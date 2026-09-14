@@ -597,70 +597,60 @@ test_that("a value passed by do.call keeps the environment of its formula", {
   expect_identical(seen, e)
 })
 
-test_that("a grouped call fitted in parallel reproduces the sequential one", {
-  skip_unless_future()
-  # The end-to-end proof for the level loop, on the smallest shape that takes
-  # it: two levels of one equation over two workers is 1 round against 2, so
-  # the levels are dispatched. One equation rather than a set only to keep the
-  # fixture to two fits per plan; since every level is seeded from the caller,
-  # a model-averaged level would agree between the two arrangements as well,
-  # which the seeding test below pins without fitting anything.
-  shape <- suppressMessages(
-    with_parallel_plan(bayesnec:::plan_group_levels(2, 1))
-  )
-  skip_if(!shape$concurrent, "the level loop declined to dispatch this shape")
-  # Bound in the frame the formula below is written in, so that the fits also
-  # answer #329: without narrow_formula_environment() this reaches both
-  # workers and both stored fits.
+test_that("a grouped call fits each level on its own rows", {
+  skip_on_cran()
+  # The level loop end to end on the real function: the subsets are built in
+  # the parent and dispatched as the elements, so what is asserted is that each
+  # level was fitted on its own rows, that the fits come back named and ordered
+  # by level, and that the seeds the levels were fitted under are recorded.
+  #
+  # No plan, and nothing in this file calls bnec_group() under one. Since #338
+  # every level is seeded from the calling session, so the two arrangements
+  # give the same estimates by construction, and that is pinned directly and
+  # without fitting by "a seeded body gives one answer on both arrangements"
+  # below. The decision is pinned by the plan_group_levels() tests, the compile
+  # directories by "each worker compiles into its own directory", and the
+  # dispatch itself by the tests that run bnec_parallel_lapply() over a real
+  # future. What a grouped call under a plan would add is a Stan compilation
+  # per worker.
+  #
+  # It would also be unreliable here. Measured on R 4.6.1 with future 1.70.0,
+  # on a WSL2 host: this call takes 173 s with no plan, while the same call
+  # under plan(multisession, workers = 2) did not return in 300 s from inside
+  # testthat, on three runs and with the fitting removed -- although it returns
+  # in 3 s outside testthat, and bnec_parallel_lapply() over a body that loads
+  # brms, raises, or calls bnec() returns in under 3 s inside testthat and out.
+  # The interaction was not identified. It is recorded here so that the next
+  # person to consider adding such a test knows what happened, and in the
+  # pull request for #338.
+  #
+  # Bound in the frame the formula is written in, so that the stored fits also
+  # answer #329: without narrow_formula_environment() this 7.6 MiB vector
+  # reaches every stored fit.
   big <- rnorm(1e6)
   d <- nec_data
   d$site <- rep(c("a", "b"), length.out = nrow(d))
-  call_it <- function() {
-    bnec_group(y ~ crf(x, model = "nec3param"), data = d,
-               group_var = "site", seed = 338, chains = 2, iter = 200,
-               refresh = 0)
-  }
-  grouped <- function() suppressMessages(suppressWarnings(call_it()))
-  grouped_verbose <- function() suppressWarnings(call_it())
-  sequential <- grouped()
-  parallel <- with_parallel_plan({
-    skip_unless_worker_sees_internals()
-    # The message is the evidence that the levels were dispatched rather than
-    # looped over, and suppressMessages() inside grouped() would discard it, so
-    # the call is made once more here with the message captured. The fit it
-    # returns is the one asserted on below.
-    expect_message(out <- grouped_verbose(), "Fitting 2 levels in parallel")
-    out
-  })
-  # The worker sets cmdstanr_write_stan_file_dir and restores it, so nothing is
-  # left behind in the calling session.
-  expect_null(getOption("cmdstanr_write_stan_file_dir"))
-  # Order and labelling come back from future_lapply() unchanged, and the
-  # levels are named after the dispatch rather than before it.
-  expect_identical(names(parallel$fits), c("a", "b"))
-  expect_identical(parallel$levels, sequential$levels)
-  expect_identical(parallel$n, sequential$n)
-  # Each level was fitted on its own rows, not on the whole data frame.
+  fit <- suppressMessages(suppressWarnings(
+    bnec_group(y ~ crf(x, model = "nec3param"), data = d, group_var = "site",
+               seed = 338, chains = 2, iter = 200, refresh = 0)
+  ))
+  expect_identical(names(fit$fits), c("a", "b"))
+  expect_identical(fit$levels, c("a", "b"))
+  expect_identical(fit$n, c(50L, 50L))
   expect_identical(
-    vapply(parallel$fits, function(f) nrow(f$fit$data), integer(1)),
-    vapply(sequential$fits, function(f) nrow(f$fit$data), integer(1))
+    unname(vapply(fit$fits, function(f) nrow(f$fit$data), integer(1))),
+    c(50L, 50L)
   )
+  # What each level was fitted under, recorded rather than regenerated.
+  expect_length(fit$level_seeds, 2L)
+  expect_true(is.numeric(fit$level_seeds))
   for (lev in c("a", "b")) {
-    expect_equal(
-      brms::as_draws_matrix(parallel$fits[[lev]]$fit),
-      brms::as_draws_matrix(sequential$fits[[lev]]$fit),
-      info = lev
-    )
-    # The stored formula holds the narrowed environment, not the 7.6 MiB
-    # vector bound beside it above (#329).
     expect_lt(
-      length(serialize(parallel$fits[[lev]]$bayesnecformula, NULL)) / 1024^2,
+      length(serialize(fit$fits[[lev]]$bayesnecformula, NULL)) / 1024^2,
       0.1
     )
   }
 })
-
-# --- What travels with the formula (#329) -----------------------------------
 
 test_that("a formula stops holding the environment it was written in", {
   # A formula records where it was created, and serialize() writes that
