@@ -168,14 +168,23 @@ queued or running -- which it must do in any case, because a second deployment
 would rewrite the source tree and `vignettes.txt` underneath the tasks of the
 first that have not yet started.
 
-## The backend differs between here and CI
+## The CI route
 
-`.github/workflows/precompile-vignettes.yaml` also runs `precompile.R`, on a
-runner that has neither `cmdstanr` nor a cmdstan installation, so it sets
-`BAYESNEC_BACKEND=rstan`. A vignette precompiled there and one precompiled here
-are therefore sampled by different back ends. Resolving that means installing
-`cmdstanr` and cmdstan on the runner and caching them. Until it is resolved, this
-is the path for a render whose numbers will be quoted.
+`.github/workflows/precompile-vignettes.yaml` also runs `precompile.R`. It
+installs `cmdstanr` and the cmdstan version `hpc/image.lock` records (#313), so
+both routes sample with the same back end and the same cmdstan, and it caches
+the compiled programs the way this job does. A diff between a render made there
+and one made here is therefore a difference in the package rather than in the
+sampler.
+
+Two things still differ, and they are the reason this remains the route for a
+render whose numbers will be quoted. The runner takes R from `setup-r` and every
+R package from the package manager's current snapshot, while the image pins R,
+`brms` and the rest by `hpc/image.lock` --- and `brms` is what writes the Stan
+program, so a different `brms` is a different program rather than a different
+sampler. And the runner
+has a job timeout of three hours against this job's day, which the largest
+vignettes exceed.
 
 ## Failure and the exit status
 
