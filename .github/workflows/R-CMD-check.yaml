@@ -6,11 +6,6 @@
 # propagated fix, and the queue never drained. Every other workflow here already
 # filters; this one did not.
 #
-# The queue is not a serial one. A run's four jobs start a median 0.1 minutes
-# apart, so the cells run in parallel, and #333 measured more than twelve
-# R-CMD-check jobs running at once. Halving the number of runs is worth doing
-# whether or not they queue. See `notes/ci_devel_cancellation.md`.
-#
 # `push` is now limited to the integration branches, and a branch with a pull
 # request is still checked through `pull_request`. Nothing loses coverage: a
 # stacked branch is checked on its own pull request, and again once GitHub
@@ -33,25 +28,6 @@ on:
 
 # Supersede rather than queue. Pushing a correction to a branch whose check is
 # still running made both run to completion, and only the second was ever read.
-# A run stopped this way reports every unfinished job as `cancelled`.
-#
-# Do not read a cancelled `ubuntu-latest (devel)` job as evidence about the
-# branch it ran on. It records that a newer commit exists on that pull request,
-# and the newer commit is the one checked. Measured 2026-09-13 over 197 runs,
-# about seven in ten cancellations stopped all four jobs before any had finished,
-# and of the 30 most recently merged pull requests, 30 had a successful devel
-# check on the head commit completed before the merge. None merged without one.
-#
-# #333 proposed exempting devel from cancellation or shortening it. Both were
-# rejected: exemption adds nothing to that coverage, and devel is not the slowest
-# job here -- it runs 1.5 to 3.6 minutes longer than `ubuntu-latest (release)`
-# and 5.3 to 7.4 minutes shorter than `windows-latest`. Exempting devel would
-# also take more than a per-cell concurrency group, because this workflow-level
-# `cancel-in-progress` stops the run before any job-level group applies.
-#
-# `notes/ci_devel_cancellation.md` holds the measurement, the day-by-day rate,
-# and what a rate quoted over a whole window does and does not describe.
-# `notes/scripts/ci_devel_cancellation.R` reproduces all of it.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -80,16 +56,9 @@ jobs:
     # a job that was merely slow. A bound above the longest observed job makes a
     # hang a deterministic event at a known boundary instead. See #328.
     #
-    # This was set against a 42-minute maximum, which #333 superseded: the
-    # longest devel job to reach a conclusion took 72.7 minutes, and five ran
-    # past 70. Against that maximum the margin is only about 1.24 times, but the
-    # maximum is one afternoon: seven of the eight longest devel jobs started on
-    # one day and six of those failed. Against the 95th centile of the
-    # distribution, which is where the routine work sits, 90 is roughly half as
-    # long again -- the centile itself drifts with the sample and is recorded,
-    # dated, in `notes/ci_devel_cancellation.md`. It is left at 90. Nothing of
-    # any cell has reached it, and the `if: always()` log dump below makes a
-    # timeout diagnosable if one fires.
+    # The 42-minute maximum this was set against is superseded: #333 measured a
+    # devel job of 72.7 minutes. 90 still clears the routine distribution by
+    # about half again, so it is left alone. See `notes/ci_devel_cancellation.md`.
     timeout-minutes: 90
 
     env:

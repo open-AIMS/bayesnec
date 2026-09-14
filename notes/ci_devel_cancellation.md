@@ -206,10 +206,11 @@ their first and last job starting, to a maximum of 102 minutes. Nine of the 788
 rows report a negative delay, which is what the API returns for a re-run;
 dropping those nine gives a median of 3 seconds and a 90th centile of 878.
 
-This supersedes the description of runner capacity at the head of
-`.github/workflows/R-CMD-check.yaml`, written when duplicate `push` and
-`pull_request` runs had filled the queue. The reason for the `push` filter is
-unaffected: halving the number of runs is worth doing whether or not they queue.
+The comment at the head of `.github/workflows/R-CMD-check.yaml` used to say the
+repository runs one job at a time, written when duplicate `push` and
+`pull_request` runs had filled the queue. That clause is removed. The reason for
+the `push` filter is unaffected: halving the number of runs is worth doing
+whether or not they queue.
 
 ## The rejected alternatives
 
