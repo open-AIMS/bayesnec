@@ -454,16 +454,21 @@ test_that("with_preserved_rng_state leaves an unused session without a seed", {
   } else {
     NULL
   }
+  old_kind <- RNGkind()
+  # One handler, kind first and seed second, for the reason
+  # with_preserved_rng_state() gives: RNGkind() called with arguments rewrites
+  # .Random.seed, and where the kind genuinely changes -- which it does here,
+  # "Rounding" back to "Rejection" -- it re-initialises the generator from the
+  # clock. Two handlers registered in this order with add = TRUE would run the
+  # seed restore first and leave the session time-seeded.
   on.exit({
+    suppressWarnings(RNGkind(old_kind[1], old_kind[2], old_kind[3]))
     if (is.null(old_seed)) {
       suppressWarnings(rm(".Random.seed", envir = globalenv()))
     } else {
       assign(".Random.seed", old_seed, envir = globalenv())
     }
   }, add = TRUE)
-  old_kind <- RNGkind()
-  on.exit(suppressWarnings(RNGkind(old_kind[1], old_kind[2], old_kind[3])),
-          add = TRUE)
   suppressWarnings(RNGkind(sample.kind = "Rounding"))
   suppressWarnings(rm(".Random.seed", envir = globalenv()))
   bayesnec:::with_preserved_rng_state({

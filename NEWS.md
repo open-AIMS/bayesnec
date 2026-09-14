@@ -898,8 +898,8 @@
   `check_fit()` is not only called directly. `bnec()` runs it on both return
   paths through `message_control_fit()`, and `summary()` runs it whenever
   `check_fit = TRUE`, so the stream after a fit and after a summary is
-  restored as well. On the released code the trailing `set.seed(10)` inside
-  the diagnostic left the stream at a fixed point after every `bnec()` call,
+  restored as well. On the released code the diagnostic's own `set.seed(10)`
+  left the stream at a fixed point after every `bnec()` call,
   whatever the fit had done; it now reflects the fitting alone, which under no
   supplied `seed` depends on how many proposals the initial-value search made
   (see #310 above). Measured on the packaged `manec_example` under the same

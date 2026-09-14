@@ -378,7 +378,7 @@ test_that("check_fit refuses a seed set.seed() would take silently", {
   # NA is how brms writes "no seed", and the initial-value search reads it that
   # way, so a user could plausibly pass it here. set.seed(NA) is an error
   # rather than a reseed, but it is refused with a message naming the argument.
-  expect_error(check_fit(nec4param, seed = NA), "seed")
+  expect_error(check_fit(nec4param, seed = NA), "must be a number")
   expect_error(check_fit(nec4param, seed = "ten"), "seed")
   expect_error(check_fit(nec4param, seed = c(1, 2)), "seed")
   expect_error(suppressMessages(check_fit(manec_example, seed = NULL)), "seed")
