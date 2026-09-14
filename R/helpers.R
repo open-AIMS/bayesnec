@@ -85,7 +85,7 @@ extract_waic_estimate <- function(x) {
   x$fit$criteria$waic$estimates["waic", "Estimate"]
 }
 
-#' Evaluate an expression with the caller's random number stream put back
+#' Evaluate an expression with the caller's saved RNG state restored
 #'
 #' Seeding a computation and leaving the stream where the seed reached it makes
 #' the next random operation in the session return something different, so a
@@ -104,8 +104,12 @@ extract_waic_estimate <- function(x) {
 #' call. \code{\link[base]{RNGkind}} is what puts \code{sample.kind} back in
 #' that case; removing \code{.Random.seed} on its own would not.
 #'
-#' The restoring fires whether \code{expr} returns or errors, so a diagnostic
-#' that fails partway still leaves the stream where it found it.
+#' Restoration runs whether \code{expr} returns or errors. It restores the
+#' generator kinds and \code{.Random.seed}, but cannot restore the cached
+#' normal variate used by \code{normal.kind = "Box-Muller"}. That cache is
+#' not stored in \code{.Random.seed} and is cleared by reseeding, so the next
+#' normal draw can change after an odd number of preceding normal draws.
+#' Use \code{normal.kind = "Inversion"} to preserve subsequent normal draws.
 #'
 #' \code{expr} is evaluated in the calling frame, so assignments inside it
 #' reach the caller's variables exactly as if the braces were written there.
