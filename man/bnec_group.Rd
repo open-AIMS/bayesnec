@@ -71,8 +71,8 @@ and the models within a level. One plan drives one of them, because
 list, so \code{bnec_group()} decides which and says which.
 
 With an ordinary plan --- \code{plan(multisession, workers = 8)} --- the two
-arrangements are counted in rounds of one fit and the smaller is taken, a
-tie going to the models, which is what earlier versions did. Writing \emph{L} for
+arrangements are counted in rounds of one fit and the smaller is taken, a tie
+going to the models, which is what earlier versions did. Writing \emph{L} for
 the levels, \emph{M} for the equations the formula asks for and \emph{W} for
 the workers, the levels take \code{ceiling(L / W) * M} rounds and the models
 \code{L * ceiling(M / W)}. Seven levels of eleven equations over four workers
@@ -85,7 +85,7 @@ it:
 \preformatted{
 library(future)
 plan(list(tweak(multisession, workers = 2),
-          tweak(multisession, workers = 4)))
+          tweak(multisession, workers = I(4))))
 fit <- bnec_group(y ~ crf(x, model = "decline"), data = my_data,
                   group_var = "site", seed = 17)
 plan(sequential)
@@ -94,27 +94,52 @@ plan(sequential)
 The outer element is the level loop and the inner one the model loop, and a
 nested plan is honoured without being counted: the division is the user's.
 Eight workers are in use here, two levels at a time with four models inside
-each.
+each. The \code{I()} around the inner count is needed, not decoration:
+\pkg{future} sets \code{mc.cores} to 1 inside a worker, \pkg{parallelly}
+reads that as the core budget and refuses four workers against it, and
+\code{I()} is how \pkg{parallelly} is told the number is meant.
 
-Three things to weigh before setting one. A core spent on the chains of a
-single fit is the cheapest of the three, because \pkg{brms} runs them without
-exporting anything and without holding a second fit, and a core spent on a
-level is the dearest, because a worker fitting a level holds that level's
-whole model-averaged set; a plan of \emph{W} level workers holds up to
-\emph{W} of them at once where fitting the levels in sequence holds one.
-Every level fits the same equations, so parallel levels compile the same Stan
-programs at the same time; each level is given its own \pkg{cmdstanr} compile
-directory to keep them apart, which means a first grouped run compiles each
-equation once per level rather than once. And \pkg{rstan} under
-\code{rstan_options(auto_write = TRUE)} caches compiled programs in one place
-that a forked worker shares with its parent, and no argument changes that
-location, so use \code{multisession} rather than \code{multicore} for a
-parallel grouped call with that option set.
+\code{plan(list(sequential, tweak(multisession, workers = I(8))))} asks for
+the other arrangement explicitly: the levels one at a time, each level's
+model set over eight workers. Use it where the count picks the levels and you
+want what earlier versions did.
 
-\code{\link{bnec}} describes what a plan does and does not reproduce, and
-none of it changes here: each fit repeats under its own \code{seed}, and the
-model-averaged quantities of a level answer to \code{\link[base]{set.seed}}
-in the calling session.
+A nested plan of \code{multisession} strategies emits a warning from
+\pkg{future} once per level, beginning \emph{added, removed, or modified
+connections}. Starting the inner cluster opens connections inside a future
+and leaves them open, which is what makes that cluster reusable, and
+\pkg{future} reports any such change. Nothing is wrong and no fit is
+affected. An inner \code{multicore} strategy, where forking is available,
+does not open connections and so does not report any.
+
+Three things to weigh before setting one. A worker fitting a level holds that
+level's whole model-averaged set, where a worker fitting one model holds one
+fit and a core given to the chains of a fit holds nothing extra, so a plan of
+\emph{W} level workers uses up to \emph{W} times the memory of the same call
+with the levels in sequence. Every level fits the same equations, so parallel
+levels compile the same Stan programs at the same time; each worker is given
+its own \pkg{cmdstanr} compile directory to keep them apart, which means a
+parallel grouped run on a cold cache compiles each equation once per worker
+rather than once, and does not read or write a persistent cache the user has
+set up. And \pkg{rstan} under \code{rstan_options(auto_write = TRUE)} caches
+compiled programs in one place that a forked worker shares with its parent,
+and no argument changes that location, so use \code{multisession} rather than
+\code{multicore} for a parallel grouped call with that option set.
+
+\bold{What a plan does and does not reproduce}
+
+Each level is given its own seed, realised in the calling session before the
+levels are dispatched and derived from \code{seed} where you passed one. So a
+grouped call gives the same estimates whichever arrangement it took, and the
+worker count does not change an answer. With a \code{seed} it repeats with no
+\code{\link[base]{set.seed}} in the session; without one,
+\code{\link[base]{set.seed}} before the call fixes it.
+
+The estimates a grouped call reports are not those earlier versions reported,
+because the levels are now seeded rather than drawing from the session's
+stream as each is reached. They are another realisation of the same
+weighting. \code{\link{bnec}} describes the rest of what a plan does to a
+fit, and none of that changes here.
 }
 \examples{
 \dontrun{

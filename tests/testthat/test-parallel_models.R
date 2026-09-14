@@ -480,10 +480,15 @@ test_that("the two arrangements of one plan are counted in rounds of one fit", {
   # One worker is parallel in name only and gives a tie, which the caller
   # resolves in favour of the models.
   expect_equal(rounds(7, 11, 1)$models, rounds(7, 11, 1)$levels)
-  # Unknown, or unbounded, is not a number to divide by. Both arms are NA and
-  # the caller leaves the levels in sequence.
+  # An unbounded worker count is a scheduler backend -- nbrOfWorkers() reports
+  # Inf for future.batchtools -- and is counted rather than refused: one round
+  # of whichever loop is dispatched. ceiling(L / Inf) is 0, so dividing would
+  # have reported an arrangement that takes no time at all.
+  expect_equal(rounds(7, 11, Inf)$levels, 11)
+  expect_equal(rounds(7, 11, Inf)$models, 7)
+  # A count that genuinely could not be read is the NA case, and the caller
+  # leaves the levels in sequence.
   expect_true(is.na(rounds(7, 11, NA)$levels))
-  expect_true(is.na(rounds(7, 11, Inf)$levels))
   expect_true(is.na(rounds(7, NA_integer_, 8)$levels))
 })
 
@@ -491,9 +496,9 @@ test_that("fewer than two levels, or no plan, is never a parallel level loop", {
   skip_unless_future()
   old <- future::plan(future::sequential)
   on.exit(future::plan(old), add = TRUE)
-  expect_false(bayesnec:::plan_group_levels(5, 11)$parallel)
+  expect_false(bayesnec:::plan_group_levels(5, 11)$dispatch)
   expect_false(
-    with_parallel_plan(bayesnec:::plan_group_levels(1, 11))$parallel
+    with_parallel_plan(bayesnec:::plan_group_levels(1, 11))$dispatch
   )
 })
 
@@ -506,14 +511,16 @@ test_that("the smaller count decides which loop an ordinary plan drives", {
     out <- with_parallel_plan(bayesnec:::plan_group_levels(3, 2)),
     "3 rounds of one fit, against 4"
   )
-  expect_false(out$parallel)
+  expect_false(out$dispatch)
+  expect_false(out$concurrent)
   # Two workers, four levels, three equations: the levels take 6 rounds and
   # the models 8, so the levels take the workers.
   expect_message(
     out <- with_parallel_plan(bayesnec:::plan_group_levels(4, 3)),
     "Fitting 4 levels in parallel over 2 workers"
   )
-  expect_true(out$parallel)
+  expect_true(out$dispatch)
+  expect_true(out$concurrent)
 })
 
 test_that("an unreadable model count leaves the levels in sequence", {
@@ -522,7 +529,7 @@ test_that("an unreadable model count leaves the levels in sequence", {
     out <- with_parallel_plan(bayesnec:::plan_group_levels(4, NA_integer_)),
     "equations the formula asks for could not be read"
   )
-  expect_false(out$parallel)
+  expect_false(out$dispatch)
 })
 
 test_that("a nested plan is honoured without being counted", {
@@ -537,34 +544,43 @@ test_that("a nested plan is honoured without being counted", {
   # anyway, because there the user has divided the workers deliberately.
   expect_message(out <- bayesnec:::plan_group_levels(3, 2),
                  "plan is a list")
-  expect_true(out$parallel)
+  expect_true(out$dispatch)
+  expect_true(out$concurrent)
 })
 
-test_that("each level compiles into its own directory, under the user's root", {
+test_that("each worker compiles into its own directory, under the user's root", {
   # Every level fits the same equations, so parallel levels compile the same
   # Stan programs at once. cmdstanr does not lock its cache, and a forked
   # worker shares the parent's tempdir, so the directory has to differ by
-  # level rather than by process.
-  a <- bayesnec:::level_stan_cache_dir(1)
-  b <- bayesnec:::level_stan_cache_dir(2)
-  expect_false(identical(a, b))
-  expect_true(dir.exists(a) && dir.exists(b))
-  # A deliberate persistent cache is still used, one directory down. The root
-  # is an argument rather than read from the options here, because future
-  # exports globals and not options and a multisession worker would otherwise
-  # never see it.
+  # process. Keyed on the process rather than on the level so that a worker
+  # which draws three levels compiles each equation once and not three times.
+  own <- bayesnec:::worker_stan_cache_dir()
+  expect_match(basename(own), paste0("^bayesnec-stan-", Sys.getpid(), "$"))
+  expect_true(dir.exists(own))
+  expect_equal(dirname(own), tempdir())
+  # A directory the user chose is shared by every worker on every backend, so
+  # it is separated the same way.
   root <- file.path(tempdir(), "bayesnec-cache-root-test")
   dir.create(root, showWarnings = FALSE)
-  expect_equal(dirname(bayesnec:::level_stan_cache_dir(3, root)), root)
-  # An option set in the calling session is not read here, and the fallback is
-  # the process's own tempdir.
+  expect_equal(dirname(bayesnec:::worker_stan_cache_dir(root)), root)
+  # The root is an argument rather than read from the options here, because
+  # future exports globals and not options and a multisession worker would
+  # otherwise never see one the caller set.
   old <- options(cmdstanr_write_stan_file_dir = root)
   on.exit(options(old), add = TRUE)
-  expect_equal(dirname(bayesnec:::level_stan_cache_dir(3)), tempdir())
-  # Named by position, so the same level reaches the same directory on the
-  # next run and the cache it wrote is still there to be read.
-  expect_identical(bayesnec:::level_stan_cache_dir(3, root),
-                   bayesnec:::level_stan_cache_dir(3, root))
+  expect_equal(dirname(bayesnec:::worker_stan_cache_dir()), tempdir())
+  # Two workers do not share a directory, which is the property the race
+  # needs. Asserted through a future rather than by construction, since the
+  # process id is what separates them.
+  skip_unless_future()
+  skip_unless_worker_sees_internals()
+  dirs <- with_parallel_plan(
+    bayesnec:::bnec_parallel_lapply(1:2, function(i) {
+      Sys.sleep(0.2)
+      bayesnec:::worker_stan_cache_dir()
+    }, parallel = TRUE)
+  )
+  expect_length(unique(unlist(dirs)), 2)
 })
 
 test_that("a value passed by do.call keeps the environment of its formula", {
@@ -592,25 +608,33 @@ test_that("a grouped call fitted in parallel reproduces the sequential one", {
   shape <- suppressMessages(
     with_parallel_plan(bayesnec:::plan_group_levels(2, 1))
   )
-  skip_if(!shape$parallel, "the level loop declined to dispatch this shape")
+  skip_if(!shape$concurrent, "the level loop declined to dispatch this shape")
   # Bound in the frame the formula below is written in, so that the fits also
   # answer #329: without narrow_formula_environment() this reaches both
   # workers and both stored fits.
   big <- rnorm(1e6)
   d <- nec_data
   d$site <- rep(c("a", "b"), length.out = nrow(d))
-  grouped <- function() {
-    suppressMessages(suppressWarnings(
-      bnec_group(y ~ crf(x, model = "nec3param"), data = d,
-                 group_var = "site", seed = 338, chains = 2, iter = 200,
-                 refresh = 0)
-    ))
+  call_it <- function() {
+    bnec_group(y ~ crf(x, model = "nec3param"), data = d,
+               group_var = "site", seed = 338, chains = 2, iter = 200,
+               refresh = 0)
   }
+  grouped <- function() suppressMessages(suppressWarnings(call_it()))
+  grouped_verbose <- function() suppressWarnings(call_it())
   sequential <- grouped()
   parallel <- with_parallel_plan({
     skip_unless_worker_sees_internals()
-    grouped()
+    # The message is the evidence that the levels were dispatched rather than
+    # looped over, and suppressMessages() inside grouped() would discard it, so
+    # the call is made once more here with the message captured. The fit it
+    # returns is the one asserted on below.
+    expect_message(out <- grouped_verbose(), "Fitting 2 levels in parallel")
+    out
   })
+  # The worker sets cmdstanr_write_stan_file_dir and restores it, so nothing is
+  # left behind in the calling session.
+  expect_null(getOption("cmdstanr_write_stan_file_dir"))
   # Order and labelling come back from future_lapply() unchanged, and the
   # levels are named after the dispatch rather than before it.
   expect_identical(names(parallel$fits), c("a", "b"))
@@ -716,7 +740,9 @@ test_that("a function the formula names comes with its own environment", {
   # The limit of what this can do, recorded rather than hidden. A user
   # transformation defined beside the formula is a closure over the same
   # environment, so the name is copied with everything it closed over. The
-  # object is needed, so there is nothing to be saved there.
+  # closure is needed; the vector beside it is not, and there is no way to tell
+  # them apart from the formula. A helper defined in a knitr chunk therefore
+  # still gives a large fit.
   make <- function() {
     big <- rnorm(1e6)
     halve <- function(z) z / 2
@@ -725,4 +751,98 @@ test_that("a function the formula names comes with its own environment", {
   narrowed <- bayesnec:::narrow_formula_environment(make(), nec_data)
   expect_true(exists("halve", envir = environment(narrowed), inherits = FALSE))
   expect_gt(length(serialize(narrowed, NULL)) / 1024^2, 7)
+})
+
+test_that("a list plan whose first strategy is sequential asks for the models", {
+  skip_unless_future()
+  old_limit <- options(parallelly.maxWorkers.localhost = Inf)
+  on.exit(options(old_limit), add = TRUE)
+  # Entering a future is what moves the plan on to the next strategy, so the
+  # levels are still dispatched; a sequential strategy runs them one at a time
+  # in the parent, and each level's model loop then sees the inner plan.
+  # Measured on R 4.6.1 with future 1.70.0: nbrOfWorkers() is 1 in the parent
+  # and 2 inside the level future. Without this branch the same plan fitted
+  # both loops in sequence and said nothing, because bnec_plan_is_parallel()
+  # reads only the first strategy.
+  old <- future::plan(list(future::sequential,
+                           future::tweak(future::multisession,
+                                         workers = I(2))))
+  on.exit(future::plan(old), add = TRUE)
+  expect_message(out <- bayesnec:::plan_group_levels(3, 11),
+                 "first strategy is sequential")
+  expect_true(out$dispatch)
+  expect_false(out$concurrent)
+  skip_unless_worker_sees_internals()
+  # suppressWarnings for future's own check on connections opened inside a
+  # future: starting the inner multisession cluster opens two of them and they
+  # stay open, which is what makes the cluster reusable. Every nested plan of
+  # multisession strategies emits it, once per level, and ?bnec_group says so.
+  seen <- suppressWarnings(bayesnec:::bnec_parallel_lapply(1:2, function(i) {
+    future::nbrOfWorkers()
+  }, parallel = TRUE))
+  expect_equal(unlist(seen), c(2, 2))
+})
+
+test_that("the nested plan the message recommends asserts its worker count", {
+  skip_unless_future()
+  # future sets mc.cores to 1 inside a worker, parallelly reads that as the
+  # core budget, and its hard limit is 300 per cent, so a bare inner worker
+  # count is refused. Measured on R 4.6.1 with future 1.70.0 and parallelly
+  # 1.48.0, one run each: under plan(list(tweak(multisession, workers = 2),
+  # tweak(multisession, workers = 4))) an inner future returned "Attempting to
+  # set up 4 localhost parallel workers with only 1 CPU cores available ... The
+  # hard limit is set to 300%", and the same plan with workers = I(4) returned
+  # 4. The refusal depends on the outer count as well -- one outer worker
+  # accepted the bare 4 -- so what is asserted here is that the advice bayesnec
+  # prints carries the I(). Building the nested cluster is not asserted: ten
+  # processes each loading brms took longer than the rest of this file
+  # together.
+  expect_match(
+    suppressMessages(
+      capture_messages(with_parallel_plan(bayesnec:::plan_group_levels(3, 2)))
+    ),
+    "workers = I(", fixed = TRUE, all = FALSE
+  )
+})
+
+test_that("a NULL binding is kept rather than deleted", {
+  # vals[[nm]] <- x deletes the element when x is NULL, which left the name out
+  # of the replacement environment and let it resolve against the parent chain
+  # instead. A decoy of the same name there then answered for it, so a model
+  # set that get_model_from_formula() would have refused became a fit of
+  # something else.
+  make <- function() {
+    mods <- NULL
+    bayesnecformula(y ~ crf(x, model = mods))
+  }
+  narrowed <- bayesnec:::narrow_formula_environment(make(), nec_data)
+  expect_true(exists("mods", envir = environment(narrowed), inherits = FALSE))
+  expect_null(get("mods", envir = environment(narrowed), inherits = FALSE))
+})
+
+test_that("the levels of a grouped call are seeded from the caller", {
+  # Without this the arrangement decides the answer: expand_manec() realises
+  # the weighted-draw seed from whatever stream bnec() is running in, so the
+  # levels in a worker draw from the worker's and the levels in the parent from
+  # the session's -- and plan_group_levels() reads the arrangement off the
+  # worker count, so the machine would change the estimates.
+  seeds <- bayesnec:::group_level_seeds
+  # A supplied seed fixes them outright, so a grouped call repeats with no
+  # set.seed() in the session.
+  expect_identical(seeds(4, 17), seeds(4, 17))
+  expect_false(identical(seeds(4, 17), seeds(4, 18)))
+  expect_length(seeds(4, 17), 4L)
+  # With none supplied they come from the session's stream, so set.seed()
+  # before the call fixes them.
+  set.seed(338)
+  a <- seeds(3)
+  set.seed(338)
+  expect_identical(seeds(3), a)
+  # The caller's stream is left where it was found, either way.
+  set.seed(338)
+  before <- get(".Random.seed", envir = globalenv())
+  invisible(seeds(5, 17))
+  expect_identical(get(".Random.seed", envir = globalenv()), before)
+  invisible(seeds(5))
+  expect_identical(get(".Random.seed", envir = globalenv()), before)
 })

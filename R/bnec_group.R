@@ -55,8 +55,8 @@
 #' list, so \code{bnec_group()} decides which and says which.
 #'
 #' With an ordinary plan --- \code{plan(multisession, workers = 8)} --- the two
-#' arrangements are counted in rounds of one fit and the smaller is taken, a
-#' tie going to the models, which is what earlier versions did. Writing \emph{L} for
+#' arrangements are counted in rounds of one fit and the smaller is taken, a tie
+#' going to the models, which is what earlier versions did. Writing \emph{L} for
 #' the levels, \emph{M} for the equations the formula asks for and \emph{W} for
 #' the workers, the levels take \code{ceiling(L / W) * M} rounds and the models
 #' \code{L * ceiling(M / W)}. Seven levels of eleven equations over four workers
@@ -69,7 +69,7 @@
 #' \preformatted{
 #' library(future)
 #' plan(list(tweak(multisession, workers = 2),
-#'           tweak(multisession, workers = 4)))
+#'           tweak(multisession, workers = I(4))))
 #' fit <- bnec_group(y ~ crf(x, model = "decline"), data = my_data,
 #'                   group_var = "site", seed = 17)
 #' plan(sequential)
@@ -78,27 +78,52 @@
 #' The outer element is the level loop and the inner one the model loop, and a
 #' nested plan is honoured without being counted: the division is the user's.
 #' Eight workers are in use here, two levels at a time with four models inside
-#' each.
+#' each. The \code{I()} around the inner count is needed, not decoration:
+#' \pkg{future} sets \code{mc.cores} to 1 inside a worker, \pkg{parallelly}
+#' reads that as the core budget and refuses four workers against it, and
+#' \code{I()} is how \pkg{parallelly} is told the number is meant.
 #'
-#' Three things to weigh before setting one. A core spent on the chains of a
-#' single fit is the cheapest of the three, because \pkg{brms} runs them without
-#' exporting anything and without holding a second fit, and a core spent on a
-#' level is the dearest, because a worker fitting a level holds that level's
-#' whole model-averaged set; a plan of \emph{W} level workers holds up to
-#' \emph{W} of them at once where fitting the levels in sequence holds one.
-#' Every level fits the same equations, so parallel levels compile the same Stan
-#' programs at the same time; each level is given its own \pkg{cmdstanr} compile
-#' directory to keep them apart, which means a first grouped run compiles each
-#' equation once per level rather than once. And \pkg{rstan} under
-#' \code{rstan_options(auto_write = TRUE)} caches compiled programs in one place
-#' that a forked worker shares with its parent, and no argument changes that
-#' location, so use \code{multisession} rather than \code{multicore} for a
-#' parallel grouped call with that option set.
+#' \code{plan(list(sequential, tweak(multisession, workers = I(8))))} asks for
+#' the other arrangement explicitly: the levels one at a time, each level's
+#' model set over eight workers. Use it where the count picks the levels and you
+#' want what earlier versions did.
 #'
-#' \code{\link{bnec}} describes what a plan does and does not reproduce, and
-#' none of it changes here: each fit repeats under its own \code{seed}, and the
-#' model-averaged quantities of a level answer to \code{\link[base]{set.seed}}
-#' in the calling session.
+#' A nested plan of \code{multisession} strategies emits a warning from
+#' \pkg{future} once per level, beginning \emph{added, removed, or modified
+#' connections}. Starting the inner cluster opens connections inside a future
+#' and leaves them open, which is what makes that cluster reusable, and
+#' \pkg{future} reports any such change. Nothing is wrong and no fit is
+#' affected. An inner \code{multicore} strategy, where forking is available,
+#' does not open connections and so does not report any.
+#'
+#' Three things to weigh before setting one. A worker fitting a level holds that
+#' level's whole model-averaged set, where a worker fitting one model holds one
+#' fit and a core given to the chains of a fit holds nothing extra, so a plan of
+#' \emph{W} level workers uses up to \emph{W} times the memory of the same call
+#' with the levels in sequence. Every level fits the same equations, so parallel
+#' levels compile the same Stan programs at the same time; each worker is given
+#' its own \pkg{cmdstanr} compile directory to keep them apart, which means a
+#' parallel grouped run on a cold cache compiles each equation once per worker
+#' rather than once, and does not read or write a persistent cache the user has
+#' set up. And \pkg{rstan} under \code{rstan_options(auto_write = TRUE)} caches
+#' compiled programs in one place that a forked worker shares with its parent,
+#' and no argument changes that location, so use \code{multisession} rather than
+#' \code{multicore} for a parallel grouped call with that option set.
+#'
+#' \bold{What a plan does and does not reproduce}
+#'
+#' Each level is given its own seed, realised in the calling session before the
+#' levels are dispatched and derived from \code{seed} where you passed one. So a
+#' grouped call gives the same estimates whichever arrangement it took, and the
+#' worker count does not change an answer. With a \code{seed} it repeats with no
+#' \code{\link[base]{set.seed}} in the session; without one,
+#' \code{\link[base]{set.seed}} before the call fixes it.
+#'
+#' The estimates a grouped call reports are not those earlier versions reported,
+#' because the levels are now seeded rather than drawing from the session's
+#' stream as each is reached. They are another realisation of the same
+#' weighting. \code{\link{bnec}} describes the rest of what a plan does to a
+#' fit, and none of that changes here.
 #'
 #' @return An object of class \code{\link{bayesnecgroupfit}}.
 #'
@@ -230,7 +255,24 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
   # unset; read inside the worker instead, a deliberate persistent cache would
   # be honoured under a forking plan and silently ignored under every other.
   cache_root <- getOption("cmdstanr_write_stan_file_dir")
-  if (level_plan$parallel) {
+  # One seed per level, realised here and applied inside the level. Without it
+  # the arrangement decides the answer: bnec() draws the weighted-draw seed for
+  # its model-averaged estimates from whatever stream it is running in
+  # (expand_manec(), see #216), so with the levels in a worker that draw comes
+  # from the worker's stream and with the levels in the parent from the
+  # parent's. Since plan_group_levels() reads the arrangement off the worker
+  # count, one script at one seed would otherwise report different
+  # model-averaged estimates on a four-core and an eight-core machine. Seeding
+  # each level from the parent makes every level's estimates a function of the
+  # parent's stream alone, so the four combinations of plan and arrangement
+  # agree.
+  #
+  # Derived from `seed` where the user supplied one, so that a grouped call
+  # repeats without a set.seed() in the session as well. The caller's stream is
+  # put back either way: bnec_group() is not entitled to move it, which is the
+  # same rule bnec_parallel_lapply() follows.
+  level_seeds <- group_level_seeds(length(levs), dots$seed)
+  if (level_plan$concurrent) {
     # Announced together, before the dispatch. The per-level message the
     # sequential path emits is dropped here: it would be emitted by the worker
     # that fits the level, and from there it arrives out of order or not at
@@ -239,9 +281,25 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
             paste0("\"", levs, "\" (", counts[levs], " observations)",
                    collapse = ", "), ".")
   }
+  # The subsets are the elements dispatched, not indices into `data`. future
+  # serialises the globals of the applied function once per future, so holding
+  # the whole data frame there would send all of it to every level -- L times
+  # what the levels between them need, and the transfer #329 exists to remove
+  # reintroduced in the loop #338 adds. Measured on a 200,000-row frame over
+  # seven levels: 5.53 MiB per future against 5.53 MiB for the seven subsets
+  # together.
+  #
+  # split() rather than data[grp == lev, ]: it is one pass, and it orders the
+  # pieces by levels(grp), which is the order `levs` is in. An empty level
+  # cannot arise -- one under four observations was refused above.
+  parts <- Map(
+    function(i, d) list(i = i, data = d),
+    seq_along(levs), unname(split(data, grp))
+  )
   # narrow_environment(), for the reason bnec() gives at its own call: future
   # exports the applied function with its enclosing environment, and that would
-  # be this frame. Only the nine names below need to reach a worker.
+  # be this frame. Only the eight names below need to reach a worker, and
+  # neither `data` nor `grp` is one of them.
   #
   # do.call() rather than forwarding `...`, because `...` cannot be put in the
   # replacement environment. Two things this changes were checked rather than
@@ -252,29 +310,35 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
   # R/validate_family.R names do.call() as the case -- so the link is read the
   # same way on both paths. The family has in any event been validated and
   # marked above, so validate_family() leaves it alone downstream.
+  #
+  # "bnec" by name rather than the function object: do.call() records the value
+  # it is given as the head of the call, so passing the object left every error
+  # raised inside a level reading `Error in (function (formula, data, ...`.
   fit_level <- narrow_environment(
-    function(i) {
-      if (parallel) {
+    function(part) {
+      i <- part$i
+      set.seed(level_seeds[i])
+      if (concurrent) {
         # Set inside the worker, where it is the worker's own option, and
         # restored so that a plan evaluating in the parent leaves nothing
-        # behind. See level_stan_cache_dir().
+        # behind. See worker_stan_cache_dir().
         old <- options(
-          cmdstanr_write_stan_file_dir = level_stan_cache_dir(i, cache_root)
+          cmdstanr_write_stan_file_dir = worker_stan_cache_dir(cache_root)
         )
         on.exit(options(old), add = TRUE)
       } else {
         message("Fitting level \"", levs[i], "\" (", counts[[levs[i]]],
                 " observations).")
       }
-      do.call(bnec, c(list(formula, data = data[grp == levs[i], , drop = FALSE],
-                           family = family), dots))
+      do.call("bnec", c(list(formula, data = part$data, family = family),
+                        dots))
     },
-    list(formula = formula, data = data, grp = grp, levs = levs,
-         counts = counts, family = family, dots = dots,
-         parallel = level_plan$parallel, cache_root = cache_root)
+    list(formula = formula, levs = levs, counts = counts, family = family,
+         dots = dots, concurrent = level_plan$concurrent,
+         cache_root = cache_root, level_seeds = level_seeds)
   )
-  fits <- bnec_parallel_lapply(seq_along(levs), fit_level,
-                               parallel = level_plan$parallel)
+  fits <- bnec_parallel_lapply(parts, fit_level,
+                               parallel = level_plan$dispatch)
   names(fits) <- levs
   out <- list(fits = fits, group_var = group_var, levels = levs,
               formula = formula, data = data, family = unmark_family(family),

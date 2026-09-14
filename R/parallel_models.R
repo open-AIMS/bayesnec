@@ -186,8 +186,12 @@ n_workers <- function(n) {
 #' upper bound on both counts, so this is a scheduling estimate rather than a
 #' measurement.
 #'
-#' Returns \code{NA} for both where the worker count or the model count is
-#' unknown, which the caller reads as "leave the levels in sequence".
+#' An unbounded worker count is counted rather than refused. A scheduler backend
+#' reports \code{Inf} from \code{\link[future]{nbrOfWorkers}} ---
+#' \pkg{future.batchtools} is the usual one, and it is the setting a grouped
+#' call of this size belongs in --- and there each arrangement takes one round
+#' of the loop it dispatches: \emph{M} for the levels and \emph{L} for the
+#' models. \code{NA} is reserved for a count that genuinely could not be read.
 #'
 #' @param n_levels A \code{\link[base]{numeric}} vector of length 1.
 #' @param n_models A \code{\link[base]{numeric}} vector of length 1, or
@@ -200,15 +204,20 @@ n_workers <- function(n) {
 #'
 #' @noRd
 group_loop_rounds <- function(n_levels, n_models, workers) {
-  if (length(workers) != 1 || is.na(workers) || !is.finite(workers) ||
+  if (length(workers) != 1 || is.na(workers) || !is.numeric(workers) ||
         length(n_models) != 1 || is.na(n_models)) {
     return(list(levels = NA_real_, models = NA_real_))
+  }
+  if (is.infinite(workers)) {
+    # ceiling(L / Inf) is 0, which would report an arrangement that takes no
+    # time at all, so the unbounded case is written out rather than divided.
+    return(list(levels = as.numeric(n_models), models = as.numeric(n_levels)))
   }
   list(levels = ceiling(n_levels / workers) * n_models,
        models = n_levels * ceiling(n_models / workers))
 }
 
-#' A Stan compile directory that no two levels share
+#' A Stan compile directory that no two workers share
 #'
 #' Every level of a grouped call fits the same equations, so parallel levels
 #' compile the same Stan programs at the same time. \pkg{cmdstanr} does not lock
@@ -218,34 +227,41 @@ group_loop_rounds <- function(n_levels, n_models, workers) {
 #' reason. The model loop inside one \code{\link{bnec}} call is not exposed to
 #' it, because there the equations differ and so do the programs.
 #'
-#' Whether the cache is in fact shared depends on the backend, and the
-#' difference is not one to rely on. Under \code{multisession} each worker is a
-#' separate process with its own \code{\link[base]{tempdir}}, so the default
-#' cache location differs already; under \code{multicore} the child inherits the
-#' parent's, so it does not. A directory per level is the same arrangement on
-#' both.
+#' \bold{Keyed on the process, not on the level.} A key per level would make a
+#' worker that draws three levels compile every equation three times, so a
+#' grouped call of seven levels and eleven equations would compile 77 programs
+#' where it needs at most one per worker. A key per process gives the same
+#' separation --- no two futures run in one process at one time --- at one
+#' compilation per equation per worker.
 #'
-#' Named by the level's position rather than by its label, because a label is
-#' arbitrary text and a directory name is not, and rather than by the process
-#' id, because a name that is the same on the next run is a cache that can still
-#' be reused on the next run. No two levels are fitted under one position, so no
-#' two futures reach for one directory.
+#' It is applied on both backends although only one needs it. Under
+#' \code{multisession} each worker is a separate process with its own
+#' \code{\link[base]{tempdir}}, so the default cache location already differs;
+#' under \code{multicore} the child inherits the parent's, so it does not. A
+#' directory per process is the same arrangement on both, and it is the case
+#' where the user has set \code{cmdstanr_write_stan_file_dir} that makes it
+#' necessary on both: a directory the user chose is shared by every worker
+#' whatever the backend.
 #'
-#' Rooted at \code{cmdstanr_write_stan_file_dir} where the user has set one, so
-#' that a deliberate persistent cache is still used, and at
-#' \code{\link[base]{tempdir}} otherwise, which is where \pkg{cmdstanr} writes
-#' by default.
+#' Rooted at \code{cmdstanr_write_stan_file_dir} where the user has set one and
+#' at \code{\link[base]{tempdir}} otherwise, which is where \pkg{cmdstanr}
+#' writes by default.
+#'
+#' \bold{What this adds is compilation on a cold cache.} A parallel grouped run
+#' compiles each equation once per worker rather than once, and a process id is
+#' not the same on the next run, so a persistent cache the user has warmed is
+#' not read by a parallel grouped call and the programs that call writes are not
+#' read by the next one. Against a fit measured at 18 minutes on the AIMS HPC
+#' that is small; against a short fit on a cold cache it need not be, and
+#' \code{group_loop_rounds()} counts sampling only. Fitting the levels in
+#' sequence --- which a plan of \code{list(sequential, ...)} asks for --- uses
+#' the cache as it always did.
 #'
 #' \code{root} is read in the parent and passed in rather than read here.
 #' \pkg{future} exports the globals a future needs and not the session's
 #' options, so a \code{multisession} worker starts with the option unset: read
 #' here, a deliberate persistent cache would be honoured under a forking plan,
 #' which inherits options, and silently ignored under every other one.
-#'
-#' What this adds is compilation, not risk: a first grouped run compiles each
-#' equation once per level rather than once. Against a fit measured at 18
-#' minutes on the AIMS HPC this is small, and it is what \code{multisession}
-#' already does.
 #'
 #' This addresses \pkg{cmdstanr} only. \pkg{rstan} caches a compiled program
 #' under \code{rstan_options(auto_write = TRUE)}, in \code{\link[base]{tempdir}}
@@ -254,8 +270,6 @@ group_loop_rounds <- function(n_levels, n_models, workers) {
 #' location, so it is documented in \code{?bnec_group} rather than worked
 #' around here.
 #'
-#' @param level A \code{\link[base]{numeric}} vector of length 1 giving the
-#' position of the level in \code{levels(grp)}.
 #' @param root A \code{\link[base]{character}} vector of length 1 giving the
 #' directory to write under, or \code{NULL} for \code{\link[base]{tempdir}}.
 #'
@@ -263,15 +277,78 @@ group_loop_rounds <- function(n_levels, n_models, workers) {
 #' which has been created.
 #'
 #' @noRd
-level_stan_cache_dir <- function(level, root = NULL) {
+worker_stan_cache_dir <- function(root = NULL) {
   base <- root
   if (is.null(base) || !is.character(base) || length(base) != 1 ||
         is.na(base)) {
     base <- tempdir()
   }
-  path <- file.path(base, paste0("bayesnec-level-", level))
+  path <- file.path(base, paste0("bayesnec-stan-", Sys.getpid()))
   dir.create(path, showWarnings = FALSE, recursive = TRUE)
   path
+}
+
+#' One seed per level, realised in the caller's session
+#'
+#' \code{\link{bnec_group}} applies these inside each level, so that a level's
+#' whole random procedure --- the initial-value search where no \code{seed} was
+#' supplied, and the weighted-draw seed \code{expand_manec()} realises for the
+#' model-averaged estimates --- answers to the caller's session and not to
+#' whichever process the level was fitted in.
+#'
+#' Without it the arrangement decides the answer. \code{expand_manec()} draws
+#' \code{w_draw_seed} from the ambient stream (#216), so a level fitted in a
+#' worker draws from that worker's L'Ecuyer-CMRG stream and a level fitted in
+#' the parent from the session's. \code{plan_group_levels()} chooses the
+#' arrangement from the worker count, so one script at one seed would report
+#' different model-averaged estimates on a four-core and an eight-core machine.
+#' This is the one place a grouped call can close that gap without changing
+#' \code{expand_manec()}, which \code{bnec_parallel_lapply()} records as the
+#' wider fix and as #216's deliberate decision.
+#'
+#' \bold{Derived from \code{seed} where the user supplied one.} A grouped call
+#' then repeats itself with no \code{\link[base]{set.seed}} in the session,
+#' which is more than \code{\link{bnec}} offers for a single set. Where none was
+#' supplied the seeds come from the session's stream, so
+#' \code{\link[base]{set.seed}} before the call fixes them.
+#'
+#' \bold{The caller's stream is put back.} \code{\link{bnec_group}} is not
+#' entitled to move it, which is the rule \code{bnec_parallel_lapply()} and
+#' \code{weighted_draw_index()} follow, and for the same reason: a fit must not
+#' reset a user's simulation seed.
+#'
+#' One consequence to state rather than hide: the realised estimates of a
+#' grouped call differ from those of earlier versions, because the levels are
+#' now seeded rather than drawing from the stream as they are reached. They are
+#' another realisation of the same weighting, and they are the same on every
+#' arrangement, which they were not.
+#'
+#' @param n_levels A \code{\link[base]{numeric}} vector of length 1.
+#' @param seed The \code{seed} the caller passed through to
+#' \code{\link[brms]{brm}}, or \code{NULL}.
+#'
+#' @return An \code{\link[base]{integer}} vector of length \code{n_levels}.
+#'
+#' @noRd
+group_level_seeds <- function(n_levels, seed = NULL) {
+  has_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+  old_seed <- if (has_seed) {
+    get(".Random.seed", envir = globalenv(), inherits = FALSE)
+  } else {
+    NULL
+  }
+  on.exit({
+    if (is.null(old_seed)) {
+      suppressWarnings(rm(".Random.seed", envir = globalenv()))
+    } else {
+      assign(".Random.seed", old_seed, envir = globalenv())
+    }
+  }, add = TRUE)
+  if (!is.null(seed) && length(seed) == 1 && is.numeric(seed) &&
+        is.finite(seed)) {
+    set.seed(seed)
+  }
+  sample.int(.Machine$integer.max, n_levels)
 }
 
 #' Decide how the levels of a grouped call will be fitted, and say so
@@ -282,34 +359,49 @@ level_stan_cache_dir <- function(level, root = NULL) {
 #' plan already holds. See \code{?bnec_group} under \emph{Fitting the levels in
 #' parallel}.
 #'
-#' \bold{A plan of one list drives one loop.} \pkg{future} evaluates a nested
-#' future sequentially unless the plan is a list, so a level fitted in a worker
-#' fits its own models one at a time: measured on R 4.6.1 with \pkg{future}
-#' 1.70.0, \code{plan(multisession, workers = 2)} reports the strategy inside a
-#' worker as \code{sequential} and \code{nbrOfWorkers()} there as 1. Dispatching
-#' the levels therefore takes the workers away from the model loop rather than
-#' adding to it, and the two arrangements are counted against each other by
-#' \code{group_loop_rounds()}. The larger count is not taken; a tie leaves the
-#' levels in sequence, which is what the release does.
+#' \bold{A plan of one strategy drives one loop.} \pkg{future} evaluates a
+#' nested future sequentially unless the plan is a list, so a level fitted in a
+#' worker fits its own models one at a time: measured on R 4.6.1 with
+#' \pkg{future} 1.70.0, \code{plan(multisession, workers = 2)} reports the
+#' strategy inside a worker as \code{sequential} and \code{nbrOfWorkers()} there
+#' as 1. Dispatching the levels therefore takes the workers away from the model
+#' loop rather than adding to it, and the two arrangements are counted against
+#' each other by \code{group_loop_rounds()}. The larger count is not taken; a
+#' tie leaves the levels in sequence, which is what the release does.
 #'
-#' \bold{A plan that is a list is honoured without being counted.} There the
-#' user has divided the workers between the two loops deliberately --
+#' \bold{A plan that is a list is honoured without being counted}, because there
+#' the user has divided the workers between the two loops deliberately. The
+#' outer element governs the level loop and the next one the model loop:
+#' measured on the same versions, inside a level worker of
 #' \code{plan(list(tweak(multisession, workers = 2), tweak(multisession,
-#' workers = 4)))} -- and the outer element is the level loop by construction.
-#' Measured on the same versions: inside a level worker of that plan
-#' \code{nbrOfWorkers()} reports 4 and the model loop parallelises over them.
+#' workers = I(3))))}, \code{nbrOfWorkers()} reports 3 and the model loop
+#' parallelises over them.
 #'
-#' \bold{The levels are the last claim on a plan, not the first.} Three things
-#' can use a core: the chains of one fit, the models of one level, and the
-#' levels. Chains are the cheapest -- \pkg{brms} runs them without exporting
-#' anything and without holding a second fit -- models next, at one fit per
-#' worker, and levels the dearest, at a whole model-averaged set per worker.
-#' That ordering is why the comparison above has to be made rather than assumed:
-#' on the four cores the grouped call of #338 was measured over, with eleven
-#' equations and seven levels, the model arrangement is the smaller count
-#' (\code{7 x ceiling(11 / 4) = 21} against \code{ceiling(7 / 4) x 11 = 22})
-#' and the levels are left in sequence. The level loop takes the workers only
-#' from about eight of them upwards.
+#' \bold{A list whose outer element is \code{sequential} is how the release
+#' arrangement is asked for.} The levels are still dispatched through
+#' \pkg{future}, because entering a future is what moves the plan on to the next
+#' strategy, but a sequential strategy evaluates them one at a time in the
+#' parent, so the model loop inside each gets the whole of the inner plan.
+#' Measured on the same versions: under
+#' \code{plan(list(sequential, tweak(multisession, workers = I(3))))} the parent
+#' reports one worker and \code{nbrOfWorkers()} inside the level future reports
+#' 3. Without this branch that plan fitted both loops in sequence and said
+#' nothing, since \code{bnec_plan_is_parallel()} reads only the first strategy.
+#'
+#' \code{concurrent} is therefore not \code{dispatch}: the levels go through
+#' \pkg{future} in both cases, and only in the first can two of them be fitted
+#' at one time. It is what decides whether the compile cache has to be
+#' separated and whether a per-level message can still be printed in order.
+#'
+#' \bold{The levels are the last of the three claims on a plan.} A core given to
+#' the chains of one fit adds no export and no second fit in memory; a worker
+#' fitting one model holds one fit; a worker fitting a level holds that level's
+#' whole model-averaged set. That ordering is why the comparison above is made
+#' rather than assumed: on the four cores the grouped call of #338 was measured
+#' over, with eleven equations and seven levels, the model arrangement is the
+#' smaller count (\code{7 x ceiling(11 / 4) = 21} against
+#' \code{ceiling(7 / 4) x 11 = 22}) and the levels are left in sequence. The
+#' level loop takes the workers only from about eight of them upwards.
 #'
 #' The decision is reported for the reason \code{plan_model_set()} gives: a
 #' parallel run emits its per-level messages out of order or not at all, so the
@@ -321,19 +413,37 @@ level_stan_cache_dir <- function(level, root = NULL) {
 #' number of equations the formula asks for, or \code{NA} where it could not be
 #' read.
 #'
-#' @return A \code{\link[base]{list}} with one element, \code{parallel}, a
-#' \code{\link[base]{logical}} vector of length 1.
+#' @return A \code{\link[base]{list}} with \code{dispatch} and \code{concurrent},
+#' each a \code{\link[base]{logical}} vector of length 1.
 #'
 #' @noRd
 plan_group_levels <- function(n_levels, n_models) {
-  if (n_levels < 2 || !bnec_plan_is_parallel()) {
-    return(list(parallel = FALSE))
+  none <- list(dispatch = FALSE, concurrent = FALSE)
+  if (n_levels < 2 ||
+        !requireNamespace("future", quietly = TRUE) ||
+        !requireNamespace("future.apply", quietly = TRUE)) {
+    return(none)
   }
   strategies <- try(future::plan("list"), silent = TRUE)
-  nested <- !inherits(strategies, "try-error") && length(strategies) > 1
+  if (inherits(strategies, "try-error")) {
+    return(none)
+  }
+  nested <- length(strategies) > 1
+  if (!nested && !bnec_plan_is_parallel()) {
+    return(none)
+  }
+  if (nested && inherits(strategies[[1]], "sequential")) {
+    message(
+      "The plan is a list whose first strategy is sequential, so the ",
+      n_levels, " levels are fitted one at a time and each level's model set",
+      " uses the next strategy in the list. This is the arrangement earlier",
+      " versions took, asked for explicitly."
+    )
+    return(list(dispatch = TRUE, concurrent = FALSE))
+  }
   workers <- try(future::nbrOfWorkers(), silent = TRUE)
   if (inherits(workers, "try-error") || !is.numeric(workers) ||
-        length(workers) != 1 || !is.finite(workers)) {
+        length(workers) != 1) {
     workers <- NA_integer_
   }
   rounds <- group_loop_rounds(n_levels, n_models, workers)
@@ -342,8 +452,8 @@ plan_group_levels <- function(n_levels, n_models) {
   # wherever forking is unavailable. Counting it gives equal rounds on both
   # arrangements, so the tie already leaves the levels in sequence, and the
   # message below says which.
-  parallel <- nested || isTRUE(rounds$levels < rounds$models)
-  if (!parallel) {
+  concurrent <- nested || isTRUE(rounds$levels < rounds$models)
+  if (!concurrent) {
     message(
       if (is.na(rounds$levels)) {
         paste0(
@@ -360,19 +470,24 @@ plan_group_levels <- function(n_levels, n_models) {
         )
       } else {
         paste0(
-          "Fitting ", n_levels, " levels one at a time, with the ", n_models,
-          " models of each level over ", n_workers(workers), ": ",
-          rounds$models, " rounds of one fit, against ", rounds$levels,
-          " with the levels in parallel instead.\nTo divide the workers",
-          " between the two loops, nest the plan, for example",
+          "Fitting ", n_levels, " levels one at a time, with the equations of",
+          " each level over ", n_workers(workers), ": ", rounds$models,
+          " rounds of one fit, against ", rounds$levels,
+          " with the levels in parallel instead, counted over the ", n_models,
+          " equations the formula asks for before any is ruled out.\nTo divide",
+          " the workers between the two loops, nest the plan, for example",
           " plan(list(tweak(multisession, workers = 2),",
-          " tweak(multisession, workers = 2)))."
+          " tweak(multisession, workers = I(2))))."
         )
       }
     )
-    return(list(parallel = FALSE))
+    return(none)
   }
-  held <- if (is.na(workers)) n_levels else min(workers, n_levels)
+  held <- if (is.na(workers) || is.infinite(workers)) {
+    n_levels
+  } else {
+    min(workers, n_levels)
+  }
   message(
     "Fitting ", n_levels, " levels in parallel over ",
     if (is.na(workers)) "the plan's workers" else n_workers(workers),
@@ -386,12 +501,12 @@ plan_group_levels <- function(n_levels, n_models) {
     },
     "\nPer-level messages from a worker may arrive out of order, or not at",
     " all. A level that fails ends the call either way.",
-    "\nEach level writes its Stan programs to its own directory, so on a cold",
-    " cache every equation is compiled once per level rather than once.",
+    "\nEach worker writes its Stan programs to its own directory, so on a cold",
+    " cache every equation is compiled once per worker rather than once.",
     "\nUp to ", held, " fitted model sets are held at once, against one when",
     " the levels are fitted in sequence."
   )
-  list(parallel = TRUE)
+  list(dispatch = TRUE, concurrent = TRUE)
 }
 
 #' Apply a function over a set of fits, in parallel where asked
@@ -570,7 +685,7 @@ env_by_reference <- function(env) {
   !is.environment(env) || nzchar(environmentName(env))
 }
 
-#' Rebuild a formula so that only what it names travels with it
+#' Rebuild a formula's environment to hold only the names it uses
 #'
 #' A formula records the environment it was created in, and
 #' \code{\link[base]{serialize}} writes that environment out in full. Created at
@@ -619,6 +734,15 @@ env_by_reference <- function(env) {
 #' the model frame is built, so that the frame, the \pkg{brms} formula and the
 #' stored fit are all narrowed by the one call.
 #'
+#' \bold{A function the formula names is the case this does nothing for.} A
+#' transformation the user defined beside the formula is a closure over the same
+#' environment, so the name is copied with everything that environment holds,
+#' and the fit is the size it was: measured at 76.294 MiB before and after. The
+#' saving is real only where every name the formula mentions is either a column
+#' of \code{data} or small. A helper defined in a \pkg{knitr} chunk and used in
+#' a formula is therefore still a large fit, and moving it to a package or to
+#' the global environment is what makes it small.
+#'
 #' @param formula A \code{\link{bayesnecformula}}, or any formula.
 #' @param data A \code{\link[base]{data.frame}}, whose names are the terms the
 #' formula does not need its environment for.
@@ -637,7 +761,13 @@ narrow_formula_environment <- function(formula, data) {
   while (!env_by_reference(env)) {
     for (nm in setdiff(wanted, names(vals))) {
       if (exists(nm, envir = env, inherits = FALSE)) {
-        vals[[nm]] <- get(nm, envir = env, inherits = FALSE)
+        # vals[nm] <- list(x), not vals[[nm]] <- x: the second deletes the
+        # element when x is NULL, so a name bound to NULL would be left out of
+        # the replacement and then resolve against the parent chain, where an
+        # unrelated object of the same name would answer for it. A NULL model
+        # set went from a refusal by get_model_from_formula() to a fit of
+        # whatever the global environment happened to hold.
+        vals[nm] <- list(get(nm, envir = env, inherits = FALSE))
       }
     }
     env <- parent.env(env)
