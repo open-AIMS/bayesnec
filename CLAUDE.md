@@ -81,6 +81,15 @@ measurements and the pointers, not a second copy of the argument. Planning
 documents follow section 13 of the global file and live in `notes/tasks/` as a
 `-human.md` and `-claude.md` pair.
 
+## The reference library
+
+The papers behind this package and the training material are in
+`C:/Rworking/references/`, outside every repository so that they are never
+committed, and reached from here through `ignore/references`. Read one by that
+path rather than the absolute one, so the read stays inside the working
+directory. `notes/references.md` lists what is there and gives the key in
+`vignettes/bayesnec.bib` for each paper the package cites.
+
 ## Naming the models in prose
 
 Section 12 rule 6 of the global file applies with these specifics. `bayesnec`
