@@ -648,6 +648,10 @@ herbicides or metals, so shrinking them towards a common curve answers a
 different question from the one being asked, and their functional forms may
 differ. `bnec_group()` fits each level separately and returns one object.
 
+Both calls below use the `decline` set rather than the whole retained set. For
+the herbicides that reproduces the final figure of @fisher2024, which used it,
+and using it for the metals as well keeps the two comparisons on one footing.
+
 ```{r}
 fits_herb <- bnec_group(fvfm ~ crf(log(concentration), "decline"),
                         data = herbicide, group_var = "herbicide",
@@ -678,7 +682,7 @@ a dispersion sub-model.
 zn_cu_15 <- droplevels(subset(lum31, minutes == 15))
 
 fits_tox <- bnec_group(
-  rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + disp("power"),
+  rlu_cens | cens(censoring) ~ crf(log(conc), "decline") + ogl(plate) + disp("power"),
   data = zn_cu_15, group_var = "toxicant", family = gfam,
   chains = 4, iter = 5000, warmup = 4000, seed = 228,
   control = list(adapt_delta = 0.99))
