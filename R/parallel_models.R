@@ -540,6 +540,9 @@ plan_group_levels <- function(n_levels, n_models) {
     if (nested && nested_inner) {
       paste0("The plan is a list, so each level fits its own model set under",
              " the next strategy in it.")
+    } else if (nested) {
+      paste0("Each level fits its model set one model at a time: the next",
+             " strategy in the list is sequential.")
     } else {
       paste0("Each level fits its model set one model at a time: the plan",
              " inside a worker is sequential unless the plan is a list.")
