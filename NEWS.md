@@ -1,5 +1,16 @@
 # bayesnec 2.2.0
 
+## Reproducible posterior comparisons and prior samples
+
+- `average_estimates()`, `compare_estimates()`, `compare_fitted()` and
+  `sample_priors()` now accept `seed = 10` and restore the caller's random
+  number state, including after an error. `compare_posterior()` forwards the
+  seed to the selected comparison. Repeated calls with the same inputs and RNG
+  kind now agree. Use the function's `seed` argument to change the sampled
+  draws; a preceding `set.seed()` no longer changes the result. This changes
+  the posterior pairing and therefore can change estimates, difference
+  intervals and probabilities compared with earlier versions (#343).
+
 ## Default priors
 
 - **The `"regularizing"` prior set is now one statement applied to every

@@ -28,7 +28,7 @@
 #' model fits contained in \code{x}. See Details.
 #'
 #' @importFrom stats quantile
-#' @importFrom chk chk_lgl chk_numeric
+#' @importFrom chk chk_lgl chk_numeric chk_number
 #'
 #' @examples
 #' \dontrun{
@@ -41,21 +41,21 @@
 #' }
 #'
 #' @section Reproducibility:
-#' The draws of each posterior are paired by an independent random permutation,
-#' so \code{prob_diff} and the difference intervals change between identical
-#' calls. Use \code{\link[base]{set.seed}} before the call for a reproducible
-#' result. This is a Monte Carlo approximation to the difference of two
-#' \bold{independent} posteriors, using \emph{n} of the \emph{n}^2 available
-#' pairs.
+#' The draws of each posterior are paired by a random permutation, so the mean
+#' is a Monte Carlo approximation using randomly paired posterior draws.
+#' The permutation is drawn under \code{seed}, so two calls on the same
+#' fits return the same estimate and a \code{\link[base]{set.seed}} in the
+#' session has no effect on it. A different \code{seed} gives another
+#' realisation of the same approximation; where the approximation matters,
+#' compare a few and report the spread. The caller's random number state is
+#' restored afterwards.
 #'
 #' @section The independence assumption:
-#' The pairing is valid only where the posteriors being compared come from
+#' The pairing is valid only where the posteriors being combined come from
 #' \bold{separate fits}. Two levels of one fit share draws --- draw \emph{i}
 #' of each comes from the same sweep of the sampler --- and permuting them
-#' destroys that pairing, which discards the correlation between the levels and
-#' widens the difference posterior. \code{prob_diff} is then pulled toward 0.5
-#' and a real difference is under-detected, which is the wrong direction to err
-#' in. A within-fit contrast needs draw-wise differencing and must not be routed
+#' destroys that pairing and discards the correlation between the levels.
+#' A within-fit combination needs draw-wise arithmetic and must not be routed
 #' through this function. See #218 and #33.
 #'
 #' @export
@@ -63,7 +63,7 @@ average_estimates <- function(x, estimate = "nec", ecx_val = 10,
                               posterior = FALSE, type = "absolute",
                               sig_val = 0.01,
                               resolution = 200, x_range = NA, xform = identity,
-                              prob_vals = c(0.5, 0.025, 0.975)) {
+                              prob_vals = c(0.5, 0.025, 0.975), seed = 10) {
   if (!is.list(x) | is.null(names(x))) {
     stop("Argument x must be a named list")
   }
@@ -86,6 +86,7 @@ average_estimates <- function(x, estimate = "nec", ecx_val = 10,
     stop("xform must be a function.")
   }
   chk_numeric(prob_vals)
+  chk_number(seed)
   if (is.na(x_range[1])) {
     x_range <- return_x_range(x)
   }
@@ -105,14 +106,19 @@ average_estimates <- function(x, estimate = "nec", ecx_val = 10,
   }
   names(posterior_list) <- names(x)
   n_samples <- min(sapply(posterior_list, length))
-  r_posterior_list <- lapply(posterior_list, FUN = function(m, n_samples) {
-    # A random subset of a longer posterior, not its first n_samples draws.
-    # sample(seq_len(n_samples)) permuted only the head of the vector, so where
-    # components had unequal draw counts the tail of the longer one was never
-    # used -- systematic rather than random thinning. Harmless when the counts
-    # are equal, which is the normal case. See #218.
-    m[sample(seq_along(m), n_samples, replace = FALSE)]
-  }, n_samples = n_samples)
+  # Random pairing affects the reported estimates. Seed it locally so calls
+  # repeat without changing the caller's RNG state (#343).
+  with_preserved_rng_state({
+    set.seed(seed, sample.kind = "Rejection")
+    r_posterior_list <- lapply(posterior_list, FUN = function(m, n_samples) {
+      # A random subset of a longer posterior, not its first n_samples draws.
+      # sample(seq_len(n_samples)) permuted only the head of the vector, so
+      # where components had unequal draw counts the tail of the longer one was
+      # never used -- systematic rather than random thinning. Harmless when the
+      # counts are equal, which is the normal case. See #218.
+      m[sample(seq_along(m), n_samples, replace = FALSE)]
+    }, n_samples = n_samples)
+  })
   posterior_data <- do.call("cbind", r_posterior_list) |>
       data.frame()
   post_mean <- apply(posterior_data, MARGIN = 1, FUN = gm_mean)

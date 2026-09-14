@@ -6,7 +6,7 @@
 #'
 #' @inheritParams compare_posterior
 #' 
-#' @importFrom chk chk_numeric
+#' @importFrom chk chk_numeric chk_number
 #'
 #' @seealso \code{\link{bnec}}
 #'
@@ -31,12 +31,15 @@
 #' }
 #'
 #' @section Reproducibility:
-#' The draws of each posterior are paired by an independent random permutation,
-#' so \code{prob_diff} and the difference intervals change between identical
-#' calls. Use \code{\link[base]{set.seed}} before the call for a reproducible
-#' result. This is a Monte Carlo approximation to the difference of two
-#' \bold{independent} posteriors, using \emph{n} of the \emph{n}^2 available
-#' pairs.
+#' The draws of each posterior are paired by a random permutation, so
+#' \code{prob_diff} and the difference intervals are a Monte Carlo
+#' approximation to the difference of two \bold{independent} posteriors, using
+#' \emph{n} of the \emph{n}^2 available pairs. The permutation is drawn under
+#' \code{seed}, so two calls on the same fits return the same comparison and a
+#' \code{\link[base]{set.seed}} in the session has no effect on it. A different
+#' \code{seed} gives another realisation of the same approximation;
+#' where the approximation matters, compare a few and report the spread. The
+#' caller's random number state is restored afterwards.
 #'
 #' @section The independence assumption:
 #' The pairing is valid only where the posteriors being compared come from
@@ -51,7 +54,8 @@
 #' @export
 compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
                               type = "absolute",
-                              sig_val = 0.01, resolution = 100, x_range = NA) {
+                              sig_val = 0.01, resolution = 100, x_range = NA,
+                              seed = 10) {
   if ((comparison %in% c("nec", "n(s)ec", "ecx", "nsec")) == FALSE) {
     stop("comparison must be one of nec, n(s)ec, ecx or nsec.")
   }
@@ -69,6 +73,7 @@ compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
   on.exit(options(warned), add = TRUE)
   chk_numeric(sig_val)
   chk_numeric(resolution)
+  chk_number(seed)
   if (is.na(x_range[1])) {
     x_range <- return_x_range(x)
   } else {
@@ -92,14 +97,19 @@ compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
   }
   names(posterior_list) <- names(x)
   n_samples <- min(sapply(posterior_list, length))
-  r_posterior_list <- lapply(posterior_list, function(m, n_samples) {
-    # A random subset of a longer posterior, not its first n_samples draws.
-    # sample(seq_len(n_samples)) permuted only the head of the vector, so where
-    # components had unequal draw counts the tail of the longer one was never
-    # used -- systematic rather than random thinning. Harmless when the counts
-    # are equal, which is the normal case. See #218.
-    m[sample(seq_along(m), n_samples, replace = FALSE)]
-  }, n_samples = n_samples)
+  # Random pairing affects the reported estimates. Seed it locally so calls
+  # repeat without changing the caller's RNG state (#343).
+  with_preserved_rng_state({
+    set.seed(seed, sample.kind = "Rejection")
+    r_posterior_list <- lapply(posterior_list, function(m, n_samples) {
+      # A random subset of a longer posterior, not its first n_samples draws.
+      # sample(seq_len(n_samples)) permuted only the head of the vector, so
+      # where components had unequal draw counts the tail of the longer one was
+      # never used -- systematic rather than random thinning. Harmless when the
+      # counts are equal, which is the normal case. See #218.
+      m[sample(seq_along(m), n_samples, replace = FALSE)]
+    }, n_samples = n_samples)
+  })
   posterior_data <- do.call("cbind", r_posterior_list) |>
     data.frame() |>
     pivot_longer(cols = everything(), names_to = "model") |>

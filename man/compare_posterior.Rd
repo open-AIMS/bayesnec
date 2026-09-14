@@ -15,6 +15,7 @@
   resolution,
   x_range = NA,
   make_newdata = TRUE,
+  seed = 10,
   ...
 )
 
@@ -55,6 +56,17 @@ roughly in proportion.}
 user allow the package to create \code{newdata} for predictions?
 If so, arguments \code{resolution} and \code{x_range} will be used. Defaults
 to TRUE. See details.}
+
+\item{seed}{A \code{\link[base]{numeric}} vector of length 1. Passed to
+\code{\link[base]{set.seed}} before the draws of the posteriors being
+compared are paired, so that two calls on the same fits return the same
+answer. The caller's random number stream is restored afterwards, and a
+\code{\link[base]{set.seed}} in the session therefore does not change the
+result. A different value gives another realisation of the same Monte
+Carlo approximation. \code{NULL} is refused, because
+\code{set.seed(NULL)} re-initialises the stream from the clock.
+Reproducibility assumes the same RNG kind; the sampling algorithm is fixed
+to \code{sample.kind = "Rejection"}.}
 
 \item{...}{Further arguments that control posterior predictions via
 \code{\link[brms]{posterior_epred}}.}

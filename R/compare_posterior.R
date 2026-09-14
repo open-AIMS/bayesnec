@@ -15,6 +15,16 @@
 #' to TRUE. See details.
 #' @param ... Further arguments that control posterior predictions via
 #' \code{\link[brms]{posterior_epred}}.
+#' @param seed A \code{\link[base]{numeric}} vector of length 1. Passed to
+#' \code{\link[base]{set.seed}} before the draws of the posteriors being
+#' compared are paired, so that two calls on the same fits return the same
+#' answer. The caller's random number stream is restored afterwards, and a
+#' \code{\link[base]{set.seed}} in the session therefore does not change the
+#' result. A different value gives another realisation of the same Monte
+#' Carlo approximation. \code{NULL} is refused, because
+#' \code{set.seed(NULL)} re-initialises the stream from the clock.
+#' Reproducibility assumes the same RNG kind; the sampling algorithm is fixed
+#' to \code{sample.kind = "Rejection"}.
 #' 
 #' @inheritParams ecx
 #' @inheritParams nsec
@@ -72,7 +82,7 @@ compare_posterior.default <- function(x, comparison = "n(s)ec", ecx_val = 10,
                                       type = "absolute",
                                       sig_val = 0.01, resolution,
                                       x_range = NA, make_newdata = TRUE,
-                                      ...) {
+                                      seed = 10, ...) {
   if (!is.list(x) | is.null(names(x))) {
     stop("Argument x must be a named list.")
   }
@@ -86,13 +96,13 @@ compare_posterior.default <- function(x, comparison = "n(s)ec", ecx_val = 10,
     out <- compare_estimates(x = x, comparison = comparison, ecx_val = ecx_val,
                              type = type,
                              sig_val = sig_val, resolution = resolution,
-                             x_range = x_range)
+                             x_range = x_range, seed = seed)
   } else {
     if (missing(resolution)) {
       resolution <- 50
     }
     out <- compare_fitted(x = x, resolution = resolution, x_range = x_range,
-                          make_newdata = make_newdata, ...)
+                          make_newdata = make_newdata, seed = seed, ...)
   }
   out
 }

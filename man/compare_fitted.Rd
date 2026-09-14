@@ -4,7 +4,14 @@
 \alias{compare_fitted}
 \title{compare_fitted}
 \usage{
-compare_fitted(x, resolution = 50, x_range = NA, make_newdata = TRUE, ...)
+compare_fitted(
+  x,
+  resolution = 50,
+  x_range = NA,
+  make_newdata = TRUE,
+  seed = 10,
+  ...
+)
 }
 \arguments{
 \item{x}{A named \code{\link[base]{list}} of objects of class
@@ -24,6 +31,17 @@ roughly in proportion.}
 user allow the package to create \code{newdata} for predictions?
 If so, arguments \code{resolution} and \code{x_range} will be used. Defaults
 to TRUE. See details.}
+
+\item{seed}{A \code{\link[base]{numeric}} vector of length 1. Passed to
+\code{\link[base]{set.seed}} before the draws of the posteriors being
+compared are paired, so that two calls on the same fits return the same
+answer. The caller's random number stream is restored afterwards, and a
+\code{\link[base]{set.seed}} in the session therefore does not change the
+result. A different value gives another realisation of the same Monte
+Carlo approximation. \code{NULL} is refused, because
+\code{set.seed(NULL)} re-initialises the stream from the clock.
+Reproducibility assumes the same RNG kind; the sampling algorithm is fixed
+to \code{sample.kind = "Rejection"}.}
 
 \item{...}{Further arguments that control posterior predictions via
 \code{\link[brms]{posterior_epred}}.}
@@ -52,12 +70,15 @@ on how to structure \code{newdata}, see for example
 }
 \section{Reproducibility}{
 
-The draws of each posterior are paired by an independent random permutation,
-so \code{prob_diff} and the difference intervals change between identical
-calls. Use \code{\link[base]{set.seed}} before the call for a reproducible
-result. This is a Monte Carlo approximation to the difference of two
-\bold{independent} posteriors, using \emph{n} of the \emph{n}^2 available
-pairs.
+The draws of each posterior are paired by a random permutation, so
+\code{prob_diff} and the difference intervals are a Monte Carlo
+approximation to the difference of two \bold{independent} posteriors, using
+\emph{n} of the \emph{n}^2 available pairs. The permutation is drawn under
+\code{seed}, so two calls on the same fits return the same comparison and a
+\code{\link[base]{set.seed}} in the session has no effect on it. A different
+\code{seed} gives another realisation of the same approximation;
+where the approximation matters, compare a few and report the spread. The
+caller's random number state is restored afterwards.
 }
 
 \section{The independence assumption}{
