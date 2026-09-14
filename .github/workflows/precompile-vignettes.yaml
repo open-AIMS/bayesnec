@@ -116,11 +116,17 @@ jobs:
           echo "cmdstan=$cmdstan" >> "$GITHUB_OUTPUT"
 
           # Both caches below are keyed on the compiler as well as the cmdstan
-          # version, for the reason hpc/run.precompile keys its own cache that
-          # way: cmdstanr names a compiled program after a hash of its Stan
-          # source and nothing else, so neither the cmdstan that produced the
-          # executable beside it nor the compiler appears in its name, and an
-          # unkeyed cache would hand a run binaries built by another toolchain.
+          # version, for the same reason hpc/run.precompile keys its own cache
+          # on the image digest: cmdstanr names a compiled program after a hash
+          # of its Stan source and nothing else, so neither the cmdstan that
+          # produced the executable beside it nor the compiler appears in its
+          # name, and an unkeyed cache would hand a run binaries built by
+          # another toolchain.
+          #
+          # The version read is the one this job's runner has. The install job
+          # and the fan-out run on separate machines, so a GitHub image rotation
+          # part way through a run is a gap this key does not close; it closes
+          # the one that matters, which is a rotation between runs.
           gcc=$(g++ -dumpfullversion -dumpversion)
           echo "toolchain=cmdstan$cmdstan-gcc$gcc" >> "$GITHUB_OUTPUT"
           echo "cmdstan $cmdstan, g++ $gcc"
@@ -146,6 +152,18 @@ jobs:
           fi
 
           available=$(cd vignettes && ls -1 *.Rmd.orig | sed 's/\.Rmd\.orig$//')
+
+          # Left out of a rebuild-everything selection, and still rebuilt when
+          # named. example5 is a Windows cmdstanr installation guide whose
+          # chunks are evaluated: it calls set_cmdstan_path("C:/cmdstan"), which
+          # on a runner warns and leaves the runner's own installation in place,
+          # so the render shows a Linux path and a "Can't find directory"
+          # warning at the step that tells the reader how to set theirs. Before
+          # #313 that leg failed at library(cmdstanr) and produced nothing; with
+          # cmdstanr installed it renders, and the run would open a pull request
+          # containing a render that is wrong for the readers of that vignette.
+          ci_excluded="example5"
+
           if [ -n "$sel" ]; then
             chosen=""
             for v in $(printf '%s' "$sel" | tr ',' ' '); do
@@ -158,7 +176,15 @@ jobs:
               fi
             done
           else
-            chosen="$available"
+            chosen=""
+            for v in $available; do
+              case " $ci_excluded " in
+                *" $v "*)
+                  echo "::notice::$v is not rebuilt by a whole-set run;" \
+                    "name it explicitly to rebuild it here" ;;
+                *) chosen="$chosen $v" ;;
+              esac
+            done
           fi
 
           # Built by hand rather than with jq: the names are basenames of
@@ -171,10 +197,10 @@ jobs:
           echo "Rebuilding: $matrix"
 
   # cmdstan is installed once for the whole run and cached, rather than in each
-  # leg of the fan-out. A cold install is 10-15 minutes of compiling, so nine
-  # legs starting together would each run it and then contend to write one cache
-  # entry; one of them stores the result and the other eight report "Unable to
-  # reserve cache" having done the work anyway. On a warm cache this job is a
+  # leg of the fan-out. A cold install is 10-15 minutes of compiling, so every
+  # leg would run it and then contend to write one cache entry; one of them
+  # stores the result and the rest report "Unable to reserve cache" having done
+  # the work anyway. On a warm cache this job is a
   # restore and a version check, and adds well under a minute to the run.
   # See #313.
   #
@@ -221,21 +247,31 @@ jobs:
           # timeout is per make invocation and defaults to 1200s; a cold build
           # of cmdstan on a four-core runner is close enough to that to fail on
           # a slow one.
+          # na.rm: detectCores() returns NA where it cannot tell, and max(1L, NA)
+          # is NA, which would reach make as -jNA.
+          cores <- max(1L, parallel::detectCores(), na.rm = TRUE)
           cmdstanr::install_cmdstan(version = Sys.getenv("CMDSTAN_VERSION"),
-                                    cores = max(1L, parallel::detectCores()),
-                                    timeout = 2400)
+                                    cores = cores, timeout = 2400)
         shell: Rscript {0}
 
       # Runs on a cache hit as well as after an install, so a cache entry that
       # is incomplete -- a run cancelled mid-build, a partial upload -- fails
-      # here rather than in nine legs twenty minutes later.
+      # here rather than in every leg twenty minutes later.
+      #
+      # The key is deterministic, so a bad entry is restored again by every
+      # rerun and this check fails identically until the entry is deleted. The
+      # remedy is named in the error rather than left to be worked out.
       - name: Check the installation
         if: needs.plan.outputs.dry_run != 'true'
+        env:
+          CACHE_KEY: cmdstan-${{ runner.os }}-${{ needs.plan.outputs.toolchain }}
         run: |
           set -euo pipefail
           dir="$HOME/.cmdstan/cmdstan-${{ needs.plan.outputs.cmdstan }}"
           if [ ! -x "$dir/bin/stanc" ]; then
-            echo "::error::no executable bin/stanc under $dir"
+            echo "::error::no executable bin/stanc under $dir. If this run" \
+              "restored a cache entry, it is incomplete; delete it with" \
+              "'gh cache delete $CACHE_KEY' and rerun to rebuild cmdstan."
             ls -la "$HOME/.cmdstan" || true
             exit 1
           fi
@@ -252,20 +288,33 @@ jobs:
     # A single vignette is ~20 min. This is a runaway backstop, not a budget --
     # a leg that is anywhere near it has something wrong with it.
     timeout-minutes: 180
+    # BAYESNEC_BACKEND is deliberately absent from the env: below, so that
+    # precompile.R takes its default of cmdstanr and this runner samples with
+    # the back end the HPC route samples with. It was held at rstan until #313,
+    # and a render made here was therefore produced by a different sampler from
+    # one made on the cluster -- a difference that made a diff between two
+    # renders unreadable as a change in the package. The cmdstan the two share
+    # is the version hpc/image.lock records; what still differs between them is
+    # stated in hpc/README.md.
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       NOT_CRAN: true
-      # BAYESNEC_BACKEND is deliberately unset, so precompile.R takes its
-      # default of cmdstanr and this runner samples with the back end the HPC
-      # route samples with. It was held at rstan until #313, and a render made
-      # here was therefore produced by a different sampler from one made on the
-      # cluster -- a difference that made a diff between two renders unreadable
-      # as a change in the package. The cmdstan the two share is the version
-      # hpc/image.lock records; what still differs between them is stated in
-      # hpc/README.md.
 
     steps:
       - uses: actions/checkout@v4
+
+      # Restore only, and placed before the R setup because it is the cheapest
+      # hard failure in the job. The `cmdstan` job above is the one that
+      # installs and saves it, so a leg that finds nothing has been started
+      # without that job having succeeded, and should say so rather than fall
+      # back to rstan and produce a render sampled by the other back end.
+      - name: Restore cmdstan ${{ needs.plan.outputs.cmdstan }}
+        if: matrix.vignette != 'dry-run'
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cmdstan
+          key: cmdstan-${{ runner.os }}-${{ needs.plan.outputs.toolchain }}
+          fail-on-cache-miss: true
 
       - uses: r-lib/actions/setup-pandoc@v2
 
@@ -285,18 +334,6 @@ jobs:
           extra-packages: >-
             any::knitr, any::purrr, any::rmarkdown, stan-dev/cmdstanr, local::.
           needs: check
-
-      # Restore only. The `cmdstan` job above is the one that installs and
-      # saves it, so a leg that finds nothing has been started without that job
-      # having succeeded and should say so rather than fall back to rstan and
-      # produce a render sampled by the other back end.
-      - name: Restore cmdstan ${{ needs.plan.outputs.cmdstan }}
-        if: matrix.vignette != 'dry-run'
-        uses: actions/cache/restore@v4
-        with:
-          path: ~/.cmdstan
-          key: cmdstan-${{ runner.os }}-${{ needs.plan.outputs.toolchain }}
-          fail-on-cache-miss: true
 
       # CMDSTAN rather than cmdstanr's own search: cmdstanr takes the highest
       # version it finds under ~/.cmdstan when the variable is unset, and this
@@ -325,13 +362,16 @@ jobs:
       # Keyed per vignette, and the fallback key does not reach across
       # vignettes even though the vignettes do share programs. A leg saves
       # whatever it restored plus whatever it compiled, so a shared fallback
-      # would have every leg save the union of all nine sets and the repository
-      # would hold nine copies of it.
+      # would have every leg save the union of every vignette's set, and the
+      # repository would hold one copy of that union per leg.
       #
       # The run id in the key, with the prefix as the fallback, is what makes a
       # leg save at all: a cache entry is immutable, so a key that matched
       # exactly would restore and then never be updated with what this run
-      # compiled.
+      # compiled. The attempt number is there for the same reason: "Re-run
+      # failed jobs" keeps the run id, so without it the second attempt of a
+      # leg saves nothing, and this workflow is built around legs that fail on
+      # their own and get rerun.
       #
       # Restore and save are separate actions rather than one `actions/cache`,
       # because that action declares `post-if: success()` and so saves nothing
@@ -345,7 +385,7 @@ jobs:
           path: ${{ runner.temp }}/stan-programs
           key: >-
             stan-${{ runner.os }}-${{ needs.plan.outputs.toolchain }}-${{
-            matrix.vignette }}-${{ github.run_id }}
+            matrix.vignette }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             stan-${{ runner.os }}-${{ needs.plan.outputs.toolchain }}-${{ matrix.vignette }}-
 
@@ -393,52 +433,77 @@ jobs:
         if: matrix.vignette != 'dry-run'
         run: Rscript vignettes/precompile.R '${{ matrix.vignette }}'
 
-      # The program cache only grows: cmdstanr never removes a program, so an
-      # edited model specification leaves the executable it replaced behind.
-      # Measured on a bayesnec program cache of 271 programs, one executable is
-      # 2.9 MB and the directory is 744 MB, compressing 2.96:1 in a sample of 40
-      # files; example7, the largest vignette, compiles 304 programs, so a
-      # complete cache of the largest of them is about 890 MB. Anything past the
-      # budget below is therefore stale rather than needed, and it is bounded
-      # here because the repository shares one 10 GB cache quota across every
-      # workflow and eviction is by least-recent use -- an unbounded entry here
-      # would displace the dependency caches R-CMD-check restores.
+      # Two decisions, both about what the next run restores.
+      #
+      # What is saved. A leg that got no further than the toolchain has no
+      # program directory, and a leg whose directory is empty has compiled
+      # nothing. Saving either would store an empty entry under a key newer
+      # than the good one, and a prefix fallback resolves to the entry created
+      # most recently -- so one failed leg would leave the following run with
+      # none of that vignette's programs. The save step is therefore gated on
+      # this step reporting that there is something to save.
+      #
+      # How large it is allowed to be. The directory only grows: cmdstanr never
+      # removes a program, so an edited model specification leaves the
+      # executable it replaced behind. Measured on a bayesnec program cache of
+      # 267 compiled programs: 780 MB (744 MiB, as du -sm reports it), about
+      # 2.9 MB each, compressing 2.96:1 in a sample of 40 files. The budget
+      # below is roughly twice that.
+      #
+      # It is bounded because the repository shares one 10 GB cache quota across
+      # every workflow, and what consumes the quota is not one entry but their
+      # accumulation: the key includes the run id, so no entry is ever replaced
+      # and each leg of each run adds one. At the budget, seven legs would add
+      # about 3.5 GB compressed per run. Stale entries are never restored again,
+      # so they are the first the least-recently-used eviction takes and they
+      # expire unread after seven days, but without a bound a single runaway
+      # entry would displace the dependency caches R-CMD-check restores.
       #
       # Emptied rather than trimmed. Trimming needs a record of which programs
       # are still in use, and there is none: the cache action does not restore
       # access times, and a program's modification time is when it was compiled
-      # rather than when it was last read.
+      # rather than when it was last read. A stamp file is left behind so that
+      # the emptied directory is still saved, which is what supersedes the
+      # oversized entry; saving nothing would leave it the newest match and the
+      # next run would restore it and empty it again.
       #
       # `!cancelled()` rather than the default, so that the bound is applied on
       # the path where it matters most: a leg that failed part way through has
       # compiled programs and is about to save them. `always()` is not used,
-      # because a cancelled run should write nothing. The directory is created
-      # if it is absent, so that the save step below has a path to read.
+      # because a cancelled run should write nothing.
       - name: Bound the Stan program cache
+        id: bound
         if: ${{ !cancelled() && matrix.vignette != 'dry-run' }}
         env:
-          BUDGET_MB: "1500"
+          BUDGET_MIB: "1500"
         run: |
           set -euo pipefail
           dir="$RUNNER_TEMP/stan-programs"
-          mkdir -p "$dir"
-          mb=$(du -sm "$dir" | cut -f1)
-          echo "Stan program cache: ${mb} MB in $(ls -1 "$dir" | wc -l) files"
-          if [ "$mb" -gt "$BUDGET_MB" ]; then
-            echo "::warning::Stan program cache is ${mb} MB, over the" \
-              "${BUDGET_MB} MB budget; emptying it. The next run compiles cold."
+          if [ ! -d "$dir" ] || [ -z "$(ls -A "$dir")" ]; then
+            echo "save=false" >> "$GITHUB_OUTPUT"
+            echo "nothing compiled; the entry this run restored stays newest"
+            exit 0
+          fi
+          mib=$(du -sm "$dir" | cut -f1)
+          echo "Stan program cache: ${mib} MiB in $(ls -1 "$dir" | wc -l) files"
+          if [ "$mib" -gt "$BUDGET_MIB" ]; then
+            echo "::warning::Stan program cache is ${mib} MiB, over the" \
+              "${BUDGET_MIB} MiB budget; emptying it. The next run compiles cold."
             rm -rf "$dir"
             mkdir -p "$dir"
+            printf 'emptied by run %s over the %s MiB budget\n' \
+              "$GITHUB_RUN_ID" "$BUDGET_MIB" > "$dir/.emptied"
           fi
+          echo "save=true" >> "$GITHUB_OUTPUT"
 
       - name: Save the compiled Stan programs
-        if: ${{ !cancelled() && matrix.vignette != 'dry-run' }}
+        if: ${{ !cancelled() && steps.bound.outputs.save == 'true' }}
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/stan-programs
           key: >-
             stan-${{ runner.os }}-${{ needs.plan.outputs.toolchain }}-${{
-            matrix.vignette }}-${{ github.run_id }}
+            matrix.vignette }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       # Nothing is fitted. A real PNG under the name below gives the
       # pull-request step an actual diff to commit, and it is covered by the

@@ -1323,8 +1323,8 @@
   not be read as a change in the package. The workflow now installs `cmdstanr`
   and cmdstan as tools of its own; neither is a dependency of `bayesnec`, and
   `brms` continues to support either back end. Compiled Stan programs are cached
-  between runs as well, which `rstan` could not offer --- it compiles in process
-  and keeps nothing (#313).
+  between runs on one branch as well, which `rstan` could not offer --- it
+  compiles in process and keeps nothing (#313).
 
 # bayesnec 2.1.4
 

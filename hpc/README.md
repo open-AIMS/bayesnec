@@ -172,19 +172,27 @@ first that have not yet started.
 
 `.github/workflows/precompile-vignettes.yaml` also runs `precompile.R`. It
 installs `cmdstanr` and the cmdstan version `hpc/image.lock` records (#313), so
-both routes sample with the same back end and the same cmdstan, and it caches
-the compiled programs the way this job does. A diff between a render made there
-and one made here is therefore a difference in the package rather than in the
-sampler.
+both routes sample with the same back end and the same cmdstan. A diff between a
+render made there and one made here is therefore a difference in the package
+rather than in the sampler.
 
-Two things still differ, and they are the reason this remains the route for a
-render whose numbers will be quoted. The runner takes R from `setup-r` and every
-R package from the package manager's current snapshot, while the image pins R,
-`brms` and the rest by `hpc/image.lock` --- and `brms` is what writes the Stan
+The R packages are still not the same. The runner takes R from `setup-r` and
+every R package from the package manager's current snapshot, while the image
+pins R, `brms` and the rest by `hpc/image.lock`. `brms` is what writes the Stan
 program, so a different `brms` is a different program rather than a different
-sampler. And the runner
-has a job timeout of three hours against this job's day, which the largest
-vignettes exceed.
+sampler, and that is why this remains the route for a render whose numbers will
+be quoted.
+
+The compiled-program cache is not the same either. This job's cache is a
+directory on shared scratch and is read by every run, every vignette and every
+branch. A GitHub Actions cache is scoped to the branch: a run restores entries
+created on its own ref or on the default branch, and `master` is the default
+branch while this workflow is dispatched on `dev` or on a `precompile/**`
+branch. Repeated runs against one ref therefore warm each other and nothing
+else, and the first run on a new branch is cold in every leg --- including the
+cmdstan installation, which is 10 to 15 minutes of compiling. Seeding those
+entries from the default branch would need a run on `master`, which nothing
+currently does.
 
 ## Failure and the exit status
 
