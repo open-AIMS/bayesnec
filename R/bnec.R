@@ -663,7 +663,10 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
             " are deprecated. Extracting relevant data and model information",
             " from argument formula. See ?bnec")
   }
-  formula <- bayesnecformula(formula)
+  # parent.frame() so that a character formula resolves symbols where the user
+  # called bnec() from. A formula object already carries its own environment
+  # and `env` is ignored for it. See #319.
+  formula <- bayesnecformula(formula, env = parent.frame())
   bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
   # Raised here rather than left to check_data(), which runs once per model
   # inside fit_bayesnec(). bnec() wraps that call in try() for a model set, so

@@ -1530,8 +1530,14 @@ sub_x_transformation <- function(value, formula) {
          "column and name that column in crf() instead.", call. = FALSE)
   }
   sub_list <- setNames(list(quote(.bnec_x_value)), x_vars)
+  # enclos is the formula's own environment. eval()'s default of parent.frame()
+  # is a frame inside the namespace, so a predictor transformation written with
+  # a function the user defined -- crf(squared(x), ...) -- was resolved off the
+  # namespace chain. That reaches further here than it does in the model frame:
+  # this runs in expand_nec(), ecx() and nsec(), so the failure arrives after
+  # every model in the set has compiled and sampled. See #319.
   eval(do.call("substitute", list(x_call, sub_list)),
-       list(.bnec_x_value = value))
+       list(.bnec_x_value = value), enclos = formula_env(formula))
 }
 
 #' The x value at which a curve first crosses a target response

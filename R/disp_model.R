@@ -92,7 +92,11 @@ parse_disp_term <- function(formula) {
     # brms to interpret.
     list(route = "A", value = deparse1(as.formula(arg)[[2]]))
   } else {
-    list(route = "B", value = eval(arg))
+    # Resolved in the formula's own environment, so that a variance function
+    # name held in a variable is looked up where the user wrote it rather than
+    # in this frame, whose lexical parent is the package namespace. The same
+    # defect as the crf() model set. See #319.
+    list(route = "B", value = eval(arg, envir = formula_env(formula)))
   }
 }
 
@@ -338,6 +342,10 @@ disp_inits <- function(spec, family, response) {
 make_disp_block <- function(model, spec, dpar, x_var, response = NULL,
                             curve = NULL) {
   if (spec$route == "A") {
+    # The environment is not set here. brms resolves a distributional sub-model
+    # against the top-level brmsformula, not against this one, so
+    # wrangle_model_formula() sets it there instead; measured on
+    # disp(~cent(x)) with cent() defined by the caller. See #319.
     return(list(nlf = as.formula(paste0(dpar, " ~ ", spec$value)), lf = NULL))
   }
   vf <- disp_functions[[spec$value]]

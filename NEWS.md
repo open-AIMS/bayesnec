@@ -834,6 +834,43 @@
   alongside the model-averaged quantities, which are not reproduced between a
   sequential and a parallel run either way.
 
+- A model set held in a variable now resolves in the environment the formula
+  was written in, so a set built programmatically works inside a function,
+  inside a knitted chunk, and inside any environment that does not inherit from
+  the global environment. `crf()` evaluated its `model` argument without naming
+  an environment, which evaluates in `crf()`'s own frame; the lexical parent of
+  that frame is the package namespace, then the imports, then base, then the
+  global environment, and the caller's frame is on none of them. A call that
+  succeeded at the console therefore failed once wrapped in a function, and the
+  message named neither `crf()` nor the cause: `object 'eqs' not found`. The
+  formula's own environment is now used, and a formula supplied as a character
+  string is given the environment of the call that converted it, through a new
+  `env` argument to `bayesnecformula()` and `bnf()` (#319).
+
+  The same defect held for a function used to transform the predictor. The
+  reduced formula `model.frame()` is built from, the back-transform
+  `sub_x_transformation()` applies in `ecx()`, `nsec()` and `expand_nec()`, the
+  component formulas of a hurdle fit, the `disp()` term and the `brmsformula`
+  handed to `brms` each lost the environment the user wrote the formula in,
+  so `crf(squared(x), "nec3param")` with `squared()` defined in the caller was
+  likewise found only at the console. All of them now take it. The
+  back-transform is the one that reached furthest: it runs after every model in
+  the set has compiled and sampled, so the failure arrived at the end of a fit
+  rather than at the start. One of these has a further consequence: the check
+  that a `disp()` sub-model evaluates to finite values could not evaluate such
+  a term at all and skipped it, so a formula written this way now stops where
+  it previously fitted and failed in Stan.
+
+  One consequence of binding an environment to a character formula: the
+  formula is stored once per model, so a formula converted inside a function
+  now holds a reference to that function's frame, and a large object in it is
+  serialised with the fit. Measured on a frame holding a 2-million-element
+  vector, the stored formula went from 463 bytes to 16 MB. A formula object
+  has always behaved this way, and a call made at the console binds the global
+  environment, which serialises by reference; only a character formula
+  converted inside a function is newly affected. Where that matters, convert
+  the string in an environment of your own with `bnf(string, env = ...)`.
+
 - A model set assembled by `c()`, `+`, `amend()` or `update()` is now weighted
   by pseudo-BMA, the documented default, rather than by stacking.
   `expand_manec()` validated the `loo_controls` it was given but supplied no

@@ -178,7 +178,14 @@ check_disp_finite <- function(formula, data) {
   bad <- character(0)
   incomplete <- character(0)
   for (label in labels) {
-    values <- try(eval(str2lang(label), envir = data), silent = TRUE)
+    # enclos is the formula's own environment. With eval()'s default of
+    # parent.frame(), a term written with a function the user defined --
+    # disp(~cent(x)) -- could not be evaluated, and the try() below then
+    # skipped it, so the check silently passed rather than checking anything.
+    # The skip is kept for a term that genuinely cannot be evaluated here, such
+    # as a smooth. See #319.
+    values <- try(eval(str2lang(label), envir = data,
+                       enclos = formula_env(formula)), silent = TRUE)
     if (inherits(values, "try-error") || !is.numeric(values)) {
       next
     }

@@ -705,7 +705,12 @@ hurdle_raw_data <- function(object) {
   x_str <- grep("crf(", labels(terms(object$formula)), fixed = TRUE,
                 value = TRUE)
   x_expr <- str2lang(eval(parse(text = x_str)))
-  data.frame(x = eval(x_expr, object$data),
+  # enclos is the stored formula's environment rather than eval()'s default of
+  # parent.frame(), which is a frame inside the namespace. A predictor written
+  # as crf(sq(x), ...) with sq() defined by the user resolves only through the
+  # formula's own environment. See #319.
+  data.frame(x = eval(x_expr, object$data,
+                      enclos = formula_env(object$formula)),
              y = object$data[[object$y_var]])
 }
 
