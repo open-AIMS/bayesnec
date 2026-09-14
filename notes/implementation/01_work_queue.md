@@ -90,7 +90,7 @@ matrix.
 |---|---|
 | #311 | twelve `open_progress = FALSE` calls in `tests/testthat/`. Mechanical, and it is why a `cmdstanr`-backend run of the suite fails, which is needed before any measurement of #328 |
 | #328 | memoise the repeated fixtures, then set `TESTTHAT_CPUS`. The test phase is 21 to 26 minutes of a 25 to 31 minute job, and the issue holds the measured plan and the changes not to make |
-| #333 | a design decision between three options. The cheapest is one documentation commit, and it stops the next cancelled devel job being investigated as a branch defect |
+| #333 | RF's decision, and no longer code work. The measurement has merged as `notes/ci_devel_cancellation.md` and `notes/scripts/ci_devel_cancellation.R`, and it refutes the issue's premise: over the 30 most recently merged pull requests every one had a successful devel job on its head commit before the merge. Closing it with a comment is one of the options |
 
 ## Defects that change a reported number
 
