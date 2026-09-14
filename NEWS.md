@@ -903,8 +903,8 @@
   whatever the fit had done; it now reflects the fitting alone, which under no
   supplied `seed` depends on how many proposals the initial-value search made
   (see #310 above). Measured on the packaged `manec_example` under the same
-  protocol: `summary()` and `message_control_fit()` each left the stream moved
-  on `dev` and leave it where they found it here.
+  protocol: `summary()` and `message_control_fit()` each returned three
+  different numbers on `dev` and return the reference three here.
 
   The restore is a behaviour change for code that relied on a diagnostic having
   advanced the stream. No test and no vignette does.
