@@ -24,15 +24,15 @@ as a dependency of `brms` whether or not it is used as the sampler, so it is
 present on any machine that can load `brms`. `cmdstanr` is on neither CRAN nor
 the dependency list of `bayesnec`, and is what this package's own vignettes are
 built with; `options(brms.backend = "cmdstanr")` is the line that selects it.
-The instructions below install `cmdstanr`, because it is the back end the
-package is developed and tested against. The `rstan` route is documented by the
-Stan project at <https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started>.
+The instructions below install `cmdstanr`. The `rstan` route is documented by
+the Stan project at
+<https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started>.
 
 # Software requirements
 
 | Software | Purpose |
 |---|---|
-| R | the language the rest of it runs in |
+| R | the language the package runs in |
 | A C++ toolchain | compiles each model before it is fitted |
 | CmdStan | the sampler that runs the compiled model |
 
@@ -40,17 +40,22 @@ The toolchain is the part that differs by operating system, and the part that
 fails most often. On Windows it is Rtools, on macOS the Xcode Command Line
 Tools, and on Linux the standard build tools.
 
-## Route by operating system
+# Route by operating system
 
-Windows is described in full below. The difficulties Stan had on Windows
-historically came from `rstan`, which requires matched versions of several
-compiled packages; `cmdstanr` avoids most of that.
+Windows needs the most care, and has its own section below. The difficulties
+Stan had on Windows historically came from `rstan`, which requires matched
+versions of several compiled packages. `cmdstanr` avoids most of that, and what
+remains is the toolchain and the installation path.
 
-Linux is described next, and was verified on 2026-09-11 under Debian with R
-4.6.1 and CmdStan 2.39.0. macOS is not covered in the same detail, because these
-steps have not been verified on it; that section points at the upstream
-instructions instead. The Windows Subsystem for Linux is a fallback for one
-situation only and is described last. Do not start there.
+Linux needs the least. A current distribution's build tools are already what
+Stan requires, and the default installation path raises none of the problems the
+Windows section deals with.
+
+macOS has not been verified for these instructions, so its section points at
+the instructions the projects themselves maintain.
+
+The Windows Subsystem for Linux is for one situation only, compilation blocked
+by security policy, and it is the last section. Do not start there.
 
 What determines whether an installation works is the check in the *Verification*
 section, not which of these routes was followed to reach it.
@@ -64,11 +69,17 @@ the Rtools that matches it, from
 <https://cran.r-project.org/bin/windows/Rtools/>. Accept the default
 installation location.
 
-Rtools is versioned against the minor version of R: Rtools45 is for R 4.5.x and
-Rtools44 for R 4.4.x. CRAN's Rtools page states the current pairing. A mismatch
-is the most common single cause of a failed setup, and the error it produces
-names no version number, so install R first and read that page rather than
+Rtools is versioned against the minor version of R, and CRAN's Rtools page
+states which Rtools goes with which R. A mismatch is the most common single
+cause of a failed setup, so install R first and read that page rather than
 reusing an Rtools already on the machine.
+
+`cmdstanr::check_cmdstan_toolchain()` names the version it is looking for, and
+that is the version to install. Under `cmdstanr` 0.9.0 and R 4.6.1 the message
+reads `Rtools45 was not found but is required to run CmdStan with R version
+4.6.1.` Which version `cmdstanr` looks for is fixed in the installed `cmdstanr`
+rather than read from CRAN, so the two can disagree; the *Recurring problems on
+Windows* section covers that case.
 
 ## R packages
 
@@ -131,17 +142,28 @@ location changes nothing else about how CmdStan is used, beyond the `.Rprofile`
 line below.
 
 Because `C:/cmdstan` is not the default location, R has to be told where to find
-it in every later session. Run `usethis::edit_r_profile()`, or open `.Rprofile`
-in your home directory, and add the line below with the version number that was
-installed. Without it, every new session reports CmdStan as not installed.
+it in every later session, and the setting it reads is an environment variable
+rather than an option. Run `usethis::edit_r_environ()`, or open `.Renviron` in
+your home directory, add the line below, and restart R. Without it, every new
+session reports CmdStan as not installed, and
+`cmdstanr::set_cmdstan_path("C:/cmdstan")` has to be called by hand in each one.
 
-
-``` r
-options(cmdstanr_cmdstan_path = "C:/cmdstan/cmdstan-2.39.0")
+```
+CMDSTAN=C:/cmdstan
 ```
 
-That file is also where the back end belongs, so that it does not have to be set
-again in each session.
+The variable is read when `cmdstanr` is loaded, which is why R has to be
+restarted, and it is the only thing read: in `cmdstanr` 0.9.0
+`cmdstanr:::cmdstanr_initialize()` takes the path from `Sys.getenv("CMDSTAN")`
+where that is set and from `~/.cmdstan` otherwise, and no option sets it. The
+version number is not needed in the variable. Where `CMDSTAN` names a directory
+that is not itself an installation, `cmdstanr` takes the newest `cmdstan-*`
+installation inside it, so the line above survives the next CmdStan upgrade
+unedited.
+
+The back end is an option rather than a variable, so it belongs in `.Rprofile`,
+and putting it there means it does not have to be set again in each session.
+This line applies on every platform.
 
 
 ``` r
@@ -186,11 +208,16 @@ Anyone who upgrades R and Rtools after installing CmdStan will meet this.
 ### The `cmdstanr` version and the Rtools it expects
 
 Rtools is installed and `cmdstanr` reports it as missing. `cmdstanr` chooses
-which Rtools to look for from the R version, and the mapping changed between
-releases: 0.9.0 sends R 4.5.x to Rtools45, while 0.8.0 sent every R from 4.4
-onward to Rtools44. An older `cmdstanr` alongside Rtools45 therefore searches for
-a toolchain that was never installed. Install `cmdstanr` 0.9.0 or later, which
-is what the r-universe repository above supplies.
+which Rtools to look for from the R version, and that choice is fixed in the
+installed `cmdstanr`. In 0.9.0, `cmdstanr:::rtools4x_version()` returns Rtools44
+for R 4.4.x and Rtools45 for every R from 4.5 onward, which is why R 4.6.1 is
+sent to Rtools45. Version 0.8.0 sent every R from 4.4 onward to Rtools44, so an
+older `cmdstanr` beside the Rtools that CRAN pairs with R 4.5.x searches for a
+toolchain that was never installed.
+
+Install `cmdstanr` 0.9.0 or later, which is what the r-universe repository above
+supplies, and install the Rtools that `check_cmdstan_toolchain()` names rather
+than the one inferred from the R version.
 
 ### Slow compilation
 
@@ -220,7 +247,10 @@ instructions, which the projects themselves maintain, and the check in the
 4. Follow the CmdStanR getting-started vignette
    (<https://mc-stan.org/cmdstanr/articles/cmdstanr.html>) for
    `check_cmdstan_toolchain()` and `install_cmdstan()`. The default installation
-   path causes no difficulty on macOS, so `dir` need not be set.
+   path causes no difficulty on macOS, so `dir` need not be set, and no
+   `CMDSTAN` variable is needed either.
+5. Put `options(brms.backend = "cmdstanr")` in `.Rprofile`, as in the Windows
+   section.
 
 # Linux
 
@@ -229,7 +259,8 @@ the standard build tools: `build-essential` on Debian and Ubuntu, or the
 equivalent development group on other distributions. Install the R packages as
 in the Windows section, then run `cmdstanr::check_cmdstan_toolchain()` followed
 by `cmdstanr::install_cmdstan()`. The default path causes no difficulty here
-either.
+either, so no `CMDSTAN` variable is needed. `options(brms.backend = "cmdstanr")`
+belongs in `.Rprofile` as it does on Windows.
 
 # The Windows Subsystem for Linux
 
@@ -264,8 +295,8 @@ using. An error from either is a toolchain or path problem, and nothing below
 will work until it is resolved.
 
 The second check fits a model, and it is the one that matters, because it
-exercises the whole path: `bnec()` calls `brms`, `brms` writes a Stan program,
-CmdStan compiles it, and the compiled program samples.
+exercises the whole path: `bnec()` calls `brms::brm()`, `brm()` writes a Stan
+program, CmdStan compiles it, and the compiled program samples.
 
 
 ``` r
@@ -282,12 +313,37 @@ summary(fit)
 A successful run compiles one Stan program, prints the sampling progress of two
 chains, and returns an object of class `bayesnecfit`. Its `summary()` reports the
 four parameters of the **nec4param** equation --- **bot**, **top**, **beta** and
-**nec** --- each with an `Rhat` near 1.00, then the *NEC* estimate with its
-credible interval, and a Bayesian R-squared. Two chains are enough to show that
-the toolchain works. The other vignettes take the `brms` default of four, which
-is what an analysis should use.
+**nec** --- each with an `Rhat` near 1.00, then a *Further Distributional
+Parameters* block holding `phi`, which is the precision of the Beta response,
+then the *NEC* estimate with its credible interval, and a Bayesian R-squared.
+Two chains are enough to show that the toolchain works. The other vignettes take
+the `brms` default of four, which is what an analysis should use.
 
 With that fit returning, the modelling vignettes can be followed;
 [Single model usage][e1] is the place to start.
+
+# Provenance
+
+The Windows failures described above, and the measurements quoted with them ---
+the 49 MB archive, the download that failed at R's default timeout and completed
+in 4.9 minutes at `timeout = 1800`, the OneDrive build failure, and the
+`tbb.dll` linked against a superseded Rtools --- are taken from the software
+setup module of the concentration-response modelling course at
+<https://github.com/open-AIMS/cr_modelling_training>, commit `9d05595`, which
+records what was seen on fresh Windows machines during 2026. They are that
+course's measurements and not this package's.
+
+The `cmdstanr` behaviour stated here was read from `cmdstanr` 0.9.0 under R
+4.6.1: the environment variable `cmdstanr:::cmdstanr_initialize()` reads, the
+Rtools version `cmdstanr:::rtools4x_version()` returns, the text of the
+toolchain error, and the fact that the `timeout` argument of `install_cmdstan()`
+reaches `build_cmdstan()` and `build_example()` while the download runs through
+`utils::download.file()` and so honours `options(timeout)`.
+
+The Linux route was checked on 2026-09-11 by running the course's verification
+script end to end, with R 4.6.1, `brms` 2.23.0, `cmdstanr` 0.9.0 and CmdStan
+2.39.0. Two limits on that check: it ran under WSL2 Debian rather than a native
+installation, and the machine was already configured, so it establishes the end
+state and not the instructions that reach it.
 
 # References

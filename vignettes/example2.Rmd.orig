@@ -34,6 +34,7 @@ knitr::opts_chunk$set(
 [e2b]: https://open-aims.github.io/bayesnec/articles/example2b.html
 [e3]: https://open-aims.github.io/bayesnec/articles/example3.html
 [e4]: https://open-aims.github.io/bayesnec/articles/example4.html
+[e5]: https://open-aims.github.io/bayesnec/articles/example5.html
 
 # `bayesnec`
 
@@ -260,7 +261,7 @@ The cause is not established here and is very likely below R. The Windows subsys
 
 ### The Stan backend
 
-Under a forked plan, use the `cmdstanr` backend. The default, `rstan`, compiles each model into the session's temporary directory, which a forked worker shares with the process it was forked from; thirteen models compiling at once in eight forked workers failed, every one of them, with `cannot open the connection` from `stanc`. A `multisession` worker is a separate R session with a temporary directory of its own, so compilation under `rstan` does not collide there. `cmdstanr` names a compiled program after a hash of its Stan code and keeps it in a cache directory, so concurrent compiles of different models do not collide and a repeated run reuses what is already built. Set it with `options(brms.backend = "cmdstanr")`, which is what this package's vignettes are built with. `cmdstanr` is not on CRAN and is not a dependency of `bayesnec`; see [its installation instructions](https://mc-stan.org/cmdstanr/) if you do not already have it.
+Under a forked plan, use the `cmdstanr` backend. The default, `rstan`, compiles each model into the session's temporary directory, which a forked worker shares with the process it was forked from; thirteen models compiling at once in eight forked workers failed, every one of them, with `cannot open the connection` from `stanc`. A `multisession` worker is a separate R session with a temporary directory of its own, so compilation under `rstan` does not collide there. `cmdstanr` names a compiled program after a hash of its Stan code and keeps it in a cache directory, so concurrent compiles of different models do not collide and a repeated run reuses what is already built. Set it with `options(brms.backend = "cmdstanr")`, which is what this package's vignettes are built with. `cmdstanr` is not on CRAN and is not a dependency of `bayesnec`; see the [Installation and setup][e5] vignette, or [its own installation instructions](https://mc-stan.org/cmdstanr/), if you do not already have it.
 
 Two models in two forked workers did not collide and thirteen in eight did, so a small trial does not reveal this, and the two-model check in *Choosing a plan* does not cover it. The explanation offered here is consistent with the shared temporary directory but was not isolated --- eight compilers running at once is also eight times the memory --- and it was seen on one machine.
 

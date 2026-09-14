@@ -35,6 +35,7 @@ knitr::opts_chunk$set(
 [e2b]: https://open-aims.github.io/bayesnec/articles/example2b.html
 [e3]: https://open-aims.github.io/bayesnec/articles/example3.html
 [e4]: https://open-aims.github.io/bayesnec/articles/example4.html
+[e5]: https://open-aims.github.io/bayesnec/articles/example5.html
 
 # `bayesnec`
 
@@ -76,6 +77,10 @@ compiler for Windows. On Mac, you should install Xcode. See the prerequisites
 section on this
 [link](https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started)
 for further instructions on how to get the compilers running.
+
+The [Installation and setup][e5] vignette works through this in detail: the two
+`brms` back ends, the `cmdstanr` installation these vignettes are built with,
+and the failures most often met on Windows.
 
 To run this vignette, we will also need some additional packages
 

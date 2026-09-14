@@ -1360,7 +1360,22 @@
   mapping that changed at 0.9.0. Its technical content comes from the software
   setup module of the `cr_modelling_training` course, which is the maintained
   version of the same material. A verification section closes it with
-  `check_cmdstan_toolchain()` and a two-chain `bnec()` fit on `nec_data` (#342).
+  `check_cmdstan_toolchain()` and a two-chain `bnec()` fit on `nec_data`, and a
+  provenance section attributes each measurement to the run that produced it.
+
+  One instruction in the course module is corrected rather than carried across.
+  A CmdStan installation outside the default location is made to persist with
+  the environment variable `CMDSTAN`, set in `.Renviron`, and not with
+  `options(cmdstanr_cmdstan_path = ...)`: no version of `cmdstanr` reads that
+  option. In `cmdstanr` 0.9.0, `cmdstanr:::cmdstanr_initialize()` takes the path
+  from `Sys.getenv("CMDSTAN")` where it is set and from `~/.cmdstan` otherwise,
+  and the string `cmdstanr_cmdstan_path` appears nowhere in the `cmdstanr`
+  namespace. The vignette also drops the version number from the setting, since
+  `CMDSTAN` naming a directory that holds an installation rather than being one
+  resolves to the newest `cmdstan-*` inside it (#342).
+
+  `vignette("example1")`, `vignette("example2")` and `README.md` now point at
+  it. Each carried its own installation text, so the package had three (#342).
 
 - New vignette, `vignette("example9")` --- *A complete analysis workflow* ---
   running a single analysis from data to reportable estimate: choosing the
