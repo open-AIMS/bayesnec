@@ -488,10 +488,30 @@ n_distinct(one_plate$conc_group)
 ```
 
 The fits below use `model = "all"`, which `bnec()` filters to the equations
-valid for the family and predictor. Chains are shorter than an analysis would
-use --- 5000 iterations with 4000 warmup, against the 10000 and 8000 `bnec()`
-defaults --- which halves the draws retained while leaving the warmup long
-enough to adapt.
+valid for the family and predictor. The whole set is kept rather than `decline`
+because the zinc response rises above its control at low concentrations, and
+`decline` holds only the equations whose curves fall from the control. Taking
+the mean of each plate's four wells at each concentration, relative to that
+plate's own control:
+
+```{r}
+zn15 |>
+  mutate(rank = as.integer(sub(".*-c", "", as.character(conc_group)))) |>
+  group_by(plate, rank) |>
+  summarise(m = mean(rlu_cens), .groups = "drop_last") |>
+  mutate(rel = m / m[rank == 1]) |>
+  group_by(rank) |>
+  summarise(plates_above_control = sum(rel > 1), median_rel = round(median(rel), 3),
+            .groups = "drop") |>
+  head(6)
+```
+
+Excluding the hormesis equations would be a decision about the curve made
+against that, so they are kept and the weights are left to settle it.
+
+Chains are shorter than an analysis would use --- 5000 iterations with 4000
+warmup, against the 10000 and 8000 `bnec()` defaults --- which halves the draws
+retained while leaving the warmup long enough to adapt.
 
 ```{r}
 fit_plain <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + disp("power"),
@@ -648,9 +668,11 @@ herbicides or metals, so shrinking them towards a common curve answers a
 different question from the one being asked, and their functional forms may
 differ. `bnec_group()` fits each level separately and returns one object.
 
-Both calls below use the `decline` set rather than the whole retained set. For
-the herbicides that reproduces the final figure of @fisher2024, which used it,
-and using it for the metals as well keeps the two comparisons on one footing.
+The two calls below use different sets, for reasons particular to each. The
+herbicide call uses `decline`, which reproduces the final figure of @fisher2024;
+the metal call keeps `model = "all"` for the reason given in the
+within-concentration section, that zinc rises above its control at low
+concentrations.
 
 ```{r}
 fits_herb <- bnec_group(fvfm ~ crf(log(concentration), "decline"),
@@ -682,7 +704,7 @@ a dispersion sub-model.
 zn_cu_15 <- droplevels(subset(lum31, minutes == 15))
 
 fits_tox <- bnec_group(
-  rlu_cens | cens(censoring) ~ crf(log(conc), "decline") + ogl(plate) + disp("power"),
+  rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + disp("power"),
   data = zn_cu_15, group_var = "toxicant", family = gfam,
   chains = 4, iter = 5000, warmup = 4000, seed = 228,
   control = list(adapt_delta = 0.99))
