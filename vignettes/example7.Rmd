@@ -1265,11 +1265,17 @@ when no candidate is correct, which is the ordinary situation with real data.
 
 The residual scale is constant along the curve and every fit is homoscedastic
 to match. That is a deliberate simplification, and it removes a confound that
-was present in the earlier version of this study, but it also means the
-dispersion sub-model is never exercised. One of the four `alga` datasets does
-show a residual gradient along the curve, so the homoscedastic case is not the
-only one that arises. Re-running the sweep under `disp("loglinear")` is tracked
-in issue #283.
+was present in the earlier version of this study, but it means no convention
+reported here estimates a dispersion that varies along the curve. One of the
+four `alga` datasets does show a residual gradient, so the homoscedastic case is
+not the only one that arises.
+
+The precision sweep was also run with a dispersion sub-model, on the same cells
+and realisations, and those results are not reported. A sub-model does not
+repair the conventions that impose the zero boundary through the response
+distribution, and adding one to a Gaussian, whose variance model is already
+correct, gives it a gradient the data do not have. The compendium holds the code
+and the tables, and its `CLAUDE.md` records why they are uncited.
 
 The priors are `bnec()`'s own defaults, derived once per cell and convention
 from a reference realisation and then held fixed across the 100 realisations of
