@@ -554,21 +554,29 @@ test_that("each worker compiles into its own directory, under the user's root", 
   # worker shares the parent's tempdir, so the directory has to differ by
   # process. Keyed on the process rather than on the level so that a worker
   # which draws three levels compiles each equation once and not three times.
+  # Paths are compared after normalisation. dirname() returns forward slashes
+  # and tempdir() returns the platform separator, so on Windows the two differ
+  # by separator alone: measured on the CI runner,
+  # "C:/Users/.../RtmpYnmHNK" against "C:\\Users\\...\\RtmpYnmHNK".
+  same_path <- function(a, b) {
+    norm <- function(p) normalizePath(p, winslash = "/", mustWork = FALSE)
+    expect_identical(norm(a), norm(b))
+  }
   own <- bayesnec:::worker_stan_cache_dir()
   expect_match(basename(own), paste0("^bayesnec-stan-", Sys.getpid(), "$"))
   expect_true(dir.exists(own))
-  expect_equal(dirname(own), tempdir())
+  same_path(dirname(own), tempdir())
   # A directory the user chose is shared by every worker on every backend, so
   # it is separated the same way.
   root <- file.path(tempdir(), "bayesnec-cache-root-test")
   dir.create(root, showWarnings = FALSE)
-  expect_equal(dirname(bayesnec:::worker_stan_cache_dir(root)), root)
+  same_path(dirname(bayesnec:::worker_stan_cache_dir(root)), root)
   # The root is an argument rather than read from the options here, because
   # future exports globals and not options and a multisession worker would
   # otherwise never see one the caller set.
   old <- options(cmdstanr_write_stan_file_dir = root)
   on.exit(options(old), add = TRUE)
-  expect_equal(dirname(bayesnec:::worker_stan_cache_dir()), tempdir())
+  same_path(dirname(bayesnec:::worker_stan_cache_dir()), tempdir())
   # Two workers do not share a directory, which is the property the race
   # needs. Asserted through a future rather than by construction, since the
   # process id is what separates them.
@@ -644,10 +652,18 @@ test_that("a grouped call fits each level on its own rows", {
   # What each level was fitted under, recorded rather than regenerated.
   expect_length(fit$level_seeds, 2L)
   expect_true(is.numeric(fit$level_seeds))
+  # The stored formula holds the narrowed environment, not the 7.6 MiB vector
+  # bound beside it above (#329). Measured against the same formula written
+  # here and left alone, so the comparison does not depend on what else the
+  # session holds.
+  unnarrowed <- local({
+    keep <- big
+    bayesnecformula(y ~ crf(x, model = "nec3param"))
+  })
   for (lev in c("a", "b")) {
     expect_lt(
-      length(serialize(fit$fits[[lev]]$bayesnecformula, NULL)) / 1024^2,
-      0.1
+      length(serialize(fit$fits[[lev]]$bayesnecformula, NULL)),
+      length(serialize(unnarrowed, NULL)) / 50
     )
   }
 })
@@ -664,16 +680,41 @@ test_that("a formula stops holding the environment it was written in", {
     bayesnecformula(y ~ crf(x, model = c("nec3param", "ecx4param")))
   }
   f <- make()
-  expect_gt(mib(f), 7)
   narrowed <- bayesnec:::narrow_formula_environment(f, nec_data)
-  expect_lt(mib(narrowed), 0.1)
   # The class survives, and so does the formula itself.
   expect_s3_class(narrowed, "bayesnecformula")
   expect_true(identical(narrowed[[2]], f[[2]]))
+  # The 7.6 MiB vector is no longer reachable from the formula, which is the
+  # property; the sizes below are its consequence. Asserted on the binding
+  # rather than on bytes alone, because what a serialised environment weighs
+  # depends on everything else in the chain and so differs between a console
+  # session and a check runner.
+  reachable <- function(x, what) {
+    e <- environment(x)
+    while (is.environment(e) && !bayesnec:::env_by_reference(e)) {
+      if (exists(what, envir = e, inherits = FALSE)) return(TRUE)
+      e <- parent.env(e)
+    }
+    FALSE
+  }
+  expect_true(reachable(f, "big"))
+  expect_false(reachable(narrowed, "big"))
   # The model frame holds the same environment, through the .Environment of
   # its terms attribute, and amend() exports one to every worker.
-  expect_gt(mib(model.frame(f, data = nec_data)), 7)
-  expect_lt(mib(model.frame(narrowed, data = nec_data)), 0.1)
+  before <- mib(f)
+  after <- mib(narrowed)
+  frame_before <- mib(model.frame(f, data = nec_data))
+  frame_after <- mib(model.frame(narrowed, data = nec_data))
+  sizes <- paste0("formula ", before, " -> ", after, " MiB; frame ",
+                  frame_before, " -> ", frame_after, " MiB")
+  expect_gt(before, 7)
+  expect_gt(frame_before, 7)
+  # An order of magnitude rather than an absolute bound, for the reason above.
+  # Measured on R 4.6.1 the reduction is from 76.29 MiB to under 0.01; the
+  # threshold here is loose enough to survive whatever else a runner's
+  # environment holds and tight enough to fail if the narrowing stops.
+  expect_lt(after, before / 50, label = sizes)
+  expect_lt(frame_after, frame_before / 50, label = sizes)
 })
 
 test_that("a name the formula uses and the data does not supply is kept", {
@@ -685,10 +726,15 @@ test_that("a name the formula uses and the data does not supply is kept", {
     mods <- c("nec3param", "ecx4param")
     bayesnecformula(y ~ crf(x, model = mods))
   }
-  narrowed <- bayesnec:::narrow_formula_environment(make(), nec_data)
+  f <- make()
+  narrowed <- bayesnec:::narrow_formula_environment(f, nec_data)
   expect_identical(get("mods", envir = environment(narrowed)),
                    c("nec3param", "ecx4param"))
-  expect_lt(length(serialize(narrowed, NULL)) / 1024^2, 0.1)
+  # The model set is kept and the 7.6 MiB vector beside it is not. Compared
+  # against the formula it came from rather than against a byte count, because
+  # what a serialised environment weighs depends on the rest of its chain.
+  expect_lt(length(serialize(narrowed, NULL)),
+            length(serialize(f, NULL)) / 50)
   # A column of the data is not copied: the model frame resolves it from
   # there, and copying it would send the data twice.
   expect_false(exists("y", envir = environment(narrowed), inherits = FALSE))
