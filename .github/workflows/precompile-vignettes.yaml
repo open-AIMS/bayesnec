@@ -12,6 +12,12 @@
 # wall clock the slowest vignette rather than the sum of all nine, and confines a
 # vignette that fails to its own leg instead of aborting the run. See #251.
 #
+# Sampling is by cmdstan, the version `hpc/image.lock` records, installed and
+# cached by the `cmdstan` job before the fan-out. That is the back end
+# `hpc/run.precompile` uses, so a render made here and one made on the cluster
+# are produced by the same sampler, and it is what makes the compiled programs
+# cacheable between runs. See #313.
+#
 # It deliberately does not push to the branch directly: precompilation changes
 # every number in every vignette, and that is a diff someone should look at.
 #
@@ -86,6 +92,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.resolve.outputs.matrix }}
+      dry_run: ${{ steps.resolve.outputs.dry_run }}
+      cmdstan: ${{ steps.resolve.outputs.cmdstan }}
+      toolchain: ${{ steps.resolve.outputs.toolchain }}
     steps:
       - uses: actions/checkout@v4
 
@@ -95,6 +104,33 @@ jobs:
           PRECOMPILE_DRY_RUN: ${{ inputs.dry_run }}
         run: |
           set -euo pipefail
+
+          # The cmdstan version is read from hpc/image.lock rather than written
+          # out here, so the two precompile routes cannot drift apart without
+          # the lock file saying so. See #313.
+          cmdstan=$(sed -n 's/^cmdstan: //p' hpc/image.lock)
+          if [ -z "$cmdstan" ]; then
+            echo "::error::no 'cmdstan:' line in hpc/image.lock"
+            exit 1
+          fi
+          echo "cmdstan=$cmdstan" >> "$GITHUB_OUTPUT"
+
+          # Both caches below are keyed on the compiler as well as the cmdstan
+          # version, for the same reason hpc/run.precompile keys its own cache
+          # on the image digest: cmdstanr names a compiled program after a hash
+          # of its Stan source and nothing else, so neither the cmdstan that
+          # produced the executable beside it nor the compiler appears in its
+          # name, and an unkeyed cache would hand a run binaries built by
+          # another toolchain.
+          #
+          # The version read is the one this job's runner has. The install job
+          # and the fan-out run on separate machines, so a GitHub image rotation
+          # part way through a run is a gap this key does not close; it closes
+          # the one that matters, which is a rotation between runs.
+          gcc=$(g++ -dumpfullversion -dumpversion)
+          echo "toolchain=cmdstan$cmdstan-gcc$gcc" >> "$GITHUB_OUTPUT"
+          echo "cmdstan $cmdstan, g++ $gcc"
+
           ref="${GITHUB_REF_NAME}"
           suffix=""
           case "$ref" in precompile/*) suffix="${ref#precompile/}" ;; esac
@@ -102,9 +138,11 @@ jobs:
           if [ "${PRECOMPILE_DRY_RUN,,}" = "true" ] || [ "$suffix" = "dry-run" ]
           then
             echo 'matrix=["dry-run"]' >> "$GITHUB_OUTPUT"
+            echo "dry_run=true" >> "$GITHUB_OUTPUT"
             echo "DRY RUN -- no fitting will happen."
             exit 0
           fi
+          echo "dry_run=false" >> "$GITHUB_OUTPUT"
 
           sel="${VIGNETTE_SELECTION:-}"
           # A push carries no inputs, so the branch suffix stands in for them.
@@ -138,8 +176,89 @@ jobs:
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
           echo "Rebuilding: $matrix"
 
-  precompile:
+  # cmdstan is installed once for the whole run and cached, rather than in each
+  # leg of the fan-out. A cold install is 10-15 minutes of compiling, so every
+  # leg would run it and then contend to write one cache entry; one of them
+  # stores the result and the rest report "Unable to reserve cache" having done
+  # the work anyway. On a warm cache this job is a
+  # restore and a version check, and adds well under a minute to the run.
+  # See #313.
+  #
+  # The job runs on a dry run as well, and does nothing: a dry run exercises the
+  # plumbing and must not spend a quarter of an hour on a toolchain it will not
+  # use. Conditioning the steps rather than the job keeps the fan-out's `needs`
+  # satisfiable -- a skipped job skips everything that needs it.
+  cmdstan:
     needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      # ~/.cmdstan, not a path of our own, because that is where cmdstanr looks
+      # by default and it is the same absolute path on every runner -- cmdstan
+      # links its TBB shared libraries by rpath, so an installation restored to
+      # a different path than it was built at does not run.
+      - name: Cache cmdstan ${{ needs.plan.outputs.cmdstan }}
+        if: needs.plan.outputs.dry_run != 'true'
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cmdstan
+          key: cmdstan-${{ runner.os }}-${{ needs.plan.outputs.toolchain }}
+
+      - uses: r-lib/actions/setup-r@v2
+        if: needs.plan.outputs.dry_run != 'true' &&
+            steps.cache.outputs.cache-hit != 'true'
+        with:
+          use-public-rspm: true
+
+      # From r-universe rather than by the `stan-dev/cmdstanr` spelling the
+      # fan-out uses below. r-universe builds that same source, and taking it
+      # this way needs neither pak nor a resolved DESCRIPTION, neither of which
+      # this job has any other reason to install: cmdstanr is wanted here only
+      # to run install_cmdstan().
+      - name: Install cmdstan ${{ needs.plan.outputs.cmdstan }}
+        if: needs.plan.outputs.dry_run != 'true' &&
+            steps.cache.outputs.cache-hit != 'true'
+        env:
+          CMDSTAN_VERSION: ${{ needs.plan.outputs.cmdstan }}
+        run: |
+          install.packages("cmdstanr",
+            repos = c("https://stan-dev.r-universe.dev", getOption("repos")))
+          # timeout is per make invocation and defaults to 1200s; a cold build
+          # of cmdstan on a four-core runner is close enough to that to fail on
+          # a slow one.
+          # na.rm: detectCores() returns NA where it cannot tell, and max(1L, NA)
+          # is NA, which would reach make as -jNA.
+          cores <- max(1L, parallel::detectCores(), na.rm = TRUE)
+          cmdstanr::install_cmdstan(version = Sys.getenv("CMDSTAN_VERSION"),
+                                    cores = cores, timeout = 2400)
+        shell: Rscript {0}
+
+      # Runs on a cache hit as well as after an install, so a cache entry that
+      # is incomplete -- a run cancelled mid-build, a partial upload -- fails
+      # here rather than in every leg twenty minutes later.
+      #
+      # The key is deterministic, so a bad entry is restored again by every
+      # rerun and this check fails identically until the entry is deleted. The
+      # remedy is named in the error rather than left to be worked out.
+      - name: Check the installation
+        if: needs.plan.outputs.dry_run != 'true'
+        env:
+          CACHE_KEY: cmdstan-${{ runner.os }}-${{ needs.plan.outputs.toolchain }}
+        run: |
+          set -euo pipefail
+          dir="$HOME/.cmdstan/cmdstan-${{ needs.plan.outputs.cmdstan }}"
+          if [ ! -x "$dir/bin/stanc" ]; then
+            echo "::error::no executable bin/stanc under $dir. If this run" \
+              "restored a cache entry, it is incomplete; delete it with" \
+              "'gh cache delete $CACHE_KEY' and rerun to rebuild cmdstan."
+            ls -la "$HOME/.cmdstan" || true
+            exit 1
+          fi
+          "$dir/bin/stanc" --version
+
+  precompile:
+    needs: [plan, cmdstan]
     runs-on: ubuntu-latest
     strategy:
       # One bad vignette must not take the other eight down with it; #251.
@@ -149,27 +268,33 @@ jobs:
     # A single vignette is ~20 min. This is a runaway backstop, not a budget --
     # a leg that is anywhere near it has something wrong with it.
     timeout-minutes: 180
+    # BAYESNEC_BACKEND is deliberately absent from the env: below, so that
+    # precompile.R takes its default of cmdstanr and this runner samples with
+    # the back end the HPC route samples with. It was held at rstan until #313,
+    # and a render made here was therefore produced by a different sampler from
+    # one made on the cluster -- a difference that made a diff between two
+    # renders unreadable as a change in the package. The cmdstan the two share
+    # is the version hpc/image.lock records; what still differs between them is
+    # stated in hpc/README.md.
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       NOT_CRAN: true
-      # precompile.R defaults to the cmdstanr backend, because the HPC path it
-      # was written for depends on cmdstan's compiled-program cache (#306).
-      # This runner has neither cmdstanr, which is not on CRAN and not in
-      # DESCRIPTION, nor a cmdstan installation, so every fit would fail
-      # require_backend() and bnec() would report only "None of the models fit
-      # successfully". Held at rstan, which is what this workflow has always
-      # used.
-      #
-      # The consequence is that a vignette precompiled here and one precompiled
-      # on the HPC are sampled by different back ends. That is a real difference
-      # and it is not resolved by this line: resolving it means installing
-      # cmdstanr and cmdstan on the runner and caching them, which is a change
-      # to this workflow that has not been exercised. Until then, treat the HPC
-      # as the path for a render whose numbers will be quoted.
-      BAYESNEC_BACKEND: rstan
 
     steps:
       - uses: actions/checkout@v4
+
+      # Restore only, and placed before the R setup because it is the cheapest
+      # hard failure in the job. The `cmdstan` job above is the one that
+      # installs and saves it, so a leg that finds nothing has been started
+      # without that job having succeeded, and should say so rather than fall
+      # back to rstan and produce a render sampled by the other back end.
+      - name: Restore cmdstan ${{ needs.plan.outputs.cmdstan }}
+        if: matrix.vignette != 'dry-run'
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cmdstan
+          key: cmdstan-${{ runner.os }}-${{ needs.plan.outputs.toolchain }}
+          fail-on-cache-miss: true
 
       - uses: r-lib/actions/setup-pandoc@v2
 
@@ -177,20 +302,92 @@ jobs:
         with:
           use-public-rspm: true
 
+      # stan-dev/cmdstanr is spelled the way .github/workflows/R-CMD-check.yaml
+      # spells it, so the two workflows install one package from one source. It
+      # goes here rather than in an install.packages() step of its own because
+      # this action caches the library it installs into, so cmdstanr is restored
+      # with everything else rather than rebuilt on every run. It is not on CRAN
+      # and deliberately not in DESCRIPTION: brms supports either backend and
+      # bayesnec must not require this one.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::knitr, any::purrr, any::rmarkdown, local::.
+          extra-packages: >-
+            any::knitr, any::purrr, any::rmarkdown, stan-dev/cmdstanr, local::.
           needs: check
 
-      # NOT cached: compiled Stan models. This job pins the rstan backend in
-      # `env:` above, so models are compiled in-process and nothing is written
-      # to ~/.cmdstan -- an earlier cache step on that path stored and restored
-      # an empty directory on every run while reading as though compilation were
-      # cached. Recompilation is a real per-run cost; making it cacheable means
-      # installing cmdstanr and cmdstan here and pointing
-      # `cmdstanr_write_stan_file_dir` at a cached path, which is what
-      # `hpc/run.precompile` does and what would also make this runner agree
-      # with the HPC on the sampler. See #230, #251, #306.
+      # CMDSTAN rather than cmdstanr's own search: cmdstanr takes the highest
+      # version it finds under ~/.cmdstan when the variable is unset, and this
+      # run is pinned to the one hpc/image.lock names.
+      #
+      # BAYESNEC_STAN_CACHE is where precompile.R has cmdstanr write the .stan
+      # files it names by hash, and therefore where the compiled executables
+      # live. Unset it is the session tempdir, and nothing survives the job.
+      # It is outside the checkout so that it cannot reach the tarball packed
+      # below.
+      - name: Select the toolchain
+        if: matrix.vignette != 'dry-run'
+        env:
+          CMDSTAN_VERSION: ${{ needs.plan.outputs.cmdstan }}
+        run: |
+          set -euo pipefail
+          echo "CMDSTAN=$HOME/.cmdstan/cmdstan-$CMDSTAN_VERSION" >> "$GITHUB_ENV"
+          echo "BAYESNEC_STAN_CACHE=$RUNNER_TEMP/stan-programs" >> "$GITHUB_ENV"
+
+      # The compiled programs, which is what #230 and #251 both wanted and
+      # neither could have while the backend was rstan: rstan compiles in
+      # process and writes nothing, so the cache step #230 added on ~/.cmdstan
+      # stored an empty directory on every run while reading as though
+      # compilation were cached.
+      #
+      # Keyed per vignette, and the fallback key does not reach across
+      # vignettes even though the vignettes do share programs. A leg saves
+      # whatever it restored plus whatever it compiled, so a shared fallback
+      # would have every leg save the union of every vignette's set, and the
+      # repository would hold one copy of that union per leg.
+      #
+      # The run id in the key, with the prefix as the fallback, is what makes a
+      # leg save at all: a cache entry is immutable, so a key that matched
+      # exactly would restore and then never be updated with what this run
+      # compiled. The attempt number is there for the same reason: "Re-run
+      # failed jobs" keeps the run id, so without it the second attempt of a
+      # leg saves nothing, and this workflow is built around legs that fail on
+      # their own and get rerun.
+      #
+      # Restore and save are separate actions rather than one `actions/cache`,
+      # because that action declares `post-if: success()` and so saves nothing
+      # when the job has failed. A leg that fails part way through a vignette
+      # has usually compiled most of that vignette's programs, and throwing
+      # them away makes the rerun pay for them again.
+      - name: Restore the compiled Stan programs
+        if: matrix.vignette != 'dry-run'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/stan-programs
+          key: >-
+            stan-${{ runner.os }}-${{ needs.plan.outputs.toolchain }}-${{
+            matrix.vignette }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            stan-${{ runner.os }}-${{ needs.plan.outputs.toolchain }}-${{ matrix.vignette }}-
+
+      # Fails before the sampling time is spent rather than after it, which is
+      # the same reason hpc/run.precompile checks its library and its image
+      # before it knits.
+      - name: Check the backend
+        if: matrix.vignette != 'dry-run'
+        env:
+          CMDSTAN_VERSION: ${{ needs.plan.outputs.cmdstan }}
+        run: |
+          want <- Sys.getenv("CMDSTAN_VERSION")
+          got <- as.character(cmdstanr::cmdstan_version())
+          if (!identical(got, want)) {
+            stop("cmdstan ", got, " at ", cmdstanr::cmdstan_path(),
+                 ", not the ", want, " hpc/image.lock records")
+          }
+          cat("cmdstan", got, "at", cmdstanr::cmdstan_path(), "\n")
+          cat("brms", as.character(packageVersion("brms")),
+              "| cmdstanr", as.character(packageVersion("cmdstanr")), "\n")
+          cat("Stan program cache:", Sys.getenv("BAYESNEC_STAN_CACHE"), "\n")
+        shell: Rscript {0}
 
       # precompile.R now takes the vignette name as an argument (#306), so this
       # step is no longer the only way to rebuild one vignette. It is kept
@@ -213,8 +410,98 @@ jobs:
           ls -1 vignettes/*.Rmd.orig
 
       - name: Precompile ${{ matrix.vignette }}
+        id: precompile
         if: matrix.vignette != 'dry-run'
         run: Rscript vignettes/precompile.R '${{ matrix.vignette }}'
+
+      # Two decisions, both about what the next run restores.
+      #
+      # What is saved. A leg that got no further than the toolchain has no
+      # program directory, and a leg whose directory is empty has compiled
+      # nothing. Saving either would store an empty entry under a key newer
+      # than the good one, and a prefix fallback resolves to the entry created
+      # most recently -- so one failed leg would leave the following run with
+      # none of that vignette's programs. The save step is therefore gated on
+      # this step reporting that there is something to save.
+      #
+      # How large it is allowed to be. The directory only grows: cmdstanr never
+      # removes a program, so an edited model specification leaves the
+      # executable it replaced behind. Measured on a bayesnec program cache of
+      # 267 compiled programs: 780 MB (744 MiB, as du -sm reports it), about
+      # 2.9 MB each, compressing 2.96:1 in a sample of 40 files. The budget
+      # below is roughly twice that.
+      #
+      # It is bounded because the repository shares one 10 GB cache quota across
+      # every workflow, and what consumes the quota is not one entry but their
+      # accumulation: the key includes the run id, so no entry is ever replaced
+      # and each leg of each run adds one. A leg at the budget adds about 530 MB
+      # compressed, so a whole-set run at the budget would add several
+      # gigabytes. Stale entries are never restored again,
+      # so they are the first the least-recently-used eviction takes and they
+      # expire unread after seven days, but without a bound a single runaway
+      # entry would displace the dependency caches R-CMD-check restores.
+      #
+      # Emptied rather than trimmed. Trimming needs a record of which programs
+      # are still in use, and there is none: the cache action does not restore
+      # access times, and a program's modification time is when it was compiled
+      # rather than when it was last read. A stamp file is left behind so that
+      # the emptied directory is still saved, which is what supersedes the
+      # oversized entry; saving nothing would leave it the newest match and the
+      # next run would restore it and empty it again.
+      #
+      # A leg whose cache was already complete still re-uploads it under the
+      # new key, having compiled nothing. That is left alone deliberately. One
+      # leg holds one vignette's programs -- example4 is 14 of them, about
+      # 14 MB compressed -- the stale copy is never restored once a newer entry
+      # exists, and it expires unread after seven days. Detecting it means
+      # recording the file count before the knit and comparing, which is worth
+      # adding if a vignette the size of example7 reaches this branch and is not
+      # worth adding for the ones that are on it.
+      #
+      # `!cancelled()` rather than the default, so that the bound is applied on
+      # the path where it matters most: a leg that failed part way through has
+      # compiled programs and is about to save them. `always()` is not used,
+      # because a cancelled run should write nothing.
+      - name: Bound the Stan program cache
+        id: bound
+        if: ${{ !cancelled() && matrix.vignette != 'dry-run' }}
+        env:
+          BUDGET_MIB: "1500"
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/stan-programs"
+          if [ ! -d "$dir" ] || [ -z "$(ls -A "$dir")" ]; then
+            echo "save=false" >> "$GITHUB_OUTPUT"
+            echo "no Stan programs here; nothing to save"
+            exit 0
+          fi
+          mib=$(du -sm "$dir" | cut -f1)
+          echo "Stan program cache: ${mib} MiB in $(ls -A "$dir" | wc -l) file(s)"
+          if [ "$mib" -gt "$BUDGET_MIB" ]; then
+            echo "::warning::Stan program cache is ${mib} MiB, over the" \
+              "${BUDGET_MIB} MiB budget; emptying it. The next run compiles cold."
+            rm -rf "$dir"
+            mkdir -p "$dir"
+            printf 'emptied by run %s over the %s MiB budget\n' \
+              "$GITHUB_RUN_ID" "$BUDGET_MIB" > "$dir/.emptied"
+          fi
+          echo "save=true" >> "$GITHUB_OUTPUT"
+
+      # `steps.precompile.conclusion != 'skipped'` is what keeps a leg that
+      # never reached the knit from re-uploading the set it restored under a
+      # newer key. The failure this split exists for is the other one -- a leg
+      # that compiled some of a vignette and then failed -- and there the step
+      # has run and concluded `failure`.
+      - name: Save the compiled Stan programs
+        if: >-
+          ${{ !cancelled() && steps.bound.outputs.save == 'true'
+          && steps.precompile.conclusion != 'skipped' }}
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/stan-programs
+          key: >-
+            stan-${{ runner.os }}-${{ needs.plan.outputs.toolchain }}-${{
+            matrix.vignette }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       # Nothing is fitted. A real PNG under the name below gives the
       # pull-request step an actual diff to commit, and it is covered by the
@@ -264,11 +551,14 @@ jobs:
           retention-days: 14
 
   open-pr:
-    needs: [plan, precompile]
+    needs: [plan, cmdstan, precompile]
     # Runs even when a leg failed, so the vignettes that did rebuild are not
     # held hostage to the one that did not. The run is still marked failed by
-    # the failing leg itself.
-    if: always() && needs.plan.result == 'success'
+    # the failing leg itself. It does not run when the toolchain job failed:
+    # every leg is then skipped, and "no leg produced any output" would name
+    # the symptom rather than the cause.
+    if: always() && needs.plan.result == 'success' &&
+        needs.cmdstan.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

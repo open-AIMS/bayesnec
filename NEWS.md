@@ -1374,6 +1374,18 @@
   `models()` given a numeric range returns the admissible set and is the route
   to use where that is what is wanted (#285).
 
+- The vignette precompilation workflow samples with `cmdstanr`, at the cmdstan
+  version `hpc/image.lock` records, rather than with `brms`'s `rstan` default.
+  The vignettes have been precompiled with `cmdstanr` on the cluster since #306,
+  while the workflow was held at `rstan` because its runner had no cmdstan
+  installation, so a vignette rebuilt in one place and a vignette rebuilt in the
+  other were produced by different samplers and a diff between two renders could
+  not be read as a change in the package. The workflow now installs `cmdstanr`
+  and cmdstan as tools of its own; neither is a dependency of `bayesnec`, and
+  `brms` continues to support either back end. Compiled Stan programs are cached
+  between runs on one branch as well, which `rstan` could not offer --- it
+  compiles in process and keeps nothing (#313).
+
 # bayesnec 2.1.4
 
 - `extraDistr` is declared in `Suggests`. `brms` requires it for the
