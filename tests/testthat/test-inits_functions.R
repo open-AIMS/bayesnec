@@ -961,6 +961,150 @@ test_that("the search is deterministic given a seed", {
   expect_equal(run(), run())
 })
 
+# Save and put back the caller's random number stream. Written on exists()
+# rather than on `.Random.seed` directly: a session that has not yet used the
+# RNG has no such object and reading it errors, which a developer running one
+# of these blocks alone would hit. Removing the object is what restores such a
+# session; assigning one would leave it seeded. The same idiom is at
+# R/helpers.R:129 and R/parallel_models.R:250. Needed since #310, which made
+# the search follow the ambient stream, so a block that advances it decides
+# where the next block in the file starts. Used as
+# `old <- saved_stream(); on.exit(restore_stream(old), add = TRUE)`, in the
+# block's own frame so that on.exit() fires when the block ends.
+saved_stream <- function() {
+  if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+    get(".Random.seed", envir = globalenv(), inherits = FALSE)
+  }
+}
+
+restore_stream <- function(old) {
+  if (is.null(old)) {
+    suppressWarnings(rm(".Random.seed", envir = globalenv()))
+  } else {
+    assign(".Random.seed", old, envir = globalenv())
+  }
+}
+
+test_that("with no seed the search follows the caller's stream", {
+  # #310. The search called set.seed(seed) unconditionally, and set.seed(NULL)
+  # re-initialises the stream from the clock and the process id rather than
+  # leaving it alone. A user who ran set.seed() before bnec() therefore had it
+  # discarded, and the fit was a fresh draw every time. Three properties are
+  # asserted together because a fix that satisfies any two of them alone is
+  # wrong: the values must repeat under one seed, must differ under another,
+  # and the stream must be left where a second run would leave it.
+  skip_on_cran()
+  x <- rep(c(1, 5, 20, 100), each = 5)
+  y <- rep(c(0.9, 0.6, 0.3, 0.1), each = 5)
+  fam <- validate_family("Beta")
+  pr <- suppressMessages(define_prior("nec4param", fam, x, y))
+  # The search now follows the ambient stream, so a test that advances it
+  # leaves the next test in the file starting somewhere else. Restored here so
+  # this block does not couple what follows it to its own draws.
+  old_seed <- saved_stream()
+  on.exit(restore_stream(old_seed), add = TRUE)
+  run <- function(ambient) {
+    set.seed(ambient)
+    inits <- suppressMessages(
+      make_good_inits("nec4param", x, y, family = fam, n_trials = 200,
+                      priors = pr, chains = 2)
+    )
+    list(inits = inits, after = .Random.seed)
+  }
+  a <- run(333)
+  b <- run(333)
+  c <- run(334)
+  expect_equal(a$inits, b$inits)
+  expect_true(identical(a$after, b$after))
+  # Not a hardcoded seed standing in for the caller's: a different session seed
+  # must give different initial values.
+  expect_false(isTRUE(all.equal(a$inits, c$inits)))
+})
+
+test_that("seed = NA is read as no seed rather than erroring", {
+  # brms writes "no seed" as seed = NA, and that value reaches the search
+  # through brm_args$seed. set.seed(NA) is an error, so the guard tests for
+  # both forms. See #310.
+  skip_on_cran()
+  x <- rep(c(1, 5, 20, 100), each = 5)
+  y <- rep(c(0.9, 0.6, 0.3, 0.1), each = 5)
+  fam <- validate_family("Beta")
+  pr <- suppressMessages(define_prior("nec4param", fam, x, y))
+  old_seed <- saved_stream()
+  on.exit(restore_stream(old_seed), add = TRUE)
+  run <- function() {
+    set.seed(11)
+    suppressMessages(
+      make_good_inits("nec4param", x, y, family = fam, n_trials = 200,
+                      priors = pr, chains = 2, seed = NA)
+    )
+  }
+  expect_error(run(), NA)
+  expect_equal(run(), run())
+  # A seed of any other shape is set.seed()'s to reject, not the guard's, so
+  # the guard cannot quietly read one as "no seed". integer(0) is the case
+  # all(is.na()) got wrong.
+  expect_error(
+    suppressMessages(
+      make_good_inits("nec4param", x, y, family = fam, n_trials = 5,
+                      priors = pr, chains = 2, seed = integer(0))
+    ),
+    "not a valid integer"
+  )
+})
+
+test_that("the seed reaches the search from brm_args, NA included", {
+  # The two blocks above call make_good_inits() directly. seed = NA can only
+  # arrive through brm_args$seed, which add_brm_defaults() reads, and that
+  # plumbing is what bnec(..., seed = NA) uses. Asserted here rather than
+  # through bnec() so no Stan program is built. See #310.
+  skip_on_cran()
+  x <- rep(c(1, 5, 20, 100), each = 5)
+  y <- rep(c(0.9, 0.6, 0.3, 0.1), each = 5)
+  fam <- validate_family("Beta")
+  old_seed <- saved_stream()
+  on.exit(restore_stream(old_seed), add = TRUE)
+  go <- function(args) {
+    set.seed(101)
+    suppressMessages(
+      add_brm_defaults(args, "nec4param", fam, x, y,
+                       skip_check = TRUE, custom_name = NULL)
+    )$init
+  }
+  # brms writes "no seed" as NA, and set.seed(NA) is an error.
+  expect_error(go(list(chains = 2, seed = NA)), NA)
+  # and with no seed at all the initial values are a function of the caller's.
+  expect_equal(go(list(chains = 2)), go(list(chains = 2)))
+})
+
+test_that("both hurdle blocks follow the caller's stream", {
+  # make_good_hurdle_inits() is the one call site that passes seed on twice,
+  # once per block, so it is checked separately. See #310.
+  skip_on_cran()
+  conc <- rep(c(0, 1, 5, 20, 100), each = 6)
+  set.seed(1)
+  y <- c(rep(1, 12), stats::rbinom(18, 1, 0.4)) *
+    stats::rgamma(30, shape = 4, rate = 2)
+  pr <- brms::prior_string("normal(2, 2)", nlpar = "top") +
+    brms::prior_string("normal(0, 2)", nlpar = "beta") +
+    brms::prior_string("normal(20, 20)", nlpar = "nec", lb = 0) +
+    brms::prior_string("normal(1, 1)", nlpar = "hutop") +
+    brms::prior_string("normal(0, 2)", nlpar = "hubeta") +
+    brms::prior_string("normal(20, 20)", nlpar = "hunec", lb = 0)
+  old_seed <- saved_stream()
+  on.exit(restore_stream(old_seed), add = TRUE)
+  run <- function(ambient) {
+    set.seed(ambient)
+    suppressMessages(
+      make_good_hurdle_inits("nec3param", conc, y, priors = pr, chains = 2,
+                             family = brms::hurdle_gamma(link = "identity"),
+                             n_trials = 200)
+    )
+  }
+  expect_equal(run(7), run(7))
+  expect_false(isTRUE(all.equal(run(7), run(8))))
+})
+
 test_that("a long search says it is still running", {
   # The actual complaint in #266: 561 seconds with no output, which a user
   # cannot tell from a hang. report_after = 0 makes the notice fire on the

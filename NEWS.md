@@ -777,6 +777,63 @@
 
 ## Bug fixes
 
+- A fit now reproduces under a `set.seed()` in the caller's session. The
+  initial-value search called `set.seed(seed)` whatever it was given, and
+  `set.seed(NULL)` does not leave the random number stream alone: it
+  re-initialises it from the clock and the process id. `bnec()` passes a seed
+  down only where the user gave `brms` one, so on the default path the search
+  discarded whatever seed the user had set and drew fresh initial values on
+  every call. The search now seeds itself only where a seed was supplied, and
+  reads `NA` --- which is how `brms` writes "no seed" --- the same way as
+  `NULL`; `bnec(..., seed = NA)` previously stopped with "supplied seed is not
+  a valid integer" (#310).
+
+  Measured on `nec3param` fitted to the packaged `nec_data` with
+  `Beta(link = "identity")`, `iter = 1000`, `chains = 2`, backend `rstan`, R
+  4.6.1, `brms` 2.23.0, `rstan` 2.32.7, one pair of runs: two calls in one
+  session each preceded by `set.seed(333)` agree to every digit of `fixef()`,
+  where the released code differs by 9.1e-5 in `nec`, 5.1e-4 in `top` and
+  3.1e-3 in `beta`. The size of that disagreement is a property of the sampler
+  rather than of the change, so it is a demonstration that the two runs are
+  different fits and not a measure of how wrong the estimates were.
+
+  `vignette("example3")` is the case #310 opened on. It runs `set.seed(333)`
+  before each of its eleven fitting chunks and passes no `seed` to `bnec()`, so
+  all eleven were discarded and every fit in the document was a fresh draw.
+  Both of the outputs that differed between renders follow from that directly.
+  The two `fixef()` tables are read off two of those fits. The three
+  `check_priors()` figures are pure functions of the fits they plot ---
+  `check_priors()` calls `brms::hypothesis()`, which touches the random number
+  stream only when given a seed of its own, and then `geom_density()` --- so a
+  figure differs exactly when its fit does. The issue records two
+  `check_priors()` calls on one saved fit giving byte-identical files, which is
+  the same statement.
+
+  The stream is a second consequence and stands on its own. How many proposals
+  the search makes depends on the stream it starts from, so a search begun from
+  the clock also left the stream in an unpredictable place, and any random
+  operation after the fit differed for that reason as well as because the fit
+  did. In the measurement above the stream state after the fit now agrees
+  between the two calls.
+
+  A run under a `future` plan repeats itself the same way. Measured on R 4.6.1
+  under `plan(multicore, workers = 3)`, three equations, the body being the
+  initial-value search itself and no `seed` supplied: two runs at one
+  `set.seed()` gave identical initial values and a third at another seed gave
+  different ones. One backend and one R version, so `seed` remains the way to
+  fix a run that has to repeat regardless.
+
+  A parallel run still does not give the same answer as a *sequential* run of
+  the same call unless `seed` is passed, and that part is unchanged: each model
+  is fitted from the stream of the worker it runs in. Running the same
+  measurement against the released code as well: without a seed neither a
+  sequential nor a parallel run repeated itself before and both do now, while
+  sequential and parallel agreed with each other only under a `seed`, on the
+  released code and on this branch alike. So what changed is that each run
+  repeats itself, not which runs agree with each other. `?bnec` states both,
+  alongside the model-averaged quantities, which are not reproduced between a
+  sequential and a parallel run either way.
+
 - A model set assembled by `c()`, `+`, `amend()` or `update()` is now weighted
   by pseudo-BMA, the documented default, rather than by stacking.
   `expand_manec()` validated the `loo_controls` it was given but supplied no

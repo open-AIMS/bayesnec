@@ -468,6 +468,34 @@
 #' \code{loo_controls} argument. Individual model fits can be pulled out
 #' for examination using function \code{\link{pull_out}}.
 #'
+#' \bold{Reproducing a fit}
+#'
+#' A fit is a random procedure twice over: initial values are drawn from the
+#' priors, and the sampler is seeded. Both draws come from R's random number
+#' stream, so \code{\link[base]{set.seed}} in your session before the call
+#' fixes the fit, and two calls made after the same \code{set.seed()} return
+#' the same estimates. Passing \code{seed} through to \code{\link[brms]{brm}}
+#' fixes it too, and does so independently of the session's stream.
+#'
+#' Two qualifications. The estimates are fixed only for a given version of
+#' \pkg{bayesnec}, \pkg{brms}, Stan and the compiler: a Stan program rebuilt
+#' by a different toolchain can differ in the last figures. And within-chain
+#' threading is adaptive by default, which \code{\link[brms]{threading}}
+#' records as preventing exact reproducibility even under a fixed seed; pass
+#' \code{threads = threading(n, static = TRUE)} where a threaded run has to
+#' repeat.
+#'
+#' A \pkg{future} plan raises two separate questions, and only the second
+#' needs anything of you. A run under a plan repeats itself under a session
+#' \code{\link[base]{set.seed}} exactly as a sequential run does, measured on
+#' one backend and one R version. But a parallel run does not give the same
+#' answer as a sequential run of the same call unless you pass \code{seed}:
+#' each model is fitted in a worker whose random number stream is its own, so
+#' the initial values differ. Measured under
+#' \code{plan(multicore, workers = 3)} on three equations, sequential and
+#' parallel agreed with a \code{seed} and disagreed without one. Pass one if
+#' you intend to compare the two.
+#'
 #' \bold{Fitting a model set in parallel}
 #'
 #' A model set is fitted one model at a time by default. Setting a \pkg{future}
@@ -505,14 +533,16 @@
 #' comparison is 99 s against 101 s -- nothing, because what a plan was
 #' overlapping has already been done.
 #'
-#' Supply a \code{seed} if the run has to be reproducible.
+#' Supply a \code{seed} if the run has to match a sequential one; see
+#' \emph{Reproducing a fit} above for what a plan does and does not repeat.
 #'
 #' The model-averaged quantities -- the averaged
 #' \code{nec}, its interval, the stored prediction grid -- are not reproduced
-#' between a sequential and a parallel run, because \code{expand_manec()} draws
-#' from the session's RNG stream, which a sequential run advances and a parallel
-#' one leaves alone; \code{set.seed()} in your session fixes that draw under a
-#' plan.
+#' between a sequential and a parallel run even with a \code{seed}, because
+#' \code{expand_manec()} draws from the session's RNG stream, which a
+#' sequential run advances and a parallel one leaves alone;
+#' \code{set.seed()} in your session fixes that draw under a plan, so a
+#' parallel run repeats itself.
 #'
 #' The worked treatment -- measured run times, which backend a forked plan
 #' needs, how to tell a plan that has stalled, and what memory does -- is in

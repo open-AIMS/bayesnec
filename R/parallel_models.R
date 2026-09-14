@@ -151,9 +151,9 @@ plan_model_set <- function(brm_args, n_models, caller = "bnec") {
 #'
 #' \bold{The RNG kind is restored inside the worker}, and this is the part that
 #' fails silently if it is left out. \code{future.seed = TRUE} installs an
-#' L'Ecuyer-CMRG stream in each worker so that draws are parallel-safe.
-#' bayesnec then seeds its own initial-value search with
-#' \code{set.seed(brm_args$seed)} in \code{make_good_inits()}, and
+#' L'Ecuyer-CMRG stream in each worker so that draws are parallel-safe. Where
+#' a \code{seed} was supplied, bayesnec then seeds its own initial-value search
+#' with \code{set.seed(brm_args$seed)} in \code{make_good_inits()}, and
 #' \code{\link[base]{set.seed}} called with \code{kind = NULL} -- the default --
 #' leaves the current generator kind in place. The same seed therefore draws
 #' from L'Ecuyer-CMRG in a worker and from the session's kind, normally
@@ -177,15 +177,31 @@ plan_model_set <- function(brm_args, n_models, caller = "bnec") {
 #'
 #' It does not make the model-averaging draw match the sequential run's. Run in
 #' sequence the loop advances the parent's stream, because every model's
-#' \code{set.seed(brm_args$seed)} and initial-value search happen there; run in
-#' parallel they happen in a worker and nothing can replay them. The fitted
-#' models reproduce exactly; \code{w_draw_seed} and \code{w_draw_index} do not.
-#' Closing that gap means deriving the draw from \code{brm_args$seed} rather
-#' than from the ambient stream, which is a change to \code{expand_manec()} and
-#' to what \#216 decided deliberately.
+#' initial-value search --- and, where a \code{seed} was supplied, its
+#' \code{set.seed(brm_args$seed)} --- happens there; run in parallel they
+#' happen in a worker and nothing can replay them.
 #'
-#' \code{future.seed = TRUE} is kept rather than dropped to \code{NULL}, even
-#' though the stream it installs is then discarded. \code{NULL} leaves the
+#' Whether the \emph{fits} match a sequential run is a question of the seed,
+#' and #310 did not change the answer. Where a \code{seed} is supplied they
+#' match exactly, because \code{make_good_inits()} seeds itself with it
+#' wherever it runs; \code{w_draw_seed} and \code{w_draw_index} still do not.
+#' Where none is supplied they do not match either, because the search draws
+#' from the stream it is handed and a worker's is not the parent's. What #310
+#' changed is that each of the two runs now repeats itself, where before
+#' neither did. Measured on R 4.6.1 under \code{plan(multicore, workers = 3)},
+#' three equations, the body being \code{add_brm_defaults()} and so the search
+#' itself, \code{set.seed(777)} before each run, against the released code and
+#' against this one: sequential agreed with parallel under a seed and not
+#' without one, on both, while two runs of either kind agreed only here. So
+#' \code{seed} is what a user comparing the two needs, and
+#' \code{\link{bnec}} says so.
+#'
+#' Closing the \code{w_draw_seed} gap means deriving the draw from
+#' \code{brm_args$seed} rather than from the ambient stream, which is a change
+#' to \code{expand_manec()} and to what \#216 decided deliberately.
+#'
+#' \code{future.seed = TRUE} is kept rather than dropped to \code{NULL}.
+#' \code{NULL} leaves the
 #' worker's RNG state to the backend, which makes correctness a property of
 #' every code path inside \code{fit_bayesnec()} seeding itself rather than of
 #' the dispatcher, and that is not something anyone maintains. \code{TRUE}
@@ -194,16 +210,40 @@ plan_model_set <- function(brm_args, n_models, caller = "bnec") {
 #' option at all: it reports \code{UNRELIABLE VALUE} for a body that uses the
 #' RNG, which every fit does. \code{NULL} is silent.)
 #'
-#' Discarding the stream does not leave the workers drawing in step.
+#' Restoring the kind does not leave the workers drawing in step, and the
+#' reason recorded here before #310 was wrong. It said
 #' \code{\link[base]{RNGkind}} re-initialises \code{.Random.seed} from the
-#' clock and the process id, so each worker starts somewhere different, and
-#' bayesnec then seeds the search itself. Measured 2026-09-11 under
-#' \code{plan(multicore, workers = 3)}: three of three draws distinct with the
-#' restore in place, as without it.
+#' clock and the process id. It does so only where no seed exists yet, which is
+#' what \code{?Random} documents and what makes \code{set.seed(NULL)} the
+#' cause of #310; where a seed is already present, which inside a
+#' \code{future.seed = TRUE} worker it always is, the new state is derived
+#' from the current one. Measured on R 4.6.1 over repeated calls in one process
+#' and again in a second process, on both arms: \code{set.seed(42)} then
+#' \code{RNGkind()} at the kind already in force gives a first draw of
+#' 0.8311705 every time, and \code{set.seed(42, kind = "L'Ecuyer-CMRG")} then
+#' \code{RNGkind()} back to Mersenne-Twister --- the change a worker makes ---
+#' gives 0.2046757 every time. What makes the
+#' workers differ is therefore the per-element L'Ecuyer-CMRG stream
+#' \code{future.seed = TRUE} installs, not the clock. The 2026-09-11
+#' measurement under \code{plan(multicore, workers = 3)} --- three of three
+#' draws distinct, with the restore in place as without it --- holds either
+#' way and so did not distinguish them.
 #'
-#' Where no \code{seed} is supplied the search calls \code{set.seed(NULL)},
-#' which reseeds from entropy, so the run is not reproducible under either plan
-#' -- which is what it does today, with or without a plan set.
+#' \bold{A run under a plan reproduces under the caller's seed.} That follows:
+#' each element's stream is derived from the parent's, the restore is
+#' deterministic, and since #310 a search given no seed draws from the stream
+#' it is handed. Measured on R 4.6.1 under \code{plan(multicore, workers = 3)},
+#' three equations, the body being \code{add_brm_defaults()} and so the search
+#' itself, with no \code{seed} supplied: two runs at one
+#' \code{\link[base]{set.seed}} gave identical initial values and a third at
+#' another seed gave different ones. One backend and one R version, so it is
+#' a measurement rather than a guarantee, and \code{seed} remains the way to
+#' fix a run that has to repeat across either.
+#'
+#' What a plan still does not reproduce is the \emph{sequential} run's
+#' model-averaging draw, for the reason given above under
+#' \code{w_draw_seed}: that draw is made in the parent from a stream the two
+#' runs advance differently.
 #'
 #' \bold{One model per chunk.} \code{future_lapply()} otherwise divides the set
 #' into one chunk per worker and runs each chunk in sequence, which for
