@@ -235,8 +235,9 @@ before fitting and which response distribution is then used.
 
 Every convention then calls `bnec()` with package defaults: the default priors derived
 from its own prepared data, the default declining candidate set for its family,
-and the default model averaging over that set. No convention is handed a prior or an
-equation chosen by another. The contrast between two conventions is therefore the
+and the default model averaging over that set — pseudo-BMA with a Bayesian
+bootstrap, which is what `bnec()` uses when `loo_controls` is not supplied. No
+convention is handed a prior or an equation chosen by another. The contrast between two conventions is therefore the
 contrast a practitioner would obtain by following the convention through, not a
 likelihood-only contrast with everything else held artificially fixed.
 
@@ -555,133 +556,133 @@ ggplot(subset(point_data, x > 0), aes(x = x, y = y)) +
 # is the mean width of the 95% credible interval, on the concentration scale of
 # the cell, and is what stops coverage being read on its own.
 sim <- read.csv(text = "
-cell,arm,estimate,rel_bias,coverage,width,rmse
-p1,measured,ErC10,-9.11,0.97,1.4341,0.4207
-p1,censored,ErC10,-8.33,0.96,1.3641,0.3805
-p1,deleted,ErC10,-4.56,0.97,1.34,0.3234
-p1,floored,ErC10,-3.11,0.97,1.2488,0.3059
-p1,beta,ErC10,-0.86,1,1.6497,0.2843
-p1,gamma,ErC10,-8.65,0.84,3.7037,0.6915
-p2,measured,ErC10,-1.47,0.96,1.037,0.1812
-p2,censored,ErC10,-2.34,0.95,0.947,0.1739
-p2,deleted,ErC10,-1.51,0.98,0.9001,0.1664
-p2,floored,ErC10,-2.2,0.98,0.936,0.1921
-p2,beta,ErC10,1.86,0.99,1.1829,0.193
-p2,gamma,ErC10,-17.03,0.71,2.7338,0.5184
-p3,measured,ErC10,0.58,0.93,0.3019,0.0796
-p3,censored,ErC10,-0.31,0.94,0.3704,0.0881
-p3,deleted,ErC10,-0.35,0.94,0.3788,0.0887
-p3,floored,ErC10,-0.51,0.96,0.4525,0.0903
-p3,beta,ErC10,6.59,0.9,0.5326,0.1713
-p3,gamma,ErC10,-24.59,0.26,0.7357,0.5447
-p4,measured,ErC10,0.23,0.95,0.17,0.04
-p4,censored,ErC10,-0.06,0.96,0.2083,0.0469
-p4,deleted,ErC10,-0.16,0.96,0.2229,0.0497
-p4,floored,ErC10,-0.18,0.96,0.2437,0.0446
-p4,beta,ErC10,9.29,0.55,0.4,0.1989
-p4,gamma,ErC10,-25.03,0.01,0.281,0.5561
-d2,measured,ErC10,-17.11,0.94,1.6431,0.603
-d2,censored,ErC10,-14.02,0.97,1.7019,0.5435
-d2,deleted,ErC10,-9.47,0.97,1.7905,0.4787
-d2,floored,ErC10,-7.32,0.97,1.7752,0.4405
-d2,beta,ErC10,2.81,0.99,2.2815,0.3192
-d2,gamma,ErC10,5.4,0.89,5.8336,1.1131
-d8,measured,ErC10,-0.88,0.99,0.9115,0.1551
-d8,censored,ErC10,-1.04,0.99,0.8523,0.1609
-d8,deleted,ErC10,1.03,0.98,0.8354,0.1575
-d8,floored,ErC10,1.83,0.96,0.8108,0.1715
-d8,beta,ErC10,-0.13,0.99,1.2669,0.2221
-d8,gamma,ErC10,-12.46,0.88,2.424,0.4068
-ctl,measured,ErC10,-2.39,0.98,1.3113,0.294
-ctl,censored,ErC10,-2.1,0.97,1.3099,0.2949
-ctl,deleted,ErC10,-2.41,0.96,1.3046,0.3002
-ctl,floored,ErC10,-2.36,0.96,1.2973,0.2941
-ctl,beta,ErC10,0.12,1,1.5124,0.2357
-ctl,gamma,ErC10,13.83,0.99,4.4668,0.7218
-p1,measured,ErC50,-0.45,1,0.8615,0.1696
-p1,censored,ErC50,-0.67,0.97,0.9241,0.2041
-p1,deleted,ErC50,-2.36,0.95,0.9968,0.2648
-p1,floored,ErC50,-3.42,0.85,0.8835,0.2916
-p1,beta,ErC50,-4.44,0.99,1.5571,0.3146
-p1,gamma,ErC50,4.31,0.9,2.3384,0.4144
-p2,measured,ErC50,-0.56,0.97,0.5902,0.1305
-p2,censored,ErC50,-0.63,0.99,0.6712,0.1427
-p2,deleted,ErC50,-1.74,0.98,0.7373,0.1722
-p2,floored,ErC50,-3.11,0.87,0.6746,0.2184
-p2,beta,ErC50,-4.4,1,1.2906,0.2769
-p2,gamma,ErC50,2.28,0.91,1.557,0.2527
-p3,measured,ErC50,-0.22,0.92,0.212,0.0579
-p3,censored,ErC50,-0.06,0.99,0.3574,0.0811
-p3,deleted,ErC50,-0.2,0.99,0.3941,0.096
-p3,floored,ErC50,-2.22,0.66,0.304,0.132
-p3,beta,ErC50,-4.42,0.92,0.7619,0.2439
-p3,gamma,ErC50,0.57,0.95,0.4778,0.1046
-p4,measured,ErC50,-0.17,0.97,0.1346,0.0318
-p4,censored,ErC50,-0.23,0.99,0.2693,0.061
-p4,deleted,ErC50,-0.05,0.99,0.3005,0.0755
-p4,floored,ErC50,-2.34,0.24,0.1981,0.1242
-p4,beta,ErC50,-5.75,0.52,0.5583,0.2953
-p4,gamma,ErC50,0.17,0.96,0.2878,0.0867
-d2,measured,ErC50,0.04,0.99,1.4338,0.2773
-d2,censored,ErC50,0.12,1,1.5672,0.3133
-d2,deleted,ErC50,-1.53,0.96,1.7945,0.3831
-d2,floored,ErC50,-3.97,0.89,1.5254,0.4622
-d2,beta,ErC50,-5,1,2.8024,0.5382
-d2,gamma,ErC50,7.83,0.79,3.9883,0.9427
-d8,measured,ErC50,1.1,0.95,0.4755,0.115
-d8,censored,ErC50,0.57,0.97,0.5582,0.1295
-d8,deleted,ErC50,-1.02,0.96,0.5995,0.1455
-d8,floored,ErC50,-1.97,0.91,0.5565,0.1612
-d8,beta,ErC50,-3.15,0.97,0.9268,0.1742
-d8,gamma,ErC50,4.62,0.84,1.2433,0.2185
-ctl,measured,ErC50,-0.66,0.99,0.9497,0.2086
-ctl,censored,ErC50,-0.78,0.99,0.9479,0.2125
-ctl,deleted,ErC50,-0.42,0.97,1.0405,0.2382
-ctl,floored,ErC50,-0.54,0.98,0.971,0.2243
-ctl,beta,ErC50,-0.68,1,1.6145,0.2304
-ctl,gamma,ErC50,0.93,0.98,2.9828,0.3944
-p1,measured,NSEC,3.95,1,1.6996,0.4401
-p1,censored,NSEC,-0.22,0.99,1.6707,0.4242
-p1,deleted,NSEC,-0.12,0.99,1.6419,0.3579
-p1,floored,NSEC,-11.46,0.96,1.6274,0.3702
-p1,beta,NSEC,-1.03,0.99,1.8036,0.3513
-p1,gamma,NSEC,25.51,0.93,4.0713,0.8988
-p2,measured,NSEC,11.12,0.94,1.2683,0.2724
-p2,censored,NSEC,5.69,0.97,1.3587,0.2739
-p2,deleted,NSEC,-0.8,0.99,1.4011,0.2554
-p2,floored,NSEC,-26.47,0.87,1.4269,0.421
-p2,beta,NSEC,-15.52,0.91,1.5391,0.3695
-p2,gamma,NSEC,-12.72,0.74,3.2062,0.5883
-p3,measured,NSEC,5.79,0.76,0.419,0.1512
-p3,censored,NSEC,2.52,0.99,0.8599,0.1475
-p3,deleted,NSEC,-1.92,0.99,0.9501,0.2047
-p3,floored,NSEC,-46.93,0.03,0.7016,0.6172
-p3,beta,NSEC,-42,0.42,1.1417,0.5851
-p3,gamma,NSEC,-62.66,0.24,1.0207,0.8548
-p4,measured,NSEC,3.29,0.84,0.2696,0.0712
-p4,censored,NSEC,2.5,0.97,0.4636,0.0734
-p4,deleted,NSEC,0.82,0.98,0.5503,0.1181
-p4,floored,NSEC,-52.76,0,0.5077,0.6867
-p4,beta,NSEC,-42.54,0.2,0.8865,0.5703
-p4,gamma,NSEC,-71.47,0.04,0.5217,0.9632
-d2,measured,NSEC,-0.26,0.99,2.0539,0.496
-d2,censored,NSEC,4.64,0.99,2.0906,0.4665
-d2,deleted,NSEC,9.28,1,2.1095,0.4562
-d2,floored,NSEC,-3.11,0.98,2.0689,0.3984
-d2,beta,NSEC,19.43,1,2.2064,0.4304
-d2,gamma,NSEC,94.3,0.88,6.4274,1.8292
-d8,measured,NSEC,8.09,0.96,1.1557,0.2133
-d8,censored,NSEC,3.82,0.95,1.2223,0.2514
-d8,deleted,NSEC,3.24,1,1.2024,0.2237
-d8,floored,NSEC,-6.87,1,1.2906,0.2767
-d8,beta,NSEC,-3.68,0.96,1.5041,0.3112
-d8,gamma,NSEC,-6.66,0.84,2.7313,0.501
-ctl,measured,NSEC,1.08,0.98,1.6416,0.346
-ctl,censored,NSEC,1.42,0.98,1.6424,0.3505
-ctl,deleted,NSEC,1.1,0.99,1.634,0.3616
-ctl,floored,NSEC,0.45,0.98,1.6337,0.3479
-ctl,beta,NSEC,-6.63,1,1.808,0.2761
-ctl,gamma,NSEC,90.3,0.96,4.4393,1.3625
+cell,arm,estimate,rel_bias,coverage,width,rmse,mcse_pct
+p1,measured,ErC10,-9.11,0.97,1.4341,0.4207,1.88
+p1,censored,ErC10,-8.33,0.96,1.3641,0.3805,1.7
+p1,deleted,ErC10,-4.56,0.97,1.34,0.3234,1.54
+p1,floored,ErC10,-3.11,0.97,1.2488,0.3059,1.49
+p1,beta,ErC10,-0.86,1,1.6497,0.2843,1.41
+p1,gamma,ErC10,-8.65,0.84,3.7037,0.6915,3.33
+p2,measured,ErC10,-1.47,0.96,1.037,0.1812,0.89
+p2,censored,ErC10,-2.34,0.95,0.947,0.1739,0.83
+p2,deleted,ErC10,-1.51,0.98,0.9001,0.1664,0.81
+p2,floored,ErC10,-2.2,0.98,0.936,0.1921,0.93
+p2,beta,ErC10,1.86,0.99,1.1829,0.193,0.94
+p2,gamma,ErC10,-17.03,0.71,2.7338,0.5184,1.93
+p3,measured,ErC10,0.58,0.93,0.3019,0.0796,0.39
+p3,censored,ErC10,-0.31,0.94,0.3704,0.0881,0.44
+p3,deleted,ErC10,-0.35,0.94,0.3788,0.0887,0.44
+p3,floored,ErC10,-0.51,0.96,0.4525,0.0903,0.45
+p3,beta,ErC10,6.59,0.9,0.5326,0.1713,0.54
+p3,gamma,ErC10,-24.59,0.26,0.7357,0.5447,1.11
+p4,measured,ErC10,0.23,0.95,0.17,0.04,0.2
+p4,censored,ErC10,-0.06,0.96,0.2083,0.0469,0.23
+p4,deleted,ErC10,-0.16,0.96,0.2229,0.0497,0.25
+p4,floored,ErC10,-0.18,0.96,0.2437,0.0446,0.22
+p4,beta,ErC10,9.29,0.55,0.4,0.1989,0.33
+p4,gamma,ErC10,-25.03,0.01,0.281,0.5561,1.15
+d2,measured,ErC10,-17.11,0.94,1.6431,0.603,1.7
+d2,censored,ErC10,-14.02,0.97,1.7019,0.5435,1.66
+d2,deleted,ErC10,-9.47,0.97,1.7905,0.4787,1.67
+d2,floored,ErC10,-7.32,0.97,1.7752,0.4405,1.6
+d2,beta,ErC10,2.81,0.99,2.2815,0.3192,1.25
+d2,gamma,ErC10,5.4,0.89,5.8336,1.1131,4.43
+d8,measured,ErC10,-0.88,0.99,0.9115,0.1551,0.91
+d8,censored,ErC10,-1.04,0.99,0.8523,0.1609,0.95
+d8,deleted,ErC10,1.03,0.98,0.8354,0.1575,0.93
+d8,floored,ErC10,1.83,0.96,0.8108,0.1715,1
+d8,beta,ErC10,-0.13,0.99,1.2669,0.2221,1.31
+d8,gamma,ErC10,-12.46,0.88,2.424,0.4068,2.06
+ctl,measured,ErC10,-2.39,0.98,1.3113,0.294,1.44
+ctl,censored,ErC10,-2.1,0.97,1.3099,0.2949,1.45
+ctl,deleted,ErC10,-2.41,0.96,1.3046,0.3002,1.47
+ctl,floored,ErC10,-2.36,0.96,1.2973,0.2941,1.44
+ctl,beta,ErC10,0.12,1,1.5124,0.2357,1.17
+ctl,gamma,ErC10,13.83,0.99,4.4668,0.7218,3.31
+p1,measured,ErC50,-0.45,1,0.8615,0.1696,0.33
+p1,censored,ErC50,-0.67,0.97,0.9241,0.2041,0.4
+p1,deleted,ErC50,-2.36,0.95,0.9968,0.2648,0.47
+p1,floored,ErC50,-3.42,0.85,0.8835,0.2916,0.47
+p1,beta,ErC50,-4.44,0.99,1.5571,0.3146,0.44
+p1,gamma,ErC50,4.31,0.9,2.3384,0.4144,0.7
+p2,measured,ErC50,-0.56,0.97,0.5902,0.1305,0.25
+p2,censored,ErC50,-0.63,0.99,0.6712,0.1427,0.28
+p2,deleted,ErC50,-1.74,0.98,0.7373,0.1722,0.29
+p2,floored,ErC50,-3.11,0.87,0.6746,0.2184,0.3
+p2,beta,ErC50,-4.4,1,1.2906,0.2769,0.33
+p2,gamma,ErC50,2.28,0.91,1.557,0.2527,0.45
+p3,measured,ErC50,-0.22,0.92,0.212,0.0579,0.11
+p3,censored,ErC50,-0.06,0.99,0.3574,0.0811,0.16
+p3,deleted,ErC50,-0.2,0.99,0.3941,0.096,0.19
+p3,floored,ErC50,-2.22,0.66,0.304,0.132,0.14
+p3,beta,ErC50,-4.42,0.92,0.7619,0.2439,0.19
+p3,gamma,ErC50,0.57,0.95,0.4778,0.1046,0.2
+p4,measured,ErC50,-0.17,0.97,0.1346,0.0318,0.06
+p4,censored,ErC50,-0.23,0.99,0.2693,0.061,0.12
+p4,deleted,ErC50,-0.05,0.99,0.3005,0.0755,0.15
+p4,floored,ErC50,-2.34,0.24,0.1981,0.1242,0.08
+p4,beta,ErC50,-5.75,0.52,0.5583,0.2953,0.1
+p4,gamma,ErC50,0.17,0.96,0.2878,0.0867,0.17
+d2,measured,ErC50,0.04,0.99,1.4338,0.2773,0.36
+d2,censored,ErC50,0.12,1,1.5672,0.3133,0.4
+d2,deleted,ErC50,-1.53,0.96,1.7945,0.3831,0.47
+d2,floored,ErC50,-3.97,0.89,1.5254,0.4622,0.44
+d2,beta,ErC50,-5,1,2.8024,0.5382,0.48
+d2,gamma,ErC50,7.83,0.79,3.9883,0.9427,0.93
+d8,measured,ErC50,1.1,0.95,0.4755,0.115,0.33
+d8,censored,ErC50,0.57,0.97,0.5582,0.1295,0.39
+d8,deleted,ErC50,-1.02,0.96,0.5995,0.1455,0.43
+d8,floored,ErC50,-1.97,0.91,0.5565,0.1612,0.44
+d8,beta,ErC50,-3.15,0.97,0.9268,0.1742,0.42
+d8,gamma,ErC50,4.62,0.84,1.2433,0.2185,0.47
+ctl,measured,ErC50,-0.66,0.99,0.9497,0.2086,0.41
+ctl,censored,ErC50,-0.78,0.99,0.9479,0.2125,0.42
+ctl,deleted,ErC50,-0.42,0.97,1.0405,0.2382,0.47
+ctl,floored,ErC50,-0.54,0.98,0.971,0.2243,0.44
+ctl,beta,ErC50,-0.68,1,1.6145,0.2304,0.45
+ctl,gamma,ErC50,0.93,0.98,2.9828,0.3944,0.78
+p1,measured,NSEC,3.95,1,1.6996,0.4401,3.38
+p1,censored,NSEC,-0.22,0.99,1.6707,0.4242,3.28
+p1,deleted,NSEC,-0.12,0.99,1.6419,0.3579,2.77
+p1,floored,NSEC,-11.46,0.96,1.6274,0.3702,2.62
+p1,beta,NSEC,-1.03,0.99,1.8036,0.3513,2.71
+p1,gamma,NSEC,25.51,0.93,4.0713,0.8988,6.46
+p2,measured,NSEC,11.12,0.94,1.2683,0.2724,1.79
+p2,censored,NSEC,5.69,0.97,1.3587,0.2739,2.04
+p2,deleted,NSEC,-0.8,0.99,1.4011,0.2554,1.97
+p2,floored,NSEC,-26.47,0.87,1.4269,0.421,1.88
+p2,beta,NSEC,-15.52,0.91,1.5391,0.3695,2.39
+p2,gamma,NSEC,-12.72,0.74,3.2062,0.5883,4.36
+p3,measured,NSEC,5.79,0.76,0.419,0.1512,1.01
+p3,censored,NSEC,2.52,0.99,0.8599,0.1475,1.11
+p3,deleted,NSEC,-1.92,0.99,0.9501,0.2047,1.57
+p3,floored,NSEC,-46.93,0.03,0.7016,0.6172,0.72
+p3,beta,NSEC,-42,0.42,1.1417,0.5851,1.63
+p3,gamma,NSEC,-62.66,0.24,1.0207,0.8548,2
+p4,measured,NSEC,3.29,0.84,0.2696,0.0712,0.44
+p4,censored,NSEC,2.5,0.97,0.4636,0.0734,0.51
+p4,deleted,NSEC,0.82,0.98,0.5503,0.1181,0.91
+p4,floored,NSEC,-52.76,0,0.5077,0.6867,0.25
+p4,beta,NSEC,-42.54,0.2,0.8865,0.5703,1.08
+p4,gamma,NSEC,-71.47,0.04,0.5217,0.9632,1.96
+d2,measured,NSEC,-0.26,0.99,2.0539,0.496,3.83
+d2,censored,NSEC,4.64,0.99,2.0906,0.4665,3.58
+d2,deleted,NSEC,9.28,1,2.1095,0.4562,3.4
+d2,floored,NSEC,-3.11,0.98,2.0689,0.3984,3.06
+d2,beta,NSEC,19.43,1,2.2064,0.4304,2.69
+d2,gamma,NSEC,94.3,0.88,6.4274,1.8292,10.5
+d8,measured,NSEC,8.09,0.96,1.1557,0.2133,1.43
+d8,censored,NSEC,3.82,0.95,1.2223,0.2514,1.91
+d8,deleted,NSEC,3.24,1,1.2024,0.2237,1.7
+d8,floored,NSEC,-6.87,1,1.2906,0.2767,2.02
+d8,beta,NSEC,-3.68,0.96,1.5041,0.3112,2.38
+d8,gamma,NSEC,-6.66,0.84,2.7313,0.501,3.82
+ctl,measured,NSEC,1.08,0.98,1.6416,0.346,2.67
+ctl,censored,NSEC,1.42,0.98,1.6424,0.3505,2.71
+ctl,deleted,NSEC,1.1,0.99,1.634,0.3616,2.79
+ctl,floored,NSEC,0.45,0.98,1.6337,0.3479,2.69
+ctl,beta,NSEC,-6.63,1,1.808,0.2761,2.03
+ctl,gamma,NSEC,90.3,0.96,4.4393,1.3625,5.35
 ")
 sim$handling <- factor(arm_handling[sim$arm], levels = handling_levels)
 sim$arm <- factor(sim$arm, levels = arm_levels)
@@ -1062,7 +1063,7 @@ produced them. This is a description of the data supplied to the fit, not of
 the substance, and it is reported because it explains the biases above.
 
 ```{r, echo = FALSE}
-# Mean stacking weight per cell and arm, transcribed from the compendium at the
+# Mean model weight per cell and arm, transcribed from the compendium at the
 # commit named in Section 9. `w_nec4param` is the weight on the generating
 # equation; `top_model` is the equation with the highest mean weight in that
 # cell and arm.
@@ -1124,7 +1125,7 @@ knitr::kable(
   col.names = c("Convention", "p1 (CV 9.6%)", "p2 (CV 6.7%)",
                 "p3 (CV 2.8%)", "p4 (CV 1.9%)"),
   digits = 3,
-  caption = "**Table 2.** Mean stacking weight on the generating equation `nec4param` across the precision sweep, averaged over 100 realisations per cell. The remaining weight is spread over the other eleven to thirteen equations in the candidate set."
+  caption = "**Table 2.** Mean model weight on the generating equation `nec4param` across the precision sweep, averaged over 100 realisations per cell. The remaining weight is spread over the other eleven to thirteen equations in the candidate set."
 )
 ```
 Given the measurements as recorded, model averaging identifies the generating
@@ -1662,10 +1663,15 @@ equations parameterised by `ec50` to behave differently between them for that
 reason alone.
 
 Each cell was simulated 100 times. The Monte Carlo standard error of the
-reported bias is a median of 0.4% of the true value for ErC50, 1.2% for ErC10
-and 2.1% for the NSEC, reaching 11.6% for the `gamma` NSEC in the `d2` cell.
-Differences smaller than those are not resolved by this study. The Monte Carlo
-standard error on a coverage of 0.95 is 0.02.
+reported bias is a median of
+`r f1(median(sim$mcse_pct[sim$estimate == "ErC50"]))`% of the true value for
+ErC50, `r f1(median(sim$mcse_pct[sim$estimate == "ErC10"]))`% for ErC10 and
+`r f1(median(sim$mcse_pct[sim$estimate == "NSEC"]))`% for the NSEC, reaching
+`r f1(max(sim$mcse_pct))`% for the
+`r sim$arm[which.max(sim$mcse_pct)]` NSEC in the
+`r sim$cell[which.max(sim$mcse_pct)]` cell. Differences smaller than those are
+not resolved by this study. The Monte Carlo standard error on a coverage of 0.95
+is `r f2(sqrt(0.95 * 0.05 / 100))`.
 
 The design is fixed at seventy observations across twelve concentrations
 spanning a factor of one hundred, with ten controls. Nothing here establishes

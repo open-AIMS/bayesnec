@@ -225,8 +225,9 @@ before fitting and which response distribution is then used.
 
 Every convention then calls `bnec()` with package defaults: the default priors derived
 from its own prepared data, the default declining candidate set for its family,
-and the default model averaging over that set. No convention is handed a prior or an
-equation chosen by another. The contrast between two conventions is therefore the
+and the default model averaging over that set — pseudo-BMA with a Bayesian
+bootstrap, which is what `bnec()` uses when `loo_controls` is not supplied. No
+convention is handed a prior or an equation chosen by another. The contrast between two conventions is therefore the
 contrast a practitioner would obtain by following the convention through, not a
 likelihood-only contrast with everything else held artificially fixed.
 
@@ -876,7 +877,7 @@ the substance, and it is reported because it explains the biases above.
 
 
 
-Table: **Table 2.** Mean stacking weight on the generating equation `nec4param` across the precision sweep, averaged over 100 realisations per cell. The remaining weight is spread over the other eleven to thirteen equations in the candidate set.
+Table: **Table 2.** Mean model weight on the generating equation `nec4param` across the precision sweep, averaged over 100 realisations per cell. The remaining weight is spread over the other eleven to thirteen equations in the candidate set.
 
 |Convention | p1 (CV 9.6%)| p2 (CV 6.7%)| p3 (CV 2.8%)| p4 (CV 1.9%)|
 |:----------|------------:|------------:|------------:|------------:|
@@ -1291,10 +1292,15 @@ equations parameterised by `ec50` to behave differently between them for that
 reason alone.
 
 Each cell was simulated 100 times. The Monte Carlo standard error of the
-reported bias is a median of 0.4% of the true value for ErC50, 1.2% for ErC10
-and 2.1% for the NSEC, reaching 11.6% for the `gamma` NSEC in the `d2` cell.
-Differences smaller than those are not resolved by this study. The Monte Carlo
-standard error on a coverage of 0.95 is 0.02.
+reported bias is a median of
+0.4% of the true value for
+ErC50, 1.2% for ErC10 and
+2.2% for the NSEC, reaching
+10.5% for the
+gamma NSEC in the
+d2 cell. Differences smaller than those are
+not resolved by this study. The Monte Carlo standard error on a coverage of 0.95
+is 0.02.
 
 The design is fixed at seventy observations across twelve concentrations
 spanning a factor of one hundred, with ten controls. Nothing here establishes
