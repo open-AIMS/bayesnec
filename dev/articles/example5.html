@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Running `bayesnec` • bayesnec</title>
+<title>Installation and setup • bayesnec</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="48x48" href="../favicon-48x48.png">
 <link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
@@ -16,7 +16,7 @@
 <script src="../bootstrap-toc.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
 <!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- pkgdown --><link href="../pkgdown.css" rel="stylesheet">
-<script src="../pkgdown.js"></script><meta property="og:title" content="Running `bayesnec`">
+<script src="../pkgdown.js"></script><meta property="og:title" content="Installation and setup">
 <meta name="robots" content="noindex">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
@@ -70,7 +70,7 @@
       <a href="../articles/example4.html">Comparing posterior predictions</a>
     </li>
     <li>
-      <a href="../articles/example5.html">Running `bayesnec`</a>
+      <a href="../articles/example5.html">Installation and setup</a>
     </li>
     <li>
       <a href="../articles/example6.html">Hurdle and zero-inflated concentration-response models</a>
@@ -101,8 +101,7 @@
       </header><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
-      <h1 data-toc-skip>Running <code>bayesnec</code>
-</h1>
+      <h1 data-toc-skip>Installation and setup</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/vignettes/example5.Rmd" class="external-link"><code>vignettes/example5.Rmd</code></a></small>
@@ -112,495 +111,357 @@
 
     
     
-<p>The <code>bayesnec</code> package makes use of the R package
-<code>brms</code> <span class="citation">(Bürkner 2017; Bürkner
-2018)</span> (<a href="https://cran.r-project.org/package=brms" class="external-link uri">https://cran.r-project.org/package=brms</a>) which relies on
-<code>stan</code> (<a href="https://mc-stan.org/" class="external-link uri">https://mc-stan.org/</a>). You will need to have either
-<code>RStan</code> (<a href="https://mc-stan.org/users/interfaces/rstan.html" class="external-link uri">https://mc-stan.org/users/interfaces/rstan.html</a>) or
-<code>cmdstanr</code>(<a href="https://mc-stan.org/cmdstanr/" class="external-link uri">https://mc-stan.org/cmdstanr/</a>) installed and configured
-on your computer to run <code>bayesnec</code>.</p>
-<p>Quick start guides can be found for both <code>RStan</code> <a href="https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started" class="external-link uri">https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started</a>
-and <code>cmdstanr</code> <a href="https://mc-stan.org/cmdstanr/articles/cmdstanr.html" class="external-link uri">https://mc-stan.org/cmdstanr/articles/cmdstanr.html</a>.
-However, in our experience getting either package to work can be a bit
-fiddly, particularly on Windows machines.</p>
-<p>We have prepared an installation workflow for <code>cmdstanr</code>
-specifically for Windows 10 that may resolve issues if the above Quick
-start links fail to result in a working version of <code>brms</code>.
-Note that this workflow has also been known to resolve some issues with
-<code>RStan</code>, although it was not developed with that
-intention.</p>
+<p><code>bayesnec</code> fits its models with <code>brms</code> <span class="citation">(Bürkner 2017; Bürkner 2018)</span>, which passes them
+to Stan (<a href="https://mc-stan.org/" class="external-link uri">https://mc-stan.org/</a>). Stan does not interpret a model.
+Each model is translated into C++, compiled into a program, and that
+program is run. A C++ toolchain is therefore required to fit anything at
+all, and this is also why the first fit of a session takes longer than
+the ones after it.</p>
+<p><code>brms</code> samples through either of two back ends.
+<code>rstan</code> <span class="citation">(Stan Development Team
+2020)</span> is installed as a dependency of <code>brms</code> whether
+or not it is used as the sampler, so it is present on any machine that
+can load <code>brms</code>. <code>cmdstanr</code> is on neither CRAN nor
+the dependency list of <code>bayesnec</code>, and is what this package’s
+own vignettes are built with;
+<code>options(brms.backend = "cmdstanr")</code> is the line that selects
+it. The instructions below install <code>cmdstanr</code>. The
+<code>rstan</code> route is documented by the Stan project at <a href="https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started" class="external-link uri">https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started</a>.</p>
 <div class="section level2">
-<h2 id="cmdstanr-installation-workflow">
-<code>cmdstanr</code> installation workflow<a class="anchor" aria-label="anchor" href="#cmdstanr-installation-workflow"></a>
+<h2 id="software-requirements">Software requirements<a class="anchor" aria-label="anchor" href="#software-requirements"></a>
 </h2>
-<p>These instructions are derived from the instructions at <a href="https://mc-stan.org/docs/2_24/cmdstan-guide/cmdstan-installation.html" class="external-link uri">https://mc-stan.org/docs/2_24/cmdstan-guide/cmdstan-installation.html</a></p>
-<p>The high level steps are:</p>
-<ol style="list-style-type: decimal">
-<li>Install <code>Rtools</code>, this is what <code>cmdstan</code> will
-use to make the executables</li>
-<li>Install <code>git</code>, this is will be used to get the
-<code>cmdstan</code> code</li>
-<li>Install <code>cmdstan</code>
-</li>
-<li>Test <code>cmdstan</code> and run a model</li>
-</ol>
-<p>These instructions assume you have R and Rstudio installed
-already.</p>
+<table class="table">
+<thead><tr class="header">
+<th>Software</th>
+<th>Purpose</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>R</td>
+<td>the language the package runs in</td>
+</tr>
+<tr class="even">
+<td>A C++ toolchain</td>
+<td>compiles each model before it is fitted</td>
+</tr>
+<tr class="odd">
+<td>CmdStan</td>
+<td>the sampler that runs the compiled model</td>
+</tr>
+</tbody>
+</table>
+<p>The toolchain is the part that differs by operating system, and the
+part that fails most often. On Windows it is Rtools, on macOS the Xcode
+Command Line Tools, and on Linux the standard build tools.</p>
+</div>
+<div class="section level2">
+<h2 id="route-by-operating-system">Route by operating system<a class="anchor" aria-label="anchor" href="#route-by-operating-system"></a>
+</h2>
+<p>Windows needs the most care, and has its own section below. The
+difficulties Stan had on Windows historically came from
+<code>rstan</code>, which requires matched versions of several compiled
+packages. <code>cmdstanr</code> avoids most of that, and what remains is
+the toolchain and the installation path.</p>
+<p>Linux needs the least. A current distribution’s build tools are
+already what Stan requires, and the default installation path raises
+none of the problems the Windows section deals with.</p>
+<p>macOS has not been verified for these instructions, so its section
+points at the instructions the projects themselves maintain.</p>
+<p>What determines whether an installation works is the check in the
+<em>Verification</em> section, not which of these routes was followed to
+reach it.</p>
+</div>
+<div class="section level2">
+<h2 id="windows">Windows<a class="anchor" aria-label="anchor" href="#windows"></a>
+</h2>
 <div class="section level3">
-<h3 id="install-rtools">1. Install <code>Rtools</code><a class="anchor" aria-label="anchor" href="#install-rtools"></a>
+<h3 id="r-and-rtools">R and Rtools<a class="anchor" aria-label="anchor" href="#r-and-rtools"></a>
 </h3>
-<ol style="list-style-type: lower-alpha">
-<li><p>Install <code>Rtools</code> from <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link uri">https://cran.r-project.org/bin/windows/Rtools/</a></p></li>
-<li>
-<p>Go to the install location and check that the following usr\bin
-and mingw64\bin directories exist:</p>
-<ul>
-<li>C:\usr\bin</li>
-<li>C:\mingw64\bin</li>
-</ul>
-</li>
-</ol>
-<p>Check that a <strong>mingw32-make.exe</strong> file is in one of
-those directories.</p>
-<p><code>RTools</code> may not always install
-<strong>mingw32-make.exe</strong> but it can be installed manually if
-needed by the following instructions:</p>
-<p>Open <code>RTools Bash</code>, which comes with <code>RTools</code>
-(hit Windows Key, type rtools bash, and hit enter). In the
-<code>RTools Bash</code> console window, type:</p>
-<p><code>pacman -Sy mingw-w64-x86_64-make</code></p>
-<p>Check that the <code>mingw32-make.exe</code> file is in one of the
-<code>RTools</code> folders listed in 1b.</p>
-<ol start="3" style="list-style-type: lower-alpha">
-<li>Add the directories to to the Windows Path using the “Edit the
-system environment variables” tool in Windows’ Control Panel. A step by
-step guide on adding directories to the windows path can be found at <a href="https://www.architectryan.com/2018/03/17/add-to-the-path-on-windows-10/" class="external-link uri">https://www.architectryan.com/2018/03/17/add-to-the-path-on-windows-10/</a>.
-Note that you will need administrator privileges on your computer to
-edit the environment variables.</li>
-</ol>
-<ul>
-<li>Put the path in the system paths section (bottom section)</li>
-<li>Note that you can also add the path
-<code>C:\cmdstan\stan\lib\stan_math\lib\tbb</code> to save having to do
-it later (in the later install <code>cmdstan</code> step below)</li>
-</ul>
-<ol start="4" style="list-style-type: lower-alpha">
-<li>
-<p>Test the paths are set correctly</p>
-<ul>
-<li>Reboot your computer</li>
-<li>Start up R studio</li>
-<li>Navigate to the terminal (a tab co-located in the R console
-panel)</li>
-<li>Type <code>echo %PATH%</code>
-</li>
-<li>The paths you added should be in the output from that command. They
-should look something like:
-<ul>
-<li><code>\c\RTools\RTools40\usr\bin</code></li>
-</ul>
-</li>
-</ul>
-</li>
-<li><p>Final check to see if it installed properly.</p></li>
-</ol>
-<p>In the terminal type:</p>
-<p><code>g++ --version</code></p>
-<p>and</p>
-<p><code>mingw32-make --version</code></p>
-<p>Check that it both return a version number. If they produce an error
-there is a problem with the installation.</p>
+<p>Install R first, from <a href="https://cran.r-project.org/bin/windows/base/" class="external-link uri">https://cran.r-project.org/bin/windows/base/</a>, and then
+the Rtools that matches it, from <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link uri">https://cran.r-project.org/bin/windows/Rtools/</a>. Accept
+the default installation location.</p>
+<p>Rtools is versioned against the minor version of R, and CRAN’s Rtools
+page states which Rtools goes with which R. A mismatch is the most
+common single cause of a failed setup, so install R first and read that
+page rather than reusing an Rtools already on the machine.</p>
+<p><code><a href="https://mc-stan.org/cmdstanr/reference/install_cmdstan.html" class="external-link">cmdstanr::check_cmdstan_toolchain()</a></code> names the version it
+is looking for, and that is the version to install. It becomes available
+once the next section has installed <code>cmdstanr</code>. Under
+<code>cmdstanr</code> 0.9.0 and R 4.6.1 it reports</p>
+<pre><code>Rtools45 was not found but is required to run CmdStan with R version 4.6.1.
+Please install Rtools45 and run cmdstanr::check_cmdstan_toolchain().</code></pre>
+<p>Which version <code>cmdstanr</code> looks for is fixed in the
+installed <code>cmdstanr</code> rather than read from CRAN, so the two
+can disagree; the <em>Recurring problems on Windows</em> section covers
+that case.</p>
 </div>
 <div class="section level3">
-<h3 id="install-git">2. Install <code>git</code><a class="anchor" aria-label="anchor" href="#install-git"></a>
+<h3 id="r-packages">R packages<a class="anchor" aria-label="anchor" href="#r-packages"></a>
 </h3>
-<ol style="list-style-type: lower-alpha">
-<li><p>If git is not already on your system, install it here: <a href="https://git-scm.com/download/win" class="external-link uri">https://git-scm.com/download/win</a></p></li>
-<li>
-<p>To check that git is installed. In RStudio:</p>
-<ul>
-<li>Navigate to the terminal</li>
-<li>type <code>git --version</code>
-</li>
-<li>Check that it returns a version number. If it produces an error
-there is a problem with the installation</li>
-</ul>
-</li>
-</ol>
-</div>
-<div class="section level3">
-<h3 id="intall-cmdstan">3. Intall <code>cmdstan</code><a class="anchor" aria-label="anchor" href="#intall-cmdstan"></a>
-</h3>
-<p>In R studio</p>
-<p>a. Navigate to the terminal</p>
-<p>b. change directory to c:\ drive using the code:
-<code>cd \c</code></p>
-<p>c. download latest version of cmdstan from githup - this may take a
-few minutes:
-<code>git clone https://github.com/stan-dev/cmdstan.git --recursive</code></p>
-<p>d. change directory to where <code>cmdstan</code> is downloaded:
-<code>cd cmdstan</code></p>
-<p>e. clean up the space (just to be sure):
-<code>mingw32-make clean-all</code></p>
-<p>f. compile the code: <code>mingw32-make build</code></p>
-<p>This will take a few minutes and should end with similar phrase as
-“““— CmdStan v2.23.0 built —”“”</p>
-<p>g. Add <code>cmdstan</code> library to system environment path by
-adding <code>C:\cmdstan\stan\lib\stan_math\lib\tbb</code> to the path
-(using the same instructions as 1.c.)</p>
-<p>h. Reboot your computer</p>
-<p>i. <code>cmdstan</code> is missing a file that must be manually added
-to the <code>C:\cmdstan\make</code> folder. Open notepad and copy paste
-the following two lines of text:</p>
-<p><code>CXXFLAGS += -Wno-nonnull</code></p>
-<p><code>TBB_CXXFLAGS= -U__MSVCRT_VERSION__ -D__MSVCRT_VERSION__=0x0E00</code></p>
-<ol start="11" style="list-style-type: lower-alpha">
-<li>Save the file with the name <code>local</code> and ensure that it
-has no file extension. For example, if you used notepad the default file
-extension is .txt which can be deleted by right clicking the file and
-selecting rename. If you can’t see the file extensions, click the view
-tab in your folder ribbon and make sure the
-<code>file name extension</code> box is checked. Instructions for how to
-remove a file extension can be found at: <a href="https://www.computerhope.com/issues/ch002089.htm" class="external-link uri">https://www.computerhope.com/issues/ch002089.htm</a>
-</li>
-</ol>
-</div>
-<div class="section level3">
-<h3 id="test-cmdstan-in-r-studio">4. Test cmdstan in R studio<a class="anchor" aria-label="anchor" href="#test-cmdstan-in-r-studio"></a>
-</h3>
-<ol style="list-style-type: lower-alpha">
-<li>Install the R package <code>cmdstanr</code> following the
-instructions at: <a href="https://mc-stan.org/cmdstanr/articles/cmdstanr.html" class="external-link uri">https://mc-stan.org/cmdstanr/articles/cmdstanr.html</a>
-</li>
-</ol>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># we recommend running this is a fresh R session or restarting your current session</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"cmdstanr"</span>, repos <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"https://mc-stan.org/r-packages/"</span>, <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"repos"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<ol start="2" style="list-style-type: lower-alpha">
-<li>Make sure all these packages are installed and loaded.</li>
-</ol>
+<p><code>cmdstanr</code> is not on CRAN, so it comes from the Stan
+project’s own repository:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/cmdstanr/" class="external-link">cmdstanr</a></span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## This is cmdstanr version 0.5.3</span></span></code></pre>
-<pre><code><span><span class="co">## - CmdStanR documentation and vignettes: mc-stan.org/cmdstanr</span></span></code></pre>
-<pre><code><span><span class="co">## - CmdStan path: /Users/dbarneche/.cmdstan/cmdstan-2.33.1</span></span></code></pre>
-<pre><code><span><span class="co">## - CmdStan version: 2.33.1</span></span></code></pre>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/posterior/" class="external-link">posterior</a></span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## This is posterior version 1.4.1</span></span></code></pre>
-<pre><code><span><span class="co">## </span></span>
-<span><span class="co">## Attaching package: 'posterior'</span></span></code></pre>
-<pre><code><span><span class="co">## The following objects are masked from 'package:stats':</span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">##     mad, sd, var</span></span></code></pre>
-<pre><code><span><span class="co">## The following objects are masked from 'package:base':</span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">##     %in%, match</span></span></code></pre>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/bayesplot/" class="external-link">bayesplot</a></span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## This is bayesplot version 1.10.0</span></span></code></pre>
-<pre><code><span><span class="co">## - Online documentation and vignettes at mc-stan.org/bayesplot</span></span></code></pre>
-<pre><code><span><span class="co">## - bayesplot theme set to bayesplot::theme_default()</span></span></code></pre>
-<pre><code><span><span class="co">##    * Does _not_ affect other ggplot2 plots</span></span></code></pre>
-<pre><code><span><span class="co">##    * See ?bayesplot_theme_set for details on theme setting</span></span></code></pre>
-<pre><code><span><span class="co">## </span></span>
-<span><span class="co">## Attaching package: 'bayesplot'</span></span></code></pre>
-<pre><code><span><span class="co">## The following object is masked from 'package:posterior':</span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">##     rhat</span></span></code></pre>
-<pre><code><span><span class="co">## The following object is masked from 'package:brms':</span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">##     rhat</span></span></code></pre>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://mc-stan.org/bayesplot/reference/bayesplot-colors.html" class="external-link">color_scheme_set</a></span><span class="op">(</span><span class="st">"brightblue"</span><span class="op">)</span></span></code></pre></div>
-<ol start="3" style="list-style-type: lower-alpha">
-<li>Manually set the following options.</li>
-</ol>
-<p>Make sure the path points to the <code>cmdstan</code>
-installation</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/set_cmdstan_path.html" class="external-link">cmdstan_path</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## [1] "/Users/dbarneche/.cmdstan/cmdstan-2.33.1"</span></span></code></pre>
-<p>If not, manually set it</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/set_cmdstan_path.html" class="external-link">set_cmdstan_path</a></span><span class="op">(</span><span class="st">"C:/cmdstan"</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## Warning: Path not set. Can't find directory: C:/cmdstan</span></span></code></pre>
-<p>To use <code>cmdstan</code> as a backend for <code>brms</code> call
-the relevant options.</p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"cmdstanr"</span>,</span>
+<span>                 repos <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"https://stan-dev.r-universe.dev"</span>,</span>
+<span>                           <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"repos"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p><code>bayesnec</code> and the rest come from CRAN, and installing
+<code>bayesnec</code> installs <code>brms</code> with it:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"bayesnec"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="the-cmdstan-installation">The CmdStan installation<a class="anchor" aria-label="anchor" href="#the-cmdstan-installation"></a>
+</h3>
+<p>Confirm the compiler is configured first. On a current Rtools this
+passes without doing anything; <code>fix = TRUE</code> repairs the
+problems it can rather than only reporting them.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/install_cmdstan.html" class="external-link">check_cmdstan_toolchain</a></span><span class="op">(</span>fix <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<p>Then install CmdStan. Three things are set here, and each of them has
+been observed to stop a fresh installation on Windows.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="st">"C:/cmdstan"</span><span class="op">)</span>           <span class="co"># install_cmdstan() does not create it</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>timeout <span class="op">=</span> <span class="fl">1800</span><span class="op">)</span>            <span class="co"># R's default of 60 seconds is too short</span></span>
+<span><span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/install_cmdstan.html" class="external-link">install_cmdstan</a></span><span class="op">(</span>dir <span class="op">=</span> <span class="st">"C:/cmdstan"</span><span class="op">)</span></span></code></pre></div>
+<p>The directory has to exist first. <code>install_cmdstan()</code> does
+not create it and stops with
+<code>Assertion on 'dir' failed: Directory 'C:/cmdstan' does not exist.</code></p>
+<p>The download needs a longer timeout than R’s default. The CmdStan
+archive is about 49 MB, and the <code>timeout</code> argument of
+<code>install_cmdstan()</code> does not govern the download while
+<code>options(timeout)</code> does. Measured on a connection delivering
+about 500 KB/s, the download failed with
+<code>Download of CmdStan failed with error</code> at the default and
+completed in 4.9 minutes at <code>timeout = 1800</code>, with nothing
+else changed. Set it in any case: it has no effect where the download
+would have completed anyway.</p>
+<p>The installation path has to be a plain one. The default location is
+inside the home directory, and on many Windows machines, particularly
+ones managed by an employer, that directory is synchronised by OneDrive,
+where the CmdStan build fails. The same failure occurs where the path
+contains a space or a character outside the standard English alphabet,
+which happens where a Windows user name does. <code>C:/cmdstan</code>
+avoids all three. Installing there rather than in the default location
+asks for two things in return: the <code>CMDSTAN</code> variable set out
+below, and <code>dir = "C:/cmdstan"</code> on any later
+<code>install_cmdstan()</code> call.</p>
+<p>Because <code>C:/cmdstan</code> is not the default location, R has to
+be told where to find it in every later session, and the setting it
+reads is an environment variable rather than an option. Run
+<code>usethis::edit_r_environ()</code>, or open <code>.Renviron</code>
+in your home directory, add the line below, and restart R. Without it,
+every new session reports CmdStan as not installed and the path has to
+be set by hand in each one.</p>
+<pre><code>CMDSTAN=C:/cmdstan</code></pre>
+<p>R reads <code>.Renviron</code> only when it starts, which is why
+editing it takes effect on the next session rather than this one. The
+variable is the only thing <code>cmdstanr</code> reads for this: in
+<code>cmdstanr</code> 0.9.0
+<code>cmdstanr:::cmdstanr_initialize()</code> takes the path from
+<code>Sys.getenv("CMDSTAN")</code> where that is set and from
+<code>~/.cmdstan</code> otherwise, and no option sets it.</p>
+<p>The version number is not needed in the variable. Where
+<code>CMDSTAN</code> names a directory that is not itself an
+installation, <code>cmdstanr</code> takes the newest
+<code>cmdstan-*</code> installation inside it, so the line above
+survives the next CmdStan upgrade unedited. The by-hand alternative does
+need it, and this asymmetry is easy to trip over:
+<code><a href="https://mc-stan.org/cmdstanr/reference/set_cmdstan_path.html" class="external-link">cmdstanr::set_cmdstan_path()</a></code> takes the path as given, so it
+has to be called as
+<code>set_cmdstan_path("C:/cmdstan/cmdstan-2.39.0")</code>. Given the
+parent directory it sets the path to that directory, leaves
+<code>cmdstan_version()</code> at <code>NULL</code>, and warns</p>
+<pre><code>Can't find CmdStan makefile to detect version number. Path may not point to valid installation.</code></pre>
+<p>The back end is an option rather than a variable, so it belongs in
+<code>.Rprofile</code>, and putting it there means it does not have to
+be set again in each session. This line applies on every platform.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>brms.backend <span class="op">=</span> <span class="st">"cmdstanr"</span><span class="op">)</span></span></code></pre></div>
-<p>Setting the path and backend may be required each time you use
-<code>cmdstan</code></p>
-<ol start="4" style="list-style-type: lower-alpha">
-<li>Check that your toolchain is set up properly.</li>
+</div>
+<div class="section level3">
+<h3 id="recurring-problems-on-windows">Recurring problems on Windows<a class="anchor" aria-label="anchor" href="#recurring-problems-on-windows"></a>
+</h3>
+<div class="section level4">
+<h4 id="a-partly-built-cmdstan-directory">A partly built CmdStan directory<a class="anchor" aria-label="anchor" href="#a-partly-built-cmdstan-directory"></a>
+</h4>
+<p>Where <code>install_cmdstan()</code> fails, run it again with these
+arguments.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/install_cmdstan.html" class="external-link">install_cmdstan</a></span><span class="op">(</span>overwrite <span class="op">=</span> <span class="cn">TRUE</span>, quiet <span class="op">=</span> <span class="cn">FALSE</span>, dir <span class="op">=</span> <span class="st">"C:/cmdstan"</span><span class="op">)</span></span></code></pre></div>
+<p><code>overwrite = TRUE</code> is the part that matters. An attempt
+that fails partway through the build leaves a partly built directory
+behind, and a second attempt without <code>overwrite</code> declines to
+replace it, which produces an error resembling the first one.
+<code>quiet = FALSE</code> only prints more of the build output, which
+is worth having because the default output is truncated and does not
+identify the stage that failed.</p>
+</div>
+<div class="section level4">
+<h4 id="chains-that-do-not-start-after-an-rtools-upgrade">Chains that do not start after an Rtools upgrade<a class="anchor" aria-label="anchor" href="#chains-that-do-not-start-after-an-rtools-upgrade"></a>
+</h4>
+<p>A model compiles and <code>cmdstanr</code> then reports
+<code>No chains finished successfully</code>, which names neither a
+cause nor a file. The usual reason is that Rtools changed after CmdStan
+was installed. CmdStan builds its own <code>tbb.dll</code>, linked
+against the toolchain that built it, so a CmdStan built under Rtools44
+requires libraries that Rtools45 does not provide: the model still
+compiles, and every chain then exits immediately with
+<code>STATUS_DLL_NOT_FOUND</code>. Rebuilding CmdStan resolves it.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/install_cmdstan.html" class="external-link">install_cmdstan</a></span><span class="op">(</span>overwrite <span class="op">=</span> <span class="cn">TRUE</span>, dir <span class="op">=</span> <span class="st">"C:/cmdstan"</span><span class="op">)</span></span></code></pre></div>
+<p>Anyone who upgrades R and Rtools after installing CmdStan will meet
+this.</p>
+</div>
+<div class="section level4">
+<h4 id="the-cmdstanr-version-and-the-rtools-it-expects">The <code>cmdstanr</code> version and the Rtools it expects<a class="anchor" aria-label="anchor" href="#the-cmdstanr-version-and-the-rtools-it-expects"></a>
+</h4>
+<p>Rtools is installed and <code>cmdstanr</code> reports it as missing.
+<code>cmdstanr</code> chooses which Rtools to look for from the R
+version, and that choice is fixed in the installed
+<code>cmdstanr</code>. In 0.9.0,
+<code>cmdstanr:::rtools4x_version()</code> returns Rtools44 for R 4.4.x
+and Rtools45 for every R from 4.5 onward, which is why R 4.6.1 is sent
+to Rtools45. Version 0.8.0 sent every R from 4.4 onward to Rtools44, so
+an older <code>cmdstanr</code> beside the Rtools that CRAN pairs with R
+4.5.x searches for a toolchain that was never installed.</p>
+<p>Install <code>cmdstanr</code> 0.9.0 or later, which is what the
+r-universe repository above supplies, and install the Rtools that
+<code>check_cmdstan_toolchain()</code> names rather than the one
+inferred from the R version.</p>
+</div>
+<div class="section level4">
+<h4 id="slow-compilation">Slow compilation<a class="anchor" aria-label="anchor" href="#slow-compilation"></a>
+</h4>
+<p>Windows Defender inspects each newly compiled program, and a compile
+that should take under a minute can take several. Excluding the CmdStan
+directory from real-time scanning resolves it, where the machine’s
+policy allows.</p>
+</div>
+<div class="section level4">
+<h4 id="compilation-blocked-by-policy">Compilation blocked by policy<a class="anchor" aria-label="anchor" href="#compilation-blocked-by-policy"></a>
+</h4>
+<p>Some managed machines prevent a newly compiled program from running
+at all. This is a policy decision rather than a configuration problem,
+and it cannot be worked around from within R. Resolving it needs whoever
+administers the machine.</p>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="macos">macOS<a class="anchor" aria-label="anchor" href="#macos"></a>
+</h2>
+<p>These steps have not been verified on macOS. They point at the
+upstream instructions, which the projects themselves maintain, and the
+check in the <em>Verification</em> section is what settles whether the
+installation works.</p>
+<ol style="list-style-type: decimal">
+<li>Install R from <a href="https://cran.r-project.org/bin/macosx/" class="external-link uri">https://cran.r-project.org/bin/macosx/</a>, choosing the
+build for your processor: the Apple Silicon and Intel builds
+differ.</li>
+<li>Install the Xcode Command Line Tools by running
+<code>xcode-select --install</code> in Terminal. Some packages also
+require <code>gfortran</code>, and CRAN’s macOS tools page states the
+current requirement.</li>
+<li>Install the R packages as in the Windows section above.</li>
+<li>Follow the CmdStanR getting-started vignette (<a href="https://mc-stan.org/cmdstanr/articles/cmdstanr.html" class="external-link uri">https://mc-stan.org/cmdstanr/articles/cmdstanr.html</a>) for
+<code>check_cmdstan_toolchain()</code> and
+<code>install_cmdstan()</code>. The default installation path causes no
+difficulty on macOS, so <code>dir</code> need not be set, and no
+<code>CMDSTAN</code> variable is needed either.</li>
+<li>Put <code>options(brms.backend = "cmdstanr")</code> in
+<code>.Rprofile</code>, as in the Windows section.</li>
 </ol>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/install_cmdstan.html" class="external-link">check_cmdstan_toolchain</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## The C++ toolchain required for CmdStan is setup properly!</span></span></code></pre>
-<p>This should return the message
-<code>The C++ toolchain required for CmdStan is setup properly!</code></p>
-<div class="section level4">
-<h4 id="compile-a-model">Compile a model<a class="anchor" aria-label="anchor" href="#compile-a-model"></a>
-</h4>
-<p>If <code>cmdstan</code> is installed, the following example model
-should work.</p>
-<p>Set up data:</p>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">file</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/set_cmdstan_path.html" class="external-link">cmdstan_path</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"examples"</span>, <span class="st">"bernoulli"</span>, <span class="st">"bernoulli.stan"</span><span class="op">)</span></span>
-<span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="va">file</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## Model executable is up to date!</span></span></code></pre>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mod</span><span class="op">$</span><span class="fu">print</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## data {</span></span>
-<span><span class="co">##   int&lt;lower=0&gt; N;</span></span>
-<span><span class="co">##   array[N] int&lt;lower=0,upper=1&gt; y;</span></span>
-<span><span class="co">## }</span></span>
-<span><span class="co">## parameters {</span></span>
-<span><span class="co">##   real&lt;lower=0,upper=1&gt; theta;</span></span>
-<span><span class="co">## }</span></span>
-<span><span class="co">## model {</span></span>
-<span><span class="co">##   theta ~ beta(1,1);  // uniform prior on interval 0,1</span></span>
-<span><span class="co">##   y ~ bernoulli(theta);</span></span>
-<span><span class="co">## }</span></span></code></pre>
-<p>Run a Monte Carlo Markov Chain:</p>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># names correspond to the data block in the Stan program</span></span>
-<span><span class="va">data_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>N <span class="op">=</span> <span class="fl">10</span>, y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">1</span>,<span class="fl">0</span>,<span class="fl">0</span>,<span class="fl">0</span>,<span class="fl">0</span>,<span class="fl">0</span>,<span class="fl">0</span>,<span class="fl">0</span>,<span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span></span>
-<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="va">mod</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span></span>
-<span>  data <span class="op">=</span> <span class="va">data_list</span>,</span>
-<span>  seed <span class="op">=</span> <span class="fl">123</span>,</span>
-<span>  chains <span class="op">=</span> <span class="fl">4</span>,</span>
-<span>  parallel_chains <span class="op">=</span> <span class="fl">4</span>,</span>
-<span>  refresh <span class="op">=</span> <span class="fl">500</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## Running MCMC with 4 parallel chains...</span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">## Chain 1 Iteration:    1 / 2000 [  0%]  (Warmup) </span></span>
-<span><span class="co">## Chain 1 Iteration:  500 / 2000 [ 25%]  (Warmup) </span></span>
-<span><span class="co">## Chain 1 Iteration: 1000 / 2000 [ 50%]  (Warmup) </span></span>
-<span><span class="co">## Chain 1 Iteration: 1001 / 2000 [ 50%]  (Sampling) </span></span>
-<span><span class="co">## Chain 1 Iteration: 1500 / 2000 [ 75%]  (Sampling) </span></span>
-<span><span class="co">## Chain 1 Iteration: 2000 / 2000 [100%]  (Sampling) </span></span>
-<span><span class="co">## Chain 2 Iteration:    1 / 2000 [  0%]  (Warmup) </span></span>
-<span><span class="co">## Chain 2 Iteration:  500 / 2000 [ 25%]  (Warmup) </span></span>
-<span><span class="co">## Chain 2 Iteration: 1000 / 2000 [ 50%]  (Warmup) </span></span>
-<span><span class="co">## Chain 2 Iteration: 1001 / 2000 [ 50%]  (Sampling) </span></span>
-<span><span class="co">## Chain 2 Iteration: 1500 / 2000 [ 75%]  (Sampling) </span></span>
-<span><span class="co">## Chain 2 Iteration: 2000 / 2000 [100%]  (Sampling) </span></span>
-<span><span class="co">## Chain 3 Iteration:    1 / 2000 [  0%]  (Warmup) </span></span>
-<span><span class="co">## Chain 3 Iteration:  500 / 2000 [ 25%]  (Warmup) </span></span>
-<span><span class="co">## Chain 3 Iteration: 1000 / 2000 [ 50%]  (Warmup) </span></span>
-<span><span class="co">## Chain 3 Iteration: 1001 / 2000 [ 50%]  (Sampling) </span></span>
-<span><span class="co">## Chain 3 Iteration: 1500 / 2000 [ 75%]  (Sampling) </span></span>
-<span><span class="co">## Chain 3 Iteration: 2000 / 2000 [100%]  (Sampling) </span></span>
-<span><span class="co">## Chain 4 Iteration:    1 / 2000 [  0%]  (Warmup) </span></span>
-<span><span class="co">## Chain 4 Iteration:  500 / 2000 [ 25%]  (Warmup) </span></span>
-<span><span class="co">## Chain 4 Iteration: 1000 / 2000 [ 50%]  (Warmup) </span></span>
-<span><span class="co">## Chain 4 Iteration: 1001 / 2000 [ 50%]  (Sampling) </span></span>
-<span><span class="co">## Chain 4 Iteration: 1500 / 2000 [ 75%]  (Sampling) </span></span>
-<span><span class="co">## Chain 4 Iteration: 2000 / 2000 [100%]  (Sampling) </span></span>
-<span><span class="co">## Chain 1 finished in 0.0 seconds.</span></span>
-<span><span class="co">## Chain 2 finished in 0.0 seconds.</span></span>
-<span><span class="co">## Chain 3 finished in 0.0 seconds.</span></span>
-<span><span class="co">## Chain 4 finished in 0.0 seconds.</span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">## All 4 chains finished successfully.</span></span>
-<span><span class="co">## Mean chain execution time: 0.0 seconds.</span></span>
-<span><span class="co">## Total execution time: 0.2 seconds.</span></span></code></pre>
-<p>Check that the model has successfully fitted by examining the model
-parameters</p>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## # A tibble: 2 × 10</span></span>
-<span><span class="co">##   variable   mean median    sd   mad      q5    q95  rhat ess_bulk ess_tail</span></span>
-<span><span class="co">##   &lt;chr&gt;     &lt;num&gt;  &lt;num&gt; &lt;num&gt; &lt;num&gt;   &lt;num&gt;  &lt;num&gt; &lt;num&gt;    &lt;num&gt;    &lt;num&gt;</span></span>
-<span><span class="co">## 1 lp__     -7.26  -6.99  0.695 0.331 -8.70   -6.75   1.00    1661.    1619.</span></span>
-<span><span class="co">## 2 theta     0.249  0.233 0.119 0.122  0.0816  0.468  1.00    1494.    1630.</span></span></code></pre>
 </div>
-<div class="section level4">
-<h4 id="run-a-model-using-brms">Run a model using brms<a class="anchor" aria-label="anchor" href="#run-a-model-using-brms"></a>
-</h4>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/cmdstanr/" class="external-link">cmdstanr</a></span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/set_cmdstan_path.html" class="external-link">set_cmdstan_path</a></span><span class="op">(</span><span class="st">"C:/cmdstan"</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## Warning: Path not set. Can't find directory: C:/cmdstan</span></span></code></pre>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>brms.backend <span class="op">=</span> <span class="st">"cmdstanr"</span><span class="op">)</span></span>
+<div class="section level2">
+<h2 id="linux">Linux<a class="anchor" aria-label="anchor" href="#linux"></a>
+</h2>
+<p>Install R through the distribution’s package manager or from CRAN,
+together with the standard build tools: <code>build-essential</code> on
+Debian and Ubuntu, or the equivalent development group on other
+distributions. Install the R packages as in the Windows section, then
+run <code><a href="https://mc-stan.org/cmdstanr/reference/install_cmdstan.html" class="external-link">cmdstanr::check_cmdstan_toolchain()</a></code> followed by
+<code><a href="https://mc-stan.org/cmdstanr/reference/install_cmdstan.html" class="external-link">cmdstanr::install_cmdstan()</a></code>. The default path causes no
+difficulty here either, so no <code>CMDSTAN</code> variable is needed.
+<code>options(brms.backend = "cmdstanr")</code> belongs in
+<code>.Rprofile</code> as it does on Windows.</p>
+</div>
+<div class="section level2">
+<h2 id="verification">Verification<a class="anchor" aria-label="anchor" href="#verification"></a>
+</h2>
+<p>Two checks. The first inspects the toolchain and the second uses it,
+so run them in that order.</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/install_cmdstan.html" class="external-link">check_cmdstan_toolchain</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/set_cmdstan_path.html" class="external-link">cmdstan_version</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>A configured toolchain reports</p>
+<pre><code>The C++ toolchain required for CmdStan is setup properly!</code></pre>
+<p>and <code>cmdstan_version()</code> returns the version string of the
+installation R is using. An error from either is a toolchain or path
+problem, and nothing below will work until it is resolved.</p>
+<p>The second check fits a model, and it is the one that matters,
+because it exercises the whole path: <code><a href="../reference/bnec.html">bnec()</a></code> calls
+<code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brms::brm()</a></code>, <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm()</a></code> writes a Stan program,
+CmdStan compiles it, and the compiled program samples.</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/">bayesnec</a></span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span></span>
 <span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="va"><a href="https://github.com/paul-buerkner/brms" class="external-link">brms</a></span><span class="op">)</span></span>
-<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm</a></span><span class="op">(</span><span class="va">count</span> <span class="op">~</span> <span class="va">zAge</span> <span class="op">+</span> <span class="va">zBase</span> <span class="op">*</span> <span class="va">Trt</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">patient</span><span class="op">)</span>,</span>
-<span>            data <span class="op">=</span> <span class="va">epilepsy</span>, family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="op">)</span>, silent <span class="op">=</span> <span class="fl">2</span>, refresh <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## Compiling Stan program...</span></span></code></pre>
-<pre><code>## 
--
-
-\
-
-|
-
-/
-
--
-
-\
-
-|
-
-/
-
--
-
-\
-
-|
-
-/
-
--</code></pre>
-<pre><code><span><span class="co">## In file included from /var/folders/80/x2f5bfts2_n9g_2h7w8rx3jm0000gn/T/RtmpGymuJf/model-5a0b7979b3af.hpp:1:</span></span>
-<span><span class="co">## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/src/stan/model/model_header.hpp:4:</span></span>
-<span><span class="co">## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/stan/math.hpp:19:</span></span>
-<span><span class="co">## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/stan/math/rev.hpp:10:</span></span>
-<span><span class="co">## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/stan/math/rev/fun.hpp:200:</span></span>
-<span><span class="co">## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/stan/math/prim/functor.hpp:16:</span></span>
-<span><span class="co">## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/stan/math/prim/functor/integrate_ode_rk45.hpp:6:</span></span>
-<span><span class="co">## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/stan/math/prim/functor/ode_rk45.hpp:9:</span></span>
-<span><span class="co">## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/numeric/odeint.hpp:76:</span></span>
-<span><span class="co">## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/numeric/odeint/integrate/observer_collection.hpp:23:</span></span>
-<span><span class="co">## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/function.hpp:30:</span></span>
-<span><span class="co">## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/function/detail/prologue.hpp:17:</span></span>
-<span><span class="co">## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/function/function_base.hpp:21:</span></span>
-<span><span class="co">## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/type_index.hpp:29:</span></span>
-<span><span class="co">## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/type_index/stl_type_index.hpp:47:</span></span>
-<span><span class="co">## /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/container_hash/hash.hpp:132:33: warning: 'unary_function&lt;const std::error_category</span></span></code></pre>
-<pre><code>## 
-\</code></pre>
-<pre><code><span><span class="co">## *, unsigned long&gt;' is deprecated [-Wdeprecated-declarations]</span></span>
-<span><span class="co">##         struct hash_base : std::unary_function&lt;T, std::size_t&gt; {};</span></span>
-<span><span class="co">##                                 ^</span></span>
-<span><span class="co">## /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/container_hash/hash.hpp:692:18: note: in instantiation of template class 'boost::hash_detail::hash_base&lt;const std::error_category *&gt;' requested here</span></span>
-<span><span class="co">##         : public boost::hash_detail::hash_base&lt;T*&gt;</span></span>
-<span><span class="co">##                  ^</span></span>
-<span><span class="co">## /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/container_hash/hash.hpp:420:24: note: in instantiation of template class 'boost::hash&lt;const std::error_category *&gt;' requested here</span></span>
-<span><span class="co">##         boost::hash&lt;T&gt; hasher;</span></span>
-<span><span class="co">##                        ^</span></span>
-<span><span class="co">## /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/container_hash/hash.hpp:551:9: note: in instantiation of function template specialization 'boost::hash_combine&lt;const std::error_category *&gt;' requested here</span></span>
-<span><span class="co">##         hash_combine(seed, &amp;v.category());</span></span>
-<span><span class="co">##         ^</span></span>
-<span><span class="co">## /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__functional/unary_function.h:23:29: note: 'unary_function&lt;const std::error_category *, unsigned long&gt;' has been explicitly marked deprecated here</span></span>
-<span><span class="co">## struct _LIBCPP_TEMPLATE_VIS _LIBCPP_DEPRECATED_IN_CXX11 unary_function</span></span>
-<span><span class="co">##                             ^</span></span>
-<span><span class="co">## /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__config:850:41: note: expanded from macro '_LIBCPP_DEPRECATED_IN_CXX11'</span></span>
-<span><span class="co">## #    define _LIBCPP_DEPRECATED_IN_CXX11 _LIBCPP_DEPRECATED</span></span>
-<span><span class="co">##                                         ^</span></span>
-<span><span class="co">## /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__config:835:49: note: expanded from macro '_LIBCPP_DEPRECATED'</span></span>
-<span><span class="co">## #      define _LIBCPP_DEPRECATED __attribute__((deprecated))</span></span>
-<span><span class="co">##                                                 ^</span></span></code></pre>
-<pre><code>## 
-|
-
-/
-
--
-
-\
-
-|
-
-/
-
--
-
-\
-
-|
-
-/
-
--
-
-\
-
-|
-
-/
-
--
-
-\
-
-|
-
-/
-
--
-
-\
-
-|
-
-/
-
--
-
-\
-
-|</code></pre>
-<pre><code><span><span class="co">## 1 warning generated.</span></span></code></pre>
-<pre><code>## 
-/
-
--</code></pre>
-<pre><code><span><span class="co">## ld: warning: duplicate -rpath '/Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/tbb' ignored</span></span></code></pre>
-<pre><code>## 
-\
-
-|
-
-/
-
--
-
- 
-Running MCMC with 4 chains, at most 10 in parallel...
-## 
-## Chain 4 finished in 1.7 seconds.
-## Chain 1 finished in 1.8 seconds.
-## Chain 2 finished in 1.7 seconds.
-## Chain 3 finished in 1.7 seconds.
-## 
-## All 4 chains finished successfully.
-## Mean chain execution time: 1.7 seconds.
-## Total execution time: 1.9 seconds.</code></pre>
-<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">##  Family: poisson </span></span>
-<span><span class="co">##   Links: mu = log </span></span>
-<span><span class="co">## Formula: count ~ zAge + zBase * Trt + (1 | patient) </span></span>
-<span><span class="co">##    Data: epilepsy (Number of observations: 236) </span></span>
-<span><span class="co">##   Draws: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;</span></span>
-<span><span class="co">##          total post-warmup draws = 4000</span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">## Group-Level Effects: </span></span>
-<span><span class="co">## ~patient (Number of levels: 59) </span></span>
-<span><span class="co">##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">## sd(Intercept)     0.58      0.07     0.46     0.73 1.01      793     1694</span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">## Population-Level Effects: </span></span>
-<span><span class="co">##            Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">## Intercept      1.77      0.12     1.54     2.00 1.00      941     1752</span></span>
-<span><span class="co">## zAge           0.09      0.09    -0.08     0.26 1.01      825     1493</span></span>
-<span><span class="co">## zBase          0.70      0.12     0.46     0.93 1.01      723     1202</span></span>
-<span><span class="co">## Trt1          -0.27      0.17    -0.58     0.06 1.00      847     1774</span></span>
-<span><span class="co">## zBase:Trt1     0.05      0.17    -0.27     0.39 1.01      759     1316</span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">## Draws were sampled using sample(hmc). For each parameter, Bulk_ESS</span></span>
-<span><span class="co">## and Tail_ESS are effective sample size measures, and Rhat is the potential</span></span>
-<span><span class="co">## scale reduction factor on split chains (at convergence, Rhat = 1).</span></span></code></pre>
+<span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>brms.backend <span class="op">=</span> <span class="st">"cmdstanr"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>,</span>
+<span>            family <span class="op">=</span> <span class="fu"><a href="https://paulbuerkner.com/brms/reference/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>, chains <span class="op">=</span> <span class="fl">2</span>, seed <span class="op">=</span> <span class="fl">333</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
+<p>A successful run compiles one Stan program, prints the sampling
+progress of two chains, and returns an object of class
+<code>bayesnecfit</code>. Its <code><a href="../reference/summary.html">summary()</a></code> reports the four
+parameters of the <strong>nec4param</strong> equation —
+<strong>bot</strong>, <strong>top</strong>, <strong>beta</strong> and
+<strong>nec</strong> — each with an <code>Rhat</code> near 1.00, then a
+<em>Further Distributional Parameters</em> block holding
+<code>phi</code>, which is the precision of the Beta response, then the
+<em>NEC</em> estimate with its credible interval, and a Bayesian
+R-squared. Two chains are enough to show that the toolchain works. The
+other vignettes take the <code>brms</code> default of four, which is
+what an analysis should use.</p>
+<p>With that fit returning, the modelling vignettes can be followed; <a href="https://open-aims.github.io/bayesnec/articles/example1.html">Single
+model usage</a> is the place to start.</p>
 </div>
-</div>
+<div class="section level2">
+<h2 id="provenance">Provenance<a class="anchor" aria-label="anchor" href="#provenance"></a>
+</h2>
+<p>The Windows failures described above, and the measurements quoted
+with them — the 49 MB archive, the download that failed at R’s default
+timeout and completed in 4.9 minutes at <code>timeout = 1800</code>, the
+OneDrive build failure, and the <code>tbb.dll</code> linked against a
+superseded Rtools — are taken from the software setup module of the
+concentration-response modelling course at <a href="https://github.com/open-AIMS/cr_modelling_training" class="external-link uri">https://github.com/open-AIMS/cr_modelling_training</a>,
+commit <code>9d05595</code>, which records what was seen on fresh
+Windows machines during 2026. They are that course’s measurements and
+not this package’s.</p>
+<p>Every statement about <code>cmdstanr</code> behaviour here was read
+from <code>cmdstanr</code> 0.9.0 under R 4.6.1, and none of it is a
+course measurement: the environment variable
+<code>cmdstanr:::cmdstanr_initialize()</code> reads and the
+<code>~/.cmdstan</code> fallback; the resolution of a
+<code>CMDSTAN</code> directory that is not itself an installation to the
+newest <code>cmdstan-*</code> inside it, and the absence of that
+resolution from <code>set_cmdstan_path()</code>; the Rtools version
+<code>cmdstanr:::rtools4x_version()</code> returns; the text of the
+three messages quoted above — the toolchain success, the missing Rtools,
+and the directory assertion — together with the fact that
+<code>install_cmdstan()</code> asserts a supplied directory rather than
+creating it, and that <code>check_cmdstan_toolchain()</code> forwards
+<code>fix = TRUE</code> to the branch that repairs rather than only
+reports; and the <code>timeout</code> argument reaching
+<code>build_cmdstan()</code> and <code>build_example()</code> while the
+download runs through <code><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">utils::download.file()</a></code> and so honours
+<code>options(timeout)</code>.</p>
+<p>The Linux route was checked on 2026-09-11 by running the course’s
+verification script end to end, with R 4.6.1, <code>brms</code> 2.23.0,
+<code>cmdstanr</code> 0.9.0 and CmdStan 2.39.0. Two limits on that
+check: it ran under WSL2 Debian rather than a native installation, and
+the machine was already configured, so it establishes the end state and
+not the instructions that reach it.</p>
 </div>
 <div class="section level2">
 <h2 class="unnumbered" id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
@@ -615,6 +476,10 @@ package for Bayesian multilevel models using Stan</span>.”</span>
 Bürkner, Paul-Christian. 2018. <span>“Advanced <span>Bayesian</span>
 Multilevel Modeling with the <span>R</span> Package <span class="nocase">brms</span>.”</span> <em>The R Journal</em> 10 (1):
 395–411. <a href="https://doi.org/10.32614/RJ-2018-017" class="external-link">https://doi.org/10.32614/RJ-2018-017</a>.
+</div>
+<div id="ref-stan2020" class="csl-entry">
+Stan Development Team. 2020. <em><span>RStan</span>: The <span>R</span>
+Interface to <span>Stan</span></em>. <a href="https://mc-stan.org/" class="external-link">https://mc-stan.org/</a>.
 </div>
 </div>
 </div>

@@ -70,7 +70,7 @@
       <a href="../articles/example4.html">Comparing posterior predictions</a>
     </li>
     <li>
-      <a href="../articles/example5.html">Running `bayesnec`</a>
+      <a href="../articles/example5.html">Installation and setup</a>
     </li>
     <li>
       <a href="../articles/example6.html">Hurdle and zero-inflated concentration-response models</a>
@@ -592,8 +592,9 @@ concurrent compiles of different models do not collide and a repeated
 run reuses what is already built. Set it with
 <code>options(brms.backend = "cmdstanr")</code>, which is what this
 package’s vignettes are built with. <code>cmdstanr</code> is not on CRAN
-and is not a dependency of <code>bayesnec</code>; see <a href="https://mc-stan.org/cmdstanr/" class="external-link">its installation instructions</a>
-if you do not already have it.</p>
+and is not a dependency of <code>bayesnec</code>; see the <a href="https://open-aims.github.io/bayesnec/articles/example5.html">Installation
+and setup</a> vignette, or <a href="https://mc-stan.org/cmdstanr/" class="external-link">its
+own installation instructions</a>, if you do not already have it.</p>
 <p>Two models in two forked workers did not collide and thirteen in
 eight did, so a small trial does not reveal this, and the two-model
 check in <em>Choosing a plan</em> does not cover it. The explanation
