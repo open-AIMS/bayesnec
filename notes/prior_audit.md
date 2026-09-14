@@ -15,6 +15,10 @@
 > draws a new response inside its `prior_type` loop, so a ratio taken across the
 > two prior types compares priors built from different draws; the coverage
 > results are unaffected, because each prior is scored against its own data.
+>
+> **The two summary tables cited below** are archived beside this file in
+> `notes/prior_audit/`. The full per-cell sweep they were reduced from was not
+> kept; re-running the script against `eebccdb3` reproduces it.
 
 # Default priors in bayesnec: an assessment against known parameter values
 
@@ -284,7 +288,8 @@ not the documented one.
 Each prior is a location and a spread. The location was recovered by matching
 the prior's mean and mode against the six response quantiles `define_prior()`
 reads, over all 15 design x transform cells, rather than asserted from the
-source (`prior_definitions.csv`, columns `anchor_of_mean`, `anchor_of_mode`).
+source (`notes/prior_audit/prior_definitions.csv`, columns `anchor_of_mean`,
+`anchor_of_mode`).
 
 | branch | families | weak location | weak spread | regularizing location | regularizing spread |
 |---|---|---|---|---|---|
