@@ -70,70 +70,25 @@ and the models within a level. One plan drives one of them, because
 \pkg{future} evaluates a nested future sequentially unless the plan is a
 list, so \code{bnec_group()} decides which and says which.
 
-With an ordinary plan --- \code{plan(multisession, workers = 8)} --- the two
-arrangements are counted in rounds of one fit and the smaller is taken, a tie
-going to the models, which is what earlier versions did. Writing \emph{L} for
-the levels, \emph{M} for the equations the formula asks for and \emph{W} for
-the workers, the levels take \code{ceiling(L / W) * M} rounds and the models
-\code{L * ceiling(M / W)}. Seven levels of eleven equations over four workers
-is 22 against 21, so the levels stay in sequence; over eight workers it is 11
-against 14, so they do not.
+The two arrangements are counted in rounds of one fit and the smaller is
+taken, a tie going to the models, which is what earlier versions did. Writing
+\emph{L} for the levels, \emph{M} for the equations the formula asks for and
+\emph{W} for the workers, the levels take \code{ceiling(L / W) * M} rounds
+and the models \code{L * ceiling(M / W)}. Seven levels of eleven equations
+over four workers is 22 against 21, so the levels stay in sequence; over
+eight workers it is 11 against 14, so they do not. A nested plan ---
+\code{plan(list(tweak(multisession, workers = 2), tweak(multisession,
+workers = I(4))))} --- drives both loops and is honoured without being
+counted, and \code{plan(list(sequential, ...))} asks for the levels in
+sequence explicitly.
 
-To use both loops at once, nest the plan, which is how \pkg{future} asks for
-it:
+No argument turns this on or off: the plan already holds that state, as it
+does for \code{\link{bnec}}.
 
-\preformatted{
-library(future)
-plan(list(tweak(multisession, workers = 2),
-          tweak(multisession, workers = I(4))))
-fit <- bnec_group(y ~ crf(x, model = "decline"), data = my_data,
-                  group_var = "site", seed = 17)
-plan(sequential)
-}
-
-The outer element is the level loop and the inner one the model loop, and a
-nested plan is honoured without being counted: the division is the user's.
-Eight workers are in use here, two levels at a time with four models inside
-each. The \code{I()} around the inner count is needed, not decoration:
-\pkg{future} sets \code{mc.cores} to 1 inside a worker, \pkg{parallelly}
-reads that as the core budget and refuses four workers against it, and
-\code{I()} is how \pkg{parallelly} is told the number is meant.
-
-\code{plan(list(sequential, tweak(multisession, workers = I(8))))} asks for
-the other arrangement explicitly: the levels one at a time, each level's
-model set over eight workers. Use it where the count picks the levels and you
-want what earlier versions did.
-
-A nested plan of \code{multisession} strategies emits a warning from
-\pkg{future} once per level, beginning \emph{added, removed, or modified
-connections}. Starting the inner cluster opens connections inside a future
-and leaves them open, which is what makes that cluster reusable, and
-\pkg{future} reports any such change. Nothing is wrong and no fit is
-affected. It is not suppressed here, because the same check would catch a
-connection genuinely leaked by something a fit called;
-\code{options(future.connections.onMisuse = "ignore")} turns it off for your
-session, and an inner \code{multicore} strategy, where forking is available,
-opens no connections and so reports none.
-
-Where you have set \code{cmdstanr_write_stan_file_dir}, a parallel grouped
-call writes one \code{bayesnec-stan-<pid>} directory under it per worker
-process per run. A process id is not the same on the next run, so these are
-not read again; they are safe to delete, and worth deleting on a filesystem
-where compiled Stan programs accumulate.
-
-Three things to weigh before setting one. A worker fitting a level holds that
-level's whole model-averaged set, where a worker fitting one model holds one
-fit and a core given to the chains of a fit holds nothing extra, so a plan of
-\emph{W} level workers uses up to \emph{W} times the memory of the same call
-with the levels in sequence. Every level fits the same equations, so parallel
-levels compile the same Stan programs at the same time; each worker is given
-its own \pkg{cmdstanr} compile directory to keep them apart, which means a
-parallel grouped run on a cold cache compiles each equation once per worker
-rather than once, and does not read or write a persistent cache the user has
-set up. And \pkg{rstan} under \code{rstan_options(auto_write = TRUE)} caches
-compiled programs in one place that a forked worker shares with its parent,
-and no argument changes that location, so use \code{multisession} rather than
-\code{multicore} for a parallel grouped call with that option set.
+The worked treatment --- why the inner worker count needs \code{I()}, what a
+parallel grouped call does to compilation and to memory, and the warning a
+nested plan emits --- is in \code{vignette("example2")} under \emph{The
+levels of a grouped call}.
 
 \bold{What a plan does and does not reproduce}
 
