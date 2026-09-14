@@ -461,12 +461,39 @@ test_that("with_preserved_rng_state leaves an unused session without a seed", {
       assign(".Random.seed", old_seed, envir = globalenv())
     }
   }, add = TRUE)
+  old_kind <- RNGkind()
+  on.exit(suppressWarnings(RNGkind(old_kind[1], old_kind[2], old_kind[3])),
+          add = TRUE)
+  suppressWarnings(RNGkind(sample.kind = "Rounding"))
   suppressWarnings(rm(".Random.seed", envir = globalenv()))
   bayesnec:::with_preserved_rng_state({
-    set.seed(1234)
+    set.seed(1234, sample.kind = "Rejection")
     runif(10)
   })
   expect_false(exists(".Random.seed", envir = globalenv(), inherits = FALSE))
+  # The combination the helper's comment is about: with no seed to restore,
+  # RNGkind() is the only thing that puts sample.kind back, so removing
+  # .Random.seed alone would leave the session on the wrong sampler.
+  expect_identical(RNGkind()[3], "Rounding")
+})
+
+test_that("with_preserved_rng_state nests", {
+  # summary() reaches dispersion() once per equation, and each call wraps, so
+  # an inner restore must not disturb an outer one.
+  set.seed(99)
+  expected <- runif(3)
+  set.seed(99)
+  first <- runif(1)
+  bayesnec:::with_preserved_rng_state({
+    set.seed(5)
+    runif(2)
+    bayesnec:::with_preserved_rng_state({
+      set.seed(7)
+      runif(4)
+    })
+    runif(3)
+  })
+  expect_equal(c(first, runif(2)), expected)
 })
 
 test_that("with_preserved_rng_state evaluates in the calling frame", {

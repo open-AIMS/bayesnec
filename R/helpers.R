@@ -109,6 +109,10 @@ extract_waic_estimate <- function(x) {
 #'
 #' \code{expr} is evaluated in the calling frame, so assignments inside it
 #' reach the caller's variables exactly as if the braces were written there.
+#' Two consequences of it being an argument rather than a block: a
+#' \code{return()} written inside it would return from the caller and skip
+#' everything after the call, and \code{\link[base]{sys.call}} sees one extra
+#' frame. No call site does either.
 #'
 #' @param expr An expression to evaluate.
 #'

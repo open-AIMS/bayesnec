@@ -18,7 +18,8 @@ vector? Defaults to FALSE.}
 \code{\link[base]{set.seed}} before simulating, so the result is
 reproducible. The caller's random number stream is restored before the
 statistic is returned, so running it does not change what the next random
-operation in the session returns.}
+operation in the session returns. \code{NULL} is refused rather than passed
+on, because \code{set.seed(NULL)} re-initialises the stream from the clock.}
 }
 \value{
 A \code{\link[base]{numeric}} vector. If \code{summary} is FALSE, an

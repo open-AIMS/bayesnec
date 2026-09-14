@@ -364,7 +364,9 @@ test_that("check_fit still repeats itself under the same seed", {
   a <- check_fit(nec4param, group = 4, ndraws = 50)
   runif(5)
   b <- check_fit(nec4param, group = 4, ndraws = 50)
-  expect_equal(a$sim_sd, b$sim_sd)
+  # The whole table rather than one column: every simulated quantity has to
+  # repeat, not only the one the restore was most likely to disturb.
+  expect_equal(a, b)
 })
 
 test_that("check_fit refuses a seed set.seed() would take silently", {
@@ -373,6 +375,10 @@ test_that("check_fit refuses a seed set.seed() would take silently", {
   # #310's defect reached through a second door.
   skip_on_cran()
   expect_error(check_fit(nec4param, seed = NULL), "seed")
+  # NA is how brms writes "no seed", and the initial-value search reads it that
+  # way, so a user could plausibly pass it here. set.seed(NA) is an error
+  # rather than a reseed, but it is refused with a message naming the argument.
+  expect_error(check_fit(nec4param, seed = NA), "seed")
   expect_error(check_fit(nec4param, seed = "ten"), "seed")
   expect_error(check_fit(nec4param, seed = c(1, 2)), "seed")
   expect_error(suppressMessages(check_fit(manec_example, seed = NULL)), "seed")

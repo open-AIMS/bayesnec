@@ -895,6 +895,17 @@
   process id, so the diagnostic did not repeat and the caller's seed was
   discarded without a word --- #310's defect reached through a second door.
 
+  `check_fit()` is not only called directly. `bnec()` runs it on both return
+  paths through `message_control_fit()`, and `summary()` runs it whenever
+  `check_fit = TRUE`, so the stream after a fit and after a summary is
+  restored as well. On the released code the trailing `set.seed(10)` inside
+  the diagnostic left the stream at a fixed point after every `bnec()` call,
+  whatever the fit had done; it now reflects the fitting alone, which under no
+  supplied `seed` depends on how many proposals the initial-value search made
+  (see #310 above). Measured on the packaged `manec_example` under the same
+  protocol: `summary()` and `message_control_fit()` each left the stream moved
+  on `dev` and leave it where they found it here.
+
   The restore is a behaviour change for code that relied on a diagnostic having
   advanced the stream. No test and no vignette does.
 

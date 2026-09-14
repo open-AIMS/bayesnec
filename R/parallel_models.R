@@ -173,8 +173,9 @@ plan_model_set <- function(brm_args, n_models, caller = "bnec") {
 #' caller's session, which is what \code{expand_manec()} says it is for, and
 #' stops a fit resetting a user's simulation seed. The restore itself is
 #' \code{with_preserved_rng_state()}, which \code{weighted_draw_index()},
-#' \code{check_fit()} and \code{dispersion()} also use; it puts the kind back
-#' first, because the generator is encoded in \code{.Random.seed[1]}.
+#' \code{check_fit_table()}, \code{check_fit_combined()} and
+#' \code{dispersion()} also use; it puts the kind back first, because the
+#' generator is encoded in \code{.Random.seed[1]}.
 #'
 #' It does not make the model-averaging draw match the sequential run's. Run in
 #' sequence the loop advances the parent's stream, because every model's
