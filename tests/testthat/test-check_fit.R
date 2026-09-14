@@ -325,3 +325,61 @@ test_that("the end-of-fit message never breaks a fit that succeeded", {
   expect_silent(bayesnec:::message_control_fit(list(not = "a fit")))
   expect_null(bayesnec:::message_control_fit(1:10))
 })
+
+# #337. A diagnostic is a summary computed from a fit, so running one must not
+# change what the next random operation in the session returns. check_fit()
+# called set.seed(seed) and left the stream where that reached.
+
+test_that("check_fit leaves the caller's RNG stream alone", {
+  skip_on_cran()
+  # Built before the stream is set, so that the cost of the build -- which does
+  # touch the RNG -- is not what is being measured.
+  nec4param_checkfit_g4()
+  set.seed(99)
+  expected <- runif(3)
+  set.seed(99)
+  first <- runif(1)
+  check_fit(nec4param, group = 4, ndraws = 50)
+  expect_equal(c(first, runif(2)), expected)
+})
+
+test_that("check_fit on a model set leaves the caller's RNG stream alone", {
+  # The bayesmanecfit method loops over pull_out(), so the restore has to hold
+  # for a fit inside a set as well as for a single fit.
+  skip_on_cran()
+  suppressMessages(check_fit(manec_example, group = 4, ndraws = 50))
+  set.seed(99)
+  expected <- runif(3)
+  set.seed(99)
+  first <- runif(1)
+  suppressMessages(check_fit(manec_example, group = 4, ndraws = 50))
+  expect_equal(c(first, runif(2)), expected)
+})
+
+test_that("check_fit still repeats itself under the same seed", {
+  # The restore must not be mistaken for the diagnostic having stopped being
+  # reproducible: the seed is still applied, only the stream is put back.
+  skip_on_cran()
+  set.seed(1)
+  a <- check_fit(nec4param, group = 4, ndraws = 50)
+  runif(5)
+  b <- check_fit(nec4param, group = 4, ndraws = 50)
+  # The whole table rather than one column: every simulated quantity has to
+  # repeat, not only the one the restore was most likely to disturb.
+  expect_equal(a, b)
+})
+
+test_that("check_fit refuses a seed set.seed() would take silently", {
+  # set.seed(NULL) re-initialises from the clock, so the diagnostic would not
+  # repeat and the caller's seed would be discarded without a word. This is
+  # #310's defect reached through a second door.
+  skip_on_cran()
+  expect_error(check_fit(nec4param, seed = NULL), "seed")
+  # NA is how brms writes "no seed", and the initial-value search reads it that
+  # way, so a user could plausibly pass it here. set.seed(NA) is an error
+  # rather than a reseed, but it is refused with a message naming the argument.
+  expect_error(check_fit(nec4param, seed = NA), "must be a number")
+  expect_error(check_fit(nec4param, seed = "ten"), "seed")
+  expect_error(check_fit(nec4param, seed = c(1, 2)), "seed")
+  expect_error(suppressMessages(check_fit(manec_example, seed = NULL)), "seed")
+})

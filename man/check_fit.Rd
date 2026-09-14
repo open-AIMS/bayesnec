@@ -32,7 +32,10 @@ actually holds where that is smaller.}
 
 \item{seed}{A \code{\link[base]{numeric}} vector of length 1. Passed to
 \code{\link[base]{set.seed}} before simulating, so the result is
-reproducible.}
+reproducible. The caller's random number stream is restored before the
+check returns, so running it does not change what the next random operation
+in the session returns. \code{NULL} is refused rather than passed on,
+because \code{set.seed(NULL)} re-initialises the stream from the clock.}
 
 \item{...}{Unused.}
 

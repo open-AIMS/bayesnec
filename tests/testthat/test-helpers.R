@@ -402,3 +402,113 @@ test_that("an estimate is back-transformed through a local function", {
   }
   expect_length(build(), 3)
 })
+
+# #337. Everything in the package that seeds a computation outside of fitting
+# restores the caller's stream through this helper, so the helper's own
+# behaviour is asserted here rather than only through its call sites.
+
+test_that("with_preserved_rng_state puts the stream back", {
+  set.seed(99)
+  expected <- runif(3)
+  set.seed(99)
+  first <- runif(1)
+  bayesnec:::with_preserved_rng_state({
+    set.seed(1234)
+    runif(10)
+  })
+  expect_equal(c(first, runif(2)), expected)
+})
+
+test_that("with_preserved_rng_state restores after an error", {
+  # A diagnostic that fails partway must still leave the stream where it was
+  # found, or an error becomes a second, silent, defect.
+  set.seed(99)
+  expected <- runif(3)
+  set.seed(99)
+  first <- runif(1)
+  expect_error(bayesnec:::with_preserved_rng_state({
+    set.seed(1234)
+    runif(10)
+    stop("failed partway")
+  }), "failed partway")
+  expect_equal(c(first, runif(2)), expected)
+})
+
+test_that("with_preserved_rng_state restores the generator kind", {
+  old_kind <- RNGkind()
+  on.exit(suppressWarnings(RNGkind(old_kind[1], old_kind[2], old_kind[3])),
+          add = TRUE)
+  suppressWarnings(RNGkind(sample.kind = "Rounding"))
+  bayesnec:::with_preserved_rng_state(set.seed(11, sample.kind = "Rejection"))
+  expect_identical(RNGkind()[3], "Rounding")
+})
+
+test_that("with_preserved_rng_state leaves an unused session without a seed", {
+  # A session that has never drawn has no .Random.seed. Assigning one where
+  # there was none would make the next draw depend on this call having been
+  # made, which is the defect in a different form. Tested by removing the
+  # object rather than in a fresh session, which is what R itself does.
+  had_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+  old_seed <- if (had_seed) {
+    get(".Random.seed", envir = globalenv(), inherits = FALSE)
+  } else {
+    NULL
+  }
+  old_kind <- RNGkind()
+  # One handler, kind first and seed second, for the reason
+  # with_preserved_rng_state() gives: RNGkind() called with arguments rewrites
+  # .Random.seed, and where the kind genuinely changes -- which it does here,
+  # "Rounding" back to "Rejection" -- it re-initialises the generator from the
+  # clock. Two handlers registered in this order with add = TRUE would run the
+  # seed restore first and leave the session time-seeded.
+  on.exit({
+    suppressWarnings(RNGkind(old_kind[1], old_kind[2], old_kind[3]))
+    if (is.null(old_seed)) {
+      suppressWarnings(rm(".Random.seed", envir = globalenv()))
+    } else {
+      assign(".Random.seed", old_seed, envir = globalenv())
+    }
+  }, add = TRUE)
+  suppressWarnings(RNGkind(sample.kind = "Rounding"))
+  suppressWarnings(rm(".Random.seed", envir = globalenv()))
+  bayesnec:::with_preserved_rng_state({
+    set.seed(1234, sample.kind = "Rejection")
+    runif(10)
+  })
+  expect_false(exists(".Random.seed", envir = globalenv(), inherits = FALSE))
+  # The combination the helper's comment is about: with no seed to restore,
+  # RNGkind() is the only thing that puts sample.kind back, so removing
+  # .Random.seed alone would leave the session on the wrong sampler.
+  expect_identical(RNGkind()[3], "Rounding")
+})
+
+test_that("with_preserved_rng_state nests", {
+  # summary() reaches dispersion() once per equation, and each call wraps, so
+  # an inner restore must not disturb an outer one.
+  set.seed(99)
+  expected <- runif(3)
+  set.seed(99)
+  first <- runif(1)
+  bayesnec:::with_preserved_rng_state({
+    set.seed(5)
+    runif(2)
+    bayesnec:::with_preserved_rng_state({
+      set.seed(7)
+      runif(4)
+    })
+    runif(3)
+  })
+  expect_equal(c(first, runif(2)), expected)
+})
+
+test_that("with_preserved_rng_state evaluates in the calling frame", {
+  # The call sites assign inside the braces and read the result afterwards, so
+  # this is load-bearing rather than incidental.
+  f <- function() {
+    bayesnec:::with_preserved_rng_state({
+      z <- 42
+    })
+    z
+  }
+  expect_equal(f(), 42)
+})
