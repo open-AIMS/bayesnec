@@ -172,11 +172,11 @@ jobs:
 
   # cmdstan is installed once for the whole run and cached, rather than in each
   # leg of the fan-out. A cold install is 10-15 minutes of compiling, so nine
-  # legs starting together would each pay it and then contend to write one cache
-  # entry; only one of them would win, and the other eight would report
-  # "Unable to reserve cache" having done the work anyway. On a warm cache this
-  # job is a restore and a version check, and adds well under a minute to the
-  # run. See #313.
+  # legs starting together would each run it and then contend to write one cache
+  # entry; one of them stores the result and the other eight report "Unable to
+  # reserve cache" having done the work anyway. On a warm cache this job is a
+  # restore and a version check, and adds well under a minute to the run.
+  # See #313.
   #
   # The job runs on a dry run as well, and does nothing: a dry run exercises the
   # plumbing and must not spend a quarter of an hour on a toolchain it will not
@@ -335,7 +335,7 @@ jobs:
           restore-keys: |
             stan-${{ runner.os }}-${{ needs.plan.outputs.toolchain }}-${{ matrix.vignette }}-
 
-      # Fails before the sampling is paid for rather than after it, which is
+      # Fails before the sampling time is spent rather than after it, which is
       # the same reason hpc/run.precompile checks its library and its image
       # before it knits.
       - name: Check the backend
@@ -383,12 +383,12 @@ jobs:
       # edited model specification leaves the executable it replaced behind.
       # Measured on a bayesnec program cache of 271 programs, one executable is
       # 2.9 MB and the directory is 744 MB, compressing 2.96:1 in a sample of 40
-      # files; example7, the largest vignette, compiles 304 programs, so about
-      # 890 MB is what a complete cache of the largest of them costs. Anything
-      # past the budget below is therefore stale rather than needed, and it is
-      # bounded here because the repository shares one 10 GB cache quota across
-      # every workflow and eviction is by least-recent use -- an unbounded entry
-      # here would be paid for by the dependency caches R-CMD-check restores.
+      # files; example7, the largest vignette, compiles 304 programs, so a
+      # complete cache of the largest of them is about 890 MB. Anything past the
+      # budget below is therefore stale rather than needed, and it is bounded
+      # here because the repository shares one 10 GB cache quota across every
+      # workflow and eviction is by least-recent use -- an unbounded entry here
+      # would displace the dependency caches R-CMD-check restores.
       #
       # Emptied rather than trimmed. Trimming needs a record of which programs
       # are still in use, and there is none: the cache action does not restore
