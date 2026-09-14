@@ -141,7 +141,7 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
   # Captured before anything can rebind it; see family_link_source() and #256.
   growth_link_source <- family_link_source(substitute(family_growth),
                                            env = parent.frame())
-  formula <- bayesnecformula(formula)
+  formula <- bayesnecformula(formula, env = parent.frame())
   y_var <- hurdle_response_var(formula)
   aterms <- check_hurdle_aterms(formula)
   if (!y_var %in% names(data)) {
@@ -485,8 +485,13 @@ check_hurdle_cens <- function(aterms, data, y, y_var) {
 #'
 #' @noRd
 swap_response <- function(formula, new_response) {
+  # The right-hand side is rebuilt from its deparsed text, which drops the
+  # environment the user wrote it in. Carried over explicitly, so that a model
+  # set or a predictor transformation held in a variable still resolves in the
+  # component formulas. See #319.
   bayesnecformula(
-    as.formula(paste0(new_response, " ~ ", deparse1(rhs(formula))))
+    as.formula(paste0(new_response, " ~ ", deparse1(rhs(formula))),
+               env = formula_env(formula))
   )
 }
 

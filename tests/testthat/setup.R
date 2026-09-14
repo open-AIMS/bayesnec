@@ -46,9 +46,11 @@ ecx4param <- pull_out(manec_example, model = "ecx4param") |>
 # Shared by test-plot.R and test-autoplot.R, which pin the same defect on the
 # base-graphics and ggplot2 paths and would otherwise define it twice.
 transformed_response_fit <- function(fit, model) {
-  # The model name is substituted into the formula text rather than referenced:
-  # crf() evaluates its model argument where the formula is used, not where it
-  # is written, so a variable reference is out of scope by then.
+  # The model name is substituted into the formula text rather than referenced,
+  # so that the stored formula records the equation itself. Since #319 crf()
+  # resolves a variable reference in the environment the formula was written
+  # in, so a reference would work, but it would deparse as the variable name
+  # and these fixtures are read by the plotting paths as text.
   fit$bayesnecformula <- bayesnecformula(
     stats::as.formula(paste0("exp(y) ~ crf(x, model = \"", model, "\")"))
   )

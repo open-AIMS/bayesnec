@@ -373,6 +373,36 @@ test_that("fit_weights_method reads only what a fit records", {
   expect_null(bayesnec:::fit_weights_method(stripped))
 })
 
+
+# ---- #319, the back-transform resolves in the formula's environment ----------
+
+test_that("sub_x_transformation resolves a locally defined function", {
+  # This runs from expand_nec(), ecx() and nsec(), all of which are reached
+  # after every model in the set has compiled and sampled, so a predictor
+  # transformation written with a function the user defined used to fail at the
+  # end of a fit rather than at the start. The assertions above use log() and
+  # sqrt(), which resolve from anywhere and so cannot catch it.
+  build <- function() {
+    squared <- function(z) z^2
+    sub_x_transformation(4, bnf(y ~ crf(squared(x), "nec3param")))
+  }
+  expect_equal(build(), 16)
+})
+
+test_that("an estimate is back-transformed through a local function", {
+  # The same defect end to end: on a stored fit the failure arrives from
+  # expand_nec() or ecx(), not from model.frame().
+  build <- function() {
+    squared <- function(z) z^2
+    fit <- suppressMessages(suppressWarnings(
+      pull_out(manec_example, model = "nec4param")
+    ))
+    fit$bayesnecformula <- bnf(y ~ crf(squared(x), "nec4param"))
+    ecx(fit, ecx_val = 10)
+  }
+  expect_length(build(), 3)
+})
+
 # #337. Everything in the package that seeds a computation outside of fitting
 # restores the caller's stream through this helper, so the helper's own
 # behaviour is asserted here rather than only through its call sites.

@@ -147,7 +147,8 @@ bnec_joint <- function(object, model = NULL, model_survival = NULL,
   if (is.null(formula)) {
     formula <- object$formula
   }
-  formula <- swap_crf_model(bayesnecformula(formula), model)
+  formula <- swap_crf_model(bayesnecformula(formula, env = parent.frame()),
+                            model)
   message("Refitting jointly as a ", joint_fam, " with a ", model,
           " response block and a ", model_survival, " survival block",
           " (crossed weight ", signif(best$weight, 3), ").")
