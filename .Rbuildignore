@@ -34,3 +34,4 @@ README.Rmd
 ^hpc$
 ^.*\.sif$
 ^\.apptainer-tmp$
+^CLAUDE\.md$
