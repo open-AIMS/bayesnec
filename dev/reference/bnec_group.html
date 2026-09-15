@@ -148,6 +148,45 @@ fits.</p>
 <p>It does not refit the favoured combination jointly. That is stage 2 of #33
 and lands in the post-processing that the <code>toxval</code> migration moves, so
 it is deliberately out of scope here.</p>
+<p><b>Fitting the levels in parallel</b></p>
+<p>A grouped call has two loops that could use a <span class="pkg">future</span> plan: the levels,
+and the models within a level. One plan drives one of them, because
+<span class="pkg">future</span> evaluates a nested future sequentially unless the plan is a
+list, so <code>bnec_group()</code> decides which and says which.</p>
+<p>The two arrangements are counted in rounds of one fit and the smaller is
+taken, a tie going to the models, which is what earlier versions did. Writing
+<em>L</em> for the levels, <em>M</em> for the equations the formula asks for and
+<em>W</em> for the workers, the levels take <code>ceiling(L / W) * M</code> rounds
+and the models <code>L * ceiling(M / W)</code>. Seven levels of eleven equations
+over four workers is 22 against 21, so the levels stay in sequence; over
+eight workers it is 11 against 14, so they do not. A nested plan —
+<code>plan(list(tweak(multisession, workers = 2), tweak(multisession,
+workers = I(4))))</code> — drives both loops and is honoured without being
+counted, and <code>plan(list(sequential, ...))</code> asks for the levels in
+sequence explicitly.</p>
+<p>No argument turns this on or off: the plan already holds that state, as it
+does for <code><a href="bnec.html">bnec</a></code>.</p>
+<p>The worked treatment — why the inner worker count needs <code><a href="https://rdrr.io/r/base/AsIs.html" class="external-link">I()</a></code>, what a
+parallel grouped call does to compilation and to memory, and the warning a
+nested plan emits — is in <code><a href="../articles/example2.html">vignette("example2")</a></code> under <em>The
+levels of a grouped call</em>.</p>
+<p><b>What a plan does and does not reproduce</b></p>
+<p>Each level is given its own seed, realised in the calling session before the
+levels are dispatched and derived from <code>seed</code> where you passed one. So a
+grouped call gives the same estimates whichever arrangement it took, and the
+worker count does not change an answer. With a <code>seed</code> it repeats with no
+<code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></code> in the session; without one,
+<code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></code> before the call fixes it.</p>
+<p>What was realised is kept: the returned object carries <code>level_seeds</code>,
+one per level in the order of <code>levels</code>. A regenerated seed cannot be
+trusted to be the same one years later — <code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample.int()</a></code>'s algorithm
+changed once already, in R 3.6.0 — and these objects are archived and
+reopened, so the realisation is stored rather than described.</p>
+<p>The estimates a grouped call reports are not those earlier versions reported,
+because the levels are now seeded rather than drawing from the session's
+stream as each is reached. They are another realisation of the same
+weighting. <code><a href="bnec.html">bnec</a></code> describes the rest of what a plan does to a
+fit, and none of that changes here.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>

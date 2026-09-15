@@ -122,6 +122,20 @@ available methods.</p>
 <dd><p>The number of observations per level.</p></dd>
 
 
+<dt><code>weights_method</code></dt>
+<dd><p>The model-averaging weighting requested of
+<code><a href="bnec_group.html">bnec_group</a></code>, which <code><a href="crossed_group_weights.html">crossed_group_weights</a></code> checks
+against what the fits themselves carry.</p></dd>
+
+
+<dt><code>level_seeds</code></dt>
+<dd><p>The seed each level was fitted under, realised in the
+calling session before the levels were dispatched. Kept so that the
+realisation is recoverable from the fit rather than regenerated, for the
+reason <code><a href="expand_manec.html">expand_manec()</a></code> stores <code>w_draw_index</code> beside
+<code>w_draw_seed</code>.</p></dd>
+
+
 </dl></div>
     <div id="see-also">
     <h2>See also</h2>
