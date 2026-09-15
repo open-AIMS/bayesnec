@@ -81,6 +81,11 @@
     <div class="section level2">
 <h2 class="page-header" data-toc-text="2.2.0" id="bayesnec-220">bayesnec 2.2.0<a class="anchor" aria-label="anchor" href="#bayesnec-220"></a></h2>
 <div class="section level3">
+<h3 id="vignette-precompilation-2-2-0">Vignette precompilation<a class="anchor" aria-label="anchor" href="#vignette-precompilation-2-2-0"></a></h3>
+<ul><li>
+<code>vignettes/precompile.R</code> now loads the repository checkout by default and reports the package version and source path before knitting. An explicit installed-package mode preserves the HPC route, which verifies its job-local installation before the script runs. A local render can no longer silently use a different <code>bayesnec</code> installation (<a href="https://github.com/open-aims/bayesnec/issues/340" class="external-link">#340</a>).</li>
+</ul></div>
+<div class="section level3">
 <h3 id="reproducible-posterior-comparisons-and-prior-samples-2-2-0">Reproducible posterior comparisons and prior samples<a class="anchor" aria-label="anchor" href="#reproducible-posterior-comparisons-and-prior-samples-2-2-0"></a></h3>
 <ul><li>
 <code><a href="../reference/average_estimates.html">average_estimates()</a></code>, <code><a href="../reference/compare_estimates.html">compare_estimates()</a></code>, <code><a href="../reference/compare_fitted.html">compare_fitted()</a></code> and <code><a href="../reference/sample_priors.html">sample_priors()</a></code> now accept <code>seed = 10</code> and restore the caller’s random number state, including after an error. The Box-Muller normal generator’s cached value is not part of this state and cannot be restored; use the default Inversion normal generator when subsequent normal draws must be preserved. <code><a href="../reference/compare_posterior.html">compare_posterior()</a></code> forwards the seed to the selected comparison. Repeated calls with the same inputs and RNG kind now agree. Use the function’s <code>seed</code> argument to change the sampled draws; a preceding <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed()</a></code> no longer changes the result. This changes the posterior pairing and therefore can change estimates, difference intervals and probabilities compared with earlier versions (<a href="https://github.com/open-aims/bayesnec/issues/343" class="external-link">#343</a>).</li>
