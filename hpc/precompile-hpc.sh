@@ -260,9 +260,21 @@ fi
 # cache rather than writing it. Raise it deliberately, once the cache is warm.
 n=${#args[@]}
 echo "==> submitting $n task(s)"
+# BAYESNEC_FIT_STORE is passed as an sbatch --export rather than being left to
+# the environment: sbatch exports the submitting shell's environment by default,
+# but the submitting shell here is the far end of an ssh, which does not carry
+# it. Named explicitly with ALL so the rest of the job's environment is
+# unaffected. Unset, this is ALL and nothing else, which is the default.
+# See "Fits computed elsewhere" in hpc/README.md.
+if [ -n "${BAYESNEC_FIT_STORE:-}" ]; then
+  echo "    fit store: $BAYESNEC_FIT_STORE"
+  export_arg="--export=ALL,BAYESNEC_FIT_STORE=$BAYESNEC_FIT_STORE"
+else
+  export_arg="--export=ALL"
+fi
 JOB=$(ssh "$HOST" "bash -lc 'cd $DEST && chmod +x hpc/run.precompile && \
   module load slurm >/dev/null 2>&1; \
-  sbatch --parsable --array=1-$n%1 hpc/run.precompile'")
+  sbatch --parsable $export_arg --array=1-$n%1 hpc/run.precompile'")
 echo "job $JOB: ${args[*]}"
 
 if [ "$wait_for_job" -eq 0 ]; then

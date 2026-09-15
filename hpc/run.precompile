@@ -191,11 +191,32 @@ mkdir -p "$CACHE"
 # BAYESNEC_VIGNETTE_CACHE is deliberately not passed through. A vignette
 # precompiled on the HPC is one whose numbers will be quoted, and the fit cache
 # reuses chunks fitted by whatever version was installed when it was written.
-singularity exec -B "$JOB":"$JOB" -B "$CACHE":"$CACHE" --pwd "$JOB" \
+#
+# BAYESNEC_FIT_STORE is, and the distinction is the point. The fit cache keys on
+# a chunk's code hash and reuses whatever was in it, so it cannot say which
+# version fitted what. A store is keyed on the call and the data, was written by
+# a run that recorded the bayesnec commit and checked this same image, and
+# refuses a call it does not hold rather than returning something near it. Set
+# it in the call to precompile-hpc.sh; unset, this is one more empty variable.
+# See "Fits computed elsewhere" in hpc/README.md.
+STORE_BIND=()
+if [ -n "${BAYESNEC_FIT_STORE:-}" ]; then
+  [ -d "$BAYESNEC_FIT_STORE" ] || {
+    echo "BAYESNEC_FIT_STORE=$BAYESNEC_FIT_STORE is not a directory" >&2; exit 1; }
+  # Bound explicitly: the store lives on scratch outside the job directory, and
+  # apptainer does not mount it otherwise.
+  STORE_BIND=(-B "$BAYESNEC_FIT_STORE":"$BAYESNEC_FIT_STORE")
+  echo "--- fit store: $BAYESNEC_FIT_STORE"
+  cat "$BAYESNEC_FIT_STORE/MANIFEST" 2>/dev/null || true
+fi
+
+singularity exec -B "$JOB":"$JOB" -B "$CACHE":"$CACHE" "${STORE_BIND[@]}" \
+  --pwd "$JOB" \
   "${RENV[@]}" \
   --env BAYESNEC_PRECOMPILE_PACKAGE=installed \
   --env BAYESNEC_STAN_CACHE="$CACHE" \
   --env BAYESNEC_VIGNETTES="$VIG" \
+  --env BAYESNEC_FIT_STORE="${BAYESNEC_FIT_STORE:-}" \
   --env SLURM_CPUS_PER_TASK="${SLURM_CPUS_PER_TASK:-4}" \
   "$SIF" Rscript vignettes/precompile.R
 
