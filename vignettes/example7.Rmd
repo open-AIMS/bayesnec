@@ -12,83 +12,50 @@ bibliography: bayesnec.bib
 
 
 
-
 [e1]: https://open-aims.github.io/bayesnec/articles/example1.html
 [e2]: https://open-aims.github.io/bayesnec/articles/example2.html
 [e5]: https://open-aims.github.io/bayesnec/articles/example5.html
 
 # Summary
 
-Specific growth rate can legitimately be negative: a population that declines
-over a test has a negative one. The common conventions for handling those
-negative values before fitting are applied routinely and are rarely reported.
-Six are compared here, each named below by the short label used for it
-throughout: keeping the values as recorded (`measured`), deleting the rows that
-hold them (`deleted`), replacing the values with zero (`floored`), declaring
-them left-censored at zero (`censored`), and fitting a response distribution
-with no support below zero, either a Beta (`beta`) or a Gamma (`gamma`).
+This vignette examines how different conventions for handling negative
+growth-rate measurements affect concentration-response modelling and the
+resulting toxicity estimates. Negative growth rates are common in algal toxicity
+tests and other ecological endpoints that measure change over time, yet many
+analytical workflows modify or remove these observations before model fitting.
 
-Three toxicity estimates are reported for each. The ErC10 and the ErC50 are the
-concentrations at which the growth rate has fallen to 90% and 50% of the
-control, and the NSEC is the highest concentration at which the modelled
-response is still indistinguishable from the control. Sections 2.2 and 2.3
-define all three.
+Using simulated datasets where the true toxicity values are known, six commonly
+used approaches were compared: retaining measured values, censoring values below
+zero, deleting negative observations, replacing negatives with zero
+("flooring"), and fitting Beta or Gamma response distributions that do not
+permit negative values. Performance was assessed for ErC10, ErC50 and NSEC
+estimates across a range of experimental designs and levels of measurement
+precision.
 
-## The problem
+The results show that approaches which retain the measured information, either
+directly or through censoring, consistently recover the true toxicity values,
+maintain nominal interval coverage, and improve as experimental precision
+increases. Deleting negative observations performs less well but remains largely
+unbiased. In contrast, conventions that replace negative values or impose a
+non-negative response distribution introduce systematic bias that does not
+disappear with increasing precision. Flooring negative values produces
+increasingly over-conservative toxicity estimates, particularly for the NSEC,
+while Beta and Gamma models can introduce substantial bias despite successfully
+converging.
 
-Replacing a negative growth rate with zero asserts that the population neither
-grew nor declined. That is a statement about the measurement, not a
-presentational tidy-up. It is made on exactly the observations that determine
-the shape of the curve at the top of the concentration series. Nothing in a
-Gaussian concentration-response fit requires the response to be positive, so the
-substitution is not something the fitting method demands.
+Application to four real algal growth datasets demonstrated that the choice of
+convention can materially affect reported toxicity values, although the
+magnitude of the effect depends on the prevalence of observations at or below
+zero growth. The simulation results indicate that the direction of the bias is
+predictable even when its magnitude is dataset specific.
 
-## Findings
-
-Six conventions were scored against a known truth on 4,200 model-averaged fits,
-across a precision sweep in which the control coefficient of variation falls
-from 9.6% to 1.9%. Each convention calls `bnec()` with its own default priors
-and averages over the declining candidate set, so the comparison is between
-practices rather than between likelihoods.
-
-- Keeping the measurement recovers the truth and replacing it does not. The
-  ErC50 bias of `measured` runs from -0.4% to
-  -0.2% across the sweep, and of `censored`
-  from -0.7% to
-  -0.2%. Flooring stops at
-  -2.3% and a Beta at
-  -5.8%.
-- The error does not shrink as the experiment improves. A bias that does not
-  converge sits inside an interval that keeps narrowing, so coverage collapses:
-  at the highest precision tested the 95% interval of `floored` contains the
-  true ErC50 in 0.24 of
-  realisations, against 0.97 for
-  `measured`. A laboratory that adds replicates and reduces its control
-  variability produces an analysis that is more confident and no less wrong.
-- The no-effect estimates are affected most. The NSEC of `floored` is
-  displaced by -52.9% at the highest precision
-  and its interval contains the true `nec` in
-  0.00 of 100 realisations.
-- A zero-bounded distribution is not a solution. The Gamma displaces ErC10
-  by -25.0% with coverage of
-  0.01, because an identity-link
-  Gamma ties the residual spread to the fitted mean and these data were
-  generated with a constant one.
-- None of it is visible in the diagnostics. Every one of the 4,200 fits
-  converged and returned all three estimates.
-
-## Recommendations
-
-- Analyse the growth rates as measured, and let the model set decide the shape.
-- Where the negative values were never recorded, declare them left-censored at
-  zero rather than substituting a value.
-- Do not replace negative values with zero, and do not choose a zero-bounded
-  response distribution in order to avoid them.
-- Do not convert to percent inhibition before fitting.
-- Report the proportion of observations at or below zero, which is the single
-  number that tells a reader whether the question arises for the dataset at all.
-
-Section 7 gives these with the evidence for each, and Section 8 the limitations.
+Overall, the study supports analysing growth-rate data as measured whenever
+possible and using censoring when values below a detection or counting limit are
+unavailable. The results provide strong evidence against replacing negative
+values with zero or selecting bounded response distributions solely because
+negative responses are present. These practices distort the data-generating
+process and can produce toxicity estimates that become more confidently wrong as
+data quality improves.
 
 # 1 Negative growth rates
 
@@ -411,6 +378,8 @@ The candidate set differs between families, because the declining set is
 filtered by what each family's support allows. Under a Gaussian family it is
 the fourteen equations listed in Section 4; under a Beta and under a Gamma it
 is twelve.
+
+
 
 
 ## 5.2 Design
