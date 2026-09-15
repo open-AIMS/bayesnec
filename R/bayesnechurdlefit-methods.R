@@ -564,6 +564,11 @@ amend.bayesnechurdlefit <- function(object, drop, add, loo_controls,
                                     prior_type = "uninformative",
                                     timeout = Inf,
                                     predictor_scale = "auto") {
+  predictor_scale <- validate_predictor_scale(predictor_scale)
+  # A factorised hurdle fit is amended growth first and survival second. The
+  # growth data omit deaths, so validate against the complete stored predictor
+  # before either component can be refitted. See #317.
+  validate_predictor_scale(predictor_scale, hurdle_raw_data(object)$x)
   args <- list(x_range = x_range, resolution = resolution, sig_val = sig_val,
                prior_type = prior_type, predictor_scale = predictor_scale,
                timeout = timeout)

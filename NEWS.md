@@ -16,7 +16,7 @@
 
 ## Default priors
 
-- `bnec()` and `get_priors()` now accept `predictor_scale = "log"` to declare
+- Default-prior entry points now accept `predictor_scale = "log"` to declare
   that the predictor has already been logged. The declaration prevents a logged
   concentration series whose lowest value is at or above 1 from being logged a
   second time when the `nec` and `ec50` prior is built, and retains `log(1) = 0`

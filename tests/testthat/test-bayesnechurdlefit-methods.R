@@ -44,6 +44,27 @@ test_that("delegating methods return one element per component", {
   expect_equal(out, list(growth = "nec3param", survival = "nec3param"))
 })
 
+test_that("hurdle amend validates the full predictor before either part (#317)", {
+  object <- mock_hurdle()
+  object$data$x <- c(1, 2, -1, -2)
+  calls <- 0L
+  local_mocked_bindings(
+    amend = function(...) {
+      calls <<- calls + 1L
+      stop("component amend should not start")
+    },
+    .package = "bayesnec"
+  )
+
+  expect_error(
+    bayesnec:::amend.bayesnechurdlefit(
+      object, add = "ecxexp", predictor_scale = "concentration"
+    ),
+    "requires a non-negative predictor"
+  )
+  expect_equal(calls, 0L)
+})
+
 test_that("combining refuses objects that are not hurdle fits", {
   o <- mock_hurdle()
   plain <- structure(list(model = "nec3param"), class = c("bayesnecfit", "bnecfit"))
