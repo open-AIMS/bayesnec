@@ -51,5 +51,6 @@ ecx_models <- pull_out(manec_example, model = "ecx")
 
 }
 \seealso{
-\code{\link{bnec}}, \code{\link{models}}.
+\code{\link{bnec}}, \code{\link{models}},
+\code{\link{pull_best}}.
 }

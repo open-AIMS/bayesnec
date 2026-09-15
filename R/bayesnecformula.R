@@ -11,6 +11,15 @@
 #' @param formula Either a \code{\link[base]{character}} string defining an
 #' R formula or an actual \code{\link[stats]{formula}} object. See details.
 #' @param ... Unused.
+#' @param env An \code{\link[base]{environment}} in which to resolve symbols
+#' that \code{formula} names but that are not columns of the data --- a
+#' variable holding the model set, or a function used to transform the
+#' predictor. Only used when \code{formula} is a character string, because a
+#' formula object already carries its own environment. Defaults to the calling
+#' environment, so a character formula passed down through a wrapper function
+#' is bound at the last call rather than where the string was written; where
+#' that matters, convert it with \code{bnf(string, env = ...)} and pass the
+#' result on.
 #'
 #' @importFrom stats as.formula
 #'
@@ -36,6 +45,13 @@
 #' (or group of equations, see \code{\link{models}}). Internally
 #' this argument is substituted by an actual \code{\link[brms]{brmsformula}},
 #' which is then passed onto \code{\link[brms]{brm}} for model fitting.
+#'
+#' The \code{model} argument may be a variable rather than a literal, so that
+#' the set can be assembled before the formula is written --- \code{eqs <-
+#' c("nec3param", "ecxll3"); bnf(y ~ crf(x, eqs))}. It is resolved in the
+#' environment the formula was written in, which for a formula supplied as a
+#' character string means the environment given by \code{env}. The same applies
+#' to any function used to transform the predictor inside \code{crf}.
 #' 
 #' \bold{Group-level terms: \code{glterms}}
 #' 
@@ -287,9 +303,21 @@
 #' try(bnf(y | trials(tr) ~ crf(scale(x, scale = TRUE), "nec3param")))
 #' }
 #' @export
-bayesnecformula <- function(formula, ...) {
+bayesnecformula <- function(formula, ..., env = parent.frame()) {
+  if (!is.environment(env)) {
+    # Refused rather than passed through. environment(formula) <- NULL is legal
+    # and would silently restore the behaviour this argument exists to fix,
+    # because formula_env() then falls back to the global environment.
+    stop("Argument `env` must be an environment; you supplied ",
+         class(env)[1], ".", call. = FALSE)
+  }
   if (is.character(formula)) {
-    formula <- as.formula(formula)
+    # A character formula carries no environment of its own, so one has to be
+    # supplied. as.formula()'s default would give the frame of this function,
+    # whose lexical parent is the package namespace and then the global
+    # environment, which is why a variable model set written in a character
+    # formula resolved only at the console. See #319.
+    formula <- as.formula(formula, env = env)
   } else if (!inherits(formula, "formula")) {
     stop("Your formula must be either a valid character or a formula object.")
   }
@@ -297,8 +325,8 @@ bayesnecformula <- function(formula, ...) {
 }
 
 #' @export
-bnf <- function(formula, ...) {
-  bayesnecformula(formula = formula, ...)
+bnf <- function(formula, ..., env = parent.frame()) {
+  bayesnecformula(formula = formula, ..., env = env)
 }
 
 #' Check if input model formula is appropriate to use with
@@ -655,8 +683,18 @@ simplify_formula <- function(formula, data, ...) {
                        rep("trials_var", length(t_var)),
                        names(c_vars),
                        rep("rate_var", length(ra_var)))
-  list(formula = as.formula(short_form), pop_vars = pop_vars,
-       group_vars = r_vars)
+  # The reduced formula is what model.frame() is given below, and model.frame()
+  # resolves anything that is not a column of the data in the formula's own
+  # environment. Without an env argument as.formula() attaches the frame of
+  # this function, whose lexical parent is the package namespace, so a
+  # predictor transformation written with a locally defined function --
+  # crf(sq(x), ...) with sq() defined in the caller -- was found only at the
+  # console. trials() has to be bound as well: short_form keeps it as a call
+  # and bayesnec does not export it, so the user's environment alone cannot
+  # resolve it. See #319.
+  list(formula = as.formula(short_form,
+                            env = formula_eval_env(formula, trials = trials)),
+       pop_vars = pop_vars, group_vars = r_vars)
 }
 
 #' @noRd
@@ -737,6 +775,15 @@ wrangle_model_formula <- function(model, formula, data, family = NULL,
     check_disp_spec(disp_spec, family, response = disp_y)
     brms_bf <- add_disp_block(brms_bf, model, disp_spec, family, new_x, disp_y)
   }
+  # brms resolves everything in the formula that is not a column of the data in
+  # the environment of the brmsformula's own formula, the distributional and
+  # non-linear sub-models included. That environment comes from the bf_<model>
+  # template, which is the global environment, so a function the user wrote in
+  # a disp(~...) term was found at the console and reported as "could not find
+  # function" from inside a function. Carried over here rather than in
+  # make_disp_block(), because setting it on the sub-model formula alone has no
+  # effect -- brms reads the top-level one. See #319.
+  environment(brms_bf$formula) <- formula_env(formula)
   brms_bf
 }
 
@@ -1074,7 +1121,27 @@ get_model_from_formula <- function(formula) {
     stop("You must specify which non-linear function to use with crf")
   }
   x_str <- paste0(substr(x_str, 1, nchar(x_str) - 1), ", \"model\")")
-  expand_model_set(eval(parse(text = x_str)))
+  # Evaluated in a frame that binds crf() and inherits from the formula's own
+  # environment, so that a model set held in a variable is looked up where the
+  # user wrote it. Evaluating in environment(formula) directly would not work:
+  # crf() is internal and not exported, so it would not be found from a user
+  # frame. Both halves are needed -- crf() itself resolves its model argument
+  # in parent.frame(), which is this frame. See #319.
+  model <- eval(parse(text = x_str),
+                envir = formula_eval_env(formula, crf = crf))
+  # Checked here rather than left to expand_model_set(), which indexes
+  # mod_groups with it and reports "'match' requires vector arguments" for
+  # anything that is not a vector. The symbol now resolves in more environments
+  # than it did, so a name that happens to be bound to something else in the
+  # caller -- a function, a data frame -- reaches this point where it used to
+  # fail to resolve at all.
+  if (!is.character(model) || length(model) == 0) {
+    stop("The `model` argument of crf() must be a character vector naming one",
+         " or more equations or model groups; here it resolved to an object of",
+         " class \"", class(model)[1], "\" and length ", length(model),
+         ". See ?models.", call. = FALSE)
+  }
+  expand_model_set(model)
 }
 
 #' @noRd
@@ -1149,6 +1216,54 @@ split_calls <- function(formula_part) {
        ra_call = ra_call, ra_var = ra_var)
 }
 
+#' The environment in which a formula's symbols are resolved
+#'
+#' @param formula A \code{\link[stats]{formula}}.
+#'
+#' @details A formula carries the environment it was written in, and that is
+#' where a symbol the user put in it has to be looked up --- a variable holding
+#' the model set, or a function transforming the predictor. Evaluating without
+#' an environment instead uses the frame of whichever internal function is doing
+#' the evaluating, whose lexical parent is the package namespace and then the
+#' global environment, so the symbol is found only when the user happens to be
+#' working at the console. See #319.
+#'
+#' @return An \code{\link[base]{environment}}.
+#'
+#' @noRd
+formula_env <- function(formula) {
+  env <- environment(formula)
+  # emptyenv() is tested alongside NULL because it is the other way a formula's
+  # environment is stripped, and it is the worse of the two to pass on: nothing
+  # at all resolves through it, not even base. Returned as the global
+  # environment, which is where such a formula resolved before #319.
+  if (is.null(env) || identical(env, emptyenv())) globalenv() else env
+}
+
+#' An evaluation frame chained to a formula's own environment
+#'
+#' @param formula A \code{\link[stats]{formula}}.
+#' @param ... Named objects to bind in the frame.
+#'
+#' @details A \code{\link{bayesnecformula}} names functions that
+#' \code{\link[bayesnec:bayesnec-package]{bayesnec}} defines internally and does
+#' not export --- \code{crf} in the term itself, \code{trials} in the reduced
+#' formula \code{\link{model.frame}} is built from. Evaluating in
+#' \code{environment(formula)} alone therefore fails on the function, while
+#' evaluating in a frame inside the namespace fails on the user's own symbols.
+#' Binding the internal functions in a frame whose parent is the formula's
+#' environment resolves both. See #319.
+#'
+#' @return An \code{\link[base]{environment}}.
+#'
+#' @noRd
+formula_eval_env <- function(formula, ...) {
+  # list2env() rather than a loop over names(), which binds nothing at all for
+  # an argument passed positionally and defers the failure to a "could not find
+  # function" a long way from the call. list2env() refuses an unnamed element.
+  list2env(list(...), envir = new.env(parent = formula_env(formula)))
+}
+
 #' @noRd
 crf <- function(x, model, arg_to_retrieve = "x") {
   mf <- match.call(expand.dots = FALSE)
@@ -1157,7 +1272,13 @@ crf <- function(x, model, arg_to_retrieve = "x") {
     deparse(substitute(a, list(a = mf[[m]])))
   } else if (arg_to_retrieve == "model") {
     m <- match("model", names(mf), 0L)
-    eval(mf[[m]])
+    # parent.frame() rather than eval()'s default, which is the frame of crf()
+    # itself. That frame's lexical parent is the package namespace, then the
+    # imports, then base, then the global environment; the caller's frame is
+    # never on that chain, which is why a variable model set was found only in
+    # the global environment. get_model_from_formula() supplies a calling frame
+    # that inherits from the formula's environment. See #319.
+    eval(mf[[m]], envir = parent.frame())
   } else {
     stop("arg_to_retrieve must be either \"x\" or \"model\".")
   }
@@ -1214,7 +1335,9 @@ trials <- function(...) {
 #'
 #' @export
 make_brmsformula <- function(formula, data, family = NULL) {
-  formula <- bnf(formula)
+  # parent.frame() so that a character formula resolves symbols where
+  # make_brmsformula() was called from rather than in its own frame. See #319.
+  formula <- bnf(formula, env = parent.frame())
   all_models <- get_model_from_formula(formula)
   out <- list()
   for (i in seq_along(all_models)) {

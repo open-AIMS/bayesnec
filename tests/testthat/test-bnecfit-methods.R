@@ -302,3 +302,13 @@ test_that("update() keeps the weighting method the set was built with", {
     suppressWarnings()
   expect_equal(attr(defaulted_fitting$mod_stats$wi, "method"), "pseudobma")
 })
+
+
+test_that("update refuses a resolution below 2 before refitting", {
+  # This method samples every model in the set again, so a resolution the
+  # no-effect estimate cannot be read off must be refused before that work
+  # rather than when expand_nec() reaches it. The test costs no fit for the
+  # same reason. See #325.
+  skip_on_cran()
+  expect_error(update(manec_example, resolution = 1), "must be at least 2")
+})

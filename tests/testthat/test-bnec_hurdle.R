@@ -172,7 +172,7 @@ test_that("bnec_hurdle fits a censored response and routes it correctly", {
   expect_gt(sum(is_lo), 0)
   fit <- bnec_hurdle(y | cens(cens) ~ crf(x, "nec3param"), data = dat,
                      iter = 400, warmup = 200, chains = 2, seed = 17,
-                     refresh = 0, open_progress = FALSE) |>
+                     refresh = 0) |>
     suppressMessages() |>
     suppressWarnings()
   expect_s3_class(fit, "bayesnechurdlefit")

@@ -29,8 +29,7 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   }
   object <- add_criteria(object, loo_controls$fitting, ...)
   fit <- object$fit
-  extract_params <- c("top", "beta", "nec", "f",
-                      "bot", "d", "slope", "ec50")
+  extract_params <- extract_par_order()
   extracted_params <- lapply(extract_params, extract_pars, fit)
   names(extracted_params) <- gsub("^nec$", "ne", extract_params)
   grid <- prediction_grid(fit, formula, x_range = x_range,
@@ -66,19 +65,28 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   # and for any two-block fit where at least one block is smooth.
   nsec_off_curve <- function(post) {
     reference <- quantile(post[, 1], sig_val)
-    out <- vapply(seq_len(nrow(post)), function(i) {
-      crossing_x(post[i, ], reference, pred_data$x)
-    }, numeric(1))
+    # The reference and the start of the search are the same grid point by
+    # construction, so a draw at or below the reference there takes that point
+    # as its NSEC. Unlike nsec.bayesnecfit() this is the first column of the
+    # grid rather than the lowest observed predictor value; the two differ only
+    # where bnec() was given an x_range, which this path has never honoured
+    # (D15 ruling 2). See #325.
+    out <- nsec_from_posterior(post, reference, pred_data$x, pred_data$x[1],
+                               post[, 1])
     n_missing <- sum(is.na(out))
     if (n_missing > 0) {
       # Names the equation. bnec() calls this once per model, so on the default
       # 23-model set an unnamed message says only that something somewhere is
-      # censored, which is not enough to act on.
+      # censored, which is not enough to act on. It names the bound as a value
+      # rather than as "the highest concentration tested", which is the top of
+      # the prediction grid and is a higher concentration than any tested
+      # wherever bnec() was given an x_range above the data.
       message("The fitted ", object$model, " curve does not fall to the ",
               "control's ", sig_val, " quantile within the predictor range ",
               "for ", n_missing, " of ", length(out), " draws. Those draws ",
               "are excluded from the NSEC summary, which is therefore ",
-              "censored above the highest concentration tested.")
+              "censored above ",
+              signif(sub_x_transformation(max(pred_data$x), formula), 3), ".")
     }
     sub_x_transformation(out, formula)
   }
@@ -167,6 +175,22 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     out <- c(out, list(hurdle = hurdle_parts))
   }
   out
+}
+
+#' The curve parameters, in the order they are appended to a bayesnecfit
+#'
+#' The same set as \code{curve_par_names()}, which \code{\link{curve_params}}
+#' reports from, in a different order. The order is kept because the extracted
+#' elements are appended to the \code{\link{bayesnecfit}} in it, so anything
+#' indexing that object positionally would read a different element if it
+#' changed; \code{test-curve_params.R} asserts that the two vectors hold the same
+#' parameters, so a parameter added for a new equation cannot reach one and not
+#' the other.
+#'
+#' @return A \code{\link[base]{character}} vector.
+#' @noRd
+extract_par_order <- function() {
+  c("top", "beta", "nec", "f", "bot", "d", "slope", "ec50")
 }
 
 #' The grid predictions are made over

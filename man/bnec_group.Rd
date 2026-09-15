@@ -62,6 +62,54 @@ fits.
 It does not refit the favoured combination jointly. That is stage 2 of #33
 and lands in the post-processing that the \code{toxval} migration moves, so
 it is deliberately out of scope here.
+
+\bold{Fitting the levels in parallel}
+
+A grouped call has two loops that could use a \pkg{future} plan: the levels,
+and the models within a level. One plan drives one of them, because
+\pkg{future} evaluates a nested future sequentially unless the plan is a
+list, so \code{bnec_group()} decides which and says which.
+
+The two arrangements are counted in rounds of one fit and the smaller is
+taken, a tie going to the models, which is what earlier versions did. Writing
+\emph{L} for the levels, \emph{M} for the equations the formula asks for and
+\emph{W} for the workers, the levels take \code{ceiling(L / W) * M} rounds
+and the models \code{L * ceiling(M / W)}. Seven levels of eleven equations
+over four workers is 22 against 21, so the levels stay in sequence; over
+eight workers it is 11 against 14, so they do not. A nested plan ---
+\code{plan(list(tweak(multisession, workers = 2), tweak(multisession,
+workers = I(4))))} --- drives both loops and is honoured without being
+counted, and \code{plan(list(sequential, ...))} asks for the levels in
+sequence explicitly.
+
+No argument turns this on or off: the plan already holds that state, as it
+does for \code{\link{bnec}}.
+
+The worked treatment --- why the inner worker count needs \code{I()}, what a
+parallel grouped call does to compilation and to memory, and the warning a
+nested plan emits --- is in \code{vignette("example2")} under \emph{The
+levels of a grouped call}.
+
+\bold{What a plan does and does not reproduce}
+
+Each level is given its own seed, realised in the calling session before the
+levels are dispatched and derived from \code{seed} where you passed one. So a
+grouped call gives the same estimates whichever arrangement it took, and the
+worker count does not change an answer. With a \code{seed} it repeats with no
+\code{\link[base]{set.seed}} in the session; without one,
+\code{\link[base]{set.seed}} before the call fixes it.
+
+What was realised is kept: the returned object carries \code{level_seeds},
+one per level in the order of \code{levels}. A regenerated seed cannot be
+trusted to be the same one years later --- \code{sample.int()}'s algorithm
+changed once already, in R 3.6.0 --- and these objects are archived and
+reopened, so the realisation is stored rather than described.
+
+The estimates a grouped call reports are not those earlier versions reported,
+because the levels are now seeded rather than drawing from the session's
+stream as each is reached. They are another realisation of the same
+weighting. \code{\link{bnec}} describes the rest of what a plan does to a
+fit, and none of that changes here.
 }
 \examples{
 \dontrun{

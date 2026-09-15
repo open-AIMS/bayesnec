@@ -18,7 +18,7 @@ number can be taken without being visible anywhere a new session would look.
 | 2b | `example2b` | the model set, and theoretical curves | — | `dev` |
 | 3 | `example3` | priors | — | `dev` |
 | 4 | `example4` | comparing posteriors | — | `dev` |
-| 5 | `example5` | *NEC*, NSEC and ECx | — | `dev` |
+| 5 | `example5` | installation and setup | #342 | `dev` |
 | 6 | `example6` | hurdle families and zero-inflation | — | `dev` |
 | 7 | `example7` | negative growth rates and the zero boundary | #193 | `negsgr-cens-vignette` |
 | 8 | `example8` | grouping and factor covariates | #6, #33 | `issue-6-33-grouping-vignette` |

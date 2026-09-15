@@ -11,7 +11,8 @@ compare_estimates(
   type = "absolute",
   sig_val = 0.01,
   resolution = 100,
-  x_range = NA
+  x_range = NA,
+  seed = 10
 )
 }
 \arguments{
@@ -42,6 +43,21 @@ less than 0.01 percent on the fits tested, and increases the run time
 roughly in proportion.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
+
+\item{seed}{A \code{\link[base]{numeric}} vector of length 1. Passed to
+\code{\link[base]{set.seed}} before the draws of the posteriors being
+compared are paired, so that two calls on the same fits return the same
+answer. The caller's saved RNG state is restored afterwards, and a
+\code{\link[base]{set.seed}} in the session therefore does not change the
+result. A different value gives another realisation of the same Monte
+Carlo approximation. \code{NULL} is refused, because
+\code{set.seed(NULL)} re-initialises the stream from the clock.
+Reproducibility assumes the same RNG kind; the sampling algorithm is fixed
+to \code{sample.kind = "Rejection"}. The saved RNG state is restored,
+but the cached normal variate used by \code{normal.kind = "Box-Muller"}
+is not part of that state. With Box-Muller, the next normal draw can change
+after an odd number of preceding normal draws. Use R's default
+\code{normal.kind = "Inversion"} to preserve subsequent normal draws.}
 }
 \value{
 A named \code{\link[base]{list}} containing bootstrapped differences
@@ -55,12 +71,15 @@ compares these via bootstrap re sampling.
 }
 \section{Reproducibility}{
 
-The draws of each posterior are paired by an independent random permutation,
-so \code{prob_diff} and the difference intervals change between identical
-calls. Use \code{\link[base]{set.seed}} before the call for a reproducible
-result. This is a Monte Carlo approximation to the difference of two
-\bold{independent} posteriors, using \emph{n} of the \emph{n}^2 available
-pairs.
+The draws of each posterior are paired by a random permutation, so
+\code{prob_diff} and the difference intervals are a Monte Carlo
+approximation to the difference of two \bold{independent} posteriors, using
+\emph{n} of the \emph{n}^2 available pairs. The permutation is drawn under
+\code{seed}, so two calls on the same fits return the same comparison and a
+\code{\link[base]{set.seed}} in the session has no effect on it. A different
+\code{seed} gives another realisation of the same approximation;
+where the approximation matters, compare a few and report the spread. The
+caller's random number state is restored afterwards.
 }
 
 \section{The independence assumption}{

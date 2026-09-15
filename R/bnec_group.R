@@ -47,6 +47,54 @@
 #' and lands in the post-processing that the \code{toxval} migration moves, so
 #' it is deliberately out of scope here.
 #'
+#' \bold{Fitting the levels in parallel}
+#'
+#' A grouped call has two loops that could use a \pkg{future} plan: the levels,
+#' and the models within a level. One plan drives one of them, because
+#' \pkg{future} evaluates a nested future sequentially unless the plan is a
+#' list, so \code{bnec_group()} decides which and says which.
+#'
+#' The two arrangements are counted in rounds of one fit and the smaller is
+#' taken, a tie going to the models, which is what earlier versions did. Writing
+#' \emph{L} for the levels, \emph{M} for the equations the formula asks for and
+#' \emph{W} for the workers, the levels take \code{ceiling(L / W) * M} rounds
+#' and the models \code{L * ceiling(M / W)}. Seven levels of eleven equations
+#' over four workers is 22 against 21, so the levels stay in sequence; over
+#' eight workers it is 11 against 14, so they do not. A nested plan ---
+#' \code{plan(list(tweak(multisession, workers = 2), tweak(multisession,
+#' workers = I(4))))} --- drives both loops and is honoured without being
+#' counted, and \code{plan(list(sequential, ...))} asks for the levels in
+#' sequence explicitly.
+#'
+#' No argument turns this on or off: the plan already holds that state, as it
+#' does for \code{\link{bnec}}.
+#'
+#' The worked treatment --- why the inner worker count needs \code{I()}, what a
+#' parallel grouped call does to compilation and to memory, and the warning a
+#' nested plan emits --- is in \code{vignette("example2")} under \emph{The
+#' levels of a grouped call}.
+#'
+#' \bold{What a plan does and does not reproduce}
+#'
+#' Each level is given its own seed, realised in the calling session before the
+#' levels are dispatched and derived from \code{seed} where you passed one. So a
+#' grouped call gives the same estimates whichever arrangement it took, and the
+#' worker count does not change an answer. With a \code{seed} it repeats with no
+#' \code{\link[base]{set.seed}} in the session; without one,
+#' \code{\link[base]{set.seed}} before the call fixes it.
+#'
+#' What was realised is kept: the returned object carries \code{level_seeds},
+#' one per level in the order of \code{levels}. A regenerated seed cannot be
+#' trusted to be the same one years later --- \code{sample.int()}'s algorithm
+#' changed once already, in R 3.6.0 --- and these objects are archived and
+#' reopened, so the realisation is stored rather than described.
+#'
+#' The estimates a grouped call reports are not those earlier versions reported,
+#' because the levels are now seeded rather than drawing from the session's
+#' stream as each is reached. They are another realisation of the same
+#' weighting. \code{\link{bnec}} describes the rest of what a plan does to a
+#' fit, and none of that changes here.
+#'
 #' @return An object of class \code{\link{bayesnecgroupfit}}.
 #'
 #' @seealso \code{\link{bnec}}, \code{\link{crossed_group_weights}},
@@ -78,7 +126,11 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
   # below dispatches to stats::model.frame, which evaluates crf(x, "nec3param")
   # as an ordinary call returning a length-1 string -- and reports "variable
   # lengths differ", which points nowhere near the actual cause.
-  formula <- bayesnecformula(formula)
+  formula <- bayesnecformula(formula, env = parent.frame())
+  # Narrowed before anything is built from it, as bnec() does. A grouped call
+  # exports the formula once per level as well as once per model, so the
+  # environment it would otherwise hold is sent L x M times. See #329.
+  formula <- narrow_formula_environment(formula, data)
   grp <- data[[group_var]]
   if (is.numeric(grp)) {
     stop("The grouping column \"", group_var, "\" is numeric. A factor",
@@ -159,17 +211,152 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
   } else {
     "pseudobma"
   }
-  fits <- vector(mode = "list", length = length(levs))
-  names(fits) <- levs
-  for (i in seq_along(levs)) {
-    message("Fitting level \"", levs[i], "\" (", counts[[levs[i]]],
-            " observations).")
-    fits[[i]] <- bnec(formula, data = data[grp == levs[i], , drop = FALSE],
-                      family = family, ...)
+  # The set the formula asks for, which is what plan_group_levels() counts the
+  # two arrangements over. Read here rather than taken from an argument because
+  # bnec() itself reads it from the formula; check_models() may then drop an
+  # equation per level, so this is an upper bound. A formula this cannot be read
+  # from is one bnec() is about to refuse, so the failure is left to arrive from
+  # there and the levels stay in sequence meanwhile.
+  models <- try(get_model_from_formula(formula), silent = TRUE)
+  n_models <- if (inherits(models, "try-error")) NA_integer_ else length(models)
+  level_plan <- plan_group_levels(length(levs), n_models)
+  # Read in the parent and passed into the worker. future exports globals and
+  # not the session's options, so a multisession worker starts with this one
+  # unset; read inside the worker instead, a deliberate persistent cache would
+  # be honoured under a forking plan and silently ignored under every other.
+  cache_root <- getOption("cmdstanr_write_stan_file_dir")
+  # One seed per level, realised here and applied inside the level. Without it
+  # the arrangement decides the answer: bnec() draws the weighted-draw seed for
+  # its model-averaged estimates from whatever stream it is running in
+  # (expand_manec(), see #216), so with the levels in a worker that draw comes
+  # from the worker's stream and with the levels in the parent from the
+  # parent's. Since plan_group_levels() reads the arrangement off the worker
+  # count, one script at one seed would otherwise report different
+  # model-averaged estimates on a four-core and an eight-core machine. Seeding
+  # each level from the parent makes every level's estimates a function of the
+  # parent's stream alone, so the four combinations of plan and arrangement
+  # agree.
+  #
+  # Derived from `seed` where the user supplied one, so that a grouped call
+  # repeats without a set.seed() in the session as well. The caller's stream is
+  # put back either way: bnec_group() is not entitled to move it, which is the
+  # same rule bnec_parallel_lapply() follows.
+  level_seeds <- group_level_seeds(length(levs), dots[["seed"]])
+  if (level_plan$concurrent) {
+    # Announced together, before the dispatch. The per-level message the
+    # sequential path emits is dropped here: it would be emitted by the worker
+    # that fits the level, and from there it arrives out of order or not at
+    # all, so the sizes are reported once from the parent instead.
+    message("Levels: ",
+            paste0("\"", levs, "\" (", counts[levs], " observations)",
+                   collapse = ", "), ".")
   }
+  # The subsets are the elements dispatched, not indices into `data`. future
+  # serialises the globals of the applied function once per future, so holding
+  # the whole data frame there would send all of it to every level -- L times
+  # what the levels between them need, and the transfer #329 exists to remove
+  # reintroduced in the loop #338 adds. Measured on a 200,000-row frame over
+  # seven levels: 5.53 MiB per future against 5.53 MiB for the seven subsets
+  # together.
+  #
+  # split() rather than data[grp == lev, ]: it is one pass, and it orders the
+  # pieces by levels(grp), which is the order `levs` is in. An empty level
+  # cannot arise -- one under four observations was refused above.
+  parts <- Map(
+    function(i, d) list(i = i, data = d),
+    seq_along(levs), unname(split(data, grp))
+  )
+  # narrow_environment(), for the reason bnec() gives at its own call: future
+  # exports the applied function with its enclosing environment, and that would
+  # be this frame. Only the six names below need to reach a worker, and neither
+  # `data` nor `grp` is one of them.
+  #
+  # do.call() rather than forwarding `...`, because `...` cannot be put in the
+  # replacement environment. Two things this changes were checked rather than
+  # assumed. The formula reaches bnec() with its own environment intact, which
+  # #319 needs for crf() to resolve a symbol, measured on R 4.6.1 against an
+  # environment set by hand. And the family arrives as a value rather than as
+  # the symbol it was, which family_link_source() already treats as "symbol" --
+  # R/validate_family.R names do.call() as the case -- so the link is read the
+  # same way on both paths. The family has in any event been validated and
+  # marked above, so validate_family() leaves it alone downstream.
+  #
+  # "bnec" by name rather than the function object: do.call() records the value
+  # it is given as the head of the call, so passing the object left every error
+  # raised inside a level reading `Error in (function (formula, data, ...`.
+  fit_level <- narrow_environment(
+    function(part) {
+      i <- part$i
+      set.seed(level_seeds[i])
+      if (concurrent) {
+        # Set inside the worker, where it is the worker's own option, and
+        # restored so that a plan evaluating in the parent leaves nothing
+        # behind. See worker_stan_cache_dir().
+        old <- options(
+          cmdstanr_write_stan_file_dir = worker_stan_cache_dir(cache_root)
+        )
+        on.exit(options(old), add = TRUE)
+      }
+      do.call("bnec", c(list(formula, data = part$data, family = family),
+                        dots))
+    },
+    list(formula = formula, family = family, dots = dots,
+         concurrent = level_plan$concurrent, cache_root = cache_root,
+         level_seeds = level_seeds)
+  )
+  # The caller's stream is restored around the whole loop, not only inside
+  # bnec_parallel_lapply()'s parallel path. fit_level() calls set.seed() on
+  # every path, so without this a grouped call fitted with the levels in
+  # sequence left the session at the last level's seed -- and, where `seed` was
+  # supplied, at a constant, so `set.seed(i); bnec_group(..., seed = 1);
+  # rnorm(1)` returned one number for every i. The state after the call would
+  # then depend on the arrangement, which is what level_seeds exists to stop.
+  rng_kind <- RNGkind()
+  has_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+  old_seed <- if (has_seed) {
+    get(".Random.seed", envir = globalenv(), inherits = FALSE)
+  } else {
+    NULL
+  }
+  on.exit({
+    suppressWarnings(do.call(RNGkind, as.list(rng_kind)))
+    if (is.null(old_seed)) {
+      suppressWarnings(rm(".Random.seed", envir = globalenv()))
+    } else {
+      assign(".Random.seed", old_seed, envir = globalenv())
+    }
+  }, add = TRUE)
+  fits <- if (level_plan$concurrent) {
+    bnec_parallel_lapply(parts, fit_level, parallel = TRUE)
+  } else {
+    # One level per dispatch, announced before it starts. future_lapply()
+    # creates every future and then collects, and a sequential future relays
+    # its conditions at collection, so dispatching all the levels at once put
+    # every per-level message at the end of the run -- measured at 1.5 s a
+    # level, all three messages arrived at 3.0 s. On a seven-level call at
+    # eighteen minutes a fit that is the only progress signal there is.
+    # Dispatching one at a time still enters a future, which is what moves the
+    # plan on to the inner strategy, so the model loop inside each level still
+    # gets the whole of it.
+    lapply(parts, function(part) {
+      message("Fitting level \"", levs[part$i], "\" (",
+              counts[[levs[part$i]]], " observations).")
+      if (level_plan$dispatch) {
+        bnec_parallel_lapply(list(part), fit_level, parallel = TRUE)[[1]]
+      } else {
+        fit_level(part)
+      }
+    })
+  }
+  names(fits) <- levs
   out <- list(fits = fits, group_var = group_var, levels = levs,
               formula = formula, data = data, family = unmark_family(family),
-              n = as.integer(counts[levs]), weights_method = wt_method)
+              n = as.integer(counts[levs]), weights_method = wt_method,
+              # Recorded rather than regenerated, for the reason
+              # expand_manec() stores w_draw_index beside w_draw_seed: these
+              # objects are archived and reopened years later, and what was
+              # realised cannot drift the way a fresh sample.int() can.
+              level_seeds = level_seeds)
   allot_class(out, c("bayesnecgroupfit", "bnecfit"))
 }
 

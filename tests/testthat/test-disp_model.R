@@ -475,3 +475,31 @@ test_that("route B reads the curve the fit uses, not the template (#294)", {
   expect_true(grepl("nec)", phi_of('(nec | grp) + disp("twosided")'),
                     fixed = TRUE))
 })
+
+
+# ---- #319, the disp() term resolves in the formula's environment -------------
+
+test_that("a variance function named by a variable resolves", {
+  build <- function() {
+    vf <- "power"
+    bayesnec:::parse_disp_term(bnf(y ~ crf(x, "nec3param") + disp(vf)))$value
+  }
+  expect_identical(build(), "power")
+})
+
+test_that("a disp sub-model reaches Stan with a locally defined function", {
+  # brms resolves a distributional sub-model against the top-level
+  # brmsformula, whose environment came from the bf_<model> template. Asserted
+  # through make_stancode(), which generates the program without compiling or
+  # sampling it.
+  d <- nec_data
+  d$y <- pmin(pmax(d$y, 0.01), 0.99)
+  build <- function() {
+    cent <- function(z) z - mean(z)
+    bfs <- make_brmsformula(bnf(y ~ crf(x, "nec3param") + disp(~cent(x))),
+                            d, family = validate_family("Beta"))
+    brms::make_stancode(bfs[[1]], data = d,
+                        family = brms::Beta(link = "identity"))
+  }
+  expect_match(build(), "phi", fixed = TRUE)
+})

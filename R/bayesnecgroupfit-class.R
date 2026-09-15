@@ -19,6 +19,14 @@
 #' @slot data The full \code{\link[base]{data.frame}}, all levels.
 #' @slot family The family, chosen once and shared by every level.
 #' @slot n The number of observations per level.
+#' @slot weights_method The model-averaging weighting requested of
+#' \code{\link{bnec_group}}, which \code{\link{crossed_group_weights}} checks
+#' against what the fits themselves carry.
+#' @slot level_seeds The seed each level was fitted under, realised in the
+#' calling session before the levels were dispatched. Kept so that the
+#' realisation is recoverable from the fit rather than regenerated, for the
+#' reason \code{expand_manec()} stores \code{w_draw_index} beside
+#' \code{w_draw_seed}.
 #'
 #' @seealso \code{\link{bnec_group}}, \code{\link{crossed_group_weights}},
 #' \code{\link{bayesnecfit}}, \code{\link{bayesmanecfit}}

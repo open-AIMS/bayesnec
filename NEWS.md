@@ -1,5 +1,19 @@
 # bayesnec 2.2.0
 
+## Reproducible posterior comparisons and prior samples
+
+- `average_estimates()`, `compare_estimates()`, `compare_fitted()` and
+  `sample_priors()` now accept `seed = 10` and restore the caller's random
+  number state, including after an error. The Box-Muller normal generator's
+  cached value is not part of this state and cannot be restored; use the default
+  Inversion normal generator when subsequent normal draws must be preserved.
+  `compare_posterior()` forwards the
+  seed to the selected comparison. Repeated calls with the same inputs and RNG
+  kind now agree. Use the function's `seed` argument to change the sampled
+  draws; a preceding `set.seed()` no longer changes the result. This changes
+  the posterior pairing and therefore can change estimates, difference
+  intervals and probabilities compared with earlier versions (#343).
+
 ## Default priors
 
 - **The `"regularizing"` prior set is now one statement applied to every
@@ -559,14 +573,59 @@
 - **A target the curve never reaches within the predictor range returns `NA`,
   with a warning naming how many draws were affected.** Both estimators
   previously returned the grid point whose prediction was nearest the target,
-  which for a curve that never declines to the target is the *lowest*
-  concentration in the series --- the furthest possible value from the truth,
-  reported as an ECx with nothing said. The crossing is now found by
-  interpolation between the bracketing grid points rather than snapped to the
-  nearer of them (#39). Every function that summarises such a posterior reports
-  the censoring and excludes the affected draws, `nec()` and the
-  `bayesnechurdlefit` methods included; they previously stopped with "missing
-  values and NaN's not allowed" on a posterior the package had itself written.
+  which for a curve that never declines to the target is the *highest*
+  concentration in the series, reported as an estimate with nothing said. The
+  crossing is now found by interpolation between the bracketing grid points
+  rather than snapped to the nearer of them (#39). Every function that
+  summarises such a posterior reports the censoring and excludes the affected
+  draws, `nec()` and the `bayesnechurdlefit` methods included; they previously
+  stopped with "missing values and NaN's not allowed" on a posterior the package
+  had itself written.
+
+- **A draw that has already reached the reference at the control is the opposite
+  case, and returns the control concentration.** The NSEC reference is the
+  `sig_val` quantile of the control posterior, so `sig_val` of the draws have a
+  control at or below it and reach it at the control itself. The control
+  concentration is the NSEC of each of those draws, which is what Fisher and Fox
+  (2023) report: their Table 3 gives a lower credible bound of zero at every
+  significance level above the 0.025 quantile the bound is read at, and those
+  draws are what produces it. A search for a sign change cannot tell that case
+  from a curve that never reaches the reference, so which value it takes is now
+  decided by the caller rather than by the search. Two limits of the range this
+  holds over. The value is the lowest *observed* concentration, where the paper
+  reports zero concentration; the two agree where the control of the design is a
+  true zero and the predictor is untransformed, and otherwise a reader comparing
+  with Table 3 sees a small positive bound in place of its 0. And it applies only
+  where the prediction grid reaches the control. Where `x_range` begins at a
+  higher concentration, a draw that reached the reference below that range is
+  not identified within it and returns `NA`, reported by a warning of its own
+  rather than by the one about curves that never reach the reference. The
+  crossing is sought from the control upward, the control being made the first
+  point of the searched grid, so no estimate is placed below the lowest tested
+  concentration and none is lost between the control and the first grid point
+  above it (#325).
+
+- **An NSEC asked for over a grid holding no concentration above the control is
+  refused by name**, rather than returning a vector of `NA` under a warning about
+  curves that never reach the reference. An `x_range` at or below the lowest
+  observed value produces such a grid, and so does `resolution = 1`. `bnec()`,
+  `amend()` and `update()` refuse a `resolution` below 2 up front, because the
+  no-effect estimate of any smooth equation in the set is read off that grid and
+  the refusal would otherwise arrive only after every model had compiled and
+  sampled (#325).
+
+- **An ECx is unchanged except where the curve has already reached its target
+  where the grid begins**, which the default `type = "absolute"` cannot produce:
+  the target is derived from the draw's own control, so the curve begins above
+  it. Three routes reach it, all degenerate, and each now returns `NA` in place
+  of a value: `type = "direct"` with a supplied target above the curve at the
+  control; `type = "range"` where the curve's lowest predicted response is at the
+  control, which makes the target equal to it exactly; and `type = "relative"` on
+  a hormetic equation for a draw whose `bot` exceeds its control. Where the curve
+  is hormetic the value returned before was the crossing on the *rising* limb ---
+  the concentration at which the response reaches the target on the way up, which
+  estimates nothing --- and otherwise it was the lowest concentration in the
+  series (#325).
 
 - **The default `resolution` is reduced from 1000 to 200** in `ecx()`,
   `nsec()`, `ecnsec()` and `average_estimates()`. The value of 1000 was
@@ -637,6 +696,106 @@
   answer to (#216). One further consequence: a parallel call does not advance
   the calling session's RNG stream, where a sequential one does.
 
+  **The levels of a grouped call can now take the plan as well.**
+  `bnec_group()` has two loops that could use the workers --- the levels, and
+  the models within a level --- and one plan drives one of them, because
+  `future` evaluates a nested future sequentially unless the plan is a list. The
+  two arrangements are therefore counted in rounds of one fit and the smaller is
+  taken, a tie leaving the levels in sequence as earlier versions did: for *L*
+  levels, *M* equations and *W* workers, `ceiling(L / W) * M` against
+  `L * ceiling(M / W)`. Seven levels of eleven equations over four workers is 22
+  against 21, so that call is unchanged; over eight workers it is 11 against 14,
+  and the levels take the workers. A nested plan ---
+  `plan(list(tweak(multisession, workers = 2), tweak(multisession,
+  workers = I(4))))` --- drives both loops and is honoured without being
+  counted, the outer element being the levels. The `I()` is needed rather than
+  decorative: `future` sets `mc.cores` to 1 inside a worker, `parallelly` reads
+  that as the core budget, and its hard limit refuses four workers against one
+  core. `plan(list(sequential, tweak(multisession, workers = I(8))))` asks for
+  the other arrangement explicitly, the levels one at a time with each level's
+  model set over eight workers. `bnec_group()` reports which arrangement it
+  took and the counts behind it (#338).
+
+  **Each worker compiles its Stan programs into its own directory.** Every
+  level fits the same equations, so parallel levels build the same programs at
+  the same time, and `cmdstanr` does not lock its compile cache: two levels on a
+  cold cache would write one `.stan` file and run `make` on one executable path
+  at once. Each worker process is given a directory of its own, under
+  `cmdstanr_write_stan_file_dir` where one is set and `tempdir()` otherwise. The
+  key is the process and not the level, so a worker that draws three levels
+  compiles each equation once rather than three times. What this adds is
+  compilation on a cold cache: a parallel grouped run compiles each equation
+  once per worker rather than once, and does not read or write a persistent
+  cache the user has warmed, because a process id is not the same on the next
+  run. Fitting the levels in sequence uses the cache as it always did. `rstan` under `rstan_options(auto_write = TRUE)` caches in
+  one place that a forked worker shares with its parent, and no argument
+  changes that location, so set `multisession` rather than `multicore` for a
+  parallel grouped call with that option in force.
+
+  **A fit no longer stores the session it was fitted in.** A formula records
+  the environment it was created in, and serialising it writes that environment
+  out in full. Written at the top level of a script that is the global
+  environment and adds nothing; written in a `knitr` chunk it is the chunk
+  environment, which holds every object the document has built so far. The
+  formula's environment is now rebuilt to hold exactly the names the formula
+  mentions and the data does not supply, parented where the walk up its own
+  parent chain stopped, and it is rebuilt before the model frame so that the
+  frame, the `brms` formula and the stored fit are all narrowed by the one
+  call. Measured on R 4.6.1 with a
+  76 MiB vector bound beside the formula: the formula serialised to 76.29 MiB
+  and now serialises to under 0.01, and the model frame built from it --- which
+  `amend()` exports to every worker, through the `.Environment` of its `terms`
+  attribute --- with it. Under a plan that environment was sent to every worker
+  once per model, and once per model per level in a grouped call, which is what
+  made a parallel run of a vignette fail at `future.globals.maxSize` rather than
+  merely slow it (#329).
+
+  The environment is narrowed rather than removed. `model.frame()` resolves a
+  term against the data first and the formula's environment second, so a formula
+  naming anything the data does not supply needs it --- including the model
+  argument of `crf()` where that is a variable rather than a string, which #319
+  resolves there deliberately. The replacement is parented at the first
+  environment R sends by reference, so the rest of the lookup chain is the one
+  the formula had. Two limits remain. A name bound in the global environment, in
+  an attached package or in a namespace is left where it is and resolved through
+  the parent chain, because copying it would reintroduce the size this removes;
+  a worker's global environment is not the caller's, so such a name was already
+  out of reach under a plan and still is. And a function defined beside the
+  formula is a closure over that same environment, so the name is copied with
+  everything it closed over: a helper written in a `knitr` chunk and used in a
+  formula therefore still gives a fit the size it was, and moving that helper
+  into a package or the global environment is what makes it small.
+
+  **A worker fitting a level holds the most memory of the three.** A core given
+  to the chains of one fit holds nothing extra, because `brm()` runs them
+  without exporting anything and without a second fit in memory; a worker
+  fitting one model holds one fit; a worker fitting a level holds that level's
+  whole model-averaged set, so a plan of *W* level workers holds up to *W* of
+  them at once where fitting the levels in sequence holds one. That ordering is
+  why the two arrangements are counted against each other rather than the levels
+  simply taking the plan.
+
+  **Every level is now given its own seed, realised in the calling session.**
+  Without it the arrangement decided the answer. `bnec()` realises the seed for
+  its weighted posterior draw from whatever stream it is running in, so a level
+  fitted in a worker drew from that worker's stream and a level fitted in the
+  parent from the session's --- and since the arrangement is read off the worker
+  count, one script at one seed would have reported different model-averaged
+  estimates on a four-core and an eight-core machine. The seeds are derived from
+  `seed` where one was passed, so a grouped call now repeats with no
+  `set.seed()` in the session, which is more than `bnec()` offers for a single
+  set; where none was passed, `set.seed()` before the call fixes them. The
+  calling session's own stream and generator kind are put back either way, and
+  the generator and sampler are pinned while the seeds are realised so that one
+  `seed` means one thing whatever the session is set to. What was realised is
+  kept on the returned object as `level_seeds`, because a regenerated seed
+  cannot be trusted to be the same one years later and these objects are
+  archived and reopened. One consequence: the
+  estimates a grouped call reports are not those earlier versions reported,
+  because the levels are seeded rather than drawing from the stream as each is
+  reached. They are another realisation of the same weighting, and they are now
+  the same on every arrangement, which they were not.
+
 - **`bnec_record()`** reports what `bnec()` did to the request before fitting:
   the candidate set as requested, the set attempted, the equations excluded with
   the reason for each, and any substitution made in the response. Both were
@@ -649,6 +808,78 @@
   failed to sample appears in it and in `failed_models()`; `requested` is
   partitioned exactly by `attempted` and `excluded$model`. The record is kept
   through `update()`, and rebuilt by `amend()` for the set that call produced.
+
+- **`pull_best()`** returns the highest-weighted candidate of a
+  `bayesmanecfit` as a `bayesnecfit`, and returns a `bayesnecfit` unchanged.
+  That candidate contributes most to the model-averaged estimate, so its fit is
+  the one normally inspected with `pp_check()` and `check_fit()`, and
+  selecting it previously meant reading the weights out of `mod_stats` and
+  passing the name to `pull_out()` --- under a class test, because
+  `screen_models()` returns a `bayesnecfit` whenever the screen leaves one
+  equation and such an object has no `mod_stats` to read. The weight selected on
+  is reported with the number of candidates it was selected from, since a weight
+  of 0.15 among twenty candidates describes the model-averaged estimate hardly
+  at all; no warning is raised against a threshold, because what counts as a
+  small weight depends on the size of the set. An exact tie returns the first
+  candidate in the order of the set and reports the tie. Which equation was
+  selected is reported on both branches, the pass-through included, so a
+  workflow leaves the same record whether or not the set had already been
+  reduced to one equation. The object is the only argument: `x_range`,
+  `resolution`, `sig_val` and `loo_controls` re-specify a fit rather than select
+  one, and are refused rather than ignored, since honouring them where
+  `pull_out()` rebuilds the fit and ignoring them where nothing is rebuilt would
+  make the returned object depend on the class the caller was told not to test
+  for. A `bayesnechurdlefit` is selected from one component at a time, so its
+  two components may end on different equations (#324).
+
+- **`curve_params()`** reports the parameters of the fitted curve --- `top`,
+  `bot`, `beta`, `nec`, `ec50`, `slope`, `d` and `f` --- with their credible
+  intervals, for a `bayesnecfit`, a `bayesmanecfit`, a `bayesnechurdlefit` and a
+  `bayesnecgroupfit`. `summary()` reports the model weights, the per-equation
+  dispersion, the weighted no-effect estimate and the per-equation Bayesian
+  R-squared, and no parameter estimates. For a single fit the parameters were
+  reachable through the underlying `brmsfit`; for a model average nothing
+  returned them. They are what a methods section states alongside the threshold
+  estimates: `top` is the control level the curve is referenced to, `bot` the
+  asymptote a `"relative"` ECx is measured against, and `beta` the decay rate
+  (#297).
+
+  The name is neither of the two the issue proposed. `parameters()` is taken by
+  the `parameters` package, which reaches every install as a hard dependency of
+  `modelbased`, and `params()` by `ssdtools`, where it is a documentation stub
+  returning `NULL` --- so attaching `ssdtools` after `bayesnec` would have made
+  the call return nothing at all rather than fail. `curve_params()` is taken by
+  nothing, sits beside `show_params()`, which names the parameters of each
+  equation without fitting, and says what it returns: the parameters of the
+  equation, and not the family's dispersion parameter, a group-level term's
+  standard deviation or the `ogl` offset.
+
+  **The estimates are per equation and are not averaged across the set.** The
+  equations of a set do not share a parameter list: `ecxexp` has no `bot`, the
+  three-parameter equations have no `d`, and only the equations of
+  `mod_groups$nec` estimate `nec`. Averaging a parameter over whichever
+  equations estimate it would average over a different subset for each
+  parameter, under weights computed for the whole set, so the rows contributing
+  to one number would hold a different share of the set from the rows
+  contributing to the next. The model weight is reported beside each row
+  instead, and `summary = FALSE` returns the draws the table was computed from.
+
+  **Each block of a two-block fit is named under its own equation.** The
+  response and survival blocks of a `bnec(family = "hurdle_gamma")` fit need not
+  use the same equation --- that is what `model_survival` and `bnec_joint()`
+  select --- so the table has a `dpar` column and names each block's equation
+  separately. The survival equation is not recorded on the fitted object, so it
+  is recovered from the fitted formula, and is reported as `NA` where it cannot
+  be identified rather than being reported as the response block's.
+
+  **`xform` applies to `nec` and `ec50` and to no other parameter.** Those two
+  are measured on the predictor axis, so where `crf()` transforms the predictor
+  inline they are on the transformed scale, as the values `nec()` and `ecx()`
+  return are, and a message says so where `xform` was left at its default. The
+  others are response levels or shape parameters, on which a transformation of
+  the predictor has no meaning. The link of each block is reported in a `link`
+  column: `bnec()` assigns `link = "identity"`, and where a caller named one
+  instead, `top` and `bot` are on the link scale.
 
 - `dispersion(summary = TRUE)` now reports `P(>1)`, the posterior probability of
   over-dispersion, alongside the median and the interval. It uses the whole
@@ -687,6 +918,138 @@
   value in the dataset, and 63 of the 414 yield readings are exactly 0 (#6, #33).
 
 ## Bug fixes
+
+- A fit now reproduces under a `set.seed()` in the caller's session. The
+  initial-value search called `set.seed(seed)` whatever it was given, and
+  `set.seed(NULL)` does not leave the random number stream alone: it
+  re-initialises it from the clock and the process id. `bnec()` passes a seed
+  down only where the user gave `brms` one, so on the default path the search
+  discarded whatever seed the user had set and drew fresh initial values on
+  every call. The search now seeds itself only where a seed was supplied, and
+  reads `NA` --- which is how `brms` writes "no seed" --- the same way as
+  `NULL`; `bnec(..., seed = NA)` previously stopped with "supplied seed is not
+  a valid integer" (#310).
+
+  Measured on `nec3param` fitted to the packaged `nec_data` with
+  `Beta(link = "identity")`, `iter = 1000`, `chains = 2`, backend `rstan`, R
+  4.6.1, `brms` 2.23.0, `rstan` 2.32.7, one pair of runs: two calls in one
+  session each preceded by `set.seed(333)` agree to every digit of `fixef()`,
+  where the released code differs by 9.1e-5 in `nec`, 5.1e-4 in `top` and
+  3.1e-3 in `beta`. The size of that disagreement is a property of the sampler
+  rather than of the change, so it is a demonstration that the two runs are
+  different fits and not a measure of how wrong the estimates were.
+
+  `vignette("example3")` is the case #310 opened on. It runs `set.seed(333)`
+  before each of its eleven fitting chunks and passes no `seed` to `bnec()`, so
+  all eleven were discarded and every fit in the document was a fresh draw.
+  Both of the outputs that differed between renders follow from that directly.
+  The two `fixef()` tables are read off two of those fits. The three
+  `check_priors()` figures are pure functions of the fits they plot ---
+  `check_priors()` calls `brms::hypothesis()`, which touches the random number
+  stream only when given a seed of its own, and then `geom_density()` --- so a
+  figure differs exactly when its fit does. The issue records two
+  `check_priors()` calls on one saved fit giving byte-identical files, which is
+  the same statement.
+
+  The stream is a second consequence and stands on its own. How many proposals
+  the search makes depends on the stream it starts from, so a search begun from
+  the clock also left the stream in an unpredictable place, and any random
+  operation after the fit differed for that reason as well as because the fit
+  did. In the measurement above the stream state after the fit now agrees
+  between the two calls.
+
+  A run under a `future` plan repeats itself the same way. Measured on R 4.6.1
+  under `plan(multicore, workers = 3)`, three equations, the body being the
+  initial-value search itself and no `seed` supplied: two runs at one
+  `set.seed()` gave identical initial values and a third at another seed gave
+  different ones. One backend and one R version, so `seed` remains the way to
+  fix a run that has to repeat regardless.
+
+  A parallel run still does not give the same answer as a *sequential* run of
+  the same call unless `seed` is passed, and that part is unchanged: each model
+  is fitted from the stream of the worker it runs in. Running the same
+  measurement against the released code as well: without a seed neither a
+  sequential nor a parallel run repeated itself before and both do now, while
+  sequential and parallel agreed with each other only under a `seed`, on the
+  released code and on this branch alike. So what changed is that each run
+  repeats itself, not which runs agree with each other. `?bnec` states both,
+  alongside the model-averaged quantities, which are not reproduced between a
+  sequential and a parallel run either way.
+
+- A model set held in a variable now resolves in the environment the formula
+  was written in, so a set built programmatically works inside a function,
+  inside a knitted chunk, and inside any environment that does not inherit from
+  the global environment. `crf()` evaluated its `model` argument without naming
+  an environment, which evaluates in `crf()`'s own frame; the lexical parent of
+  that frame is the package namespace, then the imports, then base, then the
+  global environment, and the caller's frame is on none of them. A call that
+  succeeded at the console therefore failed once wrapped in a function, and the
+  message named neither `crf()` nor the cause: `object 'eqs' not found`. The
+  formula's own environment is now used, and a formula supplied as a character
+  string is given the environment of the call that converted it, through a new
+  `env` argument to `bayesnecformula()` and `bnf()` (#319).
+
+  The same defect held for a function used to transform the predictor. The
+  reduced formula `model.frame()` is built from, the back-transform
+  `sub_x_transformation()` applies in `ecx()`, `nsec()` and `expand_nec()`, the
+  component formulas of a hurdle fit, the `disp()` term and the `brmsformula`
+  handed to `brms` each lost the environment the user wrote the formula in,
+  so `crf(squared(x), "nec3param")` with `squared()` defined in the caller was
+  likewise found only at the console. All of them now take it. The
+  back-transform is the one that reached furthest: it runs after every model in
+  the set has compiled and sampled, so the failure arrived at the end of a fit
+  rather than at the start. One of these has a further consequence: the check
+  that a `disp()` sub-model evaluates to finite values could not evaluate such
+  a term at all and skipped it, so a formula written this way now stops where
+  it previously fitted and failed in Stan.
+
+  One consequence of binding an environment to a character formula: the
+  formula is stored once per model, so a formula converted inside a function
+  now holds a reference to that function's frame, and a large object in it is
+  serialised with the fit. Measured on a frame holding a 2-million-element
+  vector, the stored formula went from 463 bytes to 16 MB. A formula object
+  has always behaved this way, and a call made at the console binds the global
+  environment, which serialises by reference; only a character formula
+  converted inside a function is newly affected. Where that matters, convert
+  the string in an environment of your own with `bnf(string, env = ...)`.
+
+- `check_fit()` and `dispersion()` now leave the caller's random number stream
+  where they found it. Both seed their posterior draw with `set.seed(seed)` and
+  neither put the stream back, so `set.seed(1); check_fit(fit); rnorm(1)` did
+  not return what `set.seed(1); rnorm(1)` returns: the stream was left wherever
+  `set.seed(10)` --- the default --- reached, and a simulation that printed a
+  diagnostic partway through silently continued from a different place. A
+  diagnostic is a summary computed from a fit and not part of fitting, which is
+  the line #310 drew when it left the initial-value search advancing the stream.
+  Both still repeat under the same `seed`; only the stream is restored (#337).
+
+  Measured on R 4.6.1, one pair of runs per function: `set.seed(1)` then three
+  `rnorm()` draws, against the same three preceded by the diagnostic.
+  `check_fit()` on the packaged `manec_example`'s `nec4param` component and
+  `dispersion()` on a `nec4param` Poisson fit of 60 simulated observations both
+  returned three different numbers on `dev` and the reference three here. Both
+  returned the same table, and the same statistic, from two calls separated by
+  an `rnorm(5)` on `dev` and here.
+
+  `check_fit()` also now refuses a `seed` that is not a single number, as
+  `dispersion()` already did. `check_fit(x, seed = NULL)` reached
+  `set.seed(NULL)`, which re-initialises the stream from the clock and the
+  process id, so the diagnostic did not repeat and the caller's seed was
+  discarded without a word --- #310's defect reached through a second door.
+
+  `check_fit()` is not only called directly. `bnec()` runs it on both return
+  paths through `message_control_fit()`, and `summary()` runs it whenever
+  `check_fit = TRUE`, so the stream after a fit and after a summary is
+  restored as well. On the released code the diagnostic's own `set.seed(10)`
+  left the stream at a fixed point after every `bnec()` call,
+  whatever the fit had done; it now reflects the fitting alone, which under no
+  supplied `seed` depends on how many proposals the initial-value search made
+  (see #310 above). Measured on the packaged `manec_example` under the same
+  protocol: `summary()` and `message_control_fit()` each returned three
+  different numbers on `dev` and return the reference three here.
+
+  The restore is a behaviour change for code that relied on a diagnostic having
+  advanced the stream. No test and no vignette does.
 
 - A model set assembled by `c()`, `+`, `amend()` or `update()` is now weighted
   by pseudo-BMA, the documented default, rather than by stacking.
@@ -1157,6 +1520,66 @@
 
 ## Documentation
 
+- `vignette("example5")` is rewritten as *Installation and setup*, and no chunk
+  in it is evaluated. It previously evaluated seven chunks, so the rendered
+  vignette recorded the machine that built it: the shipped file named one
+  contributor's home directory 21 times in 520 lines and ended with 77 lines of
+  compiler diagnostics from that machine. Evaluating those chunks also published
+  the warning `Path not set. Can't find directory: C:/cmdstan` directly beneath
+  the instruction to set that path.
+
+  The instructions themselves are replaced rather than repaired. The previous
+  text directed the reader to clone CmdStan from GitHub, run `mingw32-make
+  build`, reboot, and hand-write a `make/local` file supplying two compiler
+  flags, none of which `cmdstanr::install_cmdstan()` requires, and named
+  CmdStan v2.23.0 as the version expected. The replacement covers what stops a
+  fresh installation now: the directory `install_cmdstan()` does not create, the
+  49 MB download that R's default 60-second `options(timeout)` does not cover, a
+  home directory synchronised by OneDrive or containing a space, the `tbb.dll`
+  built against a superseded Rtools, and the `cmdstanr` version-to-Rtools
+  mapping that changed at 0.9.0. Its technical content comes from the software
+  setup module of the `cr_modelling_training` course, which is the maintained
+  version of the same material. A verification section closes it with
+  `check_cmdstan_toolchain()` and a two-chain `bnec()` fit on `nec_data`, and a
+  provenance section attributes each measurement to the run that produced it.
+
+  One instruction in the course module is corrected rather than reproduced.
+  A CmdStan installation outside the default location is made to persist with
+  the environment variable `CMDSTAN`, set in `.Renviron`, and not with
+  `options(cmdstanr_cmdstan_path = ...)`: no version of `cmdstanr` reads that
+  option. In `cmdstanr` 0.9.0, `cmdstanr:::cmdstanr_initialize()` takes the path
+  from `Sys.getenv("CMDSTAN")` where it is set and from `~/.cmdstan` otherwise,
+  and the string `cmdstanr_cmdstan_path` appears nowhere in the `cmdstanr`
+  namespace. The vignette also drops the version number from the setting, since
+  `CMDSTAN` naming a directory that holds an installation rather than being one
+  resolves to the newest `cmdstan-*` inside it (#342).
+
+  `vignette("example1")`, `vignette("example2")` and `README.md` now point at
+  it. Each held its own installation text, so the package had three (#342).
+
+- New vignette, `vignette("example9")` --- *A complete analysis workflow* ---
+  running a single analysis from data to reportable estimate: choosing the
+  family from the support of the response, fitting the candidate set, sampler
+  diagnostics per candidate equation, fit diagnostics through `pp_check()` and
+  `check_fit()`, exclusion of the equations that fail the screen, and reporting.
+  It works through the step the other vignettes state but do not demonstrate,
+  which is choosing the family from the data, and it separates the kinds of
+  sampler failure the screen returns: an equation given too few draws, which
+  passes once it is given more; an equation the design does not support, which
+  more sampling makes worse; and an equation decided at the cutoff, which is a
+  choice the analyst has to report. A count response follows, where the family
+  question becomes a dispersion screen and where the screen removes most of the
+  set for a reason that is a property of the experiment rather than of the fit.
+
+  The family screen reads `P(>1)` from `dispersion()`, the posterior probability
+  of over-dispersion, rather than thresholding the point estimate or the lower
+  bound of the interval. The exclusion step is worked on three datasets ---
+  `nassarius`, `simazine` and `diuron` --- because the share of the model weight
+  removed and the change in the model-averaged *N(S)EC* are separate
+  consequences, and neither is predictable before the screen is run. That is the
+  argument for the step being obligatory. The screening uses `check_sampling()`
+  and `screen_models()` rather than code written for the vignette. See #219.
+
 - `?bnec` and `?models` now state that a model group names the shape of the
   response and not the set of equations admissible for it. `mod_groups$decline`
   includes `neclin` and `ecxlin`, whose mean decays by subtraction and is
@@ -1168,7 +1591,50 @@
   `models()` given a numeric range returns the admissible set and is the route
   to use where that is what is wanted (#285).
 
+- The vignette precompilation workflow samples with `cmdstanr`, at the cmdstan
+  version `hpc/image.lock` records, rather than with `brms`'s `rstan` default.
+  The vignettes have been precompiled with `cmdstanr` on the cluster since #306,
+  while the workflow was held at `rstan` because its runner had no cmdstan
+  installation, so a vignette rebuilt in one place and a vignette rebuilt in the
+  other were produced by different samplers and a diff between two renders could
+  not be read as a change in the package. The workflow now installs `cmdstanr`
+  and cmdstan as tools of its own; neither is a dependency of `bayesnec`, and
+  `brms` continues to support either back end. Compiled Stan programs are cached
+  between runs on one branch as well, which `rstan` could not offer --- it
+  compiles in process and keeps nothing (#313).
+
 # bayesnec 2.1.4
+
+- New vignette `example7`, *Modelling growth data and other potentially negative
+  response values*. Specific growth rate is a rate of change and a declining
+  population has a negative one, so the response is not bounded below --- and the
+  conventions used to remove those negatives (substituting zero, pinning the
+  lower asymptote, or choosing a Beta or Gamma whose support excludes them) bias
+  the toxicity estimates that are then reported. The vignette scores eight
+  handling approaches against known truth in a simulation study, and reports two
+  results: the boundary-imposing approaches are biased low on ErC50 and high on
+  the NSEC by amounts that do *not* shrink as the experiment becomes more
+  precise, and fitting the candidate set rather than one equation recovers most
+  of the lost ErC50 accuracy once the data have already been floored.
+  `bayesnec`'s defaults are already correct here --- a Gaussian response is not
+  constrained positive and the zero-bounded models are dropped for Gaussian ---
+  so the vignette is a caution about data preparation upstream of the fit. The
+  simulation itself is a separate research compendium
+  ([open-AIMS/negative-sgr](https://github.com/open-AIMS/negative-sgr)), pinned
+  at a commit and cited; its results appear here as transcribed literals because
+  fitting takes days on many cores. See #193.
+
+- `example1` gains a *Limits of the censored likelihood* subsection. Saturation
+  is what makes a censored likelihood honest and is also its limit: once the
+  fitted curve sits well below the bound the likelihood is flat, so a `bot` whose
+  only expression is there is not identified and what gets reported for it is the
+  prior. Worked on a microalgal growth test, with the interval-censored repair
+  and the prior-to-posterior contraction as the diagnostic an interval alone
+  hides. See #193.
+
+- `example6` no longer states that `bayesnecformula` cannot carry a `cens()`
+  aterm through to the fit. It can, since #181; the section now points at the
+  *Censoring* section of `example1`.
 
 - `extraDistr` is declared in `Suggests`. `brms` requires it for the
   `beta_binomial` density and CDF, so anything that computes a log-likelihood

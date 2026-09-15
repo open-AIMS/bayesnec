@@ -879,8 +879,14 @@ boundary_inset <- function(edge, bound, centres, spread, y, side,
 #' given seed produces do not depend on how busy the machine is.
 #' @param n_trials A \code{\link[base]{numeric}} vector indicating
 #' how many attempts the function should run before giving up.
-#' @param seed seed number for reproducible random number generation. Defaults
-#' to \code{NULL}.
+#' @param seed A \code{\link[base]{numeric}} vector of length 1, or
+#' \code{NULL}. Defaults to \code{NULL}, and \code{NA} --- which is how
+#' \pkg{brms} writes "no seed" --- is read the same way. Where it is
+#' \code{NULL} or \code{NA} the search draws from the stream it was handed
+#' and does not reseed, so a \code{\link[base]{set.seed}} in the caller's
+#' session fixes the initial values. Where a value is given the search seeds
+#' itself with it, which fixes the initial values whatever the caller's stream
+#' was doing.
 #' @param family A \code{\link[stats]{family}} object. Two things are read from
 #' it and nothing else: the interval the curve is permitted to occupy, and
 #' whether the response-scaled parameters are bounded below at zero. Both are
@@ -916,6 +922,38 @@ boundary_inset <- function(edge, bound, centres, spread, y, side,
 #' the fourth power of the per-chain rate, because the released loop did not
 #' refine the set it drew before entering the loop and this one refines from the
 #' first round. That weight is between 4e-5 and 9e-3 on the designs measured.
+#'
+#' \strong{The caller's stream is not reset.} \code{set.seed(NULL)} does not
+#' leave the random number stream alone: it re-initialises it from the clock and
+#' the process id. Calling it whenever no seed was supplied --- which is the
+#' default path, since \code{\link{bnec}} passes a seed only where the user
+#' gave \pkg{brms} one --- therefore discarded any \code{set.seed()} the user
+#' had run, and drew fresh initial values on every call. Two consequences, both
+#' measured on \code{nec3param} fitted to the packaged \code{nec_data} with
+#' \code{Beta(link = "identity")}, \code{iter = 1000}, \code{chains = 2},
+#' backend \code{rstan}, two calls in one session each preceded by
+#' \code{set.seed(333)}: the two \code{fixef()} tables disagreed, by 9.1e-5 in
+#' \code{nec} and 3.1e-3 in \code{beta}, and the stream was left in a
+#' different state afterwards, so every later random operation differed too.
+#' Under this change both tables and both stream states agree exactly.
+#'
+#' \code{vignette("example3")} is the case #310 opened on. It runs
+#' \code{set.seed(333)} before each of its eleven fitting chunks and passes no
+#' \code{seed}, so all eleven were discarded and every fit in it was a fresh
+#' draw. That alone accounts for both of the outputs that differed between
+#' renders: the two \code{fixef()} tables are read off two of those fits, and
+#' the three \code{check_priors()} figures are pure functions of the fits they
+#' plot, \code{brms::hypothesis()} touching the stream only when given a seed
+#' of its own. The stream state is a second consequence and does not enter that
+#' explanation. See #310.
+#'
+#' Restoring the stream afterwards, as \code{weighted_draw_index()} does, would
+#' be wrong here. The search is part of fitting rather than a summary computed
+#' from a fit, and the Stan seed is drawn from the same stream immediately
+#' after it by whichever backend is in use, so a fit is meant to advance the
+#' stream. What it must not do is advance it by an amount nobody can predict.
+#' \code{check_fit()} and \code{dispersion()} are on the other side of that
+#' line and do not restore; see #337.
 #'
 #' \strong{The cap stays at 1e4.} It is now exactly \code{n_trials} rounds
 #' where the released loop allowed one more --- it drew the first set before the
@@ -979,7 +1017,24 @@ make_good_inits <- function(model, x, y, family, n_trials = 1e4, seed = NULL,
         get_init_predictions(init, x_sorted, pred_fct, fct_args), limits)
     }, logical(1))
   }
-  set.seed(seed)
+  # Seed only where one was supplied. set.seed(NULL) does not leave the stream
+  # alone: it re-initialises it from the clock and the process id, so the
+  # unconditional call discarded whatever set.seed() the caller had run and
+  # drew fresh initial values on every call. That is what stopped a bnec()
+  # fit reproducing under a seed set in the user's session, and, because the
+  # number of proposals the search makes then varies from run to run, it also
+  # left the stream in a different state afterwards and so changed every random
+  # operation that followed the fit. NA is brms's own way of saying "no seed",
+  # and set.seed(NA) is an error, so it is read the same way as NULL here.
+  # See #310.
+  # Written on length 1 so that only NULL and a scalar NA are read as "no
+  # seed". all(is.na()) was tried and is wrong: all(is.na(integer(0))) is TRUE,
+  # so an empty seed was silently accepted as no seed. Anything else -- a seed
+  # of length 0 or 2 -- reaches set.seed() and is rejected there with R's own
+  # message rather than by the condition.
+  if (!is.null(seed) && !(length(seed) == 1 && is.na(seed))) {
+    set.seed(seed)
+  }
   accepted <- vector("list", chains)
   filled <- rep(FALSE, chains)
   started <- Sys.time()

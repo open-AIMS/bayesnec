@@ -86,10 +86,10 @@ Sys.setenv("NOT_CRAN" = "true")
 # next full precompile is expected to change numbers in every vignette. That is
 # a deliberate decision recorded on #306, not a side effect.
 #
-# BAYESNEC_BACKEND overrides it, and .github/workflows/precompile-vignettes.yaml
-# sets it to rstan: that runner has neither cmdstanr, which is not on CRAN and
-# not in DESCRIPTION, nor a cmdstan installation, so every fit would fail
-# require_backend() there.
+# BAYESNEC_BACKEND overrides it, for a machine that has rstan and not cmdstan.
+# .github/workflows/precompile-vignettes.yaml set it to rstan until #313, and
+# so sampled with a different back end from the cluster; it now installs the
+# cmdstan version hpc/image.lock records and leaves this default in place.
 options(brms.backend = Sys.getenv("BAYESNEC_BACKEND", "cmdstanr"))
 
 # Chains run in parallel across the cores this run has been given. Without
@@ -98,13 +98,17 @@ options(brms.backend = Sys.getenv("BAYESNEC_BACKEND", "cmdstanr"))
 # serially on a four-core allocation. SLURM_CPUS_PER_TASK is the allocation
 # rather than the node; the fallback is used off the cluster.
 #
-# example2, example3 and example6 set mc.cores themselves, to
-# parallel::detectCores(), in a chunk, and so override this. That reports the
-# node and not the allocation, but brms runs at most `chains` in parallel and
-# every one of those vignettes takes the default of four, so it oversubscribes
-# nothing as they stand. Those chunks are echo = FALSE, so removing the lines
-# would change nothing a reader sees; they are left alone here because #190
-# re-renders the whole set and is the place to remove them.
+# example3 and example6 set mc.cores themselves, to parallel::detectCores(), in
+# a chunk, and so override this. That reports the node and not the allocation,
+# but brms runs at most `chains` in parallel and both of those vignettes take
+# the default of four, so it oversubscribes nothing as they stand. Those chunks
+# are echo = FALSE, so removing the lines would change nothing a reader sees;
+# they are left alone here because #190 re-renders the whole set and is the
+# place to remove them.
+#
+# example2 no longer has such a chunk. #322 replaced it with an explicit
+# cores = getOption("mc.cores", 1) on the call the reader sees, which reads
+# this allocation rather than overriding it.
 .cpus <- suppressWarnings(as.integer(Sys.getenv("SLURM_CPUS_PER_TASK")))
 if (is.na(.cpus) || .cpus < 1) {
   .cpus <- max(1L, parallel::detectCores(logical = FALSE))
@@ -291,7 +295,20 @@ for (f in rendered[lengths(reported) > 0]) {
 errored <- rendered[lengths(genuine) > 0]
 if (length(errored)) {
   detail <- vapply(errored, function(f) {
-    paste0("  ", basename(f), " (", length(genuine[[f]]), "): ", genuine[[f]][1])
+    ln <- readLines(f, warn = FALSE)
+    i <- grep("^#> Error", ln)
+    # A model bnec() reported as not fitted is exempt, per model_failure above,
+    # so it is dropped before the first genuine error is identified.
+    i <- i[!grepl(model_failure, ln[i])]
+    # knitr wraps a long message onto following `#>` lines, so reporting only
+    # the matched line yields a bare "#> Error:" that says nothing. Carry the
+    # continuation lines of the first error through to the message.
+    first <- ln[i[1]]
+    j <- i[1] + 1
+    while (j <= length(ln) && grepl("^#>", ln[j]) && !grepl("^#> Error", ln[j])) {
+      first <- paste(first, sub("^#>\\s*", "", ln[j])); j <- j + 1
+    }
+    paste0("  ", basename(f), " (", length(i), " errored chunks): ", first)
   }, character(1))
   stop("Chunks errored while knitting:\n", paste(detail, collapse = "\n"),
        "\nFix the vignette source and re-run; do not ship this output.",
