@@ -612,15 +612,13 @@ test_that("a grouped call fits each level on its own rows", {
   # level was fitted on its own rows, that the fits come back named and ordered
   # by level, and that the seeds the levels were fitted under are recorded.
   #
-  # No plan, and nothing in this file calls bnec_group() under one. Since #338
-  # every level is seeded from the calling session, so the two arrangements
-  # give the same estimates by construction, and that is pinned directly and
-  # without fitting by "a seeded body gives one answer on both arrangements"
-  # below. The decision is pinned by the plan_group_levels() tests, the compile
-  # directories by "each worker compiles into its own directory", and the
-  # dispatch itself by the tests that run bnec_parallel_lapply() over a real
-  # future. What a grouped call under a plan would add is a Stan compilation
-  # per worker.
+  # No plan is used for this real fit. Since #338 every level is seeded from the
+  # calling session, so the two arrangements give the same estimates by
+  # construction, and that is pinned directly and without fitting by "a seeded
+  # body gives one answer on both arrangements" below. The following test calls
+  # bnec_group() under a forking plan with bnec() mocked, which covers the outer
+  # orchestration without another Stan compilation. What a second real call
+  # under a plan would add is a Stan compilation per worker.
   #
   # It would also be unreliable here. Measured on R 4.6.1 with future 1.70.0,
   # on a WSL2 host: this call takes 173 s with no plan, while the same call
@@ -668,6 +666,60 @@ test_that("a grouped call fits each level on its own rows", {
   }
 })
 
+test_that("a grouped call dispatches its levels under a plan", {
+  skip_unless_future()
+  # The preceding test runs the real bnec() fitting contract. Repeating those
+  # Stan fits under a socket plan did not return in 300 s on three runs on the
+  # development host, and it adds one Stan compilation per worker. The mock here
+  # leaves the rest of bnec_group() intact and is inherited by forked workers,
+  # so this test runs the level split, plan decision, concurrent dispatch,
+  # worker cache and result assembly without another Stan compile. The socket
+  # dispatch and serialisation contract is tested separately above.
+  d <- nec_data
+  d$site <- rep(c("a", "b"), length.out = nrow(d))
+  big <- numeric(1e6)
+  parent_pid <- Sys.getpid()
+  mock_bnec <- function(formula, data, family, ...) {
+    env <- environment(formula)
+    has_big <- FALSE
+    while (is.environment(env) && !bayesnec:::env_by_reference(env)) {
+      if (exists("big", envir = env, inherits = FALSE)) {
+        has_big <- TRUE
+        break
+      }
+      env <- parent.env(env)
+    }
+    list(
+      pid = Sys.getpid(),
+      rows = row.names(data),
+      cache = getOption("cmdstanr_write_stan_file_dir"),
+      has_big = has_big
+    )
+  }
+  local_mocked_bindings(bnec = mock_bnec, .package = "bayesnec")
+  expect_message(
+    out <- suppressWarnings(with_fork_plan(
+      bnec_group(y ~ crf(x, model = "nec3param"), data = d,
+                 group_var = "site", seed = 338)
+    )),
+    "Fitting 2 levels in parallel"
+  )
+  expect_s3_class(out, "bayesnecgroupfit")
+  expect_identical(names(out$fits), c("a", "b"))
+  expect_identical(out$n, c(50L, 50L))
+  expect_identical(
+    unname(lapply(out$fits, function(f) f$rows)),
+    unname(split(row.names(d), d$site))
+  )
+  pids <- vapply(out$fits, function(f) f$pid, integer(1))
+  expect_length(unique(pids), 2L)
+  expect_false(any(pids == parent_pid))
+  caches <- vapply(out$fits, function(f) f$cache, character(1))
+  expect_length(unique(caches), 2L)
+  expect_match(basename(caches), "^bayesnec-stan-[0-9]+$")
+  expect_false(any(vapply(out$fits, function(f) f$has_big, logical(1))))
+})
+
 test_that("a formula stops holding the environment it was written in", {
   # A formula records where it was created, and serialize() writes that
   # environment out in full. narrow_environment() does not reach it: it
@@ -689,32 +741,31 @@ test_that("a formula stops holding the environment it was written in", {
   # rather than on bytes alone, because what a serialised environment weighs
   # depends on everything else in the chain and so differs between a console
   # session and a check runner.
-  reachable <- function(x, what) {
-    e <- environment(x)
+  reachable <- function(e, what) {
     while (is.environment(e) && !bayesnec:::env_by_reference(e)) {
       if (exists(what, envir = e, inherits = FALSE)) return(TRUE)
       e <- parent.env(e)
     }
     FALSE
   }
-  expect_true(reachable(f, "big"))
-  expect_false(reachable(narrowed, "big"))
+  expect_true(reachable(environment(f), "big"))
+  expect_false(reachable(environment(narrowed), "big"))
   # The model frame holds the same environment, through the .Environment of
   # its terms attribute, and amend() exports one to every worker.
   before <- mib(f)
   after <- mib(narrowed)
-  frame_before <- mib(model.frame(f, data = nec_data))
-  frame_after <- mib(model.frame(narrowed, data = nec_data))
-  sizes <- paste0("formula ", before, " -> ", after, " MiB; frame ",
-                  frame_before, " -> ", frame_after, " MiB")
+  frame_before <- model.frame(f, data = nec_data)
+  frame_after <- model.frame(narrowed, data = nec_data)
+  terms_env <- function(frame) attr(attr(frame, "terms"), ".Environment")
   expect_gt(before, 7)
-  expect_gt(frame_before, 7)
-  # An order of magnitude rather than an absolute bound, for the reason above.
-  # Measured on R 4.6.1 the reduction is from 76.29 MiB to under 0.01; the
-  # threshold here is loose enough to survive whatever else a runner's
-  # environment holds and tight enough to fail if the narrowing stops.
-  expect_lt(after, before / 50, label = sizes)
-  expect_lt(frame_after, frame_before / 50, label = sizes)
+  expect_lt(after, before / 50)
+  expect_true(reachable(terms_env(frame_before), "big"))
+  expect_false(reachable(terms_env(frame_after), "big"))
+  # Do not assert the frame's byte size. model.frame.bayesnecformula() binds
+  # trials() in this terms environment; with R_KEEP_PKG_SOURCE=yes, serialising
+  # that function includes source references which grew to 1.20 MiB after the
+  # CI suite had forced the namespace. That size is unrelated to the caller's
+  # environment, whose absence is asserted directly above.
 })
 
 test_that("a name the formula uses and the data does not supply is kept", {
