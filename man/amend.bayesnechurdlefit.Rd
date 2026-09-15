@@ -15,7 +15,8 @@
   sig_val = 0.01,
   priors,
   prior_type = "uninformative",
-  timeout = Inf
+  timeout = Inf,
+  predictor_scale = "auto"
 )
 }
 \arguments{
@@ -80,6 +81,12 @@ models can still be fitted. A model that exceeds \code{timeout} is treated
 as a failed fit and dropped from the returned set. The default \code{Inf}
 imposes no limit. Requires the \pkg{R.utils} package to be installed when a
 finite value is supplied.}
+
+\item{predictor_scale}{A \code{\link[base]{character}} string declaring
+whether the predictor is supplied as \code{"concentration"}, already
+\code{"log"} transformed, or should use the existing \code{"auto"} rule for
+priors generated for newly added models. See \code{\link{bnec}}. This is not
+inherited from the original fit; pass it explicitly to match that fit.}
 }
 \value{
 An object of class \code{\link{bayesnechurdlefit}}.

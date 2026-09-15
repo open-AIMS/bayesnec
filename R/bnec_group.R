@@ -13,6 +13,9 @@
 #' @param family A \code{\link[stats]{family}} function, string, or \code{NULL}.
 #' If \code{NULL} it is chosen once from the \emph{whole} response and passed
 #' down --- see Details.
+#' @param predictor_scale The predictor-scale declaration passed to
+#' \code{\link{bnec}} for every level. It is checked against the whole predictor
+#' before any level is fitted.
 #' @param ... Further arguments passed to \code{\link{bnec}} for every level.
 #'
 #' @details \bold{Why the levels can be fitted separately}
@@ -112,9 +115,11 @@
 #' }
 #'
 #' @export
-bnec_group <- function(formula, data, group_var, family = NULL, ...) {
+bnec_group <- function(formula, data, group_var, family = NULL,
+                       predictor_scale = "auto", ...) {
   # Captured before anything can rebind it; see family_link_source() and #256.
   link_source <- family_link_source(substitute(family), env = parent.frame())
+  predictor_scale <- validate_predictor_scale(predictor_scale)
   if (!is.character(group_var) || length(group_var) != 1) {
     stop("`group_var` must be a single column name.", call. = FALSE)
   }
@@ -174,6 +179,9 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
   # subset. See #278.
   mod_dat <- model.frame(formula, data = data)
   check_complete_cases(mod_dat)
+  validate_predictor_scale(
+    predictor_scale, retrieve_var(mod_dat, "x_var", error = TRUE)
+  )
   # Before the loop for the same reason as the line above it: bnec_group()
   # fits each level with bnec() in sequence, so a refusal reached at level k
   # arrives only after levels 1 to k-1 have compiled and sampled. See #271.
@@ -268,7 +276,7 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
   )
   # narrow_environment(), for the reason bnec() gives at its own call: future
   # exports the applied function with its enclosing environment, and that would
-  # be this frame. Only the six names below need to reach a worker, and neither
+  # be this frame. Only the seven names below need to reach a worker, and neither
   # `data` nor `grp` is one of them.
   #
   # do.call() rather than forwarding `...`, because `...` cannot be put in the
@@ -297,10 +305,12 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
         )
         on.exit(options(old), add = TRUE)
       }
-      do.call("bnec", c(list(formula, data = part$data, family = family),
+      do.call("bnec", c(list(formula, data = part$data, family = family,
+                             predictor_scale = predictor_scale),
                         dots))
     },
     list(formula = formula, family = family, dots = dots,
+         predictor_scale = predictor_scale,
          concurrent = level_plan$concurrent, cache_root = cache_root,
          level_seeds = level_seeds)
   )

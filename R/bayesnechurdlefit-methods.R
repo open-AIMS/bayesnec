@@ -562,9 +562,11 @@ amend.bayesnechurdlefit <- function(object, drop, add, loo_controls,
                                     x_range = NA, resolution = 1000,
                                     sig_val = 0.01, priors,
                                     prior_type = "uninformative",
-                                    timeout = Inf) {
+                                    timeout = Inf,
+                                    predictor_scale = "auto") {
   args <- list(x_range = x_range, resolution = resolution, sig_val = sig_val,
-               prior_type = prior_type, timeout = timeout)
+               prior_type = prior_type, predictor_scale = predictor_scale,
+               timeout = timeout)
   if (!missing(priors)) args$priors <- priors
   if (!missing(drop)) args$drop <- drop
   if (!missing(add)) args$add <- add
