@@ -8,7 +8,9 @@
 #' which to list the available models, or a \code{\link[base]{numeric}} vector
 #' indicating the natural range of values which the models should be able to
 #' handle (see Details). If missing, all available models and their groups are
-#' listed.
+#' listed when \code{max_pars} is also \code{NULL}. When \code{object} is
+#' missing and \code{max_pars} is supplied, all available equations are
+#' considered before applying the limit.
 #' @param max_pars An optional positive whole number giving the maximum number
 #' of curve parameters an equation may contain.
 #'
@@ -94,10 +96,10 @@
 #'
 #' Set \code{max_pars} to restrict the resolved set to equations with no more
 #' than that number of curve parameters. The limit can be used by itself or
-#' combined with a model group, response range, or fitted object. Use the names
-#' of the returned list as the \code{model} argument in a
+#' combined with a model group, response range, or fitted object. The returned
+#' list can be passed directly as the \code{model} argument in a
 #' \code{\link{bayesnecformula}}, for example
-#' \code{names(models("decline", max_pars = 3))}.
+#' \code{crf(x, models("decline", max_pars = 3))}.
 #'
 #' \bold{Coming from the \code{drc} package}
 #'
@@ -212,7 +214,7 @@ models <- function(object, max_pars = NULL) {
     )
     mod_params <- mod_params[n_pars <= max_pars]
     if (!length(mod_params)) {
-      stop("No model equations have ", max_pars,
+      stop("No selected model equations have ", max_pars,
            " or fewer curve parameters.", call. = FALSE)
     }
   }

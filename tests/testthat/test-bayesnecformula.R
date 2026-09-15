@@ -149,6 +149,14 @@ test_that("a literal model set is unchanged", {
                     get_model_from_formula(bnf(y ~ crf(x, "nec")))))
 })
 
+test_that("a model set returned by models() is accepted", {
+  expected <- names(models("decline", max_pars = 3))
+  expect_identical(
+    get_model_from_formula(bnf(y ~ crf(x, models("decline", max_pars = 3)))),
+    expected
+  )
+})
+
 test_that("a model set variable that does not exist is still an error", {
   fit_set <- function() {
     get_model_from_formula(bnf(y ~ crf(x, no_such_object)))

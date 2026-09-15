@@ -51,8 +51,8 @@ term called \code{crf}, which sets the concentration-response equation
 to be evaluated based on some \code{x} predictor. The equation itself is
 defined by the argument \code{"model"}: a \code{\link[base]{character}}
 vector containing a specific model, a concatenation of specific models,
-or a single string defining a particular group of models
-(or group of equations, see \code{\link{models}}). Internally
+a single string defining a particular group of models, or the named list
+returned by \code{\link{models}}. Internally
 this argument is substituted by an actual \code{\link[brms]{brmsformula}},
 which is then passed onto \code{\link[brms]{brm}} for model fitting.
 

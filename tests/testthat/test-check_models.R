@@ -128,6 +128,7 @@ test_that("models() filters equations by curve-parameter count (#301)", {
     all_models, function(x) length(names(x$pforms)), integer(1)
   )
 
+  expect_setequal(names(observed), names(expected))
   expect_equal(observed[names(expected)], expected)
   expect_setequal(names(models(max_pars = 3)), names(expected[expected <= 3]))
   expect_setequal(
@@ -142,7 +143,9 @@ test_that("models() filters equations by curve-parameter count (#301)", {
 
 test_that("models() validates parameter-count limits (#301)", {
   expect_error(models(max_pars = 1),
-               "No model equations have 1 or fewer curve parameters")
+               "No selected model equations have 1 or fewer curve parameters")
+  expect_error(models("hormesis", max_pars = 3),
+               "No selected model equations have 3 or fewer curve parameters")
   for (bad in list(0, -1, 2.5, Inf, NA_real_, c(2, 3), "3")) {
     expect_error(models(max_pars = bad),
                  "single positive whole number")
