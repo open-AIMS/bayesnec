@@ -343,12 +343,17 @@ validate_family <- function(family, link_source = "none") {
              paste0(mod_fams, collapse = ", "), ".", call. = FALSE)
       }
       family <- bnec_default_family(tag)
-    } else if (inherits(family, "family") &&
-               !identical(link_source, "symbol")) {
-      # An evaluated call: Beta(), Gamma(), Beta(link = "logit"),
-      # hurdle_gamma(link_hu = "logit"). Every link the caller wrote is kept
-      # and every one they did not is assigned -- per argument, because writing
-      # link_hu says nothing about the mean. The dispersion links are carried
+    } else if (inherits(family, "family")) {
+      # Rebuild an evaluated family whether it arrived from a call or a symbol.
+      # Family constructors return closures whose call frame can retain the
+      # environment in which the constructor was called. Keeping an object such
+      # as `fam <- Gamma(link = "identity")` unchanged therefore put that whole
+      # environment in brm_args and sent it to every future worker (#329).
+      #
+      # Every link the caller wrote is kept and every one they did not is
+      # assigned -- per argument, because writing link_hu says nothing about the
+      # mean. For a symbol, chosen_link_args() treats every mean link on the
+      # object as the caller's choice. Dispersion links are always carried
       # through untouched; see kept_links().
       family <- bnec_default_family(family$family,
                                     keep = kept_links(family, link_source))

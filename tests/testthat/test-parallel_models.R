@@ -330,6 +330,42 @@ test_that("only what the applied function names travels to a worker", {
   expect_identical(parent.env(environment(fn)), asNamespace("bayesnec"))
 })
 
+test_that("brm_args does not export a family object's calling environment", {
+  skip_unless_future()
+  # This is the second route reported in #329. The formula was already narrowed,
+  # but a family constructed beside an unrelated object retained that object
+  # through its closures and reached the model worker as brm_args$family.
+  make_family <- function() {
+    big <- numeric(1e6)
+    Gamma(link = "identity")
+  }
+  supplied <- make_family()
+  family <- bayesnec:::validate_family(supplied, link_source = "symbol")
+  brm_args <- list(family = bayesnec:::unmark_family(family))
+  # A finite maxSize asks future to calculate total_size even where the calling
+  # session has disabled its export limit with future.globals.maxSize = Inf.
+  # Without it the macOS check returned NA for both totals and tested nothing.
+  max_size <- 100 * 1024^2
+  globals <- future::getGlobalsAndPackages(
+    quote(brm_args$family$family),
+    envir = list2env(list(brm_args = brm_args), parent = baseenv()),
+    maxSize = max_size
+  )$globals
+  supplied_globals <- future::getGlobalsAndPackages(
+    quote(brm_args$family$family),
+    envir = list2env(
+      list(brm_args = list(family = supplied)), parent = baseenv()
+    ),
+    maxSize = max_size
+  )$globals
+  supplied_size <- attr(supplied_globals, "total_size")
+  rebuilt_size <- attr(globals, "total_size")
+  expect_gt(supplied_size, 7 * 1024^2)
+  # Compare the removed bytes rather than a ratio so a platform-specific fixed
+  # baseline in the discovered globals cannot obscure removal of the sentinel.
+  expect_gt(supplied_size - rebuilt_size, 7 * 1024^2)
+})
+
 test_that("future's own seeding would have changed those draws", {
   skip_unless_future()
   # The evidence for restoring RNGkind inside the worker, kept as a test
