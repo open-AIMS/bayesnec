@@ -193,6 +193,7 @@ mkdir -p "$CACHE"
 # reuses chunks fitted by whatever version was installed when it was written.
 singularity exec -B "$JOB":"$JOB" -B "$CACHE":"$CACHE" --pwd "$JOB" \
   "${RENV[@]}" \
+  --env BAYESNEC_PRECOMPILE_PACKAGE=installed \
   --env BAYESNEC_STAN_CACHE="$CACHE" \
   --env BAYESNEC_VIGNETTES="$VIG" \
   --env SLURM_CPUS_PER_TASK="${SLURM_CPUS_PER_TASK:-4}" \

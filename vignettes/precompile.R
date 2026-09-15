@@ -70,6 +70,41 @@ if (length(.bayesnec_selection)) {
 message("Precompiling: ", paste(file_path_sans_ext(basename(orig_files)),
                                 collapse = ", "))
 
+# Package source ----------------------------------------------------------
+# A direct run is a development operation, so load this checkout rather than
+# whichever bayesnec installation happens to be first on .libPaths(). Loading
+# only the exports preserves the installed-package boundary: an unexported
+# function cannot make a vignette pass here and fail under R CMD check.
+#
+# The HPC job is the exception. It installs this checkout into an isolated,
+# job-local library and verifies the resolved path before calling this script.
+# BAYESNEC_PRECOMPILE_PACKAGE=installed lets that route use its verified build
+# without requiring a development package in the pinned container.
+.package_mode <- Sys.getenv("BAYESNEC_PRECOMPILE_PACKAGE", "source")
+if (!.package_mode %in% c("source", "installed")) {
+  stop("BAYESNEC_PRECOMPILE_PACKAGE must be 'source' or 'installed', not '",
+       .package_mode, "'.", call. = FALSE)
+}
+if (identical(.package_mode, "source")) {
+  if (!requireNamespace("pkgload", quietly = TRUE)) {
+    stop("pkgload is required to precompile from the source checkout. ",
+         "Install the package's suggested dependencies and try again.",
+         call. = FALSE)
+  }
+  pkgload::load_all(".", export_all = FALSE, helpers = FALSE,
+                    attach_testthat = FALSE, quiet = TRUE)
+  .package_source <- normalizePath(".")
+} else {
+  if (!requireNamespace("bayesnec", quietly = TRUE)) {
+    stop("BAYESNEC_PRECOMPILE_PACKAGE=installed, but bayesnec is not installed.",
+         call. = FALSE)
+  }
+  suppressPackageStartupMessages(library(bayesnec))
+  .package_source <- normalizePath(find.package("bayesnec"))
+}
+message("bayesnec ", as.character(packageVersion("bayesnec")), " from ",
+        .package_source, " (", .package_mode, ")")
+
 # need to set system variable locally first -------------------------------
 Sys.setenv("NOT_CRAN" = "true")
 
