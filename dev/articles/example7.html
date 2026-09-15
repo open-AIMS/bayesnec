@@ -116,6 +116,48 @@ negative response values</h1>
     
     
 <div class="section level2">
+<h2 id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
+</h2>
+<p>This vignette examines how different conventions for handling
+negative growth-rate measurements affect concentration-response
+modelling and the resulting toxicity estimates. Negative growth rates
+are common in algal toxicity tests and other ecological endpoints that
+measure change over time, yet many analytical workflows modify or remove
+these observations before model fitting.</p>
+<p>Using simulated datasets where the true toxicity values are known,
+six commonly used approaches were compared: retaining measured values,
+censoring values below zero, deleting negative observations, replacing
+negatives with zero (“flooring”), and fitting Beta or Gamma response
+distributions that do not permit negative values. Performance was
+assessed for ErC10, ErC50 and NSEC estimates across a range of
+experimental designs and levels of measurement precision.</p>
+<p>The results show that approaches which retain the measured
+information, either directly or through censoring, consistently recover
+the true toxicity values, maintain nominal interval coverage, and
+improve as experimental precision increases. Deleting negative
+observations performs less well but remains largely unbiased. In
+contrast, conventions that replace negative values or impose a
+non-negative response distribution introduce systematic bias that does
+not disappear with increasing precision. Flooring negative values
+produces increasingly over-conservative toxicity estimates, particularly
+for the NSEC, while Beta and Gamma models can introduce substantial bias
+despite successfully converging.</p>
+<p>Application to four real algal growth datasets demonstrated that the
+choice of convention can materially affect reported toxicity values,
+although the magnitude of the effect depends on the prevalence of
+observations at or below zero growth. The simulation results indicate
+that the direction of the bias is predictable even when its magnitude is
+dataset specific.</p>
+<p>Overall, the study supports analysing growth-rate data as measured
+whenever possible and using censoring when values below a detection or
+counting limit are unavailable. The results provide strong evidence
+against replacing negative values with zero or selecting bounded
+response distributions solely because negative responses are present.
+These practices distort the data-generating process and can produce
+toxicity estimates that become more confidently wrong as data quality
+improves.</p>
+</div>
+<div class="section level2">
 <h2 id="negative-growth-rates">1 Negative growth rates<a class="anchor" aria-label="anchor" href="#negative-growth-rates"></a>
 </h2>
 <p>Some ecotoxicological responses can legitimately take negative
@@ -132,22 +174,30 @@ exceeding 100. Several commonly used concentration-response equations
 cannot generate a negative mean at all. And a negative growth rate looks
 anomalous on a plot, which invites the reader to treat it as an error
 rather than as a measurement.</p>
-<p>The removal is done in one of several ways: by replacing the negative
-values with zero before fitting, by deleting the rows that hold them, by
+<p>The removal is done in one of several ways: by deleting the rows that
+hold them, by replacing the negative values with zero before fitting, by
 declaring them censored at zero, or by fitting a response distribution
-such as a Beta or a Gamma that has no support below zero.</p>
-<p>Here we examine what each of those conventions does to the toxicity
-estimate that is subsequently reported. Section 2 sets out how the
-estimates are defined and why the definition matters when the response
-can cross zero. Section 3 sets out what replacing a negative value
-commits the analyst to, which is more than an edit to the data. Section
-4 records what <code>bayesnec</code> permits, which changed in version
-2.2.0. Section 5 reports a simulation study in which the true values are
+such as a Beta or a Gamma that has no support below zero. In a minority
+of cases the negative values are kept and the model is fitted to the
+data as recorded, which is the <code>measured</code> convention of
+Section 5.</p>
+<p>Here we examine how each of those conventions affects the toxicity
+estimate that is subsequently reported.</p>
+<ul>
+<li>Section 2 sets out how the estimates are defined, and why the
+definition matters when the response can cross zero.</li>
+<li>Section 3 sets out what replacing a negative value commits the
+analyst to, which is more than an edit to the data.</li>
+<li>Section 4 records what <code>bayesnec</code> permits, which changed
+in version 2.2.0.</li>
+<li>Section 5 reports a simulation study in which the true values are
 known, so that each convention can be scored rather than merely
-compared. Section 6 applies the same comparison to four real algal
-growth tests. Sections 7 and 8 give the recommendations and the
-limitations, and Section 9 records the provenance of every figure
-quoted.</p>
+compared.</li>
+<li>Section 6 applies the same comparison to four real algal growth
+tests.</li>
+<li>Sections 7 and 8 give the recommendations and the limitations.</li>
+<li>Section 9 records the provenance of every figure quoted.</li>
+</ul>
 <p>To run this vignette we will need the following packages.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/">bayesnec</a></span><span class="op">)</span></span>
@@ -162,22 +212,21 @@ quoted.</p>
 <div class="section level3">
 <h3 id="growth-rate-and-the-ercx-notation">2.1 Growth rate and the ErCx notation<a class="anchor" aria-label="anchor" href="#growth-rate-and-the-ercx-notation"></a>
 </h3>
-<p>The subscript <code>r</code> in ErC50 comes from OECD Test Guideline
-201 <span class="citation">(OECD 2026)</span>. In OECD terminology the
+<p>The <code>r</code> in ErC50 names the endpoint the estimate was
+derived from. It comes from OECD Test Guideline 201 <span class="citation">(OECD 2026)</span>, which writes it as a subscript;
+this vignette writes it inline. In OECD terminology the
 <em>endpoint</em> is the measured biological response, and TG 201
 defines two of them from the same cell counts and requires both to be
-reported. The toxicity estimates derived from each are distinguished by
-a subscript naming the endpoint they came from: ErC50 is the EC50 for
-the average specific <em>growth rate</em>, the rate constant of
-population increase, and EyC50 is the EC50 for the <em>yield</em>, the
-biomass increase over the test. For the same data EyC50 is
-systematically lower than ErC50, and the guideline requires the growth
-rate to be reported because it is the one that does not depend on test
-duration.</p>
-<p>An ECx or an NSEC is therefore a <em>toxicity estimate</em>, not an
-endpoint. That distinction matters here because it is the growth rate
-endpoint, not the toxicity estimate, that can take negative values.
-Everything below concerns ErCx.</p>
+reported. ErC50 is the EC50 for the average specific <em>growth
+rate</em>, the rate constant of population increase, and EyC50 is the
+EC50 for the <em>yield</em>, the biomass increase over the test. For the
+same data EyC50 is systematically lower than ErC50, and the guideline
+requires the growth rate to be reported because it does not depend on
+test duration.</p>
+<p>An ECx or an NSEC, both defined below, is therefore a <em>toxicity
+estimate</em>, not an endpoint. That distinction matters here because it
+is the growth rate endpoint, not the toxicity estimate, that can take
+negative values. Everything below concerns ErCx.</p>
 </div>
 <div class="section level3">
 <h3 id="the-ecx-reference">2.2 The ECx reference<a class="anchor" aria-label="anchor" href="#the-ecx-reference"></a>
@@ -217,25 +266,34 @@ correction twice and would additionally distort the error structure
 <div class="section level3">
 <h3 id="the-nsec">2.3 The NSEC<a class="anchor" aria-label="anchor" href="#the-nsec"></a>
 </h3>
-<p>The NSEC is the no-significant-effect-concentration of <span class="citation">Fisher and Fox (2023)</span>: the concentration at
-which the modelled mean response first becomes statistically
-indistinguishable from the modelled control response.
-<code>bayesnec</code> takes a lower quantile of the control posterior —
-by default the 1st percentile, controlled by <code>sig_val</code> — and
-finds where each posterior draw of the curve crosses it. It is one of
-the estimates recommended for guideline derivation under the current
-Australian and New Zealand technical guidance <span class="citation">(Warne et al. 2025)</span>; see <span class="citation">Fisher et al. (2023)</span> for its relationship to the
-NEC.</p>
+<p>The NSEC is the no-significant-effect-concentration of <span class="citation">Fisher and Fox (2023)</span>: the highest concentration
+at which the modelled mean response is still statistically
+indistinguishable from the modelled control response. Read up the
+concentration series, it is the point at which the response first
+becomes distinguishable from the control. <code>bayesnec</code> takes a
+lower quantile of the control posterior — by default the 1st percentile,
+controlled by <code>sig_val</code> — and finds where each posterior draw
+of the curve crosses it. It is one of the estimates recommended for
+guideline derivation under the current Australian and New Zealand
+technical guidance <span class="citation">(Warne et al. 2025)</span>;
+see <span class="citation">Fisher et al. (2023)</span> for its
+relationship to the NEC.</p>
 <p>The NSEC depends on the width of the control posterior, and this
-determines how the results below have to be read. It is a property of
-the metric rather than a defect of any fitting approach. A noisier
-experiment produces a wider control posterior, hence a lower reference
-value, hence a crossing further to the right. As the residual error
-tends to zero the reference converges on the control mean, and for an
-equation that includes a <code>nec</code> parameter the NSEC converges
-on <code>nec</code> itself. The true <code>nec</code> is therefore the
-NSEC’s limiting value, not its expected value at any finite level of
-noise.</p>
+determines how the results below have to be read. It follows from how
+the metric is defined, not from how any approach fits the data. A
+noisier experiment produces a wider control posterior, hence a lower
+reference value, hence a crossing further to the right, at a higher
+concentration. As the residual error among the control replicates tends
+to zero the reference converges on the control mean, and the crossing is
+found at a lower concentration.</p>
+<p>Several equations in <code>bayesnec</code> include a <code>nec</code>
+parameter: a threshold concentration below which the modelled mean
+response is flat at the control level and above which it declines, so
+the curve is two straight or curved segments meeting at a corner rather
+than a single smooth decline. For such an equation the NSEC converges on
+<code>nec</code> itself as the residual error falls. The true
+<code>nec</code> is therefore the NSEC’s limiting value, not its
+expected value at any finite level of noise.</p>
 </div>
 </div>
 <div class="section level2">
@@ -245,14 +303,15 @@ noise.</p>
 data. It asserts that the response cannot be negative, which is a
 statement about the response distribution, and the rest of the analysis
 has to be made consistent with it.</p>
-<p>No available family represents that assertion exactly. A floored
-response has a point mass at zero, and the distributions available for a
-non-negative continuous response exclude zero itself: a Beta is defined
-on the open interval (0, 1) and a Gamma on the open interval (0,
-infinity). The floored values therefore sit outside the support of the
-family the flooring implies. A distribution that does represent a
-continuous non-negative response with a point mass at zero — a Tweedie,
-for instance — is not available natively in <code>brms</code>.</p>
+<p>No available distribution family represents that assertion exactly. A
+floored response has a point mass at zero, and the distributions
+available for a non-negative continuous response exclude zero itself: a
+Beta is defined on the open interval (0, 1) and a Gamma on the open
+interval (0, infinity). The floored values therefore sit outside the
+support of the family the flooring implies. A distribution that does
+represent a continuous non-negative response with a point mass at zero —
+a Tweedie, for instance — is not available natively in
+<code>brms</code>.</p>
 <p><code>bayesnec</code> accommodates this by moving the values inside
 the support. <code>check_data()</code> shifts an exact zero to one tenth
 of the smallest positive value, and an exact one to
@@ -306,8 +365,9 @@ complete inhibition — can be fitted directly, on the measurements as
 recorded, and can be weighed against the free-asymptote shapes by the
 same model averaging that <code>bayesnec</code> applies to everything
 else. Choosing that shape is now a matter of evidence rather than of
-specification. Replacing the measurements remains a decision about the
-data, and the sections that follow are about the second of them.</p>
+specification. Whether to replace the measurements is a separate
+decision, taken before any equation is fitted, and it is the one the
+sections that follow are about.</p>
 </div>
 <div class="section level2">
 <h2 id="simulation-study">5 Simulation study<a class="anchor" aria-label="anchor" href="#simulation-study"></a>
@@ -396,8 +456,8 @@ model usage</a> vignette.</p>
 <p>The <code>deleted</code> convention drops the rows holding a negative
 value and analyses what is left unchanged. Nothing false is asserted
 about any observation that is kept, but the replication per
-concentration changes, and at the top of the series a whole treatment
-group can disappear.</p>
+concentration can change, and at the top of the series, at the highest
+concentrations, a whole treatment group can disappear.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"decline"</span><span class="op">)</span>, data <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">dat</span>, <span class="va">y</span> <span class="op">&gt;=</span> <span class="fl">0</span><span class="op">)</span>,</span>
 <span>     family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
@@ -753,7 +813,84 @@ design factors and the control coefficient of variation it realises.
 </div>
 </div>
 <div class="section level3">
-<h3 id="erc10-and-erc50">5.3 ErC10 and ErC50<a class="anchor" aria-label="anchor" href="#erc10-and-erc50"></a>
+<h3 id="one-dataset-under-each-convention">5.3 One dataset under each convention<a class="anchor" aria-label="anchor" href="#one-dataset-under-each-convention"></a>
+</h3>
+<p>A summary over 100 realisations of a cell, which is what the tables
+and figures below report, does not show what a convention does to a
+dataset. All six conventions were therefore also fitted to a single
+simulated dataset from <code>p1</code>, the noisiest cell tested, in
+which 10 of the seventy design points have a true mean growth rate at or
+below zero and 11 of the seventy simulated observations came out
+negative. The realisation is the one drawn for the <code>p1</code>
+exemplar by a seed fixed on the cell and convention names, so it was
+chosen before any result was seen rather than selected afterwards for
+the picture it makes.</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">panel_fit</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_abline.html" class="external-link">geom_hline</a></span><span class="op">(</span>yintercept <span class="op">=</span> <span class="fl">0</span>, linetype <span class="op">=</span> <span class="st">"dashed"</span>, colour <span class="op">=</span> <span class="st">"grey60"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_abline.html" class="external-link">geom_vline</a></span><span class="op">(</span>xintercept <span class="op">=</span> <span class="va">panel_cell</span><span class="op">$</span><span class="va">ErC50</span>, linetype <span class="op">=</span> <span class="st">"dashed"</span>,</span>
+<span>             colour <span class="op">=</span> <span class="st">"grey60"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_ribbon.html" class="external-link">geom_ribbon</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>ymin <span class="op">=</span> <span class="va">lo</span>, ymax <span class="op">=</span> <span class="va">hi</span>, fill <span class="op">=</span> <span class="va">arm</span><span class="op">)</span>, alpha <span class="op">=</span> <span class="fl">0.25</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span>data <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_points</span>, <span class="va">x</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span>,</span>
+<span>             <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>y <span class="op">=</span> <span class="va">y</span>, shape <span class="op">=</span> <span class="va">altered</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">1.1</span>, alpha <span class="op">=</span> <span class="fl">0.7</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">panel_true</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>y <span class="op">=</span> <span class="va">y</span><span class="op">)</span>, linewidth <span class="op">=</span> <span class="fl">1</span>, colour <span class="op">=</span> <span class="st">"grey10"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>y <span class="op">=</span> <span class="va">y</span>, colour <span class="op">=</span> <span class="va">arm</span><span class="op">)</span>, linewidth <span class="op">=</span> <span class="fl">0.8</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_shape_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>`FALSE` <span class="op">=</span> <span class="fl">16</span>, `TRUE` <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>, guide <span class="op">=</span> <span class="st">"none"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_colour_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="va">arm_cols</span>, guide <span class="op">=</span> <span class="st">"none"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_fill_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="va">arm_cols</span>, guide <span class="op">=</span> <span class="st">"none"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_continuous.html" class="external-link">scale_x_log10</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span> <span class="va">arm</span>, ncol <span class="op">=</span> <span class="fl">3</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">"Concentration (log scale)"</span>,</span>
+<span>       y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/expression.html" class="external-link">expression</a></span><span class="op">(</span><span class="st">"Specific growth rate ("</span><span class="op">*</span><span class="va">d</span><span class="op">^</span><span class="op">-</span><span class="fl">1</span><span class="op">*</span><span class="st">")"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_classic</a></span><span class="op">(</span>base_size <span class="op">=</span> <span class="fl">9</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>strip.background <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>        strip.text <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-one-dataset-1.png" alt="**Figure 2.** One simulated dataset from cell `p1`, fitted under each of the six conventions. Points are the data each convention was given; open symbols mark the 11 observations it altered or dropped, drawn at zero by the four conventions that substitute and at their measured values under `deleted`, which discards those rows. `measured` alters none, so nothing in its panel is marked. The coloured line is the model-averaged posterior median and the band its 95% credible interval; the black line is the true curve. The dashed horizontal line is zero growth and the dashed vertical line the true ErC50. The controls sit at a concentration of zero and have no position on a log axis, so they are not drawn; every fit uses them." width="100%"><p class="caption">
+<strong>Figure 2.</strong> One simulated dataset from cell
+<code>p1</code>, fitted under each of the six conventions. Points are
+the data each convention was given; open symbols mark the 11
+observations it altered or dropped, drawn at zero by the four
+conventions that substitute and at their measured values under
+<code>deleted</code>, which discards those rows. <code>measured</code>
+alters none, so nothing in its panel is marked. The coloured line is the
+model-averaged posterior median and the band its 95% credible interval;
+the black line is the true curve. The dashed horizontal line is zero
+growth and the dashed vertical line the true ErC50. The controls sit at
+a concentration of zero and have no position on a log axis, so they are
+not drawn; every fit uses them.
+</p>
+</div>
+<p>Under <code>measured</code> the model average follows the true curve
+the whole way down, including the part below zero, and its credible band
+is narrow throughout. Under <code>censored</code> the median does the
+same; the band flares once the curve passes zero, because a row declared
+to lie below a bound says less about where the curve goes than a
+measurement does.</p>
+<p>The three conventions that put a zero in place of the measurement —
+<code>floored</code>, <code>beta</code> and <code>gamma</code> — produce
+a curve that flattens onto zero instead of continuing down. The
+flattening is visible from a little below the true ErC50, which is
+marked by the dashed vertical line, so it begins at lower concentrations
+than the substituted rows themselves. That is the mechanism behind the
+biases reported below: the substitution is made at the top of the
+series, and the curve that results is displaced over a range that
+includes the concentrations the estimates are read from. The
+displacement is small at the ErC50 and large at the bottom of the curve,
+which is where the NSEC is read, and that ordering is what Sections 5.4
+and 5.6 measure.</p>
+<p>The <code>deleted</code> panel shows a different consequence.
+Removing every row with a negative value removed the highest
+concentrations entirely, so the fitted curve stops where the surviving
+data stop and the design is no longer the one that was run.</p>
+<p>The <code>gamma</code> panel shows a failure of the variance rather
+than of the mean. Its credible band is widest at the control, on the
+left, where the generated residual spread is no wider than anywhere
+else, because an identity-link Gamma ties the spread to the fitted mean.
+Section 5.4 quantifies that with a posterior predictive check.</p>
+</div>
+<div class="section level3">
+<h3 id="erc10-and-erc50">5.4 ErC10 and ErC50<a class="anchor" aria-label="anchor" href="#erc10-and-erc50"></a>
 </h3>
 <p>Relative bias is the mean of the estimated value minus the true
 value, over the 100 realisations of a cell, expressed as a percentage of
@@ -761,7 +898,7 @@ the true value. The precision sweep is the most informative comparison
 in the study, because it distinguishes the two things that can make an
 estimate wrong: estimation error shrinks as an experiment becomes more
 precise, and model misspecification does not.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">bias_plot</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">d</span>, <span class="va">ests</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">d</span>, <span class="va">estimate</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="va">ests</span><span class="op">)</span>,</span>
 <span>         <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">cv_f</span>, y <span class="op">=</span> <span class="va">rel_bias</span>, colour <span class="op">=</span> <span class="va">arm</span>, group <span class="op">=</span> <span class="va">arm</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
@@ -783,8 +920,8 @@ precise, and model misspecification does not.</p>
 <span><span class="op">}</span></span>
 <span><span class="fu">bias_plot</span><span class="op">(</span><span class="va">precision</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ErC10"</span>, <span class="st">"ErC50"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-precision-bias-1.png" alt="**Figure 2.** Relative bias in the estimated ErC10 and ErC50 against the control coefficient of variation, which decreases to the right as the experiment becomes more precise. Each point summarises 100 simulated datasets. The dashed line is zero bias." width="100%"><p class="caption">
-<strong>Figure 2.</strong> Relative bias in the estimated ErC10 and
+<img src="vignette-fig-precision-bias-1.png" alt="**Figure 3.** Relative bias in the estimated ErC10 and ErC50 against the control coefficient of variation, which decreases to the right as the experiment becomes more precise. Each point summarises 100 simulated datasets. The dashed line is zero bias." width="100%"><p class="caption">
+<strong>Figure 3.</strong> Relative bias in the estimated ErC10 and
 ErC50 against the control coefficient of variation, which decreases to
 the right as the experiment becomes more precise. Each point summarises
 100 simulated datasets. The dashed line is zero bias.
@@ -792,8 +929,8 @@ the right as the experiment becomes more precise. Each point summarises
 </div>
 <p>The three conventions that retain the measurement converge on the
 true ErC50. Across <code>p1</code> to <code>p4</code> the bias of
-<code>measured</code> runs from -0.5% to -0.2%, <code>censored</code>
-from -0.7% to -0.2%, and <code>deleted</code> from -2.4% to -0.1%. All
+<code>measured</code> runs from -0.4% to -0.2%, <code>censored</code>
+from -0.7% to -0.2%, and <code>deleted</code> from -2.4% to 0.0%. All
 three are within half a per cent of the truth at the highest precision
 tested.</p>
 <p>Flooring does not converge. Its ErC50 bias falls from -3.4% to -2.3%
@@ -834,7 +971,7 @@ shoulder — which is where a 10% decline is read — is what gives way.</p>
 Gaussian family the floored data are described by a correctly specified
 variance model: <code>floored</code> returns a control ratio of 0.91 to
 1.12 and a gradient of 1.04, both inside the reference. What the
-substitution changes is the mean structure, which is what Section 5.6
+substitution changes is the mean structure, which is what Section 5.7
 reports. Under a Gamma the two failures compound.</p>
 <p>The Beta is a third case. Its control ratio is 1.09 to 1.10, inside
 the reference, and its gradient 1.71 to 2.66 — a mild departure rather
@@ -847,7 +984,7 @@ nominal while its point estimate for ErC10 is a fifth low.</p>
 the noisiest to 9.3% at the most precise. Its bias grows as the
 experiment improves, which is the signature of misspecification rather
 than of estimation error.</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">design_cells</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">rel_bias</span>, y <span class="op">=</span> <span class="va">arm</span>, colour <span class="op">=</span> <span class="va">arm</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_abline.html" class="external-link">geom_vline</a></span><span class="op">(</span>xintercept <span class="op">=</span> <span class="fl">0</span>, linetype <span class="op">=</span> <span class="st">"dashed"</span>, colour <span class="op">=</span> <span class="st">"grey40"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">2.2</span><span class="op">)</span> <span class="op">+</span></span>
@@ -861,8 +998,8 @@ than of estimation error.</p>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_classic</a></span><span class="op">(</span>base_size <span class="op">=</span> <span class="fl">9</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>strip.background <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span>, legend.position <span class="op">=</span> <span class="st">"none"</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-design-bias-1.png" alt="**Figure 3.** Relative bias in the three cells that change the truth or the design rather than the measurement precision, all at a control coefficient of variation of 9.6%. `d2` and `d8` change how far the true curve descends below zero; `ctl` stops the concentration series at the zero crossing, leaving about two negative observations in seventy for a convention to act on." width="100%"><p class="caption">
-<strong>Figure 3.</strong> Relative bias in the three cells that change
+<img src="vignette-fig-design-bias-1.png" alt="**Figure 4.** Relative bias in the three cells that change the truth or the design rather than the measurement precision, all at a control coefficient of variation of 9.6%. `d2` and `d8` change how far the true curve descends below zero; `ctl` stops the concentration series at the zero crossing, leaving about two negative observations in seventy for a convention to act on." width="100%"><p class="caption">
+<strong>Figure 4.</strong> Relative bias in the three cells that change
 the truth or the design rather than the measurement precision, all at a
 control coefficient of variation of 9.6%. <code>d2</code> and
 <code>d8</code> change how far the true curve descends below zero;
@@ -887,13 +1024,13 @@ observations are at or below zero growth, the choice of convention does
 not change the reported value.</p>
 </div>
 <div class="section level3">
-<h3 id="credible-interval-coverage">5.4 Credible interval coverage<a class="anchor" aria-label="anchor" href="#credible-interval-coverage"></a>
+<h3 id="credible-interval-coverage">5.5 Credible interval coverage<a class="anchor" aria-label="anchor" href="#credible-interval-coverage"></a>
 </h3>
 <p>Coverage is the proportion of the 100 realisations whose 95% credible
 interval contains the true value. It is reported here alongside the mean
 interval width, because a wide interval and an accurate one both achieve
 nominal coverage and they are not the same result.</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cov_plot</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">d</span>, <span class="va">ests</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">d</span>, <span class="va">estimate</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="va">ests</span><span class="op">)</span>,</span>
 <span>         <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">cv_f</span>, y <span class="op">=</span> <span class="va">coverage</span>, colour <span class="op">=</span> <span class="va">arm</span>, group <span class="op">=</span> <span class="va">arm</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
@@ -913,8 +1050,8 @@ nominal coverage and they are not the same result.</p>
 <span><span class="op">}</span></span>
 <span><span class="fu">cov_plot</span><span class="op">(</span><span class="va">precision</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ErC10"</span>, <span class="st">"ErC50"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-precision-coverage-1.png" alt="**Figure 4.** Proportion of 95% credible intervals containing the true ErC10 or ErC50, against the control coefficient of variation. The dashed line is nominal coverage." width="100%"><p class="caption">
-<strong>Figure 4.</strong> Proportion of 95% credible intervals
+<img src="vignette-fig-precision-coverage-1.png" alt="**Figure 5.** Proportion of 95% credible intervals containing the true ErC10 or ErC50, against the control coefficient of variation. The dashed line is nominal coverage." width="100%"><p class="caption">
+<strong>Figure 5.</strong> Proportion of 95% credible intervals
 containing the true ErC10 or ErC50, against the control coefficient of
 variation. The dashed line is nominal coverage.
 </p>
@@ -939,7 +1076,7 @@ times as wide and covers it at the nominal rate. Neither coverage nor
 width should be reported without the other.</p>
 </div>
 <div class="section level3">
-<h3 id="the-nsec-1">5.5 The NSEC<a class="anchor" aria-label="anchor" href="#the-nsec-1"></a>
+<h3 id="the-nsec-1">5.6 The NSEC<a class="anchor" aria-label="anchor" href="#the-nsec-1"></a>
 </h3>
 <p>ErC10 and the NSEC are the two estimates commonly used as a no-effect
 value, and the conventions do not affect them in the same way. As
@@ -949,7 +1086,7 @@ at any finite noise, so the sweep rather than any single cell is what
 identifies an approach: a correctly specified one sits on the truth and
 stays there as the experiment improves, and a misspecified one departs
 further the more precise the experiment becomes.</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Bias and coverage in one figure, as two rows of a facet rather than two plots</span></span>
 <span><span class="co"># stacked by a layout package: the reference line differs between the rows, so</span></span>
 <span><span class="co"># it is supplied as data rather than as a constant.</span></span>
@@ -981,8 +1118,8 @@ further the more precise the experiment becomes.</p>
 <span>        legend.position <span class="op">=</span> <span class="st">"bottom"</span>, legend.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>        legend.key.width <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/grid/unit.html" class="external-link">unit</a></span><span class="op">(</span><span class="fl">1.4</span>, <span class="st">"lines"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-nsec-precision-1.png" alt="**Figure 5.** Relative bias in the estimated NSEC against the true `nec` of 1.3 (upper row) and the proportion of 95% credible intervals containing it (lower row), against the control coefficient of variation. The dashed lines are zero bias and nominal coverage. A correctly specified approach stays on zero bias as the residual error falls; a misspecified one departs further the more precise the experiment becomes." width="100%"><p class="caption">
-<strong>Figure 5.</strong> Relative bias in the estimated NSEC against
+<img src="vignette-fig-nsec-precision-1.png" alt="**Figure 6.** Relative bias in the estimated NSEC against the true `nec` of 1.3 (upper row) and the proportion of 95% credible intervals containing it (lower row), against the control coefficient of variation. The dashed lines are zero bias and nominal coverage. A correctly specified approach stays on zero bias as the residual error falls; a misspecified one departs further the more precise the experiment becomes." width="100%"><p class="caption">
+<strong>Figure 6.</strong> Relative bias in the estimated NSEC against
 the true <code>nec</code> of 1.3 (upper row) and the proportion of 95%
 credible intervals containing it (lower row), against the control
 coefficient of variation. The dashed lines are zero bias and nominal
@@ -1036,7 +1173,7 @@ placed to within a few per cent stops containing the truth.
 over the same range with intervals 1.81 and 2.10 times as wide.</p>
 </div>
 <div class="section level3">
-<h3 id="the-equations-the-data-are-made-to-resemble">5.6 The equations the data are made to resemble<a class="anchor" aria-label="anchor" href="#the-equations-the-data-are-made-to-resemble"></a>
+<h3 id="the-equations-the-data-are-made-to-resemble">5.7 The equations the data are made to resemble<a class="anchor" aria-label="anchor" href="#the-equations-the-data-are-made-to-resemble"></a>
 </h3>
 <p>Because every convention is model-averaged over its family’s
 declining set, and the data were generated from <code>nec4param</code>,
@@ -1150,7 +1287,7 @@ species exposed to two contaminants on undisclosed and mutually
 incomparable concentration scales. The datasets themselves are
 summarised from the data that ship with the package, so Table 3
 describes whatever version you have installed.</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">alga</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># The four case studies are the four species-by-contaminant cells of `alga`.</span></span>
@@ -1299,7 +1436,7 @@ about that row.</p>
 and passed to <code><a href="../reference/bnec.html">bnec()</a></code> with package defaults, so the case
 studies and the simulation run the same six conventions over the same
 candidate set.</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Every convention takes bnec()'s own default priors here, unlike the</span></span>
 <span><span class="co"># simulation, where one prior is fixed per cell and convention so that repeated</span></span>
 <span><span class="co"># realisations compile one Stan program rather than a hundred. Each dataset is</span></span>
@@ -1338,7 +1475,7 @@ them.</p>
 different concentration scales, each estimate is shown as a ratio: the
 convention’s estimate divided by the <code>measured</code> estimate on
 the same dataset. A ratio of 1 is exact agreement.</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Clipping by pmax/pmin on the data rather than a scale limit, to avoid</span></span>
 <span><span class="co"># depending on `scales` for an out-of-bounds handler. An interval that runs past</span></span>
 <span><span class="co"># the panel is already flagged unusable and is drawn with an open symbol.</span></span>
@@ -1361,8 +1498,8 @@ the same dataset. A ratio of 1 is exact agreement.</p>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_classic</a></span><span class="op">(</span>base_size <span class="op">=</span> <span class="fl">9</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>strip.background <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span>, legend.position <span class="op">=</span> <span class="st">"none"</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-real-ratios-1.png" alt="**Figure 6.** Estimated ErC10, ErC50 and NSEC from each convention on the four real datasets, expressed as a ratio to the `measured` analysis of the same dataset, with 95% credible intervals. The vertical line at 1 is exact agreement. Open symbols mark estimates flagged as unusable, meaning the interval reached an edge of the tested concentration range, where the bound is the design rather than the data, or collapsed to a point. Intervals extending past the plotted range are clipped at the panel edge." width="100%"><p class="caption">
-<strong>Figure 6.</strong> Estimated ErC10, ErC50 and NSEC from each
+<img src="vignette-fig-real-ratios-1.png" alt="**Figure 7.** Estimated ErC10, ErC50 and NSEC from each convention on the four real datasets, expressed as a ratio to the `measured` analysis of the same dataset, with 95% credible intervals. The vertical line at 1 is exact agreement. Open symbols mark estimates flagged as unusable, meaning the interval reached an edge of the tested concentration range, where the bound is the design rather than the data, or collapsed to a point. Intervals extending past the plotted range are clipped at the panel edge." width="100%"><p class="caption">
+<strong>Figure 7.</strong> Estimated ErC10, ErC50 and NSEC from each
 convention on the four real datasets, expressed as a ratio to the
 <code>measured</code> analysis of the same dataset, with 95% credible
 intervals. The vertical line at 1 is exact agreement. Open symbols mark
@@ -1372,9 +1509,9 @@ than the data, or collapsed to a point. Intervals extending past the
 plotted range are clipped at the panel edge.
 </p>
 </div>
-<p>No estimate in Figure 6 is flagged unusable: every interval lies
+<p>No estimate in Figure 7 is flagged unusable: every interval lies
 inside the tested concentration range.</p>
-<p>Three features of Figure 6 require care in what they do and do not
+<p>Three features of Figure 7 require care in what they do and do not
 establish.</p>
 <p>The choice of convention changes the reported value substantially on
 one of the four datasets and hardly at all on the other three. On
@@ -1506,7 +1643,7 @@ is 5.2%, under <code>gamma</code> in the <code>ctl</code> cell, so no
 figure reported from the simulation depends on an equation that did not
 converge.</p>
 <p>The weight on the zero-asymptote equations is the diagnostic Section
-5.6 identifies for flooring under an unbounded family, and it is
+5.7 identifies for flooring under an unbounded family, and it is
 computable here because it needs no truth. Averaged over the four
 datasets <code>floored</code> puts 61% of its weight on them, against 0%
 under <code>measured</code> and 0% under <code>censored</code>. In the
@@ -1632,7 +1769,7 @@ equations parameterised by <code>ec50</code> to behave differently
 between them for that reason alone.</p>
 <p>Each cell was simulated 100 times. The Monte Carlo standard error of
 the reported bias is a median of 0.4% of the true value for ErC50, 1.2%
-for ErC10 and 2.2% for the NSEC, reaching 10.4% for the gamma NSEC in
+for ErC10 and 2.2% for the NSEC, reaching 10.5% for the gamma NSEC in
 the d2 cell. Differences smaller than those are not resolved by this
 study. The Monte Carlo standard error on a coverage of 0.95 is 0.02.</p>
 <p>The design is fixed at seventy observations across twelve
@@ -1681,7 +1818,7 @@ is no longer lost; this lowers the reported lower bound of an NSEC
 interval by about three times as much as it changes the point estimate,
 and leaves every ECx unchanged. An analysis run under the CRAN release
 will not reproduce these numbers exactly.</p>
-<p>The posterior predictive figures quoted in Section 5.3 are
+<p>The posterior predictive figures quoted in Section 5.4 are
 transcribed from <code>results/ppc_spread.csv</code>, which summarises
 100 realisations of each cell and convention. They cover the four
 precision cells only. The study also keeps one fitted object per cell
@@ -1711,7 +1848,7 @@ track your installation.</p>
 Fisher, Rebecca. 2026. <em><span class="nocase">negative-response-conventions</span>: A Simulation Study
 of the Conventions Applied to Negative Concentration-Response Data</em>.
 Research compendium, <a href="https://github.com/open-AIMS/negative-response-conventions" class="external-link uri">https://github.com/open-AIMS/negative-response-conventions</a>,
-commit 31b3114f37b09a3b595d1448c08e5d715321fef7.
+commit 1721e49eaa9084a6fc6a7752808d69f5e7501cd5.
 </div>
 <div id="ref-fisherfox2023" class="csl-entry">
 Fisher, Rebecca, and David R Fox. 2023. <span>“Introducing the No
