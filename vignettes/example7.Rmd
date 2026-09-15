@@ -811,11 +811,11 @@ ggplot(nsec_long, aes(x = cv_f, y = value, colour = arm, group = arm)) +
 </div>
 The retaining conventions stay near the true `nec` across the sweep, and show no
 trend in either direction. At the highest precision the NSEC bias of `measured`
-is 3.3%, of `censored`
-2.5% and of `deleted`
-0.8%. They are not flat along the way — the
+is 3.2%, of `censored`
+2.4% and of `deleted`
+0.7%. They are not flat along the way — the
 largest single departure any of the three shows is
-11.1%,
+10.8%,
 by `measured` at a 6.7% control coefficient of variation — but the departures do
 not grow as the experiment improves, which is what distinguishes estimation
 error from misspecification.
@@ -829,11 +829,11 @@ is therefore that it stays on the truth as the residual error falls, not the
 direction it approaches from.
 
 The conventions that replace the measurement diverge downward instead. The NSEC
-of `floored` runs from -11.5% to
--52.8%, of `beta` from
--1.0% to -42.5%, and
-of `gamma` from 25.5% to
--71.5%. Coverage follows: at the highest precision
+of `floored` runs from -11.9% to
+-52.9%, of `beta` from
+-1.4% to -42.7%, and
+of `gamma` from 25.0% to
+-71.6%. Coverage follows: at the highest precision
 `floored` contains the true `nec` in
 0.00 of the 100 realisations and
 `gamma` in 0.04, against
@@ -851,18 +851,18 @@ says nothing about the quantity it names cannot be relied on to be cautious on
 the next dataset either.
 
 The one convention whose NSEC coverage falls without its bias diverging is `measured`,
-from 1.00 to
-0.84. That is the property of the
+from 0.99 to
+0.88. That is the property of the
 metric described in Section 2.3 rather than a failure of the convention. The
 NSEC overshoots the true `nec` slightly at finite noise, and by `p4` the
 interval has narrowed faster than the remaining
-3.3% has closed, so an interval that is
+3.2% has closed, so an interval that is
 correctly placed to within a few per cent stops containing the truth.
 `censored` and `deleted` hold nominal coverage over the same range with
 intervals
-1.72
+1.81
 and
-2.04
+2.10
 times as wide.
 
 ## 5.6 The equations the data are made to resemble
@@ -1161,9 +1161,11 @@ Table: **Table 4.** Model weight held by equations whose tail effective sample s
 That is a limitation of these four fits rather than of the conventions. It falls
 on `measured` and `deleted` on `r_salina`, which are reference analyses rather
 than the conventions under test, so the ratios on that dataset should be read as
-the weaker evidence. The simulation does not have this problem: across all 4,200
-fits the largest mean weight on an equation failing either diagnostic is under
-half a per cent, so nothing there rests on an equation that did not converge.
+the weaker evidence. The simulation does not have this problem. Averaged over its
+4,200 fits, equations failing either diagnostic hold 0.4% of the model weight,
+and the largest figure for any one cell and convention is 5.2%, under `gamma` in
+the `ctl` cell, so no figure reported from the simulation depends on an equation
+that did not converge.
 
 The weight on the zero-asymptote equations is the diagnostic Section 5.6
 identifies for flooring under an unbounded family, and it is computable here because it needs
@@ -1211,7 +1213,7 @@ Do not replace negative values with zero. Flooring leaves an ErC50 bias of
 improves, so its interval coverage falls to
 0.24 at the highest precision
 tested, and it displaces the NSEC by
--52.8%. Averaging over the enlarged candidate
+-52.9%. Averaging over the enlarged candidate
 set absorbs part of the distortion — the ErC10 result is close to unbiased —
 but it does not remove it, and it cannot, because the floored data are no
 longer draws from the process that produced the measurements.
@@ -1302,7 +1304,7 @@ reported bias is a median of
 0.4% of the true value for
 ErC50, 1.2% for ErC10 and
 2.2% for the NSEC, reaching
-10.5% for the
+10.4% for the
 gamma NSEC in the
 d2 cell. Differences smaller than those are
 not resolved by this study. The Monte Carlo standard error on a coverage of 0.95
@@ -1341,11 +1343,15 @@ toolchain and installs the package from that pinned source.
 
 That commit is on the development branch rather than a CRAN release, and here
 the difference matters more than it usually would, because what this vignette
-measures is what package defaults do. Two of the changes between that commit and
-the 2.1.3.1 release are the subject of results reported above: the `nec` and
+measures is what package defaults do. Three of the changes between that commit
+and the 2.1.3.1 release are the subject of results reported above. The `nec` and
 `ec50` priors are now built on the log of the predictor, and the initial-value
-search accepts chains individually. An analysis run under the CRAN release will
-not reproduce these numbers exactly.
+search accepts chains individually. The NSEC crossing is now sought from the
+control upward, with the control made the first point of the searched grid, so a
+draw that crosses between the control and the next grid point is no longer lost;
+this lowers the reported lower bound of an NSEC interval by about three times as
+much as it changes the point estimate, and leaves every ECx unchanged. An
+analysis run under the CRAN release will not reproduce these numbers exactly.
 
 The posterior predictive figures quoted in Section 5.3 are transcribed from
 `results/ppc_spread.csv`, which summarises 100 realisations of each cell and

@@ -641,48 +641,48 @@ ctl,deleted,ErC50,-0.42,0.97,1.0405,0.2382,0.47
 ctl,floored,ErC50,-0.54,0.98,0.971,0.2243,0.44
 ctl,beta,ErC50,-0.68,1,1.6145,0.2304,0.45
 ctl,gamma,ErC50,0.93,0.98,2.9828,0.3944,0.78
-p1,measured,NSEC,3.95,1,1.6996,0.4401,3.38
-p1,censored,NSEC,-0.22,0.99,1.6707,0.4242,3.28
-p1,deleted,NSEC,-0.12,0.99,1.6419,0.3579,2.77
-p1,floored,NSEC,-11.46,0.96,1.6274,0.3702,2.62
-p1,beta,NSEC,-1.03,0.99,1.8036,0.3513,2.71
-p1,gamma,NSEC,25.51,0.93,4.0713,0.8988,6.46
-p2,measured,NSEC,11.12,0.94,1.2683,0.2724,1.79
-p2,censored,NSEC,5.69,0.97,1.3587,0.2739,2.04
-p2,deleted,NSEC,-0.8,0.99,1.4011,0.2554,1.97
-p2,floored,NSEC,-26.47,0.87,1.4269,0.421,1.88
-p2,beta,NSEC,-15.52,0.91,1.5391,0.3695,2.39
-p2,gamma,NSEC,-12.72,0.74,3.2062,0.5883,4.36
-p3,measured,NSEC,5.79,0.76,0.419,0.1512,1.01
-p3,censored,NSEC,2.52,0.99,0.8599,0.1475,1.11
-p3,deleted,NSEC,-1.92,0.99,0.9501,0.2047,1.57
-p3,floored,NSEC,-46.93,0.03,0.7016,0.6172,0.72
-p3,beta,NSEC,-42,0.42,1.1417,0.5851,1.63
-p3,gamma,NSEC,-62.66,0.24,1.0207,0.8548,2
-p4,measured,NSEC,3.29,0.84,0.2696,0.0712,0.44
-p4,censored,NSEC,2.5,0.97,0.4636,0.0734,0.51
-p4,deleted,NSEC,0.82,0.98,0.5503,0.1181,0.91
-p4,floored,NSEC,-52.76,0,0.5077,0.6867,0.25
-p4,beta,NSEC,-42.54,0.2,0.8865,0.5703,1.08
-p4,gamma,NSEC,-71.47,0.04,0.5217,0.9632,1.96
-d2,measured,NSEC,-0.26,0.99,2.0539,0.496,3.83
-d2,censored,NSEC,4.64,0.99,2.0906,0.4665,3.58
-d2,deleted,NSEC,9.28,1,2.1095,0.4562,3.4
-d2,floored,NSEC,-3.11,0.98,2.0689,0.3984,3.06
-d2,beta,NSEC,19.43,1,2.2064,0.4304,2.69
-d2,gamma,NSEC,94.3,0.88,6.4274,1.8292,10.5
-d8,measured,NSEC,8.09,0.96,1.1557,0.2133,1.43
-d8,censored,NSEC,3.82,0.95,1.2223,0.2514,1.91
-d8,deleted,NSEC,3.24,1,1.2024,0.2237,1.7
-d8,floored,NSEC,-6.87,1,1.2906,0.2767,2.02
-d8,beta,NSEC,-3.68,0.96,1.5041,0.3112,2.38
-d8,gamma,NSEC,-6.66,0.84,2.7313,0.501,3.82
-ctl,measured,NSEC,1.08,0.98,1.6416,0.346,2.67
-ctl,censored,NSEC,1.42,0.98,1.6424,0.3505,2.71
-ctl,deleted,NSEC,1.1,0.99,1.634,0.3616,2.79
-ctl,floored,NSEC,0.45,0.98,1.6337,0.3479,2.69
-ctl,beta,NSEC,-6.63,1,1.808,0.2761,2.03
-ctl,gamma,NSEC,90.3,0.96,4.4393,1.3625,5.35
+p1,measured,NSEC,3.47,0.99,1.7735,0.4401,3.38
+p1,censored,NSEC,-0.65,0.99,1.745,0.4246,3.28
+p1,deleted,NSEC,-0.54,0.99,1.7209,0.3576,2.76
+p1,floored,NSEC,-11.87,0.96,1.698,0.3714,2.61
+p1,beta,NSEC,-1.43,0.99,1.8816,0.3507,2.71
+p1,gamma,NSEC,24.98,0.94,4.1836,0.8935,6.44
+p2,measured,NSEC,10.84,0.97,1.3866,0.2717,1.8
+p2,censored,NSEC,5.38,0.98,1.4477,0.2746,2.05
+p2,deleted,NSEC,-1.13,1,1.4812,0.2561,1.98
+p2,floored,NSEC,-26.79,0.86,1.4875,0.4243,1.87
+p2,beta,NSEC,-15.87,0.89,1.6103,0.3713,2.39
+p2,gamma,NSEC,-13.09,0.74,3.286,0.5875,4.35
+p3,measured,NSEC,5.69,0.8,0.5045,0.151,1.02
+p3,censored,NSEC,2.38,1,0.9338,0.1475,1.12
+p3,deleted,NSEC,-2.13,1,1.0256,0.2058,1.58
+p3,floored,NSEC,-47.08,0.03,0.748,0.6192,0.72
+p3,beta,NSEC,-42.24,0.42,1.1924,0.588,1.62
+p3,gamma,NSEC,-62.82,0.25,1.0533,0.8566,2
+p4,measured,NSEC,3.23,0.88,0.2929,0.0711,0.44
+p4,censored,NSEC,2.4,0.97,0.5304,0.0731,0.51
+p4,deleted,NSEC,0.67,0.98,0.6146,0.1205,0.93
+p4,floored,NSEC,-52.87,0,0.5541,0.6881,0.25
+p4,beta,NSEC,-42.72,0.2,0.9425,0.5725,1.08
+p4,gamma,NSEC,-71.59,0.04,0.5478,0.9646,1.96
+d2,measured,NSEC,-0.88,1,2.1192,0.4955,3.83
+d2,censored,NSEC,4.02,1,2.1617,0.4658,3.58
+d2,deleted,NSEC,8.69,1,2.1854,0.4537,3.4
+d2,floored,NSEC,-3.65,0.98,2.1466,0.397,3.05
+d2,beta,NSEC,18.93,1,2.297,0.4261,2.69
+d2,gamma,NSEC,93.44,0.93,6.5989,1.8174,10.45
+d8,measured,NSEC,7.84,0.98,1.2582,0.2119,1.44
+d8,censored,NSEC,3.52,0.99,1.3086,0.252,1.92
+d8,deleted,NSEC,2.94,1,1.2833,0.2234,1.7
+d8,floored,NSEC,-7.21,1,1.3646,0.2782,2.02
+d8,beta,NSEC,-4.01,0.98,1.5834,0.312,2.38
+d8,gamma,NSEC,-7.02,0.84,2.817,0.4999,3.8
+ctl,measured,NSEC,0.67,0.99,1.7179,0.3461,2.67
+ctl,censored,NSEC,1.02,0.99,1.7195,0.3506,2.71
+ctl,deleted,NSEC,0.69,0.99,1.7082,0.3614,2.79
+ctl,floored,NSEC,0.04,0.99,1.7104,0.3478,2.69
+ctl,beta,NSEC,-7.06,1,1.8839,0.2769,2.02
+ctl,gamma,NSEC,89.16,0.98,4.5522,1.3474,5.31
 ")
 sim$handling <- factor(arm_handling[sim$arm], levels = handling_levels)
 sim$arm <- factor(sim$arm, levels = arm_levels)
@@ -1315,76 +1315,76 @@ cases <- read.csv(text = "
 dataset,arm,estimate,value,lower,upper,x_min,x_max,w_zero_asymptote,w_failing_ess
 c_proliferum,measured,ErC10,7.9287,5.2453,9.901,0.01,20,0,0.151
 c_proliferum,measured,ErC50,9.4133,8.2551,9.9753,0.01,20,0,0.151
-c_proliferum,measured,NSEC,7.7926,4.7839,9.9038,0.01,20,0,0.151
+c_proliferum,measured,NSEC,7.7628,4.4689,9.9038,0.01,20,0,0.151
 c_proliferum,censored,ErC10,3.4463,1.4137,4.2828,0.01,20,0.005,0
 c_proliferum,censored,ErC50,6.8181,6.2331,7.4524,0.01,20,0.005,0
-c_proliferum,censored,NSEC,2.8417,0.5601,3.8504,0.01,20,0.005,0
+c_proliferum,censored,NSEC,2.8352,0.4312,3.8471,0.01,20,0.005,0
 c_proliferum,deleted,ErC10,3.3967,2.5183,4.2437,0.01,20,0.505,0
 c_proliferum,deleted,ErC50,6.9444,6.218,7.6572,0.01,20,0.505,0
-c_proliferum,deleted,NSEC,2.7796,1.1764,3.8711,0.01,20,0.505,0
+c_proliferum,deleted,NSEC,2.7729,0.9834,3.8693,0.01,20,0.505,0
 c_proliferum,floored,ErC10,3.5301,2.5406,4.3692,0.01,20,0.606,0
 c_proliferum,floored,ErC50,6.7953,6.0807,7.4276,0.01,20,0.606,0
-c_proliferum,floored,NSEC,2.3276,0.8357,4.0511,0.01,20,0.606,0
+c_proliferum,floored,NSEC,2.3194,0.7182,4.048,0.01,20,0.606,0
 c_proliferum,beta,ErC10,3.6293,2.448,4.8836,0.01,20,0.053,0.01
 c_proliferum,beta,ErC50,6.8628,5.8203,7.5428,0.01,20,0.053,0.01
-c_proliferum,beta,NSEC,2.3001,0.7755,4.0342,0.01,20,0.053,0.01
+c_proliferum,beta,NSEC,2.291,0.6037,4.0297,0.01,20,0.053,0.01
 c_proliferum,gamma,ErC10,3.4293,1.0317,7.8512,0.01,20,0.191,0
 c_proliferum,gamma,ErC50,7.2294,5.2634,8.9169,0.01,20,0.191,0
-c_proliferum,gamma,NSEC,3.9002,1.2266,7.7635,0.01,20,0.191,0
+c_proliferum,gamma,NSEC,3.8768,1.0313,7.7564,0.01,20,0.191,0
 c_proliferum2,measured,ErC10,154.4071,121.7981,246.1596,1,1000,0,0
 c_proliferum2,measured,ErC50,368.3586,354.3552,380.9968,1,1000,0,0
-c_proliferum2,measured,NSEC,63.9231,21.5235,225.2871,1,1000,0,0
+c_proliferum2,measured,NSEC,63.6554,16.7592,225.1733,1,1000,0,0
 c_proliferum2,censored,ErC10,205.8064,156.4626,225.1702,1,1000,0.001,0
 c_proliferum2,censored,ErC50,356.748,343.317,370.3292,1,1000,0.001,0
-c_proliferum2,censored,NSEC,176.2069,48.4896,199.2165,1,1000,0.001,0
+c_proliferum2,censored,NSEC,175.9187,39.5336,199.1936,1,1000,0.001,0
 c_proliferum2,deleted,ErC10,202.2045,163.4463,224.6987,1,1000,0.406,0
 c_proliferum2,deleted,ErC50,355.4588,340.3339,369.2767,1,1000,0.406,0
-c_proliferum2,deleted,NSEC,158.7781,57.418,200.2643,1,1000,0.406,0
+c_proliferum2,deleted,NSEC,157.3304,48.3216,200.2216,1,1000,0.406,0
 c_proliferum2,floored,ErC10,187.852,159.8978,215.0895,1,1000,0.74,0
 c_proliferum2,floored,ErC50,356.5631,343.761,369.1501,1,1000,0.74,0
-c_proliferum2,floored,NSEC,101.4079,38.6609,156.4153,1,1000,0.74,0
+c_proliferum2,floored,NSEC,101.1436,32.3386,156.3727,1,1000,0.74,0
 c_proliferum2,beta,ErC10,207.1596,173.9584,238.7471,1,1000,0.009,0
 c_proliferum2,beta,ErC50,353.7685,328.2035,375.9422,1,1000,0.009,0
-c_proliferum2,beta,NSEC,123.1622,54.0809,191.4479,1,1000,0.009,0
+c_proliferum2,beta,NSEC,122.7338,44.2555,191.2255,1,1000,0.009,0
 c_proliferum2,gamma,ErC10,181.5501,164.3281,203.029,1,1000,0,0
 c_proliferum2,gamma,ErC50,362.8644,355.2419,370.4479,1,1000,0,0
-c_proliferum2,gamma,NSEC,84.8421,27.6136,120.2562,1,1000,0,0
+c_proliferum2,gamma,NSEC,84.6097,20.795,120.2476,1,1000,0,0
 r_salina,measured,ErC10,4.2554,3.5881,4.9099,0.01,20,0,0.524
 r_salina,measured,ErC50,5.0666,5.0107,5.1724,0.01,20,0,0.524
-r_salina,measured,NSEC,3.2514,1.2831,4.8351,0.01,20,0,0.524
+r_salina,measured,NSEC,3.2332,1.1176,4.8351,0.01,20,0,0.524
 r_salina,censored,ErC10,3.5934,3.2351,4.8626,0.01,20,0,0
 r_salina,censored,ErC50,5.1258,5.0192,5.2022,0.01,20,0,0
-r_salina,censored,NSEC,1.5879,0.7473,4.7766,0.01,20,0,0
+r_salina,censored,NSEC,1.5832,0.642,4.7712,0.01,20,0,0
 r_salina,deleted,ErC10,2.9008,2.5394,3.978,0.01,20,0.433,0.576
 r_salina,deleted,ErC50,4.9932,4.9802,4.9975,0.01,20,0.433,0.576
-r_salina,deleted,NSEC,2.2108,1.287,3.6976,0.01,20,0.433,0.576
+r_salina,deleted,NSEC,2.2059,1.2174,3.696,0.01,20,0.433,0.576
 r_salina,floored,ErC10,3.4517,3.0983,4.8089,0.01,20,0.644,0.01
 r_salina,floored,ErC50,5.1686,5.0407,5.2531,0.01,20,0.644,0.01
-r_salina,floored,NSEC,1.3148,0.5322,4.7278,0.01,20,0.644,0.01
+r_salina,floored,NSEC,1.31,0.4359,4.7273,0.01,20,0.644,0.01
 r_salina,beta,ErC10,3.3557,2.8869,4.8017,0.01,20,0,0
 r_salina,beta,ErC50,5.1624,5.0017,5.3808,0.01,20,0,0
-r_salina,beta,NSEC,1.3022,0.5337,4.7241,0.01,20,0,0
+r_salina,beta,NSEC,1.2948,0.4188,4.722,0.01,20,0,0
 r_salina,gamma,ErC10,3.5214,3.2295,4.8857,0.01,20,0,0.065
 r_salina,gamma,ErC50,5.1594,5.0193,5.2222,0.01,20,0,0.065
-r_salina,gamma,NSEC,1.6287,0.7567,4.8293,0.01,20,0,0.065
+r_salina,gamma,NSEC,1.6236,0.6192,4.8292,0.01,20,0,0.065
 r_salina2,measured,ErC10,27.8622,21.6498,52.08,0.1,1000,0,0
 r_salina2,measured,ErC50,123.7675,110.9175,141.1856,0.1,1000,0,0
-r_salina2,measured,NSEC,25.1448,10.0263,44.1069,0.1,1000,0,0
+r_salina2,measured,NSEC,25.0214,8.435,44.0939,0.1,1000,0,0
 r_salina2,censored,ErC10,63.3976,48.9521,73.3471,0.1,1000,0,0.001
 r_salina2,censored,ErC50,116.0957,108.4235,123.3656,0.1,1000,0,0.001
-r_salina2,censored,NSEC,56.2973,41.6484,66.1243,0.1,1000,0,0.001
+r_salina2,censored,NSEC,56.2326,19.6814,66.0971,0.1,1000,0,0.001
 r_salina2,deleted,ErC10,75.0957,56.9037,91.7599,0.1,1000,0.598,0.028
 r_salina2,deleted,ErC50,109.0589,102.9999,116.006,0.1,1000,0.598,0.028
-r_salina2,deleted,NSEC,61.9212,32.4321,89.4543,0.1,1000,0.598,0.028
+r_salina2,deleted,NSEC,61.6927,28.8959,89.3991,0.1,1000,0.598,0.028
 r_salina2,floored,ErC10,73.3012,57.2026,89.259,0.1,1000,0.437,0.01
 r_salina2,floored,ErC50,109.8085,105.1082,116.0773,0.1,1000,0.437,0.01
-r_salina2,floored,NSEC,57.7843,24.5281,86.3023,0.1,1000,0.437,0.01
+r_salina2,floored,NSEC,57.5797,21.824,86.3013,0.1,1000,0.437,0.01
 r_salina2,beta,ErC10,76.4282,62.2218,91.8963,0.1,1000,0,0
 r_salina2,beta,ErC50,109.1174,102.6149,117.5185,0.1,1000,0,0
-r_salina2,beta,NSEC,62.599,32.2218,87.9103,0.1,1000,0,0
+r_salina2,beta,NSEC,62.3834,27.607,87.8895,0.1,1000,0,0
 r_salina2,gamma,ErC10,58.7203,19.3318,96.1619,0.1,1000,0,0
 r_salina2,gamma,ErC50,107.9371,87.3501,120.0164,0.1,1000,0,0
-r_salina2,gamma,NSEC,62.6606,15.0493,96.139,0.1,1000,0,0
+r_salina2,gamma,NSEC,62.182,11.6676,96.1194,0.1,1000,0,0
 ")
 cases$arm <- factor(cases$arm, levels = arm_levels)
 cases$estimate <- factor(cases$estimate, levels = c("ErC10", "ErC50", "NSEC"))
@@ -1532,9 +1532,11 @@ knitr::kable(
 That is a limitation of these four fits rather than of the conventions. It falls
 on `measured` and `deleted` on `r_salina`, which are reference analyses rather
 than the conventions under test, so the ratios on that dataset should be read as
-the weaker evidence. The simulation does not have this problem: across all 4,200
-fits the largest mean weight on an equation failing either diagnostic is under
-half a per cent, so nothing there rests on an equation that did not converge.
+the weaker evidence. The simulation does not have this problem. Averaged over its
+4,200 fits, equations failing either diagnostic hold 0.4% of the model weight,
+and the largest figure for any one cell and convention is 5.2%, under `gamma` in
+the `ctl` cell, so no figure reported from the simulation depends on an equation
+that did not converge.
 
 The weight on the zero-asymptote equations is the diagnostic Section 5.6
 identifies for flooring under an unbounded family, and it is computable here because it needs
@@ -1712,11 +1714,15 @@ toolchain and installs the package from that pinned source.
 
 That commit is on the development branch rather than a CRAN release, and here
 the difference matters more than it usually would, because what this vignette
-measures is what package defaults do. Two of the changes between that commit and
-the 2.1.3.1 release are the subject of results reported above: the `nec` and
+measures is what package defaults do. Three of the changes between that commit
+and the 2.1.3.1 release are the subject of results reported above. The `nec` and
 `ec50` priors are now built on the log of the predictor, and the initial-value
-search accepts chains individually. An analysis run under the CRAN release will
-not reproduce these numbers exactly.
+search accepts chains individually. The NSEC crossing is now sought from the
+control upward, with the control made the first point of the searched grid, so a
+draw that crosses between the control and the next grid point is no longer lost;
+this lowers the reported lower bound of an NSEC interval by about three times as
+much as it changes the point estimate, and leaves every ECx unchanged. An
+analysis run under the CRAN release will not reproduce these numbers exactly.
 
 The posterior predictive figures quoted in Section 5.3 are transcribed from
 `results/ppc_spread.csv`, which summarises 100 realisations of each cell and
