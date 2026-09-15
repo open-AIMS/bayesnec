@@ -35,4 +35,3 @@ README.Rmd
 ^.*\.sif$
 ^\.apptainer-tmp$
 ^CLAUDE\.md$
-^vignettes/fit_store\.R$
