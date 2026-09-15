@@ -713,7 +713,8 @@ plot(fits_herb)
 ```
 
 ```{r}
-compare_posterior(fits_herb, comparison = "nec")
+cmp_herb <- compare_posterior(fits_herb, comparison = "nec")
+cmp_herb$prob_diff
 ```
 
 The same call answers the question the case study opened with. Copper and zinc
@@ -737,7 +738,8 @@ summary(fits_tox)
 ```
 
 ```{r}
-compare_posterior(fits_tox, comparison = "nec")
+cmp_tox <- compare_posterior(fits_tox, comparison = "nec")
+cmp_tox$prob_diff
 ```
 
 <!-- DRAFT NOTE: the conclusion is not written. Note when writing it that the
