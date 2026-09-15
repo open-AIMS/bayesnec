@@ -733,18 +733,21 @@
   model set over eight workers. `bnec_group()` reports which arrangement it
   took and the counts behind it (#338).
 
-  **Each worker compiles its Stan programs into its own directory.** Every
+  Each active worker process compiles its Stan programs into its own directory.
+  Every
   level fits the same equations, so parallel levels build the same programs at
   the same time, and `cmdstanr` does not lock its compile cache: two levels on a
   cold cache would write one `.stan` file and run `make` on one executable path
-  at once. Each worker process is given a directory of its own, under
-  `cmdstanr_write_stan_file_dir` where one is set and `tempdir()` otherwise. The
-  key is the process and not the level, so a worker that draws three levels
-  compiles each equation once rather than three times. What this adds is
-  compilation on a cold cache: a parallel grouped run compiles each equation
-  once per worker rather than once, and does not read or write a persistent
-  cache the user has warmed, because a process id is not the same on the next
-  run. Fitting the levels in sequence uses the cache as it always did. `rstan` under `rstan_options(auto_write = TRUE)` caches in
+  at once. Each active host-process pair is given a directory of its own, under
+  `cmdstanr_write_stan_file_dir` where one is set and `tempdir()` otherwise.
+  Including the host prevents two cluster nodes with the same host-local PID
+  from sharing a path. A persistent `multisession` or `cluster` worker can reuse
+  its directory across levels. A `multicore` plan starts a new process for each
+  one-element future, so it can compile each equation once per level. What this
+  adds is compilation on a cold cache, and it does not read a persistent cache
+  the user has warmed directly because each worker writes below its own
+  subdirectory. Fitting the levels in sequence uses the cache as it always did.
+  `rstan` under `rstan_options(auto_write = TRUE)` caches in
   one place that a forked worker shares with its parent, and no argument
   changes that location, so set `multisession` rather than `multicore` for a
   parallel grouped call with that option in force.
@@ -802,16 +805,15 @@
   why the two arrangements are counted against each other rather than the levels
   simply taking the plan.
 
-  **Every level is now given its own seed, realised in the calling session.**
-  Without it the arrangement decided the answer. `bnec()` realises the seed for
-  its weighted posterior draw from whatever stream it is running in, so a level
-  fitted in a worker drew from that worker's stream and a level fitted in the
-  parent from the session's --- and since the arrangement is read off the worker
-  count, one script at one seed would have reported different model-averaged
-  estimates on a four-core and an eight-core machine. The seeds are derived from
-  `seed` where one was passed, so a grouped call now repeats with no
-  `set.seed()` in the session, which is more than `bnec()` offers for a single
-  set; where none was passed, `set.seed()` before the call fixes them. The
+  Every level is now given its own seed, realised in the calling session.
+  The seed is passed to every equation fitted for that level and is reapplied
+  when `expand_manec()` realises the weighted posterior. Both uses are needed:
+  the sequential and parallel equation loops advance different RNG streams, so
+  seeding only the level left its weighted posterior dependent on the worker
+  count. The seeds are derived from `seed` where one was passed, so a grouped
+  call now repeats with no `set.seed()` in the session, which is more than
+  `bnec()` offers for a single set; where none was passed, `set.seed()` before
+  the call fixes them. The
   calling session's own stream and generator kind are put back either way, and
   the generator and sampler are pinned while the seeds are realised so that one
   `seed` means one thing whatever the session is set to. What was realised is
