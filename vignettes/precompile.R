@@ -91,7 +91,8 @@ if (identical(.package_mode, "source")) {
          "Install the package's suggested dependencies and try again.",
          call. = FALSE)
   }
-  pkgload::load_all(".", export_all = FALSE, helpers = FALSE, quiet = TRUE)
+  pkgload::load_all(".", export_all = FALSE, helpers = FALSE,
+                    attach_testthat = FALSE, quiet = TRUE)
   .package_source <- normalizePath(".")
 } else {
   if (!requireNamespace("bayesnec", quietly = TRUE)) {
