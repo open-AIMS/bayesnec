@@ -310,10 +310,10 @@ the division removes, and propagates its uncertainty instead of conditioning on
 a point estimate. Generating the `brms` formula shows the form directly:
 
 ```{r}
-gfam <- Gamma(link = "identity")
 make_brmsformula(
   bayesnecformula(rlu_cens | cens(censoring) ~ crf(log(conc), "nec3param") + (top | plate)),
-  data = subset(lum31, toxicant == "Zn" & minutes == 15), family = gfam
+  data = subset(lum31, toxicant == "Zn" & minutes == 15),
+  family = Gamma(link = "identity")
 )
 ```
 
@@ -325,7 +325,8 @@ to `top` alone:
 ```{r}
 make_brmsformula(
   bayesnecformula(rlu_cens | cens(censoring) ~ crf(log(conc), "nec3param") + ogl(plate)),
-  data = subset(lum31, toxicant == "Zn" & minutes == 15), family = gfam
+  data = subset(lum31, toxicant == "Zn" & minutes == 15),
+  family = Gamma(link = "identity")
 )
 ```
 
@@ -460,7 +461,7 @@ process rather than about the dose axis:
 make_brmsformula(
   bayesnecformula(rlu_cens | cens(censoring) ~ crf(log(conc), "nec3param") +
                     ogl(plate) + disp("power")),
-  data = zn15, family = gfam
+  data = zn15, family = Gamma(link = "identity")
 )
 ```
 
@@ -515,12 +516,12 @@ retained while leaving the warmup long enough to adapt.
 
 ```{r}
 fit_plain <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + disp("power"),
-                  data = one_plate, family = gfam,
+                  data = one_plate, family = Gamma(link = "identity"),
                   chains = 4, iter = 5000, warmup = 4000, seed = 228, refresh = 0,
                   control = list(adapt_delta = 0.99))
 
 fit_ogl <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(conc_group) + disp("power"),
-                data = one_plate, family = gfam,
+                data = one_plate, family = Gamma(link = "identity"),
                 chains = 4, iter = 5000, warmup = 4000, seed = 228, refresh = 0,
                 control = list(adapt_delta = 0.99))
 ```
@@ -582,12 +583,12 @@ gain differences shown above mean the plates are not on a common vertical scale.
 
 ```{r}
 fit_pooled <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + disp("power"),
-                   data = zn15, family = gfam,
+                   data = zn15, family = Gamma(link = "identity"),
                    chains = 4, iter = 5000, warmup = 4000, seed = 228, refresh = 0,
                    control = list(adapt_delta = 0.99))
 
 fit_plate <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + disp("power"),
-                  data = zn15, family = gfam,
+                  data = zn15, family = Gamma(link = "identity"),
                   chains = 4, iter = 5000, warmup = 4000, seed = 228, refresh = 0,
                   control = list(adapt_delta = 0.99))
 ```
@@ -789,7 +790,8 @@ zn_cu_15 <- droplevels(subset(lum31, minutes == 15))
 
 fits_tox <- bnec_group(
   rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + disp("power"),
-  data = zn_cu_15, group_var = "toxicant", family = gfam,
+  data = zn_cu_15, group_var = "toxicant",
+  family = Gamma(link = "identity"),
   chains = 4, iter = 5000, warmup = 4000, seed = 228, refresh = 0,
   control = list(adapt_delta = 0.99))
 ```
