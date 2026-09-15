@@ -662,8 +662,18 @@ four_par <- bnec(proportion ~ crf(diuron, c("nec4param", "ecx4param")) + ogl(cha
 ```
 
 ```{r}
-rhat(three_par)
-rhat(four_par)
+sampled_badly <- function(fit, label) {
+  worst <- vapply(rhat(fit), function(x) max(x$rhat_vals), numeric(1))
+  divergent <- vapply(names(worst), function(m) {
+    np <- brms::nuts_params(pull_out(fit, model = m)$fit)
+    sum(np$Value[np$Parameter == "divergent__"])
+  }, numeric(1))
+  data.frame(curve = label, equation = names(worst),
+             divergent = divergent, max_rhat = round(worst, 4),
+             row.names = NULL)
+}
+rbind(sampled_badly(three_par, "three parameters"),
+      sampled_badly(four_par, "four parameters"))
 ```
 
 <!-- DRAFT NOTE: the conclusion is not written. Screened at 2 chains and 800
