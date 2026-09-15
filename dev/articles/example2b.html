@@ -121,16 +121,16 @@
 the working <code>bnec</code> function supports individual model
 fitting, as well as multi-model fitting with Bayesian model
 averaging.</p>
-<p>The argument <code>model</code> in a <code>bayesnecformula</code> is
-a character string indicating the name(s) of the desired model (see
-<code><a href="../reference/models.html">?models</a></code> for more details, and the list of models
-available). If a recognised model name is provided, a single model of
+<p>The argument <code>model</code> in a <code>bayesnecformula</code> may
+be a character vector of model names or a named list of equation
+formulas returned by <code><a href="../reference/models.html">models()</a></code> (see <code><a href="../reference/models.html">?models</a></code> for
+more details). If a recognised model name is provided, a single model of
 the specified type is fit, and <code>bnec</code> returns a model object
-of class <code>bayesnecfit</code>. If a vector of two or more of the
-available models are supplied, <code>bnec</code> returns a model object
-of class <code>bayesmanecfit</code> containing Bayesian model averaged
-predictions for the supplied models, providing they were successfully
-fitted.</p>
+of class <code>bayesnecfit</code>. If a vector or list of two or more of
+the available models is supplied, <code>bnec</code> returns a model
+object of class <code>bayesmanecfit</code> containing Bayesian model
+averaged predictions for the supplied models, providing they were
+successfully fitted.</p>
 <p>Model averaging is achieved through a weighted sample of each fitted
 models’ posterior predictions, with weights derived using the
 <code>loo_model_weights</code> function from <code>loo</code> <span class="citation">(Vehtari et al. 2020, 2017)</span>. Individual
@@ -183,6 +183,14 @@ implemented model groups can be seen using:</p>
 <span><span class="co">#&gt; $hormesis</span></span>
 <span><span class="co">#&gt; [1] "nechorme"      "nechorme4"     "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01" "ecxhormebc4"  </span></span>
 <span><span class="co">#&gt; [8] "ecxhormebc5"</span></span></code></pre></div>
+<p>A design with few distinct predictor concentrations may not support
+equations with four or five curve parameters.
+<code>models(max_pars = 3)</code> lists all equations with no more than
+three curve parameters. The same limit can be combined with a group, for
+example <code>models("decline", max_pars = 3)</code>, and the returned
+list can be passed directly to the <code>model</code> argument of
+<code>crf()</code>, as in
+<code>crf(x, models("decline", max_pars = 3))</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="parameter-definitions">Parameter definitions<a class="anchor" aria-label="anchor" href="#parameter-definitions"></a>
