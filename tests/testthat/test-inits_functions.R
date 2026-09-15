@@ -489,7 +489,7 @@ test_that("a fixed parameter does not break rhat on a multi-model fit", {
   })
   fit <- suppressWarnings(suppressMessages(
     bnec(f, data = d, family = gaussian(), prior = p, chains = 2, iter = 600,
-         warmup = 300, seed = 244, open_progress = FALSE, refresh = 0)
+         warmup = 300, seed = 244, refresh = 0)
   ))
   skip_if_not(is_bayesmanecfit(fit), "both candidates were needed for this test")
 

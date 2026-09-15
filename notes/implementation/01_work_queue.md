@@ -47,12 +47,13 @@ queue expected.
 
 | PR | closes | state |
 |---|---|---|
+| #349 | #311; verifies #328 | open |
 | #347 | #338, #329 | open |
 | #243 | #193, `example7` | open, batch 5a |
 | #228 | #6, #33 | open, batch 5c |
 | #225 | #209 | draft, blocked on `brms` through #249 |
 
-The open issues below are covered by none of them.
+Except for #311 and #328, the open issues below are covered by none of them.
 
 ---
 
@@ -83,21 +84,19 @@ the re-run cannot be checked. #190 now names #319, #340 and #310 in its
 
 ## Throughput
 
-Hours rather than days, and taken first because four pull requests are open
+Hours rather than days, and taken first because five pull requests are open
 against `dev` and each item after this one is read through the same check
 matrix.
 
-Both go in one pull request, #311 first and in its own commit. They edit three
-files in common — `test-check_fit.R`, `test-dispersion.R` and
-`test-failed_models.R` — so separate branches conflict, and a stack queues two
-workflow runs per branch. The body reports three `Running 'testthat.R'
-[CPU/elapsed]` figures rather than two, because #328's plan requires the
-memoisation and the worker count to be attributed separately.
+#328's fixture reuse merged through #331 before work on #311 began. Its proposed
+worker-count change was withdrawn after paired runs could not distinguish the
+effect from runner variance. #349 is based on that merged fixture reuse and
+completes the batch by removing the backend-specific arguments from #311.
 
 | # | what |
 |---|---|
-| #311 | twelve `open_progress = FALSE` calls in `tests/testthat/`. Mechanical, and it is why a `cmdstanr`-backend run of the suite fails, which is needed before any measurement of #328 |
-| #328 | memoise the repeated fixtures, then set `TESTTHAT_CPUS`. The test phase is 21 to 26 minutes of a 25 to 31 minute job, and the issue holds the measured plan and the changes not to make |
+| #311 | #349 removes twelve `open_progress = FALSE` calls from `tests/testthat/`, which lets those fits run under either `brms` backend |
+| #328 | #331 memoises the repeated fixtures, reducing fourteen compilations to five with the assertion counts unchanged; no worker count is set on ordinary CI runs |
 
 ## Defects that change a reported number
 
@@ -149,7 +148,7 @@ not survive.
   #333 is closed. `00_protocol.md` names the worktrees that must not be touched.
 - **Every pull request here targets `dev` rather than the default branch, so
   `Closes #n` never fires.** Close issues by hand after verifying the work is on
-  `dev`. Nothing is merged-and-open today; #338 and #329 will need it when #347
-  merges.
+  `dev`. #328 is merged-and-open through #331; close it after #349 verifies the
+  combined state on `dev`. #338 and #329 will need the same step when #347 merges.
 - `DESCRIPTION` requires `brms (>= 2.23.0)`; earlier versions mis-generate
   `beta_binomial`.
