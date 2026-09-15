@@ -900,6 +900,15 @@
 
 ## Bug fixes
 
+- `ecxhormebc5` is now excluded before fitting when the predictor contains
+  negative values and an identity-linked response family requires a positive
+  mean. Its linear hormesis term can make the mean negative there, and the
+  additional free lower asymptote made valid starting values unreliable on all
+  six measured `lum31` fits. The exclusion reports that reason instead of a
+  failed fit after compilation and initialisation. `ecxhormebc4`, non-negative
+  predictors, unconstrained Gaussian means and support-preserving links are
+  unaffected ([#344](https://github.com/open-AIMS/bayesnec/issues/344)).
+
 - A fit now reproduces under a `set.seed()` in the caller's session. The
   initial-value search called `set.seed(seed)` whatever it was given, and
   `set.seed(NULL)` does not leave the random number stream alone: it
