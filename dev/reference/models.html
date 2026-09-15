@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.35</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.36</span>
       </span>
     </div>
 
@@ -162,9 +162,15 @@ bounded on (0, 1) by construction and so unable to represent a response with
 no upper bound. Additionally,
 models that raise the predictor to a fractional power ("ecxsigm",
 "necsigm", "nechormepwr", "nechorme4pwr") are not suitable where the
-predictor contains negative values. These restrictions do
-not need to be controlled by the user and a call to <code><a href="bnec.html">bnec</a></code> with
-<code>models = "all"</code> will simply exclude inappropriate models.</p>
+predictor contains negative values. <code>"ecxhormebc5"</code> is also excluded
+for a negative predictor when an identity-linked response family requires a
+positive mean. Its linear hormesis term can make the mean negative there,
+and its additional free lower asymptote makes a valid starting point
+unreliable. It remains available for a non-negative predictor, an
+unconstrained Gaussian mean, or a link that maps the linear predictor into
+the response support. These restrictions do not need to be controlled by
+the user and a call to <code><a href="bnec.html">bnec</a></code> with <code>models = "all"</code> will
+simply exclude inappropriate models.</p>
 <p>A model group names a shape, not a set of equations admissible for a given
 response. "decline" is the set that excludes the hormesis models, and it
 therefore includes "neclin" and "ecxlin", whose mean decays by subtraction
