@@ -75,6 +75,9 @@
     <li>
       <a href="../articles/example6.html">Hurdle and zero-inflated concentration-response models</a>
     </li>
+    <li>
+      <a href="../articles/example7.html">Modelling growth data and other potentially negative response values</a>
+    </li>
   </ul>
 </li>
 <li>
@@ -1001,8 +1004,7 @@ Declaring a row censored at a value the family excludes — left-censored
 at <code>0</code> under Gamma or Beta, right-censored at <code>1</code>
 under Beta — is an error rather than a shift, because the censored
 likelihood is degenerate there.</p>
-<p>The reason this changes the fit is worth stating. A censored row
-contributes
+<p>The mechanism is as follows. A censored row contributes
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>F</mi><mo stretchy="false" form="prefix">(</mo><mtext mathvariant="normal">bound</mtext><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">F(\text{bound})</annotation></semantics></math>,
 the probability of falling at or below the bound, rather than a density
 at a point. As the fitted curve descends past the bound,
@@ -1012,11 +1014,111 @@ passing further below, but neither is it penalised. A substituted value
 instead contributes a density, which falls away as the curve descends,
 so substitution actively pulls the curve back up toward the value that
 was substituted.</p>
+<div class="section level3">
+<h3 id="limits-of-the-censored-likelihood">Limits of the censored likelihood<a class="anchor" aria-label="anchor" href="#limits-of-the-censored-likelihood"></a>
+</h3>
+<p>Saturation is what makes the censored likelihood honest, and it is
+also its limit. Once the fitted curve sits a few residual standard
+deviations below the bound,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>F</mi><mo stretchy="false" form="prefix">(</mo><mtext mathvariant="normal">bound</mtext><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">F(\text{bound})</annotation></semantics></math>
+is indistinguishable from 1 and moving the curve further down changes
+the likelihood by nothing. The likelihood is <em>flat</em> over that
+region, so a parameter whose only expression is there is not identified
+by the data, and what gets reported for it is the prior.</p>
+<p>The lower asymptote is the usual casualty. Where every response near
+the bottom of the curve is censored, <code>bot</code> is told only that
+it lies somewhere below the bound, and nothing in the likelihood
+distinguishes one such value from another.</p>
+<p>An example, from the <code>alga</code> dataset that ships with the
+package — <em>Rhodomonas salina</em> under contaminant A, the cell in
+which the population fell below the counting limit at the highest
+concentrations, so that specific growth rate is undefined there. Those
+16 rows are flagged <code>sgr_source == "substituted"</code>. A counting
+limit of 10 cells mL<sup>-1</sup> against the recorded
+<code>density_initial</code> of 3871 cells mL<sup>-1</sup> over three
+days implies a bound of
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mn>10</mn><mo>−</mo><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mn>3871</mn><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mn>3</mn><mo>=</mo><mi>−</mi><mn>1.99</mn></mrow><annotation encoding="application/x-tex">(\log 10 - \log 3871)/3 = -1.99</annotation></semantics></math>
+d<sup>-1</sup>. Fitting <code>nec4param</code> with a Gaussian family
+and the same prior throughout, and varying only how those rows are
+declared:</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>below-limit rows declared as</th>
+<th>
+<code>bot</code>, median [95% CI]</th>
+<th>posterior SD</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>the bound, treated as observed</td>
+<td>−1.985 [−2.013, −1.958]</td>
+<td>0.014</td>
+</tr>
+<tr class="even">
+<td>
+<code>cens(censoring)</code>, left-censored at the bound</td>
+<td>−5.64 [−11.0, −2.51]</td>
+<td>2.23</td>
+</tr>
+<tr class="odd">
+<td>
+<code>cens(censoring, upper)</code>, interval-censored from
+extinction to the bound</td>
+<td>−2.45 [−2.68, −2.10]</td>
+<td>0.17</td>
+</tr>
+</tbody>
+</table>
+<p>Taking the rows in order: substitution is not only wrong about the
+value, it is <em>confident</em>: the posterior SD is 0.014, an interval
+a tenth the width of any other, because those rows have been asserted to
+sit exactly at the bound when all that is known is that they lie below
+it.</p>
+<p>Left-censoring withdraws the false assertion, and what it reveals is
+that the data contain almost nothing about <code>bot</code>. The
+posterior widens by a factor of 160 and runs down to −11 d<sup>-1</sup>,
+a rate at which the population would fall by
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><mn>33</mn></msup><annotation encoding="application/x-tex">e^{33}</annotation></semantics></math>
+over the test. That is the prior’s lower tail rather than an estimate.
+Nothing has gone wrong mechanically: the chains mix,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>R</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\widehat{R}</annotation></semantics></math>
+is 1.00, and the sampler reports 5 divergent transitions in 8000 draws —
+nothing a routine check would stop on. The number is simply uninformed,
+and an interval alone will not tell you so.</p>
+<p>The third row is the repair. A population below the counting limit is
+not below extinction, so the truth lies in an interval and
+<code>cens(censoring, upper)</code> can say exactly that. Bounding the
+flat region from below restores a usable posterior. It is worth being
+clear about what that estimate then rests on: the lower end is the
+declared extinction floor, here 1 cell mL<sup>-1</sup> and so −2.75
+d<sup>-1</sup>, and the posterior presses against it. The asymptote is
+constrained by that assumption rather than measured, and should be
+reported that way. This fit also needed a longer warmup and a smaller
+step size to converge (the default settings left one chain of four
+stranded on a ridge in <code>beta</code>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>R</mi><mo accent="true">̂</mo></mover><mo>=</mo><mn>1.47</mn></mrow><annotation encoding="application/x-tex">\widehat{R} = 1.47</annotation></semantics></math>);
+the interval declaration gives the curve slack in the region the other
+two preparations pin down, and that slack has to be sampled.</p>
+<p>Two points follow for practice. First, read identification from the
+prior-to-posterior contraction rather than from the interval: across
+these three fits it is 0.996, 0.379 and 0.953 respectively, and the
+middle value is the diagnostic that the interval hides.
+<code><a href="../reference/pull_prior.html">pull_prior()</a></code> and the posterior draws are enough to compute
+it. Second, the problem propagates — any quantity read off the deep part
+of the fitted curve inherits the prior dependence, so an
+<code><a href="../reference/ecx.html">ecx()</a></code> value whose target falls near the asymptote deserves
+the same scepticism as <code>bot</code> itself.</p>
 <p>Whether a value is censored at all is a separate question from how to
 handle it once it is. A zero that marks a distinct event — an organism
 that died, rather than a measurement that fell below a limit — is
 structural, and belongs in a hurdle model rather than a censoring
 declaration; see <code><a href="../articles/example6.html">vignette("example6")</a></code>.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="non-constant-dispersion">Non-constant dispersion<a class="anchor" aria-label="anchor" href="#non-constant-dispersion"></a>

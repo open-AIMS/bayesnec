@@ -75,6 +75,9 @@
     <li>
       <a href="../articles/example6.html">Hurdle and zero-inflated concentration-response models</a>
     </li>
+    <li>
+      <a href="../articles/example7.html">Modelling growth data and other potentially negative response values</a>
+    </li>
   </ul>
 </li>
 <li>
@@ -1802,9 +1805,11 @@ columns</strong>: a dead individual is a structural zero and belongs to
 the hurdle, a living one that shrank is a censored observation and
 belongs to the response block. Collapsing them is flooring by another
 route.</p>
-<p><code>bayesnecformula</code> does not yet carry the
-<code>cens()</code> aterm through to the fit, so this route is not
-available in <code>bayesnec</code> today — see issue #181.</p>
+<p><code>bayesnecformula</code> carries the <code>cens()</code> aterm
+through to the fit, so this route is available directly; see the
+Censoring section of <code><a href="../articles/example1.html">vignette("example1")</a></code> for the
+declaration and for what a censored likelihood can and cannot
+recover.</p>
 <p><strong>3. If the values are already floored and
 unrecoverable</strong>, the same left-censored likelihood is the
 salvage: it replaces a false assertion with a true one, which is the
