@@ -167,17 +167,18 @@ divergent transitions:
 check_sampling(exp_5)
 ```
 
-`screen_models()` screens on those same three together, drops every candidate
-that failed, and reports what went and why. That message is the record of the
-exclusion, and is what a methods section cites; an exclusion step that leaves no
-record cannot be reproduced.
+`screen_models()` screens on those three together and drops every candidate that
+failed. It reports what went and why, and that message is the record of the
+exclusion: a step that removes models without naming them cannot be written up.
 
 ```{r, message = TRUE}
 exp_5_screened <- screen_models(exp_5)
 ```
 
-The sections below continue with `exp_5` rather than `exp_5_screened`, so that
-the model set they describe is the one fitted above.
+Here it removed `r sum(check_sampling(exp_5)$failed)` of the
+`r nrow(check_sampling(exp_5))` candidates, naming each one and the diagnostic
+it failed. `exp_5_screened` holds the candidates that passed; `exp_5` still
+holds all of them.
 
 ### Extracting toxicity values
 
