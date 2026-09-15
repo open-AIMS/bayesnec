@@ -209,7 +209,15 @@ knit_one <- function(f) {
                           cache.path = file.path(cache_root, base, ""))
   }
   started <- Sys.time()
-  knitr::knit(f, file_path_sans_ext(f))
+  # Each vignette is knitted into an environment of its own. knit()'s default
+  # is parent.frame(), which is this function's frame, so a chunk's objects
+  # landed among the loop's own variables and a chunk was able to delete them:
+  # example6 releases a fit with rm(f) inside a for loop, which removed this
+  # function's `f` argument, and the run failed on basename(f) below after the
+  # vignette had knitted successfully and 95 minutes had been spent (job
+  # 910976, 2026-09-15). A fresh environment also stops one vignette's objects
+  # reaching the next in a run that builds several.
+  knitr::knit(f, file_path_sans_ext(f), envir = new.env(parent = globalenv()))
   message(basename(f), " knitted in ",
           format(round(difftime(Sys.time(), started, units = "mins"), 1)))
 }

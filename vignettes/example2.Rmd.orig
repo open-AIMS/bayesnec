@@ -326,7 +326,7 @@ A level arrangement cannot go below *M* rounds however many workers there are, a
 
 To drive both loops, nest the plan, which is how `future` asks for it:
 
-```{r exmp2-parallel-nested, eval = FALSE}
+```{r exmp2-parallel-group-nested, eval = FALSE}
 library(future)
 plan(list(tweak(multisession, workers = 2),
           tweak(multisession, workers = I(4))))
