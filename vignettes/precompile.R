@@ -219,6 +219,34 @@ fig_state <- function() {
 }
 before <- fig_state()
 
+# Precompiled fits --------------------------------------------------------
+# example8 fits 189 models, which in sequence on a four-core allocation is the
+# better part of a day -- longer than the precompile job's walltime, and far
+# longer than a vignette should take to rebuild after a prose correction. The
+# compendium at open-AIMS/grouping-structures runs each of those fits as its own
+# cluster task and writes the assembled objects to a store keyed by a hash of the
+# call and the data. With BAYESNEC_FIT_STORE pointing at that store, bnec() and
+# bnec_group() are answered from it instead of sampling.
+#
+# The reader sees no difference: knitr echoes the chunk's source, so the vignette
+# still shows the bnec() call the fit came from. A call the store does not hold
+# stops the render at that chunk rather than falling back to fitting, which is
+# what keeps the stored fit and the printed call the same thing.
+#
+# Unset, which is the default and what CI and a local run use, nothing here does
+# anything.
+#
+# Installed after the rm(list = ls()) above, which would otherwise remove it.
+if (nzchar(Sys.getenv("BAYESNEC_FIT_STORE"))) {
+  if (length(orig_files) != 1) {
+    stop("BAYESNEC_FIT_STORE is set, but ", length(orig_files), " vignettes are",
+         " being built. A store holds one vignette's fits; name that vignette.",
+         call. = FALSE)
+  }
+  source("vignettes/fit_store.R")
+  fit_store_install()
+}
+
 purrr::walk(orig_files, knit_one)
 
 # Move figures into correct directory so they render ----------------------
