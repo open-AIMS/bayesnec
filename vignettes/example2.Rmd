@@ -289,10 +289,9 @@ check_sampling(exp_5)
 #> 13    ecxll3 1.002405 758.4739     0.4740462           0  FALSE
 ```
 
-`screen_models()` screens on those same three together, drops every candidate
-that failed, and reports what went and why. That message is the record of the
-exclusion, and is what a methods section cites; an exclusion step that leaves no
-record cannot be reproduced.
+`screen_models()` screens on those three together and drops every candidate that
+failed. It reports what went and why, and that message is the record of the
+exclusion: a step that removes models without naming them cannot be written up.
 
 
 ``` r
@@ -304,8 +303,7 @@ exp_5_screened <- screen_models(exp_5)
 #> Fitted models are: neclin ecxlin ecxexp ecxsigm ecx4param ecxwb1 ecxwb2 ecxwb1p3 ecxwb2p3 ecxll3
 ```
 
-The sections below continue with `exp_5` rather than `exp_5_screened`, so that
-the model set they describe is the one fitted above.
+Here it removed 3 of the 13 candidates, naming each one and the diagnostic it failed. `exp_5_screened` holds the candidates that passed; `exp_5` still holds all of them.
 
 ### Extracting toxicity values
 
