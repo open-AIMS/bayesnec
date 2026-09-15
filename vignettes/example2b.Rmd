@@ -62,6 +62,12 @@ models()
 #> [8] "ecxhormebc5"
 ```
 
+A design with few distinct predictor concentrations may not support equations
+with four or five curve parameters. `models(max_pars = 3)` lists all equations
+with no more than three curve parameters. The same limit can be combined with a
+group, for example `names(models("decline", max_pars = 3))`, and the returned
+names can be passed to the `model` argument of `crf()`.
+
 # Parameter definitions
 
 Where possible we have aimed for consistency in the interpretable meaning of the individual parameters across models. Across the currently implemented model set, models contain from two (basic linear or exponential decay, see **ecxlin** or **ecxexp**) to five possible parameters (**nechorme4**), including:

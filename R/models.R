@@ -9,6 +9,8 @@
 #' indicating the natural range of values which the models should be able to
 #' handle (see Details). If missing, all available models and their groups are
 #' listed.
+#' @param max_pars An optional positive whole number giving the maximum number
+#' of curve parameters an equation may contain.
 #'
 #' @details The available models are "nec3param", "nec4param", "nechorme",
 #' "nechorme4", "necsigm", "neclin", "neclinhorme", "nechormepwr",
@@ -90,6 +92,13 @@
 #' that needs the admissible set should ask for it directly, by passing the
 #' numeric range --- \code{models(c(0, 1))} --- rather than reading a group.
 #'
+#' Set \code{max_pars} to restrict the resolved set to equations with no more
+#' than that number of curve parameters. The limit can be used by itself or
+#' combined with a model group, response range, or fitted object. Use the names
+#' of the returned list as the \code{model} argument in a
+#' \code{\link{bayesnecformula}}, for example
+#' \code{names(models("decline", max_pars = 3))}.
+#'
 #' \bold{Coming from the \code{drc} package}
 #'
 #' \code{drc}'s \code{NEC.2()}, \code{NEC.3()} and \code{NEC.4()} are
@@ -155,13 +164,23 @@
 #' models("all")
 #' # models that are suitable for 0,1 bounded data
 #' models(c(0,1))
+#' # models with no more than three curve parameters
+#' models(max_pars = 3)
 #'
 #' @export
-models <- function(object) {
-  if (missing(object)) {
+models <- function(object, max_pars = NULL) {
+  if (!is.null(max_pars) &&
+      (!is.numeric(max_pars) || length(max_pars) != 1 || is.na(max_pars) ||
+       !is.finite(max_pars) || max_pars < 1 || max_pars != floor(max_pars))) {
+    stop("Argument `max_pars` must be a single positive whole number.",
+         call. = FALSE)
+  }
+  if (missing(object) && is.null(max_pars)) {
     return(mod_groups)
   }
-  if (is_bayesnecfit(object)) {
+  if (missing(object)) {
+    use_mods <- mod_groups$all
+  } else if (is_bayesnecfit(object)) {
     use_mods <- object$model
   } else if (is_bayesmanecfit(object)) {
     use_mods <- names(object$mod_fits)
@@ -187,6 +206,16 @@ models <- function(object) {
   }
   mod_params <- show_params(use_mods)
   names(mod_params) <- use_mods
+  if (!is.null(max_pars)) {
+    n_pars <- vapply(
+      mod_params, function(x) length(names(x$pforms)), integer(1)
+    )
+    mod_params <- mod_params[n_pars <= max_pars]
+    if (!length(mod_params)) {
+      stop("No model equations have ", max_pars,
+           " or fewer curve parameters.", call. = FALSE)
+    }
+  }
   mod_params
 }
 

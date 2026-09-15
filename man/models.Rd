@@ -4,7 +4,7 @@
 \alias{models}
 \title{models}
 \usage{
-models(object)
+models(object, max_pars = NULL)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecfit}} or
@@ -14,6 +14,9 @@ which to list the available models, or a \code{\link[base]{numeric}} vector
 indicating the natural range of values which the models should be able to
 handle (see Details). If missing, all available models and their groups are
 listed.}
+
+\item{max_pars}{An optional positive whole number giving the maximum number
+of curve parameters an equation may contain.}
 }
 \value{
 A \code{\link[base]{list}} of the available or fitted models.
@@ -102,6 +105,13 @@ group name does not do is state which equations that check will keep. Code
 that needs the admissible set should ask for it directly, by passing the
 numeric range --- \code{models(c(0, 1))} --- rather than reading a group.
 
+Set \code{max_pars} to restrict the resolved set to equations with no more
+than that number of curve parameters. The limit can be used by itself or
+combined with a model group, response range, or fitted object. Use the names
+of the returned list as the \code{model} argument in a
+\code{\link{bayesnecformula}}, for example
+\code{names(models("decline", max_pars = 3))}.
+
 \bold{Coming from the \code{drc} package}
 
 \code{drc}'s \code{NEC.2()}, \code{NEC.3()} and \code{NEC.4()} are
@@ -166,5 +176,7 @@ show_params("nec3param")
 models("all")
 # models that are suitable for 0,1 bounded data
 models(c(0,1))
+# models with no more than three curve parameters
+models(max_pars = 3)
 
 }
