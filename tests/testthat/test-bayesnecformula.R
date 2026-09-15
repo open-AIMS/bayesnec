@@ -155,6 +155,13 @@ test_that("a model set returned by models() is accepted", {
     get_model_from_formula(bnf(y ~ crf(x, models("decline", max_pars = 3)))),
     expected
   )
+
+  invalid_names <- models("all")[1]
+  names(invalid_names) <- NA_character_
+  expect_error(
+    get_model_from_formula(bnf(y ~ crf(x, invalid_names))),
+    "must be a character vector"
+  )
 })
 
 test_that("a model set variable that does not exist is still an error", {
