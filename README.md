@@ -53,6 +53,12 @@ prerequisites section on this
 [link](https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started) for
 further instructions on how to get the compilers running.
 
+The [Installation and
+setup](https://open-aims.github.io/bayesnec/articles/example5.html)
+vignette works through this in detail: the two `brms` back ends, the
+`cmdstanr` installation the vignettes are built with, and the failures
+most often met on Windows.
+
 Usage
 -----
 

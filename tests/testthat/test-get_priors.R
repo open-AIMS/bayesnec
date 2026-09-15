@@ -163,7 +163,7 @@ test_that("get_priors round trips through bnec", {
   skip_on_cran()
   fit <- bnec(y ~ crf(x, "nec4param"), data = nec_data, family = gaussian(),
               iter = 400, warmup = 200, chains = 2, seed = 141,
-              refresh = 0, open_progress = FALSE) |>
+              refresh = 0) |>
     suppressMessages() |>
     suppressWarnings()
   key <- c("prior", "class", "nlpar", "lb", "ub")
@@ -182,7 +182,7 @@ test_that("get_priors round trips through bnec", {
   # right but is not accepted by bnec(prior = ) would fail it.
   again <- bnec(y ~ crf(x, "nec4param"), data = nec_data, family = gaussian(),
                 prior = from_fit, iter = 400, warmup = 200, chains = 2,
-                seed = 141, refresh = 0, open_progress = FALSE) |>
+                seed = 141, refresh = 0) |>
     suppressMessages() |>
     suppressWarnings()
   expect_s3_class(again, "bayesnecfit")
@@ -201,7 +201,7 @@ test_that("a user prior makes the two entry points disagree", {
   own$prior[own$nlpar == "top"] <- "normal(0.8, 0.2)"
   fit <- bnec(y ~ crf(x, "nec4param"), data = nec_data, family = gaussian(),
               prior = own, iter = 400, warmup = 200, chains = 2, seed = 141,
-              refresh = 0, open_progress = FALSE) |>
+              refresh = 0) |>
     suppressMessages() |>
     suppressWarnings()
   got <- get_priors(fit)
@@ -317,7 +317,7 @@ test_that("a brms default on sd is still dropped", {
 test_that("nec is truncated at the recorded predictor range", {
   # The bound a user sees. Earlier versions returned lb = 0.1, because the zero
   # had been replaced before the prior was built; a zero control is a legitimate
-  # lower bound, since gamma(5, r) has zero density at zero (#269).
+  # lower bound, since the prior on nec has zero density at zero (#269, #302).
   d <- data.frame(x = rep(c(0, 1, 10, 100), each = 5),
                   y = rep(c(8, 6, 3, 1), each = 5))
   pr <- suppressMessages(

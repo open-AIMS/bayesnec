@@ -61,3 +61,33 @@ test_that("plot still rejects a value that is neither NA nor a known option", {
     "plot must be NA"
   )
 })
+
+# #302: the sampling table was written out at each of the three places that
+# needed it, so a distribution present at one was absent at the others, and an
+# unrecognised name reached fcts[[dist]](...) as NULL and failed with "attempt
+# to apply non-function", naming neither the prior nor the distribution.
+
+test_that("lognormal priors can be sampled and drawn from", {
+  ps <- data.frame(
+    prior = c("normal(1,1)", "lognormal(0, 1)"), class = "b", coef = "",
+    group = "", resp = "", dpar = "", nlpar = c("top", "nec"),
+    lb = c("", "0"), ub = c("", "10"), stringsAsFactors = FALSE
+  )
+  set.seed(302)
+  out <- sample_priors(ps, n_samples = 200, plot = NA)
+  expect_setequal(names(out), c("b_top", "b_nec"))
+  expect_length(out$b_nec, 200)
+  # a lognormal is strictly positive, and the bounds are respected
+  expect_true(all(out$b_nec > 0 & out$b_nec <= 10))
+})
+
+test_that("an unsupported prior distribution is named in the error", {
+  ps <- data.frame(
+    prior = "cauchy(0, 1)", class = "b", coef = "", group = "", resp = "",
+    dpar = "", nlpar = "top", lb = "", ub = "", stringsAsFactors = FALSE
+  )
+  expect_error(sample_priors(ps, n_samples = 10, plot = NA),
+               "cauchy")
+  expect_error(sample_priors(ps, n_samples = 10, plot = NA),
+               "gamma, normal, beta, uniform, lognormal")
+})

@@ -233,10 +233,18 @@ test_that("the ecx reference is the control, not the maximum of the curve", {
   # 13.5, which the curve reaches while still rising and again while falling.
   expect_true(all(out > x_vec[which.max(curve)]))
   expect_equal(out[1], out[2])
-  # The same curve read from its maximum crosses 13.5 on the rising limb, at
-  # an x below the peak. This is what the estimator used to return.
+  # The same curve read from its maximum has a target of 13.5, which it is below
+  # where the grid begins: it rises through that level rather than declining to
+  # it. Up to #325 the estimator returned that rising-limb crossing, at an x
+  # below the peak; it now reports no estimate, x_start being NA for an ECx. The
+  # point either way is that the maximum-anchored reference does not give the
+  # descending crossing the estimate is meant to be. This is the internal
+  # estimator called with a control a user cannot supply through ecx(); the
+  # user-reachable routes to the same case are type = "direct" with a target above
+  # the curve, type = "range" where the curve's minimum is at the control, and
+  # type = "relative" for a hormetic draw whose bot exceeds its control.
   from_max <- ecx_from_posterior(p, x_vec, 10, "absolute", c(15, 15), NA_real_)
-  expect_true(all(from_max < x_vec[which.max(curve)]))
+  expect_true(all(is.na(from_max)))
 })
 
 
@@ -261,4 +269,23 @@ test_that("the relative rename warns once for a set, not once per equation", {
   )
   # The option is restored, so a later call in the same session still warns.
   expect_null(getOption("bayesnec.relative_warned"))
+})
+
+test_that("the estimate is insensitive to resolution above the default", {
+  skip_on_cran()
+  # This pins the basis for the default of 200. The crossing is interpolated
+  # between the two bracketing grid points rather than snapped to the nearer of
+  # them, so precision saturates well below the grid spacing and the default no
+  # longer needs to be large. A five-fold increase must not change either
+  # estimator materially. See #39.
+  # as.numeric() rather than unname(): the estimate has a "resolution"
+  # attribute recording what it was computed at, which differs by construction.
+  expect_equal(as.numeric(ecx(nec4param, resolution = 200)),
+               as.numeric(ecx(nec4param, resolution = 1000)),
+               tolerance = 1e-3)
+  suppressWarnings({
+    n200 <- as.numeric(nsec(nec4param, resolution = 200))
+    n1000 <- as.numeric(nsec(nec4param, resolution = 1000))
+  })
+  expect_equal(n200, n1000, tolerance = 1e-3)
 })

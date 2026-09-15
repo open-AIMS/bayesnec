@@ -92,7 +92,11 @@ parse_disp_term <- function(formula) {
     # brms to interpret.
     list(route = "A", value = deparse1(as.formula(arg)[[2]]))
   } else {
-    list(route = "B", value = eval(arg))
+    # Resolved in the formula's own environment, so that a variance function
+    # name held in a variable is looked up where the user wrote it rather than
+    # in this frame, whose lexical parent is the package namespace. The same
+    # defect as the crf() model set. See #319.
+    list(route = "B", value = eval(arg, envir = formula_env(formula)))
   }
 }
 
@@ -310,6 +314,24 @@ disp_inits <- function(spec, family, response) {
 #' @param x_var The predictor column name, substituted for the generic "x".
 #' @param response A \code{\link[base]{numeric}} vector, used only to compute the
 #' centring constant.
+#' @param curve The curve expression to substitute for \code{@MU@}, already on
+#' the fit's own predictor name. Defaults to \code{NULL}, which rebuilds it
+#' from the \code{bf_<model>} template.
+#'
+#' @details \strong{The curve is taken from the formula being built, not from
+#' the template}, whenever the caller supplies it. \code{\link{add_formula_glef}}
+#' rewrites the main expression where a group-level deviation is applied
+#' multiplicatively --- \code{bot} becomes \code{bnecbot} (#294), and the whole
+#' curve becomes \code{bnecmu} under \code{ogl()} (#257) --- and rebuilding from
+#' the template discards that, so route (B) modelled the dispersion as a
+#' function of a mean the fit was not using. \code{\link{wrangle_model_formula}}
+#' already adds the dispersion block last for exactly this reason; the rebuild
+#' was what stopped that having any effect.
+#'
+#' The template remains the fallback for the direct callers in
+#' \code{tests/testthat/test-disp_model.R}, which have no assembled formula to
+#' read a curve from and are testing the variance function rather than the
+#' grouping.
 #'
 #' @return A \code{\link[base]{list}} with elements \code{nlf} (the block's
 #' formula) and, for route (B), \code{lf} (the parameter formula).
@@ -317,13 +339,20 @@ disp_inits <- function(spec, family, response) {
 #' @importFrom stats as.formula
 #'
 #' @noRd
-make_disp_block <- function(model, spec, dpar, x_var, response = NULL) {
+make_disp_block <- function(model, spec, dpar, x_var, response = NULL,
+                            curve = NULL) {
   if (spec$route == "A") {
+    # The environment is not set here. brms resolves a distributional sub-model
+    # against the top-level brmsformula, not against this one, so
+    # wrangle_model_formula() sets it there instead; measured on
+    # disp(~cent(x)) with cent() defined by the caller. See #319.
     return(list(nlf = as.formula(paste0(dpar, " ~ ", spec$value)), lf = NULL))
   }
   vf <- disp_functions[[spec$value]]
-  bf_obj <- get(paste0("bf_", model))
-  curve <- substitute_x_in_formula(x_var, deparse1(bf_obj$formula[[3]]))
+  if (is.null(curve)) {
+    bf_obj <- get(paste0("bf_", model))
+    curve <- substitute_x_in_formula(x_var, deparse1(bf_obj$formula[[3]]))
+  }
   # Wrapped in parentheses because the curve is substituted into log(@MU@) and
   # into log(1 - (@MU@)); an unwrapped sum would rebind against the surrounding
   # operators for the second of those.
@@ -355,7 +384,10 @@ make_disp_block <- function(model, spec, dpar, x_var, response = NULL) {
 add_disp_block <- function(brms_bf, model, spec, family, x_var,
                            response = NULL) {
   dpar <- disp_dpar(family)
-  db <- make_disp_block(model, spec, dpar, x_var, response)
+  # The curve as it now stands, which is the one the fit uses. See
+  # make_disp_block() for what rebuilding it from the template discarded.
+  db <- make_disp_block(model, spec, dpar, x_var, response,
+                        curve = deparse1(brms_bf$formula[[3]]))
   if (spec$route == "A") {
     # lf() rather than nlf(): the right-hand side is an ordinary linear
     # predictor in the data, so brms should apply its usual design-matrix

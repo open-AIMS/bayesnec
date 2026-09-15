@@ -255,8 +255,10 @@ test_that("make_good_hurdle_inits returns both blocks per chain", {
   pr <- bayesnec:::define_prior(
     "nec3param", bayesnec:::validate_family("hurdle_gamma"), x, y
   )
-  inits <- bayesnec:::make_good_hurdle_inits("nec3param", x, y, priors = pr,
-                                             chains = 2, seed = 1)
+  inits <- bayesnec:::make_good_hurdle_inits(
+    "nec3param", x, y, priors = pr, chains = 2, seed = 1,
+    family = bayesnec:::validate_family("hurdle_gamma")
+  )
   skip_if(length(inits) == 1 && "random" %in% names(inits),
           "init search fell back to random")
   expect_length(inits, 2)
@@ -306,6 +308,34 @@ test_that("zero_inflated_beta is recognised as a two-block family", {
 test_that("hurdle_mu_family picks the right family for the non-zero subset", {
   expect_equal(bayesnec:::hurdle_mu_family("hurdle_gamma")$family, "Gamma")
   expect_equal(bayesnec:::hurdle_mu_family("zero_inflated_beta")$family, "beta")
+})
+
+test_that("hurdle_mu_family uses the mean link the caller chose", {
+  # A tag names a family and nothing more, so it takes the link bnec assigns.
+  expect_equal(bayesnec:::hurdle_mu_family("hurdle_gamma")$link, "identity")
+  expect_equal(bayesnec:::hurdle_mu_family("zero_inflated_beta")$link,
+               "identity")
+  expect_equal(
+    bayesnec:::hurdle_mu_family(
+      brms::hurdle_gamma(link = "identity", link_hu = "identity")
+    )$link,
+    "identity"
+  )
+  # brms applies the inverse mean link to the whole non-linear expression, so
+  # under these links top and bot are on the log or logit scale and their
+  # priors have to be measured there. See #302.
+  expect_equal(
+    bayesnec:::hurdle_mu_family(
+      brms::hurdle_gamma(link = "log", link_hu = "identity")
+    )$link,
+    "log"
+  )
+  expect_equal(
+    bayesnec:::hurdle_mu_family(
+      brms::zero_inflated_beta(link = "logit", link_zi = "identity")
+    )$link,
+    "logit"
+  )
 })
 
 test_that("make_hu_block prefixes with zi for zero-inflated families", {
@@ -402,8 +432,10 @@ test_that("make_good_hurdle_inits uses the zi prefix", {
   pr <- bayesnec:::define_prior(
     "nec3param", bayesnec:::validate_family("zero_inflated_beta"), x, y
   )
-  inits <- bayesnec:::make_good_hurdle_inits("nec3param", x, y, priors = pr,
-                                             chains = 2, dpar = "zi", seed = 1)
+  inits <- bayesnec:::make_good_hurdle_inits(
+    "nec3param", x, y, priors = pr, chains = 2, dpar = "zi", seed = 1,
+    family = bayesnec:::validate_family("zero_inflated_beta")
+  )
   skip_if(length(inits) == 1 && "random" %in% names(inits),
           "init search fell back to random")
   expect_setequal(names(inits[[1]]),
@@ -450,9 +482,11 @@ test_that("make_good_hurdle_inits primes each block with its own equation", {
   pr <- bayesnec:::define_prior("nec3param",
                                 bayesnec:::validate_family("hurdle_gamma"),
                                 x, y, model_survival = "ecx4param")
-  inits <- bayesnec:::make_good_hurdle_inits("nec3param", x, y, priors = pr,
-                                             chains = 2,
-                                             model_survival = "ecx4param")
+  inits <- bayesnec:::make_good_hurdle_inits(
+    "nec3param", x, y, priors = pr, chains = 2,
+    model_survival = "ecx4param",
+    family = bayesnec:::validate_family("hurdle_gamma")
+  )
   skip_if(length(inits) == 1 && "random" %in% names(inits),
           "init search fell back to random")
   expect_length(inits, 2)

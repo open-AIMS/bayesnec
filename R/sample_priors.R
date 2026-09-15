@@ -8,13 +8,27 @@
 #' @param plot NA returns a \code{\link[base]{list}} of numeric vectors of
 #' sampled priors, "ggplot" (default) returns a \code{\link[ggplot2]{ggplot}}
 #'  and "base" returns a histogram in base R.
+#' @param seed A \code{\link[base]{numeric}} vector of length 1. Passed to
+#' \code{\link[base]{set.seed}} before the priors are sampled, so that two
+#' calls on the same prior set return the same draws and the same figure. The
+#' caller's saved RNG state is restored afterwards, and a
+#' \code{\link[base]{set.seed}} in the session therefore does not change the
+#' result. A different value gives an independent set of draws. \code{NULL} is
+#' refused, because \code{set.seed(NULL)} re-initialises the stream from the
+#' clock.
+#' Reproducibility assumes the same RNG kind; the sampling algorithm is fixed
+#' to \code{sample.kind = "Rejection"}. The saved RNG state is restored,
+#' but the cached normal variate used by \code{normal.kind = "Box-Muller"}
+#' is not part of that state. With Box-Muller, the next normal draw can change
+#' after an odd number of preceding normal draws. Use R's default
+#' \code{normal.kind = "Inversion"} to preserve subsequent normal draws.
 #'
-#' @importFrom stats rgamma rnorm rbeta runif
 #' @importFrom graphics hist
 #' @importFrom ggplot2 ggplot aes geom_histogram facet_wrap theme_bw labs
 #' @importFrom tidyr pivot_longer
 #' @importFrom tidyselect starts_with
 #' @importFrom dplyr filter mutate
+#' @importFrom chk chk_number
 #' @importFrom rlang .data
 #'
 #' @seealso \code{\link{bnec}}
@@ -30,8 +44,10 @@
 #' sample_priors(exmp$prior)
 #'
 #' @export
-sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
+sample_priors <- function(priors, n_samples = 10000, plot = "ggplot",
+                          seed = 10) {
   chk_numeric(n_samples)
+  chk_number(seed)
   # NA is documented as the "return the draws" option, but `NA %in% c(...)` is
   # FALSE, so the guard rejected the very value the documentation offers and
   # there was no route to the sampled values at all. `%in%` cannot express it,
@@ -44,7 +60,6 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
     stop("plot must be NA, or a character string of either ",
          "\"ggplot\" or \"base\"")
   }
-  fcts <- c(gamma = rgamma, normal = rnorm, beta = rbeta, uniform = runif)
   priors <- as.data.frame(priors) |>
     filter(class == "b")
   priors <- priors[priors$prior != "", ]
@@ -54,38 +69,43 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
     par_names[j] <- paste(priors$class[j], priors$nlpar[j], sep = sep)
   }
   out <- vector(mode = "list", length = nrow(priors))
-  for (j in seq_len(nrow(priors))) {
-    # A constant() prior is a point mass: every draw is the fixed value, and
-    # the bound filtering below is skipped because there is nothing to reject
-    # against. Without this branch the whole call failed on any prior set
-    # containing a fixed parameter, so a user could not inspect the priors they
-    # had just written. See #244.
-    if (is_constant_prior(priors$prior[j])) {
-      out[[j]] <- rep(constant_prior_value(priors$prior[j]), n_samples)
-      next
-    }
-    bits <- gsub("\\(|\\)", ",", priors$prior[j])
-    bits <- strsplit(bits, ",", fixed = TRUE)[[1]]
-    fct_i <- bits[1]
-    v1 <- as.numeric(bits[2])
-    v2 <- as.numeric(bits[3])
-    out[[j]] <- fcts[[fct_i]](n_samples, v1, v2)
-    if (any(!is.na(as.numeric(priors[j, c("lb", "ub")])))) {
-      n_bounds <- sum(!is.na(priors[j, c("lb", "ub")]))
-      if (n_bounds == 2) {
-        bounds <- as.numeric(priors[j, c("lb", "ub")])
-        out[[j]] <- sample(out[[j]][which(out[[j]] >= min(bounds) &
-                                          out[[j]] <= max(bounds))],
-                           n_samples, replace = TRUE)
-      } else if (n_bounds == 1) {
-        direction <- c("lb", "ub")[!is.na(priors[j, c("lb", "ub")])]
-        bound_fct <- ifelse(direction == "lb", `<=`, `>=`)
-        bounds <- as.numeric(priors[j, direction])
-        out[[j]] <- sample(out[[j]][!bound_fct(out[[j]], bounds)],
-                           n_samples, replace = TRUE)
+  # Prior inspection should repeat without affecting later simulation.
+  # Fix the sampling algorithm as well as the seed, and restore both on exit.
+  with_preserved_rng_state({
+    set.seed(seed, sample.kind = "Rejection")
+    for (j in seq_len(nrow(priors))) {
+      # A constant() prior is a point mass: every draw is the fixed value, and
+      # the bound filtering below is skipped because there is nothing to reject
+      # against. Without this branch the whole call failed on any prior set
+      # containing a fixed parameter, so a user could not inspect the priors they
+      # had just written. See #244.
+      if (is_constant_prior(priors$prior[j])) {
+        out[[j]] <- rep(constant_prior_value(priors$prior[j]), n_samples)
+        next
+      }
+      bits <- gsub("\\(|\\)", ",", priors$prior[j])
+      bits <- strsplit(bits, ",", fixed = TRUE)[[1]]
+      fct_i <- prior_sampler(bits[1])
+      v1 <- as.numeric(bits[2])
+      v2 <- as.numeric(bits[3])
+      out[[j]] <- fct_i(n_samples, v1, v2)
+      if (any(!is.na(as.numeric(priors[j, c("lb", "ub")])))) {
+        n_bounds <- sum(!is.na(priors[j, c("lb", "ub")]))
+        if (n_bounds == 2) {
+          bounds <- as.numeric(priors[j, c("lb", "ub")])
+          out[[j]] <- sample(out[[j]][which(out[[j]] >= min(bounds) &
+                                            out[[j]] <= max(bounds))],
+                             n_samples, replace = TRUE)
+        } else if (n_bounds == 1) {
+          direction <- c("lb", "ub")[!is.na(priors[j, c("lb", "ub")])]
+          bound_fct <- ifelse(direction == "lb", `<=`, `>=`)
+          bounds <- as.numeric(priors[j, direction])
+          out[[j]] <- sample(out[[j]][!bound_fct(out[[j]], bounds)],
+                             n_samples, replace = TRUE)
+        }
       }
     }
-  }
+  })
   names(out) <- par_names
   if (is.na(plot)) {
     out

@@ -1,0 +1,28 @@
+# Local settings for the HPC precompile scripts. Copy to hpc/local.conf, which
+# is gitignored, and edit. Nothing here is committed: an account name, a login
+# node and a path on your own disk are not the repository's business, and this
+# keeps them out of it.
+#
+#   cp hpc/local.conf.example hpc/local.conf
+#
+# Every setting can also be given as an environment variable, which takes
+# precedence over this file.
+
+# The cluster, as ssh would take it. Required.
+HOST=you@login-node.example.org
+
+# Where the job directory goes on the cluster. Defaults to
+# /export/scratch/<the account in HOST>/bayesnec-precompile.
+#DEST=/export/scratch/you/bayesnec-precompile
+
+# The container image on this machine. Needed to build it, and to copy it to the
+# cluster the first time. Once the cluster holds an image matching
+# hpc/image.lock, a precompile run needs no local copy and this can stay unset.
+#
+# Under WSL, build it somewhere other than the repository: the repository is on
+# a 9p mount where unpacking the base image takes an order of magnitude longer.
+#SIF=/home/you/tmp/bayesnec-precompile.sif
+
+# Where apptainer unpacks the base image while building. About 15GB, and it must
+# be a local Linux filesystem -- build.sh refuses a tmpfs or a 9p mount.
+#APPTAINER_TMPDIR=/home/you/tmp/apptainer

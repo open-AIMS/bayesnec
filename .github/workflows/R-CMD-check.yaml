@@ -3,8 +3,8 @@
 # A push to a branch that has an open pull request fires both `push` and
 # `pull_request`, so an unfiltered trigger ran the four-job matrix twice for
 # every push. With a stacked set of pull requests that is eight runs for one
-# propagated fix, on a repository that runs one job at a time, and the queue
-# never drained. Every other workflow here already filters; this one did not.
+# propagated fix, and the queue never drained. Every other workflow here already
+# filters; this one did not.
 #
 # `push` is now limited to the integration branches, and a branch with a pull
 # request is still checked through `pull_request`. Nothing loses coverage: a
@@ -14,7 +14,15 @@ on:
   push:
     branches: [master, dev]
   pull_request:
+  # The input lets a dispatch run hold one worker count without editing the tree
+  # being measured. Blank leaves TESTTHAT_CPUS unset, so an ordinary push or
+  # pull_request run uses testthat's default of two workers.
   workflow_dispatch:
+    inputs:
+      testthat_cpus:
+        description: "testthat worker count; blank leaves testthat's default of two"
+        required: false
+        default: ''
 
 # Supersede rather than queue. Pushing a correction to a branch whose check is
 # still running made both run to completion, and only the second was ever read.
@@ -39,6 +47,17 @@ jobs:
           - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
           - {os: ubuntu-latest,   r: 'release'}
           # - {os: ubuntu-latest,   r: 'oldrel-1'}
+
+    # The default job timeout is six hours. Two terminations on this repository
+    # arrived as a bare exit 143 partway through the test phase with no timing
+    # line and no cause, and neither was a timeout, so neither could be told from
+    # a job that was merely slow. A bound above the longest observed job makes a
+    # hang a deterministic event at a known boundary instead. See #328.
+    #
+    # The 42-minute maximum this was set against is superseded: #333 measured a
+    # devel job of 72.7 minutes. 90 still clears the routine distribution by
+    # about half again, so it is left alone. See `notes/ci_devel_cancellation.md`.
+    timeout-minutes: 90
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -111,6 +130,34 @@ jobs:
           cmdstanr::check_cmdstan_toolchain(fix = TRUE)
         shell: Rscript {0}
 
+      # Nothing here sets a worker count on an ordinary run: testthat takes its
+      # own default of two and this matrix is configured exactly as dev is.
+      #
+      # The step exists as an instrument, not a policy. While the count was
+      # computed in this file it could not be varied for measurement, because
+      # varying it meant editing the file and editing the file changed the tree
+      # being measured. Holding one setting through workflow_dispatch is what made
+      # a paired comparison possible, and #328 records what that comparison found
+      # and why the question is closed rather than deferred. It does nothing
+      # unless an input is supplied.
+      - name: Override the testthat worker count, if one was requested
+        if: github.event.inputs.testthat_cpus != ''
+        env:
+          WORKER_OVERRIDE: ${{ github.event.inputs.testthat_cpus }}
+        run: |
+          requested_workers <- Sys.getenv("WORKER_OVERRIDE")
+          workers <- suppressWarnings(as.numeric(requested_workers))
+          if (is.na(workers) || !is.finite(workers) || workers < 1 ||
+              workers != floor(workers) || workers > .Machine$integer.max) {
+            stop("testthat_cpus must be a positive integer, not '",
+                 requested_workers, "'")
+          }
+          workers <- as.integer(workers)
+          cat("overriding the testthat worker count to", workers, "\n")
+          cat(sprintf("TESTTHAT_CPUS=%d\n", workers),
+              file = Sys.getenv("GITHUB_ENV"), append = TRUE)
+        shell: Rscript {0}
+
       # Vignettes ARE built and checked. They are precompiled -- precompile.R
       # renders every .Rmd.orig to a .Rmd whose chunks are display-only -- so
       # building them is markdown to HTML and costs ~16s, not a refit. Skipping
@@ -121,3 +168,23 @@ jobs:
           build_args: 'c("--no-manual")'
           args: 'c("--no-manual", "--as-cran")'
           upload-snapshots: true
+
+      # The action's own "Show testthat output" step reported outcome=skipped on
+      # both terminations, so neither left any record of which file the suite had
+      # reached. This one runs whatever happened, including on a cancellation or a
+      # timeout, which is the case that needs it.
+      - name: Show the test log, whatever happened
+        if: always()
+        shell: bash
+        run: |
+          shopt -s nullglob
+          found=0
+          for f in check/*.Rcheck/tests/testthat.Rout check/*.Rcheck/tests/testthat.Rout.fail; do
+            echo "::group::$f"
+            tail -n 200 "$f" || true
+            echo "::endgroup::"
+            found=1
+          done
+          if [ "$found" = "0" ]; then
+            echo "no testthat.Rout found under check/*.Rcheck/tests/"
+          fi

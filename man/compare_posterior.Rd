@@ -15,6 +15,7 @@
   resolution,
   x_range = NA,
   make_newdata = TRUE,
+  seed = 10,
   ...
 )
 
@@ -42,8 +43,12 @@ Details.}
 \item{sig_val}{Probability value to use as the lower quantile to test
 significance of the predicted posterior values.}
 
-\item{resolution}{The number of unique x values over which to find ECx --
-large values will make the ECx estimate more precise.}
+\item{resolution}{The number of unique x values over which to find ECx.
+The crossing is located by linear interpolation between the two grid values
+that bracket it, so precision saturates well below the grid spacing.
+Increasing the resolution beyond the default of 200 changed the estimate by
+less than 0.01 percent on the fits tested, and increases the run time
+roughly in proportion.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
@@ -51,6 +56,21 @@ large values will make the ECx estimate more precise.}
 user allow the package to create \code{newdata} for predictions?
 If so, arguments \code{resolution} and \code{x_range} will be used. Defaults
 to TRUE. See details.}
+
+\item{seed}{A \code{\link[base]{numeric}} vector of length 1. Passed to
+\code{\link[base]{set.seed}} before the draws of the posteriors being
+compared are paired, so that two calls on the same fits return the same
+answer. The caller's saved RNG state is restored afterwards, and a
+\code{\link[base]{set.seed}} in the session therefore does not change the
+result. A different value gives another realisation of the same Monte
+Carlo approximation. \code{NULL} is refused, because
+\code{set.seed(NULL)} re-initialises the stream from the clock.
+Reproducibility assumes the same RNG kind; the sampling algorithm is fixed
+to \code{sample.kind = "Rejection"}. The saved RNG state is restored,
+but the cached normal variate used by \code{normal.kind = "Box-Muller"}
+is not part of that state. With Box-Muller, the next normal draw can change
+after an odd number of preceding normal draws. Use R's default
+\code{normal.kind = "Inversion"} to preserve subsequent normal draws.}
 
 \item{...}{Further arguments that control posterior predictions via
 \code{\link[brms]{posterior_epred}}.}

@@ -30,3 +30,8 @@ README.Rmd
 ^PR_.*\.md$
 ^superceded$
 ^notes$
+^cache$
+^hpc$
+^.*\.sif$
+^\.apptainer-tmp$
+^CLAUDE\.md$

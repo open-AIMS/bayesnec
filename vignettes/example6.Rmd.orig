@@ -112,7 +112,6 @@ library(dplyr)
 ```
 
 ```{r, results = "hide", echo = FALSE}
-rstan::rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 ```
 

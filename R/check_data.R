@@ -178,7 +178,14 @@ check_disp_finite <- function(formula, data) {
   bad <- character(0)
   incomplete <- character(0)
   for (label in labels) {
-    values <- try(eval(str2lang(label), envir = data), silent = TRUE)
+    # enclos is the formula's own environment. With eval()'s default of
+    # parent.frame(), a term written with a function the user defined --
+    # disp(~cent(x)) -- could not be evaluated, and the try() below then
+    # skipped it, so the check silently passed rather than checking anything.
+    # The skip is kept for a term that genuinely cannot be evaluated here, such
+    # as a smooth. See #319.
+    values <- try(eval(str2lang(label), envir = data,
+                       enclos = formula_env(formula)), silent = TRUE)
     if (inherits(values, "try-error") || !is.numeric(values)) {
       next
     }
@@ -225,19 +232,25 @@ check_disp_finite <- function(formula, data) {
 #' Refuse a data column whose name collides with a generated parameter
 #'
 #' The group-level transform (#257) introduces an intermediate non-linear term
-#' named \code{bnecmu}, and \code{ogl()} introduces one named \code{ogl}. Both
-#' are resolved by \pkg{brms} against the user's data frame, so a column of
-#' either name would be silently preferred over the generated term and the fit
-#' would be a different model with no error. Refused by name here rather than
-#' left to produce a confusing \pkg{brms} message about a formula the user did
-#' not write.
+#' named \code{bnecmu}, \code{ogl()} introduces one named \code{ogl}, and the
+#' parameter-level transform (#294) introduces \code{topgl}, \code{botgl},
+#' \code{bnectop} and \code{bnecbot}. All are resolved by \pkg{brms} against
+#' the user's data frame, so a column of any of those names would be silently
+#' preferred over the generated term and the fit would be a different model with
+#' no error. Refused by name here rather than left to produce a confusing
+#' \pkg{brms} message about a formula the user did not write.
+#'
+#' The set is refused in full whatever the formula is, rather than only where
+#' the term would actually be generated. Which terms a fit generates depends on
+#' the family and on the group-level structure, so a conditional refusal would
+#' accept a column on one call and refuse it on the next with the same data.
 #'
 #' @param data A \code{\link[base]{data.frame}}, the one the user supplied.
 #'
 #' @return \code{NULL}, invisibly. Called for the error.
 #' @noRd
 check_reserved_names <- function(data) {
-  reserved <- c("bnecmu", "ogl")
+  reserved <- generated_term_names()
   clash <- intersect(reserved, names(data))
   if (length(clash) > 0) {
     stop("Your data contains the column(s) ",

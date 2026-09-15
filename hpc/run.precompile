@@ -1,0 +1,224 @@
+#!/bin/bash
+#SBATCH --job-name=bnec-precompile
+#SBATCH --partition=cpuq
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=32GB
+#SBATCH --time=24:00:00
+#SBATCH --output=logs/precompile-%A_%a.log
+# No separate --error: R's message(), knitr's progress and cmdstan's output all
+# go to stderr, so splitting the streams leaves the .log nearly empty and the
+# interesting half in a file nothing points at.
+
+# Precompile one vignette. The vignette is this task's line of vignettes.txt,
+# which hpc/precompile-hpc.sh writes from the names given on its command line.
+#
+# --cpus-per-task=4: every fit in a vignette is independent of every other and
+# is run in sequence, so the only parallelism available is the four chains
+# within a fit, and brms fits four by default. precompile.R sets mc.cores from
+# SLURM_CPUS_PER_TASK, so this number is what decides how many chains run at
+# once; asking for more than four would leave the extra cores idle.
+#
+# --mem=32GB is over-provisioning rather than a measurement. On a 490GB node
+# with four cores requested the binding constraint is cores, so raising this
+# changes nothing about throughput while removing the risk of an OOM kill
+# hours into a run. example7 holds 24 model-averaged fits over thirteen
+# equations in memory at once.
+#
+# --time=24:00:00: example7 took 309 min end to end on a cold Stan cache and
+# was still running at 4 h 31 m on a warm one, of which over two hours was
+# ecx() and nsec() extraction rather than sampling (#306). A day is generous
+# for the largest vignette in the repository and a task that exceeds it has
+# gone wrong rather than been slow.
+
+set -euo pipefail
+
+# `module` returns non-zero on a cluster where these are already loaded, which
+# under `set -e` would end the job before it started. Loaded below, after the
+# previous run's staged output has been cleared.
+
+JOB="${SLURM_SUBMIT_DIR:-$PWD}"
+cd "$JOB"
+mkdir -p logs out
+
+TASK="${SLURM_ARRAY_TASK_ID:-1}"
+VIG=$(sed -n "${TASK}p" vignettes.txt)
+[ -n "$VIG" ] || { echo "no vignette on line $TASK of vignettes.txt" >&2; exit 1; }
+
+SIF="$JOB/bayesnec-precompile.sif"
+LIB="$JOB/lib"
+# Shared between vignettes, between runs and between branches: cmdstanr names a
+# compiled program after a hash of its Stan source, so a program is reused only
+# where the source is identical, which is why the directory is on scratch rather
+# than in the job. What the saving is worth depends on how much sampling the
+# vignette does: on example4, 14 programs, it was 52 s of a 14 min run.
+#
+# Keyed on the toolchain, because that hash covers the Stan source and nothing
+# else. The executable beside it was produced by some cmdstan with some compiler
+# and neither appears in its name, so an unkeyed directory would hand a run
+# binaries built by a different image -- undoing, one line later, the guarantee
+# the sif_sha256 refusal below exists to give.
+#
+# The key is the base image digest and the cmdstan version rather than the whole
+# image digest: those two decide the binary, and a rebuild that changed only an R
+# package would otherwise discard a warm cache for nothing. A change to either
+# does start a cold cache, which is the honest consequence of the guarantee.
+TOOLCHAIN=$( { sed -n 's/^base_digest: //p' hpc/image.lock
+               sed -n 's/^cmdstan: //p' hpc/image.lock; } | sha256sum | cut -c1-16)
+CACHE="${BAYESNEC_STAN_CACHE:-/export/scratch/$USER/bayesnec-stan-cache/$TOOLCHAIN}"
+
+# Cleared as the first thing done after the vignette is known, and before
+# anything that can exit non-zero. Staging on success alone is not enough: a
+# rerun that failed would leave the previous run's output in place and --fetch
+# would return it as though it were this run's. Everything above this point is
+# argument handling; the module load and the singularity check are below it for
+# that reason.
+OUT="out/$VIG"
+rm -rf "$OUT"
+
+module load slurm || true
+module load singularity || true
+command -v singularity > /dev/null || {
+  echo "singularity not on PATH after 'module load singularity'" >&2; exit 1; }
+
+echo "=== $(date -Is) precompiling $VIG on $(hostname)"
+# Marks the start of this run, so that the figures it wrote can be told from
+# the committed ones deployed alongside them without needing the git tree.
+STARTED="$JOB/.started-$VIG"
+: > "$STARTED"
+
+# The image is the other half of what determines the committed output, so a
+# job refuses to run against an image that is not the one the branch records.
+# Rebuilding the image is a change that can alter committed vignette output and
+# has to be made deliberately, on a pull request, not discovered afterwards.
+lock_sha=$(sed -n 's/^sif_sha256: //p' hpc/image.lock)
+have_sha=$(sha256sum "$SIF" | cut -d' ' -f1)
+if [ "$lock_sha" != "$have_sha" ]; then
+  echo "image does not match hpc/image.lock" >&2
+  echo "  hpc/image.lock: $lock_sha" >&2
+  echo "  $SIF: $have_sha" >&2
+  echo "Copy the image this branch records, or rebuild and update the lock." >&2
+  exit 1
+fi
+echo "--- image"; cat hpc/image.lock
+
+# bayesnec from the checked-out source, into a job-local library that goes
+# first on R_LIBS. This is the whole point of the design: the image holds the
+# toolchain and not the package, so one image precompiles any branch.
+#
+# Collected once and used by every exec below. R_LIBS_USER is set as well as
+# R_LIBS, and R_ENVIRON_USER and R_PROFILE_USER are sent to /dev/null, because
+# apptainer bind-mounts $HOME: without this the container reads the account's own
+# library and startup files from the host. Verified locally on 2026-09-10, an
+# image built with no bayesnec in it reported bayesnec as available, because it
+# was seeing the workstation's library through the bound home directory. The
+# startup files matter for the same reason -- R reads ~/.Renviron after the
+# inherited environment, so a host R_LIBS_USER there would override the one set
+# here.
+# R_LIBS_SITE is emptied for the same reason: it is the one remaining variable
+# by which a host library could reach .libPaths(). --cleanenv would close the
+# class rather than the instances, but it would also strip the SLURM_ variables
+# this job reads, so the variables are named instead.
+RENV=(--env R_LIBS="$LIB" --env R_LIBS_USER="$LIB" --env R_LIBS_SITE=
+      --env R_ENVIRON_USER=/dev/null --env R_PROFILE_USER=/dev/null)
+
+rm -rf "$LIB"; mkdir -p "$LIB"
+singularity exec -B "$JOB":"$JOB" --pwd "$JOB" "${RENV[@]}" "$SIF" \
+  R CMD INSTALL --library="$LIB" . \
+  || { echo "R CMD INSTALL failed. If a dependency is missing the image needs" >&2
+       echo "rebuilding: add it to hpc/bayesnec-precompile.def." >&2; exit 1; }
+
+# Two things checked before hours of sampling are spent.
+#
+# That the bayesnec about to be loaded is the one just installed. The path is
+# compared against a value passed in separately rather than against R_LIBS read
+# from inside the session, so that an override reaching the session cannot make
+# the check agree with itself.
+#
+# And that the packages needed to knit are present. R CMD INSTALL checks Depends
+# and Imports; the vignettes also reach Suggests, and a missing one of those
+# would otherwise fail mid-knit, hours in, rather than here.
+#
+# Not every Suggests, though. testthat is one, and an image for precompiling
+# vignettes has no reason to hold it -- demanding it refused a run that would
+# have succeeded (observed on 2026-09-10). So the hard requirement is Depends,
+# Imports, the packages precompile.R itself loads, and the packages this
+# vignette attaches; everything else in Suggests is reported when missing and
+# left to the operator to judge.
+#
+# The vignette is read for its own library() and require() calls because three
+# of the packages the vignettes attach -- bayesplot, posterior and cmdstanr --
+# appear in no field of DESCRIPTION, so a DESCRIPTION-only check would pass and
+# then fail mid-knit, which is the failure this exists to prevent. Only
+# library() and require() are read, not `pkg::`, because drc:: and remotes::
+# appear in chunks that are never evaluated.
+singularity exec -B "$JOB":"$JOB" --pwd "$JOB" "${RENV[@]}" \
+  --env BAYESNEC_JOB_LIB="$LIB" --env BAYESNEC_VIGNETTES="$VIG" \
+  "$SIF" Rscript -e '
+    lib <- normalizePath(Sys.getenv("BAYESNEC_JOB_LIB"))
+    p <- find.package("bayesnec")
+    if (!identical(normalizePath(dirname(p)), lib))
+      stop("bayesnec resolved to ", p, ", not the job library ", lib)
+    cat("bayesnec", as.character(packageVersion("bayesnec")), "from", p, "\n")
+    d <- read.dcf("DESCRIPTION")
+    field <- function(f) {
+      if (!f %in% colnames(d)) return(character(0))
+      x <- trimws(sub("\\(.*", "", unlist(strsplit(d[1, f], ","))))
+      setdiff(x[nzchar(x)], c("R", "bayesnec"))
+    }
+    absent <- function(x) x[!vapply(x, requireNamespace, logical(1), quietly = TRUE)]
+    src <- readLines(file.path("vignettes", paste0(Sys.getenv("BAYESNEC_VIGNETTES"),
+                                                   ".Rmd.orig")), warn = FALSE)
+    attached <- regmatches(src, regexpr("(library|require)\\([\"\047]?[A-Za-z][A-Za-z0-9._]*",
+                                        src))
+    attached <- sub(".*\\([\"\047]?", "", attached)
+    hard <- unique(c(field("Depends"), field("Imports"),
+                     "knitr", "rmarkdown", "purrr", attached))
+    miss <- absent(hard)
+    if (length(miss))
+      stop("not in the image: ", paste(miss, collapse = ", "),
+           "\n  Add them to hpc/bayesnec-precompile.def and rebuild.")
+    soft <- absent(setdiff(field("Suggests"), hard))
+    if (length(soft))
+      cat("NOTE: these Suggests are not in the image:", paste(soft, collapse = ", "),
+          "\n  Fine unless a vignette being built uses one, in which case add it",
+          "\n  to hpc/bayesnec-precompile.def and rebuild.\n")
+    cat("every Depends and Imports is present\n")'
+
+mkdir -p "$CACHE"
+
+# BAYESNEC_VIGNETTE_CACHE is deliberately not passed through. A vignette
+# precompiled on the HPC is one whose numbers will be quoted, and the fit cache
+# reuses chunks fitted by whatever version was installed when it was written.
+singularity exec -B "$JOB":"$JOB" -B "$CACHE":"$CACHE" --pwd "$JOB" \
+  "${RENV[@]}" \
+  --env BAYESNEC_STAN_CACHE="$CACHE" \
+  --env BAYESNEC_VIGNETTES="$VIG" \
+  --env SLURM_CPUS_PER_TASK="${SLURM_CPUS_PER_TASK:-4}" \
+  "$SIF" Rscript vignettes/precompile.R
+
+# Only reached when precompile.R exited zero, which it does not do when a chunk
+# errored: knitr renders a failed chunk and carries on, so the check inside the
+# script is what stands between a failed run and a plausible-looking .Rmd.
+# `set -e` above turns that exit status into a failed job, and the outputs are
+# staged only here, so nothing is available to copy back from a failed run.
+mkdir -p "$OUT/vignettes"
+cp "vignettes/$VIG.Rmd" "$OUT/vignettes/"
+# The figures this run wrote. precompile.R copies into vignettes/ only the
+# figures whose files it changed, so mtime identifies them without needing the
+# git tree, which is not deployed.
+find vignettes -name 'vignette-fig-*.png' -newer "$STARTED" \
+  -exec cp {} "$OUT/vignettes/" \;
+# Which job staged this, and from which source. --fetch compares the stamp with
+# what it is about to collect into, so output left by an earlier deployment
+# cannot be returned as though it belonged to this one.
+{
+  echo "job: ${SLURM_JOB_ID:-none}"
+  echo "vignette: $VIG"
+  echo "finished: $(date -Is)"
+  # || true: a missing PROVENANCE must not fail the job at the very last step,
+  # after the sampling has been paid for and the output is already staged.
+  { grep -E '^(deploy_id|commit): ' PROVENANCE 2>/dev/null; } || true
+} > "$OUT/STAMP"
+echo "=== $(date -Is) $VIG done; staged $(ls "$OUT/vignettes" | wc -l) file(s) in $OUT"

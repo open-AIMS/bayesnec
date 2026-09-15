@@ -82,7 +82,7 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA) {
   g <- posterior_epred(object$growth, newdata = nd_g$newdata, re_formula = NA)
   s <- posterior_epred(object$survival, newdata = nd_s$newdata,
                        re_formula = NA)
-  x_at <- hurdle_control_x(object)
+  x_at <- control_x(object)
   epred_part <- function(part) {
     function(nd) posterior_epred(part, newdata = nd, re_formula = NA)
   }
@@ -219,7 +219,7 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
 #' @method ecx bayesnechurdlefit
 #'
 #' @export
-ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 1000,
+ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 200,
                                   posterior = FALSE, type = "absolute",
                                   x_range = NA, xform = identity,
                                   prob_vals = c(0.5, 0.025, 0.975),

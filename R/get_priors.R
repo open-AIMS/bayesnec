@@ -132,7 +132,7 @@ get_priors.formula <- function(object, data, family = NULL,
   # "bayesnecformula"), formula first, so this is the method dispatch reaches
   # for both a bare formula and a bnf() one. The bayesnecformula method below
   # forwards here rather than the other way round, which would recurse.
-  object <- bayesnecformula(object)
+  object <- bayesnecformula(object, env = parent.frame())
   if (missing(data)) {
     stop("Argument `data` is required when get_priors() is given a formula:",
          " every default prior is derived from the data. See ?get_priors.",
@@ -208,7 +208,8 @@ get_priors.bayesnecformula <- function(object, data, ...) {
 #' @noRd
 #' @export
 get_priors.character <- function(object, data, ...) {
-  get_priors.formula(bayesnecformula(object), data = data, ...)
+  get_priors.formula(bayesnecformula(object, env = parent.frame()),
+                     data = data, ...)
 }
 
 #' Reduce a fitted brmsprior to the rows bnec() will accept back

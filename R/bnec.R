@@ -27,10 +27,16 @@
 #' ("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
 #' containing the desired arguments to be passed on to \code{\link[brms]{loo}}
 #' (via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
-#' If "weights" is
-#' not provided by the user, \code{\link{bnec}} will set the default
-#' \code{method} argument in \code{\link[loo]{loo_model_weights}} to
-#' "pseudobma". See ?\code{\link[loo]{loo_model_weights}} for further info.
+#' If no \code{method} is named in "weights", \pkg{bayesnec} sets the
+#' \code{method} argument of \code{\link[loo]{loo_model_weights}} to
+#' "pseudobma", whichever function assembles the model set.
+#' \code{\link{amend}} and \code{update} operate on an existing set and keep
+#' the method that set was built with, unless the caller names another.
+#' \code{\link{pull_out}} takes no weighting method at all: it reports and
+#' ignores one given in "weights" and always keeps the set's own.
+#' \code{\link[base]{c}} and \code{+} take no \code{loo_controls} argument;
+#' see \code{\link{c.bnecfit}} for how they decide the method. See
+#' ?\code{\link[loo]{loo_model_weights}} for further info.
 #' @param x_var Removed in version 2.0. Use formula instead. Used to be a
 #' \code{\link[base]{character}} indicating the column heading
 #' containing the predictor (concentration) variable.
@@ -61,9 +67,19 @@
 #' default priors to build when the user does not supply their own. Either
 #' \code{"uninformative"} (the default; the weakly-informative priors described
 #' in Fisher et al. 2024) or \code{"regularizing"} (narrower priors, with the
-#' no-effect \code{top} parameter centred on the control mean, which sits at the
-#' upper end of the response range for these monotonically decreasing models).
-#' Ignored when priors are supplied directly via the \code{prior} argument.
+#' no-effect \code{top} parameter placed at the mean response over the lowest
+#' concentrations tested and \code{bot} at the mean over the highest). The
+#' regularizing set narrows the response-scaled and group-level priors to 0.4 of
+#' the width of the uninformative set. The \code{nec} and \code{ec50} prior is
+#' not derived from that width at all: its spread is the one whose central 98\%
+#' interval reaches the farthest concentration tested. Under
+#' \code{"uninformative"} that prior is the one Fisher et al. (2024) describe,
+#' which is a coverage width at the 95\% level where concentrations are supplied
+#' as recorded and the constant \code{10 sd(x)} where the predictor is supplied
+#' already logged, so how much narrower the regularizing entry is depends on
+#' which of the two the data are on. See \code{vignette("example3")} for why the
+#' two rules differ. Ignored when priors are supplied directly via the
+#' \code{prior} argument.
 #' @param timeout A positive \code{\link[base]{numeric}} giving the maximum
 #' number of seconds allowed for fitting any single model, passed to
 #' \code{\link[R.utils]{withTimeout}}. This is useful when fitting multiple
@@ -130,6 +146,11 @@
 #' parameter (without a bottom plateau) will be fit; "zero_bounded" are models
 #' that are bounded to be zero; or "decline" excludes all hormesis models, i.e.,
 #' only allows a strict decline in response across the whole predictor range.
+#' Each group names a shape rather than a set of equations admissible for a
+#' given response --- "decline" includes the linear-decay models, which are
+#' dropped for a zero-bounded or 0, 1 bounded response --- so a group string is
+#' filtered by the same family check that \code{model = "all"} is. See
+#' \code{\link{models}}.
 #' Notice that if one of these group strings is provided together with a
 #' user-specified named list for the \code{\link[brms]{brm}}'s argument
 #' \code{prior}, the list names need to contain
@@ -447,6 +468,86 @@
 #' \code{loo_controls} argument. Individual model fits can be pulled out
 #' for examination using function \code{\link{pull_out}}.
 #'
+#' \bold{Reproducing a fit}
+#'
+#' A fit is a random procedure twice over: initial values are drawn from the
+#' priors, and the sampler is seeded. Both draws come from R's random number
+#' stream, so \code{\link[base]{set.seed}} in your session before the call
+#' fixes the fit, and two calls made after the same \code{set.seed()} return
+#' the same estimates. Passing \code{seed} through to \code{\link[brms]{brm}}
+#' fixes it too, and does so independently of the session's stream.
+#'
+#' Two qualifications. The estimates are fixed only for a given version of
+#' \pkg{bayesnec}, \pkg{brms}, Stan and the compiler: a Stan program rebuilt
+#' by a different toolchain can differ in the last figures. And within-chain
+#' threading is adaptive by default, which \code{\link[brms]{threading}}
+#' records as preventing exact reproducibility even under a fixed seed; pass
+#' \code{threads = threading(n, static = TRUE)} where a threaded run has to
+#' repeat.
+#'
+#' A \pkg{future} plan raises two separate questions, and only the second
+#' needs anything of you. A run under a plan repeats itself under a session
+#' \code{\link[base]{set.seed}} exactly as a sequential run does, measured on
+#' one backend and one R version. But a parallel run does not give the same
+#' answer as a sequential run of the same call unless you pass \code{seed}:
+#' each model is fitted in a worker whose random number stream is its own, so
+#' the initial values differ. Measured under
+#' \code{plan(multicore, workers = 3)} on three equations, sequential and
+#' parallel agreed with a \code{seed} and disagreed without one. Pass one if
+#' you intend to compare the two.
+#'
+#' \bold{Fitting a model set in parallel}
+#'
+#' A model set is fitted one model at a time by default. Setting a \pkg{future}
+#' plan before the call fits them at the same time instead, and
+#' \code{\link{bnec}} uses whatever plan it finds:
+#'
+#' \preformatted{
+#' library(future)
+#' plan(multisession, workers = 8)
+#' fit <- bnec(y ~ crf(x, model = "decline"), data = my_data, seed = 17)
+#' plan(sequential)
+#' }
+#'
+#' No argument turns this on or off: the plan already holds that state.
+#' \code{cores} is a different matter -- it reaches \code{\link[brms]{brm}}
+#' through \code{...} as it always has, and under a plan it is honoured rather
+#' than overridden. \pkg{future} and \pkg{future.apply} are Suggests, so with
+#' either absent, or no plan set, the models are fitted in sequence exactly as
+#' before. \code{\link{amend}} uses the plan the same way, over the models it
+#' has to fit.
+#'
+#' Some things to know before setting one.
+#'
+#' Chains and models compete for the same cores. Unless you pass \code{cores}
+#' yourself, each model in a parallel plan samples its chains one after another,
+#' so \code{workers = 4} uses four cores in total -- the same four
+#' \code{\link[brms]{brm}} already uses for the chains of one model. Only
+#' above that is a plan asking for anything more.
+#'
+#' Which run you are timing decides whether that matters. A first fit builds a
+#' Stan program for every model, and building them divides across workers
+#' cleanly: measured on the \code{"decline"} set of
+#' \code{vignette("example2")}, a first run took 300 s with no plan and 150 s
+#' over eight workers. Run again with the programs already built, the same
+#' comparison is 99 s against 101 s -- nothing, because what a plan was
+#' overlapping has already been done.
+#'
+#' Supply a \code{seed} if the run has to match a sequential one; see
+#' \emph{Reproducing a fit} above for what a plan does and does not repeat.
+#'
+#' The model-averaged quantities -- the averaged
+#' \code{nec}, its interval, the stored prediction grid -- are not reproduced
+#' between a sequential and a parallel run even with a \code{seed}, because
+#' \code{expand_manec()} draws from the session's RNG stream, which a
+#' sequential run advances and a parallel one leaves alone;
+#' \code{set.seed()} in your session fixes that draw under a plan, so a
+#' parallel run repeats itself.
+#'
+#' The worked treatment -- measured run times, which backend a forked plan
+#' needs, how to tell a plan that has stalled, and what memory does -- is in
+#' \code{vignette("example2")}.
+#'
 #' \bold{Additional technical notes}
 #'
 #' A zero concentration is fitted as recorded. No family constrains the values
@@ -541,6 +642,12 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
                  prior = NULL, prior_type = "uninformative",
                  timeout = Inf, model_survival = NULL, ...) {
   chk_number(resolution)
+  # Raised here rather than left to arrive from expand_nec(), where the
+  # no-effect estimate of a smooth equation is read off the grid: it is a
+  # property of the call, fixed before any model is fitted, and from there it
+  # arrives after every model in the set has compiled and sampled. The same
+  # placement reasoning as check_complete_cases() below. See #325.
+  check_resolution(resolution)
   chk_number(sig_val)
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
   chk_number(timeout)
@@ -556,7 +663,10 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
             " are deprecated. Extracting relevant data and model information",
             " from argument formula. See ?bnec")
   }
-  formula <- bayesnecformula(formula)
+  # parent.frame() so that a character formula resolves symbols where the user
+  # called bnec() from. A formula object already carries its own environment
+  # and `env` is ignored for it. See #319.
+  formula <- bayesnecformula(formula, env = parent.frame())
   bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
   # Raised here rather than left to check_data(), which runs once per model
   # inside fit_bayesnec(). bnec() wraps that call in try() for a model set, so
@@ -655,20 +765,47 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     mod_fits <- vector(mode = "list", length = length(model))
     names(mod_fits) <- model
     failed <- list()
+    set_plan <- plan_model_set(brm_args, length(model))
+    brm_args <- set_plan$brm_args
+    # try() stays inside the applied function, not around the call to it. The
+    # NA-on-failure contract is what several downstream functions read, and
+    # under a parallel plan an error escaping the worker aborts the whole batch
+    # rather than one model of it. silent = FALSE is kept so the failure is
+    # reported where it happens; from a worker that report reaches the parent
+    # only if the backend relays stderr, which is why the failure is recorded
+    # in the returned object as well.
+    # narrow_environment(), not a plain closure: future exports the applied
+    # function with its enclosing environment, and that would be this frame,
+    # which holds the data, the model frame, the priors and everything else
+    # bnec() has built. Only the seven names below need to reach a worker.
+    fit_one <- narrow_environment(
+      function(m) {
+        try(
+          fit_bayesnec(formula = formula, data = data, model = model[m],
+                       brm_args = brm_args, prior_type = prior_type,
+                       timeout = timeout, model_survival = model_survival),
+          silent = FALSE
+        )
+      },
+      list(formula = formula, data = data, model = model,
+           brm_args = brm_args, prior_type = prior_type, timeout = timeout,
+           model_survival = model_survival)
+    )
+    attempts <- bnec_model_lapply(seq_along(model), fit_one,
+                                  parallel = set_plan$parallel)
+    # Assembled in the parent rather than in the worker so that what a worker
+    # returns is exactly what the sequential path returns: the fit, or the
+    # try-error whose condition attribute records it. failure_record()
+    # then reads the same
+    # object either way.
     for (m in seq_along(model)) {
-      model_m <- model[m]
-      fit_m <- try(
-        fit_bayesnec(formula = formula, data = data, model = model_m,
-                     brm_args = brm_args, prior_type = prior_type,
-                     timeout = timeout, model_survival = model_survival),
-        silent = FALSE
-      )
+      fit_m <- attempts[[m]]
       if (!inherits(fit_m, "try-error")) {
         mod_fits[[m]] <- fit_m
       } else {
         mod_fits[[m]] <- NA
-        failed[[model_m]] <- failure_record(model_m,
-                                            attr(fit_m, "condition"))
+        failed[[model[m]]] <- failure_record(model[m],
+                                             attr(fit_m, "condition"))
       }
     }
     formulas <- lapply(mod_fits, extract_formula)

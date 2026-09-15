@@ -1,6 +1,405 @@
 # bayesnec 2.2.0
 
+## Reproducible posterior comparisons and prior samples
+
+- `average_estimates()`, `compare_estimates()`, `compare_fitted()` and
+  `sample_priors()` now accept `seed = 10` and restore the caller's random
+  number state, including after an error. The Box-Muller normal generator's
+  cached value is not part of this state and cannot be restored; use the default
+  Inversion normal generator when subsequent normal draws must be preserved.
+  `compare_posterior()` forwards the
+  seed to the selected comparison. Repeated calls with the same inputs and RNG
+  kind now agree. Use the function's `seed` argument to change the sampled
+  draws; a preceding `set.seed()` no longer changes the result. This changes
+  the posterior pairing and therefore can change estimates, difference
+  intervals and probabilities compared with earlier versions (#343).
+
+## Default priors
+
+- **The `"regularizing"` prior set is now one statement applied to every
+  family.** `prior_type = "regularizing"` was written out branch by branch, and
+  the branches had drifted apart, so the word did not describe one thing:
+  measured over 420 `top` and `bot` entries built from one simulated response
+  each --- five designs, three predictor transforms, seven families, two links
+  --- the ratio of the regularizing prior standard deviation to the
+  uninformative one ran from 0.032 to 2.18, and the regularizing prior was the
+  *wider* of the two in 17 of them. The set is now defined once, by a location
+  and a spread, and each family's entry is derived from it using whichever
+  distribution matches the parameter's support, with its **mode** at the
+  location and its standard deviation at the spread. On the same measurement the
+  ratio is `0.4` exactly in 385 of the 420 entries and is never above 1 (#305).
+
+  **The location is now read at the end of the predictor.** `top` is the level
+  of the response before the curve responds and `bot` the level after it stops
+  changing, so each is estimated from the observations at the corresponding end
+  of the concentration series --- the control group for `top` --- rather than
+  from the extreme, or an extreme quantile, of the response pooled over the
+  whole design. A pooled quantile is a proxy for the level of one plateau whose
+  quality depends on what share of the design sits on that plateau, and it is
+  biased in opposite directions for a discrete and for an over-dispersed
+  response: against a true `bot` of 5 the smallest count observed ran 1 to 3,
+  while against a true `top` of 40 the 95th percentile of an over-dispersed
+  count reached 72. Over the 720 `top` and `bot` cells of the prior audit the
+  released set placed the true value outside the central 95% of its own prior in
+  65; the set adopted here does so in 1. The `"uninformative"` set does so in
+  none and is unchanged.
+
+  **The spread is floored at the standard error of the location.** A mean of six
+  control observations is not a precise estimate of a plateau, and a prior
+  narrower than the noise in its own anchor states a precision the data do not
+  supply. The spread is therefore `0.4` of the uninformative width or the
+  standard error of the location, whichever is larger, and never more than the
+  uninformative width. The floor binds in 35 of the 420 entries measured, on the
+  responses whose anchor is least precise: a `bernoulli` one, where a single
+  observation states only whether one individual responded, and an
+  over-dispersed count.
+
+  **Two designs the earlier prior sweep did not contain were measured
+  separately**: complete effect at the highest concentration, so that the
+  top-dose group is entirely zero, and a hurdle or zero-inflated fit whose
+  survival declines with concentration. Over 420 such cells --- ten seeds, three
+  designs, five families --- the true value falls outside the central 95% of its
+  own prior in 12 cells, against 31 for the released `"regularizing"` set and
+  127 for the `"uninformative"` set; and the prior density at the true value is
+  below 0.15 of the prior's own maximum in 1 cell, against 60 and 61. The second
+  measure is reported alongside the first because a beta prior whose maximum
+  density is at 0.014 has nearly all its mass above it, so the interval measure
+  penalises a well-placed prior on a bounded parameter near its boundary.
+
+  All 12 of those cells are sampling error rather than a property of the rule.
+  Eleven are a six-replicate binary group: six replicates resolve a survival of
+  0.014 only to the nearest sixth, at least one individual survives 8.1% of the
+  time, and the prior then follows the observed proportion of 0.167. The twelfth
+  is the same thing on a mu block whose highest surviving concentration held two
+  survivors. That is the one respect in which reading the response is a
+  liability: the `"uninformative"` entry for those families is a constant and is
+  unaffected.
+
+  Three properties of the anchor come from those designs. A zero at the highest
+  concentration is the endpoint responding and is kept in the average, where a
+  zero at the control is a structural one and is excluded; where every
+  observation at the highest concentration is zero the location is a tenth of
+  the smallest positive observation, and at the control it is the extreme
+  quantile of the positive part; and the subset never extends past a fifth of
+  the concentrations tested, which is what keeps the second block of a hurdle
+  fit, primed from one survival proportion per concentration, from averaging
+  half the design. The scripts are archived at
+  `notes/scripts/prior_hard_cases.R`.
+
+  **The 0-1 bounded families now read the response.** `beta(5, 1)` against
+  `beta(5, 2)` changed the width of the `top` prior by 12 per cent and did not
+  change what the prior was anchored to, because it had no anchor. The
+  regularizing entry for the `bernoulli`, `binomial`, `beta_binomial` and `Beta`
+  families is now a beta distribution whose mode is the observed control level
+  and whose standard deviation follows the same rule as every other branch. The
+  `"uninformative"` entries for those families remain the fixed `beta(5, 2)` and
+  `beta(2, 5)` that Fisher et al. (2024) describe.
+
+  **`nec` and `ec50` are narrowed under `"regularizing"` as well**, which they
+  were not: the predictor-scaled prior was identical under both sets, so
+  selecting the narrower set did nothing for the two parameters a user most
+  often selects it for. The regularizing entry is now the width whose central
+  98% interval reaches the farthest concentration tested, with the location, the
+  distribution and the truncation the same under both sets. Where concentrations
+  are supplied as recorded the `"uninformative"` entry is the same rule at the
+  95% level, so on that route the two sets differ in the confidence level and in
+  nothing else. That width is not a free choice --- #302
+  exists because an entry that did not reach the farthest concentration tested
+  shipped --- so the confidence level is the only room there is to narrow it.
+  Narrowing it by `0.4` like the response-scaled entries instead puts the true
+  threshold outside the central 95% of the prior in 8 of the 30 design by
+  transform by parameter cells of the audit, against none at `0.84` (#305).
+
+  **That rule is stated directly rather than as a multiple of the
+  `"uninformative"` width**, so that it means the same thing whichever way the
+  predictor is supplied. As a multiple it did not. The uninformative width is a
+  coverage width where concentrations are supplied as recorded, but the constant
+  `10 sd(x)` where the user supplies `log(concentration)`, and on a 0.1 to 100
+  series over seven doses that constant is 24.87 against a tested range of 6.91
+  on the log scale. The regularizing prior was therefore uniform across the
+  tested series on that branch --- its truncated CDF at each dose was that
+  dose's position within the range to three decimal places --- so `prior_type`
+  was inert for `nec` and `ec50` for a user who had logged the predictor. The
+  two routes now agree on the spread where the series has no zero control and
+  its lowest tested concentration is below 1. Both conditions are needed,
+  because outside them the two are not the same predictor. A series with a
+  control is read differently on each route: the recorded-concentration route
+  drops the zero, while a user who logs the series must substitute a value for
+  it and that substitute is read. And the route is selected by whether the
+  predictor spans negative values, so a logged series whose lowest tested
+  concentration is at or above 1 stays non-negative, is not recognised as
+  logged, and is logged a second time.
+  Both `"uninformative"` entries are unchanged, and so is the regularizing entry
+  where concentrations are supplied as recorded (#314).
+
+  **Group-level scales take the same factor**, `0.4`, rather than the one half
+  they took before, and the cap on the `ogl` log-scale conversion now scales
+  with the prior type. It was a constant, so on a response whose range is more
+  than 25 times its mean both prior types returned `student_t(3, 0, 1)` and
+  selecting the narrower set changed nothing for the parameter that prompted the
+  choice --- the defect #294 removed for a parameter-level term, left in place
+  on this branch. Nothing here changes a released number: `prior_type` does not
+  exist on `master` (2.1.3.1, the CRAN release), so the whole `"regularizing"`
+  set is unreleased.
+
+- **The `nec` and `ec50` prior is now a normal on the log of the predictor.**
+  The three entries selected by the predictor's support --- `gamma(5, 4/m)`
+  where the predictor was non-negative and reached above 1, `beta(2, 2)` where
+  it lay within [0, 1], and `normal(median(x), 10 sd(x))` where it spanned
+  negative values --- become one construction, written as a `lognormal` where
+  the predictor is supplied on the dose scale and as a `normal` where it is
+  supplied already logged. The two are one rule stated on two scales. Truncation
+  to the observed predictor range is unchanged (#302).
+
+  **Two defects are removed.** The gamma entry could not describe a
+  logarithmically spaced concentration series at any rate. A gamma's spread is
+  tied to its shape, so `gamma(5, 4/m)` places its central 95% interval at
+  `0.41m` to `2.56m` whatever the data are, and it reaches the highest
+  concentration tested only where that concentration is within about 2.6 times
+  the median. That ratio is a property of the design: 2.0 for a series spaced
+  evenly from zero, and 13 to 125 for the four `nassarius` series. No fixed
+  shape serves both, and the shape that would is not usable. Solving for the
+  shape whose maximum density is at *m* and whose 97.5% point is the highest
+  dose gives 8.6 on a linear series and 1.03 on the widest `nassarius` series.
+  At 1.03 the mode is still at *m*, by construction, but that is all that is:
+  the density rises 5.7% from the lowest dose to the mode and then falls to 2.8%
+  of its peak at the highest, and the median is 3.85, twenty-four times *m* and
+  above every dose but the top one, so the prior pulls the estimate towards the
+  highest concentrations. The prior adopted here also has a monotonically
+  decreasing density on the dose scale over the whole tested range on the four
+  `nassarius` series, and that is not the same defect: a lognormal's dose-scale
+  mode is `exp(mu - sigma^2)`, so the density falls because the change of
+  variable from the log scale redistributes it. The median is what separates
+  them --- on the contaminant A series the median of the untruncated prior built
+  here is 0.223, which is the location the rule specifies exactly, that series
+  having an even number of positive doses so that the location is the geometric
+  mean of the two central ones, against 3.85 for the shape-1.03 gamma.
+  Separately, selecting on the support made the prior depend on the units the
+  dose was recorded in: measured on the `nassarius` contaminant A dose series,
+  the central 95% interval covered 1.7% of the predictor range
+  under the gamma entry, 81% under `beta(2, 2)` rescaled to that range, and
+  1097% under the normal entry before truncation, for the same experiment
+  expressed three ways.
+
+  **The location and the width.** The mean on the log scale is the median of the
+  distinct positive predictor values after logging. That is the log of the
+  median dose where the number of distinct positive doses is odd, and the log of
+  the geometric mean of the two central doses where it is even, that being their
+  midpoint on the log axis rather than on the dose axis. The prior's maximum
+  density is at that dose measured on the log scale and the median of the
+  untruncated prior on the dose scale is that dose. Both statements describe the
+  untruncated prior; truncation at the highest dose removes part of the upper
+  tail and so pulls the median down, to 0.58 against a median dose of 0.88 on
+  `nec_data`. The standard deviation is set so that the central 95% interval of
+  the untruncated prior covers every concentration tested: it is the larger of
+  the two half-widths from the location to the ends of the logged series,
+  divided by `qnorm(0.975)`. The criterion is the whole of the rule --- a prior
+  on a threshold should not exclude a concentration the experiment applied, at
+  either end --- so the width is stated rather than chosen and it adapts to the
+  design. Expressed as a multiple of `sd(log(x))` it lands between 0.73 and 1.18
+  across five designs, at 0.92 to 1.03 on the four `nassarius` series, and at
+  1.75 on `nec_data`, whose predictor is continuous and densely sampled. A fixed
+  multiple was considered and not taken: it states no criterion, so it cannot
+  guarantee that coverage on a design it was not chosen against, and any
+  multiple broad enough for a densely sampled continuous predictor puts a large
+  share of the prior below the lowest concentration tested on a wide dilution
+  series, where the lower truncation bound is a zero control. At 1.5 times
+  `sd(log(x))`, 21% of the truncated prior on the `nassarius` contaminant A
+  series lies below its lowest dose of 0.01; the rule adopted leaves 9.0% there
+  and 3.3% on a series spaced evenly from zero.
+
+  **The width is set by the two extreme concentrations**, not by the spread of
+  the series between them, so it is sensitive to how a control is recorded. The
+  prior is built from the concentrations as recorded, so a control entered as a
+  nominal small positive value states that the value was applied and the prior
+  covers it: on the `nassarius` contaminant A series the standard deviation is
+  2.30 with the control at 0, 2.59 with it at 0.001 and 6.11 with it at 1e-6.
+  Record a control as 0.
+
+  **A departure from the published wording.** Fisher et al. (2024) specify
+  maximum density at the median value of the predictor without saying which
+  scale the density is measured on. This reads it on the log-dose scale, which
+  is the scale a dilution series is designed on, and is the only reading under
+  which a prior peaking at the median can also reach 125 times it. The
+  multiplier for a predictor supplied already logged is unchanged at
+  `10 sd(x)`; the consequence is that the same data analysed as `crf(x)` and as
+  `crf(log(x))` still receive priors differing about tenfold in width, against
+  about 600-fold before this change on the current defaults and about 300-fold
+  on the released ones.
+
+  **The already-logged entry is not identical to the released one.** Its
+  location and spread are now read from the distinct predictor values rather
+  than from the observation vector, as on the other branch, which extends #269's
+  rule to the whole construction so that replication has no effect on the prior
+  at all. Over the pooled `log(herbicide$concentration)` column, 580 rows and 9
+  distinct values, the location changes from 1.10 to 2.30 and the spread from
+  26.3 to 31.5. The article fits one herbicide at a time, where the same
+  mechanism applies to each subset. The two differ under balanced replication as
+  well, because the standard deviation
+  over `k` distinct values replicated `r` times is `sqrt(r(k-1)/(rk-1))` times
+  the standard deviation of the distinct values. So the herbicide analyses of
+  Fisher et al. (2024) do change, in the width of the `nec` and `ec50` prior
+  alone; `nec_data` is unaffected on this point only because its predictor has
+  no repeated values.
+
+  **This changes every default fit** whose predictor is non-negative, and it
+  applies to `ec50` as well as to `nec`, since both read the same entry. Of the
+  analyses published in Fisher et al. (2024), the `nec_data` walkthrough changes
+  in the shape and the location of the prior as well as its width --- Figures 3
+  to 5 and the printed `summary()` --- because its predictor takes the gamma
+  entry. Every herbicide fit in that article logs the predictor before fitting,
+  so those analyses stay on the normal entry and change only in its width, for
+  the reason above.
+
+  The evidence is prior-only; nothing was fitted. Priors were obtained through
+  `get_priors()` over five designs, three predictor transforms, all 12 families,
+  both links and both prior types, and scored by the truncated prior CDF at a
+  known parameter value. The prior is a function of the predictor alone, so 30
+  design by transform by parameter cells exhaust it. The defaults being
+  replaced placed the true value outside the central 95% of the truncated prior
+  in 5 of those 30, every one of them a log-spaced series read on the recorded
+  or the square-root scale; the prior adopted here does so in none, with the
+  truncated CDF at the true value running 0.47 to 0.95 over the zero-control
+  designs and 0.43 to 0.95 over all 60 cells. The sweep places every
+  true value in the upper half of its series and so cannot detect a prior that
+  fails at the bottom; that case is checked separately, and on the `nassarius`
+  contaminant B series a threshold at the lowest dose applied sits at a
+  truncated CDF of 0.030.
+
+- **The `nec` and `ec50` gamma prior was corrected to peak at the median
+  predictor** earlier in this release cycle, before being replaced above. The
+  rate changed from `2/m` to `4/m`, which changed the mode of the untruncated
+  prior from `2m` to `m` and its mean from `2.5m` to `1.25m`. On a series spaced
+  evenly from zero, `2m` is close to the largest concentration tested, so after
+  truncation to the predictor range the density rose monotonically across
+  everything the prior permitted and pulled the *NEC* estimate towards the
+  highest concentration --- the wrong direction for a protective estimate
+  (#273). It is recorded here because it was a change to a released default, and
+  because it is the step that showed no rate could serve both a linear and a
+  log-spaced design: `2/m` places the true *NEC* of the widest `nassarius`
+  series at a truncated prior CDF of 0.9995 and `4/m` at 1.0000, so reverting
+  reduced the error without removing it.
+
+- **The initial-value search now finds values for `nechormepwr` and
+  `nechorme4pwr` on a 0-1 bounded family whose predictor reaches 1**, where the
+  gamma prior it replaces did not. Those models stay excluded for such families
+  by `check_models()`, so no fit a user can request changes. What changed is the
+  evidence recorded for the exclusion, and with it the wording of `?models` and
+  of the message `check_models()` prints. Both said there is no parameter value
+  that keeps the mean inside (0, 1) wherever the predictor reaches 1. That is
+  true only where a concentration at or above 1 falls strictly below `nec`, so
+  that it sits under the threshold, where the decay factor is exactly 1 and the
+  mean is at least `top + 1`. A `nec` below 1 puts every such concentration past
+  the threshold, and initial values can then be found.
+
+  The exclusion is unchanged and remains correct, for a reason the text now
+  states as well. The `top + 1` argument is about a predictor reaching above 1,
+  while the exclusion is unconditional on the data. What justifies that is the
+  exponent: `1 / (1 + exp(slope))` tends to 0 as `slope` grows, so
+  `x^(1 / (1 + exp(slope)))` tends to 1 for every concentration above 0, and the
+  mean below the threshold tends to `top + 1`. For any `top` above 0 there is
+  therefore a `slope` at which the mean exceeds 1, whatever range the predictor
+  covers — at `x = 0.001` that slope is 4.90 for `top = 0.05`, 2.19 for
+  `top = 0.5` and 0.27 for `top = 0.95`, against a `normal(0, 5)` prior on
+  `slope`. This is what `mu_support()` has always recorded for these two
+  equations as `unscaled_excess`: the mean can exceed 1 through a term with no
+  coefficient, so the fit cannot shrink it. Corroborated by measurement: on a
+  predictor confined below 1, 2,899 of 3,591 grid points over `top`, `slope`,
+  `beta` and `nec` put the mean above 1. Bounding `nec` below 1 is therefore not
+  the fix the earlier wording invited: on `nec_data` with `nec` below 1, 3,696 of
+  4,788 grid points put the mean above 1.
+
+  The search finds initial values now and did not before because the draws that
+  succeed sit near `nec` = 0.08 to 0.24, where the truncated prior probability
+  changed by a factor of 40 to 900: `P(nec < 0.25)` from 0.0063 to 0.269 and
+  `P(nec < 0.1)` from 0.00011 to 0.0975. `P(nec < 1)` moved only 0.481 to 0.670
+  and would not account for it (#177, #302).
+
+- **The `nec` and `ec50` prior of a hurdle or zero-inflated fit is built from
+  the whole predictor.** Both blocks of such a fit are evaluated over the whole
+  predictor range and their `nec` bounds were already rebuilt from it, but the
+  mu block's prior was shaped by the survivor subset alone. On a series reaching
+  100 whose survivors stop at 10 that placed the prior's 97.5% point at 10.0
+  while its bounds permitted 100, which is the same failure this release removes
+  from the single-block path. The response-scaled `top` and `bot` are still
+  taken from the survivors, which is what #269 was about; a parameter measured
+  in units of the predictor is not. This also removes a refusal the path would
+  otherwise reach, where every survivor sits at the zero control and the subset
+  has no positive value to build a concentration scale from (#302).
+
+- **`lognormal` can now be sampled from.** `make_inits()`, `refine_inits()` and
+  `sample_priors()` each held their own table of four distributions --- gamma,
+  normal, beta, uniform --- so a prior on any other distribution reached
+  `fcts[[dist]](...)` as `NULL` and failed with "attempt to apply
+  non-function", naming neither the prior nor the distribution. The three copies
+  are replaced by one lookup that includes `lognormal`, and an unrecognised
+  distribution now raises an error naming it and listing the supported set. This
+  affects any user-supplied prior outside those four, not only the new default
+  (#302).
+
+- **The `top` and `bot` priors of a hurdle or zero-inflated fit are now built on
+  the mean link scale.** `hurdle_mu_family()` returned an identity-link family
+  whatever link the caller supplied, so `define_prior()` measured the response
+  untransformed while `brms` applies the inverse mean link to the whole
+  non-linear expression, putting `top` and `bot` on the link scale. Under
+  `zero_inflated_beta(link = "logit")` that gave `beta(5, 2)` bounded to [0, 1]
+  for a `top` whose value on the logit scale exceeds 1 for any response plateau
+  above 0.73, and `beta(2, 5)` for a `bot` that must be negative for any
+  response floor below 0.5 --- a support that excludes the answer rather than
+  merely misplacing density. These fits now take the unbounded normal entries,
+  which is what Fisher et al. (2024) specify for any link mapping to the whole
+  real line. `link_hu` and `link_zi` are required to be the identity, so the
+  second block is unaffected. The group-level standard deviations of such a fit
+  change with it: `define_prior()` puts the mu-block response on the mean link
+  scale before their scale is measured from it, and that step was a no-op only
+  while the mu family was rebuilt on the identity link (#302).
+
 ## Sampler behaviour
+
+- **The initial-value search accepts each chain on its own, and tests the
+  initial curve against a band read from the level means rather than against
+  `range(y)`.** The four chains are drawn independently, so requiring all of
+  them to pass at the same time --- and re-drawing the complete set whenever
+  one failed --- left the accepted values unchanged and raised the number of
+  proposals to the fourth power of the per-chain rate. Measured over the
+  fourteen equations of the `decline` set at five seeds, the released rule
+  drew 148,397 proposals on the packaged `alga` `c_proliferum` contaminant A
+  series against 237, and 334,178 on a small unreplicated design against 308;
+  both counts exclude the single-parameter rescue `refine_inits()` makes on a
+  failing round, which the released rule ran far more often.
+  Of the 340 searches measured, 71 exhausted the 10,000-attempt cap under the
+  released rule and none do now; a search that exhausts the cap falls through
+  to Stan's own initialisation, so that budget was spent to reach the outcome
+  available at the first attempt. `n_trials` is unchanged (#309).
+
+  **`range(y)` was the wrong reference for the curve.** It compared the
+  initial curve's upper asymptote, an estimate of the mean control response,
+  against the largest single observation; it was tied to the prior it
+  filtered, because both `max(y)` and the location of the `top` prior are read
+  from the control, so on the `c_proliferum` series the threshold sat 0.021
+  prior standard deviations from the centre of the `top` prior; and it got
+  *looser* as replicates were added, because an extremum drifts outward with
+  sample size. Initial values are a draw from the prior restricted to the
+  region the criterion admits, so a threshold at the centre of the `top` prior
+  did not only reject draws --- it put every accepted `top` on one side of it.
+  Over three designs and fourteen equations the accepted `top` sat 0.149 prior
+  standard deviations below the prior median; it now sits within 0.01 of it.
+
+  **The band is every mean response the design estimates**, widened by four
+  within-group standard deviations, intersected with the support of the mean
+  mapped through the link, and stopped short of the boundary of that support.
+  Its two outermost centres come from `regularizing_location()`, the anchor
+  the `"regularizing"` prior uses for `top` and `bot`; on a replicated design
+  the ends come from the level means themselves. The width is the smallest
+  that covers the true asymptotes in every one of 270 in-scope simulated
+  cells, over gaussian, Beta and poisson responses. Where the highest
+  concentration has not reached that asymptote the band sits above the true
+  `bot` and no width reaches it, which is the same limitation the regularizing
+  prior records.
+
+  **A fit at a given seed is not bit-identical to one from 2.1.x**, because
+  the initial values a seed produces change. Two runs at the same seed still
+  agree.
 
 - **A group-level deviation on the whole curve, `ogl()`, is now applied
   multiplicatively rather than as an additive offset**, wherever the likelihood
@@ -33,8 +432,9 @@
   structure is a transformed `ogl()` term.** The raise was added in 2.1.4 to
   mitigate exactly these excursions and costs roughly fourteen times the gradient
   evaluations per iteration; a multiplicative deviation cannot make the
-  excursions, so there is nothing left to mitigate. A `pgl()` term, an explicit
-  `(par | group)` term, and every equation outside the gates keep it.
+  excursions, so there is nothing left to mitigate. #294 extends the same
+  reasoning to `pgl()` and `(par | group)`; the rule that results is stated
+  there.
 
   **The `ogl` prior is widened onto the scale the deviation is applied on**, by
   delta-method conversion of the existing rule evaluated at `mean(y)`:
@@ -48,11 +448,83 @@
   terms against the user's data frame first, so a column of either name would be
   used in place of the generated term and the fit would silently be a different
   model. A data frame carrying either name that fitted under 2.1.x now stops
-  with an error naming the column, before any model is compiled.
+  with an error naming the column, before any model is compiled. #294 adds
+  `topgl`, `botgl`, `bnectop` and `bnecbot` to the same list.
 
-  **Not in this change:** `pgl()` and explicit `(par | group)` terms, which place
-  a deviation on an individual curve parameter rather than on the mean and need
-  the same idea one level down.
+- **A group-level deviation on `top` or `bot` is now applied multiplicatively
+  as well**, wherever the likelihood constrains the mean. This is #257's change
+  one level down, and it covers `pgl()` and an explicit `(par | group)` term.
+  `bot` is the parameter it matters for: it is the lower asymptote, it is
+  routinely estimated close to zero, and the deviation `brms` added to it was
+  unconstrained, so a long enough leapfrog trajectory took it below zero and the
+  step was rejected. Measured on `herbicide` with `Beta(link = "identity")` and
+  `nec4param`, two chains and 2000 iterations, a `(bot | herbicide)` term gave 51
+  divergent transitions of 2000 at `adapt_delta = 0.95` under 2.1.x and gives
+  none at Stan's default of 0.8 under this change. The same term on a `gaussian`
+  response, where the mean is unconstrained, gave none either way (#294).
+
+  **Only `top` and `bot` are transformed.** `nec` and `ec50` are on the predictor
+  scale and are routinely negative on a log predictor, so `log` and `logit` of
+  them are undefined; `beta`, `slope`, `d` and `f` are dimensionless and enter
+  through an exponential. None of them is bounded by the likelihood, and a
+  `(nec | group)` term gave 0 divergent transitions of 2000 at
+  `adapt_delta = 0.8` on the same fixture. `pgl()` expands to a term on every
+  parameter, so it now generates a mix: transformed on `top` and `bot`, additive
+  on the rest, and identical to writing those terms out by hand.
+
+  **The gate is the family, not the equation**, which is where this differs from
+  `ogl()`. That transform needs the *mean* provably strictly inside its support
+  and so is undefined for the hormesis equations, whose mean can exceed 1. A
+  parameter is not the mean: `top` and `bot` are bounded to the family's support
+  by their own priors whatever equation they appear in, so the parameter-level
+  transform is defined for `nechorme`, `nechorme4`, `nechormepwr01`,
+  `ecxhormebc4` and `ecxhormebc5` as well.
+
+  **`adapt_delta` is now raised to 0.99 only where a group-level term can still
+  take the mean outside its support.** With every deviation applied on a scale it
+  cannot leave, that is decided by the equation alone: for one whose mean lies
+  between `bot` and `top`, no group-level term on any parameter can put `mu`
+  outside the support, and the raise is dropped. It is kept for `neclin`,
+  `neclinhorme` and `ecxlin`, which are unbounded below, and for the seven
+  hormesis equations with an excess term, on **every** family --- their mean is
+  negative for a sufficiently negative predictor, which `crf(log(x), ...)`
+  supplies as a matter of course, so a `(0, Inf)` support is no protection. In
+  2.1.x the raise was applied to every grouped fit on a constrained family.
+
+  **`top` and `bot` keep their names, their meanings and their own priors.** The
+  deviation is zero-centred and `m e^0` is `m`, and the parameter stays a
+  population-level term: what is renamed is the generated deviation, `botgl`, and
+  the intermediate the curve reads, `bnecbot`. `b_bot_Intercept` and everything
+  that reads it are unaffected. The group-level standard deviation is now
+  reported under `sd(botgl_Intercept)` rather than `sd(bot_Intercept)`, and is on
+  the log-odds or log scale rather than on the response scale.
+
+  The deviation is written `botgl ~ 0 + (1 | group)` and has **no population
+  intercept**, which is what keeps `bot` interpretable: `bnecbot` depends on
+  `bot` and `botgl` only through their combination, so a free intercept would be
+  exactly unidentified against `bot` and `b_bot_Intercept` would no longer be the
+  asymptote the population-level curve declines towards --- which
+  `ecx(type = "relative")` divides by and `summary()` reports. The parameter set
+  is therefore exactly the additive form's: `bot`, the group-level standard
+  deviation, and the deviations themselves. `ogl()` is the other case and keeps
+  the intercept and zero-centred prior #257 gave it, because it is documented as
+  adding a population-level parameter of its own.
+
+  **The prior on the deviation is widened onto that scale** by the same
+  delta-method conversion #257 uses for `ogl`, evaluated at `mean(y)`, and capped
+  at one tenth of the response range divided by `prior_type`'s narrowing factor.
+  The cap is the one difference: #257 caps the `log` branch only, on the argument
+  that the `logit` ratio is self-limiting at the response mean, and that argument
+  does not hold for a parameter that sits near zero. The `ogl` conversion is
+  unchanged.
+
+  **A user prior that leaves `top` or `bot` unbounded is now refused** where a
+  group-level term on it would be transformed. The multiplicative form on (0, 1)
+  is defined only while the parameter is inside (0, 1), which the generated
+  priors guarantee with `lb = 0` and `ub = 1`; `fill_missing_priors()` preserves
+  a user row and fills only what is absent, so a user prior with no bounds would
+  have reached Stan unbounded, and outside [0, 1] the expression has a pole and
+  changes sign across it. The error names the parameter and the bounds to add.
 
 ## Breaking changes to ECx, NSEC and ECNSEC
 
@@ -101,14 +573,79 @@
 - **A target the curve never reaches within the predictor range returns `NA`,
   with a warning naming how many draws were affected.** Both estimators
   previously returned the grid point whose prediction was nearest the target,
-  which for a curve that never declines to the target is the *lowest*
-  concentration in the series --- the furthest possible value from the truth,
-  reported as an ECx with nothing said. The crossing is now found by
-  interpolation between the bracketing grid points rather than snapped to the
-  nearer of them (#39). Every function that summarises such a posterior reports
-  the censoring and excludes the affected draws, `nec()` and the
-  `bayesnechurdlefit` methods included; they previously stopped with "missing
-  values and NaN's not allowed" on a posterior the package had itself written.
+  which for a curve that never declines to the target is the *highest*
+  concentration in the series, reported as an estimate with nothing said. The
+  crossing is now found by interpolation between the bracketing grid points
+  rather than snapped to the nearer of them (#39). Every function that
+  summarises such a posterior reports the censoring and excludes the affected
+  draws, `nec()` and the `bayesnechurdlefit` methods included; they previously
+  stopped with "missing values and NaN's not allowed" on a posterior the package
+  had itself written.
+
+- **A draw that has already reached the reference at the control is the opposite
+  case, and returns the control concentration.** The NSEC reference is the
+  `sig_val` quantile of the control posterior, so `sig_val` of the draws have a
+  control at or below it and reach it at the control itself. The control
+  concentration is the NSEC of each of those draws, which is what Fisher and Fox
+  (2023) report: their Table 3 gives a lower credible bound of zero at every
+  significance level above the 0.025 quantile the bound is read at, and those
+  draws are what produces it. A search for a sign change cannot tell that case
+  from a curve that never reaches the reference, so which value it takes is now
+  decided by the caller rather than by the search. Two limits of the range this
+  holds over. The value is the lowest *observed* concentration, where the paper
+  reports zero concentration; the two agree where the control of the design is a
+  true zero and the predictor is untransformed, and otherwise a reader comparing
+  with Table 3 sees a small positive bound in place of its 0. And it applies only
+  where the prediction grid reaches the control. Where `x_range` begins at a
+  higher concentration, a draw that reached the reference below that range is
+  not identified within it and returns `NA`, reported by a warning of its own
+  rather than by the one about curves that never reach the reference. The
+  crossing is sought from the control upward, the control being made the first
+  point of the searched grid, so no estimate is placed below the lowest tested
+  concentration and none is lost between the control and the first grid point
+  above it (#325).
+
+- **An NSEC asked for over a grid holding no concentration above the control is
+  refused by name**, rather than returning a vector of `NA` under a warning about
+  curves that never reach the reference. An `x_range` at or below the lowest
+  observed value produces such a grid, and so does `resolution = 1`. `bnec()`,
+  `amend()` and `update()` refuse a `resolution` below 2 up front, because the
+  no-effect estimate of any smooth equation in the set is read off that grid and
+  the refusal would otherwise arrive only after every model had compiled and
+  sampled (#325).
+
+- **An ECx is unchanged except where the curve has already reached its target
+  where the grid begins**, which the default `type = "absolute"` cannot produce:
+  the target is derived from the draw's own control, so the curve begins above
+  it. Three routes reach it, all degenerate, and each now returns `NA` in place
+  of a value: `type = "direct"` with a supplied target above the curve at the
+  control; `type = "range"` where the curve's lowest predicted response is at the
+  control, which makes the target equal to it exactly; and `type = "relative"` on
+  a hormetic equation for a draw whose `bot` exceeds its control. Where the curve
+  is hormetic the value returned before was the crossing on the *rising* limb ---
+  the concentration at which the response reaches the target on the way up, which
+  estimates nothing --- and otherwise it was the lowest concentration in the
+  series (#325).
+
+- **The default `resolution` is reduced from 1000 to 200** in `ecx()`,
+  `nsec()`, `ecnsec()` and `average_estimates()`. The value of 1000 was
+  calibrated for the nearest-grid-point search that interpolation replaces,
+  where the grid spacing set the precision directly. With interpolation the
+  precision saturates: measured on the equations of `manec_example` at 100
+  draws and on a `nec4param` fit of `nec_data` at 4000 draws, the largest
+  change in any reported ECx or NSEC between a resolution of 200 and one of
+  2000 was 0.006 per cent, and the binding case was `nsec()` on `nec4param`.
+  The reduction lowers the run time of a 4000 draw `nsec()` call by about 10
+  per cent, and the saving grows with the number of draws. The measurement does
+  not cover `bnec_hurdle()` fits or a predictor carrying an inline
+  transformation. Prediction and plotting grids are unaffected: `bnec()`,
+  `bnec_newdata()`, `autoplot()` and the `fitted()`, `predict()` and
+  `posterior_epred()` methods keep a default of 1000 (#39).
+
+- **`ecnsec()` predicts over 200 grid points rather than 10.** Both its
+  methods took 10, disagreeing with the 1000 the `\usage` section stated. The
+  value sets the denominator under `type = "range"`, which was therefore read
+  off a ten-point curve.
 
 - **`ecx_val` is no longer capped at 99.** Any value above 0 is accepted. Under
   `"absolute"` the reference is 0, so a value above 100 names a target below
@@ -116,6 +653,48 @@
   what OECD TG 201 reports rather than truncating at 100 per cent.
 
 ## New
+
+- **A model set can now be fitted in parallel.** `bnec()` and `amend()` fit
+  their models under whatever `future` plan is set when they are called, so
+  `plan(multisession, workers = 4)` before the call fits four models at a time
+  and `plan(sequential)`, or no plan at all, fits them one at a time exactly as
+  every earlier version did. There is no new argument: the plan already holds
+  that state, and a `cores` argument beside it would be ambiguous the moment a
+  user set both. `future` and `future.apply` are Suggests, so a session without
+  them takes the sequential path and reports nothing (#184).
+
+  **Chains are sampled in sequence inside each worker.** `brm()` parallelises
+  across chains already, so models in parallel on top of that would request
+  `workers x chains` processes --- sixteen for four workers and the default
+  `chains = 4`. Under a parallel plan of more than one worker `bnec()` passes
+  `cores = 1` to `brm()`. Passing `cores` yourself is left alone and is how the
+  two levels are nested deliberately. A plan that names a parallel strategy but
+  resolves to a single worker --- `plan(multicore)` wherever forking is
+  unavailable, which includes Windows --- is clamped in neither respect, and
+  says so. Note that `future` already sets `mc.cores` to 1 inside a worker, so
+  a value set in a profile does not reach `brms` there in any case; `cores = 1`
+  makes that a property of this package rather than of `future`'s internals.
+
+  **Each fitted model reproduces exactly under a parallel plan, for the same
+  `seed`.** This needed making true rather than being inherited:
+  `future.seed = TRUE` installs an L'Ecuyer-CMRG generator in each worker,
+  `set.seed()` does not restore the generator kind, and the initial-value search
+  would therefore have drawn different starting values in a worker from the same
+  seed --- silently, with no error and no warning. The worker restores the
+  parent's RNG kind before fitting. Without a `seed` the search reseeds from
+  entropy and no run repeats, under a plan or otherwise, which is unchanged.
+
+  **The model-averaged quantities are the exception.** `expand_manec()` draws
+  the seed for the weighted posterior draw from the session's RNG stream after
+  the models are fitted. A sequential run advances that stream, through the
+  `set.seed(seed)` each initial-value search makes, so the draw is fixed by
+  `seed`; under a parallel plan the model loop leaves the stream alone. The
+  averaged `nec`, its interval and the stored prediction grid therefore differ
+  between the two plans, as two valid realisations of the same weighting.
+  `set.seed()` in the calling session fixes that draw under a parallel plan, so
+  two parallel runs agree --- which is what `expand_manec()` intends it to
+  answer to (#216). One further consequence: a parallel call does not advance
+  the calling session's RNG stream, where a sequential one does.
 
 - **`bnec_record()`** reports what `bnec()` did to the request before fitting:
   the candidate set as requested, the set attempted, the equations excluded with
@@ -130,6 +709,78 @@
   partitioned exactly by `attempted` and `excluded$model`. The record is kept
   through `update()`, and rebuilt by `amend()` for the set that call produced.
 
+- **`pull_best()`** returns the highest-weighted candidate of a
+  `bayesmanecfit` as a `bayesnecfit`, and returns a `bayesnecfit` unchanged.
+  That candidate contributes most to the model-averaged estimate, so its fit is
+  the one normally inspected with `pp_check()` and `check_fit()`, and
+  selecting it previously meant reading the weights out of `mod_stats` and
+  passing the name to `pull_out()` --- under a class test, because
+  `screen_models()` returns a `bayesnecfit` whenever the screen leaves one
+  equation and such an object has no `mod_stats` to read. The weight selected on
+  is reported with the number of candidates it was selected from, since a weight
+  of 0.15 among twenty candidates describes the model-averaged estimate hardly
+  at all; no warning is raised against a threshold, because what counts as a
+  small weight depends on the size of the set. An exact tie returns the first
+  candidate in the order of the set and reports the tie. Which equation was
+  selected is reported on both branches, the pass-through included, so a
+  workflow leaves the same record whether or not the set had already been
+  reduced to one equation. The object is the only argument: `x_range`,
+  `resolution`, `sig_val` and `loo_controls` re-specify a fit rather than select
+  one, and are refused rather than ignored, since honouring them where
+  `pull_out()` rebuilds the fit and ignoring them where nothing is rebuilt would
+  make the returned object depend on the class the caller was told not to test
+  for. A `bayesnechurdlefit` is selected from one component at a time, so its
+  two components may end on different equations (#324).
+
+- **`curve_params()`** reports the parameters of the fitted curve --- `top`,
+  `bot`, `beta`, `nec`, `ec50`, `slope`, `d` and `f` --- with their credible
+  intervals, for a `bayesnecfit`, a `bayesmanecfit`, a `bayesnechurdlefit` and a
+  `bayesnecgroupfit`. `summary()` reports the model weights, the per-equation
+  dispersion, the weighted no-effect estimate and the per-equation Bayesian
+  R-squared, and no parameter estimates. For a single fit the parameters were
+  reachable through the underlying `brmsfit`; for a model average nothing
+  returned them. They are what a methods section states alongside the threshold
+  estimates: `top` is the control level the curve is referenced to, `bot` the
+  asymptote a `"relative"` ECx is measured against, and `beta` the decay rate
+  (#297).
+
+  The name is neither of the two the issue proposed. `parameters()` is taken by
+  the `parameters` package, which reaches every install as a hard dependency of
+  `modelbased`, and `params()` by `ssdtools`, where it is a documentation stub
+  returning `NULL` --- so attaching `ssdtools` after `bayesnec` would have made
+  the call return nothing at all rather than fail. `curve_params()` is taken by
+  nothing, sits beside `show_params()`, which names the parameters of each
+  equation without fitting, and says what it returns: the parameters of the
+  equation, and not the family's dispersion parameter, a group-level term's
+  standard deviation or the `ogl` offset.
+
+  **The estimates are per equation and are not averaged across the set.** The
+  equations of a set do not share a parameter list: `ecxexp` has no `bot`, the
+  three-parameter equations have no `d`, and only the equations of
+  `mod_groups$nec` estimate `nec`. Averaging a parameter over whichever
+  equations estimate it would average over a different subset for each
+  parameter, under weights computed for the whole set, so the rows contributing
+  to one number would hold a different share of the set from the rows
+  contributing to the next. The model weight is reported beside each row
+  instead, and `summary = FALSE` returns the draws the table was computed from.
+
+  **Each block of a two-block fit is named under its own equation.** The
+  response and survival blocks of a `bnec(family = "hurdle_gamma")` fit need not
+  use the same equation --- that is what `model_survival` and `bnec_joint()`
+  select --- so the table has a `dpar` column and names each block's equation
+  separately. The survival equation is not recorded on the fitted object, so it
+  is recovered from the fitted formula, and is reported as `NA` where it cannot
+  be identified rather than being reported as the response block's.
+
+  **`xform` applies to `nec` and `ec50` and to no other parameter.** Those two
+  are measured on the predictor axis, so where `crf()` transforms the predictor
+  inline they are on the transformed scale, as the values `nec()` and `ecx()`
+  return are, and a message says so where `xform` was left at its default. The
+  others are response levels or shape parameters, on which a transformation of
+  the predictor has no meaning. The link of each block is reported in a `link`
+  column: `bnec()` assigns `link = "identity"`, and where a caller named one
+  instead, `top` and `bot` are on the link scale.
+
 - `dispersion(summary = TRUE)` now reports `P(>1)`, the posterior probability of
   over-dispersion, alongside the median and the interval. It uses the whole
   posterior rather than a point estimate or one tail quantile, and it is
@@ -139,6 +790,234 @@
   adds variance to the binomial and so cannot address under-dispersion (#262).
 
 ## Bug fixes
+
+- A fit now reproduces under a `set.seed()` in the caller's session. The
+  initial-value search called `set.seed(seed)` whatever it was given, and
+  `set.seed(NULL)` does not leave the random number stream alone: it
+  re-initialises it from the clock and the process id. `bnec()` passes a seed
+  down only where the user gave `brms` one, so on the default path the search
+  discarded whatever seed the user had set and drew fresh initial values on
+  every call. The search now seeds itself only where a seed was supplied, and
+  reads `NA` --- which is how `brms` writes "no seed" --- the same way as
+  `NULL`; `bnec(..., seed = NA)` previously stopped with "supplied seed is not
+  a valid integer" (#310).
+
+  Measured on `nec3param` fitted to the packaged `nec_data` with
+  `Beta(link = "identity")`, `iter = 1000`, `chains = 2`, backend `rstan`, R
+  4.6.1, `brms` 2.23.0, `rstan` 2.32.7, one pair of runs: two calls in one
+  session each preceded by `set.seed(333)` agree to every digit of `fixef()`,
+  where the released code differs by 9.1e-5 in `nec`, 5.1e-4 in `top` and
+  3.1e-3 in `beta`. The size of that disagreement is a property of the sampler
+  rather than of the change, so it is a demonstration that the two runs are
+  different fits and not a measure of how wrong the estimates were.
+
+  `vignette("example3")` is the case #310 opened on. It runs `set.seed(333)`
+  before each of its eleven fitting chunks and passes no `seed` to `bnec()`, so
+  all eleven were discarded and every fit in the document was a fresh draw.
+  Both of the outputs that differed between renders follow from that directly.
+  The two `fixef()` tables are read off two of those fits. The three
+  `check_priors()` figures are pure functions of the fits they plot ---
+  `check_priors()` calls `brms::hypothesis()`, which touches the random number
+  stream only when given a seed of its own, and then `geom_density()` --- so a
+  figure differs exactly when its fit does. The issue records two
+  `check_priors()` calls on one saved fit giving byte-identical files, which is
+  the same statement.
+
+  The stream is a second consequence and stands on its own. How many proposals
+  the search makes depends on the stream it starts from, so a search begun from
+  the clock also left the stream in an unpredictable place, and any random
+  operation after the fit differed for that reason as well as because the fit
+  did. In the measurement above the stream state after the fit now agrees
+  between the two calls.
+
+  A run under a `future` plan repeats itself the same way. Measured on R 4.6.1
+  under `plan(multicore, workers = 3)`, three equations, the body being the
+  initial-value search itself and no `seed` supplied: two runs at one
+  `set.seed()` gave identical initial values and a third at another seed gave
+  different ones. One backend and one R version, so `seed` remains the way to
+  fix a run that has to repeat regardless.
+
+  A parallel run still does not give the same answer as a *sequential* run of
+  the same call unless `seed` is passed, and that part is unchanged: each model
+  is fitted from the stream of the worker it runs in. Running the same
+  measurement against the released code as well: without a seed neither a
+  sequential nor a parallel run repeated itself before and both do now, while
+  sequential and parallel agreed with each other only under a `seed`, on the
+  released code and on this branch alike. So what changed is that each run
+  repeats itself, not which runs agree with each other. `?bnec` states both,
+  alongside the model-averaged quantities, which are not reproduced between a
+  sequential and a parallel run either way.
+
+- A model set held in a variable now resolves in the environment the formula
+  was written in, so a set built programmatically works inside a function,
+  inside a knitted chunk, and inside any environment that does not inherit from
+  the global environment. `crf()` evaluated its `model` argument without naming
+  an environment, which evaluates in `crf()`'s own frame; the lexical parent of
+  that frame is the package namespace, then the imports, then base, then the
+  global environment, and the caller's frame is on none of them. A call that
+  succeeded at the console therefore failed once wrapped in a function, and the
+  message named neither `crf()` nor the cause: `object 'eqs' not found`. The
+  formula's own environment is now used, and a formula supplied as a character
+  string is given the environment of the call that converted it, through a new
+  `env` argument to `bayesnecformula()` and `bnf()` (#319).
+
+  The same defect held for a function used to transform the predictor. The
+  reduced formula `model.frame()` is built from, the back-transform
+  `sub_x_transformation()` applies in `ecx()`, `nsec()` and `expand_nec()`, the
+  component formulas of a hurdle fit, the `disp()` term and the `brmsformula`
+  handed to `brms` each lost the environment the user wrote the formula in,
+  so `crf(squared(x), "nec3param")` with `squared()` defined in the caller was
+  likewise found only at the console. All of them now take it. The
+  back-transform is the one that reached furthest: it runs after every model in
+  the set has compiled and sampled, so the failure arrived at the end of a fit
+  rather than at the start. One of these has a further consequence: the check
+  that a `disp()` sub-model evaluates to finite values could not evaluate such
+  a term at all and skipped it, so a formula written this way now stops where
+  it previously fitted and failed in Stan.
+
+  One consequence of binding an environment to a character formula: the
+  formula is stored once per model, so a formula converted inside a function
+  now holds a reference to that function's frame, and a large object in it is
+  serialised with the fit. Measured on a frame holding a 2-million-element
+  vector, the stored formula went from 463 bytes to 16 MB. A formula object
+  has always behaved this way, and a call made at the console binds the global
+  environment, which serialises by reference; only a character formula
+  converted inside a function is newly affected. Where that matters, convert
+  the string in an environment of your own with `bnf(string, env = ...)`.
+
+- `check_fit()` and `dispersion()` now leave the caller's random number stream
+  where they found it. Both seed their posterior draw with `set.seed(seed)` and
+  neither put the stream back, so `set.seed(1); check_fit(fit); rnorm(1)` did
+  not return what `set.seed(1); rnorm(1)` returns: the stream was left wherever
+  `set.seed(10)` --- the default --- reached, and a simulation that printed a
+  diagnostic partway through silently continued from a different place. A
+  diagnostic is a summary computed from a fit and not part of fitting, which is
+  the line #310 drew when it left the initial-value search advancing the stream.
+  Both still repeat under the same `seed`; only the stream is restored (#337).
+
+  Measured on R 4.6.1, one pair of runs per function: `set.seed(1)` then three
+  `rnorm()` draws, against the same three preceded by the diagnostic.
+  `check_fit()` on the packaged `manec_example`'s `nec4param` component and
+  `dispersion()` on a `nec4param` Poisson fit of 60 simulated observations both
+  returned three different numbers on `dev` and the reference three here. Both
+  returned the same table, and the same statistic, from two calls separated by
+  an `rnorm(5)` on `dev` and here.
+
+  `check_fit()` also now refuses a `seed` that is not a single number, as
+  `dispersion()` already did. `check_fit(x, seed = NULL)` reached
+  `set.seed(NULL)`, which re-initialises the stream from the clock and the
+  process id, so the diagnostic did not repeat and the caller's seed was
+  discarded without a word --- #310's defect reached through a second door.
+
+  `check_fit()` is not only called directly. `bnec()` runs it on both return
+  paths through `message_control_fit()`, and `summary()` runs it whenever
+  `check_fit = TRUE`, so the stream after a fit and after a summary is
+  restored as well. On the released code the diagnostic's own `set.seed(10)`
+  left the stream at a fixed point after every `bnec()` call,
+  whatever the fit had done; it now reflects the fitting alone, which under no
+  supplied `seed` depends on how many proposals the initial-value search made
+  (see #310 above). Measured on the packaged `manec_example` under the same
+  protocol: `summary()` and `message_control_fit()` each returned three
+  different numbers on `dev` and return the reference three here.
+
+  The restore is a behaviour change for code that relied on a diagnostic having
+  advanced the stream. No test and no vignette does.
+
+- A model set assembled by `c()`, `+`, `amend()` or `update()` is now weighted
+  by pseudo-BMA, the documented default, rather than by stacking.
+  `expand_manec()` validated the `loo_controls` it was given but supplied no
+  default where the caller named no method, so `method` reached
+  `loo::loo_model_weights()` as `NULL`, `loo` applied its own default of
+  `"stacking"`, and `attr(mod_stats$wi, "method")` recorded nothing. The same
+  set fitted in a single `bnec()` call was weighted by pseudo-BMA, so the
+  weighting method --- and with it the model-averaged NEC, NSEC and ECx
+  estimates --- depended on how the set was assembled rather than on what was
+  requested. Combining single fits with `c()` is a documented workflow and is
+  how the training material introduces model averaging, so this was a common
+  path. Measured on the two packaged `manec_example` fits pulled out and
+  recombined (R 4.6.1, `loo` 2.8.0): stacking placed 0.892 of the weight on
+  `nec4param`, while pseudo-BMA placed between 0.821 and 0.862 over twenty
+  repeats --- it uses a Bayesian bootstrap and so is not deterministic ---
+  against the 0.827 recorded by the `bnec()` call that fitted them. The default
+  is supplied in `expand_manec()`, which is the one point every assembly route
+  reaches (#320).
+
+  Where the set being operated on records a method, that method is kept unless
+  the caller names another --- `pull_out()` excepted, which takes no weighting
+  method at all and reports and ignores one given to it. `amend()` and
+  `pull_out()` already preserved the recorded method, but passed an unknown one
+  on as `method = NULL`, which `loo` resolves to stacking; an unknown method is
+  now left for the default to fill. `update()` did not preserve it at all and
+  now does, since refitting a set is not a request to reweight it. Because
+  `loo_controls` names its `fitting` and `weights` arguments separately, both
+  `amend()` and `update()` read a call that names only a LOO fitting argument
+  as naming no method, so changing one does not reweight the set as a side
+  effect. `c()` and `+` take no
+  `loo_controls` argument, so they inherit the method where every object being
+  combined that records one names the same method, and report the fallback to
+  the default where two disagree.
+
+- `dispersion()` no longer discards the statistic where a single observation is
+  reproduced exactly. The Pearson denominator is the fitted standard deviation,
+  which underflows to exactly zero for a curve that decays fast enough --- `mu
+  (1 - mu) n` for a binomial and `mu` for a Poisson --- and the response at such
+  an observation is the fitted value, so its residual is `0/0`. One of them made
+  every draw `NaN`, and the whole vector was returned empty with a message
+  attributing it to a bad model fit.
+
+  Such a term is now excluded from both the observed and the simulated sum and
+  every draw is retained. The exclusion is the limit rather than an
+  approximation to it: as the fitted mean tends to zero with a response of zero
+  both terms tend to zero, so excluding them is arithmetically identical to
+  contributing zero to each sum, and the ratio is self-normalising, so its null
+  value of 1 holds whatever the size of the retained set. It is made draw by
+  draw, since an observation whose fitted mean underflows in one draw gives an
+  ordinary residual in another, and a message reports the observations and the
+  draws affected. Measured on the fixture added with this change, 400 post
+  warm-up draws: 229 draws exclude nothing, 60 exclude three observations and
+  111 exclude six, and no observation is excluded in every draw.
+
+  Where instead the response differs from a fitted value of zero variance, the
+  statistic is reported as `Inf` and a warning names the observations, rather
+  than the case being swallowed by the same branch. The infinity is produced by
+  the underflow, since in exact arithmetic the residual there is large and
+  finite, but the misfit it reports is real. It is a warning rather than an
+  error because `dispersion()` is called once per equation from `expand_nec()`,
+  where stopping would abandon construction of the whole `bayesmanecfit`.
+
+  Measured on the `nassarius` contaminant A survival set of
+  `vignette("example9")` (binomial, `decline`, nine equations, 2026-09-08, R
+  4.6.1): three equations returned `NA`, among them `ecxsigm` at 0.767 of the
+  model weight with a Bayesian R-squared of 0.91, while `ecxexp` at 0.002 of the
+  weight reported a value. The statistic was therefore least available for the
+  equations describing the data best, since underflow requires a fast decay.
+  `expand_nec()` writes the four `dispersion_*` columns of the weights table
+  from this vector, so those columns now populate for such a fit. An empty
+  vector is returned only where no observation contributes a residual in any
+  draw, with a message that says so (#298).
+
+- `update()` on a `bayesmanecfit` returned an object classed `bayesmanecfit`
+  with none of that class's structure whenever all but one model failed to
+  refit. The guard tested the length of the candidate set going in rather than
+  the number of survivors coming out, so `expand_manec()`'s single-survivor
+  branch --- which returns a bare one-element list of `prebayesnecfit` --- was
+  classed as a model average. The result had no `mod_fits`, `mod_stats` or
+  `w_pred_vals`, and every `bayesmanecfit` method then failed naming a missing
+  component rather than the update. `update()` now routes a single survivor
+  through `expand_nec()` and returns a `bayesnecfit`, which is what `bnec()` and
+  `amend()` already returned for the same surviving set (#288).
+
+- A supplied `init` no longer triggers the initial-value search. The search ran
+  when `init` was absent **or** when `skip_check` was `TRUE`, so a caller who
+  supplied initial values under `skip_check = TRUE` waited for a search and then
+  had what they supplied overwritten by its result. Measured on a 32-row,
+  four-dose `Beta` fixture with `nec3param`, 2026-09-07, R 4.6.1: 597.6 s with
+  `init` supplied against 577.2 s without, identical within noise. The one
+  caller that depended on the search running regardless was `amend()`, which
+  passed the stanfit initial values of a model already in the set to a model
+  being added to it; those values name another equation's parameters and were
+  discarded by the search in every case, so `amend()` no longer passes them and
+  its behaviour is unchanged (#290).
 
 - `ecx()` and `nsec()` discarded any arithmetic inside an inline `crf()`
   transformation when putting the estimate back on the fitted scale. The
@@ -375,7 +1254,7 @@
 
   It does not keep it consistent in its *priors*. `amend()` builds a default
   prior for each model it adds, so a model added under this version to a set
-  fitted under an earlier one is given the new `nec` and `ec50` rate while the
+  fitted under an earlier one is given the new `nec` and `ec50` prior while the
   models already in the set retain the old one. That applies to every prior this
   release changes, not only to the predictor-scaled ones. Where the comparison
   between models matters, refit the whole set.
@@ -510,6 +1389,91 @@
   assumes the posteriors come from separate fits --- two levels of one fit share
   draws, and permuting them widens the difference posterior and pulls
   `prob_diff` toward 0.5, which under-detects a real difference (#218).
+
+## Documentation
+
+- `vignette("example5")` is rewritten as *Installation and setup*, and no chunk
+  in it is evaluated. It previously evaluated seven chunks, so the rendered
+  vignette recorded the machine that built it: the shipped file named one
+  contributor's home directory 21 times in 520 lines and ended with 77 lines of
+  compiler diagnostics from that machine. Evaluating those chunks also published
+  the warning `Path not set. Can't find directory: C:/cmdstan` directly beneath
+  the instruction to set that path.
+
+  The instructions themselves are replaced rather than repaired. The previous
+  text directed the reader to clone CmdStan from GitHub, run `mingw32-make
+  build`, reboot, and hand-write a `make/local` file supplying two compiler
+  flags, none of which `cmdstanr::install_cmdstan()` requires, and named
+  CmdStan v2.23.0 as the version expected. The replacement covers what stops a
+  fresh installation now: the directory `install_cmdstan()` does not create, the
+  49 MB download that R's default 60-second `options(timeout)` does not cover, a
+  home directory synchronised by OneDrive or containing a space, the `tbb.dll`
+  built against a superseded Rtools, and the `cmdstanr` version-to-Rtools
+  mapping that changed at 0.9.0. Its technical content comes from the software
+  setup module of the `cr_modelling_training` course, which is the maintained
+  version of the same material. A verification section closes it with
+  `check_cmdstan_toolchain()` and a two-chain `bnec()` fit on `nec_data`, and a
+  provenance section attributes each measurement to the run that produced it.
+
+  One instruction in the course module is corrected rather than reproduced.
+  A CmdStan installation outside the default location is made to persist with
+  the environment variable `CMDSTAN`, set in `.Renviron`, and not with
+  `options(cmdstanr_cmdstan_path = ...)`: no version of `cmdstanr` reads that
+  option. In `cmdstanr` 0.9.0, `cmdstanr:::cmdstanr_initialize()` takes the path
+  from `Sys.getenv("CMDSTAN")` where it is set and from `~/.cmdstan` otherwise,
+  and the string `cmdstanr_cmdstan_path` appears nowhere in the `cmdstanr`
+  namespace. The vignette also drops the version number from the setting, since
+  `CMDSTAN` naming a directory that holds an installation rather than being one
+  resolves to the newest `cmdstan-*` inside it (#342).
+
+  `vignette("example1")`, `vignette("example2")` and `README.md` now point at
+  it. Each held its own installation text, so the package had three (#342).
+
+- New vignette, `vignette("example9")` --- *A complete analysis workflow* ---
+  running a single analysis from data to reportable estimate: choosing the
+  family from the support of the response, fitting the candidate set, sampler
+  diagnostics per candidate equation, fit diagnostics through `pp_check()` and
+  `check_fit()`, exclusion of the equations that fail the screen, and reporting.
+  It works through the step the other vignettes state but do not demonstrate,
+  which is choosing the family from the data, and it separates the kinds of
+  sampler failure the screen returns: an equation given too few draws, which
+  passes once it is given more; an equation the design does not support, which
+  more sampling makes worse; and an equation decided at the cutoff, which is a
+  choice the analyst has to report. A count response follows, where the family
+  question becomes a dispersion screen and where the screen removes most of the
+  set for a reason that is a property of the experiment rather than of the fit.
+
+  The family screen reads `P(>1)` from `dispersion()`, the posterior probability
+  of over-dispersion, rather than thresholding the point estimate or the lower
+  bound of the interval. The exclusion step is worked on three datasets ---
+  `nassarius`, `simazine` and `diuron` --- because the share of the model weight
+  removed and the change in the model-averaged *N(S)EC* are separate
+  consequences, and neither is predictable before the screen is run. That is the
+  argument for the step being obligatory. The screening uses `check_sampling()`
+  and `screen_models()` rather than code written for the vignette. See #219.
+
+- `?bnec` and `?models` now state that a model group names the shape of the
+  response and not the set of equations admissible for it. `mod_groups$decline`
+  includes `neclin` and `ecxlin`, whose mean decays by subtraction and is
+  unbounded below, so neither is admissible for a response bounded at zero. A
+  `bnec()` call is unaffected --- `check_models()` drops them where the family
+  requires it, and a group string is filtered by the same check that
+  `model = "all"` is --- but nothing said so, and code reading the group
+  directly as a statement of admissibility got two equations that are not.
+  `models()` given a numeric range returns the admissible set and is the route
+  to use where that is what is wanted (#285).
+
+- The vignette precompilation workflow samples with `cmdstanr`, at the cmdstan
+  version `hpc/image.lock` records, rather than with `brms`'s `rstan` default.
+  The vignettes have been precompiled with `cmdstanr` on the cluster since #306,
+  while the workflow was held at `rstan` because its runner had no cmdstan
+  installation, so a vignette rebuilt in one place and a vignette rebuilt in the
+  other were produced by different samplers and a diff between two renders could
+  not be read as a change in the package. The workflow now installs `cmdstanr`
+  and cmdstan as tools of its own; neither is a dependency of `bayesnec`, and
+  `brms` continues to support either back end. Compiled Stan programs are cached
+  between runs on one branch as well, which `rstan` could not offer --- it
+  compiles in process and keeps nothing (#313).
 
 # bayesnec 2.1.4
 

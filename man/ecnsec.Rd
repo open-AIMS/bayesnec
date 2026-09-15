@@ -8,7 +8,7 @@ object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.}
 ecnsec(
   object,
   nsec,
-  resolution = 1000,
+  resolution = 200,
   x_range = NA,
   type = "absolute",
   xform = identity,
@@ -23,8 +23,10 @@ ecnsec(
 \item{nsec}{A numeric value indicating the NSEC value for which to extract
 the percentage effect.}
 
-\item{resolution}{The number of unique x values over which to find NSEC -
-large values will make the NSEC estimate more precise.}
+\item{resolution}{The number of unique x values over which the curve is
+predicted. It affects only \code{type = "range"}, where the denominator is
+the lowest response the curve predicts over the grid. The default of 200
+matches \code{\link{ecx}} and \code{\link{nsec}}.}
 
 \item{x_range}{A range of x values over which to consider extracting NSEC.}
 

@@ -85,6 +85,64 @@ extract_waic_estimate <- function(x) {
   x$fit$criteria$waic$estimates["waic", "Estimate"]
 }
 
+#' Evaluate an expression with the caller's saved RNG state restored
+#'
+#' Seeding a computation and leaving the stream where the seed reached it makes
+#' the next random operation in the session return something different, so a
+#' simulation that runs a diagnostic partway through silently continues from a
+#' different place. Everything in \pkg{bayesnec} that calls
+#' \code{\link[base]{set.seed}} outside of fitting therefore saves the state on
+#' entry and puts it back on exit. Written once here because the block was
+#' repeated at each site and is easy to get subtly wrong; see #337.
+#'
+#' The order on exit is the generator kind first and the seed second, because
+#' the kind is encoded in \code{.Random.seed[1]} and restoring it afterwards
+#' would overwrite the seed that was just put back. Where the session had not
+#' yet used the RNG there is no seed to restore and \code{.Random.seed} is
+#' removed rather than assigned, since a session that has never drawn does not
+#' have one and leaving a value there would make the next draw depend on this
+#' call. \code{\link[base]{RNGkind}} is what puts \code{sample.kind} back in
+#' that case; removing \code{.Random.seed} on its own would not.
+#'
+#' Restoration runs whether \code{expr} returns or errors. It restores the
+#' generator kinds and \code{.Random.seed}, but cannot restore the cached
+#' normal variate used by \code{normal.kind = "Box-Muller"}. That cache is
+#' not stored in \code{.Random.seed} and is cleared by reseeding, so the next
+#' normal draw can change after an odd number of preceding normal draws.
+#' Use \code{normal.kind = "Inversion"} to preserve subsequent normal draws.
+#'
+#' \code{expr} is evaluated in the calling frame, so assignments inside it
+#' reach the caller's variables exactly as if the braces were written there.
+#' Two consequences of it being an argument rather than a block: a
+#' \code{return()} written inside it would return from the caller and skip
+#' everything after the call, and \code{\link[base]{sys.call}} sees one extra
+#' frame. No call site does either.
+#'
+#' @param expr An expression to evaluate.
+#'
+#' @return The value of \code{expr}.
+#' @noRd
+with_preserved_rng_state <- function(expr) {
+  old_kind <- RNGkind()
+  has_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+  old_seed <- if (has_seed) {
+    get(".Random.seed", envir = globalenv(), inherits = FALSE)
+  } else {
+    NULL
+  }
+  on.exit({
+    # suppressWarnings for the sample.kind = "Rounding" notice, which a session
+    # set to the pre-3.6.0 sampler would otherwise have relayed once per call.
+    suppressWarnings(RNGkind(old_kind[1], old_kind[2], old_kind[3]))
+    if (is.null(old_seed)) {
+      suppressWarnings(rm(".Random.seed", envir = globalenv()))
+    } else {
+      assign(".Random.seed", old_seed, envir = globalenv())
+    }
+  }, add = TRUE)
+  expr
+}
+
 #' Realise the model-averaging draw once, reproducibly.
 #'
 #' Model averaging keeps \code{round(sample_size * wi)} of each component's
@@ -98,6 +156,7 @@ extract_waic_estimate <- function(x) {
 #'
 #' Restores the caller's RNG state rather than calling \code{set.seed()}
 #' outright: model averaging must not silently reset a user's simulation seed.
+#' \code{with_preserved_rng_state()} holds that restore.
 #'
 #' \code{sample.kind} is pinned rather than left at whatever the session is
 #' using. A seed alone does not fix a draw: R 3.6.0 changed the algorithm behind
@@ -125,29 +184,12 @@ weighted_draw_index <- function(model_set, sample_size, mod_stats, seed) {
     # erroring would break saved objects and re-drawing would restore the bug.
     seed <- 216
   }
-  old_kind <- RNGkind()
-  has_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
-  old_seed <- if (has_seed) {
-    get(".Random.seed", envir = globalenv(), inherits = FALSE)
-  } else {
-    NULL
-  }
-  on.exit({
-    # RNGkind() first, then the seed: the generator kind is encoded in
-    # .Random.seed[1], so restoring the seed last leaves both correct. Where
-    # there was no seed to restore, RNGkind() is what puts sample.kind back --
-    # removing .Random.seed on its own would not.
-    suppressWarnings(RNGkind(old_kind[1], old_kind[2], old_kind[3]))
-    if (is.null(old_seed)) {
-      suppressWarnings(rm(".Random.seed", envir = globalenv()))
-    } else {
-      assign(".Random.seed", old_seed, envir = globalenv())
-    }
-  }, add = TRUE)
-  set.seed(seed, sample.kind = "Rejection")
-  out <- lapply(model_set, function(index) {
-    size <- as.integer(round(sample_size * mod_stats[index, "wi"]))
-    sample(seq_len(sample_size), size)
+  with_preserved_rng_state({
+    set.seed(seed, sample.kind = "Rejection")
+    out <- lapply(model_set, function(index) {
+      size <- as.integer(round(sample_size * mod_stats[index, "wi"]))
+      sample(seq_len(sample_size), size)
+    })
   })
   names(out) <- model_set
   out
@@ -330,15 +372,32 @@ get_init_predictions <- function(y, x, fct, .args) {
   do.call("fct", y)
 }
 
+#' Whether one chain's initial curve is a usable starting point
+#'
+#' @param x A \code{\link[base]{numeric}} vector, the initial curve evaluated
+#' over the sorted predictor.
+#' @param limits A \code{\link[base]{numeric}} vector of length 2, the band
+#' from \code{\link{init_limits}}.
+#'
+#' @details \code{isTRUE()} because the first two clauses are \code{NA} on a
+#' curve containing \code{NA}, and the value is read in an \code{if} by
+#' \code{\link{refine_inits}}. The finiteness clauses below make the
+#' conjunction \code{FALSE} in every case reachable today, so this is a
+#' guard rather than a fix for an observed failure.
+#'
+#' @return A \code{\link[base]{logical}} of length 1.
+#'
 #' @noRd
 check_init_predictions <- function(x, limits) {
-  min(x) > min(limits) &
-    max(x) < max(limits) &
-    !any(is.na(x)) &
-    !any(is.infinite(x)) &
-    !any(is.nan(x)) &
-    x[1] > x[length(x)] &
-    length(unique(x)) > 3
+  isTRUE(
+    min(x) > min(limits) &
+      max(x) < max(limits) &
+      !any(is.na(x)) &
+      !any(is.infinite(x)) &
+      !any(is.nan(x)) &
+      x[1] > x[length(x)] &
+      length(unique(x)) > 3
+  )
 }
 
 #' @noRd
@@ -622,17 +681,52 @@ retrieve_valid_family <- function(named_list, data, link_source = "none") {
   validate_family(family, link_source = link_source)
 }
 
+#' The LOO controls a model-averaged fit is built with
+#'
+#' Supplies the documented default weighting method wherever the caller has
+#' not named one. Every route that assembles a model set passes its
+#' \code{loo_controls} through here, so the method a set is weighted by depends
+#' on what was asked for rather than on which function assembled it. See #320.
+#'
+#' @param loo_controls The caller's \code{loo_controls}, which may be missing.
+#' @param family_str A \code{\link[base]{character}} string naming the family,
+#' used only by \code{validate_loo_controls()}.
+#'
+#' @return A named \code{\link[base]{list}} of two elements, whose
+#' \code{weights$method} is always set.
+#'
 #' @noRd
 define_loo_controls <- function(loo_controls, family_str) {
   if (missing(loo_controls)) {
     loo_controls <- list(fitting = list(), weights = list(method = "pseudobma"))
   } else {
     loo_controls <- validate_loo_controls(loo_controls, family_str)
-    if (!"method" %in% names(loo_controls$weights)) {
+    # is.null() rather than a name test: pull_out() and update.bnecfit() pass
+    # the method they read off the object being operated on, which is NULL for
+    # an object that recorded none. The name is then present with a NULL value,
+    # loo::loo_model_weights() resolves that through match.arg() to its own
+    # first choice of "stacking", and the caller gets stacking without having
+    # asked for it -- which is #320 reached by a second route.
+    if (is.null(loo_controls$weights$method)) {
       loo_controls$weights$method <- "pseudobma"
     }
   }
   loo_controls
+}
+
+#' \code{loo_controls$weights} for a method that may be unknown
+#'
+#' An empty list where the method is \code{NULL}, so that
+#' \code{define_loo_controls()} supplies the default rather than the
+#' caller passing \code{method = NULL} down to \code{loo}.
+#'
+#' @param method A length-1 \code{\link[base]{character}}, or \code{NULL}.
+#'
+#' @return A named \code{\link[base]{list}}, possibly empty.
+#'
+#' @noRd
+weights_controls <- function(method) {
+  if (is.null(method)) list() else list(method = method)
 }
 
 #' @noRd
@@ -766,18 +860,38 @@ add_brm_defaults <- function(
   # iteration. #257 proposes the parameterisation change that removes the need
   # for it. See #245.
   #
-  # #257 landed the parameterisation change for the ogl case, so the raise is
-  # now conditional on the group structure actually still needing it. An ogl
-  # term whose deviation is applied multiplicatively cannot carry mu out of its
-  # support at all, so the mitigation has nothing left to mitigate and costs
-  # roughly fourteen times the gradient evaluations for it. Everything else --
-  # a pgl term, an explicit (par | group) term, and any equation the transform
-  # is not defined for -- keeps needing it, permanently.
-  ogl_is_transformed <- isTRUE(group_spec$ogl) &&
-    !identical(ogl_transform_kind(model, family), "none")
-  only_ogl <- ogl_is_transformed &&
-    identical(sort(unique(group_spec$nlpars)), "ogl")
-  if (!is.null(group_spec) && mu_is_constrained(family) && !only_ogl) {
+  # #257 landed the parameterisation change for the ogl case and #294 for a
+  # term on top or bot, so the raise is now conditional on the group structure
+  # actually still needing it. It comes down to one question: with every
+  # deviation applied on a scale it cannot leave, can any group-level term
+  # still put mu outside the support?
+  #
+  # It cannot, provided the mean is confined by its own parameters. top and bot
+  # are transformed whenever mu is constrained, so they stay inside the support;
+  # nec, ec50, beta, slope, d and f are on the predictor or log scales, and for
+  # an equation whose mean lies between bot and top a deviation on any of them
+  # leaves mu between two in-support values.
+  #
+  # mu_confined_by_pars() answers that and ogl_transform_kind() does not, which
+  # is why this does not delegate to the latter as the first version of #294
+  # did. That function tests can_exceed_one only on the (0, 1) branch, because
+  # there the question is whether a logit is defined; on (0, Inf) it returns
+  # "log" after testing below_zero alone. The hormesis equations then lost the
+  # raise under Gamma and the counts, where 2.1.4 applied it -- and their mean
+  # is negative for a sufficiently negative predictor, which crf(log(x), ...)
+  # supplies as a matter of course.
+  #
+  # An ogl term is the one case where the transform's own gate still decides,
+  # because ogl is not transformed at all where that gate refuses.
+  #
+  # Measured on herbicide, Beta(link = "identity"), nec4param: a
+  # (nec | herbicide) term gives 0 divergent transitions of 2000 at Stan's
+  # default adapt_delta of 0.8, and a (bot | herbicide) term gives 51 at 0.95
+  # without the transform. See #294.
+  group_is_bounded <- mu_confined_by_pars(model) &&
+    (!isTRUE(group_spec$ogl) ||
+       !identical(ogl_transform_kind(model, family), "none"))
+  if (!is.null(group_spec) && mu_is_constrained(family) && !group_is_bounded) {
     ctrl <- if ("control" %in% names(brm_args)) brm_args$control else list()
     if (!("adapt_delta" %in% names(ctrl))) {
       ctrl$adapt_delta <- 0.99
@@ -828,7 +942,18 @@ add_brm_defaults <- function(
       fill_missing_priors(priors, default_priors, model)
     }
   }
-  if (!("init" %in% names(brm_args)) || skip_check) {
+  check_transformed_par_bounds(brm_args$prior, group_spec, family)
+  # Whether anyone needs initial values, and nothing else. This used to read
+  # `|| skip_check`, which made a caller who supplied `init` pay for the search
+  # anyway whenever the data check was skipped -- and then discarded what they
+  # supplied, because the search result is assigned over it below. Measured on a
+  # 32-row four-dose Beta fixture with nec3param, 2026-09-07, R 4.6.1: 597.6 s
+  # with `init` supplied against 577.2 s without, identical within noise. The
+  # clause was load-bearing for one caller only, and that is fixed at its
+  # source: amend() passed `init = simdat$init`, the stanfit inits of a model
+  # already in the set, to a model being added to it, so the search had to run
+  # to overwrite them. amend() no longer passes them. See #290.
+  if (!("init" %in% names(brm_args))) {
     msg_tag <- family$family
     model_tag <- if (is.null(model_survival) || identical(model_survival,
                                                           model)) {
@@ -864,15 +989,18 @@ add_brm_defaults <- function(
     # A group-level term introduces parameters that are no part of the mean
     # curve either, and they have to come out for the same reason. Two kinds:
     # the standard deviations, dropped by class, which is general and needs no
-    # maintenance; and the `ogl` offset, dropped by name, because it is the one
-    # parameter a group-level term adds that carries class "b" and so survives
+    # maintenance; and the deviation intercepts -- `ogl`, and `topgl` and
+    # `botgl` from #294 -- dropped by name, because they are the parameters a
+    # group-level term adds that are declared with class "b" and so survive
     # every class filter. The `ogl` row is what made make_inits() reject the
     # whole set -- and therefore what stopped a user supplying by hand the
     # group-level prior that was never generated. Filtering unconditionally
-    # rather than from group_spec: `ogl` is a reserved name, so a row carrying
-    # it is always this parameter and never a curve coefficient. See #245.
+    # rather than from group_spec: these are reserved names, so a row carrying
+    # one is always this parameter and never a curve coefficient. See #245 and
+    # #294.
     init_priors <- init_priors[init_priors$class != "sd", ]
-    init_priors <- init_priors[init_priors$nlpar != "ogl", ]
+    init_priors <- init_priors[!init_priors$nlpar %in%
+                                 generated_term_names(), ]
     inits <- if (is_hurdle_family(family)) {
       # Two blocks with differently-scaled responses, primed separately then
       # merged. response_link_scale() is a no-op for hurdle_gamma under an
@@ -883,6 +1011,7 @@ add_brm_defaults <- function(
         response,
         priors = init_priors,
         chains = brm_args$chains,
+        family = family,
         dpar = hurdle_dpar(family),
         seed = init_seed,
         model_survival = model_survival
@@ -892,6 +1021,7 @@ add_brm_defaults <- function(
         model,
         predictor,
         response_link,
+        family = family,
         priors = init_priors,
         chains = brm_args$chains,
         seed = init_seed
@@ -1297,6 +1427,77 @@ step <- function(x) {
 #'
 #' @return An object of class \code{\link[brms]{brmsprior}}.
 #'
+#' Refuse a transformed parameter whose prior does not bound it to the support
+#'
+#' @param priors The prior set the fit will use, after any user rows have been
+#' merged with the defaults.
+#' @param group_spec The output of \code{\link{parse_group_terms}}.
+#' @param family A \code{\link[stats]{family}} object.
+#'
+#' @details The multiplicative form on \code{(0, 1)},
+#' \code{m e^o / (1 - m + m e^o)}, is safe \strong{because} \code{m} is inside
+#' \code{(0, 1)}. \code{\link{define_prior}} guarantees that for the priors it
+#' generates, giving \code{top} and \code{bot} \code{lb = 0} and \code{ub = 1},
+#' but \code{\link{fill_missing_priors}} preserves a user row and fills only
+#' what is absent, so a user prior such as
+#' \code{prior_string("normal(0.2, 0.5)", nlpar = "bot")} merges with
+#' \code{lb} and \code{ub} both \code{NA} and \pkg{brms} then declares
+#' \code{b_bot} unbounded.
+#'
+#' Outside \code{[0, 1]} the expression has a pole at
+#' \code{o = log((m - 1) / m)} and changes sign across it: at \code{m = 1.5}
+#' and \code{o = -1.1} it returns about -713. That is the failure
+#' \code{\link{ogl_transform_kind}} refuses the \code{can_exceed_one}
+#' equations to avoid, and it is worse here than the additive form it replaces,
+#' which would have produced an out-of-range mean that Stan rejects visibly as a
+#' divergence rather than a large finite number it accepts.
+#'
+#' Refused rather than worked around. Restoring the bound silently would change
+#' a prior the user wrote, and falling back to the additive form would make the
+#' parameterisation depend on the prior set, which is decided after the formula
+#' is built. The message names the parameter and the bounds it needs. See #294.
+#'
+#' @return \code{NULL}, invisibly. Called for the error.
+#' @noRd
+check_transformed_par_bounds <- function(priors, group_spec, family) {
+  kind <- par_transform_kind(family)
+  if (is.null(group_spec) || identical(kind, "none") || is.null(priors)) {
+    return(invisible(NULL))
+  }
+  transformed <- Filter(function(p) par_is_transformed(p, kind),
+                        intersect(group_spec$nlpars, par_transform_pars()))
+  if (length(transformed) == 0) {
+    return(invisible(NULL))
+  }
+  pr <- as.data.frame(priors)
+  support <- mu_support(family)
+  need_ub <- is.finite(support[2])
+  bad <- character(0)
+  for (p in transformed) {
+    row <- pr[pr$class == "b" & pr$nlpar == p, , drop = FALSE]
+    if (nrow(row) == 0) {
+      next
+    }
+    has_lb <- any(nzchar(row$lb) & !is.na(row$lb))
+    has_ub <- any(nzchar(row$ub) & !is.na(row$ub))
+    if (!has_lb || (need_ub && !has_ub)) {
+      bad <- c(bad, p)
+    }
+  }
+  if (length(bad) > 0) {
+    bounds <- if (need_ub) "lb = 0 and ub = 1" else "lb = 0"
+    stop("The prior(s) for ", paste0("\"", bad, "\"", collapse = "; "),
+         " do not bound the parameter to the range the ", family$family,
+         " mean is defined on. A group-level term on ",
+         paste0("\"", bad, "\"", collapse = "; "),
+         " applies its deviation multiplicatively, which is only defined while",
+         " the parameter is inside that range. Add ", bounds,
+         " to the prior, or drop the group-level term on it. See",
+         " ?bayesnecformula.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
 #' @noRd
 fill_missing_priors <- function(priors, defaults, model) {
   if (is.null(defaults) || nrow(defaults) == 0) {
@@ -1371,8 +1572,14 @@ sub_x_transformation <- function(value, formula) {
          "column and name that column in crf() instead.", call. = FALSE)
   }
   sub_list <- setNames(list(quote(.bnec_x_value)), x_vars)
+  # enclos is the formula's own environment. eval()'s default of parent.frame()
+  # is a frame inside the namespace, so a predictor transformation written with
+  # a function the user defined -- crf(squared(x), ...) -- was resolved off the
+  # namespace chain. That reaches further here than it does in the model frame:
+  # this runs in expand_nec(), ecx() and nsec(), so the failure arrives after
+  # every model in the set has compiled and sampled. See #319.
   eval(do.call("substitute", list(x_call, sub_list)),
-       list(.bnec_x_value = value))
+       list(.bnec_x_value = value), enclos = formula_env(formula))
 }
 
 #' The x value at which a curve first crosses a target response
@@ -1390,19 +1597,57 @@ sub_x_transformation <- function(value, formula) {
 #' Anchoring the target on the control is what makes the first crossing the
 #' right one for a hormetic curve as well: the target is below the control, the
 #' rising limb sits above it, so the only crossing is on the descending limb.
+#' That holds for a draw whose curve starts above the target, which is every
+#' draw for an ECx target and all but the lower \code{sig_val} tail for an NSEC
+#' reference; \code{x_start} decides the remainder.
+#'
+#' A search for a sign change cannot distinguish a curve that never reaches the
+#' target from one that has already reached it at the first grid point, and the
+#' two are opposite statements about the estimate: one places it above the end
+#' of the grid, the other at or below its start. \code{x_start} is the value the
+#' second case takes, so that the caller rather than \code{zero_crossings()}
+#' decides it. See #325.
+#'
+#' One case changes for a hormetic curve. Where such a curve begins below the
+#' target it rises through it and declines through it again, and the first sign
+#' change is the rising one --- the concentration at which the response reaches
+#' the target on the way up, which is not an estimate of anything. That is now
+#' \code{x_start} instead. For an NSEC the draw is at or below the reference at
+#' the control, so the control is its estimate; for an ECx the case is reachable
+#' only under \code{type = "direct"} with a target above the curve, and
+#' \code{NA} says so.
 #'
 #' @param y A \code{\link[base]{numeric}} vector, one draw's predicted curve
 #' over \code{x_vec}.
 #' @param target A \code{\link[base]{numeric}} value, the response level
 #' sought.
 #' @param x_vec A \code{\link[base]{numeric}} vector of predictor values.
+#' @param x_start The value returned where the curve has already reached the
+#' target at the first grid point. Defaults to \code{NA_real_}, which is what
+#' an ECx target requires: it is derived from the draw's own control and cannot
+#' be met before the grid begins, so a curve starting at or below it is a
+#' failure of the search rather than an estimate. The NSEC callers pass the
+#' control concentration, which is the estimate for such a draw.
 #'
 #' @return A \code{\link[base]{numeric}} value, or \code{NA}.
 #'
 #' @importFrom modelbased zero_crossings
 #' @noRd
-crossing_x <- function(y, target, x_vec) {
+crossing_x <- function(y, target, x_vec, x_start = NA_real_) {
   if (all(is.na(y)) || is.na(target)) {
+    return(NA_real_)
+  }
+  # y[1] rather than the first value that is not NA: x_start means the target is
+  # already met where the grid begins, and a curve whose first prediction is
+  # missing says nothing about that, so it falls through to the search.
+  if (!is.na(y[1]) && y[1] <= target) {
+    return(x_start)
+  }
+  # A single value has no interval for a sign change to fall in, and
+  # zero_crossings() stops on it with "`lower` is not smaller than `upper`"
+  # rather than returning nothing. Reachable from nsec_from_posterior() where
+  # x_range leaves one grid point at or above the control.
+  if (length(y) < 2) {
     return(NA_real_)
   }
   val <- suppressWarnings(min(zero_crossings(y - target)))
@@ -1412,6 +1657,168 @@ crossing_x <- function(y, target, x_vec) {
   floor_x <- x_vec[floor(val)]
   ceiling_x <- x_vec[ceiling(val)]
   floor_x + (val - floor(val)) * (ceiling_x - floor_x)
+}
+
+#' Refuse a resolution that defines no interval
+#'
+#' A grid of one point has no interval, so no crossing can be found on it and no
+#' estimate read off it. Raised wherever a call that will build such a grid is
+#' first seen, rather than left to arrive from \code{nsec_from_posterior()},
+#' which for \code{bnec()} and \code{update()} is after every model has
+#' compiled and sampled. \code{check_args_newdata()} is deliberately not the
+#' place: \code{resolution = 1} is a valid request of \code{bnec_newdata()},
+#' which is used to pin the shape of a single-column prediction. See #325.
+#'
+#' @param resolution The number of grid points requested.
+#'
+#' @return \code{NULL}, invisibly.
+#' @noRd
+check_resolution <- function(resolution) {
+  if (resolution < 2) {
+    stop("Argument `resolution` must be at least 2; a single grid point ",
+         "defines no interval to read an estimate from.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+#' The predictor value the control is read at
+#'
+#' The lowest \emph{observed} value of the predictor named in \code{crf()}, on
+#' the scale the user supplied it on. \code{bayesnec} treats that value as the
+#' control: the design's zero concentration, or the small value substituted for
+#' it where the predictor is modelled on a log scale.
+#'
+#' Read from the data rather than from the prediction grid so that supplying
+#' \code{x_range} does not change it, and therefore does not change the
+#' reference or any estimate anchored on it. See D15 ruling 2.
+#'
+#' For a \code{\link{bayesnechurdlefit}} the value is taken from the survival
+#' component, matching \code{hurdle_component_preds()}, which takes its
+#' predictor range from that side because the growth fit is built on survivors
+#' only and so does not see every concentration that was tested.
+#'
+#' @param object A \code{\link{bayesnecfit}}, \code{\link{bayesmanecfit}} or
+#' \code{\link{bayesnechurdlefit}}.
+#'
+#' @return A \code{\link[base]{numeric}} value.
+#'
+#' @importFrom stats model.frame
+#' @noRd
+control_x <- function(object) {
+  grid_obj <- object
+  if (is_bayesnechurdlefit(grid_obj)) {
+    grid_obj <- grid_obj$survival
+  }
+  if (inherits(grid_obj, "bayesmanecfit")) {
+    grid_obj <- suppressMessages(
+      pull_out(grid_obj, model = names(grid_obj$mod_fits)[1])
+    )
+  }
+  mod_dat <- model.frame(grid_obj$bayesnecformula, grid_obj$fit$data)
+  x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
+  min(grid_obj$fit$data[[x_var]])
+}
+
+#' The NSEC of each draw
+#'
+#' The concentration at which each draw's curve reaches the reference, sought
+#' from the control upward.
+#'
+#' Two things follow from the reference being a quantile of the control
+#' posterior. A draw whose own control lies at or below it -- \code{sig_val} of
+#' them, by construction of the quantile -- reaches the reference at the
+#' control, and the control concentration is its NSEC rather than a failure to
+#' estimate one. This is the behaviour Fisher and Fox (2023) describe and
+#' report: their Table 3 gives a lower credible bound of zero at every
+#' significance level above the 0.025 quantile the bound is read at, and those
+#' draws are what produces it. And the grid is searched only at or above the
+#' control, because the reference is defined there: a crossing below it would be
+#' read off an extrapolation into concentrations the design did not cover, and
+#' would make the estimate depend on how far \code{x_range} extends. See #325.
+#'
+#' Which draws those are is read from the control posterior rather than from the
+#' grid: the draw's own control value against the reference, both of which are
+#' read at \code{x_control}. That is the definition, and it makes the value
+#' independent of \code{x_range}, as D15 ruling 2 requires. Testing the curve at
+#' the first grid point instead would claim the control for every draw already
+#' below the reference \emph{there}, which where \code{x_range} begins above the
+#' control is a different and much larger set: those draws reached the reference
+#' somewhere below the range asked for, they are not identified within it, and
+#' they are \code{NA}.
+#'
+#' Where the grid reaches the control the control is made its first point, the
+#' control posterior supplying the predictions there, rather than the points
+#' below the control being dropped and the search beginning at the first point
+#' above it. Dropping them left a gap of one grid step between the control and
+#' the start of the search, and a draw crossing inside that gap was lost: with
+#' \code{x_range = c(0, 100)} on \code{ecx4param} at \code{sig_val = 0.05},
+#' 11 of 100 draws whose NSEC over the observed range is 0.064 to 0.484, the
+#' first searched point being 0.503. Prepending closes the gap, so which draws
+#' are identified does not depend on what \code{x_range} adds below the data.
+#' Their values still move with the grid spacing as any interpolated estimate
+#' does --- 0.0001 at \code{c(0, 3.22)} against the observed range, 0.096 at
+#' \code{c(0, 100)}, on that fit --- which is what \code{resolution} controls.
+#'
+#' @param post A draws by grid \code{\link[base]{matrix}} of predicted means.
+#' @param reference A \code{\link[base]{numeric}} value, the \code{sig_val}
+#' quantile of the control posterior.
+#' @param x_vec A \code{\link[base]{numeric}} vector of predictor values, the
+#' columns of \code{post}.
+#' @param x_control A \code{\link[base]{numeric}} value, the predictor value
+#' the control is read at, from \code{control_x()}.
+#' @param control A \code{\link[base]{numeric}} vector, the control posterior,
+#' one value per row of \code{post}, being the predicted mean at
+#' \code{x_control} and the vector \code{reference} is a quantile of.
+#'
+#' @return A \code{\link[base]{numeric}} vector, one value per draw, \code{NA}
+#' where the curve does not reach the reference at any tested concentration.
+#' @noRd
+nsec_from_posterior <- function(post, reference, x_vec, x_control, control) {
+  if (length(control) != nrow(post)) {
+    stop("The control posterior has ", length(control), " values and the ",
+         "prediction has ", nrow(post), " draws.", call. = FALSE)
+  }
+  keep <- x_vec > x_control
+  if (!any(keep)) {
+    # Both ways of producing a grid with nothing above the control: an x_range
+    # at or below the lowest observed value, and a resolution of 1, which puts
+    # the single point on it. Refused rather than left to return a vector of NA
+    # under a warning about curves that never reach the reference, or a summary
+    # computed from whichever draws needed no search. resolution = 1 is a valid
+    # request of bnec_newdata(), which is why this is refused here rather than
+    # in check_args_newdata(). See #325.
+    stop("The prediction grid holds no concentration above ",
+         signif(x_control, 3), ", the lowest observed value of the predictor, ",
+         "so there is nothing above the control to read the NSEC from. Check ",
+         "x_range, and that resolution is at least 2.", call. = FALSE)
+  }
+  if (min(x_vec) <= x_control) {
+    # The grid reaches the control, so the search starts there: the control
+    # posterior is the prediction at x_control and becomes the first column.
+    # Dropping the points below the control instead would start the search one
+    # grid step above it and lose any draw crossing in between.
+    x_kept <- c(x_control, x_vec[keep])
+    post <- cbind(control, post[, keep, drop = FALSE])
+  } else {
+    # The grid begins above the control. The stretch between the two was not
+    # asked for, so it is not searched and not interpolated across: a draw that
+    # crossed there is NA, reported separately from the draws that never cross.
+    x_kept <- x_vec
+  }
+  below_range <- logical(nrow(post))
+  out <- vapply(seq_len(nrow(post)), function(i) {
+    if (!is.na(control[i]) && control[i] <= reference) {
+      return(x_control)
+    }
+    val <- crossing_x(post[i, ], reference, x_kept)
+    if (is.na(val) && !is.na(post[i, 1]) && post[i, 1] <= reference) {
+      below_range[i] <<- TRUE
+    }
+    val
+  }, numeric(1))
+  attr(out, "n_below_range") <- sum(below_range)
+  attr(out, "x_searched_from") <- x_kept[1]
+  out
 }
 
 #' Does the family have a lower bound on the response?
@@ -1469,32 +1876,13 @@ control_posterior <- function(object, newdata, epred_fun, x_at = NULL) {
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
   control_nd <- newdata[1, , drop = FALSE]
   if (is.null(x_at)) {
+    # The same value control_x() returns. Read from grid_obj, which is already
+    # resolved here, rather than by calling control_x() and repeating the
+    # pull_out() and model.frame() this function has just done.
     x_at <- min(grid_obj$fit$data[[x_var]])
   }
   control_nd[[x_var]] <- x_at
   epred_fun(control_nd)[, 1]
-}
-
-#' The lowest observed concentration of a hurdle fit
-#'
-#' Taken from the \emph{survival} component, matching
-#' \code{hurdle_component_preds()}, which takes its predictor range from that
-#' side because the growth fit is built on survivors only and so does not see
-#' every concentration that was tested.
-#'
-#' @param object A \code{\link{bayesnechurdlefit}}.
-#'
-#' @return A \code{\link[base]{numeric}} value.
-#'
-#' @importFrom stats model.frame
-#' @noRd
-hurdle_control_x <- function(object) {
-  part <- object$survival
-  if (inherits(part, "bayesmanecfit")) {
-    part <- suppressMessages(pull_out(part, model = names(part$mod_fits)[1]))
-  }
-  mod_dat <- model.frame(part$bayesnecformula, part$fit$data)
-  min(part$fit$data[[attr(mod_dat, "bnec_pop")[["x_var"]]]])
 }
 
 #' Bring an estimate onto the scale the predictor axis is drawn on
@@ -1609,8 +1997,19 @@ check_removed_args <- function(dots) {
 #'
 #' @return \code{NULL}, invisibly. Called for the warning.
 #' @noRd
-warn_censored_draws <- function(values, estimate = "estimate") {
-  n_missing <- sum(is.na(values))
+warn_censored_draws <- function(values, estimate = "estimate", n_below = 0,
+                               x_from = NULL) {
+  n_missing <- sum(is.na(values)) - n_below
+  below_msg <- function() {
+    msg <- paste0("The ", estimate, " is not identified for ", n_below, " of ",
+                  length(values), " draws, whose curve reached the reference ",
+                  "below ", signif(x_from, 3), ", the lowest concentration in ",
+                  "the prediction range. Those draws return NA and are ",
+                  "excluded from the summary. Their ", estimate, " lies ",
+                  "between the control and ", signif(x_from, 3), ".")
+    warning(structure(class = c("bayesnec_censored", "warning", "condition"),
+                      list(message = msg, call = NULL)))
+  }
   if (n_missing > 0) {
     # Classed, so that a method which reports its own censoring can muffle the
     # reports of the calls it makes internally without also muffling anything
@@ -1625,6 +2024,12 @@ warn_censored_draws <- function(values, estimate = "estimate") {
                   "prediction grid.")
     warning(structure(class = c("bayesnec_censored", "warning", "condition"),
                       list(message = msg, call = NULL)))
+  }
+  # After the above-range report, matching the order nsec.bayesnecfit() raises
+  # the two in, so a call producing both reads the same way whichever method it
+  # came through.
+  if (n_below > 0) {
+    below_msg()
   }
   invisible(NULL)
 }

@@ -241,7 +241,7 @@ bnec_newdata.bayesnechurdlefit <- function(x, resolution = 100,
 #' @method nsec bayesnechurdlefit
 #'
 #' @export
-nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 1000,
+nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
                                    x_range = NA,
                                    xform = identity,
                                    prob_vals = c(0.5, 0.025, 0.975), ...,
@@ -259,11 +259,14 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 1000,
   # first column of the grid, so supplying x_range does not change the reference
   # and therefore the estimate, exactly as in nsec.bayesnecfit. See D15 ruling 2.
   reference <- quantile(preds$control[[hurdle_check_which(which)]], sig_val)
-  out <- vapply(seq_len(nrow(p_samples)), function(i) {
-    crossing_x(p_samples[i, ], reference, preds$x)
-  }, numeric(1))
+  out <- nsec_from_posterior(p_samples, reference, preds$x, control_x(object),
+                             preds$control[[hurdle_check_which(which)]])
+  n_below <- attr(out, "n_below_range")
+  x_from <- hurdle_xform_x(object, attr(out, "x_searched_from"))
+  attr(out, "n_below_range") <- NULL
+  attr(out, "x_searched_from") <- NULL
   out <- hurdle_xform_x(object, out)
-  warn_censored_draws(out, "NSEC")
+  warn_censored_draws(out, "NSEC", n_below = n_below, x_from = x_from)
   if (inherits(xform, "function")) {
     out <- xform(out)
   }
@@ -702,7 +705,12 @@ hurdle_raw_data <- function(object) {
   x_str <- grep("crf(", labels(terms(object$formula)), fixed = TRUE,
                 value = TRUE)
   x_expr <- str2lang(eval(parse(text = x_str)))
-  data.frame(x = eval(x_expr, object$data),
+  # enclos is the stored formula's environment rather than eval()'s default of
+  # parent.frame(), which is a frame inside the namespace. A predictor written
+  # as crf(sq(x), ...) with sq() defined by the user resolves only through the
+  # formula's own environment. See #319.
+  data.frame(x = eval(x_expr, object$data,
+                      enclos = formula_env(object$formula)),
              y = object$data[[object$y_var]])
 }
 
@@ -923,7 +931,7 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
 #' @method ecnsec bayesnechurdlefit
 #'
 #' @export
-ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 10,
+ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
                                      x_range = NA,
                                      type = "absolute", xform = identity,
                                      prob_vals = c(0.5, 0.025, 0.975), ...,

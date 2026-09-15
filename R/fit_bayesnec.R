@@ -95,11 +95,12 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   }
   if (!is.null(group_spec) && is.list(brm_args$init)) {
     g_init <- group_inits(brms_bf, data, family, brm_args$prior,
-                          ogl = group_spec$ogl)
-    # The ogl intercept may itself be fixed with a constant() prior, which is
-    # the cleanest way to remove its confounding with top and bot. Stan then
-    # does not declare b_ogl at all, so an init for it has nothing to
-    # initialise. add_brm_defaults() strips inits for constant parameters, but
+                          group_spec = group_spec)
+    # A deviation intercept may itself be fixed with a constant() prior, which
+    # is the cleanest way to remove its confounding with the parameter it is
+    # applied to. Stan then does not declare b_ogl -- or b_botgl -- at all, so
+    # an init for it has nothing to initialise. add_brm_defaults() strips
+    # inits for constant parameters, but
     # it does so before these are appended, so the same strip is applied here.
     # Hygiene rather than a fix for a binding constraint, for the reasons #244
     # records at the original site.
