@@ -948,9 +948,10 @@
   different fits and not a measure of how wrong the estimates were.
 
   `vignette("example3")` is the case #310 opened on. It runs `set.seed(333)`
-  before each of its eleven fitting chunks and passes no `seed` to `bnec()`, so
-  all eleven were discarded and every fit in the document was a fresh draw.
-  Both of the outputs that differed between renders follow from that directly.
+  before each of nine fitting chunks, which produce eleven individual fits,
+  and passes no `seed` to the fitting call. Each fit's initial-value search
+  therefore discarded the stream it was handed and began from a fresh draw.
+  Both outputs that differed between renders follow from that directly.
   The two `fixef()` tables are read off two of those fits. The three
   `check_priors()` figures are pure functions of the fits they plot ---
   `check_priors()` calls `brms::hypothesis()`, which touches the random number
