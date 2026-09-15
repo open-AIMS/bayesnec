@@ -749,16 +749,16 @@
   changes that location, so set `multisession` rather than `multicore` for a
   parallel grouped call with that option in force.
 
-  **A fit no longer stores the session it was fitted in.** A formula records
-  the environment it was created in, and serialising it writes that environment
-  out in full. Written at the top level of a script that is the global
-  environment and adds nothing; written in a `knitr` chunk it is the chunk
-  environment, which holds every object the document has built so far. The
-  formula's environment is now rebuilt to hold exactly the names the formula
-  mentions and the data does not supply, parented where the walk up its own
-  parent chain stopped, and it is rebuilt before the model frame so that the
-  frame, the `brms` formula and the stored fit are all narrowed by the one
-  call. Measured on R 4.6.1 with a
+  **A fit no longer stores or exports the session it was fitted in through its
+  formula or family.** A formula records the environment it was created in, and
+  serialising it writes that environment out in full. Written at the top level
+  of a script that is the global environment and adds nothing; written in a
+  `knitr` chunk it is the chunk environment, which holds every object the
+  document has built so far. The formula's environment is now rebuilt to hold
+  exactly the names the formula mentions and the data does not supply, parented
+  where the walk up its own parent chain stopped, and it is rebuilt before the
+  model frame so that the frame, the `brms` formula and the stored fit are all
+  narrowed by the one call. Measured on R 4.6.1 with a
   76 MiB vector bound beside the formula: the formula serialised to 76.29 MiB
   and now serialises to under 0.01, and the model frame built from it --- which
   `amend()` exports to every worker, through the `.Environment` of its `terms`
@@ -766,6 +766,16 @@
   once per model, and once per model per level in a grouped call, which is what
   made a parallel run of a vignette fail at `future.globals.maxSize` rather than
   merely slow it (#329).
+
+  A family object has its own route to the same environment. Constructors such
+  as `Gamma()` and `Beta()` return closures whose call frame can retain the
+  environment in which the family was made. A family stored in a variable was
+  kept unchanged so that its links were honoured, then exported through
+  `brm_args`; after the formula fix above, the same vignette still exported
+  3.78 GiB. Accepted family objects are now rebuilt from their family tag and
+  links. The links remain unchanged, while the unrelated construction
+  environment is absent from model workers and from the family stored on a
+  grouped fit (#329).
 
   The environment is narrowed rather than removed. `model.frame()` resolves a
   term against the data first and the formula's environment second, so a formula

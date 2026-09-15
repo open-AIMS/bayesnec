@@ -330,6 +330,35 @@ test_that("only what the applied function names travels to a worker", {
   expect_identical(parent.env(environment(fn)), asNamespace("bayesnec"))
 })
 
+test_that("brm_args does not export a family object's calling environment", {
+  skip_unless_future()
+  # This is the second route reported in #329. The formula was already narrowed,
+  # but a family constructed beside an unrelated object retained that object
+  # through its closures and reached the model worker as brm_args$family.
+  make_family <- function() {
+    big <- numeric(1e6)
+    Gamma(link = "identity")
+  }
+  supplied <- make_family()
+  family <- bayesnec:::validate_family(supplied, link_source = "symbol")
+  brm_args <- list(family = bayesnec:::unmark_family(family))
+  globals <- future::getGlobalsAndPackages(
+    quote(brm_args$family$family),
+    envir = list2env(list(brm_args = brm_args), parent = baseenv())
+  )$globals
+  supplied_globals <- future::getGlobalsAndPackages(
+    quote(brm_args$family$family),
+    envir = list2env(
+      list(brm_args = list(family = supplied)), parent = baseenv()
+    )
+  )$globals
+  expect_gt(attr(supplied_globals, "total_size"), 7 * 1024^2)
+  expect_lt(
+    attr(globals, "total_size"),
+    attr(supplied_globals, "total_size") / 10
+  )
+})
+
 test_that("future's own seeding would have changed those draws", {
   skip_unless_future()
   # The evidence for restoring RNGkind inside the worker, kept as a test
