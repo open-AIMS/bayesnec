@@ -64,6 +64,9 @@ superceded/
 # Copy hpc/local.conf.example to make one.
 hpc/local.conf
 
+# Source records for the Flores et al. (2021) diuron datasets. Not redistributed.
+data-raw/coral_diuron/
+
 # Source laboratory records and manuscripts kept alongside data-raw scripts.
 # Not redistributed with the package.
 data-raw/lum31/
