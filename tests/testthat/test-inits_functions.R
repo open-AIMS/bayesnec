@@ -1041,15 +1041,22 @@ test_that("seed = NA is read as no seed rather than erroring", {
   }
   expect_error(run(), NA)
   expect_equal(run(), run())
-  # A seed of any other shape is set.seed()'s to reject, not the guard's, so
-  # the guard cannot quietly read one as "no seed". integer(0) is the case
-  # all(is.na()) got wrong.
+  # A seed of any other shape is rejected at this boundary. integer(0) is the
+  # case all(is.na()) got wrong; set.seed(c(1, 2)) silently uses 1, so the
+  # length-two case must be checked here rather than delegated to base R.
   expect_error(
     suppressMessages(
       make_good_inits("nec4param", x, y, family = fam, n_trials = 5,
                       priors = pr, chains = 2, seed = integer(0))
     ),
-    "not a valid integer"
+    "numeric vector of length 1"
+  )
+  expect_error(
+    suppressMessages(
+      make_good_inits("nec4param", x, y, family = fam, n_trials = 5,
+                      priors = pr, chains = 2, seed = c(1, 2))
+    ),
+    "numeric vector of length 1"
   )
 })
 
