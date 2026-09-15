@@ -31,6 +31,16 @@ available methods.
 \item{\code{family}}{The family, chosen once and shared by every level.}
 
 \item{\code{n}}{The number of observations per level.}
+
+\item{\code{weights_method}}{The model-averaging weighting requested of
+\code{\link{bnec_group}}, which \code{\link{crossed_group_weights}} checks
+against what the fits themselves carry.}
+
+\item{\code{level_seeds}}{The seed each level was fitted under, realised in the
+calling session before the levels were dispatched. Kept so that the
+realisation is recoverable from the fit rather than regenerated, for the
+reason \code{expand_manec()} stores \code{w_draw_index} beside
+\code{w_draw_seed}.}
 }}
 
 \seealso{

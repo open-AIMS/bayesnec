@@ -236,6 +236,12 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   data <- mod_fits[[1]]$fit$data
   family <- mod_fits[[1]]$fit$family
   formula <- mod_fits[[1]]$bayesnecformula
+  # Narrowed here as bnec() narrows it, and for the same reason: the model
+  # frame below holds the formula's environment in the .Environment of
+  # its terms attribute, and amend() exports that frame to every worker. A fit
+  # made by an earlier version of bayesnec still holds the session it was
+  # fitted in, so this is not redundant with bnec(). See #329.
+  formula <- narrow_formula_environment(formula, data)
   bdat <- model.frame(formula, data = data)
   model_set <- check_models(model_set, family, bdat, record = TRUE)
   # Stripped as soon as it is read, for the reason check_models() gives at its
@@ -331,7 +337,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
          formula = formula, data = data, prior_type = prior_type,
          timeout = timeout)
   )
-  attempts <- bnec_model_lapply(which(needs_fit), fit_one,
+  attempts <- bnec_parallel_lapply(which(needs_fit), fit_one,
                                 parallel = set_plan$parallel)
   # Assembled in the parent, as in bnec(): what the applied function returns is
   # the fit, or the try-error whose condition attribute records it, and

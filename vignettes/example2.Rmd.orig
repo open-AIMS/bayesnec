@@ -247,7 +247,7 @@ exp_5_par <- bnec(y ~ crf(x, model = "decline"), data = df_,
 plan(sequential)
 ```
 
-There is no argument to `bnec()` that turns this on or off: the plan already records how much of the machine you are willing to use, and a second way of saying it would only disagree with the first. A `cores` is different, and is passed through to `brm()` as any other of its arguments is; what it does under a plan is the subject of *Chains within models* below. `future` and `future.apply` are suggested rather than required packages: without them, or without a plan, the models are fitted in sequence exactly as they were before this feature existed. `amend()` uses the plan in the same way, over whichever models it has to fit, and `bnec_group()` fits each level of the grouping variable in turn with that level's model set fitted in parallel.
+There is no argument to `bnec()` that turns this on or off: the plan already records how much of the machine you are willing to use, and a second way of saying it would only disagree with the first. A `cores` is different, and is passed through to `brm()` as any other of its arguments is; what it does under a plan is the subject of *Chains within models* below. `future` and `future.apply` are suggested rather than required packages: without them, or without a plan, the models are fitted in sequence exactly as they were before this feature existed. `amend()` uses the plan in the same way, over whichever models it has to fit. `bnec_group()` has a second loop that could use the same workers, its levels, and it chooses between the two by counting the rounds each arrangement takes; a nested plan drives both. That is the subject of *The levels of a grouped call* at the end of this section.
 
 ### Choosing a plan
 
@@ -309,5 +309,40 @@ Each worker holds a complete fit while it is working, and fits are large. Eight 
 Two smaller effects go with it. A `multisession` or `cluster` worker is a fresh R process that loads `bayesnec`, and with it `brms` and the Stan backend, before it can fit anything: about three seconds each, paid once per worker, which matters for a set of three models and not for a set of twenty-three. A forked `multicore` worker inherits what the parent has already loaded and does not pay this. And everything the fit needs -- the data, the formula, the priors -- is sent to each worker, so a very large data set may reach `future`'s export limit. Raise it with `options(future.globals.maxSize = )`. If that limit is reached and the data are not large, look at where the formula was written: a formula keeps the environment it was created in, so one built inside a function sends that function's variables to every worker too.
 
 Progress reporting changes too. The per-model messages `bnec()` prints come from worker processes, and arrive out of order or not at all depending on the platform. Nothing is lost: a model that fails is still recorded, the remaining models still fit, and `failed_models()` reports what happened.
+
+### The levels of a grouped call
+
+`bnec_group()` fits the model set separately within each level of a factor, so it has two loops a plan could drive: the levels, and the models within a level. Everything above applies within a level. What follows is the part that is specific to having two.
+
+One plan drives one of them. `future` evaluates a nested future sequentially unless the plan is itself a list, so dispatching the levels takes the workers away from the model loop rather than adding to them: measured on R 4.6.1 with `future` 1.70.0, inside a worker of `plan(multisession, workers = 2)` the strategy reported is `sequential` and `nbrOfWorkers()` is 1. `bnec_group()` therefore counts the two arrangements in rounds of one fit and takes the smaller, and reports which it took. Writing *L* for the levels, *M* for the equations and *W* for the workers, the levels take `ceiling(L / W) * M` rounds and the models `L * ceiling(M / W)`; a tie goes to the models, which is what earlier versions did.
+
+A level arrangement cannot go below *M* rounds however many workers there are, and a model arrangement reaches *L*, so with fewer levels than equations the levels are the smaller count only in a band. Seven levels of eleven equations is 22 rounds against 21 at four workers, and 11 against 14 at eight.
+
+To drive both loops, nest the plan, which is how `future` asks for it:
+
+```{r exmp2-parallel-nested, eval = FALSE}
+library(future)
+plan(list(tweak(multisession, workers = 2),
+          tweak(multisession, workers = I(4))))
+fit <- bnec_group(y ~ crf(x, model = "decline"), data = my_data,
+                  group_var = "site", seed = 17)
+plan(sequential)
+```
+
+The outer element is the level loop and the inner one the model loop, and a nested plan is honoured without being counted: the division is yours. Eight workers are in use here, two levels at a time with four models inside each.
+
+The `I()` around the inner count is needed rather than decorative. `future` sets `mc.cores` to 1 inside a worker and `parallelly` reads that as the core budget, so a bare `workers = 4` inner count is refused: measured on the same versions, that plan returned *Attempting to set up 4 localhost parallel workers with only 1 CPU cores available ... The hard limit is set to 300%*, where `workers = I(4)` returned 4. `I()` is how `parallelly` is told the number is meant.
+
+`plan(list(sequential, tweak(multisession, workers = I(8))))` asks for the other arrangement explicitly: the levels one at a time, each level's model set over eight workers. Use it where the count picks the levels and you want what earlier versions did.
+
+A nested plan of `multisession` strategies emits a warning from `future` once per level, beginning *added, removed, or modified connections*. Starting the inner cluster opens connections inside a future and leaves them open, which is what makes that cluster reusable, and `future` reports any such change. Nothing is wrong and no fit is affected. It is not suppressed, because the same check would catch a connection genuinely leaked by something a fit called; `options(future.connections.onMisuse = "ignore")` turns it off for a session, and an inner `multicore` strategy opens no connections and so reports none.
+
+Memory is the reason the arrangement is counted rather than the levels simply taking the plan. A worker fitting a level holds that level's whole model-averaged set, where a worker fitting one model holds one fit, and a core given to the chains of a fit holds nothing extra. A plan of *W* level workers therefore uses up to *W* times the memory of the same call with the levels in sequence, and the count already declines to dispatch the levels at the small worker counts where memory is tightest.
+
+Compilation is the other thing the arrangement adds. Every level fits the same equations, so parallel levels build the same Stan programs at the same time, and `cmdstanr` does not lock its compile cache. Each worker process is given a directory of its own to keep them apart, which means a parallel grouped run on a cold cache compiles each equation once per worker rather than once. The count above measures sampling only, so on short fits the arrangement it prefers can be the slower one on the clock. Where `cmdstanr_write_stan_file_dir` has been set, those directories are written under it as `bayesnec-stan-<pid>`, one per worker process per run; a process id does not repeat, so they are not read again and are safe to delete. Fitting the levels in sequence uses the cache as it always did.
+
+The caveat in *The Stan backend* above applies here with more force, because every level compiles the same programs: under `rstan` with `rstan_options(auto_write = TRUE)` the cache is one location that a forked worker shares with its parent, and no argument changes that location, so prefer `multisession` for a parallel grouped call with that option set.
+
+Each level is given its own seed, realised in the calling session before the levels are dispatched and derived from `seed` where one was passed. A grouped call therefore gives the same estimates whichever arrangement it took, so the number of workers on the machine does not change an answer, and the realised seeds are kept on the returned object as `level_seeds`.
 
 # References

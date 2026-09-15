@@ -696,6 +696,106 @@
   answer to (#216). One further consequence: a parallel call does not advance
   the calling session's RNG stream, where a sequential one does.
 
+  **The levels of a grouped call can now take the plan as well.**
+  `bnec_group()` has two loops that could use the workers --- the levels, and
+  the models within a level --- and one plan drives one of them, because
+  `future` evaluates a nested future sequentially unless the plan is a list. The
+  two arrangements are therefore counted in rounds of one fit and the smaller is
+  taken, a tie leaving the levels in sequence as earlier versions did: for *L*
+  levels, *M* equations and *W* workers, `ceiling(L / W) * M` against
+  `L * ceiling(M / W)`. Seven levels of eleven equations over four workers is 22
+  against 21, so that call is unchanged; over eight workers it is 11 against 14,
+  and the levels take the workers. A nested plan ---
+  `plan(list(tweak(multisession, workers = 2), tweak(multisession,
+  workers = I(4))))` --- drives both loops and is honoured without being
+  counted, the outer element being the levels. The `I()` is needed rather than
+  decorative: `future` sets `mc.cores` to 1 inside a worker, `parallelly` reads
+  that as the core budget, and its hard limit refuses four workers against one
+  core. `plan(list(sequential, tweak(multisession, workers = I(8))))` asks for
+  the other arrangement explicitly, the levels one at a time with each level's
+  model set over eight workers. `bnec_group()` reports which arrangement it
+  took and the counts behind it (#338).
+
+  **Each worker compiles its Stan programs into its own directory.** Every
+  level fits the same equations, so parallel levels build the same programs at
+  the same time, and `cmdstanr` does not lock its compile cache: two levels on a
+  cold cache would write one `.stan` file and run `make` on one executable path
+  at once. Each worker process is given a directory of its own, under
+  `cmdstanr_write_stan_file_dir` where one is set and `tempdir()` otherwise. The
+  key is the process and not the level, so a worker that draws three levels
+  compiles each equation once rather than three times. What this adds is
+  compilation on a cold cache: a parallel grouped run compiles each equation
+  once per worker rather than once, and does not read or write a persistent
+  cache the user has warmed, because a process id is not the same on the next
+  run. Fitting the levels in sequence uses the cache as it always did. `rstan` under `rstan_options(auto_write = TRUE)` caches in
+  one place that a forked worker shares with its parent, and no argument
+  changes that location, so set `multisession` rather than `multicore` for a
+  parallel grouped call with that option in force.
+
+  **A fit no longer stores the session it was fitted in.** A formula records
+  the environment it was created in, and serialising it writes that environment
+  out in full. Written at the top level of a script that is the global
+  environment and adds nothing; written in a `knitr` chunk it is the chunk
+  environment, which holds every object the document has built so far. The
+  formula's environment is now rebuilt to hold exactly the names the formula
+  mentions and the data does not supply, parented where the walk up its own
+  parent chain stopped, and it is rebuilt before the model frame so that the
+  frame, the `brms` formula and the stored fit are all narrowed by the one
+  call. Measured on R 4.6.1 with a
+  76 MiB vector bound beside the formula: the formula serialised to 76.29 MiB
+  and now serialises to under 0.01, and the model frame built from it --- which
+  `amend()` exports to every worker, through the `.Environment` of its `terms`
+  attribute --- with it. Under a plan that environment was sent to every worker
+  once per model, and once per model per level in a grouped call, which is what
+  made a parallel run of a vignette fail at `future.globals.maxSize` rather than
+  merely slow it (#329).
+
+  The environment is narrowed rather than removed. `model.frame()` resolves a
+  term against the data first and the formula's environment second, so a formula
+  naming anything the data does not supply needs it --- including the model
+  argument of `crf()` where that is a variable rather than a string, which #319
+  resolves there deliberately. The replacement is parented at the first
+  environment R sends by reference, so the rest of the lookup chain is the one
+  the formula had. Two limits remain. A name bound in the global environment, in
+  an attached package or in a namespace is left where it is and resolved through
+  the parent chain, because copying it would reintroduce the size this removes;
+  a worker's global environment is not the caller's, so such a name was already
+  out of reach under a plan and still is. And a function defined beside the
+  formula is a closure over that same environment, so the name is copied with
+  everything it closed over: a helper written in a `knitr` chunk and used in a
+  formula therefore still gives a fit the size it was, and moving that helper
+  into a package or the global environment is what makes it small.
+
+  **A worker fitting a level holds the most memory of the three.** A core given
+  to the chains of one fit holds nothing extra, because `brm()` runs them
+  without exporting anything and without a second fit in memory; a worker
+  fitting one model holds one fit; a worker fitting a level holds that level's
+  whole model-averaged set, so a plan of *W* level workers holds up to *W* of
+  them at once where fitting the levels in sequence holds one. That ordering is
+  why the two arrangements are counted against each other rather than the levels
+  simply taking the plan.
+
+  **Every level is now given its own seed, realised in the calling session.**
+  Without it the arrangement decided the answer. `bnec()` realises the seed for
+  its weighted posterior draw from whatever stream it is running in, so a level
+  fitted in a worker drew from that worker's stream and a level fitted in the
+  parent from the session's --- and since the arrangement is read off the worker
+  count, one script at one seed would have reported different model-averaged
+  estimates on a four-core and an eight-core machine. The seeds are derived from
+  `seed` where one was passed, so a grouped call now repeats with no
+  `set.seed()` in the session, which is more than `bnec()` offers for a single
+  set; where none was passed, `set.seed()` before the call fixes them. The
+  calling session's own stream and generator kind are put back either way, and
+  the generator and sampler are pinned while the seeds are realised so that one
+  `seed` means one thing whatever the session is set to. What was realised is
+  kept on the returned object as `level_seeds`, because a regenerated seed
+  cannot be trusted to be the same one years later and these objects are
+  archived and reopened. One consequence: the
+  estimates a grouped call reports are not those earlier versions reported,
+  because the levels are seeded rather than drawing from the stream as each is
+  reached. They are another realisation of the same weighting, and they are now
+  the same on every arrangement, which they were not.
+
 - **`bnec_record()`** reports what `bnec()` did to the request before fitting:
   the candidate set as requested, the set attempted, the equations excluded with
   the reason for each, and any substitution made in the response. Both were
