@@ -28,30 +28,31 @@ Model averaging is achieved through a weighted sample of each fitted models' pos
 The `model` may also be one of `"all"`, meaning all of the available models will be fit; `"ecx"` meaning only models excluding the $\eta = \text{NEC}$ step parameter will be fit; `"nec"` meaning only models with a specific $\eta = \text{NEC}$ step parameter will be fit; `"bot_free"` meaning only models without a `"bot"` parameter (without a bottom plateau) will be fit; `"zero_bounded"` are models that are bounded to be zero; or `"decline"` excludes all hormesis models, i.e., only allows a strict decline in response across the whole predictor range (see below **Parameter definitions**). There are a range of other pre-defined model groups available. The full list of currently implemented model groups can be seen using:
 
 
-```r
+``` r
 library(bayesnec)
 models()
 #> $nec
-#>  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"        "neclinhorme"  
-#>  [8] "nechormepwr"   "nechorme4pwr"  "nechormepwr01"
+#>  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"       
+#>  [7] "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01"
 #> 
 #> $ecx
-#>  [1] "ecx4param"   "ecxlin"      "ecxexp"      "ecxsigm"     "ecxwb1"      "ecxwb2"      "ecxwb1p3"    "ecxwb2p3"   
-#>  [9] "ecxll5"      "ecxll4"      "ecxll3"      "ecxhormebc4" "ecxhormebc5"
+#>  [1] "ecx4param"   "ecxlin"      "ecxexp"      "ecxsigm"     "ecxwb1"      "ecxwb2"      "ecxwb1p3"   
+#>  [8] "ecxwb2p3"    "ecxll5"      "ecxll4"      "ecxll3"      "ecxhormebc4" "ecxhormebc5"
 #> 
 #> $all
-#>  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"        "neclinhorme"  
-#>  [8] "nechormepwr"   "nechorme4pwr"  "nechormepwr01" "ecxlin"        "ecxexp"        "ecxsigm"       "ecx4param"    
-#> [15] "ecxwb1"        "ecxwb2"        "ecxwb1p3"      "ecxwb2p3"      "ecxll5"        "ecxll4"        "ecxll3"       
-#> [22] "ecxhormebc4"   "ecxhormebc5"  
+#>  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"       
+#>  [7] "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01" "ecxlin"        "ecxexp"       
+#> [13] "ecxsigm"       "ecx4param"     "ecxwb1"        "ecxwb2"        "ecxwb1p3"      "ecxwb2p3"     
+#> [19] "ecxll5"        "ecxll4"        "ecxll3"        "ecxhormebc4"   "ecxhormebc5"  
 #> 
 #> $bot_free
-#>  [1] "nec3param"     "nechorme"      "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"   "ecxlin"       
-#>  [8] "ecxexp"        "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"      "ecxll3"        "ecxhormebc4"   "nechormepwr01"
+#>  [1] "nec3param"     "nechorme"      "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"  
+#>  [7] "ecxlin"        "ecxexp"        "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"      "ecxll3"       
+#> [13] "ecxhormebc4"   "nechormepwr01"
 #> 
 #> $zero_bounded
-#>  [1] "nec3param"     "nechorme"      "necsigm"       "nechormepwr"   "nechormepwr01" "ecxexp"        "ecxsigm"      
-#>  [8] "ecxwb1p3"      "ecxwb2p3"      "ecxll3"        "ecxhormebc4"  
+#>  [1] "nec3param"     "nechorme"      "necsigm"       "nechormepwr"   "nechormepwr01" "ecxexp"       
+#>  [7] "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"      "ecxll3"        "ecxhormebc4"  
 #> 
 #> $decline
 #>  [1] "nec3param" "nec4param" "neclin"    "ecxlin"    "ecxexp"    "ecxsigm"   "ecx4param" "ecxwb1"    "ecxwb2"   
@@ -107,7 +108,7 @@ Measuring from the control is what makes an *EC~x~* well defined for a hormesis 
 
 Models that have an exponential decay (most models with parameter $\beta = \text{beta}$) with no $\delta = \text{bottom}$ parameter are 0-bounded and are not suitable for the Gaussian family, or any family modelled using a `"logit"` or `"log"` link because they cannot generate predictions of negative response values. Conversely, models with a linear decay (containing the string **lin** in their name) are not suitable for modelling families that are 0-bounded (Gamma, Poisson, Negative Binomial, Beta, Binomial, Beta-Binomial) using an `"identity"` link. These restrictions do not need to be controlled by the user, as a call to `bnec` with `models = "all"` in the formula will simply exclude inappropriate models, albeit with a message.
 
-Strictly speaking, models with a linear hormesis increase are not suitable for modelling responses that are 0, 1-bounded (Binomial-, Beta- and Beta-Binomial-distributed), however they are currently allowed in `bayesnec`, with a reasonable fit achieved through a combination of the appropriate distribution being applied to the response, and `bayesnec`'s `make_inits` function which ensures initial values passed to `brms` yield response values within the range of the user-supplied response data.
+A second exclusion applies to the 0, 1-bounded families (Binomial, Beta and Beta-Binomial) on an `"identity"` link. **nechormepwr** and **nechorme4pwr** include the hormesis term $x_i^{1/(1+e^{\alpha})}$, which has no coefficient: the term approaches 1 as $\alpha$ grows, at every concentration above zero, so for any $\tau$ above zero there is an $\alpha$ at which the mean exceeds 1, whatever the predictor range. The other hormesis equations --- **nechorme**, **nechorme4**, **nechormepwr01**, **ecxhormebc4** and **ecxhormebc5** --- are fitted on these families, because the increase prior to $\eta$ is scaled by a parameter the fit can shrink. `bayesnec`'s initial-value search starts them inside the support: `make_inits` draws from the priors, and a draw is accepted only where the whole initial curve falls within a band built from the replicated level means and their spread, intersected with the support of the mean.
 
 # Model definitions
 
@@ -305,7 +306,7 @@ with the respective `brmsformula` being
 
 #### ecxhormebc4
 
-The **ecxhormebc4** model is a 5-parameter log-logistic model similar to the **exchormebc5** model but with a lower bound of 0, given by the equation:
+The **ecxhormebc4** model is a 4 parameter log-logistic model similar to the **ecxhormebc5** model but with a lower bound of 0, given by the equation:
 $$y_i = 0 + (\tau - 0 + e^{\alpha} x)/ (1 + e^{e^{\beta} (x_i - \omega)})$$
 with the respective `brmsformula` being
 
@@ -402,7 +403,7 @@ with the respective `brmsformula` being
 #> slope ~ 1
 ```
 
-The **nechormepwr** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function. Because the model can generate predictions > 1 it should not be used for Binomial and Beta distributions with `"identity"` link. In this case the **nechromepwr01** model should be used.
+The **nechormepwr** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function. Because the model can generate predictions above 1 it is excluded from the Binomial, Beta and Beta-Binomial distributions with an `"identity"` link; **nechormepwr01** is the hormesis model for those families.
 
 #### neclinhorme
 
@@ -455,7 +456,7 @@ with the respective `brmsformula` being
 #> slope ~ 1
 ```
 
-The **nechorme4pwr** model is a *hormesis* model [@Mattson2008], allowing an initial power increase in the response variable at concentrations below $\eta$. Because the model can generate predictions > 1 it should not be used for Binomial and Beta distributions with `"identity"` link. In this case the **nechromepwr01** model should be used.
+The **nechorme4pwr** model is a *hormesis* model [@Mattson2008], allowing an initial power increase in the response variable at concentrations below $\eta$. Because the model can generate predictions above 1 it is excluded from the Binomial, Beta and Beta-Binomial distributions with an `"identity"` link; **nechormepwr01** is the hormesis model for those families.
 
 #### nechormepwr01
 
@@ -472,7 +473,7 @@ with the respective `brmsformula` being
 #> slope ~ 1
 ```
 
-The **nechormepwr01** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function. In this case the linear version (**neclinhorme**) should be used.
+The **nechormepwr01** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function. In this case the linear version (**neclinhorme**) should be used. Its increase is bounded above at 1 by construction, which is what makes it the hormesis model for the 0, 1-bounded families and also why it is excluded from the 0, `Inf` bounded ones (Gamma, Poisson, Negative Binomial with an `"identity"` link), whose response may exceed 1.
 
 #### necsigm
 
@@ -490,5 +491,65 @@ with the respective `brmsformula` being
 ```
 
 The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function. In addition, there may be theoretical issues with combining a sigmoidal decay model with an *NEC* step function because where there is an upper plateau in the data the location of $\eta$ may become ambiguous. Estimation of No-Effect-Concentrations using this model are not currently recommended without further testing.
+
+# Relationship to the `drc` NEC models
+
+Users arriving from the `drc` package [@Ritz2016] often ask which `bayesnec`
+model corresponds to `drc`'s `NEC.2()`, `NEC.3()` and `NEC.4()`. Two of the
+three are already here, and they are not approximations of one another: given
+$b = e^{\beta}$ the two implementations agree to the last bit, over a grid
+spanning every parameter including thresholds outside the predictor range.
+
+`drc`'s three functions are wrappers around a single generator that differ only
+in which parameters they hold fixed:
+
+| `drc`      | fixes                     | `bayesnec`                          |
+|------------|---------------------------|-------------------------------------|
+| `NEC.4()`  | nothing                   | **nec4param**                       |
+| `NEC.3()`  | $c = 0$                   | **nec3param**                       |
+| `NEC.2()`  | $c = 0$, $d =$ `upper`    | none, by choice --- see below       |
+
+The parameters map as $c = \delta$ (`"bot"`), $d = \tau$ (`"top"`),
+$e = \eta$ (`"nec"`) and $b = e^{\beta}$ (`exp("beta")`).
+
+That last one is the only substantive difference between the two model
+families. `drc` estimates the decay rate $b$ directly; `bayesnec` estimates
+$\beta$ and uses $e^{\beta}$, so the decay rate is positive by construction.
+This is a reparameterisation of the same model over $b > 0$, which is the whole
+of the sensible parameter space for a decline. It does mean `drc` can return
+$b < 0$ --- a threshold followed by unbounded exponential growth --- which
+`bayesnec` cannot represent and deliberately does not. A threshold followed by
+an *increase* is available here as **nec4param** with $\delta > \tau$, which
+stays bounded.
+
+Note that the reparameterisation runs in that direction and not the other.
+Converting a `drc` estimate by setting $\beta = \log(b)$ does not recover $b$
+exactly, because $e^{\log(b)}$ is not the identity in floating point; the
+resulting curves differ by round-off, on the order of $10^{-15}$. That is a
+property of the round trip rather than of either model, but it is worth knowing
+before concluding that two fits disagree.
+
+One point of possible confusion in the `drc` documentation is worth flagging.
+The model given in `?drc::NEC` carries an additional log-logistic term,
+$d_2 / (1 + e^{b_2(\log(x) - \log(e_2))})$, reproducing the general model of
+@Pires2002. The function `drc` actually fits does not include that term, so the
+equivalences in the table above are with the *fitted* model rather than with the
+documented one.
+
+## Why there is no equivalent of `NEC.2()`
+
+`NEC.2()` holds the upper asymptote at a constant, by default 1. Fixing $\tau$
+in this way asserts that the control response is exactly that constant with no
+error, which is only defensible for data normalised to a control.
+
+Normalising to an *estimated* control is a practice `bayesnec` warns about: it
+discards the control's uncertainty and propagates none of it into the *NEC*, so
+the resulting interval is narrower than the data support. Where the upper bound
+is genuinely structural rather than estimated --- a proportion that cannot
+exceed one for reasons of construction rather than of measurement --- the same
+constraint is available without a new model, either as a `brms` `constant()`
+prior on `"top"` or as a tight informative prior. Both keep the assumption
+explicit in the prior, where it can be inspected, rather than burying it in the
+choice of equation.
 
 # References

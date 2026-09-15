@@ -94,8 +94,6 @@ library(ggplot2)
 library(dplyr)
 ```
 
-
-
 # Two implementations of the same model
 
 `bayesnec` provides two ways of fitting these models. Because the likelihood
@@ -261,18 +259,18 @@ summary(fit_f, ecx = TRUE, ecx_vals = c(10, 50))
 #> 
 #> No-effect toxicity estimates
 #>                 Q50 Q2.5 Q97.5
-#> combined (NEC) 1.08 0.81  1.36
-#> growth (NEC)   1.08 0.81  1.36
-#> survival (NEC) 2.22 1.91  2.61
+#> combined (NEC) 1.08 0.78  1.37
+#> growth (NEC)   1.08 0.78  1.37
+#> survival (NEC) 2.18 1.89  2.59
 #> 
 #> ECx estimates
 #>                Q50 Q2.5 Q97.5
-#> combined ec10 1.27 1.02  1.53
-#> combined ec50 2.23 2.05  2.42
-#> growth ec10   1.27 1.02  1.53
-#> growth ec50   2.32 2.14  2.51
-#> survival ec10 2.31 2.03  2.67
-#> survival ec50 2.86 2.59  3.12
+#> combined ec10 1.26 1.00  1.53
+#> combined ec50 2.21 2.03  2.42
+#> growth ec10   1.26 1.00  1.53
+#> growth ec50   2.32 2.13  2.51
+#> survival ec10 2.28 2.01  2.66
+#> survival ec50 2.84 2.58  3.11
 #> 
 #> The combined endpoint is the expected response per individual exposed,
 #> i.e. growth * survival. Use which = to select a component.
@@ -326,12 +324,12 @@ rbind(
 ) |>
   round(3)
 #>                 Q50  Q2.5 Q97.5
-#> growth NSEC   1.198 0.976 1.474
-#> combined NSEC 1.218 0.988 1.493
-#> growth EC10   1.265 1.016 1.529
-#> combined EC10 1.265 1.016 1.529
-#> growth EC50   2.316 2.137 2.505
-#> combined EC50 2.226 2.047 2.420
+#> growth NSEC   1.194 0.952 1.458
+#> combined NSEC 1.225 0.971 1.488
+#> growth EC10   1.265 0.996 1.529
+#> combined EC10 1.265 0.996 1.529
+#> growth EC50   2.319 2.128 2.507
+#> combined EC50 2.212 2.035 2.416
 ```
 
 In this simulation survival is unaffected until a concentration of 2.0, so the
@@ -364,7 +362,7 @@ summary(fit_j)
 #> Object of class bayesnecfit containing the nec3param model
 #> 
 #>  Family: hurdle_gamma 
-#>   Links: mu = identity; shape = identity; hu = identity 
+#>   Links: mu = identity; hu = identity 
 #> Formula: y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) 
 #>          top ~ 1
 #>          beta ~ 1
@@ -379,24 +377,24 @@ summary(fit_j)
 #> 
 #> Regression Coefficients:
 #>        Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> top       24.76      0.71    23.42    26.27 1.00     7339     5584
-#> beta      -0.58      0.09    -0.74    -0.41 1.00     4958     5702
-#> nec        1.09      0.15     0.81     1.36 1.00     4937     5018
-#> hutop      0.96      0.01     0.93     0.99 1.00     7111     4234
-#> hubeta     0.12      0.21    -0.27     0.57 1.00     5280     5351
-#> hunec      2.22      0.22     1.91     2.61 1.00     5165     5992
+#> top       24.76      0.72    23.40    26.29 1.00     6285     5306
+#> beta      -0.58      0.09    -0.75    -0.40 1.00     4791     5399
+#> nec        1.08      0.16     0.79     1.37 1.00     4507     4379
+#> hutop      0.96      0.01     0.93     0.99 1.00     6902     4163
+#> hubeta     0.09      0.20    -0.27     0.54 1.00     5793     5669
+#> hunec      2.18      0.21     1.90     2.59 1.00     5723     6518
 #> 
 #> Further Distributional Parameters:
 #>       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> shape    11.03      1.18     8.83    13.60 1.00     7767     5605
+#> shape    11.03      1.23     8.77    13.65 1.00     8154     5124
 #> 
-#> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+#> Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
 #> scale reduction factor on split chains (at convergence, Rhat = 1).
 #> 
 #> 
 #>     Estimate Q2.5 Q97.5
-#> NEC     1.09 0.81  1.36
+#> NEC     1.08 0.79  1.37
 #> 
 #> 
 #> Bayesian R2 estimates:
@@ -429,12 +427,12 @@ comparison <- rbind(
 )
 round(comparison, 3)
 #>                             Q50  Q2.5 Q97.5
-#> factorised, combined      1.077 0.806 1.364
-#> joint, combined           1.086 0.807 1.358
-#> factorised, growth EC10   1.265 1.016 1.529
-#> joint, growth EC10        1.275 1.021 1.524
-#> factorised, survival EC10 2.311 2.027 2.674
-#> joint, survival EC10      2.316 2.032 2.679
+#> factorised, combined      1.075 0.783 1.365
+#> joint, combined           1.081 0.793 1.366
+#> factorised, growth EC10   1.265 0.996 1.529
+#> joint, growth EC10        1.269 1.006 1.530
+#> factorised, survival EC10 2.278 2.010 2.660
+#> joint, survival EC10      2.278 2.014 2.658
 ```
 
 Differences between the two routes are Monte Carlo noise rather than a
@@ -456,9 +454,9 @@ fit_s <- bnec(y ~ crf(x, model = "nec3param"),
 ``` r
 rbind(`survivors only` = nec(fit_s),
       `hurdle, growth` = nec(fit_f, which = "growth"))
-#>                    Q50     Q2.5    Q97.5
-#> survivors only 1.07742 0.805644 1.363567
-#> hurdle, growth 1.07742 0.805644 1.363567
+#>                    Q50      Q2.5    Q97.5
+#> survivors only 1.07513 0.7834951 1.365483
+#> hurdle, growth 1.07513 0.7834951 1.365483
 ```
 
 These are identical to every printed digit, because the factorised route *is*
@@ -481,12 +479,12 @@ data.frame(
   combined  = round(med(posterior_epred(fit_f, which = "combined", newdata = nd)), 2)
 )
 #>   x growth survival combined
-#> 1 0  24.77    0.963    23.83
-#> 2 1  24.50    0.963    23.55
-#> 3 2  14.78    0.961    14.15
-#> 4 3   8.43    0.410     3.46
-#> 5 4   4.81    0.131     0.63
-#> 6 5   2.74    0.043     0.12
+#> 1 0  24.77    0.964    23.83
+#> 2 1  24.44    0.964    23.53
+#> 3 2  14.80    0.961    14.14
+#> 4 3   8.44    0.403     3.40
+#> 5 4   4.81    0.132     0.64
+#> 6 5   2.75    0.044     0.12
 ```
 
 At the control the two agree, because almost all individuals survive. At the
@@ -529,12 +527,12 @@ fit_m <- bnec_hurdle(y ~ crf(x, model = mod_set), data = sim_dat,
 round(crossed_weights(fit_m), 3)
 #>            survival
 #> growth      nec3param nec4param ecx4param ecxexp ecxwb1 ecxll3
-#>   nec3param     0.370     0.115     0.040      0  0.026  0.042
-#>   nec4param     0.142     0.044     0.015      0  0.010  0.016
-#>   ecx4param     0.026     0.008     0.003      0  0.002  0.003
-#>   ecxexp        0.000     0.000     0.000      0  0.000  0.000
-#>   ecxwb1        0.013     0.004     0.001      0  0.001  0.001
-#>   ecxll3        0.072     0.022     0.008      0  0.005  0.008
+#>   nec3param     0.379     0.110     0.030      0  0.025  0.053
+#>   nec4param     0.121     0.035     0.010      0  0.008  0.017
+#>   ecx4param     0.030     0.009     0.002      0  0.002  0.004
+#>   ecxexp        0.001     0.000     0.000      0  0.000  0.000
+#>   ecxwb1        0.011     0.003     0.001      0  0.001  0.002
+#>   ecxll3        0.092     0.027     0.007      0  0.006  0.013
 ```
 
 Rows are growth models, columns survival models, and the entries are weights
@@ -559,9 +557,9 @@ summary(fit_m, ecx = TRUE, ecx_vals = c(10, 50), resolution = 500)
 #> 
 #> No-effect toxicity estimates
 #>                    Q50 Q2.5 Q97.5
-#> combined (N(S)EC) 1.07 0.31  1.43
-#> growth (N(S)EC)   1.07 0.31  1.44
-#> survival (N(S)EC) 2.24 1.53  2.87
+#> combined (N(S)EC) 1.04 0.29  1.42
+#> growth (N(S)EC)   1.04 0.31  1.42
+#> survival (N(S)EC) 2.20 1.43  2.81
 #> 
 #> NSEC values appear where a model set contains smooth (ECx) models, which
 #> carry no threshold parameter; N(S)EC is a model-averaged combination
@@ -569,12 +567,12 @@ summary(fit_m, ecx = TRUE, ecx_vals = c(10, 50), resolution = 500)
 #> 
 #> ECx estimates
 #>                Q50 Q2.5 Q97.5
-#> combined ec10 1.25 0.49  1.58
-#> combined ec50 2.22 1.97  2.44
-#> growth ec10   1.26 0.49  1.57
-#> growth ec50   2.31 2.10  2.50
-#> survival ec10 2.34 1.88  2.89
-#> survival ec50 2.88 2.56  3.16
+#> combined ec10 1.23 0.48  1.56
+#> combined ec50 2.21 1.95  2.42
+#> growth ec10   1.23 0.49  1.56
+#> growth ec50   2.31 2.10  2.51
+#> survival ec10 2.30 1.90  2.84
+#> survival ec50 2.86 2.53  3.16
 #> 
 #> The combined endpoint is the expected response per individual exposed,
 #> i.e. growth * survival. Use which = to select a component.
@@ -608,7 +606,7 @@ best_crossed(fit_m)
 #> [1] "nec3param"
 #> 
 #> $weight
-#> [1] 0.3699382
+#> [1] 0.3785072
 ```
 
 
@@ -623,7 +621,7 @@ summary(fit_bj)
 #> Object of class bayesnecfit containing the nec3param model
 #> 
 #>  Family: hurdle_gamma 
-#>   Links: mu = identity; shape = identity; hu = identity 
+#>   Links: mu = identity; hu = identity 
 #> Formula: y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) 
 #>          top ~ 1
 #>          beta ~ 1
@@ -638,24 +636,24 @@ summary(fit_bj)
 #> 
 #> Regression Coefficients:
 #>        Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> top       24.78      0.72    23.41    26.32 1.00     2096     1792
-#> beta      -0.58      0.09    -0.75    -0.40 1.00     1664     2113
-#> nec        1.08      0.15     0.81     1.37 1.00     1437     1347
-#> hutop      0.96      0.01     0.93     0.99 1.00     2650     1980
-#> hubeta     0.12      0.22    -0.28     0.58 1.00     1866     1706
-#> hunec      2.22      0.22     1.91     2.62 1.00     1790     2364
+#> top       24.75      0.70    23.45    26.30 1.00     2426     1957
+#> beta      -0.58      0.10    -0.75    -0.39 1.00     1592     2072
+#> nec        1.08      0.16     0.80     1.37 1.00     1588     2116
+#> hutop      0.96      0.01     0.93     0.99 1.00     2429     1563
+#> hubeta     0.09      0.20    -0.28     0.51 1.00     1720     1710
+#> hunec      2.18      0.20     1.89     2.59 1.00     1605     2057
 #> 
 #> Further Distributional Parameters:
 #>       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> shape    11.02      1.22     8.85    13.62 1.00     2858     2113
+#> shape    11.04      1.21     8.78    13.61 1.00     2692     2075
 #> 
-#> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+#> Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
 #> scale reduction factor on split chains (at convergence, Rhat = 1).
 #> 
 #> 
 #>     Estimate Q2.5 Q97.5
-#> NEC     1.08 0.81  1.37
+#> NEC     1.08 0.80  1.37
 #> 
 #> 
 #> Bayesian R2 estimates:
@@ -790,10 +788,8 @@ survivors <- subset(B, growth > 0)
 c(exposed = nrow(B), survived = nrow(survivors),
   doses_total = length(unique(B$dose)),
   doses_with_a_survivor = length(unique(survivors$dose)))
-#>               exposed              survived           doses_total 
-#>                   284                    63                    14 
-#> doses_with_a_survivor 
-#>                     4
+#>               exposed              survived           doses_total doses_with_a_survivor 
+#>                   284                    63                    14                     4
 ```
 
 A survivors-only analysis of these data would contain 63 snails of the 284
@@ -856,9 +852,9 @@ sens <- lapply(variants, function(d) {
 ``` r
 do.call(rbind, sens)
 #>                              Q50       Q2.5      Q97.5
-#> recorded deaths only  0.06574407 0.03670270 0.09733147
-#> + first all-dead dose 0.08272188 0.05214153 0.09824861
-#> + all all-dead doses  0.08520196 0.05699393 0.09830694
+#> recorded deaths only  0.06596914 0.03669723 0.09693471
+#> + first all-dead dose 0.08320376 0.05272932 0.09830386
+#> + all all-dead doses  0.08480641 0.05635826 0.09806783
 ```
 
 Two conclusions follow, and they have different implications.
@@ -1031,9 +1027,9 @@ summary(fit_a, ecx = TRUE, ecx_vals = c(10, 50), resolution = 500,
 #> 
 #> No-effect toxicity estimates
 #>                    Q50 Q2.5 Q97.5
-#> combined (N(S)EC) 0.60 0.20  1.15
-#> growth (N(S)EC)   0.60 0.20  1.15
-#> survival (N(S)EC) 1.71 1.17  2.40
+#> combined (N(S)EC) 0.59 0.15  1.12
+#> growth (N(S)EC)   0.59 0.19  1.13
+#> survival (N(S)EC) 1.69 1.10  2.40
 #> 
 #> NSEC values appear where a model set contains smooth (ECx) models, which
 #> carry no threshold parameter; N(S)EC is a model-averaged combination
@@ -1041,12 +1037,12 @@ summary(fit_a, ecx = TRUE, ecx_vals = c(10, 50), resolution = 500,
 #> 
 #> ECx estimates
 #>                Q50 Q2.5 Q97.5
-#> combined ec10 0.63 0.00  1.15
-#> combined ec50 1.06 0.74  1.24
-#> growth ec10   0.63 0.00  1.12
-#> growth ec50   1.06 0.76  1.27
-#> survival ec10 1.71 0.00  2.39
-#> survival ec50 2.12 1.46  2.49
+#> combined ec10 0.64 0.25  1.14
+#> combined ec50 1.05 0.76  1.24
+#> growth ec10   0.64 0.25  1.14
+#> growth ec50   1.06 0.76  1.24
+#> survival ec10 1.78 1.28  2.41
+#> survival ec50 2.10 1.45  2.47
 #> 
 #> The combined endpoint is the expected response per individual exposed,
 #> i.e. growth * survival. Use which = to select a component.
@@ -1066,18 +1062,18 @@ endpoints <- do.call(rbind, endpoints)
 endpoints[, 3:5] <- signif(endpoints[, 3:5], 2)
 endpoints
 #>     contaminant endpoint     ne   ec10   ec50
-#> A.1           A   growth  0.600  0.630  1.100
-#> A.2           A survival  1.700  1.700  2.100
-#> A.3           A combined  0.600  0.640  1.100
-#> B.1           B   growth  0.050  0.047  0.073
-#> B.2           B survival  0.080  0.081  0.100
-#> B.3           B combined  0.049  0.047  0.071
-#> C.1           C   growth  0.029  0.029  3.500
+#> A.1           A   growth  0.590  0.640  1.100
+#> A.2           A survival  1.700  1.800  2.100
+#> A.3           A combined  0.590  0.640  1.100
+#> B.1           B   growth  0.048  0.048  0.072
+#> B.2           B survival  0.080  0.082  0.100
+#> B.3           B combined  0.048  0.047  0.070
+#> C.1           C   growth  0.028  0.030  3.500
 #> C.2           C survival 14.000 15.000 16.000
-#> C.3           C combined  0.029  0.029  3.300
-#> D.1           D   growth  0.034  0.079  7.700
-#> D.2           D survival 12.000 13.000 15.000
-#> D.3           D combined  0.034  0.081  7.500
+#> C.3           C combined  0.028  0.030  3.500
+#> D.1           D   growth  0.034  0.081  7.600
+#> D.2           D survival 13.000 13.000 15.000
+#> D.3           D combined  0.034  0.081  7.600
 ```
 
 Three features of these results are notable.
@@ -1131,12 +1127,12 @@ combinations, all available from the two fits.
 round(crossed_weights(fit_a), 3)
 #>            survival
 #> growth      nec3param nec4param ecx4param ecxexp ecxwb1 ecxll3
-#>   nec3param     0.147     0.027     0.026      0  0.023  0.119
-#>   nec4param     0.088     0.016     0.015      0  0.014  0.071
-#>   ecx4param     0.060     0.011     0.010      0  0.009  0.048
-#>   ecxexp        0.007     0.001     0.001      0  0.001  0.005
-#>   ecxwb1        0.062     0.011     0.011      0  0.010  0.050
-#>   ecxll3        0.067     0.012     0.012      0  0.010  0.054
+#>   nec3param     0.163     0.025     0.024      0  0.022  0.121
+#>   nec4param     0.087     0.013     0.013      0  0.012  0.064
+#>   ecx4param     0.056     0.009     0.008      0  0.008  0.042
+#>   ecxexp        0.006     0.001     0.001      0  0.001  0.004
+#>   ecxwb1        0.058     0.009     0.009      0  0.008  0.043
+#>   ecxll3        0.089     0.014     0.013      0  0.012  0.066
 ```
 
 Weight is spread across several combinations rather than concentrated in one,
@@ -1272,18 +1268,18 @@ summary(zib_f, ecx = TRUE, ecx_vals = c(10, 50))
 #> 
 #> No-effect toxicity estimates
 #>                 Q50 Q2.5 Q97.5
-#> combined (NEC) 1.69 1.42  1.92
-#> growth (NEC)   1.69 1.42  1.92
-#> survival (NEC) 3.16 2.11  4.10
+#> combined (NEC) 1.68 1.32  1.91
+#> growth (NEC)   1.69 1.41  1.91
+#> survival (NEC) 2.96 1.44  3.95
 #> 
 #> ECx estimates
 #>                Q50 Q2.5 Q97.5
-#> combined ec10 2.00 1.76  2.20
-#> combined ec50 3.48 3.15  3.82
-#> growth ec10   2.00 1.76  2.20
-#> growth ec50   3.69 3.45  4.00
-#> survival ec10 3.65 2.74  4.52
-#> survival ec50 6.34 5.28  7.97
+#> combined ec10 1.98 1.72  2.19
+#> combined ec50 3.41 2.99  3.77
+#> growth ec10   1.99 1.75  2.19
+#> growth ec50   3.69 3.44  3.99
+#> survival ec10 3.47 2.19  4.37
+#> survival ec50 6.30 5.21  8.12
 #> 
 #> The combined endpoint is the expected response per individual exposed,
 #> i.e. growth * survival. Use which = to select a component.
@@ -1305,7 +1301,7 @@ summary(zib_j)
 #> Object of class bayesnecfit containing the nec3param model
 #> 
 #>  Family: zero_inflated_beta 
-#>   Links: mu = identity; phi = identity; zi = identity 
+#>   Links: mu = identity; zi = identity 
 #> Formula: y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) 
 #>          top ~ 1
 #>          beta ~ 1
@@ -1320,24 +1316,24 @@ summary(zib_j)
 #> 
 #> Regression Coefficients:
 #>        Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> top        0.68      0.01     0.66     0.71 1.00     6850     5160
-#> beta      -1.06      0.09    -1.24    -0.90 1.00     6160     5064
-#> nec        1.69      0.12     1.42     1.92 1.00     5650     4663
-#> zitop      0.97      0.02     0.91     0.99 1.00     6760     5048
-#> zibeta    -1.50      0.24    -2.00    -1.05 1.00     5549     4957
-#> zinec      3.16      0.44     2.12     4.14 1.00     5657     3156
+#> top        0.68      0.01     0.66     0.71 1.00     5533     5155
+#> beta      -1.07      0.09    -1.25    -0.90 1.00     4987     4738
+#> nec        1.69      0.13     1.40     1.91 1.00     4326     3697
+#> zitop      0.97      0.02     0.91     0.99 1.00     6661     4402
+#> zibeta    -1.58      0.26    -2.15    -1.10 1.00     4056     3824
+#> zinec      2.96      0.52     1.34     3.95 1.00     3966     2926
 #> 
 #> Further Distributional Parameters:
 #>     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> phi    28.53      4.18    21.11    37.72 1.00     7100     5692
+#> phi    28.41      4.11    21.09    37.47 1.00     5893     5081
 #> 
-#> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+#> Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
 #> scale reduction factor on split chains (at convergence, Rhat = 1).
 #> 
 #> 
 #>     Estimate Q2.5 Q97.5
-#> NEC     1.69 1.41  1.92
+#> NEC     1.68 1.27  1.91
 #> 
 #> 
 #> Bayesian R2 estimates:
@@ -1362,8 +1358,8 @@ The two routes agree, as they must:
 rbind(factorised = nec(zib_f),
       joint      = nec(zib_j))
 #>                 Q50     Q2.5    Q97.5
-#> factorised 1.693801 1.417784 1.918231
-#> joint      1.689459 1.414871 1.919908
+#> factorised 1.681525 1.318349 1.906091
+#> joint      1.675964 1.271652 1.906585
 ```
 
 Every generating value falls inside its credible interval. The two thresholds

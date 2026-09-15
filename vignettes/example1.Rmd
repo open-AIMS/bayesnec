@@ -105,7 +105,6 @@ autoplot(exp_2, xform = function(x) exp(x) - 1)
 
 A transformation written inside `disp` rather than `crf` fails differently, and less clearly. A `disp` formula is evaluated by `brms` rather than by `bayesnec`, so nothing checks it: with `disp(~log(x))` a zero concentration reaches Stan as `-Inf`, with a warning about infinite values in the data and no mention of the term responsible. The remedy is the same --- add the offset to the data and name that column.
 
-
 The inline form and a pre-computed column give the same estimate, whether the transformation's argument is a bare variable such as `log(x)` or contains arithmetic of its own such as `log(x + 1)`. Up to `bayesnec` 2.1.3 the two disagreed: an estimate read off the prediction grid was put back on the fitted scale by a substitution that replaced the parsed call's first argument slot rather than the predictor variable inside it, so the `+ 1` was discarded and `log(x + 1)` was inverted as `log(x)`. Nothing errored and the value returned was plausible. That is fixed, and the pre-computed column below is now an equivalent way of writing the same model rather than a workaround:
 
 
@@ -166,7 +165,7 @@ where the left-hand side of the formula is implemented exactly as in `brms`, inc
 library(bayesnec)
 
 exp_1 <- bnec(suc | trials(tot) ~ crf(log(raw_x), model = "nec4param"),
-              data = binom_data, seed = 333, open_progress = FALSE)
+              data = binom_data, seed = 333)
 ```
 
 The function shows the progress of the `brms` fit and returns the usual `brms` output (with a few other elements added to this list). The function `plot(pull_brmsfit(exp_1))` can be used to plot the chains, so we can assess mixing and look for other potential issues with the model fit. We can also run a pairs plot that can help to assess issues with identifiability, and which also looks OK. There are a range of other model diagnostics that can be explored for `brms` model fits, using the function `pull_brmsfit`. We encourage you to explore the rich material already on GitHub regarding use and validation of [brms](https://github.com/paul-buerkner/brms) models.
@@ -193,18 +192,18 @@ summary(exp_1)
 #> 
 #> Regression Coefficients:
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.05      0.02     0.02     0.08 1.00     3123     2828
-#> top      0.83      0.01     0.81     0.84 1.00     3958     4178
-#> beta     0.80      0.13     0.56     1.07 1.00     2690     3166
-#> nec      4.43      0.03     4.36     4.47 1.00     3084     4024
+#> bot      0.05      0.02     0.02     0.08 1.00     3037     2949
+#> top      0.83      0.01     0.81     0.84 1.00     4454     4379
+#> beta     0.80      0.13     0.56     1.08 1.00     2663     3153
+#> nec      4.42      0.03     4.36     4.48 1.00     3270     3747
 #> 
-#> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+#> Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
 #> scale reduction factor on split chains (at convergence, Rhat = 1).
 #> 
 #> 
 #>     Estimate Q2.5 Q97.5
-#> NEC     4.43 4.36  4.47
+#> NEC     4.42 4.36  4.48
 #> 
 #> 
 #> Bayesian R2 estimates:
@@ -233,8 +232,8 @@ This model fit does not look great. You can see that the error bounds around the
 
 ``` r
 exp_1$dispersion
-#> Estimate     Q2.5    Q97.5 
-#> 17.55434 12.07456 27.10157
+#> Estimate     Q2.5    Q97.5    P(>1) 
+#> 17.59272 11.96617 27.20065  1.00000
 ```
 
 ### Beta-Binomial
@@ -245,7 +244,7 @@ The Beta-Binomial model can be useful for overdispersed Binomial data.
 ``` r
 exp_1b <- bnec(suc | trials(tot) ~ crf(log(raw_x), model = "nec4param"),
                data = binom_data, family = beta_binomial(link = "identity"),
-               seed = 333, open_progress = FALSE)
+               seed = 333)
 ```
 
 Fitting this data with the `beta_binomial` yields a much more realistic fit in terms of the confidence bounds (check `autoplot(exp_1b, xform = exp)`) and the spread in the data. Note that a dispersion estimate is not provided here, as overdispersion is only relevant for Poisson and Binomial data.
@@ -264,7 +263,8 @@ autoplot(exp_1b, xform = exp)
 
 ``` r
 exp_1b$dispersion
-#> [1] NA NA NA
+#> Estimate     Q2.5    Q97.5    P(>1) 
+#>       NA       NA       NA       NA
 ```
 
 Now that we have a better fit to these data, we can interpret the results. The estimated *NEC* value can be obtained directly from the fitted model object. As explained above, we need to transform *NEC* back to the data scale.
@@ -273,7 +273,7 @@ Now that we have a better fit to these data, we can interpret the results. The e
 ``` r
 summary(exp(exp_1b$ne_posterior))
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#>   22.98   67.31   79.46   77.96   88.58  198.62
+#>   18.06   65.26   78.59   76.11   87.95  191.89
 ```
 
 EC*x* estimates can also be obtained from the *NEC* model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the *NEC* model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See both the [Model details][e2b] and [Comparing posterior predictions][e4] vignettes for more information.
@@ -281,10 +281,10 @@ EC*x* estimates can also be obtained from the *NEC* model fit, using the functio
 
 ``` r
 ecx(exp_1b, xform = exp)
-#>      Q50     Q2.5    Q97.5 
-#> 82.96216 36.92763 99.77477 
+#>       Q50      Q2.5     Q97.5 
+#>  82.91855  44.27608 106.87492 
 #> attr(,"resolution")
-#> [1] 1000
+#> [1] 200
 #> attr(,"ecx_val")
 #> [1] 10
 #> attr(,"toxicity_estimate")
@@ -311,27 +311,27 @@ summary(exp_1b)
 #> 
 #> Regression Coefficients:
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.13      0.05     0.03     0.24 1.00     1082      946
-#> top      0.84      0.03     0.77     0.88 1.00     1095     1054
-#> beta     0.87      0.69    -0.16     5.09 1.01      433      153
-#> nec      4.38      0.19     3.69     4.85 1.01      452      140
+#> bot      0.13      0.05     0.03     0.24 1.00     2134     3083
+#> top      0.84      0.03     0.77     0.88 1.00     1277     1570
+#> beta     0.84      0.68    -0.17     3.41 1.01      477      170
+#> nec      4.36      0.20     3.66     4.66 1.01      486      182
 #> 
 #> Further Distributional Parameters:
 #>     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> phi     5.34      1.28     3.16     8.35 1.01     1212     1999
+#> phi     5.29      1.21     3.26     8.28 1.00     1832     3452
 #> 
-#> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+#> Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
 #> scale reduction factor on split chains (at convergence, Rhat = 1).
 #> 
 #> 
 #>     Estimate Q2.5 Q97.5
-#> NEC     4.38 3.69  4.85
+#> NEC     4.36 3.66  4.66
 #> 
 #> 
 #> Bayesian R2 estimates:
 #>    Estimate Est.Error Q2.5 Q97.5
-#> R2     0.76      0.04 0.67  0.81
+#> R2     0.76      0.04 0.66  0.81
 ```
 
 ### Beta data
@@ -359,7 +359,7 @@ prop_data <- "https://pastebin.com/raw/123jq46d" |>
   dplyr::mutate(across(where(is.character), as.numeric))
 
 exp_2 <- bnec(resp ~ crf(log(raw_x + 1), model = "nec4param"),
-              data = prop_data, seed = 333, open_progress = FALSE)
+              data = prop_data, seed = 333)
 ```
 
 
@@ -412,7 +412,7 @@ First, we supply `bnec` with `data` (here `count_data`), and specify our formula
 
 ``` r
 exp_3 <- bnec(y ~ crf(x, model = "nec4param"), data = count_data,
-              seed = 333, open_progress = FALSE)
+              seed = 333)
 ```
 
 
@@ -427,8 +427,8 @@ autoplot(exp_3)
 
 ``` r
 exp_3$dispersion
-#>  Estimate      Q2.5     Q97.5 
-#> 0.9626916 0.7322350 1.2964718
+#>  Estimate      Q2.5     Q97.5     P(>1) 
+#> 0.9614115 0.7338588 1.2965095 0.3903750
 ```
 
 The dispersion estimate, described in the Binomial example above, is near one here, as it should be for data simulated from a Poisson, and the credible bands are commensurate with the spread of the points. We would also plot the model chains (with `plot(exp_3$fit)`) and the parameter estimates to check the fit.
@@ -451,7 +451,7 @@ Fitting these with a Poisson gives credible bands that are far too narrow for th
 
 ``` r
 exp_3b <- bnec(y ~ crf(x, model = "nec4param"), data = count_data_od,
-               seed = 333, open_progress = FALSE)
+               seed = 333)
 ```
 
 
@@ -466,8 +466,8 @@ autoplot(exp_3b)
 
 ``` r
 exp_3b$dispersion
-#> Estimate     Q2.5    Q97.5 
-#> 4.890077 3.758650 6.492500
+#> Estimate     Q2.5    Q97.5    P(>1) 
+#> 4.890548 3.733693 6.565285 1.000000
 ```
 
 We can refit these data by deliberately specifying the Negative binomial distribution via the `family` argument.
@@ -475,7 +475,7 @@ We can refit these data by deliberately specifying the Negative binomial distrib
 
 ``` r
 exp_3c <- bnec(y ~ crf(x, model = "nec4param"), data = count_data_od,
-               family = "negbinomial", seed = 333, open_progress = FALSE)
+               family = "negbinomial", seed = 333)
 ```
 
 The resultant plot has wider, more realistic credible bands than the Poisson fit to the same data. Note that a dispersion estimate is not returned here, as `bayesnec` calculates one only for the Poisson and Binomial families. See the [Model details][e2b] and [Multi model usage][e2] vignettes for options to fit other models to these data.
@@ -516,7 +516,7 @@ The raw counts are passed to `bnec` unchanged, so a replicate with twenty female
 ``` r
 exp_3d <- bnec(y | rate(n_females) ~ crf(x, model = "nec4param"),
                data = fecundity_data, family = "poisson",
-               seed = 333, open_progress = FALSE)
+               seed = 333)
 ```
 
 Because `bnec` uses an identity link, `brms` applies the denominator multiplicatively on the response scale rather than as a log offset on the linear predictor. The fitted mean therefore *is* the rate, and `top`, `bot` and `nec` are all directly interpretable as offspring per female. The prediction grid holds the denominator at 1, so the fitted curve and any `ecx` or `nsec` read from it are on that same scale, and `autoplot` divides the observed counts through by the denominator to match.
@@ -535,19 +535,19 @@ autoplot(exp_3d)
 ``` r
 exp_3d$ne
 #> Estimate     Q2.5    Q97.5 
-#> 1.528463 1.454308 1.609457
+#> 1.525997 1.454212 1.607317
 ecx(exp_3d, ecx_val = 10)
 #>      Q50     Q2.5    Q97.5 
-#> 1.612073 1.551437 1.679091 
+#> 1.611800 1.550901 1.679368 
 #> attr(,"resolution")
-#> [1] 1000
+#> [1] 200
 #> attr(,"ecx_val")
 #> [1] 10
 #> attr(,"toxicity_estimate")
 #> [1] "ecx"
 exp_3d$dispersion
-#>  Estimate      Q2.5     Q97.5 
-#> 0.8827904 0.6642228 1.1865479
+#>  Estimate      Q2.5     Q97.5     P(>1) 
+#> 0.8803188 0.6675821 1.1898829 0.1976250
 ```
 
 One caveat is worth stating explicitly. If the exposure varies for reasons unrelated to the treatment — a replicate simply received fewer animals — then `rate` is doing exactly what is wanted. If instead the exposure is itself an effect of the treatment, as it would be were `n_females` the number of females *surviving* to the point of counting, then the endpoint has quietly changed from reproductive output to fecundity conditional on survival. Both are legitimate, but they are different endpoints and will not return the same *NEC*.
@@ -566,7 +566,7 @@ measure_data <- nec_data |>
 
 ``` r
 exp_4 <- bnec(measure ~ crf(x, model = "nec4param"), data = measure_data,
-              seed = 333, open_progress = FALSE)
+              seed = 333)
 ```
 
 
@@ -596,16 +596,16 @@ summary(exp_4)
 #> 
 #> Regression Coefficients:
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.98      0.05     0.89     1.07 1.00     3689     4003
-#> top      2.44      0.01     2.41     2.46 1.00     6677     5088
-#> beta     0.65      0.10     0.46     0.84 1.00     3112     3630
-#> nec      1.50      0.02     1.46     1.54 1.00     3814     4479
+#> bot      0.98      0.05     0.88     1.07 1.00     4057     4441
+#> top      2.44      0.01     2.41     2.46 1.00     6760     5215
+#> beta     0.65      0.10     0.45     0.84 1.00     3674     4223
+#> nec      1.50      0.02     1.46     1.54 1.00     4335     4845
 #> 
 #> Further Distributional Parameters:
 #>       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> shape   516.52     74.64   384.84   683.21 1.00     5969     4475
+#> shape   515.06     74.50   379.72   680.88 1.00     6939     5087
 #> 
-#> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+#> Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
 #> scale reduction factor on split chains (at convergence, Rhat = 1).
 #> 
@@ -770,18 +770,18 @@ The coefficient of variation is not constant, which is what tells us a `Gamma` o
 # set.seed() alone is not sufficient: it governs the initial values bayesnec
 # generates, but not the seed Stan's sampler uses, so repeated runs differ.
 disp_const <- bnec(y ~ crf(log(x), model = "ecx4param"),
-                   data = disp_dat, seed = 333, open_progress = FALSE)
+                   data = disp_dat, seed = 333)
 disp_power <- bnec(y ~ crf(log(x), model = "ecx4param") + disp("power"),
-                   data = disp_dat, seed = 333, open_progress = FALSE)
+                   data = disp_dat, seed = 333)
 ```
 
 
 ``` r
 brms::loo_compare(brms::loo(pull_brmsfit(disp_const)),
                   brms::loo(pull_brmsfit(disp_power)))
-#>                          elpd_diff se_diff
-#> pull_brmsfit(disp_power)   0.0       0.0  
-#> pull_brmsfit(disp_const) -13.1       3.7
+#>                     model elpd_diff se_diff p_worse diag_diff diag_elpd
+#>  pull_brmsfit(disp_power)       0.0     0.0      NA                    
+#>  pull_brmsfit(disp_const)     -13.1     3.6    1.00   N < 100
 ```
 
 The estimated exponent should be read through the family. `disp("power")` models the dispersion parameter, which for a `Gamma` is `shape`, and the implied standard deviation is proportional to $\mu^{1 - c_1/2}$ (see the table in `?bayesnecformula`). The value used to simulate the data, $\mu^{1.6}$, therefore corresponds to $c_1 = -1.2$:
@@ -790,8 +790,8 @@ The estimated exponent should be read through the family. `disp("power")` models
 ``` r
 brms::fixef(pull_brmsfit(disp_power))[c("c0_Intercept", "c1_Intercept"), ]
 #>               Estimate Est.Error      Q2.5      Q97.5
-#> c0_Intercept  4.678649 0.1801369  4.306412  5.0135912
-#> c1_Intercept -1.086578 0.1895727 -1.452422 -0.7109449
+#> c0_Intercept  4.675853 0.1861967  4.296957  5.0273887
+#> c1_Intercept -1.085597 0.1962002 -1.458667 -0.6865293
 ```
 
 A value of zero would correspond to the constant-dispersion model, and is where the prior on this parameter is centred, so an interval excluding zero reflects the data rather than the prior.
@@ -808,12 +808,12 @@ lof$misfit_in_sds <- round(abs(lof$obs - lof$fit) / lof$replicate_sd, 2)
 lof[, c("x", "replicate_sd", "misfit_in_sds")]
 #>       x replicate_sd misfit_in_sds
 #> 1   0.1   2.33524353          0.06
-#> 2   0.3   1.37693794          0.10
+#> 2   0.3   1.37693794          0.09
 #> 3   1.0   2.04860393          0.15
 #> 4   3.0   1.27943964          0.27
 #> 5  10.0   0.39614047          0.15
-#> 6  30.0   0.14681633          0.07
-#> 7 100.0   0.06481783          0.03
+#> 6  30.0   0.14681633          0.08
+#> 7 100.0   0.06481783          0.02
 ```
 
 ## What it changes
@@ -904,12 +904,12 @@ tox <- function(fit, label) {
 }
 rbind(tox(disp_const, "constant dispersion"), tox(disp_power, "disp(\"power\")"))
 #>                 model estimate median lower upper width
-#> 1 constant dispersion     ec10   1.80  1.50  2.20  0.70
-#> 2 constant dispersion     ec50   7.20  6.60  7.80  1.20
-#> 3 constant dispersion     nsec   0.93  0.43  1.32  0.89
-#> 4       disp("power")     ec10   1.90  1.60  2.20  0.60
-#> 5       disp("power")     ec50   7.30  6.70  7.80  1.10
-#> 6       disp("power")     nsec   1.09  0.50  1.53  1.02
+#> 1 constant dispersion     ec10   1.79  1.46  2.18  0.73
+#> 2 constant dispersion     ec50   7.18  6.56  7.81  1.25
+#> 3 constant dispersion     nsec   0.91  0.30  1.28  0.99
+#> 4       disp("power")     ec10   1.86  1.58  2.17  0.59
+#> 5       disp("power")     ec50   7.27  6.69  7.85  1.16
+#> 6       disp("power")     nsec   1.10  0.37  1.50  1.13
 ```
 
 The `ecx` intervals narrow, while the `nsec` interval widens. The explanation is what each estimate is referenced against, and it follows from the reweighting the variance function performs. Under constant dispersion every observation carries equal weight. Under `disp("power")` the tightly grouped high-concentration replicates carry more and the variable control replicates carry less, which is visible in the parameters themselves.
@@ -923,10 +923,10 @@ round(cbind(
   power = brms::fixef(pull_brmsfit(disp_power))[curve_pars, "Est.Error"]
 ), 4)
 #>                constant  power
-#> top_Intercept    0.2879 0.3425
-#> bot_Intercept    0.0718 0.0330
-#> beta_Intercept   0.0512 0.0355
-#> ec50_Intercept   0.0455 0.0417
+#> top_Intercept    0.2958 0.3416
+#> bot_Intercept    0.0737 0.0338
+#> beta_Intercept   0.0529 0.0362
+#> ec50_Intercept   0.0468 0.0420
 ```
 
 The parameters set by the high-concentration end, `bot` and `beta`, are estimated more precisely, and `top`, which is set by the control end, less so. `ecx` depends on the curve as a whole — with `type = "absolute"`, the default, on where the curve falls to a given percentage of its own fitted maximum — so it inherits the better-determined shape. `nsec` is referenced against the control instead: it is the concentration at which the curve drops below a lower quantile of the *control* posterior, so it inherits the one thing the variance function made less certain, and widens.

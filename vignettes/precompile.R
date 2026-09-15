@@ -148,16 +148,21 @@ options(mc.cores = .cpus)
 message("Chains run on ", .cpus, " core(s)")
 
 # Printed output wraps at getOption("width") before knitr ever sees it, so the
-# committed .Rmd files record whatever width the renderer's .Rprofile happened
-# to set: two machines rendering the same unchanged vignette produce different
-# files. Set here so that the committed output is a property of the vignette
-# and not of the machine (#246).
+# committed .Rmd files recorded whatever width the renderer's .Rprofile set:
+# two machines rendering the same unchanged vignette produced different files.
+# Setting it here makes the committed output a property of the vignette rather
+# than of the machine (#246).
 #
-# 115 is the width the existing committed output was produced at --- the widest
-# line in vignettes/example1.Rmd is 114 characters including knitr's "#> "
-# prefix --- so this run changes numbers rather than line wrapping, and a diff
-# against it reads as the model code it is meant to. A vignette that needs a
-# different width sets its own in its setup chunk, as example9 does at 100.
+# 115 is chosen rather than inherited. The width the previous output was
+# produced at is not recoverable -- the models() print in example2b wraps
+# identically for every width from 116 to 131 -- so some re-wrapping in the
+# first render under this setting cannot be avoided, and the #190 diff shows it.
+#
+# What decides the value is the widest thing the package prints. pull_prior()
+# reaches 103 characters in example3, and a width below that splits a prior
+# table across lines in the vignette about priors; the summary() and
+# check_fit() tables are narrower again. 115 clears all of them. example9 sets
+# its own 100 in its setup chunk, which its tables fit within.
 options(width = 115)
 
 # Where cmdstanr writes the .stan files it names by hash, and therefore where
