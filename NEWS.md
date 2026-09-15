@@ -1,5 +1,13 @@
 # bayesnec 2.2.0
 
+## Vignette precompilation
+
+- `vignettes/precompile.R` now loads the repository checkout by default and
+  reports the package version and source path before knitting. An explicit
+  installed-package mode preserves the HPC route, which verifies its job-local
+  installation before the script runs. A local render can no longer silently
+  use a different `bayesnec` installation (#340).
+
 ## Reproducible posterior comparisons and prior samples
 
 - `average_estimates()`, `compare_estimates()`, `compare_fitted()` and

@@ -207,6 +207,18 @@ exits non-zero, `set -e` in `run.precompile` turns it into a failed job, and the
 outputs are staged into `out/<vignette>/` only after that check has passed. A
 failed run leaves nothing to collect, which is what `--fetch` reports.
 
+## The package source
+
+A direct run of `vignettes/precompile.R` loads the repository checkout with
+`pkgload`, with unexported objects kept unavailable. The log reports the
+package version and source path before knitting starts. This prevents an older
+installation in a user library from producing output attributed to the branch.
+
+The HPC job sets `BAYESNEC_PRECOMPILE_PACKAGE=installed` because it has already
+installed the deployed checkout into a job-local library and verified the
+resolved package path. The explicit setting keeps that installed-build check
+while direct and CI runs use the source checkout by default.
+
 ## Changing a dependency
 
 The image names the packages it installs. Adding a dependency to `bayesnec`
