@@ -147,8 +147,10 @@ test_that("an empty exclusion record is still a data frame", {
 })
 
 test_that("ecxhormebc5 is declined only where negative x can invalidate mu", {
-  negative <- data.frame(y = c(3, 2, 1), x = c(-2, 0, 2))
-  negative <- model.frame(bnf(y ~ crf(x, "ecxhormebc5")), negative)
+  negative <- data.frame(y = c(3, 2, 1), conc = exp(c(-2, 0, 2)))
+  negative <- model.frame(
+    bnf(y ~ crf(log(conc), "ecxhormebc5")), negative
+  )
   requested <- c("ecxhormebc4", "ecxhormebc5", "nec4param")
   gamma_identity <- validate_family(Gamma(link = "identity"),
                                     link_source = "chosen")
@@ -168,11 +170,17 @@ test_that("ecxhormebc5 is declined only where negative x can invalidate mu", {
     c("ecxhormebc4", "nec4param")
   )
 
-  non_negative <- data.frame(y = c(3, 2, 1), x = c(0, 1, 2))
+  non_negative <- data.frame(y = c(3, 2, 1), conc = exp(c(0, 1, 2)))
   non_negative <- model.frame(
-    bnf(y ~ crf(x, "ecxhormebc5")), non_negative
+    bnf(y ~ crf(log(conc), "ecxhormebc5")), non_negative
   )
-  expect_silent(check_models("ecxhormebc5", gamma_identity, non_negative))
+  expect_equal(
+    suppressMessages(
+      check_models(c("ecxhormebc4", "ecxhormebc5"), gamma_identity,
+                   non_negative)
+    ),
+    c("ecxhormebc4", "ecxhormebc5")
+  )
 
   # These cases do not expose a positive-support likelihood to a negative
   # linear predictor, so the new exclusion must not broaden to them.
