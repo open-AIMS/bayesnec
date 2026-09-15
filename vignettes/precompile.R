@@ -133,13 +133,9 @@ options(brms.backend = Sys.getenv("BAYESNEC_BACKEND", "cmdstanr"))
 # serially on a four-core allocation. SLURM_CPUS_PER_TASK is the allocation
 # rather than the node; the fallback is used off the cluster.
 #
-# example3 and example6 set mc.cores themselves, to parallel::detectCores(), in
-# a chunk, and so override this. That reports the node and not the allocation,
-# but brms runs at most `chains` in parallel and both of those vignettes take
-# the default of four, so it oversubscribes nothing as they stand. Those chunks
-# are echo = FALSE, so removing the lines would change nothing a reader sees;
-# they are left alone here because #190 re-renders the whole set and is the
-# place to remove them.
+# No vignette overrides this any more. example3 and example6 each set mc.cores
+# to parallel::detectCores() in an echo = FALSE chunk, which reported the node
+# rather than the allocation; both chunks were removed for the #190 re-render.
 #
 # example2 no longer has such a chunk. #322 replaced it with an explicit
 # cores = getOption("mc.cores", 1) on the call the reader sees, which reads
@@ -150,6 +146,19 @@ if (is.na(.cpus) || .cpus < 1) {
 }
 options(mc.cores = .cpus)
 message("Chains run on ", .cpus, " core(s)")
+
+# Printed output wraps at getOption("width") before knitr ever sees it, so the
+# committed .Rmd files record whatever width the renderer's .Rprofile happened
+# to set: two machines rendering the same unchanged vignette produce different
+# files. Set here so that the committed output is a property of the vignette
+# and not of the machine (#246).
+#
+# 115 is the width the existing committed output was produced at --- the widest
+# line in vignettes/example1.Rmd is 114 characters including knitr's "#> "
+# prefix --- so this run changes numbers rather than line wrapping, and a diff
+# against it reads as the model code it is meant to. A vignette that needs a
+# different width sets its own in its setup chunk, as example9 does at 100.
+options(width = 115)
 
 # Where cmdstanr writes the .stan files it names by hash, and therefore where
 # the compiled executables live. Unset, it is the session tempdir and nothing

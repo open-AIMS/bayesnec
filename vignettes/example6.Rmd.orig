@@ -111,10 +111,6 @@ library(ggplot2)
 library(dplyr)
 ```
 
-```{r, results = "hide", echo = FALSE}
-options(mc.cores = parallel::detectCores())
-```
-
 # Two implementations of the same model
 
 `bayesnec` provides two ways of fitting these models. Because the likelihood
