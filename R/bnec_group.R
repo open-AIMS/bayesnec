@@ -80,9 +80,11 @@
 #' \bold{What a plan does and does not reproduce}
 #'
 #' Each level is given its own seed, realised in the calling session before the
-#' levels are dispatched and derived from \code{seed} where you passed one. So a
-#' grouped call gives the same estimates whichever arrangement it took, and the
-#' worker count does not change an answer. With a \code{seed} it repeats with no
+#' levels are dispatched and derived from \code{seed} where you passed one. The
+#' realised seed is passed to every equation fitted for that level and is
+#' reapplied when the model-averaging draw is realised. A grouped call therefore
+#' gives the same estimates whichever arrangement it took, and the worker count
+#' does not change an answer. With a \code{seed} it repeats with no
 #' \code{\link[base]{set.seed}} in the session; without one,
 #' \code{\link[base]{set.seed}} before the call fixes it.
 #'
@@ -233,17 +235,13 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # unset; read inside the worker instead, a deliberate persistent cache would
   # be honoured under a forking plan and silently ignored under every other.
   cache_root <- getOption("cmdstanr_write_stan_file_dir")
-  # One seed per level, realised here and applied inside the level. Without it
-  # the arrangement decides the answer: bnec() draws the weighted-draw seed for
-  # its model-averaged estimates from whatever stream it is running in
-  # (expand_manec(), see #216), so with the levels in a worker that draw comes
-  # from the worker's stream and with the levels in the parent from the
-  # parent's. Since plan_group_levels() reads the arrangement off the worker
-  # count, one script at one seed would otherwise report different
-  # model-averaged estimates on a four-core and an eight-core machine. Seeding
-  # each level from the parent makes every level's estimates a function of the
-  # parent's stream alone, so the four combinations of plan and arrangement
-  # agree.
+  # One seed per level, realised here and applied to that level's model fits and
+  # model-averaging draw. Without both uses the arrangement decides the answer:
+  # the sequential and parallel model loops advance different streams before
+  # expand_manec() draws its seed. Since plan_group_levels() reads the
+  # arrangement from the worker count, one script at one seed would otherwise
+  # report different model-averaged estimates on different machines. See #216
+  # and the private .bayesnec_group_seed consumed by bnec().
   #
   # Derived from `seed` where the user supplied one, so that a grouped call
   # repeats without a set.seed() in the session as well. The caller's stream is
@@ -274,6 +272,7 @@ bnec_group <- function(formula, data, group_var, family = NULL,
     function(i, d) list(i = i, data = d),
     seq_along(levs), unname(split(data, grp))
   )
+  concurrent <- level_plan$concurrent
   # narrow_environment(), for the reason bnec() gives at its own call: future
   # exports the applied function with its enclosing environment, and that would
   # be this frame. Only the seven names below need to reach a worker, and neither
@@ -305,13 +304,22 @@ bnec_group <- function(formula, data, group_var, family = NULL,
         )
         on.exit(options(old), add = TRUE)
       }
+      # Every random part of one level answers to the same realised level seed.
+      # Passing it to brms fixes model initialisation and sampling when the
+      # model loop changes arrangement. The private companion is removed by
+      # bnec() before brms sees it and fixes expand_manec()'s weighted draw,
+      # which otherwise follows the different streams advanced by sequential
+      # and parallel model loops.
+      level_dots <- dots
+      level_dots[["seed"]] <- level_seeds[i]
+      level_dots[[".bayesnec_group_seed"]] <- level_seeds[i]
       do.call("bnec", c(list(formula, data = part$data, family = family,
                              predictor_scale = predictor_scale),
-                        dots))
+                        level_dots))
     },
     list(formula = formula, family = family, dots = dots,
          predictor_scale = predictor_scale,
-         concurrent = level_plan$concurrent, cache_root = cache_root,
+         concurrent = concurrent, cache_root = cache_root,
          level_seeds = level_seeds)
   )
   # The caller's stream is restored around the whole loop, not only inside

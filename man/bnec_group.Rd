@@ -104,9 +104,11 @@ levels of a grouped call}.
 \bold{What a plan does and does not reproduce}
 
 Each level is given its own seed, realised in the calling session before the
-levels are dispatched and derived from \code{seed} where you passed one. So a
-grouped call gives the same estimates whichever arrangement it took, and the
-worker count does not change an answer. With a \code{seed} it repeats with no
+levels are dispatched and derived from \code{seed} where you passed one. The
+realised seed is passed to every equation fitted for that level and is
+reapplied when the model-averaging draw is realised. A grouped call therefore
+gives the same estimates whichever arrangement it took, and the worker count
+does not change an answer. With a \code{seed} it repeats with no
 \code{\link[base]{set.seed}} in the session; without one,
 \code{\link[base]{set.seed}} before the call fixes it.
 

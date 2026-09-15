@@ -584,12 +584,28 @@ test_that("a nested plan is honoured without being counted", {
   expect_true(out$concurrent)
 })
 
-test_that("each worker compiles into its own directory, under the user's root", {
+test_that("only the next strategy can drive the nested model loop", {
+  skip_unless_future()
+  old <- future::plan(list(
+    future::sequential,
+    future::sequential,
+    future::tweak(future::multisession, workers = I(2))
+  ))
+  on.exit(future::plan(old), add = TRUE)
+  # There are only two fitting loops. A parallel third strategy would require a
+  # third nested future, so it cannot make the sequential second strategy drive
+  # the model loop.
+  out <- bayesnec:::plan_group_levels(3, 11)
+  expect_false(out$dispatch)
+  expect_false(out$concurrent)
+})
+
+test_that("each active host-process pair has its own compile directory", {
   # Every level fits the same equations, so parallel levels compile the same
   # Stan programs at once. cmdstanr does not lock its cache, and a forked
   # worker shares the parent's tempdir, so the directory has to differ by
-  # process. Keyed on the process rather than on the level so that a worker
-  # which draws three levels compiles each equation once and not three times.
+  # process. The host is also needed because two cluster nodes can assign the
+  # same process identifier while writing under a shared root.
   # Paths are compared after normalisation. dirname() returns forward slashes
   # and tempdir() returns the platform separator, so on Windows the two differ
   # by separator alone: measured on the CI runner,
@@ -598,8 +614,8 @@ test_that("each worker compiles into its own directory, under the user's root", 
     norm <- function(p) normalizePath(p, winslash = "/", mustWork = FALSE)
     expect_identical(norm(a), norm(b))
   }
-  own <- bayesnec:::worker_stan_cache_dir()
-  expect_match(basename(own), paste0("^bayesnec-stan-", Sys.getpid(), "$"))
+  own <- bayesnec:::worker_stan_cache_dir(host = "node/a", pid = 42)
+  expect_identical(basename(own), "bayesnec-stan-node_a-42")
   expect_true(dir.exists(own))
   same_path(dirname(own), tempdir())
   # A directory the user chose is shared by every worker on every backend, so
@@ -607,6 +623,9 @@ test_that("each worker compiles into its own directory, under the user's root", 
   root <- file.path(tempdir(), "bayesnec-cache-root-test")
   dir.create(root, showWarnings = FALSE)
   same_path(dirname(bayesnec:::worker_stan_cache_dir(root)), root)
+  node_a <- bayesnec:::worker_stan_cache_dir(root, host = "node-a", pid = 17)
+  node_b <- bayesnec:::worker_stan_cache_dir(root, host = "node-b", pid = 17)
+  expect_false(identical(node_a, node_b))
   # The root is an argument rather than read from the options here, because
   # future exports globals and not options and a multisession worker would
   # otherwise never see one the caller set.
@@ -716,6 +735,7 @@ test_that("a grouped call dispatches its levels under a plan", {
   big <- numeric(1e6)
   parent_pid <- Sys.getpid()
   mock_bnec <- function(formula, data, family, ...) {
+    dots <- list(...)
     env <- environment(formula)
     has_big <- FALSE
     while (is.environment(env) && !bayesnec:::env_by_reference(env)) {
@@ -729,7 +749,9 @@ test_that("a grouped call dispatches its levels under a plan", {
       pid = Sys.getpid(),
       rows = row.names(data),
       cache = getOption("cmdstanr_write_stan_file_dir"),
-      has_big = has_big
+      has_big = has_big,
+      seed = dots[["seed"]],
+      group_seed = dots[[".bayesnec_group_seed"]]
     )
   }
   local_mocked_bindings(bnec = mock_bnec, .package = "bayesnec")
@@ -752,8 +774,16 @@ test_that("a grouped call dispatches its levels under a plan", {
   expect_false(any(pids == parent_pid))
   caches <- vapply(out$fits, function(f) f$cache, character(1))
   expect_length(unique(caches), 2L)
-  expect_match(basename(caches), "^bayesnec-stan-[0-9]+$")
+  expect_match(basename(caches), "^bayesnec-stan-.+-[0-9]+$")
   expect_false(any(vapply(out$fits, function(f) f$has_big, logical(1))))
+  expect_identical(
+    unname(vapply(out$fits, function(f) f$seed, integer(1))),
+    out$level_seeds
+  )
+  expect_identical(
+    unname(vapply(out$fits, function(f) f$group_seed, integer(1))),
+    out$level_seeds
+  )
 })
 
 test_that("a formula stops holding the environment it was written in", {
@@ -859,6 +889,18 @@ test_that("an environment R sends by reference is left alone", {
   expect_false(bayesnec:::env_by_reference(new.env()))
 })
 
+test_that("an arbitrary attached environment is narrowed by value", {
+  attach(list(review_big = numeric(1e6)), name = "review_env")
+  on.exit(detach("review_env"), add = TRUE)
+  attached <- as.environment("review_env")
+  expect_false(bayesnec:::env_by_reference(attached))
+  f <- bayesnecformula(y ~ crf(x, model = "nec3param"))
+  environment(f) <- new.env(parent = attached)
+  narrowed <- bayesnec:::narrow_formula_environment(f, nec_data)
+  expect_false(exists("review_big", envir = environment(narrowed),
+                      inherits = TRUE))
+})
+
 test_that("a function the formula names comes with its own environment", {
   # The limit of what this can do, recorded rather than hidden. A user
   # transformation defined beside the formula is a closure over the same
@@ -960,6 +1002,23 @@ test_that("the levels of a grouped call are seeded from the caller", {
   expect_identical(seeds(4, 17), seeds(4, 17))
   expect_false(identical(seeds(4, 17), seeds(4, 18)))
   expect_length(seeds(4, 17), 4L)
+  # Match make_good_inits(): malformed values still fail rather than being
+  # replaced with unrelated generated seeds, and scalar NA means no seed. Base
+  # set.seed() accepts a vector by using its first element, so that established
+  # behaviour is retained as well.
+  expect_error(seeds(2, "bad"), "supplied seed")
+  expect_error(seeds(2, Inf), "supplied seed")
+  expect_identical(seeds(2, 1:2), seeds(2, 1))
+  expect_length(seeds(2, NA_integer_), 2L)
+  d <- nec_data
+  d$site <- rep(c("a", "b"), length.out = nrow(d))
+  expect_error(
+    suppressMessages(bnec_group(
+      y ~ crf(x, model = "nec3param"), data = d, group_var = "site",
+      family = "Beta", seed = "bad"
+    )),
+    "supplied seed"
+  )
   # With none supplied they come from the session's stream, so set.seed()
   # before the call fixes them.
   set.seed(338)
@@ -981,41 +1040,36 @@ test_that("the levels of a grouped call are seeded from the caller", {
   expect_identical(RNGkind()[3], "Rounding")
 })
 
-test_that("a seeded body gives one answer on both arrangements", {
+test_that("a seeded level gives one answer with either model arrangement", {
   skip_unless_future()
   skip_unless_worker_sees_internals()
-  # The mechanism behind the claim that the arrangement does not change a
-  # grouped call's estimates, pinned without fitting anything. The body stands
-  # in for one level: it seeds itself from the level seed the parent realised,
-  # then makes the two draws a level makes -- the initial-value search, and the
-  # single sample.int() expand_manec() uses to pick the weighted draw.
-  #
-  # It fails if the set.seed() in bnec_group()'s fit_level is removed, and it
-  # fails if bnec_parallel_lapply() stops restoring the parent's RNG kind in
-  # the worker, because the same seed then draws from L'Ecuyer-CMRG in a worker
-  # and from Mersenne-Twister in the parent.
-  set.seed(1)
-  seeds <- bayesnec:::group_level_seeds(4, 17)
-  seeded <- function(i) {
-    set.seed(seeds[i])
-    c(runif(1), sample.int(.Machine$integer.max, 1))
-  }
-  unseeded <- function(i) c(runif(1), sample.int(.Machine$integer.max, 1))
-  expect_identical(
-    bayesnec:::bnec_parallel_lapply(1:4, seeded, parallel = FALSE),
-    with_parallel_plan(
-      bayesnec:::bnec_parallel_lapply(1:4, seeded, parallel = TRUE)
+  # This is the two nested loops without Stan. Each mock equation resets to the
+  # realised level seed as brms does when bnec_group() passes seed. The weighted
+  # draw happens after that loop, where the sequential and future paths leave
+  # different ambient streams; with_group_seed() makes it independent of that
+  # difference.
+  level_seed <- bayesnec:::group_level_seeds(1, 17)
+  run_level <- function(parallel) {
+    set.seed(level_seed)
+    fits <- bayesnec:::bnec_parallel_lapply(1:3, function(i) {
+      set.seed(level_seed)
+      runif(2)
+    }, parallel = parallel)
+    draw_seed <- bayesnec:::with_group_seed(
+      level_seed, sample.int(.Machine$integer.max, 1)
     )
+    list(fits = fits, draw_seed = draw_seed)
+  }
+  expect_identical(
+    run_level(FALSE),
+    with_parallel_plan(run_level(TRUE))
   )
-  # The same comparison without the seed, which is what earlier versions did
-  # and what made the arrangement decide the answer.
+  # A standalone bnec() call supplies NULL and retains the ambient-stream
+  # behaviour documented for its model-averaging draw.
   set.seed(2)
-  a <- bayesnec:::bnec_parallel_lapply(1:4, unseeded, parallel = FALSE)
+  expected <- runif(1)
   set.seed(2)
-  b <- with_parallel_plan(
-    bayesnec:::bnec_parallel_lapply(1:4, unseeded, parallel = TRUE)
-  )
-  expect_false(identical(a, b))
+  expect_identical(bayesnec:::with_group_seed(NULL, runif(1)), expected)
 })
 
 test_that("a level seed means one thing whatever sampler the session is in", {

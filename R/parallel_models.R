@@ -227,32 +227,34 @@ group_loop_rounds <- function(n_levels, n_models, workers) {
 #' reason. The model loop inside one \code{\link{bnec}} call is not exposed to
 #' it, because there the equations differ and so do the programs.
 #'
-#' \bold{Keyed on the process, not on the level.} A key per level would make a
-#' worker that draws three levels compile every equation three times, so a
-#' grouped call of seven levels and eleven equations would compile 77 programs
-#' where it needs at most one per worker. A key per process gives the same
-#' separation --- no two futures run in one process at one time --- at one
-#' compilation per equation per worker.
+#' \bold{Keyed on the host and process, not only on the level.} PIDs are local to
+#' a host, so workers on two cluster nodes can have the same PID while writing
+#' under one shared root. The host and PID together keep concurrently active
+#' worker processes apart. On a persistent-worker backend, such as
+#' \code{multisession} or \code{cluster}, a worker that fits several levels can
+#' reuse its directory. A \code{multicore} backend starts a new process for each
+#' one-element future, so the directory is effectively per level there and each
+#' level can compile the same equations again.
 #'
 #' It is applied on both backends although only one needs it. Under
 #' \code{multisession} each worker is a separate process with its own
 #' \code{\link[base]{tempdir}}, so the default cache location already differs;
 #' under \code{multicore} the child inherits the parent's, so it does not. A
-#' directory per process is the same arrangement on both, and it is the case
-#' where the user has set \code{cmdstanr_write_stan_file_dir} that makes it
-#' necessary on both: a directory the user chose is shared by every worker
-#' whatever the backend.
+#' directory per active host-process pair is the same arrangement on both. It
+#' is also needed where the user has set
+#' \code{cmdstanr_write_stan_file_dir}: a directory the user chose can be shared
+#' by every worker on every host.
 #'
 #' Rooted at \code{cmdstanr_write_stan_file_dir} where the user has set one and
 #' at \code{\link[base]{tempdir}} otherwise, which is where \pkg{cmdstanr}
 #' writes by default.
 #'
 #' \bold{What this adds is compilation on a cold cache.} A parallel grouped run
-#' compiles each equation once per worker rather than once, and a process id is
-#' not the same on the next run, so a persistent cache the user has warmed is
-#' not read by a parallel grouped call and the programs that call writes are not
-#' read by the next one. Against a fit measured at 18 minutes on the AIMS HPC
-#' that is small; against a short fit on a cold cache it need not be, and
+#' can compile each equation once per persistent worker, and once per level
+#' under \code{multicore}, rather than once for the whole call. A persistent
+#' cache the user has warmed is not read directly because each worker writes
+#' below its own subdirectory. Against a fit measured at 18 minutes on the AIMS
+#' HPC that is small; against a short fit on a cold cache it need not be, and
 #' \code{group_loop_rounds()} counts sampling only. Fitting the levels in
 #' sequence --- which a plan of \code{list(sequential, ...)} asks for --- uses
 #' the cache as it always did.
@@ -272,20 +274,61 @@ group_loop_rounds <- function(n_levels, n_models, workers) {
 #'
 #' @param root A \code{\link[base]{character}} vector of length 1 giving the
 #' directory to write under, or \code{NULL} for \code{\link[base]{tempdir}}.
+#' @param host The worker host name.
+#' @param pid The worker process identifier.
 #'
 #' @return A \code{\link[base]{character}} vector of length 1, the directory,
 #' which has been created.
 #'
 #' @noRd
-worker_stan_cache_dir <- function(root = NULL) {
+worker_stan_cache_dir <- function(root = NULL,
+                                  host = Sys.info()[["nodename"]],
+                                  pid = Sys.getpid()) {
   base <- root
   if (is.null(base) || !is.character(base) || length(base) != 1 ||
         is.na(base)) {
     base <- tempdir()
   }
-  path <- file.path(base, paste0("bayesnec-stan-", Sys.getpid()))
+  # PIDs are unique only within one host. A cluster whose workers share `base`
+  # can assign the same PID on different nodes, so the host is part of the key.
+  # Restricted to portable filename characters because nodenames are supplied
+  # by the operating system rather than by R.
+  host <- if (length(host) == 1 && !is.na(host) && nzchar(host)) {
+    gsub("[^[:alnum:]_.-]", "_", host)
+  } else {
+    "unknown-host"
+  }
+  path <- file.path(base, paste0("bayesnec-stan-", host, "-", pid))
   dir.create(path, showWarnings = FALSE, recursive = TRUE)
   path
+}
+
+#' Evaluate an expression under a grouped call's realised level seed
+#'
+#' A model set advances R's stream differently when its equation loop is an
+#' ordinary \code{\link[base]{lapply}} and when it is dispatched through
+#' \pkg{future}. \code{expand_manec()} draws its model-averaging seed after that
+#' loop, so a level seed alone does not make the weighted posterior independent
+#' of the arrangement. This wrapper pins the expansion to the level seed and
+#' restores the stream afterwards. A \code{NULL} seed evaluates the expression
+#' unchanged, preserving the established behaviour of a standalone
+#' \code{\link{bnec}} call.
+#'
+#' @param seed A realised seed, or \code{NULL}.
+#' @param expr An expression to evaluate.
+#'
+#' @return The value of \code{expr}.
+#'
+#' @noRd
+with_group_seed <- function(seed, expr) {
+  if (is.null(seed)) {
+    return(expr)
+  }
+  with_preserved_rng_state({
+    suppressWarnings(set.seed(seed, kind = "Mersenne-Twister",
+                              sample.kind = "Rejection"))
+    expr
+  })
 }
 
 #' One seed per level, realised in the caller's session
@@ -375,8 +418,11 @@ group_level_seeds <- function(n_levels, seed = NULL) {
       assign(".Random.seed", old_seed, envir = globalenv())
     }
   }, add = TRUE)
-  if (!is.null(seed) && length(seed) == 1 && is.numeric(seed) &&
-        is.finite(seed)) {
+  # Match make_good_inits(): NULL and one NA mean that no seed was supplied;
+  # every other value reaches set.seed(), whose own validation rejects malformed
+  # values. Testing validity with a narrower predicate and then ignoring a
+  # failure would turn a call that previously stopped into an unrelated fit.
+  if (!is.null(seed) && !(length(seed) == 1 && is.na(seed))) {
     suppressWarnings(set.seed(seed, kind = "Mersenne-Twister",
                               sample.kind = "Rejection"))
   }
@@ -468,8 +514,11 @@ plan_group_levels <- function(n_levels, n_models) {
   # is not read as a request: dispatching the levels through future would cost
   # a round trip to reach the lapply they would have reached anyway, and the
   # message below would name a strategy that does no more than the first.
-  nested_inner <- nested &&
-    any(!vapply(strategies[-1], inherits, logical(1), "sequential"))
+  # bnec_group() has two nested loops, so only the next strategy can drive the
+  # model loop. A parallel third strategy is unreachable when the second is
+  # sequential; treating any later strategy as the next one both misstated the
+  # plan and dispatched a level for no gain.
+  nested_inner <- nested && !inherits(strategies[[2]], "sequential")
   if (nested && inherits(strategies[[1]], "sequential")) {
     if (!nested_inner) {
       return(none)
@@ -549,8 +598,9 @@ plan_group_levels <- function(n_levels, n_models) {
     },
     "\nPer-level messages from a worker may arrive out of order, or not at",
     " all. A level that fails ends the call either way.",
-    "\nEach worker writes its Stan programs to its own directory, so on a cold",
-    " cache every equation is compiled once per worker rather than once.",
+    "\nEach active host-process pair writes its Stan programs to its own",
+    " directory. On a cold cache this can compile every equation once per",
+    " persistent worker, and once per level under a multicore plan.",
     "\nUp to ", held, " fitted model sets are held at once, against one when",
     " the levels are fitted in sequence."
   )
@@ -719,10 +769,10 @@ bnec_parallel_lapply <- function(X, FUN, parallel = FALSE) {
 #' nothing to the serialised size. Every other environment is written out in
 #' full, together with everything bound in it.
 #'
-#' Tested on the name rather than on identity with each of them in turn:
-#' \code{\link[base]{environmentName}} returns a non-empty string for exactly
-#' the environments R serialises by reference and the empty string for an
-#' ordinary local one.
+#' Tested explicitly for the global, base and empty environments, namespaces,
+#' and attached package environments. \code{\link[base]{environmentName}} alone
+#' is insufficient: an arbitrary environment attached under a name also has a
+#' non-empty name, but R serialises its bindings by value.
 #'
 #' @param env An \code{\link[base]{environment}}.
 #'
@@ -730,7 +780,12 @@ bnec_parallel_lapply <- function(X, FUN, parallel = FALSE) {
 #'
 #' @noRd
 env_by_reference <- function(env) {
-  !is.environment(env) || nzchar(environmentName(env))
+  if (!is.environment(env)) {
+    return(TRUE)
+  }
+  identical(env, globalenv()) || identical(env, baseenv()) ||
+    identical(env, emptyenv()) || isNamespace(env) ||
+    startsWith(environmentName(env), "package:")
 }
 
 #' Rebuild a formula's environment to hold only the names it uses
