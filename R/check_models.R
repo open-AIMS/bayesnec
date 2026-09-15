@@ -283,6 +283,29 @@ check_models <- function(model, family, data, record = FALSE) {
                 "values.")
         )
       }
+      # ecxhormebc5 is defined for some parameter values on a negative
+      # predictor, unlike the fractional-power equations above, but its extra
+      # free bot parameter makes an admissible starting point unreliable in
+      # practice. Restrict this empirical exclusion to an identity-linked mean
+      # whose likelihood requires positivity: a Gaussian mean may be negative,
+      # and a log link maps any linear predictor back into positive support.
+      # ecxhormebc4 remains available because it fitted the same measured cases,
+      # including one where it received appreciable stacking weight. See #344.
+      support <- mu_support(family)
+      constrained_identity <- identical(link_tag, "identity") &&
+        isTRUE(support[1] == 0)
+      if (constrained_identity && "ecxhormebc5" %in% model) {
+        model <- setdiff(model, "ecxhormebc5")
+        reason <- paste("cannot be reliably initialised for", fam_tag,
+                        "with an identity link when the predictor contains",
+                        "negative values")
+        note_drop("ecxhormebc5", reason)
+        message("Dropping the model ecxhormebc5 because it cannot be reliably",
+                " initialised for a ", fam_tag, " with identity link when the",
+                " predictor (x) contains negative values. Use a scientifically",
+                " appropriate non-negative predictor scale or select another",
+                " equation.")
+      }
     }
   }
   if (!all(model %in% mod_groups$all)) {

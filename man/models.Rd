@@ -82,9 +82,15 @@ bounded on (0, 1) by construction and so unable to represent a response with
 no upper bound. Additionally,
 models that raise the predictor to a fractional power ("ecxsigm",
 "necsigm", "nechormepwr", "nechorme4pwr") are not suitable where the
-predictor contains negative values. These restrictions do
-not need to be controlled by the user and a call to \code{\link{bnec}} with
-\code{models = "all"} will simply exclude inappropriate models.
+predictor contains negative values. \code{"ecxhormebc5"} is also excluded
+for a negative predictor when an identity-linked response family requires a
+positive mean. Its linear hormesis term can make the mean negative there,
+and its additional free lower asymptote makes a valid starting point
+unreliable. It remains available for a non-negative predictor, an
+unconstrained Gaussian mean, or a link that maps the linear predictor into
+the response support. These restrictions do not need to be controlled by
+the user and a call to \code{\link{bnec}} with \code{models = "all"} will
+simply exclude inappropriate models.
 
 A model group names a shape, not a set of equations admissible for a given
 response. "decline" is the set that excludes the hormesis models, and it

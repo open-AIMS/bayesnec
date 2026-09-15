@@ -145,3 +145,39 @@ test_that("an empty exclusion record is still a data frame", {
   expect_s3_class(rec, "data.frame")
   expect_equal(nrow(rec), 0)
 })
+
+test_that("ecxhormebc5 is declined only where negative x can invalidate mu", {
+  negative <- data.frame(y = c(3, 2, 1), x = c(-2, 0, 2))
+  negative <- model.frame(bnf(y ~ crf(x, "ecxhormebc5")), negative)
+  requested <- c("ecxhormebc4", "ecxhormebc5", "nec4param")
+  gamma_identity <- validate_family(Gamma(link = "identity"),
+                                    link_source = "chosen")
+
+  expect_message(
+    kept <- check_models(requested, gamma_identity, negative, record = TRUE),
+    "cannot be reliably initialised.*predictor \\(x\\) contains negative"
+  )
+  expect_equal(as.character(kept), c("ecxhormebc4", "nec4param"))
+  excluded <- attr(kept, "excluded")
+  expect_equal(excluded$model, "ecxhormebc5")
+  expect_match(excluded$reason, "cannot be reliably initialised")
+  beta_identity <- validate_family(Beta(link = "identity"),
+                                   link_source = "chosen")
+  expect_equal(
+    suppressMessages(check_models(requested, beta_identity, negative)),
+    c("ecxhormebc4", "nec4param")
+  )
+
+  non_negative <- data.frame(y = c(3, 2, 1), x = c(0, 1, 2))
+  non_negative <- model.frame(
+    bnf(y ~ crf(x, "ecxhormebc5")), non_negative
+  )
+  expect_silent(check_models("ecxhormebc5", gamma_identity, non_negative))
+
+  # These cases do not expose a positive-support likelihood to a negative
+  # linear predictor, so the new exclusion must not broaden to them.
+  expect_silent(check_models("ecxhormebc5", validate_family("gaussian"),
+                             negative))
+  gamma_log <- validate_family(Gamma(link = "log"), link_source = "chosen")
+  expect_silent(check_models("ecxhormebc5", gamma_log, negative))
+})
