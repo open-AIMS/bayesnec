@@ -52,6 +52,9 @@
 #' hurdle on counts is zero-truncated. That overestimates the mean where the
 #' mean is small, which is the upper end of the concentration range; a
 #' zero-truncated count family is not yet available.
+#' @param predictor_scale The predictor-scale declaration passed to both
+#' \code{\link{bnec}} fits. It is checked against the complete predictor before
+#' either component is fitted. See \code{\link{bnec}}.
 #' @param ... Further arguments passed to both \code{\link{bnec}} calls.
 #'
 #' @details
@@ -137,11 +140,12 @@
 #'
 #' @export
 bnec_hurdle <- function(formula, data, model_survival = NULL,
-                        family_growth = NULL, ...) {
+                        family_growth = NULL, predictor_scale = "auto", ...) {
   # Captured before anything can rebind it; see family_link_source() and #256.
   growth_link_source <- family_link_source(substitute(family_growth),
                                            env = parent.frame())
   formula <- bayesnecformula(formula, env = parent.frame())
+  predictor_scale <- validate_predictor_scale(predictor_scale)
   y_var <- hurdle_response_var(formula)
   aterms <- check_hurdle_aterms(formula)
   if (!y_var %in% names(data)) {
@@ -175,6 +179,14 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
     stop("Every value of \"", y_var, "\" is zero.", call. = FALSE)
   }
   check_hurdle_cens(aterms, data, y, y_var)
+  # Both components are fitted in sequence, and the growth subset can omit the
+  # rows that contradict a concentration-scale declaration. Check the complete
+  # predictor here so the first component is not sampled before the second
+  # discovers the contradiction. See #317.
+  full_frame <- model.frame(formula, data = data, run_par_checks = TRUE)
+  validate_predictor_scale(
+    predictor_scale, retrieve_var(full_frame, "x_var", error = TRUE)
+  )
 
   # Survival component: one Bernoulli trial per individual, 1 = survived. The
   # curve therefore declines with concentration, matching the sign convention
@@ -211,11 +223,13 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
   # declaration reaches the block it belongs to. A survivor measured below the
   # recording limit is an observation of *this* component, not a structural zero.
   growth_fit <- bnec(formula, data = data[y > 0, , drop = FALSE],
-                     family = family_growth, ...)
+                     family = family_growth,
+                     predictor_scale = predictor_scale, ...)
   message("Fitting the survival component (", n_dead, " deaths of ",
           length(y), ").")
   survival_fit <- bnec(surv_formula, data = surv_data,
-                       family = bernoulli(link = "identity"), ...)
+                       family = bernoulli(link = "identity"),
+                       predictor_scale = predictor_scale, ...)
 
   out <- list(growth = growth_fit, survival = survival_fit,
               data = data, formula = formula, y_var = y_var,

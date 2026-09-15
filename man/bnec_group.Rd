@@ -4,7 +4,14 @@
 \alias{bnec_group}
 \title{Fit a concentration-response model separately at each level of a factor}
 \usage{
-bnec_group(formula, data, group_var, family = NULL, ...)
+bnec_group(
+  formula,
+  data,
+  group_var,
+  family = NULL,
+  predictor_scale = "auto",
+  ...
+)
 }
 \arguments{
 \item{formula}{A \code{\link{bayesnecformula}}, as passed to
@@ -18,6 +25,10 @@ bnec_group(formula, data, group_var, family = NULL, ...)
 \item{family}{A \code{\link[stats]{family}} function, string, or \code{NULL}.
 If \code{NULL} it is chosen once from the \emph{whole} response and passed
 down --- see Details.}
+
+\item{predictor_scale}{The predictor-scale declaration passed to
+\code{\link{bnec}} for every level. It is checked against the whole predictor
+before any level is fitted.}
 
 \item{...}{Further arguments passed to \code{\link{bnec}} for every level.}
 }

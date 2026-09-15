@@ -16,6 +16,15 @@
 
 ## Default priors
 
+- Default-prior entry points now accept `predictor_scale = "log"` to declare
+  that the predictor has already been logged. The declaration prevents a logged
+  concentration series whose lowest value is at or above 1 from being logged a
+  second time when the `nec` and `ec50` prior is built, and retains `log(1) = 0`
+  as a tested value. `predictor_scale = "concentration"` makes the alternative
+  declaration explicit and refuses negative values. The default, `"auto"`,
+  retains the previous sign-based choice and therefore changes no existing fit
+  unless the new argument is used (#317).
+
 - **The `"regularizing"` prior set is now one statement applied to every
   family.** `prior_type = "regularizing"` was written out branch by branch, and
   the branches had drifted apart, so the word did not describe one thing:
@@ -2804,4 +2813,3 @@
 - There is a vignette detailing the models available in bayesnec. Note that not all models are suitable for all families, and also depending if link functions are used.
 
 - A new check_chains function has been added to allow chain plotting in base R and that works more smoothly with plotting chains for multiple fits for bayesmanec objects.
-

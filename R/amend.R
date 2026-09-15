@@ -27,6 +27,11 @@
 #' \code{"regularizing"}. See \code{\link{bnec}}. Note this is not automatically
 #' inherited from the original fit; pass it explicitly to match the priors used
 #' when the object was first fitted.
+#' @param predictor_scale A \code{\link[base]{character}} string declaring
+#' whether the predictor is supplied as \code{"concentration"}, already
+#' \code{"log"} transformed, or should use the existing \code{"auto"} rule for
+#' priors generated for newly added models. See \code{\link{bnec}}. This is not
+#' inherited from the original fit; pass it explicitly to match that fit.
 #'
 #' @return All successfully fitted model fits. A \code{\link{bayesmanecfit}} if
 #' more than one model remains, otherwise a \code{\link{bayesnecfit}}.
@@ -39,7 +44,8 @@
 #' @export
 amend <- function(object, drop, add, loo_controls, x_range = NA,
                   resolution = 1000, sig_val = 0.01, priors,
-                  prior_type = "uninformative", timeout = Inf) {
+                  prior_type = "uninformative", timeout = Inf,
+                  predictor_scale = "auto") {
   UseMethod("amend")
 }
 
@@ -59,8 +65,10 @@ amend <- function(object, drop, add, loo_controls, x_range = NA,
 #' @export
 amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
                                 resolution = 1000, sig_val = 0.01, priors,
-                                prior_type = "uninformative", timeout = Inf) {
+                                prior_type = "uninformative",
+                                timeout = Inf, predictor_scale = "auto") {
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
+  predictor_scale <- validate_predictor_scale(predictor_scale)
   chk_number(timeout)
   if (timeout <= 0) {
     stop("Argument `timeout` must be a positive number (or Inf).")
@@ -89,7 +97,8 @@ amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
     loo_controls = if (missing(loo_controls)) NULL else loo_controls,
     x_range = x_range, resolution = resolution, sig_val = sig_val,
     priors = if (missing(priors)) NULL else priors,
-    prior_type = prior_type, timeout = timeout
+    prior_type = prior_type, predictor_scale = predictor_scale,
+    timeout = timeout
   )
 }
 
@@ -117,8 +126,10 @@ amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
 #' @export
 amend.bayesnecfit <- function(object, drop, add, loo_controls, x_range = NA,
                               resolution = 1000, sig_val = 0.01, priors,
-                              prior_type = "uninformative", timeout = Inf) {
+                              prior_type = "uninformative",
+                              timeout = Inf, predictor_scale = "auto") {
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
+  predictor_scale <- validate_predictor_scale(predictor_scale)
   chk_number(timeout)
   if (timeout <= 0) {
     stop("Argument `timeout` must be a positive number (or Inf).")
@@ -151,7 +162,8 @@ amend.bayesnecfit <- function(object, drop, add, loo_controls, x_range = NA,
     loo_controls = if (missing(loo_controls)) NULL else loo_controls,
     x_range = x_range, resolution = resolution, sig_val = sig_val,
     priors = if (missing(priors)) NULL else priors,
-    prior_type = prior_type, timeout = timeout
+    prior_type = prior_type, predictor_scale = predictor_scale,
+    timeout = timeout
   )
 }
 
@@ -191,7 +203,8 @@ amend_general_error <- function() {
 amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
                             add = NULL, loo_controls = NULL, x_range = NA,
                             resolution = 1000, sig_val = 0.01, priors = NULL,
-                            prior_type = "uninformative", timeout = Inf) {
+                            prior_type = "uninformative",
+                            predictor_scale = "auto", timeout = Inf) {
   general_error <- amend_general_error()
   if (!is.null(loo_controls)) {
     fam_tag <- mod_fits[[1]]$fit$family$family
@@ -243,6 +256,9 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   # fitted in, so this is not redundant with bnec(). See #329.
   formula <- narrow_formula_environment(formula, data)
   bdat <- model.frame(formula, data = data)
+  validate_predictor_scale(
+    predictor_scale, retrieve_var(bdat, "x_var", error = TRUE)
+  )
   model_set <- check_models(model_set, family, bdat, record = TRUE)
   # Stripped as soon as it is read, for the reason check_models() gives at its
   # record block: `model_set` is passed on from here, and an attribute nobody
@@ -318,6 +334,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
         # and is left alone here rather than changed as a side effect.
         brm_args$prior <- define_prior(
           model, family, x, y, prior_type = prior_type,
+          predictor_scale = predictor_scale,
           group_spec = parse_group_terms(formula, model)
         )
       } else {
@@ -327,6 +344,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
         fit_bayesnec(
           formula = formula, data = data, model = model,
           brm_args = brm_args, skip_check = TRUE, prior_type = prior_type,
+          predictor_scale = predictor_scale,
           timeout = timeout
         ),
         silent = FALSE
@@ -335,7 +353,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
     list(model_set = model_set, family = family, simdat = simdat,
          set_plan = set_plan, priors = priors, bdat = bdat,
          formula = formula, data = data, prior_type = prior_type,
-         timeout = timeout)
+         predictor_scale = predictor_scale, timeout = timeout)
   )
   attempts <- bnec_parallel_lapply(which(needs_fit), fit_one,
                                 parallel = set_plan$parallel)

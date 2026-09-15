@@ -1091,6 +1091,41 @@ test_that("both routes agree below a lowest dose of 1 and not above (#314)", {
   expect_lt(prior_pars(logged2)[2], prior_pars(pp(lx))[2])
 })
 
+test_that("an explicit log scale fixes a non-negative logged predictor (#317)", {
+  pp <- bayesnec:::predictor_prior
+  concentration <- round(exp(seq(log(10), log(10000), length.out = 7)), 3)
+  logged <- log(concentration)
+
+  for (type in c("uninformative", "regularizing")) {
+    from_concentration <- pp(concentration, type,
+                             predictor_scale = "concentration")
+    from_log <- pp(logged, type, predictor_scale = "log")
+    expect_equal(prior_dist(from_concentration), "lognormal")
+    expect_equal(prior_dist(from_log), "normal")
+    expect_equal(prior_pars(from_log)[1], prior_pars(from_concentration)[1])
+    if (type == "regularizing") {
+      expect_equal(prior_pars(from_log)[2], prior_pars(from_concentration)[2])
+    } else {
+      expect_equal(prior_pars(from_log)[2], 10 * sd(unique(logged)))
+    }
+    expect_false(identical(pp(logged, type), from_log))
+  }
+})
+
+test_that("an explicit log scale retains log(1) and validates declarations (#317)", {
+  pp <- bayesnec:::predictor_prior
+  logged <- log(c(1, 3, 10, 30, 100))
+  explicit <- pp(logged, predictor_scale = "log")
+  expected <- paste0("normal(", median(logged), ", ", 10 * sd(logged), ")")
+
+  expect_equal(explicit, expected)
+  expect_false(identical(pp(logged), explicit))
+  expect_error(pp(c(-1, 0, 1), predictor_scale = "concentration"),
+               "requires a non-negative predictor")
+  expect_error(pp(logged, predictor_scale = "unknown"),
+               "arg.*one of")
+})
+
 test_that("the regularizing prior is not uniform once logged (#314)", {
   # The defect #314 removes. On a 0.1 to 100 series supplied as log(conc) the
   # #305 entry had a spread of 20.96 against a tested range of 6.91, so the
@@ -1238,6 +1273,21 @@ test_that("a hurdle mu block reads the whole predictor for nec (#302)", {
   expect_equal(pr$prior[pr$nlpar == "nec"], whole)
   expect_equal(pr$prior[pr$nlpar == "hunec"], whole)
   expect_equal(as.numeric(pr$ub[pr$nlpar == "nec"]), 100)
+})
+
+test_that("a hurdle fit uses the declared scale for both blocks (#317)", {
+  set.seed(317)
+  x <- rep(log(c(1, 3, 10, 30, 100)), each = 6)
+  y <- c(rgamma(24, 25, 25 / 8), rep(0, 6))
+  fam <- brms::hurdle_gamma(link = "identity", link_hu = "identity")
+  pr <- bayesnec:::define_hurdle_prior(
+    "nec3param", fam, x, y, predictor_scale = "log"
+  )
+
+  expect_match(pr$prior[pr$nlpar == "nec"], "^normal\\(")
+  expect_match(pr$prior[pr$nlpar == "hunec"], "^normal\\(")
+  expect_equal(as.numeric(pr$lb[pr$nlpar == "nec"]), min(x))
+  expect_equal(as.numeric(pr$ub[pr$nlpar == "nec"]), max(x))
 })
 
 test_that("a hurdle mu block with no surviving dose still builds (#302)", {

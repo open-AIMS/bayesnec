@@ -817,6 +817,7 @@ add_brm_defaults <- function(
   skip_check,
   custom_name,
   prior_type = "uninformative",
+  predictor_scale = "auto",
   model_survival = NULL,
   disp_spec = NULL,
   group_spec = NULL
@@ -916,6 +917,7 @@ add_brm_defaults <- function(
       predictor,
       response,
       prior_type = prior_type,
+      predictor_scale = predictor_scale,
       model_survival = model_survival,
       disp_spec = disp_spec,
       group_spec = group_spec
