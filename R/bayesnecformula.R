@@ -13,7 +13,7 @@
 #' @param ... Unused.
 #' @param env An \code{\link[base]{environment}} in which to resolve symbols
 #' that \code{formula} names but that are not columns of the data --- a
-#' variable holding the model set, or a function used to transform the
+#' variable holding the model set, or an R function needed to transform the
 #' predictor. Only used when \code{formula} is a character string, because a
 #' formula object already carries its own environment. Defaults to the calling
 #' environment, so a character formula passed down through a wrapper function
@@ -51,7 +51,11 @@
 #' c("nec3param", "ecxll3"); bnf(y ~ crf(x, eqs))}. It is resolved in the
 #' environment the formula was written in, which for a formula supplied as a
 #' character string means the environment given by \code{env}. The same applies
-#' to any function used to transform the predictor inside \code{crf}.
+#' on the R side to a function used to transform the predictor inside
+#' \code{crf}. Resolving that function in R does not define it in Stan: the
+#' function call must also be valid Stan syntax, either because Stan provides
+#' it or because the corresponding Stan function is supplied through
+#' \code{stanvars}. Otherwise, transform the predictor in the data first.
 #' 
 #' \bold{Group-level terms: \code{glterms}}
 #' 
@@ -297,21 +301,21 @@
 #' bnf(y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1))
 #'
 #' \donttest{
-#' # complex transformations are not advisable because
-#' # they are passed directly to Stan via brms
-#' # and are likely to fail -- transform your variable beforehand!
+#' # The predictor expression is passed to Stan by brms. Precompute a
+#' # transformation unless its function is also defined for Stan.
 #' try(bnf(y | trials(tr) ~ crf(scale(x, scale = TRUE), "nec3param")))
 #' }
 #' @export
 bayesnecformula <- function(formula, ..., env = parent.frame()) {
-  if (!is.environment(env)) {
-    # Refused rather than passed through. environment(formula) <- NULL is legal
-    # and would silently restore the behaviour this argument exists to fix,
-    # because formula_env() then falls back to the global environment.
-    stop("Argument `env` must be an environment; you supplied ",
-         class(env)[1], ".", call. = FALSE)
-  }
   if (is.character(formula)) {
+    if (!is.environment(env)) {
+      # Refused rather than passed through. as.formula(..., env = NULL) is
+      # legal and would silently restore the global-environment-only behaviour
+      # this argument exists to fix. A formula object ignores env because it
+      # already records where its symbols resolve.
+      stop("Argument `env` must be an environment; you supplied ",
+           class(env)[1], ".", call. = FALSE)
+    }
     # A character formula carries no environment of its own, so one has to be
     # supplied. as.formula()'s default would give the frame of this function,
     # whose lexical parent is the package namespace and then the global

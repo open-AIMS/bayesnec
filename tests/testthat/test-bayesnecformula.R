@@ -156,7 +156,7 @@ test_that("a model set variable that does not exist is still an error", {
   expect_error(fit_set(), "no_such_object")
 })
 
-test_that("a locally defined predictor transformation resolves", {
+test_that("a locally defined predictor transformation resolves on the R side", {
   # The same defect on the other half of the crf() term: the reduced formula
   # model.frame() is given lost the user's environment, so a function defined
   # in the caller was found only at the console.
@@ -183,9 +183,11 @@ test_that("the brms formula is built from a locally defined transformation", {
   # compilation to the suite for a defect that is fixed before brm() is
   # reached.
   build <- function() {
-    squared <- function(z) z^2
+    # square() is defined here for R's model frame and is also a Stan built-in.
+    # An arbitrary R helper would still need a Stan definition at fit time.
+    square <- function(z) z^2
     eqs <- "nec3param"
-    f <- bnf(y ~ crf(squared(x), eqs))
+    f <- bnf(y ~ crf(square(x), eqs))
     single_form <- single_model_formula(f, get_model_from_formula(f))
     make_brmsformula(single_form, nec_data)
   }
@@ -222,6 +224,13 @@ test_that("env must be an environment", {
                "must be an environment")
   expect_error(bayesnecformula("y ~ crf(x, \"nec3param\")", env = "globalenv"),
                "must be an environment")
+})
+
+test_that("env is ignored when a formula already carries an environment", {
+  f <- y ~ crf(x, "nec3param")
+  out <- bnf(f, env = NULL)
+  expect_s3_class(out, "bayesnecformula")
+  expect_identical(environment(out), environment(f))
 })
 
 test_that("a model argument that is not character is named as the cause", {

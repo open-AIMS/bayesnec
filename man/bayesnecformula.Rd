@@ -16,7 +16,7 @@ R formula or an actual \code{\link[stats]{formula}} object. See details.}
 
 \item{env}{An \code{\link[base]{environment}} in which to resolve symbols
 that \code{formula} names but that are not columns of the data --- a
-variable holding the model set, or a function used to transform the
+variable holding the model set, or an R function needed to transform the
 predictor. Only used when \code{formula} is a character string, because a
 formula object already carries its own environment. Defaults to the calling
 environment, so a character formula passed down through a wrapper function
@@ -61,7 +61,11 @@ the set can be assembled before the formula is written --- \code{eqs <-
 c("nec3param", "ecxll3"); bnf(y ~ crf(x, eqs))}. It is resolved in the
 environment the formula was written in, which for a formula supplied as a
 character string means the environment given by \code{env}. The same applies
-to any function used to transform the predictor inside \code{crf}.
+on the R side to a function used to transform the predictor inside
+\code{crf}. Resolving that function in R does not define it in Stan: the
+function call must also be valid Stan syntax, either because Stan provides
+it or because the corresponding Stan function is supplied through
+\code{stanvars}. Otherwise, transform the predictor in the data first.
 
 \bold{Group-level terms: \code{glterms}}
 
@@ -299,9 +303,8 @@ bnf(y ~ crf(x, "nec3param") + disp("power"))
 bnf(y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1))
 
 \donttest{
-# complex transformations are not advisable because
-# they are passed directly to Stan via brms
-# and are likely to fail -- transform your variable beforehand!
+# The predictor expression is passed to Stan by brms. Precompute a
+# transformation unless its function is also defined for Stan.
 try(bnf(y | trials(tr) ~ crf(scale(x, scale = TRUE), "nec3param")))
 }
 }

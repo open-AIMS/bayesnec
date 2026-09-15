@@ -970,8 +970,8 @@
   string is given the environment of the call that converted it, through a new
   `env` argument to `bayesnecformula()` and `bnf()` (#319).
 
-  The same defect held for a function used to transform the predictor. The
-  reduced formula `model.frame()` is built from, the back-transform
+  The same R-side defect held for a function used to transform the predictor.
+  The reduced formula `model.frame()` is built from, the back-transform
   `sub_x_transformation()` applies in `ecx()`, `nsec()` and `expand_nec()`, the
   component formulas of a hurdle fit, the `disp()` term and the `brmsformula`
   handed to `brms` each lost the environment the user wrote the formula in,
@@ -982,7 +982,11 @@
   rather than at the start. One of these has a further consequence: the check
   that a `disp()` sub-model evaluates to finite values could not evaluate such
   a term at all and skipped it, so a formula written this way now stops where
-  it previously fitted and failed in Stan.
+  it previously fitted and failed in Stan. This change makes the function
+  available when R evaluates the formula; it does not define that function in
+  Stan. During fitting `brms` writes the predictor expression into Stan code,
+  so a custom function must also have a Stan definition supplied through
+  `stanvars`, or the transformed predictor must be computed in the data first.
 
   One consequence of binding an environment to a character formula: the
   formula is stored once per model, so a formula converted inside a function
