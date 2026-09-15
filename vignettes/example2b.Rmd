@@ -21,7 +21,14 @@ bibliography: bayesnec.bib
 
 There are a range of models available in `bayesnec` and the working `bnec` function supports individual model fitting, as well as multi-model fitting with Bayesian model averaging.
 
-The argument `model` in a `bayesnecformula` is a character string indicating the name(s) of the desired model (see `?models` for more details, and the list of models available). If a recognised model name is provided, a single model of the specified type is fit, and `bnec` returns a model object of class `bayesnecfit`. If a vector of two or more of the available models are supplied, `bnec` returns a model object of class `bayesmanecfit` containing Bayesian model averaged predictions for the supplied models, providing they were successfully fitted.
+The argument `model` in a `bayesnecformula` may be a character vector of model
+names or a named list of equation formulas returned by `models()` (see `?models`
+for more details). If a recognised model name is provided, a single model of the
+specified type is fit, and `bnec` returns a model object of class `bayesnecfit`.
+If a vector or list of two or more of the available models is supplied, `bnec`
+returns a model object of class `bayesmanecfit` containing Bayesian model
+averaged predictions for the supplied models, providing they were successfully
+fitted.
 
 Model averaging is achieved through a weighted sample of each fitted models' posterior predictions, with weights derived using the `loo_model_weights` function from `loo` [@vehtari2020; @vehtari2017]. Individual `brms` model fits can be extracted from the `mod_fits` element and can be examined individually.
 
@@ -61,6 +68,13 @@ models()
 #> [1] "nechorme"      "nechorme4"     "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01" "ecxhormebc4"  
 #> [8] "ecxhormebc5"
 ```
+
+A design with few distinct predictor concentrations may not support equations
+with four or five curve parameters. `models(max_pars = 3)` lists all equations
+with no more than three curve parameters. The same limit can be combined with a
+group, for example `models("decline", max_pars = 3)`, and the returned list can
+be passed directly to the `model` argument of `crf()`, as in
+`crf(x, models("decline", max_pars = 3))`.
 
 # Parameter definitions
 
