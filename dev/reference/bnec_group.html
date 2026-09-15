@@ -188,9 +188,11 @@ nested plan emits — is in <code><a href="../articles/example2.html">vignette("
 levels of a grouped call</em>.</p>
 <p><b>What a plan does and does not reproduce</b></p>
 <p>Each level is given its own seed, realised in the calling session before the
-levels are dispatched and derived from <code>seed</code> where you passed one. So a
-grouped call gives the same estimates whichever arrangement it took, and the
-worker count does not change an answer. With a <code>seed</code> it repeats with no
+levels are dispatched and derived from <code>seed</code> where you passed one. The
+realised seed is passed to every equation fitted for that level and is
+reapplied when the model-averaging draw is realised. A grouped call therefore
+gives the same estimates whichever arrangement it took, and the worker count
+does not change an answer. With a <code>seed</code> it repeats with no
 <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></code> in the session; without one,
 <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></code> before the call fixes it.</p>
 <p>What was realised is kept: the returned object carries <code>level_seeds</code>,

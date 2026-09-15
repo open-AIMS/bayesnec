@@ -863,16 +863,18 @@ memory is tightest.</p>
 <p>Compilation is the other thing the arrangement adds. Every level fits
 the same equations, so parallel levels build the same Stan programs at
 the same time, and <code>cmdstanr</code> does not lock its compile
-cache. Each worker process is given a directory of its own to keep them
-apart, which means a parallel grouped run on a cold cache compiles each
-equation once per worker rather than once. The count above measures
-sampling only, so on short fits the arrangement it prefers can be the
-slower one on the clock. Where <code>cmdstanr_write_stan_file_dir</code>
-has been set, those directories are written under it as
-<code>bayesnec-stan-&lt;pid&gt;</code>, one per worker process per run;
-a process id does not repeat, so they are not read again and are safe to
-delete. Fitting the levels in sequence uses the cache as it always
-did.</p>
+cache. Each active host-process pair is given a directory of its own to
+keep concurrent compiles apart. A persistent <code>multisession</code>
+or <code>cluster</code> worker can reuse its directory across levels. A
+<code>multicore</code> plan starts a new process for each one-element
+future, so it can compile each equation once per level. The count above
+measures sampling only, so on short fits the arrangement it prefers can
+be slower in elapsed time. Where
+<code>cmdstanr_write_stan_file_dir</code> has been set, those
+directories are written under it as
+<code>bayesnec-stan-&lt;host&gt;-&lt;pid&gt;</code>. They are safe to
+delete after the workers finish. Fitting the levels in sequence uses the
+cache as it always did.</p>
 <p>The caveat in <em>The Stan backend</em> above applies here with more
 force, because every level compiles the same programs: under
 <code>rstan</code> with <code>rstan_options(auto_write = TRUE)</code>
@@ -882,10 +884,13 @@ and no argument changes that location, so prefer
 set.</p>
 <p>Each level is given its own seed, realised in the calling session
 before the levels are dispatched and derived from <code>seed</code>
-where one was passed. A grouped call therefore gives the same estimates
-whichever arrangement it took, so the number of workers on the machine
-does not change an answer, and the realised seeds are kept on the
-returned object as <code>level_seeds</code>.</p>
+where one was passed. That seed is passed to every equation fitted for
+the level and is reapplied when the model-averaging draw is realised.
+Both uses are needed because sequential and parallel equation loops
+advance different RNG streams. A grouped call therefore gives the same
+estimates whichever arrangement it took, so the number of workers on the
+machine does not change an answer, and the realised seeds are kept on
+the returned object as <code>level_seeds</code>.</p>
 </div>
 </div>
 </div>
