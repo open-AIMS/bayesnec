@@ -96,7 +96,8 @@ object, for example, by adding or removing fitted models.</p>
 <span>  sig_val <span class="op">=</span> <span class="fl">0.01</span>,</span>
 <span>  <span class="va">priors</span>,</span>
 <span>  prior_type <span class="op">=</span> <span class="st">"uninformative"</span>,</span>
-<span>  timeout <span class="op">=</span> <span class="cn">Inf</span></span>
+<span>  timeout <span class="op">=</span> <span class="cn">Inf</span>,</span>
+<span>  predictor_scale <span class="op">=</span> <span class="st">"auto"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -185,6 +186,14 @@ models can still be fitted. A model that exceeds <code>timeout</code> is treated
 as a failed fit and dropped from the returned set. The default <code>Inf</code>
 imposes no limit. Requires the <span class="pkg">R.utils</span> package to be installed when a
 finite value is supplied.</p></dd>
+
+
+<dt id="arg-predictor-scale">predictor_scale<a class="anchor" aria-label="anchor" href="#arg-predictor-scale"></a></dt>
+<dd><p>A <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></code> string declaring
+whether the predictor is supplied as <code>"concentration"</code>, already
+<code>"log"</code> transformed, or should use the existing <code>"auto"</code> rule for
+priors generated for newly added models. See <code><a href="bnec.html">bnec</a></code>. This is not
+inherited from the original fit; pass it explicitly to match that fit.</p></dd>
 
 </dl></div>
     <div id="value">
