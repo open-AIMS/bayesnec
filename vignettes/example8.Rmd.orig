@@ -600,14 +600,29 @@ rbind(
 autoplot(fit_plate)
 ```
 
-<!-- DRAFT NOTE: the conclusion of this section is not yet written, and is not
-     to be written from the exploratory runs. Measured without a dispersion
-     sub-model, a plate term narrowed the ECx intervals and widened the N(S)EC,
-     and moved EC10 by 31 to 57 per cent depending on the term. Those runs also
-     showed the fitted variance at the control to be about eight times the
-     observed value, which a dispersion sub-model largely removes, so the
-     comparison has to be remade with `disp("power")` in both fits before the
-     direction is stated. See prompts/grouping-vignette-dataset.md. -->
+The two fits differ in which estimate they change. EC10 is almost the same
+either way, 0.327 mg/L pooled against 0.349 with the plate term, but its
+interval narrows from 0.219--0.712 to 0.314--0.382, about sevenfold. The
+N(S)EC changes instead, from 0.198 mg/L to 0.771, on intervals that stay wide in
+both. A reader who took the pooled fit at face value would report a no-effect
+concentration a quarter of the one the plate term gives, with an EC10 interval
+seven times wider than the data support.
+
+The weights account for it. Pooled, they spread over `ecxll5` at 0.53, `ecxwb1`
+at 0.34, and `ecxll3` and `ecxhormebc4` at 0.05 each; with the plate term they
+concentrate onto `ecxll5` at 0.85 and `ecxwb1` at 0.15. `nec3param`,
+`nec4param`, `nechorme` and `nechorme4` --- every equation that estimates a
+threshold --- take no weight in either fit. A term on the fitted value rescales
+each plate's curve by a constant and leaves the shape of the transition alone,
+so it does not make a threshold easier to place, and pooling curves of different
+scale smears the transition rather than sharpening it.
+
+The direction here is the opposite of the previous section, and both follow from
+what the term has to explain. A concentration group sits at one concentration,
+so a term on it adds a variance component that the mean function cannot absorb,
+and the intervals widen. A plate spans the whole series, so a term on it removes
+a between-plate difference that was otherwise left in the residual, and the
+curve is better determined.
 
 # Design and model complexity
 
@@ -752,10 +767,24 @@ cmp_tox <- compare_posterior(fits_tox, comparison = "nec")
 cmp_tox$prob_diff
 ```
 
-<!-- DRAFT NOTE: the conclusion is not written. Note when writing it that the
-     ECx values are on the log(conc) scale and need xform = exp, and that the
-     first quantity is a model-averaged N(S)EC rather than a NEC because the set
-     mixes threshold and smooth equations. -->
+The seven herbicides span two orders of magnitude. Back-transformed from the
+fitted scale, the N(S)EC runs from irgarol at 0.135 and diuron at 0.152 µg/L to
+simazine at 4.31 and tebuthiuron at 10.6, with ametryn, hexazinone and atrazine
+between them. `prob_diff` gives the probability that the first level of each pair
+has the higher estimate, so a value near 0 or 1 separates two herbicides and one
+near 0.5 does not: ametryn against tebuthiuron is 0.000 and atrazine against
+diuron 0.998, while simazine against tebuthiuron at 0.062 is the least separated
+of the 21 pairs. For the metals the single comparison is 0.003, so copper and
+zinc are distinguished on these data.
+
+The pairing matters for what this comparison may be used on. `compare_posterior()`
+pairs the draws of two posteriors by a random permutation, which approximates the
+difference of two independent posteriors and is valid only where the posteriors
+come from separate fits. `bnec_group()` fits every level separately, so that
+holds here. Two levels of a single fit share draws, and permuting them discards
+the correlation between them, widening the difference and pulling `prob_diff`
+towards 0.5 --- so a contrast between parts of one fit needs draw-wise
+differencing and must not be routed through this function.
 
 # Provenance
 
