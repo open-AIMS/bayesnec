@@ -342,15 +342,21 @@ test_that("brm_args does not export a family object's calling environment", {
   supplied <- make_family()
   family <- bayesnec:::validate_family(supplied, link_source = "symbol")
   brm_args <- list(family = bayesnec:::unmark_family(family))
+  # A finite maxSize asks future to calculate total_size even where the calling
+  # session has disabled its export limit with future.globals.maxSize = Inf.
+  # Without it the macOS check returned NA for both totals and tested nothing.
+  max_size <- 100 * 1024^2
   globals <- future::getGlobalsAndPackages(
     quote(brm_args$family$family),
-    envir = list2env(list(brm_args = brm_args), parent = baseenv())
+    envir = list2env(list(brm_args = brm_args), parent = baseenv()),
+    maxSize = max_size
   )$globals
   supplied_globals <- future::getGlobalsAndPackages(
     quote(brm_args$family$family),
     envir = list2env(
       list(brm_args = list(family = supplied)), parent = baseenv()
-    )
+    ),
+    maxSize = max_size
   )$globals
   expect_gt(attr(supplied_globals, "total_size"), 7 * 1024^2)
   expect_lt(
