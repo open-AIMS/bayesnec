@@ -30,6 +30,22 @@ Named vignettes are optional; with none it precompiles all of them. `--no-wait`
 returns the job id instead of blocking, and `--fetch` collects a run submitted
 that way.
 
+`--slot NAME` permits a deliberately concurrent run. The slot suffixes the
+remote deployment directory and Slurm job name, and gives the run a separate
+job-local library, output directory, provenance record and toolchain-keyed Stan
+cache. The matching container already in the ordinary deployment is hard-linked
+into the slot, so isolation does not require another image transfer. Collection
+uses the same slot name:
+
+```sh
+./hpc/precompile-hpc.sh --slot 228-fast --workers 16 --no-wait example8
+./hpc/precompile-hpc.sh --slot 228-fast --fetch example8
+```
+
+Two invocations with the same slot still refuse to overlap. Different slots do
+not share writable paths and may run together when the cluster allocation
+allows it.
+
 Settings live in `hpc/local.conf`, which is gitignored; copy
 `hpc/local.conf.example` and edit it. An account name, a login node and a path on
 one person's disk are not the repository's business, so they are kept out of it.
@@ -160,13 +176,13 @@ Serialising affects wall clock only on the first, cold run. Once the cache is
 warm the tasks read it rather than write it, and the `%1` can be raised
 deliberately.
 
-`%1` orders one array and not two. The cache is shared between runs and between
-branches, which is the point of it, so two array jobs submitted independently
-would collide in exactly the way `%1` prevents within one. `precompile-hpc.sh`
-therefore refuses to deploy while a `bnec-precompile` job of the account's is
-queued or running -- which it must do in any case, because a second deployment
-would rewrite the source tree and `vignettes.txt` underneath the tasks of the
-first that have not yet started.
+`%1` orders one array and not two. The ordinary cache is shared between runs and
+between branches, which is the point of it, so two ordinary array jobs submitted
+independently would collide in exactly the way `%1` prevents within one.
+`precompile-hpc.sh` therefore refuses to deploy while a job with the same name
+is queued or running. A named slot is the explicit exception: it has a separate
+tree and cache, so another deployment cannot rewrite its source, task list or
+compiled programs.
 
 ## The CI route
 
