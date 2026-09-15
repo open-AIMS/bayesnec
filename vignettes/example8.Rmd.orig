@@ -562,6 +562,18 @@ rbind(
 )
 ```
 
+The two fitted curves are drawn below, ungrouped first. The mean function is the
+same model in both, so what the term changes is the width of the credible band
+rather than the position of the curve.
+
+```{r}
+autoplot(fit_plain)
+```
+
+```{r}
+autoplot(fit_ogl)
+```
+
 # Across-concentration grouping
 
 A grouping whose levels each span the whole series admits a difference in shape,
@@ -594,6 +606,13 @@ rbind(
   data.frame(fit = "pooled", t(ecx(fit_pooled, ecx_val = 10, xform = exp))),
   data.frame(fit = "ogl(plate)", t(ecx(fit_plate, ecx_val = 10, xform = exp)))
 )
+```
+
+The pooled fit draws one curve through all seventeen plates; the plate term
+draws the population curve with the plates' own scales estimated around it.
+
+```{r}
+autoplot(fit_pooled)
 ```
 
 ```{r}
@@ -660,6 +679,10 @@ fit_pam <- bnec(yield ~ crf(diuron, "all") + ogl(chamber),
 summary(fit_pam)
 ```
 
+```{r}
+autoplot(fit_pam)
+```
+
 The colour endpoint has five concentrations and 45 chambers of four fragments.
 Fitting equations of three and of four curve parameters to it separately shows
 where the design runs out:
@@ -689,6 +712,19 @@ sampled_badly <- function(fit, label) {
 }
 rbind(sampled_badly(three_par, "three parameters"),
       sampled_badly(four_par, "four parameters"))
+```
+
+The two fits are drawn below. The point of the pair is that the diagnostics
+separate them where the curves do not: a fit that samples badly still produces a
+plausible-looking mean and credible band, so a set fitted without checking
+divergences and R-hat gives an answer that a figure will not question.
+
+```{r}
+autoplot(three_par)
+```
+
+```{r}
+autoplot(four_par)
 ```
 
 <!-- DRAFT NOTE: the conclusion is not written. Screened at 2 chains and 800
@@ -760,6 +796,10 @@ fits_tox <- bnec_group(
 
 ```{r}
 summary(fits_tox)
+```
+
+```{r}
+plot(fits_tox)
 ```
 
 ```{r}
