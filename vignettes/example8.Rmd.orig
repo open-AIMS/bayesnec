@@ -1,3 +1,15 @@
+<!-- NUMBERS TO VERIFY against the production render before this ships. Every
+     figure quoted in prose currently comes from the shape-check render (job
+     910761, 2 chains, iter = 400), not from a production run:
+       s4  N(S)EC 0.17 and 1.19; EC10 0.280 and 0.978; sd 0.165 (0.095-0.263)
+       s5  EC10 0.327/0.349 and N(S)EC 0.198/0.771 are from job 902840, which
+           predates the 221-commit merge of dev; annotated N(S)EC 0.19 and 0.65
+           and the control range 250,000-1,450,000 are from 910761
+       s6  divergences 0, 0, 9, 66; R-hat 1.027, 1.029, 1.844, 1.128
+       s7  prob_diff values and the per-level N(S)EC are from 902840
+     The 0.8 adapt_delta measurement in the provenance section is from the
+     exploratory runs and is independent of the render. -->
+
 ---
 title: "Grouping and factor covariates"
 output:
@@ -562,9 +574,7 @@ rbind(
 )
 ```
 
-The two fitted curves are drawn below, ungrouped first. The mean function is the
-same model in both, so what the term changes is the width of the credible band
-rather than the position of the curve.
+The two fitted curves are drawn below, ungrouped first.
 
 ```{r}
 autoplot(fit_plain)
@@ -573,6 +583,20 @@ autoplot(fit_plain)
 ```{r}
 autoplot(fit_ogl)
 ```
+
+The term changes the fitted curve, not only its uncertainty. Ungrouped, the
+model-averaged curve falls from the control immediately and the annotated
+N(S)EC is 0.17 mg/L on a narrow band; with `ogl(conc_group)` it holds near the
+control to about 1 mg/L before falling, and the N(S)EC is 1.19 on a band that
+spans most of the response range through the transition. EC10 changes with it,
+from 0.280 to 0.978 mg/L.
+
+That follows from the weights rather than from any one equation. Adding a term
+that absorbs within-concentration variation changes which curve shapes fit the
+concentration means best, so the average is taken over a different mixture. The
+four wells at a concentration are the only replication the design has, so an
+analysis that treats them as independent has nothing left to estimate that
+variation with, and reports the narrow band as though it were the evidence.
 
 # Across-concentration grouping
 
@@ -608,8 +632,8 @@ rbind(
 )
 ```
 
-The pooled fit draws one curve through all seventeen plates; the plate term
-draws the population curve with the plates' own scales estimated around it.
+Both fits draw one population curve through the same observations; what differs
+is what the model treats the spread between plates as.
 
 ```{r}
 autoplot(fit_pooled)
@@ -618,6 +642,14 @@ autoplot(fit_pooled)
 ```{r}
 autoplot(fit_plate)
 ```
+
+The vertical spread at each concentration is the gain difference. Control wells
+range from about 250,000 to 1,450,000 relative light units across the seventeen
+plates, and the pooled fit has nowhere to put that except the residual, which is
+why its curve falls from the control with a narrow band and an annotated N(S)EC
+of 0.19 mg/L. With `ogl(plate)` the same spread is attributed to the plates and
+the population curve holds nearer the control before falling, with an N(S)EC of
+0.65.
 
 The two fits differ in which estimate they change. EC10 is almost the same
 either way, 0.327 mg/L pooled against 0.349 with the plate term, but its
@@ -714,10 +746,7 @@ rbind(sampled_badly(three_par, "three parameters"),
       sampled_badly(four_par, "four parameters"))
 ```
 
-The two fits are drawn below. The point of the pair is that the diagnostics
-separate them where the curves do not: a fit that samples badly still produces a
-plausible-looking mean and credible band, so a set fitted without checking
-divergences and R-hat gives an answer that a figure will not question.
+The two fits are drawn below, three parameters first.
 
 ```{r}
 autoplot(three_par)
@@ -727,15 +756,20 @@ autoplot(three_par)
 autoplot(four_par)
 ```
 
-<!-- DRAFT NOTE: the conclusion is not written. Screened at 2 chains and 800
-     draws on 2026-09-09 the four-parameter equations gave 291 and 150 divergent
-     transitions of 800 against 0 for every three-parameter equation, and the
-     group-level sd was 0.42 to 0.45 under every equation that sampled, so the
-     effect estimated is stable while the curve is not. Raising adapt_delta to
-     0.99 at 8000 iterations reduced nec4param's divergence rate from 36 to 1.4
-     per cent but left R-hat at 1.381 and minimum ESS at 5, which is the evidence
-     that the cause is the design rather than the step size. Re-measure before
-     writing; #301 proposes restricting a set by parameter count. -->
+The diagnostics and the figures agree. Neither three-parameter equation records
+a divergent transition, and their maximum R-hat is 1.027 and 1.029; `nec4param`
+records 9 divergences at an R-hat of 1.844 and `ecx4param` 66 at 1.128. The
+four-parameter figure shows what an R-hat of 1.8 looks like: its credible band
+covers almost the whole response range from below 0.1 to near 0.7 across most of
+the concentration axis, so the fit states almost nothing about the curve while
+still drawing a mean through the data.
+
+Five concentrations is the conventional minimum for a concentration-response
+design, and it is enough to place a midpoint or a threshold but not enough to
+place both asymptotes as well. The design does not announce that: every equation
+is offered, every one returns an object, and only the diagnostics and the width
+of the band say which of them the data can support. #301 proposes restricting a
+set by the number of curve parameters for this reason.
 
 One further point belongs here. The colour score has exactly one observation on
 the `Beta` boundary, which is the signature of a response normalised to the
@@ -828,11 +862,38 @@ differencing and must not be routed through this function.
 
 # Provenance
 
-<!-- DRAFT NOTE: to be written last. Must record: the package version and commit
-     the fits were made under; that the vignette's own chunks use a reduced
-     equation set and 2 chains at 2000 iterations, against the full retained set
-     at 4 chains and 8000 with adapt_delta 0.99 for any result quoted from the
-     study runs; the seed; and the source of lum31, including that the workbooks
-     are not redistributed. -->
+Every fit shown was made when this vignette was precompiled, so the estimates
+are those of the package version it ships with. The session that produced them
+is recorded below.
+
+```{r}
+packageVersion("bayesnec")
+packageVersion("brms")
+R.version.string
+```
+
+The fits use `model = "all"`, which `bnec()` filters to the equations valid for
+the family and predictor, except for the herbicide call, which uses `decline`
+to reproduce the figure of @fisher2024, and section 6's parameter-count
+contrast, which names two equations on each side because the contrast is the
+point. Sampling is 4 chains at 5000 iterations with 4000 warmup, half the
+`bnec()` defaults of 10000 and 8000, under `seed = 228` and
+`adapt_delta = 0.99`. The raised `adapt_delta` is not decoration: at the default
+of 0.8, `ecxll5` returned 880 divergent transitions of 16000 on the section 4
+plate while holding about a fifth of the weight, and fitted alone it returns
+none at 0.99.
+
+`ecxhormebc5` is reported as not fitted in every `lum31` fit. It fails to
+initialise rather than to sample: its hormesis term `exp(slope) * x` is negative
+wherever the predictor is, which on `log(conc)` is 64 per cent of the
+observations, and a starting value drawn from the prior puts the mean below zero,
+which a Gamma with an identity link cannot represent. The same equation fits
+without difficulty on `coral_pam`, whose predictor is never negative. See #344.
+
+`lum31` was built from the AIMS data repository deposit accompanying
+@luter2025 by `data-raw/lum31.R`. `coral_colour` and `coral_pam` were built from
+the records behind @flores2021 by `data-raw/coral_diuron.R`. Neither set of
+source records is distributed with the package: the scripts are, and the
+manual pages state what was derived and how.
 
 # References
