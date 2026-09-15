@@ -358,11 +358,12 @@ test_that("brm_args does not export a family object's calling environment", {
     ),
     maxSize = max_size
   )$globals
-  expect_gt(attr(supplied_globals, "total_size"), 7 * 1024^2)
-  expect_lt(
-    attr(globals, "total_size"),
-    attr(supplied_globals, "total_size") / 10
-  )
+  supplied_size <- attr(supplied_globals, "total_size")
+  rebuilt_size <- attr(globals, "total_size")
+  expect_gt(supplied_size, 7 * 1024^2)
+  # Compare the removed bytes rather than a ratio so a platform-specific fixed
+  # baseline in the discovered globals cannot obscure removal of the sentinel.
+  expect_gt(supplied_size - rebuilt_size, 7 * 1024^2)
 })
 
 test_that("future's own seeding would have changed those draws", {
