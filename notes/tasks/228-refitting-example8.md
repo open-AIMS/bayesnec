@@ -1,17 +1,62 @@
-# Re-running example8 on a log axis
+# Re-fitting example8
 
-What the source now asks for, what has to be refitted, and which claims in the
-vignette are not yet verified against a render.
+What the vignette's fits require, and what each re-run established. Two re-runs
+have happened: the change to a log axis, and the change to `bnec()`'s sampling
+defaults that followed review.
 
-## The change
+## The current source
+
+`vignettes/example8.Rmd.orig` is an introduction to the three group-level
+syntaxes followed by three case studies, one per dataset. Every figure is on a
+log concentration axis. The two coral endpoints are fitted on
+`crf(log(diuron_adj), ...)`, where `diuron_adj` substitutes 0.1 µg/L for the
+recorded zero control. The nine fit calls name no `iter`, `warmup` or `control`
+and take `bnec()`'s defaults.
+
+The syntax section uses a 24-row synthetic frame rather than a real dataset.
+`make_brmsformula()` resolves names against a data frame and needs nothing else
+from it; the formulae it prints were checked against the real frame and are
+identical.
+
+## The cost of a change
+
+The fit store is keyed on the normalised call and a digest of the data. A change
+to any fit call changes its key, the render finds nothing under it and stops.
+`assemble_store.R` additionally refuses a set whose units were fitted by a
+`bayesnec` other than the one the manifest was built against.
+
+Two consequences worth knowing before editing a fit call. A change to `iter`,
+`warmup` or `control` re-keys every call that names it, so it is a full re-fit
+rather than a partial one. And a package upgrade between runs is a full re-fit
+whatever the calls say, because of the version guard.
+
+Each run has been directed at its own `units-*` and `store-*` directory rather
+than deleting the previous one, which is what the guard's message proposes. The
+previous store is what the figures in the open pull request were rendered from.
+`hpc/job-common.sh` in the compendium forwards `GRP_UNITS` and `GRP_STORE` into
+the container to make that possible; both default as before when unset.
+
+| run | units | store | what changed |
+|---|---|---|---|
+| 2026-09-16, log axis | `units-2.1.3.38` | `store-2.1.3.38` | three coral calls to `log(diuron_adj)`; bayesnec 2.1.3.37 to 2.1.3.38 |
+| 2026-09-16, defaults | `units-defaults` | `store-defaults` | all nine calls drop `iter`, `warmup` and `control` |
+
+## The sampling defaults
+
+`bnec()` defaults to `iter = 1e4` and `warmup = floor(iter / 5) * 4`, which is
+8000, set in `R/helpers.R:831`. It also raises `adapt_delta` to 0.99 itself
+(`R/helpers.R:895`) wherever the mean is constrained and a group-level term is
+unbounded, which is every fit in the vignette except `fits_herb`. Dropping the
+explicit `control` therefore keeps 0.99 on eight of the nine calls and returns
+the herbicide call to Stan's 0.8.
+
+## The log-axis run
 
 `vignettes/example8.Rmd.orig` draws every figure on a log concentration axis
 and fits the two coral endpoints on `crf(log(diuron_adj), ...)`. Six of the
 nine fit calls were already on `crf(log(...))` and are unchanged. The
 `lum31` and `herbicide` datasets contain no zero concentration; `coral_colour`
 and `coral_pam` do, and the vignette substitutes 0.1 µg/L for it.
-
-## The refit
 
 The fit store is keyed on the normalised call and a digest of the data, so a
 changed call changes the key and the render stops on it rather than loading the
@@ -29,7 +74,7 @@ Measured with `check_models()`: a negative predictor removes `necsigm` and
 which cannot be reliably initialised where an identity-linked `Beta` mean must
 stay positive. `log(diuron_adj)` runs from -2.30 to 3.37.
 
-### The scope of the refit
+### The scope of that refit
 
 The six unchanged calls keep their keys, so on the key contract alone 19 units
 needed fitting. They were fitted, and `assemble_store.R` then refused the
@@ -62,7 +107,7 @@ and nothing is gained by destroying it. `hpc/job-common.sh` in the compendium
 now forwards `GRP_UNITS` and `GRP_STORE` into the container, which is what makes
 that possible; both default as before when unset.
 
-## The render
+### The findings
 
 The store-backed render at bayesnec 2.1.3.38 (job 911405, 33.6 minutes, twelve
 figures, `Precompiled without error`) was compared against the render committed
@@ -87,7 +132,7 @@ The refit of all 180 units was still required, because `assemble_store.R`
 compares the version stamp and refuses to assemble at all when it disagrees.
 That guard cannot know the changes were inert.
 
-### The differences
+#### The differences
 
 - `fit_pam` fits 15 equations rather than 18, and its N(S)EC is reported on the
   fitted scale as -1.51 (-2.12, 0.73). The new `ecx-pam` chunk gives it back in
@@ -110,7 +155,7 @@ That guard cannot know the changes were inert.
 - The five `1 model(s) failed to fit: ecxhormebc5` notices are gone, because
   the equation is now excluded before fitting rather than attempted and failed.
 
-### Left alone
+#### Left alone
 
 `check_formula()` prints the formula it returns, and a `bayesnecformula`'s print
 method shows its environment, so the rendered vignette includes a line reading
