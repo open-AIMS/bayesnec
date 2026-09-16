@@ -59,7 +59,8 @@ number can be taken without being visible anywhere a new session would look.
 
    Where the render arrives through the `precompile vignettes` workflow, its
    pull request stages `vignettes/*.Rmd` and `vignettes/*.png` and nothing else,
-   so the entry is a separate commit on the same branch.
+   so the entry is a separate commit on whichever branch the rendered `.Rmd`
+   lands on.
 
    The pkgdown job is the only thing that reports either omission. It runs on a
    push to `master` or `dev` and on a pull request whose base is one of them, so
