@@ -616,9 +616,17 @@ Whether either fit may be reported is a separate question from whether it ran.
 largest R-hat, the smallest effective sample size and the number of divergent
 transitions:
 
-```{r sampling-conc-group, message = TRUE}
+```{r sampling-conc-group}
 check_sampling(fit_ogl)
 ```
+
+Eight of the fourteen equations fail. Six of those eight fail on every count at
+once, with R-hats from 1.53 to 2.11 and effective sample sizes between 5 and 8
+of the 8000 draws retained, which is a chain that never converged rather than
+one that converged imprecisely. `ecxexp` is the one to look at: its R-hat is
+1.0087 and its effective sample size 1141, both unremarkable, and it records 159
+divergent transitions. It is also the fourth-heaviest equation in the set by
+weight. A check on R-hat alone would have kept it.
 
 `vignette("example9")` gives the cutoffs and the reasoning behind them,
 including that Stan's own guidance is that any divergent transition means the
@@ -633,6 +641,10 @@ is read from them, and everything below refers to the screened objects:
 fit_plain <- screen_models(fit_plain)
 fit_ogl <- screen_models(fit_ogl)
 ```
+
+Five of fourteen go from the ungrouped fit and eight from the grouped one, each
+named with the count that failed it. What remains in both is a set whose chains
+converged, and the estimates below are averages over those.
 
 `ogl(conc_group)` estimates one deviation per concentration group, so its
 standard deviation summarises how much the four wells at a concentration depart
