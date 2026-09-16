@@ -673,14 +673,19 @@ rbind(
 )
 ```
 
-The two fitted curves are drawn below, ungrouped first.
+The two fitted curves are drawn below, ungrouped first. The second marks the
+mean of each concentration group with a diamond, which is the quantity
+`ogl(conc_group)` gives a deviation to. `group_aes = "colour"` would map the
+eleven groups to a colour scale as well; it is not used here because each group
+sits at one concentration, so the colour would repeat what the position on the
+axis already says.
 
 ```{r fig-plain}
 autoplot(fit_plain) + log_x
 ```
 
 ```{r fig-ogl}
-autoplot(fit_ogl) + log_x
+autoplot(fit_ogl, group = "conc_group") + log_x
 ```
 
 The term changes the fitted curve, not only its uncertainty. Ungrouped, the
