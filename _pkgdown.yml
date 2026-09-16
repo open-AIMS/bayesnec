@@ -26,3 +26,48 @@ template:
 # collide again, silently. See #230.
 development:
   mode: auto
+
+# The articles index and the Articles dropdown are both ordered from this block.
+# Without it pkgdown lists the vignettes alphabetically by file name, which
+# records when each vignette was written rather than a reading order. #363 holds
+# the cross-reference audit the order below follows.
+#
+# The `navbar:` keys are not decoration, and nothing in CI covers them.
+# `pkgdown:::navbar_articles()` replaces the Articles dropdown with a plain link
+# to the index as soon as an `articles:` block exists and no section sets
+# `navbar:`, so removing the keys removes the dropdown rather than reordering it.
+# `pkgdown::check_pkgdown()` reports "No problems found" on that config and the
+# site still builds, so the loss would reach the published site unremarked. A
+# section whose `navbar:` is a string gets a divider and that heading in the
+# dropdown; `navbar: ~` on the first section gives its entries with no leading
+# divider. All four sections set the key, so pkgdown appends no "More
+# articles..." link.
+#
+# Every vignette present must be listed here, and every entry must name a
+# vignette that is in the build: `data_articles_index()` aborts on either. The
+# second applies because `package_vignettes()` matches `\.[Rrq]md$` and so never
+# sees a `.Rmd.orig`, so an entry goes in with the rendered `.Rmd` rather than
+# with the source. `notes/vignette_numbering.md` rule 5 records that where a new
+# vignette's author will meet it.
+articles:
+  - title: Getting started
+    navbar: ~
+    contents:
+      - example5
+      - example1
+      - example2
+      - example2b
+  - title: Extending the analysis
+    navbar: Extending the analysis
+    contents:
+      - example3
+      - example4
+  - title: Designs and response types
+    navbar: Designs and response types
+    contents:
+      - example6
+      - example7
+  - title: A worked analysis
+    navbar: A worked analysis
+    contents:
+      - example9
