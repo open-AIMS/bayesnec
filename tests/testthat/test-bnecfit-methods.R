@@ -219,6 +219,23 @@ test_that("c() and + weight by the documented default", {
   expect_equal(attr(added$mod_stats$wi, "method"), "pseudobma")
 })
 
+test_that("c() compares stored fit data by column name", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  reordered <- ecx4param
+  reordered$fit$data <- reordered$fit$data[rev(names(reordered$fit$data))]
+
+  combined <- c(nec4param, reordered) |>
+    suppressMessages() |>
+    suppressWarnings()
+  expect_s3_class(combined, "bayesmanecfit")
+
+  changed <- reordered
+  changed$fit$data[[1]][1] <- changed$fit$data[[1]][1] + 1
+  expect_error(c(nec4param, changed), "Dataset values differ across fits")
+})
+
 test_that("c() inherits an explicit weighting method from its inputs", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
