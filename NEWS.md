@@ -13,9 +13,12 @@
   untruncated fit estimated the mean conditional on a positive observation with
   an ordinary count likelihood and was biased where the mean approached zero.
   The factorised route requires brms 2.23.2 or later because earlier releases
-  omitted the inclusive lower bound from `log_lik()` and `posterior_epred()`.
-  Earlier brms versions now stop before fitting and direct the caller to the
-  corresponding joint hurdle family (#249; paul-buerkner/brms#1903, #1923).
+  omitted the inclusive lower bound from `log_lik()`. Earlier brms versions
+  now stop before fitting and direct the caller to the corresponding joint
+  hurdle family. `bayesnec` computes the conditional-positive expectation in
+  closed form rather than using brms's finite-grid approximation, and refuses
+  `cens()` on count growth because brms does not condition the censored
+  likelihood on the truncation bound (#249; paul-buerkner/brms#1903, #1923).
 
 - The response-of-survivors component has one definition across the two routes:
   `ecx(dpar = "mu")` and `nsec(dpar = "mu")` convert a joint count hurdle's

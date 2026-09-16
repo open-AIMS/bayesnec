@@ -21,7 +21,7 @@
 #' "survival", after the case they were written for -- individuals that die
 #' contribute a zero and the survivors contribute a measurement. Nothing in the
 #' implementation is specific to that reading: any process producing exact
-#' zeros alongside a continuous response fits the same structure. Algal growth
+#' zeros alongside a positive response fits the same structure. Algal growth
 #' rate expressed as a proportion of a ceiling, with replicates that failed
 #' entirely, is the same model.
 #'
@@ -29,8 +29,9 @@
 #' R formula or an actual \code{\link[stats]{formula}} object. See
 #' \code{\link{bayesnecformula}}. The response must be untransformed, and zero
 #' values in it are taken to mean the individual did not survive. A
-#' \code{cens()} aterm is allowed alongside it; other aterms are refused, see
-#' Details.
+#' \code{cens()} aterm is allowed for continuous growth families. It is refused
+#' for count growth families because \pkg{brms} does not combine left censoring
+#' with zero truncation correctly. Other aterms are refused; see Details.
 #' @param data A \code{\link[base]{data.frame}} containing the data to use with
 #' the \code{formula}. Every unit that entered the experiment must be present,
 #' with \code{0} recorded for those that gave no response. Rows omitted rather
@@ -52,8 +53,10 @@
 #' subset is fitted with the corresponding zero-truncated likelihood. The
 #' truncation is added internally because every row in that subset is known to
 #' be positive; it is not a user-selectable response transformation. This path
-#' requires \pkg{brms} 2.23.2 or later, where the fitted model, log likelihood
-#' and posterior expected response all use the same inclusive lower bound.
+#' requires \pkg{brms} 2.23.2 or later, where the fitted model and log
+#' likelihood use the same inclusive lower bound. \pkg{bayesnec} computes the
+#' exact conditional-positive expected response from the fitted count
+#' parameters rather than using \pkg{brms}'s finite-grid approximation.
 #' @param predictor_scale The predictor-scale declaration passed to both
 #' \code{\link{bnec}} fits. It is checked against the complete predictor before
 #' either component is fitted. See \code{\link{bnec}}.
@@ -90,7 +93,8 @@
 #'
 #' \bold{Censoring, and which aterms are allowed}
 #'
-#' \code{cens()} is the one aterm accepted on the response. \code{\link{bnec}}
+#' \code{cens()} is the one aterm accepted on a continuous response.
+#' \code{\link{bnec}}
 #' itself carries three -- \code{trials()}, \code{weights()} and
 #' \code{cens()} -- and of those \code{cens()} is the only one whose meaning
 #' stays unambiguous once the response is split across two models. It is also
@@ -121,7 +125,12 @@
 #' those three are refused here as well, though they would not reach \pkg{brms}
 #' in any case: \code{\link{model.frame}} drops them for an ordinary
 #' \code{\link{bnec}} fit too. Making the two \code{\link{bnec}} calls directly
-#' remains available for anything outside this set.
+#' remains available for anything outside this set. Count growth is an
+#' exception: combining its required \code{trunc(lb = 1)} with left censoring
+#' makes \pkg{brms} subtract the truncation normaliser from an unconditioned
+#' cumulative probability, which can yield a likelihood contribution greater
+#' than one. \code{bnec_hurdle} therefore refuses \code{cens()} with a count
+#' growth family before fitting.
 #'
 #' @return An object of class \code{\link{bayesnechurdlefit}}.
 #'
@@ -221,6 +230,13 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
   growth_formula <- formula
   if (family_growth$family %in% c("poisson", "negbinomial")) {
     check_count_truncation_support()
+    if ("cens" %in% names(aterms)) {
+      stop("bnec_hurdle cannot combine cens() with a count growth family.",
+           " The positive counts require trunc(lb = 1), and brms does not",
+           " condition its censored count likelihood on that lower bound.",
+           " Use uncensored counts, or fit a validated custom likelihood.",
+           call. = FALSE)
+    }
     # The growth data contain only survivors, so their count distribution is
     # conditional on Y > 0. Adding the bound here makes that sampling decision
     # part of the likelihood without exposing trunc() as a user-facing aterm.

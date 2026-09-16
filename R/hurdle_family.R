@@ -100,9 +100,9 @@ hurdle_mu_family <- function(family) {
 #'
 #' @noRd
 hurdle_positive_mean <- function(mu, family, shape = NULL) {
-  if (family == "hurdle_poisson") {
+  if (family %in% c("poisson", "hurdle_poisson")) {
     nonzero <- -expm1(-mu)
-  } else if (family == "hurdle_negbinomial") {
+  } else if (family %in% c("negbinomial", "hurdle_negbinomial")) {
     if (is.null(shape)) {
       stop("Negative-binomial positive means require shape draws.",
            call. = FALSE)
@@ -114,6 +114,53 @@ hurdle_positive_mean <- function(mu, family, shape = NULL) {
   out <- mu / nonzero
   out[nonzero == 0] <- 1
   out
+}
+
+#' Does this fit carry the internal count-hurdle truncation?
+#'
+#' @param formula A bayesnec formula.
+#' @param family A family object.
+#'
+#' @return A logical value.
+#'
+#' @noRd
+is_factorised_count_formula <- function(formula, family) {
+  isTRUE(attr(formula, "bayesnec_internal_truncation")) &&
+    family$family %in% c("poisson", "negbinomial")
+}
+
+#' Exact expected response for a factorised count hurdle
+#'
+#' @param fit A fitted \code{brmsfit}.
+#' @param formula The bayesnec formula used for the fit.
+#' @param dpar,nlpar Optional parameter predictions passed to
+#' \code{posterior_epred}.
+#' @param ... Further arguments passed to \code{posterior_epred}.
+#'
+#' @return A numeric matrix of posterior draws.
+#'
+#' @details brms obtains expectations for truncated discrete families by
+#' summing a finite grid whose upper end is three times the largest fitted
+#' mean. That approximation can lose most of an overdispersed negative-
+#' binomial tail. For the one-sided truncation used here the conditional mean
+#' is available in closed form, so bayesnec computes it from the underlying
+#' \code{mu} and \code{shape} draws instead.
+#'
+#' @importFrom brms posterior_epred
+#'
+#' @noRd
+factorised_count_epred <- function(fit, formula, dpar = NULL, nlpar = NULL,
+                                   ...) {
+  if (!is_factorised_count_formula(formula, fit$family) ||
+      !is.null(dpar) || !is.null(nlpar)) {
+    return(posterior_epred(fit, dpar = dpar, nlpar = nlpar, ...))
+  }
+  mu <- posterior_epred(fit, dpar = "mu", ...)
+  shape <- NULL
+  if (fit$family$family == "negbinomial") {
+    shape <- posterior_epred(fit, dpar = "shape", ...)
+  }
+  hurdle_positive_mean(mu, fit$family$family, shape)
 }
 
 #' Posterior draws for one block of a joint hurdle fit

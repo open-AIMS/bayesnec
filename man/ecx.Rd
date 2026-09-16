@@ -57,7 +57,9 @@ return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
 \code{"hurdle_negbinomial"}), the parameter block to report:
 \code{"mu"} for the response block, or \code{"hu"} (\code{"zi"} for the
 zero-inflated families) for survival. Defaults to \code{NULL}, which gives
-the combined endpoint \code{mu * (1 - hu)}. The zero-probability block is
+the expected positive response multiplied by \code{1 - hu}. For continuous
+hurdles the positive response is \code{mu}; for count hurdles it is
+\code{E[Y | Y > 0]}. The zero-probability block is
 inverted to survival before computing, so ECx keeps its usual meaning of a
 percentage decline from the fitted control value. See Details.
 For the count hurdles, \code{"mu"} is converted to the positive-count mean

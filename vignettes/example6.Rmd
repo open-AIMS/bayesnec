@@ -146,16 +146,21 @@ models. `bayesnec` fits the concentration-response curve to the count mean and
 holds the zero-inflation probability constant for these families.
 
 For count hurdles, the response of survivors is `E[Y | Y > 0]`.
-`bnec_hurdle()` returns that quantity directly from its truncated growth fit.
+`bayesnec` computes that quantity exactly from the truncated growth fit's
+underlying count parameters. This avoids the finite upper grid that `brms`
+uses for expected predictions from a general truncated discrete model, which
+can omit a substantial negative-binomial tail.
 For a joint count hurdle, `ecx(dpar = "mu")` and `nsec(dpar = "mu")` convert
 the underlying Poisson or negative-binomial mean to the same conditional mean.
 The fitted `top` and `bot` parameters of the joint equation remain on the
 underlying count-mean scale.
 
 The factorised count route requires brms 2.23.2 or later. Earlier brms versions
-used different lower-bound conventions in the fitted model and its
-post-processing, so `bnec_hurdle()` refuses the route before fitting and points
-to the corresponding joint hurdle family.
+used a different lower-bound convention in `log_lik()`, so `bnec_hurdle()`
+refuses the route before fitting and points to the corresponding joint hurdle
+family. Count growth cannot currently be combined with `cens()`: `brms` does
+not condition a censored count contribution on the truncation bound, and
+`bnec_hurdle()` refuses that combination before fitting.
 
 ## The second block describes survival, not mortality
 

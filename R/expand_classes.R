@@ -45,13 +45,18 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   pred_posterior <- NULL
   get_pred_posterior <- function() {
     if (is.null(pred_posterior)) {
-      pred_posterior <<- posterior_epred(fit, newdata = new_dat,
-                                         re_formula = NA)
+      pred_posterior <<- factorised_count_epred(
+        fit, formula, newdata = new_dat, re_formula = NA
+      )
     }
     pred_posterior
   }
-  y_pred_m <- fitted(fit, newdata = new_dat, robust = TRUE, re_formula = NA,
-                     scale = "response")
+  if (is_factorised_count_formula(formula, fit$family)) {
+    y_pred_m <- summarise_epred(get_pred_posterior(), robust = TRUE)
+  } else {
+    y_pred_m <- fitted(fit, newdata = new_dat, robust = TRUE, re_formula = NA,
+                       scale = "response")
+  }
   pred_data <- data.frame(x = x_seq, Estimate = y_pred_m[, "Estimate"],
                           Q2.5 = y_pred_m[, "Q2.5"],
                           Q97.5 = y_pred_m[, "Q97.5"])
@@ -156,8 +161,16 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   if (length(od) == 0) {
     od <- c(Estimate = NA, Q2.5 = NA, Q97.5 = NA, `P(>1)` = NA)
   }
-  predicted_y <- fitted(fit, robust = TRUE, re_formula = NA, scale = "response")
-  residuals <-  residuals(fit, method = "pp_expect")[, "Estimate"]
+  if (is_factorised_count_formula(formula, fit$family)) {
+    observed_epred <- factorised_count_epred(fit, formula, re_formula = NA)
+    predicted_y <- summarise_epred(observed_epred, robust = TRUE)
+    y_var <- hurdle_response_var(formula)
+    residuals <- fit$data[[y_var]] - colMeans(observed_epred)
+  } else {
+    predicted_y <- fitted(fit, robust = TRUE, re_formula = NA,
+                          scale = "response")
+    residuals <- residuals(fit, method = "pp_expect")[, "Estimate"]
+  }
   ne_type <- ifelse(mod_class == "nec", "NEC", "NSEC")
   if (!is.null(hurdle_parts)) {
     # A two-block fit reports the combined endpoint, whose type depends on both
@@ -264,7 +277,7 @@ prediction_grid <- function(fit, formula, x_range = NA, resolution = 1000) {
 posterior_on_grid <- function(fit, formula, x_range = NA, resolution = 1000) {
   new_dat <- prediction_grid(fit, formula, x_range = x_range,
                              resolution = resolution)$newdata
-  posterior_epred(fit, newdata = new_dat, re_formula = NA)
+  factorised_count_epred(fit, formula, newdata = new_dat, re_formula = NA)
 }
 
 #' Extracts a range of statistics from a list of \code{\link{prebayesnecfit}}

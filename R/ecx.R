@@ -32,7 +32,9 @@
 #' \code{"hurdle_negbinomial"}), the parameter block to report:
 #' \code{"mu"} for the response block, or \code{"hu"} (\code{"zi"} for the
 #' zero-inflated families) for survival. Defaults to \code{NULL}, which gives
-#' the combined endpoint \code{mu * (1 - hu)}. The zero-probability block is
+#' the expected positive response multiplied by \code{1 - hu}. For continuous
+#' hurdles the positive response is \code{mu}; for count hurdles it is
+#' \code{E[Y | Y > 0]}. The zero-probability block is
 #' inverted to survival before computing, so ECx keeps its usual meaning of a
 #' percentage decline from the fitted control value. See Details.
 #' For the count hurdles, \code{"mu"} is converted to the positive-count mean
@@ -186,8 +188,9 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
     object, resolution = resolution, x_range = x_range
   )
   # dpar lets a two-block fit report its components separately. The default
-  # (NULL) gives what posterior_epred always gave: mu * (1 - hu) for such a
-  # family, the single mean curve otherwise. The zero-probability block is
+  # (NULL) gives what posterior_epred always gave: the positive-part mean times
+  # (1 - hu) for such a family, the single mean curve otherwise. The
+  # zero-probability block is
   # inverted so that "decline from control" means the same thing as it does
   # everywhere else. Valid names are "mu" and whichever brms uses for the
   # second block: "hu" for hurdle families, "zi" for zero-inflated ones.
@@ -200,6 +203,9 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
   x_vec <- newdata_list$x_vec
   control <- control_posterior(object, newdata_list$newdata, epred_fun)
   asymptote <- ecx_asymptote(object, type)
+  asymptote <- count_positive_asymptote(
+    object, dpar, asymptote, newdata_list$newdata
+  )
   ecx_out <- ecx_from_posterior(p_samples, x_vec, ecx_val, type, control,
                                 asymptote)
   n_missing <- sum(is.na(ecx_out))
@@ -408,6 +414,41 @@ ecx_asymptote <- function(object, type) {
          call. = FALSE)
   }
   0
+}
+
+#' Put a count-hurdle asymptote on the expected-positive scale
+#'
+#' @param object A \code{bayesnecfit}.
+#' @param dpar The requested distributional parameter, if any.
+#' @param asymptote Draws of the underlying count-mean asymptote.
+#' @param newdata Prediction data used to obtain shape draws.
+#'
+#' @return \code{asymptote}, transformed where the reported curve is
+#' \code{E[Y | Y > 0]}.
+#'
+#' @noRd
+count_positive_asymptote <- function(object, dpar, asymptote, newdata) {
+  if (all(is.na(asymptote))) {
+    return(asymptote)
+  }
+  family <- object$fit$family$family
+  factorised <- family %in% c("poisson", "negbinomial") &&
+    is_factorised_count_formula(object$bayesnecformula, object$fit$family) &&
+    is.null(dpar)
+  joint <- family %in% c("hurdle_poisson", "hurdle_negbinomial") &&
+    !is.null(dpar) &&
+    identical(match.arg(dpar, c("mu", hurdle_dpar(object$fit$family))), "mu")
+  if (!factorised && !joint) {
+    return(asymptote)
+  }
+  shape <- NULL
+  if (family %in% c("negbinomial", "hurdle_negbinomial")) {
+    shape <- posterior_epred(
+      object, newdata = newdata[1, , drop = FALSE], re_formula = NA,
+      dpar = "shape"
+    )
+  }
+  as.numeric(hurdle_positive_mean(asymptote, family, shape))
 }
 
 #' The model-averaged theoretical asymptote

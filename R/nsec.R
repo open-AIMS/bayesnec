@@ -22,7 +22,9 @@
 #' \code{"hurdle_negbinomial"}), the parameter block to report:
 #' \code{"mu"} for the response block, or \code{"hu"} (\code{"zi"} for the
 #' zero-inflated families) for survival. Defaults to \code{NULL}, which gives
-#' the combined endpoint \code{mu * (1 - hu)}. The zero-probability block is
+#' the expected positive response multiplied by \code{1 - hu}. For continuous
+#' hurdles the positive response is \code{mu}; for count hurdles it is
+#' \code{E[Y | Y > 0]}. The zero-probability block is
 #' inverted to survival before computing, so the NSEC is read off a declining
 #' curve. See Details.
 #' For the count hurdles, \code{"mu"} is converted to the positive-count mean
@@ -172,8 +174,9 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
   )
   # dpar selects one block of a two-block (hurdle / zero-inflated) fit, exactly
   # as in ecx(). The default (NULL) leaves the behaviour posterior_epred always
-  # gave: mu * (1 - hu) for such a family, the single mean curve otherwise. The
-  # zero-probability block is inverted to survival first, so that the NSEC is
+  # gave: the positive-part mean times (1 - hu) for such a family, the single
+  # mean curve otherwise. The zero-probability block is inverted to survival
+  # first, so that the NSEC is
   # read off a declining curve and "decline from control" keeps its usual
   # meaning.
   epred_fun <- function(nd) joint_hurdle_epred(object, nd, dpar)
