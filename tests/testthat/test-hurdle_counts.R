@@ -6,6 +6,10 @@ test_that("count hurdle families are registered as two-block", {
     expect_true(bayesnec:::is_hurdle_family(family))
     expect_identical(bayesnec:::hurdle_dpar(family), "hu")
     expect_identical(validate_family(family)$link, "identity")
+    expect_equal(bayesnec:::mu_support(validate_family(family)), c(0, Inf))
+    expect_equal(
+      bayesnec:::mu_support(validate_family(family), dpar = "hu"), c(0, 1)
+    )
   }
 })
 
