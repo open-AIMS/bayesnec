@@ -1678,6 +1678,17 @@
   `vignette("example1")`, `vignette("example2")` and `README.md` now point at
   it. Each held its own installation text, so the package had three (#342).
 
+- `vignette("example9")` works a third response, on which the coefficient of
+  variation a `Gamma` holds constant is not constant. The `lum31` zinc arm at 15
+  minutes is fitted with `ecxll5` and `ogl(plate)`, once with constant dispersion
+  and once with `disp("power")`. A probability integral transform check,
+  `pp_check(type = "pit_ecdf")`, detects the miscalibration; a display of Pearson
+  residuals against the fitted mean names the end of the series it occurs at; and
+  the same transform check on the refitted model confirms the sub-model corrected
+  it. `vignette("example8")` establishes the sub-model on this arm from a table of
+  within-cell coefficients of variation and points here for the posterior check,
+  which is the one that transfers to another dataset (#367).
+
 - New vignette, `vignette("example9")` --- *A complete analysis workflow* ---
   running a single analysis from data to reportable estimate: choosing the
   family from the support of the response, fitting the candidate set, sampler

@@ -102,7 +102,10 @@ to each is different.
 ## Coverage
 
 Steps 1 to 5 are worked in full on one dataset. A count response follows, for
-which the family question and the sampler screen both take a different form.
+which the family question and the sampler screen both take a different form. A
+third response follows that, on which the coefficient of variation the family
+holds constant is not constant. The check that detects it is a posterior one and
+the term that repairs it is written in the formula.
 
 The threshold estimates themselves --- *NEC*, *NSEC*, ECx, and the
 model-averaged *N(S)EC* reported when a set mixes both kinds --- are defined in
@@ -1070,6 +1073,369 @@ The interval is that gap. An analysis of these data reports it as such, together
 with the equations excluded and the reason, rather than presenting a narrower
 number obtained by loosening a threshold until enough equations survive.
 
+# A non-constant coefficient of variation {#a-non-constant-coefficient-of-variation}
+
+Step 4 asked whether the fitted model reproduced the spread observed within each
+concentration group, and on `simazine` it did. A third response is worked here,
+on which it does not. The Overview named this as the assumption a threshold
+estimate depends on most, and as the one no convergence diagnostic reports.
+
+Every family with a free dispersion parameter holds that parameter constant
+along the series unless the formula says otherwise. For a `Gamma` under the
+identity link a constant `shape` is a constant coefficient of variation: the
+standard deviation of a replicate is a fixed multiple of the fitted mean at
+every concentration. Where replicate variation does not behave that way, one
+`shape` is estimated as a compromise between the two ends of the series and
+describes neither.
+
+## The assay
+
+The `lum31` data record acute copper and zinc toxicity tests run on the Lum-31
+bioluminescent bacterial assay [@luter2025]. A suspension of marine bacteria is
+dosed in a microplate well and its light output read after a fixed exposure, so
+luminescence in relative light units is the response. The zinc arm at 15 minutes
+is worked here.
+
+```{r lum31-data}
+data(lum31)
+zn15 <- droplevels(subset(lum31, toxicant == "Zn" & minutes == 15))
+zn15$rank <- as.integer(sub(".*-c", "", as.character(zn15$conc_group)))
+```
+
+[*Grouping and factor covariates*](https://open-aims.github.io/bayesnec/articles/example8.html)
+describes the assay, the left-censoring that the blank correction requires, and
+the plate term used below.
+
+`conc_group` identifies a cell: the four wells at one concentration on one
+plate. A coefficient of variation computed inside a cell involves no curve, so
+no lack of fit in the mean can inflate it. The median of those cell values is
+taken at each of the `r length(unique(zn15$rank))` concentration ranks, over the
+`r length(unique(zn15$plate))` plates of the arm.
+
+```{r lum31-cv}
+cell_cv <- tapply(zn15$rlu_cens, zn15$conc_group, function(z) sd(z) / mean(z))
+cv_obs <- tapply(cell_cv, as.integer(sub(".*-c", "", names(cell_cv))), median)
+round(cv_obs[c(1, length(cv_obs))], 3)
+```
+
+The observed coefficient of variation is `r sprintf("%.3f", cv_obs[1])` at the
+control and `r sprintf("%.3f", cv_obs[length(cv_obs)])` at the bottom of the
+series, a factor of
+`r round(cv_obs[length(cv_obs)] / cv_obs[1])`. A `Gamma` fitted with one `shape`
+returns a single value for both. The table of all
+`r length(unique(zn15$rank))` ranks is in that vignette. It summarises the
+recorded response and not a fit, so it establishes that the assumption is wrong
+without establishing what a fit made under it does to the estimates.
+
+## The fit under constant dispersion
+
+One equation is fitted rather than a set, because the question is about the
+family's variance assumption and not about which curve describes the data.
+`ecxll5` is used, which holds most of the model weight in the set
+[*Grouping and factor covariates*](https://open-aims.github.io/bayesnec/articles/example8.html)
+fits to this arm.
+
+```{r disp-const, results = "hide"}
+gfam <- Gamma(link = "identity")
+fit_const <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), model = "ecxll5") +
+                    ogl(plate),
+                  data = zn15, family = gfam, seed = 17)
+```
+
+`ogl(plate)` gives each plate its own multiplicative factor on the whole fitted
+curve. The plate reader sets its gain per read, so absolute luminescence is a
+property of the read. Without the term the differences in level between plates
+enter the residual, where they are counted as dispersion. `cens(censoring)`
+declares the readings that reached the instrument's floor, which number
+`r sum(zn15$censoring != "none")` of the `r nrow(zn15)` wells in this arm.
+
+```{r disp-const-sampling}
+check_sampling(fit_const)
+```
+
+The sampler explored the posterior adequately, so anything the checks below find
+is a property of the model rather than of the run.
+
+## The probability integral transform
+
+For a continuous response, the probability integral transform value of an
+observation is the proportion of that observation's posterior predictive draws
+falling at or below it. A model that is right about the location and the spread
+of every observation produces values spread uniformly over the unit interval. A
+model simulating more variability than the data contain produces values crowded
+towards the middle, because an observation drawn from a narrower distribution
+than the one simulated for it lands near the centre of those draws. A model
+simulating less variability produces values crowded into the two ends.
+
+`pp_check(type = "pit_ecdf")` plots the empirical distribution function of those
+values against the uniform, between two dashed lines that a correctly specified
+model stays inside with probability 0.99 over the whole interval at once.
+
+```{r exmp9-pit-const, fig.asp = 0.7}
+pp_check(fit_const, type = "pit_ecdf")
+```
+
+```{r pit-const-numbers}
+# pp_check() leaves the censored readings out, because the draws it compares
+# them against are uncensored. The same subset is used here.
+pit <- function(fit) {
+  keep <- zn15$censoring == "none"
+  yrep <- posterior_predict(pull_brmsfit(fit))[, keep]
+  colMeans(sweep(yrep, 2, zn15$rlu_cens[keep], "<="))
+}
+pit_const <- pit(fit_const)
+round(c(middle_half = mean(pit_const > 0.25 & pit_const < 0.75),
+        below_0.05 = mean(pit_const < 0.05),
+        above_0.95 = mean(pit_const > 0.95)), 3)
+```
+
+The curve lies below the lower dashed line over the first half of the interval
+and above the upper one over the second, crossing the uniform near 0.55. That is
+the crowding towards the middle described above:
+`r sprintf("%.3f", mean(pit_const > 0.25 & pit_const < 0.75))` of the values lie
+in the middle half of the interval where 0.5 is expected, and
+`r sprintf("%.3f", mean(pit_const < 0.05))` and
+`r sprintf("%.3f", mean(pit_const > 0.95))` lie in the two five per cent tails
+where 0.05 is expected in each. The fit simulates more variability than the
+observations contain.
+
+## The end of the series at fault
+
+The transform pools every observation, so it states that the calibration is
+wrong and not where along the series it is wrong. A Pearson residual answers
+that. It is the raw residual divided by the standard deviation the fit gives
+that observation, so its spread is near 1 wherever the fit has the variance
+right, above 1 where the fit simulates too little and below 1 where it simulates
+too much.
+
+```{r pearson}
+# Written out rather than taken from residuals(), which brms declines to
+# interpret for a censored response, and because the coefficient of variation
+# the fit implies is wanted alongside it.
+pearson <- function(fit) {
+  bf <- pull_brmsfit(fit)
+  mu <- colMeans(posterior_epred(bf))
+  shape <- colMeans(posterior_epred(bf, dpar = "shape"))
+  data.frame(rank = zn15$rank, cell = zn15$conc_group, plate = zn15$plate,
+             fitted = mu, implied_cv = 1 / sqrt(shape),
+             resid = (zn15$rlu_cens - mu) / (mu / sqrt(shape)))
+}
+# The spread within a cell, which is what the coefficients of variation above
+# were computed on, and the spread over all the plates at one rank are
+# different quantities. Both are wanted.
+within_cell_sd <- function(res, r) {
+  x <- res[res$rank == r, ]
+  mean(tapply(x$resid, droplevels(x$cell), sd))
+}
+res_const <- pearson(fit_const)
+```
+
+```{r exmp9-pearson-const, fig.asp = 0.7, out.width = "75%"}
+band <- data.frame(fitted = tapply(res_const$fitted, res_const$rank, mean),
+                   sd = tapply(res_const$resid, res_const$rank, sd))
+ggplot(res_const, aes(x = fitted, y = resid)) +
+  geom_hline(yintercept = c(-1, 0, 1), linetype = c(2, 1, 2), colour = "grey55") +
+  geom_point(size = 0.7, alpha = 0.4) +
+  geom_line(data = band, aes(y = sd)) +
+  geom_line(data = band, aes(y = -sd)) +
+  scale_x_continuous(transform = "log", breaks = c(1e3, 1e4, 1e5, 1e6),
+                     labels = c("1,000", "10,000", "100,000", "1,000,000")) +
+  labs(x = "Fitted mean (relative light units)", y = "Pearson residual") +
+  theme_classic()
+```
+
+The solid lines are the standard deviation of the Pearson residuals within each
+concentration rank, drawn either side of zero; they are referred to below as the
+envelope. The dashed lines at 1 and -1 are where the envelope would lie if the
+fit had the variance right. The control sits at the right of the panel, where the
+fitted mean is highest, and the bottom of the series at the left.
+
+The envelope closes to
+`r sprintf("%.2f", sd(res_const$resid[res_const$rank == 1]))` at the control and
+opens to
+`r sprintf("%.2f", sd(res_const$resid[res_const$rank == max(res_const$rank)]))`
+at the bottom of the series. One `shape` is therefore too large at the control
+and too small at the bottom. That is the direction the
+Overview identified as the one that matters, since `nsec()` reads its reference
+from the posterior of the control mean and every ECx since version 2.2 is
+measured from the same place.
+
+These residuals pool the `r length(unique(zn15$plate))` plates, so at the control
+they contain the error in each plate's own factor as well as the variation
+between wells. Taken inside a cell the standard deviation is
+`r sprintf("%.2f", within_cell_sd(res_const, 1))`, which is the
+`r sprintf("%.3f", cv_obs[1])` observed within cells against the
+`r sprintf("%.3f", mean(res_const$implied_cv))` the fit implies.
+
+`check_fit()` makes the same comparison within concentration groups, and detects
+the same discrepancy.
+
+```{r checkfit-count}
+cf_const <- check_fit(fit_const)
+c(groups = nrow(cf_const),
+  flagged_on_spread = sum(cf_const$ppp_sd > 0.95 | cf_const$ppp_sd < 0.05))
+```
+
+It flags `r sum(cf_const$ppp_sd > 0.95 | cf_const$ppp_sd < 0.05)` of its
+`r nrow(cf_const)` groups on spread. Those groups are not the
+`r length(unique(zn15$rank))` ranks of the design: `check_fit()` groups by the
+value of the predictor, and each plate was dosed to its own nominal series, so a
+group is between `r min(cf_const$n)` and `r max(cf_const$n)` wells drawn from
+whichever plates share a concentration. The transform gives one statement for the
+whole fit instead, and the display above is drawn against the fitted mean, which
+is what `disp("power")` makes the dispersion a function of.
+
+## The dispersion sub-model
+
+`disp("power")` writes `log(shape)` as a linear function of `log(mu)`, so the
+dispersion parameter becomes a function of the fitted mean rather than a
+constant. [*Single model usage*](https://open-aims.github.io/bayesnec/articles/example1.html)
+covers the variance functions available, the families each applies to, and what
+the estimated exponent implies for a given family.
+
+```{r disp-power, results = "hide"}
+fit_power <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), model = "ecxll5") +
+                    ogl(plate) + disp("power"),
+                  data = zn15, family = gfam, seed = 17)
+```
+
+```{r disp-slope}
+brms::fixef(pull_brmsfit(fit_power))[c("c0_Intercept", "c1_Intercept"), ]
+```
+
+`c1` is the exponent. A value of zero is the constant-dispersion model and is
+where the prior on this parameter is centred, so an interval excluding zero
+reflects the data rather than the prior. Here it is
+`r sprintf("%.2f", brms::fixef(pull_brmsfit(fit_power))["c1_Intercept", "Estimate"])`
+on an interval of
+`r sprintf("%.2f", brms::fixef(pull_brmsfit(fit_power))["c1_Intercept", "Q2.5"])`
+to
+`r sprintf("%.2f", brms::fixef(pull_brmsfit(fit_power))["c1_Intercept", "Q97.5"])`.
+A positive exponent means `shape` rises with the fitted mean, and since the
+coefficient of variation of a `Gamma` is the inverse square root of `shape`, the
+coefficient of variation falls as the response rises.
+
+The same check is run on the refitted model.
+
+```{r exmp9-pit-power, fig.asp = 0.7}
+pp_check(fit_power, type = "pit_ecdf")
+```
+
+```{r pit-power-numbers}
+pit_power <- pit(fit_power)
+round(c(middle_half = mean(pit_power > 0.25 & pit_power < 0.75),
+        below_0.05 = mean(pit_power < 0.05),
+        above_0.95 = mean(pit_power > 0.95)), 3)
+```
+
+The curve stays between the dashed lines across the whole interval. The middle
+half now holds `r sprintf("%.3f", mean(pit_power > 0.25 & pit_power < 0.75))` of
+the values against the 0.5 expected, and the two tails
+`r sprintf("%.3f", mean(pit_power < 0.05))` and
+`r sprintf("%.3f", mean(pit_power > 0.95))` against 0.05 each. The check that
+failed on the constant-dispersion fit passes on this one. The transform is
+computed from the refitted model's own predictive draws, so a pass is evidence
+that the spread it simulates now matches the observations, and not only that a
+term was added to the formula.
+
+## Implied and observed variation along the series
+
+The two fits are compared rank by rank: the coefficient of variation each
+implies at the fitted mean, against the one observed within cells, and the
+standard deviation of the Pearson residuals each leaves.
+
+```{r disp-compare}
+res_power <- pearson(fit_power)
+by_rank <- function(res, label) {
+  data.frame(dispersion = label,
+             rank = sort(unique(res$rank)),
+             fitted = signif(tapply(res$fitted, res$rank, mean), 3),
+             observed_cv = round(as.numeric(cv_obs), 3),
+             implied_cv = round(tapply(res$implied_cv, res$rank, mean), 3),
+             pearson_sd = round(tapply(res$resid, res$rank, sd), 2),
+             row.names = NULL)
+}
+rbind(by_rank(res_const, "constant"), by_rank(res_power, "power"))
+```
+
+The constant-dispersion fit implies
+`r sprintf("%.3f", mean(res_const$implied_cv))` at every rank, which is
+`r sprintf("%.1f", mean(res_const$implied_cv) / cv_obs[1])` times the
+`r sprintf("%.3f", cv_obs[1])` observed within cells at the control. The
+sub-model implies
+`r sprintf("%.3f", mean(res_power$implied_cv[res_power$rank == 1]))` there. The
+within-cell standard deviation of its Pearson residuals at the control is
+`r sprintf("%.2f", within_cell_sd(res_power, 1))`, against
+`r sprintf("%.2f", within_cell_sd(res_const, 1))` before it and 1 where the
+variance is right.
+
+The sub-model is not exact, and the same table says where. At the bottom of the
+series it implies
+`r sprintf("%.2f", mean(res_power$implied_cv[res_power$rank == max(res_power$rank)]))`
+against `r sprintf("%.3f", cv_obs[length(cv_obs)])` observed, so it now
+simulates too much spread at the end where the constant fit simulated too
+little. A power law is a straight line in `log(shape)` against `log(mu)` and
+cannot bend where the data do. The cells at the bottom also contain the
+`r sum(zn15$censoring != "none")` readings that reached the instrument's floor,
+and a coefficient of variation computed from values held at a bound understates
+the spread, so part of the apparent overstatement is a property of the
+comparison rather than of the fit. `disp(~s(log(conc)))` fits the dispersion as
+a smooth and imposes no functional form, which is the route to take where the
+shape of the relationship is itself in question.
+
+The plate factors are estimated more accurately as well. `ogl(plate)` sets each
+plate's factor from that plate's whole series. Under constant dispersion every
+observation constrains that factor to the same degree, whether it sits at the
+tightly grouped control or in the noisy bottom of the series, so the factor is
+placed to suit the bottom. Each plate's
+observed control mean is compared with the fitted one below.
+
+```{r plate-control}
+plate_miss <- function(res) {
+  ctl <- res[res$rank == 1, ]
+  obs <- tapply(zn15$rlu_cens[res$rank == 1], droplevels(ctl$plate), mean)
+  fit <- tapply(ctl$fitted, droplevels(ctl$plate), mean)
+  c(correlation = cor(obs, fit), median_relative_error = median(abs(obs - fit) / obs))
+}
+round(rbind(constant = plate_miss(res_const), power = plate_miss(res_power)), 3)
+```
+
+The fitted control mean misses the observed one by a median of
+`r sprintf("%.1f", 100 * plate_miss(res_const)[["median_relative_error"]])` per
+cent under constant dispersion and
+`r sprintf("%.1f", 100 * plate_miss(res_power)[["median_relative_error"]])` per
+cent under the sub-model, and the correlation across the
+`r length(unique(zn15$plate))` plates rises from
+`r sprintf("%.3f", plate_miss(res_const)[["correlation"]])` to
+`r sprintf("%.3f", plate_miss(res_power)[["correlation"]])`. That is the
+difference between the pooled and within-cell residual spreads noted above: most
+of the pooled spread at the control was the plate factor, not the wells.
+
+The consequence for the reported estimates follows what
+[*Single model usage*](https://open-aims.github.io/bayesnec/articles/example1.html)
+sets out.
+
+```{r disp-estimates}
+rbind(constant = nsec(fit_const, xform = exp), power = nsec(fit_power, xform = exp))
+rbind(constant = ecx(fit_const, ecx_val = 10, xform = exp),
+      power = ecx(fit_power, ecx_val = 10, xform = exp))
+```
+
+The EC10 interval narrows from
+`r sprintf("%.2f", diff(ecx(fit_const, ecx_val = 10, xform = exp)[c(2, 3)]))`
+to
+`r sprintf("%.2f", diff(ecx(fit_power, ecx_val = 10, xform = exp)[c(2, 3)]))`
+mg/L, because the variance function gives the tightly grouped observations near
+the control a smaller standard deviation, so they constrain the curve more
+tightly than they did. The *NSEC*
+interval does not narrow with it, at
+`r sprintf("%.2f", diff(nsec(fit_const, xform = exp)[c(2, 3)]))` against
+`r sprintf("%.2f", diff(nsec(fit_power, xform = exp)[c(2, 3)]))` mg/L, because
+its reference is a quantile of the control posterior and that quantity is what
+the sub-model revised. A methods section states the dispersion structure each
+estimate was fitted under, because the two structures return different
+intervals from the same data.
+
 # Summary
 
 The sampler screen returned a different outcome at each of the three fits, and
@@ -1084,6 +1450,18 @@ set and the design has few distinct concentrations, the explanation is that the
 experiment does not contain the information it needs. Adjusting the settings
 further to retain it is not the right response. An equation that fails at the cutoff is a
 decision the analyst has taken, and it has to be reported as one.
+
+The variance assumption is the one no sampler diagnostic reports. The
+constant-dispersion fit on `lum31` sampled without a divergent transition and
+implied a coefficient of variation of
+`r sprintf("%.2f", mean(res_const$implied_cv))` at every concentration, against
+`r sprintf("%.3f", cv_obs[1])` observed within cells at the control and
+`r sprintf("%.3f", cv_obs[length(cv_obs)])` at the bottom of the series. Adding
+`disp("power")` brought the implied value at the control to
+`r sprintf("%.3f", mean(res_power$implied_cv[res_power$rank == 1]))` and the
+probability integral transform back inside its band. A fit can pass every check
+the screen applies and still simulate the wrong spread at the concentration both
+estimators are referenced from.
 
 The same holds one level up. The dispersion screen returned `binomial` because it
 detected nothing, not because nothing was there; the family for a continuous

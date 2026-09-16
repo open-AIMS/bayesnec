@@ -529,8 +529,9 @@ and `vignette("example1")` covers the dispersion machinery in general.
 
 The table above is a summary of the recorded response rather than of a fit, so
 it diagnoses the problem without confirming the remedy. The posterior check that
-does confirm it belongs with the other diagnostics, and #367 adds it to
-`vignette("example9")`.
+does confirm it is worked on this arm in `vignette("example9")`, which fits
+`ecxll5` with and without the sub-model and compares how well each describes the
+spread of the observations it simulates.
 
 ## Within-concentration grouping
 
