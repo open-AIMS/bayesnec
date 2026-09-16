@@ -558,7 +558,7 @@ plate of the copper series: it fits the `decline` set with and without the
 sub-model and compares the spread each simulates against the spread the wells
 show. What transfers from there to another dataset is the check rather than the
 arm, and a single plate is used so that the gain differences between plates need
-no term of their own.
+no `ogl(plate)`.
 
 ## Within-concentration grouping
 

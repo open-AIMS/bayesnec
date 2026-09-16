@@ -1697,8 +1697,8 @@
   mg/L, with 7 of 11 groups flagged; and both checks on the refitted model
   confirm the sub-model corrected it, at 0 of 11 flagged and a control ratio of
   1.02. The estimated exponent of 0.78 (0.64 to 0.93) agrees with the 0.77 (0.66
-  to 0.88) the replicate wells give with no fit involved, and the reported *NSEC*
-  halves, from 0.105 to 0.055 mg/L. A single plate is used so that the per-read
+  to 0.88) the replicate wells give with no fit involved, and the model-averaged
+  *NSEC* halves, from 0.109 to 0.054 mg/L. A single plate is used so that the per-read
   gain differences between plates need no group-level term, which
   `vignette("example8")` covers instead (#367).
 

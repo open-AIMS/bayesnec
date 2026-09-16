@@ -1450,8 +1450,8 @@ The variance assumption is the one no sampler diagnostic reports. On the
 `r sprintf("%.3f", cv_obs[length(cv_obs)])` at the bottom of the series, and the
 constant-dispersion fit passed the sampler screen while simulating about
 `r round(1 / cf_const$sd_ratio[cf_const$control])` times the spread the control
-shows. Adding `disp("power")` brought every group within agreement and halved
-the reported *NSEC*, from
+shows. Adding `disp("power")` brought every group inside the flag and halved
+the model-averaged *NSEC*, from
 `r sprintf("%.3f", nsec(screened_const, xform = exp)[1])` to
 `r sprintf("%.3f", nsec(screened_power, xform = exp)[1])` mg/L. A fit can pass every
 check the sampler screen applies and still simulate the wrong spread at the
