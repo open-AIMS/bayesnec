@@ -129,7 +129,7 @@ When multiple models are specified the <code>bnec</code> function
 returns a model weighted estimate of predicted posterior values, based
 on the <code>"pseudobma"</code> using Bayesian bootstrap through
 <code>loo_model_weights</code> <span class="citation">(Vehtari et al.
-2020, 2017)</span>. These are reasonably analogous to the way model
+2026, 2017)</span>. These are reasonably analogous to the way model
 weights are generated using AIC or AICc <span class="citation">(Burnham
 and Anderson 2002)</span>.</p>
 <p>It is also possible to obtain all individual model fits from the
@@ -140,18 +140,18 @@ with additional models, or to drop models using the function
 <p>Multi-model inference can be useful where there are a range of
 plausible models that could be used <span class="citation">(Burnham and
 Anderson 2002)</span> and has been recently adopted in ecotoxicology for
-Species Sensitivity Distribution (SSD) model inference <span class="citation">(Thorley and Schwarz 2018)</span>. The approach may
-have considerable value in concentration-response modelling because
-there is often no <em>a priori</em> knowledge of the functional form
-that the response relationship should take. In this case model averaging
-can be a useful way of allowing the data to drive the model selection
-process, with weights proportional to how well the individual models
-fits the data. Well-fitting models will have high weights, dominating
-the model averaged outcome. Conversely, poorly fitting models will have
-very low model weights and will therefore have little influence on the
-outcome. Where multiple models fit the data equally well, these can
-equally influence the outcome, and the resultant posterior predictions
-reflect that model uncertainty. It is possible to specify the
+Species Sensitivity Distribution (SSD) model inference <span class="citation">(Thorley et al. 2026)</span>. The approach may have
+considerable value in concentration-response modelling because there is
+often no <em>a priori</em> knowledge of the functional form that the
+response relationship should take. In this case model averaging can be a
+useful way of allowing the data to drive the model selection process,
+with weights proportional to how well the individual models fits the
+data. Well-fitting models will have high weights, dominating the model
+averaged outcome. Conversely, poorly fitting models will have very low
+model weights and will therefore have little influence on the outcome.
+Where multiple models fit the data equally well, these can equally
+influence the outcome, and the resultant posterior predictions reflect
+that model uncertainty. It is possible to specify the
 <code>"stacking"</code> method <span class="citation">(Yao et al.
 2018)</span> for model weights if desired (through the argument
 <code>loo_controls</code>) which aims to minimise prediction error. We
@@ -994,11 +994,12 @@ Environmental Assessment and Management</em> n/a (n/a).
 https://doi.org/<a href="https://doi.org/10.1002/ieam.4809" class="external-link">https://doi.org/10.1002/ieam.4809</a>.
 </div>
 <div id="ref-Thorley2018" class="csl-entry">
-Thorley, Joe, and Carl Schwarz. 2018. <em><span class="nocase">ssdtools:
-Species Sensitivity Distributions</span></em>. <a href="https://CRAN.R-project.org/package=ssdtools" class="external-link">https://CRAN.R-project.org/package=ssdtools</a>.
+Thorley, Joe, Rebecca Fisher, David Fox, and Carl Schwarz. 2026.
+<em><span class="nocase">ssdtools: Species Sensitivity
+Distributions</span></em>. <a href="https://CRAN.R-project.org/package=ssdtools" class="external-link">https://CRAN.R-project.org/package=ssdtools</a>.
 </div>
 <div id="ref-vehtari2020" class="csl-entry">
-Vehtari, Aki, Jonah Gabry, Mans Magnusson, et al. 2020. <em>Loo:
+Vehtari, Aki, Jonah Gabry, Mans Magnusson, et al. 2026. <em>Loo:
 Efficient Leave-One-Out Cross-Validation and WAIC for Bayesian
 Models</em>. <a href="https://mc-stan.org/loo/" class="external-link">https://mc-stan.org/loo/</a>.
 </div>
