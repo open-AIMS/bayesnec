@@ -357,7 +357,7 @@ lum31 |>
 Gain is a per-plate multiplicative constant, so dividing by a per-plate quantity
 does remove it. The difficulty is what the divisor is.
 
-@ritz2026 show that dividing a response by an *estimated* control mean induces
+@Ritz2026 show that dividing a response by an *estimated* control mean induces
 correlation between every observation sharing the denominator, and that ignoring
 it biases effect doses downwards and gives intervals that are too narrow. In
 their simulation, fitting the normalised response as though the observations
@@ -415,7 +415,7 @@ whose curve is `top` times a function of the predictor the two coincide.
 ### A global divisor
 
 A divisor that is one constant for the whole dataset is only a change of units.
-It uses no estimate and induces no correlation, so it is not what @ritz2026
+It uses no estimate and induces no correlation, so it is not what @Ritz2026
 object to. This assay nonetheless does not use one, and the reason is a
 property of the instrument rather than a preference.
 
@@ -451,7 +451,7 @@ not affect the N(S)EC or an ECx, for which both are nuisance plate effects, but
 the plate-level standard deviation is not a biological quantity and should not
 be reported as one.
 
-A related caution from @ritz2026 applies to the scope of the term. Normalising,
+A related caution from @Ritz2026 applies to the scope of the term. Normalising,
 or sharing a plate term, is legitimate only within curves of the same treatment.
 Plates within one toxicant-by-exposure-time arm qualify. A plate term is not
 placed across the copper-versus-zinc or 15-versus-30-minute contrasts; those are
