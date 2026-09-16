@@ -41,13 +41,19 @@ return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 
 \item{...}{Further arguments to pass to class specific methods.}
 
-\item{dpar}{For a joint two-block fit only (\code{family = "hurdle_gamma"}
-or \code{"zero_inflated_beta"}), the parameter block to report:
+\item{dpar}{For a joint two-block fit only (\code{family = "hurdle_gamma"},
+\code{"zero_inflated_beta"}, \code{"hurdle_poisson"} or
+\code{"hurdle_negbinomial"}), the parameter block to report:
 \code{"mu"} for the response block, or \code{"hu"} (\code{"zi"} for the
 zero-inflated families) for survival. Defaults to \code{NULL}, which gives
-the combined endpoint \code{mu * (1 - hu)}. The zero-probability block is
+the expected positive response multiplied by \code{1 - hu}. For continuous
+hurdles the positive response is \code{mu}; for count hurdles it is
+\code{E[Y | Y > 0]}. The zero-probability block is
 inverted to survival before computing, so the NSEC is read off a declining
-curve. See Details.}
+curve. See Details.
+For the count hurdles, \code{"mu"} is converted to the positive-count mean
+\code{E[Y | Y > 0]} so it matches the growth component returned by
+\code{\link{bnec_hurdle}}.}
 }
 \value{
 A vector containing the estimated NSEC value, including upper and
@@ -141,7 +147,7 @@ nsec(manec_example)
 }
 \references{
 Fisher R, Fox DR (2023). Introducing the no significant effect concentration
-(NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028.
+(NSEC). Environmental Toxicology and Chemistry, 42(9), 2019–2028.
 doi: 10.1002/etc.5610.
 }
 \seealso{

@@ -52,13 +52,19 @@ return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
 
 \item{...}{Additional arguments passed to methods.}
 
-\item{dpar}{For a joint two-block fit only (\code{family = "hurdle_gamma"}
-or \code{"zero_inflated_beta"}), the parameter block to report:
+\item{dpar}{For a joint two-block fit only (\code{family = "hurdle_gamma"},
+\code{"zero_inflated_beta"}, \code{"hurdle_poisson"} or
+\code{"hurdle_negbinomial"}), the parameter block to report:
 \code{"mu"} for the response block, or \code{"hu"} (\code{"zi"} for the
 zero-inflated families) for survival. Defaults to \code{NULL}, which gives
-the combined endpoint \code{mu * (1 - hu)}. The zero-probability block is
+the expected positive response multiplied by \code{1 - hu}. For continuous
+hurdles the positive response is \code{mu}; for count hurdles it is
+\code{E[Y | Y > 0]}. The zero-probability block is
 inverted to survival before computing, so ECx keeps its usual meaning of a
-percentage decline from the fitted control value. See Details.}
+percentage decline from the fitted control value. See Details.
+For the count hurdles, \code{"mu"} is converted to the positive-count mean
+\code{E[Y | Y > 0]} so it matches the growth component returned by
+\code{\link{bnec_hurdle}}.}
 }
 \value{
 A vector containing the estimated ECx value, including upper and

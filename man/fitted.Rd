@@ -7,7 +7,22 @@
 \title{Generates mean posterior linear predictions for objects fitted by
 \code{\link{bnec}}}
 \usage{
-\method{fitted}{bayesnecfit}(object, ...)
+\method{fitted}{bayesnecfit}(
+  object,
+  newdata = NULL,
+  re_formula = NULL,
+  scale = c("response", "linear"),
+  resp = NULL,
+  dpar = NULL,
+  nlpar = NULL,
+  ndraws = NULL,
+  draw_ids = NULL,
+  sort = FALSE,
+  summary = TRUE,
+  robust = FALSE,
+  probs = c(0.025, 0.975),
+  ...
+)
 
 \method{fitted}{bayesmanecfit}(object, summary = TRUE, robust = FALSE, probs = c(0.025, 0.975), ...)
 }
@@ -15,10 +30,44 @@
 \item{object}{An object of class \code{\link{bayesnecfit}} or
 \code{\link{bayesmanecfit}}.}
 
-\item{...}{Additional arguments to \code{\link[brms]{fitted.brmsfit}} if
-object is of class \code{\link{bayesnecfit}}, or to
-\code{\link[brms]{posterior_epred.brmsfit}} if object is of class
-\code{\link{bayesmanecfit}}.}
+\item{newdata}{An optional data.frame for which to evaluate predictions. If
+\code{NULL} (default), the original data of the model is used. \code{NA}
+values within factors (excluding grouping variables) are interpreted as if
+all dummy variables of this factor are zero. This allows, for instance, to
+make predictions of the grand mean when using sum coding. \code{NA} values
+within grouping variables are treated as a new level.}
+
+\item{re_formula}{formula containing group-level effects to be considered in
+the prediction. If \code{NULL} (default), include all group-level effects;
+if \code{NA} or \code{~0}, include no group-level effects.}
+
+\item{scale}{Either \code{"response"} or \code{"linear"}.
+If \code{"response"}, results are returned on the scale
+of the response variable. If \code{"linear"},
+results are returned on the scale of the linear predictor term,
+that is without applying the inverse link function or
+other transformations.}
+
+\item{resp}{Optional names of response variables. If specified, predictions
+are performed only for the specified response variables.}
+
+\item{dpar}{Optional name of a predicted distributional parameter.
+If specified, expected predictions of this parameters are returned.}
+
+\item{nlpar}{Optional name of a predicted non-linear parameter.
+If specified, expected predictions of this parameters are returned.}
+
+\item{ndraws}{Positive integer indicating how many posterior draws should
+be used. If \code{NULL} (the default) all draws are used. Ignored if
+\code{draw_ids} is not \code{NULL}.}
+
+\item{draw_ids}{An integer vector specifying the posterior draws to be used.
+If \code{NULL} (the default), all draws are used.}
+
+\item{sort}{Logical. Only relevant for time series models.
+Indicating whether to return predicted values in the original
+order (\code{FALSE}; default) or in the order of the
+time series (\code{TRUE}).}
 
 \item{summary}{Should summary statistics be returned
 instead of the raw values? Default is \code{TRUE}.}
@@ -31,6 +80,11 @@ Only used if \code{summary} is \code{TRUE}.}
 
 \item{probs}{The percentiles to be computed by the \code{quantile}
 function. Only used if \code{summary} is \code{TRUE}.}
+
+\item{...}{Additional arguments to \code{\link[brms]{fitted.brmsfit}} if
+object is of class \code{\link{bayesnecfit}}, or to
+\code{\link[brms]{posterior_epred.brmsfit}} if object is of class
+\code{\link{bayesmanecfit}}.}
 }
 \value{
 See \code{?brms:fitted.brmsfit}.

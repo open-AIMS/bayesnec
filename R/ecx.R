@@ -27,13 +27,19 @@
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
-#' @param dpar For a joint two-block fit only (\code{family = "hurdle_gamma"}
-#' or \code{"zero_inflated_beta"}), the parameter block to report:
+#' @param dpar For a joint two-block fit only (\code{family = "hurdle_gamma"},
+#' \code{"zero_inflated_beta"}, \code{"hurdle_poisson"} or
+#' \code{"hurdle_negbinomial"}), the parameter block to report:
 #' \code{"mu"} for the response block, or \code{"hu"} (\code{"zi"} for the
 #' zero-inflated families) for survival. Defaults to \code{NULL}, which gives
-#' the combined endpoint \code{mu * (1 - hu)}. The zero-probability block is
+#' the expected positive response multiplied by \code{1 - hu}. For continuous
+#' hurdles the positive response is \code{mu}; for count hurdles it is
+#' \code{E[Y | Y > 0]}. The zero-probability block is
 #' inverted to survival before computing, so ECx keeps its usual meaning of a
 #' percentage decline from the fitted control value. See Details.
+#' For the count hurdles, \code{"mu"} is converted to the positive-count mean
+#' \code{E[Y | Y > 0]} so it matches the growth component returned by
+#' \code{\link{bnec_hurdle}}.
 #' @param ... Additional arguments passed to methods.
 #'
 #' @details \bold{Every ECx is measured from the control.} The control is the
@@ -182,8 +188,9 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
     object, resolution = resolution, x_range = x_range
   )
   # dpar lets a two-block fit report its components separately. The default
-  # (NULL) gives what posterior_epred always gave: mu * (1 - hu) for such a
-  # family, the single mean curve otherwise. The zero-probability block is
+  # (NULL) gives what posterior_epred always gave: the positive-part mean times
+  # (1 - hu) for such a family, the single mean curve otherwise. The
+  # zero-probability block is
   # inverted so that "decline from control" means the same thing as it does
   # everywhere else. Valid names are "mu" and whichever brms uses for the
   # second block: "hu" for hurdle families, "zi" for zero-inflated ones.
@@ -191,25 +198,14 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
   # prediction as well as the curve. Reading the control off a matrix that had
   # had the dpar inversion applied, or not applied, inconsistently with the
   # curve would put the reference and the curve on different quantities.
-  epred_fun <- function(nd) {
-    if (is.null(dpar)) {
-      return(posterior_epred(object, newdata = nd, re_formula = NA))
-    }
-    if (!is_hurdle_family(object$fit$family)) {
-      stop("The \"dpar\" argument is only valid for hurdle families.",
-           call. = FALSE)
-    }
-    dpar <- match.arg(dpar, c("mu", hurdle_dpar(object$fit$family)))
-    out <- posterior_epred(object, newdata = nd, re_formula = NA, dpar = dpar)
-    if (dpar != "mu") {
-      out <- 1 - out
-    }
-    out
-  }
+  epred_fun <- function(nd) joint_hurdle_epred(object, nd, dpar)
   p_samples <- epred_fun(newdata_list$newdata)
   x_vec <- newdata_list$x_vec
   control <- control_posterior(object, newdata_list$newdata, epred_fun)
   asymptote <- ecx_asymptote(object, type)
+  asymptote <- count_positive_asymptote(
+    object, dpar, asymptote, newdata_list$newdata
+  )
   ecx_out <- ecx_from_posterior(p_samples, x_vec, ecx_val, type, control,
                                 asymptote)
   n_missing <- sum(is.na(ecx_out))
@@ -418,6 +414,66 @@ ecx_asymptote <- function(object, type) {
          call. = FALSE)
   }
   0
+}
+
+#' Put a count-hurdle asymptote on the expected-positive scale
+#'
+#' @param object A \code{bayesnecfit}.
+#' @param dpar The requested distributional parameter, if any.
+#' @param asymptote Draws of the underlying count-mean asymptote.
+#' @param newdata Prediction data used to obtain shape draws.
+#'
+#' @return \code{asymptote}, transformed where the reported curve is
+#' \code{E[Y | Y > 0]}.
+#'
+#' @noRd
+count_positive_asymptote <- function(object, dpar, asymptote, newdata) {
+  if (all(is.na(asymptote))) {
+    return(asymptote)
+  }
+  if (inherits(object, "bayesmanecfit")) {
+    model_set <- names(object$mod_fits)
+    sample_size <- min(vapply(
+      object$mod_fits, function(x) nrow(as_draws_df(x$fit)), numeric(1)
+    ))
+    draw_index <- pull_draw_index(object, model_set, sample_size)
+    return(unlist(lapply(model_set, function(m) {
+      part <- suppressMessages(pull_out(object, model = m))
+      part_asymptote <- ecx_asymptote(part, "relative")
+      part_asymptote <- count_positive_asymptote(
+        part, dpar, part_asymptote, newdata
+      )
+      idx <- draw_index[[m]]
+      if (length(part_asymptote) == 1) {
+        rep_len(part_asymptote, length(idx))
+      } else {
+        part_asymptote[idx]
+      }
+    })))
+  }
+  family <- object$fit$family$family
+  factorised <- family %in% c("poisson", "negbinomial") &&
+    is_factorised_count_formula(object$bayesnecformula, object$fit$family) &&
+    is.null(dpar)
+  joint <- family %in% c("hurdle_poisson", "hurdle_negbinomial") &&
+    !is.null(dpar) &&
+    identical(match.arg(dpar, c("mu", hurdle_dpar(object$fit$family))), "mu")
+  if (!factorised && !joint) {
+    return(asymptote)
+  }
+  shape <- NULL
+  if (family %in% c("negbinomial", "hurdle_negbinomial")) {
+    shape <- posterior_epred(
+      object, newdata = newdata[1, , drop = FALSE], re_formula = NA,
+      dpar = "shape"
+    )
+  }
+  # Nonlinear equation parameters are stored on the family's link scale.
+  # Predictions have already passed through linkinv(), so the theoretical bot
+  # (or the equation's zero limit where there is no bot) must do the same
+  # before it is converted to E[Y | Y > 0].
+  mean_asymptote <- object$fit$family$linkinv(asymptote)
+  as.numeric(hurdle_positive_mean(mean_asymptote, family, shape))
 }
 
 #' The model-averaged theoretical asymptote

@@ -133,7 +133,10 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 200, x_range = NA,
   floor_draws <- switch(
     type,
     absolute = 0,
-    relative = ecx_asymptote(object, "relative"),
+    relative = count_positive_asymptote(
+      object, NULL, ecx_asymptote(object, "relative"),
+      newdata_list$newdata
+    ),
     range = apply(p_samples, 1, min, na.rm = TRUE)
   )
   ecnsecP <- (control_draws - reference) / (control_draws - floor_draws) * 100
@@ -145,7 +148,6 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 200, x_range = NA,
       ecnsecP
   }
 }
-
 
 
 

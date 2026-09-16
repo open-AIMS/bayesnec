@@ -4,8 +4,10 @@
 # brms names that second block "hu" for the hurdle families and "zi" for the
 # zero-inflated ones. Structurally they are the same model -- zero-inflation
 # only differs from a hurdle when the base distribution can itself emit zeros,
-# which neither Gamma nor Beta can -- so bayesnec treats them identically and
-# carries the name through rather than branching on it. The block is
+# which neither Gamma nor Beta can -- so bayesnec treats those families
+# identically and carries the name through rather than branching on it. Count
+# hurdles also factorise because their zeros are declared structural and their
+# positive block is zero-truncated. The block is
 # distinguished in a fit by that name used as a prefix on every non-linear
 # parameter: `top` belongs to mu, `hutop` or `zitop` to the second block.
 
@@ -37,7 +39,8 @@ hurdle_dpar <- function(family) {
 #'
 #' The mu block describes the response with the zeros set aside, so its priors
 #' and initial values should come from whatever family that subset looks like:
-#' Gamma for hurdle_gamma, Beta for zero_inflated_beta.
+#' Gamma for hurdle_gamma, Beta for zero_inflated_beta, and the corresponding
+#' count family for hurdle_poisson and hurdle_negbinomial.
 #'
 #' The mean link the caller chose is used here rather than replaced. brms
 #' applies the inverse mean link to the whole non-linear expression, so under
@@ -69,8 +72,8 @@ hurdle_dpar <- function(family) {
 #'
 #' @return An object of class \code{\link[stats]{family}}.
 #'
-#' @importFrom stats Gamma
-#' @importFrom brms Beta
+#' @importFrom stats Gamma poisson
+#' @importFrom brms Beta brmsfamily negbinomial
 #'
 #' @noRd
 hurdle_mu_family <- function(family) {
@@ -80,7 +83,164 @@ hurdle_mu_family <- function(family) {
   switch(unname(hurdle_mu_fams[[fam_tag]]),
          Gamma = Gamma(link = link),
          beta = Beta(link = link),
+         poisson = brmsfamily("poisson", link = link),
+         negbinomial = negbinomial(link = link),
          stop("No mu family defined for ", fam_tag, ".", call. = FALSE))
+}
+
+#' Conditional mean of the positive part of a count distribution
+#'
+#' @param mu A numeric matrix of mean-parameter draws.
+#' @param family Either \code{"hurdle_poisson"} or
+#' \code{"hurdle_negbinomial"}.
+#' @param shape A numeric matrix of negative-binomial shape draws, required for
+#' \code{"hurdle_negbinomial"}.
+#'
+#' @return A numeric matrix with the same dimensions as \code{mu}.
+#'
+#' @noRd
+hurdle_positive_mean <- function(mu, family, shape = NULL) {
+  if (family %in% c("poisson", "hurdle_poisson")) {
+    nonzero <- -expm1(-mu)
+  } else if (family %in% c("negbinomial", "hurdle_negbinomial")) {
+    if (is.null(shape)) {
+      stop("Negative-binomial positive means require shape draws.",
+           call. = FALSE)
+    }
+    nonzero <- -expm1(-shape * log1p(mu / shape))
+  } else {
+    return(mu)
+  }
+  out <- mu / nonzero
+  out[nonzero == 0] <- 1
+  out
+}
+
+#' Conditional variance of the positive part of a count distribution
+#'
+#' @inheritParams hurdle_positive_mean
+#'
+#' @return A numeric matrix with the same dimensions as \code{mu}.
+#'
+#' @noRd
+hurdle_positive_variance <- function(mu, family, shape = NULL) {
+  if (family %in% c("poisson", "hurdle_poisson")) {
+    nonzero <- -expm1(-mu)
+    second_moment <- mu + mu^2
+  } else if (family %in% c("negbinomial", "hurdle_negbinomial")) {
+    if (is.null(shape)) {
+      stop("Negative-binomial positive variances require shape draws.",
+           call. = FALSE)
+    }
+    nonzero <- -expm1(-shape * log1p(mu / shape))
+    second_moment <- mu + mu^2 / shape + mu^2
+  } else {
+    stop("Positive-count variances require a count family.", call. = FALSE)
+  }
+  positive_mean <- hurdle_positive_mean(mu, family, shape)
+  out <- second_moment / nonzero - positive_mean^2
+  out[nonzero == 0] <- 0
+  out
+}
+
+#' Does this fit carry the internal count-hurdle truncation?
+#'
+#' @param formula A bayesnec formula.
+#' @param family A family object.
+#'
+#' @return A logical value.
+#'
+#' @noRd
+is_factorised_count_formula <- function(formula, family) {
+  isTRUE(attr(formula, "bayesnec_internal_truncation")) &&
+    family$family %in% c("poisson", "negbinomial")
+}
+
+#' Exact expected response for a factorised count hurdle
+#'
+#' @param fit A fitted \code{brmsfit}.
+#' @param formula The bayesnec formula used for the fit.
+#' @param dpar,nlpar Optional parameter predictions passed to
+#' \code{posterior_epred}.
+#' @param ndraws,draw_ids Optional posterior draw selection passed to
+#' \code{posterior_epred}.
+#' @param ... Further arguments passed to \code{posterior_epred}.
+#'
+#' @return A numeric matrix of posterior draws.
+#'
+#' @details brms obtains expectations for truncated discrete families by
+#' summing a finite grid whose upper end is three times the largest fitted
+#' mean. That approximation can lose most of an overdispersed negative-
+#' binomial tail. For the one-sided truncation used here the conditional mean
+#' is available in closed form, so bayesnec computes it from the underlying
+#' \code{mu} and \code{shape} draws instead.
+#'
+#' @importFrom brms ndraws posterior_epred
+#'
+#' @noRd
+factorised_count_epred <- function(fit, formula, dpar = NULL, nlpar = NULL,
+                                   ndraws = NULL, draw_ids = NULL, ...) {
+  if (!is_factorised_count_formula(formula, fit$family) ||
+      !is.null(dpar) || !is.null(nlpar)) {
+    return(posterior_epred(
+      fit, dpar = dpar, nlpar = nlpar, ndraws = ndraws,
+      draw_ids = draw_ids, ...
+    ))
+  }
+  # brms samples draw_ids inside each posterior prediction call when only
+  # ndraws is supplied. The mu and shape calls must use the same draws or the
+  # negative-binomial conditional mean combines unrelated parameters.
+  if (!is.null(ndraws) && is.null(draw_ids)) {
+    draw_ids <- sample.int(ndraws(fit), ndraws)
+    ndraws <- NULL
+  }
+  mu <- posterior_epred(
+    fit, dpar = "mu", ndraws = ndraws, draw_ids = draw_ids, ...
+  )
+  shape <- NULL
+  if (fit$family$family == "negbinomial") {
+    shape <- posterior_epred(
+      fit, dpar = "shape", ndraws = ndraws, draw_ids = draw_ids, ...
+    )
+  }
+  hurdle_positive_mean(mu, fit$family$family, shape)
+}
+
+#' Posterior draws for one block of a joint hurdle fit
+#'
+#' @param object A \code{bayesnecfit} containing a joint hurdle family.
+#' @param newdata A prediction data frame.
+#' @param dpar The requested parameter block, or \code{NULL} for the combined
+#' endpoint.
+#'
+#' @return A numeric matrix of posterior draws.
+#'
+#' @importFrom brms posterior_epred
+#'
+#' @noRd
+joint_hurdle_epred <- function(object, newdata, dpar = NULL) {
+  if (is.null(dpar)) {
+    return(posterior_epred(object, newdata = newdata, re_formula = NA))
+  }
+  family <- object$fit$family
+  if (!is_hurdle_family(family)) {
+    stop("The \"dpar\" argument is only valid for hurdle families.",
+         call. = FALSE)
+  }
+  dpar <- match.arg(dpar, c("mu", hurdle_dpar(family)))
+  out <- posterior_epred(
+    object, newdata = newdata, re_formula = NA, dpar = dpar
+  )
+  if (dpar != "mu") {
+    return(1 - out)
+  }
+  if (family$family == "hurdle_negbinomial") {
+    shape <- posterior_epred(
+      object, newdata = newdata, re_formula = NA, dpar = "shape"
+    )
+    return(hurdle_positive_mean(out, family$family, shape))
+  }
+  hurdle_positive_mean(out, family$family)
 }
 
 #' Non-linear parameter names of the second block for a given model

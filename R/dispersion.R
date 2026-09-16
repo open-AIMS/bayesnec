@@ -109,6 +109,7 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
   mod_name <- model$model
   mod_label <- if (is.null(mod_name)) "fitted" else mod_name
   formula <- model$bayesnecformula
+  factorised_count <- is_factorised_count_formula(formula, model$fit$family)
   model <- model$fit
   mod_dat <- model.frame(formula, data = model$data)
   allowed_fams <- c("poisson", "binomial")
@@ -128,7 +129,7 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
     fam_fcts <- get(fam)(link = model$family$link)
     obs_y <- standata(model)$Y
     lpd_out <- posterior_linpred(model)
-    prd_out <- posterior_epred(model)
+    prd_out <- factorised_count_epred(model, formula)
     # Wrapped so the caller's stream is where they left it once the statistic
     # returns. summary() reaches this for every equation of a model set, so a
     # summary printed partway through a simulation would otherwise move it.
@@ -144,7 +145,11 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
     var_out <- matrix(0, nrow(prd_out), ncol(prd_out))
     for (i in seq_len(nrow(prd_out))) {
       prd_mu <- fam_fcts$linkinv(lpd_out[i, ])
-      prd_var_y <- fam_fcts$variance(prd_mu)
+      prd_var_y <- if (factorised_count && fam == "poisson") {
+        hurdle_positive_variance(prd_mu, fam)
+      } else {
+        fam_fcts$variance(prd_mu)
+      }
       if (fam == "binomial") {
         trials_var <- attr(mod_dat, "bnec_pop")[["trials_var"]]
         prd_var_y <- prd_var_y * model$data[[trials_var]]

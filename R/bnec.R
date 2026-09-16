@@ -103,7 +103,8 @@
 #' finite value is supplied.
 #' @param model_survival An optional \code{\link[base]{character}} string naming
 #' the equation to use for the second (zero-probability) parameter block of a
-#' \code{"hurdle_gamma"} or \code{"zero_inflated_beta"} fit. Defaults to
+#' \code{"hurdle_gamma"}, \code{"zero_inflated_beta"},
+#' \code{"hurdle_poisson"} or \code{"hurdle_negbinomial"} fit. Defaults to
 #' \code{NULL}, meaning the same equation as the response block. It must be a
 #' single model: model averaging in the joint route runs over the response
 #' block, with the second block held fixed. Averaging over both at once means
@@ -302,7 +303,8 @@
 #'
 #' \bold{Two-block (hurdle and zero-inflated) families}
 #'
-#' The families "hurdle_gamma" and "zero_inflated_beta" fit data where exposure
+#' The families "hurdle_gamma", "zero_inflated_beta", "hurdle_poisson" and
+#' "hurdle_negbinomial" fit data where exposure
 #' both produces zero responses -- individuals that died, colonies that failed
 #' -- and suppresses the response of those that did not. Zeros in the response
 #' denote the former, and the fit gains a second parameter block giving the
@@ -320,6 +322,13 @@
 #' distribution can itself produce zeros, which neither the Gamma nor the Beta
 #' can, so the two are the same model and \pkg{bayesnec} treats them alike.
 #'
+#' Use "hurdle_poisson" or "hurdle_negbinomial" where the non-zero response is
+#' a count and the zeros are observed to be structural. The joint families and
+#' \code{\link{bnec_hurdle}} both use a zero-truncated likelihood for the
+#' positive counts. The joint route writes it as one hurdle distribution;
+#' \code{bnec_hurdle} applies \code{trunc(lb = 1)} internally to its growth
+#' fit, so the two likelihoods agree when the blocks share no parameters.
+#'
 #' Where a "zero_inflated_beta" response has been obtained by dividing through
 #' by some maximum, the divisor rule above applies: it must be a constant fixed
 #' in advance, not one computed from the dataset being analysed. Where no such
@@ -327,14 +336,19 @@
 #' "hurdle_gamma" and reading effective concentrations off the fitted curve via
 #' \code{\link{ecx}}.
 #'
-#' Three toxicity estimates follow from one fit: the response of survivors
-#' (\code{mu}), survival itself (\code{1 - hu}), and the combined endpoint
-#' \code{mu * (1 - hu)}, the expected response per individual *exposed*.
+#' Three toxicity estimates follow from one fit: the response of survivors,
+#' survival itself (\code{1 - hu}), and their product, the expected response per
+#' individual *exposed*.
 #' \code{\link[brms]{posterior_epred}} returns the combined endpoint, so
 #' \code{\link{ecx}}, \code{\link{nsec}} and \code{\link{plot}} describe it by
 #' default; pass \code{dpar = "mu"} or \code{dpar = "hu"} to \code{\link{ecx}}
 #' for a component. \code{\link{nec}} returns the combined threshold, which for
 #' threshold models on both blocks is the smaller of the two.
+#' For the count hurdles, \pkg{brms} calls the untruncated count mean
+#' \code{mu}; \code{ecx(dpar = "mu")} and \code{nsec(dpar = "mu")} convert it
+#' to \code{E[Y | Y > 0]} so that "response of survivors" has the same meaning
+#' in the joint and factorised routes. The fitted \code{top} and \code{bot}
+#' parameters remain on the underlying \code{mu} scale.
 #'
 #' Naming these families is enough --- \code{family = "hurdle_gamma"},
 #' \code{hurdle_gamma()}, \code{family = "zero_inflated_beta"} --- since
@@ -355,7 +369,7 @@
 #' than dying; \code{hunec} is the same concentration either way. See
 #' \code{vignette("example6")}.
 #'
-#' Neither family is ever selected automatically: a response
+#' None of the joint families is selected automatically: a response
 #' containing zeros is still treated as Gamma, with a message, so that existing
 #' analyses do not silently change.
 #'
@@ -428,10 +442,10 @@
 #' Which gives the rule for choosing between the two. If you can tell which
 #' zeros are structural -- the individual died, the replicate failed -- you have
 #' a hurdle, and a two-block family or \code{\link{bnec_hurdle}} is the right
-#' model. Zero-inflation is for when you cannot. Note that a genuine hurdle on a
-#' \emph{count} response needs a zero-truncated count family, which bayesnec
-#' does not yet provide; see the note under \code{family_growth} in
-#' \code{\link{bnec_hurdle}}.
+#' model. Zero-inflation is for when you cannot. For a count hurdle use
+#' \code{"hurdle_poisson"} or \code{"hurdle_negbinomial"} jointly, or pass the
+#' corresponding base count family to \code{\link{bnec_hurdle}} for crossed
+#' model comparison.
 #'
 #' Two consequences are worth noting. \code{zi} is a nuisance parameter here,
 #' not part of the concentration-response description, and \code{disp()} is

@@ -150,6 +150,7 @@ ppp_value <- function(sim, obs) {
 #' The per-group table for one brmsfit
 #'
 #' @param fit An object of class \code{\link[brms]{brmsfit}}.
+#' @param formula The bayesnec formula used for the fit.
 #' @param y A \code{\link[base]{numeric}} vector, the response.
 #' @param grp A \code{\link[base]{factor}}.
 #' @param ndraws,seed As in \code{\link{check_fit}}.
@@ -161,7 +162,7 @@ ppp_value <- function(sim, obs) {
 #' @importFrom stats sd
 #'
 #' @noRd
-check_fit_table <- function(fit, y, grp, ndraws, seed, is_mixture) {
+check_fit_table <- function(fit, formula, y, grp, ndraws, seed, is_mixture) {
   # brms errors rather than truncating when ndraws exceeds what the fit holds,
   # so the default has to bend to the object. A short fit -- manec_example has
   # 100 draws -- is exactly what someone runs a diagnostic on first.
@@ -179,7 +180,8 @@ check_fit_table <- function(fit, y, grp, ndraws, seed, is_mixture) {
     # observed and the simulated response, so that the two are comparable.
     # Using each draw's own mean instead would remove the very discrepancy
     # being measured.
-    mu <- apply(posterior_epred(fit), 2, median)
+    mu <- apply(factorised_count_epred(fit, formula, ndraws = ndraws),
+                2, median)
   })
   check_fit_stats(y, yrep, mu, grp, is_mixture)
 }
@@ -278,7 +280,7 @@ check_fit.bayesnecfit <- function(x, group = NULL, ndraws = 1000, seed = 10,
   y <- x$fit$data[[y_var]]
   predictor <- x$fit$data[[x_var]]
   grp <- check_fit_groups(predictor, group)
-  out <- check_fit_table(x$fit, y, grp, ndraws, seed,
+  out <- check_fit_table(x$fit, x$bayesnecformula, y, grp, ndraws, seed,
                          is_hurdle_family(x$fit$family))
   # The control is the lowest predictor value, which is the package's own
   # convention: nsec() takes its reference as quantile(p_samples[, 1], sig_val),
@@ -430,7 +432,9 @@ check_fit_combined <- function(x, group = NULL, ndraws = 1000, seed = 10) {
     alive <- posterior_predict(sb, ndraws = nd)
     grow <- posterior_predict(gb, newdata = sb$data, ndraws = nd)
     mu_alive <- apply(posterior_epred(sb), 2, median)
-    mu_grow <- apply(posterior_epred(gb, newdata = sb$data), 2, median)
+    mu_grow <- apply(factorised_count_epred(
+      gb, x$growth$bayesnecformula, newdata = sb$data, ndraws = nd
+    ), 2, median)
   })
   n <- min(nrow(alive), nrow(grow))
   yrep <- alive[seq_len(n), , drop = FALSE] * grow[seq_len(n), , drop = FALSE]

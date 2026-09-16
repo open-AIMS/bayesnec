@@ -89,7 +89,8 @@ test_that("bnec_hurdle refuses the zero-inflated count families", {
                 family_growth = "hurdle_gamma"),
     "already a two-block family"
   )
-  # A plain count family is still accepted, which is the hurdle-on-counts case.
+  # A plain count family is the hurdle-on-counts case. bnec_hurdle adds the
+  # zero truncation after it has identified the positive subset.
   expect_error(
     bayesnec:::check_hurdle_growth_family(validate_family("poisson")),
     NA

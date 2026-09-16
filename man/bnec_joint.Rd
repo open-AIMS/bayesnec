@@ -31,7 +31,8 @@ An object of class \code{\link{bayesnecfit}}.
 \description{
 Takes the model combination favoured by \code{\link{crossed_weights}} and
 refits it as one \code{\link{bnec}} model with a two-block
-(\code{hurdle_gamma} or \code{zero_inflated_beta}) family.
+(\code{hurdle_gamma}, \code{zero_inflated_beta}, \code{hurdle_poisson} or
+\code{hurdle_negbinomial}) family.
 }
 \details{
 \bold{Why refit at all}
@@ -55,9 +56,10 @@ joint route can only average over the response block.
 
 The response variable, predictor and data are taken from \code{object}, and
 the family follows the growth component: \code{hurdle_gamma} where that was
-fitted as a Gamma, \code{zero_inflated_beta} where it was a Beta. Nothing
-else transfers -- priors, control arguments and the like are defaults again
-unless passed through \code{...}.
+fitted as a Gamma, \code{zero_inflated_beta} where it was a Beta, and the
+corresponding count hurdle where it was Poisson or negative binomial.
+Nothing else transfers -- priors, control arguments and the like are
+defaults again unless passed through \code{...}.
 }
 \examples{
 \dontrun{

@@ -571,6 +571,9 @@ check_formula.bayesnecformula <- function(formula, data,
     # variable, tens of seconds after the message had scrolled past. An aterm
     # bayesnec has not validated cannot be assumed harmless.
     validated <- "trials\\(|weights\\(|cens\\(|rate\\("
+    if (isTRUE(attr(formula, "bayesnec_internal_truncation"))) {
+      validated <- paste0(validated, "|trunc\\(")
+    }
     unvalidated <- no_resp[!grepl(validated, no_resp)]
     if (length(unvalidated) > 0) {
       stop("You have specified brms special aterms bayesnec does not support: ",
@@ -794,11 +797,13 @@ wrangle_model_formula <- function(model, formula, data, family = NULL,
 #' @noRd
 #' @importFrom stats update terms
 single_model_formula <- function(formula, model) {
+  internal_truncation <- attr(formula, "bayesnec_internal_truncation")
   x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
   x_term <- eval(parse(text = x_str))
   new_crf <- paste0("crf(", x_term, ", model = \"", model, "\")")
   to_eval <- paste0("update(formula, ~ . - ", x_str, " + ", new_crf, ")")
   formula <- eval(parse(text = to_eval))
+  attr(formula, "bayesnec_internal_truncation") <- internal_truncation
   bayesnecformula(formula)
 }
 

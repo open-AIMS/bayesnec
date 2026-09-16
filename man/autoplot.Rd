@@ -7,7 +7,15 @@
 \alias{autoplot.bayesnecgroupfit}
 \title{bayesnec standard ggplot2 plotting method}
 \usage{
-\method{autoplot}{bayesnecfit}(object, ..., nec = TRUE, ecx = FALSE, xform = identity, group = NULL)
+\method{autoplot}{bayesnecfit}(
+  object,
+  ...,
+  nec = TRUE,
+  ecx = FALSE,
+  xform = identity,
+  group = NULL,
+  group_aes = c("line", "colour")
+)
 
 \method{autoplot}{bayesmanecfit}(
   object,
@@ -20,7 +28,8 @@
   ask = TRUE,
   newpage = TRUE,
   multi_facet = TRUE,
-  group = NULL
+  group = NULL,
+  group_aes = c("line", "colour")
 )
 
 \method{autoplot}{bayesnecgroupfit}(object, ..., nec = TRUE, ecx = FALSE, xform = identity, group = NULL)
@@ -43,6 +52,11 @@ the fitted formula. Observations are joined through their per-level means;
 a level recorded at one predictor value is marked at its mean instead. A
 \code{bayesnecgroupfit} uses its fitted grouping variable automatically and
 draws one panel per level.}
+
+\item{group_aes}{How should the grouping selected by \code{group} be shown?
+\code{"line"} (the default) draws grey per-level means. \code{"colour"}
+also maps the grouping to the observation fill and the per-level mean marks.
+The argument is ignored when \code{group} is \code{NULL}.}
 
 \item{all_models}{Should all individual models be plotted separately\
 (defaults to FALSE) or should model averaged predictions be plotted instead?}

@@ -15,6 +15,7 @@ expected_supports <- function() {
        zero_inflated_poisson = c(0, Inf),
        zero_inflated_negbinomial = c(0, Inf),
        hurdle_gamma = c(0, Inf),
+       hurdle_poisson = c(0, Inf), hurdle_negbinomial = c(0, Inf),
        bernoulli = c(0, 1), Beta = c(0, 1), binomial = c(0, 1),
        beta_binomial = c(0, 1), zero_inflated_beta = c(0, 1))
 }
@@ -48,6 +49,8 @@ test_that("mu_is_constrained asks family and link together, not either alone", {
   expect_true(f(validate_family("Gamma")))
   expect_true(f(validate_family("beta_binomial")))
   expect_true(f(validate_family("hurdle_gamma")))
+  expect_true(f(validate_family("hurdle_poisson")))
+  expect_true(f(validate_family("hurdle_negbinomial")))
   # gaussian has nothing to violate, whatever the link
   expect_false(f(validate_family("gaussian")))
   expect_false(f(gaussian(link = "log")))
@@ -340,7 +343,8 @@ test_that("the agreement test covers every family in mod_fams", {
   covered <- c("Beta", "binomial", "beta_binomial", "bernoulli",
                "Gamma", "poisson", "negbinomial", "zero_inflated_poisson",
                "zero_inflated_negbinomial", "gaussian",
-               "hurdle_gamma", "zero_inflated_beta")
+               "hurdle_gamma", "hurdle_poisson", "hurdle_negbinomial",
+               "zero_inflated_beta")
   expect_setequal(covered, unname(bayesnec:::mod_fams))
 })
 

@@ -48,7 +48,9 @@ NULL
 #'
 #' @export
 posterior_epred.bayesnecfit <- function(object, ...) {
-  posterior_epred(pull_brmsfit(object), ...)
+  factorised_count_epred(
+    pull_brmsfit(object), object$bayesnecformula, ...
+  )
 }
 
 #' @rdname posterior_epred
@@ -65,7 +67,7 @@ posterior_epred.bayesmanecfit <- function(object, ...) {
   mod_fits <- object$mod_fits
   model_set <- names(mod_fits)
   pred_list <- lapply(mod_fits, function(x, ...) {
-    posterior_epred(x$fit, ...)
+    factorised_count_epred(x$fit, x$bayesnecformula, ...)
   }, ...)
   sample_size <- min(sapply(pred_list, nrow))
   # The index realised when the object was built, not a fresh draw here, so
