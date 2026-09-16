@@ -18,8 +18,9 @@ bnec_hurdle(
 R formula or an actual \code{\link[stats]{formula}} object. See
 \code{\link{bayesnecformula}}. The response must be untransformed, and zero
 values in it are taken to mean the individual did not survive. A
-\code{cens()} aterm is allowed alongside it; other aterms are refused, see
-Details.}
+\code{cens()} aterm is allowed for continuous growth families. It is refused
+for count growth families because \pkg{brms} does not combine left censoring
+with zero truncation correctly. Other aterms are refused; see Details.}
 
 \item{data}{A \code{\link[base]{data.frame}} containing the data to use with
 the \code{formula}. Every unit that entered the experiment must be present,
@@ -35,15 +36,19 @@ response component.}
 \item{family_growth}{A \code{\link[stats]{family}} function for the response
 of the non-zero subset. Defaults to \code{NULL}, in which case it is chosen
 from that subset the same way \code{\link{bnec}} would: \code{Gamma} for a
-positive continuous response, \code{Beta} for one bounded on (0, 1). A
+positive continuous response, \code{Beta} for one bounded on (0, 1), and
+\code{poisson} for counts. A
 two-block family (\code{hurdle_gamma}, \code{zero_inflated_beta}) is refused,
 because \code{bnec_hurdle} is itself the two-part model, and so are the
 zero-inflated count families, which are mixtures rather than hurdles -- see
-\code{\link{bnec}}. Note that a count family is accepted here but fitted
-\emph{untruncated} to the non-zero subset, whereas the positive part of a
-hurdle on counts is zero-truncated. That overestimates the mean where the
-mean is small, which is the upper end of the concentration range; a
-zero-truncated count family is not yet available.}
+\code{\link{bnec}}. For \code{poisson} and \code{negbinomial}, the positive
+subset is fitted with the corresponding zero-truncated likelihood. The
+truncation is added internally because every row in that subset is known to
+be positive; it is not a user-selectable response transformation. This path
+requires \pkg{brms} 2.23.2 or later, where the fitted model and log
+likelihood use the same inclusive lower bound. \pkg{bayesnec} computes the
+exact conditional-positive expected response from the fitted count
+parameters rather than using \pkg{brms}'s finite-grid approximation.}
 
 \item{predictor_scale}{The predictor-scale declaration passed to both
 \code{\link{bnec}} fits. It is checked against the complete predictor before
@@ -77,7 +82,7 @@ Throughout the documentation the two parts are called "growth" and
 "survival", after the case they were written for -- individuals that die
 contribute a zero and the survivors contribute a measurement. Nothing in the
 implementation is specific to that reading: any process producing exact
-zeros alongside a continuous response fits the same structure. Algal growth
+zeros alongside a positive response fits the same structure. Algal growth
 rate expressed as a proportion of a ceiling, with replicates that failed
 entirely, is the same model.
 
@@ -110,7 +115,8 @@ rows must be reinstated as zeros before calling this function.
 
 \bold{Censoring, and which aterms are allowed}
 
-\code{cens()} is the one aterm accepted on the response. \code{\link{bnec}}
+\code{cens()} is the one aterm accepted on a continuous response.
+\code{\link{bnec}}
 itself carries three -- \code{trials()}, \code{weights()} and
 \code{cens()} -- and of those \code{cens()} is the only one whose meaning
 stays unambiguous once the response is split across two models. It is also
@@ -141,7 +147,12 @@ both -- that this function will not make on the user's behalf. Aterms beyond
 those three are refused here as well, though they would not reach \pkg{brms}
 in any case: \code{\link{model.frame}} drops them for an ordinary
 \code{\link{bnec}} fit too. Making the two \code{\link{bnec}} calls directly
-remains available for anything outside this set.
+remains available for anything outside this set. Count growth is an
+exception: combining its required \code{trunc(lb = 1)} with left censoring
+makes \pkg{brms} subtract the truncation normaliser from an unconditioned
+cumulative probability, which can yield a likelihood contribution greater
+than one. \code{bnec_hurdle} therefore refuses \code{cens()} with a count
+growth family before fitting.
 }
 \examples{
 \dontrun{

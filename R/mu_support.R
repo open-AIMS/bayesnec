@@ -18,11 +18,11 @@
 #'     \code{beta_binomial} and the \code{mu} block of
 #'     \code{zero_inflated_beta} are on (0, 1).
 #'   \item \code{Gamma}, \code{poisson}, \code{negbinomial}, the
-#'     zero-inflated counts and the \code{mu} block of \code{hurdle_gamma} are
-#'     on (0, Inf).
+#'     zero-inflated counts and the \code{mu} blocks of \code{hurdle_gamma},
+#'     \code{hurdle_poisson} and \code{hurdle_negbinomial} are on (0, Inf).
 #'   \item the \code{hu} and \code{zi} blocks are probabilities, so (0, 1)
-#'     whatever the \code{mu} block is. \code{hurdle_gamma} is the case where
-#'     the two blocks differ, and it is why this takes \code{dpar} at all:
+#'     whatever the \code{mu} block is. The hurdle families are cases where
+#'     the two blocks differ, and they are why this takes \code{dpar} at all:
 #'     \code{\link{check_models}} applies both blocks' restrictions at once.
 #' }
 #'
@@ -81,7 +81,7 @@ unit_interval_families <- function() {
 #' \code{1/mu^2} also falls to the default, and correctly: its inverse is
 #' \code{eta^(-1/2)}, which is undefined for a non-positive linear predictor.
 #'
-#' \code{test-mu_support.R} constructs each of the twelve families in
+#' \code{test-mu_support.R} constructs each family in
 #' \code{mod_fams} against a fixed list of candidate links, keeps those the
 #' family accepts, and asserts that none falls to the default except
 #' \code{identity}, \code{inverse} and \code{1/mu^2}. That candidate list is

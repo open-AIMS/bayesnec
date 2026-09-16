@@ -17,13 +17,19 @@
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
-#' @param dpar For a joint two-block fit only (\code{family = "hurdle_gamma"}
-#' or \code{"zero_inflated_beta"}), the parameter block to report:
+#' @param dpar For a joint two-block fit only (\code{family = "hurdle_gamma"},
+#' \code{"zero_inflated_beta"}, \code{"hurdle_poisson"} or
+#' \code{"hurdle_negbinomial"}), the parameter block to report:
 #' \code{"mu"} for the response block, or \code{"hu"} (\code{"zi"} for the
 #' zero-inflated families) for survival. Defaults to \code{NULL}, which gives
-#' the combined endpoint \code{mu * (1 - hu)}. The zero-probability block is
+#' the expected positive response multiplied by \code{1 - hu}. For continuous
+#' hurdles the positive response is \code{mu}; for count hurdles it is
+#' \code{E[Y | Y > 0]}. The zero-probability block is
 #' inverted to survival before computing, so the NSEC is read off a declining
 #' curve. See Details.
+#' For the count hurdles, \code{"mu"} is converted to the positive-count mean
+#' \code{E[Y | Y > 0]} so it matches the growth component returned by
+#' \code{\link{bnec_hurdle}}.
 #' @param ... Further arguments to pass to class specific methods.
 #'
 #' @details NSEC is no-effect toxicity metric that estimates the concentration 
@@ -168,25 +174,12 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
   )
   # dpar selects one block of a two-block (hurdle / zero-inflated) fit, exactly
   # as in ecx(). The default (NULL) leaves the behaviour posterior_epred always
-  # gave: mu * (1 - hu) for such a family, the single mean curve otherwise. The
-  # zero-probability block is inverted to survival first, so that the NSEC is
+  # gave: the positive-part mean times (1 - hu) for such a family, the single
+  # mean curve otherwise. The zero-probability block is inverted to survival
+  # first, so that the NSEC is
   # read off a declining curve and "decline from control" keeps its usual
   # meaning.
-  epred_fun <- function(nd) {
-    if (is.null(dpar)) {
-      return(posterior_epred(object, newdata = nd, re_formula = NA))
-    }
-    if (!is_hurdle_family(object$fit$family)) {
-      stop("The \"dpar\" argument is only valid for hurdle families.",
-           call. = FALSE)
-    }
-    dpar <- match.arg(dpar, c("mu", hurdle_dpar(object$fit$family)))
-    out <- posterior_epred(object, newdata = nd, re_formula = NA, dpar = dpar)
-    if (dpar != "mu") {
-      out <- 1 - out
-    }
-    out
-  }
+  epred_fun <- function(nd) joint_hurdle_epred(object, nd, dpar)
   p_samples <- epred_fun(newdata_list$newdata)
   x_vec <- newdata_list$x_vec
   # The control posterior is read at the lowest observed concentration rather

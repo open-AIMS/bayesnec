@@ -101,7 +101,7 @@ support of the response, not in structure.
 Throughout, the two components are referred to as "growth" and "survival",
 after the case these models were written for. Nothing in the implementation is
 specific to that reading: any process producing exact zeros alongside a
-continuous response has the same structure.
+positive response has the same structure.
 
 To run this vignette we also need
 
@@ -145,6 +145,39 @@ thing the factorisation cannot express. The two are intended to be used in
 sequence, and `bnec_joint()` connects them: fit and average the model sets with
 `bnec_hurdle()`, select a combination from `crossed_weights()`, then refit that
 combination jointly with whatever shared structure is required.
+
+## Count responses
+
+A structural zero in a count response uses `hurdle_poisson` or
+`hurdle_negbinomial`, not the similarly named zero-inflated family. A hurdle
+states that every zero came from the survival process. Its positive-count
+likelihood is therefore conditional on `Y > 0`, and the two blocks factorise.
+`bnec_hurdle()` applies `trunc(lb = 1)` internally to the growth fit, while the
+joint hurdle families include the same normalisation in their density.
+
+`zero_inflated_poisson` and `zero_inflated_negbinomial` apply where the source
+of a zero is unknown. An observed zero can then arise from either the count
+distribution or the added zero-probability component. The likelihood contains
+both possibilities in one mixture term and cannot be fitted as two independent
+models. `bayesnec` fits the concentration-response curve to the count mean and
+holds the zero-inflation probability constant for these families.
+
+For count hurdles, the response of survivors is `E[Y | Y > 0]`.
+`bayesnec` computes that quantity exactly from the truncated growth fit's
+underlying count parameters. This avoids the finite upper grid that `brms`
+uses for expected predictions from a general truncated discrete model, which
+can omit a substantial negative-binomial tail.
+For a joint count hurdle, `ecx(dpar = "mu")` and `nsec(dpar = "mu")` convert
+the underlying Poisson or negative-binomial mean to the same conditional mean.
+The fitted `top` and `bot` parameters of the joint equation remain on the
+underlying count-mean scale.
+
+The factorised count route requires brms 2.23.2 or later. Earlier brms versions
+used a different lower-bound convention in `log_lik()`, so `bnec_hurdle()`
+refuses the route before fitting and points to the corresponding joint hurdle
+family. Count growth cannot currently be combined with `cens()`: `brms` does
+not condition a censored count contribution on the truncation bound, and
+`bnec_hurdle()` refuses that combination before fitting.
 
 ## The second block describes survival, not mortality
 

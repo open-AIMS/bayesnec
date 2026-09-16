@@ -45,7 +45,9 @@ mod_fams <- c(gaussian = "gaussian",
               hurdle_gamma = "hurdle_gamma",
               zero_inflated_beta = "zero_inflated_beta",
               zero_inflated_poisson = "zero_inflated_poisson",
-              zero_inflated_negbinomial = "zero_inflated_negbinomial")
+              zero_inflated_negbinomial = "zero_inflated_negbinomial",
+              hurdle_poisson = "hurdle_poisson",
+              hurdle_negbinomial = "hurdle_negbinomial")
 
 # Families with a second parameter block modelling the probability of a zero,
 # mapped to the name brms gives that block. brms calls it "hu" for the hurdle
@@ -65,12 +67,17 @@ mod_fams <- c(gaussian = "gaussian",
 # and mu are weakly separated exactly where mu is small, and that zi is a latent
 # class rather than anything the experiment observed. Leaving these tags out of
 # this registry is what routes them through the ordinary family path in bnec(),
-# where brms fits the mixture itself with a constant zi. See #104.
-hurdle_fams <- c(hurdle_gamma = "hu", zero_inflated_beta = "zi")
+# where brms fits the mixture itself with a constant zi. Count hurdles differ:
+# their zeros are observed to be structural, so the positive count likelihood
+# is zero-truncated and the two blocks factorise exactly. See #104 and #209.
+hurdle_fams <- c(hurdle_gamma = "hu", zero_inflated_beta = "zi",
+                 hurdle_poisson = "hu", hurdle_negbinomial = "hu")
 
 # The family whose defaults the mu block should reuse for priors and initial
 # values, i.e. what the response looks like once the zeros are set aside.
-hurdle_mu_fams <- c(hurdle_gamma = "Gamma", zero_inflated_beta = "beta")
+hurdle_mu_fams <- c(hurdle_gamma = "Gamma", zero_inflated_beta = "beta",
+                    hurdle_poisson = "poisson",
+                    hurdle_negbinomial = "negbinomial")
 
 ###############################
 # DISPERSION SUB-MODELS (disp)

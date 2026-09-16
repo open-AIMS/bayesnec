@@ -1,5 +1,31 @@
 # bayesnec 2.2.0
 
+## Count hurdles
+
+- `hurdle_poisson` and `hurdle_negbinomial` are available as joint two-block
+  families where the observed zeros are structural. They differ from
+  `zero_inflated_poisson` and `zero_inflated_negbinomial`, whose zeros can arise
+  from either component and whose likelihood therefore does not separate into
+  independent response and zero-probability blocks (#209).
+
+- `bnec_hurdle()` fits an automatically selected or explicitly supplied
+  `poisson` or `negbinomial` growth component with `trunc(lb = 1)`. The earlier
+  untruncated fit estimated the mean conditional on a positive observation with
+  an ordinary count likelihood and was biased where the mean approached zero.
+  The factorised route requires brms 2.23.2 or later because earlier releases
+  omitted the inclusive lower bound from `log_lik()`. Earlier brms versions
+  now stop before fitting and direct the caller to the corresponding joint
+  hurdle family. `bayesnec` computes the conditional-positive expectation in
+  closed form rather than using brms's finite-grid approximation, and refuses
+  `cens()` on count growth because brms does not condition the censored
+  likelihood on the truncation bound (#249; paul-buerkner/brms#1903, #1923).
+
+- The response-of-survivors component has one definition across the two routes:
+  `ecx(dpar = "mu")` and `nsec(dpar = "mu")` convert a joint count hurdle's
+  underlying count mean to `E[Y | Y > 0]`, which is the quantity returned by
+  the factorised truncated growth fit. The joint fit's `top` and `bot`
+  parameters remain on the underlying count-mean scale (#249).
+
 ## Grouped plots
 
 - `ggbnec_data()` and `autoplot()` now accept `group`, which names a

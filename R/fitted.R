@@ -41,12 +41,57 @@ NULL
 #' @method fitted bayesnecfit
 #'
 #' @inherit fitted description return examples
+#' @inheritParams brms::fitted.brmsfit
 #'
 #' @importFrom stats fitted
 #'
 #' @export
-fitted.bayesnecfit <- function(object, ...) {
-  fitted(pull_brmsfit(object), ...)
+fitted.bayesnecfit <- function(object, newdata = NULL, re_formula = NULL,
+                               scale = c("response", "linear"), resp = NULL,
+                               dpar = NULL, nlpar = NULL, ndraws = NULL,
+                               draw_ids = NULL, sort = FALSE, summary = TRUE,
+                               robust = FALSE, probs = c(0.025, 0.975), ...) {
+  scale <- match.arg(scale)
+  fit <- pull_brmsfit(object)
+  if (!is_factorised_count_formula(object$bayesnecformula, fit$family) ||
+      scale == "linear" || !is.null(dpar) || !is.null(nlpar)) {
+    return(fitted(
+      fit, newdata = newdata, re_formula = re_formula, scale = scale,
+      resp = resp, dpar = dpar, nlpar = nlpar, ndraws = ndraws,
+      draw_ids = draw_ids, sort = sort, summary = summary, robust = robust,
+      probs = probs, ...
+    ))
+  }
+  draws <- factorised_count_epred(
+    fit, object$bayesnecformula, newdata = newdata,
+    re_formula = re_formula, resp = resp, ndraws = ndraws,
+    draw_ids = draw_ids, sort = sort, ...
+  )
+  summarise_epred(draws, summary = summary, robust = robust, probs = probs)
+}
+
+#' Summarise posterior expected-response draws
+#'
+#' @param draws A draws-by-observation numeric matrix.
+#' @param summary Whether to return summaries rather than draws.
+#' @param robust Whether to use the median and MAD.
+#' @param probs Quantiles to return.
+#'
+#' @return Either \code{draws} or a summary matrix.
+#'
+#' @importFrom brms posterior_summary
+#'
+#' @noRd
+summarise_epred <- function(draws, summary = TRUE, robust = FALSE,
+                            probs = c(0.025, 0.975)) {
+  if (!summary) {
+    return(draws)
+  }
+  out <- t(apply(
+    draws, 2, posterior_summary, robust = robust, probs = probs
+  ))
+  colnames(out) <- c("Estimate", "Est.Error", paste0("Q", probs * 100))
+  out
 }
 
 #' @rdname fitted
