@@ -77,6 +77,14 @@ test_that("model-averaged plotting retains a selected fitted grouping", {
     plot$layers, function(layer) inherits(layer$stat, "StatSummary"),
     logical(1)
   )))
+  colour_plot <- suppressMessages(
+    autoplot(object, group = "plate", group_aes = "colour", nec = FALSE)
+  )
+  raw_points <- Filter(function(layer) {
+    inherits(layer$geom, "GeomPoint") &&
+      !inherits(layer$stat, "StatSummary")
+  }, colour_plot$layers)
+  expect_identical(rlang::as_label(raw_points[[1]]$mapping$fill), "group")
 })
 
 test_that("group must select a group-level variable from the formula", {
@@ -107,6 +115,62 @@ test_that("autoplot adds per-level summaries only when grouping is requested", {
   expect_false(any(vapply(plain$layers, is_summary, logical(1))))
 })
 
+test_that("group colour maps observations and per-level means", {
+  skip_on_cran()
+  fit <- grouped_plot_fit()
+  colour_plot <- suppressMessages(
+    autoplot(fit, group = "plate", group_aes = "colour", nec = FALSE)
+  )
+  line_plot <- suppressMessages(
+    autoplot(fit, group = "plate", nec = FALSE)
+  )
+  is_raw_point <- function(layer) {
+    inherits(layer$geom, "GeomPoint") &&
+      !inherits(layer$stat, "StatSummary")
+  }
+  raw_colour <- Filter(is_raw_point, colour_plot$layers)[[1]]
+  raw_line <- Filter(is_raw_point, line_plot$layers)[[1]]
+  colour_summaries <- Filter(
+    function(layer) inherits(layer$stat, "StatSummary"),
+    colour_plot$layers
+  )
+
+  expect_identical(rlang::as_label(raw_colour$mapping$fill), "group")
+  expect_identical(raw_line$aes_params$fill, "grey30")
+  expect_true(any(vapply(colour_summaries, function(layer) {
+    identical(rlang::as_label(layer$mapping$colour), "group")
+  }, logical(1))))
+  expect_identical(colour_plot$labels$fill, "plate")
+  expect_identical(colour_plot$labels$colour, "plate")
+  expect_error(
+    autoplot(fit, group = "plate", group_aes = "shape", nec = FALSE),
+    "line.*colour"
+  )
+})
+
+test_that("group colours agree when levels use different mean marks", {
+  skip_on_cran()
+  fit <- nec4param
+  group <- rep(c("b", "c"), length.out = nrow(fit$fit$data))
+  group[1] <- "a"
+  fit$fit$data$mixed_group <- factor(group, levels = c("a", "b", "c"))
+  fit$bayesnecformula <- bayesnecformula(
+    y ~ crf(x, model = "nec4param") + ogl(mixed_group)
+  )
+  plot <- suppressMessages(
+    autoplot(fit, group = "mixed_group", group_aes = "colour", nec = FALSE)
+  )
+  built <- ggplot2::ggplot_build(plot)
+  fill_scale <- built$plot$scales$get_scales("fill")
+  colour_scale <- built$plot$scales$get_scales("colour")
+
+  expect_equal(fill_scale$map(levels(fit$fit$data$mixed_group)),
+               colour_scale$map(levels(fit$fit$data$mixed_group)))
+  expect_equal(as.character(fill_scale$get_breaks()), c("a", "b", "c"))
+  expect_equal(as.character(colour_scale$get_breaks()), c("a", "b", "c"))
+  expect_length(built$plot$guides$guides, 1)
+})
+
 test_that("a grouping confined to one predictor value uses mean markers", {
   skip_on_cran()
   fit <- nec4param
@@ -122,6 +186,15 @@ test_that("a grouping confined to one predictor value uses mean markers", {
   )
   expect_length(summary_layers, 1)
   expect_s3_class(summary_layers[[1]]$geom, "GeomPoint")
+
+  colour_plot <- suppressMessages(
+    autoplot(fit, group = "dose_group", group_aes = "colour", nec = FALSE)
+  )
+  colour_summary <- Filter(
+    function(layer) inherits(layer$stat, "StatSummary"),
+    colour_plot$layers
+  )[[1]]
+  expect_identical(rlang::as_label(colour_summary$mapping$fill), "group")
 })
 
 test_that("grouped fits return and plot one panel per fitted level", {
