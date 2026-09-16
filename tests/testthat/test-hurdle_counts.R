@@ -331,6 +331,45 @@ test_that("count asymptotes apply a non-identity mean link first", {
   )
 })
 
+test_that("count asymptotes support brms-specific mean links", {
+  bot_eta <- c(-0.5, 0.5)
+  shape <- matrix(c(0.8, 2), ncol = 1)
+  local_mocked_bindings(
+    posterior_epred = function(object, newdata, re_formula, dpar) shape,
+    .package = "bayesnec"
+  )
+  cases <- list(
+    list(
+      object = list(
+        fit = list(family = brms::hurdle_negbinomial(link = "squareplus")),
+        bayesnecformula = bnf(y ~ crf(x, "nec3param"))
+      ),
+      dpar = "mu"
+    ),
+    list(
+      object = list(
+        fit = list(family = brms::negbinomial(link = "softplus")),
+        bayesnecformula = bayesnec:::add_hurdle_truncation(
+          bnf(y ~ crf(x, "nec3param"))
+        )
+      ),
+      dpar = NULL
+    )
+  )
+  for (case in cases) {
+    family <- case$object$fit$family
+    expected <- as.numeric(bayesnec:::hurdle_positive_mean(
+      family$linkinv(bot_eta), family$family, shape
+    ))
+    expect_equal(
+      bayesnec:::count_positive_asymptote(
+        case$object, case$dpar, bot_eta, data.frame(x = 0)
+      ),
+      expected
+    )
+  }
+})
+
 test_that("model-averaged count asymptotes retain their draw pairing", {
   count_formula <- bayesnec:::add_hurdle_truncation(
     bnf(y ~ crf(x, "nec3param"))
