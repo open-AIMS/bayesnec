@@ -20,23 +20,23 @@ This dataset exists to demonstrate the hurdle concentration-response models
 both suppresses growth in the snails that live and kills others, so an
 analysis of the survivors alone silently conditions on survival.
 
-\bold{Mortality is recorded as a zero growth value}, with \code{alive}
-giving the same information as an explicit indicator. In the source records
+Mortality is recorded as a zero growth value, with \code{alive} giving the
+same information as an explicit indicator. In the source records
 deaths were not coded that way: they appeared as one of four traces --- a
 sentinel value far below the real data, a blank replicate within a tank that
 ran, a tank missing from a treatment that ran, or a treatment missing from
 the file entirely because nothing in it survived. Reconstructing them is
 part of the worked example.
 
-\bold{Growth is reported exactly as measured}, including four slightly
-negative values among survivors. The assay is destructive, so growth is
-obtained by referencing each individual to a baseline mean rather than to
-its own starting size, and that referencing carries enough error to put a
-strongly suppressed individual below zero. They are retained rather than
+Growth is reported exactly as measured, including four slightly negative
+values among survivors. The assay is destructive, so growth is obtained by
+referencing each individual to a baseline mean rather than to its own
+starting size, and that referencing has enough error to put a strongly
+suppressed individual below zero. They are retained rather than
 floored because flooring is the practice \code{vignette("example6")} argues
 against; a Gamma fit requires handling them explicitly.
 
-\bold{Contaminant B is the most severely affected test.} Only 63 of the 284
+Contaminant B is the most severely affected test. Only 63 of the 284
 snails exposed survived, and none at all above the third of its fourteen
 doses; the treatments above that are absent from the source records rather
 than recorded as total mortality, and are reinstated here on the dose ladder

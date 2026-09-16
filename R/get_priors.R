@@ -11,22 +11,21 @@
 #' can be coerced to one.
 #' @param ... Unused.
 #'
-#' @details Two entry points, answering two different questions.
+#' @details There are two entry points, answering two different questions.
 #'
-#' \bold{Given a fit,} \code{get_priors} returns the priors that fit actually
-#' used, including any the user overrode. This is the record of what was run:
-#' \code{bnec(formula, data = data, prior = get_priors(fit))} reproduces the same
-#' model.
+#' Given a fit, \code{get_priors} returns the priors that fit used, including
+#' any the user overrode. This is the record of what was run:
+#' \code{bnec(formula, data = data, prior = get_priors(fit))} reproduces the
+#' same model.
 #'
-#' \bold{Given a formula and data,} it returns the priors \code{\link{bnec}}
-#' would generate, without fitting anything, so they can be inspected and edited
+#' Given a formula and data, it returns the priors \code{\link{bnec}} would
+#' generate, without fitting anything, so they can be inspected and edited
 #' before the first run. The family is chosen from the data exactly as
-#' \code{\link{bnec}} would unless one is supplied, and models invalid for it are
-#' dropped with the same message.
+#' \code{\link{bnec}} would unless one is supplied, and models invalid for it
+#' are dropped with the same message.
 #'
-#' The two can disagree, and that is the point of having both: once a prior has
-#' been overridden, the fit's priors are no longer the ones the defaults would
-#' produce. Given the same formula, data and family, and no user prior, they
+#' The two disagree wherever a prior was overridden, which is the reason for
+#' having both. Given the same formula, data and family, and no user prior, they
 #' agree.
 #'
 #' What is returned is the population-level priors on the parameters of the

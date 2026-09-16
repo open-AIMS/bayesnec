@@ -56,7 +56,7 @@ So report the two side by side and screen on this one.
 \code{\link{amend}} is not called at all.
 
 \emph{Some failed} --- the failures are intersected against the models the
-object actually holds before \code{\link{amend}} is called. That guard lives
+object holds before \code{\link{amend}} is called. That guard lives
 here rather than in \code{\link{amend}}, which is deliberately not modified:
 \code{amend(drop = )} already handles a mix of present and absent names
 correctly, and silently returns the object unchanged only when \emph{every}

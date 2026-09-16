@@ -37,37 +37,38 @@
 #' posterior probability of under-dispersion, which no other summary here
 #' addresses.
 #'
-#' \bold{An observation the model reproduces exactly is excluded.} The Pearson
+#' \bold{Observations excluded from the statistic}
+#'
+#' An observation the model reproduces exactly is excluded. The Pearson
 #' denominator is the fitted standard deviation, which is exactly zero wherever
 #' the fitted mean underflows --- \code{mu (1 - mu) n} for a binomial and
 #' \code{mu} for a Poisson both do so for a curve that decays fast enough. An
-#' observation whose response equals that fitted value contributes \code{0/0}
-#' to both sums and says nothing about dispersion in either direction, so it is
-#' excluded from both and every draw is retained. The exclusion is the limit
-#' rather than an approximation to it: as the fitted mean tends to zero with a
-#' response of zero the observed term tends to zero, and the simulated term
-#' does the same, because a predictive distribution of vanishing variance
-#' returns its mean with probability approaching one. Excluding a term is
-#' arithmetically identical to contributing zero to both sums, so it introduces
-#' no bias in either direction, and the ratio is self-normalising --- under the
-#' null each retained observation contributes approximately 1 to the
-#' denominator, so the null value of 1 holds whatever the size of the retained
-#' set. The exclusion is made draw by draw, since an observation whose fitted
-#' mean underflows in one draw gives an ordinary residual in another, and the
-#' number of observations and of draws affected is reported. Where instead the response differs from a fitted value
-#' of zero variance, the model has assigned zero variance to a value it did not
-#' predict; the statistic is reported as \code{Inf} and a warning names the
-#' observations. The infinity is the underflow --- in exact arithmetic the
-#' residual there is large and finite --- but the misfit it reports is real. An empty vector is
-#' returned only where every observation has zero variance and is reproduced
-#' exactly, in which case there are no residuals to compare.
+#' observation whose response equals that fitted value contributes \code{0/0} to
+#' both sums and says nothing about dispersion in either direction, so it is
+#' excluded from both and every draw is retained. Excluding a term is
+#' arithmetically identical to contributing zero to both sums, and the ratio is
+#' self-normalising, each retained observation contributing approximately 1 to
+#' the denominator under the null, so the null value of 1 holds whatever the
+#' size of the retained set. The exclusion is made draw by draw, since an
+#' observation whose fitted mean underflows in one draw gives an ordinary
+#' residual in another, and the number of observations and of draws affected is
+#' reported.
 #'
-#' \bold{A beta-binomial fit does not address under-dispersion.}
+#' Where instead the response differs from a fitted value of zero variance, the
+#' model has assigned zero variance to a value it did not predict. The statistic
+#' is reported as \code{Inf} and a warning names the observations; the infinity
+#' is the underflow, since in exact arithmetic the residual there is large and
+#' finite, but the misfit it reports is real. An empty vector is returned only
+#' where every observation has zero variance and is reproduced exactly, in which
+#' case there are no residuals to compare.
+#'
+#' \bold{Under-dispersion and the beta-binomial}
+#'
 #' \code{beta_binomial} adds a variance component to the binomial, so it can
 #' represent a variance above the binomial's and not one below it. Where
 #' \code{P(>1)} is near 0 --- the data vary less than the fitted model implies
-#' --- moving from \code{binomial} to \code{beta_binomial} cannot help, and
-#' the usual causes are a mis-specified mean curve or non-independent
+#' --- changing from \code{binomial} to \code{beta_binomial} does not address
+#' it, and the usual causes are a mis-specified mean curve or non-independent
 #' observations that make the effective sample size smaller than the nominal
 #' one.
 #'

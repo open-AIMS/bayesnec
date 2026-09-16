@@ -35,8 +35,8 @@
 #' from the likelihood, as they do for a single \code{\link[brms]{brmsfit}}.
 #' @slot w_draw_seed The seed that realised \code{w_draw_index}. Used only
 #' where the stored index cannot apply: when a caller thins to a different
-#' number of draws, and for objects saved before version 2.1.3.7, which carry
-#' neither field and fall back to a fixed seed.
+#' number of draws, and for an object saved by a version predating both fields,
+#' which falls back to a fixed seed.
 #' @slot w_ne_posterior The model-weighted posterior estimate of the no-effect
 #' toxicity estimate.
 #' @slot w_predicted_y The model-weighted predicted values for the observed
@@ -46,14 +46,13 @@
 #' @slot w_pred_vals A \code{\link[base]{list}} with a single element
 #' \code{data}, a \code{\link[base]{data.frame}} of summary model-weighted
 #' posterior predicted values over a grid set by \code{resolution} and
-#' \code{x_range}. Up to and including version 2.1.3.6 it also held
-#' \code{posterior}, the full \code{sample_size x resolution} matrix of
-#' weighted draws those summaries came from. Once the per-model matrices were
-#' dropped that one matrix dominated what remained, so it is no longer stored.
-#' To obtain it directly, use \code{posterior_epred(x, newdata =
-#' bnec_newdata(x, resolution = 1000), re_formula = NA)}, which draws from the
-#' component models in the same weighted proportions. Objects saved before the
-#' change still carry it and are unaffected.
+#' \code{x_range}. The full \code{sample_size x resolution} matrix of weighted
+#' draws those summaries came from is not stored, because it dominated the size
+#' of a fitted object. To obtain it directly, use \code{posterior_epred(x,
+#' newdata = bnec_newdata(x, resolution = 1000), re_formula = NA)}, which draws
+#' from the component models in the same weighted proportions. An object saved
+#' by an earlier version may still hold it as a \code{posterior} element, and is
+#' unaffected.
 #' @slot w_ne The summary stats (median and 95% credibility intervals) of
 #' w_ne_posterior.
 #' @slot ne_type A \code{\link[base]{character}} vector indicating the type of

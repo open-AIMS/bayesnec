@@ -33,8 +33,7 @@ The control is drawn differently because it is not just another group:
 there moves a reported no-effect concentration in a way that a discrepancy at
 the top of the curve does not.
 
-Built directly in \pkg{ggplot2}, which is already in \code{Depends}. No
-\pkg{bayesplot} dependency -- see #148.
+Built directly in \pkg{ggplot2}, which is already in \code{Depends}.
 }
 \examples{
 \dontrun{

@@ -17,6 +17,6 @@ A \code{\link[base]{numeric}} vector.
 step
 }
 \details{
-This function is currently exported to allow for non-linear
-formula evaluation in brms.
+Exported so that \pkg{brms} can evaluate it during non-linear
+formula evaluation.
 }

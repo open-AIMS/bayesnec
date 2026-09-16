@@ -38,51 +38,27 @@
 #' produced by the same internal check \code{\link{bnec}} applies at fit time, so
 #' the two cannot disagree.
 #'
-#' Models that have an exponential decay
-#' (most models with parameter "beta") with no "bot" parameter are zero-bounded
-#' and are not suitable for the Gaussian family, or any family modelled using a
-#' logit or log link function. Models with a linear decay
-#' (containing the string "lin" in their name) are not suitable for modelling
-#' families that are zero bounded (Gamma, Poisson, Negative binomial) using an
-#' identity link, nor for families that are 0, 1 bounded (bernoulli, binomial,
-#' beta, beta_binomial) using an identity link. Note that the linear-decay
-#' restriction applies to the models containing "lin" only
-#' ("neclin", "neclinhorme", "ecxlin"); the hormesis models that also carry a
-#' "slope" parameter are retained for 0, 1 bounded families, with two
-#' exceptions. Models whose hormesis term raises the predictor to a power with
-#' no coefficient ("nechormepwr", "nechorme4pwr") are excluded for 0, 1 bounded
-#' families under an identity link. The term
-#' \code{x^(1 / (1 + exp(slope)))} contributes exactly 1 at \code{x = 1}
-#' whatever "slope" is, and below the threshold the decay factor is 1, so the
-#' fitted mean is at least \code{top + 1} at any concentration at or above 1
-#' that falls strictly below "nec". Since "nec" is bounded to the predictor
-#' range, every such value is one the sampler is free to propose, and each
-#' proposal is outside the likelihood's support. More generally the exponent
-#' \code{1 / (1 + exp(slope))} tends to 0 as "slope" grows, so the term tends to
-#' 1 for every concentration above 0 and the mean below the threshold tends to
-#' \code{top + 1}. For any "top" above 0 there is therefore a "slope" at which
-#' the mean exceeds 1, whatever range the predictor covers, and the term has no
-#' coefficient the fit can drive towards zero. That is why the exclusion does
-#' not depend on the predictor supplied. That is why this is
-#' an exclusion rather than a harder search for initial values: a \code{nec}
-#' below 1 does admit some initial values, but it neither stops the sampler
-#' reaching the values that do not nor keeps the mean inside (0, 1) by
-#' itself.
-#' "nechormepwr01" is the bounded hormesis form and is retained there;
-#' conversely it is excluded for the zero-bounded identity families, being
-#' bounded on (0, 1) by construction and so unable to represent a response with
-#' no upper bound. Additionally,
-#' models that raise the predictor to a fractional power ("ecxsigm",
-#' "necsigm", "nechormepwr", "nechorme4pwr") are not suitable where the
-#' predictor contains negative values. \code{"ecxhormebc5"} is also excluded
-#' for a negative predictor when an identity-linked response family requires a
-#' positive mean. Its linear hormesis term can make the mean negative there,
-#' and its additional free lower asymptote makes a valid starting point
-#' unreliable. It remains available for a non-negative predictor, an
-#' unconstrained Gaussian mean, or a link that maps the linear predictor into
-#' the response support. These restrictions do not need to be controlled by
-#' the user and a call to \code{\link{bnec}} with \code{models = "all"} will
-#' simply exclude inappropriate models.
+#' Four restrictions decide which equations a given response admits. Models with
+#' an exponential decay (most models with parameter "beta") and no "bot"
+#' parameter are zero-bounded, and are not suitable for the Gaussian family or
+#' for any family modelled on a logit or log link. Models with a linear decay
+#' ("neclin", "neclinhorme", "ecxlin") are unbounded below, and so are suitable
+#' for neither the zero-bounded families (Gamma, Poisson, negative binomial) nor
+#' the 0, 1 bounded ones (bernoulli, binomial, beta, beta_binomial) on an
+#' identity link. Models whose hormesis term raises the predictor to a power
+#' with no coefficient ("nechormepwr", "nechorme4pwr") can put the mean above 1
+#' at any predictor range, and are excluded for the 0, 1 bounded families on an
+#' identity link; "nechormepwr01" is the bounded form of the same equation and
+#' is retained there, and is excluded from the zero-bounded identity families for
+#' the converse reason. Models that raise the predictor to a fractional power
+#' ("ecxsigm", "necsigm", "nechormepwr", "nechorme4pwr") are not suitable where
+#' the predictor takes negative values, and \code{"ecxhormebc5"} joins them
+#' where an identity-linked family also requires a positive mean.
+#'
+#' None of this has to be controlled by the user: a \code{\link{bnec}} call
+#' with \code{model = "all"} excludes the inadmissible equations.
+#' \code{vignette("example2b")} sets out each equation and the reasoning behind
+#' its restrictions.
 #'
 #' A model group names a shape, not a set of equations admissible for a given
 #' response. "decline" is the set that excludes the hormesis models, and it
@@ -101,59 +77,17 @@
 #' \code{\link{bayesnecformula}}, for example
 #' \code{crf(x, models("decline", max_pars = 3))}.
 #'
-#' \bold{Coming from the \code{drc} package}
+#' \bold{Equivalents in the \code{drc} package}
 #'
-#' \code{drc}'s \code{NEC.2()}, \code{NEC.3()} and \code{NEC.4()} are
-#' wrappers around one generator that differ only in which parameters they hold
-#' fixed. Two of the three are already available here, and they are not
-#' approximations of one another: given \code{b = exp(}"beta"\code{)} the two
-#' implementations are identical to the last bit, over a grid spanning every
-#' parameter including thresholds outside the predictor range.
-#'
-#' \tabular{lll}{
-#'   \strong{drc} \tab \strong{fixes} \tab \strong{bayesnec} \cr
-#'   \code{NEC.4()} \tab nothing \tab \code{"nec4param"} \cr
-#'   \code{NEC.3()} \tab \code{c = 0} \tab \code{"nec3param"} \cr
-#'   \code{NEC.2()} \tab \code{c = 0}, \code{d = upper} \tab none, by choice
-#'                        --- see below \cr
-#' }
-#'
-#' The parameters map as \code{c = }"bot", \code{d = }"top",
-#' \code{e = }"nec" and \code{b = exp(}"beta"\code{)}. That last one is the
-#' only substantive difference between the two model families: \code{drc}
-#' estimates the decay rate directly, whereas \code{bayesnec} estimates
-#' "beta" and uses \code{exp(}"beta"\code{)}, so the decay rate is positive by
-#' construction. This is a reparameterisation of the same model over
-#' \code{b > 0}. It does mean \code{drc} can return \code{b < 0}, which is a
-#' threshold followed by unbounded exponential growth; \code{bayesnec} cannot
-#' represent that, and deliberately does not. A threshold followed by an
-#' increase is available as \code{"nec4param"} with "bot" greater than "top",
-#' which stays bounded.
-#'
-#' The reparameterisation runs in that direction and not the other. Converting
-#' a \code{drc} estimate by setting "beta" \code{= log(b)} does not recover
-#' \code{b} exactly, because \code{exp(log(b))} is not the identity in
-#' floating point; the resulting curves differ by round-off, on the order of
-#' \code{1e-15}. That is a property of the round trip rather than of either
-#' model, but it is worth knowing before concluding that two fits disagree.
-#'
-#' Note that the model given in \code{?drc::NEC} carries an additional
-#' log-logistic term, reproducing the general model of Pires et al. (2002).
-#' The function \code{drc} actually fits does not include that term, so the
-#' equivalences above are with the fitted model rather than with the
-#' documented one.
-#'
-#' \code{NEC.2()} fixes the upper asymptote at a constant, and has no
-#' \code{bayesnec} equivalent by choice. Doing so asserts that the control
-#' response is exactly that constant with no error, which is only defensible
-#' for data normalised to a control --- and normalising to an \emph{estimated}
-#' control discards the control's uncertainty and propagates none of it into
-#' the \emph{NEC}, which is the practice \code{bnec} warns about via its
-#' internal normalisation check. Where the upper bound is genuinely
-#' structural rather than estimated, use a \code{\link[brms]{constant}} prior
-#' or a tight informative prior
-#' on "top", which keeps the constraint explicit and leaves the rest of the
-#' machinery unchanged.
+#' \code{drc}'s \code{NEC.4()} and \code{NEC.3()} correspond to
+#' \code{"nec4param"} and \code{"nec3param"}, which are the same models under
+#' the reparameterisation \code{b = exp(}"beta"\code{)}. \code{NEC.2()} fixes
+#' the upper asymptote at a constant and has no equivalent here by choice; a
+#' \code{\link[brms]{constant}} or tight informative prior on "top" states the
+#' same constraint where it is genuinely structural.
+#' \code{vignette("example2b")} gives the parameter mapping, the agreement
+#' between the two implementations and the reason \code{NEC.2()} is not
+#' provided.
 #'
 #' @return A \code{\link[base]{list}} of the available or fitted models.
 #' @examples

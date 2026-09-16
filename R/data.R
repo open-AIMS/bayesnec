@@ -87,23 +87,23 @@ NULL
 #' both suppresses growth in the snails that live and kills others, so an
 #' analysis of the survivors alone silently conditions on survival.
 #'
-#' \bold{Mortality is recorded as a zero growth value}, with \code{alive}
-#' giving the same information as an explicit indicator. In the source records
+#' Mortality is recorded as a zero growth value, with \code{alive} giving the
+#' same information as an explicit indicator. In the source records
 #' deaths were not coded that way: they appeared as one of four traces --- a
 #' sentinel value far below the real data, a blank replicate within a tank that
 #' ran, a tank missing from a treatment that ran, or a treatment missing from
 #' the file entirely because nothing in it survived. Reconstructing them is
 #' part of the worked example.
 #'
-#' \bold{Growth is reported exactly as measured}, including four slightly
-#' negative values among survivors. The assay is destructive, so growth is
-#' obtained by referencing each individual to a baseline mean rather than to
-#' its own starting size, and that referencing carries enough error to put a
-#' strongly suppressed individual below zero. They are retained rather than
+#' Growth is reported exactly as measured, including four slightly negative
+#' values among survivors. The assay is destructive, so growth is obtained by
+#' referencing each individual to a baseline mean rather than to its own
+#' starting size, and that referencing has enough error to put a strongly
+#' suppressed individual below zero. They are retained rather than
 #' floored because flooring is the practice \code{vignette("example6")} argues
 #' against; a Gamma fit requires handling them explicitly.
 #'
-#' \bold{Contaminant B is the most severely affected test.} Only 63 of the 284
+#' Contaminant B is the most severely affected test. Only 63 of the 284
 #' snails exposed survived, and none at all above the third of its fourteen
 #' doses; the treatments above that are absent from the source records rather
 #' than recorded as total mortality, and are reinstated here on the dose ladder
@@ -178,21 +178,21 @@ NULL
 #' referenced against, and what to do with counts that fell below the
 #' resolution the method could record.
 #'
-#' \bold{Cell density is counted to a resolution of 10.} A recorded density of
-#' \code{0} therefore means "fewer than 10 cells", not "no cells". The growth
-#' rate such a culture implies is bounded rather than undefined, and
-#' left-censoring at the growth rate implied by a density of 10 is the
-#' treatment the recording process actually justifies.
+#' Cell density is counted to a resolution of 10, so a recorded density of
+#' \code{0} means fewer than 10 cells rather than none. The growth rate such a
+#' culture implies is bounded rather than undefined, and left-censoring at the
+#' growth rate implied by a density of 10 is the treatment the recording process
+#' justifies.
 #'
-#' \bold{Growth rate is reported exactly as supplied,} including substituted
-#' values, with \code{sgr_source} marking them. Where density was recorded as
-#' \code{0} the source set the growth rate to \code{0}. That substitution
-#' repays a look: a growth rate of \code{0} means "no change", and it sits in
-#' the middle of the observed range --- above every genuinely negative value in
-#' the same test --- so a culture that was lost entirely is recorded as
-#' \emph{less} affected than one that was merely declining. Correcting it in
-#' the shipped data would remove the example, and substitution at a boundary is
-#' the practice \code{vignette("example6")} argues against.
+#' Growth rate is reported exactly as supplied, including substituted values,
+#' with \code{sgr_source} marking them. Where density was recorded as \code{0}
+#' the source set the growth rate to \code{0}. A growth rate of \code{0} means
+#' no change, and sits in the middle of the observed range, above every
+#' genuinely negative value in the same test, so a culture that was lost
+#' entirely is recorded as \emph{less} affected than one that was merely
+#' declining. Correcting it in the shipped data would remove the example, and
+#' substitution at a boundary is the practice \code{vignette("example6")} argues
+#' against.
 #'
 #' \bold{The two species grow on very different scales,} which is why they were
 #' run over different exposure durations --- seven days for

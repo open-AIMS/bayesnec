@@ -7,9 +7,8 @@
 show_params(model = "all")
 }
 \arguments{
-\item{model}{Removed in version 2.0. Use formula instead. Used to be a
-\code{\link[base]{character}} vector indicating the model(s)
-to fit. See Details for more information.}
+\item{model}{Defunct. The equation or equation set is the second argument of
+\code{crf()} in the \code{formula}.}
 }
 \value{
 An \code{\link[base]{list}} of \code{\link[brms]{brmsformula}}.

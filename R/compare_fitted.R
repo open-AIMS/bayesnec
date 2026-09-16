@@ -61,7 +61,7 @@
 #' widens the difference posterior. \code{prob_diff} is then pulled toward 0.5
 #' and a real difference is under-detected, which is the wrong direction to err
 #' in. A within-fit contrast needs draw-wise differencing and must not be routed
-#' through this function. See #218 and #33.
+#' through this function.
 #'
 #' @export
 compare_fitted <- function(x, resolution = 50, x_range = NA,

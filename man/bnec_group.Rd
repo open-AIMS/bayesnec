@@ -42,7 +42,7 @@ model-averaging within each level, and returns a
 available from the per-level weights alone.
 }
 \details{
-\bold{Why the levels can be fitted separately}
+\bold{The basis for fitting the levels separately}
 
 Factor levels partition the data disjointly and share no parameters, so the
 log likelihood is a sum over levels and the expected log predictive density
@@ -59,20 +59,14 @@ their \code{elpd} contributions would not be on the same scale and the
 crossed weights would be meaningless. So it is chosen from the whole response
 and passed down.
 
-\bold{Dispersion is per level, deliberately}
+\bold{Dispersion per level}
 
-Separate fits give each level its own \code{sigma}/\code{shape}/\code{phi}.
-That is a feature, not an oversight: a shared dispersion parameter would
-break the factorisation the crossed weights depend on. A model with structure
-spanning levels --- shared dispersion, a group-level effect crossing levels,
-an explicit contrast --- is a different model, and is not what this function
-fits.
-
-\bold{What this does not do}
-
-It does not refit the favoured combination jointly. That is stage 2 of #33
-and lands in the post-processing that the \code{toxval} migration moves, so
-it is deliberately out of scope here.
+Separate fits give each level its own \code{sigma}, \code{shape} or
+\code{phi}, deliberately: a shared dispersion parameter would break the
+factorisation the crossed weights depend on. A model with structure spanning
+levels --- shared dispersion, a group-level effect crossing levels, an
+explicit contrast --- is a different model, and is not what this function
+fits. Neither does it refit the favoured combination jointly.
 
 \bold{Fitting the levels in parallel}
 
@@ -82,12 +76,12 @@ and the models within a level. One plan drives one of them, because
 list, so \code{bnec_group()} decides which and says which.
 
 The two arrangements are counted in rounds of one fit and the smaller is
-taken, a tie going to the models, which is what earlier versions did. Writing
-\emph{L} for the levels, \emph{M} for the equations the formula asks for and
-\emph{W} for the workers, the levels take \code{ceiling(L / W) * M} rounds
-and the models \code{L * ceiling(M / W)}. Seven levels of eleven equations
-over four workers is 22 against 21, so the levels stay in sequence; over
-eight workers it is 11 against 14, so they do not. A nested plan ---
+taken, a tie going to the models. Writing \emph{L} for the levels, \emph{M}
+for the equations the formula asks for and \emph{W} for the workers, the
+levels take \code{ceiling(L / W) * M} rounds and the models
+\code{L * ceiling(M / W)}. Seven levels of eleven equations over four workers
+is 22 against 21, so the levels stay in sequence; over eight workers it is 11
+against 14, so they do not. A nested plan ---
 \code{plan(list(tweak(multisession, workers = 2), tweak(multisession,
 workers = I(4))))} --- drives both loops and is honoured without being
 counted, and \code{plan(list(sequential, ...))} asks for the levels in
@@ -101,10 +95,10 @@ parallel grouped call does to compilation and to memory, and the warning a
 nested plan emits --- is in \code{vignette("example2")} under \emph{The
 levels of a grouped call}.
 
-\bold{What a plan does and does not reproduce}
+\bold{Reproducing a grouped fit under a plan}
 
 Each level is given its own seed, realised in the calling session before the
-levels are dispatched and derived from \code{seed} where you passed one. The
+levels are dispatched and derived from \code{seed} where one was supplied. The
 realised seed is passed to every equation fitted for that level and is
 reapplied when the model-averaging draw is realised. A grouped call therefore
 gives the same estimates whichever arrangement it took, and the worker count
@@ -112,17 +106,12 @@ does not change an answer. With a \code{seed} it repeats with no
 \code{\link[base]{set.seed}} in the session; without one,
 \code{\link[base]{set.seed}} before the call fixes it.
 
-What was realised is kept: the returned object carries \code{level_seeds},
+What was realised is kept: the returned object records \code{level_seeds},
 one per level in the order of \code{levels}. A regenerated seed cannot be
-trusted to be the same one years later --- \code{sample.int()}'s algorithm
-changed once already, in R 3.6.0 --- and these objects are archived and
-reopened, so the realisation is stored rather than described.
-
-The estimates a grouped call reports are not those earlier versions reported,
-because the levels are now seeded rather than drawing from the session's
-stream as each is reached. They are another realisation of the same
-weighting. \code{\link{bnec}} describes the rest of what a plan does to a
-fit, and none of that changes here.
+relied on to be the same one years later, since \code{sample.int()}'s
+algorithm has changed before, and these objects are archived and reopened, so
+the realisation is stored rather than described. \code{\link{bnec}} describes
+the rest of what a plan does to a fit, and none of that changes here.
 }
 \examples{
 \dontrun{

@@ -56,7 +56,7 @@
 #' of each comes from the same sweep of the sampler --- and permuting them
 #' destroys that pairing and discards the correlation between the levels.
 #' A within-fit combination needs draw-wise arithmetic and must not be routed
-#' through this function. See #218 and #33.
+#' through this function.
 #'
 #' @export
 average_estimates <- function(x, estimate = "nec", ecx_val = 10,

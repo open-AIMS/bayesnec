@@ -29,10 +29,8 @@ Details.}
 
 \item{resolution}{The number of unique x values over which to find ECx.
 The crossing is located by linear interpolation between the two grid values
-that bracket it, so precision saturates well below the grid spacing.
-Increasing the resolution beyond the default of 200 changed the estimate by
-less than 0.01 percent on the fits tested, and increases the run time
-roughly in proportion.}
+that bracket it, so precision saturates well below the grid spacing and a
+finer grid costs run time roughly in proportion for no gain.}
 
 \item{posterior}{A \code{\link[base]{logical}} value indicating if the full
 posterior sample of calculated ECx values should be returned instead of
@@ -86,18 +84,12 @@ predicts over the predictor range.
 a percentage, and the x value at which the curve reaches it is returned.
 }
 
-\code{"range"} is what \code{"relative"} computed in versions up to
-2.1.3, except that the span was taken from the maximum of the predicted
-curve rather than from the control. The two differ only for a curve whose
-maximum is not at the lowest concentration, which in practice means a
-hormetic one.
-
 Measuring from the control rather than from the maximum of the predicted
 curve is what makes an ECx well defined for a hormesis equation: the target
-response lies below the control, the rising limb lies above it, so the
-curve crosses the target exactly once. The \code{hormesis_def} argument
-selected between those two references and has been removed; the control is
-now always the reference.
+response lies below the control, the rising limb lies above it, so the curve
+crosses the target exactly once. \code{"range"} and \code{"relative"}
+otherwise differ only for a curve whose maximum is not at the lowest
+concentration, which in practice means a hormetic one.
 
 \code{"absolute"} measures towards 0 even for a family whose support is
 unbounded below. This follows OECD TG 201, whose percent inhibition
@@ -108,19 +100,13 @@ Where the curve does not reach the target anywhere in the predictor range
 the ECx is not identified and \code{NA} is returned, with a warning
 reporting how many draws were affected.
 
-Calls to functions \code{\link{ecx}} and \code{\link{nsec}} and
-\code{\link{compare_fitted}} do not require the same level of flexibility
-in the context of allowing argument \code{newdata}
-(from a \code{\link[brms]{posterior_predict}} perspective) to
-be supplied manually, as this is and should be handled within the function
-itself. The argument \code{resolution} controls how precisely the
-\code{\link{ecx}} or \code{\link{nsec}} value is estimated, with
-argument \code{x_range} allowing estimation beyond the existing range of
-the observed data (otherwise the default range) which can be useful in a
-small number of cases. There is also no reasonable case where estimating
-these from the raw data would be of value, because both functions would
-simply return one of the treatment concentrations, making NOEC a better
-metric in that case.
+\code{\link{ecx}}, \code{\link{nsec}} and \code{\link{compare_fitted}}
+take no \code{newdata} argument. The prediction grid is built within the
+function from \code{resolution}, which sets how precisely the estimate is
+located, and \code{x_range}, which allows estimation beyond the range of the
+observed data. Estimating from the observed concentrations instead would
+return one of the treatment concentrations, which is the NOEC rather than
+either of these metrics.
 
 \bold{Selecting a component of a hurdle model}
 

@@ -28,7 +28,7 @@ warning.}
 
 \item{ndraws}{A \code{\link[base]{numeric}} vector of length 1, the number of
 posterior draws to simulate from. Reduced silently to the number the fit
-actually holds where that is smaller.}
+holds where that is smaller.}
 
 \item{seed}{A \code{\link[base]{numeric}} vector of length 1. Passed to
 \code{\link[base]{set.seed}} before simulating, so the result is
@@ -42,7 +42,7 @@ because \code{set.seed(NULL)} re-initialises the stream from the clock.}
 \item{combined}{A \code{\link[base]{logical}} vector of length 1. If
 \code{TRUE} (the default) a third table is returned checking the two
 components against the response they jointly predict, which is what the user
-actually observed. The growth component is predicted onto the full exposed
+observed. The growth component is predicted onto the full exposed
 set rather than onto its own data, since it is fitted on survivors only.}
 }
 \value{
@@ -61,19 +61,16 @@ sampler, and \code{\link{check_priors}}, which checks the priors: this checks
 the fit against the data.
 }
 \details{
-\bold{Why this is not \code{\link{dispersion}}}
+\bold{The distinction from \code{\link{dispersion}}}
 
 \code{\link{dispersion}} reports one global statistic, and for any family
 with a free dispersion parameter that parameter absorbs exactly the
-discrepancy the global statistic measures. On the packaged
-\code{manec_example} the global Pearson ratio is 1.011, with a 95\\% interval
-of 0.71 to 1.44 --- a
-clean bill of health --- while the same fit simulates about 27\\% more
-variability than the data show in the control region. A global summary is
-structurally incapable of showing that, which is why this check is
-\emph{local}.
+discrepancy the global statistic measures. A fit can therefore return a
+global Pearson ratio whose interval covers 1 while simulating substantially
+more variability than the data show in the control region alone. A global
+summary cannot show that, which is why this check is \emph{local}.
 
-\bold{Why the control row matters}
+\bold{The importance of the control row}
 
 \code{\link{nsec}} sets its reference from the \code{sig_val} quantile of the
 posterior of the control mean, so the width of that posterior sets the

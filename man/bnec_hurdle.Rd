@@ -63,15 +63,13 @@ endpoint -- the expected response per unit \emph{exposed} -- can be derived from
 them.
 }
 \details{
-\bold{This covers the zero-inflated case too.} \pkg{brms} names the
-equivalent joint families \code{hurdle_gamma} and
-\code{zero_inflated_beta}, but the distinction is nominal: zero-inflation
-differs from a hurdle only when the base distribution can itself produce
-zeros, which neither the Gamma nor the Beta can. The Stan density
-\pkg{brms} generates for \code{zero_inflated_beta} is the hurdle form, with
-no mixture at zero. One function therefore serves both, and the appropriate
-family is chosen from the data -- \code{Gamma} for a positive continuous
-response, \code{Beta} for a proportion on (0, 1).
+The zero-inflated case is covered as well. \pkg{brms} names the equivalent
+joint families \code{hurdle_gamma} and \code{zero_inflated_beta}, but the
+distinction is nominal for these two: zero-inflation differs from a hurdle
+only when the base distribution can itself produce zeros, which neither the
+Gamma nor the Beta can. One function therefore serves both, and the family is
+chosen from the data -- \code{Gamma} for a positive continuous response,
+\code{Beta} for a proportion on (0, 1).
 
 Throughout the documentation the two parts are called "growth" and
 "survival", after the case they were written for -- individuals that die
@@ -81,7 +79,7 @@ zeros alongside a continuous response fits the same structure. Algal growth
 rate expressed as a proportion of a ceiling, with replicates that failed
 entirely, is the same model.
 
-\bold{Why two fits rather than one}
+\bold{The basis for two fits rather than one}
 
 The hurdle log-likelihood separates exactly into a Bernoulli term over all
 individuals and a zero-bounded term over the survivors only:
@@ -108,17 +106,16 @@ A \code{0} response means the individual did not survive; it is a label, not
 a measurement. Where mortality is instead recorded by omitting rows, those
 rows must be reinstated as zeros before calling this function.
 
-\bold{Censoring, and which aterms are allowed}
+\bold{Censoring and the permitted aterms}
 
 \code{cens()} is the one aterm accepted on the response. \code{\link{bnec}}
-itself carries three -- \code{trials()}, \code{weights()} and
+itself accepts three -- \code{trials()}, \code{weights()} and
 \code{cens()} -- and of those \code{cens()} is the only one whose meaning
-stays unambiguous once the response is split across two models. It is also
-the one with a use here that nothing else covers. A growth endpoint can be
-both
+stays unambiguous once the response is split across two models, and the only
+one with a use here that nothing else covers. A growth endpoint can be both
 zero-bounded with structural zeros and left-censored at the recording
-resolution, and only a two-part model with a censored response component can
-tell the two apart: a death is a structural zero belonging to the Bernoulli
+resolution, and only a two-part model with a censored response component
+separates the two: a death is a structural zero belonging to the Bernoulli
 component, while a survivor measured below the limit is a real observation of
 the growth component whose value is known only to lie at or below a bound.
 

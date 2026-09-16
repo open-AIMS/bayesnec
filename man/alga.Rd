@@ -22,21 +22,21 @@ before any model is fitted: what a response owes to the control mean it is
 referenced against, and what to do with counts that fell below the
 resolution the method could record.
 
-\bold{Cell density is counted to a resolution of 10.} A recorded density of
-\code{0} therefore means "fewer than 10 cells", not "no cells". The growth
-rate such a culture implies is bounded rather than undefined, and
-left-censoring at the growth rate implied by a density of 10 is the
-treatment the recording process actually justifies.
+Cell density is counted to a resolution of 10, so a recorded density of
+\code{0} means fewer than 10 cells rather than none. The growth rate such a
+culture implies is bounded rather than undefined, and left-censoring at the
+growth rate implied by a density of 10 is the treatment the recording process
+justifies.
 
-\bold{Growth rate is reported exactly as supplied,} including substituted
-values, with \code{sgr_source} marking them. Where density was recorded as
-\code{0} the source set the growth rate to \code{0}. That substitution
-repays a look: a growth rate of \code{0} means "no change", and it sits in
-the middle of the observed range --- above every genuinely negative value in
-the same test --- so a culture that was lost entirely is recorded as
-\emph{less} affected than one that was merely declining. Correcting it in
-the shipped data would remove the example, and substitution at a boundary is
-the practice \code{vignette("example6")} argues against.
+Growth rate is reported exactly as supplied, including substituted values,
+with \code{sgr_source} marking them. Where density was recorded as \code{0}
+the source set the growth rate to \code{0}. A growth rate of \code{0} means
+no change, and sits in the middle of the observed range, above every
+genuinely negative value in the same test, so a culture that was lost
+entirely is recorded as \emph{less} affected than one that was merely
+declining. Correcting it in the shipped data would remove the example, and
+substitution at a boundary is the practice \code{vignette("example6")} argues
+against.
 
 \bold{The two species grow on very different scales,} which is why they were
 run over different exposure durations --- seven days for

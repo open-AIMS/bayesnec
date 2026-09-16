@@ -152,9 +152,11 @@
 #' \code{\link{dispersion}} diagnostic applies to, so the two are complements
 #' rather than alternatives.
 #'
-#' \bold{What the exponent means depends on the family}, because each family
-#' already imposes its own mean-variance link. The form above is written for
-#' the dispersion parameter itself, which is what \pkg{brms} fits:
+#' \bold{The meaning of the exponent under each family}
+#'
+#' Each family already imposes its own mean-variance link, so the exponent means
+#' something different under each. The form above is written for the dispersion
+#' parameter itself, which is what \pkg{brms} fits:
 #'
 #' Writing \code{r = mu / m} for the response relative to the reference, and
 #' taking \code{"power"} for concreteness:
@@ -187,23 +189,20 @@
 #'
 #' \bold{Further brms terms (largely untested)}
 #'
-#' Currently \code{\link{bayesnecformula}} is quite agnostic about additional
-#' terms that are valid for a \code{\link[brms]{brmsformula}}. These are
-#' \code{aterms} and \code{pterms} (see \code{?\link[brms]{brmsformula}}).
-#' The only capability that \code{\link{bayesnecformula}} does not allow is
-#' the addition of \code{pterms} outside of the term \code{crf}. Although
-#' \code{pterms} can be passed to predictor \code{x} within \code{crf}, we
-#' strongly discourage their use because those functionalities have not
-#' been tested yet. If this is extremely important to your work, please
-#' raise an issue on bayesnec GitHub, and we will consider further testing and 
-#' development.
-#' Currently, the only four \code{aterms} that have validated behaviour are:
-#' 1) \code{trials()}, which is essential in binomially-distributed data, e.g.
-#' \code{y | trials(trials_variable)}, 2) weights, e.g.
-#' \code{y | weights(weights_variable)}, 3) \code{cens()} (see below), and
-#' 4) \code{rate()} (see below), following \pkg{brms} formula syntax.
-#' Any other \code{aterm} is an error rather than a warning: an aterm
-#' \code{bayesnec} has not validated cannot be assumed to behave sensibly
+#' \code{\link{bayesnecformula}} is largely agnostic about the additional terms
+#' that are valid for a \code{\link[brms]{brmsformula}} --- \code{aterms} and
+#' \code{pterms}, see \code{?\link[brms]{brmsformula}}. The one capability it
+#' does not allow is a \code{pterm} outside the \code{crf} term. A
+#' \code{pterm} can be passed to the predictor \code{x} within \code{crf},
+#' but that use is untested and discouraged; raise an issue on the
+#' \pkg{bayesnec} GitHub page where it is needed.
+#'
+#' The \code{aterms} with validated behaviour are \code{trials()}, which is
+#' essential for binomially-distributed data, e.g.
+#' \code{y | trials(trials_variable)}; \code{weights()}, e.g.
+#' \code{y | weights(weights_variable)}; \code{cens()} and \code{rate()},
+#' both described below. Any other \code{aterm} is an error rather than a
+#' warning, because an unvalidated aterm cannot be assumed to behave sensibly
 #' through the prior generation, initial-value search and post-processing that
 #' follow.
 #'
@@ -253,28 +252,27 @@
 #' (equivalently \code{0}, \code{-1}, \code{1}, \code{2}); it is not a constant,
 #' because in a concentration-response dataset only some rows are censored.
 #'
-#' \bold{The response value carries the bound.} For a left-censored row the
-#' number in the response column is the value the truth is known to be at or
-#' below --- not zero, and not a substitute for the unknown truth. Because of
-#' this, a censored row is exempt from the boundary shifts that
+#' For a left-censored row the number in the response column is the bound: the
+#' value the truth is known to be at or below, not zero and not a substitute for
+#' the unknown truth. Because of this, a censored row is exempt from the
+#' boundary shifts that
 #' \code{\link{bnec}} otherwise applies to zeros in Gamma and Beta responses:
 #' the bound has already been declared and moving it would restate it. A row
 #' declared censored at a value the family excludes --- left-censored at 0 under
 #' Gamma or Beta, right-censored at 1 under Beta --- is an error rather than a
 #' shift, because the censored likelihood is degenerate there.
 #'
-#' **NB:** \code{aterms} other than \code{trials()}, \code{weights()} and
-#' \code{cens()} are currently omitted from \code{\link{model.frame}} output. If
-#' you need other \code{aterms} as part of that output please raise an issue on
-#' our GitHub page.
+#' \code{aterms} other than \code{trials()}, \code{weights()} and
+#' \code{cens()} are omitted from \code{\link{model.frame}} output; raise an
+#' issue on the \pkg{bayesnec} GitHub page where one is needed there.
 #'
 #' \bold{Validation of formula}
-#' Please note that the function only checks for the input nature of the
-#' \code{formula} argument and adds a new class. This function **does not**
-#' perform any validation on the model nor checks on its adequacy to work with
-#' other functions in the package. For that please refer to the function
-#' \code{\link{check_formula}} which requires the dataset associated with the
-#' formula.
+#'
+#' This function checks the nature of the \code{formula} argument and adds a
+#' new class. It performs no validation of the model itself, nor any check on
+#' its adequacy for the other functions in the package. Use
+#' \code{\link{check_formula}}, which also requires the dataset associated with
+#' the formula, for that.
 #'
 #' @return An object of class \code{\link{bayesnecformula}} and
 #' \code{\link[stats]{formula}}.
@@ -353,20 +351,20 @@ bnf <- function(formula, ..., env = parent.frame()) {
 #'
 #' @details This function allows the user to make sure that the input formula
 #' will allow for a successful model fit with the function \code{\link{bnec}}.
-#' Should all checks pass, the function returns the original formula. Otherwise
-#' it will fail and requires that the user fixes it until they're able to use
-#' it with \code{\link{bnec}}.
+#' Where all checks pass, the function returns the original formula; otherwise it
+#' fails, naming what has to be corrected.
 #'
 #' The argument \code{run_par_checks} is irrelevant for most usages of this
 #' package because it only applies if three conditions are met: 1) the user has
-#' specified a group-level effect; 2) the group-level effects is parameter 
-#' specific (e.g. \code{(par | group_variable)} rather than \code{pgl/ogl(group_variable)}); and 3) The user is keen to learn if the specified parameter
-#' is found in the specified model (via argument \code{model} in the \code{crf} term -- see details in ?bayesnecformula).
+#' specified a group-level effect; 2) that effect is parameter specific, e.g.
+#' \code{(par | group_variable)} rather than \code{pgl/ogl(group_variable)};
+#' and 3) confirmation is wanted that the named parameter is present in the
+#' specified model. See the \code{model} argument of the \code{crf} term in
+#' \code{?\link{bayesnecformula}}.
 #'
-#' **NB:** \code{aterms} other than \code{trials()}, \code{weights()} and
-#' \code{cens()} are currently omitted from \code{\link{model.frame}} output. If
-#' you need other \code{aterms} as part of that output please raise an issue on
-#' our GitHub page. See details about \code{aterms} in ?bayesnecformula.
+#' \code{aterms} other than \code{trials()}, \code{weights()} and
+#' \code{cens()} are omitted from \code{\link{model.frame}} output. See the
+#' details on \code{aterms} in \code{?\link{bayesnecformula}}.
 #'
 #' @seealso
 #'   \code{\link{bnec}},

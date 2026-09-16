@@ -45,10 +45,11 @@ see Fox 2010), and is a true measure
 of No-effect-concentration (the minimum concentration above which an effect
 is predicted to occur.
 
-\bold{What is actually returned depends on the model set.} Despite the
-function name, \code{nec} returns a no-effect estimate of whichever type the
-fitted model(s) support, following the convention set out in Fisher et al.
-(2023):
+\bold{The estimate returned for each kind of model set}
+
+Despite the function name, \code{nec} returns a no-effect estimate of
+whichever type the fitted model or models support, following the convention
+set out in Fisher et al. (2023):
 
 \itemize{
 \item For a \code{\link{bayesnecfit}} holding a threshold (\code{nec}-type)

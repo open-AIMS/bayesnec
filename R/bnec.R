@@ -37,26 +37,18 @@
 #' \code{\link[base]{c}} and \code{+} take no \code{loo_controls} argument;
 #' see \code{\link{c.bnecfit}} for how they decide the method. See
 #' ?\code{\link[loo]{loo_model_weights}} for further info.
-#' @param x_var Removed in version 2.0. Use formula instead. Used to be a
-#' \code{\link[base]{character}} indicating the column heading
-#' containing the predictor (concentration) variable.
-#' @param y_var  Removed in version 2.0. Use formula instead. Used to be a
-#' \code{\link[base]{character}} indicating the column heading
-#' containing the response variable.
-#' @param model Removed in version 2.0. Use formula instead. Used to be a
-#' \code{\link[base]{character}} vector indicating the model(s)
-#' to fit. See Details for more information.
-#' @param trials_var Removed in version 2.0. Use formula instead. Used to be a
-#' \code{\link[base]{character}} indicating the column
-#' heading for the number of "trials" for binomial or "beta_binomial" response
-#' data, as it appears in "data" (if data is supplied).
-#' @param random Removed in version 2.0. Use formula instead. Used to be a
-#' named \code{\link[base]{list}} containing the random model
-#' formula to apply to model parameters.
-#' @param random_vars Removed in version 2.0. Use formula instead. Used to be a
-#' \code{\link[base]{character}} vector containing the
-#' names of the columns containing the variables used in the random model
-#' formula.
+#' @param x_var Defunct. The predictor is named inside \code{crf()} in the
+#' \code{formula}.
+#' @param y_var Defunct. The response is the left-hand side of the
+#' \code{formula}.
+#' @param model Defunct. The equation or equation set is the second argument of
+#' \code{crf()} in the \code{formula}.
+#' @param trials_var Defunct. Use the \code{trials()} aterm in the
+#' \code{formula}.
+#' @param random Defunct. Use a group-level term in the \code{formula}; see
+#' \code{\link{bayesnecformula}}.
+#' @param random_vars Defunct. Use a group-level term in the \code{formula};
+#' see \code{\link{bayesnecformula}}.
 #' @param prior An optional \code{\link[brms]{brmsprior}} object (or, when
 #' multiple models are fitted, a named \code{\link[base]{list}} of such objects)
 #' specifying the priors to use, passed to \code{\link[brms]{brm}}. When omitted,
@@ -116,9 +108,9 @@
 #'
 #' \bold{Overview}
 #'
-#' \code{\link{bnec}} serves as a wrapper for (currently) 23 (mostly) non-linear
-#' equations that are classically applied to concentration(dose)-response
-#' problems. The primary goal of these equations is to provide the user with
+#' \code{\link{bnec}} is a wrapper for the mostly non-linear equations
+#' classically applied to concentration(dose)-response problems, listed by
+#' \code{\link{models}}. The primary goal of these equations is to provide the user with
 #' estimates of No-Effect-Concentration (NEC),
 #' No-Significant-Effect-Concentration (NSEC), and Effect-Concentration
 #' (of specified percentage 'x', *ECx*) thresholds.
@@ -136,9 +128,8 @@
 #' \bold{The available models/equations/formulas}
 #'
 #' The available equations (or models) can be found via the \code{\link{models}}
-#' function. Since version 2.0, \code{\link{bnec}} requires a specific formula
-#' structure
-#' which is fully explained in the help file of \code{\link{bayesnecformula}}.
+#' function. \code{\link{bnec}} requires a specific formula structure, fully
+#' explained in the help file of \code{\link{bayesnecformula}}.
 #' This formula incorporates the information regarding the chosen model(s). If
 #' one single model is specified, \code{\link{bnec}} will return an object of
 #' class \code{\link{bayesnecfit}}; otherwise if model is either a concatenation
@@ -204,7 +195,7 @@
 #'
 #' Other families can be considered as required, please raise an
 #' \href{https://github.com/open-AIMS/bayesnec/issues}{issue} on the GitHub
-#' development site if your required family is not currently available.
+#' development site if a required family is not available.
 #'
 #' @section The link:
 #'
@@ -212,9 +203,9 @@
 #' \code{top}, \code{bot} and \code{nec} on the scale of the response and
 #' directly interpretable, and is what the JSS article describes.
 #'
-#' \strong{The link is assigned by bayesnec unless you choose one.} Naming a
-#' family and nothing more leaves it to bayesnec, so all of the following fit on
-#' the identity link:
+#' \pkg{bayesnec} assigns the link unless the call states one. Naming a family
+#' and nothing more leaves the assignment to \pkg{bayesnec}, so all of the
+#' following fit on the identity link:
 #'
 #' \preformatted{
 #' bnec(..., family = "Beta")
@@ -223,18 +214,17 @@
 #' bnec(..., family = hurdle_gamma())
 #' }
 #'
-#' Writing a link argument is what makes it yours, and it is then honoured.
-#' A link written positionally counts, since \code{link} is the first argument
-#' of every family constructor:
+#' A link argument written in the call is honoured instead. A positional one
+#' counts, since \code{link} is the first argument of every family constructor:
 #'
 #' \preformatted{
 #' bnec(..., family = Beta(link = "logit"))
 #' bnec(..., family = Beta("logit"))
 #' }
 #'
-#' This is read one link at a time. A two-block family has a link on each
-#' block, and writing one says nothing about the other, so the block you leave
-#' alone is still bayesnec's to assign:
+#' Each link is read separately. A two-block family has a link on each block,
+#' and stating one says nothing about the other, so an unstated block is still
+#' \pkg{bayesnec}'s to assign:
 #'
 #' \preformatted{
 #' bnec(..., family = hurdle_gamma(link = "log"))
@@ -245,33 +235,24 @@
 #'
 #' The dispersion links --- \code{link_phi}, \code{link_shape},
 #' \code{link_sigma} --- are outside this altogether. No curve is fitted on
-#' them and writing one says nothing about the scale \code{top}, \code{bot}
-#' and \code{nec} are reported on, so whatever you write there is carried
-#' through unchanged and whatever you do not keeps the family's own default.
-#' The one exception is \code{Gamma}, whose dispersion link \code{bayesnec}
-#' cannot carry; write \code{disp(~x)} in the formula instead, which is valid
+#' them and stating one says nothing about the scale \code{top}, \code{bot}
+#' and \code{nec} are reported on, so a stated dispersion link is passed
+#' through unchanged and an unstated one keeps the family's own default. The
+#' one exception is \code{Gamma}, whose dispersion link \pkg{bayesnec} cannot
+#' pass through; use \code{disp(~x)} in the formula instead, which is valid
 #' under any link.
 #'
 #' A family that does not reach \code{\link{bnec}} written as a constructor
 #' call --- one held in a variable, one read back off a fitted object with
-#' \code{fit$family}, or one passed through \code{do.call} --- is a case
-#' intent cannot be read from at all. The object's own links are honoured, and
-#' where the mean link is not the identity a message says which one was taken.
+#' \code{fit$family}, or one passed through \code{do.call} --- states nothing
+#' either way. The object's own links are honoured, and where the mean link is
+#' not the identity a message names it.
 #'
 #' Only \code{identity}, \code{log} and \code{logit} are fitted on; any other
 #' link is refused with an error naming the family. Note that \code{log} and
 #' \code{logit} exclude the zero-bounded equations, since a mean decaying onto
 #' zero cannot produce the negative values those link scales require --- see
 #' \code{\link{models}}.
-#'
-#' \strong{This changed in version 2.1.3.25.} Before it, the link depended on
-#' how the family was written and the difference was silent:
-#' \code{family = "Beta"} gave identity, while \code{family = Beta} and
-#' \code{family = Beta()} gave \strong{logit} and \code{family = Gamma()} gave
-#' \strong{inverse}. In those cases the curve was fitted to a transform of the
-#' mean while \code{top}, \code{bot} and \code{nec} were reported as though
-#' they were on the response scale. If you have code passing a constructed
-#' family and relying on its default link, add the link explicitly.
 #'
 #' @details
 #'
@@ -284,21 +265,18 @@
 #' effective doses upwards (Ritz et al. 2026). Nothing is gained by doing so,
 #' because \code{ecx(type = "absolute")} -- the default -- already measures the
 #' decline relative to the fitted control value, one posterior draw at a time,
-#' which is the estimand that paper recommends. Dividing by the maximum
-#' observed response is worse again than dividing by the control mean: an
-#' extreme order statistic is more variable, the divisor then depends on every
-#' treatment rather than on the controls alone, and it forces one observation
-#' to exactly 1, outside the open support of the Beta family.
+#' which is the estimand that paper recommends. \code{\link{bnec}} reports a
+#' message where it finds either practice in the response.
 #'
-#' The "Beta" and "zero_inflated_beta" families are the case where a divisor
-#' may genuinely be needed, since both require a response on the open interval
+#' The "Beta" and "zero_inflated_beta" families are the case where a divisor may
+#' genuinely be needed, since both require a response on the open interval
 #' (0, 1). Where one is needed it must be a constant fixed in advance of the
 #' analysis -- a physiological or design ceiling, or a value from accumulated
 #' historical controls -- and never a quantity computed from the dataset being
-#' analysed. Dividing by a constant is harmless; dividing by a random quantity
-#' is the problem. Responses that are already proportions on their own terms,
-#' such as the maximum quantum yield in \code{\link{herbicide}} or a survival
-#' fraction, need no divisor at all.
+#' analysed. Responses that are already proportions on their own terms, such as
+#' the maximum quantum yield in \code{\link{herbicide}} or a survival fraction,
+#' need no divisor at all. \code{vignette("example1")} gives the derivation, the
+#' simulation behind it and the case where a divisor is unavoidable.
 #'
 #' \bold{Two-block (hurdle and zero-inflated) families}
 #'
@@ -336,28 +314,22 @@
 #' for a component. \code{\link{nec}} returns the combined threshold, which for
 #' threshold models on both blocks is the smaller of the two.
 #'
-#' Naming these families is enough --- \code{family = "hurdle_gamma"},
-#' \code{hurdle_gamma()}, \code{family = "zero_inflated_beta"} --- since
-#' bayesnec assigns the link on both blocks; see \strong{The link} and
-#' \code{zero_inflated_beta(link = "identity", link_zi = "identity")}
-#' respectively. bayesnec keeps
-#' every parameter on the natural response scale, and the hurdle block is
-#' written as \code{1 - <non-zero probability>}, which is only meaningful under
-#' an identity link there.
+#' Naming the family is enough --- \code{family = "hurdle_gamma"} or
+#' \code{family = "zero_inflated_beta"} --- since \pkg{bayesnec} assigns the
+#' identity link on both blocks; see \strong{The link}.
 #'
-#' That inversion is worth knowing about when reading output. \pkg{brms} defines
-#' \code{hu} (or \code{zi}) as the probability of a \emph{zero}, which rises
-#' with the predictor, whereas every bayesnec equation declines. Writing the
-#' block as \code{1 - <equation>} puts the declining curve on \emph{survival},
-#' so the equation set, its priors and the \code{\link{ecx}}/\code{\link{nsec}}
-#' definition of "decline from control" all carry over unchanged. The practical
-#' consequence is that \code{hutop} and \code{hunec} describe surviving rather
-#' than dying; \code{hunec} is the same concentration either way. See
+#' The second block is written as \code{1 - <equation>}, because \pkg{brms}
+#' defines \code{hu} (or \code{zi}) as the probability of a \emph{zero}, which
+#' rises with the predictor, whereas every \pkg{bayesnec} equation declines.
+#' The declining curve is therefore on \emph{survival}, so the equation set,
+#' its priors and the \code{\link{ecx}} and \code{\link{nsec}} definition of
+#' a decline from the control apply to it unchanged. \code{hutop} and
+#' \code{hunec} accordingly describe surviving rather than dying, and
+#' \code{hunec} is the same concentration either way. See
 #' \code{vignette("example6")}.
 #'
-#' Neither family is ever selected automatically: a response
-#' containing zeros is still treated as Gamma, with a message, so that existing
-#' analyses do not silently change.
+#' Neither family is ever selected automatically: a response containing zeros is
+#' treated as Gamma, with a message.
 #'
 #' The two blocks need not use the same equation. \code{crf} in the formula
 #' names the response block's, and \code{model_survival} the survival block's,
@@ -384,68 +356,36 @@
 #' a single constant \code{zi} alongside it. They get no second bayesnec
 #' equation, no \code{model_survival}, and no \code{zi} curve.
 #'
-#' That looks inconsistent with \code{"zero_inflated_beta"}, which is a
-#' two-block family here, and the reason is worth stating because the family
-#' names suggest otherwise. Zero-inflation differs from a hurdle only when the
-#' base distribution can itself produce a zero. Neither Gamma nor Beta can, so
-#' for those the two coincide: every zero must have come from the inflation
-#' component, the likelihood separates exactly into a Bernoulli term over all
-#' observations and a positive-response term over the rest, and the Stan density
-#' \pkg{brms} generates for \code{zero_inflated_beta} is the hurdle form with no
-#' mixture at zero. Two blocks are then an accurate description of the model.
+#' A count distribution can itself produce a zero, where the Gamma and the Beta
+#' cannot, so an observed count of zero is evidence about both components at
+#' once and the likelihood does not separate into a term for each block.
+#' \code{\link{bnec_hurdle}} is that separation performed as two fits, and it
+#' refuses these families for the same reason. \code{zi} is held constant
+#' because a \code{zi} curve would be almost unidentified at the high
+#' concentrations that set the threshold, and because nothing in the data
+#' records which zeros are structural.
 #'
-#' Poisson and negative binomial \emph{can} produce a zero, so the equivalence
-#' fails. An observed zero is evidence about both components at once: the
-#' likelihood carries a \code{log_sum_exp} over them and does not factorise into
-#' a term for each block. That rules out \code{\link{bnec_hurdle}}, which is
-#' precisely that factorisation performed as two separate fits, and it refuses
-#' these families accordingly.
+#' That gives the rule for choosing between the two. Where the structural zeros
+#' can be identified -- the individual died, the replicate failed -- the model
+#' is a hurdle, and a two-block family or \code{\link{bnec_hurdle}} is the one
+#' to use. Zero-inflation is for the case where they cannot. A genuine hurdle on
+#' a \emph{count} response needs a zero-truncated count family, which
+#' \pkg{bayesnec} does not yet provide; see the note under \code{family_growth}
+#' in \code{\link{bnec_hurdle}}.
 #'
-#' It does not, on its own, rule out a \emph{joint} fit carrying a second curve.
-#' \pkg{brms} treats \code{zi} as a distributional parameter like any other and
-#' will model it on a predictor; the \code{log_sum_exp} is internal to the
-#' density and is indifferent to what drives \code{zi}. bayesnec nonetheless
-#' holds \code{zi} constant, for two reasons that outlast the factorisation
-#' argument:
-#'
-#' \itemize{
-#'   \item \code{zi} and \code{mu} trade off against one another -- a low count
-#'   rate is either a small \code{mu} or a large \code{zi} -- and the data
-#'   separate them only through the shape of the positive counts. In a
-#'   concentration-response design \code{mu} runs from large at the control to
-#'   near zero at the top concentration, so a \code{zi} curve would be well
-#'   informed at the low concentrations and almost unidentified at the high ones
-#'   that set the threshold. A hurdle has no such problem: every zero belongs to
-#'   the second block by construction, so that block is informed at every
-#'   concentration.
-#'   \item \code{zi} is a latent class rather than an observable. Nothing in the
-#'   data records which zeros are structural, so a threshold estimated from a
-#'   \code{zi} curve would describe something that was never measured. In the
-#'   survival case the deaths were observed, and that is what makes the second
-#'   block interpretable.
-#' }
-#'
-#' Which gives the rule for choosing between the two. If you can tell which
-#' zeros are structural -- the individual died, the replicate failed -- you have
-#' a hurdle, and a two-block family or \code{\link{bnec_hurdle}} is the right
-#' model. Zero-inflation is for when you cannot. Note that a genuine hurdle on a
-#' \emph{count} response needs a zero-truncated count family, which bayesnec
-#' does not yet provide; see the note under \code{family_growth} in
-#' \code{\link{bnec_hurdle}}.
-#'
-#' Two consequences are worth noting. \code{zi} is a nuisance parameter here,
-#' not part of the concentration-response description, and \code{disp()} is
-#' refused for both families because the dispersion parameter describes the
-#' count component while the response is the mixture. Second, predictions are on
-#' the scale of the mixture rather than of \code{mu}:
+#' Two consequences follow. \code{zi} is a nuisance parameter here rather than
+#' part of the concentration-response description, and \code{disp()} is refused
+#' for both families because the dispersion parameter describes the count
+#' component while the response is the mixture. And predictions are on the scale
+#' of the mixture rather than of \code{mu}:
 #' \code{\link[brms]{posterior_epred}} returns \code{mu * (1 - zi)}, so
 #' \code{predict}, \code{fitted}, \code{autoplot} and the stored
 #' \code{pred_vals} all sit a factor \code{1 - zi} below the \code{top} and
 #' \code{bot} that \code{summary} reports, which are on the \code{mu} scale.
 #' \code{\link{ecx}} is unaffected, because its \code{"relative"} and
 #' \code{"absolute"} types are ratios in which that constant factor cancels, and
-#' so is the no-effect threshold, because a constant \code{zi} does not move the
-#' concentration at which the curve leaves its plateau.
+#' so is the no-effect threshold, because a constant \code{zi} does not change
+#' the concentration at which the curve leaves its plateau.
 #'
 #' \bold{Non-constant dispersion}
 #'
@@ -484,10 +424,11 @@
 #'
 #' A fit is a random procedure twice over: initial values are drawn from the
 #' priors, and the sampler is seeded. Both draws come from R's random number
-#' stream, so \code{\link[base]{set.seed}} in your session before the call
-#' fixes the fit, and two calls made after the same \code{set.seed()} return
-#' the same estimates. Passing \code{seed} through to \code{\link[brms]{brm}}
-#' fixes it too, and does so independently of the session's stream.
+#' stream, so \code{\link[base]{set.seed}} in the calling session before the
+#' call fixes the fit, and two calls made after the same \code{set.seed()}
+#' return the same estimates. Passing \code{seed} through to
+#' \code{\link[brms]{brm}} fixes it too, and does so independently of the
+#' session's stream.
 #'
 #' Two qualifications. The estimates are fixed only for a given version of
 #' \pkg{bayesnec}, \pkg{brms}, Stan and the compiler: a Stan program rebuilt
@@ -497,16 +438,13 @@
 #' \code{threads = threading(n, static = TRUE)} where a threaded run has to
 #' repeat.
 #'
-#' A \pkg{future} plan raises two separate questions, and only the second
-#' needs anything of you. A run under a plan repeats itself under a session
-#' \code{\link[base]{set.seed}} exactly as a sequential run does, measured on
-#' one backend and one R version. But a parallel run does not give the same
-#' answer as a sequential run of the same call unless you pass \code{seed}:
-#' each model is fitted in a worker whose random number stream is its own, so
-#' the initial values differ. Measured under
-#' \code{plan(multicore, workers = 3)} on three equations, sequential and
-#' parallel agreed with a \code{seed} and disagreed without one. Pass one if
-#' you intend to compare the two.
+#' A \pkg{future} plan raises two separate questions, and only the second calls
+#' for anything. A run under a plan repeats itself under a session
+#' \code{\link[base]{set.seed}} exactly as a sequential run does. But a
+#' parallel run does not give the same answer as a sequential run of the same
+#' call unless \code{seed} is supplied: each model is fitted in a worker whose
+#' random number stream is its own, so the initial values differ. Supply one
+#' where the two are to be compared.
 #'
 #' \bold{Fitting a model set in parallel}
 #'
@@ -529,55 +467,40 @@
 #' before. \code{\link{amend}} uses the plan the same way, over the models it
 #' has to fit.
 #'
-#' Some things to know before setting one.
+#' Two things bear on whether a plan gains anything. Chains and models compete
+#' for the same cores: unless \code{cores} is supplied, each model in a parallel
+#' plan samples its chains one after another, so \code{workers = 4} uses four
+#' cores in total, the same four \code{\link[brms]{brm}} already uses for the
+#' chains of one model. And what a plan overlaps is compilation. A first fit
+#' builds a Stan program for every model and those builds divide across workers,
+#' while a second run of the same set has them built already and gains little.
 #'
-#' Chains and models compete for the same cores. Unless you pass \code{cores}
-#' yourself, each model in a parallel plan samples its chains one after another,
-#' so \code{workers = 4} uses four cores in total -- the same four
-#' \code{\link[brms]{brm}} already uses for the chains of one model. Only
-#' above that is a plan asking for anything more.
-#'
-#' Which run you are timing decides whether that matters. A first fit builds a
-#' Stan program for every model, and building them divides across workers
-#' cleanly: measured on the \code{"decline"} set of
-#' \code{vignette("example2")}, a first run took 300 s with no plan and 150 s
-#' over eight workers. Run again with the programs already built, the same
-#' comparison is 99 s against 101 s -- nothing, because what a plan was
-#' overlapping has already been done.
-#'
-#' Supply a \code{seed} if the run has to match a sequential one; see
+#' Supply a \code{seed} where the run has to match a sequential one; see
 #' \emph{Reproducing a fit} above for what a plan does and does not repeat.
 #'
-#' The model-averaged quantities -- the averaged
-#' \code{nec}, its interval, the stored prediction grid -- are not reproduced
-#' between a sequential and a parallel run even with a \code{seed}, because
-#' \code{expand_manec()} draws from the session's RNG stream, which a
-#' sequential run advances and a parallel one leaves alone;
-#' \code{set.seed()} in your session fixes that draw under a plan, so a
-#' parallel run repeats itself.
+#' The model-averaged quantities -- the averaged \code{nec}, its interval, the
+#' stored prediction grid -- are not reproduced between a sequential and a
+#' parallel run even with a \code{seed}, because \code{expand_manec()} draws
+#' from the session's RNG stream, which a sequential run advances and a parallel
+#' one leaves alone. \code{\link[base]{set.seed}} in the calling session fixes
+#' that draw under a plan, so a parallel run repeats itself.
 #'
-#' The worked treatment -- measured run times, which backend a forked plan
-#' needs, how to tell a plan that has stalled, and what memory does -- is in
+#' The worked treatment -- run times, which backend a forked plan needs, how to
+#' recognise a plan that has stalled, and what memory does -- is in
 #' \code{vignette("example2")}.
 #'
 #' \bold{Additional technical notes}
 #'
-#' A zero concentration is fitted as recorded. No family constrains the values
-#' a predictor may take, so a control needs no offset, and earlier versions of
-#' \pkg{bayesnec} substituted one tenth of the smallest positive concentration
-#' for it. That substitution is removed: it was applied without notice, it was
-#' never reversed in the estimates it changed, and its size depended on the
-#' lowest non-zero concentration tested rather than on the data. A fit whose
-#' predictor includes an exact zero gives different estimates than it did under
-#' earlier versions.
+#' A zero concentration is fitted as recorded. No family constrains the values a
+#' predictor may take, so a control needs no offset and none is applied.
 #'
 #' A zero concentration does still restrict what may be written inside
 #' \code{crf()} and \code{disp()}, because both are evaluated from the recorded
 #' column. \code{crf(log(x))} reaches \pkg{bayesnec}'s own data check as
 #' \code{-Inf} and stops there, naming the predictor. \code{disp(~log(x))} is
 #' evaluated by \code{brm()} instead, which \pkg{bayesnec} does not check, so
-#' the \code{-Inf} reaches Stan. Add the offset of your choice to the data and
-#' name that column in the formula.
+#' the \code{-Inf} reaches Stan. Add an offset to the data and name that column
+#' in the formula.
 #'
 #' \bold{Missing values}
 #'
@@ -587,11 +510,10 @@
 #' rows held one and which they were, by row name; the error for a non-finite
 #' value names the column.
 #'
-#' \code{\link[stats]{model.frame}} drops incomplete cases before
-#' \pkg{bayesnec} is given the data, so until version 2.2.0 an \code{NA} left
-#' the fit running on fewer rows than were supplied with nothing said, while an
-#' \code{Inf} was refused. Both are now refused, so that the sample the
-#' estimates are derived from is the user's decision and is visible in the
+#' \code{\link[stats]{model.frame}} would otherwise drop incomplete cases
+#' before \pkg{bayesnec} is given the data, leaving the fit running on fewer
+#' rows than were supplied with nothing said. Refusing them instead makes the
+#' sample the estimates are derived from the user's decision, and visible in the
 #' script.
 #'
 #' Apply \code{\link[stats]{na.omit}} to the data frame before calling

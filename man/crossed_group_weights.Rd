@@ -50,10 +50,9 @@ whether the functional form of the response changes across levels.
 
 The \strong{diagonal} maximum, \code{w_m proportional to prod_g w_gm}, is a
 comparison of \emph{common-form} models: which single equation best describes
-every level. \code{bayesnec} could not answer that before, and it is often
-the question a reader of the analysis actually has.
+every level, which is often the question a reader of the analysis has.
 
-\bold{Does the factor matter at all?}
+\bold{The contribution of the factor itself}
 
 Pass \code{pooled} --- a \code{\link{bnec}} fit of the same model set to the
 whole data set, with the factor ignored --- and the same additivity gives the

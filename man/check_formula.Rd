@@ -30,20 +30,20 @@ for usage within \code{\link[bayesnec:bayesnec-package]{bayesnec}}.
 \details{
 This function allows the user to make sure that the input formula
 will allow for a successful model fit with the function \code{\link{bnec}}.
-Should all checks pass, the function returns the original formula. Otherwise
-it will fail and requires that the user fixes it until they're able to use
-it with \code{\link{bnec}}.
+Where all checks pass, the function returns the original formula; otherwise it
+fails, naming what has to be corrected.
 
 The argument \code{run_par_checks} is irrelevant for most usages of this
 package because it only applies if three conditions are met: 1) the user has
-specified a group-level effect; 2) the group-level effects is parameter
-specific (e.g. \code{(par | group_variable)} rather than \code{pgl/ogl(group_variable)}); and 3) The user is keen to learn if the specified parameter
-is found in the specified model (via argument \code{model} in the \code{crf} term -- see details in ?bayesnecformula).
+specified a group-level effect; 2) that effect is parameter specific, e.g.
+\code{(par | group_variable)} rather than \code{pgl/ogl(group_variable)};
+and 3) confirmation is wanted that the named parameter is present in the
+specified model. See the \code{model} argument of the \code{crf} term in
+\code{?\link{bayesnecformula}}.
 
-\strong{NB:} \code{aterms} other than \code{trials()}, \code{weights()} and
-\code{cens()} are currently omitted from \code{\link{model.frame}} output. If
-you need other \code{aterms} as part of that output please raise an issue on
-our GitHub page. See details about \code{aterms} in ?bayesnecformula.
+\code{aterms} other than \code{trials()}, \code{weights()} and
+\code{cens()} are omitted from \code{\link{model.frame}} output. See the
+details on \code{aterms} in \code{?\link{bayesnecformula}}.
 }
 \examples{
 library(bayesnec)

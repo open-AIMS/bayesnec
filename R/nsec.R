@@ -7,10 +7,8 @@
 #' significance of the predicted posterior values.
 #' @param resolution The number of unique x values over which to find NSEC.
 #' The crossing is located by linear interpolation between the two grid values
-#' that bracket it, so precision saturates well below the grid spacing.
-#' Increasing the resolution beyond the default of 200 changed the estimate by
-#' less than 0.01 percent on the fits tested, and increases the run time
-#' roughly in proportion.
+#' that bracket it, so precision saturates well below the grid spacing and a
+#' finer grid costs run time roughly in proportion for no gain.
 #' @param xform A function to apply to the returned estimated concentration
 #' values.
 #' @param x_range A range of x values over which to consider extracting NSEC.
@@ -31,18 +29,15 @@
 #' the mean control response. See the detailed derivation in
 #' Fisher and Fox (2023).
 #' 
-#' The reference is the \code{sig_val} quantile of the control posterior,
-#' the control being the predicted mean at the lowest concentration in the
-#' supplied predictor. That holds for every equation, hormetic ones included:
-#' the \code{hormesis_def} argument selected between the control and the
-#' maximum of the predicted curve and has been removed, because a target
-#' below the control is crossed exactly once whatever the curve does above it.
+#' The reference is the \code{sig_val} quantile of the control posterior, the
+#' control being the predicted mean at the lowest concentration in the supplied
+#' predictor. That holds for every equation, hormetic ones included, because a
+#' target below the control is crossed exactly once whatever the curve does
+#' above it.
 #'
 #' The attached \code{ecnsec} attribute is the percent effect at the NSEC,
 #' defined as \code{\link{ecx}} defines it under \code{type = "absolute"}:
-#' the decline from the control towards zero. Up to 2.1.3 it was measured
-#' against the fitted range and computed by three different formulas that
-#' agreed only for a monotonic curve.
+#' the decline from the control towards zero.
 #'
 #' Two consequences follow from the reference being a quantile of the control
 #' posterior. A \code{sig_val} share of the draws have a control at or below the
@@ -73,19 +68,13 @@
 #' affected. Extending \code{x_range} will estimate it, at the price of reading
 #' the curve where there are no data.
 #' 
-#' Calls to functions \code{\link{ecx}} and \code{\link{nsec}} and
-#' \code{\link{compare_fitted}} do not require the same level of flexibility
-#' in the context of allowing argument \code{newdata}
-#' (from a \code{\link[brms]{posterior_predict}} perspective) to
-#' be supplied manually, as this is and should be handled within the function
-#' itself. The argument \code{resolution} controls how precisely the
-#' \code{\link{ecx}} or \code{\link{nsec}} value is estimated, with 
-#' argument \code{x_range} allowing estimation beyond the existing range of
-#' the observed data (otherwise the default range) which can be useful in a
-#' small number of cases. There is also no reasonable case where estimating
-#' these from the raw data would be of value, because both functions would
-#' simply return one of the treatment concentrations, making NOEC a better
-#' metric in that case.
+#' \code{\link{ecx}}, \code{\link{nsec}} and \code{\link{compare_fitted}}
+#' take no \code{newdata} argument. The prediction grid is built within the
+#' function from \code{resolution}, which sets how precisely the estimate is
+#' located, and \code{x_range}, which allows estimation beyond the range of the
+#' observed data. Estimating from the observed concentrations instead would
+#' return one of the treatment concentrations, which is the NOEC rather than
+#' either of these metrics.
 #'
 #' \bold{Selecting a component of a hurdle model}
 #'

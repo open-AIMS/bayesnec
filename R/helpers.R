@@ -1395,8 +1395,8 @@ newdata_eval_fitted <- function(
 #' @param x A \code{\link[base]{numeric}} vector.
 #' the new range of values in x.
 #' @return A \code{\link[base]{numeric}} vector.
-#' @details This function is currently exported to allow for non-linear
-#' formula evaluation in brms.
+#' @details Exported so that \pkg{brms} can evaluate it during non-linear
+#' formula evaluation.
 #'
 #' @export
 step <- function(x) {

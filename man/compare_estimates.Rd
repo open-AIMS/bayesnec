@@ -37,10 +37,8 @@ significance of the predicted posterior values.}
 
 \item{resolution}{The number of unique x values over which to find ECx.
 The crossing is located by linear interpolation between the two grid values
-that bracket it, so precision saturates well below the grid spacing.
-Increasing the resolution beyond the default of 200 changed the estimate by
-less than 0.01 percent on the fits tested, and increases the run time
-roughly in proportion.}
+that bracket it, so precision saturates well below the grid spacing and a
+finer grid costs run time roughly in proportion for no gain.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
@@ -91,7 +89,7 @@ destroys that pairing, which discards the correlation between the levels and
 widens the difference posterior. \code{prob_diff} is then pulled toward 0.5
 and a real difference is under-detected, which is the wrong direction to err
 in. A within-fit contrast needs draw-wise differencing and must not be routed
-through this function. See #218 and #33.
+through this function.
 }
 
 \examples{

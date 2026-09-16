@@ -19,56 +19,51 @@
 #' \code{\link{bayesnechurdlefit}} and \code{\link{bayesnecgroupfit}} methods,
 #' and unused by the other two.
 #'
-#' @details \code{\link{summary}} reports the model weights, the per-equation
-#' dispersion, the weighted no-effect estimate and the per-equation Bayesian
-#' R-squared. It does not report the parameters of the curve, and for a
-#' \code{\link{bayesmanecfit}} nothing else did either. Those parameters are
-#' what a methods section states alongside the threshold estimates: \code{top}
-#' is the control level the whole curve is referenced to, \code{bot} the
-#' asymptote a \code{"relative"} ECx is measured against, and \code{beta} the
-#' decay rate.
+#' @details These are the parameters a methods section states alongside the
+#' threshold estimates: \code{top} is the control level the whole curve is
+#' referenced to, \code{bot} the asymptote a \code{"relative"} ECx is measured
+#' against, and \code{beta} the decay rate. \code{\link{summary}} reports the
+#' model weights, the per-equation dispersion, the weighted no-effect estimate
+#' and the per-equation Bayesian R-squared, but not these.
 #'
-#' \bold{Only the parameters of the equation are reported.} The family's own
-#' dispersion parameter is \code{\link{dispersion}}'s and \code{summary}'s, and
-#' a group-level term's standard deviation, its per-level deviations and the
+#' \bold{The scope of the table}
+#'
+#' Only the parameters of the equation are reported. The family's own dispersion
+#' parameter belongs to \code{\link{dispersion}} and \code{summary}, and a
+#' group-level term's standard deviation, its per-level deviations and the
 #' \code{ogl} offset are not parameters of the curve. Use
 #' \code{\link[brms]{fixef}} or \code{\link[brms]{as_draws_df}} on
-#' \code{\link{pull_brmsfit}(x)} for those.
+#' \code{\link{pull_brmsfit}(x)} for those. \code{\link{show_params}} names
+#' the parameters of each equation without fitting anything.
 #'
-#' \bold{The estimates are per equation and are not averaged across the set.}
-#' The equations of a set do not share a parameter list: \code{ecxexp} has no
+#' The estimates are per equation and are not averaged across the set, because
+#' the equations of a set do not share a parameter list: \code{ecxexp} has no
 #' \code{bot}, the three-parameter equations have no \code{d}, and only the
 #' equations of \code{mod_groups$nec} estimate \code{nec}. Averaging a
-#' parameter over whichever equations happen to estimate it would average over
-#' a different subset for each parameter, using weights that were computed for
-#' the whole set, so the weights of the rows contributing to one number would
-#' not sum to 1 and would sum to something different for the next number. The
-#' model weight is reported beside each row instead, so a reader can see what
-#' share of the model average each curve holds, and no quantity is reported
-#' that the weights do not support. See \code{\link{average_estimates}} for the
-#' estimates that are averaged.
+#' parameter over whichever equations estimate it would use weights computed for
+#' the whole set over a different subset for each parameter, so the contributing
+#' weights would not sum to 1. The model weight is reported beside each row
+#' instead. See \code{\link{average_estimates}} for the estimates that are
+#' averaged.
 #'
-#' \code{\link{show_params}} names the parameters of each equation without
-#' fitting anything; this function reports their estimates from a fit.
+#' \bold{The scales the estimates are on}
 #'
-#' \bold{The parameters are on the scale the model was fitted on.}
 #' \code{\link{bnec}} assigns \code{link = "identity"}, so \code{top} and
-#' \code{bot} are on the response scale for every fit that did not name a link
-#' of its own. Where a link was named, \pkg{brms} applies its inverse to the
+#' \code{bot} are on the response scale for every fit that did not state a link
+#' of its own. Where a link was stated, \pkg{brms} applies its inverse to the
 #' whole non-linear expression, so \code{top} and \code{bot} are on the link
 #' scale. The link of each block is reported in the \code{link} column, and a
 #' message names any that is not the identity.
 #'
-#' \bold{\code{xform} applies to \code{nec} and \code{ec50} only.} Those two
-#' are measured on the predictor axis, so where \code{crf()} transforms the
-#' predictor inline --- \code{crf(sqrt(x), ...)} --- they are on the
-#' transformed scale, exactly as \code{\link{nec}} and \code{\link{ecx}} are,
-#' and \code{xform} is the inverse that brings them back. Every other
-#' parameter is a response level or a shape parameter and is not on the
-#' predictor axis at all, so \code{xform} is not applied to it. Where the
-#' predictor is transformed inline and \code{xform} was left at
-#' \code{identity}, a message says which parameters are on the transformed
-#' scale.
+#' \code{xform} applies to \code{nec} and \code{ec50} only. Those two are
+#' measured on the predictor axis, so where \code{crf()} transforms the
+#' predictor inline --- \code{crf(sqrt(x), ...)} --- they are on the transformed
+#' scale, exactly as \code{\link{nec}} and \code{\link{ecx}} are, and
+#' \code{xform} is the inverse that returns them. Every other parameter is a
+#' response level or a shape parameter and is not on the predictor axis at all,
+#' so \code{xform} is not applied to it. Where the predictor is transformed
+#' inline and \code{xform} was left at \code{identity}, a message names the
+#' parameters that are on the transformed scale.
 #'
 #' @return With \code{summary = TRUE}, a \code{\link[base]{data.frame}} with
 #' columns \code{model}, \code{wi}, \code{dpar}, \code{link}, \code{parameter},

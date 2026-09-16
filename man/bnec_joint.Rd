@@ -34,7 +34,7 @@ refits it as one \code{\link{bnec}} model with a two-block
 (\code{hurdle_gamma} or \code{zero_inflated_beta}) family.
 }
 \details{
-\bold{Why refit at all}
+\bold{The purpose of a joint refit}
 
 The factorised and joint routes give equivalent inference where the two
 components are independent, so a joint refit of the same pair of equations
@@ -51,7 +51,7 @@ combinations can be compared from two fits; choose a combination from
 shared structure. Model averaging happens in the first step, because the
 joint route can only average over the response block.
 
-\bold{What is carried over}
+\bold{Settings taken from the factorised fit}
 
 The response variable, predictor and data are taken from \code{object}, and
 the family follows the growth component: \code{hurdle_gamma} where that was
