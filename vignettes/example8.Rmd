@@ -130,7 +130,7 @@ deviation `ogl` is applied to it through
 `bnecmu * exp(ogl) / (1 - bnecmu + bnecmu * exp(ogl))`, which adds `ogl` to the
 log-odds of the mean. `top`, `bot`, `beta` and `nec` each retain a
 population-level intercept and nothing more, so one displacement per level is
-the whole of what the term estimates. The multiplicative form is used because a
+the whole of what `ogl()` estimates. The multiplicative form is used because a
 `Beta` response restricts the mean to $(0, 1)$; `vignette("example3")`, section
 "Priors for group-level parameters", states which deviations are applied that
 way and why.
@@ -178,8 +178,8 @@ log-odds and not as a proportion.
 
 The term names a parameter, and not every equation of a model set has every
 parameter: `bot` is a parameter of `nec4param` and not of `nec3param`. Where the
-named parameter is absent the term is dropped for that equation and the fit
-proceeds without it. The drop is reported by a message, which is easily lost
+named parameter is absent the `(par | group)` term is dropped for that equation
+and the fit proceeds without it. The drop is reported by a message, which is easily lost
 among Stan's compilation output. `check_formula()` reports it for every equation
 of the set before any model is fitted.
 
@@ -300,11 +300,11 @@ light units.
 
 Two features of the assay design decide how the response behaves, and both
 matter below. Twenty microlitres of cell suspension goes into 180 µL of sample
-in a white 96-well plate, at a cell density @luter2025 selected to keep control
+in a white 96-well plate. @luter2025 chose that cell density to keep control
 luminescence above 250 000 relative light units while still resolving an effect
-threshold --- so the lower end of the control readings is a design target rather
-than an accident. And the plate reader sets its gain per read, which is where the
-between-plate differences come from.
+threshold, so the lower end of the control readings is a design target rather
+than an accident. The second is that the plate reader sets its gain per read,
+which is where the between-plate differences come from.
 
 Copper and zinc are reference toxicants here rather than contaminants under
 investigation, run repeatedly to establish that the assay is reproducible:
@@ -355,7 +355,10 @@ lum31 |>
 ```
 
 Every well of every plate is drawn below, one panel per toxicant and exposure
-time, with the wells of one plate joined at their concentration means.
+time, with the wells of one plate joined at their concentration means. The
+response is `rlu_cens`, which is the recorded luminescence with the readings
+that reached the instrument's floor marked as censored; *Preparing the response*
+sets out why they are treated that way.
 
 
 ``` r
@@ -373,14 +376,16 @@ ggplot(lum31, aes(x = conc, y = rlu_cens, group = plate)) +
 <p class="caption">plot of chunk fig-lum31-raw</p>
 </div>
 
-Each arm holds near its control over the lower part of the series and then
-falls within about one decade of concentration. Copper drops below half its
-control by 0.084 mg/L at 15 minutes and 0.064 at 30 minutes; zinc by 1.9 and
-0.93. Zinc is therefore the weaker of the two by roughly an order of magnitude,
-and both are more potent at the longer exposure. Every arm reaches a floor at
-its top concentrations. Two further features of the figure are taken up below: the
-plates of one arm are separated vertically by a factor of four to five at the
-control, and the zinc panels rise above their control before falling.
+Luminescence stays near its control level over the lower part of each series and
+then declines across about a tenfold range of concentration. It is below half the
+control by 0.084 mg/L of copper at 15 minutes and 0.064 at 30 minutes, and by 1.9
+and 0.93 mg/L of zinc. Zinc is therefore the weaker of the two by roughly an
+order of magnitude, and both are more potent at the longer exposure. At the top
+concentrations of every arm the readings reach a floor.
+
+Two further features are taken up below. The plates of one arm are separated
+vertically by a factor of four to five at the control. And at low zinc
+concentrations luminescence rises above the control level before declining.
 
 `well` identifies an individual well, which is read at both exposure times.
 Concentrations are measured dissolved metal rather than nominal, and each batch
@@ -448,12 +453,12 @@ from the fitted control, treating the control level as a parameter. In
 control, so a `bnec()` fit on raw luminescence is that approach.
 
 The published estimates are what the fits in this case study are read against.
-Fitting
-each plate separately on the normalised response, @luter2025 report EC50s
-averaging 0.109 mg/L for copper at 15 minutes (standard deviation 0.036, range
-0.069 to 0.201 over sixteen plates) and 0.085 at 30 minutes; for zinc, 1.546 at
-15 minutes (0.284, 1.207 to 2.076 over seventeen plates) and 1.013 at 30
-minutes. The spread across plates is what a per-plate analysis leaves as
+@luter2025 fitted
+each plate separately on the normalised response. For copper they report EC50s
+averaging 0.109 mg/L at 15 minutes, with a standard deviation of 0.036 and a
+range of 0.069 to 0.201 over sixteen plates, and 0.085 at 30 minutes. For zinc,
+1.546 at 15 minutes (0.284, 1.207 to 2.076 over seventeen plates) and 1.013 at
+30 minutes. The spread across plates is what a per-plate analysis leaves as
 variation between tests, and what a plate term estimates instead.
 
 ### A group-level term as the division
@@ -547,7 +552,7 @@ not affect the N(S)EC or an ECx, for which both are nuisance plate effects, but
 the plate-level standard deviation is not a biological quantity and should not
 be reported as one.
 
-A related caution from @Ritz2026 applies to the scope of the term. Normalising,
+A related caution from @Ritz2026 applies to the scope of an `ogl(plate)` term. Normalising,
 or sharing a plate term, is legitimate only within curves of the same treatment.
 Plates within one toxicant-by-exposure-time arm qualify. A plate term is not
 placed across the copper-versus-zinc or 15-versus-30-minute contrasts; those are
@@ -695,12 +700,6 @@ displacement is estimable and `ogl()` is the term.
 In `lum31` that unit is `conc_group`, the four wells at one concentration on one
 plate. A single plate is fitted here, because a plate is the only portion of
 these data free of the gain differences between plates, and fitting a whole arm
-would let a concentration-group term absorb plate structure as well.
-
-
-In `lum31` that unit is `conc_group`, the four wells at one concentration on one
-plate. A single plate is fitted here, because a plate is the only portion of
-these data free of the gain differences between plates, and fitting a whole arm
 would let a concentration-group term absorb plate structure as well. That plate
 holds 44 readings over 11 concentration groups.
 
@@ -759,7 +758,7 @@ fit_ogl <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(conc_gr
                 seed = 228, refresh = 0)
 ```
 
-What the term estimates is one deviation per concentration group, so its
+`ogl(conc_group)` estimates one deviation per concentration group, so its
 standard deviation summarises how much the four wells at a concentration depart
 from the fitted curve beyond what the family allows.
 
@@ -840,7 +839,7 @@ whose curve fits the concentration means poorly attributes more of the
 difference to the group term, so a standard deviation read from a poorly
 weighted equation is not comparable with this one.
 
-The N(S)EC in the summary above is on the scale the model was fitted on,
+The N(S)EC in the summary above is on the scale `fit_ogl` was fitted on,
 `log(conc)`, which is why its lower bound can be negative. `ecx()` takes
 `xform = exp` and reports concentrations in mg/L, so the two are not in
 disagreement:
@@ -884,9 +883,10 @@ it holds near the control before falling. EC10 changes with it, from 0.278 mg/L
 (0.206--0.395) to 0.771 (0.015--1.815) --- almost three times the estimate, on
 an interval nine times wider.
 
-That follows from the weights rather than from any one equation. Adding a term
-that absorbs within-concentration variation changes which curve shapes fit the
-concentration means best, so the average is taken over a different mixture. The
+That follows from the weights rather than from any one equation. Adding
+`ogl(conc_group)`, which absorbs within-concentration variation, changes which
+curve shapes fit the concentration means best, so the average is taken over a
+different mixture. The
 four wells at a concentration are the only replication the design has, so an
 analysis that treats them as independent has nothing left to estimate that
 variation with, and reports the narrow band as though it were the evidence.
@@ -1027,8 +1027,9 @@ rbind(
 #> 2 ogl(plate) 0.3256430 0.3018052 0.3509309
 ```
 
-Both fits draw one population curve through the same observations; what differs
-is what the model treats the spread between plates as.
+Both fits draw one population curve through the same observations. What differs
+is where the spread between plates goes: into the residual for `fit_pooled`, and
+into the group-level term for `fit_plate`.
 
 
 ``` r
@@ -1081,12 +1082,17 @@ so it does not make a threshold easier to place, and pooling curves of different
 scale smears the transition rather than sharpening it.
 
 The direction here is the opposite of the within-concentration result, and both
-follow from what the term has to explain. A concentration group sits at one concentration,
-so a term on it adds a variance component that the mean function cannot absorb,
-and the intervals widen. A plate spans the whole series, so a term on it removes
-a between-plate difference that was otherwise left in the residual, and the
-curve is better determined.
+follow from what the grouping has to explain. A concentration group sits at one
+concentration, so `ogl(conc_group)` adds a variance component that the mean
+function cannot absorb, and the intervals widen. A plate spans the whole series,
+so `ogl(plate)` removes a between-plate difference that was otherwise left in
+the residual, and the curve is better determined.
 
+
+A `bnec_group()` fit holds one model-averaged fit per level, and `plot()` on it
+draws each in turn through base graphics. `ggbnec_data()` returns the same
+model-averaged curve as a data frame, so stacking those frames gives one object
+that a single `ggplot()` call can facet. Both figures below use it.
 
 ``` r
 group_curves <- function(x) {
@@ -1103,8 +1109,8 @@ population of metals, so they are levels rather than a grouping. Each is fitted
 with the structure the sections above arrived at: the censored response, a plate
 term for the gain, and a dispersion sub-model. `bnec_group()` fits each level
 separately and returns one object. The call keeps `model = "all"` for the reason
-given under *Within-concentration grouping*, that zinc rises above its control at
-low concentrations.
+given under *Within-concentration grouping*, that luminescence rises above the
+control level at low zinc concentrations.
 
 
 ``` r
@@ -1356,7 +1362,7 @@ here, in the vignette, and not in the shipped data, so that `data-raw/coral_diur
 continues to record what the experiment measured.
 
 `coral_pam` was dosed at 0.29, 0.96, 2.9, 9.6 and 29 µg/L, each step about 3.16
-times the last, which is half a decade. One further step below the lowest
+times the last, which is half an order of magnitude. One further step below the lowest
 treatment is 0.29/3.16 = 0.092 µg/L, and 0.1 is that value rounded. It puts the
 control the same distance from 0.29 that 0.29 is from 0.96. Half the lowest
 treatment, 0.145, would put it a third of that distance away, closer to the
@@ -1412,17 +1418,17 @@ rbind(
 <p class="caption">plot of chunk fig-coral-raw</p>
 </div>
 
-Both endpoints fall over the series. The yield panel has observations at every
+Both responses decline with concentration. The yield panel has observations at every
 one of its six concentrations. The colour panel has none between 2.9 and 29
-µg/L, a full decade of the axis and the widest unsampled interval in either
+µg/L, a full order of magnitude and the widest unsampled interval in either
 endpoint.
 
 The colour panel's top concentration is worth reading carefully, because it is
 the only observation below the gap and so is the only thing that can place a
 lower asymptote. At 29 µg/L the underlying photographs average 211 of 255 on
-the grey scale at day 14, against 90 to 128 at every lower concentration, while
-the day-0 values run from 91 to 103 throughout --- so those fragments ended
-white. @flores2021 record that all corals at 29 µg/L had died by day 10. The
+the grey scale at day 14, against 90 to 128 at every lower concentration. The
+day-0 values run from 91 to 103 throughout, so those fragments started like the
+others and ended white. @flores2021 record that all corals at 29 µg/L had died by day 10. The
 point is real and the published fit uses it, but what it measures is a fragment
 that has bleached completely rather than one on a declining curve.
 
@@ -1611,8 +1617,8 @@ one fit arrived at the same distribution --- and here it fails as well.
 Length of run matters to which of the two checks notices. Fitting the same four
 equations at 5000 iterations with 4000 warmup, half what `bnec()` uses, gave 212
 divergent transitions for `nec4param` and 326 for `ecx4param` of 4000 draws
-each, and `ecx4param` returned an R-hat of 1.009 --- inside every conventional
-cutoff, and within 0.005 of the two three-parameter equations. At the default
+each. At that length `ecx4param` returned an R-hat of 1.009, inside every
+conventional cutoff and within 0.005 of the two three-parameter equations. At the default
 run its R-hat is 1.293. The shorter chain did not make the fit better; it made
 one of the two diagnostics stop reporting the problem, which is a reason to
 report a diagnostic against the settings that produced it.
@@ -1639,7 +1645,7 @@ autoplot(four_par) + log_x
 
 The figures show where those divergences come from. Nothing between 2.9 and 29
 µg/L tells a four-parameter equation where its lower asymptote sits, because
-the colour design has no observation over that decade. At 10 µg/L the
+the colour design has no observation across that tenfold range. At 10 µg/L the
 four-parameter credible band is 0.63 wide on a response that runs from 0 to
 about 0.9, so it covers most of the values the endpoint can take; the
 three-parameter band is 0.35 there. Both close to 0.05 at 29 µg/L, where the
@@ -2138,10 +2144,6 @@ ggplot(data = herb_post, mapping = aes(x = value)) +
 <p class="caption">plot of chunk fig-cmp-herbicides</p>
 </div>
 
-This reproduces Figure 11 of @fisher2024. The seven run from irgarol at 0.135
-µg/L to tebuthiuron at 10.591, and two things the pairwise probabilities do not
-say are visible in the densities.
-
 This reproduces Figure 11 of @fisher2024. Two things the pairwise probabilities
 do not say are visible in the densities.
 
@@ -2187,10 +2189,9 @@ R.version.string
 ```
 
 The fits use `model = "all"`, which `bnec()` filters to the equations valid for
-the family and predictor, except for the herbicide call, which uses `decline`
-to match Figure 11 of @fisher2024, and the parameter-count contrast of
-case study 2, which names two equations on each side because the contrast is
-the point. No call names `iter`, `warmup` or `control`, so `bnec()`'s defaults
+the family and predictor. Two calls do not. The herbicide call uses `decline`,
+to match Figure 11 of @fisher2024. The parameter-count contrast of case study 2
+names two equations on each side, because the contrast is the point. No call names `iter`, `warmup` or `control`, so `bnec()`'s defaults
 apply: 4 chains at 10000 iterations with 8000 warmup, under `seed = 228`.
 `bnec()` also raises `adapt_delta` from Stan's 0.8 to 0.99 of its own accord
 wherever a constrained mean is given an unbounded group-level term, which is
