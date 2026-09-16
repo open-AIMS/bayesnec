@@ -606,7 +606,8 @@ plan_group_levels <- function(n_levels, n_models) {
 #' \code{\link[base]{lapply}} is used when \code{parallel} is \code{FALSE},
 #' which touches neither \pkg{future} nor the RNG.
 #'
-#' Four properties of the parallel path are load-bearing.
+#' Four properties of the parallel path are load-bearing. The measurements
+#' behind them are in \code{notes/parallel_dispatch_rng.md}.
 #'
 #' \emph{The RNG kind is restored inside the worker}, and leaving this out
 #' fails silently. \code{future.seed = TRUE} installs an L'Ecuyer-CMRG stream

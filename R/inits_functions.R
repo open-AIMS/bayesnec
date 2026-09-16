@@ -580,6 +580,8 @@ group_spread <- function(x, y) {
 #' because no width covers them: a design whose predictor stops short of the
 #' crossing, and the count design described at \code{\link{boundary_inset}}
 #' whose generating \code{bot} lies below the floor.
+#' \code{notes/initial_value_search.md} holds the coverage table, and
+#' \code{notes/scripts/init_search_audit.R} reproduces it.
 #'
 #' Coverage does not choose the spread estimator. All three candidates reach
 #' full coverage at a width of four and separate only at one, so the case for
