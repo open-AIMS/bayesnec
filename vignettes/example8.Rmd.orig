@@ -513,7 +513,7 @@ Chains are shorter than an analysis would use --- 5000 iterations with 4000
 warmup, against the 10000 and 8000 `bnec()` defaults --- which halves the draws
 retained while leaving the warmup long enough to adapt.
 
-```{r}
+```{r, results = "hide"}
 fit_plain <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + disp("power"),
                   data = one_plate, family = gfam,
                   chains = 4, iter = 5000, warmup = 4000, seed = 228, refresh = 0,
@@ -591,7 +591,7 @@ A grouping whose levels each span the whole series admits a difference in shape,
 and the plates of one arm are that case. Each plate is a complete test, and the
 gain differences shown above mean the plates are not on a common vertical scale.
 
-```{r}
+```{r, results = "hide"}
 fit_pooled <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + disp("power"),
                    data = zn15, family = gfam,
                    chains = 4, iter = 5000, warmup = 4000, seed = 228, refresh = 0,
@@ -689,11 +689,14 @@ rbind(
 The yield endpoint has six concentrations and 54 chambers of five to eight
 readings, and `ogl(chamber)` on it is well conditioned:
 
-```{r}
+```{r, results = "hide"}
 fit_pam <- bnec(yield ~ crf(diuron, "all") + ogl(chamber),
                 data = coral_pam, family = Beta(link = "identity"),
                 chains = 4, iter = 5000, warmup = 4000, seed = 228, refresh = 0,
                 control = list(adapt_delta = 0.99))
+```
+
+```{r}
 summary(fit_pam)
 ```
 
@@ -705,7 +708,7 @@ The colour endpoint has five concentrations and 45 chambers of four fragments.
 Fitting equations of three and of four curve parameters to it separately shows
 where the design runs out:
 
-```{r}
+```{r, results = "hide"}
 three_par <- bnec(proportion ~ crf(diuron, c("ecxll3", "ecxwb1p3")) + ogl(chamber),
                   data = coral_colour, family = Beta(link = "identity"),
                   chains = 4, iter = 5000, warmup = 4000, seed = 228, refresh = 0,
@@ -776,7 +779,7 @@ the metal call keeps `model = "all"` for the reason given in the
 within-concentration section, that zinc rises above its control at low
 concentrations.
 
-```{r}
+```{r, results = "hide"}
 fits_herb <- bnec_group(fvfm ~ crf(log(concentration), "decline"),
                         data = herbicide, group_var = "herbicide",
                         family = Beta(link = "identity"),
@@ -803,7 +806,7 @@ they are levels rather than a grouping, and each is fitted with the structure th
 sections arrived at: the censored response, a plate term for the gain, and a
 dispersion sub-model.
 
-```{r}
+```{r, results = "hide"}
 zn_cu_15 <- droplevels(subset(lum31, minutes == 15))
 
 fits_tox <- bnec_group(
