@@ -611,6 +611,29 @@ fit_ogl <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(conc_gr
                 seed = 228, refresh = 0)
 ```
 
+Whether either fit may be reported is a separate question from whether it ran.
+`check_sampling()` asks it for every equation of a set at once, against the
+largest R-hat, the smallest effective sample size and the number of divergent
+transitions:
+
+```{r sampling-conc-group, message = TRUE}
+check_sampling(fit_ogl)
+```
+
+`vignette("example9")` gives the cutoffs and the reasoning behind them,
+including that Stan's own guidance is that any divergent transition means the
+sampler failed to explore the posterior, and that the default of ten is a
+package convention rather than a published recommendation.
+
+`screen_models()` applies the same test and drops what fails, leaving a model
+average over the equations that sampled. Both fits are screened before anything
+is read from them, and everything below refers to the screened objects:
+
+```{r screen-conc-group, message = TRUE}
+fit_plain <- screen_models(fit_plain)
+fit_ogl <- screen_models(fit_ogl)
+```
+
 `ogl(conc_group)` estimates one deviation per concentration group, so its
 standard deviation summarises how much the four wells at a concentration depart
 from the fitted curve beyond what the family allows.
@@ -688,6 +711,14 @@ fit_pooled <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + disp("po
 fit_plate <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + disp("power"),
                   data = zn15, family = gfam,
                   seed = 228, refresh = 0)
+```
+
+Both are screened as above, so that the comparison is between two model averages
+that sampled rather than between two that merely returned:
+
+```{r screen-plate, message = TRUE}
+fit_pooled <- screen_models(fit_pooled)
+fit_plate <- screen_models(fit_plate)
 ```
 
 The comparison of interest is between the estimates each gives, and between the
@@ -996,6 +1027,10 @@ fit_pam <- bnec(yield ~ crf(log(diuron_adj), "all") + ogl(chamber),
                 seed = 228, refresh = 0)
 ```
 
+```{r screen-pam, message = TRUE}
+fit_pam <- screen_models(fit_pam)
+```
+
 ```{r summary-pam}
 summary(fit_pam)
 ```
@@ -1147,11 +1182,11 @@ ggplot(herbicide, aes(x = concentration, y = fvfm)) +
   labs(x = "Concentration (ug/L)", y = "Effective quantum yield")
 ```
 
-Every panel falls, and the concentration at which it does so differs by two
-orders of magnitude across the seven. Yield reaches half its lowest-dose mean by
-1 µg/L for irgarol and 3 µg/L for diuron and ametryn, against 100 µg/L for
-tebuthiuron and 300 for simazine, which is the last concentration simazine was
-tested at.
+Effective quantum yield declines with concentration in all seven, and the
+concentration at which it does so differs by two orders of magnitude between
+them. Yield is at half its lowest-dose mean by 1 µg/L of irgarol and 3 µg/L of
+diuron or ametryn, against 100 µg/L of tebuthiuron and 300 of simazine, which is
+the highest concentration simazine was tested at.
 
 Seven herbicides are a fixed set chosen for their interest, not a sample from a
 population of herbicides, so shrinking them towards a common curve answers a
@@ -1167,24 +1202,69 @@ fits_herb <- bnec_group(fvfm ~ crf(log(concentration), "decline"),
                         seed = 228, refresh = 0)
 ```
 
-```{r summary-herbicides}
-summary(fits_herb)
+`summary()` on a `bayesnecgroupfit` prints a full summary for every level, which
+for seven herbicides is several hundred lines. What the sections below draw on
+is the model weights, and those are worth seeing together:
+
+```{r fig-herb-weights, fig.asp = 0.55, out.width = "85%"}
+herb_wi <- do.call(rbind, Map(function(f, lev) {
+  w <- summary(f)$mod_weights[, "wi"]
+  data.frame(herbicide = lev, equation = names(w), wi = as.numeric(w))
+}, fits_herb$fits, fits_herb$levels))
+# Ordered by the weight each equation takes over all seven, so that the
+# equations the set actually uses sit together at the top.
+herb_wi$equation <- reorder(factor(herb_wi$equation), herb_wi$wi, sum)
+
+ggplot(herb_wi, aes(x = herbicide, y = equation, fill = wi)) +
+  geom_tile(colour = "white", linewidth = 0.4) +
+  geom_text(aes(label = ifelse(wi >= 0.05, sprintf("%.2f", wi), "")),
+            size = 2.7, colour = "grey15") +
+  scale_fill_gradient(low = "white", high = "#2c6a5a", name = "weight",
+                      limits = c(0, 1)) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1),
+        axis.line = element_blank(), axis.ticks = element_blank()) +
+  labs(x = NULL, y = NULL)
 ```
 
-The seven herbicides span two orders of magnitude. Back-transformed from the
-fitted scale, the N(S)EC runs from irgarol at 0.135 µg/L (0.108--0.174) and
+The seven do not agree on which equation describes them. Tebuthiuron puts half
+its weight on `ecxwb2p3`, which takes almost none anywhere else, and hexazinone
+puts 0.62 on `ecxll3`, which four of the others give nothing at all. Ametryn,
+irgarol and diuron each spread their weight over three or four equations. That
+is the case for fitting the levels separately rather than shrinking them towards
+a common curve: the curve they would be shrunk towards is not one the data agree
+on.
+
+Toxicity estimates for the seven herbicides span two orders of magnitude.
+Back-transformed from the fitted scale, the N(S)EC runs from irgarol at 0.135 µg/L (0.108--0.174) and
 diuron at 0.151 (0.110--0.194), through ametryn at 0.196, hexazinone at 0.631
 and atrazine at 1.197, to simazine at 4.349 and tebuthiuron at 10.591
 (4.349--14.013).
 
-@jones2003 report EC50s for the same seven: irgarol 0.7 µg/L, ametryn 1.7,
-diuron 2.3, hexazinone 8.8, atrazine 45, simazine 150 and tebuthiuron 175. A
-threshold is a lower quantity than a half-effect concentration and these are
-lower throughout, by a factor of five for irgarol and seventeen for tebuthiuron.
-What survives between the two is the ordering, which agrees except that the
-N(S)EC puts diuron below ametryn where the EC50 puts it above --- and those two
-are 0.6 µg/L apart in the published EC50s, which is the smallest gap in the
-series.
+The N(S)EC is a threshold, the concentration at which the response first departs
+from the control, and it is not what @jones2003 report. They report EC50s, the
+concentration at which yield is halved, so the comparison with the source study
+is against `ecx()`:
+
+```{r ecx50-herbicides}
+ecx(fits_herb, ecx_val = 50, xform = exp)
+```
+
+Their values are irgarol 0.7 µg/L, ametryn 1.7, diuron 2.3, hexazinone 8.8,
+atrazine 45, simazine 150 and tebuthiuron 175. Six of the seven agree closely,
+the published figure sitting between 13 and 30 per cent above the one here, and
+the ordering of those six is the same in both. Tebuthiuron is the exception at
+roughly half the published value, and it is also the herbicide whose ordering
+differs: here it is less toxic than simazine, and in the source study more so.
+
+The two are not derived the same way. @jones2003 interpolate linearly between
+the tested concentrations, in ToxCalc 5.0, while the values above come from a
+model average over eleven fitted curves. Linear interpolation across a
+log-spaced series cuts the chord of a curve that is concave over that interval,
+which places the half-effect concentration higher than a fitted curve does, and
+the published value is higher in all seven. That six of the seven agree within a
+third is the agreement worth having. Nothing in these data settles which
+estimate is closer to the truth for tebuthiuron.
 
 ```{r fig-herbicides, fig.asp = 1.15, out.width = "72%"}
 ggplot(group_curves(fits_herb), aes(x = x_e)) +
@@ -1199,9 +1279,9 @@ ggplot(group_curves(fits_herb), aes(x = x_e)) +
   labs(x = "Concentration (ug/L)", y = "Effective quantum yield")
 ```
 
-Every panel declines and the fitted band follows the observations down in each,
-with the N(S)EC rule at or a little before the concentration where the points
-leave the control level. The response axis is shared and the concentration axis
+Yield declines with concentration in all seven, and the fitted band follows the
+observations down in each, with the N(S)EC rule at or a little before the
+concentration where the points leave the control level. The response axis is shared and the concentration axis
 is not, so the panels are comparable in level and not in position: the seven
 curves have much the same shape and sit at different concentrations. Fitting
 each level separately is what allows the shape to differ between them. Here it
@@ -1264,7 +1344,12 @@ The pairing matters for what this comparison may be used on. `compare_posterior(
 pairs the draws of two posteriors by a random permutation, which approximates the
 difference of two independent posteriors and is valid only where the posteriors
 come from separate fits. `bnec_group()` fits every level separately, so that
-holds here. Two levels of a single fit share draws, and permuting them discards
+holds here.
+
+The two `bnec_group()` fits in this vignette are not screened as the five single
+fits above are. `check_sampling()` and `screen_models()` do not accept a
+`bayesnecgroupfit`, which #376 records; their per-level diagnostics were read by
+hand instead. Two levels of a single fit share draws, and permuting them discards
 the correlation between them, widening the difference and pulling `prob_diff`
 towards 0.5 --- so a contrast between parts of one fit needs draw-wise
 differencing and must not be routed through this function.
