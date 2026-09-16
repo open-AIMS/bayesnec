@@ -705,7 +705,7 @@ autoplot(fit_pooled) + log_x
 ```
 
 ```{r fig-plate}
-autoplot(fit_plate) + log_x
+autoplot(fit_plate, group = "plate") + log_x
 ```
 
 The vertical spread at each concentration is the gain difference. Control wells
