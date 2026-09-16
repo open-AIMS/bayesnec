@@ -767,7 +767,6 @@ transitions:
 
 ``` r
 check_sampling(fit_ogl)
-#> Loading required namespace: rstan
 #>          model max_rhat     min_ess min_ess_ratio n_divergent failed
 #> 1    nec3param 1.001923 1355.457369  0.1694321711           0  FALSE
 #> 2    nec4param 2.107572    5.208820  0.0006511025         136   TRUE
@@ -784,6 +783,15 @@ check_sampling(fit_ogl)
 #> 13      ecxll3 1.001396 1869.073784  0.2336342230           0  FALSE
 #> 14 ecxhormebc4 1.002787 1957.873132  0.2447341415           0  FALSE
 ```
+
+Eight of the fourteen equations fail. Six of those eight fail on every count at
+once, with R-hats from 1.53 to 2.11 and effective sample sizes between 5 and 8
+of the 8000 draws retained, which is a chain that never converged rather than
+one that converged imprecisely. `ecxexp` is the one to look at: its R-hat is
+1.0087 and its effective sample size 1141, both unremarkable, and it records 159
+divergent transitions. It also holds 0.122 of the weight, which four of the
+thirteen others exceed and eight do not. A check on R-hat alone would have kept
+it.
 
 `vignette("example9")` gives the cutoffs and the reasoning behind them,
 including that Stan's own guidance is that any divergent transition means the
@@ -816,6 +824,10 @@ fit_ogl <- screen_models(fit_ogl)
 #>   -  ecxll4: Rhat 1.736, ESS 6.1, 26 divergent transitions
 #> Fitted models are: nec3param ecx4param ecxwb1 ecxwb1p3 ecxll3 ecxhormebc4
 ```
+
+Five of fourteen go from the ungrouped fit and eight from the grouped one, each
+named with the count that failed it. What remains in both is a set whose chains
+converged, and the estimates below are averages over those.
 
 `ogl(conc_group)` estimates one deviation per concentration group, so its
 standard deviation summarises how much the four wells at a concentration depart

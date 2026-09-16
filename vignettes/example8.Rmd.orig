@@ -625,8 +625,9 @@ once, with R-hats from 1.53 to 2.11 and effective sample sizes between 5 and 8
 of the 8000 draws retained, which is a chain that never converged rather than
 one that converged imprecisely. `ecxexp` is the one to look at: its R-hat is
 1.0087 and its effective sample size 1141, both unremarkable, and it records 159
-divergent transitions. It is also the fourth-heaviest equation in the set by
-weight. A check on R-hat alone would have kept it.
+divergent transitions. It also holds 0.122 of the weight, which four of the
+thirteen others exceed and eight do not. A check on R-hat alone would have kept
+it.
 
 `vignette("example9")` gives the cutoffs and the reasoning behind them,
 including that Stan's own guidance is that any divergent transition means the
