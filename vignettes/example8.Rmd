@@ -703,6 +703,7 @@ these data free of the gain differences between plates, and fitting a whole arm
 would let a concentration-group term absorb plate structure as well. That plate
 holds 44 readings over 11 concentration groups.
 
+
 ``` r
 one_plate <- droplevels(subset(lum31, plate == "Zn 23Apr24 Rep6B" & minutes == 15))
 nrow(one_plate)
@@ -758,6 +759,64 @@ fit_ogl <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(conc_gr
                 seed = 228, refresh = 0)
 ```
 
+Whether either fit may be reported is a separate question from whether it ran.
+`check_sampling()` asks it for every equation of a set at once, against the
+largest R-hat, the smallest effective sample size and the number of divergent
+transitions:
+
+
+``` r
+check_sampling(fit_ogl)
+#> Loading required namespace: rstan
+#>          model max_rhat     min_ess min_ess_ratio n_divergent failed
+#> 1    nec3param 1.001923 1355.457369  0.1694321711           0  FALSE
+#> 2    nec4param 2.107572    5.208820  0.0006511025         136   TRUE
+#> 3     nechorme 1.733517    6.082601  0.0007603251          13   TRUE
+#> 4    nechorme4 1.529753    7.120474  0.0008900592          13   TRUE
+#> 5       ecxexp 1.008704 1140.998288  0.1426247861         159   TRUE
+#> 6    ecx4param 1.001570 1821.441692  0.2276802116           0  FALSE
+#> 7       ecxwb1 1.002608 1491.067927  0.1863834909           0  FALSE
+#> 8       ecxwb2 1.532098    7.112430  0.0008890538          39   TRUE
+#> 9     ecxwb1p3 1.007373  922.702088  0.1153377610           0  FALSE
+#> 10    ecxwb2p3 1.530992    7.114904  0.0008893630          10   TRUE
+#> 11      ecxll5 1.563882    6.876918  0.0008596147         718   TRUE
+#> 12      ecxll4 1.735840    6.105236  0.0007631545          26   TRUE
+#> 13      ecxll3 1.001396 1869.073784  0.2336342230           0  FALSE
+#> 14 ecxhormebc4 1.002787 1957.873132  0.2447341415           0  FALSE
+```
+
+`vignette("example9")` gives the cutoffs and the reasoning behind them,
+including that Stan's own guidance is that any divergent transition means the
+sampler failed to explore the posterior, and that the default of ten is a
+package convention rather than a published recommendation.
+
+`screen_models()` applies the same test and drops what fails, leaving a model
+average over the equations that sampled. Both fits are screened before anything
+is read from them, and everything below refers to the screened objects:
+
+
+``` r
+fit_plain <- screen_models(fit_plain)
+#> Dropping 5 of 14 candidate models that failed the sampler screen:
+#>   -  nec3param: Rhat 1.53, ESS 7.2
+#>   -  nechorme: Rhat 1.532, ESS 7.2, 67 divergent transitions
+#>   -  nechorme4: 34 divergent transitions
+#>   -  ecxll5: Rhat 1.015, ESS 127, 166 divergent transitions
+#>   -  ecxhormebc4: 54 divergent transitions
+#> Fitted models are: nec4param ecxexp ecx4param ecxwb1 ecxwb2 ecxwb1p3 ecxwb2p3 ecxll4 ecxll3
+fit_ogl <- screen_models(fit_ogl)
+#> Dropping 8 of 14 candidate models that failed the sampler screen:
+#>   -  nec4param: Rhat 2.108, ESS 5.2, 136 divergent transitions
+#>   -  nechorme: Rhat 1.734, ESS 6.1, 13 divergent transitions
+#>   -  nechorme4: Rhat 1.53, ESS 7.1, 13 divergent transitions
+#>   -  ecxexp: 159 divergent transitions
+#>   -  ecxwb2: Rhat 1.532, ESS 7.1, 39 divergent transitions
+#>   -  ecxwb2p3: Rhat 1.531, ESS 7.1
+#>   -  ecxll5: Rhat 1.564, ESS 6.9, 718 divergent transitions
+#>   -  ecxll4: Rhat 1.736, ESS 6.1, 26 divergent transitions
+#> Fitted models are: nec3param ecx4param ecxwb1 ecxwb1p3 ecxll3 ecxhormebc4
+```
+
 `ogl(conc_group)` estimates one deviation per concentration group, so its
 standard deviation summarises how much the four wells at a concentration depart
 from the fitted curve beyond what the family allows.
@@ -774,21 +833,13 @@ s_ogl
 #> Number of posterior draws per model:  8000
 #> 
 #> Model weights (Method: pseudobma_bb_weights):
-#>                waic   wi
-#> nec3param    980.84 0.16
-#> nec4param   1070.68 0.00
-#> nechorme    1070.18 0.00
-#> nechorme4   1039.43 0.00
-#> ecxexp       981.74 0.12
-#> ecx4param    982.32 0.10
-#> ecxwb1       981.19 0.21
-#> ecxwb2      1039.73 0.00
-#> ecxwb1p3     987.65 0.02
-#> ecxwb2p3    1039.54 0.00
-#> ecxll5      1040.16 0.00
-#> ecxll4      1069.81 0.00
-#> ecxll3       980.63 0.20
-#> ecxhormebc4  980.66 0.19
+#>               waic   wi
+#> nec3param   980.84 0.19
+#> ecx4param   982.32 0.11
+#> ecxwb1      981.19 0.24
+#> ecxwb1p3    987.65 0.03
+#> ecxll3      980.63 0.22
+#> ecxhormebc4 980.66 0.21
 #> 
 #> 
 #> Summary of weighted N(S)EC posterior estimates:
@@ -796,23 +847,15 @@ s_ogl
 #>     models, and is therefore a model averaged
 #>     combination of NEC and NSEC estimates.
 #>        Estimate  Q2.5 Q97.5
-#> N(S)EC    -0.03 -1.90  0.58
+#> N(S)EC     0.01 -1.81  0.57
 #> 
 #> 
 #> Bayesian R2 estimates:
 #>             Estimate Est.Error Q2.5 Q97.5
 #> nec3param       0.98      0.00 0.97  0.99
-#> nec4param       0.70      0.29 0.27  0.98
-#> nechorme        0.70      0.29 0.34  0.98
-#> nechorme4       0.84      0.25 0.36  0.99
-#> ecxexp          0.98      0.00 0.97  0.99
 #> ecx4param       0.98      0.00 0.97  0.99
 #> ecxwb1          0.98      0.00 0.97  0.99
-#> ecxwb2          0.84      0.25 0.36  0.99
 #> ecxwb1p3        0.98      0.00 0.98  0.99
-#> ecxwb2p3        0.84      0.25 0.36  0.99
-#> ecxll5          0.84      0.25 0.36  0.99
-#> ecxll4          0.70      0.29 0.34  0.98
 #> ecxll3          0.98      0.00 0.97  0.99
 #> ecxhormebc4     0.98      0.00 0.97  0.99
 ```
@@ -850,12 +893,17 @@ rbind(
   data.frame(fit = "ungrouped", t(ecx(fit_plain, ecx_val = 10, xform = exp))),
   data.frame(fit = "ogl(conc_group)", t(ecx(fit_ogl, ecx_val = 10, xform = exp)))
 )
-#>               fit       Q50       Q2.5     Q97.5
-#> 1       ungrouped 0.2775346 0.20609842 0.3946245
-#> 2 ogl(conc_group) 0.7707091 0.01476189 1.8154879
+#>               fit       Q50      Q2.5     Q97.5
+#> 1       ungrouped 0.2701030 0.2039545 0.3617184
+#> 2 ogl(conc_group) 0.8142811 0.1584256 1.8201453
 ```
 
-The two fitted curves are drawn below, ungrouped first.
+The two fitted curves are drawn below, ungrouped first. The second marks the
+mean of each concentration group with a diamond, which is the quantity
+`ogl(conc_group)` gives a deviation to. `group_aes = "colour"` would map the
+eleven groups to a colour scale as well; it is not used here because each group
+sits at one concentration, so the colour would repeat what the position on the
+axis already says.
 
 
 ``` r
@@ -869,7 +917,7 @@ autoplot(fit_plain) + log_x
 
 
 ``` r
-autoplot(fit_ogl) + log_x
+autoplot(fit_ogl, group = "conc_group") + log_x
 ```
 
 <div class="figure" style="text-align: center">
@@ -877,11 +925,11 @@ autoplot(fit_ogl) + log_x
 <p class="caption">plot of chunk fig-ogl</p>
 </div>
 
-The term changes the fitted curve, not only its uncertainty. Ungrouped, the
-model-averaged curve falls from the control immediately; with `ogl(conc_group)`
-it holds near the control before falling. EC10 changes with it, from 0.278 mg/L
-(0.206--0.395) to 0.771 (0.015--1.815) --- almost three times the estimate, on
-an interval nine times wider.
+`ogl(conc_group)` changes the fitted curve, not only its uncertainty. Ungrouped,
+the model-averaged curve falls from the control immediately; with the term it
+holds near the control before falling. EC10 changes with it, from 0.270 mg/L
+(0.204--0.362) to 0.814 (0.158--1.820) --- three times the estimate, on an
+interval that runs a factor of 11.5 from end to end against 1.8.
 
 That follows from the weights rather than from any one equation. Adding
 `ogl(conc_group)`, which absorbs within-concentration variation, changes which
@@ -908,6 +956,28 @@ fit_plate <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate
                   seed = 228, refresh = 0)
 ```
 
+Both are screened as above, so that the comparison is between two model averages
+that sampled rather than between two that merely returned:
+
+
+``` r
+fit_pooled <- screen_models(fit_pooled)
+#> Dropping 2 of 14 candidate models that failed the sampler screen:
+#>   -  ecxll5: 11 divergent transitions
+#>   -  ecxhormebc4: 44 divergent transitions
+#> Fitted models are: nec3param nec4param nechorme nechorme4 ecxexp ecx4param ecxwb1 ecxwb2 ecxwb1p3 ecxwb2p3 ecxll4 ecxll3
+fit_plate <- screen_models(fit_plate)
+#> Dropping 7 of 14 candidate models that failed the sampler screen:
+#>   -  nec3param: Rhat 1.529, ESS 7.2
+#>   -  nec4param: Rhat 1.53, ESS 7.2
+#>   -  nechorme: Rhat 1.75, ESS 6.1
+#>   -  nechorme4: Rhat 1.53, ESS 7.1
+#>   -  ecxwb2: Rhat 1.53, ESS 7.2
+#>   -  ecxll5: Rhat 1.534, ESS 7.2, 148 divergent transitions
+#>   -  ecxll4: Rhat 1.531, ESS 7.1
+#> Fitted models are: ecxexp ecx4param ecxwb1 ecxwb1p3 ecxwb2p3 ecxll3 ecxhormebc4
+```
+
 The comparison of interest is between the estimates each gives, and between the
 model weights each assigns, since pooling curves that differ in scale changes
 which functional form fits best:
@@ -923,21 +993,19 @@ summary(fit_pooled)
 #> Number of posterior draws per model:  8000
 #> 
 #> Model weights (Method: pseudobma_bb_weights):
-#>                 waic   wi
-#> nec3param   19377.38 0.00
-#> nec4param   19381.16 0.00
-#> nechorme    19377.38 0.00
-#> nechorme4   19381.17 0.00
-#> ecxexp      20091.17 0.00
-#> ecx4param   19314.85 0.01
-#> ecxwb1      19301.93 0.32
-#> ecxwb2      19345.83 0.00
-#> ecxwb1p3    19378.00 0.00
-#> ecxwb2p3    19341.98 0.00
-#> ecxll5      19299.63 0.57
-#> ecxll4      19314.77 0.01
-#> ecxll3      19311.92 0.04
-#> ecxhormebc4 19311.89 0.05
+#>               waic   wi
+#> nec3param 19377.38 0.00
+#> nec4param 19381.16 0.00
+#> nechorme  19377.38 0.00
+#> nechorme4 19381.17 0.00
+#> ecxexp    20091.17 0.00
+#> ecx4param 19314.85 0.04
+#> ecxwb1    19301.93 0.76
+#> ecxwb2    19345.83 0.00
+#> ecxwb1p3  19378.00 0.00
+#> ecxwb2p3  19341.98 0.00
+#> ecxll4    19314.77 0.04
+#> ecxll3    19311.92 0.17
 #> 
 #> 
 #> Summary of weighted N(S)EC posterior estimates:
@@ -945,25 +1013,23 @@ summary(fit_pooled)
 #>     models, and is therefore a model averaged
 #>     combination of NEC and NSEC estimates.
 #>        Estimate  Q2.5 Q97.5
-#> N(S)EC    -1.62 -2.92 -0.62
+#> N(S)EC    -1.80 -3.27 -0.56
 #> 
 #> 
 #> Bayesian R2 estimates:
-#>             Estimate Est.Error Q2.5 Q97.5
-#> nec3param       0.60      0.01 0.57  0.62
-#> nec4param       0.59      0.01 0.57  0.62
-#> nechorme        0.60      0.01 0.57  0.62
-#> nechorme4       0.59      0.01 0.57  0.62
-#> ecxexp          0.20      0.03 0.13  0.26
-#> ecx4param       0.62      0.01 0.60  0.65
-#> ecxwb1          0.63      0.01 0.61  0.65
-#> ecxwb2          0.61      0.01 0.59  0.64
-#> ecxwb1p3        0.64      0.01 0.62  0.66
-#> ecxwb2p3        0.61      0.01 0.59  0.64
-#> ecxll5          0.63      0.01 0.61  0.65
-#> ecxll4          0.62      0.01 0.60  0.65
-#> ecxll3          0.63      0.01 0.60  0.65
-#> ecxhormebc4     0.63      0.01 0.60  0.65
+#>           Estimate Est.Error Q2.5 Q97.5
+#> nec3param     0.60      0.01 0.57  0.62
+#> nec4param     0.59      0.01 0.57  0.62
+#> nechorme      0.60      0.01 0.57  0.62
+#> nechorme4     0.59      0.01 0.57  0.62
+#> ecxexp        0.20      0.03 0.13  0.26
+#> ecx4param     0.62      0.01 0.60  0.65
+#> ecxwb1        0.63      0.01 0.61  0.65
+#> ecxwb2        0.61      0.01 0.59  0.64
+#> ecxwb1p3      0.64      0.01 0.62  0.66
+#> ecxwb2p3      0.61      0.01 0.59  0.64
+#> ecxll4        0.62      0.01 0.60  0.65
+#> ecxll3        0.63      0.01 0.60  0.65
 summary(fit_plate)
 #> Object of class bayesmanecfit
 #> 
@@ -974,44 +1040,27 @@ summary(fit_plate)
 #> 
 #> Model weights (Method: pseudobma_bb_weights):
 #>                 waic   wi
-#> nec3param   18187.58 0.00
-#> nec4param   18191.58 0.00
-#> nechorme    18237.85 0.00
-#> nechorme4   18191.58 0.00
 #> ecxexp      19884.99 0.00
 #> ecx4param   17676.50 0.00
 #> ecxwb1      17572.48 1.00
-#> ecxwb2      18629.37 0.00
 #> ecxwb1p3    17989.70 0.00
 #> ecxwb2p3    17845.82 0.00
-#> ecxll5      18688.73 0.00
-#> ecxll4      18628.74 0.00
 #> ecxll3      17677.02 0.00
 #> ecxhormebc4 17677.52 0.00
 #> 
 #> 
-#> Summary of weighted N(S)EC posterior estimates:
-#> NB: Model set contains a combination of ECx and NEC
-#>     models, and is therefore a model averaged
-#>     combination of NEC and NSEC estimates.
-#>        Estimate  Q2.5 Q97.5
-#> N(S)EC    -0.36 -1.94  0.15
+#> Summary of weighted NSEC posterior estimates:
+#>      Estimate  Q2.5 Q97.5
+#> NSEC    -0.36 -1.94  0.15
 #> 
 #> 
 #> Bayesian R2 estimates:
 #>             Estimate Est.Error Q2.5 Q97.5
-#> nec3param       0.97      0.00 0.97  0.97
-#> nec4param       0.97      0.00 0.97  0.97
-#> nechorme        0.97      0.00 0.97  0.97
-#> nechorme4       0.97      0.00 0.97  0.97
 #> ecxexp          0.53      0.03 0.46  0.59
 #> ecx4param       0.98      0.00 0.98  0.98
 #> ecxwb1          0.98      0.00 0.98  0.99
-#> ecxwb2          0.89      0.16 0.61  0.98
 #> ecxwb1p3        0.98      0.00 0.98  0.98
 #> ecxwb2p3        0.98      0.00 0.98  0.98
-#> ecxll5          0.75      0.40 0.05  0.99
-#> ecxll4          0.89      0.16 0.61  0.98
 #> ecxll3          0.98      0.00 0.98  0.99
 #> ecxhormebc4     0.98      0.00 0.98  0.99
 ```
@@ -1022,9 +1071,9 @@ rbind(
   data.frame(fit = "pooled", t(ecx(fit_pooled, ecx_val = 10, xform = exp))),
   data.frame(fit = "ogl(plate)", t(ecx(fit_plate, ecx_val = 10, xform = exp)))
 )
-#>          fit       Q50      Q2.5     Q97.5
-#> 1     pooled 0.3275321 0.2189825 0.7030623
-#> 2 ogl(plate) 0.3256430 0.3018052 0.3509309
+#>          fit      Q50      Q2.5     Q97.5
+#> 1     pooled 0.280055 0.2074506 0.7368929
+#> 2 ogl(plate) 0.325643 0.3018052 0.3509309
 ```
 
 Both fits draw one population curve through the same observations. What differs
@@ -1064,19 +1113,21 @@ The pooled fit has nowhere to put that except the residual, so its curve falls
 from the control on a narrow band; with `ogl(plate)` the spread is attributed to
 the plates and the population curve holds nearer the control before falling.
 
-The two fits differ in which estimate they change. EC10 is almost the same
-either way, 0.328 mg/L pooled against 0.326 with the plate term, but its
-interval closes from 0.219--0.703 to 0.302--0.351 --- from a factor of 3.2
-between the bounds to a factor of 1.2. The N(S)EC changes instead, from 0.198
-mg/L (0.054--0.538) to 0.698 (0.144--1.162). A reader who took the pooled fit
-at face value would report a no-effect concentration under a third of the one
-the plate term gives, with an EC10 interval far wider than the data support.
+EC10 is 0.280 mg/L pooled against 0.326 with the plate term, a difference of
+about a sixth, and its interval closes from 0.207--0.737 to 0.302--0.351 ---
+from a factor of 3.6 between the bounds to a factor of 1.2. The N(S)EC changes
+by more: 0.165 mg/L (0.038--0.571) pooled against 0.698 (0.144--1.162). A reader
+who took the pooled fit at face value would report a no-effect concentration a
+quarter of the one the plate term gives, with an EC10 interval three times wider
+than the data support.
 
-The weights account for it. Pooled, they spread over `ecxll5` at 0.57, `ecxwb1`
-at 0.32, `ecxhormebc4` at 0.05 and `ecxll3` at 0.04; with the plate term
-`ecxwb1` takes all of it. `nec3param`, `nec4param`, `nechorme` and `nechorme4`
---- every equation that estimates a threshold --- take no weight in either
-fit. A term on the fitted value rescales
+The weights account for it. With the plate term `ecxwb1` takes all of the
+weight; pooled it takes 0.76, with 0.17 on `ecxll3` and 0.04 each on
+`ecx4param` and `ecxll4`. Pooling curves that differ in scale leaves the
+candidate set less certain of which shape it is looking at, and the threshold
+estimate is what that uncertainty lands on. `nec3param`, `nec4param`,
+`nechorme` and `nechorme4` --- every equation that estimates a threshold ---
+take no weight in either fit. A term on the fitted value rescales
 each plate's curve by a constant and leaves the shape of the transition alone,
 so it does not make a threshold easier to place, and pooling curves of different
 scale smears the transition rather than sharpening it.
@@ -1088,11 +1139,11 @@ function cannot absorb, and the intervals widen. A plate spans the whole series,
 so `ogl(plate)` removes a between-plate difference that was otherwise left in
 the residual, and the curve is better determined.
 
-
 A `bnec_group()` fit holds one model-averaged fit per level, and `plot()` on it
 draws each in turn through base graphics. `ggbnec_data()` returns the same
 model-averaged curve as a data frame, so stacking those frames gives one object
 that a single `ggplot()` call can facet. Both figures below use it.
+
 
 ``` r
 group_curves <- function(x) {
@@ -1228,11 +1279,11 @@ summary(fits_tox)
 #> ecxhormebc4     0.98      0.00 0.98  0.99
 ```
 
-
 Back-transformed, the threshold is 0.075 mg/L for copper (0.043--0.091) and
 0.698 for zinc (0.144--1.162): copper is the more potent by roughly an order of
 magnitude, which is the ordering @luter2025 report from the per-plate analysis
 and at much the same separation.
+
 
 ``` r
 ggplot(group_curves(fits_tox), aes(x = x_e)) +
@@ -1251,7 +1302,6 @@ ggplot(group_curves(fits_tox), aes(x = x_e)) +
 <p class="caption">plot of chunk fig-metals</p>
 </div>
 
-
 Each panel holds its own response axis, because the two arms were read at
 different gains and their relative light units are not comparable between them.
 What is comparable is where each falls, and the two panels put that an order of
@@ -1259,6 +1309,7 @@ magnitude apart: copper's threshold rules sit between 0.04 and 0.09 mg/L and
 zinc's between 0.14 and 1.2. In both the observations scatter widely at every
 concentration while the fitted band stays narrow, which is the plate term
 holding the between-plate spread out of the population curve.
+
 
 ``` r
 cmp_tox <- compare_posterior(fits_tox, comparison = "nec")
@@ -1463,6 +1514,17 @@ fit_pam <- bnec(yield ~ crf(log(diuron_adj), "all") + ogl(chamber),
 
 
 ``` r
+fit_pam <- screen_models(fit_pam)
+#> Dropping 4 of 15 candidate models that failed the sampler screen:
+#>   -  nec3param: Rhat 1.014, ESS 177.2
+#>   -  nechorme4: 29 divergent transitions
+#>   -  ecxexp: 25 divergent transitions
+#>   -  ecxll5: 84 divergent transitions
+#> Fitted models are: nec4param nechorme nechormepwr01 ecx4param ecxwb1 ecxwb2 ecxwb1p3 ecxwb2p3 ecxll4 ecxll3 ecxhormebc4
+```
+
+
+``` r
 summary(fit_pam)
 #> Object of class bayesmanecfit
 #> 
@@ -1473,21 +1535,17 @@ summary(fit_pam)
 #> 
 #> Model weights (Method: pseudobma_bb_weights):
 #>                   waic   wi
-#> nec3param     -1662.05 0.01
 #> nec4param     -1668.50 0.04
 #> nechorme      -1665.74 0.01
-#> nechorme4     -1664.36 0.00
 #> nechormepwr01 -1665.56 0.01
-#> ecxexp        -1662.45 0.00
-#> ecx4param     -1664.11 0.01
-#> ecxwb1        -1658.17 0.22
+#> ecx4param     -1664.11 0.02
+#> ecxwb1        -1658.17 0.24
 #> ecxwb2        -1668.13 0.05
 #> ecxwb1p3      -1659.14 0.00
 #> ecxwb2p3      -1660.36 0.00
-#> ecxll5        -1653.68 0.02
 #> ecxll4        -1663.47 0.01
 #> ecxll3        -1653.11 0.00
-#> ecxhormebc4   -1677.66 0.61
+#> ecxhormebc4   -1677.66 0.63
 #> 
 #> 
 #> Summary of weighted N(S)EC posterior estimates:
@@ -1495,23 +1553,19 @@ summary(fit_pam)
 #>     models, and is therefore a model averaged
 #>     combination of NEC and NSEC estimates.
 #>        Estimate  Q2.5 Q97.5
-#> N(S)EC    -1.50 -2.08  0.72
+#> N(S)EC    -1.50 -2.06  0.71
 #> 
 #> 
 #> Bayesian R2 estimates:
 #>               Estimate Est.Error Q2.5 Q97.5
-#> nec3param         0.98      0.00 0.98  0.98
 #> nec4param         0.98      0.00 0.98  0.98
 #> nechorme          0.98      0.00 0.98  0.99
-#> nechorme4         0.98      0.00 0.98  0.99
 #> nechormepwr01     0.98      0.00 0.98  0.99
-#> ecxexp            0.98      0.00 0.98  0.98
 #> ecx4param         0.98      0.00 0.98  0.98
 #> ecxwb1            0.98      0.00 0.98  0.98
 #> ecxwb2            0.98      0.00 0.98  0.98
 #> ecxwb1p3          0.98      0.00 0.98  0.98
 #> ecxwb2p3          0.98      0.00 0.98  0.98
-#> ecxll5            0.98      0.00 0.98  0.98
 #> ecxll4            0.98      0.00 0.98  0.98
 #> ecxll3            0.98      0.00 0.98  0.98
 #> ecxhormebc4       0.98      0.00 0.98  0.99
@@ -1529,25 +1583,27 @@ rbind(
   data.frame(estimate = "EC50", t(ecx(fit_pam, ecx_val = 50, xform = exp)))
 )
 #>   estimate       Q50      Q2.5    Q97.5
-#> 1     NSEC 0.2206198 0.1221051 2.088413
-#> 2     EC10 0.4796715 0.4018009 2.133392
-#> 3     EC50 2.0036769 1.7936610 2.764714
+#> 1     NSEC 0.2197578 0.1226876 2.069799
+#> 2     EC10 0.4785594 0.4007950 2.119488
+#> 3     EC50 2.0003351 1.8009836 2.750745
 ```
 
-The three estimates are ordered as they should be --- 0.221, 0.480 and 2.004
-µg/L --- and their upper bounds are not. The N(S)EC reaches 2.088 and the EC10
-2.133, both above the EC50 median, while the EC50 interval is the narrowest of
-the three at 1.794 to 2.765.
+The three estimates are ordered as they should be --- 0.220, 0.479 and 2.000
+µg/L --- and their upper bounds are not. The N(S)EC reaches 2.070 and the EC10
+2.119, both above the EC50 median, while the EC50 interval is the narrowest of
+the three at 1.801 to 2.751.
 
 A model-averaged estimate is a mixture, and the median and the tail of a mixture
-can be set by different components. Two equations hold 0.84 of the weight here
+can be set by different components. Two equations hold 0.87 of the weight here
 and both place the threshold low: `ecxhormebc4` at 0.229 (0.125--0.295) and
 `ecxwb1` at 0.178 (0.114--0.230). Neither has an upper bound above 0.3, and the
-averaged median of 0.221 is theirs. The averaged upper bound is not. `nec4param`
-places a threshold at 2.106 (1.821--2.357) on a weight of 0.041, `ecxwb2` at
-1.620 on 0.049 and `nec3param` at 1.654 on 0.006. Those three hold about a tenth
-of the weight between them and sit an order of magnitude above the other twelve,
-which is enough to put the 97.5th percentile of the mixture at 2.088.
+averaged median of 0.220 is theirs. The averaged upper bound is not. `nec4param`
+places a threshold at 2.106 (1.821--2.357) on a weight of 0.04, and `ecxwb2` at
+1.620 on 0.05. Those two hold about a tenth of the weight between them and sit
+an order of magnitude above the other nine, which is enough to put the 97.5th
+percentile of the mixture at 2.070. The screen removed a third equation of the
+same kind, `nec3param` at 1.654, and the tail is still there: it is not one
+equation's doing.
 
 The same draws are visible in the figure below. The credible band steps down at
 about 2 µg/L, its upper edge falling from about 0.58 to about 0.30, because the
@@ -1700,11 +1756,11 @@ ggplot(herbicide, aes(x = concentration, y = fvfm)) +
 <p class="caption">plot of chunk fig-herbicide-raw</p>
 </div>
 
-Every panel falls, and the concentration at which it does so differs by two
-orders of magnitude across the seven. Yield reaches half its lowest-dose mean by
-1 µg/L for irgarol and 3 µg/L for diuron and ametryn, against 100 µg/L for
-tebuthiuron and 300 for simazine, which is the last concentration simazine was
-tested at.
+Effective quantum yield declines with concentration in all seven, and the
+concentration at which it does so differs by two orders of magnitude between
+them. Yield is at half its lowest-dose mean by 1 µg/L of irgarol and 3 µg/L of
+diuron or ametryn, against 100 µg/L of tebuthiuron and 300 of simazine, which is
+the highest concentration simazine was tested at.
 
 Seven herbicides are a fixed set chosen for their interest, not a sample from a
 population of herbicides, so shrinking them towards a common curve answers a
@@ -1721,340 +1777,85 @@ fits_herb <- bnec_group(fvfm ~ crf(log(concentration), "decline"),
                         seed = 228, refresh = 0)
 ```
 
+`summary()` on a `bayesnecgroupfit` prints a full summary for every level, which
+for seven herbicides is several hundred lines. What the sections below draw on
+is the model weights, and those are worth seeing together:
+
 
 ``` r
-summary(fits_herb)
-#> $ametryn
-#> Object of class bayesmanecfit
-#> 
-#>  Family: beta  
-#>   Links: mu = identity  
-#> 
-#> Number of posterior draws per model:  8000
-#> 
-#> Model weights (Method: pseudobma_bb_weights):
-#>              waic   wi
-#> nec3param -450.87 0.02
-#> nec4param -456.49 0.03
-#> ecxexp    -320.72 0.00
-#> ecx4param -465.19 0.31
-#> ecxwb1    -443.88 0.01
-#> ecxwb2    -461.31 0.08
-#> ecxwb1p3  -323.19 0.00
-#> ecxwb2p3  -446.96 0.01
-#> ecxll5    -464.41 0.23
-#> ecxll4    -465.13 0.30
-#> ecxll3    -432.03 0.00
-#> 
-#> 
-#> Summary of weighted N(S)EC posterior estimates:
-#> NB: Model set contains a combination of ECx and NEC
-#>     models, and is therefore a model averaged
-#>     combination of NEC and NSEC estimates.
-#>        Estimate  Q2.5 Q97.5
-#> N(S)EC    -1.63 -2.13 -0.46
-#> 
-#> 
-#> Bayesian R2 estimates:
-#>           Estimate Est.Error Q2.5 Q97.5
-#> nec3param     0.99      0.00 0.99  0.99
-#> nec4param     0.99      0.00 0.99  0.99
-#> ecxexp        0.89      0.01 0.87  0.91
-#> ecx4param     0.99      0.00 0.99  0.99
-#> ecxwb1        0.99      0.00 0.98  0.99
-#> ecxwb2        0.99      0.00 0.99  0.99
-#> ecxwb1p3      0.94      0.01 0.90  0.96
-#> ecxwb2p3      0.99      0.00 0.99  0.99
-#> ecxll5        0.99      0.00 0.99  0.99
-#> ecxll4        0.99      0.00 0.99  0.99
-#> ecxll3        0.99      0.00 0.98  0.99
-#> 
-#> $atrazine
-#> Object of class bayesmanecfit
-#> 
-#>  Family: beta  
-#>   Links: mu = identity  
-#> 
-#> Number of posterior draws per model:  8000
-#> 
-#> Model weights (Method: pseudobma_bb_weights):
-#>              waic   wi
-#> nec3param -307.71 0.00
-#> nec4param -304.54 0.00
-#> ecxexp    -130.23 0.00
-#> ecx4param -332.58 0.14
-#> ecxwb1    -335.46 0.45
-#> ecxwb2    -318.41 0.00
-#> ecxwb1p3  -260.54 0.00
-#> ecxwb2p3  -313.92 0.00
-#> ecxll5    -334.74 0.27
-#> ecxll4    -332.64 0.14
-#> ecxll3    -302.46 0.00
-#> 
-#> 
-#> Summary of weighted N(S)EC posterior estimates:
-#> NB: Model set contains a combination of ECx and NEC
-#>     models, and is therefore a model averaged
-#>     combination of NEC and NSEC estimates.
-#>        Estimate  Q2.5 Q97.5
-#> N(S)EC     0.18 -1.15  0.90
-#> 
-#> 
-#> Bayesian R2 estimates:
-#>           Estimate Est.Error Q2.5 Q97.5
-#> nec3param     0.97      0.00 0.96  0.97
-#> nec4param     0.96      0.00 0.96  0.97
-#> ecxexp        0.69      0.03 0.63  0.73
-#> ecx4param     0.98      0.00 0.97  0.98
-#> ecxwb1        0.98      0.00 0.97  0.98
-#> ecxwb2        0.97      0.00 0.97  0.97
-#> ecxwb1p3      0.94      0.01 0.93  0.95
-#> ecxwb2p3      0.97      0.00 0.97  0.97
-#> ecxll5        0.98      0.00 0.97  0.98
-#> ecxll4        0.98      0.00 0.97  0.98
-#> ecxll3        0.97      0.00 0.96  0.97
-#> 
-#> $diuron
-#> Object of class bayesmanecfit
-#> 
-#>  Family: beta  
-#>   Links: mu = identity  
-#> 
-#> Number of posterior draws per model:  8000
-#> 
-#> Model weights (Method: pseudobma_bb_weights):
-#>              waic   wi
-#> nec3param -311.87 0.00
-#> nec4param -307.74 0.00
-#> ecxexp    -157.09 0.00
-#> ecx4param -365.36 0.24
-#> ecxwb1    -361.50 0.12
-#> ecxwb2    -340.16 0.00
-#> ecxwb1p3  -299.96 0.00
-#> ecxwb2p3  -343.49 0.00
-#> ecxll5    -366.15 0.35
-#> ecxll4    -364.96 0.20
-#> ecxll3    -357.54 0.09
-#> 
-#> 
-#> Summary of weighted N(S)EC posterior estimates:
-#> NB: Model set contains a combination of ECx and NEC
-#>     models, and is therefore a model averaged
-#>     combination of NEC and NSEC estimates.
-#>        Estimate  Q2.5 Q97.5
-#> N(S)EC    -1.89 -2.21 -1.64
-#> 
-#> 
-#> Bayesian R2 estimates:
-#>           Estimate Est.Error Q2.5 Q97.5
-#> nec3param     0.99      0.00 0.99  0.99
-#> nec4param     0.99      0.00 0.98  0.99
-#> ecxexp        0.86      0.01 0.84  0.88
-#> ecx4param     1.00      0.00 0.99  1.00
-#> ecxwb1        0.99      0.00 0.99  1.00
-#> ecxwb2        0.99      0.00 0.99  0.99
-#> ecxwb1p3      0.99      0.00 0.98  0.99
-#> ecxwb2p3      0.99      0.00 0.99  0.99
-#> ecxll5        1.00      0.00 0.99  1.00
-#> ecxll4        1.00      0.00 0.99  1.00
-#> ecxll3        0.99      0.00 0.99  1.00
-#> 
-#> $hexazinone
-#> Object of class bayesmanecfit
-#> 
-#>  Family: beta  
-#>   Links: mu = identity  
-#> 
-#> Number of posterior draws per model:  8000
-#> 
-#> Model weights (Method: pseudobma_bb_weights):
-#>              waic   wi
-#> nec3param -271.29 0.00
-#> nec4param -266.97 0.00
-#> ecxexp     -96.87 0.00
-#> ecx4param -303.90 0.12
-#> ecxwb1    -285.35 0.00
-#> ecxwb2    -293.05 0.02
-#> ecxwb1p3  -272.01 0.01
-#> ecxwb2p3  -298.04 0.08
-#> ecxll5    -300.14 0.02
-#> ecxll4    -304.03 0.13
-#> ecxll3    -308.65 0.62
-#> 
-#> 
-#> Summary of weighted N(S)EC posterior estimates:
-#> NB: Model set contains a combination of ECx and NEC
-#>     models, and is therefore a model averaged
-#>     combination of NEC and NSEC estimates.
-#>        Estimate  Q2.5 Q97.5
-#> N(S)EC    -0.46 -1.50  0.49
-#> 
-#> 
-#> Bayesian R2 estimates:
-#>           Estimate Est.Error Q2.5 Q97.5
-#> nec3param     0.98      0.00 0.97  0.98
-#> nec4param     0.98      0.00 0.97  0.98
-#> ecxexp        0.69      0.03 0.62  0.73
-#> ecx4param     0.98      0.00 0.98  0.98
-#> ecxwb1        0.98      0.00 0.97  0.98
-#> ecxwb2        0.98      0.00 0.98  0.98
-#> ecxwb1p3      0.97      0.00 0.97  0.98
-#> ecxwb2p3      0.98      0.00 0.98  0.98
-#> ecxll5        0.98      0.00 0.98  0.98
-#> ecxll4        0.98      0.00 0.98  0.98
-#> ecxll3        0.98      0.00 0.98  0.98
-#> 
-#> $irgarol
-#> Object of class bayesmanecfit
-#> 
-#>  Family: beta  
-#>   Links: mu = identity  
-#> 
-#> Number of posterior draws per model:  8000
-#> 
-#> Model weights (Method: pseudobma_bb_weights):
-#>              waic   wi
-#> nec3param -358.45 0.00
-#> nec4param -357.98 0.00
-#> ecxexp    -282.53 0.00
-#> ecx4param -378.04 0.26
-#> ecxwb1    -375.98 0.24
-#> ecxwb2    -370.79 0.03
-#> ecxwb1p3  -249.30 0.00
-#> ecxwb2p3  -360.15 0.00
-#> ecxll5    -377.79 0.20
-#> ecxll4    -378.13 0.27
-#> ecxll3    -351.90 0.00
-#> 
-#> 
-#> Summary of weighted N(S)EC posterior estimates:
-#> NB: Model set contains a combination of ECx and NEC
-#>     models, and is therefore a model averaged
-#>     combination of NEC and NSEC estimates.
-#>        Estimate  Q2.5 Q97.5
-#> N(S)EC    -2.00 -2.23 -1.75
-#> 
-#> 
-#> Bayesian R2 estimates:
-#>           Estimate Est.Error Q2.5 Q97.5
-#> nec3param     0.98      0.00 0.98  0.98
-#> nec4param     0.98      0.00 0.98  0.98
-#> ecxexp        0.91      0.01 0.90  0.93
-#> ecx4param     0.98      0.00 0.98  0.99
-#> ecxwb1        0.98      0.00 0.98  0.99
-#> ecxwb2        0.98      0.00 0.98  0.98
-#> ecxwb1p3      0.88      0.03 0.80  0.93
-#> ecxwb2p3      0.98      0.00 0.98  0.99
-#> ecxll5        0.99      0.00 0.98  0.99
-#> ecxll4        0.98      0.00 0.98  0.99
-#> ecxll3        0.98      0.00 0.98  0.99
-#> 
-#> $simazine
-#> Object of class bayesmanecfit
-#> 
-#>  Family: beta  
-#>   Links: mu = identity  
-#> 
-#> Number of posterior draws per model:  8000
-#> 
-#> Model weights (Method: pseudobma_bb_weights):
-#>              waic   wi
-#> nec3param -273.81 0.00
-#> nec4param -270.47 0.00
-#> ecxexp     -97.48 0.00
-#> ecx4param -304.31 0.18
-#> ecxwb1    -302.98 0.10
-#> ecxwb2    -294.58 0.02
-#> ecxwb1p3  -294.57 0.02
-#> ecxwb2p3  -298.07 0.05
-#> ecxll5    -304.05 0.16
-#> ecxll4    -304.33 0.19
-#> ecxll3    -304.78 0.28
-#> 
-#> 
-#> Summary of weighted N(S)EC posterior estimates:
-#> NB: Model set contains a combination of ECx and NEC
-#>     models, and is therefore a model averaged
-#>     combination of NEC and NSEC estimates.
-#>        Estimate Q2.5 Q97.5
-#> N(S)EC     1.47 0.03  2.43
-#> 
-#> 
-#> Bayesian R2 estimates:
-#>           Estimate Est.Error Q2.5 Q97.5
-#> nec3param     0.96      0.00 0.96  0.96
-#> nec4param     0.96      0.00 0.95  0.96
-#> ecxexp        0.48      0.06 0.34  0.57
-#> ecx4param     0.98      0.00 0.97  0.98
-#> ecxwb1        0.98      0.00 0.97  0.98
-#> ecxwb2        0.97      0.00 0.97  0.97
-#> ecxwb1p3      0.97      0.00 0.97  0.97
-#> ecxwb2p3      0.97      0.00 0.97  0.97
-#> ecxll5        0.98      0.00 0.97  0.98
-#> ecxll4        0.98      0.00 0.97  0.98
-#> ecxll3        0.98      0.00 0.97  0.98
-#> 
-#> $tebuthiuron
-#> Object of class bayesmanecfit
-#> 
-#>  Family: beta  
-#>   Links: mu = identity  
-#> 
-#> Number of posterior draws per model:  8000
-#> 
-#> Model weights (Method: pseudobma_bb_weights):
-#>              waic   wi
-#> nec3param -490.49 0.02
-#> nec4param -486.06 0.00
-#> ecxexp    -111.06 0.00
-#> ecx4param -500.22 0.00
-#> ecxwb1    -455.99 0.00
-#> ecxwb2    -518.62 0.16
-#> ecxwb1p3  -385.98 0.00
-#> ecxwb2p3  -520.94 0.50
-#> ecxll5    -519.25 0.31
-#> ecxll4    -500.48 0.00
-#> ecxll3    -479.60 0.00
-#> 
-#> 
-#> Summary of weighted N(S)EC posterior estimates:
-#> NB: Model set contains a combination of ECx and NEC
-#>     models, and is therefore a model averaged
-#>     combination of NEC and NSEC estimates.
-#>        Estimate Q2.5 Q97.5
-#> N(S)EC     2.36 1.47  2.64
-#> 
-#> 
-#> Bayesian R2 estimates:
-#>           Estimate Est.Error Q2.5 Q97.5
-#> nec3param     0.99      0.00 0.99  0.99
-#> nec4param     0.99      0.00 0.99  0.99
-#> ecxexp        0.58      0.04 0.49  0.63
-#> ecx4param     0.99      0.00 0.99  0.99
-#> ecxwb1        0.99      0.00 0.98  0.99
-#> ecxwb2        0.99      0.00 0.99  0.99
-#> ecxwb1p3      0.97      0.00 0.97  0.98
-#> ecxwb2p3      0.99      0.00 0.99  0.99
-#> ecxll5        0.99      0.00 0.99  0.99
-#> ecxll4        0.99      0.00 0.99  0.99
-#> ecxll3        0.99      0.00 0.99  0.99
+herb_wi <- do.call(rbind, Map(function(f, lev) {
+  w <- summary(f)$mod_weights[, "wi"]
+  data.frame(herbicide = lev, equation = names(w), wi = as.numeric(w))
+}, fits_herb$fits, fits_herb$levels))
+# Ordered by the weight each equation takes over all seven, so that the
+# equations the set actually uses sit together at the top.
+herb_wi$equation <- reorder(factor(herb_wi$equation), herb_wi$wi, sum)
+
+ggplot(herb_wi, aes(x = herbicide, y = equation, fill = wi)) +
+  geom_tile(colour = "white", linewidth = 0.4) +
+  geom_text(aes(label = ifelse(wi >= 0.05, sprintf("%.2f", wi), "")),
+            size = 2.7, colour = "grey15") +
+  scale_fill_gradient(low = "white", high = "#2c6a5a", name = "weight",
+                      limits = c(0, 1)) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1),
+        axis.line = element_blank(), axis.ticks = element_blank()) +
+  labs(x = NULL, y = NULL)
 ```
 
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-fig-herb-weights-1.png" alt="plot of chunk fig-herb-weights" width="85%" />
+<p class="caption">plot of chunk fig-herb-weights</p>
+</div>
 
-The seven herbicides span two orders of magnitude. Back-transformed from the
-fitted scale, the N(S)EC runs from irgarol at 0.135 µg/L (0.108--0.174) and
+The seven do not agree on which equation describes them. Tebuthiuron puts half
+its weight on `ecxwb2p3`, which takes almost none anywhere else, and hexazinone
+puts 0.62 on `ecxll3`, which four of the others give nothing at all. Ametryn,
+irgarol and diuron each spread their weight over three or four equations. That
+is the case for fitting the levels separately rather than shrinking them towards
+a common curve: the curve they would be shrunk towards is not one the data agree
+on.
+
+Toxicity estimates for the seven herbicides span two orders of magnitude.
+Back-transformed from the fitted scale, the N(S)EC runs from irgarol at 0.135 µg/L (0.108--0.174) and
 diuron at 0.151 (0.110--0.194), through ametryn at 0.196, hexazinone at 0.631
 and atrazine at 1.197, to simazine at 4.349 and tebuthiuron at 10.591
 (4.349--14.013).
 
-@jones2003 report EC50s for the same seven: irgarol 0.7 µg/L, ametryn 1.7,
-diuron 2.3, hexazinone 8.8, atrazine 45, simazine 150 and tebuthiuron 175. A
-threshold is a lower quantity than a half-effect concentration and these are
-lower throughout, by a factor of five for irgarol and seventeen for tebuthiuron.
-What survives between the two is the ordering, which agrees except that the
-N(S)EC puts diuron below ametryn where the EC50 puts it above --- and those two
-are 0.6 µg/L apart in the published EC50s, which is the smallest gap in the
-series.
+The N(S)EC is a threshold, the concentration at which the response first departs
+from the control, and it is not what @jones2003 report. They report EC50s, the
+concentration at which yield is halved, so the comparison with the source study
+is against `ecx()`:
+
+
+``` r
+ecx(fits_herb, ecx_val = 50, xform = exp)
+#>         level         Q50       Q2.5      Q97.5
+#> 1     ametryn   1.4985971   1.412824   1.603517
+#> 2    atrazine  39.3270716  34.816560  44.281153
+#> 3      diuron   2.0414192   1.903991   2.192404
+#> 4  hexazinone   7.4219317   6.747813   8.119615
+#> 5     irgarol   0.5404365   0.491021   0.599159
+#> 6    simazine 123.5956229 112.483813 135.634985
+#> 7 tebuthiuron  90.3189131  84.294982  95.274655
+```
+
+Their values are irgarol 0.7 µg/L, ametryn 1.7, diuron 2.3, hexazinone 8.8,
+atrazine 45, simazine 150 and tebuthiuron 175. Six of the seven agree closely,
+the published figure sitting between 13 and 30 per cent above the one here, and
+the ordering of those six is the same in both. Tebuthiuron is the exception at
+roughly half the published value, and it is also the herbicide whose ordering
+differs: here it is less toxic than simazine, and in the source study more so.
+
+The two are not derived the same way. @jones2003 interpolate linearly between
+the tested concentrations, in ToxCalc 5.0, while the values above come from a
+model average over eleven fitted curves. Linear interpolation across a
+log-spaced series cuts the chord of a curve that is concave over that interval,
+which places the half-effect concentration higher than a fitted curve does, and
+the published value is higher in all seven. That six of the seven agree within a
+third is the agreement worth having. Nothing in these data settles which
+estimate is closer to the truth for tebuthiuron.
+
 
 ``` r
 ggplot(group_curves(fits_herb), aes(x = x_e)) +
@@ -2074,15 +1875,15 @@ ggplot(group_curves(fits_herb), aes(x = x_e)) +
 <p class="caption">plot of chunk fig-herbicides</p>
 </div>
 
-
-Every panel declines and the fitted band follows the observations down in each,
-with the N(S)EC rule at or a little before the concentration where the points
-leave the control level. The response axis is shared and the concentration axis
+Yield declines with concentration in all seven, and the fitted band follows the
+observations down in each, with the N(S)EC rule at or a little before the
+concentration where the points leave the control level. The response axis is shared and the concentration axis
 is not, so the panels are comparable in level and not in position: the seven
 curves have much the same shape and sit at different concentrations. Fitting
 each level separately is what allows the shape to differ between them. Here it
 largely does not, and what separates the herbicides is where the curve falls
 rather than how.
+
 
 ``` r
 cmp_herb <- compare_posterior(fits_herb, comparison = "nec")
@@ -2121,6 +1922,7 @@ overlap over most of their length; the next is simazine against tebuthiuron at
 
 The 21 pairwise probabilities reduce seven posteriors to one number each, and
 those posteriors are in `posterior_data`:
+
 
 ``` r
 # Figure 11 of Fisher et al. (2024) is this display for these seven herbicides,
@@ -2167,7 +1969,12 @@ The pairing matters for what this comparison may be used on. `compare_posterior(
 pairs the draws of two posteriors by a random permutation, which approximates the
 difference of two independent posteriors and is valid only where the posteriors
 come from separate fits. `bnec_group()` fits every level separately, so that
-holds here. Two levels of a single fit share draws, and permuting them discards
+holds here.
+
+The two `bnec_group()` fits in this vignette are not screened as the five single
+fits above are. `check_sampling()` and `screen_models()` do not accept a
+`bayesnecgroupfit`, which #376 records; their per-level diagnostics were read by
+hand instead. Two levels of a single fit share draws, and permuting them discards
 the correlation between them, widening the difference and pulling `prob_diff`
 towards 0.5 --- so a contrast between parts of one fit needs draw-wise
 differencing and must not be routed through this function.

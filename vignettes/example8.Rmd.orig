@@ -688,11 +688,11 @@ autoplot(fit_plain) + log_x
 autoplot(fit_ogl, group = "conc_group") + log_x
 ```
 
-The term changes the fitted curve, not only its uncertainty. Ungrouped, the
-model-averaged curve falls from the control immediately; with `ogl(conc_group)`
-it holds near the control before falling. EC10 changes with it, from 0.278 mg/L
-(0.206--0.395) to 0.771 (0.015--1.815) --- almost three times the estimate, on
-an interval nine times wider.
+`ogl(conc_group)` changes the fitted curve, not only its uncertainty. Ungrouped,
+the model-averaged curve falls from the control immediately; with the term it
+holds near the control before falling. EC10 changes with it, from 0.270 mg/L
+(0.204--0.362) to 0.814 (0.158--1.820) --- three times the estimate, on an
+interval that runs a factor of 11.5 from end to end against 1.8.
 
 That follows from the weights rather than from any one equation. Adding
 `ogl(conc_group)`, which absorbs within-concentration variation, changes which
@@ -767,19 +767,21 @@ The pooled fit has nowhere to put that except the residual, so its curve falls
 from the control on a narrow band; with `ogl(plate)` the spread is attributed to
 the plates and the population curve holds nearer the control before falling.
 
-The two fits differ in which estimate they change. EC10 is almost the same
-either way, 0.328 mg/L pooled against 0.326 with the plate term, but its
-interval closes from 0.219--0.703 to 0.302--0.351 --- from a factor of 3.2
-between the bounds to a factor of 1.2. The N(S)EC changes instead, from 0.198
-mg/L (0.054--0.538) to 0.698 (0.144--1.162). A reader who took the pooled fit
-at face value would report a no-effect concentration under a third of the one
-the plate term gives, with an EC10 interval far wider than the data support.
+EC10 is 0.280 mg/L pooled against 0.326 with the plate term, a difference of
+about a sixth, and its interval closes from 0.207--0.737 to 0.302--0.351 ---
+from a factor of 3.6 between the bounds to a factor of 1.2. The N(S)EC changes
+by more: 0.165 mg/L (0.038--0.571) pooled against 0.698 (0.144--1.162). A reader
+who took the pooled fit at face value would report a no-effect concentration a
+quarter of the one the plate term gives, with an EC10 interval three times wider
+than the data support.
 
-The weights account for it. Pooled, they spread over `ecxll5` at 0.57, `ecxwb1`
-at 0.32, `ecxhormebc4` at 0.05 and `ecxll3` at 0.04; with the plate term
-`ecxwb1` takes all of it. `nec3param`, `nec4param`, `nechorme` and `nechorme4`
---- every equation that estimates a threshold --- take no weight in either
-fit. A term on the fitted value rescales
+The weights account for it. With the plate term `ecxwb1` takes all of the
+weight; pooled it takes 0.76, with 0.17 on `ecxll3` and 0.04 each on
+`ecx4param` and `ecxll4`. Pooling curves that differ in scale leaves the
+candidate set less certain of which shape it is looking at, and the threshold
+estimate is what that uncertainty lands on. `nec3param`, `nec4param`,
+`nechorme` and `nechorme4` --- every equation that estimates a threshold ---
+take no weight in either fit. A term on the fitted value rescales
 each plate's curve by a constant and leaves the shape of the transition alone,
 so it does not make a threshold easier to place, and pooling curves of different
 scale smears the transition rather than sharpening it.
@@ -1052,20 +1054,22 @@ rbind(
 )
 ```
 
-The three estimates are ordered as they should be --- 0.221, 0.480 and 2.004
-µg/L --- and their upper bounds are not. The N(S)EC reaches 2.088 and the EC10
-2.133, both above the EC50 median, while the EC50 interval is the narrowest of
-the three at 1.794 to 2.765.
+The three estimates are ordered as they should be --- 0.220, 0.479 and 2.000
+µg/L --- and their upper bounds are not. The N(S)EC reaches 2.070 and the EC10
+2.119, both above the EC50 median, while the EC50 interval is the narrowest of
+the three at 1.801 to 2.751.
 
 A model-averaged estimate is a mixture, and the median and the tail of a mixture
-can be set by different components. Two equations hold 0.84 of the weight here
+can be set by different components. Two equations hold 0.87 of the weight here
 and both place the threshold low: `ecxhormebc4` at 0.229 (0.125--0.295) and
 `ecxwb1` at 0.178 (0.114--0.230). Neither has an upper bound above 0.3, and the
-averaged median of 0.221 is theirs. The averaged upper bound is not. `nec4param`
-places a threshold at 2.106 (1.821--2.357) on a weight of 0.041, `ecxwb2` at
-1.620 on 0.049 and `nec3param` at 1.654 on 0.006. Those three hold about a tenth
-of the weight between them and sit an order of magnitude above the other twelve,
-which is enough to put the 97.5th percentile of the mixture at 2.088.
+averaged median of 0.220 is theirs. The averaged upper bound is not. `nec4param`
+places a threshold at 2.106 (1.821--2.357) on a weight of 0.04, and `ecxwb2` at
+1.620 on 0.05. Those two hold about a tenth of the weight between them and sit
+an order of magnitude above the other nine, which is enough to put the 97.5th
+percentile of the mixture at 2.070. The screen removed a third equation of the
+same kind, `nec3param` at 1.654, and the tail is still there: it is not one
+equation's doing.
 
 The same draws are visible in the figure below. The credible band steps down at
 about 2 µg/L, its upper edge falling from about 0.58 to about 0.30, because the
