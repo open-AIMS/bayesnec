@@ -985,24 +985,22 @@ The three estimates are ordered as they should be --- 0.221, 0.480 and 2.004
 2.133, both above the EC50 median, while the EC50 interval is the narrowest of
 the three at 1.794 to 2.765.
 
-A model-averaged estimate is a mixture, and the median and the tail of a
-mixture can be set by different components. Two equations hold 0.87 of the
-weight here and both place the threshold low: `ecxhormebc4` at 0.226
-(0.124--0.292) and `ecxwb1` at 0.179 (0.115--0.230). Neither has an upper bound
-above 0.3, and the averaged median of 0.217 is theirs. The averaged upper bound
-is not. `nec4param` places a threshold at 2.107 (1.815--2.372) on a weight of
-0.039, `ecxwb2` at 1.615 on 0.026 and `nec3param` at 1.657 on 0.007. Those
-three hold seven per cent of the weight between them, which is enough to reach
-the 97.5th percentile of the mixture: the `nec4param` estimate and the averaged
-upper bound of 2.112 agree to three decimal places.
+A model-averaged estimate is a mixture, and the median and the tail of a mixture
+can be set by different components. Two equations hold 0.84 of the weight here
+and both place the threshold low: `ecxhormebc4` at 0.229 (0.125--0.295) and
+`ecxwb1` at 0.178 (0.114--0.230). Neither has an upper bound above 0.3, and the
+averaged median of 0.221 is theirs. The averaged upper bound is not. `nec4param`
+places a threshold at 2.106 (1.821--2.357) on a weight of 0.041, `ecxwb2` at
+1.620 on 0.049 and `nec3param` at 1.654 on 0.006. Those three hold about a tenth
+of the weight between them and sit an order of magnitude above the other twelve,
+which is enough to put the 97.5th percentile of the mixture at 2.088.
 
 The same draws are visible in the figure below. The credible band steps down at
-about 2 µg/L, its upper edge falling from about 0.58 to about 0.31, because the
+about 2 µg/L, its upper edge falling from about 0.58 to about 0.30, because the
 equations that place a threshold there hold the curve near the control until it
-and drop afterwards. An equation given four per cent of the weight has no
-effect on the median and still decides where the interval ends, which is a
-reason to read a model-averaged interval against the weights rather than on its
-own.
+and drop afterwards. A tenth of the weight has no effect on the median and still
+decides where the interval ends, which is a reason to read a model-averaged
+interval against the weights rather than on its own.
 
 ```{r fig-pam}
 autoplot(fit_pam) + log_x

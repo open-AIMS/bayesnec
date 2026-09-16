@@ -872,9 +872,9 @@ autoplot(fit_ogl) + log_x
 
 The term changes the fitted curve, not only its uncertainty. Ungrouped, the
 model-averaged curve falls from the control immediately; with `ogl(conc_group)`
-it holds near the control to about 1 mg/L before falling. EC10 changes with it,
-from 0.280 mg/L (0.207--0.410) to 1.158 (0.624--2.377) --- four times the
-estimate on an interval more than eight times wider.
+it holds near the control before falling. EC10 changes with it, from 0.278 mg/L
+(0.206--0.395) to 0.771 (0.015--1.815) --- almost three times the estimate, on
+an interval nine times wider.
 
 That follows from the weights rather than from any one equation. Adding a term
 that absorbs within-concentration variation changes which curve shapes fit the
@@ -1042,26 +1042,32 @@ autoplot(fit_plate, group = "plate") + log_x
 <p class="caption">plot of chunk fig-plate</p>
 </div>
 
-The vertical spread at each concentration is the gain difference. Control wells
-range from about 250,000 to 1,450,000 relative light units across the seventeen
-plates. The pooled fit has nowhere to put that except the residual, so its curve
-falls from the control on a narrow band; with `ogl(plate)` the spread is
-attributed to the plates and the population curve holds nearer the control
-before falling.
+`group = "plate"` joins each plate's observations in the second figure, which is
+what makes the structure legible: seventeen roughly parallel traces, flat over
+the lower half of the series and falling together. The spread between them at
+any one concentration is larger than the fall between one concentration and the
+next over that flat part, and the traces stay in much the same order throughout,
+which is what a per-plate multiplicative constant looks like. Control wells run
+from about 250,000 to 1,450,000 relative light units across the seventeen
+plates, against the 250,000 floor the assay was designed to clear.
+
+The pooled fit has nowhere to put that except the residual, so its curve falls
+from the control on a narrow band; with `ogl(plate)` the spread is attributed to
+the plates and the population curve holds nearer the control before falling.
 
 The two fits differ in which estimate they change. EC10 is almost the same
-either way, 0.327 mg/L pooled against 0.349 with the plate term, but its
-interval narrows from 0.219--0.708 to 0.314--0.383, about sevenfold. The
-N(S)EC changes instead, from 0.198 mg/L (0.049--0.533) to 0.771
-(0.228--1.246). A reader who took the pooled fit at face value would report a no-effect
-concentration a quarter of the one the plate term gives, with an EC10 interval
-seven times wider than the data support.
+either way, 0.328 mg/L pooled against 0.326 with the plate term, but its
+interval closes from 0.219--0.703 to 0.302--0.351 --- from a factor of 3.2
+between the bounds to a factor of 1.2. The N(S)EC changes instead, from 0.198
+mg/L (0.054--0.538) to 0.698 (0.144--1.162). A reader who took the pooled fit
+at face value would report a no-effect concentration under a third of the one
+the plate term gives, with an EC10 interval far wider than the data support.
 
-The weights account for it. Pooled, they spread over `ecxll5` at 0.55, `ecxwb1`
-at 0.32, and `ecxll3` and `ecxhormebc4` at 0.05 each; with the plate term they
-concentrate onto `ecxll5` at 0.85 and `ecxwb1` at 0.15. `nec3param`,
-`nec4param`, `nechorme` and `nechorme4` --- every equation that estimates a
-threshold --- take no weight in either fit. A term on the fitted value rescales
+The weights account for it. Pooled, they spread over `ecxll5` at 0.57, `ecxwb1`
+at 0.32, `ecxhormebc4` at 0.05 and `ecxll3` at 0.04; with the plate term
+`ecxwb1` takes all of it. `nec3param`, `nec4param`, `nechorme` and `nechorme4`
+--- every equation that estimates a threshold --- take no weight in either
+fit. A term on the fitted value rescales
 each plate's curve by a constant and leaves the shape of the transition alone,
 so it does not make a threshold easier to place, and pooling curves of different
 scale smears the transition rather than sharpening it.
@@ -1259,10 +1265,10 @@ ggplot(data = tox_post, mapping = aes(x = value)) +
 
 
 The two posteriors barely overlap, and they differ in more than their centres.
-Copper's median is 0.075 mg/L over an interval of 0.043 to 0.092, a factor of
-2.1 from end to end. Zinc's is 0.771 over 0.227 to 1.243, a factor of 5.5.
+Copper's median is 0.075 mg/L over an interval of 0.043 to 0.091, a factor of
+2.1 from end to end. Zinc's is 0.698 over 0.144 to 1.162, a factor of 8.1.
 Copper is both the more potent metal and the better determined one on these
-data. The single pairwise comparison is 0.0138, which is what that separation
+data, and the single pairwise comparison of 0.0153 is what that separation
 reduces to.
 
 # Case study 2: diuron and climate on a coral
@@ -1497,29 +1503,27 @@ rbind(
 #> 3     EC50 2.0036769 1.7936610 2.764714
 ```
 
-The three estimates are ordered as they should be --- 0.217, 0.478 and 1.999
-µg/L --- and their upper bounds are not. The N(S)EC reaches 2.112 and the EC10
-2.155, both above the EC50 median, while the EC50 interval is the narrowest of
-the three at 1.804 to 2.735.
+The three estimates are ordered as they should be --- 0.221, 0.480 and 2.004
+µg/L --- and their upper bounds are not. The N(S)EC reaches 2.088 and the EC10
+2.133, both above the EC50 median, while the EC50 interval is the narrowest of
+the three at 1.794 to 2.765.
 
-A model-averaged estimate is a mixture, and the median and the tail of a
-mixture can be set by different components. Two equations hold 0.87 of the
-weight here and both place the threshold low: `ecxhormebc4` at 0.226
-(0.124--0.292) and `ecxwb1` at 0.179 (0.115--0.230). Neither has an upper bound
-above 0.3, and the averaged median of 0.217 is theirs. The averaged upper bound
-is not. `nec4param` places a threshold at 2.107 (1.815--2.372) on a weight of
-0.039, `ecxwb2` at 1.615 on 0.026 and `nec3param` at 1.657 on 0.007. Those
-three hold seven per cent of the weight between them, which is enough to reach
-the 97.5th percentile of the mixture: the `nec4param` estimate and the averaged
-upper bound of 2.112 agree to three decimal places.
+A model-averaged estimate is a mixture, and the median and the tail of a mixture
+can be set by different components. Two equations hold 0.84 of the weight here
+and both place the threshold low: `ecxhormebc4` at 0.229 (0.125--0.295) and
+`ecxwb1` at 0.178 (0.114--0.230). Neither has an upper bound above 0.3, and the
+averaged median of 0.221 is theirs. The averaged upper bound is not. `nec4param`
+places a threshold at 2.106 (1.821--2.357) on a weight of 0.041, `ecxwb2` at
+1.620 on 0.049 and `nec3param` at 1.654 on 0.006. Those three hold about a tenth
+of the weight between them and sit an order of magnitude above the other twelve,
+which is enough to put the 97.5th percentile of the mixture at 2.088.
 
 The same draws are visible in the figure below. The credible band steps down at
-about 2 µg/L, its upper edge falling from about 0.58 to about 0.31, because the
+about 2 µg/L, its upper edge falling from about 0.58 to about 0.30, because the
 equations that place a threshold there hold the curve near the control until it
-and drop afterwards. An equation given four per cent of the weight has no
-effect on the median and still decides where the interval ends, which is a
-reason to read a model-averaged interval against the weights rather than on its
-own.
+and drop afterwards. A tenth of the weight has no effect on the median and still
+decides where the interval ends, which is a reason to read a model-averaged
+interval against the weights rather than on its own.
 
 
 ``` r
@@ -2079,17 +2083,17 @@ ggplot(data = herb_post, mapping = aes(x = value)) +
 </div>
 
 This reproduces Figure 11 of @fisher2024. The seven run from irgarol at 0.135
-µg/L to tebuthiuron at 10.542, and three things the pairwise probabilities do
-not say are visible in the densities.
+µg/L to tebuthiuron at 10.591, and two things the pairwise probabilities do not
+say are visible in the densities.
 
 The three most potent overlap almost entirely. Irgarol at 0.135 and diuron at
-0.152 have intervals of 0.107 to 0.175 and 0.109 to 0.195, so one sits almost
-inside the other; that is what a `prob_diff` of 0.724 looks like as a
-distribution. Ametryn at 0.199 overlaps both.
+0.151 have intervals of 0.108 to 0.174 and 0.110 to 0.194, so one sits almost
+inside the other; that is what a `prob_diff` of 0.707 looks like as a
+distribution. Ametryn at 0.196 overlaps both.
 
 The posteriors differ in width as much as in position. From end to end,
-irgarol's interval spans a factor of 1.6 and diuron's 1.8, against 11.3 for
-simazine and 7.5 for atrazine. Two herbicides an order of magnitude apart in
+irgarol's interval spans a factor of 1.6 and diuron's 1.8, against 11.0 for
+simazine and 7.8 for atrazine. Two herbicides an order of magnitude apart in
 median can still overlap, because one of them is poorly determined rather than
 because they are alike.
 
@@ -2099,9 +2103,10 @@ one near 1.6, which is the model-averaging mixture case study 2 traced in
 tail of the average and not in its median.
 
 The seven herbicides span two orders of magnitude. Back-transformed from the
-fitted scale, the N(S)EC runs from irgarol at 0.135 µg/L (0.108--0.176) and
-diuron at 0.153 (0.109--0.196), through ametryn at 0.200, hexazinone at 0.631 and
-atrazine at 1.174, to simazine at 4.221 and tebuthiuron at 10.591 (4.349--14.154).
+fitted scale, the N(S)EC runs from irgarol at 0.135 µg/L (0.108--0.174) and
+diuron at 0.151 (0.110--0.194), through ametryn at 0.196, hexazinone at 0.631
+and atrazine at 1.197, to simazine at 4.349 and tebuthiuron at 10.591
+(4.349--14.013).
 
 @jones2003 report EC50s for the same seven: irgarol 0.7 µg/L, ametryn 1.7,
 diuron 2.3, hexazinone 8.8, atrazine 45, simazine 150 and tebuthiuron 175. A
@@ -2113,11 +2118,12 @@ are 0.6 µg/L apart in the published EC50s, which is the smallest gap in the
 series.
 
 `prob_diff` gives the probability that the first level of each pair has the
-higher estimate, so a value near 0 or 1 separates two herbicides and one near 0.5
-does not. Of the 21 pairs the clearest are the three against tebuthiuron ---
-ametryn, diuron and hexazinone, each at 0.0075 --- and the least separated is
-diuron against irgarol at 0.724, the two most potent of the set, whose intervals
-overlap over most of their length.
+higher estimate, so a value near 0 or 1 separates two herbicides and one near
+0.5 does not. Of the 21 pairs the clearest are those against tebuthiuron, from
+0.0095 for ametryn to 0.0101 for hexazinone. The least separated is diuron
+against irgarol at 0.707, the two most potent of the set, whose intervals
+overlap over most of their length; the next is simazine against tebuthiuron at
+0.076.
 
 The pairing matters for what this comparison may be used on. `compare_posterior()`
 pairs the draws of two posteriors by a random permutation, which approximates the
