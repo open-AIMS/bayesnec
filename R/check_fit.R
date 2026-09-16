@@ -88,7 +88,7 @@ check_fit <- function(x, group = NULL, ndraws = 1000, seed = 10, ...) {
 
 #' Assign each observation to a group of the predictor
 #'
-#' Replication is preferred over binning because it is what the design actually
+#' Replication is preferred over binning because it is what the design
 #' provides: a concentration-response experiment has replicates at each
 #' concentration, and grouping by them asks a question about the design rather
 #' than about an arbitrary cut. Binning always returns something, including
@@ -379,7 +379,7 @@ check_fit.bayesnechurdlefit <- function(x, group = NULL, ndraws = 1000,
   out
 }
 
-#' The hurdle fit checked against the data the user actually handed in
+#' The hurdle fit checked against the data the user handed in
 #'
 #' The per-component tables check each half against its own subset: growth
 #' against the survivors, survival against everyone. Neither asks whether the

@@ -35,29 +35,26 @@ bnec_plan_is_parallel <- function() {
 #' Returns the decision and the \code{\link[brms]{brm}} arguments that go with
 #' it, so the two are made in one place and cannot disagree.
 #'
-#' \bold{Fewer than two models to fit is never parallel.} A parallel plan
-#' provides no benefit over a single \code{\link[brms]{brm}} call, and treating
-#' it as parallel would apply the \code{cores} limit below and so make a lone
-#' fit slower than it is today. \code{\link{amend}} reaches this case whenever
-#' every model in the amended set is carried over from the object.
+#' Fewer than two models to fit is never parallel. A parallel plan provides no
+#' benefit over a single \code{\link[brms]{brm}} call, and treating it as
+#' parallel would apply the \code{cores} limit below and so make a lone fit
+#' slower. \code{\link{amend}} reaches this case whenever every model in the
+#' amended set is taken over from the object.
 #'
-#' \bold{Under a parallel plan of more than one worker, each model samples its
-#' chains in sequence.} \code{\link[brms]{brm}} already parallelises across
-#' chains, so fitting models in parallel on top of that requests
-#' \code{workers x chains} processes, and bayesnec passes no \code{cores}
-#' argument of its own.
+#' Under a parallel plan of more than one worker, each model samples its chains
+#' in sequence. \code{\link[brms]{brm}} already parallelises across chains, so
+#' fitting models in parallel on top of that requests
+#' \code{workers x chains} processes, and \pkg{bayesnec} passes no
+#' \code{cores} argument of its own.
 #'
-#' It is worth being exact about what this prevents, because the obvious
+#' What \code{cores = 1} prevents needs stating exactly, because the obvious
 #' account of it is wrong. \pkg{future} sets \code{mc.cores} to 1 inside a
-#' worker itself, so \pkg{brms} does not in fact reach a value set in the
-#' user's profile: measured 2026-09-11 with \code{options(mc.cores = 7)} in
-#' \code{R_PROFILE_USER}, \code{getOption("mc.cores")} inside a future is 1
-#' under \code{multisession} at two and four workers, under \code{multicore},
-#' and under a two-node \code{cluster}. Passing \code{cores = 1} is therefore
-#' not what stands between the user and sixteen processes; \pkg{future}
-#' already does that. It is kept because it makes what \pkg{brms} is asked to
-#' do a property of this package rather than of an implementation detail of
-#' another. A
+#' worker itself, so \pkg{brms} does not reach a value set in the user's
+#' profile, whatever the backend. Passing \code{cores = 1} is therefore not
+#' what stands between the user and \code{workers x chains} processes;
+#' \pkg{future} already does that. It is kept because it makes what \pkg{brms}
+#' is asked to do a property of this package rather than of an implementation
+#' detail of another. A
 #' \code{cores} the user passed to \code{\link{bnec}}, which arrives here in
 #' \code{brm_args} by way of its \code{...}, is left alone: nesting the two
 #' levels is a legitimate thing to want where there are cores to spare, and
@@ -73,7 +70,7 @@ bnec_plan_is_parallel <- function() {
 #' @param brm_args A named \code{\link[base]{list}} of arguments for
 #' \code{\link[brms]{brm}}.
 #' @param n_models A \code{\link[base]{numeric}} vector of length 1 giving the
-#' number of models that will actually be fitted.
+#' number of models that will be fitted.
 #' @param caller A \code{\link[base]{character}} vector of length 1, either
 #' \code{"bnec"} or \code{"amend"}.
 #'
@@ -227,8 +224,8 @@ group_loop_rounds <- function(n_levels, n_models, workers) {
 #' reason. The model loop inside one \code{\link{bnec}} call is not exposed to
 #' it, because there the equations differ and so do the programs.
 #'
-#' \bold{Keyed on the host and process, not only on the level.} PIDs are local to
-#' a host, so workers on two cluster nodes can have the same PID while writing
+#' The key is the host and process rather than the level alone. PIDs are local
+#' to a host, so workers on two cluster nodes can have the same PID while writing
 #' under one shared root. The host and PID together keep concurrently active
 #' worker processes apart. On a persistent-worker backend, such as
 #' \code{multisession} or \code{cluster}, a worker that fits several levels can
@@ -249,15 +246,14 @@ group_loop_rounds <- function(n_levels, n_models, workers) {
 #' at \code{\link[base]{tempdir}} otherwise, which is where \pkg{cmdstanr}
 #' writes by default.
 #'
-#' \bold{What this adds is compilation on a cold cache.} A parallel grouped run
-#' can compile each equation once per persistent worker, and once per level
-#' under \code{multicore}, rather than once for the whole call. A persistent
-#' cache the user has warmed is not read directly because each worker writes
-#' below its own subdirectory. Against a fit measured at 18 minutes on the AIMS
-#' HPC that is small; against a short fit on a cold cache it need not be, and
-#' \code{group_loop_rounds()} counts sampling only. Fitting the levels in
-#' sequence --- which a plan of \code{list(sequential, ...)} asks for --- uses
-#' the cache as it always did.
+#' What a parallel grouped run adds is compilation on a cold cache. It can
+#' compile each equation once per persistent worker, and once per level under
+#' \code{multicore}, rather than once for the whole call, because each worker
+#' writes below its own subdirectory and so does not read a cache the user has
+#' warmed. That is negligible against a long fit and need not be against a short
+#' one, and \code{group_loop_rounds()} counts sampling only. Fitting the levels
+#' in sequence --- which a plan of \code{list(sequential, ...)} asks for --- uses
+#' the cache unchanged.
 #'
 #' \code{root} is read in the parent and passed in rather than read here.
 #' \pkg{future} exports the globals a future needs and not the session's
@@ -340,22 +336,21 @@ with_group_seed <- function(seed, expr) {
 #' whichever process the level was fitted in.
 #'
 #' Without it the arrangement decides the answer. \code{expand_manec()} draws
-#' \code{w_draw_seed} from the ambient stream (#216), so a level fitted in a
-#' worker draws from that worker's L'Ecuyer-CMRG stream and a level fitted in
-#' the parent from the session's. \code{plan_group_levels()} chooses the
+#' \code{w_draw_seed} from the ambient stream, so a level fitted in a worker
+#' draws from that worker's L'Ecuyer-CMRG stream and a level fitted in the
+#' parent from the session's. \code{plan_group_levels()} chooses the
 #' arrangement from the worker count, so one script at one seed would report
 #' different model-averaged estimates on a four-core and an eight-core machine.
 #' This is the one place a grouped call can close that gap without changing
 #' \code{expand_manec()}, which \code{bnec_parallel_lapply()} records as the
-#' wider fix and as #216's deliberate decision.
+#' wider fix.
 #'
-#' \bold{Derived from \code{seed} where the user supplied one.} A grouped call
-#' then repeats itself with no \code{\link[base]{set.seed}} in the session,
-#' which is more than \code{\link{bnec}} offers for a single set. Where none was
-#' supplied the seeds come from the session's stream, so
+#' The seeds are derived from \code{seed} where the user supplied one, so a
+#' grouped call then repeats itself with no \code{\link[base]{set.seed}} in
+#' the session. Where none was supplied they come from the session's stream, so
 #' \code{\link[base]{set.seed}} before the call fixes them.
 #'
-#' \bold{The caller's stream and generator kind are both put back.}
+#' The caller's stream and generator kind are both put back.
 #' \code{\link{bnec_group}} is not entitled to advance either, which is the rule
 #' \code{bnec_parallel_lapply()} and \code{weighted_draw_index()} follow, and
 #' for the same reason: a fit must not reset a user's simulation seed. The
@@ -437,49 +432,44 @@ group_level_seeds <- function(n_levels, seed = NULL) {
 #' plan already holds. See \code{?bnec_group} under \emph{Fitting the levels in
 #' parallel}.
 #'
-#' \bold{A plan of one strategy drives one loop.} \pkg{future} evaluates a
-#' nested future sequentially unless the plan is a list, so a level fitted in a
-#' worker fits its own models one at a time: measured on R 4.6.1 with
-#' \pkg{future} 1.70.0, \code{plan(multisession, workers = 2)} reports the
-#' strategy inside a worker as \code{sequential} and \code{nbrOfWorkers()} there
-#' as 1. Dispatching the levels therefore takes the workers away from the model
-#' loop rather than adding to it, and the two arrangements are counted against
-#' each other by \code{group_loop_rounds()}. The larger count is not taken; a
-#' tie leaves the levels in sequence, which is what the release does.
+#' A plan of one strategy drives one loop. \pkg{future} evaluates a nested
+#' future sequentially unless the plan is a list, so a level fitted in a worker
+#' fits its own models one at a time: the strategy inside a worker reports as
+#' \code{sequential} and \code{nbrOfWorkers()} there as 1. Dispatching the
+#' levels therefore takes the workers away from the model loop rather than
+#' adding to them, and the two arrangements are counted against each other by
+#' \code{group_loop_rounds()}. The larger count is not taken, and a tie leaves
+#' the levels in sequence.
 #'
-#' \bold{A plan that is a list is honoured without being counted}, because there
-#' the user has divided the workers between the two loops deliberately. The
-#' outer element governs the level loop and the next one the model loop:
-#' measured on the same versions, inside a level worker of
+#' A plan that is a list is honoured without being counted, because there the
+#' user has divided the workers between the two loops deliberately. The outer
+#' element governs the level loop and the next one the model loop, so that under
 #' \code{plan(list(tweak(multisession, workers = 2), tweak(multisession,
-#' workers = I(3))))}, \code{nbrOfWorkers()} reports 3 and the model loop
+#' workers = I(3))))} a level worker reports three workers and the model loop
 #' parallelises over them.
 #'
-#' \bold{A list whose outer element is \code{sequential} is how the release
-#' arrangement is asked for.} The levels are still dispatched through
-#' \pkg{future}, because entering a future is what moves the plan on to the next
-#' strategy, but a sequential strategy evaluates them one at a time in the
-#' parent, so the model loop inside each gets the whole of the inner plan.
-#' Measured on the same versions: under
-#' \code{plan(list(sequential, tweak(multisession, workers = I(3))))} the parent
-#' reports one worker and \code{nbrOfWorkers()} inside the level future reports
-#' 3. Without this branch that plan fitted both loops in sequence and said
-#' nothing, since \code{bnec_plan_is_parallel()} reads only the first strategy.
+#' A list whose outer element is \code{sequential} is how the levels are asked
+#' for in sequence explicitly. They are still dispatched through \pkg{future},
+#' because entering a future is what moves the plan on to the next strategy, but
+#' a sequential strategy evaluates them one at a time in the parent, so the model
+#' loop inside each gets the whole of the inner plan. Without this branch such a
+#' plan fits both loops in sequence and says nothing, since
+#' \code{bnec_plan_is_parallel()} reads only the first strategy.
 #'
 #' \code{concurrent} is therefore not \code{dispatch}: the levels go through
 #' \pkg{future} in both cases, and only in the first can two of them be fitted
 #' at one time. It is what decides whether the compile cache has to be
 #' separated and whether a per-level message can still be printed in order.
 #'
-#' \bold{The levels are the last of the three claims on a plan.} A core given to
-#' the chains of one fit adds no export and no second fit in memory; a worker
+#' The levels are the last of the three claims on a plan. A core given to the
+#' chains of one fit adds no export and no second fit in memory; a worker
 #' fitting one model holds one fit; a worker fitting a level holds that level's
-#' whole model-averaged set. That ordering is why the comparison above is made
-#' rather than assumed: on the four cores the grouped call of #338 was measured
-#' over, with eleven equations and seven levels, the model arrangement is the
-#' smaller count (\code{7 x ceiling(11 / 4) = 21} against
-#' \code{ceiling(7 / 4) x 11 = 22}) and the levels are left in sequence. The
-#' level loop takes the workers only from about eight of them upwards.
+#' whole model-averaged set. That ordering is why the comparison above is
+#' counted rather than assumed. At eleven equations and seven levels over four
+#' workers the model arrangement is the smaller count
+#' (\code{7 x ceiling(11 / 4) = 21} against \code{ceiling(7 / 4) x 11 = 22})
+#' and the levels are left in sequence; the level loop takes the workers only
+#' from about eight of them upwards.
 #'
 #' The decision is reported for the reason \code{plan_model_set()} gives: a
 #' parallel run emits its per-level messages out of order or not at all, so the
@@ -613,126 +603,66 @@ plan_group_levels <- function(n_levels, n_models) {
 #' \code{\link{bnec}} and \code{amend()}, and the level loop inside
 #' \code{\link{bnec_group}}. Everything recorded below is a property of the
 #' dispatch rather than of what is being dispatched, and holds for either.
+#' \code{\link[base]{lapply}} is used when \code{parallel} is \code{FALSE},
+#' which touches neither \pkg{future} nor the RNG.
 #'
-#' \code{\link[base]{lapply}} when \code{parallel} is \code{FALSE}, which is
-#' every call made today. That path is what the acceptance criterion
-#' "sequential behaviour is identical to current output for the same seed"
-#' rests on, and it touches neither \pkg{future} nor the RNG.
+#' Four properties of the parallel path are load-bearing.
 #'
-#' \bold{The RNG kind is restored inside the worker}, and this is the part that
-#' fails silently if it is left out. \code{future.seed = TRUE} installs an
-#' L'Ecuyer-CMRG stream in each worker so that draws are parallel-safe. Where
-#' a \code{seed} was supplied, bayesnec then seeds its own initial-value search
-#' with \code{set.seed(brm_args$seed)} in \code{make_good_inits()}, and
-#' \code{\link[base]{set.seed}} called with \code{kind = NULL} -- the default --
-#' leaves the current generator kind in place. The same seed therefore draws
-#' from L'Ecuyer-CMRG in a worker and from the session's kind, normally
-#' Mersenne-Twister, in the parent, and the two give different initial values.
-#' Nothing errors and nothing warns: the fits simply differ from the sequential
-#' run. Restoring the parent's kind first makes the seed mean the same thing in
-#' both places. \code{weighted_draw_index()} records the same trap on the
-#' post-fit side.
+#' \emph{The RNG kind is restored inside the worker}, and leaving this out
+#' fails silently. \code{future.seed = TRUE} installs an L'Ecuyer-CMRG stream
+#' in each worker so that draws are parallel-safe. Where a \code{seed} was
+#' supplied, \code{make_good_inits()} then seeds its own initial-value search
+#' with \code{set.seed(brm_args$seed)}, and \code{\link[base]{set.seed}}
+#' called with \code{kind = NULL} -- the default -- leaves the current
+#' generator kind in place. The same seed therefore draws from L'Ecuyer-CMRG in
+#' a worker and from the session's kind, normally Mersenne-Twister, in the
+#' parent, and the two give different initial values with nothing raised.
+#' Restoring the parent's kind first makes the seed mean the same thing in both
+#' places. \code{weighted_draw_index()} records the same trap on the post-fit
+#' side.
 #'
-#' \bold{The caller's RNG stream is left where it was found.} A parallel loop
+#' \emph{The caller's RNG stream is left where it was found.} A parallel loop
 #' advances the parent's \code{.Random.seed} by generating the per-element
 #' streams, and initialises it from entropy where the session had not yet used
 #' the RNG, so what \code{expand_manec()} draws next -- \code{w_draw_seed},
 #' and through it which draws each equation contributes to the model-averaged
 #' estimate -- would otherwise differ between two parallel runs of the same
 #' call. Restoring makes that draw answer to a \code{set.seed()} in the
-#' caller's session, which is what \code{expand_manec()} says it is for, and
-#' stops a fit resetting a user's simulation seed. The restore itself is
-#' \code{with_preserved_rng_state()}, which \code{weighted_draw_index()},
-#' \code{check_fit_table()}, \code{check_fit_combined()} and
-#' \code{dispersion()} also use; it puts the kind back first, because the
-#' generator is encoded in \code{.Random.seed[1]}.
+#' caller's session, and stops a fit resetting a user's simulation seed. The
+#' restore is \code{with_preserved_rng_state()}, which
+#' \code{weighted_draw_index()}, \code{check_fit_table()},
+#' \code{check_fit_combined()} and \code{dispersion()} also use; it puts the
+#' kind back first, because the generator is encoded in
+#' \code{.Random.seed[1]}.
 #'
-#' It does not make the model-averaging draw match the sequential run's. Run in
-#' sequence the loop advances the parent's stream, because every model's
-#' initial-value search --- and, where a \code{seed} was supplied, its
-#' \code{set.seed(brm_args$seed)} --- happens there; run in parallel they
-#' happen in a worker and nothing can replay them.
+#' Restoring does not make the model-averaging draw match a \emph{sequential}
+#' run's. Run in sequence the loop advances the parent's stream, because every
+#' model's initial-value search happens there; run in parallel it happens in a
+#' worker and nothing can replay it. The fits themselves match a sequential run
+#' where a \code{seed} is supplied, because \code{make_good_inits()} seeds
+#' itself with it wherever it runs, and do not where none is; \code{bnec()}
+#' documents that. Deriving \code{w_draw_seed} from \code{brm_args$seed}
+#' instead of from the ambient stream would close the remaining gap, and is a
+#' change to \code{expand_manec()}.
 #'
-#' Whether the \emph{fits} match a sequential run is a question of the seed,
-#' and #310 did not change the answer. Where a \code{seed} is supplied they
-#' match exactly, because \code{make_good_inits()} seeds itself with it
-#' wherever it runs; \code{w_draw_seed} and \code{w_draw_index} still do not.
-#' Where none is supplied they do not match either, because the search draws
-#' from the stream it is handed and a worker's is not the parent's. What #310
-#' changed is that each of the two runs now repeats itself, where before
-#' neither did. Measured on R 4.6.1 under \code{plan(multicore, workers = 3)},
-#' three equations, the body being \code{add_brm_defaults()} and so the search
-#' itself, \code{set.seed(777)} before each run, against the released code and
-#' against this one: sequential agreed with parallel under a seed and not
-#' without one, on both, while two runs of either kind agreed only here. So
-#' \code{seed} is what a user comparing the two needs, and
-#' \code{\link{bnec}} says so.
+#' \emph{\code{future.seed = TRUE} rather than \code{NULL} or \code{FALSE}.}
+#' \code{NULL} leaves the worker's RNG state to the backend, which makes
+#' correctness a property of every code path inside \code{fit_bayesnec()}
+#' seeding itself rather than of the dispatcher. \code{TRUE} gives each element
+#' a well-defined independent stream whatever the body does. \code{FALSE}, the
+#' \code{future_lapply} default, reports \code{UNRELIABLE VALUE} for a body
+#' that uses the RNG, which every fit does.
 #'
-#' Closing the \code{w_draw_seed} gap means deriving the draw from
-#' \code{brm_args$seed} rather than from the ambient stream, which is a change
-#' to \code{expand_manec()} and to what \#216 decided deliberately.
-#'
-#' \code{future.seed = TRUE} is kept rather than dropped to \code{NULL}.
-#' \code{NULL} leaves the
-#' worker's RNG state to the backend, which makes correctness a property of
-#' every code path inside \code{fit_bayesnec()} seeding itself rather than of
-#' the dispatcher, and that is not something anyone maintains. \code{TRUE}
-#' gives each element a well-defined independent stream whatever the body does.
-#' (\code{future.seed = FALSE}, the \code{future_lapply} default, is not an
-#' option at all: it reports \code{UNRELIABLE VALUE} for a body that uses the
-#' RNG, which every fit does. \code{NULL} is silent.)
-#'
-#' Restoring the kind does not leave the workers drawing in step, and the
-#' reason recorded here before #310 was wrong. It said
-#' \code{\link[base]{RNGkind}} re-initialises \code{.Random.seed} from the
-#' clock and the process id. It does so only where no seed exists yet, which is
-#' what \code{?Random} documents and what makes \code{set.seed(NULL)} the
-#' cause of #310; where a seed is already present, which inside a
-#' \code{future.seed = TRUE} worker it always is, the new state is derived
-#' from the current one. Measured on R 4.6.1 over repeated calls in one process
-#' and again in a second process, on both arms: \code{set.seed(42)} then
-#' \code{RNGkind()} at the kind already in force gives a first draw of
-#' 0.8311705 every time, and \code{set.seed(42, kind = "L'Ecuyer-CMRG")} then
-#' \code{RNGkind()} back to Mersenne-Twister --- the change a worker makes ---
-#' gives 0.2046757 every time. What makes the
-#' workers differ is therefore the per-element L'Ecuyer-CMRG stream
-#' \code{future.seed = TRUE} installs, not the clock. The 2026-09-11
-#' measurement under \code{plan(multicore, workers = 3)} --- three of three
-#' draws distinct, with the restore in place as without it --- holds either
-#' way and so did not distinguish them.
-#'
-#' \bold{A run under a plan reproduces under the caller's seed.} That follows:
-#' each element's stream is derived from the parent's, the restore is
-#' deterministic, and since #310 a search given no seed draws from the stream
-#' it is handed. Measured on R 4.6.1 under \code{plan(multicore, workers = 3)},
-#' three equations, the body being \code{add_brm_defaults()} and so the search
-#' itself, with no \code{seed} supplied: two runs at one
-#' \code{\link[base]{set.seed}} gave identical initial values and a third at
-#' another seed gave different ones. One backend and one R version, so it is
-#' a measurement rather than a guarantee, and \code{seed} remains the way to
-#' fix a run that has to repeat across either.
-#'
-#' What a plan still does not reproduce is the \emph{sequential} run's
-#' model-averaging draw, for the reason given above under
-#' \code{w_draw_seed}: that draw is made in the parent from a stream the two
-#' runs advance differently.
-#'
-#' \bold{One element per chunk.} \code{future_lapply()} otherwise divides the
-#' set into one chunk per worker and runs each chunk in sequence, which for
-#' bayesnec is wrong twice over. The 23 equations differ in fitting time by an
-#' order of magnitude, so a worker that draws the slow ones sets the wall clock
-#' while the others idle; and a worker holds every fit in its chunk until the
-#' chunk ends, which is the memory multiplication \#184 warns about in its
-#' worst form. One element per future gives the assignment dynamically and
-#' holds one fit at a time.
-#'
-#' The trade is that the data, the formula and the priors are sent once per
-#' model rather than once per worker, which for 23 models over four workers is
-#' about six times the transfer. \code{narrow_environment()} does not offset
-#' that -- those are the objects a fit genuinely needs -- it removes everything
-#' else. Load balancing and holding one fit rather than six are judged the
-#' larger effects on a set whose equations differ in fitting time by an order
-#' of magnitude, but no timing has been taken either way.
+#' \emph{One element per chunk.} \code{future_lapply()} otherwise divides the
+#' set into one chunk per worker and runs each chunk in sequence, which is
+#' wrong here twice over. The equations differ in fitting time by an order of
+#' magnitude, so a worker that draws the slow ones sets the wall clock while
+#' the others idle; and a worker holds every fit in its chunk until the chunk
+#' ends, which is the memory multiplication in its worst form. One element per
+#' future assigns the work dynamically and holds one fit at a time. The trade is
+#' that the data, the formula and the priors are sent once per model rather
+#' than once per worker. \code{narrow_environment()} does not offset that ---
+#' those are the objects a fit genuinely needs --- it removes everything else.
 #'
 #' @param X A \code{\link[base]{vector}} to apply over.
 #' @param FUN A \code{\link[base]{function}} taking one element of \code{X}.
@@ -798,25 +728,24 @@ env_by_reference <- function(env) {
 #' reach it: it replaces the environment of the applied \emph{function}, and the
 #' formula inside travels with its own.
 #'
-#' Measured on R 4.6.1 with a 76 MiB vector bound beside the formula in the
-#' environment that created it: the formula alone serialises to 76.29 MiB, the
-#' narrowed closure that reads it to 76.30 MiB, and the model frame built from
-#' it to 76.30 MiB, that last by way of the \code{.Environment} of its
-#' \code{terms} attribute. So a fit sends the calling session to every worker,
-#' and stores it in every saved fit. See #329.
+#' A large object bound beside the formula therefore travels with it three
+#' times over: in the formula, in the narrowed closure that reads it, and in the
+#' model frame built from it, that last by way of the \code{.Environment} of its
+#' \code{terms} attribute. A fit would otherwise send the calling session to
+#' every worker and store it in every saved fit.
 #'
-#' \bold{The environment is narrowed rather than removed.}
+#' The environment is narrowed rather than removed.
 #' \code{\link[stats]{model.frame}} resolves a term against \code{data} first
 #' and the formula's environment second, so a formula naming anything outside
 #' \code{data} needs it --- a transformation the user wrote, and the model
 #' argument of \code{crf()} where that is a variable rather than a string.
-#' Since #319 that resolution is deliberate rather than incidental:
+#' That resolution is deliberate rather than incidental:
 #' \code{formula_eval_env()} evaluates in a frame whose parent is
 #' \code{formula_env()}. What is built here holds exactly the names the formula
 #' mentions and \code{data} does not supply.
 #'
-#' \bold{The walk stops at the first environment R serialises by reference, and
-#' the replacement is parented there.} A name bound in the global environment,
+#' The walk stops at the first environment R serialises by reference, and the
+#' replacement is parented there. A name bound in the global environment,
 #' in an attached package or in a namespace is left where it is and resolved
 #' through the parent chain, because copying it would reintroduce the size this
 #' function exists to remove. Parenting the replacement to the environment the walk
@@ -831,17 +760,17 @@ env_by_reference <- function(env) {
 #' workspace supplies is already out of reach under a plan, with or without
 #' this.
 #'
-#' \bold{Applied on the sequential path as well}, for the reason
+#' This is applied on the sequential path as well, for the reason
 #' \code{narrow_environment()} gives: a name left behind then fails on the first
 #' ordinary call rather than only for whoever sets a plan. It is applied before
 #' the model frame is built, so that the frame, the \pkg{brms} formula and the
 #' stored fit are all narrowed by the one call.
 #'
-#' \bold{A function the formula names is the case this does nothing for.} A
+#' A function the formula names is the case this does nothing for. A
 #' transformation the user defined beside the formula is a closure over the same
-#' environment, so the name is copied with everything that environment holds,
-#' and the fit is the size it was: measured at 76.294 MiB before and after. The
-#' saving is real only where every name the formula mentions is either a column
+#' environment, so the name is copied with everything that environment holds and
+#' the fit is the size it was. The saving is real only where every name the
+#' formula mentions is either a column
 #' of \code{data} or small. A helper defined in a \pkg{knitr} chunk and used in
 #' a formula is therefore still a large fit, and moving it to a package or to
 #' the global environment is what makes it small.
@@ -889,12 +818,11 @@ narrow_formula_environment <- function(formula, data) {
 #' \code{\link{bnec}} or \code{amend_model_set()}. Those frames hold
 #' everything the function has computed by that point -- for \code{amend()},
 #' every fit already in the set -- so a closure that reads a handful of small
-#' objects serialises all of it, once per future. Measured on the two-equation
-#' \code{manec_example}, 2026-09-11: the applied function reported 14.1 MiB
-#' against 75 bytes for the arguments it actually reads, and the same closure
-#' over a 32 MB object was refused outright at
-#' \code{future.globals.maxSize = 10 MiB}, naming \code{FUN}, which tells the
-#' user nothing about the cause.
+#' objects serialises all of it, once per future: on a small two-equation set
+#' the applied function is already three orders of magnitude larger than the
+#' arguments it reads, and a closure over a large object is refused outright
+#' once \code{future.globals.maxSize} is exceeded, naming only \code{FUN},
+#' which says nothing about the cause.
 #'
 #' The replacement environment's parent is the package namespace, so package
 #' internals resolve as before and are exported by reference rather than by

@@ -171,8 +171,10 @@ mu_is_constrained <- function(family, dpar = "mu") {
 #' what the likelihood permits, this one says what the mean function can
 #' produce. Together they decide whether a model is admissible for a response.
 #'
-#' \strong{Two kinds of flag, and they are not interchangeable.} Conflating
-#' them is what produces the \code{nechormepwr01} entry in
+#' \strong{The two kinds of flag}
+#'
+#' They are not interchangeable, and conflating them is what produces the
+#' \code{nechormepwr01} entry in
 #' \code{\link{check_models}} that looks like a discrepancy and is not. See
 #' #256.
 #'
@@ -234,8 +236,10 @@ mu_is_constrained <- function(family, dpar = "mu") {
 #'     it.
 #' }
 #'
-#' \strong{Scope.} Four restrictions, each of which would otherwise be an
-#' unstated assumption:
+#' \strong{Scope}
+#'
+#' Four restrictions apply, each of which would otherwise be an unstated
+#' assumption:
 #'
 #' \itemize{
 #'   \item \code{below_zero} is evaluated for \code{x >= 0}. At a negative
@@ -271,7 +275,7 @@ mu_is_constrained <- function(family, dpar = "mu") {
 #' Two observations from reading the 23 equations are recorded here rather than
 #' as a column, because both contradict abbreviated rules in circulation and
 #' both are asserted in \code{test-mu_support.R} over the equations that are
-#' actually admissible for a (0, 1) response.
+#' admissible for a (0, 1) response.
 #'
 #' \code{slope} is passed through \code{exp()} in all ten equations that carry
 #' it, so a deviation on it can never make \code{exp(slope)} invalid. What it
@@ -355,12 +359,12 @@ model_mu_ranges <- function() {
 #'
 #' Two gates, and both must pass.
 #'
-#' \strong{Is a transform needed?} \code{\link{mu_is_constrained}} says the
+#' \strong{Whether a transform is needed.} \code{\link{mu_is_constrained}} says the
 #' likelihood constrains \code{mu} and the link cannot keep it inside. Under a
 #' \code{log} or \code{logit} link the offset is already on the linear predictor
 #' and there is nothing to do.
 #'
-#' \strong{Is a transform applicable?} \code{\link{model_mu_ranges}} says the
+#' \strong{Whether a transform is applicable.} \code{\link{model_mu_ranges}} says the
 #' mean is provably strictly inside the interval, so \code{log} or
 #' \code{logit} of it is defined. This is a blocker rather than a caveat for
 #' three groups of equations: \code{neclin}, \code{neclinhorme} and
@@ -477,13 +481,14 @@ par_transform_pars <- function() {
 #' support the same excursions #257 removed from the mean occur on the
 #' parameter. \code{bot} is the case that matters: it is the lower asymptote, it
 #' is routinely estimated close to zero, and a deviation large enough to take it
-#' below zero makes the likelihood undefined. Measured on \code{herbicide} with
-#' \code{Beta(link = "identity")} and \code{nec4param}, a \code{(bot | herbicide)}
-#' term gives 51 divergent transitions of 2000 at \code{adapt_delta = 0.95} where
-#' the same term on a \code{gaussian} response gives none. See #294.
+#' below zero makes the likelihood undefined. A \code{(bot | group)} term on a
+#' bounded response gives divergent transitions where the same term on a
+#' \code{gaussian} response gives none. See #294.
 #'
-#' \strong{The gate is the family, not the equation}, and this is where the
-#' judgement differs from \code{\link{ogl_transform_kind}}. That function asks
+#' \strong{The gate is the family rather than the equation}
+#'
+#' This is where the judgement differs from
+#' \code{\link{ogl_transform_kind}}. That function asks
 #' whether the \emph{mean} is provably strictly inside the interval, which
 #' depends on the equation: \code{nechorme} can exceed 1 through
 #' \code{exp(slope) * x}, so \code{logit} of its mean is undefined. A parameter
@@ -570,7 +575,7 @@ par_gl_names <- function(par) {
 #' about that here. An excess term in \code{exp(slope) * x} makes the mean
 #' negative for a sufficiently negative predictor --- \code{nechorme}'s mean is
 #' negative for \code{x < -top / exp(slope)} --- and \code{crf(log(x), ...)}
-#' supplies a negative predictor as a matter of course. So the hormesis
+#' routinely supplies a negative predictor. So the hormesis
 #' equations can leave a \code{(0, Inf)} support as well, and a deviation on
 #' \code{slope} increases \code{exp(slope)} directly.
 #'

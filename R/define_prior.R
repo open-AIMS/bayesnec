@@ -4,18 +4,20 @@
 #' response. Where a share of the response is exactly zero those quantiles are
 #' pulled down towards zero, and the prior collapses onto a scale that has
 #' nothing to do with the asymptote it is meant to locate. That is not a rare
-#' corner: the zero-inflated count families added under #104 exist precisely for
-#' responses where a quarter or more of the values are zero.
+#' corner: the zero-inflated count families exist precisely for responses where
+#' a quarter or more of the values are zero.
 #'
-#' \strong{Why the probability is rescaled rather than the vector.} A quantile
+#' \strong{The rescaling of the probability rather than the vector}
+#'
+#' A quantile
 #' of a zero-inflated response is a quantile of the \emph{mixture}, and it is
 #' biased downward by the zero fraction throughout its range -- reaching exactly
 #' zero only at the extreme. So testing for an exactly-zero quantile and
 #' substituting the positive part, as the first version of this guard did, is a
 #' step function applied to a continuous problem: it left the worst case, just
-#' below the threshold, entirely unguarded. On a `nec4param` response with a true
-#' `top` of 40 the `top` prior mean ran 33.5 at no zeros, 6.8 at 72\% zeros, and
-#' then jumped back to 29.0 at 76\% once the raw quantile finally hit zero.
+#' below the threshold, entirely unguarded, so that the prior collapsed as the
+#' zero fraction rose and then recovered abruptly once the raw quantile finally
+#' reached zero.
 #'
 #' Level \code{p} of the distribution conditional on being positive sits at level
 #' \code{z + (1 - z)p} of the mixture, where \code{z} is the zero fraction: a
@@ -38,8 +40,6 @@
 #' from a truncated count distribution and biases the location upward. Here the
 #' positive part informs only a \emph{scale}, never the estimate itself.
 #'
-#' See #210 for the original three failure modes and #232 for why the guard
-#' became a rescaling.
 #'
 #' @param response A \code{\link[base]{numeric}} vector.
 #' @param probs A \code{\link[base]{numeric}} vector of length 1.
@@ -73,17 +73,14 @@ positive_scale <- function(response, probs) {
   q
 }
 
-#' What the "regularizing" default prior set is
+#' The "regularizing" default prior set
 #'
 #' \code{prior_type} selects between two sets of defaults for the two
 #' response-scaled parameters \code{top} and \code{bot} and for the two
 #' predictor-scaled parameters \code{nec} and \code{ec50}. The
-#' \code{"uninformative"} set is the one Fisher et al. (2024) describe; it is
-#' stated per family and is not changed here. It is not quite the set on CRAN,
-#' for two reasons that predate #305 and are recorded under
-#' \strong{What is and is not released} below. The
-#' \code{"regularizing"} set is stated once, as two numbers, and every family's
-#' entry is derived from them:
+#' \code{"uninformative"} set is the one Fisher et al. (2024) describe, stated
+#' per family. The \code{"regularizing"} set is stated once, as two numbers,
+#' and every family's entry is derived from them:
 #'
 #' \itemize{
 #'   \item \strong{Location.} The mean response at the end of the predictor
@@ -101,8 +98,8 @@ positive_scale <- function(response, probs) {
 #'     concentration tested, for the reason \code{predictor_prior()} records.
 #' }
 #'
-#' \strong{The two halves are not measured on the same thing, and that is
-#' deliberate.} The location is read at one end of the predictor; the spread is
+#' The two halves are not read from the same thing, deliberately. The location
+#' is read at one end of the predictor; the spread is
 #' inherited from the \code{"uninformative"} entry, which is built from a
 #' quantile of the pooled response --- \code{q75} or \code{q25} on the gamma
 #' branch, \code{sd(response)} on the normal one. So on a design where most of
@@ -122,53 +119,22 @@ positive_scale <- function(response, probs) {
 #' \strong{mode} is the location and its standard deviation is the spread.
 #' Matching the mode rather than the mean is what makes one stated rule mean the
 #' same thing on all three branches: a normal is specified by a parameter that
-#' is also its mode, so a gamma specified by its mean peaks somewhere else, and
-#' the same ambiguity produced #273 and #302 on the predictor side.
+#' is also its mode, so a gamma specified by its mean peaks somewhere else.
 #'
-#' \strong{Why it is stated once.} Before #305 each branch was written out
-#' separately and the three had drifted apart, so the word did not describe one
-#' thing. Measured over 420 \code{top} and \code{bot} entries each built from
-#' one simulated response -- 5 designs, 3 predictor transforms, 7 families, 2
-#' links -- the ratio of the regularizing prior standard deviation to the
-#' uninformative one ran from 0.032 to 2.18, and the regularizing prior was the
-#' wider of the two in 17 of them. Averaged by family on the identity link it
-#' was 0.40 for \code{gaussian}, 0.90 and 0.26 for \code{Gamma} \code{top} and
-#' \code{bot}, 1.48 for \code{negbinomial} \code{top}, and 0.88 for the beta
-#' branch, which read nothing from the response at all and so relocated nothing.
-#' Deriving every branch from one pair of numbers makes the ratio
-#' \code{regularizing_factor} in 404 of those 420 entries and no more than 1 in
-#' any of them, and it is what stops a family added later from drifting again.
+#' The rule is stated once rather than per branch. Written out separately the
+#' three branches drift apart, so that the same word no longer describes one
+#' thing: deriving every branch from one pair of numbers holds the ratio of the
+#' regularizing spread to the uninformative one at
+#' \code{regularizing_factor}, and keeps a family added later from drifting
+#' again.
 #'
-#' \strong{Why the location is read at the end of the predictor.} The released
-#' regularizing entries were anchored on \code{max(response)} and
-#' \code{min(response)}. The smallest observation of a \emph{discrete} response
-#' sits well below the asymptote it is meant to locate: on the simulated count
-#' responses in the audit, against a true \code{bot} of 5 the observed minimum
-#' ran 1 to 3, and the truncated prior CDF at the true value ran 0.988 to
-#' 0.99999, so the prior excluded the value it was built to find. An extreme
-#' quantile of the pooled response is biased in the other direction for an
-#' over-dispersed one and by an amount that depends on the design;
-#' \code{regularizing_location()} records the measurements and the alternatives
-#' that were tried.
-#'
-#' \strong{What is and is not released.} \code{prior_type} does not exist on
-#' \code{master} (2.1.3.1, the CRAN release), so the whole
-#' \code{"regularizing"} set is unreleased and no published analysis is
-#' affected by anything #305 changes. The \code{"uninformative"} set is
-#' untouched by #305.
-#'
-#' It is not, however, identical to the set on CRAN, and two earlier changes on
-#' \code{dev} are the reason. #302 and PR #304 replaced the \code{nec} and
-#' \code{ec50} entry outright: on a series of 0, 1, ... 10 the released entry is
-#' \code{gamma(5, 0.4)} and this one is
-#' \code{lognormal(1.70060, 0.867668)}. And #210 and #232 put
-#' \code{positive_scale()} in place of the raw quantile on the gamma branch of
-#' \code{top} and \code{bot}, which changes nothing on a response with no zeros
-#' and everything on one with many: on a \code{poisson} response with 22 zeros
-#' of 66, CRAN gives \code{gamma(2, 100)} for \code{bot} against
-#' \code{gamma(2, 0.2849)} here, the first being the collapse #210 exists to
-#' remove. Neither is a change #305 makes, and neither is a reason to describe
-#' the \code{"uninformative"} entries as the released ones without saying so.
+#' The location is read at the end of the predictor rather than from an extreme
+#' of the response. The smallest observation of a \emph{discrete} response sits
+#' well below the asymptote it is meant to locate, so a prior anchored there can
+#' exclude the value it was built to find, while an extreme quantile of the
+#' pooled response is biased in the other direction for an over-dispersed one
+#' and by an amount that depends on the design.
+#' \code{regularizing_location()} records the alternatives that were tried.
 #'
 #' @noRd
 regularizing_factor <- 0.4
@@ -280,8 +246,10 @@ beta_from_mode_sd <- function(mode, spread) {
 #' end, rather than from a quantile of the response pooled over the whole
 #' design.
 #'
-#' @details \strong{Why not a quantile of the pooled response.} A quantile of
-#' the pooled response is a proxy for the level of one plateau, and how good a
+#' @details \strong{The case against a quantile of the pooled response}
+#'
+#' A quantile of the pooled response is a proxy for the level of one plateau,
+#' and how good a
 #' proxy it is depends on what share of the design sits on that plateau. If a
 #' share \emph{f} of the observations are at the upper plateau, the upper
 #' plateau occupies levels \emph{1 - f} to 1 of the pooled response, so its own
@@ -290,17 +258,13 @@ beta_from_mode_sd <- function(mode, spread) {
 #' is the plateau for both.
 #'
 #' The consequence is largest where the response is over-dispersed, because the
-#' pooled upper tail is then far above the plateau it is drawn from. Measured on
-#' the audit's simulated \code{negbinomial} responses with a true \code{top} of
-#' 40, the 95th percentile of the pooled response ran to 72 while the mean of
-#' the control observations ran 38 to 43. A prior narrow enough to be
-#' regularizing and located at 72 excludes 40: over the audit's 15 design by
-#' transform cells, an anchor at the 95th percentile put the true value outside
-#' the central 95\% of the prior in 40 of 720 top and bot cells, every one of
-#' them an over-dispersed count. Anchoring at the end of the predictor instead
-#' leaves none.
+#' pooled upper tail is then far above the plateau it is drawn from, and a prior
+#' narrow enough to be regularizing and located in that tail can exclude the
+#' true value. Anchoring at the end of the predictor instead does not.
 #'
-#' \strong{The rule.} Take the observations at the lowest distinct predictor
+#' \strong{The rule}
+#'
+#' Take the observations at the lowest distinct predictor
 #' value for \code{top} and at the highest for \code{bot}. Extend to the next
 #' distinct value, and the next, until the subset holds a twentieth of the
 #' observations, and no fewer than three, but never past a fifth of the distinct
@@ -312,43 +276,36 @@ beta_from_mode_sd <- function(mode, spread) {
 #' averages the nearest few values: five of a hundred.
 #'
 #' The second limit is what keeps the second block of a hurdle or zero-inflated
-#' fit honest. \code{split_hurdle_response()} primes that block from one
+#' fit usable. \code{split_hurdle_response()} primes that block from one
 #' survival proportion per concentration, so every group in it is a single value
 #' and the first limit alone would average the three most extreme concentrations
-#' of a six-concentration design. Measured on such a design with survival
-#' falling from 0.99 to 0.014, that put the \code{hubot} prior's maximum
-#' density at 0.34 against a true value of 0.014.
+#' of a six-concentration design, placing the \code{hubot} prior far above the
+#' asymptote it describes.
 #'
-#' \strong{What the second limit gives up.} On a design with fewer than ten
+#' \strong{The cost of the second limit}
+#'
+#' On a design with fewer than ten
 #' concentrations and no replication the subset is one observation, because that
 #' design presents the same input as the hurdle block and the two cannot be told
 #' apart from the data. The location is then a single measurement and its
 #' standard error is the stand-in described below, which is the spread of the
 #' whole response. Where that exceeds \code{regularizing_factor} times the
 #' uninformative width the floor binds and the entry is widened towards the
-#' uninformative one, relocated rather than narrowed. Measured on an
-#' unreplicated eight-concentration series the ratio of the two standard
-#' deviations was 0.55 for \code{top} and 1.00 for \code{bot} on a Gamma
-#' response, and 0.40 for both on a gaussian one, where the stand-in is exactly
-#' the stated spread because the uninformative width is 2.5 times the same
-#' quantity. Widening on an anchor of one observation is the right answer, and
-#' it is a reason to replicate rather than a reason to narrow.
+#' uninformative one, relocated rather than narrowed. Widening on an anchor of
+#' one observation is the right answer, and it is a reason to replicate rather
+#' than a reason to narrow.
 #'
-#' \strong{Alternatives measured.} Five anchors were run through the whole
-#' audit on the same simulated data, scored as the number of the 720
-#' \code{nec4param} \code{top} and \code{bot} cells placing the true value
-#' outside the central 95\% of the prior: 65 for the released extremum, 40 for
-#' the 95th and 5th percentiles, 51 for the 90th and 10th, 134 for the 75th and
-#' 25th, 4 for the extreme of the per-dose group means, 27 for the mean of the
-#' extreme tenth of the predictor by rank, and 11 for the rule above. The
-#' group-mean extreme scores best on those designs and is not used, because it
-#' has no meaning without replication: on a continuous predictor with one
-#' observation per value it reduces to the extremum, and on the same check it
-#' failed 4 of 10 \code{Gamma} cells where the rule above failed none.
+#' Six candidate anchors were compared against this rule on simulated data, by
+#' how often each placed the true value outside the central 95\% of the prior.
+#' The extreme of the per-dose group means scored best and is not used, because
+#' it has no meaning without replication: on a continuous predictor with one
+#' observation per value it reduces to the extremum of the response, which is
+#' the anchor this rule replaces.
 #'
-#' \strong{What the rule assumes.} That the lowest concentration in the design
-#' is at the level \code{top} describes and the highest is at the level
-#' \code{bot} describes.
+#' \strong{The assumptions the rule rests on}
+#'
+#' That the lowest concentration in the design is at the level \code{top}
+#' describes and the highest is at the level \code{bot} describes.
 #'
 #' The first is an identity at a predictor of zero for thirteen of the 23
 #' equations: all ten with a \code{nec} parameter, and \code{ecxlin},
@@ -365,17 +322,12 @@ beta_from_mode_sd <- function(mode, spread) {
 #' For the other ten it is a limit rather than an identity, because the sigmoid
 #' term is not exactly at its asymptote at zero. How close it is depends on the
 #' curve rather than on the equation, being governed by
-#' \code{exp(beta) * ec50}: at \code{top} 40, \code{bot} 5, \code{ec50} 2 and
-#' a rate of 1.5, \code{ecxwb2} and \code{ecxwb2p3} are within 1e-7 of
-#' \code{top} and the other eight --- \code{ecx4param}, \code{ecxll3},
-#' \code{ecxll4}, \code{ecxll5}, \code{ecxwb1}, \code{ecxwb1p3},
-#' \code{ecxhormebc4} and \code{ecxhormebc5} --- return 38.06 to 38.34, an
-#' error of 4\%. On a shallow curve with a low midpoint, a rate of 0.2 and an
-#' \code{ec50} of 1, all ten are further off: 17.6 to 29.7 against the same
-#' \code{top} of 40, the lowest being \code{ecxwb1p3}. \code{ecxll5} depends on
-#' its shape parameter \code{f} as well as on \code{exp(beta) * ec50}. Note
-#' that \code{ecxhormebc4} and \code{ecxhormebc5} appear in both lists: their
-#' excess term does vanish at zero, and their denominator does not.
+#' \code{exp(beta) * ec50}: on a steep curve with a midpoint inside the range
+#' every one of the ten is within a few per cent of \code{top}, while on a
+#' shallow curve with a low midpoint they can fall well short of it.
+#' \code{ecxll5} depends on its shape parameter \code{f} as well. Note that
+#' \code{ecxhormebc4} and \code{ecxhormebc5} appear in both lists: their excess
+#' term does vanish at zero, and their denominator does not.
 #'
 #' In every case the lowest concentration is the best estimate of \code{top}
 #' the data offer, and it is closer to it than any quantile of the pooled
@@ -389,7 +341,9 @@ beta_from_mode_sd <- function(mode, spread) {
 #' whole response, is affected the same way and is the set to use on a design
 #' that does not reach its asymptote.
 #'
-#' \strong{Zeros.} A zero means something different at each end of the series,
+#' \strong{The treatment of zeros}
+#'
+#' A zero means something different at each end of the series,
 #' so the zero-bounded branch treats the two ends differently. At the control a
 #' zero is a structural one --- the zero-inflated families exist for responses
 #' where a share of the observations are zero whatever the concentration --- and
@@ -398,11 +352,10 @@ beta_from_mode_sd <- function(mode, spread) {
 #' the \code{top} mean is taken over the positive observations of the subset. At
 #' the highest concentration a zero is the endpoint responding, and it is the
 #' observation that says most about how low \code{bot} is, so the \code{bot}
-#' mean is taken over all of them. Filtering there estimated the asymptote from
-#' the survivors alone: on a \code{poisson} design of six concentrations
-#' descending to complete effect it put the \code{bot} prior's maximum density
-#' at 10.8 against a true \code{bot} of zero, where the released entry put it at
-#' 3.07. Where every observation at the highest concentration is zero the
+#' mean is taken over all of them. Filtering there would estimate the asymptote
+#' from the survivors alone, and place the prior well above a \code{bot} of
+#' zero on a design descending to complete effect. Where every observation at
+#' the highest concentration is zero the
 #' location is a tenth of the smallest positive observation in the response,
 #' which is the term the released entry already used to keep its rate finite.
 #'
@@ -410,39 +363,30 @@ beta_from_mode_sd <- function(mode, spread) {
 #' because \code{response_link_scale()} has already moved a zero onto the link
 #' scale and there is nothing left to exclude.
 #'
-#' Keeping the zeros at the \code{bot} end has a measured limitation under a
+#' Keeping the zeros at the \code{bot} end has a known limitation under a
 #' zero-inflated family, where a share of them is structural after all, so the
-#' anchor inherits the zero-inflation share as a downward bias. On a
-#' \code{nec4param} \code{zero_inflated_poisson} design with a true \code{bot}
-#' of 5, eleven concentrations by six replicates and ten seeds per level, the
-#' mean location was 3.92 at a zero-inflation of 0.2, 3.27 at 0.4 and 2.39 at
-#' 0.6. Coverage held --- none of the 30 cells put the true value outside the
-#' central 95\% of the prior --- so this is a limitation of the justification
-#' rather than a defect, and the justification is exact only for a response
-#' whose zeros all come from the count process.
+#' anchor inherits the zero-inflation share as a downward bias that grows with
+#' it. Coverage holds, so this is a limitation of the justification rather than
+#' a defect: the justification is exact only for a response whose zeros all come
+#' from the count process.
 #'
-#' \strong{The standard error is returned with the location} so that
+#' The standard error is returned with the location so that
 #' \code{regularizing_entry()} can floor the spread at it. A mean of six
 #' observations is not a precise estimate of a plateau, and a prior narrower
 #' than the noise in its own anchor is what put a true value outside an
 #' otherwise well-placed prior in the remaining cells.
 #'
-#' \strong{A binary endpoint with few replicates limits what any anchor read
-#' from the response can do.} Six replicates resolve a survival of 0.014 only to
-#' the nearest sixth, and at least one individual survives 8.1\% of the time, at
-#' which point the observed proportion is 0.167 --- twelve times the truth and
-#' the best estimate the group supplies. The regularizing entry follows it, and
-#' the standard-error floor cannot cover the gap because the cap holds the
-#' spread at the uninformative width. Over the 60 second-block lower-asymptote
-#' cells of \code{notes/scripts/prior_hard_cases.R} that happened 7 times
-#' against the 4.9 the binomial predicts. The \code{"uninformative"} entry for
-#' those families is a constant and is unaffected, which is the one respect in
-#' which reading the response is a liability rather than an improvement. The
-#' same thing on a smaller scale accounts for the twelfth of the twelve cells
-#' that script reports: a \code{zero_inflated_beta} mu block whose highest
-#' surviving concentration held two survivors, 0.420 and 0.514, so the location
-#' was their mean of 0.467 against a true 0.6, and their standard error of 0.047
-#' was below the stated spread so the floor did not bind.
+#' \strong{The limit of any anchor read from a binary endpoint}
+#'
+#' Few replicates resolve a small survival proportion only to the nearest
+#' fraction of the group, so a group in which one individual survives by chance
+#' reports a proportion many times the truth, and that is the best estimate the
+#' group supplies. The regularizing entry follows it, and the standard-error
+#' floor cannot cover the gap because the cap holds the spread at the
+#' uninformative width. The \code{"uninformative"} entry for those families is a
+#' constant and is unaffected, which is the one respect in which reading the
+#' response is a liability rather than an improvement.
+#' \code{notes/scripts/prior_hard_cases.R} exercises these cases.
 #'
 #' A group whose observations are all equal states no variability of its own,
 #' which is not the same as estimating its mean exactly. It is the ordinary case
@@ -568,8 +512,7 @@ regularizing_location <- function(predictor, response, side,
 #' and unbounded, so the response-scaled priors are the gaussian ones whatever
 #' the family is. Without this a \code{Gamma(link = "log")} fit on a response
 #' below 1 reaches \code{positive_scale()} with a response that is entirely
-#' negative and stops on "the response contains no positive values", which is
-#' the #229 failure.
+#' negative and stops on "the response contains no positive values".
 #'
 #' The mu block of a zero-inflated count family is an ordinary poisson or
 #' negbinomial mean --- the mixture changes how many zeros are observed, not the
@@ -693,125 +636,91 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' supplied on the dose scale, and \code{normal(mu, sigma)} where it spans
 #' negative values and has therefore already been log transformed by the user.
 #' The two are one rule stated on two scales. Truncation is applied by the
-#' caller, to the observed predictor range, and is unchanged.
+#' caller, to the observed predictor range.
 #'
-#' @details Until #302 there were three entries, selected by the support of the
-#' predictor: \code{gamma(5, 4/m)} where the predictor was non-negative and
-#' reached above 1, \code{beta(2, 2)} where it lay within [0, 1], and
-#' \code{normal(median(x), 10 sd(x))} where it spanned negative values, with
-#' \emph{m} the median of the distinct predictor values. Support is a property
-#' of the units a dose is recorded in, so the same experiment received priors
-#' differing roughly 300-fold in width according to whether the dose was
-#' recorded on a scale reaching above 1, on one confined to the unit interval,
-#' or logged. Measured on the \code{\link{nassarius}} contaminant A dose series,
-#' the central 95\% interval of the prior covered 1.7\% of the predictor range
-#' under the gamma entry, 81\% under \code{beta(2, 2)} rescaled to that range,
-#' and 1097\% under the normal entry before truncation, for the same experiment
-#' expressed three ways. The last is measured untruncated because after
-#' truncation it is 95\% of the range by construction, which is the point: it
-#' is effectively flat over everything the bounds permit.
-#'
-#' The gamma entry could not describe a log-spaced series at any rate. The
-#' spread of a gamma is tied to its shape, so \code{gamma(5, 4/m)} places its
-#' maximum density at \emph{m} and its central 95\% interval at 0.41\emph{m} to
-#' 2.56\emph{m} whatever the data are. It therefore reaches the highest dose
-#' tested only where that dose is within about 2.6 times the median dose, and
-#' that ratio is a property of the design: 2.0 for a series spaced evenly from
-#' zero, and 13 to 125 for the four nassarius series. No fixed shape serves
-#' both, and the shape that would is not usable. Solving for the shape whose
-#' maximum density is at \emph{m} and whose 97.5\% point is the highest dose
-#' gives 8.6 on a linear series and 1.03 on the widest nassarius series. At 1.03
-#' the mode is still at \emph{m}, by construction, but that is all that is: the
-#' density rises 5.7\% from the lowest dose to the mode and then falls to 2.8\%
-#' of its peak at the highest, and the median is 3.85, twenty-four times
-#' \emph{m} and above every dose but the top one. A prior whose mode is the
-#' median dose and whose median is above all but the highest dose is not
-#' describing the series it was built from, and it pulls the estimate towards
-#' the highest concentrations, which is the failure #273 reported.
-#'
-#' The prior built here has a monotonically decreasing density on the dose scale
-#' over the whole tested range on all four nassarius series, and that is not the
-#' same defect. A lognormal's dose-scale mode is \code{exp(mu - sigma^2)}, so
-#' any lognormal wide enough sits below the lowest dose; the density falls
-#' because the change of variable from the log scale to the dose scale
-#' redistributes it. Where the mass is, is what separates the two, and the
-#' median is the quantity that says so: on the nassarius contaminant A series
-#' the median of the untruncated prior built here is 0.223, which is
-#' \code{exp(mu)} and therefore the location the rule specifies exactly ---
-#' that series has an even number of positive doses, so it is the geometric mean
-#' of the two central ones --- against 3.85 for the shape-1.03 gamma. Over the
-#' sweep below the truncated prior CDF at the true value runs 0.43 to 0.95, so
-#' the mass is where the doses are.
+#' @details \strong{The location}
 #'
 #' \code{mu} is the median of the distinct positive predictor values, on the
-#' log scale. Distinct values rather than the observation vector so that
-#' replication does not change the prior, which is the rule #269 established
-#' for the gamma rate. Taking the median after logging returns the log of the
-#' median dose where the number of distinct positive doses is odd, and the log
-#' of the geometric mean of the two central doses where it is even, that being
-#' their midpoint on the log axis rather than on the dose axis. The prior's
-#' maximum density is therefore at that dose measured on the log scale, and the
-#' median of the untruncated prior on the dose scale is that dose. Both
-#' statements describe the untruncated prior. Truncation at the highest dose
-#' removes part of the upper tail and so pulls the median down: on
-#' \code{\link{nec_data}} the truncated median is 0.58 against a median dose of
-#' 0.88, and on the nassarius contaminant B series 1.23 against 2.00.
-#' Fisher et al. (2024) specify maximum
-#' density at the median predictor without saying which scale the density is
-#' measured on; this reads it on the log-dose scale, which is the scale a
-#' dilution series is designed on, and it is the only reading under which a
-#' prior peaking at the median can also reach 125 times it.
+#' log scale. Distinct values rather than the observation vector, so that
+#' replication does not change the prior. Taking the median after logging
+#' returns the log of the median dose where the number of distinct positive
+#' doses is odd, and the log of the geometric mean of the two central doses
+#' where it is even, that being their midpoint on the log axis rather than on
+#' the dose axis. The prior's maximum density is therefore at that dose measured
+#' on the log scale, and the median of the untruncated prior on the dose scale
+#' is that dose. Truncation at the highest dose removes part of the upper tail
+#' and so pulls the median down.
+#'
+#' Fisher et al. (2024) specify maximum density at the median predictor without
+#' saying which scale the density is measured on. This reads it on the log-dose
+#' scale, which is the scale a dilution series is designed on, and it is the
+#' only reading under which a prior peaking at the median can also reach a
+#' highest dose two orders of magnitude above it.
+#'
+#' \strong{The spread}
 #'
 #' \code{sigma} on the dose scale is set so that the central 95\% interval of
 #' the untruncated prior covers every dose tested: it is the larger of the two
-#' half-widths
-#' from \code{mu} to the ends of the logged series, divided by
+#' half-widths from \code{mu} to the ends of the logged series, divided by
 #' \code{qnorm(0.975)}. The criterion is the whole of the rule --- a prior on a
 #' threshold should not exclude a concentration the experiment applied, at
-#' either end --- and it is stated rather than a constant being chosen, so it
-#' adapts to the design. Setting \code{sigma} from half the range instead gives
-#' the interval the right width and the wrong centre wherever the series is
-#' asymmetric about its median on the log axis: on the nassarius contaminant A
-#' series that interval runs 0.005 to 9.96 against a series running 0.01 to 20,
-#' so it stops short of the highest dose applied.
+#' either end --- and stating it rather than choosing a constant is what makes
+#' it adapt to the design. Setting \code{sigma} from half the range instead
+#' gives the interval the right width and the wrong centre wherever the series
+#' is asymmetric about its median on the log axis, and can then stop short of
+#' the highest dose applied.
 #'
-#' A fixed multiple \emph{k} of \code{sd(log x)} was considered and not taken.
-#' It states no criterion, so it cannot guarantee the coverage above on a design
-#' it was not chosen against, and any multiple large enough to be broad on a
-#' densely sampled continuous predictor puts a large share of the prior below
-#' the lowest dose tested on a wide dilution series, where the lower truncation
-#' bound is the zero control. At \emph{k} = 1.5, 21\% of the truncated prior on
-#' the nassarius contaminant A series lies below its lowest dose of 0.01, and
-#' the lower end of its 95\% interval is 0.00022, a factor of 45 below anything
-#' applied. The rule adopted leaves 9.0\% below the lowest dose there and 3.3\%
-#' on a series spaced evenly from zero. Expressed as a multiple of
-#' \code{sd(log x)} it lands between 0.73 and 1.18 across the five designs
-#' measured, at 0.92 to 1.03 on the four nassarius series, and at 1.75 on
-#' \code{\link{nec_data}}, whose predictor is continuous and densely sampled, so
-#' it is not equivalent to any one constant.
+#' A fixed multiple of \code{sd(log x)} was considered and not taken. It states
+#' no criterion, so it cannot guarantee that coverage on a design it was not
+#' chosen against, and any multiple large enough to be broad on a densely
+#' sampled continuous predictor puts a large share of the prior below the lowest
+#' dose tested on a wide dilution series, where the lower truncation bound is
+#' the zero control. Expressed as a multiple of \code{sd(log x)} the rule
+#' adopted lands between about 0.7 and 1.8 depending on the design, so it is not
+#' equivalent to any one constant.
 #'
-#' \code{sigma} is therefore set by the two extreme doses and not by the spread
-#' of the series between them, which makes it sensitive to how the control is
-#' recorded. The prior is built from the concentrations as recorded, so a
-#' control entered as a nominal small positive value states that the value was
-#' applied and the prior covers it: on the nassarius contaminant A series
-#' \code{sigma} is 2.30 with the control at 0, 2.59 with it at 0.001 and 6.11
-#' with it at 1e-6. Record a control as 0, which is what \code{\link{bnec}}
-#' expects and what the truncation bound is then taken from.
+#' Because \code{sigma} is set by the two extreme doses and not by the spread of
+#' the series between them, it is sensitive to how the control is recorded. The
+#' prior is built from the concentrations as recorded, so a control entered as a
+#' nominal small positive value states that the value was applied and the prior
+#' covers it, widening \code{sigma} the smaller that value is. Record a control
+#' as 0, which is what \code{\link{bnec}} expects and what the truncation bound
+#' is then taken from.
 #'
-#' \code{sigma} on the branch for a predictor supplied already logged stays at
-#' \code{10 sd(x)}. That multiplier is the published default, every herbicide
-#' analysis in Fisher et al. (2024) uses it, and it is the branch the other two
-#' are being moved to rather than one being changed. Its location and spread are
-#' now read from the distinct values rather than from the observation vector, as
-#' on the other branch, so the entry is not identical to the released one: over
-#' \code{log(herbicide$concentration)}, 580 rows and 9 distinct values, the
-#' location changes from 1.10 to 2.30 and the spread from 26.3 to 31.5. The
+#' \code{sigma} on the branch for a predictor supplied already logged is
+#' \code{10 sd(x)}, the published default that every herbicide analysis in
+#' Fisher et al. (2024) uses. Its location and spread are read from the distinct
+#' values rather than from the observation vector, as on the other branch. The
 #' consequence of keeping the multiplier is that the same data analysed as
-#' \code{crf(x)} and as \code{crf(log(x))} still do not receive the same prior
-#' on \code{nec}. That difference is roughly tenfold, against roughly 600-fold
-#' before this change, and it is a difference in width alone rather than in the
-#' shape or the location of the prior.
+#' \code{crf(x)} and as \code{crf(log(x))} do not receive the same prior on
+#' \code{nec}; the remaining difference is one of width alone, rather than of
+#' the shape or the location of the prior.
+#'
+#' \strong{The case against a gamma on the dose scale}
+#'
+#' A gamma cannot describe a log-spaced series at any rate, because its spread
+#' is tied to its shape. \code{gamma(5, 4/m)} places its maximum density at
+#' \emph{m}, the median dose, and its central 95\% interval at 0.41\emph{m} to
+#' 2.56\emph{m} whatever the data are, so it reaches the highest dose tested
+#' only where that dose is within about 2.6 times the median. That ratio is a
+#' property of the design, running from 2 for a series spaced evenly from zero
+#' to two orders of magnitude for a wide dilution series, and no fixed shape
+#' serves both. Solving for the shape whose maximum density is at \emph{m} and
+#' whose 97.5\% point is the highest dose gives a shape near 1 on a wide series,
+#' at which the mode is still at \emph{m} by construction and nothing else is:
+#' the density is all but flat below the mode and the median sits above every
+#' dose but the top one, which pulls the estimate towards the highest
+#' concentrations.
+#'
+#' The prior built here has a monotonically decreasing density on the dose scale
+#' over a wide tested range, and that is not the same defect. A lognormal's
+#' dose-scale mode is \code{exp(mu - sigma^2)}, so any lognormal wide enough
+#' sits below the lowest dose; the density falls because the change of variable
+#' from the log scale to the dose scale redistributes it. Where the mass is is
+#' what separates the two, and the median says so: the median of the untruncated
+#' prior built here is \code{exp(mu)}, the location the rule specifies.
+#'
+#' \strong{Degenerate designs}
 #'
 #' A design with fewer than two distinct positive predictor values states no
 #' range for the prior to span and no spread for \code{sd} to measure, so
@@ -822,99 +731,56 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' there is then no dose scale to place the prior on. \code{check_data()} fails
 #' first on such data, so this is a backstop.
 #'
-#' Evidence for all of the above is prior-only; nothing was fitted. Priors were
-#' obtained through \code{\link{get_priors}} over five designs, three predictor
-#' transforms, all 12 families, both links and both prior types, and scored by
-#' the truncated prior CDF at a known parameter value. The prior is a function
-#' of the predictor alone, so 30 design by transform by parameter cells exhaust
-#' it. The defaults being replaced placed the true value outside the central
-#' 95\% of the truncated prior in 5 of those 30, every one of them a
-#' log-spaced series read on the recorded or the square-root scale; the prior
-#' built here does so in none, with the truncated CDF at the true value running
-#' 0.47 to 0.95 over the zero-control designs and 0.43 to 0.95 over all 60
-#' cells. The sweep does not cover a true threshold at the very bottom of
-#' a wide dilution series, which is checked separately: on the nassarius
-#' contaminant B series a threshold at the lowest dose applied sits at a
-#' truncated CDF of 0.030, inside the central 95\%, against 0.005 under a prior
-#' set from half the range. See #302.
+#' \strong{prior_type}
 #'
-#' \strong{prior_type.} The two default sets differ in the spread of this
-#' prior and in nothing else; the location, the distribution and the truncation
-#' are the same under both. The spread is stated as a coverage rule on each
-#' branch rather than as a multiple of the \code{"uninformative"} entry. Under
-#' \code{"regularizing"} it is \code{half_width / qnorm(0.99)} on both, so the
-#' central 98\% interval reaches the farthest concentration tested, against the
-#' central 95\% under \code{"uninformative"} on the lognormal branch. The prior
-#' remains truncated to \code{[min(predictor), max(predictor)]}, so narrowing it
-#' concentrates mass in the interior of the tested series and excludes no part
-#' of it.
+#' The two default sets differ in the spread of this prior and in nothing else;
+#' the location, the distribution and the truncation are the same under both.
+#' The spread is stated as a coverage rule on each branch rather than as a
+#' multiple of the \code{"uninformative"} entry. Under \code{"regularizing"} it
+#' is \code{half_width / qnorm(0.99)} on both, so the central 98\% interval
+#' reaches the farthest concentration tested, against the central 95\% under
+#' \code{"uninformative"} on the lognormal branch. The prior remains truncated
+#' to \code{[min(predictor), max(predictor)]}, so narrowing it concentrates mass
+#' in the interior of the tested series and excludes no part of it.
 #'
-#' \strong{Why the spread is not narrowed by regularizing_factor.} The
-#' response-scaled entries are narrowed by \code{regularizing_factor}. This one
-#' is not, and cannot be: its width is not a free choice, and #302 exists
-#' because the entry it replaced did not reach the farthest concentration
-#' tested. Narrowing the width by 0.4 puts the true threshold outside the
-#' central 95\% of the prior in 8 of the 30 design by transform by parameter
-#' cells of the audit, against none at 0.8 and 2 at 0.75. The room to narrow is
-#' therefore the difference between covering the series at one confidence level
-#' and covering it at another. 0.99 is the level chosen because it is the one a
-#' user supplying concentrations as recorded already receives, and because the
-#' audit's log-transformed cells stop staying inside the central 95\% of their
-#' own prior just above it: the \code{log_unit} \code{ec50} cell crosses 0.975
-#' at \code{q} of 0.9905, and sits at 0.9823 at 0.995 and 0.9929 at 0.999. The
-#' margin at 0.99 is not large --- that cell sits at 0.9743 --- so a narrower
-#' entry is a change to the gate, not only to the spread.
+#' The response-scaled entries are narrowed by \code{regularizing_factor}; this
+#' one is not, and cannot be. Its width is not a free choice --- the entry it
+#' replaced failed because it did not reach the farthest concentration tested
+#' --- so the room to narrow is the difference between covering the series at
+#' one confidence level and covering it at another. 0.99 is the level chosen
+#' because it is the one a user supplying concentrations as recorded already
+#' receives, and because a log-transformed series stops staying inside the
+#' central 95\% of its own prior just above it. The margin is not large, so a
+#' narrower entry is a change to that gate and not only to the spread.
 #'
-#' \strong{Why the rule is stated rather than applied as a factor.} Until #305
-#' the entry was identical under both sets, which made \code{prior_type} inert
-#' for the two parameters a user most often selects the narrower set for. #305
-#' multiplied the spread by \code{qnorm(0.975) / qnorm(0.99)}, which is 0.8425.
-#' On the lognormal branch the \code{qnorm(0.975)} cancels and the product is
-#' the coverage rule above, so that branch is unchanged by #314. The two
-#' expressions are the same quantity but not always the same double: the factor
-#' form rounds three times and the stated form once, which bounds the difference
-#' at about two units in the last place. One is what is observed. Measured over
-#' 200,000 randomly generated dilution series the largest relative difference
-#' was 2.22e-16, exactly one ulp, and the 15 significant digits
-#' \code{paste0()} writes differed on 1.6\% of them. Two prior strings of the
-#' audit are affected, both of them the nassarius contaminant A series: read on
-#' the recorded scale sigma is 1.93333703285197 against 1.93333703285198, and on
-#' the square-root scale 0.966668516425987 against 0.966668516425988. That is
-#' four of the 30 cells, since \code{nec} and \code{ec50} share a string.
-#' On the branch for a predictor the user has already
-#' logged it does not cancel, because the spread there is the constant
-#' \code{10 sd(z)} rather than a coverage width. On a 0.1 to 100 series over
-#' seven doses that spread is 24.87 against a tested range of 6.91 on the log
-#' scale. The prior is then all but flat over that range: the ratio of its
-#' density at one end of the series to its density at the other is 1.000588 at
-#' a spread of 24.87 and 1.000829 at 0.8425 of it, against 1.1737 under the
-#' stated rule. Measured on that series, the
-#' truncated prior CDF at the doses 0.3, 1, 3, 10 and 30 is 0.158, 0.333, 0.492,
-#' 0.667 and 0.827 under #305, which are the positions of those doses within the
-#' range and so are what a uniform prior gives, and 0.052, 0.226, 0.499, 0.793
-#' and 0.945 under the stated rule. \code{prior_type} was therefore inert for
-#' these two parameters on one of the two routes.
+#' Stating the rule rather than multiplying by
+#' \code{qnorm(0.975) / qnorm(0.99)} matters on the branch for a predictor the
+#' user has already logged, where the two are not the same quantity: the spread
+#' there is the constant \code{10 sd(z)} rather than a coverage width, which on
+#' a dilution series is several times the tested range. The prior is then all
+#' but flat over that range, and scaling a flat prior leaves it flat, so
+#' \code{prior_type} was inert for these two parameters on that route. On the
+#' lognormal branch the \code{qnorm(0.975)} cancels and the two expressions are
+#' algebraically the same, differing only at the last place or two of the
+#' printed prior string.
+#'
+#' \strong{predictor_scale}
 #'
 #' Under \code{predictor_scale = "auto"}, the branch is selected by
 #' \code{min(u) < 0}. This preserves the published behaviour but cannot identify
 #' a logged series whose lowest recorded concentration is at or above 1, because
-#' all of its logged values are non-negative. Such a series was logged a second
+#' all of its logged values are non-negative. Such a series is logged a second
 #' time. \code{predictor_scale = "log"} declares the scale instead and reads the
 #' supplied values directly, whatever their sign; \code{"concentration"} logs
 #' the distinct positive values and refuses a negative value.
 #'
 #' Under \code{"auto"}, the two routes agree on the spread where the series has
-#' no zero control
-#' \emph{and} its lowest tested concentration is below 1. Both conditions are
-#' needed, and neither is a property of the rule: they are the conditions under
-#' which the two routes describe the same predictor at all.
-#'
-#' The zero control is the first. This branch drops non-positive values through
-#' \code{u[u > 0]}, while a user who logs the series must substitute something
-#' for the zero first and that substituted value is then read. On
-#' \code{c(0, 0.1, 0.3, 1, 3, 10, 30, 100)} with the usual half-lowest-dose
-#' substitution the entries are \code{lognormal(1.0986, 1.5073)} and
-#' \code{normal(0.5493, 1.7434)}.
+#' no zero control \emph{and} its lowest tested concentration is below 1. Both
+#' conditions are needed, and neither is a property of the rule: they are the
+#' conditions under which the two routes describe the same predictor at all.
+#' This branch drops non-positive values through \code{u[u > 0]}, while a user
+#' who logs the series must substitute something for the zero first, and that
+#' substituted value is then read.
 #'
 #' The explicit declaration also decides whether zero is data or a control to
 #' omit. On the log scale, zero is \code{log(1)} and is retained. On the
@@ -1431,9 +1297,11 @@ define_disp_prior <- function(disp_spec, family, response) {
 #' outside its support, where the likelihood is undefined. There is no inverse
 #' link to rescue it -- that is the trade \code{\link{bnec}} makes so that
 #' \code{top}, \code{bot} and \code{nec} stay directly interpretable -- so
-#' keeping the mean in range falls entirely to the prior. See #245.
+#' keeping the mean in range falls entirely to the prior.
 #'
-#' \strong{The rule.} A group-level standard deviation is given one tenth of
+#' \strong{The rule}
+#'
+#' A group-level standard deviation is given one tenth of
 #' the observed range of \emph{the scale its parameter lives on}, following the
 #' same three-way split \code{\link{define_prior}} already makes for the
 #' curve's own parameters:
@@ -1449,13 +1317,12 @@ define_disp_prior <- function(disp_spec, family, response) {
 #'     dimensionless and take \code{normal(0, 5)} of their own, so 0.5.
 #' }
 #'
-#' \strong{It is a rule about the data, not about the parameter's own prior},
-#' and the distinction is worth keeping straight because the two coincide only
-#' for the dimensionless parameters, where \code{normal(0, 5)} gives exactly
-#' 0.5. Elsewhere the realised group-level standard deviation runs between
-#' roughly a twentieth and a third of the spread of the parameter's own prior,
-#' depending on family and data -- 0.06 of it for a \code{poisson} \code{top},
-#' 0.34 for a Beta one. Tying it to the parameter's prior instead would inherit
+#' This is a rule about the data rather than about the parameter's own prior,
+#' and the two coincide only for the dimensionless parameters, where
+#' \code{normal(0, 5)} gives exactly 0.5. Elsewhere the realised group-level
+#' standard deviation is a small fraction of the spread of the parameter's own
+#' prior, varying with family and data. Tying it to the parameter's prior
+#' instead would inherit
 #' scales chosen to be deliberately diffuse: \code{top} on a gaussian response
 #' takes \code{2.5 * sd(response)}, which is a reasonable statement of
 #' ignorance about a level and a poor one about deviation around it. The
@@ -1470,8 +1337,10 @@ define_disp_prior <- function(disp_spec, family, response) {
 #' default and changes only its scale, so this narrows a default that was never
 #' scale-aware rather than substituting a differently-shaped one.
 #'
-#' \strong{What the prior cannot do.} Every prior
-#' \code{\link{define_prior}} generates constrains its parameter to the region
+#' \strong{The limits of scaling this prior}
+#'
+#' Every prior \code{\link{define_prior}} generates constrains its parameter to
+#' the region
 #' where the model is defined: \code{beta(5, 2)} on (0, 1), \code{lb = 0} for
 #' the count and Gamma families, \code{nec} truncated to the predictor range.
 #' A group-level deviation cannot be constrained that way -- \pkg{brms} declares
@@ -1487,9 +1356,9 @@ define_disp_prior <- function(disp_spec, family, response) {
 #' \code{adapt_delta} that mitigates them and \code{vignette("example3")} for
 #' what a user should check.
 #'
-#' \strong{Where the deviation is applied multiplicatively that argument no
-#' longer holds}, and the prior is on a different scale. #257 did this for
-#' \code{ogl} and #294 for \code{top} and \code{bot}: the deviation enters as
+#' Where the deviation is applied multiplicatively that argument no longer
+#' holds, and the prior is on a different scale. This is done for \code{ogl} and
+#' for \code{top} and \code{bot}: the deviation enters as
 #' \code{p = m e^o / (1 - m + m e^o)} on (0, 1) or \code{p = m e^o} on
 #' (0, Inf), so no value of \code{o} can put the parameter outside its support
 #' and the prior on \code{o} is a statement about a ratio rather than about a
@@ -1502,16 +1371,15 @@ define_disp_prior <- function(disp_spec, family, response) {
 #' population intercept to give a prior to; see \code{\link{add_par_gl_term}}
 #' for why. \code{ogl} gets two, and that asymmetry is deliberate.
 #'
-#' \strong{prior_type.} \code{"regularizing"} multiplies every generated scale
-#' by \code{regularizing_factor}. A user reaching for the narrower set on a
+#' \strong{prior_type}
+#'
+#' \code{"regularizing"} multiplies every generated scale by
+#' \code{regularizing_factor}. A user reaching for the narrower set on a
 #' grouped fit is usually reaching for it \emph{because} of the grouping, and
 #' leaving the one parameter that provoked the choice untouched would make the
 #' argument inert where it is most wanted. The factor is the same one the
 #' response-scaled and predictor-scaled priors take, so the whole regularizing
-#' set is one number applied everywhere. It was a factor of two until #305,
-#' chosen then as "the same order as" a narrowing that ran from 2.5 to 1.3
-#' depending on the family; that narrowing is now the same in every family and
-#' there is no longer a reason for this one to differ from it.
+#' set is one number applied everywhere.
 #'
 #' The \code{ogl} \emph{intercept} gets a prior too, and needs one for a
 #' different reason. \code{ogl} enters as an offset added to the whole curve,

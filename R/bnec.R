@@ -810,10 +810,10 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
 #' surfaced once, where the fit happens. \code{\link{check_data}}'s
 #' normalisation messages are the precedent.
 #'
-#' \bold{Thresholded on the ratio, not the posterior predictive p-value},
-#' for the reason given in the summary machinery: a measured ~19\% control
-#' overshoot, reproducing across two independently fitted parameterisations,
-#' carried a \code{ppp} of about 0.82 and would never have flagged.
+#' The threshold is on the ratio rather than on the posterior predictive
+#' p-value, for the reason given in the summary machinery: a control overshoot
+#' large enough to matter carries a \code{ppp} well away from either tail and
+#' would not be flagged by it.
 #'
 #' A message rather than a warning, because a control mis-fit is a modelling
 #' result and not a fault. It is wrapped so that nothing here can fail a fit

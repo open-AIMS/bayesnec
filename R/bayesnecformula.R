@@ -1034,7 +1034,7 @@ add_formula_glef <- function(model, brmform, bnecform, data,
 #'
 #' @param formula An object of class \code{\link{bayesnecformula}}.
 #' @param model A \code{\link[base]{character}} string naming a single model,
-#' needed to expand a \code{pgl} term over the parameters that model actually
+#' needed to expand a \code{pgl} term over the parameters that model
 #' has.
 #'
 #' @details The counterpart of \code{\link{parse_disp_term}}, and added for the

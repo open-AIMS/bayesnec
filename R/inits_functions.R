@@ -319,10 +319,10 @@ refine_inits <- function(init, x, pred_fct, fct_args, limits,
 #'
 #' Under the identity link the two scales are the same and the support is the
 #' bound. Under any other link it is not, and clamping the linear predictor to
-#' the support of the mean excludes the region the curve occupies: measured on a
-#' \code{beta_binomial(link = "logit")} response of proportions from 0.083 to
-#' 0.932, whose logit-scale response runs -2.40 to 2.62, an unmapped clamp gives
-#' a band of exactly (0, 1) and so admits only means between 0.5 and 0.73.
+#' the support of the mean excludes the region the curve occupies. On a
+#' \code{logit}-linked response an unmapped clamp gives a band of exactly
+#' (0, 1) on the linear predictor, which admits only means between 0.5 and
+#' 0.73.
 #'
 #' The support is therefore mapped through the link. \code{log} takes (0, 1) to
 #' (-Inf, 0) and (0, Inf) to the whole line; \code{logit} takes (0, 1) to the
@@ -392,7 +392,7 @@ replicated_group_means <- function(x, y) {
 #' unlike the spread of the whole response it does not grow with the size of the
 #' effect.
 #'
-#' \strong{It is read over each half of the series and the larger taken.} A
+#' The spread is read over each half of the series and the larger taken. A
 #' single number is the wrong summary where the dispersion changes across the
 #' predictor, which is the ordinary case for a growth or a count endpoint and is
 #' what the \code{disp()} variance function exists for. On the one simulated
@@ -447,24 +447,17 @@ successive_difference_spread <- function(x, y) {
 #' variation of the response about the level of its own concentration, which is
 #' what the band has to allow for once every level's mean is inside it.
 #'
-#' Two alternatives were measured and are not used. The largest single group's
-#' standard deviation is the least robust of the three: on a replicated design
-#' a single aberrant observation widened the band by a factor of 6.7, against
-#' 4.1 for the pooled spread and 3.0 for \code{range(y)}, because a maximum over
-#' groups follows whichever group that observation lands in. The standard
-#' deviation of the whole response is the most robust, at 1.6, and is not a
-#' spread at all -- it grows with the size of the effect, giving a band 2.6 to
-#' 3.8 times the response range on the replicated designs measured against 1.1
-#' to 1.4 for the pooled one, so it widens the band for a reason that has
-#' nothing to do with the noise.
+#' Two alternatives were compared and are not used. The largest single group's
+#' standard deviation is the least robust of the three, because a maximum over
+#' groups follows whichever group an aberrant observation lands in. The standard
+#' deviation of the whole response is the most robust and is not a spread at
+#' all: it grows with the size of the effect, so it widens the band for a reason
+#' that has nothing to do with the noise.
 #'
-#' \strong{Where the replicates say too little} the spread is read from the
-#' response's successive differences instead; see
-#' \code{\link{successive_difference_spread}}. On the eight-concentration
-#' unreplicated design measured that gives 0.068 against 0.395 for
-#' \code{sd(y)}, and a band 1.7 times the response range against 4.4. Below
-#' three observations there are too few differences and the spread of the whole
-#' response stands in.
+#' Where the replicates say too little the spread is read from the response's
+#' successive differences instead; see
+#' \code{\link{successive_difference_spread}}. Below three observations there
+#' are too few differences and the spread of the whole response stands in.
 #'
 #' A pooled variance is not robust either, and a single aberrant observation
 #' widens the band: on a four-concentration design of six replicates, replacing
@@ -539,26 +532,24 @@ group_spread <- function(x, y) {
 #' the \code{top} prior are read from the same response, and on a declining
 #' curve both are read from the control, so the threshold lands close to the
 #' centre of the prior it is testing and the outcome is near a coin toss
-#' whatever the data show. Measured on the packaged \code{alga}
-#' \code{c_proliferum} contaminant A series under the default
-#' \code{"uninformative"} priors, the \code{top} prior is
-#' \code{normal(0.1284, 0.4044)} and the threshold \code{max(y)} is 0.1367 --
-#' 0.021 prior standard deviations from the centre -- and over 2,000 draws per
-#' equation the clause passed 46.2 to 61.4 per cent of them for every one of the
-#' fourteen equations of the declining set.
+#' whatever the data show: the threshold lands within a small fraction of a
+#' prior standard deviation of the prior's own centre, so the clause passes
+#' about half the draws for every equation of a declining set.
 #'
 #' And it gets looser as replicates are added, because an extremum drifts
 #' outward with sample size. A starting-value check that is more permissive on
 #' a larger design is the wrong way round.
 #'
-#' \strong{What the band is.} Every mean response the design estimates, widened
-#' by the variation about those means. The means are those of the replicated
+#' \strong{The definition of the band}
+#'
+#' Every mean response the design estimates, widened by the variation about
+#' those means. The means are those of the replicated
 #' predictor values, plus the two \code{\link{regularizing_location}} anchors --
 #' the mean of the observations at the end of the predictor series where the
 #' parameter is the level of the curve, the control end for \code{top} and the
-#' highest concentrations for \code{bot}. That is the anchor #307 adopted for
-#' the regularizing \code{top} and \code{bot} priors, so the search and that
-#' prior set read the ends of the curve from the same statistic. The
+#' highest concentrations for \code{bot}. That is the anchor the regularizing
+#' \code{top} and \code{bot} priors use, so the search and that prior set read
+#' the ends of the curve from the same statistic. The
 #' \code{"uninformative"} set, which is the default, locates \code{top} and
 #' \code{bot} at quantiles of the pooled response instead and is unchanged by
 #' this, so the shared definition covers one of the two prior sets.
@@ -578,67 +569,57 @@ group_spread <- function(x, y) {
 #' an extremum and does drift. See \code{\link{boundary_inset}} for what the
 #' cap is for and what it gives up.
 #'
-#' \strong{The width.} Four standard deviations. The rule is the smallest width
-#' that covers the asymptotes of the curve that generated the data in every cell
-#' measured, because a band that excludes them rejects a correct starting value
-#' and a wider one admits a starting point further into a tail. Two kinds of
-#' cell are out of scope, both because no width covers them and the rule would
-#' otherwise never be satisfied: a design whose predictor stops short of the
+#' \strong{The width}
+#'
+#' Four standard deviations. The rule is the smallest width covering the
+#' asymptotes of the generating curve in every cell of a simulation over three
+#' generating processes, three predictor grids, three replication levels, three
+#' equations, two curve shapes and two dispersion regimes. A band that excludes
+#' those asymptotes rejects a correct starting value, and a wider one admits a
+#' starting point further into a tail. Two kinds of cell are out of scope
+#' because no width covers them: a design whose predictor stops short of the
 #' crossing, and the count design described at \code{\link{boundary_inset}}
-#' whose generating \code{bot} lies below the floor. Both were confirmed
-#' width-invariant before being excluded.
+#' whose generating \code{bot} lies below the floor.
 #'
-#' Measured over 6,480 simulated responses: three generating processes ---
-#' gaussian, Beta and poisson, so that the clamp and the boundary inset are
-#' exercised and not only the band --- by three predictor grids, three
-#' replication levels, three equations, a steep and a shallow curve, constant
-#' and fivefold-rising dispersion, twenty seeds. Of the 270 in-scope cells, four
-#' covers all of them; three covers 268, two 264 and one 241. By process at a
-#' width of four: 90 of 90 gaussian, 90 of 90 Beta and 90 of 90 poisson. The
-#' excluded draws are covered at no width, which is what puts them out of scope.
+#' Coverage does not choose the spread estimator. All three candidates reach
+#' full coverage at a width of four and separate only at one, so the case for
+#' the pooled and half-series spread rests on robustness to a single aberrant
+#' observation and on the width of the band relative to the response range. See
+#' \code{\link{group_spread}}.
 #'
-#' \strong{Coverage does not choose the spread.} All three estimators measured
-#' reach 270 of 270 at a width of four and separate only at one, so the case for
-#' the pooled and half-series spread rests on the other two measurements ---
-#' robustness to one aberrant observation, and the width of the band relative to
-#' the response range --- and not on coverage. See \code{\link{group_spread}}.
+#' Four rather than five, because the width no longer has to compensate for the
+#' spread estimator. Under a whole-series spread an unreplicated gaussian design
+#' with rising dispersion needed five, missed at the lower end of the response
+#' where the noise is largest, and that cost was paid on every design including
+#' the replicated ones. Reading the spread over each half of the series and
+#' taking the larger --- \code{\link{successive_difference_spread}} --- covers
+#' that cell at four. The reduction is not felt equally: on a replicated design
+#' the pooled spread is unchanged and the band narrows by the full fifth, while
+#' on an unreplicated one most of the width the rule gives back is spent on the
+#' wider half-series estimator.
 #'
-#' \strong{Four rather than five, and why the earlier answer was five.} Under a
-#' whole-series spread on an unreplicated design the gaussian process needed
-#' five, and the cell that decided it was an unreplicated design with rising
-#' dispersion, missed at the lower end of the response where the noise is
-#' largest. That is a property of the estimator and not of the band, and it was
-#' paid on every design including the replicated ones. Reading the spread over
-#' each half of the series and taking the larger ---
-#' \code{\link{successive_difference_spread}} --- covers that cell at four, so
-#' the width no longer compensates for it.
+#' \strong{The support as a hard bound}
 #'
-#' The reduction from five to four is not felt equally. On a replicated design
-#' the pooled spread is unchanged and the band narrows by the full fifth. On an
-#' unreplicated one the half-series estimator is 7 to 21 per cent wider than the
-#' whole-series estimator it replaces, so the band narrows by 5 to 11 per cent:
-#' most of the width the rule gives back is spent on the better spread.
-#'
-#' \strong{The support is a hard bound on it.} Under the identity link
+#' Under the identity link
 #' \code{\link{bnec}} assigns, an initial curve outside the interval the
 #' likelihood permits is not a poor starting point but an invalid one: Stan
 #' rejects it and the fit ends on "Initialization failed". \code{range(y)} kept
 #' the curve inside the support by accident, because a response is inside its
 #' own support and the released criterion never looked beyond it. A band built
-#' from a location and a spread has no such guarantee -- on the
-#' \code{beta_binomial} series of #162 it reaches above 1 -- so it is
-#' intersected with \code{\link{init_support}}, which is the support of the
+#' from a location and a spread has no such guarantee, and on a
+#' \code{beta_binomial} series it can reach above 1, so it is intersected with
+#' \code{\link{init_support}}, which is the support of the
 #' mean mapped onto the scale the curve is on. The clauses that read it are
 #' strict inequalities, so the curve is required strictly inside.
 #'
-#' \strong{What the band does not fix.} Where the highest concentration has not
-#' reached the lower asymptote, every level mean and both anchors sit above the
-#' true \code{bot} and widening does not reach it: over the simulated designs
-#' whose predictor stops short of the crossing, coverage is 0.160 at a width
-#' of four and 0.172 at five, against 0.003 at one.
-#' limitation \code{\link{regularizing_location}} records for the regularizing
-#' prior. The released criterion is affected identically, and worse, because
-#' \code{min(y)} is above the true asymptote on such a design as well.
+#' \strong{The limit the band does not reach}
+#'
+#' Where the highest concentration has not reached the lower asymptote, every
+#' level mean and both anchors sit above the true \code{bot} and widening does
+#' not reach it. This is the same limitation
+#' \code{\link{regularizing_location}} records for the regularizing prior. The
+#' released criterion is affected identically, and worse, because \code{min(y)}
+#' is above the true asymptote on such a design as well.
 #'
 #' @return A \code{\link[base]{numeric}} vector of length 2, the lower and
 #' upper bound in that order.
@@ -787,22 +768,21 @@ init_limits <- function(x, y, width = 4, zero_bounded = FALSE,
 #' where 0.1 did not --- and it is the mechanism behind the one simulated cell
 #' no width covers.
 #'
-#' On a
-#' \code{zero_inflated_poisson} design of six concentrations by eight it is
-#' 0.0375 against a generating \code{bot} of 0.3, where the observation-based
-#' floor was 0.1 and the observed-value floor before that was 0.375 --- above
-#' the asymptote, which is the error the width is chosen to avoid.
+#' On a count design descending to near-complete effect this places the floor
+#' an order of magnitude below the generating \code{bot}, where a floor read
+#' from the smallest observed value can sit above it, which is the error the
+#' width is chosen to avoid.
 #'
-#' What replication changes is the spread of that floor and not its level. Over
-#' 200 seeds of that design the median floor is 0.025 at eight replicates, at
-#' eighty and at four hundred; the interquartile range falls from
-#' [0.0125, 0.0375] to [0.0223, 0.0255], and the share of seeds whose top group
-#' is entirely zero --- which puts a level mean on the boundary and disables the
-#' inset altogether --- falls from 15 per cent to none. So the floor
-#' concentrates on a tenth of the true smallest level mean rather than
-#' falling.
+#' What replication changes is the spread of that floor and not its level. Its
+#' median is unchanged as replication rises, while its interquartile range
+#' narrows and the share of designs whose top group is entirely zero --- which
+#' puts a level mean on the boundary and disables the inset altogether --- falls
+#' to none. The floor concentrates on a tenth of the true smallest level mean
+#' rather than falling.
 #'
-#' \strong{What this guards against, and what it does not.} A curve collapsing
+#' \strong{The scope of the guard}
+#'
+#' It guards against a curve collapsing
 #' onto the boundary, not a merely small value. On the hurdle block the floor is
 #' 6e-4 and the draw that failed was 1e-66, sixty-two orders of magnitude below
 #' it; a draw at 1e-5 would be accepted and gives a finite log likelihood. The
@@ -903,17 +883,15 @@ boundary_inset <- function(edge, bound, centres, spread, y, side,
 #' \code{test-nechormepwr-bounded.R} began passing when it should not.
 #' @param ... Additional arguments to \code{\link{make_inits}}.
 #'
-#' @details \strong{A chain is accepted on its own.} The four chains of a fit
-#' are drawn independently, so a chain whose curve lies in the band is a draw
-#' from the same distribution whether the other three passed or not. Requiring
-#' all of them to pass at the same time, and re-drawing the complete set when
-#' any one failed, therefore left the accepted values unchanged and raised the
-#' number of proposals to the fourth power of the per-chain rate. Measured on
-#' the packaged \code{alga} \code{c_proliferum} contaminant A series, where the
-#' per-chain rate runs 9 to 31 per cent, the released rule drew 148,397
-#' proposals over the fourteen equations of the declining set at five seeds
-#' against 237 for the change. Accepted chains are kept and only the empty slots
-#' are re-drawn. See #309.
+#' @details \strong{Each chain is accepted on its own}
+#'
+#' The four chains of a fit are drawn independently, so a chain whose curve lies
+#' in the band is a draw from the same distribution whether the other three
+#' passed or not. Requiring all of them to pass at the same time, and re-drawing
+#' the complete set when any one failed, therefore left the accepted values
+#' unchanged while raising the number of proposals to the fourth power of the
+#' per-chain rate, which on a design with a low rate is three orders of
+#' magnitude. Accepted chains are kept and only the empty slots are re-drawn.
 #'
 #' The set of accepted values is unchanged by this, exactly for a fresh
 #' proposal: the four draws are independent, so conditioning on the other three
@@ -921,32 +899,24 @@ boundary_inset <- function(edge, bound, centres, spread, y, side,
 #' \code{\link{refine_inits}} is included it is unchanged up to the weight of
 #' the fourth power of the per-chain rate, because the released loop did not
 #' refine the set it drew before entering the loop and this one refines from the
-#' first round. That weight is between 4e-5 and 9e-3 on the designs measured.
+#' first round, which is a negligible weight.
 #'
-#' \strong{The caller's stream is not reset.} \code{set.seed(NULL)} does not
-#' leave the random number stream alone: it re-initialises it from the clock and
-#' the process id. Calling it whenever no seed was supplied --- which is the
-#' default path, since \code{\link{bnec}} passes a seed only where the user
-#' gave \pkg{brms} one --- therefore discarded any \code{set.seed()} the user
-#' had run, and drew fresh initial values on every call. Two consequences, both
-#' measured on \code{nec3param} fitted to the packaged \code{nec_data} with
-#' \code{Beta(link = "identity")}, \code{iter = 1000}, \code{chains = 2},
-#' backend \code{rstan}, two calls in one session each preceded by
-#' \code{set.seed(333)}: the two \code{fixef()} tables disagreed, by 9.1e-5 in
-#' \code{nec} and 3.1e-3 in \code{beta}, and the stream was left in a
-#' different state afterwards, so every later random operation differed too.
-#' Under this change both tables and both stream states agree exactly.
+#' \strong{The caller's stream is not reset}
 #'
-#' \code{vignette("example3")} is the case #310 opened on. It runs
-#' \code{set.seed(333)} before each of nine fitting chunks, which produce
-#' eleven individual fits, and passes no \code{seed}. Each fit's initial-value
-#' search therefore discarded the stream it was handed and began from a fresh
-#' draw. That accounts for both of the outputs that differed between
-#' renders: the two \code{fixef()} tables are read off two of those fits, and
-#' the three \code{check_priors()} figures are pure functions of the fits they
-#' plot, \code{brms::hypothesis()} touching the stream only when given a seed
-#' of its own. The stream state is a second consequence and does not enter that
-#' explanation. See #310.
+#' \code{set.seed(NULL)} does not leave the random number stream alone: it
+#' re-initialises it from the clock and the process id. Calling it whenever no
+#' seed was supplied --- which is the default path, since \code{\link{bnec}}
+#' passes a seed only where the user gave \pkg{brms} one --- therefore discarded
+#' any \code{set.seed()} the user had run, drew fresh initial values on every
+#' call, and left the stream in a different state afterwards so that every later
+#' random operation differed too. Two calls in one session at the same
+#' \code{set.seed()} now agree exactly, in the estimates and in the stream
+#' state.
+#'
+#' \code{vignette("example3")} is the case that exposed this. It runs
+#' \code{set.seed()} before each fitting chunk and passes no \code{seed}, so
+#' each fit's initial-value search discarded the stream it was handed and began
+#' from a fresh draw, and its reported estimates differed between renders.
 #'
 #' Restoring the stream afterwards, as \code{weighted_draw_index()} does, would
 #' be wrong here. The search is part of fitting rather than a summary computed
@@ -954,36 +924,27 @@ boundary_inset <- function(edge, bound, centres, spread, y, side,
 #' after it by whichever backend is in use, so a fit is meant to advance the
 #' stream. What it must not do is advance it by an amount nobody can predict.
 #' \code{check_fit()} and \code{dispersion()} are on the other side of that
-#' line and do not restore; see #337.
+#' line and do not restore.
 #'
-#' \strong{The cap stays at 1e4.} It is now exactly \code{n_trials} rounds
-#' where the released loop allowed one more --- it drew the first set before the
-#' loop and then tested \code{n_t <= n_trials} from \code{n_t = 1} --- so the
-#' released bound was \code{n_trials + 1} sets.
+#' \strong{The cap of 1e4 proposals}
 #'
-#' #266 objects that this ran 561 seconds for a
-#' single model with no output, and proposes a smaller cap on the grounds that
-#' the outcome after exhausting it -- Stan's own random initialisation -- is
-#' available at the first attempt. Measured before changing it, and that
-#' reasoning does not hold: a search that succeeds is not equivalent to one that
-#' stops early. On a twenty-row, four-dose dataset \code{nec4param} needed 250
-#' attempts to succeed at one seed and more than 1000 at two others, while
-#' \code{nec3param} on the same data never succeeded at all. A cap of 1e3 would
-#' therefore have turned working fits into random initialisation, silently, on
-#' exactly the small designs where good initial values matter most. Accepting
-#' chains individually removes the need to approach the cap rather than
-#' lowering it.
+#' A smaller cap would be wrong, because a search that succeeds is not
+#' equivalent to one that stops early. On a small design a four-parameter
+#' equation can need several hundred attempts to succeed at one seed and more
+#' than a thousand at another, so a cap of 1e3 would silently turn working fits
+#' into Stan's own random initialisation on exactly the designs where good
+#' initial values matter most. Accepting chains individually removes the need to
+#' approach the cap rather than lowering it.
 #'
-#' \strong{A wall-clock bound was tried and removed.} It made the number of
-#' attempts, and so the initial values, and so the fit, a function of machine
-#' load: the search needs about 3.6 s idle on one packaged case and exceeded a
-#' 10 s budget under a parallel test run on the same machine. A fit whose
-#' starting values depend on what else is running is not reproducible, and #266
-#' asked for time not to be wasted, not for results to change. What is fixed
-#' instead is the actual complaint: a user watching a long search could not tell
-#' it from a hang. It now says so while it runs.
+#' A wall-clock bound was tried and removed. It made the number of attempts, and
+#' so the initial values, and so the fit, a function of machine load, and a fit
+#' whose starting values depend on what else is running is not reproducible.
+#' What a long search needs is to be distinguishable from a hang, so it reports
+#' progress while it runs.
 #'
-#' \strong{The fallback is all or nothing.} Where the cap is reached with any
+#' \strong{The fallback is all or nothing}
+#'
+#' Where the cap is reached with any
 #' slot still empty the whole fit is handed to Stan rather than half-primed.
 #' There are no values for the empty slots to supply, and starting some chains
 #' from the search and the rest from Stan's uniform draw would make the chains
@@ -1105,7 +1066,7 @@ make_good_inits <- function(model, x, y, family, n_trials = 1e4, seed = NULL,
 #' be the one used for the response block. Defaults to \code{NULL}, i.e. the
 #' same as \code{model}.
 #'
-#' @details Each block is primed from the view of the data it actually models,
+#' @details Each block is primed from the view of the data it models,
 #' then the two are merged chain-wise. The mu block sees survivors only; the hu
 #' block sees the proportion surviving at each unique predictor value, because
 #' the sub-model is written as \code{1 - survival} and so the curve being

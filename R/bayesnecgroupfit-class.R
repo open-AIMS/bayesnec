@@ -68,7 +68,7 @@ group_lapply <- function(object, fun, ...) {
 #' @details The columns are taken from the \emph{names} of the vector each
 #' underlying method returns, not from its positions. \code{nec()} and
 #' \code{ecx()} both take \code{prob_vals}, so the returned vector is
-#' \code{length(prob_vals)} long and named for the quantiles actually asked
+#' \code{length(prob_vals)} long and named for the quantiles asked
 #' for; reading positions 1 to 3 silently truncated a longer request and
 #' mislabelled a reordered one.
 #'

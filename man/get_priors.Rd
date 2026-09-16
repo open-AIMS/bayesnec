@@ -97,7 +97,7 @@ one outside that set.
 
 This is why \code{get_priors} is not \code{\link{pull_prior}}, which returns
 the whole \code{brmsprior} a fit carries -- \pkg{brms} defaults, duplicated
-vectorized rows and all -- and is for looking at rather than for feeding back
+vectorised rows and all -- and is for looking at rather than for feeding back
 in.
 }
 \examples{

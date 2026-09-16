@@ -232,7 +232,7 @@ disp_pars <- function(spec) {
 #' fitted mean. It only has to be near the data for the centring to do its job,
 #' so a robust summary is preferred to an exact one: the median for the linear
 #' form, and the geometric median for the log forms, which is the median on the
-#' scale the covariate is actually measured on. Both are computed once from the
+#' scale the covariate is measured on. Both are computed once from the
 #' data and baked into the formula as literals.
 #'
 #' @importFrom stats median

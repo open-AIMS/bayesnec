@@ -194,8 +194,8 @@ NULL
 #' substitution at a boundary is the practice \code{vignette("example6")} argues
 #' against.
 #'
-#' \bold{The two species grow on very different scales,} which is why they were
-#' run over different exposure durations --- seven days for
+#' The two species grow on very different scales, which is why they were run
+#' over different exposure durations --- seven days for
 #' \emph{C. proliferum} against three for \emph{R. salina}. Symbiodiniaceae
 #' divide slowly, and control cultures multiplied only about 2--3 fold over the
 #' whole exposure, against about 17--73 fold for \emph{R. salina}; control

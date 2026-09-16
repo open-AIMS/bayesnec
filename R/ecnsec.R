@@ -20,7 +20,7 @@
 #' @param ... Further arguments to pass to class specific methods.
 #'
 #' @details NSEC is no-effect toxicity metric that estimates the concentration 
-#' at which the modeled mean response is statistically indistinguishable from 
+#' at which the modelled mean response is statistically indistinguishable from 
 #' the mean control response. See the detailed derivation in
 #' Fisher and Fox (2023). Like NOEC, NSEC estimates will have an associated 
 #' effect size. This function estimates the effect of a given NSEC estimate.

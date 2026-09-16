@@ -241,7 +241,7 @@ check_disp_finite <- function(formula, data) {
 #' \pkg{brms} message about a formula the user did not write.
 #'
 #' The set is refused in full whatever the formula is, rather than only where
-#' the term would actually be generated. Which terms a fit generates depends on
+#' the term would be generated. Which terms a fit generates depends on
 #' the family and on the group-level structure, so a conditional refusal would
 #' accept a column on one call and refuse it on the next with the same data.
 #'

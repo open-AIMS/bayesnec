@@ -196,14 +196,13 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
 #' statistic differs from the simulated one by more than
 #' \code{fit_ratio_cutoff} either way.
 #'
-#' \bold{Thresholded on the ratio, not the posterior predictive p-value.} This
-#' is settled and the evidence is specific: measured twice on independently
-#' fitted parameterisations of the same simulated data, the simulated control
-#' mean came out at 5.5--5.6 against an observed 4.50 and a true 4.77 --- a
-#' ~19\% overshoot that reproduces across fits and is a property of the curve
-#' shape rather than noise. \bold{Both p-values were about 0.82 and neither came
-#' near flagging.} A \code{ppp} threshold would stay silent on exactly the case
-#' this exists to catch, and silence reads as a pass.
+#' The threshold is on the ratio rather than on the posterior predictive
+#' p-value. A control overshoot of about a fifth, reproducing across
+#' independently fitted parameterisations of the same data and so a property of
+#' the curve shape rather than of noise, carries a \code{ppp} well away from
+#' either tail and would not be flagged by it. A \code{ppp} threshold would stay
+#' silent on exactly the case this exists to catch, and silence reads as a
+#' pass.
 #'
 #' The control matters more than the other groups because \code{\link{nsec}}
 #' reads its reference from the control posterior, so mis-stating control
