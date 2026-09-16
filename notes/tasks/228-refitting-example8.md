@@ -41,6 +41,11 @@ the container to make that possible; both default as before when unset.
 | 2026-09-16, log axis | `units-2.1.3.38` | `store-2.1.3.38` | three coral calls to `log(diuron_adj)`; bayesnec 2.1.3.37 to 2.1.3.38 |
 | 2026-09-16, defaults | `units-defaults` | `store-defaults` | all nine calls drop `iter`, `warmup` and `control` |
 
+No further re-fit has been needed since. `screen_models()`, the heatmap, the
+`ecx()` call for the herbicide EC50s and the group marks on `fig-ogl` all operate
+on fitted objects or on the data, so they change the render and not the store.
+Only a change inside `bnec()` or `bnec_group()` re-keys a call.
+
 ## The sampling defaults
 
 `bnec()` defaults to `iter = 1e4` and `warmup = floor(iter / 5) * 4`, which is
@@ -163,6 +168,24 @@ method shows its environment, so the rendered vignette includes a line reading
 render and means nothing to a reader. It predates this branch and is a property
 of the print method rather than of the vignette, so it is recorded here rather
 than worked around in the chunk.
+
+## The sampler screen
+
+`example8` reported model-averaged estimates without calling `check_sampling()`
+until 2026-09-17. Measured on the store at `bnec()`'s defaults, the weight
+sitting on equations that fail the screen was 0.170 for `fit_plain`, 0.122 for
+`fit_ogl`, 0.617 for `fit_pooled`, 0.000 for `fit_plate` and 0.030 for
+`fit_pam`. `ecxexp` in `fit_ogl` held 0.122 with 159 divergent transitions, and
+its `top * exp(-beta * x)` form is unbounded as concentration falls on a logged
+predictor: it put the lower bound of that fit's EC10 at 0.015 mg/L, below the
+lowest tested concentration, and produced a credible band reaching four million
+relative light units where the data top out near six hundred thousand.
+
+Screening changes `fit_pooled` EC10 from 0.328 to 0.279 mg/L and its N(S)EC from
+0.197 to 0.162, and raises `fit_ogl`'s EC10 lower bound from 0.015 to 0.152. The
+five single-object fits are screened in the vignette. The two `bnec_group()`
+fits are not, because `check_sampling()` and `screen_models()` refuse a
+`bayesnecgroupfit`; that is #376.
 
 ## The replacement of `plot()`
 
