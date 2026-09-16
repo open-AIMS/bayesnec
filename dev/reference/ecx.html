@@ -18,7 +18,7 @@ bayesnecfit or bayesnecfit."><meta property="og:image" content="https://open-aim
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.36</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.37</span>
       </span>
     </div>
 
@@ -166,13 +166,19 @@ return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
 
 
 <dt id="arg-dpar">dpar<a class="anchor" aria-label="anchor" href="#arg-dpar"></a></dt>
-<dd><p>For a joint two-block fit only (<code>family = "hurdle_gamma"</code>
-or <code>"zero_inflated_beta"</code>), the parameter block to report:
+<dd><p>For a joint two-block fit only (<code>family = "hurdle_gamma"</code>,
+<code>"zero_inflated_beta"</code>, <code>"hurdle_poisson"</code> or
+<code>"hurdle_negbinomial"</code>), the parameter block to report:
 <code>"mu"</code> for the response block, or <code>"hu"</code> (<code>"zi"</code> for the
 zero-inflated families) for survival. Defaults to <code>NULL</code>, which gives
-the combined endpoint <code>mu * (1 - hu)</code>. The zero-probability block is
+the expected positive response multiplied by <code>1 - hu</code>. For continuous
+hurdles the positive response is <code>mu</code>; for count hurdles it is
+<code>E[Y | Y &gt; 0]</code>. The zero-probability block is
 inverted to survival before computing, so ECx keeps its usual meaning of a
-percentage decline from the fitted control value. See Details.</p></dd>
+percentage decline from the fitted control value. See Details.
+For the count hurdles, <code>"mu"</code> is converted to the positive-count mean
+<code>E[Y | Y &gt; 0]</code> so it matches the growth component returned by
+<code><a href="bnec_hurdle.html">bnec_hurdle</a></code>.</p></dd>
 
 </dl></div>
     <div id="value">

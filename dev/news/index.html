@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.36</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.37</span>
       </span>
     </div>
 
@@ -89,6 +89,12 @@
 
     <div class="section level2">
 <h2 class="page-header" data-toc-text="2.2.0" id="bayesnec-220">bayesnec 2.2.0<a class="anchor" aria-label="anchor" href="#bayesnec-220"></a></h2>
+<div class="section level3">
+<h3 id="count-hurdles-2-2-0">Count hurdles<a class="anchor" aria-label="anchor" href="#count-hurdles-2-2-0"></a></h3>
+<ul><li><p><code>hurdle_poisson</code> and <code>hurdle_negbinomial</code> are available as joint two-block families where the observed zeros are structural. They differ from <code>zero_inflated_poisson</code> and <code>zero_inflated_negbinomial</code>, whose zeros can arise from either component and whose likelihood therefore does not separate into independent response and zero-probability blocks (<a href="https://github.com/open-aims/bayesnec/issues/209" class="external-link">#209</a>).</p></li>
+<li><p><code><a href="../reference/bnec_hurdle.html">bnec_hurdle()</a></code> fits an automatically selected or explicitly supplied <code>poisson</code> or <code>negbinomial</code> growth component with <code>trunc(lb = 1)</code>. The earlier untruncated fit estimated the mean conditional on a positive observation with an ordinary count likelihood and was biased where the mean approached zero. The factorised route requires brms 2.23.2 or later because earlier releases omitted the inclusive lower bound from <code><a href="https://mc-stan.org/rstantools/reference/log_lik.html" class="external-link">log_lik()</a></code>. Earlier brms versions now stop before fitting and direct the caller to the corresponding joint hurdle family. <code>bayesnec</code> computes the conditional-positive expectation in closed form rather than using brms’s finite-grid approximation, and refuses <code>cens()</code> on count growth because brms does not condition the censored likelihood on the truncation bound (<a href="https://github.com/open-aims/bayesnec/issues/249" class="external-link">#249</a>; paul-buerkner/brms#1903, <a href="https://github.com/open-aims/bayesnec/issues/1923" class="external-link">#1923</a>).</p></li>
+<li><p>The response-of-survivors component has one definition across the two routes: <code>ecx(dpar = "mu")</code> and <code>nsec(dpar = "mu")</code> convert a joint count hurdle’s underlying count mean to <code>E[Y | Y &gt; 0]</code>, which is the quantity returned by the factorised truncated growth fit. The joint fit’s <code>top</code> and <code>bot</code> parameters remain on the underlying count-mean scale (<a href="https://github.com/open-aims/bayesnec/issues/249" class="external-link">#249</a>).</p></li>
+</ul></div>
 <div class="section level3">
 <h3 id="grouped-plots-2-2-0">Grouped plots<a class="anchor" aria-label="anchor" href="#grouped-plots-2-2-0"></a></h3>
 <ul><li>

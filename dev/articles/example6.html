@@ -38,7 +38,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.36</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.37</span>
       </span>
     </div>
 
@@ -212,7 +212,7 @@ response, not in structure.</p>
 <p>Throughout, the two components are referred to as “growth” and
 “survival”, after the case these models were written for. Nothing in the
 implementation is specific to that reading: any process producing exact
-zeros alongside a continuous response has the same structure.</p>
+zeros alongside a positive response has the same structure.</p>
 <p>To run this vignette we also need</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/">bayesnec</a></span><span class="op">)</span></span>
@@ -286,6 +286,45 @@ express. The two are intended to be used in sequence, and
 with <code><a href="../reference/bnec_hurdle.html">bnec_hurdle()</a></code>, select a combination from
 <code><a href="../reference/crossed_weights.html">crossed_weights()</a></code>, then refit that combination jointly with
 whatever shared structure is required.</p>
+<div class="section level3">
+<h3 id="count-responses">Count responses<a class="anchor" aria-label="anchor" href="#count-responses"></a>
+</h3>
+<p>A structural zero in a count response uses
+<code>hurdle_poisson</code> or <code>hurdle_negbinomial</code>, not the
+similarly named zero-inflated family. A hurdle states that every zero
+came from the survival process. Its positive-count likelihood is
+therefore conditional on <code>Y &gt; 0</code>, and the two blocks
+factorise. <code><a href="../reference/bnec_hurdle.html">bnec_hurdle()</a></code> applies <code>trunc(lb = 1)</code>
+internally to the growth fit, while the joint hurdle families include
+the same normalisation in their density.</p>
+<p><code>zero_inflated_poisson</code> and
+<code>zero_inflated_negbinomial</code> apply where the source of a zero
+is unknown. An observed zero can then arise from either the count
+distribution or the added zero-probability component. The likelihood
+contains both possibilities in one mixture term and cannot be fitted as
+two independent models. <code>bayesnec</code> fits the
+concentration-response curve to the count mean and holds the
+zero-inflation probability constant for these families.</p>
+<p>For count hurdles, the response of survivors is
+<code>E[Y | Y &gt; 0]</code>. <code>bayesnec</code> computes that
+quantity exactly from the truncated growth fit’s underlying count
+parameters. This avoids the finite upper grid that <code>brms</code>
+uses for expected predictions from a general truncated discrete model,
+which can omit a substantial negative-binomial tail. For a joint count
+hurdle, <code>ecx(dpar = "mu")</code> and <code>nsec(dpar = "mu")</code>
+convert the underlying Poisson or negative-binomial mean to the same
+conditional mean. The fitted <code>top</code> and <code>bot</code>
+parameters of the joint equation remain on the underlying count-mean
+scale.</p>
+<p>The factorised count route requires brms 2.23.2 or later. Earlier
+brms versions used a different lower-bound convention in
+<code><a href="https://mc-stan.org/rstantools/reference/log_lik.html" class="external-link">log_lik()</a></code>, so <code><a href="../reference/bnec_hurdle.html">bnec_hurdle()</a></code> refuses the route
+before fitting and points to the corresponding joint hurdle family.
+Count growth cannot currently be combined with <code>cens()</code>:
+<code>brms</code> does not condition a censored count contribution on
+the truncation bound, and <code><a href="../reference/bnec_hurdle.html">bnec_hurdle()</a></code> refuses that
+combination before fitting.</p>
+</div>
 <div class="section level3">
 <h3 id="the-second-block-describes-survival-not-mortality">The second block describes survival, not mortality<a class="anchor" aria-label="anchor" href="#the-second-block-describes-survival-not-mortality"></a>
 </h3>
