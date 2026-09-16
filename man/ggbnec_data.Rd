@@ -28,15 +28,18 @@ values.}
 \item{...}{Additional arguments to be passed to \code{\link{ecx}}. By
 default, function \code{\link{ecx}} returns EC10.}
 
-\item{group}{An optional character string naming a group-level variable in
-the fitted formula. When supplied, its values are returned in a column named
-\code{group}, with the source name in attribute \code{"group_var"}. A
+\item{group}{An optional character string naming a categorical variable in
+the data supplied to \code{\link{bnec}}. When supplied, its values are
+returned in a column named \code{group}, with the source name in attribute
+\code{"group_var"}. Attribute \code{"group_fitted"} states whether the
+fitted formula includes it as a group-level variable. A
 \code{bayesnecgroupfit} returns its fitted grouping variable automatically.}
 }
 \value{
 A \code{\link[base]{data.frame}}. When \code{group} is supplied, or
 \code{x} is a \code{bayesnecgroupfit}, the frame includes a \code{group}
-column and a \code{"group_var"} attribute.
+column and a \code{"group_var"} attribute. A \code{bayesnecgroupfit} also
+includes a \code{panel} column containing the level fitted in each panel.
 }
 \description{
 Creates the data.frame for plotting with \code{\link{autoplot}}.

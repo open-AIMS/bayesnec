@@ -121,5 +121,6 @@ pull_out <- function(manec, model, loo_controls, ...) {
   # attempted is still accurate for the object being returned. Read from the
   # element rather than through failed_models() so that an object fitted before
   # the record existed yields NULL and is left untouched.
-  attach_failed_models(out, manec[["failed_models"]])
+  out <- attach_failed_models(out, manec[["failed_models"]])
+  carry_retained_data(out, manec)
 }

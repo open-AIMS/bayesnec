@@ -877,6 +877,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     out <- attach_failed_models(out, failed)
     out <- attach_bnec_record(out, requested_models, model,
                               excluded_models, substitutions)
+    out <- retain_unused_data(out, data)
     message_control_fit(out)
     out
   } else {
@@ -891,6 +892,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     out <- allot_class(mod_fit, c("bayesnecfit", "bnecfit"))
     out <- attach_bnec_record(out, requested_models, model,
                               excluded_models, substitutions)
+    out <- retain_unused_data(out, data)
     message_control_fit(out)
     out
   }

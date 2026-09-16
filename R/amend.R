@@ -403,7 +403,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
       bnec_rec$substitutions
     )
   }
-  out
+  carry_retained_data(out, object)
 }
 
 #' The candidate set an amended object was asked for

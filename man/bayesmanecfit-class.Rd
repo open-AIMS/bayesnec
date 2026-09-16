@@ -26,6 +26,12 @@ available methods.
 \item{\code{mod_fits}}{A \code{\link[base]{list}} of fitted model outputs of class
 \code{prebayesnecfit} for each of the fitted models.}
 
+\item{\code{retained_data}}{A \code{\link[base]{data.frame}} containing columns of
+the data supplied to \code{\link{bnec}} that \code{brm()} omitted from its
+stored model frame. The columns are stored once for the model set, in
+fitted-data order. The element is absent when every supplied column was used
+by the fit.}
+
 \item{\code{success_models}}{A \code{\link[base]{character}} vector indicating the
 name of the successfully fitted models.}
 

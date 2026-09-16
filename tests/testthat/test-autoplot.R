@@ -87,15 +87,78 @@ test_that("model-averaged plotting retains a selected fitted grouping", {
   expect_identical(rlang::as_label(raw_points[[1]]$mapping$fill), "group")
 })
 
-test_that("group must select a group-level variable from the formula", {
+test_that("an unfitted categorical column groups raw observations", {
+  skip_on_cran()
+  fit <- unfitted_group_plot_fit()
+  grouped <- suppressMessages(ggbnec_data(fit, group = "climate",
+                                          add_nec = FALSE))
+  raw <- grouped[!is.na(grouped$y_r), ]
+  expect_equal(raw$group, fit$retained_data$climate)
+  expect_identical(attr(grouped, "group_var"), "climate")
+  expect_false(attr(grouped, "group_fitted"))
+
+  plot <- suppressMessages(
+    autoplot(fit, group = "climate", group_aes = "colour", nec = FALSE)
+  )
+  expect_identical(plot$labels$fill, "climate (not fitted)")
+  expect_identical(plot$labels$colour, "climate (not fitted)")
+  expect_false(any(vapply(
+    plot$layers, function(layer) inherits(layer$stat, "StatSummary"),
+    logical(1)
+  )))
+  expect_error(
+    autoplot(fit, group = "climate", nec = FALSE),
+    "only use `group_aes = \\\"colour\\\"`"
+  )
+})
+
+test_that("retained columns are stored once in fitted-row order", {
+  skip_on_cran()
+  fit <- unfitted_group_plot_fit()
+  expect_named(fit$retained_data, "climate")
+  expect_identical(rownames(fit$retained_data), rownames(fit$fit$data))
+  expect_false("climate" %in% names(fit$fit$data))
+})
+
+test_that("a model set and a pulled fit retain an unfitted grouping", {
+  skip_on_cran()
+  source <- manec_example$mod_fits[[1]]$fit$data
+  source$climate <- factor(rep(c("ambient", "warm", "hot"),
+                               length.out = nrow(source)))
+  object <- bayesnec:::retain_unused_data(manec_example, source)
+  grouped <- suppressMessages(ggbnec_data(object, group = "climate",
+                                          add_nec = FALSE))
+  expect_equal(grouped$group[!is.na(grouped$y_r)], source$climate)
+  one <- suppressMessages(pull_out(object, "nec4param"))
+  expect_identical(one$retained_data, object$retained_data)
+  expect_no_error(suppressMessages(
+    autoplot(one, group = "climate", group_aes = "colour", nec = FALSE)
+  ))
+
+  amended <- suppressWarnings(suppressMessages(
+    amend(object, drop = "ecx4param")
+  ))
+  expect_identical(amended$retained_data, object$retained_data)
+  other <- suppressMessages(pull_out(object, "ecx4param"))
+  combined <- suppressWarnings(suppressMessages(c(one, other)))
+  expect_identical(combined$retained_data, object$retained_data)
+})
+
+test_that("group names and types are validated against both data sources", {
   skip_on_cran()
   fit <- grouped_plot_fit()
   expect_error(ggbnec_data(fit, group = "missing"),
-               "must name a group-level variable")
+               "fitted formula or a column retained")
   expect_error(ggbnec_data(nec4param, group = "x"),
-               "formula includes a group-level variable")
+               "must be categorical")
   expect_error(ggbnec_data(fit, group = character()),
                "one non-empty column name")
+
+  d <- fit$fit$data
+  d$continuous <- seq_len(nrow(d))
+  fit <- bayesnec:::retain_unused_data(fit, d)
+  expect_error(ggbnec_data(fit, group = "continuous"),
+               "must be categorical")
 })
 
 test_that("group does not consume an existing positional dots argument", {
@@ -209,12 +272,46 @@ test_that("grouped fits return and plot one panel per fitted level", {
   expect_equal(levels(dat$group), c("a", "b"))
   expect_equal(as.integer(table(dat$group)), rep(nrow(dat) / 2, 2))
   expect_identical(attr(dat, "group_var"), "site")
-  expect_error(ggbnec_data(object, group = "plate"),
-               "grouped by \"site\"")
+  selected <- suppressMessages(ggbnec_data(object, group = "plate",
+                                            add_nec = FALSE))
+  expect_identical(attr(selected, "group_var"), "plate")
+  expect_identical(attr(selected, "panel_var"), "site")
+  expect_true(attr(selected, "group_fitted"))
 
   plot <- suppressMessages(autoplot(object, nec = FALSE))
   panels <- levels(plot$layers[[1]]$data$model)
   expect_equal(panels, c("site = a", "site = b"))
+})
+
+test_that("grouped fits resolve an unfitted grouping within each level", {
+  skip_on_cran()
+  fit_a <- unfitted_group_plot_fit()
+  fit_b <- unfitted_group_plot_fit(values = rep(
+    c("warm", "hot"), length.out = nrow(nec4param$fit$data)
+  ))
+  object <- structure(
+    list(fits = list(a = fit_a, b = fit_b), group_var = "site",
+         levels = c("a", "b")),
+    class = c("bayesnecgroupfit", "bnecfit")
+  )
+  dat <- suppressMessages(ggbnec_data(object, group = "climate",
+                                      add_nec = FALSE))
+  expect_equal(
+    as.character(dat$group[dat$panel == "a" & !is.na(dat$y_r)]),
+    as.character(fit_a$retained_data$climate)
+  )
+  expect_equal(
+    as.character(dat$group[dat$panel == "b" & !is.na(dat$y_r)]),
+    as.character(fit_b$retained_data$climate)
+  )
+  expect_false(attr(dat, "group_fitted"))
+
+  plot <- suppressMessages(
+    autoplot(object, group = "climate", group_aes = "colour", nec = FALSE)
+  )
+  expect_identical(plot$labels$fill, "climate (not fitted)")
+  expect_equal(levels(plot$layers[[1]]$data$model),
+               c("site = a", "site = b"))
 })
 
 test_that("the nec annotation is present by default and suppressible", {
