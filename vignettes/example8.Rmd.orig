@@ -254,10 +254,29 @@ route for these.
 ## The assay
 
 The `lum31` dataset records acute copper and zinc toxicity tests using the
-Lum-31 bioluminescent bacterial assay of @luter2025. A suspension of marine
-bacteria is dosed in a microplate well and its light output read after a fixed
-exposure; light falls as the cells are inhibited, so luminescence in relative
-light units is the response and no separate endpoint is scored.
+bioluminescent bacterial assay of @luter2025. The test organism is *Vibrio
+azureus* strain Lum-31, a tropical bacterium chosen because the established
+bacterial assays use the temperate *Aliivibrio fischeri* and are run at
+temperatures a tropical marine assessment cannot use; these tests are at 27 °C.
+
+Light is the response because light is a by-product of metabolism. Luciferase
+oxidises reduced flavin mononucleotide and an aldehyde in the presence of
+oxygen, and the cell regenerates the substrate through further oxidation, so
+anything that interferes with electron transport reduces the light emitted.
+Nothing separate is scored: the endpoint is the reading itself, in relative
+light units.
+
+Two features of the assay design decide how the response behaves, and both
+matter below. Twenty microlitres of cell suspension goes into 180 µL of sample
+in a white 96-well plate, at a cell density @luter2025 selected to keep control
+luminescence above 250 000 relative light units while still resolving an effect
+threshold --- so the lower end of the control readings is a design target rather
+than an accident. And the plate reader sets its gain per read, which is where
+the between-plate differences this vignette is largely about come from.
+
+Copper and zinc are reference toxicants here rather than contaminants under
+investigation, run repeatedly to establish that the assay is reproducible:
+sixteen copper plates and seventeen zinc plates.
 
 ```{r lum31-str}
 data(lum31)
@@ -317,7 +336,10 @@ between batches and the plates are not on a common grid.
 ## Normalising to a control
 
 The analysis published with these data divides each plate twice before fitting.
-From `bayesNEC_30m_final.R` in the accompanying repository:
+@luter2025 state it in the methods --- the median of the four control wells is
+used to model the inverse proportion of light lost relative to the control, and
+that quantity is then divided by the maximum luminescence --- and
+`bayesNEC_30m_final.R` in the accompanying repository does it:
 
 ```r
 Rep1B_y30_qtox  = (1 - (median(CuDat1[1:4, 4]) - Rep1B_y30) / median(CuDat1[1:4, 4]))
@@ -361,6 +383,14 @@ Their recommended approach is to model the raw response and derive inhibition
 from the fitted control, treating the control level as a parameter. In
 `bayesnec` that parameter is `top`, and `ecx()` is measured from the modelled
 control, so a `bnec()` fit on raw luminescence is that approach.
+
+The published estimates are the comparison for everything fitted below. Fitting
+each plate separately on the normalised response, @luter2025 report EC50s
+averaging 0.109 mg/L for copper at 15 minutes (standard deviation 0.036, range
+0.069 to 0.201 over sixteen plates) and 0.085 at 30 minutes; for zinc, 1.546 at
+15 minutes (0.284, 1.207 to 2.076 over seventeen plates) and 1.013 at 30
+minutes. The spread across plates is what a per-plate analysis leaves as
+variation between tests, and what a plate term estimates instead.
 
 ### A group-level term as the division
 
@@ -798,12 +828,29 @@ to place a threshold or a midpoint but not enough to place both asymptotes as
 well. Nothing refuses: every equation is offered, each returns an object, and the
 divergent transitions are the only sign that the design was too narrow for it.
 
-`coral_colour` and `coral_pam` are two endpoints of one 14-day exposure of
-*Acropora millepora* to the herbicide diuron under three climate scenarios
-[@flores2021], reported at
-<https://doi.org/10.1016/j.marpolbul.2021.112582>. Both are
-within-concentration designs, a chamber sitting at one concentration, and they
-differ in the width of the design and in nothing else that matters here.
+`coral_colour` and `coral_pam` are two endpoints of one exposure of *Acropora
+millepora* to the herbicide diuron under three climate scenarios [@flores2021],
+reported at <https://doi.org/10.1016/j.marpolbul.2021.112582>.
+
+The scenarios are not years but combinations of temperature and dissolved carbon
+dioxide, labelled by the year they represent: 28.1 °C at 397 ppm for present-day
+conditions, and RCP8.5 projections of 29.1 °C at 680 ppm and 30.2 °C at 858 ppm.
+Three replicate chambers were run at each combination of scenario and
+concentration, with four coral fragments in each. The concentrations are
+relevant to where the corals live: diuron has been measured in the Great Barrier
+Reef lagoon at up to 0.778 µg/L.
+
+The two endpoints are different measurements on the same fragments. `yield` is
+the effective quantum yield of photosystem II in the symbiotic dinoflagellates,
+read by pulse-amplitude modulated fluorometry. `proportion` is a colour index
+standing in for bleaching: a photograph of about half a square centimetre of
+live tissue, reduced to its mean grey pixel value and then rescaled between the
+smallest and largest values observed. That rescaling is worth remembering ---
+one observation is bound to sit on 1, and one does.
+
+Both are within-concentration designs, a chamber sitting at one concentration,
+and they differ in the width of the design and in nothing else that matters
+here.
 
 ```{r coral-design}
 data(coral_colour)
@@ -882,11 +929,21 @@ endpoint.
 The scenarios separate in the colour endpoint and barely at all in yield. Mean
 colour at 2.9 µg/L runs 0.728, 0.611 and 0.456 from 2018 to 2100, and at 29
 µg/L 0.173, 0.066 and 0.045. Mean yield differs by less than 0.015 between
-scenarios at every concentration below 9.6. Climate is a fixed set of three
-levels of interest in themselves, so the route for it is `bnec_group()`, the
-route the factor covariates take. The fits below pool over it. What they are
-used to show is how the number of curve parameters behaves against a design of
-a given width, and one curve per endpoint shows that most directly.
+scenarios at every concentration below 9.6.
+
+@flores2021 reach the same conclusion from their own fits. Their colour index
+EC50 falls from 6.05 µg/L under present-day conditions to 4.99 and 4.86, and
+they put the probability that each later scenario lies below the first at 0.956
+and 0.970. Their yield EC50 is 2.06, 2.02 and 2.03, and the matching
+probabilities are 0.615 and 0.539, which is as near to no information as a
+probability gets.
+
+Climate is a fixed set of three levels of interest in themselves, so the route
+for it is `bnec_group()`, the route the factor covariates take. The fits below
+pool over it, which the yield result above licenses and the colour result does
+not. That is a deliberate simplification: what these fits are used to show is
+how the number of curve parameters behaves against a design of a given width,
+and one curve per endpoint shows it most directly.
 
 The yield endpoint has six concentrations and 54 chambers of five to eight
 readings, and `ogl(chamber)` on it is well conditioned:
@@ -1021,9 +1078,15 @@ to be made before the family is chosen, and `vignette("example6")` covers them.
 # Case study 3: seven herbicides
 
 `herbicide` [@jones2003] holds the effective quantum yield of photosystem II in
-corals exposed to seven photosystem II herbicides, each over its own
-concentration range. `?herbicide` gives the method and the species; the report
+the symbiotic dinoflagellates of the coral *Seriatopora hystrix*, measured after
+a ten-hour exposure to each of seven photosystem II inhibiting herbicides. Three
+replicate containers of four corals were held at each concentration. The report
 is at <https://doi.org/10.3354/meps261149>.
+
+The endpoint is the same quantity as case study 2's `yield`, and the connection
+between the two runs deeper than that: @jones2003 found the effect of diuron to
+be inversely related to temperature, which is the observation @flores2021 tested
+two decades later by crossing diuron with warming.
 
 ```{r fig-herbicide-raw, fig.asp = 1.15, out.width = "72%"}
 data(herbicide)
@@ -1095,6 +1158,15 @@ The seven herbicides span two orders of magnitude. Back-transformed from the
 fitted scale, the N(S)EC runs from irgarol at 0.135 µg/L (0.108--0.176) and
 diuron at 0.153 (0.109--0.196), through ametryn at 0.200, hexazinone at 0.631 and
 atrazine at 1.174, to simazine at 4.221 and tebuthiuron at 10.591 (4.349--14.154).
+
+@jones2003 report EC50s for the same seven: irgarol 0.7 µg/L, ametryn 1.7,
+diuron 2.3, hexazinone 8.8, atrazine 45, simazine 150 and tebuthiuron 175. A
+threshold is a lower quantity than a half-effect concentration and these are
+lower throughout, by a factor of five for irgarol and seventeen for tebuthiuron.
+What survives between the two is the ordering, which agrees except that the
+N(S)EC puts diuron below ametryn where the EC50 puts it above --- and those two
+are 0.6 µg/L apart in the published EC50s, which is the smallest gap in the
+series.
 
 `prob_diff` gives the probability that the first level of each pair has the
 higher estimate, so a value near 0 or 1 separates two herbicides and one near 0.5
