@@ -18,6 +18,10 @@
 #' a level recorded at one predictor value is marked at its mean instead. A
 #' \code{bayesnecgroupfit} uses its fitted grouping variable automatically and
 #' draws one panel per level.
+#' @param group_aes How should the grouping selected by \code{group} be shown?
+#' \code{"line"} (the default) draws grey per-level means. \code{"colour"}
+#' also maps the grouping to the observation fill and the per-level mean marks.
+#' The argument is ignored when \code{group} is \code{NULL}.
 #'
 #' @return A \code{\link[ggplot2]{ggplot}} object.
 #'
@@ -54,10 +58,12 @@ NULL
 #'
 #' @export
 autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
-                                 xform = identity, group = NULL) {
+                                 xform = identity, group = NULL,
+                                 group_aes = c("line", "colour")) {
   x <- object
   chk_lgl(nec)
   chk_lgl(ecx)
+  group_aes <- match.arg(group_aes)
   if (!inherits(xform, "function")) {
     stop("xform must be a function.")
   }
@@ -67,7 +73,8 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   ggbnec_data(x, add_nec = nec, add_ecx = ecx,
               xform = xform, group = group, ...) |>
     mutate(model = x$model, tag = rownames(.env$summ$nec_vals)) |>
-    ggbnec(nec = nec, ecx = ecx, group = !is.null(group))
+    ggbnec(nec = nec, ecx = ecx, group = !is.null(group),
+           group_aes = group_aes, group_label = group)
 }
 
 #' @rdname autoplot
@@ -101,10 +108,12 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                                    xform = identity,
                                    all_models = FALSE, plot = TRUE, ask = TRUE,
                                    newpage = TRUE, multi_facet = TRUE,
-                                   group = NULL) {
+                                   group = NULL,
+                                   group_aes = c("line", "colour")) {
   x <- object
   chk_lgl(nec)
   chk_lgl(ecx)
+  group_aes <- match.arg(group_aes)
   if (!inherits(xform, "function")) {
     stop("xform must be a function.")
   }
@@ -130,7 +139,8 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
       map_dfr(all_fits, ggbnec_data, add_nec = nec, add_ecx = ecx,
               xform = xform, group = group, ..., .id = "model") |>
         left_join(y = nec_labs, by = "model") |>
-        ggbnec(nec = nec, ecx = ecx, group = !is.null(group))
+        ggbnec(nec = nec, ecx = ecx, group = !is.null(group),
+               group_aes = group_aes, group_label = group)
     } else {
       if (plot) {
         default_ask <- devAskNewPage()
@@ -146,7 +156,8 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                                    xform = xform, group = group, ...) |>
           mutate(model = x$success_models[i],
                  tag = rownames(.env$summ_i$nec_vals)) |>
-          ggbnec(nec = nec, ecx = ecx, group = !is.null(group))
+          ggbnec(nec = nec, ecx = ecx, group = !is.null(group),
+                 group_aes = group_aes, group_label = group)
         plot(plots[[i]], newpage = newpage || i > 1)
         if (i == 1) {
           devAskNewPage(ask = ask)
@@ -162,7 +173,8 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                 group = group, ...) |>
       mutate(model = "Model averaged predictions",
              tag = rownames(.env$summ$nec_vals)) |>
-      ggbnec(nec = nec, ecx = ecx, group = !is.null(group))
+      ggbnec(nec = nec, ecx = ecx, group = !is.null(group),
+             group_aes = group_aes, group_label = group)
   }
 }
 
@@ -513,7 +525,9 @@ autoplot.bayesnecgroupfit <- function(object, ..., nec = TRUE, ecx = FALSE,
 #' @importFrom rlang .data
 #'
 #' @noRd
-ggbnec <- function(x, nec = TRUE, ecx = FALSE, group = FALSE) {
+ggbnec <- function(x, nec = TRUE, ecx = FALSE, group = FALSE,
+                   group_aes = c("line", "colour"), group_label = NULL) {
+  group_aes <- match.arg(group_aes)
   out <- ggplot() +
     geom_polygon(data = x |> filter(!is.na(.data$y_ci)),
                  mapping = aes(x = .data$x_e, y = .data$y_ci),
@@ -528,31 +542,62 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE, group = FALSE) {
     spanning <- names(n_x)[n_x > 1]
     single_x <- names(n_x)[n_x <= 1]
     if (length(spanning) > 0) {
-      out <- out +
-        stat_summary(
-          data = raw[as.character(raw$group) %in% spanning, , drop = FALSE],
+      spanning_data <- raw[
+        as.character(raw$group) %in% spanning, , drop = FALSE
+      ]
+      if (group_aes == "colour") {
+        out <- out + stat_summary(
+          data = spanning_data,
+          mapping = aes(x = .data$x_r, y = .data$y_r,
+                        group = .data$group, colour = .data$group),
+          fun = mean, geom = "line", linewidth = 0.3
+        )
+      } else {
+        out <- out + stat_summary(
+          data = spanning_data,
           mapping = aes(x = .data$x_r, y = .data$y_r,
                         group = .data$group),
           fun = mean, geom = "line", colour = "grey40", linewidth = 0.3
         )
+      }
     }
     if (length(single_x) > 0) {
-      out <- out +
-        stat_summary(
-          data = raw[as.character(raw$group) %in% single_x, , drop = FALSE],
+      single_x_data <- raw[
+        as.character(raw$group) %in% single_x, , drop = FALSE
+      ]
+      if (group_aes == "colour") {
+        out <- out + stat_summary(
+          data = single_x_data,
+          mapping = aes(x = .data$x_r, y = .data$y_r,
+                        group = .data$group, fill = .data$group),
+          fun = mean, geom = "point", shape = 23, size = 2
+        )
+      } else {
+        out <- out + stat_summary(
+          data = single_x_data,
           mapping = aes(x = .data$x_r, y = .data$y_r,
                         group = .data$group),
           fun = mean, geom = "point", shape = 23, fill = "white", size = 2
         )
+      }
     }
   }
   out <- out +
     geom_line(data = x |> filter(!is.na(.data$y_e)),
               mapping = aes(x = .data$x_e, y = .data$y_e),
-              colour = "black", linetype = 2) +
-    geom_point(data = raw,
-               mapping = aes(x = .data$x_r, y = .data$y_r), fill = "grey30",
-               shape = 21)
+              colour = "black", linetype = 2)
+  if (group && group_aes == "colour") {
+    out <- out +
+      geom_point(data = raw,
+                 mapping = aes(x = .data$x_r, y = .data$y_r,
+                               fill = .data$group), shape = 21) +
+      labs(colour = group_label, fill = group_label)
+  } else {
+    out <- out +
+      geom_point(data = raw,
+                 mapping = aes(x = .data$x_r, y = .data$y_r),
+                 fill = "grey30", shape = 21)
+  }
   if (nec) {
     ltys <- rep(c(1, 2, 2), length(unique(x$model)))
     lwds <- rep(c(0.5, 0.2, 0.2), length(unique(x$model)))
