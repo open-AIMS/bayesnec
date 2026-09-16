@@ -260,11 +260,11 @@ light units.
 
 Two features of the assay design decide how the response behaves, and both
 matter below. Twenty microlitres of cell suspension goes into 180 µL of sample
-in a white 96-well plate, at a cell density @luter2025 selected to keep control
+in a white 96-well plate. @luter2025 chose that cell density to keep control
 luminescence above 250 000 relative light units while still resolving an effect
-threshold --- so the lower end of the control readings is a design target rather
-than an accident. And the plate reader sets its gain per read, which is where the
-between-plate differences come from.
+threshold, so the lower end of the control readings is a design target rather
+than an accident. The second is that the plate reader sets its gain per read,
+which is where the between-plate differences come from.
 
 Copper and zinc are reference toxicants here rather than contaminants under
 investigation, run repeatedly to establish that the assay is reproducible:
@@ -295,7 +295,10 @@ lum31 |>
 ```
 
 Every well of every plate is drawn below, one panel per toxicant and exposure
-time, with the wells of one plate joined at their concentration means.
+time, with the wells of one plate joined at their concentration means. The
+response is `rlu_cens`, which is the recorded luminescence with the readings
+that reached the instrument's floor marked as censored; *Preparing the response*
+sets out why they are treated that way.
 
 ```{r fig-lum31-raw, fig.asp = 0.6, out.width = "95%"}
 ggplot(lum31, aes(x = conc, y = rlu_cens, group = plate)) +
@@ -373,12 +376,12 @@ from the fitted control, treating the control level as a parameter. In
 control, so a `bnec()` fit on raw luminescence is that approach.
 
 The published estimates are what the fits in this case study are read against.
-Fitting
-each plate separately on the normalised response, @luter2025 report EC50s
-averaging 0.109 mg/L for copper at 15 minutes (standard deviation 0.036, range
-0.069 to 0.201 over sixteen plates) and 0.085 at 30 minutes; for zinc, 1.546 at
-15 minutes (0.284, 1.207 to 2.076 over seventeen plates) and 1.013 at 30
-minutes. The spread across plates is what a per-plate analysis leaves as
+@luter2025 fitted
+each plate separately on the normalised response. For copper they report EC50s
+averaging 0.109 mg/L at 15 minutes, with a standard deviation of 0.036 and a
+range of 0.069 to 0.201 over sixteen plates, and 0.085 at 30 minutes. For zinc,
+1.546 at 15 minutes (0.284, 1.207 to 2.076 over seventeen plates) and 1.013 at
+30 minutes. The spread across plates is what a per-plate analysis leaves as
 variation between tests, and what a plate term estimates instead.
 
 ### A group-level term as the division
@@ -748,6 +751,11 @@ and the intervals widen. A plate spans the whole series, so a term on it removes
 a between-plate difference that was otherwise left in the residual, and the
 curve is better determined.
 
+A `bnec_group()` fit holds one model-averaged fit per level, and `plot()` on it
+draws each in turn through base graphics. `ggbnec_data()` returns the same
+model-averaged curve as a data frame, so stacking those frames gives one object
+that a single `ggplot()` call can facet. Both figures below use it.
+
 ```{r group-curves}
 group_curves <- function(x) {
   do.call(rbind, Map(function(f, lev) data.frame(level = lev, ggbnec_data(f)),
@@ -950,9 +958,9 @@ endpoint.
 The colour panel's top concentration is worth reading carefully, because it is
 the only observation below the gap and so is the only thing that can place a
 lower asymptote. At 29 µg/L the underlying photographs average 211 of 255 on
-the grey scale at day 14, against 90 to 128 at every lower concentration, while
-the day-0 values run from 91 to 103 throughout --- so those fragments ended
-white. @flores2021 record that all corals at 29 µg/L had died by day 10. The
+the grey scale at day 14, against 90 to 128 at every lower concentration. The
+day-0 values run from 91 to 103 throughout, so those fragments started like the
+others and ended white. @flores2021 record that all corals at 29 µg/L had died by day 10. The
 point is real and the published fit uses it, but what it measures is a fragment
 that has bleached completely rather than one on a declining curve.
 
@@ -1070,8 +1078,8 @@ one fit arrived at the same distribution --- and here it fails as well.
 Length of run matters to which of the two checks notices. Fitting the same four
 equations at 5000 iterations with 4000 warmup, half what `bnec()` uses, gave 212
 divergent transitions for `nec4param` and 326 for `ecx4param` of 4000 draws
-each, and `ecx4param` returned an R-hat of 1.009 --- inside every conventional
-cutoff, and within 0.005 of the two three-parameter equations. At the default
+each. At that length `ecx4param` returned an R-hat of 1.009, inside every
+conventional cutoff and within 0.005 of the two three-parameter equations. At the default
 run its R-hat is 1.293. The shorter chain did not make the fit better; it made
 one of the two diagnostics stop reporting the problem, which is a reason to
 report a diagnostic against the settings that produced it.
@@ -1270,10 +1278,9 @@ R.version.string
 ```
 
 The fits use `model = "all"`, which `bnec()` filters to the equations valid for
-the family and predictor, except for the herbicide call, which uses `decline`
-to match Figure 11 of @fisher2024, and the parameter-count contrast of
-case study 2, which names two equations on each side because the contrast is
-the point. No call names `iter`, `warmup` or `control`, so `bnec()`'s defaults
+the family and predictor. Two calls do not. The herbicide call uses `decline`,
+to match Figure 11 of @fisher2024. The parameter-count contrast of case study 2
+names two equations on each side, because the contrast is the point. No call names `iter`, `warmup` or `control`, so `bnec()`'s defaults
 apply: 4 chains at 10000 iterations with 8000 warmup, under `seed = 228`.
 `bnec()` also raises `adapt_delta` from Stan's 0.8 to 0.99 of its own accord
 wherever a constrained mean is given an unbounded group-level term, which is
