@@ -116,6 +116,33 @@ hurdle_positive_mean <- function(mu, family, shape = NULL) {
   out
 }
 
+#' Conditional variance of the positive part of a count distribution
+#'
+#' @inheritParams hurdle_positive_mean
+#'
+#' @return A numeric matrix with the same dimensions as \code{mu}.
+#'
+#' @noRd
+hurdle_positive_variance <- function(mu, family, shape = NULL) {
+  if (family %in% c("poisson", "hurdle_poisson")) {
+    nonzero <- -expm1(-mu)
+    second_moment <- mu + mu^2
+  } else if (family %in% c("negbinomial", "hurdle_negbinomial")) {
+    if (is.null(shape)) {
+      stop("Negative-binomial positive variances require shape draws.",
+           call. = FALSE)
+    }
+    nonzero <- -expm1(-shape * log1p(mu / shape))
+    second_moment <- mu + mu^2 / shape + mu^2
+  } else {
+    stop("Positive-count variances require a count family.", call. = FALSE)
+  }
+  positive_mean <- hurdle_positive_mean(mu, family, shape)
+  out <- second_moment / nonzero - positive_mean^2
+  out[nonzero == 0] <- 0
+  out
+}
+
 #' Does this fit carry the internal count-hurdle truncation?
 #'
 #' @param formula A bayesnec formula.
@@ -135,6 +162,8 @@ is_factorised_count_formula <- function(formula, family) {
 #' @param formula The bayesnec formula used for the fit.
 #' @param dpar,nlpar Optional parameter predictions passed to
 #' \code{posterior_epred}.
+#' @param ndraws,draw_ids Optional posterior draw selection passed to
+#' \code{posterior_epred}.
 #' @param ... Further arguments passed to \code{posterior_epred}.
 #'
 #' @return A numeric matrix of posterior draws.
@@ -146,19 +175,33 @@ is_factorised_count_formula <- function(formula, family) {
 #' is available in closed form, so bayesnec computes it from the underlying
 #' \code{mu} and \code{shape} draws instead.
 #'
-#' @importFrom brms posterior_epred
+#' @importFrom brms ndraws posterior_epred
 #'
 #' @noRd
 factorised_count_epred <- function(fit, formula, dpar = NULL, nlpar = NULL,
-                                   ...) {
+                                   ndraws = NULL, draw_ids = NULL, ...) {
   if (!is_factorised_count_formula(formula, fit$family) ||
       !is.null(dpar) || !is.null(nlpar)) {
-    return(posterior_epred(fit, dpar = dpar, nlpar = nlpar, ...))
+    return(posterior_epred(
+      fit, dpar = dpar, nlpar = nlpar, ndraws = ndraws,
+      draw_ids = draw_ids, ...
+    ))
   }
-  mu <- posterior_epred(fit, dpar = "mu", ...)
+  # brms samples draw_ids inside each posterior prediction call when only
+  # ndraws is supplied. The mu and shape calls must use the same draws or the
+  # negative-binomial conditional mean combines unrelated parameters.
+  if (!is.null(ndraws) && is.null(draw_ids)) {
+    draw_ids <- sample.int(ndraws(fit), ndraws)
+    ndraws <- NULL
+  }
+  mu <- posterior_epred(
+    fit, dpar = "mu", ndraws = ndraws, draw_ids = draw_ids, ...
+  )
   shape <- NULL
   if (fit$family$family == "negbinomial") {
-    shape <- posterior_epred(fit, dpar = "shape", ...)
+    shape <- posterior_epred(
+      fit, dpar = "shape", ndraws = ndraws, draw_ids = draw_ids, ...
+    )
   }
   hurdle_positive_mean(mu, fit$family$family, shape)
 }

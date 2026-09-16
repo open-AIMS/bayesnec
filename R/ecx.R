@@ -431,6 +431,26 @@ count_positive_asymptote <- function(object, dpar, asymptote, newdata) {
   if (all(is.na(asymptote))) {
     return(asymptote)
   }
+  if (inherits(object, "bayesmanecfit")) {
+    model_set <- names(object$mod_fits)
+    sample_size <- min(vapply(
+      object$mod_fits, function(x) nrow(as_draws_df(x$fit)), numeric(1)
+    ))
+    draw_index <- pull_draw_index(object, model_set, sample_size)
+    return(unlist(lapply(model_set, function(m) {
+      part <- suppressMessages(pull_out(object, model = m))
+      part_asymptote <- ecx_asymptote(part, "relative")
+      part_asymptote <- count_positive_asymptote(
+        part, dpar, part_asymptote, newdata
+      )
+      idx <- draw_index[[m]]
+      if (length(part_asymptote) == 1) {
+        rep_len(part_asymptote, length(idx))
+      } else {
+        part_asymptote[idx]
+      }
+    })))
+  }
   family <- object$fit$family$family
   factorised <- family %in% c("poisson", "negbinomial") &&
     is_factorised_count_formula(object$bayesnecformula, object$fit$family) &&

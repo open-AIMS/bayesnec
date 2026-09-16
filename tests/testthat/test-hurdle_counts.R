@@ -62,6 +62,26 @@ test_that("joint count growth predictions are conditional on being positive", {
   )
 })
 
+test_that("positive-count variances use the zero-truncated distribution", {
+  mu <- matrix(c(0, 0.5, 3, 10), nrow = 2)
+  q_pois <- 1 - exp(-mu)
+  expected_pois <- (mu + mu^2) / q_pois - (mu / q_pois)^2
+  expected_pois[1] <- 0
+  expect_equal(
+    bayesnec:::hurdle_positive_variance(mu, "poisson"), expected_pois
+  )
+
+  shape <- matrix(c(0.8, 2, 5, 10), nrow = 2)
+  q_nb <- 1 - (shape / (shape + mu))^shape
+  expected_nb <- (mu + mu^2 / shape + mu^2) / q_nb -
+    (mu / q_nb)^2
+  expected_nb[1] <- 0
+  expect_equal(
+    bayesnec:::hurdle_positive_variance(mu, "negbinomial", shape),
+    expected_nb
+  )
+})
+
 test_that("factorised count epred uses the exact positive mean", {
   formula <- bayesnec:::add_hurdle_truncation(
     bnf(y ~ crf(x, "nec3param"))
@@ -82,6 +102,28 @@ test_that("factorised count epred uses the exact positive mean", {
   )
   expect_true(all(is.finite(got)))
   expect_gt(got[1, 2], 4.8)
+})
+
+test_that("factorised negative-binomial epred pairs mu and shape draws", {
+  formula <- bayesnec:::add_hurdle_truncation(
+    bnf(y ~ crf(x, "nec3param"))
+  )
+  fit <- list(family = validate_family("negbinomial"))
+  seen_ids <- list()
+  local_mocked_bindings(
+    ndraws = function(object) 6L,
+    posterior_epred = function(object, dpar, ndraws = NULL,
+                               draw_ids = NULL, ...) {
+      seen_ids[[dpar]] <<- draw_ids
+      matrix(draw_ids, ncol = 1)
+    },
+    .package = "bayesnec"
+  )
+
+  set.seed(209)
+  bayesnec:::factorised_count_epred(fit, formula, ndraws = 3)
+  expect_length(seen_ids$mu, 3)
+  expect_identical(seen_ids$mu, seen_ids$shape)
 })
 
 test_that("joint hurdle block predictions use the documented scales", {
@@ -239,6 +281,51 @@ test_that("relative count-hurdle asymptotes use the positive-count scale", {
       bot, "hurdle_negbinomial", shape
     ))
   )
+
+  object$fit$family <- validate_family("poisson")
+  object$bayesnecformula <- bayesnec:::add_hurdle_truncation(
+    bnf(y ~ crf(x, "nec3param"))
+  )
+  expect_equal(
+    bayesnec:::count_positive_asymptote(object, NULL, bot,
+                                        data.frame(x = 0)),
+    as.numeric(bayesnec:::hurdle_positive_mean(bot, "poisson"))
+  )
+})
+
+test_that("model-averaged count asymptotes retain their draw pairing", {
+  count_formula <- bayesnec:::add_hurdle_truncation(
+    bnf(y ~ crf(x, "nec3param"))
+  )
+  parts <- lapply(c("a", "b"), function(model) {
+    structure(list(
+      model = model,
+      fit = list(family = validate_family("poisson")),
+      bayesnecformula = count_formula
+    ), class = c("bayesnecfit", "bnecfit"))
+  })
+  names(parts) <- c("a", "b")
+  object <- structure(list(
+    mod_fits = list(a = list(fit = 1), b = list(fit = 2))
+  ), class = c("bayesmanecfit", "bnecfit"))
+  asymptote <- c(0.2, 0.5, 1, 2)
+  draw_index <- list(a = c(1L, 3L), b = c(2L, 4L))
+  local_mocked_bindings(
+    as_draws_df = function(x) data.frame(draw = seq_along(asymptote)),
+    pull_draw_index = function(...) draw_index,
+    pull_out = function(object, model) parts[[model]],
+    ecx_asymptote = function(object, type) asymptote,
+    .package = "bayesnec"
+  )
+
+  got <- bayesnec:::count_positive_asymptote(
+    object, NULL, rep(0, 4), data.frame(x = 0)
+  )
+  transformed <- as.numeric(
+    bayesnec:::hurdle_positive_mean(asymptote, "poisson")
+  )
+  expect_equal(got, c(transformed[draw_index$a],
+                      transformed[draw_index$b]))
 })
 
 test_that("a real factorised count fit reports the exact positive mean", {
