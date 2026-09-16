@@ -62,36 +62,62 @@ and nothing is gained by destroying it. `hpc/job-common.sh` in the compendium
 now forwards `GRP_UNITS` and `GRP_STORE` into the container, which is what makes
 that possible; both default as before when unset.
 
-## Claims awaiting a render
+## The render
 
-Every number below came from a render at bayesnec 2.1.3.37 on the recorded
-predictor scale. Each has to be read off the new render and written in, or
-removed where it no longer holds. Line numbers are of `example8.Rmd.orig` at
-`8cf27c78`.
+The store-backed render at bayesnec 2.1.3.38 (job 911405, 33.6 minutes, twelve
+figures, `Precompiled without error`) was compared against the render committed
+at `54c6e7da` by diffing the `#>` output lines of the two `example8.Rmd` files.
+820 output lines before, 799 after, and every difference falls in the coral
+section.
 
-| where | claim to re-read |
-|---|---|
-| §4, ~632 | the concentration the `ogl(conc_group)` curve holds to before falling; EC10 0.280 (0.207--0.410) against 1.158 (0.624--2.377), and the multiples stated with them |
-| §4, ~549 | the equation `which.max(mod_weights)` selects, and the `conc_group` standard deviation read from it |
-| §5, ~695 | EC10 0.327 pooled against 0.349; intervals 0.219--0.708 against 0.314--0.383; N(S)EC 0.198 (0.049--0.533) against 0.771 (0.228--1.246) |
-| §5, ~703 | weights `ecxll5` 0.55, `ecxwb1` 0.32, `ecxll3` and `ecxhormebc4` 0.05 each, against `ecxll5` 0.85 and `ecxwb1` 0.15; and that no threshold-estimating equation takes weight in either fit |
-| §6, ~880 | the divergence counts and R-hat range, which the passage now states without. Under 2.1.3.37 on the recorded scale: 0 divergences for both three-parameter equations, 71 for `nec4param`, 243 for `ecx4param`, R-hat 1.004 to 1.018 |
-| §6, `ecx-pam` | a new chunk, no prose reads it yet |
-| §7, ~1000 | the seven N(S)EC values, irgarol 0.135 (0.108--0.176) through tebuthiuron 10.591 (4.349--14.154) |
-| §7, ~1006 | `prob_diff` 0.0075 for the three pairs against tebuthiuron, 0.724 for diuron against irgarol, 0.0138 for the metals |
+Sections 4, 5 and 7 are identical to every digit. The EC10 comparison in
+section 4 returns 0.2800498 (0.2073675--0.4097915) ungrouped and section 5's
+pooled fit 0.3268868 (0.2194524--0.7082089), which is what the previous render
+printed. So do the model weights, the seven herbicide thresholds and every
+`prob_diff`. An earlier note here said every fit-derived number would change.
+That was an assumption and it was wrong: the four commits between 5f98d8d6 and
+8cf27c78 that touch priors, initial values or the model set are all
+behaviour-preserving for these calls. `859c9f98` defaults `predictor_scale` to
+`"auto"` and keeps the existing sign heuristic; `dd0fca16` only validates the
+shape of a seed; `5f99396e` removes an equation that failed to initialise
+anyway; and the rebuilt manifest gave each `lum31` set the same 14 equations
+that fitted before, so `d0af28a5` filtered nothing extra.
 
-Two further claims are measured from the data rather than from a fit and are
-unaffected by the refit, but were not measured in this session: the control
-wells spanning about 250,000 to 1,450,000 relative light units across the
-seventeen plates (§5, ~689), and the 880 divergent transitions `ecxll5`
-returned at `adapt_delta = 0.8` (Provenance), which came from a separate run
-rather than from the store.
+The refit of all 180 units was still required, because `assemble_store.R`
+compares the version stamp and refuses to assemble at all when it disagrees.
+That guard cannot know the changes were inert.
 
-The three new dataset figures and their readings were measured directly against
-the shipped data while the source was written and need no refit. Confirm they
-survive the vignette's chunk options. `fig-herbicides` and `fig-metals` were
-tested against a stand-in fit rather than the real ones: check the facet count,
-the axis range, and that the `nec_vals` rule lands inside each panel.
+### The differences
+
+- `fit_pam` fits 15 equations rather than 18, and its N(S)EC is reported on the
+  fitted scale as -1.51 (-2.12, 0.73). The new `ecx-pam` chunk gives it back in
+  µg/L: NSEC 0.217 (0.119--2.112), EC10 0.478 (0.401--2.155), EC50 1.999
+  (1.804--2.735). Weights concentrate on `ecxhormebc4` at 0.64 and `ecxwb1` at
+  0.23.
+- The parameter-count diagnostics changed, and the argument with them. Under
+  2.1.3.37 on the recorded scale: 0 divergences for both three-parameter
+  equations, 71 for `nec4param`, 243 for `ecx4param`, every R-hat between 1.004
+  and 1.018. On the log scale: 0 and 0, then 212 for `nec4param` at an R-hat of
+  1.3537 and 326 for `ecx4param` at 1.0088. The old passage said a check on
+  R-hat alone would not separate the two sets, which no longer holds for
+  `nec4param`; it holds for `ecx4param`, which records the most divergences of
+  the four at an R-hat inside every conventional cutoff. The section now makes
+  the point on `ecx4param`.
+- Measured from `ggbnec_data()` on the two assembled sets: at 10 µg/L the
+  four-parameter credible band is 0.639 wide against the three-parameter 0.278,
+  and both close to about 0.05 at 29 µg/L. NSEC 1.57 (0.66--3.87) for three
+  parameters against 2.79 (1.52--21.61) for four.
+- The five `1 model(s) failed to fit: ecxhormebc5` notices are gone, because
+  the equation is now excluded before fitting rather than attempted and failed.
+
+### Left alone
+
+`check_formula()` prints the formula it returns, and a `bayesnecformula`'s print
+method shows its environment, so the rendered vignette includes a line reading
+`<environment: 0x555567925aa8>`. The address is a different number on every
+render and means nothing to a reader. It predates this branch and is a property
+of the print method rather than of the vignette, so it is recorded here rather
+than worked around in the chunk.
 
 ## The replacement of `plot()`
 

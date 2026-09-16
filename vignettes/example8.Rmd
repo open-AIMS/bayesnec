@@ -43,6 +43,19 @@ library(ggplot2)
 library(dplyr)
 ```
 
+Every concentration series used here spans between two and four orders of
+magnitude, so each figure is drawn on a log axis. `autoplot()` and
+`ggbnec_data()` return the predictor on the scale it was recorded on, having
+already inverted any transformation written inside `crf()`. The axis is
+therefore set by transforming the scale, and not by transforming the values or
+the breaks. The same scale object serves every figure.
+
+
+``` r
+log_x <- scale_x_continuous(transform = "log10",
+                            labels = function(x) signif(x, 2))
+```
+
 # Types of grouping
 
 The distinction that matters is whether the grouping sits **within** a
@@ -88,6 +101,33 @@ brms_form <- function(formula, family = gfam) {
                    family = family)[["nec4param"]]
 }
 ```
+
+Seven photosystem II herbicides were applied to corals over a range of
+concentrations, each across the whole range, so every level of the grouping
+has its own complete series. `?herbicide` gives the method and the species;
+the report is at <https://doi.org/10.3354/meps261149>.
+
+
+``` r
+ggplot(herbicide, aes(x = concentration, y = fvfm)) +
+  geom_point(shape = 21, fill = "grey30", alpha = 0.6) +
+  facet_wrap(~herbicide, nrow = 2, scales = "free_x") +
+  log_x +
+  theme_classic() +
+  theme(panel.spacing.x = unit(1.2, "lines")) +
+  labs(x = "Concentration (ug/L)", y = "Effective quantum yield")
+```
+
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-fig-herbicide-raw-1.png" alt="plot of chunk fig-herbicide-raw" width="95%" />
+<p class="caption">plot of chunk fig-herbicide-raw</p>
+</div>
+
+Every panel falls, and the concentration at which it does so differs by two
+orders of magnitude across the seven. Yield reaches half its lowest-dose mean
+by 1 µg/L for irgarol and 3 µg/L for diuron and ametryn, against 100 µg/L for
+tebuthiuron and 300 for simazine, which is the last concentration simazine was
+tested at.
 
 ## Displacement of the whole curve
 
@@ -176,7 +216,7 @@ check_formula(
 #> Performing single parameter checks on all models...
 #> The parameter(s) "bot" not valid parameters in nec3param. If this was a mistake, check ?models and ?show_params, otherwise ignore.
 #> response ~ crf(conc, c("nec3param", "nec4param")) + (bot | group)
-#> <environment: 0x555567868eb0>
+#> <environment: 0x555567925aa8>
 ```
 
 ## Deviation on every parameter
@@ -308,6 +348,35 @@ lum31 |>
 #> 3 Zn            15     17         187   748   748
 #> 4 Zn            30     17         187   748   748
 ```
+
+Every well of every plate is drawn below, one panel per toxicant and exposure
+time, with the wells of one plate joined at their concentration means. The
+assay is described at <https://doi.org/10.1002/tox.70003>.
+
+
+``` r
+ggplot(lum31, aes(x = conc, y = rlu_cens, group = plate)) +
+  geom_point(shape = 21, fill = "grey30", alpha = 0.25, size = 1) +
+  stat_summary(fun = mean, geom = "line", colour = "grey40", linewidth = 0.3) +
+  facet_wrap(~toxicant + minutes, scales = "free", labeller = label_both) +
+  log_x +
+  theme_classic() +
+  labs(x = "Dissolved metal (mg/L)", y = "Relative light units")
+```
+
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-fig-lum31-raw-1.png" alt="plot of chunk fig-lum31-raw" width="95%" />
+<p class="caption">plot of chunk fig-lum31-raw</p>
+</div>
+
+Each arm holds near its control over the lower part of the series and then
+falls within about one decade of concentration. Copper drops below half its
+control by 0.084 mg/L at 15 minutes and 0.064 at 30 minutes; zinc by 1.9 and
+0.93. Zinc is therefore the weaker of the two by roughly an order of magnitude,
+and both are more potent at the longer exposure. Every arm reaches a floor at
+its top concentrations. Two further features of the figure are taken up below: the
+plates of one arm are separated vertically by a factor of four to five at the
+control, and the zinc panels rise above their control before falling.
 
 A plate is a complete test: eleven measured concentrations with four replicate
 wells at each, read at 15 and 30 minutes. `conc_group` identifies the four wells
@@ -725,10 +794,6 @@ s_ogl
 #> ecxll4          0.98      0.00 0.97  0.99
 #> ecxll3          0.98      0.00 0.97  0.99
 #> ecxhormebc4     0.98      0.00 0.97  0.99
-#> 
-#> 
-#> 1 model(s) failed to fit: ecxhormebc5
-#> See ?failed_models for the priors and initial values used.
 ```
 
 That summary reports the model weights, the model-averaged N(S)EC and a Bayesian
@@ -771,22 +836,22 @@ The two fitted curves are drawn below, ungrouped first.
 
 
 ``` r
-autoplot(fit_plain)
+autoplot(fit_plain) + log_x
 ```
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-unnamed-chunk-25-1.png" alt="plot of chunk unnamed-chunk-25" width="60%" />
-<p class="caption">plot of chunk unnamed-chunk-25</p>
+<img src="vignette-fig-fig-plain-1.png" alt="plot of chunk fig-plain" width="60%" />
+<p class="caption">plot of chunk fig-plain</p>
 </div>
 
 
 ``` r
-autoplot(fit_ogl)
+autoplot(fit_ogl) + log_x
 ```
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-unnamed-chunk-26-1.png" alt="plot of chunk unnamed-chunk-26" width="60%" />
-<p class="caption">plot of chunk unnamed-chunk-26</p>
+<img src="vignette-fig-fig-ogl-1.png" alt="plot of chunk fig-ogl" width="60%" />
+<p class="caption">plot of chunk fig-ogl</p>
 </div>
 
 The term changes the fitted curve, not only its uncertainty. Ungrouped, the
@@ -877,10 +942,6 @@ summary(fit_pooled)
 #> ecxll4          0.62      0.01 0.60  0.64
 #> ecxll3          0.63      0.01 0.60  0.65
 #> ecxhormebc4     0.63      0.01 0.60  0.65
-#> 
-#> 
-#> 1 model(s) failed to fit: ecxhormebc5
-#> See ?failed_models for the priors and initial values used.
 summary(fit_plate)
 #> Object of class bayesmanecfit
 #> 
@@ -931,10 +992,6 @@ summary(fit_plate)
 #> ecxll4          0.98      0.00 0.98  0.98
 #> ecxll3          0.98      0.00 0.98  0.99
 #> ecxhormebc4     0.98      0.00 0.98  0.99
-#> 
-#> 
-#> 1 model(s) failed to fit: ecxhormebc5
-#> See ?failed_models for the priors and initial values used.
 ```
 
 
@@ -953,22 +1010,22 @@ is what the model treats the spread between plates as.
 
 
 ``` r
-autoplot(fit_pooled)
+autoplot(fit_pooled) + log_x
 ```
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-unnamed-chunk-30-1.png" alt="plot of chunk unnamed-chunk-30" width="60%" />
-<p class="caption">plot of chunk unnamed-chunk-30</p>
+<img src="vignette-fig-fig-pooled-1.png" alt="plot of chunk fig-pooled" width="60%" />
+<p class="caption">plot of chunk fig-pooled</p>
 </div>
 
 
 ``` r
-autoplot(fit_plate)
+autoplot(fit_plate) + log_x
 ```
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-unnamed-chunk-31-1.png" alt="plot of chunk unnamed-chunk-31" width="60%" />
-<p class="caption">plot of chunk unnamed-chunk-31</p>
+<img src="vignette-fig-fig-plate-1.png" alt="plot of chunk fig-plate" width="60%" />
+<p class="caption">plot of chunk fig-plate</p>
 </div>
 
 The vertical spread at each concentration is the gain difference. Control wells
@@ -1013,8 +1070,10 @@ divergent transitions are the only sign that the design was too narrow for it.
 
 `coral_colour` and `coral_pam` are two endpoints of one 14-day exposure of
 *Acropora millepora* to the herbicide diuron under three climate scenarios
-[@flores2021]. Both are within-concentration designs --- a chamber sits at one
-concentration --- and they differ in exactly the way this section needs.
+[@flores2021], reported at
+<https://doi.org/10.1016/j.marpolbul.2021.112582>. Both are
+within-concentration designs, a chamber sitting at one concentration, and they
+differ in the width of the design and in nothing else that matters here.
 
 
 ``` r
@@ -1031,15 +1090,99 @@ rbind(
 #> pam     414              6       54
 ```
 
+## The control on a log axis
+
+Both endpoints include an untreated control recorded as an exact zero. A log
+axis has no position for it, and `crf(log(diuron))` has no value for it either:
+the column reaches the data check as `-Inf` and `bnec()` refuses the fit,
+naming it. Some value has to be put in its place. That substitution is made
+here, in the vignette, and not in the shipped data, so that `data-raw/coral_diuron.R`
+continues to record what the experiment measured.
+
+`coral_pam` was dosed at 0.29, 0.96, 2.9, 9.6 and 29 µg/L, each step about 3.16
+times the last, which is half a decade. One further step below the lowest
+treatment is 0.29/3.16 = 0.092 µg/L, and 0.1 is that value rounded. It puts the
+control the same distance from 0.29 that 0.29 is from 0.96. Half the lowest
+treatment, 0.145, would put it a third of that distance away, closer to the
+lowest dose than any two doses are to each other. `coral_colour` was dosed at
+the same concentrations but for 9.6, so its series has one step missing in the
+middle and the substituted control sits a regular step below it.
+
+
+``` r
+nudge <- function(x) ifelse(x == 0, 0.1, x)
+coral_colour$diuron_adj <- nudge(coral_colour$diuron)
+coral_pam$diuron_adj <- nudge(coral_pam$diuron)
+sort(unique(coral_pam$diuron_adj))
+#> [1]  0.10  0.29  0.96  2.90  9.60 29.00
+```
+
+No other concentration is altered. Every estimate reported in this section is
+therefore an estimate against a control placed at 0.1 µg/L, and a threshold
+returned near that value would be describing the substitution rather than
+diuron.
+
+The substitution has a second consequence, and it is general rather than
+particular to these data. Any concentration below 1 has a negative logarithm,
+so `log(diuron_adj)` runs from -2.30 to 3.37. Three of the 18 equations that
+`model = "all"` offers for this family cannot be fitted on a predictor that
+reaches a negative value. `necsigm` and `ecxsigm` raise the predictor to a
+fractional power, which is undefined there. `ecxhormebc5` cannot be reliably
+initialised where an identity-linked `Beta` mean must stay positive, because
+its hormesis term is negative wherever the predictor is. `bnec()` reports each
+exclusion and fits the remaining 15. Every `lum31` fit in this vignette meets
+the same condition, its concentrations being in mg/L and mostly below 1.
+
+
+``` r
+rbind(
+  transform(coral_colour[c("climate", "diuron_adj")],
+            endpoint = "colour (proportion)", y = coral_colour$proportion),
+  transform(coral_pam[c("climate", "diuron_adj")],
+            endpoint = "yield", y = coral_pam$yield)
+) |>
+  ggplot(aes(x = diuron_adj, y = y, colour = climate, shape = climate)) +
+  geom_point(alpha = 0.7) +
+  facet_wrap(~endpoint, scales = "free_y") +
+  log_x +
+  scale_colour_grey(start = 0.7, end = 0) +
+  theme_classic() +
+  theme(legend.position = "bottom") +
+  labs(x = "Diuron (ug/L), control at 0.1", y = "Response")
+```
+
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-fig-coral-raw-1.png" alt="plot of chunk fig-coral-raw" width="95%" />
+<p class="caption">plot of chunk fig-coral-raw</p>
+</div>
+
+Both endpoints fall over the series. The yield panel has observations at every
+one of its six concentrations. The colour panel has none between 2.9 and 29
+µg/L, a full decade of the axis and the widest unsampled interval in either
+endpoint.
+
+The scenarios separate in the colour endpoint and barely at all in yield. Mean
+colour at 2.9 µg/L runs 0.728, 0.611 and 0.456 from 2018 to 2100, and at 29
+µg/L 0.173, 0.066 and 0.045. Mean yield differs by less than 0.015 between
+scenarios at every concentration below 9.6. Climate is a fixed set of three
+levels of interest in themselves, so the route for it is `bnec_group()`, the
+route the factor covariates take. The fits below pool over it. What they are
+used to show is how the number of curve parameters behaves against a design of
+a given width, and one curve per endpoint shows that most directly.
+
 The yield endpoint has six concentrations and 54 chambers of five to eight
 readings, and `ogl(chamber)` on it is well conditioned:
 
 
 ``` r
-fit_pam <- bnec(yield ~ crf(diuron, "all") + ogl(chamber),
+fit_pam <- bnec(yield ~ crf(log(diuron_adj), "all") + ogl(chamber),
                 data = coral_pam, family = Beta(link = "identity"),
                 chains = 4, iter = 5000, warmup = 4000, seed = 228, refresh = 0,
                 control = list(adapt_delta = 0.99))
+```
+
+
+``` r
 summary(fit_pam)
 #> Object of class bayesmanecfit
 #> 
@@ -1050,32 +1193,29 @@ summary(fit_pam)
 #> 
 #> Model weights (Method: pseudobma_bb_weights):
 #>                   waic   wi
-#> nec3param     -1657.19 0.00
-#> nec4param     -1659.53 0.03
-#> nechorme      -1698.00 0.21
-#> nechorme4     -1698.11 0.22
-#> necsigm       -1654.81 0.00
-#> nechormepwr01 -1699.64 0.47
-#> ecxexp        -1658.17 0.00
-#> ecxsigm       -1660.32 0.00
-#> ecx4param     -1646.72 0.01
-#> ecxwb1        -1639.31 0.00
-#> ecxwb2        -1661.98 0.06
-#> ecxwb1p3      -1661.73 0.00
-#> ecxwb2p3      -1660.50 0.00
-#> ecxll5        -1655.35 0.00
-#> ecxll4        -1646.95 0.00
-#> ecxll3        -1660.87 0.00
-#> ecxhormebc4   -1681.63 0.00
-#> ecxhormebc5   -1679.62 0.00
+#> nec3param     -1662.95 0.01
+#> nec4param     -1668.16 0.04
+#> nechorme      -1665.32 0.00
+#> nechorme4     -1665.72 0.00
+#> nechormepwr01 -1665.29 0.00
+#> ecxexp        -1661.47 0.00
+#> ecx4param     -1663.31 0.01
+#> ecxwb1        -1658.70 0.23
+#> ecxwb2        -1667.68 0.03
+#> ecxwb1p3      -1658.85 0.00
+#> ecxwb2p3      -1660.59 0.00
+#> ecxll5        -1653.74 0.01
+#> ecxll4        -1664.24 0.01
+#> ecxll3        -1651.23 0.00
+#> ecxhormebc4   -1677.65 0.64
 #> 
 #> 
 #> Summary of weighted N(S)EC posterior estimates:
 #> NB: Model set contains a combination of ECx and NEC
 #>     models, and is therefore a model averaged
 #>     combination of NEC and NSEC estimates.
-#>        Estimate Q2.5 Q97.5
-#> N(S)EC     0.08 0.03  0.16
+#>        Estimate  Q2.5 Q97.5
+#> N(S)EC    -1.51 -2.12  0.73
 #> 
 #> 
 #> Bayesian R2 estimates:
@@ -1083,11 +1223,9 @@ summary(fit_pam)
 #> nec3param         0.98      0.00 0.98  0.98
 #> nec4param         0.98      0.00 0.98  0.98
 #> nechorme          0.98      0.00 0.98  0.99
-#> nechorme4         0.98      0.00 0.98  0.99
-#> necsigm           0.98      0.00 0.98  0.98
+#> nechorme4         0.98      0.00 0.98  0.98
 #> nechormepwr01     0.98      0.00 0.98  0.99
 #> ecxexp            0.98      0.00 0.98  0.98
-#> ecxsigm           0.98      0.00 0.98  0.98
 #> ecx4param         0.98      0.00 0.98  0.98
 #> ecxwb1            0.98      0.00 0.98  0.98
 #> ecxwb2            0.98      0.00 0.98  0.98
@@ -1096,18 +1234,44 @@ summary(fit_pam)
 #> ecxll5            0.98      0.00 0.98  0.98
 #> ecxll4            0.98      0.00 0.98  0.98
 #> ecxll3            0.98      0.00 0.98  0.98
-#> ecxhormebc4       0.98      0.00 0.98  0.98
-#> ecxhormebc5       0.98      0.00 0.98  0.98
+#> ecxhormebc4       0.98      0.00 0.98  0.99
 ```
+
+As in the sections above, the N(S)EC in that summary is on the scale the model
+was fitted on, `log(diuron_adj)`. `xform = exp` returns it and the effect
+concentrations to µg/L:
 
 
 ``` r
-autoplot(fit_pam)
+rbind(
+  data.frame(estimate = "NSEC", t(nsec(fit_pam, xform = exp))),
+  data.frame(estimate = "EC10", t(ecx(fit_pam, ecx_val = 10, xform = exp))),
+  data.frame(estimate = "EC50", t(ecx(fit_pam, ecx_val = 50, xform = exp)))
+)
+#>   estimate       Q50      Q2.5    Q97.5
+#> 1     NSEC 0.2167685 0.1185416 2.112356
+#> 2     EC10 0.4779483 0.4006524 2.154934
+#> 3     EC50 1.9993206 1.8037562 2.735347
+```
+
+The three estimates are ordered as they should be --- 0.217, 0.478 and 1.999
+µg/L --- and their upper bounds are not. The N(S)EC reaches 2.112 and the EC10
+2.155, both above the EC50 median, while the EC50 interval is the narrowest of
+the three at 1.804 to 2.735. The weights say why: `ecxhormebc4` holds 0.64 and
+`ecxwb1` 0.23, and the rest of the fifteen equations share the remaining 0.13.
+A hormesis equation places its threshold where the curve turns upward rather
+than where it begins to fall, so the averaged threshold is drawn from a
+mixture of two answers to different questions and its upper tail is long. The
+EC50 sits in the sampled part of the series and is not affected.
+
+
+``` r
+autoplot(fit_pam) + log_x
 ```
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-unnamed-chunk-34-1.png" alt="plot of chunk unnamed-chunk-34" width="60%" />
-<p class="caption">plot of chunk unnamed-chunk-34</p>
+<img src="vignette-fig-fig-pam-1.png" alt="plot of chunk fig-pam" width="60%" />
+<p class="caption">plot of chunk fig-pam</p>
 </div>
 
 The colour endpoint has five concentrations and 45 chambers of four fragments.
@@ -1116,12 +1280,12 @@ where the design runs out:
 
 
 ``` r
-three_par <- bnec(proportion ~ crf(diuron, c("ecxll3", "ecxwb1p3")) + ogl(chamber),
+three_par <- bnec(proportion ~ crf(log(diuron_adj), c("ecxll3", "ecxwb1p3")) + ogl(chamber),
                   data = coral_colour, family = Beta(link = "identity"),
                   chains = 4, iter = 5000, warmup = 4000, seed = 228, refresh = 0,
                   control = list(adapt_delta = 0.99))
 
-four_par <- bnec(proportion ~ crf(diuron, c("nec4param", "ecx4param")) + ogl(chamber),
+four_par <- bnec(proportion ~ crf(log(diuron_adj), c("nec4param", "ecx4param")) + ogl(chamber),
                  data = coral_colour, family = Beta(link = "identity"),
                  chains = 4, iter = 5000, warmup = 4000, seed = 228, refresh = 0,
                  control = list(adapt_delta = 0.99))
@@ -1142,44 +1306,62 @@ sampled_badly <- function(fit, label) {
 rbind(sampled_badly(three_par, "three parameters"),
       sampled_badly(four_par, "four parameters"))
 #>              curve  equation divergent max_rhat
-#> 1 three parameters    ecxll3         0   1.0042
-#> 2 three parameters  ecxwb1p3         0   1.0040
-#> 3  four parameters nec4param        71   1.0177
-#> 4  four parameters ecx4param       243   1.0130
+#> 1 three parameters    ecxll3         0   1.0055
+#> 2 three parameters  ecxwb1p3         0   1.0039
+#> 3  four parameters nec4param       212   1.3537
+#> 4  four parameters ecx4param       326   1.0088
 ```
 
-The two fits are drawn below, three parameters first.
+Neither three-parameter equation records a divergent transition. `nec4param`
+records 212 and `ecx4param` 326, of the 4000 draws each retains.
+
+The two columns answer different questions, and the four rows show both
+answers. R-hat compares the chains of one fit with each other, and a value near
+1 says they arrived at the same distribution. A divergent transition is
+recorded where the sampler's step size is too large for the curvature of the
+posterior at that point, so the simulated path departs from the one the
+equations describe. A parameter the data do not constrain produces exactly that
+curvature, in a posterior nearly flat along one direction and sharp across it.
+
+`nec4param` fails both checks, at an R-hat of 1.354 that no analysis would
+accept. `ecx4param` fails only one: its R-hat is 1.009, inside every
+conventional cutoff and within 0.005 of the two three-parameter equations,
+while it records more divergent transitions than `nec4param` does. An analysis
+that checked R-hat and stopped would have reported `ecx4param` as converged.
 
 
 ``` r
-autoplot(three_par)
+autoplot(three_par) + log_x
 ```
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-unnamed-chunk-37-1.png" alt="plot of chunk unnamed-chunk-37" width="60%" />
-<p class="caption">plot of chunk unnamed-chunk-37</p>
+<img src="vignette-fig-fig-three-par-1.png" alt="plot of chunk fig-three-par" width="60%" />
+<p class="caption">plot of chunk fig-three-par</p>
 </div>
 
 
 ``` r
-autoplot(four_par)
+autoplot(four_par) + log_x
 ```
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-unnamed-chunk-38-1.png" alt="plot of chunk unnamed-chunk-38" width="60%" />
-<p class="caption">plot of chunk unnamed-chunk-38</p>
+<img src="vignette-fig-fig-four-par-1.png" alt="plot of chunk fig-four-par" width="60%" />
+<p class="caption">plot of chunk fig-four-par</p>
 </div>
 
-The divergences separate the two sets and R-hat does not. Neither
-three-parameter equation records a divergent transition; `nec4param` records 71
-and `ecx4param` 243. Every one of the four has an R-hat between 1.004 and 1.018,
-so a check on R-hat alone would have passed all of them.
+The figures show where those divergences come from. Nothing between 2.9 and 29
+µg/L tells a four-parameter equation where its lower asymptote sits, because
+the colour design has no observation over that decade. At 10 µg/L the
+four-parameter credible band is 0.64 wide on a response that runs from 0 to
+about 0.9, so it covers most of the values the endpoint can take; the
+three-parameter band is 0.28 there. Both close to about 0.05 at 29 µg/L, where
+the observations resume. A three-parameter equation fixes the lower asymptote
+instead of estimating it, and so has nothing to place in the gap.
 
-The figure shows where the four-parameter fits are unconstrained. Their credible
-band spans most of the response range between about 3 and 11 µg/L, which is the
-gap between the fourth diuron concentration and the fifth, and closes again where
-the observations resume. The extra parameters are asked to describe a region the
-design does not sample.
+The threshold estimates differ in the same way. The three-parameter set
+returns an NSEC of 1.57 µg/L (0.66--3.87). The four-parameter set returns 2.79
+(1.52--21.61), an upper bound of the same order as the highest concentration
+tested, which is 29. Both sets were fitted to the same 180 observations.
 
 #301 proposes restricting a model set by the number of curve parameters for
 this reason.
@@ -1534,12 +1716,29 @@ summary(fits_herb)
 
 
 ``` r
-plot(fits_herb)
+group_curves <- function(x) {
+  do.call(rbind, Map(function(f, lev) data.frame(level = lev, ggbnec_data(f)),
+                     x$fits, x$levels))
+}
+```
+
+
+``` r
+ggplot(group_curves(fits_herb), aes(x = x_e)) +
+  geom_polygon(aes(y = y_ci), fill = "grey75", alpha = 0.5) +
+  geom_line(aes(y = y_e), linetype = 2) +
+  geom_point(aes(x = x_r, y = y_r), shape = 21, fill = "grey30", alpha = 0.6) +
+  geom_vline(aes(xintercept = nec_vals), colour = "grey50") +
+  facet_wrap(~level, nrow = 2, scales = "free_x") +
+  log_x +
+  theme_classic() +
+  theme(panel.spacing.x = unit(1.2, "lines")) +
+  labs(x = "Concentration (ug/L)", y = "Effective quantum yield")
 ```
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-unnamed-chunk-41-1.png" alt="plot of chunk unnamed-chunk-41" width="60%" />
-<p class="caption">plot of chunk unnamed-chunk-41</p>
+<img src="vignette-fig-fig-herbicides-1.png" alt="plot of chunk fig-herbicides" width="95%" />
+<p class="caption">plot of chunk fig-herbicides</p>
 </div>
 
 
@@ -1641,10 +1840,6 @@ summary(fits_tox)
 #> ecxll3          0.96      0.00 0.95  0.97
 #> ecxhormebc4     0.96      0.00 0.95  0.97
 #> 
-#> 
-#> 1 model(s) failed to fit: ecxhormebc5
-#> See ?failed_models for the priors and initial values used.
-#> 
 #> $Zn
 #> Object of class bayesmanecfit
 #> 
@@ -1695,20 +1890,24 @@ summary(fits_tox)
 #> ecxll4          0.98      0.00 0.98  0.98
 #> ecxll3          0.98      0.00 0.98  0.99
 #> ecxhormebc4     0.98      0.00 0.98  0.99
-#> 
-#> 
-#> 1 model(s) failed to fit: ecxhormebc5
-#> See ?failed_models for the priors and initial values used.
 ```
 
 
 ``` r
-plot(fits_tox)
+ggplot(group_curves(fits_tox), aes(x = x_e)) +
+  geom_polygon(aes(y = y_ci), fill = "grey75", alpha = 0.5) +
+  geom_line(aes(y = y_e), linetype = 2) +
+  geom_point(aes(x = x_r, y = y_r), shape = 21, fill = "grey30", alpha = 0.4) +
+  geom_vline(aes(xintercept = nec_vals), colour = "grey50") +
+  facet_wrap(~level, scales = "free") +
+  log_x +
+  theme_classic() +
+  labs(x = "Dissolved metal (mg/L)", y = "Relative light units")
 ```
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-unnamed-chunk-45-1.png" alt="plot of chunk unnamed-chunk-45" width="60%" />
-<p class="caption">plot of chunk unnamed-chunk-45</p>
+<img src="vignette-fig-fig-metals-1.png" alt="plot of chunk fig-metals" width="95%" />
+<p class="caption">plot of chunk fig-metals</p>
 </div>
 
 
@@ -1768,12 +1967,16 @@ of 0.8, `ecxll5` returned 880 divergent transitions of 16000 on the section 4
 plate while holding about a fifth of the weight, and fitted alone it returns
 none at 0.99.
 
-`ecxhormebc5` is reported as not fitted in every `lum31` fit. It fails to
-initialise rather than to sample: its hormesis term `exp(slope) * x` is negative
-wherever the predictor is, which on `log(conc)` is 64 per cent of the
-observations, and a starting value drawn from the prior puts the mean below zero,
-which a Gamma with an identity link cannot represent. The same equation fits
-without difficulty on `coral_pam`, whose predictor is never negative. See #344.
+`ecxhormebc5` is excluded before fitting wherever the predictor reaches a
+negative value and the response family requires a positive mean on an identity
+link. Its hormesis term `exp(slope) * x` is negative wherever the predictor is,
+and a starting value drawn from the prior then puts the mean below zero, which
+neither a Gamma nor a `Beta` on an identity link can represent. That covers
+every fit in this vignette on a logged predictor: the `lum31` concentrations
+are in mg/L and negative on the log scale for 64 per cent of the observations,
+and `log(diuron_adj)` is negative below 1 µg/L. `necsigm` and `ecxsigm` are
+excluded on the same predictor for a different reason, that a fractional power
+of a negative number is undefined. See #344.
 
 `lum31` was built from the AIMS data repository deposit accompanying
 @luter2025 by `data-raw/lum31.R`. `coral_colour` and `coral_pam` were built from

@@ -125,6 +125,7 @@ ggplot(herbicide, aes(x = concentration, y = fvfm)) +
   facet_wrap(~herbicide, nrow = 2, scales = "free_x") +
   log_x +
   theme_classic() +
+  theme(panel.spacing.x = unit(1.2, "lines")) +
   labs(x = "Concentration (ug/L)", y = "Effective quantum yield")
 ```
 
@@ -841,6 +842,16 @@ rbind(
 )
 ```
 
+The three estimates are ordered as they should be --- 0.217, 0.478 and 1.999
+µg/L --- and their upper bounds are not. The N(S)EC reaches 2.112 and the EC10
+2.155, both above the EC50 median, while the EC50 interval is the narrowest of
+the three at 1.804 to 2.735. The weights say why: `ecxhormebc4` holds 0.64 and
+`ecxwb1` 0.23, and the rest of the fifteen equations share the remaining 0.13.
+A hormesis equation places its threshold where the curve turns upward rather
+than where it begins to fall, so the averaged threshold is drawn from a
+mixture of two answers to different questions and its upper tail is long. The
+EC50 sits in the sampled part of the series and is not affected.
+
 ```{r fig-pam}
 autoplot(fit_pam) + log_x
 ```
@@ -876,15 +887,22 @@ rbind(sampled_badly(three_par, "three parameters"),
       sampled_badly(four_par, "four parameters"))
 ```
 
-The two columns of that table answer different questions. R-hat compares the
-chains of one fit with each other, and a value near 1 says they arrived at the
-same distribution. A divergent transition is recorded where the sampler's step
-size is too large for the curvature of the posterior at that point, so the
-simulated path departs from the one the equations describe. A parameter the
-data do not constrain produces exactly that curvature, in a posterior that is
-nearly flat along one direction and sharp across it. An equation can therefore
-report an R-hat that passes any conventional cutoff and still record
-divergences, so a check on R-hat alone does not separate these two sets.
+Neither three-parameter equation records a divergent transition. `nec4param`
+records 212 and `ecx4param` 326, of the 4000 draws each retains.
+
+The two columns answer different questions, and the four rows show both
+answers. R-hat compares the chains of one fit with each other, and a value near
+1 says they arrived at the same distribution. A divergent transition is
+recorded where the sampler's step size is too large for the curvature of the
+posterior at that point, so the simulated path departs from the one the
+equations describe. A parameter the data do not constrain produces exactly that
+curvature, in a posterior nearly flat along one direction and sharp across it.
+
+`nec4param` fails both checks, at an R-hat of 1.354 that no analysis would
+accept. `ecx4param` fails only one: its R-hat is 1.009, inside every
+conventional cutoff and within 0.005 of the two three-parameter equations,
+while it records more divergent transitions than `nec4param` does. An analysis
+that checked R-hat and stopped would have reported `ecx4param` as converged.
 
 ```{r fig-three-par}
 autoplot(three_par) + log_x
@@ -894,12 +912,19 @@ autoplot(three_par) + log_x
 autoplot(four_par) + log_x
 ```
 
-The figures show where the four-parameter fits are unconstrained. Nothing
-between 2.9 and 29 µg/L tells either equation where its lower asymptote sits,
-because the colour design has no observation over that decade, so the credible
-band is wide across it and closes again where the observations resume. A
-three-parameter equation fixes that asymptote instead of estimating it, and has
-nothing to place there.
+The figures show where those divergences come from. Nothing between 2.9 and 29
+µg/L tells a four-parameter equation where its lower asymptote sits, because
+the colour design has no observation over that decade. At 10 µg/L the
+four-parameter credible band is 0.64 wide on a response that runs from 0 to
+about 0.9, so it covers most of the values the endpoint can take; the
+three-parameter band is 0.28 there. Both close to about 0.05 at 29 µg/L, where
+the observations resume. A three-parameter equation fixes the lower asymptote
+instead of estimating it, and so has nothing to place in the gap.
+
+The threshold estimates differ in the same way. The three-parameter set
+returns an NSEC of 1.57 µg/L (0.66--3.87). The four-parameter set returns 2.79
+(1.52--21.61), an upper bound of the same order as the highest concentration
+tested, which is 29. Both sets were fitted to the same 180 observations.
 
 #301 proposes restricting a model set by the number of curve parameters for
 this reason.
@@ -952,6 +977,7 @@ ggplot(group_curves(fits_herb), aes(x = x_e)) +
   facet_wrap(~level, nrow = 2, scales = "free_x") +
   log_x +
   theme_classic() +
+  theme(panel.spacing.x = unit(1.2, "lines")) +
   labs(x = "Concentration (ug/L)", y = "Effective quantum yield")
 ```
 
