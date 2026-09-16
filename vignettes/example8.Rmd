@@ -376,14 +376,16 @@ ggplot(lum31, aes(x = conc, y = rlu_cens, group = plate)) +
 <p class="caption">plot of chunk fig-lum31-raw</p>
 </div>
 
-Each arm holds near its control over the lower part of the series and then
-falls across about a tenfold range of concentration. Copper drops below half its
-control by 0.084 mg/L at 15 minutes and 0.064 at 30 minutes; zinc by 1.9 and
-0.93. Zinc is therefore the weaker of the two by roughly an order of magnitude,
-and both are more potent at the longer exposure. Every arm reaches a floor at
-its top concentrations. Two further features of the figure are taken up below: the
-plates of one arm are separated vertically by a factor of four to five at the
-control, and the zinc panels rise above their control before falling.
+Luminescence stays near its control level over the lower part of each series and
+then declines across about a tenfold range of concentration. It is below half the
+control by 0.084 mg/L of copper at 15 minutes and 0.064 at 30 minutes, and by 1.9
+and 0.93 mg/L of zinc. Zinc is therefore the weaker of the two by roughly an
+order of magnitude, and both are more potent at the longer exposure. At the top
+concentrations of every arm the readings reach a floor.
+
+Two further features are taken up below. The plates of one arm are separated
+vertically by a factor of four to five at the control. And at low zinc
+concentrations luminescence rises above the control level before declining.
 
 `well` identifies an individual well, which is read at both exposure times.
 Concentrations are measured dissolved metal rather than nominal, and each batch
@@ -1107,8 +1109,8 @@ population of metals, so they are levels rather than a grouping. Each is fitted
 with the structure the sections above arrived at: the censored response, a plate
 term for the gain, and a dispersion sub-model. `bnec_group()` fits each level
 separately and returns one object. The call keeps `model = "all"` for the reason
-given under *Within-concentration grouping*, that zinc rises above its control at
-low concentrations.
+given under *Within-concentration grouping*, that luminescence rises above the
+control level at low zinc concentrations.
 
 
 ``` r
@@ -1416,7 +1418,7 @@ rbind(
 <p class="caption">plot of chunk fig-coral-raw</p>
 </div>
 
-Both endpoints fall over the series. The yield panel has observations at every
+Both responses decline with concentration. The yield panel has observations at every
 one of its six concentrations. The colour panel has none between 2.9 and 29
 µg/L, a full order of magnitude and the widest unsampled interval in either
 endpoint.
