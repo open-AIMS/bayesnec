@@ -520,6 +520,7 @@ autoplot.bayesnecgroupfit <- function(object, ..., nec = TRUE, ecx = FALSE,
 #' @importFrom ggplot2 ggplot geom_polygon aes geom_line geom_point stat_summary
 #' @importFrom ggplot2 geom_vline geom_text theme_classic facet_wrap theme
 #' @importFrom ggplot2 element_text element_blank element_rect labs
+#' @importFrom ggplot2 scale_colour_discrete scale_fill_discrete
 #' @importFrom ggplot2 scale_x_continuous
 #' @importFrom dplyr filter
 #' @importFrom rlang .data
@@ -587,10 +588,17 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE, group = FALSE,
               mapping = aes(x = .data$x_e, y = .data$y_e),
               colour = "black", linetype = 2)
   if (group && group_aes == "colour") {
+    group_levels <- if (is.factor(raw$group)) {
+      levels(droplevels(raw$group))
+    } else {
+      sort(unique(as.character(raw$group)), na.last = NA)
+    }
     out <- out +
       geom_point(data = raw,
                  mapping = aes(x = .data$x_r, y = .data$y_r,
                                fill = .data$group), shape = 21) +
+      scale_colour_discrete(limits = group_levels) +
+      scale_fill_discrete(limits = group_levels) +
       labs(colour = group_label, fill = group_label)
   } else {
     out <- out +

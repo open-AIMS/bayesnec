@@ -148,6 +148,29 @@ test_that("group colour maps observations and per-level means", {
   )
 })
 
+test_that("group colours agree when levels use different mean marks", {
+  skip_on_cran()
+  fit <- nec4param
+  group <- rep(c("b", "c"), length.out = nrow(fit$fit$data))
+  group[1] <- "a"
+  fit$fit$data$mixed_group <- factor(group, levels = c("a", "b", "c"))
+  fit$bayesnecformula <- bayesnecformula(
+    y ~ crf(x, model = "nec4param") + ogl(mixed_group)
+  )
+  plot <- suppressMessages(
+    autoplot(fit, group = "mixed_group", group_aes = "colour", nec = FALSE)
+  )
+  built <- ggplot2::ggplot_build(plot)
+  fill_scale <- built$plot$scales$get_scales("fill")
+  colour_scale <- built$plot$scales$get_scales("colour")
+
+  expect_equal(fill_scale$map(levels(fit$fit$data$mixed_group)),
+               colour_scale$map(levels(fit$fit$data$mixed_group)))
+  expect_equal(as.character(fill_scale$get_breaks()), c("a", "b", "c"))
+  expect_equal(as.character(colour_scale$get_breaks()), c("a", "b", "c"))
+  expect_length(built$plot$guides$guides, 1)
+})
+
 test_that("a grouping confined to one predictor value uses mean markers", {
   skip_on_cran()
   fit <- nec4param
