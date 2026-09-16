@@ -1,8 +1,9 @@
 # Vignette numbering — the register
 
-**Check this file before creating a new `vignettes/exampleN.Rmd.orig`. In the
-same commit that creates the file, add your row here and an entry in the
-`articles:` block of `_pkgdown.yml`.**
+**Check this file before creating a new `vignettes/exampleN.Rmd.orig`, and add
+your row to it in the same commit that creates the file.** The `articles:` block
+of `_pkgdown.yml` records the number as well, but not in that commit — rule 5
+gives the timing and the two ways of getting it wrong.
 
 This register exists because two parallel sessions both claimed `example8` in
 August 2026 — the #6/#33 grouping vignette and the #219 workflow vignette — and
@@ -39,13 +40,26 @@ number can be taken without being visible anywhere a new session would look.
    output, the figure names under `vignette-fig-`, every `vignette("exampleN")`
    cross-reference, and any published URL all carry the number.
 4. `2b` is a historical exception. Do not create further letter suffixes.
-5. **List the vignette in `_pkgdown.yml`.** Its `articles:` block sets the order
-   of the articles index and of the Articles dropdown, and
-   `pkgdown:::data_articles_index()` aborts the site build on a vignette that is
-   present but absent from the block. Put the entry in the section its subject
-   belongs to; #363 records how the order was derived. The pkgdown job is the
-   only thing that reports the omission, and it reports it as a failed build on
-   whichever pull request adds the vignette.
+5. **List the vignette in `_pkgdown.yml`, in the commit that adds the rendered
+   `vignettes/exampleN.Rmd`.** Its `articles:` block sets the order of the
+   articles index and of the Articles dropdown. Put the entry in the section its
+   subject belongs to; #363 records how the order was derived.
+
+   The block aborts the site build in both directions.
+   `pkgdown:::data_articles_index()` refuses a vignette that is present but
+   unlisted, with `1 vignette missing from index`, and refuses a listed entry
+   that names no vignette in the build, with `must be a known topic name or
+   alias`. The second is the one to watch, because
+   `pkgdown:::package_vignettes()` globs `\.[Rrq]md$` and so never sees a
+   `.Rmd.orig`, and `notes/implementation/00_protocol.md` tells a session not to
+   run `precompile.R`. A new vignette therefore exists as `.Rmd.orig` alone for
+   as long as the render is outstanding, and an entry added over that gap fails
+   every pkgdown run until the `.Rmd` lands.
+
+   The pkgdown job is the only thing that reports either omission. It runs on a
+   pull request whose base is `master` or `dev`, so a pull request stacked on a
+   feature branch finds out when it is retargeted rather than when the mistake
+   is made.
 
 ---
 
