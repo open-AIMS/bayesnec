@@ -792,21 +792,25 @@ from are returned as well, in `posterior_data`, and drawing them separates a
 difference in location from a difference in width:
 
 ```{r fig-cmp-metals, fig.asp = 0.5, out.width = "78%"}
-ggplot(data = cmp_tox$posterior_data, mapping = aes(x = value)) +
+tox_post <- cmp_tox$posterior_data
+tox_post$value <- exp(tox_post$value)
+
+ggplot(data = tox_post, mapping = aes(x = value)) +
   geom_density(mapping = aes(group = model, colour = model, fill = model),
                alpha = 0.3) +
+  log_x +
   theme_classic() +
-  theme(legend.position = "top") +
-  labs(x = "N(S)EC, log(mg/L)", y = "Density", fill = NULL, colour = NULL)
+  labs(x = "Dissolved metal (mg/L)", y = "Density",
+       fill = "Toxicant", colour = "Toxicant")
 ```
 
 
 The two posteriors barely overlap, and they differ in more than their centres.
-Copper's is narrow: a 95 per cent interval of 0.76 log units, centred at -2.59,
-which is 0.075 mg/L. Zinc's is centred at -0.26, or 0.77 mg/L, over an interval
-of 1.70 log units --- more than twice as wide. Copper is both the more potent
-metal and the better determined one on these data. The single pairwise
-comparison is 0.0138, which is what that separation reduces to.
+Copper's median is 0.075 mg/L over an interval of 0.043 to 0.092, a factor of
+2.1 from end to end. Zinc's is 0.771 over 0.227 to 1.243, a factor of 5.5.
+Copper is both the more potent metal and the better determined one on these
+data. The single pairwise comparison is 0.0138, which is what that separation
+reduces to.
 
 # Case study 2: diuron and climate on a coral
 
@@ -1113,8 +1117,8 @@ Seven herbicides are a fixed set chosen for their interest, not a sample from a
 population of herbicides, so shrinking them towards a common curve answers a
 different question from the one being asked, and their functional forms may
 differ. `bnec_group()` fits each level separately and returns one object. This
-call uses `decline` rather than `"all"`, which reproduces the final figure of
-@fisher2024.
+call uses `decline` rather than `"all"`, which is what Figure 11 of @fisher2024
+was fitted with.
 
 ```{r fit-herbicides, results = "hide"}
 fits_herb <- bnec_group(fvfm ~ crf(log(concentration), "decline"),
@@ -1149,39 +1153,41 @@ The 21 pairwise probabilities are a summary of seven posteriors, and those are
 in `posterior_data`:
 
 ```{r fig-cmp-herbicides, fig.asp = 0.5, out.width = "95%"}
-# Drawn as vignette("example4") draws a compare_posterior density, with the
-# levels ordered by their median so that the legend reads in the same order as
-# the curves.
+# Figure 11 of Fisher et al. (2024) is this display for these seven herbicides,
+# and this reproduces it. The posteriors are on the fitted scale, log(ug/L), and
+# exp() returns them to concentration so that the axis reads in the units the
+# estimates are reported in, as every other figure here does.
 herb_post <- cmp_herb$posterior_data
-herb_post$model <- reorder(factor(herb_post$model), herb_post$value, median)
+herb_post$value <- exp(herb_post$value)
 
 ggplot(data = herb_post, mapping = aes(x = value)) +
   geom_density(mapping = aes(group = model, colour = model, fill = model),
                alpha = 0.3) +
-  guides(fill = guide_legend(nrow = 1), colour = guide_legend(nrow = 1)) +
+  log_x +
   theme_classic() +
-  theme(legend.position = "top") +
-  labs(x = "N(S)EC, log(ug/L)", y = "Density", fill = NULL, colour = NULL)
+  labs(x = "Concentration (ug/L)", y = "Density",
+       fill = "Model", colour = "Model")
 ```
 
-Ordered by their medians, the seven run from irgarol and diuron at the left to
-tebuthiuron at the right, which is the potency ordering the table gave. Three
-things the pairwise probabilities do not say are visible in the densities.
+This reproduces Figure 11 of @fisher2024. The seven run from irgarol at 0.135
+µg/L to tebuthiuron at 10.542, and three things the pairwise probabilities do
+not say are visible in the densities.
 
-The three most potent overlap almost entirely. Irgarol, diuron and ametryn sit
-within half a log unit of each other and their densities are superimposed over
-most of their length, which is what a `prob_diff` of 0.724 for diuron against
-irgarol looks like as a distribution.
+The three most potent overlap almost entirely. Irgarol at 0.135 and diuron at
+0.152 have intervals of 0.107 to 0.175 and 0.109 to 0.195, so one sits almost
+inside the other; that is what a `prob_diff` of 0.724 looks like as a
+distribution. Ametryn at 0.199 overlaps both.
 
-The posteriors differ in width by more than they differ in position for some
-pairs. Irgarol's 95 per cent interval spans 0.49 log units and simazine's 2.42,
-five times as wide, so two herbicides an order of magnitude apart in median can
-still overlap because one of them is poorly determined.
+The posteriors differ in width as much as in position. From end to end,
+irgarol's interval spans a factor of 1.6 and diuron's 1.8, against 11.3 for
+simazine and 7.5 for atrazine. Two herbicides an order of magnitude apart in
+median can still overlap, because one of them is poorly determined rather than
+because they are alike.
 
-Several are bimodal. Tebuthiuron has a second mode near 2.05 and ametryn a long
-left shoulder, which is the same model-averaging mixture case study 2 traced in
-`fit_pam`: a low-weight equation placing its threshold somewhere else, visible
-in the tail of the average rather than in its median.
+Several are bimodal. Tebuthiuron has a second mode near 2 µg/L and hexazinone
+one near 1.6, which is the model-averaging mixture case study 2 traced in
+`fit_pam`: a low-weight equation placing its threshold elsewhere, visible in the
+tail of the average and not in its median.
 
 The seven herbicides span two orders of magnitude. Back-transformed from the
 fitted scale, the N(S)EC runs from irgarol at 0.135 µg/L (0.108--0.176) and
@@ -1227,7 +1233,7 @@ R.version.string
 
 The fits use `model = "all"`, which `bnec()` filters to the equations valid for
 the family and predictor, except for the herbicide call, which uses `decline`
-to reproduce the figure of @fisher2024, and the parameter-count contrast of
+to match Figure 11 of @fisher2024, and the parameter-count contrast of
 case study 2, which names two equations on each side because the contrast is
 the point. No call names `iter`, `warmup` or `control`, so `bnec()`'s defaults
 apply: 4 chains at 10000 iterations with 8000 warmup, under `seed = 228`.
