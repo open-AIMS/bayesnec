@@ -54,7 +54,7 @@ the meaning of zero*:
   and biases statistics), with @blasco2019 and @martin2005 for establishing
   zero provenance before choosing a model, and @warton2005 for "many zeros does
   not imply zero inflation". All four are already in `vignettes/bayesnec.bib`.
-* The normalisation caveat (@ritz2026, issue #173) is a *different* argument
+* The normalisation caveat (@Ritz2026, issue #173) is a *different* argument
   about dividing by a control mean, and is settled — do not merge the two.
 * The distinction between structural zeros and rounding is settled and
   demonstrated with the `herbicide` data (gap-ratio diagnostic); left-censoring

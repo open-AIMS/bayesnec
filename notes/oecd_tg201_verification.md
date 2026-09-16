@@ -290,7 +290,7 @@ scale. That is the sentence the section should be built around.
 `example6.Rmd.orig:909-912` already notes that `ecx(type = "absolute")` "measures
 decline relative to the *fitted* control value and therefore propagates control
 uncertainty through the posterior" — but it sits in the **normalisation** section
-(@ritz2026, issue #173), disconnected from the flooring argument. TG 201 Annex 5's
+(@Ritz2026, issue #173), disconnected from the flooring argument. TG 201 Annex 5's
 "Normalizing responses" makes exactly that complaint about dividing by the control
 mean (it "introduces an additional error caused by the error on the control mean",
 needing a covariance correction, Draper and Smith 1981). Absolute ECx answers both
@@ -506,7 +506,7 @@ approaches."
 
 One thing to keep separate: TG 201 Annex 5 has a "Normalizing responses" section
 warning that dividing by the **control mean** introduces the error on the control
-mean and needs a covariance correction. That is the @ritz2026 / issue #173
+mean and needs a covariance correction. That is the @Ritz2026 / issue #173
 argument, and recommendation 3 normalises to each unit's **own** baseline, which
 is a different operation. Per the scoping note these two arguments stay separate.
 

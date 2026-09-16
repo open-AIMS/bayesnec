@@ -1,7 +1,9 @@
 # Vignette numbering — the register
 
 **Check this file before creating a new `vignettes/exampleN.Rmd.orig`, and add
-your row to it in the same commit that creates the file.**
+your row to it in the same commit that creates the file.** The `articles:` block
+of `_pkgdown.yml` records the number as well, but not in that commit — rule 5
+gives the timing and the two ways of getting it wrong.
 
 This register exists because two parallel sessions both claimed `example8` in
 August 2026 — the #6/#33 grouping vignette and the #219 workflow vignette — and
@@ -20,9 +22,9 @@ number can be taken without being visible anywhere a new session would look.
 | 4 | `example4` | comparing posteriors | — | `dev` |
 | 5 | `example5` | installation and setup | #342 | `dev` |
 | 6 | `example6` | hurdle families and zero-inflation | — | `dev` |
-| 7 | `example7` | negative growth rates and the zero boundary | #193 | `negsgr-cens-vignette` |
+| 7 | `example7` | negative growth rates and the zero boundary | #193 | `dev` |
 | 8 | `example8` | grouping and factor covariates | #6, #33 | `issue-6-33-grouping-vignette` |
-| 9 | `example9` | a complete analysis workflow | #219 | `issue-219-workflow-vignette` |
+| 9 | `example9` | a complete analysis workflow | #219 | `dev` |
 
 **Next free number: 10.**
 
@@ -31,12 +33,42 @@ number can be taken without being visible anywhere a new session would look.
 1. **Claim the number here first**, on a branch that goes to `dev` quickly, or in
    the same PR that adds the vignette. A number claimed only on a long-lived
    feature branch is invisible to everyone else.
-2. **A number is not free just because `dev` has no such file.** Four of the ten
-   rows above live on unmerged branches. Check this table, not `ls vignettes/`.
+2. **A number is not free just because `dev` has no such file.** A row above may
+   name an unmerged branch in its last column. Check this table, not
+   `ls vignettes/`.
 3. **Renumbering is expensive** once a vignette is rendered: `precompile.R`
    output, the figure names under `vignette-fig-`, every `vignette("exampleN")`
    cross-reference, and any published URL all carry the number.
 4. `2b` is a historical exception. Do not create further letter suffixes.
+5. **List the vignette in `_pkgdown.yml` once the rendered
+   `vignettes/exampleN.Rmd` exists, and never before it.** Its `articles:` block
+   sets the order of the articles index and of the Articles dropdown. Put the
+   entry in the section its subject belongs to; #363 records how the order was
+   derived.
+
+   The block aborts the site build in both directions.
+   `pkgdown:::data_articles_index()` refuses a vignette that is present but
+   unlisted, with `1 vignette missing from index`, and refuses a listed entry
+   that names no vignette in the build, with `must be a known topic name or
+   alias`. The second is the one to watch, because
+   `pkgdown:::package_vignettes()` matches `\.[Rrq]md$` and so never sees a
+   `.Rmd.orig`, and `notes/implementation/00_protocol.md` tells a session not to
+   run `precompile.R`. A new vignette therefore exists as `.Rmd.orig` alone for
+   as long as the render is outstanding, and an entry added over that gap fails
+   every pkgdown run until the `.Rmd` lands.
+
+   Where the render arrives through the `precompile vignettes` workflow, its
+   pull request stages `vignettes/*.Rmd` and `vignettes/*.png` and nothing else,
+   so the entry is a separate commit on whichever branch the rendered `.Rmd`
+   lands on.
+
+   The pkgdown job is the only thing that reports either omission. It runs on a
+   push to `master` or `dev` and on a pull request whose base is one of them, so
+   a missing entry that reaches `dev` shows up as a failed push run and a dev
+   site that stops updating. A pull request stacked on a feature branch is not
+   checked until it is retargeted, and the precompile workflow's own pull
+   request targets the branch it was dispatched against, so that one is not
+   checked either where the dispatch was against a feature branch.
 
 ---
 
