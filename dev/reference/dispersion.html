@@ -101,9 +101,9 @@
 
 
 <dl><dt id="arg-model">model<a class="anchor" aria-label="anchor" href="#arg-model"></a></dt>
-<dd><p>An object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> whose distribution
-family is either <code><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></code> or
-<code><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial</a></code>.</p></dd>
+<dd><p>An object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or
+<code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> whose distribution family is either
+<code><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></code> or <code><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial</a></code>.</p></dd>
 
 
 <dt id="arg-summary">summary<a class="anchor" aria-label="anchor" href="#arg-summary"></a></dt>
@@ -122,16 +122,17 @@ on, because <code>set.seed(NULL)</code> re-initialises the stream from the clock
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>A <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></code> vector. If <code>summary</code> is FALSE, an
-n-long vector containing the dispersion metric, where n is the number of post
-warm-up posterior draws from the <code><a href="https://paulbuerkner.com/brms/reference/brmsfit-class.html" class="external-link">brmsfit</a></code> object. An
-element of that vector is <code>Inf</code> for a draw containing an observation of
+    <p>For a <code><a href="bayesnecfit-class.html">bayesnecfit</a></code>, a <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></code>
+vector. If <code>summary</code> is FALSE, it contains the dispersion metric for
+each post-warm-up posterior draw from the <code><a href="https://paulbuerkner.com/brms/reference/brmsfit-class.html" class="external-link">brmsfit</a></code>
+object. An element is <code>Inf</code> for a draw containing an observation of
 zero fitted variance whose response is not the fitted value, and <code>NA</code>
 for a draw in which no observation contributes a residual; both cases are
-described under Details and both are reported when they arise. If
-TRUE, then a <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code> containing the summary stats
-(median, 95% credible interval, and the posterior probability of
-over-dispersion) of the dispersion metric.</p>
+described under Details and reported when they arise. If <code>summary</code> is
+TRUE, the vector contains the median, 95% credible interval, and posterior
+probability of over-dispersion. For a <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code>,
+<code>summary = FALSE</code> returns a named list of these vectors and
+<code>summary = TRUE</code> returns a data frame with one row per equation.</p>
     </div>
     <div id="details">
     <h2>Details</h2>
