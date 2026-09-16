@@ -1111,9 +1111,9 @@ c(wells = nrow(cu), concentrations = length(unique(cu$conc)),
   at_the_floor = sum(cu$censoring != "none"))
 ```
 
-The plate is the one of the `r length(unique(subset(lum31, toxicant == "Cu" & minutes == 15)$plate))`
-in this arm with the fewest readings at the instrument's floor, which is one of
-`r nrow(cu)`. A reading held at a bound contributes a spread smaller than the one
+It is one of two plates in the arm of
+`r length(unique(subset(lum31, toxicant == "Cu" & minutes == 15)$plate))` with
+the fewest readings at the instrument's floor, which is one of `r nrow(cu)`. A reading held at a bound contributes a spread smaller than the one
 the well would have shown, so a plate with many of them would understate exactly
 the quantity this section is about.
 
@@ -1215,9 +1215,11 @@ cf_const[, c("group", "n", "obs_sd", "sim_sd", "sd_ratio", "ppp_sd", "control")]
 ```
 
 `sd_ratio` is the observed spread divided by the simulated one, so 1 is
-agreement. It rises across the series from
-`r sprintf("%.2f", cf_const$sd_ratio[cf_const$control])` at the control to a
-maximum of `r sprintf("%.2f", max(cf_const$sd_ratio))` at
+agreement. It lies between
+`r sprintf("%.2f", min(cf_const$sd_ratio[1:5]))` and
+`r sprintf("%.2f", max(cf_const$sd_ratio[1:5]))` over the five lowest
+concentrations, then rises to a maximum of
+`r sprintf("%.2f", max(cf_const$sd_ratio))` at
 `r sprintf("%.2g", as.numeric(cf_const$group)[which.max(cf_const$sd_ratio)])`
 mg/L, and `r sum(cf_const$ppp_sd > 0.95 | cf_const$ppp_sd < 0.05)` of its
 `r nrow(cf_const)` groups are flagged. The fit simulates about
@@ -1249,10 +1251,10 @@ The screen is run again rather than assumed. It removes
 `r sum(check_sampling(set_power)$failed)` equation here, and not the same one it
 removed before: a dispersion sub-model changes the posterior every equation is
 sampled from. The same equation holds the most weight in both sets, and holds
-more of it in this one, at
-`r sprintf("%.2f", max(summary(screened_power)$mod_weights[, "wi"]))` against
-`r sprintf("%.2f", max(summary(screened_const)$mod_weights[, "wi"]))`, because
-the variance function changes which curves fit the concentration means best.
+more of it in this one. The weights themselves concentrate: under constant
+dispersion `r sum(summary(screened_const)$mod_weights[, "wi"] > 0.01)` equations
+share them, and under the sub-model
+`r sum(summary(screened_power)$mod_weights[, "wi"] > 0.01)` do.
 
 ```{r disp-slope}
 brms::fixef(pull_brmsfit(best_power))[c("c0_Intercept", "c1_Intercept"), ]
@@ -1266,7 +1268,11 @@ a power law makes `log(cv)` linear in `log(mu)` with slope `-c1/2`.
 ```{r disp-slope-observed}
 conc_mean <- tapply(cu$rlu_cens, cu$conc, mean)
 obs_slope <- lm(log(cv_obs) ~ log(conc_mean))
--2 * c(estimate = coef(obs_slope)[[2]], rev(confint(obs_slope)[2, ]))
+# Multiplying by -2 reverses the order of the bounds, so the names confint()
+# supplied would be attached to the wrong ends.
+setNames(-2 * c(coef(obs_slope)[[2]], rev(confint(obs_slope)[2, ])),
+         c("c1", "lower", "upper"))
+c(r_squared = summary(obs_slope)$r.squared)
 ```
 
 The two agree. The fit gives
@@ -1280,7 +1286,12 @@ and the wells give
 `r sprintf("%.2f", -2 * confint(obs_slope)[2, 2])` to
 `r sprintf("%.2f", -2 * confint(obs_slope)[2, 1])`. The sub-model is therefore
 describing the replicate variation the design measured, and not absorbing a
-failure of the curve elsewhere in the series.
+failure of the curve elsewhere in the series. No curve enters a
+within-concentration standard deviation, which is what makes that comparison
+worth making. Whether a power law is the right form for the relationship is a
+separate question, and the regression answers it here with an R-squared of
+`r sprintf("%.3f", summary(obs_slope)$r.squared)` on
+`r summary(obs_slope)$df[2]` degrees of freedom.
 
 ```{r exmp9-pit-power, fig.asp = 0.7}
 pp_check(best_power, type = "pit_ecdf")
@@ -1344,44 +1355,76 @@ ggplot(sd_ratios, aes(x = conc, y = sd_ratio, colour = dispersion,
 The constant-dispersion series climbs across three orders of magnitude of the
 predictor, passing through agreement near
 `r sprintf("%.2g", as.numeric(cf_const$group)[which.min(abs(cf_const$sd_ratio - 1))])`
-mg/L. The `disp("power")` series sits on the dashed line over the whole range
-apart from
-`r sprintf("%.2g", as.numeric(cf_power$group)[which.max(cf_power$sd_ratio)])`
-mg/L, where it reaches
-`r sprintf("%.2f", max(cf_power$sd_ratio))`. The response there is near the
-instrument's floor and four wells determine the point, so the observed spread is
-not well resolved; that group is not flagged.
+mg/L. The `disp("power")` series stays near the dashed line, and does not sit on
+it: its ratios run from
+`r sprintf("%.2f", min(cf_power$sd_ratio))` to
+`r sprintf("%.2f", max(cf_power$sd_ratio))`, and on a logarithmic axis the low
+end is as far from agreement as the high end. None of those groups is flagged,
+and the reason is the design rather than the fit. A standard deviation computed
+from four values has a sampling standard deviation of about
+`r sprintf("%.0f", 100 / sqrt(2 * (unique(cf_power$n)[1] - 1)))` per cent of
+itself, so four wells do not resolve a spread more finely than that span. What
+the display supports is that the ratios no longer trend with concentration, not
+that each one is exactly 1.
 
 ## The reported estimates
 
+The diagnostics above are run on the highest-weighted equation, which is what
+`pp_check()` and `check_fit()` take. The estimates are read from the screened
+set, as step 5 does, because the weights here are spread across several
+equations and no one of them describes the model-averaged value on its own.
+
+```{r disp-weights}
+round(summary(screened_const)$mod_weights[, "wi"], 3)
+```
+
 ```{r disp-estimates}
-rbind(constant = nsec(best_const, xform = exp),
-      power = nsec(best_power, xform = exp))
-rbind(constant = ecx(best_const, ecx_val = 10, xform = exp),
-      power = ecx(best_power, ecx_val = 10, xform = exp))
+rbind(constant = nsec(screened_const, xform = exp),
+      power = nsec(screened_power, xform = exp))
+rbind(constant = ecx(screened_const, ecx_val = 10, xform = exp),
+      power = ecx(screened_power, ecx_val = 10, xform = exp))
 ```
 
 The *NSEC* falls from
-`r sprintf("%.3f", nsec(best_const, xform = exp)[1])` to
-`r sprintf("%.3f", nsec(best_power, xform = exp)[1])` mg/L, a factor of
-`r sprintf("%.1f", nsec(best_const, xform = exp)[1] / nsec(best_power, xform = exp)[1])`.
-That is the mechanism the Overview sets out, observed: `nsec()` places its
-reference at a quantile of the posterior of the control mean, the
-constant-dispersion fit made that posterior about
-`r round(1 / cf_const$sd_ratio[cf_const$control])` times too wide, and a
-reference placed too low is crossed further along the curve. The
-constant-dispersion fit reports the *less* protective of the two figures, and
-nothing in its sampler diagnostics says so.
+`r sprintf("%.3f", nsec(screened_const, xform = exp)[1])` to
+`r sprintf("%.3f", nsec(screened_power, xform = exp)[1])` mg/L, a factor of
+`r sprintf("%.1f", nsec(screened_const, xform = exp)[1] / nsec(screened_power, xform = exp)[1])`.
+The mechanism is what `nsec()` reads its reference from, which is the posterior
+of the control mean with any group-level deviation excluded.
+
+```{r control-posterior}
+control_reference <- function(fit) {
+  nd <- data.frame(conc = min(cu$conc), censoring = "none")
+  post <- posterior_epred(pull_brmsfit(fit), newdata = nd, re_formula = NA)[, 1]
+  c(sd = sd(post), cv = sd(post) / mean(post),
+    reference_share = unname(quantile(post, 0.01) / mean(post)))
+}
+round(rbind(constant = control_reference(best_const),
+            power = control_reference(best_power)), 4)
+```
+
+That posterior is
+`r sprintf("%.0f", control_reference(best_const)[["sd"]] / control_reference(best_power)[["sd"]])`
+times wider under constant dispersion. `nsec()` sets its reference at a lower
+quantile of it, so the reference sits at
+`r sprintf("%.2f", control_reference(best_const)[["reference_share"]])` of the
+control mean there against
+`r sprintf("%.2f", control_reference(best_power)[["reference_share"]])` under the
+sub-model. A reference placed that far below the control is crossed further
+along the curve, so the constant-dispersion fit reports the *less* protective of
+the two figures, and nothing in its sampler diagnostics says so.
 
 EC10 changes by less, from
-`r sprintf("%.3f", ecx(best_const, ecx_val = 10, xform = exp)[1])` to
-`r sprintf("%.3f", ecx(best_power, ecx_val = 10, xform = exp)[1])` mg/L, and its
-interval narrows from
-`r sprintf("%.3f", diff(ecx(best_const, ecx_val = 10, xform = exp)[c(2, 3)]))` to
-`r sprintf("%.3f", diff(ecx(best_power, ecx_val = 10, xform = exp)[c(2, 3)]))`
+`r sprintf("%.3f", ecx(screened_const, ecx_val = 10, xform = exp)[1])` to
+`r sprintf("%.3f", ecx(screened_power, ecx_val = 10, xform = exp)[1])` mg/L,
+while its interval narrows from
+`r sprintf("%.3f", diff(ecx(screened_const, ecx_val = 10, xform = exp)[c(2, 3)]))`
+to
+`r sprintf("%.3f", diff(ecx(screened_power, ecx_val = 10, xform = exp)[c(2, 3)]))`
 mg/L. It is measured at a fixed fraction of the control mean rather than at a
 quantile of its posterior, so the variance assumption reaches it through the
-precision of the curve rather than through the placement of its reference.
+precision of the curve rather than through the placement of its reference. That
+is the difference the Overview draws between the two.
 
 A methods section states the dispersion structure each estimate was fitted
 under, because the two structures return different estimates from the same data.
@@ -1409,8 +1452,8 @@ constant-dispersion fit passed the sampler screen while simulating about
 `r round(1 / cf_const$sd_ratio[cf_const$control])` times the spread the control
 shows. Adding `disp("power")` brought every group within agreement and halved
 the reported *NSEC*, from
-`r sprintf("%.3f", nsec(best_const, xform = exp)[1])` to
-`r sprintf("%.3f", nsec(best_power, xform = exp)[1])` mg/L. A fit can pass every
+`r sprintf("%.3f", nsec(screened_const, xform = exp)[1])` to
+`r sprintf("%.3f", nsec(screened_power, xform = exp)[1])` mg/L. A fit can pass every
 check the sampler screen applies and still simulate the wrong spread at the
 concentration both estimators are referenced from.
 
