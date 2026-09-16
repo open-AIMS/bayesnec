@@ -40,26 +40,34 @@ number can be taken without being visible anywhere a new session would look.
    output, the figure names under `vignette-fig-`, every `vignette("exampleN")`
    cross-reference, and any published URL all carry the number.
 4. `2b` is a historical exception. Do not create further letter suffixes.
-5. **List the vignette in `_pkgdown.yml`, in the commit that adds the rendered
-   `vignettes/exampleN.Rmd`.** Its `articles:` block sets the order of the
-   articles index and of the Articles dropdown. Put the entry in the section its
-   subject belongs to; #363 records how the order was derived.
+5. **List the vignette in `_pkgdown.yml` once the rendered
+   `vignettes/exampleN.Rmd` exists, and never before it.** Its `articles:` block
+   sets the order of the articles index and of the Articles dropdown. Put the
+   entry in the section its subject belongs to; #363 records how the order was
+   derived.
 
    The block aborts the site build in both directions.
    `pkgdown:::data_articles_index()` refuses a vignette that is present but
    unlisted, with `1 vignette missing from index`, and refuses a listed entry
    that names no vignette in the build, with `must be a known topic name or
    alias`. The second is the one to watch, because
-   `pkgdown:::package_vignettes()` globs `\.[Rrq]md$` and so never sees a
+   `pkgdown:::package_vignettes()` matches `\.[Rrq]md$` and so never sees a
    `.Rmd.orig`, and `notes/implementation/00_protocol.md` tells a session not to
    run `precompile.R`. A new vignette therefore exists as `.Rmd.orig` alone for
    as long as the render is outstanding, and an entry added over that gap fails
    every pkgdown run until the `.Rmd` lands.
 
+   Where the render arrives through the `precompile vignettes` workflow, its
+   pull request stages `vignettes/*.Rmd` and `vignettes/*.png` and nothing else,
+   so the entry is a separate commit on the same branch.
+
    The pkgdown job is the only thing that reports either omission. It runs on a
-   pull request whose base is `master` or `dev`, so a pull request stacked on a
-   feature branch finds out when it is retargeted rather than when the mistake
-   is made.
+   push to `master` or `dev` and on a pull request whose base is one of them, so
+   a missing entry that reaches `dev` shows up as a failed push run and a dev
+   site that stops updating. A pull request stacked on a feature branch is not
+   checked until it is retargeted, and the precompile workflow's own pull
+   request targets the branch it was dispatched against, so that one is not
+   checked either where the dispatch was against a feature branch.
 
 ---
 

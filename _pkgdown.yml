@@ -45,7 +45,7 @@ development:
 #
 # Every vignette present must be listed here, and every entry must name a
 # vignette that is in the build: `data_articles_index()` aborts on either. The
-# second applies because `package_vignettes()` globs `\.[Rrq]md$` and so never
+# second applies because `package_vignettes()` matches `\.[Rrq]md$` and so never
 # sees a `.Rmd.orig`, so an entry goes in with the rendered `.Rmd` rather than
 # with the source. `notes/vignette_numbering.md` rule 5 records that where a new
 # vignette's author will meet it.
