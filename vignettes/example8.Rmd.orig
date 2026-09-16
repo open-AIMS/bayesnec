@@ -840,8 +840,8 @@ the effective quantum yield of photosystem II in the symbiotic dinoflagellates,
 read by pulse-amplitude modulated fluorometry. `proportion` is a colour index
 standing in for bleaching: a photograph of about half a square centimetre of
 live tissue, reduced to its mean grey pixel value and then rescaled between the
-smallest and largest values observed. That rescaling is worth remembering ---
-one observation is bound to sit on 1, and one does.
+smallest and largest values observed. That rescaling has a consequence for the
+family: one observation is bound to sit on 1, and one does.
 
 Both are within-concentration designs, a chamber sitting at one concentration,
 and they differ in the width of the design and in nothing else that matters
@@ -1031,22 +1031,26 @@ rbind(sampled_badly(three_par, "three parameters"),
       sampled_badly(four_par, "four parameters"))
 ```
 
-Neither three-parameter equation records a divergent transition. `nec4param`
-records 212 and `ecx4param` 326.
+Neither three-parameter equation records a divergent transition, and both have
+an R-hat of 1.004 or below. `nec4param` records 1914 of its 8000 retained draws
+and `ecx4param` 2076, at R-hats of 1.086 and 1.293. About a quarter of the
+transitions of each four-parameter equation diverged.
 
-The two columns answer different questions, and the four rows show both
-answers. R-hat compares the chains of one fit with each other, and a value near
-1 says they arrived at the same distribution. A divergent transition is
-recorded where the sampler's step size is too large for the curvature of the
-posterior at that point, so the simulated path departs from the one the
-equations describe. A parameter the data do not constrain produces exactly that
-curvature, in a posterior nearly flat along one direction and sharp across it.
+A divergent transition is recorded where the sampler's step size is too large
+for the curvature of the posterior at that point, so the simulated path departs
+from the one the equations describe. A parameter the data do not constrain
+produces exactly that curvature, in a posterior nearly flat along one direction
+and sharp across it. R-hat asks a different question --- whether the chains of
+one fit arrived at the same distribution --- and here it fails as well.
 
-`nec4param` fails both checks, at an R-hat of 1.354 that no analysis would
-accept. `ecx4param` fails only one: its R-hat is 1.009, inside every
-conventional cutoff and within 0.005 of the two three-parameter equations,
-while it records more divergent transitions than `nec4param` does. An analysis
-that checked R-hat and stopped would have reported `ecx4param` as converged.
+Length of run matters to which of the two checks notices. Fitting the same four
+equations at 5000 iterations with 4000 warmup, half what `bnec()` uses, gave 212
+divergent transitions for `nec4param` and 326 for `ecx4param` of 4000 draws
+each, and `ecx4param` returned an R-hat of 1.009 --- inside every conventional
+cutoff, and within 0.005 of the two three-parameter equations. At the default
+run its R-hat is 1.293. The shorter chain did not make the fit better; it made
+one of the two diagnostics stop reporting the problem, which is a reason to
+report a diagnostic against the settings that produced it.
 
 ```{r fig-three-par}
 autoplot(three_par) + log_x
@@ -1059,19 +1063,19 @@ autoplot(four_par) + log_x
 The figures show where those divergences come from. Nothing between 2.9 and 29
 µg/L tells a four-parameter equation where its lower asymptote sits, because
 the colour design has no observation over that decade. At 10 µg/L the
-four-parameter credible band is 0.64 wide on a response that runs from 0 to
+four-parameter credible band is 0.63 wide on a response that runs from 0 to
 about 0.9, so it covers most of the values the endpoint can take; the
-three-parameter band is 0.28 there. Both close to about 0.05 at 29 µg/L, where
-the observations resume. A three-parameter equation fixes the lower asymptote
+three-parameter band is 0.35 there. Both close to 0.05 at 29 µg/L, where the
+observations resume. A three-parameter equation fixes the lower asymptote
 instead of estimating it, and so has nothing to place in the gap.
 
 The four-parameter equations are worse served than the gap alone suggests. What
 they have to estimate a lower asymptote from is one concentration, and the
 reading at that concentration is of fragments that had bleached completely.
 
-The threshold estimates differ in the same way. The three-parameter set
-returns an NSEC of 1.57 µg/L (0.66--3.87). The four-parameter set returns 2.79
-(1.52--21.61), an upper bound of the same order as the highest concentration
+The threshold estimates differ in the same way. The three-parameter set returns
+an NSEC of 1.71 µg/L (0.65--5.84). The four-parameter set returns 2.69
+(1.42--20.37), an upper bound of the same order as the highest concentration
 tested, which is 29. Both sets were fitted to the same 180 observations.
 
 #301 proposes restricting a model set by the number of curve parameters for
