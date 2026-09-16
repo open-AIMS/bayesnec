@@ -1,7 +1,8 @@
 # Vignette numbering — the register
 
-**Check this file before creating a new `vignettes/exampleN.Rmd.orig`, and add
-your row to it in the same commit that creates the file.**
+**Check this file before creating a new `vignettes/exampleN.Rmd.orig`. In the
+same commit that creates the file, add your row here and an entry in the
+`articles:` block of `_pkgdown.yml`.**
 
 This register exists because two parallel sessions both claimed `example8` in
 August 2026 — the #6/#33 grouping vignette and the #219 workflow vignette — and
@@ -20,9 +21,9 @@ number can be taken without being visible anywhere a new session would look.
 | 4 | `example4` | comparing posteriors | — | `dev` |
 | 5 | `example5` | installation and setup | #342 | `dev` |
 | 6 | `example6` | hurdle families and zero-inflation | — | `dev` |
-| 7 | `example7` | negative growth rates and the zero boundary | #193 | `negsgr-cens-vignette` |
+| 7 | `example7` | negative growth rates and the zero boundary | #193 | `dev` |
 | 8 | `example8` | grouping and factor covariates | #6, #33 | `issue-6-33-grouping-vignette` |
-| 9 | `example9` | a complete analysis workflow | #219 | `issue-219-workflow-vignette` |
+| 9 | `example9` | a complete analysis workflow | #219 | `dev` |
 
 **Next free number: 10.**
 
@@ -31,12 +32,20 @@ number can be taken without being visible anywhere a new session would look.
 1. **Claim the number here first**, on a branch that goes to `dev` quickly, or in
    the same PR that adds the vignette. A number claimed only on a long-lived
    feature branch is invisible to everyone else.
-2. **A number is not free just because `dev` has no such file.** Four of the ten
-   rows above live on unmerged branches. Check this table, not `ls vignettes/`.
+2. **A number is not free just because `dev` has no such file.** A row above may
+   name an unmerged branch in its last column. Check this table, not
+   `ls vignettes/`.
 3. **Renumbering is expensive** once a vignette is rendered: `precompile.R`
    output, the figure names under `vignette-fig-`, every `vignette("exampleN")`
    cross-reference, and any published URL all carry the number.
 4. `2b` is a historical exception. Do not create further letter suffixes.
+5. **List the vignette in `_pkgdown.yml`.** Its `articles:` block sets the order
+   of the articles index and of the Articles dropdown, and
+   `pkgdown:::data_articles_index()` aborts the site build on a vignette that is
+   present but absent from the block. Put the entry in the section its subject
+   belongs to; #363 records how the order was derived. The pkgdown job is the
+   only thing that reports the omission, and it reports it as a failed build on
+   whichever pull request adds the vignette.
 
 ---
 

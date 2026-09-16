@@ -28,25 +28,24 @@ development:
   mode: auto
 
 # The articles index and the Articles dropdown are both ordered from this block.
-# Without it pkgdown lists the vignettes alphabetically by file name, which is
-# the order in which they happened to be written rather than a reading order.
-# See #363 for the cross-reference audit the order below follows: no vignette is
-# placed before one it sends the reader to.
+# Without it pkgdown lists the vignettes alphabetically by file name, which
+# records when each vignette was written rather than a reading order. #363 holds
+# the cross-reference audit the order below follows.
 #
-# The `navbar:` keys are not decoration. `pkgdown:::navbar_articles()` replaces
-# the Articles dropdown with a plain link to the index as soon as an `articles:`
-# block exists and no section sets `navbar:`, so omitting them would drop the
-# dropdown rather than reorder it. A section whose `navbar:` is a string gets a
-# divider and that heading in the dropdown; `navbar: ~` on the first section
-# gives its entries with no leading divider. All four sections are listed, so
-# the dropdown holds every vignette and pkgdown appends no "More articles..."
-# link.
+# The `navbar:` keys are not decoration, and nothing in CI covers them.
+# `pkgdown:::navbar_articles()` replaces the Articles dropdown with a plain link
+# to the index as soon as an `articles:` block exists and no section sets
+# `navbar:`, so removing the keys removes the dropdown rather than reordering it.
+# `pkgdown::check_pkgdown()` reports "No problems found" on that config and the
+# site still builds, so the loss would reach the published site unremarked. A
+# section whose `navbar:` is a string gets a divider and that heading in the
+# dropdown; `navbar: ~` on the first section gives its entries with no leading
+# divider. All four sections set the key, so pkgdown appends no "More
+# articles..." link.
 #
-# `data_articles_index()` aborts the build on a vignette that is present but
-# unlisted, so this block cannot diverge from the vignettes without the build
-# saying so. A vignette added with no entry here fails the pkgdown job.
-# `example8` is added by #228 alongside the vignette itself, under `Designs and
-# response types`.
+# Every vignette present must be listed here: `data_articles_index()` aborts the
+# build on one that is not. `notes/vignette_numbering.md` records that obligation
+# where a new vignette's author will meet it.
 articles:
   - title: Getting started
     navbar: ~
