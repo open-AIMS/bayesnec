@@ -561,7 +561,8 @@ displacement is estimable and `ogl()` is the term.
 In `lum31` that unit is `conc_group`, the four wells at one concentration on one
 plate. A single plate is fitted here, because a plate is the only portion of
 these data free of the gain differences between plates, and fitting a whole arm
-would let a concentration-group term absorb plate structure as well.
+would let a concentration-group term absorb plate structure as well. That plate
+holds 44 readings over 11 concentration groups.
 
 ```{r one-plate}
 one_plate <- droplevels(subset(lum31, plate == "Zn 23Apr24 Rep6B" & minutes == 15))
@@ -625,7 +626,9 @@ best
 brms::VarCorr(pull_out(fit_ogl, model = best)$fit)$conc_group$sd
 ```
 
-The value is a property of that equation as well as of the data: an equation
+That standard deviation is 0.088 (0.031--0.180), on the scale the deviation is
+applied on rather than on the response scale. It is a property of that equation
+as well as of the data: an equation
 whose curve fits the concentration means poorly attributes more of the
 difference to the group term, so a standard deviation read from a poorly
 weighted equation is not comparable with this one.
@@ -776,6 +779,11 @@ fits_tox <- bnec_group(
 summary(fits_tox)
 ```
 
+Back-transformed, the threshold is 0.075 mg/L for copper (0.043--0.091) and
+0.698 for zinc (0.144--1.162): copper is the more potent by roughly an order of
+magnitude, which is the ordering @luter2025 report from the per-plate analysis
+and at much the same separation.
+
 ```{r fig-metals, fig.asp = 0.85, out.width = "78%"}
 ggplot(group_curves(fits_tox), aes(x = x_e)) +
   geom_polygon(aes(y = y_ci), fill = "grey75", alpha = 0.5) +
@@ -787,6 +795,14 @@ ggplot(group_curves(fits_tox), aes(x = x_e)) +
   theme_classic() +
   labs(x = "Dissolved metal (mg/L)", y = "Relative light units")
 ```
+
+Each panel holds its own response axis, because the two arms were read at
+different gains and their relative light units are not comparable between them.
+What is comparable is where each falls, and the two panels put that an order of
+magnitude apart: copper's threshold rules sit between 0.04 and 0.09 mg/L and
+zinc's between 0.14 and 1.2. In both the observations scatter widely at every
+concentration while the fitted band stays narrow, which is the plate term
+holding the between-plate spread out of the population curve.
 
 ```{r cmp-metals}
 cmp_tox <- compare_posterior(fits_tox, comparison = "nec")
@@ -863,6 +879,10 @@ rbind(
              chambers = n_distinct(coral_pam$chamber))
 )
 ```
+
+The two differ in width rather than in kind: 180 colour readings over five
+concentrations in 45 chambers, against 414 yield readings over six in 54. The
+colour endpoint is the narrower design and the one this section turns on.
 
 ## The control on a log axis
 
@@ -1139,6 +1159,21 @@ fits_herb <- bnec_group(fvfm ~ crf(log(concentration), "decline"),
 summary(fits_herb)
 ```
 
+The seven herbicides span two orders of magnitude. Back-transformed from the
+fitted scale, the N(S)EC runs from irgarol at 0.135 µg/L (0.108--0.174) and
+diuron at 0.151 (0.110--0.194), through ametryn at 0.196, hexazinone at 0.631
+and atrazine at 1.197, to simazine at 4.349 and tebuthiuron at 10.591
+(4.349--14.013).
+
+@jones2003 report EC50s for the same seven: irgarol 0.7 µg/L, ametryn 1.7,
+diuron 2.3, hexazinone 8.8, atrazine 45, simazine 150 and tebuthiuron 175. A
+threshold is a lower quantity than a half-effect concentration and these are
+lower throughout, by a factor of five for irgarol and seventeen for tebuthiuron.
+What survives between the two is the ordering, which agrees except that the
+N(S)EC puts diuron below ametryn where the EC50 puts it above --- and those two
+are 0.6 µg/L apart in the published EC50s, which is the smallest gap in the
+series.
+
 ```{r fig-herbicides, fig.asp = 1.15, out.width = "72%"}
 ggplot(group_curves(fits_herb), aes(x = x_e)) +
   geom_polygon(aes(y = y_ci), fill = "grey75", alpha = 0.5) +
@@ -1152,13 +1187,30 @@ ggplot(group_curves(fits_herb), aes(x = x_e)) +
   labs(x = "Concentration (ug/L)", y = "Effective quantum yield")
 ```
 
+Every panel declines and the fitted band follows the observations down in each,
+with the N(S)EC rule at or a little before the concentration where the points
+leave the control level. The response axis is shared and the concentration axis
+is not, so the panels are comparable in level and not in position: the seven
+curves have much the same shape and sit at different concentrations. Fitting
+each level separately is what allows the shape to differ between them. Here it
+largely does not, and what separates the herbicides is where the curve falls
+rather than how.
+
 ```{r cmp-herbicides}
 cmp_herb <- compare_posterior(fits_herb, comparison = "nec")
 cmp_herb$prob_diff
 ```
 
-The 21 pairwise probabilities are a summary of seven posteriors, and those are
-in `posterior_data`:
+`prob_diff` gives the probability that the first level of each pair has the
+higher estimate, so a value near 0 or 1 separates two herbicides and one near
+0.5 does not. Of the 21 pairs the clearest are those against tebuthiuron, from
+0.0095 for ametryn to 0.0101 for hexazinone. The least separated is diuron
+against irgarol at 0.707, the two most potent of the set, whose intervals
+overlap over most of their length; the next is simazine against tebuthiuron at
+0.076.
+
+The 21 pairwise probabilities reduce seven posteriors to one number each, and
+those posteriors are in `posterior_data`:
 
 ```{r fig-cmp-herbicides, fig.asp = 0.5, out.width = "95%"}
 # Figure 11 of Fisher et al. (2024) is this display for these seven herbicides,
@@ -1177,9 +1229,8 @@ ggplot(data = herb_post, mapping = aes(x = value)) +
        fill = "Model", colour = "Model")
 ```
 
-This reproduces Figure 11 of @fisher2024. The seven run from irgarol at 0.135
-µg/L to tebuthiuron at 10.591, and two things the pairwise probabilities do not
-say are visible in the densities.
+This reproduces Figure 11 of @fisher2024. Two things the pairwise probabilities
+do not say are visible in the densities.
 
 The three most potent overlap almost entirely. Irgarol at 0.135 and diuron at
 0.151 have intervals of 0.108 to 0.174 and 0.110 to 0.194, so one sits almost
@@ -1196,29 +1247,6 @@ Several are bimodal. Tebuthiuron has a second mode near 2 µg/L and hexazinone
 one near 1.6, which is the model-averaging mixture case study 2 traced in
 `fit_pam`: a low-weight equation placing its threshold elsewhere, visible in the
 tail of the average and not in its median.
-
-The seven herbicides span two orders of magnitude. Back-transformed from the
-fitted scale, the N(S)EC runs from irgarol at 0.135 µg/L (0.108--0.174) and
-diuron at 0.151 (0.110--0.194), through ametryn at 0.196, hexazinone at 0.631
-and atrazine at 1.197, to simazine at 4.349 and tebuthiuron at 10.591
-(4.349--14.013).
-
-@jones2003 report EC50s for the same seven: irgarol 0.7 µg/L, ametryn 1.7,
-diuron 2.3, hexazinone 8.8, atrazine 45, simazine 150 and tebuthiuron 175. A
-threshold is a lower quantity than a half-effect concentration and these are
-lower throughout, by a factor of five for irgarol and seventeen for tebuthiuron.
-What survives between the two is the ordering, which agrees except that the
-N(S)EC puts diuron below ametryn where the EC50 puts it above --- and those two
-are 0.6 µg/L apart in the published EC50s, which is the smallest gap in the
-series.
-
-`prob_diff` gives the probability that the first level of each pair has the
-higher estimate, so a value near 0 or 1 separates two herbicides and one near
-0.5 does not. Of the 21 pairs the clearest are those against tebuthiuron, from
-0.0095 for ametryn to 0.0101 for hexazinone. The least separated is diuron
-against irgarol at 0.707, the two most potent of the set, whose intervals
-overlap over most of their length; the next is simazine against tebuthiuron at
-0.076.
 
 The pairing matters for what this comparison may be used on. `compare_posterior()`
 pairs the draws of two posteriors by a random permutation, which approximates the
