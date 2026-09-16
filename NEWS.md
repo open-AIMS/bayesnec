@@ -965,6 +965,28 @@
   because the plate reader applies auto-scale gain adjustment and the value at
   which it stops resolving is therefore a plate property (#6, #33).
 
+- `vignette("example8")` is structured as an introduction to the three
+  group-level syntaxes followed by three case studies, one per dataset. The
+  syntax section previously introduced `herbicide` in order to have a data frame
+  for `make_brmsformula()` to resolve names against, which put a factor-covariate
+  dataset in the section about random groupings; it now uses a 24-row synthetic
+  frame and introduces no dataset at all. The copper-against-zinc comparison has
+  moved into the `lum31` case study, beside the fits whose structure it reuses.
+
+- The `vignette("example8")` fits use `bnec()`'s own sampling defaults rather
+  than naming `iter`, `warmup` and `control` at each call. The vignette had
+  halved the iterations and set `adapt_delta = 0.99` throughout, so its
+  diagnostics described a configuration a reader would not get by default. The
+  defaults are 10000 iterations at 8000 warmup, and `adapt_delta` is raised to
+  0.99 by `bnec()` itself wherever a constrained mean is given an unbounded
+  group-level term, which covers every fit in the vignette but the herbicide
+  one.
+
+- `vignette("example8")` draws the posteriors behind each `compare_posterior()`
+  call, for the metals and for the seven herbicides. `prob_diff` reduces a pair
+  to one number and the densities show whether a pair is separated in location
+  or in width.
+
 - `vignette("example8")` is drawn on a log concentration axis throughout. Every
   series in it spans one to three orders of magnitude, and `autoplot()` returns
   the predictor on the scale it was recorded on, so a bare figure put the whole
