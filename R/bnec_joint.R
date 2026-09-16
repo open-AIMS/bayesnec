@@ -52,7 +52,8 @@ best_crossed <- function(object) {
 #'
 #' Takes the model combination favoured by \code{\link{crossed_weights}} and
 #' refits it as one \code{\link{bnec}} model with a two-block
-#' (\code{hurdle_gamma} or \code{zero_inflated_beta}) family.
+#' (\code{hurdle_gamma}, \code{zero_inflated_beta}, \code{hurdle_poisson} or
+#' \code{hurdle_negbinomial}) family.
 #'
 #' @param object An object of class \code{\link{bayesnechurdlefit}} returned by
 #' \code{\link{bnec_hurdle}}.
@@ -91,9 +92,10 @@ best_crossed <- function(object) {
 #'
 #' The response variable, predictor and data are taken from \code{object}, and
 #' the family follows the growth component: \code{hurdle_gamma} where that was
-#' fitted as a Gamma, \code{zero_inflated_beta} where it was a Beta. Nothing
-#' else transfers -- priors, control arguments and the like are defaults again
-#' unless passed through \code{...}.
+#' fitted as a Gamma, \code{zero_inflated_beta} where it was a Beta, and the
+#' corresponding count hurdle where it was Poisson or negative binomial.
+#' Nothing else transfers -- priors, control arguments and the like are
+#' defaults again unless passed through \code{...}.
 #'
 #' @return An object of class \code{\link{bayesnecfit}}.
 #'
@@ -147,7 +149,8 @@ bnec_joint <- function(object, model = NULL, model_survival = NULL,
   if (is.null(formula)) {
     formula <- object$formula
   }
-  formula <- swap_crf_model(bayesnecformula(formula), model)
+  formula <- swap_crf_model(bayesnecformula(formula, env = parent.frame()),
+                            model)
   message("Refitting jointly as a ", joint_fam, " with a ", model,
           " response block and a ", model_survival, " survival block",
           " (crossed weight ", signif(best$weight, 3), ").")

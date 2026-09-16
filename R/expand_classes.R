@@ -3,6 +3,10 @@
 #' @inheritParams bnec
 #'
 #' @param object An object of class \code{\link{prebayesnecfit}}.
+#' @param loo_controls A named \code{\link[base]{list}} whose "fitting"
+#' element holds arguments to be passed on to \code{\link[brms]{loo}}. A
+#' single model is not weighted, so a "weights" element is accepted and not
+#' read. See \code{\link{bnec}}.
 #' @param ... Further arguments to internal function.
 #'
 #' @return A \code{\link[base]{list}} of model statistical output derived from
@@ -25,8 +29,7 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   }
   object <- add_criteria(object, loo_controls$fitting, ...)
   fit <- object$fit
-  extract_params <- c("top", "beta", "nec", "f",
-                      "bot", "d", "slope", "ec50")
+  extract_params <- extract_par_order()
   extracted_params <- lapply(extract_params, extract_pars, fit)
   names(extracted_params) <- gsub("^nec$", "ne", extract_params)
   grid <- prediction_grid(fit, formula, x_range = x_range,
@@ -62,17 +65,45 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   # and for any two-block fit where at least one block is smooth.
   nsec_off_curve <- function(post) {
     reference <- quantile(post[, 1], sig_val)
-    out <- apply(post, 1, nsec_fct, reference = reference, x_vec = pred_data$x)
-    x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
-    x_call <- str2lang(eval(parse(text = x_str)))
-    if (inherits(x_call, "call")) {
-      x_call[[2]] <- str2lang("out")
-      out <- eval(x_call)
+    # The reference and the start of the search are the same grid point by
+    # construction, so a draw at or below the reference there takes that point
+    # as its NSEC. Unlike nsec.bayesnecfit() this is the first column of the
+    # grid rather than the lowest observed predictor value; the two differ only
+    # where bnec() was given an x_range, which this path has never honoured
+    # (D15 ruling 2). See #325.
+    out <- nsec_from_posterior(post, reference, pred_data$x, pred_data$x[1],
+                               post[, 1])
+    n_missing <- sum(is.na(out))
+    if (n_missing > 0) {
+      # Names the equation. bnec() calls this once per model, so on the default
+      # 23-model set an unnamed message says only that something somewhere is
+      # censored, which is not enough to act on. It names the bound as a value
+      # rather than as "the highest concentration tested", which is the top of
+      # the prediction grid and is a higher concentration than any tested
+      # wherever bnec() was given an x_range above the data.
+      message("The fitted ", object$model, " curve does not fall to the ",
+              "control's ", sig_val, " quantile within the predictor range ",
+              "for ", n_missing, " of ", length(out), " draws. Those draws ",
+              "are excluded from the NSEC summary, which is therefore ",
+              "censored above ",
+              signif(sub_x_transformation(max(pred_data$x), formula), 3), ".")
     }
-    out
+    sub_x_transformation(out, formula)
+  }
+  # Memoised alongside get_pred_posterior(). A smooth block on a hurdle fit
+  # reaches this twice on the same posterior -- once for the response block and
+  # once for the combined endpoint -- and crossing_x() is a root search per
+  # draw, so the second pass is measurable where the nearest-grid-point search
+  # it replaced was not.
+  ne_off_curve <- NULL
+  get_ne_off_curve <- function() {
+    if (is.null(ne_off_curve)) {
+      ne_off_curve <<- nsec_off_curve(get_pred_posterior())
+    }
+    ne_off_curve
   }
   if (mod_class == "ecx") {
-    ne_posterior <- nsec_off_curve(get_pred_posterior())
+    ne_posterior <- get_ne_off_curve()
     extracted_params$ne <- estimates_summary(ne_posterior)
   } else {
     ne_posterior <- as_draws_df(fit)[["b_nec_Intercept"]]
@@ -107,7 +138,7 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
       # curve itself rather than combined from the parts. When only one block
       # is smooth this is an N(S)EC in the sense of Fisher et al. (2023): a
       # threshold on one process and a significant-effect point on the other.
-      combined_ne <- nsec_off_curve(get_pred_posterior())
+      combined_ne <- get_ne_off_curve()
       ne_lab <- if (mod_class == "ecx" && hu_class == "ecx") {
         "NSEC"
       } else {
@@ -123,7 +154,7 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   }
   od <- dispersion(object, summary = TRUE)
   if (length(od) == 0) {
-    od <- c(NA, NA, NA)
+    od <- c(Estimate = NA, Q2.5 = NA, Q97.5 = NA, `P(>1)` = NA)
   }
   predicted_y <- fitted(fit, robust = TRUE, re_formula = NA, scale = "response")
   residuals <-  residuals(fit, method = "pp_expect")[, "Estimate"]
@@ -144,6 +175,22 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     out <- c(out, list(hurdle = hurdle_parts))
   }
   out
+}
+
+#' The curve parameters, in the order they are appended to a bayesnecfit
+#'
+#' The same set as \code{curve_par_names()}, which \code{\link{curve_params}}
+#' reports from, in a different order. The order is kept because the extracted
+#' elements are appended to the \code{\link{bayesnecfit}} in it, so anything
+#' indexing that object positionally would read a different element if it
+#' changed; \code{test-curve_params.R} asserts that the two vectors hold the same
+#' parameters, so a parameter added for a new equation cannot reach one and not
+#' the other.
+#'
+#' @return A \code{\link[base]{character}} vector.
+#' @noRd
+extract_par_order <- function() {
+  c("top", "beta", "nec", "f", "bot", "d", "slope", "ec50")
 }
 
 #' The grid predictions are made over
@@ -274,11 +321,19 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   } else if (any(success_models %in% mod_groups$ecx) & any(success_models %in% mod_groups$nec)) {
     ne_lab <- "N(S)EC"
   }
-  if (missing(loo_controls)) {
-    loo_controls <- list(fitting = list(), weights = list())
+  # define_loo_controls() rather than validate_loo_controls(), and on both
+  # branches. Validation alone leaves `weights` empty, `method` is then NULL in
+  # the do.call() below, and loo::loo_model_weights() applies its own default of
+  # "stacking" -- so a set assembled by c(), `+`, amend() or update() was
+  # weighted by stacking while the same set fitted by bnec() was weighted by
+  # pseudo-BMA, and attr(wi, "method") recorded nothing. This is the single
+  # point every route reaches, so the default is supplied here rather than at
+  # each entry point. See #320.
+  fam_tag <- object[[1]]$fit$family$family
+  loo_controls <- if (missing(loo_controls)) {
+    define_loo_controls(family_str = fam_tag)
   } else {
-    fam_tag <- object[[1]]$fit$family$family
-    loo_controls <- validate_loo_controls(loo_controls, fam_tag)
+    define_loo_controls(loo_controls, fam_tag)
   }
   loo_w_controls <- loo_controls$weights
   for (i in seq_along(object)) {
@@ -290,8 +345,8 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   mod_dat <- model.frame(formula[[1]], data = object[[1]]$fit$data)
   y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
   disp <-  do_wrapper(object, extract_dispersion, fct = "rbind")
-  colnames(disp) <- c("dispersion_Estimate",
-                      "dispersion_Q2.5", "dispersion_Q97.5")
+  colnames(disp) <- c("dispersion_Estimate", "dispersion_Q2.5",
+                      "dispersion_Q97.5", "dispersion_P_over_1")
   mod_stats <- data.frame(model = success_models)
   mod_stats$waic <- sapply(object, extract_waic_estimate)
   loo_mw_args <- c(list(x = lapply(object, extract_loo)), loo_w_controls)

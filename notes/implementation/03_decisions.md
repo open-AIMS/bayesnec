@@ -81,6 +81,9 @@ in a single worktree.
 
 ## D10 — Sequencing against the toxval migration
 
+**Step 3 is superseded by D11 (2026-09-06):** the estimator bug fixes are made in
+`bayesnec` and the migration is deferred. The rest of this entry stands.
+
 The queue is split so that **no Tier 1 item edits a file the migration moves.**
 That was checked, not assumed: the migration deletes `R/ecx.R` and `R/nsec.R`
 from `bayesnec` and relocates `predict.bayesnecfit` / `predict.bayesmanecfit`,
@@ -130,3 +133,260 @@ Return a `brmsprior` for a single model and a named list of `brmsprior` objects
 for a model set, in both cases directly usable as the `prior =` argument.
 Document that the two entry points answer different questions and can disagree
 once a user has overridden a prior.
+
+## D11 — The estimator fixes are made in `bayesnec`, and the migration is deferred
+
+RF, 2026-09-06. **This supersedes D10's step 3.** `ecx()`, `nsec()` and
+`ecnsec()` still migrate to `toxval`, and #255 remains the tracker, but the
+migration is not run in this pass and it no longer defers a fix to an estimator.
+#195, #196, #160, #161 and #206 are tier B of `01_work_queue.md`.
+
+**What changed.** D10 was written when the migration was the next structural
+piece of work. It has not started: toxval#39 is open with no commits against it,
+and its own prerequisite toxval#45, CRAN readiness, is also open. Meanwhile a
+training course is to be written against `dev` within days, so the estimators are
+about to be taught from.
+
+**Why fixing here is not work discarded.** The migration relocates files. A
+corrected `R/ecx.R` relocates exactly as an uncorrected one does, and the
+correction is then in toxval's history rather than being re-derived there. What
+the deferral was avoiding is editing a file that is about to be deleted; what it
+was producing instead is a known-wrong result shipped for as long as the
+migration takes.
+
+**The measurement that settled it.** `example1.Rmd.orig:253` fits
+`resp ~ crf(log(raw_x + 1), model = "nec4param")` and `:109` calls `ecx()` on
+that fit. #196's back-transform substitutes into the first argument slot of the
+parsed call, so the inverse applied is `log(raw_x)` and the `+ 1` is discarded.
+The package's introductory vignette therefore reports an ECx computed from a
+back-transform that drops a term. `example1` is the only vignette using an inline
+transformation with arithmetic; `example6` uses a pre-computed `log_dose` column.
+
+**What D10 keeps.** Its ordering constraint on the structural move stands, and
+D8's constraint that `bayesnec` cannot declare `Imports: toxval` before toxval is
+installable is unchanged. Only the position of the bug fixes changes.
+
+**The obligation this creates.** Each tier B fix is recorded on the matching
+toxval issue as it lands — #196 to toxval#19, #195 to toxval#8 and toxval#12, #39
+to toxval#40 — so the migration re-lands the corrected version rather than the
+one toxval forked.
+
+## D12 — All three vignettes are finalised, and #228 goes last
+
+RF, 2026-09-06. **This supersedes the 2026-09-03 decision to keep the vignette
+pull requests open until the software stabilised.** The training course teaches
+from the vignettes, so they are a deliverable of this run rather than an
+instrument of it.
+
+The ordering is by what blocks each one, not by issue number:
+
+1. **PR #243**, example7 — reported mergeable; what remains is verification.
+2. **PR #238**, example9 — a full review is on the PR, unactioned. Two of its
+   errors of fact expired when #260 merged and must be re-checked before the
+   review is applied.
+3. **PR #228**, the grouping vignette — blocked on a scientific question about
+   family choice and on 2000/2000 divergences under `ogl()` for the binomial
+   families.
+
+**#228's blocker is raised as its own issue** rather than held on the PR, because
+it is material to #250's claim that group-level terms work for bounded families
+generally, and that claim outlives this vignette. **Take #257 first**: applying a
+group-level deviation on a scale where the mean cannot leave its support is the
+one candidate explanation not yet refuted, and it would produce this signature on
+a binomial response near the ceiling.
+
+## D13 — The precompile runs once, after the vignettes
+
+RF, 2026-09-06. #190 and #248 are tier E, and they run after tier D rather than
+before a CRAN submission. The trigger changed: the rendered vignettes have to be
+current because the training course reads them, not because a submission is due.
+
+One ordering constraint follows from D11. B1 changes the ECx values reported in
+`example1`, so `example1` cannot be re-rendered before B1 lands or it is rendered
+twice.
+
+## D14 — The run is autonomous and stacked
+
+RF, 2026-09-06. `00_protocol.md` stands unchanged: one worktree, one branch per
+issue cut from the previous issue's branch, each PR targeting the branch below
+it, and RF reviews and merges down the stack. Parallel worktrees were considered
+and rejected for the reason already recorded — tier B's five items are all in
+`R/ecx.R`, `R/nsec.R` and the plotting path, so a fan-out would produce mutually
+conflicting pull requests.
+
+## D15 — The ECx reference, and the `type` vocabulary in `bayesnec`
+
+RF, 2026-09-06. Eight rulings, taken together because they are one definition.
+They align `bayesnec` with toxval T8, T9 and T10, which are stated in full in
+`/mnt/c/Rworking/toxval/REFACTOR-claude.md` §3.9 and §3.10 and summarised in
+that repository's `notes/implementation/02_decisions.md`.
+
+**The governing ruling.** *Any ECx value is measured relative to the control
+predicted mean, taken as the predicted response at the lowest concentration in
+the supplied predictor.* `bnec()` fits decreasing curves only, so the increasing
+forms in toxval T9 do not arise here; hormesis remains in scope and is the case
+the ruling decides.
+
+**What the code does now, and why that is the defect.** `ecx_x_absolute()`
+(`R/ecx.R:331`) uses `max(y_d)` as the reference and `ecx_x_relative()`
+(`R/ecx.R:319`) uses `max(y_d)` as the top of the span. For a monotonic
+decreasing curve the maximum of the predicted curve is the control, so the two
+agree. For a hormetic curve the maximum is the peak at the *NEC*, so every
+reported ECx is measured from the peak rather than from the control. That is the
+behaviour `hormesis_def = "max"` describes, applied unconditionally and without
+the `modify_posterior()` call that would have implemented the alternative.
+`nsec()` is anchored on the control already (`R/nsec.R:155`,
+`quantile(p_samples[, 1], sig_val)`) except for a live `hormesis_def == "max"`
+branch at `:167`. The two estimators therefore disagree on hormetic curves, which
+is the inconsistency the ruling removes.
+
+| | ruling |
+|---|---|
+| 1 | **Four `type` values, matching toxval T9.** `absolute` (default), control → 0; `relative`, control → the equation's theoretical asymptote; `range`, control → the lowest response the curve predicts over the predictor range; `direct`, a supplied response value. `range` is what `relative` computes today |
+| 2 | **The control is read at the lowest observed predictor value**, not at the lowest point of the prediction grid. Supplying `x_range` therefore does not change any reported estimate |
+| 3 | **A target the curve never reaches within the predictor range returns `NA` with a warning.** Today the nearest grid point is returned, which for a curve that never declines to the target can report the control concentration itself as the ECx |
+| 4 | **`hormesis_def` is removed** from `ecx()`, `nsec()` and `ecnsec()`, as in toxval T10. Its `ecx()` consumer is already commented out and it selects nothing once the control is the reference |
+| 5 | **`ecnsec` follows toxval T8**: it inverts the `ecx` reference construction under the same `type` and defaults to `absolute`. One formula replaces the three that stand in `R/nsec.R:157`, `R/nsec.R:363` and `R/ecnsec.R:131` |
+| 6 | **`relative` is refused where the bound is infinite** — an equation with no `bot` fitted with a family that has no lower bound. Error for a single fit; drop with a warning, name the equations and renormalise the weights for a model-averaged one |
+| 7 | **`absolute` uses 0 on an unbounded family deliberately**, following OECD TG 201, so the `gaussian`-without-`bot` refusal at `R/ecx.R:161` is removed and `ecx_val` stays uncapped |
+| 8 | **`type = "relative"` warns when supplied explicitly**, naming `range`, because its meaning changes and 2.1.3 is released. A plain `warning()` rather than `lifecycle::deprecate_warn()`, so no dependency is added |
+
+**Consequences to state in `NEWS.md` rather than let arrive as side effects.**
+Every ECx from a hormesis equation changes. Every `ecnsec` changes and generally
+becomes smaller. `type = "relative"` returns a different quantity. `NA` appears
+in results that previously always returned a number. `example1` reports ECx
+values computed through the #196 back-transform and changes for that reason as
+well.
+
+**Recorded on the matching toxval issues as each lands**, per D11: #196 to
+toxval#19, #195 to toxval#8 and toxval#12, #39 to toxval#40, and the `ecnsec`
+alignment to toxval#49.
+
+## D16 — Three further rulings taken with D15
+
+RF, 2026-09-06.
+
+**#206 — the `gaussian` exclusion is removed entirely.** The six zero-bounded
+equations become available under `gaussian()` with an identity link, which is the
+curve shape OECD TG 201 and Ritz, Gerhard & Streibig (2026) both recommend for
+algal growth-rate data. The issue measures that they fit cleanly and that model
+weights reject them when wrong. The separate `log`/`logit` link exclusion at
+`R/check_models.R:20` is untouched — it is reachable and it is correct.
+
+**#273 — `gamma(5, 4/m)`, chosen on consistency rather than on fits.** RF,
+2026-09-07, superseding the instruction to choose on a measurement. The three
+entries of `x_prs` are selected on the predictor's distribution, and two of them
+place their maximum density at a central measure of it: `beta(2, 2)` at the
+centre of the unit interval, `normal(median(x), ...)` at the median. The gamma
+entry should therefore peak at *m*, which `rate = 4/m` gives and `rate = 2/m`
+does not. It is also the only one of the three that did not do what `?bnec` and
+`vignette("example3")` describe.
+
+`gamma(2, 2/m)` was considered and rejected: its *mean* is *m* but its maximum
+density is at *m*/2, so it matches neither the documentation nor the convention
+the other two entries follow, both of which are specified by where the density
+peaks rather than by where its mean falls.
+
+**Refits were run and are not the basis of the decision.** They measured a
+bias-variance trade-off with no clear winner, which is not what settles a
+question about whether a default is internally consistent, and they have been
+removed from the record so that a later reader does not treat them as the
+argument. The one quantitative statement that remains is arithmetic rather than
+empirical: `(5 - 1) / (2/m)` equals `max(x)` exactly on a series spaced evenly
+from zero, so the old prior's mode sat on its own truncation bound.
+
+One thing the episode is worth keeping: `x_prs`'s entries are labelled with
+family names but are indexed on the \emph{predictor}'s distribution, so the
+`Gamma` entry is the one any non-negative predictor takes whatever the response
+family is. That is easy to read the other way round and now has its own test.
+
+**#93 — the two remaining response corrections message once and are recorded on
+the fit.** Once per `bnec()` call rather than once per model, stating what was
+substituted and how many rows, and stored on the fitted object so a user
+comparing `bayesnec` against another engine can recover what was altered. The
+`bnec()`-not-`check_data()` placement rule in `R/bnec.R` applies.
+
+## D17 — The NSEC of a draw at or below the reference at the control
+
+RF via Claude, 2026-09-12, on #325. Corrects D15 ruling 3 where it reaches the
+NSEC, and leaves it standing for the ECx.
+
+**The ruling as taken.** "A target the curve never reaches within the predictor
+range returns `NA` with a warning. Today the nearest grid point is returned,
+which for a curve that never declines to the target can report the control
+concentration itself as the ECx."
+
+**One of the three statements in that rationale is wrong.** Measured on
+`x = seq(0, 10, length.out = 11)` and `y = 10 - x`: for a target below the whole
+curve, which is the case a curve that never declines to the target presents,
+`which.min(abs(y - target))` returns the *highest* concentration, not the
+control. The nearest grid point is the control only where the target lies
+*above* the curve at the first grid point. For an ECx that requires
+`type = "direct"` with a supplied target above the control, since every other
+type derives the target from the draw's own control. For an NSEC it is the lower
+`sig_val` tail of the control posterior, and there the control is the correct
+answer rather than a defect.
+
+**Why it is the correct answer.** The NSEC reference is the `sig_val` quantile of
+the control posterior, so `sig_val` of the draws have a control at or below it by
+construction of the quantile, and each of those reaches the reference at the
+control itself. Fisher and Fox (2023) obtain every draw's NSEC by backward
+interpolation, solving the inverse of the fitted equation analytically, with no
+crossing search and no exclusion step. Their printed code,
+`(-log(p/b0)/b1)^(1/b2)`, does not itself return zero for such a draw: the base
+is negative where `b0 < p` and a fractional exponent of it is `NaN` in R, exactly
+zero arising only at `b0 == p`. What the paper *reports* for those draws is zero,
+and the text says so twice: at p. 2026 that the lower bound of the credible
+interval
+"will be 0 for any significance level greater than the 0.025 quantile", and in
+the discussion that such an outcome "potentially validly reflects the underlying
+fact that the confidence bounds of a true no-effect value may in fact contain 0
+because, for smooth curves, a decline in the response may occur at the lowest
+concentration". Their Table 3 reports it: 10.5 (6.15–13.6) at 0.01, and 8.78
+(0–12.1), 7.84 (0–11.5) and 6.51 (0–10.7) at 0.05, 0.10 and 0.20.
+
+**What `bayesnec` reads as zero concentration.** The lowest observed value of the
+predictor named in `crf()`. The package already treats it as the control —
+`control_posterior()`, `R/bnec.R:23` and the `top` prior rule at
+`R/define_prior.R:374` — and a design that adds a small value to a zero control
+so the predictor can be modelled on a log scale needs no separate case, because
+that value is the control.
+
+**The rulings.**
+
+| | ruling |
+|---|---|
+| 1 | A draw whose **control** is at or below the reference returns the control concentration. The test is on the control posterior, the same vector `reference` is a quantile of, not on the curve at the first grid point: `sig_val` of the draws satisfy it by construction, and the value is then independent of `x_range` as D15 ruling 2 requires. A draw whose control is above the reference but whose curve is already below it where a supplied `x_range` begins reached the reference below the range asked for; that is not identified within the range, so it is `NA` and is reported with the draws that never reach the reference. The first implementation tested the curve at the first grid point instead, which on `nsec(ecx4param, x_range = c(1, 3))` reported the control --- a concentration below the whole grid --- for 65 of 100 draws, 64 of them not in the `sig_val` tail, with no warning |
+| 1a | `crossing_x()` takes an `x_start` argument for the same case, defaulting to `NA_real_` so that the ECx callers are unchanged. `nsec.drc()` uses it, having no per-draw control posterior to test |
+| 2 | Those draws are not reported. They are `sig_val` of the draws of every fit by construction, so a message about them restates the definition of the quantile |
+| 3 | `NA` and the warning are kept for a draw whose curve does not reach the reference at any tested concentration, and the wording is theirs alone. This is a departure from Fisher and Fox (2023), whose analytic inversion is unbounded above and returns an extrapolated concentration; declining to extrapolate is a package decision and is documented as one |
+| 4 | The NSEC crossing is sought from the control upward, because the reference is defined there. The control is made the first point of the searched grid, the control posterior supplying the predictions at it, rather than the points below it being dropped: dropping them starts the search one grid step above the control and loses any draw crossing in between, which on `nsec(ecx4param, sig_val = 0.05, x_range = c(0, 100))` was 11 of 100 draws whose estimate over the observed range is 0.064 to 0.484, the first searched point being 0.503. A crossing *below* the control is not sought at all: it would be read off an extrapolation into concentrations the design did not cover. Together these make the estimate independent of what `x_range` adds below the data, which is ruling 2 of D15. Where a grid holds no concentration above the control --- an `x_range` at or below the lowest observed value, or `resolution = 1` --- the call is refused by name rather than returning a vector of `NA` under a warning that names the wrong cause. `crossing_x()` also guards a series shorter than two, which `modelbased::zero_crossings()` stops on with "`lower` is not smaller than `upper`" |
+| 4a | The two classes of `NA` are reported separately. A draw that reached the reference below a supplied `x_range` is not a draw whose curve never reaches it, and one message for both states of each the thing that is true of the other --- which is the defect #325 was opened for. `nsec_from_posterior()` returns the count as an attribute and the callers word the two warnings |
+| 4b | `bnec()`, `amend()` and `update.bnecfit()` refuse a `resolution` below 2, before any fitting. It is a property of the call rather than of any one model, and reaching it from `expand_nec()` means reaching it after every model in the set has compiled and sampled --- the placement rule §11 records for `check_data()`. `check_args_newdata()` is the wrong place: `resolution = 1` is a valid request of `bnec_newdata()`, which `test-bayesmanec_methods.R` uses to pin a prediction shape |
+| 5 | `hurdle_control_x()` is removed. `control_x()` resolves a hurdle fit to its survival component and returns the same value |
+| 6 | The value is the lowest *observed* concentration, which is where this departs from the paper at the lower end as ruling 3 departs from it at the upper. Fisher and Fox (2023) report zero, extrapolating from `b0` to zero concentration; `bayesnec` reports the control, 0.0323 on `nec_data`. The two agree where the design's control is a true zero and the predictor is untransformed, and a reader checking against Table 3 will otherwise see a small positive bound where the paper reports 0. Documented in `?nsec` |
+| 7 | A curve that has already reached its target where the grid begins takes `x_start`. Where it is hormetic the first sign change is on the rising limb --- the concentration at which the response reaches the target on the way up --- which estimates nothing; where it is not, the nearest grid point was the lowest concentration. For an NSEC the draw is at or below the reference at the control and the control is its estimate. For an ECx three routes reach the case, all degenerate, and each returns `NA`: `type = "direct"` with a supplied target above the curve at the control; `type = "range"` where the curve's lowest predicted response is at the control, which makes the target equal to it exactly; and `type = "relative"` on a hormetic equation for a draw whose `bot` exceeds its control. `type = "absolute"`, the default, cannot reach it |
+
+**What was measured, and on what.** `cache/logworkflow/fit_log_regularizing.rds`
+--- a local cache, not in the repository, so these numbers cannot be re-run from
+the record alone --- the `example9` workflow fit,
+`suc | trials(tot) ~ crf(log(dose_adj), model = "decline")`, 8000 draws. Of the
+draws `crossing_x()` discarded, every one reached
+the reference and none failed to: 80 of 80 on `ecxll3`, `ecxwb1` and
+`ecx4param`, 79 of 79 on `nec3param`. The count is `sig_val × n_draws` at each of
+0.01, 0.05, 0.10 and 0.20, and the reported 2.5% bound was 0.983, 0.883, 0.829
+and 0.761 where the control is 0.005. Master's estimator, applied to the same
+posterior, places exactly `sig_val × n_draws` draws at the control, discards
+none, and reproduces the structure of Table 3, so the defect was introduced in
+this development cycle and never released; it entered in PR #281 at `ce2aa236`
+and `027b9f9d`.
+
+**Not decided here.** Whether a draw that never reaches the reference should
+instead return the highest tested concentration, making the estimate a lower
+bound in the conventional "greater than the highest concentration tested" sense,
+and whether a summary should be reported at all when most draws are in that
+class — `quantile(..., na.rm = TRUE)` currently reports a value computed from
+whichever draws crossed. No fit in which the class is non-empty over the full
+tested range has been measured; the only demonstration was obtained by
+truncating a prediction grid, which is not a design that would have been fitted.
+RF, 2026-09-12: a real example is needed before deciding.

@@ -51,6 +51,16 @@ set_distribution <- function(x, support_integer = FALSE, trials = NULL,
         } else {
           "binomial"
         }
+      } else {
+        # An integer response with negative values -- a difference, an
+        # increment, a change in a count between two times -- is ordinary
+        # input. The branch had no else, so the function fell off the end and
+        # returned NULL; automatic family selection then read that NULL and the
+        # call failed reporting a `family` argument the user had not supplied.
+        # gaussian is what the equivalent numeric vector already returns, so
+        # the two now differ only where the storage type is informative. See
+        # #272.
+        "gaussian"
       }
     }
   }

@@ -4,7 +4,14 @@
 \alias{bnec_hurdle}
 \title{Fit a factorised hurdle (or zero-inflated) concentration-response model}
 \usage{
-bnec_hurdle(formula, data, model_survival = NULL, family_growth = NULL, ...)
+bnec_hurdle(
+  formula,
+  data,
+  model_survival = NULL,
+  family_growth = NULL,
+  predictor_scale = "auto",
+  ...
+)
 }
 \arguments{
 \item{formula}{Either a \code{\link[base]{character}} string defining an
@@ -28,18 +35,21 @@ response component.}
 \item{family_growth}{A \code{\link[stats]{family}} function for the response
 of the non-zero subset. Defaults to \code{NULL}, in which case it is chosen
 from that subset the same way \code{\link{bnec}} would: \code{Gamma} for a
-positive continuous response, \code{Beta} for one bounded on (0, 1). A
+positive continuous response, \code{Beta} for one bounded on (0, 1), and
+\code{poisson} for counts. A
 two-block family (\code{hurdle_gamma}, \code{zero_inflated_beta}) is refused,
 because \code{bnec_hurdle} is itself the two-part model, and so are the
 zero-inflated count families, which are mixtures rather than hurdles -- see
-\code{\link{bnec}}. The plain count families (\code{poisson},
-\code{negbinomial}) are refused too: \code{bnec_hurdle} would fit them
-\emph{untruncated} to the non-zero subset, whereas the positive part of a
-hurdle on counts is zero-truncated. That overestimates the mean where the
-mean is small, which is the upper end of the concentration range. Use
-\code{bnec(family = "hurdle_poisson")} or
-\code{bnec(family = "hurdle_negbinomial")}, where \pkg{brms} writes the
-zero-truncated positive part itself.}
+\code{\link{bnec}}. For \code{poisson} and \code{negbinomial}, the positive
+subset is fitted with the corresponding zero-truncated likelihood. The
+truncation is added internally because every row in that subset is known to
+be positive; it is not a user-selectable response transformation. This path
+requires \pkg{brms} 2.23.2 or later, where the fitted model, log likelihood
+and posterior expected response all use the same inclusive lower bound.}
+
+\item{predictor_scale}{The predictor-scale declaration passed to both
+\code{\link{bnec}} fits. It is checked against the complete predictor before
+either component is fitted. See \code{\link{bnec}}.}
 
 \item{...}{Further arguments passed to both \code{\link{bnec}} calls.}
 }

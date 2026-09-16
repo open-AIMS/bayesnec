@@ -173,3 +173,342 @@ test_that("empty defaults are a no-op", {
                                                       "nec4param"))
   expect_identical(out, supplied)
 })
+
+
+# ---- #196, the back-transform ------------------------------------------------
+
+test_that("sub_x_transformation keeps arithmetic inside the crf() call", {
+  # #196. The substitution used to be x_call[[2]] <- ecx_out, which replaces
+  # the call's first argument slot. For log(x) that slot is the symbol x and
+  # replacing it is right; for log(x + 1) it is the expression x + 1 and the
+  # "+ 1" was discarded, so the estimate was inverted as log(x). Nothing
+  # errored and the value returned was plausible.
+  f <- function(txt) {
+    bayesnecformula(stats::as.formula(
+      paste0("y ~ crf(", txt, ", model = \"nec3param\")")
+    ))
+  }
+  expect_equal(sub_x_transformation(100, f("log(x)")), log(100))
+  expect_equal(sub_x_transformation(100, f("log(x + 1)")), log(101))
+  expect_equal(sub_x_transformation(100, f("log(x/2)")), log(50))
+  expect_equal(sub_x_transformation(100, f("sqrt(x)")), sqrt(100))
+  # A pre-computed column is not a call, so nothing is substituted.
+  expect_equal(sub_x_transformation(100, f("log_x")), 100)
+  # Vectorised, and NA-preserving, because a draw with no crossing is NA.
+  expect_equal(sub_x_transformation(c(1, NA, 3), f("log(x + 1)")),
+               log(c(1, NA, 3) + 1))
+})
+
+# ---- #39 and D15 ruling 3, the crossing --------------------------------------
+
+test_that("crossing_x interpolates, and returns NA where there is no crossing", {
+  x <- seq(0, 10, length.out = 11)
+  y <- 10 - x                       # crosses 5.5 at x = 4.5 exactly
+  expect_equal(crossing_x(y, 5.5, x), 4.5, tolerance = 1e-8)
+  # Interpolated rather than snapped to the nearer grid point, which would
+  # give 4 or 5 on this grid.
+  expect_false(crossing_x(y, 5.5, x) %in% x)
+  # A target the curve never reaches. This is the case that used to return the
+  # nearest grid point: for a curve that never declines to the target that is
+  # x[11], the highest concentration, reported with nothing said.
+  expect_true(is.na(crossing_x(y, -5, x)))
+  # x_start does not reach that case: the curve begins above the target, so the
+  # search is the thing that failed.
+  expect_true(is.na(crossing_x(y, -5, x, x_start = x[1])))
+  # A series already at or below the target where the grid begins. There is no
+  # sign change to find, and the estimate is at or below x[1] rather than above
+  # x[11], so the caller says which value it takes. The default is NA, which is
+  # what an ECx target requires; the NSEC callers pass the control concentration.
+  # Equality counts as reached: it is what type = "range" produces where the
+  # curve's lowest predicted response is at the control, and what nsec.drc
+  # produces at any sig_val for which the lower confidence curve begins on the
+  # reference. See #325.
+  expect_true(is.na(crossing_x(y, 10, x)))
+  expect_equal(crossing_x(y, 10, x, x_start = x[1]), x[1])
+  expect_equal(crossing_x(y, 12, x, x_start = x[1]), x[1])
+  expect_equal(crossing_x(y, 12, x, x_start = -1), -1)
+  # A single grid point has no interval for a sign change to fall in, and
+  # zero_crossings() stops rather than returning nothing. Reachable where
+  # x_range leaves one point at or above the control. Two points are enough.
+  expect_true(is.na(crossing_x(y[1], 5.5, x[1])))
+  expect_true(is.na(crossing_x(y[1], 5.5, x[1], x_start = x[1])))
+  expect_equal(crossing_x(y[1], 10, x[1], x_start = x[1]), x[1])
+  expect_equal(crossing_x(c(10, 0), 5, c(0, 1)), 0.5, tolerance = 1e-8)
+  expect_true(is.na(crossing_x(rep(NA_real_, 11), 5, x)))
+  expect_true(is.na(crossing_x(y, NA_real_, x)))
+  # A hormetic curve: the target is below the control, so the rising limb
+  # cannot cross it and the first crossing is the one on the descending limb.
+  horme <- c(10, 12, 14, 13, 11, 9, 7, 5, 3, 2, 1)
+  expect_gt(crossing_x(horme, 9, x), x[which.max(horme)])
+})
+
+test_that("family_has_lower_bound separates gaussian from the rest", {
+  expect_false(family_has_lower_bound(stats::gaussian()))
+  expect_true(family_has_lower_bound(stats::binomial()))
+  expect_true(family_has_lower_bound(stats::Gamma()))
+  expect_true(family_has_lower_bound(stats::poisson()))
+})
+
+# ---- #160, the annotation and the axis ---------------------------------------
+
+test_that("to_axis_scale brings an estimate onto the axis scale", {
+  raw <- seq(1, 100, length.out = 100)
+  f_plain <- bayesnecformula(y ~ crf(x, model = "nec3param"))
+  f_log <- bayesnecformula(y ~ crf(log(x), model = "nec3param"))
+  d <- data.frame(x = raw, y = runif(100))
+  b_plain <- stats::model.frame(f_plain, data = d)
+  b_log <- stats::model.frame(f_log, data = d)
+  # Predictor untransformed: the estimate is already on the recorded scale and
+  # xform applies to it exactly as it applies to the axis.
+  expect_equal(to_axis_scale(50, b_plain, f_plain, raw), 50)
+  expect_equal(to_axis_scale(50, b_plain, f_plain, raw, function(z) z * 2), 100)
+  # Predictor transformed and no xform supplied: the estimate is on the fitted
+  # scale and the axis on the recorded one, so it is inverted numerically.
+  # This is the default case #160 reports, where the annotation was drawn at
+  # its own fitted value on an axis in concentrations.
+  expect_equal(to_axis_scale(log(50), b_log, f_log, raw), 50, tolerance = 1e-3)
+  # Predictor transformed and xform supplied: that is what xform is for, and
+  # it is used rather than the numerical inverse.
+  expect_equal(to_axis_scale(log(50), b_log, f_log, raw, exp), 50,
+               tolerance = 1e-8)
+})
+
+
+# ---- the crf() term must name one variable -----------------------------------
+
+test_that("sub_x_transformation refuses a crf() term with two variables", {
+  # simplify_formula() takes every variable inside crf() as the predictor
+  # (x_var <- all.vars(x_call), no subsetting), so such a formula has no single
+  # predictor to invert on. Taking the first would substitute into `offset` for
+  # crf(log(offset + x)) -- the same class of silent wrong answer as #196.
+  f <- bayesnecformula(y ~ crf(log(offset + x), model = "nec3param"))
+  expect_error(sub_x_transformation(100, f), "names 2 variables")
+})
+
+# ---- the annotation type a plotting method asks for --------------------------
+
+test_that("plot_ecx asks for range under gaussian and the default otherwise", {
+  skip_on_cran()
+  # plot() asked for "relative" under its 2.1.3 meaning, the control-to-minimum
+  # span; ggbnec_data() took the ecx() default. The same gaussian fit was
+  # therefore annotated with two different quantities depending on which method
+  # drew it, and after the rename plot()'s word named a third.
+  expect_equal(plot_ecx(nec4param, "gaussian"),
+               ecx(nec4param, type = "range"))
+  expect_equal(plot_ecx(nec4param, "beta"), ecx(nec4param))
+  # A type the caller named wins.
+  expect_equal(plot_ecx(nec4param, "gaussian", list(type = "absolute")),
+               ecx(nec4param, type = "absolute"))
+})
+
+
+test_that("to_axis_scale carries the estimate's attributes through", {
+  raw <- seq(1, 100, length.out = 100)
+  f_log <- bayesnecformula(y ~ crf(log(x), model = "nec3param"))
+  b_log <- stats::model.frame(f_log, data = data.frame(x = raw, y = runif(100)))
+  v <- structure(log(c(50, 40, 60)), ecx_val = 10, toxicity_estimate = "ecx")
+  # The numerical-inverse branch. bind_ecx() reads attr(., "ecx_val") and
+  # assigns it into a data frame, so a stripped vector is an error there rather
+  # than a missing label.
+  out <- to_axis_scale(v, b_log, f_log, raw)
+  expect_equal(attr(out, "ecx_val"), 10)
+  expect_equal(attr(out, "toxicity_estimate"), "ecx")
+  expect_equal(as.numeric(out), c(50, 40, 60), tolerance = 1e-3)
+  # An unidentified draw stays NA rather than being interpolated to an endpoint.
+  expect_true(is.na(to_axis_scale(c(log(50), NA), b_log, f_log, raw)[2]))
+})
+
+test_that("define_loo_controls always names a weighting method", {
+  # The documented default is pseudo-BMA. Every route that assembles a model
+  # set passes through here, so a missing method at this point is what reaches
+  # loo::loo_model_weights(), which resolves it to stacking. See #320.
+  expect_equal(bayesnec:::define_loo_controls(family_str = "gaussian"),
+               list(fitting = list(), weights = list(method = "pseudobma")))
+  expect_equal(
+    bayesnec:::define_loo_controls(list(), "gaussian")$weights$method,
+    "pseudobma"
+  )
+  expect_equal(
+    bayesnec:::define_loo_controls(list(weights = list()),
+                                   "gaussian")$weights$method,
+    "pseudobma"
+  )
+  # Named but NULL, which is what a caller preserving an unknown method used to
+  # pass. match.arg() reads that as loo's own first choice, so it is treated as
+  # unspecified rather than passed on.
+  expect_equal(
+    bayesnec:::define_loo_controls(list(weights = list(method = NULL)),
+                                   "gaussian")$weights$method,
+    "pseudobma"
+  )
+  # An explicit request is never overridden.
+  expect_equal(
+    bayesnec:::define_loo_controls(list(weights = list(method = "stacking")),
+                                   "gaussian")$weights$method,
+    "stacking"
+  )
+  # Other elements of weights survive alongside the injected method.
+  ctrl <- bayesnec:::define_loo_controls(
+    list(fitting = list(pointwise = FALSE), weights = list(BB = FALSE)),
+    "gaussian"
+  )
+  expect_equal(ctrl$weights, list(BB = FALSE, method = "pseudobma"))
+  expect_equal(ctrl$fitting, list(pointwise = FALSE))
+})
+
+test_that("weights_controls distinguishes an unknown method from a named one", {
+  expect_equal(bayesnec:::weights_controls(NULL), list())
+  expect_equal(bayesnec:::weights_controls("stacking"),
+               list(method = "stacking"))
+})
+
+test_that("fit_weights_method reads only what a fit records", {
+  expect_equal(bayesnec:::fit_weights_method(manec_example), "pseudobma")
+  # A bayesnecfit has no weights, so it records no method. NULL means unknown,
+  # not pseudo-BMA, which is why the callers pass it through
+  # weights_controls().
+  expect_null(bayesnec:::fit_weights_method(nec4param))
+  stripped <- manec_example
+  attr(stripped$mod_stats$wi, "method") <- NULL
+  expect_null(bayesnec:::fit_weights_method(stripped))
+})
+
+
+# ---- #319, the back-transform resolves in the formula's environment ----------
+
+test_that("sub_x_transformation resolves a locally defined function", {
+  # This runs from expand_nec(), ecx() and nsec(), all of which are reached
+  # after every model in the set has compiled and sampled, so a predictor
+  # transformation written with a function the user defined used to fail at the
+  # end of a fit rather than at the start. The assertions above use log() and
+  # sqrt(), which resolve from anywhere and so cannot catch it.
+  build <- function() {
+    squared <- function(z) z^2
+    sub_x_transformation(4, bnf(y ~ crf(squared(x), "nec3param")))
+  }
+  expect_equal(build(), 16)
+})
+
+test_that("an estimate is back-transformed through a local function", {
+  # The same defect end to end: on a stored fit the failure arrives from
+  # expand_nec() or ecx(), not from model.frame().
+  build <- function() {
+    squared <- function(z) z^2
+    fit <- suppressMessages(suppressWarnings(
+      pull_out(manec_example, model = "nec4param")
+    ))
+    fit$bayesnecformula <- bnf(y ~ crf(squared(x), "nec4param"))
+    ecx(fit, ecx_val = 10)
+  }
+  expect_length(build(), 3)
+})
+
+# #337. Everything in the package that seeds a computation outside of fitting
+# restores the caller's stream through this helper, so the helper's own
+# behaviour is asserted here rather than only through its call sites.
+
+test_that("with_preserved_rng_state puts the stream back", {
+  set.seed(99)
+  expected <- runif(3)
+  set.seed(99)
+  first <- runif(1)
+  bayesnec:::with_preserved_rng_state({
+    set.seed(1234)
+    runif(10)
+  })
+  expect_equal(c(first, runif(2)), expected)
+})
+
+test_that("with_preserved_rng_state restores after an error", {
+  # A diagnostic that fails partway must still leave the stream where it was
+  # found, or an error becomes a second, silent, defect.
+  set.seed(99)
+  expected <- runif(3)
+  set.seed(99)
+  first <- runif(1)
+  expect_error(bayesnec:::with_preserved_rng_state({
+    set.seed(1234)
+    runif(10)
+    stop("failed partway")
+  }), "failed partway")
+  expect_equal(c(first, runif(2)), expected)
+})
+
+test_that("with_preserved_rng_state restores the generator kind", {
+  old_kind <- RNGkind()
+  on.exit(suppressWarnings(RNGkind(old_kind[1], old_kind[2], old_kind[3])),
+          add = TRUE)
+  suppressWarnings(RNGkind(sample.kind = "Rounding"))
+  bayesnec:::with_preserved_rng_state(set.seed(11, sample.kind = "Rejection"))
+  expect_identical(RNGkind()[3], "Rounding")
+})
+
+test_that("with_preserved_rng_state leaves an unused session without a seed", {
+  # A session that has never drawn has no .Random.seed. Assigning one where
+  # there was none would make the next draw depend on this call having been
+  # made, which is the defect in a different form. Tested by removing the
+  # object rather than in a fresh session, which is what R itself does.
+  had_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+  old_seed <- if (had_seed) {
+    get(".Random.seed", envir = globalenv(), inherits = FALSE)
+  } else {
+    NULL
+  }
+  old_kind <- RNGkind()
+  # One handler, kind first and seed second, for the reason
+  # with_preserved_rng_state() gives: RNGkind() called with arguments rewrites
+  # .Random.seed, and where the kind genuinely changes -- which it does here,
+  # "Rounding" back to "Rejection" -- it re-initialises the generator from the
+  # clock. Two handlers registered in this order with add = TRUE would run the
+  # seed restore first and leave the session time-seeded.
+  on.exit({
+    suppressWarnings(RNGkind(old_kind[1], old_kind[2], old_kind[3]))
+    if (is.null(old_seed)) {
+      suppressWarnings(rm(".Random.seed", envir = globalenv()))
+    } else {
+      assign(".Random.seed", old_seed, envir = globalenv())
+    }
+  }, add = TRUE)
+  suppressWarnings(RNGkind(sample.kind = "Rounding"))
+  suppressWarnings(rm(".Random.seed", envir = globalenv()))
+  bayesnec:::with_preserved_rng_state({
+    set.seed(1234, sample.kind = "Rejection")
+    runif(10)
+  })
+  expect_false(exists(".Random.seed", envir = globalenv(), inherits = FALSE))
+  # The combination the helper's comment is about: with no seed to restore,
+  # RNGkind() is the only thing that puts sample.kind back, so removing
+  # .Random.seed alone would leave the session on the wrong sampler.
+  expect_identical(RNGkind()[3], "Rounding")
+})
+
+test_that("with_preserved_rng_state nests", {
+  # summary() reaches dispersion() once per equation, and each call wraps, so
+  # an inner restore must not disturb an outer one.
+  set.seed(99)
+  expected <- runif(3)
+  set.seed(99)
+  first <- runif(1)
+  bayesnec:::with_preserved_rng_state({
+    set.seed(5)
+    runif(2)
+    bayesnec:::with_preserved_rng_state({
+      set.seed(7)
+      runif(4)
+    })
+    runif(3)
+  })
+  expect_equal(c(first, runif(2)), expected)
+})
+
+test_that("with_preserved_rng_state evaluates in the calling frame", {
+  # The call sites assign inside the braces and read the result afterwards, so
+  # this is load-bearing rather than incidental.
+  f <- function() {
+    bayesnec:::with_preserved_rng_state({
+      z <- 42
+    })
+    z
+  }
+  expect_equal(f(), 42)
+})

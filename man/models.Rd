@@ -4,7 +4,7 @@
 \alias{models}
 \title{models}
 \usage{
-models(object)
+models(object, max_pars = NULL)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecfit}} or
@@ -13,7 +13,12 @@ a \code{\link[base]{character}} vector indicating the type of model set for
 which to list the available models, or a \code{\link[base]{numeric}} vector
 indicating the natural range of values which the models should be able to
 handle (see Details). If missing, all available models and their groups are
-listed.}
+listed when \code{max_pars} is also \code{NULL}. When \code{object} is
+missing and \code{max_pars} is supplied, all available equations are
+considered before applying the limit.}
+
+\item{max_pars}{An optional positive whole number giving the maximum number
+of curve parameters an equation may contain.}
 }
 \value{
 A \code{\link[base]{list}} of the available or fitted models.
@@ -62,18 +67,52 @@ no coefficient ("nechormepwr", "nechorme4pwr") are excluded for 0, 1 bounded
 families under an identity link. The term
 \code{x^(1 / (1 + exp(slope)))} contributes exactly 1 at \code{x = 1}
 whatever "slope" is, and below the threshold the decay factor is 1, so the
-fitted mean is at least \code{top + 1} wherever the predictor reaches 1.
-There is no parameter value that keeps it inside (0, 1), which is why this is
-an exclusion rather than a harder search for initial values.
+fitted mean is at least \code{top + 1} at any concentration at or above 1
+that falls strictly below "nec". Since "nec" is bounded to the predictor
+range, every such value is one the sampler is free to propose, and each
+proposal is outside the likelihood's support. More generally the exponent
+\code{1 / (1 + exp(slope))} tends to 0 as "slope" grows, so the term tends to
+1 for every concentration above 0 and the mean below the threshold tends to
+\code{top + 1}. For any "top" above 0 there is therefore a "slope" at which
+the mean exceeds 1, whatever range the predictor covers, and the term has no
+coefficient the fit can drive towards zero. That is why the exclusion does
+not depend on the predictor supplied. That is why this is
+an exclusion rather than a harder search for initial values: a \code{nec}
+below 1 does admit some initial values, but it neither stops the sampler
+reaching the values that do not nor keeps the mean inside (0, 1) by
+itself.
 "nechormepwr01" is the bounded hormesis form and is retained there;
 conversely it is excluded for the zero-bounded identity families, being
 bounded on (0, 1) by construction and so unable to represent a response with
 no upper bound. Additionally,
 models that raise the predictor to a fractional power ("ecxsigm",
 "necsigm", "nechormepwr", "nechorme4pwr") are not suitable where the
-predictor contains negative values. These restrictions do
-not need to be controlled by the user and a call to \code{\link{bnec}} with
-\code{models = "all"} will simply exclude inappropriate models.
+predictor contains negative values. \code{"ecxhormebc5"} is also excluded
+for a negative predictor when an identity-linked response family requires a
+positive mean. Its linear hormesis term can make the mean negative there,
+and its additional free lower asymptote makes a valid starting point
+unreliable. It remains available for a non-negative predictor, an
+unconstrained Gaussian mean, or a link that maps the linear predictor into
+the response support. These restrictions do not need to be controlled by
+the user and a call to \code{\link{bnec}} with \code{models = "all"} will
+simply exclude inappropriate models.
+
+A model group names a shape, not a set of equations admissible for a given
+response. "decline" is the set that excludes the hormesis models, and it
+therefore includes "neclin" and "ecxlin", whose mean decays by subtraction
+and is unbounded below. Neither is admissible for a response bounded at
+zero. A \code{\link{bnec}} call is unaffected, because the same internal
+check described above drops them where the family requires it; what the
+group name does not do is state which equations that check will keep. Code
+that needs the admissible set should ask for it directly, by passing the
+numeric range --- \code{models(c(0, 1))} --- rather than reading a group.
+
+Set \code{max_pars} to restrict the resolved set to equations with no more
+than that number of curve parameters. The limit can be used by itself or
+combined with a model group, response range, or fitted object. The returned
+list can be passed directly as the \code{model} argument in a
+\code{\link{bayesnecformula}}, for example
+\code{crf(x, models("decline", max_pars = 3))}.
 
 \bold{Coming from the \code{drc} package}
 
@@ -139,5 +178,7 @@ show_params("nec3param")
 models("all")
 # models that are suitable for 0,1 bounded data
 models(c(0,1))
+# models with no more than three curve parameters
+models(max_pars = 3)
 
 }

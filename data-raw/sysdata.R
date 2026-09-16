@@ -67,17 +67,9 @@ mod_fams <- c(gaussian = "gaussian",
 # and mu are weakly separated exactly where mu is small, and that zi is a latent
 # class rather than anything the experiment observed. Leaving these tags out of
 # this registry is what routes them through the ordinary family path in bnec(),
-# where brms fits the mixture itself with a constant zi. See #104.
-# hurdle_poisson and hurdle_negbinomial ARE in this registry, where the
-# zero-inflated count families deliberately are not (#104). The distinction is
-# whether the zeros are observed or latent. Under zero-inflation a zero could
-# have come from either component, so zi and mu are weakly separated exactly
-# where mu is small -- the high-concentration end that sets the NEC -- and a
-# curve on zi describes a class nobody measured. Under a hurdle the zeros are
-# observed to be structural: the individual died, the replicate failed. The
-# likelihood then factorises exactly and both blocks carry an interpretable
-# concentration-response curve, which is the same situation hurdle_gamma
-# already serves. See #209.
+# where brms fits the mixture itself with a constant zi. Count hurdles differ:
+# their zeros are observed to be structural, so the positive count likelihood
+# is zero-truncated and the two blocks factorise exactly. See #104 and #209.
 hurdle_fams <- c(hurdle_gamma = "hu", zero_inflated_beta = "zi",
                  hurdle_poisson = "hu", hurdle_negbinomial = "hu")
 

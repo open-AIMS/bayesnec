@@ -1,72 +1,41 @@
 # Review run — the pre-CRAN loop
 
-> ## START HERE — handoff, 2026-08-23
+> ## START HERE — 2026-08-25
 >
-> The session that ran phases 0–3 ended here. **Read this block, then
-> `notes/tasks/148-model-fit-diagnostics.md`, before anything else.**
+> **Do not look for the state of the stack in this file.** It lives on GitHub,
+> and the one-line-per-item index is the **status column** in the stack table in
+> `01_work_queue.md`. Everything else — why a PR did what it did, what it left
+> undone — is in the PR body or the issue thread. RF, 2026-08-25: the same facts
+> were being written into three notes files and the tracker, and that is what
+> makes it hard to follow.
 >
-> ### The correction that matters most
->
-> `01_work_queue.md` item 7 (#148) was **wrong in four ways**, and everything
-> downstream inherited it: PR #226 was built to it, and the phase 2 review
-> validated #226 against the queue rather than against the issue. Item 7 has now
-> been corrected and carries the detail. In short: there are **four** parts not
-> three (Part D exists), decision **(d) was answered *in* and prototyped**,
-> decision **(b) was omitted entirely**, and a doc fix in `example2` rides on (b).
->
-> **The authoritative source is `notes/tasks/148-model-fit-diagnostics.md`** —
-> 23 KB, written at scoping time, referenced from the issue thread, and never
-> consulted by the queue entry or the review. **`notes/tasks/` is untracked, so
-> this file is not in git. Commit it before anything else can be trusted.**
->
-> ### The lesson, stated plainly
->
-> Four of the five phase 2 findings were gaps between what code did and what was
-> *claimed* about it. The review then made the same mistake at one level up:
-> it validated PRs against a summary of the requirements instead of the
-> requirements. **Check claims against sources, including claims made by these
-> notes.**
->
-> ### Work outstanding, all confirmed in scope pre-CRAN by RF
->
-> | what | where | note |
-> |---|---|---|
-> | (b) automatic surfacing | into PR #226 | `bnec()` message + `summary()` line, threshold on the **ratio** |
-> | (d) combined hurdle check | into PR #226 | prototype already written on the #148 thread |
-> | **Part D** (D1–D4) | **its own PR** | needs no `loo`, does not depend on #217 — the spec says build it standalone |
-> | `example2.Rmd.orig:102` doc fix | with Part D | claims summary warns on divergences; it does not |
-> | rewrite PR #238 | after Part D | currently hand-rolls the screen because Part D was thought absent |
-> | phase 4 release gate | after merges | see below |
->
-> ### State of the PRs
->
-> Nine open, all MERGEABLE, all reviewed. Versions pinned monotonically along
-> the merge path so merging in this order costs no conflicts:
->
-> ```
-> dev .14 → 235 .15 → 236 .16 → 237 .17 → 224 .18 → 225 .19
->        → 226 .20 → 227 .21 → 228 .22 → 238 .23
+> ```bash
+> gh pr list   --repo open-AIMS/bayesnec --state open
+> gh issue list --repo open-AIMS/bayesnec --state open
 > ```
 >
-> **Delete each branch as it merges** — an undeleted merged base stops GitHub
-> retargeting the PR above it, which has already bitten twice in this run.
+> Two things that are **not** on GitHub and will bite you:
 >
-> ### Two things that changed late
+> - **Every PR here targets `dev`, not the default branch, so `Closes #n` never
+>   fires.** Close issues by hand after verifying the work is on `dev`.
+> - **`issue-136-rate-aterm` and `issue-148-check-fit` have merged but must not
+>   be deleted** — they are the bases of PRs #225 and #238, and deleting a merged
+>   base closes the PR above it irrecoverably.
 >
-> - **The machine is free.** Load 0.29 on 22 cores; the `negative-sgr` simulation
->   study has finished. The 2-core budget in `00_protocol.md` no longer binds and
->   **#190 is unblocked**.
-> - **A full-suite run to characterise the `WARN 10`** was launched and did not
->   finish before the session ended. Re-run it; ten testthat warnings on every
->   platform should be cleared before submission.
->
-> ### The loop
->
-> Ran in `/loop` dynamic mode and **does not survive the session**. Restart with
-> the same prompt to resume. Worktrees `/mnt/c/Rworking/bayesnec-review` and
-> `-review2` were created by that session and can be removed with
-> `git worktree remove`.
+> The 2026-08-23 handoff below is kept for its lesson, not its PR list.
 
+> ## The lesson from phases 0–3, 2026-08-23
+>
+> Four of the five phase 2 findings were gaps between what the code did and what
+> was *claimed* about it. The review then made the same mistake one level up: it
+> validated PRs against a **summary** of the requirements — `01_work_queue.md`
+> item 7 — instead of against the requirements. Item 7 was wrong in four ways,
+> and #226 was built to it. **Check claims against sources, including claims
+> made by these notes.**
+>
+> The rest of that handoff has been cut: its PR list, branch advice and
+> outstanding-work table are all either stale or now recorded on the PRs and
+> issues themselves.
 
 How a Claude Code session works through the *review* of the stack `01_work_queue.md`
 built, and the issues that review generated. Read `00_protocol.md` first — every
@@ -469,3 +438,155 @@ leaving the PRs to drift unmerged across the whole migration.
 
 Until this is answered, phases 0–2 proceed unchanged; only the review *standard*
 for 227 and 228 depends on it, and phase 3 for those two PRs.
+
+---
+
+# Phase 3b — the CI tidy-up, 2026-08-24
+
+A fresh session picked the run up here. **All seven open PRs were red, and not
+one of them was red for a reason to do with its own subject matter.** Every
+platform reported `FAIL 0`; the red X in each case was
+`Error: R CMD check found WARNINGs` from one of two roxygen slips.
+
+| cause | PRs affected | fixed on |
+|---|---|---|
+| `check_sampling.Rd` / `screen_models.Rd` link to `check_fit`, which does not exist until 226 | 240, 224, 225 | **240**, the base |
+| `@param` missing for `combined` (`check_fit`), `fit_ratio_cutoff` and `check_fit` (`summary`) | 226, 227, 228, 238 | **226** |
+
+Both were introduced by the phase 3 fixes themselves — decision (b) added two
+`summary()` arguments and decision (d) added one to
+`check_fit.bayesnechurdlefit()`, and neither carried a roxygen entry. The
+`\link{check_fit}` references are demoted to `\code{check_fit()}` at the base of
+the stack and **restored on 226**, the branch that introduces the function, so
+the documentation is correct at every point along the merge path rather than
+only at the end.
+
+**Versions were deliberately not bumped.** The pinning
+`dev .17 → 240 .18 → 224 .19 → 225 .20 → 226 .21 → 227 .22 → 228 .23 → 238 .24`
+is what makes the merge path conflict-free, and a doc fix on an open PR does not
+earn a new development version. The restack merged with zero conflicts on all
+six branches.
+
+## The `WARN 10` is one line
+
+The handoff asked for this to be characterised. All ten testthat warnings, on
+every platform on every branch, come from **`R/autoplot.R:188`** —
+`select(.data$x_e, ...)`. `.data` in a *tidyselect* expression was deprecated in
+tidyselect 1.2.0. Every other `.data$` in the package sits in a data-masking
+context (`aes()`, `filter()`, `mutate()`, `arrange()`) and is correct.
+
+Replaced with quoted names. `test-expand_classes.R` went from ten warnings to
+none. Fixed at the base of the stack so it propagates to all seven PRs.
+
+## Four issues were merged but never closed
+
+#229, #230, #231 and #232 were fixed by #235, #233, #237 and #236, all merged to
+`dev`, but the PR bodies referenced them as `(#230)` rather than with a closing
+keyword. Closed with a pointer to the merging PR.
+
+**Worth adopting:** write `Closes #n` in the PR body, not `(#n)`.
+
+## The precompile rehearsal of 2026-08-24
+
+`/mnt/c/Rworking/bayesnec-precompile` was found holding **an uncommitted,
+unpushed, detached-HEAD tree with 39 modified files** — a full precompile run
+across example1–6, 8 and 9 on an integration branch merging the 224–238 stack,
+executed 23 Aug 21:50 – 24 Aug 01:53. A stray `git checkout` there would have
+destroyed about four hours of fitting.
+
+Preserved on **`precompile-rehearsal-2026-08-24`**. It is *not* a #190 run:
+
+- **example7 is absent** — `negsgr-cens-vignette` is not merged into that tree.
+- **example8 does not execute at all** (see below).
+- It predates the R CMD check fixes above.
+- It was killed before `precompile.R` reached its figure-move step, leaving 29
+  images stranded in the repository root. That move has been completed as the
+  script would have done it.
+
+### Two findings came out of it, and neither is an artefact
+
+**1. A `Beta` response that reaches exactly zero can fail the whole candidate
+set.** The rehearsal carried an uncommitted edit to `example9.Rmd.orig` moving
+the beta example off `irgarol`, which has **eight of its twelve
+top-concentration replicates at exactly zero**, onto `simazine`, which spans
+0.16–0.71 and never touches a boundary. Zeros by herbicide:
+
+| herbicide | n | zeros | at the top concentration |
+|---|---|---|---|
+| ametryn | 96 | 12 | 7 of 12 |
+| irgarol | 72 | 10 | 8 of 12 |
+| hexazinone | 76 | 1 | 1 of 5 |
+| atrazine, diuron, simazine, tebuthiuron | — | 0 | — |
+
+The boundary handling `check_data()` applies is evidently not rescuing these
+fits, which is worth knowing before any vignette leans on `herbicide` + `Beta`.
+
+**2. That is very likely why example8's `bnec_group()` call fails.**
+`bnec_group()` fits all seven herbicides, so it takes in all three of the
+zero-carrying ones. So the example8 failure is a **data-and-family question, not
+a `bnec_group()` defect** — but that should be confirmed by fitting one clean
+level and one zero-carrying level singly before #33 is judged on it.
+
+## example8 does not execute — both halves
+
+The rendered rehearsal output shows the vignette is a sequence of errors:
+
+```
+fit_ogl <- bnec(suc | trials(tot) ~ crf(dose, "nec3param") + ogl(tank), ...)
+#> Error: Failed to fit model nec3param.
+
+fit_grp <- bnec_group(fvfm ~ crf(log(concentration), "decline"), herbicide, ...)
+#> Error in expand_manec(...): None of the models fit successfully
+```
+
+Every later chunk then cascades on `object 'fit_ogl' not found`, and the
+vignette produced **no figures at all**.
+
+The rewrite at `0eea2b55` answered the conditioning objection correctly — it
+moved Part 1 from nassarius *growth* to nassarius *survival*, so no animal is
+filtered out. But survival turns out not to be modellable either:
+
+- **There is almost no concentration-response in survival.** Contaminant A runs
+  12% dead at the control, then 0–6% dead across seven doses spanning
+  0.01–1.25, then 83% at 2.5 and 100% at 20. That is a step, not a curve — and
+  the control has *higher* mortality than the next six doses.
+- **The levels are not comparable.** The four contaminants sit on largely
+  non-overlapping dose grids: A 0–2.5 (11 doses), **B 0.02/0.05/0.1 (3 doses)**,
+  C 0.02–15 (12), D 0.001–15 (13). Three dose levels will not support a
+  four-parameter model, let alone crossed weights over a 23-model set.
+
+So `nassarius` fails for **both** halves of the vignette, for two unrelated
+reasons, and the failure is not the one the PR thread diagnosed.
+
+### `cr_modelling_training` ships data built for this
+
+Cloned at `/mnt/c/Rworking/cr_modelling_training`. Its
+`vignettes/8Factor_covariates_and_groupings.Rmd` uses three CSVs, one per thing
+this vignette has to teach:
+
+| file | n | structure | teaches |
+|---|---|---|---|
+| `example_ogl.csv` | 100 | coral tile % colour change, grouped by tile colour | `ogl()` — intercept only |
+| `example_pgl.csv` | 176 | `log_x`, `y`, `plateRep` | `pgl()` — slope and intercept |
+| `example_fi.csv` | 151 | Chlorella / Zn across hardness × pH | the factor interaction (#33) |
+
+**The open decision is whether to bring one or more of these into the package as
+data** — which needs provenance, documentation and permission — or to keep
+looking in the packaged data. RF's call.
+
+## Also standing, and not yet acted on
+
+- **`R-CMD-check.yaml` passes `--ignore-vignettes`.** Nothing in CI has ever
+  checked a vignette; #190 is the first real check of them. Do not read a green
+  stack as evidence that the vignettes build.
+- **example7** (`negsgr-cens-vignette`, 8 commits) is pushed with no PR. It
+  commits the *rendered* `example7.Rmd` and its figures, edits `R/nsec.R`, and
+  edits the rendered `example1.Rmd` and `example6.Rmd` — all three of which
+  cross rules this stack has been keeping. Needs review and a targeting
+  decision.
+- **Vignette numbering**, settled but previously unrecorded: **7** negative
+  growth (#193), **8** grouping (#6/#33), **9** workflow (#219).
+- Stale worktrees `bayesnec-review` and `bayesnec-review2` can be removed.
+- **The open decision from phase 3 is still open:** are #33 and #6 (PRs 227,
+  228) in the pre-migration release? It now matters more, because example8's
+  data problem sits on 228.

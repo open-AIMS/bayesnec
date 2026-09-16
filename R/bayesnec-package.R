@@ -7,7 +7,7 @@
 #' (Fox 2010), 'NSEC' (Fisher and Fox 2023), and 'N(S)EC (Fisher et al. 2023).
 #' A full description of bayesnec can be found in Fisher et al. (2024).
 #' Please see ?bnec for more details. This package expands and supersedes an
-#' original version implemented in R2jags (Su and Yajima 2020), see Fisher et
+#' original version implemented in R2jags (Su and Yajima 2024), see Fisher et
 #  al. (2020).
 #' @name bayesnec-package
 #' @aliases bayesnec
@@ -33,8 +33,8 @@
 #' Fisher R, Ricardo GF, Fox, DR (2020) jagsNEC: A Bayesian No Effect
 #' Concentration (NEC) package. doi:10.5281/ZENODO.3966864.
 #' 
-#' Su Y, Yajima M (2020). R2jags: Using R to Run 'JAGS'. R package version
-#' 0.6-1, <https://CRAN.R-project.org/package=R2jags>.
+#' Su Y, Yajima M (2024). R2jags: Using R to Run 'JAGS'. R package version
+#' 0.8-9, <https://CRAN.R-project.org/package=R2jags>.
 #' 
 #' Fox DR (2010). A Bayesian Approach for Determining the No Effect
 #' Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology

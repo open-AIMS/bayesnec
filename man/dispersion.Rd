@@ -14,14 +14,24 @@ family is either \code{\link[stats]{poisson}} or
 \item{summary}{Logical. Should summary stats be returned instead of full
 vector? Defaults to FALSE.}
 
-\item{seed}{Change seed for reproducible purposes.}
+\item{seed}{A \code{\link[base]{numeric}} vector of length 1. Passed to
+\code{\link[base]{set.seed}} before simulating, so the result is
+reproducible. The caller's random number stream is restored before the
+statistic is returned, so running it does not change what the next random
+operation in the session returns. \code{NULL} is refused rather than passed
+on, because \code{set.seed(NULL)} re-initialises the stream from the clock.}
 }
 \value{
 A \code{\link[base]{numeric}} vector. If \code{summary} is FALSE, an
 n-long vector containing the dispersion metric, where n is the number of post
-warm-up posterior draws from the \code{\link[brms]{brmsfit}} object. If
+warm-up posterior draws from the \code{\link[brms]{brmsfit}} object. An
+element of that vector is \code{Inf} for a draw containing an observation of
+zero fitted variance whose response is not the fitted value, and \code{NA}
+for a draw in which no observation contributes a residual; both cases are
+described under Details and both are reported when they arise. If
 TRUE, then a \code{\link[base]{data.frame}} containing the summary stats
-(mean, median, 95\% highest density intervals) of the dispersion metric.
+(median, 95\% credible interval, and the posterior probability of
+over-dispersion) of the dispersion metric.
 }
 \description{
 Calculates a posterior dispersion metric.
@@ -30,12 +40,58 @@ Calculates a posterior dispersion metric.
 This function calculates a dispersion metric which takes the ratio
 between the observed relative to simulated Pearson residuals sums of
 squares.
+
+The statistic is the ratio of the observed to the simulated Pearson
+residual sum of squares, whose null value is 1. With \code{summary = TRUE}
+the returned vector reports \code{P(>1)}, the posterior probability that the
+ratio exceeds 1. It uses the whole posterior rather than a point estimate or
+a single tail quantile, and it is symmetric: \code{1 - P(>1)} is the
+posterior probability of under-dispersion, which no other summary here
+addresses.
+
+\bold{An observation the model reproduces exactly is excluded.} The Pearson
+denominator is the fitted standard deviation, which is exactly zero wherever
+the fitted mean underflows --- \code{mu (1 - mu) n} for a binomial and
+\code{mu} for a Poisson both do so for a curve that decays fast enough. An
+observation whose response equals that fitted value contributes \code{0/0}
+to both sums and says nothing about dispersion in either direction, so it is
+excluded from both and every draw is retained. The exclusion is the limit
+rather than an approximation to it: as the fitted mean tends to zero with a
+response of zero the observed term tends to zero, and the simulated term
+does the same, because a predictive distribution of vanishing variance
+returns its mean with probability approaching one. Excluding a term is
+arithmetically identical to contributing zero to both sums, so it introduces
+no bias in either direction, and the ratio is self-normalising --- under the
+null each retained observation contributes approximately 1 to the
+denominator, so the null value of 1 holds whatever the size of the retained
+set. The exclusion is made draw by draw, since an observation whose fitted
+mean underflows in one draw gives an ordinary residual in another, and the
+number of observations and of draws affected is reported. Where instead the response differs from a fitted value
+of zero variance, the model has assigned zero variance to a value it did not
+predict; the statistic is reported as \code{Inf} and a warning names the
+observations. The infinity is the underflow --- in exact arithmetic the
+residual there is large and finite --- but the misfit it reports is real. An empty vector is
+returned only where every observation has zero variance and is reproduced
+exactly, in which case there are no residuals to compare.
+
+\bold{A beta-binomial fit does not address under-dispersion.}
+\code{beta_binomial} adds a variance component to the binomial, so it can
+represent a variance above the binomial's and not one below it. Where
+\code{P(>1)} is near 0 --- the data vary less than the fitted model implies
+--- moving from \code{binomial} to \code{beta_binomial} cannot help, and
+the usual causes are a mis-specified mean curve or non-independent
+observations that make the effective sample size smaller than the nominal
+one.
 }
 \examples{
 \dontrun{
 library(bayesnec)
 data(nec_data)
-nec_data$y <- as.integer(round(nec_data$y * 100))
+# A Poisson mean following the curve, so the counts are a genuine count
+# process; rounding a scaled proportion gives a variance that does not change
+# with the mean, which no count distribution can represent.
+mu <- 5 + (85 - 5) * exp(-exp(0.3) * (nec_data$x - 1.5) * (nec_data$x > 1.5))
+nec_data$y <- as.integer(rpois(length(mu), mu))
 nec4param <- bnec(y ~ crf(x, "nec4param"), data = nec_data, chains = 2)
 dispersion(nec4param, summary = TRUE)
 }

@@ -4,11 +4,19 @@
 \alias{ggbnec_data}
 \title{Creates the data.frame for plotting with \code{\link{autoplot}}.}
 \usage{
-ggbnec_data(x, add_nec = TRUE, add_ecx = FALSE, xform = identity, ...)
+ggbnec_data(
+  x,
+  add_nec = TRUE,
+  add_ecx = FALSE,
+  xform = identity,
+  ...,
+  group = NULL
+)
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesnecfit}} or
-\code{\link{bayesmanecfit}}, as returned by function \code{\link{bnec}}.}
+\code{\link{bayesmanecfit}}, as returned by function \code{\link{bnec}},
+or a \code{\link{bayesnecgroupfit}} returned by \code{\link{bnec_group}}.}
 
 \item{add_nec}{Should NEC values be added to the plot? Defaults to TRUE.}
 
@@ -19,9 +27,16 @@ values.}
 
 \item{...}{Additional arguments to be passed to \code{\link{ecx}}. By
 default, function \code{\link{ecx}} returns EC10.}
+
+\item{group}{An optional character string naming a group-level variable in
+the fitted formula. When supplied, its values are returned in a column named
+\code{group}, with the source name in attribute \code{"group_var"}. A
+\code{bayesnecgroupfit} returns its fitted grouping variable automatically.}
 }
 \value{
-A \code{\link[base]{data.frame}}.
+A \code{\link[base]{data.frame}}. When \code{group} is supplied, or
+\code{x} is a \code{bayesnecgroupfit}, the frame includes a \code{group}
+column and a \code{"group_var"} attribute.
 }
 \description{
 Creates the data.frame for plotting with \code{\link{autoplot}}.

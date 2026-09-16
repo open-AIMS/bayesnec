@@ -107,11 +107,13 @@ test_that("check_data exempts censored rows from the boundary shifts", {
   }
   y <- c(0.9, 0.5, 0.2, 0)
   # unchanged when no censoring is declared
-  expect_message(
-    out <- bayesnec:::check_data(build(y), Gamma(), "nec4param"),
-    "response contains zeros"
-  )
+  # check_data() performs the shift and is now silent about it: the message is
+  # emitted once per bnec() call by report_substitutions(), reading the record
+  # check_data() returns, rather than once per model from here. See #93.
+  expect_silent(out <- bayesnec:::check_data(build(y), Gamma(), "nec4param"))
   expect_equal(out$mod_dat$y, c(0.9, 0.5, 0.2, 0.02))
+  expect_message(bayesnec:::report_substitutions(out$substitutions),
+                 "value\\(s\\) at 0")
   # a zero that is not censored is still shifted, one that is censored is not
   cen <- c("none", "none", "left", "none")
   out2 <- bayesnec:::check_data(build(c(0.9, 0.5, 0.005, 0), cen), Gamma(),

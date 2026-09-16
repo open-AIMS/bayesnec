@@ -4,15 +4,26 @@
 \alias{compare_fitted}
 \title{compare_fitted}
 \usage{
-compare_fitted(x, resolution = 50, x_range = NA, make_newdata = TRUE, ...)
+compare_fitted(
+  x,
+  resolution = 50,
+  x_range = NA,
+  make_newdata = TRUE,
+  seed = 10,
+  ...
+)
 }
 \arguments{
 \item{x}{A named \code{\link[base]{list}} of objects of class
 \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by
 \code{\link{bnec}}.}
 
-\item{resolution}{The number of unique x values over which to find ECx --
-large values will make the ECx estimate more precise.}
+\item{resolution}{The number of unique x values over which to find ECx.
+The crossing is located by linear interpolation between the two grid values
+that bracket it, so precision saturates well below the grid spacing.
+Increasing the resolution beyond the default of 200 changed the estimate by
+less than 0.01 percent on the fits tested, and increases the run time
+roughly in proportion.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
@@ -20,6 +31,21 @@ large values will make the ECx estimate more precise.}
 user allow the package to create \code{newdata} for predictions?
 If so, arguments \code{resolution} and \code{x_range} will be used. Defaults
 to TRUE. See details.}
+
+\item{seed}{A \code{\link[base]{numeric}} vector of length 1. Passed to
+\code{\link[base]{set.seed}} before the draws of the posteriors being
+compared are paired, so that two calls on the same fits return the same
+answer. The caller's saved RNG state is restored afterwards, and a
+\code{\link[base]{set.seed}} in the session therefore does not change the
+result. A different value gives another realisation of the same Monte
+Carlo approximation. \code{NULL} is refused, because
+\code{set.seed(NULL)} re-initialises the stream from the clock.
+Reproducibility assumes the same RNG kind; the sampling algorithm is fixed
+to \code{sample.kind = "Rejection"}. The saved RNG state is restored,
+but the cached normal variate used by \code{normal.kind = "Box-Muller"}
+is not part of that state. With Box-Muller, the next normal draw can change
+after an odd number of preceding normal draws. Use R's default
+\code{normal.kind = "Inversion"} to preserve subsequent normal draws.}
 
 \item{...}{Further arguments that control posterior predictions via
 \code{\link[brms]{posterior_epred}}.}
@@ -46,6 +72,31 @@ an additional data.frame via the \code{newdata} argument. For guidance
 on how to structure \code{newdata}, see for example
 \code{\link[brms]{posterior_epred}}.
 }
+\section{Reproducibility}{
+
+The draws of each posterior are paired by a random permutation, so
+\code{prob_diff} and the difference intervals are a Monte Carlo
+approximation to the difference of two \bold{independent} posteriors, using
+\emph{n} of the \emph{n}^2 available pairs. The permutation is drawn under
+\code{seed}, so two calls on the same fits return the same comparison and a
+\code{\link[base]{set.seed}} in the session has no effect on it. A different
+\code{seed} gives another realisation of the same approximation;
+where the approximation matters, compare a few and report the spread. The
+caller's random number state is restored afterwards.
+}
+
+\section{The independence assumption}{
+
+The pairing is valid only where the posteriors being compared come from
+\bold{separate fits}. Two levels of one fit share draws --- draw \emph{i}
+of each comes from the same sweep of the sampler --- and permuting them
+destroys that pairing, which discards the correlation between the levels and
+widens the difference posterior. \code{prob_diff} is then pulled toward 0.5
+and a real difference is under-detected, which is the wrong direction to err
+in. A within-fit contrast needs draw-wise differencing and must not be routed
+through this function. See #218 and #33.
+}
+
 \examples{
 \dontrun{
 library(bayesnec)

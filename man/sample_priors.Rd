@@ -4,7 +4,7 @@
 \alias{sample_priors}
 \title{sample_priors}
 \usage{
-sample_priors(priors, n_samples = 10000, plot = "ggplot")
+sample_priors(priors, n_samples = 10000, plot = "ggplot", seed = 10)
 }
 \arguments{
 \item{priors}{An object of class \code{\link[brms]{brmsprior}} from package
@@ -15,9 +15,27 @@ sample_priors(priors, n_samples = 10000, plot = "ggplot")
 \item{plot}{NA returns a \code{\link[base]{list}} of numeric vectors of
 sampled priors, "ggplot" (default) returns a \code{\link[ggplot2]{ggplot}}
 and "base" returns a histogram in base R.}
+
+\item{seed}{A \code{\link[base]{numeric}} vector of length 1. Passed to
+\code{\link[base]{set.seed}} before the priors are sampled, so that two
+calls on the same prior set return the same draws and the same figure. The
+caller's saved RNG state is restored afterwards, and a
+\code{\link[base]{set.seed}} in the session therefore does not change the
+result. A different value gives an independent set of draws. \code{NULL} is
+refused, because \code{set.seed(NULL)} re-initialises the stream from the
+clock.
+Reproducibility assumes the same RNG kind; the sampling algorithm is fixed
+to \code{sample.kind = "Rejection"}. The saved RNG state is restored,
+but the cached normal variate used by \code{normal.kind = "Box-Muller"}
+is not part of that state. With Box-Muller, the next normal draw can change
+after an odd number of preceding normal draws. Use R's default
+\code{normal.kind = "Inversion"} to preserve subsequent normal draws.}
 }
 \value{
-A \code{\link[base]{list}} containing the initialisation values.
+For \code{plot = NA}, a \code{\link[base]{list}} of numeric
+vectors of sampled prior values, one per parameter. Otherwise a
+\code{\link[ggplot2]{ggplot}} or, for \code{plot = "base"}, the histograms
+drawn as a side effect.
 }
 \description{
 Creates list or generates a plot of prior samples

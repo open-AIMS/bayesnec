@@ -15,25 +15,32 @@
 #' to TRUE. See details.
 #' @param ... Further arguments that control posterior predictions via
 #' \code{\link[brms]{posterior_epred}}.
+#' @param seed A \code{\link[base]{numeric}} vector of length 1. Passed to
+#' \code{\link[base]{set.seed}} before the draws of the posteriors being
+#' compared are paired, so that two calls on the same fits return the same
+#' answer. The caller's saved RNG state is restored afterwards, and a
+#' \code{\link[base]{set.seed}} in the session therefore does not change the
+#' result. A different value gives another realisation of the same Monte
+#' Carlo approximation. \code{NULL} is refused, because
+#' \code{set.seed(NULL)} re-initialises the stream from the clock.
+#' Reproducibility assumes the same RNG kind; the sampling algorithm is fixed
+#' to \code{sample.kind = "Rejection"}. The saved RNG state is restored,
+#' but the cached normal variate used by \code{normal.kind = "Box-Muller"}
+#' is not part of that state. With Box-Muller, the next normal draw can change
+#' after an odd number of preceding normal draws. Use R's default
+#' \code{normal.kind = "Inversion"} to preserve subsequent normal draws.
 #' 
 #' @inheritParams ecx
 #' @inheritParams nsec
 #'
-#' @details \code{type} "relative" is calculated as the percentage decrease
-#' from the maximum predicted value of the response (top) to the minimum
-#' predicted value of the response. Type "absolute" (the default) is
-#' calculated as the percentage decrease from the maximum value of the
-#' response (top) to 0 (or bot for a 4 parameter model fit). Type "direct"
-#' provides a direct estimate of the x value for a given y.
-#' Note that for the current version, ECx for an "nechorme" (NEC Hormesis)
-#' model is estimated at a percent decline from the control.
-#' 
-#' For \code{hormesis_def}, if "max", then ECx or NSEC values -- i.e.,
-#' depending on argument \code{comparison} -- are calculated
-#' as a decline from the maximum estimates (i.e. the peak at NEC);
-#' if "control", then ECx or NSEC values are calculated relative to the
-#' control, which is assumed to be the lowest observed concentration.
-#' 
+#' @details \code{type} is passed to \code{\link{ecx}} and takes the same four
+#' values, all measured from the control --- the predicted mean at the lowest
+#' concentration in the supplied predictor, per posterior draw. "absolute" (the
+#' default) measures to 0, "relative" to the equation's theoretical asymptote,
+#' "range" to the lowest response the curve predicts, and "direct" takes a
+#' response value rather than a percentage. See \code{\link{ecx}} for the full
+#' definitions and for what changed at 2.2.0.
+#'
 #' The argument \code{make_newdata} is only used if
 #' \code{comparison = "fitted"}. It is relevant to those who want the package
 #' to create a data.frame from which to make predictions. This is done via
@@ -63,10 +70,23 @@
 #' }
 #'
 #' @export
-compare_posterior <- function(x, comparison = "n(s)ec", ecx_val = 10,
-                              type = "absolute", hormesis_def = "control",
-                              sig_val = 0.01, resolution, x_range = NA,
-                              make_newdata = TRUE, ...) {
+compare_posterior <- function(x, ...) {
+  UseMethod("compare_posterior")
+}
+
+#' @rdname compare_posterior
+#' @order 2
+#'
+#' @method compare_posterior default
+#'
+#' @inherit compare_posterior description return examples
+#'
+#' @export
+compare_posterior.default <- function(x, comparison = "n(s)ec", ecx_val = 10,
+                                      type = "absolute",
+                                      sig_val = 0.01, resolution,
+                                      x_range = NA, make_newdata = TRUE,
+                                      seed = 10, ...) {
   if (!is.list(x) | is.null(names(x))) {
     stop("Argument x must be a named list.")
   }
@@ -78,15 +98,43 @@ compare_posterior <- function(x, comparison = "n(s)ec", ecx_val = 10,
       resolution <- 500
     }
     out <- compare_estimates(x = x, comparison = comparison, ecx_val = ecx_val,
-                             type = type, hormesis_def = hormesis_def,
+                             type = type,
                              sig_val = sig_val, resolution = resolution,
-                             x_range = x_range)
+                             x_range = x_range, seed = seed)
   } else {
     if (missing(resolution)) {
       resolution <- 50
     }
     out <- compare_fitted(x = x, resolution = resolution, x_range = x_range,
-                          make_newdata = make_newdata, ...)
+                          make_newdata = make_newdata, seed = seed, ...)
   }
   out
+}
+
+#' @rdname compare_posterior
+#' @order 3
+#'
+#' @method compare_posterior bayesnecgroupfit
+#'
+#' @inherit compare_posterior description return examples
+#'
+#' @details For a \code{\link{bayesnecgroupfit}} the comparison is across the
+#' levels of the grouping factor: each level was fitted independently, so the
+#' per-level fits are already the named list this function takes, and the method
+#' is dispatch rather than new machinery.
+#'
+#' This is the natural companion to \code{\link{crossed_group_weights}}. That
+#' answers which \emph{equation} best describes each level; this answers whether
+#' the levels differ in the \emph{quantity being reported} --- the \emph{NEC},
+#' an ECx, or the fitted curve. A factor covariate analysis usually wants both,
+#' and they can disagree: two levels can favour the same model form while
+#' differing in where the threshold falls, and vice versa.
+#'
+#' The levels share no parameters, so the posteriors are independent and the
+#' pairwise probabilities are read directly, with no multiple-comparison
+#' adjustment implied.
+#'
+#' @export
+compare_posterior.bayesnecgroupfit <- function(x, ...) {
+  compare_posterior(x$fits, ...)
 }

@@ -37,3 +37,42 @@ test_that("prob_vals passes correctly", {
   nec4 <- nec(nec4param, prob_vals = c(0.5, 0.3, 0.7))
   expect_equal(names(nec4), c("Q50", "Q30", "Q70"))
 })
+
+
+# ---- #39, the censored no-effect posterior -----------------------------------
+
+# estimates_summary() gained na.rm when nsec_off_curve() started returning NA
+# for a draw whose curve never reaches the reference; nec() did not, so it
+# raised "missing values and NaN's not allowed" on a posterior the package had
+# itself written. The NA reach nec() by two routes: a joint two-block fit whose
+# survival block is smooth, and a model set containing any smooth equation.
+# Injected here rather than fitted, because producing a draw that never crosses
+# needs a fit that does not converge to a decline.
+
+test_that("nec summarises a censored posterior rather than erroring", {
+  censored <- nec4param
+  censored$ne_posterior[c(3, 17)] <- NA_real_
+  out <- suppressWarnings(nec(censored))
+  expect_equal(length(out), 3)
+  expect_false(anyNA(out))
+  # The two dropped draws are excluded, not replaced, so the summary is taken
+  # over the 98 that are identified.
+  expect_equal(as.numeric(out),
+               as.numeric(quantile(censored$ne_posterior,
+                                   probs = c(0.5, 0.025, 0.975),
+                                   na.rm = TRUE)))
+})
+
+test_that("nec says how many draws are censored, on either class", {
+  censored <- nec4param
+  censored$ne_posterior[c(3, 17)] <- NA_real_
+  expect_warning(nec(censored), "not identified for 2 of 100 draws")
+  censored_manec <- manec_example
+  censored_manec$w_ne_posterior[1] <- NA_real_
+  expect_warning(suppressMessages(nec(censored_manec)),
+                 "not identified for 1 of 100 draws")
+})
+
+test_that("an uncensored posterior is silent", {
+  expect_silent(nec(nec4param))
+})

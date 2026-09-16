@@ -43,18 +43,20 @@
 #' @param family_growth A \code{\link[stats]{family}} function for the response
 #' of the non-zero subset. Defaults to \code{NULL}, in which case it is chosen
 #' from that subset the same way \code{\link{bnec}} would: \code{Gamma} for a
-#' positive continuous response, \code{Beta} for one bounded on (0, 1). A
+#' positive continuous response, \code{Beta} for one bounded on (0, 1), and
+#' \code{poisson} for counts. A
 #' two-block family (\code{hurdle_gamma}, \code{zero_inflated_beta}) is refused,
 #' because \code{bnec_hurdle} is itself the two-part model, and so are the
 #' zero-inflated count families, which are mixtures rather than hurdles -- see
-#' \code{\link{bnec}}. The plain count families (\code{poisson},
-#' \code{negbinomial}) are refused too: \code{bnec_hurdle} would fit them
-#' \emph{untruncated} to the non-zero subset, whereas the positive part of a
-#' hurdle on counts is zero-truncated. That overestimates the mean where the
-#' mean is small, which is the upper end of the concentration range. Use
-#' \code{bnec(family = "hurdle_poisson")} or
-#' \code{bnec(family = "hurdle_negbinomial")}, where \pkg{brms} writes the
-#' zero-truncated positive part itself.
+#' \code{\link{bnec}}. For \code{poisson} and \code{negbinomial}, the positive
+#' subset is fitted with the corresponding zero-truncated likelihood. The
+#' truncation is added internally because every row in that subset is known to
+#' be positive; it is not a user-selectable response transformation. This path
+#' requires \pkg{brms} 2.23.2 or later, where the fitted model, log likelihood
+#' and posterior expected response all use the same inclusive lower bound.
+#' @param predictor_scale The predictor-scale declaration passed to both
+#' \code{\link{bnec}} fits. It is checked against the complete predictor before
+#' either component is fitted. See \code{\link{bnec}}.
 #' @param ... Further arguments passed to both \code{\link{bnec}} calls.
 #'
 #' @details
@@ -140,8 +142,12 @@
 #'
 #' @export
 bnec_hurdle <- function(formula, data, model_survival = NULL,
-                        family_growth = NULL, ...) {
-  formula <- bayesnecformula(formula)
+                        family_growth = NULL, predictor_scale = "auto", ...) {
+  # Captured before anything can rebind it; see family_link_source() and #256.
+  growth_link_source <- family_link_source(substitute(family_growth),
+                                           env = parent.frame())
+  formula <- bayesnecformula(formula, env = parent.frame())
+  predictor_scale <- validate_predictor_scale(predictor_scale)
   y_var <- hurdle_response_var(formula)
   aterms <- check_hurdle_aterms(formula)
   if (!y_var %in% names(data)) {
@@ -175,6 +181,14 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
     stop("Every value of \"", y_var, "\" is zero.", call. = FALSE)
   }
   check_hurdle_cens(aterms, data, y, y_var)
+  # Both components are fitted in sequence, and the growth subset can omit the
+  # rows that contradict a concentration-scale declaration. Check the complete
+  # predictor here so the first component is not sampled before the second
+  # discovers the contradiction. See #317.
+  full_frame <- model.frame(formula, data = data, run_par_checks = TRUE)
+  validate_predictor_scale(
+    predictor_scale, retrieve_var(full_frame, "x_var", error = TRUE)
+  )
 
   # Survival component: one Bernoulli trial per individual, 1 = survived. The
   # curve therefore declines with concentration, matching the sign convention
@@ -199,27 +213,33 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
     family_growth <- validate_family(
       set_distribution(y[y > 0], silence_y_msgs = TRUE)
     )
-    # Checked on the auto-selected family as well as on a supplied one. An
-    # integer response picks poisson or negbinomial here, which is exactly the
-    # case that must not be fitted untruncated -- and it is the one a user
-    # reaches silently, without ever naming a family.
-    check_hurdle_growth_family(family_growth)
   } else {
-    family_growth <- validate_family(family_growth)
+    family_growth <- validate_family(family_growth,
+                                     link_source = growth_link_source)
     check_hurdle_growth_family(family_growth)
+  }
+  growth_formula <- formula
+  if (family_growth$family %in% c("poisson", "negbinomial")) {
+    check_count_truncation_support()
+    # The growth data contain only survivors, so their count distribution is
+    # conditional on Y > 0. Adding the bound here makes that sampling decision
+    # part of the likelihood without exposing trunc() as a user-facing aterm.
+    growth_formula <- add_hurdle_truncation(growth_formula)
   }
   message("Fitting the growth component (", sum(y > 0), " survivors of ",
           length(y), ") with a ", family_growth$family, " distribution.")
-  # The formula is passed through unchanged, aterms included: a censoring
-  # indicator is an ordinary data column, so the subset carries it along and the
-  # declaration reaches the block it belongs to. A survivor measured below the
-  # recording limit is an observation of *this* component, not a structural zero.
-  growth_fit <- bnec(formula, data = data[y > 0, , drop = FALSE],
-                     family = family_growth, ...)
+  # User aterms are passed through unchanged. A censoring indicator is an
+  # ordinary data column, so the subset carries it to the block it belongs to.
+  # A survivor measured below the recording limit is an observation of this
+  # component, not a structural zero.
+  growth_fit <- bnec(growth_formula, data = data[y > 0, , drop = FALSE],
+                     family = family_growth,
+                     predictor_scale = predictor_scale, ...)
   message("Fitting the survival component (", n_dead, " deaths of ",
           length(y), ").")
   survival_fit <- bnec(surv_formula, data = surv_data,
-                       family = bernoulli(link = "identity"), ...)
+                       family = bernoulli(link = "identity"),
+                       predictor_scale = predictor_scale, ...)
 
   out <- list(growth = growth_fit, survival = survival_fit,
               data = data, formula = formula, y_var = y_var,
@@ -251,11 +271,9 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
 #' that for reasons of identifiability and interpretation rather than of
 #' likelihood algebra, set out under \code{\link{bnec}}.
 #'
-#' Nor does the message send the user to a count hurdle, because there is not
-#' yet one to send them to: the positive part of a hurdle on counts is
-#' zero-truncated, and fitting an untruncated \code{poisson} to the non-zero
-#' subset -- which is what this function would do -- estimates
-#' \code{mu / (1 - exp(-mu))} rather than \code{mu}.
+#' For structural count zeros, pass the ordinary \code{poisson} or
+#' \code{negbinomial} family. \code{bnec_hurdle} adds the zero truncation that
+#' conditioning on the positive subset requires.
 #'
 #' @return \code{invisible(NULL)}, called for its side effect.
 #'
@@ -271,60 +289,62 @@ check_hurdle_growth_family <- function(family) {
          " likelihood does not factorise, so two separate fits would give you a",
          " different model. Use bnec(family = \"", fam_tag, "\") for the",
          " mixture. If every zero really is structural you want a hurdle on",
-         " counts, whose positive part is zero-truncated: that is",
-         " bnec(family = \"hurdle_", sub("^zero_inflated_", "", fam_tag),
-         "\"). See ?bnec.",
-         call. = FALSE)
-  }
-  # Refused rather than fitted, and this is a behaviour change: bnec_hurdle
-  # fits the growth component to data[y > 0, ] with an ORDINARY count family,
-  # which is not the right likelihood. Conditioning a Poisson on y > 0
-  # estimates mu / (1 - exp(-mu)) rather than mu; the bias is negligible for
-  # large mu and grows as mu falls towards zero -- the high-concentration end
-  # where the NEC and ECx are read off. For hurdle_gamma the same construction
-  # is exact, because a Gamma has no mass at zero, which is why this was never
-  # a problem before counts were in scope.
-  #
-  # The obvious repair -- add trunc(lb = 1) to the growth formula, which is a
-  # fact about the y > 0 subset rather than a user modelling choice -- is
-  # blocked upstream, and that is the durable reason this stays refused rather
-  # than the scope of #209. brms handles trunc(lb =) inconsistently on discrete
-  # families: the generated Stan normalises at lb - 1 (inclusive, so the fit is
-  # right), but posterior_epred_trunc_discrete() sums over (min_lb + 1):ub and
-  # divides by cdf(ub) - cdf(lb) (exclusive), so ecx(), nsec(), fitted() and
-  # every plot would be silently wrong with no warning. log_lik had the same
-  # off-by-one; that half is fixed on brms master (paul-buerkner/brms#1922) but
-  # unreleased, and the epred half (paul-buerkner/brms#1923) is still open, so
-  # no brms version makes the route work end to end and pinning is not a way
-  # out. trunc(lb = 0) is not a workaround either -- Stan then fits untruncated
-  # while the R side zero-truncates. Tracked in #249; until it closes, the
-  # joint families are the only correct route, and brms writes their
-  # zero-truncated positive part itself via the - log1m_exp(-lambda)
-  # normaliser. See #209 and #249.
-  if (fam_tag %in% c("poisson", "negbinomial")) {
-    stop("bnec_hurdle cannot use ", fam_tag, " as the growth family. Its",
-         " positive part would be fitted with an untruncated ", fam_tag,
-         " on the non-zero counts, which estimates mu / (1 - exp(-mu)) rather",
-         " than mu -- a bias that grows as the mean falls towards zero, which",
-         " is the high-concentration end the NEC and ECx are read off. Use",
-         " bnec(family = \"hurdle_", fam_tag, "\"), where brms writes the",
-         " zero-truncated positive part itself. That fit also gives both",
-         " blocks a concentration-response curve, which is what a count hurdle",
-         " is for. Restoring the separate-fits route needs a zero-truncated",
-         " count likelihood, which is deferred on an upstream brms bug in the",
-         " post-processing of trunc() for discrete families",
-         " (open-AIMS/bayesnec#249). See ?bnec.",
+         " counts. Pass family_growth = ",
+         sub("^zero_inflated_", "", fam_tag), "(); bnec_hurdle fits the",
+         " required zero-truncated likelihood for the positive subset. See ?bnec.",
          call. = FALSE)
   }
   if (is_hurdle_family(fam_tag)) {
     stop("bnec_hurdle cannot use ", fam_tag, " as the growth family: it is",
          " already a two-block family, and bnec_hurdle is the two-part model.",
-         " Pass the family of the non-zero responses -- Gamma or Beta -- or",
+         " Pass the family of the non-zero responses -- Gamma, Beta, poisson",
+         " or negbinomial -- or",
          " leave family_growth unset and it will be chosen from them. Use",
          " bnec(family = \"", fam_tag, "\") for the equivalent joint fit.",
          call. = FALSE)
   }
   invisible(NULL)
+}
+
+#' Check that brms uses inclusive bounds throughout count truncation
+#'
+#' @param version The installed \pkg{brms} version.
+#'
+#' @return \code{invisible(NULL)}, called for its side effect.
+#'
+#' @noRd
+check_count_truncation_support <- function(
+    version = utils::packageVersion("brms")) {
+  if (version < "2.23.2") {
+    stop("Factorised count hurdles require brms 2.23.2 or later, which",
+         " includes the corrected inclusive lower bound in log_lik() and",
+         " posterior_epred(). Installed brms is ", as.character(version), ".",
+         " Until brms is updated, use bnec(family = \"hurdle_poisson\") or",
+         " bnec(family = \"hurdle_negbinomial\") for a joint count hurdle.",
+         call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+#' Add the count-hurdle truncation to the growth formula
+#'
+#' @param formula An object of class \code{\link{bayesnecformula}}.
+#'
+#' @return \code{formula} with \code{trunc(lb = 1)} appended to its response.
+#'
+#' @noRd
+add_hurdle_truncation <- function(formula) {
+  parts <- hurdle_lhs_parts(lhs(formula))
+  trunc_call <- quote(trunc(lb = 1))
+  aterms <- c(parts$aterms, list(trunc_call))
+  aterm_call <- Reduce(
+    function(left, right) call("+", left, right), aterms
+  )
+  formula[[2]] <- call("|", parts$response, aterm_call)
+  # check_formula() accepts trunc() only on an internally marked formula. A
+  # caller cannot otherwise use this unvalidated aterm through bnec().
+  attr(formula, "bayesnec_internal_truncation") <- TRUE
+  formula
 }
 
 #' Extract the response variable name from a hurdle formula
@@ -528,8 +548,13 @@ check_hurdle_cens <- function(aterms, data, y, y_var) {
 #'
 #' @noRd
 swap_response <- function(formula, new_response) {
+  # The right-hand side is rebuilt from its deparsed text, which drops the
+  # environment the user wrote it in. Carried over explicitly, so that a model
+  # set or a predictor transformation held in a variable still resolves in the
+  # component formulas. See #319.
   bayesnecformula(
-    as.formula(paste0(new_response, " ~ ", deparse1(rhs(formula))))
+    as.formula(paste0(new_response, " ~ ", deparse1(rhs(formula))),
+               env = formula_env(formula))
   )
 }
 

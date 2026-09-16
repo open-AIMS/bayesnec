@@ -4,8 +4,10 @@
 # brms names that second block "hu" for the hurdle families and "zi" for the
 # zero-inflated ones. Structurally they are the same model -- zero-inflation
 # only differs from a hurdle when the base distribution can itself emit zeros,
-# which neither Gamma nor Beta can -- so bayesnec treats them identically and
-# carries the name through rather than branching on it. The block is
+# which neither Gamma nor Beta can -- so bayesnec treats those families
+# identically and carries the name through rather than branching on it. Count
+# hurdles also factorise because their zeros are declared structural and their
+# positive block is zero-truncated. The block is
 # distinguished in a fit by that name used as a prefix on every non-linear
 # parameter: `top` belongs to mu, `hutop` or `zitop` to the second block.
 
@@ -40,7 +42,33 @@ hurdle_dpar <- function(family) {
 #' Gamma for hurdle_gamma, Beta for zero_inflated_beta, and the corresponding
 #' count family for hurdle_poisson and hurdle_negbinomial.
 #'
+#' The mean link the caller chose is used here rather than replaced. brms
+#' applies the inverse mean link to the whole non-linear expression, so under
+#' \code{hurdle_gamma(link = "log")} the generated Stan code reads
+#' \code{mu = exp(nlp_bot + (nlp_top - nlp_bot) * ...)} and \code{top} and
+#' \code{bot} are on the log scale. Returning an identity-link family here made
+#' \code{\link{define_prior}} build their priors from the untransformed
+#' response, as it does for a fit that really is on the identity link, so the
+#' priors described a different scale from the parameters. On
+#' \code{zero_inflated_beta(link = "logit")} that produced \code{beta(5, 2)}
+#' bounded to [0, 1] for a \code{top} whose true value on the logit scale was
+#' 2.2, and \code{beta(2, 5)} for a \code{bot} that must be negative for any
+#' response floor below 0.5 --- a support that excludes the answer rather than
+#' merely misplacing density. The non-hurdle route has always handled this, by
+#' reading the response on the link scale and taking the unbounded normal
+#' entries for a log or logit link, which is what Fisher et al. (2024) describe
+#' for "any response variable for which the link ensures valid values of the
+#' response can take from -Inf to Inf, including log and logit". See #302.
+#'
+#' The second block is unaffected and is deliberately left on the identity
+#' link: \code{\link{validate_family}} requires \code{link_hu} and
+#' \code{link_zi} to be \code{"identity"}, because that block is written as
+#' \code{1 - <non-zero probability>} and any other link would model something
+#' else.
+#'
 #' @param family Either a \code{\link[stats]{family}} object or a family tag.
+#' A tag names a family and nothing more, so it takes the identity link ---
+#' the one \code{\link{bnec}} assigns where it chooses one.
 #'
 #' @return An object of class \code{\link[stats]{family}}.
 #'
@@ -49,13 +77,80 @@ hurdle_dpar <- function(family) {
 #'
 #' @noRd
 hurdle_mu_family <- function(family) {
-  fam_tag <- if (inherits(family, "family")) family$family else family
+  is_fam <- inherits(family, "family")
+  fam_tag <- if (is_fam) family$family else family
+  link <- if (is_fam && !is.null(family$link)) family$link else "identity"
   switch(unname(hurdle_mu_fams[[fam_tag]]),
-         Gamma = Gamma(link = "identity"),
-         beta = Beta(link = "identity"),
-         poisson = poisson(link = "identity"),
-         negbinomial = negbinomial(link = "identity"),
+         Gamma = Gamma(link = link),
+         beta = Beta(link = link),
+         poisson = poisson(link = link),
+         negbinomial = negbinomial(link = link),
          stop("No mu family defined for ", fam_tag, ".", call. = FALSE))
+}
+
+#' Conditional mean of the positive part of a count distribution
+#'
+#' @param mu A numeric matrix of mean-parameter draws.
+#' @param family Either \code{"hurdle_poisson"} or
+#' \code{"hurdle_negbinomial"}.
+#' @param shape A numeric matrix of negative-binomial shape draws, required for
+#' \code{"hurdle_negbinomial"}.
+#'
+#' @return A numeric matrix with the same dimensions as \code{mu}.
+#'
+#' @noRd
+hurdle_positive_mean <- function(mu, family, shape = NULL) {
+  if (family == "hurdle_poisson") {
+    nonzero <- -expm1(-mu)
+  } else if (family == "hurdle_negbinomial") {
+    if (is.null(shape)) {
+      stop("Negative-binomial positive means require shape draws.",
+           call. = FALSE)
+    }
+    nonzero <- -expm1(-shape * log1p(mu / shape))
+  } else {
+    return(mu)
+  }
+  out <- mu / nonzero
+  out[nonzero == 0] <- 1
+  out
+}
+
+#' Posterior draws for one block of a joint hurdle fit
+#'
+#' @param object A \code{bayesnecfit} containing a joint hurdle family.
+#' @param newdata A prediction data frame.
+#' @param dpar The requested parameter block, or \code{NULL} for the combined
+#' endpoint.
+#'
+#' @return A numeric matrix of posterior draws.
+#'
+#' @importFrom brms posterior_epred
+#'
+#' @noRd
+joint_hurdle_epred <- function(object, newdata, dpar = NULL) {
+  if (is.null(dpar)) {
+    return(posterior_epred(object, newdata = newdata, re_formula = NA))
+  }
+  family <- object$fit$family
+  if (!is_hurdle_family(family)) {
+    stop("The \"dpar\" argument is only valid for hurdle families.",
+         call. = FALSE)
+  }
+  dpar <- match.arg(dpar, c("mu", hurdle_dpar(family)))
+  out <- posterior_epred(
+    object, newdata = newdata, re_formula = NA, dpar = dpar
+  )
+  if (dpar != "mu") {
+    return(1 - out)
+  }
+  if (family$family == "hurdle_negbinomial") {
+    shape <- posterior_epred(
+      object, newdata = newdata, re_formula = NA, dpar = "shape"
+    )
+    return(hurdle_positive_mean(out, family$family, shape))
+  }
+  hurdle_positive_mean(out, family$family)
 }
 
 #' Non-linear parameter names of the second block for a given model
@@ -140,9 +235,13 @@ add_hu_block <- function(brms_bf, model, x_var, dpar) {
 survival_by_x <- function(predictor, response) {
   ux <- sort(unique(predictor))
   p <- vapply(ux, function(z) mean(response[predictor == z] > 0), numeric(1))
-  # Stan needs mu strictly inside (0, 1) under an identity link, and the
-  # init-finder validates candidates against range(y); exact 0 and 1 make that
-  # unsatisfiable. Clamp exactly as response_link_scale() does elsewhere.
+  # Stan needs mu strictly inside (0, 1) under an identity link, and a
+  # proportion of exactly 0 or 1 makes that unsatisfiable. Clamp exactly as
+  # response_link_scale() does elsewhere. Note that eps is now also the floor
+  # of the band this block's initial curve is tested against: init_limits()
+  # sets its band back from the boundary of the support by a tenth of the
+  # distance to the nearest observed value, and on this block the nearest
+  # observed value is eps wherever a proportion was clamped. See #309.
   eps <- 1 / (2 * length(response))
   list(x = ux, y = pmin(pmax(p, eps), 1 - eps))
 }

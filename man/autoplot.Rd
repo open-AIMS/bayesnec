@@ -4,9 +4,10 @@
 \alias{autoplot}
 \alias{autoplot.bayesnecfit}
 \alias{autoplot.bayesmanecfit}
+\alias{autoplot.bayesnecgroupfit}
 \title{bayesnec standard ggplot2 plotting method}
 \usage{
-\method{autoplot}{bayesnecfit}(object, ..., nec = TRUE, ecx = FALSE, xform = identity)
+\method{autoplot}{bayesnecfit}(object, ..., nec = TRUE, ecx = FALSE, xform = identity, group = NULL)
 
 \method{autoplot}{bayesmanecfit}(
   object,
@@ -18,12 +19,15 @@
   plot = TRUE,
   ask = TRUE,
   newpage = TRUE,
-  multi_facet = TRUE
+  multi_facet = TRUE,
+  group = NULL
 )
+
+\method{autoplot}{bayesnecgroupfit}(object, ..., nec = TRUE, ecx = FALSE, xform = identity, group = NULL)
 }
 \arguments{
-\item{object}{An object of class \code{\link{bayesnecfit}} or
-\code{\link{bayesmanecfit}}.}
+\item{object}{An object of class \code{\link{bayesnecfit}},
+\code{\link{bayesmanecfit}} or \code{\link{bayesnecgroupfit}}.}
 
 \item{...}{Additional arguments to be passed to \code{\link{ggbnec_data}}.}
 
@@ -33,6 +37,12 @@
 
 \item{xform}{A function to apply to the returned estimated concentration
 values.}
+
+\item{group}{An optional character string naming a group-level variable in
+the fitted formula. Observations are joined through their per-level means;
+a level recorded at one predictor value is marked at its mean instead. A
+\code{bayesnecgroupfit} uses its fitted grouping variable automatically and
+draws one panel per level.}
 
 \item{all_models}{Should all individual models be plotted separately\
 (defaults to FALSE) or should model averaged predictions be plotted instead?}

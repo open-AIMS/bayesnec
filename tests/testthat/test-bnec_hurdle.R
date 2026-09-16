@@ -154,6 +154,25 @@ test_that("bnec_hurdle rejects a censored structural zero", {
   )
 })
 
+test_that("bnec_hurdle validates the full predictor before either fit (#317)", {
+  dat <- data.frame(x = c(1, 2, -1, -2), y = c(2, 1, 0, 0))
+  calls <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      calls <<- calls + 1L
+      stop("component fit should not start")
+    },
+    .package = "bayesnec"
+  )
+
+  expect_error(
+    bnec_hurdle(y ~ crf(x, "nec3param"), data = dat,
+                predictor_scale = "concentration"),
+    "requires a non-negative predictor"
+  )
+  expect_equal(calls, 0L)
+})
+
 test_that("bnec_hurdle fits a censored response and routes it correctly", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
@@ -172,7 +191,7 @@ test_that("bnec_hurdle fits a censored response and routes it correctly", {
   expect_gt(sum(is_lo), 0)
   fit <- bnec_hurdle(y | cens(cens) ~ crf(x, "nec3param"), data = dat,
                      iter = 400, warmup = 200, chains = 2, seed = 17,
-                     refresh = 0, open_progress = FALSE) |>
+                     refresh = 0) |>
     suppressMessages() |>
     suppressWarnings()
   expect_s3_class(fit, "bayesnechurdlefit")

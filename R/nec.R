@@ -113,7 +113,14 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
   if (inherits(xform, "function")) {
     nec_out <- xform(nec_out)
   }
-  nec_estimate <- quantile(unlist(nec_out), probs = prob_vals)
+  # na.rm because the stored posterior can contain NA. A threshold equation's
+  # b_nec_Intercept cannot, but a joint two-block fit whose survival block is
+  # smooth has its combined no-effect estimate read off the curve by
+  # nsec_off_curve(), which returns NA for any draw that never reaches the
+  # reference. Without this such a fit's nec() is an error rather than a
+  # censored estimate. See #39 and D15 ruling 3.
+  warn_censored_draws(nec_out, ne_label(object))
+  nec_estimate <- quantile(unlist(nec_out), probs = prob_vals, na.rm = TRUE)
   names(nec_estimate) <- clean_names(nec_estimate)
   attr(nec_estimate, "toxicity_estimate") <- "nec"
   attr(nec_out, "toxicity_estimate") <-  "nec"
@@ -160,7 +167,12 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
   if (inherits(xform, "function")) {
     nec_out <- xform(nec_out)
   }
-  nec_estimate <- quantile(unlist(nec_out), probs = prob_vals)
+  # na.rm, as above. Here the NA arrive by a second route as well: every smooth
+  # equation in the set contributes NSEC draws read off its own curve, so a set
+  # containing one whose curve does not reach the reference has NA in the
+  # weighted posterior even where every threshold equation in it is fine.
+  warn_censored_draws(nec_out, ne_label(object))
+  nec_estimate <- quantile(unlist(nec_out), probs = prob_vals, na.rm = TRUE)
   names(nec_estimate) <- clean_names(nec_estimate)
   attr(nec_estimate, "toxicity_estimate") <- "nec"
   attr(nec_out, "toxicity_estimate") <-  "nec"

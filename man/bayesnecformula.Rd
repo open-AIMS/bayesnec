@@ -6,13 +6,23 @@
 \title{Set up a model formula for use in
 \code{\link[bayesnec:bayesnec-package]{bayesnec}}}
 \usage{
-bayesnecformula(formula, ...)
+bayesnecformula(formula, ..., env = parent.frame())
 }
 \arguments{
 \item{formula}{Either a \code{\link[base]{character}} string defining an
 R formula or an actual \code{\link[stats]{formula}} object. See details.}
 
 \item{...}{Unused.}
+
+\item{env}{An \code{\link[base]{environment}} in which to resolve symbols
+that \code{formula} names but that are not columns of the data --- a
+variable holding the model set, or an R function needed to transform the
+predictor. Only used when \code{formula} is a character string, because a
+formula object already carries its own environment. Defaults to the calling
+environment, so a character formula passed down through a wrapper function
+is bound at the last call rather than where the string was written; where
+that matters, convert it with \code{bnf(string, env = ...)} and pass the
+result on.}
 }
 \value{
 An object of class \code{\link{bayesnecformula}} and
@@ -41,10 +51,21 @@ term called \code{crf}, which sets the concentration-response equation
 to be evaluated based on some \code{x} predictor. The equation itself is
 defined by the argument \code{"model"}: a \code{\link[base]{character}}
 vector containing a specific model, a concatenation of specific models,
-or a single string defining a particular group of models
-(or group of equations, see \code{\link{models}}). Internally
+a single string defining a particular group of models, or a named list of
+equation formulas returned by \code{\link{models}}. Internally
 this argument is substituted by an actual \code{\link[brms]{brmsformula}},
 which is then passed onto \code{\link[brms]{brm}} for model fitting.
+
+The \code{model} argument may be a variable rather than a literal, so that
+the set can be assembled before the formula is written --- \code{eqs <-
+c("nec3param", "ecxll3"); bnf(y ~ crf(x, eqs))}. It is resolved in the
+environment the formula was written in, which for a formula supplied as a
+character string means the environment given by \code{env}. The same applies
+on the R side to a function used to transform the predictor inside
+\code{crf}. Resolving that function in R does not define it in Stan: the
+function call must also be valid Stan syntax, either because Stan provides
+it or because the corresponding Stan function is supplied through
+\code{stanvars}. Otherwise, transform the predictor in the data first.
 
 \bold{Group-level terms: \code{glterms}}
 
@@ -66,6 +87,39 @@ or model suite. For example, the parameter \code{bot} exists in model
 \code{"nec4param"} but not in \code{"nec3param"}, so if the user specifies
 \code{model = "nec"} in \code{crf}, the term \code{(bot | group_variable)}
 will be dropped in models where that parameter does not exist.
+
+\bold{The scale a group-level deviation is applied on}
+
+\pkg{brms} declares a group-level deviation unconstrained, and under the
+\code{"identity"} link \code{\link{bnec}} assigns, the quantity it is added
+to often is not. Where the likelihood restricts the range of the mean ---
+every family except \code{gaussian} --- the deviation is therefore applied
+\emph{multiplicatively} rather than added, so that no proposal can put the
+quantity outside the range in which the model is defined. On a \code{0} to
+\code{1} response it scales the odds and on a positive response it scales the
+value itself. This applies to \code{ogl}, where the deviation is on the whole
+curve, and to a term on \code{top} or \code{bot}, which are the two
+parameters bounded to the support of the mean. A deviation on \code{nec},
+\code{ec50}, \code{beta}, \code{slope}, \code{d} or \code{f} is added, as
+none of those is bounded by the likelihood. A \code{pgl} term places a
+deviation on every parameter at once and so generates a mixture of the two.
+
+The deviation is centred on zero and a deviation of zero leaves the value
+unchanged, so \code{top}, \code{bot}, \code{nec} and \code{beta} keep their
+meanings and their own priors. A deviation on \code{top} or \code{bot} adds
+no population-level term of its own, so the fit has exactly the parameters the
+additive form had and \code{bot} remains the asymptote the population-level
+curve declines towards. A prior the user supplies for \code{top} or
+\code{bot} must bound it to the range the mean is defined on, because the
+multiplicative form is defined only inside that range; a prior that does not
+is refused with a message naming the bounds to add. What changes is the name the standard deviation
+is reported under: a term on \code{bot} is summarised as
+\code{sd(botgl_Intercept)} rather than \code{sd(bot_Intercept)}, and it is on
+the log-odds or log scale rather than on the response scale. The generated
+term names \code{ogl}, \code{bnecmu}, \code{topgl}, \code{botgl},
+\code{bnectop} and \code{bnecbot} are refused as data column names, because
+\pkg{brms} would resolve a column of that name in place of the generated term.
+See \code{vignette("example3")}.
 
 \bold{Dispersion sub-models: \code{disp}}
 
@@ -178,7 +232,8 @@ fires on every path that fits --- \code{\link{bnec}} always supplies one ---
 but not on a bare \code{\link{make_brmsformula}(formula, data)} call, which
 has no family to validate and builds the formula unchecked.
 
-Because \code{\link{bnec}} forces \code{link = "identity"}, \pkg{brms}
+Because \code{\link{bnec}} fits on \code{link = "identity"}, which it
+assigns unless a link argument is written, \pkg{brms}
 writes the denominator multiplicatively on the response scale rather than as
 a log offset on the linear predictor, so the mean \emph{is} the rate and
 "top", "bot" and "nec" stay directly interpretable as counts per unit
@@ -248,9 +303,8 @@ bnf(y ~ crf(x, "nec3param") + disp("power"))
 bnf(y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1))
 
 \donttest{
-# complex transformations are not advisable because
-# they are passed directly to Stan via brms
-# and are likely to fail -- transform your variable beforehand!
+# The predictor expression is passed to Stan by brms. Precompute a
+# transformation unless its function is also defined for Stan.
 try(bnf(y | trials(tr) ~ crf(scale(x, scale = TRUE), "nec3param")))
 }
 }

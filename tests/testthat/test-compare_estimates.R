@@ -10,3 +10,87 @@ test_that("output is a list of appropriately name elements", {
   expect_equal(names(ce), c("posterior_list", "posterior_data", "diff_list",
                             "diff_data", "prob_diff"))
 })
+
+
+# ---- the four-value type vocabulary ------------------------------------------
+
+# compare_estimates() and compare_posterior() forward type to ecx(), but kept a
+# second copy of the vocabulary that still listed the 2.1.3 three-value set. It
+# therefore refused "range" -- the name the rename warning gives callers for the
+# behaviour they had -- so the migration the warning names was impossible from
+# the two functions that exist to compare an ECx across fits.
+
+test_that("compare_estimates accepts every type ecx accepts", {
+  skip_on_cran()
+  x <- list(ecx4param = ecx4param, nec4param = nec4param)
+  for (ty in c("absolute", "range")) {
+    ce <- compare_estimates(x, comparison = "ecx", type = ty, resolution = 50)
+    expect_equal(names(ce), c("posterior_list", "posterior_data", "diff_list",
+                              "diff_data", "prob_diff"))
+  }
+  expect_error(compare_estimates(x, comparison = "ecx", type = "nonsense"),
+               "type must be one of")
+})
+
+test_that("the relative rename is warned once for the call, not once per fit", {
+  skip_on_cran()
+  x <- list(ecx4param = ecx4param, nec4param = nec4param)
+  w <- testthat::capture_warnings(
+    compare_estimates(x, comparison = "ecx", type = "relative",
+                      resolution = 50)
+  )
+  expect_equal(sum(grepl("now measures from the control", w)), 1)
+})
+
+test_that("average_estimates validates type on the same vocabulary", {
+  skip_on_cran()
+  x <- list(ecx4param = ecx4param, nec4param = nec4param)
+  expect_error(average_estimates(x, estimate = "ecx", type = "nonsense"),
+               "type must be one of")
+  out <- average_estimates(x, estimate = "ecx", type = "range",
+                           resolution = 50)
+  expect_equal(length(out), 3)
+})
+
+
+# ---- #39, a censored draw must not void the comparison -----------------------
+
+test_that("prob_diff is computed over the identified draws", {
+  # A difference is NA wherever either estimate is, and an ECx or NSEC is NA for
+  # a draw whose curve never reaches the target. Without na.rm a single censored
+  # draw made prob NA for the whole comparison -- silently, because prob is the
+  # headline output and NA is a value rather than an error.
+  skip_on_cran()
+  x <- list(a = ecx4param, b = nec4param)
+  # Over the full range these fixtures have no censored draw at all: one at or
+  # below the reference at the control reaches it there and returns the control
+  # rather than NA, so the censored class is only the curves that never reach the
+  # reference (#325). That is asserted unconditionally.
+  full <- suppressWarnings(
+    compare_estimates(x, comparison = "nsec", resolution = 50)
+  )
+  expect_false(any(vapply(full$posterior_list, anyNA, logical(1))))
+  expect_false(anyNA(full$prob_diff$prob))
+  expect_true(all(full$prob_diff$prob >= 0 & full$prob_diff$prob <= 1))
+  # The na.rm path itself needs one component censored and the other identified
+  # over the same range, which depends on where the packaged fixture's curves sit
+  # rather than on anything this test controls. The precondition is measured and
+  # the case skipped if a regenerated fixture no longer meets it, rather than
+  # asserted and left to fail for the wrong reason.
+  censored_range <- c(0, 1.4)
+  post_n <- suppressWarnings(nsec(nec4param, resolution = 50,
+                                  x_range = censored_range, posterior = TRUE))
+  post_e <- suppressWarnings(nsec(ecx4param, resolution = 50,
+                                  x_range = censored_range, posterior = TRUE))
+  skip_if_not(
+    anyNA(post_n) && sum(!is.na(post_n) & !is.na(post_e)) > 0,
+    "the packaged fixture no longer gives a partially censored comparison"
+  )
+  out <- suppressWarnings(
+    compare_estimates(x, comparison = "nsec", resolution = 50,
+                      x_range = censored_range)
+  )
+  expect_true(any(vapply(out$posterior_list, anyNA, logical(1))))
+  expect_false(anyNA(out$prob_diff$prob))
+  expect_true(all(out$prob_diff$prob >= 0 & out$prob_diff$prob <= 1))
+})

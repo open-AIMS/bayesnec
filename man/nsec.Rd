@@ -8,9 +8,8 @@ object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.}
 nsec(
   object,
   sig_val = 0.01,
-  resolution = 1000,
+  resolution = 200,
   x_range = NA,
-  hormesis_def = "control",
   xform = identity,
   prob_vals = c(0.5, 0.025, 0.975),
   ...,
@@ -24,13 +23,14 @@ nsec(
 \item{sig_val}{Probability value to use as the lower quantile to test
 significance of the predicted posterior values.}
 
-\item{resolution}{The number of unique x values over which to find NSEC -
-large values will make the NSEC estimate more precise.}
+\item{resolution}{The number of unique x values over which to find NSEC.
+The crossing is located by linear interpolation between the two grid values
+that bracket it, so precision saturates well below the grid spacing.
+Increasing the resolution beyond the default of 200 changed the estimate by
+less than 0.01 percent on the fits tested, and increases the run time
+roughly in proportion.}
 
 \item{x_range}{A range of x values over which to consider extracting NSEC.}
-
-\item{hormesis_def}{A \code{\link[base]{character}} vector, taking values
-of "max" or "control". See Details.}
 
 \item{xform}{A function to apply to the returned estimated concentration
 values.}
@@ -48,7 +48,10 @@ return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 zero-inflated families) for survival. Defaults to \code{NULL}, which gives
 the combined endpoint \code{mu * (1 - hu)}. The zero-probability block is
 inverted to survival before computing, so the NSEC is read off a declining
-curve. See Details.}
+curve. See Details.
+For the count hurdles, \code{"mu"} is converted to the positive-count mean
+\code{E[Y | Y > 0]} so it matches the growth component returned by
+\code{\link{bnec_hurdle}}.}
 }
 \value{
 A vector containing the estimated NSEC value, including upper and
@@ -64,10 +67,47 @@ at which the modeled mean response is statistically indistinguishable from
 the mean control response. See the detailed derivation in
 Fisher and Fox (2023).
 
-For \code{hormesis_def}, if "max", then NSEC values are calculated
-as a decline from the maximum estimates (i.e. the peak at NEC);
-if "control", then NSEC values are calculated relative to the control, which
-is assumed to be the lowest observed concentration.
+The reference is the \code{sig_val} quantile of the control posterior,
+the control being the predicted mean at the lowest concentration in the
+supplied predictor. That holds for every equation, hormetic ones included:
+the \code{hormesis_def} argument selected between the control and the
+maximum of the predicted curve and has been removed, because a target
+below the control is crossed exactly once whatever the curve does above it.
+
+The attached \code{ecnsec} attribute is the percent effect at the NSEC,
+defined as \code{\link{ecx}} defines it under \code{type = "absolute"}:
+the decline from the control towards zero. Up to 2.1.3 it was measured
+against the fitted range and computed by three different formulas that
+agreed only for a monotonic curve.
+
+Two consequences follow from the reference being a quantile of the control
+posterior. A \code{sig_val} share of the draws have a control at or below the
+reference, and each of those reaches it at the control itself, so the control
+concentration is that draw's NSEC. Fisher and Fox (2023) report the same
+behaviour: the lower credible bound of the NSEC is the lowest concentration
+whenever \code{sig_val} is above the quantile the bound is read at, 0.025
+under the default \code{prob_vals}. And the crossing is sought at or above the
+control, so extending \code{x_range} below the data does not place an estimate
+at a concentration lower than any tested.
+
+Two limits on that. The value is the lowest \emph{observed} concentration,
+where Fisher and Fox (2023) report zero concentration, which they reach by
+extrapolating the fitted curve below the data. The two agree where the control
+of the design is a true zero and the predictor is untransformed; otherwise the
+bound reported here is the control rather than the 0 of their Table 3, and a
+transformed predictor returns it on the transformed scale like any other
+estimate. And it applies where the prediction grid begins at the control. Where
+\code{x_range} begins at a higher concentration, a draw already at or below
+the reference at the first grid point reached it somewhere below the range
+asked for, which is not identified within that range: such a draw returns
+\code{NA} and is reported with those that never reach the reference.
+
+Where a draw's curve does not reach the reference at any tested concentration
+its NSEC is above the highest concentration in the prediction grid. Such a
+draw returns \code{NA} and is excluded from the summary, which is therefore
+censored above that concentration, and a warning reports how many draws were
+affected. Extending \code{x_range} will estimate it, at the price of reading
+the curve where there are no data.
 
 Calls to functions \code{\link{ecx}} and \code{\link{nsec}} and
 \code{\link{compare_fitted}} do not require the same level of flexibility
@@ -105,7 +145,7 @@ nsec(manec_example)
 }
 \references{
 Fisher R, Fox DR (2023). Introducing the no significant effect concentration
-(NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028.
+(NSEC). Environmental Toxicology and Chemistry, 42(9), 2019–2028.
 doi: 10.1002/etc.5610.
 }
 \seealso{

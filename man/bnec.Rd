@@ -21,6 +21,7 @@ bnec(
   prior_type = "uninformative",
   timeout = Inf,
   model_survival = NULL,
+  predictor_scale = "auto",
   ...
 )
 }
@@ -30,7 +31,13 @@ R formula or an actual \code{\link[stats]{formula}} object. See
 \code{\link{bayesnecformula}} and \code{\link{check_formula}}.}
 
 \item{data}{A \code{\link[base]{data.frame}} containing the data to use with
-the \code{formula}.}
+the \code{formula}. Every variable the \code{formula} names must be
+complete: a row with an \code{NA} or \code{NaN} in any of them is refused
+rather than removed, so that the fit is never run on a smaller sample than
+was supplied without the user having chosen that. An \code{Inf} in the
+predictor or the response is refused as well. Apply
+\code{\link[stats]{na.omit}} before calling \code{bnec} where those rows
+are to be discarded.}
 
 \item{x_range}{A range of predictor values over which to consider extracting
 ECx.}
@@ -48,10 +55,16 @@ interpolated NOEC value from smooth ECx curves.}
 ("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
 containing the desired arguments to be passed on to \code{\link[brms]{loo}}
 (via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
-If "weights" is
-not provided by the user, \code{\link{bnec}} will set the default
-\code{method} argument in \code{\link[loo]{loo_model_weights}} to
-"pseudobma". See ?\code{\link[loo]{loo_model_weights}} for further info.}
+If no \code{method} is named in "weights", \pkg{bayesnec} sets the
+\code{method} argument of \code{\link[loo]{loo_model_weights}} to
+"pseudobma", whichever function assembles the model set.
+\code{\link{amend}} and \code{update} operate on an existing set and keep
+the method that set was built with, unless the caller names another.
+\code{\link{pull_out}} takes no weighting method at all: it reports and
+ignores one given in "weights" and always keeps the set's own.
+\code{\link[base]{c}} and \code{+} take no \code{loo_controls} argument;
+see \code{\link{c.bnecfit}} for how they decide the method. See
+?\code{\link[loo]{loo_model_weights}} for further info.}
 
 \item{x_var}{Removed in version 2.0. Use formula instead. Used to be a
 \code{\link[base]{character}} indicating the column heading
@@ -90,9 +103,19 @@ it is matched exactly and not confused with \code{prior_type}.}
 default priors to build when the user does not supply their own. Either
 \code{"uninformative"} (the default; the weakly-informative priors described
 in Fisher et al. 2024) or \code{"regularizing"} (narrower priors, with the
-no-effect \code{top} parameter centred on the control mean, which sits at the
-upper end of the response range for these monotonically decreasing models).
-Ignored when priors are supplied directly via the \code{prior} argument.}
+no-effect \code{top} parameter placed at the mean response over the lowest
+concentrations tested and \code{bot} at the mean over the highest). The
+regularizing set narrows the response-scaled and group-level priors to 0.4 of
+the width of the uninformative set. The \code{nec} and \code{ec50} prior is
+not derived from that width at all: its spread is the one whose central 98\\%
+interval reaches the farthest concentration tested. Under
+\code{"uninformative"} that prior is the one Fisher et al. (2024) describe,
+which is a coverage width at the 95\\% level where concentrations are supplied
+as recorded and the constant \code{10 sd(x)} where the predictor is supplied
+already logged, so how much narrower the regularizing entry is depends on
+which of the two the data are on. See \code{vignette("example3")} for why the
+two rules differ. Ignored when priors are supplied directly via the
+\code{prior} argument.}
 
 \item{timeout}{A positive \code{\link[base]{numeric}} giving the maximum
 number of seconds allowed for fitting any single model, passed to
@@ -106,13 +129,27 @@ finite value is supplied.}
 
 \item{model_survival}{An optional \code{\link[base]{character}} string naming
 the equation to use for the second (zero-probability) parameter block of a
-\code{"hurdle_gamma"} or \code{"zero_inflated_beta"} fit. Defaults to
+\code{"hurdle_gamma"}, \code{"zero_inflated_beta"},
+\code{"hurdle_poisson"} or \code{"hurdle_negbinomial"} fit. Defaults to
 \code{NULL}, meaning the same equation as the response block. It must be a
 single model: model averaging in the joint route runs over the response
 block, with the second block held fixed. Averaging over both at once means
 fitting every pair of equations, which is what \code{\link{bnec_hurdle}} and
 \code{\link{crossed_weights}} do from two fits instead. Ignored, with an
 error, for any other family.}
+
+\item{predictor_scale}{A \code{\link[base]{character}} string declaring the
+scale of the predictor for the default \code{nec} and \code{ec50} prior.
+\code{"concentration"} treats the supplied values as recorded concentrations,
+omits zero controls and builds a lognormal prior. \code{"log"} treats every
+supplied value as an already logged concentration and builds a normal prior,
+including when all values are non-negative and when one is \code{log(1) = 0}.
+The default, \code{"auto"}, preserves the existing rule: a predictor spanning
+negative values is treated as logged and any other predictor as recorded
+concentrations. Values alone cannot identify a logged predictor whose minimum
+is non-negative, so use \code{"log"} whenever the predictor has already been
+logged. The argument affects only defaults generated by \pkg{bayesnec}; a
+complete prior supplied through \code{prior} is unchanged.}
 
 \item{...}{Further arguments to \code{\link[brms]{brm}}.}
 }
@@ -170,6 +207,11 @@ parameter will be fit; "bot_free" meaning only models without a "bot"
 parameter (without a bottom plateau) will be fit; "zero_bounded" are models
 that are bounded to be zero; or "decline" excludes all hormesis models, i.e.,
 only allows a strict decline in response across the whole predictor range.
+Each group names a shape rather than a set of equations admissible for a
+given response --- "decline" includes the linear-decay models, which are
+dropped for a zero-bounded or 0, 1 bounded response --- so a group string is
+filtered by the same family check that \code{model = "all"} is. See
+\code{\link{models}}.
 Notice that if one of these group strings is provided together with a
 user-specified named list for the \code{\link[brms]{brm}}'s argument
 \code{prior}, the list names need to contain
@@ -252,29 +294,19 @@ block carries the same names with a prefix (\code{hutop}, \code{hunec} for
 \pkg{brms} names the block \code{hu} in one case and \code{zi} in the
 other).
 
-Use "hurdle_poisson" or "hurdle_negbinomial" where the non-zero response is
-a count and the zeros are \emph{observed} to be structural --- the individual
-died, the replicate failed. \pkg{brms} writes the positive part
-zero-truncated, so the mu block estimates the mean of the surviving counts
-rather than the mean of counts conditioned on being non-zero. These are the
-count analogues of "hurdle_gamma", and they are what to reach for instead of
-\code{\link{bnec_hurdle}} with a count growth family, which cannot express
-that truncation.
-
-Note the contrast with "zero_inflated_poisson" and
-"zero_inflated_negbinomial", which are \emph{not} routed through the
-two-block machinery. There the zeros are latent: a zero could have come from
-either component, so the zero-probability and the mean are weakly separated
-exactly where the mean is small, which is the high-concentration end that
-determines the \emph{NEC}. A threshold fitted to that probability would
-describe a class nobody observed.
-
 Use "hurdle_gamma" where the non-zero response is positive and unbounded
 above (growth increments, biomass) and "zero_inflated_beta" where it is a
 proportion on (0, 1). The distinction between "hurdle" and "zero-inflated"
 is nominal here: zero-inflation differs from a hurdle only when the base
 distribution can itself produce zeros, which neither the Gamma nor the Beta
 can, so the two are the same model and \pkg{bayesnec} treats them alike.
+
+Use "hurdle_poisson" or "hurdle_negbinomial" where the non-zero response is
+a count and the zeros are observed to be structural. The joint families and
+\code{\link{bnec_hurdle}} both use a zero-truncated likelihood for the
+positive counts. The joint route writes it as one hurdle distribution;
+\code{bnec_hurdle} applies \code{trunc(lb = 1)} internally to its growth
+fit, so the two likelihoods agree when the blocks share no parameters.
 
 Where a "zero_inflated_beta" response has been obtained by dividing through
 by some maximum, the divisor rule above applies: it must be a constant fixed
@@ -283,18 +315,23 @@ constant is available, prefer modelling the raw response with
 "hurdle_gamma" and reading effective concentrations off the fitted curve via
 \code{\link{ecx}}.
 
-Three toxicity estimates follow from one fit: the response of survivors
-(\code{mu}), survival itself (\code{1 - hu}), and the combined endpoint
-\code{mu * (1 - hu)}, the expected response per individual \emph{exposed}.
+Three toxicity estimates follow from one fit: the response of survivors,
+survival itself (\code{1 - hu}), and their product, the expected response per
+individual \emph{exposed}.
 \code{\link[brms]{posterior_epred}} returns the combined endpoint, so
 \code{\link{ecx}}, \code{\link{nsec}} and \code{\link{plot}} describe it by
 default; pass \code{dpar = "mu"} or \code{dpar = "hu"} to \code{\link{ecx}}
 for a component. \code{\link{nec}} returns the combined threshold, which for
 threshold models on both blocks is the smaller of the two.
+For the count hurdles, \pkg{brms} calls the untruncated count mean
+\code{mu}; \code{ecx(dpar = "mu")} and \code{nsec(dpar = "mu")} convert it
+to \code{E[Y | Y > 0]} so that "response of survivors" has the same meaning
+in the joint and factorised routes. The fitted \code{top} and \code{bot}
+parameters remain on the underlying \code{mu} scale.
 
-These families must be specified as \code{family = "hurdle_gamma"} or
-\code{family = "zero_inflated_beta"}, or with both links set explicitly as
-\code{hurdle_gamma(link = "identity", link_hu = "identity")} and
+Naming these families is enough --- \code{family = "hurdle_gamma"},
+\code{hurdle_gamma()}, \code{family = "zero_inflated_beta"} --- since
+bayesnec assigns the link on both blocks; see \strong{The link} and
 \code{zero_inflated_beta(link = "identity", link_zi = "identity")}
 respectively. bayesnec keeps
 every parameter on the natural response scale, and the hurdle block is
@@ -311,7 +348,7 @@ consequence is that \code{hutop} and \code{hunec} describe surviving rather
 than dying; \code{hunec} is the same concentration either way. See
 \code{vignette("example6")}.
 
-Neither family is ever selected automatically: a response
+None of the joint families is selected automatically: a response
 containing zeros is still treated as Gamma, with a message, so that existing
 analyses do not silently change.
 
@@ -384,10 +421,10 @@ block interpretable.
 Which gives the rule for choosing between the two. If you can tell which
 zeros are structural -- the individual died, the replicate failed -- you have
 a hurdle, and a two-block family or \code{\link{bnec_hurdle}} is the right
-model. Zero-inflation is for when you cannot. Note that a genuine hurdle on a
-\emph{count} response needs a zero-truncated count family, which bayesnec
-does not yet provide; see the note under \code{family_growth} in
-\code{\link{bnec_hurdle}}.
+model. Zero-inflation is for when you cannot. For a count hurdle use
+\code{"hurdle_poisson"} or \code{"hurdle_negbinomial"} jointly, or pass the
+corresponding base count family to \code{\link{bnec_hurdle}} for crossed
+model comparison.
 
 Two consequences are worth noting. \code{zi} is a nuisance parameter here,
 not part of the concentration-response description, and \code{disp()} is
@@ -413,9 +450,7 @@ function of the fitted mean (\code{disp("power")}). See
 carry one, and what the exponent implies for each.
 
 A variance function of the fitted mean requires the mean to be modelled on
-its natural scale. \code{\link{bnec}} uses an identity link whenever it
-selects the family itself; where a family is supplied explicitly its link
-should be too, as in \code{Gamma(link = "identity")}.
+its natural scale, which is the identity link \code{\link{bnec}} fits on.
 
 Because \code{\link{ecx}} and \code{\link{nsec}} are defined on \code{mu}, a
 dispersion sub-model changes the credible intervals of the toxicity
@@ -438,23 +473,195 @@ posterior predictions, with weights derived using functions
 \code{loo_controls} argument. Individual model fits can be pulled out
 for examination using function \code{\link{pull_out}}.
 
+\bold{Reproducing a fit}
+
+A fit is a random procedure twice over: initial values are drawn from the
+priors, and the sampler is seeded. Both draws come from R's random number
+stream, so \code{\link[base]{set.seed}} in your session before the call
+fixes the fit, and two calls made after the same \code{set.seed()} return
+the same estimates. Passing \code{seed} through to \code{\link[brms]{brm}}
+fixes it too, and does so independently of the session's stream.
+
+Two qualifications. The estimates are fixed only for a given version of
+\pkg{bayesnec}, \pkg{brms}, Stan and the compiler: a Stan program rebuilt
+by a different toolchain can differ in the last figures. And within-chain
+threading is adaptive by default, which \code{\link[brms]{threading}}
+records as preventing exact reproducibility even under a fixed seed; pass
+\code{threads = threading(n, static = TRUE)} where a threaded run has to
+repeat.
+
+A \pkg{future} plan raises two separate questions, and only the second
+needs anything of you. A run under a plan repeats itself under a session
+\code{\link[base]{set.seed}} exactly as a sequential run does, measured on
+one backend and one R version. But a parallel run does not give the same
+answer as a sequential run of the same call unless you pass \code{seed}:
+each model is fitted in a worker whose random number stream is its own, so
+the initial values differ. Measured under
+\code{plan(multicore, workers = 3)} on three equations, sequential and
+parallel agreed with a \code{seed} and disagreed without one. Pass one if
+you intend to compare the two.
+
+\bold{Fitting a model set in parallel}
+
+A model set is fitted one model at a time by default. Setting a \pkg{future}
+plan before the call fits them at the same time instead, and
+\code{\link{bnec}} uses whatever plan it finds:
+
+\preformatted{
+library(future)
+plan(multisession, workers = 8)
+fit <- bnec(y ~ crf(x, model = "decline"), data = my_data, seed = 17)
+plan(sequential)
+}
+
+No argument turns this on or off: the plan already holds that state.
+\code{cores} is a different matter -- it reaches \code{\link[brms]{brm}}
+through \code{...} as it always has, and under a plan it is honoured rather
+than overridden. \pkg{future} and \pkg{future.apply} are Suggests, so with
+either absent, or no plan set, the models are fitted in sequence exactly as
+before. \code{\link{amend}} uses the plan the same way, over the models it
+has to fit.
+
+Some things to know before setting one.
+
+Chains and models compete for the same cores. Unless you pass \code{cores}
+yourself, each model in a parallel plan samples its chains one after another,
+so \code{workers = 4} uses four cores in total -- the same four
+\code{\link[brms]{brm}} already uses for the chains of one model. Only
+above that is a plan asking for anything more.
+
+Which run you are timing decides whether that matters. A first fit builds a
+Stan program for every model, and building them divides across workers
+cleanly: measured on the \code{"decline"} set of
+\code{vignette("example2")}, a first run took 300 s with no plan and 150 s
+over eight workers. Run again with the programs already built, the same
+comparison is 99 s against 101 s -- nothing, because what a plan was
+overlapping has already been done.
+
+Supply a \code{seed} if the run has to match a sequential one; see
+\emph{Reproducing a fit} above for what a plan does and does not repeat.
+
+The model-averaged quantities -- the averaged
+\code{nec}, its interval, the stored prediction grid -- are not reproduced
+between a sequential and a parallel run even with a \code{seed}, because
+\code{expand_manec()} draws from the session's RNG stream, which a
+sequential run advances and a parallel one leaves alone;
+\code{set.seed()} in your session fixes that draw under a plan, so a
+parallel run repeats itself.
+
+The worked treatment -- measured run times, which backend a forked plan
+needs, how to tell a plan that has stalled, and what memory does -- is in
+\code{vignette("example2")}.
+
 \bold{Additional technical notes}
 
-As some concentration-response data will use zero concentration
-which can cause numerical estimation issues, a small offset is added (1 /
-10th of the next lowest value) to zero values of concentration where
-\code{x_var} are distributed on a continuous scale from 0 to infinity, or
-are bounded to 0, or 1.
+A zero concentration is fitted as recorded. No family constrains the values
+a predictor may take, so a control needs no offset, and earlier versions of
+\pkg{bayesnec} substituted one tenth of the smallest positive concentration
+for it. That substitution is removed: it was applied without notice, it was
+never reversed in the estimates it changed, and its size depended on the
+lowest non-zero concentration tested rather than on the data. A fit whose
+predictor includes an exact zero gives different estimates than it did under
+earlier versions.
 
-\bold{NAs are thrown away}
+A zero concentration does still restrict what may be written inside
+\code{crf()} and \code{disp()}, because both are evaluated from the recorded
+column. \code{crf(log(x))} reaches \pkg{bayesnec}'s own data check as
+\code{-Inf} and stops there, naming the predictor. \code{disp(~log(x))} is
+evaluated by \code{brm()} instead, which \pkg{bayesnec} does not check, so
+the \code{-Inf} reaches Stan. Add the offset of your choice to the data and
+name that column in the formula.
 
-Stan's default behaviour is to fail when the input data contains NAs. For
-that reason \pkg{brms} excludes any NAs from input data prior to fitting,
-and does not allow them back in as is the case with e.g. \code{stats::lm} and
-\code{na.action = exclude}. So we advise that you exclude any NAs in your
-data prior to fitting because if you so wish that should facilitate merging
-predictions back onto your original dataset.
+\bold{Missing values}
+
+A row with an \code{NA} or \code{NaN} in any variable the \code{formula}
+names is refused rather than removed, and so is an \code{Inf} in the
+predictor or the response. The error for a missing value reports how many
+rows held one and which they were, by row name; the error for a non-finite
+value names the column.
+
+\code{\link[stats]{model.frame}} drops incomplete cases before
+\pkg{bayesnec} is given the data, so until version 2.2.0 an \code{NA} left
+the fit running on fewer rows than were supplied with nothing said, while an
+\code{Inf} was refused. Both are now refused, so that the sample the
+estimates are derived from is the user's decision and is visible in the
+script.
+
+Apply \code{\link[stats]{na.omit}} to the data frame before calling
+\code{bnec} where those rows are to be discarded. The frame that results is
+the one the fit is derived from, so predictions align with it row for row:
+\pkg{brms} excludes NAs prior to fitting and does not pad the predictions
+back out, as \code{stats::lm} does with \code{na.action = na.exclude}.
 }
+\section{The link}{
+
+
+\code{\link{bnec}} fits on the \strong{identity} link, which is what keeps
+\code{top}, \code{bot} and \code{nec} on the scale of the response and
+directly interpretable, and is what the JSS article describes.
+
+\strong{The link is assigned by bayesnec unless you choose one.} Naming a
+family and nothing more leaves it to bayesnec, so all of the following fit on
+the identity link:
+
+\preformatted{
+bnec(..., family = "Beta")
+bnec(..., family = Beta)
+bnec(..., family = Beta())
+bnec(..., family = hurdle_gamma())
+}
+
+Writing a link argument is what makes it yours, and it is then honoured.
+A link written positionally counts, since \code{link} is the first argument
+of every family constructor:
+
+\preformatted{
+bnec(..., family = Beta(link = "logit"))
+bnec(..., family = Beta("logit"))
+}
+
+This is read one link at a time. A two-block family has a link on each
+block, and writing one says nothing about the other, so the block you leave
+alone is still bayesnec's to assign:
+
+\preformatted{
+bnec(..., family = hurdle_gamma(link = "log"))
+  # log on the mean, identity on hu
+bnec(..., family = hurdle_gamma(link_hu = "logit"))
+  # identity on the mean, and refused: hu must be fitted on identity
+}
+
+The dispersion links --- \code{link_phi}, \code{link_shape},
+\code{link_sigma} --- are outside this altogether. No curve is fitted on
+them and writing one says nothing about the scale \code{top}, \code{bot}
+and \code{nec} are reported on, so whatever you write there is carried
+through unchanged and whatever you do not keeps the family's own default.
+The one exception is \code{Gamma}, whose dispersion link \code{bayesnec}
+cannot carry; write \code{disp(~x)} in the formula instead, which is valid
+under any link.
+
+A family that does not reach \code{\link{bnec}} written as a constructor
+call --- one held in a variable, one read back off a fitted object with
+\code{fit$family}, or one passed through \code{do.call} --- is a case
+intent cannot be read from at all. The object's own links are honoured, and
+where the mean link is not the identity a message says which one was taken.
+
+Only \code{identity}, \code{log} and \code{logit} are fitted on; any other
+link is refused with an error naming the family. Note that \code{log} and
+\code{logit} exclude the zero-bounded equations, since a mean decaying onto
+zero cannot produce the negative values those link scales require --- see
+\code{\link{models}}.
+
+\strong{This changed in version 2.1.3.25.} Before it, the link depended on
+how the family was written and the difference was silent:
+\code{family = "Beta"} gave identity, while \code{family = Beta} and
+\code{family = Beta()} gave \strong{logit} and \code{family = Gamma()} gave
+\strong{inverse}. In those cases the curve was fitted to a transform of the
+mean while \code{top}, \code{bot} and \code{nec} were reported as though
+they were on the response scale. If you have code passing a constructed
+family and relying on its default link, add the link explicitly.
+}
+
 \examples{
 \dontrun{
 library(bayesnec)

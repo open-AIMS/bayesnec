@@ -92,7 +92,11 @@ parse_disp_term <- function(formula) {
     # brms to interpret.
     list(route = "A", value = deparse1(as.formula(arg)[[2]]))
   } else {
-    list(route = "B", value = eval(arg))
+    # Resolved in the formula's own environment, so that a variance function
+    # name held in a variable is looked up where the user wrote it rather than
+    # in this frame, whose lexical parent is the package namespace. The same
+    # defect as the crf() model set. See #319.
+    list(route = "B", value = eval(arg, envir = formula_env(formula)))
   }
 }
 
@@ -143,17 +147,18 @@ check_disp_spec <- function(spec, family, response = NULL) {
     # A variance function of the fitted mean is built by substituting the
     # model's own curve expression into the form. That expression is the linear
     # predictor on the LINK scale, so it is the mean only under an identity
-    # link. bnec() forces identity whenever it selects the family itself, but a
-    # user-supplied family keeps whatever link it was given, and the failure is
-    # silent for some of them: under Gamma's default inverse link the block
-    # computes log(1/mu) = -log(mu) and the slope is estimated with the wrong
-    # sign, converging cleanly and excluding zero. Refuse rather than fit that.
+    # link. bnec() assigns identity unless the caller wrote a link argument, or
+    # supplied a family it could not read intent from (#256), so this fires on
+    # those two routes. The failure it refuses is silent: under an inverse link
+    # the block computes
+    # log(1/mu) = -log(mu) and the slope is estimated with the wrong sign,
+    # converging cleanly and excluding zero. Refuse rather than fit that.
     link <- if (inherits(family, "family")) family$link else "identity"
     if (!identical(link, "identity")) {
       stop("A variance function of the fitted mean needs the mean modelled on",
            " its natural scale, but family ", fam_tag, " was supplied with a \"",
-           link, "\" link. Pass ", fam_tag, "(link = \"identity\"), or omit",
-           " `family` and let bnec() choose it, which uses an identity link.",
+           link, "\" link. Pass ", fam_tag, "(link = \"identity\"), or name",
+           " the family without a link, as in family = \"", fam_tag, "\".",
            " To model dispersion on the predictor instead, pass a formula,",
            " e.g. disp(~x), which is valid under any link. See",
            " ?bayesnecformula", call. = FALSE)
@@ -309,6 +314,24 @@ disp_inits <- function(spec, family, response) {
 #' @param x_var The predictor column name, substituted for the generic "x".
 #' @param response A \code{\link[base]{numeric}} vector, used only to compute the
 #' centring constant.
+#' @param curve The curve expression to substitute for \code{@MU@}, already on
+#' the fit's own predictor name. Defaults to \code{NULL}, which rebuilds it
+#' from the \code{bf_<model>} template.
+#'
+#' @details \strong{The curve is taken from the formula being built, not from
+#' the template}, whenever the caller supplies it. \code{\link{add_formula_glef}}
+#' rewrites the main expression where a group-level deviation is applied
+#' multiplicatively --- \code{bot} becomes \code{bnecbot} (#294), and the whole
+#' curve becomes \code{bnecmu} under \code{ogl()} (#257) --- and rebuilding from
+#' the template discards that, so route (B) modelled the dispersion as a
+#' function of a mean the fit was not using. \code{\link{wrangle_model_formula}}
+#' already adds the dispersion block last for exactly this reason; the rebuild
+#' was what stopped that having any effect.
+#'
+#' The template remains the fallback for the direct callers in
+#' \code{tests/testthat/test-disp_model.R}, which have no assembled formula to
+#' read a curve from and are testing the variance function rather than the
+#' grouping.
 #'
 #' @return A \code{\link[base]{list}} with elements \code{nlf} (the block's
 #' formula) and, for route (B), \code{lf} (the parameter formula).
@@ -316,13 +339,20 @@ disp_inits <- function(spec, family, response) {
 #' @importFrom stats as.formula
 #'
 #' @noRd
-make_disp_block <- function(model, spec, dpar, x_var, response = NULL) {
+make_disp_block <- function(model, spec, dpar, x_var, response = NULL,
+                            curve = NULL) {
   if (spec$route == "A") {
+    # The environment is not set here. brms resolves a distributional sub-model
+    # against the top-level brmsformula, not against this one, so
+    # wrangle_model_formula() sets it there instead; measured on
+    # disp(~cent(x)) with cent() defined by the caller. See #319.
     return(list(nlf = as.formula(paste0(dpar, " ~ ", spec$value)), lf = NULL))
   }
   vf <- disp_functions[[spec$value]]
-  bf_obj <- get(paste0("bf_", model))
-  curve <- substitute_x_in_formula(x_var, deparse1(bf_obj$formula[[3]]))
+  if (is.null(curve)) {
+    bf_obj <- get(paste0("bf_", model))
+    curve <- substitute_x_in_formula(x_var, deparse1(bf_obj$formula[[3]]))
+  }
   # Wrapped in parentheses because the curve is substituted into log(@MU@) and
   # into log(1 - (@MU@)); an unwrapped sum would rebind against the surrounding
   # operators for the second of those.
@@ -354,7 +384,10 @@ make_disp_block <- function(model, spec, dpar, x_var, response = NULL) {
 add_disp_block <- function(brms_bf, model, spec, family, x_var,
                            response = NULL) {
   dpar <- disp_dpar(family)
-  db <- make_disp_block(model, spec, dpar, x_var, response)
+  # The curve as it now stands, which is the one the fit uses. See
+  # make_disp_block() for what rebuilding it from the template discarded.
+  db <- make_disp_block(model, spec, dpar, x_var, response,
+                        curve = deparse1(brms_bf$formula[[3]]))
   if (spec$route == "A") {
     # lf() rather than nlf(): the right-hand side is an ordinary linear
     # predictor in the data, so brms should apply its usual design-matrix

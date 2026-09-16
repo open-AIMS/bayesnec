@@ -50,14 +50,29 @@ test_that("get_priors builds priors from a formula and data without fitting", {
                   "brmsprior")
 })
 
+test_that("nec3param under gaussian now returns priors (#206)", {
+  # The exclusion this replaces refused every zero-bounded equation for a
+  # gaussian response, so the package's namesake equation could not be fitted
+  # to the growth-rate data OECD TG 201 recommends it for.
+  out <- suppressMessages(
+    get_priors(y ~ crf(x, "nec3param"), data = nec_data, family = gaussian())
+  )
+  expect_s3_class(out, "brmsprior")
+  expect_setequal(out$nlpar[nzchar(out$nlpar)], c("top", "beta", "nec"))
+})
+
 test_that("get_priors rejects what it cannot build priors from", {
   expect_error(get_priors(y ~ crf(x, "nec4param")), "`data` is required")
   expect_error(get_priors(1:3), "fitted by bnec")
   expect_error(get_priors(list()), "fitted by bnec")
-  # A model invalid for the family is dropped, as it is at fit time.
+  # A model invalid for the family is dropped, as it is at fit time. nec3param
+  # under gaussian is no longer one: #206 removed that exclusion, so this uses
+  # a case the rule still covers -- a zero-bounded equation under a log link,
+  # where the mean cannot produce the negative values the linear predictor
+  # needs.
   expect_error(
     get_priors(y ~ crf(x, "nec3param"), data = nec_data,
-               family = gaussian()) |> suppressMessages(),
+               family = gaussian(link = "log")) |> suppressMessages(),
     "None of the model"
   )
 })
@@ -148,7 +163,7 @@ test_that("get_priors round trips through bnec", {
   skip_on_cran()
   fit <- bnec(y ~ crf(x, "nec4param"), data = nec_data, family = gaussian(),
               iter = 400, warmup = 200, chains = 2, seed = 141,
-              refresh = 0, open_progress = FALSE) |>
+              refresh = 0) |>
     suppressMessages() |>
     suppressWarnings()
   key <- c("prior", "class", "nlpar", "lb", "ub")
@@ -167,7 +182,7 @@ test_that("get_priors round trips through bnec", {
   # right but is not accepted by bnec(prior = ) would fail it.
   again <- bnec(y ~ crf(x, "nec4param"), data = nec_data, family = gaussian(),
                 prior = from_fit, iter = 400, warmup = 200, chains = 2,
-                seed = 141, refresh = 0, open_progress = FALSE) |>
+                seed = 141, refresh = 0) |>
     suppressMessages() |>
     suppressWarnings()
   expect_s3_class(again, "bayesnecfit")
@@ -179,6 +194,22 @@ test_that("get_priors round trips through bnec", {
   expect_true("sigma" %in% whole$class)
 })
 
+test_that("get_priors honours an explicit predictor scale (#317)", {
+  x <- rep(log(c(1, 3, 10, 30, 100)), each = 4)
+  d <- data.frame(x = x, y = seq(8, 2, length.out = length(x)))
+  automatic <- get_priors(y ~ crf(x, "nec3param"), data = d,
+                          family = gaussian())
+  logged <- get_priors(y ~ crf(x, "nec3param"), data = d,
+                       family = gaussian(), predictor_scale = "log")
+  auto_nec <- automatic$prior[automatic$nlpar == "nec"]
+  log_nec <- logged$prior[logged$nlpar == "nec"]
+
+  expect_match(auto_nec, "^lognormal\\(")
+  expect_match(log_nec, "^normal\\(")
+  expect_equal(as.numeric(logged$lb[logged$nlpar == "nec"]), min(x))
+  expect_equal(as.numeric(logged$ub[logged$nlpar == "nec"]), max(x))
+})
+
 test_that("a user prior makes the two entry points disagree", {
   skip_on_cran()
   own <- get_priors(y ~ crf(x, "nec4param"), data = nec_data,
@@ -186,7 +217,7 @@ test_that("a user prior makes the two entry points disagree", {
   own$prior[own$nlpar == "top"] <- "normal(0.8, 0.2)"
   fit <- bnec(y ~ crf(x, "nec4param"), data = nec_data, family = gaussian(),
               prior = own, iter = 400, warmup = 200, chains = 2, seed = 141,
-              refresh = 0, open_progress = FALSE) |>
+              refresh = 0) |>
     suppressMessages() |>
     suppressWarnings()
   got <- get_priors(fit)
@@ -259,4 +290,83 @@ test_that("the two-block families are unaffected", {
   out <- bayesnec:::usable_prior(pr)
   expect_equal(nrow(out), 3)
   expect_setequal(out$nlpar, c("top", "zitop", "zinec"))
+})
+
+# --- #245: a group-level sd row is part of the record ------------------------
+# bayesnec now generates an sd prior, so leaving it out of usable_prior() would
+# make get_priors() a record of everything except the parameter a grouped model
+# is hardest to get right -- the same reasoning #207 and #231 applied to the
+# dispersion and mixing parameters.
+
+test_that("a group-level sd prior round trips", {
+  set.seed(245)
+  x <- as.numeric(rep(1:10, each = 5))
+  # declining, so check_data() has no cause to warn about the direction
+  y <- plogis(2 - 0.4 * x + rnorm(50, 0, 0.2))
+  d <- data.frame(x = x, y = y, tank = factor(rep(1:10, 5)))
+  gp <- suppressMessages(
+    get_priors(y ~ crf(x, "nec4param") + ogl(tank), data = d,
+               family = Beta(link = "identity"))
+  )
+  expect_true("sd" %in% gp$class)
+  out <- bayesnec:::usable_prior(gp)
+  expect_true("sd" %in% out$class)
+  expect_identical(out$prior[out$class == "sd"],
+                   gp$prior[gp$class == "sd"])
+  # the curve's own rows, and the ogl offset, come back untouched
+  expect_setequal(out$nlpar[out$class == "b"],
+                  c("beta", "top", "bot", "nec", "ogl"))
+})
+
+test_that("a brms default on sd is still dropped", {
+  # As for zi: reporting a prior brms chose for itself would suggest bayesnec
+  # had made a choice it did not make. This is the row the bug left behind.
+  pr <- data.frame(prior = c("normal(0, 5)", "student_t(3, 0, 2.5)"),
+                   class = c("b", "sd"), coef = "", group = c("", "tank"),
+                   resp = "", dpar = "", nlpar = c("beta", "ogl"),
+                   lb = NA_character_, ub = NA_character_,
+                   source = c("user", "default"), stringsAsFactors = FALSE)
+  out <- bayesnec:::usable_prior(pr)
+  expect_false("sd" %in% out$class)
+})
+
+test_that("nec is truncated at the recorded predictor range", {
+  # The bound a user sees. Earlier versions returned lb = 0.1, because the zero
+  # had been replaced before the prior was built; a zero control is a legitimate
+  # lower bound, since the prior on nec has zero density at zero (#269, #302).
+  d <- data.frame(x = rep(c(0, 1, 10, 100), each = 5),
+                  y = rep(c(8, 6, 3, 1), each = 5))
+  pr <- suppressMessages(
+    get_priors(y ~ crf(x, model = "nec3param"), data = d,
+               family = Gamma(link = "identity"))
+  )
+  expect_equal(as.numeric(pr$lb[pr$nlpar == "nec"]), 0)
+  expect_equal(as.numeric(pr$ub[pr$nlpar == "nec"]), 100)
+})
+
+test_that("get_priors reports the substitution its priors are built from", {
+  # check_data() can shift the response off a boundary before the prior is
+  # derived from it, and every prior this function returns is derived from that
+  # response. The messages were moved out of check_data() so that a model set
+  # would not repeat them once per member; without a call at this entry point
+  # that made the route silent, where it previously reported the Gamma
+  # correction. See #93 and D16.
+  d <- data.frame(x = rep(c(0, 1, 10, 100), each = 5),
+                  y = rep(c(8, 6, 3, 0), each = 5))
+  expect_message(
+    get_priors(y ~ crf(x, model = "nec3param"), data = d,
+               family = Gamma(link = "identity")),
+    "have been shifted"
+  )
+  # Reported once for the set, not once per member.
+  msgs <- capture.output(
+    invisible(get_priors(y ~ crf(x, model = c("nec3param", "nec4param")),
+                         data = d, family = Gamma(link = "identity"))),
+    type = "message"
+  )
+  expect_equal(sum(grepl("have been shifted", msgs)), 1)
+  # And it does not point the user at ?bnec_record, which names something this
+  # call does not produce.
+  expect_false(any(grepl("bnec_record", msgs)))
+  expect_true(any(grepl("priors below are derived", msgs)))
 })

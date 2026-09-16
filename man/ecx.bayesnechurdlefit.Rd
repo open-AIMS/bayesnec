@@ -7,10 +7,9 @@
 \method{ecx}{bayesnechurdlefit}(
   object,
   ecx_val = 10,
-  resolution = 1000,
+  resolution = 200,
   posterior = FALSE,
   type = "absolute",
-  hormesis_def = "control",
   x_range = NA,
   xform = identity,
   prob_vals = c(0.5, 0.025, 0.975),
@@ -21,21 +20,25 @@
 \arguments{
 \item{object}{An object of class \code{\link{bayesnechurdlefit}}.}
 
-\item{ecx_val}{The desired percentage effect value. This must be a value
-between 1 and 99 (for type = "relative" and "absolute"), defaults to 10.}
+\item{ecx_val}{The desired percentage effect value, defaults to 10. Any
+value above 0 is accepted for every \code{type} except "direct", where it
+is a response value rather than a percentage. Values above 100 are
+meaningful under "absolute" for a response that can go negative --- see
+Details.}
 
-\item{resolution}{The number of unique x values over which to find ECx --
-large values will make the ECx estimate more precise.}
+\item{resolution}{The number of unique x values over which to find ECx.
+The crossing is located by linear interpolation between the two grid values
+that bracket it, so precision saturates well below the grid spacing.
+Increasing the resolution beyond the default of 200 changed the estimate by
+less than 0.01 percent on the fits tested, and increases the run time
+roughly in proportion.}
 
 \item{posterior}{A \code{\link[base]{logical}} value indicating if the full
 posterior sample of calculated ECx values should be returned instead of
 just the median and 95 credible intervals.}
 
 \item{type}{A \code{\link[base]{character}} vector, taking values of
-"relative", "absolute" (the default) or "direct". See Details.}
-
-\item{hormesis_def}{A \code{\link[base]{character}} vector, taking values
-of "max" or "control". See Details.}
+"absolute" (the default), "relative", "range" or "direct". See Details.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 

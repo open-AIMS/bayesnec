@@ -11,6 +11,15 @@
 #' @param formula Either a \code{\link[base]{character}} string defining an
 #' R formula or an actual \code{\link[stats]{formula}} object. See details.
 #' @param ... Unused.
+#' @param env An \code{\link[base]{environment}} in which to resolve symbols
+#' that \code{formula} names but that are not columns of the data --- a
+#' variable holding the model set, or an R function needed to transform the
+#' predictor. Only used when \code{formula} is a character string, because a
+#' formula object already carries its own environment. Defaults to the calling
+#' environment, so a character formula passed down through a wrapper function
+#' is bound at the last call rather than where the string was written; where
+#' that matters, convert it with \code{bnf(string, env = ...)} and pass the
+#' result on.
 #'
 #' @importFrom stats as.formula
 #'
@@ -32,10 +41,21 @@
 #' to be evaluated based on some \code{x} predictor. The equation itself is
 #' defined by the argument \code{"model"}: a \code{\link[base]{character}}
 #' vector containing a specific model, a concatenation of specific models,
-#' or a single string defining a particular group of models
-#' (or group of equations, see \code{\link{models}}). Internally
+#' a single string defining a particular group of models, or a named list of
+#' equation formulas returned by \code{\link{models}}. Internally
 #' this argument is substituted by an actual \code{\link[brms]{brmsformula}},
 #' which is then passed onto \code{\link[brms]{brm}} for model fitting.
+#'
+#' The \code{model} argument may be a variable rather than a literal, so that
+#' the set can be assembled before the formula is written --- \code{eqs <-
+#' c("nec3param", "ecxll3"); bnf(y ~ crf(x, eqs))}. It is resolved in the
+#' environment the formula was written in, which for a formula supplied as a
+#' character string means the environment given by \code{env}. The same applies
+#' on the R side to a function used to transform the predictor inside
+#' \code{crf}. Resolving that function in R does not define it in Stan: the
+#' function call must also be valid Stan syntax, either because Stan provides
+#' it or because the corresponding Stan function is supplied through
+#' \code{stanvars}. Otherwise, transform the predictor in the data first.
 #' 
 #' \bold{Group-level terms: \code{glterms}}
 #' 
@@ -57,6 +77,39 @@
 #' \code{"nec4param"} but not in \code{"nec3param"}, so if the user specifies
 #' \code{model = "nec"} in \code{crf}, the term \code{(bot | group_variable)}
 #' will be dropped in models where that parameter does not exist.
+#'
+#' \bold{The scale a group-level deviation is applied on}
+#'
+#' \pkg{brms} declares a group-level deviation unconstrained, and under the
+#' \code{"identity"} link \code{\link{bnec}} assigns, the quantity it is added
+#' to often is not. Where the likelihood restricts the range of the mean ---
+#' every family except \code{gaussian} --- the deviation is therefore applied
+#' \emph{multiplicatively} rather than added, so that no proposal can put the
+#' quantity outside the range in which the model is defined. On a \code{0} to
+#' \code{1} response it scales the odds and on a positive response it scales the
+#' value itself. This applies to \code{ogl}, where the deviation is on the whole
+#' curve, and to a term on \code{top} or \code{bot}, which are the two
+#' parameters bounded to the support of the mean. A deviation on \code{nec},
+#' \code{ec50}, \code{beta}, \code{slope}, \code{d} or \code{f} is added, as
+#' none of those is bounded by the likelihood. A \code{pgl} term places a
+#' deviation on every parameter at once and so generates a mixture of the two.
+#'
+#' The deviation is centred on zero and a deviation of zero leaves the value
+#' unchanged, so \code{top}, \code{bot}, \code{nec} and \code{beta} keep their
+#' meanings and their own priors. A deviation on \code{top} or \code{bot} adds
+#' no population-level term of its own, so the fit has exactly the parameters the
+#' additive form had and \code{bot} remains the asymptote the population-level
+#' curve declines towards. A prior the user supplies for \code{top} or
+#' \code{bot} must bound it to the range the mean is defined on, because the
+#' multiplicative form is defined only inside that range; a prior that does not
+#' is refused with a message naming the bounds to add. What changes is the name the standard deviation
+#' is reported under: a term on \code{bot} is summarised as
+#' \code{sd(botgl_Intercept)} rather than \code{sd(bot_Intercept)}, and it is on
+#' the log-odds or log scale rather than on the response scale. The generated
+#' term names \code{ogl}, \code{bnecmu}, \code{topgl}, \code{botgl},
+#' \code{bnectop} and \code{bnecbot} are refused as data column names, because
+#' \pkg{brms} would resolve a column of that name in place of the generated term.
+#' See \code{vignette("example3")}.
 #'
 #' \bold{Dispersion sub-models: \code{disp}}
 #'
@@ -167,7 +220,8 @@
 #' but not on a bare \code{\link{make_brmsformula}(formula, data)} call, which
 #' has no family to validate and builds the formula unchecked.
 #'
-#' Because \code{\link{bnec}} forces \code{link = "identity"}, \pkg{brms}
+#' Because \code{\link{bnec}} fits on \code{link = "identity"}, which it
+#' assigns unless a link argument is written, \pkg{brms}
 #' writes the denominator multiplicatively on the response scale rather than as
 #' a log offset on the linear predictor, so the mean \emph{is} the rate and
 #' "top", "bot" and "nec" stay directly interpretable as counts per unit
@@ -247,15 +301,27 @@
 #' bnf(y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1))
 #'
 #' \donttest{
-#' # complex transformations are not advisable because
-#' # they are passed directly to Stan via brms
-#' # and are likely to fail -- transform your variable beforehand!
+#' # The predictor expression is passed to Stan by brms. Precompute a
+#' # transformation unless its function is also defined for Stan.
 #' try(bnf(y | trials(tr) ~ crf(scale(x, scale = TRUE), "nec3param")))
 #' }
 #' @export
-bayesnecformula <- function(formula, ...) {
+bayesnecformula <- function(formula, ..., env = parent.frame()) {
   if (is.character(formula)) {
-    formula <- as.formula(formula)
+    if (!is.environment(env)) {
+      # Refused rather than passed through. as.formula(..., env = NULL) is
+      # legal and would silently restore the global-environment-only behaviour
+      # this argument exists to fix. A formula object ignores env because it
+      # already records where its symbols resolve.
+      stop("Argument `env` must be an environment; you supplied ",
+           class(env)[1], ".", call. = FALSE)
+    }
+    # A character formula carries no environment of its own, so one has to be
+    # supplied. as.formula()'s default would give the frame of this function,
+    # whose lexical parent is the package namespace and then the global
+    # environment, which is why a variable model set written in a character
+    # formula resolved only at the console. See #319.
+    formula <- as.formula(formula, env = env)
   } else if (!inherits(formula, "formula")) {
     stop("Your formula must be either a valid character or a formula object.")
   }
@@ -263,8 +329,8 @@ bayesnecformula <- function(formula, ...) {
 }
 
 #' @export
-bnf <- function(formula, ...) {
-  bayesnecformula(formula = formula, ...)
+bnf <- function(formula, ..., env = parent.frame()) {
+  bayesnecformula(formula = formula, ..., env = env)
 }
 
 #' Check if input model formula is appropriate to use with
@@ -505,6 +571,9 @@ check_formula.bayesnecformula <- function(formula, data,
     # variable, tens of seconds after the message had scrolled past. An aterm
     # bayesnec has not validated cannot be assumed harmless.
     validated <- "trials\\(|weights\\(|cens\\(|rate\\("
+    if (isTRUE(attr(formula, "bayesnec_internal_truncation"))) {
+      validated <- paste0(validated, "|trunc\\(")
+    }
     unvalidated <- no_resp[!grepl(validated, no_resp)]
     if (length(unvalidated) > 0) {
       stop("You have specified brms special aterms bayesnec does not support: ",
@@ -621,8 +690,18 @@ simplify_formula <- function(formula, data, ...) {
                        rep("trials_var", length(t_var)),
                        names(c_vars),
                        rep("rate_var", length(ra_var)))
-  list(formula = as.formula(short_form), pop_vars = pop_vars,
-       group_vars = r_vars)
+  # The reduced formula is what model.frame() is given below, and model.frame()
+  # resolves anything that is not a column of the data in the formula's own
+  # environment. Without an env argument as.formula() attaches the frame of
+  # this function, whose lexical parent is the package namespace, so a
+  # predictor transformation written with a locally defined function --
+  # crf(sq(x), ...) with sq() defined in the caller -- was found only at the
+  # console. trials() has to be bound as well: short_form keeps it as a call
+  # and bayesnec does not export it, so the user's environment alone cannot
+  # resolve it. See #319.
+  list(formula = as.formula(short_form,
+                            env = formula_eval_env(formula, trials = trials)),
+       pop_vars = pop_vars, group_vars = r_vars)
 }
 
 #' @noRd
@@ -644,7 +723,8 @@ wrangle_model_formula <- function(model, formula, data, family = NULL,
   brms_bf[[1]][[3]] <- str2lang(tmp)
   bnec_group_vars <- attr(data, "bnec_group")
   if (any(!is.na(bnec_group_vars))) {
-    brms_bf <- add_formula_glef(model, brms_bf, formula, data)
+    brms_bf <- add_formula_glef(model, brms_bf, formula, data,
+                                family = family)
   }
   # Hurdle families get a second, mechanically derived parameter block for the
   # hurdle probability. Added after any group-level terms so that those apply
@@ -702,17 +782,28 @@ wrangle_model_formula <- function(model, formula, data, family = NULL,
     check_disp_spec(disp_spec, family, response = disp_y)
     brms_bf <- add_disp_block(brms_bf, model, disp_spec, family, new_x, disp_y)
   }
+  # brms resolves everything in the formula that is not a column of the data in
+  # the environment of the brmsformula's own formula, the distributional and
+  # non-linear sub-models included. That environment comes from the bf_<model>
+  # template, which is the global environment, so a function the user wrote in
+  # a disp(~...) term was found at the console and reported as "could not find
+  # function" from inside a function. Carried over here rather than in
+  # make_disp_block(), because setting it on the sub-model formula alone has no
+  # effect -- brms reads the top-level one. See #319.
+  environment(brms_bf$formula) <- formula_env(formula)
   brms_bf
 }
 
 #' @noRd
 #' @importFrom stats update terms
 single_model_formula <- function(formula, model) {
+  internal_truncation <- attr(formula, "bayesnec_internal_truncation")
   x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
   x_term <- eval(parse(text = x_str))
   new_crf <- paste0("crf(", x_term, ", model = \"", model, "\")")
   to_eval <- paste0("update(formula, ~ . - ", x_str, " + ", new_crf, ")")
   formula <- eval(parse(text = to_eval))
+  attr(formula, "bayesnec_internal_truncation") <- internal_truncation
   bayesnecformula(formula)
 }
 
@@ -722,23 +813,144 @@ clean_bar_glef <- function(x) {
   gsub("\\(|\\)", "", x)
 }
 
+#' Apply a group-level deviation to one parameter multiplicatively
+#'
+#' @param brmform The \pkg{brms} formula being built.
+#' @param par A \code{\link[base]{character}} string naming the parameter.
+#' @param var A \code{\link[base]{character}} string naming the grouping
+#' variable.
+#' @param kind \code{"logit"} or \code{"log"}, from
+#' \code{\link{par_transform_kind}}.
+#'
+#' @details The parameter-level form of what #257 did to the mean. Instead of
+#' \code{bot ~ 1 + (1 | g)}, which adds an unconstrained deviation to \code{bot}
+#' on \code{bot}'s own scale and lets a leapfrog step take it below zero, the
+#' curve reads an intermediate:
+#'
+#' \preformatted{
+#'   y       ~ bnecbot + (top - bnecbot) * exp(...)
+#'   bnecbot ~ bot * exp(botgl) / (1 - bot + bot * exp(botgl))
+#'   bot     ~ 1
+#'   botgl   ~ 0 + (1 | g)
+#' }
+#'
+#' \code{bot} is still a population-level non-linear parameter with its own
+#' prior and its own name, so \code{b_bot_Intercept} and everything that reads
+#' it are unchanged, and the deviation is zero-centred with
+#' \code{m * exp(0) == m}, so \code{bot} keeps its meaning. What changes is that
+#' no value of \code{botgl} can put \code{bnecbot} outside \code{(0, 1)}.
+#'
+#' \strong{The deviation has no population intercept}, which is what keeps
+#' \code{bot} interpretable. \code{bnecbot} depends on \code{bot} and
+#' \code{botgl} only through their combination, so a free \code{b_botgl} would
+#' be exactly unidentified against \code{bot}: the two would trade off along a
+#' ridge with no change to the likelihood, and \code{b_bot_Intercept} would no
+#' longer be the asymptote the population-level curve declines towards.
+#' \code{ecx(type = "relative")} divides by that asymptote at
+#' \code{R/ecx.R:407} and \code{\link{expand_nec}} reports it, so both would
+#' have been wrong. Writing the sub-formula with \code{0 +} removes the
+#' population term altogether --- \pkg{brms} then declares no \code{b_botgl} ---
+#' and leaves exactly the parameters the additive form had: \code{bot}, the
+#' group-level standard deviation, and the deviations themselves, which the
+#' hierarchical prior centres on zero. Checked against \pkg{brms} 2.23.0 in the
+#' generated Stan code. This is where the parameter-level transform differs from
+#' \code{ogl()}, which is documented as adding a population-level parameter of
+#' its own and keeps its intercept and the zero-centred prior #257 gave it.
+#'
+#' The intermediate is built by setting the \code{nl} and \code{loop}
+#' attributes rather than by calling \code{brms::nlf()}, which returns a list
+#' for \code{bf()} to unpack rather than a formula. Checked against
+#' \pkg{brms} 2.23.0: the sub-formulas may be given in any order, because
+#' \pkg{brms} resolves them by name, and the generated Stan code is identical
+#' either way. See #294.
+#'
+#' @return The modified \pkg{brms} formula.
+#'
+#' @importFrom stats as.formula
+#' @importFrom formula.tools rhs `rhs<-`
+#'
+#' @noRd
+add_par_gl_term <- function(brmform, par, var, kind) {
+  nms <- par_gl_names(par)
+  if (is.null(brmform[[2]][[nms[["dev"]]]])) {
+    # First term on this parameter. Substitution is on the symbol rather than
+    # on the deparsed string so that a parameter name occurring inside a longer
+    # name cannot be hit by accident.
+    brmform[[1]][[3]] <- eval(call("substitute", brmform[[1]][[3]],
+                                   stats::setNames(list(as.name(nms[["inter"]])),
+                                                   par)))
+    brmform[[2]][[nms[["dev"]]]] <- as.formula(paste(nms[["dev"]], "~ 0"))
+    inter_form <- as.formula(
+      paste(nms[["inter"]], "~",
+            ogl_transform_expr(kind, m = par, o = nms[["dev"]]))
+    )
+    attr(inter_form, "nl") <- TRUE
+    attr(inter_form, "loop") <- TRUE
+    brmform[[2]][[nms[["inter"]]]] <- inter_form
+  }
+  tmp_rhs <- deparse1(rhs(brmform[[2]][[nms[["dev"]]]]))
+  # The term, not the variable name. Testing for the name alone drops a second
+  # grouping whose name is a substring of one already added: (bot | grp2) +
+  # (bot | grp) kept only grp2, silently and depending on the order written.
+  if (!has_gl_term(tmp_rhs, var)) {
+    rhs(brmform[[2]][[nms[["dev"]]]]) <-
+      str2lang(paste0(tmp_rhs, " + (1 |", var, ")"))
+  }
+  brmform
+}
+
+#' Whether a sub-formula's right-hand side already groups by a variable
+#'
+#' @param rhs_str The deparsed right-hand side.
+#' @param var A \code{\link[base]{character}} string naming the grouping
+#' variable.
+#'
+#' @details \code{deparse1()} of a term appended as \code{" + (1 |", var, ")"}
+#' renders as \code{(1 | var)}, with the space \pkg{R} inserts around the bar.
+#' Both spellings are tested so that this does not depend on how the string was
+#' built. See #294.
+#'
+#' @return A \code{\link[base]{logical}}.
+#' @noRd
+has_gl_term <- function(rhs_str, var) {
+  any(vapply(c(paste0("(1 | ", var, ")"), paste0("(1 |", var, ")")),
+             grepl, logical(1), x = rhs_str, fixed = TRUE))
+}
+
 #' @noRd
 #' @importFrom stats terms
 #' @importFrom formula.tools rhs `rhs<-`
-add_formula_glef <- function(model, brmform, bnecform, data) {
+add_formula_glef <- function(model, brmform, bnecform, data,
+                             family = NULL) {
   crf_term <- grep("crf(", labels(terms(bnecform)), fixed = TRUE,
                    value = TRUE)
   to_eval <- paste0("update(bnecform, ~ . - ", crf_term, ")")
   random_call <- rhs(eval(parse(text = to_eval)))
   random_call <- gsub("\\) \\+ ", ") impossiblestr ", deparse1(random_call))
   split_random_call <- strsplit(random_call, " impossiblestr ")[[1]]
+  # Decided once, before either branch, because pgl() and an explicit
+  # (par | group) term must agree: pgl() is documented as a term on every
+  # parameter at once, so it has to expand to exactly what writing those terms
+  # out by hand would give. Only top and bot are transformed; see
+  # par_transform_pars() for why the others are left additive. #294.
+  par_kind <- par_transform_kind(family)
+  # Read before either branch, because add_par_gl_term() appends sub-formulas of
+  # its own. Iterating over a list that is growing would put a group-level term
+  # on the generated terms as well as on the parameters, and validating the
+  # explicit terms against it would accept (botgl | group) as a parameter of the
+  # model whenever a pgl term had already generated botgl.
+  model_pars <- names(brmform[[2]])
   if (any(grepl("pgl(", split_random_call, fixed = TRUE))) {
     str_calls <- grep("pgl(", split_random_call, fixed = TRUE, value = TRUE)
     vars <- all.vars(str2lang(paste0(str_calls, collapse = " + ")))
-    for (i in seq_along(brmform[[2]])) {
+    for (p in model_pars) {
       for (j in seq_along(vars)) {
-        brmform[[2]][[i]] <- str2lang(paste0(deparse1(brmform[[2]][[i]]),
-                                             " + (1 |", vars[j], ")"))
+        if (par_is_transformed(p, par_kind)) {
+          brmform <- add_par_gl_term(brmform, p, vars[j], par_kind)
+        } else {
+          brmform[[2]][[p]] <- str2lang(paste0(deparse1(brmform[[2]][[p]]),
+                                               " + (1 |", vars[j], ")"))
+        }
       }
     }
   }
@@ -761,8 +973,8 @@ add_formula_glef <- function(model, brmform, bnecform, data) {
     split_str_calls <- tmp_list
     pars <- sapply(split_str_calls, `[[`, 1)
     vars <- sapply(split_str_calls, `[[`, 2)
-    if (!all(pars %in% names(brmform[[2]]))) {
-      to_flag <- pars[!pars %in% names(brmform[[2]])]
+    if (!all(pars %in% model_pars)) {
+      to_flag <- pars[!pars %in% model_pars]
       message("The parameter(s) ", paste0("\"", to_flag, "\"", collapse = "; "),
               " are not valid parameters in ", model, ". Ignoring...")
       split_str_calls <- split_str_calls[-match(to_flag, pars)]
@@ -771,8 +983,14 @@ add_formula_glef <- function(model, brmform, bnecform, data) {
     }
     if (length(split_str_calls) > 0) {
       for (k in seq_along(pars)) {
+        if (par_is_transformed(pars[k], par_kind)) {
+          brmform <- add_par_gl_term(brmform, pars[k], vars[k], par_kind)
+          next
+        }
         tmp_rhs <- deparse1(rhs(brmform[[2]][[pars[k]]]))
-        if (!grepl(vars[k], tmp_rhs)) {
+        # See has_gl_term(). The substring test this replaces dropped the second
+        # of (nec | grp2) + (nec | grp) on every version up to 2.1.4.
+        if (!has_gl_term(tmp_rhs, vars[k])) {
           rhs(brmform[[2]][[pars[k]]]) <- str2lang(paste0(tmp_rhs, " + (1 |",
                                                           vars[k], ")"))
         }
@@ -782,8 +1000,34 @@ add_formula_glef <- function(model, brmform, bnecform, data) {
   if (any(grepl("ogl(", split_random_call, fixed = TRUE))) {
     str_calls <- grep("ogl(", split_random_call, fixed = TRUE, value = TRUE)
     vars <- all.vars(str2lang(paste0(str_calls, collapse = " + ")))
-    tmp <- paste0("ogl + ", deparse1(brmform[[1]][[3]]))
-    brmform[[1]][[3]] <- str2lang(tmp)
+    kind <- ogl_transform_kind(model, family)
+    if (identical(kind, "none")) {
+      # The additive offset, which is what every version up to 2.1.4 emitted.
+      # Kept for a mean the likelihood does not constrain, for a non-identity
+      # link where the offset is already on the linear predictor, and for the
+      # equations whose mean can reach or pass a bound, where the transform is
+      # undefined rather than merely unnecessary. See ogl_transform_kind().
+      tmp <- paste0("ogl + ", deparse1(brmform[[1]][[3]]))
+      brmform[[1]][[3]] <- str2lang(tmp)
+    } else {
+      # The curve becomes an intermediate quantity and the deviation is applied
+      # to it multiplicatively, so mu cannot leave its support however long the
+      # leapfrog trajectory is. The deviation is zero-centred and
+      # m * exp(0) == m, so the transformed model is the current model when the
+      # deviation is zero and top, bot, nec and beta keep their meanings.
+      #
+      # Built by setting the nl and loop attributes rather than by calling
+      # brms::nlf(), which returns a list intended for bf() to unpack rather
+      # than a formula. Checked against brms 2.23.0: the two produce identical
+      # Stan code. See #257.
+      curve <- deparse1(brmform[[1]][[3]])
+      brmform[[1]][[3]] <- str2lang(ogl_transform_expr(kind))
+      curve_form <- stats::as.formula(paste("bnecmu ~", curve))
+      attr(curve_form, "nl") <- TRUE
+      attr(curve_form, "loop") <- TRUE
+      # Prepended, so the intermediate is defined before the terms that read it.
+      brmform[[2]] <- c(list(bnecmu = curve_form), brmform[[2]])
+    }
     brmform[[2]]$ogl <- ogl ~ 1
     for (j in seq_along(vars)) {
       brmform[[2]]$ogl <- str2lang(paste0(deparse1(brmform[[2]]$ogl),
@@ -791,6 +1035,91 @@ add_formula_glef <- function(model, brmform, bnecform, data) {
     }
   }
   brmform
+}
+
+#' Describe the group-level structure a bayesnecformula carries
+#'
+#' @param formula An object of class \code{\link{bayesnecformula}}.
+#' @param model A \code{\link[base]{character}} string naming a single model,
+#' needed to expand a \code{pgl} term over the parameters that model actually
+#' has.
+#'
+#' @details The counterpart of \code{\link{parse_disp_term}}, and added for the
+#' same reason. \code{\link{add_formula_glef}} already knows how to turn
+#' \code{ogl}, \code{pgl} and \code{(par | group)} into brms sub-formulas, but
+#' nothing passed that structure to \code{define_prior()}, so no prior was ever
+#' generated for the parameters those terms introduce. See #245.
+#'
+#' The parsing deliberately repeats \code{add_formula_glef()}'s rather than
+#' factoring it out: that function builds a formula and this one describes it,
+#' and the two are called from different places on different objects. Any change
+#' to the accepted term syntax has to be made in both.
+#'
+#' A \code{(par | group)} term naming a parameter the model does not have is
+#' dropped silently here. \code{add_formula_glef()} messages about it and
+#' ignores it, so generating a prior for a term that will not be in the model
+#' would put a row in the set that never reaches the fit.
+#'
+#' \code{nlpars} names the parameters the user put a term on, not the names
+#' those terms are declared under in the fit. Where the deviation is applied
+#' multiplicatively the standard deviation is declared on \code{botgl} rather
+#' than on \code{bot} (#294), but which parameters that applies to is a
+#' property of the family, and this function is not given one --
+#' \code{\link{get_priors}} and \code{\link{amend}} both call it before the
+#' family is resolved. The mapping is therefore made in
+#' \code{\link{define_group_prior}}, which has the family, and this function
+#' keeps reporting the structure the user wrote.
+#'
+#' @return A \code{\link[base]{list}} with elements \code{nlpars}, the
+#' non-linear parameters carrying a group-level standard deviation, and
+#' \code{ogl}, whether an \code{ogl} offset parameter was added; or
+#' \code{NULL} when the formula carries no group-level term.
+#'
+#' @importFrom stats terms
+#' @importFrom formula.tools rhs
+#'
+#' @noRd
+parse_group_terms <- function(formula, model) {
+  crf_term <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
+  if (length(crf_term) == 0) {
+    return(NULL)
+  }
+  to_eval <- paste0("update(formula, ~ . - ", crf_term, ")")
+  random_call <- rhs(eval(parse(text = to_eval)))
+  random_call <- gsub("\\) \\+ ", ") impossiblestr ", deparse1(random_call))
+  split_random_call <- strsplit(random_call, " impossiblestr ")[[1]]
+  # disp() is a variance function, not a grouping term, and has its own prior
+  # route through define_disp_prior(). Dropping it here keeps a formula that
+  # carries only a disp() term from being reported as grouped.
+  split_random_call <- split_random_call[!grepl("disp(", split_random_call,
+                                                fixed = TRUE)]
+  model_pars <- names(get(paste0("bf_", model))[[2]])
+  nlpars <- character(0)
+  has_ogl <- FALSE
+  if (any(grepl("pgl(", split_random_call, fixed = TRUE))) {
+    # pgl puts a group-level term on every parameter of the model at once.
+    nlpars <- c(nlpars, model_pars)
+  }
+  if (any(grepl("ogl(", split_random_call, fixed = TRUE))) {
+    has_ogl <- TRUE
+    nlpars <- c(nlpars, "ogl")
+  }
+  bar_calls <- grep("|", split_random_call, fixed = TRUE, value = TRUE)
+  bar_calls <- bar_calls[!grepl("pgl(", bar_calls, fixed = TRUE) &
+                           !grepl("ogl(", bar_calls, fixed = TRUE)]
+  if (length(bar_calls) > 0) {
+    split_str_calls <- lapply(bar_calls, clean_bar_glef)
+    for (i in seq_along(split_str_calls)) {
+      pars_i <- strsplit(split_str_calls[[i]][1], " \\+ ")[[1]]
+      nlpars <- c(nlpars, trimws(pars_i))
+    }
+    nlpars <- intersect(nlpars, c(model_pars, "ogl"))
+  }
+  nlpars <- unique(nlpars)
+  if (length(nlpars) == 0) {
+    return(NULL)
+  }
+  list(nlpars = nlpars, ogl = has_ogl)
 }
 
 #' @noRd
@@ -801,7 +1130,34 @@ get_model_from_formula <- function(formula) {
     stop("You must specify which non-linear function to use with crf")
   }
   x_str <- paste0(substr(x_str, 1, nchar(x_str) - 1), ", \"model\")")
-  expand_model_set(eval(parse(text = x_str)))
+  # Evaluated in a frame that binds crf() and inherits from the formula's own
+  # environment, so that a model set held in a variable is looked up where the
+  # user wrote it. Evaluating in environment(formula) directly would not work:
+  # crf() is internal and not exported, so it would not be found from a user
+  # frame. Both halves are needed -- crf() itself resolves its model argument
+  # in parent.frame(), which is this frame. See #319.
+  model <- eval(parse(text = x_str),
+                envir = formula_eval_env(formula, crf = crf))
+  if (is.list(model) && length(model) > 0 && !is.null(names(model)) &&
+      !anyNA(names(model)) && all(nzchar(names(model))) &&
+      all(vapply(model, inherits, logical(1), what = "brmsformula"))) {
+    model <- names(model)
+  }
+  # Checked here rather than left to expand_model_set(), which indexes
+  # mod_groups with it and reports "'match' requires vector arguments" for
+  # anything that is not a vector. The symbol now resolves in more environments
+  # than it did, so a name that happens to be bound to something else in the
+  # caller -- a function, a data frame -- reaches this point where it used to
+  # fail to resolve at all.
+  if (!is.character(model) || length(model) == 0) {
+    stop("The `model` argument of crf() must be a character vector naming one",
+         " or more equations or model groups, or a named list of equation",
+         " formulas returned by models();",
+         " here it resolved to an object of",
+         " class \"", class(model)[1], "\" and length ", length(model),
+         ". See ?models.", call. = FALSE)
+  }
+  expand_model_set(model)
 }
 
 #' @noRd
@@ -876,6 +1232,54 @@ split_calls <- function(formula_part) {
        ra_call = ra_call, ra_var = ra_var)
 }
 
+#' The environment in which a formula's symbols are resolved
+#'
+#' @param formula A \code{\link[stats]{formula}}.
+#'
+#' @details A formula carries the environment it was written in, and that is
+#' where a symbol the user put in it has to be looked up --- a variable holding
+#' the model set, or a function transforming the predictor. Evaluating without
+#' an environment instead uses the frame of whichever internal function is doing
+#' the evaluating, whose lexical parent is the package namespace and then the
+#' global environment, so the symbol is found only when the user happens to be
+#' working at the console. See #319.
+#'
+#' @return An \code{\link[base]{environment}}.
+#'
+#' @noRd
+formula_env <- function(formula) {
+  env <- environment(formula)
+  # emptyenv() is tested alongside NULL because it is the other way a formula's
+  # environment is stripped, and it is the worse of the two to pass on: nothing
+  # at all resolves through it, not even base. Returned as the global
+  # environment, which is where such a formula resolved before #319.
+  if (is.null(env) || identical(env, emptyenv())) globalenv() else env
+}
+
+#' An evaluation frame chained to a formula's own environment
+#'
+#' @param formula A \code{\link[stats]{formula}}.
+#' @param ... Named objects to bind in the frame.
+#'
+#' @details A \code{\link{bayesnecformula}} names functions that
+#' \code{\link[bayesnec:bayesnec-package]{bayesnec}} defines internally and does
+#' not export --- \code{crf} in the term itself, \code{trials} in the reduced
+#' formula \code{\link{model.frame}} is built from. Evaluating in
+#' \code{environment(formula)} alone therefore fails on the function, while
+#' evaluating in a frame inside the namespace fails on the user's own symbols.
+#' Binding the internal functions in a frame whose parent is the formula's
+#' environment resolves both. See #319.
+#'
+#' @return An \code{\link[base]{environment}}.
+#'
+#' @noRd
+formula_eval_env <- function(formula, ...) {
+  # list2env() rather than a loop over names(), which binds nothing at all for
+  # an argument passed positionally and defers the failure to a "could not find
+  # function" a long way from the call. list2env() refuses an unnamed element.
+  list2env(list(...), envir = new.env(parent = formula_env(formula)))
+}
+
 #' @noRd
 crf <- function(x, model, arg_to_retrieve = "x") {
   mf <- match.call(expand.dots = FALSE)
@@ -884,7 +1288,13 @@ crf <- function(x, model, arg_to_retrieve = "x") {
     deparse(substitute(a, list(a = mf[[m]])))
   } else if (arg_to_retrieve == "model") {
     m <- match("model", names(mf), 0L)
-    eval(mf[[m]])
+    # parent.frame() rather than eval()'s default, which is the frame of crf()
+    # itself. That frame's lexical parent is the package namespace, then the
+    # imports, then base, then the global environment; the caller's frame is
+    # never on that chain, which is why a variable model set was found only in
+    # the global environment. get_model_from_formula() supplies a calling frame
+    # that inherits from the formula's environment. See #319.
+    eval(mf[[m]], envir = parent.frame())
   } else {
     stop("arg_to_retrieve must be either \"x\" or \"model\".")
   }
@@ -941,7 +1351,9 @@ trials <- function(...) {
 #'
 #' @export
 make_brmsformula <- function(formula, data, family = NULL) {
-  formula <- bnf(formula)
+  # parent.frame() so that a character formula resolves symbols where
+  # make_brmsformula() was called from rather than in its own frame. See #319.
+  formula <- bnf(formula, env = parent.frame())
   all_models <- get_model_from_formula(formula)
   out <- list()
   for (i in seq_along(all_models)) {

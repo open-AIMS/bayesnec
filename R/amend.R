@@ -27,6 +27,11 @@
 #' \code{"regularizing"}. See \code{\link{bnec}}. Note this is not automatically
 #' inherited from the original fit; pass it explicitly to match the priors used
 #' when the object was first fitted.
+#' @param predictor_scale A \code{\link[base]{character}} string declaring
+#' whether the predictor is supplied as \code{"concentration"}, already
+#' \code{"log"} transformed, or should use the existing \code{"auto"} rule for
+#' priors generated for newly added models. See \code{\link{bnec}}. This is not
+#' inherited from the original fit; pass it explicitly to match that fit.
 #'
 #' @return All successfully fitted model fits. A \code{\link{bayesmanecfit}} if
 #' more than one model remains, otherwise a \code{\link{bayesnecfit}}.
@@ -39,7 +44,8 @@
 #' @export
 amend <- function(object, drop, add, loo_controls, x_range = NA,
                   resolution = 1000, sig_val = 0.01, priors,
-                  prior_type = "uninformative", timeout = Inf) {
+                  prior_type = "uninformative", timeout = Inf,
+                  predictor_scale = "auto") {
   UseMethod("amend")
 }
 
@@ -59,8 +65,10 @@ amend <- function(object, drop, add, loo_controls, x_range = NA,
 #' @export
 amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
                                 resolution = 1000, sig_val = 0.01, priors,
-                                prior_type = "uninformative", timeout = Inf) {
+                                prior_type = "uninformative",
+                                timeout = Inf, predictor_scale = "auto") {
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
+  predictor_scale <- validate_predictor_scale(predictor_scale)
   chk_number(timeout)
   if (timeout <= 0) {
     stop("Argument `timeout` must be a positive number (or Inf).")
@@ -75,6 +83,7 @@ amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
   if (!missing(add)) {chk_character(add)}
   if (!is.na(x_range[1])) {chk_numeric(x_range)}
   chk_numeric(resolution)
+  check_resolution(resolution)
   chk_numeric(sig_val)
   if(!inherits(object, "bayesmanecfit")){
     stop("object is not of class bayesmanecfit")
@@ -82,13 +91,14 @@ amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
 
   amend_model_set(
     object = object, mod_fits = object$mod_fits,
-    old_method = attributes(object$mod_stats$wi)$method,
+    old_method = fit_weights_method(object),
     drop = if (missing(drop)) NULL else drop,
     add = if (missing(add)) NULL else add,
     loo_controls = if (missing(loo_controls)) NULL else loo_controls,
     x_range = x_range, resolution = resolution, sig_val = sig_val,
     priors = if (missing(priors)) NULL else priors,
-    prior_type = prior_type, timeout = timeout
+    prior_type = prior_type, predictor_scale = predictor_scale,
+    timeout = timeout
   )
 }
 
@@ -116,8 +126,10 @@ amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
 #' @export
 amend.bayesnecfit <- function(object, drop, add, loo_controls, x_range = NA,
                               resolution = 1000, sig_val = 0.01, priors,
-                              prior_type = "uninformative", timeout = Inf) {
+                              prior_type = "uninformative",
+                              timeout = Inf, predictor_scale = "auto") {
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
+  predictor_scale <- validate_predictor_scale(predictor_scale)
   chk_number(timeout)
   if (timeout <= 0) {
     stop("Argument `timeout` must be a positive number (or Inf).")
@@ -138,6 +150,7 @@ amend.bayesnecfit <- function(object, drop, add, loo_controls, x_range = NA,
   if (!missing(add)) {chk_character(add)}
   if (!is.na(x_range[1])) {chk_numeric(x_range)}
   chk_numeric(resolution)
+  check_resolution(resolution)
   chk_numeric(sig_val)
   # Promote the single fit to a one-element model set and hand it to the same
   # worker the bayesmanecfit method uses, so the two cannot drift apart. This
@@ -149,7 +162,8 @@ amend.bayesnecfit <- function(object, drop, add, loo_controls, x_range = NA,
     loo_controls = if (missing(loo_controls)) NULL else loo_controls,
     x_range = x_range, resolution = resolution, sig_val = sig_val,
     priors = if (missing(priors)) NULL else priors,
-    prior_type = prior_type, timeout = timeout
+    prior_type = prior_type, predictor_scale = predictor_scale,
+    timeout = timeout
   )
 }
 
@@ -189,12 +203,17 @@ amend_general_error <- function() {
 amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
                             add = NULL, loo_controls = NULL, x_range = NA,
                             resolution = 1000, sig_val = 0.01, priors = NULL,
-                            prior_type = "uninformative", timeout = Inf) {
+                            prior_type = "uninformative",
+                            predictor_scale = "auto", timeout = Inf) {
   general_error <- amend_general_error()
   if (!is.null(loo_controls)) {
     fam_tag <- mod_fits[[1]]$fit$family$family
     loo_controls <- validate_loo_controls(loo_controls, fam_tag)
-    if (!"method" %in% names(loo_controls$weights)) {
+    # is.null() rather than a name test, for the reason define_loo_controls()
+    # gives: a name present with a NULL value is not a request for a method,
+    # and reading it as one had the two functions disagree about the same
+    # argument.
+    if (is.null(loo_controls$weights$method)) {
       loo_controls$weights$method <- old_method
     }
     is_new_method_old <- identical(loo_controls$weights$method, old_method)
@@ -207,11 +226,14 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
       }
     }
   } else {
-    # A bayesnecfit carries no weighting method, so leave `weights` empty
-    # rather than passing method = NULL down to loo_model_weights().
-    old_weights <- if (is.null(old_method)) list() else list(method = old_method)
-    loo_controls <- list(fitting = list(), weights = old_weights)
+    # A bayesnecfit records no weighting method, so leave `weights` empty
+    # rather than passing method = NULL down to loo_model_weights(), which
+    # resolves it to stacking. expand_manec() fills an empty `weights` with the
+    # documented default. See #320.
+    loo_controls <- list(fitting = list(),
+                         weights = weights_controls(old_method))
   }
+  bnec_rec <- attr(object, "bnec_record")
   model_set <- names(mod_fits)
   if (!is.null(drop)) {
     model_set <- handle_set(model_set, drop = drop)
@@ -227,20 +249,68 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   data <- mod_fits[[1]]$fit$data
   family <- mod_fits[[1]]$fit$family
   formula <- mod_fits[[1]]$bayesnecformula
+  # Narrowed here as bnec() narrows it, and for the same reason: the model
+  # frame below holds the formula's environment in the .Environment of
+  # its terms attribute, and amend() exports that frame to every worker. A fit
+  # made by an earlier version of bayesnec still holds the session it was
+  # fitted in, so this is not redundant with bnec(). See #329.
+  formula <- narrow_formula_environment(formula, data)
   bdat <- model.frame(formula, data = data)
-  model_set <- check_models(model_set, family, bdat)
+  validate_predictor_scale(
+    predictor_scale, retrieve_var(bdat, "x_var", error = TRUE)
+  )
+  model_set <- check_models(model_set, family, bdat, record = TRUE)
+  # Stripped as soon as it is read, for the reason check_models() gives at its
+  # record block: `model_set` is passed on from here, and an attribute nobody
+  # expects makes it compare unequal to the plain character vector.
+  amend_excluded <- attr(model_set, "excluded")
+  model_set <- as.character(model_set)
   old_fits <- mod_fits
   mod_fits <- vector(mode = "list", length = length(model_set))
   names(mod_fits) <- model_set
   failed <- list()
-  for (m in seq_along(model_set)) {
-    model <- model_set[m]
-    mod_m <- try(old_fits[[model]], silent = TRUE)
-    if (!inherits(mod_m, "prebayesnecfit")) {
-      brm_args <- list(
-        family = family, iter = simdat$iter, thin = simdat$thin,
-        warmup = simdat$warmup, init = simdat$init, chains = simdat$chains,
-        sample_prior = simdat$sample_prior
+  # Which models this call has to fit. A model already in the set is carried
+  # over from old_fits without a brm() call, so a set of twenty with one
+  # addition is a one-model run, and only the additions decide whether a
+  # parallel plan is worth using.
+  needs_fit <- !vapply(model_set, function(model) {
+    inherits(try(old_fits[[model]], silent = TRUE), "prebayesnecfit")
+  }, logical(1))
+  # Carried over here, in the parent, rather than returned from the applied
+  # function. Under a parallel plan the alternative serialises every existing
+  # fit out to a worker and straight back again for a model that is not
+  # refitted, which is the memory multiplication #184 raises. Doing it here is
+  # necessary and not sufficient: old_fits also has to stay out of what the
+  # applied function exports, which is what narrow_environment() below is for.
+  for (m in which(!needs_fit)) {
+    mod_fits[[model_set[m]]] <- old_fits[[model_set[m]]]
+  }
+  # amend() rebuilds brm_args per model from the stored simdat rather than
+  # taking one from the user, so what plan_model_set() decides has to be
+  # passed into the loop body and merged there.
+  set_plan <- plan_model_set(list(), sum(needs_fit), caller = "amend")
+  # narrow_environment(), for the reason bnec() gives at its own call: future
+  # exports the applied function with its enclosing environment, and this frame
+  # holds old_fits and the partly filled mod_fits. Carrying existing fits over
+  # in the parent saves nothing unless they are also kept out of what is
+  # exported, which is what this does.
+  fit_one <- narrow_environment(
+    function(m) {
+      model <- model_set[m]
+      # No `init`. This branch is reached only for a model that is not already
+      # in the set, and simdat$init holds the stanfit initial values of a model
+      # that is -- values named for another equation's parameters, which are
+      # meaningless here. add_brm_defaults() overwrote them with its own search
+      # in every case, so omitting them changes nothing that happened; what it
+      # changes is that the search is now requested by the absence of `init`
+      # rather than compelled by skip_check. See #290.
+      brm_args <- c(
+        list(
+          family = family, iter = simdat$iter, thin = simdat$thin,
+          warmup = simdat$warmup, chains = simdat$chains,
+          sample_prior = simdat$sample_prior
+        ),
+        set_plan$brm_args
       )
       brm_args$prior <- priors
       model_priors <- try(validate_priors(brm_args$prior, model),
@@ -260,27 +330,45 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
         if (!is.null(denom)) {
           y <- y / denom
         }
-        brm_args$prior <- define_prior(model, family, x, y,
-                                       prior_type = prior_type)
+        # Note this path still does not pass disp_spec, which predates #245
+        # and is left alone here rather than changed as a side effect.
+        brm_args$prior <- define_prior(
+          model, family, x, y, prior_type = prior_type,
+          predictor_scale = predictor_scale,
+          group_spec = parse_group_terms(formula, model)
+        )
       } else {
         brm_args$prior <- model_priors
       }
-      fit_m <- try(
+      try(
         fit_bayesnec(
           formula = formula, data = data, model = model,
           brm_args = brm_args, skip_check = TRUE, prior_type = prior_type,
+          predictor_scale = predictor_scale,
           timeout = timeout
         ),
         silent = FALSE
       )
-      if (!inherits(fit_m, "try-error")) {
-        mod_fits[[model]] <- fit_m
-      } else {
-        mod_fits[[model]] <- NA
-        failed[[model]] <- failure_record(model, attr(fit_m, "condition"))
-      }
+    },
+    list(model_set = model_set, family = family, simdat = simdat,
+         set_plan = set_plan, priors = priors, bdat = bdat,
+         formula = formula, data = data, prior_type = prior_type,
+         predictor_scale = predictor_scale, timeout = timeout)
+  )
+  attempts <- bnec_parallel_lapply(which(needs_fit), fit_one,
+                                parallel = set_plan$parallel)
+  # Assembled in the parent, as in bnec(): what the applied function returns is
+  # the fit, or the try-error whose condition attribute records it, and
+  # failure_record() then
+  # reads the same object whichever plan produced it.
+  for (i in seq_along(attempts)) {
+    model <- model_set[which(needs_fit)[i]]
+    fit_m <- attempts[[i]]
+    if (!inherits(fit_m, "try-error")) {
+      mod_fits[[model]] <- fit_m
     } else {
-      mod_fits[[m]] <- mod_m
+      mod_fits[[model]] <- NA
+      failed[[model]] <- failure_record(model, attr(fit_m, "condition"))
     }
   }
   formulas <- lapply(mod_fits, extract_formula)
@@ -298,5 +386,75 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   # Only the models this call attempted. Failures recorded on the object being
   # amended are not carried forward: a model that failed then may have been
   # dropped now, or is being retried here with different priors.
-  attach_failed_models(out, failed)
+  out <- attach_failed_models(out, failed)
+  # The candidate set changed, so the record is rebuilt rather than carried
+  # through. `substitutions` is not: amend() fits from the stored data with
+  # skip_check = TRUE, so it makes no substitution of its own and the one
+  # bnec() made still describes the response every model here was fitted to.
+  #
+  # Rebuilt only where there was a record to begin with. An object fitted by a
+  # version that did not record one has no `requested` to extend, and inventing
+  # `substitutions = NULL` for it would state that no substitution was made
+  # when what is true is that it is not known.
+  if (!is.null(bnec_rec)) {
+    out <- attach_bnec_record(
+      out, amend_requested(bnec_rec$requested, add), model_set,
+      amend_exclusions(bnec_rec, amend_excluded, model_set, add),
+      bnec_rec$substitutions
+    )
+  }
+  out
+}
+
+#' The candidate set an amended object was asked for
+#'
+#' @param requested The \code{requested} element of the record being amended.
+#' @param add The equations added by this call, or \code{NULL}.
+#'
+#' @return A \code{\link[base]{character}} vector.
+#' @noRd
+amend_requested <- function(requested, add) {
+  union(as.character(requested), as.character(add))
+}
+
+#' The exclusions of an amended object, keeping requested partitioned exactly
+#'
+#' Three things can put an equation in \code{requested} but not in the set
+#' attempted: \code{check_models()} declined it in this call, it was declined
+#' in the call being amended and has not been asked for again, or the user
+#' dropped it here. All three are recorded, so that \code{requested} is
+#' partitioned by the set attempted and this table, as it is for
+#' \code{\link{bnec}}.
+#'
+#' @param bnec_rec The record being amended.
+#' @param excluded The \code{excluded} attribute from this call's
+#' \code{check_models()}.
+#' @param attempted The set this call attempted.
+#' @param add The equations added by this call, or \code{NULL}.
+#'
+#' @return A \code{\link[base]{data.frame}} of equation and reason.
+#' @noRd
+amend_exclusions <- function(bnec_rec, excluded, attempted, add) {
+  out <- if (is.null(excluded)) {
+    data.frame(model = character(), reason = character(),
+               stringsAsFactors = FALSE)
+  } else {
+    excluded
+  }
+  requested <- amend_requested(bnec_rec$requested, add)
+  unaccounted <- setdiff(requested, c(attempted, out$model))
+  if (length(unaccounted) == 0) {
+    return(out)
+  }
+  prior <- bnec_rec$excluded
+  reasons <- vapply(unaccounted, function(m) {
+    hit <- which(prior$model == m)
+    if (length(hit) > 0) {
+      prior$reason[hit[1]]
+    } else {
+      "dropped by amend()"
+    }
+  }, character(1), USE.NAMES = FALSE)
+  rbind(out, data.frame(model = unaccounted, reason = reasons,
+                        stringsAsFactors = FALSE))
 }

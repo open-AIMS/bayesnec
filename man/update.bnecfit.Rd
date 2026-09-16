@@ -46,10 +46,16 @@ interpolated NOEC value from smooth ECx curves.}
 ("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
 containing the desired arguments to be passed on to \code{\link[brms]{loo}}
 (via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
-If "weights" is
-not provided by the user, \code{\link{bnec}} will set the default
-\code{method} argument in \code{\link[loo]{loo_model_weights}} to
-"pseudobma". See ?\code{\link[loo]{loo_model_weights}} for further info.}
+If no \code{method} is named in "weights", \pkg{bayesnec} sets the
+\code{method} argument of \code{\link[loo]{loo_model_weights}} to
+"pseudobma", whichever function assembles the model set.
+\code{\link{amend}} and \code{update} operate on an existing set and keep
+the method that set was built with, unless the caller names another.
+\code{\link{pull_out}} takes no weighting method at all: it reports and
+ignores one given in "weights" and always keeps the set's own.
+\code{\link[base]{c}} and \code{+} take no \code{loo_controls} argument;
+see \code{\link{c.bnecfit}} for how they decide the method. See
+?\code{\link[loo]{loo_model_weights}} for further info.}
 
 \item{force_fit}{Should model truly be updated in case either
 \code{newdata} of a new family is provided?}
@@ -65,6 +71,15 @@ if multiple models are returned, also an object of class
 \description{
 Update an object of class \code{\link{bnecfit}} as fitted by function
 \code{\link{bnec}}.
+}
+\details{
+A \code{family} passed through \code{...} is read exactly as
+\code{\link{bnec}} reads it: the link is assigned by \pkg{bayesnec} unless
+the caller writes one, an unsupported link is refused before any model is
+refitted, and the validated family is the one \pkg{brms} receives. See the
+\emph{The link} section of \code{\link{bnec}}. Supplying a family that
+differs from the fitted one requires \code{force_fit = TRUE}, because the
+priors carried over from the original fit were built for the original family.
 }
 \examples{
 \dontrun{

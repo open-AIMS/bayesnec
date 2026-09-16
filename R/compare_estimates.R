@@ -6,7 +6,7 @@
 #'
 #' @inheritParams compare_posterior
 #' 
-#' @importFrom chk chk_numeric
+#' @importFrom chk chk_numeric chk_number
 #'
 #' @seealso \code{\link{bnec}}
 #'
@@ -30,24 +30,50 @@
 #' comparison="ecx")
 #' }
 #'
+#' @section Reproducibility:
+#' The draws of each posterior are paired by a random permutation, so
+#' \code{prob_diff} and the difference intervals are a Monte Carlo
+#' approximation to the difference of two \bold{independent} posteriors, using
+#' \emph{n} of the \emph{n}^2 available pairs. The permutation is drawn under
+#' \code{seed}, so two calls on the same fits return the same comparison and a
+#' \code{\link[base]{set.seed}} in the session has no effect on it. A different
+#' \code{seed} gives another realisation of the same approximation;
+#' where the approximation matters, compare a few and report the spread. The
+#' caller's random number state is restored afterwards.
+#'
+#' @section The independence assumption:
+#' The pairing is valid only where the posteriors being compared come from
+#' \bold{separate fits}. Two levels of one fit share draws --- draw \emph{i}
+#' of each comes from the same sweep of the sampler --- and permuting them
+#' destroys that pairing, which discards the correlation between the levels and
+#' widens the difference posterior. \code{prob_diff} is then pulled toward 0.5
+#' and a real difference is under-detected, which is the wrong direction to err
+#' in. A within-fit contrast needs draw-wise differencing and must not be routed
+#' through this function. See #218 and #33.
+#'
 #' @export
 compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
-                              type = "absolute", hormesis_def = "control",
-                              sig_val = 0.01, resolution = 100, x_range = NA) {
+                              type = "absolute",
+                              sig_val = 0.01, resolution = 100, x_range = NA,
+                              seed = 10) {
   if ((comparison %in% c("nec", "n(s)ec", "ecx", "nsec")) == FALSE) {
     stop("comparison must be one of nec, n(s)ec, ecx or nsec.")
   }
   chk_numeric(ecx_val)
-  if ((type %in% c("relative", "absolute", "direct")) == FALSE) {
-    stop("type must be one of \"relative\", \"absolute\" (the default) or",
-         "\"direct\". Please see ?ecx for more details.")
-  }
-  if ((hormesis_def %in% c("max", "control")) == FALSE) {
-    stop("type must be one of 'max' or 'control' (the default). 
-         Please see ?ecx for more details.")
-  }
+  # The same validator ecx() uses, rather than a second copy of the vocabulary.
+  # The copy that stood here still listed the 2.1.3 three-value set, so it
+  # refused type = "range" -- which is the name the rename warning gives users
+  # for the behaviour they had, making the migration it names impossible from
+  # here and from compare_posterior(), which forwards to this function.
+  type <- validate_ecx_type(type, match.call())
+  # Warned once for the call rather than once per fit in x: the ecx() calls
+  # below name type explicitly, so each would otherwise repeat the message.
+  # Same reasoning as ecx.bayesmanecfit. See D15 ruling 8.
+  warned <- options(bayesnec.relative_warned = TRUE)
+  on.exit(options(warned), add = TRUE)
   chk_numeric(sig_val)
   chk_numeric(resolution)
+  chk_number(seed)
   if (is.na(x_range[1])) {
     x_range <- return_x_range(x)
   } else {
@@ -62,18 +88,28 @@ compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
   if (comparison == "ecx") {
     posterior_list <- lapply(x, ecx, ecx_val = ecx_val, resolution = resolution,
                              posterior = TRUE, type = type,
-                             hormesis_def = hormesis_def, x_range = x_range)
+                             x_range = x_range)
   }
   if (comparison == "nsec") {
     posterior_list <- lapply(x, nsec, sig_val = sig_val, resolution = resolution,
-                             posterior = TRUE, hormesis_def = hormesis_def,
+                             posterior = TRUE,
                              x_range = x_range)
   }
   names(posterior_list) <- names(x)
   n_samples <- min(sapply(posterior_list, length))
-  r_posterior_list <- lapply(posterior_list, function(m, n_samples) {
-    m[sample(seq_len(n_samples), replace = FALSE)]
-  }, n_samples = n_samples)
+  # Random pairing affects the reported estimates. Seed it locally so calls
+  # repeat without changing the caller's RNG state (#343).
+  with_preserved_rng_state({
+    set.seed(seed, sample.kind = "Rejection")
+    r_posterior_list <- lapply(posterior_list, function(m, n_samples) {
+      # A random subset of a longer posterior, not its first n_samples draws.
+      # sample(seq_len(n_samples)) permuted only the head of the vector, so
+      # where components had unequal draw counts the tail of the longer one was
+      # never used -- systematic rather than random thinning. Harmless when the
+      # counts are equal, which is the normal case. See #218.
+      m[sample(seq_along(m), n_samples, replace = FALSE)]
+    }, n_samples = n_samples)
+  })
   posterior_data <- do.call("cbind", r_posterior_list) |>
     data.frame() |>
     pivot_longer(cols = everything(), names_to = "model") |>
@@ -87,10 +123,18 @@ compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
   diff_data_out <- bind_rows(diff_list, .id = "comparison") |>
     pivot_longer(everything(), names_to = "comparison", values_to = "diff") |>
     data.frame()
+  # na.rm because a difference is NA wherever either estimate is, and an ECx or
+  # NSEC is NA for any draw whose curve does not reach the target (#39). Without
+  # it a single censored draw in either posterior made prob NA for the whole
+  # comparison -- and silently, because the probability is the headline output
+  # and NA is a value rather than an error. The probability is therefore over
+  # the draw pairs in which both estimates are identified; the draws that are
+  # not have already been reported by the ecx() or nsec() call that built the
+  # posterior. The comparison itself is unchanged where nothing is censored.
   prob_diff <- lapply(diff_list, function(m) {
     m[m > 0] <- 1
     m[m <= 0] <- 0
-    data.frame(prob = mean(m))
+    data.frame(prob = mean(m, na.rm = TRUE))
   })
   prob_diff_out <- bind_rows(prob_diff, .id = "comparison") |>
     data.frame()

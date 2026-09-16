@@ -10,12 +10,12 @@ average_estimates(
   ecx_val = 10,
   posterior = FALSE,
   type = "absolute",
-  hormesis_def = "control",
   sig_val = 0.01,
-  resolution = 1000,
+  resolution = 200,
   x_range = NA,
   xform = identity,
-  prob_vals = c(0.5, 0.025, 0.975)
+  prob_vals = c(0.5, 0.025, 0.975),
+  seed = 10
 )
 }
 \arguments{
@@ -26,24 +26,28 @@ average_estimates(
 \item{estimate}{The type of estimate to use in the mean. Takes values
 "nec", "ecx" or "nsec".}
 
-\item{ecx_val}{The desired percentage effect value. This must be a value
-between 1 and 99 (for type = "relative" and "absolute"), defaults to 10.}
+\item{ecx_val}{The desired percentage effect value, defaults to 10. Any
+value above 0 is accepted for every \code{type} except "direct", where it
+is a response value rather than a percentage. Values above 100 are
+meaningful under "absolute" for a response that can go negative --- see
+Details.}
 
 \item{posterior}{A \code{\link[base]{logical}} value indicating if the full
 posterior sample of calculated ECx values should be returned instead of
 just the median and 95 credible intervals.}
 
 \item{type}{A \code{\link[base]{character}} vector, taking values of
-"relative", "absolute" (the default) or "direct". See Details.}
-
-\item{hormesis_def}{A \code{\link[base]{character}} vector, taking values
-of "max" or "control". See Details.}
+"absolute" (the default), "relative", "range" or "direct". See Details.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test
 significance of the predicted posterior values.}
 
-\item{resolution}{The number of unique x values over which to find ECx --
-large values will make the ECx estimate more precise.}
+\item{resolution}{The number of unique x values over which to find ECx.
+The crossing is located by linear interpolation between the two grid values
+that bracket it, so precision saturates well below the grid spacing.
+Increasing the resolution beyond the default of 200 changed the estimate by
+less than 0.01 percent on the fits tested, and increases the run time
+roughly in proportion.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
@@ -53,6 +57,21 @@ values.}
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
+
+\item{seed}{A \code{\link[base]{numeric}} vector of length 1. Passed to
+\code{\link[base]{set.seed}} before the draws of the posteriors being
+compared are paired, so that two calls on the same fits return the same
+answer. The caller's saved RNG state is restored afterwards, and a
+\code{\link[base]{set.seed}} in the session therefore does not change the
+result. A different value gives another realisation of the same Monte
+Carlo approximation. \code{NULL} is refused, because
+\code{set.seed(NULL)} re-initialises the stream from the clock.
+Reproducibility assumes the same RNG kind; the sampling algorithm is fixed
+to \code{sample.kind = "Rejection"}. The saved RNG state is restored,
+but the cached normal variate used by \code{normal.kind = "Box-Muller"}
+is not part of that state. With Box-Muller, the next normal draw can change
+after an odd number of preceding normal draws. Use R's default
+\code{normal.kind = "Inversion"} to preserve subsequent normal draws.}
 }
 \value{
 The geometric mean of the estimates estimate values
@@ -75,6 +94,28 @@ already based on a re-scaling of the x (concentration) axis, it is important
 to pass an appropriate xform argument to ensure these are back transformed
 before the the geometric mean calculation is applied.
 }
+\section{Reproducibility}{
+
+The draws of each posterior are paired by a random permutation, so the mean
+is a Monte Carlo approximation using randomly paired posterior draws.
+The permutation is drawn under \code{seed}, so two calls on the same
+fits return the same estimate and a \code{\link[base]{set.seed}} in the
+session has no effect on it. A different \code{seed} gives another
+realisation of the same approximation; where the approximation matters,
+compare a few and report the spread. The caller's random number state is
+restored afterwards.
+}
+
+\section{The independence assumption}{
+
+The pairing is valid only where the posteriors being combined come from
+\bold{separate fits}. Two levels of one fit share draws --- draw \emph{i}
+of each comes from the same sweep of the sampler --- and permuting them
+destroys that pairing and discards the correlation between the levels.
+A within-fit combination needs draw-wise arithmetic and must not be routed
+through this function. See #218 and #33.
+}
+
 \examples{
 \dontrun{
 library(brms)
