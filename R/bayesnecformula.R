@@ -41,8 +41,8 @@
 #' to be evaluated based on some \code{x} predictor. The equation itself is
 #' defined by the argument \code{"model"}: a \code{\link[base]{character}}
 #' vector containing a specific model, a concatenation of specific models,
-#' or a single string defining a particular group of models
-#' (or group of equations, see \code{\link{models}}). Internally
+#' a single string defining a particular group of models, or a named list of
+#' equation formulas returned by \code{\link{models}}. Internally
 #' this argument is substituted by an actual \code{\link[brms]{brmsformula}},
 #' which is then passed onto \code{\link[brms]{brm}} for model fitting.
 #'
@@ -1133,6 +1133,11 @@ get_model_from_formula <- function(formula) {
   # in parent.frame(), which is this frame. See #319.
   model <- eval(parse(text = x_str),
                 envir = formula_eval_env(formula, crf = crf))
+  if (is.list(model) && length(model) > 0 && !is.null(names(model)) &&
+      !anyNA(names(model)) && all(nzchar(names(model))) &&
+      all(vapply(model, inherits, logical(1), what = "brmsformula"))) {
+    model <- names(model)
+  }
   # Checked here rather than left to expand_model_set(), which indexes
   # mod_groups with it and reports "'match' requires vector arguments" for
   # anything that is not a vector. The symbol now resolves in more environments
@@ -1141,7 +1146,9 @@ get_model_from_formula <- function(formula) {
   # fail to resolve at all.
   if (!is.character(model) || length(model) == 0) {
     stop("The `model` argument of crf() must be a character vector naming one",
-         " or more equations or model groups; here it resolved to an object of",
+         " or more equations or model groups, or a named list of equation",
+         " formulas returned by models();",
+         " here it resolved to an object of",
          " class \"", class(model)[1], "\" and length ", length(model),
          ". See ?models.", call. = FALSE)
   }

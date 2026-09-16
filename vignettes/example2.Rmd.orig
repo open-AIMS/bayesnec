@@ -150,11 +150,6 @@ not converge, and should be dropped before the set is averaged --- note that we
 have also used far fewer than the default `bayesnec` `iter` (10,000) here, which
 makes convergence harder than it would usually be.
 
-`screen_models` does that, and reports what it dropped and why --- which is what
-a methods section has to cite. It screens on Rhat, effective sample size and
-divergent transitions together, all three of which `check_sampling` reports per
-candidate model.
-
 The older and more permissive 1.05 is still available by changing the argument,
 which is useful mainly for comparison against analyses that predate the current
 recommendation:
@@ -164,14 +159,23 @@ rhat(exp_5, rhat_cutoff = 1.05) |>
   sapply("[[", "failed")
 ```
 
-`rhat()` reports Rhat alone. To screen on all three sampler diagnostics at once
---- Rhat, effective sample size and divergent transitions --- use
-`check_sampling()`, and `screen_models()` to drop the failures and report what
-went:
+`rhat()` reports Rhat alone. `check_sampling()` reports all three sampler
+diagnostics for each candidate model --- Rhat, effective sample size and
+divergent transitions:
 
 ```{r}
 check_sampling(exp_5)
 ```
+
+`screen_models()` screens on those three together and drops every candidate that
+failed. It reports what went and why, and that message is the record of the
+exclusion: a step that removes models without naming them cannot be written up.
+
+```{r, message = TRUE}
+exp_5_screened <- screen_models(exp_5)
+```
+
+Here it removed `r sum(check_sampling(exp_5)$failed)` of the `r nrow(check_sampling(exp_5))` candidates, naming each one and the diagnostic it failed. `exp_5_screened` holds the candidates that passed; `exp_5` still holds all of them.
 
 ### Extracting toxicity values
 
@@ -320,7 +324,7 @@ A level arrangement cannot go below *M* rounds however many workers there are, a
 
 To drive both loops, nest the plan, which is how `future` asks for it:
 
-```{r exmp2-parallel-nested, eval = FALSE}
+```{r exmp2-parallel-group-nested, eval = FALSE}
 library(future)
 plan(list(tweak(multisession, workers = 2),
           tweak(multisession, workers = I(4))))
@@ -339,10 +343,10 @@ A nested plan of `multisession` strategies emits a warning from `future` once pe
 
 Memory is the reason the arrangement is counted rather than the levels simply taking the plan. A worker fitting a level holds that level's whole model-averaged set, where a worker fitting one model holds one fit, and a core given to the chains of a fit holds nothing extra. A plan of *W* level workers therefore uses up to *W* times the memory of the same call with the levels in sequence, and the count already declines to dispatch the levels at the small worker counts where memory is tightest.
 
-Compilation is the other thing the arrangement adds. Every level fits the same equations, so parallel levels build the same Stan programs at the same time, and `cmdstanr` does not lock its compile cache. Each worker process is given a directory of its own to keep them apart, which means a parallel grouped run on a cold cache compiles each equation once per worker rather than once. The count above measures sampling only, so on short fits the arrangement it prefers can be the slower one on the clock. Where `cmdstanr_write_stan_file_dir` has been set, those directories are written under it as `bayesnec-stan-<pid>`, one per worker process per run; a process id does not repeat, so they are not read again and are safe to delete. Fitting the levels in sequence uses the cache as it always did.
+Compilation is the other thing the arrangement adds. Every level fits the same equations, so parallel levels build the same Stan programs at the same time, and `cmdstanr` does not lock its compile cache. Each active host-process pair is given a directory of its own to keep concurrent compiles apart. A persistent `multisession` or `cluster` worker can reuse its directory across levels. A `multicore` plan starts a new process for each one-element future, so it can compile each equation once per level. The count above measures sampling only, so on short fits the arrangement it prefers can be slower in elapsed time. Where `cmdstanr_write_stan_file_dir` has been set, those directories are written under it as `bayesnec-stan-<host>-<pid>`. They are safe to delete after the workers finish. Fitting the levels in sequence uses the cache as it always did.
 
 The caveat in *The Stan backend* above applies here with more force, because every level compiles the same programs: under `rstan` with `rstan_options(auto_write = TRUE)` the cache is one location that a forked worker shares with its parent, and no argument changes that location, so prefer `multisession` for a parallel grouped call with that option set.
 
-Each level is given its own seed, realised in the calling session before the levels are dispatched and derived from `seed` where one was passed. A grouped call therefore gives the same estimates whichever arrangement it took, so the number of workers on the machine does not change an answer, and the realised seeds are kept on the returned object as `level_seeds`.
+Each level is given its own seed, realised in the calling session before the levels are dispatched and derived from `seed` where one was passed. That seed is passed to every equation fitted for the level and is reapplied when the model-averaging draw is realised. Both uses are needed because sequential and parallel equation loops advance different RNG streams. A grouped call therefore gives the same estimates whichever arrangement it took, so the number of workers on the machine does not change an answer, and the realised seeds are kept on the returned object as `level_seeds`.
 
 # References

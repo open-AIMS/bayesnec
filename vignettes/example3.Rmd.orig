@@ -109,12 +109,6 @@ These tighter priors can improve convergence and guard against implausible fits 
 
 To see the difference we fit the same **nec4param** model to the `nec_data` example (a Beta-distributed response on the `"identity"` link) under each prior set. **nec4param** is used rather than **nec3param** so that both response-scaled parameters are present: **nec3param** has no **bot**, and **bot** is where the two sets differ most. Note `prior_type` is ignored whenever the user supplies their own `prior` argument.
 
-```{r echo = FALSE, warning = FALSE, message = FALSE, results = "hide"}
-library(bayesnec)
-library(brms)
-options(mc.cores = parallel::detectCores())
-```
-
 ```{r, results = "hide"}
 library(brms)
 library(bayesnec)
@@ -182,12 +176,6 @@ The priors used in the default model fit can be extracted using `pull_prior`, an
 ### bayesnecfit
 
 To set specified priors, it is simplest to start by letting `bnec` find the priors on its own, i.e. by not specifying the `brm` argument `prior` at all.
-
-```{r echo = FALSE, warning = FALSE, message = FALSE, results = "hide"}
-library(bayesnec)
-library(brms)
-options(mc.cores = parallel::detectCores())
-```
 
 ```{r, results = "hide"}
 library(brms)

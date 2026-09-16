@@ -938,9 +938,10 @@ boundary_inset <- function(edge, bound, centres, spread, y, side,
 #' Under this change both tables and both stream states agree exactly.
 #'
 #' \code{vignette("example3")} is the case #310 opened on. It runs
-#' \code{set.seed(333)} before each of its eleven fitting chunks and passes no
-#' \code{seed}, so all eleven were discarded and every fit in it was a fresh
-#' draw. That alone accounts for both of the outputs that differed between
+#' \code{set.seed(333)} before each of nine fitting chunks, which produce
+#' eleven individual fits, and passes no \code{seed}. Each fit's initial-value
+#' search therefore discarded the stream it was handed and began from a fresh
+#' draw. That accounts for both of the outputs that differed between
 #' renders: the two \code{fixef()} tables are read off two of those fits, and
 #' the three \code{check_priors()} figures are pure functions of the fits they
 #' plot, \code{brms::hypothesis()} touching the stream only when given a seed
@@ -1029,10 +1030,13 @@ make_good_inits <- function(model, x, y, family, n_trials = 1e4, seed = NULL,
   # See #310.
   # Written on length 1 so that only NULL and a scalar NA are read as "no
   # seed". all(is.na()) was tried and is wrong: all(is.na(integer(0))) is TRUE,
-  # so an empty seed was silently accepted as no seed. Anything else -- a seed
-  # of length 0 or 2 -- reaches set.seed() and is rejected there with R's own
-  # message rather than by the condition.
+  # so an empty seed was silently accepted as no seed. Validate the remaining
+  # shape here because set.seed(c(1, 2)) silently uses the first value, while
+  # the documented contract is one numeric value.
   if (!is.null(seed) && !(length(seed) == 1 && is.na(seed))) {
+    if (!is.numeric(seed) || length(seed) != 1) {
+      stop("`seed` must be a numeric vector of length 1, NULL or NA.")
+    }
     set.seed(seed)
   }
   accepted <- vector("list", chains)

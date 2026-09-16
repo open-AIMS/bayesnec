@@ -113,6 +113,45 @@ test_that("models() rejects ranges and names it cannot map", {
   }
 })
 
+test_that("models() filters equations by curve-parameter count (#301)", {
+  expected <- c(
+    ecxlin = 2L, ecxexp = 2L, nec3param = 3L, neclin = 3L,
+    ecxsigm = 3L, ecxwb1p3 = 3L, ecxwb2p3 = 3L, ecxll3 = 3L,
+    nec4param = 4L, nechorme = 4L, necsigm = 4L, neclinhorme = 4L,
+    nechormepwr = 4L, nechormepwr01 = 4L, ecx4param = 4L,
+    ecxwb1 = 4L, ecxwb2 = 4L, ecxll4 = 4L, ecxhormebc4 = 4L,
+    nechorme4 = 5L, nechorme4pwr = 5L, ecxll5 = 5L,
+    ecxhormebc5 = 5L
+  )
+  all_models <- models("all")
+  observed <- vapply(
+    all_models, function(x) length(names(x$pforms)), integer(1)
+  )
+
+  expect_setequal(names(observed), names(expected))
+  expect_equal(observed[names(expected)], expected)
+  expect_setequal(names(models(max_pars = 3)), names(expected[expected <= 3]))
+  expect_setequal(
+    names(models("decline", max_pars = 3)),
+    intersect(mod_groups$decline, names(expected[expected <= 3]))
+  )
+  expect_setequal(
+    names(models(c(0, 1), max_pars = 3)),
+    intersect(names(models(c(0, 1))), names(expected[expected <= 3]))
+  )
+})
+
+test_that("models() validates parameter-count limits (#301)", {
+  expect_error(models(max_pars = 1),
+               "No selected model equations have 1 or fewer curve parameters")
+  expect_error(models("hormesis", max_pars = 3),
+               "No selected model equations have 3 or fewer curve parameters")
+  for (bad in list(0, -1, 2.5, Inf, NA_real_, c(2, 3), "3")) {
+    expect_error(models(max_pars = bad),
+                 "single positive whole number")
+  }
+})
+
 
 test_that("check_models records which equations it excluded, and why (#261)", {
   # bnec() decided which equations it would not attempt, told the user once by

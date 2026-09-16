@@ -714,6 +714,12 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   check_reserved_names(data)
   model <- get_model_from_formula(formula)
   brm_args <- list(...)
+  # bnec_group() supplies its realised per-level seed through `...` so the
+  # model-averaging draw can be fixed without adding a user-facing bnec()
+  # argument. Remove it before anything is forwarded to brms. A standalone
+  # bnec() call retains its established ambient-stream behaviour.
+  group_seed <- brm_args[[".bayesnec_group_seed"]]
+  brm_args[[".bayesnec_group_seed"]] <- NULL
   # `prior` is an explicit argument (rather than relying on `...`) so that a
   # user-supplied `prior =` is matched exactly and cannot be captured by partial
   # matching against `prior_type`. Only fold it into brm_args when supplied, so
@@ -837,9 +843,11 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
       }
     }
     formulas <- lapply(mod_fits, extract_formula)
-    mod_fits <- expand_manec(mod_fits, formula = formulas, x_range = x_range,
-                             resolution = resolution, sig_val = sig_val,
-                             loo_controls = loo_controls)
+    mod_fits <- with_group_seed(group_seed, expand_manec(
+      mod_fits, formula = formulas, x_range = x_range,
+      resolution = resolution, sig_val = sig_val,
+      loo_controls = loo_controls
+    ))
     if (length(mod_fits) > 1) {
       out <- allot_class(mod_fits, c("bayesmanecfit", "bnecfit"))
     } else {

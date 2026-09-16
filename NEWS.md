@@ -2,6 +2,38 @@
 
 ## Vignette precompilation
 
+- Every precompiled vignette except `example7` and `example8` has been
+  re-rendered, and `vignette("example9")` is shipped for the first time. The
+  committed output dated from January 2026 and predated the model code in
+  several places: the `beta_binomial` initialisation of #168, the
+  inline-transformation estimate of #196, the `rhat_cutoff` default of #240,
+  the zero-predictor substitution and prior rates of #270, and the `cmdstanr`
+  backend of #308. Estimates, figures and printed output therefore change
+  throughout, and the built package grows from 8.45 MB to 10.54 MB (#190).
+
+- `vignettes/precompile.R` now sets `options(width = 115)`. Printed output
+  wraps at `getOption("width")` before `knitr` sees it, so the committed `.Rmd`
+  files recorded the width the renderer's `.Rprofile` happened to set, and two
+  machines rendering an unchanged vignette produced different files (#246).
+
+- `vignettes/precompile.R` now knits each vignette into an environment of its
+  own. `knit()` defaults `envir` to `parent.frame()`, so chunks were evaluated
+  among the precompile loop's own variables: `example6` releases each fit with
+  `rm(f)` inside a `for` loop, which deleted the variable holding the file
+  name and failed the run after the vignette had knitted successfully. One
+  vignette's objects can no longer reach the next either.
+
+- `vignettes/example2.Rmd.orig` had two chunks labelled
+  `exmp2-parallel-nested`, which `knitr` refuses, so that vignette could not be
+  precompiled at all after #322. It now demonstrates `screen_models()` as well,
+  which was described there in prose only (#248).
+
+- `vignettes/example2b.Rmd.orig` states the 0, 1-bounded exclusions as
+  `check_models()` applies them. It had recorded the linear-hormesis equations
+  as allowed on those families, where `neclinhorme`, `nechormepwr` and
+  `nechorme4pwr` are excluded, and described an initial-value criterion that
+  #312 replaced (#170).
+
 - `vignettes/precompile.R` now loads the repository checkout by default and
   reports the package version and source path before knitting. An explicit
   installed-package mode preserves the HPC route, which verifies its job-local
@@ -733,18 +765,21 @@
   model set over eight workers. `bnec_group()` reports which arrangement it
   took and the counts behind it (#338).
 
-  **Each worker compiles its Stan programs into its own directory.** Every
+  Each active worker process compiles its Stan programs into its own directory.
+  Every
   level fits the same equations, so parallel levels build the same programs at
   the same time, and `cmdstanr` does not lock its compile cache: two levels on a
   cold cache would write one `.stan` file and run `make` on one executable path
-  at once. Each worker process is given a directory of its own, under
-  `cmdstanr_write_stan_file_dir` where one is set and `tempdir()` otherwise. The
-  key is the process and not the level, so a worker that draws three levels
-  compiles each equation once rather than three times. What this adds is
-  compilation on a cold cache: a parallel grouped run compiles each equation
-  once per worker rather than once, and does not read or write a persistent
-  cache the user has warmed, because a process id is not the same on the next
-  run. Fitting the levels in sequence uses the cache as it always did. `rstan` under `rstan_options(auto_write = TRUE)` caches in
+  at once. Each active host-process pair is given a directory of its own, under
+  `cmdstanr_write_stan_file_dir` where one is set and `tempdir()` otherwise.
+  Including the host prevents two cluster nodes with the same host-local PID
+  from sharing a path. A persistent `multisession` or `cluster` worker can reuse
+  its directory across levels. A `multicore` plan starts a new process for each
+  one-element future, so it can compile each equation once per level. What this
+  adds is compilation on a cold cache, and it does not read a persistent cache
+  the user has warmed directly because each worker writes below its own
+  subdirectory. Fitting the levels in sequence uses the cache as it always did.
+  `rstan` under `rstan_options(auto_write = TRUE)` caches in
   one place that a forked worker shares with its parent, and no argument
   changes that location, so set `multisession` rather than `multicore` for a
   parallel grouped call with that option in force.
@@ -802,16 +837,15 @@
   why the two arrangements are counted against each other rather than the levels
   simply taking the plan.
 
-  **Every level is now given its own seed, realised in the calling session.**
-  Without it the arrangement decided the answer. `bnec()` realises the seed for
-  its weighted posterior draw from whatever stream it is running in, so a level
-  fitted in a worker drew from that worker's stream and a level fitted in the
-  parent from the session's --- and since the arrangement is read off the worker
-  count, one script at one seed would have reported different model-averaged
-  estimates on a four-core and an eight-core machine. The seeds are derived from
-  `seed` where one was passed, so a grouped call now repeats with no
-  `set.seed()` in the session, which is more than `bnec()` offers for a single
-  set; where none was passed, `set.seed()` before the call fixes them. The
+  Every level is now given its own seed, realised in the calling session.
+  The seed is passed to every equation fitted for that level and is reapplied
+  when `expand_manec()` realises the weighted posterior. Both uses are needed:
+  the sequential and parallel equation loops advance different RNG streams, so
+  seeding only the level left its weighted posterior dependent on the worker
+  count. The seeds are derived from `seed` where one was passed, so a grouped
+  call now repeats with no `set.seed()` in the session, which is more than
+  `bnec()` offers for a single set; where none was passed, `set.seed()` before
+  the call fixes them. The
   calling session's own stream and generator kind are put back either way, and
   the generator and sampler are pinned while the seeds are realised so that one
   `seed` means one thing whatever the session is set to. What was realised is
@@ -976,9 +1010,10 @@
   different fits and not a measure of how wrong the estimates were.
 
   `vignette("example3")` is the case #310 opened on. It runs `set.seed(333)`
-  before each of its eleven fitting chunks and passes no `seed` to `bnec()`, so
-  all eleven were discarded and every fit in the document was a fresh draw.
-  Both of the outputs that differed between renders follow from that directly.
+  before each of nine fitting chunks, which produce eleven individual fits,
+  and passes no `seed` to the fitting call. Each fit's initial-value search
+  therefore discarded the stream it was handed and began from a fresh draw.
+  Both outputs that differed between renders follow from that directly.
   The two `fixef()` tables are read off two of those fits. The three
   `check_priors()` figures are pure functions of the fits they plot ---
   `check_priors()` calls `brms::hypothesis()`, which touches the random number
