@@ -468,7 +468,12 @@ count_positive_asymptote <- function(object, dpar, asymptote, newdata) {
       dpar = "shape"
     )
   }
-  as.numeric(hurdle_positive_mean(asymptote, family, shape))
+  # Nonlinear equation parameters are stored on the family's link scale.
+  # Predictions have already passed through linkinv(), so the theoretical bot
+  # (or the equation's zero limit where there is no bot) must do the same
+  # before it is converted to E[Y | Y > 0].
+  mean_asymptote <- stats::make.link(object$fit$family$link)$linkinv(asymptote)
+  as.numeric(hurdle_positive_mean(mean_asymptote, family, shape))
 }
 
 #' The model-averaged theoretical asymptote

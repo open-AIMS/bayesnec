@@ -293,6 +293,44 @@ test_that("relative count-hurdle asymptotes use the positive-count scale", {
   )
 })
 
+test_that("count asymptotes apply a non-identity mean link first", {
+  bot_eta <- log(c(0.5, 2))
+  expected <- as.numeric(
+    bayesnec:::hurdle_positive_mean(exp(bot_eta), "poisson")
+  )
+  joint <- list(
+    fit = list(family = brms::hurdle_poisson(link = "log")),
+    bayesnecformula = bnf(y ~ crf(x, "nec3param"))
+  )
+  expect_equal(
+    bayesnec:::count_positive_asymptote(
+      joint, "mu", bot_eta, data.frame(x = 0)
+    ),
+    expected
+  )
+
+  factorised <- list(
+    fit = list(family = stats::poisson(link = "log")),
+    bayesnecformula = bayesnec:::add_hurdle_truncation(
+      bnf(y ~ crf(x, "nec3param"))
+    )
+  )
+  expect_equal(
+    bayesnec:::count_positive_asymptote(
+      factorised, NULL, bot_eta, data.frame(x = 0)
+    ),
+    expected
+  )
+  # An equation without bot tends to zero on the link scale, hence to one on
+  # the mean scale under a log link.
+  expect_equal(
+    bayesnec:::count_positive_asymptote(
+      factorised, NULL, 0, data.frame(x = 0)
+    ),
+    as.numeric(bayesnec:::hurdle_positive_mean(1, "poisson"))
+  )
+})
+
 test_that("model-averaged count asymptotes retain their draw pairing", {
   count_formula <- bayesnec:::add_hurdle_truncation(
     bnf(y ~ crf(x, "nec3param"))
