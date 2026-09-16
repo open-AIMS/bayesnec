@@ -78,6 +78,9 @@
     <li>
       <a href="../articles/example7.html">Modelling growth data and other potentially negative response values</a>
     </li>
+    <li>
+      <a href="../articles/example9.html">A complete analysis workflow</a>
+    </li>
   </ul>
 </li>
 <li>
@@ -254,14 +257,33 @@ NA).</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_5</span><span class="op">$</span><span class="va">mod_stats</span></span>
 <span><span class="co">#&gt;               model      waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5</span></span>
-<span><span class="co">#&gt; nec4param nec4param -84.71235 0.3266459430                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; neclin       neclin -52.72181 0.0004911001                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxlin       ecxlin -27.81568 0.0006015808                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecx4param ecx4param -81.67824 0.0972614372                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxwb1       ecxwb1 -75.70936 0.0183140713                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxwb2       ecxwb2 -84.77620 0.2454512947                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxll5       ecxll5 -84.61205 0.2204366725                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxll4       ecxll4 -81.55602 0.0907979003                  NA              NA               NA</span></span></code></pre></div>
+<span><span class="co">#&gt; nec3param nec3param -72.14396 2.148698e-02                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; nec4param nec4param -84.95172 3.950980e-01                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; neclin       neclin -52.29203 8.972298e-04                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxlin       ecxlin -26.28965 4.647118e-07                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxexp       ecxexp  65.94475 7.877696e-25                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxsigm     ecxsigm -77.63117 3.594643e-02                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecx4param ecx4param -81.86810 9.735072e-02                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxwb1       ecxwb1 -75.21155 1.214995e-02                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxwb2       ecxwb2 -85.06792 2.791782e-01                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxwb1p3   ecxwb1p3 -74.45185 1.508941e-02                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxwb2p3   ecxwb2p3 -77.25285 4.235898e-02                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxll4       ecxll4 -81.18987 7.016793e-02                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxll3       ecxll3 -77.20556 3.027576e-02                  NA              NA               NA</span></span>
+<span><span class="co">#&gt;           dispersion_P_over_1</span></span>
+<span><span class="co">#&gt; nec3param                  NA</span></span>
+<span><span class="co">#&gt; nec4param                  NA</span></span>
+<span><span class="co">#&gt; neclin                     NA</span></span>
+<span><span class="co">#&gt; ecxlin                     NA</span></span>
+<span><span class="co">#&gt; ecxexp                     NA</span></span>
+<span><span class="co">#&gt; ecxsigm                    NA</span></span>
+<span><span class="co">#&gt; ecx4param                  NA</span></span>
+<span><span class="co">#&gt; ecxwb1                     NA</span></span>
+<span><span class="co">#&gt; ecxwb2                     NA</span></span>
+<span><span class="co">#&gt; ecxwb1p3                   NA</span></span>
+<span><span class="co">#&gt; ecxwb2p3                   NA</span></span>
+<span><span class="co">#&gt; ecxll4                     NA</span></span>
+<span><span class="co">#&gt; ecxll3                     NA</span></span></code></pre></div>
 <p>We can obtain a neater summary of the model fit by using the
 <code>summary</code> method for a <code>bayesmanecfit</code> object. A
 list of fitted models, and model weights are provided. In addition, the
@@ -276,20 +298,25 @@ include a warning if there were fits with divergent transitions.</p>
 <span><span class="co">#&gt; Object of class bayesmanecfit</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;  Family: gaussian  </span></span>
-<span><span class="co">#&gt;   Links: mu = identity; sigma = identity  </span></span>
+<span><span class="co">#&gt;   Links: mu = identity  </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Number of posterior draws per model:  1600</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Model weights (Method: pseudobma_bb_weights):</span></span>
 <span><span class="co">#&gt;             waic   wi</span></span>
-<span><span class="co">#&gt; nec4param -84.71 0.33</span></span>
-<span><span class="co">#&gt; neclin    -52.72 0.00</span></span>
-<span><span class="co">#&gt; ecxlin    -27.82 0.00</span></span>
-<span><span class="co">#&gt; ecx4param -81.68 0.10</span></span>
-<span><span class="co">#&gt; ecxwb1    -75.71 0.02</span></span>
-<span><span class="co">#&gt; ecxwb2    -84.78 0.25</span></span>
-<span><span class="co">#&gt; ecxll5    -84.61 0.22</span></span>
-<span><span class="co">#&gt; ecxll4    -81.56 0.09</span></span>
+<span><span class="co">#&gt; nec3param -72.14 0.02</span></span>
+<span><span class="co">#&gt; nec4param -84.95 0.40</span></span>
+<span><span class="co">#&gt; neclin    -52.29 0.00</span></span>
+<span><span class="co">#&gt; ecxlin    -26.29 0.00</span></span>
+<span><span class="co">#&gt; ecxexp     65.94 0.00</span></span>
+<span><span class="co">#&gt; ecxsigm   -77.63 0.04</span></span>
+<span><span class="co">#&gt; ecx4param -81.87 0.10</span></span>
+<span><span class="co">#&gt; ecxwb1    -75.21 0.01</span></span>
+<span><span class="co">#&gt; ecxwb2    -85.07 0.28</span></span>
+<span><span class="co">#&gt; ecxwb1p3  -74.45 0.02</span></span>
+<span><span class="co">#&gt; ecxwb2p3  -77.25 0.04</span></span>
+<span><span class="co">#&gt; ecxll4    -81.19 0.07</span></span>
+<span><span class="co">#&gt; ecxll3    -77.21 0.03</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Summary of weighted N(S)EC posterior estimates:</span></span>
@@ -297,19 +324,28 @@ include a warning if there were fits with divergent transitions.</p>
 <span><span class="co">#&gt;     models, and is therefore a model averaged</span></span>
 <span><span class="co">#&gt;     combination of NEC and NSEC estimates.</span></span>
 <span><span class="co">#&gt;        Estimate Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; N(S)EC     3.37 2.11  3.98</span></span>
+<span><span class="co">#&gt; N(S)EC     3.31 1.94  4.01</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Bayesian R2 estimates:</span></span>
 <span><span class="co">#&gt;           Estimate Est.Error Q2.5 Q97.5</span></span>
+<span><span class="co">#&gt; nec3param     0.83      0.01 0.81  0.85</span></span>
 <span><span class="co">#&gt; nec4param     0.86      0.01 0.84  0.87</span></span>
 <span><span class="co">#&gt; neclin        0.83      0.01 0.80  0.84</span></span>
-<span><span class="co">#&gt; ecxlin        0.80      0.01 0.78  0.82</span></span>
-<span><span class="co">#&gt; ecx4param     0.85      0.01 0.83  0.87</span></span>
+<span><span class="co">#&gt; ecxlin        0.80      0.01 0.77  0.82</span></span>
+<span><span class="co">#&gt; ecxexp        0.61      0.03 0.55  0.65</span></span>
+<span><span class="co">#&gt; ecxsigm       0.84      0.01 0.82  0.85</span></span>
+<span><span class="co">#&gt; ecx4param     0.85      0.01 0.84  0.87</span></span>
 <span><span class="co">#&gt; ecxwb1        0.85      0.01 0.83  0.86</span></span>
 <span><span class="co">#&gt; ecxwb2        0.86      0.01 0.84  0.87</span></span>
-<span><span class="co">#&gt; ecxll5        0.86      0.01 0.84  0.87</span></span>
-<span><span class="co">#&gt; ecxll4        0.85      0.01 0.83  0.87</span></span></code></pre></div>
+<span><span class="co">#&gt; ecxwb1p3      0.84      0.01 0.82  0.85</span></span>
+<span><span class="co">#&gt; ecxwb2p3      0.84      0.01 0.82  0.85</span></span>
+<span><span class="co">#&gt; ecxll4        0.85      0.01 0.84  0.87</span></span>
+<span><span class="co">#&gt; ecxll3        0.84      0.01 0.82  0.85</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; 1 model(s) failed to fit: ecxll5</span></span>
+<span><span class="co">#&gt; See ?failed_models for the priors and initial values used.</span></span></code></pre></div>
 <p>The <code>bayesmanecfit</code> object also contains all of the
 individual <code>brms</code> model fits, which can be extracted using
 the <code>pull_out</code> function. For example, we can pull out and
@@ -385,19 +421,60 @@ convergence according to Rhat:</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rhat.html">rhat</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="st">"[["</span>, <span class="st">"failed"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; nec4param    neclin    ecxlin ecx4param    ecxwb1    ecxwb2    ecxll5    ecxll4 </span></span>
-<span><span class="co">#&gt;     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE</span></span></code></pre></div>
-<p>Here we get a message because none of our models failed the default
-Rhat criterion. A more conservative cut off of 1.01 can also be used by
-changing the default argument to the desired value. In this case one
-model fails, although we note that this is a very stringent criterion,
-and we have also used less than the default <code>bayesnec</code> value
-of <code>iter</code> (10,000).</p>
+<span><span class="co">#&gt; nec3param nec4param    neclin    ecxlin    ecxexp   ecxsigm ecx4param    ecxwb1    ecxwb2  ecxwb1p3  ecxwb2p3 </span></span>
+<span><span class="co">#&gt;     FALSE      TRUE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE </span></span>
+<span><span class="co">#&gt;    ecxll4    ecxll3 </span></span>
+<span><span class="co">#&gt;      TRUE     FALSE</span></span></code></pre></div>
+<p>The default cut off is 1.01, following <span class="citation">Vehtari
+et al. (2021)</span>, whose recommendation is that Rhat should not
+exceed 1.01 at convergence. Any model returning <code>TRUE</code> here
+did not converge, and should be dropped before the set is averaged —
+note that we have also used far fewer than the default
+<code>bayesnec</code> <code>iter</code> (10,000) here, which makes
+convergence harder than it would usually be.</p>
+<p>The older and more permissive 1.05 is still available by changing the
+argument, which is useful mainly for comparison against analyses that
+predate the current recommendation:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/rhat.html">rhat</a></span><span class="op">(</span><span class="va">exp_5</span>, rhat_cutoff <span class="op">=</span> <span class="fl">1.01</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/rhat.html">rhat</a></span><span class="op">(</span><span class="va">exp_5</span>, rhat_cutoff <span class="op">=</span> <span class="fl">1.05</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="st">"[["</span>, <span class="st">"failed"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; nec4param    neclin    ecxlin ecx4param    ecxwb1    ecxwb2    ecxll5    ecxll4 </span></span>
-<span><span class="co">#&gt;     FALSE     FALSE     FALSE      TRUE     FALSE     FALSE     FALSE     FALSE</span></span></code></pre></div>
+<span><span class="co">#&gt; nec3param nec4param    neclin    ecxlin    ecxexp   ecxsigm ecx4param    ecxwb1    ecxwb2  ecxwb1p3  ecxwb2p3 </span></span>
+<span><span class="co">#&gt;     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE </span></span>
+<span><span class="co">#&gt;    ecxll4    ecxll3 </span></span>
+<span><span class="co">#&gt;     FALSE     FALSE</span></span></code></pre></div>
+<p><code><a href="../reference/rhat.html">rhat()</a></code> reports Rhat alone. <code><a href="../reference/check_sampling.html">check_sampling()</a></code>
+reports all three sampler diagnostics for each candidate model — Rhat,
+effective sample size and divergent transitions:</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/check_sampling.html">check_sampling</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">)</span></span>
+<span><span class="co">#&gt;        model max_rhat  min_ess min_ess_ratio n_divergent failed</span></span>
+<span><span class="co">#&gt; 1  nec3param 1.009273 332.1574     0.2075984           0   TRUE</span></span>
+<span><span class="co">#&gt; 2  nec4param 1.010144 480.7366     0.3004604           0   TRUE</span></span>
+<span><span class="co">#&gt; 3     neclin 1.005700 624.0328     0.3900205           0  FALSE</span></span>
+<span><span class="co">#&gt; 4     ecxlin 1.007916 626.0950     0.3913094           0  FALSE</span></span>
+<span><span class="co">#&gt; 5     ecxexp 1.008185 697.0696     0.4356685           0  FALSE</span></span>
+<span><span class="co">#&gt; 6    ecxsigm 1.004028 556.1325     0.3475828           0  FALSE</span></span>
+<span><span class="co">#&gt; 7  ecx4param 1.004052 754.9726     0.4718579           0  FALSE</span></span>
+<span><span class="co">#&gt; 8     ecxwb1 1.006168 681.2412     0.4257757           0  FALSE</span></span>
+<span><span class="co">#&gt; 9     ecxwb2 1.009685 598.0465     0.3737791           0  FALSE</span></span>
+<span><span class="co">#&gt; 10  ecxwb1p3 1.006678 705.5896     0.4409935           0  FALSE</span></span>
+<span><span class="co">#&gt; 11  ecxwb2p3 1.009592 842.8158     0.5267599           0  FALSE</span></span>
+<span><span class="co">#&gt; 12    ecxll4 1.010013 517.1654     0.3232284           0   TRUE</span></span>
+<span><span class="co">#&gt; 13    ecxll3 1.002405 758.4739     0.4740462           0  FALSE</span></span></code></pre></div>
+<p><code><a href="../reference/screen_models.html">screen_models()</a></code> screens on those three together and
+drops every candidate that failed. It reports what went and why, and
+that message is the record of the exclusion: a step that removes models
+without naming them cannot be written up.</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">exp_5_screened</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/screen_models.html">screen_models</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Dropping 3 of 13 candidate models that failed the sampler screen:</span></span>
+<span><span class="co">#&gt;   -  nec3param: ESS 332.2</span></span>
+<span><span class="co">#&gt;   -  nec4param: Rhat 1.01</span></span>
+<span><span class="co">#&gt;   -  ecxll4: Rhat 1.01</span></span>
+<span><span class="co">#&gt; Fitted models are: neclin ecxlin ecxexp ecxsigm ecx4param ecxwb1 ecxwb2 ecxwb1p3 ecxwb2p3 ecxll3</span></span></code></pre></div>
+<p>Here it removed 3 of the 13 candidates, naming each one and the
+diagnostic it failed. <code>exp_5_screened</code> holds the candidates
+that passed; <code>exp_5</code> still holds all of them.</p>
 </div>
 <div class="section level4">
 <h4 id="extracting-toxicity-values">Extracting toxicity values<a class="anchor" aria-label="anchor" href="#extracting-toxicity-values"></a>
@@ -417,7 +494,7 @@ argument and can be used to pull a single model out (as above) or to
 pull out a specific set of models.</p>
 <p>We can use this to obtain first a set of <em>NEC</em> only models
 from the existing set.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_5_nec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">exp_5</span>, model <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span></span></code></pre></div>
 <p>In this case, because we have already fitted <code>"decline"</code>
 models, we can ignore the message regarding the missing <em>NEC</em>
@@ -434,23 +511,23 @@ the model with the highest weight is <strong>nec4param</strong>.</p>
 this using our all model set, because it is valid to use <em>NEC</em>
 models for estimating <em>ECx</em> (see more information in the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model
 details</a> vignette).</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ECx10</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_5</span>, ecx_val <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
 <span><span class="va">ECx50</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_5</span>, ecx_val <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span>
 <span><span class="va">ECx10</span></span>
 <span><span class="co">#&gt;      Q50     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 3.641915 2.699609 4.177541 </span></span>
+<span><span class="co">#&gt; 3.624947 2.776549 4.182345 </span></span>
 <span><span class="co">#&gt; attr(,"resolution")</span></span>
-<span><span class="co">#&gt; [1] 1000</span></span>
+<span><span class="co">#&gt; [1] 200</span></span>
 <span><span class="co">#&gt; attr(,"ecx_val")</span></span>
 <span><span class="co">#&gt; [1] 10</span></span>
 <span><span class="co">#&gt; attr(,"toxicity_estimate")</span></span>
 <span><span class="co">#&gt; [1] "ecx"</span></span>
 <span><span class="va">ECx50</span></span>
 <span><span class="co">#&gt;      Q50     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 5.100009 4.842115 5.357903 </span></span>
+<span><span class="co">#&gt; 5.086540 4.838239 5.365963 </span></span>
 <span><span class="co">#&gt; attr(,"resolution")</span></span>
-<span><span class="co">#&gt; [1] 1000</span></span>
+<span><span class="co">#&gt; [1] 200</span></span>
 <span><span class="co">#&gt; attr(,"ecx_val")</span></span>
 <span><span class="co">#&gt; [1] 50</span></span>
 <span><span class="co">#&gt; attr(,"toxicity_estimate")</span></span>
@@ -458,11 +535,11 @@ details</a> vignette).</p>
 <p>The weighted <em>NEC</em> estimates can be extracted directly from
 the <em>NEC</em> model set object, as they are an explicit parameter in
 these models.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">NECvals</span> <span class="op">&lt;-</span> <span class="va">exp_5_nec</span><span class="op">$</span><span class="va">w_ne</span></span>
 <span><span class="va">NECvals</span></span>
 <span><span class="co">#&gt; Estimate     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 3.528531 3.129615 4.031603</span></span></code></pre></div>
+<span><span class="co">#&gt; 3.531917 3.145371 4.100437</span></span></code></pre></div>
 <p>Note that the new <em>NEC</em> estimates from the
 <strong>nec</strong>-containing model fits are slightly higher than
 those reported in the summary output of all the fitted models. This can
@@ -477,7 +554,7 @@ posteriors vigenette</a>.</p>
 <p>Now we can make a combined plot of our output, showing the model
 averaged <em>NEC</em> model and the “all averaged model”, along with the
 relevant thresholds.</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">preds</span> <span class="op">&lt;-</span> <span class="va">exp_5_nec</span><span class="op">$</span><span class="va">w_pred_vals</span><span class="op">$</span><span class="va">data</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_5</span>, nec <span class="op">=</span> <span class="cn">FALSE</span>, all <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">+</span></span>
@@ -523,7 +600,7 @@ another and there are usually more of them than there are chains.</p>
 <p><code><a href="../reference/bnec.html">bnec()</a></code> fits the models one at a time unless a <a href="https://cran.r-project.org/package=future" class="external-link"><code>future</code></a>
 plan says otherwise. Setting one before the call is all that is
 required:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://future.futureverse.org" class="external-link">future</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="va">multisession</span>, workers <span class="op">=</span> <span class="fl">8</span><span class="op">)</span></span>
 <span><span class="va">exp_5_par</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"decline"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">df_</span>,</span>
@@ -725,7 +802,7 @@ too.</p>
 </h4>
 <p>The two levels are not exclusive. Passing <code>cores</code> yourself
 is left alone by <code><a href="../reference/bnec.html">bnec()</a></code>, and nests deliberately:</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="va">multisession</span>, workers <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="va">exp_5_nested</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"decline"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">df_</span>,</span>
 <span>                     iter <span class="op">=</span> <span class="fl">2e3</span>, cores <span class="op">=</span> <span class="fl">4</span>, seed <span class="op">=</span> <span class="fl">322</span><span class="op">)</span></span>
@@ -818,7 +895,7 @@ band. Seven levels of eleven equations is 22 rounds against 21 at four
 workers, and 11 against 14 at eight.</p>
 <p>To drive both loops, nest the plan, which is how <code>future</code>
 asks for it:</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://future.futureverse.org" class="external-link">future</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">tweak</a></span><span class="op">(</span><span class="va">multisession</span>, workers <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>,</span>
 <span>          <span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">tweak</a></span><span class="op">(</span><span class="va">multisession</span>, workers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/AsIs.html" class="external-link">I</a></span><span class="op">(</span><span class="fl">4</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
@@ -929,6 +1006,14 @@ Models</em>. <a href="https://mc-stan.org/loo/" class="external-link">https://mc
 Vehtari, Aki, Andrew Gelman, and Jonah Gabry. 2017. <span>“Practical
 Bayesian Model Evaluation Using Leave-One-Out Cross-Validation and
 WAIC.”</span> <em>Statistics and Computing</em> 27: 1413–32. <a href="https://doi.org/10.1007/s11222-016-9696-4" class="external-link">https://doi.org/10.1007/s11222-016-9696-4</a>.
+</div>
+<div id="ref-Vehtari2021" class="csl-entry">
+Vehtari, Aki, Andrew Gelman, Daniel Simpson, Bob Carpenter, and
+Paul-Christian Bürkner. 2021. <span>“Rank-Normalization, Folding, and
+Localization: An Improved
+<span><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>R</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\widehat{R}</annotation></semantics></math></span>
+for Assessing Convergence of <span>MCMC</span> (with
+Discussion).”</span> <em>Bayesian Analysis</em> 16 (2): 667–718. <a href="https://doi.org/10.1214/20-BA1221" class="external-link">https://doi.org/10.1214/20-BA1221</a>.
 </div>
 <div id="ref-Yao2018" class="csl-entry">
 Yao, Yuling, Aki Vehtari, Daniel Simpson, and Andrew Gelman. 2018.

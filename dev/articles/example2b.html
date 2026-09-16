@@ -78,6 +78,9 @@
     <li>
       <a href="../articles/example7.html">Modelling growth data and other potentially negative response values</a>
     </li>
+    <li>
+      <a href="../articles/example9.html">A complete analysis workflow</a>
+    </li>
   </ul>
 </li>
 <li>
@@ -155,26 +158,27 @@ implemented model groups can be seen using:</p>
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/">bayesnec</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/models.html">models</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; $nec</span></span>
-<span><span class="co">#&gt;  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"        "neclinhorme"  </span></span>
-<span><span class="co">#&gt;  [8] "nechormepwr"   "nechorme4pwr"  "nechormepwr01"</span></span>
+<span><span class="co">#&gt;  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"       </span></span>
+<span><span class="co">#&gt;  [7] "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01"</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $ecx</span></span>
-<span><span class="co">#&gt;  [1] "ecx4param"   "ecxlin"      "ecxexp"      "ecxsigm"     "ecxwb1"      "ecxwb2"      "ecxwb1p3"    "ecxwb2p3"   </span></span>
-<span><span class="co">#&gt;  [9] "ecxll5"      "ecxll4"      "ecxll3"      "ecxhormebc4" "ecxhormebc5"</span></span>
+<span><span class="co">#&gt;  [1] "ecx4param"   "ecxlin"      "ecxexp"      "ecxsigm"     "ecxwb1"      "ecxwb2"      "ecxwb1p3"   </span></span>
+<span><span class="co">#&gt;  [8] "ecxwb2p3"    "ecxll5"      "ecxll4"      "ecxll3"      "ecxhormebc4" "ecxhormebc5"</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $all</span></span>
-<span><span class="co">#&gt;  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"        "neclinhorme"  </span></span>
-<span><span class="co">#&gt;  [8] "nechormepwr"   "nechorme4pwr"  "nechormepwr01" "ecxlin"        "ecxexp"        "ecxsigm"       "ecx4param"    </span></span>
-<span><span class="co">#&gt; [15] "ecxwb1"        "ecxwb2"        "ecxwb1p3"      "ecxwb2p3"      "ecxll5"        "ecxll4"        "ecxll3"       </span></span>
-<span><span class="co">#&gt; [22] "ecxhormebc4"   "ecxhormebc5"  </span></span>
+<span><span class="co">#&gt;  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"       </span></span>
+<span><span class="co">#&gt;  [7] "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01" "ecxlin"        "ecxexp"       </span></span>
+<span><span class="co">#&gt; [13] "ecxsigm"       "ecx4param"     "ecxwb1"        "ecxwb2"        "ecxwb1p3"      "ecxwb2p3"     </span></span>
+<span><span class="co">#&gt; [19] "ecxll5"        "ecxll4"        "ecxll3"        "ecxhormebc4"   "ecxhormebc5"  </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $bot_free</span></span>
-<span><span class="co">#&gt;  [1] "nec3param"     "nechorme"      "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"   "ecxlin"       </span></span>
-<span><span class="co">#&gt;  [8] "ecxexp"        "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"      "ecxll3"        "ecxhormebc4"   "nechormepwr01"</span></span>
+<span><span class="co">#&gt;  [1] "nec3param"     "nechorme"      "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"  </span></span>
+<span><span class="co">#&gt;  [7] "ecxlin"        "ecxexp"        "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"      "ecxll3"       </span></span>
+<span><span class="co">#&gt; [13] "ecxhormebc4"   "nechormepwr01"</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $zero_bounded</span></span>
-<span><span class="co">#&gt;  [1] "nec3param"     "nechorme"      "necsigm"       "nechormepwr"   "nechormepwr01" "ecxexp"        "ecxsigm"      </span></span>
-<span><span class="co">#&gt;  [8] "ecxwb1p3"      "ecxwb2p3"      "ecxll3"        "ecxhormebc4"  </span></span>
+<span><span class="co">#&gt;  [1] "nec3param"     "nechorme"      "necsigm"       "nechormepwr"   "nechormepwr01" "ecxexp"       </span></span>
+<span><span class="co">#&gt;  [7] "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"      "ecxll3"        "ecxhormebc4"  </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $decline</span></span>
 <span><span class="co">#&gt;  [1] "nec3param" "nec4param" "neclin"    "ecxlin"    "ecxexp"    "ecxsigm"   "ecx4param" "ecxwb1"    "ecxwb2"   </span></span>
@@ -338,14 +342,28 @@ Binomial, Beta-Binomial) using an <code>"identity"</code> link. These
 restrictions do not need to be controlled by the user, as a call to
 <code>bnec</code> with <code>models = "all"</code> in the formula will
 simply exclude inappropriate models, albeit with a message.</p>
-<p>Strictly speaking, models with a linear hormesis increase are not
-suitable for modelling responses that are 0, 1-bounded (Binomial-, Beta-
-and Beta-Binomial-distributed), however they are currently allowed in
-<code>bayesnec</code>, with a reasonable fit achieved through a
-combination of the appropriate distribution being applied to the
-response, and <code>bayesnec</code>’s <code>make_inits</code> function
-which ensures initial values passed to <code>brms</code> yield response
-values within the range of the user-supplied response data.</p>
+<p>An exclusion also applies to the 0, 1-bounded families (Binomial,
+Beta and Beta-Binomial) on an <code>"identity"</code> link, and it
+reaches two of the hormesis equations. <strong>nechormepwr</strong> and
+<strong>nechorme4pwr</strong> include the hormesis term
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>x</mi><mi>i</mi><mrow><mn>1</mn><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><mo stretchy="false" form="postfix">)</mo></mrow></msubsup><annotation encoding="application/x-tex">x_i^{1/(1+e^{\alpha})}</annotation></semantics></math>,
+which has no coefficient to shrink it. The term approaches 1 as
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math>
+grows, at every concentration above zero, so for any
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>τ</mi><annotation encoding="application/x-tex">\tau</annotation></semantics></math>
+above zero there is an
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math>
+at which the mean exceeds 1. That holds whatever the predictor range,
+which is why the exclusion does not depend on the data supplied. The
+other hormesis equations — <strong>nechorme</strong>,
+<strong>nechorme4</strong>, <strong>nechormepwr01</strong>,
+<strong>ecxhormebc4</strong> and <strong>ecxhormebc5</strong> — are
+fitted on these families, because their increase prior to
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>
+is scaled by a parameter. The initial-value search starts them inside
+the support: it draws from the priors, and accepts a draw only where the
+whole initial curve falls within a band built from the replicated level
+means and their spread, intersected with the support of the mean.</p>
 </div>
 <div class="section level2">
 <h2 id="model-definitions">Model definitions<a class="anchor" aria-label="anchor" href="#model-definitions"></a>
@@ -542,8 +560,8 @@ with the respective <code>brmsformula</code> being</p>
 <div class="section level5">
 <h5 id="ecxhormebc4">ecxhormebc4<a class="anchor" aria-label="anchor" href="#ecxhormebc4"></a>
 </h5>
-<p>The <strong>ecxhormebc4</strong> model is a 5-parameter log-logistic
-model similar to the <strong>exchormebc5</strong> model but with a lower
+<p>The <strong>ecxhormebc4</strong> model is a 4 parameter log-logistic
+model similar to the <strong>ecxhormebc5</strong> model but with a lower
 bound of 0, given by the equation:
 <math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mn>0</mn><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mn>0</mn><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = 0 + (\tau - 0 + e^{\alpha} x)/ (1 + e^{e^{\beta} (x_i - \omega)})</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
@@ -659,10 +677,10 @@ increase in the response variable at concentrations below
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>.
 The model is 0-bounded, thus not suitable for Gaussian response data or
 the use of a <code>"logit"</code> or <code>"log"</code> link function.
-Because the model can generate predictions &gt; 1 it should not be used
-for Binomial and Beta distributions with <code>"identity"</code> link.
-In this case the <strong>nechromepwr01</strong> model should be
-used.</p>
+Because the model can generate predictions above 1 it is excluded from
+the Binomial, Beta and Beta-Binomial distributions with an
+<code>"identity"</code> link. <strong>nechormepwr01</strong> is the
+power-increase hormesis equation that is bounded on those families.</p>
 </div>
 <div class="section level5">
 <h5 id="neclinhorme">neclinhorme<a class="anchor" aria-label="anchor" href="#neclinhorme"></a>
@@ -732,10 +750,10 @@ with the respective <code>brmsformula</code> being</p>
 <span class="citation">(Mattson 2008)</span>, allowing an initial power
 increase in the response variable at concentrations below
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>.
-Because the model can generate predictions &gt; 1 it should not be used
-for Binomial and Beta distributions with <code>"identity"</code> link.
-In this case the <strong>nechromepwr01</strong> model should be
-used.</p>
+Because the model can generate predictions above 1 it is excluded from
+the Binomial, Beta and Beta-Binomial distributions with an
+<code>"identity"</code> link. <strong>nechormepwr01</strong> is the
+power-increase hormesis equation that is bounded on those families.</p>
 </div>
 <div class="section level5">
 <h5 id="nechormepwr01">nechormepwr01<a class="anchor" aria-label="anchor" href="#nechormepwr01"></a>
@@ -760,7 +778,11 @@ increase in the response variable at concentrations below
 The model is 0-bounded, thus not suitable for Gaussian response data or
 the use of a <code>"logit"</code> or <code>"log"</code> link function.
 In this case the linear version (<strong>neclinhorme</strong>) should be
-used.</p>
+used. The increase of <strong>nechormepwr01</strong> is bounded above at
+1 by construction, which is what keeps it available on the 0, 1-bounded
+families. The same bound excludes it from the 0, <code>Inf</code>
+bounded families (Gamma, Poisson, Negative Binomial with an
+<code>"identity"</code> link), whose response may exceed 1.</p>
 </div>
 <div class="section level5">
 <h5 id="necsigm">necsigm<a class="anchor" aria-label="anchor" href="#necsigm"></a>
@@ -784,6 +806,121 @@ there is an upper plateau in the data the location of
 may become ambiguous. Estimation of No-Effect-Concentrations using this
 model are not currently recommended without further testing.</p>
 </div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="relationship-to-the-drc-nec-models">Relationship to the <code>drc</code> NEC models<a class="anchor" aria-label="anchor" href="#relationship-to-the-drc-nec-models"></a>
+</h2>
+<p>Users arriving from the <code>drc</code> package <span class="citation">(Ritz et al. 2016)</span> often ask which
+<code>bayesnec</code> model corresponds to <code>drc</code>’s
+<code>NEC.2()</code>, <code>NEC.3()</code> and <code>NEC.4()</code>. Two
+of the three are already here, and they are not approximations of one
+another: given
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>=</mo><msup><mi>e</mi><mi>β</mi></msup></mrow><annotation encoding="application/x-tex">b = e^{\beta}</annotation></semantics></math>
+the two implementations agree to the last bit, over a grid spanning
+every parameter including thresholds outside the predictor range.</p>
+<p><code>drc</code>’s three functions are wrappers around a single
+generator that differ only in which parameters they hold fixed:</p>
+<table class="table">
+<colgroup>
+<col width="15%">
+<col width="35%">
+<col width="48%">
+</colgroup>
+<thead><tr class="header">
+<th><code>drc</code></th>
+<th>fixes</th>
+<th><code>bayesnec</code></th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>NEC.4()</code></td>
+<td>nothing</td>
+<td><strong>nec4param</strong></td>
+</tr>
+<tr class="even">
+<td><code>NEC.3()</code></td>
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>c</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">c = 0</annotation></semantics></math></td>
+<td><strong>nec3param</strong></td>
+</tr>
+<tr class="odd">
+<td><code>NEC.2()</code></td>
+<td>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>c</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">c = 0</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>=</mo></mrow><annotation encoding="application/x-tex">d =</annotation></semantics></math><code>upper</code>
+</td>
+<td>none, by choice — see below</td>
+</tr>
+</tbody>
+</table>
+<p>The parameters map as
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>c</mi><mo>=</mo><mi>δ</mi></mrow><annotation encoding="application/x-tex">c = \delta</annotation></semantics></math>
+(<code>"bot"</code>),
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>=</mo><mi>τ</mi></mrow><annotation encoding="application/x-tex">d = \tau</annotation></semantics></math>
+(<code>"top"</code>),
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>e</mi><mo>=</mo><mi>η</mi></mrow><annotation encoding="application/x-tex">e = \eta</annotation></semantics></math>
+(<code>"nec"</code>) and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>=</mo><msup><mi>e</mi><mi>β</mi></msup></mrow><annotation encoding="application/x-tex">b = e^{\beta}</annotation></semantics></math>
+(<code>exp("beta")</code>).</p>
+<p>That last one is the only substantive difference between the two
+model families. <code>drc</code> estimates the decay rate
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math>
+directly; <code>bayesnec</code> estimates
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math>
+and uses
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><mi>β</mi></msup><annotation encoding="application/x-tex">e^{\beta}</annotation></semantics></math>,
+so the decay rate is positive by construction. This is a
+reparameterisation of the same model over
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">b &gt; 0</annotation></semantics></math>,
+which is the whole of the sensible parameter space for a decline. It
+does mean <code>drc</code> can return
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>&lt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">b &lt; 0</annotation></semantics></math>
+— a threshold followed by unbounded exponential growth — which
+<code>bayesnec</code> cannot represent and deliberately does not. A
+threshold followed by an <em>increase</em> is available here as
+<strong>nec4param</strong> with
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mo>&gt;</mo><mi>τ</mi></mrow><annotation encoding="application/x-tex">\delta &gt; \tau</annotation></semantics></math>,
+which stays bounded.</p>
+<p>Note that the reparameterisation runs in that direction and not the
+other. Converting a <code>drc</code> estimate by setting
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi><mo>=</mo><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>b</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\beta = \log(b)</annotation></semantics></math>
+does not recover
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math>
+exactly, because
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><mrow><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>b</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup><annotation encoding="application/x-tex">e^{\log(b)}</annotation></semantics></math>
+is not the identity in floating point; the resulting curves differ by
+round-off, on the order of
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mrow><mi>−</mi><mn>15</mn></mrow></msup><annotation encoding="application/x-tex">10^{-15}</annotation></semantics></math>.
+That is a property of the round trip rather than of either model, but it
+is worth knowing before concluding that two fits disagree.</p>
+<p>One point of possible confusion in the <code>drc</code> documentation
+is worth flagging. The model given in <code>?drc::NEC</code> carries an
+additional log-logistic term,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mn>2</mn></msub><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><msub><mi>b</mi><mn>2</mn></msub><mo stretchy="false" form="prefix">(</mo><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo>−</mo><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><msub><mi>e</mi><mn>2</mn></msub><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">)</mo></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">d_2 / (1 + e^{b_2(\log(x) - \log(e_2))})</annotation></semantics></math>,
+reproducing the general model of <span class="citation">Pires et al.
+(2002)</span>. The function <code>drc</code> actually fits does not
+include that term, so the equivalences in the table above are with the
+<em>fitted</em> model rather than with the documented one.</p>
+<div class="section level3">
+<h3 id="why-there-is-no-equivalent-of-nec-2">Why there is no equivalent of <code>NEC.2()</code><a class="anchor" aria-label="anchor" href="#why-there-is-no-equivalent-of-nec-2"></a>
+</h3>
+<p><code>NEC.2()</code> holds the upper asymptote at a constant, by
+default 1. Fixing
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>τ</mi><annotation encoding="application/x-tex">\tau</annotation></semantics></math>
+in this way asserts that the control response is exactly that constant
+with no error, which is only defensible for data normalised to a
+control.</p>
+<p>Normalising to an <em>estimated</em> control is a practice
+<code>bayesnec</code> warns about: it discards the control’s uncertainty
+and propagates none of it into the <em>NEC</em>, so the resulting
+interval is narrower than the data support. Where the upper bound is
+genuinely structural rather than estimated — a proportion that cannot
+exceed one for reasons of construction rather than of measurement — the
+same constraint is available without a new model, either as a
+<code>brms</code> <code><a href="https://paulbuerkner.com/brms/reference/constant.html" class="external-link">constant()</a></code> prior on <code>"top"</code> or
+as a tight informative prior. Both keep the assumption explicit in the
+prior, where it can be inspected, rather than burying it in the choice
+of equation.</p>
 </div>
 </div>
 <div class="section level2">
@@ -812,6 +949,11 @@ Safety</em> 73 (2): 123–31.
 <div id="ref-Mattson2008" class="csl-entry">
 Mattson, Mark P. 2008. <span>“Hormesis Defined.”</span> <em>Ageing
 Research Reviews</em> 7 (1): 1–7. https://doi.org/<a href="https://doi.org/10.1016/j.arr.2007.08.007" class="external-link">https://doi.org/10.1016/j.arr.2007.08.007</a>.
+</div>
+<div id="ref-Pires2002" class="csl-entry">
+Pires, Ana M., João A. Branco, Ana Picado, and Elsa Mendonça. 2002.
+<span>“<span class="nocase">Models for the estimation of a ’no effect
+concentration’</span>.”</span> <em>Environmetrics</em> 13: 15–27. <a href="https://doi.org/10.1002/env.501" class="external-link">https://doi.org/10.1002/env.501</a>.
 </div>
 <div id="ref-Ritz2016" class="csl-entry">
 Ritz, Christian, Florent Baty, Jens C Streibig, and Daniel Gerhard.
