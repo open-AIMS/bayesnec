@@ -73,7 +73,7 @@ hurdle_dpar <- function(family) {
 #' @return An object of class \code{\link[stats]{family}}.
 #'
 #' @importFrom stats Gamma poisson
-#' @importFrom brms Beta negbinomial
+#' @importFrom brms Beta brmsfamily negbinomial
 #'
 #' @noRd
 hurdle_mu_family <- function(family) {
@@ -83,7 +83,7 @@ hurdle_mu_family <- function(family) {
   switch(unname(hurdle_mu_fams[[fam_tag]]),
          Gamma = Gamma(link = link),
          beta = Beta(link = link),
-         poisson = poisson(link = link),
+         poisson = brmsfamily("poisson", link = link),
          negbinomial = negbinomial(link = link),
          stop("No mu family defined for ", fam_tag, ".", call. = FALSE))
 }

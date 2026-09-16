@@ -23,6 +23,13 @@ test_that("count hurdle mu blocks use their base count families", {
   expect_identical(
     bayesnec:::hurdle_mu_family("hurdle_poisson")$link, "identity"
   )
+  for (link in c("softplus", "squareplus")) {
+    mu_family <- bayesnec:::hurdle_mu_family(
+      brms::hurdle_poisson(link = link)
+    )
+    expect_identical(mu_family$family, "poisson")
+    expect_identical(mu_family$link, link)
+  }
 })
 
 test_that("count hurdle model restrictions follow the mu block", {
