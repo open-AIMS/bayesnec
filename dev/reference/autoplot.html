@@ -96,7 +96,7 @@ plotting method.</p>
 
     <div id="ref-usage">
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for class 'bayesnecfit'</span></span>
-<span><span class="fu">autoplot</span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span>, nec <span class="op">=</span> <span class="cn">TRUE</span>, ecx <span class="op">=</span> <span class="cn">FALSE</span>, xform <span class="op">=</span> <span class="va">identity</span><span class="op">)</span></span>
+<span><span class="fu">autoplot</span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span>, nec <span class="op">=</span> <span class="cn">TRUE</span>, ecx <span class="op">=</span> <span class="cn">FALSE</span>, xform <span class="op">=</span> <span class="va">identity</span>, group <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'bayesmanecfit'</span></span>
 <span><span class="fu">autoplot</span><span class="op">(</span></span>
@@ -109,8 +109,12 @@ plotting method.</p>
 <span>  plot <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  ask <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  newpage <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  multi_facet <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<span>  multi_facet <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  group <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'bayesnecgroupfit'</span></span>
+<span><span class="fu">autoplot</span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span>, nec <span class="op">=</span> <span class="cn">TRUE</span>, ecx <span class="op">=</span> <span class="cn">FALSE</span>, xform <span class="op">=</span> <span class="va">identity</span>, group <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -118,8 +122,8 @@ plotting method.</p>
 
 
 <dl><dt id="arg-object">object<a class="anchor" aria-label="anchor" href="#arg-object"></a></dt>
-<dd><p>An object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or
-<code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code>.</p></dd>
+<dd><p>An object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code>,
+<code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> or <code><a href="bayesnecgroupfit-class.html">bayesnecgroupfit</a></code>.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
@@ -137,6 +141,14 @@ plotting method.</p>
 <dt id="arg-xform">xform<a class="anchor" aria-label="anchor" href="#arg-xform"></a></dt>
 <dd><p>A function to apply to the returned estimated concentration
 values.</p></dd>
+
+
+<dt id="arg-group">group<a class="anchor" aria-label="anchor" href="#arg-group"></a></dt>
+<dd><p>An optional character string naming a group-level variable in
+the fitted formula. Observations are joined through their per-level means;
+a level recorded at one predictor value is marked at its mean instead. A
+<code>bayesnecgroupfit</code> uses its fitted grouping variable automatically and
+draws one panel per level.</p></dd>
 
 
 <dt id="arg-all-models">all_models<a class="anchor" aria-label="anchor" href="#arg-all-models"></a></dt>
