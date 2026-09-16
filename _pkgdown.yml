@@ -26,3 +26,46 @@ template:
 # collide again, silently. See #230.
 development:
   mode: auto
+
+# The articles index and the Articles dropdown are both ordered from this block.
+# Without it pkgdown lists the vignettes alphabetically by file name, which is
+# the order in which they happened to be written rather than a reading order.
+# See #363 for the cross-reference audit the order below follows: no vignette is
+# placed before one it sends the reader to.
+#
+# The `navbar:` keys are not decoration. `pkgdown:::navbar_articles()` replaces
+# the Articles dropdown with a plain link to the index as soon as an `articles:`
+# block exists and no section sets `navbar:`, so omitting them would drop the
+# dropdown rather than reorder it. A section whose `navbar:` is a string gets a
+# divider and that heading in the dropdown; `navbar: ~` on the first section
+# gives its entries with no leading divider. All four sections are listed, so
+# the dropdown holds every vignette and pkgdown appends no "More articles..."
+# link.
+#
+# `data_articles_index()` aborts the build on a vignette that is present but
+# unlisted, so this block cannot diverge from the vignettes without the build
+# saying so. A vignette added with no entry here fails the pkgdown job.
+# `example8` is added by #228 alongside the vignette itself, under `Designs and
+# response types`.
+articles:
+  - title: Getting started
+    navbar: ~
+    contents:
+      - example5
+      - example1
+      - example2
+      - example2b
+  - title: Extending the analysis
+    navbar: Extending the analysis
+    contents:
+      - example3
+      - example4
+  - title: Designs and response types
+    navbar: Designs and response types
+    contents:
+      - example6
+      - example7
+  - title: A worked analysis
+    navbar: A worked analysis
+    contents:
+      - example9
