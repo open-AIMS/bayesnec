@@ -1395,7 +1395,7 @@ maximum, the divisor must be a constant fixed in advance rather than one
 computed from the data under analysis. Dividing every observation by the same
 random quantity — a control mean, or an observed maximum — induces correlation
 across observations, discards the uncertainty in the divisor, and biases
-effective doses upwards by Jensen's inequality [@ritz2026].
+effective doses upwards by Jensen's inequality [@Ritz2026].
 
 The operative distinction is not random versus fixed but **shared versus
 per-unit**. Dividing each unit by its own baseline also uses a random quantity,
