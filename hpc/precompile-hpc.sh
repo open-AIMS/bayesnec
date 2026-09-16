@@ -6,6 +6,7 @@
 #   ./hpc/precompile-hpc.sh --no-wait example7      # submit and return the id
 #   ./hpc/precompile-hpc.sh --fetch example7        # collect a finished run
 #   ./hpc/precompile-hpc.sh --workers 16 example8   # fit each model set in parallel
+#   ./hpc/precompile-hpc.sh --slot 228-fast --workers 16 example8
 #   ./hpc/precompile-hpc.sh                         # every vignette
 #
 # Run from the repository root. It copies the working tree, not the commit, so
@@ -30,12 +31,16 @@ HOST="${HOST:-}"
   echo "HOST is not set. Copy hpc/local.conf.example to hpc/local.conf and put" >&2
   echo "your cluster account and login node in it, or set HOST in the call." >&2
   exit 1; }
-DEST="${DEST:-/export/scratch/${HOST%%@*}/bayesnec-precompile}"
+BASE_DEST="${DEST:-/export/scratch/${HOST%%@*}/bayesnec-precompile}"
+DEST="$BASE_DEST"
 SIF="${SIF:-}"
 POLL="${POLL:-60}"
 
 wait_for_job=1
 fetch_only=0
+# A slot gives a concurrent run its own deployed tree, library, output, job
+# name and Stan cache. Without it the original single-deployment guard applies.
+slot=""
 # --workers N fits the models of one set in parallel, under a future plan set by
 # precompile.R. Unset, a vignette is rendered exactly as it was before #184, with
 # the allocation spent on chains. The useful width is the number of equations in
@@ -44,23 +49,38 @@ fetch_only=0
 workers=""
 args=()
 want_workers=0
+want_slot=0
 for a in "$@"; do
   if [ "$want_workers" -eq 1 ]; then workers="$a"; want_workers=0; continue; fi
+  if [ "$want_slot" -eq 1 ]; then slot="$a"; want_slot=0; continue; fi
   case "$a" in
     --no-wait) wait_for_job=0 ;;
     --fetch) fetch_only=1 ;;
     --workers) want_workers=1 ;;
     --workers=*) workers="${a#*=}" ;;
+    --slot) want_slot=1 ;;
+    --slot=*) slot="${a#*=}" ;;
     -*) echo "unknown option: $a" >&2; exit 2 ;;
     *) args+=("$a") ;;
   esac
 done
 [ "$want_workers" -eq 0 ] || { echo "--workers needs a number" >&2; exit 2; }
+[ "$want_slot" -eq 0 ] || { echo "--slot needs a name" >&2; exit 2; }
 if [ -n "$workers" ]; then
   case "$workers" in
     ''|*[!0-9]*) echo "--workers must be a positive integer, got: $workers" >&2; exit 2 ;;
   esac
 fi
+if [ -n "$slot" ]; then
+  case "$slot" in
+    *[!A-Za-z0-9_-]*|'')
+      echo "--slot may contain only letters, numbers, underscores and hyphens" >&2
+      exit 2 ;;
+  esac
+  DEST="${BASE_DEST}-${slot}"
+fi
+JOB_NAME="bnec-precompile${slot:+-$slot}"
+DEPLOY_RECORD=".last-deploy${slot:+-$slot}"
 
 mapfile -t available < <(cd vignettes && ls -1 *.Rmd.orig | sed 's/\.Rmd\.orig$//')
 [ "${#available[@]}" -gt 0 ] || {
@@ -98,7 +118,7 @@ fetch() {
   # Written by the deploy in this same invocation, or read back from the last
   # one when --fetch is used on its own.
   local want="${DEPLOY_ID:-}"
-  [ -n "$want" ] || want=$(cat .last-deploy 2>/dev/null || true)
+  [ -n "$want" ] || want=$(cat "$DEPLOY_RECORD" 2>/dev/null || true)
   for v in "${args[@]}"; do
     # `|| rc=$?` and not `; rc=$?`: a simple command that fails is not exempt
     # from errexit, so the plain form ended the script before either branch
@@ -151,6 +171,7 @@ if [ "$fetch_only" -eq 1 ]; then fetch; exit 0; fi
 # lock rather than refusing outright. That is what lets the day-to-day command
 # need no setting beyond HOST.
 have_local_sif=0
+link_remote_sif=0
 if [ -n "$SIF" ] && [ -f "$SIF" ]; then
   have_local_sif=1
   ./hpc/build.sh --check
@@ -161,14 +182,26 @@ else
     "sha256sum $DEST/bayesnec-precompile.sif 2>/dev/null | cut -d' ' -f1") || {
     echo "could not reach $HOST" >&2; exit 1; }
   if [ "$remote_sha" != "$lock_sha" ]; then
-    echo "No image here, and the one on $HOST is not the one this branch records." >&2
-    echo "  hpc/image.lock: $lock_sha" >&2
-    echo "  on the cluster: ${remote_sha:-none}" >&2
-    echo "Build it with ./hpc/build.sh and set SIF in hpc/local.conf, so that it" >&2
-    echo "can be copied across." >&2
-    exit 1
+    base_sha=""
+    if [ -n "$slot" ]; then
+      base_sha=$(ssh -o BatchMode=yes "$HOST" \
+        "sha256sum $BASE_DEST/bayesnec-precompile.sif 2>/dev/null | cut -d' ' -f1") || {
+        echo "could not reach $HOST" >&2; exit 1; }
+    fi
+    if [ -n "$slot" ] && [ "$base_sha" = "$lock_sha" ]; then
+      link_remote_sif=1
+      echo "==> slot $slot will reuse the matching container already on $HOST"
+    else
+      echo "No image here, and the one on $HOST is not the one this branch records." >&2
+      echo "  hpc/image.lock: $lock_sha" >&2
+      echo "  on the cluster: ${remote_sha:-none}" >&2
+      echo "Build it with ./hpc/build.sh and set SIF in hpc/local.conf, so that it" >&2
+      echo "can be copied across." >&2
+      exit 1
+    fi
+  else
+    echo "==> no local image; the one on $HOST matches hpc/image.lock"
   fi
-  echo "==> no local image; the one on $HOST matches hpc/image.lock"
 fi
 
 # A second deployment while an array is still queued would rewrite the tree, and
@@ -178,7 +211,7 @@ fi
 # job-local library is shared in the same way. The array is submitted at %1, so
 # a full run is a long time to leave that window open.
 running=$(ssh -o BatchMode=yes "$HOST" "bash -lc 'module load slurm >/dev/null 2>&1; \
-  squeue -h -u \$USER -n bnec-precompile -o %A'" || true)
+  squeue -h -u \$USER -n $JOB_NAME -o %A'" || true)
 if [ -n "$running" ]; then
   echo "a precompile job is already queued or running on $HOST:" >&2
   echo "  $(echo "$running" | tr '\n' ' ')" >&2
@@ -189,6 +222,11 @@ fi
 
 echo "==> creating $DEST on $HOST"
 ssh "$HOST" "mkdir -p $DEST/logs $DEST/out"
+if [ "$link_remote_sif" -eq 1 ]; then
+  # Both directories are on the same scratch filesystem. A hard link avoids a
+  # second 707 MB transfer and remains byte-identical to the locked image.
+  ssh "$HOST" "ln -f $BASE_DEST/bayesnec-precompile.sif $DEST/bayesnec-precompile.sif"
+fi
 
 # Excludes rather than an explicit list of what to send, so that a directory
 # added to the package later is copied rather than silently omitted. What is
@@ -231,7 +269,7 @@ rm -f .PROVENANCE.tmp
 
 # Kept so that a later `--fetch` in a separate invocation knows which deployment
 # it is collecting. Untracked; .gitignore covers it.
-printf '%s\n' "$DEPLOY_ID" > .last-deploy
+printf '%s\n' "$DEPLOY_ID" > "$DEPLOY_RECORD"
 
 printf '%s\n' "${args[@]}" > .vignettes.tmp
 rsync -a .vignettes.tmp "$HOST:$DEST/vignettes.txt"
@@ -280,7 +318,15 @@ n=${#args[@]}
 # shell this ssh opens, so the variable is set there rather than passed as an
 # sbatch option.
 WORKERS_EXPORT=""
+SLOT_EXPORT=""
 SBATCH_RES=""
+if [ -n "$slot" ]; then
+  toolchain=$( { sed -n 's/^base_digest: //p' hpc/image.lock
+                 sed -n 's/^cmdstan: //p' hpc/image.lock; } | sha256sum | cut -c1-16)
+  # A slot must not write an executable while another job may be reading or
+  # compiling the same hash. Keying by the toolchain retains the image guard.
+  SLOT_EXPORT="export BAYESNEC_STAN_CACHE=$DEST/stan-cache/$toolchain; "
+fi
 if [ -n "$workers" ]; then
   WORKERS_EXPORT="export BAYESNEC_VIGNETTE_WORKERS=$workers; "
   # One core per worker, and memory to match: each worker holds its own fit.
@@ -292,7 +338,8 @@ fi
 echo "==> submitting $n task(s)"
 JOB=$(ssh "$HOST" "bash -lc 'cd $DEST && chmod +x hpc/run.precompile && \
   module load slurm >/dev/null 2>&1; \
-  ${WORKERS_EXPORT}sbatch --parsable ${SBATCH_RES}--array=1-$n%1 hpc/run.precompile'")
+  ${SLOT_EXPORT}${WORKERS_EXPORT}sbatch --parsable --job-name=$JOB_NAME \
+  ${SBATCH_RES}--array=1-$n%1 hpc/run.precompile'")
 echo "job $JOB: ${args[*]}"
 
 if [ "$wait_for_job" -eq 0 ]; then
@@ -305,7 +352,7 @@ Submitted. To follow it:
 
 To collect the output when it finishes:
 
-  ./hpc/precompile-hpc.sh --fetch ${args[*]}
+  ./hpc/precompile-hpc.sh --fetch${slot:+ --slot $slot} ${args[*]}
 TXT
   exit 0
 fi

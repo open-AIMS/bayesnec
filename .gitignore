@@ -58,7 +58,7 @@ superceded/
 
 # Written by hpc/precompile-hpc.sh so a later --fetch knows which deployment
 # it is collecting.
-.last-deploy
+.last-deploy*
 
 # Local cluster settings for hpc/: account, login node, image path.
 # Copy hpc/local.conf.example to make one.
