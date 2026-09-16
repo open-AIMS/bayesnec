@@ -50,6 +50,100 @@ test_that("ggbnec_data returns the same frame shape for a model set", {
   expect_false("nec_vals" %in% names(without))
 })
 
+test_that("ggbnec_data returns a selected fitted grouping", {
+  skip_on_cran()
+  fit <- grouped_plot_fit()
+  grouped <- suppressMessages(ggbnec_data(fit, group = "plate",
+                                          add_nec = FALSE))
+  raw <- grouped[!is.na(grouped$y_r), ]
+  expect_equal(raw$group, fit$fit$data$plate)
+  expect_identical(attr(grouped, "group_var"), "plate")
+
+  plain <- suppressMessages(ggbnec_data(fit, add_nec = FALSE))
+  expect_false("group" %in% names(plain))
+  expect_null(attr(plain, "group_var"))
+})
+
+test_that("model-averaged plotting retains a selected fitted grouping", {
+  skip_on_cran()
+  object <- manec_example
+  object$mod_fits <- lapply(object$mod_fits, grouped_plot_fit)
+  grouped <- suppressMessages(ggbnec_data(object, group = "plate",
+                                          add_nec = FALSE))
+  expect_true("group" %in% names(grouped))
+  expect_identical(attr(grouped, "group_var"), "plate")
+  plot <- suppressMessages(autoplot(object, group = "plate", nec = FALSE))
+  expect_true(any(vapply(
+    plot$layers, function(layer) inherits(layer$stat, "StatSummary"),
+    logical(1)
+  )))
+})
+
+test_that("group must select a group-level variable from the formula", {
+  skip_on_cran()
+  fit <- grouped_plot_fit()
+  expect_error(ggbnec_data(fit, group = "missing"),
+               "must name a group-level variable")
+  expect_error(ggbnec_data(nec4param, group = "x"),
+               "formula includes a group-level variable")
+  expect_error(ggbnec_data(fit, group = character()),
+               "one non-empty column name")
+})
+
+test_that("group does not consume an existing positional dots argument", {
+  skip_on_cran()
+  expect_no_error(suppressMessages(
+    ggbnec_data(nec4param, FALSE, FALSE, identity, 50)
+  ))
+})
+
+test_that("autoplot adds per-level summaries only when grouping is requested", {
+  skip_on_cran()
+  fit <- grouped_plot_fit()
+  grouped <- suppressMessages(autoplot(fit, group = "plate", nec = FALSE))
+  plain <- suppressMessages(autoplot(fit, nec = FALSE))
+  is_summary <- function(layer) inherits(layer$stat, "StatSummary")
+  expect_true(any(vapply(grouped$layers, is_summary, logical(1))))
+  expect_false(any(vapply(plain$layers, is_summary, logical(1))))
+})
+
+test_that("a grouping confined to one predictor value uses mean markers", {
+  skip_on_cran()
+  fit <- nec4param
+  fit$fit$data$dose_group <- factor(fit$fit$data$x)
+  fit$bayesnecformula <- bayesnecformula(
+    y ~ crf(x, model = "nec4param") + ogl(dose_group)
+  )
+  plot <- suppressMessages(
+    autoplot(fit, group = "dose_group", nec = FALSE)
+  )
+  summary_layers <- Filter(
+    function(layer) inherits(layer$stat, "StatSummary"), plot$layers
+  )
+  expect_length(summary_layers, 1)
+  expect_s3_class(summary_layers[[1]]$geom, "GeomPoint")
+})
+
+test_that("grouped fits return and plot one panel per fitted level", {
+  skip_on_cran()
+  fit <- grouped_plot_fit()
+  object <- structure(
+    list(fits = list(a = fit, b = fit), group_var = "site",
+         levels = c("a", "b")),
+    class = c("bayesnecgroupfit", "bnecfit")
+  )
+  dat <- suppressMessages(ggbnec_data(object, add_nec = FALSE))
+  expect_equal(levels(dat$group), c("a", "b"))
+  expect_equal(as.integer(table(dat$group)), rep(nrow(dat) / 2, 2))
+  expect_identical(attr(dat, "group_var"), "site")
+  expect_error(ggbnec_data(object, group = "plate"),
+               "grouped by \"site\"")
+
+  plot <- suppressMessages(autoplot(object, nec = FALSE))
+  panels <- levels(plot$layers[[1]]$data$model)
+  expect_equal(panels, c("site = a", "site = b"))
+})
+
 test_that("the nec annotation is present by default and suppressible", {
   skip_on_cran()
   with_nec <- suppressMessages(ggbnec_data(nec4param))

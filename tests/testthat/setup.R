@@ -79,3 +79,17 @@ transformed_response_manec <- function(manec) {
 gg_x_max <- function(obj, ...) {
   max(suppressMessages(ggbnec_data(obj, ...))$x_e, na.rm = TRUE)
 }
+
+# Add a group-level term to a stored fit without refitting. The brms component
+# is left unchanged because the plotting path needs its fitted curve only; the
+# bayesnec formula and stored data provide the grouping metadata and values.
+grouped_plot_fit <- function(fit = nec4param) {
+  fit$fit$data$plate <- factor(rep(letters[1:4],
+                                    length.out = nrow(fit$fit$data)))
+  fit$bayesnecformula <- bayesnecformula(
+    stats::as.formula(paste0(
+      "y ~ crf(x, model = \"", fit$model, "\") + ogl(plate)"
+    ))
+  )
+  fit
+}
