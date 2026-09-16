@@ -914,6 +914,15 @@ one of its six concentrations. The colour panel has none between 2.9 and 29
 µg/L, a full decade of the axis and the widest unsampled interval in either
 endpoint.
 
+The colour panel's top concentration is worth reading carefully, because it is
+the only observation below the gap and so is the only thing that can place a
+lower asymptote. At 29 µg/L the underlying photographs average 211 of 255 on
+the grey scale at day 14, against 90 to 128 at every lower concentration, while
+the day-0 values run from 91 to 103 throughout --- so those fragments ended
+white. @flores2021 record that all corals at 29 µg/L had died by day 10. The
+point is real and the published fit uses it, but what it measures is a fragment
+that has bleached completely rather than one on a declining curve.
+
 The scenarios separate in the colour endpoint and barely at all in yield. Mean
 colour at 2.9 µg/L runs 0.728, 0.611 and 0.456 from 2018 to 2100, and at 29
 µg/L 0.173, 0.066 and 0.045. Mean yield differs by less than 0.015 between
@@ -1048,6 +1057,10 @@ about 0.9, so it covers most of the values the endpoint can take; the
 three-parameter band is 0.28 there. Both close to about 0.05 at 29 µg/L, where
 the observations resume. A three-parameter equation fixes the lower asymptote
 instead of estimating it, and so has nothing to place in the gap.
+
+The four-parameter equations are worse served than the gap alone suggests. What
+they have to estimate a lower asymptote from is one concentration, and the
+reading at that concentration is of fragments that had bleached completely.
 
 The threshold estimates differ in the same way. The three-parameter set
 returns an NSEC of 1.57 µg/L (0.66--3.87). The four-parameter set returns 2.79
