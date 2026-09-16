@@ -189,7 +189,7 @@ exp_5_nec <- pull_out(exp_5, model = "nec")
 
 In this case, because we have already fitted `"decline"` models, we can ignore the message regarding the missing *NEC* models---these are all models that are not appropriate for the family and link `bnec` selected for these data, or allow hormesis, which we did not consider in this example.
 
-Now we have two model sets, an *NEC* set, and a mixed *NEC* and *ECx* set. Of course, before we use this model set for any inference, we would need to check the chain mixing and `acf` plot for each of the input models. For the "all" set, the model with the highest weight is **nec4param**. 
+Now we have two model sets, an *NEC* set, and a mixed *NEC* and *ECx* set. Before using either for inference, check the chain mixing and the `acf` plot for each of the input models. For the "all" set, the model with the highest weight is **nec4param**. 
 
 Now we can use the `ecx` function to get *EC~10~* and *EC~50~* values. We can do this using our all model set, because it is valid to use *NEC* models for estimating *ECx* (see more information in the [Model details][e2b] vignette).
 

@@ -663,7 +663,7 @@ group, with the control flagged.
 The control is the lowest value of the predictor, which is `bayesnec`'s
 convention throughout. `check_fit()` flags that group, and both estimators read
 their reference from the posterior of the fitted mean there: `nsec()` sets its
-significance reference from it, and since version 2.2 every ECx is measured from
+significance reference from it, and every ECx is measured from
 it as well. Control variability therefore propagates into every threshold the
 analysis reports, not only the no-effect concentration. An experiment whose
 lowest treatment is not a control is being analysed on that assumption and

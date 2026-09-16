@@ -108,7 +108,7 @@ $$
 
 # Model types for *NEC* and *EC~x~* estimation
 
-In principle all models provide an estimate for "no-effect" toxicity concentration. As seen above, for model strings with **nec** as a prefix, the NEC is directly estimated as parameter $\eta = \text{NEC}$ in the model, as per @Fox2010. On the other hand, model strings with **ecx** as a prefix are continuous curve models with no threshold, typically used for extracting ECx values from concentration-response data. In this instance, the NEC reported is actually the No-Significant-Effect-Concentration [NSEC, see details in @fisherfox2023], defined as the concentration at which there is a user supplied certainty (based on the Bayesian posterior estimate) that the response falls below the estimated value of the upper asymptote ($\tau = \text{top}$) of the response (i.e., the response value is significantly lower than that expected in the case of no exposure). The default value for this NSEC proportion is 0.01, which corresponds to an alpha value (Type-I error rate) of 0.01 for a one-sided test of significance. The NSEC concept has been recently explored using simulation studies and case study examples, and when combined with the NEC estimates of threshold models within a model‐
+In principle all models provide an estimate for "no-effect" toxicity concentration. As seen above, for model strings with **nec** as a prefix, the NEC is estimated directly as parameter $\eta = \text{NEC}$ in the model, as per @Fox2010. Model strings with **ecx** as a prefix are continuous curve models with no threshold, typically used for extracting ECx values from concentration-response data. In this instance, the NEC reported is the No-Significant-Effect-Concentration [NSEC, see details in @fisherfox2023], defined as the concentration at which there is a user supplied certainty (based on the Bayesian posterior estimate) that the response falls below the estimated value of the upper asymptote ($\tau = \text{top}$) of the response (i.e., the response value is significantly lower than that expected in the case of no exposure). The default value for this NSEC proportion is 0.01, which corresponds to an alpha value (Type-I error rate) of 0.01 for a one-sided test of significance. The NSEC concept has been recently explored using simulation studies and case study examples, and when combined with the NEC estimates of threshold models within a model‐
 averaging approach, can yield robust estimates of N(S)EC and of their uncertainty within a single
 analysis framework [@fisher2023ieam]. Both NEC and NSEC can be calculated from fitted models using the functions \code{nec} and \code{nsec}. The model averaged N(S)EC is automatically returned as part of the fitted model for any \code{bayesmanecfit} that contains a combination of both \code{"nec"} and \code{"ecx"} models. The significance level used can be adjusted from the default value using \code{amend}.
 
@@ -540,17 +540,17 @@ Note that the reparameterisation runs in that direction and not the other.
 Converting a `drc` estimate by setting $\beta = \log(b)$ does not recover $b$
 exactly, because $e^{\log(b)}$ is not the identity in floating point; the
 resulting curves differ by round-off, on the order of $10^{-15}$. That is a
-property of the round trip rather than of either model, but it is worth knowing
-before concluding that two fits disagree.
+property of the round trip rather than of either model, and accounts for a
+disagreement of that size between two fits.
 
-One point of possible confusion in the `drc` documentation is worth flagging.
-The model given in `?drc::NEC` carries an additional log-logistic term,
+One point in the `drc` documentation invites confusion. The model given in
+`?drc::NEC` includes an additional log-logistic term,
 $d_2 / (1 + e^{b_2(\log(x) - \log(e_2))})$, reproducing the general model of
-@Pires2002. The function `drc` actually fits does not include that term, so the
+@Pires2002. The function `drc` fits does not include that term, so the
 equivalences in the table above are with the *fitted* model rather than with the
 documented one.
 
-## Why there is no equivalent of `NEC.2()`
+## The absence of an equivalent of `NEC.2()`
 
 `NEC.2()` holds the upper asymptote at a constant, by default 1. Fixing $\tau$
 in this way asserts that the control response is exactly that constant with no

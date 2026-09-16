@@ -30,9 +30,9 @@ This project started with an implementation of the *NEC* model based on that des
 
 Specific models can be fit directly using `bnec`, which is what we discuss here. Alternatively, it is possible to fit a custom model set, a specific model set, or all the available models. Further information on fitting multi-models using `bayesnec` can be found in the [Multi model usage][e2] vignette. For detailed information on the models available in `bayesnec` see the [Model details][e2b] vignette.
 
-Important information on the current package is contained in the `bayesnec` help-files and the [Model details][e2b] vignette.
+Further information on the package is in the `bayesnec` help files and the [Model details][e2b] vignette.
 
-This package is currently under development. We are keen to receive any feedback regarding usage, and especially bug reporting that includes an easy to run self-contained reproducible example of unexpected behaviour, or example model fits that fail to converge (have poor chain mixing) or yield other errors. Such information will hopefully help us towards building a more robust package. We cannot help troubleshoot issues if an easy-to-run reproducible example is not supplied.
+This package is under development. Feedback on usage is welcome, and so are bug reports, provided they include a self-contained reproducible example of the unexpected behaviour, or of a model fit that fails to converge or returns an error. An issue without such an example cannot be diagnosed.
 
 # Installation
 
@@ -76,9 +76,9 @@ library(tidyr)
 
 # The scale of the predictor
 
-The scale on which the predictor enters the model is a decision the user has to make, and `bayesnec` does not make it for them. `bnec` takes the concentration exactly as it is given. It is worth settling before any model is fitted, because it generally matters more than the choice of equation: on one algal dataset, moving a `nec4param` fit from the raw dose axis to `log(dose)` reduced the maximum lack of fit in the mean from 0.2115 to 0.0676 on a response spanning about 0.7, while five different equations fitted on the log axis all landed within 1.2 `elpd_loo` of one another.
+The scale on which the predictor enters the model is a decision the user has to make, and `bayesnec` does not make it for them. `bnec` takes the concentration exactly as it is given. Settle it before any model is fitted, because it generally matters more than the choice of equation: on one algal dataset, refitting a `nec4param` model from the raw dose axis to `log(dose)` reduced the maximum lack of fit in the mean from 0.2115 to 0.0676 on a response spanning about 0.7, while five different equations fitted on the log axis all landed within 1.2 `elpd_loo` of one another.
 
-Concentration—response experiments are usually laid out as a dilution series, in which each concentration is a fixed multiple of the one below it. On a linear axis such a design crushes the low concentrations together and spreads the high ones out, so the equation spends its flexibility at the top of the range, where the response is often already flat, and has few distinct points where the response is actually changing.
+Concentration—response experiments are usually laid out as a dilution series, in which each concentration is a fixed multiple of the one below it. On a linear axis such a design crushes the low concentrations together and spreads the high ones out, so the equation spends its flexibility at the top of the range, where the response is often already flat, and has few distinct points where the response is changing.
 
 The way to tell is to look at the spacing of the **design**, not at the response. If the concentrations are near evenly spaced after a log transformation, the series was laid out on a log scale and is usually best modelled there:
 
@@ -168,7 +168,7 @@ exp_1 <- bnec(suc | trials(tot) ~ crf(log(raw_x), model = "nec4param"),
               data = binom_data, seed = 333)
 ```
 
-The function shows the progress of the `brms` fit and returns the usual `brms` output (with a few other elements added to this list). The function `plot(pull_brmsfit(exp_1))` can be used to plot the chains, so we can assess mixing and look for other potential issues with the model fit. We can also run a pairs plot that can help to assess issues with identifiability, and which also looks OK. There are a range of other model diagnostics that can be explored for `brms` model fits, using the function `pull_brmsfit`. We encourage you to explore the rich material already on GitHub regarding use and validation of [brms](https://github.com/paul-buerkner/brms) models.
+The function shows the progress of the `brms` fit and returns the usual `brms` output, with a few other elements added to the list. `plot(pull_brmsfit(exp_1))` plots the chains, so that mixing and other potential issues with the fit can be assessed. A pairs plot addresses identifiability, and also looks acceptable here. A range of other diagnostics is available for `brms` fits through `pull_brmsfit`; the material on the [brms](https://github.com/paul-buerkner/brms) GitHub page covers their use and validation.
 
 Initially `bayesnec` will attempt to use starting values generated for that type of model formula and family. It will run the iterations and then test if all chains are valid. If the model does not have valid chains `bayesnec` will discard that model and an error will be returned indicating the model could not be fit successfully.
 
@@ -349,7 +349,7 @@ round(c(linear = spacing_cv(conc),
 #>       1.72       0.58       0.44
 ```
 
-An offset of one is convenient rather than principled; it is reasonable here because the concentrations span several orders of magnitude and one lies within their range. Whatever offset is used has to be carried through to anything read off the fitted model, which is what the `xform` argument does below.
+An offset of one is convenient rather than principled; it is reasonable here because the concentrations span several orders of magnitude and one lies within their range. Whatever offset is used has to be reversed in anything read off the fitted model, which is what the `xform` argument does below.
 
 
 ``` r
@@ -550,7 +550,7 @@ exp_3d$dispersion
 #> 0.8803188 0.6675821 1.1898829 0.1976250
 ```
 
-One caveat is worth stating explicitly. If the exposure varies for reasons unrelated to the treatment — a replicate simply received fewer animals — then `rate` is doing exactly what is wanted. If instead the exposure is itself an effect of the treatment, as it would be were `n_females` the number of females *surviving* to the point of counting, then the endpoint has quietly changed from reproductive output to fecundity conditional on survival. Both are legitimate, but they are different endpoints and will not return the same *NEC*.
+One caveat applies. If the exposure varies for reasons unrelated to the treatment — a replicate simply received fewer animals — then `rate` is doing exactly what is wanted. If instead the exposure is itself an effect of the treatment, as it would be were `n_females` the number of females *surviving* to the point of counting, then the endpoint has quietly changed from reproductive output to fecundity conditional on survival. Both are legitimate, but they are different endpoints and will not return the same *NEC*.
 
 ### Measure data
 
@@ -625,7 +625,7 @@ In this case our model has converged really well.
 
 Supply the response as measured. Do not convert it to percent inhibition, percent of control, or percent of the observed maximum before calling `bnec`.
 
-Normalising to the control is conventional in ecotoxicology, usually as $y^0_i = 1 - y_i / \bar{y}_{con}$ where $\bar{y}_{con}$ is the mean of three to six control replicates. @Ritz2026 show what it costs. Every observation is divided by the *same random quantity*, so the normalised values are correlated and the sampling variability of the divisor is discarded. Applying Jensen's inequality to $y \rightarrow 1/y$ gives $E(1 - y_i/\bar{y}_{con}) \leq 1 - E(y_i)/E(\bar{y}_{con})$, so the inhibition trend is biased downwards and the effective doses read off it are biased upwards. In their simulation of an ED10 with six controls, normalising gave a bias of 6.8% and a coefficient of variation of 26.4%, against 2.1% and 12.7% for the same quantity estimated from the raw response; nominal 95% intervals covered at 88–91%. Roughly half the reported variability was an artefact of the normalisation itself.
+Normalising to the control is conventional in ecotoxicology, usually as $y^0_i = 1 - y_i / \bar{y}_{con}$ where $\bar{y}_{con}$ is the mean of three to six control replicates. @Ritz2026 set out what it does to the estimates. Every observation is divided by the *same random quantity*, so the normalised values are correlated and the sampling variability of the divisor is discarded. Applying Jensen's inequality to $y \rightarrow 1/y$ gives $E(1 - y_i/\bar{y}_{con}) \leq 1 - E(y_i)/E(\bar{y}_{con})$, so the inhibition trend is biased downwards and the effective doses read off it are biased upwards. In their simulation of an ED10 with six controls, normalising gave a bias of 6.8% and a coefficient of variation of 26.4%, against 2.1% and 12.7% for the same quantity estimated from the raw response; nominal 95% intervals covered at 88–91%. Roughly half the reported variability was an artefact of the normalisation itself.
 
 Nothing is lost by not normalising. The concentration at which inhibition rises by $x$ percent is the same concentration at which the response falls by $x$ percent, so the two analyses answer the same question. The second is what `ecx(type = "absolute")` — the default — already returns:
 
@@ -637,7 +637,7 @@ Dividing by the maximum observed response instead of the control mean is worse, 
 
 `bnec` looks for both practices and says so. Dividing by the observed maximum leaves a maximum of exactly `1` attained by exactly one observation; dividing by the control mean leaves the control observations averaging to exactly `1`. Either produces a message pointing back to this section. The first check is suppressed when the response lies on a rational grid, because genuine count-derived proportions such as 19/20 surviving routinely produce a single observation at `1` and are not evidence of anything.
 
-## When a divisor is unavoidable
+## The case where a divisor is unavoidable
 
 The problem is dividing by something *random*, not dividing as such. @Ritz2026 are explicit on this point:
 
@@ -661,15 +661,15 @@ y | cens(censoring) ~ crf(x, model = "nec4param")
 
 `censoring` is a variable in the data rather than a constant, because in a concentration-response dataset only some rows are censored. It takes the values `"none"`, `"left"`, `"right"` or `"interval"` (equivalently `0`, `-1`, `1`, `2`). Interval censoring takes a second argument giving the upper bound, `cens(censoring, upper)`.
 
-**The response column carries the bound.** On a left-censored row, the number in the response column is the value the truth is known to be at or below — not zero, and not a guess at the unknown truth. The declaration supplies that upper end of the interval and the family's support supplies the lower one, so a left-censored row under a Beta asserts only that the truth lies in $(0, \text{bound}]$.
+On a left-censored row, the number in the response column is the bound: the value the truth is known to be at or below, not zero and not a guess at the unknown truth. The declaration supplies that upper end of the interval and the family's support supplies the lower one, so a left-censored row under a Beta asserts only that the truth lies in $(0, \text{bound}]$.
 
-Because the bound has been declared, a censored row is exempt from the boundary shifts `bnec` otherwise applies to zeros under the Gamma and Beta families; moving the bound would restate it. Declaring a row censored at a value the family excludes — left-censored at `0` under Gamma or Beta, right-censored at `1` under Beta — is an error rather than a shift, because the censored likelihood is degenerate there.
+Because the bound has been declared, a censored row is exempt from the boundary shifts `bnec` otherwise applies to zeros under the Gamma and Beta families; shifting the bound would restate it. Declaring a row censored at a value the family excludes — left-censored at `0` under Gamma or Beta, right-censored at `1` under Beta — is an error rather than a shift, because the censored likelihood is degenerate there.
 
 The mechanism is as follows. A censored row contributes $F(\text{bound})$, the probability of falling at or below the bound, rather than a density at a point. As the fitted curve descends past the bound, $F$ rises toward 1 and *saturates*: the curve is not rewarded for passing further below, but neither is it penalised. A substituted value instead contributes a density, which falls away as the curve descends, so substitution actively pulls the curve back up toward the value that was substituted.
 
 ## Limits of the censored likelihood
 
-Saturation is what makes the censored likelihood honest, and it is also its limit. Once the fitted curve sits a few residual standard deviations below the bound, $F(\text{bound})$ is indistinguishable from 1 and moving the curve further down changes the likelihood by nothing. The likelihood is *flat* over that region, so a parameter whose only expression is there is not identified by the data, and what gets reported for it is the prior.
+Saturation is what keeps the censored likelihood truthful, and it is also its limit. Once the fitted curve sits a few residual standard deviations below the bound, $F(\text{bound})$ is indistinguishable from 1 and lowering the curve further changes the likelihood by nothing. The likelihood is *flat* over that region, so a parameter whose only expression is there is not identified by the data, and what gets reported for it is the prior.
 
 The lower asymptote is the usual casualty. Where every response near the bottom of the curve is censored, `bot` is told only that it lies somewhere below the bound, and nothing in the likelihood distinguishes one such value from another.
 
@@ -685,7 +685,7 @@ Taking the rows in order: substitution is not only wrong about the value, it is 
 
 Left-censoring withdraws the false assertion, and what it reveals is that the data contain almost nothing about `bot`. The posterior widens by a factor of 160 and runs down to −11 d^-1^, a rate at which the population would fall by $e^{33}$ over the test. That is the prior's lower tail rather than an estimate. Nothing has gone wrong mechanically: the chains mix, $\widehat{R}$ is 1.00, and the sampler reports 5 divergent transitions in 8000 draws — nothing a routine check would stop on. The number is simply uninformed, and an interval alone will not tell you so.
 
-The third row is the repair. A population below the counting limit is not below extinction, so the truth lies in an interval and `cens(censoring, upper)` can say exactly that. Bounding the flat region from below restores a usable posterior. It is worth being clear about what that estimate then rests on: the lower end is the declared extinction floor, here 1 cell mL^-1^ and so −2.75 d^-1^, and the posterior presses against it. The asymptote is constrained by that assumption rather than measured, and should be reported that way. This fit also needed a longer warmup and a smaller step size to converge (the default settings left one chain of four stranded on a ridge in `beta`, $\widehat{R} = 1.47$); the interval declaration gives the curve slack in the region the other two preparations pin down, and that slack has to be sampled.
+The third row is the repair. A population below the counting limit is not below extinction, so the truth lies in an interval and `cens(censoring, upper)` can say exactly that. Bounding the flat region from below restores a usable posterior. What that estimate then rests on has to be stated: the lower end is the declared extinction floor, here 1 cell mL^-1^ and so −2.75 d^-1^, and the posterior presses against it. The asymptote is constrained by that assumption rather than measured, and should be reported that way. This fit also needed a longer warmup and a smaller step size to converge (the default settings left one chain of four stranded on a ridge in `beta`, $\widehat{R} = 1.47$); the interval declaration gives the curve slack in the region the other two preparations pin down, and that slack has to be sampled.
 
 Two points follow for practice. First, read identification from the prior-to-posterior contraction rather than from the interval: across these three fits it is 0.996, 0.379 and 0.953 respectively, and the middle value is the diagnostic that the interval hides. `pull_prior()` and the posterior draws are enough to compute it. Second, the problem propagates — any quantity read off the deep part of the fitted curve inherits the prior dependence, so an `ecx()` value whose target falls near the asymptote deserves the same scepticism as `bot` itself.
 
@@ -712,7 +712,7 @@ A variance function of the fitted mean requires the mean to be modelled on its n
 
 `"loglinear"` is linear in $\mu$ rather than in $\log(\mu)$, so it remains defined across zero. It is also the form a log-transformed endpoint inherits from a power law on its original scale. If a density has $\text{sd} \propto \mu^p$, the delta method gives $\text{sd}(\log N) \propto \mu^{p - 1}$; substituting $\mu_N = N_0 \exp(d \mu_r)$ for an average specific growth rate $\mu_r$ over $d$ days leaves $\log \text{sd}(\mu_r) = \text{const} + d (p - 1) \mu_r$, which is `"loglinear"`. A growth rate is therefore not a response a variance function cannot describe, only one the power law cannot, and $p < 1$ implies $c_1 < 0$.
 
-The exponent $c_1$ is dimensionless for `"power"` and `"twosided"`, which multiply $\log(\mu)$, but carries units of 1/response for `"loglinear"`. Its default prior is scaled to the observed spread of the response accordingly, so that it means the same thing whatever the response is measured in.
+The exponent $c_1$ is dimensionless for `"power"` and `"twosided"`, which multiply $\log(\mu)$, but has units of 1/response for `"loglinear"`. Its default prior is scaled to the observed spread of the response accordingly, so that it means the same thing whatever the response is measured in.
 
 The covariate in every variance function is centred on a fixed reference $m$, computed from the response before fitting — its median, or its geometric median for the forms that take $\log(\mu)$. It is a constant rather than an estimated quantity, so it changes the coordinates the sub-model is written in and not the likelihood. Without it, $c_0$ would be the dispersion parameter at $\mu = 1$, or at $\mu = 0$ for `"loglinear"` — points nowhere near the data unless the response happens to be of order one. Fitting a response of order $10^4$ uncentred gives a posterior correlation between $c_0$ and $c_1$ above 0.99. With centring, $c_0$ is the dispersion parameter at a typical response and $c_1$ its rate of change from there.
 
@@ -816,9 +816,9 @@ lof[, c("x", "replicate_sd", "misfit_in_sds")]
 #> 7 100.0   0.06481783          0.02
 ```
 
-## What it changes
+## The effect of the variance function on the intervals
 
-Both models describe the same mean curve, so the effect of the variance function is on the intervals rather than on the fitted response. We take the two intervals from the same draws: the *credible* interval on the fitted mean, and the *prediction* interval a new observation would be expected to fall in. Only the second carries the fitted dispersion directly.
+Both models describe the same mean curve, so the effect of the variance function is on the intervals rather than on the fitted response. We take the two intervals from the same draws: the *credible* interval on the fitted mean, and the *prediction* interval a new observation would be expected to fall in. Only the second reflects the fitted dispersion directly.
 
 
 ``` r
@@ -889,7 +889,7 @@ ggplot(bands, aes(x = x, y = width, colour = model)) +
 
 The two lines cross. Relative to the variance function, the constant-dispersion model is too narrow at low concentrations and too wide at high ones — the uneven error described at the start of this section, and the reason the consequences fall on the toxicity estimates rather than on the fitted curve.
 
-Those consequences are not in a single direction, and it is worth seeing why.
+Those consequences are not in a single direction, for the reason set out below.
 
 
 ``` r
@@ -912,7 +912,7 @@ rbind(tox(disp_const, "constant dispersion"), tox(disp_power, "disp(\"power\")")
 #> 6       disp("power")     nsec   1.10  0.37  1.50  1.13
 ```
 
-The `ecx` intervals narrow, while the `nsec` interval widens. The explanation is what each estimate is referenced against, and it follows from the reweighting the variance function performs. Under constant dispersion every observation carries equal weight. Under `disp("power")` the tightly grouped high-concentration replicates carry more and the variable control replicates carry less, which is visible in the parameters themselves.
+The `ecx` intervals narrow, while the `nsec` interval widens. The explanation is what each estimate is referenced against, and it follows from the reweighting the variance function performs. Under constant dispersion every observation is weighted equally. Under `disp("power")` the tightly grouped high-concentration replicates are weighted more and the variable control replicates less, which is visible in the parameters themselves.
 
 
 ``` r

@@ -4,11 +4,11 @@
 #' (2018), https://github.com/paul-buerkner/brms) to fit concentration
 #' (dose)-response data using Bayesian methods for the purpose of estimating
 #' both Effect Concentration (ECx) values, but more particularly 'NEC'
-#' (Fox 2010), 'NSEC' (Fisher and Fox 2023), and 'N(S)EC (Fisher et al. 2023).
+#' (Fox 2010), 'NSEC' (Fisher and Fox 2023), and 'N(S)EC' (Fisher et al. 2023).
 #' A full description of bayesnec can be found in Fisher et al. (2024).
 #' Please see ?bnec for more details. This package expands and supersedes an
 #' original version implemented in R2jags (Su and Yajima 2024), see Fisher et
-#  al. (2020).
+#' al. (2020).
 #' @name bayesnec-package
 #' @aliases bayesnec
 #' @importFrom ggplot2 autoplot

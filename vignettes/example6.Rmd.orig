@@ -73,12 +73,12 @@ it is generally the quantity of interest for risk assessment, being the
 expectation over the whole exposed cohort including the individuals that
 contributed no measurement.
 
-Two properties of these models are worth stating before any code, because both
-are easily misread.
+Two properties of these models are easily misread, and both are stated here
+before any code.
 
-**The survivors-only analysis is not an approximation.** The hurdle
-log-likelihood separates exactly into a term over all individuals and a term
-over the survivors only,
+The survivors-only analysis is not an approximation. The hurdle log-likelihood
+separates exactly into a term over all individuals and a term over the survivors
+only,
 
 ```
 log p(y_i) = log Bernoulli(alive_i | 1 - hu_i)
@@ -90,13 +90,13 @@ factorises and the survivors-only fit recovers the response block exactly. What
 it cannot provide is the mortality curve or the combined endpoint. This is
 demonstrated numerically below.
 
-**Zero-inflated Gamma and Beta are the same model as the hurdle.**
-Zero-inflation differs from a hurdle only when the base distribution can itself
-produce zeros, which neither the Gamma nor the Beta can. The Stan density
-`brms` generates for `zero_inflated_beta` is the hurdle form, with no mixture
-at zero. `bayesnec` treats the two identically and carries the `brms` name
-through, so `hurdle_gamma` and `zero_inflated_beta` differ in name and in the
-support of the response, not in structure.
+Zero-inflated Gamma and Beta are the same model as the hurdle. Zero-inflation
+differs from a hurdle only when the base distribution can itself produce zeros,
+which neither the Gamma nor the Beta can. The Stan density `brms` generates for
+`zero_inflated_beta` is the hurdle form, with no mixture at zero. `bayesnec`
+treats the two identically and keeps the `brms` name, so `hurdle_gamma` and
+`zero_inflated_beta` differ in name and in the support of the response, not in
+structure.
 
 Throughout, the two components are referred to as "growth" and "survival",
 after the case these models were written for. Nothing in the implementation is
@@ -111,23 +111,23 @@ library(ggplot2)
 library(dplyr)
 ```
 
-# Two implementations of the same model
+# The factorised and joint implementations
 
 `bayesnec` provides two ways of fitting these models. Because the likelihood
 factorises, the two give equivalent inference; the choice between them is
 practical rather than statistical.
 
-**Factorised** — `bnec_hurdle()` fits two ordinary `bnec()` models, a
+The *factorised* route, `bnec_hurdle()`, fits two ordinary `bnec()` models: a
 zero-bounded model to the non-zero subset and a `bernoulli` model to the
-survival indicator over all individuals, and returns them together as a
-`bayesnechurdlefit`. Combined predictions are formed afterwards by multiplying
-the two posteriors.
+survival indicator over all individuals. It returns them together as a
+`bayesnechurdlefit`, and combined predictions are formed afterwards by
+multiplying the two posteriors.
 
-**Joint** — `bnec(family = "hurdle_gamma")` fits one model with two parameter
-blocks. `brms` names the second block `hu` (or `zi` for the zero-inflated
-families), and `bayesnec` gives it its own concentration-response curve with
-every non-linear parameter carrying that prefix: `top` belongs to the response
-block, `hutop` to the survival block.
+The *joint* route, `bnec(family = "hurdle_gamma")`, fits one model with two
+parameter blocks. `brms` names the second block `hu` (or `zi` for the
+zero-inflated families), and `bayesnec` gives it its own concentration-response
+curve with every non-linear parameter taking that prefix: `top` belongs to the
+response block, `hutop` to the survival block.
 
 | | factorised (`bnec_hurdle`) | joint (`family = "hurdle_gamma"`) |
 |---|---|---|
@@ -152,12 +152,12 @@ Both routes model the probability of **surviving**, which declines with
 concentration and so matches the sign convention of all 23 `bayesnec`
 equations. They arrive at this differently.
 
-**In the factorised route the response is coded as survival.** There is a real
+In the factorised route the response is coded as survival. There is a real
 response variable for the second fit, so `bnec_hurdle()` constructs an
 alive/dead indicator, `1` for alive, and fits an ordinary `bernoulli` model to
 it using the equation unchanged. Nothing is inverted.
 
-**In the joint route there is no second response to code.** `hu` is a
+In the joint route there is no second response to code. `hu` is a
 distributional parameter of the *same* response, and `brms` defines it as the
 probability of a zero, that is, mortality. That definition belongs to the
 family and cannot be exchanged for its complement. The formula is the only
@@ -171,7 +171,7 @@ which describes the same declining survival curve while leaving `hu` with the
 meaning `brms` requires. The `1 -` is an adapter that makes the joint route
 agree with the factorised one, not a modelling decision.
 
-### Why survival rather than mortality
+### The consequences of placing the curve on survival
 
 Placing the declining curve on survival, in both routes, has three
 consequences.
@@ -260,7 +260,7 @@ set out in the next section.
 autoplot(fit_f, which = "all")
 ```
 
-## Where the combined endpoint differs from the growth endpoint
+## The separation of the combined and growth endpoints
 
 The combined no-effect estimate is `pmin(ne_growth, ne_survival)` evaluated per
 posterior draw, and so equals the growth estimate whenever growth is the more
@@ -270,9 +270,9 @@ a property of thresholds rather than a limitation of the combination: a
 threshold marks the concentration at which an effect *begins*, and the combined
 effect begins as soon as either process does.
 
-The same reasoning applies more generally, and it is worth being explicit about
-it, because it determines where the combined endpoint is informative. The
-combined curve is the product of the two components, and below the survival
+The same reasoning generalises, and determines where the combined endpoint is
+informative. The combined curve is the product of the two components, and below
+the survival
 threshold survival sits at its control value, so the product is a constant
 multiple of the growth curve there. Any estimate defined as a proportional
 decline from the control — which is how both `ecx()` and `nsec()` are defined —
@@ -299,11 +299,11 @@ the growth curve. The gap continues to widen with the level of effect
 considered, and is largest on the response scale itself, as the comparison in
 the next section shows.
 
-The practical consequence is that a hurdle model is not worth fitting for the
-sake of a combined no-effect estimate, which will generally reproduce the
-growth one. It is worth fitting for the survival curve, which a survivors-only
-analysis cannot produce at all, and for the effect sizes at concentrations
-where mortality is operating, which it systematically understates.
+The practical consequence is that a combined no-effect estimate is not on its
+own a reason to fit a hurdle model, since it will generally reproduce the growth
+one. The reasons to fit one are the survival curve, which a survivors-only
+analysis cannot produce at all, and the effect sizes at concentrations where
+mortality is operating, which such an analysis systematically understates.
 
 ## The joint route
 
@@ -325,8 +325,8 @@ routes, and the distinction is easy to miss. A `bayesnechurdlefit` from
 `"survival"` or `"combined"` selects one of them. A joint fit holds two
 parameter blocks inside one model, so `ecx()` takes `dpar = "mu"` or
 `dpar = "hu"` instead, naming the `brms` distributional parameter. The two are
-not interchangeable, so it is worth checking `class(fit)` where a component
-estimate comes back looking like the combined one.
+not interchangeable, so check `class(fit)` where a component estimate comes back
+looking like the combined one.
 
 Note also that `nec()` on a joint fit returns the **combined** threshold — the
 per-draw minimum of the two blocks, as described above — and has no argument
@@ -347,7 +347,7 @@ round(comparison, 3)
 Differences between the two routes are Monte Carlo noise rather than a
 modelling choice.
 
-## What the survivors-only analysis recovers
+## The recovery of the response block from survivors alone
 
 The point made in the overview, demonstrated numerically. Fitting an ordinary
 Gamma model to the non-zero rows only:
@@ -449,7 +449,7 @@ choice where the distinction matters.
 Model averaging is done on the factorised fit, because the joint route can
 average only over the response block. Where a single fit is required — most
 often because the two blocks need to share structure, which the factorisation
-cannot express — `best_crossed()` reports the combination carrying the highest
+cannot express — `best_crossed()` reports the combination holding the highest
 crossed weight and `bnec_joint()` refits that combination as one two-block
 model.
 
@@ -482,7 +482,7 @@ where the joint form is needed for a reason the factorisation cannot serve.
 Group-level structure spanning both blocks is the main such reason, and is
 supplied through the `formula` argument of `bnec_joint()`.
 
-# Worked example: chronic snail toxicity
+# A worked chronic snail toxicity example
 
 The `nassarius` dataset holds four chronic toxicity tests on the tropical
 marine snail *Nassarius dorsatus*, one row per individual snail that entered
@@ -555,7 +555,7 @@ omission, and recovering it adds information rather than inventing it. The
 reconstruction is part of the analysis rather than a caveat attached to it, and
 the next section quantifies what it contributes.
 
-## The contribution of the reconstruction: contaminant B
+## The contribution of the reconstruction under contaminant B
 
 B is the most severely affected of the four tests, and for that reason it is
 the clearest illustration of why a hurdle model is needed.
@@ -582,13 +582,13 @@ Those four numbers are the entire dataset such an analysis would see. It would
 report a smooth decline in growth across a dose range topping out at 0.10, and
 each of its fitted values would be defensible. What it could not report is that
 the contaminant sterilises the experiment at three times that dose. The 221
-snails carrying that information are precisely the ones it discards. This is
+snails that hold that information are precisely the ones it discards. This is
 the conditioning problem in an extreme form: 78% of the cohort and 71% of the
 tested doses are removed from the analysis by the act of dropping the dead.
 
-### Does the reconstruction change the answer?
+### The effect of the reconstruction on the estimates
 
-Only for the survival component — and that is exactly the point.
+It changes the survival component only, and that is the point.
 
 The three variants below differ only in rows recording individuals that died.
 They contain 74, 95 and 284 snails respectively, but all three contain the same
@@ -627,16 +627,15 @@ do.call(rbind, sens)
 
 Two conclusions follow, and they have different implications.
 
-**Reinstating the first all-dead dose changes the survival threshold**,
-moving it by about 25% and halving the credible interval. Analysing only the
-doses that appear in the file biases that threshold low, because the last dose
-those records contain is one at which half the snails were still alive, so the
-fit never sees the concentration at which survival collapses. Nothing about the
-growth estimate moves, which is why this cost is invisible to an analysis that
-looks only at survivors.
+Reinstating the first all-dead dose changes the survival threshold by about
+25% and halves the credible interval. Analysing only the doses that appear in
+the file biases that threshold low, because the last dose those records contain
+is one at which half the snails were still alive, so the fit never sees the
+concentration at which survival collapses. The growth estimate is unchanged,
+which is why a survivors-only analysis cannot detect the loss.
 
-**The all-dead doses above it add little** — about 3%, well inside the
-interval. Once the fitted curve has reached zero, further doses at which every
+The all-dead doses above it add about 3%, well inside the interval. Once the
+fitted curve has reached zero, further doses at which every
 individual died are largely redundant. The information about where survival
 collapses sits in the narrow window between the last dose with full survival
 and the first with none.
@@ -658,10 +657,11 @@ reports this rather than conditioning it away.
 Two decisions have to be made before fitting, and both are of the kind usually
 made silently.
 
-**The four negative growth values.** The assay is destructive, so growth is
-obtained by referencing each snail to a baseline mean rather than to its own
-starting size. That referencing carries error, and four survivors of 876 are
-slightly negative. The Gamma distribution cannot accommodate them.
+The first decision concerns the four negative growth values. The assay is
+destructive, so growth is obtained by referencing each snail to a baseline mean
+rather than to its own starting size. That referencing has error in it, and four
+survivors of 876 are slightly negative. The Gamma distribution cannot
+accommodate them.
 
 ```{r nassarius-negatives}
 subset(nassarius, alive == 1 & growth <= 0)
@@ -675,8 +675,9 @@ but it is a substitution and is stated rather than done quietly. See the
 data-preparation section below for why the alternative, flooring them to zero,
 would be considerably worse than immaterial.
 
-**The control on a log dose scale.** Dose spans several orders of magnitude, so
-the models are fitted on a log scale, and `log(0)` is undefined. The control is
+The second concerns the control on a log dose scale. Dose spans several orders
+of magnitude, so the models are fitted on a log scale, and `log(0)` is
+undefined. The control is
 placed one decade below the lowest tested dose: far enough to read as a
 control, close enough not to stretch the fitted range.
 
@@ -699,8 +700,8 @@ back_transform <- function(d) {
 
 Before fitting, the simulation objects are released. Every `bnec` fit forks
 worker processes that share the memory of the session that spawned them, and
-each page those workers touch stops being shared, so a large session makes
-every subsequent fit more expensive. None of the simulation fits are referenced
+each page those workers touch stops being shared, so a large session raises the
+memory every subsequent fit needs. None of the simulation fits are referenced
 again.
 
 ```{r nassarius-cleanup}
@@ -712,8 +713,8 @@ Each test is fitted with `mod_set`, the same six-model set used in the
 simulation above, on both components. That is 48 model fits in total, so the
 loop below is written to hold as few of them at once as it can: each test is
 summarised as it is fitted and then discarded, keeping only contaminant A for
-the plots that follow. Holding all four six-model hurdle fits at once is the
-largest memory cost in this vignette, and an avoidable one.
+the plots that follow. Holding all four six-model hurdle fits at once needs
+more memory than anything else in this vignette, and is avoidable.
 
 ```{r nassarius-fit, results = "hide"}
 tests <- split(nassarius, nassarius$contaminant)
@@ -794,16 +795,16 @@ endpoints
 
 Three features of these results are notable.
 
-**The combined and growth rows are all but identical.** The combined no-effect
+The combined and growth rows are all but identical. The combined no-effect
 estimate matches the growth estimate exactly for A, C and D, and differs only
 in the third decimal for B, 0.049 against 0.050. This is the per-draw minimum
 at work: the combined estimate can depart from growth only where mortality
 begins close enough to the growth threshold to bind on at least some draws. B
 is the test where it comes closest — its survival estimate is 1.6 times its
 growth estimate, against ratios of 2.8 for A and several hundred for C and D —
-which is why B is the one that moves, and why it moves so little.
+which is why B is the one that departs from growth at all, and by so little.
 
-**Growth and survival, in contrast, separate widely.** The two sit within a
+Growth and survival, in contrast, separate widely. The two sit within a
 factor of two for B and a factor of three for A, but more than two orders of
 magnitude apart for C and D, whose growth declines from the low end of the
 tested range while survival holds until close to the top dose of 20. A single
@@ -811,7 +812,7 @@ number from a survivors-only analysis cannot express that, and the four tests
 would look far more alike than they are. The survival curve is also the one
 thing such an analysis cannot produce at any level of effect.
 
-**What the combined endpoint adds appears above the no-effect level.** The
+What the combined endpoint adds appears above the no-effect level. The
 combined EC50 sits at or below the growth EC50 in all four tests: about 6%
 lower for C, 3% for B and D, and unchanged for A, whose growth EC50 of 1.1
 falls below the concentration at which its survival curve leaves the control.
@@ -855,7 +856,7 @@ In practice the conditions under which it is appropriate are more restrictive
 than they first appear, and the most likely misuse is reaching for it simply
 because a proportion happens to contain some zeros.
 
-## When a hurdle Beta is appropriate
+## The conditions a hurdle Beta requires
 
 A usable hurdle-Beta case requires **all** of:
 
@@ -988,7 +989,7 @@ between the doses at 1 and 2. With nothing observed in between, the likelihood
 is nearly flat across that interval and the estimate drifts toward the first
 dose showing unambiguous decline. The survival threshold is looser still,
 because mortality is confined to the top four doses. The same lesson appears in
-the snail example below, where reinstating a single missing dose moves the
+the snail example below, where reinstating a single missing dose changes the
 survival threshold by 25%: where a threshold is the quantity of interest, dose
 placement around it does more good than extra replication elsewhere.
 
@@ -1019,7 +1020,7 @@ fit the raw response and use `ecx(type = "absolute")`, which measures decline
 relative to the *fitted* control value and therefore propagates control
 uncertainty through the posterior.
 
-# Counter-example: when zeros are not structural
+# A counter-example with zeros that are not structural
 
 `bayesnec` ships the `herbicide` dataset [@jones2003], which contains 23 zero
 values in `fvfm`, maximum quantum yield. These appear to be candidates for
@@ -1049,7 +1050,7 @@ c(resolution = min(diff(sort(unique(nonzero)))),
 A recorded `0.00` therefore means the true value was below 0.005. It does not
 mark a distinct event; it marks a measurement that rounded down.
 
-**The zeros appear only where the curve crosses below the rounding floor.**
+The zeros appear only where the curve crosses below the rounding floor.
 Diuron records no zeros at all; its means decline smoothly and level off above
 the floor, while zeros appear only in the more potent compounds whose curves go
 lower. The same biology and the same instrument produce no zeros.
@@ -1104,7 +1105,7 @@ does not test **how many causes they have**, and no test computed on the
 processed data can. That is the second thing to establish, and it is a
 provenance question rather than a computation.
 
-## Three kinds of zero
+## The kinds of zero a response can hold
 
 | state | true value | kind of zero |
 |---|---|---|
@@ -1155,7 +1156,7 @@ low concentrations — rather than about negative growth rates, so they are not 
 ruling on this case. The reason and the remedy are both general, however, and
 both apply here: change the function, not the values.
 
-## What "distorts the error distribution" means
+## The meaning of "distorts the error distribution"
 
 The phrase is precise rather than rhetorical. Write `µ(x)` for the fitted mean at
 concentration `x`, `σ` for the residual scale, `f` for the density and `F` for
@@ -1206,14 +1207,14 @@ from each other.
 
 ## Recommended handling
 
-**1. Do not floor.** Model on a scale that admits the values actually measured —
-a specific growth rate, or the raw increment — using a family on the real line
-with a model carrying a lower asymptote (`nec4param`, `ecx4param`) so the curve
-can cross zero. `bayesnec` already drops the zero-bounded models for Gaussian
-data. Drive any hurdle from the **recorded failure indicator**, not from
+1. *Do not floor.* Model on a scale that admits the values as measured — a
+specific growth rate, or the raw increment — using a family on the real line
+with an equation that has a lower asymptote (`nec4param`, `ecx4param`) so the
+curve can cross zero. `bayesnec` already drops the zero-bounded equations for
+Gaussian data. Drive any hurdle from the recorded failure indicator, not from
 `y == 0`.
 
-**2. If the shape of the curve below zero is not of interest, censor there.**
+2. *Where the shape of the curve below zero is not of interest, censor there.*
 This is the better answer whenever the assessment concerns the transition from
 growth to decline rather than the severity of the decline. A left-censored
 (Tobit) likelihood asserts "true value ≤ 0" instead of "= 0", so the fit is not
@@ -1227,11 +1228,11 @@ other parameters. Because `bot` is shared across the whole curve, that deforms
 the fit in the positive-growth region as well. Censoring turns `bot` from a badly
 extrapolated estimate into a weakly identified nuisance.
 
-The cost is that censored observations retain only near-quantal information: the
+What is given up is that censored observations retain only near-quantal information: the
 proportion falling below zero at a given concentration is informative, but once
 nearly all replicates at a concentration lie below zero, a small negative growth
-rate and a large one become close to indistinguishable. **The distinction between
-growth arrest and active loss of biomass is largely given up.** Where that
+rate and a large one become close to indistinguishable, so the distinction
+between growth arrest and active loss of biomass is largely given up. Where that
 distinction matters to the assessment, keep the uncensored real-line fit of item
 1.
 
@@ -1241,18 +1242,19 @@ as such. And a censored zero and a structural zero are indistinguishable once
 written to file, so the censoring indicator and the failure indicator must be
 **separate columns**: a dead individual is a structural zero and belongs to the
 hurdle, a living one that shrank is a censored observation and belongs to the
-response block. Collapsing them is flooring by another route.
+response block. Collapsing the two columns into one is flooring by another
+route.
 
-`bayesnecformula` carries the `cens()` aterm through to the fit, so this route
+`bayesnecformula` passes the `cens()` aterm through to the fit, so this route
 is available directly; see the Censoring section of `vignette("example1")` for
 the declaration and for what a censored likelihood can and cannot recover.
 
-**3. If the values are already floored and unrecoverable**, the same
+3. *Where the values are already floored and unrecoverable*, the same
 left-censored likelihood is the salvage: it replaces a false assertion with a
-true one, which is the most that can be recovered. This is a repair, whereas item
-2 is a design.
+true one, which is the most that can be recovered. This is a repair, whereas
+item 2 is a design.
 
-**4. If a strictly positive scale is required**, model the response relative to
+4. *Where a strictly positive scale is required*, model the response relative to
 each unit's own baseline, where the only zeros are genuine failures and
 `hurdle_gamma` is correct. Note that ECx must then be defined on the derived
 increment: a 50% reduction in a *ratio* and a 50% reduction in the *increment*
@@ -1279,6 +1281,6 @@ Common traces to look for:
   does not appear in the file.
 
 The last is the easiest to miss and the most consequential, since it removes
-the concentration carrying the most information about the survival curve.
+the concentration that holds the most information about the survival curve.
 
 # References
