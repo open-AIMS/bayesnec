@@ -7,9 +7,9 @@
 dispersion(model, summary = FALSE, seed = 10)
 }
 \arguments{
-\item{model}{An object of class \code{\link{bayesnecfit}} whose distribution
-family is either \code{\link[stats]{poisson}} or
-\code{\link[stats]{binomial}}.}
+\item{model}{An object of class \code{\link{bayesnecfit}} or
+\code{\link{bayesmanecfit}} whose distribution family is either
+\code{\link[stats]{poisson}} or \code{\link[stats]{binomial}}.}
 
 \item{summary}{Logical. Should summary stats be returned instead of full
 vector? Defaults to FALSE.}
@@ -22,16 +22,17 @@ operation in the session returns. \code{NULL} is refused rather than passed
 on, because \code{set.seed(NULL)} re-initialises the stream from the clock.}
 }
 \value{
-A \code{\link[base]{numeric}} vector. If \code{summary} is FALSE, an
-n-long vector containing the dispersion metric, where n is the number of post
-warm-up posterior draws from the \code{\link[brms]{brmsfit}} object. An
-element of that vector is \code{Inf} for a draw containing an observation of
+For a \code{\link{bayesnecfit}}, a \code{\link[base]{numeric}}
+vector. If \code{summary} is FALSE, it contains the dispersion metric for
+each post-warm-up posterior draw from the \code{\link[brms]{brmsfit}}
+object. An element is \code{Inf} for a draw containing an observation of
 zero fitted variance whose response is not the fitted value, and \code{NA}
 for a draw in which no observation contributes a residual; both cases are
-described under Details and both are reported when they arise. If
-TRUE, then a \code{\link[base]{data.frame}} containing the summary stats
-(median, 95\% credible interval, and the posterior probability of
-over-dispersion) of the dispersion metric.
+described under Details and reported when they arise. If \code{summary} is
+TRUE, the vector contains the median, 95\% credible interval, and posterior
+probability of over-dispersion. For a \code{\link{bayesmanecfit}},
+\code{summary = FALSE} returns a named list of these vectors and
+\code{summary = TRUE} returns a data frame with one row per equation.
 }
 \description{
 Calculates a posterior dispersion metric.
