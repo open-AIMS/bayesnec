@@ -41,17 +41,13 @@ vignette resolves to a paper in the library.
 | `OECD201_2026.pdf` | `oecd2026tg201` |
 | `Pires_et_al-2002-Environmetrics.pdf` | `Pires2002` |
 | `Ritz_etal2016.pdf` | `Ritz2016` |
-| `Ritz_etal2026.pdf` | `ritz2026` and `Ritz2026` |
+| `Ritz_etal2026.pdf` | `Ritz2026` |
 | `Trenfied_etal2016.pdf` | `trenfield2016` |
 | `Warton2005 - Many zeros does not mean zero inflation....pdf` | `warton2005` |
 | `Weimer_etal2012.pdf` | `Weimer2012` |
 | `Yao_etal2018.pdf` | `Yao2018` |
 | `vehtari_etal2017.pdf` | `vehtari2017` |
 | `vehtari_etal2021.pdf` | `Vehtari2021` |
-
-`Ritz_etal2026.pdf` answers to two keys. `ritz2026` and `Ritz2026` are the same
-paper entered twice in `vignettes/bayesnec.bib`, which is left as found rather
-than corrected here.
 
 ## Papers with no bibliography entry
 
