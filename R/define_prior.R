@@ -895,19 +895,16 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' and 0.945 under the stated rule. \code{prior_type} was therefore inert for
 #' these two parameters on one of the two routes.
 #'
-#' Two consequences of stating the rule this way are worth recording. The
-#' branch is selected by \code{min(u) < 0}, not by the user having logged the
-#' predictor, so every predictor that spans negative values now receives a prior
-#' with 98\% of its mass inside the tested range where it previously received
-#' \code{10 sd(z)} narrowed by 0.8425. That is the intended change for a logged
-#' concentration series and is unaudited for any other predictor that reaches
-#' below zero. And the rule is now one statement on both branches under
-#' \code{"regularizing"} but not under \code{"uninformative"}, so how much
-#' \code{prior_type} narrows this entry still depends on the route: a factor of
-#' 0.8425 where concentrations are supplied as recorded, and about sixteenfold
-#' on the series measured above where they are supplied logged.
+#' Under \code{predictor_scale = "auto"}, the branch is selected by
+#' \code{min(u) < 0}. This preserves the published behaviour but cannot identify
+#' a logged series whose lowest recorded concentration is at or above 1, because
+#' all of its logged values are non-negative. Such a series was logged a second
+#' time. \code{predictor_scale = "log"} declares the scale instead and reads the
+#' supplied values directly, whatever their sign; \code{"concentration"} logs
+#' the distinct positive values and refuses a negative value.
 #'
-#' The two routes now agree on the spread where the series has no zero control
+#' Under \code{"auto"}, the two routes agree on the spread where the series has
+#' no zero control
 #' \emph{and} its lowest tested concentration is below 1. Both conditions are
 #' needed, and neither is a property of the rule: they are the conditions under
 #' which the two routes describe the same predictor at all.
@@ -919,31 +916,16 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' substitution the entries are \code{lognormal(1.0986, 1.5073)} and
 #' \code{normal(0.5493, 1.7434)}.
 #'
-#' The lowest concentration is the second, and follows from the discriminator
-#' rather than from the data. \code{spans_negative} is \code{min(u) < 0}, so a
-#' logged series whose lowest tested concentration is at or above 1 stays
-#' non-negative, is not recognised as logged, and is logged a second time.
-#' Measured on three series none of which has a zero control, under
-#' \code{"regularizing"}: 0.1 to 100 over seven doses gives
-#' \code{lognormal(1.0986, 1.5073)} and \code{normal(1.0986, 1.5073)}, which
-#' agree; 1 to 1000 gives \code{lognormal(3.4539, 1.4847)} and
-#' \code{lognormal(1.3833, 0.5341)}; 10 to 10000 gives
-#' \code{lognormal(5.7565, 1.4847)} and \code{lognormal(1.7503, 0.3939)}. The
-#' location differs as well as the spread.
-#'
-#' The discriminator is not corrected here, for the reason the comment on
-#' \code{spans_negative} records and because correcting it would change the
-#' \code{"uninformative"} entry for those users as well, which #314 excludes.
-#' The remaining error is also second-order against what this entry fixes: on
-#' the 10 to 10000 series supplied logged the misclassified regularizing prior
-#' still has its mode inside the tested range, at 4.94 against a series median
-#' of 5.76, and \code{prior_type} still narrows it. What is removed here is an
-#' entry that was uniform across the tested range and on which \code{prior_type}
-#' did nothing at all. See #314.
+#' The explicit declaration also decides whether zero is data or a control to
+#' omit. On the log scale, zero is \code{log(1)} and is retained. On the
+#' concentration scale, zero is the untreated control and is omitted before the
+#' logarithm is taken. No value-based rule can distinguish those meanings.
 #'
 #' @param predictor A \code{\link[base]{numeric}} vector, the predictor as it
 #' was supplied.
 #' @param prior_type One of \code{"uninformative"} or \code{"regularizing"}.
+#' @param predictor_scale One of \code{"auto"}, \code{"concentration"} or
+#' \code{"log"}. See \code{\link{bnec}}.
 #'
 #' @return A \code{\link[base]{character}} string of length 1, a \pkg{brms}
 #' prior string.
@@ -951,13 +933,35 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' @importFrom stats median sd qnorm
 #'
 #' @noRd
-predictor_prior <- function(predictor, prior_type = "uninformative") {
+validate_predictor_scale <- function(predictor_scale, predictor = NULL) {
+  predictor_scale <- match.arg(predictor_scale,
+                               c("auto", "concentration", "log"))
+  if (!is.null(predictor) && predictor_scale == "concentration" &&
+      any(predictor < 0)) {
+    stop("`predictor_scale = \"concentration\"` requires a non-negative",
+         " predictor. Use \"log\" if the supplied values are already logged,",
+         " or \"auto\" to retain the existing sign-based choice.",
+         call. = FALSE)
+  }
+  predictor_scale
+}
+
+#' @noRd
+predictor_prior <- function(predictor, prior_type = "uninformative",
+                            predictor_scale = "auto") {
   u <- unique(predictor)
-  # A concentration cannot be negative, so a predictor that spans negative
-  # values is one the user has transformed. Selecting on that is what selects
-  # the scale the prior is stated on.
-  spans_negative <- min(u) < 0
-  z <- if (spans_negative) u else log(u[u > 0])
+  predictor_scale <- validate_predictor_scale(predictor_scale, u)
+  # A precomputed logged column can have the same non-negative values as a
+  # concentration column, so the values cannot determine its scale. Keep the
+  # sign heuristic under "auto" for compatibility and let an explicit
+  # declaration replace it. See #317.
+  is_logged <- switch(
+    predictor_scale,
+    auto = min(u) < 0,
+    concentration = FALSE,
+    log = TRUE
+  )
+  z <- if (is_logged) u else log(u[u > 0])
   if (!length(z)) {
     stop("Cannot build a prior for \"nec\" or \"ec50\": the predictor",
          " contains no positive values, so there is no concentration scale",
@@ -972,7 +976,7 @@ predictor_prior <- function(predictor, prior_type = "uninformative") {
   # series it reached 9.96 against a highest dose of 20, which is the defect
   # #302 exists to remove.
   half_width <- max(mu - min(z), max(z) - mu)
-  if (spans_negative) {
+  if (is_logged) {
     dist <- "normal"
     sigma <- sd(z) * 10
   } else {
@@ -1021,7 +1025,7 @@ predictor_prior <- function(predictor, prior_type = "uninformative") {
 #' @param family A \code{\link[stats]{family}} function.
 #' @param predictor The predictor variable for the NEC model fit.
 #' @param response The response variable for the NEC model fit.
-#' @param predictor_scale The predictor the \code{nec} and \code{ec50} prior is
+#' @param prior_predictor The predictor the \code{nec} and \code{ec50} prior is
 #' built from and truncated to. Defaults to \code{predictor}, and differs from
 #' it only for the two blocks of a hurdle or zero-inflated fit, each of which is
 #' primed from a subset of the predictor but evaluated over the whole of it.
@@ -1036,9 +1040,10 @@ predictor_prior <- function(predictor, prior_type = "uninformative") {
 define_prior <- function(model, family, predictor, response,
                          prior_type = "uninformative",
                          model_survival = NULL, disp_spec = NULL,
-                         group_spec = NULL, predictor_scale = NULL) {
-  if (is.null(predictor_scale)) {
-    predictor_scale <- predictor
+                         group_spec = NULL, prior_predictor = NULL,
+                         predictor_scale = "auto") {
+  if (is.null(prior_predictor)) {
+    prior_predictor <- predictor
   }
   # Which scale an ogl deviation is applied on decides how wide its prior
   # should be, and it is a property of the model and the family, both of which
@@ -1056,6 +1061,7 @@ define_prior <- function(model, family, predictor, response,
     hurdle_priors <- define_hurdle_prior(model, family, predictor, response,
                                          prior_type = prior_type,
                                          model_survival = model_survival,
+                                         prior_predictor = prior_predictor,
                                          predictor_scale = predictor_scale)
     # A group-level term reaches the mu block only. add_formula_glef() runs
     # before the hu sub-formulas are attached, so `ogl` and `pgl` never see
@@ -1257,7 +1263,8 @@ define_prior <- function(model, family, predictor, response,
   # One construction for nec and ec50, on whichever scale the predictor was
   # supplied on. See predictor_prior() for why, and #302 for the measurements.
   # prior_type changes its spread and not its location or its shape.
-  x_pr <- predictor_prior(predictor_scale, prior_type = prior_type)
+  x_pr <- predictor_prior(prior_predictor, prior_type = prior_type,
+                          predictor_scale = predictor_scale)
   lbs <- c(Gamma = 0, poisson = 0, negbinomial = 0, gaussian = NA,
            bernoulli = 0, binomial = 0, "beta_binomial" = 0, beta = 0)
   ubs <- c(Gamma = NA, poisson = NA, negbinomial = NA, gaussian = NA,
@@ -1269,9 +1276,9 @@ define_prior <- function(model, family, predictor, response,
                          lb = lbs[fam_tag], ub = ubs[fam_tag])
   # x-dependent priors
   pr_nec <- prior_string(x_pr, nlpar = "nec",
-                         lb = min(predictor_scale), ub = max(predictor_scale))
+                         lb = min(prior_predictor), ub = max(prior_predictor))
   pr_ec50 <- prior_string(x_pr, nlpar = "ec50",
-                          lb = min(predictor_scale), ub = max(predictor_scale))
+                          lb = min(prior_predictor), ub = max(prior_predictor))
   # x- and y-independent priors
   pr_d <- prior_string("normal(0, 5)", nlpar = "d")
   pr_beta <- prior_string("normal(0, 5)", nlpar = "beta")
@@ -1683,9 +1690,10 @@ define_group_prior <- function(group_spec, predictor, response,
 define_hurdle_prior <- function(model, family, predictor, response,
                                 prior_type = "uninformative",
                                 model_survival = NULL,
-                                predictor_scale = NULL) {
-  if (is.null(predictor_scale)) {
-    predictor_scale <- predictor
+                                prior_predictor = NULL,
+                                predictor_scale = "auto") {
+  if (is.null(prior_predictor)) {
+    prior_predictor <- predictor
   }
   dpar <- hurdle_dpar(family)
   # The second block may carry a different equation from the response block,
@@ -1700,18 +1708,20 @@ define_hurdle_prior <- function(model, family, predictor, response,
   # well below the real control level.
   mu_priors <- define_prior(model, hurdle_mu_family(family),
                             parts$mu$x, parts$mu$y, prior_type = prior_type,
+                            prior_predictor = prior_predictor,
                             predictor_scale = predictor_scale)
   # second block: reuse the bernoulli/identity defaults on the proportion
   # non-zero, then rename every non-linear parameter into its namespace.
   hu_priors <- define_prior(model_survival, bernoulli(link = "identity"),
                             parts$hu$x, parts$hu$y, prior_type = prior_type,
+                            prior_predictor = prior_predictor,
                             predictor_scale = predictor_scale)
   hu_priors$nlpar <- ifelse(nzchar(hu_priors$nlpar),
                             paste0(dpar, hu_priors$nlpar), hu_priors$nlpar)
   # Both blocks are evaluated over the *whole* predictor range inside the joint
   # fit, but each is primed from a subset of it: mu from the non-zeros only,
   # which stop short of the concentrations where everything is zero, and the
-  # second block from the deduplicated unique-x vector. `predictor_scale` above
+  # second block from the deduplicated unique-x vector. `prior_predictor` above
   # is what makes the predictor-scaled priors and their bounds come from the
   # whole predictor rather than from those subsets, so that neither threshold is
   # boxed out of the range it must cover. Only the mu block is affected in

@@ -168,6 +168,52 @@ queued or running -- which it must do in any case, because a second deployment
 would rewrite the source tree and `vignettes.txt` underneath the tasks of the
 first that have not yet started.
 
+## Fits computed elsewhere
+
+`example8` fits 189 models. In sequence on the four cores this job asks for that
+is the better part of a day, which is longer than the walltime above and far
+longer than a vignette should take to rebuild after a prose correction. Every one
+of those fits is independent of every other, and this job cannot exploit that:
+`precompile.R` knits one chunk after another.
+
+The compendium at
+[open-AIMS/grouping-structures](https://github.com/open-AIMS/grouping-structures)
+runs them instead. It reads the fit calls out of `example8.Rmd.orig`, splits each
+model set into one array task per equation --- per equation and level, for the
+`bnec_group()` calls --- reassembles them with `c.bnecfit()`, and writes the nine
+objects the vignette expects to a store. Set `BAYESNEC_FIT_STORE` to that
+directory and `vignettes/fit_store.R` answers `bnec()` and `bnec_group()` from it
+instead of sampling.
+
+```sh
+BAYESNEC_FIT_STORE=/export/scratch/$USER/grouping-structures/store \
+  ./hpc/precompile-hpc.sh example8
+```
+
+A fit is filed under a hash of the call and a digest of the data it was given,
+and `vignettes/fit_store.R` recomputes that hash during the render. A call the
+store does not hold stops the render at that chunk, naming the key it wanted and
+the keys the store has. It does not fall back to fitting: a vignette edit nobody
+noticed would otherwise turn into a day-long render, or into one chunk fitted
+fresh among eight from a store built against a different draft.
+
+What this does not change is which sampler produced the numbers. The compendium
+sets `brms.backend` to `cmdstanr` as `precompile.R` does, installs `bayesnec`
+from a commit it records in its own `hpc/bayesnec.lock`, and runs inside this
+image --- the same one, checked against the same `image.lock`.
+
+Two consequences follow. The store is a few gigabytes of `brmsfit`
+objects, so it stays on scratch beside the job rather than being fetched. And an
+assembled model set is not bit-identical to one from a single `bnec()` call: each
+equation is, because the vignette's `seed` reaches `brm()` either way, but
+`expand_manec()` draws from the session's random number stream to build the
+averaged prediction grid, and a session that has just fitted seventeen other
+equations is at a different point in that stream. `bnec()` documents the same
+thing for its own parallel model loop under *Fitting a model set in parallel*.
+
+`vignettes/fit_store.R` is generated in the compendium and copied here; it
+records the digest of the source it was built from. Edit it there.
+
 ## The CI route
 
 `.github/workflows/precompile-vignettes.yaml` also runs `precompile.R`. It
@@ -206,6 +252,18 @@ error text is only text in a rendered `.Rmd`.
 exits non-zero, `set -e` in `run.precompile` turns it into a failed job, and the
 outputs are staged into `out/<vignette>/` only after that check has passed. A
 failed run leaves nothing to collect, which is what `--fetch` reports.
+
+## The package source
+
+A direct run of `vignettes/precompile.R` loads the repository checkout with
+`pkgload`, with unexported objects kept unavailable. The log reports the
+package version and source path before knitting starts. This prevents an older
+installation in a user library from producing output attributed to the branch.
+
+The HPC job sets `BAYESNEC_PRECOMPILE_PACKAGE=installed` because it has already
+installed the deployed checkout into a job-local library and verified the
+resolved package path. The explicit setting keeps that installed-build check
+while direct and CI runs use the source checkout by default.
 
 ## Changing a dependency
 

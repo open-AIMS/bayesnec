@@ -14,6 +14,20 @@ test_that("user-supplied `prior` is not captured by partial matching to `prior_t
                "argument \"data\" is missing")
 })
 
+test_that("predictor_scale is an explicit bnec argument (#317)", {
+  expect_true("predictor_scale" %in% names(formals(bnec)))
+  expect_error(
+    bnec(y ~ crf(x, "nec3param"), data = nec_data,
+         predictor_scale = "unknown"),
+    "arg.*one of"
+  )
+  expect_error(
+    bnec(y ~ crf(log_x, c("nec3param", "nec4param")), data = nec_data,
+         predictor_scale = "concentration"),
+    "requires a non-negative predictor"
+  )
+})
+
 test_that("a model set states the missing-value refusal once, from bnec()", {
   # check_data() runs once per model inside fit_bayesnec(), and bnec() wraps
   # that call in try() for a model set, so a refusal raised from there was

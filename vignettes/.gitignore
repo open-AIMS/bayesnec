@@ -5,6 +5,7 @@
 !vignette-fig-*.pdf
 !vignette-fig-*.png
 !precompile.R
+!fit_store.R
 !exmp2b_theoretical_curves.R
 /prompts/
 /.quarto/

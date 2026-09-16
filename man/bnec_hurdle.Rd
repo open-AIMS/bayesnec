@@ -4,7 +4,14 @@
 \alias{bnec_hurdle}
 \title{Fit a factorised hurdle (or zero-inflated) concentration-response model}
 \usage{
-bnec_hurdle(formula, data, model_survival = NULL, family_growth = NULL, ...)
+bnec_hurdle(
+  formula,
+  data,
+  model_survival = NULL,
+  family_growth = NULL,
+  predictor_scale = "auto",
+  ...
+)
 }
 \arguments{
 \item{formula}{Either a \code{\link[base]{character}} string defining an
@@ -37,6 +44,10 @@ zero-inflated count families, which are mixtures rather than hurdles -- see
 hurdle on counts is zero-truncated. That overestimates the mean where the
 mean is small, which is the upper end of the concentration range; a
 zero-truncated count family is not yet available.}
+
+\item{predictor_scale}{The predictor-scale declaration passed to both
+\code{\link{bnec}} fits. It is checked against the complete predictor before
+either component is fitted. See \code{\link{bnec}}.}
 
 \item{...}{Further arguments passed to both \code{\link{bnec}} calls.}
 }

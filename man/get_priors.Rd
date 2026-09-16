@@ -13,6 +13,7 @@ get_priors(object, ...)
   family = NULL,
   prior_type = "uninformative",
   model_survival = NULL,
+  predictor_scale = "auto",
   ...
 )
 }
@@ -39,6 +40,11 @@ the way \code{\link{bnec}} would.}
 \item{model_survival}{An optional \code{\link[base]{character}} string naming
 the equation for the second block of a joint hurdle or zero-inflated fit. See
 \code{\link{bnec}}.}
+
+\item{predictor_scale}{A \code{\link[base]{character}} string declaring
+whether the predictor is supplied as \code{"concentration"}, already
+\code{"log"} transformed, or should use the existing \code{"auto"} rule.
+See \code{\link{bnec}}.}
 }
 \value{
 For a single model, an object of class

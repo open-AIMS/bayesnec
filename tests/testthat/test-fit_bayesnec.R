@@ -26,12 +26,14 @@ gamma_boundary_data <- function() {
 # does with it. `init` is supplied so that add_brm_defaults() skips the
 # initial-value search, which is stochastic and can take minutes (#266), and
 # are_chains_correct() is mocked because the fake fit has no chains to count.
-fit_call <- function(formula, data, family, brm_args = list()) {
+fit_call <- function(formula, data, family, brm_args = list(),
+                     predictor_scale = "auto") {
   seen <- new.env(parent = emptyenv())
   local_mocked_bindings(
     brm = function(formula, data, ...) {
       seen$data <- data
       seen$formula <- formula
+      seen$prior <- list(...)$prior
       structure(list(), class = "brmsfit")
     },
     are_chains_correct = function(...) TRUE,
@@ -41,10 +43,23 @@ fit_call <- function(formula, data, family, brm_args = list()) {
     bayesnec:::fit_bayesnec(
       formula = bnf(formula), data = data, model = "nec3param",
       brm_args = c(list(family = family, init = list(list()), chains = 1,
-                        iter = 10), brm_args))
+                        iter = 10), brm_args),
+      predictor_scale = predictor_scale)
   ))
   seen
 }
+
+test_that("fit_bayesnec passes an explicit predictor scale to its prior (#317)", {
+  x <- rep(log(c(1, 3, 10, 30, 100)), each = 4)
+  d <- data.frame(x = x, y = seq(8, 2, length.out = length(x)))
+  seen <- fit_call(y ~ crf(x, model = "nec3param"), d, gaussian(),
+                   predictor_scale = "log")
+  prior <- as.data.frame(seen$prior)
+
+  expect_match(prior$prior[prior$nlpar == "nec"], "^normal\\(")
+  expect_equal(as.numeric(prior$lb[prior$nlpar == "nec"]), min(x))
+  expect_equal(as.numeric(prior$ub[prior$nlpar == "nec"]), max(x))
+})
 
 # The data frame alone, which is what most of the cases below assert on.
 fit_data <- function(formula, data, family, brm_args = list()) {

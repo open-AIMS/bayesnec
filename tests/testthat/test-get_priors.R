@@ -194,6 +194,22 @@ test_that("get_priors round trips through bnec", {
   expect_true("sigma" %in% whole$class)
 })
 
+test_that("get_priors honours an explicit predictor scale (#317)", {
+  x <- rep(log(c(1, 3, 10, 30, 100)), each = 4)
+  d <- data.frame(x = x, y = seq(8, 2, length.out = length(x)))
+  automatic <- get_priors(y ~ crf(x, "nec3param"), data = d,
+                          family = gaussian())
+  logged <- get_priors(y ~ crf(x, "nec3param"), data = d,
+                       family = gaussian(), predictor_scale = "log")
+  auto_nec <- automatic$prior[automatic$nlpar == "nec"]
+  log_nec <- logged$prior[logged$nlpar == "nec"]
+
+  expect_match(auto_nec, "^lognormal\\(")
+  expect_match(log_nec, "^normal\\(")
+  expect_equal(as.numeric(logged$lb[logged$nlpar == "nec"]), min(x))
+  expect_equal(as.numeric(logged$ub[logged$nlpar == "nec"]), max(x))
+})
+
 test_that("a user prior makes the two entry points disagree", {
   skip_on_cran()
   own <- get_priors(y ~ crf(x, "nec4param"), data = nec_data,

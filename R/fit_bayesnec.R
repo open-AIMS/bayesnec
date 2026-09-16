@@ -22,7 +22,8 @@
 #' @noRd
 fit_bayesnec <- function(formula, data, model = NA, brm_args,
                          skip_check = FALSE, prior_type = "uninformative",
-                         timeout = Inf, model_survival = NULL) {
+                         timeout = Inf, model_survival = NULL,
+                         predictor_scale = "auto") {
   formula <- single_model_formula(formula, model)
   bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
   x <- retrieve_var(bdat, "x_var", error = TRUE)
@@ -66,6 +67,7 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   brm_args <- add_brm_defaults(brm_args, model, family, x, response,
                                skip_check, custom_name,
                                prior_type = prior_type,
+                               predictor_scale = predictor_scale,
                                model_survival = model_survival,
                                disp_spec = parse_disp_term(formula),
                                group_spec = group_spec)

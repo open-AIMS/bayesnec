@@ -70,6 +70,41 @@ if (length(.bayesnec_selection)) {
 message("Precompiling: ", paste(file_path_sans_ext(basename(orig_files)),
                                 collapse = ", "))
 
+# Package source ----------------------------------------------------------
+# A direct run is a development operation, so load this checkout rather than
+# whichever bayesnec installation happens to be first on .libPaths(). Loading
+# only the exports preserves the installed-package boundary: an unexported
+# function cannot make a vignette pass here and fail under R CMD check.
+#
+# The HPC job is the exception. It installs this checkout into an isolated,
+# job-local library and verifies the resolved path before calling this script.
+# BAYESNEC_PRECOMPILE_PACKAGE=installed lets that route use its verified build
+# without requiring a development package in the pinned container.
+.package_mode <- Sys.getenv("BAYESNEC_PRECOMPILE_PACKAGE", "source")
+if (!.package_mode %in% c("source", "installed")) {
+  stop("BAYESNEC_PRECOMPILE_PACKAGE must be 'source' or 'installed', not '",
+       .package_mode, "'.", call. = FALSE)
+}
+if (identical(.package_mode, "source")) {
+  if (!requireNamespace("pkgload", quietly = TRUE)) {
+    stop("pkgload is required to precompile from the source checkout. ",
+         "Install the package's suggested dependencies and try again.",
+         call. = FALSE)
+  }
+  pkgload::load_all(".", export_all = FALSE, helpers = FALSE,
+                    attach_testthat = FALSE, quiet = TRUE)
+  .package_source <- normalizePath(".")
+} else {
+  if (!requireNamespace("bayesnec", quietly = TRUE)) {
+    stop("BAYESNEC_PRECOMPILE_PACKAGE=installed, but bayesnec is not installed.",
+         call. = FALSE)
+  }
+  suppressPackageStartupMessages(library(bayesnec))
+  .package_source <- normalizePath(find.package("bayesnec"))
+}
+message("bayesnec ", as.character(packageVersion("bayesnec")), " from ",
+        .package_source, " (", .package_mode, ")")
+
 # need to set system variable locally first -------------------------------
 Sys.setenv("NOT_CRAN" = "true")
 
@@ -211,6 +246,34 @@ fig_state <- function() {
   tools::md5sum(f)
 }
 before <- fig_state()
+
+# Precompiled fits --------------------------------------------------------
+# example8 fits 189 models, which in sequence on a four-core allocation is the
+# better part of a day -- longer than the precompile job's walltime, and far
+# longer than a vignette should take to rebuild after a prose correction. The
+# compendium at open-AIMS/grouping-structures runs each of those fits as its own
+# cluster task and writes the assembled objects to a store keyed by a hash of the
+# call and the data. With BAYESNEC_FIT_STORE pointing at that store, bnec() and
+# bnec_group() are answered from it instead of sampling.
+#
+# The reader sees no difference: knitr echoes the chunk's source, so the vignette
+# still shows the bnec() call the fit came from. A call the store does not hold
+# stops the render at that chunk rather than falling back to fitting, which is
+# what keeps the stored fit and the printed call the same thing.
+#
+# Unset, which is the default and what CI and a local run use, nothing here does
+# anything.
+#
+# Installed after the rm(list = ls()) above, which would otherwise remove it.
+if (nzchar(Sys.getenv("BAYESNEC_FIT_STORE"))) {
+  if (length(orig_files) != 1) {
+    stop("BAYESNEC_FIT_STORE is set, but ", length(orig_files), " vignettes are",
+         " being built. A store holds one vignette's fits; name that vignette.",
+         call. = FALSE)
+  }
+  source("vignettes/fit_store.R")
+  fit_store_install()
+}
 
 purrr::walk(orig_files, knit_one)
 

@@ -70,6 +70,31 @@ test_that("a family object reached through a variable is honoured, and said so",
   expect_silent(v(quiet, link_source = "symbol"))
 })
 
+test_that("a family object is rebuilt without changing its specification", {
+  # Family constructors return closures whose call frame retains promises from
+  # the calling environment. A family assigned in a knitr chunk therefore sent
+  # the complete chunk environment to every model worker through brm_args. The
+  # family is rebuilt from its tag and links, which are all it contributes to a
+  # bayesnec fit. See #329.
+  make_family <- function() {
+    big <- numeric(1e6)
+    Gamma(link = "log")
+  }
+  supplied <- make_family()
+  validated <- suppressMessages(
+    bayesnec:::validate_family(supplied, link_source = "symbol")
+  )
+  expect_identical(
+    bayesnec:::family_signature(validated),
+    bayesnec:::family_signature(supplied)
+  )
+  expect_false(
+    identical(
+      environment(validated$variance), environment(supplied$variance)
+    )
+  )
+})
+
 test_that("the family tag brms reports is accepted as well as the constructor", {
   # mod_fams maps the tag to the constructor and the two differ for one family:
   # get("beta") resolves to base::beta(). A user reading the family off a

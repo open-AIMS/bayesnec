@@ -1,5 +1,13 @@
 # bayesnec 2.2.0
 
+## Vignette precompilation
+
+- `vignettes/precompile.R` now loads the repository checkout by default and
+  reports the package version and source path before knitting. An explicit
+  installed-package mode preserves the HPC route, which verifies its job-local
+  installation before the script runs. A local render can no longer silently
+  use a different `bayesnec` installation (#340).
+
 ## Reproducible posterior comparisons and prior samples
 
 - `average_estimates()`, `compare_estimates()`, `compare_fitted()` and
@@ -15,6 +23,15 @@
   intervals and probabilities compared with earlier versions (#343).
 
 ## Default priors
+
+- Default-prior entry points now accept `predictor_scale = "log"` to declare
+  that the predictor has already been logged. The declaration prevents a logged
+  concentration series whose lowest value is at or above 1 from being logged a
+  second time when the `nec` and `ec50` prior is built, and retains `log(1) = 0`
+  as a tested value. `predictor_scale = "concentration"` makes the alternative
+  declaration explicit and refuses negative values. The default, `"auto"`,
+  retains the previous sign-based choice and therefore changes no existing fit
+  unless the new argument is used (#317).
 
 - **The `"regularizing"` prior set is now one statement applied to every
   family.** `prior_type = "regularizing"` was written out branch by branch, and
@@ -732,16 +749,16 @@
   changes that location, so set `multisession` rather than `multicore` for a
   parallel grouped call with that option in force.
 
-  **A fit no longer stores the session it was fitted in.** A formula records
-  the environment it was created in, and serialising it writes that environment
-  out in full. Written at the top level of a script that is the global
-  environment and adds nothing; written in a `knitr` chunk it is the chunk
-  environment, which holds every object the document has built so far. The
-  formula's environment is now rebuilt to hold exactly the names the formula
-  mentions and the data does not supply, parented where the walk up its own
-  parent chain stopped, and it is rebuilt before the model frame so that the
-  frame, the `brms` formula and the stored fit are all narrowed by the one
-  call. Measured on R 4.6.1 with a
+  **A fit no longer stores or exports the session it was fitted in through its
+  formula or family.** A formula records the environment it was created in, and
+  serialising it writes that environment out in full. Written at the top level
+  of a script that is the global environment and adds nothing; written in a
+  `knitr` chunk it is the chunk environment, which holds every object the
+  document has built so far. The formula's environment is now rebuilt to hold
+  exactly the names the formula mentions and the data does not supply, parented
+  where the walk up its own parent chain stopped, and it is rebuilt before the
+  model frame so that the frame, the `brms` formula and the stored fit are all
+  narrowed by the one call. Measured on R 4.6.1 with a
   76 MiB vector bound beside the formula: the formula serialised to 76.29 MiB
   and now serialises to under 0.01, and the model frame built from it --- which
   `amend()` exports to every worker, through the `.Environment` of its `terms`
@@ -749,6 +766,16 @@
   once per model, and once per model per level in a grouped call, which is what
   made a parallel run of a vignette fail at `future.globals.maxSize` rather than
   merely slow it (#329).
+
+  A family object has its own route to the same environment. Constructors such
+  as `Gamma()` and `Beta()` return closures whose call frame can retain the
+  environment in which the family was made. A family stored in a variable was
+  kept unchanged so that its links were honoured, then exported through
+  `brm_args`; after the formula fix above, the same vignette still exported
+  3.78 GiB. Accepted family objects are now rebuilt from their family tag and
+  links. The links remain unchanged, while the unrelated construction
+  environment is absent from model workers and from the family stored on a
+  grouped fit (#329).
 
   The environment is narrowed rather than removed. `model.frame()` resolves a
   term against the data first and the formula's environment second, so a formula
@@ -919,6 +946,15 @@
 
 ## Bug fixes
 
+- `ecxhormebc5` is now excluded before fitting when the predictor contains
+  negative values and an identity-linked response family requires a positive
+  mean. Its linear hormesis term can make the mean negative there, and the
+  additional free lower asymptote made valid starting values unreliable on all
+  six measured `lum31` fits. The exclusion reports that reason instead of a
+  failed fit after compilation and initialisation. `ecxhormebc4`, non-negative
+  predictors, unconstrained Gaussian means and support-preserving links are
+  unaffected ([#344](https://github.com/open-AIMS/bayesnec/issues/344)).
+
 - A fit now reproduces under a `set.seed()` in the caller's session. The
   initial-value search called `set.seed(seed)` whatever it was given, and
   `set.seed(NULL)` does not leave the random number stream alone: it
@@ -989,8 +1025,8 @@
   string is given the environment of the call that converted it, through a new
   `env` argument to `bayesnecformula()` and `bnf()` (#319).
 
-  The same defect held for a function used to transform the predictor. The
-  reduced formula `model.frame()` is built from, the back-transform
+  The same R-side defect held for a function used to transform the predictor.
+  The reduced formula `model.frame()` is built from, the back-transform
   `sub_x_transformation()` applies in `ecx()`, `nsec()` and `expand_nec()`, the
   component formulas of a hurdle fit, the `disp()` term and the `brmsformula`
   handed to `brms` each lost the environment the user wrote the formula in,
@@ -1001,7 +1037,11 @@
   rather than at the start. One of these has a further consequence: the check
   that a `disp()` sub-model evaluates to finite values could not evaluate such
   a term at all and skipped it, so a formula written this way now stops where
-  it previously fitted and failed in Stan.
+  it previously fitted and failed in Stan. This change makes the function
+  available when R evaluates the formula; it does not define that function in
+  Stan. During fitting `brms` writes the predictor expression into Stan code,
+  so a custom function must also have a Stan definition supplied through
+  `stanvars`, or the transformed predictor must be computed in the data first.
 
   One consequence of binding an environment to a character formula: the
   formula is stored once per model, so a formula converted inside a function
@@ -2832,4 +2872,3 @@
 - There is a vignette detailing the models available in bayesnec. Note that not all models are suitable for all families, and also depending if link functions are used.
 
 - A new check_chains function has been added to allow chain plotting in base R and that works more smoothly with plotting chains for multiple fits for bayesmanec objects.
-

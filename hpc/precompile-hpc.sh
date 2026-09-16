@@ -279,10 +279,10 @@ n=${#args[@]}
 # sbatch exports the submitting environment, and that environment is the remote
 # shell this ssh opens, so the variable is set there rather than passed as an
 # sbatch option.
-WORKERS_EXPORT=""
 SBATCH_RES=""
+exports="ALL"
 if [ -n "$workers" ]; then
-  WORKERS_EXPORT="export BAYESNEC_VIGNETTE_WORKERS=$workers; "
+  exports="$exports,BAYESNEC_VIGNETTE_WORKERS=$workers"
   # One core per worker, and memory to match: each worker holds its own fit.
   # These override the directives in hpc/run.precompile, which are set for the
   # sequential default.
@@ -290,9 +290,20 @@ if [ -n "$workers" ]; then
   echo "==> model sets fitted across $workers worker(s), ${workers} core(s), $((workers * 8))GB"
 fi
 echo "==> submitting $n task(s)"
+# BAYESNEC_FIT_STORE is passed as an sbatch --export rather than being left to
+# the environment: sbatch exports the submitting shell's environment by default,
+# but the submitting shell here is the far end of an ssh, which does not carry
+# it. Named explicitly with ALL so the rest of the job's environment is
+# unaffected. Unset, this is ALL and nothing else, which is the default.
+# See "Fits computed elsewhere" in hpc/README.md.
+if [ -n "${BAYESNEC_FIT_STORE:-}" ]; then
+  echo "    fit store: $BAYESNEC_FIT_STORE"
+  exports="$exports,BAYESNEC_FIT_STORE=$BAYESNEC_FIT_STORE"
+fi
+export_arg="--export=$exports"
 JOB=$(ssh "$HOST" "bash -lc 'cd $DEST && chmod +x hpc/run.precompile && \
   module load slurm >/dev/null 2>&1; \
-  ${WORKERS_EXPORT}sbatch --parsable ${SBATCH_RES}--array=1-$n%1 hpc/run.precompile'")
+  sbatch --parsable $export_arg ${SBATCH_RES}--array=1-$n%1 hpc/run.precompile'")
 echo "job $JOB: ${args[*]}"
 
 if [ "$wait_for_job" -eq 0 ]; then

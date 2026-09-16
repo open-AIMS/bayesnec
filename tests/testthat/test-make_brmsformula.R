@@ -63,8 +63,29 @@ test_that("make_brmsformula resolves symbols in its caller's frame", {
   }
   expect_identical(build_set(), "nec3param")
   build_x <- function() {
+    # This checks R-side construction only. The separate Stan test below uses
+    # a function name that both languages define.
     squared <- function(z) z^2
     names(make_brmsformula("y ~ crf(squared(x), \"nec3param\")", nec_data))
   }
   expect_identical(build_x(), "nec3param")
+})
+
+test_that("a local R transformation that Stan defines reaches valid code", {
+  skip_if_not_installed("rstan")
+  build_code <- function() {
+    # Stan provides square(); this local definition supplies the R side used
+    # while bayesnec builds the model frame. Other custom functions require a
+    # corresponding Stan definition through stanvars.
+    square <- function(z) z^2
+    bform <- make_brmsformula(
+      "y ~ crf(square(x), \"nec3param\")", nec_data
+    )[[1]]
+    brms::make_stancode(
+      bform, data = nec_data, family = stats::gaussian(link = "identity")
+    )
+  }
+  code <- build_code()
+  expect_match(code, "square(C_1[n])", fixed = TRUE)
+  expect_true(rstan::stanc(model_code = code, allow_undefined = FALSE)$status)
 })
