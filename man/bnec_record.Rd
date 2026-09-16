@@ -28,8 +28,8 @@ equation whose refit failed stays in \code{attempted} and is not reported
 by \code{\link{failed_models}}.
 
 The record is kept through \code{\link[stats]{update}} and
-\code{\link{amend}}. \code{NULL} for an object fitted by a version that
-did not record it.
+\code{\link{amend}}. \code{NULL} for an object fitted by a version
+predating the record.
 }
 \description{
 Reports the candidate set as requested, the candidate set attempted, the
@@ -59,5 +59,5 @@ bnec_record(manec_example)
 
 }
 \seealso{
-\code{\link{bnec}}, \code{\link{models}}, \code{\link{check_data}}
+\code{\link{bnec}}, \code{\link{models}}
 }

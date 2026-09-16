@@ -410,7 +410,7 @@ fit_weights_method <- function(x) {
 #' to be materialised --- which matters, because with 23 models and \emph{G}
 #' levels it has \code{23^G} cells.
 #'
-#' \bold{This identity is specific to pseudo-BMA}, the package default, and
+#' The identity is specific to pseudo-BMA, the package default, and
 #' \code{crossed_group_weights()} enforces it rather than assuming it: a fit
 #' built with any other weighting method is refused, because there is no
 #' correct crossed table to return for one.
@@ -419,7 +419,7 @@ fit_weights_method <- function(x) {
 #' matrix and are not computed here. The same caveat applies to
 #' \code{\link{crossed_weights}} for hurdle fits, for the same reason.
 #'
-#' \bold{Two readings, both useful}
+#' \bold{The two readings of the crossed table}
 #'
 #' The \strong{unrestricted} maximum picks the best model for each level
 #' independently, and will typically assign different equations to different
@@ -450,8 +450,8 @@ fit_weights_method <- function(x) {
 #' So \code{se_diff} is reported when every level, and the pooled fit, settled
 #' on a single model, and is \code{NA} whenever any of them is
 #' model-averaged --- in which case the difference is a point estimate with no
-#' uncertainty attached, which is worth remembering before reading much into a
-#' small one. Where the values are present the observations are additionally
+#' uncertainty attached, so a small difference should not be read as evidence of
+#' one. Where the values are present the observations are additionally
 #' checked to line up before anything is computed.
 #'
 #' Note this compares the \emph{best} model per level against the \emph{best}
