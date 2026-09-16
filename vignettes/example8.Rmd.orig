@@ -792,13 +792,12 @@ from are returned as well, in `posterior_data`, and drawing them separates a
 difference in location from a difference in width:
 
 ```{r fig-cmp-metals, fig.asp = 0.5, out.width = "78%"}
-ggplot(cmp_tox$posterior_data, aes(x = value, fill = model, colour = model)) +
-  geom_density(alpha = 0.35, linewidth = 0.4) +
-  scale_fill_grey(start = 0.75, end = 0.25, name = NULL) +
-  scale_colour_grey(start = 0.6, end = 0.1, name = NULL) +
+ggplot(data = cmp_tox$posterior_data, mapping = aes(x = value)) +
+  geom_density(mapping = aes(group = model, colour = model, fill = model),
+               alpha = 0.3) +
   theme_classic() +
   theme(legend.position = "top") +
-  labs(x = "N(S)EC, log(mg/L)", y = "Density")
+  labs(x = "N(S)EC, log(mg/L)", y = "Density", fill = NULL, colour = NULL)
 ```
 
 
@@ -1150,26 +1149,24 @@ The 21 pairwise probabilities are a summary of seven posteriors, and those are
 in `posterior_data`:
 
 ```{r fig-cmp-herbicides, fig.asp = 0.5, out.width = "95%"}
-# Seven levels is past what a grey scale can separate, and the order the
-# densities appear in is information, so the levels are ordered by their median
-# and given a sequential colour scale rather than the grey one used where there
-# are two or three.
+# Drawn as vignette("example4") draws a compare_posterior density, with the
+# levels ordered by their median so that the legend reads in the same order as
+# the curves.
 herb_post <- cmp_herb$posterior_data
 herb_post$model <- reorder(factor(herb_post$model), herb_post$value, median)
 
-ggplot(herb_post, aes(x = value, fill = model, colour = model)) +
-  geom_density(alpha = 0.45, linewidth = 0.3) +
-  scale_fill_viridis_d(option = "mako", end = 0.9, direction = -1, name = NULL) +
-  scale_colour_viridis_d(option = "mako", end = 0.9, direction = -1, name = NULL) +
-  guides(fill = guide_legend(nrow = 1)) +
+ggplot(data = herb_post, mapping = aes(x = value)) +
+  geom_density(mapping = aes(group = model, colour = model, fill = model),
+               alpha = 0.3) +
+  guides(fill = guide_legend(nrow = 1), colour = guide_legend(nrow = 1)) +
   theme_classic() +
   theme(legend.position = "top") +
-  labs(x = "N(S)EC, log(ug/L)", y = "Density")
+  labs(x = "N(S)EC, log(ug/L)", y = "Density", fill = NULL, colour = NULL)
 ```
 
 Ordered by their medians, the seven run from irgarol and diuron at the left to
 tebuthiuron at the right, which is the potency ordering the table gave. Three
-things the pairwise probabilities do not say are visible here.
+things the pairwise probabilities do not say are visible in the densities.
 
 The three most potent overlap almost entirely. Irgarol, diuron and ametryn sit
 within half a log unit of each other and their densities are superimposed over
