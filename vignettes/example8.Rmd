@@ -1,15 +1,3 @@
-<!-- NUMBERS TO VERIFY against the production render before this ships. Every
-     figure quoted in prose currently comes from the shape-check render (job
-     910761, 2 chains, iter = 400), not from a production run:
-       s4  N(S)EC 0.17 and 1.19; EC10 0.280 and 0.978; sd 0.165 (0.095-0.263)
-       s5  EC10 0.327/0.349 and N(S)EC 0.198/0.771 are from job 902840, which
-           predates the 221-commit merge of dev; annotated N(S)EC 0.19 and 0.65
-           and the control range 250,000-1,450,000 are from 910761
-       s6  divergences 0, 0, 9, 66; R-hat 1.027, 1.029, 1.844, 1.128
-       s7  prob_diff values and the per-level N(S)EC are from 902840
-     The 0.8 adapt_delta measurement in the provenance section is from the
-     exploratory runs and is independent of the render. -->
-
 ---
 title: "Grouping and factor covariates"
 output:
@@ -45,8 +33,8 @@ decision to make:
   level its own complete model set, and lets the *functional form* differ
   between levels.
 
-They answer different questions and suit different data. This vignette works
-through both, and then through the case where they have to be combined.
+They answer different questions and suit different data, and the last section
+uses both at once.
 
 
 ``` r
@@ -802,11 +790,10 @@ autoplot(fit_ogl)
 </div>
 
 The term changes the fitted curve, not only its uncertainty. Ungrouped, the
-model-averaged curve falls from the control immediately and the annotated
-N(S)EC is 0.17 mg/L on a narrow band; with `ogl(conc_group)` it holds near the
-control to about 1 mg/L before falling, and the N(S)EC is 1.19 on a band that
-spans most of the response range through the transition. EC10 changes with it,
-from 0.280 to 0.978 mg/L.
+model-averaged curve falls from the control immediately; with `ogl(conc_group)`
+it holds near the control to about 1 mg/L before falling. EC10 changes with it,
+from 0.280 mg/L (0.207--0.410) to 1.158 (0.624--2.377) --- four times the
+estimate on an interval more than eight times wider.
 
 That follows from the weights rather than from any one equation. Adding a term
 that absorbs within-concentration variation changes which curve shapes fit the
@@ -986,22 +973,21 @@ autoplot(fit_plate)
 
 The vertical spread at each concentration is the gain difference. Control wells
 range from about 250,000 to 1,450,000 relative light units across the seventeen
-plates, and the pooled fit has nowhere to put that except the residual, which is
-why its curve falls from the control with a narrow band and an annotated N(S)EC
-of 0.19 mg/L. With `ogl(plate)` the same spread is attributed to the plates and
-the population curve holds nearer the control before falling, with an N(S)EC of
-0.65.
+plates. The pooled fit has nowhere to put that except the residual, so its curve
+falls from the control on a narrow band; with `ogl(plate)` the spread is
+attributed to the plates and the population curve holds nearer the control
+before falling.
 
 The two fits differ in which estimate they change. EC10 is almost the same
 either way, 0.327 mg/L pooled against 0.349 with the plate term, but its
-interval narrows from 0.219--0.712 to 0.314--0.382, about sevenfold. The
-N(S)EC changes instead, from 0.198 mg/L to 0.771, on intervals that stay wide in
-both. A reader who took the pooled fit at face value would report a no-effect
+interval narrows from 0.219--0.708 to 0.314--0.383, about sevenfold. The
+N(S)EC changes instead, from 0.198 mg/L (0.049--0.533) to 0.771
+(0.228--1.246). A reader who took the pooled fit at face value would report a no-effect
 concentration a quarter of the one the plate term gives, with an EC10 interval
 seven times wider than the data support.
 
-The weights account for it. Pooled, they spread over `ecxll5` at 0.53, `ecxwb1`
-at 0.34, and `ecxll3` and `ecxhormebc4` at 0.05 each; with the plate term they
+The weights account for it. Pooled, they spread over `ecxll5` at 0.55, `ecxwb1`
+at 0.32, and `ecxll3` and `ecxhormebc4` at 0.05 each; with the plate term they
 concentrate onto `ecxll5` at 0.85 and `ecxwb1` at 0.15. `nec3param`,
 `nec4param`, `nechorme` and `nechorme4` --- every equation that estimates a
 threshold --- take no weight in either fit. A term on the fitted value rescales
@@ -1022,8 +1008,8 @@ A concentration-response design has to be wide enough for the curve being asked
 of it. Five concentrations is the conventional minimum, and at that minimum the
 number of parameters in an equation matters: the design has enough information
 to place a threshold or a midpoint but not enough to place both asymptotes as
-well. The failure is a sampler failure rather than an error, so a set fitted
-without checking diagnostics returns an answer that looks ordinary.
+well. Nothing refuses: every equation is offered, each returns an object, and the
+divergent transitions are the only sign that the design was too narrow for it.
 
 `coral_colour` and `coral_pam` are two endpoints of one 14-day exposure of
 *Acropora millepora* to the herbicide diuron under three climate scenarios
@@ -1184,22 +1170,21 @@ autoplot(four_par)
 <p class="caption">plot of chunk unnamed-chunk-38</p>
 </div>
 
-The diagnostics and the figures agree. Neither three-parameter equation records
-a divergent transition, and their maximum R-hat is 1.027 and 1.029; `nec4param`
-records 9 divergences at an R-hat of 1.844 and `ecx4param` 66 at 1.128. The
-four-parameter figure shows what an R-hat of 1.8 looks like: its credible band
-covers almost the whole response range from below 0.1 to near 0.7 across most of
-the concentration axis, so the fit states almost nothing about the curve while
-still drawing a mean through the data.
+The divergences separate the two sets and R-hat does not. Neither
+three-parameter equation records a divergent transition; `nec4param` records 71
+and `ecx4param` 243. Every one of the four has an R-hat between 1.004 and 1.018,
+so a check on R-hat alone would have passed all of them.
 
-Five concentrations is the conventional minimum for a concentration-response
-design, and it is enough to place a midpoint or a threshold but not enough to
-place both asymptotes as well. The design does not announce that: every equation
-is offered, every one returns an object, and only the diagnostics and the width
-of the band say which of them the data can support. #301 proposes restricting a
-set by the number of curve parameters for this reason.
+The figure shows where the four-parameter fits are unconstrained. Their credible
+band spans most of the response range between about 3 and 11 µg/L, which is the
+gap between the fourth diuron concentration and the fifth, and closes again where
+the observations resume. The extra parameters are asked to describe a region the
+design does not sample.
 
-One further point belongs here. The colour score has exactly one observation on
+#301 proposes restricting a model set by the number of curve parameters for
+this reason.
+
+The colour score has exactly one observation on
 the `Beta` boundary, which is the signature of a response normalised to the
 largest value in the dataset, and the yield endpoint has 63 readings at zero.
 Neither is a defect in the data; both are decisions about the response that have
@@ -1587,9 +1572,9 @@ cmp_herb$prob_diff
 
 The same call answers the question the case study opened with. Copper and zinc
 are two contaminants of interest, not a sample from a population of metals, so
-they are levels rather than a grouping, and each is fitted with the structure
-sections 3 to 5 arrived at: the censored response, a plate term for the gain, and
-a dispersion sub-model.
+they are levels rather than a grouping, and each is fitted with the structure the earlier
+sections arrived at: the censored response, a plate term for the gain, and a
+dispersion sub-model.
 
 
 ``` r
@@ -1735,14 +1720,17 @@ cmp_tox$prob_diff
 ```
 
 The seven herbicides span two orders of magnitude. Back-transformed from the
-fitted scale, the N(S)EC runs from irgarol at 0.135 and diuron at 0.152 µg/L to
-simazine at 4.31 and tebuthiuron at 10.6, with ametryn, hexazinone and atrazine
-between them. `prob_diff` gives the probability that the first level of each pair
-has the higher estimate, so a value near 0 or 1 separates two herbicides and one
-near 0.5 does not: ametryn against tebuthiuron is 0.000 and atrazine against
-diuron 0.998, while simazine against tebuthiuron at 0.062 is the least separated
-of the 21 pairs. For the metals the single comparison is 0.003, so copper and
-zinc are distinguished on these data.
+fitted scale, the N(S)EC runs from irgarol at 0.135 µg/L (0.108--0.176) and
+diuron at 0.153 (0.109--0.196), through ametryn at 0.200, hexazinone at 0.631 and
+atrazine at 1.174, to simazine at 4.221 and tebuthiuron at 10.591 (4.349--14.154).
+
+`prob_diff` gives the probability that the first level of each pair has the
+higher estimate, so a value near 0 or 1 separates two herbicides and one near 0.5
+does not. Of the 21 pairs the clearest are the three against tebuthiuron ---
+ametryn, diuron and hexazinone, each at 0.0075 --- and the least separated is
+diuron against irgarol at 0.724, the two most potent of the set, whose intervals
+overlap over most of their length. For the metals the single comparison is
+0.0138, so copper and zinc are distinguished on these data.
 
 The pairing matters for what this comparison may be used on. `compare_posterior()`
 pairs the draws of two posteriors by a random permutation, which approximates the
