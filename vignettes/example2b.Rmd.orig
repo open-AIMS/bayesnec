@@ -109,7 +109,7 @@ Measuring from the control is what makes an *EC~x~* well defined for a hormesis 
 
 Models that have an exponential decay (most models with parameter $\beta = \text{beta}$) with no $\delta = \text{bottom}$ parameter are 0-bounded and are not suitable for the Gaussian family, or any family modelled using a `"logit"` or `"log"` link because they cannot generate predictions of negative response values. Conversely, models with a linear decay (containing the string **lin** in their name) are not suitable for modelling families that are 0-bounded (Gamma, Poisson, Negative Binomial, Beta, Binomial, Beta-Binomial) using an `"identity"` link. These restrictions do not need to be controlled by the user, as a call to `bnec` with `models = "all"` in the formula will simply exclude inappropriate models, albeit with a message.
 
-Strictly speaking, models with a linear hormesis increase are not suitable for modelling responses that are 0, 1-bounded (Binomial-, Beta- and Beta-Binomial-distributed), however they are currently allowed in `bayesnec`, with a reasonable fit achieved through a combination of the appropriate distribution being applied to the response, and `bayesnec`'s `make_inits` function which ensures initial values passed to `brms` yield response values within the range of the user-supplied response data.
+An exclusion also applies to the 0, 1-bounded families (Binomial, Beta and Beta-Binomial) on an `"identity"` link, and it reaches two of the hormesis equations. **nechormepwr** and **nechorme4pwr** include the hormesis term $x_i^{1/(1+e^{\alpha})}$, which has no coefficient to shrink it. The term approaches 1 as $\alpha$ grows, at every concentration above zero, so for any $\tau$ above zero there is an $\alpha$ at which the mean exceeds 1. That holds whatever the predictor range, which is why the exclusion does not depend on the data supplied. The other hormesis equations --- **nechorme**, **nechorme4**, **nechormepwr01**, **ecxhormebc4** and **ecxhormebc5** --- are fitted on these families, because their increase prior to $\eta$ is scaled by a parameter. The initial-value search starts them inside the support: it draws from the priors, and accepts a draw only where the whole initial curve falls within a band built from the replicated level means and their spread, intersected with the support of the mean.
 
 # Model definitions
 
@@ -253,7 +253,7 @@ show_params("ecxhormebc5")[[1]]
 
 #### ecxhormebc4
 
-The **ecxhormebc4** model is a 5-parameter log-logistic model similar to the **exchormebc5** model but with a lower bound of 0, given by the equation:
+The **ecxhormebc4** model is a 4 parameter log-logistic model similar to the **ecxhormebc5** model but with a lower bound of 0, given by the equation:
 $$y_i = 0 + (\tau - 0 + e^{\alpha} x)/ (1 + e^{e^{\beta} (x_i - \omega)})$$
 with the respective `brmsformula` being
 
@@ -322,7 +322,7 @@ with the respective `brmsformula` being
 show_params("nechormepwr")[[1]]
 ```
 
-The **nechormepwr** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function. Because the model can generate predictions > 1 it should not be used for Binomial and Beta distributions with `"identity"` link. In this case the **nechromepwr01** model should be used.
+The **nechormepwr** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function. Because the model can generate predictions above 1 it is excluded from the Binomial, Beta and Beta-Binomial distributions with an `"identity"` link. **nechormepwr01** is the power-increase hormesis equation that is bounded on those families.
 
 #### neclinhorme
 
@@ -358,7 +358,7 @@ with the respective `brmsformula` being
 show_params("nechorme4pwr")[[1]]
 ```
 
-The **nechorme4pwr** model is a *hormesis* model [@Mattson2008], allowing an initial power increase in the response variable at concentrations below $\eta$. Because the model can generate predictions > 1 it should not be used for Binomial and Beta distributions with `"identity"` link. In this case the **nechromepwr01** model should be used.
+The **nechorme4pwr** model is a *hormesis* model [@Mattson2008], allowing an initial power increase in the response variable at concentrations below $\eta$. Because the model can generate predictions above 1 it is excluded from the Binomial, Beta and Beta-Binomial distributions with an `"identity"` link. **nechormepwr01** is the power-increase hormesis equation that is bounded on those families.
 
 #### nechormepwr01
 
@@ -370,7 +370,7 @@ with the respective `brmsformula` being
 show_params("nechormepwr01")[[1]]
 ```
 
-The **nechormepwr01** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function. In this case the linear version (**neclinhorme**) should be used.
+The **nechormepwr01** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function. In this case the linear version (**neclinhorme**) should be used. The increase of **nechormepwr01** is bounded above at 1 by construction, which is what keeps it available on the 0, 1-bounded families. The same bound excludes it from the 0, `Inf` bounded families (Gamma, Poisson, Negative Binomial with an `"identity"` link), whose response may exceed 1.
 
 #### necsigm
 

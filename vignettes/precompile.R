@@ -133,13 +133,9 @@ options(brms.backend = Sys.getenv("BAYESNEC_BACKEND", "cmdstanr"))
 # serially on a four-core allocation. SLURM_CPUS_PER_TASK is the allocation
 # rather than the node; the fallback is used off the cluster.
 #
-# example3 and example6 set mc.cores themselves, to parallel::detectCores(), in
-# a chunk, and so override this. That reports the node and not the allocation,
-# but brms runs at most `chains` in parallel and both of those vignettes take
-# the default of four, so it oversubscribes nothing as they stand. Those chunks
-# are echo = FALSE, so removing the lines would change nothing a reader sees;
-# they are left alone here because #190 re-renders the whole set and is the
-# place to remove them.
+# No vignette overrides this any more. example3 and example6 each set mc.cores
+# to parallel::detectCores() in an echo = FALSE chunk, which reported the node
+# rather than the allocation; both chunks were removed for the #190 re-render.
 #
 # example2 no longer has such a chunk. #322 replaced it with an explicit
 # cores = getOption("mc.cores", 1) on the call the reader sees, which reads
@@ -150,6 +146,24 @@ if (is.na(.cpus) || .cpus < 1) {
 }
 options(mc.cores = .cpus)
 message("Chains run on ", .cpus, " core(s)")
+
+# Printed output wraps at getOption("width") before knitr ever sees it, so the
+# committed .Rmd files recorded whatever width the renderer's .Rprofile set:
+# two machines rendering the same unchanged vignette produced different files.
+# Setting it here makes the committed output a property of the vignette rather
+# than of the machine (#246).
+#
+# 115 is chosen rather than inherited. The width the previous output was
+# produced at is not recoverable -- the models() print in example2b wraps
+# identically for every width from 116 to 131 -- so some re-wrapping in the
+# first render under this setting cannot be avoided, and the #190 diff shows it.
+#
+# What decides the value is the widest thing the package prints. pull_prior()
+# reaches 103 characters in example3, and a width below that splits a prior
+# table across lines in the vignette about priors; the summary() and
+# check_fit() tables are narrower again. 115 clears all of them. example9 sets
+# its own 100 in its setup chunk, which its tables fit within.
+options(width = 115)
 
 # Where cmdstanr writes the .stan files it names by hash, and therefore where
 # the compiled executables live. Unset, it is the session tempdir and nothing
@@ -200,7 +214,15 @@ knit_one <- function(f) {
                           cache.path = file.path(cache_root, base, ""))
   }
   started <- Sys.time()
-  knitr::knit(f, file_path_sans_ext(f))
+  # Each vignette is knitted into an environment of its own. knit()'s default
+  # is parent.frame(), which is this function's frame, so a chunk's objects
+  # landed among the loop's own variables and a chunk was able to delete them:
+  # example6 releases a fit with rm(f) inside a for loop, which removed this
+  # function's `f` argument, and the run failed on basename(f) below after the
+  # vignette had knitted successfully and 95 minutes had been spent (job
+  # 910976, 2026-09-15). A fresh environment also stops one vignette's objects
+  # reaching the next in a run that builds several.
+  knitr::knit(f, file_path_sans_ext(f), envir = new.env(parent = globalenv()))
   message(basename(f), " knitted in ",
           format(round(difftime(Sys.time(), started, units = "mins"), 1)))
 }

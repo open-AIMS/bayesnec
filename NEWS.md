@@ -2,6 +2,38 @@
 
 ## Vignette precompilation
 
+- Every precompiled vignette except `example7` and `example8` has been
+  re-rendered, and `vignette("example9")` is shipped for the first time. The
+  committed output dated from January 2026 and predated the model code in
+  several places: the `beta_binomial` initialisation of #168, the
+  inline-transformation estimate of #196, the `rhat_cutoff` default of #240,
+  the zero-predictor substitution and prior rates of #270, and the `cmdstanr`
+  backend of #308. Estimates, figures and printed output therefore change
+  throughout, and the built package grows from 8.45 MB to 10.54 MB (#190).
+
+- `vignettes/precompile.R` now sets `options(width = 115)`. Printed output
+  wraps at `getOption("width")` before `knitr` sees it, so the committed `.Rmd`
+  files recorded the width the renderer's `.Rprofile` happened to set, and two
+  machines rendering an unchanged vignette produced different files (#246).
+
+- `vignettes/precompile.R` now knits each vignette into an environment of its
+  own. `knit()` defaults `envir` to `parent.frame()`, so chunks were evaluated
+  among the precompile loop's own variables: `example6` releases each fit with
+  `rm(f)` inside a `for` loop, which deleted the variable holding the file
+  name and failed the run after the vignette had knitted successfully. One
+  vignette's objects can no longer reach the next either.
+
+- `vignettes/example2.Rmd.orig` had two chunks labelled
+  `exmp2-parallel-nested`, which `knitr` refuses, so that vignette could not be
+  precompiled at all after #322. It now demonstrates `screen_models()` as well,
+  which was described there in prose only (#248).
+
+- `vignettes/example2b.Rmd.orig` states the 0, 1-bounded exclusions as
+  `check_models()` applies them. It had recorded the linear-hormesis equations
+  as allowed on those families, where `neclinhorme`, `nechormepwr` and
+  `nechorme4pwr` are excluded, and described an initial-value criterion that
+  #312 replaced (#170).
+
 - `vignettes/precompile.R` now loads the repository checkout by default and
   reports the package version and source path before knitting. An explicit
   installed-package mode preserves the HPC route, which verifies its job-local
