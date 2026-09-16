@@ -1,5 +1,14 @@
 # bayesnec 2.2.0
 
+## Grouped plots
+
+- `ggbnec_data()` and `autoplot()` now accept `group`, which names a
+  group-level variable in the fitted formula. The returned data retain the
+  levels, and the plot joins the observed per-level means without using a
+  categorical colour scale that becomes unreadable for many levels. A
+  `bayesnecgroupfit` is also supported directly, with one panel for each level
+  fitted by `bnec_group()` (#368).
+
 ## Vignette precompilation
 
 - Every precompiled vignette except `example7` and `example8` has been

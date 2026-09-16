@@ -1236,7 +1236,14 @@ identical_value <- function(x, y) {
 #' @noRd
 #' @importFrom stats model.frame
 check_data_equality <- function(mod_fits) {
-  data_are_equal <- lapply(mod_fits, function(x) as.matrix(x$fit$data)) |>
+  data_are_equal <- lapply(mod_fits, function(x) {
+    fit_data <- x$fit$data
+    # brms orders stored columns by their first appearance in the equation.
+    # Hormesis and non-hormesis equations can therefore store the same data in
+    # different orders, so compare columns by name rather than by position.
+    fit_data <- fit_data[, order(names(fit_data)), drop = FALSE]
+    as.matrix(fit_data)
+  }) |>
     Reduce(f = identical_value) |>
     is.matrix()
   if (!data_are_equal) {
