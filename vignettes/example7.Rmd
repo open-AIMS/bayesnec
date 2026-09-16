@@ -14,7 +14,7 @@ bibliography: bayesnec.bib
 
 [e1]: https://open-aims.github.io/bayesnec/articles/example1.html
 [e2]: https://open-aims.github.io/bayesnec/articles/example2.html
-[e5]: https://open-aims.github.io/bayesnec/articles/example5.html
+[e6]: https://open-aims.github.io/bayesnec/articles/example6.html
 
 # Summary
 
@@ -222,8 +222,8 @@ because the population fell below a counting limit, is a censored observation
 rather than a floored one, and is exempt from the substitution. And a response
 that is genuinely zero because the population died is a different process
 again, which the hurdle and zero-inflated families are designed for; see the
-[Hurdle and zero-inflated models][e5] vignette. Those families are not a remedy
-for a substituted negative.
+[Hurdle and zero-inflated concentration-response models][e6] vignette. Those
+families are not a remedy for a substituted negative.
 
 # 4 Zero-asymptote equations under a Gaussian family
 
