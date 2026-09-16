@@ -51,10 +51,22 @@ decision to make:
 They answer different questions and suit different data, and the last section
 uses both at once.
 
-```{r, warning = FALSE, message = FALSE}
+```{r libraries, warning = FALSE, message = FALSE}
 library(bayesnec)
 library(ggplot2)
 library(dplyr)
+```
+
+Every concentration series used here spans between two and four orders of
+magnitude, so each figure is drawn on a log axis. `autoplot()` and
+`ggbnec_data()` return the predictor on the scale it was recorded on, having
+already inverted any transformation written inside `crf()`. The axis is
+therefore set by transforming the scale, and not by transforming the values or
+the breaks. The same scale object serves every figure.
+
+```{r log-axis}
+log_x <- scale_x_continuous(transform = "log10",
+                            labels = function(x) signif(x, 2))
 ```
 
 # Types of grouping
@@ -89,7 +101,7 @@ of photosystem II, a proportion, and is modelled with a `Beta` family. The link
 is stated explicitly because `Beta()` defaults to `logit` and `bnec()` fits
 every family on the identity link.
 
-```{r}
+```{r syntax-data}
 data(herbicide)
 gdat <- herbicide |>
   rename(conc = concentration, response = fvfm, group = herbicide) |>
@@ -102,6 +114,26 @@ brms_form <- function(formula, family = gfam) {
 }
 ```
 
+Seven photosystem II herbicides were applied to corals over a range of
+concentrations, each across the whole range, so every level of the grouping
+has its own complete series. `?herbicide` gives the method and the species;
+the report is at <https://doi.org/10.3354/meps261149>.
+
+```{r fig-herbicide-raw, fig.asp = 0.5, out.width = "95%"}
+ggplot(herbicide, aes(x = concentration, y = fvfm)) +
+  geom_point(shape = 21, fill = "grey30", alpha = 0.6) +
+  facet_wrap(~herbicide, nrow = 2, scales = "free_x") +
+  log_x +
+  theme_classic() +
+  labs(x = "Concentration (ug/L)", y = "Effective quantum yield")
+```
+
+Every panel falls, and the concentration at which it does so differs by two
+orders of magnitude across the seven. Yield reaches half its lowest-dose mean
+by 1 µg/L for irgarol and 3 µg/L for diuron and ametryn, against 100 µg/L for
+tebuthiuron and 300 for simazine, which is the last concentration simazine was
+tested at.
+
 ## Displacement of the whole curve
 
 `ogl()` gives each level of the grouping one deviation applied to the fitted
@@ -109,7 +141,7 @@ mean. The whole curve is displaced up or down and its shape is identical in
 every level, which makes it the analogue of a random intercept in a linear
 model.
 
-```{r}
+```{r form-ogl}
 brms_form(response ~ crf(conc, "nec4param") + ogl(group))
 ```
 
@@ -129,7 +161,7 @@ way and why.
 leaves the others population-level, so the curve changes shape in one specified
 way rather than being displaced as a whole.
 
-```{r}
+```{r form-nec-gl}
 brms_form(response ~ crf(conc, "nec4param") + (nec | group))
 ```
 
@@ -139,7 +171,7 @@ distribution, so the deviation is added to it directly.
 
 A parameter that is restricted is written differently.
 
-```{r}
+```{r form-bot-gl}
 brms_form(response ~ crf(conc, "nec4param") + (bot | group))
 ```
 
@@ -157,7 +189,7 @@ proceeds without it. The drop is reported by a message, which is easily lost
 among Stan's compilation output. `check_formula()` reports it for every equation
 of the set before any model is fitted.
 
-```{r, message = TRUE}
+```{r check-formula, message = TRUE}
 check_formula(
   bayesnecformula(response ~ crf(conc, c("nec3param", "nec4param")) +
                     (bot | group)),
@@ -171,7 +203,7 @@ check_formula(
 level is given its own curve shrunk towards a common one, and the parameter
 names of the equation do not have to be known in advance.
 
-```{r}
+```{r form-pgl}
 brms_form(response ~ crf(conc, "nec4param") + pgl(group))
 ```
 
@@ -187,7 +219,7 @@ claims and the one the data are least likely to support.
 Under `gaussian()` the mean is on the real line and no transformation is needed,
 so all three terms appear as plain additive `brms` terms.
 
-```{r}
+```{r form-gaussian}
 brms_form(response ~ crf(conc, "nec4param") + ogl(group), family = gaussian())
 brms_form(response ~ crf(conc, "nec4param") + (nec | group), family = gaussian())
 brms_form(response ~ crf(conc, "nec4param") + pgl(group), family = gaussian())
@@ -233,7 +265,7 @@ bacteria is dosed in a microplate well and its light output read after a fixed
 exposure; light falls as the cells are inhibited, so luminescence in relative
 light units is the response and no separate endpoint is scored.
 
-```{r}
+```{r lum31-str}
 data(lum31)
 str(lum31)
 ```
@@ -241,12 +273,35 @@ str(lum31)
 The design supplies replication at three scales, and the rest of this vignette
 uses each in turn.
 
-```{r}
+```{r lum31-design}
 lum31 |>
   group_by(toxicant, minutes) |>
   summarise(plates = n_distinct(plate), conc_groups = n_distinct(conc_group),
             wells = n_distinct(well), rows = n(), .groups = "drop")
 ```
+
+Every well of every plate is drawn below, one panel per toxicant and exposure
+time, with the wells of one plate joined at their concentration means. The
+assay is described at <https://doi.org/10.1002/tox.70003>.
+
+```{r fig-lum31-raw, fig.asp = 0.6, out.width = "95%"}
+ggplot(lum31, aes(x = conc, y = rlu_cens, group = plate)) +
+  geom_point(shape = 21, fill = "grey30", alpha = 0.25, size = 1) +
+  stat_summary(fun = mean, geom = "line", colour = "grey40", linewidth = 0.3) +
+  facet_wrap(~toxicant + minutes, scales = "free", labeller = label_both) +
+  log_x +
+  theme_classic() +
+  labs(x = "Dissolved metal (mg/L)", y = "Relative light units")
+```
+
+Each arm holds near its control over the lower part of the series and then
+falls within about one decade of concentration. Copper drops below half its
+control by 0.084 mg/L at 15 minutes and 0.064 at 30 minutes; zinc by 1.9 and
+0.93. Zinc is therefore the weaker of the two by roughly an order of magnitude,
+and both are more potent at the longer exposure. Every arm reaches a floor at
+its top concentrations. Two further features of the figure are taken up below: the
+plates of one arm are separated vertically by a factor of four to five at the
+control, and the zinc panels rise above their control before falling.
 
 A plate is a complete test: eleven measured concentrations with four replicate
 wells at each, read at 15 and 30 minutes. `conc_group` identifies the four wells
@@ -275,7 +330,7 @@ applies auto-scale gain adjustment, set per read, so absolute luminescence is a
 property of the read rather than of the assay. Median control-well luminescence
 differs several-fold between plates of the same batch:
 
-```{r}
+```{r lum31-control-gain}
 lum31 |>
   filter(toxicant == "Zn", minutes == 15) |>
   group_by(batch, plate) |>
@@ -309,7 +364,7 @@ A group-level term on the control parameter targets the same per-plate constant
 the division removes, and propagates its uncertainty instead of conditioning on
 a point estimate. Generating the `brms` formula shows the form directly:
 
-```{r}
+```{r form-top-plate}
 gfam <- Gamma(link = "identity")
 make_brmsformula(
   bayesnecformula(rlu_cens | cens(censoring) ~ crf(log(conc), "nec3param") + (top | plate)),
@@ -322,7 +377,7 @@ multiplicative factor on the curve, which is the form gain takes. `ogl()` gives
 the same multiplicative structure applied to the whole fitted value rather than
 to `top` alone:
 
-```{r}
+```{r form-ogl-plate}
 make_brmsformula(
   bayesnecformula(rlu_cens | cens(censoring) ~ crf(log(conc), "nec3param") + ogl(plate)),
   data = subset(lum31, toxicant == "Zn" & minutes == 15), family = gfam
@@ -347,7 +402,7 @@ control lands near the top of a bounded scale, where a `Beta` variance
 and any effect concentration measured from it is stable. That requires the
 curves to share a scale, and under per-read gain they do not:
 
-```{r}
+```{r lum31-control-share}
 lum31 |>
   filter(toxicant == "Zn", minutes == 15) |>
   group_by(plate) |>
@@ -394,7 +449,7 @@ emitting less light than the blank gives a negative value. The source records
 replaced such a value by zero. `rlu` reports every reading as it stands,
 including one that escaped the replacement:
 
-```{r}
+```{r lum31-floor}
 lum31 |>
   group_by(toxicant, minutes) |>
   summarise(rows = n(), zero = sum(rlu == 0), negative = sum(rlu < 0),
@@ -414,7 +469,7 @@ smallest positive reading on the plate --- a plate property, because gain is set
 per plate, and pooled over the two exposure times because the two reads of one
 plate share a gain setting.
 
-```{r}
+```{r lum31-censoring}
 lum31 |>
   filter(toxicant == "Zn", minutes == 15) |>
   count(censoring)
@@ -431,7 +486,7 @@ A `Gamma` with an identity link has a constant coefficient of variation, and
 these data do not. Within-cell variation, pooled over the seventeen plates at
 each concentration, rises steadily as the response falls:
 
-```{r}
+```{r lum31-cv}
 zn15 <- droplevels(subset(lum31, toxicant == "Zn" & minutes == 15))
 zn15 |>
   mutate(rank = as.integer(sub(".*-c", "", as.character(conc_group)))) |>
@@ -456,7 +511,7 @@ weights --- depends on how the variance is apportioned along the series.
 variance function of the fitted mean, which is a statement about the measurement
 process rather than about the dose axis:
 
-```{r}
+```{r form-disp-power}
 make_brmsformula(
   bayesnecformula(rlu_cens | cens(censoring) ~ crf(log(conc), "nec3param") +
                     ogl(plate) + disp("power")),
@@ -481,7 +536,7 @@ data free of the gain differences between plates, which the next section is
 about, and fitting the whole arm here would let a concentration-group term
 absorb plate structure as well.
 
-```{r}
+```{r one-plate}
 one_plate <- droplevels(subset(lum31, plate == "Zn 23Apr24 Rep6B" & minutes == 15))
 nrow(one_plate)
 n_distinct(one_plate$conc_group)
@@ -494,7 +549,7 @@ because the zinc response rises above its control at low concentrations, and
 the mean of each plate's four wells at each concentration, relative to that
 plate's own control:
 
-```{r}
+```{r lum31-hormesis-check}
 zn15 |>
   mutate(rank = as.integer(sub(".*-c", "", as.character(conc_group)))) |>
   group_by(plate, rank) |>
@@ -513,7 +568,7 @@ Chains are shorter than an analysis would use --- 5000 iterations with 4000
 warmup, against the 10000 and 8000 `bnec()` defaults --- which halves the draws
 retained while leaving the warmup long enough to adapt.
 
-```{r, results = "hide"}
+```{r fit-conc-group, results = "hide"}
 fit_plain <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + disp("power"),
                   data = one_plate, family = gfam,
                   chains = 4, iter = 5000, warmup = 4000, seed = 228, refresh = 0,
@@ -529,7 +584,7 @@ What the term estimates is one deviation per concentration group, so its
 standard deviation summarises how much the four wells at a concentration depart
 from the fitted curve beyond what the family allows.
 
-```{r}
+```{r summary-ogl}
 s_ogl <- summary(fit_ogl)
 s_ogl
 ```
@@ -539,7 +594,7 @@ R-squared for each equation. It does not report the group-level standard
 deviation, which is estimated separately by every equation of the set, so it is
 read from one of them. Taking the equation with the most weight:
 
-```{r}
+```{r varcorr-conc-group}
 best <- rownames(s_ogl$mod_weights)[which.max(s_ogl$mod_weights[, "wi"])]
 best
 brms::VarCorr(pull_out(fit_ogl, model = best)$fit)$conc_group$sd
@@ -555,7 +610,7 @@ The N(S)EC in the summary above is on the scale the model was fitted on,
 `xform = exp` and reports concentrations in mg/L, so the two are not in
 disagreement:
 
-```{r}
+```{r ecx-conc-group}
 rbind(
   data.frame(fit = "ungrouped", t(ecx(fit_plain, ecx_val = 10, xform = exp))),
   data.frame(fit = "ogl(conc_group)", t(ecx(fit_ogl, ecx_val = 10, xform = exp)))
@@ -564,12 +619,12 @@ rbind(
 
 The two fitted curves are drawn below, ungrouped first.
 
-```{r}
-autoplot(fit_plain)
+```{r fig-plain}
+autoplot(fit_plain) + log_x
 ```
 
-```{r}
-autoplot(fit_ogl)
+```{r fig-ogl}
+autoplot(fit_ogl) + log_x
 ```
 
 The term changes the fitted curve, not only its uncertainty. Ungrouped, the
@@ -591,7 +646,7 @@ A grouping whose levels each span the whole series admits a difference in shape,
 and the plates of one arm are that case. Each plate is a complete test, and the
 gain differences shown above mean the plates are not on a common vertical scale.
 
-```{r, results = "hide"}
+```{r fit-plate, results = "hide"}
 fit_pooled <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + disp("power"),
                    data = zn15, family = gfam,
                    chains = 4, iter = 5000, warmup = 4000, seed = 228, refresh = 0,
@@ -607,12 +662,12 @@ The comparison of interest is between the estimates each gives, and between the
 model weights each assigns, since pooling curves that differ in scale changes
 which functional form fits best:
 
-```{r}
+```{r summary-plate}
 summary(fit_pooled)
 summary(fit_plate)
 ```
 
-```{r}
+```{r ecx-plate}
 rbind(
   data.frame(fit = "pooled", t(ecx(fit_pooled, ecx_val = 10, xform = exp))),
   data.frame(fit = "ogl(plate)", t(ecx(fit_plate, ecx_val = 10, xform = exp)))
@@ -622,12 +677,12 @@ rbind(
 Both fits draw one population curve through the same observations; what differs
 is what the model treats the spread between plates as.
 
-```{r}
-autoplot(fit_pooled)
+```{r fig-pooled}
+autoplot(fit_pooled) + log_x
 ```
 
-```{r}
-autoplot(fit_plate)
+```{r fig-plate}
+autoplot(fit_plate) + log_x
 ```
 
 The vertical spread at each concentration is the gain difference. Control wells
@@ -672,10 +727,12 @@ divergent transitions are the only sign that the design was too narrow for it.
 
 `coral_colour` and `coral_pam` are two endpoints of one 14-day exposure of
 *Acropora millepora* to the herbicide diuron under three climate scenarios
-[@flores2021]. Both are within-concentration designs --- a chamber sits at one
-concentration --- and they differ in exactly the way this section needs.
+[@flores2021], reported at
+<https://doi.org/10.1016/j.marpolbul.2021.112582>. Both are
+within-concentration designs, a chamber sitting at one concentration, and they
+differ in the width of the design and in nothing else that matters here.
 
-```{r}
+```{r coral-design}
 data(coral_colour)
 data(coral_pam)
 rbind(
@@ -686,41 +743,125 @@ rbind(
 )
 ```
 
+## The control on a log axis
+
+Both endpoints include an untreated control recorded as an exact zero. A log
+axis has no position for it, and `crf(log(diuron))` has no value for it either:
+the column reaches the data check as `-Inf` and `bnec()` refuses the fit,
+naming it. Some value has to be put in its place. That substitution is made
+here, in the vignette, and not in the shipped data, so that `data-raw/coral_diuron.R`
+continues to record what the experiment measured.
+
+`coral_pam` was dosed at 0.29, 0.96, 2.9, 9.6 and 29 µg/L, each step about 3.16
+times the last, which is half a decade. One further step below the lowest
+treatment is 0.29/3.16 = 0.092 µg/L, and 0.1 is that value rounded. It puts the
+control the same distance from 0.29 that 0.29 is from 0.96. Half the lowest
+treatment, 0.145, would put it a third of that distance away, closer to the
+lowest dose than any two doses are to each other. `coral_colour` was dosed at
+the same concentrations but for 9.6, so its series has one step missing in the
+middle and the substituted control sits a regular step below it.
+
+```{r coral-nudge}
+nudge <- function(x) ifelse(x == 0, 0.1, x)
+coral_colour$diuron_adj <- nudge(coral_colour$diuron)
+coral_pam$diuron_adj <- nudge(coral_pam$diuron)
+sort(unique(coral_pam$diuron_adj))
+```
+
+No other concentration is altered. Every estimate reported in this section is
+therefore an estimate against a control placed at 0.1 µg/L, and a threshold
+returned near that value would be describing the substitution rather than
+diuron.
+
+The substitution has a second consequence, and it is general rather than
+particular to these data. Any concentration below 1 has a negative logarithm,
+so `log(diuron_adj)` runs from -2.30 to 3.37. Three of the 18 equations that
+`model = "all"` offers for this family cannot be fitted on a predictor that
+reaches a negative value. `necsigm` and `ecxsigm` raise the predictor to a
+fractional power, which is undefined there. `ecxhormebc5` cannot be reliably
+initialised where an identity-linked `Beta` mean must stay positive, because
+its hormesis term is negative wherever the predictor is. `bnec()` reports each
+exclusion and fits the remaining 15. Every `lum31` fit in this vignette meets
+the same condition, its concentrations being in mg/L and mostly below 1.
+
+```{r fig-coral-raw, fig.asp = 0.45, out.width = "95%"}
+rbind(
+  transform(coral_colour[c("climate", "diuron_adj")],
+            endpoint = "colour (proportion)", y = coral_colour$proportion),
+  transform(coral_pam[c("climate", "diuron_adj")],
+            endpoint = "yield", y = coral_pam$yield)
+) |>
+  ggplot(aes(x = diuron_adj, y = y, colour = climate, shape = climate)) +
+  geom_point(alpha = 0.7) +
+  facet_wrap(~endpoint, scales = "free_y") +
+  log_x +
+  scale_colour_grey(start = 0.7, end = 0) +
+  theme_classic() +
+  theme(legend.position = "bottom") +
+  labs(x = "Diuron (ug/L), control at 0.1", y = "Response")
+```
+
+Both endpoints fall over the series. The yield panel has observations at every
+one of its six concentrations. The colour panel has none between 2.9 and 29
+µg/L, a full decade of the axis and the widest unsampled interval in either
+endpoint.
+
+The scenarios separate in the colour endpoint and barely at all in yield. Mean
+colour at 2.9 µg/L runs 0.728, 0.611 and 0.456 from 2018 to 2100, and at 29
+µg/L 0.173, 0.066 and 0.045. Mean yield differs by less than 0.015 between
+scenarios at every concentration below 9.6. Climate is a fixed set of three
+levels of interest in themselves, so the route for it is `bnec_group()`, the
+route the factor covariates take. The fits below pool over it. What they are
+used to show is how the number of curve parameters behaves against a design of
+a given width, and one curve per endpoint shows that most directly.
+
 The yield endpoint has six concentrations and 54 chambers of five to eight
 readings, and `ogl(chamber)` on it is well conditioned:
 
-```{r, results = "hide"}
-fit_pam <- bnec(yield ~ crf(diuron, "all") + ogl(chamber),
+```{r fit-pam, results = "hide"}
+fit_pam <- bnec(yield ~ crf(log(diuron_adj), "all") + ogl(chamber),
                 data = coral_pam, family = Beta(link = "identity"),
                 chains = 4, iter = 5000, warmup = 4000, seed = 228, refresh = 0,
                 control = list(adapt_delta = 0.99))
 ```
 
-```{r}
+```{r summary-pam}
 summary(fit_pam)
 ```
 
-```{r}
-autoplot(fit_pam)
+As in the sections above, the N(S)EC in that summary is on the scale the model
+was fitted on, `log(diuron_adj)`. `xform = exp` returns it and the effect
+concentrations to µg/L:
+
+```{r ecx-pam}
+rbind(
+  data.frame(estimate = "NSEC", t(nsec(fit_pam, xform = exp))),
+  data.frame(estimate = "EC10", t(ecx(fit_pam, ecx_val = 10, xform = exp))),
+  data.frame(estimate = "EC50", t(ecx(fit_pam, ecx_val = 50, xform = exp)))
+)
+```
+
+```{r fig-pam}
+autoplot(fit_pam) + log_x
 ```
 
 The colour endpoint has five concentrations and 45 chambers of four fragments.
 Fitting equations of three and of four curve parameters to it separately shows
 where the design runs out:
 
-```{r, results = "hide"}
-three_par <- bnec(proportion ~ crf(diuron, c("ecxll3", "ecxwb1p3")) + ogl(chamber),
+```{r fit-par-count, results = "hide"}
+three_par <- bnec(proportion ~ crf(log(diuron_adj), c("ecxll3", "ecxwb1p3")) + ogl(chamber),
                   data = coral_colour, family = Beta(link = "identity"),
                   chains = 4, iter = 5000, warmup = 4000, seed = 228, refresh = 0,
                   control = list(adapt_delta = 0.99))
 
-four_par <- bnec(proportion ~ crf(diuron, c("nec4param", "ecx4param")) + ogl(chamber),
+four_par <- bnec(proportion ~ crf(log(diuron_adj), c("nec4param", "ecx4param")) + ogl(chamber),
                  data = coral_colour, family = Beta(link = "identity"),
                  chains = 4, iter = 5000, warmup = 4000, seed = 228, refresh = 0,
                  control = list(adapt_delta = 0.99))
 ```
 
-```{r}
+```{r par-count-diagnostics}
 sampled_badly <- function(fit, label) {
   worst <- vapply(rhat(fit), function(x) max(x$rhat_vals), numeric(1))
   divergent <- vapply(names(worst), function(m) {
@@ -735,26 +876,30 @@ rbind(sampled_badly(three_par, "three parameters"),
       sampled_badly(four_par, "four parameters"))
 ```
 
-The two fits are drawn below, three parameters first.
+The two columns of that table answer different questions. R-hat compares the
+chains of one fit with each other, and a value near 1 says they arrived at the
+same distribution. A divergent transition is recorded where the sampler's step
+size is too large for the curvature of the posterior at that point, so the
+simulated path departs from the one the equations describe. A parameter the
+data do not constrain produces exactly that curvature, in a posterior that is
+nearly flat along one direction and sharp across it. An equation can therefore
+report an R-hat that passes any conventional cutoff and still record
+divergences, so a check on R-hat alone does not separate these two sets.
 
-```{r}
-autoplot(three_par)
+```{r fig-three-par}
+autoplot(three_par) + log_x
 ```
 
-```{r}
-autoplot(four_par)
+```{r fig-four-par}
+autoplot(four_par) + log_x
 ```
 
-The divergences separate the two sets and R-hat does not. Neither
-three-parameter equation records a divergent transition; `nec4param` records 71
-and `ecx4param` 243. Every one of the four has an R-hat between 1.004 and 1.018,
-so a check on R-hat alone would have passed all of them.
-
-The figure shows where the four-parameter fits are unconstrained. Their credible
-band spans most of the response range between about 3 and 11 µg/L, which is the
-gap between the fourth diuron concentration and the fifth, and closes again where
-the observations resume. The extra parameters are asked to describe a region the
-design does not sample.
+The figures show where the four-parameter fits are unconstrained. Nothing
+between 2.9 and 29 µg/L tells either equation where its lower asymptote sits,
+because the colour design has no observation over that decade, so the credible
+band is wide across it and closes again where the observations resume. A
+three-parameter equation fixes that asymptote instead of estimating it, and has
+nothing to place there.
 
 #301 proposes restricting a model set by the number of curve parameters for
 this reason.
@@ -779,7 +924,7 @@ the metal call keeps `model = "all"` for the reason given in the
 within-concentration section, that zinc rises above its control at low
 concentrations.
 
-```{r, results = "hide"}
+```{r fit-herbicides, results = "hide"}
 fits_herb <- bnec_group(fvfm ~ crf(log(concentration), "decline"),
                         data = herbicide, group_var = "herbicide",
                         family = Beta(link = "identity"),
@@ -787,15 +932,30 @@ fits_herb <- bnec_group(fvfm ~ crf(log(concentration), "decline"),
                         control = list(adapt_delta = 0.99))
 ```
 
-```{r}
+```{r summary-herbicides}
 summary(fits_herb)
 ```
 
-```{r}
-plot(fits_herb)
+```{r group-curves}
+group_curves <- function(x) {
+  do.call(rbind, Map(function(f, lev) data.frame(level = lev, ggbnec_data(f)),
+                     x$fits, x$levels))
+}
 ```
 
-```{r}
+```{r fig-herbicides, fig.asp = 0.5, out.width = "95%"}
+ggplot(group_curves(fits_herb), aes(x = x_e)) +
+  geom_polygon(aes(y = y_ci), fill = "grey75", alpha = 0.5) +
+  geom_line(aes(y = y_e), linetype = 2) +
+  geom_point(aes(x = x_r, y = y_r), shape = 21, fill = "grey30", alpha = 0.6) +
+  geom_vline(aes(xintercept = nec_vals), colour = "grey50") +
+  facet_wrap(~level, nrow = 2, scales = "free_x") +
+  log_x +
+  theme_classic() +
+  labs(x = "Concentration (ug/L)", y = "Effective quantum yield")
+```
+
+```{r cmp-herbicides}
 cmp_herb <- compare_posterior(fits_herb, comparison = "nec")
 cmp_herb$prob_diff
 ```
@@ -806,7 +966,7 @@ they are levels rather than a grouping, and each is fitted with the structure th
 sections arrived at: the censored response, a plate term for the gain, and a
 dispersion sub-model.
 
-```{r, results = "hide"}
+```{r fit-metals, results = "hide"}
 zn_cu_15 <- droplevels(subset(lum31, minutes == 15))
 
 fits_tox <- bnec_group(
@@ -816,15 +976,23 @@ fits_tox <- bnec_group(
   control = list(adapt_delta = 0.99))
 ```
 
-```{r}
+```{r summary-metals}
 summary(fits_tox)
 ```
 
-```{r}
-plot(fits_tox)
+```{r fig-metals, fig.asp = 0.45, out.width = "95%"}
+ggplot(group_curves(fits_tox), aes(x = x_e)) +
+  geom_polygon(aes(y = y_ci), fill = "grey75", alpha = 0.5) +
+  geom_line(aes(y = y_e), linetype = 2) +
+  geom_point(aes(x = x_r, y = y_r), shape = 21, fill = "grey30", alpha = 0.4) +
+  geom_vline(aes(xintercept = nec_vals), colour = "grey50") +
+  facet_wrap(~level, scales = "free") +
+  log_x +
+  theme_classic() +
+  labs(x = "Dissolved metal (mg/L)", y = "Relative light units")
 ```
 
-```{r}
+```{r cmp-metals}
 cmp_tox <- compare_posterior(fits_tox, comparison = "nec")
 cmp_tox$prob_diff
 ```
@@ -857,7 +1025,7 @@ Every fit shown was made when this vignette was precompiled, so the estimates
 are those of the package version it ships with. The session that produced them
 is recorded below.
 
-```{r}
+```{r session}
 packageVersion("bayesnec")
 packageVersion("brms")
 R.version.string
@@ -874,12 +1042,16 @@ of 0.8, `ecxll5` returned 880 divergent transitions of 16000 on the section 4
 plate while holding about a fifth of the weight, and fitted alone it returns
 none at 0.99.
 
-`ecxhormebc5` is reported as not fitted in every `lum31` fit. It fails to
-initialise rather than to sample: its hormesis term `exp(slope) * x` is negative
-wherever the predictor is, which on `log(conc)` is 64 per cent of the
-observations, and a starting value drawn from the prior puts the mean below zero,
-which a Gamma with an identity link cannot represent. The same equation fits
-without difficulty on `coral_pam`, whose predictor is never negative. See #344.
+`ecxhormebc5` is excluded before fitting wherever the predictor reaches a
+negative value and the response family requires a positive mean on an identity
+link. Its hormesis term `exp(slope) * x` is negative wherever the predictor is,
+and a starting value drawn from the prior then puts the mean below zero, which
+neither a Gamma nor a `Beta` on an identity link can represent. That covers
+every fit in this vignette on a logged predictor: the `lum31` concentrations
+are in mg/L and negative on the log scale for 64 per cent of the observations,
+and `log(diuron_adj)` is negative below 1 µg/L. `necsigm` and `ecxsigm` are
+excluded on the same predictor for a different reason, that a fractional power
+of a negative number is undefined. See #344.
 
 `lum31` was built from the AIMS data repository deposit accompanying
 @luter2025 by `data-raw/lum31.R`. `coral_colour` and `coral_pam` were built from

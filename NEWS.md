@@ -965,6 +965,30 @@
   because the plate reader applies auto-scale gain adjustment and the value at
   which it stops resolving is therefore a plate property (#6, #33).
 
+- `vignette("example8")` is drawn on a log concentration axis throughout. Every
+  series in it spans one to three orders of magnitude, and `autoplot()` returns
+  the predictor on the scale it was recorded on, so a bare figure put the whole
+  curve into the left of the axis. The axis is set by transforming the scale
+  rather than the values or the breaks. The two `bnec_group()` figures are built
+  from `ggbnec_data()` instead of `plot()`, because `plot.bayesnecfit()` applies
+  its `xform` argument only where the predictor was not transformed inside
+  `crf()`, so no argument to it reaches the axis of a fit on `log(conc)`.
+
+- The `coral_colour` and `coral_pam` fits in `vignette("example8")` are on
+  `crf(log(diuron_adj), ...)` rather than the recorded concentration. Both
+  datasets record an untreated control as an exact zero, which `bnec()` refuses
+  inside `log()`, so the vignette substitutes 0.1 µg/L for it in a visible chunk
+  and reports every estimate against that value. 0.1 is one step of the
+  half-decade dilution series below the lowest treatment. `data-raw/coral_diuron.R`
+  continues to ship the recorded zero, so the substitution stays a decision of
+  the analysis rather than a property of the data.
+
+- Every chunk of `vignettes/example8.Rmd.orig` is now labelled, and the fitting
+  chunks set `results = "hide"`. Unlabelled chunks give figures positional file
+  names, so inserting one renamed every figure below it and left the previous
+  render's files orphaned in `vignettes/`. `refresh = 0` does not suppress
+  `cmdstanr`'s progress reporting, which `results = "hide"` does.
+
 - New datasets `coral_colour` and `coral_pam`: colour score and photosystem II
   effective quantum yield for *Acropora millepora* exposed to the herbicide
   diuron under three climate scenarios, from Flores et al. (2021), the study the
@@ -972,9 +996,9 @@
   designs --- a chamber sits at one concentration and so admits only a
   displacement --- with 45 chambers of four fragments for colour and 54 chambers
   of five to eight readings for yield. `coral_colour` has five concentrations,
-  which is the conventional minimum, and `vignette("example8")` uses it to show
-  that equations of four curve parameters do not sample reliably against a design
-  that small while equations of three do (#301). Exactly one colour observation
+  which is the conventional minimum, and `vignette("example8")` uses it to
+  contrast equations of three and of four curve parameters against a design
+  that small (#301). Exactly one colour observation
   sits on the `Beta` boundary, the signature of a score normalised to the largest
   value in the dataset, and 63 of the 414 yield readings are exactly 0 (#6, #33).
 
