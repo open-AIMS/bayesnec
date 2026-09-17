@@ -1228,6 +1228,34 @@ shows, and about `r round(max(cf_const$sd_ratio))` times too little where the
 ratio is largest. One `shape` cannot do both, which is what a constant
 coefficient of variation requires of it.
 
+`plot()` shows both statistics with the spread the fit simulates for each. The
+response falls from about
+`r format(signif(max(cf_const$obs_mean), 3), big.mark = ",", scientific = FALSE)`
+relative light units at the control to about
+`r format(signif(min(cf_const$obs_mean), 3), big.mark = ",", scientific = FALSE)`
+at the bottom, so the display is put on a logarithmic scale; on a linear one the
+lower half of the series is a row of points on the axis.
+
+```{r exmp9-checkfit-plot, fig.asp = 0.62, out.width = "85%"}
+plot(cf_const) +
+  scale_y_log10(labels = function(x) {
+    format(x, big.mark = ",", scientific = FALSE)
+  })
+```
+
+Each bar is the 95% span of the statistic simulated from the fit and each point
+is the value observed. The two panels separate what the fit gets right from what
+it does not. Every observed mean lies inside its bar, so the curve reproduces
+the response at every concentration. In the scale panel the observed standard
+deviation lies below its bar at the
+`r sum(cf_const$ppp_sd > 0.95)` concentrations where the response is highest,
+and the gap is more than an order of magnitude at the control:
+`r format(signif(cf_const$obs_sd[cf_const$control], 3), big.mark = ",", scientific = FALSE)`
+observed against a simulated span reaching
+`r format(signif(cf_const$sim_sd_hi[cf_const$control], 3), big.mark = ",", scientific = FALSE)`.
+A model can therefore describe the mean of every group and still be wrong about
+the spread of all of them, which is the case the Overview singles out.
+
 ## The dispersion sub-model
 
 `disp("power")` writes `log(shape)` as a linear function of `log(mu)`, so the
