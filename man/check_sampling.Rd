@@ -8,7 +8,8 @@ check_sampling(x, rhat_cutoff = 1.01, ess_cutoff = 400, divergence_cutoff = 10)
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesnecfit}},
-\code{\link{bayesmanecfit}} or \code{\link{bayesnechurdlefit}}.}
+\code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}} or
+\code{\link{bayesnecgroupfit}}.}
 
 \item{rhat_cutoff}{A \code{\link[base]{numeric}} vector of length 1.}
 
@@ -20,6 +21,8 @@ check_sampling(x, rhat_cutoff = 1.01, ess_cutoff = 400, divergence_cutoff = 10)
 A \code{\link[base]{data.frame}} with one row per candidate model and
 columns \code{model}, \code{max_rhat}, \code{min_ess}, \code{min_ess_ratio},
 \code{n_divergent} and \code{failed}. For a
+\code{\link{bayesnecgroupfit}}, the same table includes a leading
+\code{level} column. For a
 \code{\link{bayesnechurdlefit}}, a named \code{\link[base]{list}} of two
 such tables --- \code{growth} and \code{survival} --- as
 \code{\link{rhat}} also returns for that class.
@@ -86,6 +89,15 @@ which is what a \code{constant()} prior produces. \code{failed} is a
 logical by construction and is never \code{NA}: a model that cannot be
 assessed is not the same thing as a model that failed, and folding the two
 together silently turns \code{\link{screen_models}} into a no-op.
+}
+
+\section{Grouped fits}{
+
+
+A \code{\link{bayesnecgroupfit}} is diagnosed one level at a time because
+its levels were fitted independently. The result is one table with a
+\code{level} column, rather than a list of tables, so that an equation which
+passes at one level and fails at another can be compared directly.
 }
 
 \examples{

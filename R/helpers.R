@@ -1321,6 +1321,31 @@ carry_retained_data <- function(object, source) {
   object
 }
 
+#' Retained columns shared by separately fitted models
+#'
+#' A reconstructed model set has one observation frame only when the retained
+#' columns from its fitted models are identical. Keep that frame once on the
+#' result. Different frames are reported and omitted because plotting could not
+#' align one of them with every model in the set.
+#'
+#' Missing retained columns are ignored. This preserves the behaviour of
+#' \code{c.bnecfit()} for objects saved before retained columns were introduced.
+#'
+#' @noRd
+retain_shared_data <- function(object, fits) {
+  retained <- Filter(Negate(is.null), lapply(fits, function(fit) {
+    fit[["retained_data"]]
+  }))
+  if (length(retained) > 0 &&
+      all(vapply(retained[-1], identical, logical(1), retained[[1]]))) {
+    object$retained_data <- retained[[1]]
+  } else if (length(retained) > 1) {
+    message("The objects retain different unused data columns; the combined ",
+            "fit will not retain them for plotting groups.")
+  }
+  object
+}
+
 #' @noRd
 #' @importFrom chk chk_numeric
 check_args_newdata <- function(resolution, x_range) {

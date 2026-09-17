@@ -293,8 +293,14 @@ posterior_on_grid <- function(fit, formula, x_range = NA, resolution = 1000) {
 #' be a \code{\link[base]{list}} of formulas if multiple objects are passed to
 #' \code{object}.
 #'
+#' @details When recovered input objects contain \code{retained_data}, the
+#' returned model set stores that data frame once if every available copy is
+#' identical. Different retained frames are reported and omitted because one
+#' frame cannot align observations for the whole set.
+#'
 #' @return A \code{\link[base]{list}} of model statistical output derived from
-#' the input model list.
+#' the input model list. This includes \code{retained_data} when compatible
+#' retained columns were present on the input objects.
 #'
 #' @importFrom loo loo_model_weights
 #' @importFrom stats quantile
@@ -325,8 +331,19 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
     message(paste0("Fitted models are: ",
                    paste0(success_models, collapse = " ")))
   }
-  mod_fits <- object[success_models]
+  retained_sources <- attr(object, "retained_data_sources", exact = TRUE)
   object <- object[success_models]
+  if (is.null(retained_sources)) {
+    retained_sources <- object
+  }
+  # Retained columns belong once on the completed set. Recovered single-model
+  # fits include them only so they survive transport to this function; keeping
+  # them in mod_fits as well would duplicate the same frame for every equation.
+  mod_fits <- lapply(object, function(fit) {
+    fit$retained_data <- NULL
+    fit
+  })
+  object <- mod_fits
   formula <- formula[success_models]
   ne_lab <- "NEC"
   if (all(success_models %in% mod_groups$ecx)) {
@@ -405,11 +422,12 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   # the package read and which became the dominant cost once the per-model
   # matrices went. pred_data, the summary the plot methods use, is built from it
   # here and is what survives. See #213.
-  list(mod_fits = mod_fits, success_models = success_models,
-       mod_stats = mod_stats, sample_size = sample_size,
-       w_draw_seed = draw_seed, w_draw_index = draw_index,
-       w_ne_posterior = ne_posterior, w_predicted_y = y_pred,
-       w_residuals = mod_dat[[y_var]] - y_pred,
-       w_pred_vals = list(data = pred_data),
-       w_ne = nec, ne_type = ne_lab)
+  out <- list(mod_fits = mod_fits, success_models = success_models,
+              mod_stats = mod_stats, sample_size = sample_size,
+              w_draw_seed = draw_seed, w_draw_index = draw_index,
+              w_ne_posterior = ne_posterior, w_predicted_y = y_pred,
+              w_residuals = mod_dat[[y_var]] - y_pred,
+              w_pred_vals = list(data = pred_data),
+              w_ne = nec, ne_type = ne_lab)
+  retain_shared_data(out, retained_sources)
 }

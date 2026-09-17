@@ -144,6 +144,57 @@ test_that("a model set and a pulled fit retain an unfitted grouping", {
   expect_identical(combined$retained_data, object$retained_data)
 })
 
+test_that("expand_manec retains identical unused columns", {
+  skip_on_cran()
+  retained <- data.frame(
+    climate = factor(rep(c("ambient", "warm", "hot"),
+                         length.out = nrow(nec4param$fit$data))),
+    row.names = rownames(nec4param$fit$data)
+  )
+  fits <- list(nec4param, ecx4param)
+  fits <- lapply(fits, function(fit) {
+    fit$retained_data <- retained
+    fit
+  })
+  recovered <- unlist(lapply(fits, bayesnec:::recover_prebayesnecfit),
+                      recursive = FALSE)
+  formulas <- lapply(recovered, bayesnec:::extract_formula)
+  object <- expand_manec(recovered, formulas) |>
+    suppressMessages() |>
+    suppressWarnings() |>
+    (\(z) bayesnec:::allot_class(z, c("bayesmanecfit", "bnecfit")))()
+
+  expect_identical(object$retained_data, retained)
+  expect_true(all(vapply(object$mod_fits, function(fit) {
+    is.null(fit$retained_data)
+  }, logical(1))))
+  expect_no_error(suppressMessages(
+    autoplot(object, group = "climate", group_aes = "colour", nec = FALSE)
+  ))
+})
+
+test_that("expand_manec omits different unused columns", {
+  skip_on_cran()
+  fits <- list(nec4param, ecx4param)
+  fits[[1]]$retained_data <- data.frame(
+    climate = factor(rep(c("ambient", "warm"),
+                         length.out = nrow(fits[[1]]$fit$data)))
+  )
+  fits[[2]]$retained_data <- data.frame(
+    climate = factor(rep(c("ambient", "hot"),
+                         length.out = nrow(fits[[2]]$fit$data)))
+  )
+  recovered <- unlist(lapply(fits, bayesnec:::recover_prebayesnecfit),
+                      recursive = FALSE)
+  formulas <- lapply(recovered, bayesnec:::extract_formula)
+
+  expect_message(
+    object <- suppressWarnings(expand_manec(recovered, formulas)),
+    "retain different unused data columns"
+  )
+  expect_null(object$retained_data)
+})
+
 test_that("group names and types are validated against both data sources", {
   skip_on_cran()
   fit <- grouped_plot_fit()

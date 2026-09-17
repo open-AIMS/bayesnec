@@ -21,6 +21,9 @@
 #' for to fit the model.
 #' @slot bayesnecformula An object of class \code{\link{bayesnecformula}} and
 #' \code{\link[stats]{formula}}.
+#' @slot retained_data An optional \code{\link[base]{data.frame}} containing
+#' columns retained by \code{\link{bnec}} for plotting. This element is present
+#' on a recovered object when the fitted object contained retained columns.
 #'
 #' @seealso
 #'   \code{\link{bayesnec}},
@@ -50,14 +53,22 @@ is_prebayesnecfit <- function(x) {
 #' @noRd
 recover_prebayesnecfit <- function(x) {
   if (is_bayesnecfit(x)) {
-    out <- allot_class(x[c("fit", "model", "init", "bayesnecformula")],
+    keep <- c("fit", "model", "init", "bayesnecformula")
+    if (!is.null(x[["retained_data"]])) {
+      keep <- c(keep, "retained_data")
+    }
+    out <- allot_class(x[keep],
                        "prebayesnecfit")
     out <- list(out = out)
     names(out) <- out$out$model
     out
   } else if (is_bayesmanecfit(x)) {
+    retained_data <- x[["retained_data"]]
     for (i in seq_along(x$mod_fits)) {
       x$mod_fits[[i]] <- allot_class(x$mod_fits[[i]], "prebayesnecfit")
+      if (!is.null(retained_data)) {
+        x$mod_fits[[i]]$retained_data <- retained_data
+      }
     }
     x$mod_fits
   } else {
