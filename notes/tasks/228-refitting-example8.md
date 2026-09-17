@@ -40,11 +40,60 @@ the container to make that possible; both default as before when unset.
 |---|---|---|---|
 | 2026-09-16, log axis | `units-2.1.3.38` | `store-2.1.3.38` | three coral calls to `log(diuron_adj)`; bayesnec 2.1.3.37 to 2.1.3.38 |
 | 2026-09-16, defaults | `units-defaults` | `store-defaults` | all nine calls drop `iter`, `warmup` and `control` |
+| 2026-09-17, retained columns | `units-379` | `store-379` | no call changed; bayesnec 2.1.3.38 to 2.1.3.39 so that #379 attaches the unused data columns at fit time |
 
-No further re-fit has been needed since. `screen_models()`, the heatmap, the
-`ecx()` call for the herbicide EC50s and the group marks on `fig-ogl` all operate
-on fitted objects or on the data, so they change the render and not the store.
-Only a change inside `bnec()` or `bnec_group()` re-keys a call.
+`screen_models()`, the heatmap, the `ecx()` call for the herbicide EC50s, the
+group marks on `fig-ogl` and the per-equation threshold figure all operate on
+fitted objects or on the data, so they change the render and not the store. Only
+a change inside `bnec()` or `bnec_group()` re-keys a call.
+
+The 2026-09-17 run is the exception that proves the version guard's worth. No
+call changed, so every key was the same as `store-defaults` held; what changed
+was what `bnec()` puts on the object it returns. #379 keeps the columns omitted
+from the `brms` model frame, which is what lets `autoplot(fit_pam, group =
+"climate")` colour the observations by a scenario the model does not fit. A fit
+made before that holds no such columns, and no key would have said so.
+
+The refit reproduced the previous draws exactly. Rendering against `store-379`
+changed three figures --- the three that gained `group = "climate"` --- and left
+the other twelve byte-identical, and the only other line to differ in the whole
+vignette was the printed package version. That is the evidence that 2.1.3.39
+changed what is stored and not what is sampled.
+
+## The element the reassembly drops
+
+A unit is fitted by `bnec()` and holds `retained_data`. The store is not
+assembled by `bnec()`: `analysis/assemble_store.R` combines the units with
+`expand_manec()`, and `expand_manec()` does not set that element, because
+`bnec()` attaches it to the finished object afterwards. `c.bnecfit()` has a rule
+of its own and is not on this path either. So the first `store-379` came back
+with the columns on every unit and on no assembled fit, and
+`autoplot(f, group = "climate")` refused with
+`Available columns are: "yield", "chamber", "diuron_adj"`.
+
+The compendium now applies `c.bnecfit()`'s rule in `assemble_one()`: keep the
+element where every input is identical, drop it where they are not, because a
+set whose members saw different data has no single frame to align observations
+against. open-AIMS/bayesnec#380 asks whether `expand_manec()` should do this
+itself.
+
+A change of this kind is an assembly rather than a refit. The units were already
+correct, so re-running `hpc/run.assemble` alone with
+`GRP_UNITS` and `GRP_STORE` set rebuilt all nine fits in about 25 minutes
+against the three hours the array had taken. Check what a unit holds before
+concluding that a store needs refitting:
+
+```r
+u <- readRDS("units-379/<key>__<model>.rds")
+names(u$fit$retained_data)
+```
+
+Two traps found while doing it. `squeue` and `sacct` are not on the `PATH` of a
+non-interactive `ssh` shell, so a watcher built on them reports nothing and
+silence looks like a job still running; use `ssh HOST 'bash -lc "squeue ..."'`.
+And `hpc/run.assemble` ends by listing `store/` whatever `GRP_STORE` is set to,
+so a directed run appears to have written nothing; read the directory named by
+`GRP_STORE` instead.
 
 ## The sampling defaults
 
