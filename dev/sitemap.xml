@@ -10,6 +10,7 @@
 <url><loc>https://open-aims.github.io/bayesnec/articles/example5.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/articles/example6.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/articles/example7.html</loc></url>
+<url><loc>https://open-aims.github.io/bayesnec/articles/example8.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/articles/example9.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/articles/index.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/authors.html</loc></url>
@@ -48,6 +49,8 @@
 <url><loc>https://open-aims.github.io/bayesnec/reference/compare_estimates.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/compare_fitted.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/compare_posterior.html</loc></url>
+<url><loc>https://open-aims.github.io/bayesnec/reference/coral_colour.html</loc></url>
+<url><loc>https://open-aims.github.io/bayesnec/reference/coral_pam.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/crossed_group_weights.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/crossed_weights.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/curve_params.html</loc></url>
@@ -70,6 +73,7 @@
 <url><loc>https://open-aims.github.io/bayesnec/reference/index.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/is_manecsummary.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/is_necsummary.html</loc></url>
+<url><loc>https://open-aims.github.io/bayesnec/reference/lum31.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/make_brmsformula.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/manec_example.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/manecsummary-class.html</loc></url>

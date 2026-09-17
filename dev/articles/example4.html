@@ -38,7 +38,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.37</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
       </span>
     </div>
 
@@ -83,6 +83,9 @@
     </li>
     <li>
       <a href="../articles/example7.html">Modelling growth data and other potentially negative response values</a>
+    </li>
+    <li>
+      <a href="../articles/example8.html">Grouping and factor covariates</a>
     </li>
     <li class="divider">
     </li>
@@ -141,18 +144,26 @@ predictor values. Below we demonstrate usage of
 we compare different types of models and model sets using a single
 dataset. However, the intent of this function is to allow comparison
 across different datasets that might represent, for example, different
-levels of a fixed factor covariate. At this time <code>bnec</code> does
-not allow inclusion of an interaction with a fixed factor. Including an
-interaction term within each of the non-linear models implemented in
-<code>bayesnec</code> is relatively straightforward, and may be
-introduced in future releases. However, in many cases the functional
-form of the response may change with different levels of a given factor.
-The substantial complexity of defining all possible non-linear model
-combinations at each factor level means it unlikely this could be
-feasibly implemented in <code>bayesnec</code> in the short term. In the
-meantime the greatest flexibility in the functional form of individual
-model fits can be readily obtained using models fitted independently to
-data within each factor level.</p>
+levels of a fixed factor covariate. A factor covariate can be fitted in
+two ways, and the two answer different questions. A group-level term
+written into the formula — <code>ogl()</code>,
+<code>(par | group)</code> or <code>pgl()</code> — fits one model to all
+of the data and treats the levels as a sample from a population,
+estimating how far each level departs from a curve the levels share.
+<code><a href="../reference/bnec_group.html">bnec_group()</a></code> instead fits each level separately, so that a
+level has its own model set and its own functional form and shares
+nothing with the others, which is what levels that are fixed and of
+interest in themselves require. The <a href="https://open-aims.github.io/bayesnec/articles/example8.html">Grouping
+and factor covariates</a> vignette sets out which design admits which
+term. <code>compare_posterior</code> is the estimator for the second of
+these. It pairs the draws of two posteriors by a random permutation,
+which approximates the difference of two independent posteriors and is
+valid only where the fits are separate — as they are for
+<code><a href="../reference/bnec_group.html">bnec_group()</a></code>, or for calls made independently per level.
+Two levels of one group-level fit share draws, and permuting them
+discards the correlation between them, so a contrast between those
+levels is taken by differencing the draws of that fit rather than
+through this function.</p>
 <p>To run this vignette, we will also need some additional packages</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span></code></pre></div>
