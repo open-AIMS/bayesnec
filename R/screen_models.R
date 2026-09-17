@@ -43,9 +43,28 @@
 #' components may legitimately end up with different model sets --- a model
 #' valid for the 0-1 bounded survival component need not be valid for growth.
 #'
+#' @section Grouped fits:
+#'
+#' A \code{\link{bayesnecgroupfit}} is screened with
+#' \code{group_action = "per_level"} by default. An equation which fails at one
+#' level is then removed only from that level, because \code{\link{bnec_group}}
+#' fitted the levels independently. The returned levels may consequently have
+#' different candidate sets.
+#'
+#' Set \code{group_action = "common"} to remove an equation from every level
+#' where it is present when it fails at any level. This keeps an initially
+#' common candidate set aligned, but discards fits which passed their own
+#' sampler diagnostics. Existing differences caused by equations that failed
+#' to fit cannot be restored by screening.
+#'
 #' @param x An object of class \code{\link{bayesnecfit}},
-#' \code{\link{bayesmanecfit}} or \code{\link{bayesnechurdlefit}}.
+#' \code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}} or
+#' \code{\link{bayesnecgroupfit}}.
 #' @inheritParams check_sampling
+#' @param group_action For a \code{\link{bayesnecgroupfit}}, either
+#' \code{"per_level"} to screen each independently fitted level separately, or
+#' \code{"common"} to remove from every level each equation which fails at any
+#' level. Ignored for other classes.
 #' @param quiet A \code{\link[base]{logical}}. Suppress the message reporting
 #' what was dropped. Defaults to \code{FALSE}; there is rarely a good reason to
 #' set it.
@@ -54,7 +73,8 @@
 #' \code{\link{bayesmanecfit}} reduced to one model becomes a
 #' \code{\link{bayesnecfit}}, as \code{\link{amend}} already does. A
 #' \code{\link{bayesnechurdlefit}} comes back as one, with each component
-#' screened.
+#' screened. A \code{\link{bayesnecgroupfit}} comes back as one, with each
+#' element of \code{fits} replaced by its screened fit.
 #'
 #' @seealso \code{\link{check_sampling}}, \code{\link{check_fit}},
 #' \code{\link{amend}}, \code{\link{pull_best}}
@@ -67,7 +87,8 @@
 #'
 #' @export
 screen_models <- function(x, rhat_cutoff = 1.01, ess_cutoff = 400,
-                          divergence_cutoff = 10, quiet = FALSE) {
+                          divergence_cutoff = 10, quiet = FALSE,
+                          group_action = c("per_level", "common")) {
   chk_lgl(quiet)
   if (is_bayesnechurdlefit(x)) {
     screen_part <- function(part) {
@@ -75,6 +96,14 @@ screen_models <- function(x, rhat_cutoff = 1.01, ess_cutoff = 400,
                     divergence_cutoff = divergence_cutoff, quiet = quiet)
     }
     return(hurdle_rewrap(x, screen_part(x$growth), screen_part(x$survival)))
+  }
+  if (is_bayesnecgroupfit(x)) {
+    group_action <- match.arg(group_action)
+    return(screen_group_models(
+      x, rhat_cutoff = rhat_cutoff, ess_cutoff = ess_cutoff,
+      divergence_cutoff = divergence_cutoff, quiet = quiet,
+      group_action = group_action
+    ))
   }
   tab <- check_sampling(x, rhat_cutoff = rhat_cutoff,
                         ess_cutoff = ess_cutoff,
@@ -118,6 +147,99 @@ screen_models <- function(x, rhat_cutoff = 1.01, ess_cutoff = 400,
                    collapse = "\n"))
   }
   amend(x, drop = to_drop)
+}
+
+#' Screen the independently fitted levels of a bayesnecgroupfit
+#'
+#' @param x A \code{\link{bayesnecgroupfit}}.
+#' @inheritParams screen_models
+#'
+#' @return A \code{\link{bayesnecgroupfit}}.
+#'
+#' @noRd
+screen_group_models <- function(x, rhat_cutoff, ess_cutoff,
+                                divergence_cutoff, quiet, group_action) {
+  if (identical(group_action, "per_level")) {
+    fits <- lapply(seq_along(x$fits), function(i) {
+      level <- x$levels[i]
+      if (!quiet) {
+        message("Screening level \"", level, "\".")
+      }
+      tryCatch(
+        screen_models(
+          x$fits[[i]], rhat_cutoff = rhat_cutoff, ess_cutoff = ess_cutoff,
+          divergence_cutoff = divergence_cutoff, quiet = quiet
+        ),
+        error = function(e) {
+          stop("Level \"", level, "\": ", conditionMessage(e), call. = FALSE)
+        }
+      )
+    })
+    names(fits) <- x$levels
+    x$fits <- fits
+    return(x)
+  }
+
+  tab <- check_sampling(
+    x, rhat_cutoff = rhat_cutoff, ess_cutoff = ess_cutoff,
+    divergence_cutoff = divergence_cutoff
+  )
+  failed <- unique(tab$model[tab$failed])
+  if (length(failed) == 0) {
+    if (!quiet) {
+      message("All ", nrow(tab), " candidate fits across ", length(x$levels),
+              " levels passed the sampler screen (Rhat <= ", rhat_cutoff,
+              ", ESS >= ", ess_cutoff, ", divergences <= ",
+              divergence_cutoff, ").")
+    }
+    return(x)
+  }
+
+  failed_rows <- tab[tab$failed, , drop = FALSE]
+  reasons <- paste0(
+    "  -  ", failed_rows$level, " / ",
+    sub("^  -  ", "", screen_reasons(
+      failed_rows, rhat_cutoff, ess_cutoff, divergence_cutoff
+    ))
+  )
+  held <- lapply(x$fits, screen_models_held)
+  emptied <- vapply(held, function(models) {
+    length(intersect(models, failed)) == length(models)
+  }, logical(1))
+  if (any(emptied)) {
+    levels <- paste0("\"", x$levels[emptied], "\"", collapse = ", ")
+    stop("Common screening would remove every candidate model from level",
+         if (sum(emptied) == 1) " " else "s ", levels,
+         ". Refit the failing equations, or use group_action = \"per_level\"",
+         " to screen each independently fitted level separately.",
+         "\n", paste0(reasons, collapse = "\n"),
+         call. = FALSE)
+  }
+
+  if (!quiet) {
+    message("Removing ", length(failed), " equation",
+            if (length(failed) == 1) "" else "s",
+            " from every level where present because they failed at least",
+            " one level:\n", paste0(reasons, collapse = "\n"))
+  }
+
+  x$fits <- Map(function(fit, models) {
+    to_drop <- intersect(models, failed)
+    if (length(to_drop) == 0) fit else amend(fit, drop = to_drop)
+  }, x$fits, held)
+  names(x$fits) <- x$levels
+  x
+}
+
+#' Candidate model names held by one fit
+#'
+#' @param x A \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
+#'
+#' @return A \code{\link[base]{character}} vector.
+#'
+#' @noRd
+screen_models_held <- function(x) {
+  if (is_bayesmanecfit(x)) names(x$mod_fits) else x$model
 }
 
 #' One line per dropped model, naming which threshold it failed
