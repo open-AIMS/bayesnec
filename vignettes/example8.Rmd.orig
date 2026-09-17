@@ -842,6 +842,126 @@ group_curves <- function(x) {
 ```
 
 
+## What the plate term has to carry
+
+The section above fitted `ogl(plate)` on the argument that the plates differ by
+a vertical scale factor. Two parts of that argument are checked here by fitting
+the alternatives rather than by reasoning about them: whether a deviation on
+every parameter is supported, and whether the level the term absorbs belongs to
+the plate or to the batch the plate was run in.
+
+`check_formula()` with `run_par_checks = TRUE` reports which parameters of each
+equation a named-parameter term can be applied to, which is what limits the
+comparison below to `nec3param` and `nec4param`.
+
+```{r check-par-terms, message = TRUE}
+check_formula(
+  bayesnecformula(rlu_cens | cens(censoring) ~
+                    crf(log(conc), c("nec3param", "nec4param")) +
+                    (nec | plate) + disp("power")),
+  data = zn15, run_par_checks = TRUE
+)
+```
+
+The four fits below are the same model set on the same data with the group-level
+term varied. `fit_pgl` places a deviation on every parameter of the equation;
+`fit_batch` moves the single deviation from the plate to the batch; and
+`fit_plate_batch` estimates both at once, so that the between-plate and
+between-batch standard deviations are reported on a common scale.
+
+```{r fit-pgl, results = "hide"}
+fit_pgl <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + pgl(plate) + disp("power"),
+                data = zn15, family = gfam,
+                seed = 228, refresh = 0)
+
+fit_batch <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(batch) + disp("power"),
+                  data = zn15, family = gfam,
+                  seed = 228, refresh = 0)
+
+fit_plate_batch <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + ogl(batch) + disp("power"),
+                        data = zn15, family = gfam,
+                        seed = 228, refresh = 0)
+```
+
+A named-parameter term is not applied across the whole set. The parameter that
+places the curve is `nec` in ten equations and `ec50` in ten, and three have
+neither, so `(nec | plate)` over `model = "all"` would describe a structure that
+most of the set does not have. The comparison is made on the two equations that
+do carry `nec`, against the same two equations with `ogl(plate)`, so that the
+two fits differ only in where the deviation sits.
+
+```{r fit-nec-gl, results = "hide"}
+fit_nec_gl <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), c("nec3param", "nec4param")) + (nec | plate) + disp("power"),
+                   data = zn15, family = gfam,
+                   seed = 228, refresh = 0)
+
+fit_nec_ogl <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), c("nec3param", "nec4param")) + ogl(plate) + disp("power"),
+                    data = zn15, family = gfam,
+                    seed = 228, refresh = 0)
+```
+
+Every fit is screened before it is read, on the same terms as the pooled and
+plate fits above.
+
+```{r screen-plate-terms, message = TRUE}
+fit_pgl <- screen_models(fit_pgl)
+fit_batch <- screen_models(fit_batch)
+fit_plate_batch <- screen_models(fit_plate_batch)
+fit_nec_gl <- screen_models(fit_nec_gl)
+fit_nec_ogl <- screen_models(fit_nec_ogl)
+```
+
+```{r summary-plate-terms}
+summary(fit_pgl)
+summary(fit_batch)
+summary(fit_plate_batch)
+```
+
+The group-level standard deviations are what separate the three. `VarCorr()` on
+each equation of the set reports them on the scale of the linear predictor for
+the parameter they apply to.
+
+```{r varcorr-plate-terms}
+sd_table <- function(x, label) {
+  do.call(rbind, lapply(names(x$mod_fits), function(m) {
+    vc <- brms::VarCorr(pull_out(x, model = m)$fit)
+    do.call(rbind, lapply(names(vc), function(g) {
+      data.frame(fit = label, model = m, group = g,
+                 parameter = rownames(vc[[g]]$sd),
+                 sd = vc[[g]]$sd[, "Estimate"],
+                 lower = vc[[g]]$sd[, "Q2.5"], upper = vc[[g]]$sd[, "Q97.5"],
+                 row.names = NULL)
+    }))
+  }))
+}
+```
+
+```{r ecx-plate-terms}
+rbind(
+  data.frame(fit = "pooled", t(ecx(fit_pooled, ecx_val = 10, xform = exp))),
+  data.frame(fit = "ogl(plate)", t(ecx(fit_plate, ecx_val = 10, xform = exp))),
+  data.frame(fit = "pgl(plate)", t(ecx(fit_pgl, ecx_val = 10, xform = exp))),
+  data.frame(fit = "ogl(batch)", t(ecx(fit_batch, ecx_val = 10, xform = exp))),
+  data.frame(fit = "ogl(plate) + ogl(batch)", t(ecx(fit_plate_batch, ecx_val = 10, xform = exp)))
+)
+```
+
+```{r nsec-plate-terms}
+rbind(
+  data.frame(fit = "ogl(plate), two equations", t(nsec(fit_nec_ogl, xform = exp))),
+  data.frame(fit = "(nec | plate), two equations", t(nsec(fit_nec_gl, xform = exp)))
+)
+```
+
+```{r fig-pgl}
+autoplot(fit_pgl, group = "plate") + log_x
+```
+
+```{r fig-plate-batch}
+autoplot(fit_plate_batch, group = "plate") + log_x
+```
+
+
 ## Copper against zinc
 
 Copper and zinc are two contaminants of interest, not a sample from a
