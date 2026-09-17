@@ -901,7 +901,7 @@ concentration while the fitted band stays narrow, which is the plate term
 holding the between-plate spread out of the population curve.
 
 ```{r cmp-metals}
-cmp_tox <- compare_posterior(fits_tox, comparison = "nec")
+cmp_tox <- compare_posterior(fits_tox, comparison = "n(s)ec")
 cmp_tox$prob_diff
 ```
 
@@ -1424,7 +1424,7 @@ largely does not, and what separates the herbicides is where the curve falls
 rather than how.
 
 ```{r cmp-herbicides}
-cmp_herb <- compare_posterior(fits_herb, comparison = "nec")
+cmp_herb <- compare_posterior(fits_herb, comparison = "n(s)ec")
 cmp_herb$prob_diff
 ```
 

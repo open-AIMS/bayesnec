@@ -280,6 +280,11 @@ test_that("common grouped screening removes an equation from every level", {
   expect_true(all(vapply(out$fits, inherits, logical(1), "bayesnecfit")))
   expect_equal(vapply(out$fits, `[[`, character(1), "model"),
                c(a = "ecx4param", b = "ecx4param"))
+  cmp <- suppressWarnings(suppressMessages(
+    compare_posterior(out, comparison = "n(s)ec")
+  ))
+  expect_named(cmp, c("posterior_list", "posterior_data", "diff_list",
+                      "diff_data", "prob_diff"))
 })
 
 test_that("grouped screening names a level from which it would drop all fits", {
