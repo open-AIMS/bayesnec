@@ -365,11 +365,16 @@ sets out why they are treated that way.
 
 
 ``` r
-ggplot(lum31, aes(x = conc, y = rlu_cens, group = plate)) +
-  geom_point(shape = 21, fill = "grey30", alpha = 0.25, size = 1) +
-  stat_summary(fun = mean, geom = "line", colour = "grey40", linewidth = 0.3) +
+ggplot(lum31, aes(x = conc, y = rlu_cens, group = plate,
+                  colour = toxicant)) +
+  geom_point(alpha = 0.3, size = 1) +
+  stat_summary(fun = mean, geom = "line", linewidth = 0.3) +
   facet_wrap(~toxicant + minutes, scales = "free", labeller = label_both) +
   log_x +
+  # One hue per toxicant, kept the same in every figure of this case study, so
+  # that a panel here and a density below can be read as the same arm. The
+  # facet strip names it, so the legend would repeat the strip.
+  scale_colour_hue(guide = "none") +
   theme_classic() +
   labs(x = "Dissolved metal (mg/L)", y = "Relative light units")
 ```
@@ -1301,13 +1306,15 @@ and at much the same separation.
 
 
 ``` r
-ggplot(group_curves(fits_tox), aes(x = x_e)) +
-  geom_polygon(aes(y = y_ci), fill = "grey75", alpha = 0.5) +
+ggplot(group_curves(fits_tox), aes(x = x_e, colour = level, fill = level)) +
+  geom_polygon(aes(y = y_ci), colour = NA, alpha = 0.3) +
   geom_line(aes(y = y_e), linetype = 2) +
-  geom_point(aes(x = x_r, y = y_r), shape = 21, fill = "grey30", alpha = 0.4) +
+  geom_point(aes(x = x_r, y = y_r), alpha = 0.4, size = 1.2) +
   geom_vline(aes(xintercept = nec_vals), colour = "grey50") +
   facet_wrap(~level, ncol = 1, scales = "free") +
   log_x +
+  scale_colour_hue(guide = "none") +
+  scale_fill_hue(guide = "none") +
   theme_classic() +
   labs(x = "Dissolved metal (mg/L)", y = "Relative light units")
 ```
@@ -1476,7 +1483,6 @@ rbind(
   geom_point(alpha = 0.7) +
   facet_wrap(~endpoint, scales = "free_y") +
   log_x +
-  scale_colour_grey(start = 0.7, end = 0) +
   theme_classic() +
   theme(legend.position = "bottom") +
   labs(x = "Diuron (ug/L), control at 0.1", y = "Response")
@@ -1762,10 +1768,11 @@ two decades later by crossing diuron with warming.
 
 ``` r
 data(herbicide)
-ggplot(herbicide, aes(x = concentration, y = fvfm)) +
-  geom_point(shape = 21, fill = "grey30", alpha = 0.6) +
+ggplot(herbicide, aes(x = concentration, y = fvfm, colour = herbicide)) +
+  geom_point(alpha = 0.6) +
   facet_wrap(~herbicide, ncol = 2, scales = "free_x") +
   log_x +
+  scale_colour_hue(guide = "none") +
   theme_classic() +
   theme(panel.spacing.x = unit(1.2, "lines")) +
   labs(x = "Concentration (ug/L)", y = "Effective quantum yield")
@@ -1878,13 +1885,15 @@ estimate is closer to the truth for tebuthiuron.
 
 
 ``` r
-ggplot(group_curves(fits_herb), aes(x = x_e)) +
-  geom_polygon(aes(y = y_ci), fill = "grey75", alpha = 0.5) +
+ggplot(group_curves(fits_herb), aes(x = x_e, colour = level, fill = level)) +
+  geom_polygon(aes(y = y_ci), colour = NA, alpha = 0.3) +
   geom_line(aes(y = y_e), linetype = 2) +
-  geom_point(aes(x = x_r, y = y_r), shape = 21, fill = "grey30", alpha = 0.6) +
+  geom_point(aes(x = x_r, y = y_r), alpha = 0.6, size = 1.2) +
   geom_vline(aes(xintercept = nec_vals), colour = "grey50") +
   facet_wrap(~level, ncol = 2, scales = "free_x") +
   log_x +
+  scale_colour_hue(guide = "none") +
+  scale_fill_hue(guide = "none") +
   theme_classic() +
   theme(panel.spacing.x = unit(1.2, "lines")) +
   labs(x = "Concentration (ug/L)", y = "Effective quantum yield")
