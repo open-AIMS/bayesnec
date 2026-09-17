@@ -107,7 +107,8 @@ that leaves no record is not reproducible.</p>
 <span>  rhat_cutoff <span class="op">=</span> <span class="fl">1.01</span>,</span>
 <span>  ess_cutoff <span class="op">=</span> <span class="fl">400</span>,</span>
 <span>  divergence_cutoff <span class="op">=</span> <span class="fl">10</span>,</span>
-<span>  quiet <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  quiet <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  group_action <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"per_level"</span>, <span class="st">"common"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -117,7 +118,8 @@ that leaves no record is not reproducible.</p>
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>An object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code>,
-<code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> or <code><a href="bayesnechurdlefit.html">bayesnechurdlefit</a></code>.</p></dd>
+<code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code>, <code><a href="bayesnechurdlefit.html">bayesnechurdlefit</a></code> or
+<code><a href="bayesnecgroupfit-class.html">bayesnecgroupfit</a></code>.</p></dd>
 
 
 <dt id="arg-rhat-cutoff">rhat_cutoff<a class="anchor" aria-label="anchor" href="#arg-rhat-cutoff"></a></dt>
@@ -137,6 +139,13 @@ that leaves no record is not reproducible.</p>
 what was dropped. Defaults to <code>FALSE</code>; there is rarely a good reason to
 set it.</p></dd>
 
+
+<dt id="arg-group-action">group_action<a class="anchor" aria-label="anchor" href="#arg-group-action"></a></dt>
+<dd><p>For a <code><a href="bayesnecgroupfit-class.html">bayesnecgroupfit</a></code>, either
+<code>"per_level"</code> to screen each independently fitted level separately, or
+<code>"common"</code> to remove from every level each equation which fails at any
+level. Ignored for other classes.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
@@ -144,7 +153,8 @@ set it.</p></dd>
 <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> reduced to one model becomes a
 <code><a href="bayesnecfit-class.html">bayesnecfit</a></code>, as <code><a href="amend.html">amend</a></code> already does. A
 <code><a href="bayesnechurdlefit.html">bayesnechurdlefit</a></code> comes back as one, with each component
-screened.</p>
+screened. A <code><a href="bayesnecgroupfit-class.html">bayesnecgroupfit</a></code> comes back as one, with each
+element of <code>fits</code> replaced by its screened fit.</p>
     </div>
     <div id="what-it-screens-on-and-what-it-does-not">
     <h2>What it screens on, and what it does not</h2>
@@ -190,6 +200,22 @@ except the all-failed case now propagates as itself.</p>
 rewrapped, as <code><a href="amend.html">amend</a></code> already does for that class. The two
 components may legitimately end up with different model sets — a model
 valid for the 0-1 bounded survival component need not be valid for growth.</p>
+    </div>
+    <div id="grouped-fits">
+    <h2>Grouped fits</h2>
+
+
+
+<p>A <code><a href="bayesnecgroupfit-class.html">bayesnecgroupfit</a></code> is screened with
+<code>group_action = "per_level"</code> by default. An equation which fails at one
+level is then removed only from that level, because <code><a href="bnec_group.html">bnec_group</a></code>
+fitted the levels independently. The returned levels may consequently have
+different candidate sets.</p>
+<p>Set <code>group_action = "common"</code> to remove an equation from every level
+where it is present when it fails at any level. This keeps an initially
+common candidate set aligned, but discards fits which passed their own
+sampler diagnostics. Existing differences caused by equations that failed
+to fit cannot be restored by screening.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>
