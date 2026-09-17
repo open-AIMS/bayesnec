@@ -120,6 +120,12 @@ or <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> returned by
 <span class="pkg">brms</span> defaults and duplicated vectorized rows included, which is what to
 use for looking at a fit. It is not accepted by <code>bnec(prior = )</code> –
 <code><a href="get_priors.html">get_priors</a></code> is the function for feeding priors back in.</p>
+<p>Before reusing these rows in a <span class="pkg">brms</span> formula that adds population-level
+coefficients to a non-linear parameter, check whether the coefficients have
+the same meaning and support. A prior that names the parameter but no
+coefficient applies to every added coefficient, including any contrasts.
+Rebuild the priors where necessary as described in
+<code><a href="get_priors.html">get_priors</a></code>.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>
