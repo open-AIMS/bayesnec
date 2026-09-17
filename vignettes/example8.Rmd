@@ -965,6 +965,17 @@ A grouping whose levels each span the whole series admits a difference in shape,
 and the plates of one arm are that case. Each plate is a complete test, and the
 gain differences shown above mean the plates are not on a common vertical scale.
 
+Admitting a difference in shape is not a reason to fit one. What separates these
+plates is a vertical scale factor, and `ogl()` states that and nothing more: one
+deviation on the fitted value, every curve parameter shared. `pgl()` would place
+a deviation on each parameter instead, so that the threshold and the slope could
+differ from plate to plate as well as the level, and it would estimate four
+group-level standard deviations where `ogl()` estimates one. Seventeen plates
+would support that --- five levels is the conventional minimum --- so the choice
+is about what the design says rather than what it can afford. The traces below
+give no reason to fit a shape difference, and the same figure is what would show
+one if it were there.
+
 
 ``` r
 fit_pooled <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + disp("power"),
@@ -1601,8 +1612,12 @@ concentrations to µg/L:
 
 
 ``` r
+# Bound rather than called twice: the model-averaged N(S)EC is also the
+# reference the figure below draws its lines from, and a second call would be a
+# second draw from the mixture.
+pam_ne <- nsec(fit_pam, xform = exp)
 rbind(
-  data.frame(estimate = "NSEC", t(nsec(fit_pam, xform = exp))),
+  data.frame(estimate = "NSEC", t(pam_ne)),
   data.frame(estimate = "EC10", t(ecx(fit_pam, ecx_val = 10, xform = exp))),
   data.frame(estimate = "EC50", t(ecx(fit_pam, ecx_val = 50, xform = exp)))
 )
@@ -1628,6 +1643,50 @@ an order of magnitude above the other nine, which is enough to put the 97.5th
 percentile of the mixture at 2.070. The screen removed a third equation of the
 same kind, `nec3param` at 1.654, and the tail is still there: it is not one
 equation's doing.
+
+Each equation's own threshold, against the weight it holds, is below. The
+estimator follows the equation: `nec()` where the equation has a `nec`
+parameter, `nsec()` where it does not.
+
+
+``` r
+pam_wi <- summary(fit_pam)$mod_weights[, "wi"]
+pam_thr <- do.call(rbind, lapply(names(pam_wi), function(m) {
+  one <- pull_out(fit_pam, model = m)
+  v <- if (m %in% models()$nec) nec(one, xform = exp) else nsec(one, xform = exp)
+  data.frame(equation = m, wi = pam_wi[[m]], est = v[[1]], lo = v[[2]], hi = v[[3]])
+}))
+pam_thr$equation <- reorder(factor(pam_thr$equation), pam_thr$est)
+
+ggplot(pam_thr, aes(x = est, y = equation)) +
+  annotate("rect", xmin = pam_ne[[2]], xmax = pam_ne[[3]],
+           ymin = -Inf, ymax = Inf, fill = "#2c6a5a", alpha = 0.07) +
+  geom_vline(xintercept = pam_ne[[1]], colour = "#2c6a5a") +
+  geom_vline(xintercept = pam_ne[[3]], colour = "#2c6a5a", linetype = 2) +
+  geom_linerange(aes(xmin = lo, xmax = hi, colour = wi)) +
+  geom_point(aes(colour = wi, size = wi)) +
+  scale_colour_gradient(low = "grey80", high = "#2c6a5a",
+                        name = "stacking\nweight") +
+  scale_size_area(max_size = 5, guide = "none") +
+  log_x +
+  theme_classic() +
+  labs(x = "Threshold (µg/L)", y = NULL)
+```
+
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-fig-pam-thresholds-1.png" alt="plot of chunk fig-pam-thresholds" width="85%" />
+<p class="caption">plot of chunk fig-pam-thresholds</p>
+</div>
+
+The solid line is the model-averaged median and the dashed line its upper
+bound, with the averaged interval shaded. The ordering is what the paragraph
+above states in numbers: the two darkest points sit at the left of the range,
+the two furthest to the right sit an order of magnitude away and are pale, with
+`nec4param` on the dashed line itself, and between them the weight is unrelated
+to the position. An
+equation's threshold and the weight it holds are separate quantities, and that
+is what lets a twentieth of the weight decide where the averaged interval
+ends.
 
 The same draws are visible in the figure below. The credible band steps down at
 about 2 µg/L, its upper edge falling from about 0.58 to about 0.30, because the
