@@ -11,6 +11,12 @@
 #' use for looking at a fit. It is not accepted by \code{bnec(prior = )} --
 #' \code{\link{get_priors}} is the function for feeding priors back in.
 #'
+#' These rows also must not be reused unchanged in a \pkg{brms} formula that
+#' adds population-level coefficients to a non-linear parameter. A prior that
+#' names the parameter but no coefficient then applies to the added contrasts
+#' as well as its intercept. Rebuild the priors against the target formula as
+#' described in \code{\link{get_priors}}.
+#'
 #' @return A \code{\link[base]{list}} containing the priors.
 #'
 #' @seealso \code{\link{get_priors}}, \code{\link{check_priors}}
