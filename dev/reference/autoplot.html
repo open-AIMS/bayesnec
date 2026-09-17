@@ -123,7 +123,15 @@ plotting method.</p>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'bayesnecgroupfit'</span></span>
-<span><span class="fu">autoplot</span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span>, nec <span class="op">=</span> <span class="cn">TRUE</span>, ecx <span class="op">=</span> <span class="cn">FALSE</span>, xform <span class="op">=</span> <span class="va">identity</span>, group <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">autoplot</span><span class="op">(</span></span>
+<span>  <span class="va">object</span>,</span>
+<span>  <span class="va">...</span>,</span>
+<span>  nec <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  ecx <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  xform <span class="op">=</span> <span class="va">identity</span>,</span>
+<span>  group <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  group_aes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"line"</span>, <span class="st">"colour"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -153,9 +161,13 @@ values.</p></dd>
 
 
 <dt id="arg-group">group<a class="anchor" aria-label="anchor" href="#arg-group"></a></dt>
-<dd><p>An optional character string naming a group-level variable in
-the fitted formula. Observations are joined through their per-level means;
-a level recorded at one predictor value is marked at its mean instead. A
+<dd><p>An optional character string naming a categorical variable in
+the data supplied to <code><a href="bnec.html">bnec</a></code>. Observations are joined through
+their per-level means when the variable occurs as a group-level term in the
+fitted formula; a level recorded at one predictor value is marked at its
+mean instead. A variable not fitted by the model can be shown only with
+<code>group_aes = "colour"</code>; the curve and credible band are pooled over
+that variable, and the legend identifies it as not fitted. A
 <code>bayesnecgroupfit</code> uses its fitted grouping variable automatically and
 draws one panel per level.</p></dd>
 
@@ -164,7 +176,9 @@ draws one panel per level.</p></dd>
 <dd><p>How should the grouping selected by <code>group</code> be shown?
 <code>"line"</code> (the default) draws grey per-level means. <code>"colour"</code>
 also maps the grouping to the observation fill and the per-level mean marks.
-The argument is ignored when <code>group</code> is <code>NULL</code>.</p></dd>
+The argument is ignored when <code>group</code> is <code>NULL</code>. Only
+<code>"colour"</code> is available when <code>group</code> is not a group-level term
+in the fitted formula.</p></dd>
 
 
 <dt id="arg-all-models">all_models<a class="anchor" aria-label="anchor" href="#arg-all-models"></a></dt>

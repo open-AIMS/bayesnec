@@ -123,6 +123,14 @@ available methods.</p>
 <code>prebayesnecfit</code> for each of the fitted models.</p></dd>
 
 
+<dt><code>retained_data</code></dt>
+<dd><p>A <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code> containing columns of
+the data supplied to <code><a href="bnec.html">bnec</a></code> that <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm()</a></code> omitted from its
+stored model frame. The columns are stored once for the model set, in
+fitted-data order. The element is absent when every supplied column was used
+by the fit.</p></dd>
+
+
 <dt><code>success_models</code></dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></code> vector indicating the
 name of the successfully fitted models.</p></dd>

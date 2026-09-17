@@ -132,9 +132,13 @@ default, function <code><a href="ecx.html">ecx</a></code> returns EC10.</p></dd>
 
 
 <dt id="arg-group">group<a class="anchor" aria-label="anchor" href="#arg-group"></a></dt>
-<dd><p>An optional character string naming a group-level variable in
-the fitted formula. When supplied, its values are returned in a column named
-<code>group</code>, with the source name in attribute <code>"group_var"</code>. A
+<dd><p>An optional character string naming a categorical variable in
+the data supplied to <code><a href="bnec.html">bnec</a></code>. When supplied, its values are
+returned in a column named <code>group</code>, with the source name in attribute
+<code>"group_var"</code>. Attribute <code>"group_fitted"</code> states whether the
+fit represents the grouping: either the fitted formula includes it as a
+group-level variable, or independently fitted <code>bayesnecgroupfit</code>
+panels use it. A
 <code>bayesnecgroupfit</code> returns its fitted grouping variable automatically.</p></dd>
 
 </dl></div>
@@ -142,7 +146,8 @@ the fitted formula. When supplied, its values are returned in a column named
     <h2>Value</h2>
     <p>A <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code>. When <code>group</code> is supplied, or
 <code>x</code> is a <code>bayesnecgroupfit</code>, the frame includes a <code>group</code>
-column and a <code>"group_var"</code> attribute.</p>
+column and a <code>"group_var"</code> attribute. A <code>bayesnecgroupfit</code> also
+includes a <code>panel</code> column containing the level fitted in each panel.</p>
     </div>
 
     <div id="ref-examples">
