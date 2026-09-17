@@ -280,7 +280,10 @@ different question from the one being asked, and their functional forms may
 differ from one another. `bnec_group()` fits each level separately and is the
 route for these.
 
-# A bioluminescent bacterial toxicity assay for tropical marine environments
+# Case study 1
+
+<small>*A bioluminescent bacterial toxicity assay for tropical marine
+environments*</small>
 
 ## The assay
 
@@ -1361,7 +1364,10 @@ Copper is both the more potent metal and the better determined one on these
 data, and the single pairwise comparison of 0.0153 is what that separation
 reduces to.
 
-# Combined effects of climate change and the herbicide diuron on the coral *Acropora millepora*
+# Case study 2
+
+<small>*Combined effects of climate change and the herbicide diuron on the coral
+Acropora millepora*</small>
 
 ## Design and model complexity
 
@@ -1738,7 +1744,9 @@ readings at zero.
 Neither is a defect in the data; both are decisions about the response that have
 to be made before the family is chosen, and `vignette("example6")` covers them.
 
-# Phytotoxicity of photosystem II herbicides to coral
+# Case study 3
+
+<small>*Phytotoxicity of photosystem II herbicides to coral*</small>
 
 `herbicide` [@jones2003] holds the effective quantum yield of photosystem II in
 the symbiotic dinoflagellates of the coral *Seriatopora hystrix*, measured after
