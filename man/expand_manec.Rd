@@ -53,9 +53,16 @@ see \code{\link{c.bnecfit}} for how they decide the method. See
 }
 \value{
 A \code{\link[base]{list}} of model statistical output derived from
-the input model list.
+the input model list. This includes \code{retained_data} when compatible
+retained columns were present on the input objects.
 }
 \description{
 Extracts a range of statistics from a list of \code{\link{prebayesnecfit}}
 objects.
+}
+\details{
+When recovered input objects contain \code{retained_data}, the
+returned model set stores that data frame once if every available copy is
+identical. Different retained frames are reported and omitted because one
+frame cannot align observations for the whole set.
 }

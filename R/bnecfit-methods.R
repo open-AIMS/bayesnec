@@ -48,6 +48,10 @@ c.bnecfit <- function(x, ...) {
     check_data_equality(mod_fits)
   }
   mod_fits <- mod_fits[!duplicated(names(mod_fits))]
+  # Preserve c()'s input-level compatibility rule even where duplicate model
+  # names are removed above. expand_manec() reads these sources only to decide
+  # whether one retained frame can describe the combined set.
+  attr(mod_fits, "retained_data_sources") <- inputs
   formulas <- lapply(mod_fits, extract_formula)
   # c() has no loo_controls argument, so the only place an explicit weighting
   # request can come from is the objects being combined. Inherited where every
@@ -70,16 +74,6 @@ c.bnecfit <- function(x, ...) {
     x
   } else {
     out <- allot_class(out, c("bayesmanecfit", "bnecfit"))
-    retained <- Filter(Negate(is.null), lapply(inputs, function(fit) {
-      fit[["retained_data"]]
-    }))
-    if (length(retained) > 0 &&
-        all(vapply(retained[-1], identical, logical(1), retained[[1]]))) {
-      out$retained_data <- retained[[1]]
-    } else if (length(retained) > 1) {
-      message("The objects retain different unused data columns; the combined ",
-              "fit will not retain them for plotting groups.")
-    }
     out
   }
 }

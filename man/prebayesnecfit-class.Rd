@@ -30,6 +30,10 @@ for to fit the model.}
 
 \item{\code{bayesnecformula}}{An object of class \code{\link{bayesnecformula}} and
 \code{\link[stats]{formula}}.}
+
+\item{\code{retained_data}}{An optional \code{\link[base]{data.frame}} containing
+columns retained by \code{\link{bnec}} for plotting. This element is present
+on a recovered object when the fitted object contained retained columns.}
 }}
 
 \seealso{
