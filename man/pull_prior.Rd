@@ -23,11 +23,12 @@ Returns the whole \code{\link[brms]{brmsprior}} each fit carries,
 use for looking at a fit. It is not accepted by \code{bnec(prior = )} --
 \code{\link{get_priors}} is the function for feeding priors back in.
 
-These rows also must not be reused unchanged in a \pkg{brms} formula that
-adds population-level coefficients to a non-linear parameter. A prior that
-names the parameter but no coefficient then applies to the added contrasts
-as well as its intercept. Rebuild the priors against the target formula as
-described in \code{\link{get_priors}}.
+Before reusing these rows in a \pkg{brms} formula that adds population-level
+coefficients to a non-linear parameter, check whether the coefficients have
+the same meaning and support. A prior that names the parameter but no
+coefficient applies to every added coefficient, including any contrasts.
+Rebuild the priors where necessary as described in
+\code{\link{get_priors}}.
 }
 \examples{
 library(bayesnec)
