@@ -32,7 +32,15 @@
   group_aes = c("line", "colour")
 )
 
-\method{autoplot}{bayesnecgroupfit}(object, ..., nec = TRUE, ecx = FALSE, xform = identity, group = NULL)
+\method{autoplot}{bayesnecgroupfit}(
+  object,
+  ...,
+  nec = TRUE,
+  ecx = FALSE,
+  xform = identity,
+  group = NULL,
+  group_aes = c("line", "colour")
+)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecfit}},
@@ -47,16 +55,22 @@
 \item{xform}{A function to apply to the returned estimated concentration
 values.}
 
-\item{group}{An optional character string naming a group-level variable in
-the fitted formula. Observations are joined through their per-level means;
-a level recorded at one predictor value is marked at its mean instead. A
+\item{group}{An optional character string naming a categorical variable in
+the data supplied to \code{\link{bnec}}. Observations are joined through
+their per-level means when the variable occurs as a group-level term in the
+fitted formula; a level recorded at one predictor value is marked at its
+mean instead. A variable not fitted by the model can be shown only with
+\code{group_aes = "colour"}; the curve and credible band are pooled over
+that variable, and the legend identifies it as not fitted. A
 \code{bayesnecgroupfit} uses its fitted grouping variable automatically and
 draws one panel per level.}
 
 \item{group_aes}{How should the grouping selected by \code{group} be shown?
 \code{"line"} (the default) draws grey per-level means. \code{"colour"}
 also maps the grouping to the observation fill and the per-level mean marks.
-The argument is ignored when \code{group} is \code{NULL}.}
+The argument is ignored when \code{group} is \code{NULL}. Only
+\code{"colour"} is available when \code{group} is not a group-level term
+in the fitted formula.}
 
 \item{all_models}{Should all individual models be plotted separately\
 (defaults to FALSE) or should model averaged predictions be plotted instead?}
