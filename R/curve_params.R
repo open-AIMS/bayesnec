@@ -394,10 +394,10 @@ fit_dpars <- function(family) {
 #'
 #' The response block's equation is recorded on the object. The second block's
 #' is not: \code{model_survival} is passed to \code{fit_bayesnec()} and never
-#' stored, and \code{recover_prebayesnecfit()} rebuilds a fit from four named
-#' elements, so a fifth added to the object would be dropped by \code{c()},
-#' \code{+}, \code{\link{amend}} and \code{update()}. It is recovered from the
-#' fitted formula instead, which cannot go stale by any of those routes.
+#' stored, and \code{recover_prebayesnecfit()} rebuilds a fit from named
+#' elements that do not include the survival equation. It is recovered from
+#' the fitted formula instead, which cannot go stale through \code{c()},
+#' \code{+}, \code{\link{amend}} or \code{update()}.
 #'
 #' Returns \code{NA} for a block whose expression matches no equation, so an
 #' equation is named only where it has been identified. Reporting the response
