@@ -1713,6 +1713,21 @@
   `vignette("example1")`, `vignette("example2")` and `README.md` now point at
   it. Each held its own installation text, so the package had three (#342).
 
+- `vignette("example9")` works a third response, on which the coefficient of
+  variation a `Gamma` holds constant is not constant. One plate of the `lum31`
+  copper series at 15 minutes is fitted with the `decline` set, once with
+  constant dispersion and once with `disp("power")`. A probability integral
+  transform check, `pp_check(type = "pit_ecdf")`, detects the miscalibration;
+  `check_fit()` names the concentrations it occurs at, reporting an observed
+  spread 0.09 times the simulated one at the control and 2.80 times it at 2.7
+  mg/L, with 7 of 11 groups flagged; and both checks on the refitted model
+  confirm the sub-model corrected it, at 0 of 11 flagged and a control ratio of
+  1.02. The estimated exponent of 0.78 (0.64 to 0.93) agrees with the 0.77 (0.66
+  to 0.88) the replicate wells give with no fit involved, and the model-averaged
+  *NSEC* halves, from 0.109 to 0.054 mg/L. A single plate is used so that the per-read
+  gain differences between plates need no group-level term, which
+  `vignette("example8")` covers instead (#367).
+
 - New vignette, `vignette("example9")` --- *A complete analysis workflow* ---
   running a single analysis from data to reportable estimate: choosing the
   family from the support of the response, fitting the candidate set, sampler
