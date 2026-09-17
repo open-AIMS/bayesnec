@@ -163,7 +163,15 @@ see <code><a href="c.bnecfit.html">c.bnecfit</a></code> for how they decide the 
     <div id="value">
     <h2>Value</h2>
     <p>A <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> of model statistical output derived from
-the input model list.</p>
+the input model list. This includes <code>retained_data</code> when compatible
+retained columns were present on the input objects.</p>
+    </div>
+    <div id="details">
+    <h2>Details</h2>
+    <p>When recovered input objects contain <code>retained_data</code>, the
+returned model set stores that data frame once if every available copy is
+identical. Different retained frames are reported and omitted because one
+frame cannot align observations for the whole set.</p>
     </div>
 
   </div>
