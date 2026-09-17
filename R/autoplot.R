@@ -369,7 +369,9 @@ bind_ecx <- function(data, ecx_vals) {
 #' the data supplied to \code{\link{bnec}}. When supplied, its values are
 #' returned in a column named \code{group}, with the source name in attribute
 #' \code{"group_var"}. Attribute \code{"group_fitted"} states whether the
-#' fitted formula includes it as a group-level variable. A
+#' fit represents the grouping: either the fitted formula includes it as a
+#' group-level variable, or independently fitted \code{bayesnecgroupfit}
+#' panels use it. A
 #' \code{bayesnecgroupfit} returns its fitted grouping variable automatically.
 #' @param ... Additional arguments to be passed to \code{\link{ecx}}. By
 #' default, function \code{\link{ecx}} returns EC10.

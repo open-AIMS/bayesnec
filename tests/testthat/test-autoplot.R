@@ -272,6 +272,7 @@ test_that("grouped fits return and plot one panel per fitted level", {
   expect_equal(levels(dat$group), c("a", "b"))
   expect_equal(as.integer(table(dat$group)), rep(nrow(dat) / 2, 2))
   expect_identical(attr(dat, "group_var"), "site")
+  expect_true(attr(dat, "group_fitted"))
   selected <- suppressMessages(ggbnec_data(object, group = "plate",
                                             add_nec = FALSE))
   expect_identical(attr(selected, "group_var"), "plate")
