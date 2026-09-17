@@ -1638,13 +1638,26 @@ interval against the weights rather than on its own.
 
 
 ``` r
-autoplot(fit_pam) + log_x
+autoplot(fit_pam, group = "climate", group_aes = "colour") + log_x
 ```
 
 <div class="figure" style="text-align: center">
 <img src="vignette-fig-fig-pam-1.png" alt="plot of chunk fig-pam" width="60%" />
 <p class="caption">plot of chunk fig-pam</p>
 </div>
+
+`climate` is not in the fitted formula --- the model estimates a deviation per
+chamber, not per scenario --- so `autoplot()` takes it from the columns `bnec()`
+retained from the supplied data and labels the legend "climate (not fitted)".
+The curve and the band are pooled over the three scenarios, and the colour marks
+the observations only.
+
+The scenarios overlap over most of the series. The scenario means of `yield`
+differ by at most 0.014 at 0.1, 0.29, 0.96 and 2.9 µg/L, and separate only at
+9.6 and 29 µg/L, where they are 0.052, 0.040, 0.022 and 0.027, 0.006, 0.000 ---
+a separation between quantities that have already fallen to a twelfth of the
+control. @flores2021 report the same result from these data, giving a
+probability of 0.615 and 0.539 that yield differs between the warming scenarios.
 
 The colour endpoint has five concentrations and 45 chambers of four fragments.
 Fitting equations of three and of four curve parameters to it separately shows
@@ -1705,7 +1718,7 @@ report a diagnostic against the settings that produced it.
 
 
 ``` r
-autoplot(three_par) + log_x
+autoplot(three_par, group = "climate", group_aes = "colour") + log_x
 ```
 
 <div class="figure" style="text-align: center">
@@ -1715,7 +1728,7 @@ autoplot(three_par) + log_x
 
 
 ``` r
-autoplot(four_par) + log_x
+autoplot(four_par, group = "climate", group_aes = "colour") + log_x
 ```
 
 <div class="figure" style="text-align: center">
@@ -1735,6 +1748,16 @@ instead of estimating it, and so has nothing to place in the gap.
 The four-parameter equations are worse served than the gap alone suggests. What
 they have to estimate a lower asymptote from is one concentration, and the
 reading at that concentration is of fragments that had bleached completely.
+
+The climate scenarios separate in these two figures where they did not in
+`fit_pam`. The scenario means of `proportion` are 0.779, 0.737 and 0.672 at
+0.96 µg/L and 0.728, 0.611 and 0.456 at 2.9, a spread of 0.27 on a response
+running to about 0.9, and the 2100 points sit below the 2018 points at every
+concentration above the control. @flores2021 report a probability of 0.956 and
+0.970 that the colour index differs between the warming scenarios, against
+0.615 and 0.539 for yield. Neither figure fits that difference: both curves are
+pooled over the scenarios, and separating them would need `climate` in the
+formula or a `bnec_group()` call over it.
 
 The threshold estimates differ in the same way. The three-parameter set returns
 an NSEC of 1.71 µg/L (0.65--5.84). The four-parameter set returns 2.69
@@ -2017,7 +2040,7 @@ is recorded below.
 
 ``` r
 packageVersion("bayesnec")
-#> [1] '2.1.3.38'
+#> [1] '2.1.3.39'
 packageVersion("brms")
 #> [1] '2.23.0'
 R.version.string
