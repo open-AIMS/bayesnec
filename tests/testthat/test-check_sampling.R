@@ -285,10 +285,12 @@ test_that("common grouped screening removes an equation from every level", {
 test_that("grouped screening names a level from which it would drop all fits", {
   skip_on_cran()
   grouped <- group_sampling_fixture()
-  expect_error(
+  msg <- tryCatch(
     suppressMessages(screen_models(grouped, group_action = "common")),
-    'level.*"a"'
+    error = function(e) conditionMessage(e)
   )
+  expect_match(msg, 'level.*"a"')
+  expect_match(msg, "nec4param: Rhat")
 })
 
 test_that("the reasons name every failing criterion, not just the first", {

@@ -90,7 +90,6 @@ screen_models <- function(x, rhat_cutoff = 1.01, ess_cutoff = 400,
                           divergence_cutoff = 10, quiet = FALSE,
                           group_action = c("per_level", "common")) {
   chk_lgl(quiet)
-  group_action <- match.arg(group_action)
   if (is_bayesnechurdlefit(x)) {
     screen_part <- function(part) {
       screen_models(part, rhat_cutoff = rhat_cutoff, ess_cutoff = ess_cutoff,
@@ -99,6 +98,7 @@ screen_models <- function(x, rhat_cutoff = 1.01, ess_cutoff = 400,
     return(hurdle_rewrap(x, screen_part(x$growth), screen_part(x$survival)))
   }
   if (is_bayesnecgroupfit(x)) {
+    group_action <- match.arg(group_action)
     return(screen_group_models(
       x, rhat_cutoff = rhat_cutoff, ess_cutoff = ess_cutoff,
       divergence_cutoff = divergence_cutoff, quiet = quiet,
@@ -195,6 +195,13 @@ screen_group_models <- function(x, rhat_cutoff, ess_cutoff,
     return(x)
   }
 
+  failed_rows <- tab[tab$failed, , drop = FALSE]
+  reasons <- paste0(
+    "  -  ", failed_rows$level, " / ",
+    sub("^  -  ", "", screen_reasons(
+      failed_rows, rhat_cutoff, ess_cutoff, divergence_cutoff
+    ))
+  )
   held <- lapply(x$fits, screen_models_held)
   emptied <- vapply(held, function(models) {
     length(intersect(models, failed)) == length(models)
@@ -205,17 +212,11 @@ screen_group_models <- function(x, rhat_cutoff, ess_cutoff,
          if (sum(emptied) == 1) " " else "s ", levels,
          ". Refit the failing equations, or use group_action = \"per_level\"",
          " to screen each independently fitted level separately.",
+         "\n", paste0(reasons, collapse = "\n"),
          call. = FALSE)
   }
 
   if (!quiet) {
-    failed_rows <- tab[tab$failed, , drop = FALSE]
-    reasons <- paste0(
-      "  -  ", failed_rows$level, " / ",
-      sub("^  -  ", "", screen_reasons(
-        failed_rows, rhat_cutoff, ess_cutoff, divergence_cutoff
-      ))
-    )
     message("Removing ", length(failed), " equation",
             if (length(failed) == 1) "" else "s",
             " from every level where present because they failed at least",
