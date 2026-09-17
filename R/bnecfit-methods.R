@@ -37,6 +37,7 @@
 #' @export
 c.bnecfit <- function(x, ...) {
   dots <- list(...)
+  inputs <- c(list(x), dots)
   if (!all(c(is_bnecfit(x), sapply(dots, is_bnecfit)))) {
     stop("All objects must be an object fitted by bnec.")
   } else {
@@ -68,7 +69,18 @@ c.bnecfit <- function(x, ...) {
   if (length(out) == 1) {
     x
   } else {
-    allot_class(out, c("bayesmanecfit", "bnecfit"))
+    out <- allot_class(out, c("bayesmanecfit", "bnecfit"))
+    retained <- Filter(Negate(is.null), lapply(inputs, function(fit) {
+      fit[["retained_data"]]
+    }))
+    if (length(retained) > 0 &&
+        all(vapply(retained[-1], identical, logical(1), retained[[1]]))) {
+      out$retained_data <- retained[[1]]
+    } else if (length(retained) > 1) {
+      message("The objects retain different unused data columns; the combined ",
+              "fit will not retain them for plotting groups.")
+    }
+    out
   }
 }
 
@@ -179,6 +191,8 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
   # bnec_record() then returned NULL for a fit this version had recorded --
   # which is the one thing the documented NULL is supposed to rule out.
   bnec_rec <- attr(object, "bnec_record")
+  retained_data <- object[["retained_data"]]
+  supplied_newdata <- !is.null(newdata)
   # Read here for the same reason as the record above. update() refits an
   # existing set; it is not a request to reweight it, so the method the set was
   # built with is the one it keeps unless the caller names another. Without
@@ -343,6 +357,11 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
   # keep, which is the documented meaning of a NULL record.
   if (!is.null(bnec_rec)) {
     attr(out, "bnec_record") <- bnec_rec
+  }
+  if (supplied_newdata) {
+    out <- retain_unused_data(out, newdata)
+  } else if (!is.null(retained_data)) {
+    out$retained_data <- retained_data
   }
   out
 }

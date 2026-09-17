@@ -1271,6 +1271,56 @@ check_data_equality <- function(mod_fits) {
   }
 }
 
+#' Retain columns omitted from a brms fit
+#'
+#' \code{brm()} stores only columns used by its model frame. Plotting may still
+#' need a categorical design variable that the curve was pooled over, so keep
+#' those omitted columns once on the returned bayesnec object. The rows are put
+#' in fitted-data order here, while both frames are available, rather than left
+#' for a later plotting call to align by position.
+#'
+#' @param object A \code{\link{bayesnecfit}} or
+#' \code{\link{bayesmanecfit}} under construction.
+#' @param data The data frame supplied for fitting.
+#'
+#' @return \code{object}, with a \code{retained_data} element when \code{data}
+#' contains columns absent from the stored \code{brmsfit} data.
+#' @noRd
+retain_unused_data <- function(object, data) {
+  fit_data <- if (is_bayesmanecfit(object)) {
+    object$mod_fits[[1]]$fit$data
+  } else {
+    object$fit$data
+  }
+  unused <- setdiff(names(data), names(fit_data))
+  if (length(unused) == 0) {
+    object$retained_data <- NULL
+    return(object)
+  }
+  rows <- match(rownames(fit_data), rownames(data))
+  if (anyNA(rows)) {
+    stop("The fitted rows could not be matched to the supplied data while ",
+         "retaining unused columns. This should not happen; please report it.",
+         call. = FALSE)
+  }
+  object$retained_data <- data[rows, unused, drop = FALSE]
+  object
+}
+
+#' Retained columns on a derived fit
+#'
+#' Subsetting or reweighting a fitted model set does not change its rows. Keep
+#' the unused columns without rebuilding them from a component \code{brmsfit},
+#' where they are deliberately absent.
+#'
+#' @noRd
+carry_retained_data <- function(object, source) {
+  if (!is.null(source[["retained_data"]])) {
+    object$retained_data <- source$retained_data
+  }
+  object
+}
+
 #' @noRd
 #' @importFrom chk chk_numeric
 check_args_newdata <- function(resolution, x_range) {

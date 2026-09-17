@@ -93,3 +93,15 @@ grouped_plot_fit <- function(fit = nec4param) {
   )
   fit
 }
+
+# Retain a categorical column that the fitted formula does not use. The source
+# rows are deliberately reversed so tests observe name-based alignment rather
+# than succeeding through the common case where both frames share an order.
+unfitted_group_plot_fit <- function(fit = nec4param, values = NULL) {
+  d <- fit$fit$data[rev(seq_len(nrow(fit$fit$data))), , drop = FALSE]
+  if (is.null(values)) {
+    values <- rep(c("ambient", "warm", "hot"), length.out = nrow(d))
+  }
+  d$climate <- factor(values)
+  bayesnec:::retain_unused_data(fit, d)
+}

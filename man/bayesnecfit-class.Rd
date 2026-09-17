@@ -31,6 +31,11 @@ to fit the model.}
 \item{\code{bayesnecformula}}{An object of class \code{\link{bayesnecformula}} and
 \code{\link[stats]{formula}}.}
 
+\item{\code{retained_data}}{A \code{\link[base]{data.frame}} containing columns of
+the data supplied to \code{\link{bnec}} that \code{brm()} omitted from its
+stored model frame. Rows are in fitted-data order. The element is absent
+when every supplied column was used by the fit.}
+
 \item{\code{pred_vals}}{A \code{\link[base]{list}} with a single element
 \code{data}, a \code{\link[base]{data.frame}} of summary posterior
 predicted values over a grid set by \code{resolution} and \code{x_range}.

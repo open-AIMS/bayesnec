@@ -13,15 +13,21 @@
 #' @param ecx Should ECx values be added to the plot? Defaults to FALSE..
 #' @param xform A function to apply to the returned estimated concentration
 #' values.
-#' @param group An optional character string naming a group-level variable in
-#' the fitted formula. Observations are joined through their per-level means;
-#' a level recorded at one predictor value is marked at its mean instead. A
+#' @param group An optional character string naming a categorical variable in
+#' the data supplied to \code{\link{bnec}}. Observations are joined through
+#' their per-level means when the variable occurs as a group-level term in the
+#' fitted formula; a level recorded at one predictor value is marked at its
+#' mean instead. A variable not fitted by the model can be shown only with
+#' \code{group_aes = "colour"}; the curve and credible band are pooled over
+#' that variable, and the legend identifies it as not fitted. A
 #' \code{bayesnecgroupfit} uses its fitted grouping variable automatically and
 #' draws one panel per level.
 #' @param group_aes How should the grouping selected by \code{group} be shown?
 #' \code{"line"} (the default) draws grey per-level means. \code{"colour"}
 #' also maps the grouping to the observation fill and the per-level mean marks.
-#' The argument is ignored when \code{group} is \code{NULL}.
+#' The argument is ignored when \code{group} is \code{NULL}. Only
+#' \code{"colour"} is available when \code{group} is not a group-level term
+#' in the fitted formula.
 #'
 #' @return A \code{\link[ggplot2]{ggplot}} object.
 #'
@@ -70,11 +76,14 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   summ <- summary(x, ecx = FALSE) |>
     suppressWarnings() |>
     suppressMessages()
-  ggbnec_data(x, add_nec = nec, add_ecx = ecx,
-              xform = xform, group = group, ...) |>
+  dat <- ggbnec_data(x, add_nec = nec, add_ecx = ecx,
+                     xform = xform, group = group, ...)
+  group_label <- plot_group_label(dat, group, group_aes)
+  dat |>
     mutate(model = x$model, tag = rownames(.env$summ$nec_vals)) |>
     ggbnec(nec = nec, ecx = ecx, group = !is.null(group),
-           group_aes = group_aes, group_label = group)
+           group_aes = group_aes, group_label = group_label,
+           group_fitted = !identical(attr(dat, "group_fitted"), FALSE))
 }
 
 #' @rdname autoplot
@@ -136,11 +145,19 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
           data.frame() |>
           rownames_to_column(var = "tag")
       }, .id = "model")
-      map_dfr(all_fits, ggbnec_data, add_nec = nec, add_ecx = ecx,
-              xform = xform, group = group, ..., .id = "model") |>
+      plot_data <- lapply(all_fits, function(fit) {
+        ggbnec_data(fit, add_nec = nec, add_ecx = ecx,
+                    xform = xform, group = group, ...)
+      })
+      group_label <- plot_group_label(plot_data[[1]], group, group_aes)
+      group_fitted <- !identical(
+        attr(plot_data[[1]], "group_fitted"), FALSE
+      )
+      map_dfr(plot_data, identity, .id = "model") |>
         left_join(y = nec_labs, by = "model") |>
         ggbnec(nec = nec, ecx = ecx, group = !is.null(group),
-               group_aes = group_aes, group_label = group)
+               group_aes = group_aes, group_label = group_label,
+               group_fitted = group_fitted)
     } else {
       if (plot) {
         default_ask <- devAskNewPage()
@@ -152,12 +169,17 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
         summ_i <- summary(all_fits[[i]], ecx = FALSE) |>
           suppressWarnings() |>
           suppressMessages()
-        plots[[i]] <- ggbnec_data(all_fits[[i]], add_nec = nec, add_ecx = ecx,
-                                   xform = xform, group = group, ...) |>
+        dat_i <- ggbnec_data(all_fits[[i]], add_nec = nec, add_ecx = ecx,
+                             xform = xform, group = group, ...)
+        group_label <- plot_group_label(dat_i, group, group_aes)
+        plots[[i]] <- dat_i |>
           mutate(model = x$success_models[i],
                  tag = rownames(.env$summ_i$nec_vals)) |>
           ggbnec(nec = nec, ecx = ecx, group = !is.null(group),
-                 group_aes = group_aes, group_label = group)
+                 group_aes = group_aes, group_label = group_label,
+                 group_fitted = !identical(
+                   attr(dat_i, "group_fitted"), FALSE
+                 ))
         plot(plots[[i]], newpage = newpage || i > 1)
         if (i == 1) {
           devAskNewPage(ask = ask)
@@ -169,12 +191,15 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
     summ <- summary(x, ecx = FALSE) |>
       suppressWarnings() |>
       suppressMessages()
-    ggbnec_data(x, add_nec = nec, add_ecx = ecx, xform = xform,
-                group = group, ...) |>
+    dat <- ggbnec_data(x, add_nec = nec, add_ecx = ecx, xform = xform,
+                       group = group, ...)
+    group_label <- plot_group_label(dat, group, group_aes)
+    dat |>
       mutate(model = "Model averaged predictions",
              tag = rownames(.env$summ$nec_vals)) |>
       ggbnec(nec = nec, ecx = ecx, group = !is.null(group),
-             group_aes = group_aes, group_label = group)
+             group_aes = group_aes, group_label = group_label,
+             group_fitted = !identical(attr(dat, "group_fitted"), FALSE))
   }
 }
 
@@ -183,15 +208,18 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
 #'
 #' @return A \code{\link[base]{data.frame}}.
 #'
-#' @param group An optional character string naming a group-level variable in
-#' the fitted formula.
+#' @param group An optional character string naming a categorical variable in
+#' the data supplied to \code{\link{bnec}}.
+#' @param retained_data A data frame of columns omitted from
+#' \code{brms_fit$data}, stored in fitted-row order on the bayesnec object.
 #'
 #' @importFrom dplyr mutate
 #' @importFrom rlang .data
 #' @importFrom stats model.frame
 #'
 #' @noRd
-prep_raw_data <- function(brms_fit, bayesnecformula, group = NULL) {
+prep_raw_data <- function(brms_fit, bayesnecformula, group = NULL,
+                          retained_data = NULL) {
   r_df <- brms_fit$data
   mod_dat <- model.frame(bayesnecformula, data = r_df)
   if (!is.null(group) &&
@@ -199,17 +227,34 @@ prep_raw_data <- function(brms_fit, bayesnecformula, group = NULL) {
        !nzchar(group))) {
     stop("`group` must be NULL or one non-empty column name.", call. = FALSE)
   }
+  group_fitted <- NULL
+  group_values <- NULL
   if (!is.null(group)) {
     group_vars <- attr(mod_dat, "bnec_group")
     group_vars <- group_vars[!is.na(group_vars)]
-    if (!group %in% group_vars) {
-      if (length(group_vars) == 0) {
-        stop("`group` can only be used when the fitted formula includes a",
-             " group-level variable.", call. = FALSE)
-      }
-      stop("`group` must name a group-level variable in the fitted formula: ",
-           paste0("\"", group_vars, "\"", collapse = ", "), ".",
-           call. = FALSE)
+    available <- union(names(r_df), names(retained_data))
+    if (!group %in% available) {
+      stop("`group` must name a group-level variable in the fitted formula ",
+           "or a column retained from the data supplied to bnec(). Available ",
+           "columns are: ", paste0("\"", available, "\"", collapse = ", "),
+           ".", call. = FALSE)
+    }
+    group_fitted <- group %in% group_vars
+    group_values <- if (group %in% names(r_df)) {
+      r_df[[group]]
+    } else {
+      retained_data[[group]]
+    }
+    if (!group_fitted &&
+        !(is.factor(group_values) || is.character(group_values) ||
+          is.logical(group_values))) {
+      stop("`group` must be categorical when it is not a group-level ",
+           "variable in the fitted formula; convert \"", group,
+           "\" to a factor before fitting.", call. = FALSE)
+    }
+    if (anyNA(group_values)) {
+      stop("`group` contains missing values in \"", group,
+           "\"; remove or define them before fitting.", call. = FALSE)
     }
   }
   y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
@@ -231,10 +276,35 @@ prep_raw_data <- function(brms_fit, bayesnecformula, group = NULL) {
     # A stable output name lets downstream code use the same mapping whichever
     # source column was selected. The source name remains on the result as an
     # attribute for code that labels the grouping.
-    out$group <- r_df[[group]]
+    out$group <- group_values
     keep <- c(keep, "group")
   }
-  out[, keep, drop = FALSE]
+  out <- out[, keep, drop = FALSE]
+  if (!is.null(group)) {
+    attr(out, "group_fitted") <- group_fitted
+  }
+  out
+}
+
+#' Label and validate a grouping selected for autoplot
+#'
+#' A grouping absent from the fitted formula describes observations only. It
+#' is labelled as such and is not allowed to draw the fitted-group mean lines,
+#' which would otherwise suggest that the model estimated a per-level curve.
+#'
+#' @noRd
+plot_group_label <- function(data, group, group_aes) {
+  if (is.null(group)) {
+    return(NULL)
+  }
+  if (identical(attr(data, "group_fitted"), FALSE)) {
+    if (!identical(group_aes, "colour")) {
+      stop("A `group` that is not a group-level variable in the fitted ",
+           "formula can only use `group_aes = \"colour\"`.", call. = FALSE)
+    }
+    return(paste0(group, " (not fitted)"))
+  }
+  group
 }
 
 #' @param data A \code{\link[base]{data.frame}}.
@@ -295,16 +365,21 @@ bind_ecx <- function(data, ecx_vals) {
 #' @param add_ecx Should ECx values be added to the plot? Defaults to FALSE.
 #' @param xform A function to apply to the returned estimated concentration
 #' values.
-#' @param group An optional character string naming a group-level variable in
-#' the fitted formula. When supplied, its values are returned in a column named
-#' \code{group}, with the source name in attribute \code{"group_var"}. A
+#' @param group An optional character string naming a categorical variable in
+#' the data supplied to \code{\link{bnec}}. When supplied, its values are
+#' returned in a column named \code{group}, with the source name in attribute
+#' \code{"group_var"}. Attribute \code{"group_fitted"} states whether the
+#' fit represents the grouping: either the fitted formula includes it as a
+#' group-level variable, or independently fitted \code{bayesnecgroupfit}
+#' panels use it. A
 #' \code{bayesnecgroupfit} returns its fitted grouping variable automatically.
 #' @param ... Additional arguments to be passed to \code{\link{ecx}}. By
 #' default, function \code{\link{ecx}} returns EC10.
 #'
 #' @return A \code{\link[base]{data.frame}}. When \code{group} is supplied, or
 #' \code{x} is a \code{bayesnecgroupfit}, the frame includes a \code{group}
-#' column and a \code{"group_var"} attribute.
+#' column and a \code{"group_var"} attribute. A \code{bayesnecgroupfit} also
+#' includes a \code{panel} column containing the level fitted in each panel.
 #'
 #' @examples
 #' \donttest{
@@ -353,7 +428,8 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                      y_e = c(e_df$estimate__, rep(NA, nrow(e_df))),
                      y_ci = c(e_df$lower__, rev(e_df$upper__)),
                      x_r = NA, y_r = NA)
-  r_df <- prep_raw_data(brms_fit, x$bayesnecformula, group = group)
+  r_df <- prep_raw_data(brms_fit, x$bayesnecformula, group = group,
+                        retained_data = x$retained_data)
   if (!is.null(group)) {
     e_df$group <- r_df$group[rep(NA_integer_, nrow(e_df))]
   }
@@ -375,6 +451,7 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   }
   if (!is.null(group)) {
     attr(out, "group_var") <- group
+    attr(out, "group_fitted") <- attr(r_df, "group_fitted")
   }
   out
 }
@@ -410,7 +487,8 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                      y_ci = c(e_df$Q2.5, rev(e_df$Q97.5)),
                      x_r = NA, y_r = NA)
   r_df <- prep_raw_data(x$mod_fits[[1]]$fit,
-                        x$mod_fits[[1]]$bayesnecformula, group = group)
+                        x$mod_fits[[1]]$bayesnecformula, group = group,
+                        retained_data = x$retained_data)
   if (!is.null(group)) {
     e_df$group <- r_df$group[rep(NA_integer_, nrow(e_df))]
   }
@@ -437,6 +515,7 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   }
   if (!is.null(group)) {
     attr(out, "group_var") <- group
+    attr(out, "group_fitted") <- attr(r_df, "group_fitted")
   }
   out
 }
@@ -455,19 +534,23 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #' @export
 ggbnec_data.bayesnecgroupfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                                          xform = identity, ..., group = NULL) {
-  if (!is.null(group) && !identical(group, x$group_var)) {
-    stop("A bayesnecgroupfit is grouped by \"", x$group_var,
-         "\"; `group` cannot select a different variable.", call. = FALSE)
-  }
+  panel_group <- is.null(group) || identical(group, x$group_var)
   pieces <- lapply(seq_along(x$fits), function(i) {
     out <- ggbnec_data(x$fits[[i]], add_nec = add_nec, add_ecx = add_ecx,
-                       xform = xform, ...)
-    out$group <- factor(rep(x$levels[i], nrow(out)), levels = x$levels)
+                       xform = xform, ...,
+                       group = if (panel_group) NULL else group)
+    out$panel <- factor(rep(x$levels[i], nrow(out)), levels = x$levels)
+    if (panel_group) {
+      out$group <- out$panel
+    }
     out
   })
+  group_fitted <- if (panel_group) TRUE else attr(pieces[[1]], "group_fitted")
   out <- do.call(rbind, pieces)
   rownames(out) <- NULL
-  attr(out, "group_var") <- x$group_var
+  attr(out, "group_var") <- if (panel_group) x$group_var else group
+  attr(out, "group_fitted") <- group_fitted
+  attr(out, "panel_var") <- x$group_var
   out
 }
 
@@ -482,9 +565,11 @@ ggbnec_data.bayesnecgroupfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #'
 #' @export
 autoplot.bayesnecgroupfit <- function(object, ..., nec = TRUE, ecx = FALSE,
-                                      xform = identity, group = NULL) {
+                                      xform = identity, group = NULL,
+                                      group_aes = c("line", "colour")) {
   chk_lgl(nec)
   chk_lgl(ecx)
+  group_aes <- match.arg(group_aes)
   if (!inherits(xform, "function")) {
     stop("xform must be a function.")
   }
@@ -499,10 +584,18 @@ autoplot.bayesnecgroupfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   names(tags) <- object$levels
   panel_labs <- paste0(object$group_var, " = ", object$levels)
   names(panel_labs) <- object$levels
-  level <- as.character(dat$group)
+  level <- as.character(dat$panel)
   dat$model <- factor(unname(panel_labs[level]), levels = unname(panel_labs))
   dat$tag <- unname(tags[level])
-  ggbnec(dat, nec = nec, ecx = ecx, group = FALSE)
+  show_group <- !is.null(group) && !identical(group, object$group_var)
+  group_label <- if (show_group) {
+    plot_group_label(dat, group, group_aes)
+  } else {
+    NULL
+  }
+  ggbnec(dat, nec = nec, ecx = ecx, group = show_group,
+         group_aes = group_aes, group_label = group_label,
+         group_fitted = !identical(attr(dat, "group_fitted"), FALSE))
 }
 
 #' ggbnec
@@ -527,14 +620,15 @@ autoplot.bayesnecgroupfit <- function(object, ..., nec = TRUE, ecx = FALSE,
 #'
 #' @noRd
 ggbnec <- function(x, nec = TRUE, ecx = FALSE, group = FALSE,
-                   group_aes = c("line", "colour"), group_label = NULL) {
+                   group_aes = c("line", "colour"), group_label = NULL,
+                   group_fitted = TRUE) {
   group_aes <- match.arg(group_aes)
   out <- ggplot() +
     geom_polygon(data = x |> filter(!is.na(.data$y_ci)),
                  mapping = aes(x = .data$x_e, y = .data$y_ci),
                  fill = "grey75", alpha = 0.5)
   raw <- x |> filter(!is.na(.data$y_r))
-  if (group) {
+  if (group && group_fitted) {
     # Character values omit unused factor levels. Keeping them would add NA to
     # the selected names below and could pass an absent level into a layer.
     n_x <- tapply(raw$x_r, as.character(raw$group), function(value) {
