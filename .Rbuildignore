@@ -35,3 +35,4 @@ README.Rmd
 ^.*\.sif$
 ^\.apptainer-tmp$
 ^CLAUDE\.md$
+^.*\.log$

@@ -70,3 +70,6 @@ data-raw/coral_diuron/
 # Source laboratory records and manuscripts kept alongside data-raw scripts.
 # Not redistributed with the package.
 data-raw/lum31/
+
+# Stray run logs at the top level.
+*.log
