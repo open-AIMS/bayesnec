@@ -9,12 +9,14 @@ screen_models(
   rhat_cutoff = 1.01,
   ess_cutoff = 400,
   divergence_cutoff = 10,
-  quiet = FALSE
+  quiet = FALSE,
+  group_action = c("per_level", "common")
 )
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesnecfit}},
-\code{\link{bayesmanecfit}} or \code{\link{bayesnechurdlefit}}.}
+\code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}} or
+\code{\link{bayesnecgroupfit}}.}
 
 \item{rhat_cutoff}{A \code{\link[base]{numeric}} vector of length 1.}
 
@@ -25,13 +27,19 @@ screen_models(
 \item{quiet}{A \code{\link[base]{logical}}. Suppress the message reporting
 what was dropped. Defaults to \code{FALSE}; there is rarely a good reason to
 set it.}
+
+\item{group_action}{For a \code{\link{bayesnecgroupfit}}, either
+\code{"per_level"} to screen each independently fitted level separately, or
+\code{"common"} to remove from every level each equation which fails at any
+level. Ignored for other classes.}
 }
 \value{
 The object with failing candidates removed. A
 \code{\link{bayesmanecfit}} reduced to one model becomes a
 \code{\link{bayesnecfit}}, as \code{\link{amend}} already does. A
 \code{\link{bayesnechurdlefit}} comes back as one, with each component
-screened.
+screened. A \code{\link{bayesnecgroupfit}} comes back as one, with each
+element of \code{fits} replaced by its screened fit.
 }
 \description{
 Runs \code{\link{check_sampling}}, drops every candidate that failed, and
@@ -81,6 +89,22 @@ A \code{\link{bayesnechurdlefit}} is screened one component at a time and
 rewrapped, as \code{\link{amend}} already does for that class. The two
 components may legitimately end up with different model sets --- a model
 valid for the 0-1 bounded survival component need not be valid for growth.
+}
+
+\section{Grouped fits}{
+
+
+A \code{\link{bayesnecgroupfit}} is screened with
+\code{group_action = "per_level"} by default. An equation which fails at one
+level is then removed only from that level, because \code{\link{bnec_group}}
+fitted the levels independently. The returned levels may consequently have
+different candidate sets.
+
+Set \code{group_action = "common"} to remove an equation from every level
+where it is present when it fails at any level. This keeps an initially
+common candidate set aligned, but discards fits which passed their own
+sampler diagnostics. Existing differences caused by equations that failed
+to fit cannot be restored by screening.
 }
 
 \examples{
