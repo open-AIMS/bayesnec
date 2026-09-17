@@ -55,6 +55,44 @@ A precompiled vignette embeds whatever the render printed. A home directory, a
 library path or compiler output reaches CRAN in the built vignette, so check the
 rendered `.Rmd` for them before committing it.
 
+### Reading a rendered vignette
+
+The committed `.Rmd` already holds every chunk's output as text, so rendering it
+fits nothing and takes seconds:
+
+```r
+rmarkdown::render("vignettes/example9.Rmd",
+                  output_file = "example9_20260917-0725.html",
+                  output_dir = "<main checkout>/ignore/vignette_preview")
+```
+
+Every preview goes in `bayesnec/ignore/vignette_preview/` in the main checkout,
+named `exampleN_YYYYMMDD-HHMM.html`, which is the convention already
+in that directory and keeps successive renders of one vignette side by side.
+`ignore/` is git-ignored and matched by `^ignore$` in `.Rbuildignore`, so nothing
+written there reaches a commit or a build.
+
+A worktree has an `ignore/` of its own, and a preview written to it is invisible
+from the checkout RF works in --- the same trap section 10 of the global file
+records for `prompts/`. Where the session is in a worktree, take the main
+checkout from the first entry of `git worktree list` and write there.
+
+Copy the `vignette-fig-*.png` files the vignette references into the output
+directory first, or the figures come out broken. `html_vignette` embeds them, so
+the result is one self-contained file and the copies can then be deleted.
+
+Do not precompile in order to read a vignette. `vignettes/precompile.R` refits
+every model --- `example9` alone was 3902 s on 2026-09-08 --- and that is a
+release operation, not a review one.
+
+The catch is that a branch which edits only the `.Rmd.orig` leaves the `.Rmd`
+stale, which is the normal state, since precompiling is not a merge
+precondition. Rendering it then shows the vignette without the change. To read a
+new section in place, knit that section on its own against the fits it
+describes, splice the knitted markdown into the committed `.Rmd`, and render
+that. The preview must then say that its parts come from different renders, so
+that no one reads numbers across them.
+
 ## The test suite
 
 `notes/running_the_test_suite.md` holds the measurements and the four traps.

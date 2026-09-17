@@ -2,9 +2,9 @@
 #'
 #' Calculates a posterior dispersion metric.
 #'
-#' @param model An object of class \code{\link{bayesnecfit}} whose distribution
-#' family is either \code{\link[stats]{poisson}} or
-#' \code{\link[stats]{binomial}}.
+#' @param model An object of class \code{\link{bayesnecfit}} or
+#' \code{\link{bayesmanecfit}} whose distribution family is either
+#' \code{\link[stats]{poisson}} or \code{\link[stats]{binomial}}.
 #' @param summary Logical. Should summary stats be returned instead of full
 #' vector? Defaults to FALSE.
 #' @param seed A \code{\link[base]{numeric}} vector of length 1. Passed to
@@ -18,16 +18,17 @@
 #' between the observed relative to simulated Pearson residuals sums of
 #' squares.
 #'
-#' @return A \code{\link[base]{numeric}} vector. If \code{summary} is FALSE, an
-#' n-long vector containing the dispersion metric, where n is the number of post
-#' warm-up posterior draws from the \code{\link[brms]{brmsfit}} object. An
-#' element of that vector is \code{Inf} for a draw containing an observation of
+#' @return For a \code{\link{bayesnecfit}}, a \code{\link[base]{numeric}}
+#' vector. If \code{summary} is FALSE, it contains the dispersion metric for
+#' each post-warm-up posterior draw from the \code{\link[brms]{brmsfit}}
+#' object. An element is \code{Inf} for a draw containing an observation of
 #' zero fitted variance whose response is not the fitted value, and \code{NA}
 #' for a draw in which no observation contributes a residual; both cases are
-#' described under Details and both are reported when they arise. If
-#' TRUE, then a \code{\link[base]{data.frame}} containing the summary stats
-#' (median, 95% credible interval, and the posterior probability of
-#' over-dispersion) of the dispersion metric.
+#' described under Details and reported when they arise. If \code{summary} is
+#' TRUE, the vector contains the median, 95% credible interval, and posterior
+#' probability of over-dispersion. For a \code{\link{bayesmanecfit}},
+#' \code{summary = FALSE} returns a named list of these vectors and
+#' \code{summary = TRUE} returns a data frame with one row per equation.
 #'
 #' @details The statistic is the ratio of the observed to the simulated Pearson
 #' residual sum of squares, whose null value is 1. With \code{summary = TRUE}
@@ -93,6 +94,8 @@
 #' }
 #' @export
 dispersion <- function(model, summary = FALSE, seed = 10) {
+  chk_lgl(summary)
+  chk_number(seed)
   # Not an S3 generic, so a hurdle fit has to be handled here. It has two
   # underlying brmsfits and no combined analogue, so one result per component.
   if (is_bayesnechurdlefit(model)) {
@@ -101,8 +104,25 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
       survival = dispersion(model$survival, summary = summary, seed = seed)
     ))
   }
-  chk_lgl(summary)
-  chk_number(seed)
+  # A model average has no single dispersion statistic: its summary already
+  # reports one for each candidate equation. Apply the same calculation to the
+  # stored fits so callers can inspect the draws behind those columns. Empty
+  # summaries become NA rows, matching expand_nec() and the model summary.
+  if (is_bayesmanecfit(model)) {
+    out <- lapply(model$mod_fits, dispersion, summary = summary, seed = seed)
+    if (!summary) {
+      return(out)
+    }
+    summary_names <- c("Estimate", "Q2.5", "Q97.5", "P(>1)")
+    out <- lapply(out, function(x) {
+      if (length(x) == 0) {
+        stats::setNames(rep(NA_real_, length(summary_names)), summary_names)
+      } else {
+        x
+      }
+    })
+    return(as.data.frame(do.call(rbind, out), check.names = FALSE))
+  }
   # Captured before `model` is replaced by the brmsfit. expand_nec() calls this
   # once per equation, so an unnamed message on a model set says only that
   # something somewhere was excluded, which is not enough to act on.

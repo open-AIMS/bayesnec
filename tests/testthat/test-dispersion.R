@@ -57,6 +57,37 @@ test_that("dispersion recovers a value near one for Poisson-simulated data", {
   expect_lt(disp[["Q97.5"]], 2.5)
 })
 
+test_that("dispersion reports every equation in a model set", {
+  fit <- poisson_fit()
+  duplicate <- fit
+  duplicate$model <- "duplicate"
+  model_set <- structure(
+    list(mod_fits = list(nec4param = fit, duplicate = duplicate)),
+    class = c("bayesmanecfit", "bnecfit")
+  )
+
+  draws <- dispersion(model_set)
+  expect_named(draws, names(model_set$mod_fits))
+  expect_equal(draws[["nec4param"]], draws[["duplicate"]])
+
+  stats <- dispersion(model_set, summary = TRUE)
+  expect_s3_class(stats, "data.frame")
+  expect_identical(rownames(stats), names(model_set$mod_fits))
+  expect_named(stats, c("Estimate", "Q2.5", "Q97.5", "P(>1)"))
+  expect_equal(as.numeric(stats[1, ]), as.numeric(stats[2, ]))
+})
+
+test_that("unsupported model-set families return named empty results", {
+  draws <- dispersion(manec_example)
+  expect_named(draws, names(manec_example$mod_fits))
+  expect_true(all(lengths(draws) == 0))
+
+  stats <- dispersion(manec_example, summary = TRUE)
+  expect_identical(rownames(stats), names(manec_example$mod_fits))
+  expect_named(stats, c("Estimate", "Q2.5", "Q97.5", "P(>1)"))
+  expect_true(all(is.na(stats)))
+})
+
 # This block compiles the same Stan program poisson_fit() does -- nec4param with
 # a poisson family -- on different data, so it cannot share that fit and keeps a
 # compilation of its own. Refitting through update() would reuse the program but
