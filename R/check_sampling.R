@@ -56,8 +56,16 @@
 #' assessed is not the same thing as a model that failed, and folding the two
 #' together silently turns \code{\link{screen_models}} into a no-op.
 #'
+#' @section Grouped fits:
+#'
+#' A \code{\link{bayesnecgroupfit}} is diagnosed one level at a time because
+#' its levels were fitted independently. The result is one table with a
+#' \code{level} column, rather than a list of tables, so that an equation which
+#' passes at one level and fails at another can be compared directly.
+#'
 #' @param x An object of class \code{\link{bayesnecfit}},
-#' \code{\link{bayesmanecfit}} or \code{\link{bayesnechurdlefit}}.
+#' \code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}} or
+#' \code{\link{bayesnecgroupfit}}.
 #' @param rhat_cutoff A \code{\link[base]{numeric}} vector of length 1.
 #' @param ess_cutoff A \code{\link[base]{numeric}} vector of length 1.
 #' @param divergence_cutoff A \code{\link[base]{numeric}} vector of length 1.
@@ -65,6 +73,8 @@
 #' @return A \code{\link[base]{data.frame}} with one row per candidate model and
 #' columns \code{model}, \code{max_rhat}, \code{min_ess}, \code{min_ess_ratio},
 #' \code{n_divergent} and \code{failed}. For a
+#' \code{\link{bayesnecgroupfit}}, the same table includes a leading
+#' \code{level} column. For a
 #' \code{\link{bayesnechurdlefit}}, a named \code{\link[base]{list}} of two
 #' such tables --- \code{growth} and \code{survival} --- as
 #' \code{\link{rhat}} also returns for that class.
@@ -101,6 +111,17 @@ check_sampling <- function(x, rhat_cutoff = 1.01, ess_cutoff = 400,
                            ess_cutoff = ess_cutoff,
                            divergence_cutoff = divergence_cutoff))
   }
+  if (is_bayesnecgroupfit(x)) {
+    tabs <- group_lapply(
+      x, check_sampling, rhat_cutoff = rhat_cutoff,
+      ess_cutoff = ess_cutoff, divergence_cutoff = divergence_cutoff
+    )
+    out <- do.call(rbind, Map(function(tab, level) {
+      cbind(data.frame(level = level, stringsAsFactors = FALSE), tab)
+    }, tabs, x$levels))
+    rownames(out) <- NULL
+    return(out)
+  }
   fits <- sampling_fits(x)
   rows <- lapply(names(fits), function(m) {
     sampling_row(fits[[m]], m, rhat_cutoff, ess_cutoff, divergence_cutoff)
@@ -130,8 +151,8 @@ sampling_fits <- function(x) {
     names(out) <- x$model
     out
   } else {
-    stop("check_sampling requires a bayesnecfit, a bayesmanecfit or a",
-         " bayesnechurdlefit.", call. = FALSE)
+    stop("check_sampling requires a bayesnecfit, a bayesmanecfit, a",
+         " bayesnechurdlefit or a bayesnecgroupfit.", call. = FALSE)
   }
 }
 

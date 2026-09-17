@@ -861,6 +861,14 @@ fits_tox <- bnec_group(
   seed = 228, refresh = 0)
 ```
 
+The two levels were fitted independently, so an equation that fails the sampler
+screen for one metal is removed only from that metal. Writing the action in the
+call makes the resulting difference between candidate sets explicit.
+
+```{r screen-metals}
+fits_tox <- screen_models(fits_tox, group_action = "per_level")
+```
+
 ```{r summary-metals}
 summary(fits_tox)
 ```
@@ -1319,6 +1327,14 @@ fits_herb <- bnec_group(fvfm ~ crf(log(concentration), "decline"),
                         seed = 228, refresh = 0)
 ```
 
+Each herbicide is screened separately because each was fitted separately. A
+failed equation is removed from that herbicide without discarding successful
+fits of the same equation for the other six.
+
+```{r screen-herbicides}
+fits_herb <- screen_models(fits_herb, group_action = "per_level")
+```
+
 `summary()` on a `bayesnecgroupfit` prints a full summary for every level, which
 for seven herbicides is several hundred lines. What the sections below draw on
 is the model weights, and those are worth seeing together:
@@ -1465,10 +1481,10 @@ difference of two independent posteriors and is valid only where the posteriors
 come from separate fits. `bnec_group()` fits every level separately, so that
 holds here.
 
-The two `bnec_group()` fits in this vignette are not screened as the five single
-fits above are. `check_sampling()` and `screen_models()` do not accept a
-`bayesnecgroupfit`, which #376 records; their per-level diagnostics were read by
-hand instead. Two levels of a single fit share draws, and permuting them discards
+The two `bnec_group()` fits are screened per level, as specified in their calls.
+Their independently fitted levels can retain different equation sets when an
+equation samples adequately for one level and fails for another. Two levels of
+a single fit share draws, and permuting them discards
 the correlation between them, widening the difference and pulling `prob_diff`
 towards 0.5 --- so a contrast between parts of one fit needs draw-wise
 differencing and must not be routed through this function.

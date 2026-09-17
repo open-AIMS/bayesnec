@@ -146,6 +146,35 @@ test_that("check_sampling delegates over both components of a hurdle fit", {
   expect_equal(out$growth, check_sampling(manec_example))
 })
 
+group_sampling_fixture <- function() {
+  passing <- manec_example
+  # Give nec4param the diagnostics of the passing equation at level b. The
+  # model name stays fixed so the same equation fails at a and passes at b.
+  passing$mod_fits[["nec4param"]]$fit <-
+    passing$mod_fits[["ecx4param"]]$fit
+  structure(
+    list(
+      fits = list(a = manec_example, b = passing),
+      levels = c("a", "b")
+    ),
+    class = c("bayesnecgroupfit", "bnecfit")
+  )
+}
+
+test_that("check_sampling returns one level-labelled table for a grouped fit", {
+  skip_on_cran()
+  grouped <- group_sampling_fixture()
+  tab <- check_sampling(grouped, rhat_cutoff = 1.15, ess_cutoff = 0,
+                        divergence_cutoff = 1e6)
+  expect_s3_class(tab, "data.frame")
+  expect_named(tab, c("level", "model", "max_rhat", "min_ess",
+                      "min_ess_ratio", "n_divergent", "failed"))
+  expect_equal(nrow(tab), 4)
+  nec_rows <- tab[tab$model == "nec4param", ]
+  expect_equal(nec_rows$level, c("a", "b"))
+  expect_equal(nec_rows$failed, c(TRUE, FALSE))
+})
+
 # --- screen_models: the three cases the spec enumerates -----------------------
 
 test_that("case 1 — nothing failed: unchanged, amend not called", {
@@ -221,6 +250,45 @@ test_that("screen_models rewraps a hurdle fit as a hurdle fit", {
   expect_s3_class(out, "bayesnechurdlefit")
   expect_s3_class(out$growth, "bayesmanecfit")
   expect_s3_class(out$survival, "bayesmanecfit")
+})
+
+test_that("grouped screening drops failures independently by default", {
+  skip_on_cran()
+  grouped <- group_sampling_fixture()
+  suppressWarnings(expect_message(
+    out <- screen_models(grouped, rhat_cutoff = 1.15, ess_cutoff = 0,
+                         divergence_cutoff = 1e6),
+    "Screening level"
+  ))
+  expect_s3_class(out, "bayesnecgroupfit")
+  expect_s3_class(out$fits$a, "bayesnecfit")
+  expect_equal(out$fits$a$model, "ecx4param")
+  expect_s3_class(out$fits$b, "bayesmanecfit")
+  expect_setequal(names(out$fits$b$mod_fits),
+                  c("nec4param", "ecx4param"))
+})
+
+test_that("common grouped screening removes an equation from every level", {
+  skip_on_cran()
+  grouped <- group_sampling_fixture()
+  suppressWarnings(expect_message(
+    out <- screen_models(grouped, rhat_cutoff = 1.15, ess_cutoff = 0,
+                         divergence_cutoff = 1e6, group_action = "common"),
+    "from every level"
+  ))
+  expect_s3_class(out, "bayesnecgroupfit")
+  expect_true(all(vapply(out$fits, inherits, logical(1), "bayesnecfit")))
+  expect_equal(vapply(out$fits, `[[`, character(1), "model"),
+               c(a = "ecx4param", b = "ecx4param"))
+})
+
+test_that("grouped screening names a level from which it would drop all fits", {
+  skip_on_cran()
+  grouped <- group_sampling_fixture()
+  expect_error(
+    suppressMessages(screen_models(grouped, group_action = "common")),
+    'level.*"a"'
+  )
 })
 
 test_that("the reasons name every failing criterion, not just the first", {
