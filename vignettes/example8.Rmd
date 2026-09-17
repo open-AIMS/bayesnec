@@ -33,8 +33,8 @@ decision to make:
   level its own complete model set, and lets the *functional form* differ
   between levels.
 
-They answer different questions and suit different data. The first case study
-below uses both, on the same dataset.
+They answer different questions and suit different data. The bioluminescent
+assay below uses both, on the same dataset.
 
 
 ``` r
@@ -61,12 +61,12 @@ log_x <- scale_x_continuous(transform = "log10",
 The distinction that matters is whether the grouping sits **within** a
 concentration or **across** it, because it decides which route applies.
 
-**Within concentration.** Each group occurs at one concentration only ---
+A grouping within a concentration occurs at one concentration only ---
 replicate tanks, vials, chambers. The group cannot have its own
 concentration-response curve, because it spans no concentrations. What it can do
 is shift the response level up or down, and that is a **group-level term**.
 
-**Across concentration.** Each group spans the whole concentration range ---
+A grouping across concentration spans the whole concentration range ---
 different genotypes, chemicals, seasons. Every level *could* have its own curve,
 and the question is usually whether it does. That is **`bnec_group()`**.
 
@@ -280,7 +280,7 @@ different question from the one being asked, and their functional forms may
 differ from one another. `bnec_group()` fits each level separately and is the
 route for these.
 
-# Case study 1: the Lum-31 bacterial assay
+# A bioluminescent bacterial toxicity assay for tropical marine environments
 
 ## The assay
 
@@ -1361,7 +1361,7 @@ Copper is both the more potent metal and the better determined one on these
 data, and the single pairwise comparison of 0.0153 is what that separation
 reduces to.
 
-# Case study 2: diuron and climate on a coral
+# Combined effects of climate change and the herbicide diuron on the coral *Acropora millepora*
 
 ## Design and model complexity
 
@@ -1738,7 +1738,7 @@ readings at zero.
 Neither is a defect in the data; both are decisions about the response that have
 to be made before the family is chosen, and `vignette("example6")` covers them.
 
-# Case study 3: seven herbicides
+# Phytotoxicity of photosystem II herbicides to coral
 
 `herbicide` [@jones2003] holds the effective quantum yield of photosystem II in
 the symbiotic dinoflagellates of the coral *Seriatopora hystrix*, measured after
@@ -1746,7 +1746,7 @@ a ten-hour exposure to each of seven photosystem II inhibiting herbicides. Three
 replicate containers of four corals were held at each concentration. The report
 is at <https://doi.org/10.3354/meps261149>.
 
-The endpoint is the same quantity as case study 2's `yield`, and the two studies
+The endpoint is the same quantity as `coral_pam`'s `yield`, and the two studies
 are connected by more than that. @jones2003 found the effect of diuron to be
 inversely related to temperature, which is the observation @flores2021 tested
 two decades later by crossing diuron with warming.
@@ -1973,7 +1973,7 @@ median can still overlap, because one of them is poorly determined rather than
 because they are alike.
 
 Several are bimodal. Tebuthiuron has a second mode near 2 µg/L and hexazinone
-one near 1.6, which is the model-averaging mixture case study 2 traced in
+one near 1.6, which is the model-averaging mixture traced in
 `fit_pam`: a low-weight equation placing its threshold elsewhere, visible in the
 tail of the average and not in its median.
 
@@ -2009,7 +2009,7 @@ R.version.string
 
 The fits use `model = "all"`, which `bnec()` filters to the equations valid for
 the family and predictor. Two calls do not. The herbicide call uses `decline`,
-to match Figure 11 of @fisher2024. The parameter-count contrast of case study 2
+to match Figure 11 of @fisher2024. The parameter-count contrast on `coral_pam`
 names two equations on each side, because the contrast is the point. No call names `iter`, `warmup` or `control`, so `bnec()`'s defaults
 apply: 4 chains at 10000 iterations with 8000 warmup, under `seed = 228`.
 `bnec()` also raises `adapt_delta` from Stan's 0.8 to 0.99 of its own accord
