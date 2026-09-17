@@ -253,3 +253,242 @@ NULL
 #' with(alga, table(species, contaminant, sgr_source))
 #'
 NULL
+
+#' Bioluminescent bacterial toxicity data with floored luminescence readings
+#'
+#' Raw luminescence of the marine bacterium Lum-31 exposed to dissolved copper
+#' or zinc, from the acute toxicity tests of Luter et al. (2025). The assay
+#' reads light output from a bacterial suspension in a microplate well; light
+#' falls as the cells are inhibited, so luminescence is the response and no
+#' separate endpoint is scored. The analysis code accompanying the paper is at
+#' \url{https://github.com/open-AIMS/Lum31-tox-assays}.
+#'
+#' This dataset exists to demonstrate group-level terms (see
+#' \code{vignette("example8")}). Its design supplies replication at three
+#' nested scales --- four wells within a concentration (\code{conc_group}), 33
+#' plates each spanning a whole dilution series (\code{plate}), and two
+#' toxicants read at two exposure times --- so the same data support a
+#' within-concentration group term, an across-concentration one, and a factor
+#' covariate.
+#'
+#' The tests were run in five dated batches. A batch holds two to five plates,
+#' each of which is a complete test: 11 measured concentrations, four replicate
+#' wells at each, read at 15 and 30 minutes. Each row of the dataset is one
+#' well at one exposure time, and \code{well} identifies the physical well, so
+#' the two rows sharing a \code{well} level are the same suspension read twice.
+#'
+#' Concentrations are measured dissolved metal rather than nominal, and each
+#' batch was dosed and assayed separately, so the concentration values differ
+#' between batches. There are 53 distinct copper concentrations and 54 zinc
+#' concentrations across the whole dataset but only 11 within any one plate,
+#' and plates cannot be compared point by point.
+#'
+#' Readings were blank-corrected against wells of artificial seawater, so a
+#' well emitting less light than the blank gives a negative value. Such a value
+#' was replaced by zero in the source records, and 386 of the 2904 readings are
+#' zero on that account; one further reading escaped the replacement and is
+#' recorded as \code{-123}. \code{rlu} reports every reading as it stands in
+#' the source, negative value included, because it is the direct evidence that
+#' a zero here is a floored negative rather than an absence of light. The
+#' generating process at the floor is measurement noise about a small positive
+#' value, which makes these readings left-censored rather than the product of a
+#' distinct zero-generating process.
+#'
+#' \code{censoring} and \code{rlu_cens} give that treatment in the form
+#' \code{\link[brms]{brm}} expects, as \code{rlu_cens | cens(censoring)}. A
+#' Gamma likelihood requires a strictly positive response and \code{brms}
+#' refuses the fit at data validation otherwise, so the censoring bound cannot
+#' be zero. The bound used is the smallest positive reading on the plate. It is
+#' a plate property because the plate reader applies auto-scale gain
+#' adjustment, and it is pooled over the two exposure times because the two
+#' reads of one plate share a gain setting. No detection limit is recorded for
+#' the instrument, so the bound is an inference from the readings rather than a
+#' stated resolution, and estimates are more sensitive to it in the arms where
+#' more readings reach the floor --- 28 per cent for copper at 30 minutes,
+#' against 0.9 per cent for zinc at 15.
+#'
+#' Auto-scale gain also means absolute luminescence is not comparable between
+#' plates. Median control-well luminescence differs by up to 2.8-fold between
+#' plates read on the same day, and the October batch sits 4.6-fold below the
+#' March batches. The published analysis removes this by dividing each plate by
+#' the median of its four control wells; a group-level term on the control
+#' parameter estimates the same per-plate factor and propagates its
+#' uncertainty, which is what \code{vignette("example8")} compares.
+#'
+#' The columns are as follows:
+#'
+#' \describe{
+#' \item{toxicant}{The metal tested (fct), \code{"Cu"} or \code{"Zn"}.}
+#' \item{batch}{Date of the batch of assays (fct), five levels.}
+#' \item{plate}{Plate identifier, unique across the dataset (fct), 16 copper
+#'   plates and 17 zinc. Plate labels repeat between batches in the source
+#'   workbooks, so the level combines toxicant, batch and plate label.}
+#' \item{conc_group}{The four wells at one concentration on one plate (fct),
+#'   numbered in ascending concentration within the plate. This is the
+#'   within-concentration grouping factor: every level sits at a single
+#'   concentration, so it cannot have a concentration-response curve of its
+#'   own.}
+#' \item{well}{Replicate well identifier, unique within plate (fct). Each level
+#'   appears twice, once per exposure time. Within one toxicant-by-exposure-time
+#'   subset a level has a single observation, so a group-level term on
+#'   \code{well} there is an observation-level term rather than a grouping.}
+#' \item{minutes}{Exposure time in minutes at which the plate was read (int),
+#'   15 or 30. The source workbooks also hold a 5 minute read, which the
+#'   published analysis did not use and which is not included here.}
+#' \item{conc}{Measured dissolved metal concentration in mg/L (dbl).}
+#' \item{rlu}{Raw luminescence in relative light units, exactly as recorded
+#'   (dbl). Zero where a blank-corrected negative was replaced by zero, and
+#'   \code{-123} in the one case where it was not.}
+#' \item{censoring}{Censoring indicator (chr), \code{"left"} where \code{rlu}
+#'   is zero or negative and \code{"none"} otherwise.}
+#' \item{rlu_cens}{\code{rlu}, with every non-positive reading replaced by the
+#'   smallest positive reading on the same plate (dbl). Strictly positive
+#'   throughout, and the response to fit with \code{censoring}.}
+#' }
+#'
+#' @name lum31
+#' @docType data
+#' @format An object of class `data.frame` with 2904 rows and 10 columns.
+#' @keywords datasets
+#' @examples
+#' head(lum31)
+#' with(lum31, table(toxicant, minutes, censoring))
+#'
+#' @references
+#' Luter HM, Damjanovic K, Thomas MC, Fisher R, Hoj L, Negri AP (2025) A
+#' bioluminescent bacterial toxicity assay for tropical marine environments.
+#' Environmental Toxicology. doi: 10.1002/tox.70003.
+#'
+NULL
+
+#' Coral colour score under diuron and three climate scenarios
+#'
+#' Colour score of the reef-building coral \emph{Acropora millepora} after a
+#' 14-day exposure to the photosystem II herbicide diuron, crossed with three
+#' climate scenarios, from Flores et al. (2021). The scenarios are the
+#' temperature and partial pressure of carbon dioxide projected for 2018, 2050
+#' and 2100.
+#'
+#' The design is three climate scenarios by five diuron concentrations by three
+#' chambers, with four coral fragments in each chamber: 45 chambers and 180
+#' fragments. A chamber sits at one concentration, so it spans no part of the
+#' concentration-response curve and admits only a displacement --- the
+#' within-concentration structure \code{vignette("example8")} demonstrates with
+#' \code{ogl(chamber)}.
+#'
+#' Five concentrations is at the conventional minimum for a
+#' concentration-response design, and this dataset exists partly to show what
+#' that limit does. Equations of four curve parameters do not sample reliably
+#' against five concentrations while equations of three do, and the failure
+#' appears as divergent transitions rather than as an error.
+#'
+#' Colour was scored from image pixel intensity before and after the exposure,
+#' reported here as \code{t0_pixel} and \code{t14_pixel}. \code{intensity} is a
+#' derived score on the unit interval and \code{proportion} is exactly its
+#' complement. How \code{intensity} was derived is not recorded, and it is not
+#' any of the obvious normalisations of the two pixel columns, so it is shipped
+#' as supplied rather than reconstructed. Exactly one fragment has an
+#' \code{intensity} of 1 and therefore a \code{proportion} of 0, which is the
+#' signature of a score normalised to the largest value in the dataset and is a
+#' boundary a \code{Beta} likelihood cannot represent. See
+#' \code{vignette("example6")} for what to do with a value on a boundary.
+#'
+#' The control concentration is reported as \code{0}. The source file also
+#' holds a column substituting \code{0.1} for it so that a log predictor can be
+#' taken; that substitution is not shipped, because substituting at a boundary
+#' is the practice \code{vignette("example6")} argues against and a user who
+#' wants it can make it and say so.
+#'
+#' The columns are as follows:
+#'
+#' \describe{
+#' \item{climate}{Climate scenario (fct), \code{"2018"}, \code{"2050"} or
+#'   \code{"2100"}.}
+#' \item{diuron}{Diuron concentration in \eqn{\mu}g/L (dbl), one of 0, 0.29,
+#'   0.96, 2.9 and 29.}
+#' \item{chamber}{Exposure chamber (fct), 45 levels, each at one climate
+#'   scenario and one concentration.}
+#' \item{fragment}{Coral fragment within chamber (int), 1 to 4.}
+#' \item{t0_pixel}{Mean image pixel intensity at the start of the exposure
+#'   (dbl).}
+#' \item{t14_pixel}{Mean image pixel intensity after 14 days (dbl).}
+#' \item{intensity}{Derived colour intensity on the unit interval (dbl).
+#'   Exactly one observation is 1.}
+#' \item{proportion}{\code{1 - intensity} (dbl), the response used in
+#'   \code{vignette("example8")}. Exactly one observation is 0.}
+#' }
+#'
+#' @name coral_colour
+#' @docType data
+#' @format An object of class `data.frame` with 180 rows and 8 columns.
+#' @keywords datasets
+#' @examples
+#' head(coral_colour)
+#' with(coral_colour, table(climate, diuron))
+#'
+#' @references
+#' Flores F, Marques JA, Uthicke S, Fisher R, Patel F, Kaserzon S, Negri AP
+#' (2021) Combined effects of climate change and the herbicide diuron on the
+#' coral Acropora millepora. Marine Pollution Bulletin, 169: 112582.
+#' doi: 10.1016/j.marpolbul.2021.112582.
+#'
+NULL
+
+#' Coral photosynthetic yield under diuron and three climate scenarios
+#'
+#' Effective quantum yield of photosystem II in the reef-building coral
+#' \emph{Acropora millepora} exposed to the herbicide diuron, crossed with
+#' three climate scenarios, from the same 14-day experiment as
+#' \code{\link{coral_colour}}.
+#'
+#' The design is three climate scenarios by six diuron concentrations by three
+#' chambers: 54 chambers. Yield was read repeatedly on the fragments in each
+#' chamber, so the chambers hold five to eight readings each and the rows are
+#' not balanced. As with \code{\link{coral_colour}} a chamber sits at one
+#' concentration and admits only a displacement, and 54 chambers of several
+#' readings is the better conditioned of the two for a
+#' \code{ogl(chamber)} term.
+#'
+#' Chamber was numbered 1 to 3 within each climate-by-concentration cell in the
+#' source records rather than across the experiment, so \code{chamber} here
+#' combines the three to give a unique identifier.
+#'
+#' Yield is a proportion and 63 of the 414 readings are exactly 0, all of them
+#' at the higher concentrations where photosynthesis had stopped. These are
+#' measurements at a boundary rather than substitutions, and a \code{Beta}
+#' likelihood cannot represent them; \code{vignette("example6")} covers the
+#' options.
+#'
+#' The control concentration is reported as \code{0}, and the substitution the
+#' source file holds for it is not shipped, for the reason given under
+#' \code{\link{coral_colour}}.
+#'
+#' The columns are as follows:
+#'
+#' \describe{
+#' \item{climate}{Climate scenario (fct), \code{"2018"}, \code{"2050"} or
+#'   \code{"2100"}.}
+#' \item{diuron}{Diuron concentration in \eqn{\mu}g/L (dbl), one of 0, 0.29,
+#'   0.96, 2.9, 9.6 and 29.}
+#' \item{chamber}{Exposure chamber (fct), 54 levels, each at one climate
+#'   scenario and one concentration.}
+#' \item{fragment}{Coral fragment within chamber (int).}
+#' \item{yield}{Effective quantum yield of photosystem II (dbl), a proportion.
+#'   63 readings are exactly 0.}
+#' }
+#'
+#' @name coral_pam
+#' @docType data
+#' @format An object of class `data.frame` with 414 rows and 5 columns.
+#' @keywords datasets
+#' @examples
+#' head(coral_pam)
+#' with(coral_pam, table(climate, diuron))
+#'
+#' @references
+#' Flores F, Marques JA, Uthicke S, Fisher R, Patel F, Kaserzon S, Negri AP
+#' (2021) Combined effects of climate change and the herbicide diuron on the
+#' coral Acropora millepora. Marine Pollution Bulletin, 169: 112582.
+#' doi: 10.1016/j.marpolbul.2021.112582.
+#'
+NULL

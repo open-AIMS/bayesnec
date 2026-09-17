@@ -985,6 +985,80 @@
   `dispersion_P_over_1` column. `?dispersion` now states that `beta_binomial`
   adds variance to the binomial and so cannot address under-dispersion (#262).
 
+- New dataset `lum31`: the acute copper and zinc tests of the Lum-31
+  bioluminescent bacterial assay of Luter et al. (2025). 2904 raw luminescence
+  readings from 33 plates in five dated batches, each plate a complete series of
+  11 measured concentrations by four replicate wells, read at 15 and 30 minutes.
+  Replication at three nested scales --- the four wells at a concentration
+  (`conc_group`), the plate across the whole series (`plate`), and toxicant by
+  exposure time --- supports every group-level structure `vignette("example8")`
+  demonstrates. Readings were blank-corrected
+  against seawater blanks, so 386 of them are negatives that the source records
+  replaced with zero and one is a negative that escaped the replacement; `rlu`
+  reports each as recorded and `censoring` with `rlu_cens` give the left-censored
+  form. The censoring bound is the smallest positive reading on the plate,
+  because the plate reader applies auto-scale gain adjustment and the value at
+  which it stops resolving is therefore a plate property (#6, #33).
+
+- `vignette("example8")` is structured as an introduction to the three
+  group-level syntaxes followed by three case studies, one per dataset. The
+  syntax section previously introduced `herbicide` in order to have a data frame
+  for `make_brmsformula()` to resolve names against, which put a factor-covariate
+  dataset in the section about random groupings; it now uses a 24-row synthetic
+  frame and introduces no dataset at all. The copper-against-zinc comparison has
+  moved into the `lum31` case study, beside the fits whose structure it reuses.
+
+- The `vignette("example8")` fits use `bnec()`'s own sampling defaults rather
+  than naming `iter`, `warmup` and `control` at each call. The vignette had
+  halved the iterations and set `adapt_delta = 0.99` throughout, so its
+  diagnostics described a configuration a reader would not get by default. The
+  defaults are 10000 iterations at 8000 warmup, and `adapt_delta` is raised to
+  0.99 by `bnec()` itself wherever a constrained mean is given an unbounded
+  group-level term, which covers every fit in the vignette but the herbicide
+  one.
+
+- `vignette("example8")` draws the posteriors behind each `compare_posterior()`
+  call, for the metals and for the seven herbicides. `prob_diff` reduces a pair
+  to one number and the densities show whether a pair is separated in location
+  or in width.
+
+- `vignette("example8")` is drawn on a log concentration axis throughout. Every
+  series in it spans one to three orders of magnitude, and `autoplot()` returns
+  the predictor on the scale it was recorded on, so a bare figure put the whole
+  curve into the left of the axis. The axis is set by transforming the scale
+  rather than the values or the breaks. The two `bnec_group()` figures are built
+  from `ggbnec_data()` instead of `plot()`, because `plot.bayesnecfit()` applies
+  its `xform` argument only where the predictor was not transformed inside
+  `crf()`, so no argument to it reaches the axis of a fit on `log(conc)`.
+
+- The `coral_colour` and `coral_pam` fits in `vignette("example8")` are on
+  `crf(log(diuron_adj), ...)` rather than the recorded concentration. Both
+  datasets record an untreated control as an exact zero, which `bnec()` refuses
+  inside `log()`, so the vignette substitutes 0.1 µg/L for it in a visible chunk
+  and reports every estimate against that value. 0.1 is one step of the
+  half-decade dilution series below the lowest treatment. `data-raw/coral_diuron.R`
+  continues to ship the recorded zero, so the substitution stays a decision of
+  the analysis rather than a property of the data.
+
+- Every chunk of `vignettes/example8.Rmd.orig` is now labelled, and the fitting
+  chunks set `results = "hide"`. Unlabelled chunks give figures positional file
+  names, so inserting one renamed every figure below it and left the previous
+  render's files orphaned in `vignettes/`. `refresh = 0` does not suppress
+  `cmdstanr`'s progress reporting, which `results = "hide"` does.
+
+- New datasets `coral_colour` and `coral_pam`: colour score and photosystem II
+  effective quantum yield for *Acropora millepora* exposed to the herbicide
+  diuron under three climate scenarios, from Flores et al. (2021), the study the
+  JSS article cites for `compare_posterior()`. Both are within-concentration
+  designs --- a chamber sits at one concentration and so admits only a
+  displacement --- with 45 chambers of four fragments for colour and 54 chambers
+  of five to eight readings for yield. `coral_colour` has five concentrations,
+  which is the conventional minimum, and `vignette("example8")` uses it to
+  contrast equations of three and of four curve parameters against a design
+  that small (#301). Exactly one colour observation
+  sits on the `Beta` boundary, the signature of a score normalised to the largest
+  value in the dataset, and 63 of the 414 yield readings are exactly 0 (#6, #33).
+
 ## Bug fixes
 
 - `ecxhormebc5` is now excluded before fitting when the predictor contains
@@ -1638,6 +1712,21 @@
 
   `vignette("example1")`, `vignette("example2")` and `README.md` now point at
   it. Each held its own installation text, so the package had three (#342).
+
+- `vignette("example9")` works a third response, on which the coefficient of
+  variation a `Gamma` holds constant is not constant. One plate of the `lum31`
+  copper series at 15 minutes is fitted with the `decline` set, once with
+  constant dispersion and once with `disp("power")`. A probability integral
+  transform check, `pp_check(type = "pit_ecdf")`, detects the miscalibration;
+  `check_fit()` names the concentrations it occurs at, reporting an observed
+  spread 0.09 times the simulated one at the control and 2.80 times it at 2.7
+  mg/L, with 7 of 11 groups flagged; and both checks on the refitted model
+  confirm the sub-model corrected it, at 0 of 11 flagged and a control ratio of
+  1.02. The estimated exponent of 0.78 (0.64 to 0.93) agrees with the 0.77 (0.66
+  to 0.88) the replicate wells give with no fit involved, and the model-averaged
+  *NSEC* halves, from 0.109 to 0.054 mg/L. A single plate is used so that the per-read
+  gain differences between plates need no group-level term, which
+  `vignette("example8")` covers instead (#367).
 
 - New vignette, `vignette("example9")` --- *A complete analysis workflow* ---
   running a single analysis from data to reportable estimate: choosing the
