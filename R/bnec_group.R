@@ -190,15 +190,6 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   check_disp_finite(formula, data)
   check_reserved_names(data)
   dots <- list(...)
-  # Checked over every level before fitting any of them. Leaving this to the
-  # inner bnec() calls would report the same diagnostic one level at a time and
-  # could reach an affected level only after earlier levels had compiled and
-  # sampled. The private marker is removed by bnec() before brms sees it. A
-  # supplied prior replaces the defaults the warning concerns. See #386.
-  if (is.null(dots$prior)) {
-    check_response_range(mod_dat, group = grp)
-  }
-  dots[[".bayesnec_response_range_checked"]] <- TRUE
   # The response substitutions are not reported here. bnec_group() fits each
   # level on its own subset, so the values substituted differ between levels
   # and the per-level bnec() call is where the report belongs. See #93.
@@ -211,6 +202,22 @@ bnec_group <- function(formula, data, group_var, family = NULL,
             ". Pass `family` to override.")
   }
   family <- validate_family(family, link_source = link_source)
+  # Checked over every level before fitting any of them. Leaving this to the
+  # inner bnec() calls would report the same diagnostic one level at a time and
+  # could reach an affected level only after earlier levels had compiled and
+  # sampled. The private marker is removed by bnec() before brms sees it. A
+  # partial prior still uses defaults for its omitted sensitive rows. See #386.
+  diagnostic_models <- suppressMessages(
+    check_models(get_model_from_formula(formula), family, mod_dat)
+  )
+  diagnostic_survival <- suppressMessages(
+    check_model_survival(dots$model_survival, family, mod_dat)
+  )
+  if (uses_response_range_defaults(dots$prior, diagnostic_models, family,
+                                   diagnostic_survival)) {
+    check_response_range(mod_dat, family, group = grp)
+  }
+  dots[[".bayesnec_response_range_checked"]] <- TRUE
   # The crossed weights are an outer product of the per-level weight vectors,
   # and that identity holds for pseudo-BMA only, so the method is checked in
   # crossed_group_weights() rather than merely documented -- multiplying

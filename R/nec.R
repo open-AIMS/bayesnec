@@ -48,11 +48,13 @@
 #' from every model regardless of type.
 #'
 #' The default \code{nec} prior is bounded by the tested predictor range.
+#' For a threshold fit, or a model average containing threshold equations only,
 #' \code{nec} reports when the posterior median or upper interval limit reaches
-#' the fitted prior's upper bound, because the estimate may then be constrained
-#' by the design and should be treated as censored unless a scientifically
-#' justified prior supports extrapolation. The bound is transformed by
-#' \code{xform} before it is reported.
+#' a common fitted prior upper bound. The estimate may then be constrained by
+#' that prior and should be treated as censored unless its bound and shape are
+#' scientifically justified. No bound diagnostic is inferred for a mixed
+#' NEC/NSEC model average or where component models use different bounds. The
+#' bound is transformed by \code{xform} before it is reported.
 #'
 #' @return A vector containing the estimated no-effect value, including upper
 #' and lower 95% credible interval bounds (or other interval as specified by
@@ -212,6 +214,20 @@ report_nec_prior_bound <- function(object, estimate, xform = identity) {
   } else {
     list(object)
   }
+  model_names <- if (inherits(object, "bayesmanecfit")) {
+    names(object$mod_fits)
+  } else {
+    object$model
+  }
+  # A mixed model average combines sampled NEC parameters with NSEC values
+  # read from smooth curves. Equality of that mixture with a bound belonging to
+  # one component does not establish that the reported N(S)EC is constrained.
+  if (!length(model_names) ||
+      !all(vapply(model_names, function(model) {
+        "nec" %in% equation_par_names(model)
+      }, logical(1)))) {
+    return(invisible(NULL))
+  }
   bounds <- unlist(lapply(fits, function(fit) {
     prior <- fit$fit$prior
     if (is.null(prior) || !all(c("nlpar", "ub") %in% names(prior))) {
@@ -226,7 +242,7 @@ report_nec_prior_bound <- function(object, estimate, xform = identity) {
   }
   bounds <- unique(xform(bounds))
   bounds <- bounds[is.finite(bounds)]
-  if (!length(bounds)) {
+  if (length(bounds) != 1L) {
     return(invisible(NULL))
   }
   central_at_bound <- any(signif(estimate[[1]], 3) == signif(bounds, 3))
@@ -239,9 +255,9 @@ report_nec_prior_bound <- function(object, estimate, xform = identity) {
   bound <- bounds[which.min(abs(bounds - estimate[[index]]))]
   message(
     "The estimated ", statistic, " is at the upper bound of the fitted nec ",
-    "prior (", signif(bound, 3), "). The estimate may be constrained by the ",
-    "tested predictor range; report it as censored unless a scientifically ",
-    "justified prior supports extrapolation."
+    "prior (", signif(bound, 3), "). The estimate may be constrained by that ",
+    "prior; report it as censored unless the bound and prior are scientifically ",
+    "justified."
   )
   invisible(NULL)
 }

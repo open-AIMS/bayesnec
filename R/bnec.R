@@ -778,16 +778,6 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # call: check_data() runs once per model, and a model set would otherwise
   # repeat the message ten or more times.
   check_normalisation(bdat)
-  # The default response-scaled priors can describe the observed endpoint
-  # rather than the lower asymptote when little of the response range was
-  # observed. Raised once here rather than from define_prior(), which runs once
-  # per equation. bnec_group() performs the same check over all levels before
-  # its loop and marks each inner call so it is not repeated. A complete prior
-  # supplied by the user replaces the defaults and therefore does not need this
-  # default-prior warning. See #386.
-  if (!response_range_checked && is.null(brm_args$prior)) {
-    check_response_range(bdat)
-  }
   # Raised here for the same reason: check_data() runs once per model, so a
   # model set would print the conflict for each of its members and then end on
   # the generic all-models-failed advice, long after the cause. The conflict is
@@ -813,6 +803,19 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # multi-model branch escaped it only because `model[m]` drops attributes.
   # check_models() warns about exactly this at its record block. See #261.
   model <- as.character(model)
+  model_survival <- check_model_survival(model_survival, brm_args$family, bdat)
+  # The default response-scaled priors can describe the observed endpoint
+  # rather than the lower asymptote when little of the response range was
+  # observed. Raised once here rather than from define_prior(), which runs once
+  # per equation. A partial prior does not silence it: add_brm_defaults() fills
+  # omitted bot/nec/ec50 rows from the same defaults. bnec_group() performs the
+  # check over all levels and marks each inner call so it is not repeated.
+  # See #386.
+  if (!response_range_checked &&
+      uses_response_range_defaults(brm_args$prior, model, brm_args$family,
+                                   model_survival)) {
+    check_response_range(bdat, brm_args$family)
+  }
   # Reported once here rather than from check_data(), which runs once per
   # model. Computed from the same model frame and family the loop will use, so
   # what is reported is what will be done. See #93 and D16.
@@ -826,7 +829,6 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     brm_args$family
   )
   report_substitutions(substitutions)
-  model_survival <- check_model_survival(model_survival, brm_args$family, bdat)
   loo_controls <- define_loo_controls(loo_controls, brm_args$family$family)
   if (length(model) == 0) {
     stop("No valid models have been supplied for this data type.")

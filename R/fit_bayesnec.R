@@ -29,12 +29,14 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   x <- retrieve_var(bdat, "x_var", error = TRUE)
   y <- retrieve_var(bdat, "y_var", error = TRUE)
   tr <- retrieve_var(bdat, "trials_var")
+  denominator <- retrieve_var(bdat, "rate_var")
   family <- brm_args$family
   if (!skip_check) {
     checked_df <- check_data(data = bdat, family = family, model = model)
     x <- checked_df$mod_dat$x
     y <- checked_df$mod_dat$y
     tr <- checked_df$mod_dat$trials
+    denominator <- checked_df$mod_dat$denom
     family <- checked_df$family
     custom_name <- check_custom_name(family)
     brm_args$family <- family
@@ -60,6 +62,9 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
     response <- y / tr
   } else {
     response <- y
+  }
+  if (!is.null(denominator)) {
+    response <- response / denominator
   }
   brms_bf <- wrangle_model_formula(model, formula, bdat, family,
                                    model_survival = model_survival)

@@ -71,8 +71,8 @@ test_that("the incomplete-response warning combines affected levels", {
     run_par_checks = TRUE
   )
   expect_warning(
-    check_response_range(bdat, group = d$site),
-    "group level\\(s\\).*incomplete.*20%"
+    check_response_range(bdat, brms::Beta(link = "identity"), group = d$site),
+    "series/block\\(s\\).*incomplete.*20%"
   )
 })
 
@@ -96,7 +96,7 @@ test_that("bnec_group checks once and marks every level as checked", {
     out <- suppressMessages(
       bnec_group(y ~ crf(x, "nec4param"), d, group_var = "site")
     ),
-    "group level\\(s\\).*\"a\".*\"b\""
+    "series/block\\(s\\).*\"a\".*\"b\""
   )
   expect_s3_class(out, "bayesnecgroupfit")
   expect_identical(checked, c(TRUE, TRUE))

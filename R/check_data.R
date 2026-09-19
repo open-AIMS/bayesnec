@@ -88,7 +88,7 @@ check_normalisation <- function(data) {
   invisible(NULL)
 }
 
-#' Warn where the observed response does not reach half of its control level
+#' Warn where the modelled response does not reach half of its control level
 #'
 #' The default \code{bot} prior reads its location and spread from the observed
 #' response, and the default \code{nec} and \code{ec50} priors are truncated to
@@ -96,7 +96,10 @@ check_normalisation <- function(data) {
 #' control level at the highest concentration is therefore a useful, objective
 #' case to identify before any model is fitted: it has not observed even the
 #' midpoint of a decline towards zero, so it supplies weak evidence about a
-#' lower asymptote or a threshold above the series.
+#' lower asymptote or a threshold above the series. Binomial responses are
+#' assessed as proportions and rate responses per unit exposure, matching the
+#' response from which the default priors are built. Joint hurdle responses
+#' are assessed separately for survivors and survival.
 #'
 #' This is a diagnostic and not a completeness test. A decline of at least
 #' 50 percent does not prove that the lower asymptote was reached, and the ratio
@@ -110,6 +113,7 @@ check_normalisation <- function(data) {
 #'
 #' @param data A model frame, as returned by \code{\link{model.frame}} for a
 #' \code{\link{bayesnecformula}}.
+#' @param family The validated response family.
 #' @param group An optional factor or character vector defining independent
 #' concentration-response series.
 #' @param minimum_decline The minimum fractional decline from the mean response
@@ -118,7 +122,8 @@ check_normalisation <- function(data) {
 #' @return \code{NULL}, invisibly. Called for its warning.
 #'
 #' @noRd
-check_response_range <- function(data, group = NULL, minimum_decline = 0.5) {
+check_response_range <- function(data, family, group = NULL,
+                                 minimum_decline = 0.5) {
   y <- try(retrieve_var(data, "y_var", error = TRUE), silent = TRUE)
   x <- try(retrieve_var(data, "x_var", error = TRUE), silent = TRUE)
   if (inherits(y, "try-error") || inherits(x, "try-error")) {
@@ -132,20 +137,42 @@ check_response_range <- function(data, group = NULL, minimum_decline = 0.5) {
   if (length(group) != length(y)) {
     return(invisible(NULL))
   }
-  decline <- vapply(levels(group), function(level) {
+  trials <- retrieve_var(data, "trials_var")
+  denominator <- retrieve_var(data, "rate_var")
+  decline <- lapply(levels(group), function(level) {
     use <- group == level & is.finite(x) & is.finite(y)
     x_level <- x[use]
     y_level <- y[use]
-    if (length(unique(x_level)) < 2) {
-      return(NA_real_)
+    if (family$family %in% c("binomial", "beta_binomial")) {
+      y_level <- y_level / trials[use]
     }
-    control <- mean(y_level[x_level == min(x_level)])
-    endpoint <- mean(y_level[x_level == max(x_level)])
-    if (!is.finite(control) || control <= 0 || !is.finite(endpoint)) {
-      return(NA_real_)
+    if (!is.null(denominator)) {
+      y_level <- y_level / denominator[use]
     }
-    1 - endpoint / control
-  }, numeric(1))
+    views <- if (is_hurdle_family(family)) {
+      parts <- split_hurdle_response(x_level, y_level)
+      list(response = parts$mu, survival = parts$hu)
+    } else {
+      list(response = list(x = x_level, y = y_level))
+    }
+    vapply(names(views), function(component) {
+      view <- views[[component]]
+      if (length(unique(view$x)) < 2) {
+        return(NA_real_)
+      }
+      control <- mean(view$y[view$x == min(view$x)])
+      endpoint <- mean(view$y[view$x == max(view$x)])
+      if (!is.finite(control) || control <= 0 || !is.finite(endpoint)) {
+        return(NA_real_)
+      }
+      1 - endpoint / control
+    }, numeric(1))
+  })
+  decline_names <- unlist(Map(function(level, values) {
+    if (length(values) == 1L) level else paste(level, names(values), sep = ": ")
+  }, levels(group), decline), use.names = FALSE)
+  decline <- unlist(decline, use.names = FALSE)
+  names(decline) <- decline_names
   affected <- is.finite(decline) & decline < minimum_decline
   if (!any(affected)) {
     return(invisible(NULL))
@@ -154,7 +181,9 @@ check_response_range <- function(data, group = NULL, minimum_decline = 0.5) {
     "\"", names(decline)[affected], "\" (",
     trimws(formatC(100 * decline[affected], digits = 3, format = "fg")), "%)"
   )
-  where <- if (identical(levels(group), "all data")) {
+  one_block <- length(decline) == 1L &&
+    identical(levels(group), "all data")
+  where <- if (one_block) {
     paste0(
       "; the observed decline is ",
       trimws(formatC(
@@ -162,7 +191,7 @@ check_response_range <- function(data, group = NULL, minimum_decline = 0.5) {
       )), "%"
     )
   } else {
-    paste0(" in group level(s) ", paste(observed, collapse = ", "))
+    paste0(" in series/block(s) ", paste(observed, collapse = ", "))
   }
   warning(
     "The mean response at the highest predictor value declines by less than ",
@@ -178,6 +207,52 @@ check_response_range <- function(data, group = NULL, minimum_decline = 0.5) {
     call. = FALSE
   )
   invisible(NULL)
+}
+
+#' Does the fit still use a response-range-sensitive default prior?
+#'
+#' A supplied prior can be partial: \code{fill_missing_priors()} adds defaults
+#' for parameter rows it does not replace. The incomplete-range diagnostic is
+#' therefore suppressed only when every response-range-sensitive row is
+#' supplied for every equation that will be fitted.
+#'
+#' @param prior A \code{\link[brms]{brmsprior}} or named list of them.
+#' @param models Character vector of concrete model names.
+#' @param family The validated response family.
+#' @param model_survival Optional equation for a hurdle survival block.
+#'
+#' @return A logical scalar.
+#' @noRd
+uses_response_range_defaults <- function(prior, models, family,
+                                         model_survival = NULL) {
+  affected <- c("bot", "nec", "ec50")
+  for (model in models) {
+    supplied <- if (inherits(prior, "brmsprior")) {
+      prior
+    } else if (is.list(prior) && model %in% names(prior)) {
+      prior[[model]]
+    } else {
+      NULL
+    }
+    if (!inherits(supplied, "brmsprior")) {
+      return(TRUE)
+    }
+    required <- intersect(equation_par_names(model), affected)
+    if (is_hurdle_family(family)) {
+      survival_model <- if (is.null(model_survival)) model else model_survival
+      required <- c(
+        required,
+        paste0(hurdle_dpar(family),
+               intersect(equation_par_names(survival_model), affected))
+      )
+    }
+    prior_df <- as.data.frame(supplied)
+    present <- prior_df$nlpar[prior_df$class == "b"]
+    if (!all(required %in% present)) {
+      return(TRUE)
+    }
+  }
+  FALSE
 }
 
 #' Refuse a model frame from which incomplete cases were removed

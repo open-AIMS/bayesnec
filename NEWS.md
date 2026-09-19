@@ -2,13 +2,16 @@
 
 ## Incomplete response ranges
 
-- `bnec()` now warns before fitting when the mean response at the highest
-  concentration has declined by less than 50% from the control mean. Such a
-  design may not identify the lower asymptote: where an equation estimates
-  `bot`, its default prior is derived from the observed response, while the
-  default `nec` and `ec50` priors exclude values above the tested range.
-  `bnec_group()` evaluates every
-  level before fitting any of them and reports all affected levels once.
+- `bnec()` now warns before fitting when the modelled response at the highest
+  concentration has declined by less than 50% from its control mean. Binomial
+  outcomes are assessed as proportions, rates per unit exposure, and joint
+  hurdle response and survival blocks separately. Such a design may not
+  identify the lower asymptote: where an equation estimates `bot`, its default
+  prior is derived from the observed response, while the default `nec` and
+  `ec50` priors exclude values above the tested range. A partial custom prior
+  does not silence the warning while those defaults are still filled.
+  `bnec_group()` evaluates every level before fitting any of them and reports
+  all affected levels once. For pure threshold fits with a common bound,
   `nec()` also reports when its median or upper interval limit reaches the
   fitted `nec` prior bound, so the estimate can be treated as censored (#386).
 

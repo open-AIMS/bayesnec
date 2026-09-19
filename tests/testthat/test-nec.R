@@ -91,3 +91,36 @@ test_that("nec reports an estimate at the fitted prior bound", {
     paste0("\\(", format(signif(exp(upper), 3), scientific = FALSE), "\\)")
   )
 })
+
+test_that("the prior-bound message is provenance-neutral", {
+  constrained <- nec4param
+  upper <- unname(quantile(constrained$ne_posterior, 0.975))
+  is_nec <- constrained$fit$prior$nlpar == "nec"
+  constrained$fit$prior$ub[is_nec] <- upper
+  messages <- capture.output(nec(constrained), type = "message")
+  expect_true(any(grepl("constrained by that prior", messages)))
+  expect_false(any(grepl("tested predictor range", messages)))
+})
+
+test_that("a mixed NEC/NSEC average does not infer a common NEC bound", {
+  mixed <- manec_example
+  upper <- unname(quantile(mixed$w_ne_posterior, 0.975, na.rm = TRUE))
+  for (model in names(mixed$mod_fits)) {
+    is_nec <- grepl("nec$", mixed$mod_fits[[model]]$fit$prior$nlpar)
+    mixed$mod_fits[[model]]$fit$prior$ub[is_nec] <- upper
+  }
+  messages <- capture.output(nec(mixed), type = "message")
+  expect_false(any(grepl("upper bound of the fitted nec prior", messages)))
+})
+
+test_that("a pure threshold average needs one common prior bound", {
+  pure <- manec_example
+  pure$mod_fits <- list(nec4param = nec4param, nec3param = nec4param)
+  pure$mod_fits$nec3param$model <- "nec3param"
+  first_nec <- pure$mod_fits$nec4param$fit$prior$nlpar == "nec"
+  second_nec <- pure$mod_fits$nec3param$fit$prior$nlpar == "nec"
+  pure$mod_fits$nec4param$fit$prior$ub[first_nec] <- 2
+  pure$mod_fits$nec3param$fit$prior$ub[second_nec] <- 3
+  expect_silent(report_nec_prior_bound(pure, c(Q50 = 2, Q2.5 = 1,
+                                                Q97.5 = 2)))
+})
