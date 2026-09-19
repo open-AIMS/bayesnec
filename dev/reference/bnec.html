@@ -240,7 +240,17 @@ as recorded and the constant <code>10 sd(x)</code> where the predictor is suppli
 already logged, so how much narrower the regularizing entry is depends on
 which of the two the data are on. See <code><a href="../articles/example3.html">vignette("example3")</a></code> for why the
 two rules differ. Ignored when priors are supplied directly via the
-<code>prior</code> argument.</p></dd>
+<code>prior</code> argument. Both default sets assume that the tested
+concentrations reach the lower asymptote of the curve. Where the mean
+response at the highest concentration is below the mean at the second
+highest by more than the contrast's standard error admits, tested one-sided
+at the 5\<!-- % level under the mean-variance relationship of the fitted family, -->
+<code>bnec</code> reports that before fitting: an equation that estimates
+<code>bot</code> then has a prior describing the observed endpoint rather than the
+asymptote, and the <code>nec</code> or <code>ec50</code> prior excludes a threshold above
+the tested range. Inspect the generated entries with <code><a href="get_priors.html">get_priors</a></code>
+and pass a scientifically justified prior through <code>prior</code> where
+information beyond the design is available.</p></dd>
 
 
 <dt id="arg-timeout">timeout<a class="anchor" aria-label="anchor" href="#arg-timeout"></a></dt>
