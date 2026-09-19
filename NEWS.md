@@ -6,8 +6,13 @@
   declining between the two highest concentrations tested. The contrast is
   fitted as a generalised linear model under the mean-variance relationship of
   the family being fitted and tested one-sided at the 5 per cent level, so the
-  report rate on a design whose top has flattened is 5 per cent by
-  construction. Such a design may not identify the lower asymptote: where an
+  report rate on a design whose top has flattened is 5 per cent wherever that
+  variance function is the family's own, which is every family but two. The
+  quasipoisson variance is a linear approximation to the negative binomial
+  variance, and the quasibinomial variance absorbs a beta-binomial
+  over-dispersion as a constant multiplier only where the number of trials is
+  constant within a level. Both are measured in the audit (#391). Such a
+  design may not identify the lower asymptote: where an
   equation estimates `bot` its default prior is derived from the observed
   response, and the default `nec` and `ec50` priors exclude a threshold above
   the tested range. The two blocks of a joint hurdle fit are assessed
@@ -19,7 +24,15 @@
   and `bnec_group()` raises it for every level before it fits any of them. A
   prior supplied for every `bot`, `nec` and `ec50` row of every equation
   silences it; a partial prior does not, because the omitted rows are still
-  filled from the same defaults (#390).
+  filled from the same defaults. A design with no predictor value observed
+  twice is passed over in silence, because a contrast is not defined there.
+  The report names the predictor as the formula wrote it, so a fit on
+  `crf(log(concentration))` reports log concentrations under that name (#390).
+
+- `bnec_group()` now raises the `model_survival` check before it fits any
+  level. An invalid equation for a survival block was previously reported by
+  the first level's `bnec()` call, which is after that level had compiled and
+  sampled (#390).
 
 ## Behaviour changes to a fit with a `rate()` denominator
 

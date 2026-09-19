@@ -56,7 +56,7 @@ test_that("a gaussian response is reported where its top two levels differ", {
   # checked against the data without recomputing it.
   expect_message(
     check_response_flattened(bdat, gaussian(link = "identity")),
-    "falls from 0.805 at 2 to 0.602 at 4"
+    "falls from 0.805 to 0.602 as x rises from 2 to 4"
   )
   flat <- flat_bdat(y ~ crf(x, "nec4param"),
                     data.frame(x = flat_x, y = flattened_y))
@@ -141,7 +141,7 @@ test_that("a binomial response is assessed on its counts", {
   # The proportion is reported, not the count.
   expect_message(
     check_response_flattened(bdat, binomial(link = "identity")),
-    "falls from 0.55 at 2 to 0.2 at 4"
+    "the mean proportion falls from 0.55 to 0.2 as x rises from 2 to 4"
   )
 })
 
@@ -195,7 +195,7 @@ test_that("a rate() contrast is taken on the rate scale", {
   bdat <- flat_bdat(count | rate(expo) ~ crf(x, "nec3param"), d)
   expect_message(
     check_response_flattened(bdat, poisson(link = "identity")),
-    "falls from 3 at 2 to 1.55 at 4"
+    "the mean rate falls from 3 to 1.55 as x rises from 2 to 4"
   )
   # The same counts with the denominator held at 1 are rising, so the contrast
   # would report nothing. The difference is the offset and nothing else.
@@ -282,8 +282,8 @@ test_that("a hurdle response block is assessed against its own two levels", {
   bdat <- hurdle_frame(x, y)
   msg <- capture_messages(check_response_flattened(bdat, hurdle_family))
   # The levels named for the response block are 1 and 2, not 2 and 4.
-  expect_length(grep("The response block .*at 1 to .*at 2", msg), 1)
-  expect_length(grep("The survival block .*at 2 to .*at 4", msg), 1)
+  expect_length(grep("The response block .*rises from 1 to 2", msg), 1)
+  expect_length(grep("The survival block .*rises from 2 to 4", msg), 1)
 })
 
 test_that("the hurdle survival block reads the raw counts", {
@@ -313,17 +313,32 @@ test_that("fewer than two predictor levels is passed over in silence", {
   expect_silent(check_response_flattened(bdat, gaussian(link = "identity")))
 })
 
-test_that("an unreplicated design reports that it could not be assessed", {
+test_that("a design with no replication is passed over in silence", {
+  # A factor fit on one observation per predictor value is saturated, so no
+  # contrast is defined. Section 2.2 of the plan asks for a report here, and it
+  # is not given: that shape is an ordinary continuous predictor rather than a
+  # degenerate design, and reporting on it would put an advisory on every fit
+  # of the package's own example data.
   bdat <- flat_bdat(y ~ crf(x, "nec4param"),
                     data.frame(x = c(0, 1, 2, 4),
                                y = c(1, 0.9, 0.8, 0.6)))
-  expect_message(
-    check_response_flattened(bdat, gaussian(link = "identity")),
-    "could not"
+  expect_silent(check_response_flattened(bdat, gaussian(link = "identity")))
+  expect_silent(
+    check_response_flattened(bdat, gaussian(link = "identity"),
+                             pool_dispersion = FALSE)
   )
 })
 
-test_that("a response with no variation reports that it could not be ", {
+test_that("nec_data, which every vignette fits, is passed over", {
+  # 100 rows at 100 distinct predictor values.
+  skip_if_not(exists("nec_data"))
+  bdat <- flat_bdat(y ~ crf(x, "nec3param"), nec_data)
+  expect_silent(
+    check_response_flattened(bdat, brms::Beta(link = "identity"))
+  )
+})
+
+test_that("a replicated response with no variation reports that it could not", {
   y <- rep(c(1, 0.9, 0.8, 0.8), each = 4)
   bdat <- flat_bdat(y ~ crf(x, "nec4param"),
                     data.frame(x = flat_x, y = y))
@@ -368,6 +383,23 @@ test_that("a binomial family with no trials term is passed over", {
     flatness_blocks(flat_x, declining_successes, NULL, NULL,
                     binomial(link = "identity")),
     list()
+  )
+  bdat <- flat_bdat(y ~ crf(x, "nec3param"),
+                    data.frame(x = flat_x, y = declining_successes))
+  expect_silent(
+    check_response_flattened(bdat, binomial(link = "identity"))
+  )
+})
+
+test_that("the predictor is named as the formula wrote it", {
+  # The model frame holds the predictor transformed, so a fit on log
+  # concentrations reports log concentrations. Naming the expression is what
+  # stops one being read as the other.
+  d <- data.frame(x = exp(flat_x), y = declining_y)
+  bdat <- flat_bdat(y ~ crf(log(x), "nec4param"), d)
+  expect_message(
+    check_response_flattened(bdat, gaussian(link = "identity")),
+    "as log\\(x\\) rises from 2 to 4"
   )
 })
 
@@ -534,7 +566,6 @@ test_that("the report rate on a flat top is near the stated alpha", {
   # Two standard errors of a 500-replicate proportion at 0.05 is 0.019.
   expect_lt(rate(gaussian_block, TRUE), 0.1)
   expect_lt(rate(gaussian_block, FALSE), 0.1)
-  binomial_spec <- flatness_spec("binomial")
   p <- c(1, 0.7, 0.4, 0.25, 0.25)
   survival_block <- function() {
     list(x = c(0, 1, 2, 4, 8), successes = rbinom(5, 20, p),

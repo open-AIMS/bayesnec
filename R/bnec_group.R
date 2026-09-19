@@ -221,10 +221,11 @@ bnec_group <- function(formula, data, group_var, family = NULL,
       )
     }), levs)
     level_survival <- suppressMessages(
-      check_model_survival(dots$model_survival, family, mod_dat)
+      check_model_survival(dots[["model_survival"]], family, mod_dat)
     )
     sensitive_blocks <- lapply(level_models, function(models) {
-      uses_response_range_defaults(dots$prior, models, family, level_survival)
+      uses_response_range_defaults(dots[["prior"]], models, family,
+                                   level_survival)
     })
     if (any(unlist(sensitive_blocks, use.names = FALSE))) {
       check_response_flattened(

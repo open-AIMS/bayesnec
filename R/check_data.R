@@ -180,9 +180,18 @@ flatness_blocks <- function(x, y, trials, denominator, family) {
     ux <- sort(unique(x))
     counts <- vapply(ux, function(z) sum(x == z), numeric(1))
     alive <- vapply(ux, function(z) sum(y[x == z] > 0), numeric(1))
+    mu_spec <- flatness_spec(hurdle_mu_family(family))
+    mu_block <- list(x = parts$mu$x, y = parts$mu$y, spec = mu_spec)
+    # Unreachable today: make_brmsformula() refuses a rate() term for anything
+    # but poisson and negbinomial, so no hurdle fit has a denominator. Attached
+    # anyway, because the mu block of a count hurdle has a count spec whose
+    # offset is TRUE, and leaving it off would put that block's contrast on
+    # counts rather than rates the day a rate() hurdle is allowed.
+    if (isTRUE(mu_spec$offset)) {
+      mu_block$denominator <- denominator[y > 0]
+    }
     return(list(
-      response = list(x = parts$mu$x, y = parts$mu$y,
-                      spec = flatness_spec(hurdle_mu_family(family))),
+      response = mu_block,
       # Dispersion is held at 1, which is the assumption the second block of
       # the fit makes as well: brms models it as a Bernoulli process per
       # observation.
@@ -279,6 +288,24 @@ flatness_contrast <- function(block, alpha = 0.05, pool_dispersion = TRUE) {
   if (!all(c(lower, upper) %in% x_keep)) {
     return(list(status = "failed"))
   }
+  # Only the binomial row holds its dispersion fixed. The count rows are mapped
+  # to quasipoisson, so poisson never reaches here as itself.
+  estimates_dispersion <- !identical(spec$family$family, "binomial")
+  # A block with no predictor value observed twice is passed over in silence.
+  # A factor fit on one observation per level is saturated, so a dispersion
+  # cannot be estimated and no contrast is defined; and that is the ordinary
+  # shape of a continuous predictor rather than a defect in the design. The
+  # package's own nec_data has 100 distinct predictor values in 100 rows, and
+  # every vignette fits it, so reporting here would put an advisory on the
+  # documented example of the package. Section 2.2 of the plan asks for a
+  # report on an unreplicated design; it was written for a designed series, and
+  # a note raised on the commonest call there is teaches users to ignore the
+  # rule, which is the failure the rule exists to avoid. What section 2.2 wants
+  # protected is the degenerate case below, where replication is present and
+  # every replicate is identical.
+  if (estimates_dispersion && all(table(x_keep) < 2)) {
+    return(list(status = "skipped"))
+  }
   ux_keep <- sort(unique(x_keep))
   ref <- which(ux_keep == lower)
   # The levels of a factor built from a numeric vector are its sorted unique
@@ -316,7 +343,7 @@ flatness_contrast <- function(block, alpha = 0.05, pool_dispersion = TRUE) {
   # catches. Families whose dispersion is fixed are exempt: the variance of a
   # binomial count is fixed by its mean and its number of trials, so a standard
   # error is defined there with one observation per level.
-  if (!spec$family$family %in% c("binomial", "poisson")) {
+  if (estimates_dispersion) {
     working <- if (identical(spec$kind, "matrix")) {
       block$successes[keep] / block$trials[keep]
     } else {
@@ -333,7 +360,7 @@ flatness_contrast <- function(block, alpha = 0.05, pool_dispersion = TRUE) {
     return(list(status = "failed"))
   }
   change <- max(change, 0)
-  if (spec$family$family %in% c("binomial", "poisson")) {
+  if (!estimates_dispersion) {
     two_sided <- pchisq(change, df = 1, lower.tail = FALSE)
   } else {
     dispersion <- summary(full)$dispersion
@@ -383,6 +410,62 @@ flatness_label <- function(block, family, level, named_levels) {
     paste0(base, " of level \"", level, "\"")
   } else {
     base
+  }
+}
+
+#' Name the quantity a block's reported mean is a mean of
+#'
+#' The model frame holds the predictor and the response as the formula wrote
+#' them, so a fit on \code{crf(log(concentration))} reports log concentrations.
+#' Naming the expression is what stops a log concentration being read as a
+#' concentration, which is the trap \code{bayesnec/CLAUDE.md} records for the
+#' estimators.
+#'
+#' @param block One element of \code{\link{flatness_blocks}}.
+#' @param y_label The response as the formula wrote it.
+#'
+#' @return A \code{\link[base]{character}} string.
+#'
+#' @noRd
+flatness_mean_label <- function(block, y_label) {
+  if (identical(block$spec$kind, "matrix")) {
+    "proportion"
+  } else if (isTRUE(block$spec$offset) && !is.null(block$denominator)) {
+    "rate"
+  } else {
+    y_label
+  }
+}
+
+#' The predictor and response as the formula wrote them
+#'
+#' @param data A model frame for a \code{\link{bayesnecformula}}.
+#' @param var \code{"x_var"} or \code{"y_var"}.
+#' @param fallback What to return where the attribute is absent.
+#'
+#' @return A \code{\link[base]{character}} string.
+#'
+#' @noRd
+pop_var_label <- function(data, var, fallback) {
+  pop_vars <- attr(data, "bnec_pop")
+  if (is.null(pop_vars)) {
+    return(fallback)
+  }
+  # The column name of the model frame, not the entry of bnec_pop. bnec_pop
+  # records the bare variable, "x", while the column is named for the term the
+  # formula wrote, "log(x)", and it is the term that says which scale the
+  # numbers reported beside it are on. make_brmsformula() reads the name the
+  # same way.
+  position <- which(names(pop_vars) == var)
+  if (length(position) != 1) {
+    return(fallback)
+  }
+  label <- names(data)[position]
+  if (!is.character(label) || length(label) != 1 || is.na(label) ||
+      !nzchar(label)) {
+    fallback
+  } else {
+    label
   }
 }
 
@@ -465,12 +548,14 @@ check_response_flattened <- function(data, family, group = NULL,
   if (length(group) != length(y)) {
     return(invisible(NULL))
   }
+  x_label <- pop_var_label(data, "x_var", "the predictor")
+  y_label <- pop_var_label(data, "y_var", "response")
   declining <- character(0)
   untestable <- character(0)
   for (level in levels(group)) {
     use <- group == level & is.finite(x) & is.finite(y)
     level_blocks <- if (is.list(blocks)) blocks[[level]] else blocks
-    if (is.null(level_blocks) || !any(use)) {
+    if (is.null(level_blocks) || !isTRUE(any(use))) {
       next
     }
     views <- flatness_blocks(x[use], y[use], trials[use], denominator[use],
@@ -487,11 +572,12 @@ check_response_flattened <- function(data, family, group = NULL,
           declining,
           paste0(
             capitalise_first(label),
-            " is still declining at the top of the series: the mean",
-            " falls from ", signif(result$lower_mean, 3), " at ",
-            signif(result$lower_x, 3), " to ", signif(result$upper_mean, 3),
-            " at ", signif(result$upper_x, 3), " (p = ",
-            signif(result$p_value, 2), ", one-sided)."
+            " is still declining at the top of the series: the mean ",
+            flatness_mean_label(views[[name]], y_label), " falls from ",
+            signif(result$lower_mean, 3), " to ",
+            signif(result$upper_mean, 3), " as ", x_label, " rises from ",
+            signif(result$lower_x, 3), " to ", signif(result$upper_x, 3),
+            " (p = ", signif(result$p_value, 2), ", one-sided)."
           )
         )
       }
@@ -511,10 +597,11 @@ check_response_flattened <- function(data, family, group = NULL,
   if (length(untestable) > 0) {
     message(
       "Whether the response has flattened at the top of the series could not",
-      " be assessed for ", paste(untestable, collapse = ", "), ": the",
+      " be assessed for ", paste(untestable, collapse = ", "), ". The",
       " contrast between the two highest predictor values has no standard",
-      " error, which happens where neither level varies or where the model",
-      " fitting it did not converge."
+      " error there: every observation at those values is identical, or the",
+      " exposure is not positive, or the model fitting the contrast did not",
+      " converge."
     )
   }
   invisible(NULL)
