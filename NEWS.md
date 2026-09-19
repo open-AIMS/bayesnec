@@ -1,5 +1,12 @@
 # bayesnec 2.2.0
 
+## Package metadata
+
+- The minimum `testthat` recorded in `DESCRIPTION` is raised from 3.1.8 to
+  3.2.0. `local_mocked_bindings()` and `with_mocked_bindings()` arrived in
+  3.2.0 and the test suite calls them 36 times across 13 files, so the recorded
+  bound understated what running the tests requires. No package code changes.
+
 ## Designs that have not reached the lower asymptote
 
 - `bnec()` now reports, before anything is fitted, where the response is still
