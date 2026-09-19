@@ -236,9 +236,10 @@
 #' denominator as a plain column and reads that column when it builds the
 #' default priors, pins the prediction grid at a denominator of 1, and puts the
 #' observations on the rate scale for a plot; an expression is not recorded
-#' there, so those four would divide by \code{hours} while \pkg{brms} divided by
-#' the quotient. Compute the column before the call and name it in
+#' there, so each of them would divide by \code{hours} while \pkg{brms} divided
+#' by the quotient. Compute the column before the call and name it in
 #' \code{rate()}.
+#'
 #' Please note that \pkg{brms} does not implement design weights as in other
 #' standard \pkg{base} functions. From their help page, \pkg{brms} "takes the
 #' weights literally, which means that an observation with weight 2 receives 2
@@ -1238,8 +1239,12 @@ split_calls <- function(formula_part) {
       # the rate scale (R/plot.R, R/autoplot.R). Refused here, in the one place
       # every route passes through, rather than corrected in each of them.
       if (length(ra_call_raw) > 1 && !is.symbol(ra_call_raw[[2]])) {
+        # The call is deparsed whole rather than rebuilt around its argument.
+        # check_formula()'s aterm pattern is unanchored, so a user-defined
+        # myrate() reaches this branch, and a message rebuilt as "rate(...)"
+        # would then name a call they did not write.
         stop("A rate() denominator must be a column of the data; you supplied",
-             " rate(", deparse1(ra_call_raw[[2]]), "). bayesnec carries the",
+             " ", deparse1(ra_call_raw), ". bayesnec carries the",
              " denominator as a plain column through the default priors, the",
              " prediction grid and the plotting paths, and an expression",
              " cannot be carried there. Compute the column first and name it",

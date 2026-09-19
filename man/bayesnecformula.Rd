@@ -248,9 +248,10 @@ The denominator must be a column of the data. An expression such as
 denominator as a plain column and reads that column when it builds the
 default priors, pins the prediction grid at a denominator of 1, and puts the
 observations on the rate scale for a plot; an expression is not recorded
-there, so those four would divide by \code{hours} while \pkg{brms} divided by
-the quotient. Compute the column before the call and name it in
+there, so each of them would divide by \code{hours} while \pkg{brms} divided
+by the quotient. Compute the column before the call and name it in
 \code{rate()}.
+
 Please note that \pkg{brms} does not implement design weights as in other
 standard \pkg{base} functions. From their help page, \pkg{brms} "takes the
 weights literally, which means that an observation with weight 2 receives 2
