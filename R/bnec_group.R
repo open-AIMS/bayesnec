@@ -403,6 +403,29 @@ fit_weights_method <- function(x) {
   attr(x$mod_stats$wi, "method")
 }
 
+#' The model weights one fit holds
+#'
+#' @param x A fit for one level, of class \code{\link{bayesnecfit}} or
+#' \code{\link{bayesmanecfit}}.
+#'
+#' @details A single-model fit is given a weight of one on its own equation,
+#' which is what it is. Read by \code{\link{crossed_group_weights}} for the
+#' crossed table and by \code{\link{bnec_joint}} for the summed weights the
+#' joint refit chooses its equation on.
+#'
+#' @return A named \code{\link[base]{numeric}} vector.
+#'
+#' @importFrom stats setNames
+#'
+#' @noRd
+fit_model_weights <- function(x) {
+  if (inherits(x, "bayesmanecfit")) {
+    setNames(x$mod_stats$wi, rownames(x$mod_stats))
+  } else {
+    setNames(1, x$model)
+  }
+}
+
 #' Crossed model weights across the levels of a factor
 #'
 #' The weight of every combination of per-level models, and the two readings of
@@ -524,14 +547,7 @@ crossed_group_weights <- function(object, pooled = NULL) {
          " that looks right and is not. Refit with the default weighting, or",
          " read the per-level weights off the fits directly.", call. = FALSE)
   }
-  wt <- function(x) {
-    if (inherits(x, "bayesmanecfit")) {
-      setNames(x$mod_stats$wi, rownames(x$mod_stats))
-    } else {
-      setNames(1, x$model)
-    }
-  }
-  per_level <- lapply(object$fits, wt)
+  per_level <- lapply(object$fits, fit_model_weights)
   best <- vapply(per_level, function(w) names(w)[which.max(w)], character(1))
   best_weight <- prod(vapply(per_level, max, numeric(1)))
   # The diagonal is only defined over models every level actually fitted; a

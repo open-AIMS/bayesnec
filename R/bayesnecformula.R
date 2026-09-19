@@ -713,7 +713,7 @@ substitute_x_in_formula <- function(new_x, brms_rhs) {
 #' @noRd
 #' @importFrom formula.tools lhs
 wrangle_model_formula <- function(model, formula, data, family = NULL,
-                                  model_survival = NULL) {
+                                  model_survival = NULL, level_spec = NULL) {
   brms_bf <- get(paste0("bf_", model))
   brms_bf[[1]][[2]] <- lhs(formula)
   bnec_pop_vars <- attr(data, "bnec_pop")
@@ -721,6 +721,12 @@ wrangle_model_formula <- function(model, formula, data, family = NULL,
   brms_rhs <- deparse1(brms_bf[[1]][[3]])
   tmp <- substitute_x_in_formula(new_x, brms_rhs)
   brms_bf[[1]][[3]] <- str2lang(tmp)
+  # Read from the built formula before anything is appended to it, for the
+  # reason add_formula_glef() records at its own model_pars. Every block below
+  # adds sub-formulas -- ogl and botgl from the group-level routes, the hurdle
+  # block, the dispersion block -- and a level term belongs on the curve's own
+  # parameters and on none of those.
+  curve_pars <- names(brms_bf[[2]])
   bnec_group_vars <- attr(data, "bnec_group")
   if (any(!is.na(bnec_group_vars))) {
     brms_bf <- add_formula_glef(model, brms_bf, formula, data,
@@ -781,6 +787,13 @@ wrangle_model_formula <- function(model, formula, data, family = NULL,
     disp_y <- retrieve_var(data, "y_var")
     check_disp_spec(disp_spec, family, response = disp_y)
     brms_bf <- add_disp_block(brms_bf, model, disp_spec, family, new_x, disp_y)
+  }
+  # Applied last of the blocks, so that the right-hand side a level term
+  # replaces is the one every other route has finished with. There is no
+  # user-facing syntax for a level term: level_spec is built by
+  # bnec_joint.bayesnecgroupfit() and reaches here through fit_bayesnec().
+  if (!is.null(level_spec)) {
+    brms_bf <- add_formula_level_terms(brms_bf, level_spec, curve_pars, family)
   }
   # brms resolves everything in the formula that is not a column of the data in
   # the environment of the brmsformula's own formula, the distributional and
@@ -1033,6 +1046,60 @@ add_formula_glef <- function(model, brmform, bnecform, data,
       brmform[[2]]$ogl <- str2lang(paste0(deparse1(brmform[[2]]$ogl),
                                           " + (1 |", vars[j], ")"))
     }
+  }
+  brmform
+}
+
+#' Give every curve parameter a separate value per level of a factor
+#'
+#' @param brmform The \pkg{brms} formula being built.
+#' @param level_spec The level-term specification built by
+#' \code{\link{bnec_joint}}; see its \code{group_var}, \code{levels} and
+#' \code{disp} elements.
+#' @param curve_pars The equation's own parameters, read from the formula
+#' before any block was appended to it.
+#' @param family An object of class \code{\link[stats]{family}}, or
+#' \code{NULL}.
+#'
+#' @details The joint refit of #382. Where \code{\link{add_formula_glef}}
+#' \emph{appends} a group-level term to a parameter's right-hand side, this
+#' \emph{replaces} the population part of it: \code{top ~ 1} becomes
+#' \code{top ~ 0 + site}, which is dummy coding of the factor onto that
+#' parameter. \code{0 +} rather than \code{1 +} so that every level carries a
+#' coefficient on the parameter's own scale, which is what makes the bounds
+#' \code{\link{define_prior}} declares apply to each of them.
+#'
+#' Only the leading \code{1} is replaced, so a group-level term already
+#' appended by \code{\link{add_formula_glef}} survives: \code{1 + (1 | tank)}
+#' becomes \code{0 + site + (1 | tank)}.
+#'
+#' The dispersion parameter is treated the same way where \code{disp} is
+#' \code{TRUE} and the family has one, so that each level gets its own. brms
+#' puts a predicted dispersion on the log link, which is why the prior for
+#' those coefficients is the log-scale centre \code{\link{define_disp_prior}}
+#' already uses for \code{c0} rather than the prior the unmodelled parameter
+#' would have taken. See \code{\link{add_level_defaults}}.
+#'
+#' @return An object of class \code{\link[brms]{brmsformula}}.
+#'
+#' @importFrom brms lf
+#' @importFrom formula.tools rhs `rhs<-`
+#' @importFrom stats as.formula
+#'
+#' @noRd
+add_formula_level_terms <- function(brmform, level_spec, curve_pars,
+                                    family = NULL) {
+  var <- level_spec$group_var
+  for (p in intersect(curve_pars, names(brmform[[2]]))) {
+    tmp_rhs <- deparse1(rhs(brmform[[2]][[p]]))
+    rhs(brmform[[2]][[p]]) <-
+      str2lang(sub("^1", paste0("0 + ", var), tmp_rhs))
+  }
+  if (isTRUE(level_spec$disp) && !is.null(family) && has_disp_par(family)) {
+    # lf() rather than nlf(), and for the reason add_disp_block() gives for
+    # route (A): the right-hand side is an ordinary design matrix in the data.
+    brmform <- brmform +
+      lf(as.formula(paste0(disp_dpar(family), " ~ 0 + ", var)))
   }
   brmform
 }

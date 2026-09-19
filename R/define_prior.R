@@ -1380,16 +1380,7 @@ define_disp_prior <- function(disp_spec, family, response) {
     return(NULL)
   }
   fam_tag <- family$family
-  c0_prs <- c(
-    gaussian = paste0("normal(", round(log(sd(response)), 3), ", 2)"),
-    # shape is an inverse dispersion for both of these: a CV of 0.1 to 0.5 puts
-    # a Gamma shape between about 4 and 100, i.e. 1.4 to 4.6 on the log scale.
-    Gamma = "normal(2, 2)",
-    negbinomial = "normal(2, 2)",
-    # phi likewise, on the wider scale the PAM fits needed.
-    beta = "normal(4, 3)",
-    beta_binomial = "normal(4, 3)"
-  )
+  c0_prs <- disp_intercept_priors(response)
   vf <- disp_functions[[disp_spec$value]]
   # A slope on log(mu) is dimensionless, so a fixed scale means the same thing
   # whatever the response is measured in. A slope on mu itself is not: it

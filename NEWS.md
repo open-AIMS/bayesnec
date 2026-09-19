@@ -1,5 +1,19 @@
 # bayesnec 2.2.0
 
+## Joint refit across factor levels
+
+- `bnec_joint()` is now generic and has a method for `bayesnecgroupfit`. It
+  refits a grouped fit as one model in which every curve parameter takes a
+  separate value per level of the grouping factor, estimated in a single
+  posterior. One equation is fitted for all levels; the default is the
+  equation holding the highest summed model weight across levels, and a
+  spread of weight across equations is reported rather than resolved silently.
+  `disp_by_level` decides whether the family's dispersion parameter also
+  varies by level, and defaults to `TRUE`. The returned object has class
+  `bayesnecjointfit`. `ecx()`, `nsec()`, `nec()` and `autoplot()` do not yet
+  report per level for such a fit and raise an error rather than answering for
+  an unnamed level (#382).
+
 ## Count hurdles
 
 - `hurdle_poisson` and `hurdle_negbinomial` are available as joint two-block

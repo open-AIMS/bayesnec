@@ -1298,3 +1298,92 @@ sd_prior_scales <- function(priors) {
   )
   vals[is.finite(vals) & vals > 0]
 }
+
+#' Priors and initial values for the coefficients a level term introduces
+#'
+#' @param brm_args The list of \code{\link[brms]{brm}} arguments built by
+#' \code{add_brm_defaults()}, with its priors and initial values already
+#' derived for the model with no level term.
+#' @param level_spec The level-term specification built by
+#' \code{\link{bnec_joint}}.
+#' @param family An object of class \code{\link[stats]{family}}.
+#' @param response The response variable, on the response scale.
+#'
+#' @details The level-term counterpart of \code{\link{group_inits}}, and the
+#' whole of what a joint refit adds to the default machinery. It derives
+#' nothing of its own for the curve: each level coefficient takes the value
+#' \code{make_good_inits()} found for that parameter with no level term,
+#' replicated across the levels. Deriving per level subset instead would make
+#' the starting point depend on how many observations each level happens to
+#' have, and would put the levels on different footings before sampling began.
+#'
+#' \strong{The curve priors need nothing here, and that is measured rather
+#' than assumed.} \code{\link{define_prior}} writes one row per parameter with
+#' class \code{"b"}, an \code{nlpar} and no \code{coef}, and \pkg{brms} applies
+#' such a row to every coefficient of that parameter at once: on
+#' \code{top ~ 0 + grp} with two levels, \pkg{brms} 2.23.0 generates
+#' \code{vector<lower=0,upper=1>[K_top] b_top} and
+#' \code{lprior += beta_lpdf(b_top | 5, 2)}, so the bounds and the density
+#' reach both coefficients. Replicating the row per level would state the same
+#' prior twice.
+#'
+#' The dispersion parameter is the exception, because \pkg{brms} puts a
+#' \emph{predicted} dispersion behind a log link where an unmodelled one is
+#' declared on its own scale. Its level coefficients are therefore not covered
+#' by anything \code{\link{define_prior}} wrote, and without a row here they
+#' run on the improper flat default \pkg{brms} gives class \code{"b"}. They
+#' take the log-scale entry \code{\link{disp_intercept_priors}} holds, which is
+#' the same statement \code{define_disp_prior()} makes about \code{c0}.
+#'
+#' Called after the initial-value search rather than before it. The dispersion
+#' row carries a \code{dpar} and no \code{nlpar}, and \code{make_inits()}
+#' builds a parameter name from the class and the \code{nlpar} alone, so a row
+#' added earlier would be read as a curve coefficient named \code{b_} and
+#' rejected against the equation's parameter list.
+#'
+#' @return The modified \code{brm_args}.
+#'
+#' @importFrom brms prior_string
+#'
+#' @noRd
+add_level_defaults <- function(brm_args, level_spec, family, response) {
+  n_lev <- length(level_spec$levels)
+  # A character init is the "random" fallback from a search that gave up; there
+  # is no list to expand and Stan initialises every coefficient itself. The
+  # same constraint group_inits() is gated on in fit_bayesnec().
+  if (is.list(brm_args$init)) {
+    brm_args$init <- lapply(brm_args$init, function(chain) {
+      for (p in level_spec$nlpars) {
+        nm <- paste0("b_", p)
+        # Length-tested rather than replicated unconditionally: a caller who
+        # supplied `init` themselves bypasses the search entirely, and one who
+        # already wrote a value per level meant them.
+        if (nm %in% names(chain) && length(chain[[nm]]) != n_lev) {
+          chain[[nm]] <- as.array(rep(chain[[nm]][[1]], n_lev))
+        }
+      }
+      chain
+    })
+  }
+  if (!isTRUE(level_spec$disp) || !has_disp_par(family)) {
+    return(brm_args)
+  }
+  dpar <- disp_dpar(family)
+  response_link <- response_link_scale(response, family)
+  prior_df <- as.data.frame(brm_args$prior)
+  supplied <- nrow(prior_df) > 0 &&
+    any(prior_df$class == "b" & prior_df$dpar == dpar)
+  if (!supplied) {
+    entry <- disp_intercept_priors(response_link)[[family$family]]
+    brm_args$prior <- brm_args$prior +
+      prior_string(entry, class = "b", dpar = dpar)
+  }
+  if (is.list(brm_args$init)) {
+    c0 <- disp_intercept_centre(family, response_link)
+    brm_args$init <- lapply(brm_args$init, function(chain) {
+      chain[[paste0("b_", dpar)]] <- as.array(rep(c0, n_lev))
+      chain
+    })
+  }
+  brm_args
+}
