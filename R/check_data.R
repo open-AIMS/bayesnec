@@ -88,6 +88,198 @@ check_normalisation <- function(data) {
   invisible(NULL)
 }
 
+#' Warn where the modelled response does not reach half of its control level
+#'
+#' The default \code{bot} prior reads its location and spread from the observed
+#' response, and the default \code{nec} and \code{ec50} priors are truncated to
+#' the tested predictor range. A design whose response is still above half its
+#' control level at the highest concentration is therefore a useful, objective
+#' case to identify before any model is fitted: it has not observed even the
+#' midpoint of a decline towards zero, so it supplies weak evidence about a
+#' lower asymptote or a threshold above the series. Binomial responses are
+#' assessed as proportions and rate responses per unit exposure, matching the
+#' response from which the default priors are built. Joint hurdle responses
+#' are assessed separately for survivors and survival.
+#'
+#' This is a diagnostic and not a completeness test. A decline of at least
+#' 50 percent does not prove that the lower asymptote was reached, and the ratio
+#' is not defined where the mean response at the lowest concentration is not
+#' positive. Those designs remain covered by the documentation of the prior
+#' assumptions rather than by an unreliable data-only classification.
+#'
+#' Called from \code{bnec()} once before its model loop, and from
+#' \code{bnec_group()} once before its level loop. The grouped route evaluates
+#' each level separately and combines all affected levels in one warning.
+#'
+#' @param data A model frame, as returned by \code{\link{model.frame}} for a
+#' \code{\link{bayesnecformula}}.
+#' @param family The validated response family.
+#' @param group An optional factor or character vector defining independent
+#' concentration-response series.
+#' @param blocks Character vector naming the response blocks to assess, or a
+#' named list providing the blocks separately for each group level.
+#' @param minimum_decline The minimum fractional decline from the mean response
+#' at the lowest predictor value to the mean at the highest.
+#'
+#' @return \code{NULL}, invisibly. Called for its warning.
+#'
+#' @noRd
+check_response_range <- function(data, family, group = NULL,
+                                 blocks = c("response", "survival"),
+                                 minimum_decline = 0.5) {
+  y <- try(retrieve_var(data, "y_var", error = TRUE), silent = TRUE)
+  x <- try(retrieve_var(data, "x_var", error = TRUE), silent = TRUE)
+  if (inherits(y, "try-error") || inherits(x, "try-error")) {
+    return(invisible(NULL))
+  }
+  if (is.null(group)) {
+    group <- factor(rep("all data", length(y)))
+  } else {
+    group <- factor(group)
+  }
+  if (length(group) != length(y)) {
+    return(invisible(NULL))
+  }
+  trials <- retrieve_var(data, "trials_var")
+  denominator <- retrieve_var(data, "rate_var")
+  decline <- lapply(levels(group), function(level) {
+    use <- group == level & is.finite(x) & is.finite(y)
+    x_level <- x[use]
+    y_level <- y[use]
+    if (family$family %in% c("binomial", "beta_binomial")) {
+      y_level <- y_level / trials[use]
+    }
+    if (!is.null(denominator)) {
+      y_level <- y_level / denominator[use]
+    }
+    level_blocks <- if (is.list(blocks)) blocks[[level]] else blocks
+    if (is.null(level_blocks)) {
+      level_blocks <- character(0)
+    }
+    views <- if (is_hurdle_family(family)) {
+      parts <- split_hurdle_response(x_level, y_level)
+      list(response = parts$mu, survival = parts$hu)
+    } else {
+      list(response = list(x = x_level, y = y_level))
+    }
+    views <- views[intersect(names(views), level_blocks)]
+    vapply(names(views), function(component) {
+      view <- views[[component]]
+      if (length(unique(view$x)) < 2) {
+        return(NA_real_)
+      }
+      control <- mean(view$y[view$x == min(view$x)])
+      endpoint <- mean(view$y[view$x == max(view$x)])
+      if (!is.finite(control) || control <= 0 || !is.finite(endpoint)) {
+        return(NA_real_)
+      }
+      1 - endpoint / control
+    }, numeric(1))
+  })
+  decline_names <- unlist(Map(function(level, values) {
+    if (length(values) == 0L) {
+      character(0)
+    } else if (length(values) == 1L) {
+      level
+    } else {
+      paste(level, names(values), sep = ": ")
+    }
+  }, levels(group), decline), use.names = FALSE)
+  decline <- unlist(decline, use.names = FALSE)
+  names(decline) <- decline_names
+  affected <- is.finite(decline) & decline < minimum_decline
+  if (!any(affected)) {
+    return(invisible(NULL))
+  }
+  observed <- paste0(
+    "\"", names(decline)[affected], "\" (",
+    trimws(formatC(100 * decline[affected], digits = 3, format = "fg")), "%)"
+  )
+  one_block <- length(decline) == 1L &&
+    identical(levels(group), "all data")
+  where <- if (one_block) {
+    paste0(
+      "; the observed decline is ",
+      trimws(formatC(
+        100 * decline[affected][[1]], digits = 3, format = "fg"
+      )), "%"
+    )
+  } else {
+    paste0(" in series/block(s) ", paste(observed, collapse = ", "))
+  }
+  warning(
+    "The mean response at the highest predictor value declines by less than ",
+    trimws(formatC(100 * minimum_decline, digits = 3, format = "fg")),
+    "% from the mean at the lowest predictor value", where, ". The data may",
+    " not identify the lower asymptote. For equations that estimate bot, its",
+    " default prior is derived from the observed response; the default nec and",
+    " ec50 priors are limited",
+    " to the tested predictor range. Inspect them with get_priors(), supply",
+    " scientifically justified priors through the prior argument where",
+    " available, and treat a threshold estimate at the upper bound as",
+    " censored.",
+    call. = FALSE
+  )
+  invisible(NULL)
+}
+
+#' Does the fit still use a response-range-sensitive default prior?
+#'
+#' A supplied prior can be partial: \code{fill_missing_priors()} adds defaults
+#' for parameter rows it does not replace. The incomplete-range diagnostic is
+#' therefore suppressed only when every response-range-sensitive row is
+#' supplied for every equation that will be fitted.
+#'
+#' @param prior A \code{\link[brms]{brmsprior}} or named list of them.
+#' @param models Character vector of concrete model names.
+#' @param family The validated response family.
+#' @param model_survival Optional equation for a hurdle survival block.
+#'
+#' @return A named logical vector, one element per response block.
+#' @noRd
+uses_response_range_defaults <- function(prior, models, family,
+                                         model_survival = NULL) {
+  affected <- c("bot", "nec", "ec50")
+  hurdle <- is_hurdle_family(family)
+  out <- setNames(rep(FALSE, if (hurdle) 2L else 1L),
+                  if (hurdle) c("response", "survival") else "response")
+  for (model in models) {
+    supplied <- if (inherits(prior, "brmsprior")) {
+      prior
+    } else if (is.list(prior) && model %in% names(prior)) {
+      prior[[model]]
+    } else {
+      NULL
+    }
+    required <- list(
+      response = intersect(equation_par_names(model), affected)
+    )
+    if (hurdle) {
+      survival_model <- if (is.null(model_survival)) model else model_survival
+      required$survival <- paste0(
+        hurdle_dpar(family),
+        intersect(equation_par_names(survival_model), affected)
+      )
+    }
+    if (inherits(supplied, "brmsprior")) {
+      prior_df <- as.data.frame(supplied)
+      dpar <- if ("dpar" %in% names(prior_df)) prior_df$dpar else ""
+      present <- prior_df$nlpar[
+        prior_df$class == "b" & (is.na(dpar) | !nzchar(dpar))
+      ]
+    } else {
+      present <- character(0)
+    }
+    for (block in names(required)) {
+      if (length(required[[block]]) > 0L &&
+          !all(required[[block]] %in% present)) {
+        out[[block]] <- TRUE
+      }
+    }
+  }
+  out
+}
+
 #' Refuse a model frame from which incomplete cases were removed
 #'
 #' \code{stats::model.frame()} drops an incomplete case before \pkg{bayesnec}

@@ -76,3 +76,74 @@ test_that("nec says how many draws are censored, on either class", {
 test_that("an uncensored posterior is silent", {
   expect_silent(nec(nec4param))
 })
+
+test_that("nec reports an estimate at the fitted prior bound", {
+  constrained <- nec4param
+  upper <- unname(quantile(constrained$ne_posterior, 0.975))
+  is_nec <- constrained$fit$prior$nlpar == "nec"
+  constrained$fit$prior$ub[is_nec] <- upper
+  expect_message(
+    nec(constrained),
+    "upper interval limit is at the upper bound of the fitted nec prior"
+  )
+  expect_message(
+    nec(constrained, xform = exp),
+    paste0("\\(", format(signif(exp(upper), 3), scientific = FALSE), "\\)")
+  )
+  expect_message(
+    nec(constrained, xform = function(x) -x),
+    "comparison is made on the fitted scale before xform"
+  )
+  expect_message(
+    nec(constrained, xform = function(x) (x - upper)^2),
+    "comparison is made on the fitted scale before xform"
+  )
+})
+
+test_that("the prior-bound message is provenance-neutral", {
+  constrained <- nec4param
+  upper <- unname(quantile(constrained$ne_posterior, 0.975))
+  is_nec <- constrained$fit$prior$nlpar == "nec"
+  constrained$fit$prior$ub[is_nec] <- upper
+  messages <- capture.output(nec(constrained), type = "message")
+  expect_true(any(grepl("constrained by that prior", messages)))
+  expect_false(any(grepl("tested predictor range", messages)))
+})
+
+test_that("a mixed NEC/NSEC average does not infer a common NEC bound", {
+  mixed <- manec_example
+  upper <- unname(quantile(mixed$w_ne_posterior, 0.975, na.rm = TRUE))
+  for (model in names(mixed$mod_fits)) {
+    is_nec <- grepl("nec$", mixed$mod_fits[[model]]$fit$prior$nlpar)
+    mixed$mod_fits[[model]]$fit$prior$ub[is_nec] <- upper
+  }
+  messages <- capture.output(nec(mixed), type = "message")
+  expect_false(any(grepl("upper bound of the fitted nec prior", messages)))
+})
+
+test_that("a joint threshold/smooth fit does not infer a NEC constraint", {
+  mixed_blocks <- nec4param
+  mixed_blocks$ne_type <- "N(S)EC"
+  upper <- unname(quantile(mixed_blocks$ne_posterior, 0.975))
+  is_nec <- mixed_blocks$fit$prior$nlpar == "nec"
+  mixed_blocks$fit$prior$ub[is_nec] <- upper
+  expect_silent(
+    report_nec_prior_bound(
+      mixed_blocks,
+      quantile(mixed_blocks$ne_posterior, c(0.5, 0.025, 0.975))
+    )
+  )
+})
+
+test_that("a pure threshold average needs one common prior bound", {
+  pure <- manec_example
+  pure$mod_fits <- list(nec4param = nec4param, nec3param = nec4param)
+  pure$ne_type <- "NEC"
+  pure$mod_fits$nec3param$model <- "nec3param"
+  first_nec <- pure$mod_fits$nec4param$fit$prior$nlpar == "nec"
+  second_nec <- pure$mod_fits$nec3param$fit$prior$nlpar == "nec"
+  pure$mod_fits$nec4param$fit$prior$ub[first_nec] <- 2
+  pure$mod_fits$nec3param$fit$prior$ub[second_nec] <- 3
+  expect_silent(report_nec_prior_bound(pure, c(Q50 = 2, Q2.5 = 1,
+                                                Q97.5 = 2)))
+})

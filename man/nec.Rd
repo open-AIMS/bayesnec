@@ -71,6 +71,18 @@ one.
 and is the better choice where the type matters, because \code{nec} always
 returns an unlabelled vector. Use \code{\link{nsec}} where a NSEC is wanted
 from every model regardless of type.
+
+The default \code{nec} prior is bounded by the tested predictor range.
+Where the recorded combined estimate is a NEC, \code{nec} reports when the
+posterior median or upper interval limit reaches a common fitted prior upper
+bound. The estimate may then be constrained by that prior and should be
+treated as censored unless its bound and shape are scientifically justified.
+No bound diagnostic is inferred for a mixed NEC/NSEC model average, a joint
+fit with a smooth response block, or component models with different bounds.
+Contact with the bound is assessed on the fitted scale before \code{xform},
+so decreasing and non-monotone transformations cannot reverse or otherwise
+change the quantile used for the comparison. The bound is transformed by
+\code{xform} only for display.
 }
 \examples{
 library(bayesnec)

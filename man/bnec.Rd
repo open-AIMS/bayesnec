@@ -115,7 +115,16 @@ as recorded and the constant \code{10 sd(x)} where the predictor is supplied
 already logged, so how much narrower the regularizing entry is depends on
 which of the two the data are on. See \code{vignette("example3")} for why the
 two rules differ. Ignored when priors are supplied directly via the
-\code{prior} argument.}
+\code{prior} argument. Both default sets assume that the tested concentrations
+represent enough of the response curve to inform its lower asymptote. When
+the mean response at the highest concentration has declined by less than
+50 percent from the mean at the lowest, \code{bnec} warns before fitting:
+for an equation that estimates \code{bot}, its response-derived prior may
+then describe the observed endpoint rather than the asymptote, while the
+\code{nec} or \code{ec50} prior excludes thresholds above the tested range.
+Inspect the generated entries with
+\code{\link{get_priors}} and pass a complete, scientifically justified prior
+through \code{prior} when information beyond the design is available.}
 
 \item{timeout}{A positive \code{\link[base]{numeric}} giving the maximum
 number of seconds allowed for fitting any single model, passed to

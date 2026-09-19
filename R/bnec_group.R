@@ -189,6 +189,7 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # arrives only after levels 1 to k-1 have compiled and sampled. See #271.
   check_disp_finite(formula, data)
   check_reserved_names(data)
+  dots <- list(...)
   # The response substitutions are not reported here. bnec_group() fits each
   # level on its own subset, so the values substituted differ between levels
   # and the per-level bnec() call is where the report belongs. See #93.
@@ -201,6 +202,34 @@ bnec_group <- function(formula, data, group_var, family = NULL,
             ". Pass `family` to override.")
   }
   family <- validate_family(family, link_source = link_source)
+  # Checked over every level before fitting any of them. Leaving this to the
+  # inner bnec() calls would report the same diagnostic one level at a time and
+  # could reach an affected level only after earlier levels had compiled and
+  # sampled. The private marker is removed by bnec() before brms sees it. A
+  # partial prior still uses defaults for its omitted sensitive rows. See #386.
+  requested_models <- get_model_from_formula(formula)
+  diagnostic_models <- setNames(lapply(levels(grp), function(level) {
+    suppressMessages(
+      check_models(requested_models, family,
+                   mod_dat[grp == level, , drop = FALSE])
+    )
+  }), levels(grp))
+  diagnostic_survival <- suppressMessages(
+    check_model_survival(dots$model_survival, family, mod_dat)
+  )
+  sensitive_blocks <- lapply(diagnostic_models, function(models) {
+    uses_response_range_defaults(
+      dots$prior, models, family, diagnostic_survival
+    )
+  })
+  if (any(unlist(sensitive_blocks, use.names = FALSE))) {
+    blocks_by_level <- lapply(sensitive_blocks, function(blocks) {
+      names(blocks)[blocks]
+    })
+    check_response_range(mod_dat, family, group = grp,
+                         blocks = blocks_by_level)
+  }
+  dots[[".bayesnec_response_range_checked"]] <- TRUE
   # The crossed weights are an outer product of the per-level weight vectors,
   # and that identity holds for pseudo-BMA only, so the method is checked in
   # crossed_group_weights() rather than merely documented -- multiplying
@@ -215,7 +244,6 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # request is therefore recorded here, and crossed_group_weights() prefers
   # whatever the fits themselves still carry, since that is what actually
   # happened. See #33.
-  dots <- list(...)
   wt_method <- if (!is.null(dots$loo_controls$weights$method)) {
     dots$loo_controls$weights$method
   } else {

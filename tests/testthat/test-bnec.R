@@ -62,6 +62,181 @@ test_that("the refusal precedes the family choice, so nothing is read off a subs
   expect_length(msgs, 0)
 })
 
+test_that("an incomplete observed response is reported before fitting", {
+  d <- data.frame(
+    x = rep(c(0, 1, 2, 4), each = 3),
+    y = rep(c(1, 0.95, 0.9, 0.8), each = 3)
+  )
+  bdat <- model.frame(
+    bayesnecformula(y ~ crf(x, c("nec3param", "nec4param"))),
+    data = d, run_par_checks = TRUE
+  )
+  family <- brms::Beta(link = "identity")
+  expect_warning(check_response_range(bdat, family),
+                 "observed decline is.*20%")
+
+  d$y <- rep(c(1, 0.7, 0.3, 0.1), each = 3)
+  bdat <- model.frame(
+    bayesnecformula(y ~ crf(x, c("nec3param", "nec4param"))),
+    data = d, run_par_checks = TRUE
+  )
+  expect_silent(check_response_range(bdat, family))
+})
+
+test_that("bnec reports an incomplete range while affected defaults remain", {
+  d <- data.frame(
+    x = rep(c(0, 1, 2, 4), each = 3),
+    y = rep(c(1, 0.95, 0.9, 0.8), each = 3)
+  )
+  f <- y ~ crf(x, c("nec3param", "nec4param"))
+  local_mocked_bindings(
+    fit_bayesnec = function(...) stop("mock fit"),
+    .package = "bayesnec"
+  )
+  warnings <- character(0)
+  suppressMessages(
+    withCallingHandlers(
+      expect_error(
+        bnec(f, d, family = Beta(link = "identity")),
+        "None of the model"
+      ),
+      warning = function(w) {
+        warnings <<- c(warnings, conditionMessage(w))
+        invokeRestart("muffleWarning")
+      }
+    )
+  )
+  expect_length(grep("may not identify the lower asymptote", warnings), 1)
+
+  partial <- brms::prior_string("beta(5, 2)", nlpar = "top")
+  expect_warning(
+    suppressMessages(
+      expect_error(
+        bnec(f, d, family = Beta(link = "identity"), prior = partial),
+        "None of the model"
+      )
+    ),
+    "may not identify the lower asymptote"
+  )
+
+  nec_prior <- brms::prior_string("normal(1, 1)", nlpar = "nec")
+  affected <- brms::prior_string("normal(0, 1)", nlpar = "bot") +
+    nec_prior
+  expect_warning(
+    suppressMessages(
+      expect_error(
+        bnec(y ~ crf(x, "nec4param"), d,
+             family = Beta(link = "identity"), prior = affected),
+        "mock fit"
+      )
+    ),
+    NA
+  )
+
+  complete <- list(nec3param = nec_prior, nec4param = affected)
+  expect_warning(
+    suppressMessages(
+      expect_error(
+        bnec(f, d, family = Beta(link = "identity"), prior = complete),
+        "None of the model"
+      )
+    ),
+    NA
+  )
+})
+
+test_that("the response-range diagnostic is not inferred on an invalid scale", {
+  d <- data.frame(
+    x = rep(0:3, each = 2),
+    y = rep(c(0, -0.1, -0.2, -0.3), each = 2)
+  )
+  bdat <- model.frame(
+    bayesnecformula(y ~ crf(x, "nec4param")), data = d,
+    run_par_checks = TRUE
+  )
+  expect_silent(check_response_range(bdat, gaussian(link = "identity")))
+})
+
+test_that("the response-range check uses binomial proportions and rates", {
+  binomial_data <- data.frame(
+    x = rep(c(0, 1), each = 2),
+    successes = c(20, 20, 8, 8),
+    trials = c(100, 100, 10, 10)
+  )
+  binomial_frame <- model.frame(
+    bayesnecformula(successes | trials(trials) ~ crf(x, "nec3param")),
+    data = binomial_data, run_par_checks = TRUE
+  )
+  expect_warning(
+    check_response_range(binomial_frame, binomial(link = "identity")),
+    "decline is -300%"
+  )
+
+  rate_data <- data.frame(
+    x = rep(c(0, 1), each = 2),
+    count = c(100, 100, 40, 40),
+    exposure = c(100, 100, 50, 50)
+  )
+  rate_frame <- model.frame(
+    bayesnecformula(count | rate(exposure) ~ crf(x, "nec3param")),
+    data = rate_data, run_par_checks = TRUE
+  )
+  expect_warning(
+    check_response_range(rate_frame, poisson(link = "identity")),
+    "decline is.*20%"
+  )
+})
+
+test_that("the response-range check assesses hurdle blocks separately", {
+  d <- data.frame(
+    x = rep(c(0, 1), each = 10),
+    y = c(rep(1, 10), rep(1, 2), rep(0, 8))
+  )
+  bdat <- model.frame(
+    bayesnecformula(y ~ crf(x, "nec3param")), d,
+    run_par_checks = TRUE
+  )
+  expect_warning(
+    check_response_range(
+      bdat, brms::hurdle_gamma(link = "identity", link_hu = "identity")
+    ),
+    "response.*0%"
+  )
+
+  response_prior <- brms::prior_string("normal(1, 1)", nlpar = "nec")
+  survival_prior <- brms::prior_string("normal(1, 1)", nlpar = "hunec")
+  family <- brms::hurdle_gamma(link = "identity", link_hu = "identity")
+
+  response_custom <- uses_response_range_defaults(
+    response_prior, "nec3param", family
+  )
+  expect_identical(response_custom,
+                   c(response = FALSE, survival = TRUE))
+  expect_silent(
+    check_response_range(bdat, family,
+                         blocks = names(response_custom)[response_custom])
+  )
+
+  survival_custom <- uses_response_range_defaults(
+    survival_prior, "nec3param", family
+  )
+  expect_identical(survival_custom,
+                   c(response = TRUE, survival = FALSE))
+  expect_warning(
+    check_response_range(bdat, family,
+                         blocks = names(survival_custom)[survival_custom]),
+    "response.*0%"
+  )
+})
+
+test_that("equations without affected defaults do not trigger the check", {
+  sensitivity <- uses_response_range_defaults(
+    NULL, c("ecxlin", "ecxexp", "ecxsigm"),
+    gaussian(link = "identity")
+  )
+  expect_identical(sensitivity, c(response = FALSE))
+})
+
 test_that("Check models inappropriate for negative x are dropped", {
   # The family is given explicitly because nec_data's response is 0-1 bounded,
   # for which nechorme4pwr is now excluded up front (#177) -- the negative-x
