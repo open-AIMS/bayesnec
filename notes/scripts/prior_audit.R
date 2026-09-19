@@ -73,9 +73,10 @@ N_REP_GAUSS <- as.integer(Sys.getenv("BAYESNEC_PRIOR_AUDIT_NREP_GAUSS",
 # search per cell over 5,760 cells, so the cap is lowered here and the
 # cells that reach it are counted rather than being left to dominate the
 # wall clock. A cell that reaches 200 rounds has not found a full set of
-# four chains from 800 proposals, which is the finding; the released cap
-# would change how large the recorded number is and not whether the
-# search succeeded.
+# four chains from at most 800 proposals, which is the finding; the
+# released cap would change how large the recorded number is and not
+# whether the search succeeded. The bound is not reached, because each
+# round redraws only the chains still empty.
 INIT_CAP <- 200L
 CHAINS <- 4L
 
@@ -275,13 +276,21 @@ trunc_summary <- function(pstr, lb, ub, truth) {
 # already uses for a proposal count.
 proposal_counter <- new.env(parent = emptyenv())
 proposal_counter$n <- 0L
+# The tracer expression is evaluated inside make_inits()'s own frame, so
+# the counter is embedded in it as an object through bquote() rather than
+# named and looked up. A bare name resolves through the bayesnec
+# namespace's parent chain, which reaches the global environment when the
+# script is run with Rscript and does not when it is source()d into a
+# local one -- and the failure would be silent, leaving the count at zero.
 with_proposal_count <- function(expr) {
   proposal_counter$n <- 0L
   suppressMessages(trace("make_inits", where = asNamespace("bayesnec"),
                          print = FALSE,
-                         exit = quote(
-                           proposal_counter$n <- proposal_counter$n +
-                             length(returnValue()))))
+                         exit = bquote(
+                           assign("n",
+                                  get("n", envir = .(proposal_counter)) +
+                                    length(returnValue()),
+                                  envir = .(proposal_counter)))))
   on.exit(suppressMessages(untrace("make_inits",
                                    where = asNamespace("bayesnec"))),
           add = TRUE)
@@ -390,6 +399,15 @@ for (cn in names(completeness)) {
        f_reached <- (mu[which.min(xx)][1] - mu[which.max(xx)][1]) /
          (fs$top - fs$bot)
        max_effect <- 1 - mu[which.max(xx)][1] / mu[which.min(xx)][1]
+       # Seeded per cell rather than drawn from one stream running through
+       # the whole sweep. The initial-value search below calls set.seed()
+       # itself, so without this each cell's response descends from the
+       # previous cell's search and every simulated response in the sweep
+       # changes if INIT_CAP or CHAINS is changed. The stream the response
+       # is drawn from is now a function of the cell alone. The response
+       # is still redrawn for each prior type, which is what the note at
+       # the end of this part is about.
+       set.seed(10L + cell_id)
        y <- fs$sim(mu)
        dat <- data.frame(x = xr, y = y)
        form <- sprintf("y ~ crf(%s, \"%s\")", tr$lab, mod)
@@ -467,6 +485,21 @@ for (cn in names(completeness)) {
          # The flatness rule, on the blocks and the family the fit would use.
          # pool_dispersion is TRUE because no design here carries a disp()
          # term, which is the case in which bnec() fits a single sigma.
+         #
+         # Two differences from what bnec() computes, neither of which
+         # changes a conclusion here but both of which a later reader
+         # would otherwise have to rediscover. bnec() raises the report on
+         # the model frame, before check_data() runs, at R/bnec.R:825,
+         # while the response read here is post-check_data(); for Gamma,
+         # beta and zero_inflated_beta that nudges zeros and ones away
+         # from the boundary, so the two responses are not identical.
+         # And `only` is left NULL, so a hurdle or zero-inflated cell is
+         # reported where either block declines, which is what bnec()
+         # does -- but the hurdle simulators here hold the hurdle
+         # probability constant at 0.8, so their survival block is flat
+         # by construction and contributes its own false positive to this
+         # column. That is why hurdle_gamma reads above the single-block
+         # families at the flattest setting.
          flat <- tryCatch(
            flatness_result(ck$mod_dat$x, ck$mod_dat$y, ck$mod_dat$trials,
                            ck$mod_dat$denom, ck$family),
@@ -589,15 +622,16 @@ cat("\ncells whose prior support excludes the truth (p_truth exactly 1):\n")
 print(with(xp, tapply(p_truth >= 1, list(paste(par, prior_type), completeness),
                       sum, na.rm = TRUE))[, names(completeness), drop = FALSE])
 
-# ---- the two columns #391 adds ---------------------------------------
+# ---- the proposal count and the flatness result ----------------------
 cells <- res[!duplicated(res$cell), ]
 cat("\n== initial-value proposals to a full set of", CHAINS, "chains ==\n")
 cat("cap", INIT_CAP, "rounds; cells that fell back to Stan's own",
     "initialisation:", sum(cells$init_capped, na.rm = TRUE), "of",
     sum(!is.na(cells$init_capped)), "\n")
-cat("A hurdle or zero-inflated cell primes two blocks in turn, so its count",
-    "covers\nboth and its ceiling is twice the", INIT_CAP * CHAINS,
-    "of a single-block cell.\n")
+cat("A round redraws only the chains still empty, so a single-block cell",
+    "draws at\nmost", INIT_CAP * CHAINS, "proposals and usually fewer. A",
+    "hurdle or zero-inflated cell\nprimes two blocks in turn, so its count",
+    "covers both and its bound is twice that.\n")
 print(round(with(cells, tapply(n_proposals, list(model, completeness), median,
                                na.rm = TRUE))[, names(completeness),
                                               drop = FALSE], 1))
@@ -625,12 +659,14 @@ print(round(with(tested, tapply(flat_report, list(design, completeness), mean,
 cat("\nNote. The `complete` column is not the rule's false-positive rate.\n",
     "The rule tests the last interval of the series and not whether the\n",
     "response has reached bot, and on a log-spaced series that interval is\n",
-    "the widest one there is: on log_wide the mean is 72 per cent of the\n",
-    "way from top to bot at 2.5 and within 1 per cent of bot at 20, so the\n",
-    "contrast is large and true. The report rate rises with the spacing of\n",
-    "the last step, from 0.09 on the evenly spaced designs to 0.94 on\n",
-    "log_wide, and those reports are power and not false positives. Part 3\n",
-    "measures the false-positive rate on a top that is flat.\n",
+    "the widest one there is. On log_wide under crf(log(x)) the mean is\n",
+    "71 per cent of the way from top to bot at a dose of 2.5 and within\n",
+    "1 per cent of bot at 20, so the contrast between them is large and\n",
+    "the decline is real; on the identity transform of the same series it\n",
+    "is 28 per cent at 2.5. The report rate at the complete setting rises\n",
+    "with the spacing of the last step, as the table above shows, and those\n",
+    "reports are power and not false positives. Part 3 measures the\n",
+    "false-positive rate on a top that is flat.\n",
     sep = "")
 
 # NOTE on ratios. The response is redrawn inside the prior_type loop
@@ -1046,28 +1082,64 @@ cat("  beta_binomial, 4 rows per level, rho 0.1:", round(r[["rate"]], 4),
 # functions it is built from. Checked here so that the rates reported
 # are known to be the rates of the message, not of a private path.
 cat("\n-- check_response_flattened() against the helpers --\n")
+# Three layouts rather than one: a plain gaussian response, a binomial
+# response of the "matrix" kind with a trials() term, and a hurdle fit
+# whose two blocks are assessed separately. Between them they exercise
+# every branch the rates above rely on -- the estimated and the fixed
+# dispersion, the two-block split, and the message the user meets.
 set.seed(3400)
-agree <- logical(200)
-for (i in seq_len(200)) {
-  x <- rep(1:5, each = 4)
-  mu <- if (i %% 2 == 0) null_mu(10, 2) else alt_mu(10, 2, 0.4)
-  y <- rnorm(length(x), rep(mu, each = 4), 0.6)
-  dat <- data.frame(x = x, y = y)
-  sf <- single_model_formula(bayesnecformula(y ~ crf(x, "nec4param")),
-                             "nec4param")
-  md <- model.frame(sf, data = dat, run_par_checks = FALSE)
-  msgs <- character(0)
-  withCallingHandlers(
-    check_response_flattened(md, g_fam),
-    message = function(m) {
-      msgs <<- c(msgs, conditionMessage(m))
-      invokeRestart("muffleMessage")
-    })
-  wrapper <- any(grepl("still declining at the top", msgs))
-  helper <- isTRUE(flatness_result(x, y, NULL, NULL, g_fam)$declining)
-  agree[i] <- identical(wrapper, helper)
+agree <- integer(0)
+wrapper_cases <- list(
+  list(lab = "gaussian", family = g_fam, form = "y ~ crf(x, \"nec4param\")",
+       draw = function(declining) {
+         mu <- if (declining) alt_mu(10, 2, 0.4) else null_mu(10, 2)
+         x <- rep(1:5, each = 4)
+         data.frame(x = x, y = rnorm(length(x), rep(mu, each = 4), 0.6))
+       }),
+  list(lab = "binomial", family = validate_family("binomial"),
+       form = "y | trials(trials) ~ crf(x, \"nec4param\")",
+       draw = function(declining) {
+         mu <- if (declining) alt_mu(0.9, 0.2, 0.4) else null_mu(0.9, 0.2)
+         x <- rep(1:5, each = 4)
+         data.frame(x = x, trials = 20,
+                    y = rbinom(length(x), 20, rep(mu, each = 4)))
+       }),
+  list(lab = "hurdle_gamma", family = validate_family("hurdle_gamma"),
+       form = "y ~ crf(x, \"nec4param\")",
+       draw = function(declining) {
+         p <- if (declining) alt_mu(0.95, 0.4, 0.4) else null_mu(0.95, 0.4)
+         x <- rep(1:5, each = 20)
+         alive <- rbinom(length(x), 1, rep(p, each = 20))
+         data.frame(x = x,
+                    y = ifelse(alive == 1, rgamma(length(x), 25, 25 / 5), 0))
+       })
+)
+for (case in wrapper_cases) {
+  ok <- logical(100)
+  for (i in seq_len(100)) {
+    dat <- case$draw(i %% 2 == 1)
+    sf <- single_model_formula(bayesnecformula(as.formula(case$form)),
+                               "nec4param")
+    md <- model.frame(sf, data = dat, run_par_checks = FALSE)
+    msgs <- character(0)
+    withCallingHandlers(
+      check_response_flattened(md, case$family),
+      message = function(m) {
+        msgs <<- c(msgs, conditionMessage(m))
+        invokeRestart("muffleMessage")
+      })
+    wrapper <- any(grepl("still declining at the top", msgs))
+    trials <- if ("trials" %in% names(dat)) dat$trials else NULL
+    helper <- isTRUE(flatness_result(dat$x, dat$y, trials, NULL,
+                                     case$family)$declining)
+    ok[i] <- identical(wrapper, helper)
+  }
+  cat("  ", case$lab, ": the wrapper and the helpers agree on ", sum(ok),
+      " of 100 blocks\n", sep = "")
+  agree <- c(agree, sum(ok))
 }
-cat("the wrapper and the helpers agree on", sum(agree), "of 200 blocks\n")
+cat("agreement over all three layouts:", sum(agree), "of",
+    100 * length(wrapper_cases), "blocks\n")
 }
 
 # ======================================================================
@@ -1156,7 +1228,9 @@ if (!requireNamespace("MASS", quietly = TRUE)) {
   cat("MASS", as.character(packageVersion("MASS")),
       "- the same blocks, tested by a likelihood ratio on a",
       "glm.nb\nfit of the two levels, one-sided by the sign of the",
-      "contrast.\n\n")
+      "contrast. The rate of the\ndeviance difference is reported beside",
+      "it, which is the statistic the same two\nfits would give under",
+      "anova.negbin().\n\n")
   nb_contrast <- function(x, y, alpha = 0.05) {
     ux <- sort(unique(x))
     keep <- x %in% ux[length(ux) - 1:0]
@@ -1166,25 +1240,36 @@ if (!requireNamespace("MASS", quietly = TRUE)) {
     null <- try(suppressWarnings(MASS::glm.nb(y ~ 1, data = d)), silent = TRUE)
     if (inherits(full, "try-error") || inherits(null, "try-error") ||
           !isTRUE(full$converged) || !isTRUE(null$converged)) {
-      return(c(report = NA, ok = 0))
+      return(c(report = NA, deviance_report = NA, ok = 0))
     }
     # The likelihood ratio and not the deviance difference. glm.nb
     # estimates a theta for each fit, so the two deviances are computed
     # under different variance functions and their difference is not a
-    # likelihood ratio: on the flat-top null it reported on 0.000 of 200
-    # blocks against a nominal 0.05, which is a broken statistic rather
-    # than a conservative one.
-    stat <- 2 * as.numeric(logLik(full) - logLik(null))
-    if (!is.finite(stat)) return(c(report = NA, ok = 0))
-    two <- pchisq(max(stat, 0), df = 1, lower.tail = FALSE)
+    # likelihood ratio. Both are computed and both are reported, because
+    # the claim that the deviance route is broken here is a measurement
+    # and not an assertion: the column beside the likelihood ratio is
+    # what supports it.
     est <- coef(full)[2]
-    p <- if (is.finite(est) && est < 0) two / 2 else 1 - two / 2
-    c(report = as.numeric(p < alpha), ok = 1)
+    one_sided <- function(stat) {
+      if (!is.finite(stat)) return(NA_real_)
+      two <- pchisq(max(stat, 0), df = 1, lower.tail = FALSE)
+      if (is.finite(est) && est < 0) two / 2 else 1 - two / 2
+    }
+    p_lr <- one_sided(2 * as.numeric(logLik(full) - logLik(null)))
+    p_dev <- one_sided(null$deviance - full$deviance)
+    if (!is.finite(p_lr)) {
+      return(c(report = NA, deviance_report = NA, ok = 0))
+    }
+    c(report = as.numeric(p_lr < alpha),
+      deviance_report = as.numeric(isTRUE(p_dev < alpha)), ok = 1)
   }
   # glm.nb is roughly twenty times the cost of the quasipoisson contrast,
-  # so the comparison runs on a tenth of the replicates. The interval is
-  # reported with it.
-  n_nb <- max(200L, N_REP_CAL %/% 10L)
+  # so the comparison runs on a tenth of the replicates, with a floor of
+  # 200 so that the interval means something. The floor never raises the
+  # count above what the caller asked for, or a smoke run with
+  # BAYESNEC_PRIOR_AUDIT_NREP set low would spend its whole wall clock
+  # here. The interval is reported with the rate.
+  n_nb <- max(min(200L, N_REP_CAL), N_REP_CAL %/% 10L)
   nbcmp <- list()
   nb_settings <- list(list(lab = "flat top (null)", mu = null_mu(40, 5)),
                       list(lab = "step 0.1", mu = alt_mu(40, 5, 0.1)),
@@ -1195,6 +1280,7 @@ if (!requireNamespace("MASS", quietly = TRUE)) {
     set.seed(4600 + j)
     rule <- logical(n_nb)
     nb <- rep(NA_real_, n_nb)
+    nb_dev <- rep(NA_real_, n_nb)
     ok <- logical(n_nb)
     for (i in seq_len(n_nb)) {
       x <- level_x(4)
@@ -1204,6 +1290,7 @@ if (!requireNamespace("MASS", quietly = TRUE)) {
                           declining)
       z <- nb_contrast(x, y)
       nb[i] <- z[["report"]]
+      nb_dev[i] <- z[["deviance_report"]]
       ok[i] <- z[["ok"]] == 1
     }
     nbcmp[[length(nbcmp) + 1]] <- data.frame(
@@ -1213,6 +1300,7 @@ if (!requireNamespace("MASS", quietly = TRUE)) {
       glm_nb_rate = round(mean(nb[ok]), 4),
       glm_nb_ci = ci_of(mean(nb[ok]), sum(ok)),
       glm_nb_converged = round(mean(ok), 3),
+      glm_nb_deviance_rate = round(mean(nb_dev[ok]), 4),
       missed_by_rule_reported_by_nb = round(mean(!rule[ok] & nb[ok] == 1), 4),
       stringsAsFactors = FALSE)
   }

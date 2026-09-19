@@ -780,6 +780,20 @@ Extend `prior_audit.R` with a design axis crossing the existing cells:
   the maximum effect, so that the new cells reproduce the figures that issue
   quotes.
 
+Amended 2026-09-19, after the implementation in #391. The fraction is reached by
+holding the series and the decay rate and placing the true threshold along the
+series, not by dropping the design's own doses above a cut point. Dropping doses
+reaches no stated fraction on an evenly spaced series --- on `linear` the cut for
+0.02 falls between the fourth and fifth dose, whose realised fraction is zero ---
+and it changes the number of concentrations and the ratio of the maximum to the
+median dose, which is the sole input to the gamma branch of the `nec` prior, so
+the completeness contrast would be confounded with a change in the prior's own
+input. Two consequences follow and are recorded in `notes/prior_audit.md`: the
+audit never shortens a series, so `ub = max(prior_predictor)` never changes; and
+a `nec4param` threshold stays inside the series at every setting, so the `nec`
+support exclusion is measured on #386's own design rather than over the
+factorial.
+
 Report, per cell, the truncated prior CDF at the true value for `top`, `bot`,
 `nec` and `ec50`, as now, and add two columns the later phases need: the number
 of proposals `make_good_inits()` makes, and whether the flatness rule of §2.2

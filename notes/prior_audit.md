@@ -5,7 +5,10 @@
 > `nec` and `ec50` prior as it was then; that prior was replaced in #302 and
 > PR #304, so section 1 is a record of the defect rather than of current
 > behaviour. Section 2 was fixed in the same PR. The `top` and `bot` findings in
-> section 3 and in part 2 are open as #305 and still hold.
+> section 3 and in part 2 were opened as #305; part 3 below re-ran the same
+> cells on 2026-09-19 and found 2 of 720 outside the band against the counts
+> section 3 reports, so they describe `eebccdb3` and not current behaviour.
+> Read part 3 for what the priors do now.
 >
 > **Two design types this sweep does not contain** --- complete effect at the
 > highest concentration, so that the top-dose group is entirely zero, and a
@@ -22,10 +25,9 @@
 >
 > **Part 3 is a later run** of the same script, extended for #391 with designs
 > that do not reach the lower asymptote. It was produced against `dev` at
-> `441e7464` on 2026-09-19 and its complete-design cells no longer reproduce the
-> part 1 figures above, because the priors those sections describe were changed
-> by #302, PR #304 and the work that followed. Read parts 1 and 2 as the record
-> of `eebccdb3` and part 3 as the record of current behaviour.
+> `441e7464` on 2026-09-19. Its complete-design cells do not reproduce the
+> figures in parts 1 and 2 above, because the priors those parts describe were
+> changed by #302, PR #304 and the work that followed.
 
 # Default priors in bayesnec: an assessment against known parameter values
 
@@ -407,11 +409,13 @@ uses interior quantiles.
 # Designs that do not reach the lower asymptote
 
 Part 3 of this record. `dev` at `441e7464`, R 4.6.1, brms 2.23.0, MASS 7.3.65,
-2026-09-19. Nothing was fitted and no Stan program was compiled. Produced by
-`notes/scripts/prior_audit.R`, which now runs in four parts named `sweep`,
-`reproduction`, `calibration` and `miss`, and takes about forty minutes in full.
-The figures #386 quotes were produced by a script held in a session scratch and
-never committed; part 2 of the run below is a committed reproduction of them.
+2026-09-19. No concentration-response model was fitted and no Stan program was
+compiled; parts 3 and 4 below fit generalised linear models, which is what the
+rule they measure does. Produced by `notes/scripts/prior_audit.R`, which now
+runs in four parts named `sweep`, `reproduction`, `calibration` and `miss`, and
+takes about forty minutes in full. The figures #386 quotes were produced by a
+script held in a session scratch and never committed; the reproduction part is a
+committed reproduction of them.
 
 ## The completeness axis
 
@@ -434,13 +438,17 @@ the four settings and is the situation #386 describes: a fixed dilution series
 against a sample more or less toxic than the one the series was designed for.
 The threshold that reaches a fraction *f* at the highest dose is
 `max(x) + log(1 - f) / rate` for `nec4param` and
-`max(x) + log((1 - f) / f) / rate` for `ecx4param`.
+`max(x) + log((1 - f) / f) / rate` for `ecx4param`. The substitution is recorded
+in §6 of `notes/tasks/386-incomplete-designs-claude.md`, which is the
+specification a later phase reads.
 
 For `nec4param` the threshold stays inside the series at every setting, so those
 cells measure what an unidentified lower asymptote does to the `bot` prior. For
 `ecx4param` it rises above the highest dose once *f* falls below a half, so
 those cells measure what it does to the threshold prior's truncation. The two
-findings #386 reports are therefore separated by equation rather than mixed.
+findings #386 reports are therefore separated by equation rather than mixed. The
+audit never shortens a series, so `ub = max(prior_predictor)` is the same number
+in every cell.
 
 Two quantities are recorded per cell, because #386's label is not the
 specification's. `f_reached` is the fraction of the `top`-to-`bot` span the mean
@@ -451,8 +459,15 @@ labels the same designs. For #386's `top` of 0.9 and `bot` of 0.1 the second is
 complete setting, 0.918 and 0.815 at `f92`, 0.360 and 0.319 at `f36`, and 0.020
 and 0.018 at `f02`.
 
+The complete setting's `f_reached` of 0.972 is an average of two different
+numbers and not the `1 - exp(-5)` the rate is set to give. An `ecx4param` curve
+has already fallen part of the way at the lowest dose, so the span it covers
+within the series is less than the whole: by equation the averages at the
+complete setting are 0.9933 for `nec4param`, which is `1 - exp(-5)` exactly, and
+0.9508 for `ecx4param`.
+
 The factorial is now 4 completeness settings x 5 designs x 3 transforms x 12
-families x 2 links x 2 prior types x 2 equations = 5,760 cells and 17,272
+families x 2 links x 2 prior types x 2 equations = 5,760 cells and 17,262
 parameter-prior rows.
 
 ## The `bot` prior as the design flattens
@@ -462,27 +477,36 @@ near 0.5 means the prior is centred on the truth.
 
 | prior type | complete | f92 | f36 | f02 |
 |---|---|---|---|---|
-| `uninformative` | 0.3507 | 0.2403 | 0.1239 | 0.1114 |
-| `regularizing` | 0.4422 | 0.2744 | 0.0449 | 0.0287 |
+| `uninformative` | 0.3499 | 0.2428 | 0.1235 | 0.1098 |
+| `regularizing` | 0.4516 | 0.2762 | 0.0437 | 0.0304 |
 
 Cells outside the central 95% of the truncated prior, out of 720 `top` and `bot`
 cells per prior type per setting:
 
 | prior type | complete | f92 | f36 | f02 |
 |---|---|---|---|---|
-| `uninformative` | 0 | 0 | 74 | 101 |
-| `regularizing` | 4 | 29 | 286 | 331 |
+| `uninformative` | 0 | 0 | 69 | 100 |
+| `regularizing` | 2 | 26 | 289 | 327 |
 
-The mean over families understates the collapse, because the four bounded
-families take a fixed `beta(2, 5)` that reads nothing from the response and so
-does not change across the axis. Median `p_truth` for `bot` on the gaussian
-identity cells, which is the branch #386 reports, is 0.480, 0.309, 6.25e-04 and
-5.23e-09 under `uninformative` and 0.512, 0.372, 2.28e-09 and 1.86e-63 under
-`regularizing`. The direction and the order of magnitude agree with #386.
+The mean over families understates the collapse, because five of the twelve take
+a fixed `beta(2, 5)` for `bot` on the identity link that reads nothing from the
+response and so does not change across the axis. Those five are `bernoulli`,
+`Beta`, `beta_binomial`, `binomial` and `zero_inflated_beta`, each of which
+returns one distinct prior string over all 60 design, transform and completeness
+cells.
 
-The four `regularizing` failures at the complete setting are `bernoulli` on the
-identity link, which is the family with the coarsest response and the one #386's
-note on `regularizing_location()` already names.
+Median `p_truth` for `bot` on the gaussian cells at the identity link, which is
+the branch #386 reports, is 0.490, 0.345, 6.33e-03 and 4.45e-07 under
+`uninformative` and 0.503, 0.408, 6.25e-07 and 4.89e-40 under `regularizing`.
+The direction and the order of magnitude agree with #386, whose figures are
+0.507, 0.0386 and 6.43e-14 for `uninformative` and 0.525, 1.45e-05 and 2.30e-90
+for `regularizing` on its own three designs; the reproduction section below
+compares them on #386's design, where they agree to two significant figures.
+
+The two `regularizing` failures at the complete setting are `bernoulli` and
+`zero_inflated_beta` on the identity link. `bernoulli` is the family with the
+coarsest response, and is the one #386's note on `regularizing_location()`
+already names.
 
 ## The threshold priors
 
@@ -491,22 +515,24 @@ type and setting:
 
 | parameter and prior type | complete | f92 | f36 | f02 |
 |---|---|---|---|---|
-| `ec50`, `uninformative` | 0 | 0 | 360 | 358 |
-| `ec50`, `regularizing` | 0 | 0 | 360 | 360 |
+| `ec50`, `uninformative` | 0 | 0 | 360 | 360 |
+| `ec50`, `regularizing` | 0 | 0 | 360 | 359 |
 | `nec`, either | 0 | 0 | 0 | 0 |
 
 The `ec50` rows are `p_truth` of exactly 1: the true midpoint lies above
 `max(prior_predictor)`, which is the upper truncation bound, so the prior places
 no mass on it at all. This is #386's threshold finding, reproduced over every
-design, transform, family and link rather than on one cell.
+design, transform, family and link rather than on one cell. The one `f02` cell
+short of 360 is a `bernoulli` cell whose priors could not be built at all, for
+the reason given below.
 
 The `nec` rows are zero by construction and not by acquittal. The completeness
 axis keeps a `nec4param` threshold inside the series at every setting, so these
 cells cannot exhibit the exclusion. A `nec` above the tested range is measured
-in part 2 below, on #386's own design, where it gives `p_truth` of 1 as well.
-At `f92` no `ec50` cell is excluded but 144 of 360 `regularizing` cells and 72
-`uninformative` cells sit outside the central 95%, so the prior is already in
-the wrong place before its support fails.
+in the reproduction section below, on #386's own design, where it gives
+`p_truth` of 1 as well. At `f92` no `ec50` cell is excluded but 144 of 360
+`regularizing` cells and 72 `uninformative` cells sit outside the central 95%,
+so the prior is already in the wrong place before its support fails.
 
 ## The figures #386 quotes
 
@@ -551,10 +577,15 @@ magnitude on the flattest one. The `regularizing` entry is anchored on `min(y)`,
 which is a single order statistic of a poisson draw, so it is the entry in the
 set most sensitive to the draw, and neither run's seed is recoverable.
 
-The threshold priors reproduce exactly. On an `ecx4param` design with a true
-`ec50` of 45 against a highest concentration of 40, and on a `nec4param` design
-with a true `nec` of 60, the truncated prior CDF at the truth is 1 under both
-prior sets, as #386 reports.
+The threshold priors reproduce, at a truncated prior CDF of 1 under both prior
+sets, which is what #386 reports for a true `ec50` of 45 and for a true `nec` of
+60 against a highest concentration of 40. The two are one measurement rather
+than two confirmations: the `nec` and `ec50` entries read the predictor alone
+and nothing else, so the run prints the same prior string and the same bounds
+for both equations, and `p_truth` of 1 follows from `ub = 40` and a truth above
+it. The `nec4param` design is degenerate as well, since a threshold of 60 puts
+the whole series below the break point and the mean response is `top` at every
+dose.
 
 The constant entries reproduce exactly. `beta(5, 2)` at a true `top` of 0.9 and
 `beta(2, 5)` at a true `bot` of 0.1 give 0.886 and 0.114, which are #386's
@@ -574,15 +605,18 @@ Median proposals:
 | equation | complete | f92 | f36 | f02 |
 |---|---|---|---|---|
 | `nec4param` | 6 | 6 | 7 | 8 |
-| `ecx4param` | 4 | 5 | 5 | 7 |
+| `ecx4param` | 5 | 5 | 5 | 7 |
+| both | 5 | 5 | 6 | 7 |
 
-The 90th percentile is 13 at the complete setting, 14 at `f92` and `f36`, and
-22.5 at `f02`. Twenty-seven of 5,756 cells reached the cap and fell back to
-Stan's own initialisation, all of them at `f02` and all on `hurdle_gamma` or
-`zero_inflated_beta`, whose two blocks are primed in turn so that their ceiling
-is twice a single-block cell's. The search therefore draws about a third more
-proposals at the median on an incomplete design, and finds no full set at all on
-a two-block family whose response is flat.
+The 90th percentile is 14 at the complete setting, 15 at `f92`, 14 at `f36` and
+22.8 at `f02`. Twenty-seven of 5,751 cells reached the cap and fell back to
+Stan's own initialisation: 21 `zero_inflated_beta`, 4 `binomial` and 2
+`beta_binomial`, 26 of them at `f02` and one at `f36`. A two-block family is
+over-represented, and its count covers both blocks because they are primed in
+turn, but the fallback is not confined to one: the four `binomial` cells are
+single-block. An incomplete design therefore raises the median proposal count
+from 5 to 7 and the 90th percentile from 14 to 23, and the search fails
+altogether in about one cell in 200 at the flattest setting.
 
 ## The flatness rule of #390
 
@@ -590,27 +624,38 @@ a two-block family whose response is flat.
 
 | | complete | f92 | f36 | f02 |
 |---|---|---|---|---|
-| all families | 0.475 | 0.742 | 0.717 | 0.099 |
+| all families | 0.481 | 0.750 | 0.697 | 0.096 |
 
 The complete column is not the rule's false-positive rate, and the reason is a
-property of the rule rather than of this sweep.
-The rule tests the last interval of the series, not whether the response has
-reached `bot`, and on a log-spaced series that interval is the widest one there
-is. On `log_wide` the mean is 72 per cent of the way from `top` to `bot` at a
-dose of 2.5 and within 1 per cent of `bot` at 20, so the contrast between them is
-large and the decline is real. The report rate at the complete setting rises with
-the spacing of the last step, from 0.094 on `linear` and 0.073 on `linear_unit`
-to 0.493 on `log_2fold`, 0.774 on `log_unit` and 0.941 on `log_wide`. Those
-reports are power and not false positives: the response is still declining where
-the rule says it is. They are also advisories raised on designs whose `bot` prior
-is sound, which follows from a rule that reads two levels rather than the
-curve. The level is stated rather than tuned, so this is recorded and not acted
-on.
+property of the rule rather than of this sweep. The rule tests the last interval
+of the series, not whether the response has reached `bot`, and on a log-spaced
+series that interval is the widest one there is. On `log_wide` under
+`crf(log(x))` the mean is 71 per cent of the way from `top` to `bot` at a dose
+of 2.5 and within 1 per cent of `bot` at 20, so the contrast between them is
+large and the decline is real; on the identity transform of the same series the
+mean at 2.5 is 28 per cent of the way. The report rate at the complete setting
+rises with the spacing of the last step, from 0.104 on `linear` and 0.101 on
+`linear_unit` to 0.476 on `log_2fold`, 0.781 on `log_unit` and 0.944 on
+`log_wide`. Those reports are power and not false positives: the response is
+still declining where the rule says it is. They are also advisories raised on
+designs whose `bot` prior is sound, which follows from a rule that reads two
+levels rather than the curve. The level is stated rather than tuned, so this is
+recorded and not acted on.
 
-At `f02` the rate falls to 0.099, which is the miss: a design showing 2 per cent
+At `f02` the rate falls to 0.096, which is the miss: a design showing 2 per cent
 of its span is reported on one call in ten. The rule detects an incomplete design
 by its slope and not by its extent, and a curve that has barely started to fall
 has almost no slope to detect.
+
+Two notes on what this column is. The response read here is the one
+`check_data()` returns, while `bnec()` raises the report on the model frame
+before `check_data()` runs, so for `Gamma`, `beta` and `zero_inflated_beta` the
+two responses differ in the zeros and ones that check nudges away from the
+boundary. And a hurdle or zero-inflated cell is reported where either block
+declines, which is what `bnec()` does, but the hurdle simulators in this sweep
+hold the hurdle probability constant at 0.8, so their survival block is flat by
+construction and contributes its own false positive: that is why `hurdle_gamma`
+reads 0.183 and `zero_inflated_beta` 0.192 at `f02` against `poisson`'s 0.058.
 
 ### The false-positive rate on a flat top
 
@@ -632,29 +677,43 @@ contrast is zero. Intervals are Wilson score intervals.
 | bernoulli, 4 observations per level | 4000 | 0.0862 | [0.0779, 0.0954] | 0.088 |
 
 Nine of the ten rows cover 0.05 or sit within 0.01 of it, and the tenth is
-`bernoulli`, which is item 3 below. The generator's response levels are this
-run's rather than #390's, which are not recorded, so agreement of this kind is
-what the comparison can establish and a digit-for-digit match is not.
+`bernoulli`, which is the third item below. The generator's response levels are
+this run's rather than #390's, which are not recorded, so agreement of this kind
+is what the comparison can establish and a digit-for-digit match is not.
+
+The `beta_binomial` row of this table, the constant-trials row of the
+varying-trials table below, and the replicated row at the end of the
+unreplicated table are all the same data-generating process under three seeds:
+five levels, four rows of twenty trials each, an intra-class correlation of 0.1,
+flat top. They read 0.0528, 0.0485 and 0.0517, which is a spread of 0.004 over
+three independent runs of 4000 replicates and is the Monte Carlo error on every
+figure in this section.
+
+`check_response_flattened()`, which is the function a user meets, agreed with
+the two helpers this section calls on 300 of 300 blocks, over a gaussian
+response, a `binomial` response with a `trials()` term, and a `hurdle_gamma` fit
+whose two blocks are assessed separately. Those three cover the estimated and
+the fixed dispersion, the two-column count response and the hurdle split.
 
 ### The quasipoisson approximation to the negative binomial variance
 
-Item 1 of #390. The claim is that quasipoisson's linear variance, `phi mu`, approximates the
-negative binomial's quadratic `mu + mu^2 / theta` well enough over two adjacent
-levels. On a flat top the approximation holds: `negbinomial` with a size of 5
-reports on 0.0568 [0.0500, 0.0644], against a nominal 0.05.
+Item 1 of #390. The claim is that quasipoisson's linear variance, `phi mu`,
+approximates the negative binomial's quadratic `mu + mu^2 / theta` well enough
+over two adjacent levels. On a flat top the approximation holds: `negbinomial`
+with a size of 5 reports on 0.0568 [0.0500, 0.0644], against a nominal 0.05.
 
-The departure appears in power rather than in calibration. On an over-dispersed count
-design with `theta` 2 against a control mean of 40, so that the quadratic term is
-800 against a linear term of 40 at the control, the rule reports on 0.209, 0.395
-and 0.569 of blocks as the fall between the two highest levels rises through
-0.1, 0.2 and 0.3 of the `top`-to-`bot` span. The miss rate is therefore 0.79,
-0.60 and 0.43. On the same generator with `poisson` variation rather than
-`theta` 2 the rule reports on 0.519, 0.920 and 0.996.
+The departure appears in power rather than in calibration. On an over-dispersed
+count design with `theta` 2 against a control mean of 40, so that the quadratic
+term is 800 against a linear term of 40 at the control, the rule reports on
+0.209, 0.395 and 0.569 of blocks as the fall between the two highest levels
+rises through 0.1, 0.2 and 0.3 of the `top`-to-`bot` span. The miss rate is
+therefore 0.79, 0.60 and 0.43. On the same generator with `poisson` variation
+rather than `theta` 2 the rule reports on 0.519, 0.920 and 0.996.
 
 ### Quasibinomial where the trials vary within a level
 
-Item 2 of #390. Beta-binomial blocks at an intra-class correlation of 0.1, flat top, 4000
-replicates:
+Item 2 of #390. Beta-binomial blocks at an intra-class correlation of 0.1, flat
+top, 4000 replicates:
 
 | trials within a level | rate | interval | #390 |
 |---|---|---|---|
@@ -678,7 +737,8 @@ level nearer 0.15 than 0.05.
 
 ### Bernoulli small-sample discreteness
 
-Item 3 of #390. Twenty thousand replicates per row, on a flat top of a five-level series.
+Item 3 of #390. Twenty thousand replicates per row, on a flat top of a
+five-level series.
 
 | observations per level | rate | interval |
 |---|---|---|
@@ -690,12 +750,14 @@ Item 3 of #390. Twenty thousand replicates per row, on a flat top of a five-leve
 | 50 | 0.0527 | [0.0497, 0.0559] |
 
 #390 reports 0.082, 0.063 and 0.049 at four, ten and twenty-five, and states
-that the rate is not monotone in the count. Both reproduce: the run reads 0.0886,
-0.0558 and 0.0504 at those three counts, and the rate at fifty is 0.0527, above
-the rate at twenty-five, with intervals that do not overlap. The row at two
-observations is below nominal at 0.0428 and the row at one is zero, which is the
-guard #390 added for a block of one individual per level rather than a rate. The
-three counts #390 quotes therefore do not bound the rate, as it says.
+that the rate is not monotone in the count. The three figures reproduce, at
+0.0886, 0.0558 and 0.0504. Non-monotonicity is visible in the rows #390 does not
+cover rather than in those three: the rate at two observations is 0.0428, below
+both the nominal level and the rate at four, and the two intervals do not
+overlap. The rows at 25 and 50 read 0.0504 and 0.0527 with overlapping
+intervals, so they establish nothing either way. The row at one observation is
+the guard #390 added for a block of one individual per level, which passes the
+block over rather than testing it, and is a count of zero rather than a rate.
 
 ### The fixed-dispersion fallback on an unreplicated design
 
@@ -708,11 +770,12 @@ Item 4 of #390. One row per level, twenty trials, 4000 replicates, flat top.
 | beta_binomial, rho 0.1 | 0.1825 | [0.1708, 0.1948] | 0.184 |
 | beta_binomial, rho 0.2 | 0.2502 | [0.2371, 0.2639] | |
 
-The item reproduces to three significant figures at the intra-class correlation
-#390 measured, and the two rows either side of it show that the rate is roughly
-linear in the correlation over this range. Supplying four replicate rows per
-level restores the over-dispersion estimate and the rate returns to 0.0517
-[0.0453, 0.0591], which is #390's own remedy measured.
+The item reproduces to two significant figures at the intra-class correlation
+#390 measured, 0.1825 [0.1708, 0.1948] against its 0.184, and the two rows
+either side of it show that the rate is roughly linear in the correlation over
+this range. Supplying four replicate rows per level restores the over-dispersion
+estimate and the rate returns to 0.0517 [0.0453, 0.0591], which is #390's own
+remedy measured.
 
 This is the largest departure from the stated level in the rule. It was accepted
 deliberately, because the alternative was to pass the design over and report on
@@ -722,9 +785,9 @@ records point to, and it is not a case for changing the rule.
 
 ### The miss rate on a top that is still declining
 
-The part 3 series with the fourth level held a stated fraction of the span above
-`bot` and the fifth at `bot`, so the contrast tested is a fall of that fraction.
-4000 replicates.
+The five-level series with the fourth level held a stated fraction of the span
+above `bot` and the fifth at `bot`, so the contrast tested is a fall of that
+fraction. 4000 replicates.
 
 | block | fall 0.1 | fall 0.2 | fall 0.3 |
 |---|---|---|---|
@@ -739,7 +802,7 @@ concentrations and nothing else, so a fall of a third of the span between them i
 detected on one call in four. A dilution series whose survival is still falling
 at the undiluted end is therefore reported only where the fall is large.
 
-### The comparison against MASS::glm.nb
+### The comparison against `MASS::glm.nb`
 
 Run once for the comparison, on the `theta` 2 blocks, testing the same one-sided
 contrast by a likelihood ratio on a `glm.nb` fit of the two levels. 400
@@ -757,10 +820,14 @@ quasi rule does miss designs a parametric fit finds. The trade is visible in the
 first row: `glm.nb`'s own rate on a flat top is 0.0775 with an interval whose
 lower bound is above 0.05, so part of its extra power is extra false reporting at
 this size, which is the eight observations section 2.2 of the specification
-describes as short of asymptotic. The likelihood ratio is used rather than the difference of the two
-deviances, because `glm.nb` estimates a `theta` for each fit and the two
-deviances are computed under different variance functions: the deviance
-difference reported on 0.000 of 200 flat-top blocks.
+describes as short of asymptotic.
+
+The likelihood ratio is used rather than the difference of the two deviances,
+because `glm.nb` estimates a `theta` for each fit and the two deviances are
+computed under different variance functions. Both are computed, and the deviance
+route reports on 0.0025, 0.0200, 0.0175 and 0.0125 of the same four settings: it
+is not a conservative version of the same test but a broken one, which never
+reaches the nominal level and has almost no power.
 
 The measurement does not settle whether `MASS` belongs in `Suggests`. It
 establishes what the fallback would add, about eleven percentage points of power
@@ -775,13 +842,14 @@ response equals 1. `R/helpers.R:488` and `:519` compute
 `max(response[which(response < 1)])`, which is `-Inf` when no observation is
 below 1, and `linear_rescale()` then produces `NaN` for every element.
 `define_prior()` stops in `quantile.default()` with "missing values and NaN's not
-allowed if 'na.rm' is FALSE", which names neither the column nor the cause. Four
-of the 5,760 cells reached it, all `bernoulli` at the `f02` setting, where the
-true mean is 0.95 at every dose and a draw of 54 observations can contain no
-zero. A user meets it as a failed fit rather than as a refusal. Not filed yet.
+allowed if 'na.rm' is FALSE", which names neither the column nor the cause. Nine
+of the 5,760 cells reached it, all `bernoulli` and all at the two flattest
+settings, where the true mean is 0.95 at every dose and a draw of 54 or 66
+observations can contain no zero. A user meets it as a failed fit rather than as
+a refusal. Not filed yet.
 
 The flatness rule reports on a design whose lower asymptote is identified,
-wherever the last dose step is wide. Measured above at 0.941 on `log_wide` at
+wherever the last dose step is wide. Measured above at 0.944 on `log_wide` at
 the complete setting, where the response is within 1 per cent of `bot` at the
 highest dose. The report is true as a statement about the last interval and
 misleading as a statement about the design, and what it then advises --- inspect
@@ -792,8 +860,8 @@ remedy is a change to what the rule tests.
 ## Questions outside this run
 
 The `nec` prior's support exclusion, which the completeness axis cannot produce
-because it keeps a `nec4param` threshold inside the series; it is measured in
-part 2 on #386's own design instead. The hurdle response block's own
-completeness, since the axis places one threshold and a two-block fit has two.
-And anything that requires a fit: every figure here is a prior, an initial value
-or a pre-fit contrast.
+because it keeps a `nec4param` threshold inside the series; it is measured on
+#386's own design instead. The hurdle response block's own completeness, since
+the axis places one threshold and a two-block fit has two. And anything that
+requires a concentration-response fit: every figure here is a prior, an initial
+value or a pre-fit contrast.
