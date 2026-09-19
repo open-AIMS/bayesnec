@@ -211,10 +211,18 @@ test_that("a target the curve never reaches returns NA with a warning", {
                             resolution = 100, posterior = TRUE),
                  "does not reach")
   expect_true(all(is.na(out)))
-  # And the summary is NA rather than the lowest concentration tested.
+  # The summary reports the top of the prediction range as a bound, with the
+  # count beside it, rather than the lowest concentration tested. No draw is
+  # given the value of the bound: what each contributes to the summary is its
+  # rank, and every rank here is beyond the top, so every reported entry is the
+  # bound (#395).
   expect_warning(est <- ecx(nec4param, ecx_val = 100, type = "direct",
                             resolution = 100))
-  expect_true(all(is.na(est)))
+  cens <- attr(est, "censored_summary")
+  expect_identical(cens$bound, rep(">=", 3))
+  expect_identical(cens$n_above, cens$n_draws)
+  expect_true(all(est == cens$upper))
+  expect_false(any(est == min(nec4param$pred_vals$data$x)))
 })
 
 test_that("the ecx reference is the control, not the maximum of the curve", {

@@ -111,6 +111,26 @@
 #' @return A vector containing the estimated ECx value, including upper and
 #' lower 95% credible interval bounds.
 #'
+#' @section Capping and dropping:
+#' A draw whose curve does not reach the target anywhere in the prediction
+#' range has no such concentration in that range, and may have none at any
+#' concentration. It is not capped at the top of the range, which would assert
+#' that its estimate equals that value; it is recorded as lying beyond it. The
+#' summary is then censored: the draw keeps its rank and is given no value, so
+#' a reported quantile that falls among such draws is the end of the prediction
+#' range rather than a quantile of the draws that did reach the target.
+#' Attribute \code{"censored_summary"} marks which entries those are, and
+#' states how many draws lie beyond each end and where the ends are. A draw
+#' whose curve had already passed the target where the range begins is recorded
+#' at the other end and reported the same way.
+#'
+#' Up to version 2.1.3 such a draw was deleted and the remaining draws were
+#' summarised as though nothing had been removed, which reported an estimate
+#' lower than the quantity it was labelled as, with an interval narrower than
+#' the posterior supports. See \code{\link{nec}} for the same treatment of a
+#' threshold parameter, where the draw does have a value and the operation is
+#' right-censoring in the ordinary sense.
+#'
 #' @examples
 #' \donttest{
 #' library(brms)
@@ -208,10 +228,20 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
   )
   ecx_out <- ecx_from_posterior(p_samples, x_vec, ecx_val, type, control,
                                 asymptote)
-  n_missing <- sum(is.na(ecx_out))
+  below <- attr(ecx_out, "below_range")
+  above <- is.na(ecx_out) & !below
+  attr(ecx_out, "below_range") <- NULL
   ecx_out <- sub_x_transformation(ecx_out, object$bayesnecformula)
-  bound <- sub_x_transformation(max(x_vec), object$bayesnecformula)
-  # xform is applied to the censoring bound as well as to the estimates, and
+  # The record is built here rather than read off the fit, because ecx() works
+  # on a grid the caller may have changed through x_range. The bounds are the
+  # ends of that grid on the fitted predictor scale, which is the scale
+  # sub_x_transformation() has just put the estimates on; taking them as
+  # max(x_vec) and min(x_vec) would be the recorded scale and would select the
+  # wrong end under a decreasing crf() transformation.
+  grid_fitted <- sub_x_transformation(x_vec, object$bayesnecformula)
+  grid_fitted <- grid_fitted[is.finite(grid_fitted)]
+  cens <- censoring_record(max(grid_fitted), min(grid_fitted), above, below)
+  # xform is applied to the censoring bounds as well as to the estimates, and
   # the warning is raised after both, so that the bound and the numbers the
   # caller is about to read are on one scale. Reporting the bound before xform
   # named the fitted scale beside estimates in concentrations -- on
@@ -219,17 +249,25 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
   # an estimate of 99.
   if (inherits(xform, "function")) {
     ecx_out <- xform(ecx_out)
-    bound <- xform(bound)
+    cens <- xform_censoring(cens, xform)
   }
-  if (n_missing > 0) {
+  attr(ecx_out, "censored") <- cens
+  if (sum(above) > 0) {
     warning("The ", object$model, " curve does not reach the ", type,
             " ECx", ecx_val, " target anywhere in the predictor range for ",
-            n_missing, " of ", length(ecx_out), " draws, which return NA. ",
-            "The estimate is censored above ", signif(bound, 3), ".",
+            sum(above), " of ", length(ecx_out), " draws. The estimate is ",
+            "censored above ", signif(cens$upper, 3), ": those draws keep ",
+            "their rank in the summary and are given no value.",
             call. = FALSE)
   }
+  if (sum(below) > 0) {
+    warning("The ", object$model, " curve has already reached the ", type,
+            " ECx", ecx_val, " target where the predictor range begins, for ",
+            sum(below), " of ", length(ecx_out), " draws. The estimate is ",
+            "censored below ", signif(cens$lower, 3), ".", call. = FALSE)
+  }
 
-  ecx_estimate <- quantile(unlist(ecx_out), probs = prob_vals, na.rm = TRUE)
+  ecx_estimate <- summarise_censored(unlist(ecx_out), prob_vals, cens)
   names(ecx_estimate) <- clean_names(ecx_estimate)
   attr(ecx_estimate, "resolution") <- resolution
   attr(ecx_out, "resolution") <- resolution
@@ -242,6 +280,12 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
   # if() on it is an error. An all-NA estimate has already been reported by the
   # warning above, which says the same thing more precisely.
   if (all(is.na(ecx_estimate))) {
+    NULL
+  } else if (!is.null(attr(ecx_estimate, "censored_summary"))) {
+    # The censored summary above has already said this, with the count and the
+    # bound, and has reported the affected entries as bounds rather than as
+    # numbers. The advisory asked the caller to do by hand what the summary now
+    # does, so repeating it here would say the work was still outstanding.
     NULL
   } else if (signif(ecx_estimate[1], 3) == signif(ecx_estimate[3], 3)) {
     message("The estimated mean is identical or nearly identical to your",
@@ -326,11 +370,23 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 200,
                posterior = TRUE, type = type,
                x_range = x_range, xform = xform, prob_vals = prob_vals,
                dpar = dpar)
-    out[draw_index[[mod]]]
+    idx <- draw_index[[mod]]
+    sample_out <- out[idx]
+    # Subsetting drops the record, so the share of it that belongs to these
+    # draws is rebuilt here. Without this a single ecx-type fit and
+    # the one-model average of it would report the same quantity two different
+    # ways, and pull_out() would change a number without changing a model.
+    attr(sample_out, "censored") <-
+      subset_censoring(attr(out, "censored"), idx)
+    sample_out
   }
   to_iter <- seq_len(length(object$success_models))
-  ecx_out <- unlist(lapply(to_iter, sample_ecx))
-  ecx_estimate <- quantile(ecx_out, probs = prob_vals, na.rm = TRUE)
+  ecx_parts <- lapply(to_iter, sample_ecx)
+  ecx_out <- unlist(lapply(ecx_parts, as.numeric))
+  cens <- concat_censoring(lapply(ecx_parts, attr, "censored"),
+                           vapply(ecx_parts, length, integer(1)))
+  attr(ecx_out, "censored") <- cens
+  ecx_estimate <- summarise_censored(ecx_out, prob_vals, cens)
   names(ecx_estimate) <- clean_names(ecx_estimate)
   attr(ecx_estimate, "resolution") <- resolution
   attr(ecx_out, "resolution") <- resolution
@@ -525,7 +581,14 @@ ecx_from_posterior <- function(p_samples, x_vec, ecx_val, type, control,
   n_draws <- nrow(p_samples)
   control <- rep_len(control, n_draws)
   asymptote <- rep_len(asymptote, n_draws)
-  vapply(seq_len(n_draws), function(i) {
+  # Separated for the same reason nsec_from_posterior() separates them: an NA
+  # on its own does not say which end of the range produced it, and the two are
+  # opposite statements about where the estimate is. A curve already below the
+  # target where the grid begins is reachable wherever x_range starts above the
+  # lowest observed concentration, because the control is read there and not at
+  # the first grid point (D15 ruling 2).
+  below_range <- logical(n_draws)
+  out <- vapply(seq_len(n_draws), function(i) {
     y <- p_samples[i, ]
     target <- switch(
       type,
@@ -535,6 +598,20 @@ ecx_from_posterior <- function(p_samples, x_vec, ecx_val, type, control,
         (control[i] - min(y, na.rm = TRUE)) * (ecx_val / 100),
       direct = ecx_val
     )
-    crossing_x(y, target, x_vec)
+    val <- crossing_x(y, target, x_vec)
+    # A below-range draw is one whose curve had already declined past the
+    # target before the grid began, which requires the target to sit below the
+    # control -- the control is read at the lowest observed concentration, at
+    # or below the foot of the grid. A target at or above the control is one
+    # the curve never declines to at all, which belongs with the draws that did
+    # not reach it: type = "direct" with a response value above the whole curve
+    # is the case, and D15 ruling 3 is about that one.
+    if (is.na(val) && !is.na(y[1]) && !is.na(target) && y[1] <= target &&
+        target < control[i]) {
+      below_range[i] <<- TRUE
+    }
+    val
   }, numeric(1))
+  attr(out, "below_range") <- below_range
+  out
 }

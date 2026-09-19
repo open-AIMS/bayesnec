@@ -136,6 +136,28 @@ holds two parameter blocks inside one model, so it takes \code{dpar} naming
 the \pkg{brms} distributional parameter. Supplying one where the other is
 expected is an error rather than silently ignored.
 }
+\section{Capping and dropping}{
+
+A draw whose curve does not reach the target anywhere in the prediction
+range has no such concentration in that range, and may have none at any
+concentration. It is not capped at the top of the range, which would assert
+that its estimate equals that value; it is recorded as lying beyond it. The
+summary is then censored: the draw keeps its rank and is given no value, so
+a reported quantile that falls among such draws is the end of the prediction
+range rather than a quantile of the draws that did reach the target.
+Attribute \code{"censored_summary"} marks which entries those are, and
+states how many draws lie beyond each end and where the ends are. A draw
+whose curve had already passed the target where the range begins is recorded
+at the other end and reported the same way.
+
+Up to version 2.2.1 such a draw was deleted and the remaining draws were
+summarised as though nothing had been removed, which reported an estimate
+lower than the quantity it was labelled as, with an interval narrower than
+the posterior supports. See \code{\link{nec}} for the same treatment of a
+threshold parameter, where the draw does have a value and the operation is
+right-censoring in the ordinary sense.
+}
+
 \examples{
 \donttest{
 library(bayesnec)

@@ -109,6 +109,26 @@
 #' @return A vector containing the estimated NSEC value, including upper and
 #' lower 95% credible interval bounds.
 #'
+#' @section Capping and dropping:
+#' A draw whose curve does not reach the target anywhere in the prediction
+#' range has no such concentration in that range, and may have none at any
+#' concentration. It is not capped at the top of the range, which would assert
+#' that its estimate equals that value; it is recorded as lying beyond it. The
+#' summary is then censored: the draw keeps its rank and is given no value, so
+#' a reported quantile that falls among such draws is the end of the prediction
+#' range rather than a quantile of the draws that did reach the target.
+#' Attribute \code{"censored_summary"} marks which entries those are, and
+#' states how many draws lie beyond each end and where the ends are. A draw
+#' whose curve had already passed the target where the range begins is recorded
+#' at the other end and reported the same way.
+#'
+#' Up to version 2.1.3 such a draw was deleted and the remaining draws were
+#' summarised as though nothing had been removed, which reported an estimate
+#' lower than the quantity it was labelled as, with an interval narrower than
+#' the posterior supports. See \code{\link{nec}} for the same treatment of a
+#' threshold parameter, where the draw does have a value and the operation is
+#' right-censoring in the ordinary sense.
+#'
 #' @references
 #' Fisher R, Fox DR (2023). Introducing the no significant effect concentration
 #' (NSEC). Environmental Toxicology and Chemistry, 42(9), 2019–2028.
@@ -205,42 +225,52 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
   # the estimate is, and one message for both would say of each the thing that
   # is true of the other. Counted before sub_x_transformation(), which returns a
   # bare value.
-  n_below <- attr(nsec_out, "n_below_range")
+  below <- attr(nsec_out, "below_range")
+  n_below <- sum(below)
   searched_from <- attr(nsec_out, "x_searched_from")
-  n_above <- sum(is.na(nsec_out)) - n_below
+  above <- is.na(nsec_out) & !below
+  n_above <- sum(above)
   nsec_out <- sub_x_transformation(nsec_out, object$bayesnecformula)
+  # The record is built here rather than read off the fit, because nsec() works
+  # on a grid the caller may have changed through x_range. Its lower bound is
+  # the point the search started from, which is what a below-range draw is
+  # known to lie beneath, and not min(x_vec): the two differ wherever the grid
+  # reaches below the control.
   bound <- sub_x_transformation(max(x_vec), object$bayesnecformula)
   lower <- sub_x_transformation(searched_from, object$bayesnecformula)
+  cens <- censoring_record(bound, lower, above, below)
   # xform reaches the censoring bounds as well as the estimates, and the
   # warnings follow both, so that a bound is on the scale the caller reads the
   # estimate on. See the same reordering in ecx.bayesnecfit.
   if (inherits(xform, "function")) {
     nsec_out <- xform(nsec_out)
-    bound <- xform(bound)
-    lower <- xform(lower)
+    cens <- xform_censoring(cens, xform)
   }
+  bound <- cens$upper
+  lower <- cens$lower
   if (n_above > 0) {
     warning("The ", object$model, " curve does not fall below the control's ",
             sig_val, " quantile anywhere in the predictor range for ",
-            n_above, " of ", length(nsec_out), " draws, which return NA. ",
-            "The NSEC is censored above ", signif(bound, 3), ".",
-            call. = FALSE)
+            n_above, " of ", length(nsec_out), " draws. The NSEC is censored ",
+            "above ", signif(bound, 3), ": those draws keep their rank in the ",
+            "summary and are given no value.", call. = FALSE)
   }
   if (n_below > 0) {
     warning("The ", object$model, " curve falls below the control's ", sig_val,
             " quantile before ", signif(lower, 3), ", the lowest concentration ",
             "in the prediction range, for ", n_below, " of ", length(nsec_out),
-            " draws, which return NA. Their NSEC lies between the control and ",
-            signif(lower, 3), ", which this x_range does not cover.",
-            call. = FALSE)
+            " draws. The NSEC is censored below ", signif(lower, 3),
+            ", which this x_range does not cover.", call. = FALSE)
   }
-  # sub_x_transformation() returns the vector with its attributes, so the two
+  # sub_x_transformation() returns the vector with its attributes, so the three
   # nsec_from_posterior() left for the warnings would otherwise reach the caller,
   # and only on this class: the bayesmanecfit path subsets by draw index and
-  # drops them.
+  # drops them. The censoring record replaces them and is meant to travel.
   attr(nsec_out, "n_below_range") <- NULL
+  attr(nsec_out, "below_range") <- NULL
   attr(nsec_out, "x_searched_from") <- NULL
-  nsec_estimate <- quantile(unlist(nsec_out), probs = prob_vals, na.rm = TRUE)
+  attr(nsec_out, "censored") <- cens
+  nsec_estimate <- summarise_censored(unlist(nsec_out), prob_vals, cens)
   names(nsec_estimate) <- clean_names(nsec_estimate)
   attr(nsec_estimate, "resolution") <- resolution
   attr(nsec_out, "resolution") <- resolution
@@ -305,6 +335,12 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 200,
     sample_out <- out[idx]
     attr(sample_out, "ecnsec_relativeP") <-
       attributes(out)$ecnsec_relativeP[idx]
+    # Subsetting drops the record, so the share of it that belongs to these
+    # draws is rebuilt here. Without this a single fit and the
+    # one-model average of it would report the same quantity two different
+    # ways, and pull_out() would change a number without changing a model.
+    attr(sample_out, "censored") <-
+      subset_censoring(attr(out, "censored"), idx)
     sample_out
   }
   to_iter <- seq_len(length(object$success_models))
@@ -312,8 +348,11 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 200,
   ecnsecP <- unlist(lapply(nsec_out, 
                     FUN = function(p){attributes(p)$ecnsec_relativeP}))
   ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
-  nsec_out <- unlist(nsec_out)
-  nsec_estimate <- quantile(nsec_out, probs = prob_vals, na.rm = TRUE)
+  cens <- concat_censoring(lapply(nsec_out, attr, "censored"),
+                           vapply(nsec_out, length, integer(1)))
+  nsec_out <- unlist(lapply(nsec_out, as.numeric))
+  attr(nsec_out, "censored") <- cens
+  nsec_estimate <- summarise_censored(nsec_out, prob_vals, cens)
   names(nsec_estimate) <- clean_names(nsec_estimate)
   attr(nsec_estimate, "resolution") <- resolution
   attr(nsec_out, "resolution") <- resolution

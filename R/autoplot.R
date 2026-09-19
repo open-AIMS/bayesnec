@@ -324,13 +324,34 @@ bind_nec <- function(data, nec_vals, xform = identity) {
   df <- data[1:3, ]
   df[ ] <- NA
 
+  cens <- attr(nec_vals, "censored_summary")
   nec_vals <- xform(nec_vals)
 
   df$nec_vals <- nec_vals
-  df$nec_labs[1] <- rounded(nec_vals[[1]], 2)
-  df$nec_labs_l[1] <- rounded(nec_vals[[2]], 2)
-  df$nec_labs_u[1] <- rounded(nec_vals[[3]], 2)
+  # A censored entry is the end of the prediction range, not a quantile, and
+  # the annotation says so. The vertical line is still drawn there, because
+  # that is where the estimate is known to be at least: what the prefix stops
+  # is reading the number off the axis as though it were the estimate itself.
+  df$nec_labs[1] <- censored_label(nec_vals, cens, 1)
+  df$nec_labs_l[1] <- censored_label(nec_vals, cens, 2)
+  df$nec_labs_u[1] <- censored_label(nec_vals, cens, 3)
   rbind(data, df)
+}
+
+#' One annotation label, marked where the entry is a bound
+#'
+#' @param values A summarised estimate.
+#' @param cens Its \code{"censored_summary"} attribute, or \code{NULL}.
+#' @param i The entry to label.
+#'
+#' @return A \code{\link[base]{character}} value.
+#' @noRd
+censored_label <- function(values, cens, i) {
+  lab <- rounded(values[[i]], 2)
+  if (is.null(cens) || !nzchar(cens$bound[i])) {
+    return(lab)
+  }
+  paste0(cens$bound[i], lab)
 }
 
 #' @param data A \code{\link[base]{data.frame}}.
@@ -348,11 +369,12 @@ bind_ecx <- function(data, ecx_vals) {
   data$ecx_labs_u <- NA
   df <- data[1:3, ]
   df[ ] <- NA
+  cens <- attr(ecx_vals, "censored_summary")
   df$ecx_vals <- ecx_vals
   df$ecx_int[1] <- attr(ecx_vals, "ecx_val")
-  df$ecx_labs[1] <- rounded(ecx_vals[[1]], 2)
-  df$ecx_labs_l[1] <- rounded(ecx_vals[[2]], 2)
-  df$ecx_labs_u[1] <- rounded(ecx_vals[[3]], 2)
+  df$ecx_labs[1] <- censored_label(ecx_vals, cens, 1)
+  df$ecx_labs_l[1] <- censored_label(ecx_vals, cens, 2)
+  df$ecx_labs_u[1] <- censored_label(ecx_vals, cens, 3)
   rbind(data, df)
 }
 
@@ -441,12 +463,17 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   }
   x_grid_raw <- x$pred_vals$data$x
   if (add_nec) {
-    out <- bind_nec(out, to_axis_scale(x$ne, bdat, x$bayesnecformula,
-                                       x_grid_raw, xform))
+    nec_vals <- to_axis_scale(x$ne, bdat, x$bayesnecformula,
+                              x_grid_raw, xform)
+    nec_vals <- rescale_censoring_bounds(nec_vals, bdat, x$bayesnecformula,
+                                         x_grid_raw, xform)
+    out <- bind_nec(out, nec_vals)
   }
   if (add_ecx) {
     ecx_vals <- to_axis_scale(plot_ecx(x, x$fit$family$family, list(...)),
                               bdat, x$bayesnecformula, x_grid_raw, xform)
+    ecx_vals <- rescale_censoring_bounds(ecx_vals, bdat, x$bayesnecformula,
+                                         x_grid_raw, xform)
     out <- bind_ecx(out, ecx_vals)
   }
   if (!is.null(group)) {
@@ -503,14 +530,18 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
       mutate(x_e = xform(.data$x_e), x_r = xform(.data$x_r))
   }
   if (add_nec) {
-    out <- bind_nec(out, to_axis_scale(x$w_ne, bdat, manec_formula,
-                                       x_grid_raw, xform))
+    nec_vals <- to_axis_scale(x$w_ne, bdat, manec_formula, x_grid_raw, xform)
+    nec_vals <- rescale_censoring_bounds(nec_vals, bdat, manec_formula,
+                                         x_grid_raw, xform)
+    out <- bind_nec(out, nec_vals)
   }
   if (add_ecx) {
     ecx_vals <- to_axis_scale(
       plot_ecx(x, x$mod_fits[[1]]$fit$family$family, list(...)),
       bdat, manec_formula, x_grid_raw, xform
     )
+    ecx_vals <- rescale_censoring_bounds(ecx_vals, bdat, manec_formula,
+                                         x_grid_raw, xform)
     out <- bind_ecx(out, ecx_vals)
   }
   if (!is.null(group)) {

@@ -261,16 +261,25 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
   reference <- quantile(preds$control[[hurdle_check_which(which)]], sig_val)
   out <- nsec_from_posterior(p_samples, reference, preds$x, control_x(object),
                              preds$control[[hurdle_check_which(which)]])
-  n_below <- attr(out, "n_below_range")
+  below <- attr(out, "below_range")
+  above <- is.na(out) & !below
   x_from <- hurdle_xform_x(object, attr(out, "x_searched_from"))
   attr(out, "n_below_range") <- NULL
+  attr(out, "below_range") <- NULL
   attr(out, "x_searched_from") <- NULL
   out <- hurdle_xform_x(object, out)
-  warn_censored_draws(out, "NSEC", n_below = n_below, x_from = x_from)
+  # The lower bound is the point the search started from, not the foot of the
+  # grid: those differ wherever the grid reaches below the control, and it is
+  # the search start a below-range draw is known to lie beneath.
+  cens <- censoring_record(max(hurdle_xform_x(object, preds$x)), x_from,
+                           above, below)
+  warn_censored_draws(out, "NSEC", cens = cens)
   if (inherits(xform, "function")) {
     out <- xform(out)
+    cens <- xform_censoring(cens, xform)
   }
-  estimate <- quantile(out, probs = prob_vals, na.rm = TRUE)
+  attr(out, "censored") <- cens
+  estimate <- summarise_censored(out, prob_vals, cens)
   names(estimate) <- clean_names(estimate)
   attr(estimate, "toxicity_estimate") <- "nsec"
   attr(estimate, "component") <- hurdle_check_which(which)

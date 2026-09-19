@@ -74,6 +74,8 @@ print.necsummary <- function(x, ...) {
         "   combination of a NEC and a NSEC.\n", sep = "")
   }
   print_mat(x$nec_vals)
+  print_censoring_note(attr(x$nec_vals, "censored_summary"),
+                       rownames(x$nec_vals)[1])
   if (!is.null(x$ecs)) {
     cat("\n\n")
     for (i in seq_along(x$ecs)) {
@@ -119,6 +121,7 @@ print.manecsummary <- function(x, ...) {
         "    combination of NEC and NSEC estimates.\n", sep = "")
   }
   print_mat(x$nec_vals)
+  print_censoring_note(attr(x$nec_vals, "censored_summary"), neclab)
   cat("\n\n")
   if (!is.null(x$ecs)) {
     for (i in seq_along(x$ecs)) {
