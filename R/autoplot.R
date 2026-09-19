@@ -7,7 +7,8 @@
 #' @order 1
 #'
 #' @param object An object of class \code{\link{bayesnecfit}},
-#' \code{\link{bayesmanecfit}} or \code{\link{bayesnecgroupfit}}.
+#' \code{\link{bayesmanecfit}}, \code{\link{bayesnecgroupfit}} or
+#' \code{\link{bayesnecjointfit}}.
 #' @param ... Additional arguments to be passed to \code{\link{ggbnec_data}}.
 #' @param nec Should NEC values be added to the plot? Defaults to TRUE.
 #' @param ecx Should ECx values be added to the plot? Defaults to FALSE..
@@ -21,7 +22,8 @@
 #' \code{group_aes = "colour"}; the curve and credible band are pooled over
 #' that variable, and the legend identifies it as not fitted. A
 #' \code{bayesnecgroupfit} uses its fitted grouping variable automatically and
-#' draws one panel per level.
+#' draws one panel per level, as does a \code{\link{bayesnecjointfit}}, whose
+#' levels are coefficients of one posterior rather than separate fits.
 #' @param group_aes How should the grouping selected by \code{group} be shown?
 #' \code{"line"} (the default) draws grey per-level means. \code{"colour"}
 #' also maps the grouping to the observation fill and the per-level mean marks.
@@ -360,7 +362,8 @@ bind_ecx <- function(data, ecx_vals) {
 #'
 #' @param x An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}}, as returned by function \code{\link{bnec}},
-#' or a \code{\link{bayesnecgroupfit}} returned by \code{\link{bnec_group}}.
+#' a \code{\link{bayesnecgroupfit}} returned by \code{\link{bnec_group}}, or
+#' a \code{\link{bayesnecjointfit}} returned by \code{\link{bnec_joint}}.
 #' @param add_nec Should NEC values be added to the plot? Defaults to TRUE.
 #' @param add_ecx Should ECx values be added to the plot? Defaults to FALSE.
 #' @param xform A function to apply to the returned estimated concentration
@@ -377,9 +380,10 @@ bind_ecx <- function(data, ecx_vals) {
 #' default, function \code{\link{ecx}} returns EC10.
 #'
 #' @return A \code{\link[base]{data.frame}}. When \code{group} is supplied, or
-#' \code{x} is a \code{bayesnecgroupfit}, the frame includes a \code{group}
-#' column and a \code{"group_var"} attribute. A \code{bayesnecgroupfit} also
-#' includes a \code{panel} column containing the level fitted in each panel.
+#' \code{x} is a \code{bayesnecgroupfit} or a \code{bayesnecjointfit}, the
+#' frame includes a \code{group} column and a \code{"group_var"} attribute.
+#' Those two classes also include a \code{panel} column containing the level
+#' drawn in each panel.
 #'
 #' @examples
 #' \donttest{

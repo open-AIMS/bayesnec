@@ -400,9 +400,21 @@ ecx_asymptote <- function(object, type) {
   if (inherits(object, "bayesmanecfit")) {
     return(manec_asymptote(object))
   }
-  bot_draws <- as_draws_df(object$fit)[["b_bot_Intercept"]]
-  if (!is.null(bot_draws)) {
-    return(as.numeric(bot_draws))
+  # One level of a joint refit names its coefficient b_bot_<group_var><level>,
+  # so the b_bot_Intercept read below finds nothing on it. Without this branch
+  # a four-parameter equation with a bot would be measured towards 0 instead of
+  # towards bot, silently, wherever the family is bounded below -- which is
+  # every family a joint refit of a bounded response is fitted with.
+  if (inherits(object, "bayesnecjointlevel")) {
+    bot_draws <- joint_level_draws(object, "bot")
+    if (!is.null(bot_draws)) {
+      return(bot_draws)
+    }
+  } else {
+    bot_draws <- as_draws_df(object$fit)[["b_bot_Intercept"]]
+    if (!is.null(bot_draws)) {
+      return(as.numeric(bot_draws))
+    }
   }
   if (!family_has_lower_bound(object$fit$family)) {
     stop("type = \"relative\" needs a finite asymptote to measure towards. ",

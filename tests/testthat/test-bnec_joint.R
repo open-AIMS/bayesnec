@@ -284,19 +284,127 @@ test_that("per-level estimates agree with bnec_group on the same equation", {
   }
 })
 
-test_that("the estimators do not report per level for a joint refit yet", {
-  # Remove with phase 2 of #382, which gives prediction_grid() a level column
-  # and each estimator a row per level. Until then the grid carries no level
-  # column, a level term is population-level so re_formula = NA does not drop
-  # it, and the prediction stops rather than answering for an unnamed level.
+# Phase 2 of #382. The test that stood here asserted that ecx() on a joint
+# refit errored and that the grid carried no level column; both are now false
+# and the assertions below replace them.
+
+test_that("the level column is added only where a level spec asks for it", {
+  # No fit and no sampling: prediction_grid() reads the family and the data off
+  # whatever it is handed, which is what makes the conditional testable without
+  # a posterior. The unconditional case is the one that matters, because every
+  # caller that existed before #382 passes no level spec.
+  d <- data.frame(x = c(1, 2, 3, 4), y = c(0.9, 0.6, 0.3, 0.1),
+                  site = factor(c("a", "a", "b", "b")))
+  fake <- list(data = d, family = gaussian())
+  f <- bnf(y ~ crf(x, "nec3param"))
+  plain <- prediction_grid(fake, f, resolution = 7)$newdata
+  expect_equal(nrow(plain), 7L)
+  expect_false("site" %in% names(plain))
+  spec <- list(group_var = "site", levels = c("a", "b"))
+  by_level <- prediction_grid(fake, f, resolution = 7,
+                              level_spec = spec)$newdata
+  expect_equal(nrow(by_level), 14L)
+  expect_equal(levels(by_level$site), c("a", "b"))
+  # The level varies slowest, so a posterior over this grid splits into
+  # contiguous per-level blocks.
+  expect_equal(as.character(by_level$site), rep(c("a", "b"), each = 7))
+  expect_equal(by_level$x[1:7], plain$x)
+  expect_equal(by_level$x[8:14], plain$x)
+  # One level predicted keeps every level on the factor, because brms builds
+  # the design matrix against the levels the fit was given.
+  spec$predict_levels <- "b"
+  one <- prediction_grid(fake, f, resolution = 7, level_spec = spec)$newdata
+  expect_equal(nrow(one), 7L)
+  expect_equal(levels(one$site), c("a", "b"))
+  expect_true(all(one$site == "b"))
+})
+
+test_that("bnec_newdata on a joint refit gives resolution rows per level", {
   skip_on_cran()
   f <- joint_gate_fixture()
-  expect_error(ecx(f$joint, ecx_val = 10))
-  nd <- prediction_grid(f$joint$fit, f$joint$bayesnecformula,
-                        resolution = 10)$newdata
-  expect_false("site" %in% names(nd))
-  expect_error(
-    brms::posterior_epred(f$joint$fit, newdata = nd, re_formula = NA),
-    "site"
-  )
+  nd <- bnec_newdata(f$joint, resolution = 10)
+  expect_equal(nrow(nd), 20L)
+  expect_equal(as.character(nd$site), rep(c("a", "b"), each = 10))
+  # The prediction that phase 1 recorded as stopping on the missing column now
+  # runs, which is the whole of what phase 2 needed from the grid.
+  pe <- brms::posterior_epred(f$joint$fit, newdata = nd, re_formula = NA)
+  expect_equal(ncol(pe), 20L)
+})
+
+test_that("the estimators report one row per level of a joint refit", {
+  skip_on_cran()
+  f <- joint_gate_fixture()
+  e <- suppressWarnings(suppressMessages(ecx(f$joint, ecx_val = 10)))
+  expect_s3_class(e, "data.frame")
+  expect_equal(e$level, c("a", "b"))
+  expect_equal(ncol(e), 4L)
+  n <- nec(f$joint)
+  expect_equal(n$level, c("a", "b"))
+  s <- suppressWarnings(suppressMessages(nsec(f$joint)))
+  expect_equal(s$level, c("a", "b"))
+  # The same columns the grouped route returns, so the two tables can be read
+  # against each other.
+  expect_equal(names(n), names(nec(f$grouped)))
+  # ecnsec() has to be given a method of its own: a bayesnecjointfit inherits
+  # from bnecfit, so without one the inherited ecnsec.bnecfit() ran on the
+  # multi-level grid and returned a number for the fit rather than per level.
+  en <- suppressWarnings(suppressMessages(ecnsec(f$joint, nsec = 1.5)))
+  expect_equal(en$level, c("a", "b"))
+  expect_equal(names(en), names(e))
+  # posterior = TRUE has no one-row-per-level form, and unlike a grouped fit
+  # there are no per-level fits to send the user to, so the draws come back as
+  # a named list rather than being refused.
+  ep <- suppressWarnings(suppressMessages(
+    ecx(f$joint, ecx_val = 10, posterior = TRUE)
+  ))
+  expect_named(ep, c("a", "b"))
+  expect_equal(length(ep$a), brms::ndraws(f$joint$fit))
+})
+
+test_that("per-level ecx from a joint refit agrees with bnec_group", {
+  # The phase 2 gate of #382. Phase 1 established that the curve parameters
+  # agree; this carries that agreement through the estimators, which is what a
+  # user actually reads. A disagreement here and not in phase 1's test is a
+  # grid or extraction fault in phase 2, because the priors are already pinned.
+  skip_on_cran()
+  f <- joint_gate_fixture()
+  jp <- suppressWarnings(suppressMessages(
+    ecx(f$joint, ecx_val = 10, posterior = TRUE)
+  ))
+  for (lev in c("a", "b")) {
+    gp <- suppressWarnings(suppressMessages(
+      ecx(f$grouped$fits[[lev]], ecx_val = 10, posterior = TRUE)
+    ))
+    j <- jp[[lev]]
+    # Monte Carlo error of each median, from the draws themselves. The two fits
+    # are independent samples of the same posterior, so the difference of the
+    # medians is compared against the two errors added in quadrature.
+    mcse <- sqrt(stats::sd(j, na.rm = TRUE)^2 / sum(!is.na(j)) +
+                   stats::sd(gp, na.rm = TRUE)^2 / sum(!is.na(gp)))
+    expect_lt(
+      abs(stats::median(j, na.rm = TRUE) -
+            stats::median(gp, na.rm = TRUE)) / mcse,
+      6
+    )
+  }
+})
+
+test_that("autoplot and ggbnec_data carry the level of a joint refit", {
+  skip_on_cran()
+  f <- joint_gate_fixture()
+  dat <- suppressWarnings(suppressMessages(ggbnec_data(f$joint)))
+  expect_true("panel" %in% names(dat))
+  expect_equal(levels(dat$panel), c("a", "b"))
+  expect_equal(attr(dat, "panel_var"), "site")
+  expect_equal(attr(dat, "group_var"), "site")
+  expect_true(attr(dat, "group_fitted"))
+  # One raw observation per fitted row, split between the panels as the data
+  # were.
+  raw <- dat[!is.na(dat$y_r), ]
+  expect_equal(as.integer(table(raw$panel)), c(nrow(nec_data), nrow(nec_data)))
+  # Each level gets its own curve and its own three NEC rows.
+  expect_equal(as.integer(table(dat$panel[!is.na(dat$nec_vals)])), c(3L, 3L))
+  p <- suppressWarnings(suppressMessages(autoplot(f$joint)))
+  expect_s3_class(p, "ggplot")
+  expect_equal(levels(p$layers[[1]]$data$model), c("site = a", "site = b"))
 })
