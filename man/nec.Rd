@@ -79,7 +79,10 @@ bound. The estimate may then be constrained by that prior and should be
 treated as censored unless its bound and shape are scientifically justified.
 No bound diagnostic is inferred for a mixed NEC/NSEC model average, a joint
 fit with a smooth response block, or component models with different bounds.
-The bound is transformed by \code{xform} before it is reported.
+Contact with the bound is assessed on the fitted scale before \code{xform},
+so decreasing and non-monotone transformations cannot reverse or otherwise
+change the quantile used for the comparison. The bound is transformed by
+\code{xform} only for display.
 }
 \examples{
 library(bayesnec)

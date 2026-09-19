@@ -90,6 +90,14 @@ test_that("nec reports an estimate at the fitted prior bound", {
     nec(constrained, xform = exp),
     paste0("\\(", format(signif(exp(upper), 3), scientific = FALSE), "\\)")
   )
+  expect_message(
+    nec(constrained, xform = function(x) -x),
+    "comparison is made on the fitted scale before xform"
+  )
+  expect_message(
+    nec(constrained, xform = function(x) (x - upper)^2),
+    "comparison is made on the fitted scale before xform"
+  )
 })
 
 test_that("the prior-bound message is provenance-neutral", {

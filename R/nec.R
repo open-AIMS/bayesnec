@@ -54,7 +54,10 @@
 #' treated as censored unless its bound and shape are scientifically justified.
 #' No bound diagnostic is inferred for a mixed NEC/NSEC model average, a joint
 #' fit with a smooth response block, or component models with different bounds.
-#' The bound is transformed by \code{xform} before it is reported.
+#' Contact with the bound is assessed on the fitted scale before \code{xform},
+#' so decreasing and non-monotone transformations cannot reverse or otherwise
+#' change the quantile used for the comparison. The bound is transformed by
+#' \code{xform} only for display.
 #'
 #' @return A vector containing the estimated no-effect value, including upper
 #' and lower 95% credible interval bounds (or other interval as specified by
@@ -118,7 +121,8 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
   if (mod_class == "ecx") {
     stop("nec is not a parameter in ecx model types.")
   }
-  nec_out <- object$ne_posterior
+  fitted_nec_out <- object$ne_posterior
+  nec_out <- fitted_nec_out
   if (inherits(xform, "function")) {
     nec_out <- xform(nec_out)
   }
@@ -131,7 +135,9 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
   warn_censored_draws(nec_out, ne_label(object))
   nec_estimate <- quantile(unlist(nec_out), probs = prob_vals, na.rm = TRUE)
   names(nec_estimate) <- clean_names(nec_estimate)
-  report_nec_prior_bound(object, nec_estimate, xform)
+  fitted_estimate <- quantile(unlist(fitted_nec_out), probs = prob_vals,
+                              na.rm = TRUE)
+  report_nec_prior_bound(object, fitted_estimate, xform)
   attr(nec_estimate, "toxicity_estimate") <- "nec"
   attr(nec_out, "toxicity_estimate") <-  "nec"
   if (!posterior) {
@@ -173,7 +179,8 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
             " mixture of NEC and NSEC draws -- the model-averaged N(S)EC",
             " rather than a NEC. See ?nec and summary(), which labels it.")
   }
-  nec_out <- object$w_ne_posterior
+  fitted_nec_out <- object$w_ne_posterior
+  nec_out <- fitted_nec_out
   if (inherits(xform, "function")) {
     nec_out <- xform(nec_out)
   }
@@ -184,7 +191,9 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
   warn_censored_draws(nec_out, ne_label(object))
   nec_estimate <- quantile(unlist(nec_out), probs = prob_vals, na.rm = TRUE)
   names(nec_estimate) <- clean_names(nec_estimate)
-  report_nec_prior_bound(object, nec_estimate, xform)
+  fitted_estimate <- quantile(unlist(fitted_nec_out), probs = prob_vals,
+                              na.rm = TRUE)
+  report_nec_prior_bound(object, fitted_estimate, xform)
   attr(nec_estimate, "toxicity_estimate") <- "nec"
   attr(nec_out, "toxicity_estimate") <-  "nec"
   if (!posterior) {
@@ -202,7 +211,7 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
 #' the same bound; \code{unique()} removes those copies.
 #'
 #' @param object A \code{bayesnecfit} or \code{bayesmanecfit}.
-#' @param estimate The three-quantile result returned by \code{nec()}.
+#' @param estimate The three-quantile result on the fitted predictor scale.
 #' @param xform The transformation applied to the posterior and its bound.
 #'
 #' @return \code{NULL}, invisibly. Called for its message.
@@ -242,7 +251,7 @@ report_nec_prior_bound <- function(object, estimate, xform = identity) {
   if (!length(bounds) || all(is.na(estimate))) {
     return(invisible(NULL))
   }
-  bounds <- unique(xform(bounds))
+  bounds <- unique(bounds)
   bounds <- bounds[is.finite(bounds)]
   if (length(bounds) != 1L) {
     return(invisible(NULL))
@@ -255,10 +264,12 @@ report_nec_prior_bound <- function(object, estimate, xform = identity) {
   statistic <- if (central_at_bound) "median" else "upper interval limit"
   index <- if (central_at_bound) 1 else 3
   bound <- bounds[which.min(abs(bounds - estimate[[index]]))]
+  display_bound <- xform(bound)
   message(
     "The estimated ", statistic, " is at the upper bound of the fitted nec ",
-    "prior (", signif(bound, 3), "). The estimate may be constrained by that ",
-    "prior; report it as censored unless the bound and prior are scientifically ",
+    "prior (", signif(display_bound, 3), "). The comparison is made on the ",
+    "fitted scale before xform. The estimate may be constrained by that prior; ",
+    "report it as censored unless the bound and prior are scientifically ",
     "justified."
   )
   invisible(NULL)

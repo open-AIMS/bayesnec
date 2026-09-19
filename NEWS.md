@@ -15,7 +15,8 @@
   default are assessed. Where the recorded combined estimate is a NEC with a
   common bound, `nec()` also reports when its median or upper interval limit
   reaches the fitted `nec` prior bound, so the estimate can be treated as
-  censored (#386).
+  censored. Contact is assessed before `xform`, so decreasing or non-monotone
+  transformations cannot hide it (#386).
 
 ## Count hurdles
 
