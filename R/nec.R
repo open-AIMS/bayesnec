@@ -47,6 +47,13 @@
 #' returns an unlabelled vector. Use \code{\link{nsec}} where a NSEC is wanted
 #' from every model regardless of type.
 #'
+#' The default \code{nec} prior is bounded by the tested predictor range.
+#' \code{nec} reports when the posterior median or upper interval limit reaches
+#' the fitted prior's upper bound, because the estimate may then be constrained
+#' by the design and should be treated as censored unless a scientifically
+#' justified prior supports extrapolation. The bound is transformed by
+#' \code{xform} before it is reported.
+#'
 #' @return A vector containing the estimated no-effect value, including upper
 #' and lower 95% credible interval bounds (or other interval as specified by
 #' prob_vals).
@@ -122,6 +129,7 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
   warn_censored_draws(nec_out, ne_label(object))
   nec_estimate <- quantile(unlist(nec_out), probs = prob_vals, na.rm = TRUE)
   names(nec_estimate) <- clean_names(nec_estimate)
+  report_nec_prior_bound(object, nec_estimate, xform)
   attr(nec_estimate, "toxicity_estimate") <- "nec"
   attr(nec_out, "toxicity_estimate") <-  "nec"
   if (!posterior) {
@@ -174,6 +182,7 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
   warn_censored_draws(nec_out, ne_label(object))
   nec_estimate <- quantile(unlist(nec_out), probs = prob_vals, na.rm = TRUE)
   names(nec_estimate) <- clean_names(nec_estimate)
+  report_nec_prior_bound(object, nec_estimate, xform)
   attr(nec_estimate, "toxicity_estimate") <- "nec"
   attr(nec_out, "toxicity_estimate") <-  "nec"
   if (!posterior) {
@@ -181,4 +190,58 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
   } else {
     nec_out
   }
+}
+
+#' Report a no-effect estimate constrained by its fitted prior
+#'
+#' Reads the bound from the prior the fit actually used rather than from the
+#' data, so a user-supplied bound and an inline predictor transformation are
+#' handled on the same scale as the posterior. Vectorised brms prior rows repeat
+#' the same bound; \code{unique()} removes those copies.
+#'
+#' @param object A \code{bayesnecfit} or \code{bayesmanecfit}.
+#' @param estimate The three-quantile result returned by \code{nec()}.
+#' @param xform The transformation applied to the posterior and its bound.
+#'
+#' @return \code{NULL}, invisibly. Called for its message.
+#'
+#' @noRd
+report_nec_prior_bound <- function(object, estimate, xform = identity) {
+  fits <- if (inherits(object, "bayesmanecfit")) {
+    object$mod_fits
+  } else {
+    list(object)
+  }
+  bounds <- unlist(lapply(fits, function(fit) {
+    prior <- fit$fit$prior
+    if (is.null(prior) || !all(c("nlpar", "ub") %in% names(prior))) {
+      return(numeric(0))
+    }
+    upper <- suppressWarnings(as.numeric(prior$ub))
+    use <- grepl("nec$", prior$nlpar) & is.finite(upper)
+    unique(upper[use])
+  }), use.names = FALSE)
+  if (!length(bounds) || all(is.na(estimate))) {
+    return(invisible(NULL))
+  }
+  bounds <- unique(xform(bounds))
+  bounds <- bounds[is.finite(bounds)]
+  if (!length(bounds)) {
+    return(invisible(NULL))
+  }
+  central_at_bound <- any(signif(estimate[[1]], 3) == signif(bounds, 3))
+  upper_at_bound <- any(signif(estimate[[3]], 3) == signif(bounds, 3))
+  if (!central_at_bound && !upper_at_bound) {
+    return(invisible(NULL))
+  }
+  statistic <- if (central_at_bound) "median" else "upper interval limit"
+  index <- if (central_at_bound) 1 else 3
+  bound <- bounds[which.min(abs(bounds - estimate[[index]]))]
+  message(
+    "The estimated ", statistic, " is at the upper bound of the fitted nec ",
+    "prior (", signif(bound, 3), "). The estimate may be constrained by the ",
+    "tested predictor range; report it as censored unless a scientifically ",
+    "justified prior supports extrapolation."
+  )
+  invisible(NULL)
 }

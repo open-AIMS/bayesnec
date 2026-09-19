@@ -62,6 +62,70 @@ test_that("the refusal precedes the family choice, so nothing is read off a subs
   expect_length(msgs, 0)
 })
 
+test_that("an incomplete observed response is reported before fitting", {
+  d <- data.frame(
+    x = rep(c(0, 1, 2, 4), each = 3),
+    y = rep(c(1, 0.95, 0.9, 0.8), each = 3)
+  )
+  bdat <- model.frame(
+    bayesnecformula(y ~ crf(x, c("nec3param", "nec4param"))),
+    data = d, run_par_checks = TRUE
+  )
+  expect_warning(check_response_range(bdat), "observed decline is.*20%")
+
+  d$y <- rep(c(1, 0.7, 0.3, 0.1), each = 3)
+  bdat <- model.frame(
+    bayesnecformula(y ~ crf(x, c("nec3param", "nec4param"))),
+    data = d, run_par_checks = TRUE
+  )
+  expect_silent(check_response_range(bdat))
+})
+
+test_that("bnec reports an incomplete range once and only for default priors", {
+  d <- data.frame(
+    x = rep(c(0, 1, 2, 4), each = 3),
+    y = rep(c(1, 0.95, 0.9, 0.8), each = 3)
+  )
+  f <- y ~ crf(x, c("nechormepwr", "nechorme4pwr"))
+  warnings <- character(0)
+  suppressMessages(
+    withCallingHandlers(
+      expect_error(
+        bnec(f, d, family = Beta(link = "identity")),
+        "None of the model"
+      ),
+      warning = function(w) {
+        warnings <<- c(warnings, conditionMessage(w))
+        invokeRestart("muffleWarning")
+      }
+    )
+  )
+  expect_length(grep("may not identify the lower asymptote", warnings), 1)
+
+  supplied <- brms::prior_string("beta(5, 2)", nlpar = "top")
+  expect_warning(
+    suppressMessages(
+      expect_error(
+        bnec(f, d, family = Beta(link = "identity"), prior = supplied),
+        "None of the model"
+      )
+    ),
+    NA
+  )
+})
+
+test_that("the response-range diagnostic is not inferred on an invalid scale", {
+  d <- data.frame(
+    x = rep(0:3, each = 2),
+    y = rep(c(0, -0.1, -0.2, -0.3), each = 2)
+  )
+  bdat <- model.frame(
+    bayesnecformula(y ~ crf(x, "nec4param")), data = d,
+    run_par_checks = TRUE
+  )
+  expect_silent(check_response_range(bdat))
+})
+
 test_that("Check models inappropriate for negative x are dropped", {
   # The family is given explicitly because nec_data's response is 0-1 bounded,
   # for which nechorme4pwr is now excluded up front (#177) -- the negative-x

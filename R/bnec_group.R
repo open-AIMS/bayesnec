@@ -189,6 +189,16 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # arrives only after levels 1 to k-1 have compiled and sampled. See #271.
   check_disp_finite(formula, data)
   check_reserved_names(data)
+  dots <- list(...)
+  # Checked over every level before fitting any of them. Leaving this to the
+  # inner bnec() calls would report the same diagnostic one level at a time and
+  # could reach an affected level only after earlier levels had compiled and
+  # sampled. The private marker is removed by bnec() before brms sees it. A
+  # supplied prior replaces the defaults the warning concerns. See #386.
+  if (is.null(dots$prior)) {
+    check_response_range(mod_dat, group = grp)
+  }
+  dots[[".bayesnec_response_range_checked"]] <- TRUE
   # The response substitutions are not reported here. bnec_group() fits each
   # level on its own subset, so the values substituted differ between levels
   # and the per-level bnec() call is where the report belongs. See #93.
@@ -215,7 +225,6 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # request is therefore recorded here, and crossed_group_weights() prefers
   # whatever the fits themselves still carry, since that is what actually
   # happened. See #33.
-  dots <- list(...)
   wt_method <- if (!is.null(dots$loo_controls$weights$method)) {
     dots$loo_controls$weights$method
   } else {

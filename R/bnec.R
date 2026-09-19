@@ -79,7 +79,16 @@
 #' already logged, so how much narrower the regularizing entry is depends on
 #' which of the two the data are on. See \code{vignette("example3")} for why the
 #' two rules differ. Ignored when priors are supplied directly via the
-#' \code{prior} argument.
+#' \code{prior} argument. Both default sets assume that the tested concentrations
+#' represent enough of the response curve to inform its lower asymptote. When
+#' the mean response at the highest concentration has declined by less than
+#' 50 percent from the mean at the lowest, \code{bnec} warns before fitting:
+#' for an equation that estimates \code{bot}, its response-derived prior may
+#' then describe the observed endpoint rather than the asymptote, while the
+#' \code{nec} or \code{ec50} prior excludes thresholds above the tested range.
+#' Inspect the generated entries with
+#' \code{\link{get_priors}} and pass a complete, scientifically justified prior
+#' through \code{prior} when information beyond the design is available.
 #' @param predictor_scale A \code{\link[base]{character}} string declaring the
 #' scale of the predictor for the default \code{nec} and \code{ec50} prior.
 #' \code{"concentration"} treats the supplied values as recorded concentrations,
@@ -734,6 +743,10 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # bnec() call retains its established ambient-stream behaviour.
   group_seed <- brm_args[[".bayesnec_group_seed"]]
   brm_args[[".bayesnec_group_seed"]] <- NULL
+  response_range_checked <- isTRUE(
+    brm_args[[".bayesnec_response_range_checked"]]
+  )
+  brm_args[[".bayesnec_response_range_checked"]] <- NULL
   # `prior` is an explicit argument (rather than relying on `...`) so that a
   # user-supplied `prior =` is matched exactly and cannot be captured by partial
   # matching against `prior_type`. Only fold it into brm_args when supplied, so
@@ -765,6 +778,16 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # call: check_data() runs once per model, and a model set would otherwise
   # repeat the message ten or more times.
   check_normalisation(bdat)
+  # The default response-scaled priors can describe the observed endpoint
+  # rather than the lower asymptote when little of the response range was
+  # observed. Raised once here rather than from define_prior(), which runs once
+  # per equation. bnec_group() performs the same check over all levels before
+  # its loop and marks each inner call so it is not repeated. A complete prior
+  # supplied by the user replaces the defaults and therefore does not need this
+  # default-prior warning. See #386.
+  if (!response_range_checked && is.null(brm_args$prior)) {
+    check_response_range(bdat)
+  }
   # Raised here for the same reason: check_data() runs once per model, so a
   # model set would print the conflict for each of its members and then end on
   # the generic all-models-failed advice, long after the cause. The conflict is

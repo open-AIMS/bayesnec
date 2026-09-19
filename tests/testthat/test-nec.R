@@ -76,3 +76,18 @@ test_that("nec says how many draws are censored, on either class", {
 test_that("an uncensored posterior is silent", {
   expect_silent(nec(nec4param))
 })
+
+test_that("nec reports an estimate at the fitted prior bound", {
+  constrained <- nec4param
+  upper <- unname(quantile(constrained$ne_posterior, 0.975))
+  is_nec <- constrained$fit$prior$nlpar == "nec"
+  constrained$fit$prior$ub[is_nec] <- upper
+  expect_message(
+    nec(constrained),
+    "upper interval limit is at the upper bound of the fitted nec prior"
+  )
+  expect_message(
+    nec(constrained, xform = exp),
+    paste0("\\(", format(signif(exp(upper), 3), scientific = FALSE), "\\)")
+  )
+})

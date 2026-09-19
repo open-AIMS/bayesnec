@@ -59,6 +59,49 @@ test_that("a missing value is refused before the first level is fitted", {
   expect_false(any(grepl("Fitting level", msgs)))
 })
 
+test_that("the incomplete-response warning combines affected levels", {
+  d <- data.frame(
+    x = rep(rep(c(0, 1, 2, 4), each = 2), 2),
+    y = c(rep(c(1, 0.9, 0.85, 0.8), each = 2),
+          rep(c(1, 0.8, 0.4, 0.1), each = 2)),
+    site = rep(c("incomplete", "complete"), each = 8)
+  )
+  bdat <- model.frame(
+    bayesnecformula(y ~ crf(x, "nec4param")), data = d,
+    run_par_checks = TRUE
+  )
+  expect_warning(
+    check_response_range(bdat, group = d$site),
+    "group level\\(s\\).*incomplete.*20%"
+  )
+})
+
+test_that("bnec_group checks once and marks every level as checked", {
+  d <- data.frame(
+    x = rep(rep(c(0, 1, 2, 4), each = 2), 2),
+    y = rep(c(1, 0.95, 0.9, 0.8), each = 4),
+    site = rep(c("a", "b"), each = 8)
+  )
+  checked <- logical(0)
+  local_mocked_bindings(
+    bnec = function(...) {
+      checked <<- c(
+        checked, isTRUE(list(...)[[".bayesnec_response_range_checked"]])
+      )
+      list()
+    },
+    .package = "bayesnec"
+  )
+  expect_warning(
+    out <- suppressMessages(
+      bnec_group(y ~ crf(x, "nec4param"), d, group_var = "site")
+    ),
+    "group level\\(s\\).*\"a\".*\"b\""
+  )
+  expect_s3_class(out, "bayesnecgroupfit")
+  expect_identical(checked, c(TRUE, TRUE))
+})
+
 test_that("crossed_group_weights requires the right class", {
   expect_error(crossed_group_weights(manec_example), "bayesnecgroupfit")
 })
