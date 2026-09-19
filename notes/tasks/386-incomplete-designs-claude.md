@@ -148,7 +148,7 @@ Keep, unchanged from PR #387:
   from the same defaults.
 - The per-block treatment of a hurdle fit.
 
-Change the message text to name the remedy once phase 6 exists:
+Change the message text to name the remedy once phases 5 and 7 exist:
 
 ```
 The response at the highest predictor value is still declining (the mean falls
@@ -160,7 +160,8 @@ reported.
 
 ### 2.3 `report_nec_prior_bound()`
 
-Phase 4 replaces it. Two properties of it are worth keeping and one is not.
+Phases 4 and 5 replace it. Two properties of it are worth keeping and two are
+not.
 
 Keep the assessment on the fitted scale before `xform`, with `xform` applied to
 the bound for display only. A decreasing transformation would otherwise reverse
@@ -170,17 +171,17 @@ Keep reading the bound from the prior stored on the fitted object rather than
 recomputing it from the data, so a user-supplied bound is handled.
 
 Do not keep the exact-equality test, `signif(estimate, 3) == signif(bound, 3)`.
-A median at 0.997 of the bound is not reported by it. Phase 4 counts draws at or
+A median at 0.997 of the bound is not reported by it. §4.3 counts draws at or
 above the bound instead, which needs no tolerance.
 
 Do not keep the refusal to report for a mixed NEC/NSEC model average. That is
 the common default `bnec()` path, so the report mostly does not fire where it is
-wanted. Phase 4 reports per component and combines, which is what
+wanted. §4.3 reports per component and combines, which is what
 `nec.bayesnechurdlefit()` already does for the two blocks of a hurdle fit.
 
 ---
 
-## 3. Removal of the tested-range truncation (phase 5, #393)
+## 3. Removal of the tested-range truncation (phase 6, #393)
 
 ### 3.1 What changes
 
@@ -226,8 +227,8 @@ What the removal does buy is the shape of the posterior. At present a threshold
 above the series produces a spike at `max(x)` and a narrow credible interval,
 which reads as a precise estimate. Without the truncation the posterior spreads
 over the region the data cannot distinguish, and the interval is wide, which is
-the correct statement. Phase 4 is what turns that into a report rather than a
-number.
+the correct statement. Phases 4 and 5 are what turn that into a report rather
+than a number.
 
 The prior's own spread still concentrates inside the tested range. `sigma` is
 set so that the central 95% interval reaches the farthest concentration tested
@@ -236,7 +237,7 @@ after this change roughly one part in forty of the prior mass sits above the
 highest concentration on the lognormal branch. That is enough for the posterior
 to be shaped by the likelihood where the data say anything, and it is not enough
 on a wholly flat design, where the answer is prior-dominated by construction.
-Widening it is part of phase 6 and not of this phase.
+Widening it is part of phase 7 and not of this phase.
 
 ### 3.3 The lower bound
 
@@ -244,12 +245,12 @@ Widening it is part of phase 6 and not of this phase.
 the lowest concentration tested is admissible. That is the mirror case and it is
 real: a sample toxic at every dilution has its threshold below the series.
 
-The reporting for it is not built in this plan. `warn_censored_draws()` already
+The reporting for it is open in §4.11. `warn_censored_draws()` already
 holds the wording, in `below_msg()` at `R/helpers.R:2087`, for an NSEC whose
 curve reached the reference below the lowest concentration in the prediction
-range. Phase 4 should reuse it for the lower end of the `nec` posterior, and the
-`extrapolate` argument should apply to both ends. Flagged in the human document
-as an open decision because #386 measured only the upper end.
+range. §4.11 should reuse it for the lower end of the `nec` posterior, and the
+`extrapolate` argument should apply to both ends. Flagged in the human document as an open
+decision because #386 measured only the upper end.
 
 ### 3.4 What must be measured
 
@@ -284,117 +285,192 @@ through the `prior` argument, which is where a user-supplied bound belongs.
 
 ---
 
-## 4. Censoring and `extrapolate` (phase 4, #392)
+## 4. Censoring and `extrapolate` (phases 4 and 5, #395 and #392)
 
-### 4.1 The censoring
+### 4.1 The realisation of the no-effect estimate
 
-`nec()` gains an `extrapolate` argument on the generic and both methods,
-`R/nec.R:73`, `:92` and `:147`:
+The reported N(S)EC is not computed by `nec()`. `expand_nec()` builds
+`ne_posterior` at `R/expand_classes.R:111-114` and stores its summary as `ne`;
+`expand_manec()` builds `w_ne_posterior` at `:403` and stores `w_ne` at `:420`.
+`summary()` reads those stored summaries through `clean_nec_vals()`, and
+`autoplot()` reads them again through `summ$nec_vals` at `R/autoplot.R:83`,
+`:144`, `:177` and `:199`. Nothing on that path calls `nec()`.
+
+So the censoring is recorded where the posterior is realised, and `nec()` and
+`nsec()` read the record rather than deriving it. An earlier draft of this plan
+put it in `nec()` alone, which would have left the number users report
+unqualified.
+
+### 4.2 The two kinds of beyond-range draw
+
+`ne_posterior` holds different quantities for the two equation classes, and they
+handle the same condition in opposite ways.
+
+For an `ecx`-type equation it is an NSEC read off the prediction grid by
+`nsec_off_curve()`. A draw whose curve does not fall to the control's `sig_val`
+quantile within the grid is `NA`, and `estimates_summary()` deletes it with
+`na.rm = TRUE`. The reported quantiles are therefore conditional on the draws
+that did reach the reference, which is lower than the quantity they are labelled
+as wherever any draw did not. `nsec_off_curve()` reports the count per equation
+at fit time; `expand_manec()` reports nothing for the mixture it assembles.
+
+For a `nec`-type equation it is `b_nec_Intercept`, a sampled parameter currently
+held inside the range by the prior truncation §3 removes.
+
+After §3, one half of a model-averaged mixture would delete its beyond-range
+draws while the other kept them at large values, and the effective contribution
+of a component that deleted draws would be smaller than the stacking weight
+allocated to it. That is why this section precedes §3 in the order of work.
+
+### 4.3 The record
+
+In `expand_nec()` and `expand_manec()`, on the posterior:
+
+```r
+attr(ne_posterior, "censored") <- list(
+  bound = max(pred_data$x),   # the prediction grid, not max(x) of the data
+  above = <logical, one per draw>
+)
+```
+
+`above` is `is.na(draw)` for a block read off the curve and `draw >= bound` for a
+block that samples `b_nec_Intercept`. Both mean the same thing for the reported
+quantity: the no-effect value is at or beyond the top of the prediction range.
+`expand_manec()` combines the per-component vectors under the draw index it
+already uses, so the combined fraction is the weighted one and not a count over
+components.
+
+The bound is the prediction grid rather than `max(x)` of the data, because that
+is the value `ecx()` already censors at and a user who passed `x_range` to
+`bnec()` meant it.
+
+### 4.4 The censored summary
+
+`estimates_summary()` gains a censored form. With a censored fraction `f`, the
+quantile at probability `q` is the ordinary quantile of the uncensored draws
+where `q < 1 - f`, and is reported as `>= bound` otherwise.
+
+A censored draw is never given a numeric value. It contributes its rank and
+nothing else.
+
+This is not the treatment #39 and D15 ruling 3 removed, and the distinction goes
+in the code comment at `estimates_summary()` so that the two are not later
+confused. That treatment assigned `max(x_vec)` to a censored draw and used it as
+a number, so it raised the point estimate without saying so. Here a quantile
+falling among the censored draws is reported as a bound rather than as a number,
+and the fraction is stated.
+
+`summary()` and `print()` show a censored entry as `>= <bound>`. Where only the
+upper interval limit is censored, the estimate prints normally and the limit
+prints as `>= <bound>`. `autoplot()` draws a censored N(S)EC as a bound rather
+than as a line with an interval.
+
+### 4.5 `extrapolate`
 
 ```r
 nec(object, posterior = FALSE, xform = identity,
     prob_vals = c(0.5, 0.025, 0.975), extrapolate = FALSE, ...)
+
+nsec(object, sig_val = 0.01, resolution = 200, x_range = NA,
+     xform = identity, prob_vals = c(0.5, 0.025, 0.975),
+     extrapolate = FALSE, ..., dpar = NULL)
 ```
-
-The bound is `max(object$pred_vals$data$x)` for a `bayesnecfit`, which is the
-upper end of the prediction grid `expand_nec()` built, `R/expand_classes.R:116`.
-It is the value `ecx()` already censors at, so the two report against the same
-number and a user who widened `x_range` at fit time gets a correspondingly wider
-`nec()`. For a `bayesmanecfit`, take it from the component fits and require them
-to agree; where they do not, report per component.
-
-With `extrapolate = FALSE`, draws at or above the bound are set to the bound.
-The returned estimate then gains the attribute:
-
-```r
-attr(nec_estimate, "censored") <- list(bound = bound,
-                                       fraction = mean(draws >= bound),
-                                       direction = "above")
-```
-
-and a classed warning is raised through the existing mechanism:
-
-```r
-warning(structure(class = c("bayesnec_censored", "warning", "condition"),
-                  list(message = msg, call = NULL)))
-```
-
-so that a method summarising several components can muffle the inner reports
-with `without_censored_warning()`, `R/helpers.R:2123`, exactly as
-`nec.bayesnechurdlefit()` already does.
-
-Order of operations, which is not negotiable: censor on the fitted predictor
-scale, then apply `xform`. PR #387 established this and the reason holds — a
-decreasing `xform` would otherwise map the upper tail to the lower one and the
-comparison against the bound would select the wrong quantile.
-
-### 4.2 `extrapolate`
 
 | value | behaviour |
 |---|---|
-| `FALSE` (default) | censor at the upper end of the prediction grid |
-| `TRUE` | no censoring; the extrapolation limit is infinite and the posterior is returned as sampled |
-| a number | censor at that value instead of the grid bound |
+| `FALSE` (default) | report the censored summary of §4.4 |
+| `TRUE` | no censoring; the limit is infinite |
+| a number | the extrapolation limit; censor at that value instead |
 
-A numeric value below the grid bound is an error, not a silent tightening: it
-would report an estimate as censored at a value the fit had no trouble
-identifying, and the user has almost certainly confused it with `x_range`.
+`TRUE` is accepted only where every component of the reported estimate samples a
+NEC, which `ne_type` records. A curve cannot be read off an infinite grid, so
+where any component is an NSEC, `TRUE` is an error naming the finite form. On the
+default `bnec()` set, which mixes both classes, that is the common case.
 
-`extrapolate = TRUE` on a fit whose prior is still truncated returns the
-truncated posterior, which is not an extrapolation. Detect that case, by
-comparing the grid bound against the `ub` on the stored `nec` prior, and message
-that the fit itself is bounded so the argument has nothing to release. This
-matters for the phase ordering: between phase 4 and phase 5 every fit is in that
-state, and afterwards only fits made by an earlier version or with a
-user-supplied bound are.
+A finite limit does both jobs on a mixed set. The NSEC components are recomputed
+on a grid extended to it, through the `x_range` argument `nsec()` and `ecx()`
+already take at `R/nsec.R:129` and `R/ecx.R:128`, which recompute from the stored
+fit and need no refit. The NEC components are released to it. The roxygen states
+that the first of those re-evaluates the curve and so takes time proportional to
+`resolution`.
 
-### 4.3 Why `nec()` caps and `ecx()` drops
+A number below the current grid bound is an error naming `x_range`, not a silent
+tightening: it would report an estimate as censored at a value the fit had no
+trouble identifying.
+
+### 4.6 The difference between capping and dropping
 
 The two are both called censoring and they are not the same operation, so the
-difference is stated here and in the roxygen.
+difference is stated in the roxygen of `nec()`, `nsec()` and `ecx()`.
 
-`ecx()` reads its estimate off a fitted curve on a grid. A draw whose curve
-never reaches the target has no ECx in the range, and may have none at any
-concentration, so `NA` is the correct value and the draw is excluded. Capping it
-at the grid bound would assert that its ECx equals that bound, which is a
-statement the draw does not make.
+`ecx()` reads its estimate off a fitted curve. A draw whose curve never reaches
+the target has no ECx in the range, and may have none at any concentration, so
+`NA` is the correct value and the draw is excluded. Capping it at the grid bound
+would assert that its ECx equals that bound, which is a statement the draw does
+not make.
 
-`nec()` reads a sampled parameter. A draw whose `nec` is above the grid bound
-has a value, and that value is known to exceed the bound, so setting it to the
-bound is right-censoring in the ordinary sense and the resulting quantile is a
-censored quantile. Where more than half the draws are censored the median is
-exactly the bound, and the correct report is that the estimate is at or above
-it.
+`nec()` reads a sampled parameter. A draw whose `nec` is above the grid bound has
+a value, and that value is known to exceed the bound, so setting it to the bound
+is right-censoring in the ordinary sense.
 
-### 4.4 The printed form
+§4.4 unifies the two at the reporting stage by counting both as "at or above the
+bound" without giving either a number, which is available to both because neither
+claims a value for a censored draw.
 
-`summary()` and `print()` show a censored estimate as `>= <bound>` rather than
-as a number, so that a value at the bound cannot be read as a point estimate.
-`autoplot()`'s N(S)EC annotation takes the same treatment. Where only the upper
-interval limit is censored, the estimate prints normally and the upper limit
-prints as `>= <bound>`.
+### 4.7 Order of operations
 
-### 4.5 Tests
+Censor on the fitted predictor scale, then apply `xform`. PR #387 established
+this and the reason holds: a decreasing `xform` would map the upper tail to the
+lower one and the comparison against the bound would select the wrong quantile.
+`xform` applies to the bound for display only.
 
-`tests/testthat/test-nec.R`:
+### 4.8 The hurdle route
 
-- A fit whose posterior lies wholly above the bound: estimate equals the bound
-  at all three quantiles, `censored` attribute records a fraction of 1, one
-  `bayesnec_censored` warning is raised.
-- The same fit under `extrapolate = TRUE`: the posterior is returned unaltered
-  and no censoring warning is raised.
-- `extrapolate = <number>` above the grid bound: censoring at that number.
-- `extrapolate = <number>` below the grid bound: an error naming `x_range`.
-- A decreasing `xform`: the same draws are censored as with `identity`, and the
-  reported bound is the transformed one.
-- A `bayesmanecfit` whose components have different grid bounds: reported per
-  component rather than refused.
-- A fit with no censored draws: no warning, no attribute, output identical to
-  the current release.
+`expand_nec()` builds `combined_ne` as `pmin()` of the two blocks where both are
+threshold blocks, `R/expand_classes.R:138`, and off the combined curve otherwise.
+`pmin()` propagates `NA`, so a censored draw in either block censors the
+combination. That is correct and needs recording rather than changing.
 
----
+### 4.9 Interaction with a still-truncated prior
 
-## 5. The incomplete-design prior set (phase 6, #394)
+Between these phases and §3, every fit has a `nec` prior bounded at the grid, so
+`extrapolate = TRUE` returns a truncated posterior and is not an extrapolation.
+Detect it by comparing the grid bound against the `ub` on the stored `nec` prior
+and message that the fit itself is bounded. Afterwards the same applies to a fit
+made by an earlier version or with a user-supplied bound.
+
+### 4.10 Tests
+
+`tests/testthat/test-summary.R`, `test-autoplot.R`, `test-nec.R` and
+`test-nsec.R`:
+
+- a single `ecx`-type fit with censored draws: `summary()` prints `>= bound` and
+  states the fraction;
+- a model-averaged set mixing `nec` and `ecx` equations: the combined fraction is
+  the weighted one;
+- a hurdle fit where one block is censored and the other is not;
+- `extrapolate = TRUE` on a pure NEC set: the posterior unaltered;
+- `extrapolate = TRUE` on a mixed set: an error naming the finite form;
+- a finite limit on a mixed set: the NSEC components recomputed on the extended
+  grid, the NEC components released, and the combined fraction falling;
+- a number below the grid bound: an error naming `x_range`;
+- a decreasing `xform`: the same draws censored as under `identity`, the bound
+  reported transformed;
+- a fit with no censored draws: output identical to the current release, which is
+  the regression guard for every existing analysis.
+
+### 4.11 Open decisions
+
+Whether the lower end takes the same treatment, for a threshold below the lowest
+concentration tested. `warn_censored_draws()` already holds the wording in its
+`below_msg()` branch at `R/helpers.R:2087`. #386 measured only the upper end.
+
+Whether the per-equation NSEC summary is reported as censored as well, or whether
+only the combined N(S)EC is. The per-equation one deletes its censored draws and
+says so in a message, which is disclosed but is a different quantity from the one
+it is labelled as.
+
+## 5. The incomplete-design prior set (phase 7, #394)
 
 ### 5.1 The declaration is the user's
 
@@ -571,8 +647,8 @@ The roxygen at `R/define_prior.R:385` states that `"uninformative"` is the set
 to use on a design that does not reach its asymptote. #386 measured that this is
 true on the positive branch and false on the gaussian one, where the
 uninformative entry held 6.43e-14 of its mass below the truth. That sentence is
-corrected as part of phase 6, and the correction is noted here so it is not lost
-if phase 6 is deferred.
+corrected as part of phase 7, and the correction is noted here so it is not lost
+if phase 7 is deferred.
 
 `bnec_hurdle()` refuses an `NA` response up front and primes its second block
 from one survival proportion per concentration. The flatness rule must be

@@ -25,7 +25,7 @@ prior and the initial-value band to match.
 Two smaller items go first. One is a defect found while reviewing PR #387: the
 default priors for a `rate()` fit are built from counts rather than from rates.
 The other is the warning PR #387 adds, which identifies the design for the user
-and is what tells them to reach for the new prior set.
+and is what tells them to declare it.
 
 ---
 
@@ -62,9 +62,27 @@ highest concentration with a narrow interval. Specification §3.
 
 ### Censoring of the reported estimate at the prediction range
 
-Removing the truncation without this would make `nec()` return concentrations
+Removing the truncation without this would make `bnec()` report concentrations
 above the highest tested by default, which is a change to what the package
 claims. Specification §4.
+
+### The censoring recorded where the posterior is realised
+
+The reported N(S)EC is summarised inside `bnec()` and read from that stored
+summary by `summary()`, `print()` and `autoplot()`, so a report added to `nec()`
+alone would not reach the number users report. Specification §4.1.
+
+### A single treatment for a beyond-range draw
+
+A model-averaged N(S)EC mixes a sampled NEC with an NSEC read off the grid, and
+the second currently deletes its beyond-range draws while the first cannot
+produce one, so removing the truncation would leave the two halves of one mixture
+handling the same condition in opposite ways. Specification §4.2.
+
+### An infinite extrapolation limit only where every component samples a NEC
+
+A curve cannot be read off an infinite grid, so a set containing an `ecx`-type
+equation requires a finite limit. Specification §4.5.
 
 ### The `extrapolate` argument on `nec()`
 
@@ -106,12 +124,13 @@ Six phases, one issue each.
 | 1 | #389 | the default priors for a `rate()` fit |
 | 2 | #390 | the report that a design has not flattened |
 | 3 | #391 | incomplete designs in the prior audit |
-| 4 | #392 | censoring of the reported estimate, and `extrapolate` |
-| 5 | #393 | removal of the tested-range truncation |
-| 6 | #394 | the incomplete-design prior set |
+| 4 | #395 | the censoring record on the no-effect posterior, and its reporting |
+| 5 | #392 | `extrapolate` on `nec()` and `nsec()` |
+| 6 | #393 | removal of the tested-range truncation |
+| 7 | #394 | the incomplete-design prior set |
 
-Phases 4 and 5 must land in that order, because phase 5 removes a constraint
-that phase 4 puts the reporting in place for.
+Phases 4, 5 and 6 must land in that order. Phase 6 removes a constraint that
+phases 4 and 5 put the reporting in place for.
 
 ### Phase 1. The rate denominator in the default priors (#389)
 
@@ -154,34 +173,61 @@ It is done when the script reports the truncated prior CDF at the true value for
 complete and incomplete designs side by side, and reproduces the figures #386
 quotes.
 
-### Phase 4. Censoring and the `extrapolate` argument (#392)
+### Phase 4. The censoring record on the no-effect posterior (#395)
 
-`nec()` reports a no-effect estimate at or above the top of the prediction range
-as censored, and gains an argument that returns it uncensored. Nothing else
-changes yet, so this phase is safe on its own: the prior is still truncated, so
-the behaviour is a clearer report of what the package already returns.
+The no-effect posterior records which of its draws lie beyond the prediction
+range and at what bound, and `summary()`, `print()` and `autoplot()` report it.
 
-It is done when a fit whose posterior is against the bound reports the fraction
-of draws censored and the bound, `extrapolate = TRUE` returns the posterior
-unaltered, and `summary()` shows the estimate as bounded below rather than as a
-point.
+This phase exists because the reported N(S)EC is not computed by `nec()`. It is
+realised inside `bnec()`, by `expand_nec()` for one equation and `expand_manec()`
+for a model-averaged set, and `summary()` reads the stored summary. A censoring
+report added to `nec()` alone would not reach the number a user reports.
 
-### Phase 5. Removal of the tested-range truncation (#393)
+It also settles a difference between the two halves of a model-averaged N(S)EC.
+For an `ecx`-type equation the no-effect value is an NSEC read off the prediction
+grid, and a draw whose curve does not reach the reference is `NA` and is deleted
+from the summary. For a `nec`-type equation it is a sampled parameter, currently
+held inside the range by the truncation phase 6 removes. Without this phase, one
+half of the mixture would delete its beyond-range draws while the other kept
+them.
+
+It is done when the reported N(S)EC states its censored fraction and its bound,
+the numbers `summary()` prints agree with what `nec()` and `nsec()` return for
+the same object, and nothing changes for a fit with no censored draws.
+
+### Phase 5. The `extrapolate` argument (#392)
+
+`nec()` and `nsec()` gain an argument that returns a no-effect estimate beyond
+the prediction range for a caller who asks for it. The default reports the
+censored summary from phase 4.
+
+The two halves of a mixed set cannot be extrapolated the same way, and that
+decides what the argument accepts. A NEC is a sampled parameter, so releasing it
+to an infinite limit is free. An NSEC is read off a fitted curve, and a curve
+cannot be read off an infinite grid. So an infinite limit is available only where
+every component samples a NEC, and a mixed set requires a finite limit, which
+extends the grid for the NSEC components and releases the NEC components.
+
+It is done when `extrapolate = TRUE` returns the posterior unaltered on a pure
+NEC set and errors on a mixed one, a finite limit extends both halves, and no
+output changes for a fit with no censored draws.
+
+### Phase 6. Removal of the tested-range truncation (#393)
 
 The default `nec` and `ec50` priors are no longer truncated at the highest
 concentration tested. The posterior may then place mass above the series, and
-phase 4 is what stops that reaching the user as an unqualified number.
+phases 4 and 5 are what stop that reaching the user as an unqualified number.
 
 It is done when the audit shows the complete-design cells unchanged, the
 incomplete-design threshold cells no longer at a prior CDF of exactly 1, and the
 initial-value search taking no more proposals than before on the complete
 designs.
 
-### Phase 6. The incomplete-design prior set (#394)
+### Phase 7. The incomplete-design prior set (#394)
 
 `bnec()` gains the declaration that the lower asymptote was not observed. It
 changes the `bot` prior and the initial-value band. This is the largest phase and
-it depends on all five before it.
+it depends on all six before it.
 
 It is done when the audit shows the `bot` prior covering the true value on the
 incomplete designs, the complete-design cells unchanged under the default, and a
@@ -192,8 +238,8 @@ to Stan.
 
 ## The user-visible change
 
-On a complete design, nothing changes except the reporting in phase 4. The
-priors are the same and the estimates are the same.
+On a complete design, nothing changes except the reporting in phases 4 and 5.
+The priors are the same and the estimates are the same.
 
 On a design that has not flattened, `bnec()` reports it before fitting:
 
@@ -202,21 +248,36 @@ The response at the highest concentration is still declining. The lower
 asymptote may not be identified. See ?bnec for `response_complete`.
 ```
 
-The user then fits with the declaration, and `nec()` reports the estimate as
-censored unless they ask for extrapolation:
+The user then fits with the declaration. The N(S)EC is reported as censored,
+both where they read it off the summary and where they call the estimator:
 
 ```r
 fit <- bnec(y ~ crf(x, "nec4param"), data = dat, response_complete = FALSE)
 
-nec(fit)
-#  Estimate  Q2.5 Q97.5
-#     >= 40 >= 40 >= 40
-#  The no-effect estimate is at or above 40, the highest concentration in the
-#  prediction range, for 87% of draws. Reported as censored.
+summary(fit)
+#  N(S)EC   Estimate  Q2.5 Q97.5
+#              >= 40 >= 40 >= 40
+#  87% of draws place the no-effect value at or above 40, the top of the
+#  prediction range. The estimate is censored there.
 
 nec(fit, extrapolate = TRUE)
 #  Estimate  Q2.5 Q97.5
 #      61.4  38.2   412
+```
+
+On a model-averaged set containing an `ecx`-type equation, the second call needs
+a limit, because half the mixture is read off a fitted curve and a curve cannot
+be read off an infinite grid:
+
+```r
+nec(manec_fit, extrapolate = TRUE)
+#  Error: `extrapolate = TRUE` needs every model in the set to estimate a NEC.
+#  This set includes ecx4param, whose N(S)EC is read off the fitted curve.
+#  Supply a finite limit, for example extrapolate = 400.
+
+nec(manec_fit, extrapolate = 400)
+#  Estimate  Q2.5 Q97.5
+#      58.9  36.4   331
 ```
 
 The interval in the second call is wide because the data do not identify the
@@ -233,7 +294,7 @@ specification.
 
 The name of the declaration. `response_complete = FALSE` is used throughout and
 `asymptote_observed = FALSE` is the alternative. Nothing is released, so this is
-a one-line change at any point before phase 6 merges.
+a one-line change at any point before phase 7 merges.
 
 The lower bound. This plan removes the truncation at the top of the series only,
 because that is the case #386 measured. A threshold below the lowest
