@@ -1770,6 +1770,56 @@ the correlation between them, widening the difference and pulling `prob_diff`
 towards 0.5 --- so a contrast between parts of one fit needs draw-wise
 differencing and must not be routed through this function.
 
+## Contrasts from a joint refit
+
+That restriction is what a joint refit removes. `bnec_joint()` takes the
+per-level fits and refits one equation across every level at once, giving each
+level its own copy of every curve parameter in a single posterior. A difference
+between two levels is then a difference between two coefficients of one fit,
+taken draw by draw, and it needs no permutation.
+
+The equation is chosen against the per-level weights rather than named here, so
+the refit is of whatever the seven levels between them favoured. The call comes
+after `screen_models()` above, so it refits the screened set --- the equations
+each herbicide retained --- and not the set as first fitted.
+
+```{r fit-herb-joint, results = "hide"}
+herb_joint <- bnec_joint(fits_herb, seed = 228, refresh = 0)
+```
+
+```{r summary-herb-joint}
+herb_joint
+```
+
+Every estimate from a joint refit reports per level, one row each, which is the
+shape `bnec_group()` returns.
+
+```{r ecx-herb-joint}
+ecx(herb_joint, ecx_val = 50, xform = exp)
+```
+
+The contrast is then taken on the draws. `posterior = TRUE` returns the
+per-level draws as a named list, and because they come from one fit they are
+already aligned: draw *i* of one level and draw *i* of another were taken at the
+same step of the same chain.
+
+```{r cmp-herb-joint}
+herb_draws <- ecx(herb_joint, ecx_val = 50, posterior = TRUE, xform = exp)
+diuron_irgarol <- herb_draws[["diuron"]] - herb_draws[["irgarol"]]
+c(prob_diuron_higher = mean(diuron_irgarol > 0),
+  median_difference = median(diuron_irgarol),
+  quantile(diuron_irgarol, c(0.025, 0.975)))
+```
+
+The two routes answer different questions about the same pair, and neither is a
+correction of the other. `compare_posterior()` asks how two independently
+estimated herbicides compare, which is what a reader wants when the seven were
+tested separately and are being ranked. The joint refit asks how two levels of
+one model compare, holding the equation and the dispersion common between them,
+which is what a reader wants when the question is whether these two herbicides
+differ rather than how each behaves.
+
+
 # Choosing a route for a factor
 
 Three routes fit a factor, and they answer different questions. The choice is
