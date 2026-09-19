@@ -37,10 +37,11 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
     y <- checked_df$mod_dat$y
     tr <- checked_df$mod_dat$trials
     # Taken from the checked frame rather than left as the value read from bdat
-    # above, so that the denominator matches the response it divides: both come
-    # from the same object, and any row check_data() drops or alters is dropped
-    # or altered in both. NULL where the formula has no rate() term, because
-    # check_data() adds the column only when one is present.
+    # above, so that the denominator and the response it divides come from one
+    # object and stay aligned: check_data() substitutes into the response, and
+    # the substituted values are what y holds here. NULL where the formula has
+    # no rate() term, because check_data() adds the column only when one is
+    # present.
     denominator <- checked_df$mod_dat$denom
     family <- checked_df$family
     custom_name <- check_custom_name(family)

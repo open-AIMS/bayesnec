@@ -2044,3 +2044,58 @@ test_that("bnec and amend build the same default rate prior (#389)", {
   expect_identical(prior_entry(added, "top"), prior_entry(used, "top"))
   expect_identical(prior_entry(added, "nec"), prior_entry(used, "nec"))
 })
+
+test_that("the initial-value search reads the rate scale as well (#389)", {
+  # The division is applied to `response`, which add_brm_defaults() passes to
+  # define_prior() and to make_good_inits() alike, so the starting band moves
+  # with the prior. Asserted by capturing what the search is given rather than
+  # by running it: the search itself is stochastic and can take minutes (#266).
+  d <- rate_prior_data()
+  fam <- validate_family("poisson")
+  seen <- new.env(parent = emptyenv())
+  local_mocked_bindings(
+    brm = function(formula, data, ...) structure(list(), class = "brmsfit"),
+    are_chains_correct = function(...) TRUE,
+    make_good_inits = function(model, predictor, response, ...) {
+      seen$response <- response
+      list(random = "random")
+    },
+    .package = "bayesnec"
+  )
+  suppressMessages(suppressWarnings(
+    fit_bayesnec(formula = bnf(y | rate(ex) ~ crf(x, "nec4param")), data = d,
+                 model = "nec4param",
+                 brm_args = list(family = fam, chains = 1, iter = 10))
+  ))
+  expect_equal(seen$response, response_link_scale(d$y / d$ex, fam))
+  expect_false(isTRUE(all.equal(seen$response,
+                                response_link_scale(d$y, fam))))
+})
+
+test_that("the amend path divides without check_data (#389)", {
+  # skip_check = TRUE is the route amend() takes, and there the denominator is
+  # read from the model frame because check_data() has not run. Covered
+  # separately from the bnec() route, which reads it from the checked frame.
+  d <- rate_prior_data()
+  fam <- validate_family("poisson")
+  seen <- new.env(parent = emptyenv())
+  local_mocked_bindings(
+    brm = function(formula, data, ...) {
+      seen$prior <- list(...)$prior
+      structure(list(), class = "brmsfit")
+    },
+    are_chains_correct = function(...) TRUE,
+    make_good_inits = function(...) list(random = "random"),
+    .package = "bayesnec"
+  )
+  suppressMessages(suppressWarnings(
+    fit_bayesnec(formula = bnf(y | rate(ex) ~ crf(x, "nec4param")), data = d,
+                 model = "nec4param", skip_check = TRUE,
+                 brm_args = list(family = fam, chains = 1, iter = 10))
+  ))
+  skipped <- as.data.frame(seen$prior)
+  on_rates <- as.data.frame(define_prior("nec4param", fam, d$x, d$y / d$ex))
+  for (np in c("top", "bot")) {
+    expect_identical(prior_entry(skipped, np), prior_entry(on_rates, np))
+  }
+})

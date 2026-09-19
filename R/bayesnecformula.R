@@ -230,6 +230,15 @@
 #' scale; plots put the observations on that same scale by dividing through.
 #' \code{offset} is deliberately not offered as an alternative --- under an
 #' identity link it would be additive on the mean, which is not what is wanted.
+#'
+#' The denominator must be a column of the data. An expression such as
+#' \code{rate(hours / 24)} is an error, because \pkg{bayesnec} records the
+#' denominator as a plain column and reads that column when it builds the
+#' default priors, pins the prediction grid at a denominator of 1, and puts the
+#' observations on the rate scale for a plot; an expression is not recorded
+#' there, so those four would divide by \code{hours} while \pkg{brms} divided by
+#' the quotient. Compute the column before the call and name it in
+#' \code{rate()}.
 #' Please note that \pkg{brms} does not implement design weights as in other
 #' standard \pkg{base} functions. From their help page, \pkg{brms} "takes the
 #' weights literally, which means that an observation with weight 2 receives 2
@@ -1218,6 +1227,24 @@ split_calls <- function(formula_part) {
       # clean_aterms() special case and lets find_transformations() match it
       # unaided. See #136.
       ra_call_raw <- tmp_[[grep("rate(", tmp_, fixed = TRUE)[1]]]
+      # Only a bare column is accepted. Because the denominator is carried as a
+      # plain column, an expression is reduced here to the first variable in it
+      # while brms keeps the expression, and the two then disagree: under
+      # rate(exposure_hours / 24) brms divides by the quotient and every
+      # bayesnec path that reads the column divides by exposure_hours. That
+      # reaches the default priors and the initial-value band (#389), the
+      # prediction grid, which pins the column at 1 rather than the expression
+      # (R/expand_classes.R), and the observations the plotting paths put on
+      # the rate scale (R/plot.R, R/autoplot.R). Refused here, in the one place
+      # every route passes through, rather than corrected in each of them.
+      if (length(ra_call_raw) > 1 && !is.symbol(ra_call_raw[[2]])) {
+        stop("A rate() denominator must be a column of the data; you supplied",
+             " rate(", deparse1(ra_call_raw[[2]]), "). bayesnec carries the",
+             " denominator as a plain column through the default priors, the",
+             " prediction grid and the plotting paths, and an expression",
+             " cannot be carried there. Compute the column first and name it",
+             " in rate().", call. = FALSE)
+      }
       ra_var <- all.vars(ra_call_raw)
       if (length(ra_var) > 0) {
         ra_var <- ra_var[1]
