@@ -105,7 +105,7 @@ test_that("bnec_group checks once and marks every level as checked", {
 test_that("the grouped diagnostic includes models valid in any level", {
   d <- data.frame(
     x = c(-3:0, 0:3),
-    y = rep(c(1, 0.95, 0.9, 0.8), 2),
+    y = c(1, 0.95, 0.9, 0.8, 1, 0.7, 0.3, 0.1),
     site = rep(c("negative", "nonnegative"), each = 4)
   )
   checked <- logical(0)
@@ -127,7 +127,24 @@ test_that("the grouped diagnostic includes models valid in any level", {
         prior = list(nec3param = nec_prior)
       )
     ),
-    "may not identify the lower asymptote"
+    NA
+  )
+  expect_identical(checked, c(TRUE, TRUE))
+
+  # The additional equation is valid only in the non-negative level and has no
+  # supplied prior. Make that level incomplete and the negative level complete:
+  # only the former should now be named, despite the shared grouped call.
+  d$y <- c(1, 0.7, 0.3, 0.1, 1, 0.95, 0.9, 0.8)
+  checked <- logical(0)
+  expect_warning(
+    suppressMessages(
+      bnec_group(
+        y ~ crf(x, c("nec3param", "necsigm")), d, group_var = "site",
+        family = gaussian(link = "identity"),
+        prior = list(nec3param = nec_prior)
+      )
+    ),
+    "\"nonnegative\".*20%"
   )
   expect_identical(checked, c(TRUE, TRUE))
 })

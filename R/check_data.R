@@ -116,7 +116,8 @@ check_normalisation <- function(data) {
 #' @param family The validated response family.
 #' @param group An optional factor or character vector defining independent
 #' concentration-response series.
-#' @param blocks Character vector naming the response blocks to assess.
+#' @param blocks Character vector naming the response blocks to assess, or a
+#' named list providing the blocks separately for each group level.
 #' @param minimum_decline The minimum fractional decline from the mean response
 #' at the lowest predictor value to the mean at the highest.
 #'
@@ -151,13 +152,17 @@ check_response_range <- function(data, family, group = NULL,
     if (!is.null(denominator)) {
       y_level <- y_level / denominator[use]
     }
+    level_blocks <- if (is.list(blocks)) blocks[[level]] else blocks
+    if (is.null(level_blocks)) {
+      level_blocks <- character(0)
+    }
     views <- if (is_hurdle_family(family)) {
       parts <- split_hurdle_response(x_level, y_level)
       list(response = parts$mu, survival = parts$hu)
     } else {
       list(response = list(x = x_level, y = y_level))
     }
-    views <- views[intersect(names(views), blocks)]
+    views <- views[intersect(names(views), level_blocks)]
     vapply(names(views), function(component) {
       view <- views[[component]]
       if (length(unique(view$x)) < 2) {
@@ -172,7 +177,13 @@ check_response_range <- function(data, family, group = NULL,
     }, numeric(1))
   })
   decline_names <- unlist(Map(function(level, values) {
-    if (length(values) == 1L) level else paste(level, names(values), sep = ": ")
+    if (length(values) == 0L) {
+      character(0)
+    } else if (length(values) == 1L) {
+      level
+    } else {
+      paste(level, names(values), sep = ": ")
+    }
   }, levels(group), decline), use.names = FALSE)
   decline <- unlist(decline, use.names = FALSE)
   names(decline) <- decline_names
