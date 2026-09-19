@@ -116,8 +116,13 @@
 
   Both are designs whose curves reach the reference within the range tested, so
   nothing is censored and no figure differs. The change shows on a design that
-  has not reached its lower asymptote, which is the case #386 is about. The fits
-  measured are the four named here; the other vignettes were not rebuilt.
+  has not reached its lower asymptote, which is the case #386 is about. On the
+  packaged `ecx4param` fit re-expanded over a prediction range that stops before
+  its curve reaches the reference, 60 of 100 draws are beyond the range, and the
+  reported NSEC is `>= 0.9` where the deleted-draw summary gave 0.801
+  (0.048-0.890). The measurement covers the six vignette estimates named here
+  and the twelve per-equation estimates behind the second of them; the other
+  vignettes were not rebuilt.
 
 ## Behaviour changes to a fit with a `rate()` denominator
 
