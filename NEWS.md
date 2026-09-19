@@ -14,8 +14,11 @@
   constant within a level. The claim is also asymptotic in the number of
   observations behind each level, so a bernoulli response of a handful of
   observations per concentration reports above it: 8.2 per cent at four,
-  6.3 at ten and 4.9 at twenty-five. All three are measured in the audit
-  (#391). Such a design may not identify the lower asymptote: where an
+  6.3 at ten and 4.9 at twenty-five, on one simulated series. The rate is not
+  monotone in that count, because the discreteness of a 0/1 response depends on
+  the level of the response as well as on the number of observations, so those
+  three figures do not bound it. All three approximations are measured in the
+  audit (#391). Such a design may not identify the lower asymptote: where an
   equation estimates `bot` its default prior is derived from the observed
   response, and the default `nec` and `ec50` priors exclude a threshold above
   the tested range. The two blocks of a joint hurdle fit are assessed
