@@ -79,7 +79,17 @@
 #' already logged, so how much narrower the regularizing entry is depends on
 #' which of the two the data are on. See \code{vignette("example3")} for why the
 #' two rules differ. Ignored when priors are supplied directly via the
-#' \code{prior} argument.
+#' \code{prior} argument. Both default sets assume that the tested
+#' concentrations reach the lower asymptote of the curve. Where the mean
+#' response at the highest concentration is below the mean at the second
+#' highest by more than the contrast's standard error admits, tested one-sided
+#' at the 5\% level under the mean-variance relationship of the fitted family,
+#' \code{\link{bnec}} reports that before fitting: an equation that estimates
+#' \code{bot} then has a prior describing the observed endpoint rather than the
+#' asymptote, and the \code{nec} or \code{ec50} prior excludes a threshold above
+#' the tested range. Inspect the generated entries with \code{\link{get_priors}}
+#' and pass a scientifically justified prior through \code{prior} where
+#' information beyond the design is available.
 #' @param predictor_scale A \code{\link[base]{character}} string declaring the
 #' scale of the predictor for the default \code{nec} and \code{ec50} prior.
 #' \code{"concentration"} treats the supplied values as recorded concentrations,
@@ -734,6 +744,11 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # bnec() call retains its established ambient-stream behaviour.
   group_seed <- brm_args[[".bayesnec_group_seed"]]
   brm_args[[".bayesnec_group_seed"]] <- NULL
+  # bnec_group() runs the flatness check over every level before it fits any of
+  # them, and marks each inner call so that the report is not repeated per
+  # level. Private, and removed here before anything reaches brms.
+  flatness_checked <- isTRUE(brm_args[[".bayesnec_flatness_checked"]])
+  brm_args[[".bayesnec_flatness_checked"]] <- NULL
   # `prior` is an explicit argument (rather than relying on `...`) so that a
   # user-supplied `prior =` is matched exactly and cannot be captured by partial
   # matching against `prior_type`. Only fold it into brm_args when supplied, so
@@ -790,6 +805,29 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # multi-model branch escaped it only because `model[m]` drops attributes.
   # check_models() warns about exactly this at its record block. See #261.
   model <- as.character(model)
+  # Moved above the flatness report, which needs it: the survival block of a
+  # two-block fit is checked against the equation that block will use.
+  model_survival <- check_model_survival(model_survival, brm_args$family, bdat)
+  # Whether the response has flattened at the top of the series is a property
+  # of the data and the formula together, fixed for the whole call, so it is
+  # reported once here rather than from check_data(), which runs once per
+  # equation. A partial prior does not silence it: fill_missing_priors() fills
+  # the omitted bot, nec and ec50 rows from the same defaults. See #390.
+  #
+  # pool_dispersion follows the fit: bnec() fits a single sigma for a gaussian
+  # response unless a disp() term is supplied, and for every other family the
+  # variance depends on the mean, so the contrast estimates its dispersion from
+  # the two levels it compares.
+  sensitive_blocks <- uses_response_range_defaults(
+    brm_args$prior, model, brm_args$family, model_survival
+  )
+  if (!flatness_checked && any(sensitive_blocks)) {
+    check_response_flattened(
+      bdat, brm_args$family,
+      blocks = names(sensitive_blocks)[sensitive_blocks],
+      pool_dispersion = is.null(parse_disp_term(formula))
+    )
+  }
   # Reported once here rather than from check_data(), which runs once per
   # model. Computed from the same model frame and family the loop will use, so
   # what is reported is what will be done. See #93 and D16.
@@ -803,7 +841,6 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     brm_args$family
   )
   report_substitutions(substitutions)
-  model_survival <- check_model_survival(model_survival, brm_args$family, bdat)
   loo_controls <- define_loo_controls(loo_controls, brm_args$family$family)
   if (length(model) == 0) {
     stop("No valid models have been supplied for this data type.")
