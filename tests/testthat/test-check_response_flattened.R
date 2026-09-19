@@ -337,6 +337,37 @@ test_that("nec_data, which every vignette fits, is passed over", {
   )
 })
 
+test_that("an unreplicated binomial design falls back to a fixed dispersion", {
+  # One composite sample per dilution with twenty individuals scored in it is
+  # the ordinary whole effluent binomial layout. quasibinomial would need
+  # replication it does not have, so the contrast is taken on the individuals
+  # instead, which is what the survival block of a hurdle fit does with the
+  # same counts.
+  d <- data.frame(x = c(0, 1, 2, 4), succ = c(20, 16, 11, 2), tr = 20)
+  bdat <- flat_bdat(succ | trials(tr) ~ crf(x, "nec3param"), d)
+  for (family in list(binomial(link = "identity"),
+                      brms::beta_binomial(link = "identity"))) {
+    expect_message(check_response_flattened(bdat, family), still_declining)
+  }
+  # The same counts as a hurdle survival block give the same p-value, which is
+  # the agreement the fallback exists for.
+  survival <- list(x = d$x, successes = d$succ, trials = rep(20, 4),
+                   spec = list(family = binomial(), kind = "matrix",
+                               offset = FALSE))
+  as_binomial <- flatness_contrast(
+    list(x = d$x, successes = d$succ, trials = rep(20, 4),
+         spec = flatness_spec("binomial"))
+  )
+  expect_identical(as_binomial$status, "tested")
+  expect_equal(as_binomial$p_value, flatness_contrast(survival)$p_value)
+  # A replicated design keeps quasibinomial, because over-dispersion between
+  # replicate vessels is real and is worth accounting for.
+  replicated <- list(x = rep(c(2, 4), each = 3),
+                     successes = c(11, 10, 12, 4, 5, 3),
+                     trials = rep(20, 6), spec = flatness_spec("binomial"))
+  expect_identical(flatness_contrast(replicated)$status, "tested")
+})
+
 test_that("a binomial block with one individual per level is passed over", {
   # The dispersion is fixed for these two, so replication is not what carries
   # the information: the number of individuals is. One individual at each of

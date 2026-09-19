@@ -292,6 +292,41 @@ flatness_contrast <- function(block, alpha = 0.05, pool_dispersion = TRUE) {
   # to quasipoisson, so poisson never reaches here as itself.
   estimates_dispersion <- !identical(spec$family$family, "binomial")
   ux_keep <- sort(unique(x_keep))
+  replicated <- max(tabulate(match(x_keep, ux_keep))) > 1
+  # A binomial or beta-binomial design with one row per concentration falls
+  # back to a fixed dispersion rather than being passed over.
+  #
+  # Those two rows are mapped to quasibinomial, whose dispersion needs
+  # replication, so the replication rule below would pass over one composite
+  # sample per dilution with twenty individuals scored in it --- the ordinary
+  # whole effluent binomial layout, and the design this rule exists for. The
+  # identical counts reaching this function as the survival block of a hurdle
+  # fit are tested, so the same data would give two answers depending on which
+  # family declared them.
+  #
+  # The denominator is known here, so the information is the individuals rather
+  # than the replication, exactly as it is for the hu block. The fallback
+  # trades the over-dispersion estimate for a test that exists at all, which is
+  # the same trade the hu block makes for the same reason. Where replication is
+  # present quasibinomial is kept, because over-dispersion between replicate
+  # vessels is real and worth accounting for.
+  #
+  # One consequence is stated rather than left implicit: a beta_binomial
+  # response with no replication is tested under a model that assumes no
+  # over-dispersion, on a family whose declaration says to expect it, so the
+  # test is anti-conservative there, and by more than the fallback's other
+  # rows. Measured on a flat top, four levels of twenty trials, one row at
+  # each, 4000 replicates: binomial reports on 0.058 and beta_binomial at an
+  # intra-class correlation of 0.1 on 0.184, against the nominal 0.05. The
+  # alternative was to pass the design over, which reports on none of the
+  # designs that are genuinely incomplete, and a rate of 0.184 on a message
+  # whose only consequence is to prompt the user is the better of the two. It
+  # is stated in NEWS and is an audit item for #391 beside the varying-trials
+  # rate.
+  if (estimates_dispersion && identical(spec$kind, "matrix") && !replicated) {
+    spec$family <- binomial()
+    estimates_dispersion <- FALSE
+  }
   # A block carrying too little information at the two levels is passed over in
   # silence, and what counts as information differs by family.
   #
@@ -322,7 +357,7 @@ flatness_contrast <- function(block, alpha = 0.05, pool_dispersion = TRUE) {
   # as.character(), which is both the rounding the comment below rules out and
   # 18 times slower on a 200,000-value predictor.
   thin <- if (estimates_dispersion) {
-    max(tabulate(match(x_keep, ux_keep))) < 2
+    !replicated
   } else {
     individuals <- function(value) {
       at <- x_keep == value

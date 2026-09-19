@@ -34,7 +34,17 @@
   two levels compared is passed over in silence: for a family whose dispersion
   is estimated that is a design with no predictor value observed twice, and for
   a bernoulli response or a hurdle survival block it is fewer than two
-  individuals at either level.
+  individuals at either level. A `binomial` or `beta_binomial` response with one
+  row per concentration is an exception: the denominator is known there, so the
+  contrast falls back to a fixed dispersion and is assessed on the individuals,
+  which is what the survival block of a hurdle fit already does with the same
+  counts. The fallback trades the over-dispersion estimate for a test that
+  exists at all. On `beta_binomial`, whose declaration says to expect
+  over-dispersion, that makes the test anti-conservative: on a flat top of four
+  levels of twenty trials with one row at each, `binomial` reports on 5.8 per
+  cent and `beta_binomial` at an intra-class correlation of 0.1 on 18.4 per
+  cent, over 4000 replicates. Supplying replicate rows restores the
+  over-dispersion estimate.
   The report names the predictor as the formula wrote it, so a fit on
   `crf(log(concentration))` reports log concentrations under that name (#390).
 
