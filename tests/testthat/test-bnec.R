@@ -202,6 +202,39 @@ test_that("the response-range check assesses hurdle blocks separately", {
     ),
     "response.*0%"
   )
+
+  response_prior <- brms::prior_string("normal(1, 1)", nlpar = "nec")
+  survival_prior <- brms::prior_string("normal(1, 1)", nlpar = "hunec")
+  family <- brms::hurdle_gamma(link = "identity", link_hu = "identity")
+
+  response_custom <- uses_response_range_defaults(
+    response_prior, "nec3param", family
+  )
+  expect_identical(response_custom,
+                   c(response = FALSE, survival = TRUE))
+  expect_silent(
+    check_response_range(bdat, family,
+                         blocks = names(response_custom)[response_custom])
+  )
+
+  survival_custom <- uses_response_range_defaults(
+    survival_prior, "nec3param", family
+  )
+  expect_identical(survival_custom,
+                   c(response = TRUE, survival = FALSE))
+  expect_warning(
+    check_response_range(bdat, family,
+                         blocks = names(survival_custom)[survival_custom]),
+    "response.*0%"
+  )
+})
+
+test_that("equations without affected defaults do not trigger the check", {
+  sensitivity <- uses_response_range_defaults(
+    NULL, c("ecxlin", "ecxexp", "ecxsigm"),
+    gaussian(link = "identity")
+  )
+  expect_identical(sensitivity, c(response = FALSE))
 })
 
 test_that("Check models inappropriate for negative x are dropped", {

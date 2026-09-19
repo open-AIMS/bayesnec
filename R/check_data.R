@@ -116,6 +116,7 @@ check_normalisation <- function(data) {
 #' @param family The validated response family.
 #' @param group An optional factor or character vector defining independent
 #' concentration-response series.
+#' @param blocks Character vector naming the response blocks to assess.
 #' @param minimum_decline The minimum fractional decline from the mean response
 #' at the lowest predictor value to the mean at the highest.
 #'
@@ -123,6 +124,7 @@ check_normalisation <- function(data) {
 #'
 #' @noRd
 check_response_range <- function(data, family, group = NULL,
+                                 blocks = c("response", "survival"),
                                  minimum_decline = 0.5) {
   y <- try(retrieve_var(data, "y_var", error = TRUE), silent = TRUE)
   x <- try(retrieve_var(data, "x_var", error = TRUE), silent = TRUE)
@@ -155,6 +157,7 @@ check_response_range <- function(data, family, group = NULL,
     } else {
       list(response = list(x = x_level, y = y_level))
     }
+    views <- views[intersect(names(views), blocks)]
     vapply(names(views), function(component) {
       view <- views[[component]]
       if (length(unique(view$x)) < 2) {
@@ -221,11 +224,14 @@ check_response_range <- function(data, family, group = NULL,
 #' @param family The validated response family.
 #' @param model_survival Optional equation for a hurdle survival block.
 #'
-#' @return A logical scalar.
+#' @return A named logical vector, one element per response block.
 #' @noRd
 uses_response_range_defaults <- function(prior, models, family,
                                          model_survival = NULL) {
   affected <- c("bot", "nec", "ec50")
+  hurdle <- is_hurdle_family(family)
+  out <- setNames(rep(FALSE, if (hurdle) 2L else 1L),
+                  if (hurdle) c("response", "survival") else "response")
   for (model in models) {
     supplied <- if (inherits(prior, "brmsprior")) {
       prior
@@ -234,25 +240,33 @@ uses_response_range_defaults <- function(prior, models, family,
     } else {
       NULL
     }
-    if (!inherits(supplied, "brmsprior")) {
-      return(TRUE)
-    }
-    required <- intersect(equation_par_names(model), affected)
-    if (is_hurdle_family(family)) {
+    required <- list(
+      response = intersect(equation_par_names(model), affected)
+    )
+    if (hurdle) {
       survival_model <- if (is.null(model_survival)) model else model_survival
-      required <- c(
-        required,
-        paste0(hurdle_dpar(family),
-               intersect(equation_par_names(survival_model), affected))
+      required$survival <- paste0(
+        hurdle_dpar(family),
+        intersect(equation_par_names(survival_model), affected)
       )
     }
-    prior_df <- as.data.frame(supplied)
-    present <- prior_df$nlpar[prior_df$class == "b"]
-    if (!all(required %in% present)) {
-      return(TRUE)
+    if (inherits(supplied, "brmsprior")) {
+      prior_df <- as.data.frame(supplied)
+      dpar <- if ("dpar" %in% names(prior_df)) prior_df$dpar else ""
+      present <- prior_df$nlpar[
+        prior_df$class == "b" & (is.na(dpar) | !nzchar(dpar))
+      ]
+    } else {
+      present <- character(0)
+    }
+    for (block in names(required)) {
+      if (length(required[[block]]) > 0L &&
+          !all(required[[block]] %in% present)) {
+        out[[block]] <- TRUE
+      }
     }
   }
-  FALSE
+  out
 }
 
 #' Refuse a model frame from which incomplete cases were removed

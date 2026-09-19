@@ -102,6 +102,36 @@ test_that("bnec_group checks once and marks every level as checked", {
   expect_identical(checked, c(TRUE, TRUE))
 })
 
+test_that("the grouped diagnostic includes models valid in any level", {
+  d <- data.frame(
+    x = c(-3:0, 0:3),
+    y = rep(c(1, 0.95, 0.9, 0.8), 2),
+    site = rep(c("negative", "nonnegative"), each = 4)
+  )
+  checked <- logical(0)
+  local_mocked_bindings(
+    bnec = function(...) {
+      checked <<- c(
+        checked, isTRUE(list(...)[[".bayesnec_response_range_checked"]])
+      )
+      list()
+    },
+    .package = "bayesnec"
+  )
+  nec_prior <- brms::prior_string("normal(1, 1)", nlpar = "nec")
+  expect_warning(
+    suppressMessages(
+      bnec_group(
+        y ~ crf(x, c("nec3param", "necsigm")), d, group_var = "site",
+        family = gaussian(link = "identity"),
+        prior = list(nec3param = nec_prior)
+      )
+    ),
+    "may not identify the lower asymptote"
+  )
+  expect_identical(checked, c(TRUE, TRUE))
+})
+
 test_that("crossed_group_weights requires the right class", {
   expect_error(crossed_group_weights(manec_example), "bayesnecgroupfit")
 })

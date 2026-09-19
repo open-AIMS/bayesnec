@@ -113,6 +113,20 @@ test_that("a mixed NEC/NSEC average does not infer a common NEC bound", {
   expect_false(any(grepl("upper bound of the fitted nec prior", messages)))
 })
 
+test_that("a joint threshold/smooth fit does not infer a NEC constraint", {
+  mixed_blocks <- nec4param
+  mixed_blocks$ne_type <- "N(S)EC"
+  upper <- unname(quantile(mixed_blocks$ne_posterior, 0.975))
+  is_nec <- mixed_blocks$fit$prior$nlpar == "nec"
+  mixed_blocks$fit$prior$ub[is_nec] <- upper
+  expect_silent(
+    report_nec_prior_bound(
+      mixed_blocks,
+      quantile(mixed_blocks$ne_posterior, c(0.5, 0.025, 0.975))
+    )
+  )
+})
+
 test_that("a pure threshold average needs one common prior bound", {
   pure <- manec_example
   pure$mod_fits <- list(nec4param = nec4param, nec3param = nec4param)

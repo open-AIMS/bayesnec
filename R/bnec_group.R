@@ -207,15 +207,22 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # could reach an affected level only after earlier levels had compiled and
   # sampled. The private marker is removed by bnec() before brms sees it. A
   # partial prior still uses defaults for its omitted sensitive rows. See #386.
-  diagnostic_models <- suppressMessages(
-    check_models(get_model_from_formula(formula), family, mod_dat)
-  )
+  requested_models <- get_model_from_formula(formula)
+  diagnostic_models <- unique(unlist(lapply(levels(grp), function(level) {
+    suppressMessages(
+      check_models(requested_models, family,
+                   mod_dat[grp == level, , drop = FALSE])
+    )
+  }), use.names = FALSE))
   diagnostic_survival <- suppressMessages(
     check_model_survival(dots$model_survival, family, mod_dat)
   )
-  if (uses_response_range_defaults(dots$prior, diagnostic_models, family,
-                                   diagnostic_survival)) {
-    check_response_range(mod_dat, family, group = grp)
+  sensitive_blocks <- uses_response_range_defaults(
+    dots$prior, diagnostic_models, family, diagnostic_survival
+  )
+  if (any(sensitive_blocks)) {
+    check_response_range(mod_dat, family, group = grp,
+                         blocks = names(sensitive_blocks)[sensitive_blocks])
   }
   dots[[".bayesnec_response_range_checked"]] <- TRUE
   # The crossed weights are an outer product of the per-level weight vectors,

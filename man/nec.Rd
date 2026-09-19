@@ -73,13 +73,13 @@ returns an unlabelled vector. Use \code{\link{nsec}} where a NSEC is wanted
 from every model regardless of type.
 
 The default \code{nec} prior is bounded by the tested predictor range.
-For a threshold fit, or a model average containing threshold equations only,
-\code{nec} reports when the posterior median or upper interval limit reaches
-a common fitted prior upper bound. The estimate may then be constrained by
-that prior and should be treated as censored unless its bound and shape are
-scientifically justified. No bound diagnostic is inferred for a mixed
-NEC/NSEC model average or where component models use different bounds. The
-bound is transformed by \code{xform} before it is reported.
+Where the recorded combined estimate is a NEC, \code{nec} reports when the
+posterior median or upper interval limit reaches a common fitted prior upper
+bound. The estimate may then be constrained by that prior and should be
+treated as censored unless its bound and shape are scientifically justified.
+No bound diagnostic is inferred for a mixed NEC/NSEC model average, a joint
+fit with a smooth response block, or component models with different bounds.
+The bound is transformed by \code{xform} before it is reported.
 }
 \examples{
 library(bayesnec)

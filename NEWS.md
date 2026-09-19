@@ -11,9 +11,11 @@
   `ec50` priors exclude values above the tested range. A partial custom prior
   does not silence the warning while those defaults are still filled.
   `bnec_group()` evaluates every level before fitting any of them and reports
-  all affected levels once. For pure threshold fits with a common bound,
-  `nec()` also reports when its median or upper interval limit reaches the
-  fitted `nec` prior bound, so the estimate can be treated as censored (#386).
+  all affected levels once. Only blocks and equations still using an affected
+  default are assessed. Where the recorded combined estimate is a NEC with a
+  common bound, `nec()` also reports when its median or upper interval limit
+  reaches the fitted `nec` prior bound, so the estimate can be treated as
+  censored (#386).
 
 ## Count hurdles
 

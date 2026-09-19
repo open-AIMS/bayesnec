@@ -811,10 +811,12 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # omitted bot/nec/ec50 rows from the same defaults. bnec_group() performs the
   # check over all levels and marks each inner call so it is not repeated.
   # See #386.
-  if (!response_range_checked &&
-      uses_response_range_defaults(brm_args$prior, model, brm_args$family,
-                                   model_survival)) {
-    check_response_range(bdat, brm_args$family)
+  sensitive_blocks <- uses_response_range_defaults(
+    brm_args$prior, model, brm_args$family, model_survival
+  )
+  if (!response_range_checked && any(sensitive_blocks)) {
+    check_response_range(bdat, brm_args$family,
+                         blocks = names(sensitive_blocks)[sensitive_blocks])
   }
   # Reported once here rather than from check_data(), which runs once per
   # model. Computed from the same model frame and family the loop will use, so
