@@ -580,15 +580,16 @@ and differs by a factor of 1.6 on the complete design and by two orders of
 magnitude on the flattest one.
 
 The two entries differ in how much of the response they read, which accounts
-for that. `regularizing_location()` (`R/define_prior.R:522`) returns the mean of
+for that. `regularizing_location()` (`R/define_prior.R:521`) returns the mean of
 the observations at the extreme concentration, so on this design the `bot`
 anchor is a mean of five poisson draws: the three gamma entries above have their
 maximum density at 5.00, 26.2 and 35.2, which are those three means exactly. At
 a mean of 35.2 that statistic has a standard error of 2.65, and shifting a gamma
 of shape 14 by a few units changes its far tail by orders of magnitude, so a
 `p_truth` in the tenth decimal place is not comparable across two draws. The
-`uninformative` entry is `gamma(2, 2/q25)` on the whole response of 40
-observations and is correspondingly stable. Neither run's seed is recoverable.
+`uninformative` entry is a gamma of shape 2 whose mean is set near the 25th
+percentile of the whole response of 40 observations, and is correspondingly
+stable. Neither run's seed is recoverable.
 Part 1 section 3 above describes the `regularizing` `bot` anchor as the sample
 minimum; that was its behaviour at `eebccdb3` and is not its behaviour here.
 
@@ -662,15 +663,23 @@ of its span is reported on one call in ten. The rule detects an incomplete desig
 by its slope and not by its extent, and a curve that has barely started to fall
 has almost no slope to detect.
 
-Two notes on what this column is. The response read here is the one
-`check_data()` returns, while `bnec()` raises the report on the model frame
-before `check_data()` runs, so for `Gamma`, `beta` and `zero_inflated_beta` the
-two responses differ in the zeros and ones that check nudges away from the
-boundary. And a hurdle or zero-inflated cell is reported where either block
-declines, which is what `bnec()` does, but the hurdle simulators in this sweep
-hold the hurdle probability constant at 0.8, so their survival block is flat by
-construction and contributes its own false positive: that is why `hurdle_gamma`
-reads 0.183 and `zero_inflated_beta` 0.192 at `f02` against `poisson`'s 0.058.
+One note on what this column is. A hurdle or zero-inflated cell is reported
+where either block declines, which is what `bnec()` does, but the hurdle
+simulators in this sweep hold the hurdle probability constant at 0.8, so their
+survival block is flat by construction and contributes its own false positive:
+that is why `hurdle_gamma` reads 0.183 and `zero_inflated_beta` 0.192 at `f02`
+against `poisson`'s 0.058.
+
+The column is computed from the four variables `bnec()` hands
+`check_response_flattened()` on the model frame, not from `check_data()`'s
+output. The two agree cell for cell on this sweep --- the saved result is
+unchanged in every one of its 17,262 rows --- but they are not interchangeable
+in general, and they agree here only because nothing in the sweep reaches the
+substitutions `check_data()` makes. It nudges an exact 0 or 1 away from the
+boundary for `beta` and an exact 0 for `Gamma`, exempting a hurdle fit
+(`R/check_data.R:1007`), and none of these simulators produces one:
+`rgamma(shape = 25)` and `rbeta` at these parameters return no boundary value,
+and `zero_inflated_beta` keeps its zeros.
 
 ### The false-positive rate on a flat top
 

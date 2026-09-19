@@ -1243,12 +1243,12 @@ if (!requireNamespace("MASS", quietly = TRUE)) {
   cat("MASS is not installed; the comparison was not run.\n")
 } else {
   cat("MASS", as.character(packageVersion("MASS")),
-      "- the same blocks, tested by a likelihood ratio on a",
-      "glm.nb\nfit of the two levels, one-sided by the sign of the",
-      "contrast, which is what\nanova.negbin() reports as its LR stat. The",
-      "rate of the difference of the two\ndeviances is reported beside it,",
-      "which is not that statistic and is shown\nnot to be a conservative",
-      "version of it.\n\n")
+      "- the same blocks, tested by the likelihood ratio on a",
+      "glm.nb fit\nof the two levels, which is the statistic anova.negbin()",
+      "reports as its LR\nstat., made one-sided by the sign of the contrast.",
+      "The rate of the difference\nof the two deviances is reported beside",
+      "it, which is a different statistic and\nis shown not to be a",
+      "conservative version of the first.\n\n")
   nb_contrast <- function(x, y, alpha = 0.05) {
     ux <- sort(unique(x))
     keep <- x %in% ux[length(ux) - 1:0]
