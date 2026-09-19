@@ -1811,13 +1811,57 @@ c(prob_diuron_higher = mean(diuron_irgarol > 0),
   quantile(diuron_irgarol, c(0.025, 0.975)))
 ```
 
+The refit chose `ecxll5`, and the message it printed on the way is the first
+result. That equation holds the highest summed weight over the seven levels at
+1.37 of a possible 7.00, which is a share of 0.196: `ecx4param` at 1.29,
+`ecxll4` at 1.27 and `ecxll3` at 1.06 are barely behind it. The seven herbicides
+do not agree on a functional form, and a joint refit has to pick one anyway.
+
+That shows in the estimates. The EC50 intervals above are far narrower than the
+model-averaged ones the densities showed: irgarol spans 2.64 to 2.68 µg/L here,
+a factor of 1.015, against the factor of 1.6 reported for the same herbicide
+from `fits_herb`. The joint refit conditions on one equation, so the model
+uncertainty the averaged fit represents is simply absent from it. Where the
+weight is concentrated on one equation that narrowing is a genuine gain in
+precision; where it is spread across four, as here, most of it is uncertainty
+that has been dropped rather than resolved.
+
+The contrast is read the same way. On the N(S)EC, the quantity
+`compare_posterior()` was given above, the joint refit puts the probability that
+diuron exceeds irgarol at 0.208, with a median difference of -0.09 µg/L
+(-0.29 to 0.12). `compare_posterior()` gave 0.707 for the same pair. The two
+disagree about the sign and agree about what matters: both sit near 0.5, and
+this pair is not separated by either route. A difference whose interval spans
+zero will land on whichever side the pairing happens to favour.
+
+The same contrast on the EC50 is decisive --- diuron exceeds irgarol in every
+draw, by 0.80 µg/L (0.73 to 0.86) --- which is the pattern the zinc case study
+met as well. An ECx is a fixed drop from each level's own control, and the
+N(S)EC is a departure from a band whose width the structural choice sets.
+
+The sampler was not entirely comfortable. Eight of 40000 post-warmup draws
+diverged, against none for the per-level fits, with a maximum R-hat of 1.004 and
+a minimum bulk effective sample size of 2123. `bnec()` raises `adapt_delta` to
+0.99 of its own accord wherever a constrained mean is given an unbounded
+group-level term, and a joint refit has no group-level term, so it was sampled
+at Stan's default of 0.8. Eight divergences is a small number and the fit is
+usable; a joint refit on a bounded response is nonetheless a case for naming
+`adapt_delta` rather than relying on that rule.
+
 The two routes answer different questions about the same pair, and neither is a
 correction of the other. `compare_posterior()` asks how two independently
 estimated herbicides compare, which is what a reader wants when the seven were
 tested separately and are being ranked. The joint refit asks how two levels of
 one model compare, holding the equation and the dispersion common between them,
-which is what a reader wants when the question is whether these two herbicides
-differ rather than how each behaves.
+which is what a reader wants when the question is whether these two differ
+rather than how each behaves.
+
+On these data the first question is the better one. Seven herbicides that
+disagree about the equation are not well served by a model that imposes one, and
+the herbicide case study reports the model-averaged per-level estimates for that
+reason. The joint refit earns its place where the levels agree on a form and the
+question is a contrast --- a control against a treatment, or two sites of one
+experiment --- rather than a ranking of seven independent tests.
 
 
 # Choosing a route for a factor
