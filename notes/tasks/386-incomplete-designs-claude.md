@@ -100,7 +100,7 @@ The replacement:
 # R/check_data.R
 check_response_flattened <- function(data, family, group = NULL,
                                      blocks = c("response", "survival"),
-                                     se_multiple = 2) { ... }
+                                     alpha = 0.05) { ... }
 ```
 
 For each block, take the two highest distinct predictor levels, `x_k` and
@@ -108,8 +108,21 @@ For each block, take the two highest distinct predictor levels, `x_k` and
 scale the default priors are built from (proportions for the binomial families,
 per unit exposure for a `rate()` fit, each hurdle block separately). Let `se` be
 the standard error of that difference, from the pooled within-level variance of
-the two levels. Report where `d > se_multiple * se`, that is, where the response
-is still declining at the top of the series.
+the two levels where both are replicated, falling back to the variance pooled
+over all levels where they are not. Report where `d / se(d) > t(1 - alpha, df)`,
+one-sided: where the response is still declining at the top of the series.
+
+The level is stated rather than a multiple of the standard error, so the number
+in the code has a meaning. On a design whose top is flat the true difference is
+zero and the rule reports at `alpha`, which is its false-positive rate by
+construction; phase 3 measures the realised rate rather than choosing a
+threshold from it.
+
+The local variance is preferred over the pooled one wherever both levels are
+replicated, because on proportions and counts the variance is not homogeneous
+across the series. Pooling would overstate the standard error exactly where the
+response has flattened, and the rule would then report an incomplete design less
+often than its level says.
 
 Properties this gives:
 
@@ -125,9 +138,9 @@ Properties this gives:
 Edge cases:
 
 - Fewer than two distinct predictor levels: return without reporting.
-- No replication within either of the two highest levels: `se` is undefined.
-  Fall back to the pooled within-level variance over all levels, and where the
-  design is wholly unreplicated, report that the check could not be applied
+- No replication within either of the two highest levels: the local variance is
+  undefined, so the pooled one over all levels is used, with `df = N - L`. Where
+  the design is wholly unreplicated, report that the check could not be applied
   rather than passing silently.
 - A single distinct response value at both levels: `d` is zero and the design
   passes, which is correct.
@@ -154,7 +167,7 @@ Change the message text to name the remedy once phases 5 and 7 exist:
 The response at the highest predictor value is still declining (the mean falls
 by <d> between <x_{k-1}> and <x_k>, against a standard error of <se>). The
 lower asymptote may not be identified by this design. See ?bnec for
-`response_complete`, and ?nec for how a threshold above the tested range is
+`asymptote_observed`, and ?nec for how a threshold above the tested range is
 reported.
 ```
 
@@ -245,12 +258,12 @@ Widening it is part of phase 7 and not of this phase.
 the lowest concentration tested is admissible. That is the mirror case and it is
 real: a sample toxic at every dilution has its threshold below the series.
 
-The reporting for it is open in §4.11. `warn_censored_draws()` already
+Its reporting is in §4.4. `warn_censored_draws()` already
 holds the wording, in `below_msg()` at `R/helpers.R:2087`, for an NSEC whose
 curve reached the reference below the lowest concentration in the prediction
 range. §4.11 should reuse it for the lower end of the `nec` posterior, and the
-`extrapolate` argument should apply to both ends. Flagged in the human document as an open
-decision because #386 measured only the upper end.
+`extrapolate` argument should apply to both ends. #386 measured only the upper end; the
+reporting covers both.
 
 ### 3.4 What must be measured
 
@@ -301,7 +314,27 @@ So the censoring is recorded where the posterior is realised, and `nec()` and
 put it in `nec()` alone, which would have left the number users report
 unqualified.
 
-### 4.2 The two kinds of beyond-range draw
+### 4.2 The scope of the censored summary
+
+Every estimator that can return `NA` for an out-of-range draw takes it, not only
+the stored N(S)EC. `ecx()` summarises with `quantile(..., na.rm = TRUE)` at
+`R/ecx.R:232`, and `nsec()` does the same at `R/nsec.R:196`, `:243`, `:314`,
+`:316`, `:409` and `:424`. The draws deleted are those whose curve did not reach
+the target, which are the largest, so each reported estimate is lower than the
+quantity it is labelled as and its interval is narrower. Lower is the protective
+direction, which is why this has not caused trouble; the narrow interval is the
+more serious half.
+
+A single `ecx`-type fit and the one-model average of it are the same quantity, so
+reporting one as censored and the other as a deleted-draw summary would make
+`pull_out()` change a number without changing a model. That is the argument that
+settles the scope.
+
+`nsec()` and `ecx()` build the record for the vector they return rather than
+reading a stored one, because they recompute on a grid the caller may have
+changed through `x_range`.
+
+### 4.3 The two kinds of beyond-range draw
 
 `ne_posterior` holds different quantities for the two equation classes, and they
 handle the same condition in opposite ways.
@@ -322,29 +355,44 @@ draws while the other kept them at large values, and the effective contribution
 of a component that deleted draws would be smaller than the stacking weight
 allocated to it. That is why this section precedes §3 in the order of work.
 
-### 4.3 The record
+### 4.4 The record
 
 In `expand_nec()` and `expand_manec()`, on the posterior:
 
 ```r
 attr(ne_posterior, "censored") <- list(
-  bound = max(pred_data$x),   # the prediction grid, not max(x) of the data
-  above = <logical, one per draw>
+  upper = max(pred_data$x),   # the prediction grid, not max(x) of the data
+  lower = min(pred_data$x),
+  above = <logical, one per draw>,
+  below = <logical, one per draw>
 )
 ```
 
-`above` is `is.na(draw)` for a block read off the curve and `draw >= bound` for a
-block that samples `b_nec_Intercept`. Both mean the same thing for the reported
-quantity: the no-effect value is at or beyond the top of the prediction range.
+`above` is `draw >= upper` for a block that samples `b_nec_Intercept`, and for a
+block read off the curve it is the `NA` draws that did not reach the reference
+within the grid. `below` is the mirror, and for a curve-read block it is the
+count `nsec_from_posterior()` already separates and `warn_censored_draws()`
+already reports through `below_msg()`. The two ends are recorded separately
+because an `NA` alone does not say which one produced it.
+
+Both mean the same thing for the reported quantity: the no-effect value is beyond
+that end of the prediction range.
 `expand_manec()` combines the per-component vectors under the draw index it
 already uses, so the combined fraction is the weighted one and not a count over
 components.
 
-The bound is the prediction grid rather than `max(x)` of the data, because that
-is the value `ecx()` already censors at and a user who passed `x_range` to
+The bounds are the prediction grid rather than the range of the data, because
+that is what `ecx()` already censors at and a user who passed `x_range` to
 `bnec()` meant it.
 
-### 4.4 The censored summary
+Both ends are in scope because §3 removes `lb` and `ub` in the same two lines. A
+threshold below the lowest concentration tested becomes admissible at the same
+moment, and admitting it without reporting it would recreate #386's defect at the
+other end. That end binds on a logged predictor or a design with no control;
+where the predictor is a concentration with a zero control, `lb` was already the
+lognormal's own support and nothing changes.
+
+### 4.5 The censored summary
 
 `estimates_summary()` gains a censored form. With a censored fraction `f`, the
 quantile at probability `q` is the ordinary quantile of the uncensored draws
@@ -360,12 +408,12 @@ a number, so it raised the point estimate without saying so. Here a quantile
 falling among the censored draws is reported as a bound rather than as a number,
 and the fraction is stated.
 
-`summary()` and `print()` show a censored entry as `>= <bound>`. Where only the
-upper interval limit is censored, the estimate prints normally and the limit
-prints as `>= <bound>`. `autoplot()` draws a censored N(S)EC as a bound rather
-than as a line with an interval.
+`summary()` and `print()` show a censored entry as `>= <bound>` at the upper end
+and `<= <bound>` at the lower. Where only the upper interval limit is censored,
+the estimate prints normally and the limit prints as `>= <bound>`. `autoplot()`
+draws a censored N(S)EC as a bound rather than as a line with an interval.
 
-### 4.5 `extrapolate`
+### 4.6 `extrapolate`
 
 ```r
 nec(object, posterior = FALSE, xform = identity,
@@ -378,9 +426,10 @@ nsec(object, sig_val = 0.01, resolution = 200, x_range = NA,
 
 | value | behaviour |
 |---|---|
-| `FALSE` (default) | report the censored summary of §4.4 |
-| `TRUE` | no censoring; the limit is infinite |
-| a number | the extrapolation limit; censor at that value instead |
+| `FALSE` (default) | report the censored summary of §4.5 |
+| `TRUE` | no censoring at either end; the limit is infinite |
+| a number | the upper extrapolation limit; censor at that value instead |
+| a pair of numbers | the lower and upper limits |
 
 `TRUE` is accepted only where every component of the reported estimate samples a
 NEC, which `ne_type` records. A curve cannot be read off an infinite grid, so
@@ -396,9 +445,10 @@ that the first of those re-evaluates the curve and so takes time proportional to
 
 A number below the current grid bound is an error naming `x_range`, not a silent
 tightening: it would report an estimate as censored at a value the fit had no
-trouble identifying.
+trouble identifying. The same applies to a lower limit above the grid's lower
+end.
 
-### 4.6 The difference between capping and dropping
+### 4.7 The difference between capping and dropping
 
 The two are both called censoring and they are not the same operation, so the
 difference is stated in the roxygen of `nec()`, `nsec()` and `ecx()`.
@@ -413,25 +463,25 @@ not make.
 a value, and that value is known to exceed the bound, so setting it to the bound
 is right-censoring in the ordinary sense.
 
-§4.4 unifies the two at the reporting stage by counting both as "at or above the
+§4.5 unifies the two at the reporting stage by counting both as "at or above the
 bound" without giving either a number, which is available to both because neither
 claims a value for a censored draw.
 
-### 4.7 Order of operations
+### 4.8 Order of operations
 
 Censor on the fitted predictor scale, then apply `xform`. PR #387 established
 this and the reason holds: a decreasing `xform` would map the upper tail to the
 lower one and the comparison against the bound would select the wrong quantile.
 `xform` applies to the bound for display only.
 
-### 4.8 The hurdle route
+### 4.9 The hurdle route
 
 `expand_nec()` builds `combined_ne` as `pmin()` of the two blocks where both are
 threshold blocks, `R/expand_classes.R:138`, and off the combined curve otherwise.
 `pmin()` propagates `NA`, so a censored draw in either block censors the
 combination. That is correct and needs recording rather than changing.
 
-### 4.9 Interaction with a still-truncated prior
+### 4.10 Interaction with a still-truncated prior
 
 Between these phases and §3, every fit has a `nec` prior bounded at the grid, so
 `extrapolate = TRUE` returns a truncated posterior and is not an extrapolation.
@@ -439,36 +489,42 @@ Detect it by comparing the grid bound against the `ub` on the stored `nec` prior
 and message that the fit itself is bounded. Afterwards the same applies to a fit
 made by an earlier version or with a user-supplied bound.
 
-### 4.10 Tests
+### 4.11 Tests
 
-`tests/testthat/test-summary.R`, `test-autoplot.R`, `test-nec.R` and
-`test-nsec.R`:
+`tests/testthat/test-summary.R`, `test-autoplot.R`, `test-nec.R`, `test-nsec.R`
+and `test-ecx.R`:
 
 - a single `ecx`-type fit with censored draws: `summary()` prints `>= bound` and
   states the fraction;
 - a model-averaged set mixing `nec` and `ecx` equations: the combined fraction is
   the weighted one;
 - a hurdle fit where one block is censored and the other is not;
+- `nsec()` and `ecx()` on a fit with out-of-range draws: the censored summary,
+  agreeing with what `summary()` prints for the same object;
+- a single `ecx`-type fit and the one-model average of it: the same number, which
+  is what `pull_out()` must not change;
+- a draw beyond the lower end of the grid: recorded as `below` and printed as
+  `<= bound`;
 - `extrapolate = TRUE` on a pure NEC set: the posterior unaltered;
 - `extrapolate = TRUE` on a mixed set: an error naming the finite form;
 - a finite limit on a mixed set: the NSEC components recomputed on the extended
   grid, the NEC components released, and the combined fraction falling;
-- a number below the grid bound: an error naming `x_range`;
+- a number below the grid bound, and a lower limit above the grid's lower end:
+  an error naming `x_range`;
 - a decreasing `xform`: the same draws censored as under `identity`, the bound
   reported transformed;
 - a fit with no censored draws: output identical to the current release, which is
   the regression guard for every existing analysis.
 
-### 4.11 Open decisions
+### 4.12 The behaviour change
 
-Whether the lower end takes the same treatment, for a threshold below the lowest
-concentration tested. `warn_censored_draws()` already holds the wording in its
-`below_msg()` branch at `R/helpers.R:2087`. #386 measured only the upper end.
+Censoring the per-equation summaries changes the reported NSEC and ECx for every
+existing fit with any out-of-range draw, the vignettes included. RF accepted that
+on 2026-09-19, on the condition that its size is measured on the vignette fits
+and recorded in `NEWS.md` before the change merges, rather than afterwards.
 
-Whether the per-equation NSEC summary is reported as censored as well, or whether
-only the combined N(S)EC is. The per-equation one deletes its censored draws and
-says so in a message, which is disclosed but is a different quantity from the one
-it is labelled as.
+A fit with no out-of-range draw is unaffected, and the last test above is the
+guard for that.
 
 ## 5. The incomplete-design prior set (phase 7, #394)
 
@@ -484,15 +540,15 @@ This also makes each half defensible on its own. The check may be approximate,
 because its only consequence is a prompt. The prior change is never applied
 without the user asking for it, so no released analysis changes.
 
-### 5.2 A separate argument, not a third `prior_type`
+### 5.2 The declaration argument
 
 `bnec()` gains:
 
 ```r
-bnec(formula, data, ..., prior_type = "uninformative", response_complete = TRUE)
+bnec(formula, data, ..., prior_type = "uninformative", asymptote_observed = TRUE)
 ```
 
-`response_complete = FALSE` states that the lower asymptote was not observed. It
+`asymptote_observed = FALSE` states that the lower asymptote was not observed. It
 is plumbed to `define_prior()` and to `make_good_inits()` alongside
 `prior_type`, through `fit_bayesnec()` and `add_brm_defaults()`, and to
 `get_priors()` and `amend()` so that the generated entries can be inspected
@@ -510,13 +566,16 @@ One mechanical trap either way. `R/define_prior.R:1537` reads
 package currently means `"uninformative"`. A third value would be absorbed by
 them silently. Grep for `prior_type ==` before touching any of this.
 
-The name is not settled. `asymptote_observed = TRUE` is the alternative and is
-more precise about what is being declared. `prior_type` does not exist on CRAN,
-so neither name has a compatibility claim on it.
+The name states exactly what the argument changes. After §3 the threshold priors
+are no longer truncated for anyone, so this argument governs the `bot` prior and
+the initial-value band and nothing else, both of which are the lower asymptote. A
+name such as `response_complete` would promise control over the `nec` and `ec50`
+priors that it does not have. `prior_type` does not exist on CRAN, so nothing
+constrains the choice.
 
 ### 5.3 The `bot` entry
 
-Under `response_complete = FALSE`, one rule replaces the location-and-spread
+Under `asymptote_observed = FALSE`, one rule replaces the location-and-spread
 construction for `bot`, on every family:
 
 > The central 95% of the `bot` prior spans from the support floor to the mean
@@ -566,7 +625,7 @@ designs the new prior set exists for. The band's own documentation already
 records that no width reaches a true `bot` below the observed endpoint: coverage
 was 0.160 at a width of four and 0.172 at five, against 0.003 at one.
 
-So `response_complete` is plumbed to `make_good_inits()` as well, and under
+So `asymptote_observed` is plumbed to `make_good_inits()` as well, and under
 `FALSE` the band's lower limit becomes the same floor §5.3 uses, still
 intersected with `init_support()`. The upper limit is unchanged.
 
@@ -582,29 +641,37 @@ distinguish them from the equations that estimate `bot`, because the region that
 would distinguish them was not observed. A model average over both is therefore
 averaging over the assumption in question, with weights the data cannot inform.
 
-Recommendation: report it and do not alter the set. Under
-`response_complete = FALSE` with a set containing both, message that the
-`bot_free` equations assert a complete decline to the support floor and name
-`mod_groups` for restricting the set. Silently dropping them would decide a
-modelling question on the user's behalf, and silently keeping them leaves a
-model average whose weights are uninformative on the point at issue.
+Report it and do not alter the set. Whether the response can reach the support
+floor is a property of the endpoint, which the user knows and the package cannot
+infer: for a lethality endpoint zero is attainable and `nec3param` is the right
+equation, and for a growth or photosynthetic yield endpoint it usually is not.
+Silently dropping the group would decide a modelling question on the user's
+behalf, and silently keeping it leaves a model average whose weights are
+uninformative on the point at issue.
 
-Open for RF's decision, recorded in the human document.
+So the message states both branches, because the data decide neither:
+
+```
+This set mixes equations that estimate a lower asymptote with ones that assert
+the response falls to <floor>. With the asymptote unobserved the fit cannot
+distinguish them. Restrict the set to mod_groups$bot_free if the response can
+reach <floor> for this endpoint, or away from it if it cannot.
+```
 
 ### 5.6 Tests
 
 `tests/testthat/test-define_prior.R`, on simulated designs whose response stops
 at a stated fraction of its range, asserting direction rather than digits:
 
-- Under `response_complete = FALSE` the `bot` prior's 97.5th percentile is at or
+- Under `asymptote_observed = FALSE` the `bot` prior's 97.5th percentile is at or
   near the endpoint mean and its 2.5th percentile is at or near the floor, for
   each family in the table of §5.3.
 - Under the default the entries are bit-identical to the current ones, for both
   `prior_type` values. This is the regression guard for every released analysis.
-- A gaussian response spanning negative values under `response_complete = FALSE`
+- A gaussian response spanning negative values under `asymptote_observed = FALSE`
   is refused with a message naming `prior`.
 - `get_priors()` and `amend()` honour the argument.
-- The initial-value band under `response_complete = FALSE` extends to the floor,
+- The initial-value band under `asymptote_observed = FALSE` extends to the floor,
   and a fit on a simulated incomplete design initialises from the search rather
   than falling back.
 

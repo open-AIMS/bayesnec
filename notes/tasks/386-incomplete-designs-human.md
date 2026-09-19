@@ -79,6 +79,18 @@ the second currently deletes its beyond-range draws while the first cannot
 produce one, so removing the truncation would leave the two halves of one mixture
 handling the same condition in opposite ways. Specification §4.2.
 
+### The censored summary applied to `nsec()` and `ecx()` as well
+
+A single `ecx`-type fit and the one-model average of it are the same quantity, so
+reporting one as censored and the other as a deleted-draw summary would make
+`pull_out()` change a number without changing a model. Specification §4.2.
+
+### Both ends of the prediction range
+
+Removing the upper truncation removes the lower one in the same two lines, so
+admitting a threshold below the lowest concentration without reporting it would
+recreate this problem at the other end. Specification §4.3.
+
 ### An infinite extrapolation limit only where every component samples a NEC
 
 A curve cannot be read off an infinite grid, so a set containing an `ecx`-type
@@ -101,10 +113,22 @@ the package reports what it sees and the user decides. Specification §5.1.
 whether the design is complete is a different question, so a third value would
 prevent a user from having both. Specification §5.2.
 
+### The name `asymptote_observed`
+
+After the truncation is removed for everyone, this argument governs the `bot`
+prior and the initial-value band and nothing else, both of which are the lower
+asymptote, so the name states its whole scope. Specification §5.2.
+
 ### The `bot` prior from the support floor to the observed endpoint
 
 On an incomplete design the endpoint mean is an upper bound on `bot` rather than
 an estimate of it. Specification §5.3.
+
+### The `bot_free` equations reported, with both branches stated
+
+Whether the response can reach the support floor is a property of the endpoint,
+which the user knows and the package cannot infer, so the message names both
+ways of restricting the set rather than choosing one. Specification §5.5.
 
 ### The initial-value band under the same declaration
 
@@ -245,14 +269,14 @@ On a design that has not flattened, `bnec()` reports it before fitting:
 
 ```
 The response at the highest concentration is still declining. The lower
-asymptote may not be identified. See ?bnec for `response_complete`.
+asymptote may not be identified. See ?bnec for `asymptote_observed`.
 ```
 
 The user then fits with the declaration. The N(S)EC is reported as censored,
 both where they read it off the summary and where they call the estimator:
 
 ```r
-fit <- bnec(y ~ crf(x, "nec4param"), data = dat, response_complete = FALSE)
+fit <- bnec(y ~ crf(x, "nec4param"), data = dat, asymptote_observed = FALSE)
 
 summary(fit)
 #  N(S)EC   Estimate  Q2.5 Q97.5
@@ -287,26 +311,34 @@ estimate of something the experiment did not measure.
 
 ---
 
-## Open decisions
+## Decisions taken since this plan was written
 
-Three things are not settled and are flagged where they arise in the
-specification.
+RF settled six points on 2026-09-19. Each is stated above with the others; they
+are collected here because the earlier version of this section left them open.
 
-The name of the declaration. `response_complete = FALSE` is used throughout and
-`asymptote_observed = FALSE` is the alternative. Nothing is released, so this is
-a one-line change at any point before phase 7 merges.
+The declaration is named `asymptote_observed`, defaulting to `TRUE`.
 
-The lower bound. This plan removes the truncation at the top of the series only,
-because that is the case #386 measured. A threshold below the lowest
-concentration tested is the mirror case and the same mechanism applies to it.
-Specification §3.3 states what it would take.
+The censored summary applies to `nsec()` and `ecx()` as well as to the stored
+N(S)EC, so every estimator that can return `NA` for an out-of-range draw reports
+the same way.
 
-The model set on an incomplete design. Fourteen of the 23 equations have no
-`bot` parameter and so assert that the response reaches the support floor. On an
-incomplete design the data cannot distinguish them from the equations that
-estimate `bot`, so a model average over both is averaging over the assumption in
-question. The recommendation is to report this and not to alter the set
-silently. Specification §5.5.
+Both ends of the prediction range are reported, not the upper end alone.
+
+The flatness rule states a significance level rather than a multiple of the
+standard error, and reports through `message()`.
+
+The `bot_free` equations are reported and the model set is not altered, with the
+message naming both ways of restricting it.
+
+The change to existing reported NSEC and ECx figures is accepted, on the
+condition that its size is measured on the vignette fits and recorded in
+`NEWS.md` before the change merges.
+
+One thing remains open. The `bot` rule cannot be satisfied exactly on the
+zero-bounded branch, because a gamma at a fixed shape of 2 cannot have its
+central 95% both start at zero and end at a chosen value. The realised coverage
+per family is measured in phase 3 rather than asserted, and the rule is revisited
+if a family falls far from it. Specification §5.3.
 
 ---
 
