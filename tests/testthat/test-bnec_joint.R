@@ -105,28 +105,218 @@ test_that("the summed weight adds over levels, a dropped equation as zero", {
   expect_equal(unname(w[["ecx4param"]]), 0.3)
 })
 
-test_that("a spread of weight across equations is reported, not refused", {
-  msg <- paste(
-    capture_messages(try(bnec_joint(spread_group_fit()), silent = TRUE)),
-    collapse = ""
-  )
-  expect_match(msg, "do not agree on an equation")
-  expect_match(msg, "\"a\" favours nec3param")
-  expect_match(msg, "\"b\" favours nec4param")
-  expect_match(msg, "nec4param holds the highest summed weight, 0.4")
-  expect_match(msg, "Refitting jointly as one nec4param model")
+test_that("each level is fitted the equation its own weights favour", {
+  # The correction of #388. The summed-weight winner imposed one functional
+  # form on levels that rejected it; best_crossed() already returns the growth
+  # and survival equations separately, and this is that rule over levels.
+  g <- spread_group_fit()
+  expect_equal(joint_level_equations(g),
+               c(a = "nec3param", b = "nec4param"))
+  msg <- paste(capture_messages(try(bnec_joint(g), silent = TRUE)),
+               collapse = "")
+  expect_match(msg, "composing nec3param at \"a\", nec4param at \"b\"")
+  expect_match(msg, "each level with its own curve parameters")
 })
 
-test_that("`model` overrides the summed-weight choice", {
+test_that("`model` forces one equation at every level", {
   g <- spread_group_fit()
   msg <- paste(
     capture_messages(try(bnec_joint(g, model = "ecx4param"), silent = TRUE)),
     collapse = ""
   )
   expect_match(msg, "Refitting jointly as one ecx4param model")
-  expect_false(grepl("do not agree", msg))
+  expect_false(grepl("composing", msg))
   expect_error(bnec_joint(g, model = c("nec3param", "nec4param")),
                "single equation")
+})
+
+test_that("levels that agree take the dummy-coded form, not a composition", {
+  # The reduction to the special case. Where every level favours the same
+  # equation there is nothing to compose, and the message names the single
+  # equation the phase 1 route already built.
+  g <- mock_group_fit(list(a = c(nec3param = 0.6, nec4param = 0.4),
+                           b = c(nec3param = 0.8, nec4param = 0.2)))
+  msg <- paste(capture_messages(try(bnec_joint(g), silent = TRUE)),
+               collapse = "")
+  expect_match(msg, "Refitting jointly as one nec3param model")
+  expect_false(grepl("composing", msg))
+})
+
+test_that("a group-level term is refused where the equations differ", {
+  g <- spread_group_fit()
+  g$formula <- bnf(y ~ crf(x, "nec3param") + ogl(tank))
+  expect_error(bnec_joint(g), "group-level term cannot be written")
+  # and is accepted once one equation is forced at every level
+  expect_false(grepl("group-level term cannot be written",
+                     paste(capture_messages(try(
+                       bnec_joint(g, model = "nec3param"), silent = TRUE)),
+                       collapse = "")))
+})
+
+test_that("prior and init are refused where the equations differ", {
+  # The composed parameter names are internal, so a set written against the
+  # equation's own names names nothing in the model. Refused rather than
+  # dropped: add_brm_defaults() validates a supplied prior against the
+  # representative equation and discards it silently when it does not match.
+  g <- spread_group_fit()
+  expect_error(bnec_joint(g, prior = brms::prior(normal(0, 1), nlpar = "top")),
+               "cannot be supplied where the levels favour different")
+  expect_error(bnec_joint(g, init = list(list(b_top = 0.5))),
+               "cannot be supplied where the levels favour different")
+  # and both are accepted again once one equation is forced everywhere
+  expect_false(grepl("cannot be supplied", paste(capture_messages(try(
+    bnec_joint(g, model = "nec3param", init = list(list(b_top = 0.5))),
+    silent = TRUE)), collapse = "")))
+})
+
+test_that("a level tag is legal, unique, and independent of the level order", {
+  # brms refuses a non-linear parameter name containing a dot or an underscore
+  # (validate_par_formula), so the tag can use neither.
+  tags <- level_par_tags(c("site 1", "site-1", "b"))
+  expect_false(any(grepl("[._]", tags)))
+  expect_equal(length(unique(tags)), 3L)
+  # The two levels differing only in punctuation share a stem and are still
+  # distinct, and an empty stem is given one.
+  expect_true(all(grepl("^site1Lv", tags[1:2])))
+  expect_equal(unname(level_par_tags("!!")), "levLv1")
+  # The rank is taken over the sorted level set, so reordering the levels does
+  # not rename a level's parameters.
+  expect_equal(level_par_tags(c("b", "a"))[["a"]],
+               level_par_tags(c("a", "b"))[["a"]])
+  expect_error(brms::bf(y ~ top_a * x, top_a ~ 1, nl = TRUE),
+               "dots or underscores")
+})
+
+composed_spec <- function(models = list(a = "nec3param", b = "ecxll5"),
+                          disp = TRUE) {
+  d <- rbind(transform(nec_data[, c("x", "y")], site = "a"),
+             transform(nec_data[, c("x", "y")], site = "b"))
+  d$site <- factor(d$site)
+  f <- bnf(y ~ crf(x, "nec3param"))
+  cd <- compose_level_data(f, d, c("a", "b"), "site")
+  spec <- list(group_var = "site", levels = c("a", "b"), models = models,
+               composed = TRUE, disp = disp, tags = cd$tags, inds = cd$inds,
+               x_ref = cd$x_ref)
+  list(data = cd$data, formula = f, spec = spec,
+       family = validate_family("beta"))
+}
+
+test_that("the composed formula carries one equation per level", {
+  cs <- composed_spec()
+  bdat <- model.frame(cs$formula, data = cs$data)
+  bff <- wrangle_model_formula("nec3param", cs$formula, bdat, cs$family,
+                               level_spec = cs$spec)
+  pars <- names(bff[[2]])
+  expect_true(all(c("topaLv1", "betaaLv1", "necaLv1") %in% pars))
+  expect_true(all(c("botbLv2", "topbLv2", "betabLv2", "ec50bLv2", "fbLv2") %in%
+                    pars))
+  # nec3param has no ec50 and ecxll5 has no nec, so a name from one level's
+  # equation must not appear under the other's tag.
+  expect_false("ec50aLv1" %in% pars)
+  expect_false("necbLv2" %in% pars)
+  mu <- deparse1(bff$formula[[3]])
+  expect_match(mu, "bnecindaLv1 * (", fixed = TRUE)
+  expect_match(mu, "bnecindbLv2 * (", fixed = TRUE)
+  # The predictor is masked, not the result: on a row it does not own, a level
+  # evaluates its equation at one of its own observed predictor values.
+  expect_match(mu, "(1 - bnecindaLv1) * ", fixed = TRUE)
+  expect_true(cs$spec$x_ref$a %in% cs$data$x)
+  sc <- brms::stancode(bff, data = cs$data, family = cs$family)
+  expect_match(sc, "b_topaLv1", fixed = TRUE)
+  expect_match(sc, "b_fbLv2", fixed = TRUE)
+})
+
+test_that("three levels with colliding stems compose to a valid model", {
+  # More than two levels, three different equations, and two level names that
+  # differ only in punctuation, which is the case the rank in the tag exists
+  # for. No sampling: what is asserted is the model brms is asked to build.
+  levs <- c("site 1", "site-1", "b")
+  d <- do.call(rbind, lapply(levs, function(l)
+    transform(nec_data[, c("x", "y")], site = l)))
+  d$site <- factor(d$site, levels = levs)
+  f <- bnf(y ~ crf(x, "nec3param"))
+  cd <- compose_level_data(f, d, levs, "site")
+  spec <- list(group_var = "site", levels = levs,
+               models = stats::setNames(
+                 list("nec3param", "ecxll5", "nechormepwr01"), levs),
+               composed = TRUE, disp = TRUE, tags = cd$tags, inds = cd$inds,
+               x_ref = cd$x_ref)
+  fam <- validate_family("beta")
+  bff <- wrangle_model_formula("nec3param", f, model.frame(f, data = cd$data),
+                               fam, level_spec = spec)
+  expect_equal(unname(unlist(cd$tags)),
+               c("site1Lv2", "site1Lv3", "bLv1"))
+  expect_true(all(c("necsite1Lv2", "fsite1Lv3", "slopebLv1") %in%
+                    names(bff[[2]])))
+  expect_length(unique(names(bff[[2]])), length(names(bff[[2]])))
+  expect_match(brms::stancode(bff, data = cd$data, family = fam),
+               "b_slopebLv1", fixed = TRUE)
+  out <- suppressMessages(
+    add_level_defaults(list(chains = 1, seed = 1), spec, fam, cd$data$y,
+                       predictor = cd$data$x)
+  )
+  # Twelve curve parameters over the three equations, each with a prior row and
+  # an initial value under its own level's tag.
+  pr <- as.data.frame(out$prior)
+  expect_length(pr$nlpar[nzchar(pr$nlpar)], 12L)
+  expect_setequal(setdiff(names(out$init[[1]]), "b_phi"),
+                  paste0("b_", pr$nlpar[nzchar(pr$nlpar)]))
+})
+
+test_that("an indicator column that would overwrite the data is refused", {
+  d <- rbind(transform(nec_data[, c("x", "y")], site = "a"),
+             transform(nec_data[, c("x", "y")], site = "b"))
+  d$site <- factor(d$site)
+  d$bnecindaLv1 <- 1
+  expect_error(compose_level_data(bnf(y ~ crf(x, "nec3param")), d,
+                                  c("a", "b"), "site"),
+               "which the data already")
+})
+
+test_that("a composed level takes its own equation's priors and inits", {
+  cs <- composed_spec()
+  brm_args <- list(chains = 2, seed = 1)
+  out <- suppressMessages(
+    add_level_defaults(brm_args, cs$spec, cs$family, cs$data$y,
+                       predictor = cs$data$x)
+  )
+  pr <- as.data.frame(out$prior)
+  # Every parameter of each level's own equation has a row under that level's
+  # tag, and no parameter of the other equation does.
+  expect_setequal(pr$nlpar[nzchar(pr$nlpar)],
+                  c("topaLv1", "betaaLv1", "necaLv1",
+                    "botbLv2", "topbLv2", "betabLv2", "ec50bLv2", "fbLv2"))
+  # Derived once per equation over the whole response, so the two levels' top
+  # rows state the same prior: the levels are exchangeable a priori.
+  expect_equal(pr$prior[pr$nlpar == "topaLv1"],
+               pr$prior[pr$nlpar == "topbLv2"])
+  # And the bounds are the equation's own.
+  expect_equal(pr$lb[pr$nlpar == "topaLv1"], "0")
+  expect_equal(length(out$init), 2L)
+  expect_setequal(names(out$init[[1]]),
+                  c(paste0("b_", c("topaLv1", "betaaLv1", "necaLv1",
+                                   "botbLv2", "topbLv2", "betabLv2",
+                                   "ec50bLv2", "fbLv2")), "b_phi"))
+  expect_equal(length(out$init[[1]]$b_phi), 2L)
+})
+
+test_that("the composed grid carries an indicator column per level", {
+  cs <- composed_spec()
+  fake <- list(data = cs$data, family = cs$family)
+  g <- prediction_grid(fake, cs$formula, resolution = 5,
+                       level_spec = cs$spec)$newdata
+  expect_equal(nrow(g), 10L)
+  expect_true(all(c("bnecindaLv1", "bnecindbLv2") %in% names(g)))
+  expect_equal(g$bnecindaLv1, rep(c(1, 0), each = 5))
+  expect_equal(g$bnecindbLv2, rep(c(0, 1), each = 5))
+  # One level predicted still writes every level's column, because the composed
+  # mean reads all of them on every row.
+  cs$spec$predict_levels <- "b"
+  one <- prediction_grid(fake, cs$formula, resolution = 5,
+                         level_spec = cs$spec)$newdata
+  expect_equal(nrow(one), 5L)
+  expect_equal(one$bnecindaLv1, rep(0, 5))
+  expect_equal(one$bnecindbLv2, rep(1, 5))
 })
 
 level_term_formulas <- function() {
@@ -254,6 +444,12 @@ test_that("the joint refit carries a coefficient per level", {
   expect_equal(f$joint$group_var, "site")
   expect_equal(f$joint$levels, c("a", "b"))
   expect_equal(f$joint$model, "nec3param")
+  # The reduction to the special case, on a fitted object: both levels favour
+  # nec3param, so nothing is composed and the dummy-coded form is what was
+  # built. The coefficient names asserted below are that form's.
+  expect_false(isTRUE(f$joint$level_spec$composed))
+  expect_equal(unname(unlist(f$joint$models)), c("nec3param", "nec3param"))
+  expect_null(f$joint$level_spec$tags)
   vars <- brms::variables(f$joint$fit)
   expect_true(all(c("b_top_sitea", "b_top_siteb", "b_beta_sitea",
                     "b_beta_siteb", "b_nec_sitea", "b_nec_siteb",
@@ -407,4 +603,154 @@ test_that("autoplot and ggbnec_data carry the level of a joint refit", {
   p <- suppressWarnings(suppressMessages(autoplot(f$joint)))
   expect_s3_class(p, "ggplot")
   expect_equal(levels(p$layers[[1]]$data$model), c("site = a", "site = b"))
+})
+
+# The composed branch of #388: the levels favour different equations, so the
+# refit carries one equation per level in a single posterior. The grouped fit
+# is mocked down to the weights, which is all bnec_joint() reads off it, so the
+# fixture costs one Stan program for the refit and one per level for the
+# comparison rather than a full bnec_group() over two equations.
+composed_gate_fixture <- local({
+  cached <- NULL
+  function() {
+    if (!is.null(cached)) {
+      return(cached)
+    }
+    set.seed(101)
+    xb <- nec_data$x
+    mu_b <- 0.05 + (0.9 - 0.05) / (1 + exp(2 * (xb - 1.4)))
+    yb <- pmin(pmax(stats::rnorm(length(xb), mu_b, 0.05), 0.001), 0.999)
+    d <- rbind(data.frame(x = nec_data$x, y = nec_data$y, site = "a"),
+               data.frame(x = xb, y = yb, site = "b"))
+    d$site <- factor(d$site)
+    grouped <- mock_group_fit(list(a = c(nec3param = 0.8, ecx4param = 0.2),
+                                   b = c(ecx4param = 0.9, nec3param = 0.1)))
+    grouped$data <- d
+    grouped$formula <- bnf(y ~ crf(x, c("nec3param", "ecx4param")))
+    grouped$family <- validate_family("beta")
+    brm_opts <- list(iter = 2000, warmup = 1000, chains = 2, seed = 7,
+                     refresh = 0)
+    joint <- suppressWarnings(suppressMessages(
+      do.call(bnec_joint, c(list(grouped), brm_opts))
+    ))
+    singles <- list(
+      a = suppressWarnings(suppressMessages(do.call(bnec, c(
+        list(y ~ crf(x, "nec3param"), data = d[d$site == "a", ]), brm_opts)))),
+      b = suppressWarnings(suppressMessages(do.call(bnec, c(
+        list(y ~ crf(x, "ecx4param"), data = d[d$site == "b", ]), brm_opts))))
+    )
+    cached <<- list(data = d, joint = joint, singles = singles)
+    cached
+  }
+})
+
+test_that("a composed refit carries one equation per level in one posterior", {
+  skip_on_cran()
+  f <- composed_gate_fixture()
+  expect_true(isTRUE(f$joint$level_spec$composed))
+  expect_equal(unname(unlist(f$joint$models)), c("nec3param", "ecx4param"))
+  expect_true(is.na(f$joint$model))
+  vars <- brms::variables(f$joint$fit)
+  # Level a's nec3param parameters and level b's ecx4param parameters, with
+  # neither level carrying a parameter of the other's equation.
+  expect_true(all(paste0("b_", c("topaLv1", "betaaLv1", "necaLv1"),
+                         "_Intercept") %in% vars))
+  expect_true(all(paste0("b_", c("botbLv2", "ec50bLv2", "topbLv2", "betabLv2"),
+                         "_Intercept") %in% vars))
+  expect_false("b_necbLv2_Intercept" %in% vars)
+  expect_false("b_ec50aLv1_Intercept" %in% vars)
+  # disp_by_level keeps its meaning: the dispersion is a linear term on the
+  # factor either way, so it is named as the dummy-coded branch names it.
+  expect_true(all(c("b_phi_sitea", "b_phi_siteb") %in% vars))
+  expect_output(print(f$joint), "a = nec3param, b = ecx4param")
+})
+
+test_that("a composed refit agrees with a fit of each level's own equation", {
+  # The gate of #388. Each level of the composed refit and a fit of that level
+  # alone with that level's equation estimate the same curve, so they must
+  # agree to Monte Carlo error. The comparison is made on the curve parameters
+  # and on ecx(), which is what a user reads.
+  skip_on_cran()
+  f <- composed_gate_fixture()
+  jf <- suppressWarnings(summary(f$joint$fit))$fixed
+  for (lev in c("a", "b")) {
+    tag <- f$joint$level_spec$tags[[lev]]
+    m <- f$joint$models[[lev]]
+    gf <- suppressWarnings(summary(pull_brmsfit(f$singles[[lev]])))$fixed
+    for (p in names(get(paste0("bf_", m))[[2]])) {
+      j <- jf[paste0(p, tag, "_Intercept"), ]
+      g <- gf[paste0(p, "_Intercept"), ]
+      mcse <- sqrt(j[["Est.Error"]]^2 / j[["Bulk_ESS"]] +
+                     g[["Est.Error"]]^2 / g[["Bulk_ESS"]])
+      expect_lt(abs(j[["Estimate"]] - g[["Estimate"]]) / mcse, 5)
+      expect_gt(j[["Est.Error"]] / g[["Est.Error"]], 0.8)
+      expect_lt(j[["Est.Error"]] / g[["Est.Error"]], 1.25)
+    }
+  }
+  jp <- suppressWarnings(suppressMessages(
+    ecx(f$joint, ecx_val = 10, posterior = TRUE)
+  ))
+  for (lev in c("a", "b")) {
+    gp <- suppressWarnings(suppressMessages(
+      ecx(f$singles[[lev]], ecx_val = 10, posterior = TRUE)
+    ))
+    j <- jp[[lev]]
+    mcse <- sqrt(stats::sd(j, na.rm = TRUE)^2 / sum(!is.na(j)) +
+                   stats::sd(gp, na.rm = TRUE)^2 / sum(!is.na(gp)))
+    expect_lt(abs(stats::median(j, na.rm = TRUE) -
+                    stats::median(gp, na.rm = TRUE)) / mcse, 6)
+  }
+})
+
+test_that("the composed curve at a level matches a fit of that level alone", {
+  # The curve rather than an estimate read off it. nsec() disagreed by five
+  # Monte Carlo errors of its median on a measured run while the two curves
+  # agreed to 1.3e-3 at every grid point, because nsec() reads the 1 per cent
+  # tail of the control posterior against a curve that is nearly flat there: a
+  # 2e-3 shift in the threshold moves the crossing by 2e-2 in x. The curve is
+  # therefore what the agreement is asserted on, and the estimator test above
+  # uses ecx(), which crosses the curve where it is steep.
+  skip_on_cran()
+  f <- composed_gate_fixture()
+  for (lev in c("a", "b")) {
+    lf <- joint_level_fit(f$joint, lev)
+    ndj <- bnec_newdata(lf, resolution = 25)
+    ndg <- bnec_newdata(f$singles[[lev]], resolution = 25)
+    pj <- brms::posterior_epred(f$joint$fit, newdata = ndj, re_formula = NA)
+    pg <- brms::posterior_epred(pull_brmsfit(f$singles[[lev]]),
+                                newdata = ndg, re_formula = NA)
+    expect_lt(max(abs(apply(pj, 2, stats::median) -
+                        apply(pg, 2, stats::median))), 0.01)
+  }
+})
+
+test_that("the estimators and the plot follow each level's own equation", {
+  skip_on_cran()
+  f <- composed_gate_fixture()
+  e <- suppressWarnings(suppressMessages(ecx(f$joint, ecx_val = 10)))
+  expect_equal(e$level, c("a", "b"))
+  # nec() is defined at level a, whose equation is nec3param, and not at level
+  # b, whose ecx4param has no nec parameter, so the whole-fit call fails rather
+  # than reporting a number for one level.
+  expect_error(suppressWarnings(nec(f$joint)))
+  expect_equal(length(joint_level_fit(f$joint, "a")$ne_posterior),
+               brms::ndraws(f$joint$fit))
+  expect_null(joint_level_fit(f$joint, "b")$ne_posterior)
+  dat <- suppressWarnings(suppressMessages(ggbnec_data(f$joint)))
+  # One curve and one set of three no-effect rows per panel, and every raw
+  # observation assigned to the panel its row belongs to. The row-to-level map
+  # is read off the indicator columns here, because a composed refit with a
+  # shared dispersion never puts the factor in the formula at all.
+  expect_equal(as.integer(table(dat$panel[!is.na(dat$nec_vals)])), c(3L, 3L))
+  expect_equal(as.integer(table(joint_row_levels(f$joint))),
+               c(nrow(nec_data), nrow(nec_data)))
+  p <- suppressWarnings(suppressMessages(autoplot(f$joint)))
+  expect_s3_class(p, "ggplot")
+  # The annotation names what was read off each panel's own curve: a threshold
+  # equation reports its nec parameter, a smooth one its NSEC. Read off the
+  # plot rather than ggbnec_data(), which does not carry the tag.
+  tagged <- p$layers[[which(vapply(p$layers, function(l)
+    is.data.frame(l$data) && "tag" %in% names(l$data), logical(1)))[1]]]$data
+  expect_equal(unique(as.character(tagged$tag[tagged$panel == "a"])), "NEC")
+  expect_equal(unique(as.character(tagged$tag[tagged$panel == "b"])), "NSEC")
 })

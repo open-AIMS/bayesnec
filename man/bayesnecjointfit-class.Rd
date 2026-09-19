@@ -8,9 +8,9 @@
 factor}
 \description{
 Returned by \code{\link{bnec_joint}} applied to a
-\code{\link{bayesnecgroupfit}}. One equation is fitted, with every curve
-parameter taking a separate value per level of the grouping factor within a
-single posterior.
+\code{\link{bayesnecgroupfit}}. Each level is fitted the equation its own
+weights favour, with every curve parameter taking a separate value per level
+of the grouping factor within a single posterior.
 }
 \details{
 The object holds the fit and the level structure and nothing
@@ -38,7 +38,12 @@ first level's crossing and report it for the fit.
 
 The coefficient one level holds on one parameter is named
 \code{b_<parameter>_<group_var><level>} in the draws --- \code{b_top_sitea}
-for level \code{"a"} of a grouping variable named \code{site}.
+for level \code{"a"} of a grouping variable named \code{site} --- where
+every level was fitted the same equation. Where they were not, each level's
+parameters are \pkg{brms} non-linear parameters in their own right and the
+name is \code{b_<parameter><level tag>_Intercept}, the tag being the level
+name reduced to letters and digits followed by \code{Lv} and its rank in the
+sorted level set. \code{print()} reports the tags.
 
 See \code{methods(class = "bayesnecjointfit")} for an overview of available
 methods.
@@ -48,10 +53,22 @@ methods.
 \describe{
 \item{\code{fit}}{The \code{\link[brms]{brmsfit}}.}
 
-\item{\code{model}}{The equation fitted at every level.}
+\item{\code{model}}{The equation fitted at every level, or \code{NA} where the
+levels favoured different equations.}
+
+\item{\code{models}}{A named \code{\link[base]{character}} vector, the equation
+fitted at each level.}
+
+\item{\code{level_spec}}{The level structure the fit was built from: the level
+tags, indicator columns and mask values where the equations differ, and the
+grouping variable and levels either way.}
+
+\item{\code{level_weights}}{The weight the equation fitted at each level holds at
+that level, from the grouped fit. A level's own weights sum to one, so this
+is the share of that level's evidence behind the equation used there.}
 
 \item{\code{bayesnecformula}}{The \code{\link{bayesnecformula}} the fit was built
-from, carrying the single equation.}
+from, carrying the equation of the first level.}
 
 \item{\code{init}}{The initial values the fit was given.}
 
@@ -69,9 +86,11 @@ given a value per level.}
 \item{\code{model_weights}}{The summed model weight of every equation across the
 levels of the grouped fit, in decreasing order.}
 
-\item{\code{model_weight_share}}{The share of the summed weight the fitted equation
-holds, between 0 and 1, or \code{NA} where \code{model} named an equation
-no level fitted.}
+\item{\code{model_weight_share}}{The share of the summed weight the forced equation
+holds, between 0 and 1, where \code{model} named one. \code{NA} where each
+level was fitted its own equation, because no equation was imposed on the
+set for such a share to describe, and \code{NA} where \code{model} named an
+equation no level fitted.}
 }}
 
 \seealso{

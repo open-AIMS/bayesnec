@@ -823,6 +823,11 @@ add_brm_defaults <- function(
   group_spec = NULL,
   level_spec = NULL
 ) {
+  # Recorded before anything below fills them in. A composed joint refit
+  # rebuilds both from the per-level equations, and it must not overwrite a set
+  # the caller wrote themselves. See compose_level_defaults().
+  init_supplied <- "init" %in% names(brm_args)
+  prior_supplied <- !is.null(brm_args$prior)
   if (!("chains" %in% names(brm_args))) {
     brm_args$chains <- 4
   }
@@ -1072,7 +1077,12 @@ add_brm_defaults <- function(
   # above settled on and the dispersion prior it appends cannot reach
   # make_inits(). See add_level_defaults().
   if (!is.null(level_spec)) {
-    brm_args <- add_level_defaults(brm_args, level_spec, family, response)
+    brm_args <- add_level_defaults(brm_args, level_spec, family, response,
+                                   predictor = predictor,
+                                   prior_type = prior_type,
+                                   predictor_scale = predictor_scale,
+                                   init_supplied = init_supplied,
+                                   prior_supplied = prior_supplied)
   }
   brm_args
 }

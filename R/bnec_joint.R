@@ -56,17 +56,19 @@ best_crossed <- function(object) {
 #' \code{\link{crossed_weights}} favours, refitted with a two-block
 #' (\code{hurdle_gamma}, \code{zero_inflated_beta}, \code{hurdle_poisson} or
 #' \code{hurdle_negbinomial}) family. For a \code{\link{bayesnecgroupfit}} it
-#' is one equation in which every curve parameter takes a separate value per
-#' level of the grouping factor, estimated in a single posterior.
+#' is the equation each level favours, composed into one model in which every
+#' curve parameter takes a separate value per level of the grouping factor,
+#' estimated in a single posterior.
 #'
 #' @param object An object of class \code{\link{bayesnechurdlefit}} returned by
 #' \code{\link{bnec_hurdle}}, or of class \code{\link{bayesnecgroupfit}}
 #' returned by \code{\link{bnec_group}}.
 #' @param model An optional \code{\link[base]{character}} string naming the
 #' equation to fit. For a hurdle fit it is the response block's equation and
-#' defaults to the highest-weighted growth model in \code{object}; for a
-#' grouped fit it is the one equation fitted at every level and defaults to
-#' the equation holding the highest summed weight across levels.
+#' defaults to the highest-weighted growth model in \code{object}. For a
+#' grouped fit it forces one equation at every level; the default is instead
+#' the equation each level's own weights favour, which may differ between
+#' levels.
 #' @param model_survival An optional \code{\link[base]{character}} string naming
 #' the equation for the survival block. Defaults to the highest-weighted
 #' survival model in \code{object}. Hurdle fits only.
@@ -113,16 +115,30 @@ best_crossed <- function(object) {
 #' group-level term such as \code{ogl()} or \code{(nec | site)} pools the
 #' levels towards a common curve. Neither fits one model in which every level
 #' has its own curve parameters estimated together, which is what this route
-#' adds. Each parameter's \code{~ 1} is replaced by \code{~ 0 + <group_var>},
-#' so \code{top}, \code{nec} and the rest take a value per level within one
-#' posterior. That posterior supports a contrast between two levels
-#' conditional on everything they share, which differencing the independent
-#' posteriors of a \code{\link{bnec_group}} fit cannot.
+#' adds. That posterior supports a contrast between two levels conditional on
+#' everything they share, which differencing the independent posteriors of a
+#' \code{\link{bnec_group}} fit cannot.
 #'
-#' One equation is fitted for all levels, because one model has one functional
-#' form. The default is the equation holding the highest summed weight across
-#' levels, and where that equation holds less than half of the summed weight
-#' the levels favouring other equations are reported.
+#' Each level is fitted the equation its own model weights favour, which is the
+#' \code{\link{bayesnecgroupfit}} analogue of what \code{\link{best_crossed}}
+#' does for a hurdle fit: that function returns the best growth equation and
+#' the best survival equation separately, and the two blocks of one joint
+#' hurdle model then carry different equations. One \pkg{brms} model can carry
+#' a different functional form per level, because the mean is arbitrary
+#' arithmetic over data columns and parameters: each level's equation is
+#' multiplied by an indicator that is one on that level's rows and zero
+#' elsewhere, and the terms are summed.
+#'
+#' Where every level favours the same equation the sum reduces to that equation
+#' with each parameter's \code{~ 1} replaced by \code{~ 0 + <group_var>}, which
+#' is dummy coding of the factor onto the curve, and that is what is built.
+#' \code{model} forces one equation at every level, which is the same reduced
+#' form.
+#'
+#' A group-level term cannot be added to a refit whose levels chose different
+#' equations, because the levels then share no parameter for it to be written
+#' on. Pass \code{model} to fit one equation everywhere, which is the form such
+#' a term applies to.
 #'
 #' \code{disp_by_level} decides whether the family's dispersion parameter is
 #' also estimated per level. \code{FALSE} shares one dispersion across the
@@ -227,43 +243,38 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
   chk_logical(disp_by_level)
   eq_weights <- joint_equation_weights(object)
   n_lev <- length(object$levels)
+  favoured <- joint_level_equations(object)
   if (is.null(model)) {
-    model <- names(eq_weights)[1]
-    share <- unname(eq_weights[[1]]) / n_lev
-    # Reported, not refused. A spread of weight across equations is a result
-    # about the data, and the user asked for a joint fit; what they need is to
-    # know that one equation is being imposed on levels that did not choose it.
-    if (share < 0.5) {
-      favoured <- vapply(object$fits, function(x) {
-        w <- fit_model_weights(x)
-        names(w)[which.max(w)]
-      }, character(1))
-      message("The levels do not agree on an equation (",
-              paste0("\"", object$levels, "\" favours ", favoured,
-                     collapse = "; "),
-              "). A joint refit has one functional form, and ", model,
-              " holds the highest summed weight, ", signif(share, 3),
-              " of the ", n_lev, " available. Pass `model` to choose",
-              " another.")
-    }
+    # One equation per level, which is the bayesnecgroupfit analogue of
+    # best_crossed(): that function returns the best growth equation and the
+    # best survival equation separately, and bnec_joint() already composes two
+    # different equations into one hurdle model from them. Taking the highest
+    # summed weight instead would impose one form on levels that rejected it.
+    models <- favoured
+    # NA rather than a number. The summed-weight share describes an equation
+    # imposed on every level, and no equation is imposed here, so reporting it
+    # would put a figure on the object that says nothing about what was fitted.
+    share <- NA_real_
   } else {
     if (!is.character(model) || length(model) != 1) {
-      stop("`model` must name a single equation. A joint refit fits one",
-           " equation at every level, so a set cannot be averaged over here;",
+      stop("`model` must name a single equation, which is then fitted at",
+           " every level. Leave it out to fit each level the equation that",
+           " level's weights favour; a set cannot be averaged over here, and",
            " the averaging belongs in the bnec_group() call that preceded it.",
            call. = FALSE)
     }
+    models <- stats::setNames(rep(model, n_lev), object$levels)
     share <- if (model %in% names(eq_weights)) {
       unname(eq_weights[[model]]) / n_lev
     } else {
       NA_real_
     }
   }
+  composed <- length(unique(models)) > 1
   if (is.null(formula)) {
     formula <- object$formula
   }
-  formula <- swap_crf_model(bayesnecformula(formula, env = parent.frame()),
-                            model)
+  formula <- bayesnecformula(formula, env = parent.frame())
   family <- unmark_family(validate_family(object$family))
   if (isTRUE(disp_by_level) && !is.null(parse_disp_term(formula))) {
     stop("The formula already has a disp() term, which models the",
@@ -278,33 +289,198 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
   # alphabetically by the design matrix, so pinning it here is what makes
   # `levels` on the returned object name the coefficients it has.
   data[[group_var]] <- factor(data[[group_var]], levels = object$levels)
-  # Read from the equation's own template, which is what parse_group_terms()
-  # does for the same purpose. The formula-building side reads the parameters
-  # off the formula it has built, for the reason add_formula_glef() records;
-  # here there is no built formula yet and the two agree because both come
-  # from bf_<model>.
+  # The representative equation. The composed branch builds its own formula and
+  # its own priors from `models`, but fit_bayesnec() still swaps one equation
+  # into the crf() term for the model frame and the data check, and takes one
+  # name for the failure record. The first level's is used because it is one of
+  # the equations actually fitted rather than a stand-in for none of them.
+  rep_model <- unname(models[[1]])
+  formula <- swap_crf_model(formula, rep_model)
   level_spec <- list(group_var = group_var, levels = object$levels,
-                     nlpars = names(get(paste0("bf_", model))[[2]]),
+                     models = as.list(models), composed = composed,
+                     nlpars = names(get(paste0("bf_", rep_model))[[2]]),
                      disp = isTRUE(disp_by_level))
+  # `prior` and `init` name parameters, and on the composed branch the names
+  # are the internal per-level ones (topaLv1 and the rest) that a caller has no
+  # way to know before the call is made. Refused rather than silently
+  # discarded: add_brm_defaults() validates a supplied prior against the
+  # representative equation's parameter list, so a set written for the curve
+  # parameters fails that check and is dropped without a word.
+  dot_names <- names(list(...))
+  if (composed && any(c("prior", "init") %in% dot_names)) {
+    stop("`", paste0(intersect(c("prior", "init"), dot_names),
+                     collapse = "` and `"),
+         "` cannot be supplied where the levels favour different equations (",
+         paste0("\"", object$levels, "\": ", unname(models), collapse = "; "),
+         "), because each level's parameters are renamed for the composed",
+         " model. Pass `model` to fit one equation at every level, which keeps",
+         " the parameter names the equation's own.", call. = FALSE)
+  }
+  if (composed && !is.null(parse_group_terms(formula, rep_model))) {
+    stop("The levels favour different equations (",
+         paste0("\"", object$levels, "\": ", unname(models), collapse = "; "),
+         "), so each level's curve is a separate set of parameters and a",
+         " group-level term cannot be written across them. Pass `model` to",
+         " fit one equation at every level, which is the form a group-level",
+         " term applies to.", call. = FALSE)
+  }
   disp_note <- if (isTRUE(disp_by_level) && has_disp_par(family)) {
-    paste0(" and a separate ", disp_dpar(family), " per level")
+    paste0(", and a separate ", disp_dpar(family), " per level")
   } else {
     ""
   }
-  message("Refitting jointly as one ", model, " model with a separate ",
-          paste0(level_spec$nlpars, collapse = ", "), " per level of \"",
-          group_var, "\"", disp_note, ".")
+  # Announced before the data are built rather than after, so that a failure in
+  # building them is read against a call whose equation choice has been stated.
+  if (composed) {
+    message("Refitting jointly as one model composing ",
+            paste0(unname(models), " at \"", object$levels, "\"",
+                   collapse = ", "),
+            ", each level with its own curve parameters", disp_note, ".")
+  } else {
+    message("Refitting jointly as one ", rep_model,
+            " model with a separate ",
+            paste0(names(get(paste0("bf_", rep_model))[[2]]),
+                   collapse = ", "),
+            " per level of \"", group_var, "\"", disp_note, ".")
+  }
+  if (composed) {
+    level_spec <- c(level_spec,
+                    compose_level_data(formula, data, object$levels,
+                                       group_var))
+    data <- level_spec$data
+    level_spec$data <- NULL
+    level_spec$nlpars <- unlist(lapply(object$levels, function(l) {
+      paste0(names(get(paste0("bf_", models[[l]]))[[2]]),
+             level_spec$tags[[l]])
+    }))
+  }
   brm_args <- list(...)
   brm_args$family <- family
-  refit <- fit_bayesnec(formula = formula, data = data, model = model,
+  refit <- fit_bayesnec(formula = formula, data = data, model = rep_model,
                          brm_args = brm_args, level_spec = level_spec)
-  out <- list(fit = refit$fit, model = model,
+  out <- list(fit = refit$fit,
+              model = if (composed) NA_character_ else rep_model,
+              models = models, level_spec = level_spec,
               bayesnecformula = refit$bayesnecformula, init = refit$init,
               group_var = group_var, levels = object$levels,
               disp_by_level = isTRUE(disp_by_level), data = data,
               family = family, model_weights = eq_weights,
+              level_weights = joint_level_weights(object, models),
               model_weight_share = share)
   allot_class(out, c("bayesnecjointfit", "bnecfit"))
+}
+
+#' The equation each level of a grouped fit favours
+#'
+#' @param object An object of class \code{\link{bayesnecgroupfit}}.
+#'
+#' @details The \code{\link{bayesnecgroupfit}} analogue of
+#' \code{\link{best_crossed}}, which returns the best growth equation and the
+#' best survival equation separately rather than one equation for the pair.
+#'
+#' @return A named \code{\link[base]{character}} vector, one equation per
+#' level.
+#'
+#' @noRd
+joint_level_equations <- function(object) {
+  # Indexed by level rather than iterated over `fits` in whatever order they
+  # are stored: the names attached afterwards would otherwise be a second,
+  # independent ordering, and a mismatch would give a level the wrong
+  # equation silently.
+  out <- vapply(object$levels, function(l) {
+    w <- fit_model_weights(object$fits[[l]])
+    names(w)[which.max(w)]
+  }, character(1))
+  stats::setNames(out, object$levels)
+}
+
+#' The weight one equation holds at each level of a grouped fit
+#'
+#' @param object An object of class \code{\link{bayesnecgroupfit}}.
+#' @param models A named \code{\link[base]{character}} vector, the equation to
+#' report for each level.
+#'
+#' @details What the joint refit reports in place of the summed-weight share.
+#' A level's own weights sum to one, so this is the share of that level's
+#' evidence the equation fitted there holds, and it is a statement about the
+#' fit rather than about an equation the fit does not use. An equation
+#' \code{check_models()} dropped from a level holds zero there.
+#'
+#' @return A named \code{\link[base]{numeric}} vector, one per level.
+#'
+#' @noRd
+joint_level_weights <- function(object, models) {
+  out <- vapply(object$levels, function(l) {
+    w <- fit_model_weights(object$fits[[l]])
+    m <- unname(models[[l]])
+    if (m %in% names(w)) unname(w[[m]]) else 0
+  }, numeric(1))
+  stats::setNames(out, object$levels)
+}
+
+#' The indicator columns and mask values a composed joint refit needs
+#'
+#' @param formula An object of class \code{\link{bayesnecformula}}.
+#' @param data The data being fitted.
+#' @param levels The factor levels, in coefficient order.
+#' @param group_var The name of the factor column.
+#'
+#' @details Builds the three things \code{compose_level_formula()} reads that
+#' are properties of the data rather than of the equations: a tag per level, an
+#' indicator column per level written into the data, and the predictor value
+#' each level's equation is evaluated at on the rows it does not own.
+#'
+#' The mask value is an \emph{observed} predictor value of that level, the
+#' observation nearest its median, and it is that rather than the median itself
+#' because the guard rests on it being a value the level already evaluates its
+#' equation at. The median of an even number of observations is not one of
+#' them.
+#'
+#' The predictor is taken from the model frame rather than from the data, so a
+#' \code{crf(log(x), ...)} formula masks on the transformed scale the equation
+#' is written on. Rows the model frame dropped are dropped from the level
+#' vector with it, so the mask value is an observation the fit actually sees.
+#'
+#' @return A \code{\link[base]{list}} of \code{tags}, \code{inds},
+#' \code{x_ref} and \code{data}.
+#'
+#' @importFrom stats model.frame median setNames
+#'
+#' @noRd
+compose_level_data <- function(formula, data, levels, group_var) {
+  tags <- level_par_tags(levels)
+  inds <- setNames(paste0("bnecind", tags), levels)
+  clash <- intersect(inds, names(data))
+  if (length(clash) > 0) {
+    stop("A joint refit across levels that favour different equations needs",
+         " the column", if (length(clash) > 1) "s" else "", " ",
+         paste0("\"", clash, "\"", collapse = ", "),
+         ", which the data already ",
+         if (length(clash) > 1) "hold" else "holds",
+         ". Rename ", if (length(clash) > 1) "them" else "it",
+         " and refit.", call. = FALSE)
+  }
+  mf <- model.frame(formula, data = data, run_par_checks = FALSE)
+  keep <- seq_len(nrow(data))
+  na_act <- attr(mf, "na.action")
+  if (!is.null(na_act)) {
+    keep <- keep[-as.integer(na_act)]
+  }
+  x_col <- retrieve_var(mf, "x_var", error = TRUE)
+  lev_vec <- as.character(data[[group_var]])[keep]
+  x_ref <- setNames(vapply(levels, function(l) {
+    xv <- x_col[lev_vec == l & is.finite(x_col)]
+    if (length(xv) == 0) {
+      stop("Level \"", l, "\" has no usable predictor value, so a joint",
+           " refit cannot be composed across the levels.", call. = FALSE)
+    }
+    xv[which.min(abs(xv - median(xv)))]
+  }, numeric(1)), levels)
+  for (l in levels) {
+    data[[inds[[l]]]] <- as.numeric(as.character(data[[group_var]]) == l)
+  }
+  list(tags = as.list(tags), inds = as.list(inds), x_ref = as.list(x_ref),
+       data = data)
 }
 
 #' The summed model weight of every equation in a grouped fit

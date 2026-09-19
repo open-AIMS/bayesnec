@@ -1346,8 +1346,20 @@ sd_prior_scales <- function(priors) {
 #' @importFrom brms prior_string
 #'
 #' @noRd
-add_level_defaults <- function(brm_args, level_spec, family, response) {
+add_level_defaults <- function(brm_args, level_spec, family, response,
+                               predictor = NULL,
+                               prior_type = "uninformative",
+                               predictor_scale = "auto",
+                               init_supplied = FALSE,
+                               prior_supplied = FALSE) {
   n_lev <- length(level_spec$levels)
+  if (isTRUE(level_spec$composed)) {
+    brm_args <- compose_level_defaults(brm_args, level_spec, family, predictor,
+                                       response, prior_type, predictor_scale,
+                                       init_supplied, prior_supplied)
+    return(add_level_disp_defaults(brm_args, level_spec, family, response,
+                                   n_lev))
+  }
   # A character init is the "random" fallback from a search that gave up; there
   # is no list to expand and Stan initialises every coefficient itself. The
   # same constraint group_inits() is gated on in fit_bayesnec().
@@ -1365,6 +1377,27 @@ add_level_defaults <- function(brm_args, level_spec, family, response) {
       chain
     })
   }
+  add_level_disp_defaults(brm_args, level_spec, family, response, n_lev)
+}
+
+#' The prior and initial value for a dispersion given a value per level
+#'
+#' Factored out of \code{\link{add_level_defaults}} so that the dummy-coded and
+#' the composed branch state it once. The dispersion sub-model is the same
+#' either way --- \code{phi ~ 0 + <group_var>} on the factor column --- because
+#' it is a linear term on the factor and has nothing to do with which equation
+#' each level's curve takes.
+#'
+#' @inheritParams add_level_defaults
+#' @param n_lev The number of levels.
+#'
+#' @return The modified \code{brm_args}.
+#'
+#' @importFrom brms prior_string
+#'
+#' @noRd
+add_level_disp_defaults <- function(brm_args, level_spec, family, response,
+                                    n_lev) {
   if (!isTRUE(level_spec$disp) || !has_disp_par(family)) {
     return(brm_args)
   }
@@ -1385,5 +1418,105 @@ add_level_defaults <- function(brm_args, level_spec, family, response) {
       chain
     })
   }
+  brm_args
+}
+
+#' Priors and initial values where each level has its own equation
+#'
+#' @inheritParams add_level_defaults
+#' @param predictor The predictor, on the scale the curve is fitted on.
+#' @param prior_type Passed to \code{\link{define_prior}}.
+#' @param predictor_scale Passed to \code{\link{define_prior}}.
+#' @param init_supplied Whether the caller supplied \code{init}, in which case
+#' the search never ran and what is there is theirs.
+#' @param prior_supplied Whether the caller supplied \code{prior}.
+#'
+#' @details The composed branch of a joint refit. Each level's parameters are
+#' separate \pkg{brms} non-linear parameters, so, unlike the dummy-coded
+#' branch, one prior row per parameter no longer reaches every level: a row has
+#' to be written for each level's own name.
+#'
+#' A level's parameter takes that parameter's prior under \emph{that level's}
+#' equation, and the derivation is done once per distinct equation over the
+#' whole predictor and response rather than once per level over that level's
+#' subset. Deriving per subset would make the prior depend on how many
+#' observations a level happens to have, and the contrast between two levels
+#' would then be partly a contrast between their priors. It also means
+#' \code{\link{define_prior}} is called exactly as every other fit in the
+#' package calls it and returns exactly what it returns elsewhere; only the
+#' \code{nlpar} column is rewritten afterwards.
+#'
+#' The initial values follow the same rule and for the reason recorded at
+#' \code{fit_bayesnec.R}: Stan draws from uniform(-2, 2) on the unconstrained
+#' scale and ignores the declared prior, so a prior alone does not stop the mean
+#' starting outside a bounded response's support.
+#'
+#' Where any equation's search falls back to \code{"random"} the whole init
+#' list is dropped and Stan initialises everything, because a per-chain list
+#' that names some levels and not others is not a list \pkg{brms} can use.
+#'
+#' @return The modified \code{brm_args}.
+#'
+#' @noRd
+compose_level_defaults <- function(brm_args, level_spec, family, predictor,
+                                   response, prior_type, predictor_scale,
+                                   init_supplied, prior_supplied) {
+  eqs <- unique(unlist(level_spec$models))
+  per_eq <- lapply(eqs, function(m) {
+    define_prior(m, family, predictor, response, prior_type = prior_type,
+                 predictor_scale = predictor_scale)
+  })
+  names(per_eq) <- eqs
+  if (!prior_supplied) {
+    # A row with no nlpar is a statement about the response rather than about a
+    # curve parameter -- the family's own dispersion -- so it is taken once
+    # from the first equation rather than repeated per level.
+    ref <- per_eq[[1]]
+    out <- ref[!nzchar(ref$nlpar), ]
+    for (l in level_spec$levels) {
+      p <- per_eq[[level_spec$models[[l]]]]
+      p <- p[nzchar(p$nlpar), ]
+      p$nlpar <- paste0(p$nlpar, level_spec$tags[[l]])
+      out <- out + p
+    }
+    brm_args$prior <- out
+  }
+  if (init_supplied) {
+    return(brm_args)
+  }
+  response_link <- response_link_scale(response, family)
+  chains <- if (is.null(brm_args$chains)) 4 else brm_args$chains
+  seed <- if ("seed" %in% names(brm_args)) brm_args$seed else NULL
+  per_eq_init <- lapply(eqs, function(m) {
+    pr <- per_eq[[m]]
+    pr <- pr[pr$class != "sd", ]
+    pr <- pr[!pr$nlpar %in% generated_term_names(), ]
+    suppressMessages(
+      make_good_inits(m, predictor, response_link, family = family,
+                      priors = pr, chains = chains, seed = seed)
+    )
+  })
+  names(per_eq_init) <- eqs
+  gave_up <- vapply(per_eq_init, function(x) {
+    length(x) == 1 && "random" %in% names(x)
+  }, logical(1))
+  if (any(gave_up)) {
+    message("The initial-value search gave up for ",
+            paste0(eqs[gave_up], collapse = ", "),
+            ", so Stan's own initialisation is used for every level. On a",
+            " bounded response the fit may fail to initialise; see ?bnec for",
+            " supplying `init` directly.")
+    brm_args$init <- "random"
+    return(brm_args)
+  }
+  brm_args$init <- lapply(seq_len(chains), function(i) {
+    chain <- list()
+    for (l in level_spec$levels) {
+      src <- per_eq_init[[level_spec$models[[l]]]][[i]]
+      names(src) <- paste0(names(src), level_spec$tags[[l]])
+      chain <- c(chain, src)
+    }
+    chain
+  })
   brm_args
 }

@@ -714,6 +714,21 @@ substitute_x_in_formula <- function(new_x, brms_rhs) {
 #' @importFrom formula.tools lhs
 wrangle_model_formula <- function(model, formula, data, family = NULL,
                                   model_survival = NULL, level_spec = NULL) {
+  # A joint refit whose levels chose different equations is not one equation
+  # with a term added to it, so it is built rather than amended, and the
+  # branches below have no work to do on it. Everything they add -- a
+  # group-level term, a hurdle block, a disp() sub-model -- is refused for this
+  # route in bnec_joint(), which is where the message belongs.
+  if (!is.null(level_spec) && isTRUE(level_spec$composed)) {
+    brms_bf <- compose_level_formula(formula, data, level_spec)
+    if (isTRUE(level_spec$disp) && !is.null(family) && has_disp_par(family)) {
+      brms_bf <- brms_bf +
+        lf(as.formula(paste0(disp_dpar(family), " ~ 0 + ",
+                             level_spec$group_var)))
+    }
+    environment(brms_bf$formula) <- formula_env(formula)
+    return(brms_bf)
+  }
   brms_bf <- get(paste0("bf_", model))
   brms_bf[[1]][[2]] <- lhs(formula)
   bnec_pop_vars <- attr(data, "bnec_pop")
@@ -1102,6 +1117,143 @@ add_formula_level_terms <- function(brmform, level_spec, curve_pars,
       lf(as.formula(paste0(disp_dpar(family), " ~ 0 + ", var)))
   }
   brmform
+}
+
+#' A per-level suffix for the parameters of a composed joint refit
+#'
+#' @param levels A \code{\link[base]{character}} vector of factor levels.
+#'
+#' @details Where the levels of a joint refit chose different equations, each
+#' level's parameters are separate \pkg{brms} non-linear parameters and need
+#' names of their own. Three constraints decide the scheme.
+#' \code{validate_par_formula()} refuses a name containing a dot or an
+#' underscore, so the obvious \code{top_a} is illegal. Levels differing only in
+#' punctuation --- \code{"site 1"} and \code{"site-1"} --- collapse to the same
+#' alphanumeric stem, so the stem alone is not unique. And the tag must not
+#' depend on the order the levels were supplied in, or the same data fitted
+#' twice would give two sets of parameter names.
+#'
+#' The rank is therefore taken over the \emph{sorted} level set, which is a
+#' property of the set and not of its order, and appended after a literal
+#' \code{Lv}. Since a rank is all digits, the last \code{Lv} in a tag is always
+#' the separator, so stem and rank are both recoverable and no two levels can
+#' produce the same tag.
+#'
+#' @return A named \code{\link[base]{character}} vector, one tag per level.
+#'
+#' @noRd
+level_par_tags <- function(levels) {
+  levels <- as.character(levels)
+  stem <- gsub("[^A-Za-z0-9]", "", levels)
+  stem[!nzchar(stem)] <- "lev"
+  stem <- substr(stem, 1, 12)
+  rank <- match(levels, sort(unique(levels)))
+  stats::setNames(paste0(stem, "Lv", rank), levels)
+}
+
+#' Rename the symbols of an equation template
+#'
+#' Walks the language object rather than editing its deparsed text, so that a
+#' parameter name is never matched inside a longer one and the predictor is
+#' replaced by an expression rather than by a string.
+#'
+#' @param e A \code{\link[base]{language}} object.
+#' @param map A named \code{\link[base]{list}} of replacements, each itself a
+#' language object.
+#'
+#' @return A \code{\link[base]{language}} object.
+#'
+#' @noRd
+rename_syms <- function(e, map) {
+  if (is.symbol(e)) {
+    nm <- as.character(e)
+    if (!is.null(map[[nm]])) {
+      return(map[[nm]])
+    }
+    return(e)
+  }
+  if (is.call(e) && length(e) > 1) {
+    # The function position is left alone: step() and exp() are calls, not
+    # parameters, and a parameter never appears there.
+    for (i in seq_along(e)[-1]) {
+      e[[i]] <- rename_syms(e[[i]], map)
+    }
+  }
+  e
+}
+
+#' Compose one equation per level into a single brms formula
+#'
+#' @param formula An object of class \code{\link{bayesnecformula}}.
+#' @param data The model frame, carrying the \code{bnec_pop} attribute.
+#' @param level_spec The level-term specification built by
+#' \code{\link{bnec_joint}}; see its \code{levels}, \code{models}, \code{tags},
+#' \code{inds} and \code{x_ref} elements.
+#'
+#' @details The general case of a joint refit. The mean is a sum of one term
+#' per level, each the level's own equation multiplied by an indicator column
+#' that is one on the rows of that level and zero elsewhere, so that one model
+#' carries as many functional forms as there are levels. Where every level
+#' chose the same equation the indicator sum reduces to that equation dummy
+#' coded on the factor, which is what \code{\link{add_formula_level_terms}}
+#' builds directly, and that branch is taken instead.
+#'
+#' \strong{The predictor is masked, not the result.} Every level's
+#' sub-expression is evaluated on every row, including the rows its indicator
+#' zeroes. In Stan \code{0 * inf} is \code{NaN} and one \code{NaN} poisons the
+#' log density, and several equations do overflow --- \code{ecxsigm}'s
+#' \code{x^exp(d)} and \code{nechormepwr01}'s reciprocal among them --- at
+#' predictor values outside the range the level was measured over. Each level's
+#' \code{x} is therefore replaced by
+#' \code{ind * x + (1 - ind) * x_ref}, where \code{x_ref} is one of that
+#' level's own observed predictor values. On a foreign row the level evaluates
+#' its equation at a predictor value it already evaluates it at on a row of its
+#' own, so the composition is non-finite exactly where a fit of that level
+#' alone would be, and no more often. The masking arithmetic itself cannot
+#' overflow: \code{ind} is 0 or 1 and \code{x} is data.
+#'
+#' @return An object of class \code{\link[brms]{brmsformula}}.
+#'
+#' @importFrom brms bf
+#' @importFrom formula.tools lhs
+#' @importFrom stats as.formula setNames
+#'
+#' @noRd
+compose_level_formula <- function(formula, data, level_spec) {
+  bnec_pop_vars <- attr(data, "bnec_pop")
+  new_x <- names(data)[which(names(bnec_pop_vars) == "x_var")]
+  terms <- character(0)
+  pforms <- list()
+  # Collected separately from pforms, which is indexed by name and would
+  # silently overwrite a collision rather than reveal one.
+  par_names <- character(0)
+  for (l in level_spec$levels) {
+    tag <- level_spec$tags[[l]]
+    ind <- level_spec$inds[[l]]
+    tmpl <- get(paste0("bf_", level_spec$models[[l]]))
+    pars <- names(tmpl[[2]])
+    map <- setNames(lapply(paste0(pars, tag), as.name), pars)
+    map[["x"]] <- str2lang(
+      paste0("(", ind, " * (", new_x, ") + (1 - ", ind, ") * ",
+             format(level_spec$x_ref[[l]], digits = 17), ")")
+    )
+    terms <- c(terms,
+               paste0(ind, " * (", deparse1(rename_syms(tmpl[[1]][[3]], map)),
+                      ")"))
+    for (p in pars) {
+      pforms[[paste0(p, tag)]] <- as.formula(paste0(p, tag, " ~ 1"))
+      par_names <- c(par_names, paste0(p, tag))
+    }
+  }
+  if (anyDuplicated(par_names)) {
+    stop("Two levels of \"", level_spec$group_var, "\" produced the same",
+         " parameter name in the joint refit (",
+         paste0(unique(par_names[duplicated(par_names)]), collapse = ", "),
+         "). Please report this with the level names.", call. = FALSE)
+  }
+  mu <- as.formula(paste0("y ~ ", paste0(terms, collapse = " + ")))
+  mu[[2]] <- lhs(formula)
+  do.call(bf, c(list(mu), unname(pforms), list(nl = TRUE)))
 }
 
 #' Describe the group-level structure a bayesnecformula carries

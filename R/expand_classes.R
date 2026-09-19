@@ -312,6 +312,17 @@ add_grid_levels <- function(newdata, level_spec, n_x) {
                  drop = FALSE]
   out[[level_spec$group_var]] <- factor(rep(predict_levels, each = n_x),
                                         levels = all_levels)
+  # Where the levels chose different equations the mean is an indicator sum
+  # rather than a dummy-coded curve, and the indicators are data columns the
+  # factor cannot stand in for. Every level's column is written, including the
+  # ones not being predicted, because the composed mean reads all of them on
+  # every row.
+  if (!is.null(level_spec$inds)) {
+    row_level <- rep(predict_levels, each = n_x)
+    for (l in all_levels) {
+      out[[level_spec$inds[[l]]]] <- as.numeric(row_level == l)
+    }
+  }
   rownames(out) <- NULL
   out
 }

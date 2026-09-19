@@ -22,17 +22,73 @@
 #'
 #' @noRd
 joint_level_fit <- function(object, level) {
+  model <- joint_level_model(object, level)
   out <- list(fit = object$fit, bayesnecformula = object$bayesnecformula,
-              model = object$model, group_var = object$group_var,
-              level = level, retained_data = NULL)
+              model = model, group_var = object$group_var,
+              level = level, levels = object$levels,
+              level_spec = object$level_spec, retained_data = NULL)
   out <- allot_class(out, c("bayesnecjointlevel", "bayesnecfit", "bnecfit"))
   # Only a threshold equation has a nec parameter to read. nec.bayesnecfit()
   # stops on the equation name before it reaches ne_posterior for a smooth one,
   # so leaving it NULL there is what makes a joint refit refuse nec() with the
-  # same message every other class refuses it with.
-  if (length(grep("ecx", object$model)) == 0) {
+  # same message every other class refuses it with. Read off this level's own
+  # equation, because a composed refit can have a threshold equation at one
+  # level and a smooth one at the next.
+  if (length(grep("ecx", model)) == 0) {
     out$ne_posterior <- joint_level_draws(object, "nec", level)
     out$ne_type <- "NEC"
+  }
+  out
+}
+
+#' The equation fitted at one level of a joint refit
+#'
+#' @param object An object of class \code{\link{bayesnecjointfit}}, or an
+#' internal \code{bayesnecjointlevel}.
+#' @param level The level, defaulting to the one named on a
+#' \code{bayesnecjointlevel}.
+#'
+#' @details Where the levels of the grouped fit favoured different equations
+#' the joint refit composes them, so there is no one equation for the fit and
+#' \code{object$model} is \code{NA}. \code{models} carries one per level and is
+#' what every per-level reader goes to.
+#'
+#' @return A \code{\link[base]{character}} string.
+#'
+#' @noRd
+joint_level_model <- function(object, level = object$level) {
+  if (!is.null(object$models)) {
+    return(unname(object$models[[level]]))
+  }
+  object$model
+}
+
+#' The level each fitted row belongs to
+#'
+#' @param x An object of class \code{\link{bayesnecjointfit}}.
+#'
+#' @details Read from the indicator columns where the levels have different
+#' equations, and from the factor column otherwise. The factor is not always
+#' there to read: a composed refit with \code{disp_by_level = FALSE} never
+#' writes the grouping variable into the formula, so \pkg{brms} does not keep
+#' the column in \code{fit$data}, and the indicators are then the only record
+#' of which rows are whose.
+#'
+#' @return A \code{\link[base]{character}} vector, one level name per row of
+#' \code{x$fit$data}.
+#'
+#' @noRd
+joint_row_levels <- function(x) {
+  d <- x$fit$data
+  if (is.null(x$level_spec$inds)) {
+    return(as.character(d[[x$group_var]]))
+  }
+  out <- rep(NA_character_, nrow(d))
+  for (l in x$levels) {
+    ind <- x$level_spec$inds[[l]]
+    if (!is.null(d[[ind]])) {
+      out[d[[ind]] == 1] <- l
+    }
   }
   out
 }
@@ -56,7 +112,17 @@ joint_level_fit <- function(object, level) {
 #' @importFrom brms as_draws_df variables
 #' @noRd
 joint_level_draws <- function(object, par, level = object$level) {
-  var <- paste0("b_", par, "_", object$group_var, level)
+  # Two namings, one per branch. Dummy coded, the level is a coefficient of the
+  # parameter and the name carries the factor and the level. Composed, the
+  # level's parameter is a non-linear parameter in its own right with an
+  # intercept, so the level is in the parameter name and the coefficient is
+  # named Intercept like any other.
+  tag <- object$level_spec$tags[[level]]
+  var <- if (is.null(tag)) {
+    paste0("b_", par, "_", object$group_var, level)
+  } else {
+    paste0("b_", par, tag, "_Intercept")
+  }
   if (!var %in% variables(object$fit)) {
     return(NULL)
   }
@@ -76,15 +142,21 @@ joint_level_draws <- function(object, par, level = object$level) {
 #' @noRd
 joint_level_spec <- function(object, predict_levels = NULL) {
   levels <- object$levels
-  if (is.null(levels)) {
-    # A bayesnecjointlevel names one level and the full set is not on it.
-    # The factor still has to be built with every level the fit was given, so
-    # they are recovered from the fitted data rather than reduced to this one.
-    levels <- levels(object$fit$data[[object$group_var]])
+  if (!is.null(object$level)) {
+    # A bayesnecjointlevel names one level and predicts that one alone. The
+    # factor still has to be built with every level the fit was given, because
+    # brms builds the design matrix against those. Carried on the object rather
+    # than recovered from fit$data: a composed refit with a shared dispersion
+    # never puts the factor in the formula, so brms does not keep the column.
     predict_levels <- object$level
   }
+  if (is.null(levels)) {
+    levels <- levels(object$fit$data[[object$group_var]])
+  }
+  # inds is NULL on a dummy-coded refit, and add_grid_levels() then adds the
+  # factor column alone, which is the whole of what that branch's mean reads.
   list(group_var = object$group_var, levels = levels,
-       predict_levels = predict_levels)
+       predict_levels = predict_levels, inds = object$level_spec$inds)
 }
 
 #' @noRd
@@ -265,7 +337,7 @@ ggbnec_data.bayesnecjointfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   panel_group <- is.null(group) || identical(group, x$group_var)
   raw_group <- if (panel_group) NULL else group
   r_all <- prep_raw_data(x$fit, x$bayesnecformula, group = raw_group)
-  row_level <- as.character(x$fit$data[[x$group_var]])
+  row_level <- joint_row_levels(x)
   bdat <- model.frame(x$bayesnecformula, data = x$fit$data,
                       run_par_checks = TRUE)
   pieces <- lapply(x$levels, function(lev) {
@@ -340,7 +412,13 @@ autoplot.bayesnecjointfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   names(panel_labs) <- object$levels
   level <- as.character(dat$panel)
   dat$model <- factor(unname(panel_labs[level]), levels = unname(panel_labs))
-  dat$tag <- if (length(grep("ecx", object$model)) > 0) "NSEC" else "NEC"
+  # Per level, not per fit: a composed refit can have a threshold equation in
+  # one panel and a smooth one in the next, and the annotation names what was
+  # read off that panel's curve.
+  lev_tag <- vapply(object$levels, function(l) {
+    if (length(grep("ecx", joint_level_model(object, l))) > 0) "NSEC" else "NEC"
+  }, character(1))
+  dat$tag <- unname(lev_tag[level])
   show_group <- !is.null(group) && !identical(group, object$group_var)
   group_label <- if (show_group) {
     plot_group_label(dat, group, group_aes)

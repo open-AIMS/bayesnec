@@ -24,9 +24,10 @@ returned by \code{\link{bnec_group}}.}
 
 \item{model}{An optional \code{\link[base]{character}} string naming the
 equation to fit. For a hurdle fit it is the response block's equation and
-defaults to the highest-weighted growth model in \code{object}; for a
-grouped fit it is the one equation fitted at every level and defaults to
-the equation holding the highest summed weight across levels.}
+defaults to the highest-weighted growth model in \code{object}. For a
+grouped fit it forces one equation at every level; the default is instead
+the equation each level's own weights favour, which may differ between
+levels.}
 
 \item{model_survival}{An optional \code{\link[base]{character}} string naming
 the equation for the survival block. Defaults to the highest-weighted
@@ -53,8 +54,9 @@ structure the factorisation could not. For a
 \code{\link{crossed_weights}} favours, refitted with a two-block
 (\code{hurdle_gamma}, \code{zero_inflated_beta}, \code{hurdle_poisson} or
 \code{hurdle_negbinomial}) family. For a \code{\link{bayesnecgroupfit}} it
-is one equation in which every curve parameter takes a separate value per
-level of the grouping factor, estimated in a single posterior.
+is the equation each level favours, composed into one model in which every
+curve parameter takes a separate value per level of the grouping factor,
+estimated in a single posterior.
 }
 \details{
 \bold{Why refit at all}
@@ -89,16 +91,30 @@ defaults again unless passed through \code{...}.
 group-level term such as \code{ogl()} or \code{(nec | site)} pools the
 levels towards a common curve. Neither fits one model in which every level
 has its own curve parameters estimated together, which is what this route
-adds. Each parameter's \code{~ 1} is replaced by \code{~ 0 + <group_var>},
-so \code{top}, \code{nec} and the rest take a value per level within one
-posterior. That posterior supports a contrast between two levels
-conditional on everything they share, which differencing the independent
-posteriors of a \code{\link{bnec_group}} fit cannot.
+adds. That posterior supports a contrast between two levels conditional on
+everything they share, which differencing the independent posteriors of a
+\code{\link{bnec_group}} fit cannot.
 
-One equation is fitted for all levels, because one model has one functional
-form. The default is the equation holding the highest summed weight across
-levels, and where that equation holds less than half of the summed weight
-the levels favouring other equations are reported.
+Each level is fitted the equation its own model weights favour, which is the
+\code{\link{bayesnecgroupfit}} analogue of what \code{\link{best_crossed}}
+does for a hurdle fit: that function returns the best growth equation and
+the best survival equation separately, and the two blocks of one joint
+hurdle model then carry different equations. One \pkg{brms} model can carry
+a different functional form per level, because the mean is arbitrary
+arithmetic over data columns and parameters: each level's equation is
+multiplied by an indicator that is one on that level's rows and zero
+elsewhere, and the terms are summed.
+
+Where every level favours the same equation the sum reduces to that equation
+with each parameter's \code{~ 1} replaced by \code{~ 0 + <group_var>}, which
+is dummy coding of the factor onto the curve, and that is what is built.
+\code{model} forces one equation at every level, which is the same reduced
+form.
+
+A group-level term cannot be added to a refit whose levels chose different
+equations, because the levels then share no parameter for it to be written
+on. Pass \code{model} to fit one equation everywhere, which is the form such
+a term applies to.
 
 \code{disp_by_level} decides whether the family's dispersion parameter is
 also estimated per level. \code{FALSE} shares one dispersion across the

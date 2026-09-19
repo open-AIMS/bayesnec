@@ -138,6 +138,92 @@ rows it does not own --- but it must be shown to hold for every equation in
 `models()`, not for the two above. If it cannot be made robust, the approach
 stalls and that is worth knowing in the first hour.
 
+### The guard and its evidence
+
+Resolved 2026-09-19. In level *l*'s sub-expression `x` is replaced by
+`ind_l * x + (1 - ind_l) * x_ref_l`, with `x_ref_l` an **observed** predictor
+value of level *l*: the observation nearest that level's median, read off the
+model frame so that `crf(log(x), ...)` masks on the scale the equation is
+written on. On a foreign row the level therefore evaluates its equation at a
+predictor value it already evaluates it at on a row of its own, so the
+`(x, theta)` pairs the composition visits are a subset of those a fit of that
+level alone visits, for the gradient as well as the value. An observed value
+rather than the median itself, because the median of an even number of
+observations is not one of them and the argument rests on the value being one
+the level already visits. The masking arithmetic cannot overflow: `ind` is 0 or
+1 and `x` is data.
+
+Three measurements, R 4.6.1, brms 2.23.0, rstan 2.32.7. Level a spans x in
+[0, 300] and level b in [0.05, 3.2]; the equation under test owns level b.
+
+Enumerated in R over 20 000 parameter draws per equation, drawn wide enough to
+reach `exp(-746)` underflowing to exactly 0 and `exp(710)` overflowing to `Inf`,
+which is what makes `0 * Inf` reachable inside an equation. Counting draws where
+the composed contribution on a foreign row is `NaN` while the equation is finite
+on every one of its own rows: **1538 over 23 equations unmasked, 0 masked**.
+Fourteen equations showed the hazard, worst `nechormepwr01` (549), `ecxexp`
+(457), `ecxsigm` (381), `necsigm` (55).
+
+In Stan, all 23 equations composed against `nec3param`, fitted and then probed
+with 500 unconstrained parameter vectors from N(0, 4) through
+`rstan::log_prob()` and `rstan::grad_log_prob()`. All compiled, initialised and
+sampled; none gave a non-finite log density. Twelve gave `NaN` gradients, and so
+does the control --- the same equation fitted alone on level b's rows with no
+indicator and no mask, probed identically:
+
+| equation | composed | alone | z | equation | composed | alone | z |
+|---|---|---|---|---|---|---|---|
+| `ecxll5` | 100 | 84 | 1.31 | `ecxhormebc5` | 28 | 43 | -1.85 |
+| `ecxll4` | 45 | 38 | 0.80 | `ecxsigm` | 26 | 30 | -0.55 |
+| `ecxwb1` | 44 | 47 | -0.33 | `ecxwb2` | 24 | 20 | 0.62 |
+| `ecxhormebc4` | 36 | 40 | -0.48 | `necsigm` | 22 | 30 | -1.14 |
+| `ecxll3` | 36 | 38 | -0.24 | `ecx4param` | 17 | 18 | -0.17 |
+| `ecxwb1p3` | 34 | 29 | 0.65 | `ecxwb2p3` | 16 | 10 | 1.19 |
+
+The other eleven equations give zero in both. `z` is the difference of the two
+rates over its binomial standard error at 500 draws; the largest is 1.31 and six
+of the twelve are negative, so the rates agree within the Monte Carlo error of
+the probe for every equation.
+
+The claim the guard supports is therefore not that a composed model never
+produces a `NaN` --- `necsigm` differentiates
+`(step(x - nec) * (x - nec))^exp(d)` with respect to `d`, which is
+`0^p * log(0)` at `x <= nec`, whatever it is composed with --- but that it
+produces one no more often than a fit of that level by itself.
+
+Dropping the mask raises the rate wherever the probe reaches the hazard at all:
+`necsigm` 70/500 against 22 masked and 30 alone, `ecxsigm` 54/500 against 26 and
+30. `nechormepwr01` and `ecxexp` give 0 either way, because the region the
+enumeration finds their hazard in --- parameter values past the limits of
+`exp()` --- is not one a N(0, 4) probe reaches. The two measurements cover
+different parts of the parameter space and the guard is needed in both: the
+enumeration covers the extreme tails, the Stan probe the region a warmup chain
+passes through.
+
+### The gate and the estimator it is not run on
+
+Measured 2026-09-19 on `nec_data` at level a and a smooth logistic decline at
+level b, both Beta, two chains of 2000. `bnec_group()` over
+`c("nec3param", "ecx4param")` chose `nec3param` at a and `ecx4param` at b
+unprompted. The composed refit against `pull_out()` of each level's chosen
+equation from that grouped fit: every curve parameter within 1.7 Monte Carlo
+errors, standard deviation ratios 0.95 to 1.05; `ecx(ecx_val = 10)` 1.5969
+against 1.5966 at a (z = 0.75) and 0.5982 against 0.6005 at b (z = -1.67).
+
+`nsec()` is the exception and is not evidence of disagreement. At level b it
+gave 0.2710 against 0.2550, which is 5.3 Monte Carlo errors of the median on
+the effective sample sizes, while the two curves agreed to 1.3e-3 at every one
+of 50 grid points. `nsec()` reads the 1 per cent tail of the control posterior
+--- 0.81529 against 0.81737 --- against a curve falling at about 0.10 per unit
+x near the control, so a 2e-3 shift in the threshold puts the crossing 2e-2
+further along x. The difference is 0.24 posterior standard deviations.
+
+Run the agreement test on the curve, which is a statement about the model, and
+on `ecx()`, which crosses the curve where it is steep. A tail quantile read
+against a nearly flat curve is not a quantity two independent samples of the
+same posterior can be expected to agree on to the Monte Carlo error of a
+median.
+
 ### The reusable parts of the existing implementation
 
 Phase 2's per-level estimators mostly survive and fit the corrected design

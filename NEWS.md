@@ -5,14 +5,15 @@
 - `bnec_joint()` is now generic and has a method for `bayesnecgroupfit`. It
   refits a grouped fit as one model in which every curve parameter takes a
   separate value per level of the grouping factor, estimated in a single
-  posterior. One equation is fitted for all levels; the default is the
-  equation holding the highest summed model weight across levels, and a
-  spread of weight across equations is reported rather than resolved silently.
+  posterior. Each level is fitted the equation its own model weights favour,
+  which may differ between levels: one model fits a different functional form
+  at each level, each multiplied by an indicator for that level's rows. Where
+  every level favours the same equation the model reduces to that equation
+  dummy coded on the factor, and `model` forces one equation everywhere.
   `disp_by_level` decides whether the family's dispersion parameter also
   varies by level, and defaults to `TRUE`. The returned object has class
-  `bayesnecjointfit`. `ecx()`, `nsec()`, `nec()` and `autoplot()` do not yet
-  report per level for such a fit and raise an error rather than answering for
-  an unnamed level (#382).
+  `bayesnecjointfit`, and `ecx()`, `nsec()`, `nec()`, `ecnsec()` and
+  `autoplot()` report one row or one panel per level (#382, #388).
 
 ## Count hurdles
 
