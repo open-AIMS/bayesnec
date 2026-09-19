@@ -733,16 +733,59 @@ A grouping whose levels each span the whole series admits a difference in shape,
 and the plates of one arm are that case. Each plate is a complete test, and the
 gain differences shown above mean the plates are not on a common vertical scale.
 
-Admitting a difference in shape is not a reason to fit one. What separates these
-plates is a vertical scale factor, and `ogl()` states that and nothing more: one
-deviation on the fitted value, every curve parameter shared. `pgl()` would place
-a deviation on each parameter instead, so that the threshold and the slope could
-differ from plate to plate as well as the level, and it would estimate four
-group-level standard deviations where `ogl()` estimates one. Seventeen plates
-would support that --- five levels is the conventional minimum --- so the choice
-is about what the design says rather than what it can afford. The traces below
-give no reason to fit a shape difference, and the same figure is what would show
-one if it were there.
+Admitting a difference in shape is not a reason to fit one, and whether these
+plates have one is a question for the data rather than for the design. The two
+terms make different claims. `ogl()` places one deviation on the fitted value,
+so every curve parameter is shared and the plates differ by a multiplicative
+constant. `pgl()` places a deviation on each parameter instead, so the threshold
+and the slope may differ from plate to plate as well as the level. Seventeen
+plates can support either --- five levels is the conventional minimum for one
+group-level standard deviation --- so the choice is settled by fitting both and
+reading the standard deviations, which *The structure a plate term states*
+below does.
+
+A model-free reading of the same question is available first, and it does not
+depend on any of this. The concentration at which a plate falls to half its own
+control level can be read off the observed series by interpolation. That
+crossing is measured against each plate's own control, so a purely
+multiplicative difference between plates cannot change it.
+
+```{r lum31-crossing}
+half_control_crossing <- function(d) {
+  m <- d |>
+    group_by(conc) |>
+    summarise(y = mean(rlu), .groups = "drop") |>
+    arrange(conc)
+  half <- m$y[which.min(m$conc)] / 2
+  i <- which(m$y < half)[1]
+  if (is.na(i) || i == 1) return(NA_real_)
+  # Linear interpolation on log(conc), which is the scale the curve is fitted
+  # on, so the crossing and the fitted estimates are the same kind of quantity.
+  x1 <- log(m$conc[i - 1]); x2 <- log(m$conc[i])
+  y1 <- m$y[i - 1];         y2 <- m$y[i]
+  x1 + (half - y1) * (x2 - x1) / (y2 - y1)
+}
+
+zn_crossings <- zn15 |>
+  group_by(batch, plate) |>
+  group_modify(~ tibble(cross = half_control_crossing(.x),
+                        control = mean(.x$rlu[.x$conc == min(.x$conc)]))) |>
+  ungroup()
+
+c(sd_crossing = sd(zn_crossings$cross),
+  sd_log_control = sd(log(zn_crossings$control)),
+  cor_with_gain = cor(zn_crossings$cross, log(zn_crossings$control)))
+```
+
+The crossing has a standard deviation of 0.193 on the log concentration scale
+across the seventeen plates, so the plates do not share a curve position. The
+control level itself varies more, at 0.45, and the two are almost unrelated: a
+correlation of -0.23 between a plate's crossing and its gain. Two things differ
+between plates rather than one, and `ogl()` states only the first of them.
+
+The difference in position is a property of the plate and not of the reading.
+Each plate is read twice, at 15 and at 30 minutes, and the crossings from the
+two reads correlate at 0.87 across the seventeen plates.
 
 ```{r fit-plate, results = "hide"}
 fit_pooled <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + disp("power"),
@@ -794,8 +837,10 @@ autoplot(fit_plate, group = "plate") + log_x
 what makes the structure legible: seventeen roughly parallel traces, flat over
 the lower half of the series and falling together. The spread between them at
 any one concentration is larger than the fall between one concentration and the
-next over that flat part, and the traces stay in much the same order throughout,
-which is what a per-plate multiplicative constant looks like. Control wells run
+next over that flat part, and the traces stay in much the same order throughout.
+That ordering is the gain difference, which dominates the figure; the difference
+in position the crossings report is the smaller of the two and is not legible
+here. Control wells run
 from about 250,000 to 1,450,000 relative light units across the seventeen
 plates, against the 250,000 floor the assay was designed to clear.
 
@@ -842,17 +887,18 @@ group_curves <- function(x) {
 ```
 
 
-## What the plate term has to carry
+## The structure a plate term states
 
-The section above fitted `ogl(plate)` on the argument that the plates differ by
-a vertical scale factor. Two parts of that argument are checked here by fitting
-the alternatives rather than by reasoning about them: whether a deviation on
-every parameter is supported, and whether the level the term absorbs belongs to
-the plate or to the batch the plate was run in.
+The crossings above show that the plates differ in two ways, and `ogl(plate)`
+states only one of them. This section fits the alternatives and reads their
+group-level standard deviations, which is what decides whether the second
+difference is large enough to model. Three fits vary the term while holding the
+model set, the data and the dispersion sub-model fixed, so that nothing but the
+term differs.
 
 `check_formula()` with `run_par_checks = TRUE` reports which parameters of each
 equation a named-parameter term can be applied to, which is what limits the
-comparison below to `nec3param` and `nec4param`.
+named-parameter comparison below to `nec3param` and `nec4param`.
 
 ```{r check-par-terms, message = TRUE}
 check_formula(
@@ -863,11 +909,12 @@ check_formula(
 )
 ```
 
-The four fits below are the same model set on the same data with the group-level
-term varied. `fit_pgl` places a deviation on every parameter of the equation;
-`fit_batch` moves the single deviation from the plate to the batch; and
-`fit_plate_batch` estimates both at once, so that the between-plate and
-between-batch standard deviations are reported on a common scale.
+`fit_pgl` places a deviation on every parameter of the equation. `fit_batch`
+places the single deviation on the batch the plate was run in rather than on
+the plate.
+`fit_plate_batch` estimates both at once, which is the only one of the three
+that can separate them, because plates are nested in batches and either term
+alone absorbs part of the other.
 
 ```{r fit-pgl, results = "hide"}
 fit_pgl <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + pgl(plate) + disp("power"),
@@ -883,12 +930,12 @@ fit_plate_batch <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl
                         seed = 228, refresh = 0)
 ```
 
-A named-parameter term is not applied across the whole set. The parameter that
-places the curve is `nec` in ten equations and `ec50` in ten, and three have
-neither, so `(nec | plate)` over `model = "all"` would describe a structure that
-most of the set does not have. The comparison is made on the two equations that
-do carry `nec`, against the same two equations with `ogl(plate)`, so that the
-two fits differ only in where the deviation sits.
+A named-parameter term is not applied across the whole set. The parameter
+placing the curve is `nec` in ten equations and `ec50` in ten, and three have
+neither, so `(nec | plate)` over `model = "all"` would describe a structure most
+of the set does not have. The comparison is made on the two equations that do
+estimate `nec`, against the same two with `ogl(plate)`, so that the two fits
+differ only in where the deviation sits.
 
 ```{r fit-nec-gl, results = "hide"}
 fit_nec_gl <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), c("nec3param", "nec4param")) + (nec | plate) + disp("power"),
@@ -911,30 +958,69 @@ fit_nec_gl <- screen_models(fit_nec_gl)
 fit_nec_ogl <- screen_models(fit_nec_ogl)
 ```
 
-```{r summary-plate-terms}
-summary(fit_pgl)
-summary(fit_batch)
-summary(fit_plate_batch)
-```
+### The group-level standard deviations
 
-The group-level standard deviations are what separate the three. `VarCorr()` on
-each equation of the set reports them on the scale of the linear predictor for
-the parameter they apply to.
+`VarCorr()` reports the deviations on the scale of the parameter each applies
+to. They are read against the stacking weight of the equation they were computed
+on, because an equation holding no weight says nothing about the model average.
 
 ```{r varcorr-plate-terms}
 sd_table <- function(x, label) {
-  do.call(rbind, lapply(names(x$mod_fits), function(m) {
+  w <- summary(x)$mod_weights
+  do.call(rbind, lapply(rownames(w), function(m) {
     vc <- brms::VarCorr(pull_out(x, model = m)$fit)
     do.call(rbind, lapply(names(vc), function(g) {
-      data.frame(fit = label, model = m, group = g,
-                 parameter = rownames(vc[[g]]$sd),
-                 sd = vc[[g]]$sd[, "Estimate"],
-                 lower = vc[[g]]$sd[, "Q2.5"], upper = vc[[g]]$sd[, "Q97.5"],
-                 row.names = NULL)
+      sd <- vc[[g]]$sd
+      data.frame(fit = label, model = m, wi = w[m, "wi"], grouping = g,
+                 parameter = rownames(sd), sd = sd[, "Estimate"],
+                 lower = sd[, "Q2.5"], upper = sd[, "Q97.5"], row.names = NULL)
     }))
   }))
 }
+
+sds <- rbind(sd_table(fit_plate, "ogl(plate)"), sd_table(fit_pgl, "pgl(plate)"),
+             sd_table(fit_batch, "ogl(batch)"),
+             sd_table(fit_plate_batch, "ogl(plate) + ogl(batch)"))
+subset(sds, wi >= 0.01)
 ```
+
+`pgl(plate)` gives all of its weight to `ecxll5` and estimates five deviations.
+Three of them are supported and two are not. The deviation on `top` is 0.46
+(0.33--0.65), which reproduces the 0.45 (0.33--0.63) that `ogl(plate)` estimates
+on its single term: the gain difference is the same quantity read two ways.
+Beyond it, `f` is 0.30 (0.19--0.52) and `beta` is 0.08 (0.04--0.12), and neither
+interval includes zero. Those are shape parameters, so the plates differ in the
+form of the transition and not only in its height, which is what the crossings
+reported without fitting anything. The deviations on `ec50`, at 0.11
+(0.003--0.35), and on `bot`, at 0.51 (0.02--1.12), have lower bounds at zero and
+are not supported.
+
+The plate and the batch cannot be separated by fitting either alone. `ogl(batch)`
+on its own estimates 0.44 (0.23--0.84), which is indistinguishable from the
+plate term, because the five batches absorb the differences between the plates
+within them. Fitted together, the plate deviation is 0.39 (0.26--0.59) and the
+batch deviation is 0.29 (0.02--0.72). The plate interval excludes zero and the
+batch interval does not, so the difference is between plates, and what remains
+between batches is not separable from nothing on seventeen plates in five
+batches.
+
+### The term changes which equation is favoured
+
+```{r weights-plate-terms}
+do.call(rbind, Map(function(x, label) {
+  w <- summary(x)$mod_weights
+  data.frame(fit = label, model = rownames(w), wi = round(w[, "wi"], 3))[w[, "wi"] >= 0.01, ]
+}, list(fit_pooled, fit_plate, fit_pgl, fit_plate_batch),
+   list("pooled", "ogl(plate)", "pgl(plate)", "ogl(plate) + ogl(batch)")))
+```
+
+Pooled, the weight is spread over six equations with `ecxll5` at 0.57 and
+`ecxwb1` at 0.32. With `ogl(plate)` it collapses onto `ecxwb1` entirely, and
+with `pgl(plate)` onto `ecxll5` entirely. The group-level term is not a
+correction applied to a fixed curve; it changes which functional form the data
+support, because what counts as residual variation changes with it.
+
+### The estimates the choice affects
 
 ```{r ecx-plate-terms}
 rbind(
@@ -948,18 +1034,93 @@ rbind(
 
 ```{r nsec-plate-terms}
 rbind(
-  data.frame(fit = "ogl(plate), two equations", t(nsec(fit_nec_ogl, xform = exp))),
-  data.frame(fit = "(nec | plate), two equations", t(nsec(fit_nec_gl, xform = exp)))
+  data.frame(fit = "pooled", t(nsec(fit_pooled, xform = exp))),
+  data.frame(fit = "ogl(plate)", t(nsec(fit_plate, xform = exp))),
+  data.frame(fit = "pgl(plate)", t(nsec(fit_pgl, xform = exp))),
+  data.frame(fit = "ogl(batch)", t(nsec(fit_batch, xform = exp))),
+  data.frame(fit = "ogl(plate) + ogl(batch)", t(nsec(fit_plate_batch, xform = exp)))
 )
 ```
+
+The two estimates answer differently. EC10 sits between 0.33 and 0.37 mg/L
+whichever term is fitted, so it is insensitive to the whole question. The
+N(S)EC is not: 0.20 pooled, 0.70 with `ogl(plate)`, 0.74 with `pgl(plate)`, and
+1.07 to 1.13 once a batch term is present. That is a factor of five driven by
+the grouping structure alone, on one dataset with one response.
+
+The reason is in what each estimate is read off. An ECx is a fixed percentage
+drop from the control, and the control is re-estimated per plate by any of these
+terms, so the drop is measured from a reference that is re-estimated with it,
+and the answer barely changes. The N(S)EC is the point at which the curve departs from the control
+band, and the width of that band is exactly what a group-level term reallocates.
+Where the two estimates disagree about how much a structural choice matters, an
+assessment should state which of them it reports.
+
+### The named-parameter term
+
+```{r nec-gl-comparison}
+rbind(
+  data.frame(fit = "ogl(plate)", t(ecx(fit_nec_ogl, ecx_val = 10, xform = exp))),
+  data.frame(fit = "(nec | plate)", t(ecx(fit_nec_gl, ecx_val = 10, xform = exp)))
+)
+sd_table(fit_nec_gl, "(nec | plate)")
+```
+
+On the same two equations and the same data, `ogl(plate)` gives an EC10 of 0.79
+(0.48--0.82) and `(nec | plate)` gives 1.46 (1.20--1.75). The deviation on `nec`
+is 0.31 (0.21--0.45), so the plates do differ in threshold, which is consistent
+with the crossings. The two fits nonetheless answer a question about the
+population curve differently by nearly a factor of two, and the intervals do not
+overlap.
+
+Neither is a correction of the other. `ogl(plate)` asks what the average plate's
+curve is once each plate's gain is removed; `(nec | plate)` asks what the average
+plate's threshold is, with the gain left in the residual. A term is a statement
+about which differences are nuisance, and the estimate follows from it.
+
+```{r pareto-nec-gl}
+loo_k <- function(x, label) {
+  w <- summary(x)$mod_weights
+  do.call(rbind, lapply(rownames(w), function(m) {
+    k <- pull_out(x, model = m)$fit$criteria$loo$diagnostics$pareto_k
+    data.frame(fit = label, model = m, wi = round(w[m, "wi"], 3),
+               n = length(k), k_above_0.7 = sum(k > 0.7), k_max = round(max(k), 2),
+               row.names = NULL)
+  }))
+}
+rbind(loo_k(fit_pgl, "pgl(plate)"), loo_k(fit_nec_gl, "(nec | plate)"))
+```
+
+`(nec | plate)` is the only fit in this section with a Pareto-k above 0.7, one
+observation of 748 at 0.73, on `nec4param`, which holds 0.66 of the weight. A
+contributing equation is failing the check, so the finding is reported rather
+than set aside: one influential observation at that threshold means the
+leave-one-out estimate for that equation is approximate, not that the fit is
+wrong. `pgl(plate)` reaches 0.56 at most despite estimating five deviations
+across seventeen levels, so the extra structure has not made the fit fragile.
+
+### The term this case study uses
+
+`ogl(plate)` is kept for the sections that follow, and the reason is now stated
+from the fits rather than assumed. The gain difference is the large one, at 0.45
+on the log scale against 0.19 for the difference in position, and `ogl()` is the
+term that states it. `pgl(plate)` finds real shape differences beyond it, but it
+is a five-deviation model fitted to answer a question --- how toxic is zinc to
+this assay --- whose EC10 answer does not change when it is fitted.
+
+That is a judgement about this dataset and not a rule. Where the position
+difference is the larger of the two, or where the threshold rather than the ECx
+is what the assessment reports, the same evidence would favour the other term.
 
 ```{r fig-pgl}
 autoplot(fit_pgl, group = "plate") + log_x
 ```
 
-```{r fig-plate-batch}
-autoplot(fit_plate_batch, group = "plate") + log_x
-```
+The figure shows the same seventeen traces as the `ogl(plate)` figure above,
+with each plate's fitted curve free to take its own shape. The curves remain
+close over the flat part of the series and separate through the transition,
+which is where a difference in `f` and `beta` acts, and the population band is
+wider than the `ogl(plate)` band through that region for the same reason.
 
 
 ## Copper against zinc
