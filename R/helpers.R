@@ -610,6 +610,35 @@ check_nec_no_dpar <- function(dots) {
   invisible(TRUE)
 }
 
+#' Guard against `no_effect` being passed to a class that cannot use it
+#'
+#' \code{no_effect} asks for the no-effect estimate of whichever type each
+#' level's equation supports, labelled by type. It is answerable only where
+#' exactly one equation was fitted per level, which is a
+#' \code{\link{bayesnecjointfit}} and nothing else: a
+#' \code{\link{bayesmanecfit}} averages over a set containing both kinds and a
+#' \code{\link{bayesnecgroupfit}} holds one such average per level, so neither
+#' has a single type to label. Refused rather than discarded, for the reason
+#' given in \code{\link{check_component_arg}}.
+#'
+#' @param dots The \code{...} of the calling method, as a list.
+#' @param object The object the method was called on.
+#'
+#' @return Invisibly \code{TRUE}, or an error.
+#'
+#' @noRd
+check_no_effect_arg <- function(dots, object) {
+  if ("no_effect" %in% names(dots)) {
+    stop("`no_effect` selects between the nec parameter and the no-effect",
+         " estimate each level's own equation supports. It applies to a",
+         " bayesnecjointfit, where exactly one equation is fitted per level.",
+         " This object is a ", class(object)[1], ", whose no-effect estimate",
+         " has one type already: see ?nec for what that type is, and nsec()",
+         " for a NSEC from every model regardless of type.", call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
 #' @noRd
 return_nec_post <- function(m, xform) {
   if (is_bayesnecfit(m)) {

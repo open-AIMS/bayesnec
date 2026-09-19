@@ -24,11 +24,23 @@ with the level varying slowest.
 \code{\link{ecnsec}} therefore return a
 \code{\link[base]{data.frame}} with one row per level, named in a
 \code{level} column, rather than the named vector of three they return for a
-\code{\link{bayesnecfit}}. That is the same table a
+\code{\link{bayesnecfit}}. For \code{\link{ecx}}, \code{\link{nsec}} and
+\code{\link{ecnsec}} that is the same table a
 \code{\link{bayesnecgroupfit}} returns, so the two routes can be read
 against each other. \code{autoplot()} draws one panel per level and
 \code{\link{ggbnec_data}} names the level in a \code{panel} column, again
 matching the grouped fit.
+
+\code{\link{nec}} adds two columns, because a composed refit fits one
+equation per level and only some equations estimate a \code{nec} parameter:
+\code{model} names the equation fitted at that level and \code{ne_type} the
+type of the estimate reported there. By default the estimate is the
+\code{nec} parameter, which is \code{NA} at a level whose equation has none;
+\code{nec(x, no_effect = TRUE)} reports instead the NSEC of that level's own
+fitted curve there, and labels the row \code{"NSEC"}. One equation per level
+is what makes that label possible: the model-averaged estimate of a
+\code{\link{bayesmanecfit}} mixes NEC and NSEC draws in proportion to the
+model weights and so has no single type to report.
 
 Each level is estimated on its own grid, one level at a time, rather than
 from one prediction spanning them all. A control posterior, an ECx crossing

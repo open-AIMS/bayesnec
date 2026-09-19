@@ -15,6 +15,17 @@
   `bayesnecjointfit`, and `ecx()`, `nsec()`, `nec()`, `ecnsec()` and
   `autoplot()` report one row or one panel per level (#382, #388).
 
+- `nec()` on a joint refit names the equation fitted at each level in a `model`
+  column and the type of that level's estimate in an `ne_type` column, and
+  reports `NA` where the level's equation has no `nec` parameter rather than
+  failing for the whole fit. `nec(x, no_effect = TRUE)` reports instead the
+  no-effect estimate each level's own equation does support --- the `nec`
+  parameter at a threshold level, the NSEC of the fitted curve at a smooth one
+  --- labelled by type. A joint refit fits exactly one equation per level, so
+  unlike the model-averaged N(S)EC of a `bayesmanecfit` each value is a NEC or
+  an NSEC and never a weighted mixture of both. `no_effect` applies to no other
+  class and is refused rather than discarded by them (#388).
+
 ## Count hurdles
 
 - `hurdle_poisson` and `hurdle_negbinomial` are available as joint two-block

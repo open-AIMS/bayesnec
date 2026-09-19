@@ -162,6 +162,9 @@ print.bayesnecgroupfit <- function(x, ...) {
 #' @method nec bayesnecgroupfit
 #' @export
 nec.bayesnecgroupfit <- function(object, ...) {
+  # Raised here rather than left to arrive from the per-level call, which would
+  # name the class of one level's fit and not the class the user called.
+  check_no_effect_arg(list(...), object)
   group_estimate_table(object, "nec", function(f, ...) nec(f, ...), ...)
 }
 

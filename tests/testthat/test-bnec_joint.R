@@ -539,8 +539,17 @@ test_that("the estimators report one row per level of a joint refit", {
   s <- suppressWarnings(suppressMessages(nsec(f$joint)))
   expect_equal(s$level, c("a", "b"))
   # The same columns the grouped route returns, so the two tables can be read
-  # against each other.
-  expect_equal(names(n), names(nec(f$grouped)))
+  # against each other. nec() adds two of its own, because a composed refit can
+  # fit an equation with no nec parameter at one level and not at another, so
+  # the estimate has to say which equation produced it and of what type.
+  expect_equal(names(s),
+               names(suppressWarnings(suppressMessages(nsec(f$grouped)))))
+  expect_equal(names(n), c("level", "model", "ne_type",
+                           names(nec(f$grouped))[-1]))
+  # Both levels here were fitted nec3param, so both rows are a NEC.
+  expect_equal(n$model, c("nec3param", "nec3param"))
+  expect_equal(n$ne_type, c("NEC", "NEC"))
+  expect_false(anyNA(n$Q50))
   # ecnsec() has to be given a method of its own: a bayesnecjointfit inherits
   # from bnecfit, so without one the inherited ecnsec.bnecfit() ran on the
   # multi-level grid and returned a number for the fit rather than per level.
@@ -729,10 +738,6 @@ test_that("the estimators and the plot follow each level's own equation", {
   f <- composed_gate_fixture()
   e <- suppressWarnings(suppressMessages(ecx(f$joint, ecx_val = 10)))
   expect_equal(e$level, c("a", "b"))
-  # nec() is defined at level a, whose equation is nec3param, and not at level
-  # b, whose ecx4param has no nec parameter, so the whole-fit call fails rather
-  # than reporting a number for one level.
-  expect_error(suppressWarnings(nec(f$joint)))
   expect_equal(length(joint_level_fit(f$joint, "a")$ne_posterior),
                brms::ndraws(f$joint$fit))
   expect_null(joint_level_fit(f$joint, "b")$ne_posterior)
@@ -753,4 +758,110 @@ test_that("the estimators and the plot follow each level's own equation", {
     is.data.frame(l$data) && "tag" %in% names(l$data), logical(1)))[1]]]$data
   expect_equal(unique(as.character(tagged$tag[tagged$panel == "a"])), "NEC")
   expect_equal(unique(as.character(tagged$tag[tagged$panel == "b"])), "NSEC")
+})
+
+# nec() on a composed refit, #388. The fit above mixes a threshold equation at
+# one level with a smooth one at the other, which is the case the two forms
+# below exist to separate, so it is the fixture these reuse.
+
+test_that("the strict nec() gives NA where a level's equation has no nec", {
+  skip_on_cran()
+  f <- composed_gate_fixture()
+  n <- suppressMessages(nec(f$joint))
+  expect_s3_class(n, "data.frame")
+  expect_equal(n$level, c("a", "b"))
+  # The equation is in the table, so the NA reads as a property of ecx4param
+  # rather than as a failure of the fit.
+  expect_equal(n$model, c("nec3param", "ecx4param"))
+  expect_equal(n$ne_type, c("NEC", NA_character_))
+  expect_false(anyNA(unlist(n[1, c("Q50", "Q2.5", "Q97.5")])))
+  expect_true(all(is.na(unlist(n[2, c("Q50", "Q2.5", "Q97.5")]))))
+  expect_message(nec(f$joint), "no nec parameter")
+  expect_message(nec(f$joint), "no_effect = TRUE")
+  # The threshold level is the number nec() on that level alone returns.
+  # as.numeric() on both sides: nec() carries a toxicity_estimate attribute
+  # that the table column does not, and expect_equal() compares attributes.
+  expect_equal(as.numeric(unlist(n[1, c("Q50", "Q2.5", "Q97.5")])),
+               as.numeric(nec(joint_level_fit(f$joint, "a"))))
+  # posterior = TRUE keeps one element per level, each of ndraws, and the
+  # level with no nec parameter is NA throughout rather than zero: a vector of
+  # zeros would read as a no-effect estimate at the origin.
+  p <- suppressMessages(nec(f$joint, posterior = TRUE))
+  expect_named(p, c("a", "b"))
+  expect_equal(unname(lengths(p)),
+               rep(brms::ndraws(f$joint$fit), 2))
+  expect_true(all(is.na(p$b)))
+  expect_false(anyNA(p$a))
+  expect_equal(unname(attr(p, "model")), c("nec3param", "ecx4param"))
+  expect_equal(unname(attr(p, "ne_type")), c("NEC", NA_character_))
+})
+
+test_that("no_effect = TRUE labels the no-effect estimate at every level", {
+  skip_on_cran()
+  f <- composed_gate_fixture()
+  strict <- suppressMessages(nec(f$joint))
+  ne <- suppressWarnings(suppressMessages(nec(f$joint, no_effect = TRUE)))
+  expect_equal(ne$level, c("a", "b"))
+  expect_equal(ne$model, c("nec3param", "ecx4param"))
+  # One equation per level, so each row is a NEC or an NSEC and the table says
+  # which. A bayesmanecfit cannot: its estimate is a weighted mixture of both.
+  expect_equal(ne$ne_type, c("NEC", "NSEC"))
+  expect_false(anyNA(ne$Q50))
+  # The threshold level is the strict NEC unchanged.
+  expect_equal(ne[1, c("Q50", "Q2.5", "Q97.5")],
+               strict[1, c("Q50", "Q2.5", "Q97.5")])
+  # The smooth level is nsec() on that level -- literally that call, on the
+  # same internal single-level fit, so the two agree exactly rather than to
+  # Monte Carlo error. A second crossing search written for this path would
+  # not, which is why one was not written.
+  s <- suppressWarnings(suppressMessages(nsec(f$joint)))
+  expect_equal(ne[2, c("Q50", "Q2.5", "Q97.5")],
+               s[2, c("Q50", "Q2.5", "Q97.5")])
+  pn <- suppressWarnings(suppressMessages(
+    nec(f$joint, posterior = TRUE, no_effect = TRUE)
+  ))
+  sp <- suppressWarnings(suppressMessages(nsec(f$joint, posterior = TRUE)))
+  expect_equal(as.numeric(pn$b), as.numeric(sp$b))
+  expect_equal(unname(attr(pn, "ne_type")), c("NEC", "NSEC"))
+  # And the annotation autoplot() draws names the same two types, so the
+  # figure and the table cannot disagree about which level holds which.
+  expect_equal(vapply(c("a", "b"), joint_level_is_threshold, logical(1),
+                      object = f$joint, USE.NAMES = FALSE),
+               ne$ne_type == "NEC")
+})
+
+test_that("a refit whose levels are all smooth gives NA, not an error", {
+  # No sampling. Under no_effect = FALSE the strict path reads the equation at
+  # each level and returns the NA row without touching the posterior, which is
+  # what makes the all-smooth case testable without a fit. That case is the
+  # ordinary one for a refit of data whose every level favours a smooth
+  # equation, and before #388 it was an error rather than a table.
+  o <- structure(list(group_var = "site", levels = c("a", "b"),
+                      models = list(a = "ecx4param", b = "ecxll5"),
+                      level_spec = list(composed = TRUE)),
+                 class = c("bayesnecjointfit", "bnecfit"))
+  n <- suppressMessages(nec(o))
+  expect_equal(n$level, c("a", "b"))
+  expect_equal(n$model, c("ecx4param", "ecxll5"))
+  expect_true(all(is.na(n$ne_type)))
+  expect_true(all(is.na(unlist(n[, c("Q50", "Q2.5", "Q97.5")]))))
+  expect_equal(names(n), c("level", "model", "ne_type",
+                           "Q50", "Q2.5", "Q97.5"))
+  # prob_vals still names the columns where no level reaches a per-level
+  # method to validate it.
+  n2 <- suppressMessages(nec(o, prob_vals = c(0.5, 0.3, 0.7)))
+  expect_equal(names(n2), c("level", "model", "ne_type", "Q50", "Q30", "Q70"))
+  expect_error(nec(o, prob_vals = c(0.5, 0.7)), "central, lower and upper")
+})
+
+test_that("the membership test is the nec group, not the equation name", {
+  # mod_groups$nec is the group of equations that estimate a nec parameter.
+  # A match on "ecx" in the name agrees across the 23 equations shipped, so
+  # only a name outside the convention separates the two rules.
+  expect_true(joint_level_is_threshold(
+    list(models = list(a = "neclin")), "a"))
+  expect_false(joint_level_is_threshold(
+    list(models = list(a = "ecxll5")), "a"))
+  expect_setequal(c(mod_groups$nec, mod_groups$ecx), mod_groups$all)
+  expect_length(intersect(mod_groups$nec, mod_groups$ecx), 0L)
 })

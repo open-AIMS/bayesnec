@@ -28,17 +28,39 @@ joint_level_fit <- function(object, level) {
               level = level, levels = object$levels,
               level_spec = object$level_spec, retained_data = NULL)
   out <- allot_class(out, c("bayesnecjointlevel", "bayesnecfit", "bnecfit"))
-  # Only a threshold equation has a nec parameter to read. nec.bayesnecfit()
-  # stops on the equation name before it reaches ne_posterior for a smooth one,
-  # so leaving it NULL there is what makes a joint refit refuse nec() with the
-  # same message every other class refuses it with. Read off this level's own
-  # equation, because a composed refit can have a threshold equation at one
-  # level and a smooth one at the next.
-  if (length(grep("ecx", model)) == 0) {
+  # Only a threshold equation has a nec parameter to read, so ne_posterior
+  # being NULL is the single record that this level has none: nec() reports NA
+  # for it and joint_level_ne() reads the level's NSEC off its own curve
+  # instead. Read off this level's own equation, because a composed refit can
+  # have a threshold equation at one level and a smooth one at the next.
+  if (joint_level_is_threshold(object, level)) {
     out$ne_posterior <- joint_level_draws(object, "nec", level)
     out$ne_type <- "NEC"
+  } else {
+    out$ne_type <- "NSEC"
   }
   out
+}
+
+#' Whether the equation fitted at one level estimates a nec parameter
+#'
+#' The membership test is \code{mod_groups$nec}, the group of equations that
+#' estimate a \code{nec} parameter, and not a match on \code{"ecx"} within the
+#' equation name. The two agree across the 23 equations shipped, but only the
+#' group states which parameters an equation has; the string is a fact about
+#' how the equations were named, and one added outside that convention would be
+#' classified wrongly by it.
+#'
+#' @param object An object of class \code{\link{bayesnecjointfit}}, or an
+#' internal \code{bayesnecjointlevel}.
+#' @param level The level, defaulting to the one named on a
+#' \code{bayesnecjointlevel}.
+#'
+#' @return \code{TRUE} or \code{FALSE}.
+#'
+#' @noRd
+joint_level_is_threshold <- function(object, level = object$level) {
+  joint_level_model(object, level) %in% mod_groups$nec
 }
 
 #' The equation fitted at one level of a joint refit
@@ -213,11 +235,116 @@ joint_estimate_table <- function(object, what, fun, ...) {
   estimate_table(est, object$levels, what)
 }
 
+#' The no-effect estimate at every level of a composed joint refit
+#'
+#' A composed joint refit fits exactly one equation at each level, so each
+#' level's no-effect estimate is a NEC or an NSEC and nothing else. The
+#' model-averaged estimate of a \code{\link{bayesmanecfit}} is not: it is a
+#' weighted mixture of \code{nec} draws from the threshold equations of the set
+#' and NSEC draws from the smooth ones, and carries no label saying in what
+#' proportion. One equation per level is what makes the labelled per-level
+#' quantity available here and not there.
+#'
+#' Two forms are reported. Under \code{no_effect = FALSE} the estimate is the
+#' \code{nec} parameter and nothing else, so a level whose equation has none
+#' returns \code{NA}. Under \code{no_effect = TRUE} a smooth level returns the
+#' NSEC of its own curve, which is \code{\link{nsec}} on that level: the same
+#' function, called on the same internal single-level fit, so the two agree
+#' exactly rather than to Monte Carlo error.
+#'
+#' \code{expand_nec}'s \code{nsec_off_curve()} is not what is called for a
+#' smooth level. It is a closure over that function's own prediction grid and
+#' takes its control posterior at the first grid column rather than at the
+#' lowest observed predictor value (D15 ruling 2, see #325), so reusing it
+#' would produce a number that \code{\link{nsec}} on the same level disagrees
+#' with. Both routes share the crossing search itself,
+#' \code{nsec_from_posterior}.
+#'
+#' @param object An object of class \code{\link{bayesnecjointfit}}.
+#' @param no_effect A \code{\link[base]{logical}} value, see
+#' \code{\link{nec}}.
+#' @param ... Passed to \code{\link{nec}} or \code{\link{nsec}} on each level.
+#'
+#' @return A \code{\link[base]{data.frame}} with one row per level, or a named
+#' \code{\link[base]{list}} of draws under \code{posterior = TRUE}.
+#'
+#' @importFrom brms ndraws
+#' @importFrom stats quantile setNames
+#'
+#' @noRd
+joint_ne_table <- function(object, no_effect, ...) {
+  dots <- list(...)
+  prob_vals <- if (is.null(dots$prob_vals)) {
+    c(0.5, 0.025, 0.975)
+  } else {
+    dots$prob_vals
+  }
+  # Validated here as well as in the per-level methods because a fit whose
+  # levels are all smooth reaches neither under no_effect = FALSE: every level
+  # takes the NA row built below, whose names come from prob_vals.
+  if (length(prob_vals) < 3 || prob_vals[1] < prob_vals[2] ||
+      prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
+    stop("prob_vals must include central, lower and upper quantiles,",
+         " in that order.", call. = FALSE)
+  }
+  posterior <- isTRUE(dots$posterior)
+  levels <- object$levels
+  models <- vapply(levels, joint_level_model, character(1), object = object,
+                   USE.NAMES = FALSE)
+  threshold <- vapply(levels, joint_level_is_threshold, logical(1),
+                      object = object, USE.NAMES = FALSE)
+  ne_type <- rep(NA_character_, length(levels))
+  ne_type[threshold] <- "NEC"
+  if (no_effect) {
+    ne_type[!threshold] <- "NSEC"
+  }
+  na_row <- quantile(NA_real_, probs = prob_vals, na.rm = TRUE)
+  names(na_row) <- clean_names(na_row)
+  est <- lapply(seq_along(levels), function(i) {
+    lvl_fit <- joint_level_fit(object, levels[i])
+    if (threshold[i]) {
+      return(nec(lvl_fit, ...))
+    }
+    if (no_effect) {
+      return(nsec(lvl_fit, ...))
+    }
+    # NA per draw rather than NULL, so that the list stays one element per
+    # level of the same length and every summary of it returns NA. A zero-length
+    # element would drop out of a vapply() over the list and a vector of zeros
+    # would read as an estimate at the origin.
+    if (posterior) rep(NA_real_, ndraws(object$fit)) else na_row
+  })
+  names(est) <- levels
+  if (any(!threshold) && !no_effect) {
+    # Worded so that it reads the same for one level and for every level, which
+    # is the ordinary case for a refit of data whose levels all favour a smooth
+    # equation.
+    message("No NEC is defined at ",
+            paste0("\"", levels[!threshold], "\" (", models[!threshold], ")",
+                   collapse = ", "),
+            ", where the equation fitted has no nec parameter, so those ",
+            "estimates are NA. nec(x, no_effect = TRUE) returns the no-effect ",
+            "estimate each level's own equation does support -- the nec ",
+            "parameter for a threshold equation, the NSEC of the fitted curve ",
+            "for a smooth one -- labelled by type.")
+  }
+  if (posterior) {
+    attr(est, "model") <- setNames(models, levels)
+    attr(est, "ne_type") <- setNames(ne_type, levels)
+    return(est)
+  }
+  out <- estimate_table(est, levels, "nec")
+  data.frame(level = out$level, model = models, ne_type = ne_type,
+             out[, -1, drop = FALSE], stringsAsFactors = FALSE)
+}
+
 #' @noRd
 #' @method nec bayesnecjointfit
+#' @importFrom chk chk_lgl
 #' @export
-nec.bayesnecjointfit <- function(object, ...) {
-  joint_estimate_table(object, "nec", function(f, ...) nec(f, ...), ...)
+nec.bayesnecjointfit <- function(object, ..., no_effect = FALSE) {
+  chk_lgl(no_effect)
+  joint_ne_table(object, no_effect = no_effect, ...)
 }
 
 #' @noRd
@@ -416,7 +543,7 @@ autoplot.bayesnecjointfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   # one panel and a smooth one in the next, and the annotation names what was
   # read off that panel's curve.
   lev_tag <- vapply(object$levels, function(l) {
-    if (length(grep("ecx", joint_level_model(object, l))) > 0) "NSEC" else "NEC"
+    if (joint_level_is_threshold(object, l)) "NEC" else "NSEC"
   }, character(1))
   dat$tag <- unname(lev_tag[level])
   show_group <- !is.null(group) && !identical(group, object$group_var)
