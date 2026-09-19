@@ -189,6 +189,7 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # arrives only after levels 1 to k-1 have compiled and sampled. See #271.
   check_disp_finite(formula, data)
   check_reserved_names(data)
+  dots <- list(...)
   # The response substitutions are not reported here. bnec_group() fits each
   # level on its own subset, so the values substituted differ between levels
   # and the per-level bnec() call is where the report belongs. See #93.
@@ -201,6 +202,41 @@ bnec_group <- function(formula, data, group_var, family = NULL,
             ". Pass `family` to override.")
   }
   family <- validate_family(family, link_source = link_source)
+  # Checked over every level before any of them is fitted. Left to the inner
+  # bnec() calls it would report one level at a time, and would reach an
+  # affected level only after the levels before it had compiled and sampled --
+  # the same reason check_disp_finite() is raised above. The private marker is
+  # removed by bnec() before brms sees it. See #390.
+  # The equation set is read per level, because check_models() may drop an
+  # equation in one level and not another, and an equation that is dropped
+  # there cannot make that level's default priors sensitive. A formula the set
+  # cannot be read from is one bnec() is about to refuse, so the failure is
+  # left to arrive from there and nothing is reported meanwhile.
+  requested_models <- try(get_model_from_formula(formula), silent = TRUE)
+  if (!inherits(requested_models, "try-error")) {
+    level_models <- setNames(lapply(levs, function(level) {
+      suppressMessages(
+        check_models(requested_models, family,
+                     mod_dat[grp == level, , drop = FALSE])
+      )
+    }), levs)
+    level_survival <- suppressMessages(
+      check_model_survival(dots$model_survival, family, mod_dat)
+    )
+    sensitive_blocks <- lapply(level_models, function(models) {
+      uses_response_range_defaults(dots$prior, models, family, level_survival)
+    })
+    if (any(unlist(sensitive_blocks, use.names = FALSE))) {
+      check_response_flattened(
+        mod_dat, family, group = grp,
+        blocks = lapply(sensitive_blocks, function(blocks) {
+          names(blocks)[blocks]
+        }),
+        pool_dispersion = is.null(parse_disp_term(formula))
+      )
+    }
+  }
+  dots[[".bayesnec_flatness_checked"]] <- TRUE
   # The crossed weights are an outer product of the per-level weight vectors,
   # and that identity holds for pseudo-BMA only, so the method is checked in
   # crossed_group_weights() rather than merely documented -- multiplying
@@ -215,7 +251,6 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # request is therefore recorded here, and crossed_group_weights() prefers
   # whatever the fits themselves still carry, since that is what actually
   # happened. See #33.
-  dots <- list(...)
   wt_method <- if (!is.null(dots$loo_controls$weights$method)) {
     dots$loo_controls$weights$method
   } else {

@@ -1,5 +1,26 @@
 # bayesnec 2.2.0
 
+## Designs that have not reached the lower asymptote
+
+- `bnec()` now reports, before anything is fitted, where the response is still
+  declining between the two highest concentrations tested. The contrast is
+  fitted as a generalised linear model under the mean-variance relationship of
+  the family being fitted and tested one-sided at the 5 per cent level, so the
+  report rate on a design whose top has flattened is 5 per cent by
+  construction. Such a design may not identify the lower asymptote: where an
+  equation estimates `bot` its default prior is derived from the observed
+  response, and the default `nec` and `ec50` priors exclude a threshold above
+  the tested range. The two blocks of a joint hurdle fit are assessed
+  separately, each against its own two highest concentrations, and the survival
+  block is assessed from the counts, which is what makes the check computable
+  where that block holds one proportion per concentration. A `rate()`
+  denominator enters the contrast as an offset, so the comparison is on the
+  rate scale. The report is raised once per call rather than once per equation,
+  and `bnec_group()` raises it for every level before it fits any of them. A
+  prior supplied for every `bot`, `nec` and `ec50` row of every equation
+  silences it; a partial prior does not, because the omitted rows are still
+  filled from the same defaults (#390).
+
 ## Behaviour changes to a fit with a `rate()` denominator
 
 - The default `top` and `bot` priors for a model fitted with a `rate()`
