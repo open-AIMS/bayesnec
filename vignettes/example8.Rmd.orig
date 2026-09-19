@@ -1770,6 +1770,54 @@ the correlation between them, widening the difference and pulling `prob_diff`
 towards 0.5 --- so a contrast between parts of one fit needs draw-wise
 differencing and must not be routed through this function.
 
+# Choosing a route for a factor
+
+Three routes fit a factor, and they answer different questions. The choice is
+made from the question rather than from the data, because all three will return
+an answer on any dataset with enough levels.
+
+| the question | the route | the call |
+|---|---|---|
+| Does the shape of the curve differ between levels? | separate fits | `bnec_group(y ~ crf(x, "all"), group_var = "site")` |
+| What is the population curve, with the differences between levels treated as nuisance? | a group-level term | `y ~ crf(x, "all") + ogl(site)` |
+| What is the difference between two named levels, within one posterior? | a joint refit | `bnec_joint(fits)` on a `bnec_group()` fit |
+
+Separate fits are the only route that lets the functional form differ between
+levels. Each level gets its own model set and its own weights, so one level may
+be described by `nec3param` and another by `ecxll5`, and the herbicide case
+study above is that case. In exchange nothing is shared: each level is
+estimated from its own data alone, and a level with few observations is
+estimated imprecisely.
+
+A group-level term shares everything except the deviations it names. It is the
+route for a grouping that is a nuisance rather than a subject --- plates,
+chambers, tanks --- where the levels are exchangeable and the question is about
+the population curve rather than about any level. `ogl()` displaces the whole
+curve, `pgl()` gives every parameter its own deviation, and `(par | group)`
+names one parameter. The zinc case study above chooses between them by fitting
+all three and reading the group-level standard deviations, which is the general
+method: the term is a claim about which differences exist, and the standard
+deviations say whether the data support it.
+
+A joint refit estimates every level's curve parameters in one posterior, with
+no pooling between them. It is reached from a `bnec_group()` fit rather than
+from a formula, so the equation is chosen against the per-level model weights
+before it is refitted. Two things follow that neither other route gives. A
+contrast between levels is a difference within one posterior rather than
+between two independent ones, so it can condition on what the levels share.
+And the dispersion can be estimated across levels rather than per level, which
+is the right model where the measurement error is a property of the assay and
+not of the level. See `?bnec_joint`.
+
+The comparison in *Within-concentration grouping* and *Across-concentration
+grouping* above is between the first two routes on one dataset, and its result
+does not transfer: `ogl(conc_group)` widened the intervals and `ogl(plate)`
+narrowed them, on the same response, because a grouping whose levels sit at one
+concentration and a grouping whose levels span the series have different work to
+do. What transfers is the method, which is to fit the alternatives and read the
+standard deviations rather than to argue from the design.
+
+
 # Provenance
 
 Every fit shown was made when this vignette was precompiled, so the estimates
