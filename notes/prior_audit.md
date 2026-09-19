@@ -488,12 +488,16 @@ cells per prior type per setting:
 | `uninformative` | 0 | 0 | 69 | 100 |
 | `regularizing` | 2 | 26 | 289 | 327 |
 
-The mean over families understates the collapse, because five of the twelve take
-a fixed `beta(2, 5)` for `bot` on the identity link that reads nothing from the
-response and so does not change across the axis. Those five are `bernoulli`,
-`Beta`, `beta_binomial`, `binomial` and `zero_inflated_beta`, each of which
-returns one distinct prior string over all 60 design, transform and completeness
-cells.
+The mean over families understates the collapse in the `uninformative` row,
+because under that prior type five of the twelve take a fixed `beta(2, 5)` for
+`bot` on the identity link, which reads nothing from the response and so does
+not change across the axis. Those five are `bernoulli`, `Beta`, `beta_binomial`,
+`binomial` and `zero_inflated_beta`; four of them return one distinct prior
+string over all 60 design, transform and completeness cells, and `bernoulli`
+over the 57 of its 60 that could be built. The `regularizing` entries for the
+same five do read the response --- at the identity link they return 22, 60, 48,
+43 and 60 distinct strings --- which is part of why the collapse is larger in
+that row of the table above.
 
 Median `p_truth` for `bot` on the gaussian cells at the identity link, which is
 the branch #386 reports, is 0.490, 0.345, 6.33e-03 and 4.45e-07 under
@@ -573,9 +577,20 @@ and `regularizing`. #386 quotes 0.473 and 0.253, then 0.0277 and 6.91e-06 at 40%
 effect, then 0.0203 and 4.17e-11 at 11%. The `uninformative` column reproduces;
 the `regularizing` column is the same order of magnitude in two rows of three
 and differs by a factor of 1.6 on the complete design and by two orders of
-magnitude on the flattest one. The `regularizing` entry is anchored on `min(y)`,
-which is a single order statistic of a poisson draw, so it is the entry in the
-set most sensitive to the draw, and neither run's seed is recoverable.
+magnitude on the flattest one.
+
+The two entries differ in how much of the response they read, which accounts
+for that. `regularizing_location()` (`R/define_prior.R:522`) returns the mean of
+the observations at the extreme concentration, so on this design the `bot`
+anchor is a mean of five poisson draws: the three gamma entries above have their
+maximum density at 5.00, 26.2 and 35.2, which are those three means exactly. At
+a mean of 35.2 that statistic has a standard error of 2.65, and shifting a gamma
+of shape 14 by a few units changes its far tail by orders of magnitude, so a
+`p_truth` in the tenth decimal place is not comparable across two draws. The
+`uninformative` entry is `gamma(2, 2/q25)` on the whole response of 40
+observations and is correspondingly stable. Neither run's seed is recoverable.
+Part 1 section 3 above describes the `regularizing` `bot` anchor as the sample
+minimum; that was its behaviour at `eebccdb3` and is not its behaviour here.
 
 The threshold priors reproduce, at a truncated prior CDF of 1 under both prior
 sets, which is what #386 reports for a true `ec50` of 45 and for a true `nec` of
@@ -685,15 +700,19 @@ The `beta_binomial` row of this table, the constant-trials row of the
 varying-trials table below, and the replicated row at the end of the
 unreplicated table are all the same data-generating process under three seeds:
 five levels, four rows of twenty trials each, an intra-class correlation of 0.1,
-flat top. They read 0.0528, 0.0485 and 0.0517, which is a spread of 0.004 over
-three independent runs of 4000 replicates and is the Monte Carlo error on every
-figure in this section.
+flat top. They read 0.0528, 0.0485 and 0.0517, a spread of 0.004 over three
+independent runs of 4000 replicates, which is the Monte Carlo error on a
+4000-replicate row at this rate. The 20000-replicate rows are about half as
+uncertain and the rows near 0.18 rather less certain; each row's own interval
+is given beside it.
 
 `check_response_flattened()`, which is the function a user meets, agreed with
-the two helpers this section calls on 300 of 300 blocks, over a gaussian
-response, a `binomial` response with a `trials()` term, and a `hurdle_gamma` fit
-whose two blocks are assessed separately. Those three cover the estimated and
-the fixed dispersion, the two-column count response and the hurdle split.
+the two helpers this section calls on 400 of 400 blocks, over a gaussian
+response, a `binomial` response with a `trials()` term, a `hurdle_gamma` fit
+whose two blocks are assessed separately, and an unreplicated `beta_binomial`
+block of one row per level. Those four cover the estimated dispersion, the fixed
+one, the fixed-dispersion fallback that produces the 0.1825 below, the
+two-column count response and the hurdle split.
 
 ### The quasipoisson approximation to the negative binomial variance
 
@@ -824,10 +843,12 @@ describes as short of asymptotic.
 
 The likelihood ratio is used rather than the difference of the two deviances,
 because `glm.nb` estimates a `theta` for each fit and the two deviances are
-computed under different variance functions. Both are computed, and the deviance
-route reports on 0.0025, 0.0200, 0.0175 and 0.0125 of the same four settings: it
-is not a conservative version of the same test but a broken one, which never
-reaches the nominal level and has almost no power.
+computed under different variance functions. The likelihood ratio is also what
+`anova.negbin()` reports as its `LR stat.` for the same pair of fits. Both are
+computed here, and the deviance route reports on 0.0025, 0.0200, 0.0175 and
+0.0125 of the same four settings: it is not a conservative version of the same
+test but a broken one, which never reaches the nominal level and has almost no
+power.
 
 The measurement does not settle whether `MASS` belongs in `Suggests`. It
 establishes what the fallback would add, about eleven percentage points of power
@@ -844,7 +865,7 @@ below 1, and `linear_rescale()` then produces `NaN` for every element.
 `define_prior()` stops in `quantile.default()` with "missing values and NaN's not
 allowed if 'na.rm' is FALSE", which names neither the column nor the cause. Nine
 of the 5,760 cells reached it, all `bernoulli` and all at the two flattest
-settings, where the true mean is 0.95 at every dose and a draw of 54 or 66
+settings, where the true mean is 0.95 at every dose and a draw of 60 or 66
 observations can contain no zero. A user meets it as a failed fit rather than as
 a refusal. Not filed yet.
 
