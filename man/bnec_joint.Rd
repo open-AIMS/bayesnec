@@ -105,11 +105,12 @@ also estimated per level. \code{FALSE} shares one dispersion across the
 levels, which is the model for a measurement error that is a property of the
 assay rather than of the level.
 
-The returned object carries the fit and the level structure and nothing
-derived from a prediction grid: \code{\link{ecx}}, \code{\link{nsec}},
-\code{\link{nec}} and \code{\link{autoplot}} do not yet report per level for
-a joint refit, and calling them on one is an error rather than an estimate
-for an unnamed level.
+\code{\link{ecx}}, \code{\link{nsec}}, \code{\link{nec}} and
+\code{\link{ecnsec}} on the returned object give one row per level, in the
+\code{\link[base]{data.frame}} a \code{\link{bayesnecgroupfit}} returns, and
+\code{\link{autoplot}} draws one panel per level. Each level is estimated on
+its own prediction grid, so the estimate for a level is read off that
+level's curve alone.
 }
 \examples{
 \dontrun{

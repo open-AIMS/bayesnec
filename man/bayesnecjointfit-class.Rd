@@ -14,15 +14,27 @@ single posterior.
 }
 \details{
 The object holds the fit and the level structure and nothing
-derived from a prediction grid. \code{prediction_grid()} builds the
-predictor and the columns a family needs and no level column, and a level
-term is a population-level term, so \code{re_formula = NA} does not drop it
-and \code{\link[brms]{posterior_epred}} stops on the column it cannot find.
+derived from a prediction grid. A level term is a population-level term, so
+\code{re_formula = NA} does not drop it and the prediction grid has to name
+a level: \code{\link{bnec_newdata}} on a joint refit returns
+\code{resolution} rows for each level rather than \code{resolution} rows,
+with the level varying slowest.
+
 \code{\link{ecx}}, \code{\link{nsec}}, \code{\link{nec}} and
-\code{autoplot()} therefore do not report per level for a joint refit
-yet. The failure is an error rather than an estimate for an unnamed level,
-which is why the fit can be read for its parameters before those are
-written.
+\code{\link{ecnsec}} therefore return a
+\code{\link[base]{data.frame}} with one row per level, named in a
+\code{level} column, rather than the named vector of three they return for a
+\code{\link{bayesnecfit}}. That is the same table a
+\code{\link{bayesnecgroupfit}} returns, so the two routes can be read
+against each other. \code{autoplot()} draws one panel per level and
+\code{\link{ggbnec_data}} names the level in a \code{panel} column, again
+matching the grouped fit.
+
+Each level is estimated on its own grid, one level at a time, rather than
+from one prediction spanning them all. A control posterior, an ECx crossing
+and an NSEC search each read a single monotone curve, and a grid holding
+every level concatenated is not one: the crossing search would find the
+first level's crossing and report it for the fit.
 
 The coefficient one level holds on one parameter is named
 \code{b_<parameter>_<group_var><level>} in the draws --- \code{b_top_sitea}

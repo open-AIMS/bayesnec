@@ -8,7 +8,8 @@ bnec_newdata(x, resolution = 100, x_range = NA)
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesnecfit}} or
-\code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}.}
+\code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}, or of class
+\code{\link{bayesnecjointfit}} as returned by \code{\link{bnec_joint}}.}
 
 \item{resolution}{A \code{\link[base]{numeric}} vector of length 1 indicating
 the number of x values over which to predict values.}
@@ -17,7 +18,10 @@ the number of x values over which to predict values.}
 the range of x values over which to make predictions.}
 }
 \value{
-A \code{\link[base]{data.frame}} to be used in predictions.
+A \code{\link[base]{data.frame}} to be used in predictions. For a
+\code{\link{bayesnecjointfit}} it holds \code{resolution} rows for each
+level of the grouping factor, in a column of that name, with the level
+varying slowest; every other class gives \code{resolution} rows.
 }
 \description{
 Create a dataset for predictions
