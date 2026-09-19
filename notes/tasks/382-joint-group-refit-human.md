@@ -62,7 +62,15 @@ across levels, and the user can name another. Where the levels disagree
 strongly about the equation, that is a result about the data and the function
 says so rather than choosing silently.
 
-Done when the fit returns and its parameters can be read per level.
+The priors and initial values for the level coefficients come from the
+machinery that already derives them, extended to cover the extra coefficients,
+rather than from a second derivation inside `bnec_joint()`. A second derivation
+would drift from the first, and a joint refit with the wrong priors samples
+cleanly and reports healthy diagnostics, so the mistake would have no symptom.
+See the specification under *Priors and initial values*.
+
+Done when the fit returns, its parameters can be read per level, and the
+per-level estimates agree with a `bnec_group()` fit of the same equation.
 
 ### Phase 2
 

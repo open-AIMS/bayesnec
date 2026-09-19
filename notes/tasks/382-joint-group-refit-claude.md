@@ -103,19 +103,63 @@ is available by not applying the replacement to it, and should be reachable
 through an argument rather than by editing code. Name it `disp_by_level`,
 default `TRUE`.
 
-### Priors
+### Priors and initial values
 
-`get_priors()` derives priors per parameter from the data. With `0 + <group>`
-there are now as many coefficients per parameter as there are levels, and the
-prior has to apply to each. Check what `get_priors()` returns for the
-constructed formula before fitting, and where it returns a prior for a
-coefficient that no longer exists, that is the bug to fix first.
+The level term is threaded through the existing prior and initial-value
+machinery as a `level_spec`, beside the `group_spec` that already exists. It is
+not given a prior derivation of its own. This is settled, not open: the
+alternative is recorded under *Rejected alternatives* and the reason it was
+rejected is that it fails silently.
 
-This is the part most likely to be wrong in a way that samples cleanly. A prior
-derived from the whole response applied to a per-level coefficient is not
-obviously wrong from the output. Compare the per-level posteriors against the
-`bnec_group()` fit of the same equation; they should agree to Monte Carlo error
-where the priors are right, because the models are then the same model.
+The machinery to extend, in the order `fit_bayesnec()` reaches it:
+
+| what | where | what it does now | what it must also do |
+|---|---|---|---|
+| `parse_group_terms()` | `R/fit_bayesnec.R:66` | reads the group-level terms off the formula into `group_spec` | a sibling producing `level_spec` from the level term |
+| `add_brm_defaults()` | `R/fit_bayesnec.R:67` | takes `group_spec`, passes it on | take `level_spec`, pass it on |
+| `define_prior()` | `R/helpers.R:914` | derives a prior per parameter, with `group_spec` for the deviations | derive the same parameter prior for each level coefficient |
+| `group_inits()` | `R/fit_bayesnec.R:99` | initial values for the group-level terms, read from `make_standata()` | the same for the level coefficients |
+
+`bnec_joint()` constructs the model rather than parsing it from user syntax, so
+`level_spec` is built by `bnec_joint()` and handed down. There is no user-facing
+syntax to parse and none is added, which is the whole of why this is smaller
+than it looks: the parsing half of `parse_group_terms()` has no analogue here.
+
+Each level coefficient takes the prior that parameter would have taken with no
+level term at all. A `top` coefficient for level A and one for
+level B each get the `top` prior `define_prior()` already derives. That is the
+correct default because the levels are exchangeable a priori --- nothing in the
+data says which level should be shrunk towards what, and a joint refit is
+chosen precisely when no shrinkage is wanted.
+
+Derive it once and replicate it across levels rather than deriving it per level
+subset. Per-level derivation would make the prior depend on how many
+observations each level happens to have, so a level with three points would get
+a different prior from one with thirty, and the contrast between them would then
+be partly a contrast between their priors.
+
+The initial values matter as much as the priors and for a reason the code
+already records at `fit_bayesnec.R:74`: Stan draws a lower-bounded standard
+deviation from uniform(-2, 2) on the unconstrained scale and ignores the
+declared prior, so a prior alone does not stop the mean starting outside a
+bounded response's support. A joint refit on a Gamma or Beta response with no
+initial values for its level coefficients is expected to fail to initialise, and
+that failure will look like a sampler problem rather than a missing step.
+
+### The check that the priors are right
+
+Per-level posteriors from a joint refit and from a `bnec_group()` fit of the
+same single equation estimate the same quantity, and must agree to Monte Carlo
+error. They are the same model written two ways once the priors match.
+
+A disagreement is the diagnostic. Where the joint refit is tighter than the
+grouped one, a prior is being applied more than once or is derived from the
+whole response where it should be per parameter. Where it is wider, a level
+coefficient has no prior and is running on `brms`'s improper default.
+
+Run this before phase 2, with the priors printed rather than assumed. The same
+comparison is phase 2's gate, and if it is first run there a failure cannot be
+attributed between the two phases.
 
 ### Family
 
@@ -201,6 +245,16 @@ because the equation choice should be made against per-level weights, and
 requiring `bnec_group()` first means it always is. It also doubles the work:
 the syntax needs parsing, validation against each equation's parameter list,
 and its own interaction with `ogl()`, `pgl()` and `disp()`.
+
+### A prior derivation of its own inside `bnec_joint()`
+
+`bnec_joint()` would build the priors and initial values itself and pass them
+through `...`, adding nothing to `define_prior()`. Rejected because it is a
+second derivation of the same quantities, and the two drift. Every later change
+to how a `top` or `nec` prior is derived would have to be made twice, and a
+missed one produces a joint refit whose priors differ from every other fit in
+the package while sampling cleanly and reporting healthy diagnostics. The
+failure has no symptom at the point of use, which is the argument against it.
 
 ### A combination of per-level fits through `c.bnecfit()`
 
