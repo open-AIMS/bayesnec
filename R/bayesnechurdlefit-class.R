@@ -268,12 +268,14 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 200,
   grid_fitted <- sub_x_transformation(preds$x, object$formula)
   grid_fitted <- grid_fitted[is.finite(grid_fitted)]
   cens <- censoring_record(max(grid_fitted), min(grid_fitted), above, below)
-  warn_censored_draws(out, paste0("ECx", ecx_val), cens = cens)
   if (inherits(xform, "function")) {
     out <- xform(out)
     cens <- xform_censoring(cens, xform)
   }
   attr(out, "censored") <- cens
+  # After xform, as in ecx.bayesnecfit: the bound the report names and the
+  # numbers the caller is about to read are then on one scale.
+  warn_censored_draws(out, paste0("ECx", ecx_val), cens = cens)
   estimate <- summarise_censored(out, prob_vals, cens)
   names(estimate) <- clean_names(estimate)
   attr(estimate, "ecx_val") <- ecx_val
