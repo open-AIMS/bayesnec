@@ -164,6 +164,67 @@ test_that("combine_censored_min is pmin where neither block is censored", {
   expect_null(out$censored)
 })
 
+test_that("the censored summary recovers the quantile where it is identified", {
+  # The strongest statement the rank treatment makes: where a quantile does not
+  # fall among the censored draws, it is the quantile of the uncensored truth
+  # and not of the draws that were identified. Checked against a posterior
+  # whose beyond-range values are known, which no fit can supply.
+  set.seed(1)
+  truth <- sort(stats::runif(200, 0, 5))
+  above <- truth > 4
+  seen <- truth
+  seen[above] <- NA_real_
+  out <- bayesnec:::summarise_censored(
+    seen, c(0.5, 0.025, 0.975), cens_record(above, logical(200), upper = 4,
+                                            lower = 0)
+  )
+  want <- stats::quantile(truth, c(0.5, 0.025, 0.975))
+  expect_gt(sum(above), 20)
+  expect_equal(unname(out[1:2]), unname(want[1:2]))
+  # The upper limit does fall among them and is the bound, which is the one
+  # entry the data cannot identify.
+  expect_identical(attr(out, "censored_summary")$bound, c("", "", ">="))
+  expect_equal(unname(out[[3]]), 4)
+  # The deleted-draw summary gets the median wrong by deleting the top 17 per
+  # cent of the sample.
+  deleted <- stats::quantile(seen, c(0.5, 0.025, 0.975), na.rm = TRUE)
+  expect_lt(deleted[[1]], want[[1]])
+})
+
+test_that("a wholly censored posterior reports the bound at every entry", {
+  x <- rep(NA_real_, 5)
+  up <- bayesnec:::summarise_censored(
+    x, c(0.5, 0.025, 0.975), cens_record(rep(TRUE, 5), logical(5))
+  )
+  expect_true(all(up == 10))
+  expect_identical(attr(up, "censored_summary")$bound, rep(">=", 3))
+  down <- bayesnec:::summarise_censored(
+    x, c(0.5, 0.025, 0.975), cens_record(logical(5), rep(TRUE, 5))
+  )
+  expect_true(all(down == 0))
+  expect_identical(attr(down, "censored_summary")$bound, rep("<=", 3))
+})
+
+test_that("a one-draw posterior is summarised rather than refused", {
+  out <- bayesnec:::summarise_censored(NA_real_, c(0.5, 0.025, 0.975),
+                                       cens_record(TRUE, FALSE))
+  expect_equal(as.numeric(out), rep(10, 3))
+  plain <- bayesnec:::summarise_censored(3, c(0.5, 0.025, 0.975),
+                                         cens_record(FALSE, FALSE))
+  expect_equal(as.numeric(plain), rep(3, 3))
+})
+
+test_that("a record of the wrong length is refused rather than recycled", {
+  # Recycling a shorter logical would censor a draw chosen by position in the
+  # recycling rather than by where its estimate lies, and would do it silently.
+  expect_error(
+    bayesnec:::summarise_censored(c(1, 2), 0.5,
+                                  cens_record(c(TRUE, FALSE, FALSE),
+                                              logical(3))),
+    "covers 3 draws and the posterior has 2"
+  )
+})
+
 # Integration. These reuse the packaged fits and change only the prediction
 # grid, so no model is compiled or sampled.
 
