@@ -1894,3 +1894,208 @@ test_that("the extension limit is a fifth of the concentrations, and binds", {
   expect_equal(bayesnec:::regularizing_location(xr, yr, "top")[["location"]],
                mean(yr[xr == min(xr)]))
 })
+
+# #389: the default top and bot priors for a rate() fit.
+#
+# bnec() fits on link = "identity", so brms writes a rate denominator
+# multiplicatively on the response scale: the mean is the rate and top, bot and
+# nec are counts per unit exposure. fit_bayesnec() built the defaults from the
+# raw counts, which displaced every entry by the exposure and displaced the
+# initial-value band with it, because `response` is what reaches both
+# define_prior() and make_good_inits(). get_priors() and amend() already
+# divided the denominator out, so the routes disagreed on the same data.
+
+rate_prior_data <- function(seed = 389) {
+  set.seed(seed)
+  x <- rep(seq(0, 10, length.out = 10), 4)
+  # A varying exposure, so that dividing it out is not the same as dividing by
+  # a constant, and a mean exposure of 3.75 that is far enough from 1 for the
+  # displacement to be unambiguous.
+  ex <- rep(c(1, 2, 4, 8), each = 10)
+  nec3 <- function(beta, nec, top, x) {
+    top * exp(-exp(beta) * (x - nec) * (x > nec))
+  }
+  data.frame(x = x, ex = ex,
+             y = as.integer(stats::rpois(40, nec3(-0.5, 4, 20, x) * ex)))
+}
+
+# The prior fit_bayesnec() hands to brm(), with brm() mocked: the assertion is
+# about the object it receives and not about anything the sampler does with it.
+# `init` is supplied so that add_brm_defaults() skips the initial-value search,
+# which is stochastic and slow (#266). Modelled on fit_call() in
+# test-fit_bayesnec.R, which cannot be shared because testthat runs each file
+# in its own subprocess.
+rate_fitted_prior <- function(formula, data, family, model = "nec4param") {
+  seen <- new.env(parent = emptyenv())
+  local_mocked_bindings(
+    brm = function(formula, data, ...) {
+      seen$prior <- list(...)$prior
+      structure(list(), class = "brmsfit")
+    },
+    are_chains_correct = function(...) TRUE,
+    .package = "bayesnec"
+  )
+  suppressMessages(suppressWarnings(
+    fit_bayesnec(formula = bnf(formula), data = data, model = model,
+                 brm_args = list(family = family, init = list(list()),
+                                 chains = 1, iter = 10))
+  ))
+  as.data.frame(seen$prior)
+}
+
+prior_entry <- function(prior, nlpar) {
+  prior$prior[prior$nlpar == nlpar]
+}
+
+test_that("a rate denominator scales the default top and bot priors (#389)", {
+  d <- rate_prior_data()
+  fam <- validate_family("poisson")
+  fitted_prior <- rate_fitted_prior(y | rate(ex) ~ crf(x, "nec4param"), d, fam)
+  on_rates <- as.data.frame(define_prior("nec4param", fam, d$x, d$y / d$ex))
+  on_counts <- as.data.frame(define_prior("nec4param", fam, d$x, d$y))
+  for (np in c("top", "bot")) {
+    expect_identical(prior_entry(fitted_prior, np), prior_entry(on_rates, np))
+    expect_false(identical(prior_entry(fitted_prior, np),
+                           prior_entry(on_counts, np)))
+  }
+  # The size of the displacement, stated rather than left to the equality
+  # above: gamma(2, rate) has mean 2 / rate, the true top of these data is 20,
+  # and the count-scale entry put the prior mean at 64.
+  prior_mean <- function(txt) {
+    2 / as.numeric(sub("^gamma\\([^,]+,\\s*([^)]+)\\)$", "\\1", txt))
+  }
+  expect_equal(prior_mean(prior_entry(fitted_prior, "top")), 19.490625,
+               tolerance = 1e-6)
+  expect_equal(prior_mean(prior_entry(on_counts, "top")), 63.98125,
+               tolerance = 1e-6)
+})
+
+test_that("a fit with no rate term is unchanged by the division (#389)", {
+  # The guard on the new branch. `denominator` is NULL wherever the formula
+  # has no rate() term, and a poisson fit without one keeps the entries it
+  # had before #389.
+  d <- rate_prior_data()
+  fam <- validate_family("poisson")
+  fitted_prior <- rate_fitted_prior(y ~ crf(x, "nec4param"), d, fam)
+  plain <- as.data.frame(define_prior("nec4param", fam, d$x, d$y))
+  expect_identical(fitted_prior$prior, plain$prior)
+})
+
+test_that("a rate denominator of one leaves the prior alone (#389)", {
+  d <- rate_prior_data()
+  d$ex <- 1
+  fam <- validate_family("poisson")
+  fitted_prior <- rate_fitted_prior(y | rate(ex) ~ crf(x, "nec4param"), d, fam)
+  plain <- as.data.frame(define_prior("nec4param", fam, d$x, d$y))
+  expect_identical(fitted_prior$prior, plain$prior)
+})
+
+test_that("bnec and get_priors agree on a rate default prior (#389)", {
+  # ?get_priors states that the priors previewed from a formula and the priors
+  # a fit used agree where no prior was supplied. On rate() data they did not:
+  # get_priors() divided the denominator out and fit_bayesnec() did not, so the
+  # documented guarantee was false for every poisson and negbinomial rate fit.
+  d <- rate_prior_data()
+  fam <- validate_family("negbinomial")
+  fitted_prior <- rate_fitted_prior(y | rate(ex) ~ crf(x, "nec4param"), d, fam)
+  previewed <- as.data.frame(suppressMessages(
+    get_priors(y | rate(ex) ~ crf(x, "nec4param"), data = d,
+               family = "negbinomial")
+  ))
+  expect_identical(fitted_prior$prior, previewed$prior)
+})
+
+test_that("bnec and amend build the same default rate prior (#389)", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # The defect's own statement: the two routes built the prior from different
+  # scales for the same data, and nothing asserted that they agree. amend()
+  # rebuilds a default prior only for a model added to a set it has already
+  # fitted, so the fit below cannot be mocked away; it is kept to one equation,
+  # two chains and 400 iterations, since the compilation is the cost and the
+  # posterior is never read.
+  d <- rate_prior_data()
+  fit <- suppressMessages(suppressWarnings(
+    bnec(y | rate(ex) ~ crf(x, "nec3param"), data = d, family = "poisson",
+         chains = 2, iter = 400, seed = 389)
+  ))
+  seen <- new.env(parent = emptyenv())
+  local_mocked_bindings(
+    brm = function(formula, data, ...) {
+      seen$prior <- list(...)$prior
+      structure(list(), class = "brmsfit")
+    },
+    are_chains_correct = function(...) TRUE,
+    .package = "bayesnec"
+  )
+  # The added model's prior is read off the mocked brm() call rather than off
+  # the returned object: the fake fit holds no posterior, so amend() fails
+  # once it reaches the model weights. The prior has been built by then, which
+  # is the only part under test, and the second compilation is avoided.
+  suppressMessages(suppressWarnings(
+    try(amend(fit, add = "nec4param"), silent = TRUE)
+  ))
+  expect_false(is.null(seen$prior))
+  added <- as.data.frame(seen$prior)
+  used <- as.data.frame(get_priors(fit))
+  # top is the entry the two equations share; nec3param fixes bot at zero and
+  # so has no entry for it.
+  expect_identical(prior_entry(added, "top"), prior_entry(used, "top"))
+  expect_identical(prior_entry(added, "nec"), prior_entry(used, "nec"))
+})
+
+test_that("the initial-value search reads the rate scale as well (#389)", {
+  # The division is applied to `response`, which add_brm_defaults() passes to
+  # define_prior() and to make_good_inits() alike, so the starting band moves
+  # with the prior. Asserted by capturing what the search is given rather than
+  # by running it: the search itself is stochastic and can take minutes (#266).
+  d <- rate_prior_data()
+  fam <- validate_family("poisson")
+  seen <- new.env(parent = emptyenv())
+  local_mocked_bindings(
+    brm = function(formula, data, ...) structure(list(), class = "brmsfit"),
+    are_chains_correct = function(...) TRUE,
+    make_good_inits = function(model, predictor, response, ...) {
+      seen$response <- response
+      list(random = "random")
+    },
+    .package = "bayesnec"
+  )
+  suppressMessages(suppressWarnings(
+    fit_bayesnec(formula = bnf(y | rate(ex) ~ crf(x, "nec4param")), data = d,
+                 model = "nec4param",
+                 brm_args = list(family = fam, chains = 1, iter = 10))
+  ))
+  expect_equal(seen$response, response_link_scale(d$y / d$ex, fam))
+  expect_false(isTRUE(all.equal(seen$response,
+                                response_link_scale(d$y, fam))))
+})
+
+test_that("the amend path divides without check_data (#389)", {
+  # skip_check = TRUE is the route amend() takes, and there the denominator is
+  # read from the model frame because check_data() has not run. Covered
+  # separately from the bnec() route, which reads it from the checked frame.
+  d <- rate_prior_data()
+  fam <- validate_family("poisson")
+  seen <- new.env(parent = emptyenv())
+  local_mocked_bindings(
+    brm = function(formula, data, ...) {
+      seen$prior <- list(...)$prior
+      structure(list(), class = "brmsfit")
+    },
+    are_chains_correct = function(...) TRUE,
+    make_good_inits = function(...) list(random = "random"),
+    .package = "bayesnec"
+  )
+  suppressMessages(suppressWarnings(
+    fit_bayesnec(formula = bnf(y | rate(ex) ~ crf(x, "nec4param")), data = d,
+                 model = "nec4param", skip_check = TRUE,
+                 brm_args = list(family = fam, chains = 1, iter = 10))
+  ))
+  skipped <- as.data.frame(seen$prior)
+  on_rates <- as.data.frame(define_prior("nec4param", fam, d$x, d$y / d$ex))
+  for (np in c("top", "bot")) {
+    expect_identical(prior_entry(skipped, np), prior_entry(on_rates, np))
+  }
+})

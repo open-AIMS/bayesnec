@@ -135,3 +135,25 @@ test_that("an unrecognised aterm is an error, not a message", {
     model.frame(bnf(y | rate(ex) ~ crf(x, "nec3param")), data = d)
   )
 })
+
+test_that("a rate denominator written as an expression is refused (#389)", {
+  # The denominator is carried as a plain column, so an expression is reduced
+  # to the first variable in it while brms keeps the expression: under
+  # rate(exh / 24) brms divides by the quotient and every bayesnec path that
+  # reads the column divides by exh. Since #389 that reaches the default priors
+  # and the initial-value band, and it already reached the prediction grid and
+  # the plotting paths, so the form is refused rather than corrected four
+  # times.
+  d <- rate_data()
+  d$exh <- d$ex * 24
+  expect_error(model.frame(bnf(y | rate(exh / 24) ~ crf(x, "nec3param")),
+                           data = d),
+               "must be a column of the data")
+  expect_error(bnf(y | rate(ex * 2) ~ crf(x, "nec3param")) |>
+                 model.frame(data = d),
+               "rate\\(ex \\* 2\\)")
+  # the bare column is untouched
+  expect_no_error(
+    model.frame(bnf(y | rate(exh) ~ crf(x, "nec3param")), data = d)
+  )
+})

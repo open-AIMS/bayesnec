@@ -1,5 +1,89 @@
 # bayesnec 2.2.0
 
+## Package metadata
+
+- The minimum `testthat` recorded in `DESCRIPTION` is raised from 3.1.8 to
+  3.2.0. `local_mocked_bindings()` and `with_mocked_bindings()` arrived in
+  3.2.0 and the test suite calls them 36 times across 13 files, so the recorded
+  bound understated what running the tests requires. No package code changes.
+
+## Designs that have not reached the lower asymptote
+
+- `bnec()` now reports, before anything is fitted, where the response is still
+  declining between the two highest concentrations tested. The contrast is
+  fitted as a generalised linear model under the mean-variance relationship of
+  the family being fitted and tested one-sided at the 5 per cent level, so the
+  report rate on a design whose top has flattened is 5 per cent wherever that
+  variance function is the family's own, which is every family but two. The
+  quasipoisson variance is a linear approximation to the negative binomial
+  variance, and the quasibinomial variance absorbs a beta-binomial
+  over-dispersion as a constant multiplier only where the number of trials is
+  constant within a level. The claim is also asymptotic in the number of
+  observations behind each level, so a bernoulli response of a handful of
+  observations per concentration reports above it: 8.2 per cent at four,
+  6.3 at ten and 4.9 at twenty-five, on one simulated series. The rate is not
+  monotone in that count, because the discreteness of a 0/1 response depends on
+  the level of the response as well as on the number of observations, so those
+  three figures do not bound it. All three approximations are measured in the
+  audit (#391). Such a design may not identify the lower asymptote: where an
+  equation estimates `bot` its default prior is derived from the observed
+  response, and the default `nec` and `ec50` priors exclude a threshold above
+  the tested range. The two blocks of a joint hurdle fit are assessed
+  separately, each against its own two highest concentrations, and the survival
+  block is assessed from the counts, which is what makes the check computable
+  where that block holds one proportion per concentration. A `rate()`
+  denominator enters the contrast as an offset, so the comparison is on the
+  rate scale. The report is raised once per call rather than once per equation,
+  and `bnec_group()` raises it for every level before it fits any of them. A
+  prior supplied for every `bot`, `nec` and `ec50` row of every equation
+  silences it; a partial prior does not, because the omitted rows are still
+  filled from the same defaults. A block with too little information at the
+  two levels compared is passed over in silence: for a family whose dispersion
+  is estimated that is a design with no predictor value observed twice, and for
+  a bernoulli response or a hurdle survival block it is fewer than two
+  individuals at either level. A `binomial` or `beta_binomial` response with one
+  row per concentration is an exception: the denominator is known there, so the
+  contrast falls back to a fixed dispersion and is assessed on the individuals,
+  which is what the survival block of a hurdle fit already does with the same
+  counts. The fallback trades the over-dispersion estimate for a test that
+  exists at all. On `beta_binomial`, whose declaration says to expect
+  over-dispersion, that makes the test anti-conservative: on a flat top of four
+  levels of twenty trials with one row at each, `binomial` reports on 5.8 per
+  cent and `beta_binomial` at an intra-class correlation of 0.1 on 18.4 per
+  cent, over 4000 replicates. Supplying replicate rows restores the
+  over-dispersion estimate.
+  The report names the predictor as the formula wrote it, so a fit on
+  `crf(log(concentration))` reports log concentrations under that name (#390).
+
+- `bnec_group()` now raises the `model_survival` check before it fits any
+  level. An invalid equation for a survival block was previously reported by
+  the first level's `bnec()` call, which is after that level had compiled and
+  sampled (#390).
+
+## Behaviour changes to a fit with a `rate()` denominator
+
+- The default `top` and `bot` priors for a model fitted with a `rate()`
+  denominator are now built on the rate scale. They were derived from the raw
+  counts, so every entry was displaced by the exposure, and because the same
+  vector reaches the initial-value search the starting band was displaced with
+  it. Fitted results therefore change for the `poisson` and `negbinomial`
+  families, which are the only two a `rate()` term accepts, wherever the
+  denominator is not 1. On a simulated `nec4param` series with a true `top` of
+  20 and exposures of 1, 2, 4 and 8, the `top` entry changes from
+  `gamma(2, 0.0313)`, a prior mean of 64.0, to `gamma(2, 0.103)`, a prior mean
+  of 19.5. `get_priors()` and `amend()` already divided the denominator out, so
+  the priors a fit uses and the priors `get_priors()` previews for it now agree,
+  as the documentation states they do (#389).
+
+- A `rate()` denominator written as an expression, such as `rate(hours / 24)`,
+  is now an error. The denominator is recorded as a plain column, so an
+  expression was reduced to the first variable in it while `brms` kept the
+  expression, and the two then disagreed: `brms` divided by the quotient while
+  every `bayesnec` path that reads the column divided by `hours`. That reached
+  the prediction grid, which pins the column at 1, and the observations the
+  plotting paths put on the rate scale, and with the prior change above it
+  would reach the posterior. Compute the column before the call and name it in
+  `rate()` (#389).
 ## Joint refit across factor levels
 
 - `bnec_joint()` is now generic and has a method for `bayesnecgroupfit`. It

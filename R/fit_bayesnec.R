@@ -29,12 +29,20 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   x <- retrieve_var(bdat, "x_var", error = TRUE)
   y <- retrieve_var(bdat, "y_var", error = TRUE)
   tr <- retrieve_var(bdat, "trials_var")
+  denominator <- retrieve_var(bdat, "rate_var")
   family <- brm_args$family
   if (!skip_check) {
     checked_df <- check_data(data = bdat, family = family, model = model)
     x <- checked_df$mod_dat$x
     y <- checked_df$mod_dat$y
     tr <- checked_df$mod_dat$trials
+    # Taken from the checked frame rather than left as the value read from bdat
+    # above, so that the denominator and the response it divides come from one
+    # object and stay aligned: check_data() substitutes into the response, and
+    # the substituted values are what y holds here. NULL where the formula has
+    # no rate() term, because check_data() adds the column only when one is
+    # present.
+    denominator <- checked_df$mod_dat$denom
     family <- checked_df$family
     custom_name <- check_custom_name(family)
     brm_args$family <- family
@@ -60,6 +68,18 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
     response <- y / tr
   } else {
     response <- y
+  }
+  # A rate() denominator is divided out for the same reason trials is above.
+  # bnec() fits on link = "identity", so brms writes the denominator
+  # multiplicatively on the response scale and the mean is the rate: top, bot
+  # and nec are counts per unit exposure, not counts. Built from the raw counts
+  # the defaults were displaced by the exposure, and because `response` is what
+  # reaches both define_prior() and the initial-value search, one division
+  # serves both. amend() already divides, on the same reasoning, at the point
+  # it rebuilds priors for a model added to an existing set (#136); this is the
+  # bnec() route agreeing with it. See #389.
+  if (!is.null(denominator)) {
+    response <- response / denominator
   }
   brms_bf <- wrangle_model_formula(model, formula, bdat, family,
                                    model_survival = model_survival,
