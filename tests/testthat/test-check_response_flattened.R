@@ -361,11 +361,18 @@ test_that("an unreplicated binomial design falls back to a fixed dispersion", {
   expect_identical(as_binomial$status, "tested")
   expect_equal(as_binomial$p_value, flatness_contrast(survival)$p_value)
   # A replicated design keeps quasibinomial, because over-dispersion between
-  # replicate vessels is real and is worth accounting for.
+  # replicate vessels is real and is worth accounting for. Asserted on the
+  # p-value, not on the status: both routes return "tested", so a status
+  # assertion would pass whether or not the fallback had fired on a design
+  # that supplies its own dispersion, which is the regression this guards.
   replicated <- list(x = rep(c(2, 4), each = 3),
                      successes = c(11, 10, 12, 4, 5, 3),
                      trials = rep(20, 6), spec = flatness_spec("binomial"))
-  expect_identical(flatness_contrast(replicated)$status, "tested")
+  kept <- flatness_contrast(replicated)
+  expect_identical(kept$status, "tested")
+  forced <- replicated
+  forced$spec$family <- binomial()
+  expect_gt(kept$p_value, 10 * flatness_contrast(forced)$p_value)
 })
 
 test_that("a binomial block with one individual per level is passed over", {
