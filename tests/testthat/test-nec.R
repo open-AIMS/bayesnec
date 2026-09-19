@@ -130,6 +130,7 @@ test_that("a joint threshold/smooth fit does not infer a NEC constraint", {
 test_that("a pure threshold average needs one common prior bound", {
   pure <- manec_example
   pure$mod_fits <- list(nec4param = nec4param, nec3param = nec4param)
+  pure$ne_type <- "NEC"
   pure$mod_fits$nec3param$model <- "nec3param"
   first_nec <- pure$mod_fits$nec4param$fit$prior$nlpar == "nec"
   second_nec <- pure$mod_fits$nec3param$fit$prior$nlpar == "nec"
