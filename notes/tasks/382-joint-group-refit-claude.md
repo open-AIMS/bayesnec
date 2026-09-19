@@ -131,7 +131,7 @@ sampler will visit during warmup, so this is a live risk rather than a
 theoretical one, and it is worse for the equations with an exponent on an
 exponent.
 
-**Resolve and demonstrate this before building anything else.** Masking the
+Resolve and demonstrate this before building anything else. Masking the
 predictor rather than the result is the obvious first thing to try --- each
 level's expression evaluated at a predictor value that is always in range on the
 rows it does not own --- but it must be shown to hold for every equation in
