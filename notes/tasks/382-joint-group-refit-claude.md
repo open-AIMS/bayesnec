@@ -207,6 +207,34 @@ so run it with the priors pinned explicitly the first time.
 
 ## Phase 3
 
+### The store cannot hold a joint refit yet
+
+Measured on the `grouping-structures` compendium on 2026-09-19, before any
+vignette work. Three things block a `bnec_joint()` call in `example8`, and all
+three are compendium work rather than package work.
+
+`R/keys.R` declares `FIT_FUNS <- c("bnec", "bnec_group", "bnec_hurdle")`, and
+the shim replaces exactly those three for the duration of a render. A
+`bnec_joint()` call is not intercepted, so it would not read the store: it would
+sample during the precompile, which is the failure the whole store exists to
+prevent, and it would do it silently rather than stopping.
+
+`fit_key()` keys a call on the call and a digest of the data it is handed.
+`bnec_joint()` is handed a fitted object, not data. The key function needs a
+rule for that case --- keying on the prerequisite's key plus the joint call is
+the obvious one, and it makes the dependency explicit in the key.
+
+`analysis/run_unit.R` runs each unit as an independent array task, and
+`run_unit()` evaluates an undecomposable call whole (`R/units.R:137`). A joint
+refit is undecomposable, which is fine, but it needs its prerequisite
+`bayesnecgroupfit` to exist, and no array task can depend on another. It
+therefore belongs in the assembly step, after the grouped fit it refits has been
+assembled, or in a second array submitted behind the first.
+
+None of this is hard, and none of it is phase 3. Settle it before the vignette
+section is written, or the section cannot be rendered from the store.
+
+
 The `example8` section demonstrating a question the other two routes cannot
 answer. The contrast within one posterior is the clearest: `compare_posterior()`
 on a `bnec_group()` fit differences independent posteriors, and the joint refit
