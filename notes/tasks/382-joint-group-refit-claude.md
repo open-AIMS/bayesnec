@@ -62,6 +62,95 @@ same structure. Reuse the accessor pattern; do not re-derive the parameter list
 from the equation name, because `model_pars` is read from the built formula for
 the reason the comment there gives.
 
+## Correction: one equation per level, not one for the set
+
+Recorded 2026-09-19, after phases 1 and 2 shipped. **This supersedes the
+equation-choice rule stated under Phase 1 below.** Phase 1's rule stands only as
+the special case it turns out to be.
+
+### The premise that was wrong
+
+Phase 1 says "One equation has to be chosen for all levels, because a single
+model has a single functional form." That is false. A brms non-linear formula
+can carry a different functional form per level, selected by an indicator column
+per level, because the mean expression is arbitrary arithmetic over data columns
+and parameters.
+
+Measured on `34271a85`, R 4.5.2, brms 2.23.0: `make_stancode()` builds a model
+whose level a is `nec3param` and whose level b is `ecxll5`, sharing one `phi`,
+from
+
+```r
+bf(y ~ inda * (topA * exp(-exp(betaA) * (x - necA) * step(x - necA))) +
+       indb * (botB + (topB - botB)/(1 + exp(exp(betaB) * (x - ec50B)))^exp(fB)),
+   topA + betaA + necA ~ 1,
+   botB + topB + betaB + ec50B + fB ~ 1,
+   nl = TRUE)
+```
+
+### Why the correction is the right model
+
+`bnec_joint()` already does this for a hurdle fit. `best_crossed()` returns the
+best growth equation and the best survival equation **separately**, and
+`bnec_joint.bayesnechurdlefit()` passes both, so the two blocks of one model
+carry different equations. The `bayesnecgroupfit` analogue of `best_crossed()`
+is the highest-weight equation of each level, not the highest summed weight over
+levels.
+
+The corrected rule subsumes the current one. Where every level favours the same
+equation, an indicator composition of that one equation is the dummy-coded model
+phase 1 already builds. Where they disagree, the current rule imposes a form on
+levels that reject it, and the herbicide refit measured what that costs:
+`ecxll5` chosen on a summed weight of 1.37 of a possible 7.00, a share of 0.196,
+with `ecx4param` at 1.29, `ecxll4` at 1.27 and `ecxll3` at 1.06 behind it, and
+EC50 intervals collapsing to a factor of 1.015 on irgarol against 1.6 from the
+model-averaged fit.
+
+### Two constraints measured, not assumed
+
+brms rejects a non-linear parameter name containing an underscore or a dot ---
+`validate_par_formula()` stops with "Parameter names should not contain dots or
+underscores." A per-level naming scheme must therefore not use `top_a`. The
+scheme must also be collision-free across levels whose names differ only in
+punctuation, and stable under reordering of the levels.
+
+The `subset()` route is closed. Writing each level as its own block of a
+multivariate formula would let brms evaluate each level only on its own rows,
+which is the clean way to avoid the hazard below, but `mvbrmsformula()` refuses:
+"Cannot use the same response variable twice in the same model." Duplicating the
+response per level would give each block its own dispersion, which removes the
+shared dispersion that is one of the two reasons to refit jointly at all.
+
+### The hazard to resolve first
+
+Under the indicator composition every level's sub-expression is evaluated on
+every row, including rows where its indicator is zero. In Stan `0 * inf` is
+`NaN`, and one `NaN` poisons the log density. `ecxll5`'s
+`(1 + exp(exp(beta) * (x - ec50)))^exp(f)` overflows for parameter values the
+sampler will visit during warmup, so this is a live risk rather than a
+theoretical one, and it is worse for the equations with an exponent on an
+exponent.
+
+**Resolve and demonstrate this before building anything else.** Masking the
+predictor rather than the result is the obvious first thing to try --- each
+level's expression evaluated at a predictor value that is always in range on the
+rows it does not own --- but it must be shown to hold for every equation in
+`models()`, not for the two above. If it cannot be made robust, the approach
+stalls and that is worth knowing in the first hour.
+
+### The reusable parts of the existing implementation
+
+Phase 2's per-level estimators mostly survive and fit the corrected design
+better: the `bayesnecjointlevel` view presents one level as a `bayesnecfit`, and
+under per-level equations each level genuinely has its own equation rather than
+a share of a common one. The view has to learn which equation belongs to which
+level.
+
+Phase 1's `add_formula_level_terms()` becomes the branch taken where the levels
+agree. Its priors-and-inits thread through `level_spec` is reusable; the prior
+for a level's parameter is that parameter's prior under **that level's**
+equation, derived once per equation rather than once per fit.
+
 ## Phase 1
 
 ### Signature
