@@ -1,5 +1,30 @@
 # bayesnec 2.2.0
 
+## Behaviour changes to a fit with a `rate()` denominator
+
+- The default `top` and `bot` priors for a model fitted with a `rate()`
+  denominator are now built on the rate scale. They were derived from the raw
+  counts, so every entry was displaced by the exposure, and because the same
+  vector reaches the initial-value search the starting band was displaced with
+  it. Fitted results therefore change for the `poisson` and `negbinomial`
+  families, which are the only two a `rate()` term accepts, wherever the
+  denominator is not 1. On a simulated `nec4param` series with a true `top` of
+  20 and exposures of 1, 2, 4 and 8, the `top` entry changes from
+  `gamma(2, 0.0313)`, a prior mean of 64.0, to `gamma(2, 0.103)`, a prior mean
+  of 19.5. `get_priors()` and `amend()` already divided the denominator out, so
+  the priors a fit uses and the priors `get_priors()` previews for it now agree,
+  as the documentation states they do (#389).
+
+- A `rate()` denominator written as an expression, such as `rate(hours / 24)`,
+  is now an error. The denominator is recorded as a plain column, so an
+  expression was reduced to the first variable in it while `brms` kept the
+  expression, and the two then disagreed: `brms` divided by the quotient while
+  every `bayesnec` path that reads the column divided by `hours`. That reached
+  the prediction grid, which pins the column at 1, and the observations the
+  plotting paths put on the rate scale, and with the prior change above it
+  would reach the posterior. Compute the column before the call and name it in
+  `rate()` (#389).
+
 ## Count hurdles
 
 - `hurdle_poisson` and `hurdle_negbinomial` are available as joint two-block

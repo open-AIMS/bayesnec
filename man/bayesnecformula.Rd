@@ -242,6 +242,16 @@ an \code{\link{ecx}} and an \code{\link{nsec}} are all read on the rate
 scale; plots put the observations on that same scale by dividing through.
 \code{offset} is deliberately not offered as an alternative --- under an
 identity link it would be additive on the mean, which is not what is wanted.
+
+The denominator must be a column of the data. An expression such as
+\code{rate(hours / 24)} is an error, because \pkg{bayesnec} records the
+denominator as a plain column and reads that column when it builds the
+default priors, pins the prediction grid at a denominator of 1, and puts the
+observations on the rate scale for a plot; an expression is not recorded
+there, so each of them would divide by \code{hours} while \pkg{brms} divided
+by the quotient. Compute the column before the call and name it in
+\code{rate()}.
+
 Please note that \pkg{brms} does not implement design weights as in other
 standard \pkg{base} functions. From their help page, \pkg{brms} "takes the
 weights literally, which means that an observation with weight 2 receives 2
