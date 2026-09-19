@@ -11,8 +11,11 @@
   quasipoisson variance is a linear approximation to the negative binomial
   variance, and the quasibinomial variance absorbs a beta-binomial
   over-dispersion as a constant multiplier only where the number of trials is
-  constant within a level. Both are measured in the audit (#391). Such a
-  design may not identify the lower asymptote: where an
+  constant within a level. The claim is also asymptotic in the number of
+  observations behind each level, so a bernoulli response of a handful of
+  observations per concentration reports above it: 8.2 per cent at four,
+  6.3 at ten and 4.9 at twenty-five. All three are measured in the audit
+  (#391). Such a design may not identify the lower asymptote: where an
   equation estimates `bot` its default prior is derived from the observed
   response, and the default `nec` and `ec50` priors exclude a threshold above
   the tested range. The two blocks of a joint hurdle fit are assessed
@@ -24,8 +27,11 @@
   and `bnec_group()` raises it for every level before it fits any of them. A
   prior supplied for every `bot`, `nec` and `ec50` row of every equation
   silences it; a partial prior does not, because the omitted rows are still
-  filled from the same defaults. A design with no predictor value observed
-  twice is passed over in silence, because a contrast is not defined there.
+  filled from the same defaults. A block with too little information at the
+  two levels compared is passed over in silence: for a family whose dispersion
+  is estimated that is a design with no predictor value observed twice, and for
+  a bernoulli response or a hurdle survival block it is fewer than two
+  individuals at either level.
   The report names the predictor as the formula wrote it, so a fit on
   `crf(log(concentration))` reports log concentrations under that name (#390).
 

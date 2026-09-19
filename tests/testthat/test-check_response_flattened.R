@@ -331,11 +331,35 @@ test_that("a design with no replication is passed over in silence", {
 
 test_that("nec_data, which every vignette fits, is passed over", {
   # 100 rows at 100 distinct predictor values.
-  skip_if_not(exists("nec_data"))
   bdat <- flat_bdat(y ~ crf(x, "nec3param"), nec_data)
   expect_silent(
     check_response_flattened(bdat, brms::Beta(link = "identity"))
   )
+})
+
+test_that("a binomial block with one individual per level is passed over", {
+  # The dispersion is fixed for these two, so replication is not what carries
+  # the information: the number of individuals is. One individual at each of
+  # the two levels leaves a two-by-two table of single trials, on which the
+  # deviance test reads p = 0.048 for any pair (1, 0) and the exact conditional
+  # p is a half.
+  x <- seq_len(30)
+  y <- rep(c(1, 0), length.out = 30)
+  bdat <- flat_bdat(y ~ crf(x, "nec3param"), data.frame(x = x, y = y))
+  expect_silent(
+    check_response_flattened(bdat, brms::bernoulli(link = "identity"))
+  )
+  survival <- list(x = x, successes = y, trials = rep(1, 30),
+                   spec = list(family = binomial(), kind = "matrix",
+                               offset = FALSE))
+  expect_identical(flatness_contrast(survival)$status, "skipped")
+  # Twenty individuals at one observation per level is informative, and is
+  # assessed.
+  informative <- list(x = c(0, 1, 2, 4), successes = c(20, 16, 11, 2),
+                      trials = rep(20, 4),
+                      spec = list(family = binomial(), kind = "matrix",
+                                  offset = FALSE))
+  expect_identical(flatness_contrast(informative)$status, "tested")
 })
 
 test_that("a replicated response with no variation reports that it could not", {

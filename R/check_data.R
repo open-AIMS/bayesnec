@@ -291,22 +291,52 @@ flatness_contrast <- function(block, alpha = 0.05, pool_dispersion = TRUE) {
   # Only the binomial row holds its dispersion fixed. The count rows are mapped
   # to quasipoisson, so poisson never reaches here as itself.
   estimates_dispersion <- !identical(spec$family$family, "binomial")
-  # A block with no predictor value observed twice is passed over in silence.
-  # A factor fit on one observation per level is saturated, so a dispersion
-  # cannot be estimated and no contrast is defined; and that is the ordinary
-  # shape of a continuous predictor rather than a defect in the design. The
-  # package's own nec_data has 100 distinct predictor values in 100 rows, and
-  # every vignette fits it, so reporting here would put an advisory on the
-  # documented example of the package. Section 2.2 of the plan asks for a
-  # report on an unreplicated design; it was written for a designed series, and
-  # a note raised on the commonest call there is teaches users to ignore the
-  # rule, which is the failure the rule exists to avoid. What section 2.2 wants
-  # protected is the degenerate case below, where replication is present and
-  # every replicate is identical.
-  if (estimates_dispersion && all(table(x_keep) < 2)) {
+  ux_keep <- sort(unique(x_keep))
+  # A block carrying too little information at the two levels is passed over in
+  # silence, and what counts as information differs by family.
+  #
+  # Where the dispersion is estimated it is replication: a factor fit with one
+  # observation per predictor value is saturated, so no dispersion can be
+  # estimated and no contrast is defined. That is the ordinary shape of a
+  # continuous predictor rather than a defect in the design --- the package's
+  # own nec_data has 100 distinct predictor values in 100 rows, and every
+  # vignette fits it --- so reporting would put an advisory on the documented
+  # example of the package.
+  #
+  # Where it is fixed it is the number of individuals behind each level. One
+  # observation per level is informative where each carries twenty individuals
+  # and is not where each carries one: two single Bernoulli trials reading
+  # (1, 0) give a deviance p of 0.048, against an exact conditional p of a
+  # half, and an unreplicated bernoulli design reported on a fifth of flat
+  # tops. Two individuals are required at each of the two levels, which a
+  # dilution series of ten or twenty passes and one individual per
+  # concentration does not.
+  #
+  # Section 2.2 of the plan asks for a report on an unreplicated design. It was
+  # written for a designed series, and an advisory raised on the commonest call
+  # there is teaches users to ignore the rule, which is the failure the rule
+  # exists to avoid. What section 2.2 wants protected is the degenerate case
+  # below, where the information is present and every observation is identical.
+  #
+  # tabulate(match(...)) rather than table(): table() builds its factor through
+  # as.character(), which is both the rounding the comment below rules out and
+  # 18 times slower on a 200,000-value predictor.
+  thin <- if (estimates_dispersion) {
+    max(tabulate(match(x_keep, ux_keep))) < 2
+  } else {
+    individuals <- function(value) {
+      at <- x_keep == value
+      if (identical(spec$kind, "matrix")) {
+        sum(block$trials[keep][at])
+      } else {
+        sum(at)
+      }
+    }
+    individuals(lower) < 2 || individuals(upper) < 2
+  }
+  if (thin) {
     return(list(status = "skipped"))
   }
-  ux_keep <- sort(unique(x_keep))
   ref <- which(ux_keep == lower)
   # The levels of a factor built from a numeric vector are its sorted unique
   # values, so the coefficient wanted is found by position and never by
