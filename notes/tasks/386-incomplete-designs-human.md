@@ -79,6 +79,13 @@ the second currently deletes its beyond-range draws while the first cannot
 produce one, so removing the truncation would leave the two halves of one mixture
 handling the same condition in opposite ways. Specification §4.2.
 
+### A contrast on the family's own mean-variance relationship
+
+A difference of means tested with a pooled standard error assumes a variance that
+does not depend on the mean, which holds for gaussian and for no other family the
+package fits, and it cannot be computed at all on a hurdle survival block.
+Specification §2.2.
+
 ### The censored summary applied to `nsec()` and `ecx()` as well
 
 A single `ecx`-type fit and the one-model average of it are the same quantity, so
@@ -172,19 +179,27 @@ data and a test asserts the entry.
 
 A user is told, before anything is fitted, that the response at the top of the
 series is still declining. Without this nobody knows to declare the design in
-phase 5.
+phase 7.
 
-PR #387 implements this and needs three changes. The rule triggers on the
+PR #387 implements this and its rule is replaced. That rule triggers on the
 magnitude of the effect, which does not separate an incomplete design from a
-complete one with a high asymptote, so it is replaced by a test of whether the
-response is still declining at the top of the series. That replacement also
-answers the question #386 raised about the hormesis equations, because it never
-reads the control. Whether the report is a warning or a message follows from its
-measured false-positive rate on complete designs rather than from preference.
+complete one with a high asymptote. The replacement compares the two highest
+concentrations tested, as a one-sided contrast in a generalised linear model that
+uses the fitted family's own mean-variance relationship, at a stated significance
+level. It never reads the control, which also answers the question #386 raised
+about the hormesis equations.
 
-It is done when the check fires on the simulated incomplete designs, its
-false-positive rate on complete designs is measured and recorded, and it is
-raised once per `bnec()` call rather than once per equation.
+The replacement is what makes the check computable on a hurdle fit at all. The
+survival block holds one proportion per concentration, so any rule built on
+replication within a concentration is undefined there, and a survival curve still
+falling at the undiluted end is the commonest incomplete design in whole effluent
+testing. That block takes a binomial contrast on the counts instead, where the
+denominator supplies the information replication would have.
+
+It is done when the check reports on the simulated incomplete designs and on a
+hurdle design whose survival is still falling, its realised false-positive rate
+on the complete designs of phase 3 agrees with its stated level, and it is raised
+once per `bnec()` call rather than once per equation.
 
 ### Phase 3. Incomplete designs in the prior audit (#391)
 
@@ -193,9 +208,14 @@ within 5% of `bot`, so it cannot measure any of this. It is extended with
 incomplete cells before the priors change, so that the later phases have a
 baseline and can show the complete-design cells did not regress.
 
+It also measures the two rates the phase 2 rule needs. The complete cells give
+its false-positive rate, which should agree with its stated level. The incomplete
+cells give its miss rate, which is what decides whether two approximations in the
+variance handling are tolerable or whether `MASS` belongs in `Suggests`.
+
 It is done when the script reports the truncated prior CDF at the true value for
-complete and incomplete designs side by side, and reproduces the figures #386
-quotes.
+complete and incomplete designs side by side, reproduces the figures #386 quotes,
+and reports both rates.
 
 ### Phase 4. The censoring record on the no-effect posterior (#395)
 

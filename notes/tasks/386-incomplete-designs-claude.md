@@ -94,7 +94,7 @@ response rises before it falls, the declared decline is measured against a level
 that is not the peak and the check over-reports. #386 raised this as an open
 question and PR #387 does not address it.
 
-The replacement:
+#### The statistic
 
 ```r
 # R/check_data.R
@@ -103,51 +103,132 @@ check_response_flattened <- function(data, family, group = NULL,
                                      alpha = 0.05) { ... }
 ```
 
-For each block, take the two highest distinct predictor levels, `x_k` and
-`x_{k-1}`. Let `d = mean(y at x_{k-1}) - mean(y at x_k)` on the same response
-scale the default priors are built from (proportions for the binomial families,
-per unit exposure for a `rate()` fit, each hurdle block separately). Let `se` be
-the standard error of that difference, from the pooled within-level variance of
-the two levels where both are replicated, falling back to the variance pooled
-over all levels where they are not. Report where `d / se(d) > t(1 - alpha, df)`,
-one-sided: where the response is still declining at the top of the series.
+For each block, take the two highest distinct predictor levels present in that
+block, fit a generalised linear model with the level as a two-valued factor, and
+test the contrast one-sided at `alpha`. Report where the mean at the higher level
+is below the mean at the lower one by more than the contrast's standard error
+admits.
 
 The level is stated rather than a multiple of the standard error, so the number
-in the code has a meaning. On a design whose top is flat the true difference is
+in the code has a meaning. On a design whose top is flat the true contrast is
 zero and the rule reports at `alpha`, which is its false-positive rate by
-construction; phase 3 measures the realised rate rather than choosing a
-threshold from it.
+construction; §6 measures the realised rate rather than choosing a threshold from
+it.
 
-The local variance is preferred over the pooled one wherever both levels are
-replicated, because on proportions and counts the variance is not homogeneous
-across the series. Pooling would overstate the standard error exactly where the
-response has flattened, and the rule would then report an incomplete design less
-often than its level says.
+The rule never reads the control, so a hormesis design is assessed correctly with
+no special case, and a non-positive control mean does not arise. The PR #387 rule
+returned `NA` and skipped silently on such a response, which removed the check
+for gaussian responses on log-ratio or centred scales that the package supports
+(#229).
 
-Properties this gives:
+#### The family mapping
 
-- It never reads the control, so a hormesis design is assessed correctly with no
-  special case.
-- It is scale-free in the sense that matters: it compares a decline against the
-  noise in that decline, not against an arbitrary fraction.
-- It is defined where the control mean is not positive, which the PR #387 rule
-  is not. That rule returns `NA` and skips silently, removing the check for
-  gaussian responses on log-ratio or centred scales, which the package supports
-  (#229).
+| block | model | why |
+|---|---|---|
+| gaussian | `glm(gaussian)` | the two-sample t test, which this contrast is |
+| Gamma | `glm(Gamma(link = "log"))` | `Var = φ μ²` is the Gamma variance |
+| poisson, negbinomial | `glm(quasipoisson(link = "log"))` | see the dispersion note below |
+| binomial, beta_binomial | `glm(quasibinomial)` on `cbind(successes, failures)` | `Var = φ p(1-p)/n` |
+| bernoulli | `glm(binomial)` | one trial leaves no dispersion to estimate |
+| beta | `glm(quasibinomial)` on the proportion | `Var = μ(1-μ)/(1+φ)` is `φ_q μ(1-μ)` |
+| hurdle `mu` | the row above for `hurdle_mu_family()` | the survivors are that family |
+| hurdle `hu` | `glm(binomial)` on the non-zero and total counts | one proportion per level, denominator known |
 
-Edge cases:
+The quasi variance function is the family's own variance function on every row
+except the two recorded below, so this is not an approximation for most of what
+the package fits. Beta is the row that looks as though it needs `betareg` or
+`glmmTMB`: its variance is `μ(1-μ)` times a constant, which is what quasibinomial
+fits, and its precision parameter reappears as the dispersion.
 
-- Fewer than two distinct predictor levels: return without reporting.
-- No replication within either of the two highest levels: the local variance is
-  undefined, so the pooled one over all levels is used, with `df = N - L`. Where
-  the design is wholly unreplicated, report that the check could not be applied
-  rather than passing silently.
-- A single distinct response value at both levels: `d` is zero and the design
-  passes, which is correct.
+A `log` link is written explicitly for Gamma and the count families so that the
+sign of the contrast means the same thing on every row. The `inverse` link
+`stats::Gamma()` defaults to reverses it. This is the same trap the identity-link
+note in `bayesnec/CLAUDE.md` records for the fit itself.
 
-`warning()` against `message()` is decided by the measured false-positive rate
-from phase 3, not by preference. Use `message()` unless that rate on complete
-designs is below 5%.
+A `rate()` denominator enters as `offset(log(denominator))` under the log link
+rather than by dividing the response, which keeps the count integral and puts the
+contrast on the rate scale.
+
+#### The case for quasi-likelihood over a full parametric fit
+
+The dispersion parameter of a negative binomial or a beta-binomial is not
+identified by two levels of three to five replicates. The parametric advantage
+over quasi-likelihood is asymptotic, and eight observations is not asymptotic, so
+a correct variance function evaluated at a badly estimated shape can be worse
+calibrated than a moment-based dispersion.
+
+`MASS::glm.nb` reaching its iteration limit, and `glmmTMB` returning a
+non-positive-definite Hessian, are ordinary outcomes at this size. A pre-fit
+advisory message that errors, or warns about its own convergence, is worse than
+one that is slightly conservative, and its fallback would be this test anyway.
+
+`glm()` and the quasi families are in `stats`. `glmmTMB` would add TMB, `Matrix`
+and `RcppEigen` to a `DESCRIPTION` that imports ten packages, for a message whose
+only consequence is to prompt the user.
+
+#### The dispersion is estimated locally
+
+From the two levels being compared, not from the whole series.
+
+The negative binomial variance, `μ + μ²/θ`, is quadratic in the mean while
+quasipoisson's `φ μ` is linear. A dispersion estimated across a whole
+concentration series is pulled up by the high-mean levels, and applying it at the
+low means at the top of a declining series overstates the variance there and
+misses the incomplete design. Across two adjacent concentrations the mean
+gradient is small and the linear approximation is close.
+
+Gaussian is the exception. `bnec()` fits a single `sigma` across the series
+unless a `disp()` variance function is supplied, so pooling the dispersion over
+all levels there is the same assumption the model itself makes. Pool for gaussian
+where `parse_disp_term()` finds no term, and use the two levels alone where it
+finds one.
+
+#### The hurdle blocks
+
+The survival block has no within-level replication. `survival_by_x()` returns one
+proportion per unique predictor value, so a rule built on replication cannot be
+computed there at all, and that block holds the commonest incomplete design there
+is: a whole effluent dilution series whose survival is still falling at the
+undiluted end.
+
+Its information comes from the individuals within a concentration rather than
+from replication across them, so a binomial model on the counts is well defined
+with one proportion per level. Dispersion is held at 1, which is the assumption
+the `hu` block of the fit itself makes, since `brms` models it as a Bernoulli
+process per observation.
+
+`survival_by_x()` clamps its proportions to `[eps, 1 - eps]` with
+`eps = 1 / (2 * length(response))`, so that Stan can fit them under the identity
+link. The test reads the raw non-zero and total counts, not those values.
+
+The `mu` block is the survivors only, so where nothing survived at the highest
+concentration it has no observations there and its two highest levels are not the
+design's. Take each block's own top two levels and name the concentrations used
+in the report.
+
+`zero_inflated_poisson` and `zero_inflated_negbinomial` are not in `hurdle_fams`.
+They hold `zi` constant and fit no curve on it, so they do not split and the check
+runs on the whole response.
+
+#### Edge cases
+
+- Fewer than two distinct predictor levels in a block: return without reporting.
+- No variation at either level, so the dispersion or the standard error is zero:
+  report that the check could not be applied rather than passing silently.
+- A `glm()` that does not converge: the same.
+
+#### Reporting
+
+`message()`, not `warning()`. Both existing pre-fit reports use it,
+`check_normalisation()` and `report_substitutions()`, and one complete design in
+twenty is too often for a warning on something advisory.
+
+```
+The <block> response is still declining at the top of the series: the mean falls
+from <m1> at <x1> to <m2> at <x2> (p = <p>, one-sided). The lower asymptote may
+not be identified by this design. See ?bnec for `asymptote_observed`, and ?nec
+for how a threshold beyond the tested range is reported.
+```
 
 Keep, unchanged from PR #387:
 
@@ -161,15 +242,20 @@ Keep, unchanged from PR #387:
   from the same defaults.
 - The per-block treatment of a hurdle fit.
 
-Change the message text to name the remedy once phases 5 and 7 exist:
+#### The two approximations
 
-```
-The response at the highest predictor value is still declining (the mean falls
-by <d> between <x_{k-1}> and <x_k>, against a standard error of <se>). The
-lower asymptote may not be identified by this design. See ?bnec for
-`asymptote_observed`, and ?nec for how a threshold above the tested range is
-reported.
-```
+Quasipoisson is a linear approximation to the negative binomial variance, and
+quasibinomial cannot absorb a beta-binomial over-dispersion where the trials vary
+within a level: as a proportion that variance is `p(1-p)/n · [1 + (n-1)ρ]`, whose
+bracket depends on `n` and collapses to a constant multiplier only where the
+trials are constant. `notes/beta_binomial_varying_trials.md` records that they
+can vary here.
+
+The direction of the second is not asserted. §6 includes an over-dispersed count
+cell and a varying-trials cell and reports how often the rule misses a genuinely
+incomplete design. If that rate is material, the escalation is `MASS::glm.nb` in
+`Suggests` with this test as the fallback where it does not converge, not
+`glmmTMB` in `Imports`. `MASS` ships with R.
 
 ### 2.3 `report_nec_prior_bound()`
 
@@ -699,12 +785,40 @@ Report, per cell, the truncated prior CDF at the true value for `top`, `bot`,
 of proposals `make_good_inits()` makes, and whether the flatness rule of §2.2
 reports.
 
-The false-positive rate of the flatness rule is read off the complete cells. It
-is what decides `warning()` against `message()` in phase 2, so phase 3 precedes
-phase 2 in the measurement even though the code may land in either order.
+#### The rates the flatness rule needs
+
+The rule has a stated level rather than a tuned threshold, so what the complete
+cells measure is whether its realised false-positive rate agrees with that level
+on the families whose variance is not homogeneous across the series. A rate far
+from `alpha` there is a defect in the variance handling, not a threshold to
+adjust.
+
+The incomplete cells measure the miss rate, which is what decides whether the two
+approximations in §2.2 are tolerable. Three cells are needed beyond the existing
+family sweep:
+
+- an over-dispersed count design, simulated from a negative binomial with a
+  `theta` low enough that the quadratic term dominates at the control, which is
+  where quasipoisson's linear variance departs furthest from the truth;
+- a beta-binomial design with trials constant, where quasibinomial is exact;
+- the same design with trials varying by a stated factor across observations,
+  where it is not.
+
+The second and third are reported side by side, because the difference between
+them is the whole of the varying-trials approximation and neither number means
+anything alone.
+
+Report the miss rate against `MASS::glm.nb` on the count cell, run once for the
+comparison and not as a dependency of the package. If the quasi rule misses
+designs that `glm.nb` reports, that measurement is what justifies adding `MASS`
+to `Suggests`; if it does not, it is what closes the question.
+
+#### Provenance
 
 Keep the script's existing provenance header convention: the commit, the R
-version and the date of the run that produced the archived figures.
+version and the date of the run that produced the archived figures. Where
+`MASS::glm.nb` was run for the comparison above, record its version there too,
+since it is not a dependency and a later reader cannot assume it was present.
 
 ---
 
