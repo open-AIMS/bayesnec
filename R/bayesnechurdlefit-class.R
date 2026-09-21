@@ -407,8 +407,12 @@ combine_censored_min <- function(g, s, n) {
   # The bound true of both components, as in concat_censoring(): the smallest
   # upper bound and the largest lower one. The two grids are the same within a
   # bnec_hurdle() call.
-  list(values = out,
-       censored = censoring_record(min(g_cens$upper, s_cens$upper),
-                                   max(g_cens$lower, s_cens$lower),
-                                   above, below))
+  combined <- censoring_record(min(g_cens$upper, s_cens$upper),
+                               max(g_cens$lower, s_cens$lower),
+                               above, below)
+  # As in concat_censoring(): the two blocks of one fit share a formula and so
+  # agree on whether the predictor was reversed.
+  attr(combined, "swapped") <- isTRUE(attr(attr(g, "censored"), "swapped")) ||
+    isTRUE(attr(attr(s, "censored"), "swapped"))
+  list(values = out, censored = combined)
 }

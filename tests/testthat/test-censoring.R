@@ -316,6 +316,52 @@ test_that("an unexplained NA is left out of the fraction that is stated", {
   expect_true(cs$n_above + cs$n_below <= cs$n_draws)
 })
 
+test_that("a stacked table marks the rows whose entries are bounds", {
+  # print.hurdlesummary() builds one matrix from several estimates. rbind()
+  # keeps the numbers and drops every attribute, so a censored row printed as a
+  # bare number while nec() on the same object returned it marked.
+  marked <- bayesnec:::summarise_censored(
+    c(1:4, rep(NA_real_, 6)), c(0.5, 0.025, 0.975),
+    cens_record(c(rep(FALSE, 4), rep(TRUE, 6)), logical(10))
+  )
+  plain <- bayesnec:::summarise_censored(as.numeric(1:10),
+                                         c(0.5, 0.025, 0.975), NULL)
+  mat <- rbind(marked, plain)
+  rownames(mat) <- c("combined", "growth")
+  expect_null(attr(mat, "censored_summary"))
+  attr(mat, "censored_summary") <- bayesnec:::row_censoring(
+    list(marked, plain)
+  )
+  printed <- utils::capture.output(bayesnec:::print_mat(mat))
+  combined <- printed[grepl("combined", printed)]
+  growth <- printed[grepl("growth", printed)]
+  expect_true(grepl(">=", combined, fixed = TRUE))
+  expect_false(grepl(">=", growth, fixed = TRUE))
+  note <- utils::capture.output(bayesnec:::print_row_censoring_notes(
+    attr(mat, "censored_summary"), rownames(mat)
+  ))
+  expect_true(any(grepl("combined", note, fixed = TRUE)))
+  expect_false(any(grepl("growth", note, fixed = TRUE)))
+})
+
+test_that("the report names the geometry and the end it landed at", {
+  # Both clauses describe the draws by what the search saw. A decreasing
+  # remapping puts those two classes at opposite ends of the reported scale, so
+  # the clause "whose curve does not reach the target" must still name the end
+  # those draws are beyond, which after the swap is the lower one.
+  rec <- cens_record(above = c(TRUE, TRUE, FALSE), below = rep(FALSE, 3),
+                     upper = 10, lower = 1)
+  flipped <- bayesnec:::xform_censoring(rec, function(z) -z)
+  msg <- tryCatch(
+    bayesnec:::warn_censored_draws(c(NA_real_, NA_real_, -5), "NSEC",
+                                   cens = flipped),
+    bayesnec_censored = function(w) conditionMessage(w)
+  )
+  expect_true(grepl("not identified for 2 of 3 draws", msg, fixed = TRUE))
+  expect_true(grepl("censored above -10", msg, fixed = TRUE))
+  expect_false(grepl("reached the reference below", msg, fixed = TRUE))
+})
+
 # Integration. These reuse the packaged fits and change only the prediction
 # grid, so no model is compiled or sampled.
 

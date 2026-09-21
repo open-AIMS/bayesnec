@@ -527,7 +527,14 @@ concat_censoring <- function(parts, n_draws) {
   }
   uppers <- vapply(parts[present], function(p) p$upper, numeric(1))
   lowers <- vapply(parts[present], function(p) p$lower, numeric(1))
-  censoring_record(min(uppers), max(lowers), above, below)
+  out <- censoring_record(min(uppers), max(lowers), above, below)
+  # Carried across, because the components of one bnec() call share a formula
+  # and therefore agree on it, and because the combined record is the one a
+  # bayesmanecfit keeps for the rest of its life. A reader that inferred the
+  # geometry from the field names would invert its prose on a reversed
+  # predictor; censored_end() and warn_censored_draws() read this instead.
+  attr(out, "swapped") <- isTRUE(attr(parts[present][[1]], "swapped"))
+  out
 }
 
 #' Report the censoring of a summarised estimate
@@ -696,6 +703,44 @@ bound_prefix <- function(values, i) {
   paste0(cens$bound[i], " ")
 }
 
+#' Collect the censoring records of estimates that are about to be stacked
+#'
+#' \code{rbind()} keeps the numbers and drops every attribute, so a table built
+#' by stacking one estimate per row loses the marks that say which entries are
+#' bounds. This returns the records in row order, for
+#' \code{attr(mat, "censored_summary")}, and \code{NULL} where no row carries
+#' one.
+#'
+#' @param estimates A \code{\link[base]{list}} of summarised estimates, in the
+#' order their rows appear.
+#'
+#' @return A \code{\link[base]{list}} of records, or \code{NULL}.
+#' @noRd
+row_censoring <- function(estimates) {
+  recs <- lapply(estimates, attr, "censored_summary")
+  if (all(vapply(recs, is.null, logical(1)))) {
+    return(NULL)
+  }
+  recs
+}
+
+#' Print a note for each row of a stacked table that carries a bound
+#'
+#' @param recs The \code{"censored_summary"} attribute of a stacked matrix.
+#' @param labels The row names of that matrix.
+#'
+#' @return \code{NULL}, invisibly. Called for the output.
+#' @noRd
+print_row_censoring_notes <- function(recs, labels) {
+  if (is.null(recs) || !is.null(recs$bound)) {
+    return(invisible(NULL))
+  }
+  for (i in seq_along(recs)) {
+    print_censoring_note(recs[[i]], labels[i])
+  }
+  invisible(NULL)
+}
+
 #' Print a matrix of estimates, marking any entry that is a bound
 #'
 #' A one-row matrix carrying a \code{"censored_summary"} attribute has each
@@ -710,10 +755,23 @@ print_mat <- function(x, digits = 2) {
   for (i in seq_len(ncol(x))) {
     out[, i] <- sprintf(fmt, x[, i])
   }
+  # One record for a one-row matrix, or a list of records one per row for the
+  # stacked tables print.hurdlesummary() builds. rbind() drops the attribute
+  # each component estimate carries, so a caller that stacks estimates has to
+  # collect the records and attach them; row_censoring() does that.
   cens <- attr(x, "censored_summary")
-  if (!is.null(cens) && nrow(out) == 1 && length(cens$bound) == ncol(out)) {
-    marked <- nzchar(cens$bound)
-    out[1, marked] <- paste0(cens$bound[marked], " ", out[1, marked])
+  if (!is.null(cens)) {
+    recs <- if (is.null(cens$bound)) cens else list(cens)
+    if (length(recs) == nrow(out)) {
+      for (i in seq_len(nrow(out))) {
+        b <- recs[[i]]$bound
+        if (is.null(b) || length(b) != ncol(out)) {
+          next
+        }
+        marked <- nzchar(b)
+        out[i, marked] <- paste0(b[marked], " ", out[i, marked])
+      }
+    }
   }
   # Dropped before printing: print.default() lists any attribute that is not
   # dim or dimnames underneath the matrix, so leaving the record on would put
@@ -2408,16 +2466,26 @@ warn_censored_draws <- function(values, estimate = "estimate", n_below = 0,
   # NA -- a sampled threshold above the top of the grid, which is.na() cannot
   # see. Without a record the counts are taken as they were before.
   if (!is.null(cens)) {
+    # Both clauses below describe the draws by the geometry the search saw: one
+    # set whose curve never reached the target, one whose curve had already
+    # passed it. A decreasing remapping puts those at opposite ends of the
+    # reported scale, so the end each is named at comes from censored_end()
+    # rather than from the field the class happens to be stored in.
     n_below <- sum(cens$below)
+    n_above <- sum(cens$above)
+    if (isTRUE(attr(cens, "swapped"))) {
+      n_below <- sum(cens$above)
+      n_above <- sum(cens$below)
+    }
     # An NA the record does not account for is a draw whose estimate could not
     # be computed at all rather than one known to be beyond an end -- an
     # all-NA prediction row, or a posterior a caller has edited. It is still
     # deleted from the summary, so it is still counted here; silence about a
     # deleted draw is the defect this function exists to prevent.
-    n_missing <- sum(cens$above) +
+    n_missing <- n_above +
       sum(is.na(values) & !cens$above & !cens$below)
-    x_from <- cens$lower
-    upper <- signif(cens$upper, 3)
+    x_from <- censored_end(cens, "below")
+    upper <- signif(censored_end(cens, "above"), 3)
   } else {
     n_missing <- sum(is.na(values)) - n_below
     upper <- "the highest concentration in the prediction grid"

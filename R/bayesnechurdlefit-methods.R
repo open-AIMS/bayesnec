@@ -277,12 +277,15 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
     censoring_record(max(preds$x), searched_from, above, below),
     function(value) hurdle_xform_x(object, value)
   )
-  warn_censored_draws(out, "NSEC", cens = cens)
   if (inherits(xform, "function")) {
     out <- xform(out)
     cens <- xform_censoring(cens, xform)
   }
   attr(out, "censored") <- cens
+  # After xform, as in ecx.bayesnecfit and nsec.bayesnecfit: the bound the
+  # report names and the numbers the caller is about to read are then on one
+  # scale.
+  warn_censored_draws(out, "NSEC", cens = cens)
   estimate <- summarise_censored(out, prob_vals, cens)
   names(estimate) <- clean_names(estimate)
   attr(estimate, "toxicity_estimate") <- "nsec"
@@ -343,9 +346,16 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
   chk_numeric(ecx_vals)
   ecs <- NULL
   if (ecx) {
+    # On the grid the two component fits were predicted over, not the range of
+    # the data. ecx() rebuilds its own grid when x_range is absent, so the ECx
+    # block described a different range from the no-effect estimates printed
+    # directly above it, and those are now marked with the end they are
+    # censored at. See the same argument in summary.bayesnecfit.
+    hurdle_range <- range(c(object$growth$pred_vals$data$x,
+                            object$survival$pred_vals$data$x))
     ecs <- lapply(c("combined", "growth", "survival"), function(w) {
       out <- lapply(ecx_vals, function(v) {
-        ecx(object, ecx_val = v, which = w, ...)
+        ecx(object, ecx_val = v, which = w, x_range = hurdle_range, ...)
       })
       names(out) <- paste0("ec", ecx_vals)
       out
@@ -424,7 +434,15 @@ print.hurdlesummary <- function(x, ...) {
   tp <- x$ne_types[names(x$ne)]
   rownames(ne_mat) <- ifelse(is.na(tp), names(x$ne),
                              paste0(names(x$ne), " (", tp, ")"))
+  # rbind() keeps the numbers and drops every attribute, so the marks that say
+  # which entries are the end of the prediction range rather than a quantile
+  # are collected and attached by hand. Without this a censored estimate
+  # printed here as a bare number while nec() on the same object returned it
+  # marked, which is the disagreement #395 exists to remove.
+  attr(ne_mat, "censored_summary") <- row_censoring(x$ne)
   print_mat(ne_mat)
+  print_row_censoring_notes(attr(ne_mat, "censored_summary"),
+                            rownames(ne_mat))
   if (any(x$ne_types != "NEC", na.rm = TRUE)) {
     cat("\nNSEC values appear where a model set contains smooth (ECx) models,",
         "which\ncarry no threshold parameter; N(S)EC is a model-averaged",
@@ -432,11 +450,15 @@ print.hurdlesummary <- function(x, ...) {
   }
   if (!is.null(x$ecs)) {
     cat("\nECx estimates\n")
-    ec_mat <- do.call(rbind, lapply(x$ecs, function(z) do.call(rbind, z)))
+    ec_flat <- unlist(x$ecs, recursive = FALSE, use.names = FALSE)
+    ec_mat <- do.call(rbind, ec_flat)
     rownames(ec_mat) <- unlist(lapply(names(x$ecs), function(w) {
       paste0(w, " ", names(x$ecs[[w]]))
     }))
+    attr(ec_mat, "censored_summary") <- row_censoring(ec_flat)
     print_mat(ec_mat)
+    print_row_censoring_notes(attr(ec_mat, "censored_summary"),
+                              rownames(ec_mat))
   }
   cat("\nThe combined endpoint is the expected response per individual",
       "exposed,\ni.e. growth * survival. Use which = to select a component.\n")
