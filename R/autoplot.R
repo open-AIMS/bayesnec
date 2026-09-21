@@ -309,14 +309,12 @@ plot_group_label <- function(data, group, group_aes) {
 
 #' @param data A \code{\link[base]{data.frame}}.
 #' @param nec_vals A \code{\link[base]{numeric}} vector containing the mean,
-#' and 95% credible intervals of NEC values.
-#' @param xform A function to apply to the returned estimated concentration
-#' values.
+#' and 95% credible intervals of NEC values, already on the axis scale.
 #'
 #' @return A \code{\link[base]{data.frame}}.
 #'
 #' @noRd
-bind_nec <- function(data, nec_vals, xform = identity) {
+bind_nec <- function(data, nec_vals) {
   data$nec_vals <- NA
   data$nec_labs <- NA
   data$nec_labs_l <- NA
@@ -324,8 +322,12 @@ bind_nec <- function(data, nec_vals, xform = identity) {
   df <- data[1:3, ]
   df[ ] <- NA
 
+  # The transformation is applied by to_axis_scale() before this is called, and
+  # the xform argument that stood here was always identity. It is removed
+  # rather than left: a decreasing transformation applied at this point would
+  # reorder the three entries while the marks read off the record stayed where
+  # they were, so a ">=" would end up on what had become a lower bound.
   cens <- attr(nec_vals, "censored_summary")
-  nec_vals <- xform(nec_vals)
 
   df$nec_vals <- nec_vals
   # A censored entry is the end of the prediction range, not a quantile, and

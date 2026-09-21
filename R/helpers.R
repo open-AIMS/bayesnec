@@ -390,7 +390,12 @@ summarise_censored <- function(x, probs, cens = attr(x, "censored")) {
   attr(out, "censored_summary") <- list(
     bound = bound, upper = cens$upper, lower = cens$lower,
     n_above = sum(cens$above), n_below = sum(cens$below),
-    n_draws = length(cens$above)
+    # The draws the quantile was taken over, which is every draw the record
+    # accounts for. An NA the record explains at neither end could not be
+    # computed at all and is dropped by na.rm, so counting it here would state
+    # a fraction of a sample the reported figure was not taken from.
+    # warn_censored_draws() reports such a draw separately.
+    n_draws = sum(!is.na(ranked))
   )
   out
 }
@@ -439,14 +444,50 @@ xform_censoring <- function(cens, xform) {
   }
   new_upper <- xform(cens$upper)
   new_lower <- xform(cens$lower)
+  swapped <- isTRUE(attr(cens, "swapped"))
   if (is.finite(new_upper) && is.finite(new_lower) && new_upper < new_lower) {
     # A decreasing remapping takes the top of the old scale to the bottom of
     # the new one, so a draw known to be beyond the top of the range is stated
     # as below the bottom of the transformed one. The same draws are censored;
     # only the end they are named at swaps over.
-    return(censoring_record(new_lower, new_upper, cens$below, cens$above))
+    out <- censoring_record(new_lower, new_upper, cens$below, cens$above)
+    swapped <- !swapped
+  } else {
+    out <- censoring_record(new_upper, new_lower, cens$above, cens$below)
   }
-  censoring_record(new_upper, new_lower, cens$above, cens$below)
+  # Cumulative, because a record is remapped twice: once from the scale the
+  # curve was searched on to the fitted scale, and again for a caller's xform.
+  # Two decreasing remappings leave the ends where they started. The flag is
+  # what censored_end() reads, so that a message describing the draws by their
+  # geometry -- the curve never reached the target -- can still name the end of
+  # the reported scale those draws actually landed at.
+  attr(out, "swapped") <- swapped
+  out
+}
+
+#' The bound a class of beyond-range draw is reported at
+#'
+#' \code{end} names the class as the search saw it: \code{"above"} for draws
+#' the curve did not reach within the range, \code{"below"} for draws it had
+#' already passed where the range began. Where a remapping has reversed the
+#' predictor, those two classes sit at the opposite ends of the reported scale,
+#' and a message that named \code{upper} for the first of them would name the
+#' one value those draws are known not to exceed. Reading it from the record's
+#' own flag settles it for one end, for both ends at once, and for a record
+#' remapped twice.
+#'
+#' @param cens A record from \code{censoring_record()}.
+#' @param end Either \code{"above"} or \code{"below"}.
+#'
+#' @return A \code{\link[base]{numeric}} value.
+#' @noRd
+censored_end <- function(cens, end = c("above", "below")) {
+  end <- match.arg(end)
+  if (xor(identical(end, "above"), isTRUE(attr(cens, "swapped")))) {
+    cens$upper
+  } else {
+    cens$lower
+  }
 }
 
 #' Combine per-component censoring records into one, in draw order

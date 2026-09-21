@@ -108,17 +108,16 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
       message("The fitted ", object$model, " curve does not fall to the ",
               "control's ", sig_val, " quantile within the predictor range ",
               "for ", sum(above), " of ", length(out), " draws. The NSEC ",
-              "summary is censored at ", signif(
-                if (any(cens$above)) cens$upper else cens$lower, 3
-              ), ": those draws keep their rank in it and are given no value.")
+              "summary is censored at ",
+              signif(censored_end(cens, "above"), 3),
+              ": those draws keep their rank in it and are given no value.")
     }
     if (sum(below) > 0) {
       message("The fitted ", object$model, " curve is already below the ",
               "control's ", sig_val, " quantile where the predictor range ",
               "begins, for ", sum(below), " of ", length(out), " draws. The ",
-              "NSEC summary is censored at ", signif(
-                if (any(cens$below)) cens$lower else cens$upper, 3
-              ), ".")
+              "NSEC summary is censored at ",
+              signif(censored_end(cens, "below"), 3), ".")
     }
     out <- sub_x_transformation(out, formula)
     # The two attributes nsec_from_posterior() leaves for the reports above are

@@ -431,3 +431,73 @@ test_that("the plot annotation marks a censored estimate", {
   plain <- suppressMessages(suppressWarnings(ggbnec_data(ecx4param)))
   expect_false(any(grepl("^>=|^<=", plain$nec_labs[!is.na(plain$nec_labs)])))
 })
+
+test_that("a hurdle fit with one block censored reports the other block", {
+  # Specification 4.11's hurdle case, on a mock rather than a fit: no packaged
+  # two-block fit exists and compiling one for this costs minutes. The growth
+  # block is beyond the top of the range for the first two draws and the
+  # survival block is inside it for all four, so the combined no-effect
+  # estimate is the survival block wherever growth is censored. pmin() on the
+  # raw vectors returned NA for those draws and deleted them.
+  cens <- function(above) {
+    bayesnec:::censoring_record(10, 0, above, logical(length(above)))
+  }
+  mk <- function(post, above) {
+    out <- structure(list(model = "nec3param", ne_type = "NEC",
+                          ne_posterior = post),
+                     class = c("bayesnecfit", "bnecfit"))
+    attr(out$ne_posterior, "censored") <- cens(above)
+    out
+  }
+  obj <- structure(
+    list(growth = mk(c(NA_real_, NA_real_, 3, 9), c(TRUE, TRUE, FALSE, FALSE)),
+         survival = mk(c(4, 5, 6, 2), rep(FALSE, 4)),
+         data = data.frame(x = 1:4, y = c(2, 1, 0, 0)),
+         formula = bnf(y ~ crf(x, "nec3param")), y_var = "y",
+         n_exposed = 4L, n_dead = 2L),
+    class = c("bayesnechurdlefit", "bnecfit")
+  )
+  post <- suppressMessages(suppressWarnings(
+    nec(obj, posterior = TRUE)
+  ))
+  # The first two draws take the survival value; the last two take the smaller
+  # of the two blocks as before.
+  expect_equal(as.numeric(post), c(4, 5, 3, 2))
+  expect_false(anyNA(post))
+  # A record is still attached, because a component carried one, but it marks
+  # no draw: the combination is inside the range at every draw.
+  expect_false(bayesnec:::has_censoring(attr(post, "censored")))
+  est <- suppressMessages(suppressWarnings(nec(obj)))
+  expect_equal(as.numeric(est),
+               as.numeric(stats::quantile(c(4, 5, 3, 2),
+                                          c(0.5, 0.025, 0.975))))
+  expect_null(attr(est, "censored_summary"))
+})
+
+test_that("a hurdle fit censored in both blocks stays censored", {
+  cens <- function(above) {
+    bayesnec:::censoring_record(10, 0, above, logical(length(above)))
+  }
+  mk <- function(post, above) {
+    out <- structure(list(model = "nec3param", ne_type = "NEC",
+                          ne_posterior = post),
+                     class = c("bayesnecfit", "bnecfit"))
+    attr(out$ne_posterior, "censored") <- cens(above)
+    out
+  }
+  obj <- structure(
+    list(growth = mk(c(NA_real_, 3), c(TRUE, FALSE)),
+         survival = mk(c(NA_real_, 6), c(TRUE, FALSE)),
+         data = data.frame(x = 1:4, y = c(2, 1, 0, 0)),
+         formula = bnf(y ~ crf(x, "nec3param")), y_var = "y",
+         n_exposed = 4L, n_dead = 2L),
+    class = c("bayesnechurdlefit", "bnecfit")
+  )
+  est <- suppressMessages(suppressWarnings(nec(obj)))
+  cs <- attr(est, "censored_summary")
+  # The minimum of two draws is above the top of the range only where both
+  # blocks are, which is the first draw here.
+  expect_identical(cs$n_above, 1L)
+  expect_equal(cs$upper, 10)
+  expect_true(any(nzchar(cs$bound)))
+})

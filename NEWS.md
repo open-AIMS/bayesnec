@@ -98,6 +98,28 @@
   smaller of the two is now above the range only where both blocks are, and
   below it where either is (#395).
 
+- The quantile estimator behind a censored summary is the inverse empirical
+  distribution function, `quantile(type = 1)`. A posterior with no beyond-range
+  draw is summarised exactly as it was in 2.1.3, with `median()` and
+  `quantile()`'s default type 7, which interpolates between two adjacent order
+  statistics. Once any draw is censored every reported entry becomes an order
+  statistic instead, because a value interpolated across a draw that has no
+  value is one the posterior does not support: on ten draws with one censored,
+  the 97.5 per cent quantile sits 0.775 of the way from the ninth draw into the
+  tenth, and interpolating there would report the bound although the smallest
+  value consistent with the sample is the ninth draw. Every entry therefore
+  changes a little when the first draw is censored, including entries at the
+  other end of the interval. Keeping the uncensored summary bit-identical to
+  the release was preferred to making the two agree at the boundary (#395).
+
+- `summary(x, ecx = TRUE)` now computes its ECx over the range the fit was
+  predicted over rather than over the range of the data. The two differ
+  wherever `bnec()` was given an `x_range`, and the ECx block then described a
+  different range from the no-effect estimate printed above it. The marks this
+  release adds put the two claims on one screen: a note reading that the
+  prediction range stops at 0.9 stood directly above an unmarked ECx of 1.67
+  (#395).
+
 - Behaviour change, measured. A fit with no draw beyond its prediction range is
   unaffected, and the summary it reports is unchanged to the last bit. Two
   vignette fits were rebuilt under their own settings and measured:
@@ -119,8 +141,8 @@
   has not reached its lower asymptote, which is the case #386 is about. On the
   packaged `ecx4param` fit re-expanded over a prediction range that stops before
   its curve reaches the reference, 60 of 100 draws are beyond the range, and the
-  reported NSEC is `>= 0.9` where the deleted-draw summary gave 0.801
-  (0.048-0.890). The measurement covers the six vignette estimates named here
+  reported NSEC is `>= 0.9` (`>= 0.9`, 0.384, `>= 0.9`) where the deleted-draw
+  summary gave 0.801 (0.048-0.890). The measurement covers the six vignette estimates named here
   and the twelve per-equation estimates behind the second of them; the other
   vignettes were not rebuilt.
 

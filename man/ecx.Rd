@@ -153,6 +153,18 @@ states how many draws lie beyond each end and where the ends are. A draw
 whose curve had already passed the target where the range begins is recorded
 at the other end and reported the same way.
 
+Which quantile estimator is used depends on whether anything is censored.
+A posterior with no beyond-range draw is summarised exactly as it was up to
+version 2.1.3, with \code{\link[stats]{median}} and
+\code{\link[stats]{quantile}}'s default type 7, which interpolates between
+two adjacent order statistics. Once any draw is censored every reported
+entry becomes an order statistic instead, because a value interpolated
+across a draw that has no value would be one the posterior does not support.
+Every entry therefore changes a little when the first draw is censored,
+including entries at the other end of the interval. Keeping the uncensored
+summary bit-identical to the release was preferred to making the two agree
+at the boundary, because every archived analysis is compared against it.
+
 Up to version 2.1.3 such a draw was deleted and the remaining draws were
 summarised as though nothing had been removed, which reported an estimate
 lower than the quantity it was labelled as, with an interval narrower than

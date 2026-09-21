@@ -122,6 +122,18 @@
 #' whose curve had already passed the target where the range begins is recorded
 #' at the other end and reported the same way.
 #'
+#' Which quantile estimator is used depends on whether anything is censored.
+#' A posterior with no beyond-range draw is summarised exactly as it was up to
+#' version 2.1.3, with \code{\link[stats]{median}} and
+#' \code{\link[stats]{quantile}}'s default type 7, which interpolates between
+#' two adjacent order statistics. Once any draw is censored every reported
+#' entry becomes an order statistic instead, because a value interpolated
+#' across a draw that has no value would be one the posterior does not support.
+#' Every entry therefore changes a little when the first draw is censored,
+#' including entries at the other end of the interval. Keeping the uncensored
+#' summary bit-identical to the release was preferred to making the two agree
+#' at the boundary, because every archived analysis is compared against it.
+#'
 #' Up to version 2.1.3 such a draw was deleted and the remaining draws were
 #' summarised as though nothing had been removed, which reported an estimate
 #' lower than the quantity it was labelled as, with an interval narrower than
@@ -249,19 +261,20 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
     nsec_out <- xform(nsec_out)
     cens <- xform_censoring(cens, xform)
   }
-  # Named from the record rather than from bound and lower directly, so that a
-  # decreasing crf() reports each set of draws at the end of the fitted scale
-  # they actually lie beyond.
+  # The end each class is named at comes from the record's own flag rather than
+  # from a local variable, so that a decreasing crf() or xform reports each set
+  # of draws at the end of the reported scale they actually lie beyond, and does
+  # so where draws sit at both ends at once.
   if (n_above > 0) {
     warning("The ", object$model, " curve does not fall below the control's ",
             sig_val, " quantile anywhere in the predictor range for ",
             n_above, " of ", length(nsec_out), " draws. The NSEC is censored ",
-            "at ", signif(if (any(cens$above)) cens$upper else cens$lower, 3),
+            "at ", signif(censored_end(cens, "above"), 3),
             ": those draws keep their rank in the summary and are given no ",
             "value.", call. = FALSE)
   }
   if (n_below > 0) {
-    below_at <- signif(if (any(cens$below)) cens$lower else cens$upper, 3)
+    below_at <- signif(censored_end(cens, "below"), 3)
     warning("The ", object$model, " curve falls below the control's ", sig_val,
             " quantile before ", below_at, ", the lowest concentration in the ",
             "prediction range, for ", n_below, " of ", length(nsec_out),
@@ -510,8 +523,9 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,
     # censoring record. This method builds no record -- it has no
     # bayesnecformula to take a bound from, and it summarises with quantile()
     # and no na.rm, so a beyond-range draw raises an error here rather than
-    # being deleted in silence -- so the vector is dropped rather than handed
-    # to a caller with no use for it. Both bayesnec classes drop it too.
+    # being deleted in silence -- so the vector it would otherwise return is
+    # dropped. The n_below_range and x_searched_from this method has always
+    # returned are left alone: they are not this branch's to change.
     attr(out_vals, "below_range") <- NULL
     attr(out_vals, "ecnsec_relativeP") <- ecnsecP
   }

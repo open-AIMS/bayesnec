@@ -262,12 +262,16 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 200,
   below <- attr(out, "below_range")
   above <- is.na(out) & !below
   attr(out, "below_range") <- NULL
-  # Put the estimate back on the fitted scale, matching ecx.bayesnecfit, and
-  # take the censoring bounds off the same grid on that same scale.
+  # Put the estimate back on the fitted scale, matching ecx.bayesnecfit. The
+  # record is built on the recorded grid, the scale the curve was searched on,
+  # and remapped onto the fitted scale, which swaps the two ends under a
+  # decreasing crf(). See the same construction in ecx.bayesnecfit.
   out <- sub_x_transformation(out, object$formula)
-  grid_fitted <- sub_x_transformation(preds$x, object$formula)
-  grid_fitted <- grid_fitted[is.finite(grid_fitted)]
-  cens <- censoring_record(max(grid_fitted), min(grid_fitted), above, below)
+  x_kept <- preds$x[is.finite(preds$x)]
+  cens <- xform_censoring(
+    censoring_record(max(x_kept), min(x_kept), above, below),
+    function(value) sub_x_transformation(value, object$formula)
+  )
   if (inherits(xform, "function")) {
     out <- xform(out)
     cens <- xform_censoring(cens, xform)

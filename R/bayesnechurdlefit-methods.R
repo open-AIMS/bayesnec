@@ -263,16 +263,20 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
                              preds$control[[hurdle_check_which(which)]])
   below <- attr(out, "below_range")
   above <- is.na(out) & !below
-  x_from <- hurdle_xform_x(object, attr(out, "x_searched_from"))
+  searched_from <- attr(out, "x_searched_from")
   attr(out, "n_below_range") <- NULL
   attr(out, "below_range") <- NULL
   attr(out, "x_searched_from") <- NULL
   out <- hurdle_xform_x(object, out)
   # The lower bound is the point the search started from, not the foot of the
   # grid: those differ wherever the grid reaches below the control, and it is
-  # the search start a below-range draw is known to lie beneath.
-  cens <- censoring_record(max(hurdle_xform_x(object, preds$x)), x_from,
-                           above, below)
+  # the search start a below-range draw is known to lie beneath. Built on the
+  # recorded grid, the scale the search ran on, and remapped onto the fitted
+  # scale, which swaps the two ends under a decreasing crf().
+  cens <- xform_censoring(
+    censoring_record(max(preds$x), searched_from, above, below),
+    function(value) hurdle_xform_x(object, value)
+  )
   warn_censored_draws(out, "NSEC", cens = cens)
   if (inherits(xform, "function")) {
     out <- xform(out)

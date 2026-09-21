@@ -124,6 +124,18 @@
 #' whose curve had already passed the target where the range begins is recorded
 #' at the other end and reported the same way.
 #'
+#' Which quantile estimator is used depends on whether anything is censored.
+#' A posterior with no beyond-range draw is summarised exactly as it was up to
+#' version 2.1.3, with \code{\link[stats]{median}} and
+#' \code{\link[stats]{quantile}}'s default type 7, which interpolates between
+#' two adjacent order statistics. Once any draw is censored every reported
+#' entry becomes an order statistic instead, because a value interpolated
+#' across a draw that has no value would be one the posterior does not support.
+#' Every entry therefore changes a little when the first draw is censored,
+#' including entries at the other end of the interval. Keeping the uncensored
+#' summary bit-identical to the release was preferred to making the two agree
+#' at the boundary, because every archived analysis is compared against it.
+#'
 #' Up to version 2.1.3 such a draw was deleted and the remaining draws were
 #' summarised as though nothing had been removed, which reported an estimate
 #' lower than the quantity it was labelled as, with an interval narrower than
@@ -271,8 +283,7 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
     warning("The ", object$model, " curve does not reach the ", type,
             " ECx", ecx_val, " target anywhere in the predictor range for ",
             sum(above), " of ", length(ecx_out), " draws. The estimate is ",
-            "censored at ",
-            signif(if (any(cens$above)) cens$upper else cens$lower, 3),
+            "censored at ", signif(censored_end(cens, "above"), 3),
             ": those draws keep their rank in the summary and are given no ",
             "value.", call. = FALSE)
   }
@@ -280,8 +291,7 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
     warning("The ", object$model, " curve has already reached the ", type,
             " ECx", ecx_val, " target where the predictor range begins, for ",
             sum(below), " of ", length(ecx_out), " draws. The estimate is ",
-            "censored at ",
-            signif(if (any(cens$below)) cens$lower else cens$upper, 3), ".",
+            "censored at ", signif(censored_end(cens, "below"), 3), ".",
             call. = FALSE)
   }
 
