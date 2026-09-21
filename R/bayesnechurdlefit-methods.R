@@ -351,11 +351,22 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
     # block described a different range from the no-effect estimates printed
     # directly above it, and those are now marked with the end they are
     # censored at. See the same argument in summary.bayesnecfit.
-    hurdle_range <- range(c(object$growth$pred_vals$data$x,
-                            object$survival$pred_vals$data$x))
+    #
+    # The intersection of the two component grids rather than their union,
+    # because that is the stretch both curves are defined over and it is the
+    # range combine_censored_min() names when it bounds the combined no-effect
+    # estimate. Growth is fitted on survivors only, so its grid stops short of
+    # any concentration where nothing survived, and the union would reach past
+    # the combined endpoint. NULL where a component has no stored grid, which
+    # leaves ecx() to build its own as before.
+    hurdle_range <- hurdle_summary_range(object)
     ecs <- lapply(c("combined", "growth", "survival"), function(w) {
       out <- lapply(ecx_vals, function(v) {
-        ecx(object, ecx_val = v, which = w, x_range = hurdle_range, ...)
+        if (is.null(hurdle_range)) {
+          ecx(object, ecx_val = v, which = w, ...)
+        } else {
+          ecx(object, ecx_val = v, which = w, x_range = hurdle_range, ...)
+        }
       })
       names(out) <- paste0("ec", ecx_vals)
       out
@@ -1017,4 +1028,34 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
   names(estimate) <- clean_names(estimate)
   attr(estimate, "component") <- which
   if (!posterior) estimate else out
+}
+
+#' The predictor range both blocks of a two-block fit were predicted over
+#'
+#' The intersection of the two component grids. A component is a
+#' \code{\link{bayesnecfit}} or a \code{\link{bayesmanecfit}} depending on
+#' whether \code{crf()} named one equation or a set, and the two classes store
+#' their grid under different names -- \code{pred_vals} and \code{w_pred_vals}
+#' -- so reading one of them alone returns \code{NULL} for the commoner case
+#' and \code{range()} of nothing is \code{c(Inf, -Inf)}.
+#'
+#' @param object An object of class \code{\link{bayesnechurdlefit}}.
+#'
+#' @return A \code{\link[base]{numeric}} vector of length 2, or \code{NULL}
+#' where either component has no stored grid.
+#' @noRd
+hurdle_summary_range <- function(object) {
+  grid_of <- function(x) {
+    out <- x$w_pred_vals$data$x
+    if (is.null(out)) {
+      out <- x$pred_vals$data$x
+    }
+    out
+  }
+  g <- grid_of(object$growth)
+  s <- grid_of(object$survival)
+  if (is.null(g) || is.null(s) || !length(g) || !length(s)) {
+    return(NULL)
+  }
+  c(max(min(g), min(s)), min(max(g), max(s)))
 }

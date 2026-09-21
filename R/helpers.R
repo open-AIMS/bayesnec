@@ -2461,64 +2461,73 @@ check_removed_args <- function(dots) {
 #' @noRd
 warn_censored_draws <- function(values, estimate = "estimate", n_below = 0,
                                x_from = NULL, cens = attr(values, "censored")) {
-  # The record is the authority where there is one. It counts the two ends
-  # separately, and it covers a draw that is beyond the range without being
-  # NA -- a sampled threshold above the top of the grid, which is.na() cannot
-  # see. Without a record the counts are taken as they were before.
-  if (!is.null(cens)) {
-    # Both clauses below describe the draws by the geometry the search saw: one
-    # set whose curve never reached the target, one whose curve had already
-    # passed it. A decreasing remapping puts those at opposite ends of the
-    # reported scale, so the end each is named at comes from censored_end()
-    # rather than from the field the class happens to be stored in.
-    n_below <- sum(cens$below)
-    n_above <- sum(cens$above)
-    if (isTRUE(attr(cens, "swapped"))) {
-      n_below <- sum(cens$above)
-      n_above <- sum(cens$below)
-    }
-    # An NA the record does not account for is a draw whose estimate could not
-    # be computed at all rather than one known to be beyond an end -- an
-    # all-NA prediction row, or a posterior a caller has edited. It is still
-    # deleted from the summary, so it is still counted here; silence about a
-    # deleted draw is the defect this function exists to prevent.
-    n_missing <- n_above +
-      sum(is.na(values) & !cens$above & !cens$below)
-    x_from <- censored_end(cens, "below")
-    upper <- signif(censored_end(cens, "above"), 3)
-  } else {
+  # Classed, so that a method which reports its own censoring can muffle the
+  # reports of the calls it makes internally without also muffling anything
+  # else they raise. nec.bayesnechurdlefit() summarises what nec() returned for
+  # each component, so an unclassed warning would be printed once per component
+  # and once for the combination, saying the same thing three times.
+  raise <- function(msg) {
+    warning(structure(class = c("bayesnec_censored", "warning", "condition"),
+                      list(message = msg, call = NULL)))
+  }
+  if (is.null(cens)) {
+    # No record: the counts and the wording the release used.
     n_missing <- sum(is.na(values)) - n_below
-    upper <- "the highest concentration in the prediction grid"
+    if (n_missing > 0) {
+      raise(paste0("The ", estimate, " is not identified for ", n_missing,
+                   " of ", length(values), " draws, whose curve does not ",
+                   "reach the target anywhere in the predictor range. Those ",
+                   "draws return NA and are excluded from the summary."))
+    }
+    if (n_below > 0) {
+      raise(paste0("The ", estimate, " is not identified for ", n_below,
+                   " of ", length(values), " draws, whose curve reached the ",
+                   "reference below ", signif(x_from, 3), ", the lowest ",
+                   "concentration in the prediction range. Those draws return ",
+                   "NA and are excluded from the summary."))
+    }
+    return(invisible(NULL))
   }
-  below_msg <- function() {
-    msg <- paste0("The ", estimate, " is not identified for ", n_below, " of ",
-                  length(values), " draws, whose curve reached the reference ",
-                  "below ", signif(x_from, 3), ", the lowest concentration in ",
-                  "the prediction range. The summary is censored there: those ",
-                  "draws keep their rank in it and are given no value, so a ",
-                  "quantile falling among them is reported as a bound.")
-    warning(structure(class = c("bayesnec_censored", "warning", "condition"),
-                      list(message = msg, call = NULL)))
+  # With a record, each report is keyed on the end of the REPORTED scale the
+  # draws lie beyond, taken from the same two fields print_censoring_note()
+  # reads. Keying it on the geometry the search saw -- one set whose curve
+  # never reached the target, one whose curve had already passed it -- put the
+  # two reporters in contradiction wherever a decreasing crf() or xform had
+  # swapped the ends, so that a warning said "censored above" over a note
+  # saying "lie below" about the same draws.
+  #
+  # An NA the record accounts for at neither end could not be computed at all:
+  # an all-NA prediction row, or a posterior a caller has edited. It is
+  # reported on its own rather than folded into one of the two ends, and it is
+  # left out of the denominator, so that every fraction stated here is over the
+  # same sample as the one print_censoring_note() states.
+  unexplained <- is.na(values) & !cens$above & !cens$below
+  n_draws <- length(values) - sum(unexplained)
+  if (sum(cens$above) > 0) {
+    raise(paste0("The ", estimate, " is not identified for ",
+                 sum(cens$above), " of ", n_draws, " draws, which lie at or ",
+                 "above ", signif(cens$upper, 3), ", the upper bound of the ",
+                 "prediction range. The summary is censored there: those ",
+                 "draws keep their rank in it and are given no value, so a ",
+                 "quantile falling among them is reported as a bound."))
   }
-  if (n_missing > 0) {
-    # Classed, so that a method which reports its own censoring can muffle the
-    # reports of the calls it makes internally without also muffling anything
-    # else they raise. nec.bayesnechurdlefit() summarises what nec() returned
-    # for each component, so an unclassed warning would be printed once per
-    # component and once for the combination, saying the same thing three times.
-    msg <- paste0("The ", estimate, " is not identified for ", n_missing,
-                  " of ", length(values), " draws. The summary is censored ",
-                  "above ", upper, ": draws known to lie beyond that end keep ",
-                  "their rank in the summary and are given no value, so a ",
-                  "quantile falling among them is reported as a bound.")
-    warning(structure(class = c("bayesnec_censored", "warning", "condition"),
-                      list(message = msg, call = NULL)))
-  }
-  # After the above-range report, matching the order nsec.bayesnecfit() raises
-  # the two in, so a call producing both reads the same way whichever method it
+  # After the upper report, matching the order nsec.bayesnecfit() raises the
+  # two in, so a call producing both reads the same way whichever method it
   # came through.
-  if (n_below > 0) {
-    below_msg()
+  if (sum(cens$below) > 0) {
+    raise(paste0("The ", estimate, " is not identified for ",
+                 sum(cens$below), " of ", n_draws, " draws, which lie at or ",
+                 "below ", signif(cens$lower, 3), ", the lower bound of the ",
+                 "prediction range. The summary is censored there: those ",
+                 "draws keep their rank in it and are given no value, so a ",
+                 "quantile falling among them is reported as a bound."))
+  }
+  if (sum(unexplained) > 0) {
+    raise(paste0("The ", estimate, " could not be computed for ",
+                 sum(unexplained), " of ", length(values), " draws, which lie ",
+                 "beyond neither end of the prediction range. Those draws ",
+                 "return NA and are left out of the summary and out of the ",
+                 "fraction reported beside it."))
   }
   invisible(NULL)
 }

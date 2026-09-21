@@ -344,11 +344,12 @@ test_that("a stacked table marks the rows whose entries are bounds", {
   expect_false(any(grepl("growth", note, fixed = TRUE)))
 })
 
-test_that("the report names the geometry and the end it landed at", {
-  # Both clauses describe the draws by what the search saw. A decreasing
-  # remapping puts those two classes at opposite ends of the reported scale, so
-  # the clause "whose curve does not reach the target" must still name the end
-  # those draws are beyond, which after the swap is the lower one.
+test_that("the warning and the note name the same end for the same draws", {
+  # A decreasing remapping puts the two classes of beyond-range draw at
+  # opposite ends of the reported scale. Keying the warning on the geometry the
+  # search saw and the note on the record's fields put the two in
+  # contradiction: "censored above -10" printed over "lie below -10" about the
+  # same draws. Both now read the same two fields.
   rec <- cens_record(above = c(TRUE, TRUE, FALSE), below = rep(FALSE, 3),
                      upper = 10, lower = 1)
   flipped <- bayesnec:::xform_censoring(rec, function(z) -z)
@@ -358,8 +359,37 @@ test_that("the report names the geometry and the end it landed at", {
     bayesnec_censored = function(w) conditionMessage(w)
   )
   expect_true(grepl("not identified for 2 of 3 draws", msg, fixed = TRUE))
-  expect_true(grepl("censored above -10", msg, fixed = TRUE))
-  expect_false(grepl("reached the reference below", msg, fixed = TRUE))
+  expect_true(grepl("at or below -10", msg, fixed = TRUE))
+  expect_false(grepl("above", msg, fixed = TRUE))
+  # The note about the same draws, and the mark on the summary, agree with it.
+  out <- bayesnec:::summarise_censored(c(NA_real_, NA_real_, -5),
+                                       c(0.5, 0.025, 0.975), flipped)
+  note <- utils::capture.output(
+    bayesnec:::print_censoring_note(attr(out, "censored_summary"), "NSEC")
+  )
+  expect_true(any(grepl("lie below -10", note, fixed = TRUE)))
+  expect_true(any(attr(out, "censored_summary")$bound == "<="))
+})
+
+test_that("a draw the record explains at neither end is reported apart", {
+  # It could not be computed at all rather than being known to lie beyond an
+  # end, so it is named on its own and left out of the denominator the other
+  # reports use, which is the denominator the note states.
+  msgs <- character(0)
+  withCallingHandlers(
+    bayesnec:::warn_censored_draws(
+      c(NA_real_, 2, NA_real_), "NSEC",
+      cens = cens_record(c(TRUE, FALSE, FALSE), rep(FALSE, 3))
+    ),
+    bayesnec_censored = function(w) {
+      msgs <<- c(msgs, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_length(msgs, 2)
+  expect_true(grepl("not identified for 1 of 2 draws", msgs[1], fixed = TRUE))
+  expect_true(grepl("could not be computed for 1 of 3 draws", msgs[2],
+                    fixed = TRUE))
 })
 
 # Integration. These reuse the packaged fits and change only the prediction

@@ -68,9 +68,10 @@
 #' Which quantile estimator is used depends on whether anything is censored.
 #' A posterior with no beyond-range draw is summarised exactly as it was up to
 #' version 2.1.3, with \code{\link[stats]{quantile}}'s default type 7, which
-#' interpolates between two adjacent order statistics. Once any draw is censored every reported
-#' entry becomes an order statistic instead, because a value interpolated
-#' across a draw that has no value would be one the posterior does not support.
+#' interpolates between two adjacent order statistics. Once any draw is
+#' censored every reported entry becomes an order statistic instead, because a
+#' value interpolated across a draw that has no value would be one the
+#' posterior does not support.
 #' Every entry therefore changes a little when the first draw is censored,
 #' including entries at the other end of the interval. Keeping the uncensored
 #' summary bit-identical to the release was preferred to making the two agree
