@@ -270,6 +270,52 @@ test_that("a decreasing predictor transformation names the right end", {
   expect_false(any(attr(out, "censored_summary")$bound == ">="))
 })
 
+test_that("the end a class is named at survives one and two remappings", {
+  # The two classes are named by the geometry the search saw: draws the curve
+  # did not reach within the range, and draws it had already passed where the
+  # range began. A decreasing remapping puts those at opposite ends of the
+  # reported scale, so a message naming cens$upper for the first of them would
+  # name the one value those draws are known not to exceed. The record carries
+  # which way round it is.
+  rec <- cens_record(above = c(TRUE, FALSE, FALSE),
+                     below = c(FALSE, TRUE, FALSE), upper = 10, lower = 1)
+  expect_equal(bayesnec:::censored_end(rec, "above"), 10)
+  expect_equal(bayesnec:::censored_end(rec, "below"), 1)
+
+  flipped <- bayesnec:::xform_censoring(rec, function(v) -v)
+  expect_true(isTRUE(attr(flipped, "swapped")))
+  # Both ends are censored here, which is the case a test on cens$above alone
+  # gets wrong: it would name -1 for draws that lie at or below -10.
+  expect_equal(bayesnec:::censored_end(flipped, "above"), -10)
+  expect_equal(bayesnec:::censored_end(flipped, "below"), -1)
+
+  # Two decreasing remappings leave the ends where they started, which is the
+  # composition a record makes when both the crf() and the caller's xform
+  # reverse the predictor.
+  twice <- bayesnec:::xform_censoring(flipped, function(v) -v)
+  expect_false(isTRUE(attr(twice, "swapped")))
+  expect_equal(bayesnec:::censored_end(twice, "above"), 10)
+  expect_equal(bayesnec:::censored_end(twice, "below"), 1)
+
+  # An increasing remapping after a decreasing one keeps the swap.
+  mixed <- bayesnec:::xform_censoring(flipped, function(v) v * 2)
+  expect_true(isTRUE(attr(mixed, "swapped")))
+  expect_equal(bayesnec:::censored_end(mixed, "above"), -20)
+})
+
+test_that("an unexplained NA is left out of the fraction that is stated", {
+  # Such a draw could not be computed at all, so na.rm drops it from the
+  # quantile. Counting it in n_draws would state a fraction of a sample the
+  # reported figure was not taken from.
+  x <- c(1:8, NA_real_, NA_real_)
+  cens <- cens_record(c(rep(FALSE, 8), FALSE, TRUE), logical(10))
+  out <- bayesnec:::summarise_censored(x, c(0.5, 0.025, 0.975), cens)
+  cs <- attr(out, "censored_summary")
+  expect_identical(cs$n_above, 1L)
+  expect_identical(cs$n_draws, 9L)
+  expect_true(cs$n_above + cs$n_below <= cs$n_draws)
+})
+
 # Integration. These reuse the packaged fits and change only the prediction
 # grid, so no model is compiled or sampled.
 
