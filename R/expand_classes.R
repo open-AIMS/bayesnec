@@ -65,18 +65,20 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   } else {
     mod_class <- "nec"
   }
-  # The prediction grid on the fitted predictor scale. Every no-effect draw is
-  # on that scale -- nsec_off_curve() puts its result there with
-  # sub_x_transformation(), and b_nec_Intercept is a parameter of the fitted
-  # model -- so the bounds a draw is compared against have to be there too. A
-  # bound taken as max(pred_data$x) would be on the recorded scale, and for a
-  # decreasing crf() transformation the comparison would select the wrong end.
-  # Non-finite entries are dropped because an x_range reaching 0 under
-  # crf(log(x)) puts -Inf at the foot of the grid.
+  # The two scales the bounds are needed on. A curve is searched on the
+  # recorded grid, so a draw the search did not identify is beyond an end of
+  # THAT grid, and its record is built there and remapped with
+  # xform_censoring(), which swaps the two ends for a decreasing crf(). A
+  # sampled b_nec_Intercept is already on the fitted scale and is compared
+  # against the fitted bounds directly. Non-finite entries are dropped because
+  # an x_range reaching 0 under crf(log(x)) puts -Inf at the foot of the fitted
+  # grid.
+  grid_recorded <- pred_data$x[is.finite(pred_data$x)]
   grid_fitted <- sub_x_transformation(pred_data$x, formula)
   grid_fitted <- grid_fitted[is.finite(grid_fitted)]
   ne_upper <- max(grid_fitted)
   ne_lower <- min(grid_fitted)
+  to_fitted_scale <- function(value) sub_x_transformation(value, formula)
   # NSEC read off a fitted curve, on the predictor scale the user supplied it
   # on. Used for smooth (ecx-type) models, which carry no threshold parameter,
   # and for any two-block fit where at least one block is smooth.
@@ -92,6 +94,10 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
                                post[, 1])
     below <- attr(out, "below_range")
     above <- is.na(out) & !below
+    cens <- xform_censoring(
+      censoring_record(max(grid_recorded), min(grid_recorded), above, below),
+      to_fitted_scale
+    )
     if (sum(above) > 0) {
       # Names the equation. bnec() calls this once per model, so on the default
       # 23-model set an unnamed message says only that something somewhere is
@@ -102,14 +108,17 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
       message("The fitted ", object$model, " curve does not fall to the ",
               "control's ", sig_val, " quantile within the predictor range ",
               "for ", sum(above), " of ", length(out), " draws. The NSEC ",
-              "summary is censored above ", signif(ne_upper, 3), ": those ",
-              "draws keep their rank in it and are given no value.")
+              "summary is censored at ", signif(
+                if (any(cens$above)) cens$upper else cens$lower, 3
+              ), ": those draws keep their rank in it and are given no value.")
     }
     if (sum(below) > 0) {
       message("The fitted ", object$model, " curve is already below the ",
               "control's ", sig_val, " quantile where the predictor range ",
               "begins, for ", sum(below), " of ", length(out), " draws. The ",
-              "NSEC summary is censored below ", signif(ne_lower, 3), ".")
+              "NSEC summary is censored at ", signif(
+                if (any(cens$below)) cens$lower else cens$upper, 3
+              ), ".")
     }
     out <- sub_x_transformation(out, formula)
     # The two attributes nsec_from_posterior() leaves for the reports above are
@@ -117,7 +126,7 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     attr(out, "n_below_range") <- NULL
     attr(out, "below_range") <- NULL
     attr(out, "x_searched_from") <- NULL
-    attr(out, "censored") <- censoring_record(ne_upper, ne_lower, above, below)
+    attr(out, "censored") <- cens
     out
   }
   # Memoised alongside get_pred_posterior(). A smooth block on a hurdle fit

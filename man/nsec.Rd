@@ -150,7 +150,7 @@ states how many draws lie beyond each end and where the ends are. A draw
 whose curve had already passed the target where the range begins is recorded
 at the other end and reported the same way.
 
-Up to version 2.2.1 such a draw was deleted and the remaining draws were
+Up to version 2.1.3 such a draw was deleted and the remaining draws were
 summarised as though nothing had been removed, which reported an estimate
 lower than the quantity it was labelled as, with an interval narrower than
 the posterior supports. See \code{\link{nec}} for the same treatment of a

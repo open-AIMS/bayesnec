@@ -235,10 +235,13 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
   # on a grid the caller may have changed through x_range. Its lower bound is
   # the point the search started from, which is what a below-range draw is
   # known to lie beneath, and not min(x_vec): the two differ wherever the grid
-  # reaches below the control.
-  bound <- sub_x_transformation(max(x_vec), object$bayesnecformula)
-  lower <- sub_x_transformation(searched_from, object$bayesnecformula)
-  cens <- censoring_record(bound, lower, above, below)
+  # reaches below the control. It is built on the recorded scale, the scale the
+  # search ran on, and remapped onto the fitted scale, which swaps the two ends
+  # under a decreasing crf(). See the same construction in ecx.bayesnecfit.
+  cens <- xform_censoring(
+    censoring_record(max(x_vec), searched_from, above, below),
+    function(value) sub_x_transformation(value, object$bayesnecformula)
+  )
   # xform reaches the censoring bounds as well as the estimates, and the
   # warnings follow both, so that a bound is on the scale the caller reads the
   # estimate on. See the same reordering in ecx.bayesnecfit.
@@ -246,20 +249,23 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
     nsec_out <- xform(nsec_out)
     cens <- xform_censoring(cens, xform)
   }
-  bound <- cens$upper
-  lower <- cens$lower
+  # Named from the record rather than from bound and lower directly, so that a
+  # decreasing crf() reports each set of draws at the end of the fitted scale
+  # they actually lie beyond.
   if (n_above > 0) {
     warning("The ", object$model, " curve does not fall below the control's ",
             sig_val, " quantile anywhere in the predictor range for ",
             n_above, " of ", length(nsec_out), " draws. The NSEC is censored ",
-            "above ", signif(bound, 3), ": those draws keep their rank in the ",
-            "summary and are given no value.", call. = FALSE)
+            "at ", signif(if (any(cens$above)) cens$upper else cens$lower, 3),
+            ": those draws keep their rank in the summary and are given no ",
+            "value.", call. = FALSE)
   }
   if (n_below > 0) {
     warning("The ", object$model, " curve falls below the control's ", sig_val,
-            " quantile before ", signif(lower, 3), ", the lowest concentration ",
-            "in the prediction range, for ", n_below, " of ", length(nsec_out),
-            " draws. The NSEC is censored below ", signif(lower, 3),
+            " quantile before the lowest concentration in the prediction ",
+            "range, for ", n_below, " of ", length(nsec_out),
+            " draws. The NSEC is censored at ",
+            signif(if (any(cens$below)) cens$lower else cens$upper, 3),
             ", which this x_range does not cover.", call. = FALSE)
   }
   # sub_x_transformation() returns the vector with its attributes, so the three
@@ -500,6 +506,13 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,
   
   if(posterior & is.na(group_var)){ 
     out_vals <- unlist(nsec_out)
+    # below_range is the per-draw vector nsec_from_posterior() adds for the
+    # censoring record. This method builds no record -- it has no
+    # bayesnecformula to take a bound from, and it summarises with quantile()
+    # and no na.rm, so a beyond-range draw raises an error here rather than
+    # being deleted in silence -- so the vector is dropped rather than handed
+    # to a caller with no use for it. Both bayesnec classes drop it too.
+    attr(out_vals, "below_range") <- NULL
     attr(out_vals, "ecnsec_relativeP") <- ecnsecP
   }
   

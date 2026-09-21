@@ -366,7 +366,20 @@ summarise_censored <- function(x, probs, cens = attr(x, "censored")) {
   ranked <- vals
   ranked[cens$above] <- Inf
   ranked[cens$below] <- -Inf
-  out <- quantile(ranked, probs = probs, na.rm = TRUE)
+  # type = 1, the inverse empirical distribution function, rather than R's
+  # default type = 7. That default interpolates between two adjacent order
+  # statistics, and an interpolation that begins at a finite draw and ends at a
+  # censored one is infinite for any weight above zero -- so a quantile lying
+  # only fractionally inside the censored block came back as the bound, which
+  # asserts more than the ranks support. On ten draws with one censored, the
+  # 97.5 per cent quantile sits 0.775 of the way from the ninth draw into the
+  # tenth, and was reported as the bound although the smallest value consistent
+  # with the sample is the ninth draw. type = 1 returns an order statistic and
+  # never interpolates, so every reported entry is either a draw that was
+  # identified or a draw that is known to lie beyond an end, which is exactly
+  # what "contributes its rank and nothing else" says. The uncensored branch
+  # above keeps type = 7 and is untouched.
+  out <- quantile(ranked, probs = probs, na.rm = TRUE, type = 1)
   at_upper <- is.infinite(out) & out > 0
   at_lower <- is.infinite(out) & out < 0
   bound <- rep("", length(out))
@@ -398,18 +411,27 @@ subset_censoring <- function(cens, idx) {
   cens
 }
 
-#' Put a censoring record on the scale \code{xform} reports estimates on
+#' Put a censoring record on another predictor scale
 #'
-#' Which draws are beyond the prediction range is a property of the predictor
-#' and of the grid, so it is settled before \code{xform} is seen and is not
-#' revisited here (specification 4.8). What \code{xform} does change is the
-#' value each bound is printed as, and, for a decreasing transformation, which
-#' end of the reported scale each censored draw appears at.
+#' Used for both remappings a record makes: the \code{crf()} transformation
+#' that takes the recorded predictor scale, which the curve is searched on, to
+#' the fitted scale the estimates are returned on; and the \code{xform} a
+#' caller supplies for display. Which draws are beyond the prediction range is
+#' a property of the predictor and of the grid, so it is settled once, on the
+#' scale the search happened on, and is not revisited here (specification 4.8).
+#' What a remapping changes is the value each bound is stated as, and, for a
+#' decreasing one, which end of the new scale each censored draw appears at.
+#'
+#' Every site that builds a record calls this rather than transforming the
+#' bounds by hand. Transforming them by hand keeps the numbers right and leaves
+#' \code{above} and \code{below} naming the ends of the old scale, which under
+#' \code{crf(-x)} labels a draw beyond the top of the recorded range as being
+#' above the top of the fitted one, where it is in fact below the foot of it.
 #'
 #' @param cens A record from \code{censoring_record()}, or \code{NULL}.
-#' @param xform A \code{\link[base]{function}}.
+#' @param xform A monotone \code{\link[base]{function}}.
 #'
-#' @return A record on the transformed scale, or \code{NULL}.
+#' @return A record on the new scale, or \code{NULL}.
 #' @noRd
 xform_censoring <- function(cens, xform) {
   if (is.null(cens)) {
@@ -418,10 +440,10 @@ xform_censoring <- function(cens, xform) {
   new_upper <- xform(cens$upper)
   new_lower <- xform(cens$lower)
   if (is.finite(new_upper) && is.finite(new_lower) && new_upper < new_lower) {
-    # A decreasing xform maps the top of the predictor range to the bottom of
-    # the reported scale, so a draw known to be beyond the top of the range is
-    # reported as below the bottom of the transformed one. The same draws are
-    # censored; only the end they are named at swaps over.
+    # A decreasing remapping takes the top of the old scale to the bottom of
+    # the new one, so a draw known to be beyond the top of the range is stated
+    # as below the bottom of the transformed one. The same draws are censored;
+    # only the end they are named at swaps over.
     return(censoring_record(new_lower, new_upper, cens$below, cens$above))
   }
   censoring_record(new_upper, new_lower, cens$above, cens$below)
@@ -2292,29 +2314,6 @@ to_axis_scale <- function(values, bdat, formula, x_grid_raw,
   out[finite_v] <- approx(x = fitted_grid[keep], y = x_grid_raw[keep],
                           xout = values[finite_v], rule = 2)$y
   out
-}
-
-#' Put a censoring record's bounds on the axis scale
-#'
-#' \code{to_axis_scale()} moves the estimates; the bounds recorded beside them
-#' have to make the same move, or a plot annotation would read ">= 1.17" on an
-#' axis running in concentrations.
-#'
-#' @param values The result of \code{to_axis_scale()}, carrying the record.
-#' @param ... Passed to \code{to_axis_scale()}.
-#'
-#' @return \code{values} with the bounds in its record rescaled.
-#' @noRd
-rescale_censoring_bounds <- function(values, ...) {
-  cens <- attr(values, "censored_summary")
-  if (is.null(cens)) {
-    return(values)
-  }
-  ends <- to_axis_scale(c(cens$lower, cens$upper), ...)
-  cens$lower <- ends[[1]]
-  cens$upper <- ends[[2]]
-  attr(values, "censored_summary") <- cens
-  values
 }
 
 #' Refuse an argument that has been removed, by name

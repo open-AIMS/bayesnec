@@ -153,12 +153,24 @@ states how many draws lie beyond each end and where the ends are. A draw
 whose curve had already passed the target where the range begins is recorded
 at the other end and reported the same way.
 
-Up to version 2.2.1 such a draw was deleted and the remaining draws were
+Up to version 2.1.3 such a draw was deleted and the remaining draws were
 summarised as though nothing had been removed, which reported an estimate
 lower than the quantity it was labelled as, with an interval narrower than
 the posterior supports. See \code{\link{nec}} for the same treatment of a
 threshold parameter, where the draw does have a value and the operation is
 right-censoring in the ordinary sense.
+
+One case is reported less precisely than it was before that change. A draw
+whose curve declines away from the target everywhere --- \code{type =
+"direct"} with a response value the curve never attains, and an absolute
+target above a control that is itself negative --- has no such concentration
+at any value of the predictor, not merely none within the range. It is
+reported here as at or beyond the top of the range, which is the treatment
+specification 4.5 gives to every draw the search did not identify; up to
+version 2.1.3 it returned \code{NA}, which said only that the estimate was
+not identified. The censored fraction beside the estimate is what
+distinguishes the two: where it is the whole posterior, no draw reached the
+target.
 }
 
 \examples{

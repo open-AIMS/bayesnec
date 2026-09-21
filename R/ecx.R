@@ -131,6 +131,18 @@
 #' threshold parameter, where the draw does have a value and the operation is
 #' right-censoring in the ordinary sense.
 #'
+#' One case is reported less precisely than it was before that change. A draw
+#' whose curve declines away from the target everywhere --- \code{type =
+#' "direct"} with a response value the curve never attains, and an absolute
+#' target above a control that is itself negative --- has no such concentration
+#' at any value of the predictor, not merely none within the range. It is
+#' reported here as at or beyond the top of the range, which is the treatment
+#' specification 4.5 gives to every draw the search did not identify; up to
+#' version 2.1.3 it returned \code{NA}, which said only that the estimate was
+#' not identified. The censored fraction beside the estimate is what
+#' distinguishes the two: where it is the whole posterior, no draw reached the
+#' target.
+#'
 #' @examples
 #' \donttest{
 #' library(brms)
@@ -233,14 +245,17 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
   attr(ecx_out, "below_range") <- NULL
   ecx_out <- sub_x_transformation(ecx_out, object$bayesnecformula)
   # The record is built here rather than read off the fit, because ecx() works
-  # on a grid the caller may have changed through x_range. The bounds are the
-  # ends of that grid on the fitted predictor scale, which is the scale
-  # sub_x_transformation() has just put the estimates on; taking them as
-  # max(x_vec) and min(x_vec) would be the recorded scale and would select the
-  # wrong end under a decreasing crf() transformation.
-  grid_fitted <- sub_x_transformation(x_vec, object$bayesnecformula)
-  grid_fitted <- grid_fitted[is.finite(grid_fitted)]
-  cens <- censoring_record(max(grid_fitted), min(grid_fitted), above, below)
+  # on a grid the caller may have changed through x_range. It is built on the
+  # recorded scale, which is the scale the curve was searched on and therefore
+  # the scale a beyond-range draw is beyond an end of, and then remapped onto
+  # the fitted scale that sub_x_transformation() has just put the estimates on.
+  # Comparing against fitted bounds directly would keep above and below naming
+  # the ends of the recorded scale, which a decreasing crf() reverses.
+  x_kept <- x_vec[is.finite(x_vec)]
+  cens <- xform_censoring(
+    censoring_record(max(x_kept), min(x_kept), above, below),
+    function(value) sub_x_transformation(value, object$bayesnecformula)
+  )
   # xform is applied to the censoring bounds as well as to the estimates, and
   # the warning is raised after both, so that the bound and the numbers the
   # caller is about to read are on one scale. Reporting the bound before xform
@@ -256,15 +271,18 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
     warning("The ", object$model, " curve does not reach the ", type,
             " ECx", ecx_val, " target anywhere in the predictor range for ",
             sum(above), " of ", length(ecx_out), " draws. The estimate is ",
-            "censored above ", signif(cens$upper, 3), ": those draws keep ",
-            "their rank in the summary and are given no value.",
-            call. = FALSE)
+            "censored at ",
+            signif(if (any(cens$above)) cens$upper else cens$lower, 3),
+            ": those draws keep their rank in the summary and are given no ",
+            "value.", call. = FALSE)
   }
   if (sum(below) > 0) {
     warning("The ", object$model, " curve has already reached the ", type,
             " ECx", ecx_val, " target where the predictor range begins, for ",
             sum(below), " of ", length(ecx_out), " draws. The estimate is ",
-            "censored below ", signif(cens$lower, 3), ".", call. = FALSE)
+            "censored at ",
+            signif(if (any(cens$below)) cens$lower else cens$upper, 3), ".",
+            call. = FALSE)
   }
 
   ecx_estimate <- summarise_censored(unlist(ecx_out), prob_vals, cens)
@@ -603,9 +621,13 @@ ecx_from_posterior <- function(p_samples, x_vec, ecx_val, type, control,
     # target before the grid began, which requires the target to sit below the
     # control -- the control is read at the lowest observed concentration, at
     # or below the foot of the grid. A target at or above the control is one
-    # the curve never declines to at all, which belongs with the draws that did
-    # not reach it: type = "direct" with a response value above the whole curve
-    # is the case, and D15 ruling 3 is about that one.
+    # the curve never declines to at all, and is reported at the upper end with
+    # the draws that did not reach the target, which is what specification 4.5
+    # asks for a draw whose estimate may not exist at any concentration. Two
+    # shapes reach that branch: type = "direct" with a response value above the
+    # whole curve, which is what D15 ruling 3 is about; and an absolute ECx on
+    # a response whose control is negative, where the target is above the
+    # control and the curve declines away from it. Neither has a crossing.
     if (is.na(val) && !is.na(y[1]) && !is.na(target) && y[1] <= target &&
         target < control[i]) {
       below_range[i] <<- TRUE

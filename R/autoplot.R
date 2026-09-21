@@ -463,17 +463,16 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   }
   x_grid_raw <- x$pred_vals$data$x
   if (add_nec) {
-    nec_vals <- to_axis_scale(x$ne, bdat, x$bayesnecformula,
-                              x_grid_raw, xform)
-    nec_vals <- rescale_censoring_bounds(nec_vals, bdat, x$bayesnecformula,
-                                         x_grid_raw, xform)
-    out <- bind_nec(out, nec_vals)
+    # to_axis_scale() moves the estimates onto the recorded scale and keeps
+    # the record's marks, which is all bind_nec() reads: the annotation is
+    # built from the moved values, so the bounds inside the record are not
+    # consulted and are left on the scale they were computed on.
+    out <- bind_nec(out, to_axis_scale(x$ne, bdat, x$bayesnecformula,
+                                       x_grid_raw, xform))
   }
   if (add_ecx) {
     ecx_vals <- to_axis_scale(plot_ecx(x, x$fit$family$family, list(...)),
                               bdat, x$bayesnecformula, x_grid_raw, xform)
-    ecx_vals <- rescale_censoring_bounds(ecx_vals, bdat, x$bayesnecformula,
-                                         x_grid_raw, xform)
     out <- bind_ecx(out, ecx_vals)
   }
   if (!is.null(group)) {
@@ -530,18 +529,14 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
       mutate(x_e = xform(.data$x_e), x_r = xform(.data$x_r))
   }
   if (add_nec) {
-    nec_vals <- to_axis_scale(x$w_ne, bdat, manec_formula, x_grid_raw, xform)
-    nec_vals <- rescale_censoring_bounds(nec_vals, bdat, manec_formula,
-                                         x_grid_raw, xform)
-    out <- bind_nec(out, nec_vals)
+    out <- bind_nec(out, to_axis_scale(x$w_ne, bdat, manec_formula,
+                                       x_grid_raw, xform))
   }
   if (add_ecx) {
     ecx_vals <- to_axis_scale(
       plot_ecx(x, x$mod_fits[[1]]$fit$family$family, list(...)),
       bdat, manec_formula, x_grid_raw, xform
     )
-    ecx_vals <- rescale_censoring_bounds(ecx_vals, bdat, manec_formula,
-                                         x_grid_raw, xform)
     out <- bind_ecx(out, ecx_vals)
   }
   if (!is.null(group)) {

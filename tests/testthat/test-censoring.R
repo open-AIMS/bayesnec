@@ -38,10 +38,10 @@ test_that("a censored draw contributes its rank and no value", {
   expect_identical(cens$n_above, 91L)
   expect_identical(cens$n_below, 0L)
   expect_identical(cens$n_draws, 100L)
-  # The lower limit is an ordinary quantile of the whole sample, which falls
-  # among the nine draws that were identified, so it is a number and not a
-  # bound.
-  expect_equal(unname(out[["Q2.5"]]), 3.475)
+  # The lower limit falls among the nine draws that were identified, so it is a
+  # number and not a bound. It is the third of them, because the censored
+  # summary reports an order statistic rather than interpolating between two.
+  expect_equal(unname(out[["Q2.5"]]), 3)
   # This is not the treatment #39 removed: no censored draw was given the value
   # of the bound, so the median of the uncensored draws is unchanged by how
   # many draws were censored.
@@ -68,7 +68,11 @@ test_that("summarise_censored honours prob_vals and leaves names alone", {
                                      logical(100))
   out <- bayesnec:::summarise_censored(x, c(0.5, 0.1, 0.9))
   expect_named(out, c("50%", "10%", "90%"))
-  expect_identical(attr(out, "censored_summary")$bound, c(">=", "", ">="))
+  # Fifty draws identified and fifty censored: the median is the fiftieth order
+  # statistic, which is the last draw that was identified, so it is a number.
+  # Only the 90 per cent quantile falls among the censored ranks.
+  expect_identical(attr(out, "censored_summary")$bound, c("", "", ">="))
+  expect_equal(unname(out[["50%"]]), 50)
 })
 
 test_that("a decreasing xform censors the same draws at the other end", {
@@ -178,7 +182,7 @@ test_that("the censored summary recovers the quantile where it is identified", {
     seen, c(0.5, 0.025, 0.975), cens_record(above, logical(200), upper = 4,
                                             lower = 0)
   )
-  want <- stats::quantile(truth, c(0.5, 0.025, 0.975))
+  want <- stats::quantile(truth, c(0.5, 0.025, 0.975), type = 1)
   expect_gt(sum(above), 20)
   expect_equal(unname(out[1:2]), unname(want[1:2]))
   # The upper limit does fall among them and is the bound, which is the one
@@ -223,6 +227,47 @@ test_that("a record of the wrong length is refused rather than recycled", {
                                               logical(3))),
     "covers 3 draws and the posterior has 2"
   )
+})
+
+test_that("a quantile that only straddles the boundary is not called a bound", {
+  # Ten draws, one censored at 100. The 97.5 per cent quantile sits between the
+  # ninth draw and the tenth, so under an interpolating quantile it came back
+  # infinite and was reported as >= 100, although the smallest value consistent
+  # with the sample is 9. The censored summary reports an order statistic, so
+  # the entry is either a draw that was identified or one known to be beyond an
+  # end, and never a value produced by interpolating across the boundary.
+  x <- c(1:9, NA_real_)
+  out <- bayesnec:::summarise_censored(
+    x, c(0.5, 0.025, 0.975),
+    cens_record(c(rep(FALSE, 9), TRUE), logical(10), upper = 100, lower = 0)
+  )
+  cens <- attr(out, "censored_summary")
+  expect_identical(cens$bound, c("", "", ">="))
+  expect_equal(unname(out[[1]]), 5)
+  # The reported upper limit is the censored draw's own rank, so the bound is
+  # true: that draw is at or beyond 100.
+  expect_equal(unname(out[[3]]), 100)
+  # Every finite entry is a draw that was identified, not an interpolation.
+  finite <- out[!nzchar(cens$bound)]
+  expect_true(all(finite %in% 1:9))
+})
+
+test_that("a decreasing predictor transformation names the right end", {
+  # crf(-x) maps the top of the recorded range to the foot of the fitted one, so
+  # a draw the search left beyond the top of the recorded grid lies below the
+  # foot of the fitted grid and must be reported there. Building the record on
+  # the fitted bounds directly would label it as above the fitted top, which is
+  # the one value it is known not to exceed.
+  recorded <- censoring_record(above = c(TRUE, FALSE), below = c(FALSE, FALSE),
+                               upper = 5, lower = 0.1)
+  fitted <- bayesnec:::xform_censoring(recorded, function(v) -v)
+  expect_identical(fitted$above, c(FALSE, FALSE))
+  expect_identical(fitted$below, c(TRUE, FALSE))
+  expect_equal(c(fitted$lower, fitted$upper), c(-5, -0.1))
+  out <- bayesnec:::summarise_censored(c(NA_real_, -2), c(0.5, 0.025, 0.975),
+                                       fitted)
+  expect_true(any(attr(out, "censored_summary")$bound == "<="))
+  expect_false(any(attr(out, "censored_summary")$bound == ">="))
 })
 
 # Integration. These reuse the packaged fits and change only the prediction
@@ -311,7 +356,7 @@ test_that("ecx takes the censored summary as well", {
   expect_true(all(out[nzchar(cens$bound)] == 0.6))
   expect_warning(ecx(ecx4param, ecx_val = 50, x_range = c(0.03, 0.6),
                      resolution = 50),
-                 "censored above")
+                 "censored at 0.6")
 })
 
 test_that("a draw beyond the lower end is recorded as below", {
