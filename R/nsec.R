@@ -261,11 +261,11 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
             "value.", call. = FALSE)
   }
   if (n_below > 0) {
+    below_at <- signif(if (any(cens$below)) cens$lower else cens$upper, 3)
     warning("The ", object$model, " curve falls below the control's ", sig_val,
-            " quantile before the lowest concentration in the prediction ",
-            "range, for ", n_below, " of ", length(nsec_out),
-            " draws. The NSEC is censored at ",
-            signif(if (any(cens$below)) cens$lower else cens$upper, 3),
+            " quantile before ", below_at, ", the lowest concentration in the ",
+            "prediction range, for ", n_below, " of ", length(nsec_out),
+            " draws. The NSEC is censored at ", below_at,
             ", which this x_range does not cover.", call. = FALSE)
   }
   # sub_x_transformation() returns the vector with its attributes, so the three
