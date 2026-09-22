@@ -715,6 +715,14 @@ the entry it was replacing. The entry built instead is
 whose 2.5th is 0.0084 to 0.0087 of it by family. The rule quoted above is the
 contract; the helper was the mechanism the row suggested.
 
+The band's lower limit is lowered to the floor rather than set to it. Section
+5.4 below says it "becomes the same floor"; the implementation applies `min()`.
+The declaration states that the true asymptote may be lower than the response
+shows and never that it is higher, so it may only widen the band. On a gaussian
+response the spread already places the lower limit below zero, and assigning
+the floor there would narrow the band and reject draws the released search
+accepts.
+
 The refusal covers a non-identity link as well as a gaussian response spanning
 negative values. `prior_family_tag()` rewrites a `log` or `logit` link onto the
 gaussian entries, and on that scale the floor of the mean is `-Inf`. A response

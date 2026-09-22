@@ -1120,7 +1120,8 @@ families do read the response, and they exclude the truth in 179 of 180 cells at
 `f36`. So the declaration is what corrects the gaussian `"uninformative"` entry
 and every `"regularizing"` entry, and for the other eleven families under
 `"uninformative"` it replaces a prior that was wide by construction with one
-that is located.
+that is located. The script prints the count by family and prior type for each
+arm, which is where that reading comes from.
 
 ## The realised span, by family
 

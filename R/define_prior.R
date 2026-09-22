@@ -678,19 +678,40 @@ asymptote_floor <- function(family, response) {
 #' --- and has no floor in its own units. A non-identity link is a scale the
 #' caller chose, on which the mean's floor maps to \code{-Inf}.
 #'
+#' The negative branch counts the observations and reports the smallest, because
+#' the test is \code{min(response) >= 0} and one reading below zero therefore
+#' decides it. That is the right test --- a response that goes below zero is
+#' measured on a scale that admits negative values, and a tolerance would invent
+#' a floor the data contradict --- but a single stray reading and a response
+#' that is negative throughout are different situations for the user, and the
+#' message says which one this is.
+#'
 #' @param family A \code{\link[stats]{family}} object.
+#' @param response The response, already on the link scale. Read on the
+#' negative branch alone.
 #'
 #' @return A \code{\link[base]{character}} string.
 #'
 #' @noRd
-no_floor_reason <- function(family) {
+no_floor_reason <- function(family, response = NULL) {
   if (!isTRUE(identical(family$link, "identity"))) {
-    paste0("the \"", family$link, "\" link puts the curve on a scale whose",
-           " floor is -Inf, so none is available.")
-  } else {
-    paste0("a ", family$family, " response spanning negative values has no",
-           " floor that can be derived from the data.")
+    return(paste0("the \"", family$link, "\" link puts the curve on a scale",
+                  " whose floor is -Inf, so none is available."))
   }
+  below <- if (is.null(response)) {
+    numeric(0)
+  } else {
+    response[is.finite(response) & response < 0]
+  }
+  detail <- if (length(below) == 0) {
+    ""
+  } else {
+    paste0(" ", length(below), " of ",
+           sum(is.finite(response)), " observations are below zero, the",
+           " smallest being ", signif(min(below), 4), ".")
+  }
+  paste0("a ", family$family, " response spanning negative values has no",
+         " floor that can be derived from the data.", detail)
 }
 
 #' The message refusing a declaration that cannot be acted on
@@ -755,12 +776,27 @@ asymptote_floor_error <- function(reason) {
 #'
 #' \strong{The cap in \code{\link{regularizing_entry}} is deliberately not
 #' applied.} That cap holds a regularizing spread at or below the uninformative
-#' width, which is the invariant a user selecting that set is entitled to. The
-#' entry built here is wider than both released sets by construction, since that
-#' width is the whole point: #386 measured the prior CDF at the true \code{bot}
-#' at 6.43e-14 under \code{"uninformative"} and 2.30e-90 under
-#' \code{"regularizing"} on its flattest design. So this is a separate
-#' construction rather than a fourth branch of that function.
+#' width, which is the invariant a user selecting that set is entitled to. It
+#' does not apply here because this entry is not a narrowed version of a
+#' released one: the rule above fixes both ends of the interval, so the width
+#' follows from the endpoint mean rather than from the width of an entry built
+#' on a different location. That makes this a separate construction rather than
+#' a fourth branch of that function.
+#'
+#' The cap would bind on five of the eight families and not on the other three.
+#' Standard deviations of the \code{bot} entry on the flattest design of the
+#' audit's \code{f02} setting, \code{"uninformative"} against declared:
+#' gaussian 0.107 against 0.220, \code{beta} 0.160 against 0.253,
+#' \code{bernoulli} 0.160 against 0.297, \code{binomial} and
+#' \code{beta_binomial} 0.160 against 0.256. On the gamma branch the declared
+#' entry is narrower --- \code{Gamma} 0.558 against 0.297, \code{poisson} 23.4
+#' against 13.1, \code{negbinomial} 15.5 against 8.84 --- and narrower by
+#' exactly a half by construction, since a gamma at shape 2 has a standard
+#' deviation of its mean over the square root of two and the rule halves the
+#' mean. Narrower there is not worse: what the entry changes is where the mass
+#' sits, and #386 measured the prior CDF at the true \code{bot} at 6.43e-14
+#' under \code{"uninformative"} and 2.30e-90 under \code{"regularizing"} on
+#' its flattest design.
 #'
 #' @param branch One of \code{"normal"}, \code{"gamma"} or \code{"beta"}.
 #' @param endpoint The mean response at the highest predictor level, strictly
@@ -780,14 +816,22 @@ unobserved_bot_entry <- function(branch, endpoint) {
                     signif(endpoint / (2 * qnorm(0.975)), 6), ")"),
     gamma = paste0("gamma(2, ", signif(1 / (half / 2), 6), ")"),
     beta = {
-      # qbeta(p, 1, b) is 1 - (1 - p)^(1/b), so the shape whose 97.5th
-      # percentile is the endpoint mean is log(0.025) / log(1 - e).
-      shape2 <- log(0.025) / log(1 - endpoint)
+      # The endpoint is tested before the logarithm rather than the shape
+      # after it, so that an endpoint at or above 1 does not emit a "NaNs
+      # produced" warning on its way to the fallback, which the caller can do
+      # nothing about. It is unreachable from define_prior(), which refuses a
+      # binomial or beta_binomial response above 1 and whose
+      # response_link_scale() puts a bounded response strictly inside (0, 1).
+      # The mode-and-spread construction is well defined there and is used
+      # rather than an error being raised from inside prior construction.
+      shape2 <- if (endpoint >= 1) {
+        NA_real_
+      } else {
+        # qbeta(p, 1, b) is 1 - (1 - p)^(1/b), so the shape whose 97.5th
+        # percentile is the endpoint mean is log(0.025) / log(1 - e).
+        log(0.025) / log(1 - endpoint)
+      }
       if (!is.finite(shape2) || shape2 <= 0) {
-        # Only reachable where the endpoint mean is at or above 1, which
-        # response_link_scale() puts a bounded response strictly inside. The
-        # mode-and-spread construction is well defined there and is used rather
-        # than an error being raised from inside prior construction.
         pars <- beta_from_mode_sd(min(half, 0.5),
                                   endpoint / (2 * qnorm(0.975)))
         paste0("beta(", signif(pars[["shape1"]], 6), ", ",
@@ -805,11 +849,13 @@ unobserved_bot_entry <- function(branch, endpoint) {
 #' @details \code{\link{regularizing_location}}'s \code{"bot"} anchor, guarded
 #' so that the entry is well formed where the endpoint group is entirely at the
 #' floor. A tenth of the smallest positive observation stands in there, which is
-#' the device the released \code{"uninformative"} gamma entry already uses to
-#' keep its rate finite and which \code{\link{regularizing_location}} uses on
-#' its own zero-bounded branch. Where the response has no positive observation
-#' at all there is no scale between the floor and the endpoint, and the
-#' declaration is refused rather than met with an arbitrary one.
+#' what \code{\link{regularizing_location}} returns on its own zero-bounded
+#' branch for the same case. The released \code{"uninformative"} gamma entry
+#' reads the same quantity differently --- a hundredth of it, added to the
+#' quantile that sets the spread, to keep the rate finite --- so the two are the
+#' same device and not the same term. Where the response has no positive
+#' observation at all there is no scale between the floor and the endpoint, and
+#' the declaration is refused rather than met with an arbitrary one.
 #'
 #' @inheritParams regularizing_location
 #' @param zero_bounded Passed through to \code{\link{regularizing_location}}.
@@ -1533,10 +1579,17 @@ define_prior <- function(model, family, predictor, response,
   # Raised here for get_priors() and amend(); bnec() and bnec_group() refuse a
   # response with no derivable floor before their loops, for the reason recorded
   # against check_complete_cases() in R/bnec.R.
-  if (!asymptote_observed) {
+  #
+  # Skipped for an equation with no `bot` parameter. pr_bot is built
+  # unconditionally below and assembled only into the equations that have one,
+  # so building it there would be work for nothing -- and, more to the point,
+  # would raise the refusal for a nec3param fit that generates no bot prior at
+  # all. check_asymptote_declaration() gates itself the same way.
+  if (!asymptote_observed && "bot" %in% equation_par_names(model)) {
     floor_val <- asymptote_floor(family, response)
     if (!is.finite(floor_val)) {
-      stop(asymptote_floor_error(no_floor_reason(family)), call. = FALSE)
+      stop(asymptote_floor_error(no_floor_reason(family, response)),
+           call. = FALSE)
     }
     branch <- if (gamma_scaled) {
       "gamma"

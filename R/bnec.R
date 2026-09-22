@@ -127,8 +127,13 @@
 #' the initial-value search and nothing else. The \code{bot} prior's central 95%
 #' then spans from the floor of the response --- zero for every family but
 #' gaussian, and zero for a gaussian response that is non-negative throughout
-#' --- to the mean response at the highest predictor level, so that mean is read
-#' as an upper bound on \code{bot} rather than as an estimate of it. The
+#' --- to the mean response at the end of the predictor series, so that mean is
+#' read as an upper bound on \code{bot} rather than as an estimate of it. That
+#' is the anchor the \code{"regularizing"} set already locates \code{bot} at:
+#' the highest predictor value alone on a replicated design, and as many of the
+#' highest values as it takes to reach three observations, or a twentieth of
+#' them, on a sparsely replicated one, never reaching past the top fifth of the
+#' distinct values. The
 #' initial-value band is extended to the same floor, because a band built from
 #' the observed response rejects the very draws the new prior produces and the
 #' fit then falls back to \pkg{Stan}'s own initialisation.
@@ -905,7 +910,9 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # bnec_group() has already raised it over every level.
   if (!asymptote_checked) {
     check_asymptote_declaration(bdat, brm_args$family, model,
-                                asymptote_observed = asymptote_observed)
+                                asymptote_observed = asymptote_observed,
+                                prior = brm_args$prior,
+                                model_survival = model_survival)
   }
   # Reported once here rather than from check_data(), which runs once per
   # model. Computed from the same model frame and family the loop will use, so

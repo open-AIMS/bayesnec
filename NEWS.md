@@ -77,8 +77,12 @@
   `ec50` and the group-level entries.
 
   Under `FALSE` the central 95 per cent of the `bot` prior spans from the floor
-  of the response to the mean response at the highest predictor level, so that
-  mean is read as an upper bound on `bot` rather than as an estimate of it. The
+  of the response to the mean response at the end of the predictor series, so
+  that mean is read as an upper bound on `bot` rather than as an estimate of it.
+  That anchor is the one the `"regularizing"` set already locates `bot` at: the
+  highest predictor value alone on a replicated design, and as many of the
+  highest values as it takes to reach three observations on a sparsely
+  replicated one. The
   floor is zero for every family but gaussian, and zero for a gaussian response
   that is non-negative throughout. The entry is `normal(e/2, e/(2 qnorm(0.975)))`
   on the gaussian branch, `beta(1, log(0.025) / log(1 - e))` on the four

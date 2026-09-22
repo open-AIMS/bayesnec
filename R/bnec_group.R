@@ -214,6 +214,7 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # left to arrive from there and nothing is reported meanwhile.
   requested_models <- try(get_model_from_formula(formula), silent = TRUE)
   level_sets <- character(0)
+  level_survival <- NULL
   if (!inherits(requested_models, "try-error")) {
     level_models <- setNames(lapply(levs, function(level) {
       suppressMessages(
@@ -251,13 +252,22 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # level. Where the formula's set could not be read, level_sets is empty and
   # only the refusal is reachable, which is the same resolution the flatness
   # report above takes for that case.
-  declared <- if ("asymptote_observed" %in% names(dots)) {
-    dots[["asymptote_observed"]]
-  } else {
-    TRUE
-  }
+  # pmatch(), not an exact lookup. `dots` is forwarded to bnec() through
+  # do.call(), where `asymptote_observed` is a formal before `...` and so
+  # matches an abbreviation. Reading it exactly here would leave an abbreviated
+  # argument declared for the fit and undeclared for this check, which sets
+  # .bayesnec_asymptote_checked and drops the refusal back into the per-level
+  # model loop -- the failure the hoist exists to prevent.
+  hit <- which(!is.na(pmatch(names(dots), "asymptote_observed")))
+  declared <- if (length(hit) == 1) dots[[hit]] else TRUE
+  # Validated here as well as in bnec(), because this check reads it first and
+  # an invalid value would otherwise raise the floor refusal or the mixed-set
+  # report before bnec() reports what is actually wrong.
+  chk_flag(declared, x_name = "`asymptote_observed`")
   check_asymptote_declaration(mod_dat, family, level_sets,
-                              asymptote_observed = declared)
+                              asymptote_observed = declared,
+                              prior = dots[["prior"]],
+                              model_survival = level_survival)
   dots[[".bayesnec_asymptote_checked"]] <- TRUE
   # The crossed weights are an outer product of the per-level weight vectors,
   # and that identity holds for pseudo-BMA only, so the method is checked in

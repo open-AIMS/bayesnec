@@ -665,10 +665,7 @@ check_response_flattened <- function(data, family, group = NULL,
       " Inspect the entries with get_priors() and",
       " supply scientifically justified ones through the prior argument where",
       " information beyond the design is available.",
-      " Where the design did stop before the asymptote, declare it with",
-      " asymptote_observed = FALSE, which spans the bot prior from the floor",
-      " of the response to the mean at the highest predictor level and widens",
-      " the initial-value search to match."
+      declaration_advice(family, y)
     )
   }
   if (length(untestable) > 0) {
@@ -695,13 +692,17 @@ check_response_flattened <- function(data, family, group = NULL,
 #' @param models Character vector of concrete model names.
 #' @param family The validated response family.
 #' @param model_survival Optional equation for a hurdle survival block.
+#' @param affected The parameter rows to read. The default is the three the
+#' flatness report is raised for; \code{\link{check_asymptote_declaration}}
+#' passes \code{"bot"} alone, because that is the only row the declaration
+#' generates.
 #'
 #' @return A named logical vector, one element per response block.
 #'
 #' @noRd
 uses_response_range_defaults <- function(prior, models, family,
-                                         model_survival = NULL) {
-  affected <- c("bot", "nec", "ec50")
+                                         model_survival = NULL,
+                                         affected = c("bot", "nec", "ec50")) {
   hurdle <- is_hurdle_family(family)
   out <- setNames(rep(FALSE, if (hurdle) 2L else 1L),
                   if (hurdle) c("response", "survival") else "response")
@@ -742,6 +743,38 @@ uses_response_range_defaults <- function(prior, models, family,
   out
 }
 
+#' The sentence naming the declaration, where the declaration is available
+#'
+#' @details \code{asymptote_observed = FALSE} needs a floor, and there are
+#' responses for which none can be derived. Recommending it for one of those
+#' would send the user to a hard error, so the sentence is omitted there and
+#' the report ends on the prior advice that precedes it.
+#'
+#' The floor is read from the response as supplied rather than from the link
+#' scale, which is what \code{\link{asymptote_floor}} expects. The two agree:
+#' the only branch that reads the response is the gaussian one, where an
+#' identity link leaves \code{\link{response_link_scale}} a no-op, and every
+#' other tag returns zero without reading it. A two-block family is passed as
+#' the joint family for the same reason --- its mu family has the same link, and
+#' the link is what decides the answer for a non-identity fit.
+#'
+#' @param family The validated response family.
+#' @param y The response as supplied.
+#'
+#' @return A \code{\link[base]{character}} string, empty where no floor can be
+#' derived.
+#'
+#' @noRd
+declaration_advice <- function(family, y) {
+  if (!is.finite(asymptote_floor(family, y))) {
+    return("")
+  }
+  paste0(" Where the design did stop before the asymptote, declare it with",
+         " asymptote_observed = FALSE, which spans the bot prior from the",
+         " floor of the response to the mean at the highest predictor level",
+         " and widens the initial-value search to match.")
+}
+
 #' Act on a declaration that the lower asymptote was not observed
 #'
 #' \code{asymptote_observed = FALSE} needs a floor --- the smallest value the
@@ -780,16 +813,37 @@ uses_response_range_defaults <- function(prior, models, family,
 #' @param data A model frame, as returned by the \code{\link{model.frame}}
 #' method for a \code{\link{bayesnecformula}}.
 #' @param family The validated response family.
+#' The declaration is refused only where a \code{bot} prior will be generated
+#' from it. \code{\link{add_brm_defaults}} wraps the default-prior build in
+#' \code{try()} so that a user who supplied a complete set is never blocked by
+#' a default they will not use (#207, #229), and a check raised before the loop
+#' would take that back. So the refusal is gated on
+#' \code{\link{uses_response_range_defaults}} reading the \code{bot} row
+#' alone, the same test that gates the flatness report above it. The
+#' initial-value band is unaffected either way: with no floor to extend it to,
+#' \code{\link{make_good_inits}} leaves it where it was.
+#'
 #' @param models A \code{\link[base]{character}} vector of concrete equation
 #' names.
 #' @param asymptote_observed The declaration, as passed to \code{\link{bnec}}.
+#' @param prior The prior the caller supplied, or \code{NULL}.
+#' @param model_survival The equation for a hurdle survival block, or
+#' \code{NULL}.
 #'
 #' @return \code{NULL}, invisibly. Called for its error and its message.
 #'
 #' @noRd
 check_asymptote_declaration <- function(data, family, models,
-                                        asymptote_observed = TRUE) {
+                                        asymptote_observed = TRUE,
+                                        prior = NULL,
+                                        model_survival = NULL) {
   if (isTRUE(asymptote_observed)) {
+    return(invisible(NULL))
+  }
+  supplied <- length(models) > 0 &&
+    !any(uses_response_range_defaults(prior, models, family, model_survival,
+                                      affected = "bot"))
+  if (supplied) {
     return(invisible(NULL))
   }
   y <- try(retrieve_var(data, "y_var", error = TRUE), silent = TRUE)
@@ -814,12 +868,17 @@ check_asymptote_declaration <- function(data, family, models,
   } else {
     family
   }
+  x <- try(retrieve_var(data, "x_var", error = TRUE), silent = TRUE)
+  if (inherits(x, "try-error")) {
+    return(invisible(NULL))
+  }
   if (is_hurdle_family(family)) {
-    x <- try(retrieve_var(data, "x_var", error = TRUE), silent = TRUE)
-    if (inherits(x, "try-error")) {
-      return(invisible(NULL))
-    }
-    y <- split_hurdle_response(x, y)$mu$y
+    # The split is what makes this block do any work: the mu subset drops the
+    # structural zeros, so its endpoint mean differs from the whole response's
+    # and is the one define_hurdle_prior() reads.
+    parts <- split_hurdle_response(x, y)
+    x <- parts$mu$x
+    y <- parts$mu$y
   }
   response <- try(response_link_scale(y, floor_family), silent = TRUE)
   if (inherits(response, "try-error")) {
@@ -827,8 +886,16 @@ check_asymptote_declaration <- function(data, family, models,
   }
   floor_val <- asymptote_floor(floor_family, response)
   if (!is.finite(floor_val)) {
-    stop(asymptote_floor_error(no_floor_reason(floor_family)), call. = FALSE)
+    stop(asymptote_floor_error(no_floor_reason(floor_family, response)),
+         call. = FALSE)
   }
+  # The second refusal unobserved_endpoint_mean() can raise, hoisted here for
+  # the same reason as the first: from inside define_prior() it is printed once
+  # per equation and the call then ends on the generic all-models-failed
+  # advice. Reached only on a response with no value above the floor at all,
+  # which for a gaussian response is every observation at zero.
+  invisible(unobserved_endpoint_mean(x, response,
+                                     zero_bounded_family(floor_family)))
   bot_free <- intersect(models, mod_groups$bot_free)
   bot_est <- setdiff(models, mod_groups$bot_free)
   if (length(bot_free) > 0 && length(bot_est) > 0) {

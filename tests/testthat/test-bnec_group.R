@@ -386,3 +386,42 @@ test_that("the asymptote declaration is refused before any level (#394)", {
     asymptote_observed = FALSE, chains = 1, iter = 10))))
   expect_match(conditionMessage(err), "`prior` argument", fixed = TRUE)
 })
+
+test_that("bnec_group reads an abbreviated declaration (#394)", {
+  # `dots` is forwarded to bnec() through do.call(), where asymptote_observed
+  # is a formal before `...` and so matches an abbreviation. Read exactly, an
+  # abbreviated argument would be declared for the fit and undeclared for the
+  # hoisted check, which sets .bayesnec_asymptote_checked either way and drops
+  # the refusal back into the per-level model loop.
+  set.seed(394)
+  x <- rep(c(0, 1, 2, 4, 8, 16), each = 4)
+  mu <- 0.9 - 0.4 * (x / max(x))
+  d <- data.frame(
+    x = rep(x, 2),
+    y = c(stats::rnorm(length(mu), mu, 0.03) - 1.5,
+          stats::rnorm(length(mu), mu, 0.03) - 1.5),
+    site = rep(c("a", "b"), each = length(x))
+  )
+  err <- expect_error(suppressWarnings(suppressMessages(bnec_group(
+    y ~ crf(x, "nec4param"), d, group_var = "site",
+    asymptote = FALSE, chains = 1, iter = 10))))
+  expect_match(conditionMessage(err), "`prior` argument", fixed = TRUE)
+})
+
+test_that("bnec_group validates the declaration before any level (#394)", {
+  # Read here before bnec() sees it, so an invalid value would otherwise raise
+  # the floor refusal or the mixed-set report rather than naming what is wrong.
+  set.seed(394)
+  x <- rep(c(0, 1, 2, 4, 8, 16), each = 4)
+  mu <- 0.9 - 0.4 * (x / max(x))
+  d <- data.frame(
+    x = rep(x, 2),
+    y = c(stats::rnorm(length(mu), mu, 0.03),
+          stats::rnorm(length(mu), mu, 0.03)),
+    site = rep(c("a", "b"), each = length(x))
+  )
+  expect_error(suppressWarnings(suppressMessages(bnec_group(
+    y ~ crf(x, "nec4param"), d, group_var = "site",
+    asymptote_observed = NA, chains = 1, iter = 10))),
+    "asymptote_observed", fixed = TRUE)
+})

@@ -165,8 +165,13 @@ series stopped short of the asymptote, which changes the \code{bot} prior and
 the initial-value search and nothing else. The \code{bot} prior's central 95\%
 then spans from the floor of the response --- zero for every family but
 gaussian, and zero for a gaussian response that is non-negative throughout
---- to the mean response at the highest predictor level, so that mean is read
-as an upper bound on \code{bot} rather than as an estimate of it. The
+--- to the mean response at the end of the predictor series, so that mean is
+read as an upper bound on \code{bot} rather than as an estimate of it. That
+is the anchor the \code{"regularizing"} set already locates \code{bot} at:
+the highest predictor value alone on a replicated design, and as many of the
+highest values as it takes to reach three observations, or a twentieth of
+them, on a sparsely replicated one, never reaching past the top fifth of the
+distinct values. The
 initial-value band is extended to the same floor, because a band built from
 the observed response rejects the very draws the new prior produces and the
 fit then falls back to \pkg{Stan}'s own initialisation.

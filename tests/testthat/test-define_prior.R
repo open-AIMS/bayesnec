@@ -2335,6 +2335,10 @@ test_that("the bot prior spans the floor to the endpoint mean (#394)", {
       e <- bayesnec:::regularizing_location(
         d$x, yl, "bot", zero_bounded = bayesnec:::zero_bounded_family(fam)
       )[["location"]]
+      # The anchor is read through the implementation's own call, so this pins
+      # what that call returns on this design: the mean over the observations
+      # at the highest predictor value, which is what the rule names.
+      expect_equal(e, mean(yl[d$x == max(d$x)]), info = paste(case$tag, ptype))
       # Stated per branch, because the three meet the rule to different
       # degrees and a single tolerance would hide which.
       if (identical(case$branch, "gamma")) {
@@ -2700,4 +2704,159 @@ test_that("amend refuses a response with no derivable floor (#394)", {
     amend(manec_example, add = "nechorme4", asymptote_observed = FALSE)
   )))
   expect_match(conditionMessage(err), "`prior` argument", fixed = TRUE)
+})
+
+test_that("the declaration reaches both blocks of a hurdle fit (#394)", {
+  # define_hurdle_prior() builds the mu block from the survivors and the second
+  # block from the proportion surviving at each predictor value, and the design
+  # stopped before both curves' asymptotes. The declaration replaces both
+  # entries and leaves everything else in either block as it was.
+  set.seed(394)
+  x <- rep(c(0, 0.31, 0.63, 1.25, 2.5, 5, 10, 40), each = 5)
+  mu <- 2 + 8 * exp(-2.5 * (x - 39.82) * ifelse(x - 39.82 < 0, 0, 1))
+  d <- data.frame(
+    x = x,
+    y = stats::rgamma(length(mu), 25, 25 / mu) *
+      stats::rbinom(length(mu), 1, 0.8)
+  )
+  fam <- validate_family("hurdle_gamma")
+  entries <- function(declared) {
+    pr <- as.data.frame(suppressWarnings(suppressMessages(get_priors(
+      y ~ crf(x, "nec4param"), data = d, family = fam,
+      asymptote_observed = declared))))
+    stats::setNames(pr$prior, pr$nlpar)
+  }
+  default <- entries(TRUE)
+  declared <- entries(FALSE)
+  # The mu block's bot is on the gamma branch and the survival block's on the
+  # beta branch, so the two take different constructions from one declaration.
+  expect_match(declared[["bot"]], "^gamma\\(2, ")
+  expect_match(declared[["hubot"]], "^beta\\(1, ")
+  expect_false(identical(declared[["bot"]], default[["bot"]]))
+  expect_false(identical(declared[["hubot"]], default[["hubot"]]))
+  moved <- c("bot", "hubot")
+  expect_identical(declared[setdiff(names(declared), moved)],
+                   default[setdiff(names(default), moved)])
+})
+
+test_that("the declaration reads a zero-inflated count block (#394)", {
+  # prior_family_tag() rewrites zero_inflated_poisson onto the poisson entries,
+  # because the mixture changes how many zeros are observed and not the scale
+  # of mu, so the declaration takes the gamma branch there as well.
+  set.seed(394)
+  x <- rep(c(0, 0.31, 0.63, 1.25, 2.5, 5, 10, 40), each = 5)
+  mu <- 8 + 32 * exp(-2.5 * (x - 39.82) * ifelse(x - 39.82 < 0, 0, 1))
+  d <- data.frame(
+    x = x,
+    y = as.integer(stats::rpois(length(mu), mu) *
+                     stats::rbinom(length(mu), 1, 0.8))
+  )
+  fam <- validate_family("zero_inflated_poisson")
+  bot_of <- function(declared) {
+    pr <- as.data.frame(suppressWarnings(suppressMessages(get_priors(
+      y ~ crf(x, "nec4param"), data = d, family = fam,
+      asymptote_observed = declared))))
+    pr$prior[pr$nlpar == "bot"]
+  }
+  expect_match(bot_of(FALSE), "^gamma\\(2, ")
+  expect_false(identical(bot_of(FALSE), bot_of(TRUE)))
+})
+
+test_that("the declared entry is built on the rate scale (#394)", {
+  # bnec() fits on the identity link, so brms writes a rate() denominator
+  # multiplicatively and the mean is the rate. The endpoint mean the entry is
+  # built from is therefore a rate, which #389 established for the released
+  # entries and this asserts for the declared one.
+  set.seed(394)
+  x <- rep(c(0, 0.31, 0.63, 1.25, 2.5, 5, 10, 40), each = 5)
+  ex <- rep(c(1, 2, 4, 8), length.out = length(x))
+  mu <- 6 + 14 * exp(-2.5 * (x - 39.82) * ifelse(x - 39.82 < 0, 0, 1))
+  d <- data.frame(x = x, ex = ex,
+                  y = as.integer(stats::rpois(length(mu), mu * ex)))
+  fam <- validate_family("poisson")
+  on_rates <- as.data.frame(define_prior("nec4param", fam, d$x, d$y / d$ex,
+                                         asymptote_observed = FALSE))
+  on_counts <- as.data.frame(define_prior("nec4param", fam, d$x, d$y,
+                                          asymptote_observed = FALSE))
+  fitted_prior <- as.data.frame(suppressWarnings(suppressMessages(get_priors(
+    y | rate(ex) ~ crf(x, "nec4param"), data = d, family = "poisson",
+    asymptote_observed = FALSE))))
+  expect_identical(prior_entry(fitted_prior, "bot"),
+                   prior_entry(on_rates, "bot"))
+  expect_false(identical(prior_entry(fitted_prior, "bot"),
+                         prior_entry(on_counts, "bot")))
+})
+
+test_that("a complete supplied bot prior is not refused (#394)", {
+  # add_brm_defaults() wraps the default build in try() so that a user who
+  # supplied their own complete set is never blocked by a default they will not
+  # use (#207, #229). A refusal raised before the model loop would take that
+  # back, so it is gated on whether a bot row will be generated at all.
+  d <- incomplete_design(0.36, "gaussian")
+  d$y <- d$y - 1.2
+  fam <- validate_family("gaussian")
+  bdat <- stats::model.frame(bnf(y ~ crf(x, "nec4param")), data = d)
+  complete <- suppressWarnings(suppressMessages(get_priors(
+    y ~ crf(x, "nec4param"), data = incomplete_design(0.36, "gaussian"),
+    family = fam)))
+  expect_silent(bayesnec:::check_asymptote_declaration(
+    bdat, fam, "nec4param", asymptote_observed = FALSE, prior = complete))
+  # Omitting the bot row alone restores the refusal.
+  partial <- complete[as.data.frame(complete)$nlpar != "bot", ]
+  expect_error(
+    bayesnec:::check_asymptote_declaration(
+      bdat, fam, "nec4param", asymptote_observed = FALSE, prior = partial),
+    "`prior` argument", fixed = TRUE)
+  # And a set whose equations have no bot parameter generates no bot row, so
+  # there is nothing to refuse either here or in define_prior().
+  expect_silent(bayesnec:::check_asymptote_declaration(
+    bdat, fam, c("nec3param", "ecxexp"), asymptote_observed = FALSE))
+  built <- suppressWarnings(suppressMessages(
+    define_prior("nec3param", fam, d$x, d$y, asymptote_observed = FALSE)))
+  expect_s3_class(built, "brmsprior")
+})
+
+test_that("a response with no value above the floor is refused early (#394)", {
+  # The second refusal unobserved_endpoint_mean() can raise. Hoisted for the
+  # same reason as the first: from inside the model loop it is printed once per
+  # equation and the call then ends on the generic all-models-failed advice.
+  d <- incomplete_design(0.36, "gaussian")
+  d$y <- 0
+  fam <- validate_family("gaussian")
+  bdat <- stats::model.frame(bnf(y ~ crf(x, "nec4param")), data = d)
+  err <- expect_error(bayesnec:::check_asymptote_declaration(
+    bdat, fam, "nec4param", asymptote_observed = FALSE))
+  expect_match(conditionMessage(err), "no value above that floor", fixed = TRUE)
+  expect_match(conditionMessage(err), "`prior` argument", fixed = TRUE)
+})
+
+test_that("the refusal counts the observations below the floor (#394)", {
+  # min(response) >= 0 is the test, so one reading below zero decides it. That
+  # is the right test, because a response that goes below zero is measured on a
+  # scale that admits negative values; the message says how many did, so that a
+  # single stray reading and a response that is negative throughout are
+  # distinguishable.
+  d <- incomplete_design(0.36, "gaussian")
+  d$y[1] <- -0.001
+  expect_true(min(d$y) < 0 && sum(d$y < 0) == 1)
+  err <- expect_error(suppressWarnings(suppressMessages(get_priors(
+    y ~ crf(x, "nec4param"), data = d, family = gaussian(),
+    asymptote_observed = FALSE))))
+  expect_match(conditionMessage(err), "1 of 40 observations are below zero",
+               fixed = TRUE)
+  expect_match(conditionMessage(err), "smallest being -0.001", fixed = TRUE)
+})
+
+test_that("the flatness report offers the declaration only where usable (#394)",
+{
+  # The report recommends the declaration, and the declaration is refused on a
+  # response with no derivable floor. Recommending it there would send the user
+  # to a hard error, so the sentence is omitted.
+  d <- incomplete_design(0.36, "gaussian")
+  expect_match(bayesnec:::declaration_advice(validate_family("gaussian"), d$y),
+               "asymptote_observed = FALSE", fixed = TRUE)
+  expect_identical(
+    bayesnec:::declaration_advice(validate_family("gaussian"), d$y - 1.2), "")
+  expect_identical(
+    bayesnec:::declaration_advice(Gamma(link = "log"), d$y * 10), "")
 })
