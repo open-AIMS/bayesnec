@@ -317,7 +317,7 @@ test_that("nsec refuses an infinite limit and extends a finite one", {
                "narrow it with x_range instead")
 })
 
-test_that("a limit is measured against the wider of two ranges", {
+test_that("with no x_range the stored grid counts as well", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
@@ -341,13 +341,21 @@ test_that("a limit is measured against the wider of two ranges", {
   expect_equal(bayesnec:::searched_or_stored_bounds(wide, NA)$upper, 8)
   expect_error(suppressMessages(nsec(wide, extrapolate = 5)),
                "which ends at 8")
-  expect_error(suppressMessages(nec(f, extrapolate = 5)),
-               "nec is not a parameter")
+  # The same object through both functions, which is the whole claim: one grid
+  # was cleared, not two different ones on two different fits.
   threshold <- suppressMessages(suppressWarnings(
-    pull_out(manec_example, model = "nec4param")
+    bayesnec:::expand_and_assign_nec(
+      manec_example$mod_fits[["nec4param"]],
+      manec_example$mod_fits[["nec4param"]]$bayesnecformula,
+      model = "nec4param",
+      x_range = c(min(manec_example$mod_fits[["nec4param"]]$fit$data$x), 8),
+      resolution = 50
+    )
   ))
-  expect_error(suppressMessages(nec(threshold, extrapolate = 3)),
-               "which ends at 3.2205")
+  expect_error(suppressMessages(nec(threshold, extrapolate = 5)),
+               "which ends at 8")
+  expect_error(suppressMessages(nsec(threshold, extrapolate = 5)),
+               "which ends at 8")
 })
 
 test_that("a lower limit below the control is accepted and reported", {

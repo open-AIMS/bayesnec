@@ -203,8 +203,10 @@ discarding it. Where it is not, the range is the wider of the observed range
 of the predictor and the prediction range the fit itself stores, which
 differ for a fit built over a grid above the data; a limit between them
 would report the estimate as censored inside the grid the fit was built on,
-so both have to be cleared, and \code{\link{nec}} refuses the same
-numbers.
+so both have to be cleared. \code{\link{nec}} measures against that stored
+grid alone, having no \code{x_range} of its own, so the two agree on a fit
+whose grid reaches beyond the data and can differ on one whose grid stops
+short of it.
 
 A lower limit extends the grid but not the search. The reference is a
 quantile of the control posterior, so the control is where the search
