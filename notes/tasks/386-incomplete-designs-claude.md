@@ -355,18 +355,36 @@ reporting covers both.
 
 Against the phase 3 audit, before and after:
 
-- Every complete-design cell: the truncated prior CDF at the true `nec` and
-  `ec50` must not change by more than the Monte Carlo error of the audit. The
-  truncation is not binding on those designs, so a change there is a defect in
-  this phase.
-- Every incomplete-design cell: the CDF at the truth must no longer be exactly
-  1.000.
+- Every complete-design cell: the generated prior string for `nec` and `ec50`
+  must not change, and neither may `top` or `bot`. The truncation is not binding
+  on those designs, so a change there is a defect in this phase.
+- Every incomplete-design cell: the truncated prior CDF at the truth must no
+  longer be exactly 1.000.
+
+  Corrected 2026-09-22, after the implementation in #393. This section first
+  asked for the CDF to be unchanged on a complete design as well. That is wrong,
+  and the measurement is what showed it: `p_truth` is the CDF of the
+  *truncated* prior, so removing a bound changes the normalising constant
+  on every design, binding or not. It fell by 0.0008 to 0.344, median 0.055, in
+  all 1,440 complete cells, while the prior strings themselves were identical in
+  all 1,440 and `top` and `bot` in all 11,502. The prior string is the invariant
+  to assert; the CDF is not.
 - The initial-value search. `make_inits()`, `R/inits_functions.R:156`, draws
   from the priors including their bounds, so removing the upper bound widens the
   `nec` draws, and `check_init_predictions()` rejects any whose curve falls
   outside the band. Record the number of proposals the search makes on each
   complete design before and after. A rise there must be quantified rather
   than assumed absent.
+
+  Corrected 2026-09-22. An earlier reading of this bullet treated "no more
+  proposals than before" as an acceptance criterion. It is not one, and #393
+  measured a rise: `nec4param` +1.31 [0.59, 2.04] over 720 complete cells, while
+  `ecx4param` is flat at -0.22 [-0.60, 0.16]. The mechanism is that a `nec`
+  above the series gives a curve flat at `top`, which the band rejects, where an
+  `ec50` above it still declines. It was accepted: one extra proposal against
+  the 10,000 a fit is allowed, no complete cell exhausted the search, and the
+  sweep-wide capped count fell from 27 to 21. What this bullet requires is the
+  figure, not a particular value of it.
 
 ### 3.5 Rejected alternatives
 
