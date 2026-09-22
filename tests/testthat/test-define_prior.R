@@ -2859,6 +2859,26 @@ test_that("a response with no value above the floor is refused early (#394)", {
     bdat, fam, "nec4param", asymptote_observed = FALSE))
   expect_match(conditionMessage(err), "no value above that floor", fixed = TRUE)
   expect_match(conditionMessage(err), "`prior` argument", fixed = TRUE)
+  # On a zero-bounded family the same response reaches positive_scale(), whose
+  # refusal names the construction of top and bot and not the declaration.
+  # unobserved_endpoint_mean() tests for a positive value before reading the
+  # anchor, so the declaration's own message is what arrives.
+  pois <- validate_family("poisson")
+  d$y <- as.integer(d$y)
+  bpois <- stats::model.frame(bnf(y ~ crf(x, "nec4param")), data = d)
+  err2 <- expect_error(bayesnec:::check_asymptote_declaration(
+    bpois, pois, "nec4param", asymptote_observed = FALSE))
+  expect_match(conditionMessage(err2), "asymptote_observed", fixed = TRUE)
+  expect_match(conditionMessage(err2), "no value above that floor",
+               fixed = TRUE)
+  # And a zero-bounded response whose endpoint group is entirely zero is not
+  # refused: regularizing_location() stands a tenth of the smallest positive
+  # observation in, which is a scale the entry can be placed on.
+  e <- incomplete_design(0.36, "Gamma")
+  e$y[e$x == max(e$x)] <- 0
+  gam <- validate_family("Gamma")
+  yl <- response_link_scale(e$y, gam)
+  expect_gt(bayesnec:::unobserved_endpoint_mean(e$x, yl, TRUE), 0)
 })
 
 test_that("the refusal counts the observations below the floor (#394)", {

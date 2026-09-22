@@ -867,28 +867,31 @@ unobserved_bot_entry <- function(branch, endpoint) {
 #'
 #' @noRd
 unobserved_endpoint_mean <- function(predictor, response, zero_bounded) {
-  # try(), because the zero-bounded branch reaches positive_scale(), which
-  # refuses a response with no positive value at all and does so naming the
-  # construction of `top` and `bot`. Raised from here that message arrives
-  # under a declaration it does not name, so the failure falls through to the
-  # guard below and the declaration's own refusal is what the user reads. The
-  # default path still raises positive_scale()'s message on the same response,
+  no_interval <- asymptote_floor_error(
+    paste0("the response holds no value above that floor, so there is no",
+           " interval to place it on.")
+  )
+  # Tested before the anchor is read rather than after. regularizing_location()
+  # reaches positive_scale() for side "bot" exactly when there is no positive
+  # value --- its own zero-bounded branch takes min(pos) / 10 whenever there is
+  # one --- and positive_scale() refuses naming the construction of `top` and
+  # `bot`, which under a declaration is a message that does not name the
+  # declaration. The same vector is the fallback below, so hoisting the test
+  # duplicates nothing and leaves no error swallowed, where wrapping the read
+  # in try() would have converted a later error into this one as well. The
+  # default path still raises positive_scale()'s message on such a response,
   # which is where it belongs.
-  e <- try(regularizing_location(predictor, response, "bot",
-                                 zero_bounded = zero_bounded)[["location"]],
-           silent = TRUE)
-  if (inherits(e, "try-error")) {
-    e <- NA_real_
+  pos <- response[is.finite(response) & response > 0]
+  if (length(pos) == 0) {
+    stop(no_interval, call. = FALSE)
+  }
+  e <- regularizing_location(predictor, response, "bot",
+                             zero_bounded = zero_bounded)[["location"]]
+  if (!is.finite(e) || e <= 0) {
+    e <- min(pos) / 10
   }
   if (!is.finite(e) || e <= 0) {
-    pos <- response[is.finite(response) & response > 0]
-    e <- if (length(pos) > 0) min(pos) / 10 else NA_real_
-  }
-  if (!is.finite(e) || e <= 0) {
-    stop(asymptote_floor_error(
-      paste0("the response holds no value above that floor, so there is no",
-             " interval to place it on.")
-    ), call. = FALSE)
+    stop(no_interval, call. = FALSE)
   }
   e
 }
