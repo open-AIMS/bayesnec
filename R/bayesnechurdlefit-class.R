@@ -162,17 +162,19 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
   # this method actually returns. Left on, a censored component was reported by
   # each of the calls here and again by the report below, three times over for
   # the combined value.
-  g_post <- without_censored_warning(unlist(nec(object$growth,
-                                                posterior = TRUE)))
-  s_post <- without_censored_warning(unlist(nec(object$survival,
-                                                posterior = TRUE)))
+  g_post <- without_censored_warning(nec(object$growth, posterior = TRUE))
+  s_post <- without_censored_warning(nec(object$survival, posterior = TRUE))
   if (which == "growth") {
-    out <- g_post
+    out <- unlist(g_post)
+    cens <- attr(g_post, "censored")
   } else if (which == "survival") {
-    out <- s_post
+    out <- unlist(s_post)
+    cens <- attr(s_post, "censored")
   } else {
     n <- min(length(g_post), length(s_post))
-    out <- pmin(g_post[seq_len(n)], s_post[seq_len(n)])
+    combined <- combine_censored_min(g_post, s_post, n)
+    out <- combined$values
+    cens <- combined$censored
     g_type <- attr(without_censored_warning(nec(object$growth)),
                    "toxicity_estimate")
     s_type <- attr(without_censored_warning(nec(object$survival)),
@@ -184,13 +186,16 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
   }
   if (inherits(xform, "function")) {
     out <- xform(out)
+    cens <- xform_censoring(cens, xform)
   }
-  # na.rm and the report above it: either component may be an ecx-type fit
-  # whose no-effect estimate is read off the curve, and such a draw is NA where
-  # the curve never reaches the reference. pmin() propagates that into the
-  # combined value. See #39 and D15 ruling 3.
-  warn_censored_draws(out, "no-effect estimate")
-  estimate <- quantile(out, probs = prob_vals, na.rm = TRUE)
+  attr(out, "censored") <- cens
+  # The report and the summary below: either component may be an ecx-type fit
+  # whose no-effect estimate is read off the curve, and such a draw lies beyond
+  # the prediction range rather than having no value. It keeps its rank in the
+  # summary and is given no number. See #39 and D15 ruling 3 for why it is not
+  # given the bound as a value instead.
+  warn_censored_draws(out, "no-effect estimate", cens = cens)
+  estimate <- summarise_censored(out, prob_vals, cens)
   names(estimate) <- clean_names(estimate)
   attr(estimate, "toxicity_estimate") <- "nec"
   attr(out, "toxicity_estimate") <- "nec"
@@ -254,13 +259,28 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 200,
   control <- preds$control[[which]]
   out <- ecx_from_posterior(p_samples, preds$x, ecx_val, type, control,
                             NA_real_)
-  # Put the estimate back on the fitted scale, matching ecx.bayesnecfit.
+  below <- attr(out, "below_range")
+  above <- is.na(out) & !below
+  attr(out, "below_range") <- NULL
+  # Put the estimate back on the fitted scale, matching ecx.bayesnecfit. The
+  # record is built on the recorded grid, the scale the curve was searched on,
+  # and remapped onto the fitted scale, which swaps the two ends under a
+  # decreasing crf(). See the same construction in ecx.bayesnecfit.
   out <- sub_x_transformation(out, object$formula)
-  warn_censored_draws(out, paste0("ECx", ecx_val))
+  x_kept <- preds$x[is.finite(preds$x)]
+  cens <- xform_censoring(
+    censoring_record(max(x_kept), min(x_kept), above, below),
+    function(value) sub_x_transformation(value, object$formula)
+  )
   if (inherits(xform, "function")) {
     out <- xform(out)
+    cens <- xform_censoring(cens, xform)
   }
-  estimate <- quantile(out, probs = prob_vals, na.rm = TRUE)
+  attr(out, "censored") <- cens
+  # After xform, as in ecx.bayesnecfit: the bound the report names and the
+  # numbers the caller is about to read are then on one scale.
+  warn_censored_draws(out, paste0("ECx", ecx_val), cens = cens)
+  estimate <- summarise_censored(out, prob_vals, cens)
   names(estimate) <- clean_names(estimate)
   attr(estimate, "ecx_val") <- ecx_val
   attr(estimate, "resolution") <- resolution
@@ -337,4 +357,62 @@ print.bayesnechurdlefit <- function(x, ...) {
       "which = \"combined\" (default),\n\"growth\" or \"survival\";",
       "crossed_weights() for the full crossed model weights.\n")
   invisible(x)
+}
+
+#' Take the smaller of two component no-effect posteriors, keeping censoring
+#'
+#' Below both thresholds the combined endpoint is flat, so it leaves that
+#' plateau at whichever component binds first and the combined estimate is the
+#' minimum of the two. A component draw that lies beyond an end of its
+#' prediction range has no value to take a minimum with, so it enters the
+#' comparison at the end it is known to be beyond and nothing else: above the
+#' top of the range it cannot be the smaller unless the other draw is beyond
+#' it as well, and below the foot of the range it is the smaller whatever the
+#' other draw is.
+#'
+#' \code{pmin()} on the raw vectors cannot do this. It propagates the
+#' \code{NA} that an ecx-type component returns for a beyond-range draw, so a
+#' draw whose growth NSEC was above the range and whose survival NEC was well
+#' inside it came back as no estimate at all, and was then deleted from the
+#' summary.
+#'
+#' @param g,s The two component posteriors, each carrying its \code{"censored"}
+#' record where it has one.
+#' @param n The number of draws to combine.
+#'
+#' @return A \code{\link[base]{list}} with elements \code{values} and
+#' \code{censored}.
+#' @noRd
+combine_censored_min <- function(g, s, n) {
+  idx <- seq_len(n)
+  g_cens <- subset_censoring(attr(g, "censored"), idx)
+  s_cens <- subset_censoring(attr(s, "censored"), idx)
+  g_v <- as.numeric(g)[idx]
+  s_v <- as.numeric(s)[idx]
+  if (is.null(g_cens) && is.null(s_cens)) {
+    return(list(values = pmin(g_v, s_v), censored = NULL))
+  }
+  blank <- list(above = logical(n), below = logical(n),
+                upper = Inf, lower = -Inf)
+  g_cens <- if (is.null(g_cens)) blank else g_cens
+  s_cens <- if (is.null(s_cens)) blank else s_cens
+  g_v[g_cens$above] <- Inf
+  g_v[g_cens$below] <- -Inf
+  s_v[s_cens$above] <- Inf
+  s_v[s_cens$below] <- -Inf
+  out <- pmin(g_v, s_v)
+  above <- is.infinite(out) & out > 0
+  below <- is.infinite(out) & out < 0
+  out[above | below] <- NA_real_
+  # The bound true of both components, as in concat_censoring(): the smallest
+  # upper bound and the largest lower one. The two grids are the same within a
+  # bnec_hurdle() call.
+  combined <- censoring_record(min(g_cens$upper, s_cens$upper),
+                               max(g_cens$lower, s_cens$lower),
+                               above, below)
+  # As in concat_censoring(): the two blocks of one fit share a formula and so
+  # agree on whether the predictor was reversed.
+  attr(combined, "swapped") <- isTRUE(attr(attr(g, "censored"), "swapped")) ||
+    isTRUE(attr(attr(s, "censored"), "swapped"))
+  list(values = out, censored = combined)
 }

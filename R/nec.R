@@ -49,7 +49,33 @@
 #'
 #' @return A vector containing the estimated no-effect value, including upper
 #' and lower 95% credible interval bounds (or other interval as specified by
-#' prob_vals).
+#' prob_vals). Where any posterior draw lies beyond the range the model was
+#' predicted over, that draw keeps its rank in the summary and is given no
+#' value, so an entry falling among such draws is the end of the prediction
+#' range rather than a quantile. Attribute \code{"censored_summary"} marks
+#' which entries those are and states how many draws lie beyond each end.
+#'
+#' @section Capping and dropping:
+#' Two operations are both called censoring and they are not the same. A
+#' threshold equation's \code{nec} is a sampled parameter: a draw above the top
+#' of the prediction range has a value, and that value is known to exceed the
+#' bound, which is right-censoring in the ordinary sense. An NSEC or an ECx is
+#' read off a fitted curve: a draw whose curve never reaches the target has no
+#' such concentration in the range and may have none at any concentration, so
+#' the draw is not capped at the bound, it is recorded as lying beyond it. Both
+#' are reported the same way here, because neither claims a value for the draw.
+#'
+#' Which quantile estimator is used depends on whether anything is censored.
+#' A posterior with no beyond-range draw is summarised exactly as it was up to
+#' version 2.1.3, with \code{\link[stats]{quantile}}'s default type 7, which
+#' interpolates between two adjacent order statistics. Once any draw is
+#' censored every reported entry becomes an order statistic instead, because a
+#' value interpolated across a draw that has no value would be one the
+#' posterior does not support.
+#' Every entry therefore changes a little when the first draw is censored,
+#' including entries at the other end of the interval. Keeping the uncensored
+#' summary bit-identical to the release was preferred to making the two agree
+#' at the boundary, because every archived analysis is compared against it.
 #'
 #' @references
 #' Fisher R, Fox DR (2023). Introducing the no significant effect concentration
@@ -110,17 +136,25 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
     stop("nec is not a parameter in ecx model types.")
   }
   nec_out <- object$ne_posterior
+  # The record expand_nec() wrote when the posterior was realised, read rather
+  # than derived. This is the whole point of #395: summary() reports object$ne,
+  # which is the summary of exactly this vector, so a censoring report invented
+  # here would not be the one a user reads.
+  cens <- attr(nec_out, "censored")
   if (inherits(xform, "function")) {
     nec_out <- xform(nec_out)
+    cens <- xform_censoring(cens, xform)
+    attr(nec_out, "censored") <- cens
   }
-  # na.rm because the stored posterior can contain NA. A threshold equation's
-  # b_nec_Intercept cannot, but a joint two-block fit whose survival block is
-  # smooth has its combined no-effect estimate read off the curve by
-  # nsec_off_curve(), which returns NA for any draw that never reaches the
-  # reference. Without this such a fit's nec() is an error rather than a
-  # censored estimate. See #39 and D15 ruling 3.
-  warn_censored_draws(nec_out, ne_label(object))
-  nec_estimate <- quantile(unlist(nec_out), probs = prob_vals, na.rm = TRUE)
+  # The stored posterior can hold a draw that is beyond the prediction range. A
+  # threshold equation's b_nec_Intercept is such a draw wherever the prior no
+  # longer holds it inside; a joint two-block fit whose survival block is smooth
+  # has its combined no-effect estimate read off the curve by nsec_off_curve(),
+  # which returns NA for any draw that never reaches the reference. Either way
+  # the draw keeps its rank and is given no value. See #39 and D15 ruling 3 for
+  # why it is not given max(x_vec) instead.
+  warn_censored_draws(nec_out, ne_label(object), cens = cens)
+  nec_estimate <- summarise_censored(unlist(nec_out), prob_vals, cens)
   names(nec_estimate) <- clean_names(nec_estimate)
   attr(nec_estimate, "toxicity_estimate") <- "nec"
   attr(nec_out, "toxicity_estimate") <-  "nec"
@@ -164,15 +198,22 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
             " rather than a NEC. See ?nec and summary(), which labels it.")
   }
   nec_out <- object$w_ne_posterior
+  # As above, and the record expand_manec() wrote is the weighted one: it was
+  # assembled under the draw index that built the mixture, so its fraction is
+  # the share of the model-averaged posterior that is censored rather than the
+  # share of equations that are.
+  cens <- attr(nec_out, "censored")
   if (inherits(xform, "function")) {
     nec_out <- xform(nec_out)
+    cens <- xform_censoring(cens, xform)
+    attr(nec_out, "censored") <- cens
   }
-  # na.rm, as above. Here the NA arrive by a second route as well: every smooth
-  # equation in the set contributes NSEC draws read off its own curve, so a set
-  # containing one whose curve does not reach the reference has NA in the
-  # weighted posterior even where every threshold equation in it is fine.
-  warn_censored_draws(nec_out, ne_label(object))
-  nec_estimate <- quantile(unlist(nec_out), probs = prob_vals, na.rm = TRUE)
+  # Censoring arrives by a second route here: every smooth equation in the set
+  # contributes NSEC draws read off its own curve, so a set containing one whose
+  # curve does not reach the reference is censored even where every threshold
+  # equation in it is inside the range.
+  warn_censored_draws(nec_out, ne_label(object), cens = cens)
+  nec_estimate <- summarise_censored(unlist(nec_out), prob_vals, cens)
   names(nec_estimate) <- clean_names(nec_estimate)
   attr(nec_estimate, "toxicity_estimate") <- "nec"
   attr(nec_out, "toxicity_estimate") <-  "nec"

@@ -33,7 +33,11 @@ return the estimated NEC value. Defaults to 0.5 (median) and 0.025 and
 \value{
 A vector containing the estimated no-effect value, including upper
 and lower 95\% credible interval bounds (or other interval as specified by
-prob_vals).
+prob_vals). Where any posterior draw lies beyond the range the model was
+predicted over, that draw keeps its rank in the summary and is given no
+value, so an entry falling among such draws is the end of the prediction
+range rather than a quantile. Attribute \code{"censored_summary"} marks
+which entries those are and states how many draws lie beyond each end.
 }
 \description{
 Extracts the predicted NEC value as desired from an object of class
@@ -72,6 +76,30 @@ and is the better choice where the type matters, because \code{nec} always
 returns an unlabelled vector. Use \code{\link{nsec}} where a NSEC is wanted
 from every model regardless of type.
 }
+\section{Capping and dropping}{
+
+Two operations are both called censoring and they are not the same. A
+threshold equation's \code{nec} is a sampled parameter: a draw above the top
+of the prediction range has a value, and that value is known to exceed the
+bound, which is right-censoring in the ordinary sense. An NSEC or an ECx is
+read off a fitted curve: a draw whose curve never reaches the target has no
+such concentration in the range and may have none at any concentration, so
+the draw is not capped at the bound, it is recorded as lying beyond it. Both
+are reported the same way here, because neither claims a value for the draw.
+
+Which quantile estimator is used depends on whether anything is censored.
+A posterior with no beyond-range draw is summarised exactly as it was up to
+version 2.1.3, with \code{\link[stats]{quantile}}'s default type 7, which
+interpolates between two adjacent order statistics. Once any draw is
+censored every reported entry becomes an order statistic instead, because a
+value interpolated across a draw that has no value would be one the
+posterior does not support.
+Every entry therefore changes a little when the first draw is censored,
+including entries at the other end of the interval. Keeping the uncensored
+summary bit-identical to the release was preferred to making the two agree
+at the boundary, because every archived analysis is compared against it.
+}
+
 \examples{
 library(bayesnec)
 data(manec_example)

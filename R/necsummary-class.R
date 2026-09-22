@@ -26,7 +26,10 @@
 #' no-effect estimate: \code{"NEC"}, \code{"NSEC"}, or \code{"N(S)EC"} where
 #' the two blocks of a hurdle fit use different equation types.
 #' @slot nec_vals The NEC values. Note that if model is an ECx-type model,
-#' this estimate will be a NSEC proxy.
+#' this estimate will be a NSEC proxy. Where any posterior draw lies beyond the
+#' range the model was predicted over, attribute \code{"censored_summary"}
+#' marks which entries are the end of that range rather than a quantile, and
+#' states how many draws lie beyond each end.
 #' @slot ecs A \code{\link[base]{list}} containing the ECx values
 #' should the user decide to calculate them (see the non-exported
 #' \code{bayesnec:::summary.bayesnecfit} help file for details).

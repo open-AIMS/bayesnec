@@ -79,7 +79,15 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
     message("ECx calculation takes a few seconds per model, calculating...\n")
     ecs <- list()
     for (i in seq_along(ecx_vals)) {
-      ecs[[i]] <- ecx(x, ecx_val = ecx_vals[i])
+      # On the grid the fit was built over, not the range of the data. ecx()
+      # rebuilds its own grid from the data when x_range is absent, so a fit
+      # given an x_range reported its ECx over a different range from the
+      # no-effect estimate printed three lines above it. Since #395 marks a
+      # censored no-effect estimate with the bound it is censored at, the two
+      # claims sit on one screen: a note reading "the upper bound of the
+      # prediction range is 0.9" stood directly above an unmarked ECx of 1.67.
+      ecs[[i]] <- ecx(x, ecx_val = ecx_vals[i],
+                      x_range = range(x$pred_vals$data$x))
     }
     names(ecs) <- paste0("ECx (", ecx_vals, "%) estimate:")
   }
@@ -145,7 +153,10 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
     message("ECx calculation takes a few seconds per model, calculating...\n")
     ecs <- list()
     for (i in seq_along(ecx_vals)) {
-      ecs[[i]] <- ecx(x, ecx_val = ecx_vals[i])
+      # The grid the set was built over, for the reason given in
+      # summary.bayesnecfit.
+      ecs[[i]] <- ecx(x, ecx_val = ecx_vals[i],
+                      x_range = range(x$w_pred_vals$data$x))
     }
     names(ecs) <- paste0("ECx (", ecx_vals, "%) estimate:")
   }

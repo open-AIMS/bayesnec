@@ -60,6 +60,151 @@
   the first level's `bnec()` call, which is after that level had compiled and
   sampled (#390).
 
+## Estimates beyond the range the model was predicted over
+
+- Every reported no-effect and effect-concentration estimate now states how many
+  of its posterior draws lie beyond the range the model was predicted over, and
+  reports as a bound any entry that falls among those draws. Up to this release
+  such a draw was deleted and the remaining draws were summarised as though
+  nothing had been removed, so the reported value was a quantile of the draws
+  that did reach the target rather than of the posterior it was labelled as.
+  `summary()` and `print()` mark a censored entry `>=` or `<=` and print the
+  count beneath it, `autoplot()` and `plot()` mark their annotations the same
+  way, and `nec()`, `nsec()` and `ecx()` return an attribute
+  `"censored_summary"` giving the marks, the counts and the two bounds. The
+  record is written where the posterior is realised, inside `bnec()`, so the
+  number `summary()` reports and the number the estimators return are the same
+  number qualified the same way (#395).
+
+- A censored draw is never given a numeric value. It contributes its rank to the
+  summary and nothing else, so a quantile that falls among such draws is
+  reported as the end of the prediction range rather than as a number, and one
+  that does not is an ordinary quantile of the posterior. This is not the
+  treatment removed in 2.1.2 (#39), which assigned the highest concentration in
+  the grid to such a draw and then used it as a value, raising the point
+  estimate without saying so (#395).
+
+- The two ends are recorded separately. A draw whose curve had already passed
+  the target where the prediction range begins is reported as `<=` the foot of
+  that range, which an `NA` alone could not distinguish from a draw whose curve
+  never reached the target at all (#395).
+
+- `nec()` on a joint hurdle fit now returns a value for a draw where one block
+  is beyond the prediction range and the other is not. The combined no-effect
+  estimate is the smaller of the two blocks and was formed with `pmin()`, which
+  propagates the `NA` an `ecx`-type block returns for a beyond-range draw. A
+  draw whose growth estimate was above the range and whose survival estimate was
+  well inside it therefore had no combined value at all and was deleted. The
+  smaller of the two is now above the range only where both blocks are, and
+  below it where either is (#395).
+
+- The quantile estimator behind a censored summary is the inverse empirical
+  distribution function, `quantile(type = 1)`. A posterior with no beyond-range
+  draw is summarised exactly as it was in 2.1.3, with `median()` and
+  `quantile()`'s default type 7, which interpolates between two adjacent order
+  statistics. Once any draw is censored every reported entry becomes an order
+  statistic instead, because a value interpolated across a draw that has no
+  value is one the posterior does not support: on ten draws with one censored,
+  the 97.5 per cent quantile sits 0.775 of the way from the ninth draw into the
+  tenth, and interpolating there would report the bound although the smallest
+  value consistent with the sample is the ninth draw. Every entry therefore
+  changes a little when the first draw is censored, including entries at the
+  other end of the interval. Keeping the uncensored summary bit-identical to
+  the release was preferred to making the two agree at the boundary (#395).
+
+- `summary(x, ecx = TRUE)` now computes its ECx over the range the fit was
+  predicted over rather than over the range of the data. The two differ
+  wherever `bnec()` was given an `x_range`, and the ECx block then described a
+  different range from the no-effect estimate printed above it. The marks this
+  release adds put the two claims on one screen: a note reading that the
+  prediction range stops at 0.9 stood directly above an unmarked ECx of 1.67
+  (#395).
+
+- Behaviour change, measured across the nine vignettes. A fit with no draw
+  beyond its prediction range is unaffected, and the summary it reports is
+  unchanged to the last bit. Which estimates each vignette reports was taken
+  from its parsed chunk headers rather than from the text of the file, since the
+  vignettes set `eval` globally and a chunk is skipped only where it sets
+  `eval = FALSE` itself. The fits behind those estimates were rebuilt under the
+  settings each vignette uses, and both summaries were taken from one set of
+  draws: the deleted-draw quantile the release reports, and the censored
+  quantile this release reports. 149 measurements were taken this way, covering
+  every estimate the six vignettes report; where `summary()` computes an ECx
+  over a grid a bare `ecx()` call would not use, both grids were measured. Nine
+  measurements, over eight estimates, have a draw beyond the range their model
+  was predicted over, and all eight are in `example6`. No reported entry falls
+  among those draws, so no estimate in any vignette is reported as a bound.
+
+  - `example1`, 16 measurements over ten single-equation fits, spanning
+    `binomial`, `beta_binomial`, Beta, `poisson`, `negbinomial`, a `rate()`
+    denominator and Gamma. None has a beyond-range draw. The dispersion
+    section's toxicity table reads, before and after alike, an NSEC of
+    0.90 (0.27 to 1.27) under constant
+    dispersion and 1.08 (0.36 to 1.49) under `disp("power")`, with EC10 of 1.79
+    and 1.86 and EC50 of 7.17 and 7.26, all back-transformed with
+    `xform = exp` as the vignette reports them.
+  - `example2`, 17 measurements on `exp_5`, the `decline` set on a simulated
+    gaussian response at `iter = 2000`, thirteen equations retained and about
+    1600 weighted draws. None has a beyond-range draw. The model-averaged
+    N(S)EC is 3.34 (2.02 to 3.97), the EC10 3.63 (2.72 to 4.13) and the EC50
+    5.09 (4.83 to 5.36), before and after alike, and the same holds for each
+    equation's own N(S)EC and for the `pull_out(model = "nec")` subset.
+  - `example3`, the two `nec()` calls that contrast a fixed and a free `top`,
+    1.13 (1.03 to 1.34) and 1.17 (1.03 to 1.38). Neither has a beyond-range
+    draw.
+  - `example5`, the single `nec4param` fit the installation check runs, 1.54
+    (1.50 to 1.57). No beyond-range draw.
+  - `example6`, 99 measurements over the factorised and joint hurdle fits, the
+    six-equation hurdle set, the nassarius sensitivity fits and the
+    four-contaminant endpoints loop, each for growth, survival and the combined
+    endpoint. Nine of them, over eight estimates, have a beyond-range draw,
+    described below.
+  - `example9`, 14 measurements over the simazine Beta set, the nassarius
+    binomial
+    set and the two censored Gamma sets. None has a beyond-range draw. The
+    simazine N(S)EC is 4.33 mg/L (1.01 to 11.3), its EC10 17.6 and its EC50 124;
+    the copper NSEC is 0.106 mg/L under constant dispersion and 0.054 under
+    `disp("power")`, before and after alike.
+
+  The eight that change are all ECx estimates on a hurdle fit, where the two
+  blocks are predicted over different grids and the growth block is fitted on
+  survivors alone. They are between 1 and 19 draws in 3200 or 8000, so every one
+  of them changes only where the censored summary reads an order statistic in
+  place of an interpolated quantile. Two entries of `summary(fit_a, ecx = TRUE)`
+  in the nassarius section change by 0.01 at the two decimal places `summary()`
+  prints: the upper limit of the growth EC50 from 1.23 to 1.24 on 19 censored
+  draws of 3200, and the upper limit of the survival EC50 from 2.45 to 2.46 on
+  9. Every other changed estimate is identical once printed, the largest
+  difference being the growth EC50 of contaminant C, 3.399 against 3.402 on 8
+  censored draws of 3200. What is new in those places is the note beneath the
+  table stating how many draws lie beyond the range, which the release did not
+  report at all.
+
+  Three vignettes report no estimate and were ruled out by inspection rather
+  than measured. `example2b` fits nothing: every chunk draws a theoretical curve
+  from a closed-form function. `example7`'s twelve `bnec()` calls are all in
+  chunks that set `eval = FALSE`, so none of them runs. `example4` fits one
+  model set and reports only `compare_posterior()`, which reads the
+  `posterior = TRUE` draws and never reaches the summary this release changes;
+  run on the packaged model-averaged fit it returns an unnamed posterior of
+  length 100 with no missing value and no censoring record.
+
+  `example8` could not be measured. It fits 189 models and loads them from a
+  store keyed by the fit call, which `vignettes/fit_store.R` reaches only where
+  `BAYESNEC_FIT_STORE` names a directory produced by the
+  `open-AIMS/grouping-structures` compendium. That variable is unset here and no
+  such directory exists, and the file's own header puts a sequential rebuild at
+  the better part of a day, so its 24 reported estimates are unmeasured.
+
+  Every design that was measured reaches the reference within the range tested
+  for almost every draw, which is why nothing is reported as a bound. The change
+  shows on a design that has not reached its lower asymptote, which is the case
+  #386 is about. On the packaged `ecx4param` fit re-expanded over a prediction
+  range that stops before its curve reaches the reference, 60 of 100 draws are
+  beyond the range, and the reported NSEC is `>= 0.9` (0.384 to `>= 0.9`) where
+  the deleted-draw summary gave 0.801 (0.048-0.890).
+
+
 ## Behaviour changes to a fit with a `rate()` denominator
 
 - The default `top` and `bot` priors for a model fitted with a `rate()`

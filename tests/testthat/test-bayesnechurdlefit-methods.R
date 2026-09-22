@@ -220,3 +220,31 @@ test_that("ecnsec honours type and refuses the two it cannot compute", {
   expect_error(ecnsec(obj, nsec = 5, hormesis_def = "max"),
                "hormesis_def has been removed")
 })
+
+test_that("the summary ECx grid is read from whichever class a block is", {
+  # A hurdle component is a bayesnecfit or a bayesmanecfit depending on whether
+  # crf() named one equation or a set, and the two store their prediction grid
+  # under different names. Reading pred_vals alone returned NULL for the
+  # commoner case, range() of nothing is c(Inf, -Inf), and summary(ecx = TRUE)
+  # then errored inside seq() (#395).
+  mk <- function(grid, slot) {
+    out <- list()
+    out[[slot]] <- list(data = data.frame(x = grid))
+    out
+  }
+  both_sets <- list(growth = mk(c(1, 4), "w_pred_vals"),
+                    survival = mk(c(0.5, 6), "w_pred_vals"))
+  # The intersection, which is the range both curves are defined over and the
+  # bound combine_censored_min() gives the combined no-effect estimate.
+  expect_equal(bayesnec:::hurdle_summary_range(both_sets), c(1, 4))
+  mixed <- list(growth = mk(c(1, 4), "pred_vals"),
+                survival = mk(c(0.5, 6), "w_pred_vals"))
+  expect_equal(bayesnec:::hurdle_summary_range(mixed), c(1, 4))
+  # No stored grid on either side: NULL, which leaves ecx() to build its own
+  # rather than being handed a range it cannot use.
+  expect_null(bayesnec:::hurdle_summary_range(list(growth = list(),
+                                                   survival = list())))
+  expect_null(bayesnec:::hurdle_summary_range(
+    list(growth = mk(c(1, 4), "pred_vals"), survival = list())
+  ))
+})
