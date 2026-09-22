@@ -10,6 +10,7 @@ nec(
   posterior = FALSE,
   xform = identity,
   prob_vals = c(0.5, 0.025, 0.975),
+  extrapolate = FALSE,
   ...
 )
 }
@@ -28,7 +29,16 @@ values.}
 return the estimated NEC value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
 
-\item{...}{Additional arguments passed to methods.}
+\item{extrapolate}{The bound beyond which the estimate is reported as
+censored. \code{FALSE}, the default, censors at the prediction range the fit
+was built on. \code{TRUE} removes the bound at both ends. A single number is
+an upper limit, and a pair of numbers is a lower and an upper limit, in that
+order. See the \emph{Extrapolation} section of \code{\link{nec}}.}
+
+\item{...}{Additional arguments passed to methods. \code{sig_val} and
+\code{resolution} are forwarded to \code{\link{nsec}} where a finite
+\code{extrapolate} limit requires a curve to be re-evaluated, and are
+otherwise unused.}
 }
 \value{
 A vector containing the estimated no-effect value, including upper
@@ -98,6 +108,61 @@ Every entry therefore changes a little when the first draw is censored,
 including entries at the other end of the interval. Keeping the uncensored
 summary bit-identical to the release was preferred to making the two agree
 at the boundary, because every archived analysis is compared against it.
+}
+
+\section{Extrapolation}{
+
+\code{extrapolate} chooses the bound the estimate is censored at. It is read
+on the recorded predictor scale, the scale the data were supplied on and the
+scale \code{\link{bnec}} and \code{\link{nsec}} take \code{x_range} on. That
+is neither the scale \code{crf()} fits on nor the scale \code{xform}
+displays, so under \code{crf(log(concentration))} the limit is a
+concentration and not a log concentration.
+
+\code{TRUE} removes the bound at both ends. It is accepted only where every
+component of the reported estimate samples a NEC. An NSEC is read off a
+fitted curve and a curve cannot be evaluated on an infinite grid, so where
+any component is an NSEC --- which includes the default \code{\link{bnec}}
+model set, because that set fits equations of both classes --- \code{TRUE}
+is an error naming the finite form. For a single fit the class is the one
+recorded in \code{ne_type}, which takes both blocks of a joint two-block
+fit into account. For a model-averaged set it is read from each equation's
+name, which is where \code{\link{summary}} reads the label it prints, so
+the two cannot disagree about what the set is.
+
+A finite limit applies to both classes, by a different route for each. The
+threshold components are compared against it, which requires no further
+computation because every draw of a sampled \code{nec} already has a value.
+The curve-read components are re-evaluated on a grid extended to it, through
+the \code{x_range} argument of \code{\link{nsec}}. That recomputes from the
+stored fit and needs no refit, but it does evaluate the curve once for each
+such equation, at a run time proportional to \code{resolution}. The
+re-evaluation reuses the number of grid points the fit stored unless
+\code{resolution} is given, so over a wider range the grid is proportionally
+coarser, and it reads its control at the lowest observed concentration, so
+its numbers can differ in the last digits from the stored summary.
+
+Two requests re-evaluate nothing and return what \code{extrapolate = FALSE}
+returns: a limit equal to the current bounds, and any limit on a fit with no
+draw beyond either end, where every draw was identified inside the range the
+fit used and a wider grid has none left to identify. An object fitted before
+version 2.2.0 records nothing about which of its draws lie beyond the range,
+so it takes the second of those whatever its draws are, and
+\code{extrapolate} does nothing to it. Refit it, or rebuild the set with
+\code{\link{amend}}, to extrapolate from it.
+
+A limit inside the prediction range is an error rather than a silent
+tightening, because it would report an estimate as censored at a value the
+fit had no trouble identifying. Narrow the range with \code{x_range} where
+the fit or the estimate is built instead.
+
+Two constraints on the reach of an extrapolation are reported rather than
+corrected. Where the \code{nec} prior stored on the fit is itself bounded at
+the prediction range, the posterior holds no draw beyond that bound and a
+wider limit returns the same truncated posterior; a message states the
+bound. And a curve-read component is measured from the control, so a lower
+limit below the lowest observed concentration extends the grid without
+extending the search, and those components stay censored at the control.
 }
 
 \examples{

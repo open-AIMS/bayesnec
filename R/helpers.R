@@ -2456,11 +2456,18 @@ check_removed_args <- function(dots) {
 #'
 #' @param values A \code{\link[base]{numeric}} vector of per-draw estimates.
 #' @param estimate A \code{\link[base]{character}} label naming the quantity.
+#' @param range_label A \code{\link[base]{character}} naming what the two
+#' bounds are the ends of. The default is right wherever the bounds come from
+#' the grid the estimate was read on. Where \code{extrapolate} has replaced
+#' them the bound is the limit the caller named and is somewhere the prediction
+#' range does not reach, so calling it the end of that range would state the
+#' wrong number twice over.
 #'
 #' @return \code{NULL}, invisibly. Called for the warning.
 #' @noRd
 warn_censored_draws <- function(values, estimate = "estimate", n_below = 0,
-                               x_from = NULL, cens = attr(values, "censored")) {
+                               x_from = NULL, cens = attr(values, "censored"),
+                               range_label = "prediction range") {
   # Classed, so that a method which reports its own censoring can muffle the
   # reports of the calls it makes internally without also muffling anything
   # else they raise. nec.bayesnechurdlefit() summarises what nec() returned for
@@ -2507,7 +2514,7 @@ warn_censored_draws <- function(values, estimate = "estimate", n_below = 0,
     raise(paste0("The ", estimate, " is not identified for ",
                  sum(cens$above), " of ", n_draws, " draws, which lie at or ",
                  "above ", signif(cens$upper, 3), ", the upper bound of the ",
-                 "prediction range. The summary is censored there: those ",
+                 range_label, ". The summary is censored there: those ",
                  "draws keep their rank in it and are given no value, so a ",
                  "quantile falling among them is reported as a bound."))
   }
@@ -2518,7 +2525,7 @@ warn_censored_draws <- function(values, estimate = "estimate", n_below = 0,
     raise(paste0("The ", estimate, " is not identified for ",
                  sum(cens$below), " of ", n_draws, " draws, which lie at or ",
                  "below ", signif(cens$lower, 3), ", the lower bound of the ",
-                 "prediction range. The summary is censored there: those ",
+                 range_label, ". The summary is censored there: those ",
                  "draws keep their rank in it and are given no value, so a ",
                  "quantile falling among them is reported as a bound."))
   }
