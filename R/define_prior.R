@@ -871,16 +871,22 @@ unobserved_endpoint_mean <- function(predictor, response, zero_bounded) {
     paste0("the response holds no value above that floor, so there is no",
            " interval to place it on.")
   )
-  # Tested before the anchor is read rather than after. regularizing_location()
-  # reaches positive_scale() for side "bot" exactly when there is no positive
-  # value --- its own zero-bounded branch takes min(pos) / 10 whenever there is
-  # one --- and positive_scale() refuses naming the construction of `top` and
-  # `bot`, which under a declaration is a message that does not name the
-  # declaration. The same vector is the fallback below, so hoisting the test
-  # duplicates nothing and leaves no error swallowed, where wrapping the read
-  # in try() would have converted a later error into this one as well. The
-  # default path still raises positive_scale()'s message on such a response,
-  # which is where it belongs.
+  # Tested before the anchor is read rather than after. On a zero-bounded
+  # family regularizing_location() reaches positive_scale() for side "bot"
+  # exactly when there is no positive value --- its zero-bounded branch takes
+  # min(pos) / 10 whenever there is one --- and positive_scale() refuses naming
+  # the construction of `top` and `bot`, which under a declaration is a message
+  # that does not name the declaration. The test applies on the other branch
+  # too, where it changes nothing: a response with no positive value gives a
+  # location at or below zero there and is refused either way.
+  #
+  # `pos` is the same set positive_scale() computes, not an approximation of
+  # it: that function takes the positive part of the finite values and this
+  # takes the finite positive values. The same vector is the fallback below, so
+  # hoisting the test duplicates nothing and leaves no error swallowed, where
+  # wrapping the read in try() would have converted a later error into this one
+  # as well. The default path still raises positive_scale()'s message on such a
+  # response, which is where it belongs.
   pos <- response[is.finite(response) & response > 0]
   if (length(pos) == 0) {
     stop(no_interval, call. = FALSE)
