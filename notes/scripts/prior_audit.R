@@ -20,6 +20,11 @@
 # Updated 2026-09-19 for #391. Part 1 gained a completeness axis, and a
 # proposal count and a flatness result per cell; parts 2 to 4 are new.
 #
+# Updated 2026-09-22 for #394. Part 5 is new and measures the
+# `asymptote_observed = FALSE` declaration. Parts 1 to 4 are unchanged,
+# which is what lets a run of them on the #394 branch be compared with
+# the figures parts 3 and 4 of notes/prior_audit.md record.
+#
 # Part 1 no longer reproduces its own nec/ec50 results. Those findings
 # were acted on in #302 and PR #304, which replaced the three
 # support-selected entries with a normal prior on the log of the
@@ -41,7 +46,7 @@
 #   Rscript notes/scripts/prior_audit.R [part ...]
 #
 # With no argument every part runs. Naming one or more of sweep,
-# reproduction, calibration, miss runs those alone.
+# reproduction, calibration, miss, declaration runs those alone.
 #
 #   1. sweep         the factorial prior sweep, crossed with a
 #                    completeness axis, with the proposals the
@@ -54,7 +59,10 @@
 #                    items #390 disclosed;
 #   4. miss          its miss rate on a top that is still declining,
 #                    including the negative binomial comparison against
-#                    MASS::glm.nb.
+#                    MASS::glm.nb;
+#   5. declaration   the `bot` prior and the initial-value search under
+#                    `asymptote_observed = FALSE`, paired cell by cell
+#                    against the default.
 #
 # Every stochastic part seeds itself, so a part named alone reproduces
 # the figures it prints in a full run.
@@ -1329,4 +1337,292 @@ if (!requireNamespace("MASS", quietly = TRUE)) {
   }
   print(do.call(rbind, nbcmp), row.names = FALSE)
 }
+}
+
+# ======================================================================
+# Part 5. The declaration that the asymptote was not observed (#394)
+# ======================================================================
+# `asymptote_observed = FALSE` replaces the `bot` entry of whichever set
+# `prior_type` selected, spanning its central 95% from the floor of the
+# response to the mean at the highest predictor level, and extends the
+# initial-value band to the same floor.
+#
+# Every cell is run twice, under the default and under the
+# declaration, from one simulated response, so the two arms are paired
+# by cell and the difference is the declaration and nothing else. That
+# is what part 1 cannot supply: it runs the default alone, and a
+# comparison across two runs of it would also show whatever else
+# differed between them.
+#
+# The factorial is part 1's, restricted in two ways. Only `nec4param`
+# is run, because `ecx4param`'s threshold leaves the series once the
+# design is flat and its `bot` is then unidentified for a second
+# reason. Only the identity link is run, because the declaration is
+# refused on any other: `prior_family_tag()` rewrites a log or logit
+# link onto the gaussian entries and the floor of the mean maps to
+# -Inf there. That refusal is measured separately below rather than
+# folded into the sweep.
+if (run_this("declaration")) {
+set.seed(394)
+cat("\n\n=== 5. the declaration of an unobserved asymptote ===\n")
+rows5 <- list()
+cell5 <- 0L
+started5 <- Sys.time()
+for (cn in names(completeness)) {
+ f_target <- completeness[[cn]]
+ for (dn in names(designs)) {
+  dsp <- designs[[dn]]
+  for (tn in names(transforms)) {
+   tr <- transforms[[tn]]
+   xraw <- dsp$x
+   if (!tr$zero_ok && any(xraw == 0)) {
+     nz <- min(xraw[xraw > 0])
+     xraw[xraw == 0] <- nz / 2
+   }
+   xt <- tr$f(xraw)
+   for (fn in names(fam_spec)) {
+    fs <- fam_spec[[fn]]
+    for (ptype in c("uninformative", "regularizing")) {
+     mod <- "nec4param"
+     cell5 <- cell5 + 1L
+     xp_t <- tr$f(dsp$nec)
+     xx <- rep(xt, each = n_rep)
+     xr <- rep(xraw, each = n_rep)
+     rate <- 5 / (max(xt) - xp_t)
+     xp_t <- shifted_threshold(mod, max(xt), rate, f_target)
+     mu <- mu_nec4(xx, fs$top, fs$bot, xp_t, log(rate))
+     f_reached <- (mu[which.min(xx)][1] - mu[which.max(xx)][1]) /
+       (fs$top - fs$bot)
+     set.seed(394000L + cell5)
+     y <- fs$sim(mu)
+     dat <- data.frame(x = xr, y = y)
+     form <- sprintf("y ~ crf(%s, \"%s\")", tr$lab, mod)
+     if (!is.null(fs$trials)) {
+       dat$trials <- fs$trials
+       form <- sprintf("y | trials(trials) ~ crf(%s, \"%s\")", tr$lab, mod)
+     }
+     fargs <- list(link = "identity")
+     ctor_args <- names(formals(get(fn)))
+     for (la in intersect(c("link_hu", "link_zi"), ctor_args)) {
+       fargs[[la]] <- "identity"
+     }
+     fam <- try(do.call(get(fn), fargs), silent = TRUE)
+     if (inherits(fam, "try-error")) next
+     # The response define_prior() reads, obtained by replaying the
+     # path get_priors() takes, as part 1 does. The initial-value
+     # search is given the same object.
+     replay <- tryCatch({
+       sf <- single_model_formula(bayesnecformula(as.formula(form)), mod)
+       md <- model.frame(sf, data = dat, run_par_checks = FALSE)
+       ck <- suppressWarnings(suppressMessages(
+         check_data(data = md, family = fam, model = mod)))
+       yy <- ck$mod_dat$y
+       if (ck$family$family %in% c("binomial", "beta_binomial")) {
+         yy <- yy / ck$mod_dat$trials
+       }
+       if (!is.null(ck$mod_dat$denom)) yy <- yy / ck$mod_dat$denom
+       list(ck = ck, yy = yy)
+     }, error = function(e) NULL)
+     for (declared in c(TRUE, FALSE)) {
+      pr <- try(suppressWarnings(suppressMessages(
+        get_priors(as.formula(form), data = dat, family = fam,
+                   prior_type = ptype,
+                   asymptote_observed = declared))), silent = TRUE)
+      if (inherits(pr, "try-error")) {
+        rows5[[length(rows5) + 1]] <- data.frame(
+          cell = cell5, completeness = cn, design = dn, transform = tn,
+          family = fn, prior_type = ptype, asymptote_observed = declared,
+          prior = NA_character_, lb = NA, ub = NA, truth = NA,
+          q025 = NA, q975 = NA, p_truth = NA, raw_sd = NA,
+          endpoint = NA, f_reached = f_reached,
+          n_proposals = NA, init_capped = NA,
+          error = as.character(attr(pr, "condition")$message),
+          stringsAsFactors = FALSE)
+        next
+      }
+      pr <- as.data.frame(pr)
+      row <- pr[pr$nlpar == "bot", ]
+      lb <- suppressWarnings(as.numeric(row$lb[1]))
+      ub <- suppressWarnings(as.numeric(row$ub[1]))
+      truth <- fam$linkfun(fs$bot)
+      ss <- trunc_summary(row$prior[1], lb, ub, truth)
+      endpoint <- NA_real_
+      n_prop <- NA_integer_
+      capped <- NA
+      if (!is.null(replay)) {
+        ck <- replay$ck
+        yy <- replay$yy
+        endpoint <- tryCatch({
+          yl <- if (is_hurdle_family(ck$family)) {
+            response_link_scale(
+              split_hurdle_response(ck$mod_dat$x, yy)$mu$y,
+              hurdle_mu_family(ck$family))
+          } else {
+            response_link_scale(yy, ck$family)
+          }
+          zb <- zero_bounded_family(if (is_hurdle_family(ck$family)) {
+            hurdle_mu_family(ck$family)
+          } else {
+            ck$family
+          })
+          xs <- if (is_hurdle_family(ck$family)) {
+            split_hurdle_response(ck$mod_dat$x, yy)$mu$x
+          } else {
+            ck$mod_dat$x
+          }
+          regularizing_location(xs, yl, "bot", zero_bounded = zb)[["location"]]
+        }, error = function(e) NA_real_)
+        search <- tryCatch({
+          ip <- pr[pr$class == "b" &
+                     !pr$nlpar %in% generated_term_names(), , drop = FALSE]
+          counted <- if (is_hurdle_family(ck$family)) {
+            with_proposal_count(suppressMessages(make_good_hurdle_inits(
+              mod, ck$mod_dat$x, yy, priors = ip, chains = CHAINS,
+              family = ck$family, dpar = hurdle_dpar(ck$family),
+              seed = cell5, n_trials = INIT_CAP, report_after = Inf,
+              asymptote_observed = declared)))
+          } else {
+            with_proposal_count(suppressMessages(make_good_inits(
+              mod, ck$mod_dat$x, response_link_scale(yy, ck$family),
+              family = ck$family, priors = ip, chains = CHAINS,
+              seed = cell5, n_trials = INIT_CAP, report_after = Inf,
+              asymptote_observed = declared)))
+          }
+          list(n = counted$proposals,
+               capped = length(counted$value) == 1 &&
+                 "random" %in% names(counted$value))
+        }, error = function(e) NULL)
+        if (!is.null(search)) {
+          n_prop <- as.integer(search$n)
+          capped <- search$capped
+        }
+      }
+      rows5[[length(rows5) + 1]] <- data.frame(
+        cell = cell5, completeness = cn, design = dn, transform = tn,
+        family = fn, prior_type = ptype, asymptote_observed = declared,
+        prior = row$prior[1], lb = lb, ub = ub, truth = truth,
+        q025 = if (is.null(ss)) NA else ss$q025,
+        q975 = if (is.null(ss)) NA else ss$q975,
+        p_truth = if (is.null(ss)) NA else ss$p_truth,
+        raw_sd = if (is.null(ss)) NA else ss$raw_sd,
+        endpoint = endpoint, f_reached = f_reached,
+        n_proposals = n_prop, init_capped = capped,
+        error = NA_character_, stringsAsFactors = FALSE)
+     }
+    }
+   }
+  }
+  message("declaration: ", cn, " ", dn, " (",
+          signif(as.numeric(Sys.time() - started5, units = "secs"), 3), "s)")
+ }
+}
+res5 <- do.call(rbind, rows5)
+out5 <- Sys.getenv("BAYESNEC_PRIOR_AUDIT_OUT5",
+                   file.path(tempdir(), "prior_audit_declaration.rds"))
+saveRDS(res5, out5)
+cat("rows:", nrow(res5), "  cells:", length(unique(res5$cell)), "\n")
+cat("written to", out5, "\n")
+cat("errors:", sum(!is.na(res5$error)), "\n")
+if (any(!is.na(res5$error))) {
+  print(unique(res5$error[!is.na(res5$error)]))
+}
+
+ok5 <- subset(res5, is.na(error))
+ok5$arm <- ifelse(ok5$asymptote_observed, "default", "declared")
+ok5$fail <- !is.na(ok5$p_truth) & (ok5$p_truth < 0.025 | ok5$p_truth > 0.975)
+cat("\n== the bot prior: mean CDF at the true bot, by completeness ==\n")
+print(round(with(ok5, tapply(p_truth, list(paste(prior_type, arm),
+                                           completeness),
+                             mean, na.rm = TRUE))[, names(completeness),
+                                                  drop = FALSE], 4))
+cat("\ncells placing the true bot outside the central 95% of the prior,\n",
+    "out of ", sum(ok5$arm == "default" & ok5$completeness == "complete" &
+                     ok5$prior_type == "uninformative"),
+    " per prior type per setting:\n", sep = "")
+print(with(ok5, tapply(fail, list(paste(prior_type, arm), completeness),
+                       sum))[, names(completeness), drop = FALSE])
+cat("\nthe same count by family and prior type, which is where the",
+    "\nfamily-specific behaviour is:\n")
+for (a in c("default", "declared")) {
+  cat("\n", a, " arm:\n", sep = "")
+  print(with(subset(ok5, arm == a),
+             tapply(fail, list(family, prior_type), sum)))
+}
+
+cat("\n== the realised span of the declared entry, by family ==\n")
+cat("q025 and q975 as multiples of the endpoint mean the entry is built",
+    "from.\nThe rule asks for 0 and 1; the gamma branch cannot reach either",
+    "at a fixed\nshape of 2 and is reported as it lands.\n")
+dec <- subset(ok5, arm == "declared" & is.finite(endpoint) & endpoint > 0)
+dec$lo_ratio <- dec$q025 / dec$endpoint
+dec$hi_ratio <- dec$q975 / dec$endpoint
+span <- do.call(rbind, lapply(split(dec, dec$family), function(z) {
+  data.frame(family = z$family[1], n = nrow(z),
+             q025_over_endpoint = round(median(z$lo_ratio, na.rm = TRUE), 4),
+             q975_over_endpoint = round(median(z$hi_ratio, na.rm = TRUE), 4),
+             stringsAsFactors = FALSE)
+}))
+print(span, row.names = FALSE)
+
+cat("\n== the initial-value search ==\n")
+cells5 <- ok5[!duplicated(paste(ok5$cell, ok5$arm)), ]
+cat("median proposals to a full set of", CHAINS, "chains, by completeness:\n")
+print(round(with(cells5, tapply(n_proposals, list(arm, completeness),
+                                median, na.rm = TRUE))[, names(completeness),
+                                                       drop = FALSE], 1))
+cat("\ncells that fell back to Stan's own initialisation (cap", INIT_CAP,
+    "rounds):\n")
+print(with(cells5, tapply(init_capped, list(arm, completeness),
+                          sum, na.rm = TRUE))[, names(completeness),
+                                              drop = FALSE])
+cat("\npaired difference in the proposal count, declared minus default:\n")
+paired <- merge(
+  subset(cells5, arm == "default",
+         select = c(cell, n_proposals, init_capped)),
+  subset(cells5, arm == "declared",
+         select = c(cell, n_proposals, init_capped)),
+  by = "cell", suffixes = c("_default", "_declared"))
+paired <- merge(paired, unique(ok5[, c("cell", "completeness")]), by = "cell")
+diffs <- paired$n_proposals_declared - paired$n_proposals_default
+for (cn in names(completeness)) {
+  keep <- paired$completeness == cn & is.finite(diffs)
+  d <- diffs[keep]
+  se <- sd(d) / sqrt(length(d))
+  cat(sprintf("  %-9s n = %4d  mean %+6.2f [%+.2f, %+.2f]\n", cn, length(d),
+              mean(d), mean(d) - 1.96 * se, mean(d) + 1.96 * se))
+}
+
+cat("\n== the declaration on a non-identity link ==\n")
+cat("prior_family_tag() rewrites a log or logit link onto the gaussian",
+    "entries, and\nthe floor of the mean maps to -Inf there, so the",
+    "declaration is refused.\n")
+ref <- list()
+for (fn in names(fam_spec)) {
+  fs <- fam_spec[[fn]]
+  ctor_args <- names(formals(get(fn)))
+  fargs <- list(link = fs$alt)
+  for (la in intersect(c("link_hu", "link_zi"), ctor_args)) {
+    fargs[[la]] <- "identity"
+  }
+  fam <- try(do.call(get(fn), fargs), silent = TRUE)
+  if (inherits(fam, "try-error")) next
+  x <- rep(designs$log_2fold$x, each = n_rep)
+  mu <- mu_nec4(x, fs$top, fs$bot, designs$log_2fold$nec, log(1))
+  set.seed(3940L + which(names(fam_spec) == fn))
+  y <- fs$sim(mu)
+  dat <- data.frame(x = x, y = y)
+  form <- "y ~ crf(x, \"nec4param\")"
+  if (!is.null(fs$trials)) {
+    dat$trials <- fs$trials
+    form <- "y | trials(trials) ~ crf(x, \"nec4param\")"
+  }
+  got <- try(suppressWarnings(suppressMessages(
+    get_priors(as.formula(form), data = dat, family = fam,
+               asymptote_observed = FALSE))), silent = TRUE)
+  ref[[length(ref) + 1]] <- data.frame(
+    family = fn, link = fs$alt,
+    refused = inherits(got, "try-error"),
+    stringsAsFactors = FALSE)
+}
+print(do.call(rbind, ref), row.names = FALSE)
 }

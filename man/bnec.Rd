@@ -19,6 +19,7 @@ bnec(
   random_vars = NULL,
   prior = NULL,
   prior_type = "uninformative",
+  asymptote_observed = TRUE,
   timeout = Inf,
   model_survival = NULL,
   predictor_scale = "auto",
@@ -152,7 +153,44 @@ So the entry does correspondingly little to locate a threshold in the logged,
 \code{"uninformative"} case and rather more in the other three. Inspect the
 generated
 entries with \code{\link{get_priors}} and pass a scientifically justified
-prior through \code{prior} where information beyond the design is available.}
+prior through \code{prior} where information beyond the design is available.
+Neither value of \code{prior_type} corrects a design that stopped before the
+asymptote; \code{asymptote_observed} is the argument for that.}
+
+\item{asymptote_observed}{A \code{\link[base]{logical}} declaring whether the
+highest predictor level reached the lower asymptote of the curve. The default
+\code{TRUE} is the assumption both default prior sets are built on, and
+leaves every generated entry exactly as it was. \code{FALSE} states that the
+series stopped short of the asymptote, which changes the \code{bot} prior and
+the initial-value search and nothing else. The \code{bot} prior's central 95\%
+then spans from the floor of the response --- zero for every family but
+gaussian, and zero for a gaussian response that is non-negative throughout
+--- to the mean response at the highest predictor level, so that mean is read
+as an upper bound on \code{bot} rather than as an estimate of it. The
+initial-value band is extended to the same floor, because a band built from
+the observed response rejects the very draws the new prior produces and the
+fit then falls back to \pkg{Stan}'s own initialisation.
+
+The declaration is the user's because the data cannot make it: a flat
+response at the top of the series is what a complete design and a truncated
+one both look like. \code{\link{bnec}} reports a response still declining at
+the top of the series before it fits anything, which is evidence that the
+design is incomplete, and it cannot supply evidence that a flat one is
+complete.
+
+A gaussian response spanning negative values, and any response fitted on a
+link other than the identity, has no floor that can be derived from the data,
+and \code{FALSE} is refused for it rather than a floor being invented. Supply
+a \code{bot} prior through \code{prior} in that case.
+
+Fourteen of the 23 equations have no \code{bot} parameter and so assert that
+the response falls to the floor. On a design that did not reach the asymptote
+the data cannot distinguish them from the equations that estimate \code{bot},
+so a model set holding both is reported. Whether the response can reach the
+floor is a property of the endpoint rather than of the data --- zero is
+attainable for a lethality endpoint and usually not for a growth or
+photosynthetic yield endpoint --- so the set is left as requested and the
+choice is the user's. \code{mod_groups$bot_free} names the fourteen.}
 
 \item{timeout}{A positive \code{\link[base]{numeric}} giving the maximum
 number of seconds allowed for fitting any single model, passed to

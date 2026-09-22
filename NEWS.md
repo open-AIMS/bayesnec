@@ -60,6 +60,50 @@
   the first level's `bnec()` call, which is after that level had compiled and
   sampled (#390).
 
+- `bnec()`, `get_priors()` and `amend()` gain `asymptote_observed`, a
+  declaration of whether the highest predictor level reached the lower
+  asymptote of the curve. The default `TRUE` is the assumption both default
+  prior sets are built on and leaves every generated entry unchanged, which the
+  test suite pins against the strings the release produced. `FALSE` states that
+  the series stopped short, and changes the `bot` prior and the initial-value
+  search and nothing else. Both default sets place `bot` at the observed
+  response over the highest concentrations, so on such a design the prior is
+  located above the true value and is at its narrowest exactly where `bot` is
+  least identified: on the flattest of #386's simulated designs the prior CDF at
+  the true `bot` is 6.43e-14 under `"uninformative"` and 2.30e-90 under
+  `"regularizing"`. Selecting a prior type does not correct that, which is why
+  this is a separate argument rather than a third `prior_type` value; a user
+  with an incomplete design keeps whichever set they chose for `top`, `nec`,
+  `ec50` and the group-level entries.
+
+  Under `FALSE` the central 95 per cent of the `bot` prior spans from the floor
+  of the response to the mean response at the highest predictor level, so that
+  mean is read as an upper bound on `bot` rather than as an estimate of it. The
+  floor is zero for every family but gaussian, and zero for a gaussian response
+  that is non-negative throughout. The entry is `normal(e/2, e/(2 qnorm(0.975)))`
+  on the gaussian branch, `beta(1, log(0.025) / log(1 - e))` on the four
+  bounded families and `gamma(2, 4/e)` on `Gamma`, `poisson` and `negbinomial`,
+  for an endpoint mean *e*. The first two meet the rule exactly at the upper end;
+  a gamma at a fixed shape of 2 cannot, and its realised central 95 per cent is
+  0.0606*e* to 1.393*e*. The initial-value band is extended to the same floor,
+  because a band built from the observed response rejects the draws the new
+  prior exists to produce.
+
+  A gaussian response spanning negative values has no floor that can be derived
+  from the data, and neither does any response fitted on a link other than the
+  identity, where the floor of the mean maps to minus infinity. `FALSE` is
+  refused for both, naming `bot` and the `prior` argument, rather than a floor
+  being invented. The refusal is raised by `bnec()` before its model loop and by
+  `bnec_group()` before its level loop, so it is stated once rather than once
+  per equation or after the earlier levels have been fitted.
+
+  Fourteen of the 23 equations have no `bot` parameter and so assert that the
+  response falls to the floor. On a design that did not reach the asymptote the
+  data cannot separate them from the equations that estimate `bot`, so a set
+  holding both is reported. Whether the response can reach the floor is a
+  property of the endpoint rather than of the data, so the set is left as
+  requested and the message states both branches (#394).
+
 ## Estimates beyond the range the model was predicted over
 
 - Every reported no-effect and effect-concentration estimate now states how many

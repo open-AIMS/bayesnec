@@ -1191,6 +1191,7 @@ add_brm_defaults <- function(
   skip_check,
   custom_name,
   prior_type = "uninformative",
+  asymptote_observed = TRUE,
   predictor_scale = "auto",
   model_survival = NULL,
   disp_spec = NULL,
@@ -1291,6 +1292,7 @@ add_brm_defaults <- function(
       predictor,
       response,
       prior_type = prior_type,
+      asymptote_observed = asymptote_observed,
       predictor_scale = predictor_scale,
       model_survival = model_survival,
       disp_spec = disp_spec,
@@ -1390,7 +1392,8 @@ add_brm_defaults <- function(
         family = family,
         dpar = hurdle_dpar(family),
         seed = init_seed,
-        model_survival = model_survival
+        model_survival = model_survival,
+        asymptote_observed = asymptote_observed
       )
     } else {
       make_good_inits(
@@ -1400,7 +1403,8 @@ add_brm_defaults <- function(
         family = family,
         priors = init_priors,
         chains = brm_args$chains,
-        seed = init_seed
+        seed = init_seed,
+        asymptote_observed = asymptote_observed
       )
     }
     if (length(inits) == 1 && "random" %in% names(inits)) {

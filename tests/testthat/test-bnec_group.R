@@ -366,3 +366,23 @@ test_that("a model-averaged level yields a WAIC difference but no SE", {
   expect_false(is.na(res$diff))
   expect_true(is.na(res$se_diff))
 })
+
+test_that("the asymptote declaration is refused before any level (#394)", {
+  # bnec_group() fits each level with bnec() in sequence, so a refusal left to
+  # the inner call arrives only after the levels before it have compiled and
+  # sampled. Raised over the whole response before the loop, it names the
+  # remedy where the generic all-levels-failed path would not.
+  set.seed(394)
+  x <- rep(c(0, 1, 2, 4, 8, 16), each = 4)
+  mu <- 0.9 - 0.4 * (x / max(x))
+  d <- data.frame(
+    x = rep(x, 2),
+    y = c(stats::rnorm(length(mu), mu, 0.03) - 1.5,
+          stats::rnorm(length(mu), mu, 0.03) - 1.5),
+    site = rep(c("a", "b"), each = length(x))
+  )
+  err <- expect_error(suppressWarnings(suppressMessages(bnec_group(
+    y ~ crf(x, c("nec3param", "nec4param")), d, group_var = "site",
+    asymptote_observed = FALSE, chains = 1, iter = 10))))
+  expect_match(conditionMessage(err), "`prior` argument", fixed = TRUE)
+})

@@ -384,10 +384,15 @@ beta_from_mode_sd <- function(mode, spread) {
 #' The second is a property of the design rather than of the equation, and where
 #' the highest concentration has not reached the lower asymptote the location for
 #' \code{bot} sits above the true value. That is a bias and not noise, so the
-#' standard-error floor does not widen the prior to cover it; the
+#' standard-error floor does not widen the prior to cover it. The
 #' \code{"uninformative"} entry, whose location is the lower quartile of the
-#' whole response, is affected the same way and is the set to use on a design
-#' that does not reach its asymptote.
+#' whole response, is affected the same way rather than being the remedy: on the
+#' gaussian branch of #386's flattest design the prior CDF at the true
+#' \code{bot} is 6.43e-14 under \code{"uninformative"} and 2.30e-90 under
+#' \code{"regularizing"}, so selecting the first mitigates and does not correct.
+#' What a user does about such a design is declare it, with
+#' \code{asymptote_observed = FALSE}, which replaces the entry either set
+#' produced. See \code{\link{unobserved_bot_entry}} and #394.
 #'
 #' \strong{Zeros.} A zero means something different at each end of the series,
 #' so the zero-bounded branch treats the two ends differently. At the control a
@@ -613,6 +618,219 @@ prior_family_tag <- function(family) {
 #' @noRd
 zero_bounded_family <- function(family) {
   isTRUE(prior_family_tag(family) %in% c("Gamma", "poisson", "negbinomial"))
+}
+
+#' The floor of the lower asymptote, on the scale the curve is fitted on
+#'
+#' @details \code{asymptote_observed = FALSE} states that the highest predictor
+#' level did not reach the lower asymptote, so the response supplies an upper
+#' bound on \code{bot} and not an estimate of it. The prior and the
+#' initial-value band then both need the other end of the interval, which is the
+#' smallest value the mean can take. This returns it, and is read at the two
+#' places that must agree about it: \code{\link{define_prior}}, which spans the
+#' \code{bot} prior from here to the endpoint mean, and
+#' \code{\link{make_good_inits}}, which extends the band to the same value.
+#'
+#' Keyed on \code{\link{prior_family_tag}} rather than on the family name, for
+#' the two reasons recorded there. Every tag but \code{gaussian} describes a
+#' mean bounded below at zero --- \code{(0, 1)} for the four bounded
+#' families and \code{(0, Inf)} for the three count and positive-continuous
+#' ones --- so the floor is zero.
+#'
+#' The \code{gaussian} tag is two different situations. Under an identity link
+#' it is a real-valued mean, and a response that is non-negative throughout is
+#' measured on a scale whose floor is zero; a response spanning negative values
+#' has no floor that can be derived from the data, and \code{NA} is returned so
+#' that the caller refuses rather than inventing one. Under a \code{log} or
+#' \code{logit} link the tag is reached by rewriting, and the quantity the curve
+#' and the prior live on is the link scale, whose floor is \code{-Inf} however
+#' the response is signed: \code{log(y) >= 0} says that every observation
+#' exceeds one in response units, which is a property of the units and not a
+#' floor. So \code{NA} is returned for any link but the identity.
+#'
+#' @param family A \code{\link[stats]{family}} object.
+#' @param response The response, already on the link scale.
+#'
+#' @return A \code{\link[base]{numeric}} vector of length 1: the floor, or
+#' \code{NA_real_} where none can be derived.
+#'
+#' @noRd
+asymptote_floor <- function(family, response) {
+  tag <- prior_family_tag(family)
+  if (is.na(tag)) {
+    return(NA_real_)
+  }
+  if (!identical(tag, "gaussian")) {
+    return(0)
+  }
+  if (!isTRUE(identical(family$link, "identity"))) {
+    return(NA_real_)
+  }
+  finite <- response[is.finite(response)]
+  if (length(finite) > 0 && min(finite) >= 0) 0 else NA_real_
+}
+
+#' Why no floor could be derived, as a clause for the refusal
+#'
+#' @details Two causes reach it and the remedy differs, so each is named. A
+#' gaussian response spanning negative values is ordinary input to this package
+#' --- a log ratio, a growth increment, anything expressed as a change (#229)
+#' --- and has no floor in its own units. A non-identity link is a scale the
+#' caller chose, on which the mean's floor maps to \code{-Inf}.
+#'
+#' @param family A \code{\link[stats]{family}} object.
+#'
+#' @return A \code{\link[base]{character}} string.
+#'
+#' @noRd
+no_floor_reason <- function(family) {
+  if (!isTRUE(identical(family$link, "identity"))) {
+    paste0("the \"", family$link, "\" link puts the curve on a scale whose",
+           " floor is -Inf, so none is available.")
+  } else {
+    paste0("a ", family$family, " response spanning negative values has no",
+           " floor that can be derived from the data.")
+  }
+}
+
+#' The message refusing a declaration that cannot be acted on
+#'
+#' @param reason The clause \code{\link{no_floor_reason}} supplies, naming
+#' what could not be derived.
+#'
+#' @return A \code{\link[base]{character}} string.
+#'
+#' @noRd
+asymptote_floor_error <- function(reason) {
+  paste0("`asymptote_observed = FALSE` places the prior for \"bot\" between",
+         " the floor of the response and the mean at the highest predictor",
+         " level, and ", reason, " Supply a prior for \"bot\" through the",
+         " `prior` argument and leave `asymptote_observed` at its default.")
+}
+
+#' The bot prior for a design that did not reach the lower asymptote
+#'
+#' @details One rule on every family: the central 95\% of the prior spans from
+#' the floor \code{\link{asymptote_floor}} returns to the mean response at the
+#' highest predictor level. On such a design that mean is an upper bound on
+#' \code{bot} rather than an estimate of it, so it becomes the top of the
+#' prior's central interval instead of its centre.
+#'
+#' The endpoint mean is \code{\link{regularizing_location}}'s \code{"bot"}
+#' anchor, which is the mean over the observations at the end of the predictor
+#' series, so the two prior sets and the initial-value band all read the
+#' endpoint the same way and the treatment of zeros recorded there applies here
+#' unchanged.
+#'
+#' The three branches, for an endpoint mean \emph{e} and a floor of zero:
+#'
+#' \itemize{
+#'   \item gaussian: \code{normal(e/2, e/(2 qnorm(0.975)))}, whose central 95\%
+#'   is exactly \code{[0, e]}.
+#'   \item beta: \code{beta(1, log(0.025) / log(1 - e))}, whose 97.5th
+#'   percentile is exactly \emph{e} and whose 2.5th is 0.0084 to 0.0087 of it,
+#'   median by family over the audit's designs.
+#'   \item gamma: \code{gamma(2, 2/q)} at \code{q = e/2}, which is the idiom the
+#'   \code{"uninformative"} entry already uses. At a fixed shape of 2 the
+#'   central 95\% cannot both start at zero and end at a chosen value, so the
+#'   rule is applied as "mean at half the endpoint mean" and the realised
+#'   interval is \code{[0.0606 e, 1.393 e]}.
+#' }
+#'
+#' \strong{The beta branch matches quantiles rather than a mode and a spread.}
+#' Section 5.3 of the specification names \code{\link{beta_from_mode_sd}}, and that
+#' helper cannot meet the rule: it requires both shapes above 1, so the density
+#' is zero at the floor and the 2.5th percentile is well inside the interval.
+#' Applied with the mode at \emph{e}/2 and the gaussian branch's spread it
+#' returns a 2.5th percentile of 0.18\emph{e}, which on the audit's flat
+#' designs sits above the true \code{bot} in every one of the 75 bounded cells
+#' at \code{f36}, and again at \code{f02}, under each prior type --- where the
+#' fixed \code{beta(2, 5)} of the \code{"uninformative"} set excludes the truth
+#' in none of them. Fixing \code{shape1} at 1 instead gives a density that is
+#' positive and finite at the floor, leaves \code{shape2} determined by the
+#' 97.5th percentile alone, and excludes the truth in none of those cells
+#' either. The governing sentence above is the contract and
+#' the helper was the suggested mechanism, so the sentence is what is met. The
+#' measurement is in \code{notes/prior_audit.md} part 5.
+#'
+#' \strong{The cap in \code{\link{regularizing_entry}} is deliberately not
+#' applied.} That cap holds a regularizing spread at or below the uninformative
+#' width, which is the invariant a user selecting that set is entitled to. The
+#' entry built here is wider than both released sets by construction, since that
+#' width is the whole point: #386 measured the prior CDF at the true \code{bot}
+#' at 6.43e-14 under \code{"uninformative"} and 2.30e-90 under
+#' \code{"regularizing"} on its flattest design. So this is a separate
+#' construction rather than a fourth branch of that function.
+#'
+#' @param branch One of \code{"normal"}, \code{"gamma"} or \code{"beta"}.
+#' @param endpoint The mean response at the highest predictor level, strictly
+#' positive and on the link scale.
+#'
+#' @return A \code{\link[base]{character}} string of length 1, a \pkg{brms}
+#' prior string.
+#'
+#' @importFrom stats qnorm
+#'
+#' @noRd
+unobserved_bot_entry <- function(branch, endpoint) {
+  half <- endpoint / 2
+  switch(
+    branch,
+    normal = paste0("normal(", signif(half, 6), ", ",
+                    signif(endpoint / (2 * qnorm(0.975)), 6), ")"),
+    gamma = paste0("gamma(2, ", signif(1 / (half / 2), 6), ")"),
+    beta = {
+      # qbeta(p, 1, b) is 1 - (1 - p)^(1/b), so the shape whose 97.5th
+      # percentile is the endpoint mean is log(0.025) / log(1 - e).
+      shape2 <- log(0.025) / log(1 - endpoint)
+      if (!is.finite(shape2) || shape2 <= 0) {
+        # Only reachable where the endpoint mean is at or above 1, which
+        # response_link_scale() puts a bounded response strictly inside. The
+        # mode-and-spread construction is well defined there and is used rather
+        # than an error being raised from inside prior construction.
+        pars <- beta_from_mode_sd(min(half, 0.5),
+                                  endpoint / (2 * qnorm(0.975)))
+        paste0("beta(", signif(pars[["shape1"]], 6), ", ",
+               signif(pars[["shape2"]], 6), ")")
+      } else {
+        paste0("beta(1, ", signif(shape2, 6), ")")
+      }
+    },
+    stop("Unknown prior branch \"", branch, "\".", call. = FALSE)
+  )
+}
+
+#' The endpoint mean the unobserved-asymptote bot prior is built from
+#'
+#' @details \code{\link{regularizing_location}}'s \code{"bot"} anchor, guarded
+#' so that the entry is well formed where the endpoint group is entirely at the
+#' floor. A tenth of the smallest positive observation stands in there, which is
+#' the device the released \code{"uninformative"} gamma entry already uses to
+#' keep its rate finite and which \code{\link{regularizing_location}} uses on
+#' its own zero-bounded branch. Where the response has no positive observation
+#' at all there is no scale between the floor and the endpoint, and the
+#' declaration is refused rather than met with an arbitrary one.
+#'
+#' @inheritParams regularizing_location
+#' @param zero_bounded Passed through to \code{\link{regularizing_location}}.
+#'
+#' @return A \code{\link[base]{numeric}} vector of length 1, strictly positive.
+#'
+#' @noRd
+unobserved_endpoint_mean <- function(predictor, response, zero_bounded) {
+  e <- regularizing_location(predictor, response, "bot",
+                             zero_bounded = zero_bounded)[["location"]]
+  if (!is.finite(e) || e <= 0) {
+    pos <- response[is.finite(response) & response > 0]
+    e <- if (length(pos) > 0) min(pos) / 10 else NA_real_
+  }
+  if (!is.finite(e) || e <= 0) {
+    stop(asymptote_floor_error(
+      paste0("the response holds no value above that floor, so there is no",
+             " interval to place it on.")
+    ), call. = FALSE)
+  }
+  e
 }
 
 #' The regularizing prior for one response-scaled parameter
@@ -1061,6 +1279,10 @@ predictor_prior <- function(predictor, prior_type = "uninformative",
 #' @param family A \code{\link[stats]{family}} function.
 #' @param predictor The predictor variable for the NEC model fit.
 #' @param response The response variable for the NEC model fit.
+#' @param asymptote_observed A \code{\link[base]{logical}}. \code{FALSE}
+#' declares that the highest predictor level did not reach the lower asymptote,
+#' which replaces the \code{bot} entry of whichever set \code{prior_type}
+#' selected with the construction \code{\link{unobserved_bot_entry}} describes.
 #' @param prior_predictor The predictor the \code{nec} and \code{ec50} prior is
 #' built from. Defaults to \code{predictor}, and differs from
 #' it only for the two blocks of a hurdle or zero-inflated fit, each of which is
@@ -1075,6 +1297,7 @@ predictor_prior <- function(predictor, prior_type = "uninformative",
 #' @noRd
 define_prior <- function(model, family, predictor, response,
                          prior_type = "uninformative",
+                         asymptote_observed = TRUE,
                          model_survival = NULL, disp_spec = NULL,
                          group_spec = NULL, prior_predictor = NULL,
                          predictor_scale = "auto") {
@@ -1096,6 +1319,8 @@ define_prior <- function(model, family, predictor, response,
   if (is_hurdle_family(family)) {
     hurdle_priors <- define_hurdle_prior(model, family, predictor, response,
                                          prior_type = prior_type,
+                                         asymptote_observed =
+                                           asymptote_observed,
                                          model_survival = model_survival,
                                          prior_predictor = prior_predictor,
                                          predictor_scale = predictor_scale)
@@ -1295,6 +1520,34 @@ define_prior <- function(model, family, predictor, response,
                  binomial = u_b_b,
                  "beta_binomial" = u_b_b,
                  beta = u_b_b)
+  }
+  # The declaration replaces the bot entry of whichever set produced it, rather
+  # than being a third value of prior_type. prior_type selects how strongly to
+  # regularise a design assumed complete; whether the design is complete is an
+  # orthogonal question, so a user with an incomplete design keeps the
+  # regularizing set for every other parameter. Written after both branches for
+  # the same reason: one adjustment applied to whichever entry was built, not
+  # the same adjustment written twice. See #394 and section 5.2 of
+  # notes/tasks/386-incomplete-designs-claude.md.
+  #
+  # Raised here for get_priors() and amend(); bnec() and bnec_group() refuse a
+  # response with no derivable floor before their loops, for the reason recorded
+  # against check_complete_cases() in R/bnec.R.
+  if (!asymptote_observed) {
+    floor_val <- asymptote_floor(family, response)
+    if (!is.finite(floor_val)) {
+      stop(asymptote_floor_error(no_floor_reason(family)), call. = FALSE)
+    }
+    branch <- if (gamma_scaled) {
+      "gamma"
+    } else if (identical(fam_tag, "gaussian")) {
+      "normal"
+    } else {
+      "beta"
+    }
+    y_b_prs[fam_tag] <- unobserved_bot_entry(
+      branch, unobserved_endpoint_mean(predictor, response, gamma_scaled)
+    )
   }
   # One construction for nec and ec50, on whichever scale the predictor was
   # supplied on. See predictor_prior() for why, and #302 for the measurements.
@@ -1740,6 +1993,7 @@ define_group_prior <- function(group_spec, predictor, response,
 #' @noRd
 define_hurdle_prior <- function(model, family, predictor, response,
                                 prior_type = "uninformative",
+                                asymptote_observed = TRUE,
                                 model_survival = NULL,
                                 prior_predictor = NULL,
                                 predictor_scale = "auto") {
@@ -1757,14 +2011,21 @@ define_hurdle_prior <- function(model, family, predictor, response,
   # (Gamma for hurdle_gamma, Beta for zero_inflated_beta), built from the
   # non-zeros only -- including the zeros would drag the top and bot quantiles
   # well below the real control level.
+  # The declaration reaches both blocks. Each is a curve of its own with its own
+  # lower asymptote, and a design that stopped before the response block's
+  # asymptote stopped before the survival block's as well, so a declaration that
+  # applied to one only would leave the other's bot prior stating a precision
+  # the design does not supply.
   mu_priors <- define_prior(model, hurdle_mu_family(family),
                             parts$mu$x, parts$mu$y, prior_type = prior_type,
+                            asymptote_observed = asymptote_observed,
                             prior_predictor = prior_predictor,
                             predictor_scale = predictor_scale)
   # second block: reuse the bernoulli/identity defaults on the proportion
   # non-zero, then rename every non-linear parameter into its namespace.
   hu_priors <- define_prior(model_survival, bernoulli(link = "identity"),
                             parts$hu$x, parts$hu$y, prior_type = prior_type,
+                            asymptote_observed = asymptote_observed,
                             prior_predictor = prior_predictor,
                             predictor_scale = predictor_scale)
   hu_priors$nlpar <- ifelse(nzchar(hu_priors$nlpar),

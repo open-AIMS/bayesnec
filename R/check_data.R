@@ -664,7 +664,11 @@ check_response_flattened <- function(data, family, group = NULL,
       " prior_type.",
       " Inspect the entries with get_priors() and",
       " supply scientifically justified ones through the prior argument where",
-      " information beyond the design is available."
+      " information beyond the design is available.",
+      " Where the design did stop before the asymptote, declare it with",
+      " asymptote_observed = FALSE, which spans the bot prior from the floor",
+      " of the response to the mean at the highest predictor level and widens",
+      " the initial-value search to match."
     )
   }
   if (length(untestable) > 0) {
@@ -737,6 +741,108 @@ uses_response_range_defaults <- function(prior, models, family,
   }
   out
 }
+
+#' Act on a declaration that the lower asymptote was not observed
+#'
+#' \code{asymptote_observed = FALSE} needs a floor --- the smallest value the
+#' mean can take --- and there are responses for which none can be derived. This
+#' refuses those, and reports a model set that mixes equations estimating a
+#' lower asymptote with equations asserting the response falls to that floor.
+#'
+#' Both are properties of the data, the family and the model set together, fixed
+#' for the whole call, so they are raised here and called once from
+#' \code{\link{bnec}} before its model loop and once from
+#' \code{\link{bnec_group}} before its level loop. \code{\link{define_prior}}
+#' keeps the refusal as the backstop for \code{\link{get_priors}} and
+#' \code{\link{amend}}, which do not come through either. The placement follows
+#' \code{\link{check_complete_cases}}, and matters for the same reason: from
+#' inside the model loop the refusal is printed once per equation and the call
+#' then ends on the generic all-models-failed advice, and from inside the level
+#' loop it arrives only after the earlier levels have compiled and sampled.
+#'
+#' The response is built the way \code{fit_bayesnec()} builds it --- divided by
+#' the trials or the \code{rate()} denominator, then put on the link scale ---
+#' so the floor is derived from the quantity the prior will be derived from.
+#' It is read from the model frame, before \code{\link{check_data}} has nudged a
+#' zero or a one off a boundary, and the two agree because a nudge leaves a
+#' value within its own support and the floor depends on the sign of the response and
+#' on the link alone. Both divisors are positive wherever the fit is meaningful,
+#' so neither changes that sign either.
+#'
+#' The model-set report states both branches, because the data decide neither.
+#' The region that would separate an equation estimating \code{bot} from one
+#' asserting the response reaches the floor is the region the design did not
+#' reach, so a model average over both is averaging over the assumption at
+#' issue with weights the data cannot inform. Whether the response can reach the
+#' floor is a property of the endpoint, which the user knows and the package
+#' cannot infer, so the set is reported and left alone.
+#'
+#' @param data A model frame, as returned by the \code{\link{model.frame}}
+#' method for a \code{\link{bayesnecformula}}.
+#' @param family The validated response family.
+#' @param models A \code{\link[base]{character}} vector of concrete equation
+#' names.
+#' @param asymptote_observed The declaration, as passed to \code{\link{bnec}}.
+#'
+#' @return \code{NULL}, invisibly. Called for its error and its message.
+#'
+#' @noRd
+check_asymptote_declaration <- function(data, family, models,
+                                        asymptote_observed = TRUE) {
+  if (isTRUE(asymptote_observed)) {
+    return(invisible(NULL))
+  }
+  y <- try(retrieve_var(data, "y_var", error = TRUE), silent = TRUE)
+  if (inherits(y, "try-error")) {
+    return(invisible(NULL))
+  }
+  if (family$family %in% c("binomial", "beta_binomial")) {
+    trials <- retrieve_var(data, "trials_var")
+    if (!is.null(trials)) {
+      y <- y / trials
+    }
+  }
+  denominator <- retrieve_var(data, "rate_var")
+  if (!is.null(denominator)) {
+    y <- y / denominator
+  }
+  # A hurdle or zero-inflated fit primes its mu block from the survivors, which
+  # is the subset define_hurdle_prior() reads, so the floor is derived from the
+  # same subset and on the same family.
+  floor_family <- if (is_hurdle_family(family)) {
+    hurdle_mu_family(family)
+  } else {
+    family
+  }
+  if (is_hurdle_family(family)) {
+    x <- try(retrieve_var(data, "x_var", error = TRUE), silent = TRUE)
+    if (inherits(x, "try-error")) {
+      return(invisible(NULL))
+    }
+    y <- split_hurdle_response(x, y)$mu$y
+  }
+  response <- try(response_link_scale(y, floor_family), silent = TRUE)
+  if (inherits(response, "try-error")) {
+    return(invisible(NULL))
+  }
+  floor_val <- asymptote_floor(floor_family, response)
+  if (!is.finite(floor_val)) {
+    stop(asymptote_floor_error(no_floor_reason(floor_family)), call. = FALSE)
+  }
+  bot_free <- intersect(models, mod_groups$bot_free)
+  bot_est <- setdiff(models, mod_groups$bot_free)
+  if (length(bot_free) > 0 && length(bot_est) > 0) {
+    message(
+      "This set mixes equations that estimate a lower asymptote with ones that",
+      " assert the response falls to ", signif(floor_val, 3), ". With the",
+      " asymptote unobserved the fit cannot distinguish them. Restrict the set",
+      " to mod_groups$bot_free if the response can reach ",
+      signif(floor_val, 3), " for this endpoint, or away from it if it cannot."
+    )
+  }
+  invisible(NULL)
+}
+
 #' Refuse a model frame from which incomplete cases were removed
 #'
 #' \code{stats::model.frame()} drops an incomplete case before \pkg{bayesnec}

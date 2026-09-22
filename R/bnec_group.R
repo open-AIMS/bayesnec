@@ -213,6 +213,7 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # cannot be read from is one bnec() is about to refuse, so the failure is
   # left to arrive from there and nothing is reported meanwhile.
   requested_models <- try(get_model_from_formula(formula), silent = TRUE)
+  level_sets <- character(0)
   if (!inherits(requested_models, "try-error")) {
     level_models <- setNames(lapply(levs, function(level) {
       suppressMessages(
@@ -236,8 +237,28 @@ bnec_group <- function(formula, data, group_var, family = NULL,
         pool_dispersion = is.null(parse_disp_term(formula))
       )
     }
+    # The union of the per-level sets, which is what a crossed model average
+    # covers: an equation check_models() keeps in any level is one some level
+    # will fit.
+    level_sets <- unique(unlist(level_models, use.names = FALSE))
   }
   dots[[".bayesnec_flatness_checked"]] <- TRUE
+  # Raised once over the whole response, before any level is fitted. Left to
+  # the inner bnec() calls, the refusal would arrive only after the levels
+  # before it had compiled and sampled, and the mixed-set report would be
+  # printed once per level. `mod_dat` holds the whole response, which is what
+  # decides whether a floor can be derived, and that answer cannot differ by
+  # level. Where the formula's set could not be read, level_sets is empty and
+  # only the refusal is reachable, which is the same resolution the flatness
+  # report above takes for that case.
+  declared <- if ("asymptote_observed" %in% names(dots)) {
+    dots[["asymptote_observed"]]
+  } else {
+    TRUE
+  }
+  check_asymptote_declaration(mod_dat, family, level_sets,
+                              asymptote_observed = declared)
+  dots[[".bayesnec_asymptote_checked"]] <- TRUE
   # The crossed weights are an outer product of the per-level weight vectors,
   # and that identity holds for pseudo-BMA only, so the method is checked in
   # crossed_group_weights() rather than merely documented -- multiplying
