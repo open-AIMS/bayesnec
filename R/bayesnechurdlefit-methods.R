@@ -256,7 +256,8 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
   # As in nsec.bayesnecfit: extrapolate resolves into the grid the curve is
   # searched on, and adds to x_range the refusal to narrow and the refusal of
   # an infinite limit.
-  lims <- extrapolate_limits(extrapolate, grid_x_range(object, x_range),
+  lims <- extrapolate_limits(extrapolate,
+                             searched_or_stored_bounds(object, x_range),
                              "NSEC")
   if (!is.null(lims)) {
     report_curve_read_lower_limit(object, lims)

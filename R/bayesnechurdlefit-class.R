@@ -113,7 +113,14 @@ hurdle_check_which <- function(which) {
 #' @param which Which component to return: \code{"combined"} (the default),
 #' \code{"growth"} or \code{"survival"}.
 #'
-#' @details The combined no-effect concentration is
+#' @details \code{extrapolate} is passed to each component and measured
+#' against that component's own prediction range. The growth component stops
+#' short of any concentration where nothing survived, so its range can end
+#' below the survival component's, and a limit between the two is an extension
+#' for one and inside the range for the other. Such a limit is refused, and
+#' the refusal names which component raised it.
+#'
+#' The combined no-effect concentration is
 #' \code{pmin(ne_growth, ne_survival)} evaluated per posterior draw. Below both
 #' thresholds the growth curve sits at \code{top} and the survival curve at its
 #' own control value, so their product is flat; it departs that plateau at
@@ -165,13 +172,25 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
   # the combined value.
   # Passed to each component rather than resolved here: the two components are
   # separate fits with prediction ranges of their own, and combine_censored_min
-  # below already reduces the two records to the bound true of both.
-  g_post <- without_censored_warning(
-    nec(object$growth, posterior = TRUE, extrapolate = extrapolate, ...)
-  )
-  s_post <- without_censored_warning(
-    nec(object$survival, posterior = TRUE, extrapolate = extrapolate, ...)
-  )
+  # below already reduces the two records to the bound true of both. Each
+  # refusal is re-raised under the name of the component that raised it,
+  # because the growth fit stops short of the survival fit wherever nothing
+  # survived at the top concentrations, so a limit between the two ranges is an
+  # extension for one component and inside the range for the other, and the
+  # error otherwise names a range without saying whose.
+  component_nec <- function(part, what) {
+    withCallingHandlers(
+      without_censored_warning(
+        nec(part, posterior = TRUE, extrapolate = extrapolate, ...)
+      ),
+      error = function(e) {
+        stop("The ", what, " component refused extrapolate: ",
+             conditionMessage(e), call. = FALSE)
+      }
+    )
+  }
+  g_post <- component_nec(object$growth, "growth")
+  s_post <- component_nec(object$survival, "survival")
   if (which == "growth") {
     out <- unlist(g_post)
     cens <- attr(g_post, "censored")

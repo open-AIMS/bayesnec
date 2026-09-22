@@ -157,16 +157,24 @@
   `TRUE` is an error naming the finite form. A finite limit applies to that set,
   releasing the threshold components by comparison and re-evaluating the
   curve-read ones on a grid extended to the limit, through the `x_range`
-  argument `nsec()` already takes, which needs no refit. A limit inside the
-  current range is an error rather than a silent tightening; narrow the range
-  with `x_range`. Two constraints are reported rather than corrected: where the
-  `nec` prior stored on the fit is itself bounded, a message names that bound,
-  because the posterior holds no draw beyond it and a wider limit returns the
-  same truncated posterior; and a curve-read component is measured from the
-  control, so a lower limit below the lowest observed concentration extends the
-  grid without extending the search. `nsec()` on a `brmsfit` or a `drc` fit
-  refuses `extrapolate`, because neither stores a prediction range to measure a
-  limit against (#392).
+  argument `nsec()` already takes, which needs no refit.
+
+  A limit inside the current range is an error rather than a silent tightening;
+  narrow the range with `x_range`. The range a limit is measured against is the
+  wider of two, the range the call will search and the prediction range the fit
+  stores, so `nec()` and `nsec()` refuse the same numbers. A limit on a fit with
+  no draw beyond either end re-evaluates nothing and returns the stored
+  estimate, because every draw was already identified inside the range the fit
+  used.
+
+  Two constraints are reported rather than corrected. Where the `nec` prior
+  stored on the fit is itself bounded, a message names that bound, because the
+  posterior holds no draw beyond it and a wider limit returns the same
+  truncated posterior. And a curve-read component is measured from the control,
+  so a lower limit below the lowest observed concentration extends the grid
+  without extending the search. `nsec()` on a `brmsfit` or a `drc` fit refuses
+  `extrapolate`, because neither stores a prediction range to measure a limit
+  against (#392).
 
 ## Behaviour changes to a fit with a `rate()` denominator
 

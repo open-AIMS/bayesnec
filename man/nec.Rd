@@ -33,7 +33,7 @@ return the estimated NEC value. Defaults to 0.5 (median) and 0.025 and
 censored. \code{FALSE}, the default, censors at the prediction range the fit
 was built on. \code{TRUE} removes the bound at both ends. A single number is
 an upper limit, and a pair of numbers is a lower and an upper limit, in that
-order. See the \emph{Extrapolation} section.}
+order. See the \emph{Extrapolation} section of \code{\link{nec}}.}
 
 \item{...}{Additional arguments passed to methods. \code{sig_val} and
 \code{resolution} are forwarded to \code{\link{nsec}} where a finite
@@ -120,12 +120,15 @@ displays, so under \code{crf(log(concentration))} the limit is a
 concentration and not a log concentration.
 
 \code{TRUE} removes the bound at both ends. It is accepted only where every
-component of the reported estimate samples a NEC, which the fit records in
-\code{ne_type}. An NSEC is read off a fitted curve and a curve cannot be
-evaluated on an infinite grid, so where any component is an NSEC --- which
-includes the default \code{\link{bnec}} model set, because that set fits
-equations of both classes --- \code{TRUE} is an error naming the finite
-form.
+component of the reported estimate samples a NEC. An NSEC is read off a
+fitted curve and a curve cannot be evaluated on an infinite grid, so where
+any component is an NSEC --- which includes the default \code{\link{bnec}}
+model set, because that set fits equations of both classes --- \code{TRUE}
+is an error naming the finite form. For a single fit the class is the one
+recorded in \code{ne_type}, which takes both blocks of a joint two-block
+fit into account. For a model-averaged set it is read from each equation's
+name, which is where \code{\link{summary}} reads the label it prints, so
+the two cannot disagree about what the set is.
 
 A finite limit applies to both classes, by a different route for each. The
 threshold components are compared against it, which requires no further
@@ -134,11 +137,15 @@ The curve-read components are re-evaluated on a grid extended to it, through
 the \code{x_range} argument of \code{\link{nsec}}. That recomputes from the
 stored fit and needs no refit, but it does evaluate the curve once for each
 such equation, at a run time proportional to \code{resolution}. The
-re-evaluation uses the resolution of the grid the fit stored unless
-\code{resolution} is given, and it reads its control at the lowest observed
-concentration, so its numbers can differ in the last digits from the stored
-summary. A limit equal to the current bounds re-evaluates nothing and
-returns what \code{extrapolate = FALSE} returns.
+re-evaluation reuses the number of grid points the fit stored unless
+\code{resolution} is given, so over a wider range the grid is proportionally
+coarser, and it reads its control at the lowest observed concentration, so
+its numbers can differ in the last digits from the stored summary.
+
+Two requests re-evaluate nothing and return what \code{extrapolate = FALSE}
+returns: a limit equal to the current bounds, and any limit on a fit with no
+draw beyond either end, where every draw was identified inside the range the
+fit used and a wider grid has none left to identify.
 
 A limit inside the prediction range is an error rather than a silent
 tightening, because it would report an estimate as censored at a value the

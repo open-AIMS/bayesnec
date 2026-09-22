@@ -15,7 +15,7 @@
 #' censored. \code{FALSE}, the default, censors at the prediction range the fit
 #' was built on. \code{TRUE} removes the bound at both ends. A single number is
 #' an upper limit, and a pair of numbers is a lower and an upper limit, in that
-#' order. See the \emph{Extrapolation} section.
+#' order. See the \emph{Extrapolation} section of \code{\link{nec}}.
 #' @param ... Additional arguments passed to methods. \code{sig_val} and
 #' \code{resolution} are forwarded to \code{\link{nsec}} where a finite
 #' \code{extrapolate} limit requires a curve to be re-evaluated, and are
@@ -94,12 +94,15 @@
 #' concentration and not a log concentration.
 #'
 #' \code{TRUE} removes the bound at both ends. It is accepted only where every
-#' component of the reported estimate samples a NEC, which the fit records in
-#' \code{ne_type}. An NSEC is read off a fitted curve and a curve cannot be
-#' evaluated on an infinite grid, so where any component is an NSEC --- which
-#' includes the default \code{\link{bnec}} model set, because that set fits
-#' equations of both classes --- \code{TRUE} is an error naming the finite
-#' form.
+#' component of the reported estimate samples a NEC. An NSEC is read off a
+#' fitted curve and a curve cannot be evaluated on an infinite grid, so where
+#' any component is an NSEC --- which includes the default \code{\link{bnec}}
+#' model set, because that set fits equations of both classes --- \code{TRUE}
+#' is an error naming the finite form. For a single fit the class is the one
+#' recorded in \code{ne_type}, which takes both blocks of a joint two-block
+#' fit into account. For a model-averaged set it is read from each equation's
+#' name, which is where \code{\link{summary}} reads the label it prints, so
+#' the two cannot disagree about what the set is.
 #'
 #' A finite limit applies to both classes, by a different route for each. The
 #' threshold components are compared against it, which requires no further
@@ -108,11 +111,15 @@
 #' the \code{x_range} argument of \code{\link{nsec}}. That recomputes from the
 #' stored fit and needs no refit, but it does evaluate the curve once for each
 #' such equation, at a run time proportional to \code{resolution}. The
-#' re-evaluation uses the resolution of the grid the fit stored unless
-#' \code{resolution} is given, and it reads its control at the lowest observed
-#' concentration, so its numbers can differ in the last digits from the stored
-#' summary. A limit equal to the current bounds re-evaluates nothing and
-#' returns what \code{extrapolate = FALSE} returns.
+#' re-evaluation reuses the number of grid points the fit stored unless
+#' \code{resolution} is given, so over a wider range the grid is proportionally
+#' coarser, and it reads its control at the lowest observed concentration, so
+#' its numbers can differ in the last digits from the stored summary.
+#'
+#' Two requests re-evaluate nothing and return what \code{extrapolate = FALSE}
+#' returns: a limit equal to the current bounds, and any limit on a fit with no
+#' draw beyond either end, where every draw was identified inside the range the
+#' fit used and a wider grid has none left to identify.
 #'
 #' A limit inside the prediction range is an error rather than a silent
 #' tightening, because it would report an estimate as censored at a value the
@@ -193,13 +200,16 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
   # prediction grid the fit stored, which is the value the record censors at
   # and the value ecx() censors at, so the whole package reports against one
   # number.
-  bounds <- ne_grid_bounds(object)
-  lims <- extrapolate_limits(extrapolate, bounds, necfit_ne_type(object),
-                             object$model)
+  # ne_grid_bounds() is left as a promise rather than assigned: under the
+  # default, extrapolate_limits() returns before forcing it, so a fit that
+  # stores no prediction grid raises nothing on the path every existing call
+  # takes. It is read again below, where the limits say it is needed.
+  lims <- extrapolate_limits(extrapolate, ne_grid_bounds(object),
+                             necfit_ne_type(object), object$model)
   if (!is.null(lims)) {
     dots <- list(...)
     nec_out <- extrapolated_necfit_ne(
-      object, lims, bounds,
+      object, lims, ne_grid_bounds(object),
       sig_val = if (is.null(dots$sig_val)) 0.01 else dots$sig_val,
       resolution = if (is.null(dots$resolution)) {
         stored_resolution(object)
@@ -208,6 +218,10 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
       }
     )
   }
+  # Read before xform, which for a general function need not preserve an
+  # attribute. It says whether the record below is the prediction range or a
+  # limit the caller named, which is what the report has to state.
+  range_label <- censoring_range_label(nec_out)
   # The record expand_nec() wrote when the posterior was realised, read rather
   # than derived. This is the whole point of #395: summary() reports object$ne,
   # which is the summary of exactly this vector, so a censoring report invented
@@ -225,7 +239,8 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
   # which returns NA for any draw that never reaches the reference. Either way
   # the draw keeps its rank and is given no value. See #39 and D15 ruling 3 for
   # why it is not given max(x_vec) instead.
-  warn_censored_draws(nec_out, ne_label(object), cens = cens)
+  warn_censored_draws(nec_out, ne_label(object), cens = cens,
+                      range_label = range_label)
   nec_estimate <- summarise_censored(unlist(nec_out), prob_vals, cens)
   names(nec_estimate) <- clean_names(nec_estimate)
   attr(nec_estimate, "toxicity_estimate") <- "nec"
@@ -274,13 +289,14 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
   # Validated against every equation in the set, not against the set's own
   # label: an infinite limit turns on whether each component samples a NEC,
   # and the label of a mixed set says only that at least one does not.
-  bounds <- ne_grid_bounds(object)
-  lims <- extrapolate_limits(extrapolate, bounds, manec_ne_types(object),
-                             object$success_models)
+  # As in nec.bayesnecfit(), left as a promise so that the default path reads
+  # nothing off the object.
+  lims <- extrapolate_limits(extrapolate, ne_grid_bounds(object),
+                             manec_ne_types(object), object$success_models)
   if (!is.null(lims)) {
     dots <- list(...)
     nec_out <- extrapolated_manec_ne(
-      object, lims, bounds,
+      object, lims, ne_grid_bounds(object),
       sig_val = if (is.null(dots$sig_val)) 0.01 else dots$sig_val,
       resolution = if (is.null(dots$resolution)) {
         stored_resolution(object)
@@ -289,6 +305,7 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
       }
     )
   }
+  range_label <- censoring_range_label(nec_out)
   # As above, and the record expand_manec() wrote is the weighted one: it was
   # assembled under the draw index that built the mixture, so its fraction is
   # the share of the model-averaged posterior that is censored rather than the
@@ -303,7 +320,8 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
   # contributes NSEC draws read off its own curve, so a set containing one whose
   # curve does not reach the reference is censored even where every threshold
   # equation in it is inside the range.
-  warn_censored_draws(nec_out, ne_label(object), cens = cens)
+  warn_censored_draws(nec_out, ne_label(object), cens = cens,
+                      range_label = range_label)
   nec_estimate <- summarise_censored(unlist(nec_out), prob_vals, cens)
   names(nec_estimate) <- clean_names(nec_estimate)
   attr(nec_estimate, "toxicity_estimate") <- "nec"

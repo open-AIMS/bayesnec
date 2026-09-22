@@ -44,7 +44,7 @@ censored. \code{FALSE}, the default, censors at the ends of the prediction
 grid. A single number is an upper limit, and a pair of numbers is a lower
 and an upper limit, in that order; the grid is extended to reach them.
 \code{TRUE} is refused here, because every NSEC is read off a fitted curve.
-See the \emph{Extrapolation} section.}
+See the \emph{Extrapolation} section of \code{\link{nsec}}.}
 
 \item{...}{Further arguments to pass to class specific methods.}
 

@@ -305,16 +305,39 @@ test_that("nsec refuses an infinite limit and extends a finite one", {
   expect_error(nsec(f, extrapolate = TRUE), "samples a NEC")
   narrow <- suppressWarnings(nsec(f, x_range = c(0.0324, 0.9)))
   wide <- suppressMessages(suppressWarnings(
-    nsec(f, x_range = c(0.0324, 0.9), extrapolate = 3)
+    nsec(f, x_range = c(0.0324, 0.9), extrapolate = 5)
   ))
   n_narrow <- attr(narrow, "censored_summary")$n_above
   expect_gt(n_narrow, 0)
-  # The curve is re-evaluated out to 3, so draws that had not reached the
+  # The curve is re-evaluated out to 5, so draws that had not reached the
   # reference by 0.9 are identified and the fraction falls.
   expect_lt(sum(attr(wide, "censored_summary")$n_above, 0), n_narrow)
   expect_error(suppressMessages(nsec(f, x_range = c(0.0324, 0.9),
                                      extrapolate = 0.5)),
                "narrow it with x_range instead")
+})
+
+test_that("a limit is measured against the wider of two ranges", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  f <- suppressMessages(suppressWarnings(pull_out(manec_example,
+                                                  model = "ecx4param")))
+  # nsec() with a narrow x_range searches that range, but the fit itself stores
+  # a grid reaching 3.22. A limit between the two would censor the estimate
+  # inside the grid the fit carries, which is the silent tightening the
+  # argument exists to refuse, so it is measured against the wider of the two
+  # and nec() and nsec() refuse the same numbers.
+  stored <- bayesnec:::ne_grid_bounds(f)
+  expect_gt(stored$upper, 3)
+  expect_error(suppressMessages(nsec(f, x_range = c(0.0324, 0.9),
+                                     extrapolate = 3)),
+               "which ends at 3.2205")
+  threshold <- suppressMessages(suppressWarnings(
+    pull_out(manec_example, model = "nec4param")
+  ))
+  expect_error(suppressMessages(nec(threshold, extrapolate = 3)),
+               "which ends at 3.2205")
 })
 
 test_that("a lower limit below the control is accepted and reported", {
@@ -329,4 +352,173 @@ test_that("a lower limit below the control is accepted and reported", {
     suppressWarnings(nsec(f, extrapolate = c(0.001, 5))),
     "search cannot begin below"
   )
+})
+
+# A set of two threshold equations, assembled from one packaged fit so that the
+# pure-NEC branch can be exercised without fitting a second model. The two
+# names are both in mod_groups$nec, which is what the branch reads; the draws
+# behind them are the same fit's, which is all the branch does read.
+pure_nec_stub <- function(posterior = as.numeric(manec_example$w_ne_posterior),
+                          index = TRUE) {
+  f <- manec_example$mod_fits[["nec4param"]]
+  n <- length(posterior)
+  out <- list(
+    success_models = c("nec4param", "nec3param"),
+    mod_fits = list(nec4param = f, nec3param = f),
+    w_ne_posterior = posterior,
+    w_pred_vals = manec_example$w_pred_vals,
+    sample_size = n
+  )
+  if (index) {
+    half <- floor(n / 2)
+    out$w_draw_index <- list(nec4param = seq_len(half),
+                             nec3param = seq.int(half + 1, n))
+  }
+  attr(out$w_ne_posterior, "censored") <- bayesnec:::censoring_record(
+    3.22051966293556, 0.03234801324009,
+    posterior >= 3.22051966293556, posterior <= 0.03234801324009
+  )
+  bayesnec:::allot_class(out, c("bayesmanecfit", "bnecfit"))
+}
+
+test_that("a set of threshold equations is released without a curve", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # Half the draws pushed above the top of the grid, so the stored record is
+  # censored and the branch has something to release. Nothing here reads a
+  # curve, which is what makes an infinite limit available at all.
+  post <- as.numeric(manec_example$w_ne_posterior)
+  post[1:50] <- post[1:50] + 3
+  m <- pure_nec_stub(post)
+  expect_identical(bayesnec:::manec_ne_types(m), c("NEC", "NEC"))
+  bounds <- bayesnec:::ne_grid_bounds(m)
+  lims <- bayesnec:::extrapolate_limits(TRUE, bounds,
+                                        bayesnec:::manec_ne_types(m),
+                                        m$success_models)
+  released <- suppressMessages(
+    bayesnec:::extrapolated_manec_ne(m, lims, bounds, 0.01, 200)
+  )
+  # Every draw keeps its value and none is censored, so the summary is the
+  # ordinary one of the whole posterior.
+  expect_false(bayesnec:::has_censoring(attr(released, "censored")))
+  expect_identical(as.numeric(released), post)
+  # The stored record censored the fifty that were pushed out.
+  expect_identical(sum(attr(m$w_ne_posterior, "censored")$above), 50L)
+})
+
+test_that("a draw with no value is refused rather than dropped in silence", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # The case manec_ne_types() cannot see: a set of joint two-block fits whose
+  # survival blocks hold a smooth equation is named NEC by the equation name,
+  # and its combined estimate is read off a curve. Releasing such a draw by
+  # comparison would quietly restore the deleted-draw summary.
+  post <- as.numeric(manec_example$w_ne_posterior)
+  post[1:40] <- post[1:40] + 3
+  post[c(5, 11)] <- NA_real_
+  m <- pure_nec_stub(post)
+  bounds <- bayesnec:::ne_grid_bounds(m)
+  lims <- bayesnec:::extrapolate_limits(20, bounds, c("NEC", "NEC"),
+                                        m$success_models)
+  expect_error(
+    suppressMessages(
+      bayesnec:::extrapolated_manec_ne(m, lims, bounds, 0.01, 200)
+    ),
+    "has no value for 2 of"
+  )
+})
+
+test_that("a set with no stored draw index is rebuilt under one index", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # An object stored before the weighted draw index was kept. pull_draw_index()
+  # regenerates a different draw, so slicing the stored mixture for the
+  # threshold components would put those draws beside curve-read draws taken
+  # under the new one. The mixture is rebuilt under the one index instead.
+  m <- truncated_manec_fit()
+  legacy <- m
+  legacy$w_draw_index <- list()
+  rebuilt <- suppressMessages(suppressWarnings(
+    nec(legacy, extrapolate = 3, posterior = TRUE)
+  ))
+  expect_length(as.numeric(rebuilt), length(m$w_ne_posterior))
+  again <- suppressMessages(suppressWarnings(
+    nec(legacy, extrapolate = 3, posterior = TRUE)
+  ))
+  expect_identical(as.numeric(rebuilt), as.numeric(again))
+})
+
+test_that("extrapolating a fit with nothing censored changes no number", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # Every draw was identified inside the range the fit used, so a wider bound
+  # censors none of them and a wider grid has none left to identify. Measured
+  # before this was short-circuited: the rebuilt mixture read 1.449 (0.808,
+  # 1.528) against the stored 1.450 (0.749, 1.527), a lower bound eight per
+  # cent away on a fit with nothing censored.
+  default <- suppressMessages(suppressWarnings(nec(manec_example)))
+  wider <- suppressMessages(suppressWarnings(nec(manec_example,
+                                                 extrapolate = 5)))
+  expect_identical(as.numeric(default), as.numeric(wider))
+  expect_null(attr(wider, "censored_summary"))
+})
+
+test_that("the censoring report names the limit rather than the range", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  fit <- truncated_nec_fit()
+  plain <- tryCatch(nec(fit), bayesnec_censored = conditionMessage)
+  expect_true(grepl("bound of the prediction range", plain, fixed = TRUE))
+  # 1.45 is the limit the caller named, and the prediction range ends at 0.9,
+  # so calling 1.45 the end of that range would state the wrong number twice.
+  moved <- suppressMessages(
+    tryCatch(nec(fit, extrapolate = 1.45), bayesnec_censored = conditionMessage)
+  )
+  expect_true(grepl("bound of the extrapolation range", moved, fixed = TRUE))
+  expect_true(grepl("1.45", moved, fixed = TRUE))
+  # A limit that extends nothing leaves the record and the wording alone.
+  bounds <- bayesnec:::ne_grid_bounds(fit)
+  unmoved <- suppressMessages(tryCatch(
+    nec(fit, extrapolate = c(bounds$lower, bounds$upper)),
+    bayesnec_censored = conditionMessage
+  ))
+  expect_true(grepl("bound of the prediction range", unmoved, fixed = TRUE))
+})
+
+test_that("a grid point outside the fitted domain is left out of the bounds", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # expand_nec() drops such a point from its own bounds, because an x_range
+  # reaching zero under crf(log(x)) puts -Inf at the foot of the fitted grid.
+  # Filtering the recorded grid alone kept the zero, and the lower limit of a
+  # single-number extrapolate defaults to this bound, so the fit refused every
+  # upper limit for naming a value the caller had not given.
+  f <- suppressMessages(suppressWarnings(pull_out(manec_example,
+                                                  model = "nec4param")))
+  logged <- f
+  logged$bayesnecformula <- bayesnecformula(y ~ crf(log(x), "nec4param"))
+  logged$pred_vals$data$x <- c(0, logged$pred_vals$data$x[-1])
+  bounds <- bayesnec:::ne_grid_bounds(logged)
+  expect_gt(bounds$lower, 0)
+  expect_silent(
+    bayesnec:::fitted_extrapolate_limits(
+      list(lower = bounds$lower, upper = 20), bounds, logged$bayesnecformula
+    )
+  )
+})
+
+test_that("a fit that stores no prediction range refuses a limit", {
+  expect_null(bayesnec:::ne_grid_bounds(list(pred_vals = list(data = NULL))))
+  expect_error(
+    bayesnec:::extrapolate_limits(5, NULL, "NEC"),
+    "stores none"
+  )
+  # The default forces none of it, so an object with no grid is unaffected.
+  expect_null(bayesnec:::extrapolate_limits(FALSE, stop("not forced"), "NEC"))
 })

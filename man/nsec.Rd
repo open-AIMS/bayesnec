@@ -45,7 +45,7 @@ censored. \code{FALSE}, the default, censors at the ends of the prediction
 grid. A single number is an upper limit, and a pair of numbers is a lower
 and an upper limit, in that order; the grid is extended to reach them.
 \code{TRUE} is refused here, because every NSEC is read off a fitted curve.
-See the \emph{Extrapolation} section.}
+See the \emph{Extrapolation} section of \code{\link{nsec}}.}
 
 \item{...}{Further arguments to pass to class specific methods.}
 
@@ -196,14 +196,14 @@ range is an error rather than a silent tightening, because it would report
 an estimate as censored at a value the fit had no trouble identifying. Use
 \code{x_range} to narrow the range.
 
-The range a limit is measured against is the range this call will search,
-which is \code{x_range} where one is given and the observed range of the
-predictor otherwise. That is not always the grid the fit itself stored: a
-fit built with an \code{x_range} of its own carries that grid, while
-\code{nsec} with no \code{x_range} returns to the observed range. Where the
-two differ, \code{\link{nec}} measures against the stored grid and
-\code{nsec} against this one, so the same number can be accepted by one and
-refused by the other.
+A limit is measured against the wider of two ranges: the one this call will
+search, which is \code{x_range} where one is given and the observed range
+of the predictor otherwise, and the prediction range the fit itself stores.
+The two are the same for a fit built with no \code{x_range} of its own.
+They differ for a fit built over a grid above the data, and a limit between
+them would report the estimate as censored inside the grid the fit was
+built on, so both have to be cleared. \code{\link{nec}} measures against
+the same pair, so the two functions accept and refuse the same numbers.
 
 A lower limit extends the grid but not the search. The reference is a
 quantile of the control posterior, so the control is where the search

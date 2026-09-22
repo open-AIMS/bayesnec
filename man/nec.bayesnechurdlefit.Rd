@@ -32,7 +32,7 @@ return the estimated NEC value. Defaults to 0.5 (median) and 0.025 and
 censored. \code{FALSE}, the default, censors at the prediction range the fit
 was built on. \code{TRUE} removes the bound at both ends. A single number is
 an upper limit, and a pair of numbers is a lower and an upper limit, in that
-order. See the \emph{Extrapolation} section.}
+order. See the \emph{Extrapolation} section of \code{\link{nec}}.}
 
 \item{which}{Which component to return: \code{"combined"} (the default),
 \code{"growth"} or \code{"survival"}.}
@@ -50,6 +50,13 @@ and lower credible interval bounds.
 Extracts the predicted NEC value from a \code{\link{bayesnechurdlefit}}
 }
 \details{
+\code{extrapolate} is passed to each component and measured
+against that component's own prediction range. The growth component stops
+short of any concentration where nothing survived, so its range can end
+below the survival component's, and a limit between the two is an extension
+for one and inside the range for the other. Such a limit is refused, and
+the refusal names which component raised it.
+
 The combined no-effect concentration is
 \code{pmin(ne_growth, ne_survival)} evaluated per posterior draw. Below both
 thresholds the growth curve sits at \code{top} and the survival curve at its
