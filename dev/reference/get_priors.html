@@ -108,6 +108,7 @@ fitted.</p>
 <span>  <span class="va">data</span>,</span>
 <span>  family <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  prior_type <span class="op">=</span> <span class="st">"uninformative"</span>,</span>
+<span>  asymptote_observed <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  model_survival <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  predictor_scale <span class="op">=</span> <span class="st">"auto"</span>,</span>
 <span>  <span class="va">...</span></span>
@@ -144,6 +145,14 @@ the way <code><a href="bnec.html">bnec</a></code> would.</p></dd>
 <dt id="arg-prior-type">prior_type<a class="anchor" aria-label="anchor" href="#arg-prior-type"></a></dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></code> string, either
 <code>"uninformative"</code> (the default) or <code>"regularizing"</code>. See
+<code><a href="bnec.html">bnec</a></code>.</p></dd>
+
+
+<dt id="arg-asymptote-observed">asymptote_observed<a class="anchor" aria-label="anchor" href="#arg-asymptote-observed"></a></dt>
+<dd><p>A <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></code> declaring whether
+the highest predictor level reached the lower asymptote of the curve.
+<code>FALSE</code> replaces the <code>bot</code> entry, which is how the entries a fit
+under that declaration would use can be read without fitting. See
 <code><a href="bnec.html">bnec</a></code>.</p></dd>
 
 
