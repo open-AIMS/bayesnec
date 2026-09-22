@@ -119,7 +119,11 @@
 #' Two requests re-evaluate nothing and return what \code{extrapolate = FALSE}
 #' returns: a limit equal to the current bounds, and any limit on a fit with no
 #' draw beyond either end, where every draw was identified inside the range the
-#' fit used and a wider grid has none left to identify.
+#' fit used and a wider grid has none left to identify. An object fitted before
+#' version 2.2.0 records nothing about which of its draws lie beyond the range,
+#' so it takes the second of those whatever its draws are, and
+#' \code{extrapolate} does nothing to it. Refit it, or rebuild the set with
+#' \code{\link{amend}}, to extrapolate from it.
 #'
 #' A limit inside the prediction range is an error rather than a silent
 #' tightening, because it would report an estimate as censored at a value the
@@ -208,8 +212,9 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
                              necfit_ne_type(object), object$model)
   if (!is.null(lims)) {
     dots <- list(...)
+    bounds <- ne_grid_bounds(object)
     nec_out <- extrapolated_necfit_ne(
-      object, lims, ne_grid_bounds(object),
+      object, lims, bounds,
       sig_val = if (is.null(dots$sig_val)) 0.01 else dots$sig_val,
       resolution = if (is.null(dots$resolution)) {
         stored_resolution(object)
@@ -222,6 +227,7 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
   # attribute. It says whether the record below is the prediction range or a
   # limit the caller named, which is what the report has to state.
   range_label <- censoring_range_label(nec_out)
+  attr(nec_out, "extrapolated") <- NULL
   # The record expand_nec() wrote when the posterior was realised, read rather
   # than derived. This is the whole point of #395: summary() reports object$ne,
   # which is the summary of exactly this vector, so a censoring report invented
@@ -295,8 +301,9 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
                              manec_ne_types(object), object$success_models)
   if (!is.null(lims)) {
     dots <- list(...)
+    bounds <- ne_grid_bounds(object)
     nec_out <- extrapolated_manec_ne(
-      object, lims, ne_grid_bounds(object),
+      object, lims, bounds,
       sig_val = if (is.null(dots$sig_val)) 0.01 else dots$sig_val,
       resolution = if (is.null(dots$resolution)) {
         stored_resolution(object)
@@ -306,6 +313,7 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
     )
   }
   range_label <- censoring_range_label(nec_out)
+  attr(nec_out, "extrapolated") <- NULL
   # As above, and the record expand_manec() wrote is the weighted one: it was
   # assembled under the draw index that built the mixture, so its fraction is
   # the share of the model-averaged posterior that is censored rather than the

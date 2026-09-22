@@ -196,14 +196,15 @@ range is an error rather than a silent tightening, because it would report
 an estimate as censored at a value the fit had no trouble identifying. Use
 \code{x_range} to narrow the range.
 
-A limit is measured against the wider of two ranges: the one this call will
-search, which is \code{x_range} where one is given and the observed range
-of the predictor otherwise, and the prediction range the fit itself stores.
-The two are the same for a fit built with no \code{x_range} of its own.
-They differ for a fit built over a grid above the data, and a limit between
-them would report the estimate as censored inside the grid the fit was
-built on, so both have to be cleared. \code{\link{nec}} measures against
-the same pair, so the two functions accept and refuse the same numbers.
+A limit is measured against the range this call would otherwise use.
+Where \code{x_range} is given, that is the range, at both ends: it is a
+deliberate narrowing, and \code{extrapolate} extends from it rather than
+discarding it. Where it is not, the range is the wider of the observed range
+of the predictor and the prediction range the fit itself stores, which
+differ for a fit built over a grid above the data; a limit between them
+would report the estimate as censored inside the grid the fit was built on,
+so both have to be cleared, and \code{\link{nec}} refuses the same
+numbers.
 
 A lower limit extends the grid but not the search. The reference is a
 quantile of the control posterior, so the control is where the search

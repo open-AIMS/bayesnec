@@ -161,11 +161,14 @@
 
   A limit inside the current range is an error rather than a silent tightening;
   narrow the range with `x_range`. The range a limit is measured against is the
-  wider of two, the range the call will search and the prediction range the fit
-  stores, so `nec()` and `nsec()` refuse the same numbers. A limit on a fit with
-  no draw beyond either end re-evaluates nothing and returns the stored
+  range the call would otherwise use: `x_range` where one is given, and
+  otherwise the wider of the observed range and the prediction range the fit
+  stores, so `nec()` and `nsec()` refuse the same numbers. A limit on a fit
+  with no draw beyond either end re-evaluates nothing and returns the stored
   estimate, because every draw was already identified inside the range the fit
-  used.
+  used; an object fitted before this version records nothing about which of its
+  draws lie beyond the range, so `extrapolate` does nothing to it and it has to
+  be refitted or rebuilt with `amend()`.
 
   Two constraints are reported rather than corrected. Where the `nec` prior
   stored on the fit is itself bounded, a message names that bound, because the

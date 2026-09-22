@@ -83,17 +83,27 @@ grid_x_range <- function(object, x_range) {
 
 #' The range a limit given to a curve-read estimator is measured against
 #'
-#' The wider of two: the range this call will search, and the prediction range
-#' the fit itself stores. They are the same for a fit built with no
-#' \code{x_range}, and they differ for one built with a grid above the data,
-#' where \code{\link{nsec}} with no \code{x_range} of its own returns to the
-#' observed range. Measured on a fit re-expanded with
-#' \code{x_range = c(0.0324, 8)}: the search range ends at 3.22, so
+#' The range the call would otherwise use, which is what \code{extrapolate}
+#' must not narrow.
+#'
+#' Where the caller named an \code{x_range}, that is the range, at both ends.
+#' They have chosen the range deliberately, and measuring against anything
+#' wider both discards their lower bound and refuses the pair that would keep
+#' it: \code{nsec(x_range = c(0.5, 0.9), extrapolate = 9)} searched from
+#' 0.0324 rather than 0.5 without saying so, and
+#' \code{extrapolate = c(0.5, 9)}, the form that states the intent, was
+#' refused for naming a lower limit inside a range the caller had already
+#' narrowed.
+#'
+#' Where they did not, it is the wider of the range this call will search and
+#' the prediction range the fit stores. Those differ for a fit built over a
+#' grid above the data, where \code{\link{nsec}} with no \code{x_range}
+#' returns to the observed range: measured on a fit re-expanded with
+#' \code{x_range = c(0.0324, 8)}, the search range ends at 3.22, so
 #' \code{extrapolate = 5} read against it alone was accepted and censored the
-#' estimate at 5, inside the grid the fit itself stores, which is the silent
-#' tightening the argument exists to refuse. Taking the wider of the two makes
-#' \code{\link{nec}} and \code{\link{nsec}} refuse the same numbers, which is
-#' what specification 4.6 asks for.
+#' estimate at 5, inside the grid the fit itself stores. Taking the wider of
+#' the two there makes \code{\link{nec}} and \code{\link{nsec}} refuse the
+#' same numbers, which is what specification 4.6 asks for.
 #'
 #' @param object A fit.
 #' @param x_range The caller's \code{x_range}.
@@ -103,6 +113,9 @@ grid_x_range <- function(object, x_range) {
 #' @noRd
 searched_or_stored_bounds <- function(object, x_range) {
   search <- grid_x_range(object, x_range)
+  if (!all(is.na(x_range))) {
+    return(search)
+  }
   stored <- ne_grid_bounds(object)
   if (is.null(stored)) {
     return(search)
@@ -216,8 +229,9 @@ extrapolate_limits <- function(extrapolate, bounds, ne_types,
 #' which is the scale \code{crf()} fitted (specification 4.8). A decreasing
 #' \code{crf()} takes the top of the recorded scale to the foot of the fitted
 #' one, so the two limits are transformed and then ordered rather than kept
-#' under the names they arrived with. An infinite recorded limit stays infinite, with its sign
-#' decided by the direction the finite grid bounds map in.
+#' under the names they arrived with. An infinite recorded limit stays
+#' infinite, with its sign decided by the direction the finite grid bounds map
+#' in.
 #'
 #' @param lims A pair of limits from \code{extrapolate_limits()}.
 #' @param bounds The current prediction range, on the recorded scale.
@@ -466,9 +480,6 @@ stored_resolution <- function(object) {
 extrapolated_necfit_ne <- function(object, lims, bounds, sig_val, resolution) {
   fitted_lims <- fitted_extrapolate_limits(lims, bounds,
                                            object$bayesnecformula)
-  report_bounded_ne_prior(
-    setNames(list(ne_prior_bounds(object$fit)), object$model), fitted_lims
-  )
   if (!extends_range(lims, bounds) ||
       !has_censoring(attr(object$ne_posterior, "censored"))) {
     # Two cases with one answer. The limits may be the prediction range, in
@@ -480,6 +491,13 @@ extrapolated_necfit_ne <- function(object, lims, bounds, sig_val, resolution) {
     # extrapolate = FALSE reports rather than a number recomputed for no gain.
     return(object$ne_posterior)
   }
+  # After the short-circuit, not before it. A call that returns the stored
+  # estimate bit for bit recomputed nothing and could not have reported
+  # anything different, so advice to refit with a wider prior bound had no
+  # bearing on the number beside it.
+  report_bounded_ne_prior(
+    setNames(list(ne_prior_bounds(object$fit)), object$model), fitted_lims
+  )
   if (identical(necfit_ne_type(object), "NEC")) {
     out <- object$ne_posterior
     check_releasable(as.numeric(out), object$model)
@@ -524,6 +542,33 @@ component_fit <- function(object, model) {
   allot_class(object$mod_fits[[model]], c("bayesnecfit", "bnecfit"))
 }
 
+#' One equation's stored threshold posterior, without expanding the component
+#'
+#' \code{expand_nec()} stores a single-block threshold posterior as
+#' \code{as_draws_df(fit)[["b_nec_Intercept"]]} and nothing else, so reading
+#' it back needs no expansion. Reaching it through \code{\link{pull_out}} paid
+#' for a discarded \code{posterior_epred()} over the grid, a per-draw root
+#' search, \code{dispersion()} and the \pkg{loo} weights, on the one path
+#' \code{extrapolate} takes for an object saved before the weighted draw index
+#' was kept.
+#'
+#' A joint two-block fit is the exception: its stored estimate is the per-draw
+#' minimum of two blocks, or a value read off the combined curve, neither of
+#' which is a single parameter. Those go through \code{\link{pull_out}}.
+#'
+#' @param object A \code{\link{bayesmanecfit}}.
+#' @param model A \code{\link[base]{character}} naming one equation.
+#'
+#' @return A \code{\link[base]{numeric}} vector of draws.
+#' @noRd
+component_ne_posterior <- function(object, model) {
+  fit <- object$mod_fits[[model]]$fit
+  if (!is_hurdle_family(fit$family)) {
+    return(as.numeric(as_draws_df(fit)[["b_nec_Intercept"]]))
+  }
+  as.numeric(suppressMessages(pull_out(object, model = model))$ne_posterior)
+}
+
 #' The model-averaged no-effect posterior, released to a pair of limits
 #'
 #' The threshold components are released by comparison and the curve-read ones
@@ -545,6 +590,16 @@ extrapolated_manec_ne <- function(object, lims, bounds, sig_val, resolution) {
   types <- manec_ne_types(object)
   formula <- object$mod_fits[[success[1]]]$bayesnecformula
   fitted_lims <- fitted_extrapolate_limits(lims, bounds, formula)
+  if (!extends_range(lims, bounds) ||
+      !has_censoring(attr(object$w_ne_posterior, "censored"))) {
+    # As in extrapolated_necfit_ne(). The second test also keeps a set whose
+    # stored weighted draw index predates #216 from being resampled where
+    # there is nothing to gain: on manec_example, which has no stored index and
+    # nothing censored, the rebuilt mixture read 1.449 (0.808, 1.528) against
+    # the stored 1.450 (0.749, 1.527).
+    return(object$w_ne_posterior)
+  }
+  # As in extrapolated_necfit_ne(), after the short-circuit.
   report_bounded_ne_prior(
     setNames(lapply(seq_along(success), function(i) {
       if (types[i] == "NEC") {
@@ -555,15 +610,6 @@ extrapolated_manec_ne <- function(object, lims, bounds, sig_val, resolution) {
     }), success),
     fitted_lims
   )
-  if (!extends_range(lims, bounds) ||
-      !has_censoring(attr(object$w_ne_posterior, "censored"))) {
-    # As in extrapolated_necfit_ne(). The second test also keeps a set whose
-    # stored weighted draw index predates #216 from being resampled where
-    # there is nothing to gain: on manec_example, which has no stored index and
-    # nothing censored, the rebuilt mixture read 1.449 (0.808, 1.528) against
-    # the stored 1.450 (0.749, 1.527).
-    return(object$w_ne_posterior)
-  }
   values <- object$w_ne_posterior
   if (all(types == "NEC")) {
     check_releasable(as.numeric(values), paste0(success, collapse = ", "))
@@ -599,9 +645,7 @@ extrapolated_manec_ne <- function(object, lims, bounds, sig_val, resolution) {
       part <- if (have_stored_index) {
         as.numeric(values[starts[i]:(starts[i] + lens[i] - 1)])
       } else {
-        as.numeric(
-          suppressMessages(pull_out(object, model = success[i]))$ne_posterior
-        )[idx]
+        component_ne_posterior(object, success[i])[idx]
       }
       check_releasable(part, success[i])
       attr(part, "censored") <- recensor_sampled(part, fitted_lims)

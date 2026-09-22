@@ -323,16 +323,26 @@ test_that("a limit is measured against the wider of two ranges", {
   }
   f <- suppressMessages(suppressWarnings(pull_out(manec_example,
                                                   model = "ecx4param")))
-  # nsec() with a narrow x_range searches that range, but the fit itself stores
-  # a grid reaching 3.22. A limit between the two would censor the estimate
-  # inside the grid the fit carries, which is the silent tightening the
-  # argument exists to refuse, so it is measured against the wider of the two
-  # and nec() and nsec() refuse the same numbers.
-  stored <- bayesnec:::ne_grid_bounds(f)
-  expect_gt(stored$upper, 3)
-  expect_error(suppressMessages(nsec(f, x_range = c(0.0324, 0.9),
-                                     extrapolate = 3)),
-               "which ends at 3.2205")
+  # With no x_range of its own, nsec() searches the observed range, which ends
+  # at 3.22, while this fit stores a grid reaching 8. A limit between the two
+  # would censor the estimate inside the grid the fit was built on, which is
+  # the silent tightening the argument exists to refuse, so with no x_range the
+  # limit is measured against the wider of the two and nec() and nsec() refuse
+  # the same numbers.
+  wide <- suppressMessages(suppressWarnings(bayesnec:::expand_and_assign_nec(
+    manec_example$mod_fits[["ecx4param"]],
+    manec_example$mod_fits[["ecx4param"]]$bayesnecformula,
+    model = "ecx4param",
+    x_range = c(min(manec_example$mod_fits[["ecx4param"]]$fit$data$x), 8),
+    resolution = 50
+  )))
+  expect_equal(bayesnec:::ne_grid_bounds(wide)$upper, 8)
+  expect_lt(bayesnec:::grid_x_range(wide, NA)$upper, 4)
+  expect_equal(bayesnec:::searched_or_stored_bounds(wide, NA)$upper, 8)
+  expect_error(suppressMessages(nsec(wide, extrapolate = 5)),
+               "which ends at 8")
+  expect_error(suppressMessages(nec(f, extrapolate = 5)),
+               "nec is not a parameter")
   threshold <- suppressMessages(suppressWarnings(
     pull_out(manec_example, model = "nec4param")
   ))
@@ -546,4 +556,120 @@ test_that("a component classed for nsec gives what pull_out gives", {
   )
   expect_identical(attributes(from_heavy), attributes(from_light))
   expect_identical(as.numeric(from_heavy), as.numeric(from_light))
+})
+
+test_that("a supplied x_range is the range at both ends", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # The caller chose the range, so extrapolate extends from it rather than from
+  # anything wider. Measured before this was so: extrapolate = 9 beside
+  # x_range = c(0.5, 0.9) searched from 0.0324, discarding the narrowing
+  # without saying so, and the pair that states the intent was refused for
+  # naming a lower limit inside a range the caller had already narrowed.
+  f <- suppressMessages(suppressWarnings(pull_out(manec_example,
+                                                  model = "ecx4param")))
+  expect_equal(
+    unlist(bayesnec:::searched_or_stored_bounds(f, c(0.5, 0.9))),
+    c(lower = 0.5, upper = 0.9)
+  )
+  single <- suppressMessages(suppressWarnings(
+    nsec(f, x_range = c(0.5, 0.9), extrapolate = 9)
+  ))
+  pair <- suppressMessages(suppressWarnings(
+    nsec(f, x_range = c(0.5, 0.9), extrapolate = c(0.5, 9))
+  ))
+  # The pair form is accepted and gives what the single-number form gives, so
+  # stating the lower limit is never punished.
+  expect_equal(as.numeric(single), as.numeric(pair), tolerance = 1e-12)
+  direct <- suppressWarnings(nsec(f, x_range = c(0.5, 9)))
+  expect_equal(as.numeric(single), as.numeric(direct), tolerance = 1e-12)
+  # With no x_range the stored grid still counts, which is what makes nec() and
+  # nsec() refuse the same numbers.
+  union <- bayesnec:::searched_or_stored_bounds(f, NA)
+  expect_equal(union$upper, bayesnec:::ne_grid_bounds(f)$upper)
+})
+
+test_that("a hurdle component error is relabelled only when it is one", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # The default names no extrapolate, so nothing on that path may be reported
+  # as a refusal of it. Measured before this was gated: a growth component
+  # holding an ecx-type equation reported "the growth component refused
+  # extrapolate: nec is not a parameter in ecx model types".
+  smooth <- suppressMessages(suppressWarnings(pull_out(manec_example,
+                                                       model = "ecx4param")))
+  obj <- structure(list(growth = smooth, survival = smooth),
+                   class = c("bayesnechurdlefit", "bnecfit"))
+  plain <- tryCatch(suppressMessages(nec(obj)), error = conditionMessage)
+  expect_match(plain, "not a parameter in ecx model types")
+  expect_false(grepl("refused extrapolate", plain, fixed = TRUE))
+  # Where extrapolate is named, the component that raised the error is named
+  # too, because the two components have prediction ranges of their own.
+  named <- tryCatch(suppressMessages(nec(obj, extrapolate = 5)),
+                    error = conditionMessage)
+  expect_match(named, "growth component refused extrapolate")
+})
+
+test_that("a threshold posterior is read without expanding the component", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # expand_nec() stores it as as_draws_df(fit)[["b_nec_Intercept"]] and nothing
+  # else, so the rebuild path reads it straight from the fit rather than paying
+  # for an expansion whose every other product it discards.
+  direct <- bayesnec:::component_ne_posterior(manec_example, "nec4param")
+  expanded <- as.numeric(
+    suppressMessages(suppressWarnings(
+      pull_out(manec_example, model = "nec4param")
+    ))$ne_posterior
+  )
+  expect_identical(direct, expanded)
+})
+
+test_that("a call that recomputes nothing gives no advice about the prior", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # manec_example has nothing censored, so extrapolate = 5 returns the stored
+  # estimate bit for bit. Advising a refit with a wider nec prior bound on such
+  # a call names a constraint that had no bearing on the number beside it.
+  msgs <- character(0)
+  out <- withCallingHandlers(
+    suppressWarnings(nec(manec_example, extrapolate = 5)),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_identical(as.numeric(out),
+                   as.numeric(suppressMessages(suppressWarnings(
+                     nec(manec_example)
+                   ))))
+  expect_false(any(grepl("bounded above", msgs, fixed = TRUE)))
+  # It is still said where the limit reaches past the bound on a fit that does
+  # recompute.
+  censored <- truncated_nec_fit()
+  said <- character(0)
+  withCallingHandlers(
+    suppressWarnings(nec(censored, extrapolate = 5)),
+    message = function(m) {
+      said <<- c(said, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_true(any(grepl("bounded above", said, fixed = TRUE)))
+})
+
+test_that("the extrapolation marker does not reach the caller", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  fit <- truncated_nec_fit()
+  post <- suppressMessages(suppressWarnings(
+    nec(fit, extrapolate = 1.45, posterior = TRUE)
+  ))
+  expect_null(attr(post, "extrapolated"))
+  expect_false(is.null(attr(post, "censored")))
 })

@@ -179,15 +179,23 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
   # extension for one component and inside the range for the other, and the
   # error otherwise names a range without saying whose.
   component_nec <- function(part, what) {
-    withCallingHandlers(
+    call_it <- function() {
       without_censored_warning(
         nec(part, posterior = TRUE, extrapolate = extrapolate, ...)
-      ),
-      error = function(e) {
-        stop("The ", what, " component refused extrapolate: ",
-             conditionMessage(e), call. = FALSE)
-      }
-    )
+      )
+    }
+    # Only where there is something to attribute. Relabelling every error on
+    # this path reported "the growth component refused extrapolate: nec is not
+    # a parameter in ecx model types" for a call that had named no extrapolate
+    # at all. tryCatch() rather than withCallingHandlers(), because this
+    # replaces the condition rather than running beside it.
+    if (identical(extrapolate, FALSE)) {
+      return(call_it())
+    }
+    tryCatch(call_it(), error = function(e) {
+      stop("The ", what, " component refused extrapolate: ",
+           conditionMessage(e), call. = FALSE)
+    })
   }
   g_post <- component_nec(object$growth, "growth")
   s_post <- component_nec(object$survival, "survival")

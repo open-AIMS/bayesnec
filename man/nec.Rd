@@ -145,7 +145,11 @@ its numbers can differ in the last digits from the stored summary.
 Two requests re-evaluate nothing and return what \code{extrapolate = FALSE}
 returns: a limit equal to the current bounds, and any limit on a fit with no
 draw beyond either end, where every draw was identified inside the range the
-fit used and a wider grid has none left to identify.
+fit used and a wider grid has none left to identify. An object fitted before
+version 2.2.0 records nothing about which of its draws lie beyond the range,
+so it takes the second of those whatever its draws are, and
+\code{extrapolate} does nothing to it. Refit it, or rebuild the set with
+\code{\link{amend}}, to extrapolate from it.
 
 A limit inside the prediction range is an error rather than a silent
 tightening, because it would report an estimate as censored at a value the
