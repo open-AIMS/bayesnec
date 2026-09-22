@@ -1312,7 +1312,19 @@ test_that("a chain is accepted on its own, so a low per-chain rate still succeed
   }
   # The released rule, reimplemented here so the comparison does not depend on
   # a second working tree.
-  released_drawn <- function(seed, cap = 2000) {
+  #
+  # The cap is 20,000 rounds rather than the 2,000 it was when this test was
+  # written, because #393 lowered the per-chain acceptance rate on this design
+  # and the released rule needs the fourth power of it. Measured over 8,000
+  # draws on this design and equation: 0.188 with the nec prior truncated to
+  # the tested range and 0.171 without it, since 0.101 of that prior's mass now
+  # sits above the highest dose and a nec drawn there makes the curve flat at
+  # top. The 4-at-once expectation is therefore 803 rounds before and 1,163
+  # after, so a cap of 2,000 left one of these three seeds capped. At 20,000 the
+  # chance of a cap is below 1e-7 per seed. The three seeds together took 8.1 s,
+  # timed with system.time() in one Rscript process on one core on 2026-09-22;
+  # not measured on CI, where the suite runs two workers.
+  released_drawn <- function(seed, cap = 20000) {
     set.seed(seed)
     n <- 0
     passed <- FALSE

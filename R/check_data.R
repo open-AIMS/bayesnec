@@ -551,11 +551,15 @@ capitalise_first <- function(x) {
 #' Report a response still declining at the top of the tested series
 #'
 #' The default \code{bot} prior takes its location and spread from the observed
-#' response and the default \code{nec} and \code{ec50} priors are truncated to
-#' the tested predictor range, so on a design whose response is still falling at
-#' the highest concentration all three describe the design rather than the
-#' curve. The condition is reported before anything is fitted, because what the
-#' user does about it is a choice of prior.
+#' response, and the default \code{nec} and \code{ec50} priors take their
+#' location and spread from the tested predictor range, so on a design whose
+#' response is still falling at the highest concentration all three describe the
+#' design rather than the curve. The condition is reported before anything is
+#' fitted, because what the user does about it is a choice of prior. The two
+#' threshold priors are no longer truncated to that range (#393), so a threshold
+#' above the highest concentration is in the tail of the prior rather than
+#' outside its support; the report still stands, because a tail is not a
+#' statement that the design measured the threshold.
 #'
 #' The statistic is a one-sided contrast between the two highest distinct
 #' predictor values present in a block, fitted as a generalised linear model
@@ -653,8 +657,12 @@ check_response_flattened <- function(data, family, group = NULL,
       paste(declining, collapse = "\n"), "\n",
       "The lower asymptote may not be identified by this design: where an",
       " equation estimates bot its default prior is derived from the observed",
-      " response, and the default nec and ec50 priors exclude a threshold",
-      " above the tested range. Inspect the entries with get_priors() and",
+      " response, and the default nec and ec50 priors put a threshold above the",
+      " tested range in their tail, where how much of the prior lies there",
+      " depends on prior_type and on whether the predictor was supplied as a",
+      " concentration or already logged; ?bnec tabulates the four under",
+      " prior_type.",
+      " Inspect the entries with get_priors() and",
       " supply scientifically justified ones through the prior argument where",
       " information beyond the design is available."
     )

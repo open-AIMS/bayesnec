@@ -28,6 +28,12 @@
 > `441e7464` on 2026-09-19. Its complete-design cells do not reproduce the
 > figures in parts 1 and 2 above, because the priors those parts describe were
 > changed by #302, PR #304 and the work that followed.
+>
+> **Part 4 is the same script run twice** on 2026-09-22, before and after the
+> change #393 makes to the `nec` and `ec50` bounds, and reports the paired
+> difference. Its before run reproduces part 3 exactly. Read part 4 for the
+> bounds on those two entries now; part 3's threshold tables describe the
+> truncated entries that #393 replaced.
 
 # Default priors in bayesnec: an assessment against known parameter values
 
@@ -895,3 +901,152 @@ because it keeps a `nec4param` threshold inside the series; it is measured on
 the axis places one threshold and a two-block fit has two. And anything that
 requires a concentration-response fit: every figure here is a prior, an initial
 value or a pre-fit contrast.
+
+---
+
+# Part 4. The tested-range truncation removed (#393)
+
+> **Provenance.** Parts 1 (sweep) and 2 (reproduction) of
+> `notes/scripts/prior_audit.R` were run twice on 2026-09-22, R 4.6.1,
+> brms 2.23.0, on branch `issue-393-remove-truncation` at the commit before and
+> the commit after the change to `R/define_prior.R`. The script itself is
+> unchanged between the two runs, and every cell is seeded from its own index,
+> so the two runs are paired cell by cell. The before run reproduces the
+> 2026-09-19 figures in part 3 above exactly, which is what establishes that it
+> measured the released code.
+
+The change removes `lb = min(prior_predictor)` and `ub = max(prior_predictor)`
+from the `nec` and `ec50` entries and replaces them with the support of the
+prior distribution: `lb = 0` on the lognormal branch and no bound on the normal
+one.
+
+## The complete-design cells
+
+The `top` and `bot` entries are untouched. Every prior string and every
+`p_truth` is identical across the two runs, over all 11,502 such rows, so the
+tables in part 3 stand as printed.
+
+The `nec` and `ec50` prior *strings* are identical on the complete cells as
+well, over all 1,440 of them. What changes is the statistic: `p_truth` is the
+CDF of the prior **after truncation**, which is a function of the bounds as well
+as of the distribution. The fall is 0.0008 to 0.344, with a median of 0.055, and
+it is a fall in every one of the 1,440 cells. It is largest where the truncation
+removed most mass: 0.187 on average for `linear` and `linear_unit` under
+`crf(log(x))`, against 0.013 to 0.016 for the three log-spaced series under the
+identity and square-root transforms.
+
+Writing *a* for the prior CDF at the old lower bound, *b* for the CDF at the old
+upper bound and *u* for the CDF at the truth, the truncated statistic is
+(*u* − *a*) / (*b* − *a*) and the untruncated one is *u*. Their difference is
+(*u*(1 − *b*) − *a*(1 − *u*)) / (*b* − *a*), so removing the upper bound alone
+always lowers the statistic, removing the lower bound alone always raises it,
+and where both go the sign depends on where the truth sits: the difference is
+negative at *u* = *a*, positive at *u* = *b*, and zero at
+*u* = *a* / (1 − *b* + *a*). The lognormal cells with a zero control have
+*a* = 0 and fall by construction. The `crf(log(x))` cells, where the
+largest falls are, take the normal branch, where the old lower bound was binding
+too, so the fall observed there is the net of two effects and not the
+upper-tail term alone. That every one of the 1,440 cells falls is the
+measurement and not a consequence of the algebra.
+
+Specification §3.4 asks for the complete-design CDF to be unchanged within the
+Monte Carlo error of the audit, on the ground that the truncation does not bind
+there. That is right about the support and wrong about the statistic. The
+truncation bound the normalisation on every design, complete or not, because the
+lognormal always places mass above the highest concentration tested and the
+normal places mass below the lowest; what a complete design guarantees is that
+the truth is inside the support, not that the renormalisation is negligible. The
+test the requirement was reaching for is whether a complete design's truth is
+still well inside the prior, and it is: the count of complete `nec` and `ec50`
+cells outside the central 95% of their own prior is 0 before and 0 after, and
+the range of `p_truth` over those cells is 0.420 to 0.974 before and 0.334 to
+0.965 after.
+
+## The incomplete-design cells
+
+`ec50` cells whose prior support excluded the truth, out of 2,159 incomplete
+cells that could be built:
+
+| | before | after |
+|---|---|---|
+| `p_truth` exactly 1 | 1,439 | 0 |
+| largest `p_truth` | 1 | 0.99938 |
+
+The 1,439 are part 3's 360, 360, 360 and 359. The largest value after the change
+is 0.99938, so the truth is in the far upper tail of the prior on those designs
+and is no longer outside it. The median over the incomplete `ec50` cells is
+0.934.
+
+The count of `nec` and `ec50` cells outside the central 95% falls as well, which
+is the same prior mass counted a second way:
+
+| parameter and prior type | complete | f92 | f36 | f02 |
+|---|---|---|---|---|
+| `ec50`, `uninformative`, before | 0 | 72 | 360 | 360 |
+| `ec50`, `uninformative`, after | 0 | 0 | 144 | 144 |
+| `ec50`, `regularizing`, before | 0 | 144 | 360 | 359 |
+| `ec50`, `regularizing`, after | 0 | 96 | 216 | 216 |
+| `nec`, `uninformative`, before | 0 | 24 | 168 | 357 |
+| `nec`, `uninformative`, after | 0 | 0 | 0 | 0 |
+| `nec`, `regularizing`, before | 0 | 96 | 215 | 357 |
+| `nec`, `regularizing`, after | 0 | 24 | 215 | 215 |
+
+## The `nec` support exclusion, on #386's own design
+
+The sweep cannot produce it, for the reason recorded in the §6 amendment: the
+completeness axis keeps a `nec4param` threshold inside the series. Part 2 of the
+script measures it on #386's design, a log-spaced series of eight concentrations
+from 0 to 40, with a true `ec50` of 45 and a true `nec` of 60. The prior string
+is the same before and after and is the same for both equations, because the two
+entries read the predictor alone.
+
+| parameter | prior type | `ub` before | `p_truth` before | `ub` after | `p_truth` after |
+|---|---|---|---|---|---|
+| `ec50` | `uninformative` | 40 | 1 | none | 0.9795 |
+| `ec50` | `regularizing` | 40 | 1 | none | 0.9923 |
+| `nec` | `uninformative` | 40 | 1 | none | 0.9877 |
+| `nec` | `regularizing` | 40 | 1 | none | 0.9962 |
+
+## The initial-value search
+
+`make_inits()` draws from the priors including their bounds, so removing the
+upper bound widens the `nec` and `ec50` draws and
+`check_init_predictions()` rejects any whose curve falls outside the band. The
+counts are paired by cell, one search per cell, capped at 200 rounds as part 3
+was, and the difference is reported as a paired mean with a normal interval.
+
+On the complete designs the search takes more proposals, and the rise is
+confined to `nec4param`:
+
+| equation, complete designs | median before | median after | mean before | mean after | paired mean difference |
+|---|---|---|---|---|---|
+| `nec4param`, n = 720 | 6 | 7 | 10.37 | 11.68 | +1.31 [0.59, 2.04] |
+| `ecx4param`, n = 720 | 5 | 4 | 7.36 | 7.14 | −0.22 [−0.60, 0.16] |
+| both, n = 1,440 | 5 | 6 | 8.86 | 9.41 | +0.55 [0.14, 0.96] |
+
+The 90th percentile over the complete cells rises from 14 to 15, and from 15 to
+18.1 on the `nec4param` cells alone. The asymmetry follows from the shape of the
+two equations. An `ec50` drawn above the highest concentration still gives a
+curve that declines across the series, so the band often accepts it; a `nec`
+drawn above the highest concentration gives a curve that is flat at `top` at
+every dose, which the band rejects wherever the response has fallen.
+
+The rise does not reach the cap. No complete-design cell fell back to Stan's own
+initialisation in either run, and the largest single count over the complete
+cells fell from 283 to 166. Over the whole sweep the fallback count fell from 27
+cells to 21, all of them at `f36` or `f02`.
+
+## The limits of a prior-only harness
+
+No model is fitted, so the posterior this change exists to widen is not measured
+here. The prior CDF at the truth and the proposal count are what the
+specification asks for and are what a prior-only harness can supply.
+
+## Outstanding at merge
+
+`vignettes/example3.Rmd.orig` was corrected on the #393 branch and the committed
+`vignettes/example3.Rmd` was not regenerated, because precompiling refits every
+model. Until `vignettes/precompile.R` is run for `example3`, the published
+vignette shows the truncation as live output: its stored `pull_prior()` tables
+give the `nec` row `lb = 0.03234801324009`, which is `min(nec_data$x)`, and
+`lb = 0, ub = 10` on a second fit, where the current code gives `0` and `NA`.

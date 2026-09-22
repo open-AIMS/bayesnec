@@ -107,10 +107,10 @@ no-effect \code{top} parameter placed at the mean response over the lowest
 concentrations tested and \code{bot} at the mean over the highest). The
 regularizing set narrows the response-scaled and group-level priors to 0.4 of
 the width of the uninformative set. The \code{nec} and \code{ec50} prior is
-not derived from that width at all: its spread is the one whose central 98\\%
+not derived from that width at all: its spread is the one whose central 98\%
 interval reaches the farthest concentration tested. Under
 \code{"uninformative"} that prior is the one Fisher et al. (2024) describe,
-which is a coverage width at the 95\\% level where concentrations are supplied
+which is a coverage width at the 95\% level where concentrations are supplied
 as recorded and the constant \code{10 sd(x)} where the predictor is supplied
 already logged, so how much narrower the regularizing entry is depends on
 which of the two the data are on. See \code{vignette("example3")} for why the
@@ -119,13 +119,40 @@ two rules differ. Ignored when priors are supplied directly via the
 concentrations reach the lower asymptote of the curve. Where the mean
 response at the highest concentration is below the mean at the second
 highest by more than the contrast's standard error admits, tested one-sided
-at the 5\\% level under the mean-variance relationship of the fitted family,
+at the 5\% level under the mean-variance relationship of the fitted family,
 \code{\link{bnec}} reports that before fitting: an equation that estimates
 \code{bot} then has a prior describing the observed endpoint rather than the
-asymptote, and the \code{nec} or \code{ec50} prior excludes a threshold above
-the tested range. Inspect the generated entries with \code{\link{get_priors}}
-and pass a scientifically justified prior through \code{prior} where
-information beyond the design is available.}
+asymptote, and the \code{nec} or \code{ec50} prior places a threshold above
+that range in its tail rather than outside its support. How far into the tail
+is a property of the branch and of \code{prior_type} together rather than of
+either alone. Three of the four combinations set the spread by a coverage
+rule that reaches the farthest concentration tested, at the 95\% level for
+\code{"uninformative"} on a predictor supplied as a recorded concentration
+and at the 98\% level for \code{"regularizing"} on either, so the mass above
+the highest concentration is 0.025 or 0.01 at least and larger where the
+series extends further below its median on the log scale than above it. The
+fourth, \code{"uninformative"} on a predictor supplied already logged, sets
+the spread to 10 times the standard deviation of the distinct predictor
+values, which is the constant Fisher et al. (2024) state rather than a
+coverage width, and is much the widest of the four. The share of each entry's
+mass between the lowest and the highest value tested, and the share above the
+highest, on \code{\link{nec_data}} for the recorded-concentration branch and
+on \code{log(herbicide$concentration)} for the already-logged one:
+
+\tabular{llll}{
+\strong{predictor} \tab \strong{prior_type} \tab \strong{inside} \tab
+\strong{above} \cr
+recorded \tab uninformative \tab 0.755 \tab 0.220 \cr
+recorded \tab regularizing  \tab 0.811 \tab 0.179 \cr
+logged   \tab uninformative \tab 0.116 \tab 0.442 \cr
+logged   \tab regularizing  \tab 0.980 \tab 0.010
+}
+
+So the entry does correspondingly little to locate a threshold in the logged,
+\code{"uninformative"} case and rather more in the other three. Inspect the
+generated
+entries with \code{\link{get_priors}} and pass a scientifically justified
+prior through \code{prior} where information beyond the design is available.}
 
 \item{timeout}{A positive \code{\link[base]{numeric}} giving the maximum
 number of seconds allowed for fitting any single model, passed to

@@ -355,6 +355,64 @@
 
 ## Default priors
 
+- The default `nec` and `ec50` priors are no longer truncated to the range of
+  the tested predictor. Both entries were built with `lb = min(x)` and
+  `ub = max(x)`, so a threshold above the highest concentration tested was
+  outside the prior support rather than in its tail: the posterior could place
+  no mass there, piled against the bound, and `nec()` returned the highest
+  concentration tested with a narrow credible interval around it. The bound is
+  now taken from the support of the prior distribution instead. A predictor
+  supplied as a recorded concentration takes a lognormal entry and keeps
+  `lb = 0`, because a lognormal has zero density below zero and without the
+  bound `brms` declares an unconstrained parameter whose every negative proposal
+  Stan rejects; a predictor declared or detected as already logged takes a
+  normal entry and no bound at all, because a logged concentration may
+  legitimately be negative. Removing the truncation does not identify a
+  threshold the design did not measure. What it changes is the shape of the
+  posterior: mass spreads over the region the data cannot distinguish and the
+  interval widens, which is the correct statement. The spread rule of #314 is
+  unchanged, and how far into the tail a beyond-range threshold now falls
+  depends on the branch and on `prior_type` together rather than on either
+  alone. Three of the four combinations set the spread by a coverage rule that
+  reaches the farthest concentration tested, so the mass above the highest
+  concentration is 0.025 or 0.01 at least, and larger where the series extends
+  further below its median on the log scale than above it: 0.220 under
+  `"uninformative"` and 0.179 under `"regularizing"` on `nec_data`. The fourth,
+  `"uninformative"` on a predictor supplied already logged, sets the spread to
+  10 times the standard deviation of the distinct predictor values, which is the
+  constant Fisher et al. (2024) state rather than a coverage width, and is much
+  the widest: on `log(herbicide$concentration)` it places 0.116 of its mass
+  inside the tested range and 0.442 above the highest concentration, against
+  0.980 and 0.010 for `"regularizing"` on the same data, so it does
+  correspondingly little to locate a threshold at all. `?bnec` under
+  `prior_type` tabulates all four. What now holds a
+  reported estimate inside the tested range by default is the censoring of the
+  posterior described under "Estimates beyond the range the model was predicted
+  over", together with the `extrapolate` argument of `nec()` and `nsec()`,
+  rather than the prior.
+
+  Measured over the 5,760-cell prior audit, before and after, paired cell by
+  cell. Of the 2,159 incomplete-design `ec50` cells, 1,439 had a prior CDF at
+  the true value of exactly 1 and none do now, the largest remaining value being
+  0.99938. On the complete designs the `top` and `bot` entries and the `nec` and
+  `ec50` prior strings are all unchanged, and no complete-design cell has its
+  true value outside the central 95 per cent of its own prior before or after.
+  The initial-value search draws more proposals on a complete `nec4param`
+  design, by a paired mean of 1.31 with a 95 per cent interval of 0.59 to 2.04
+  over 720 cells, because a threshold drawn above the series gives a curve flat
+  at `top` that the acceptance band rejects; on `ecx4param` the difference is
+  −0.22, interval −0.60 to 0.16. The audit caps its own search at 200 rounds
+  rather than the 10,000 a fit takes, and at that cap no complete-design cell
+  exhausted the search in either run while the number that did over the whole
+  sweep fell from 27 to 21. `notes/prior_audit.md` part 4 holds the tables.
+
+  A fit made before this release keeps the bounds it was fitted with. `amend()`
+  rebuilds a prior only for an equation it adds, so adding one to such a fit
+  leaves a model-averaged set in which some equations have a truncated `nec`
+  posterior and some do not. `nec()` then reports the tightest bound across the
+  set when asked to extrapolate past it. Refit rather than amend where the two
+  halves must be on the same footing (#393).
+
 - `get_priors()` and `pull_prior()` now state that their output must be checked
   before use with a `brms` formula that adds population-level coefficients to a
   non-linear parameter. A parameter-level prior that is valid for the

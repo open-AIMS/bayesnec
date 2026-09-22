@@ -21,10 +21,12 @@ bounded_linear_drops <- function() {
 #' \code{slope} is, and below the threshold -- where the decay factor is exactly
 #' 1 -- the fitted mean is at least \code{top + 1}. Wherever a concentration at
 #' or above 1 falls strictly below \code{nec} there is therefore a point at
-#' which no parameter value keeps the mean inside (0, 1). \code{nec} is
-#' truncated to the predictor range, so on a predictor reaching above 1 every
-#' such \code{nec} is a value the sampler is free to propose, and each proposal
-#' is outside the likelihood's support.
+#' which no parameter value keeps the mean inside (0, 1). The prior on
+#' \code{nec} places mass over the whole predictor range, so on a predictor
+#' reaching above 1 every such \code{nec} is a value the sampler is free to
+#' propose, and each proposal is outside the likelihood's support. Since #393
+#' it places mass above that range as well, which widens the set of such values
+#' rather than narrowing it.
 #'
 #' \strong{That is the sharpest case, not the whole reason.} It is a statement
 #' about a predictor reaching above 1, and the exclusion is unconditional on the
@@ -54,10 +56,22 @@ bounded_linear_drops <- function() {
 #' So the initial-value search finding an admissible draw does not make the
 #' model usable. It does now find one, where the gamma prior it replaced did
 #' not, because the draws that succeed sit near \code{nec} = 0.08 to 0.24 and
-#' the truncated prior probability of reaching there changed by a factor of 40
-#' to 900: \code{P(nec < 0.25)} from 0.0063 to 0.269 and \code{P(nec < 0.1)}
-#' from 0.00011 to 0.0975. \code{P(nec < 1)} moved only 0.481 to 0.670, which
-#' would not explain it. See #177 and #302.
+#' the prior probability of reaching there changed by a factor of 40 to 900:
+#' \code{P(nec < 0.25)} from 0.0063 to 0.269 and \code{P(nec < 0.1)} from
+#' 0.00011 to 0.0975. \code{P(nec < 1)} shifted only from 0.481 to 0.670, which
+#' would not explain it. Each of those six figures is the CDF of the entry
+#' truncated to the tested range, which is what both entries had when they were
+#' measured. #393 removed that truncation, and reading the same quantity on the
+#' whole distribution is an affine map and not a rescaling: with \code{a} and
+#' \code{b} the prior CDF at the two bounds, the untruncated value is
+#' \code{T * (b - a) + a}, which reduces to multiplication by \code{b} only
+#' where the series has a zero control. On \code{\link{nec_data}}, where
+#' \code{a} is 0.025 for the lognormal and 5e-7 for the gamma, the first two
+#' gamma figures are unchanged to the precision printed, the third moves from
+#' 0.481 to 0.480, and the three lognormal ones become 0.2282, 0.0986 and
+#' 0.5314. The factor of 40 to 900 survives, at 36 and
+#' 896; the last pair becomes 0.480 against 0.531, which is a weaker version of
+#' the same point. See #177 and #302.
 #'
 #' @return A \code{\link[base]{character}} vector.
 #'
@@ -85,9 +99,10 @@ unscaled_power_message <- function(drop_model, fam_tag) {
          " with identity link: their hormesis term",
          " x^(1 / (1 + exp(slope))) has no scale parameter, so the fitted mean",
          " is at least top + 1 at any concentration at or above 1 that",
-         " falls below nec, and cannot be held inside (0, 1) there. nec is",
-         " bounded to the predictor range, so the sampler is free to propose",
-         " such a value. More generally x^(1 / (1 + exp(slope))) tends to 1",
+         " falls below nec, and cannot be held inside (0, 1) there. The prior",
+         " on nec places mass across the predictor range, so the sampler is",
+         " free to propose such a value. More generally",
+         " x^(1 / (1 + exp(slope))) tends to 1",
          " as slope grows, for every concentration above 0, so for any top",
          " above 0 there is a slope at which the mean exceeds 1 whatever the",
          " predictor range. That is why the exclusion does not depend on the",

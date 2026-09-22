@@ -692,8 +692,11 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' of the predictor: \code{lognormal(mu, sigma)} where the predictor is
 #' supplied on the dose scale, and \code{normal(mu, sigma)} where it spans
 #' negative values and has therefore already been log transformed by the user.
-#' The two are one rule stated on two scales. Truncation is applied by the
-#' caller, to the observed predictor range, and is unchanged.
+#' The two are one rule stated on two scales. The bound is applied by the
+#' caller and is the support of the distribution returned here: \code{lb = 0}
+#' on the lognormal branch and none on the normal one. Up to and including
+#' 2.1.4 the caller truncated both to the observed predictor range as well;
+#' #393 removed that.
 #'
 #' @details Until #302 there were three entries, selected by the support of the
 #' predictor: \code{gamma(5, 4/m)} where the predictor was non-negative and
@@ -740,8 +743,15 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' \code{exp(mu)} and therefore the location the rule specifies exactly ---
 #' that series has an even number of positive doses, so it is the geometric mean
 #' of the two central ones --- against 3.85 for the shape-1.03 gamma. Over the
-#' sweep below the truncated prior CDF at the true value runs 0.43 to 0.95, so
-#' the mass is where the doses are.
+#' sweep below the prior CDF at the true value runs 0.43 to 0.95, so
+#' the mass is where the doses are. Those figures were measured with the entry
+#' truncated to the tested range. #393 removed that truncation, and reading the
+#' same quantity on the whole distribution is an affine map rather than a
+#' rescaling: with \code{a} and \code{b} the prior CDF at the two old bounds,
+#' the untruncated value is \code{T * (b - a) + a}. It reduces to multiplication
+#' by \code{b} only where the series has a zero control, which not every design
+#' in that sweep has, so the corrected range is not obtained by scaling the two
+#' ends of this one.
 #'
 #' \code{mu} is the median of the distinct positive predictor values, on the
 #' log scale. Distinct values rather than the observation vector so that
@@ -751,11 +761,12 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' of the geometric mean of the two central doses where it is even, that being
 #' their midpoint on the log axis rather than on the dose axis. The prior's
 #' maximum density is therefore at that dose measured on the log scale, and the
-#' median of the untruncated prior on the dose scale is that dose. Both
-#' statements describe the untruncated prior. Truncation at the highest dose
-#' removes part of the upper tail and so pulls the median down: on
-#' \code{\link{nec_data}} the truncated median is 0.58 against a median dose of
-#' 0.88, and on the nassarius contaminant B series 1.23 against 2.00.
+#' median of the prior on the dose scale is that dose. The entry is no longer
+#' truncated to the tested range (#393), so both statements describe it as it
+#' is used. Up to and including 2.1.4 it was, and the truncation at the highest
+#' dose removed part of the upper tail and so pulled the median down: on
+#' \code{\link{nec_data}} the truncated median was 0.58 against a median dose
+#' of 0.88, and on the nassarius contaminant B series 1.23 against 2.00.
 #' Fisher et al. (2024) specify maximum
 #' density at the median predictor without saying which scale the density is
 #' measured on; this reads it on the log-dose scale, which is the scale a
@@ -763,7 +774,7 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' prior peaking at the median can also reach 125 times it.
 #'
 #' \code{sigma} on the dose scale is set so that the central 95\% interval of
-#' the untruncated prior covers every dose tested: it is the larger of the two
+#' the prior covers every dose tested: it is the larger of the two
 #' half-widths
 #' from \code{mu} to the ends of the logged series, divided by
 #' \code{qnorm(0.975)}. The criterion is the whole of the rule --- a prior on a
@@ -779,16 +790,19 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' It states no criterion, so it cannot guarantee the coverage above on a design
 #' it was not chosen against, and any multiple large enough to be broad on a
 #' densely sampled continuous predictor puts a large share of the prior below
-#' the lowest dose tested on a wide dilution series, where the lower truncation
-#' bound is the zero control. At \emph{k} = 1.5, 21\% of the truncated prior on
-#' the nassarius contaminant A series lies below its lowest dose of 0.01, and
-#' the lower end of its 95\% interval is 0.00022, a factor of 45 below anything
-#' applied. The rule adopted leaves 9.0\% below the lowest dose there and 3.3\%
-#' on a series spaced evenly from zero. Expressed as a multiple of
+#' the lowest dose tested on a wide dilution series. At \emph{k} = 1.5, 21\% of
+#' the prior on the nassarius contaminant A series lies below its lowest dose of
+#' 0.01, and the lower end of its 95\% interval is 0.00022, a factor of 45 below
+#' anything applied. The rule adopted leaves 9.0\% below the lowest dose there
+#' and 3.3\% on a series spaced evenly from zero. Expressed as a multiple of
 #' \code{sd(log x)} it lands between 0.73 and 1.18 across the five designs
 #' measured, at 0.92 to 1.03 on the four nassarius series, and at 1.75 on
 #' \code{\link{nec_data}}, whose predictor is continuous and densely sampled, so
-#' it is not equivalent to any one constant.
+#' it is not equivalent to any one constant. All three shares above were
+#' measured with the entry truncated to the tested range, whose lower bound was
+#' the control; #393 removed that truncation, so a share is now read on the
+#' whole lognormal, and the comparison between the two widths is unchanged
+#' because \code{sigma} never read the bounds.
 #'
 #' \code{sigma} is therefore set by the two extreme doses and not by the spread
 #' of the series between them, which makes it sensitive to how the control is
@@ -797,7 +811,7 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' applied and the prior covers it: on the nassarius contaminant A series
 #' \code{sigma} is 2.30 with the control at 0, 2.59 with it at 0.001 and 6.11
 #' with it at 1e-6. Record a control as 0, which is what \code{\link{bnec}}
-#' expects and what the truncation bound is then taken from.
+#' expects.
 #'
 #' \code{sigma} on the branch for a predictor supplied already logged stays at
 #' \code{10 sd(x)}. That multiplier is the published default, every herbicide
@@ -836,18 +850,40 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' a wide dilution series, which is checked separately: on the nassarius
 #' contaminant B series a threshold at the lowest dose applied sits at a
 #' truncated CDF of 0.030, inside the central 95\%, against 0.005 under a prior
-#' set from half the range. See #302.
+#' set from half the range. Every figure in this paragraph is the CDF of the
+#' entry truncated to the tested range, which is what it had when they were
+#' measured; #393 removed that truncation, so the same quantity is now read on
+#' the whole distribution, by the affine map given above and not by a rescaling.
+#' See #302.
 #'
 #' \strong{prior_type.} The two default sets differ in the spread of this
-#' prior and in nothing else; the location, the distribution and the truncation
-#' are the same under both. The spread is stated as a coverage rule on each
+#' prior and in nothing else; the location, the distribution and the bounds are
+#' the same under both. The spread is stated as a coverage rule on each
 #' branch rather than as a multiple of the \code{"uninformative"} entry. Under
 #' \code{"regularizing"} it is \code{half_width / qnorm(0.99)} on both, so the
 #' central 98\% interval reaches the farthest concentration tested, against the
-#' central 95\% under \code{"uninformative"} on the lognormal branch. The prior
-#' remains truncated to \code{[min(predictor), max(predictor)]}, so narrowing it
-#' concentrates mass in the interior of the tested series and excludes no part
-#' of it.
+#' central 95\% under \code{"uninformative"} on the lognormal branch. Narrowing
+#' it concentrates mass in the interior of the tested series and excludes no
+#' part of it, and since #393 it excludes nothing outside it either: the only
+#' bound is \code{lb = 0} on the lognormal branch, which is that
+#' distribution's own support.
+#'
+#' \strong{How much mass sits outside the tested series.} This is the statement
+#' #393 makes it necessary to get right, and it is a property of the branch and
+#' of \code{prior_type} together rather than of either alone. Three of the four
+#' cells are a coverage rule and are narrow by construction; the fourth is the
+#' constant \code{10 sd(z)} and is much wider. The coverage rule fixes the share
+#' above the \emph{farther} of the two ends from the location on the log scale,
+#' at 0.025 under \code{"uninformative"} and 0.01 under \code{"regularizing"},
+#' so those are lower bounds on the share above the highest value tested and the
+#' realised share is larger wherever the series extends further below its median
+#' than above it. The only cell where a threshold above the series is barely in
+#' the tail rather than deep in it is \code{normal} with
+#' \code{"uninformative"}, where the prior does correspondingly little to locate
+#' one. The four measured shares are tabulated under \code{prior_type} in
+#' \code{?\link{bnec}}, which is where this file's callers and the report in
+#' \code{\link{check_response_flattened}} send a reader; this block is not a
+#' second copy of them, because it is \code{@noRd} and no user can reach it.
 #'
 #' \strong{Why the spread is not narrowed by regularizing_factor.} The
 #' response-scaled entries are narrowed by \code{regularizing_factor}. This one
@@ -888,11 +924,11 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' scale. The prior is then all but flat over that range: the ratio of its
 #' density at one end of the series to its density at the other is 1.000588 at
 #' a spread of 24.87 and 1.000829 at 0.8425 of it, against 1.1737 under the
-#' stated rule. Measured on that series, the
-#' truncated prior CDF at the doses 0.3, 1, 3, 10 and 30 is 0.158, 0.333, 0.492,
-#' 0.667 and 0.827 under #305, which are the positions of those doses within the
-#' range and so are what a uniform prior gives, and 0.052, 0.226, 0.499, 0.793
-#' and 0.945 under the stated rule. \code{prior_type} was therefore inert for
+#' stated rule. Measured on that series, with the entry truncated to the tested
+#' range as it then was, the prior CDF at the doses 0.3, 1, 3, 10 and 30 is
+#' 0.158, 0.333, 0.492, 0.667 and 0.827 under #305, which are the positions of
+#' those doses within the range and so are what a uniform prior gives, and
+#' 0.052, 0.226, 0.499, 0.793 and 0.945 under the stated rule. \code{prior_type} was therefore inert for
 #' these two parameters on one of the two routes.
 #'
 #' Under \code{predictor_scale = "auto"}, the branch is selected by
@@ -1026,7 +1062,7 @@ predictor_prior <- function(predictor, prior_type = "uninformative",
 #' @param predictor The predictor variable for the NEC model fit.
 #' @param response The response variable for the NEC model fit.
 #' @param prior_predictor The predictor the \code{nec} and \code{ec50} prior is
-#' built from and truncated to. Defaults to \code{predictor}, and differs from
+#' built from. Defaults to \code{predictor}, and differs from
 #' it only for the two blocks of a hurdle or zero-inflated fit, each of which is
 #' primed from a subset of the predictor but evaluated over the whole of it.
 #' See \code{define_hurdle_prior()}.
@@ -1274,11 +1310,24 @@ define_prior <- function(model, family, predictor, response,
                          lb = lbs[fam_tag], ub = ubs[fam_tag])
   pr_bot <- prior_string(y_b_prs[fam_tag], nlpar = "bot",
                          lb = lbs[fam_tag], ub = ubs[fam_tag])
-  # x-dependent priors
-  pr_nec <- prior_string(x_pr, nlpar = "nec",
-                         lb = min(prior_predictor), ub = max(prior_predictor))
-  pr_ec50 <- prior_string(x_pr, nlpar = "ec50",
-                          lb = min(prior_predictor), ub = max(prior_predictor))
+  # x-dependent priors. The bound is taken from the support of the prior
+  # distribution and not from the range of the tested predictor. The
+  # distribution predictor_prior() returns is proper on its own support, so the
+  # posterior stays proper with no truncation, and truncating to the tested
+  # range put a threshold above the highest concentration outside the support
+  # rather than in the tail: the posterior piled against the bound and reported
+  # a narrow interval at the highest concentration tested. The lower bound is
+  # kept only where the distribution requires it. A lognormal has zero density
+  # below zero, and without lb = 0 brms declares an unconstrained parameter
+  # whose every negative proposal Stan rejects. The normal branch takes no
+  # bound, because a predictor supplied already logged may legitimately be
+  # negative, so the branch test is on the distribution and is not a proxy for
+  # the sign of the data. See #393, and predictor_prior() for which branch is
+  # which. What holds a reported estimate inside the tested range is now the
+  # censoring of #395 and the `extrapolate` argument of #392, not the prior.
+  x_lb <- if (grepl("^lognormal", x_pr)) 0 else NA
+  pr_nec <- prior_string(x_pr, nlpar = "nec", lb = x_lb)
+  pr_ec50 <- prior_string(x_pr, nlpar = "ec50", lb = x_lb)
   # x- and y-independent priors
   pr_d <- prior_string("normal(0, 5)", nlpar = "d")
   pr_beta <- prior_string("normal(0, 5)", nlpar = "beta")
@@ -1460,11 +1509,12 @@ define_disp_prior <- function(disp_spec, family, response) {
 #' takes \code{2.5 * sd(response)}, which is a reasonable statement of
 #' ignorance about a level and a poor one about deviation around it. The
 #' observed range is the more defensible anchor, and it is the same quantity
-#' the predictor-scaled priors are already bounded by.
+#' the predictor-scaled priors take their own location and spread from.
 #'
-#' For \code{nec} and \code{ec50} the two readings do agree, because those
-#' priors are truncated to \code{[min(predictor), max(predictor)]}, so the
-#' range \emph{is} the scale the prior spans.
+#' For \code{nec} and \code{ec50} the two readings do agree, because the
+#' coverage rule those priors are built under puts the central 95\% or 98\% of
+#' the entry across \code{[min(predictor), max(predictor)]}, so the range is
+#' the scale the prior spans.
 #'
 #' \code{student_t(3, 0, s)} keeps the shape and heavy tail of the \pkg{brms}
 #' default and changes only its scale, so this narrows a default that was never
@@ -1473,7 +1523,8 @@ define_disp_prior <- function(disp_spec, family, response) {
 #' \strong{What the prior cannot do.} Every prior
 #' \code{\link{define_prior}} generates constrains its parameter to the region
 #' where the model is defined: \code{beta(5, 2)} on (0, 1), \code{lb = 0} for
-#' the count and Gamma families, \code{nec} truncated to the predictor range.
+#' the count and Gamma families, and \code{lb = 0} on \code{nec} and
+#' \code{ec50} where the predictor is a recorded concentration.
 #' A group-level deviation cannot be constrained that way -- \pkg{brms} declares
 #' \code{r_} unconstrained -- so a grouped fit does not inherit the property
 #' that \code{top}, \code{bot} and \code{nec} remain in range, and no choice
@@ -1730,11 +1781,13 @@ define_hurdle_prior <- function(model, family, predictor, response,
   # its prior and bounds are unchanged.
   #
   # The prior is taken from the whole predictor and not only its bounds. A prior
-  # shaped by the survivor subset but truncated to the whole predictor states
-  # that the threshold lies below the highest concentration at which anything
-  # survived, which is the same failure #302 removes from the single-block path:
-  # on a series reaching 100 whose survivors stop at 10 the mu block's nec prior
-  # placed its 97.5% point at 10.0 while its bounds permitted 100. It also
+  # shaped by the survivor subset states that the threshold lies below the
+  # highest concentration at which anything survived, which is the same failure
+  # #302 removes from the single-block path: on a series reaching 100 whose
+  # survivors stop at 10 the mu block's nec prior placed its 97.5% point at 10.0
+  # while its bounds, which were then the whole predictor's range, permitted
+  # 100. #393 has since removed the upper bound, so the shape is now the only
+  # thing that would say it. It also
   # restores the invariance the single-block path has, that the nec and ec50
   # prior is a function of the predictor alone, and it makes the two blocks of
   # one fit agree about the scale of their shared predictor, which is what #269
