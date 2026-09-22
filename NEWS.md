@@ -379,11 +379,13 @@
   further below its median on the log scale than above it: 0.220 under
   `"uninformative"` and 0.179 under `"regularizing"` on `nec_data`. The fourth,
   `"uninformative"` on a predictor supplied already logged, sets the spread to
-  the constant `10 sd(z)` that Fisher et al. (2024) state rather than by
-  coverage, and is much the widest: on `log(herbicide$concentration)` it places
-  0.12 of its mass inside the tested range and 0.44 above the highest
-  concentration, so it does correspondingly little to locate a threshold at all.
-  `?bnec` under `prior_type` gives the four figures together. What now holds a
+  10 times the standard deviation of the distinct predictor values, which is the
+  constant Fisher et al. (2024) state rather than a coverage width, and is much
+  the widest: on `log(herbicide$concentration)` it places 0.116 of its mass
+  inside the tested range and 0.442 above the highest concentration, against
+  0.980 and 0.010 for `"regularizing"` on the same data, so it does
+  correspondingly little to locate a threshold at all. `?bnec` under
+  `prior_type` tabulates all four. What now holds a
   reported estimate inside the tested range by default is the censoring of the
   posterior described under "Estimates beyond the range the model was predicted
   over", together with the `extrapolate` argument of `nec()` and `nsec()`,

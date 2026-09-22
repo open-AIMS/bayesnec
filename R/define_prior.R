@@ -745,9 +745,13 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' of the two central ones --- against 3.85 for the shape-1.03 gamma. Over the
 #' sweep below the prior CDF at the true value runs 0.43 to 0.95, so
 #' the mass is where the doses are. Those figures were measured with the entry
-#' truncated to the tested range; #393 removed that truncation, which
-#' multiplies each of them by one minus the mass above the highest dose and
-#' leaves them inside the series.
+#' truncated to the tested range. #393 removed that truncation, and reading the
+#' same quantity on the whole distribution is an affine map rather than a
+#' rescaling: with \code{a} and \code{b} the prior CDF at the two old bounds,
+#' the untruncated value is \code{T * (b - a) + a}. It reduces to multiplication
+#' by \code{b} only where the series has a zero control, which not every design
+#' in that sweep has, so the corrected range is not obtained by scaling the two
+#' ends of this one.
 #'
 #' \code{mu} is the median of the distinct positive predictor values, on the
 #' log scale. Distinct values rather than the observation vector so that
@@ -849,7 +853,8 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' set from half the range. Every figure in this paragraph is the CDF of the
 #' entry truncated to the tested range, which is what it had when they were
 #' measured; #393 removed that truncation, so the same quantity is now read on
-#' the whole distribution. See #302.
+#' the whole distribution, by the affine map given above and not by a rescaling.
+#' See #302.
 #'
 #' \strong{prior_type.} The two default sets differ in the spread of this
 #' prior and in nothing else; the location, the distribution and the bounds are
@@ -867,28 +872,18 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' #393 makes it necessary to get right, and it is a property of the branch and
 #' of \code{prior_type} together rather than of either alone. Three of the four
 #' cells are a coverage rule and are narrow by construction; the fourth is the
-#' constant \code{10 sd(z)} and is much wider. Measured as the share of the
-#' entry's mass between the lowest and the highest value tested, and the share
-#' above the highest, on \code{\link{nec_data}} for the lognormal branch and on
-#' \code{log(herbicide$concentration)} for the normal one:
-#'
-#' \tabular{llll}{
-#'   \strong{branch} \tab \strong{prior_type} \tab \strong{inside} \tab \strong{above} \cr
-#'   lognormal \tab uninformative \tab 0.755 \tab 0.220 \cr
-#'   lognormal \tab regularizing  \tab 0.811 \tab 0.179 \cr
-#'   normal    \tab uninformative \tab 0.116 \tab 0.442 \cr
-#'   normal    \tab regularizing  \tab 0.980 \tab 0.010
-#' }
-#'
-#' The coverage rule fixes the share above the \emph{farther} of the two ends
-#' from the location on the log scale, at 0.025 under \code{"uninformative"} and 0.01
-#' under \code{"regularizing"}, so those are lower bounds on the share above the
-#' highest value tested and the realised share is larger wherever the series
-#' extends further below its median than above it. The only cell where a
-#' threshold above the series is barely in the tail rather than deep in it is
-#' \code{normal} with \code{"uninformative"}, where the prior does
-#' correspondingly little to locate one. Every other statement of this in the
-#' package points here.
+#' constant \code{10 sd(z)} and is much wider. The coverage rule fixes the share
+#' above the \emph{farther} of the two ends from the location on the log scale,
+#' at 0.025 under \code{"uninformative"} and 0.01 under \code{"regularizing"},
+#' so those are lower bounds on the share above the highest value tested and the
+#' realised share is larger wherever the series extends further below its median
+#' than above it. The only cell where a threshold above the series is barely in
+#' the tail rather than deep in it is \code{normal} with
+#' \code{"uninformative"}, where the prior does correspondingly little to locate
+#' one. The four measured shares are tabulated under \code{prior_type} in
+#' \code{?\link{bnec}}, which is where this file's callers and the report in
+#' \code{\link{check_response_flattened}} send a reader; this block is not a
+#' second copy of them, because it is \code{@noRd} and no user can reach it.
 #'
 #' \strong{Why the spread is not narrowed by regularizing_factor.} The
 #' response-scaled entries are narrowed by \code{regularizing_factor}. This one

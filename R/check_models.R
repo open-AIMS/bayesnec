@@ -60,10 +60,17 @@ bounded_linear_drops <- function() {
 #' \code{P(nec < 0.25)} from 0.0063 to 0.269 and \code{P(nec < 0.1)} from
 #' 0.00011 to 0.0975. \code{P(nec < 1)} shifted only from 0.481 to 0.670, which
 #' would not explain it. Each of those six figures is the CDF of the entry
-#' truncated to the tested range, which is what both entries had when they
-#' were measured; #393 removed that truncation, which multiplies all six by one
-#' minus the mass the truncation had removed and leaves the ratio between the
-#' two entries almost unchanged. See #177 and #302.
+#' truncated to the tested range, which is what both entries had when they were
+#' measured. #393 removed that truncation, and reading the same quantity on the
+#' whole distribution is an affine map and not a rescaling: with \code{a} and
+#' \code{b} the prior CDF at the two bounds, the untruncated value is
+#' \code{T * (b - a) + a}, which reduces to multiplication by \code{b} only
+#' where the series has a zero control. On \code{\link{nec_data}}, where
+#' \code{a} is 0.025 for the lognormal and 5e-7 for the gamma, the three gamma
+#' figures are unchanged to the precision printed and the three lognormal ones
+#' become 0.2282, 0.0986 and 0.5314. The factor of 40 to 900 survives, at 36 and
+#' 896; the last pair becomes 0.480 against 0.531, which is a weaker version of
+#' the same point. See #177 and #302.
 #'
 #' @return A \code{\link[base]{character}} vector.
 #'
