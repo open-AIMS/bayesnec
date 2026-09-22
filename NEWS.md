@@ -101,12 +101,14 @@
   `bnec_group()` before its level loop, so it is stated once rather than once
   per equation or after the earlier levels have been fitted.
 
-  Fourteen of the 23 equations have no `bot` parameter and so assert that the
-  response falls to the floor. On a design that did not reach the asymptote the
-  data cannot separate them from the equations that estimate `bot`, so a set
-  holding both is reported. Whether the response can reach the floor is a
-  property of the endpoint rather than of the data, so the set is left as
-  requested and the message states both branches (#394).
+  Fourteen of the 23 equations have no `bot` parameter and so have no lower
+  asymptote to estimate; eleven of them fall to zero, and `neclin`,
+  `neclinhorme` and `ecxlin` decay by subtraction and are unbounded below. On a
+  design that did not reach the asymptote the data cannot separate them from the
+  equations that estimate `bot`, so a set holding both is reported. Whether the
+  response can reach zero is a property of the endpoint rather than of the
+  data, so the set is left as requested and the message states both branches
+  (#394).
 
 ## Estimates beyond the range the model was predicted over
 

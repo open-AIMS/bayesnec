@@ -2589,12 +2589,12 @@ test_that("bnec refuses the declaration before its model loop (#394)", {
 })
 
 test_that("a mixed model set is reported under the declaration (#394)", {
-  # Fourteen of the 23 equations have no bot parameter and so assert that the
-  # response reaches the floor. On a design that did not reach the asymptote
-  # the data cannot separate them from the equations that estimate bot, so the
-  # set is reported and left alone. The message states both branches, because
-  # whether the response can reach the floor is a property of the endpoint and
-  # not of the data.
+  # Fourteen of the 23 equations have no bot parameter and so have no lower
+  # asymptote to estimate. On a design that did not reach the asymptote the
+  # data cannot separate them from the equations that estimate bot, so the set
+  # is reported and left alone. The message states both branches, because
+  # whether the response can reach zero is a property of the endpoint and not
+  # of the data.
   d <- incomplete_design(0.36, "gaussian")
   bdat <- stats::model.frame(bnf(y ~ crf(x, c("nec3param", "nec4param"))),
                              data = d)

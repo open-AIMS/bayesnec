@@ -150,8 +150,10 @@
 #' and \code{FALSE} is refused for it rather than a floor being invented. Supply
 #' a \code{bot} prior through \code{prior} in that case.
 #'
-#' Fourteen of the 23 equations have no \code{bot} parameter and so assert that
-#' the response falls to the floor. On a design that did not reach the asymptote
+#' Fourteen of the 23 equations have no \code{bot} parameter and so have no
+#' lower asymptote to estimate. Eleven of them fall to zero, and \code{neclin},
+#' \code{neclinhorme} and \code{ecxlin} decay by subtraction and are unbounded
+#' below. On a design that did not reach the asymptote
 #' the data cannot distinguish them from the equations that estimate \code{bot},
 #' so a model set holding both is reported. Whether the response can reach the
 #' floor is a property of the endpoint rather than of the data --- zero is
