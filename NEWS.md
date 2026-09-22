@@ -161,10 +161,10 @@
 
   A limit inside the current range is an error rather than a silent tightening;
   narrow the range with `x_range`. The range a limit is measured against is the
-  range the call would otherwise use: `x_range` where one is given, and
-  otherwise the wider of the observed range and the prediction range the fit
-  stores, so a limit has to clear the grid the fit was built on and not only
-  the range this call would search. A limit on a fit
+  range the call would otherwise use. Where `x_range` is given, that is the
+  range. Where it is not, it is the wider of the observed range and the
+  prediction range the fit stores, so a limit given to such a call has to clear
+  the grid the fit was built on and not only the range the call would search. A limit on a fit
   with no draw beyond either end re-evaluates nothing and returns the stored
   estimate, because every draw was already identified inside the range the fit
   used; an object fitted before this version records nothing about which of its
