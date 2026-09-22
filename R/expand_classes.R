@@ -152,9 +152,10 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     # stored summary of an uncensored threshold posterior is still the one
     # extract_pars() read off fixef(robust = TRUE) -- the same three statistics
     # by a different route, and the number every archived analysis reports.
-    # A truncated nec prior holds every draw inside the grid, so this branch is
-    # silent until that truncation is removed (#393) or a fit is amended with a
-    # wider bound.
+    # A nec prior truncated to the tested range holds every draw inside the
+    # grid, so this branch was silent until #393 removed that truncation. It is
+    # live for a fit made since; for one made before, or for a user prior that
+    # bounds nec, it is silent unless the fit is amended with a wider bound.
     if (has_censoring(attr(ne_posterior, "censored"))) {
       extracted_params$ne <- estimates_summary(ne_posterior)
       report_ne_censoring(attr(extracted_params$ne, "censored_summary"),
