@@ -244,13 +244,24 @@ bnec_newdata.bayesnechurdlefit <- function(x, resolution = 100,
 nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
                                    x_range = NA,
                                    xform = identity,
-                                   prob_vals = c(0.5, 0.025, 0.975), ...,
+                                   prob_vals = c(0.5, 0.025, 0.975),
+                                   extrapolate = FALSE, ...,
                                    posterior = FALSE, which = "combined") {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   chk_logical(posterior)
   if (!inherits(xform, "function")) {
     stop("xform must be a function.")
+  }
+  # As in nsec.bayesnecfit: extrapolate resolves into the grid the curve is
+  # searched on, and adds to x_range the refusal to narrow and the refusal of
+  # an infinite limit.
+  lims <- extrapolate_limits(extrapolate,
+                             searched_or_stored_bounds(object, x_range),
+                             "NSEC")
+  if (!is.null(lims)) {
+    report_curve_read_lower_limit(object, lims)
+    x_range <- c(lims$lower, lims$upper)
   }
   preds <- hurdle_component_preds(object, resolution = resolution,
                                   x_range = x_range)

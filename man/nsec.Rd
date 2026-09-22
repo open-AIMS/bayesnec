@@ -12,6 +12,7 @@ nsec(
   x_range = NA,
   xform = identity,
   prob_vals = c(0.5, 0.025, 0.975),
+  extrapolate = FALSE,
   ...,
   dpar = NULL
 )
@@ -38,6 +39,13 @@ values.}
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
+
+\item{extrapolate}{The bound beyond which the estimate is reported as
+censored. \code{FALSE}, the default, censors at the ends of the prediction
+grid. A single number is an upper limit, and a pair of numbers is a lower
+and an upper limit, in that order; the grid is extended to reach them.
+\code{TRUE} is refused here, because every NSEC is read off a fitted curve.
+See the \emph{Extrapolation} section of \code{\link{nsec}}.}
 
 \item{...}{Further arguments to pass to class specific methods.}
 
@@ -168,6 +176,43 @@ lower than the quantity it was labelled as, with an interval narrower than
 the posterior supports. See \code{\link{nec}} for the same treatment of a
 threshold parameter, where the draw does have a value and the operation is
 right-censoring in the ordinary sense.
+}
+
+\section{Extrapolation}{
+
+\code{extrapolate} chooses the bound the estimate is censored at, on the
+same predictor scale as \code{x_range} and the data, not the scale
+\code{crf()} fits on and not the scale \code{xform} displays.
+
+\code{TRUE} asks for no bound at either end, and is an error here whatever
+the fit is. An NSEC is the concentration at which a fitted curve reaches a
+reference, so reading one means evaluating that curve on a grid, and no grid
+reaches infinity. Name a finite limit instead.
+
+A finite limit extends the grid the curve is searched on and then censors
+there, so \code{extrapolate} does through a checked argument what
+\code{x_range} does through an unchecked one: a limit inside the current
+range is an error rather than a silent tightening, because it would report
+an estimate as censored at a value the fit had no trouble identifying. Use
+\code{x_range} to narrow the range.
+
+A limit is measured against the range this call would otherwise use.
+Where \code{x_range} is given, that is the range, at both ends: it is a
+deliberate narrowing, and \code{extrapolate} extends from it rather than
+discarding it. Where it is not, the range is the wider of the observed range
+of the predictor and the prediction range the fit itself stores, which
+differ for a fit built over a grid above the data; a limit between them
+would report the estimate as censored inside the grid the fit was built on,
+so both have to be cleared. \code{\link{nec}} measures against that stored
+grid alone, having no \code{x_range} of its own, so the two agree on a fit
+whose grid reaches beyond the data and can differ on one whose grid stops
+short of it.
+
+A lower limit extends the grid but not the search. The reference is a
+quantile of the control posterior, so the control is where the search
+begins, and a draw already past the reference there has no identifiable
+crossing at any lower concentration. Such a limit is accepted, and a message
+states that the estimate stays censored at the control.
 }
 
 \examples{
