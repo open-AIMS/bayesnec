@@ -880,8 +880,8 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #'   normal    \tab regularizing  \tab 0.980 \tab 0.010
 #' }
 #'
-#' The coverage rule fixes the share above the *farther* of the two ends from
-#' the location on the log scale, at 0.025 under \code{"uninformative"} and 0.01
+#' The coverage rule fixes the share above the \emph{farther} of the two ends
+#' from the location on the log scale, at 0.025 under \code{"uninformative"} and 0.01
 #' under \code{"regularizing"}, so those are lower bounds on the share above the
 #' highest value tested and the realised share is larger wherever the series
 #' extends further below its median than above it. The only cell where a
