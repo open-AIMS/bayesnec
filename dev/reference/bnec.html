@@ -232,10 +232,10 @@ no-effect <code>top</code> parameter placed at the mean response over the lowest
 concentrations tested and <code>bot</code> at the mean over the highest). The
 regularizing set narrows the response-scaled and group-level priors to 0.4 of
 the width of the uninformative set. The <code>nec</code> and <code>ec50</code> prior is
-not derived from that width at all: its spread is the one whose central 98\<!-- % -->
+not derived from that width at all: its spread is the one whose central 98%
 interval reaches the farthest concentration tested. Under
 <code>"uninformative"</code> that prior is the one Fisher et al. (2024) describe,
-which is a coverage width at the 95\<!-- % level where concentrations are supplied -->
+which is a coverage width at the 95% level where concentrations are supplied
 as recorded and the constant <code>10 sd(x)</code> where the predictor is supplied
 already logged, so how much narrower the regularizing entry is depends on
 which of the two the data are on. See <code><a href="../articles/example3.html">vignette("example3")</a></code> for why the
@@ -244,13 +244,30 @@ two rules differ. Ignored when priors are supplied directly via the
 concentrations reach the lower asymptote of the curve. Where the mean
 response at the highest concentration is below the mean at the second
 highest by more than the contrast's standard error admits, tested one-sided
-at the 5\<!-- % level under the mean-variance relationship of the fitted family, -->
+at the 5% level under the mean-variance relationship of the fitted family,
 <code>bnec</code> reports that before fitting: an equation that estimates
 <code>bot</code> then has a prior describing the observed endpoint rather than the
-asymptote, and the <code>nec</code> or <code>ec50</code> prior excludes a threshold above
-the tested range. Inspect the generated entries with <code><a href="get_priors.html">get_priors</a></code>
-and pass a scientifically justified prior through <code>prior</code> where
-information beyond the design is available.</p></dd>
+asymptote, and the <code>nec</code> or <code>ec50</code> prior places a threshold above
+that range in its tail rather than outside its support. How far into the tail
+is a property of the branch and of <code>prior_type</code> together rather than of
+either alone. Three of the four combinations set the spread by a coverage
+rule that reaches the farthest concentration tested, at the 95% level for
+<code>"uninformative"</code> on a predictor supplied as a recorded concentration
+and at the 98% level for <code>"regularizing"</code> on either, so the mass above
+the highest concentration is 0.025 or 0.01 at least and larger where the
+series extends further below its median on the log scale than above it. The
+fourth, <code>"uninformative"</code> on a predictor supplied already logged, sets
+the spread to 10 times the standard deviation of the distinct predictor
+values, which is the constant Fisher et al. (2024) state rather than a
+coverage width, and is much the widest of the four. The share of each entry's
+mass between the lowest and the highest value tested, and the share above the
+highest, on <code><a href="nec_data.html">nec_data</a></code> for the recorded-concentration branch and
+on <code>log(herbicide$concentration)</code> for the already-logged one:</p>
+<table class="table table"><tr><td><strong>predictor</strong></td><td><strong>prior_type</strong></td><td><strong>inside</strong></td><td><strong>above</strong></td></tr><tr><td>recorded</td><td>uninformative</td><td>0.755</td><td>0.220</td></tr><tr><td>recorded</td><td>regularizing</td><td>0.811</td><td>0.179</td></tr><tr><td>logged</td><td>uninformative</td><td>0.116</td><td>0.442</td></tr><tr><td>logged</td><td>regularizing</td><td>0.980</td><td>0.010</td></tr></table><p>So the entry does correspondingly little to locate a threshold in the logged,
+<code>"uninformative"</code> case and rather more in the other three. Inspect the
+generated
+entries with <code><a href="get_priors.html">get_priors</a></code> and pass a scientifically justified
+prior through <code>prior</code> where information beyond the design is available.</p></dd>
 
 
 <dt id="arg-timeout">timeout<a class="anchor" aria-label="anchor" href="#arg-timeout"></a></dt>
