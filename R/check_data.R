@@ -804,7 +804,7 @@ declaration_advice <- function(family, y) {
 #'
 #' The model-set report states both branches, because the data decide neither.
 #' The region that would separate an equation estimating \code{bot} from one
-#' asserting the response reaches zero is the region the design did not reach,
+#' with no lower asymptote to estimate is the region the design did not reach,
 #' so a model average over both is averaging over the assumption at issue with
 #' weights the data cannot inform. Whether the response can reach zero is a
 #' property of the endpoint, which the user knows and the package cannot infer,
@@ -843,23 +843,25 @@ check_asymptote_declaration <- function(data, family, models,
     return(invisible(NULL))
   }
   # Reported before the gate below and not behind it. Whether a set mixes
-  # equations that estimate a lower asymptote with ones that assert the
-  # response reaches zero is a property of the set and of the design, and
-  # supplying a bot prior does not make the region that would separate them
-  # observed. The gate exists for the refusals alone.
+  # equations that estimate a lower asymptote with ones that do not is a
+  # property of the set and of the design, and supplying a bot prior does not
+  # make the region that would separate them observed. The gate exists for the
+  # refusals alone.
   #
-  # The message names zero from the equations rather than from
-  # asymptote_floor(). An equation without a bot parameter has zero written
-  # into its own asymptote -- nec3param is top * exp(-exp(beta) (x - nec)),
-  # which tends to zero -- so what it asserts is a property of the equation and
-  # holds whether or not the family supplies a floor. The two coincide wherever
-  # a floor exists.
+  # The message says the fourteen have no lower asymptote to estimate, which is
+  # what having no bot parameter means, rather than that they fall to zero.
+  # Eleven of them do fall to zero -- nec3param is top * exp(-exp(beta)
+  # (x - nec)) -- but neclin, neclinhorme and ecxlin decay by subtraction and
+  # are unbounded below, which ?models records at R/models.R. check_models()
+  # keeps all three for a gaussian family, which is the branch where the floor
+  # comes from the response being non-negative, so the claim would be false on
+  # the common path and the advice that follows it would be acted on.
   bot_free <- intersect(models, mod_groups$bot_free)
   bot_est <- setdiff(models, mod_groups$bot_free)
   if (length(bot_free) > 0 && length(bot_est) > 0) {
     message(
       "This set mixes equations that estimate a lower asymptote with ones that",
-      " assert the response falls to zero. With the asymptote unobserved the",
+      " have no lower asymptote to estimate. With the asymptote unobserved the",
       " fit cannot distinguish them. Restrict the set to mod_groups$bot_free",
       " if the response can reach zero for this endpoint, or away from it if",
       " it cannot."

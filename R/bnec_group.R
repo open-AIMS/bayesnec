@@ -282,10 +282,15 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # request is therefore recorded here, and crossed_group_weights() prefers
   # whatever the fits themselves still carry, since that is what actually
   # happened. See #33.
-  wt_method <- if (!is.null(dots$loo_controls$weights$method)) {
-    dots$loo_controls$weights$method
-  } else {
-    "pseudobma"
+  # dots_arg(), for the reason recorded there. `loo_controls` is a bnec()
+  # formal before `...`, so an abbreviated `loo_c =` reaches the fit and reads
+  # as absent here, and the fallback to "pseudobma" would then record a method
+  # the levels were not fitted under -- which is the wrong crossed table with
+  # nothing to signal it, the failure crossed_group_weights() exists to
+  # prevent.
+  wt_method <- dots_arg(dots, "loo_controls")$weights$method
+  if (is.null(wt_method)) {
+    wt_method <- "pseudobma"
   }
   # The set the formula asks for, which is what plan_group_levels() counts the
   # two arrangements over. Read here rather than taken from an argument because

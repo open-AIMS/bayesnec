@@ -2608,7 +2608,12 @@ test_that("a mixed model set is reported under the declaration (#394)", {
     bayesnec:::check_asymptote_declaration(
       bdat, fam, c("nec3param", "nec4param"), asymptote_observed = FALSE),
     message = conditionMessage)
+  expect_match(msg, "no lower asymptote to estimate", fixed = TRUE)
   expect_match(msg, "if the response can reach zero", fixed = TRUE)
+  # neclin, neclinhorme and ecxlin decay by subtraction and are unbounded
+  # below, so the report must not claim that every bot_free equation falls to
+  # zero. All three are kept for a gaussian family.
+  expect_false(grepl("falls to zero", msg, fixed = TRUE))
   expect_match(msg, "or away from it if it cannot", fixed = TRUE)
   # A set on one side of the divide says nothing, and neither does the default.
   expect_silent(bayesnec:::check_asymptote_declaration(
