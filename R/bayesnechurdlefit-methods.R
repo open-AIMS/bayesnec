@@ -619,6 +619,7 @@ amend.bayesnechurdlefit <- function(object, drop, add, loo_controls,
                                     x_range = NA, resolution = 1000,
                                     sig_val = 0.01, priors,
                                     prior_type = "uninformative",
+                                    asymptote_observed = TRUE,
                                     timeout = Inf,
                                     predictor_scale = "auto") {
   predictor_scale <- validate_predictor_scale(predictor_scale)
@@ -627,7 +628,9 @@ amend.bayesnechurdlefit <- function(object, drop, add, loo_controls,
   # before either component can be refitted. See #317.
   validate_predictor_scale(predictor_scale, hurdle_raw_data(object)$x)
   args <- list(x_range = x_range, resolution = resolution, sig_val = sig_val,
-               prior_type = prior_type, predictor_scale = predictor_scale,
+               prior_type = prior_type,
+               asymptote_observed = asymptote_observed,
+               predictor_scale = predictor_scale,
                timeout = timeout)
   if (!missing(priors)) args$priors <- priors
   if (!missing(drop)) args$drop <- drop

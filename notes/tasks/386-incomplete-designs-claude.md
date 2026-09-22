@@ -697,6 +697,39 @@ or below the uninformative width. It must not apply here. The new entry is
 deliberately wider than both existing sets, and the cap is precisely what holds
 the prior at a width that excludes the truth, as #386 states.
 
+#### Amendments from the implementation
+
+Written 2026-09-22 on the #394 branch. Two rows of the table above were changed
+while the phase was implemented, and the measurements behind both are in
+`notes/prior_audit.md` part 5.
+
+The beta row does not use `beta_from_mode_sd()`. That helper requires both
+shapes above 1, so the density is zero at the floor and the 2.5th percentile is
+well inside the interval: applied with the mode at *e*/2 and the gaussian row's
+spread it returns a 2.5th percentile of 0.18*e*, which sat above the true `bot`
+in every one of the 75 bounded cells at `f36`, and again at `f02`, under each
+prior type. The fixed `beta(2, 5)` of the `"uninformative"` set excludes the
+truth in none of those cells, so the construction the row named was worse than
+the entry it was replacing. The entry built instead is
+`beta(1, log(0.025) / log(1 - e))`, whose 97.5th percentile is exactly *e* and
+whose 2.5th is 0.0084 to 0.0087 of it by family. The rule quoted above is the
+contract; the helper was the mechanism the row suggested.
+
+The band's lower limit is lowered to the floor rather than set to it. Section
+5.4 below says it "becomes the same floor"; the implementation applies `min()`.
+The declaration states that the true asymptote may be lower than the response
+shows and never that it is higher, so it may only widen the band. On a gaussian
+response the spread already places the lower limit below zero, and assigning
+the floor there would narrow the band and reject draws the released search
+accepts.
+
+The refusal covers a non-identity link as well as a gaussian response spanning
+negative values. `prior_family_tag()` rewrites a `log` or `logit` link onto the
+gaussian entries, and on that scale the floor of the mean is `-Inf`. A response
+that happens to be non-negative once logged states only that every observation
+exceeds one in response units, which is a property of the units rather than a
+floor, so there is nothing to span the prior from.
+
 ### 5.4 The initial-value band
 
 `init_limits()`, `R/inits_functions.R:647`, builds the band from the observed
