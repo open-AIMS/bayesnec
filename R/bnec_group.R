@@ -116,34 +116,6 @@
 #' crossed_group_weights(fit)
 #' }
 #'
-#' One argument of \code{bnec()}, read from a \code{bnec_group()} dot list
-#'
-#' @details \code{\link{bnec_group}} inspects several of the arguments it is
-#' about to forward, so that a report or a refusal that is a property of the
-#' whole response is raised once rather than once per level. It forwards them
-#' with \code{do.call()}, where an argument named before \code{...} in
-#' \code{\link{bnec}}'s signature matches an abbreviation, so reading the dot
-#' list by exact name gives an answer the forwarded call can contradict:
-#' \code{model_s = "nec3param"} reaches \code{bnec()} as
-#' \code{model_survival} and reads as absent here.
-#'
-#' \code{pmatch()} resolves it the way the call will. It returns at most one
-#' index for a one-element table, and an exact name wins over an abbreviation,
-#' so two abbreviations of the same formal resolve to one index here and
-#' \code{do.call()} refuses the duplicate before anything is fitted.
-#'
-#' @param dots The dot list \code{\link{bnec_group}} collected.
-#' @param name The \code{\link{bnec}} formal to read.
-#' @param default What to return where the argument was not supplied.
-#'
-#' @return The supplied value, or \code{default}.
-#'
-#' @noRd
-dots_arg <- function(dots, name, default = NULL) {
-  hit <- which(!is.na(pmatch(names(dots), name)))
-  if (length(hit) == 1) dots[[hit]] else default
-}
-
 #' @export
 bnec_group <- function(formula, data, group_var, family = NULL,
                        predictor_scale = "auto", ...) {
@@ -739,4 +711,32 @@ compare_pooled <- function(object, pooled, best) {
        diff = diff,
        se_diff = se_diff,
        n_obs = n_obs)
+}
+
+#' One argument of \code{bnec()}, read from a \code{bnec_group()} dot list
+#'
+#' @details \code{\link{bnec_group}} inspects several of the arguments it is
+#' about to forward, so that a report or a refusal that is a property of the
+#' whole response is raised once rather than once per level. It forwards them
+#' with \code{do.call()}, where an argument named before \code{...} in
+#' \code{\link{bnec}}'s signature matches an abbreviation, so reading the dot
+#' list by exact name gives an answer the forwarded call can contradict:
+#' \code{model_s = "nec3param"} reaches \code{bnec()} as
+#' \code{model_survival} and reads as absent here.
+#'
+#' \code{pmatch()} resolves it the way the call will. It returns at most one
+#' index for a one-element table, and an exact name wins over an abbreviation,
+#' so two abbreviations of the same formal resolve to one index here and
+#' \code{do.call()} refuses the duplicate before anything is fitted.
+#'
+#' @param dots The dot list \code{\link{bnec_group}} collected.
+#' @param name The \code{\link{bnec}} formal to read.
+#' @param default What to return where the argument was not supplied.
+#'
+#' @return The supplied value, or \code{default}.
+#'
+#' @noRd
+dots_arg <- function(dots, name, default = NULL) {
+  hit <- which(!is.na(pmatch(names(dots), name)))
+  if (length(hit) == 1) dots[[hit]] else default
 }
