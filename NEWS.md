@@ -371,20 +371,23 @@
   threshold the design did not measure. What it changes is the shape of the
   posterior: mass spreads over the region the data cannot distinguish and the
   interval widens, which is the correct statement. The spread rule of #314 is
-  unchanged. On the lognormal branch the central 95 per cent of the
-  `"uninformative"` entry and the central 98 per cent of the `"regularizing"`
-  entry reach only as far as the farthest concentration tested from the prior
-  location on the log scale, so at least one part in forty of the
-  `"uninformative"` mass lies above the highest concentration, and more where
-  the series extends further below its median on that scale than above it: on
-  `nec_data` the share is 0.22. The normal branch is far wider, because its
-  `"uninformative"` spread is the constant `10 sd(z)` that Fisher et al. (2024)
-  state rather than a coverage width. On `log(herbicide$concentration)` it
-  places 0.12 of its mass inside the tested range and 0.44 above the highest
-  concentration. What now holds a reported estimate inside that range by default
-  is the censoring of the posterior described under "Estimates beyond the range
-  the model was predicted over", together with the `extrapolate` argument of
-  `nec()` and `nsec()`, rather than the prior.
+  unchanged, and how far into the tail a beyond-range threshold now falls
+  depends on the branch and on `prior_type` together rather than on either
+  alone. Three of the four combinations set the spread by a coverage rule that
+  reaches the farthest concentration tested, so the mass above the highest
+  concentration is 0.025 or 0.01 at least, and larger where the series extends
+  further below its median on the log scale than above it: 0.220 under
+  `"uninformative"` and 0.179 under `"regularizing"` on `nec_data`. The fourth,
+  `"uninformative"` on a predictor supplied already logged, sets the spread to
+  the constant `10 sd(z)` that Fisher et al. (2024) state rather than by
+  coverage, and is much the widest: on `log(herbicide$concentration)` it places
+  0.12 of its mass inside the tested range and 0.44 above the highest
+  concentration, so it does correspondingly little to locate a threshold at all.
+  `?bnec` under `prior_type` gives the four figures together. What now holds a
+  reported estimate inside the tested range by default is the censoring of the
+  posterior described under "Estimates beyond the range the model was predicted
+  over", together with the `extrapolate` argument of `nec()` and `nsec()`,
+  rather than the prior.
 
   Measured over the 5,760-cell prior audit, before and after, paired cell by
   cell. Of the 2,159 incomplete-design `ec50` cells, 1,439 had a prior CDF at
@@ -396,9 +399,10 @@
   design, by a paired mean of 1.31 with a 95 per cent interval of 0.59 to 2.04
   over 720 cells, because a threshold drawn above the series gives a curve flat
   at `top` that the acceptance band rejects; on `ecx4param` the difference is
-  −0.22, interval −0.60 to 0.16. No complete-design cell exhausted the search in
-  either run and over the whole sweep the number that did fell from 27 to 21.
-  `notes/prior_audit.md` part 4 holds the tables.
+  −0.22, interval −0.60 to 0.16. The audit caps its own search at 200 rounds
+  rather than the 10,000 a fit takes, and at that cap no complete-design cell
+  exhausted the search in either run while the number that did over the whole
+  sweep fell from 27 to 21. `notes/prior_audit.md` part 4 holds the tables.
 
   A fit made before this release keeps the bounds it was fitted with. `amend()`
   rebuilds a prior only for an equation it adds, so adding one to such a fit

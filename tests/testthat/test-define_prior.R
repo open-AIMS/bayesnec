@@ -2172,14 +2172,14 @@ test_that("the threshold prior places mass beyond the tested range (#393)", {
   row <- pr[pr$nlpar == "ec50", ]
   pars <- as.numeric(strsplit(gsub("^[^(]*\\(|\\)$", "", row$prior),
                               ",[[:space:]]*")[[1]])
-  # The bounds are what carries the finding. Without these two the rest is
+  # The bounds are what holds the finding. Without these two the rest is
   # satisfied by the released prior string as well, since the string is the
   # same on both sides of the change.
   expect_equal(as.numeric(row$lb), 0)
   expect_true(is.na(row$ub))
-  # The truth is above the bound the entry used to carry, so the CDF of the
-  # truncated prior there was exactly 1: the support excluded it. That is what
-  # #386 reported and what this change removes.
+  # The truth is above the bound the entry was given until #393, so the CDF of
+  # the truncated prior there was exactly 1: the support excluded it. That is
+  # what #386 reported and what this change removes.
   expect_gt(45, max(x))
   cdf <- function(q) stats::plnorm(q, pars[1], pars[2])
   lo <- if (is.na(row$lb)) 0 else as.numeric(row$lb)
@@ -2220,6 +2220,10 @@ test_that("a single distinct predictor value builds and draws (#393)", {
   row <- pr[pr$nlpar == "nec", ]
   expect_match(row$prior, "^lognormal\\(")
   expect_equal(as.numeric(row$lb), 0)
+  # This is the assertion that fails fast on a regression. The make_inits()
+  # call below would hang rather than fail if the upper bound came back, since
+  # the tautology it restores is an infinite while loop; do not remove this as
+  # redundant.
   expect_true(is.na(row$ub))
   set.seed(393)
   inits <- bayesnec:::make_inits(

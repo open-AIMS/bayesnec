@@ -124,18 +124,19 @@ at the 5\\% level under the mean-variance relationship of the fitted family,
 \code{bot} then has a prior describing the observed endpoint rather than the
 asymptote, and the \code{nec} or \code{ec50} prior places a threshold above
 that range in its tail rather than outside its support. How far into the tail
-depends on the branch. Where the predictor is supplied as a recorded
-concentration the central 95\\% of the \code{"uninformative"} entry and the
-central 98\\% of the \code{"regularizing"} entry reach the farthest
-concentration tested from the prior location on the log scale, so at least
-one part in forty of the \code{"uninformative"} mass lies above the highest
-concentration, and more where the series extends further below its median on
-that scale than above it. Where the predictor is supplied already logged the
-\code{"uninformative"} spread is the constant \code{10 sd(x)} of Fisher et
-al. (2024) rather than a coverage width, and the entry is correspondingly
-much wider: on \code{log(herbicide$concentration)} it places 0.12 of its mass
-inside the tested range and 0.44 above the highest concentration. Inspect the
-generated
+is a property of the branch and of \code{prior_type} together. Three of the
+four combinations set the spread by a coverage rule that reaches the farthest
+concentration tested, at the 95\\% level for \code{"uninformative"} on a
+predictor supplied as a recorded concentration and at the 98\\% level for
+\code{"regularizing"} on either, so the mass above the highest concentration
+is 0.025 or 0.01 at least and larger where the series extends further below
+its median on the log scale than above it: 0.220 and 0.179 on
+\code{\link{nec_data}}. The fourth, \code{"uninformative"} on a predictor
+supplied already logged, sets the spread to the constant \code{10 sd(x)} of
+Fisher et al. (2024) rather than by coverage, and is much the widest of the
+four: on \code{log(herbicide$concentration)} it places 0.12 of its mass
+inside the tested range and 0.44 above the highest concentration, so it does
+correspondingly little to locate a threshold at all. Inspect the generated
 entries with \code{\link{get_priors}} and pass a scientifically justified
 prior through \code{prior} where information beyond the design is available.}
 

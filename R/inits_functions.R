@@ -1088,6 +1088,9 @@ make_good_inits <- function(model, x, y, family, n_trials = 1e4, seed = NULL,
     # log(10) to log(10000) gets a fallback below every dose. The fallback is
     # reached no more often than before, and rather less: over the 5,760-cell
     # prior audit of #391, re-run for #393, the count fell from 27 cells to 21.
+    # That audit caps its own search at 200 rounds rather than the 1e4 this
+    # function takes, so those two counts bound how often a shipped fit reaches
+    # here from above and are not a rate for it.
     # What changed is where it starts when it is reached. Supplying `init`
     # through bnec() is the remedy, and this message names get_priors() so the
     # entry can be read first.

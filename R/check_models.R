@@ -60,10 +60,10 @@ bounded_linear_drops <- function() {
 #' \code{P(nec < 0.25)} from 0.0063 to 0.269 and \code{P(nec < 0.1)} from
 #' 0.00011 to 0.0975. \code{P(nec < 1)} shifted only from 0.481 to 0.670, which
 #' would not explain it. Each of those six figures is the CDF of the entry
-#' truncated to the tested range, which is what both entries carried when they
-#' were measured; #393 removed that truncation, which rescales all six by the
-#' mass the truncation had removed and leaves the ratio between the two entries
-#' almost unchanged. See #177 and #302.
+#' truncated to the tested range, which is what both entries had when they
+#' were measured; #393 removed that truncation, which multiplies all six by one
+#' minus the mass the truncation had removed and leaves the ratio between the
+#' two entries almost unchanged. See #177 and #302.
 #'
 #' @return A \code{\link[base]{character}} vector.
 #'

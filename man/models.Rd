@@ -68,9 +68,9 @@ families under an identity link. The term
 \code{x^(1 / (1 + exp(slope)))} contributes exactly 1 at \code{x = 1}
 whatever "slope" is, and below the threshold the decay factor is 1, so the
 fitted mean is at least \code{top + 1} at any concentration at or above 1
-that falls strictly below "nec". Since "nec" is bounded to the predictor
-range, every such value is one the sampler is free to propose, and each
-proposal is outside the likelihood's support. More generally the exponent
+that falls strictly below "nec". The prior on "nec" places mass across the
+predictor range, so every such value is one the sampler is free to propose,
+and each proposal is outside the likelihood's support. More generally the exponent
 \code{1 / (1 + exp(slope))} tends to 0 as "slope" grows, so the term tends to
 1 for every concentration above 0 and the mean below the threshold tends to
 \code{top + 1}. For any "top" above 0 there is therefore a "slope" at which

@@ -160,10 +160,13 @@ Two constraints on the reach of an extrapolation are reported rather than
 corrected. Where the \code{nec} prior stored on the fit is itself bounded at
 the prediction range, the posterior holds no draw beyond that bound and a
 wider limit returns the same truncated posterior; a message states the
-bound. The default prior no longer carries such a bound, so this applies to
-a fit made before that change or to a user prior that supplies one. And a curve-read component is measured from the control, so a lower
-limit below the lowest observed concentration extends the grid without
-extending the search, and those components stay censored at the control.
+bound. The default prior no longer bounds \code{nec} above, so this applies
+to a fit made before that change, or to a user prior that supplies a bound.
+The lower bound of 0 that a predictor supplied as a concentration still
+takes is reported by the other arm of the same message. And a curve-read
+component is measured from the control, so a lower limit below the lowest
+observed concentration extends the grid without extending the search, and
+those components stay censored at the control.
 }
 
 \examples{

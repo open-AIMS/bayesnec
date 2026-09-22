@@ -58,6 +58,16 @@ test_that("a gaussian response is reported where its top two levels differ", {
     check_response_flattened(bdat, gaussian(link = "identity")),
     "falls from 0.805 to 0.602 as x rises from 2 to 4"
   )
+  # What the report says about the threshold priors, pinned because it went
+  # stale once and nothing failed: it said they "exclude a threshold above the
+  # tested range", which stopped being true when #393 removed the truncation.
+  # This is the only sentence of the message that makes a claim about the
+  # priors rather than about the data, and it is the only one that was not
+  # already asserted here.
+  expect_message(
+    check_response_flattened(bdat, gaussian(link = "identity")),
+    "put a threshold above the tested range in their tail"
+  )
   flat <- flat_bdat(y ~ crf(x, "nec4param"),
                     data.frame(x = flat_x, y = flattened_y))
   expect_silent(check_response_flattened(flat, gaussian(link = "identity")))

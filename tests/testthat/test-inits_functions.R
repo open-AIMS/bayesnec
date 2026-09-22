@@ -1321,8 +1321,9 @@ test_that("a chain is accepted on its own, so a low per-chain rate still succeed
   # sits above the highest dose and a nec drawn there makes the curve flat at
   # top. The 4-at-once expectation is therefore 803 rounds before and 1,163
   # after, so a cap of 2,000 left one of these three seeds capped. At 20,000 the
-  # chance of a cap is below 1e-7 per seed and the three seeds together run in
-  # about 8 s.
+  # chance of a cap is below 1e-7 per seed. The three seeds together took 8.1 s,
+  # timed with system.time() in one Rscript process on one core on 2026-09-22;
+  # not measured on CI, where the suite runs two workers.
   released_drawn <- function(seed, cap = 20000) {
     set.seed(seed)
     n <- 0
