@@ -66,9 +66,10 @@ bounded_linear_drops <- function() {
 #' \code{b} the prior CDF at the two bounds, the untruncated value is
 #' \code{T * (b - a) + a}, which reduces to multiplication by \code{b} only
 #' where the series has a zero control. On \code{\link{nec_data}}, where
-#' \code{a} is 0.025 for the lognormal and 5e-7 for the gamma, the three gamma
-#' figures are unchanged to the precision printed and the three lognormal ones
-#' become 0.2282, 0.0986 and 0.5314. The factor of 40 to 900 survives, at 36 and
+#' \code{a} is 0.025 for the lognormal and 5e-7 for the gamma, the first two
+#' gamma figures are unchanged to the precision printed, the third moves from
+#' 0.481 to 0.480, and the three lognormal ones become 0.2282, 0.0986 and
+#' 0.5314. The factor of 40 to 900 survives, at 36 and
 #' 896; the last pair becomes 0.480 against 0.531, which is a weaker version of
 #' the same point. See #177 and #302.
 #'

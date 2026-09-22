@@ -107,10 +107,10 @@ no-effect \code{top} parameter placed at the mean response over the lowest
 concentrations tested and \code{bot} at the mean over the highest). The
 regularizing set narrows the response-scaled and group-level priors to 0.4 of
 the width of the uninformative set. The \code{nec} and \code{ec50} prior is
-not derived from that width at all: its spread is the one whose central 98\\%
+not derived from that width at all: its spread is the one whose central 98\%
 interval reaches the farthest concentration tested. Under
 \code{"uninformative"} that prior is the one Fisher et al. (2024) describe,
-which is a coverage width at the 95\\% level where concentrations are supplied
+which is a coverage width at the 95\% level where concentrations are supplied
 as recorded and the constant \code{10 sd(x)} where the predictor is supplied
 already logged, so how much narrower the regularizing entry is depends on
 which of the two the data are on. See \code{vignette("example3")} for why the
@@ -119,16 +119,16 @@ two rules differ. Ignored when priors are supplied directly via the
 concentrations reach the lower asymptote of the curve. Where the mean
 response at the highest concentration is below the mean at the second
 highest by more than the contrast's standard error admits, tested one-sided
-at the 5\\% level under the mean-variance relationship of the fitted family,
+at the 5\% level under the mean-variance relationship of the fitted family,
 \code{\link{bnec}} reports that before fitting: an equation that estimates
 \code{bot} then has a prior describing the observed endpoint rather than the
 asymptote, and the \code{nec} or \code{ec50} prior places a threshold above
 that range in its tail rather than outside its support. How far into the tail
 is a property of the branch and of \code{prior_type} together rather than of
 either alone. Three of the four combinations set the spread by a coverage
-rule that reaches the farthest concentration tested, at the 95\\% level for
+rule that reaches the farthest concentration tested, at the 95\% level for
 \code{"uninformative"} on a predictor supplied as a recorded concentration
-and at the 98\\% level for \code{"regularizing"} on either, so the mass above
+and at the 98\% level for \code{"regularizing"} on either, so the mass above
 the highest concentration is 0.025 or 0.01 at least and larger where the
 series extends further below its median on the log scale than above it. The
 fourth, \code{"uninformative"} on a predictor supplied already logged, sets
@@ -148,8 +148,9 @@ logged   \tab uninformative \tab 0.116 \tab 0.442 \cr
 logged   \tab regularizing  \tab 0.980 \tab 0.010
 }
 
-So the entry does correspondingly little to locate a threshold in the third
-of those four cases and rather more in the other three. Inspect the generated
+So the entry does correspondingly little to locate a threshold in the logged,
+\code{"uninformative"} case and rather more in the other three. Inspect the
+generated
 entries with \code{\link{get_priors}} and pass a scientifically justified
 prior through \code{prior} where information beyond the design is available.}
 
