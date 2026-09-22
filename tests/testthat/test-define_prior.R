@@ -2159,10 +2159,11 @@ test_that("a logged predictor keeps neither threshold bound (#393)", {
 })
 
 test_that("the threshold prior places mass beyond the tested range (#393)", {
-  # The measurement the change exists for: the prior CDF at a true threshold
-  # above the highest concentration tested is no longer exactly 1. The spread
-  # rule of #314 puts the central 95 per cent of the uninformative entry inside
-  # the tested range, so the mass above it is small and is not zero.
+  # The measurement the change exists for, on #386's own design: the prior CDF
+  # at a true ec50 of 45 against a highest concentration of 40 was exactly 1 and
+  # is now below it. The CDF is computed over the bounds the entry is given, as
+  # the prior audit computes it, because that is the density the sampler sees,
+  # and it is the bounds and not the prior string that #393 changed.
   x <- rep(c(0, 0.31, 0.63, 1.25, 2.5, 5, 10, 40), each = 5)
   d <- data.frame(x = x, y = seq(0.9, 0.1, length.out = length(x)))
   pr <- as.data.frame(suppressMessages(get_priors(
@@ -2171,8 +2172,61 @@ test_that("the threshold prior places mass beyond the tested range (#393)", {
   row <- pr[pr$nlpar == "ec50", ]
   pars <- as.numeric(strsplit(gsub("^[^(]*\\(|\\)$", "", row$prior),
                               ",[[:space:]]*")[[1]])
-  above <- stats::plnorm(max(x), pars[1], pars[2], lower.tail = FALSE)
+  # The bounds are what carries the finding. Without these two the rest is
+  # satisfied by the released prior string as well, since the string is the
+  # same on both sides of the change.
+  expect_equal(as.numeric(row$lb), 0)
+  expect_true(is.na(row$ub))
+  # The truth is above the bound the entry used to carry, so the CDF of the
+  # truncated prior there was exactly 1: the support excluded it. That is what
+  # #386 reported and what this change removes.
+  expect_gt(45, max(x))
+  cdf <- function(q) stats::plnorm(q, pars[1], pars[2])
+  lo <- if (is.na(row$lb)) 0 else as.numeric(row$lb)
+  hi <- if (is.na(row$ub)) Inf else as.numeric(row$ub)
+  mass <- (if (is.finite(hi)) cdf(hi) else 1) - cdf(lo)
+  expect_lt((cdf(45) - cdf(lo)) / mass, 1)
+  # The value notes/prior_audit.md part 4 reports for this cell.
+  expect_equal(signif((cdf(45) - cdf(lo)) / mass, 4), 0.9795)
+  # The spread rule of #314 puts the central 95 per cent of the uninformative
+  # entry inside the tested range, so the mass above it is small and is not
+  # zero.
+  above <- 1 - cdf(max(x))
   expect_gt(above, 0)
   expect_lt(above, 0.05)
-  expect_lt(stats::plnorm(45, pars[1], pars[2]), 1)
+})
+
+test_that("a single distinct predictor value builds and draws (#393)", {
+  # The old two-bound branch of make_inits() ran
+  # while (draw <= min(bounds) | draw >= max(bounds)), which is a tautology
+  # where min equals max, so a nec prior built from a predictor with one
+  # distinct positive value hung the initial-value search rather than failing.
+  # With lb = 0 and no ub that branch is unreachable from the default priors.
+  # predictor_prior() already had the degenerate fallback of sigma = 1 for this
+  # case; nothing else did.
+  #
+  # Driven through define_prior() rather than get_priors(), because a constant
+  # predictor does not reach the prior through a formula: check_data() compares
+  # the response means of the two halves of the predictor, which is NaN here,
+  # and stops on "missing value where TRUE/FALSE needed". That refusal is
+  # unhelpful and is not this change's business; what is asserted here is that
+  # the prior and the initial-value search no longer have a defect of their own
+  # behind it.
+  x <- rep(5, 12)
+  y <- seq(0.9, 0.1, length.out = 12)
+  pr <- as.data.frame(suppressMessages(
+    define_prior("nec3param", validate_family("gaussian"), x, y)
+  ))
+  row <- pr[pr$nlpar == "nec", ]
+  expect_match(row$prior, "^lognormal\\(")
+  expect_equal(as.numeric(row$lb), 0)
+  expect_true(is.na(row$ub))
+  set.seed(393)
+  inits <- bayesnec:::make_inits(
+    "nec3param", c("b_top", "b_beta", "b_nec"),
+    priors = pr[pr$class == "b", ], chains = 2
+  )
+  expect_length(inits, 2)
+  expect_true(all(vapply(inits, function(z) is.finite(z$b_nec), logical(1))))
+  expect_true(all(vapply(inits, function(z) z$b_nec > 0, logical(1))))
 })

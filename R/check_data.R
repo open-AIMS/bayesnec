@@ -657,8 +657,9 @@ check_response_flattened <- function(data, family, group = NULL,
       paste(declining, collapse = "\n"), "\n",
       "The lower asymptote may not be identified by this design: where an",
       " equation estimates bot its default prior is derived from the observed",
-      " response, and the default nec and ec50 priors exclude a threshold",
-      " above the tested range. Inspect the entries with get_priors() and",
+      " response, and the default nec and ec50 priors place most of their mass",
+      " inside the tested range, so a threshold above it is in the far tail.",
+      " Inspect the entries with get_priors() and",
       " supply scientifically justified ones through the prior argument where",
       " information beyond the design is available."
     )

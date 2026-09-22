@@ -692,8 +692,11 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' of the predictor: \code{lognormal(mu, sigma)} where the predictor is
 #' supplied on the dose scale, and \code{normal(mu, sigma)} where it spans
 #' negative values and has therefore already been log transformed by the user.
-#' The two are one rule stated on two scales. Truncation is applied by the
-#' caller, to the observed predictor range, and is unchanged.
+#' The two are one rule stated on two scales. The bound is applied by the
+#' caller and is the support of the distribution returned here: \code{lb = 0}
+#' on the lognormal branch and none on the normal one. Up to and including
+#' 2.1.4 the caller truncated both to the observed predictor range as well;
+#' #393 removed that.
 #'
 #' @details Until #302 there were three entries, selected by the support of the
 #' predictor: \code{gamma(5, 4/m)} where the predictor was non-negative and

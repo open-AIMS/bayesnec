@@ -1076,6 +1076,21 @@ make_good_inits <- function(model, x, y, family, n_trials = 1e4, seed = NULL,
     }
   }
   if (any(!filled)) {
+    # What Stan does from here depends on how the nec prior is declared, and
+    # #393 changed that. Stan draws uniform(-2, 2) on the unconstrained scale
+    # and applies the constraint transform, so a parameter declared
+    # <lower=a, upper=b> starts inside the tested series, one declared
+    # <lower=0> starts in (0.135, 7.39) whatever the units of the series, and
+    # an unconstrained one starts in (-2, 2). Before #393 every nec was
+    # two-sided and the fallback therefore started inside the design; now the
+    # lognormal branch is one-sided and the normal branch -- a predictor the
+    # user supplied already logged -- is unconstrained, where a series spanning
+    # log(10) to log(10000) gets a fallback below every dose. The fallback is
+    # reached no more often than before, and rather less: over the 5,760-cell
+    # prior audit of #391, re-run for #393, the count fell from 27 cells to 21.
+    # What changed is where it starts when it is reached. Supplying `init`
+    # through bnec() is the remedy, and this message names get_priors() so the
+    # entry can be read first.
     elapsed <- as.numeric(Sys.time() - started, units = "secs")
     message("bayesnec failed to find initial values for all ", chains,
             " chains of the ", model, " model after ", n_t, " attempts and ",

@@ -57,7 +57,7 @@ test_that("fit_bayesnec passes an explicit predictor scale to its prior (#317)",
   prior <- as.data.frame(seen$prior)
 
   expect_match(prior$prior[prior$nlpar == "nec"], "^normal\\(")
-  # The normal branch carries neither bound (#393); what the declared scale
+  # The normal branch takes neither bound (#393); what the declared scale
   # decides here is the distribution, not the truncation.
   expect_true(is.na(prior$lb[prior$nlpar == "nec"]))
   expect_true(is.na(prior$ub[prior$nlpar == "nec"]))

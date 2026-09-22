@@ -86,15 +86,20 @@
 #' at the 5\% level under the mean-variance relationship of the fitted family,
 #' \code{\link{bnec}} reports that before fitting: an equation that estimates
 #' \code{bot} then has a prior describing the observed endpoint rather than the
-#' asymptote, and the \code{nec} or \code{ec50} prior places most of its mass
-#' inside the tested range, so a threshold above that range sits in the prior's
-#' tail rather than outside its support. The central 95\% of the
-#' \code{"uninformative"} entry and the central 98\% of the
-#' \code{"regularizing"} entry reach the farthest concentration tested from the
-#' prior location on the log scale, so at least one part in forty of the
-#' \code{"uninformative"} mass lies above the highest concentration, and more
-#' where the series extends further below its median on that scale than above
-#' it. Inspect the generated
+#' asymptote, and the \code{nec} or \code{ec50} prior places a threshold above
+#' that range in its tail rather than outside its support. How far into the tail
+#' depends on the branch. Where the predictor is supplied as a recorded
+#' concentration the central 95\% of the \code{"uninformative"} entry and the
+#' central 98\% of the \code{"regularizing"} entry reach the farthest
+#' concentration tested from the prior location on the log scale, so at least
+#' one part in forty of the \code{"uninformative"} mass lies above the highest
+#' concentration, and more where the series extends further below its median on
+#' that scale than above it. Where the predictor is supplied already logged the
+#' \code{"uninformative"} spread is the constant \code{10 sd(x)} of Fisher et
+#' al. (2024) rather than a coverage width, and the entry is correspondingly
+#' much wider: on \code{log(herbicide$concentration)} it places 0.12 of its mass
+#' inside the tested range and 0.44 above the highest concentration. Inspect the
+#' generated
 #' entries with \code{\link{get_priors}} and pass a scientifically justified
 #' prior through \code{prior} where information beyond the design is available.
 #' @param predictor_scale A \code{\link[base]{character}} string declaring the

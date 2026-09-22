@@ -371,20 +371,41 @@
   threshold the design did not measure. What it changes is the shape of the
   posterior: mass spreads over the region the data cannot distinguish and the
   interval widens, which is the correct statement. The spread rule of #314 is
-  unchanged, so the central 95 per cent of the `"uninformative"` entry and the
-  central 98 per cent of the `"regularizing"` entry still reach only as far as
-  the farthest concentration tested from the prior location on the log scale.
-  At least one part in forty of the `"uninformative"` mass therefore lies above
-  the highest concentration, and more where the series extends further below its
-  median on that scale than above it: on `nec_data` the share is 0.22. What now
-  holds a reported estimate inside that range by default is the
-  censoring of the posterior described under "Estimates beyond the range the
-  model was predicted over", together with the `extrapolate` argument of
-  `nec()` and `nsec()`, rather than the prior. Over the 5,760-cell prior audit
-  the truncated prior CDF at a true `ec50` above the series was exactly 1 in
-  720 cells and is now below 1 in every one of them, while no complete-design
-  cell changes and the median number of proposals the initial-value search
-  draws is unchanged (#393).
+  unchanged. On the lognormal branch the central 95 per cent of the
+  `"uninformative"` entry and the central 98 per cent of the `"regularizing"`
+  entry reach only as far as the farthest concentration tested from the prior
+  location on the log scale, so at least one part in forty of the
+  `"uninformative"` mass lies above the highest concentration, and more where
+  the series extends further below its median on that scale than above it: on
+  `nec_data` the share is 0.22. The normal branch is far wider, because its
+  `"uninformative"` spread is the constant `10 sd(z)` that Fisher et al. (2024)
+  state rather than a coverage width. On `log(herbicide$concentration)` it
+  places 0.12 of its mass inside the tested range and 0.44 above the highest
+  concentration. What now holds a reported estimate inside that range by default
+  is the censoring of the posterior described under "Estimates beyond the range
+  the model was predicted over", together with the `extrapolate` argument of
+  `nec()` and `nsec()`, rather than the prior.
+
+  Measured over the 5,760-cell prior audit, before and after, paired cell by
+  cell. Of the 2,159 incomplete-design `ec50` cells, 1,439 had a prior CDF at
+  the true value of exactly 1 and none do now, the largest remaining value being
+  0.99938. On the complete designs the `top` and `bot` entries and the `nec` and
+  `ec50` prior strings are all unchanged, and no complete-design cell has its
+  true value outside the central 95 per cent of its own prior before or after.
+  The initial-value search draws more proposals on a complete `nec4param`
+  design, by a paired mean of 1.31 with a 95 per cent interval of 0.59 to 2.04
+  over 720 cells, because a threshold drawn above the series gives a curve flat
+  at `top` that the acceptance band rejects; on `ecx4param` the difference is
+  −0.22, interval −0.60 to 0.16. No complete-design cell exhausted the search in
+  either run and over the whole sweep the number that did fell from 27 to 21.
+  `notes/prior_audit.md` part 4 holds the tables.
+
+  A fit made before this release keeps the bounds it was fitted with. `amend()`
+  rebuilds a prior only for an equation it adds, so adding one to such a fit
+  leaves a model-averaged set in which some equations have a truncated `nec`
+  posterior and some do not. `nec()` then reports the tightest bound across the
+  set when asked to extrapolate past it. Refit rather than amend where the two
+  halves must be on the same footing (#393).
 
 - `get_priors()` and `pull_prior()` now state that their output must be checked
   before use with a `brms` formula that adds population-level coefficients to a

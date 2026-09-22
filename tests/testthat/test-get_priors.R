@@ -11,16 +11,27 @@ test_that("get_priors returns only what bnec accepts back", {
   expect_false("sigma" %in% out$class)
   # An absent bound is NA, as define_prior() writes it, not "".
   expect_true(all(is.na(out$lb[out$nlpar != "nec"])))
-  # A bound the stored fit carries is returned unchanged. Read off that fit
-  # rather than asserted to be present, because the default nec prior is no
-  # longer truncated to the tested range (#393) and this fixture was fitted
-  # before that change; the property under test is the round trip, not which
-  # bounds a current default would set.
+  # A bound the stored fit holds is returned unchanged. Read off that fit rather
+  # than asserted to be present, because the default nec prior is no longer
+  # truncated to the tested range (#393) and this fixture was fitted before that
+  # change; the property under test is the round trip, not which bounds a
+  # current default would set. The comparison is against the fit's bounds put
+  # through blank_bounds_to_na(), because a brmsfit writes an absent bound as ""
+  # and usable_prior() rewrites it to NA, which is the whole of this test's
+  # first assertion above; comparing the raw forms would fail on a rebuilt
+  # fixture for a difference the package makes on purpose.
   stored <- as.data.frame(nec4param$fit$prior)
+  stored <- bayesnec:::blank_bounds_to_na(stored)
   stored <- stored[stored$class == "b" & stored$nlpar == "nec" &
                      nzchar(stored$prior), ]
+  expect_equal(nrow(stored), 1L)
   expect_equal(out$lb[out$nlpar == "nec"], stored$lb)
   expect_equal(out$ub[out$nlpar == "nec"], stored$ub)
+  # Not vacuous: this fixture predates #302 and still holds a two-sided gamma
+  # entry, so at least one of the two bounds is a number rather than NA. A
+  # fixture rebuilt on this branch would hold lb = 0 and ub = NA and still
+  # satisfy it.
+  expect_false(all(is.na(c(stored$lb, stored$ub))))
 })
 
 test_that("get_priors on a model set is a named list bnec can take", {

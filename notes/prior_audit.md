@@ -928,25 +928,39 @@ tables in part 3 stand as printed.
 
 The `nec` and `ec50` prior *strings* are identical on the complete cells as
 well, over all 1,440 of them. What changes is the statistic: `p_truth` is the
-CDF of the prior **after truncation**, so removing the upper bound restores the
-upper tail to the normalising constant and the same truth is reached at a lower
-CDF. The fall is 0.0008 to 0.344, with a median of 0.055, and it is a fall in
-every one of the 1,440 cells. It is largest where the truncation removed most
-mass: 0.187 on average for `linear` and `linear_unit` under `crf(log(x))`,
-against 0.013 to 0.016 for the three log-spaced series under the identity and
-square-root transforms.
+CDF of the prior **after truncation**, which is a function of the bounds as well
+as of the distribution. The fall is 0.0008 to 0.344, with a median of 0.055, and
+it is a fall in every one of the 1,440 cells. It is largest where the truncation
+removed most mass: 0.187 on average for `linear` and `linear_unit` under
+`crf(log(x))`, against 0.013 to 0.016 for the three log-spaced series under the
+identity and square-root transforms.
+
+Writing *a* for the prior CDF at the old lower bound, *b* for the CDF at the old
+upper bound and *u* for the CDF at the truth, the truncated statistic is
+(*u* − *a*) / (*b* − *a*) and the untruncated one is *u*. Their difference is
+(*u*(1 − *b*) − *a*(1 − *u*)) / (*b* − *a*), so removing the upper bound alone
+always lowers the statistic, removing the lower bound alone always raises it,
+and where both go the sign depends on where the truth sits: the difference is
+negative at *u* = *a*, positive at *u* = *b*, and zero at
+*u* = *a* / (1 − *b* + *a*). The lognormal cells with a zero control have
+*a* = 0 and fall by construction. The `crf(log(x))` cells, where the
+largest falls are, take the normal branch, where the old lower bound was binding
+too, so the fall observed there is the net of two effects and not the
+upper-tail term alone. That every one of the 1,440 cells falls is the
+measurement and not a consequence of the algebra.
 
 Specification §3.4 asks for the complete-design CDF to be unchanged within the
 Monte Carlo error of the audit, on the ground that the truncation does not bind
 there. That is right about the support and wrong about the statistic. The
 truncation bound the normalisation on every design, complete or not, because the
-lognormal always places mass above the highest concentration tested; what a
-complete design guarantees is that the truth is inside the support, not that the
-renormalisation is negligible. The test the requirement was reaching for is
-whether a complete design's truth is still well inside the prior, and it is: the
-count of complete `nec` and `ec50` cells outside the central 95% of their own
-prior is 0 before and 0 after, and the range of `p_truth` over those cells
-is 0.420 to 0.974 before and 0.334 to 0.965 after.
+lognormal always places mass above the highest concentration tested and the
+normal places mass below the lowest; what a complete design guarantees is that
+the truth is inside the support, not that the renormalisation is negligible. The
+test the requirement was reaching for is whether a complete design's truth is
+still well inside the prior, and it is: the count of complete `nec` and `ec50`
+cells outside the central 95% of their own prior is 0 before and 0 after, and
+the range of `p_truth` over those cells is 0.420 to 0.974 before and 0.334 to
+0.965 after.
 
 ## The incomplete-design cells
 
