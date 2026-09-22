@@ -522,3 +522,28 @@ test_that("a fit that stores no prediction range refuses a limit", {
   # The default forces none of it, so an object with no grid is unaffected.
   expect_null(bayesnec:::extrapolate_limits(FALSE, stop("not forced"), "NEC"))
 })
+
+test_that("a component classed for nsec gives what pull_out gives", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # The assumption behind component_fit(): nsec() reads the stored brms fit and
+  # the formula and nothing expand_nec() adds, so re-evaluating a curve through
+  # the classed component rather than through pull_out() is the same
+  # computation without the discarded expansion. Pinned bit for bit, because a
+  # future nsec() that reached for pred_vals or ne_posterior would otherwise
+  # fail silently on a component that has neither.
+  heavy <- suppressMessages(suppressWarnings(pull_out(manec_example,
+                                                      model = "ecx4param")))
+  light <- bayesnec:::component_fit(manec_example, "ecx4param")
+  expect_s3_class(light, "bayesnecfit")
+  expect_false("pred_vals" %in% names(light))
+  from_heavy <- suppressWarnings(
+    nsec(heavy, resolution = 300, x_range = c(0.0324, 5), posterior = TRUE)
+  )
+  from_light <- suppressWarnings(
+    nsec(light, resolution = 300, x_range = c(0.0324, 5), posterior = TRUE)
+  )
+  expect_identical(attributes(from_heavy), attributes(from_light))
+  expect_identical(as.numeric(from_heavy), as.numeric(from_light))
+})
