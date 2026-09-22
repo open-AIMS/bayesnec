@@ -1274,11 +1274,24 @@ define_prior <- function(model, family, predictor, response,
                          lb = lbs[fam_tag], ub = ubs[fam_tag])
   pr_bot <- prior_string(y_b_prs[fam_tag], nlpar = "bot",
                          lb = lbs[fam_tag], ub = ubs[fam_tag])
-  # x-dependent priors
-  pr_nec <- prior_string(x_pr, nlpar = "nec",
-                         lb = min(prior_predictor), ub = max(prior_predictor))
-  pr_ec50 <- prior_string(x_pr, nlpar = "ec50",
-                          lb = min(prior_predictor), ub = max(prior_predictor))
+  # x-dependent priors. The bound is taken from the support of the prior
+  # distribution and not from the range of the tested predictor. The
+  # distribution predictor_prior() returns is proper on its own support, so the
+  # posterior stays proper with no truncation, and truncating to the tested
+  # range put a threshold above the highest concentration outside the support
+  # rather than in the tail: the posterior piled against the bound and reported
+  # a narrow interval at the highest concentration tested. The lower bound is
+  # kept only where the distribution requires it. A lognormal has zero density
+  # below zero, and without lb = 0 brms declares an unconstrained parameter
+  # whose every negative proposal Stan rejects. The normal branch takes no
+  # bound, because a predictor supplied already logged may legitimately be
+  # negative, so the branch test is on the distribution and is not a proxy for
+  # the sign of the data. See #393, and predictor_prior() for which branch is
+  # which. What holds a reported estimate inside the tested range is now the
+  # censoring of #395 and the `extrapolate` argument of #392, not the prior.
+  x_lb <- if (grepl("^lognormal", x_pr)) 0 else NA
+  pr_nec <- prior_string(x_pr, nlpar = "nec", lb = x_lb)
+  pr_ec50 <- prior_string(x_pr, nlpar = "ec50", lb = x_lb)
   # x- and y-independent priors
   pr_d <- prior_string("normal(0, 5)", nlpar = "d")
   pr_beta <- prior_string("normal(0, 5)", nlpar = "beta")

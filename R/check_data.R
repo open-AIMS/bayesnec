@@ -551,11 +551,15 @@ capitalise_first <- function(x) {
 #' Report a response still declining at the top of the tested series
 #'
 #' The default \code{bot} prior takes its location and spread from the observed
-#' response and the default \code{nec} and \code{ec50} priors are truncated to
-#' the tested predictor range, so on a design whose response is still falling at
-#' the highest concentration all three describe the design rather than the
-#' curve. The condition is reported before anything is fitted, because what the
-#' user does about it is a choice of prior.
+#' response, and the default \code{nec} and \code{ec50} priors take their
+#' location and spread from the tested predictor range, so on a design whose
+#' response is still falling at the highest concentration all three describe the
+#' design rather than the curve. The condition is reported before anything is
+#' fitted, because what the user does about it is a choice of prior. The two
+#' threshold priors are no longer truncated to that range (#393), so a threshold
+#' above the highest concentration is in the tail of the prior rather than
+#' outside its support; the report still stands, because a tail is not a
+#' statement that the design measured the threshold.
 #'
 #' The statistic is a one-sided contrast between the two highest distinct
 #' predictor values present in a block, fitted as a generalised linear model

@@ -11,9 +11,16 @@ test_that("get_priors returns only what bnec accepts back", {
   expect_false("sigma" %in% out$class)
   # An absent bound is NA, as define_prior() writes it, not "".
   expect_true(all(is.na(out$lb[out$nlpar != "nec"])))
-  # nec keeps the bounds it was given.
-  expect_false(is.na(out$lb[out$nlpar == "nec"]))
-  expect_false(is.na(out$ub[out$nlpar == "nec"]))
+  # A bound the stored fit carries is returned unchanged. Read off that fit
+  # rather than asserted to be present, because the default nec prior is no
+  # longer truncated to the tested range (#393) and this fixture was fitted
+  # before that change; the property under test is the round trip, not which
+  # bounds a current default would set.
+  stored <- as.data.frame(nec4param$fit$prior)
+  stored <- stored[stored$class == "b" & stored$nlpar == "nec" &
+                     nzchar(stored$prior), ]
+  expect_equal(out$lb[out$nlpar == "nec"], stored$lb)
+  expect_equal(out$ub[out$nlpar == "nec"], stored$ub)
 })
 
 test_that("get_priors on a model set is a named list bnec can take", {
@@ -206,8 +213,13 @@ test_that("get_priors honours an explicit predictor scale (#317)", {
 
   expect_match(auto_nec, "^lognormal\\(")
   expect_match(log_nec, "^normal\\(")
-  expect_equal(as.numeric(logged$lb[logged$nlpar == "nec"]), min(x))
-  expect_equal(as.numeric(logged$ub[logged$nlpar == "nec"]), max(x))
+  # Neither branch is truncated to the tested range (#393), and the normal
+  # branch takes no lower bound either, because a logged concentration may
+  # legitimately be negative.
+  expect_true(is.na(logged$lb[logged$nlpar == "nec"]))
+  expect_true(is.na(logged$ub[logged$nlpar == "nec"]))
+  expect_equal(as.numeric(automatic$lb[automatic$nlpar == "nec"]), 0)
+  expect_true(is.na(automatic$ub[automatic$nlpar == "nec"]))
 })
 
 test_that("a user prior makes the two entry points disagree", {
@@ -330,18 +342,32 @@ test_that("a brms default on sd is still dropped", {
   expect_false("sd" %in% out$class)
 })
 
-test_that("nec is truncated at the recorded predictor range", {
-  # The bound a user sees. Earlier versions returned lb = 0.1, because the zero
-  # had been replaced before the prior was built; a zero control is a legitimate
-  # lower bound, since the prior on nec has zero density at zero (#269, #302).
+test_that("nec is bounded by the support of its prior, not by the series", {
+  # The bound a user sees. lb comes from the lognormal, which has zero density
+  # below zero, and not from min(x): earlier versions returned lb = 0.1 because
+  # the zero control had been replaced before the prior was built, and then
+  # lb = 0 from the recorded minimum (#269, #302). There is no upper bound,
+  # because truncating at max(x) put a threshold above the highest concentration
+  # tested outside the prior support rather than in its tail (#393).
   d <- data.frame(x = rep(c(0, 1, 10, 100), each = 5),
                   y = rep(c(8, 6, 3, 1), each = 5))
   pr <- suppressMessages(
     get_priors(y ~ crf(x, model = "nec3param"), data = d,
                family = Gamma(link = "identity"))
   )
+  expect_match(pr$prior[pr$nlpar == "nec"], "^lognormal\\(")
   expect_equal(as.numeric(pr$lb[pr$nlpar == "nec"]), 0)
-  expect_equal(as.numeric(pr$ub[pr$nlpar == "nec"]), 100)
+  expect_true(is.na(pr$ub[pr$nlpar == "nec"]))
+  # A design with no zero control takes the same bound, so the lower end is not
+  # a restatement of min(x) under another name.
+  d2 <- data.frame(x = rep(c(1, 10, 100), each = 5),
+                   y = rep(c(8, 3, 1), each = 5))
+  pr2 <- suppressMessages(
+    get_priors(y ~ crf(x, model = "nec3param"), data = d2,
+               family = Gamma(link = "identity"))
+  )
+  expect_equal(as.numeric(pr2$lb[pr2$nlpar == "nec"]), 0)
+  expect_true(is.na(pr2$ub[pr2$nlpar == "nec"]))
 })
 
 test_that("get_priors reports the substitution its priors are built from", {

@@ -355,6 +355,37 @@
 
 ## Default priors
 
+- The default `nec` and `ec50` priors are no longer truncated to the range of
+  the tested predictor. Both entries were built with `lb = min(x)` and
+  `ub = max(x)`, so a threshold above the highest concentration tested was
+  outside the prior support rather than in its tail: the posterior could place
+  no mass there, piled against the bound, and `nec()` returned the highest
+  concentration tested with a narrow credible interval around it. The bound is
+  now taken from the support of the prior distribution instead. A predictor
+  supplied as a recorded concentration takes a lognormal entry and keeps
+  `lb = 0`, because a lognormal has zero density below zero and without the
+  bound `brms` declares an unconstrained parameter whose every negative proposal
+  Stan rejects; a predictor declared or detected as already logged takes a
+  normal entry and no bound at all, because a logged concentration may
+  legitimately be negative. Removing the truncation does not identify a
+  threshold the design did not measure. What it changes is the shape of the
+  posterior: mass spreads over the region the data cannot distinguish and the
+  interval widens, which is the correct statement. The spread rule of #314 is
+  unchanged, so the central 95 per cent of the `"uninformative"` entry and the
+  central 98 per cent of the `"regularizing"` entry still reach only as far as
+  the farthest concentration tested from the prior location on the log scale.
+  At least one part in forty of the `"uninformative"` mass therefore lies above
+  the highest concentration, and more where the series extends further below its
+  median on that scale than above it: on `nec_data` the share is 0.22. What now
+  holds a reported estimate inside that range by default is the
+  censoring of the posterior described under "Estimates beyond the range the
+  model was predicted over", together with the `extrapolate` argument of
+  `nec()` and `nsec()`, rather than the prior. Over the 5,760-cell prior audit
+  the truncated prior CDF at a true `ec50` above the series was exactly 1 in
+  720 cells and is now below 1 in every one of them, while no complete-design
+  cell changes and the median number of proposals the initial-value search
+  draws is unchanged (#393).
+
 - `get_priors()` and `pull_prior()` now state that their output must be checked
   before use with a `brms` formula that adds population-level coefficients to a
   non-linear parameter. A parameter-level prior that is valid for the
