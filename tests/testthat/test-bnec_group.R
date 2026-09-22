@@ -425,3 +425,23 @@ test_that("bnec_group validates the declaration before any level (#394)", {
     asymptote_observed = NA, chains = 1, iter = 10))),
     "asymptote_observed", fixed = TRUE)
 })
+
+test_that("bnec_group resolves a dot argument the way do.call will (#394)", {
+  # dots_arg() is what makes the hoisted checks read the same value the
+  # forwarded call will receive. `model_survival` is the case that was already
+  # wrong before the declaration existed: `model_s` upward is unambiguous
+  # against bnec()'s formals, so do.call() matches it while an exact lookup
+  # returns NULL, and the flatness report and the declaration's hurdle gate
+  # would then be given no survival equation at all.
+  dots <- list(asymptote = FALSE, model_s = "nec3param", prior_type = "x")
+  expect_false(bayesnec:::dots_arg(dots, "asymptote_observed", TRUE))
+  expect_identical(bayesnec:::dots_arg(dots, "model_survival"), "nec3param")
+  expect_null(bayesnec:::dots_arg(dots, "prior"))
+  # An exact name wins over an abbreviation of the same formal.
+  both <- list(asymptote = TRUE, asymptote_observed = FALSE)
+  expect_false(bayesnec:::dots_arg(both, "asymptote_observed", TRUE))
+  # Nothing supplied gives the default, and an empty list does not error.
+  expect_true(bayesnec:::dots_arg(list(), "asymptote_observed", TRUE))
+  expect_true(bayesnec:::dots_arg(list(chains = 2), "asymptote_observed",
+                                  TRUE))
+})

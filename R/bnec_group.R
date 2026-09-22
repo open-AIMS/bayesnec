@@ -116,6 +116,34 @@
 #' crossed_group_weights(fit)
 #' }
 #'
+#' One argument of \code{bnec()}, read from a \code{bnec_group()} dot list
+#'
+#' @details \code{\link{bnec_group}} inspects several of the arguments it is
+#' about to forward, so that a report or a refusal that is a property of the
+#' whole response is raised once rather than once per level. It forwards them
+#' with \code{do.call()}, where an argument named before \code{...} in
+#' \code{\link{bnec}}'s signature matches an abbreviation, so reading the dot
+#' list by exact name gives an answer the forwarded call can contradict:
+#' \code{model_s = "nec3param"} reaches \code{bnec()} as
+#' \code{model_survival} and reads as absent here.
+#'
+#' \code{pmatch()} resolves it the way the call will. It returns at most one
+#' index for a one-element table, and an exact name wins over an abbreviation,
+#' so two abbreviations of the same formal resolve to one index here and
+#' \code{do.call()} refuses the duplicate before anything is fitted.
+#'
+#' @param dots The dot list \code{\link{bnec_group}} collected.
+#' @param name The \code{\link{bnec}} formal to read.
+#' @param default What to return where the argument was not supplied.
+#'
+#' @return The supplied value, or \code{default}.
+#'
+#' @noRd
+dots_arg <- function(dots, name, default = NULL) {
+  hit <- which(!is.na(pmatch(names(dots), name)))
+  if (length(hit) == 1) dots[[hit]] else default
+}
+
 #' @export
 bnec_group <- function(formula, data, group_var, family = NULL,
                        predictor_scale = "auto", ...) {
@@ -223,10 +251,10 @@ bnec_group <- function(formula, data, group_var, family = NULL,
       )
     }), levs)
     level_survival <- suppressMessages(
-      check_model_survival(dots[["model_survival"]], family, mod_dat)
+      check_model_survival(dots_arg(dots, "model_survival"), family, mod_dat)
     )
     sensitive_blocks <- lapply(level_models, function(models) {
-      uses_response_range_defaults(dots[["prior"]], models, family,
+      uses_response_range_defaults(dots_arg(dots, "prior"), models, family,
                                    level_survival)
     })
     if (any(unlist(sensitive_blocks, use.names = FALSE))) {
@@ -252,21 +280,20 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # level. Where the formula's set could not be read, level_sets is empty and
   # only the refusal is reachable, which is the same resolution the flatness
   # report above takes for that case.
-  # pmatch(), not an exact lookup. `dots` is forwarded to bnec() through
-  # do.call(), where `asymptote_observed` is a formal before `...` and so
-  # matches an abbreviation. Reading it exactly here would leave an abbreviated
-  # argument declared for the fit and undeclared for this check, which sets
-  # .bayesnec_asymptote_checked and drops the refusal back into the per-level
-  # model loop -- the failure the hoist exists to prevent.
-  hit <- which(!is.na(pmatch(names(dots), "asymptote_observed")))
-  declared <- if (length(hit) == 1) dots[[hit]] else TRUE
+  # dots_arg(), not an exact lookup. `dots` is forwarded to bnec() through
+  # do.call(), where these are formals before `...` and so match an
+  # abbreviation. Reading `asymptote_observed` exactly would leave an
+  # abbreviated argument declared for the fit and undeclared for this check,
+  # which sets .bayesnec_asymptote_checked and drops the refusal back into the
+  # per-level model loop -- the failure the hoist exists to prevent.
+  declared <- dots_arg(dots, "asymptote_observed", TRUE)
   # Validated here as well as in bnec(), because this check reads it first and
   # an invalid value would otherwise raise the floor refusal or the mixed-set
   # report before bnec() reports what is actually wrong.
   chk_flag(declared, x_name = "`asymptote_observed`")
   check_asymptote_declaration(mod_dat, family, level_sets,
                               asymptote_observed = declared,
-                              prior = dots[["prior"]],
+                              prior = dots_arg(dots, "prior"),
                               model_survival = level_survival)
   dots[[".bayesnec_asymptote_checked"]] <- TRUE
   # The crossed weights are an outer product of the per-level weight vectors,

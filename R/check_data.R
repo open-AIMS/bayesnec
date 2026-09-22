@@ -804,17 +804,19 @@ declaration_advice <- function(family, y) {
 #'
 #' The model-set report states both branches, because the data decide neither.
 #' The region that would separate an equation estimating \code{bot} from one
-#' asserting the response reaches the floor is the region the design did not
-#' reach, so a model average over both is averaging over the assumption at
-#' issue with weights the data cannot inform. Whether the response can reach the
-#' floor is a property of the endpoint, which the user knows and the package
-#' cannot infer, so the set is reported and left alone.
+#' asserting the response reaches zero is the region the design did not reach,
+#' so a model average over both is averaging over the assumption at issue with
+#' weights the data cannot inform. Whether the response can reach zero is a
+#' property of the endpoint, which the user knows and the package cannot infer,
+#' so the set is reported and left alone.
 #'
 #' @param data A model frame, as returned by the \code{\link{model.frame}}
 #' method for a \code{\link{bayesnecformula}}.
 #' @param family The validated response family.
-#' The declaration is refused only where a \code{bot} prior will be generated
-#' from it. \code{\link{add_brm_defaults}} wraps the default-prior build in
+#' The model-set report is raised whatever prior was supplied, because the set
+#' and the design are what decide it. The two refusals are raised only where a
+#' \code{bot} prior will be generated from the declaration.
+#' \code{\link{add_brm_defaults}} wraps the default-prior build in
 #' \code{try()} so that a user who supplied a complete set is never blocked by
 #' a default they will not use (#207, #229), and a check raised before the loop
 #' would take that back. So the refusal is gated on
@@ -839,6 +841,29 @@ check_asymptote_declaration <- function(data, family, models,
                                         model_survival = NULL) {
   if (isTRUE(asymptote_observed)) {
     return(invisible(NULL))
+  }
+  # Reported before the gate below and not behind it. Whether a set mixes
+  # equations that estimate a lower asymptote with ones that assert the
+  # response reaches zero is a property of the set and of the design, and
+  # supplying a bot prior does not make the region that would separate them
+  # observed. The gate exists for the refusals alone.
+  #
+  # The message names zero from the equations rather than from
+  # asymptote_floor(). An equation without a bot parameter has zero written
+  # into its own asymptote -- nec3param is top * exp(-exp(beta) (x - nec)),
+  # which tends to zero -- so what it asserts is a property of the equation and
+  # holds whether or not the family supplies a floor. The two coincide wherever
+  # a floor exists.
+  bot_free <- intersect(models, mod_groups$bot_free)
+  bot_est <- setdiff(models, mod_groups$bot_free)
+  if (length(bot_free) > 0 && length(bot_est) > 0) {
+    message(
+      "This set mixes equations that estimate a lower asymptote with ones that",
+      " assert the response falls to zero. With the asymptote unobserved the",
+      " fit cannot distinguish them. Restrict the set to mod_groups$bot_free",
+      " if the response can reach zero for this endpoint, or away from it if",
+      " it cannot."
+    )
   }
   supplied <- length(models) > 0 &&
     !any(uses_response_range_defaults(prior, models, family, model_survival,
@@ -896,17 +921,6 @@ check_asymptote_declaration <- function(data, family, models,
   # which for a gaussian response is every observation at zero.
   invisible(unobserved_endpoint_mean(x, response,
                                      zero_bounded_family(floor_family)))
-  bot_free <- intersect(models, mod_groups$bot_free)
-  bot_est <- setdiff(models, mod_groups$bot_free)
-  if (length(bot_free) > 0 && length(bot_est) > 0) {
-    message(
-      "This set mixes equations that estimate a lower asymptote with ones that",
-      " assert the response falls to ", signif(floor_val, 3), ". With the",
-      " asymptote unobserved the fit cannot distinguish them. Restrict the set",
-      " to mod_groups$bot_free if the response can reach ",
-      signif(floor_val, 3), " for this endpoint, or away from it if it cannot."
-    )
-  }
   invisible(NULL)
 }
 

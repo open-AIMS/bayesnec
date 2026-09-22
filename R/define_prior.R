@@ -784,8 +784,11 @@ asymptote_floor_error <- function(reason) {
 #' a fourth branch of that function.
 #'
 #' The cap would bind on five of the eight families and not on the other three.
-#' Standard deviations of the \code{bot} entry on the flattest design of the
-#' audit's \code{f02} setting, \code{"uninformative"} against declared:
+#' Standard deviations of the \code{bot} entry, \code{"uninformative"} against
+#' declared, measured on the \code{incomplete_design(0.02, tag)} fixture of
+#' \code{tests/testthat/test-define_prior.R} at its seed of 394, which is the
+#' audit's \code{f02} setting on a series of eight concentrations by five
+#' replicates:
 #' gaussian 0.107 against 0.220, \code{beta} 0.160 against 0.253,
 #' \code{bernoulli} 0.160 against 0.297, \code{binomial} and
 #' \code{beta_binomial} 0.160 against 0.256. On the gamma branch the declared
@@ -864,8 +867,19 @@ unobserved_bot_entry <- function(branch, endpoint) {
 #'
 #' @noRd
 unobserved_endpoint_mean <- function(predictor, response, zero_bounded) {
-  e <- regularizing_location(predictor, response, "bot",
-                             zero_bounded = zero_bounded)[["location"]]
+  # try(), because the zero-bounded branch reaches positive_scale(), which
+  # refuses a response with no positive value at all and does so naming the
+  # construction of `top` and `bot`. Raised from here that message arrives
+  # under a declaration it does not name, so the failure falls through to the
+  # guard below and the declaration's own refusal is what the user reads. The
+  # default path still raises positive_scale()'s message on the same response,
+  # which is where it belongs.
+  e <- try(regularizing_location(predictor, response, "bot",
+                                 zero_bounded = zero_bounded)[["location"]],
+           silent = TRUE)
+  if (inherits(e, "try-error")) {
+    e <- NA_real_
+  }
   if (!is.finite(e) || e <= 0) {
     pos <- response[is.finite(response) & response > 0]
     e <- if (length(pos) > 0) min(pos) / 10 else NA_real_

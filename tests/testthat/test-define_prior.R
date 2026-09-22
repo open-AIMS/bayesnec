@@ -2608,7 +2608,7 @@ test_that("a mixed model set is reported under the declaration (#394)", {
     bayesnec:::check_asymptote_declaration(
       bdat, fam, c("nec3param", "nec4param"), asymptote_observed = FALSE),
     message = conditionMessage)
-  expect_match(msg, "if the response can reach", fixed = TRUE)
+  expect_match(msg, "if the response can reach zero", fixed = TRUE)
   expect_match(msg, "or away from it if it cannot", fixed = TRUE)
   # A set on one side of the divide says nothing, and neither does the default.
   expect_silent(bayesnec:::check_asymptote_declaration(
@@ -2799,6 +2799,8 @@ test_that("a complete supplied bot prior is not refused (#394)", {
   complete <- suppressWarnings(suppressMessages(get_priors(
     y ~ crf(x, "nec4param"), data = incomplete_design(0.36, "gaussian"),
     family = fam)))
+  # A single equation, so the mixed-set report cannot fire and silence is the
+  # whole outcome.
   expect_silent(bayesnec:::check_asymptote_declaration(
     bdat, fam, "nec4param", asymptote_observed = FALSE, prior = complete))
   # Omitting the bot row alone restores the refusal.
@@ -2808,12 +2810,36 @@ test_that("a complete supplied bot prior is not refused (#394)", {
       bdat, fam, "nec4param", asymptote_observed = FALSE, prior = partial),
     "`prior` argument", fixed = TRUE)
   # And a set whose equations have no bot parameter generates no bot row, so
-  # there is nothing to refuse either here or in define_prior().
+  # there is nothing to refuse either here or in define_prior(). Both are
+  # bot_free, so the mixed-set report is silent for that reason as well.
   expect_silent(bayesnec:::check_asymptote_declaration(
     bdat, fam, c("nec3param", "ecxexp"), asymptote_observed = FALSE))
   built <- suppressWarnings(suppressMessages(
     define_prior("nec3param", fam, d$x, d$y, asymptote_observed = FALSE)))
   expect_s3_class(built, "brmsprior")
+})
+
+test_that("a supplied prior does not silence the mixed-set report (#394)", {
+  # Whether a set mixes equations that estimate a lower asymptote with ones
+  # that assert the response reaches zero is a property of the set and of the
+  # design. Supplying a bot prior does not make the region that would separate
+  # them observed, so the gate that suppresses the refusals must not reach the
+  # report.
+  d <- incomplete_design(0.36, "gaussian")
+  fam <- validate_family("gaussian")
+  bdat <- stats::model.frame(bnf(y ~ crf(x, c("nec3param", "nec4param"))),
+                             data = d)
+  complete <- suppressWarnings(suppressMessages(get_priors(
+    y ~ crf(x, "nec4param"), data = d, family = fam)))
+  expect_message(
+    bayesnec:::check_asymptote_declaration(
+      bdat, fam, c("nec3param", "nec4param"), asymptote_observed = FALSE,
+      prior = complete),
+    "mod_groups\\$bot_free")
+  # And it still raises no refusal, which is what the gate is for.
+  expect_no_error(suppressMessages(bayesnec:::check_asymptote_declaration(
+    bdat, fam, c("nec3param", "nec4param"), asymptote_observed = FALSE,
+    prior = complete)))
 })
 
 test_that("a response with no value above the floor is refused early (#394)", {
