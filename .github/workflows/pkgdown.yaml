@@ -1,8 +1,12 @@
+# `predev` is the staging branch the #386 programme merges into while it is
+# under review; it is in both lists so that a pull request into it is checked
+# by the same set as one into `dev`. Remove both entries when `predev` is
+# merged and retired, or this workflow keeps naming a branch that is gone.
 on:
   push:
-    branches: [master, dev]
+    branches: [master, dev, predev]
   pull_request:
-    branches: [master, dev]
+    branches: [master, dev, predev]
   workflow_dispatch:
 
 name: pkgdown
