@@ -95,7 +95,7 @@ to calculate them."><meta property="og:image" content="https://open-aims.github.
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Class <code>manecsummary</code> of models fitted with the <span class="pkg">brms</span> package</h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/manecsummary-class.R" class="external-link"><code>R/manecsummary-class.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/issue-395-censored-estimates/R/manecsummary-class.R" class="external-link"><code>R/manecsummary-class.R</code></a></small>
     <div class="hidden name"><code>manecsummary-class.Rd</code></div>
     </div>
 
@@ -150,7 +150,12 @@ are ECx-type models.</p></dd>
 
 <dt><code>nec_vals</code></dt>
 <dd><p>The model-averaged NEC values. Note that if model stack
-contains ECx-type models, these will be via NSEC proxies.</p></dd>
+contains ECx-type models, these will be via NSEC proxies. Where any draw of
+the weighted posterior lies beyond the range the models were predicted over,
+attribute <code>"censored_summary"</code> marks which entries are the end of that
+range rather than a quantile, and states how many draws lie beyond each end.
+The count is over the weighted draws, so it is the share of the
+model-averaged posterior that is censored and not the share of equations.</p></dd>
 
 
 <dt><code>ecs</code></dt>

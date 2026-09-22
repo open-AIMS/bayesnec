@@ -93,7 +93,7 @@ to calculate them."><meta property="og:image" content="https://open-aims.github.
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Class <code>necsummary</code> of models fitted with the <span class="pkg">brms</span> package</h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/necsummary-class.R" class="external-link"><code>R/necsummary-class.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/issue-395-censored-estimates/R/necsummary-class.R" class="external-link"><code>R/necsummary-class.R</code></a></small>
     <div class="hidden name"><code>necsummary-class.Rd</code></div>
     </div>
 
@@ -140,7 +140,10 @@ the two blocks of a hurdle fit use different equation types.</p></dd>
 
 <dt><code>nec_vals</code></dt>
 <dd><p>The NEC values. Note that if model is an ECx-type model,
-this estimate will be a NSEC proxy.</p></dd>
+this estimate will be a NSEC proxy. Where any posterior draw lies beyond the
+range the model was predicted over, attribute <code>"censored_summary"</code>
+marks which entries are the end of that range rather than a quantile, and
+states how many draws lie beyond each end.</p></dd>
 
 
 <dt><code>ecs</code></dt>
