@@ -1041,3 +1041,12 @@ cells to 21, all of them at `f36` or `f02`.
 No model is fitted, so the posterior this change exists to widen is not measured
 here. The prior CDF at the truth and the proposal count are what the
 specification asks for and are what a prior-only harness can supply.
+
+## Outstanding at merge
+
+`vignettes/example3.Rmd.orig` was corrected on the #393 branch and the committed
+`vignettes/example3.Rmd` was not regenerated, because precompiling refits every
+model. Until `vignettes/precompile.R` is run for `example3`, the published
+vignette shows the truncation as live output: its stored `pull_prior()` tables
+give the `nec` row `lb = 0.03234801324009`, which is `min(nec_data$x)`, and
+`lb = 0, ub = 10` on a second fit, where the current code gives `0` and `NA`.
