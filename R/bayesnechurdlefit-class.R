@@ -150,6 +150,7 @@ hurdle_check_which <- function(which) {
 #' @export
 nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
                                   prob_vals = c(0.5, 0.025, 0.975),
+                                  extrapolate = FALSE,
                                   which = "combined", ...) {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
@@ -162,8 +163,15 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
   # this method actually returns. Left on, a censored component was reported by
   # each of the calls here and again by the report below, three times over for
   # the combined value.
-  g_post <- without_censored_warning(nec(object$growth, posterior = TRUE))
-  s_post <- without_censored_warning(nec(object$survival, posterior = TRUE))
+  # Passed to each component rather than resolved here: the two components are
+  # separate fits with prediction ranges of their own, and combine_censored_min
+  # below already reduces the two records to the bound true of both.
+  g_post <- without_censored_warning(
+    nec(object$growth, posterior = TRUE, extrapolate = extrapolate, ...)
+  )
+  s_post <- without_censored_warning(
+    nec(object$survival, posterior = TRUE, extrapolate = extrapolate, ...)
+  )
   if (which == "growth") {
     out <- unlist(g_post)
     cens <- attr(g_post, "censored")

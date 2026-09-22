@@ -17,6 +17,12 @@
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
+#' @param extrapolate The bound beyond which the estimate is reported as
+#' censored. \code{FALSE}, the default, censors at the ends of the prediction
+#' grid. A single number is an upper limit, and a pair of numbers is a lower
+#' and an upper limit, in that order; the grid is extended to reach them.
+#' \code{TRUE} is refused here, because every NSEC is read off a fitted curve.
+#' See the \emph{Extrapolation} section.
 #' @param dpar For a joint two-block fit only (\code{family = "hurdle_gamma"},
 #' \code{"zero_inflated_beta"}, \code{"hurdle_poisson"} or
 #' \code{"hurdle_negbinomial"}), the parameter block to report:
@@ -141,6 +147,38 @@
 #' threshold parameter, where the draw does have a value and the operation is
 #' right-censoring in the ordinary sense.
 #'
+#' @section Extrapolation:
+#' \code{extrapolate} chooses the bound the estimate is censored at, on the
+#' same predictor scale as \code{x_range} and the data, not the scale
+#' \code{crf()} fits on and not the scale \code{xform} displays.
+#'
+#' \code{TRUE} asks for no bound at either end, and is an error here whatever
+#' the fit is. An NSEC is the concentration at which a fitted curve reaches a
+#' reference, so reading one means evaluating that curve on a grid, and no grid
+#' reaches infinity. Name a finite limit instead.
+#'
+#' A finite limit extends the grid the curve is searched on and then censors
+#' there, so \code{extrapolate} does through a checked argument what
+#' \code{x_range} does through an unchecked one: a limit inside the current
+#' range is an error rather than a silent tightening, because it would report
+#' an estimate as censored at a value the fit had no trouble identifying. Use
+#' \code{x_range} to narrow the range.
+#'
+#' The range a limit is measured against is the range this call will search,
+#' which is \code{x_range} where one is given and the observed range of the
+#' predictor otherwise. That is not always the grid the fit itself stored: a
+#' fit built with an \code{x_range} of its own carries that grid, while
+#' \code{nsec} with no \code{x_range} returns to the observed range. Where the
+#' two differ, \code{\link{nec}} measures against the stored grid and
+#' \code{nsec} against this one, so the same number can be accepted by one and
+#' refused by the other.
+#'
+#' A lower limit extends the grid but not the search. The reference is a
+#' quantile of the control posterior, so the control is where the search
+#' begins, and a draw already past the reference there has no identifiable
+#' crossing at any lower concentration. Such a limit is accepted, and a message
+#' states that the estimate stays censored at the control.
+#'
 #' @references
 #' Fisher R, Fox DR (2023). Introducing the no significant effect concentration
 #' (NSEC). Environmental Toxicology and Chemistry, 42(9), 2019–2028.
@@ -160,7 +198,8 @@
 # (nsec.drc, nsec.brmsfit) absorb it through their own `...`.
 nsec <- function(object, sig_val = 0.01, resolution = 200,
                  x_range = NA,
-                 xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...,
+                 xform = identity, prob_vals = c(0.5, 0.025, 0.975),
+                 extrapolate = FALSE, ...,
                  dpar = NULL) {
   UseMethod("nsec")
 }
@@ -184,7 +223,8 @@ nsec <- function(object, sig_val = 0.01, resolution = 200,
 #' @export
 nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
                              x_range = NA,
-                             xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...,
+                             xform = identity, prob_vals = c(0.5, 0.025, 0.975),
+                             extrapolate = FALSE, ...,
                              posterior = FALSE, dpar = NULL) {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
@@ -200,6 +240,16 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
+  }
+  # extrapolate resolves into x_range, because the grid is the only thing an
+  # NSEC can be extended over: the estimate is read off a curve and the curve
+  # is read off the grid. What extrapolate adds over x_range is the refusal to
+  # narrow and the refusal of an infinite limit, both of which a bare x_range
+  # accepts silently.
+  lims <- extrapolate_limits(extrapolate, grid_x_range(object, x_range), "NSEC")
+  if (!is.null(lims)) {
+    report_curve_read_lower_limit(object, lims)
+    x_range <- c(lims$lower, lims$upper)
   }
   newdata_list <- newdata_eval(
     object, resolution = resolution, x_range = x_range
@@ -323,12 +373,23 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
 #' @export
 nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 200,
                                x_range = NA,
-                               xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...,
+                               xform = identity, prob_vals = c(0.5, 0.025, 0.975),
+                               extrapolate = FALSE, ...,
                                posterior = FALSE, dpar = NULL) {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   if (length(sig_val)>1) {
     stop("You may only pass one sig_val")
+  }
+  # Resolved once for the set and passed down as x_range, so that every
+  # component is searched over one grid. Resolving it again inside each
+  # component call would measure each limit against that component's own
+  # range.
+  lims <- extrapolate_limits(extrapolate, grid_x_range(object, x_range),
+                             "NSEC")
+  if (!is.null(lims)) {
+    report_curve_read_lower_limit(object, lims)
+    x_range <- c(lims$lower, lims$upper)
   }
   sample_size <- object$sample_size
   # The same weighted index every other quantity on this object uses, rather
@@ -411,7 +472,8 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 200,
 #' @export
 nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,    
                          x_range = NA,
-                         xform = identity, prob_vals = c(0.5, 0.025, 0.975), ..., 
+                         xform = identity, prob_vals = c(0.5, 0.025, 0.975),
+                         extrapolate = FALSE, ..., 
                          posterior = FALSE,
                          x_var, 
                          group_var = NA, 
@@ -433,6 +495,7 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,
   if (missing(x_var)) {
     stop("x_var must be supplied for a brmsfit object.")    
   }  
+  check_no_extrapolate(extrapolate, "brmsfit")
   if (by_group & is.na(group_var)){
     stop("You must specify a group_by variable if you want values returned by groups.")
   }
@@ -560,10 +623,12 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,
 #' @export
 nsec.drc <- function(object, sig_val = 0.01, resolution = 200,
                      x_range = NA,
-                     xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...,
+                     xform = identity, prob_vals = c(0.5, 0.025, 0.975),
+                     extrapolate = FALSE, ...,
                      x_var,
                      horme = FALSE,
                      curveid = NA) {
+  check_no_extrapolate(extrapolate, "drc")
   chk_numeric(sig_val)
   chk_numeric(resolution)
   

@@ -9,6 +9,7 @@
   posterior = FALSE,
   xform = identity,
   prob_vals = c(0.5, 0.025, 0.975),
+  extrapolate = FALSE,
   which = "combined",
   ...
 )
@@ -27,10 +28,19 @@ values.}
 return the estimated NEC value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
 
+\item{extrapolate}{The bound beyond which the estimate is reported as
+censored. \code{FALSE}, the default, censors at the prediction range the fit
+was built on. \code{TRUE} removes the bound at both ends. A single number is
+an upper limit, and a pair of numbers is a lower and an upper limit, in that
+order. See the \emph{Extrapolation} section.}
+
 \item{which}{Which component to return: \code{"combined"} (the default),
 \code{"growth"} or \code{"survival"}.}
 
-\item{...}{Additional arguments passed to methods.}
+\item{...}{Additional arguments passed to methods. \code{sig_val} and
+\code{resolution} are forwarded to \code{\link{nsec}} where a finite
+\code{extrapolate} limit requires a curve to be re-evaluated, and are
+otherwise unused.}
 }
 \value{
 A vector containing the estimated no-effect value, including upper

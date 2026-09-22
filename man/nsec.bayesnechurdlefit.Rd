@@ -11,6 +11,7 @@
   x_range = NA,
   xform = identity,
   prob_vals = c(0.5, 0.025, 0.975),
+  extrapolate = FALSE,
   ...,
   posterior = FALSE,
   which = "combined"
@@ -37,6 +38,13 @@ values.}
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
+
+\item{extrapolate}{The bound beyond which the estimate is reported as
+censored. \code{FALSE}, the default, censors at the ends of the prediction
+grid. A single number is an upper limit, and a pair of numbers is a lower
+and an upper limit, in that order; the grid is extended to reach them.
+\code{TRUE} is refused here, because every NSEC is read off a fitted curve.
+See the \emph{Extrapolation} section.}
 
 \item{...}{Further arguments to pass to class specific methods.}
 
