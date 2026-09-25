@@ -280,13 +280,292 @@ do_wrapper <- function(..., fct = "cbind") {
 #' @noRd
 #' @importFrom stats median quantile
 estimates_summary <- function(x) {
-  # na.rm because an NSEC or ECx read off a curve is NA for any draw whose
-  # curve does not reach the target within the predictor range. Those draws
-  # used to be assigned max(x_vec), which is not an estimate of anything and
-  # dragged the summary upward without saying so. See #39 and D15 ruling 3.
-  x <- c(median(x, na.rm = TRUE), quantile(x, c(0.025, 0.975), na.rm = TRUE))
-  names(x) <- c("Estimate", "Q2.5", "Q97.5")
-  x
+  cens <- attr(x, "censored")
+  if (!has_censoring(cens)) {
+    # na.rm because an NSEC or ECx read off a curve is NA for any draw whose
+    # curve does not reach the target within the predictor range. Those draws
+    # used to be assigned max(x_vec), which is not an estimate of anything and
+    # dragged the summary upward without saying so. See #39 and D15 ruling 3.
+    #
+    # Kept verbatim as the uncensored path, rather than routed through
+    # summarise_censored() with an empty record, so that a posterior with no
+    # beyond-range draw returns the value the previous release returned to the
+    # last bit. median() and quantile(type = 7) agree on the 0.5 quantile
+    # algebraically but not necessarily in floating point, and every archived
+    # analysis is compared against this number.
+    x <- c(median(x, na.rm = TRUE), quantile(x, c(0.025, 0.975), na.rm = TRUE))
+    names(x) <- c("Estimate", "Q2.5", "Q97.5")
+    return(x)
+  }
+  # The censored form. A beyond-range draw keeps its rank and is given no
+  # value, so a quantile falling among such draws is reported as the bound it
+  # is beyond rather than as a number. This is NOT the treatment #39 and D15
+  # ruling 3 removed: that one assigned max(x_vec) to such a draw and then used
+  # it as a number, which raised the point estimate without saying so. Here the
+  # draw enters the ordering and nothing else, the reported entry is flagged as
+  # a bound, and the censored fraction is stated beside it. D15 ruling 3 stands.
+  out <- summarise_censored(x, c(0.5, 0.025, 0.975), cens)
+  names(out) <- c("Estimate", "Q2.5", "Q97.5")
+  out
+}
+
+#' A record of which draws of a posterior lie beyond the prediction range
+#'
+#' Carried as attribute \code{"censored"} on the per-draw vector, from the
+#' point the posterior is realised to the point it is summarised. The two ends
+#' are recorded separately because an \code{NA} on its own does not say which
+#' one produced it.
+#'
+#' @param upper,lower A \code{\link[base]{numeric}} value, the end of the
+#' prediction grid on the \emph{fitted} predictor scale, which is the scale the
+#' draws are on.
+#' @param above,below A \code{\link[base]{logical}} vector, one element per
+#' draw.
+#'
+#' @return A \code{\link[base]{list}}.
+#' @noRd
+censoring_record <- function(upper, lower, above, below) {
+  above[is.na(above)] <- FALSE
+  below[is.na(below)] <- FALSE
+  list(upper = upper, lower = lower, above = above, below = below)
+}
+
+#' @noRd
+has_censoring <- function(cens) {
+  !is.null(cens) && (any(cens$above) || any(cens$below))
+}
+
+#' Quantiles of a posterior whose beyond-range draws have no value
+#'
+#' A censored draw is placed at \code{Inf} or \code{-Inf} before the quantile
+#' is taken, which is exactly "it contributes its rank and nothing else": it
+#' occupies the order statistic it is known to occupy, and no finite value is
+#' invented for it. A quantile that lands on one of them comes back infinite
+#' and is reported as the bound, flagged in the \code{"censored_summary"}
+#' attribute of the result. Compare \code{\link{estimates_summary}}, which
+#' explains why this is not the treatment #39 removed.
+#'
+#' @param x A \code{\link[base]{numeric}} vector of per-draw estimates.
+#' @param probs A \code{\link[base]{numeric}} vector of probabilities.
+#' @param cens A record from \code{censoring_record()}.
+#'
+#' @return A named \code{\link[base]{numeric}} vector, with attribute
+#' \code{"censored_summary"} where any entry is a bound.
+#' @noRd
+#' @importFrom stats quantile
+summarise_censored <- function(x, probs, cens = attr(x, "censored")) {
+  vals <- as.numeric(x)
+  if (!has_censoring(cens)) {
+    return(quantile(vals, probs = probs, na.rm = TRUE))
+  }
+  if (length(cens$above) != length(vals) ||
+      length(cens$below) != length(vals)) {
+    stop("The censoring record covers ", length(cens$above), " draws and the ",
+         "posterior has ", length(vals), ".", call. = FALSE)
+  }
+  ranked <- vals
+  ranked[cens$above] <- Inf
+  ranked[cens$below] <- -Inf
+  # type = 1, the inverse empirical distribution function, rather than R's
+  # default type = 7. That default interpolates between two adjacent order
+  # statistics, and an interpolation that begins at a finite draw and ends at a
+  # censored one is infinite for any weight above zero -- so a quantile lying
+  # only fractionally inside the censored block came back as the bound, which
+  # asserts more than the ranks support. On ten draws with one censored, the
+  # 97.5 per cent quantile sits 0.775 of the way from the ninth draw into the
+  # tenth, and was reported as the bound although the smallest value consistent
+  # with the sample is the ninth draw. type = 1 returns an order statistic and
+  # never interpolates, so every reported entry is either a draw that was
+  # identified or a draw that is known to lie beyond an end, which is exactly
+  # what "contributes its rank and nothing else" says. The uncensored branch
+  # above keeps type = 7 and is untouched.
+  out <- quantile(ranked, probs = probs, na.rm = TRUE, type = 1)
+  at_upper <- is.infinite(out) & out > 0
+  at_lower <- is.infinite(out) & out < 0
+  bound <- rep("", length(out))
+  bound[at_upper] <- ">="
+  bound[at_lower] <- "<="
+  out[at_upper] <- cens$upper
+  out[at_lower] <- cens$lower
+  attr(out, "censored_summary") <- list(
+    bound = bound, upper = cens$upper, lower = cens$lower,
+    n_above = sum(cens$above), n_below = sum(cens$below),
+    # The draws the quantile was taken over, which is every draw the record
+    # accounts for. An NA the record explains at neither end could not be
+    # computed at all and is dropped by na.rm, so counting it here would state
+    # a fraction of a sample the reported figure was not taken from.
+    # warn_censored_draws() reports such a draw separately.
+    n_draws = sum(!is.na(ranked))
+  )
+  out
+}
+
+#' Take one model's share of a censoring record
+#'
+#' @param cens A record from \code{censoring_record()}, or \code{NULL}.
+#' @param idx An integer vector of draw positions.
+#'
+#' @return A record covering \code{idx}, or \code{NULL}.
+#' @noRd
+subset_censoring <- function(cens, idx) {
+  if (is.null(cens)) {
+    return(NULL)
+  }
+  cens$above <- cens$above[idx]
+  cens$below <- cens$below[idx]
+  cens
+}
+
+#' Put a censoring record on another predictor scale
+#'
+#' Used for both remappings a record makes: the \code{crf()} transformation
+#' that takes the recorded predictor scale, which the curve is searched on, to
+#' the fitted scale the estimates are returned on; and the \code{xform} a
+#' caller supplies for display. Which draws are beyond the prediction range is
+#' a property of the predictor and of the grid, so it is settled once, on the
+#' scale the search happened on, and is not revisited here (specification 4.8).
+#' What a remapping changes is the value each bound is stated as, and, for a
+#' decreasing one, which end of the new scale each censored draw appears at.
+#'
+#' Every site that builds a record calls this rather than transforming the
+#' bounds by hand. Transforming them by hand keeps the numbers right and leaves
+#' \code{above} and \code{below} naming the ends of the old scale, which under
+#' \code{crf(-x)} labels a draw beyond the top of the recorded range as being
+#' above the top of the fitted one, where it is in fact below the foot of it.
+#'
+#' @param cens A record from \code{censoring_record()}, or \code{NULL}.
+#' @param xform A monotone \code{\link[base]{function}}.
+#'
+#' @return A record on the new scale, or \code{NULL}.
+#' @noRd
+xform_censoring <- function(cens, xform) {
+  if (is.null(cens)) {
+    return(NULL)
+  }
+  new_upper <- xform(cens$upper)
+  new_lower <- xform(cens$lower)
+  swapped <- isTRUE(attr(cens, "swapped"))
+  if (is.finite(new_upper) && is.finite(new_lower) && new_upper < new_lower) {
+    # A decreasing remapping takes the top of the old scale to the bottom of
+    # the new one, so a draw known to be beyond the top of the range is stated
+    # as below the bottom of the transformed one. The same draws are censored;
+    # only the end they are named at swaps over.
+    out <- censoring_record(new_lower, new_upper, cens$below, cens$above)
+    swapped <- !swapped
+  } else {
+    out <- censoring_record(new_upper, new_lower, cens$above, cens$below)
+  }
+  # Cumulative, because a record is remapped twice: once from the scale the
+  # curve was searched on to the fitted scale, and again for a caller's xform.
+  # Two decreasing remappings leave the ends where they started. The flag is
+  # what censored_end() reads, so that a message describing the draws by their
+  # geometry -- the curve never reached the target -- can still name the end of
+  # the reported scale those draws actually landed at.
+  attr(out, "swapped") <- swapped
+  out
+}
+
+#' The bound a class of beyond-range draw is reported at
+#'
+#' \code{end} names the class as the search saw it: \code{"above"} for draws
+#' the curve did not reach within the range, \code{"below"} for draws it had
+#' already passed where the range began. Where a remapping has reversed the
+#' predictor, those two classes sit at the opposite ends of the reported scale,
+#' and a message that named \code{upper} for the first of them would name the
+#' one value those draws are known not to exceed. Reading it from the record's
+#' own flag settles it for one end, for both ends at once, and for a record
+#' remapped twice.
+#'
+#' @param cens A record from \code{censoring_record()}.
+#' @param end Either \code{"above"} or \code{"below"}.
+#'
+#' @return A \code{\link[base]{numeric}} value.
+#' @noRd
+censored_end <- function(cens, end = c("above", "below")) {
+  end <- match.arg(end)
+  if (xor(identical(end, "above"), isTRUE(attr(cens, "swapped")))) {
+    cens$upper
+  } else {
+    cens$lower
+  }
+}
+
+#' Combine per-component censoring records into one, in draw order
+#'
+#' The components are concatenated in the order their draws are, so the
+#' combined fraction is the weighted one: a component holding a tenth of the
+#' weighted draws contributes a tenth of the elements. Counting censored
+#' components instead would weight every equation equally.
+#'
+#' The bound reported for the combination is the one true of every component:
+#' the smallest upper bound, and the largest lower bound. Within a
+#' \code{\link{bnec}} call every component shares the prediction grid and the
+#' formula, so they are equal and this selects that common value; they can
+#' differ only for a set assembled by hand from separately built fits.
+#'
+#' @param parts A \code{\link[base]{list}} of records, one per component, each
+#' already subset to the draws that component contributes, with \code{NULL}
+#' for a component carrying no record.
+#' @param n_draws An \code{\link[base]{integer}} vector, the number of draws
+#' each component contributes, used where its record is \code{NULL}.
+#'
+#' @return A record, or \code{NULL} where no component is censored.
+#' @noRd
+concat_censoring <- function(parts, n_draws) {
+  present <- !vapply(parts, is.null, logical(1))
+  if (!any(present)) {
+    return(NULL)
+  }
+  above <- unlist(lapply(seq_along(parts), function(i) {
+    if (present[i]) parts[[i]]$above else logical(n_draws[i])
+  }))
+  below <- unlist(lapply(seq_along(parts), function(i) {
+    if (present[i]) parts[[i]]$below else logical(n_draws[i])
+  }))
+  if (!any(above) && !any(below)) {
+    return(NULL)
+  }
+  uppers <- vapply(parts[present], function(p) p$upper, numeric(1))
+  lowers <- vapply(parts[present], function(p) p$lower, numeric(1))
+  out <- censoring_record(min(uppers), max(lowers), above, below)
+  # Carried across, because the components of one bnec() call share a formula
+  # and therefore agree on it, and because the combined record is the one a
+  # bayesmanecfit keeps for the rest of its life. A reader that inferred the
+  # geometry from the field names would invert its prose on a reversed
+  # predictor; censored_end() and warn_censored_draws() read this instead.
+  attr(out, "swapped") <- isTRUE(attr(parts[present][[1]], "swapped"))
+  out
+}
+
+#' Report the censoring of a summarised estimate
+#'
+#' One line stating how many draws lie beyond each end of the prediction range
+#' and where that end is, printed beside the estimate it qualifies. The count
+#' is what a reader needs in order to decide whether the estimate is usable,
+#' and it is not recoverable from the printed quantiles.
+#'
+#' @param cens The \code{"censored_summary"} attribute of a summary.
+#' @param label A \code{\link[base]{character}} naming the quantity.
+#'
+#' @return \code{NULL}, invisibly. Called for the output.
+#' @noRd
+print_censoring_note <- function(cens, label = "estimate") {
+  if (is.null(cens)) {
+    return(invisible(NULL))
+  }
+  if (cens$n_above > 0) {
+    cat("NB: ", cens$n_above, " of ", cens$n_draws, " draws of the ", label,
+        " lie above ", signif(cens$upper, 3), ", the upper bound\n",
+        "    of the prediction range. An entry marked >= is that bound and",
+        " not a quantile.\n", sep = "")
+  }
+  if (cens$n_below > 0) {
+    cat("NB: ", cens$n_below, " of ", cens$n_draws, " draws of the ", label,
+        " lie below ", signif(cens$lower, 3), ", the lower bound\n",
+        "    of the prediction range. An entry marked <= is that bound and",
+        " not a quantile.\n", sep = "")
+  }
+  invisible(NULL)
 }
 
 #' @noRd
@@ -406,6 +685,69 @@ clean_names <- function(x) {
 }
 
 
+#' The ">= " or "<= " that marks one entry of a summarised estimate
+#'
+#' Empty where the entry is an ordinary quantile, which is every entry of an
+#' estimate that carries no censoring record.
+#'
+#' @param values A summarised estimate.
+#' @param i The entry to mark.
+#'
+#' @return A \code{\link[base]{character}} value.
+#' @noRd
+bound_prefix <- function(values, i) {
+  cens <- attr(values, "censored_summary")
+  if (is.null(cens) || !nzchar(cens$bound[i])) {
+    return("")
+  }
+  paste0(cens$bound[i], " ")
+}
+
+#' Collect the censoring records of estimates that are about to be stacked
+#'
+#' \code{rbind()} keeps the numbers and drops every attribute, so a table built
+#' by stacking one estimate per row loses the marks that say which entries are
+#' bounds. This returns the records in row order, for
+#' \code{attr(mat, "censored_summary")}, and \code{NULL} where no row carries
+#' one.
+#'
+#' @param estimates A \code{\link[base]{list}} of summarised estimates, in the
+#' order their rows appear.
+#'
+#' @return A \code{\link[base]{list}} of records, or \code{NULL}.
+#' @noRd
+row_censoring <- function(estimates) {
+  recs <- lapply(estimates, attr, "censored_summary")
+  if (all(vapply(recs, is.null, logical(1)))) {
+    return(NULL)
+  }
+  recs
+}
+
+#' Print a note for each row of a stacked table that carries a bound
+#'
+#' @param recs The \code{"censored_summary"} attribute of a stacked matrix.
+#' @param labels The row names of that matrix.
+#'
+#' @return \code{NULL}, invisibly. Called for the output.
+#' @noRd
+print_row_censoring_notes <- function(recs, labels) {
+  if (is.null(recs) || !is.null(recs$bound)) {
+    return(invisible(NULL))
+  }
+  for (i in seq_along(recs)) {
+    print_censoring_note(recs[[i]], labels[i])
+  }
+  invisible(NULL)
+}
+
+#' Print a matrix of estimates, marking any entry that is a bound
+#'
+#' A one-row matrix carrying a \code{"censored_summary"} attribute has each
+#' censored entry prefixed with \code{">="} or \code{"<="}. The number printed
+#' is then the end of the prediction range rather than a quantile of the
+#' posterior, and the prefix is what says so.
+#'
 #' @noRd
 print_mat <- function(x, digits = 2) {
   fmt <- paste0("%.", digits, "f")
@@ -413,6 +755,28 @@ print_mat <- function(x, digits = 2) {
   for (i in seq_len(ncol(x))) {
     out[, i] <- sprintf(fmt, x[, i])
   }
+  # One record for a one-row matrix, or a list of records one per row for the
+  # stacked tables print.hurdlesummary() builds. rbind() drops the attribute
+  # each component estimate carries, so a caller that stacks estimates has to
+  # collect the records and attach them; row_censoring() does that.
+  cens <- attr(x, "censored_summary")
+  if (!is.null(cens)) {
+    recs <- if (is.null(cens$bound)) cens else list(cens)
+    if (length(recs) == nrow(out)) {
+      for (i in seq_len(nrow(out))) {
+        b <- recs[[i]]$bound
+        if (is.null(b) || length(b) != ncol(out)) {
+          next
+        }
+        marked <- nzchar(b)
+        out[i, marked] <- paste0(b[marked], " ", out[i, marked])
+      }
+    }
+  }
+  # Dropped before printing: print.default() lists any attribute that is not
+  # dim or dimnames underneath the matrix, so leaving the record on would put
+  # the whole list on screen below the three numbers it qualifies.
+  attr(out, "censored_summary") <- NULL
   print(out, quote = FALSE, right = TRUE)
   invisible(x)
 }
@@ -426,12 +790,17 @@ clean_mod_weights <- function(x) {
 #' @noRd
 clean_nec_vals <- function(x, all_models, ecx_models) {
   if (is_bayesnecfit(x)) {
-    mat <- t(as.matrix(x$ne))
+    vals <- x$ne
   } else if (is_bayesmanecfit(x)) {
-    mat <- t(as.matrix(x$w_ne))
+    vals <- x$w_ne
   } else {
     stop("Wrong input class.")
   }
+  mat <- t(as.matrix(vals))
+  # as.matrix() keeps names and drops everything else, so the censoring record
+  # is copied onto the matrix by hand. Without it summary() would print the
+  # bound as though it were a quantile.
+  attr(mat, "censored_summary") <- attr(vals, "censored_summary")
   # ne_type is recorded when the fit is expanded and is the authority: for a
   # two-block (hurdle) fit the reported estimate describes the combined
   # endpoint, whose type depends on the equations used for both blocks and so
@@ -456,7 +825,12 @@ nice_ecx_out <- function(ec, ecx_tag) {
   cat("\n")
   mat <- t(as.matrix(ec))
   rownames(mat) <- "Estimate"
+  # as.matrix() keeps names and drops everything else, so the record ecx() set
+  # is copied onto the matrix by hand, exactly as in clean_nec_vals().
+  attr(mat, "censored_summary") <- attr(ec, "censored_summary")
   print_mat(mat)
+  print_censoring_note(attr(ec, "censored_summary"), sub(" estimate:$", "",
+                                                         ecx_tag))
 }
 
 #' @noRd
@@ -846,6 +1220,7 @@ add_brm_defaults <- function(
   skip_check,
   custom_name,
   prior_type = "uninformative",
+  asymptote_observed = TRUE,
   predictor_scale = "auto",
   model_survival = NULL,
   disp_spec = NULL,
@@ -952,6 +1327,7 @@ add_brm_defaults <- function(
       predictor,
       response,
       prior_type = prior_type,
+      asymptote_observed = asymptote_observed,
       predictor_scale = predictor_scale,
       model_survival = model_survival,
       disp_spec = disp_spec,
@@ -1051,7 +1427,8 @@ add_brm_defaults <- function(
         family = family,
         dpar = hurdle_dpar(family),
         seed = init_seed,
-        model_survival = model_survival
+        model_survival = model_survival,
+        asymptote_observed = asymptote_observed
       )
     } else {
       make_good_inits(
@@ -1061,7 +1438,8 @@ add_brm_defaults <- function(
         family = family,
         priors = init_priors,
         chains = brm_args$chains,
-        seed = init_seed
+        seed = init_seed,
+        asymptote_observed = asymptote_observed
       )
     }
     if (length(inits) == 1 && "random" %in% names(inits)) {
@@ -1947,6 +2325,10 @@ nsec_from_posterior <- function(post, reference, x_vec, x_control, control) {
     val
   }, numeric(1))
   attr(out, "n_below_range") <- sum(below_range)
+  # The vector as well as the count. The count is what the warnings report; the
+  # vector is what a censoring record needs, because a summary has to know
+  # which draws sit at which end rather than only how many sit at each.
+  attr(out, "below_range") <- below_range
   attr(out, "x_searched_from") <- x_kept[1]
   out
 }
@@ -2124,42 +2506,85 @@ check_removed_args <- function(dots) {
 #'
 #' @param values A \code{\link[base]{numeric}} vector of per-draw estimates.
 #' @param estimate A \code{\link[base]{character}} label naming the quantity.
+#' @param range_label A \code{\link[base]{character}} naming what the two
+#' bounds are the ends of. The default is right wherever the bounds come from
+#' the grid the estimate was read on. Where \code{extrapolate} has replaced
+#' them the bound is the limit the caller named and is somewhere the prediction
+#' range does not reach, so calling it the end of that range would state the
+#' wrong number twice over.
 #'
 #' @return \code{NULL}, invisibly. Called for the warning.
 #' @noRd
 warn_censored_draws <- function(values, estimate = "estimate", n_below = 0,
-                               x_from = NULL) {
-  n_missing <- sum(is.na(values)) - n_below
-  below_msg <- function() {
-    msg <- paste0("The ", estimate, " is not identified for ", n_below, " of ",
-                  length(values), " draws, whose curve reached the reference ",
-                  "below ", signif(x_from, 3), ", the lowest concentration in ",
-                  "the prediction range. Those draws return NA and are ",
-                  "excluded from the summary. Their ", estimate, " lies ",
-                  "between the control and ", signif(x_from, 3), ".")
+                               x_from = NULL, cens = attr(values, "censored"),
+                               range_label = "prediction range") {
+  # Classed, so that a method which reports its own censoring can muffle the
+  # reports of the calls it makes internally without also muffling anything
+  # else they raise. nec.bayesnechurdlefit() summarises what nec() returned for
+  # each component, so an unclassed warning would be printed once per component
+  # and once for the combination, saying the same thing three times.
+  raise <- function(msg) {
     warning(structure(class = c("bayesnec_censored", "warning", "condition"),
                       list(message = msg, call = NULL)))
   }
-  if (n_missing > 0) {
-    # Classed, so that a method which reports its own censoring can muffle the
-    # reports of the calls it makes internally without also muffling anything
-    # else they raise. nec.bayesnechurdlefit() summarises what nec() returned
-    # for each component, so an unclassed warning would be printed once per
-    # component and once for the combination, saying the same thing three times.
-    msg <- paste0("The ", estimate, " is not identified for ", n_missing,
-                  " of ", length(values), " draws, whose curve does not reach ",
-                  "the target anywhere in the predictor range. Those draws ",
-                  "return NA and are excluded from the summary, which is ",
-                  "therefore censored above the highest concentration in the ",
-                  "prediction grid.")
-    warning(structure(class = c("bayesnec_censored", "warning", "condition"),
-                      list(message = msg, call = NULL)))
+  if (is.null(cens)) {
+    # No record: the counts and the wording the release used.
+    n_missing <- sum(is.na(values)) - n_below
+    if (n_missing > 0) {
+      raise(paste0("The ", estimate, " is not identified for ", n_missing,
+                   " of ", length(values), " draws, whose curve does not ",
+                   "reach the target anywhere in the predictor range. Those ",
+                   "draws return NA and are excluded from the summary."))
+    }
+    if (n_below > 0) {
+      raise(paste0("The ", estimate, " is not identified for ", n_below,
+                   " of ", length(values), " draws, whose curve reached the ",
+                   "reference below ", signif(x_from, 3), ", the lowest ",
+                   "concentration in the prediction range. Those draws return ",
+                   "NA and are excluded from the summary."))
+    }
+    return(invisible(NULL))
   }
-  # After the above-range report, matching the order nsec.bayesnecfit() raises
-  # the two in, so a call producing both reads the same way whichever method it
+  # With a record, each report is keyed on the end of the REPORTED scale the
+  # draws lie beyond, taken from the same two fields print_censoring_note()
+  # reads. Keying it on the geometry the search saw -- one set whose curve
+  # never reached the target, one whose curve had already passed it -- put the
+  # two reporters in contradiction wherever a decreasing crf() or xform had
+  # swapped the ends, so that a warning said "censored above" over a note
+  # saying "lie below" about the same draws.
+  #
+  # An NA the record accounts for at neither end could not be computed at all:
+  # an all-NA prediction row, or a posterior a caller has edited. It is
+  # reported on its own rather than folded into one of the two ends, and it is
+  # left out of the denominator, so that every fraction stated here is over the
+  # same sample as the one print_censoring_note() states.
+  unexplained <- is.na(values) & !cens$above & !cens$below
+  n_draws <- length(values) - sum(unexplained)
+  if (sum(cens$above) > 0) {
+    raise(paste0("The ", estimate, " is not identified for ",
+                 sum(cens$above), " of ", n_draws, " draws, which lie at or ",
+                 "above ", signif(cens$upper, 3), ", the upper bound of the ",
+                 range_label, ". The summary is censored there: those ",
+                 "draws keep their rank in it and are given no value, so a ",
+                 "quantile falling among them is reported as a bound."))
+  }
+  # After the upper report, matching the order nsec.bayesnecfit() raises the
+  # two in, so a call producing both reads the same way whichever method it
   # came through.
-  if (n_below > 0) {
-    below_msg()
+  if (sum(cens$below) > 0) {
+    raise(paste0("The ", estimate, " is not identified for ",
+                 sum(cens$below), " of ", n_draws, " draws, which lie at or ",
+                 "below ", signif(cens$lower, 3), ", the lower bound of the ",
+                 range_label, ". The summary is censored there: those ",
+                 "draws keep their rank in it and are given no value, so a ",
+                 "quantile falling among them is reported as a bound."))
+  }
+  if (sum(unexplained) > 0) {
+    raise(paste0("The ", estimate, " could not be computed for ",
+                 sum(unexplained), " of ", length(values), " draws, which lie ",
+                 "beyond neither end of the prediction range. Those draws ",
+                 "return NA and are left out of the summary and out of the ",
+                 "fraction reported beside it."))
   }
   invisible(NULL)
 }

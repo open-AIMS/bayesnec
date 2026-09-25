@@ -941,8 +941,8 @@ test_that("prior_type narrows the nec and ec50 prior and nothing else (#314)", {
     expect_equal(prior_pars(r)[2], reg_spread(prior_scale(x)))
     expect_lt(prior_pars(r)[2], prior_pars(u)[2])
   }
-  # and it reaches both nec and ec50 through define_prior(), with the bounds
-  # left at the predictor range so that no part of the tested series is excluded
+  # and it reaches both nec and ec50 through define_prior(), bounded by the
+  # support of the distribution rather than by the tested series (#393)
   x <- rep(c(0, 25, 50, 75, 100), each = 6)
   d <- data.frame(x = x, y = seq(0.9, 0.1, length.out = length(x)))
   reg <- suppressMessages(get_priors(
@@ -952,7 +952,7 @@ test_that("prior_type narrows the nec and ec50 prior and nothing else (#314)", {
   target <- bayesnec:::predictor_prior(x, prior_type = "regularizing")
   expect_equal(reg$prior[reg$nlpar == "ec50"], target)
   expect_equal(as.numeric(reg$lb[reg$nlpar == "ec50"]), 0)
-  expect_equal(as.numeric(reg$ub[reg$nlpar == "ec50"]), 100)
+  expect_true(is.na(reg$ub[reg$nlpar == "ec50"]))
 })
 
 # The uninformative entry for every cell of the #302 audit: five designs by
@@ -1253,11 +1253,13 @@ test_that("a predictor with no positive values is refused (#302)", {
 })
 
 test_that("a hurdle mu block reads the whole predictor for nec (#302)", {
-  # Both blocks of a hurdle fit are evaluated over the whole predictor range,
-  # and their nec bounds are taken from it, so the prior inside those bounds is
-  # taken from it too. Priming the mu block's nec from the survivors alone would
-  # state that the threshold is below the highest concentration at which
-  # anything survived, which is the failure this change removes elsewhere.
+  # Both blocks of a hurdle fit are evaluated over the whole predictor range, so
+  # the prior locating their threshold is built from the whole of it. Priming
+  # the mu block's nec from the survivors alone would state that the threshold
+  # is below the highest concentration at which anything survived, which is the
+  # failure this change removes elsewhere. The bounds are no longer read from
+  # the predictor at all (#393), so they are asserted here as the lognormal's
+  # own support.
   #
   # Only the mu block moves. survival_by_x() returns sort(unique(predictor)), so
   # the second block already had the whole predictor's distinct values and its
@@ -1272,7 +1274,8 @@ test_that("a hurdle mu block reads the whole predictor for nec (#302)", {
   whole <- bayesnec:::predictor_prior(x)
   expect_equal(pr$prior[pr$nlpar == "nec"], whole)
   expect_equal(pr$prior[pr$nlpar == "hunec"], whole)
-  expect_equal(as.numeric(pr$ub[pr$nlpar == "nec"]), 100)
+  expect_equal(as.numeric(pr$lb[pr$nlpar == "nec"]), 0)
+  expect_true(is.na(pr$ub[pr$nlpar == "nec"]))
 })
 
 test_that("a hurdle fit uses the declared scale for both blocks (#317)", {
@@ -1286,8 +1289,11 @@ test_that("a hurdle fit uses the declared scale for both blocks (#317)", {
 
   expect_match(pr$prior[pr$nlpar == "nec"], "^normal\\(")
   expect_match(pr$prior[pr$nlpar == "hunec"], "^normal\\(")
-  expect_equal(as.numeric(pr$lb[pr$nlpar == "nec"]), min(x))
-  expect_equal(as.numeric(pr$ub[pr$nlpar == "nec"]), max(x))
+  # The normal branch takes neither bound (#393): a predictor supplied already
+  # logged may legitimately be negative, so there is no distributional lower
+  # bound to keep.
+  expect_true(is.na(pr$lb[pr$nlpar == "nec"]))
+  expect_true(is.na(pr$ub[pr$nlpar == "nec"]))
 })
 
 test_that("a hurdle mu block with no surviving dose still builds (#302)", {
@@ -2098,4 +2104,822 @@ test_that("the amend path divides without check_data (#389)", {
   for (np in c("top", "bot")) {
     expect_identical(prior_entry(skipped, np), prior_entry(on_rates, np))
   }
+})
+
+# ---------------------------------------------------------------------------
+# The tested-range truncation, removed in #393
+# ---------------------------------------------------------------------------
+
+test_that("the threshold priors are bounded by their own support (#393)", {
+  # On a predictor supplied as a concentration the entry is a lognormal, which
+  # has zero density below zero, so lb = 0 is kept: without it brms declares an
+  # unconstrained parameter whose every negative proposal Stan rejects. There
+  # is no upper bound, so a threshold above the highest concentration tested is
+  # in the tail of the prior rather than outside its support.
+  x <- rep(c(0, 25, 50, 75, 100), each = 6)
+  d <- data.frame(x = x, y = seq(0.9, 0.1, length.out = length(x)))
+  for (ptype in c("uninformative", "regularizing")) {
+    for (mod in c("nec4param", "ecx4param")) {
+      np <- if (mod == "nec4param") "nec" else "ec50"
+      pr <- as.data.frame(suppressMessages(get_priors(
+        as.formula(sprintf("y ~ crf(x, \"%s\")", mod)), data = d,
+        family = Beta(link = "identity"), prior_type = ptype
+      )))
+      row <- pr[pr$nlpar == np, ]
+      expect_match(row$prior, "^lognormal\\(")
+      expect_equal(as.numeric(row$lb), 0)
+      expect_true(is.na(row$ub))
+    }
+  }
+})
+
+test_that("a logged predictor keeps neither threshold bound (#393)", {
+  # The branch test is on the distribution and not on the sign of the data. A
+  # normal is supported on the whole line, and a logged concentration may
+  # legitimately be negative, so neither bound is set. The "auto" rule and the
+  # explicit declaration are both exercised, because they reach the same branch
+  # by different routes.
+  x_neg <- rep(log(c(0.05, 0.1, 1, 10, 100)), each = 6)
+  x_pos <- rep(log(c(1, 3, 10, 30, 100)), each = 6)
+  cases <- list(
+    list(x = x_neg, scale = "auto"),
+    list(x = x_pos, scale = "log")
+  )
+  for (case in cases) {
+    d <- data.frame(x = case$x, y = seq(0.9, 0.1, length.out = length(case$x)))
+    pr <- as.data.frame(suppressMessages(get_priors(
+      y ~ crf(x, "nec4param"), data = d, family = Beta(link = "identity"),
+      predictor_scale = case$scale
+    )))
+    row <- pr[pr$nlpar == "nec", ]
+    expect_match(row$prior, "^normal\\(")
+    expect_true(is.na(row$lb))
+    expect_true(is.na(row$ub))
+  }
+})
+
+test_that("the threshold prior places mass beyond the tested range (#393)", {
+  # The measurement the change exists for, on #386's own design: the prior CDF
+  # at a true ec50 of 45 against a highest concentration of 40 was exactly 1 and
+  # is now below it. The CDF is computed over the bounds the entry is given, as
+  # the prior audit computes it, because that is the density the sampler sees,
+  # and it is the bounds and not the prior string that #393 changed.
+  x <- rep(c(0, 0.31, 0.63, 1.25, 2.5, 5, 10, 40), each = 5)
+  d <- data.frame(x = x, y = seq(0.9, 0.1, length.out = length(x)))
+  pr <- as.data.frame(suppressMessages(get_priors(
+    y ~ crf(x, "ecx4param"), data = d, family = gaussian()
+  )))
+  row <- pr[pr$nlpar == "ec50", ]
+  pars <- as.numeric(strsplit(gsub("^[^(]*\\(|\\)$", "", row$prior),
+                              ",[[:space:]]*")[[1]])
+  # The bounds are what holds the finding. Without these two the rest is
+  # satisfied by the released prior string as well, since the string is the
+  # same on both sides of the change.
+  expect_equal(as.numeric(row$lb), 0)
+  expect_true(is.na(row$ub))
+  # The truth is above the bound the entry was given until #393, so the CDF of
+  # the truncated prior there was exactly 1: the support excluded it. That is
+  # what #386 reported and what this change removes.
+  expect_gt(45, max(x))
+  cdf <- function(q) stats::plnorm(q, pars[1], pars[2])
+  lo <- if (is.na(row$lb)) 0 else as.numeric(row$lb)
+  hi <- if (is.na(row$ub)) Inf else as.numeric(row$ub)
+  mass <- (if (is.finite(hi)) cdf(hi) else 1) - cdf(lo)
+  expect_lt((cdf(45) - cdf(lo)) / mass, 1)
+  # The value notes/prior_audit.md part 4 reports for this cell.
+  expect_equal(signif((cdf(45) - cdf(lo)) / mass, 4), 0.9795)
+  # The spread rule of #314 puts the central 95 per cent of the uninformative
+  # entry inside the tested range, so the mass above it is small and is not
+  # zero.
+  above <- 1 - cdf(max(x))
+  expect_gt(above, 0)
+  expect_lt(above, 0.05)
+})
+
+test_that("a single distinct predictor value builds and draws (#393)", {
+  # The old two-bound branch of make_inits() ran
+  # while (draw <= min(bounds) | draw >= max(bounds)), which is a tautology
+  # where min equals max, so a nec prior built from a predictor with one
+  # distinct positive value hung the initial-value search rather than failing.
+  # With lb = 0 and no ub that branch is unreachable from the default priors.
+  # predictor_prior() already had the degenerate fallback of sigma = 1 for this
+  # case; nothing else did.
+  #
+  # Driven through define_prior() rather than get_priors(), because a constant
+  # predictor does not reach the prior through a formula: check_data() compares
+  # the response means of the two halves of the predictor, which is NaN here,
+  # and stops on "missing value where TRUE/FALSE needed". That refusal is
+  # unhelpful and is not this change's business; what is asserted here is that
+  # the prior and the initial-value search no longer have a defect of their own
+  # behind it.
+  x <- rep(5, 12)
+  y <- seq(0.9, 0.1, length.out = 12)
+  pr <- as.data.frame(suppressMessages(
+    define_prior("nec3param", validate_family("gaussian"), x, y)
+  ))
+  row <- pr[pr$nlpar == "nec", ]
+  expect_match(row$prior, "^lognormal\\(")
+  expect_equal(as.numeric(row$lb), 0)
+  # This is the assertion that fails fast on a regression. The make_inits()
+  # call below would hang rather than fail if the upper bound came back, since
+  # the tautology it restores is an infinite while loop; do not remove this as
+  # redundant.
+  expect_true(is.na(row$ub))
+  set.seed(393)
+  inits <- bayesnec:::make_inits(
+    "nec3param", c("b_top", "b_beta", "b_nec"),
+    priors = pr[pr$class == "b", ], chains = 2
+  )
+  expect_length(inits, 2)
+  expect_true(all(vapply(inits, function(z) is.finite(z$b_nec), logical(1))))
+  expect_true(all(vapply(inits, function(z) z$b_nec > 0, logical(1))))
+})
+
+# ---------------------------------------------------------------------------
+# The declaration that the lower asymptote was not observed, #394
+# ---------------------------------------------------------------------------
+
+# A nec4param response whose series stops at a stated fraction of its span.
+# The threshold is placed so that the mean at the highest predictor value has
+# travelled `reached` of the way from top to bot, which is the device
+# notes/scripts/prior_audit.R uses and the reason it uses it: the series, the
+# replication and the decay rate are then identical across settings and the
+# only thing that differs is how much of the curve the design shows.
+incomplete_design <- function(reached, family_tag, seed = 394, top = 0.9,
+                              bot = 0.1) {
+  x <- rep(c(0, 0.31, 0.63, 1.25, 2.5, 5, 10, 40), each = 5)
+  rate <- 2.5
+  nec <- max(x) + log(1 - reached) / rate
+  mu <- bot + (top - bot) *
+    exp(-rate * (x - nec) * ifelse(x - nec < 0, 0, 1))
+  set.seed(seed)
+  y <- switch(
+    family_tag,
+    gaussian = stats::rnorm(length(mu), mu, 0.04),
+    Gamma = stats::rgamma(length(mu), 25, 25 / mu),
+    poisson = as.integer(stats::rpois(length(mu), mu * 40)),
+    negbinomial = as.integer(stats::rnbinom(length(mu), mu = mu * 40,
+                                            size = 5)),
+    Beta = stats::rbeta(length(mu), mu * 20, (1 - mu) * 20),
+    bernoulli = as.integer(stats::rbinom(length(mu), 1, mu)),
+    as.integer(stats::rbinom(length(mu), 20, mu))
+  )
+  data.frame(x = x, y = y, trials = 20)
+}
+
+incomplete_formula <- function(family_tag, model = "nec4param") {
+  if (family_tag %in% c("binomial", "beta_binomial")) {
+    stats::as.formula(sprintf("y | trials(trials) ~ crf(x, \"%s\")", model))
+  } else {
+    stats::as.formula(sprintf("y ~ crf(x, \"%s\")", model))
+  }
+}
+
+# The quantiles of a prior string, which is what the rule of #394 is stated
+# on. No truncation is applied: the bot entry takes the family's own support
+# as its bounds and the distribution already lies inside it.
+prior_quantiles <- function(txt, probs = c(0.025, 0.975)) {
+  fam <- sub("\\(.*$", "", txt)
+  args <- as.numeric(strsplit(gsub("^[^(]*\\(|\\)$", "", txt),
+                              ",[[:space:]]*")[[1]])
+  switch(fam,
+         normal = stats::qnorm(probs, args[1], args[2]),
+         gamma = stats::qgamma(probs, args[1], args[2]),
+         beta = stats::qbeta(probs, args[1], args[2]),
+         stop("unhandled prior family ", fam))
+}
+
+prior_args <- function(txt) {
+  as.numeric(strsplit(gsub("^[^(]*\\(|\\)$", "", txt), ",[[:space:]]*")[[1]])
+}
+
+test_that("the bot prior spans the floor to the endpoint mean (#394)", {
+  # The rule of specification section 5.3, one sentence on every family: the
+  # central 95 per cent of the bot prior runs from the support floor to the
+  # mean response at the highest predictor level. Asserted as direction and
+  # order of magnitude rather than as digits, because the realised coverage
+  # differs by branch and is recorded in notes/prior_audit.md.
+  #
+  # The gamma row cannot satisfy it exactly. At a fixed shape of 2 the central
+  # 95 per cent runs from 0.0606 to 1.393 times the mean, so the tolerance is
+  # stated per branch and the gamma one is the wider.
+  cases <- list(
+    list(tag = "gaussian", branch = "normal"),
+    list(tag = "Gamma", branch = "gamma"),
+    list(tag = "poisson", branch = "gamma"),
+    list(tag = "negbinomial", branch = "gamma"),
+    list(tag = "Beta", branch = "beta"),
+    list(tag = "bernoulli", branch = "beta"),
+    list(tag = "binomial", branch = "beta"),
+    list(tag = "beta_binomial", branch = "beta")
+  )
+  for (case in cases) {
+    d <- incomplete_design(0.36, case$tag)
+    fam <- validate_family(case$tag)
+    for (ptype in c("uninformative", "regularizing")) {
+      pr <- as.data.frame(suppressWarnings(suppressMessages(get_priors(
+        incomplete_formula(case$tag), data = d, family = fam,
+        prior_type = ptype, asymptote_observed = FALSE))))
+      entry <- pr$prior[pr$nlpar == "bot"]
+      expect_match(entry, paste0("^", case$branch, "\\("),
+                   info = paste(case$tag, ptype))
+      qs <- prior_quantiles(entry)
+      # The endpoint mean the entry is built from, read through the same
+      # anchor define_prior() uses so that the assertion is about the rule and
+      # not about a second implementation of the endpoint.
+      y <- d$y
+      if (case$tag %in% c("binomial", "beta_binomial")) {
+        y <- y / d$trials
+      }
+      yl <- response_link_scale(y, fam)
+      e <- bayesnec:::regularizing_location(
+        d$x, yl, "bot", zero_bounded = bayesnec:::zero_bounded_family(fam)
+      )[["location"]]
+      # The anchor is read through the implementation's own call, so this pins
+      # what that call returns on this design: the mean over the observations
+      # at the highest predictor value, which is what the rule names.
+      expect_equal(e, mean(yl[d$x == max(d$x)]), info = paste(case$tag, ptype))
+      # Stated per branch, because the three meet the rule to different
+      # degrees and a single tolerance would hide which.
+      if (identical(case$branch, "gamma")) {
+        # A gamma at a fixed shape of 2 cannot start at zero and end at a
+        # chosen value, so the realised interval is a fixed multiple of the
+        # endpoint mean either side of it.
+        expect_equal(qs[1] / e, 0.0606, tolerance = 1e-2)
+        expect_equal(qs[2] / e, 1.3929, tolerance = 1e-3)
+      } else if (identical(case$branch, "beta")) {
+        expect_equal(qs[2], e, tolerance = 1e-5)
+        expect_lt(qs[1], 0.05 * e)
+      } else {
+        # Exactly [0, e] up to the six significant figures the entry is
+        # written to.
+        expect_lt(abs(qs[1]), 1e-5 * e)
+        expect_equal(qs[2], e, tolerance = 1e-5)
+      }
+      # The declaration governs bot and nothing else, so the entry either
+      # prior_type produced for every other parameter survives unchanged.
+      base <- as.data.frame(suppressWarnings(suppressMessages(get_priors(
+        incomplete_formula(case$tag), data = d, family = fam,
+        prior_type = ptype))))
+      expect_identical(pr$prior[pr$nlpar != "bot"],
+                       base$prior[base$nlpar != "bot"],
+                       info = paste(case$tag, ptype))
+    }
+  }
+})
+
+test_that("the declared prior covers a bot the released sets exclude (#394)", {
+  # The measurement #394 exists for, on #386's flattest gaussian design. The
+  # released entries put the true bot of 0.1 far outside their own central 95
+  # per cent; the declaration puts it inside.
+  d <- incomplete_design(0.02, "gaussian", seed = 386)
+  bot_entry <- function(ptype, declared) {
+    pr <- as.data.frame(suppressWarnings(suppressMessages(get_priors(
+      y ~ crf(x, "nec4param"), data = d, family = gaussian(),
+      prior_type = ptype, asymptote_observed = declared))))
+    pr$prior[pr$nlpar == "bot"]
+  }
+  cdf_at <- function(txt, q) {
+    a <- prior_args(txt)
+    stats::pnorm(q, a[1], a[2])
+  }
+  for (ptype in c("uninformative", "regularizing")) {
+    expect_lt(cdf_at(bot_entry(ptype, TRUE), 0.1), 1e-10)
+    declared <- cdf_at(bot_entry(ptype, FALSE), 0.1)
+    expect_gt(declared, 0.025)
+    expect_lt(declared, 0.975)
+  }
+})
+
+test_that("the regularizing cap does not hold the declared entry (#394)", {
+  # regularizing_entry() caps a spread at the uninformative width, which is
+  # what holds the released prior at a width that excludes the truth. The
+  # declared entry is a separate construction, so on a flat design it is wider
+  # than both released sets rather than being capped at the wider of them.
+  d <- incomplete_design(0.02, "gaussian", seed = 386)
+  bot_entry <- function(ptype, declared) {
+    pr <- as.data.frame(suppressWarnings(suppressMessages(get_priors(
+      y ~ crf(x, "nec4param"), data = d, family = gaussian(),
+      prior_type = ptype, asymptote_observed = declared))))
+    pr$prior[pr$nlpar == "bot"]
+  }
+  spread <- function(txt) prior_args(txt)[2]
+  declared <- spread(bot_entry("uninformative", FALSE))
+  expect_gt(declared, spread(bot_entry("uninformative", TRUE)))
+  expect_gt(declared, spread(bot_entry("regularizing", TRUE)))
+  # The two prior types give the same declared entry, because the rule
+  # replaces the entry rather than narrowing whatever produced it.
+  expect_identical(bot_entry("uninformative", FALSE),
+                   bot_entry("regularizing", FALSE))
+})
+
+test_that("a response with no derivable floor is refused (#394)", {
+  # The gaussian row of the table in section 5.3 with no floor available.
+  # Refused, naming bot and the prior argument, rather than a floor being
+  # invented: a response expressed as a log ratio or a growth increment is
+  # ordinary input here (#229).
+  d <- incomplete_design(0.36, "gaussian")
+  d$y <- d$y - 1.2
+  expect_true(any(d$y < 0))
+  err <- expect_error(suppressWarnings(suppressMessages(get_priors(
+    y ~ crf(x, "nec4param"), data = d, family = gaussian(),
+    asymptote_observed = FALSE))))
+  expect_match(conditionMessage(err), "\"bot\"", fixed = TRUE)
+  expect_match(conditionMessage(err), "`prior` argument", fixed = TRUE)
+  expect_match(conditionMessage(err), "spanning negative values", fixed = TRUE)
+  # The same response under the default builds as it always did.
+  built <- suppressWarnings(suppressMessages(get_priors(
+    y ~ crf(x, "nec4param"), data = d, family = gaussian())))
+  expect_s3_class(built, "brmsprior")
+})
+
+test_that("a non-identity link is refused as well (#394)", {
+  # prior_family_tag() rewrites a log or logit link onto the gaussian entries,
+  # and on that scale the floor of the mean maps to -Inf. A response that is
+  # non-negative once logged says only that every observation exceeds one in
+  # response units, which is a property of the units and not a floor.
+  d <- incomplete_design(0.36, "gaussian")
+  d$y <- d$y * 10
+  err <- expect_error(suppressWarnings(suppressMessages(get_priors(
+    y ~ crf(x, "nec4param"), data = d, family = Gamma(link = "log"),
+    asymptote_observed = FALSE))))
+  expect_match(conditionMessage(err), "\"log\" link", fixed = TRUE)
+  expect_match(conditionMessage(err), "`prior` argument", fixed = TRUE)
+})
+
+test_that("the default leaves every generated entry bit-identical (#394)", {
+  # The regression guard for every released analysis. The strings below were
+  # captured on predev at 5fee2e9a, before this change, by the generator
+  # recorded in the pull request for #394. They are compared as text and not
+  # as numbers, because a prior string is what define_prior() returns and a
+  # change of rounding is exactly what this has to catch.
+  released <- c(
+    "gaussian|uninformative|top" =
+      "normal(0.95277185372616, 0.697777486264628)",
+    "gaussian|uninformative|bot" =
+      "normal(0.161825553470704, 0.697777486264628)",
+    "gaussian|uninformative|nec" =
+      "lognormal(0.916290731874155, 1.41461207660427)",
+    "gaussian|regularizing|top" =
+      "normal(0.926694327915049, 0.279110994505851)",
+    "gaussian|regularizing|bot" =
+      "normal(0.0836645059283788, 0.279110994505851)",
+    "gaussian|regularizing|nec" =
+      "lognormal(0.916290731874155, 1.19182034345698)",
+    "Gamma|uninformative|top" =
+      "gamma(2, 2.00559762731528)",
+    "Gamma|uninformative|bot" =
+      "gamma(2, 2.68398226979542)",
+    "Gamma|uninformative|nec" =
+      "lognormal(0.916290731874155, 1.41461207660427)",
+    "Gamma|regularizing|top" =
+      "gamma(14.6468, 13.5687)",
+    "Gamma|regularizing|bot" =
+      "gamma(1.60172, 6.00479)",
+    "Gamma|regularizing|nec" =
+      "lognormal(0.916290731874155, 1.19182034345698)",
+    "poisson|uninformative|top" =
+      "gamma(2, 0.0512820512820513)",
+    "poisson|uninformative|bot" =
+      "gamma(2, 0.064998375040624)",
+    "poisson|uninformative|nec" =
+      "lognormal(0.916290731874155, 1.41461207660427)",
+    "poisson|regularizing|top" =
+      "gamma(14.8201, 0.348992)",
+    "poisson|regularizing|bot" =
+      "gamma(1.80208, 0.154246)",
+    "poisson|regularizing|nec" =
+      "lognormal(0.916290731874155, 1.19182034345698)",
+    "negbinomial|uninformative|top" =
+      "gamma(2, 0.0392253003187056)",
+    "negbinomial|uninformative|bot" =
+      "gamma(2, 0.100037514067775)",
+    "negbinomial|uninformative|nec" =
+      "lognormal(0.916290731874155, 1.41461207660427)",
+    "negbinomial|regularizing|top" =
+      "gamma(11.2195, 0.232262)",
+    "negbinomial|regularizing|bot" =
+      "gamma(1.93472, 0.245978)",
+    "negbinomial|regularizing|nec" =
+      "lognormal(0.916290731874155, 1.19182034345698)",
+    "Beta|uninformative|top" =
+      "beta(5, 2)",
+    "Beta|uninformative|bot" =
+      "beta(2, 5)",
+    "Beta|uninformative|nec" =
+      "lognormal(0.916290731874155, 1.41461207660427)",
+    "Beta|regularizing|top" =
+      "beta(30.2922, 7.41633)",
+    "Beta|regularizing|bot" =
+      "beta(3.45027, 23.1799)",
+    "Beta|regularizing|nec" =
+      "lognormal(0.916290731874155, 1.19182034345698)",
+    "bernoulli|uninformative|top" =
+      "beta(5, 2)",
+    "bernoulli|uninformative|bot" =
+      "beta(2, 5)",
+    "bernoulli|uninformative|nec" =
+      "lognormal(0.916290731874155, 1.41461207660427)",
+    "bernoulli|regularizing|top" =
+      "beta(4.18661, 1.03186)",
+    "bernoulli|regularizing|bot" =
+      "beta(1.03219, 4.18707)",
+    "bernoulli|regularizing|nec" =
+      "lognormal(0.916290731874155, 1.19182034345698)",
+    "binomial|uninformative|top" =
+      "beta(5, 2)",
+    "binomial|uninformative|bot" =
+      "beta(2, 5)",
+    "binomial|uninformative|nec" =
+      "lognormal(0.916290731874155, 1.41461207660427)",
+    "binomial|regularizing|top" =
+      "beta(25.2469, 4.32008)",
+    "binomial|regularizing|bot" =
+      "beta(3.09767, 22.2152)",
+    "binomial|regularizing|nec" =
+      "lognormal(0.916290731874155, 1.19182034345698)",
+    "beta_binomial|uninformative|top" =
+      "beta(5, 2)",
+    "beta_binomial|uninformative|bot" =
+      "beta(2, 5)",
+    "beta_binomial|uninformative|nec" =
+      "lognormal(0.916290731874155, 1.41461207660427)",
+    "beta_binomial|regularizing|top" =
+      "beta(25.2469, 4.32008)",
+    "beta_binomial|regularizing|bot" =
+      "beta(3.09767, 22.2152)",
+    "beta_binomial|regularizing|nec" =
+      "lognormal(0.916290731874155, 1.19182034345698)"
+  )
+  tags <- c("gaussian", "Gamma", "poisson", "negbinomial", "Beta",
+            "bernoulli", "binomial", "beta_binomial")
+  for (tag in tags) {
+    # A complete design, at the `complete` setting of the prior audit: the
+    # decay rate is held and the threshold placed so that exp(-5) of the span
+    # from top to bot is left untravelled at the highest predictor value.
+    d <- incomplete_design(1 - exp(-5), tag, seed = 394)
+    fam <- validate_family(tag)
+    for (ptype in c("uninformative", "regularizing")) {
+      pr <- as.data.frame(suppressWarnings(suppressMessages(get_priors(
+        incomplete_formula(tag), data = d, family = fam,
+        prior_type = ptype))))
+      for (np in c("top", "bot", "nec")) {
+        key <- paste(tag, ptype, np, sep = "|")
+        expect_identical(pr$prior[pr$nlpar == np], unname(released[[key]]),
+                         info = key)
+      }
+    }
+  }
+})
+
+test_that("bnec refuses the declaration before its model loop (#394)", {
+  # The placement rule recorded in CLAUDE.md. check_data() runs once per model
+  # from inside fit_bayesnec(), and bnec() wraps that call in try() for a model
+  # set, so a refusal raised from there is printed once per equation and the
+  # call then ends on the generic all-models-failed advice. Raised before the
+  # loop it is raised once, and nothing is compiled.
+  d <- incomplete_design(0.36, "gaussian")
+  d$y <- d$y - 1.2
+  err <- expect_error(suppressWarnings(suppressMessages(bnec(
+    y ~ crf(x, c("nec3param", "nec4param")), data = d,
+    asymptote_observed = FALSE, chains = 1, iter = 10))))
+  expect_match(conditionMessage(err), "`prior` argument", fixed = TRUE)
+  expect_false(grepl("None of the models fit successfully",
+                     conditionMessage(err), fixed = TRUE))
+})
+
+test_that("a mixed model set is reported under the declaration (#394)", {
+  # Fourteen of the 23 equations have no bot parameter and so have no lower
+  # asymptote to estimate. On a design that did not reach the asymptote the
+  # data cannot separate them from the equations that estimate bot, so the set
+  # is reported and left alone. The message states both branches, because
+  # whether the response can reach zero is a property of the endpoint and not
+  # of the data.
+  d <- incomplete_design(0.36, "gaussian")
+  bdat <- stats::model.frame(bnf(y ~ crf(x, c("nec3param", "nec4param"))),
+                             data = d)
+  fam <- validate_family("gaussian")
+  expect_message(
+    bayesnec:::check_asymptote_declaration(
+      bdat, fam, c("nec3param", "nec4param"), asymptote_observed = FALSE),
+    "mod_groups\\$bot_free"
+  )
+  msg <- tryCatch(
+    bayesnec:::check_asymptote_declaration(
+      bdat, fam, c("nec3param", "nec4param"), asymptote_observed = FALSE),
+    message = conditionMessage)
+  expect_match(msg, "no lower asymptote to estimate", fixed = TRUE)
+  expect_match(msg, "if the response can reach zero", fixed = TRUE)
+  # neclin, neclinhorme and ecxlin decay by subtraction and are unbounded
+  # below, so the report must not claim that every bot_free equation falls to
+  # zero. All three are kept for a gaussian family.
+  expect_false(grepl("falls to zero", msg, fixed = TRUE))
+  expect_match(msg, "or away from it if it cannot", fixed = TRUE)
+  # A set on one side of the divide says nothing, and neither does the default.
+  expect_silent(bayesnec:::check_asymptote_declaration(
+    bdat, fam, c("nec3param", "ecxexp"), asymptote_observed = FALSE))
+  expect_silent(bayesnec:::check_asymptote_declaration(
+    bdat, fam, c("nec4param", "ecx4param"), asymptote_observed = FALSE))
+  expect_silent(bayesnec:::check_asymptote_declaration(
+    bdat, fam, c("nec3param", "nec4param")))
+})
+
+test_that("bnec and get_priors validate the declaration (#394)", {
+  d <- incomplete_design(0.36, "gaussian")
+  expect_error(suppressWarnings(suppressMessages(get_priors(
+    y ~ crf(x, "nec4param"), data = d, family = gaussian(),
+    asymptote_observed = NA))), "flag")
+  expect_error(suppressWarnings(suppressMessages(bnec(
+    y ~ crf(x, "nec4param"), data = d, asymptote_observed = "no",
+    chains = 1, iter = 10))), "flag")
+})
+
+test_that("a fit is built with the declared prior (#394)", {
+  # The argument reaches the prior brm() is handed and not only get_priors().
+  # brm() is mocked and `init` supplied, so nothing compiles and the
+  # initial-value search does not run; what is asserted is the object
+  # fit_bayesnec() passes on.
+  d <- incomplete_design(0.36, "gaussian")
+  fam <- validate_family("gaussian")
+  seen <- new.env(parent = emptyenv())
+  local_mocked_bindings(
+    brm = function(formula, data, ...) {
+      seen$prior <- list(...)$prior
+      structure(list(), class = "brmsfit")
+    },
+    are_chains_correct = function(...) TRUE,
+    .package = "bayesnec"
+  )
+  suppressMessages(suppressWarnings(
+    fit_bayesnec(formula = bnf(y ~ crf(x, "nec4param")), data = d,
+                 model = "nec4param", asymptote_observed = FALSE,
+                 brm_args = list(family = fam, init = list(list()),
+                                 chains = 1, iter = 10))
+  ))
+  used <- as.data.frame(seen$prior)
+  declared <- as.data.frame(suppressWarnings(suppressMessages(get_priors(
+    y ~ crf(x, "nec4param"), data = d, family = fam,
+    asymptote_observed = FALSE))))
+  expect_identical(used$prior, declared$prior)
+  default <- as.data.frame(suppressWarnings(suppressMessages(get_priors(
+    y ~ crf(x, "nec4param"), data = d, family = fam))))
+  expect_false(identical(prior_entry(used, "bot"),
+                         prior_entry(default, "bot")))
+})
+
+test_that("amend honours the declaration for an added model (#394)", {
+  # amend() rebuilds a default prior only for a model that is not already in
+  # the set, so the declaration has to reach that rebuild and the refit that
+  # follows it. The stored manec_example supplies the set; nothing is fitted
+  # here, because both are mocked and what is asserted is the argument each
+  # receives.
+  seen <- new.env(parent = emptyenv())
+  local_mocked_bindings(
+    define_prior = function(model, family, predictor, response,
+                            prior_type = "uninformative",
+                            asymptote_observed = TRUE, ...) {
+      seen$prior_declared <- asymptote_observed
+      brms::prior_string("normal(0, 5)", nlpar = "top")
+    },
+    fit_bayesnec = function(..., asymptote_observed = TRUE) {
+      seen$fit_declared <- asymptote_observed
+      stop("not fitted in this test", call. = FALSE)
+    },
+    .package = "bayesnec"
+  )
+  for (declared in c(TRUE, FALSE)) {
+    seen$prior_declared <- NULL
+    seen$fit_declared <- NULL
+    suppressMessages(suppressWarnings(try(
+      amend(manec_example, add = "nechorme4",
+            asymptote_observed = declared),
+      silent = TRUE
+    )))
+    expect_identical(seen$prior_declared, declared)
+    expect_identical(seen$fit_declared, declared)
+  }
+})
+
+test_that("amend refuses a response with no derivable floor (#394)", {
+  # The backstop define_prior() keeps for the routes that do not come through
+  # bnec(). manec_example is fitted on a response spanning negative values, so
+  # the declaration cannot be acted on and amend() reports that rather than
+  # adding a model under a prior it could not build.
+  err <- expect_error(suppressMessages(suppressWarnings(
+    amend(manec_example, add = "nechorme4", asymptote_observed = FALSE)
+  )))
+  expect_match(conditionMessage(err), "`prior` argument", fixed = TRUE)
+})
+
+test_that("the declaration reaches both blocks of a hurdle fit (#394)", {
+  # define_hurdle_prior() builds the mu block from the survivors and the second
+  # block from the proportion surviving at each predictor value, and the design
+  # stopped before both curves' asymptotes. The declaration replaces both
+  # entries and leaves everything else in either block as it was.
+  set.seed(394)
+  x <- rep(c(0, 0.31, 0.63, 1.25, 2.5, 5, 10, 40), each = 5)
+  mu <- 2 + 8 * exp(-2.5 * (x - 39.82) * ifelse(x - 39.82 < 0, 0, 1))
+  d <- data.frame(
+    x = x,
+    y = stats::rgamma(length(mu), 25, 25 / mu) *
+      stats::rbinom(length(mu), 1, 0.8)
+  )
+  fam <- validate_family("hurdle_gamma")
+  entries <- function(declared) {
+    pr <- as.data.frame(suppressWarnings(suppressMessages(get_priors(
+      y ~ crf(x, "nec4param"), data = d, family = fam,
+      asymptote_observed = declared))))
+    stats::setNames(pr$prior, pr$nlpar)
+  }
+  default <- entries(TRUE)
+  declared <- entries(FALSE)
+  # The mu block's bot is on the gamma branch and the survival block's on the
+  # beta branch, so the two take different constructions from one declaration.
+  expect_match(declared[["bot"]], "^gamma\\(2, ")
+  expect_match(declared[["hubot"]], "^beta\\(1, ")
+  expect_false(identical(declared[["bot"]], default[["bot"]]))
+  expect_false(identical(declared[["hubot"]], default[["hubot"]]))
+  moved <- c("bot", "hubot")
+  expect_identical(declared[setdiff(names(declared), moved)],
+                   default[setdiff(names(default), moved)])
+})
+
+test_that("the declaration reads a zero-inflated count block (#394)", {
+  # prior_family_tag() rewrites zero_inflated_poisson onto the poisson entries,
+  # because the mixture changes how many zeros are observed and not the scale
+  # of mu, so the declaration takes the gamma branch there as well.
+  set.seed(394)
+  x <- rep(c(0, 0.31, 0.63, 1.25, 2.5, 5, 10, 40), each = 5)
+  mu <- 8 + 32 * exp(-2.5 * (x - 39.82) * ifelse(x - 39.82 < 0, 0, 1))
+  d <- data.frame(
+    x = x,
+    y = as.integer(stats::rpois(length(mu), mu) *
+                     stats::rbinom(length(mu), 1, 0.8))
+  )
+  fam <- validate_family("zero_inflated_poisson")
+  bot_of <- function(declared) {
+    pr <- as.data.frame(suppressWarnings(suppressMessages(get_priors(
+      y ~ crf(x, "nec4param"), data = d, family = fam,
+      asymptote_observed = declared))))
+    pr$prior[pr$nlpar == "bot"]
+  }
+  expect_match(bot_of(FALSE), "^gamma\\(2, ")
+  expect_false(identical(bot_of(FALSE), bot_of(TRUE)))
+})
+
+test_that("the declared entry is built on the rate scale (#394)", {
+  # bnec() fits on the identity link, so brms writes a rate() denominator
+  # multiplicatively and the mean is the rate. The endpoint mean the entry is
+  # built from is therefore a rate, which #389 established for the released
+  # entries and this asserts for the declared one.
+  set.seed(394)
+  x <- rep(c(0, 0.31, 0.63, 1.25, 2.5, 5, 10, 40), each = 5)
+  ex <- rep(c(1, 2, 4, 8), length.out = length(x))
+  mu <- 6 + 14 * exp(-2.5 * (x - 39.82) * ifelse(x - 39.82 < 0, 0, 1))
+  d <- data.frame(x = x, ex = ex,
+                  y = as.integer(stats::rpois(length(mu), mu * ex)))
+  fam <- validate_family("poisson")
+  on_rates <- as.data.frame(define_prior("nec4param", fam, d$x, d$y / d$ex,
+                                         asymptote_observed = FALSE))
+  on_counts <- as.data.frame(define_prior("nec4param", fam, d$x, d$y,
+                                          asymptote_observed = FALSE))
+  fitted_prior <- as.data.frame(suppressWarnings(suppressMessages(get_priors(
+    y | rate(ex) ~ crf(x, "nec4param"), data = d, family = "poisson",
+    asymptote_observed = FALSE))))
+  expect_identical(prior_entry(fitted_prior, "bot"),
+                   prior_entry(on_rates, "bot"))
+  expect_false(identical(prior_entry(fitted_prior, "bot"),
+                         prior_entry(on_counts, "bot")))
+})
+
+test_that("a complete supplied bot prior is not refused (#394)", {
+  # add_brm_defaults() wraps the default build in try() so that a user who
+  # supplied their own complete set is never blocked by a default they will not
+  # use (#207, #229). A refusal raised before the model loop would take that
+  # back, so it is gated on whether a bot row will be generated at all.
+  d <- incomplete_design(0.36, "gaussian")
+  d$y <- d$y - 1.2
+  fam <- validate_family("gaussian")
+  bdat <- stats::model.frame(bnf(y ~ crf(x, "nec4param")), data = d)
+  complete <- suppressWarnings(suppressMessages(get_priors(
+    y ~ crf(x, "nec4param"), data = incomplete_design(0.36, "gaussian"),
+    family = fam)))
+  # A single equation, so the mixed-set report cannot fire and silence is the
+  # whole outcome.
+  expect_silent(bayesnec:::check_asymptote_declaration(
+    bdat, fam, "nec4param", asymptote_observed = FALSE, prior = complete))
+  # Omitting the bot row alone restores the refusal.
+  partial <- complete[as.data.frame(complete)$nlpar != "bot", ]
+  expect_error(
+    bayesnec:::check_asymptote_declaration(
+      bdat, fam, "nec4param", asymptote_observed = FALSE, prior = partial),
+    "`prior` argument", fixed = TRUE)
+  # And a set whose equations have no bot parameter generates no bot row, so
+  # there is nothing to refuse either here or in define_prior(). Both are
+  # bot_free, so the mixed-set report is silent for that reason as well.
+  expect_silent(bayesnec:::check_asymptote_declaration(
+    bdat, fam, c("nec3param", "ecxexp"), asymptote_observed = FALSE))
+  built <- suppressWarnings(suppressMessages(
+    define_prior("nec3param", fam, d$x, d$y, asymptote_observed = FALSE)))
+  expect_s3_class(built, "brmsprior")
+})
+
+test_that("a supplied prior does not silence the mixed-set report (#394)", {
+  # Whether a set mixes equations that estimate a lower asymptote with ones
+  # that assert the response reaches zero is a property of the set and of the
+  # design. Supplying a bot prior does not make the region that would separate
+  # them observed, so the gate that suppresses the refusals must not reach the
+  # report.
+  d <- incomplete_design(0.36, "gaussian")
+  fam <- validate_family("gaussian")
+  bdat <- stats::model.frame(bnf(y ~ crf(x, c("nec3param", "nec4param"))),
+                             data = d)
+  complete <- suppressWarnings(suppressMessages(get_priors(
+    y ~ crf(x, "nec4param"), data = d, family = fam)))
+  expect_message(
+    bayesnec:::check_asymptote_declaration(
+      bdat, fam, c("nec3param", "nec4param"), asymptote_observed = FALSE,
+      prior = complete),
+    "mod_groups\\$bot_free")
+  # And it still raises no refusal, which is what the gate is for.
+  expect_no_error(suppressMessages(bayesnec:::check_asymptote_declaration(
+    bdat, fam, c("nec3param", "nec4param"), asymptote_observed = FALSE,
+    prior = complete)))
+})
+
+test_that("a response with no value above the floor is refused early (#394)", {
+  # The second refusal unobserved_endpoint_mean() can raise. Hoisted for the
+  # same reason as the first: from inside the model loop it is printed once per
+  # equation and the call then ends on the generic all-models-failed advice.
+  d <- incomplete_design(0.36, "gaussian")
+  d$y <- 0
+  fam <- validate_family("gaussian")
+  bdat <- stats::model.frame(bnf(y ~ crf(x, "nec4param")), data = d)
+  err <- expect_error(bayesnec:::check_asymptote_declaration(
+    bdat, fam, "nec4param", asymptote_observed = FALSE))
+  expect_match(conditionMessage(err), "no value above that floor", fixed = TRUE)
+  expect_match(conditionMessage(err), "`prior` argument", fixed = TRUE)
+  # On a zero-bounded family the same response reaches positive_scale(), whose
+  # refusal names the construction of top and bot and not the declaration. The
+  # declaration's own message is what must arrive; this pins the behaviour
+  # rather than the implementation, and it holds for the construction that
+  # tests for a positive value before reading the anchor and for the one that
+  # caught positive_scale()'s error afterwards.
+  pois <- validate_family("poisson")
+  d$y <- as.integer(d$y)
+  bpois <- stats::model.frame(bnf(y ~ crf(x, "nec4param")), data = d)
+  err2 <- expect_error(bayesnec:::check_asymptote_declaration(
+    bpois, pois, "nec4param", asymptote_observed = FALSE))
+  expect_match(conditionMessage(err2), "asymptote_observed", fixed = TRUE)
+  expect_match(conditionMessage(err2), "no value above that floor",
+               fixed = TRUE)
+})
+
+test_that("an endpoint group at the floor is not refused (#394)", {
+  # The guard on the test hoisted above the anchor: an early stop() can only
+  # break this by refusing something it should accept, and a zero-bounded
+  # response whose endpoint group is entirely zero is the case that separates
+  # "no positive value at the endpoint" from "no positive value at all".
+  # regularizing_location() stands a tenth of the smallest positive observation
+  # in there, which is a scale the entry can be placed on.
+  d <- incomplete_design(0.36, "Gamma")
+  d$y[d$x == max(d$x)] <- 0
+  fam <- validate_family("Gamma")
+  yl <- response_link_scale(d$y, fam)
+  expect_gt(bayesnec:::unobserved_endpoint_mean(d$x, yl, TRUE), 0)
+  entry <- as.data.frame(suppressWarnings(suppressMessages(get_priors(
+    y ~ crf(x, "nec4param"), data = d, family = fam,
+    asymptote_observed = FALSE))))
+  expect_match(entry$prior[entry$nlpar == "bot"], "^gamma\\(2, ")
+})
+
+test_that("the refusal counts the observations below the floor (#394)", {
+  # min(response) >= 0 is the test, so one reading below zero decides it. That
+  # is the right test, because a response that goes below zero is measured on a
+  # scale that admits negative values; the message says how many did, so that a
+  # single stray reading and a response that is negative throughout are
+  # distinguishable.
+  d <- incomplete_design(0.36, "gaussian")
+  d$y[1] <- -0.001
+  expect_true(min(d$y) < 0 && sum(d$y < 0) == 1)
+  err <- expect_error(suppressWarnings(suppressMessages(get_priors(
+    y ~ crf(x, "nec4param"), data = d, family = gaussian(),
+    asymptote_observed = FALSE))))
+  expect_match(conditionMessage(err), "1 of 40 observations are below zero",
+               fixed = TRUE)
+  expect_match(conditionMessage(err), "smallest being -0.001", fixed = TRUE)
+})
+
+test_that("the flatness report offers the declaration only where usable (#394)",
+{
+  # The report recommends the declaration, and the declaration is refused on a
+  # response with no derivable floor. Recommending it there would send the user
+  # to a hard error, so the sentence is omitted.
+  d <- incomplete_design(0.36, "gaussian")
+  expect_match(bayesnec:::declaration_advice(validate_family("gaussian"), d$y),
+               "asymptote_observed = FALSE", fixed = TRUE)
+  expect_identical(
+    bayesnec:::declaration_advice(validate_family("gaussian"), d$y - 1.2), "")
+  expect_identical(
+    bayesnec:::declaration_advice(Gamma(link = "log"), d$y * 10), "")
 })

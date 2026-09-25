@@ -168,11 +168,19 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   # lxform = identity these are the recorded values.
   x_labs <- signif(lxform(x_ticks), 2)
   axis(side = 1, at = x_ticks, labels = x_labs)
-  legend_nec <- paste(nec_tag, ": ", signif(lxform(nec["Estimate"]), 2),
-                      " (", signif(lxform(nec["Q2.5"]), 2), "-",
+  # The bound markers keep this legend saying what summary() says about the
+  # same object. Without them a censored estimate reads here as a number.
+  legend_nec <- paste(nec_tag, ": ", bound_prefix(nec, 1),
+                      signif(lxform(nec["Estimate"]), 2),
+                      " (", bound_prefix(nec, 2),
+                      signif(lxform(nec["Q2.5"]), 2), "-",
+                      bound_prefix(nec, 3),
                       signif(lxform(nec["Q97.5"]), 2), ")", sep = "")
-  legend_ec10 <- paste("EC10: ", signif(lxform(ec10[1]), 2),
-                       " (", signif(lxform(ec10[2]), 2), "-",
+  legend_ec10 <- paste("EC10: ", bound_prefix(ec10, 1),
+                       signif(lxform(ec10[1]), 2),
+                       " (", bound_prefix(ec10, 2),
+                       signif(lxform(ec10[2]), 2), "-",
+                       bound_prefix(ec10, 3),
                        signif(lxform(ec10[3]), 2), ")", sep = "")
   if (CI) {
     lines(x_vec, x$pred_vals$data$Q97.5, lty = 2)
@@ -304,11 +312,17 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     # No lxform branch, for the reason given at the bayesnecfit site above.
     x_labs <- signif(lxform(x_ticks), 2)
     axis(side = 1, at = x_ticks, labels = x_labs)
-    legend_nec <- paste(nec_tag, ": ", signif(lxform(nec["Estimate"]), 2),
-                        " (", signif(lxform(nec["Q2.5"]), 2), "-",
+    legend_nec <- paste(nec_tag, ": ", bound_prefix(nec, 1),
+                        signif(lxform(nec["Estimate"]), 2),
+                        " (", bound_prefix(nec, 2),
+                        signif(lxform(nec["Q2.5"]), 2), "-",
+                        bound_prefix(nec, 3),
                         signif(lxform(nec["Q97.5"]), 2), ")", sep = "")
-    legend_ec10 <- paste("EC10: ", signif(lxform(ec10[1]), 2),
-                         " (", signif(lxform(ec10[2]), 2), "-",
+    legend_ec10 <- paste("EC10: ", bound_prefix(ec10, 1),
+                         signif(lxform(ec10[1]), 2),
+                         " (", bound_prefix(ec10, 2),
+                         signif(lxform(ec10[2]), 2), "-",
+                         bound_prefix(ec10, 3),
                          signif(lxform(ec10[3]), 2), ")", sep = "")
     if (CI) {
       lines(x_vec, x$w_pred_vals$data$Q97.5, lty = 2)

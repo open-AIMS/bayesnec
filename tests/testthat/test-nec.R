@@ -66,7 +66,10 @@ test_that("nec summarises a censored posterior rather than erroring", {
 test_that("nec says how many draws are censored, on either class", {
   censored <- nec4param
   censored$ne_posterior[c(3, 17)] <- NA_real_
-  expect_warning(nec(censored), "not identified for 2 of 100 draws")
+  # An NA the fit's own record explains at neither end: it could not be
+  # computed rather than being known to lie beyond a bound, and it is reported
+  # as such and left out of the fraction the other reports are over (#395).
+  expect_warning(nec(censored), "could not be computed for 2 of 100 draws")
   censored_manec <- manec_example
   censored_manec$w_ne_posterior[1] <- NA_real_
   expect_warning(suppressMessages(nec(censored_manec)),

@@ -355,18 +355,36 @@ reporting covers both.
 
 Against the phase 3 audit, before and after:
 
-- Every complete-design cell: the truncated prior CDF at the true `nec` and
-  `ec50` must not change by more than the Monte Carlo error of the audit. The
-  truncation is not binding on those designs, so a change there is a defect in
-  this phase.
-- Every incomplete-design cell: the CDF at the truth must no longer be exactly
-  1.000.
+- Every complete-design cell: the generated prior string for `nec` and `ec50`
+  must not change, and neither may `top` or `bot`. The truncation is not binding
+  on those designs, so a change there is a defect in this phase.
+- Every incomplete-design cell: the truncated prior CDF at the truth must no
+  longer be exactly 1.000.
+
+  Corrected 2026-09-22, after the implementation in #393. This section first
+  asked for the CDF to be unchanged on a complete design as well. That is wrong,
+  and the measurement is what showed it: `p_truth` is the CDF of the
+  *truncated* prior, so removing a bound changes the normalising constant
+  on every design, binding or not. It fell by 0.0008 to 0.344, median 0.055, in
+  all 1,440 complete cells, while the prior strings themselves were identical in
+  all 1,440 and `top` and `bot` in all 11,502. The prior string is the invariant
+  to assert; the CDF is not.
 - The initial-value search. `make_inits()`, `R/inits_functions.R:156`, draws
   from the priors including their bounds, so removing the upper bound widens the
   `nec` draws, and `check_init_predictions()` rejects any whose curve falls
   outside the band. Record the number of proposals the search makes on each
   complete design before and after. A rise there must be quantified rather
   than assumed absent.
+
+  Corrected 2026-09-22. An earlier reading of this bullet treated "no more
+  proposals than before" as an acceptance criterion. It is not one, and #393
+  measured a rise: `nec4param` +1.31 [0.59, 2.04] over 720 complete cells, while
+  `ecx4param` is flat at -0.22 [-0.60, 0.16]. The mechanism is that a `nec`
+  above the series gives a curve flat at `top`, which the band rejects, where an
+  `ec50` above it still declines. It was accepted: one extra proposal against
+  the 10,000 a fit is allowed, no complete cell exhausted the search, and the
+  sweep-wide capped count fell from 27 to 21. What this bullet requires is the
+  figure, not a particular value of it.
 
 ### 3.5 Rejected alternatives
 
@@ -696,6 +714,39 @@ The cap in `regularizing_entry()`, `R/define_prior.R:657`, holds the spread at
 or below the uninformative width. It must not apply here. The new entry is
 deliberately wider than both existing sets, and the cap is precisely what holds
 the prior at a width that excludes the truth, as #386 states.
+
+#### Amendments from the implementation
+
+Written 2026-09-22 on the #394 branch. Two rows of the table above were changed
+while the phase was implemented, and the measurements behind both are in
+`notes/prior_audit.md` part 5.
+
+The beta row does not use `beta_from_mode_sd()`. That helper requires both
+shapes above 1, so the density is zero at the floor and the 2.5th percentile is
+well inside the interval: applied with the mode at *e*/2 and the gaussian row's
+spread it returns a 2.5th percentile of 0.18*e*, which sat above the true `bot`
+in every one of the 75 bounded cells at `f36`, and again at `f02`, under each
+prior type. The fixed `beta(2, 5)` of the `"uninformative"` set excludes the
+truth in none of those cells, so the construction the row named was worse than
+the entry it was replacing. The entry built instead is
+`beta(1, log(0.025) / log(1 - e))`, whose 97.5th percentile is exactly *e* and
+whose 2.5th is 0.0084 to 0.0087 of it by family. The rule quoted above is the
+contract; the helper was the mechanism the row suggested.
+
+The band's lower limit is lowered to the floor rather than set to it. Section
+5.4 below says it "becomes the same floor"; the implementation applies `min()`.
+The declaration states that the true asymptote may be lower than the response
+shows and never that it is higher, so it may only widen the band. On a gaussian
+response the spread already places the lower limit below zero, and assigning
+the floor there would narrow the band and reject draws the released search
+accepts.
+
+The refusal covers a non-identity link as well as a gaussian response spanning
+negative values. `prior_family_tag()` rewrites a `log` or `logit` link onto the
+gaussian entries, and on that scale the floor of the mean is `-Inf`. A response
+that happens to be non-negative once logged states only that every observation
+exceeds one in response units, which is a property of the units rather than a
+floor, so there is nothing to span the prior from.
 
 ### 5.4 The initial-value band
 

@@ -27,7 +27,12 @@
 #' @slot ecx_mods A \code{\link[base]{logical}} indicating which \code{models}
 #' are ECx-type models.
 #' @slot nec_vals The model-averaged NEC values. Note that if model stack
-#' contains ECx-type models, these will be via NSEC proxies.
+#' contains ECx-type models, these will be via NSEC proxies. Where any draw of
+#' the weighted posterior lies beyond the range the models were predicted over,
+#' attribute \code{"censored_summary"} marks which entries are the end of that
+#' range rather than a quantile, and states how many draws lie beyond each end.
+#' The count is over the weighted draws, so it is the share of the
+#' model-averaged posterior that is censored and not the share of equations.
 #' @slot ecs A \code{\link[base]{list}} containing the ECx values
 #' should the user decide to calculate them (see the non-exported
 #' \code{bayesnec:::summary.bayesnecfit} help file for details). Different
