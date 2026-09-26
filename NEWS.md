@@ -170,6 +170,17 @@
   prediction range stops at 0.9 stood directly above an unmarked ECx of 1.67
   (#395).
 
+- `summary(x, ecx = TRUE)` on a `bayesnechurdlefit` reads its ECx rows over the
+  intersection of the prediction grids stored with the two components, unless
+  an `x_range` is supplied. A supplied `x_range` replaces that grid and reaches
+  each ECx calculation once. In the development version the summary passed its
+  own range beside the caller's, and the call stopped with "formal argument
+  "x_range" matched by multiple actual arguments". The supplied range sets the
+  grid of the ECx rows only. Each no-effect row is censored at the prediction
+  grid stored when its component was fitted, unless `extrapolate` is supplied
+  and names other limits. `x_range` changes neither, so it is no longer passed
+  to `nec()`, which had ignored it without a message (#416).
+
 - Behaviour change, measured across the nine vignettes. A fit with no draw
   beyond its prediction range is unaffected, and the summary it reports is
   unchanged to the last bit. Which estimates each vignette reports was taken

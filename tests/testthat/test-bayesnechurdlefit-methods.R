@@ -248,3 +248,150 @@ test_that("the summary ECx grid is read from whichever class a block is", {
     list(growth = mk(c(1, 4), "pred_vals"), survival = list())
   ))
 })
+
+# A component carrying only what summary.bayesnechurdlefit() reads once ecx()
+# and nec() are mocked: the stored prediction grid, the equation names, the
+# no-effect type and the family. grid = NULL stores no grid.
+summary_component <- function(grid, averaged = FALSE) {
+  fit <- list(family = list(family = "gaussian"))
+  stored <- if (is.null(grid)) NULL else list(data = data.frame(x = grid))
+  if (averaged) {
+    out <- list(mod_fits = list(nec3param = list(fit = fit),
+                                ecx4param = list(fit = fit)),
+                ne_type = "N(S)EC", w_pred_vals = stored)
+    structure(out, class = c("bayesmanecfit", "bnecfit"))
+  } else {
+    out <- list(model = "nec3param", ne_type = "NEC", fit = fit,
+                pred_vals = stored)
+    structure(out, class = c("bayesnecfit", "bnecfit"))
+  }
+}
+
+summary_hurdle <- function(growth, survival) {
+  structure(list(growth = growth, survival = survival,
+                 n_exposed = 40L, n_dead = 10L),
+            class = c("bayesnechurdlefit", "bnecfit"))
+}
+
+# Replaces ecx() and nec() with recorders. Each call's arguments are kept as
+# supplied, so an argument passed twice appears twice rather than stopping the
+# call as the real generic does.
+record_summary_calls <- function(env = parent.frame()) {
+  calls <- new.env()
+  calls$ecx <- list()
+  calls$nec <- list()
+  estimate <- c(Estimate = 1, Q2.5 = 0.5, Q97.5 = 2)
+  local_mocked_bindings(
+    ecx = function(object, ...) {
+      calls$ecx[[length(calls$ecx) + 1]] <- list(...)
+      estimate
+    },
+    nec = function(object, ...) {
+      calls$nec[[length(calls$nec) + 1]] <- list(...)
+      estimate
+    },
+    .package = "bayesnec",
+    .env = env
+  )
+  calls
+}
+
+n_named <- function(args, name) sum(names(args) == name)
+
+test_that("an explicit x_range reaches each summary ECx call once (#416)", {
+  # Every pairing of a single-equation and a model-averaged component, since
+  # the two classes store their grid under different names.
+  for (g_avg in c(FALSE, TRUE)) {
+    for (s_avg in c(FALSE, TRUE)) {
+      o <- summary_hurdle(summary_component(c(0, 10), g_avg),
+                          summary_component(c(0, 40), s_avg))
+      calls <- record_summary_calls()
+      # Both limits differ from the default of c(0, 10), so a range cut back
+      # to the intersection of the stored grids would show.
+      out <- summary(o, ecx = TRUE, ecx_vals = c(10, 50),
+                     x_range = c(0.5, 40), xform = exp, resolution = 50)
+      expect_s3_class(out, "hurdlesummary")
+      expect_length(calls$ecx, 6)
+      for (args in calls$ecx) {
+        expect_equal(n_named(args, "x_range"), 1)
+        expect_equal(args$x_range, c(0.5, 40))
+        expect_identical(args$xform, exp)
+        expect_equal(args$resolution, 50)
+      }
+      expect_setequal(vapply(calls$ecx, `[[`, "", "which"),
+                      c("combined", "growth", "survival"))
+      expect_setequal(vapply(calls$ecx, `[[`, 0, "ecx_val"), c(10, 50))
+      # The no-effect rows are read from the posterior stored at fit time, so
+      # x_range is withheld from nec() while the rest of ... still reaches it.
+      expect_length(calls$nec, 3)
+      for (args in calls$nec) {
+        expect_equal(n_named(args, "x_range"), 0)
+        expect_identical(args$xform, exp)
+        expect_equal(args$resolution, 50)
+      }
+    }
+  }
+})
+
+test_that("without x_range the summary ECx rows use the stored grids", {
+  for (g_avg in c(FALSE, TRUE)) {
+    for (s_avg in c(FALSE, TRUE)) {
+      o <- summary_hurdle(summary_component(c(1, 10), g_avg),
+                          summary_component(c(0, 40), s_avg))
+      calls <- record_summary_calls()
+      summary(o, ecx = TRUE, ecx_vals = 50, xform = exp, resolution = 50)
+      expect_length(calls$ecx, 3)
+      for (args in calls$ecx) {
+        expect_equal(n_named(args, "x_range"), 1)
+        expect_equal(args$x_range, c(1, 10))
+        expect_identical(args$xform, exp)
+        expect_equal(args$resolution, 50)
+      }
+    }
+  }
+})
+
+test_that("a component with no stored grid leaves ecx() its own default", {
+  o <- summary_hurdle(summary_component(NULL),
+                      summary_component(c(0, 40), averaged = TRUE))
+  calls <- record_summary_calls()
+  summary(o, ecx = TRUE, ecx_vals = 50)
+  expect_length(calls$ecx, 3)
+  for (args in calls$ecx) {
+    expect_equal(n_named(args, "x_range"), 0)
+  }
+  # A supplied range still applies where there is no default to replace.
+  calls <- record_summary_calls()
+  summary(o, ecx = TRUE, ecx_vals = 50, x_range = c(0.5, 40))
+  for (args in calls$ecx) {
+    expect_equal(n_named(args, "x_range"), 1)
+    expect_equal(args$x_range, c(0.5, 40))
+  }
+})
+
+test_that("x_range = NULL leaves ecx() its own default, not the stored grids", {
+  # Both components store a grid, so the summary's default would be c(0, 10).
+  # An explicit NULL is not that default: the call reaches ecx() without an
+  # x_range, and ecx() then applies its own default of NA and builds its grid.
+  o <- summary_hurdle(summary_component(c(0, 10)),
+                      summary_component(c(0, 40), averaged = TRUE))
+  calls <- record_summary_calls()
+  summary(o, ecx = TRUE, ecx_vals = 50, x_range = NULL, resolution = 50)
+  expect_length(calls$ecx, 3)
+  for (args in calls$ecx) {
+    expect_equal(n_named(args, "x_range"), 0)
+    expect_equal(args$resolution, 50)
+  }
+})
+
+test_that("x_range without ecx = TRUE reaches neither estimator", {
+  o <- summary_hurdle(summary_component(c(0, 10)),
+                      summary_component(c(0, 40)))
+  calls <- record_summary_calls()
+  expect_no_error(summary(o, x_range = c(0.5, 40)))
+  expect_length(calls$ecx, 0)
+  expect_length(calls$nec, 3)
+  for (args in calls$nec) {
+    expect_equal(n_named(args, "x_range"), 0)
+  }
+})
