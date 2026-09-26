@@ -95,14 +95,116 @@ test_that("all_models draws a panel per candidate, named", {
     legend = function(..., legend = NULL) labels <<- c(labels, as.character(legend)),
     .package = "bayesnec"
   )
-  pl_x_max(manec_example, all_models = TRUE)
+  # all_models is deprecated (#120) and still draws what it drew, with one
+  # warning per call.
+  old <- collect_warnings(pl_x_max(manec_example, all_models = TRUE))
+  expect_length(old$warnings, 1)
+  expect_match(old$warnings, "`all_models` is deprecated", fixed = TRUE)
   expect_true(all(names(manec_example$mod_fits) %in% labels))
-  # And not otherwise. The model-average plot does call legend(), at
-  # R/plot.R:333, but with the estimate string rather than a model name, so no
-  # candidate name appears.
+  # all_models = TRUE drew no model average, and its mapping, average = FALSE,
+  # keeps it that way.
+  expect_false("Model averaged predictions" %in% labels)
+  # And not otherwise. The model-average plot does call legend(), in
+  # plot_manec_average(), but with the estimate string rather than a model
+  # name, so no candidate name appears.
   labels <- character()
-  pl_x_max(manec_example, all_models = FALSE)
+  old <- collect_warnings(pl_x_max(manec_example, all_models = FALSE))
+  expect_length(old$warnings, 1)
   expect_false(any(names(manec_example$mod_fits) %in% labels))
+})
+
+test_that("all_models draws what its replacement arguments draw", {
+  # The deprecation maps all_models onto model and average, so each old call
+  # and its mapping must reach the same drawing calls with the same values.
+  # Read off the legend() and abline() calls rather than off the device, as
+  # the tests above do.
+  skip_on_cran()
+  drawn <- list()
+  local_mocked_bindings(
+    legend = function(..., legend = NULL) {
+      drawn[[length(drawn) + 1L]] <<- list(legend = legend)
+    },
+    abline = function(v = NULL, ...) drawn[[length(drawn) + 1L]] <<- list(v = v),
+    .package = "bayesnec"
+  )
+  record <- function(...) {
+    drawn <<- list()
+    suppressWarnings(pl_x_max(manec_example, ...))
+    drawn
+  }
+  expect_identical(record(all_models = TRUE),
+                   record(model = manec_example$success_models,
+                          average = FALSE))
+  expect_identical(record(all_models = FALSE), record())
+  expect_identical(record(all_models = TRUE, add_ec10 = TRUE),
+                   record(model = manec_example$success_models,
+                          average = FALSE, add_ec10 = TRUE))
+})
+
+test_that("model and average choose the panels and their layout", {
+  # One panel per named equation, labelled with its name, and the model
+  # average in the first panel unless average = FALSE. par() is intercepted to
+  # read the layout: a single panel takes the whole device, and two or more
+  # keep the two columns all_models = TRUE drew.
+  skip_on_cran()
+  labels <- character()
+  layouts <- list()
+  local_mocked_bindings(
+    legend = function(..., legend = NULL) labels <<- c(labels, as.character(legend)),
+    par = function(...) {
+      args <- list(...)
+      if (!is.null(args$mfrow)) layouts[[length(layouts) + 1L]] <<- args$mfrow
+      graphics::par(...)
+    },
+    .package = "bayesnec"
+  )
+  panels <- function(...) {
+    labels <<- character()
+    layouts <<- list()
+    pl_x_max(manec_example, ...)
+    list(labels = intersect(labels, c("Model averaged predictions",
+                                      manec_example$success_models)),
+         layout = layouts)
+  }
+  one <- panels(model = "nec4param")
+  expect_identical(one$labels, c("Model averaged predictions", "nec4param"))
+  expect_identical(one$layout, list(c(1, 2)))
+  alone <- panels(model = "ecx4param", average = FALSE)
+  expect_identical(alone$labels, "ecx4param")
+  expect_identical(alone$layout, list(c(1, 1)))
+  # The equations follow the model average in the order given.
+  all3 <- panels(model = c("ecx4param", "nec4param"))
+  expect_identical(all3$labels, c("Model averaged predictions", "ecx4param",
+                                  "nec4param"))
+  expect_identical(all3$layout, list(c(2, 2)))
+  # The default is the model average alone, with no layout set.
+  plain <- panels()
+  expect_length(plain$labels, 0)
+  expect_length(plain$layout, 0)
+})
+
+test_that("the panels plot() draws for model are silent and restore par", {
+  skip_on_cran()
+  pdf(NULL)
+  on.exit(dev.off(), add = TRUE)
+  before <- par("mfrow")
+  expect_silent(out <- withVisible(plot(manec_example, model = "nec4param")))
+  expect_null(out$value)
+  expect_false(out$visible)
+  expect_identical(par("mfrow"), before)
+})
+
+test_that("plot() refuses a model outside the set and an empty selection", {
+  skip_on_cran()
+  expect_error(pl_x_max(manec_example, model = c("nec4param", "nope")),
+               "not in this set: \"nope\"")
+  expect_error(pl_x_max(manec_example, model = NULL, average = FALSE),
+               "Nothing is selected")
+  expect_error(pl_x_max(manec_example, all_models = TRUE,
+                        model = "nec4param"),
+               "cannot be combined")
+  expect_error(pl_x_max(manec_example, all_models = TRUE, average = FALSE),
+               "cannot be combined")
 })
 
 test_that("add_nec and add_ec10 decide what is annotated", {

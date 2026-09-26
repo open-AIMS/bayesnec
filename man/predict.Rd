@@ -9,7 +9,15 @@
 \usage{
 \method{predict}{bayesnecfit}(object, ...)
 
-\method{predict}{bayesmanecfit}(object, summary = TRUE, robust = FALSE, probs = c(0.025, 0.975), ...)
+\method{predict}{bayesmanecfit}(
+  object,
+  summary = TRUE,
+  robust = FALSE,
+  probs = c(0.025, 0.975),
+  ...,
+  model = NULL,
+  average = TRUE
+)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecfit}} or
@@ -31,9 +39,30 @@ Only used if \code{summary} is \code{TRUE}.}
 
 \item{probs}{The percentiles to be computed by the \code{quantile}
 function. Only used if \code{summary} is \code{TRUE}.}
+
+\item{model}{\code{NULL} (the default), or a \code{\link[base]{character}}
+vector naming equations of the model set, for each of which the
+predictions of that equation alone are returned. These are what
+\code{predict()} returns for the \code{\link{bayesnecfit}} that
+\code{\link{pull_out}} gives for the equation, drawn from its whole
+posterior. A name that is not an equation of the set is refused.}
+
+\item{average}{A \code{\link[base]{logical}} value indicating if the model
+averaged predictions should be returned. Defaults to \code{TRUE}.
+\code{average = FALSE} requires \code{model}.}
 }
 \value{
 See \code{?brms::predict.brmsfit}.
+
+For a \code{\link{bayesmanecfit}} with \code{model = NULL}, the
+model averaged predictions, in the form \code{?brms::predict.brmsfit}
+describes. Where \code{model} is given, a named
+\code{\link[base]{list}} of such results instead: an element
+\code{average} holding the model averaged predictions, where
+\code{average = TRUE}, followed by one element for each equation, named
+by the equation, in the order given in \code{model}. The list is returned
+even when it has one element, so that its form depends on whether
+\code{model} is given and on nothing else.
 }
 \description{
 Generates mean posterior predictions for objects fitted by
@@ -48,6 +77,9 @@ predict(manec_example)
 # Provide user-specified `newdata`
 nd_ <- data.frame(x = seq(0, 3, length.out = 200))
 predict(manec_example, ecx_val = 50, newdata = nd_, make_newdata = FALSE)
+# The model average beside one equation of the set, as a named list
+preds_list <- predict(manec_example, model = "nec4param")
+names(preds_list)
 # Predictions for raw input data
 nec4param <- pull_out(manec_example, model = "nec4param")
 preds <- predict(nec4param, make_newdata = FALSE)

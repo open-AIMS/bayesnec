@@ -202,15 +202,54 @@
   (#395).
 
 - `summary(x, ecx = TRUE)` on a `bayesnechurdlefit` reads its ECx rows over the
-  intersection of the prediction grids stored with the two components, unless
-  an `x_range` is supplied. A supplied `x_range` replaces that grid and reaches
-  each ECx calculation once. In the development version the summary passed its
-  own range beside the caller's, and the call stopped with "formal argument
+  prediction grids stored with the components, unless an `x_range` is
+  supplied. A supplied `x_range` replaces those grids and reaches each ECx
+  calculation once. In the development version the summary passed its own
+  range beside the caller's, and the call stopped with "formal argument
   "x_range" matched by multiple actual arguments". The supplied range sets the
   grid of the ECx rows only. Each no-effect row is censored at the prediction
   grid stored when its component was fitted, unless `extrapolate` is supplied
   and names other limits. `x_range` changes neither, so it is no longer passed
   to `nec()`, which had ignored it without a message (#416).
+
+- On a `bayesnechurdlefit`, a growth ECx or NSEC is now read over the growth
+  component's own observed range, which ends at the highest concentration at
+  which anything survived. Without an `x_range`, `ecx()`, `nsec()` and
+  `ecnsec()` with `which = "growth"` had read the growth curve over the
+  survival component's range, which covers every concentration tested, and
+  now read it over growth's. A growth ECx or NSEC above growth's highest
+  concentration was therefore read off the growth curve extended past the
+  data it was fitted to. It is now reported as censored at that
+  concentration, marked `>=` as any other censored estimate is. `ecnsec()`
+  returns a percentage effect rather than a concentration, so there is no
+  concentration to censor: with `which = "growth"` and no `x_range` it now
+  refuses an `nsec` outside growth's observed range and names that range.
+  An `x_range` that includes `nsec` reads the growth curve extended past its
+  data, as it does for `ecx()`. The survival and combined estimates are read
+  over the survival range as before, because the combined curve needs the
+  concentrations above growth's range, where survival falls towards zero.
+  With `extrapolate`, a growth NSEC is measured against growth's range, so a
+  limit between the tops of the two ranges now extends the growth search
+  where it was refused before (#412).
+
+- `summary(x, ecx = TRUE)` on a `bayesnechurdlefit` now reads its growth ECx
+  rows over the grid stored with the growth component, clipped to growth's
+  observed range, and its survival and combined rows over the grid stored
+  with the survival component. All three were read over the intersection of
+  the two grids, which ends at growth's highest concentration. A survival or
+  combined ECx above that concentration was therefore reported as censored
+  there, while a bare `ecx()` call identified it. The survival ECx rows also
+  covered a shorter range than the survival no-effect row above them, which
+  is censored at the end of the survival grid. The clip applies where
+  `bnec_hurdle()` was given an `x_range`, which it stores on both components:
+  the growth rows are then read no further than growth's highest
+  concentration, as a bare `ecx()` reads them. Each ECx row now agrees with a
+  bare `ecx()` call for the same curve wherever the components were fitted
+  without an `x_range`, and each growth row also agrees where that range
+  reaches past the growth data. `plot()`, `autoplot()` and `posterior_epred()`
+  still draw every curve, growth included, over the survival range: a curve
+  drawn beyond the growth data is a prediction rather than an estimate
+  (#412).
 
 - Behaviour change, measured across the nine vignettes. A fit with no draw
   beyond its prediction range is unaffected, and the summary it reports is
@@ -375,6 +414,19 @@
   the scale the estimate is returned on. A decreasing `xform` reverses the
   direction of the comparison, and the censoring record is remapped with the
   draws (#44).
+
+- `nec()`, `ecx()` and `nsec()` on a `bayesnecgroupfit` now mark a censored
+  entry as the level's own fit does. The table they return gains one character
+  column per quantile, named `bound_` followed by that quantile's column name
+  (`bound_Q50`, `bound_Q2.5` and `bound_Q97.5` by default). An entry is `">="`
+  or `"<="` where the matching number is the end of the prediction range, and
+  `""` where it is a quantile. The new columns follow the numeric ones, which
+  keep their names, positions and values; code that checks the column names or
+  counts the columns sees the change. The table previously dropped each level's
+  `"censored_summary"` attribute: on a group whose first level is the packaged
+  `manec_example` predicted over a grid ending at 0.9, `nec()` on that level
+  marked its estimate and upper limit `>= 0.90`, and `nec()` on the group
+  returned both as an unmarked 0.90 (#404).
 
 ## Behaviour changes to a fit with a `rate()` denominator
 
@@ -1249,6 +1301,29 @@
 
 ## New
 
+- `predict()`, `plot()` and `autoplot()` for a `bayesmanecfit` take two new
+  arguments. `model` names one or more equations of the set, and `average`
+  chooses whether the model averaged predictions are included; it defaults to
+  `TRUE`. `autoplot(fit, model = "nec4param")` draws the model average in the
+  first panel and the `nec4param` fit in the second. `all_models`, which these
+  replace, drew either every equation of the set or the model average alone.
+  The panel of each named equation shows the same curve and annotations as
+  `plot()` or `autoplot()` gives for that equation once pulled out of the set
+  with `pull_out()`. A name that is not an equation of the set is refused
+  with an error that names it. `predict()` with neither argument returns the
+  same matrix as before. Given `model`, it returns a named list: an element
+  `average`, where `average = TRUE`, followed by one element for each named
+  equation, holding that equation's own predictions.
+  `all_models` is deprecated and will be removed in a later release. It keeps
+  working, and each call that supplies it gives one warning, including a
+  `plot()` of a `bnec_group()` fit, which draws every level.
+  `all_models = TRUE` is now `model = fit$success_models, average = FALSE`,
+  and `all_models = FALSE` is the default; both draw what they drew before.
+  Supplying `all_models` together with `model` or `average` is an error.
+  `predict()` never took `all_models`: it was passed on to `brms`, which
+  ignored it. It is still ignored, so such a call returns what it returned
+  before, and it now gives a warning naming `model` and `average` (#120).
+
 - **A model set can now be fitted in parallel.** `bnec()` and `amend()` fit
   their models under whatever `future` plan is set when they are called, so
   `plan(multisession, workers = 4)` before the call fits four models at a time
@@ -1615,7 +1690,42 @@
   Whether an estimate is a NEC or an NSEC is now decided by whether the fitted
   equation has a `nec` parameter, not by the substring `"ecx"` in its name:
   `nec()`, the model-averaged label of `bnec()`, and `summary()` read it off
-  the fit. The two readings agree for every earlier equation (#419).
+  the equation's formula, and off the fit only where the name is no equation.
+  The two readings agree for every earlier equation (#419).
+
+- `bnec()` now fits a `disp()` term on the two-block families `hurdle_gamma`
+  and `zero_inflated_beta`, which refused it. The term models the dispersion
+  parameter of the positive block, `shape` for `hurdle_gamma` and `phi` for
+  `zero_inflated_beta`, and leaves the `hu` or `zi` block unchanged. A variance
+  function such as `disp("power")` is written in the mean of the positive
+  block, which is the Gamma or Beta component mean `mu` and not the mean of the
+  response, `(1 - hu) * mu`. Its centring constant is computed from the
+  positive responses only, and its parameters take the priors and initial
+  values of the `Gamma` or `Beta` family. That is the variance function
+  `bnec_hurdle()` fits on its growth component, so the joint and factorised
+  routes model the same dispersion, and `bnec_joint()` includes a growth
+  component's `disp()` term in the joint model it fits. `hurdle_poisson` still
+  refuses the term, because its positive counts have no dispersion parameter.
+  `hurdle_negbinomial` refuses it until a decision is made on how a relative
+  `ecx()` or `ecnsec()` estimate reads the shape: it reads the shape at the
+  control, which under a `disp()` term can differ from the shape at the lower
+  asymptote. `get_priors()` refuses the term on both families with the same
+  messages, and `bnec_joint()` refuses a negative binomial growth component
+  fitted with `disp()` before it announces the refit, naming its `formula`
+  argument as the way to refit without the term. No fit that previously
+  succeeded changes (#410).
+
+- `bnec()` now checks a `disp()` term against the family once per call, before
+  it fits any equation. The check was made once per equation inside the model
+  loop, so on a model set a refusal, such as `disp()` on `poisson`, was printed
+  once per equation and the call ended on "None of the models fit
+  successfully", which names neither the cause nor the remedy. The refusal and
+  its message are unchanged. Because it is now raised before the loop, it is
+  reported before the data checks the loop makes for each equation, such as
+  the one for a non-finite response. The refusal of a variance function a family
+  cannot take now also names the two-block families that take it, so
+  `disp("twosided")` on `Gamma` lists `zero_inflated_beta` beside `beta` and
+  `beta_binomial` (#410).
 
 ## Bug fixes
 
@@ -1633,10 +1743,13 @@
   `rate()`, `cens()`, `trials()`, `weights()`, the non-linear predictor and the
   response, so the column has to be renamed; it cannot be accepted. The refusal
   is raised once per call, before the model loop, by `bnec()`, `bnec_group()`,
-  `bnec_hurdle()`, `make_brmsformula()`, `get_priors()` and `check_formula()`.
-  A model set held in a variable, as in ``crf(x, `my models`)``, and a variance
-  function held in a variable, as in ``disp(`my vf`)``, are not columns, are
-  looked up where the formula was written, and are still accepted (#398).
+  `bnec_hurdle()`, `bnec_joint()`, `make_brmsformula()`, `get_priors()` and
+  `check_formula()`. `bnec_joint()` raises it before it rebuilds the `crf()`
+  term of a supplied `formula`, where such a predictor ended in the same parse
+  error. A model set held in a variable, as in ``crf(x, `my models`)``, and a
+  variance function held in a variable, as in ``disp(`my vf`)``, are not
+  columns, are looked up where the formula was written, and are still accepted
+  (#398).
 
 - `ecxhormebc5` is now excluded before fitting when the predictor contains
   negative values and an identity-linked response family requires a positive
@@ -2310,6 +2423,17 @@
   assumes the posteriors come from separate fits --- two levels of one fit share
   draws, and permuting them widens the difference posterior and pulls
   `prob_diff` toward 0.5, which under-detects a real difference (#218).
+
+- `bnec_hurdle()` now fits a `disp()` term on the growth component. The term
+  was previously copied into the survival formula as well, and the bernoulli
+  survival fit refused it because that family has no dispersion parameter, so
+  no hurdle fit could model the growth dispersion, and the refusal arrived only
+  after the growth component had been sampled. The term is now removed from
+  the survival formula, and it is checked against `family_growth` before either
+  component is fitted, so a specification the growth family cannot take, such
+  as any `disp()` term on a `poisson` growth component, is refused before
+  anything is sampled. `?bnec_hurdle` states that the term applies to the
+  growth component only. No fit that previously succeeded changes (#410).
 
 ## Documentation
 

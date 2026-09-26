@@ -23,13 +23,15 @@
   nec = TRUE,
   ecx = FALSE,
   xform = identity,
-  all_models = FALSE,
+  model = NULL,
+  average = TRUE,
   plot = TRUE,
   ask = TRUE,
   newpage = TRUE,
   multi_facet = TRUE,
   group = NULL,
-  group_aes = c("line", "colour")
+  group_aes = c("line", "colour"),
+  all_models = NULL
 )
 
 \method{autoplot}{bayesnecgroupfit}(
@@ -72,11 +74,19 @@ The argument is ignored when \code{group} is \code{NULL}. Only
 \code{"colour"} is available when \code{group} is not a group-level term
 in the fitted formula.}
 
-\item{all_models}{Should all individual models be plotted separately\
-(defaults to FALSE) or should model averaged predictions be plotted instead?}
+\item{model}{\code{NULL} (the default), or a \code{\link[base]{character}}
+vector naming equations of the model set. Each named equation is drawn in a
+panel of its own, which shows the same curve and annotations as
+\code{autoplot()} gives for the \code{\link{bayesnecfit}} that
+\code{\link{pull_out}} returns for it. A name that is not an equation of
+the set is refused.}
+
+\item{average}{Should the model averaged predictions be plotted? Defaults
+to TRUE. Where \code{model} is also given, the model average takes the
+first panel. \code{average = FALSE} requires \code{model}.}
 
 \item{plot}{Should output \code{\link[ggplot2]{ggplot}} output be plotted?
-Only relevant if \code{all = TRUE} and \code{multi_facet = FALSE}.}
+Only relevant if \code{model} is given and \code{multi_facet = FALSE}.}
 
 \item{ask}{Indicates if the user is prompted before a new page is plotted.
 Only relevant if \code{plot = TRUE} and \code{multi_facet = FALSE}.}
@@ -86,7 +96,18 @@ new page. Only relevant if \code{plot = TRUE} and
 \code{multi_facet = FALSE}.}
 
 \item{multi_facet}{Should all plots be plotted in one single panel via
-facets? Defaults to TRUE.}
+facets? Defaults to TRUE, in which case the facets of the named equations
+are ordered by name. Only relevant if \code{model} is given. With
+\code{multi_facet = FALSE}, one \code{\link[ggplot2]{ggplot}} is drawn for
+each panel and the list of them is returned invisibly, the model average
+first where it is requested and then the equations in the order given in
+\code{model}.}
+
+\item{all_models}{Deprecated, and to be removed in a later release; use
+\code{model} and \code{average}. \code{all_models = TRUE} is
+\code{model = object$success_models, average = FALSE}, and
+\code{all_models = FALSE} is the default. Supplying it gives a warning, and
+supplying it together with \code{model} or \code{average} is an error.}
 }
 \value{
 A \code{\link[ggplot2]{ggplot}} object.
@@ -105,12 +126,17 @@ autoplot(nec4param, ecx = TRUE, ecx_val = 50)
 
 # plot model averaged predictions
 autoplot(manec_example)
-# plot all panels together
-autoplot(manec_example, ecx = TRUE, ecx_val = 50, all_models = TRUE)
+# plot the model average and each equation of the set, a facet each
+autoplot(manec_example, ecx = TRUE, ecx_val = 50,
+         model = c("nec4param", "ecx4param"))
+# plot the equations alone, without the model average
+autoplot(manec_example, model = manec_example$success_models,
+         average = FALSE)
 }
 \dontrun{
 # plots multiple models, one at a time, with interactive prompt
-autoplot(manec_example, ecx = TRUE, ecx_val = 50, all_models = TRUE,
+autoplot(manec_example, ecx = TRUE, ecx_val = 50,
+         model = manec_example$success_models, average = FALSE,
          multi_facet = FALSE)
 }
 }
