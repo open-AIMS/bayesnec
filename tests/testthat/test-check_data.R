@@ -585,3 +585,156 @@ test_that("a disp term written with a local function is still checked", {
   }
   expect_error(build(), "not finite")
 })
+
+
+# ---- #400, a bounded response at one bound in every observation --------------
+
+# Six concentrations of five, so a level of bnec_group() holds 30 rows.
+cd_at_bound_x <- function() rep(c(0.1, 0.5, 1, 3, 10, 30), each = 5)
+
+test_that("response_bound_reached names the bound every observation is at", {
+  expect_identical(response_bound_reached(rep(0, 6)), 0)
+  expect_identical(response_bound_reached(rep(1, 6)), 1)
+  # Counts are compared with their own trials, which may differ by row.
+  expect_identical(response_bound_reached(c(5, 8, 10), c(5, 8, 10)), 1)
+  expect_identical(response_bound_reached(c(0, 0, 0), c(5, 8, 10)), 0)
+  # One observation away from the bound is a response that varies.
+  expect_identical(response_bound_reached(c(rep(1, 5), 0)), NA_real_)
+  expect_identical(response_bound_reached(c(5, 8, 9), c(5, 8, 10)), NA_real_)
+  expect_identical(response_bound_reached(c(rep(0, 5), 0.2)), NA_real_)
+  # Both bounds at once is a response that varies, not one at a bound.
+  expect_identical(response_bound_reached(c(0, 1, 0, 1)), NA_real_)
+  expect_identical(response_bound_reached(numeric(0)), NA_real_)
+})
+
+test_that("the update route tests the family the refit uses (#400)", {
+  # check_update_data() reads a family off the new data where none is
+  # supplied, to ask whether the data suggest a different one. The refit keeps
+  # the fit's own family, so that is the family the bound is tested against.
+  # A bernoulli fit given a response of 1 in every row: read off the data that
+  # is a poisson response, which is not bounded, so nothing was refused and
+  # under force_fit = TRUE brms refitted the bernoulli on it.
+  bern <- nec4param
+  bern$fit$family <- brms::bernoulli(link = "identity")
+  d <- bern$fit$data
+  d$y <- rep(1L, nrow(d))
+  err <- expect_error(check_update_data(list(bern), d))
+  expect_match(conditionMessage(err),
+               "The response \"y\" is at the upper bound of a bernoulli",
+               fixed = TRUE)
+  # A gaussian fit given a response of exactly 1: read off the data that is a
+  # beta response, but the refit is gaussian, so nothing is refused and the
+  # suggested change of family is reported as before.
+  d1 <- nec4param$fit$data
+  d1$y <- 1
+  res <- suppressMessages(check_update_data(list(nec4param), d1))
+  expect_true(res$changed_family)
+  # A supplied family is the one the refit uses, so it is the one tested.
+  expect_error(
+    check_update_data(list(nec4param), d1, Beta(link = "identity")),
+    "at the upper bound of a beta response", fixed = TRUE
+  )
+})
+
+test_that("update() refuses before the refit, and refits a gaussian (#400)", {
+  # brms::update() is mocked: the assertion is whether the refit is reached,
+  # not what it returns. stats::update() is called explicitly so that the test
+  # reaches the method rather than the mock, which replaces the binding the
+  # package imports.
+  calls <- 0L
+  local_mocked_bindings(
+    update = function(...) {
+      calls <<- calls + 1L
+      stop("refit reached")
+    },
+    .package = "bayesnec"
+  )
+  bern <- nec4param
+  bern$fit$family <- brms::bernoulli(link = "identity")
+  d <- bern$fit$data
+  d$y <- rep(1L, nrow(d))
+  expect_error(stats::update(bern, newdata = d),
+               "at the upper bound of a bernoulli response", fixed = TRUE)
+  expect_identical(calls, 0L)
+  d1 <- nec4param$fit$data
+  d1$y <- 1
+  err <- NULL
+  capture.output(
+    err <- tryCatch(
+      suppressMessages(stats::update(nec4param, newdata = d1,
+                                     force_fit = TRUE)),
+      error = conditionMessage
+    ),
+    type = "message"
+  )
+  expect_false(grepl("upper bound", err))
+  expect_identical(calls, 1L)
+})
+
+test_that("an interval-censored response is judged on its recorded values (#400)", {
+  # cover | cens(cens, upper): every row states that the truth lies between the
+  # recorded bound and an upper end inside the support. The default priors are
+  # built from the recorded values alone, so letting such a response through
+  # ended in the quantile() error the refusal replaces. It is refused by name.
+  x <- cd_at_bound_x()
+  d <- data.frame(x = x, cover = 0, cens = "interval",
+                  upper = seq(0.05, 0.5, length.out = length(x)))
+  err <- expect_error(suppressMessages(
+    get_priors(cover | cens(cens, upper) ~ crf(x, model = "nec3param"),
+               data = d, family = "Beta")
+  ))
+  expect_match(conditionMessage(err),
+               "The response \"cover\" is at the lower bound of a beta",
+               fixed = TRUE)
+  expect_false(grepl("na.rm", conditionMessage(err), fixed = TRUE))
+  # The same for a count at its trials with an interval below it.
+  n <- data.frame(x = x, alive = 10L, exposed = 10L, cens = "interval",
+                  lower = 8L)
+  err <- expect_error(suppressMessages(
+    get_priors(alive | trials(exposed) + cens(cens, lower) ~
+                 crf(x, model = "nec3param"), data = n, family = "binomial")
+  ))
+  expect_match(conditionMessage(err), "every count equals its number of trials",
+               fixed = TRUE)
+})
+
+test_that("check_response_at_bound leaves every other response alone", {
+  x <- cd_at_bound_x()
+  ones <- cd_bdat(y ~ crf(x, model = "nec3param"), data.frame(x = x, y = 1))
+  zeros <- cd_bdat(y ~ crf(x, model = "nec3param"),
+                   data.frame(x = x, y = 0L))
+  # Not a bounded family: a constant gaussian or count response is a matter
+  # for the prior construction of those families, not for this refusal.
+  expect_silent(check_response_at_bound(ones, gaussian()))
+  expect_silent(check_response_at_bound(zeros, poisson()))
+  # zero_inflated_beta is outside the ruling, which names beta.
+  expect_silent(check_response_at_bound(ones, "zero_inflated_beta"))
+  near <- cd_bdat(y ~ crf(x, model = "nec3param"),
+                  data.frame(x = x, y = c(rep(1L, 29), 0L)))
+  expect_silent(check_response_at_bound(near, bernoulli()))
+  # No trials() term: check_data() refuses that, so this says nothing rather
+  # than testing counts against a bound it cannot see.
+  expect_silent(check_response_at_bound(zeros, binomial()))
+})
+
+test_that("a grouped response names every level at a bound, and only those", {
+  x <- cd_at_bound_x()
+  d <- data.frame(x = rep(x, 3), y = c(rep(1L, 30), rep(0L, 30),
+                                       rep(c(1L, 0L), 15)),
+                  site = rep(c("north", "south", "reef"), each = 30))
+  bdat <- cd_bdat(y ~ crf(x, model = "nec3param"), d)
+  err <- expect_error(check_response_at_bound(
+    bdat, bernoulli(), group = factor(d$site), group_name = "site"
+  ))
+  msg <- conditionMessage(err)
+  expect_match(msg, "2 level(s) of \"site\"", fixed = TRUE)
+  expect_match(msg, "\"north\", where every value is 1 (the upper bound)",
+               fixed = TRUE)
+  expect_match(msg, "\"south\", where every value is 0 (the lower bound)",
+               fixed = TRUE)
+  expect_false(grepl("reef", msg))
+  expect_match(msg, "Remove those levels from `data`", fixed = TRUE)
+  # The level that varies passes on its own as well.
+  reef <- cd_bdat(y ~ crf(x, model = "nec3param"), d[d$site == "reef", ])
+  expect_silent(check_response_at_bound(reef, bernoulli()))
+})

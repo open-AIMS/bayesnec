@@ -195,6 +195,12 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
   # predictor here so the first component is not sampled before the second
   # discovers the contradiction. See #317.
   full_frame <- model.frame(formula, data = data, run_par_checks = TRUE)
+  # Immediately after the frame, as bnec() places it. model.frame() drops a
+  # row with a missing predictor, so the growth bound check below would
+  # otherwise read the survivors without it: a growth response whose only
+  # value off the bound sat in that row was refused as every value at the
+  # bound, rather than as the missing value it is. See #278 and #400.
+  check_complete_cases(full_frame)
   validate_predictor_scale(
     predictor_scale, retrieve_var(full_frame, "x_var", error = TRUE)
   )
@@ -242,6 +248,20 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
     # part of the likelihood without exposing trunc() as a user-facing aterm.
     growth_formula <- add_hurdle_truncation(growth_formula)
   }
+  # The growth component is fitted to the survivors alone, so it can be at a
+  # bound of its family where the response as a whole is not: a Beta growth
+  # component whose every survivor is 1. Raised here rather than left to the
+  # growth bnec() call, which would name the response column and say that
+  # every value is 1 of a column that also holds the zeros. Built from
+  # `formula`, which is growth_formula without the count truncation, since the
+  # response rows are what is tested. See #400.
+  check_response_at_bound(
+    model.frame(formula, data = data[y > 0, , drop = FALSE],
+                run_par_checks = TRUE),
+    family_growth,
+    subject = paste0("The growth component of the response \"", y_var,
+                     "\" (its ", sum(y > 0), " non-zero values)")
+  )
   message("Fitting the growth component (", sum(y > 0), " survivors of ",
           length(y), ") with a ", family_growth$family, " distribution.")
   # User aterms are passed through unchanged. A censoring indicator is an

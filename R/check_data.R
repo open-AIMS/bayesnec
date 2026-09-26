@@ -1367,6 +1367,155 @@ check_inline_boundary <- function(data, family) {
   invisible(NULL)
 }
 
+#' The bound at which every observation of a bounded response sits
+#'
+#' @param y The response, as read from the model frame.
+#' @param trials The number of trials of a \code{binomial} or
+#' \code{beta_binomial} response, or \code{NULL} for a response recorded as a
+#' proportion.
+#'
+#' @return 0 or 1, the bound every observation sits at, or \code{NA} where the
+#' response is not at one bound throughout.
+#' @noRd
+response_bound_reached <- function(y, trials = NULL) {
+  if (length(y) == 0) {
+    return(NA_real_)
+  }
+  if (all(y == 0)) {
+    return(0)
+  }
+  # Compared as counts against their own trials rather than as y / trials
+  # against 1, so that the test is exact for integer counts and does not
+  # depend on how a division rounds.
+  upper <- if (is.null(trials)) 1 else trials
+  if (all(y == upper)) {
+    return(1)
+  }
+  NA_real_
+}
+
+#' Refuse a bounded response with every observation at one of its bounds
+#'
+#' A \code{bernoulli}, \code{binomial}, \code{beta_binomial} or \code{beta}
+#' response whose every observation is 0, or 1 (every count equal to its
+#' trials), does not vary, so it identifies no concentration-response curve.
+#' Before #400 the three discrete families failed inside prior construction:
+#' \code{response_link_scale()} anchors a response at a bound on the largest
+#' observation strictly inside it, which does not exist here, and
+#' \code{define_prior()} then stopped in \code{quantile()} with a message that
+#' named neither the column nor the cause. \code{beta} at 1 was shifted to
+#' 0.999 and fitted. \code{beta} at 0 was shifted by a tenth of the smallest
+#' positive observation, which with none present is \code{Inf}.
+#'
+#' A property of the data and the family, fixed for the whole call, so it is
+#' raised once from \code{\link{bnec}} and \code{\link{get_priors}} before any
+#' model is considered, and from \code{\link{bnec_group}} for every level
+#' before any level is fitted, following the placement of
+#' \code{\link{check_inline_boundary}}. \code{\link{bnec_hurdle}} raises it on
+#' the growth component before either component is fitted. \code{amend()} and
+#' \code{update()} call it for the routes that do not come through those entry
+#' points, each with the family its refit uses. It is not called from
+#' \code{\link{check_data}}, which is given whatever family its caller chose:
+#' on the \code{update()} route that is the family read off the new data, not
+#' the one the refit uses. The whole decision is made here, so that a change to
+#' what is done with such a response is made in one place.
+#'
+#' Censoring is not consulted: the response is judged on its recorded values,
+#' because the default priors are built from them. A value left- or
+#' right-censored at a bound of one of these families states either what the
+#' family cannot represent (beyond the bound) or nothing at all (anywhere
+#' within its support). An interval-censored observation whose upper end, the
+#' second variable of \code{cens()}, lies inside the support holds
+#' information the recorded value does not, but \code{check_data()},
+#' \code{response_link_scale()} and \code{define_prior()} read only the
+#' recorded values, so such a response reached the same \code{quantile()}
+#' error as one with no censoring at all when it was let through. It is refused
+#' by name instead. Supplying \code{prior} does not change this: the refusal is
+#' raised before any prior is read.
+#'
+#' @param data A model frame from \code{model.frame()} on a
+#' \code{\link{bayesnecformula}}.
+#' @param family A \code{\link[stats]{family}}, or its name.
+#' @param group A factor with one element per row of \code{data}, or
+#' \code{NULL}. Where supplied, each level is tested separately and every level
+#' at a bound is named.
+#' @param group_name The name of the grouping column, for the message.
+#' @param subject The subject of the message, where the rows tested are not the
+#' whole response; \code{NULL} names the response column.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#' @noRd
+check_response_at_bound <- function(data, family, group = NULL,
+                                    group_name = NULL, subject = NULL) {
+  fam_tag <- if (inherits(family, "family")) family$family else family
+  if (!fam_tag %in% c("bernoulli", "binomial", "beta_binomial", "beta")) {
+    return(invisible(NULL))
+  }
+  y <- try(retrieve_var(data, "y_var", error = TRUE), silent = TRUE)
+  if (inherits(y, "try-error")) {
+    return(invisible(NULL))
+  }
+  trials <- NULL
+  if (fam_tag %in% c("binomial", "beta_binomial")) {
+    trials <- retrieve_var(data, "trials_var")
+    # A binomial response with no trials() term is refused by check_data().
+    # Without the trials there is no upper bound to test against, so nothing
+    # is said here and that refusal is left to arrive.
+    if (is.null(trials)) {
+      return(invisible(NULL))
+    }
+  }
+  bnec_pop_vars <- attr(data, "bnec_pop")
+  y_name <- names(data)[which(names(bnec_pop_vars) == "y_var")]
+  if (is.null(subject)) {
+    subject <- paste0("The response \"", y_name, "\"")
+  }
+  counted <- !is.null(trials)
+  describe <- function(bound) {
+    if (bound == 1 && counted) {
+      "every count equals its number of trials, a proportion of 1"
+    } else if (counted) {
+      "every count is 0"
+    } else {
+      paste("every value is", bound)
+    }
+  }
+  side <- function(bound) if (bound == 1) "upper" else "lower"
+  why <- " A response that does not vary identifies no concentration-response"
+  if (is.null(group)) {
+    bound <- response_bound_reached(y, trials)
+    if (is.na(bound)) {
+      return(invisible(NULL))
+    }
+    stop(subject, " is at the ", side(bound), " bound of a ", fam_tag,
+         " response in every observation: ", describe(bound), ".", why,
+         " curve, so bayesnec does not fit one to it or derive default priors",
+         " from it.", call. = FALSE)
+  }
+  rows <- split(seq_along(y), group, drop = TRUE)
+  bounds <- vapply(rows, function(i) {
+    response_bound_reached(y[i], trials[i])
+  }, numeric(1))
+  hit <- bounds[!is.na(bounds)]
+  if (length(hit) == 0) {
+    return(invisible(NULL))
+  }
+  # Refused for the whole call rather than fitting the other levels and
+  # reporting this one as skipped, so that the omission is made by the user and
+  # is visible in their script (D30). Every such level is named at once, so
+  # that one call finds them all.
+  where <- vapply(names(hit), function(lev) {
+    paste0("\"", lev, "\", where ", describe(hit[[lev]]), " (the ",
+           side(hit[[lev]]), " bound)")
+  }, character(1))
+  stop(subject, " is at a bound of a ", fam_tag, " response in every",
+       " observation of ", length(hit), " level(s) of \"", group_name, "\": ",
+       paste(where, collapse = "; "), ".", why, " curve. No level has been",
+       " fitted. Remove ", if (length(hit) == 1) "that level" else
+         "those levels", " from `data` to fit the others, so that the",
+       " omission is recorded in the call.", call. = FALSE)
+}
+
 #' Reject a boundary value on a response transformed inside the formula
 #'
 #' The shift a boundary value would receive is computed on the transformed

@@ -286,6 +286,55 @@ test_that("bnec_hurdle rejects inputs that break the zero-as-death convention", 
   )
 })
 
+test_that("a growth component at a bound is named as that component (#400)", {
+  # Every survivor is 1, so the growth component, a Beta response here, does
+  # not vary although the response as a whole does. Left to the growth bnec()
+  # call, the refusal named the response and said that every value of it is 1,
+  # of a column that also holds the zeros.
+  dat <- data.frame(x = as.numeric(rep(1:4, each = 5)),
+                    y = c(rep(1, 15), rep(0, 5)))
+  calls <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      calls <<- calls + 1L
+      stop("component fit should not start")
+    },
+    .package = "bayesnec"
+  )
+  err <- expect_error(suppressMessages(
+    bnec_hurdle(y ~ crf(x, "nec3param"), data = dat)
+  ))
+  expect_match(conditionMessage(err),
+               paste0("The growth component of the response \"y\" (its 15",
+                      " non-zero values) is at the upper bound of a beta",
+                      " response in every observation: every value is 1."),
+               fixed = TRUE)
+  expect_identical(calls, 0L)
+})
+
+test_that("a missing predictor is refused before the growth bound (#400)", {
+  # model.frame() drops the row, so read after it the survivors were all 1 and
+  # the call was refused as a growth component at the bound.
+  dat <- data.frame(x = as.numeric(rep(1:4, each = 5)),
+                    y = c(rep(1, 14), 0.6, rep(0, 5)))
+  dat$x[15] <- NA
+  calls <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      calls <<- calls + 1L
+      stop("component fit should not start")
+    },
+    .package = "bayesnec"
+  )
+  err <- expect_error(suppressMessages(
+    bnec_hurdle(y ~ crf(x, "nec3param"), data = dat)
+  ))
+  expect_match(conditionMessage(err), "row\\(s\\) with missing values")
+  expect_match(conditionMessage(err), "at row\\(s\\) 15")
+  expect_false(grepl("upper bound", conditionMessage(err)))
+  expect_identical(calls, 0L)
+})
+
 test_that("crossed_weights is the outer product of component weights", {
   # Mock two model-averaged fits: crossed_weights only reads mod_stats.
   mock_manec <- function(w) {

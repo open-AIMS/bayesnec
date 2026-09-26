@@ -84,3 +84,58 @@ test_that("bnec refuses a resolution below 2 before fitting anything", {
     "must be at least 2"
   )
 })
+
+test_that("a response at one bound is refused once, before the model loop (#400)", {
+  # Each case failed inside prior construction on the quantile() error, which
+  # named neither the column nor the cause, except beta at 1, which was shifted
+  # to 0.999 and fitted, and beta at 0, which was shifted to Inf. From
+  # check_data() alone the refusal would be printed once per model of the set
+  # and end on the all-models-failed advice.
+  calls <- 0L
+  local_mocked_bindings(
+    bnec_parallel_lapply = function(...) {
+      calls <<- calls + 1L
+      stop("reached the model loop")
+    },
+    .package = "bayesnec"
+  )
+  cases <- at_bound_cases()
+  for (nm in names(cases)) {
+    cs <- cases[[nm]]
+    msgs <- character(0)
+    err <- tryCatch(
+      withCallingHandlers(
+        bnec(cs$formula, data = cs$data, family = cs$family),
+        message = function(m) {
+          msgs <<- c(msgs, conditionMessage(m))
+          invokeRestart("muffleMessage")
+        }
+      ),
+      error = conditionMessage
+    )
+    expect_match(err, paste0("The response \"", cs$column, "\" is at the ",
+                             cs$bound, " bound"), fixed = TRUE, info = nm)
+    expect_false(grepl("None of the models", err), info = nm)
+    # No substitution report precedes it: a beta response at 1 is no longer
+    # announced as shifted to 0.999 before being refused.
+    expect_length(msgs, 0)
+  }
+  expect_identical(calls, 0L)
+})
+
+test_that("one observation off the bound reaches the model loop (#400)", {
+  local_mocked_bindings(
+    bnec_parallel_lapply = function(...) stop("reached the model loop"),
+    .package = "bayesnec"
+  )
+  cases <- at_bound_cases()
+  for (nm in names(cases)) {
+    cs <- cases[[nm]]
+    expect_error(
+      suppressWarnings(suppressMessages(
+        bnec(cs$formula, data = cs$near, family = cs$family)
+      )),
+      "reached the model loop", info = nm
+    )
+  }
+})
