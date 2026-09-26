@@ -233,6 +233,38 @@ test_that("a hurdle fit is compared through its combined threshold", {
   expect_equal(grow$n_above, 2)
 })
 
+test_that("a hurdle fit on unequal ranges leaves an unresolved minimum open", {
+  # Growth is predicted to 8 and survival to 10, as where nothing survived at
+  # the top concentrations. In the second draw growth is known only to lie at
+  # or above 8 and survival is identified at 9, so the combined threshold lies
+  # somewhere from 8 to 9 and is marked censored above 8 (#415). Before that
+  # correction the draw was returned as an identified 9, and exceedance() would
+  # have counted it as exceeding 8.5.
+  #   growth    2  >=8  5  >=8
+  #   survival  6  9    3  >=10
+  #   combined  2  >=8  3  >=8
+  growth <- with_ne_posterior(
+    nec4param, c(2, 9, 5, 9),
+    above = c(FALSE, TRUE, FALSE, TRUE), upper = 8
+  )
+  survival <- with_ne_posterior(
+    nec4param, c(6, 9, 3, 12),
+    above = c(FALSE, FALSE, FALSE, TRUE), upper = 10
+  )
+  hurdle <- structure(list(growth = growth, survival = survival),
+                      class = c("bayesnechurdlefit", "bnecfit"))
+  # 8.5 is inside survival's range and beyond the combined one, so neither
+  # draw censored above 8 is decided: the result is an interval.
+  out <- quiet_exceedance(hurdle, threshold = 8.5)
+  expect_true(is.na(out$prob))
+  expect_equal(c(out$prob_lower, out$prob_upper), c(0, 2 / 4))
+  expect_equal(out$n_above, 2)
+  # Below 8 both are decided: each lies at or above 8 and so exceeds 7.
+  inside <- quiet_exceedance(hurdle, threshold = 7)
+  expect_equal(inside$prob, 2 / 4)
+  expect_equal(inside$prob_lower, inside$prob_upper)
+})
+
 test_that("the threshold is read on the scale xform returns", {
   # An increasing xform: the threshold is given on the transformed scale.
   plain <- quiet_exceedance(eight_draws(), threshold = 5)
