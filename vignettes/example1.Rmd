@@ -192,10 +192,10 @@ summary(exp_1)
 #> 
 #> Regression Coefficients:
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.05      0.02     0.02     0.08 1.00     3037     2949
-#> top      0.83      0.01     0.81     0.84 1.00     4454     4379
-#> beta     0.80      0.13     0.56     1.08 1.00     2663     3153
-#> nec      4.42      0.03     4.36     4.48 1.00     3270     3747
+#> bot      0.05      0.02     0.02     0.08 1.00     2982     3265
+#> top      0.83      0.01     0.81     0.84 1.00     4702     4222
+#> beta     0.80      0.14     0.55     1.08 1.00     2551     3607
+#> nec      4.42      0.03     4.36     4.48 1.00     3040     4437
 #> 
 #> Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
@@ -233,7 +233,7 @@ This model fit does not look great. You can see that the error bounds around the
 ``` r
 exp_1$dispersion
 #> Estimate     Q2.5    Q97.5    P(>1) 
-#> 17.59272 11.96617 27.20065  1.00000
+#> 17.59751 11.98486 26.93841  1.00000
 ```
 
 ### Beta-Binomial
@@ -273,7 +273,7 @@ Now that we have a better fit to these data, we can interpret the results. The e
 ``` r
 summary(exp(exp_1b$ne_posterior))
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#>   18.06   65.26   78.59   76.11   87.95  191.89
+#>   17.73   65.40   78.74   76.59   88.44  198.23
 ```
 
 EC*x* estimates can also be obtained from the *NEC* model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the *NEC* model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See both the [Model details][e2b] and [Comparing posterior predictions][e4] vignettes for more information.
@@ -282,7 +282,7 @@ EC*x* estimates can also be obtained from the *NEC* model fit, using the functio
 ``` r
 ecx(exp_1b, xform = exp)
 #>       Q50      Q2.5     Q97.5 
-#>  82.91855  44.27608 106.87492 
+#>  83.16503  44.57296 110.90310 
 #> attr(,"resolution")
 #> [1] 200
 #> attr(,"ecx_val")
@@ -311,14 +311,14 @@ summary(exp_1b)
 #> 
 #> Regression Coefficients:
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.13      0.05     0.03     0.24 1.00     2134     3083
-#> top      0.84      0.03     0.77     0.88 1.00     1277     1570
-#> beta     0.84      0.68    -0.17     3.41 1.01      477      170
-#> nec      4.36      0.20     3.66     4.66 1.01      486      182
+#> bot      0.13      0.05     0.03     0.23 1.00     1896     2563
+#> top      0.84      0.03     0.77     0.88 1.00     1498     1166
+#> beta     0.84      0.71    -0.18     4.37 1.00      518      186
+#> nec      4.37      0.21     3.67     4.70 1.00      539      180
 #> 
 #> Further Distributional Parameters:
 #>     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> phi     5.29      1.21     3.26     8.28 1.00     1832     3452
+#> phi     5.28      1.24     3.26     8.11 1.00     1859     2777
 #> 
 #> Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
@@ -326,12 +326,12 @@ summary(exp_1b)
 #> 
 #> 
 #>     Estimate Q2.5 Q97.5
-#> NEC     4.36 3.66  4.66
+#> NEC     4.37 3.67  4.70
 #> 
 #> 
 #> Bayesian R2 estimates:
 #>    Estimate Est.Error Q2.5 Q97.5
-#> R2     0.76      0.04 0.66  0.81
+#> R2     0.76      0.04 0.68  0.81
 ```
 
 ### Beta data
@@ -428,7 +428,7 @@ autoplot(exp_3)
 ``` r
 exp_3$dispersion
 #>  Estimate      Q2.5     Q97.5     P(>1) 
-#> 0.9614115 0.7338588 1.2965095 0.3903750
+#> 0.9635490 0.7336119 1.2851574 0.3975000
 ```
 
 The dispersion estimate, described in the Binomial example above, is near one here, as it should be for data simulated from a Poisson, and the credible bands are commensurate with the spread of the points. We would also plot the model chains (with `plot(exp_3$fit)`) and the parameter estimates to check the fit.
@@ -467,7 +467,7 @@ autoplot(exp_3b)
 ``` r
 exp_3b$dispersion
 #> Estimate     Q2.5    Q97.5    P(>1) 
-#> 4.890548 3.733693 6.565285 1.000000
+#> 4.889823 3.754817 6.578114 1.000000
 ```
 
 We can refit these data by deliberately specifying the Negative binomial distribution via the `family` argument.
@@ -535,10 +535,10 @@ autoplot(exp_3d)
 ``` r
 exp_3d$ne
 #> Estimate     Q2.5    Q97.5 
-#> 1.525997 1.454212 1.607317
+#> 1.526470 1.453376 1.607691
 ecx(exp_3d, ecx_val = 10)
 #>      Q50     Q2.5    Q97.5 
-#> 1.611800 1.550901 1.679368 
+#> 1.611954 1.552050 1.679677 
 #> attr(,"resolution")
 #> [1] 200
 #> attr(,"ecx_val")
@@ -547,7 +547,7 @@ ecx(exp_3d, ecx_val = 10)
 #> [1] "ecx"
 exp_3d$dispersion
 #>  Estimate      Q2.5     Q97.5     P(>1) 
-#> 0.8803188 0.6675821 1.1898829 0.1976250
+#> 0.8812035 0.6682100 1.1809228 0.1966250
 ```
 
 One caveat is worth stating explicitly. If the exposure varies for reasons unrelated to the treatment — a replicate simply received fewer animals — then `rate` is doing exactly what is wanted. If instead the exposure is itself an effect of the treatment, as it would be were `n_females` the number of females *surviving* to the point of counting, then the endpoint has quietly changed from reproductive output to fecundity conditional on survival. Both are legitimate, but they are different endpoints and will not return the same *NEC*.
@@ -596,14 +596,14 @@ summary(exp_4)
 #> 
 #> Regression Coefficients:
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.98      0.05     0.88     1.07 1.00     4057     4441
-#> top      2.44      0.01     2.41     2.46 1.00     6760     5215
-#> beta     0.65      0.10     0.45     0.84 1.00     3674     4223
-#> nec      1.50      0.02     1.46     1.54 1.00     4335     4845
+#> bot      0.98      0.05     0.88     1.07 1.00     3564     4249
+#> top      2.44      0.01     2.41     2.46 1.00     5744     5055
+#> beta     0.65      0.10     0.46     0.84 1.00     3007     4119
+#> nec      1.50      0.02     1.46     1.54 1.00     3614     4942
 #> 
 #> Further Distributional Parameters:
 #>       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> shape   515.06     74.50   379.72   680.88 1.00     6939     5087
+#> shape   515.84     73.80   382.69   673.16 1.00     6209     4973
 #> 
 #> Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
@@ -790,8 +790,8 @@ The estimated exponent should be read through the family. `disp("power")` models
 ``` r
 brms::fixef(pull_brmsfit(disp_power))[c("c0_Intercept", "c1_Intercept"), ]
 #>               Estimate Est.Error      Q2.5      Q97.5
-#> c0_Intercept  4.675853 0.1861967  4.296957  5.0273887
-#> c1_Intercept -1.085597 0.1962002 -1.458667 -0.6865293
+#> c0_Intercept  4.677736 0.1813607  4.303550  5.0193925
+#> c1_Intercept -1.085440 0.1930693 -1.452408 -0.7029879
 ```
 
 A value of zero would correspond to the constant-dispersion model, and is where the prior on this parameter is centred, so an interval excluding zero reflects the data rather than the prior.
@@ -808,12 +808,12 @@ lof$misfit_in_sds <- round(abs(lof$obs - lof$fit) / lof$replicate_sd, 2)
 lof[, c("x", "replicate_sd", "misfit_in_sds")]
 #>       x replicate_sd misfit_in_sds
 #> 1   0.1   2.33524353          0.06
-#> 2   0.3   1.37693794          0.09
+#> 2   0.3   1.37693794          0.10
 #> 3   1.0   2.04860393          0.15
 #> 4   3.0   1.27943964          0.27
 #> 5  10.0   0.39614047          0.15
 #> 6  30.0   0.14681633          0.08
-#> 7 100.0   0.06481783          0.02
+#> 7 100.0   0.06481783          0.03
 ```
 
 ## What it changes
@@ -904,12 +904,12 @@ tox <- function(fit, label) {
 }
 rbind(tox(disp_const, "constant dispersion"), tox(disp_power, "disp(\"power\")"))
 #>                 model estimate median lower upper width
-#> 1 constant dispersion     ec10   1.79  1.46  2.18  0.73
-#> 2 constant dispersion     ec50   7.18  6.56  7.81  1.25
-#> 3 constant dispersion     nsec   0.91  0.30  1.28  0.99
-#> 4       disp("power")     ec10   1.86  1.58  2.17  0.59
-#> 5       disp("power")     ec50   7.27  6.69  7.85  1.16
-#> 6       disp("power")     nsec   1.10  0.37  1.50  1.13
+#> 1 constant dispersion     ec10   1.78  1.45  2.15  0.70
+#> 2 constant dispersion     ec50   7.17  6.56  7.77  1.21
+#> 3 constant dispersion     nsec   0.90  0.29  1.27  0.98
+#> 4       disp("power")     ec10   1.86  1.59  2.17  0.58
+#> 5       disp("power")     ec50   7.27  6.71  7.85  1.14
+#> 6       disp("power")     nsec   1.09  0.36  1.49  1.13
 ```
 
 The `ecx` intervals narrow, while the `nsec` interval widens. The explanation is what each estimate is referenced against, and it follows from the reweighting the variance function performs. Under constant dispersion every observation carries equal weight. Under `disp("power")` the tightly grouped high-concentration replicates carry more and the variable control replicates carry less, which is visible in the parameters themselves.
@@ -923,10 +923,10 @@ round(cbind(
   power = brms::fixef(pull_brmsfit(disp_power))[curve_pars, "Est.Error"]
 ), 4)
 #>                constant  power
-#> top_Intercept    0.2958 0.3416
-#> bot_Intercept    0.0737 0.0338
-#> beta_Intercept   0.0529 0.0362
-#> ec50_Intercept   0.0468 0.0420
+#> top_Intercept    0.2903 0.3438
+#> bot_Intercept    0.0739 0.0334
+#> beta_Intercept   0.0523 0.0356
+#> ec50_Intercept   0.0453 0.0417
 ```
 
 The parameters set by the high-concentration end, `bot` and `beta`, are estimated more precisely, and `top`, which is set by the control end, less so. `ecx` depends on the curve as a whole — with `type = "absolute"`, the default, on where the curve falls to a given percentage of its own fitted maximum — so it inherits the better-determined shape. `nsec` is referenced against the control instead: it is the concentration at which the curve drops below a lower quantile of the *control* posterior, so it inherits the one thing the variance function made less certain, and widens.
