@@ -481,6 +481,22 @@
   installation before the script runs. A local render can no longer silently
   use a different `bayesnec` installation (#340).
 
+- `vignettes/fit_store.R` now refuses a fit store whose `MANIFEST` records a
+  `bayesnec` older than 2.1.3.40, with a message naming both versions and the
+  compendium command that refits the store. A stored fit is keyed on its call
+  and its data, so a store fitted before #409 changed the default priors loaded
+  under the current code without an error, and the version, 2.1.3.39 before and
+  after #409, did not distinguish the two. The store assembled on 2026-09-18
+  records 2.1.3.39 and is refused. The minimum is raised only by a change to
+  what `example8` fits, so a version bump for anything else does not require a
+  refit (#413).
+
+- The colour legend of the `example8` figure of each equation's threshold
+  against its weight is titled "model weight" rather than "stacking weight".
+  The set is weighted by pseudo-BMA, the default, and the vignette does not ask
+  for stacking. The rendered vignette keeps the old title until it is next
+  precompiled (#413).
+
 ## Reproducible posterior comparisons and prior samples
 
 - `average_estimates()`, `compare_estimates()`, `compare_fitted()` and
