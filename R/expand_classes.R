@@ -408,11 +408,13 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   })
   object <- mod_fits
   formula <- formula[success_models]
-  # Read off each fit's parameters, as nec() reads them, rather than off group
-  # membership: ecxflat is in neither mod_groups$ecx nor mod_groups$nec, so a
-  # set holding it was labelled a NEC. For the equations of mod_groups$all the
-  # two readings agree. See #419.
-  has_nec <- vapply(object, function(m) fit_has_nec(m$fit), logical(1))
+  # Read off each equation's parameters, as nec() reads them, rather than off
+  # group membership: ecxflat is in neither mod_groups$ecx nor mod_groups$nec,
+  # so a set holding it was labelled a NEC. For the equations of mod_groups$all
+  # the two readings agree. See has_nec_parameter() and #419.
+  has_nec <- vapply(names(object), function(m) {
+    has_nec_parameter(m, object[[m]]$fit)
+  }, logical(1))
   ne_lab <- "NEC"
   if (!any(has_nec)) {
     ne_lab <- "NSEC"

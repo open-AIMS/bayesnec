@@ -19,8 +19,17 @@ test_that("the class is read off the parameters, not the name (#419)", {
   renamed_threshold <- nec4param
   renamed_threshold$model <- "ecxthreshold"
   expect_identical(nec(renamed_threshold), nec(nec4param))
-  expect_false(bayesnec:::fit_has_nec(ecx4param$fit))
-  expect_true(bayesnec:::fit_has_nec(nec4param$fit))
+  expect_false(bayesnec:::has_nec_parameter("flat", ecx4param$fit))
+  expect_true(bayesnec:::has_nec_parameter("ecxthreshold", nec4param$fit))
+  # The equation's formula is read first, and needs no fit: several tests
+  # build objects with no brmsfit, and reading the fit alone stopped in
+  # fixef() on them.
+  expect_true(bayesnec:::has_nec_parameter("nec3param", NULL))
+  expect_false(bayesnec:::has_nec_parameter("ecxflat", NULL))
+  expect_false(bayesnec:::has_nec_parameter("ecx4param", list()))
+  # Only where neither is known does the prefix decide, as it always did.
+  expect_true(bayesnec:::has_nec_parameter("threshold", NULL))
+  expect_false(bayesnec:::has_nec_parameter("ecxsmooth", NULL))
   # The model-averaged note reads the fits as well: renaming both equations so
   # that neither holds the substring leaves the smooth one smooth.
   renamed_set <- manec_example

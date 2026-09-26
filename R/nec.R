@@ -199,12 +199,11 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
   }
-  # Classified by whether the fit samples a nec parameter, as expand_nec()
-  # classifies it, rather than by the substring "ecx" in the equation's name.
-  # The name is a convention ?bnec states, and a classification resting on it
-  # would return an NSEC as a NEC for any equation spelled without the prefix.
-  # See #419.
-  if (!fit_has_nec(object$fit)) {
+  # Classified by whether the equation has a nec parameter, rather than by the
+  # substring "ecx" in its name. The name is a convention ?bnec states, and a
+  # classification resting on it would return an NSEC as a NEC for any
+  # equation spelled without the prefix. See has_nec_parameter() and #419.
+  if (!has_nec_parameter(object$model, object$fit)) {
     stop("nec is not a parameter in ecx model types.")
   }
   # Once for the call. The gate it sets also covers the nsec() that extrapolate
@@ -302,11 +301,13 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
   # Once for the set, not once per equation. See report_fitted_scale().
   quiet <- report_fitted_scale(object, xform, "nec")
   on.exit(options(quiet), add = TRUE)
-  # Read off each fit's parameters, for the reason given in nec.bayesnecfit().
-  # ecxflat belongs to no group, but it has no nec parameter and contributes
-  # NSEC draws, so a set holding it is a mixture and says so. See #419.
-  if (!all(vapply(object$mod_fits, function(m) fit_has_nec(m$fit),
-                  logical(1)))) {
+  # Read off each equation's parameters, for the reason given in
+  # nec.bayesnecfit(). ecxflat belongs to no group, but it has no nec parameter
+  # and contributes NSEC draws, so a set holding it is a mixture and says so.
+  # See #419.
+  if (!all(vapply(names(object$mod_fits), function(m) {
+    has_nec_parameter(m, object$mod_fits[[m]]$fit)
+  }, logical(1)))) {
     message("This bayesmanecfit contains smooth (ecx) models, which have no",
             " threshold parameter, so the returned estimate is a weighted",
             " mixture of NEC and NSEC draws -- the model-averaged N(S)EC",
@@ -362,20 +363,38 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
   }
 }
 
-#' Whether a fit samples a nec parameter
+#' Whether an equation has a nec parameter
 #'
-#' The test \code{\link{expand_nec}} applies to decide whether a fit's
-#' no-effect estimate is its sampled \code{nec} or an NSEC read off its curve:
-#' \code{extract_pars()} returns \code{NA} for a parameter the fit does not
-#' have. Read off the fit rather than off the equation's name, so that no
-#' classification depends on how an equation is spelled. For a two-block fit it
-#' reads the response block, whose \code{nec} has no prefix, which is the
-#' block the equation name describes. See #419.
+#' Read first from the equation's own formula, through
+#' \code{\link{equation_par_names}}, which is what \code{\link{show_params}}
+#' displays. That needs no fitted \code{\link[brms]{brmsfit}}, so it answers for
+#' an object assembled without one, which several tests build and which a
+#' first version of this function, reading the fit alone, could not: it called
+#' \code{fixef()} on a \code{NULL} \code{fit} and stopped. Where the name is no
+#' equation the fit is read instead, by the test \code{\link{expand_nec}}
+#' applies: \code{extract_pars()} returns \code{NA} for a parameter the fit does
+#' not have. Only where neither is available does the substring convention
+#' \code{?bnec} states decide, as it decided every case before #419; no fit
+#' made by \code{\link{bnec}} reaches that branch, since its equation is always
+#' known.
 #'
-#' @param fit An object of class \code{\link[brms]{brmsfit}}.
+#' Neither of the first two readings depends on how an equation is spelled, so
+#' \code{ecxflat} and any later equation are classified by what they estimate.
+#' For a two-block fit the name and the unprefixed \code{nec} both describe the
+#' response block. See #419.
+#'
+#' @param model A \code{\link[base]{character}} naming the equation.
+#' @param fit The \code{\link[brms]{brmsfit}}, or \code{NULL}.
 #'
 #' @return A \code{\link[base]{logical}} of length 1.
 #' @noRd
-fit_has_nec <- function(fit) {
-  !all(is.na(extract_pars("nec", fit)))
+has_nec_parameter <- function(model, fit = NULL) {
+  if (is.character(model) && length(model) == 1 && !is.na(model) &&
+        model %in% equation_names()) {
+    return("nec" %in% equation_par_names(model))
+  }
+  if (inherits(fit, "brmsfit")) {
+    return(!all(is.na(extract_pars("nec", fit))))
+  }
+  !isTRUE(any(grepl("ecx", model, fixed = TRUE)))
 }
