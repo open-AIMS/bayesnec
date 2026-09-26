@@ -662,13 +662,14 @@ reflected_labels <- function(labs) {
   vapply(labs[c(1, 3, 2)], reflect, character(1), USE.NAMES = FALSE)
 }
 
-annotate <- function(obj, ...) {
+annotation_frame <- function(obj, ...) {
   suppressMessages(suppressWarnings(ggbnec_data(obj, ...)))
 }
 
-annotate_ecx <- function(obj, ...) {
-  do.call(annotate, c(list(obj, add_nec = FALSE, add_ecx = TRUE, ...),
-                      reversal_ecx_args()))
+annotation_frame_ecx <- function(obj, ...) {
+  do.call(annotation_frame,
+          c(list(obj, add_nec = FALSE, add_ecx = TRUE, ...),
+            reversal_ecx_args()))
 }
 
 test_that("a bound above the grid is labelled as below it once negated", {
@@ -685,7 +686,7 @@ test_that("a bound above the grid is labelled as below it once negated", {
       x_range = c(reversal_x_foot(), 0.9), resolution = 50
     )
   ))
-  expect_identical(annotation_labels(annotate(fit, xform = negate)),
+  expect_identical(annotation_labels(annotation_frame(fit, xform = negate)),
                    rep("<=-0.90", 3))
 })
 
@@ -694,9 +695,9 @@ test_that("a decreasing xform reverses the NEC annotation", {
     skip_on_cran()
   }
   for (obj in list(reversal_fit("nec"), reversal_manec())) {
-    plain <- annotation_labels(annotate(obj))
+    plain <- annotation_labels(annotation_frame(obj))
     expect_match(plain[3], "^>=")
-    negated <- annotate(obj, xform = negate)
+    negated <- annotation_frame(obj, xform = negate)
     expect_identical(annotation_labels(negated), reflected_labels(plain))
     # The lower limit is the bound now, and it is the smaller number.
     expect_match(annotation_labels(negated)[2], "^<=")
@@ -710,9 +711,9 @@ test_that("a decreasing xform reverses the ECx annotation", {
     skip_on_cran()
   }
   for (obj in list(reversal_fit("nec"), reversal_manec())) {
-    plain <- annotation_labels(annotate_ecx(obj), "ecx")
+    plain <- annotation_labels(annotation_frame_ecx(obj), "ecx")
     expect_match(plain[3], "^>=")
-    negated <- annotate_ecx(obj, xform = negate)
+    negated <- annotation_frame_ecx(obj, xform = negate)
     expect_identical(annotation_labels(negated, "ecx"),
                      reflected_labels(plain))
     vals <- negated$ecx_vals[!is.na(negated$ecx_vals)]
@@ -729,15 +730,16 @@ test_that("the inverse of a decreasing crf() term restores the annotation", {
   # their marks must come back as the untransformed fit has them. The estimate
   # is compared for its mark only, for the type 1 reason given above.
   pairs <- list(
-    list(plain = annotation_labels(annotate(reversal_fit("nec"))),
+    list(plain = annotation_labels(annotation_frame(reversal_fit("nec"))),
          inverted = annotation_labels(
-           annotate(negated_fit(reversal_fit("nec"))))),
-    list(plain = annotation_labels(annotate(reversal_manec())),
+           annotation_frame(negated_fit(reversal_fit("nec"))))),
+    list(plain = annotation_labels(annotation_frame(reversal_manec())),
          inverted = annotation_labels(
-           annotate(negated_manec(reversal_manec())))),
-    list(plain = annotation_labels(annotate_ecx(reversal_fit("ecx")), "ecx"),
+           annotation_frame(negated_manec(reversal_manec())))),
+    list(plain = annotation_labels(
+           annotation_frame_ecx(reversal_fit("ecx")), "ecx"),
          inverted = annotation_labels(
-           annotate_ecx(negated_fit(reversal_fit("ecx"))), "ecx"))
+           annotation_frame_ecx(negated_fit(reversal_fit("ecx"))), "ecx"))
   )
   for (p in pairs) {
     expect_identical(p$inverted[2:3], p$plain[2:3])
@@ -751,11 +753,11 @@ test_that("identity and increasing maps leave the annotation as it was", {
     skip_on_cran()
   }
   fit <- reversal_fit("nec")
-  plain <- annotation_labels(annotate(fit))
+  plain <- annotation_labels(annotation_frame(fit))
   expect_identical(plain[c(1, 2)],
                    unname(bayesnec:::rounded(fit$ne[c(1, 2)], 2)))
   expect_identical(plain[3], paste0(">=", bayesnec:::rounded(fit$ne[[3]], 2)))
-  doubled <- annotation_labels(annotate(fit, xform = function(z) z * 2))
+  doubled <- annotation_labels(annotation_frame(fit, xform = function(z) z * 2))
   expect_identical(doubled[3],
                    paste0(">=", bayesnec:::rounded(fit$ne[[3]] * 2, 2)))
   expect_no_match(doubled[1:2], "^[<>]=")
