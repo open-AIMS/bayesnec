@@ -7,6 +7,40 @@ test_that("doesn't work for ecx models", {
   expect_error(nec(ecx4param), "nec is not a parameter in ecx model types.")
 })
   
+test_that("the class is read off the parameters, not the name (#419)", {
+  # nec() refused on the substring "ecx" in the equation's name. A smooth
+  # equation spelled without the prefix would then have had its NSEC returned
+  # as a NEC; and a threshold equation spelled with it would have been refused.
+  # The test is now whether the fit samples a nec parameter.
+  renamed_smooth <- ecx4param
+  renamed_smooth$model <- "flat"
+  expect_error(nec(renamed_smooth),
+               "nec is not a parameter in ecx model types.")
+  renamed_threshold <- nec4param
+  renamed_threshold$model <- "ecxthreshold"
+  expect_identical(nec(renamed_threshold), nec(nec4param))
+  expect_false(bayesnec:::has_nec_parameter("flat", ecx4param$fit))
+  expect_true(bayesnec:::has_nec_parameter("ecxthreshold", nec4param$fit))
+  # The equation's formula is read first, and needs no fit: several tests
+  # build objects with no brmsfit, and reading the fit alone stopped in
+  # fixef() on them.
+  expect_true(bayesnec:::has_nec_parameter("nec3param", NULL))
+  expect_false(bayesnec:::has_nec_parameter("ecxflat", NULL))
+  expect_false(bayesnec:::has_nec_parameter("ecx4param", list()))
+  # Only where neither is known does the prefix decide, as it always did.
+  expect_true(bayesnec:::has_nec_parameter("threshold", NULL))
+  expect_false(bayesnec:::has_nec_parameter("ecxsmooth", NULL))
+  # The model-averaged note reads the fits as well: renaming both equations so
+  # that neither holds the substring leaves the smooth one smooth.
+  renamed_set <- manec_example
+  names(renamed_set$mod_fits) <- c("threshold", "smooth")
+  expect_message(nec(renamed_set), "model-averaged N\\(S\\)EC")
+  only_threshold <- manec_example
+  only_threshold$mod_fits <- only_threshold$mod_fits["nec4param"]
+  expect_no_message(suppressWarnings(nec(only_threshold)),
+                    message = "contains smooth")
+})
+
 test_that("works for bayesnecfit", {
   nec1 <- nec(nec4param)
   expect_equal(length(nec1), 3)

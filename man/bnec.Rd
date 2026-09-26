@@ -188,11 +188,12 @@ link other than the identity, has no floor that can be derived from the data,
 and \code{FALSE} is refused for it rather than a floor being invented. Supply
 a \code{bot} prior through \code{prior} in that case.
 
-Fourteen of the 23 equations have no \code{bot} parameter and so have no
-lower asymptote to estimate. Eleven of them fall to zero, and \code{neclin},
-\code{neclinhorme} and \code{ecxlin} decay by subtraction and are unbounded
-below. On a design that did not reach the asymptote
-the data cannot distinguish them from the equations that estimate \code{bot},
+Fourteen of the 23 equations of the "all" group have no \code{bot}
+parameter and so have no lower asymptote to estimate. Eleven of them fall to
+zero, and \code{neclin}, \code{neclinhorme} and \code{ecxlin} decay by
+subtraction and are unbounded below. On a design that did not reach the
+asymptote the data cannot distinguish them from the equations that estimate
+\code{bot},
 so a model set holding both is reported. Whether the response can reach the
 floor is a property of the endpoint rather than of the data --- zero is
 attainable for a lethality endpoint and usually not for a growth or
@@ -295,6 +296,10 @@ given response --- "decline" includes the linear-decay models, which are
 dropped for a zero-bounded or 0, 1 bounded response --- so a group string is
 filtered by the same family check that \code{model = "all"} is. See
 \code{\link{models}}.
+The constant equation "ecxflat", whose mean does not change with
+concentration, belongs to none of these groups. It is fitted where it is
+named, alone or with other equations, and where the response does not vary,
+as described below. It joins "all", "ecx" and "decline" at the 3.0 release.
 Notice that if one of these group strings is provided together with a
 user-specified named list for the \code{\link[brms]{brm}}'s argument
 \code{prior}, the list names need to contain
@@ -319,6 +324,39 @@ In the case of a \code{\link{bayesmanecfit}} that contains a mixture of both
 NEC and ECx models, the no-effect estimate is a model averaged combination of
 the NEC and NSEC estimates, and is reported as the N(S)EC
 (see Fisher et al. 2023).
+The constant equation "ecxflat" has no step and no "nec" parameter, so its
+no-effect estimate is an NSEC. Whether an estimate is a NEC or an NSEC is
+decided by whether the fitted equation has a "nec" parameter, and not by the
+prefix of its name.
+
+\bold{A response that does not vary}
+
+A bernoulli, binomial, beta_binomial or beta response whose every
+observation is at one bound of its family --- every value 0 or every value
+1, or for a counted response every count 0 or every count equal to its
+trials --- identifies no concentration-response curve. \code{bnec} fits
+"ecxflat" alone to such a response, whatever model set was requested, and a
+message says so. The equations requested and not fitted are recorded, with
+the reason, by \code{\link{bnec_record}}. The fit states that the response
+did not change over the concentrations tested. No draw of its curve reaches
+an ECx target, so every draw of its ECx is reported as censored above the
+upper end of the prediction range. The same holds for every draw of its NSEC
+except those whose level lies at or below the reference, the \code{sig_val}
+quantile of the control posterior. Those draws, about a share \code{sig_val}
+of the whole, take the control concentration, as they do for every equation.
+
+A beta response of 0 in every observation is refused instead. A beta
+distribution cannot represent a zero, and \code{bnec} shifts a zero off the
+boundary by a tenth of the smallest positive value, which such a response
+does not have. A beta response of 1 in every observation is fitted, its ones
+shifted to 0.999 as they are for any beta response.
+
+\code{\link{bnec_group}} applies the same rule to each level, so that a
+level whose response does not vary is fitted with "ecxflat" alone and the
+other levels with the set requested. \code{\link{get_priors}},
+\code{\link{amend}}, \code{update()} and \code{\link{bnec_hurdle}} do not
+substitute "ecxflat" for the set requested: they refuse such a response for
+a set holding any other equation, and accept "ecxflat" named alone.
 
 \bold{Further argument to \code{\link[brms]{brm}}}
 

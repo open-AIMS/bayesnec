@@ -291,11 +291,14 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   # The backstop for this route, which builds priors with define_prior() and
   # fits with skip_check = TRUE, so check_data() never runs on it. Raised once,
   # before the loop, and only where a model is to be fitted: dropping a model
-  # builds no prior. A fit made by bnec() does not reach it, since bnec()
-  # refuses such a response; it guards the stored data of an object assembled
-  # or altered by other means. See #400.
+  # builds no prior. It is given the equations to be fitted, so that a curve
+  # equation added to such a response is refused and ecxflat alone is let
+  # through. bnec() fits ecxflat alone to such a response, so a fit it made
+  # reaches here when a curve equation is added to it; amend() does not
+  # substitute ecxflat for the equations asked for, as bnec() does. See #400
+  # and #419.
   if (any(needs_fit)) {
-    check_response_at_bound(bdat, family)
+    check_response_at_bound(bdat, family, model = model_set[needs_fit])
   }
   # Carried over here, in the parent, rather than returned from the applied
   # function. Under a parallel plan the alternative serialises every existing

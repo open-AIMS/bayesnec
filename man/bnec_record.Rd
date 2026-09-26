@@ -17,7 +17,12 @@ names; \code{excluded}, a \code{\link[base]{data.frame}} of the equations
 \code{\link{bnec}} declined to attempt with the reason for each; and
 \code{substitutions}, a \code{\link[base]{data.frame}} of the changes made to
 the response, or \code{NULL} where none were made. \code{requested} is
-partitioned exactly by \code{attempted} and \code{excluded$model}.
+partitioned exactly by \code{attempted} and \code{excluded$model}, with one
+exception. Where the response does not vary, \code{\link{bnec}} fits the
+constant equation "ecxflat" alone whatever was requested: \code{attempted}
+is then "ecxflat", which need not have been requested, and every other
+requested equation is in \code{excluded} with that reason. See the section
+of \code{?bnec} on a response that does not vary.
 
 \code{attempted} is the set \code{\link{bnec}} tried to fit, not the set
 that sampled: an equation that was attempted and failed appears here, and

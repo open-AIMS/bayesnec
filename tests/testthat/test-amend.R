@@ -153,3 +153,27 @@ test_that("amend refuses stored data at a bound before fitting a model (#400)", 
                fixed = TRUE)
   expect_identical(calls, 0L)
 })
+
+test_that("amend lets ecxflat alone through at a bound, and names it (#419)", {
+  # bnec() fits ecxflat alone to such a response, so a fit it made reaches this
+  # backstop when an equation is added. A curve equation is refused, and the
+  # message names ecxflat; adding ecxflat itself is let through to the fit.
+  m <- manec_example
+  m$mod_fits[[1]]$fit$data$y <- 1
+  m$mod_fits[[1]]$fit$family <- brms::Beta(link = "identity")
+  fitted <- character(0)
+  local_mocked_bindings(
+    fit_bayesnec = function(..., model) {
+      fitted <<- c(fitted, model)
+      stop("model fit reached")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(suppressMessages(amend(m, add = "nec3param")),
+               "is the only one that can be fitted to it", fixed = TRUE)
+  expect_identical(fitted, character(0))
+  res <- tryCatch(suppressWarnings(suppressMessages(amend(m, add = "ecxflat"))),
+                  error = conditionMessage)
+  expect_identical(fitted, "ecxflat")
+  expect_false(grepl("upper bound", paste(res, collapse = " ")))
+})

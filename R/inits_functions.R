@@ -1057,10 +1057,25 @@ make_good_inits <- function(model, x, y, family, n_trials = 1e4, seed = NULL,
     do.call(make_inits,
             c(list(model, fct_args), modifyList(dots, list(chains = n))))
   }
+  # A constant equation is held to the support of the mean rather than to the
+  # band. check_init_predictions() asks for a curve that declines and takes
+  # more than three values, which a constant never does, so every draw was
+  # rejected and the fit fell to Stan's own initialisation after n_trials
+  # rounds. And on a response with no variation, the case bnec() fits ecxflat
+  # to, the band has no width to hold a level inside. The one parameter is
+  # drawn from a prior bounded to the support, so a draw strictly inside it is
+  # a level the likelihood can evaluate. See #419.
+  constant <- model %in% constant_equations()
+  support <- init_support(family)
   passes <- function(inits) {
     vapply(inits, function(init) {
-      check_init_predictions(
-        get_init_predictions(init, x_sorted, pred_fct, fct_args), limits)
+      preds <- get_init_predictions(init, x_sorted, pred_fct, fct_args)
+      if (constant) {
+        all(is.finite(preds)) && min(preds) > support[1] &&
+          max(preds) < support[2]
+      } else {
+        check_init_predictions(preds, limits)
+      }
     }, logical(1))
   }
   # Seed only where one was supplied. set.seed(NULL) does not leave the stream

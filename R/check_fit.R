@@ -59,7 +59,9 @@
 #'
 #' \bold{Model averaging does not protect you here}
 #'
-#' Stacking weights come from a global \code{elpd}. The control is a handful of
+#' Model weights come from a global \code{elpd}, whether they are the
+#' pseudo-BMA weights \code{\link{bnec}} computes by default or stacking
+#' weights requested through \code{loo_controls}. The control is a handful of
 #' rows out of many, so a candidate model can hold high weight while fitting the
 #' control badly --- it wins on the bulk of the curve and pays almost nothing
 #' for the control. For a \code{\link{bayesmanecfit}} the per-model rows are
