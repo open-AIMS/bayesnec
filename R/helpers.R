@@ -1042,16 +1042,23 @@ resolve_model_average <- function(x, model, average, all_models = NULL,
            call. = FALSE)
     }
     chk_flag(all_models)
-    # A plain warning() rather than lifecycle::deprecate_warn(), because
-    # lifecycle is not in Imports; validate_ecx_type() sets the same
-    # precedent. Raised on every call that supplies the argument, so a script
-    # run again after an upgrade reports it each time until it is changed.
-    warning("`all_models` is deprecated and will be removed in a later ",
-            "release. Use `model` to name the equations to show and ",
-            "`average` to choose whether the model average is shown. ",
-            "`all_models = TRUE` is `model = <fit>$success_models, ",
-            "average = FALSE`, and `all_models = FALSE` is the default, ",
-            "`model = NULL, average = TRUE`.", call. = FALSE)
+    # A warning() rather than lifecycle::deprecate_warn(), because lifecycle
+    # is not in Imports; validate_ecx_type() sets the same precedent. Raised
+    # on every call that supplies the argument, so a script run again after an
+    # upgrade reports it each time until it is changed. The condition carries
+    # a class of its own so that plot.bayesnecgroupfit(), which calls this
+    # method once per level, can let the first through and muffle the rest.
+    warning(structure(
+      class = c("bayesnec_all_models_deprecated", "warning", "condition"),
+      list(message = paste0(
+        "`all_models` is deprecated and will be removed in a later ",
+        "release. Use `model` to name the equations to show and ",
+        "`average` to choose whether the model average is shown. ",
+        "`all_models = TRUE` is `model = <fit>$success_models, ",
+        "average = FALSE`, and `all_models = FALSE` is the default, ",
+        "`model = NULL, average = TRUE`."
+      ), call = NULL)
+    ))
     # The mapping reproduces what each value drew before: TRUE drew every
     # equation of the set, in the order of the set, and no model average;
     # FALSE drew the model average alone.

@@ -78,6 +78,31 @@ test_that("predict() returns a named list where model is given", {
                    c("Estimate", "Est.Error", "Q10", "Q90"))
 })
 
+test_that("predict() ignores all_models, with a warning (#120)", {
+  # predict() never took all_models; it fell into the dots and brms ignored
+  # it. It is still ignored, so the result is what the call always returned,
+  # and the warning is new.
+  skip_on_cran()
+  nd <- bnec_newdata(manec_example, resolution = 20)
+  set.seed(123)
+  plain <- predict(manec_example, newdata = nd)
+  set.seed(123)
+  old <- collect_warnings(predict(manec_example, newdata = nd,
+                                  all_models = TRUE))
+  expect_length(old$warnings, 1)
+  expect_match(old$warnings, "is ignored", fixed = TRUE)
+  expect_identical(old$value, plain)
+  # Beside model it changes nothing either.
+  set.seed(124)
+  listed <- predict(manec_example, newdata = nd, model = "nec4param")
+  set.seed(124)
+  expect_identical(
+    suppressWarnings(predict(manec_example, newdata = nd, model = "nec4param",
+                             all_models = TRUE)),
+    listed
+  )
+})
+
 test_that("predict() refuses a model outside the set and an empty selection", {
   skip_on_cran()
   expect_error(predict(manec_example, model = "nope"),

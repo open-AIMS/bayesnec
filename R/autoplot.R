@@ -96,9 +96,10 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
 #'
 #' @param model \code{NULL} (the default), or a \code{\link[base]{character}}
 #' vector naming equations of the model set. Each named equation is drawn in a
-#' panel of its own, as \code{autoplot()} draws the \code{\link{bayesnecfit}}
-#' that \code{\link{pull_out}} returns for it. A name that is not an equation
-#' of the set is refused.
+#' panel of its own, which shows the same curve and annotations as
+#' \code{autoplot()} gives for the \code{\link{bayesnecfit}} that
+#' \code{\link{pull_out}} returns for it. A name that is not an equation of
+#' the set is refused.
 #' @param average Should the model averaged predictions be plotted? Defaults
 #' to TRUE. Where \code{model} is also given, the model average takes the
 #' first panel. \code{average = FALSE} requires \code{model}.

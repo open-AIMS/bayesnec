@@ -21,9 +21,10 @@ add_na <- function(x, n = 3) {
 }
 
 # Evaluate a call, returning its value and the messages of the warnings it
-# raised, which are muffled. The `all_models` deprecation is to warn once per
-# call, so test-plot.R and test-autoplot.R assert the count as well as the
-# message; expect_warning() alone passes on one warning or several.
+# raised, which are muffled. The `all_models` warnings are to be raised once
+# per call, so test-plot.R, test-autoplot.R, test-bnec_group.R and
+# test-bayesmanec_methods.R assert the count as well as the message;
+# expect_warning() alone passes on one warning or several.
 collect_warnings <- function(expr) {
   warnings <- character()
   value <- withCallingHandlers(expr, warning = function(w) {

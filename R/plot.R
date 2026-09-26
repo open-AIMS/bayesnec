@@ -224,9 +224,10 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 #'
 #' @param model \code{NULL} (the default), or a \code{\link[base]{character}}
 #' vector naming equations of the model set. Each named equation is plotted in
-#' a panel of its own, as \code{plot()} draws the \code{\link{bayesnecfit}}
-#' that \code{\link{pull_out}} returns for it. A name that is not an equation
-#' of the set is refused.
+#' a panel of its own, which shows the same curve and annotations as
+#' \code{plot()} gives for the \code{\link{bayesnecfit}} that
+#' \code{\link{pull_out}} returns for it. A name that is not an equation of
+#' the set is refused.
 #' @param average A \code{\link[base]{logical}} value indicating if the model
 #' averaged predictions should be plotted. Defaults to \code{TRUE}. Where
 #' \code{model} is also given, the model average takes the first panel and the

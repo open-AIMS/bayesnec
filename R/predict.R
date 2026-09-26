@@ -100,6 +100,18 @@ predict.bayesmanecfit <- function(object, summary = TRUE,
     object, model, average,
     new_supplied = !missing(model) || !missing(average)
   )
+  # predict() never had all_models: it fell into the dots and brms ignored
+  # it. It is ignored still, rather than mapped as plot() and autoplot() map
+  # it, because mapping all_models = TRUE would turn the matrix such a call
+  # has always returned into a list. The warning says so, since the same
+  # argument now changes what the plotting methods draw.
+  if ("all_models" %in% ...names()) {
+    warning("`all_models` is not an argument of predict() for a model set ",
+            "and is ignored, as it always has been. Use `model` to name ",
+            "equations whose predictions to return and `average` to choose ",
+            "whether the model averaged predictions are returned.",
+            call. = FALSE)
+  }
   if (is.null(shown$model)) {
     return(predict_manec_average(object, summary = summary, robust = robust,
                                  probs = probs, ...))

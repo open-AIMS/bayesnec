@@ -193,8 +193,21 @@ plot.bayesnecgroupfit <- function(x, ...) {
   n <- length(x$levels)
   old <- par(mfrow = c(ceiling(n / 2), min(2, n)))
   on.exit(par(old), add = TRUE)
+  # The all_models deprecation belongs to the caller's one call, not to each
+  # level, so only its first warning is let through. It is muffled here rather
+  # than mapped once for the whole group because the mapping names the
+  # equations of each level's own set, and those can differ between levels.
+  deprecation_seen <- FALSE
   for (i in seq_along(x$levels)) {
-    plot(x$fits[[i]], ...)
+    withCallingHandlers(
+      plot(x$fits[[i]], ...),
+      bayesnec_all_models_deprecated = function(w) {
+        if (deprecation_seen) {
+          invokeRestart("muffleWarning")
+        }
+        deprecation_seen <<- TRUE
+      }
+    )
     title(main = paste0(x$group_var, " = ", x$levels[i]))
   }
   invisible(x)
