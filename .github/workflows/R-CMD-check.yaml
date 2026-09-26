@@ -1,82 +1,33 @@
-# Workflow derived from https://github.com/r-lib/actions/tree/master/examples
-# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
-# A push to a branch that has an open pull request fires both `push` and
-# `pull_request`, so an unfiltered trigger ran the four-job matrix twice for
-# every push. With a stacked set of pull requests that is eight runs for one
-# propagated fix, and the queue never drained. Every other workflow here already
-# filters; this one did not.
-#
-# `push` is now limited to the integration branches, and a branch with a pull
-# request is still checked through `pull_request`. Nothing loses coverage: a
-# stacked branch is checked on its own pull request, and again once GitHub
-# retargets that pull request to `dev` as the one below it merges.
-on:
-  push:
-    branches: [master, dev]
-  pull_request:
-  # The input lets a dispatch run hold one worker count without editing the tree
-  # being measured. Blank leaves TESTTHAT_CPUS unset, so an ordinary push or
-  # pull_request run uses testthat's default of two workers.
-  workflow_dispatch:
-    inputs:
-      testthat_cpus:
-        description: "testthat worker count; blank leaves testthat's default of two"
-        required: false
-        default: ''
+name: R-CMD-check
+run-name: PR 402 group worker diagnostic
 
-# Supersede rather than queue. Pushing a correction to a branch whose check is
-# still running made both run to completion, and only the second was ever read.
+on:
+  workflow_dispatch:
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-name: R-CMD-check
-
 jobs:
-  R-CMD-check:
-    runs-on: ${{ matrix.config.os }}
-
-    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
-
-    strategy:
-      fail-fast: false
-      matrix:
-        config:
-          - {os: macOS-latest,   r: 'release'}
-          - {os: windows-latest, r: 'release'}
-          - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
-          - {os: ubuntu-latest,   r: 'release'}
-          # - {os: ubuntu-latest,   r: 'oldrel-1'}
-
-    # The default job timeout is six hours. Two terminations on this repository
-    # arrived as a bare exit 143 partway through the test phase with no timing
-    # line and no cause, and neither was a timeout, so neither could be told from
-    # a job that was merely slow. A bound above the longest observed job makes a
-    # hang a deterministic event at a known boundary instead. See #328.
-    #
-    # The 42-minute maximum this was set against is superseded: #333 measured a
-    # devel job of 72.7 minutes. 90 still clears the routine distribution by
-    # about half again, so it is left alone. See `notes/ci_devel_cancellation.md`.
+  group-worker-diagnostic:
+    name: ubuntu-latest (devel, group worker diagnostic)
+    runs-on: ubuntu-latest
     timeout-minutes: 90
-
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
+      NOT_CRAN: 'true'
+      TESTTHAT_PARALLEL: 'true'
+      TESTTHAT_CPUS: '1'
 
     steps:
       - uses: actions/checkout@v3
       - uses: r-lib/actions/setup-pandoc@v2-branch
       - uses: r-lib/actions/setup-r@v2-branch
         with:
-          r-version: ${{ matrix.config.r }}
-          rtools-version: ${{ matrix.config.rtools-version }}
-          http-user-agent: ${{ matrix.config.http-user-agent }}
+          r-version: devel
+          http-user-agent: release
           use-public-rspm: true
-
-      - name: Pandoc Windows fix
-        if: runner.os == 'Windows'
-        run: choco install pandoc
-
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: |
@@ -84,107 +35,44 @@ jobs:
             BH
             stan-dev/cmdstanr
             RcppEigen
-
-      # Pins StanHeaders on Windows. CRAN rstan 2.32.7 declares
-      # `StanHeaders (>= 2.32.0)` with no upper bound, so pak correctly resolves
-      # to StanHeaders 2.39.1 (published 2026-09-02); rstan 2.32.7 then cannot
-      # compile a model on Windows, and every brm() call fails with
-      # "invalid connection". See #275. macOS and Ubuntu pass with that same
-      # pair, so the pin is applied only where the failure occurs and the other
-      # three jobs keep checking against current CRAN.
-      #
-      # The dated snapshot serves StanHeaders 2.32.10 -- the last 2.32 release,
-      # and the version installed by the most recent green Windows run
-      # (dev bc5f7d00, 2026-09-02 04:55 UTC, before 2.39.1 was published at
-      # 12:10 UTC that day). Remove this step once CRAN rstan is released
-      # against StanHeaders 2.39 or later.
-      #
-      # The version is asserted rather than assumed: install.packages() only
-      # warns when a repository is unreachable, so without the check an
-      # unreachable snapshot would leave 2.39.1 in place and reproduce #275
-      # after a 30-minute test run instead of failing here with a named cause.
-      - name: Pin StanHeaders to a version rstan can compile against
-        if: runner.os == 'Windows'
-        run: |
-          install.packages("StanHeaders", repos = "https://packagemanager.posit.co/cran/2026-09-02")
-          sh <- packageVersion("StanHeaders")
-          rs <- packageVersion("rstan")
-          if (!grepl("^2[.]32[.]", sh)) {
-            stop("StanHeaders ", sh, " is installed but 2.32.x is required to ",
-                 "match rstan ", rs, "; see #275")
-          }
-          cat("StanHeaders", format(sh), "with rstan", format(rs), "\n")
+      - name: Check the existing Stan toolchain
+        run: cmdstanr::check_cmdstan_toolchain(fix = TRUE)
         shell: Rscript {0}
-
-      # Configures the Rtools toolchain on Windows. It no longer installs
-      # StanHeaders or rstan from https://mc-stan.org/r-packages/. Those two
-      # `install.packages()` calls were added in 7c52e186 (2022-11-01) to obtain
-      # a preview rstan for R 4.2; CRAN rstan supports current R, and neither
-      # `rstantools` nor `cmdstanr` is a dependency of this package, so the
-      # preview build is no longer needed. They also passed the mc-stan index
-      # and `getOption("repos")` together, which is a fallback list rather than
-      # a preference, so an unreachable index installed from CRAN without
-      # erroring -- a second, intermittent source of the same version skew.
-      - name: Use Cmdstan to Fix
-        run: |
-          cmdstanr::check_cmdstan_toolchain(fix = TRUE)
-        shell: Rscript {0}
-
-      # Nothing here sets a worker count on an ordinary run: testthat takes its
-      # own default of two and this matrix is configured exactly as dev is.
-      #
-      # The step exists as an instrument, not a policy. While the count was
-      # computed in this file it could not be varied for measurement, because
-      # varying it meant editing the file and editing the file changed the tree
-      # being measured. Holding one setting through workflow_dispatch is what made
-      # a paired comparison possible, and #328 records what that comparison found
-      # and why the question is closed rather than deferred. It does nothing
-      # unless an input is supplied.
-      - name: Override the testthat worker count, if one was requested
-        if: github.event.inputs.testthat_cpus != ''
-        env:
-          WORKER_OVERRIDE: ${{ github.event.inputs.testthat_cpus }}
-        run: |
-          requested_workers <- Sys.getenv("WORKER_OVERRIDE")
-          workers <- suppressWarnings(as.numeric(requested_workers))
-          if (is.na(workers) || !is.finite(workers) || workers < 1 ||
-              workers != floor(workers) || workers > .Machine$integer.max) {
-            stop("testthat_cpus must be a positive integer, not '",
-                 requested_workers, "'")
-          }
-          workers <- as.integer(workers)
-          cat("overriding the testthat worker count to", workers, "\n")
-          cat(sprintf("TESTTHAT_CPUS=%d\n", workers),
-              file = Sys.getenv("GITHUB_ENV"), append = TRUE)
-        shell: Rscript {0}
-
-      # Vignettes ARE built and checked. They are precompiled -- precompile.R
-      # renders every .Rmd.orig to a .Rmd whose chunks are display-only -- so
-      # building them is markdown to HTML and costs ~16s, not a refit. Skipping
-      # them meant nothing in CI had ever checked a vignette, and the first
-      # check of them was the release precompile. See #190.
-      - uses: r-lib/actions/check-r-package@v2
-        with:
-          build_args: 'c("--no-manual")'
-          args: 'c("--no-manual", "--as-cran")'
-          upload-snapshots: true
-
-      # The action's own "Show testthat output" step reported outcome=skipped on
-      # both terminations, so neither left any record of which file the suite had
-      # reached. This one runs whatever happened, including on a cancellation or a
-      # timeout, which is the case that needs it.
-      - name: Show the test log, whatever happened
-        if: always()
+      - name: Install the PR package
+        run: R CMD INSTALL --no-docs .
+        shell: bash
+      - name: Trace worker results and run the group tests
         shell: bash
         run: |
-          shopt -s nullglob
-          found=0
-          for f in check/*.Rcheck/tests/testthat.Rout check/*.Rcheck/tests/testthat.Rout.fail; do
-            echo "::group::$f"
-            tail -n 200 "$f" || true
-            echo "::endgroup::"
-            found=1
-          done
-          if [ "$found" = "0" ]; then
-            echo "no testthat.Rout found under check/*.Rcheck/tests/"
-          fi
+          cat >> tests/testthat/setup.R <<'RS'
+          testthat:::SubprocessReporter$set(
+            "public", "add_result",
+            function(context, test, result) {
+              cat("REPORTER_RESULT", private$filename, test,
+                  class(result)[1], as.numeric(utils::object.size(result)),
+                  "\n", file = stderr())
+              if (inherits(result, "expectation_success")) {
+                result[["srcref"]] <- NULL
+                result[["trace"]] <- NULL
+              }
+              private$event("add_result", context, test, result)
+            },
+            overwrite = TRUE
+          )
+          RS
+          Rscript - <<'RS' 2>&1 | tee "$RUNNER_TEMP/pr402-group-worker.log"
+          set.seed(402)
+          cat(R.version.string, "\n")
+          cat("TESTTHAT_PARALLEL=", Sys.getenv("TESTTHAT_PARALLEL"), "\n", sep = "")
+          cat("TESTTHAT_CPUS=", Sys.getenv("TESTTHAT_CPUS"), "\n", sep = "")
+          testthat::test_dir("tests/testthat", filter = "^(bnec_group|data)$",
+                            package = "bayesnec", load_package = "installed",
+                            reporter = "check", stop_on_failure = TRUE)
+          RS
+      - name: Upload diagnostic log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr402-group-worker-log
+          path: ${{ runner.temp }}/pr402-group-worker.log
+          retention-days: 7
