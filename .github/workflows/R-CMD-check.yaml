@@ -1,5 +1,5 @@
 name: R-CMD-check
-run-name: PR 402 group worker diagnostic
+run-name: PR 402 joint worker diagnostic
 
 on:
   workflow_dispatch:
@@ -9,8 +9,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  group-worker-diagnostic:
-    name: ubuntu-latest (devel, group worker diagnostic)
+  joint-worker-diagnostic:
+    name: ubuntu-latest (devel, joint worker diagnostic)
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -41,7 +41,7 @@ jobs:
       - name: Install the PR package
         run: R CMD INSTALL --no-docs .
         shell: bash
-      - name: Trace worker results and run the group tests
+      - name: Trace worker results and run the joint tests
         shell: bash
         run: |
           cat >> tests/testthat/setup.R <<'RS'
@@ -60,12 +60,12 @@ jobs:
             overwrite = TRUE
           )
           RS
-          Rscript - <<'RS' 2>&1 | tee "$RUNNER_TEMP/pr402-group-worker.log"
+          Rscript - <<'RS' 2>&1 | tee "$RUNNER_TEMP/pr402-joint-worker.log"
           set.seed(402)
           cat(R.version.string, "\n")
           cat("TESTTHAT_PARALLEL=", Sys.getenv("TESTTHAT_PARALLEL"), "\n", sep = "")
           cat("TESTTHAT_CPUS=", Sys.getenv("TESTTHAT_CPUS"), "\n", sep = "")
-          testthat::test_dir("tests/testthat", filter = "^(bnec_group|data)$",
+          testthat::test_dir("tests/testthat", filter = "^(bnec_joint|data)$",
                             package = "bayesnec", load_package = "installed",
                             reporter = "check", stop_on_failure = TRUE)
           RS
@@ -73,6 +73,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pr402-group-worker-log
-          path: ${{ runner.temp }}/pr402-group-worker.log
+          name: pr402-joint-worker-log
+          path: ${{ runner.temp }}/pr402-joint-worker.log
           retention-days: 7
