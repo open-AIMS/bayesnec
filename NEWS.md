@@ -325,6 +325,27 @@
   would reach the posterior. Compute the column before the call and name it in
   `rate()` (#389).
 
+## The centring constant of a variance function
+
+- The centring constant of a `disp()` variance function of the fitted mean is
+  now computed on the scale of that mean. Under the identity link `bnec()`
+  assigns, the mean of a `negbinomial` fit with a `rate()` term is the rate,
+  and the mean of a `beta_binomial` fit is the proportion of its trials, but
+  the constant was computed from the recorded counts. Under `disp("power")` and
+  `disp("loglinear")` it was displaced by the exposure or by the number of
+  trials, so `c0` was no longer the dispersion at the middle of the observed
+  means. Under `disp("twosided")` the second constant was 0, because one minus
+  a count is never positive, so the `c2` term was not centred at all. The
+  constant is written into the Stan program as a literal, so fitted results
+  change for `negbinomial` fits whose formula has both a `rate()` term and a
+  `disp()` term, wherever the denominator is not 1, and for `beta_binomial`
+  fits with a `disp()` term. A `disp(~...)` sub-model on the predictor has no
+  centring constant and is unaffected. On the simulated `nec3param` series of
+  40 counts with exposures of 1, 2, 4 and 8 that the `rate()` tests use, the
+  `disp("power")` constant changes from 3.02013, the median log count, to
+  2.19722, the median log rate, and the `disp("loglinear")` constant changes
+  from 20.5 to 9 (#397).
+
 ## Count hurdles
 
 - `hurdle_poisson` and `hurdle_negbinomial` are available as joint two-block

@@ -157,3 +157,61 @@ test_that("a rate denominator written as an expression is refused (#389)", {
     model.frame(bnf(y | rate(exh) ~ crf(x, "nec3param")), data = d)
   )
 })
+
+# ---- #397, the disp() centring constant on the scale of the mean -------------
+
+# The constants are spliced into the variance function as "- <literal>)", which
+# no curve expression contains, so this reads them back in order of appearance.
+centring_literals <- function(rhs) {
+  m <- regmatches(rhs, gregexpr("- -?[0-9.]+\\)", rhs))[[1]]
+  as.numeric(gsub("^- |\\)$", "", m))
+}
+
+rate_shape_rhs <- function(formula, d) {
+  bf <- make_brmsformula(formula, d, family = "negbinomial")[[1]]
+  deparse1(bf$pforms$shape[[3]])
+}
+
+test_that("a rate fit centres its variance function on the rate (#397)", {
+  # Under the identity link the negbinomial mean is the rate, so a centre
+  # computed from the counts was displaced by the median log exposure: 3.02013
+  # against 2.19722 under power, and 20.5 against 9 under loglinear, on this
+  # series.
+  d <- rate_data()
+  rate <- d$y / d$ex
+  # The exposures differ, so the two scales give different references and the
+  # assertions below can tell them apart.
+  expect_false(median(log(rate[rate > 0])) == median(log(d$y[d$y > 0])))
+  expect_false(median(rate) == median(d$y))
+  pw <- rate_shape_rhs(y | rate(ex) ~ crf(x, "nec3param") + disp("power"), d)
+  expect_equal(centring_literals(pw),
+               signif(median(log(rate[rate > 0])), 6))
+  # loglinear centres on the median itself rather than the geometric median,
+  # so the division is asserted on both forms of the reference
+  ll <- rate_shape_rhs(y | rate(ex) ~ crf(x, "nec3param") + disp("loglinear"),
+                       d)
+  expect_equal(centring_literals(ll), signif(median(rate), 6))
+})
+
+test_that("the rate-scale literal reaches the Stan program (#397)", {
+  # bnec() and make_brmsformula() share the formula builder, so the literal
+  # asserted above is the one a fit compiles.
+  d <- rate_data()
+  bf <- make_brmsformula(y | rate(ex) ~ crf(x, "nec3param") + disp("power"), d,
+                         family = validate_family("negbinomial"))[[1]]
+  sc <- brms::make_stancode(bf, data = d,
+                            family = brms::negbinomial(link = "identity"))
+  ref <- format(signif(median(log((d$y / d$ex)[d$y > 0])), 6),
+                scientific = FALSE)
+  expect_match(sc, paste0("- ", ref, ")"), fixed = TRUE)
+})
+
+test_that("without a rate term the centre is still taken from the counts", {
+  # The same counts fitted as counts: the mean is a count, so the literal is
+  # the one the formula builder produced before #397.
+  d <- rate_data()
+  pw <- rate_shape_rhs(y ~ crf(x, "nec3param") + disp("power"), d)
+  expect_equal(centring_literals(pw), signif(median(log(d$y[d$y > 0])), 6))
+  ll <- rate_shape_rhs(y ~ crf(x, "nec3param") + disp("loglinear"), d)
+  expect_equal(centring_literals(ll), signif(median(d$y), 6))
+})

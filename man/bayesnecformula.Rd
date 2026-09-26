@@ -135,7 +135,9 @@ is descriptive: it says noise is larger at one end of the dose axis.
 mean} — a variance function in the GLM sense, and a statement about the
 measurement process rather than about the dose axis. The functions available,
 on the log link every eligible family gives its dispersion parameter, with
-\code{m} a fixed reference value computed from the response before fitting:
+\code{m} a fixed reference value computed from the response before fitting,
+on the scale of \code{mu} (a count divided by its number of trials or by its
+\code{rate()} denominator):
 }
 
 \tabular{lll}{

@@ -503,3 +503,47 @@ test_that("a disp sub-model reaches Stan with a locally defined function", {
   }
   expect_match(build(), "phi", fixed = TRUE)
 })
+
+
+# ---- #397, the centring constant on the scale of the mean --------------------
+
+# The constants are spliced into the variance function as "- <literal>)", which
+# no curve expression contains, so this reads them back in order of appearance.
+centring_literals <- function(rhs) {
+  m <- regmatches(rhs, gregexpr("- -?[0-9.]+\\)", rhs))[[1]]
+  as.numeric(gsub("^- |\\)$", "", m))
+}
+
+# disp_dat's curve recorded as counts out of varying trials. One row at each
+# bound, so that the filters disp_centre() applies before taking a log are
+# exercised on the proportion rather than on the count.
+bb_dat <- disp_dat
+bb_dat$n <- rep(c(20, 30, 40), 10)
+bb_dat$count <- as.integer(round(bb_dat$y * bb_dat$n))
+bb_dat$count[1] <- bb_dat$n[1]
+bb_dat$count[30] <- 0L
+
+bb_phi_rhs <- function(vf) {
+  f <- bnf(paste0('count | trials(n) ~ crf(x, "ecx4param") + disp("', vf,
+                  '")'))
+  bf <- make_brmsformula(f, bb_dat, family = validate_family("beta_binomial"))
+  deparse1(bf[[1]]$pforms$phi[[3]])
+}
+
+test_that("a trials fit centres its variance function on the proportion", {
+  # Under the identity link the beta_binomial mean is the proportion of trials.
+  # Centred on the counts, power's reference was the log of a count.
+  p <- bb_dat$count / bb_dat$n
+  expect_equal(centring_literals(bb_phi_rhs("power")),
+               signif(median(log(p[p > 0])), 6))
+})
+
+test_that("twosided centres both terms on the proportion (#397)", {
+  # log(1 - count) is undefined for every count above zero, so centred on the
+  # counts the second reference fell back to 0 and c2 was left uncentred.
+  p <- bb_dat$count / bb_dat$n
+  refs <- centring_literals(bb_phi_rhs("twosided"))
+  expect_equal(refs, c(signif(median(log(p[p > 0])), 6),
+                       signif(median(log(1 - p[p < 1])), 6)))
+  expect_false(refs[2] == 0)
+})
