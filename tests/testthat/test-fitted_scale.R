@@ -61,6 +61,8 @@ test_that("the inverse is named in closed form only where one is known", {
   expect_null(inv("sqrt(1 - x)"))
   expect_null(inv("squared(x)"))
   expect_null(inv("-x"))
+  # I() changes only the class, so what it wraps decides.
+  expect_identical(inv("I(log(x))"), "exp")
 })
 
 test_that("the transformation is read from the crf() term", {
@@ -79,6 +81,16 @@ test_that("the transformation is read from the crf() term", {
   neg <- logged_x_fit(nec4param, "nec4param", "-x")
   expect_identical(bayesnec:::inline_x_transform(neg)$label, "-x")
   expect_equal(bayesnec:::sub_x_transformation(2, neg$bayesnecformula), -2)
+  # I(x) is the predictor itself, so there is nothing to report. I() around a
+  # transformation still reports it.
+  as_is <- logged_x_fit(nec4param, "nec4param", "I(x)")
+  expect_null(bayesnec:::inline_x_transform(as_is))
+  expect_equal(bayesnec:::sub_x_transformation(2, as_is$bayesnecformula), 2,
+               ignore_attr = TRUE)
+  expect_length(scale_messages(nec(as_is)), 0)
+  wrapped <- logged_x_fit(nec4param, "nec4param", "I(log(x))")
+  expect_match(scale_messages(nec(wrapped)), "Pass xform = exp to nec()",
+               fixed = TRUE)
 })
 
 test_that("nec() reports once for a bare call and leaves the value alone", {
@@ -197,6 +209,11 @@ test_that("a group and a hurdle pair report once for the call", {
   expect_length(msgs, 1)
   expect_match(msgs, "The fitted group", fixed = TRUE)
   expect_length(scale_messages(nec(g, xform = exp)), 0)
+  # xform found by position and by partial name, as the per-level nec() call
+  # finds it, so the group is not told about a scale already inverted.
+  expect_length(scale_messages(nec(g, FALSE, exp)), 0)
+  expect_length(scale_messages(nec(g, xfo = exp)), 0)
+  expect_length(scale_messages(nec(g, FALSE)), 1)
   # The option is restored when the call stops after reporting.
   expect_error(suppressMessages(nec(g, posterior = TRUE)), "one row per level")
   expect_null(getOption("bayesnec.xform_reported"))
@@ -210,6 +227,29 @@ test_that("a group and a hurdle pair report once for the call", {
   expect_length(scale_messages(nsec(g, resolution = 20)), 1)
   expect_length(scale_messages(ecx(h, resolution = 20)), 1)
   expect_length(scale_messages(nsec(h, resolution = 20)), 1)
+  expect_length(scale_messages(nsec(g, 0.01, 20, NA, exp)), 0)
+  expect_length(scale_messages(ecx(g, 10, 20, FALSE, "absolute", NA, exp)), 0)
+})
+
+test_that("ecnsec() on a hurdle pair asks for nsec on the recorded scale", {
+  # This method reads nsec on the recorded grid as supplied and applies xform
+  # to the percentage it returns, so an nsec() value left on the transformed
+  # scale is read as a concentration. The message names the xform to give
+  # nsec() rather than one to give ecnsec(), and it is raised whatever xform
+  # was given, because none changes the scale nsec is read on.
+  skip_on_cran()
+  tf <- logged_x_fit(nec4param, "nec4param")
+  h <- fake_scale_hurdle(tf, tf)
+  msgs <- scale_messages(ecnsec(h, nsec = 1, resolution = 20))
+  expect_length(msgs, 1)
+  expect_match(msgs, "reads nsec on the scale of x as supplied", fixed = TRUE)
+  expect_match(msgs, "as nsec() returns it given xform = exp", fixed = TRUE)
+  expect_false(grepl("to ecnsec()", msgs, fixed = TRUE))
+  expect_length(scale_messages(ecnsec(h, nsec = 1, resolution = 20,
+                                      xform = exp)), 1)
+  expect_length(scale_messages(ecnsec(fake_scale_hurdle(nec4param, nec4param),
+                                      nsec = 1, resolution = 20)), 0)
+  expect_null(getOption("bayesnec.xform_reported"))
 })
 
 test_that("summary() reports once where it calls ecx(), and never otherwise", {

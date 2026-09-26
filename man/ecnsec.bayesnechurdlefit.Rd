@@ -62,4 +62,11 @@ the same \code{type}. \code{"relative"} is refused, as it is by
 \code{\link{ecx}} for this class: a two-block fit has no single \code{bot}
 parameter to measure towards. \code{"direct"} is refused because it names a
 response value rather than a percentage.
+
+\code{nsec} is read on the recorded predictor scale as supplied, and
+\code{xform} is applied to the percentage returned rather than to
+\code{nsec}. Where \code{crf()} transforms the predictor inline,
+\code{\link{nsec}} returns its estimate on the transformed scale unless given
+an \code{xform}, so a message says so once per call and names the
+\code{xform} to give \code{\link{nsec}}.
 }

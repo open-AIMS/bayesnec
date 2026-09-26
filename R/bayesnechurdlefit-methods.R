@@ -378,9 +378,12 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
   if (ecx) {
     # The nine ecx() calls below would each report the scale of what they
     # return, so it is reported once for the table. The no-effect rows are read
-    # under suppressMessages() below and report nothing either way. See
-    # report_fitted_scale().
-    quiet <- report_fitted_scale(object, dots_xform(list(...)), "ecx")
+    # under suppressMessages() below and report nothing either way. The dots
+    # are matched as ecx() will match them, with ecx_val named as ecx_row()
+    # names it. See report_fitted_scale().
+    quiet <- report_fitted_scale(
+      object, dots_xform(ecx, c(list(ecx_val = ecx_vals[1]), list(...))), "ecx"
+    )
     on.exit(options(quiet), add = TRUE)
     # On the grid the two component fits were predicted over, not the range of
     # the data. ecx() rebuilds its own grid when x_range is absent, so the ECx
@@ -1044,6 +1047,13 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
 #' parameter to measure towards. \code{"direct"} is refused because it names a
 #' response value rather than a percentage.
 #'
+#' \code{nsec} is read on the recorded predictor scale as supplied, and
+#' \code{xform} is applied to the percentage returned rather than to
+#' \code{nsec}. Where \code{crf()} transforms the predictor inline,
+#' \code{\link{nsec}} returns its estimate on the transformed scale unless given
+#' an \code{xform}, so a message says so once per call and names the
+#' \code{xform} to give \code{\link{nsec}}.
+#'
 #' @return A vector of estimates.
 #'
 #' @method ecnsec bayesnechurdlefit
@@ -1070,10 +1080,14 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
          "asymptote is not a single fitted parameter. Use ",
          "type = \"absolute\" or type = \"range\".", call. = FALSE)
   }
-  # No scale message here, unlike ecnsec.bnecfit(). This method reads nsec on
-  # the recorded scale and applies xform to the percentage it returns rather
-  # than to nsec, so the advice that message gives, to pass the inverse as
-  # xform, would be wrong for this class.
+  # A message of its own rather than ecnsec.bnecfit()'s. This method reads nsec
+  # on the recorded grid as supplied and applies xform to the percentage it
+  # returns, so the advice to pass the inverse as xform would be wrong here;
+  # the nsec itself has to arrive on the recorded scale. identity is passed in
+  # place of the caller's xform, because no xform changes the scale nsec is
+  # read on, so the message is raised whatever xform was given.
+  quiet <- report_fitted_scale(object, identity, "ecnsec_hurdle")
+  on.exit(options(quiet), add = TRUE)
   preds <- hurdle_component_preds(object, resolution = resolution,
                                   x_range = x_range)
   p_samples <- preds[[which]]

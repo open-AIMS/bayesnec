@@ -71,15 +71,30 @@ without_scale_report <- function(expr) {
 #' The xform a method received through its dots
 #'
 #' For the methods that take \code{xform} in \code{...} rather than as a
-#' formal. Read with \code{[[} so that a name that merely begins with
-#' \code{xform} is not taken for it, as \code{$} would.
+#' formal and pass the dots on to a per-fit method. The dots are matched
+#' against the generic that per-fit method is reached through, so that
+#' \code{xform} is found by position and by partial name exactly as that
+#' method will find it: \code{nec(g, FALSE, exp)} on a group supplies
+#' \code{xform} as surely as \code{nec(fit, FALSE, exp)} does on one fit.
+#' Reading \code{dots[["xform"]]} alone took only the full name, and reported
+#' a scale the per-level calls had already inverted.
 #'
+#' @param generic The generic the dots are passed to, such as \code{nec}.
 #' @param dots The \code{...} of the calling method, as a list.
 #'
 #' @return A function, or whatever was supplied.
 #' @noRd
-dots_xform <- function(dots) {
-  if (is.null(dots[["xform"]])) identity else dots[["xform"]]
+dots_xform <- function(generic, dots) {
+  # The object slot is filled with a placeholder so that the dots are matched
+  # from the generic's second formal on. An error here (an argument matched
+  # twice, say) is left to the per-fit call, which raises it with the caller's
+  # own call in the message.
+  matched <- tryCatch(
+    match.call(generic, as.call(c(list(quote(f), quote(object)), dots))),
+    error = function(e) NULL
+  )
+  xform <- if (is.null(matched)) NULL else matched[["xform"]]
+  if (is.null(xform)) identity else xform
 }
 
 #' The first fit in a list whose predictor is transformed inline
@@ -131,6 +146,12 @@ inline_x_transform <- function(object) {
   # inherits() rather than is.call(), as in sub_x_transformation(), which
   # returns a parenthesised predictor such as crf((x)) unchanged.
   if (!inherits(x_call, "call")) {
+    return(NULL)
+  }
+  # I(x) is the predictor itself: sub_x_transformation() evaluates it to the
+  # same numbers with an AsIs class, so no estimate is transformed.
+  if (identical(x_call[[1]], as.name("I")) && length(x_call) == 2 &&
+      is.name(x_call[[2]])) {
     return(NULL)
   }
   # More than one variable is refused by simplify_formula() before fitting and
@@ -192,6 +213,10 @@ x_inverse_text <- function(x_call) {
   if (!is.call(x_call) || length(x_call) != 2 || !is.name(x_call[[1]])) {
     return(NULL)
   }
+  # I() changes nothing but the class, so I(log(x)) inverts as log(x) does.
+  if (identical(x_call[[1]], as.name("I"))) {
+    return(x_inverse_text(x_call[[2]]))
+  }
   fun <- as.character(x_call[[1]])
   body <- switch(fun, log = "exp(x)", log10 = "10^x", log2 = "2^x",
                  log1p = "expm1(x)", sqrt = "x^2", exp = "log(x)", NULL)
@@ -249,7 +274,11 @@ x_literal_shift <- function(arg) {
 #' @param kind The name of the function whose result is described.
 #' \code{"nec"}, \code{"ecx"} and \code{"nsec"} return an estimate on the
 #' predictor axis. \code{"ecnsec"} returns a percentage, and it is the
-#' \code{nsec} it is given that has a scale. \code{"curve_params"} reports
+#' \code{nsec} it is given that has a scale. \code{"ecnsec_hurdle"} is the
+#' same for a \code{\link{bayesnechurdlefit}}, whose method applies
+#' \code{xform} to the percentage rather than to \code{nsec}, so the
+#' \code{nsec} has to be supplied on the recorded scale; the advice names the
+#' \code{xform} to give \code{\link{nsec}} instead. \code{"curve_params"} reports
 #' two parameters on the predictor axis among others that are not.
 #' \code{"average_estimates"} averages on whichever scale it is given, and
 #' \code{"compare_estimates"} takes no \code{xform} at all.
@@ -258,6 +287,12 @@ x_literal_shift <- function(arg) {
 #' @noRd
 fitted_scale_text <- function(what, tr, kind) {
   inv <- x_inverse_text(tr$call)
+  # The inverse as an argument to nsec(), for the hurdle ecnsec() message.
+  nsec_with <- if (is.null(inv)) {
+    paste0("given the inverse of ", tr$label, " as xform")
+  } else {
+    paste0("given xform = ", inv)
+  }
   pass <- function(fun, purpose, lead = "Pass") {
     if (is.null(inv)) {
       paste0(lead, " the inverse of ", tr$label, " as xform to ", fun, " ",
@@ -283,6 +318,13 @@ fitted_scale_text <- function(what, tr, kind) {
       "to it, and nsec() returns its estimate on the transformed scale unless ",
       "given an xform. Where nsec is on the transformed scale, ",
       pass("ecnsec()", paste("to read it", recorded), lead = "pass")
+    ),
+    ecnsec_hurdle = paste0(
+      opening, ". ecnsec() on a hurdle pair reads nsec ", recorded,
+      " as supplied: its xform is applied to the percentage it returns, not ",
+      "to nsec. nsec() returns its estimate on the transformed scale unless ",
+      "given an xform, so supply nsec ", recorded, ", as nsec() returns it ",
+      nsec_with, "."
     ),
     average_estimates = paste0(
       opening, ", so average_estimates() averages the estimates on that ",
