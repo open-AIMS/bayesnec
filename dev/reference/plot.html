@@ -132,7 +132,9 @@ bayesmanecfit."><meta property="og:image" content="https://open-aims.github.io/b
 <span>  ylab <span class="op">=</span> <span class="st">"Response"</span>,</span>
 <span>  xlab <span class="op">=</span> <span class="st">"Predictor"</span>,</span>
 <span>  xticks <span class="op">=</span> <span class="cn">NA</span>,</span>
-<span>  all_models <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  model <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  average <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  all_models <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -210,10 +212,29 @@ label.</p></dd>
 the x-axis.</p></dd>
 
 
+<dt id="arg-model">model<a class="anchor" aria-label="anchor" href="#arg-model"></a></dt>
+<dd><p><code>NULL</code> (the default), or a <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></code>
+vector naming equations of the model set. Each named equation is plotted in
+a panel of its own, which shows the same curve and annotations as
+<code>plot()</code> gives for the <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> that
+<code><a href="pull_out.html">pull_out</a></code> returns for it. A name that is not an equation of
+the set is refused.</p></dd>
+
+
+<dt id="arg-average">average<a class="anchor" aria-label="anchor" href="#arg-average"></a></dt>
+<dd><p>A <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></code> value indicating if the model
+averaged predictions should be plotted. Defaults to <code>TRUE</code>. Where
+<code>model</code> is also given, the model average takes the first panel and the
+named equations follow in the order given. <code>average = FALSE</code> requires
+<code>model</code>.</p></dd>
+
+
 <dt id="arg-all-models">all_models<a class="anchor" aria-label="anchor" href="#arg-all-models"></a></dt>
-<dd><p>A <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></code> value indicating if all
-models in the model set should be plotted simultaneously, or if a model
-average plot should be returned.</p></dd>
+<dd><p>Deprecated, and to be removed in a later release; use
+<code>model</code> and <code>average</code>. <code>all_models = TRUE</code> is
+<code>model = x$success_models, average = FALSE</code>, and
+<code>all_models = FALSE</code> is the default. Supplying it gives a warning, and
+supplying it together with <code>model</code> or <code>average</code> is an error.</p></dd>
 
 </dl></div>
     <div id="value">
@@ -237,9 +258,13 @@ average plot should be returned.</p></dd>
 <span class="r-in"><span><span class="co"># plot model averaged predictions (bayesmanecfit)</span></span></span>
 <span class="r-in"><span><span class="fu">plot</span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span></span>
 <span class="r-plt img"><img src="plot-3.png" alt="" width="700" height="433"></span>
-<span class="r-in"><span><span class="co"># plot all panels together</span></span></span>
-<span class="r-in"><span><span class="fu">plot</span><span class="op">(</span><span class="va">manec_example</span>, add_ec10 <span class="op">=</span> <span class="cn">TRUE</span>, all_models <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># plot the model average and one equation of the set, a panel each</span></span></span>
+<span class="r-in"><span><span class="fu">plot</span><span class="op">(</span><span class="va">manec_example</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span></span></span>
 <span class="r-plt img"><img src="plot-4.png" alt="" width="700" height="433"></span>
+<span class="r-in"><span><span class="co"># plot every equation of the set without the model average</span></span></span>
+<span class="r-in"><span><span class="fu">plot</span><span class="op">(</span><span class="va">manec_example</span>, add_ec10 <span class="op">=</span> <span class="cn">TRUE</span>, model <span class="op">=</span> <span class="va">manec_example</span><span class="op">$</span><span class="va">success_models</span>,</span></span>
+<span class="r-in"><span>     average <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-plt img"><img src="plot-5.png" alt="" width="700" height="433"></span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>

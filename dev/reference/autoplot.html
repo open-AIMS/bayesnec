@@ -116,13 +116,15 @@ plotting method.</p>
 <span>  nec <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  ecx <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  xform <span class="op">=</span> <span class="va">identity</span>,</span>
-<span>  all_models <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  model <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  average <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  plot <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  ask <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  newpage <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  multi_facet <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  group <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  group_aes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"line"</span>, <span class="st">"colour"</span><span class="op">)</span></span>
+<span>  group_aes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"line"</span>, <span class="st">"colour"</span><span class="op">)</span>,</span>
+<span>  all_models <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'bayesnecgroupfit'</span></span>
@@ -184,14 +186,24 @@ The argument is ignored when <code>group</code> is <code>NULL</code>. Only
 in the fitted formula.</p></dd>
 
 
-<dt id="arg-all-models">all_models<a class="anchor" aria-label="anchor" href="#arg-all-models"></a></dt>
-<dd><p>Should all individual models be plotted separately\
-(defaults to FALSE) or should model averaged predictions be plotted instead?</p></dd>
+<dt id="arg-model">model<a class="anchor" aria-label="anchor" href="#arg-model"></a></dt>
+<dd><p><code>NULL</code> (the default), or a <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></code>
+vector naming equations of the model set. Each named equation is drawn in a
+panel of its own, which shows the same curve and annotations as
+<code>autoplot()</code> gives for the <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> that
+<code><a href="pull_out.html">pull_out</a></code> returns for it. A name that is not an equation of
+the set is refused.</p></dd>
+
+
+<dt id="arg-average">average<a class="anchor" aria-label="anchor" href="#arg-average"></a></dt>
+<dd><p>Should the model averaged predictions be plotted? Defaults
+to TRUE. Where <code>model</code> is also given, the model average takes the
+first panel. <code>average = FALSE</code> requires <code>model</code>.</p></dd>
 
 
 <dt id="arg-plot">plot<a class="anchor" aria-label="anchor" href="#arg-plot"></a></dt>
 <dd><p>Should output <code><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></code> output be plotted?
-Only relevant if <code>all = TRUE</code> and <code>multi_facet = FALSE</code>.</p></dd>
+Only relevant if <code>model</code> is given and <code>multi_facet = FALSE</code>.</p></dd>
 
 
 <dt id="arg-ask">ask<a class="anchor" aria-label="anchor" href="#arg-ask"></a></dt>
@@ -207,7 +219,20 @@ new page. Only relevant if <code>plot = TRUE</code> and
 
 <dt id="arg-multi-facet">multi_facet<a class="anchor" aria-label="anchor" href="#arg-multi-facet"></a></dt>
 <dd><p>Should all plots be plotted in one single panel via
-facets? Defaults to TRUE.</p></dd>
+facets? Defaults to TRUE, in which case the facets of the named equations
+are ordered by name. Only relevant if <code>model</code> is given. With
+<code>multi_facet = FALSE</code>, one <code><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></code> is drawn for
+each panel and the list of them is returned invisibly, the model average
+first where it is requested and then the equations in the order given in
+<code>model</code>.</p></dd>
+
+
+<dt id="arg-all-models">all_models<a class="anchor" aria-label="anchor" href="#arg-all-models"></a></dt>
+<dd><p>Deprecated, and to be removed in a later release; use
+<code>model</code> and <code>average</code>. <code>all_models = TRUE</code> is
+<code>model = object$success_models, average = FALSE</code>, and
+<code>all_models = FALSE</code> is the default. Supplying it gives a warning, and
+supplying it together with <code>model</code> or <code>average</code> is an error.</p></dd>
 
 </dl></div>
     <div id="value">
@@ -226,12 +251,17 @@ facets? Defaults to TRUE.</p></dd>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># plot model averaged predictions</span></span></span>
 <span class="r-in"><span><span class="fu">autoplot</span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="co"># plot all panels together</span></span></span>
-<span class="r-in"><span><span class="fu">autoplot</span><span class="op">(</span><span class="va">manec_example</span>, ecx <span class="op">=</span> <span class="cn">TRUE</span>, ecx_val <span class="op">=</span> <span class="fl">50</span>, all_models <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># plot the model average and each equation of the set, a facet each</span></span></span>
+<span class="r-in"><span><span class="fu">autoplot</span><span class="op">(</span><span class="va">manec_example</span>, ecx <span class="op">=</span> <span class="cn">TRUE</span>, ecx_val <span class="op">=</span> <span class="fl">50</span>,</span></span>
+<span class="r-in"><span>         model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nec4param"</span>, <span class="st">"ecx4param"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># plot the equations alone, without the model average</span></span></span>
+<span class="r-in"><span><span class="fu">autoplot</span><span class="op">(</span><span class="va">manec_example</span>, model <span class="op">=</span> <span class="va">manec_example</span><span class="op">$</span><span class="va">success_models</span>,</span></span>
+<span class="r-in"><span>         average <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
 <span class="r-in"><span><span class="co"># plots multiple models, one at a time, with interactive prompt</span></span></span>
-<span class="r-in"><span><span class="fu">autoplot</span><span class="op">(</span><span class="va">manec_example</span>, ecx <span class="op">=</span> <span class="cn">TRUE</span>, ecx_val <span class="op">=</span> <span class="fl">50</span>, all_models <span class="op">=</span> <span class="cn">TRUE</span>,</span></span>
+<span class="r-in"><span><span class="fu">autoplot</span><span class="op">(</span><span class="va">manec_example</span>, ecx <span class="op">=</span> <span class="cn">TRUE</span>, ecx_val <span class="op">=</span> <span class="fl">50</span>,</span></span>
+<span class="r-in"><span>         model <span class="op">=</span> <span class="va">manec_example</span><span class="op">$</span><span class="va">success_models</span>, average <span class="op">=</span> <span class="cn">FALSE</span>,</span></span>
 <span class="r-in"><span>         multi_facet <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 </code></pre></div>
