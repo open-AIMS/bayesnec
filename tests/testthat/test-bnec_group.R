@@ -156,6 +156,38 @@ test_that("printing reports the shared family and the per-level model sets", {
   expect_equal(sum(grepl("family", out)), 1)
 })
 
+test_that("plot() of a group fit gives the all_models warning once (#120)", {
+  # plot.bayesnecgroupfit() calls plot() once per level, each of which maps
+  # the deprecated all_models onto its own set and would warn. The warning
+  # belongs to the caller's one call. The panel labels are read off a mocked
+  # legend() to show that every level still drew every equation of its set.
+  skip_on_cran()
+  gf <- fake_group_fit(list(a = manec_example, b = manec_example,
+                            c = manec_example))
+  labels <- character()
+  local_mocked_bindings(
+    legend = function(..., legend = NULL) {
+      labels <<- c(labels, as.character(legend))
+    },
+    .package = "bayesnec"
+  )
+  pdf(NULL)
+  on.exit(dev.off(), add = TRUE)
+  first <- collect_warnings(plot(gf, all_models = TRUE))
+  expect_length(first$warnings, 1)
+  expect_match(first$warnings, "`all_models` is deprecated", fixed = TRUE)
+  for (m in manec_example$success_models) {
+    expect_equal(sum(labels == m), 3)
+  }
+  # The muffling lasts one call: the next call warns again, once.
+  second <- collect_warnings(plot(gf, all_models = FALSE))
+  expect_length(second$warnings, 1)
+  # And the replacement arguments reach every level without a warning.
+  labels <- character()
+  expect_silent(plot(gf, model = "nec4param", average = FALSE))
+  expect_equal(sum(labels == "nec4param"), 3)
+})
+
 # #33 review finding: the outer-product identity holds for pseudo-BMA only, and
 # was documented but not enforced. `loo_controls` reaches bnec() through `...`,
 # so stacking weights were reachable and would have produced a crossed table

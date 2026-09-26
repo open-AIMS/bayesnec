@@ -107,10 +107,10 @@ exp_5_nec4param <- pull_out(exp_5, model = "ecx4param")
 autoplot(exp_5_nec4param)
 ```
 
-This would extract the **nec4param** model from the `bayesmanecfit` and create a new object of class `bayesnecfit` which contains just a single fit. This would be identical to fitting the **ecx4param** as a single model using `bnec`. All of the models in the `bayesmanecfit` can be simultaneously plotted using the argument `all_models = TRUE`.
+This would extract the **nec4param** model from the `bayesmanecfit` and create a new object of class `bayesnecfit` which contains just a single fit. This would be identical to fitting the **ecx4param** as a single model using `bnec`. Models in the `bayesmanecfit` can be plotted together by naming them in the argument `model`, and `average = FALSE` leaves out the panel of model averaged predictions. Here every model in the set is plotted.
 
 ```{r exmp2-allmods, fig.width = 7, fig.asp = 1.2}
-autoplot(exp_5, all_models = TRUE)
+autoplot(exp_5, model = exp_5$success_models, average = FALSE)
 ```
 
 You can see that some of these models represent very bad fits, and accordingly have extremely low model weights, such as the **ecxlin** and **neclin** models in this example. There is no harm in leaving in poor models with low weight, precisely because they have such a low model weight and therefore will not influence posterior predictions. However, it is important to assess the adequacy of model fits of all models, because a poor fit may be more to do with a model that has not converged.
@@ -216,7 +216,7 @@ Now we can make a combined plot of our output, showing the model averaged *NEC* 
 ```{r exmp2-pretty, fig.width = 5}
 preds <- exp_5_nec$w_pred_vals$data
 
-autoplot(exp_5, nec = FALSE, all = FALSE) +
+autoplot(exp_5, nec = FALSE) +
   geom_vline(mapping = aes(xintercept = ECx10, colour = "ECx 10"),
              linetype = c(1, 3, 3), key_glyph = "path") +
   geom_vline(mapping = aes(xintercept = ECx50, colour = "ECx 50"),

@@ -1006,6 +1006,104 @@ check_nec_no_dpar <- function(dots) {
   invisible(TRUE)
 }
 
+#' Resolve which equations and whether the model average a method shows
+#'
+#' \code{predict()}, \code{plot()} and \code{autoplot()} on a
+#' \code{\link{bayesmanecfit}} take \code{model}, naming equations of the set,
+#' and \code{average}, choosing whether the model-averaged outcome is included
+#' (D5, #120). The two are separate arguments because the single logical
+#' \code{all_models} they replace could ask for every equation or for the
+#' model average, but not for a subset of the equations, nor for equations and
+#' the model average together.
+#'
+#' @param x A \code{\link{bayesmanecfit}}.
+#' @param model \code{NULL}, or a character vector of equation names.
+#' @param average A single logical value.
+#' @param all_models \code{NULL}, or the deprecated argument as supplied.
+#' @param new_supplied Whether the calling method was given \code{model} or
+#' \code{average} explicitly.
+#'
+#' @return A list with elements \code{model}, \code{NULL} or a character
+#' vector of equation names in the order given and without duplicates, and
+#' \code{average}, a single logical value.
+#'
+#' @importFrom chk chk_flag
+#'
+#' @noRd
+resolve_model_average <- function(x, model, average, all_models = NULL,
+                                  new_supplied = FALSE) {
+  if (!is.null(all_models)) {
+    # Refused rather than resolved in favour of one side: a call giving both
+    # asks for two things, and neither argument can be read as overriding the
+    # other without guessing which the caller meant.
+    if (new_supplied) {
+      stop("`all_models` cannot be combined with `model` or `average`, ",
+           "which replace it. Remove `all_models` from the call.",
+           call. = FALSE)
+    }
+    chk_flag(all_models)
+    # A warning() rather than lifecycle::deprecate_warn(), because lifecycle
+    # is not in Imports; validate_ecx_type() sets the same precedent. Raised
+    # on every call that supplies the argument, so a script run again after an
+    # upgrade reports it each time until it is changed. The condition carries
+    # a class of its own so that plot.bayesnecgroupfit(), which calls this
+    # method once per level, can let the first through and muffle the rest.
+    warning(structure(
+      class = c("bayesnec_all_models_deprecated", "warning", "condition"),
+      list(message = paste0(
+        "`all_models` is deprecated and will be removed in a later ",
+        "release. Use `model` to name the equations to show and ",
+        "`average` to choose whether the model average is shown. ",
+        "`all_models = TRUE` is `model = <fit>$success_models, ",
+        "average = FALSE`, and `all_models = FALSE` is the default, ",
+        "`model = NULL, average = TRUE`."
+      ), call = NULL)
+    ))
+    # The mapping reproduces what each value drew before: TRUE drew every
+    # equation of the set, in the order of the set, and no model average;
+    # FALSE drew the model average alone.
+    if (all_models) {
+      return(list(model = x$success_models, average = FALSE))
+    }
+    return(list(model = NULL, average = TRUE))
+  }
+  chk_flag(average)
+  if (!is.null(model)) {
+    if (!is.character(model) || length(model) == 0 || anyNA(model) ||
+        !all(nzchar(model))) {
+      stop("`model` must be NULL or a character vector naming equations of ",
+           "the set.", call. = FALSE)
+    }
+    model <- unique(model)
+    unknown <- setdiff(model, x$success_models)
+    if (length(unknown) > 0) {
+      groups <- intersect(unknown, names(mod_groups))
+      # pull_out() accepts a group name and expands it; `model` here does
+      # not, because D5 has it name equations. Saying so stops the refusal
+      # reading as though the group were absent from the set.
+      group_note <- if (length(groups) > 0) {
+        paste0(" ", paste0("\"", groups, "\"", collapse = ", "),
+               " names a group of equations (see ?models), not an ",
+               "equation; name the equations themselves.")
+      } else {
+        ""
+      }
+      stop("`model` names ",
+           if (length(unknown) == 1) "an equation" else "equations",
+           " not in this set: ", paste0("\"", unknown, "\"", collapse = ", "),
+           ". The set holds ",
+           paste0("\"", x$success_models, "\"", collapse = ", "), ".",
+           group_note, call. = FALSE)
+    }
+  }
+  if (is.null(model) && !average) {
+    stop("Nothing is selected: `model` is NULL and `average` is FALSE. Name ",
+         "one or more equations in `model`, or set `average = TRUE`.",
+         call. = FALSE)
+  }
+  list(model = model, average = average)
+}
+
 #' @noRd
 return_nec_post <- function(m, xform) {
   if (is_bayesnecfit(m)) {

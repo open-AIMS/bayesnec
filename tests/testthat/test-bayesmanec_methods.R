@@ -16,6 +16,103 @@ test_that("predict/fitted is a matrix of appropriately name elements", {
   expect_equal(colnames(fitt_p), c("Estimate", "Est.Error", "Q2.5", "Q97.5"))
 })
 
+test_that("predict() with neither model nor average is unchanged (#120)", {
+  skip_on_cran()
+  # The model-averaged summary as predict() computed it before model and
+  # average existed, recomputed here from posterior_predict() so that the
+  # default is compared against the earlier body rather than against itself.
+  # Seeded, because posterior_predict() simulates new observations.
+  nd <- bnec_newdata(manec_example, resolution = 20)
+  set.seed(120)
+  expected <- t(apply(posterior_predict(manec_example, newdata = nd), 2,
+                      brms::posterior_summary, robust = FALSE,
+                      probs = c(0.025, 0.975)))
+  colnames(expected) <- c("Estimate", "Est.Error", "Q2.5", "Q97.5")
+  set.seed(120)
+  expect_identical(predict(manec_example, newdata = nd), expected)
+  set.seed(120)
+  expect_identical(predict(manec_example, newdata = nd, model = NULL,
+                           average = TRUE), expected)
+  set.seed(120)
+  draws <- posterior_predict(manec_example, newdata = nd)
+  set.seed(120)
+  expect_identical(predict(manec_example, newdata = nd, summary = FALSE),
+                   draws)
+})
+
+test_that("predict() returns a named list where model is given", {
+  skip_on_cran()
+  nd <- bnec_newdata(manec_example, resolution = 20)
+  set.seed(121)
+  avg <- predict(manec_example, newdata = nd)
+  set.seed(121)
+  both <- predict(manec_example, newdata = nd, model = "nec4param")
+  expect_type(both, "list")
+  expect_named(both, c("average", "nec4param"))
+  # The model average comes first and is computed first, so for the same seed
+  # it is what model = NULL returns.
+  expect_identical(both$average, avg)
+  # An equation's element is predict() on the equation pulled out of the set.
+  set.seed(122)
+  alone <- predict(manec_example, newdata = nd, model = "nec4param",
+                   average = FALSE)
+  expect_named(alone, "nec4param")
+  set.seed(122)
+  expect_identical(alone$nec4param, predict(nec4param, newdata = nd))
+  # The equations follow in the order given, a repeated name once.
+  expect_named(
+    predict(manec_example, newdata = nd,
+            model = c("ecx4param", "nec4param", "ecx4param")),
+    c("average", "ecx4param", "nec4param")
+  )
+  # summary and probs reach every element.
+  draws <- predict(manec_example, newdata = nd, model = "ecx4param",
+                   summary = FALSE)
+  expect_equal(dim(draws$average), c(manec_example$sample_size, nrow(nd)))
+  expect_equal(dim(draws$ecx4param),
+               c(brms::ndraws(pull_brmsfit(ecx4param)), nrow(nd)))
+  q <- predict(manec_example, newdata = nd, model = "ecx4param",
+               probs = c(0.1, 0.9))
+  expect_identical(colnames(q$average), c("Estimate", "Est.Error", "Q10", "Q90"))
+  expect_identical(colnames(q$ecx4param),
+                   c("Estimate", "Est.Error", "Q10", "Q90"))
+})
+
+test_that("predict() ignores all_models, with a warning (#120)", {
+  # predict() never took all_models; it fell into the dots and brms ignored
+  # it. It is still ignored, so the result is what the call always returned,
+  # and the warning is new.
+  skip_on_cran()
+  nd <- bnec_newdata(manec_example, resolution = 20)
+  set.seed(123)
+  plain <- predict(manec_example, newdata = nd)
+  set.seed(123)
+  old <- collect_warnings(predict(manec_example, newdata = nd,
+                                  all_models = TRUE))
+  expect_length(old$warnings, 1)
+  expect_match(old$warnings, "is ignored", fixed = TRUE)
+  expect_identical(old$value, plain)
+  # Beside model it changes nothing either.
+  set.seed(124)
+  listed <- predict(manec_example, newdata = nd, model = "nec4param")
+  set.seed(124)
+  expect_identical(
+    suppressWarnings(predict(manec_example, newdata = nd, model = "nec4param",
+                             all_models = TRUE)),
+    listed
+  )
+})
+
+test_that("predict() refuses a model outside the set and an empty selection", {
+  skip_on_cran()
+  expect_error(predict(manec_example, model = "nope"),
+               "not in this set: \"nope\"", fixed = TRUE)
+  expect_error(predict(manec_example, average = FALSE), "Nothing is selected")
+  expect_error(predict(manec_example, model = NA_character_),
+               "must be NULL or a character vector")
+  expect_error(predict(manec_example, average = "yes"), "flag")
+})
+
 test_that("plot returns null, is invisible, and is silent", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()

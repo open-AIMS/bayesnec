@@ -1249,6 +1249,29 @@
 
 ## New
 
+- `predict()`, `plot()` and `autoplot()` for a `bayesmanecfit` take two new
+  arguments. `model` names one or more equations of the set, and `average`
+  chooses whether the model averaged predictions are included; it defaults to
+  `TRUE`. `autoplot(fit, model = "nec4param")` draws the model average in the
+  first panel and the `nec4param` fit in the second. `all_models`, which these
+  replace, drew either every equation of the set or the model average alone.
+  The panel of each named equation shows the same curve and annotations as
+  `plot()` or `autoplot()` gives for that equation once pulled out of the set
+  with `pull_out()`. A name that is not an equation of the set is refused
+  with an error that names it. `predict()` with neither argument returns the
+  same matrix as before. Given `model`, it returns a named list: an element
+  `average`, where `average = TRUE`, followed by one element for each named
+  equation, holding that equation's own predictions.
+  `all_models` is deprecated and will be removed in a later release. It keeps
+  working, and each call that supplies it gives one warning, including a
+  `plot()` of a `bnec_group()` fit, which draws every level.
+  `all_models = TRUE` is now `model = fit$success_models, average = FALSE`,
+  and `all_models = FALSE` is the default; both draw what they drew before.
+  Supplying `all_models` together with `model` or `average` is an error.
+  `predict()` never took `all_models`: it was passed on to `brms`, which
+  ignored it. It is still ignored, so such a call returns what it returned
+  before, and it now gives a warning naming `model` and `average` (#120).
+
 - **A model set can now be fitted in parallel.** `bnec()` and `amend()` fit
   their models under whatever `future` plan is set when they are called, so
   `plan(multisession, workers = 4)` before the call fits four models at a time
