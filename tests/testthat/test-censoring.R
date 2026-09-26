@@ -763,6 +763,32 @@ test_that("identity and increasing maps leave the annotation as it was", {
   expect_no_match(doubled[1:2], "^[<>]=")
 })
 
+test_that("the annotation marks what nec() marks at a whole n times p", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # A grid ending between the 50th and 51st of nec4param's 100 NEC draws
+  # leaves exactly 50 above it. 100 * 0.5 is whole, so the median is the 50th
+  # draw: identified on the recorded scale, and censored once the draws are
+  # negated, where the 50 beyond the range are the lowest. Reversing the marks
+  # where they stood left the negated estimate unmarked.
+  f <- manec_example$mod_fits[["nec4param"]]
+  ranked <- sort(nec4param$ne_posterior)
+  fit <- suppressMessages(suppressWarnings(
+    bayesnec:::expand_and_assign_nec(
+      f, f$bayesnecformula, model = "nec4param",
+      x_range = c(reversal_x_foot(), mean(ranked[50:51])), resolution = 50
+    )
+  ))
+  expect_identical(attr(fit$ne, "censored_summary")$n_above, 50L)
+  per_draw <- suppressMessages(suppressWarnings(nec(fit, xform = negate)))
+  per_draw_marks <- attr(per_draw, "censored_summary")$bound
+  expect_identical(per_draw_marks[1], "<=")
+  labels <- annotation_labels(annotation_frame(fit, xform = negate))
+  expect_identical(regmatches(labels, regexpr("^([<>]=)?", labels)),
+                   per_draw_marks)
+})
+
 test_that("the base plot legend takes the same reversal", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()

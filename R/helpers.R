@@ -2494,10 +2494,18 @@ map_is_decreasing <- function(map, grid) {
 #' \code{ggbnec_data(fit, xform = function(x) -x)} labelled an estimate
 #' censored above 0.9 as \code{">=-0.90"}, where \code{"<=-0.90"} is correct.
 #'
-#' The direction is read once, from the images of the two ends of the grid, and
-#' not from the record's bounds as \code{xform_censoring()} reads it, because an
-#' uncensored summary carries no record and its interval has to be put in order
-#' all the same.
+#' The direction is read once, from the mapped values of the two ends of the
+#' grid, and not from the record's bounds as \code{xform_censoring()} reads it,
+#' because an uncensored summary carries no record and its interval has to be
+#' put in order all the same.
+#'
+#' The summary is remapped, not the draws, so an entry that is not a bound can
+#' differ by one order statistic from the estimator given the same map: a type
+#' 1 quantile is not symmetric under a reflection where the number of draws
+#' times the probability is a whole number. The marks do not differ, because
+#' \code{remap_censored_summary()} works them out again from the counts, and an
+#' entry marked as a bound is set to that bound, as \code{summarise_censored()}
+#' sets it.
 #'
 #' @param values A summarised estimate: the estimate, then the lower and upper
 #' limits of its interval.
@@ -2518,9 +2526,75 @@ remap_summary <- function(values, map, grid) {
   # through the map with the numbers. Carried through, the record kept the
   # marks of the old scale, which is the defect; and a map that is not
   # arithmetic may drop it, which would take the marks off the labels.
-  attr(out, "censored_summary") <- remap_censored_summary(
-    attr(values, "censored_summary"), map, decreasing
-  )
+  cens <- remap_censored_summary(attr(values, "censored_summary"), map,
+                                 decreasing, summary_probs(values))
+  if (decreasing && !is.null(cens) && length(cens$bound) == length(out)) {
+    # A mark worked out again from the counts can fall on an entry whose
+    # remapped value is a draw, where the number of draws times the probability
+    # is a whole number. The entry is then set to the bound it is marked with,
+    # which is the value summarise_censored() gives every marked entry, so that
+    # the label never pairs a mark with a number that is not the bound.
+    out[cens$bound == ">="] <- cens$upper
+    out[cens$bound == "<="] <- cens$lower
+  }
+  attr(out, "censored_summary") <- cens
+  out
+}
+
+#' The probability each entry of a summary is the quantile at
+#'
+#' Read from the names a summary is given: \code{"Estimate"} for the median
+#' of \code{estimates_summary()}, \code{"Q"} followed by a percentage from
+#' \code{clean_names()}, and a percentage followed by \code{"%"} as
+#' \code{quantile()} writes it before \code{clean_names()} is applied. The
+#' record does not keep the probabilities, and the names are the only place
+#' they survive.
+#'
+#' @param values A summarised estimate.
+#'
+#' @return A \code{\link[base]{numeric}} vector, one probability per entry, or
+#' \code{NULL} where any name is missing or of none of those forms.
+#' @noRd
+summary_probs <- function(values) {
+  nms <- names(values)
+  if (is.null(nms)) {
+    return(NULL)
+  }
+  num <- "[0-9]*\\.?[0-9]+(e[-+]?[0-9]+)?"
+  pct <- rep(NA_character_, length(nms))
+  pct[nms == "Estimate"] <- "50"
+  q_form <- grepl(paste0("^Q", num, "$"), nms)
+  pct[q_form] <- sub("^Q", "", nms[q_form])
+  pct_form <- grepl(paste0("^", num, "%$"), nms)
+  pct[pct_form] <- sub("%$", "", nms[pct_form])
+  probs <- as.numeric(pct) / 100
+  if (anyNA(probs)) {
+    return(NULL)
+  }
+  probs
+}
+
+#' The marks a censored summary gives each entry, from the counts alone
+#'
+#' Runs \code{quantile(type = 1)} over a sample holding only the ranks the
+#' record states, \code{-Inf} for each draw below the range, \code{Inf} for
+#' each above it and a finite value for the rest, so the index rule is the one
+#' \code{summarise_censored()} applied and is not rewritten here.
+#'
+#' @param n_below,n_above,n_draws \code{\link[base]{integer}} counts from the
+#' record.
+#' @param probs The probability of each entry.
+#'
+#' @return A \code{\link[base]{character}} vector of marks.
+#' @importFrom stats quantile
+#' @noRd
+marks_from_counts <- function(n_below, n_above, n_draws, probs) {
+  ranked <- c(rep(-Inf, n_below), numeric(n_draws - n_below - n_above),
+              rep(Inf, n_above))
+  q <- quantile(ranked, probs = probs, type = 1, names = FALSE)
+  out <- rep("", length(q))
+  out[q == Inf] <- ">="
+  out[q == -Inf] <- "<="
   out
 }
 
@@ -2528,19 +2602,31 @@ remap_summary <- function(values, map, grid) {
 #'
 #' The rule \code{xform_censoring()} applies to the per-draw record, applied to
 #' the record \code{summarise_censored()} leaves on a summary. Both bounds are
-#' mapped. Under a decreasing map the two bounds exchange names, the counts of
-#' draws above and below exchange, each mark is reversed, and the marks of the
-#' two interval entries exchange places with the entries themselves.
+#' mapped. Under a decreasing map the two bounds exchange names and the counts
+#' of draws above and below exchange.
+#'
+#' The marks are then worked out again from the exchanged counts, rather than
+#' reversed where they stand. A type 1 quantile is not symmetric under a
+#' reflection where the number of draws times the probability is a whole
+#' number: of 4000 draws with exactly 100 above the range, the 97.5 per cent
+#' quantile is the 3900th draw and identified, while the 2.5 per cent quantile
+#' of the reflected draws is the 100th and censored. Reversing the marks left
+#' that entry unmarked where \code{nec(fit, xform = function(x) -x)} marks it.
+#' Where the probabilities cannot be read from the names, the marks are
+#' reversed and exchanged with their entries instead, which is exact away from
+#' such a count.
 #'
 #' @param cens The \code{"censored_summary"} attribute of a summary, or
 #' \code{NULL}.
 #' @param map A monotone \code{\link[base]{function}}.
 #' @param decreasing A \code{\link[base]{logical}} value, whether \code{map}
 #' reverses the order of the grid.
+#' @param probs The probability of each entry, from \code{summary_probs()}, or
+#' \code{NULL}.
 #'
 #' @return A record on the new scale, or \code{NULL}.
 #' @noRd
-remap_censored_summary <- function(cens, map, decreasing) {
+remap_censored_summary <- function(cens, map, decreasing, probs = NULL) {
   if (is.null(cens)) {
     return(NULL)
   }
@@ -2552,6 +2638,17 @@ remap_censored_summary <- function(cens, map, decreasing) {
     out$lower <- new_lower
     return(out)
   }
+  out$upper <- new_lower
+  out$lower <- new_upper
+  out$n_above <- cens$n_below
+  out$n_below <- cens$n_above
+  counts <- c(out$n_below, out$n_above, cens$n_draws)
+  if (length(probs) == length(cens$bound) && length(counts) == 3 &&
+      all(is.finite(counts)) && counts[3] >= counts[1] + counts[2]) {
+    out$bound <- marks_from_counts(out$n_below, out$n_above, cens$n_draws,
+                                   probs)
+    return(out)
+  }
   reversed <- c(">=" = "<=", "<=" = ">=")
   bound <- cens$bound
   marked <- nzchar(bound)
@@ -2560,10 +2657,6 @@ remap_censored_summary <- function(cens, map, decreasing) {
     bound[2:3] <- bound[3:2]
   }
   out$bound <- unname(bound)
-  out$upper <- new_lower
-  out$lower <- new_upper
-  out$n_above <- cens$n_below
-  out$n_below <- cens$n_above
   out
 }
 

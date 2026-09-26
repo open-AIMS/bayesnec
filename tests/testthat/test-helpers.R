@@ -456,6 +456,65 @@ test_that("grid_inverse inverts the crf() term on the grid", {
   expect_null(bayesnec:::grid_inverse(f_log, c(0, 5)))
 })
 
+test_that("the marks agree with the per-draw path where n times p is whole", {
+  # 40 draws, so 40 * 0.025, 40 * 0.5 and 40 * 0.975 are all whole numbers and
+  # the type 1 index of each entry sits exactly on a rank. One draw beyond an
+  # end is then an identified 97.5 per cent quantile on one scale and a
+  # censored 2.5 per cent quantile on the reflected one, so reversing the marks
+  # where they stood left that entry unmarked where the estimator marks it.
+  raw <- seq(1, 100, length.out = 100)
+  f_plain <- bayesnecformula(y ~ crf(x, model = "nec3param"))
+  b_plain <- stats::model.frame(f_plain,
+                                data = data.frame(x = raw, y = seq_len(100)))
+  finite <- seq(10, 90, length.out = 39)
+  one_end <- c(logical(39), TRUE)
+  cases <- list(
+    above = list(draws = c(finite, NA_real_),
+                 cens = bayesnec:::censoring_record(100, 1, one_end,
+                                                    logical(40))),
+    below = list(draws = c(NA_real_, finite),
+                 cens = bayesnec:::censoring_record(100, 1, logical(40),
+                                                    rev(one_end)))
+  )
+  for (case in cases) {
+    on_recorded <- bayesnec:::summarise_censored(case$draws, reversal_probs,
+                                                 case$cens)
+    out <- to_axis_scale(on_recorded, b_plain, f_plain, raw, negate)
+    per_draw <- bayesnec:::summarise_censored(
+      negate(case$draws), reversal_probs,
+      bayesnec:::xform_censoring(case$cens, negate)
+    )
+    expect_identical(attr(out, "censored_summary")$bound,
+                     attr(per_draw, "censored_summary")$bound)
+    # A marked entry is the bound on both paths. An unmarked one may be the
+    # neighbouring order statistic, which is what remapping a summary rather
+    # than its draws gives up.
+    marked <- nzchar(attr(per_draw, "censored_summary")$bound)
+    expect_equal(as.numeric(out)[marked], as.numeric(per_draw)[marked])
+  }
+  # The case the reversal got wrong: the lower limit is the censored entry.
+  above <- cases$above
+  out <- to_axis_scale(
+    bayesnec:::summarise_censored(above$draws, reversal_probs, above$cens),
+    b_plain, f_plain, raw, negate
+  )
+  expect_identical(attr(out, "censored_summary")$bound, c("", "<=", ""))
+  expect_equal(out[[2]], -100)
+})
+
+test_that("summary_probs reads the probabilities from the names", {
+  expect_equal(bayesnec:::summary_probs(c(Estimate = 1, Q2.5 = 2, Q97.5 = 3)),
+               c(0.5, 0.025, 0.975))
+  expect_equal(bayesnec:::summary_probs(c(Q50 = 1, Q10 = 2, Q90 = 3)),
+               c(0.5, 0.1, 0.9))
+  expect_equal(bayesnec:::summary_probs(c(`50%` = 1, `2.5%` = 2)),
+               c(0.5, 0.025))
+  # Without a name of one of those forms there is no probability to read, and
+  # the marks are reversed where they stand instead.
+  expect_null(bayesnec:::summary_probs(c(1, 2, 3)))
+  expect_null(bayesnec:::summary_probs(c(a = 1, Q2.5 = 2)))
+})
+
 test_that("define_loo_controls always names a weighting method", {
   # The documented default is pseudo-BMA. Every route that assembles a model
   # set passes through here, so a missing method at this point is what reaches
