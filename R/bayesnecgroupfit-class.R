@@ -91,7 +91,25 @@ group_estimate_table <- function(object, what, fun, ...) {
          " fitted independently, so each element is an ordinary fit and its",
          " posterior is unchanged by being part of a group.", call. = FALSE)
   }
-  est <- group_lapply(object, fun, ...)
+  estimate_table(group_lapply(object, fun, ...), object$levels, what)
+}
+
+#' Stack per-level estimates into one row per level
+#'
+#' Shared with \code{\link{bayesnecjointfit}}, whose levels are coefficients of
+#' one posterior rather than separate fits. The two routes answer the same
+#' question and a user comparing them reads one table against the other, so the
+#' columns are built once here rather than twice.
+#'
+#' @param est A named \code{\link[base]{list}} of estimate vectors, one per
+#' level.
+#' @param levels The level names, in order.
+#' @param what The name of the calling method, for the error message.
+#'
+#' @return A \code{\link[base]{data.frame}} with one row per level.
+#'
+#' @noRd
+estimate_table <- function(est, levels, what) {
   nms <- names(est[[1]])
   if (is.null(nms) || anyDuplicated(nms) > 0) {
     stop("The per-level ", what, " estimates are not uniquely named, so they",
@@ -103,11 +121,11 @@ group_estimate_table <- function(object, what, fun, ...) {
     # Matched by name, so a level whose method returned the quantiles in a
     # different order cannot silently land in the wrong column.
     if (!identical(names(e), nms)) {
-      stop("Level \"", object$levels[i], "\" returned ", what, " estimates",
-           " named differently from level \"", object$levels[1], "\".",
+      stop("Level \"", levels[i], "\" returned ", what, " estimates",
+           " named differently from level \"", levels[1], "\".",
            call. = FALSE)
     }
-    cbind(data.frame(level = object$levels[i], stringsAsFactors = FALSE),
+    cbind(data.frame(level = levels[i], stringsAsFactors = FALSE),
           as.data.frame(as.list(unclass(e)[nms])))
   }))
   rownames(out) <- NULL
@@ -144,6 +162,9 @@ print.bayesnecgroupfit <- function(x, ...) {
 #' @method nec bayesnecgroupfit
 #' @export
 nec.bayesnecgroupfit <- function(object, ...) {
+  # Raised here rather than left to arrive from the per-level call, which would
+  # name the class of one level's fit and not the class the user called.
+  check_no_effect_arg(list(...), object)
   group_estimate_table(object, "nec", function(f, ...) nec(f, ...), ...)
 }
 

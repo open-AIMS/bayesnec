@@ -984,6 +984,35 @@ check_nec_no_dpar <- function(dots) {
   invisible(TRUE)
 }
 
+#' Guard against `no_effect` being passed to a class that cannot use it
+#'
+#' \code{no_effect} asks for the no-effect estimate of whichever type each
+#' level's equation supports, labelled by type. It is answerable only where
+#' exactly one equation was fitted per level, which is a
+#' \code{\link{bayesnecjointfit}} and nothing else: a
+#' \code{\link{bayesmanecfit}} averages over a set containing both kinds and a
+#' \code{\link{bayesnecgroupfit}} holds one such average per level, so neither
+#' has a single type to label. Refused rather than discarded, for the reason
+#' given in \code{\link{check_component_arg}}.
+#'
+#' @param dots The \code{...} of the calling method, as a list.
+#' @param object The object the method was called on.
+#'
+#' @return Invisibly \code{TRUE}, or an error.
+#'
+#' @noRd
+check_no_effect_arg <- function(dots, object) {
+  if ("no_effect" %in% names(dots)) {
+    stop("`no_effect` selects between the nec parameter and the no-effect",
+         " estimate each level's own equation supports. It applies to a",
+         " bayesnecjointfit, where exactly one equation is fitted per level.",
+         " This object is a ", class(object)[1], ", whose no-effect estimate",
+         " has one type already: see ?nec for what that type is, and nsec()",
+         " for a NSEC from every model regardless of type.", call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
 #' @noRd
 return_nec_post <- function(m, xform) {
   if (is_bayesnecfit(m)) {
@@ -1195,8 +1224,14 @@ add_brm_defaults <- function(
   predictor_scale = "auto",
   model_survival = NULL,
   disp_spec = NULL,
-  group_spec = NULL
+  group_spec = NULL,
+  level_spec = NULL
 ) {
+  # Recorded before anything below fills them in. A composed joint refit
+  # rebuilds both from the per-level equations, and it must not overwrite a set
+  # the caller wrote themselves. See compose_level_defaults().
+  init_supplied <- "init" %in% names(brm_args)
+  prior_supplied <- !is.null(brm_args$prior)
   if (!("chains" %in% names(brm_args))) {
     brm_args$chains <- 4
   }
@@ -1444,6 +1479,17 @@ add_brm_defaults <- function(
       }
     }
     brm_args$init <- inits
+  }
+  # Last, so that the curve coefficients it replicates are whatever the search
+  # above settled on and the dispersion prior it appends cannot reach
+  # make_inits(). See add_level_defaults().
+  if (!is.null(level_spec)) {
+    brm_args <- add_level_defaults(brm_args, level_spec, family, response,
+                                   predictor = predictor,
+                                   prior_type = prior_type,
+                                   predictor_scale = predictor_scale,
+                                   init_supplied = init_supplied,
+                                   prior_supplied = prior_supplied)
   }
   brm_args
 }

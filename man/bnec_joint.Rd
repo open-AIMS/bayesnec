@@ -2,37 +2,61 @@
 % Please edit documentation in R/bnec_joint.R
 \name{bnec_joint}
 \alias{bnec_joint}
-\title{Refit a factorised hurdle model as a single joint fit}
+\alias{bnec_joint.default}
+\alias{bnec_joint.bayesnechurdlefit}
+\alias{bnec_joint.bayesnecgroupfit}
+\title{Refit a factorised model as a single joint fit}
 \usage{
-bnec_joint(object, model = NULL, model_survival = NULL, formula = NULL, ...)
+bnec_joint(object, ...)
+
+\method{bnec_joint}{default}(object, ...)
+
+\method{bnec_joint}{bayesnechurdlefit}(object, model = NULL, model_survival = NULL, formula = NULL, ...)
+
+\method{bnec_joint}{bayesnecgroupfit}(object, model = NULL, formula = NULL, disp_by_level = TRUE, ...)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnechurdlefit}} returned by
-\code{\link{bnec_hurdle}}.}
+\code{\link{bnec_hurdle}}, or of class \code{\link{bayesnecgroupfit}}
+returned by \code{\link{bnec_group}}.}
+
+\item{...}{Further arguments passed to \code{\link[brms]{brm}}.}
 
 \item{model}{An optional \code{\link[base]{character}} string naming the
-equation for the response block. Defaults to the highest-weighted growth
-model in \code{object}.}
+equation to fit. For a hurdle fit it is the response block's equation and
+defaults to the highest-weighted growth model in \code{object}. For a
+grouped fit it forces one equation at every level; the default is instead
+the equation each level's own weights favour, which may differ between
+levels.}
 
 \item{model_survival}{An optional \code{\link[base]{character}} string naming
 the equation for the survival block. Defaults to the highest-weighted
-survival model in \code{object}.}
+survival model in \code{object}. Hurdle fits only.}
 
 \item{formula}{An optional \code{\link{bayesnecformula}} to fit instead of
 the one held in \code{object}. Supply this to add structure the factorised
 fit cannot carry, for example a group-level term. The \code{crf} model
 argument is overwritten by \code{model} either way.}
 
-\item{...}{Further arguments passed to \code{\link{bnec}}.}
+\item{disp_by_level}{A \code{\link[base]{logical}}. Should the family's
+dispersion parameter also take a separate value per level? Defaults to
+\code{TRUE}. Grouped fits only.}
 }
 \value{
-An object of class \code{\link{bayesnecfit}}.
+For a \code{\link{bayesnechurdlefit}}, an object of class
+\code{\link{bayesnecfit}}; for a \code{\link{bayesnecgroupfit}}, an object
+of class \code{\link{bayesnecjointfit}}.
 }
 \description{
-Takes the model combination favoured by \code{\link{crossed_weights}} and
-refits it as one \code{\link{bnec}} model with a two-block
+Takes what a factorised fit favoured and refits it as one model expressing
+structure the factorisation could not. For a
+\code{\link{bayesnechurdlefit}} that is the model combination
+\code{\link{crossed_weights}} favours, refitted with a two-block
 (\code{hurdle_gamma}, \code{zero_inflated_beta}, \code{hurdle_poisson} or
-\code{hurdle_negbinomial}) family.
+\code{hurdle_negbinomial}) family. For a \code{\link{bayesnecgroupfit}} it
+is the equation each level favours, composed into one model in which every
+curve parameter takes a separate value per level of the grouping factor,
+estimated in a single posterior.
 }
 \details{
 \bold{Why refit at all}
@@ -60,6 +84,49 @@ fitted as a Gamma, \code{zero_inflated_beta} where it was a Beta, and the
 corresponding count hurdle where it was Poisson or negative binomial.
 Nothing else transfers -- priors, control arguments and the like are
 defaults again unless passed through \code{...}.
+
+\bold{The joint refit of a grouped fit}
+
+\code{\link{bnec_group}} fits each level of a factor separately, and a
+group-level term such as \code{ogl()} or \code{(nec | site)} pools the
+levels towards a common curve. Neither fits one model in which every level
+has its own curve parameters estimated together, which is what this route
+adds. That posterior supports a contrast between two levels conditional on
+everything they share, which differencing the independent posteriors of a
+\code{\link{bnec_group}} fit cannot.
+
+Each level is fitted the equation its own model weights favour, which is the
+\code{\link{bayesnecgroupfit}} analogue of what \code{\link{best_crossed}}
+does for a hurdle fit: that function returns the best growth equation and
+the best survival equation separately, and the two blocks of one joint
+hurdle model then carry different equations. One \pkg{brms} model can carry
+a different functional form per level, because the mean is arbitrary
+arithmetic over data columns and parameters: each level's equation is
+multiplied by an indicator that is one on that level's rows and zero
+elsewhere, and the terms are summed.
+
+Where every level favours the same equation the sum reduces to that equation
+with each parameter's \code{~ 1} replaced by \code{~ 0 + <group_var>}, which
+is dummy coding of the factor onto the curve, and that is what is built.
+\code{model} forces one equation at every level, which is the same reduced
+form.
+
+A group-level term cannot be added to a refit whose levels chose different
+equations, because the levels then share no parameter for it to be written
+on. Pass \code{model} to fit one equation everywhere, which is the form such
+a term applies to.
+
+\code{disp_by_level} decides whether the family's dispersion parameter is
+also estimated per level. \code{FALSE} shares one dispersion across the
+levels, which is the model for a measurement error that is a property of the
+assay rather than of the level.
+
+\code{\link{ecx}}, \code{\link{nsec}}, \code{\link{nec}} and
+\code{\link{ecnsec}} on the returned object give one row per level, in the
+\code{\link[base]{data.frame}} a \code{\link{bayesnecgroupfit}} returns, and
+\code{\link{autoplot}} draws one panel per level. Each level is estimated on
+its own prediction grid, so the estimate for a level is read off that
+level's curve alone.
 }
 \examples{
 \dontrun{
@@ -73,10 +140,17 @@ fit <- bnec_hurdle(y ~ crf(x, c("nec3param", "nec4param", "ecx4param")),
 fit_j <- bnec_joint(fit)
 # the same pair with a group-level effect the factorisation cannot carry
 fit_r <- bnec_joint(fit, formula = y ~ crf(x, "nec3param") + (nec | tank))
+
+# a grouped fit, refitted as one model with a value per level
+data(nec_data)
+nec_data$site <- factor(rep(c("a", "b"), length.out = nrow(nec_data)))
+fits <- bnec_group(y ~ crf(x, c("nec3param", "nec4param")),
+                   data = nec_data, group_var = "site")
+joint <- bnec_joint(fits)
 }
 
 }
 \seealso{
-\code{\link{bnec_hurdle}}, \code{\link{crossed_weights}},
-\code{\link{best_crossed}}, \code{\link{bnec}}
+\code{\link{bnec_hurdle}}, \code{\link{bnec_group}},
+\code{\link{crossed_weights}}, \code{\link{best_crossed}}, \code{\link{bnec}}
 }

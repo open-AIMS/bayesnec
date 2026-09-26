@@ -313,6 +313,31 @@
   plotting paths put on the rate scale, and with the prior change above it
   would reach the posterior. Compute the column before the call and name it in
   `rate()` (#389).
+## Joint refit across factor levels
+
+- `bnec_joint()` is now generic and has a method for `bayesnecgroupfit`. It
+  refits a grouped fit as one model in which every curve parameter takes a
+  separate value per level of the grouping factor, estimated in a single
+  posterior. Each level is fitted the equation its own model weights favour,
+  which may differ between levels: one model fits a different functional form
+  at each level, each multiplied by an indicator for that level's rows. Where
+  every level favours the same equation the model reduces to that equation
+  dummy coded on the factor, and `model` forces one equation everywhere.
+  `disp_by_level` decides whether the family's dispersion parameter also
+  varies by level, and defaults to `TRUE`. The returned object has class
+  `bayesnecjointfit`, and `ecx()`, `nsec()`, `nec()`, `ecnsec()` and
+  `autoplot()` report one row or one panel per level (#382, #388).
+
+- `nec()` on a joint refit names the equation fitted at each level in a `model`
+  column and the type of that level's estimate in an `ne_type` column, and
+  reports `NA` where the level's equation has no `nec` parameter rather than
+  failing for the whole fit. `nec(x, no_effect = TRUE)` reports instead the
+  no-effect estimate each level's own equation does support --- the `nec`
+  parameter at a threshold level, the NSEC of the fitted curve at a smooth one
+  --- labelled by type. A joint refit fits exactly one equation per level, so
+  unlike the model-averaged N(S)EC of a `bayesmanecfit` each value is a NEC or
+  an NSEC and never a weighted mixture of both. `no_effect` applies to no other
+  class and is refused rather than discarded by them (#388).
 
 ## Count hurdles
 

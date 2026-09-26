@@ -161,6 +161,7 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
                                   which = "combined", ...) {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
+  check_no_effect_arg(list(...), object)
   chk_logical(posterior)
   which <- hurdle_check_which(which)
   if (!inherits(xform, "function")) {

@@ -278,19 +278,42 @@ extract_par_order <- function() {
 #' \code{\link{bayesnecfit}} because inside \code{\link{expand_manec}} the
 #' object has not been given its class yet. See #211.
 #'
+#' A level term is the one thing the grid cannot ignore. Every other structure
+#' \code{bayesnec} fits to a factor --- \code{ogl()}, \code{pgl()},
+#' \code{(par | group)} --- is group-level, and every prediction in the package
+#' is made with \code{re_formula = NA}, which drops it. A joint refit
+#' (\code{\link{bnec_joint}} on a \code{\link{bayesnecgroupfit}}) puts the
+#' factor in the population-level part of every curve parameter, so it is part
+#' of the mean and the grid has to name a level. \code{level_spec} is therefore
+#' \code{NULL} for every caller that existed before #382, and the grid those
+#' callers get is byte-for-byte what it was: adding a column no other model
+#' reads would change nothing for them and test nothing, while touching every
+#' prediction path in the package.
+#'
 #' @param fit An object of class \code{\link[brms]{brmsfit}}.
 #' @param formula An object of class \code{\link{bayesnecformula}}.
-#'
-#' @inheritParams bnec
+#' @param level_spec \code{NULL}, the default, or a
+#' \code{\link[base]{list}} with elements \code{group_var}, the name of the
+#' factor column the level term is written on; \code{levels}, every level of
+#' it, in the order the coefficients are in; and optionally
+#' \code{predict_levels}, the subset to build rows for. The grid then has
+#' \code{resolution} rows per predicted level rather than \code{resolution}
+#' rows, with the level varying slowest, and the factor is built with all of
+#' \code{levels} whichever subset is predicted --- \pkg{brms} builds the design
+#' matrix against the levels the fit was given, so a factor missing one of them
+#' is a different contrast.
 #'
 #' @return A \code{\link[base]{list}} of \code{newdata}, the
-#' \code{\link[base]{data.frame}} to predict over; \code{x_seq}, the predictor
-#' values it spans; and \code{x_var}, the name of the predictor.
+#' \code{\link[base]{data.frame}} to predict over; \code{x_seq}, the unique
+#' predictor values it spans, which under \code{level_spec} is repeated once
+#' per predicted level in \code{newdata}; and \code{x_var}, the name of the
+#' predictor.
 #'
 #' @importFrom stats model.frame
 #'
 #' @noRd
-prediction_grid <- function(fit, formula, x_range = NA, resolution = 1000) {
+prediction_grid <- function(fit, formula, x_range = NA, resolution = 1000,
+                            level_spec = NULL) {
   mod_dat <- model.frame(formula, data = fit$data)
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
   if (is.na(x_range[1])) {
@@ -320,7 +343,51 @@ prediction_grid <- function(fit, formula, x_range = NA, resolution = 1000) {
   if (!is.na(rate_var)) {
     newdata[[rate_var]] <- 1
   }
+  if (!is.null(level_spec)) {
+    newdata <- add_grid_levels(newdata, level_spec, length(x_seq))
+  }
   list(newdata = newdata, x_seq = x_seq, x_var = x_var)
+}
+
+#' Repeat a prediction grid once per level of a level term
+#'
+#' The level varies slowest, so rows \code{1:resolution} are the first
+#' predicted level and the matrix \code{\link[brms]{posterior_epred}} returns
+#' splits into contiguous blocks of \code{resolution} columns. That is what
+#' lets a per-level estimate be read off the same posterior the other levels
+#' were drawn from, rather than from a second prediction.
+#'
+#' @param newdata The single-level grid.
+#' @param level_spec See \code{prediction_grid}.
+#' @param n_x The number of grid points per level.
+#'
+#' @return A \code{\link[base]{data.frame}} with \code{n_x} rows per predicted
+#' level.
+#'
+#' @noRd
+add_grid_levels <- function(newdata, level_spec, n_x) {
+  all_levels <- level_spec$levels
+  predict_levels <- level_spec$predict_levels
+  if (is.null(predict_levels)) {
+    predict_levels <- all_levels
+  }
+  out <- newdata[rep(seq_len(n_x), times = length(predict_levels)), ,
+                 drop = FALSE]
+  out[[level_spec$group_var]] <- factor(rep(predict_levels, each = n_x),
+                                        levels = all_levels)
+  # Where the levels chose different equations the mean is an indicator sum
+  # rather than a dummy-coded curve, and the indicators are data columns the
+  # factor cannot stand in for. Every level's column is written, including the
+  # ones not being predicted, because the composed mean reads all of them on
+  # every row.
+  if (!is.null(level_spec$inds)) {
+    row_level <- rep(predict_levels, each = n_x)
+    for (l in all_levels) {
+      out[[level_spec$inds[[l]]]] <- as.numeric(row_level == l)
+    }
+  }
+  rownames(out) <- NULL
+  out
 }
 
 #' Posterior expectation over the prediction grid

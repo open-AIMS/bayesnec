@@ -24,7 +24,7 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
                          skip_check = FALSE, prior_type = "uninformative",
                          asymptote_observed = TRUE,
                          timeout = Inf, model_survival = NULL,
-                         predictor_scale = "auto") {
+                         predictor_scale = "auto", level_spec = NULL) {
   formula <- single_model_formula(formula, model)
   bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
   x <- retrieve_var(bdat, "x_var", error = TRUE)
@@ -83,7 +83,8 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
     response <- response / denominator
   }
   brms_bf <- wrangle_model_formula(model, formula, bdat, family,
-                                   model_survival = model_survival)
+                                   model_survival = model_survival,
+                                   level_spec = level_spec)
   group_spec <- parse_group_terms(formula, model)
   brm_args <- add_brm_defaults(brm_args, model, family, x, response,
                                skip_check, custom_name,
@@ -92,7 +93,8 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
                                predictor_scale = predictor_scale,
                                model_survival = model_survival,
                                disp_spec = parse_disp_term(formula),
-                               group_spec = group_spec)
+                               group_spec = group_spec,
+                               level_spec = level_spec)
   # A group-level term needs initial values as well as a prior. Stan's own
   # draw for a lower-bounded standard deviation is uniform(-2, 2) on the
   # unconstrained scale and ignores whatever prior was declared, so a prior

@@ -13,7 +13,7 @@
 ##
 ## Set BAYESNEC_FIT_STORE to the directory. Leave it unset and nothing here
 ## does anything, so an ordinary precompile is unaffected.
-## keys_sha256: 2fc326e908b74fd6
+## keys_sha256: 25db16bf6152ac6c
 
 ## The key a stored fit is filed under.
 ##
@@ -30,7 +30,14 @@
 ## Kept free of every dependency but digest, because this file is copied verbatim
 ## into bayesnec and has to behave identically there.
 
-FIT_FUNS <- c("bnec", "bnec_group", "bnec_hurdle")
+FIT_FUNS <- c("bnec", "bnec_group", "bnec_hurdle", "bnec_joint")
+
+## The fitting functions whose first argument is a fitted object rather than a
+## data frame. bnec_joint() refits a bayesnecgroupfit or a bayesnechurdlefit as
+## one model, so what it is handed is the result of an earlier call in the same
+## vignette. There is no `data` to digest, and keying on the call alone would
+## file two joint refits of two different grouped fits under one key.
+FIT_FUNS_ON_FIT <- c("bnec_joint")
 
 ## bayesnec::bnec -> "bnec"; bnec -> "bnec"; anything else -> NA.
 fit_fun_name <- function(e) {
@@ -53,6 +60,19 @@ fit_fun_name <- function(e) {
 ## dropped and digested separately: it is a whole data frame, and deparsing one
 ## would be both enormous and dependent on print width.
 ##
+## `object` is dropped for the same reason and on the same terms, but only for
+## the functions that take one: it names the fit being refitted, and what
+## identifies that fit is its own key rather than the symbol the vignette
+## happened to bind it to. joint_key() digests the key in its place.
+##
+## bnec_joint() is a generic, and the definition matched against here is the
+## generic rather than the method, so only `object` is named by match.call() and
+## everything else keeps whatever name the call gave it. Matching against the
+## method would normalise `model` and `formula` as well, but it would mean the
+## two sides choosing a method -- by class during the render and from the
+## prerequisite's own function here -- and the whole value of this file is that
+## both sides reach the same string without consulting each other.
+##
 ## deparse() with a wide cutoff rather than deparse1(), because the file has to
 ## run under the R in the container as well as here.
 normalise_fit_call <- function(cl, fn_name = fit_fun_name(cl)) {
@@ -62,6 +82,9 @@ normalise_fit_call <- function(cl, fn_name = fit_fun_name(cl)) {
   def <- get(fn_name, envir = asNamespace("bayesnec"))
   cl <- match.call(def, cl, expand.dots = TRUE)
   cl$data <- NULL
+  if (fn_name %in% FIT_FUNS_ON_FIT) {
+    cl$object <- NULL
+  }
   args <- as.list(cl)[-1L]
   if (length(args)) {
     args <- args[order(names(args))]
@@ -82,6 +105,24 @@ normalise_fit_call <- function(cl, fn_name = fit_fun_name(cl)) {
 fit_key <- function(cl, data, fn_name = fit_fun_name(cl)) {
   substr(digest::digest(list(call = normalise_fit_call(cl, fn_name),
                              data = data),
+                        algo = "sha256"), 1L, 16L)
+}
+
+## A joint refit is keyed on its call and on the key of the fit it refits.
+##
+## The dependency is part of the identity rather than beside it: change the
+## bnec_group() call and its key changes, so the joint refit's key changes with
+## it and the render stops at the joint chunk instead of loading a refit of the
+## previous draft. That is the same contract the data digest keeps for every
+## other call in the store, reached the only way it can be reached for a call
+## that is handed a fit rather than data.
+##
+## The list element is named `depends_on` rather than `data`, which keeps a
+## joint refit's key out of the space fit_key() addresses even where a
+## prerequisite key and a data frame happened to digest alike.
+joint_key <- function(cl, depends_on, fn_name = fit_fun_name(cl)) {
+  substr(digest::digest(list(call = normalise_fit_call(cl, fn_name),
+                             depends_on = depends_on),
                         algo = "sha256"), 1L, 16L)
 }
 
@@ -130,19 +171,59 @@ fit_store_shim <- function(fn_name, store) {
     caller <- parent.frame()
     def <- get(fn_name, envir = asNamespace("bayesnec"))
     mcl <- match.call(def, cl, expand.dots = TRUE)
-    if (is.null(mcl$data)) {
-      stop("the fit store needs `data` named or matched in the call to ",
-           fn_name, "().", call. = FALSE)
+    key <- if (fn_name %in% FIT_FUNS_ON_FIT) {
+      joint_key(cl, fit_store_prereq_key(mcl, fn_name, caller), fn_name)
+    } else {
+      if (is.null(mcl$data)) {
+        stop("the fit store needs `data` named or matched in the call to ",
+             fn_name, "().", call. = FALSE)
+      }
+      fit_key(cl, eval(mcl$data, caller), fn_name)
     }
-    data <- eval(mcl$data, caller)
-    key <- fit_key(cl, data, fn_name)
     path <- file.path(store, paste0(key, ".rds"))
     if (!file.exists(path)) {
       fit_store_miss(key, cl, fn_name, store)
     }
     message("fit store: ", key, " <- ", basename(path))
-    readRDS(path)
+    # Every object the store hands back is stamped with the key it came from, so
+    # that a later call which refits it can name its prerequisite without being
+    # told. The compendium reaches the same key by following the variable back to
+    # the earlier fit call in the vignette source, which is a different route to
+    # the same string -- and two routes that agree is the property the whole
+    # store rests on.
+    obj <- readRDS(path)
+    attr(obj, "fit_store_key") <- key
+    obj
   }
+}
+
+## The key of the fit a joint refit was handed.
+##
+## Read off the object rather than off the symbol, because the symbol is not
+## evidence: a variable rebound between the grouped fit and the joint refit would
+## still be called `fits_herb`. The stamp is only on an object this shim
+## returned, so a missing one means the fit reaching bnec_joint() is not the one
+## the compendium planned against, and that is reported rather than guessed
+## around.
+fit_store_prereq_key <- function(mcl, fn_name, caller) {
+  if (is.null(mcl$object)) {
+    stop("the fit store needs `object` named or matched in the call to ",
+         fn_name, "().", call. = FALSE)
+  }
+  obj <- eval(mcl$object, caller)
+  dep <- attr(obj, "fit_store_key")
+  if (is.null(dep)) {
+    stop("the fit handed to ", fn_name, "() did not come from the fit store.\n",
+         "  object: ", paste(deparse(mcl$object, width.cutoff = 500L),
+                             collapse = " "), "\n",
+         "  A joint refit is keyed on the key of the fit it refits, so that fit\n",
+         "  has to be one the store answered. It is not, which means something\n",
+         "  between the two calls returned a new object -- screen_models() and\n",
+         "  amend() both do. Refit jointly from the object the fitting call\n",
+         "  returned, or teach the compendium about the step in between.",
+         call. = FALSE)
+  }
+  dep
 }
 
 ## A miss is reported with everything needed to find the cause: the key, the

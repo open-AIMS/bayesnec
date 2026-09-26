@@ -79,3 +79,18 @@ test_that("nec says how many draws are censored, on either class", {
 test_that("an uncensored posterior is silent", {
   expect_silent(nec(nec4param))
 })
+
+# ---- no_effect, #388 ---------------------------------------------------------
+
+test_that("no_effect is refused rather than discarded off a joint refit", {
+  # The argument selects between the nec parameter and the no-effect estimate
+  # each level's own equation supports, which needs exactly one equation per
+  # level. Every other class has one type of no-effect estimate already, so a
+  # supplied no_effect would otherwise be absorbed by ... and ignored, which is
+  # the failure check_component_arg() exists to prevent.
+  expect_error(nec(nec4param, no_effect = TRUE), "`no_effect` selects")
+  expect_error(suppressMessages(nec(manec_example, no_effect = TRUE)),
+               "bayesmanecfit")
+  # Refused on its default value as well: the user typed it, so it was meant.
+  expect_error(nec(nec4param, no_effect = FALSE), "`no_effect` selects")
+})

@@ -11,7 +11,8 @@ nec(
   xform = identity,
   prob_vals = c(0.5, 0.025, 0.975),
   extrapolate = FALSE,
-  ...
+  ...,
+  no_effect = FALSE
 )
 }
 \arguments{
@@ -39,6 +40,15 @@ order. See the \emph{Extrapolation} section of \code{\link{nec}}.}
 \code{resolution} are forwarded to \code{\link{nsec}} where a finite
 \code{extrapolate} limit requires a curve to be re-evaluated, and are
 otherwise unused.}
+
+\item{no_effect}{For a \code{\link{bayesnecjointfit}} only, a
+\code{\link[base]{logical}} value. \code{FALSE}, the default, reports the
+\code{nec} parameter alone, so a level whose equation has none returns
+\code{NA}. \code{TRUE} reports instead the no-effect estimate each level's
+own equation supports --- the \code{nec} parameter for a threshold equation,
+the NSEC of the fitted curve for a smooth one --- labelled by type in an
+\code{ne_type} column. The other classes have no such argument and reject it
+rather than discarding it.}
 }
 \value{
 A vector containing the estimated no-effect value, including upper
@@ -79,12 +89,23 @@ with NSEC draws from the smooth ones, in proportion to the model
 weights. The result is the model-averaged \bold{N(S)EC}, and a message is
 emitted to say so. It is not a pure NEC and should not be reported as
 one.
+\item For a \code{\link{bayesnecjointfit}}, a
+\code{\link[base]{data.frame}} with one row per level of the grouping
+factor, the equation fitted at that level in a \code{model} column and
+the type of the estimate in an \code{ne_type} column. A composed joint
+refit fits one equation per level, so each level's estimate is a NEC or
+an NSEC and never a mixture of the two. \code{no_effect = FALSE}, the
+default, therefore reports the \code{nec} parameter and \code{NA} where
+the level's equation has none, and \code{no_effect = TRUE} reports a NEC
+at a threshold level and the NSEC of the fitted curve at a smooth one.
+The \code{ne_type} column is what a model-averaged N(S)EC cannot report.
 }
 
 \code{\link{summary}} labels the estimate NEC, NSEC or N(S)EC accordingly,
-and is the better choice where the type matters, because \code{nec} always
-returns an unlabelled vector. Use \code{\link{nsec}} where a NSEC is wanted
-from every model regardless of type.
+and is the better choice where the type matters, because for every class but
+the joint refit \code{nec} returns an unlabelled vector. Use
+\code{\link{nsec}} where a NSEC is wanted from every model regardless of
+type.
 }
 \section{Capping and dropping}{
 
