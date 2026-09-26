@@ -376,6 +376,19 @@
   direction of the comparison, and the censoring record is remapped with the
   draws (#44).
 
+- `nec()`, `ecx()` and `nsec()` on a `bayesnecgroupfit` now mark a censored
+  entry as the level's own fit does. The table they return gains one character
+  column per quantile, named `bound_` followed by that quantile's column name
+  (`bound_Q50`, `bound_Q2.5` and `bound_Q97.5` by default). An entry is `">="`
+  or `"<="` where the matching number is the end of the prediction range, and
+  `""` where it is a quantile. The new columns follow the numeric ones, which
+  keep their names, positions and values; code that checks the column names or
+  counts the columns sees the change. The table previously dropped each level's
+  `"censored_summary"` attribute: on a group whose first level is the packaged
+  `manec_example` predicted over a grid ending at 0.9, `nec()` on that level
+  marked its estimate and upper limit `>= 0.90`, and `nec()` on the group
+  returned both as an unmarked 0.90 (#404).
+
 ## Behaviour changes to a fit with a `rate()` denominator
 
 - The default `top` and `bot` priors for a model fitted with a `rate()`
