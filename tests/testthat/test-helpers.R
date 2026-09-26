@@ -709,3 +709,22 @@ test_that("with_preserved_rng_state evaluates in the calling frame", {
   }
   expect_equal(f(), 42)
 })
+
+test_that("subset_draws keeps the censoring record of the draws it takes", {
+  # `[` drops the record, after which a censored draw cannot be told from a
+  # missing one (#404). The subset must carry the share of the record that
+  # belongs to the draws taken, in their new order.
+  x <- c(1, NA, 3, NA)
+  attr(x, "censored") <- bayesnec:::censoring_record(
+    upper = 5, lower = 0, above = c(FALSE, TRUE, FALSE, FALSE),
+    below = c(FALSE, FALSE, FALSE, TRUE)
+  )
+  out <- bayesnec:::subset_draws(x, c(4, 2, 1))
+  expect_identical(as.numeric(out), c(NA, NA, 1))
+  cens <- attr(out, "censored")
+  expect_identical(cens$above, c(FALSE, TRUE, FALSE))
+  expect_identical(cens$below, c(TRUE, FALSE, FALSE))
+  expect_identical(c(cens$upper, cens$lower), c(5, 0))
+  # Without a record the subset is exactly what `[` returns.
+  expect_identical(bayesnec:::subset_draws(c(4, 5, 6), c(3, 1)), c(6, 4))
+})

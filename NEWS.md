@@ -331,6 +331,29 @@
   `extrapolate`, because neither stores a prediction range to measure a limit
   against (#392).
 
+- `compare_estimates()` and `compare_posterior()` now compare a censored draw
+  through its censoring record instead of deleting it. For many pairs the
+  record fixes the sign of the difference whatever the censored value is: a
+  draw at or above the top of the prediction range, paired with a draw
+  identified below it, gives a positive difference. A pair whose sign the
+  record leaves open is indeterminate, and `prob_diff` gains `prob_lower` and
+  `prob_upper`, which count every such pair as not positive and as positive
+  respectively. The two are equal where no pair is indeterminate, and `prob`
+  is then that value, identical to the previous one where nothing is censored.
+  Where they differ `prob` is `NA`. `prob_diff` also gains `censored_first` and
+  `censored_second`, the censored fraction of each posterior in the pair, and
+  `diff_data` gains `positive` and `indeterminate`, which mark each difference
+  draw; a difference involving a censored draw is `NA` in `diff` and
+  `diff_list`. This supersedes the first correction for #39, made earlier in
+  this release, under which a pair containing a censored ECx or NSEC draw was
+  deleted and `prob` reported over the remaining pairs with nothing to say so:
+  on the packaged `manec_example`, comparing the ECx50 of `nec4param` and
+  `ecx4param` over 0.03 to 1.66, 74 and 59 of 100 draws were censored and `prob`
+  was 0.6 over the 10 pairs left, where the record supports any value from
+  0.37 to 0.80. A threshold equation's sampled `nec` draw beyond the range,
+  which `nec()` reports only as a bound, was compared by its value; every
+  comparison type now treats such a draw as the estimator reports it (#404).
+
 ## Behaviour changes to a fit with a `rate()` denominator
 
 - The default `top` and `bot` priors for a model fitted with a `rate()`
@@ -1783,12 +1806,15 @@
   zero". Supplying an `xform` took a different branch and was unaffected, which
   is why the failure was specific to the default (#160, #161).
 
-- `compare_estimates()` and `compare_posterior()` no longer report
-  `prob = NA` for a comparison in which any draw is censored. The pairwise
-  probability is computed over the draw pairs where both estimates are
-  identified; a single unreached draw in either posterior previously voided the
-  whole comparison, and silently, the probability being a value rather than an
-  error (#39).
+- `compare_estimates()` and `compare_posterior()` no longer void a comparison
+  in which any draw is censored. A single unreached draw in either posterior
+  previously made `prob` `NA` for the whole comparison, and silently, the
+  probability being a value rather than an error (#39). The first correction
+  computed the probability over the draw pairs where both estimates are
+  identified. That is superseded by the #404 entry under *Estimates beyond the
+  range the model was predicted over*: a censored draw is now compared through
+  its censoring record, and `prob` is `NA` only where the record leaves the
+  probability between `prob_lower` and `prob_upper`.
 
 - `plot()` and `autoplot()` annotate the same EC10 for a gaussian fit. `plot()`
   asked for `type = "relative"` under its 2.1.3 meaning, the control-to-minimum

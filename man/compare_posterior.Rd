@@ -78,7 +78,7 @@ after an odd number of preceding normal draws. Use R's default
 \value{
 A named \code{\link[base]{list}} containing bootstrapped differences
 in posterior predictions of the \code{\link{bayesnecfit}} or
-\code{\link{bayesnecfit}} model fits contained in \code{x}. See Details.
+\code{\link{bayesmanecfit}} model fits contained in \code{x}. See Details.
 }
 \description{
 Extracts posterior predicted values from a list of class
@@ -121,6 +121,15 @@ user-specific data.frame, set \code{make_newdata = FALSE} and provide
 an additional data.frame via the \code{newdata} argument. For guidance
 on how to structure \code{newdata}, see for example
 \code{\link[brms]{posterior_epred}}.
+
+Every comparison other than "fitted" is made by
+\code{\link{compare_estimates}}, which describes the elements returned. A
+posterior draw that lies beyond the prediction range is not deleted from
+the comparison. Where the censoring leaves the sign of some paired
+differences unknown, \code{prob_diff} reports the probability as a lower
+and an upper value, \code{prob_lower} and \code{prob_upper}, with the
+censored fraction of each posterior, and \code{prob} is \code{NA}. See the
+\emph{Censored estimates} section of \code{\link{compare_estimates}}.
 }
 \examples{
 \dontrun{
@@ -135,4 +144,5 @@ compare_posterior(list("n(s)ec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
 \seealso{
 \code{\link{bnec}} \code{\link{ecx}} \code{\link{nsec}}
 \code{\link{nec}} \code{\link{bnec_newdata}}
+\code{\link{compare_estimates}}
 }
