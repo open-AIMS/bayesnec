@@ -695,3 +695,30 @@ test_that("a fit-time x_range does not carry the growth rows past the data", {
                                       x_range = c(lower, 4))))
   }
 })
+
+test_that("exceedance() reads a growth estimate on growth's range (#412)", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # exceedance() reads the posterior through ecx() and nsec(), so a growth
+  # EC50 beyond growth's top reaches it as censored there. Against a threshold
+  # above that top, the censored draws could lie on either side, and the
+  # probability is the interval between the two counts rather than a number.
+  obj <- hurdle_cut_fixture(1.6)
+  g_top <- max(obj$growth$fit$data$x)
+  post <- suppressWarnings(ecx(obj, ecx_val = 50, which = "growth",
+                               posterior = TRUE))
+  n_above <- sum(attr(post, "censored")$above)
+  expect_gt(n_above, 0)
+  out <- suppressWarnings(exceedance(obj, threshold = 2, estimate = "ecx",
+                                     ecx_val = 50, which = "growth"))
+  expect_equal(out$n_above, n_above)
+  expect_true(is.na(out$prob))
+  expect_lt(out$prob_lower, out$prob_upper)
+  # Below growth's top every censored draw is known to exceed the threshold,
+  # so the probability is identified.
+  expect_lt(1.5, g_top)
+  below <- suppressWarnings(exceedance(obj, threshold = 1.5, estimate = "ecx",
+                                       ecx_val = 50, which = "growth"))
+  expect_equal(below$prob_lower, below$prob_upper)
+})
