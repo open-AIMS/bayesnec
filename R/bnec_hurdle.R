@@ -195,6 +195,12 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
   # predictor here so the first component is not sampled before the second
   # discovers the contradiction. See #317.
   full_frame <- model.frame(formula, data = data, run_par_checks = TRUE)
+  # Immediately after the frame, as bnec() places it. model.frame() drops a
+  # row with a missing predictor, so the growth bound check below would
+  # otherwise read the survivors without it: a growth response whose only
+  # value off the bound sat in that row was refused as every value at the
+  # bound, rather than as the missing value it is. See #278 and #400.
+  check_complete_cases(full_frame)
   validate_predictor_scale(
     predictor_scale, retrieve_var(full_frame, "x_var", error = TRUE)
   )

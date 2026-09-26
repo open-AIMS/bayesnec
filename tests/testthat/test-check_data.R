@@ -605,12 +605,6 @@ test_that("response_bound_reached names the bound every observation is at", {
   # Both bounds at once is a response that varies, not one at a bound.
   expect_identical(response_bound_reached(c(0, 1, 0, 1)), NA_real_)
   expect_identical(response_bound_reached(numeric(0)), NA_real_)
-  # An interval-censored row that spans off the bound makes it vary.
-  expect_identical(response_bound_reached(rep(0, 4), spans = c(TRUE, FALSE,
-                                                               FALSE, FALSE)),
-                   NA_real_)
-  expect_identical(response_bound_reached(rep(0, 4), spans = rep(FALSE, 4)),
-                   0)
 })
 
 test_that("the update route tests the family the refit uses (#400)", {
@@ -677,28 +671,31 @@ test_that("update() refuses before the refit, and refits a gaussian (#400)", {
   expect_identical(calls, 1L)
 })
 
-test_that("an interval from the bound is a response that varies (#400)", {
-  # cover | cens(cens, upper): each row states that the truth lies between the
-  # recorded 0 and its upper end, which is inside the support, so the response
-  # varies although every recorded value is 0.
+test_that("an interval-censored response is judged on its recorded values (#400)", {
+  # cover | cens(cens, upper): every row states that the truth lies between the
+  # recorded bound and an upper end inside the support. The default priors are
+  # built from the recorded values alone, so letting such a response through
+  # ended in the quantile() error the refusal replaces. It is refused by name.
   x <- cd_at_bound_x()
   d <- data.frame(x = x, cover = 0, cens = "interval",
                   upper = seq(0.05, 0.5, length.out = length(x)))
-  f <- cover | cens(cens, upper) ~ crf(x, model = "nec3param")
-  expect_silent(check_response_at_bound(cd_bdat(f, d), "beta"))
-  # One such row is enough.
-  d1 <- transform(d, cens = "none", upper = 0)
-  d1$cens[1] <- "interval"
-  d1$upper[1] <- 0.05
-  expect_silent(check_response_at_bound(cd_bdat(f, d1), "beta"))
-  # An interval whose upper end is the recorded value is a point at the bound.
-  d2 <- transform(d, upper = 0)
-  expect_error(check_response_at_bound(cd_bdat(f, d2), "beta"),
-               "every value is 0", fixed = TRUE)
-  # Left and right censoring are not consulted.
-  d3 <- transform(d, cens = "right")
-  expect_error(check_response_at_bound(cd_bdat(f, d3), "beta"),
-               "every value is 0", fixed = TRUE)
+  err <- expect_error(suppressMessages(
+    get_priors(cover | cens(cens, upper) ~ crf(x, model = "nec3param"),
+               data = d, family = "Beta")
+  ))
+  expect_match(conditionMessage(err),
+               "The response \"cover\" is at the lower bound of a beta",
+               fixed = TRUE)
+  expect_false(grepl("na.rm", conditionMessage(err), fixed = TRUE))
+  # The same for a count at its trials with an interval below it.
+  n <- data.frame(x = x, alive = 10L, exposed = 10L, cens = "interval",
+                  lower = 8L)
+  err <- expect_error(suppressMessages(
+    get_priors(alive | trials(exposed) + cens(cens, lower) ~
+                 crf(x, model = "nec3param"), data = n, family = "binomial")
+  ))
+  expect_match(conditionMessage(err), "every count equals its number of trials",
+               fixed = TRUE)
 })
 
 test_that("check_response_at_bound leaves every other response alone", {

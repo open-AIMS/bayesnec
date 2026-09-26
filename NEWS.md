@@ -1469,9 +1469,10 @@
   `bnec_hurdle()` refuses a growth component whose every survivor is at a
   bound before either component is fitted, and names it as the growth
   component. A response with one observation off the bound is fitted as
-  before. A response with an interval-censored observation whose upper end,
-  the second variable of `cens()`, differs from its recorded value is not
-  refused, since that observation lies inside the support (#400).
+  before. A censored response is judged on its recorded values, because the
+  default priors are built from them, so an interval-censored response whose
+  every recorded value is at a bound is refused although the upper ends of its
+  intervals lie inside the support (#400).
 
 - A fit now reproduces under a `set.seed()` in the caller's session. The
   initial-value search called `set.seed(seed)` whatever it was given, and

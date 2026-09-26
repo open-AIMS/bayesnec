@@ -312,6 +312,29 @@ test_that("a growth component at a bound is named as that component (#400)", {
   expect_identical(calls, 0L)
 })
 
+test_that("a missing predictor is refused before the growth bound (#400)", {
+  # model.frame() drops the row, so read after it the survivors were all 1 and
+  # the call was refused as a growth component at the bound.
+  dat <- data.frame(x = as.numeric(rep(1:4, each = 5)),
+                    y = c(rep(1, 14), 0.6, rep(0, 5)))
+  dat$x[15] <- NA
+  calls <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      calls <<- calls + 1L
+      stop("component fit should not start")
+    },
+    .package = "bayesnec"
+  )
+  err <- expect_error(suppressMessages(
+    bnec_hurdle(y ~ crf(x, "nec3param"), data = dat)
+  ))
+  expect_match(conditionMessage(err), "row\\(s\\) with missing values")
+  expect_match(conditionMessage(err), "at row\\(s\\) 15")
+  expect_false(grepl("upper bound", conditionMessage(err)))
+  expect_identical(calls, 0L)
+})
+
 test_that("crossed_weights is the outer product of component weights", {
   # Mock two model-averaged fits: crossed_weights only reads mod_stats.
   mock_manec <- function(w) {

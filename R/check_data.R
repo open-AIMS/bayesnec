@@ -1373,20 +1373,12 @@ check_inline_boundary <- function(data, family) {
 #' @param trials The number of trials of a \code{binomial} or
 #' \code{beta_binomial} response, or \code{NULL} for a response recorded as a
 #' proportion.
-#' @param spans A logical vector marking the interval-censored observations
-#' whose upper end differs from the recorded value, or \code{NULL}.
 #'
 #' @return 0 or 1, the bound every observation sits at, or \code{NA} where the
 #' response is not at one bound throughout.
 #' @noRd
-response_bound_reached <- function(y, trials = NULL, spans = NULL) {
+response_bound_reached <- function(y, trials = NULL) {
   if (length(y) == 0) {
-    return(NA_real_)
-  }
-  # An interval-censored observation from the bound to a value inside the
-  # support states that the truth lies in that interval, not at the bound, so a
-  # response with one such observation varies whatever the recorded values are.
-  if (any(spans)) {
     return(NA_real_)
   }
   if (all(y == 0)) {
@@ -1428,15 +1420,18 @@ response_bound_reached <- function(y, trials = NULL, spans = NULL) {
 #' the one the refit uses. The whole decision is made here, so that a change to
 #' what is done with such a response is made in one place.
 #'
-#' Left and right censoring are not consulted: a value censored at a bound of
-#' one of these families states either what the family cannot represent
-#' (beyond the bound) or nothing at all (anywhere within its support), so a
-#' response whose every recorded value is at one bound is refused whether or
-#' not some of those values are censored. An interval-censored observation is
-#' different where its upper end, the second variable of \code{cens()}, differs
-#' from its recorded value: that observation lies inside the support, so the
-#' response varies and is not refused. An upper end written in the formula as a
-#' number is not in the model frame and is not read.
+#' Censoring is not consulted: the response is judged on its recorded values,
+#' because the default priors are built from them. A value left- or
+#' right-censored at a bound of one of these families states either what the
+#' family cannot represent (beyond the bound) or nothing at all (anywhere
+#' within its support). An interval-censored observation whose upper end, the
+#' second variable of \code{cens()}, lies inside the support holds
+#' information the recorded value does not, but \code{check_data()},
+#' \code{response_link_scale()} and \code{define_prior()} read only the
+#' recorded values, so such a response reached the same \code{quantile()}
+#' error as one with no censoring at all when it was let through. It is refused
+#' by name instead. Supplying \code{prior} does not change this: the refusal is
+#' raised before any prior is read.
 #'
 #' @param data A model frame from \code{model.frame()} on a
 #' \code{\link{bayesnecformula}}.
@@ -1470,12 +1465,6 @@ check_response_at_bound <- function(data, family, group = NULL,
       return(invisible(NULL))
     }
   }
-  cens <- retrieve_cens(data)
-  upper_end <- try(retrieve_var(data, "cens_y2_var"), silent = TRUE)
-  spans <- NULL
-  if (!is.null(cens) && is.numeric(upper_end)) {
-    spans <- !is.na(cens) & cens == 2 & !is.na(upper_end) & upper_end != y
-  }
   bnec_pop_vars <- attr(data, "bnec_pop")
   y_name <- names(data)[which(names(bnec_pop_vars) == "y_var")]
   if (is.null(subject)) {
@@ -1494,7 +1483,7 @@ check_response_at_bound <- function(data, family, group = NULL,
   side <- function(bound) if (bound == 1) "upper" else "lower"
   why <- " A response that does not vary identifies no concentration-response"
   if (is.null(group)) {
-    bound <- response_bound_reached(y, trials, spans)
+    bound <- response_bound_reached(y, trials)
     if (is.na(bound)) {
       return(invisible(NULL))
     }
@@ -1505,7 +1494,7 @@ check_response_at_bound <- function(data, family, group = NULL,
   }
   rows <- split(seq_along(y), group, drop = TRUE)
   bounds <- vapply(rows, function(i) {
-    response_bound_reached(y[i], trials[i], spans[i])
+    response_bound_reached(y[i], trials[i])
   }, numeric(1))
   hit <- bounds[!is.na(bounds)]
   if (length(hit) == 0) {
