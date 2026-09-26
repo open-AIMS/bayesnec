@@ -354,6 +354,28 @@
   which `nec()` reports only as a bound, was compared by its value; every
   comparison type now treats such a draw as the estimator reports it (#404).
 
+- New function `exceedance()` returns the posterior probability that a NEC,
+  NSEC or ECx exceeds a threshold concentration, such as a guideline or
+  trigger value. It reads the posterior that `nec()`, `nsec()` or `ecx()`
+  returns for the same object and arguments. It accepts a single fit, a model
+  set, a hurdle fit, whose combined no-effect concentration it compares unless
+  `which` names a component, and a grouped fit, with one row per level. A draw
+  beyond the prediction range is counted from the censoring record rather than
+  deleted. For a threshold inside the range the record decides every such
+  draw, because a draw censored above exceeds the threshold. For a threshold
+  beyond an end it does not, and the probability is reported as an interval,
+  `prob_lower` to `prob_upper`, with `prob` `NA`. Above the upper end the
+  interval runs from the share of identified draws above the threshold to that
+  share plus the share censored above. The result also gives the number of
+  draws censored at each end. On the packaged `manec_example`, the EC50 of
+  `nec4param` with the prediction range capped at 1.67 has 57 of 100 draws
+  censored above, and the probability that it exceeds 1.65 is 0.83, the value
+  on the full range; deleting the censored draws gives 0.60. `xform` is
+  applied to the estimate before the comparison, so the threshold is given on
+  the scale the estimate is returned on. A decreasing `xform` reverses the
+  direction of the comparison, and the censoring record is remapped with the
+  draws (#44).
+
 ## Behaviour changes to a fit with a `rate()` denominator
 
 - The default `top` and `bot` priors for a model fitted with a `rate()`
