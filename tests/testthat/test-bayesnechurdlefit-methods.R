@@ -227,42 +227,92 @@ test_that("the summary ECx grid is read from whichever class a block is", {
   # under different names. Reading pred_vals alone returned NULL for the
   # commoner case, range() of nothing is c(Inf, -Inf), and summary(ecx = TRUE)
   # then errored inside seq() (#395).
+  #
+  # The growth grid is clipped to growth's observed range, which is built
+  # from a fitted component; here each mock carries it as `observed`, equal to
+  # its grid unless stated.
+  local_mocked_bindings(
+    hurdle_estimate_range = function(object, which, x_range) {
+      object$growth$observed
+    },
+    .package = "bayesnec"
+  )
   mk <- function(grid, slot) {
-    out <- list()
+    out <- list(observed = range(grid))
     out[[slot]] <- list(data = data.frame(x = grid))
     out
   }
+  range_of <- function(o, w) bayesnec:::hurdle_summary_range(o, w)
   both_sets <- list(growth = mk(c(1, 4), "w_pred_vals"),
                     survival = mk(c(0.5, 6), "w_pred_vals"))
-  # The intersection, which is the range both curves are defined over and the
-  # bound combine_censored_min() gives the combined no-effect estimate.
-  expect_equal(bayesnec:::hurdle_summary_range(both_sets), c(1, 4))
+  # Growth's own grid for the growth curve, and survival's for the survival
+  # and combined curves, which is the rule a bare ecx() applies (#412). The
+  # intersection, c(1, 4), cut the survival and combined rows at growth's top.
+  expect_equal(range_of(both_sets, "growth"), c(1, 4))
+  expect_equal(range_of(both_sets, "survival"), c(0.5, 6))
+  expect_equal(range_of(both_sets, "combined"), c(0.5, 6))
   mixed <- list(growth = mk(c(1, 4), "pred_vals"),
                 survival = mk(c(0.5, 6), "w_pred_vals"))
-  expect_equal(bayesnec:::hurdle_summary_range(mixed), c(1, 4))
-  # No stored grid on either side: NULL, which leaves ecx() to build its own
-  # rather than being handed a range it cannot use.
-  expect_null(bayesnec:::hurdle_summary_range(list(growth = list(),
-                                                   survival = list())))
-  expect_null(bayesnec:::hurdle_summary_range(
-    list(growth = mk(c(1, 4), "pred_vals"), survival = list())
-  ))
+  expect_equal(range_of(mixed, "growth"), c(1, 4))
+  expect_equal(range_of(mixed, "combined"), c(0.5, 6))
+  # No stored grid: NULL, which leaves ecx() to build its own rather than
+  # being handed a range it cannot use. Each curve depends on its own
+  # component's grid alone.
+  for (w in c("combined", "growth", "survival")) {
+    expect_null(range_of(list(growth = list(), survival = list()), w))
+  }
+  growth_only <- list(growth = mk(c(1, 4), "pred_vals"), survival = list())
+  expect_equal(range_of(growth_only, "growth"), c(1, 4))
+  expect_null(range_of(growth_only, "survival"))
+  expect_null(range_of(growth_only, "combined"))
+})
+
+test_that("the summary's growth grid is clipped to growth's observed range", {
+  # bnec_hurdle() passes one x_range to both components, so a range given at
+  # fit time is stored as growth's grid as well, past the highest
+  # concentration at which anything survived (#412).
+  local_mocked_bindings(
+    hurdle_estimate_range = function(object, which, x_range) {
+      object$growth$observed
+    },
+    .package = "bayesnec"
+  )
+  mk <- function(grid, observed) {
+    list(observed = observed, pred_vals = list(data = data.frame(x = grid)))
+  }
+  range_of <- function(o, w) bayesnec:::hurdle_summary_range(o, w)
+  survival <- mk(c(0, 40), c(0, 40))
+  # Wider than the growth data: cut to them. The survival grid is kept.
+  widened <- list(growth = mk(c(0, 40), c(0, 10)), survival = survival)
+  expect_equal(range_of(widened, "growth"), c(0, 10))
+  expect_equal(range_of(widened, "survival"), c(0, 40))
+  expect_equal(range_of(widened, "combined"), c(0, 40))
+  # Narrower than the growth data: the fit was asked for that range, and it is
+  # kept.
+  narrowed <- list(growth = mk(c(1, 5), c(0, 10)), survival = survival)
+  expect_equal(range_of(narrowed, "growth"), c(1, 5))
+  # Wholly outside the growth data: nothing to clip to, and ecx() is left to
+  # build growth's observed range itself.
+  apart <- list(growth = mk(c(20, 40), c(0, 10)), survival = survival)
+  expect_null(range_of(apart, "growth"))
 })
 
 # A component carrying only what summary.bayesnechurdlefit() reads once ecx()
 # and nec() are mocked: the stored prediction grid, the equation names, the
-# no-effect type and the family. grid = NULL stores no grid.
-summary_component <- function(grid, averaged = FALSE) {
+# no-effect type and the family. grid = NULL stores no grid. observed stands
+# for the range of the data the component was fitted to, which
+# record_summary_calls() reports in place of building it from a fit.
+summary_component <- function(grid, averaged = FALSE, observed = grid) {
   fit <- list(family = list(family = "gaussian"))
   stored <- if (is.null(grid)) NULL else list(data = data.frame(x = grid))
   if (averaged) {
     out <- list(mod_fits = list(nec3param = list(fit = fit),
                                 ecx4param = list(fit = fit)),
-                ne_type = "N(S)EC", w_pred_vals = stored)
+                ne_type = "N(S)EC", w_pred_vals = stored, observed = observed)
     structure(out, class = c("bayesmanecfit", "bnecfit"))
   } else {
     out <- list(model = "nec3param", ne_type = "NEC", fit = fit,
-                pred_vals = stored)
+                pred_vals = stored, observed = observed)
     structure(out, class = c("bayesnecfit", "bnecfit"))
   }
 }
@@ -275,7 +325,8 @@ summary_hurdle <- function(growth, survival) {
 
 # Replaces ecx() and nec() with recorders. Each call's arguments are kept as
 # supplied, so an argument passed twice appears twice rather than stopping the
-# call as the real generic does.
+# call as the real generic does. hurdle_estimate_range() reports the growth
+# component's observed range from the mock rather than from a fit.
 record_summary_calls <- function(env = parent.frame()) {
   calls <- new.env()
   calls$ecx <- list()
@@ -289,6 +340,9 @@ record_summary_calls <- function(env = parent.frame()) {
     nec = function(object, ...) {
       calls$nec[[length(calls$nec) + 1]] <- list(...)
       estimate
+    },
+    hurdle_estimate_range = function(object, which, x_range) {
+      object$growth$observed
     },
     .package = "bayesnec",
     .env = env
@@ -306,8 +360,9 @@ test_that("an explicit x_range reaches each summary ECx call once (#416)", {
       o <- summary_hurdle(summary_component(c(0, 10), g_avg),
                           summary_component(c(0, 40), s_avg))
       calls <- record_summary_calls()
-      # Both limits differ from the default of c(0, 10), so a range cut back
-      # to the intersection of the stored grids would show.
+      # Both limits differ from the growth rows' default of c(0, 10), and the
+      # lower one from the other rows' c(0, 40), so a default left in place of
+      # the supplied range would show.
       out <- summary(o, ecx = TRUE, ecx_vals = c(10, 50),
                      x_range = c(0.5, 40), xform = exp, resolution = 50)
       expect_s3_class(out, "hurdlesummary")
@@ -333,7 +388,12 @@ test_that("an explicit x_range reaches each summary ECx call once (#416)", {
   }
 })
 
-test_that("without x_range the summary ECx rows use the stored grids", {
+test_that("without x_range each summary ECx row uses its own stored grid", {
+  # Growth's grid for the growth rows and survival's for the survival and
+  # combined rows (#412). Before, all three read the intersection, c(1, 10),
+  # which cut the survival and combined rows at growth's top.
+  expected <- list(combined = c(0, 40), growth = c(1, 10),
+                   survival = c(0, 40))
   for (g_avg in c(FALSE, TRUE)) {
     for (s_avg in c(FALSE, TRUE)) {
       o <- summary_hurdle(summary_component(c(1, 10), g_avg),
@@ -343,22 +403,55 @@ test_that("without x_range the summary ECx rows use the stored grids", {
       expect_length(calls$ecx, 3)
       for (args in calls$ecx) {
         expect_equal(n_named(args, "x_range"), 1)
-        expect_equal(args$x_range, c(1, 10))
+        expect_equal(args$x_range, expected[[args$which]])
         expect_identical(args$xform, exp)
         expect_equal(args$resolution, 50)
       }
+      expect_setequal(vapply(calls$ecx, `[[`, "", "which"), names(expected))
     }
+  }
+  # Both components given a fit-time x_range of c(0, 40), which reaches past
+  # growth's data at c(1, 10): the growth rows are cut to the data, and the
+  # others keep the stored grid.
+  o <- summary_hurdle(summary_component(c(0, 40), observed = c(1, 10)),
+                      summary_component(c(0, 40)))
+  calls <- record_summary_calls()
+  summary(o, ecx = TRUE, ecx_vals = 50)
+  expected$growth <- c(1, 10)
+  for (args in calls$ecx) {
+    expect_equal(args$x_range, expected[[args$which]])
   }
 })
 
 test_that("a component with no stored grid leaves ecx() its own default", {
+  # Only the rows read over that component's grid lose their x_range; the
+  # others keep the grid of the component that has one.
   o <- summary_hurdle(summary_component(NULL),
                       summary_component(c(0, 40), averaged = TRUE))
   calls <- record_summary_calls()
   summary(o, ecx = TRUE, ecx_vals = 50)
   expect_length(calls$ecx, 3)
   for (args in calls$ecx) {
-    expect_equal(n_named(args, "x_range"), 0)
+    if (identical(args$which, "growth")) {
+      expect_equal(n_named(args, "x_range"), 0)
+    } else {
+      expect_equal(n_named(args, "x_range"), 1)
+      expect_equal(args$x_range, c(0, 40))
+    }
+  }
+  # The survival component without one: the survival and combined rows are
+  # left to ecx(), and the growth rows keep growth's grid.
+  o <- summary_hurdle(summary_component(c(1, 10)), summary_component(NULL))
+  calls <- record_summary_calls()
+  summary(o, ecx = TRUE, ecx_vals = 50)
+  expect_length(calls$ecx, 3)
+  for (args in calls$ecx) {
+    if (identical(args$which, "growth")) {
+      expect_equal(n_named(args, "x_range"), 1)
+      expect_equal(args$x_range, c(1, 10))
+    } else {
+      expect_equal(n_named(args, "x_range"), 0)
+    }
   }
   # A supplied range still applies where there is no default to replace.
   calls <- record_summary_calls()
@@ -370,7 +463,8 @@ test_that("a component with no stored grid leaves ecx() its own default", {
 })
 
 test_that("x_range = NULL leaves ecx() its own default, not the stored grids", {
-  # Both components store a grid, so the summary's default would be c(0, 10).
+  # Both components store a grid, so the summary's default would be c(0, 10)
+  # for the growth rows and c(0, 40) for the others.
   # An explicit NULL is not that default: the call reaches ecx() without an
   # x_range, and ecx() then applies its own default of NA and builds its grid.
   o <- summary_hurdle(summary_component(c(0, 10)),
@@ -394,4 +488,237 @@ test_that("x_range without ecx = TRUE reaches neither estimator", {
   for (args in calls$nec) {
     expect_equal(n_named(args, "x_range"), 0)
   }
+})
+
+# ---- The range each hurdle estimate is read over (#412) ----------------------
+
+# A hurdle fit whose growth component stops short of the survival component,
+# built from the packaged nec4param fit rather than by sampling. The growth
+# component keeps only the rows at or below cut, as a fit to survivors does
+# where nothing lived above cut, and stores a grid over those rows, as bnec()
+# does. The survival component keeps every row, so its range runs to 3.22.
+# Both components share the one set of draws, which is enough here: what is
+# asserted is which range each curve is read over.
+hurdle_cut_fixture <- function(cut) {
+  growth <- nec4param
+  growth$fit$data <- growth$fit$data[growth$fit$data$x <= cut, , drop = FALSE]
+  xg <- growth$fit$data$x
+  growth$pred_vals$data <- data.frame(x = seq(min(xg), max(xg),
+                                              length.out = 100))
+  structure(list(growth = growth, survival = nec4param,
+                 data = nec4param$fit$data,
+                 formula = nec4param$bayesnecformula, y_var = "y",
+                 n_exposed = nrow(nec4param$fit$data), n_dead = 0L),
+            class = c("bayesnechurdlefit", "bnecfit"))
+}
+
+test_that("a supplied x_range is kept, and only growth is given its own", {
+  # No object is read unless the growth range has to be built.
+  expect_true(is.na(bayesnec:::hurdle_estimate_range(list(), "survival", NA)))
+  expect_true(is.na(bayesnec:::hurdle_estimate_range(list(), "combined", NA)))
+  expect_equal(bayesnec:::hurdle_estimate_range(list(), "growth", c(0, 9)),
+               c(0, 9))
+})
+
+test_that("summary() and a bare ecx() agree for every curve (#412)", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  obj <- hurdle_cut_fixture(1.6)
+  s <- suppressWarnings(summary(obj, ecx = TRUE, ecx_vals = c(10, 50, 90)))
+  for (w in c("combined", "growth", "survival")) {
+    for (v in c(10, 50, 90)) {
+      bare <- suppressWarnings(ecx(obj, ecx_val = v, which = w))
+      expect_equal(s$ecs[[w]][[paste0("ec", v)]], bare,
+                   label = paste(w, "EC", v))
+    }
+  }
+  # Before #412 the summary read every row over the intersection of the two
+  # grids, which ends at growth's top, so its survival EC50 was censored there
+  # while a bare ecx() identified it above that.
+  g_top <- max(obj$growth$fit$data$x)
+  expect_gt(s$ecs$survival$ec50[["Q50"]], g_top)
+  expect_null(attr(s$ecs$survival$ec50, "censored_summary"))
+})
+
+test_that("a growth ECx beyond growth's range is censored there (#412)", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  obj <- hurdle_cut_fixture(1.6)
+  g_top <- max(obj$growth$fit$data$x)
+  expect_warning(est <- ecx(obj, ecx_val = 50, which = "growth"),
+                 "not identified")
+  cs <- attr(est, "censored_summary")
+  # The bound is growth's highest concentration, not survival's 3.22.
+  expect_equal(cs$upper, g_top)
+  expect_equal(cs$bound[1], ">=")
+  expect_equal(est[["Q50"]], g_top)
+  # Read over the survival range, the same curve gives a number above growth's
+  # top, which is what a bare call reported before and what is now withheld.
+  s_range <- range(obj$survival$fit$data$x)
+  extended <- ecx(obj, ecx_val = 50, which = "growth", x_range = s_range)
+  expect_gt(extended[["Q50"]], g_top)
+  expect_null(attr(extended, "censored_summary"))
+  # An EC10 below growth's top is identified as before.
+  inside <- ecx(obj, ecx_val = 10, which = "growth")
+  expect_lt(inside[["Q50"]], g_top)
+  expect_null(attr(inside, "censored_summary"))
+})
+
+test_that("the combined ECx is read beyond growth's range (#412)", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  obj <- hurdle_cut_fixture(1.6)
+  g_top <- max(obj$growth$fit$data$x)
+  est <- ecx(obj, ecx_val = 90, which = "combined")
+  expect_gt(est[["Q2.5"]], g_top)
+  expect_null(attr(est, "censored_summary"))
+  s_range <- range(obj$survival$fit$data$x)
+  expect_equal(est, ecx(obj, ecx_val = 90, which = "combined",
+                        x_range = s_range))
+  expect_equal(ecx(obj, ecx_val = 50, which = "survival"),
+               ecx(obj, ecx_val = 50, which = "survival", x_range = s_range))
+})
+
+test_that("a growth NSEC is searched over growth's range (#412)", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # Cut below the NSEC of nec4param, about 1.48, so that most draws have not
+  # reached the reference by growth's top.
+  obj <- hurdle_cut_fixture(1.4)
+  g_top <- max(obj$growth$fit$data$x)
+  expect_warning(est <- nsec(obj, which = "growth"), "not identified")
+  cs <- attr(est, "censored_summary")
+  expect_equal(cs$upper, g_top)
+  expect_equal(cs$bound[1], ">=")
+  # extrapolate extends the range the call would otherwise search, which for
+  # growth is growth's own. A limit between growth's top and survival's is
+  # therefore an extension for growth and is accepted, and inside the range
+  # for survival and is refused.
+  extended <- nsec(obj, which = "growth", extrapolate = 2)
+  expect_gt(extended[["Q50"]], g_top)
+  expect_equal(extended, nsec(obj, which = "growth", x_range = c(
+    min(obj$growth$fit$data$x), 2
+  )), ignore_attr = TRUE)
+  expect_error(nsec(obj, which = "survival", extrapolate = 2),
+               "inside the prediction range")
+})
+
+test_that("ecnsec reads the growth curve over growth's range (#412)", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # type = "range" measures towards the lowest response over the grid, so the
+  # grid the curve is read over shows in the answer.
+  obj <- hurdle_cut_fixture(1.6)
+  g_range <- range(obj$growth$fit$data$x)
+  s_range <- range(obj$survival$fit$data$x)
+  bare <- ecnsec(obj, nsec = 1.5, which = "growth", type = "range")
+  expect_equal(bare, ecnsec(obj, nsec = 1.5, which = "growth",
+                            type = "range", x_range = g_range))
+  expect_false(isTRUE(all.equal(
+    bare, ecnsec(obj, nsec = 1.5, which = "growth", type = "range",
+                 x_range = s_range)
+  )))
+})
+
+test_that("the plots and posterior_epred() keep the survival range (#412)", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # A plotted growth curve beyond its data is a prediction, not an estimate,
+  # so it is drawn over every concentration tested.
+  obj <- hurdle_cut_fixture(1.6)
+  s_range <- range(obj$survival$fit$data$x)
+  dat <- ggbnec_data(obj, which = "growth", resolution = 20)
+  expect_equal(range(dat$curve$x), s_range)
+  expect_equal(posterior_epred(obj, which = "growth", resolution = 20),
+               posterior_epred(obj, which = "growth", resolution = 20,
+                               x_range = s_range))
+})
+
+test_that("ecnsec refuses a growth value beyond growth's range (#412)", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # The curve is read at the grid point nearest nsec, so a value above growth's
+  # top was read at the top without a message: nsec = 2.5 returned the effect
+  # at 1.595. A survival NSEC is the likely such value, since survival's range
+  # runs past growth's.
+  obj <- hurdle_cut_fixture(1.4)
+  g_top <- max(obj$growth$fit$data$x)
+  expect_error(ecnsec(obj, nsec = 2.5, which = "growth"),
+               "outside the observed range of the growth component")
+  s_nsec <- suppressWarnings(nsec(obj, which = "survival"))[["Q50"]]
+  expect_gt(s_nsec, g_top)
+  expect_error(ecnsec(obj, nsec = s_nsec, which = "growth"),
+               paste0("to ", signif(g_top, 4)))
+  # A value inside growth's range, at its top included, is read as before.
+  expect_length(ecnsec(obj, nsec = g_top, which = "growth"), 3)
+  # The survival and combined curves are read over every concentration tested,
+  # and a range the caller supplies is theirs to set: an x_range that reaches
+  # nsec reads the growth curve extended past its data, as ecx() does.
+  expect_length(ecnsec(obj, nsec = 2.5, which = "survival"), 3)
+  expect_length(ecnsec(obj, nsec = 2.5, which = "combined"), 3)
+  s_range <- range(obj$survival$fit$data$x)
+  expect_length(ecnsec(obj, nsec = 2.5, which = "growth", x_range = s_range),
+                3)
+})
+
+test_that("a fit-time x_range does not carry the growth rows past the data", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # bnec_hurdle(x_range = ) stores the one range on both components. Both
+  # stored grids are widened to 4 here, above survival's data as well as
+  # growth's. Read over the stored grid, the summary's growth EC50 was an
+  # identified 1.674 while a bare ecx() censored it at growth's top (#412).
+  obj <- hurdle_cut_fixture(1.6)
+  lower <- min(obj$survival$fit$data$x)
+  wide <- data.frame(x = seq(lower, 4, length.out = 100))
+  obj$growth$pred_vals$data <- wide
+  obj$survival$pred_vals$data <- wide
+  s <- suppressWarnings(summary(obj, ecx = TRUE, ecx_vals = c(10, 50)))
+  for (v in c(10, 50)) {
+    bare <- suppressWarnings(ecx(obj, ecx_val = v, which = "growth"))
+    expect_equal(s$ecs$growth[[paste0("ec", v)]], bare)
+  }
+  cs <- attr(s$ecs$growth$ec50, "censored_summary")
+  expect_equal(cs$upper, max(obj$growth$fit$data$x))
+  # The survival and combined rows keep the stored grid the fit was asked for.
+  for (w in c("survival", "combined")) {
+    expect_equal(s$ecs[[w]]$ec50,
+                 suppressWarnings(ecx(obj, ecx_val = 50, which = w,
+                                      x_range = c(lower, 4))))
+  }
+})
+
+test_that("exceedance() reads a growth estimate on growth's range (#412)", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # exceedance() reads the posterior through ecx() and nsec(), so a growth
+  # EC50 beyond growth's top reaches it as censored there. Against a threshold
+  # above that top, the censored draws could lie on either side, and the
+  # probability is the interval between the two counts rather than a number.
+  obj <- hurdle_cut_fixture(1.6)
+  g_top <- max(obj$growth$fit$data$x)
+  post <- suppressWarnings(ecx(obj, ecx_val = 50, which = "growth",
+                               posterior = TRUE))
+  n_above <- sum(attr(post, "censored")$above)
+  expect_gt(n_above, 0)
+  out <- suppressWarnings(exceedance(obj, threshold = 2, estimate = "ecx",
+                                     ecx_val = 50, which = "growth"))
+  expect_equal(out$n_above, n_above)
+  expect_true(is.na(out$prob))
+  expect_lt(out$prob_lower, out$prob_upper)
+  # Below growth's top every censored draw is known to exceed the threshold,
+  # so the probability is identified.
+  expect_lt(1.5, g_top)
+  below <- suppressWarnings(exceedance(obj, threshold = 1.5, estimate = "ecx",
+                                       ecx_val = 50, which = "growth"))
+  expect_equal(below$prob_lower, below$prob_upper)
 })

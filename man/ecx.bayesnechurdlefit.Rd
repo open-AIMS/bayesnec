@@ -65,4 +65,20 @@ Extracts the predicted ECx value from a \code{\link{bayesnechurdlefit}}
 The combined curve is the product of the growth curve and the
 survival curve. Because both decline, the combined ECx is always reached at
 or below either component's own ECx.
+
+Without \code{x_range}, a growth ECx is read over the growth component's
+own observed range, and a survival or combined ECx over the survival
+component's. The growth component is fitted to survivors only, so its range
+ends at the highest concentration at which anything survived. A growth ECx
+above that concentration is reported as censored there, rather than read
+off the growth curve extended past its data. The survival range covers every
+concentration tested, and the combined curve needs the stretch above
+growth's range, where survival falls towards zero. A supplied
+\code{x_range} applies to all three curves alike.
+\code{\link{summary.bayesnechurdlefit}} reads its ECx rows by the same rule,
+and \code{\link{nsec.bayesnechurdlefit}} and
+\code{\link{ecnsec.bayesnechurdlefit}} use the same ranges. The plots and
+\code{\link{posterior_epred.bayesnechurdlefit}} draw every curve, growth
+included, over the survival range: a curve drawn beyond the growth data is a
+prediction, not an estimate.
 }
