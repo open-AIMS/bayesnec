@@ -87,3 +87,153 @@ test_that("Parameter checks", {
   f_21 <- y ~ crf(scale(sqrt(x), scale = FALSE), "nec3param")
   expect_s3_class(check_formula(bnf(f_21), data), "bayesnecformula")
 })
+
+# Each measured column is held twice, under a syntactic name and under the kind
+# of name a spreadsheet gives it, so that every refusal below can be set beside
+# the same formula written with a name that is accepted. See #398.
+odd_data <- data.frame(x = seq(0.5, 10, length.out = 12),
+                       y = rep(c(0, 4, 7, 2), 3),
+                       hours = rep(c(1, 2), 6),
+                       status = rep(c("none", "left"), 6),
+                       grp = rep(c("a", "b"), each = 6))
+odd_data[["conc mg"]] <- odd_data$x
+odd_data[["growth (mm)"]] <- odd_data$y
+odd_data[["exposure hours"]] <- odd_data$hours
+odd_data[["cens code"]] <- odd_data$status
+
+test_that("a non-syntactic name is refused by name in each term (#398)", {
+  expect_error(
+    check_formula(bnf(y ~ crf(`conc mg`, "nec3param")), odd_data),
+    "\"conc mg\" in crf(`conc mg`, \"nec3param\")", fixed = TRUE
+  )
+  expect_error(
+    check_formula(bnf(y ~ crf(log(`conc mg`), "nec3param")), odd_data),
+    "\"conc mg\" in crf(log(`conc mg`), \"nec3param\")", fixed = TRUE
+  )
+  # The call the issue was filed on, reached through model.frame().
+  expect_error(
+    model.frame(bnf(y | rate(`exposure hours`) ~ crf(x, "nec3param")),
+                data = odd_data),
+    "\"exposure hours\" in rate(`exposure hours`)", fixed = TRUE
+  )
+  expect_error(
+    check_formula(bnf(y | cens(`cens code`) ~ crf(x, "nec3param")), odd_data),
+    "\"cens code\" in cens(`cens code`)", fixed = TRUE
+  )
+  expect_error(
+    check_formula(bnf(`growth (mm)` ~ crf(x, "nec3param")), odd_data),
+    "\"growth (mm)\" in the response", fixed = TRUE
+  )
+  expect_error(
+    check_formula(bnf(y ~ crf(x, "nec3param") + pgl(`cens code`)), odd_data),
+    "\"cens code\" in pgl(`cens code`)", fixed = TRUE
+  )
+})
+
+test_that("the same formulas with syntactic names are unchanged (#398)", {
+  f_list <- list(
+    bnf(y ~ crf(x, "nec3param")),
+    bnf(y ~ crf(log(x), "nec3param")),
+    bnf(y | rate(hours) ~ crf(x, "nec3param")),
+    bnf(y | cens(status) ~ crf(x, "nec3param")),
+    bnf(y ~ crf(x, "nec3param") + pgl(status))
+  )
+  for (f in f_list) {
+    expect_identical(check_formula(f, odd_data), f)
+  }
+  mf <- model.frame(bnf(y | rate(hours) ~ crf(x, "nec3param")), data = odd_data)
+  expect_identical(mf$hours, odd_data$hours)
+})
+
+test_that("every offending name is reported in one refusal (#398)", {
+  f <- bnf(`growth (mm)` | cens(`cens code`) ~ crf(`conc mg`, "nec3param"))
+  err <- expect_error(check_formula(f, odd_data), "not syntactic R names")
+  msg <- conditionMessage(err)
+  expect_match(msg, "\"growth (mm)\" in the response", fixed = TRUE)
+  expect_match(msg, "\"cens code\" in cens(`cens code`)", fixed = TRUE)
+  expect_match(msg, "\"conc mg\" in crf(`conc mg`, \"nec3param\")",
+               fixed = TRUE)
+  # The suggested replacements are make.names()'s own, in the same order.
+  expect_match(msg, "\"growth..mm.\"", fixed = TRUE)
+  expect_match(msg, "\"cens.code\"", fixed = TRUE)
+  expect_match(msg, "\"conc.mg\"", fixed = TRUE)
+  # A name used in two terms is reported once, with both terms.
+  f_2 <- bnf(y | cens(status, `conc mg`) ~ crf(`conc mg`, "nec3param"))
+  expect_error(
+    check_formula(f_2, odd_data),
+    "\"conc mg\" in cens(status, `conc mg`) and crf(`conc mg`, \"nec3param\")",
+    fixed = TRUE
+  )
+  # make.names() also rejects a leading digit and a reserved word.
+  digit_data <- odd_data
+  digit_data[["1st"]] <- digit_data$x
+  expect_error(check_formula(bnf(y ~ crf(`1st`, "nec3param")), digit_data),
+               "\"1st\" in crf(`1st`, \"nec3param\")", fixed = TRUE)
+})
+
+test_that("a model set held in a non-syntactic variable is accepted (#398)", {
+  # Only the predictor of crf() is checked. The model argument is evaluated by
+  # get_model_from_formula() and never reaches brms, so this call already
+  # worked, and the refusal must not take it away.
+  `nec models` <- c("nec3param", "nec4param")
+  f <- bnf(y ~ crf(x, `nec models`))
+  expect_identical(check_formula(f, odd_data), f)
+  expect_named(make_brmsformula(f, data = odd_data),
+               c("nec3param", "nec4param"))
+})
+
+test_that("bnec() and make_brmsformula() refuse before any fit (#398)", {
+  fits <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      fits <<- fits + 1L
+      stop("a model fit was started")
+    },
+    .package = "bayesnec"
+  )
+  # A model set, because bnec() wraps each model's fit in try(): a refusal
+  # raised per model would be printed once for each and the call would end on
+  # "None of the models fit successfully" instead of this message.
+  expect_error(
+    bnec(y | rate(`exposure hours`) ~ crf(x, c("nec3param", "ecx4param")),
+         data = odd_data),
+    "\"exposure hours\" in rate(`exposure hours`)", fixed = TRUE
+  )
+  expect_error(
+    bnec(`growth (mm)` ~ crf(x, c("nec3param", "ecx4param")),
+         data = odd_data),
+    "\"growth (mm)\" in the response", fixed = TRUE
+  )
+  expect_equal(fits, 0L)
+  expect_error(
+    make_brmsformula(y | cens(`cens code`) ~
+                       crf(x, c("nec3param", "ecx4param")),
+                     data = odd_data),
+    "\"cens code\" in cens(`cens code`)", fixed = TRUE
+  )
+})
+
+test_that("bnec_group() and bnec_hurdle() refuse before any fit (#398)", {
+  fits <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      fits <<- fits + 1L
+      stop("a component or level fit was started")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(
+    bnec_group(y ~ crf(`conc mg`, "nec3param"), data = odd_data,
+               group_var = "grp"),
+    "\"conc mg\" in crf(`conc mg`, \"nec3param\")", fixed = TRUE
+  )
+  expect_error(
+    bnec_hurdle(y ~ crf(`conc mg`, "nec3param"), data = odd_data),
+    "\"conc mg\" in crf(`conc mg`, \"nec3param\")", fixed = TRUE
+  )
+  expect_error(
+    bnec_hurdle(`growth (mm)` ~ crf(x, "nec3param"), data = odd_data),
+    "\"growth (mm)\" in the response", fixed = TRUE
+  )
+  expect_equal(fits, 0L)
+})

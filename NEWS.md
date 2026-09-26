@@ -1442,6 +1442,23 @@
 
 ## Bug fixes
 
+- A formula that names a column whose name is not a syntactic R name, such as
+  `` `conc (mg/L)` `` read from a spreadsheet, is now refused before anything
+  is fitted. The message names each such column, the term it appears in, and
+  the name `make.names()` gives it. In `crf()`, `rate()`, `cens()`, `disp()`,
+  `pgl()` or `ogl()` such a name previously ended in a parse error such as
+  `<text>:1:5: unexpected symbol`, which named neither the column nor the term,
+  and in a term such as `(nec | group)` it was reported as not found in the
+  data. In the response, `trials()` or `weights()` it passed `check_formula()`,
+  and the call then failed inside `brms` after the initial-value search.
+  `brms::make_stancode()` gives the same parse error for such a name in
+  `rate()`, `cens()`, `trials()`, `weights()`, the non-linear predictor and the
+  response, so the column has to be renamed; it cannot be accepted. The refusal
+  is raised once per call, before the model loop, by `bnec()`, `bnec_group()`,
+  `bnec_hurdle()`, `make_brmsformula()` and `check_formula()`. A model set held
+  in a variable, as in ``crf(x, `my models`)``, is not a column, never reaches
+  `brms`, and is still accepted (#398).
+
 - `ecxhormebc5` is now excluded before fitting when the predictor contains
   negative values and an identity-linked response family requires a positive
   mean. Its linear hormesis term can make the mean negative there, and the
