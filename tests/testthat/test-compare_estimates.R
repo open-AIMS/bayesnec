@@ -132,6 +132,33 @@ test_that("a draw censored at a bound is not compared by its value", {
   expect_identical(plain$diff, c(3, 6))
 })
 
+test_that("two identified infinite draws are left out, as before", {
+  # Inf - Inf is NaN, which has no sign. The earlier na.rm dropped such a pair,
+  # so it is missing rather than indeterminate, and a comparison with nothing
+  # censored keeps a single probability.
+  s <- bayesnec:::difference_sign(c(Inf, Inf, -Inf, 2), c(Inf, 3, -Inf, Inf))
+  expect_identical(s$positive, c(NA, TRUE, NA, FALSE))
+  expect_identical(s$indeterminate, c(FALSE, FALSE, FALSE, FALSE))
+  expect_identical(s$diff, c(NaN, Inf, NaN, -Inf))
+  # The same through compare_estimates(), on nec posteriors with infinite
+  # draws that no record marks. prob is the value the previous expression
+  # gives, not NA.
+  skip_on_cran()
+  a <- nec4param
+  b <- nec4param
+  a$ne_posterior[1:50] <- Inf
+  b$ne_posterior[1:50] <- Inf
+  ce <- suppressWarnings(suppressMessages(
+    compare_estimates(list(a = a, b = b), comparison = "nec")
+  ))
+  m <- ce$diff_list[[1]]
+  expect_true(any(is.nan(m)))
+  m[m > 0] <- 1
+  m[m <= 0] <- 0
+  expect_identical(ce$prob_diff$prob, mean(m, na.rm = TRUE))
+  expect_false(any(ce$diff_data$indeterminate))
+})
+
 test_that("a comparison with nothing censored returns what it returned before", {
   # The regression guard. prob is recomputed here by the expression the
   # function used before #404, and must agree to the last bit.

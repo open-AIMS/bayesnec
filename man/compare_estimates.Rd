@@ -69,7 +69,8 @@ as the estimator returns it with \code{posterior = TRUE}, including the
 \code{"censored"} attribute that records which draws lie beyond the
 prediction range.}
 \item{\code{posterior_data}}{The paired draws of each posterior, in long
-format, with columns \code{model} and \code{value}.}
+format, with columns \code{model} and \code{value}. It carries no
+censoring mark; see the \emph{Censored estimates} section.}
 \item{\code{diff_list}}{The paired differences for each pair of fits,
 named \code{"a-b"} for the first fit minus the second. A difference
 involving a censored draw has no value and is \code{NA}.}
@@ -95,30 +96,42 @@ compares these via bootstrap re sampling.
 }
 \section{Censored estimates}{
 
-A draw that lies beyond the prediction range is treated as the estimator
-reports it: it has no value, and it is known only to lie at or beyond the
-end of the range. This applies to every comparison type. An ECx or NSEC
-draw whose curve does not reach the target is such a draw, and so is a
-threshold equation's \code{nec} draw above the prediction range, which is
-sampled and has a number but is reported by \code{\link{nec}} as a bound.
+In the differences and the probabilities, a draw that lies beyond the
+prediction range is treated as the estimator reports it: it is given no
+value, and it is known only to lie at or beyond the end of the range. This
+applies to every comparison type. An ECx or NSEC draw whose curve does not
+reach the target is such a draw, and so is a threshold equation's
+\code{nec} draw above the prediction range, which is sampled and has a
+number but is reported by \code{\link{nec}} as a bound. Under "nec" and
+"n(s)ec", \code{posterior_list} and \code{posterior_data} still hold that
+sampled value, as \code{\link{nec}} returns it with \code{posterior = TRUE}.
+The \code{"censored"} attribute of \code{posterior_list} marks the draw and
+\code{posterior_data} does not, so a value there beyond the prediction range
+is not an identified estimate.
 
 The comparison does not delete these draws. For many pairs the censoring
 record fixes the sign of the difference whatever the censored value is: a
 draw at or above the upper end of the range, paired with a draw identified
-below it, gives a positive difference. The sign is unknown only where both
-draws are censored at the same end, or where the identified draw lies
-beyond the bound of the censored one. Such a pair is indeterminate: it is
-counted as not positive in \code{prob_lower} and as positive in
-\code{prob_upper}, and it is marked in the \code{indeterminate} column of
-\code{diff_data}. Where no pair is indeterminate the two probabilities are
-equal, and \code{prob} is that value. Where any pair is indeterminate
-\code{prob} is \code{NA}, because the comparison does not identify a single
-probability. \code{censored_first} and \code{censored_second} state how
-much of each posterior was censored.
+below it, gives a positive difference. The sign is unknown in three cases:
+where both draws are censored at the same end; where an identified draw
+lies at or above the upper bound of a draw censored above it, or below the
+lower bound of a draw censored below it; and where a draw censored above
+one bound is paired with a draw censored below another and the two
+prediction ranges do not overlap. The second case arises from an identified
+draw exactly at the bound, since the record states "at or above", or from
+components predicted over different ranges, as does the third. Such a pair
+is indeterminate: it is counted as not positive in \code{prob_lower} and as
+positive in \code{prob_upper}, and it is marked in the \code{indeterminate}
+column of \code{diff_data}. Where no pair is indeterminate the two
+probabilities are equal, and \code{prob} is that value. Where any pair is
+indeterminate \code{prob} is \code{NA}, because the comparison does not
+identify a single probability. \code{censored_first} and
+\code{censored_second} state how much of each posterior was censored.
 
 A draw that is \code{NA} without the censoring record accounting for it
 could not be computed at all, and a pair containing one is left out of both
-probabilities.
+probabilities. So is a pair of identified draws whose difference is not a
+number, such as two infinite draws of the same sign.
 }
 
 \section{Reproducibility}{
