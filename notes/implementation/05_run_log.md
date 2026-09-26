@@ -367,3 +367,8 @@ and the order `01_work_queue.md`.
   `example2b`) collected and committed on branch `precompile-backlog-run`
   (`1fb714ab`). `example2b` and `example5` were unchanged. Tasks 7 to 9
   (`example6`, `example7`, `example9`) still running one at a time.
+- 2026-09-27 09:49 AEST. Precompile job 914176 finished: all nine tasks
+  `COMPLETED`, exit 0. `example7` took 38 s because it transcribes its figures
+  from the `negative-response-conventions` compendium and fits nothing.
+  Tasks 7 to 9 collected at 09:55 and opened with tasks 1 to 6 as #454 into
+  `predev`. No rendered file contains a local path.
