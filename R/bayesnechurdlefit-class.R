@@ -126,6 +126,15 @@ hurdle_check_which <- function(which) {
 #' own control value, so their product is flat; it departs that plateau at
 #' whichever threshold binds first.
 #'
+#' A component draw beyond the top of its prediction range is known only to
+#' exceed that limit. The two components' ranges can differ, because growth
+#' is fitted to survivors only and its range stops short of any
+#' concentration at which nothing survived. Where one component is known
+#' only to exceed its limit and the other is estimated above that limit, the
+#' combined draw is not identified. It is reported as beyond the top of the
+#' range, at the smaller of the two components' upper limits, which is true
+#' of every such draw.
+#'
 #' \bold{The combined estimate is therefore the smaller of the two, and reduces
 #' to the growth estimate whenever growth is the more sensitive endpoint} --
 #' which it usually is, since a contaminant that kills has generally slowed
@@ -400,10 +409,16 @@ print.bayesnechurdlefit <- function(x, ...) {
 #' plateau at whichever component binds first and the combined estimate is the
 #' minimum of the two. A component draw that lies beyond an end of its
 #' prediction range has no value to take a minimum with, so it enters the
-#' comparison at the end it is known to be beyond and nothing else: above the
-#' top of the range it cannot be the smaller unless the other draw is beyond
-#' it as well, and below the foot of the range it is the smaller whatever the
-#' other draw is.
+#' comparison at the end it is known to be beyond and nothing else. Below the
+#' foot of its range it is the smaller whatever the other draw is. Above the
+#' top of its range, at \code{U}, it is known only to exceed \code{U}: the
+#' minimum is the other draw where that draw is identified at or below
+#' \code{U}, and is otherwise known only to exceed \code{U} as well.
+#'
+#' The two components need not share a range. Growth is fitted to survivors
+#' only, so its grid stops short of any concentration at which nothing
+#' survived (\code{hurdle_summary_range()}), and a survival draw identified
+#' at 20 is not the minimum when growth is known only to exceed 10 (#415).
 #'
 #' \code{pmin()} on the raw vectors cannot do this. It propagates the
 #' \code{NA} that an ecx-type component returns for a beyond-range draw, so a
@@ -431,17 +446,51 @@ combine_censored_min <- function(g, s, n) {
                 upper = Inf, lower = -Inf)
   g_cens <- if (is.null(g_cens)) blank else g_cens
   s_cens <- if (is.null(s_cens)) blank else s_cens
+  # A draw censored above its component's limit U, compared with a draw of the
+  # other component identified above U. The minimum then lies between U and
+  # that value and is not identified. Placing the censored draw at Inf alone,
+  # as below, returned the identified value as the minimum: growth known only
+  # to exceed 10 against survival at 20 gave 20 as an exact combined
+  # threshold (#415). The comparison is strict, because an identified value at
+  # U itself is the minimum whatever the censored draw is. Both directions are
+  # tested, so that the result does not depend on which component is growth.
+  # %in% TRUE drops an identified draw whose value is NA, which pmin() below
+  # leaves unexplained, as it did before.
+  g_known <- !g_cens$above & !g_cens$below
+  s_known <- !s_cens$above & !s_cens$below
+  unresolved <- ((g_cens$above & s_known & s_v > g_cens$upper) |
+                   (s_cens$above & g_known & g_v > s_cens$upper)) %in% TRUE
   g_v[g_cens$above] <- Inf
   g_v[g_cens$below] <- -Inf
   s_v[s_cens$above] <- Inf
   s_v[s_cens$below] <- -Inf
   out <- pmin(g_v, s_v)
+  out[unresolved] <- Inf
   above <- is.infinite(out) & out > 0
   below <- is.infinite(out) & out < 0
   out[above | below] <- NA_real_
-  # The bound true of both components, as in concat_censoring(): the smallest
-  # upper bound and the largest lower one. The two grids are the same within a
-  # bnec_hurdle() call.
+  # One bound per posterior, because the record holds one (D20): the smallest
+  # upper limit and the largest lower one, as in concat_censoring(). A draw
+  # marked above exceeds its own component's upper limit, so it exceeds the
+  # smaller of the two as well; that is weaker than the per-draw truth where
+  # the limits differ, and never false. An interval record holding both
+  # limits was not adopted, because it would change the record and every
+  # reader of it. The test above also keeps every identified value at or
+  # below the recorded upper limit, which summarise_censored() assumes when
+  # it ranks every draw censored above higher than all of them.
+  #
+  # The below-range branch is unchanged. A draw below the foot of its own
+  # range puts the minimum below that foot whatever the other draw is, and
+  # the largest lower limit is true of it. It does not keep the property
+  # above where the two feet differ, which needs nothing to have survived at
+  # the foot of the fitted range: an identified value can lie below the
+  # larger foot, and summarise_censored() still ranks a draw censored below
+  # lower than it. Marking such a value as below the larger foot was tried,
+  # with and without requiring a draw below, and reverted. With 3999 draws
+  # identified at 3 and one below a foot of 5, it reported every entry as a
+  # bound at 5 and every draw as not identified, where the exact summary is
+  # 3. The correction belongs in the summary rather than in this record
+  # (#421).
   combined <- censoring_record(min(g_cens$upper, s_cens$upper),
                                max(g_cens$lower, s_cens$lower),
                                above, below)
