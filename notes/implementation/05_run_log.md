@@ -350,3 +350,11 @@ and the order `01_work_queue.md`.
   `example8` store refit is not started and `example8` is left out of the
   precompile, as §4 provides. Seventeen issues were filed for defects found
   during the run: #435 to #451.
+- 2026-09-27 06:30 AEST. Full precompile submitted to the AIMS HPC as job 914176,
+  nine array tasks (`example1`, `example2b`, `example2`, `example3`, `example4`,
+  `example5`, `example6`, `example7`, `example9`), from `predev` at `a806fb7c`.
+  `example8` is left out because PR #402 has not merged. The two items still
+  open at submission, #452 (#410 joint families) and #453 (#419 `ecxflat`),
+  change no vignette's output, so the rendered vignettes are current for the
+  whole list. Collect with `./hpc/precompile-hpc.sh --fetch <names>` from a
+  worktree with `hpc/local.conf`; the VPN connection closes near 18:00 AEST.
