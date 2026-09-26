@@ -1144,7 +1144,7 @@ ggplot(pam_thr, aes(x = est, y = equation)) +
   geom_linerange(aes(xmin = lo, xmax = hi, colour = wi)) +
   geom_point(aes(colour = wi, size = wi)) +
   scale_colour_gradient(low = "grey80", high = "#2c6a5a",
-                        name = "stacking\nweight") +
+                        name = "model\nweight") +
   scale_size_area(max_size = 5, guide = "none") +
   log_x +
   theme_classic() +

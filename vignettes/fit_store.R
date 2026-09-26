@@ -105,6 +105,80 @@ fit_key <- function(cl, data, fn_name = fit_fun_name(cl)) {
 ## into a render where one chunk was fitted fresh and the rest came from a store
 ## built against a different draft.
 
+## The oldest bayesnec a store may have been fitted with.
+##
+## The key covers the call and the data, not the code that answers the call, so
+## a store fitted before a change to what bayesnec fits still resolves every key
+## and loads without complaint. PR #409 changed the default priors and left
+## Version at 2.1.3.39, which is what the store assembled on 2026-09-18 records;
+## 2.1.3.40 is the first version that can only be a build after it (#413).
+##
+## A minimum rather than equality with the installed version, because most
+## version bumps change nothing example8 fits: 2.1.3.41 (#397) changes the
+## disp() centring of negbinomial and beta_binomial fits, and example8 fits
+## Gamma and Beta. Equality would turn every such bump into a refit of 189
+## models with no number changed. In exchange the value has to be raised by
+## hand, by the change that does alter what example8 fits.
+##
+## Added to this copy in bayesnec before the compendium's shim/fit_store_body.R
+## has it. Add it there before this file is next regenerated, or the
+## regeneration drops it.
+FIT_STORE_MIN_BAYESNEC <- "2.1.3.40"
+
+## Refuse a store whose MANIFEST records a bayesnec older than the minimum.
+##
+## The version is read from the MANIFEST that analysis/assemble_store.R writes.
+## Its `bayesnec:` line is the version the manifest was built against, and the
+## assembly refuses a set whose units were fitted by any other, so it is also
+## the version the units of the last assembly were fitted with. It certifies
+## that assembly, not every file in the directory: notes/example8_fit_store.md
+## gives the cases where an older fit survives it. Compared with
+## numeric_version() rather than as a string, under which "2.1.3.100" sorts
+## before "2.1.3.40".
+##
+## A store with no MANIFEST, or with none recording a version, is not refused:
+## the compendium's key check creates a store of empty files with no MANIFEST
+## and installs this shim against it, and that gate has to keep working. It is
+## reported instead, so that an unchecked store does not read as a checked one.
+## Leading space before `bayesnec:` is allowed, so that a padded line is checked
+## rather than taken for a missing one.
+fit_store_check_version <- function(manifest,
+                                    minimum = FIT_STORE_MIN_BAYESNEC) {
+  lines <- if (file.exists(manifest)) readLines(manifest, warn = FALSE)
+  version_line <- "^[[:space:]]*bayesnec:"
+  recorded <- trimws(sub(version_line, "",
+                         grep(version_line, lines, value = TRUE)))
+  if (!length(recorded)) {
+    message("  The store records no bayesnec version, so it was not checked ",
+            "against the minimum of ", minimum, ".")
+    return(invisible(NA_character_))
+  }
+  # assemble_store.R writes one `bayesnec:` line. The first is read so that a
+  # hand-edited MANIFEST cannot turn one version into a vector of them.
+  recorded <- recorded[[1L]]
+  have <- numeric_version(recorded, strict = FALSE)
+  if (is.na(have)) {
+    stop("the fit store's MANIFEST records bayesnec \"", recorded, "\", which ",
+         "is not a version number.\n  MANIFEST: ", manifest, call. = FALSE)
+  }
+  if (have < numeric_version(minimum)) {
+    stop("the fit store was fitted with bayesnec ", recorded, ", and example8 ",
+         "needs a store fitted with ", minimum, " or later.\n",
+         "  MANIFEST: ", manifest, "\n",
+         "  Fits from an older bayesnec were made by code that has since\n",
+         "  changed what example8 fits, so they are not what this render\n",
+         "  would produce. Refit the store in the grouping-structures\n",
+         "  compendium. First rename the cluster's old units/ and store/\n",
+         "  directories: the units and joint jobs skip a file that exists,\n",
+         "  and their keys do not include the version, so old fits would be\n",
+         "  reused. Then run ./hpc/deploy.sh --ref <bayesnec commit>, fetch the\n",
+         "  store with ./hpc/fetch-store.sh, and point BAYESNEC_FIT_STORE at\n",
+         "  it. notes/example8_fit_store.md in bayesnec gives the steps.",
+         call. = FALSE)
+  }
+  invisible(recorded)
+}
+
 fit_store_install <- function(store = Sys.getenv("BAYESNEC_FIT_STORE"),
                               envir = globalenv()) {
   if (!nzchar(store)) return(invisible(FALSE))
@@ -117,6 +191,9 @@ fit_store_install <- function(store = Sys.getenv("BAYESNEC_FIT_STORE"),
   if (file.exists(manifest)) {
     message(paste0("  ", readLines(manifest, warn = FALSE), collapse = "\n"))
   }
+  # Checked before any shim is assigned, so a refused store leaves bnec() and
+  # the other fitting functions as they were.
+  fit_store_check_version(manifest)
   for (nm in FIT_FUNS) {
     assign(nm, fit_store_shim(nm, store), envir = envir)
   }
