@@ -70,7 +70,8 @@ jobs:
                                filter = paste0("^(amend|autoplot|",
                                                "average_estimates|bayesmanec_methods|",
                                                "bayesnec_methods|bayesnecformula|",
-                                               "bayesnechurdlefit-methods|bnec_group)$"))
+                                               "bayesnechurdlefit-methods|bnec_group|",
+                                               "bnec_hurdle)$"))
           RS
       - name: Upload diagnostic log
         if: always()
