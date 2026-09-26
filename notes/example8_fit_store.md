@@ -17,7 +17,7 @@ A store fitted before a change to what `bayesnec` fits therefore resolves every
 key and loads without an error. `fit_store_install()` in `vignettes/fit_store.R`
 now reads the `bayesnec:` line of the store's `MANIFEST` and stops where it
 records a version older than `FIT_STORE_MIN_BAYESNEC`, 2.1.3.40. The message
-names both versions and the refit below.
+names both versions and the refit below, including the renaming in its step 2.
 
 The minimum is raised by hand, and only by a change to what `example8` fits: a
 default prior, initial value or sampler setting that its fits use. A change to
@@ -25,12 +25,29 @@ one of its calls needs no raise, because it changes the key and the render stops
 at that call. A version bump for anything else leaves the minimum alone, which
 is why the check is a minimum rather than equality with the installed version.
 
-The check has two limits. A store with no `MANIFEST`, or one without a `bayesnec:` line, is
-installed with a message saying it was not checked, because the compendium's
-key check (`analysis/check_keys.R`) installs the shim against a store of empty
-files with no `MANIFEST`. And the check reads the version the units were fitted
-with, so a joint refit left in the store from an earlier run is not covered; the
-refit steps below remove it.
+A store with no `MANIFEST`, or one without a `bayesnec:` line, is installed with
+a message saying it was not checked. The compendium's key check
+(`analysis/check_keys.R`) installs the shim against a store of empty files with
+no `MANIFEST`, and a refusal would break that check.
+
+The version in `MANIFEST` certifies the last assembly, not every file in the
+store directory. Three cases arise where a refit writes into the previous run's
+directories, each under a key the new vignette still asks for:
+
+- A unit from the earlier run is reused, because the units array skips a unit
+  whose file exists. `analysis/assemble_store.R` stops on it, since its version
+  differs from the manifest's, and stops before it rewrites `MANIFEST`. The
+  store keeps the old version and the check refuses it.
+- A joint refit from the earlier run is kept, because `analysis/run_joint.R`
+  skips a refit whose file exists. The assembly has rewritten `MANIFEST` with
+  the new version, so the old refit passes the check.
+- An incomplete assembly leaves the earlier run's set in place.
+  `analysis/assemble_store.R` writes `MANIFEST` with the new version (line 158)
+  before it exits on a call that is short a unit (line 167). That call's store
+  file is not rewritten, so its older fit passes the check.
+
+Renaming `units/` and `store/` on the cluster before a refit, step 2 below,
+prevents all three.
 
 `vignettes/fit_store.R` is generated in the compendium from `R/keys.R` and
 `shim/fit_store_body.R`. The check was added to the copy in `bayesnec` first.
@@ -59,13 +76,10 @@ the cluster reachable over SSH (the AIMS VPN).
 
 2. After a change of `bayesnec` version, rename the previous run's output
    directories on the cluster before deploying. Neither key includes the
-   version: the units array skips a unit whose file exists, and the joint job
-   skips a refit whose store file exists. Old units under an unchanged key would
-   be reused, and `analysis/assemble_store.R` then refuses the set because its
-   units were fitted by a version other than the manifest's. The old joint
-   refit would be kept without any message, since the assembly rewrites the
-   `MANIFEST` with the new version. Renaming rather than deleting keeps the old
-   store, which is what rendered output already published came from:
+   version, and both the units array and the joint job skip a file that exists;
+   *The version check* above gives the three cases this prevents. Renaming
+   rather than deleting keeps the old store, which is what rendered output
+   already published came from:
 
    ```sh
    ssh <host> 'cd /export/scratch/$USER/grouping-structures &&

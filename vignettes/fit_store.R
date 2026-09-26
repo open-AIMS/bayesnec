@@ -130,18 +130,24 @@ FIT_STORE_MIN_BAYESNEC <- "2.1.3.40"
 ## The version is read from the MANIFEST that analysis/assemble_store.R writes.
 ## Its `bayesnec:` line is the version the manifest was built against, and the
 ## assembly refuses a set whose units were fitted by any other, so it is also
-## the version the units were fitted with. Compared with numeric_version()
-## rather than as a string, under which "2.1.3.100" sorts before "2.1.3.40".
+## the version the units of the last assembly were fitted with. It certifies
+## that assembly, not every file in the directory: notes/example8_fit_store.md
+## gives the cases where an older fit survives it. Compared with
+## numeric_version() rather than as a string, under which "2.1.3.100" sorts
+## before "2.1.3.40".
 ##
 ## A store with no MANIFEST, or with none recording a version, is not refused:
 ## the compendium's key check creates a store of empty files with no MANIFEST
 ## and installs this shim against it, and that gate has to keep working. It is
 ## reported instead, so that an unchecked store does not read as a checked one.
+## Leading space before `bayesnec:` is allowed, so that a padded line is checked
+## rather than taken for a missing one.
 fit_store_check_version <- function(manifest,
                                     minimum = FIT_STORE_MIN_BAYESNEC) {
   lines <- if (file.exists(manifest)) readLines(manifest, warn = FALSE)
-  recorded <- trimws(sub("^bayesnec:", "",
-                         grep("^bayesnec:", lines, value = TRUE)))
+  version_line <- "^[[:space:]]*bayesnec:"
+  recorded <- trimws(sub(version_line, "",
+                         grep(version_line, lines, value = TRUE)))
   if (!length(recorded)) {
     message("  The store records no bayesnec version, so it was not checked ",
             "against the minimum of ", minimum, ".")
@@ -162,10 +168,13 @@ fit_store_check_version <- function(manifest,
          "  Fits from an older bayesnec were made by code that has since\n",
          "  changed what example8 fits, so they are not what this render\n",
          "  would produce. Refit the store in the grouping-structures\n",
-         "  compendium with ./hpc/deploy.sh --ref <bayesnec commit>, fetch it\n",
-         "  with ./hpc/fetch-store.sh, and point BAYESNEC_FIT_STORE at the\n",
-         "  assembled store. notes/example8_fit_store.md in bayesnec gives the\n",
-         "  steps.", call. = FALSE)
+         "  compendium. First rename the cluster's old units/ and store/\n",
+         "  directories: the units and joint jobs skip a file that exists,\n",
+         "  and their keys do not include the version, so old fits would be\n",
+         "  reused. Then run ./hpc/deploy.sh --ref <bayesnec commit>, fetch the\n",
+         "  store with ./hpc/fetch-store.sh, and point BAYESNEC_FIT_STORE at\n",
+         "  it. notes/example8_fit_store.md in bayesnec gives the steps.",
+         call. = FALSE)
   }
   invisible(recorded)
 }

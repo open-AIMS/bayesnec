@@ -4,12 +4,14 @@
 # environment of its own, so that its definitions and the shims it assigns
 # reach nothing else in the suite.
 #
-# Two places are tried for it. From a source tree, and from the copy covr
-# makes, it is two levels above tests/testthat. Under R CMD check the tests run
-# in <pkg>.Rcheck/tests/testthat, and the unpacked source is in
+# Two places are tried for it. From a source tree it is two levels above
+# tests/testthat. Under R CMD check the tests run in
+# <pkg>.Rcheck/tests/testthat, and the unpacked source is in
 # <pkg>.Rcheck/00_pkg_src/<pkg>. Anywhere else the tests are skipped rather
 # than failed: the file is a precompile tool, and its absence says nothing
-# about the package.
+# about the package. The coverage job is one such place. covr runs the tests
+# from the installed package's copy of them, <lib>/<pkg>/<pkg>-tests, and the
+# installed package holds no vignettes/ directory.
 fit_store_env <- function() {
   candidates <- c(
     test_path("..", "..", "vignettes", "fit_store.R"),
@@ -51,9 +53,26 @@ test_that("a store fitted with an older bayesnec is refused", {
   msg <- conditionMessage(err)
   expect_match(msg, "fitted with bayesnec 2.1.3.39", fixed = TRUE)
   expect_match(msg, paste(fs$FIT_STORE_MIN_BAYESNEC, "or later"), fixed = TRUE)
+  expect_match(msg, "rename the cluster's old units/ and store/", fixed = TRUE)
   expect_match(msg, "./hpc/deploy.sh --ref", fixed = TRUE)
   expect_match(msg, "BAYESNEC_FIT_STORE", fixed = TRUE)
   # Refused before any shim was assigned.
+  expect_length(ls(shims), 0L)
+  unlink(store, recursive = TRUE)
+})
+
+test_that("a version line with leading space is still checked", {
+  fs <- fit_store_env()
+  # Read as a missing line, this store would be installed with a message
+  # rather than refused.
+  store <- fit_store_dir()
+  writeLines(c("vignette: example8.Rmd.orig", "  bayesnec: 2.1.3.39"),
+             file.path(store, "MANIFEST"))
+  shims <- new.env()
+  expect_error(
+    suppressMessages(fs$fit_store_install(store, envir = shims)),
+    "fitted with bayesnec 2.1.3.39", fixed = TRUE
+  )
   expect_length(ls(shims), 0L)
   unlink(store, recursive = TRUE)
 })
