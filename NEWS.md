@@ -161,7 +161,15 @@
   is now marked as above the smaller of the two components' upper limits,
   which is true of it, and the finite upper limit implied by the survival draw
   is not reported. A survival draw at or below the growth limit is still the
-  combined value, and the rule is the same with the two components exchanged
+  combined value, and the rule is the same with the two components exchanged.
+  The same rule is applied at the foot of the range, where the larger of the
+  two lower limits is reported. Those limits differ only where nothing
+  survived at the foot of the range. A combined draw estimated below the
+  larger lower limit is then marked as below it, because unmarked it was
+  ranked above every draw known only to lie below that limit, some of which
+  may lie above it. With growth's range starting at 5, one draw of growth at 7
+  and survival at 3 and one of growth below 5 and survival at 8 gave an
+  unmarked 3 as the 97.5 per cent entry, where the second draw may be 4
   (#415).
 
 - The quantile estimator behind a censored summary is the inverse empirical

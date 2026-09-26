@@ -70,7 +70,10 @@ concentration at which nothing survived. Where one component is known
 only to exceed its limit and the other is estimated above that limit, the
 combined draw is not identified. It is reported as beyond the top of the
 range, at the smaller of the two components' upper limits, which is true
-of every such draw.
+of every such draw. At the foot of the range the larger of the two lower
+limits is reported. Where the lower limits differ, a combined draw
+estimated below the larger of them is reported as below that limit, so that
+it is ranked consistently with the draws known only to lie below it.
 
 \bold{The combined estimate is therefore the smaller of the two, and reduces
 to the growth estimate whenever growth is the more sensitive endpoint} --

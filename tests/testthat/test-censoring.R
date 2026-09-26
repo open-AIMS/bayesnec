@@ -733,25 +733,58 @@ test_that("the shorter range bounds the combination in either direction", {
   expect_equal(both$censored$upper, 10)
 })
 
-test_that("a draw below the foot of its range stays below it", {
-  # The below-range branch is unchanged by #415: a draw below the foot of its
-  # own range puts the minimum below that foot whatever the other draw is, so
-  # it is marked below and the recorded limit is the larger of the two feet.
-  # The unequal feet are what a decreasing crf() gives on the fitted scale,
-  # where growth's shorter range is cut at the foot rather than the top.
-  g <- c(NA_real_, NA_real_, 7)
-  attr(g, "censored") <- cens_record(logical(3), c(TRUE, TRUE, FALSE),
+test_that("a minimum below the larger foot is marked below it", {
+  # The specification for #415 said the below-range branch needed no change.
+  # It is true draw by draw, but where the two feet differ an identified
+  # minimum can lie below the larger one, which the record reports, and the
+  # summary ranked every draw marked below lower than it. D20's rule is applied
+  # at the foot as well. Growth's range is 5 to 10 and survival's 0 to 10.
+  g <- c(NA_real_, NA_real_, 7, 7, 9)
+  attr(g, "censored") <- cens_record(logical(5),
+                                     c(TRUE, TRUE, FALSE, FALSE, FALSE),
                                      lower = 5)
   attr(attr(g, "censored"), "swapped") <- TRUE
-  s <- c(8, 3, NA_real_)
-  attr(s, "censored") <- cens_record(logical(3), c(FALSE, FALSE, TRUE))
+  s <- c(8, 3, NA_real_, 3, 6)
+  attr(s, "censored") <- cens_record(logical(5),
+                                     c(FALSE, FALSE, TRUE, FALSE, FALSE))
   attr(attr(s, "censored"), "swapped") <- TRUE
-  out <- bayesnec:::combine_censored_min(g, s, 3)
-  expect_true(all(is.na(out$values)))
-  expect_identical(out$censored$below, c(TRUE, TRUE, TRUE))
+  out <- bayesnec:::combine_censored_min(g, s, 5)
+  # Draw by draw: below 5 against 8; below 5 against 3; 7 against below 0;
+  # 7 against 3, identified at 3 and marked below 5; 9 against 6, identified
+  # at 6 and above the larger foot, so kept.
+  expect_equal(out$values, c(NA, NA, NA, NA, 6))
+  expect_identical(out$censored$below, c(TRUE, TRUE, TRUE, TRUE, FALSE))
   expect_false(any(out$censored$above))
   expect_equal(out$censored$lower, 5)
+  # A record remapped by a decreasing crf() keeps its flag.
   expect_true(attr(out$censored, "swapped"))
+  expect_identical(bayesnec:::combine_censored_min(s, g, 5), out)
+  # Equal feet leave an identified minimum alone, as before.
+  attr(g, "censored") <- cens_record(logical(5),
+                                     c(TRUE, TRUE, FALSE, FALSE, FALSE))
+  equal <- bayesnec:::combine_censored_min(g, s, 5)
+  expect_equal(equal$values, c(NA, NA, NA, 3, 6))
+  expect_identical(equal$censored$below, c(TRUE, TRUE, TRUE, FALSE, FALSE))
+})
+
+test_that("the summary ranks a minimum below the larger foot as a bound", {
+  # The two-draw case that showed the lower branch needed the change. One
+  # draw has growth at 7 and survival at 3; the other has growth below its
+  # foot of 5, at an unknown value that may be 4, and survival at 8. The
+  # 97.5 per cent entry was an unmarked 3 before the change, below a draw
+  # that may lie at 4.
+  g <- c(7, NA_real_)
+  attr(g, "censored") <- cens_record(logical(2), c(FALSE, TRUE), lower = 5)
+  s <- c(3, 8)
+  attr(s, "censored") <- cens_record(logical(2), logical(2))
+  out <- bayesnec:::combine_censored_min(g, s, 2)
+  x <- out$values
+  attr(x, "censored") <- out$censored
+  est <- bayesnec:::summarise_censored(x, c(0.5, 0.025, 0.975))
+  cs <- attr(est, "censored_summary")
+  expect_identical(cs$bound, c("<=", "<=", "<="))
+  expect_equal(unname(est[[3]]), 5)
+  expect_identical(cs$n_below, 2L)
 })
 
 test_that("an unexplained missing draw is not marked by the combination", {

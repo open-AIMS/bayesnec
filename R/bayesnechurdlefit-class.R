@@ -133,7 +133,10 @@ hurdle_check_which <- function(which) {
 #' only to exceed its limit and the other is estimated above that limit, the
 #' combined draw is not identified. It is reported as beyond the top of the
 #' range, at the smaller of the two components' upper limits, which is true
-#' of every such draw.
+#' of every such draw. At the foot of the range the larger of the two lower
+#' limits is reported. Where the lower limits differ, a combined draw
+#' estimated below the larger of them is reported as below that limit, so that
+#' it is ranked consistently with the draws known only to lie below it.
 #'
 #' \bold{The combined estimate is therefore the smaller of the two, and reduces
 #' to the growth estimate whenever growth is the more sensitive endpoint} --
@@ -419,6 +422,10 @@ print.bayesnechurdlefit <- function(x, ...) {
 #' only, so its grid stops short of any concentration at which nothing
 #' survived (\code{hurdle_summary_range()}), and a survival draw identified
 #' at 20 is not the minimum when growth is known only to exceed 10 (#415).
+#' The record holds one limit at each end, the smaller upper limit and the
+#' larger lower one. Where the lower limits differ, a minimum identified below
+#' the larger of them is marked as below it, which keeps every identified
+#' value inside the recorded limits.
 #'
 #' \code{pmin()} on the raw vectors cannot do this. It propagates the
 #' \code{NA} that an ecx-type component returns for a beyond-range draw, so a
@@ -466,29 +473,36 @@ combine_censored_min <- function(g, s, n) {
   s_v[s_cens$below] <- -Inf
   out <- pmin(g_v, s_v)
   out[unresolved] <- Inf
-  above <- is.infinite(out) & out > 0
-  below <- is.infinite(out) & out < 0
-  out[above | below] <- NA_real_
   # One bound per posterior, because the record holds one (D20): the smallest
   # upper limit and the largest lower one, as in concat_censoring(). A draw
   # marked above exceeds its own component's upper limit, so it exceeds the
   # smaller of the two as well; that is weaker than the per-draw truth where
   # the limits differ, and never false. An interval record holding both
   # limits was not adopted, because it would change the record and every
-  # reader of it. The test above also keeps every identified value at or
-  # below the recorded upper limit, which summarise_censored() assumes when
-  # it ranks every draw censored above higher than all of them.
-  #
-  # The below-range branch is unchanged. A draw below the foot of its own
-  # range puts the minimum below that foot whatever the other draw is, and
-  # the largest lower limit is true of it. It does not keep the property
-  # above where the two feet differ, as they do on the fitted scale under a
-  # decreasing crf(): an identified value can lie below the larger foot, and
-  # summarise_censored() still ranks a draw censored below lower than it.
-  # That is recorded on the pull request for #415 rather than changed here.
-  combined <- censoring_record(min(g_cens$upper, s_cens$upper),
-                               max(g_cens$lower, s_cens$lower),
-                               above, below)
+  # reader of it.
+  upper <- min(g_cens$upper, s_cens$upper)
+  lower <- max(g_cens$lower, s_cens$lower)
+  # summarise_censored() ranks every draw marked below lower than every
+  # identified draw, and every draw marked above higher. That is true only
+  # where each identified value lies inside the recorded limits. The
+  # comparison above ensures it at the top. At the foot, where the two lower
+  # limits differ, a minimum identified below the larger limit was left
+  # unmarked, although a draw marked below that limit may lie above it. With
+  # growth on 5 to 10 at 7 and survival on 0 to 10 at 3 in one draw, and
+  # growth below 5 with survival at 8 in the other, the 97.5 per cent entry
+  # was an unmarked 3 where the second draw may be 4. D20's rule is therefore
+  # applied at the foot as well: such a minimum is marked below the larger
+  # limit, which is true of it and weaker than its value. Only where the
+  # limits differ, so that a posterior whose components share a foot is
+  # unchanged. The feet differ only where nothing survived at the foot of the
+  # fitted range, or where one component has no record.
+  if (g_cens$lower != s_cens$lower) {
+    out[is.finite(out) & out < lower] <- -Inf
+  }
+  above <- is.infinite(out) & out > 0
+  below <- is.infinite(out) & out < 0
+  out[above | below] <- NA_real_
+  combined <- censoring_record(upper, lower, above, below)
   # As in concat_censoring(): the two blocks of one fit share a formula and so
   # agree on whether the predictor was reversed.
   attr(combined, "swapped") <- isTRUE(attr(attr(g, "censored"), "swapped")) ||
