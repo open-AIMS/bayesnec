@@ -54,10 +54,9 @@ jobs:
     # a job that was merely slow. A bound above the longest observed job makes a
     # hang a deterministic event at a known boundary instead. See #328.
     #
-    # The 42-minute maximum this was set against is superseded: #333 measured a
-    # devel job of 72.7 minutes. 90 still clears the routine distribution by
-    # about half again, so it is left alone. See `notes/ci_devel_cancellation.md`.
-    timeout-minutes: 90
+    # The serial R-devel check took 64 minutes and cold dependency setup took
+    # 27 minutes on PR #402. Allow both within one job; release jobs retain 90.
+    timeout-minutes: ${{ matrix.config.r == 'devel' && 120 || 90 }}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
