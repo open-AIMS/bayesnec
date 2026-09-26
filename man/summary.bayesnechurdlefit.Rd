@@ -33,19 +33,21 @@ two component estimates per posterior draw, so it is a pure NEC only where
 both components are; see \code{\link{nec.bayesnechurdlefit}}.
 
 With \code{ecx = TRUE}, the growth ECx rows are read over the prediction
-grid stored with the growth component, and the survival and combined rows
-over the grid stored with the survival component. This is the rule
-\code{\link{ecx.bayesnechurdlefit}} applies by default, so each row agrees
-with a bare \code{\link{ecx}} call for the same curve wherever the
-components were fitted without an \code{x_range}. A growth ECx above the
-highest concentration at which anything survived is reported as censored
-there. Where a component stores no grid, its rows are read over the grid
-\code{\link{ecx}} builds by default. An \code{x_range} supplied in
-\code{...} replaces those grids for all three curves, and sets the grid of
-the ECx rows only. \code{x_range = NULL} leaves \code{\link{ecx}} to build
-its own grid, as it does where a component stores none. The argument must
-be given by its full name, because an abbreviation can be ignored without a
-message.
+grid stored with the growth component, clipped to growth's observed range,
+and the survival and combined rows over the grid stored with the survival
+component. This is the rule \code{\link{ecx.bayesnechurdlefit}} applies by
+default. Each row therefore agrees with a bare \code{\link{ecx}} call for
+the same curve wherever the components were fitted without an
+\code{x_range}, and the growth rows also agree where that range reaches
+past the growth data.
+A growth ECx above the highest concentration at which anything survived is
+reported as censored there. Where a component stores no grid, its rows are
+read over the grid \code{\link{ecx}} builds by default. An \code{x_range}
+supplied in \code{...} replaces those grids for all three curves, and sets
+the grid of the ECx rows only. \code{x_range = NULL} leaves
+\code{\link{ecx}} to build its own grid, as it does where a component
+stores none. The argument must be given by its full name, because an
+abbreviation can be ignored without a message.
 
 \code{x_range} is not passed to \code{\link{nec}}, because each no-effect
 estimate is read from the posterior stored when its component was fitted,

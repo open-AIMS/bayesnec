@@ -365,19 +365,21 @@ hurdle_xform_x <- function(object, out) {
 #' both components are; see \code{\link{nec.bayesnechurdlefit}}.
 #'
 #' With \code{ecx = TRUE}, the growth ECx rows are read over the prediction
-#' grid stored with the growth component, and the survival and combined rows
-#' over the grid stored with the survival component. This is the rule
-#' \code{\link{ecx.bayesnechurdlefit}} applies by default, so each row agrees
-#' with a bare \code{\link{ecx}} call for the same curve wherever the
-#' components were fitted without an \code{x_range}. A growth ECx above the
-#' highest concentration at which anything survived is reported as censored
-#' there. Where a component stores no grid, its rows are read over the grid
-#' \code{\link{ecx}} builds by default. An \code{x_range} supplied in
-#' \code{...} replaces those grids for all three curves, and sets the grid of
-#' the ECx rows only. \code{x_range = NULL} leaves \code{\link{ecx}} to build
-#' its own grid, as it does where a component stores none. The argument must
-#' be given by its full name, because an abbreviation can be ignored without a
-#' message.
+#' grid stored with the growth component, clipped to growth's observed range,
+#' and the survival and combined rows over the grid stored with the survival
+#' component. This is the rule \code{\link{ecx.bayesnechurdlefit}} applies by
+#' default. Each row therefore agrees with a bare \code{\link{ecx}} call for
+#' the same curve wherever the components were fitted without an
+#' \code{x_range}, and the growth rows also agree where that range reaches
+#' past the growth data.
+#' A growth ECx above the highest concentration at which anything survived is
+#' reported as censored there. Where a component stores no grid, its rows are
+#' read over the grid \code{\link{ecx}} builds by default. An \code{x_range}
+#' supplied in \code{...} replaces those grids for all three curves, and sets
+#' the grid of the ECx rows only. \code{x_range = NULL} leaves
+#' \code{\link{ecx}} to build its own grid, as it does where a component
+#' stores none. The argument must be given by its full name, because an
+#' abbreviation can be ignored without a message.
 #'
 #' \code{x_range} is not passed to \code{\link{nec}}, because each no-effect
 #' estimate is read from the posterior stored when its component was fitted,
@@ -419,15 +421,16 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
     # censored at. See the same argument in summary.bayesnecfit.
     #
     # Each row on the stored grid of the component whose range a bare ecx()
-    # reads that curve over (D28, #412): growth's grid for the growth rows,
-    # survival's for the survival and combined rows. The intersection of the
-    # two grids, used before, cut the survival and combined rows at growth's
-    # highest concentration. The summary then disagreed with a bare ecx(),
-    # and its survival ECx rows covered a shorter range than its own survival
-    # no-effect row, which is censored at the end of the survival grid. The
-    # combined curve needs the stretch above growth's grid, where survival
-    # falls towards zero. NULL where that component has no stored grid, which
-    # leaves ecx() to build its own.
+    # reads that curve over (D28, #412): growth's grid, clipped to growth's
+    # observed range, for the growth rows, and survival's for the survival and
+    # combined rows. hurdle_summary_range() gives the reason for the clip.
+    # The intersection of the two grids, used before, cut the survival and
+    # combined rows at growth's highest concentration. The summary then
+    # disagreed with a bare ecx(), and its survival ECx rows covered a shorter
+    # range than its own survival no-effect row, which is censored at the end
+    # of the survival grid. The combined curve needs the stretch above
+    # growth's grid, where survival falls towards zero. NULL where that
+    # component has no stored grid, which leaves ecx() to build its own.
     #
     # A caller's x_range is matched by this helper's own formal and replaces
     # the default, so ecx() receives it once. Left in ... it was passed beside
@@ -1089,7 +1092,10 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
 #' the survival component's, as in \code{\link{ecx.bayesnechurdlefit}}. The
 #' range sets the lowest predicted response that \code{type = "range"}
 #' measures towards, and the grid point nearest \code{nsec} at which the curve
-#' is read.
+#' is read. With \code{which = "growth"} and no \code{x_range}, an \code{nsec}
+#' outside growth's observed range is refused, because the growth fit has no
+#' data there. An \code{x_range} that includes \code{nsec} reads the growth
+#' curve extended past its data, as it does for \code{\link{ecx}}.
 #'
 #' @return A vector of estimates.
 #'
@@ -1128,10 +1134,29 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
   # The range ecx() and nsec() read the same curve over, growth's own for the
   # growth curve (D28, #412), so that the three answer their questions of one
   # curve on one grid.
-  preds <- hurdle_component_preds(
-    object, resolution = resolution,
-    x_range = hurdle_estimate_range(object, which, x_range)
-  )
+  grid_range <- hurdle_estimate_range(object, which, x_range)
+  # The curve is read at the grid point nearest nsec, so an nsec beyond the
+  # grid is read at the grid's end. On growth's own range that end is the
+  # highest concentration at which anything survived, and a value above it,
+  # such as a survival NSEC, came back as the effect at growth's top without a
+  # message: nsec = 2.5 on a growth range ending at 1.6 returned the answer at
+  # 1.6. Refused rather than read off the growth curve extended past its data,
+  # which D28 rules out for a growth estimate, and rather than returned as NA,
+  # which would reach a caller's table as a missing value with the reason
+  # lost. Only on growth's own range: a range the caller supplied is theirs to
+  # set, and the survival and combined curves are read over every
+  # concentration tested.
+  if (identical(which, "growth") && any(is.na(x_range)) &&
+      any(nsec < grid_range[1] | nsec > grid_range[2], na.rm = TRUE)) {
+    stop("nsec = ", paste(signif(nsec, 4), collapse = ", "), " lies outside ",
+         "the observed range of the growth component, ",
+         signif(grid_range[1], 4), " to ", signif(grid_range[2], 4), ". The ",
+         "growth fit is built on survivors only and has no data there. ",
+         "Supply an x_range that includes nsec to read the growth curve ",
+         "extended past its data.", call. = FALSE)
+  }
+  preds <- hurdle_component_preds(object, resolution = resolution,
+                                  x_range = grid_range)
   p_samples <- preds[[which]]
   # ecnsec asks: what percentage effect does a given predictor value
   # correspond to? Read off the same curve everything else uses, and inverted
@@ -1155,14 +1180,14 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
   if (!posterior) estimate else out
 }
 
-#' The stored prediction grid a hurdle summary reads one curve's ECx over
+#' The prediction grid a hurdle summary reads one curve's ECx over
 #'
-#' The grid stored with the growth component for the growth curve, and the
-#' grid stored with the survival component for the survival and combined
-#' curves. That is the rule \code{hurdle_estimate_range()} applies to the
-#' observed ranges when a bare \code{\link{ecx}} is called (D28, #412). Growth
-#' is fitted to survivors only, so its grid stops short of any concentration at
-#' which nothing survived.
+#' The grid stored with the survival component for the survival and combined
+#' curves. For the growth curve, the grid stored with the growth component,
+#' clipped to growth's observed range. That is the rule
+#' \code{hurdle_estimate_range()} applies when a bare \code{\link{ecx}} is
+#' called (D28, #412). Growth is fitted to survivors only, so its observed range
+#' stops short of any concentration at which nothing survived.
 #'
 #' A component is a \code{\link{bayesnecfit}} or a \code{\link{bayesmanecfit}}
 #' depending on whether \code{crf()} named one equation or a set, and the two
@@ -1175,7 +1200,8 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
 #' \code{"growth"} or \code{"survival"}.
 #'
 #' @return A \code{\link[base]{numeric}} vector of length 2, or \code{NULL}
-#' where the component has no stored grid.
+#' where the component has no stored grid, or where growth's stored grid lies
+#' wholly outside its observed range.
 #' @noRd
 hurdle_summary_range <- function(object, which) {
   grid_of <- function(x) {
@@ -1185,10 +1211,31 @@ hurdle_summary_range <- function(object, which) {
     }
     out
   }
-  part <- if (identical(which, "growth")) object$growth else object$survival
-  x <- grid_of(part)
+  growth <- identical(which, "growth")
+  x <- grid_of(if (growth) object$growth else object$survival)
   if (is.null(x) || !length(x)) {
     return(NULL)
   }
-  c(min(x), max(x))
+  out <- c(min(x), max(x))
+  if (!growth) {
+    return(out)
+  }
+  # Clipped to the observed range. bnec_hurdle() passes one x_range to both
+  # components, so a range given at fit time is stored as growth's grid too,
+  # and it reaches past the highest concentration at which anything survived.
+  # Read over it, on a fixture built from nec4param whose growth data end at
+  # 1.595, the summary reported an identified growth EC50 of 1.674 where a
+  # bare ecx() reported it censored at 1.595. The stored
+  # grid is kept where it is narrower, since the fit was asked for that range.
+  # Where there is no stored grid this is not reached, and ecx() applies the
+  # same observed range as its own default.
+  observed <- hurdle_estimate_range(object, "growth", NA)
+  out <- c(max(out[1], observed[1]), min(out[2], observed[2]))
+  # A stored grid wholly outside the growth data leaves nothing to clip to, and
+  # a reversed pair would be read by prediction_grid() as the range between
+  # them. ecx() builds growth's observed range itself.
+  if (out[1] >= out[2]) {
+    return(NULL)
+  }
+  out
 }

@@ -487,9 +487,10 @@ print.bayesnechurdlefit <- function(x, ...) {
 #' \code{U}, and is otherwise known only to exceed \code{U} as well.
 #'
 #' The two components need not share a range. Growth is fitted to survivors
-#' only, so its grid stops short of any concentration at which nothing
-#' survived (\code{hurdle_summary_range()}), and a survival draw identified
-#' at 20 is not the minimum when growth is known only to exceed 10 (#415).
+#' only, so its observed range stops short of any concentration at which
+#' nothing survived (\code{hurdle_estimate_range()}), and a survival draw
+#' identified at 20 is not the minimum when growth is known only to exceed 10
+#' (#415).
 #'
 #' \code{pmin()} on the raw vectors cannot do this. It propagates the
 #' \code{NA} that an ecx-type component returns for a beyond-range draw, so a

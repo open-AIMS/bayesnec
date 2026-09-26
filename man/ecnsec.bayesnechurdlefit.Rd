@@ -75,5 +75,8 @@ component's own observed range, and the survival and combined curves over
 the survival component's, as in \code{\link{ecx.bayesnechurdlefit}}. The
 range sets the lowest predicted response that \code{type = "range"}
 measures towards, and the grid point nearest \code{nsec} at which the curve
-is read.
+is read. With \code{which = "growth"} and no \code{x_range}, an \code{nsec}
+outside growth's observed range is refused, because the growth fit has no
+data there. An \code{x_range} that includes \code{nsec} reads the growth
+curve extended past its data, as it does for \code{\link{ecx}}.
 }
