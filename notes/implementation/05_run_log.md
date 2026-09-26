@@ -326,3 +326,11 @@ and the order `01_work_queue.md`.
   leaves the full suite to CI.
 - 2026-09-26 20:55 AEST. #418 recorded in `notes/incomplete_design_fits.md`
   (`528f0667`).
+- 2026-09-26, item 6. #403 stopped: D21 cannot be implemented as written. The
+  geometric mean of a censored and an identified draw has a per-draw bound
+  below the grid limit, and `summarise_censored()` holds one bound per end.
+  Options and measurements are on #403; the ruling is to be made with #421. The
+  comparison half of #404 went ahead in item 6.
+- 2026-09-26, item 3. The lower-end extension of D20 was tried in two forms and
+  reverted after review; the lower end is #421. Item 3 implements D20 at the
+  upper end only.
