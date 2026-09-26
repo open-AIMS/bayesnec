@@ -118,7 +118,12 @@ names; <code>excluded</code>, a <code><a href="https://rdrr.io/r/base/data.frame
 <code><a href="bnec.html">bnec</a></code> declined to attempt with the reason for each; and
 <code>substitutions</code>, a <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code> of the changes made to
 the response, or <code>NULL</code> where none were made. <code>requested</code> is
-partitioned exactly by <code>attempted</code> and <code>excluded$model</code>.</p>
+partitioned exactly by <code>attempted</code> and <code>excluded$model</code>, with one
+exception. Where the response does not vary, <code><a href="bnec.html">bnec</a></code> fits the
+constant equation "ecxflat" alone whatever was requested: <code>attempted</code>
+is then "ecxflat", which need not have been requested, and every other
+requested equation is in <code>excluded</code> with that reason. See the section
+of <code><a href="bnec.html">?bnec</a></code> on a response that does not vary.</p>
 <p><code>attempted</code> is the set <code><a href="bnec.html">bnec</a></code> tried to fit, not the set
 that sampled: an equation that was attempted and failed appears here, and
 for <code><a href="bnec.html">bnec</a></code> and <code><a href="amend.html">amend</a></code> also in

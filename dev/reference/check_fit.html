@@ -196,7 +196,9 @@ deviation of the response mixes residual variability with the slope of the
 curve across the group, which would make every steep-region group look
 overdispersed.</p>
 <p><b>Model averaging does not protect you here</b></p>
-<p>Stacking weights come from a global <code>elpd</code>. The control is a handful of
+<p>Model weights come from a global <code>elpd</code>, whether they are the
+pseudo-BMA weights <code><a href="bnec.html">bnec</a></code> computes by default or stacking
+weights requested through <code>loo_controls</code>. The control is a handful of
 rows out of many, so a candidate model can hold high weight while fitting the
 control badly — it wins on the bulk of the curve and pays almost nothing
 for the control. For a <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> the per-model rows are
