@@ -328,7 +328,8 @@ hurdle_xform_x <- function(object, out) {
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
 #' @param ... Passed to \code{\link{nec}} and \code{\link{ecx}} for each
 #' component, so that \code{xform} in particular applies to every estimate in
-#' the table.
+#' the table. \code{x_range} is the exception: it is passed to
+#' \code{\link{ecx}} only. See Details.
 #' @param ecx Should ECx estimates be included? Defaults to \code{FALSE}.
 #' @param ecx_vals The ECx levels to report.
 #'
@@ -338,6 +339,16 @@ hurdle_xform_x <- function(object, out) {
 #' mixture (Fisher et al. 2023). The combined estimate is the smaller of the
 #' two component estimates per posterior draw, so it is a pure NEC only where
 #' both components are; see \code{\link{nec.bayesnechurdlefit}}.
+#'
+#' With \code{ecx = TRUE}, the ECx rows are read over the intersection of the
+#' prediction grids stored with the two components, or over the grid
+#' \code{\link{ecx}} builds by default where either component stores none. An
+#' \code{x_range} supplied in \code{...} replaces that grid, and sets the grid
+#' of the ECx rows only. It is not passed to \code{\link{nec}}, because each
+#' no-effect estimate is read from the posterior stored when its component was
+#' fitted, and is censored at the bound of the prediction grid stored then. To
+#' report a no-effect estimate beyond that bound, supply \code{extrapolate},
+#' which is passed to \code{\link{nec}}.
 #'
 #' @return An object of class \code{hurdlesummary}.
 #'
@@ -371,14 +382,22 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
     # the combined endpoint. NULL where a component has no stored grid, which
     # leaves ecx() to build its own as before.
     hurdle_range <- hurdle_summary_range(object)
+    # A caller's x_range is matched by this helper's own formal and replaces
+    # the default, so ecx() receives it once. Left in ... it was passed beside
+    # x_range = hurdle_range and the call stopped with "formal argument
+    # "x_range" matched by multiple actual arguments" (#416). The formal
+    # follows ... so that only the full name matches it; before ... it would
+    # also take an argument whose name is a prefix of x_range. A NULL, from
+    # either source, leaves ecx() to build its own grid.
+    ecx_row <- function(w, v, ..., x_range = hurdle_range) {
+      if (is.null(x_range)) {
+        ecx(object, ecx_val = v, which = w, ...)
+      } else {
+        ecx(object, ecx_val = v, which = w, x_range = x_range, ...)
+      }
+    }
     ecs <- lapply(c("combined", "growth", "survival"), function(w) {
-      out <- lapply(ecx_vals, function(v) {
-        if (is.null(hurdle_range)) {
-          ecx(object, ecx_val = v, which = w, ...)
-        } else {
-          ecx(object, ecx_val = v, which = w, x_range = hurdle_range, ...)
-        }
-      })
+      out <- lapply(ecx_vals, function(v) ecx_row(w, v, ...))
       names(out) <- paste0("ec", ecx_vals)
       out
     })
@@ -387,8 +406,19 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
   # nec() warns once per call that a mixed model set yields an N(S)EC rather
   # than a NEC, which would be repeated up to six times here. The table labels
   # every estimate by type, so the message is redundant and is suppressed.
-  nes <- lapply(c("combined", "growth", "survival"), function(w) {
+  #
+  # x_range is taken out of ... here rather than forwarded. A no-effect
+  # estimate is read from the posterior stored when its component was fitted,
+  # and is censored at the prediction grid stored then, so a range named now
+  # cannot change it; extrapolate, which is forwarded, is the argument that
+  # does. nec() absorbed x_range without a message, so nothing told the
+  # caller that the no-effect rows had not used it (#416). It sets the grid of
+  # the ECx rows only, which ?summary.bayesnechurdlefit states.
+  nec_row <- function(w, ..., x_range) {
     suppressMessages(nec(object, which = w, ...))
+  }
+  nes <- lapply(c("combined", "growth", "survival"), function(w) {
+    nec_row(w, ...)
   })
   names(nes) <- c("combined", "growth", "survival")
   mods <- function(f) {
