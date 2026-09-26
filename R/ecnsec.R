@@ -38,6 +38,13 @@
 #' The \code{hormesis_def} argument has been removed; the control is now
 #' always the reference. See \code{\link{ecx}}.
 #'
+#' \code{nsec} is read on the recorded predictor scale once \code{xform} has
+#' been applied to it. Where \code{crf()} transforms the predictor inline, as
+#' in \code{crf(log(concentration))}, \code{\link{nsec}} returns its estimate
+#' on the transformed scale unless given an \code{xform}, so a message says so
+#' once per call where \code{xform} is left at its default, and names the
+#' \code{xform} that puts such a value on the recorded scale.
+#'
 #' @seealso \code{\link{bnec}}
 #'
 #' @return A vector containing the estimated ECNSEC value, including upper and
@@ -97,6 +104,11 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 200, x_range = NA,
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
   }
+  # The percentage returned has no predictor scale; the nsec supplied does. It
+  # is read on the recorded scale after xform, so the message says what to pass
+  # where nsec came from nsec() without one. See report_fitted_scale().
+  quiet <- report_fitted_scale(object, xform, "ecnsec")
+  on.exit(options(quiet), add = TRUE)
   if (inherits(xform, "function")) {
     nsec_use <- xform(nsec)
   }

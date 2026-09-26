@@ -85,6 +85,12 @@ one.
 and is the better choice where the type matters, because \code{nec} always
 returns an unlabelled vector. Use \code{\link{nsec}} where a NSEC is wanted
 from every model regardless of type.
+
+Where \code{crf()} transforms the predictor inline, as in
+\code{crf(log(concentration))}, the estimate is on the transformed scale
+unless \code{xform} is supplied, and a message says so once per call. It
+names the transformation and the \code{xform} that returns the estimate on
+the recorded scale.
 }
 \section{Capping and dropping}{
 

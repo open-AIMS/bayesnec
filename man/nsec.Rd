@@ -84,6 +84,12 @@ the \code{hormesis_def} argument selected between the control and the
 maximum of the predicted curve and has been removed, because a target
 below the control is crossed exactly once whatever the curve does above it.
 
+Where \code{crf()} transforms the predictor inline, as in
+\code{crf(log(concentration))}, the NSEC is on the transformed scale unless
+\code{xform} is supplied, and a message says so once per call. It names the
+transformation and the \code{xform} that returns the estimate on the
+recorded scale.
+
 The attached \code{ecnsec} attribute is the percent effect at the NSEC,
 defined as \code{\link{ecx}} defines it under \code{type = "absolute"}:
 the decline from the control towards zero. Up to 2.1.3 it was measured

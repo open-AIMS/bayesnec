@@ -2012,6 +2012,24 @@ fill_missing_priors <- function(priors, defaults, model) {
   out
 }
 
+#' The predictor expression written in a formula's crf() term
+#'
+#' Shared by \code{sub_x_transformation()}, which applies it to an estimate,
+#' and \code{inline_x_transform()}, which reports it, so that an estimate is
+#' said to be on a transformed scale exactly where it has been put on one.
+#'
+#' @param formula A \code{\link{bayesnecformula}}.
+#'
+#' @return The expression as a call, such as \code{log(x + 1)}, or a symbol
+#' where the predictor is named untransformed.
+#'
+#' @importFrom stats terms
+#' @noRd
+crf_x_call <- function(formula) {
+  x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
+  str2lang(eval(parse(text = x_str)))
+}
+
 #' Put an estimate read off the prediction grid back on the fitted scale
 #'
 #' The prediction grid is built on the raw predictor column
@@ -2040,11 +2058,10 @@ fill_missing_priors <- function(priors, defaults, model) {
 #'
 #' @return A \code{\link[base]{numeric}} vector on the fitted scale.
 #'
-#' @importFrom stats terms setNames
+#' @importFrom stats setNames
 #' @noRd
 sub_x_transformation <- function(value, formula) {
-  x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
-  x_call <- str2lang(eval(parse(text = x_str)))
+  x_call <- crf_x_call(formula)
   if (!inherits(x_call, "call")) {
     return(value)
   }
@@ -2870,5 +2887,8 @@ plot_ecx <- function(object, family, dots = list()) {
   if (!("type" %in% names(dots)) && identical(family, "gaussian")) {
     dots$type <- "range"
   }
-  do.call(ecx, c(list(object), dots))
+  # Without the scale message: both callers put the estimate on the axis scale
+  # with to_axis_scale(), so the message would describe a number the plot does
+  # not show.
+  without_scale_report(do.call(ecx, c(list(object), dots)))
 }

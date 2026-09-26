@@ -19,7 +19,10 @@
 #' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits are
 #' already based on a re-scaling of the x (concentration) axis, it is important
 #' to pass an appropriate xform argument to ensure these are back transformed
-#' before the the geometric mean calculation is applied.
+#' before the the geometric mean calculation is applied. Where \code{crf()}
+#' transforms the predictor inline and \code{xform} is left at its default, a
+#' message says so once per call, naming the transformation and the
+#' \code{xform} that inverts it.
 #'
 #' @seealso \code{\link{bnec}}
 #'
@@ -87,6 +90,12 @@ average_estimates <- function(x, estimate = "nec", ecx_val = 10,
   }
   chk_numeric(prob_vals)
   chk_number(seed)
+  # Once for the call rather than once per fit in x, and decided here because
+  # return_nec_post() reads the stored posteriors without calling nec(). See
+  # report_fitted_scale().
+  quiet <- report_fitted_scale(first_transformed_fit(x), xform,
+                               "average_estimates")
+  on.exit(options(quiet), add = TRUE)
   if (is.na(x_range[1])) {
     x_range <- return_x_range(x)
   }

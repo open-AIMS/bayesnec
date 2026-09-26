@@ -137,6 +137,14 @@ compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
   chk_numeric(sig_val)
   chk_numeric(resolution)
   chk_number(seed)
+  # The scale message is reported once for the call, as the rename warning is
+  # above. It is decided here rather than left to the per-fit calls below,
+  # which name xform = identity whatever the caller wants, and because the
+  # "n(s)ec" comparison reads the stored posteriors without calling an
+  # estimator. See report_fitted_scale().
+  quiet <- report_fitted_scale(first_transformed_fit(x), identity,
+                               "compare_estimates")
+  on.exit(options(quiet), add = TRUE)
   if (is.na(x_range[1])) {
     x_range <- return_x_range(x)
   } else {

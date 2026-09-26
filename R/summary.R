@@ -77,6 +77,12 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
   ecs <- NULL
   if (ecx) {
     message("ECx calculation takes a few seconds per model, calculating...\n")
+    # Once for the table rather than once per ecx_vals entry. summary() takes
+    # no xform, so the ECx rows are on the fitted scale, and the message names
+    # the ecx() call that returns them on the recorded one. See
+    # report_fitted_scale().
+    quiet <- report_fitted_scale(x, identity, "ecx")
+    on.exit(options(quiet), add = TRUE)
     ecs <- list()
     for (i in seq_along(ecx_vals)) {
       # On the grid the fit was built over, not the range of the data. ecx()
@@ -151,6 +157,9 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
   ecs <- NULL
   if (ecx) {
     message("ECx calculation takes a few seconds per model, calculating...\n")
+    # Once for the table, as in summary.bayesnecfit.
+    quiet <- report_fitted_scale(x, identity, "ecx")
+    on.exit(options(quiet), add = TRUE)
     ecs <- list()
     for (i in seq_along(ecx_vals)) {
       # The grid the set was built over, for the reason given in

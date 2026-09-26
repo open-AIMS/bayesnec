@@ -253,6 +253,9 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
   if (!inherits(xform, "function")) {
     stop("xform must be a function.")
   }
+  # Once for the call. See report_fitted_scale().
+  quiet <- report_fitted_scale(object, xform, "nsec")
+  on.exit(options(quiet), add = TRUE)
   # As in nsec.bayesnecfit: extrapolate resolves into the grid the curve is
   # searched on, and adds to x_range the refusal to narrow and the refusal of
   # an infinite limit.
@@ -373,6 +376,12 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
   chk_numeric(ecx_vals)
   ecs <- NULL
   if (ecx) {
+    # The nine ecx() calls below would each report the scale of what they
+    # return, so it is reported once for the table. The no-effect rows are read
+    # under suppressMessages() below and report nothing either way. See
+    # report_fitted_scale().
+    quiet <- report_fitted_scale(object, dots_xform(list(...)), "ecx")
+    on.exit(options(quiet), add = TRUE)
     # On the grid the two component fits were predicted over, not the range of
     # the data. ecx() rebuilds its own grid when x_range is absent, so the ECx
     # block described a different range from the no-effect estimates printed
@@ -912,7 +921,9 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
     }
     lines(xv, p$est)
     if (add_nec) {
-      ne <- xform(nec(x, which = if (w == "combined") "combined" else w))
+      ne <- xform(without_scale_report(
+        nec(x, which = if (w == "combined") "combined" else w)
+      ))
       abline(v = ne, col = "red", lty = c(1, 3, 3))
       legend("topright", bty = "n", lty = 1, col = "red",
              legend = paste0("N(S)EC: ", signif(ne[1], 2), " (",
@@ -1059,6 +1070,10 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
          "asymptote is not a single fitted parameter. Use ",
          "type = \"absolute\" or type = \"range\".", call. = FALSE)
   }
+  # No scale message here, unlike ecnsec.bnecfit(). This method reads nsec on
+  # the recorded scale and applies xform to the percentage it returns rather
+  # than to nsec, so the advice that message gives, to pass the inverse as
+  # xform, would be wrong for this class.
   preds <- hurdle_component_preds(object, resolution = resolution,
                                   x_range = x_range)
   p_samples <- preds[[which]]

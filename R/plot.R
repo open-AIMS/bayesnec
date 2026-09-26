@@ -109,8 +109,11 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     y_dat <- x$fit$data[[y_var]]
   }
   ec10 <- c(NA, NA, NA)
+  # Without the scale message: the EC10 is put on the axis scale below by
+  # to_axis_scale(), so the message would describe a number the plot does not
+  # show.
   if (add_ec10 & family != "gaussian") {
-    ec10 <- ecx(x)
+    ec10 <- without_scale_report(ecx(x))
   }
   if (add_ec10 & family == "gaussian") {
     # "range", not "relative". This line asked for "relative" because up to
@@ -121,7 +124,7 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     # on manec_example's nec4param, EC10 1.673 against 1.581 -- warned the
     # caller about a rename they had not asked for, and errored outright for a
     # bot-free equation under gaussian, which #206 has just made fittable.
-    ec10 <- ecx(x, type = "range")
+    ec10 <- without_scale_report(ecx(x, type = "range"))
   }
 
   bdat <- model.frame(x$bayesnecformula, data = x$fit$data, run_par_checks = TRUE)
@@ -280,12 +283,12 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     }
     ec10 <- c(NA, NA, NA)
     if (add_ec10 & family != "gaussian") {
-      ec10 <- ecx(x)
+      ec10 <- without_scale_report(ecx(x))
     }
     if (add_ec10 & family == "gaussian") {
       # "range" rather than "relative", for the reasons given in
       # plot.bayesnecfit above.
-      ec10 <- ecx(x, type = "range")
+      ec10 <- without_scale_report(ecx(x, type = "range"))
     }
     x_dat <- mod_dat[[x_var]]
     x_vec <- x$w_pred_vals$data$x

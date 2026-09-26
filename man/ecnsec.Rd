@@ -69,6 +69,13 @@ than a percentage and is refused here.
 
 The \code{hormesis_def} argument has been removed; the control is now
 always the reference. See \code{\link{ecx}}.
+
+\code{nsec} is read on the recorded predictor scale once \code{xform} has
+been applied to it. Where \code{crf()} transforms the predictor inline, as
+in \code{crf(log(concentration))}, \code{\link{nsec}} returns its estimate
+on the transformed scale unless given an \code{xform}, so a message says so
+once per call where \code{xform} is left at its default, and names the
+\code{xform} that puts such a value on the recorded scale.
 }
 \examples{
 \donttest{

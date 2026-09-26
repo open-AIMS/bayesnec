@@ -175,6 +175,11 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
   if (!inherits(xform, "function")) {
     stop("xform must be a function.")
   }
+  # Decided here for the pair. The component calls below pass no xform, since
+  # it is applied to their result afterwards, so they are not in a position to
+  # decide it. See report_fitted_scale().
+  quiet <- report_fitted_scale(object, xform, "nec")
+  on.exit(options(quiet), add = TRUE)
   # The component reports are muffled and one is raised below for the vector
   # this method actually returns. Left on, a censored component was reported by
   # each of the calls here and again by the report below, three times over for
@@ -293,6 +298,9 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 200,
   if (!inherits(xform, "function")) {
     stop("xform must be a function.")
   }
+  # Once for the call. See report_fitted_scale().
+  quiet <- report_fitted_scale(object, xform, "ecx")
+  on.exit(options(quiet), add = TRUE)
   preds <- hurdle_component_preds(object, resolution = resolution,
                                   x_range = x_range)
   p_samples <- preds[[which]]

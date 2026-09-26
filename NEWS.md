@@ -1833,6 +1833,28 @@
   zero". Supplying an `xform` took a different branch and was unaffected, which
   is why the failure was specific to the default (#160, #161).
 
+- Where `crf()` transforms the predictor inline, as in
+  `crf(log(concentration))`, `nec()`, `ecx()`, `nsec()`, `ecnsec()`,
+  `curve_params()`, `average_estimates()` and `compare_estimates()` now say so
+  in a message once per call. These functions return values on the transformed
+  scale unless `xform` is supplied, while `autoplot()` draws the recorded scale,
+  and nothing in the returned number said which scale it was on. A log-scale
+  estimate that falls inside the tested range reads as a concentration. The
+  message names the transformation and the `xform` that inverts it:
+  `xform = exp` for `log()`, `function(x) x^2` for `sqrt()` and
+  `function(x) exp(x) - 1` for `log(x + 1)`. Where no closed form is known it
+  asks for the inverse of the transformation it names. It is raised once for a
+  model set, a group, a hurdle pair or a comparison, not once for each
+  equation, level, component or fit, and not at all where `xform` is supplied.
+  `compare_estimates()` takes no `xform`, so its message names the estimators
+  that do. `summary(ecx = TRUE)` raises it once for its ECx rows. `plot()` and
+  `autoplot()` do not raise it, because they put every estimate on the axis
+  scale themselves. `ecnsec()` on a `bayesnechurdlefit` does not raise it
+  either, because its `xform` is applied to the percentage it returns rather
+  than to `nsec`. No returned value changes: making the recorded scale the
+  default changes every reported value from such a fit and is left to the 3.0
+  release (#299).
+
 - `compare_estimates()` and `compare_posterior()` no longer void a comparison
   in which any draw is censored. A single unreached draw in either posterior
   previously made `prob` `NA` for the whole comparison, and silently, the

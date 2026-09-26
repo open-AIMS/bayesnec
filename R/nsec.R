@@ -50,6 +50,12 @@
 #' maximum of the predicted curve and has been removed, because a target
 #' below the control is crossed exactly once whatever the curve does above it.
 #'
+#' Where \code{crf()} transforms the predictor inline, as in
+#' \code{crf(log(concentration))}, the NSEC is on the transformed scale unless
+#' \code{xform} is supplied, and a message says so once per call. It names the
+#' transformation and the \code{xform} that returns the estimate on the
+#' recorded scale.
+#'
 #' The attached \code{ecnsec} attribute is the percent effect at the NSEC,
 #' defined as \code{\link{ecx}} defines it under \code{type = "absolute"}:
 #' the decline from the control towards zero. Up to 2.1.3 it was measured
@@ -245,6 +251,9 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
   }
+  # Once for the call. See report_fitted_scale().
+  quiet <- report_fitted_scale(object, xform, "nsec")
+  on.exit(options(quiet), add = TRUE)
   # extrapolate resolves into x_range, because the grid is the only thing an
   # NSEC can be extended over: the estimate is read off a curve and the curve
   # is read off the grid. What extrapolate adds over x_range is the refusal to
@@ -387,6 +396,11 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 200,
   if (length(sig_val)>1) {
     stop("You may only pass one sig_val")
   }
+  # Once for the set, not once per equation. xform is validated by the
+  # per-equation calls below, and anything but identity raises nothing here.
+  # See report_fitted_scale().
+  quiet <- report_fitted_scale(object, xform, "nsec")
+  on.exit(options(quiet), add = TRUE)
   # Resolved once for the set and passed down as x_range, so that every
   # component is searched over one grid. Resolving it again inside each
   # component call would measure each limit against that component's own
