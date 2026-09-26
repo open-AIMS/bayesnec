@@ -77,7 +77,7 @@ jobs:
           cat("TESTTHAT_PARALLEL=", Sys.getenv("TESTTHAT_PARALLEL"), "\n", sep = "")
           cat("TESTTHAT_CPUS=", Sys.getenv("TESTTHAT_CPUS"), "\n", sep = "")
           setwd("tests")
-          testthat::test_check("bayesnec", filter = "^bnecfit-methods$")
+          testthat::test_check("bayesnec", filter = "^(bnec|bnecfit-methods)$")
           RS
       - name: Upload diagnostic log
         if: always()
