@@ -91,8 +91,10 @@ in this project.
    changes no fitted result does not bump it (RF, 2026-09-26, D18).
 6. The test files the item touches pass under `NOT_CRAN=true` against an
    installed build, not only under `devtools::load_all()`, which exposes
-   unexported functions that `R CMD check` will not see. The full suite runs
-   once per item.
+   unexported functions that `R CMD check` will not see. Each file is run on
+   its own with `TESTTHAT_PARALLEL=false`. The full suite is left to CI: run
+   locally under `devtools::test()`, its parallel workers deadlocked on this
+   machine on 2026-09-26, three suites idle for over an hour at load 0.3.
 7. An independent review: a fresh session given the issue, the specification
    section and the diff, and asked for correctness defects only. Address what
    is real; up to three rounds.
@@ -169,7 +171,6 @@ the precompile and the store refit. Check the clock at each item boundary.
 devtools::load_all(".")
 Sys.setenv(NOT_CRAN = "true")
 testthat::test_file("tests/testthat/test-<file>.R")
-devtools::test()                       # once per item
 ```
 
 Without `NOT_CRAN=true` a local run skips nearly every fitting assertion and
