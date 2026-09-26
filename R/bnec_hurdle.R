@@ -255,12 +255,18 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
   # every value is 1 of a column that also holds the zeros. Built from
   # `formula`, which is growth_formula without the count truncation, since the
   # response rows are what is tested. See #400.
+  #
+  # Given the growth set, so that ecxflat named alone for the growth component
+  # is let through and fitted. The substitution bnec() makes for a response
+  # with no variation is not made here: #419 gave it to bnec() and bnec_group()
+  # only, so a growth set holding a curve equation is still refused.
   check_response_at_bound(
     model.frame(formula, data = data[y > 0, , drop = FALSE],
                 run_par_checks = TRUE),
     family_growth,
     subject = paste0("The growth component of the response \"", y_var,
-                     "\" (its ", sum(y > 0), " non-zero values)")
+                     "\" (its ", sum(y > 0), " non-zero values)"),
+    model = get_model_from_formula(formula)
   )
   message("Fitting the growth component (", sum(y > 0), " survivors of ",
           length(y), ") with a ", family_growth$family, " distribution.")

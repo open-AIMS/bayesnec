@@ -100,6 +100,54 @@ test_that("response_link_scale only-zeros edge case stays in (0, 1)", {
   expect_true(all(result < 1))
 })
 
+test_that("response_link_scale shifts a response at one bound inside it (#419)", {
+  # Every observation at 1 left no value below 1 to rescale towards, and the
+  # identity branch returned NaN; every observation at 0 gave Inf. Only
+  # ecxflat is built from such a response, and it is shifted by 1 / (2n), the
+  # correction survival_by_x() applies to a proportion of exactly 0 or 1.
+  for (fam in list(bernoulli(link = "identity"), binomial(link = "identity"),
+                   beta_binomial(link = "identity"), Beta(link = "identity"))) {
+    ones <- bayesnec:::response_link_scale(rep(1, 20), fam)
+    zeros <- bayesnec:::response_link_scale(rep(0, 20), fam)
+    expect_equal(ones, rep(1 - 1 / 40, 20), info = fam$family)
+    expect_equal(zeros, rep(1 / 40, 20), info = fam$family)
+  }
+  # A response that varies is rescaled as before, not shifted: its values stay
+  # distinct and its ends are set by its own observations inside the bounds.
+  mixed <- bayesnec:::response_link_scale(c(0, 0.5, 1),
+                                          bernoulli(link = "identity"))
+  expect_length(unique(mixed), 3)
+  expect_equal(mixed[1], 0.005)
+  # A family with no bound is left alone.
+  expect_identical(
+    bayesnec:::response_link_scale(rep(1, 5), gaussian()), rep(1, 5)
+  )
+})
+
+test_that("the init search accepts a constant inside the support (#419)", {
+  # check_init_predictions() asks for a declining curve with more than three
+  # values, which a constant never is, so every draw was rejected and the fit
+  # fell to Stan's own initialisation after n_trials rounds. A constant is held
+  # to the support of the mean instead, and on a response with no variation,
+  # whose band has no width, it is still initialised.
+  x <- rep(c(0.1, 0.5, 1, 3, 10, 30), each = 5)
+  fam <- bernoulli(link = "identity")
+  pr <- brms::prior_string("beta(5, 2)", nlpar = "top", lb = 0, ub = 1)
+  y <- bayesnec:::response_link_scale(rep(1, length(x)), fam)
+  inits <- make_good_inits("ecxflat", x, y, family = fam, priors = pr,
+                           chains = 3, seed = 419, n_trials = 5)
+  expect_length(inits, 3)
+  tops <- vapply(inits, function(i) as.numeric(i$b_top), numeric(1))
+  expect_true(all(tops > 0 & tops < 1))
+  # And on a response that varies, under a family with no bound.
+  g <- make_good_inits("ecxflat", nec_data$x, nec_data$y, family = gaussian(),
+                       priors = brms::prior_string("normal(0.5, 1)",
+                                                   nlpar = "top"),
+                       chains = 2, seed = 419, n_trials = 5)
+  expect_length(g, 2)
+  expect_false("random" %in% names(g))
+})
+
 test_that("response_link_scale only-ones edge case stays in (0, 1)", {
   response <- c(0.98, 0.99, 1.0, 1.0)
   family <- beta_binomial(link = "identity")

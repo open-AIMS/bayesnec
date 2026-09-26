@@ -97,7 +97,10 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
     }
     names(ecs) <- paste0("ECx (", ecx_vals, "%) estimate:")
   }
-  is_ecx <- x$model %in% mod_groups$ecx
+  # Read off the fit's parameters rather than group membership, so that
+  # ecxflat, which belongs to no group, is reported as the NSEC it gives. See
+  # #419 and fit_has_nec().
+  is_ecx <- !fit_has_nec(x$fit)
   ecx_mod <- NULL
   if (is_ecx) {
     ecx_mod <- x$model
@@ -169,9 +172,13 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
     }
     names(ecs) <- paste0("ECx (", ecx_vals, "%) estimate:")
   }
+  # As in summary.bayesnecfit(): the parameters, not group membership.
+  no_nec <- !vapply(x$success_models, function(m) {
+    fit_has_nec(x$mod_fits[[m]]$fit)
+  }, logical(1))
   ecx_mods <- NULL
-  if (any(x$success_models %in% mod_groups$ecx)) {
-    ecx_mods <- x$success_models[x$success_models %in% mod_groups$ecx]
+  if (any(no_nec)) {
+    ecx_mods <- x$success_models[no_nec]
   }
   out <- list(
     models = x$success_models,

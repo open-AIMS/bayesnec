@@ -85,17 +85,24 @@ test_that("bnec refuses a resolution below 2 before fitting anything", {
   )
 })
 
-test_that("a response at one bound is refused once, before the model loop (#400)", {
+test_that("a response at one bound is fitted as ecxflat alone (#400, #419)", {
   # Each case failed inside prior construction on the quantile() error, which
   # named neither the column nor the cause, except beta at 1, which was shifted
-  # to 0.999 and fitted, and beta at 0, which was shifted to Inf. From
-  # check_data() alone the refusal would be printed once per model of the set
-  # and end on the all-models-failed advice.
-  calls <- 0L
+  # to 0.999 and fitted, and beta at 0, which was shifted to Inf. #400 refused
+  # them; D31 fits the constant equation to them instead, decided once before
+  # the model loop. The two-equation set asked for is replaced, so the call
+  # takes the single-model branch and never reaches the model loop. Beta at 0
+  # cannot be fitted by ecxflat either and is still refused.
+  loop_calls <- 0L
+  fitted <- character(0)
   local_mocked_bindings(
     bnec_parallel_lapply = function(...) {
-      calls <<- calls + 1L
+      loop_calls <<- loop_calls + 1L
       stop("reached the model loop")
+    },
+    fit_bayesnec = function(..., model) {
+      fitted <<- c(fitted, model)
+      stop("fit reached")
     },
     .package = "bayesnec"
   )
@@ -113,14 +120,51 @@ test_that("a response at one bound is refused once, before the model loop (#400)
       ),
       error = conditionMessage
     )
-    expect_match(err, paste0("The response \"", cs$column, "\" is at the ",
-                             cs$bound, " bound"), fixed = TRUE, info = nm)
-    expect_false(grepl("None of the models", err), info = nm)
-    # No substitution report precedes it: a beta response at 1 is no longer
-    # announced as shifted to 0.999 before being refused.
-    expect_length(msgs, 0)
+    if (nm == "beta_zero") {
+      expect_match(err, paste0("The response \"", cs$column, "\" is at the ",
+                               cs$bound, " bound"), fixed = TRUE, info = nm)
+      expect_match(err, "the constant equation ecxflat included",
+                   fixed = TRUE, info = nm)
+      # Refused before any report on the response, as #400 placed it.
+      expect_length(msgs, 0)
+      next
+    }
+    expect_identical(err, "fit reached", info = nm)
+    expect_match(msgs[1], paste0("The response \"", cs$column, "\" is at the ",
+                                 cs$bound, " bound"), fixed = TRUE, info = nm)
+    expect_match(msgs[1], paste("fitted with the constant equation ecxflat",
+                                "alone, and the 2 other equation(s) requested",
+                                "are not fitted"), fixed = TRUE, info = nm)
   }
-  expect_identical(calls, 0L)
+  expect_identical(fitted, rep("ecxflat", length(cases) - 1L))
+  expect_identical(loop_calls, 0L)
+})
+
+test_that("ecxflat named alone at a bound fits without the report (#419)", {
+  # Nothing was set aside, so there is nothing to say why.
+  fitted <- character(0)
+  local_mocked_bindings(
+    fit_bayesnec = function(..., model) {
+      fitted <<- c(fitted, model)
+      stop("fit reached")
+    },
+    .package = "bayesnec"
+  )
+  cs <- at_bound_cases()$bernoulli_one
+  msgs <- character(0)
+  err <- tryCatch(
+    withCallingHandlers(
+      bnec(alive ~ crf(x, "ecxflat"), data = cs$data, family = cs$family),
+      message = function(m) {
+        msgs <<- c(msgs, conditionMessage(m))
+        invokeRestart("muffleMessage")
+      }
+    ),
+    error = conditionMessage
+  )
+  expect_identical(err, "fit reached")
+  expect_identical(fitted, "ecxflat")
+  expect_false(any(grepl("ecxflat alone", msgs, fixed = TRUE)))
 })
 
 test_that("one observation off the bound reaches the model loop (#400)", {
@@ -138,4 +182,199 @@ test_that("one observation off the bound reaches the model loop (#400)", {
       "reached the model loop", info = nm
     )
   }
+})
+
+# ---- #419, the constant equation, fitted --------------------------------------
+
+# Three fits, each made once and shared by every test below, because compiling
+# the Stan program is what these tests cost. A bernoulli response of 1
+# throughout, requested with the whole default set, which bnec() fits as
+# ecxflat alone; a gaussian response with no concentration effect, fitted with
+# ecxflat named beside nec3param, so that both take appreciable weight and the
+# mixture holds ecxflat draws; and manec_example, which declines, amended with
+# ecxflat, which is a response with an effect. Short chains at a fixed seed:
+# what is asserted is where the draws lie, not their precision. amend() takes
+# the sampler settings of the set it amends and has no seed argument.
+flat_fixtures <- local({
+  cache <- list()
+  keep_messages <- function(expr) {
+    msgs <- character(0)
+    value <- withCallingHandlers(
+      suppressWarnings(expr),
+      message = function(m) {
+        msgs <<- c(msgs, conditionMessage(m))
+        invokeRestart("muffleMessage")
+      }
+    )
+    list(fit = value, messages = msgs)
+  }
+  function(which) {
+    if (is.null(cache[[which]])) {
+      x <- rep(c(0.1, 0.5, 1, 3, 10, 30), each = 5)
+      cache[[which]] <<- switch(
+        which,
+        at_bound = keep_messages(
+          bnec(alive ~ crf(x, model = "all"),
+               data = data.frame(x = x, alive = 1L), family = "bernoulli",
+               chains = 2, iter = 300, warmup = 200, seed = 419, refresh = 0)
+        ),
+        no_effect = keep_messages({
+          set.seed(419)
+          flat <- data.frame(x = rep(c(0, 0.25, 0.5, 1, 2, 4), each = 6))
+          flat$y <- stats::rnorm(nrow(flat), 2, 0.3)
+          bnec(y ~ crf(x, c("ecxflat", "nec3param")), data = flat,
+               family = gaussian(), chains = 2, iter = 300, warmup = 200,
+               seed = 419, refresh = 0)
+        }),
+        effect = keep_messages(amend(manec_example, add = "ecxflat"))
+      )
+    }
+    cache[[which]]
+  }
+})
+
+# Every draw of an ECx censored above the upper end of the grid, for each type
+# the family admits: "relative" needs a lower bound to measure towards, which
+# a gaussian response does not have.
+expect_ecx_all_above <- function(fit, types) {
+  for (type in types) {
+    e <- suppressWarnings(ecx(fit, posterior = TRUE, type = type))
+    cens <- attr(e, "censored")
+    expect_true(all(is.na(e)), info = type)
+    expect_true(all(cens$above), info = type)
+    expect_false(any(cens$below), info = type)
+    est <- suppressWarnings(ecx(fit, type = type))
+    expect_identical(attr(est, "censored_summary")$bound, rep(">=", 3),
+                     info = type)
+  }
+}
+
+# The NSEC of a constant: every draw above the reference never falls to it and
+# is censored above, and a draw at or below it takes the control, the rule
+# nsec() applies to every equation. For a constant the draw's control is its
+# top, so those draws are exactly the ones whose top is at or below the
+# sig_val quantile of top.
+expect_nsec_above_but_control <- function(fit, sig_val = 0.01) {
+  ns <- suppressWarnings(nsec(fit, posterior = TRUE, sig_val = sig_val))
+  cens <- attr(ns, "censored")
+  top <- brms::as_draws_df(fit$fit)$b_top_Intercept
+  at_control <- !is.na(ns)
+  expect_identical(sum(at_control),
+                   sum(top <= stats::quantile(top, sig_val)))
+  expect_true(all(ns[at_control] == min(fit$fit$data$x)))
+  expect_identical(sum(cens$above), length(ns) - sum(at_control))
+  expect_false(any(cens$below))
+}
+
+test_that("a bernoulli response of 1 throughout is fitted as ecxflat (#419)", {
+  skip_on_cran()
+  fx <- flat_fixtures("at_bound")
+  fit <- fx$fit
+  expect_s3_class(fit, "bayesnecfit")
+  expect_identical(fit$model, "ecxflat")
+  expect_true(any(grepl(
+    "fitted with the constant equation ecxflat alone, and the 23 other",
+    fx$messages, fixed = TRUE
+  )))
+  # The set asked for, the equation fitted and why the rest were not.
+  rec <- bnec_record(fit)
+  expect_setequal(rec$requested, names(models("all")))
+  expect_identical(rec$attempted, "ecxflat")
+  expect_setequal(rec$excluded$model, names(models("all")))
+  expect_true(all(grepl("upper bound of a bernoulli response",
+                        rec$excluded$reason, fixed = TRUE)))
+  # Its only curve parameter is the level of the response, which sits near 1.
+  expect_identical(bayesnec:::equation_par_names(fit$model), "top")
+  expect_gt(unname(fit$top["Estimate"]), 0.8)
+  expect_identical(fit$ne_type, "NSEC")
+})
+
+test_that("every ECx of ecxflat is censored above, with or without an effect (#419)", {
+  skip_on_cran()
+  expect_ecx_all_above(flat_fixtures("at_bound")$fit,
+                       c("absolute", "relative", "range"))
+  no_effect <- suppressMessages(
+    pull_out(flat_fixtures("no_effect")$fit, model = "ecxflat")
+  )
+  expect_ecx_all_above(no_effect, c("absolute", "range"))
+  effect <- suppressMessages(
+    pull_out(flat_fixtures("effect")$fit, model = "ecxflat")
+  )
+  expect_ecx_all_above(effect, c("absolute", "range"))
+})
+
+test_that("the NSEC of ecxflat is censored above but for the control share (#419)", {
+  skip_on_cran()
+  fit <- flat_fixtures("at_bound")$fit
+  expect_nsec_above_but_control(fit)
+  expect_nsec_above_but_control(fit, sig_val = 0.05)
+  # The stored no-effect estimate is that NSEC, read on the fit's own grid, and
+  # at the default sig_val every entry of its summary is the bound.
+  cens <- attr(fit$ne_posterior, "censored")
+  expect_identical(sum(cens$above) + sum(!is.na(fit$ne_posterior)),
+                   length(fit$ne_posterior))
+  expect_identical(attr(fit$ne, "censored_summary")$bound, rep(">=", 3))
+  effect <- suppressMessages(
+    pull_out(flat_fixtures("effect")$fit, model = "ecxflat")
+  )
+  expect_nsec_above_but_control(effect)
+})
+
+test_that("nec() refuses a single ecxflat fit, and summary() labels an NSEC (#419)", {
+  skip_on_cran()
+  fit <- flat_fixtures("at_bound")$fit
+  expect_error(nec(fit), "nec is not a parameter in ecx model types")
+  s <- summary(fit)
+  expect_true(s$is_ecx)
+  expect_identical(rownames(s$nec_vals), "NSEC")
+})
+
+test_that("a set holding ecxflat mixes its NSEC draws into the N(S)EC (#419)", {
+  skip_on_cran()
+  fit <- flat_fixtures("no_effect")$fit
+  expect_s3_class(fit, "bayesmanecfit")
+  expect_identical(fit$ne_type, "N(S)EC")
+  # On a response with no effect ecxflat takes appreciable weight, so the
+  # mixture holds its draws: the first of the two segments, in the order of
+  # success_models.
+  expect_identical(fit$success_models, c("ecxflat", "nec3param"))
+  seg <- seq_along(fit$w_draw_index$ecxflat)
+  expect_gt(length(seg), 0)
+  vals <- as.numeric(fit$w_ne_posterior)[seg]
+  above <- attr(fit$w_ne_posterior, "censored")$above[seg]
+  control <- min(fit$mod_fits$ecxflat$fit$data$x)
+  expect_true(all(above | (!is.na(vals) & vals == control)))
+  expect_gt(sum(above), 0)
+  msgs <- character(0)
+  withCallingHandlers(
+    suppressWarnings(nec(fit)),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_true(any(grepl("contains smooth (ecx) models", msgs, fixed = TRUE)))
+  expect_identical(summary(fit, check_fit = FALSE)$ecx_mods, "ecxflat")
+})
+
+test_that("ecxflat added to a declining response takes almost no weight (#419)", {
+  skip_on_cran()
+  fit <- flat_fixtures("effect")$fit
+  expect_setequal(fit$success_models, c("nec4param", "ecx4param", "ecxflat"))
+  expect_lt(fit$mod_stats["ecxflat", "wi"], 0.01)
+  # Read off each fit's parameters: two smooth equations and one threshold.
+  expect_identical(fit$ne_type, "N(S)EC")
+})
+
+test_that("ecxflat plots as a horizontal line with bound labels (#419)", {
+  skip_on_cran()
+  fit <- flat_fixtures("at_bound")$fit
+  g <- suppressMessages(ggbnec_data(fit))
+  expect_length(unique(g$y_e[!is.na(g$y_e)]), 1)
+  labs <- g[!is.na(g$nec_labs), c("nec_labs", "nec_labs_l", "nec_labs_u")]
+  expect_true(all(startsWith(unlist(labs), ">=")))
+  expect_s3_class(suppressMessages(autoplot(fit)), "ggplot")
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  expect_no_error(plot(fit))
 })

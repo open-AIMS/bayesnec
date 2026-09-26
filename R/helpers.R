@@ -874,6 +874,23 @@ contains_negative <- function(x) {
 #' @noRd
 response_link_scale <- function(response, family) {
   link_tag <- family$link
+  # A bounded response with every observation at one bound has no value strictly
+  # inside the support to rescale towards, so the branches below returned NaN
+  # (at 1, the largest value below 1 does not exist) or Inf (at 0, nor does the
+  # smallest above 0), and define_prior() then stopped in quantile(). Only
+  # ecxflat reaches here with such a response, because bnec() fits it alone in
+  # place of any curve and every other route refuses the response first. It is
+  # shifted inside the support by 1 / (2n), the correction survival_by_x()
+  # applies to a proportion of exactly 0 or 1, so that its top prior and initial
+  # value are built from a level the likelihood can evaluate. See #400 and
+  # #419.
+  if (isTRUE(family$family %in% c("bernoulli", "binomial", "beta_binomial",
+                                  "beta")) &&
+        length(response) > 0 && !anyNA(response) &&
+        !is.na(response_bound_reached(response))) {
+    eps <- 1 / (2 * length(response))
+    response <- pmin(pmax(response, eps), 1 - eps)
+  }
   # Computed on demand rather than eagerly. An all-zero response is legitimate
   # input for a zero-inflated family, and reaches none of the branches below --
   # but min(response[response > 0]) on it is Inf and emits a warning the caller
@@ -1501,10 +1518,13 @@ check_update_data <- function(x, data, family = NULL, on_fit = TRUE) {
     # a response of 1 in every row would be tested as poisson and refitted, and
     # a gaussian fit given a response of exactly 1 would be refused as beta.
     # After check_complete_cases(), for the reason get_priors() gives;
-    # check_data() runs that again below. See #400.
+    # check_data() runs that again below. Given the fit's own equation, so that
+    # an ecxflat fit, which is what bnec() fits to such a response, can be
+    # refitted to one, and a curve equation cannot. See #400 and #419.
     check_complete_cases(bdat)
     check_response_at_bound(
-      bdat, if (is.null(family)) x[[i]]$fit$family else family
+      bdat, if (is.null(family)) x[[i]]$fit$family else family,
+      model = model
     )
     # Named fam, not family: reassigning the argument inside its own loop
     # would leave the second iteration reading the validated object rather

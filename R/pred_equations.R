@@ -45,6 +45,14 @@ pred_ecxlin <- function(b_top, b_slope, x) {
 }
 
 #' @noRd
+pred_ecxflat <- function(b_top, x) {
+  # rep_len() rather than b_top alone, so that the initial-value search, which
+  # reads the curve over the predictor, is given one value per concentration.
+  # A draw arrives with a dim attribute of 1, which as.numeric() drops.
+  rep_len(as.numeric(b_top), length(x))
+}
+
+#' @noRd
 pred_ecxexp <- function(b_top, b_beta, x) {
   b_top * exp(-exp(b_beta) * x)
 }

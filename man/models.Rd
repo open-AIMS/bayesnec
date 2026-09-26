@@ -14,8 +14,8 @@ which to list the available models, or a \code{\link[base]{numeric}} vector
 indicating the natural range of values which the models should be able to
 handle (see Details). If missing, all available models and their groups are
 listed when \code{max_pars} is also \code{NULL}. When \code{object} is
-missing and \code{max_pars} is supplied, all available equations are
-considered before applying the limit.}
+missing and \code{max_pars} is supplied, the equations of the "all" group
+are considered before applying the limit.}
 
 \item{max_pars}{An optional positive whole number giving the maximum number
 of curve parameters an equation may contain.}
@@ -31,7 +31,24 @@ The available models are "nec3param", "nec4param", "nechorme",
 "nechorme4", "necsigm", "neclin", "neclinhorme", "nechormepwr",
 "nechorme4pwr", "nechormepwr01", "ecxlin", "ecxexp", "ecxsigm", "ecx4param",
 "ecxwb1", "ecxwb2", "ecxwb1p3", "ecxwb2p3", "ecxll5", "ecxll4", "ecxll3",
-"ecxhormebc4", and "ecxhormebc5".
+"ecxhormebc4", "ecxhormebc5", and "ecxflat".
+
+"ecxflat" is the constant equation: its mean is its one curve parameter,
+"top", at every concentration, so it states that the response did not
+change over the range tested. Its formula is written \code{top + 0 * x} so
+that the fitted object keeps the predictor, and the second term is exactly
+zero. It has no step and no "nec" parameter, so its no-effect estimate is an
+NSEC, and the curve of no draw reaches an ECx target: every ECx it gives,
+and its NSEC in every draw whose level is above the reference, is reported
+as censored above the upper end of the prediction range. It belongs to no
+model group in this release, so none of \code{models()}, a group name, a
+numeric range or \code{max_pars} lists it; name it to fit it, as in
+\code{crf(x, "ecxflat")} or \code{crf(x, c("ecxflat", "nec4param"))}. It
+joins "all", "ecx" and "decline" at the 3.0 release, which changes every
+model-averaged result and is left to a release for that reason.
+\code{\link{bnec}} fits it alone, whatever set was requested, to a bounded
+response with every observation at one bound; see the section of
+\code{?bnec} on a response that does not vary.
 
 To see the model formula and parameters for a specific model use the
 function \code{\link{show_params}}.
@@ -108,9 +125,10 @@ group name does not do is state which equations that check will keep. Code
 that needs the admissible set should ask for it directly, by passing the
 numeric range --- \code{models(c(0, 1))} --- rather than reading a group.
 
-The \code{"bot_free"} group contains the fourteen equations with no
-\code{bot} parameter. It includes the eleven equations in
-\code{"zero_bounded"}, whose fitted mean falls to zero, and the three
+The \code{"bot_free"} group contains the fourteen equations of the
+\code{"all"} group with no \code{bot} parameter. It includes the eleven
+equations in \code{"zero_bounded"}, whose fitted mean falls to zero, and the
+three
 linear-decay equations \code{"neclin"}, \code{"neclinhorme"} and
 \code{"ecxlin"}, whose fitted mean is unbounded below. The name therefore
 does not mean that \code{bot} is estimated freely or that every equation in

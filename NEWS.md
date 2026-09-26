@@ -1570,6 +1570,46 @@
   sits on the `Beta` boundary, the signature of a score normalised to the largest
   value in the dataset, and 63 of the 414 yield readings are exactly 0 (#6, #33).
 
+- A constant equation, `ecxflat`, is added. Its mean is its one curve
+  parameter, `top`, at every concentration, so a fit of it states that the response did
+  not change over the range tested. It has no step and no `nec` parameter, so
+  its no-effect estimate is an NSEC. No draw of its curve reaches an ECx
+  target, so every draw of its ECx is reported as censored above the upper end
+  of the prediction range, through the censoring record of #395. Its NSEC is
+  censored there in every draw except those whose level lies at or below the
+  reference, the `sig_val` quantile of the control posterior, which take the
+  control concentration as they do for every equation; at the default
+  `sig_val = 0.01` that is about 1 per cent of the draws, and every entry of
+  the default summary is censored. `nec()` refuses a single `ecxflat` fit, as
+  it refuses every equation without a `nec` parameter, and in a model set its
+  draws enter the model-averaged N(S)EC as NSEC draws. `autoplot()` and
+  `plot()` draw it as a horizontal line, with the censored estimates labelled
+  as bounds.
+
+  `ecxflat` is available by name only, as in `crf(x, "ecxflat")` or
+  `crf(x, c("ecxflat", "nec4param"))`, and belongs to no model group, so
+  `models()`, `model = "all"` and every other group leave it out and no
+  existing fit or default set changes. It is planned to join `all`, `ecx` and
+  `decline` at the 3.0 release. Adding it there changes every model-averaged
+  result: where it takes appreciable model weight, a constant describes the
+  data about as well as the declining curves, and its draws enter the
+  model-averaged ECx and NSEC as censored above the range.
+
+  `bnec()` fits `ecxflat` alone to a `bernoulli`, `binomial`, `beta_binomial`
+  or `beta` response with every observation at one bound, whatever model set
+  was requested, with a message saying why the other equations were not
+  fitted, and records them as excluded in `bnec_record()`. Such a response
+  identifies no curve, and was refused under #400. `bnec_group()` does the
+  same for each level whose response does not vary, and fits the other levels
+  with the set requested. A `beta` response of 0 in every observation is still
+  refused. `get_priors()` returns the prior of `ecxflat` for such a response
+  when it is named alone, and refuses a set holding any other equation.
+
+  Whether an estimate is a NEC or an NSEC is now decided by whether the fitted
+  equation has a `nec` parameter, not by the substring `"ecx"` in its name:
+  `nec()`, the model-averaged label of `bnec()`, and `summary()` read it off
+  the fit. The two readings agree for every earlier equation (#419).
+
 ## Bug fixes
 
 - A formula that names a column whose name is not a syntactic R name, such as
@@ -1601,27 +1641,30 @@
   unaffected ([#344](https://github.com/open-AIMS/bayesnec/issues/344)).
 
 - A `bernoulli`, `binomial`, `beta_binomial` or `beta` response with every
-  observation at one bound is now refused before anything is fitted, with a
-  message that names the response column and the bound. The bound is 1 or 0
-  for a response recorded as a proportion, and for a `binomial` or
-  `beta_binomial` response it is every count equal to its trials or every count
-  0. Such a response does not vary, so it identifies no concentration-response
-  curve. The three discrete families previously failed inside prior
-  construction with "missing values and NaN's not allowed if 'na.rm' is FALSE",
-  which named neither the column nor the cause. A `beta` response of 1 in every
-  observation was shifted to 0.999 and fitted, and one of 0 was shifted to
-  `Inf`. The refusal is raised once per call, before the model loop, by `bnec()`
-  and `get_priors()`, and by `amend()` and `update(newdata = )`, which test the
-  family the refit uses. `bnec_group()` refuses the whole call before any level
-  is fitted where any one level has every observation at a bound, and names
-  each such level, so that it is removed from the data explicitly.
-  `bnec_hurdle()` refuses a growth component whose every survivor is at a
-  bound before either component is fitted, and names it as the growth
-  component. A response with one observation off the bound is fitted as
-  before. A censored response is judged on its recorded values, because the
-  default priors are built from them, so an interval-censored response whose
-  every recorded value is at a bound is refused although the upper ends of its
-  intervals lie inside the support (#400).
+  observation at one bound no longer fails inside prior construction. The
+  bound is 1 or 0 for a response recorded as a proportion, and for a
+  `binomial` or `beta_binomial` response it is every count equal to its trials
+  or every count 0. Such a response does not vary, so it identifies no
+  concentration-response curve. The three discrete families previously failed
+  with "missing values and NaN's not allowed if 'na.rm' is FALSE", which named
+  neither the column nor the cause. A `beta` response of 1 in every observation
+  was shifted to 0.999 and fitted, and one of 0 was shifted to `Inf`. `bnec()`
+  and `bnec_group()` now fit the constant equation `ecxflat` alone to such a
+  response, as described under New (#419). `get_priors()`, `amend()`,
+  `update(newdata = )` and `bnec_hurdle()` refuse it wherever the set holds any
+  other equation, once per call and before any model is fitted, with a message
+  that names the response column and the bound and points to `ecxflat`.
+  `amend()` and `update()` test the family the refit uses, and `bnec_hurdle()`
+  tests the growth component, whose every survivor can be at a bound where the
+  response as a whole is not, before either component is fitted. A `beta`
+  response of 0 in every observation is refused on every route, `ecxflat`
+  included, because the zeros are shifted off the boundary by a tenth of the
+  smallest positive value and there is none. A response with one observation
+  off the bound is fitted as before. A censored response is judged on its
+  recorded values, because the default priors are built from them, so an
+  interval-censored response whose every recorded value is at a bound is
+  treated as one at the bound although the upper ends of its intervals lie
+  inside the support (#400).
 
 - A fit now reproduces under a `set.seed()` in the caller's session. The
   initial-value search called `set.seed(seed)` whatever it was given, and

@@ -435,6 +435,52 @@ test_that("a response at one bound is refused by name, not by quantile() (#400)"
   }
 })
 
+test_that("ecxflat named alone gets its prior at a bound (#419)", {
+  # A curve equation has no prior to give on such a response, and the set
+  # above is refused for that reason. ecxflat has one parameter, the level of
+  # the response, and its prior is built without reaching the NaN of #400:
+  # response_link_scale() shifts the response inside the support first.
+  cases <- at_bound_cases()
+  for (nm in setdiff(names(cases), "beta_zero")) {
+    cs <- cases[[nm]]
+    f <- stats::update(cs$formula, . ~ crf(x, "ecxflat"))
+    for (type in c("uninformative", "regularizing")) {
+      pr <- suppressMessages(
+        get_priors(f, data = cs$data, family = cs$family, prior_type = type)
+      )
+      expect_s3_class(pr, "brmsprior")
+      expect_identical(pr$nlpar, "top", info = paste(nm, type))
+      expect_false(anyNA(pr$prior), info = paste(nm, type))
+      expect_false(any(grepl("NaN|Inf", pr$prior)), info = paste(nm, type))
+    }
+  }
+  # The regularizing entry is placed at the bound the response sits at.
+  one <- suppressMessages(get_priors(
+    alive ~ crf(x, "ecxflat"), data = cases$bernoulli_one$data,
+    family = "bernoulli", prior_type = "regularizing"
+  ))
+  zero <- suppressMessages(get_priors(
+    alive ~ crf(x, "ecxflat"), data = cases$bernoulli_zero$data,
+    family = "bernoulli", prior_type = "regularizing"
+  ))
+  shapes <- function(p) as.numeric(regmatches(p, gregexpr("[0-9.]+", p))[[1]])
+  expect_gt(shapes(one$prior)[1], shapes(one$prior)[2])
+  expect_lt(shapes(zero$prior)[1], shapes(zero$prior)[2])
+  # Beta at 0 cannot be fitted by any equation and is refused by name.
+  bz <- cases$beta_zero
+  expect_error(
+    suppressMessages(get_priors(cover ~ crf(x, "ecxflat"), data = bz$data,
+                                family = bz$family)),
+    "A beta distribution cannot represent a zero", fixed = TRUE
+  )
+  # ecxflat beside a curve equation is refused, and the message names ecxflat.
+  expect_error(
+    get_priors(alive ~ crf(x, c("ecxflat", "nec3param")),
+               data = cases$bernoulli_one$data, family = "bernoulli"),
+    "is the only one that can be fitted to it", fixed = TRUE
+  )
+})
+
 test_that("one observation off the bound still builds priors (#400)", {
   cases <- at_bound_cases()
   for (nm in names(cases)) {

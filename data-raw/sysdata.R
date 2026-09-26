@@ -301,6 +301,27 @@ bf_ecxhormebc4 <- brms::bf(y ~ 0 + (top - 0 + exp(slope) * x) /
                            top + beta + ec50 + slope ~ 1,
                            nl = TRUE)
 
+################
+# CONSTANT MODEL
+################
+# ecxflat: a mean that does not change with concentration, with `top` as its
+# only curve parameter. Named with the ecx prefix because it has no step and no
+# nec parameter, so under the convention ?bnec states its no-effect estimate is
+# an NSEC. It belongs to no group in mod_groups above: joining "all", "ecx" and
+# "decline" would change every model-averaged result, and is left to the 3.0
+# release (#419, D31). It is available by name and is what bnec() fits to a
+# response with no variation.
+#
+# The `0 * x` term is not decoration. brms builds the model data from the
+# variables the non-linear formula names, and a formula of `top` alone names no
+# predictor, so the fitted object's data would hold no predictor column and
+# every function that reads the predictor back from it -- the prediction grid,
+# the control value, the plots -- would fail. The product is exactly 0 for
+# every finite predictor, so the mean is exactly top.
+bf_ecxflat <- brms::bf(y ~ top + 0 * x,
+                       top ~ 1,
+                       nl = TRUE)
+
 ##################
 #PREDICT FUNCTIONS
 ##################
@@ -327,7 +348,8 @@ pred_functions <- list(nec3param = pred_nec3param,
                        ecxll4 = pred_ecxll4,
                        ecxll3 = pred_ecxll3,
                        ecxhormebc4 = pred_ecxhormebc4,
-                       ecxhormebc5 = pred_ecxhormebc5)
+                       ecxhormebc5 = pred_ecxhormebc5,
+                       ecxflat = pred_ecxflat)
 
 ####################
 # SAVE INTERNAL DATA
@@ -381,6 +403,8 @@ usethis::use_data(
   bf_ecxhormebc5,
   #ecxhormebc4
   bf_ecxhormebc4,
+  #ecxflat
+  bf_ecxflat,
   pred_functions,
   internal = TRUE, overwrite = TRUE
 )

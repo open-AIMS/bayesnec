@@ -1702,6 +1702,14 @@ define_prior <- function(model, family, predictor, response,
   if (model == "ecxexp") {
     priors <- pr_beta + pr_top
   }
+  # The top entry every other equation takes, unchanged. It is placed for the
+  # level of an undeclined response, which for a constant is the whole response.
+  # On a response with every observation at a bound it is still built:
+  # response_link_scale() shifts such a response inside the support before any
+  # quantile is taken of it. See #419.
+  if (model == "ecxflat") {
+    priors <- pr_top
+  }
   if (model == "ecxhormebc4") {
     priors <- pr_top + pr_beta + pr_ec50 + pr_slope
   }

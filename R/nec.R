@@ -199,12 +199,12 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
   }
-  if (length(grep("ecx", object$model)) > 0) {
-    mod_class <- "ecx"
-  } else {
-    mod_class <- "nec"
-  }
-  if (mod_class == "ecx") {
+  # Classified by whether the fit samples a nec parameter, as expand_nec()
+  # classifies it, rather than by the substring "ecx" in the equation's name.
+  # The name is a convention ?bnec states, and a classification resting on it
+  # would return an NSEC as a NEC for any equation spelled without the prefix.
+  # See #419.
+  if (!fit_has_nec(object$fit)) {
     stop("nec is not a parameter in ecx model types.")
   }
   # Once for the call. The gate it sets also covers the nsec() that extrapolate
@@ -302,7 +302,11 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
   # Once for the set, not once per equation. See report_fitted_scale().
   quiet <- report_fitted_scale(object, xform, "nec")
   on.exit(options(quiet), add = TRUE)
-  if (max(grepl("ecx", names(object$mod_fits))) == 1) {
+  # Read off each fit's parameters, for the reason given in nec.bayesnecfit().
+  # ecxflat belongs to no group, but it has no nec parameter and contributes
+  # NSEC draws, so a set holding it is a mixture and says so. See #419.
+  if (!all(vapply(object$mod_fits, function(m) fit_has_nec(m$fit),
+                  logical(1)))) {
     message("This bayesmanecfit contains smooth (ecx) models, which have no",
             " threshold parameter, so the returned estimate is a weighted",
             " mixture of NEC and NSEC draws -- the model-averaged N(S)EC",
@@ -356,4 +360,22 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
   } else {
     nec_out
   }
+}
+
+#' Whether a fit samples a nec parameter
+#'
+#' The test \code{\link{expand_nec}} applies to decide whether a fit's
+#' no-effect estimate is its sampled \code{nec} or an NSEC read off its curve:
+#' \code{extract_pars()} returns \code{NA} for a parameter the fit does not
+#' have. Read off the fit rather than off the equation's name, so that no
+#' classification depends on how an equation is spelled. For a two-block fit it
+#' reads the response block, whose \code{nec} has no prefix, which is the
+#' block the equation name describes. See #419.
+#'
+#' @param fit An object of class \code{\link[brms]{brmsfit}}.
+#'
+#' @return A \code{\link[base]{logical}} of length 1.
+#' @noRd
+fit_has_nec <- function(fit) {
+  !all(is.na(extract_pars("nec", fit)))
 }

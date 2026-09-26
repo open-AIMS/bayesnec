@@ -193,9 +193,14 @@ get_priors.formula <- function(object, data, family = NULL,
   family <- retrieve_valid_family(fam_args, bdat, link_source = link_source)
   # Raised once, before the model loop and before the substitution report
   # below, which would otherwise report a beta response at 1 in every
-  # observation as shifted to 0.999. See #400.
-  check_response_at_bound(bdat, family)
-  model <- check_models(get_model_from_formula(object), family, bdat)
+  # observation as shifted to 0.999. A curve equation has no prior to give on
+  # such a response, so a set holding one is refused; ecxflat named alone is
+  # let through, since its one parameter is the level of the response. This
+  # function returns priors for the set asked for, so it does not substitute
+  # ecxflat for the set as bnec() does. See #400 and #419.
+  requested <- get_model_from_formula(object)
+  check_response_at_bound(bdat, family, model = requested)
+  model <- check_models(requested, family, bdat)
   model_survival <- check_model_survival(model_survival, family, bdat)
   if (length(model) == 0) {
     stop("No valid models have been supplied for this data type.",

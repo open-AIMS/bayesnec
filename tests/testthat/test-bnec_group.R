@@ -446,15 +446,62 @@ test_that("bnec_group resolves a dot argument the way do.call will (#394)", {
                                   TRUE))
 })
 
-test_that("a level at a bound refuses the whole call before any level (#400)", {
-  # D30: refused rather than fitting the other levels and reporting this one as
-  # skipped, so that the user removes the level and the omission is visible in
-  # their script. Left to the inner bnec() calls, level "b" would be reached
-  # only after level "a" had compiled and sampled.
+test_that("a level at a bound is fitted with ecxflat, the others as asked (#419)", {
+  # D31 replaced D30's refusal of the whole call: the level whose response does
+  # not vary is fitted with ecxflat alone by its own bnec() call, and every
+  # other level with the set requested. bnec_group() names the level once,
+  # before any level is fitted, and marks the level calls so that bnec() does
+  # not say it again. The level fits are mocked: what is asserted is the
+  # dispatch, and bnec()'s substitution is asserted in test-bnec.R on a fit.
   x <- rep(c(0.1, 0.5, 1, 3, 10, 30), each = 5)
   a <- rep(1L, length(x))
   a[x == max(x)] <- c(0L, 0L, 1L, 0L, 1L)
   d <- data.frame(x = rep(x, 2), alive = c(a, rep(1L, length(x))),
+                  site = rep(c("a", "b"), each = length(x)))
+  seen <- list()
+  local_mocked_bindings(
+    bnec = function(formula, data, ...) {
+      seen[[length(seen) + 1L]] <<- list(
+        rows = nrow(data), all_one = all(data$alive == 1L),
+        reported = isTRUE(list(...)[[".bayesnec_bound_reported"]])
+      )
+      manec_example
+    },
+    .package = "bayesnec"
+  )
+  msgs <- character(0)
+  fit <- withCallingHandlers(
+    bnec_group(alive ~ crf(x, c("nec3param", "ecx4param")), d,
+               group_var = "site", family = "bernoulli"),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_s3_class(fit, "bayesnecgroupfit")
+  expect_length(seen, 2)
+  expect_false(seen[[1]]$all_one)
+  expect_true(seen[[2]]$all_one)
+  expect_true(all(vapply(seen, `[[`, logical(1), "reported")))
+  report <- grep("fitted with the constant equation ecxflat alone", msgs,
+                 fixed = TRUE, value = TRUE)
+  expect_length(report, 1)
+  expect_match(report, "1 level(s) of \"site\": \"b\" (the upper bound)",
+               fixed = TRUE)
+  # Said before the first level is fitted.
+  expect_lt(which(msgs == report),
+            min(grep("Fitting level", msgs, fixed = TRUE)))
+})
+
+test_that("a beta level at 0 still refuses the whole call before any level (#419)", {
+  # ecxflat cannot be fitted to a beta response of 0 throughout: its zeros are
+  # shifted off the boundary by a tenth of the smallest positive value, and
+  # there is none. So that level refuses the whole call, as #400 did for every
+  # level at a bound, before any level is fitted.
+  x <- rep(c(0.1, 0.5, 1, 3, 10, 30), each = 5)
+  d <- data.frame(x = rep(x, 2),
+                  cover = c(seq(0.9, 0.2, length.out = length(x)),
+                            rep(0, length(x))),
                   site = rep(c("a", "b"), each = length(x)))
   calls <- 0L
   local_mocked_bindings(
@@ -464,25 +511,29 @@ test_that("a level at a bound refuses the whole call before any level (#400)", {
     },
     .package = "bayesnec"
   )
-  msgs <- character(0)
   err <- tryCatch(
-    withCallingHandlers(
-      bnec_group(alive ~ crf(x, c("nec3param", "ecx4param")), d,
-                 group_var = "site", family = "bernoulli"),
-      message = function(m) {
-        msgs <<- c(msgs, conditionMessage(m))
-        invokeRestart("muffleMessage")
-      }
+    suppressMessages(
+      bnec_group(cover ~ crf(x, c("nec3param", "ecx4param")), d,
+                 group_var = "site", family = "Beta")
     ),
     error = conditionMessage
   )
-  expect_match(err, "The response \"alive\" is at a bound", fixed = TRUE)
-  expect_match(err, "1 level(s) of \"site\": \"b\", where every value is 1",
+  expect_match(err, "1 level(s) of \"site\": \"b\", where every value is 0",
                fixed = TRUE)
   expect_match(err, "Remove that level from `data`", fixed = TRUE)
-  expect_false(grepl("\"a\"", err, fixed = TRUE))
   expect_identical(calls, 0L)
-  # Nothing about the levels' response precedes it, the flatness report
-  # included.
-  expect_length(msgs, 0)
+})
+
+test_that("the group tables hold a level fitted with a single equation (#419)", {
+  # A level fitted with ecxflat alone is a bayesnecfit among bayesmanecfits.
+  # The crossed weights give it weight 1 on its one equation and take the
+  # diagonal over the equations every level fitted; the nsec() table reads one
+  # row per level whatever each level fitted. ecx4param stands in for the
+  # single-equation level, which needs no fit.
+  g <- fake_group_fit(list(a = manec_example, b = ecx4param))
+  cw <- crossed_group_weights(g)
+  expect_identical(cw$per_level$b, c(ecx4param = 1))
+  expect_identical(cw$common_models, "ecx4param")
+  tab <- suppressWarnings(suppressMessages(nsec(g)))
+  expect_identical(tab$level, c("a", "b"))
 })

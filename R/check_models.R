@@ -1,3 +1,34 @@
+#' Every equation that can be requested by name
+#'
+#' The members of \code{mod_groups$all} and the equations that belong to no
+#' group, which in this release is \code{ecxflat}. Read from
+#' \code{pred_functions}, the registry \code{data-raw/sysdata.R} builds with one
+#' entry per equation, rather than from a group: \code{mod_groups$all} is the
+#' default model set, and an equation can be valid by name without being in
+#' it. See #419.
+#'
+#' @return A \code{\link[base]{character}} vector.
+#'
+#' @noRd
+equation_names <- function() {
+  names(pred_functions)
+}
+
+#' Equations whose mean does not change with the predictor
+#'
+#' \code{ecxflat}, whose mean is its one curve parameter \code{top}. Named in
+#' one place because three things treat it differently from every other
+#' equation: \code{\link{bnec}} fits it alone to a response with no variation,
+#' the refusal of such a response exempts it, and the initial-value search
+#' cannot apply its test of a declining curve to it. See #419.
+#'
+#' @return A \code{\link[base]{character}} vector.
+#'
+#' @noRd
+constant_equations <- function() {
+  "ecxflat"
+}
+
 #' Models excluded from 0-1 bounded identity families because they can go
 #' negative
 #'
@@ -305,7 +336,7 @@ check_models <- function(model, family, data, record = FALSE) {
       # whose likelihood requires positivity: a Gaussian mean may be negative,
       # and a log link maps any linear predictor back into positive support.
       # ecxhormebc4 remains available because it fitted the same measured cases,
-      # including one where it received appreciable stacking weight. See #344.
+      # including one where it received appreciable model weight. See #344.
       support <- mu_support(family)
       constrained_identity <- identical(link_tag, "identity") &&
         isTRUE(support[1] == 0)
@@ -323,8 +354,10 @@ check_models <- function(model, family, data, record = FALSE) {
       }
     }
   }
-  if (!all(model %in% mod_groups$all)) {
-    to_flag <- paste0(model[!model %in% mod_groups$all], collapse = "; ")
+  # Checked against every equation rather than against mod_groups$all, which is
+  # the default set: ecxflat belongs to no group and is valid by name. See #419.
+  if (!all(model %in% equation_names())) {
+    to_flag <- paste0(model[!model %in% equation_names()], collapse = "; ")
     stop("The model(s): ", to_flag, "; is not a valid",
          " model entry. Please check ?bnec for valid model calls.")
   }

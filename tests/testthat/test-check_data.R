@@ -636,6 +636,25 @@ test_that("the update route tests the family the refit uses (#400)", {
   )
 })
 
+test_that("the update route lets an ecxflat fit through at a bound (#419)", {
+  # bnec() fits ecxflat alone to such a response, so an ecxflat fit given new
+  # data at a bound is refitted; the fit's own equation is what is tested.
+  flat <- ecx4param
+  flat$model <- "ecxflat"
+  flat$fit$family <- brms::bernoulli(link = "identity")
+  flat$bayesnecformula <- bayesnecformula(y ~ crf(x, model = "ecxflat"))
+  d <- flat$fit$data
+  d$y <- rep(1L, nrow(d))
+  res <- tryCatch(suppressMessages(check_update_data(list(flat), d)),
+                  error = conditionMessage)
+  expect_false(any(grepl("upper bound", unlist(res), fixed = TRUE)))
+  # The same data under a curve equation is refused, naming ecxflat.
+  bern <- nec4param
+  bern$fit$family <- brms::bernoulli(link = "identity")
+  expect_error(check_update_data(list(bern), d),
+               "The constant equation ecxflat", fixed = TRUE)
+})
+
 test_that("update() refuses before the refit, and refits a gaussian (#400)", {
   # brms::update() is mocked: the assertion is whether the refit is reached,
   # not what it returns. stats::update() is called explicitly so that the test
@@ -737,4 +756,131 @@ test_that("a grouped response names every level at a bound, and only those", {
   # The level that varies passes on its own as well.
   reef <- cd_bdat(y ~ crf(x, model = "nec3param"), d[d$site == "reef", ])
   expect_silent(check_response_at_bound(reef, bernoulli()))
+})
+
+# ---- #419, the constant equation in place of the refusal ----------------------
+
+test_that("ecxflat alone is let through at a bound, except beta at 0 (#419)", {
+  # The routes that keep #400's refusal -- get_priors(), amend(), update() and
+  # bnec_hurdle() -- pass the equations they are about to build a prior for. A
+  # set holding any curve equation is refused and the message names ecxflat;
+  # ecxflat alone is let through wherever it can be fitted.
+  cases <- at_bound_cases()
+  for (nm in names(cases)) {
+    cs <- cases[[nm]]
+    bdat <- cd_bdat(cs$formula, cs$data)
+    fam <- validate_family(cs$family)
+    err <- expect_error(
+      check_response_at_bound(bdat, fam, model = c("ecxflat", "nec3param"))
+    )
+    if (nm == "beta_zero") {
+      expect_match(conditionMessage(err),
+                   "no equation can be fitted to it, the constant equation",
+                   fixed = TRUE, info = nm)
+      expect_error(check_response_at_bound(bdat, fam, model = "ecxflat"),
+                   "A beta distribution cannot represent a zero",
+                   fixed = TRUE, info = nm)
+      next
+    }
+    expect_match(conditionMessage(err),
+                 "The constant equation ecxflat, whose mean does not change",
+                 fixed = TRUE, info = nm)
+    expect_silent(check_response_at_bound(bdat, fam, model = "ecxflat"))
+  }
+})
+
+test_that("constant_fallback replaces the set and records why (#419)", {
+  cs <- at_bound_cases()$binomial_trials
+  bdat <- cd_bdat(cs$formula, cs$data)
+  fam <- validate_family(cs$family)
+  msgs <- character(0)
+  out <- withCallingHandlers(
+    constant_fallback(bdat, fam, c("nec3param", "ecx4param")),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_identical(out$model, "ecxflat")
+  expect_identical(out$excluded$model, c("nec3param", "ecx4param"))
+  expect_match(out$excluded$reason, "upper bound of a binomial response",
+               fixed = TRUE)
+  expect_length(msgs, 1)
+  expect_match(msgs, "the 2 other equation(s) requested are not fitted",
+               fixed = TRUE)
+  # Said once by bnec_group() for every level, so the level's call is silent.
+  expect_silent(constant_fallback(bdat, fam, "nec3param", report = FALSE))
+  # A response one observation off the bound is fitted with the set asked for.
+  near <- cd_bdat(cs$formula, cs$near)
+  expect_null(constant_fallback(near, fam, "nec3param"))
+  # So is a family with no bound to be at.
+  ones <- cd_bdat(y ~ crf(x, model = "nec3param"),
+                  data.frame(x = cd_at_bound_x(), y = 1))
+  expect_null(constant_fallback(ones, gaussian(), "nec3param"))
+  # Beta at 0 cannot be fitted with ecxflat either, and is refused.
+  bz <- at_bound_cases()$beta_zero
+  expect_error(
+    constant_fallback(cd_bdat(bz$formula, bz$data),
+                      validate_family(bz$family), "nec3param"),
+    "A beta distribution cannot represent a zero", fixed = TRUE
+  )
+})
+
+test_that("a grouped call names the levels fitted with ecxflat (#419)", {
+  x <- cd_at_bound_x()
+  d <- data.frame(x = rep(x, 3), y = c(rep(1L, 30), rep(0L, 30),
+                                       rep(c(1L, 0L), 15)),
+                  site = rep(c("north", "south", "reef"), each = 30))
+  bdat <- cd_bdat(y ~ crf(x, model = "nec3param"), d)
+  msgs <- character(0)
+  levs <- withCallingHandlers(
+    constant_fallback_levels(bdat, bernoulli(), factor(d$site), "site"),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_setequal(levs, c("north", "south"))
+  expect_length(msgs, 1)
+  expect_match(msgs, "2 level(s) of \"site\"", fixed = TRUE)
+  expect_match(msgs, "\"north\" (the upper bound)", fixed = TRUE)
+  expect_false(grepl("reef", msgs))
+  # A beta level at 0 cannot be fitted with ecxflat, so the whole call is
+  # refused before any level is fitted, naming that level alone.
+  b <- data.frame(x = rep(x, 3), cover = c(rep(1, 30), rep(0, 30),
+                                           rep(c(0.9, 0.2), 15)),
+                  site = rep(c("north", "south", "reef"), each = 30))
+  bb <- cd_bdat(cover ~ crf(x, model = "nec3param"), b)
+  err <- expect_error(constant_fallback_levels(
+    bb, validate_family("Beta"), factor(b$site), "site"
+  ))
+  msg <- conditionMessage(err)
+  expect_match(msg, "1 level(s) of \"site\": \"south\"", fixed = TRUE)
+  expect_match(msg, "these levels do not have, so no equation can be fitted",
+               fixed = TRUE)
+  expect_false(grepl("north", msg))
+})
+
+test_that("the asymptote report does not count ecxflat on either side (#419)", {
+  # With the asymptote declared unobserved, a set mixing equations that
+  # estimate bot with ones that have none is reported. ecxflat has no bot, and
+  # a constant is told from a declining curve whatever the asymptote did, so
+  # it is on neither side.
+  bdat <- cd_bdat(y ~ crf(x, model = "nec4param"), nec_data)
+  report <- function(models) {
+    msgs <- character(0)
+    withCallingHandlers(
+      try(check_asymptote_declaration(bdat, validate_family("Beta"), models,
+                                      asymptote_observed = FALSE),
+          silent = TRUE),
+      message = function(m) {
+        msgs <<- c(msgs, conditionMessage(m))
+        invokeRestart("muffleMessage")
+      }
+    )
+    any(grepl("This set mixes equations", msgs, fixed = TRUE))
+  }
+  expect_false(report(c("ecxflat", "nec3param")))
+  expect_false(report(c("ecxflat", "nec4param")))
+  expect_true(report(c("nec3param", "nec4param")))
 })
