@@ -169,6 +169,17 @@ test_that("every offending name is reported in one refusal (#398)", {
   digit_data[["1st"]] <- digit_data$x
   expect_error(check_formula(bnf(y ~ crf(`1st`, "nec3param")), digit_data),
                "\"1st\" in crf(`1st`, \"nec3param\")", fixed = TRUE)
+  # Two names that make.names() maps to the same name are given distinct
+  # suggestions.
+  clash_data <- odd_data
+  clash_data[["conc-mg"]] <- clash_data$hours
+  err <- expect_error(
+    check_formula(bnf(y | rate(`conc-mg`) ~ crf(`conc mg`, "nec3param")),
+                  clash_data),
+    "not syntactic R names"
+  )
+  expect_match(conditionMessage(err), "gives \"conc.mg\", \"conc.mg.1\".",
+               fixed = TRUE)
 })
 
 test_that("a model set held in a non-syntactic variable is accepted (#398)", {
@@ -182,7 +193,26 @@ test_that("a model set held in a non-syntactic variable is accepted (#398)", {
                c("nec3param", "nec4param"))
 })
 
-test_that("bnec() and make_brmsformula() refuse before any fit (#398)", {
+test_that("disp() given a non-syntactic variable is accepted (#398)", {
+  # disp() given anything but a one-sided formula names a variance function,
+  # which parse_disp_term() evaluates in the formula's environment, as it does
+  # the crf() model set. It names no column and never reaches brms by name.
+  pos_data <- odd_data
+  pos_data$y <- pos_data$y + 1
+  `my vf` <- "power"
+  f <- bnf(y ~ crf(x, "nec3param") + disp(`my vf`))
+  expect_identical(check_formula(f, pos_data), f)
+  expect_named(make_brmsformula(f, data = pos_data,
+                                family = Gamma(link = "identity")),
+               "nec3param")
+  # A one-sided formula in disp() is a sub-model on columns, and is checked.
+  expect_error(
+    check_formula(bnf(y ~ crf(x, "nec3param") + disp(~ `conc mg`)), pos_data),
+    "\"conc mg\" in disp(~`conc mg`)", fixed = TRUE
+  )
+})
+
+test_that("bnec(), make_brmsformula() and get_priors() refuse first (#398)", {
   fits <- 0L
   local_mocked_bindings(
     fit_bayesnec = function(...) {
@@ -204,12 +234,38 @@ test_that("bnec() and make_brmsformula() refuse before any fit (#398)", {
          data = odd_data),
     "\"growth (mm)\" in the response", fixed = TRUE
   )
+  expect_error(
+    bnec(y ~ crf(`conc mg`, c("nec3param", "ecx4param")), data = odd_data),
+    "\"conc mg\" in crf(`conc mg`, c(\"nec3param\", \"ecx4param\"))",
+    fixed = TRUE
+  )
   expect_equal(fits, 0L)
   expect_error(
     make_brmsformula(y | cens(`cens code`) ~
                        crf(x, c("nec3param", "ecx4param")),
                      data = odd_data),
     "\"cens code\" in cens(`cens code`)", fixed = TRUE
+  )
+  # A bare predictor, singly and in a set. make_brmsformula() rebuilds the
+  # crf() term from deparsed text in single_model_formula() before it reaches
+  # model.frame(), so these reach the refusal only through its own call.
+  expect_error(
+    make_brmsformula(y ~ crf(`conc mg`, "nec3param"), data = odd_data),
+    "\"conc mg\" in crf(`conc mg`, \"nec3param\")", fixed = TRUE
+  )
+  expect_error(
+    make_brmsformula(y ~ crf(`conc mg`, c("nec3param", "ecx4param")),
+                     data = odd_data),
+    "\"conc mg\" in crf(`conc mg`, c(\"nec3param\", \"ecx4param\"))",
+    fixed = TRUE
+  )
+  # get_priors() builds the same per-model formula, after its own
+  # model.frame().
+  expect_error(
+    get_priors(y ~ crf(`conc mg`, c("nec3param", "ecx4param")),
+               data = odd_data),
+    "\"conc mg\" in crf(`conc mg`, c(\"nec3param\", \"ecx4param\"))",
+    fixed = TRUE
   )
 })
 

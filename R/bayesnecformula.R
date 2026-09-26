@@ -657,6 +657,17 @@ check_syntactic_names <- function(formula) {
         return(all.vars(x_arg))
       }
     }
+    # The same holds for disp() given anything other than a one-sided formula.
+    # parse_disp_term() evaluates that argument in the formula's environment as
+    # the name of a variance function, so disp(`my vf`) with `my vf` <- "power"
+    # fits and names no column. disp(~ ...) is a sub-model on columns and is
+    # checked; the test matches parse_disp_term()'s own for route A.
+    if (is.call(term) && identical(term[[1]], quote(disp))) {
+      disp_arg <- if (length(term) > 1) term[[2]] else NULL
+      if (!(is.call(disp_arg) && identical(disp_arg[[1]], quote(`~`)))) {
+        return(character(0))
+      }
+    }
     all.vars(term)
   }
   formula_terms <- c(list(lhs_parts$response), lhs_parts$aterms, rhs_terms)
@@ -666,7 +677,9 @@ check_syntactic_names <- function(formula) {
   all_vars <- unique(unlist(vars))
   # make.names() is R's own definition of a syntactic name, so it catches a
   # reserved word such as `if` as well as a space or a leading digit, and it
-  # also gives the replacement the message suggests.
+  # also gives the replacement the message suggests. The suggestion is made
+  # with unique = TRUE, because "a b" and "a-b" would otherwise both be told to
+  # become "a.b".
   bad <- all_vars[all_vars != make.names(all_vars)]
   if (length(bad) == 0) {
     return(invisible(NULL))
@@ -681,7 +694,8 @@ check_syntactic_names <- function(formula) {
        " model from the text of the formula, where a name that has to be",
        " written in backticks cannot be parsed. Rename the column(s) in the",
        " data and in the formula, for example with make.names(), which gives ",
-       paste0("\"", make.names(bad), "\"", collapse = ", "), ".",
+       paste0("\"", make.names(bad, unique = TRUE), "\"", collapse = ", "),
+       ".",
        call. = FALSE)
 }
 
@@ -1463,6 +1477,12 @@ make_brmsformula <- function(formula, data, family = NULL) {
   # parent.frame() so that a character formula resolves symbols where
   # make_brmsformula() was called from rather than in its own frame. See #319.
   formula <- bnf(formula, env = parent.frame())
+  # Called here as well as in check_formula(), which this function reaches
+  # only through model.frame() inside the loop. single_model_formula() comes
+  # first there and rebuilds the crf() term from deparsed text, so a
+  # non-syntactic predictor would otherwise fail as a parse error before the
+  # refusal is reached. See #398.
+  check_syntactic_names(formula)
   all_models <- get_model_from_formula(formula)
   out <- list()
   for (i in seq_along(all_models)) {
