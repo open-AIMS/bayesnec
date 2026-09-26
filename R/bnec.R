@@ -159,7 +159,8 @@
 #' floor is a property of the endpoint rather than of the data --- zero is
 #' attainable for a lethality endpoint and usually not for a growth or
 #' photosynthetic yield endpoint --- so the set is left as requested and the
-#' choice is the user's. \code{mod_groups$bot_free} names the fourteen.
+#' choice is the user's. \code{models()$bot_free} returns the fourteen, and
+#' \code{models()$zero_bounded} returns the eleven that fall to zero.
 #' @param predictor_scale A \code{\link[base]{character}} string declaring the
 #' scale of the predictor for the default \code{nec} and \code{ec50} prior.
 #' \code{"concentration"} treats the supplied values as recorded concentrations,

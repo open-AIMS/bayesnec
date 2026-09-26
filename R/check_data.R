@@ -862,9 +862,9 @@ check_asymptote_declaration <- function(data, family, models,
     message(
       "This set mixes equations that estimate a lower asymptote with ones that",
       " have no lower asymptote to estimate. With the asymptote unobserved the",
-      " fit cannot distinguish them. Restrict the set to mod_groups$bot_free",
-      " if the response can reach zero for this endpoint, or away from it if",
-      " it cannot."
+      " fit cannot distinguish them. Use `model = \"zero_bounded\"` if the",
+      " response can reach zero for this endpoint; otherwise, exclude the",
+      " equations in `models()$bot_free`."
     )
   }
   supplied <- length(models) > 0 &&
