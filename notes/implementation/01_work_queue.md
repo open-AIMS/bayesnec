@@ -37,8 +37,8 @@ skipped when reached, and taken up once the decision is recorded in
 | 12 | #410 | §4 item 12 | D29 | merged, #431 |
 | 13 | #404 | §4 item 13 | D22 | merged, #433, without PR #402 |
 | 14 | #413 | §4 item 14 | D24 | merged, #432, without PR #402 |
-| 15 | #410 | §4 item 15 | D29 | #452; `hurdle_negbinomial` pending RF |
-| 16 | #419 | §4 item 16 | D31 | #453 |
+| 15 | #410 | §4 item 15 | D29 | merged, #452; `hurdle_negbinomial` pending RF |
+| 16 | #419 | §4 item 16 | D31 | merged, #453 |
 | bg | #418 | §4, the background item | D26 | committed, `528f0667` |
 | end | precompile | §4, the precompile and the store refit | D18 | test passed (job 914152); submit by 16:00 AEST 2026-09-27 |
 

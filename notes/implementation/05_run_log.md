@@ -358,3 +358,12 @@ and the order `01_work_queue.md`.
   change no vignette's output, so the rendered vignettes are current for the
   whole list. Collect with `./hpc/precompile-hpc.sh --fetch <names>` from a
   worktree with `hpc/local.conf`; the VPN connection closes near 18:00 AEST.
+- 2026-09-27 08:55 AEST. The list is finished: every item is merged into
+  `predev` except #403, stopped for RF's ruling with #421. #453 failed its first
+  check run on all four platforms (seven errors in `test-censoring.R`: the new
+  `nec`-parameter test read a fitted `brms` object the structural hurdle fixtures
+  do not hold); fixed in `77a72e67` and merged on a green re-run.
+- 2026-09-27 08:10 AEST. Precompile tasks 1 to 6 (`example1` to `example5`,
+  `example2b`) collected and committed on branch `precompile-backlog-run`
+  (`1fb714ab`). `example2b` and `example5` were unchanged. Tasks 7 to 9
+  (`example6`, `example7`, `example9`) still running one at a time.
