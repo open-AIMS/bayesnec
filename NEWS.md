@@ -1462,11 +1462,16 @@
   which named neither the column nor the cause. A `beta` response of 1 in every
   observation was shifted to 0.999 and fitted, and one of 0 was shifted to
   `Inf`. The refusal is raised once per call, before the model loop, by `bnec()`
-  and `get_priors()`, and by `amend()` and `update(newdata = )`. `bnec_group()`
-  refuses the whole call before any level is fitted where any one level has
-  every observation at a bound, and names each such level, so that it is
-  removed from the data explicitly. A response with one observation off the
-  bound is fitted as before (#400).
+  and `get_priors()`, and by `amend()` and `update(newdata = )`, which test the
+  family the refit uses. `bnec_group()` refuses the whole call before any level
+  is fitted where any one level has every observation at a bound, and names
+  each such level, so that it is removed from the data explicitly.
+  `bnec_hurdle()` refuses a growth component whose every survivor is at a
+  bound before either component is fitted, and names it as the growth
+  component. A response with one observation off the bound is fitted as
+  before. A response with an interval-censored observation whose upper end,
+  the second variable of `cens()`, differs from its recorded value is not
+  refused, since that observation lies inside the support (#400).
 
 - A fit now reproduces under a `set.seed()` in the caller's session. The
   initial-value search called `set.seed(seed)` whatever it was given, and

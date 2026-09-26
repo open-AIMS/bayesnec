@@ -605,17 +605,100 @@ test_that("response_bound_reached names the bound every observation is at", {
   # Both bounds at once is a response that varies, not one at a bound.
   expect_identical(response_bound_reached(c(0, 1, 0, 1)), NA_real_)
   expect_identical(response_bound_reached(numeric(0)), NA_real_)
+  # An interval-censored row that spans off the bound makes it vary.
+  expect_identical(response_bound_reached(rep(0, 4), spans = c(TRUE, FALSE,
+                                                               FALSE, FALSE)),
+                   NA_real_)
+  expect_identical(response_bound_reached(rep(0, 4), spans = rep(FALSE, 4)),
+                   0)
 })
 
-test_that("check_data refuses a beta response at 1 rather than shifting it", {
-  # The backstop for get_priors() and update(newdata = ). Before #400 the
-  # response was shifted to 0.999 in every row and fitted.
-  d <- data.frame(x = cd_at_bound_x(), y = 1)
-  err <- expect_error(cd_run(y ~ crf(x, model = "nec3param"), d,
-                             Beta(link = "identity")))
-  expect_match(conditionMessage(err), "The response \"y\" is at the upper bound",
+test_that("the update route tests the family the refit uses (#400)", {
+  # check_update_data() reads a family off the new data where none is
+  # supplied, to ask whether the data suggest a different one. The refit keeps
+  # the fit's own family, so that is the family the bound is tested against.
+  # A bernoulli fit given a response of 1 in every row: read off the data that
+  # is a poisson response, which is not bounded, so nothing was refused and
+  # under force_fit = TRUE brms refitted the bernoulli on it.
+  bern <- nec4param
+  bern$fit$family <- brms::bernoulli(link = "identity")
+  d <- bern$fit$data
+  d$y <- rep(1L, nrow(d))
+  err <- expect_error(check_update_data(list(bern), d))
+  expect_match(conditionMessage(err),
+               "The response \"y\" is at the upper bound of a bernoulli",
                fixed = TRUE)
-  expect_match(conditionMessage(err), "every value is 1", fixed = TRUE)
+  # A gaussian fit given a response of exactly 1: read off the data that is a
+  # beta response, but the refit is gaussian, so nothing is refused and the
+  # suggested change of family is reported as before.
+  d1 <- nec4param$fit$data
+  d1$y <- 1
+  res <- suppressMessages(check_update_data(list(nec4param), d1))
+  expect_true(res$changed_family)
+  # A supplied family is the one the refit uses, so it is the one tested.
+  expect_error(
+    check_update_data(list(nec4param), d1, Beta(link = "identity")),
+    "at the upper bound of a beta response", fixed = TRUE
+  )
+})
+
+test_that("update() refuses before the refit, and refits a gaussian (#400)", {
+  # brms::update() is mocked: the assertion is whether the refit is reached,
+  # not what it returns. stats::update() is called explicitly so that the test
+  # reaches the method rather than the mock, which replaces the binding the
+  # package imports.
+  calls <- 0L
+  local_mocked_bindings(
+    update = function(...) {
+      calls <<- calls + 1L
+      stop("refit reached")
+    },
+    .package = "bayesnec"
+  )
+  bern <- nec4param
+  bern$fit$family <- brms::bernoulli(link = "identity")
+  d <- bern$fit$data
+  d$y <- rep(1L, nrow(d))
+  expect_error(stats::update(bern, newdata = d),
+               "at the upper bound of a bernoulli response", fixed = TRUE)
+  expect_identical(calls, 0L)
+  d1 <- nec4param$fit$data
+  d1$y <- 1
+  err <- NULL
+  capture.output(
+    err <- tryCatch(
+      suppressMessages(stats::update(nec4param, newdata = d1,
+                                     force_fit = TRUE)),
+      error = conditionMessage
+    ),
+    type = "message"
+  )
+  expect_false(grepl("upper bound", err))
+  expect_identical(calls, 1L)
+})
+
+test_that("an interval from the bound is a response that varies (#400)", {
+  # cover | cens(cens, upper): each row states that the truth lies between the
+  # recorded 0 and its upper end, which is inside the support, so the response
+  # varies although every recorded value is 0.
+  x <- cd_at_bound_x()
+  d <- data.frame(x = x, cover = 0, cens = "interval",
+                  upper = seq(0.05, 0.5, length.out = length(x)))
+  f <- cover | cens(cens, upper) ~ crf(x, model = "nec3param")
+  expect_silent(check_response_at_bound(cd_bdat(f, d), "beta"))
+  # One such row is enough.
+  d1 <- transform(d, cens = "none", upper = 0)
+  d1$cens[1] <- "interval"
+  d1$upper[1] <- 0.05
+  expect_silent(check_response_at_bound(cd_bdat(f, d1), "beta"))
+  # An interval whose upper end is the recorded value is a point at the bound.
+  d2 <- transform(d, upper = 0)
+  expect_error(check_response_at_bound(cd_bdat(f, d2), "beta"),
+               "every value is 0", fixed = TRUE)
+  # Left and right censoring are not consulted.
+  d3 <- transform(d, cens = "right")
+  expect_error(check_response_at_bound(cd_bdat(f, d3), "beta"),
+               "every value is 0", fixed = TRUE)
 })
 
 test_that("check_response_at_bound leaves every other response alone", {

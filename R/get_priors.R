@@ -175,6 +175,13 @@ get_priors.formula <- function(object, data, family = NULL,
   chk_flag(asymptote_observed)
   predictor_scale <- validate_predictor_scale(predictor_scale)
   bdat <- model.frame(object, data = data, run_par_checks = TRUE)
+  # Immediately after the model frame, as bnec() places it, so that nothing
+  # below is decided from a frame with incomplete rows already dropped. Without
+  # it the bound check that follows read the smaller frame, and a response whose
+  # only 0 sat in a row with a missing predictor was refused as every value 1
+  # rather than as the missing value it is. check_data() still runs it per
+  # model. See #278 and #400.
+  check_complete_cases(bdat)
   validate_predictor_scale(
     predictor_scale, retrieve_var(bdat, "x_var", error = TRUE)
   )
@@ -184,9 +191,9 @@ get_priors.formula <- function(object, data, family = NULL,
   link_source <- family_link_source(substitute(family), env = parent.frame())
   fam_args <- if (is.null(family)) list() else list(family = family)
   family <- retrieve_valid_family(fam_args, bdat, link_source = link_source)
-  # Raised once, before the substitution report below: a beta response at 1
-  # in every observation would otherwise be reported as shifted to 0.999 and
-  # then refused by check_data() inside the loop. See #400.
+  # Raised once, before the model loop and before the substitution report
+  # below, which would otherwise report a beta response at 1 in every
+  # observation as shifted to 0.999. See #400.
   check_response_at_bound(bdat, family)
   model <- check_models(get_model_from_formula(object), family, bdat)
   model_survival <- check_model_survival(model_survival, family, bdat)

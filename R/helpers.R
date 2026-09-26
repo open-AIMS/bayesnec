@@ -1472,6 +1472,18 @@ check_update_data <- function(x, data, family = NULL, on_fit = TRUE) {
     formula <- extract_formula(x[[i]])
     bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
     model <- get_model_from_formula(formula)
+    # Tested against the family the refit uses: the one supplied, otherwise the
+    # fit's own, which brms::update() keeps. `fam` below is read off the new
+    # data where no family is supplied, which is right for asking whether the
+    # data suggest a different family and wrong for this: a bernoulli fit given
+    # a response of 1 in every row would be tested as poisson and refitted, and
+    # a gaussian fit given a response of exactly 1 would be refused as beta.
+    # After check_complete_cases(), for the reason get_priors() gives;
+    # check_data() runs that again below. See #400.
+    check_complete_cases(bdat)
+    check_response_at_bound(
+      bdat, if (is.null(family)) x[[i]]$fit$family else family
+    )
     # Named fam, not family: reassigning the argument inside its own loop
     # would leave the second iteration reading the validated object rather
     # than what the caller supplied.

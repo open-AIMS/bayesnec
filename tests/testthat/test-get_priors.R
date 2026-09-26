@@ -449,3 +449,18 @@ test_that("one observation off the bound still builds priors (#400)", {
     }
   }
 })
+
+test_that("a missing value is refused before the bound is read (#400)", {
+  # The model frame drops an incomplete row. Read before check_complete_cases(),
+  # the bound check saw a response whose only 0 had been dropped with its
+  # missing predictor, and refused it as every value 1.
+  x <- rep(c(0.1, 0.5, 1, 3, 10, 30), each = 5)
+  d <- data.frame(x = x, alive = 1L)
+  d$alive[30] <- 0L
+  d$x[30] <- NA
+  err <- expect_error(
+    get_priors(alive ~ crf(x, "nec3param"), data = d, family = "bernoulli")
+  )
+  expect_match(conditionMessage(err), "row\\(s\\) with missing values")
+  expect_false(grepl("upper bound", conditionMessage(err)))
+})

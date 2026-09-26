@@ -1139,12 +1139,6 @@ check_data <- function(data, family, model) {
   if (!all(is.finite(y))) {
     stop("Your response column contains values that are not finite.")
   }
-  # The backstop for get_priors(), which calls this once per model, and for
-  # update(newdata = ). bnec(), bnec_group() and get_priors() raise it before
-  # any model is considered. Placed before the boundary checks and nudges
-  # below, so that a response with no variation is refused for that rather
-  # than having its values shifted or its censoring questioned. See #400.
-  check_response_at_bound(data, family)
   resp_check <- mean(y[which(x < mean(x))]) <
     mean(y[which(x > mean(x))])
   if (resp_check && !grepl("horme", model)) {
@@ -1379,12 +1373,20 @@ check_inline_boundary <- function(data, family) {
 #' @param trials The number of trials of a \code{binomial} or
 #' \code{beta_binomial} response, or \code{NULL} for a response recorded as a
 #' proportion.
+#' @param spans A logical vector marking the interval-censored observations
+#' whose upper end differs from the recorded value, or \code{NULL}.
 #'
 #' @return 0 or 1, the bound every observation sits at, or \code{NA} where the
 #' response is not at one bound throughout.
 #' @noRd
-response_bound_reached <- function(y, trials = NULL) {
+response_bound_reached <- function(y, trials = NULL, spans = NULL) {
   if (length(y) == 0) {
+    return(NA_real_)
+  }
+  # An interval-censored observation from the bound to a value inside the
+  # support states that the truth lies in that interval, not at the bound, so a
+  # response with one such observation varies whatever the recorded values are.
+  if (any(spans)) {
     return(NA_real_)
   }
   if (all(y == 0)) {
@@ -1417,16 +1419,24 @@ response_bound_reached <- function(y, trials = NULL) {
 #' raised once from \code{\link{bnec}} and \code{\link{get_priors}} before any
 #' model is considered, and from \code{\link{bnec_group}} for every level
 #' before any level is fitted, following the placement of
-#' \code{\link{check_inline_boundary}}. \code{\link{check_data}} and
-#' \code{amend()} call it as the backstop for the routes that do not come
-#' through those entry points. The whole decision is made here, so that a
-#' change to what is done with such a response is made in one place.
+#' \code{\link{check_inline_boundary}}. \code{\link{bnec_hurdle}} raises it on
+#' the growth component before either component is fitted. \code{amend()} and
+#' \code{update()} call it for the routes that do not come through those entry
+#' points, each with the family its refit uses. It is not called from
+#' \code{\link{check_data}}, which is given whatever family its caller chose:
+#' on the \code{update()} route that is the family read off the new data, not
+#' the one the refit uses. The whole decision is made here, so that a change to
+#' what is done with such a response is made in one place.
 #'
-#' Censoring is not consulted: the test is on the recorded values, and a
+#' Left and right censoring are not consulted: a value censored at a bound of
+#' one of these families states either what the family cannot represent
+#' (beyond the bound) or nothing at all (anywhere within its support), so a
 #' response whose every recorded value is at one bound is refused whether or
-#' not some of those values are censored. A value censored at a bound of one of
-#' these families states either what the family cannot represent (beyond the
-#' bound) or nothing at all (anywhere within its support).
+#' not some of those values are censored. An interval-censored observation is
+#' different where its upper end, the second variable of \code{cens()}, differs
+#' from its recorded value: that observation lies inside the support, so the
+#' response varies and is not refused. An upper end written in the formula as a
+#' number is not in the model frame and is not read.
 #'
 #' @param data A model frame from \code{model.frame()} on a
 #' \code{\link{bayesnecformula}}.
@@ -1435,11 +1445,13 @@ response_bound_reached <- function(y, trials = NULL) {
 #' \code{NULL}. Where supplied, each level is tested separately and every level
 #' at a bound is named.
 #' @param group_name The name of the grouping column, for the message.
+#' @param subject The subject of the message, where the rows tested are not the
+#' whole response; \code{NULL} names the response column.
 #'
 #' @return \code{NULL}, invisibly. Called for its error.
 #' @noRd
 check_response_at_bound <- function(data, family, group = NULL,
-                                    group_name = NULL) {
+                                    group_name = NULL, subject = NULL) {
   fam_tag <- if (inherits(family, "family")) family$family else family
   if (!fam_tag %in% c("bernoulli", "binomial", "beta_binomial", "beta")) {
     return(invisible(NULL))
@@ -1458,8 +1470,17 @@ check_response_at_bound <- function(data, family, group = NULL,
       return(invisible(NULL))
     }
   }
+  cens <- retrieve_cens(data)
+  upper_end <- try(retrieve_var(data, "cens_y2_var"), silent = TRUE)
+  spans <- NULL
+  if (!is.null(cens) && is.numeric(upper_end)) {
+    spans <- !is.na(cens) & cens == 2 & !is.na(upper_end) & upper_end != y
+  }
   bnec_pop_vars <- attr(data, "bnec_pop")
   y_name <- names(data)[which(names(bnec_pop_vars) == "y_var")]
+  if (is.null(subject)) {
+    subject <- paste0("The response \"", y_name, "\"")
+  }
   counted <- !is.null(trials)
   describe <- function(bound) {
     if (bound == 1 && counted) {
@@ -1473,18 +1494,18 @@ check_response_at_bound <- function(data, family, group = NULL,
   side <- function(bound) if (bound == 1) "upper" else "lower"
   why <- " A response that does not vary identifies no concentration-response"
   if (is.null(group)) {
-    bound <- response_bound_reached(y, trials)
+    bound <- response_bound_reached(y, trials, spans)
     if (is.na(bound)) {
       return(invisible(NULL))
     }
-    stop("The response \"", y_name, "\" is at the ", side(bound), " bound of",
-         " a ", fam_tag, " response in every observation: ", describe(bound),
-         ".", why, " curve, so bayesnec does not fit one to it or derive",
-         " default priors from it.", call. = FALSE)
+    stop(subject, " is at the ", side(bound), " bound of a ", fam_tag,
+         " response in every observation: ", describe(bound), ".", why,
+         " curve, so bayesnec does not fit one to it or derive default priors",
+         " from it.", call. = FALSE)
   }
   rows <- split(seq_along(y), group, drop = TRUE)
   bounds <- vapply(rows, function(i) {
-    response_bound_reached(y[i], trials[i])
+    response_bound_reached(y[i], trials[i], spans[i])
   }, numeric(1))
   hit <- bounds[!is.na(bounds)]
   if (length(hit) == 0) {
@@ -1498,13 +1519,12 @@ check_response_at_bound <- function(data, family, group = NULL,
     paste0("\"", lev, "\", where ", describe(hit[[lev]]), " (the ",
            side(hit[[lev]]), " bound)")
   }, character(1))
-  stop("The response \"", y_name, "\" is at a bound of a ", fam_tag,
-       " response in every observation of ", length(hit), " level(s) of \"",
-       group_name, "\": ", paste(where, collapse = "; "), ".", why,
-       " curve. No level has been fitted. Remove ",
-       if (length(hit) == 1) "that level" else "those levels",
-       " from `data` to fit the others, so that the omission is recorded in",
-       " the call.", call. = FALSE)
+  stop(subject, " is at a bound of a ", fam_tag, " response in every",
+       " observation of ", length(hit), " level(s) of \"", group_name, "\": ",
+       paste(where, collapse = "; "), ".", why, " curve. No level has been",
+       " fitted. Remove ", if (length(hit) == 1) "that level" else
+         "those levels", " from `data` to fit the others, so that the",
+       " omission is recorded in the call.", call. = FALSE)
 }
 
 #' Reject a boundary value on a response transformed inside the formula
