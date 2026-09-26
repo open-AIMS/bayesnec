@@ -1571,8 +1571,14 @@
   value in the dataset, and 63 of the 414 yield readings are exactly 0 (#6, #33).
 
 - A constant equation, `ecxflat`, is added. Its mean is its one curve
-  parameter, `top`, at every concentration, so a fit of it states that the response did
-  not change over the range tested. It has no step and no `nec` parameter, so
+  parameter, `top`, at every concentration, so a fit of it states that the
+  response did not change over the range tested. It is written
+  `top + 0 * atan(x)`, which keeps the predictor in the fitted object and is
+  exactly `top` at every predictor value, including the infinite one an
+  `x_range` reaching 0 puts at the foot of the grid under `crf(log(x))`. A
+  group-level term on it is applied on the logit or log scale where the family
+  bounds the mean, as for the other equations whose mean stays inside the
+  support. It has no step and no `nec` parameter, so
   its no-effect estimate is an NSEC. No draw of its curve reaches an ECx
   target, so every draw of its ECx is reported as censored above the upper end
   of the prediction range, through the censoring record of #395. Its NSEC is
@@ -1602,7 +1608,8 @@
   identifies no curve, and was refused under #400. `bnec_group()` does the
   same for each level whose response does not vary, and fits the other levels
   with the set requested. A `beta` response of 0 in every observation is still
-  refused. `get_priors()` returns the prior of `ecxflat` for such a response
+  refused, and so is a name that is no equation, as it is for any other
+  response. `get_priors()` returns the prior of `ecxflat` for such a response
   when it is named alone, and refuses a set holding any other equation.
 
   Whether an estimate is a NEC or an NSEC is now decided by whether the fitted

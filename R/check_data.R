@@ -1658,6 +1658,10 @@ constant_fallback <- function(data, family, model, report = TRUE) {
   if (is.null(state) || is.na(state$bounds)) {
     return(NULL)
   }
+  # Before the set is replaced. check_models() refuses a name that is no
+  # equation, and it is given ecxflat alone from here, so without this a
+  # misspelt name was recorded as excluded for the bound and the fit went on.
+  check_equation_names(model)
   check_response_at_bound(data, family, model = constant_equations())
   flat <- constant_equations()
   dropped <- setdiff(model, flat)
@@ -1696,11 +1700,18 @@ constant_fallback <- function(data, family, model, report = TRUE) {
 #' @param family The validated family.
 #' @param group The grouping factor, one element per row of \code{data}.
 #' @param group_name The name of the grouping column.
+#' @param model The equations the formula requests, or \code{NULL} where they
+#' could not be read. Where they are \code{ecxflat} alone nothing is set aside,
+#' so nothing is reported, as \code{constant_fallback()} reports nothing then.
 #'
 #' @return A \code{\link[base]{character}} vector of the levels at a bound,
 #' possibly empty.
 #' @noRd
-constant_fallback_levels <- function(data, family, group, group_name) {
+constant_fallback_levels <- function(data, family, group, group_name,
+                                     model = NULL) {
+  if (!is.null(model)) {
+    check_equation_names(model)
+  }
   check_response_at_bound(data, family, group = group,
                           group_name = group_name,
                           model = constant_equations())
@@ -1711,6 +1722,11 @@ constant_fallback_levels <- function(data, family, group, group_name) {
   hit <- state$bounds[!is.na(state$bounds)]
   if (length(hit) == 0) {
     return(character(0))
+  }
+  # Silent where ecxflat alone was requested: every level then fits the set
+  # asked for, and there is nothing set aside to explain.
+  if (!is.null(model) && all(model %in% constant_equations())) {
+    return(names(hit))
   }
   where <- vapply(names(hit), function(lev) {
     paste0("\"", lev, "\" (the ", if (hit[[lev]] == 1) "upper" else "lower",

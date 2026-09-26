@@ -14,6 +14,28 @@ equation_names <- function() {
   names(pred_functions)
 }
 
+#' Refuse a name that is no equation
+#'
+#' Checked against every equation rather than against \code{mod_groups$all},
+#' which is the default set: \code{ecxflat} belongs to no group and is valid by
+#' name. Raised from \code{\link{check_models}} and, before it replaces the set
+#' requested, from \code{constant_fallback()}, so that a misspelt name is
+#' refused on a response at a bound as it is on any other. See #419.
+#'
+#' @param model A \code{\link[base]{character}} vector of equation names.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#'
+#' @noRd
+check_equation_names <- function(model) {
+  if (!all(model %in% equation_names())) {
+    to_flag <- paste0(model[!model %in% equation_names()], collapse = "; ")
+    stop("The model(s): ", to_flag, "; is not a valid",
+         " model entry. Please check ?bnec for valid model calls.")
+  }
+  invisible(NULL)
+}
+
 #' Equations whose mean does not change with the predictor
 #'
 #' \code{ecxflat}, whose mean is its one curve parameter \code{top}. Named in
@@ -354,13 +376,7 @@ check_models <- function(model, family, data, record = FALSE) {
       }
     }
   }
-  # Checked against every equation rather than against mod_groups$all, which is
-  # the default set: ecxflat belongs to no group and is valid by name. See #419.
-  if (!all(model %in% equation_names())) {
-    to_flag <- paste0(model[!model %in% equation_names()], collapse = "; ")
-    stop("The model(s): ", to_flag, "; is not a valid",
-         " model entry. Please check ?bnec for valid model calls.")
-  }
+  check_equation_names(model)
   if (record) {
     attr(model, "excluded") <- excluded
   }

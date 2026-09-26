@@ -211,7 +211,19 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # before it had compiled and sampled, which is the reason check_disp_finite()
   # is raised above. Placed before the flatness report, which reads the set
   # each level will fit. See #400 and #419.
-  flat_levels <- constant_fallback_levels(mod_dat, family, grp, group_var)
+  #
+  # The requested set is read here, before the flatness report reads it below,
+  # so that a name that is no equation is refused before any level is fitted
+  # and a request for ecxflat alone is not reported as set aside.
+  requested_models <- try(get_model_from_formula(formula), silent = TRUE)
+  flat_levels <- constant_fallback_levels(
+    mod_dat, family, grp, group_var,
+    model = if (inherits(requested_models, "try-error")) {
+      NULL
+    } else {
+      requested_models
+    }
+  )
   dots[[".bayesnec_bound_reported"]] <- TRUE
   # Checked over every level before any of them is fitted. Left to the inner
   # bnec() calls it would report one level at a time, and would reach an
@@ -223,7 +235,6 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # there cannot make that level's default priors sensitive. A formula the set
   # cannot be read from is one bnec() is about to refuse, so the failure is
   # left to arrive from there and nothing is reported meanwhile.
-  requested_models <- try(get_model_from_formula(formula), silent = TRUE)
   level_sets <- character(0)
   level_survival <- NULL
   if (!inherits(requested_models, "try-error")) {

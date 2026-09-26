@@ -312,13 +312,17 @@ bf_ecxhormebc4 <- brms::bf(y ~ 0 + (top - 0 + exp(slope) * x) /
 # release (#419, D31). It is available by name and is what bnec() fits to a
 # response with no variation.
 #
-# The `0 * x` term is not decoration. brms builds the model data from the
+# The `0 * atan(x)` term is not decoration. brms builds the model data from the
 # variables the non-linear formula names, and a formula of `top` alone names no
 # predictor, so the fitted object's data would hold no predictor column and
 # every function that reads the predictor back from it -- the prediction grid,
-# the control value, the plots -- would fail. The product is exactly 0 for
-# every finite predictor, so the mean is exactly top.
-bf_ecxflat <- brms::bf(y ~ top + 0 * x,
+# the control value, the plots -- would fail. atan() rather than x itself,
+# because the prediction grid can hold an infinite predictor: an x_range
+# reaching 0 under crf(log(x)) puts -Inf at its foot, where 0 * x is NaN and
+# the NSEC search then stopped in quantile(). atan() is finite on the whole
+# extended line, so the product is exactly 0 wherever the predictor is not NaN,
+# and the mean is exactly top.
+bf_ecxflat <- brms::bf(y ~ top + 0 * atan(x),
                        top ~ 1,
                        nl = TRUE)
 

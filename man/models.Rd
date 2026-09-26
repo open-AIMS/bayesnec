@@ -35,16 +35,17 @@ The available models are "nec3param", "nec4param", "nechorme",
 
 "ecxflat" is the constant equation: its mean is its one curve parameter,
 "top", at every concentration, so it states that the response did not
-change over the range tested. Its formula is written \code{top + 0 * x} so
-that the fitted object keeps the predictor, and the second term is exactly
-zero. It has no step and no "nec" parameter, so its no-effect estimate is an
-NSEC, and the curve of no draw reaches an ECx target: every ECx it gives,
-and its NSEC in every draw whose level is above the reference, is reported
-as censored above the upper end of the prediction range. It belongs to no
-model group in this release, so none of \code{models()}, a group name, a
-numeric range or \code{max_pars} lists it; name it to fit it, as in
-\code{crf(x, "ecxflat")} or \code{crf(x, c("ecxflat", "nec4param"))}. It
-joins "all", "ecx" and "decline" at the 3.0 release, which changes every
+change over the range tested. Its formula is written
+\code{top + 0 * atan(x)} so that the fitted object keeps the predictor. The
+second term is exactly zero for every predictor value, an infinite one
+included. It has no step and no "nec" parameter, so its no-effect estimate
+is an NSEC. The curve of no draw reaches an ECx target, so every ECx it
+gives is reported as censored above the upper end of the prediction range,
+and so is its NSEC in every draw whose level is above the reference. It
+belongs to no model group in this release, so none of \code{models()}, a
+group name, a numeric range or \code{max_pars} lists it; name it to fit it,
+as in \code{crf(x, "ecxflat")} or \code{crf(x, c("ecxflat", "nec4param"))}.
+It joins "all", "ecx" and "decline" at the 3.0 release, which changes every
 model-averaged result and is left to a release for that reason.
 \code{\link{bnec}} fits it alone, whatever set was requested, to a bounded
 response with every observation at one bound; see the section of

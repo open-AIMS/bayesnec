@@ -186,13 +186,14 @@ test_that("one observation off the bound reaches the model loop (#400)", {
 
 # ---- #419, the constant equation, fitted --------------------------------------
 
-# Three fits, each made once and shared by every test below, because compiling
+# Four fits, each made once and shared by every test below, because compiling
 # the Stan program is what these tests cost. A bernoulli response of 1
 # throughout, requested with the whole default set, which bnec() fits as
 # ecxflat alone; a gaussian response with no concentration effect, fitted with
 # ecxflat named beside nec3param, so that both take appreciable weight and the
 # mixture holds ecxflat draws; and manec_example, which declines, amended with
-# ecxflat, which is a response with an effect. Short chains at a fixed seed:
+# ecxflat, which is a response with an effect; and the first again on a logged
+# predictor with an x_range reaching 0. Short chains at a fixed seed:
 # what is asserted is where the draws lie, not their precision. amend() takes
 # the sampler settings of the set it amends and has no seed argument.
 flat_fixtures <- local({
@@ -226,7 +227,17 @@ flat_fixtures <- local({
                family = gaussian(), chains = 2, iter = 300, warmup = 200,
                seed = 419, refresh = 0)
         }),
-        effect = keep_messages(amend(manec_example, add = "ecxflat"))
+        effect = keep_messages(amend(manec_example, add = "ecxflat")),
+        # An x_range reaching 0 under crf(log(x)) puts -Inf at the foot of the
+        # prediction grid. With the mean written top + 0 * x that point was
+        # NaN, the NSEC search stopped in quantile() after sampling, and under
+        # the substitution the whole call failed with that unnamed error.
+        log_range = keep_messages(
+          bnec(alive ~ crf(log(x), model = "all"),
+               data = data.frame(x = x, alive = 1L), family = "bernoulli",
+               x_range = c(0, 30), chains = 2, iter = 300, warmup = 200,
+               seed = 419, refresh = 0)
+        )
       )
     }
     cache[[which]]
@@ -410,4 +421,37 @@ test_that("ecxflat estimates take the scale message once and exceedance() (#419)
   # The default estimate is the NEC, which nec() refuses for a single fit
   # without a nec parameter.
   expect_error(exceedance(fit, 3), "nec is not a parameter")
+})
+
+test_that("ecxflat is fitted on a grid reaching -Inf under crf(log(x)) (#419)", {
+  skip_on_cran()
+  fit <- flat_fixtures("log_range")$fit
+  expect_identical(fit$model, "ecxflat")
+  # The mean is finite, and exactly top, at every grid point, the foot at
+  # log(0) included, so the curve is still one horizontal line.
+  expect_identical(min(fit$pred_vals$data$x), 0)
+  expect_true(all(is.finite(fit$pred_vals$data$Estimate)))
+  expect_length(unique(fit$pred_vals$data$Estimate), 1)
+  expect_false(any(is.nan(fit$ne_posterior)))
+  expect_identical(attr(fit$ne, "censored_summary")$bound, rep(">=", 3))
+  e <- suppressWarnings(suppressMessages(
+    ecx(fit, x_range = c(0, 30), posterior = TRUE)
+  ))
+  expect_true(all(attr(e, "censored")$above))
+})
+
+test_that("a misspelt equation at a bound is refused, not set aside (#419)", {
+  # The set is replaced by ecxflat before check_models() sees it, so the name
+  # is checked first; otherwise it was recorded as excluded for the bound and
+  # the fit went on.
+  local_mocked_bindings(
+    fit_bayesnec = function(...) stop("fit reached"),
+    .package = "bayesnec"
+  )
+  cs <- at_bound_cases()$bernoulli_one
+  expect_error(
+    suppressMessages(bnec(alive ~ crf(x, c("nec4param", "bogus")),
+                          data = cs$data, family = cs$family)),
+    "bogus; is not a valid model entry", fixed = TRUE
+  )
 })

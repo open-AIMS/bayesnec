@@ -214,8 +214,8 @@ mu_is_constrained <- function(family, dpar = "mu") {
 #'   \item \code{zero_asymptote}: the mean decays onto zero and has no free
 #'     lower asymptote, so it cannot produce the negative values a \code{log}
 #'     or \code{logit} linear predictor needs. Derived as "carries no
-#'     \code{bot} and is not unbounded below", which reproduces
-#'     \code{mod_groups$zero_bounded} exactly.
+#'     \code{bot}, is not unbounded below and is not constant", which
+#'     reproduces \code{mod_groups$zero_bounded} exactly.
 #' }
 #'
 #' \emph{Appropriateness} --- is the shape meaningful for the response, whether
@@ -289,8 +289,14 @@ mu_is_constrained <- function(family, dpar = "mu") {
 #' term --- and that equation is excluded from bounded responses on
 #' \code{below_zero} in any case.
 #'
-#' @return A \code{\link[base]{data.frame}}, one row per model in
-#' \code{\link{models}}.
+#' \code{ecxflat}, the constant equation, has a row although it is in no model
+#' group (#419). Its mean is \code{top}, so it is confined wherever \code{top}
+#' is, and every flag is \code{FALSE}. It is the one equation the derivation of
+#' \code{zero_asymptote} below would misread: it has no \code{bot} and is not
+#' unbounded below, and its mean does not decay at all.
+#'
+#' @return A \code{\link[base]{data.frame}}, one row per equation, the
+#' members of \code{models()$all} and \code{ecxflat}.
 #'
 #' @noRd
 model_mu_ranges <- function() {
@@ -317,7 +323,8 @@ model_mu_ranges <- function() {
     ecxll4        = list(),
     ecxll3        = list(),
     ecxhormebc4   = list(can_exceed_one = TRUE),
-    ecxhormebc5   = list(can_exceed_one = TRUE)
+    ecxhormebc5   = list(can_exceed_one = TRUE),
+    ecxflat       = list()
   )
   flag <- function(x, nm) isTRUE(x[[nm]])
   out <- data.frame(
@@ -337,7 +344,12 @@ model_mu_ranges <- function() {
   has_bot <- vapply(out$model, function(m) {
     "bot" %in% names(get(paste0("bf_", m))[[2]])
   }, logical(1))
-  out$zero_asymptote <- !has_bot & !out$below_zero
+  # A constant is excluded by name: it has no bot and is not unbounded below,
+  # and it does not decay onto zero either, because it does not decay. Without
+  # the exclusion it would be read as zero-bounded, which check_models() does
+  # not treat it as: a log or logit link keeps it. See #419.
+  out$zero_asymptote <- !has_bot & !out$below_zero &
+    !out$model %in% constant_equations()
   rownames(out) <- NULL
   out
 }
