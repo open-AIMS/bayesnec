@@ -178,6 +178,12 @@ the same <code>type</code>. <code>"relative"</code> is refused, as it is by
 <code><a href="ecx.html">ecx</a></code> for this class: a two-block fit has no single <code>bot</code>
 parameter to measure towards. <code>"direct"</code> is refused because it names a
 response value rather than a percentage.</p>
+<p><code>nsec</code> is read on the recorded predictor scale as supplied, and
+<code>xform</code> is applied to the percentage returned rather than to
+<code>nsec</code>. Where <code>crf()</code> transforms the predictor inline,
+<code><a href="nsec.html">nsec</a></code> returns its estimate on the transformed scale unless given
+an <code>xform</code>, so a message says so once per call and names the
+<code>xform</code> to give <code><a href="nsec.html">nsec</a></code>.</p>
     </div>
 
   </div>

@@ -187,6 +187,11 @@ one.</p></li>
 and is the better choice where the type matters, because <code>nec</code> always
 returns an unlabelled vector. Use <code><a href="nsec.html">nsec</a></code> where a NSEC is wanted
 from every model regardless of type.</p>
+<p>Where <code>crf()</code> transforms the predictor inline, as in
+<code>crf(log(concentration))</code>, the estimate is on the transformed scale
+unless <code>xform</code> is supplied, and a message says so once per call. It
+names the transformation and the <code>xform</code> that returns the estimate on
+the recorded scale.</p>
     </div>
     <div id="capping-and-dropping">
     <h2>Capping and dropping</h2>

@@ -222,6 +222,11 @@ cent rather than truncating it, so <code>ecx_val</code> is not capped at 100.</p
 <p>Where the curve does not reach the target anywhere in the predictor range
 the ECx is not identified and <code>NA</code> is returned, with a warning
 reporting how many draws were affected.</p>
+<p>Where <code>crf()</code> transforms the predictor inline, as in
+<code>crf(log(concentration))</code>, the ECx is on the transformed scale unless
+<code>xform</code> is supplied, and a message says so once per call. It names the
+transformation and the <code>xform</code> that returns the estimate on the
+recorded scale.</p>
 <p>Calls to functions <code>ecx</code> and <code><a href="nsec.html">nsec</a></code> and
 <code><a href="compare_fitted.html">compare_fitted</a></code> do not require the same level of flexibility
 in the context of allowing argument <code>newdata</code>

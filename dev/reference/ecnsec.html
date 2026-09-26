@@ -178,6 +178,12 @@ same question of the same curve. "direct" names a response value rather
 than a percentage and is refused here.</p>
 <p>The <code>hormesis_def</code> argument has been removed; the control is now
 always the reference. See <code><a href="ecx.html">ecx</a></code>.</p>
+<p><code>nsec</code> is read on the recorded predictor scale once <code>xform</code> has
+been applied to it. Where <code>crf()</code> transforms the predictor inline, as
+in <code>crf(log(concentration))</code>, <code><a href="nsec.html">nsec</a></code> returns its estimate
+on the transformed scale unless given an <code>xform</code>, so a message says so
+once per call where <code>xform</code> is left at its default, and names the
+<code>xform</code> that puts such a value on the recorded scale.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>

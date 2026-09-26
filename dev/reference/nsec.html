@@ -195,6 +195,11 @@ supplied predictor. That holds for every equation, hormetic ones included:
 the <code>hormesis_def</code> argument selected between the control and the
 maximum of the predicted curve and has been removed, because a target
 below the control is crossed exactly once whatever the curve does above it.</p>
+<p>Where <code>crf()</code> transforms the predictor inline, as in
+<code>crf(log(concentration))</code>, the NSEC is on the transformed scale unless
+<code>xform</code> is supplied, and a message says so once per call. It names the
+transformation and the <code>xform</code> that returns the estimate on the
+recorded scale.</p>
 <p>The attached <code>ecnsec</code> attribute is the percent effect at the NSEC,
 defined as <code><a href="ecx.html">ecx</a></code> defines it under <code>type = "absolute"</code>:
 the decline from the control towards zero. Up to 2.1.3 it was measured

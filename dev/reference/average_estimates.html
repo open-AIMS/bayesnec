@@ -211,7 +211,10 @@ models are more stable on a log-transformed or sqrt scaling. If the input
 <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> model fits are
 already based on a re-scaling of the x (concentration) axis, it is important
 to pass an appropriate xform argument to ensure these are back transformed
-before the the geometric mean calculation is applied.</p>
+before the the geometric mean calculation is applied. Where <code>crf()</code>
+transforms the predictor inline and <code>xform</code> is left at its default, a
+message says so once per call, naming the transformation and the
+<code>xform</code> that inverts it.</p>
     </div>
     <div id="reproducibility">
     <h2>Reproducibility</h2>
