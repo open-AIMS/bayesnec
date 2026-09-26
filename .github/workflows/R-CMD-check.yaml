@@ -1,5 +1,5 @@
 name: R-CMD-check
-run-name: PR 402 worker file-order diagnostic
+run-name: PR 402 full worker result trace
 
 on:
   workflow_dispatch:
@@ -9,8 +9,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  worker-file-order-diagnostic:
-    name: ubuntu-latest (devel, worker file-order diagnostic)
+  worker-result-trace:
+    name: ubuntu-latest (devel, full worker result trace)
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -41,7 +41,7 @@ jobs:
       - name: Install the PR package
         run: R CMD INSTALL --no-docs .
         shell: bash
-      - name: Trace worker results through the group tests
+      - name: Trace all worker results
         shell: bash
         run: |
           cat >> tests/testthat/setup.R <<'RS'
@@ -51,10 +51,6 @@ jobs:
               cat("REPORTER_RESULT", private$filename, test,
                   class(result)[1], as.numeric(utils::object.size(result)),
                   "\n", file = stderr())
-              if (inherits(result, "expectation_success")) {
-                result[["srcref"]] <- NULL
-                result[["trace"]] <- NULL
-              }
               private$event("add_result", context, test, result)
             },
             overwrite = TRUE
@@ -66,12 +62,7 @@ jobs:
           cat("TESTTHAT_PARALLEL=", Sys.getenv("TESTTHAT_PARALLEL"), "\n", sep = "")
           cat("TESTTHAT_CPUS=", Sys.getenv("TESTTHAT_CPUS"), "\n", sep = "")
           setwd("tests")
-          testthat::test_check("bayesnec",
-                               filter = paste0("^(amend|autoplot|",
-                                               "average_estimates|bayesmanec_methods|",
-                                               "bayesnec_methods|bayesnecformula|",
-                                               "bayesnechurdlefit-methods|bnec_group|",
-                                               "bnec_hurdle)$"))
+          testthat::test_check("bayesnec")
           RS
       - name: Upload diagnostic log
         if: always()
