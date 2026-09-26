@@ -109,12 +109,22 @@ exceeding it, so the two are the share of identified draws above the
 threshold and that share plus the share censored above. A threshold below
 the lower bound is treated in the same way with the draws censored below.
 \code{prob} is \code{NA} in both cases, because the posterior does not
-identify a single probability. A threshold equal to the upper bound falls in
-the first case, because a draw stated as at or above the bound may lie at
-it. Widening the prediction range decides more of those draws, at the price
-of reading the curve where there are no data: \code{x_range} widens it for
-\code{\link{ecx}} and \code{\link{nsec}}, and \code{extrapolate} for
-\code{\link{nec}} and \code{\link{nsec}}.
+identify a single probability. Widening the prediction range decides more of
+those draws, at the price of reading the curve where there are no data:
+\code{x_range} widens it for \code{\link{ecx}} and \code{\link{nsec}}, and
+\code{extrapolate} for \code{\link{nec}} and \code{\link{nsec}}.
+
+A threshold equal to the upper bound is also reported as an interval. A
+sampled \code{nec} draw is marked censored where it is at or above the
+bound, so a censored draw may lie on the bound itself, and a draw equal to
+the threshold does not exceed it. A threshold equal to the lower bound is
+decided, because a draw at or below it does not exceed it. Where the bound
+is itself back-transformed, as with \code{xform = exp} on a fit to
+\code{crf(log(concentration))}, it can differ in the last digits from the
+concentration it was computed from: \code{exp(log(100))} is slightly above
+100. A threshold given as that concentration then falls just inside or just
+outside the range, and the rounding decides whether its probability is
+exact or reported as an interval.
 
 A draw that is \code{NA} without the record accounting for it could not be
 computed at all, and is left out of both probabilities and of
