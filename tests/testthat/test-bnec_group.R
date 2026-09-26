@@ -115,11 +115,17 @@ test_that("per-level estimates come back as one row per level", {
   expect_equal(nrow(out), 2)
   expect_setequal(out$level, c("a", "b"))
   # Columns are the names nec() itself returns, not fixed positions -- see the
-  # posterior/prob_vals tests below for why that matters.
-  expect_equal(names(out), c("level", "Q50", "Q2.5", "Q97.5"))
+  # posterior/prob_vals tests below for why that matters. The bound_ columns
+  # hold each entry's censoring mark (#404) and follow the numeric columns,
+  # which keep the positions they had before the marks were added.
+  expect_equal(names(out), c("level", "Q50", "Q2.5", "Q97.5",
+                             "bound_Q50", "bound_Q2.5", "bound_Q97.5"))
   # the same fit at both levels must give the same numbers -- the map must not
   # be reordering or recycling anything
   expect_equal(out$Q50[1], out$Q50[2])
+  # manec_example is identified inside its own grid, so nothing is a bound.
+  expect_true(all(unlist(out[c("bound_Q50", "bound_Q2.5", "bound_Q97.5")]) ==
+                    ""))
 })
 
 # #33 second review: group_estimate_table() read positions 1:3 of whatever the
@@ -143,8 +149,115 @@ test_that("a non-default prob_vals is carried through, not truncated", {
   # Five quantiles, in nec()'s required central/lower/upper order. Reading
   # positions 1:3 dropped the last two without a word.
   out <- nec(gf, prob_vals = c(0.5, 0.05, 0.95, 0.25, 0.75))
-  expect_equal(names(out), c("level", "Q50", "Q5", "Q95", "Q25", "Q75"))
+  q <- c("Q50", "Q5", "Q95", "Q25", "Q75")
+  expect_equal(names(out), c("level", q, paste0("bound_", q)))
   expect_equal(nrow(out), 2)
+})
+
+# #404: the table dropped each level's "censored_summary" record, so a level
+# whose own nec() reported ">= 0.9" came back from nec() on the group as a plain
+# 0.9. The censored level is manec_example re-expanded over a grid ending at
+# 0.9, inside its posterior, as test-censoring.R does; nothing is compiled or
+# sampled. Built once, because expand_manec() predicts every equation over the
+# grid.
+censored_level <- local({
+  fit <- NULL
+  function() {
+    if (is.null(fit)) {
+      fs <- manec_example$mod_fits
+      forms <- lapply(fs, function(z) z$bayesnecformula)
+      x_range <- c(min(fs[["ecx4param"]]$fit$data$x), 0.9)
+      fit <<- bayesnec:::allot_class(
+        suppressMessages(suppressWarnings(bayesnec:::expand_manec(
+          fs, formula = forms, x_range = x_range, resolution = 50
+        ))),
+        c("bayesmanecfit", "bnecfit")
+      )
+    }
+    fit
+  }
+})
+
+# The number and the mark a level's own fit reports, in the form the group
+# table holds them: the numbers as they were, and "" where there is no record.
+own_estimate <- function(e) {
+  bound <- attr(e, "censored_summary")$bound
+  list(values = unname(as.numeric(e)), names = names(e),
+       bound = if (is.null(bound)) rep("", length(e)) else bound)
+}
+
+expect_level_agrees <- function(out, row, e) {
+  own <- own_estimate(e)
+  expect_identical(unname(unlist(out[row, own$names])), own$values)
+  expect_identical(unname(unlist(out[row, paste0("bound_", own$names)])),
+                   own$bound)
+}
+
+test_that("the table marks a censored level as its own fit does", {
+  skip_if(Sys.getenv("NOT_CRAN") == "")
+  cens <- censored_level()
+  gf <- fake_group_fit(list(a = cens, b = manec_example))
+  out <- suppressMessages(suppressWarnings(nec(gf)))
+  own_a <- suppressMessages(suppressWarnings(nec(cens)))
+  own_b <- suppressMessages(suppressWarnings(nec(manec_example)))
+  # The fixture must be censored above, or every mark checked here is empty.
+  expect_true(any(attr(own_a, "censored_summary")$bound == ">="))
+  expect_level_agrees(out, 1, own_a)
+  # An uncensored level is unchanged: its numbers are its own nec(), and none
+  # of its entries is marked.
+  expect_null(attr(own_b, "censored_summary"))
+  expect_level_agrees(out, 2, own_b)
+  # A column survives the subsetting and stacking an attribute would not (D22).
+  expect_identical(out[1, "bound_Q50"],
+                   attr(own_a, "censored_summary")$bound[1])
+  expect_identical(rbind(out, out)$bound_Q97.5, rep(out$bound_Q97.5, 2))
+})
+
+test_that("nsec() and ecx() on the group agree with each level's own fit", {
+  skip_if(Sys.getenv("NOT_CRAN") == "")
+  cens <- censored_level()
+  gf <- fake_group_fit(list(a = cens, b = manec_example))
+  # Above: an ECx50 the curves do not reach before 0.9.
+  x_top <- c(min(manec_example$mod_fits[[1]]$fit$data$x), 0.9)
+  out <- suppressWarnings(ecx(gf, ecx_val = 50, x_range = x_top))
+  for (i in 1:2) {
+    own <- suppressWarnings(ecx(gf$fits[[i]], ecx_val = 50, x_range = x_top))
+    expect_level_agrees(out, i, own)
+  }
+  expect_true(any(out$bound_Q50 == ">="))
+  # Below: a grid starting at 2.5 leaves the crossings before its foot, so
+  # the marks are "<=" rather than ">=".
+  out <- suppressWarnings(nsec(gf, x_range = c(2.5, 3.2), resolution = 50))
+  for (i in 1:2) {
+    own <- suppressWarnings(nsec(gf$fits[[i]], x_range = c(2.5, 3.2),
+                                 resolution = 50))
+    expect_level_agrees(out, i, own)
+  }
+  expect_true(any(out$bound_Q50 == "<="))
+  expect_false(any(unlist(out[grep("^bound_", names(out))]) == ">="))
+})
+
+test_that("the marks are each record's bound vector, and empty without one", {
+  plain <- c(Q50 = 1.2, Q2.5 = 0.5, Q97.5 = 1.4)
+  marked <- c(Q50 = 0.9, Q2.5 = 0.5, Q97.5 = 0.9)
+  attr(marked, "censored_summary") <- list(bound = c(">=", "", ">="))
+  out <- bayesnec:::estimate_marks(list(marked, plain), names(plain),
+                                   c("a", "b"), "nec")
+  expect_identical(names(out), c("bound_Q50", "bound_Q2.5", "bound_Q97.5"))
+  expect_identical(unlist(out[1, ], use.names = FALSE), c(">=", "", ">="))
+  expect_identical(unlist(out[2, ], use.names = FALSE), rep("", 3))
+  expect_type(out$bound_Q50, "character")
+})
+
+test_that("a record that cannot be aligned with the entries is refused", {
+  # summarise_censored() writes one mark per entry, so this is a guard against a
+  # record built elsewhere, not a path a fit reaches.
+  e <- c(Q50 = 0.9, Q2.5 = 0.5, Q97.5 = 0.9)
+  attr(e, "censored_summary") <- list(bound = c(">=", ""))
+  expect_error(
+    bayesnec:::estimate_marks(list(e), names(e), "a", "nec"),
+    "marks 2 entries and its nec estimate has 3"
+  )
 })
 
 test_that("printing reports the shared family and the per-level model sets", {

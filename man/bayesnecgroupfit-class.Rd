@@ -14,6 +14,17 @@ everything that works on those works per level.
 \details{
 See \code{methods(class = "bayesnecgroupfit")} for an overview of
 available methods.
+
+\code{\link{nec}}, \code{\link{ecx}} and \code{\link{nsec}} on a
+\code{bayesnecgroupfit} return a \code{\link[base]{data.frame}} with one row
+per level: a \code{level} column; one numeric column per quantile, named as
+the same method names them on a single fit; and, after those, one character
+column per quantile, named \code{bound_} followed by that quantile's column
+name, for example \code{bound_Q97.5}. A \code{bound_} entry is \code{">="} or
+\code{"<="} where the matching number is the end of the prediction range
+rather than a quantile, and \code{""} where it is a quantile. These are the
+marks the level's own fit returns in attribute \code{"censored_summary"} and
+prints beside the number.
 }
 \section{Slots}{
 
