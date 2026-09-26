@@ -71,7 +71,7 @@ jobs:
                                                "average_estimates|bayesmanec_methods|",
                                                "bayesnec_methods|bayesnecformula|",
                                                "bayesnechurdlefit-methods|bnec_group|",
-                                               "bnec_hurdle)$"))
+                                               "bnec_hurdle|bnec_joint)$"))
           RS
       - name: Upload diagnostic log
         if: always()
