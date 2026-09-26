@@ -134,6 +134,21 @@
   the grid to such a draw and then used it as a value, raising the point
   estimate without saying so (#395).
 
+- Under a decreasing transformation of the predictor axis, the NEC and ECx
+  annotations of `autoplot()`, `ggbnec_data()` and `plot()` now give the lower
+  limit of the interval first. The transformation was applied to the three
+  numbers alone, so under `xform = function(x) -x` the entry labelled as the
+  lower limit was the larger of the two. The `plot()` legends did the same
+  under a decreasing `lxform`. The two limits are now exchanged wherever the
+  transformation is decreasing, including where no `xform` is given and the
+  axis is put back on the recorded scale by inverting a decreasing `crf()`
+  term.
+  The `>=` and `<=` marks of a censored entry follow the rule the estimators
+  apply to each draw: a no-effect concentration censored above 0.9 is
+  labelled `<=-0.90` under `xform = function(x) -x`, as
+  `nec(fit, xform = function(x) -x)` reports it. Identity and increasing
+  transformations give the same annotation as before (#417).
+
 - The two ends are recorded separately. A draw whose curve had already passed
   the target where the prediction range begins is reported as `<=` the foot of
   that range, which an `NA` alone could not distinguish from a draw whose curve

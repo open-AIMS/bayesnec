@@ -170,18 +170,25 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   axis(side = 1, at = x_ticks, labels = x_labs)
   # The bound markers keep this legend saying what summary() says about the
   # same object. Without them a censored estimate reads here as a number.
-  legend_nec <- paste(nec_tag, ": ", bound_prefix(nec, 1),
-                      signif(lxform(nec["Estimate"]), 2),
-                      " (", bound_prefix(nec, 2),
-                      signif(lxform(nec["Q2.5"]), 2), "-",
-                      bound_prefix(nec, 3),
-                      signif(lxform(nec["Q97.5"]), 2), ")", sep = "")
-  legend_ec10 <- paste("EC10: ", bound_prefix(ec10, 1),
-                       signif(lxform(ec10[1]), 2),
-                       " (", bound_prefix(ec10, 2),
-                       signif(lxform(ec10[2]), 2), "-",
-                       bound_prefix(ec10, 3),
-                       signif(lxform(ec10[3]), 2), ")", sep = "")
+  # lxform relabels values already on the axis scale, and a decreasing one
+  # reverses the interval and its marks just as a decreasing xform does, so the
+  # labels take the remapping to_axis_scale() applies rather than lxform on the
+  # numbers beside marks read for the axis scale (#417). Indexed by position
+  # because an lxform that is not arithmetic may drop the names.
+  nec_lab <- remap_summary(nec, lxform, x_vec)
+  ec10_lab <- remap_summary(ec10, lxform, x_vec)
+  legend_nec <- paste(nec_tag, ": ", bound_prefix(nec_lab, 1),
+                      signif(nec_lab[[1]], 2),
+                      " (", bound_prefix(nec_lab, 2),
+                      signif(nec_lab[[2]], 2), "-",
+                      bound_prefix(nec_lab, 3),
+                      signif(nec_lab[[3]], 2), ")", sep = "")
+  legend_ec10 <- paste("EC10: ", bound_prefix(ec10_lab, 1),
+                       signif(ec10_lab[[1]], 2),
+                       " (", bound_prefix(ec10_lab, 2),
+                       signif(ec10_lab[[2]], 2), "-",
+                       bound_prefix(ec10_lab, 3),
+                       signif(ec10_lab[[3]], 2), ")", sep = "")
   if (CI) {
     lines(x_vec, x$pred_vals$data$Q97.5, lty = 2)
     lines(x_vec, x$pred_vals$data$Q2.5, lty = 2)
@@ -312,18 +319,21 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     # No lxform branch, for the reason given at the bayesnecfit site above.
     x_labs <- signif(lxform(x_ticks), 2)
     axis(side = 1, at = x_ticks, labels = x_labs)
-    legend_nec <- paste(nec_tag, ": ", bound_prefix(nec, 1),
-                        signif(lxform(nec["Estimate"]), 2),
-                        " (", bound_prefix(nec, 2),
-                        signif(lxform(nec["Q2.5"]), 2), "-",
-                        bound_prefix(nec, 3),
-                        signif(lxform(nec["Q97.5"]), 2), ")", sep = "")
-    legend_ec10 <- paste("EC10: ", bound_prefix(ec10, 1),
-                         signif(lxform(ec10[1]), 2),
-                         " (", bound_prefix(ec10, 2),
-                         signif(lxform(ec10[2]), 2), "-",
-                         bound_prefix(ec10, 3),
-                         signif(lxform(ec10[3]), 2), ")", sep = "")
+    # Remapped through lxform, for the reason given at the bayesnecfit site.
+    nec_lab <- remap_summary(nec, lxform, x_vec)
+    ec10_lab <- remap_summary(ec10, lxform, x_vec)
+    legend_nec <- paste(nec_tag, ": ", bound_prefix(nec_lab, 1),
+                        signif(nec_lab[[1]], 2),
+                        " (", bound_prefix(nec_lab, 2),
+                        signif(nec_lab[[2]], 2), "-",
+                        bound_prefix(nec_lab, 3),
+                        signif(nec_lab[[3]], 2), ")", sep = "")
+    legend_ec10 <- paste("EC10: ", bound_prefix(ec10_lab, 1),
+                         signif(ec10_lab[[1]], 2),
+                         " (", bound_prefix(ec10_lab, 2),
+                         signif(ec10_lab[[2]], 2), "-",
+                         bound_prefix(ec10_lab, 3),
+                         signif(ec10_lab[[3]], 2), ")", sep = "")
     if (CI) {
       lines(x_vec, x$w_pred_vals$data$Q97.5, lty = 2)
       lines(x_vec, x$w_pred_vals$data$Q2.5, lty = 2)
