@@ -66,7 +66,9 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA) {
   # where nothing lived -- exactly the upper end the combined endpoint needs.
   # Growth is therefore extrapolated over that stretch, which is harmless in
   # the product because survival there is ~0, but it is why the range comes
-  # from the survival side.
+  # from the survival side. The default stays here for the curves, which the
+  # plots and posterior_epred() read. An estimate of growth alone is given
+  # growth's own range by hurdle_estimate_range() before it reaches here.
   if (any(is.na(x_range))) {
     nd_s <- newdata_eval(object$survival, resolution = resolution,
                          x_range = NA)
@@ -97,6 +99,47 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA) {
   c_s <- c_s[seq_len(n)]
   list(x = nd_g$x_vec, growth = g, survival = s, combined = g * s,
        control = list(growth = c_g, survival = c_s, combined = c_g * c_s))
+}
+
+#' The predictor range a hurdle estimate is read over
+#'
+#' An \code{x_range} the caller supplied is returned unchanged. Without one, a
+#' growth estimate is read over the growth component's own observed range, and
+#' a survival or combined estimate is left to the survival range that
+#' \code{hurdle_component_preds()} takes by default.
+#'
+#' @param object An object of class \code{\link{bayesnechurdlefit}}.
+#' @param which The curve the estimate is read from, as returned by
+#' \code{hurdle_check_which()}.
+#' @param x_range The caller's \code{x_range}.
+#'
+#' @return \code{x_range}, or the growth component's observed range as a
+#' \code{\link[base]{numeric}} vector of length 2.
+#' @noRd
+hurdle_estimate_range <- function(object, which, x_range) {
+  # D28 (#412). The growth fit has no data above the highest concentration at
+  # which anything survived, so a growth ECx or NSEC read over the survival
+  # range was read off the growth curve extended past its data. Over growth's
+  # own range such an estimate is censored at growth's highest concentration
+  # instead, through the record each estimator already builds from its grid.
+  # The combined estimate keeps the survival range: it needs the
+  # concentrations above growth's, where survival falls towards zero, and the
+  # intersection of the two ranges would censor combined estimates the
+  # survival range identifies. Resolved in the estimators rather than as a
+  # default inside hurdle_component_preds(), because the plots and
+  # posterior_epred() read every curve from that function and keep the
+  # survival range: a plotted growth curve beyond its data is a prediction,
+  # not an estimate.
+  #
+  # any(), as in hurdle_component_preds(), so that the two read the same
+  # x_range as absent.
+  if (!identical(which, "growth") || !any(is.na(x_range))) {
+    return(x_range)
+  }
+  # Through the constructor hurdle_component_preds() builds its grids with, so
+  # the two cannot disagree on where the growth fit's observed range ends.
+  bounds <- grid_x_range(object$growth, NA)
+  c(bounds$lower, bounds$upper)
 }
 
 #' @noRd
@@ -264,6 +307,22 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
 #' survival curve. Because both decline, the combined ECx is always reached at
 #' or below either component's own ECx.
 #'
+#' Without \code{x_range}, a growth ECx is read over the growth component's
+#' own observed range, and a survival or combined ECx over the survival
+#' component's. The growth component is fitted to survivors only, so its range
+#' ends at the highest concentration at which anything survived. A growth ECx
+#' above that concentration is reported as censored there, rather than read
+#' off the growth curve extended past its data. The survival range covers every
+#' concentration tested, and the combined curve needs the stretch above
+#' growth's range, where survival falls towards zero. A supplied
+#' \code{x_range} applies to all three curves alike.
+#' \code{\link{summary.bayesnechurdlefit}} reads its ECx rows by the same rule,
+#' and \code{\link{nsec.bayesnechurdlefit}} and
+#' \code{\link{ecnsec.bayesnechurdlefit}} use the same ranges. The plots and
+#' \code{\link{posterior_epred.bayesnechurdlefit}} draw every curve, growth
+#' included, over the survival range: a curve drawn beyond the growth data is a
+#' prediction, not an estimate.
+#'
 #' @return A vector containing the estimated ECx value, including upper and
 #' lower credible interval bounds.
 #'
@@ -301,8 +360,12 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 200,
   # Once for the call. See report_fitted_scale().
   quiet <- report_fitted_scale(object, xform, "ecx")
   on.exit(options(quiet), add = TRUE)
-  preds <- hurdle_component_preds(object, resolution = resolution,
-                                  x_range = x_range)
+  # Growth's own range for a growth ECx, so that one beyond it is censored at
+  # growth's highest concentration by the record built below (D28, #412).
+  preds <- hurdle_component_preds(
+    object, resolution = resolution,
+    x_range = hurdle_estimate_range(object, which, x_range)
+  )
   p_samples <- preds[[which]]
   # The control comes from hurdle_component_preds(), which reads it at the
   # lowest observed concentration. Taking p_samples[, 1] instead made every

@@ -69,4 +69,11 @@ response value rather than a percentage.
 \code{\link{nsec}} returns its estimate on the transformed scale unless given
 an \code{xform}, so a message says so once per call and names the
 \code{xform} to give \code{\link{nsec}}.
+
+Without \code{x_range}, the growth curve is read over the growth
+component's own observed range, and the survival and combined curves over
+the survival component's, as in \code{\link{ecx.bayesnechurdlefit}}. The
+range sets the lowest predicted response that \code{type = "range"}
+measures towards, and the grid point nearest \code{nsec} at which the curve
+is read.
 }

@@ -233,6 +233,15 @@ bnec_newdata.bayesnechurdlefit <- function(x, resolution = 100,
 #' \code{"growth"} or \code{"survival"}.
 #' @param posterior Should the full posterior be returned instead of a summary?
 #'
+#' @details Without \code{x_range}, a growth NSEC is searched for over the
+#' growth component's own observed range, which ends at the highest
+#' concentration at which anything survived, and is reported as censored there
+#' where the curve has not reached the reference by that concentration. A
+#' survival or combined NSEC is searched for over the survival component's
+#' range. \code{extrapolate} extends the range the call would otherwise use,
+#' so for \code{which = "growth"} it is measured against growth's range. See
+#' \code{\link{ecx.bayesnechurdlefit}} for the reasoning.
+#'
 #' @return A vector containing the estimated NSEC value and credible bounds.
 #'
 #' @importFrom stats quantile
@@ -250,6 +259,7 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   chk_logical(posterior)
+  which <- hurdle_check_which(which)
   if (!inherits(xform, "function")) {
     stop("xform must be a function.")
   }
@@ -259,22 +269,33 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
   # As in nsec.bayesnecfit: extrapolate resolves into the grid the curve is
   # searched on, and adds to x_range the refusal to narrow and the refusal of
   # an infinite limit.
+  #
+  # Measured against the range this call would otherwise search, which for a
+  # growth NSEC is growth's own (D28, #412). Measured against the survival
+  # range, a limit between the tops of the two ranges would be refused as
+  # inside a prediction range that the growth search no longer reaches, while
+  # the growth NSEC it was meant to extend is censored at growth's top.
+  bounds_from <- if (identical(which, "growth")) object$growth else object
   lims <- extrapolate_limits(extrapolate,
-                             searched_or_stored_bounds(object, x_range),
+                             searched_or_stored_bounds(bounds_from, x_range),
                              "NSEC")
   if (!is.null(lims)) {
     report_curve_read_lower_limit(object, lims)
     x_range <- c(lims$lower, lims$upper)
   }
-  preds <- hurdle_component_preds(object, resolution = resolution,
-                                  x_range = x_range)
-  p_samples <- preds[[hurdle_check_which(which)]]
+  # Growth's own range for a growth NSEC, so that one beyond it is censored at
+  # growth's highest concentration by the record built below (D28, #412).
+  preds <- hurdle_component_preds(
+    object, resolution = resolution,
+    x_range = hurdle_estimate_range(object, which, x_range)
+  )
+  p_samples <- preds[[which]]
   # The control is read at the lowest observed concentration rather than at the
   # first column of the grid, so supplying x_range does not change the reference
   # and therefore the estimate, exactly as in nsec.bayesnecfit. See D15 ruling 2.
-  reference <- quantile(preds$control[[hurdle_check_which(which)]], sig_val)
+  reference <- quantile(preds$control[[which]], sig_val)
   out <- nsec_from_posterior(p_samples, reference, preds$x, control_x(object),
-                             preds$control[[hurdle_check_which(which)]])
+                             preds$control[[which]])
   below <- attr(out, "below_range")
   above <- is.na(out) & !below
   searched_from <- attr(out, "x_searched_from")
@@ -303,7 +324,7 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
   estimate <- summarise_censored(out, prob_vals, cens)
   names(estimate) <- clean_names(estimate)
   attr(estimate, "toxicity_estimate") <- "nsec"
-  attr(estimate, "component") <- hurdle_check_which(which)
+  attr(estimate, "component") <- which
   attr(out, "toxicity_estimate") <- "nsec"
   if (!posterior) estimate else out
 }
@@ -343,14 +364,20 @@ hurdle_xform_x <- function(object, out) {
 #' two component estimates per posterior draw, so it is a pure NEC only where
 #' both components are; see \code{\link{nec.bayesnechurdlefit}}.
 #'
-#' With \code{ecx = TRUE}, the ECx rows are read over the intersection of the
-#' prediction grids stored with the two components, or over the grid
-#' \code{\link{ecx}} builds by default where either component stores none. An
-#' \code{x_range} supplied in \code{...} replaces that grid, and sets the grid
-#' of the ECx rows only. \code{x_range = NULL} leaves \code{\link{ecx}} to
-#' build its own grid, as it does where a component stores none. The argument
-#' must be given by its full name, because an abbreviation can be ignored
-#' without a message.
+#' With \code{ecx = TRUE}, the growth ECx rows are read over the prediction
+#' grid stored with the growth component, and the survival and combined rows
+#' over the grid stored with the survival component. This is the rule
+#' \code{\link{ecx.bayesnechurdlefit}} applies by default, so each row agrees
+#' with a bare \code{\link{ecx}} call for the same curve wherever the
+#' components were fitted without an \code{x_range}. A growth ECx above the
+#' highest concentration at which anything survived is reported as censored
+#' there. Where a component stores no grid, its rows are read over the grid
+#' \code{\link{ecx}} builds by default. An \code{x_range} supplied in
+#' \code{...} replaces those grids for all three curves, and sets the grid of
+#' the ECx rows only. \code{x_range = NULL} leaves \code{\link{ecx}} to build
+#' its own grid, as it does where a component stores none. The argument must
+#' be given by its full name, because an abbreviation can be ignored without a
+#' message.
 #'
 #' \code{x_range} is not passed to \code{\link{nec}}, because each no-effect
 #' estimate is read from the posterior stored when its component was fitted,
@@ -385,33 +412,36 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
       object, dots_xform(ecx, c(list(ecx_val = ecx_vals[1]), list(...))), "ecx"
     )
     on.exit(options(quiet), add = TRUE)
-    # On the grid the two component fits were predicted over, not the range of
+    # On the grid the component fits were predicted over, not the range of
     # the data. ecx() rebuilds its own grid when x_range is absent, so the ECx
     # block described a different range from the no-effect estimates printed
     # directly above it, and those are now marked with the end they are
     # censored at. See the same argument in summary.bayesnecfit.
     #
-    # The intersection of the two component grids rather than their union,
-    # because that is the stretch both curves are defined over and it is the
-    # range combine_censored_min() names when it bounds the combined no-effect
-    # estimate. Growth is fitted on survivors only, so its grid stops short of
-    # any concentration where nothing survived, and the union would reach past
-    # the combined endpoint. NULL where a component has no stored grid, which
-    # leaves ecx() to build its own as before.
-    hurdle_range <- hurdle_summary_range(object)
+    # Each row on the stored grid of the component whose range a bare ecx()
+    # reads that curve over (D28, #412): growth's grid for the growth rows,
+    # survival's for the survival and combined rows. The intersection of the
+    # two grids, used before, cut the survival and combined rows at growth's
+    # highest concentration. The summary then disagreed with a bare ecx(),
+    # and its survival ECx rows covered a shorter range than its own survival
+    # no-effect row, which is censored at the end of the survival grid. The
+    # combined curve needs the stretch above growth's grid, where survival
+    # falls towards zero. NULL where that component has no stored grid, which
+    # leaves ecx() to build its own.
+    #
     # A caller's x_range is matched by this helper's own formal and replaces
     # the default, so ecx() receives it once. Left in ... it was passed beside
-    # x_range = hurdle_range and the call stopped with "formal argument
-    # "x_range" matched by multiple actual arguments" (#416). The formal
-    # follows ... so that it cannot take a positional argument meant for ecx(),
-    # and it matches only the full name. An abbreviation such as x_ran is not
-    # matched here and reaches ecx() through .... Where the components store a
-    # grid, the generic has already matched x_range exactly to the default, so
-    # the abbreviation is ignored without a message, as it was before this
-    # change. The help page asks for the full name rather than this code
-    # partially matching names itself. A NULL, from either source, leaves ecx()
-    # to build its own grid.
-    ecx_row <- function(w, v, ..., x_range = hurdle_range) {
+    # the default and the call stopped with "formal argument "x_range"
+    # matched by multiple actual arguments" (#416). The formal follows ... so
+    # that it cannot take a positional argument meant for ecx(), and it
+    # matches only the full name. An abbreviation such as x_ran is not matched
+    # here and reaches ecx() through .... Where the component stores a grid,
+    # the generic has already matched x_range exactly to the default, so the
+    # abbreviation is ignored without a message, as it was before #416. The
+    # help page asks for the full name rather than this code partially
+    # matching names itself. A NULL, from either source, leaves ecx() to build
+    # its own grid.
+    ecx_row <- function(w, v, ..., x_range = hurdle_summary_range(object, w)) {
       if (is.null(x_range)) {
         ecx(object, ecx_val = v, which = w, ...)
       } else {
@@ -1054,6 +1084,13 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
 #' an \code{xform}, so a message says so once per call and names the
 #' \code{xform} to give \code{\link{nsec}}.
 #'
+#' Without \code{x_range}, the growth curve is read over the growth
+#' component's own observed range, and the survival and combined curves over
+#' the survival component's, as in \code{\link{ecx.bayesnechurdlefit}}. The
+#' range sets the lowest predicted response that \code{type = "range"}
+#' measures towards, and the grid point nearest \code{nsec} at which the curve
+#' is read.
+#'
 #' @return A vector of estimates.
 #'
 #' @method ecnsec bayesnechurdlefit
@@ -1088,8 +1125,13 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
   # read on, so the message is raised whatever xform was given.
   quiet <- report_fitted_scale(object, identity, "ecnsec_hurdle")
   on.exit(options(quiet), add = TRUE)
-  preds <- hurdle_component_preds(object, resolution = resolution,
-                                  x_range = x_range)
+  # The range ecx() and nsec() read the same curve over, growth's own for the
+  # growth curve (D28, #412), so that the three answer their questions of one
+  # curve on one grid.
+  preds <- hurdle_component_preds(
+    object, resolution = resolution,
+    x_range = hurdle_estimate_range(object, which, x_range)
+  )
   p_samples <- preds[[which]]
   # ecnsec asks: what percentage effect does a given predictor value
   # correspond to? Read off the same curve everything else uses, and inverted
@@ -1113,21 +1155,29 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
   if (!posterior) estimate else out
 }
 
-#' The predictor range both blocks of a two-block fit were predicted over
+#' The stored prediction grid a hurdle summary reads one curve's ECx over
 #'
-#' The intersection of the two component grids. A component is a
-#' \code{\link{bayesnecfit}} or a \code{\link{bayesmanecfit}} depending on
-#' whether \code{crf()} named one equation or a set, and the two classes store
-#' their grid under different names -- \code{pred_vals} and \code{w_pred_vals}
-#' -- so reading one of them alone returns \code{NULL} for the commoner case
-#' and \code{range()} of nothing is \code{c(Inf, -Inf)}.
+#' The grid stored with the growth component for the growth curve, and the
+#' grid stored with the survival component for the survival and combined
+#' curves. That is the rule \code{hurdle_estimate_range()} applies to the
+#' observed ranges when a bare \code{\link{ecx}} is called (D28, #412). Growth
+#' is fitted to survivors only, so its grid stops short of any concentration at
+#' which nothing survived.
+#'
+#' A component is a \code{\link{bayesnecfit}} or a \code{\link{bayesmanecfit}}
+#' depending on whether \code{crf()} named one equation or a set, and the two
+#' classes store their grid under different names -- \code{pred_vals} and
+#' \code{w_pred_vals} -- so reading one of them alone returns \code{NULL} for
+#' the commoner case and \code{range()} of nothing is \code{c(Inf, -Inf)}.
 #'
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
+#' @param which The curve the ECx is read from: \code{"combined"},
+#' \code{"growth"} or \code{"survival"}.
 #'
 #' @return A \code{\link[base]{numeric}} vector of length 2, or \code{NULL}
-#' where either component has no stored grid.
+#' where the component has no stored grid.
 #' @noRd
-hurdle_summary_range <- function(object) {
+hurdle_summary_range <- function(object, which) {
   grid_of <- function(x) {
     out <- x$w_pred_vals$data$x
     if (is.null(out)) {
@@ -1135,10 +1185,10 @@ hurdle_summary_range <- function(object) {
     }
     out
   }
-  g <- grid_of(object$growth)
-  s <- grid_of(object$survival)
-  if (is.null(g) || is.null(s) || !length(g) || !length(s)) {
+  part <- if (identical(which, "growth")) object$growth else object$survival
+  x <- grid_of(part)
+  if (is.null(x) || !length(x)) {
     return(NULL)
   }
-  c(max(min(g), min(s)), min(max(g), max(s)))
+  c(min(x), max(x))
 }

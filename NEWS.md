@@ -202,15 +202,45 @@
   (#395).
 
 - `summary(x, ecx = TRUE)` on a `bayesnechurdlefit` reads its ECx rows over the
-  intersection of the prediction grids stored with the two components, unless
-  an `x_range` is supplied. A supplied `x_range` replaces that grid and reaches
-  each ECx calculation once. In the development version the summary passed its
-  own range beside the caller's, and the call stopped with "formal argument
+  prediction grids stored with the components, unless an `x_range` is
+  supplied. A supplied `x_range` replaces those grids and reaches each ECx
+  calculation once. In the development version the summary passed its own
+  range beside the caller's, and the call stopped with "formal argument
   "x_range" matched by multiple actual arguments". The supplied range sets the
   grid of the ECx rows only. Each no-effect row is censored at the prediction
   grid stored when its component was fitted, unless `extrapolate` is supplied
   and names other limits. `x_range` changes neither, so it is no longer passed
   to `nec()`, which had ignored it without a message (#416).
+
+- On a `bayesnechurdlefit`, a growth ECx or NSEC is now read over the growth
+  component's own observed range, which ends at the highest concentration at
+  which anything survived. Without an `x_range`, `ecx()`, `nsec()` and
+  `ecnsec()` with `which = "growth"` had read the growth curve over the
+  survival component's range, which covers every concentration tested, and
+  now read it over growth's. A growth estimate above growth's highest
+  concentration was therefore read off the growth curve extended past the
+  data it was fitted to. It is now reported as censored at that
+  concentration, marked `>=` as any other censored estimate is. The survival
+  and combined estimates are read over the survival range as before, because
+  the combined curve needs the concentrations above growth's range, where
+  survival falls towards zero. With `extrapolate`, a growth NSEC is measured
+  against growth's range, so a limit between the tops of the two ranges now
+  extends the growth search where it was refused before (#412).
+
+- `summary(x, ecx = TRUE)` on a `bayesnechurdlefit` now reads its growth ECx
+  rows over the grid stored with the growth component, and its survival and
+  combined rows over the grid stored with the survival component. All three
+  were read over the intersection of the two grids, which ends at growth's
+  highest concentration. A survival or combined ECx above that concentration
+  was therefore reported as censored there, while a bare `ecx()` call
+  identified it. The survival ECx rows also covered a shorter range than the
+  survival no-effect row above them, which is censored at the end of the
+  survival grid. Each ECx row now agrees
+  with a bare `ecx()` call for the same curve wherever the components were
+  fitted without an `x_range`. `plot()`, `autoplot()` and `posterior_epred()`
+  still draw every curve, growth included, over the survival range: a curve
+  drawn beyond the growth data is a prediction rather than an estimate
+  (#412).
 
 - Behaviour change, measured across the nine vignettes. A fit with no draw
   beyond its prediction range is unaffected, and the summary it reports is
