@@ -244,13 +244,24 @@ bnec_newdata.bayesnechurdlefit <- function(x, resolution = 100,
 nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
                                    x_range = NA,
                                    xform = identity,
-                                   prob_vals = c(0.5, 0.025, 0.975), ...,
+                                   prob_vals = c(0.5, 0.025, 0.975),
+                                   extrapolate = FALSE, ...,
                                    posterior = FALSE, which = "combined") {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   chk_logical(posterior)
   if (!inherits(xform, "function")) {
     stop("xform must be a function.")
+  }
+  # As in nsec.bayesnecfit: extrapolate resolves into the grid the curve is
+  # searched on, and adds to x_range the refusal to narrow and the refusal of
+  # an infinite limit.
+  lims <- extrapolate_limits(extrapolate,
+                             searched_or_stored_bounds(object, x_range),
+                             "NSEC")
+  if (!is.null(lims)) {
+    report_curve_read_lower_limit(object, lims)
+    x_range <- c(lims$lower, lims$upper)
   }
   preds <- hurdle_component_preds(object, resolution = resolution,
                                   x_range = x_range)
@@ -261,16 +272,32 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
   reference <- quantile(preds$control[[hurdle_check_which(which)]], sig_val)
   out <- nsec_from_posterior(p_samples, reference, preds$x, control_x(object),
                              preds$control[[hurdle_check_which(which)]])
-  n_below <- attr(out, "n_below_range")
-  x_from <- hurdle_xform_x(object, attr(out, "x_searched_from"))
+  below <- attr(out, "below_range")
+  above <- is.na(out) & !below
+  searched_from <- attr(out, "x_searched_from")
   attr(out, "n_below_range") <- NULL
+  attr(out, "below_range") <- NULL
   attr(out, "x_searched_from") <- NULL
   out <- hurdle_xform_x(object, out)
-  warn_censored_draws(out, "NSEC", n_below = n_below, x_from = x_from)
+  # The lower bound is the point the search started from, not the foot of the
+  # grid: those differ wherever the grid reaches below the control, and it is
+  # the search start a below-range draw is known to lie beneath. Built on the
+  # recorded grid, the scale the search ran on, and remapped onto the fitted
+  # scale, which swaps the two ends under a decreasing crf().
+  cens <- xform_censoring(
+    censoring_record(max(preds$x), searched_from, above, below),
+    function(value) hurdle_xform_x(object, value)
+  )
   if (inherits(xform, "function")) {
     out <- xform(out)
+    cens <- xform_censoring(cens, xform)
   }
-  estimate <- quantile(out, probs = prob_vals, na.rm = TRUE)
+  attr(out, "censored") <- cens
+  # After xform, as in ecx.bayesnecfit and nsec.bayesnecfit: the bound the
+  # report names and the numbers the caller is about to read are then on one
+  # scale.
+  warn_censored_draws(out, "NSEC", cens = cens)
+  estimate <- summarise_censored(out, prob_vals, cens)
   names(estimate) <- clean_names(estimate)
   attr(estimate, "toxicity_estimate") <- "nsec"
   attr(estimate, "component") <- hurdle_check_which(which)
@@ -330,9 +357,27 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
   chk_numeric(ecx_vals)
   ecs <- NULL
   if (ecx) {
+    # On the grid the two component fits were predicted over, not the range of
+    # the data. ecx() rebuilds its own grid when x_range is absent, so the ECx
+    # block described a different range from the no-effect estimates printed
+    # directly above it, and those are now marked with the end they are
+    # censored at. See the same argument in summary.bayesnecfit.
+    #
+    # The intersection of the two component grids rather than their union,
+    # because that is the stretch both curves are defined over and it is the
+    # range combine_censored_min() names when it bounds the combined no-effect
+    # estimate. Growth is fitted on survivors only, so its grid stops short of
+    # any concentration where nothing survived, and the union would reach past
+    # the combined endpoint. NULL where a component has no stored grid, which
+    # leaves ecx() to build its own as before.
+    hurdle_range <- hurdle_summary_range(object)
     ecs <- lapply(c("combined", "growth", "survival"), function(w) {
       out <- lapply(ecx_vals, function(v) {
-        ecx(object, ecx_val = v, which = w, ...)
+        if (is.null(hurdle_range)) {
+          ecx(object, ecx_val = v, which = w, ...)
+        } else {
+          ecx(object, ecx_val = v, which = w, x_range = hurdle_range, ...)
+        }
       })
       names(out) <- paste0("ec", ecx_vals)
       out
@@ -411,7 +456,15 @@ print.hurdlesummary <- function(x, ...) {
   tp <- x$ne_types[names(x$ne)]
   rownames(ne_mat) <- ifelse(is.na(tp), names(x$ne),
                              paste0(names(x$ne), " (", tp, ")"))
+  # rbind() keeps the numbers and drops every attribute, so the marks that say
+  # which entries are the end of the prediction range rather than a quantile
+  # are collected and attached by hand. Without this a censored estimate
+  # printed here as a bare number while nec() on the same object returned it
+  # marked, which is the disagreement #395 exists to remove.
+  attr(ne_mat, "censored_summary") <- row_censoring(x$ne)
   print_mat(ne_mat)
+  print_row_censoring_notes(attr(ne_mat, "censored_summary"),
+                            rownames(ne_mat))
   if (any(x$ne_types != "NEC", na.rm = TRUE)) {
     cat("\nNSEC values appear where a model set contains smooth (ECx) models,",
         "which\ncarry no threshold parameter; N(S)EC is a model-averaged",
@@ -419,11 +472,15 @@ print.hurdlesummary <- function(x, ...) {
   }
   if (!is.null(x$ecs)) {
     cat("\nECx estimates\n")
-    ec_mat <- do.call(rbind, lapply(x$ecs, function(z) do.call(rbind, z)))
+    ec_flat <- unlist(x$ecs, recursive = FALSE, use.names = FALSE)
+    ec_mat <- do.call(rbind, ec_flat)
     rownames(ec_mat) <- unlist(lapply(names(x$ecs), function(w) {
       paste0(w, " ", names(x$ecs[[w]]))
     }))
+    attr(ec_mat, "censored_summary") <- row_censoring(ec_flat)
     print_mat(ec_mat)
+    print_row_censoring_notes(attr(ec_mat, "censored_summary"),
+                              rownames(ec_mat))
   }
   cat("\nThe combined endpoint is the expected response per individual",
       "exposed,\ni.e. growth * survival. Use which = to select a component.\n")
@@ -562,6 +619,7 @@ amend.bayesnechurdlefit <- function(object, drop, add, loo_controls,
                                     x_range = NA, resolution = 1000,
                                     sig_val = 0.01, priors,
                                     prior_type = "uninformative",
+                                    asymptote_observed = TRUE,
                                     timeout = Inf,
                                     predictor_scale = "auto") {
   predictor_scale <- validate_predictor_scale(predictor_scale)
@@ -570,7 +628,9 @@ amend.bayesnechurdlefit <- function(object, drop, add, loo_controls,
   # before either component can be refitted. See #317.
   validate_predictor_scale(predictor_scale, hurdle_raw_data(object)$x)
   args <- list(x_range = x_range, resolution = resolution, sig_val = sig_val,
-               prior_type = prior_type, predictor_scale = predictor_scale,
+               prior_type = prior_type,
+               asymptote_observed = asymptote_observed,
+               predictor_scale = predictor_scale,
                timeout = timeout)
   if (!missing(priors)) args$priors <- priors
   if (!missing(drop)) args$drop <- drop
@@ -982,4 +1042,34 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
   names(estimate) <- clean_names(estimate)
   attr(estimate, "component") <- which
   if (!posterior) estimate else out
+}
+
+#' The predictor range both blocks of a two-block fit were predicted over
+#'
+#' The intersection of the two component grids. A component is a
+#' \code{\link{bayesnecfit}} or a \code{\link{bayesmanecfit}} depending on
+#' whether \code{crf()} named one equation or a set, and the two classes store
+#' their grid under different names -- \code{pred_vals} and \code{w_pred_vals}
+#' -- so reading one of them alone returns \code{NULL} for the commoner case
+#' and \code{range()} of nothing is \code{c(Inf, -Inf)}.
+#'
+#' @param object An object of class \code{\link{bayesnechurdlefit}}.
+#'
+#' @return A \code{\link[base]{numeric}} vector of length 2, or \code{NULL}
+#' where either component has no stored grid.
+#' @noRd
+hurdle_summary_range <- function(object) {
+  grid_of <- function(x) {
+    out <- x$w_pred_vals$data$x
+    if (is.null(out)) {
+      out <- x$pred_vals$data$x
+    }
+    out
+  }
+  g <- grid_of(object$growth)
+  s <- grid_of(object$survival)
+  if (is.null(g) || is.null(s) || !length(g) || !length(s)) {
+    return(NULL)
+  }
+  c(max(min(g), min(s)), min(max(g), max(s)))
 }

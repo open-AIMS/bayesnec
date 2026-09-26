@@ -15,6 +15,7 @@
   sig_val = 0.01,
   priors,
   prior_type = "uninformative",
+  asymptote_observed = TRUE,
   timeout = Inf,
   predictor_scale = "auto"
 )
@@ -71,6 +72,12 @@ supplied. Either \code{"uninformative"} (the default) or
 \code{"regularizing"}. See \code{\link{bnec}}. Note this is not automatically
 inherited from the original fit; pass it explicitly to match the priors used
 when the object was first fitted.}
+
+\item{asymptote_observed}{A \code{\link[base]{logical}} declaring whether
+the highest predictor level reached the lower asymptote, applied to the
+default priors and the initial-value search of any newly added models. See
+\code{\link{bnec}}. Not inherited from the original fit; pass it explicitly
+to match the declaration that fit was built under.}
 
 \item{timeout}{A positive \code{\link[base]{numeric}} giving the maximum
 number of seconds allowed for fitting any single model, passed to

@@ -22,6 +22,7 @@
 #' @noRd
 fit_bayesnec <- function(formula, data, model = NA, brm_args,
                          skip_check = FALSE, prior_type = "uninformative",
+                         asymptote_observed = TRUE,
                          timeout = Inf, model_survival = NULL,
                          predictor_scale = "auto") {
   formula <- single_model_formula(formula, model)
@@ -87,6 +88,7 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   brm_args <- add_brm_defaults(brm_args, model, family, x, response,
                                skip_check, custom_name,
                                prior_type = prior_type,
+                               asymptote_observed = asymptote_observed,
                                predictor_scale = predictor_scale,
                                model_survival = model_survival,
                                disp_spec = parse_disp_term(formula),

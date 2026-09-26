@@ -309,14 +309,12 @@ plot_group_label <- function(data, group, group_aes) {
 
 #' @param data A \code{\link[base]{data.frame}}.
 #' @param nec_vals A \code{\link[base]{numeric}} vector containing the mean,
-#' and 95% credible intervals of NEC values.
-#' @param xform A function to apply to the returned estimated concentration
-#' values.
+#' and 95% credible intervals of NEC values, already on the axis scale.
 #'
 #' @return A \code{\link[base]{data.frame}}.
 #'
 #' @noRd
-bind_nec <- function(data, nec_vals, xform = identity) {
+bind_nec <- function(data, nec_vals) {
   data$nec_vals <- NA
   data$nec_labs <- NA
   data$nec_labs_l <- NA
@@ -324,13 +322,38 @@ bind_nec <- function(data, nec_vals, xform = identity) {
   df <- data[1:3, ]
   df[ ] <- NA
 
-  nec_vals <- xform(nec_vals)
+  # The transformation is applied by to_axis_scale() before this is called, and
+  # the xform argument that stood here was always identity. It is removed
+  # rather than left: a decreasing transformation applied at this point would
+  # reorder the three entries while the marks read off the record stayed where
+  # they were, so a ">=" would end up on what had become a lower bound.
+  cens <- attr(nec_vals, "censored_summary")
 
   df$nec_vals <- nec_vals
-  df$nec_labs[1] <- rounded(nec_vals[[1]], 2)
-  df$nec_labs_l[1] <- rounded(nec_vals[[2]], 2)
-  df$nec_labs_u[1] <- rounded(nec_vals[[3]], 2)
+  # A censored entry is the end of the prediction range, not a quantile, and
+  # the annotation says so. The vertical line is still drawn there, because
+  # that is where the estimate is known to be at least: what the prefix stops
+  # is reading the number off the axis as though it were the estimate itself.
+  df$nec_labs[1] <- censored_label(nec_vals, cens, 1)
+  df$nec_labs_l[1] <- censored_label(nec_vals, cens, 2)
+  df$nec_labs_u[1] <- censored_label(nec_vals, cens, 3)
   rbind(data, df)
+}
+
+#' One annotation label, marked where the entry is a bound
+#'
+#' @param values A summarised estimate.
+#' @param cens Its \code{"censored_summary"} attribute, or \code{NULL}.
+#' @param i The entry to label.
+#'
+#' @return A \code{\link[base]{character}} value.
+#' @noRd
+censored_label <- function(values, cens, i) {
+  lab <- rounded(values[[i]], 2)
+  if (is.null(cens) || !nzchar(cens$bound[i])) {
+    return(lab)
+  }
+  paste0(cens$bound[i], lab)
 }
 
 #' @param data A \code{\link[base]{data.frame}}.
@@ -348,11 +371,12 @@ bind_ecx <- function(data, ecx_vals) {
   data$ecx_labs_u <- NA
   df <- data[1:3, ]
   df[ ] <- NA
+  cens <- attr(ecx_vals, "censored_summary")
   df$ecx_vals <- ecx_vals
   df$ecx_int[1] <- attr(ecx_vals, "ecx_val")
-  df$ecx_labs[1] <- rounded(ecx_vals[[1]], 2)
-  df$ecx_labs_l[1] <- rounded(ecx_vals[[2]], 2)
-  df$ecx_labs_u[1] <- rounded(ecx_vals[[3]], 2)
+  df$ecx_labs[1] <- censored_label(ecx_vals, cens, 1)
+  df$ecx_labs_l[1] <- censored_label(ecx_vals, cens, 2)
+  df$ecx_labs_u[1] <- censored_label(ecx_vals, cens, 3)
   rbind(data, df)
 }
 
@@ -441,6 +465,10 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   }
   x_grid_raw <- x$pred_vals$data$x
   if (add_nec) {
+    # to_axis_scale() moves the estimates onto the recorded scale and keeps
+    # the record's marks, which is all bind_nec() reads: the annotation is
+    # built from the moved values, so the bounds inside the record are not
+    # consulted and are left on the scale they were computed on.
     out <- bind_nec(out, to_axis_scale(x$ne, bdat, x$bayesnecformula,
                                        x_grid_raw, xform))
   }

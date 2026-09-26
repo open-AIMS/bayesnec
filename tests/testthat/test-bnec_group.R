@@ -366,3 +366,82 @@ test_that("a model-averaged level yields a WAIC difference but no SE", {
   expect_false(is.na(res$diff))
   expect_true(is.na(res$se_diff))
 })
+
+test_that("the asymptote declaration is refused before any level (#394)", {
+  # bnec_group() fits each level with bnec() in sequence, so a refusal left to
+  # the inner call arrives only after the levels before it have compiled and
+  # sampled. Raised over the whole response before the loop, it names the
+  # remedy where the generic all-levels-failed path would not.
+  set.seed(394)
+  x <- rep(c(0, 1, 2, 4, 8, 16), each = 4)
+  mu <- 0.9 - 0.4 * (x / max(x))
+  d <- data.frame(
+    x = rep(x, 2),
+    y = c(stats::rnorm(length(mu), mu, 0.03) - 1.5,
+          stats::rnorm(length(mu), mu, 0.03) - 1.5),
+    site = rep(c("a", "b"), each = length(x))
+  )
+  err <- expect_error(suppressWarnings(suppressMessages(bnec_group(
+    y ~ crf(x, c("nec3param", "nec4param")), d, group_var = "site",
+    asymptote_observed = FALSE, chains = 1, iter = 10))))
+  expect_match(conditionMessage(err), "`prior` argument", fixed = TRUE)
+})
+
+test_that("bnec_group reads an abbreviated declaration (#394)", {
+  # `dots` is forwarded to bnec() through do.call(), where asymptote_observed
+  # is a formal before `...` and so matches an abbreviation. Read exactly, an
+  # abbreviated argument would be declared for the fit and undeclared for the
+  # hoisted check, which sets .bayesnec_asymptote_checked either way and drops
+  # the refusal back into the per-level model loop.
+  set.seed(394)
+  x <- rep(c(0, 1, 2, 4, 8, 16), each = 4)
+  mu <- 0.9 - 0.4 * (x / max(x))
+  d <- data.frame(
+    x = rep(x, 2),
+    y = c(stats::rnorm(length(mu), mu, 0.03) - 1.5,
+          stats::rnorm(length(mu), mu, 0.03) - 1.5),
+    site = rep(c("a", "b"), each = length(x))
+  )
+  err <- expect_error(suppressWarnings(suppressMessages(bnec_group(
+    y ~ crf(x, "nec4param"), d, group_var = "site",
+    asymptote = FALSE, chains = 1, iter = 10))))
+  expect_match(conditionMessage(err), "`prior` argument", fixed = TRUE)
+})
+
+test_that("bnec_group validates the declaration before any level (#394)", {
+  # Read here before bnec() sees it, so an invalid value would otherwise raise
+  # the floor refusal or the mixed-set report rather than naming what is wrong.
+  set.seed(394)
+  x <- rep(c(0, 1, 2, 4, 8, 16), each = 4)
+  mu <- 0.9 - 0.4 * (x / max(x))
+  d <- data.frame(
+    x = rep(x, 2),
+    y = c(stats::rnorm(length(mu), mu, 0.03),
+          stats::rnorm(length(mu), mu, 0.03)),
+    site = rep(c("a", "b"), each = length(x))
+  )
+  expect_error(suppressWarnings(suppressMessages(bnec_group(
+    y ~ crf(x, "nec4param"), d, group_var = "site",
+    asymptote_observed = NA, chains = 1, iter = 10))),
+    "asymptote_observed", fixed = TRUE)
+})
+
+test_that("bnec_group resolves a dot argument the way do.call will (#394)", {
+  # dots_arg() is what makes the hoisted checks read the same value the
+  # forwarded call will receive. `model_survival` is the case that was already
+  # wrong before the declaration existed: `model_s` upward is unambiguous
+  # against bnec()'s formals, so do.call() matches it while an exact lookup
+  # returns NULL, and the flatness report and the declaration's hurdle gate
+  # would then be given no survival equation at all.
+  dots <- list(asymptote = FALSE, model_s = "nec3param", prior_type = "x")
+  expect_false(bayesnec:::dots_arg(dots, "asymptote_observed", TRUE))
+  expect_identical(bayesnec:::dots_arg(dots, "model_survival"), "nec3param")
+  expect_null(bayesnec:::dots_arg(dots, "prior"))
+  # An exact name wins over an abbreviation of the same formal.
+  both <- list(asymptote = TRUE, asymptote_observed = FALSE)
+  expect_false(bayesnec:::dots_arg(both, "asymptote_observed", TRUE))
+  # Nothing supplied gives the default, and an empty list does not error.
+  expect_true(bayesnec:::dots_arg(list(), "asymptote_observed", TRUE))
+  expect_true(bayesnec:::dots_arg(list(chains = 2), "asymptote_observed",
+                                  TRUE))
+})

@@ -27,6 +27,11 @@
 #' \code{"regularizing"}. See \code{\link{bnec}}. Note this is not automatically
 #' inherited from the original fit; pass it explicitly to match the priors used
 #' when the object was first fitted.
+#' @param asymptote_observed A \code{\link[base]{logical}} declaring whether
+#' the highest predictor level reached the lower asymptote, applied to the
+#' default priors and the initial-value search of any newly added models. See
+#' \code{\link{bnec}}. Not inherited from the original fit; pass it explicitly
+#' to match the declaration that fit was built under.
 #' @param predictor_scale A \code{\link[base]{character}} string declaring
 #' whether the predictor is supplied as \code{"concentration"}, already
 #' \code{"log"} transformed, or should use the existing \code{"auto"} rule for
@@ -44,8 +49,8 @@
 #' @export
 amend <- function(object, drop, add, loo_controls, x_range = NA,
                   resolution = 1000, sig_val = 0.01, priors,
-                  prior_type = "uninformative", timeout = Inf,
-                  predictor_scale = "auto") {
+                  prior_type = "uninformative", asymptote_observed = TRUE,
+                  timeout = Inf, predictor_scale = "auto") {
   UseMethod("amend")
 }
 
@@ -58,7 +63,7 @@ amend <- function(object, drop, add, loo_controls, x_range = NA,
 #'
 #' @inherit amend return examples
 #'
-#' @importFrom chk chk_character chk_numeric chk_number
+#' @importFrom chk chk_character chk_numeric chk_number chk_flag
 #'
 #' @noRd
 #'
@@ -66,8 +71,10 @@ amend <- function(object, drop, add, loo_controls, x_range = NA,
 amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
                                 resolution = 1000, sig_val = 0.01, priors,
                                 prior_type = "uninformative",
+                                asymptote_observed = TRUE,
                                 timeout = Inf, predictor_scale = "auto") {
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
+  chk_flag(asymptote_observed)
   predictor_scale <- validate_predictor_scale(predictor_scale)
   chk_number(timeout)
   if (timeout <= 0) {
@@ -97,7 +104,8 @@ amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
     loo_controls = if (missing(loo_controls)) NULL else loo_controls,
     x_range = x_range, resolution = resolution, sig_val = sig_val,
     priors = if (missing(priors)) NULL else priors,
-    prior_type = prior_type, predictor_scale = predictor_scale,
+    prior_type = prior_type, asymptote_observed = asymptote_observed,
+    predictor_scale = predictor_scale,
     timeout = timeout
   )
 }
@@ -119,7 +127,7 @@ amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
 #' both <- amend(single, add = "ecxexp")
 #' }
 #'
-#' @importFrom chk chk_character chk_numeric chk_number
+#' @importFrom chk chk_character chk_numeric chk_number chk_flag
 #'
 #' @noRd
 #'
@@ -127,8 +135,10 @@ amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
 amend.bayesnecfit <- function(object, drop, add, loo_controls, x_range = NA,
                               resolution = 1000, sig_val = 0.01, priors,
                               prior_type = "uninformative",
+                              asymptote_observed = TRUE,
                               timeout = Inf, predictor_scale = "auto") {
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
+  chk_flag(asymptote_observed)
   predictor_scale <- validate_predictor_scale(predictor_scale)
   chk_number(timeout)
   if (timeout <= 0) {
@@ -162,7 +172,8 @@ amend.bayesnecfit <- function(object, drop, add, loo_controls, x_range = NA,
     loo_controls = if (missing(loo_controls)) NULL else loo_controls,
     x_range = x_range, resolution = resolution, sig_val = sig_val,
     priors = if (missing(priors)) NULL else priors,
-    prior_type = prior_type, predictor_scale = predictor_scale,
+    prior_type = prior_type, asymptote_observed = asymptote_observed,
+    predictor_scale = predictor_scale,
     timeout = timeout
   )
 }
@@ -204,6 +215,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
                             add = NULL, loo_controls = NULL, x_range = NA,
                             resolution = 1000, sig_val = 0.01, priors = NULL,
                             prior_type = "uninformative",
+                            asymptote_observed = TRUE,
                             predictor_scale = "auto", timeout = Inf) {
   general_error <- amend_general_error()
   if (!is.null(loo_controls)) {
@@ -334,6 +346,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
         # and is left alone here rather than changed as a side effect.
         brm_args$prior <- define_prior(
           model, family, x, y, prior_type = prior_type,
+          asymptote_observed = asymptote_observed,
           predictor_scale = predictor_scale,
           group_spec = parse_group_terms(formula, model)
         )
@@ -344,6 +357,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
         fit_bayesnec(
           formula = formula, data = data, model = model,
           brm_args = brm_args, skip_check = TRUE, prior_type = prior_type,
+          asymptote_observed = asymptote_observed,
           predictor_scale = predictor_scale,
           timeout = timeout
         ),
@@ -353,6 +367,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
     list(model_set = model_set, family = family, simdat = simdat,
          set_plan = set_plan, priors = priors, bdat = bdat,
          formula = formula, data = data, prior_type = prior_type,
+         asymptote_observed = asymptote_observed,
          predictor_scale = predictor_scale, timeout = timeout)
   )
   attempts <- bnec_parallel_lapply(which(needs_fit), fit_one,

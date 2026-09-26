@@ -1312,7 +1312,19 @@ test_that("a chain is accepted on its own, so a low per-chain rate still succeed
   }
   # The released rule, reimplemented here so the comparison does not depend on
   # a second working tree.
-  released_drawn <- function(seed, cap = 2000) {
+  #
+  # The cap is 20,000 rounds rather than the 2,000 it was when this test was
+  # written, because #393 lowered the per-chain acceptance rate on this design
+  # and the released rule needs the fourth power of it. Measured over 8,000
+  # draws on this design and equation: 0.188 with the nec prior truncated to
+  # the tested range and 0.171 without it, since 0.101 of that prior's mass now
+  # sits above the highest dose and a nec drawn there makes the curve flat at
+  # top. The 4-at-once expectation is therefore 803 rounds before and 1,163
+  # after, so a cap of 2,000 left one of these three seeds capped. At 20,000 the
+  # chance of a cap is below 1e-7 per seed. The three seeds together took 8.1 s,
+  # timed with system.time() in one Rscript process on one core on 2026-09-22;
+  # not measured on CI, where the suite runs two workers.
+  released_drawn <- function(seed, cap = 20000) {
     set.seed(seed)
     n <- 0
     passed <- FALSE
@@ -1741,4 +1753,162 @@ test_that("the spread threshold prefers the differences at two degrees of freedo
   y3 <- c(y, y[5] + 0.01, y[12] - 0.01, y[18] + 0.02)
   expect_false(isTRUE(all.equal(group_spread(x3, y3),
                                 successive_difference_spread(x3, y3))))
+})
+
+# ---------------------------------------------------------------------------
+# The initial-value band under a declared unobserved asymptote, #394
+# ---------------------------------------------------------------------------
+
+# A gaussian nec4param response whose series stops at a stated fraction of the
+# span from top to bot. The same device as the prior audit and as
+# test-define_prior.R: the series, the replication and the decay rate are held
+# and the threshold is placed, so the only thing that differs across settings
+# is how much of the curve the design shows.
+flat_design <- function(reached, seed = 394, top = 0.9, bot = 0.1,
+                        sigma = 0.02) {
+  x <- rep(c(0, 0.31, 0.63, 1.25, 2.5, 5, 10, 40), each = 5)
+  rate <- 2.5
+  nec <- max(x) + log(1 - reached) / rate
+  mu <- bot + (top - bot) * exp(-rate * (x - nec) * ifelse(x - nec < 0, 0, 1))
+  set.seed(seed)
+  list(x = x, y = stats::rnorm(length(mu), mu, sigma), nec = nec)
+}
+
+test_that("the band extends to the floor when declared (#394)", {
+  d <- flat_design(0.02)
+  fam <- validate_family("gaussian")
+  yl <- response_link_scale(d$y, fam)
+  released <- bayesnec:::init_limits(d$x, yl, zero_bounded = FALSE,
+                                     support = bayesnec:::init_support(fam))
+  declared <- bayesnec:::init_limits(
+    d$x, yl, zero_bounded = FALSE, support = bayesnec:::init_support(fam),
+    floor_value = bayesnec:::asymptote_floor(fam, yl))
+  expect_gt(released[1], 0)
+  expect_lte(declared[1], 0)
+  # The upper limit is untouched: the declaration says the asymptote may be
+  # lower than the response shows and never that it is higher.
+  expect_identical(released[2], declared[2])
+})
+
+test_that("a floor never narrows the band (#394)", {
+  # Applied through min(), so a band whose lower limit already sits below the
+  # floor -- which the spread places it below on a gaussian response with a low
+  # asymptote -- is left alone rather than being raised to it.
+  d <- flat_design(1 - exp(-5), sigma = 0.15)
+  fam <- validate_family("gaussian")
+  yl <- response_link_scale(d$y, fam)
+  released <- bayesnec:::init_limits(d$x, yl, zero_bounded = FALSE,
+                                     support = bayesnec:::init_support(fam))
+  declared <- bayesnec:::init_limits(
+    d$x, yl, zero_bounded = FALSE, support = bayesnec:::init_support(fam),
+    floor_value = 0)
+  expect_lt(released[1], 0)
+  expect_identical(released, declared)
+})
+
+test_that("the band stops short of a bounded family's floor (#394)", {
+  # On a bounded family the floor is the boundary of the support, which the
+  # likelihood cannot evaluate, so boundary_inset() holds the band strictly
+  # inside it. The band still reaches far below the observed response, which is
+  # what the declaration is for.
+  d <- flat_design(0.02)
+  fam <- validate_family("Beta")
+  y <- pmin(pmax(d$y, 1e-3), 1 - 1e-3)
+  yl <- response_link_scale(y, fam)
+  released <- bayesnec:::init_limits(d$x, yl, zero_bounded = FALSE,
+                                     support = bayesnec:::init_support(fam))
+  declared <- bayesnec:::init_limits(
+    d$x, yl, zero_bounded = FALSE, support = bayesnec:::init_support(fam),
+    floor_value = bayesnec:::asymptote_floor(fam, yl))
+  expect_gt(declared[1], 0)
+  expect_lt(declared[1], 0.01)
+  expect_lt(declared[1], released[1])
+})
+
+test_that("the band admits the curve the declared prior draws (#394)", {
+  # The item specification section 5.4 calls the one most likely to be missed.
+  # make_good_inits() rejects any initial curve whose predictions fall outside
+  # the band and, after n_trials rounds, hands the whole fit to Stan's own
+  # initialisation, so the failure mode is "Initialization failed" rather than
+  # a wrong number.
+  #
+  # Asserted on one curve rather than on the search, so that the result does
+  # not depend on a draw: a curve whose lower asymptote is at the floor is
+  # exactly what the declared bot prior exists to produce.
+  d <- flat_design(0.02)
+  fam <- validate_family("gaussian")
+  yl <- response_link_scale(d$y, fam)
+  released <- bayesnec:::init_limits(d$x, yl, zero_bounded = FALSE,
+                                     support = bayesnec:::init_support(fam))
+  declared <- bayesnec:::init_limits(
+    d$x, yl, zero_bounded = FALSE, support = bayesnec:::init_support(fam),
+    floor_value = bayesnec:::asymptote_floor(fam, yl))
+  init <- list(b_top = max(yl), b_bot = 0, b_nec = stats::median(d$x),
+               b_beta = 0)
+  pars <- c("b_beta", "b_bot", "b_nec", "b_top")
+  preds <- bayesnec:::get_init_predictions(
+    init, sort(d$x), bayesnec:::pred_nec4param, pars)
+  expect_false(bayesnec:::check_init_predictions(preds, released))
+  expect_true(bayesnec:::check_init_predictions(preds, declared))
+})
+
+test_that("the declared band accepts more of the prior's draws (#394)", {
+  # The same thing measured through the draws the search makes, rather than
+  # through the search, which is not a paired comparison: refine_inits() and
+  # the per-round redraw of the empty chains alone both consume random numbers,
+  # so the two arms diverge after the first acceptance differs and the number
+  # of rounds is not monotone in the width of the band. One fixed set of
+  # proposals scored against the two bands is.
+  #
+  # The audit reports the effect on the search itself, as a paired mean of
+  # -4.58 proposals over its 358 flattest cells.
+  d <- flat_design(0.02)
+  fam <- validate_family("gaussian")
+  yl <- response_link_scale(d$y, fam)
+  pr <- as.data.frame(suppressWarnings(suppressMessages(
+    define_prior("nec4param", fam, d$x, d$y, asymptote_observed = FALSE)
+  )))
+  pr <- pr[pr$class == "b", ]
+  released <- bayesnec:::init_limits(d$x, yl, zero_bounded = FALSE,
+                                     support = bayesnec:::init_support(fam))
+  declared <- bayesnec:::init_limits(
+    d$x, yl, zero_bounded = FALSE, support = bayesnec:::init_support(fam),
+    floor_value = bayesnec:::asymptote_floor(fam, yl))
+  pars <- c("b_beta", "b_bot", "b_nec", "b_top")
+  set.seed(394)
+  draws <- bayesnec:::make_inits("nec4param", pars, priors = pr, chains = 200)
+  accepted <- function(limits) {
+    sum(vapply(draws, function(init) {
+      bayesnec:::check_init_predictions(
+        bayesnec:::get_init_predictions(init, sort(d$x),
+                                        bayesnec:::pred_nec4param, pars),
+        limits)
+    }, logical(1)))
+  }
+  expect_gt(accepted(declared), accepted(released))
+})
+
+test_that("add_brm_defaults passes the declaration to the search (#394)", {
+  # One argument reaches define_prior() and make_good_inits() alike, so the
+  # band and the prior cannot be built under different declarations. Asserted
+  # by capturing what the search is given rather than by running it, which is
+  # stochastic and slow (#266).
+  d <- flat_design(0.02)
+  fam <- validate_family("gaussian")
+  seen <- new.env(parent = emptyenv())
+  local_mocked_bindings(
+    make_good_inits = function(..., asymptote_observed = TRUE) {
+      seen$declared <- asymptote_observed
+      list(random = "random")
+    },
+    .package = "bayesnec"
+  )
+  for (declared in c(TRUE, FALSE)) {
+    seen$declared <- NULL
+    suppressMessages(suppressWarnings(bayesnec:::add_brm_defaults(
+      brm_args = list(chains = 2, iter = 10), model = "nec4param",
+      family = fam, predictor = d$x, response = d$y, skip_check = TRUE,
+      custom_name = NULL, asymptote_observed = declared)))
+    expect_identical(seen$declared, declared)
+  }
 })

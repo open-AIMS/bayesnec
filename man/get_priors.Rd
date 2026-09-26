@@ -12,6 +12,7 @@ get_priors(object, ...)
   data,
   family = NULL,
   prior_type = "uninformative",
+  asymptote_observed = TRUE,
   model_survival = NULL,
   predictor_scale = "auto",
   ...
@@ -35,6 +36,12 @@ the way \code{\link{bnec}} would.}
 
 \item{prior_type}{A \code{\link[base]{character}} string, either
 \code{"uninformative"} (the default) or \code{"regularizing"}. See
+\code{\link{bnec}}.}
+
+\item{asymptote_observed}{A \code{\link[base]{logical}} declaring whether
+the highest predictor level reached the lower asymptote of the curve.
+\code{FALSE} replaces the \code{bot} entry, which is how the entries a fit
+under that declaration would use can be read without fitting. See
 \code{\link{bnec}}.}
 
 \item{model_survival}{An optional \code{\link[base]{character}} string naming

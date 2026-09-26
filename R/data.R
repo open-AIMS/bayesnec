@@ -133,7 +133,7 @@ NULL
 #'   test design.}
 #' }
 #'
-#' Between 79\% and 95\% of the deaths in each test fall into the two
+#' Between 79% and 95% of the deaths in each test fall into the two
 #' \code{"absent_"} categories, so most of the mortality is reinstated rather
 #' than read off the source file. This is a recording convention rather than a
 #' defect: a treatment in which nothing survived was simply not written down,

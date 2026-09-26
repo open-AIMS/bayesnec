@@ -65,6 +65,20 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   } else {
     mod_class <- "nec"
   }
+  # The two scales the bounds are needed on. A curve is searched on the
+  # recorded grid, so a draw the search did not identify is beyond an end of
+  # THAT grid, and its record is built there and remapped with
+  # xform_censoring(), which swaps the two ends for a decreasing crf(). A
+  # sampled b_nec_Intercept is already on the fitted scale and is compared
+  # against the fitted bounds directly. Non-finite entries are dropped because
+  # an x_range reaching 0 under crf(log(x)) puts -Inf at the foot of the fitted
+  # grid.
+  grid_recorded <- pred_data$x[is.finite(pred_data$x)]
+  grid_fitted <- sub_x_transformation(pred_data$x, formula)
+  grid_fitted <- grid_fitted[is.finite(grid_fitted)]
+  ne_upper <- max(grid_fitted)
+  ne_lower <- min(grid_fitted)
+  to_fitted_scale <- function(value) sub_x_transformation(value, formula)
   # NSEC read off a fitted curve, on the predictor scale the user supplied it
   # on. Used for smooth (ecx-type) models, which carry no threshold parameter,
   # and for any two-block fit where at least one block is smooth.
@@ -78,8 +92,13 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     # (D15 ruling 2). See #325.
     out <- nsec_from_posterior(post, reference, pred_data$x, pred_data$x[1],
                                post[, 1])
-    n_missing <- sum(is.na(out))
-    if (n_missing > 0) {
+    below <- attr(out, "below_range")
+    above <- is.na(out) & !below
+    cens <- xform_censoring(
+      censoring_record(max(grid_recorded), min(grid_recorded), above, below),
+      to_fitted_scale
+    )
+    if (sum(above) > 0) {
       # Names the equation. bnec() calls this once per model, so on the default
       # 23-model set an unnamed message says only that something somewhere is
       # censored, which is not enough to act on. It names the bound as a value
@@ -88,12 +107,26 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
       # wherever bnec() was given an x_range above the data.
       message("The fitted ", object$model, " curve does not fall to the ",
               "control's ", sig_val, " quantile within the predictor range ",
-              "for ", n_missing, " of ", length(out), " draws. Those draws ",
-              "are excluded from the NSEC summary, which is therefore ",
-              "censored above ",
-              signif(sub_x_transformation(max(pred_data$x), formula), 3), ".")
+              "for ", sum(above), " of ", length(out), " draws. The NSEC ",
+              "summary is censored at ",
+              signif(censored_end(cens, "above"), 3),
+              ": those draws keep their rank in it and are given no value.")
     }
-    sub_x_transformation(out, formula)
+    if (sum(below) > 0) {
+      message("The fitted ", object$model, " curve is already below the ",
+              "control's ", sig_val, " quantile where the predictor range ",
+              "begins, for ", sum(below), " of ", length(out), " draws. The ",
+              "NSEC summary is censored at ",
+              signif(censored_end(cens, "below"), 3), ".")
+    }
+    out <- sub_x_transformation(out, formula)
+    # The two attributes nsec_from_posterior() leaves for the reports above are
+    # dropped, and the record the summaries read replaces them.
+    attr(out, "n_below_range") <- NULL
+    attr(out, "below_range") <- NULL
+    attr(out, "x_searched_from") <- NULL
+    attr(out, "censored") <- cens
+    out
   }
   # Memoised alongside get_pred_posterior(). A smooth block on a hurdle fit
   # reaches this twice on the same posterior -- once for the response block and
@@ -112,6 +145,22 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     extracted_params$ne <- estimates_summary(ne_posterior)
   } else {
     ne_posterior <- as_draws_df(fit)[["b_nec_Intercept"]]
+    attr(ne_posterior, "censored") <- censoring_record(
+      ne_upper, ne_lower, ne_posterior >= ne_upper, ne_posterior <= ne_lower
+    )
+    # Only where a draw is beyond the grid. Left alone otherwise, so that the
+    # stored summary of an uncensored threshold posterior is still the one
+    # extract_pars() read off fixef(robust = TRUE) -- the same three statistics
+    # by a different route, and the number every archived analysis reports.
+    # A nec prior truncated to the tested range holds every draw inside the
+    # grid, so this branch was silent until #393 removed that truncation. It is
+    # live for a fit made since; for one made before, or for a user prior that
+    # bounds nec, it is silent unless the fit is amended with a wider bound.
+    if (has_censoring(attr(ne_posterior, "censored"))) {
+      extracted_params$ne <- estimates_summary(ne_posterior)
+      report_ne_censoring(attr(extracted_params$ne, "censored_summary"),
+                          object$model, "NEC")
+    }
   }
   pred_vals <- list(data = pred_data)
   # Hurdle fits carry a second block. Keep its threshold alongside the combined
@@ -136,6 +185,13 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
       # so the product is flat; it leaves that plateau at whichever threshold
       # binds first. Exact for threshold models on both blocks.
       combined_ne <- pmin(ne_posterior, hu_ne_posterior)
+      # Recorded off the combination rather than merged from the two blocks'
+      # records. The minimum of two draws is above the grid only where both
+      # are, and below it where either is, so deriving it here states that
+      # once instead of twice.
+      attr(combined_ne, "censored") <- censoring_record(
+        ne_upper, ne_lower, combined_ne >= ne_upper, combined_ne <= ne_lower
+      )
       ne_lab <- "NEC"
     } else {
       # With a smooth block on either side there is no threshold to take the
@@ -156,6 +212,13 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
                          ne_type = ne_lab)
     ne_posterior <- combined_ne
     extracted_params$ne <- estimates_summary(ne_posterior)
+    if (identical(ne_lab, "NEC")) {
+      # Only the two-threshold branch reports here. The other reaches its
+      # combination through nsec_off_curve(), which has already said the same
+      # thing about the same draws.
+      report_ne_censoring(attr(extracted_params$ne, "censored_summary"),
+                          object$model, ne_lab)
+    }
   }
   od <- dispersion(object, summary = TRUE)
   if (length(od) == 0) {
@@ -402,6 +465,17 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
                                     draw_seed)
   ne_posterior <- unlist(lapply(success_models, w_nec_calc,
                                  object, draw_index))
+  # The combined record, assembled under the same draw index as the mixture
+  # itself, so that the censored fraction it reports is the weighted one. A
+  # count over equations would give a component holding one per cent of the
+  # weight the same standing in that fraction as the dominant one.
+  attr(ne_posterior, "censored") <- concat_censoring(
+    lapply(success_models, function(m) {
+      subset_censoring(attr(object[[m]]$ne_posterior, "censored"),
+                       draw_index[[m]])
+    }),
+    vapply(success_models, function(m) length(draw_index[[m]]), integer(1))
+  )
   y_pred <- rowSums(do_wrapper(success_models, w_pred_calc,
                                object, mod_stats))
   # Each model's posterior over the prediction grid is computed here and
@@ -418,6 +492,10 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
                      data.frame(t(apply(post_pred, 2,
                                         estimates_summary))))
   nec <- estimates_summary(ne_posterior)
+  # Once for the set. The per-equation reports above say which curves did not
+  # reach the reference; this one says what that leaves of the estimate the
+  # user reports, which was available nowhere before.
+  report_ne_censoring(attr(nec, "censored_summary"), "model-averaged", ne_lab)
   # post_pred itself is not kept: it was w_pred_vals$posterior, which nothing in
   # the package read and which became the dominant cost once the per-model
   # matrices went. pred_data, the summary the plot methods use, is built from it
@@ -430,4 +508,38 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
               w_pred_vals = list(data = pred_data),
               w_ne = nec, ne_type = ne_lab)
   retain_shared_data(out, retained_sources)
+}
+
+#' Report the censoring of a stored no-effect summary, once
+#'
+#' Raised from \code{\link{expand_nec}} and \code{expand_manec()} as the
+#' posterior is realised, which is where \code{\link{bnec}} reaches it. A
+#' message rather than a warning: the estimate is reported and usable, and the
+#' warning channel is already carrying the per-draw reports the estimators
+#' raise.
+#'
+#' @param cens The \code{"censored_summary"} attribute of a summary.
+#' @param what A \code{\link[base]{character}} naming the fit or equation.
+#' @param label A \code{\link[base]{character}} naming the estimate type.
+#'
+#' @return \code{NULL}, invisibly. Called for the message.
+#' @noRd
+report_ne_censoring <- function(cens, what, label = "N(S)EC") {
+  if (is.null(cens)) {
+    return(invisible(NULL))
+  }
+  if (cens$n_above > 0) {
+    message("The ", what, " ", label, " is censored above ",
+            signif(cens$upper, 3), ", the upper bound of the prediction ",
+            "range: ", cens$n_above, " of ", cens$n_draws, " draws lie at or ",
+            "beyond it. They keep their rank in the summary and are given no ",
+            "value, so any reported quantile falling among them is a bound.")
+  }
+  if (cens$n_below > 0) {
+    message("The ", what, " ", label, " is censored below ",
+            signif(cens$lower, 3), ", the lower bound of the prediction ",
+            "range: ", cens$n_below, " of ", cens$n_draws, " draws lie at or ",
+            "beyond it.")
+  }
+  invisible(NULL)
 }

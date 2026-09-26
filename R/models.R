@@ -55,9 +55,10 @@
 #' \code{x^(1 / (1 + exp(slope)))} contributes exactly 1 at \code{x = 1}
 #' whatever "slope" is, and below the threshold the decay factor is 1, so the
 #' fitted mean is at least \code{top + 1} at any concentration at or above 1
-#' that falls strictly below "nec". Since "nec" is bounded to the predictor
-#' range, every such value is one the sampler is free to propose, and each
-#' proposal is outside the likelihood's support. More generally the exponent
+#' that falls strictly below "nec". The prior on "nec" places mass across the
+#' predictor range, so every such value is one the sampler is free to propose,
+#' and each proposal is outside the likelihood's support. More generally the
+#' exponent
 #' \code{1 / (1 + exp(slope))} tends to 0 as "slope" grows, so the term tends to
 #' 1 for every concentration above 0 and the mean below the threshold tends to
 #' \code{top + 1}. For any "top" above 0 there is therefore a "slope" at which
@@ -93,6 +94,14 @@
 #' group name does not do is state which equations that check will keep. Code
 #' that needs the admissible set should ask for it directly, by passing the
 #' numeric range --- \code{models(c(0, 1))} --- rather than reading a group.
+#'
+#' The \code{"bot_free"} group contains the fourteen equations with no
+#' \code{bot} parameter. It includes the eleven equations in
+#' \code{"zero_bounded"}, whose fitted mean falls to zero, and the three
+#' linear-decay equations \code{"neclin"}, \code{"neclinhorme"} and
+#' \code{"ecxlin"}, whose fitted mean is unbounded below. The name therefore
+#' does not mean that \code{bot} is estimated freely or that every equation in
+#' the group approaches zero.
 #'
 #' Set \code{max_pars} to restrict the resolved set to equations with no more
 #' than that number of curve parameters. The limit can be used by itself or

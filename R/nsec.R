@@ -17,6 +17,12 @@
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
+#' @param extrapolate The bound beyond which the estimate is reported as
+#' censored. \code{FALSE}, the default, censors at the ends of the prediction
+#' grid. A single number is an upper limit, and a pair of numbers is a lower
+#' and an upper limit, in that order; the grid is extended to reach them.
+#' \code{TRUE} is refused here, because every NSEC is read off a fitted curve.
+#' See the \emph{Extrapolation} section of \code{\link{nsec}}.
 #' @param dpar For a joint two-block fit only (\code{family = "hurdle_gamma"},
 #' \code{"zero_inflated_beta"}, \code{"hurdle_poisson"} or
 #' \code{"hurdle_negbinomial"}), the parameter block to report:
@@ -109,6 +115,73 @@
 #' @return A vector containing the estimated NSEC value, including upper and
 #' lower 95% credible interval bounds.
 #'
+#' @section Capping and dropping:
+#' A draw whose curve does not reach the target anywhere in the prediction
+#' range has no such concentration in that range, and may have none at any
+#' concentration. It is not capped at the top of the range, which would assert
+#' that its estimate equals that value; it is recorded as lying beyond it. The
+#' summary is then censored: the draw keeps its rank and is given no value, so
+#' a reported quantile that falls among such draws is the end of the prediction
+#' range rather than a quantile of the draws that did reach the target.
+#' Attribute \code{"censored_summary"} marks which entries those are, and
+#' states how many draws lie beyond each end and where the ends are. A draw
+#' whose curve had already passed the target where the range begins is recorded
+#' at the other end and reported the same way.
+#'
+#' Which quantile estimator is used depends on whether anything is censored.
+#' A posterior with no beyond-range draw is summarised exactly as it was up to
+#' version 2.1.3, with \code{\link[stats]{quantile}}'s default type 7, which
+#' interpolates between two adjacent order statistics. Once any draw is
+#' censored every reported entry becomes an order statistic instead, because a
+#' value interpolated across a draw that has no value would be one the
+#' posterior does not support.
+#' Every entry therefore changes a little when the first draw is censored,
+#' including entries at the other end of the interval. Keeping the uncensored
+#' summary bit-identical to the release was preferred to making the two agree
+#' at the boundary, because every archived analysis is compared against it.
+#'
+#' Up to version 2.1.3 such a draw was deleted and the remaining draws were
+#' summarised as though nothing had been removed, which reported an estimate
+#' lower than the quantity it was labelled as, with an interval narrower than
+#' the posterior supports. See \code{\link{nec}} for the same treatment of a
+#' threshold parameter, where the draw does have a value and the operation is
+#' right-censoring in the ordinary sense.
+#'
+#' @section Extrapolation:
+#' \code{extrapolate} chooses the bound the estimate is censored at, on the
+#' same predictor scale as \code{x_range} and the data, not the scale
+#' \code{crf()} fits on and not the scale \code{xform} displays.
+#'
+#' \code{TRUE} asks for no bound at either end, and is an error here whatever
+#' the fit is. An NSEC is the concentration at which a fitted curve reaches a
+#' reference, so reading one means evaluating that curve on a grid, and no grid
+#' reaches infinity. Name a finite limit instead.
+#'
+#' A finite limit extends the grid the curve is searched on and then censors
+#' there, so \code{extrapolate} does through a checked argument what
+#' \code{x_range} does through an unchecked one: a limit inside the current
+#' range is an error rather than a silent tightening, because it would report
+#' an estimate as censored at a value the fit had no trouble identifying. Use
+#' \code{x_range} to narrow the range.
+#'
+#' A limit is measured against the range this call would otherwise use.
+#' Where \code{x_range} is given, that is the range, at both ends: it is a
+#' deliberate narrowing, and \code{extrapolate} extends from it rather than
+#' discarding it. Where it is not, the range is the wider of the observed range
+#' of the predictor and the prediction range the fit itself stores, which
+#' differ for a fit built over a grid above the data; a limit between them
+#' would report the estimate as censored inside the grid the fit was built on,
+#' so both have to be cleared. \code{\link{nec}} measures against that stored
+#' grid alone, having no \code{x_range} of its own, so the two agree on a fit
+#' whose grid reaches beyond the data and can differ on one whose grid stops
+#' short of it.
+#'
+#' A lower limit extends the grid but not the search. The reference is a
+#' quantile of the control posterior, so the control is where the search
+#' begins, and a draw already past the reference there has no identifiable
+#' crossing at any lower concentration. Such a limit is accepted, and a message
+#' states that the estimate stays censored at the control.
+#'
 #' @references
 #' Fisher R, Fox DR (2023). Introducing the no significant effect concentration
 #' (NSEC). Environmental Toxicology and Chemistry, 42(9), 2019–2028.
@@ -128,7 +201,8 @@
 # (nsec.drc, nsec.brmsfit) absorb it through their own `...`.
 nsec <- function(object, sig_val = 0.01, resolution = 200,
                  x_range = NA,
-                 xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...,
+                 xform = identity, prob_vals = c(0.5, 0.025, 0.975),
+                 extrapolate = FALSE, ...,
                  dpar = NULL) {
   UseMethod("nsec")
 }
@@ -152,7 +226,8 @@ nsec <- function(object, sig_val = 0.01, resolution = 200,
 #' @export
 nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
                              x_range = NA,
-                             xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...,
+                             xform = identity, prob_vals = c(0.5, 0.025, 0.975),
+                             extrapolate = FALSE, ...,
                              posterior = FALSE, dpar = NULL) {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
@@ -168,6 +243,18 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
+  }
+  # extrapolate resolves into x_range, because the grid is the only thing an
+  # NSEC can be extended over: the estimate is read off a curve and the curve
+  # is read off the grid. What extrapolate adds over x_range is the refusal to
+  # narrow and the refusal of an infinite limit, both of which a bare x_range
+  # accepts silently.
+  lims <- extrapolate_limits(extrapolate,
+                             searched_or_stored_bounds(object, x_range),
+                             "NSEC")
+  if (!is.null(lims)) {
+    report_curve_read_lower_limit(object, lims)
+    x_range <- c(lims$lower, lims$upper)
   }
   newdata_list <- newdata_eval(
     object, resolution = resolution, x_range = x_range
@@ -205,42 +292,59 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
   # the estimate is, and one message for both would say of each the thing that
   # is true of the other. Counted before sub_x_transformation(), which returns a
   # bare value.
-  n_below <- attr(nsec_out, "n_below_range")
+  below <- attr(nsec_out, "below_range")
+  n_below <- sum(below)
   searched_from <- attr(nsec_out, "x_searched_from")
-  n_above <- sum(is.na(nsec_out)) - n_below
+  above <- is.na(nsec_out) & !below
+  n_above <- sum(above)
   nsec_out <- sub_x_transformation(nsec_out, object$bayesnecformula)
-  bound <- sub_x_transformation(max(x_vec), object$bayesnecformula)
-  lower <- sub_x_transformation(searched_from, object$bayesnecformula)
+  # The record is built here rather than read off the fit, because nsec() works
+  # on a grid the caller may have changed through x_range. Its lower bound is
+  # the point the search started from, which is what a below-range draw is
+  # known to lie beneath, and not min(x_vec): the two differ wherever the grid
+  # reaches below the control. It is built on the recorded scale, the scale the
+  # search ran on, and remapped onto the fitted scale, which swaps the two ends
+  # under a decreasing crf(). See the same construction in ecx.bayesnecfit.
+  cens <- xform_censoring(
+    censoring_record(max(x_vec), searched_from, above, below),
+    function(value) sub_x_transformation(value, object$bayesnecformula)
+  )
   # xform reaches the censoring bounds as well as the estimates, and the
   # warnings follow both, so that a bound is on the scale the caller reads the
   # estimate on. See the same reordering in ecx.bayesnecfit.
   if (inherits(xform, "function")) {
     nsec_out <- xform(nsec_out)
-    bound <- xform(bound)
-    lower <- xform(lower)
+    cens <- xform_censoring(cens, xform)
   }
+  # The end each class is named at comes from the record's own flag rather than
+  # from a local variable, so that a decreasing crf() or xform reports each set
+  # of draws at the end of the reported scale they actually lie beyond, and does
+  # so where draws sit at both ends at once.
   if (n_above > 0) {
     warning("The ", object$model, " curve does not fall below the control's ",
             sig_val, " quantile anywhere in the predictor range for ",
-            n_above, " of ", length(nsec_out), " draws, which return NA. ",
-            "The NSEC is censored above ", signif(bound, 3), ".",
-            call. = FALSE)
+            n_above, " of ", length(nsec_out), " draws. The NSEC is censored ",
+            "at ", signif(censored_end(cens, "above"), 3),
+            ": those draws keep their rank in the summary and are given no ",
+            "value.", call. = FALSE)
   }
   if (n_below > 0) {
+    below_at <- signif(censored_end(cens, "below"), 3)
     warning("The ", object$model, " curve falls below the control's ", sig_val,
-            " quantile before ", signif(lower, 3), ", the lowest concentration ",
-            "in the prediction range, for ", n_below, " of ", length(nsec_out),
-            " draws, which return NA. Their NSEC lies between the control and ",
-            signif(lower, 3), ", which this x_range does not cover.",
-            call. = FALSE)
+            " quantile before ", below_at, ", the lowest concentration in the ",
+            "prediction range, for ", n_below, " of ", length(nsec_out),
+            " draws. The NSEC is censored at ", below_at,
+            ", which this x_range does not cover.", call. = FALSE)
   }
-  # sub_x_transformation() returns the vector with its attributes, so the two
+  # sub_x_transformation() returns the vector with its attributes, so the three
   # nsec_from_posterior() left for the warnings would otherwise reach the caller,
   # and only on this class: the bayesmanecfit path subsets by draw index and
-  # drops them.
+  # drops them. The censoring record replaces them and is meant to travel.
   attr(nsec_out, "n_below_range") <- NULL
+  attr(nsec_out, "below_range") <- NULL
   attr(nsec_out, "x_searched_from") <- NULL
-  nsec_estimate <- quantile(unlist(nsec_out), probs = prob_vals, na.rm = TRUE)
+  attr(nsec_out, "censored") <- cens
+  nsec_estimate <- summarise_censored(unlist(nsec_out), prob_vals, cens)
   names(nsec_estimate) <- clean_names(nsec_estimate)
   attr(nsec_estimate, "resolution") <- resolution
   attr(nsec_out, "resolution") <- resolution
@@ -274,12 +378,24 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
 #' @export
 nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 200,
                                x_range = NA,
-                               xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...,
+                               xform = identity, prob_vals = c(0.5, 0.025, 0.975),
+                               extrapolate = FALSE, ...,
                                posterior = FALSE, dpar = NULL) {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   if (length(sig_val)>1) {
     stop("You may only pass one sig_val")
+  }
+  # Resolved once for the set and passed down as x_range, so that every
+  # component is searched over one grid. Resolving it again inside each
+  # component call would measure each limit against that component's own
+  # range.
+  lims <- extrapolate_limits(extrapolate,
+                             searched_or_stored_bounds(object, x_range),
+                             "NSEC")
+  if (!is.null(lims)) {
+    report_curve_read_lower_limit(object, lims)
+    x_range <- c(lims$lower, lims$upper)
   }
   sample_size <- object$sample_size
   # The same weighted index every other quantity on this object uses, rather
@@ -305,6 +421,12 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 200,
     sample_out <- out[idx]
     attr(sample_out, "ecnsec_relativeP") <-
       attributes(out)$ecnsec_relativeP[idx]
+    # Subsetting drops the record, so the share of it that belongs to these
+    # draws is rebuilt here. Without this a single fit and the
+    # one-model average of it would report the same quantity two different
+    # ways, and pull_out() would change a number without changing a model.
+    attr(sample_out, "censored") <-
+      subset_censoring(attr(out, "censored"), idx)
     sample_out
   }
   to_iter <- seq_len(length(object$success_models))
@@ -312,8 +434,11 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 200,
   ecnsecP <- unlist(lapply(nsec_out, 
                     FUN = function(p){attributes(p)$ecnsec_relativeP}))
   ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
-  nsec_out <- unlist(nsec_out)
-  nsec_estimate <- quantile(nsec_out, probs = prob_vals, na.rm = TRUE)
+  cens <- concat_censoring(lapply(nsec_out, attr, "censored"),
+                           vapply(nsec_out, length, integer(1)))
+  nsec_out <- unlist(lapply(nsec_out, as.numeric))
+  attr(nsec_out, "censored") <- cens
+  nsec_estimate <- summarise_censored(nsec_out, prob_vals, cens)
   names(nsec_estimate) <- clean_names(nsec_estimate)
   attr(nsec_estimate, "resolution") <- resolution
   attr(nsec_out, "resolution") <- resolution
@@ -353,7 +478,8 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 200,
 #' @export
 nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,    
                          x_range = NA,
-                         xform = identity, prob_vals = c(0.5, 0.025, 0.975), ..., 
+                         xform = identity, prob_vals = c(0.5, 0.025, 0.975),
+                         extrapolate = FALSE, ..., 
                          posterior = FALSE,
                          x_var, 
                          group_var = NA, 
@@ -375,6 +501,7 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,
   if (missing(x_var)) {
     stop("x_var must be supplied for a brmsfit object.")    
   }  
+  check_no_extrapolate(extrapolate, "brmsfit")
   if (by_group & is.na(group_var)){
     stop("You must specify a group_by variable if you want values returned by groups.")
   }
@@ -461,6 +588,14 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,
   
   if(posterior & is.na(group_var)){ 
     out_vals <- unlist(nsec_out)
+    # below_range is the per-draw vector nsec_from_posterior() adds for the
+    # censoring record. This method builds no record -- it has no
+    # bayesnecformula to take a bound from, and it summarises with quantile()
+    # and no na.rm, so a beyond-range draw raises an error here rather than
+    # being deleted in silence -- so the vector it would otherwise return is
+    # dropped. The n_below_range and x_searched_from this method has always
+    # returned are left alone: they are not this branch's to change.
+    attr(out_vals, "below_range") <- NULL
     attr(out_vals, "ecnsec_relativeP") <- ecnsecP
   }
   
@@ -494,10 +629,12 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,
 #' @export
 nsec.drc <- function(object, sig_val = 0.01, resolution = 200,
                      x_range = NA,
-                     xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...,
+                     xform = identity, prob_vals = c(0.5, 0.025, 0.975),
+                     extrapolate = FALSE, ...,
                      x_var,
                      horme = FALSE,
                      curveid = NA) {
+  check_no_extrapolate(extrapolate, "drc")
   chk_numeric(sig_val)
   chk_numeric(resolution)
   

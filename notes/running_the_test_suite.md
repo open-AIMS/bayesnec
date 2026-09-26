@@ -64,3 +64,38 @@ number that leaves it room --- the suite is not the only thing that matters.
 **Without `NOT_CRAN=true` the suite reports zero failures while skipping nearly
 every assertion**, because most files open with `skip_on_cran()`. A clean run
 that finishes suspiciously quickly is that, not success.
+
+`R-CMD-check.yaml` does not set it in its own `env:` block, and the only
+`NOT_CRAN` under `.github/` is in `precompile-vignettes.yaml`, so the workflow
+file reads as though CI skips the fitting tests. It does not:
+`r-lib/actions/check-r-package` sets `NOT_CRAN: true` itself. Read the run's
+testthat line rather than the workflow to settle it --- on `2026-09-22`,
+`ubuntu-latest (release)` reported `FAIL 0 | WARN 19 | SKIP 4 | PASS 5061` with
+`checking tests` taking 25 minutes. So the four-platform matrix is a full-suite
+run and is better evidence than one local one.
+
+## Green checks that mean less than they appear
+
+Both were found in the #393 review.
+
+### A deadlocked worker against a slow fit
+
+Two consecutive parallel runs stalled on the same file for over an hour. The worker had accumulated **zero**
+seconds of CPU time while blocked in `poll_schedule_timeout`, which is a
+deadlock. Check `ps -o etime,times,wchan` on the worker before waiting or
+timing; a run that has not finished is not necessarily a run that is working.
+
+### The limits of `tools::checkRd()`
+
+It validates; only rendering reveals. A man page silently dropped the second
+half of four sentences and `checkRd()` passed it, as did four
+`R CMD check` platforms. The cause was `\\%` in the generated Rd, which is valid
+Rd: the backslash renders and the bare `%` after it opens a comment to end of
+line. It comes from writing `\%` in a roxygen block under
+`Roxygen: list(markdown = TRUE)`, where `%` is not an escapable character, so
+roxygen2 emits a literal backslash and then escapes the percent itself. Write a
+bare `%` in the roxygen. The detector is `git grep '\\\\%' -- man/` and not a
+grep over `R/`, because the same source habit is harmless inside `@noRd`, where
+no Rd is generated. After #393, `man/check_fit.Rd` and `man/nassarius.Rd` still
+have it. Render a man page and read it before trusting a documentation change:
+`Rscript -e 'tools::Rd2txt("man/<topic>.Rd", out = stdout())'`.

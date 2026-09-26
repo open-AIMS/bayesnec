@@ -135,6 +135,11 @@ get_priors.bayesnechurdlefit <- function(object, ...) {
 #' @param prior_type A \code{\link[base]{character}} string, either
 #' \code{"uninformative"} (the default) or \code{"regularizing"}. See
 #' \code{\link{bnec}}.
+#' @param asymptote_observed A \code{\link[base]{logical}} declaring whether
+#' the highest predictor level reached the lower asymptote of the curve.
+#' \code{FALSE} replaces the \code{bot} entry, which is how the entries a fit
+#' under that declaration would use can be read without fitting. See
+#' \code{\link{bnec}}.
 #' @param predictor_scale A \code{\link[base]{character}} string declaring
 #' whether the predictor is supplied as \code{"concentration"}, already
 #' \code{"log"} transformed, or should use the existing \code{"auto"} rule.
@@ -148,10 +153,12 @@ get_priors.bayesnechurdlefit <- function(object, ...) {
 #' @method get_priors formula
 #'
 #' @importFrom stats model.frame
+#' @importFrom chk chk_flag
 #'
 #' @export
 get_priors.formula <- function(object, data, family = NULL,
                                prior_type = "uninformative",
+                               asymptote_observed = TRUE,
                                model_survival = NULL,
                                predictor_scale = "auto", ...) {
   # bayesnecformula() returns an object whose class is c("formula",
@@ -165,6 +172,7 @@ get_priors.formula <- function(object, data, family = NULL,
          call. = FALSE)
   }
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
+  chk_flag(asymptote_observed)
   predictor_scale <- validate_predictor_scale(predictor_scale)
   bdat <- model.frame(object, data = data, run_par_checks = TRUE)
   validate_predictor_scale(
@@ -217,7 +225,9 @@ get_priors.formula <- function(object, data, family = NULL,
       y <- y / checked$mod_dat$denom
     }
     define_prior(m, checked$family, checked$mod_dat$x, y,
-                 prior_type = prior_type, model_survival = model_survival,
+                 prior_type = prior_type,
+                 asymptote_observed = asymptote_observed,
+                 model_survival = model_survival,
                  predictor_scale = predictor_scale,
                  disp_spec = disp_spec,
                  group_spec = parse_group_terms(single_form, m))

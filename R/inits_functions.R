@@ -631,14 +631,29 @@ group_spread <- function(x, y) {
 #' mean mapped onto the scale the curve is on. The clauses that read it are
 #' strict inequalities, so the curve is required strictly inside.
 #'
-#' \strong{What the band does not fix.} Where the highest concentration has not
-#' reached the lower asymptote, every level mean and both anchors sit above the
-#' true \code{bot} and widening does not reach it: over the simulated designs
-#' whose predictor stops short of the crossing, coverage is 0.160 at a width
-#' of four and 0.172 at five, against 0.003 at one.
-#' limitation \code{\link{regularizing_location}} records for the regularizing
-#' prior. The released criterion is affected identically, and worse, because
-#' \code{min(y)} is above the true asymptote on such a design as well.
+#' \strong{What the width does not fix, and what \code{floor_value} does.}
+#' Where the highest concentration has not reached the lower asymptote, every
+#' level mean and both anchors sit above the true \code{bot} and widening does
+#' not reach it: over the simulated designs whose predictor stops short of the
+#' crossing, coverage is 0.160 at a width of four and 0.172 at five, against
+#' 0.003 at one.
+#' That is the limitation \code{\link{regularizing_location}} records for the
+#' regularizing prior. The released criterion is affected identically, and
+#' worse, because \code{min(y)} is above the true asymptote on such a design as
+#' well.
+#'
+#' No width covers it because the quantity the width scales --- the spread of
+#' the response --- is itself small on a flat design, so \code{floor} states the
+#' other end of the interval outright rather than scaling towards it. It is
+#' supplied by \code{\link{make_good_inits}} from \code{\link{asymptote_floor}}
+#' under \code{asymptote_observed = FALSE}, and is the same value
+#' \code{\link{define_prior}} spans the \code{bot} prior from, so the band
+#' cannot reject the draws that prior is there to produce.
+#'
+#' @param floor_value The lowest value the mean can take, or \code{NA_real_}
+#' where the band is not to be extended. Applied through \code{min()}, so it
+#' widens the band and never narrows it, and is then clamped to \code{support}
+#' with everything else.
 #'
 #' @return A \code{\link[base]{numeric}} vector of length 2, the lower and
 #' upper bound in that order.
@@ -646,7 +661,8 @@ group_spread <- function(x, y) {
 #' @noRd
 init_limits <- function(x, y, width = 4, zero_bounded = FALSE,
                         support = c(-Inf, Inf),
-                        spread_fn = group_spread) {
+                        spread_fn = group_spread,
+                        floor_value = NA_real_) {
   keep <- is.finite(x) & is.finite(y)
   x <- x[keep]
   y <- y[keep]
@@ -693,6 +709,19 @@ init_limits <- function(x, y, width = 4, zero_bounded = FALSE,
   }
   if (!all(is.finite(out)) || out[1] > out[2]) {
     out <- range(y, na.rm = TRUE)
+  }
+  # Under asymptote_observed = FALSE the bot prior is placed between the floor
+  # and the observed endpoint, so draws below every level mean are exactly what
+  # the search is now meant to produce and the band has to admit them.
+  #
+  # min(), not assignment. The declaration is a statement that the true
+  # asymptote may be lower than the response shows, and never that it is higher,
+  # so it may only widen the band: on a gaussian response the spread already
+  # places the lower limit below zero, and assigning the floor there would
+  # narrow the band and reject draws the released search accepts. The upper
+  # limit is untouched for the same reason.
+  if (is.finite(floor_value)) {
+    out[1] <- min(out[1], floor_value)
   }
   if (!all(is.finite(out))) {
     # Unreachable on a non-empty finite response, since range(y) is finite
@@ -879,6 +908,10 @@ boundary_inset <- function(edge, bound, centres, spread, y, side,
 #' given seed produces do not depend on how busy the machine is.
 #' @param n_trials A \code{\link[base]{numeric}} vector indicating
 #' how many attempts the function should run before giving up.
+#' @param asymptote_observed A \code{\link[base]{logical}}. \code{FALSE}
+#' extends the band down to \code{\link{asymptote_floor}}, which is where
+#' \code{\link{define_prior}} places the bottom of the \code{bot} prior under
+#' the same declaration.
 #' @param seed A \code{\link[base]{numeric}} vector of length 1, or
 #' \code{NULL}. Defaults to \code{NULL}, and \code{NA} --- which is how
 #' \pkg{brms} writes "no seed" --- is read the same way. Where it is
@@ -994,9 +1027,21 @@ boundary_inset <- function(edge, bound, centres, spread, y, side,
 #'
 #' @noRd
 make_good_inits <- function(model, x, y, family, n_trials = 1e4, seed = NULL,
-                            report_after = 20, ...) {
+                            report_after = 20, asymptote_observed = TRUE,
+                            ...) {
+  # NA where the declaration was not made, and NA as well where no floor can be
+  # derived. define_prior() refuses the second case, and bnec() refuses it
+  # before its model loop, so reaching here with NA under a declaration means
+  # the caller came through neither; the band is then left as it was rather than
+  # a second refusal being raised from inside an initial-value search.
+  init_floor <- if (asymptote_observed) {
+    NA_real_
+  } else {
+    asymptote_floor(family, y)
+  }
   limits <- init_limits(x, y, zero_bounded = zero_bounded_family(family),
-                        support = init_support(family))
+                        support = init_support(family),
+                        floor_value = init_floor)
   pred_fct <- get(paste0("pred_", model))
   fct_args <- names(unlist(as.list(args(pred_fct))))
   fct_args <- setdiff(fct_args, "x")
@@ -1076,6 +1121,24 @@ make_good_inits <- function(model, x, y, family, n_trials = 1e4, seed = NULL,
     }
   }
   if (any(!filled)) {
+    # What Stan does from here depends on how the nec prior is declared, and
+    # #393 changed that. Stan draws uniform(-2, 2) on the unconstrained scale
+    # and applies the constraint transform, so a parameter declared
+    # <lower=a, upper=b> starts inside the tested series, one declared
+    # <lower=0> starts in (0.135, 7.39) whatever the units of the series, and
+    # an unconstrained one starts in (-2, 2). Before #393 every nec was
+    # two-sided and the fallback therefore started inside the design; now the
+    # lognormal branch is one-sided and the normal branch -- a predictor the
+    # user supplied already logged -- is unconstrained, where a series spanning
+    # log(10) to log(10000) gets a fallback below every dose. The fallback is
+    # reached no more often than before, and rather less: over the 5,760-cell
+    # prior audit of #391, re-run for #393, the count fell from 27 cells to 21.
+    # That audit caps its own search at 200 rounds rather than the 1e4 this
+    # function takes, so those two counts bound how often a shipped fit reaches
+    # here from above and are not a rate for it.
+    # What changed is where it starts when it is reached. Supplying `init`
+    # through bnec() is the remedy, and this message names get_priors() so the
+    # entry can be read first.
     elapsed <- as.numeric(Sys.time() - started, units = "secs")
     message("bayesnec failed to find initial values for all ", chains,
             " chains of the ", model, " model after ", n_t, " attempts and ",
@@ -1124,7 +1187,8 @@ make_good_inits <- function(model, x, y, family, n_trials = 1e4, seed = NULL,
 #' @noRd
 make_good_hurdle_inits <- function(model, predictor, response, priors, chains,
                                    family, dpar = "hu", seed = NULL,
-                                   model_survival = NULL, ...) {
+                                   model_survival = NULL,
+                                   asymptote_observed = TRUE, ...) {
   if (is.null(model_survival)) {
     model_survival <- model
   }
@@ -1139,12 +1203,16 @@ make_good_hurdle_inits <- function(model, predictor, response, priors, chains,
   # block, and bernoulli with an identity link for the second, whose response is
   # the proportion surviving. Passing the joint family to either would give the
   # wrong support -- (0, Inf) for a block whose mean is a proportion.
+  # The declaration reaches both blocks, matching define_hurdle_prior(), which
+  # gives both a bot prior spanning from the floor.
   mu_inits <- make_good_inits(model, parts$mu$x, parts$mu$y,
                               family = hurdle_mu_family(family), priors = mu_pr,
-                              chains = chains, seed = seed, ...)
+                              chains = chains, seed = seed,
+                              asymptote_observed = asymptote_observed, ...)
   hu_inits <- make_good_inits(model_survival, parts$hu$x, parts$hu$y,
                               family = bernoulli(link = "identity"),
-                              priors = hu_pr, chains = chains, seed = seed, ...)
+                              priors = hu_pr, chains = chains, seed = seed,
+                              asymptote_observed = asymptote_observed, ...)
   # If either block fell back to Stan's random initialisation there is nothing
   # coherent to merge -- hand the whole fit to Stan rather than half-priming it.
   fell_back <- function(x) length(x) == 1 && "random" %in% names(x)

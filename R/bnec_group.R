@@ -213,6 +213,8 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # cannot be read from is one bnec() is about to refuse, so the failure is
   # left to arrive from there and nothing is reported meanwhile.
   requested_models <- try(get_model_from_formula(formula), silent = TRUE)
+  level_sets <- character(0)
+  level_survival <- NULL
   if (!inherits(requested_models, "try-error")) {
     level_models <- setNames(lapply(levs, function(level) {
       suppressMessages(
@@ -221,10 +223,10 @@ bnec_group <- function(formula, data, group_var, family = NULL,
       )
     }), levs)
     level_survival <- suppressMessages(
-      check_model_survival(dots[["model_survival"]], family, mod_dat)
+      check_model_survival(dots_arg(dots, "model_survival"), family, mod_dat)
     )
     sensitive_blocks <- lapply(level_models, function(models) {
-      uses_response_range_defaults(dots[["prior"]], models, family,
+      uses_response_range_defaults(dots_arg(dots, "prior"), models, family,
                                    level_survival)
     })
     if (any(unlist(sensitive_blocks, use.names = FALSE))) {
@@ -236,8 +238,36 @@ bnec_group <- function(formula, data, group_var, family = NULL,
         pool_dispersion = is.null(parse_disp_term(formula))
       )
     }
+    # The union of the per-level sets, which is what a crossed model average
+    # covers: an equation check_models() keeps in any level is one some level
+    # will fit.
+    level_sets <- unique(unlist(level_models, use.names = FALSE))
   }
   dots[[".bayesnec_flatness_checked"]] <- TRUE
+  # Raised once over the whole response, before any level is fitted. Left to
+  # the inner bnec() calls, the refusal would arrive only after the levels
+  # before it had compiled and sampled, and the mixed-set report would be
+  # printed once per level. `mod_dat` holds the whole response, which is what
+  # decides whether a floor can be derived, and that answer cannot differ by
+  # level. Where the formula's set could not be read, level_sets is empty and
+  # only the refusal is reachable, which is the same resolution the flatness
+  # report above takes for that case.
+  # dots_arg(), not an exact lookup. `dots` is forwarded to bnec() through
+  # do.call(), where these are formals before `...` and so match an
+  # abbreviation. Reading `asymptote_observed` exactly would leave an
+  # abbreviated argument declared for the fit and undeclared for this check,
+  # which sets .bayesnec_asymptote_checked and drops the refusal back into the
+  # per-level model loop -- the failure the hoist exists to prevent.
+  declared <- dots_arg(dots, "asymptote_observed", TRUE)
+  # Validated here as well as in bnec(), because this check reads it first and
+  # an invalid value would otherwise raise the floor refusal or the mixed-set
+  # report before bnec() reports what is actually wrong.
+  chk_flag(declared, x_name = "`asymptote_observed`")
+  check_asymptote_declaration(mod_dat, family, level_sets,
+                              asymptote_observed = declared,
+                              prior = dots_arg(dots, "prior"),
+                              model_survival = level_survival)
+  dots[[".bayesnec_asymptote_checked"]] <- TRUE
   # The crossed weights are an outer product of the per-level weight vectors,
   # and that identity holds for pseudo-BMA only, so the method is checked in
   # crossed_group_weights() rather than merely documented -- multiplying
@@ -252,10 +282,15 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # request is therefore recorded here, and crossed_group_weights() prefers
   # whatever the fits themselves still carry, since that is what actually
   # happened. See #33.
-  wt_method <- if (!is.null(dots$loo_controls$weights$method)) {
-    dots$loo_controls$weights$method
-  } else {
-    "pseudobma"
+  # dots_arg(), for the reason recorded there. `loo_controls` is a bnec()
+  # formal before `...`, so an abbreviated `loo_c =` reaches the fit and reads
+  # as absent here, and the fallback to "pseudobma" would then record a method
+  # the levels were not fitted under -- which is the wrong crossed table with
+  # nothing to signal it, the failure crossed_group_weights() exists to
+  # prevent.
+  wt_method <- dots_arg(dots, "loo_controls")$weights$method
+  if (is.null(wt_method)) {
+    wt_method <- "pseudobma"
   }
   # The set the formula asks for, which is what plan_group_levels() counts the
   # two arrangements over. Read here rather than taken from an argument because
@@ -681,4 +716,32 @@ compare_pooled <- function(object, pooled, best) {
        diff = diff,
        se_diff = se_diff,
        n_obs = n_obs)
+}
+
+#' One argument of \code{bnec()}, read from a \code{bnec_group()} dot list
+#'
+#' @details \code{\link{bnec_group}} inspects several of the arguments it is
+#' about to forward, so that a report or a refusal that is a property of the
+#' whole response is raised once rather than once per level. It forwards them
+#' with \code{do.call()}, where an argument named before \code{...} in
+#' \code{\link{bnec}}'s signature matches an abbreviation, so reading the dot
+#' list by exact name gives an answer the forwarded call can contradict:
+#' \code{model_s = "nec3param"} reaches \code{bnec()} as
+#' \code{model_survival} and reads as absent here.
+#'
+#' \code{pmatch()} resolves it the way the call will. It returns at most one
+#' index for a one-element table, and an exact name wins over an abbreviation,
+#' so two abbreviations of the same formal resolve to one index here and
+#' \code{do.call()} refuses the duplicate before anything is fitted.
+#'
+#' @param dots The dot list \code{\link{bnec_group}} collected.
+#' @param name The \code{\link{bnec}} formal to read.
+#' @param default What to return where the argument was not supplied.
+#'
+#' @return The supplied value, or \code{default}.
+#'
+#' @noRd
+dots_arg <- function(dots, name, default = NULL) {
+  hit <- which(!is.na(pmatch(names(dots), name)))
+  if (length(hit) == 1) dots[[hit]] else default
 }

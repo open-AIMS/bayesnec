@@ -384,10 +384,15 @@ beta_from_mode_sd <- function(mode, spread) {
 #' The second is a property of the design rather than of the equation, and where
 #' the highest concentration has not reached the lower asymptote the location for
 #' \code{bot} sits above the true value. That is a bias and not noise, so the
-#' standard-error floor does not widen the prior to cover it; the
+#' standard-error floor does not widen the prior to cover it. The
 #' \code{"uninformative"} entry, whose location is the lower quartile of the
-#' whole response, is affected the same way and is the set to use on a design
-#' that does not reach its asymptote.
+#' whole response, is affected the same way rather than being the remedy: on the
+#' gaussian branch of #386's flattest design the prior CDF at the true
+#' \code{bot} is 6.43e-14 under \code{"uninformative"} and 2.30e-90 under
+#' \code{"regularizing"}, so selecting the first mitigates and does not correct.
+#' What a user does about such a design is declare it, with
+#' \code{asymptote_observed = FALSE}, which replaces the entry either set
+#' produced. See \code{\link{unobserved_bot_entry}} and #394.
 #'
 #' \strong{Zeros.} A zero means something different at each end of the series,
 #' so the zero-bounded branch treats the two ends differently. At the control a
@@ -615,6 +620,288 @@ zero_bounded_family <- function(family) {
   isTRUE(prior_family_tag(family) %in% c("Gamma", "poisson", "negbinomial"))
 }
 
+#' The floor of the lower asymptote, on the scale the curve is fitted on
+#'
+#' @details \code{asymptote_observed = FALSE} states that the highest predictor
+#' level did not reach the lower asymptote, so the response supplies an upper
+#' bound on \code{bot} and not an estimate of it. The prior and the
+#' initial-value band then both need the other end of the interval, which is the
+#' smallest value the mean can take. This returns it, and is read at the two
+#' places that must agree about it: \code{\link{define_prior}}, which spans the
+#' \code{bot} prior from here to the endpoint mean, and
+#' \code{\link{make_good_inits}}, which extends the band to the same value.
+#'
+#' Keyed on \code{\link{prior_family_tag}} rather than on the family name, for
+#' the two reasons recorded there. Every tag but \code{gaussian} describes a
+#' mean bounded below at zero --- \code{(0, 1)} for the four bounded
+#' families and \code{(0, Inf)} for the three count and positive-continuous
+#' ones --- so the floor is zero.
+#'
+#' The \code{gaussian} tag is two different situations. Under an identity link
+#' it is a real-valued mean, and a response that is non-negative throughout is
+#' measured on a scale whose floor is zero; a response spanning negative values
+#' has no floor that can be derived from the data, and \code{NA} is returned so
+#' that the caller refuses rather than inventing one. Under a \code{log} or
+#' \code{logit} link the tag is reached by rewriting, and the quantity the curve
+#' and the prior live on is the link scale, whose floor is \code{-Inf} however
+#' the response is signed: \code{log(y) >= 0} says that every observation
+#' exceeds one in response units, which is a property of the units and not a
+#' floor. So \code{NA} is returned for any link but the identity.
+#'
+#' @param family A \code{\link[stats]{family}} object.
+#' @param response The response, already on the link scale.
+#'
+#' @return A \code{\link[base]{numeric}} vector of length 1: the floor, or
+#' \code{NA_real_} where none can be derived.
+#'
+#' @noRd
+asymptote_floor <- function(family, response) {
+  tag <- prior_family_tag(family)
+  if (is.na(tag)) {
+    return(NA_real_)
+  }
+  if (!identical(tag, "gaussian")) {
+    return(0)
+  }
+  if (!isTRUE(identical(family$link, "identity"))) {
+    return(NA_real_)
+  }
+  finite <- response[is.finite(response)]
+  if (length(finite) > 0 && min(finite) >= 0) 0 else NA_real_
+}
+
+#' Why no floor could be derived, as a clause for the refusal
+#'
+#' @details Two causes reach it and the remedy differs, so each is named. A
+#' gaussian response spanning negative values is ordinary input to this package
+#' --- a log ratio, a growth increment, anything expressed as a change (#229)
+#' --- and has no floor in its own units. A non-identity link is a scale the
+#' caller chose, on which the mean's floor maps to \code{-Inf}.
+#'
+#' The negative branch counts the observations and reports the smallest, because
+#' the test is \code{min(response) >= 0} and one reading below zero therefore
+#' decides it. That is the right test --- a response that goes below zero is
+#' measured on a scale that admits negative values, and a tolerance would invent
+#' a floor the data contradict --- but a single stray reading and a response
+#' that is negative throughout are different situations for the user, and the
+#' message says which one this is.
+#'
+#' @param family A \code{\link[stats]{family}} object.
+#' @param response The response, already on the link scale. Read on the
+#' negative branch alone.
+#'
+#' @return A \code{\link[base]{character}} string.
+#'
+#' @noRd
+no_floor_reason <- function(family, response = NULL) {
+  if (!isTRUE(identical(family$link, "identity"))) {
+    return(paste0("the \"", family$link, "\" link puts the curve on a scale",
+                  " whose floor is -Inf, so none is available."))
+  }
+  below <- if (is.null(response)) {
+    numeric(0)
+  } else {
+    response[is.finite(response) & response < 0]
+  }
+  detail <- if (length(below) == 0) {
+    ""
+  } else {
+    paste0(" ", length(below), " of ",
+           sum(is.finite(response)), " observations are below zero, the",
+           " smallest being ", signif(min(below), 4), ".")
+  }
+  paste0("a ", family$family, " response spanning negative values has no",
+         " floor that can be derived from the data.", detail)
+}
+
+#' The message refusing a declaration that cannot be acted on
+#'
+#' @param reason The clause \code{\link{no_floor_reason}} supplies, naming
+#' what could not be derived.
+#'
+#' @return A \code{\link[base]{character}} string.
+#'
+#' @noRd
+asymptote_floor_error <- function(reason) {
+  paste0("`asymptote_observed = FALSE` places the prior for \"bot\" between",
+         " the floor of the response and the mean at the highest predictor",
+         " level, and ", reason, " Supply a prior for \"bot\" through the",
+         " `prior` argument and leave `asymptote_observed` at its default.")
+}
+
+#' The bot prior for a design that did not reach the lower asymptote
+#'
+#' @details One rule on every family: the central 95\% of the prior spans from
+#' the floor \code{\link{asymptote_floor}} returns to the mean response at the
+#' highest predictor level. On such a design that mean is an upper bound on
+#' \code{bot} rather than an estimate of it, so it becomes the top of the
+#' prior's central interval instead of its centre.
+#'
+#' The endpoint mean is \code{\link{regularizing_location}}'s \code{"bot"}
+#' anchor, which is the mean over the observations at the end of the predictor
+#' series, so the two prior sets and the initial-value band all read the
+#' endpoint the same way and the treatment of zeros recorded there applies here
+#' unchanged.
+#'
+#' The three branches, for an endpoint mean \emph{e} and a floor of zero:
+#'
+#' \itemize{
+#'   \item gaussian: \code{normal(e/2, e/(2 qnorm(0.975)))}, whose central 95\%
+#'   is exactly \code{[0, e]}.
+#'   \item beta: \code{beta(1, log(0.025) / log(1 - e))}, whose 97.5th
+#'   percentile is exactly \emph{e} and whose 2.5th is 0.0084 to 0.0087 of it,
+#'   median by family over the audit's designs.
+#'   \item gamma: \code{gamma(2, 2/q)} at \code{q = e/2}, which is the idiom the
+#'   \code{"uninformative"} entry already uses. At a fixed shape of 2 the
+#'   central 95\% cannot both start at zero and end at a chosen value, so the
+#'   rule is applied as "mean at half the endpoint mean" and the realised
+#'   interval is \code{[0.0606 e, 1.393 e]}.
+#' }
+#'
+#' \strong{The beta branch matches quantiles rather than a mode and a spread.}
+#' Section 5.3 of the specification names \code{\link{beta_from_mode_sd}}, and that
+#' helper cannot meet the rule: it requires both shapes above 1, so the density
+#' is zero at the floor and the 2.5th percentile is well inside the interval.
+#' Applied with the mode at \emph{e}/2 and the gaussian branch's spread it
+#' returns a 2.5th percentile of 0.18\emph{e}, which on the audit's flat
+#' designs sits above the true \code{bot} in every one of the 75 bounded cells
+#' at \code{f36}, and again at \code{f02}, under each prior type --- where the
+#' fixed \code{beta(2, 5)} of the \code{"uninformative"} set excludes the truth
+#' in none of them. Fixing \code{shape1} at 1 instead gives a density that is
+#' positive and finite at the floor, leaves \code{shape2} determined by the
+#' 97.5th percentile alone, and excludes the truth in none of those cells
+#' either. The governing sentence above is the contract and
+#' the helper was the suggested mechanism, so the sentence is what is met. The
+#' measurement is in \code{notes/prior_audit.md} part 5.
+#'
+#' \strong{The cap in \code{\link{regularizing_entry}} is deliberately not
+#' applied.} That cap holds a regularizing spread at or below the uninformative
+#' width, which is the invariant a user selecting that set is entitled to. It
+#' does not apply here because this entry is not a narrowed version of a
+#' released one: the rule above fixes both ends of the interval, so the width
+#' follows from the endpoint mean rather than from the width of an entry built
+#' on a different location. That makes this a separate construction rather than
+#' a fourth branch of that function.
+#'
+#' The cap would bind on five of the eight families and not on the other three.
+#' Standard deviations of the \code{bot} entry, \code{"uninformative"} against
+#' declared, measured on the \code{incomplete_design(0.02, tag)} fixture of
+#' \code{tests/testthat/test-define_prior.R} at its seed of 394, which is the
+#' audit's \code{f02} setting on a series of eight concentrations by five
+#' replicates:
+#' gaussian 0.107 against 0.220, \code{beta} 0.160 against 0.253,
+#' \code{bernoulli} 0.160 against 0.297, \code{binomial} and
+#' \code{beta_binomial} 0.160 against 0.256. On the gamma branch the declared
+#' entry is narrower --- \code{Gamma} 0.558 against 0.297, \code{poisson} 23.4
+#' against 13.1, \code{negbinomial} 15.5 against 8.84 --- and narrower by
+#' exactly a half by construction, since a gamma at shape 2 has a standard
+#' deviation of its mean over the square root of two and the rule halves the
+#' mean. Narrower there is not worse: what the entry changes is where the mass
+#' sits, and #386 measured the prior CDF at the true \code{bot} at 6.43e-14
+#' under \code{"uninformative"} and 2.30e-90 under \code{"regularizing"} on
+#' its flattest design.
+#'
+#' @param branch One of \code{"normal"}, \code{"gamma"} or \code{"beta"}.
+#' @param endpoint The mean response at the highest predictor level, strictly
+#' positive and on the link scale.
+#'
+#' @return A \code{\link[base]{character}} string of length 1, a \pkg{brms}
+#' prior string.
+#'
+#' @importFrom stats qnorm
+#'
+#' @noRd
+unobserved_bot_entry <- function(branch, endpoint) {
+  half <- endpoint / 2
+  switch(
+    branch,
+    normal = paste0("normal(", signif(half, 6), ", ",
+                    signif(endpoint / (2 * qnorm(0.975)), 6), ")"),
+    gamma = paste0("gamma(2, ", signif(1 / (half / 2), 6), ")"),
+    beta = {
+      # The endpoint is tested before the logarithm rather than the shape
+      # after it, so that an endpoint at or above 1 does not emit a "NaNs
+      # produced" warning on its way to the fallback, which the caller can do
+      # nothing about. It is unreachable from define_prior(), which refuses a
+      # binomial or beta_binomial response above 1 and whose
+      # response_link_scale() puts a bounded response strictly inside (0, 1).
+      # The mode-and-spread construction is well defined there and is used
+      # rather than an error being raised from inside prior construction.
+      shape2 <- if (endpoint >= 1) {
+        NA_real_
+      } else {
+        # qbeta(p, 1, b) is 1 - (1 - p)^(1/b), so the shape whose 97.5th
+        # percentile is the endpoint mean is log(0.025) / log(1 - e).
+        log(0.025) / log(1 - endpoint)
+      }
+      if (!is.finite(shape2) || shape2 <= 0) {
+        pars <- beta_from_mode_sd(min(half, 0.5),
+                                  endpoint / (2 * qnorm(0.975)))
+        paste0("beta(", signif(pars[["shape1"]], 6), ", ",
+               signif(pars[["shape2"]], 6), ")")
+      } else {
+        paste0("beta(1, ", signif(shape2, 6), ")")
+      }
+    },
+    stop("Unknown prior branch \"", branch, "\".", call. = FALSE)
+  )
+}
+
+#' The endpoint mean the unobserved-asymptote bot prior is built from
+#'
+#' @details \code{\link{regularizing_location}}'s \code{"bot"} anchor, guarded
+#' so that the entry is well formed where the endpoint group is entirely at the
+#' floor. A tenth of the smallest positive observation stands in there, which is
+#' what \code{\link{regularizing_location}} returns on its own zero-bounded
+#' branch for the same case. The released \code{"uninformative"} gamma entry
+#' reads the same quantity differently --- a hundredth of it, added to the
+#' quantile that sets the spread, to keep the rate finite --- so the two are the
+#' same device and not the same term. Where the response has no positive
+#' observation at all there is no scale between the floor and the endpoint, and
+#' the declaration is refused rather than met with an arbitrary one.
+#'
+#' @inheritParams regularizing_location
+#' @param zero_bounded Passed through to \code{\link{regularizing_location}}.
+#'
+#' @return A \code{\link[base]{numeric}} vector of length 1, strictly positive.
+#'
+#' @noRd
+unobserved_endpoint_mean <- function(predictor, response, zero_bounded) {
+  no_interval <- asymptote_floor_error(
+    paste0("the response holds no value above that floor, so there is no",
+           " interval to place it on.")
+  )
+  # Tested before the anchor is read rather than after. On a zero-bounded
+  # family regularizing_location() reaches positive_scale() for side "bot"
+  # exactly when there is no positive value --- its zero-bounded branch takes
+  # min(pos) / 10 whenever there is one --- and positive_scale() refuses naming
+  # the construction of `top` and `bot`, which under a declaration is a message
+  # that does not name the declaration. The test applies on the other branch
+  # too, where it changes nothing: a response with no positive value gives a
+  # location at or below zero there and is refused either way.
+  #
+  # `pos` is the same set positive_scale() computes, not an approximation of
+  # it: that function takes the positive part of the finite values and this
+  # takes the finite positive values. The same vector is the fallback below, so
+  # hoisting the test duplicates nothing and leaves no error swallowed, where
+  # wrapping the read in try() would have converted a later error into this one
+  # as well. The default path still raises positive_scale()'s message on such a
+  # response, which is where it belongs.
+  pos <- response[is.finite(response) & response > 0]
+  if (length(pos) == 0) {
+    stop(no_interval, call. = FALSE)
+  }
+  e <- regularizing_location(predictor, response, "bot",
+                             zero_bounded = zero_bounded)[["location"]]
+  if (!is.finite(e) || e <= 0) {
+    e <- min(pos) / 10
+  }
+  if (!is.finite(e) || e <= 0) {
+    stop(no_interval, call. = FALSE)
+  }
+  e
+}
+
 #' The regularizing prior for one response-scaled parameter
 #'
 #' Applies the contract recorded at \code{regularizing_factor} to one branch.
@@ -692,8 +979,11 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' of the predictor: \code{lognormal(mu, sigma)} where the predictor is
 #' supplied on the dose scale, and \code{normal(mu, sigma)} where it spans
 #' negative values and has therefore already been log transformed by the user.
-#' The two are one rule stated on two scales. Truncation is applied by the
-#' caller, to the observed predictor range, and is unchanged.
+#' The two are one rule stated on two scales. The bound is applied by the
+#' caller and is the support of the distribution returned here: \code{lb = 0}
+#' on the lognormal branch and none on the normal one. Up to and including
+#' 2.1.4 the caller truncated both to the observed predictor range as well;
+#' #393 removed that.
 #'
 #' @details Until #302 there were three entries, selected by the support of the
 #' predictor: \code{gamma(5, 4/m)} where the predictor was non-negative and
@@ -740,8 +1030,15 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' \code{exp(mu)} and therefore the location the rule specifies exactly ---
 #' that series has an even number of positive doses, so it is the geometric mean
 #' of the two central ones --- against 3.85 for the shape-1.03 gamma. Over the
-#' sweep below the truncated prior CDF at the true value runs 0.43 to 0.95, so
-#' the mass is where the doses are.
+#' sweep below the prior CDF at the true value runs 0.43 to 0.95, so
+#' the mass is where the doses are. Those figures were measured with the entry
+#' truncated to the tested range. #393 removed that truncation, and reading the
+#' same quantity on the whole distribution is an affine map rather than a
+#' rescaling: with \code{a} and \code{b} the prior CDF at the two old bounds,
+#' the untruncated value is \code{T * (b - a) + a}. It reduces to multiplication
+#' by \code{b} only where the series has a zero control, which not every design
+#' in that sweep has, so the corrected range is not obtained by scaling the two
+#' ends of this one.
 #'
 #' \code{mu} is the median of the distinct positive predictor values, on the
 #' log scale. Distinct values rather than the observation vector so that
@@ -751,11 +1048,12 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' of the geometric mean of the two central doses where it is even, that being
 #' their midpoint on the log axis rather than on the dose axis. The prior's
 #' maximum density is therefore at that dose measured on the log scale, and the
-#' median of the untruncated prior on the dose scale is that dose. Both
-#' statements describe the untruncated prior. Truncation at the highest dose
-#' removes part of the upper tail and so pulls the median down: on
-#' \code{\link{nec_data}} the truncated median is 0.58 against a median dose of
-#' 0.88, and on the nassarius contaminant B series 1.23 against 2.00.
+#' median of the prior on the dose scale is that dose. The entry is no longer
+#' truncated to the tested range (#393), so both statements describe it as it
+#' is used. Up to and including 2.1.4 it was, and the truncation at the highest
+#' dose removed part of the upper tail and so pulled the median down: on
+#' \code{\link{nec_data}} the truncated median was 0.58 against a median dose
+#' of 0.88, and on the nassarius contaminant B series 1.23 against 2.00.
 #' Fisher et al. (2024) specify maximum
 #' density at the median predictor without saying which scale the density is
 #' measured on; this reads it on the log-dose scale, which is the scale a
@@ -763,7 +1061,7 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' prior peaking at the median can also reach 125 times it.
 #'
 #' \code{sigma} on the dose scale is set so that the central 95\% interval of
-#' the untruncated prior covers every dose tested: it is the larger of the two
+#' the prior covers every dose tested: it is the larger of the two
 #' half-widths
 #' from \code{mu} to the ends of the logged series, divided by
 #' \code{qnorm(0.975)}. The criterion is the whole of the rule --- a prior on a
@@ -779,16 +1077,19 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' It states no criterion, so it cannot guarantee the coverage above on a design
 #' it was not chosen against, and any multiple large enough to be broad on a
 #' densely sampled continuous predictor puts a large share of the prior below
-#' the lowest dose tested on a wide dilution series, where the lower truncation
-#' bound is the zero control. At \emph{k} = 1.5, 21\% of the truncated prior on
-#' the nassarius contaminant A series lies below its lowest dose of 0.01, and
-#' the lower end of its 95\% interval is 0.00022, a factor of 45 below anything
-#' applied. The rule adopted leaves 9.0\% below the lowest dose there and 3.3\%
-#' on a series spaced evenly from zero. Expressed as a multiple of
+#' the lowest dose tested on a wide dilution series. At \emph{k} = 1.5, 21\% of
+#' the prior on the nassarius contaminant A series lies below its lowest dose of
+#' 0.01, and the lower end of its 95\% interval is 0.00022, a factor of 45 below
+#' anything applied. The rule adopted leaves 9.0\% below the lowest dose there
+#' and 3.3\% on a series spaced evenly from zero. Expressed as a multiple of
 #' \code{sd(log x)} it lands between 0.73 and 1.18 across the five designs
 #' measured, at 0.92 to 1.03 on the four nassarius series, and at 1.75 on
 #' \code{\link{nec_data}}, whose predictor is continuous and densely sampled, so
-#' it is not equivalent to any one constant.
+#' it is not equivalent to any one constant. All three shares above were
+#' measured with the entry truncated to the tested range, whose lower bound was
+#' the control; #393 removed that truncation, so a share is now read on the
+#' whole lognormal, and the comparison between the two widths is unchanged
+#' because \code{sigma} never read the bounds.
 #'
 #' \code{sigma} is therefore set by the two extreme doses and not by the spread
 #' of the series between them, which makes it sensitive to how the control is
@@ -797,7 +1098,7 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' applied and the prior covers it: on the nassarius contaminant A series
 #' \code{sigma} is 2.30 with the control at 0, 2.59 with it at 0.001 and 6.11
 #' with it at 1e-6. Record a control as 0, which is what \code{\link{bnec}}
-#' expects and what the truncation bound is then taken from.
+#' expects.
 #'
 #' \code{sigma} on the branch for a predictor supplied already logged stays at
 #' \code{10 sd(x)}. That multiplier is the published default, every herbicide
@@ -836,18 +1137,40 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' a wide dilution series, which is checked separately: on the nassarius
 #' contaminant B series a threshold at the lowest dose applied sits at a
 #' truncated CDF of 0.030, inside the central 95\%, against 0.005 under a prior
-#' set from half the range. See #302.
+#' set from half the range. Every figure in this paragraph is the CDF of the
+#' entry truncated to the tested range, which is what it had when they were
+#' measured; #393 removed that truncation, so the same quantity is now read on
+#' the whole distribution, by the affine map given above and not by a rescaling.
+#' See #302.
 #'
 #' \strong{prior_type.} The two default sets differ in the spread of this
-#' prior and in nothing else; the location, the distribution and the truncation
-#' are the same under both. The spread is stated as a coverage rule on each
+#' prior and in nothing else; the location, the distribution and the bounds are
+#' the same under both. The spread is stated as a coverage rule on each
 #' branch rather than as a multiple of the \code{"uninformative"} entry. Under
 #' \code{"regularizing"} it is \code{half_width / qnorm(0.99)} on both, so the
 #' central 98\% interval reaches the farthest concentration tested, against the
-#' central 95\% under \code{"uninformative"} on the lognormal branch. The prior
-#' remains truncated to \code{[min(predictor), max(predictor)]}, so narrowing it
-#' concentrates mass in the interior of the tested series and excludes no part
-#' of it.
+#' central 95\% under \code{"uninformative"} on the lognormal branch. Narrowing
+#' it concentrates mass in the interior of the tested series and excludes no
+#' part of it, and since #393 it excludes nothing outside it either: the only
+#' bound is \code{lb = 0} on the lognormal branch, which is that
+#' distribution's own support.
+#'
+#' \strong{How much mass sits outside the tested series.} This is the statement
+#' #393 makes it necessary to get right, and it is a property of the branch and
+#' of \code{prior_type} together rather than of either alone. Three of the four
+#' cells are a coverage rule and are narrow by construction; the fourth is the
+#' constant \code{10 sd(z)} and is much wider. The coverage rule fixes the share
+#' above the \emph{farther} of the two ends from the location on the log scale,
+#' at 0.025 under \code{"uninformative"} and 0.01 under \code{"regularizing"},
+#' so those are lower bounds on the share above the highest value tested and the
+#' realised share is larger wherever the series extends further below its median
+#' than above it. The only cell where a threshold above the series is barely in
+#' the tail rather than deep in it is \code{normal} with
+#' \code{"uninformative"}, where the prior does correspondingly little to locate
+#' one. The four measured shares are tabulated under \code{prior_type} in
+#' \code{?\link{bnec}}, which is where this file's callers and the report in
+#' \code{\link{check_response_flattened}} send a reader; this block is not a
+#' second copy of them, because it is \code{@noRd} and no user can reach it.
 #'
 #' \strong{Why the spread is not narrowed by regularizing_factor.} The
 #' response-scaled entries are narrowed by \code{regularizing_factor}. This one
@@ -888,11 +1211,11 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' scale. The prior is then all but flat over that range: the ratio of its
 #' density at one end of the series to its density at the other is 1.000588 at
 #' a spread of 24.87 and 1.000829 at 0.8425 of it, against 1.1737 under the
-#' stated rule. Measured on that series, the
-#' truncated prior CDF at the doses 0.3, 1, 3, 10 and 30 is 0.158, 0.333, 0.492,
-#' 0.667 and 0.827 under #305, which are the positions of those doses within the
-#' range and so are what a uniform prior gives, and 0.052, 0.226, 0.499, 0.793
-#' and 0.945 under the stated rule. \code{prior_type} was therefore inert for
+#' stated rule. Measured on that series, with the entry truncated to the tested
+#' range as it then was, the prior CDF at the doses 0.3, 1, 3, 10 and 30 is
+#' 0.158, 0.333, 0.492, 0.667 and 0.827 under #305, which are the positions of
+#' those doses within the range and so are what a uniform prior gives, and
+#' 0.052, 0.226, 0.499, 0.793 and 0.945 under the stated rule. \code{prior_type} was therefore inert for
 #' these two parameters on one of the two routes.
 #'
 #' Under \code{predictor_scale = "auto"}, the branch is selected by
@@ -1025,8 +1348,12 @@ predictor_prior <- function(predictor, prior_type = "uninformative",
 #' @param family A \code{\link[stats]{family}} function.
 #' @param predictor The predictor variable for the NEC model fit.
 #' @param response The response variable for the NEC model fit.
+#' @param asymptote_observed A \code{\link[base]{logical}}. \code{FALSE}
+#' declares that the highest predictor level did not reach the lower asymptote,
+#' which replaces the \code{bot} entry of whichever set \code{prior_type}
+#' selected with the construction \code{\link{unobserved_bot_entry}} describes.
 #' @param prior_predictor The predictor the \code{nec} and \code{ec50} prior is
-#' built from and truncated to. Defaults to \code{predictor}, and differs from
+#' built from. Defaults to \code{predictor}, and differs from
 #' it only for the two blocks of a hurdle or zero-inflated fit, each of which is
 #' primed from a subset of the predictor but evaluated over the whole of it.
 #' See \code{define_hurdle_prior()}.
@@ -1039,6 +1366,7 @@ predictor_prior <- function(predictor, prior_type = "uninformative",
 #' @noRd
 define_prior <- function(model, family, predictor, response,
                          prior_type = "uninformative",
+                         asymptote_observed = TRUE,
                          model_survival = NULL, disp_spec = NULL,
                          group_spec = NULL, prior_predictor = NULL,
                          predictor_scale = "auto") {
@@ -1060,6 +1388,8 @@ define_prior <- function(model, family, predictor, response,
   if (is_hurdle_family(family)) {
     hurdle_priors <- define_hurdle_prior(model, family, predictor, response,
                                          prior_type = prior_type,
+                                         asymptote_observed =
+                                           asymptote_observed,
                                          model_survival = model_survival,
                                          prior_predictor = prior_predictor,
                                          predictor_scale = predictor_scale)
@@ -1260,6 +1590,41 @@ define_prior <- function(model, family, predictor, response,
                  "beta_binomial" = u_b_b,
                  beta = u_b_b)
   }
+  # The declaration replaces the bot entry of whichever set produced it, rather
+  # than being a third value of prior_type. prior_type selects how strongly to
+  # regularise a design assumed complete; whether the design is complete is an
+  # orthogonal question, so a user with an incomplete design keeps the
+  # regularizing set for every other parameter. Written after both branches for
+  # the same reason: one adjustment applied to whichever entry was built, not
+  # the same adjustment written twice. See #394 and section 5.2 of
+  # notes/tasks/386-incomplete-designs-claude.md.
+  #
+  # Raised here for get_priors() and amend(); bnec() and bnec_group() refuse a
+  # response with no derivable floor before their loops, for the reason recorded
+  # against check_complete_cases() in R/bnec.R.
+  #
+  # Skipped for an equation with no `bot` parameter. pr_bot is built
+  # unconditionally below and assembled only into the equations that have one,
+  # so building it there would be work for nothing -- and, more to the point,
+  # would raise the refusal for a nec3param fit that generates no bot prior at
+  # all. check_asymptote_declaration() gates itself the same way.
+  if (!asymptote_observed && "bot" %in% equation_par_names(model)) {
+    floor_val <- asymptote_floor(family, response)
+    if (!is.finite(floor_val)) {
+      stop(asymptote_floor_error(no_floor_reason(family, response)),
+           call. = FALSE)
+    }
+    branch <- if (gamma_scaled) {
+      "gamma"
+    } else if (identical(fam_tag, "gaussian")) {
+      "normal"
+    } else {
+      "beta"
+    }
+    y_b_prs[fam_tag] <- unobserved_bot_entry(
+      branch, unobserved_endpoint_mean(predictor, response, gamma_scaled)
+    )
+  }
   # One construction for nec and ec50, on whichever scale the predictor was
   # supplied on. See predictor_prior() for why, and #302 for the measurements.
   # prior_type changes its spread and not its location or its shape.
@@ -1274,11 +1639,24 @@ define_prior <- function(model, family, predictor, response,
                          lb = lbs[fam_tag], ub = ubs[fam_tag])
   pr_bot <- prior_string(y_b_prs[fam_tag], nlpar = "bot",
                          lb = lbs[fam_tag], ub = ubs[fam_tag])
-  # x-dependent priors
-  pr_nec <- prior_string(x_pr, nlpar = "nec",
-                         lb = min(prior_predictor), ub = max(prior_predictor))
-  pr_ec50 <- prior_string(x_pr, nlpar = "ec50",
-                          lb = min(prior_predictor), ub = max(prior_predictor))
+  # x-dependent priors. The bound is taken from the support of the prior
+  # distribution and not from the range of the tested predictor. The
+  # distribution predictor_prior() returns is proper on its own support, so the
+  # posterior stays proper with no truncation, and truncating to the tested
+  # range put a threshold above the highest concentration outside the support
+  # rather than in the tail: the posterior piled against the bound and reported
+  # a narrow interval at the highest concentration tested. The lower bound is
+  # kept only where the distribution requires it. A lognormal has zero density
+  # below zero, and without lb = 0 brms declares an unconstrained parameter
+  # whose every negative proposal Stan rejects. The normal branch takes no
+  # bound, because a predictor supplied already logged may legitimately be
+  # negative, so the branch test is on the distribution and is not a proxy for
+  # the sign of the data. See #393, and predictor_prior() for which branch is
+  # which. What holds a reported estimate inside the tested range is now the
+  # censoring of #395 and the `extrapolate` argument of #392, not the prior.
+  x_lb <- if (grepl("^lognormal", x_pr)) 0 else NA
+  pr_nec <- prior_string(x_pr, nlpar = "nec", lb = x_lb)
+  pr_ec50 <- prior_string(x_pr, nlpar = "ec50", lb = x_lb)
   # x- and y-independent priors
   pr_d <- prior_string("normal(0, 5)", nlpar = "d")
   pr_beta <- prior_string("normal(0, 5)", nlpar = "beta")
@@ -1460,11 +1838,12 @@ define_disp_prior <- function(disp_spec, family, response) {
 #' takes \code{2.5 * sd(response)}, which is a reasonable statement of
 #' ignorance about a level and a poor one about deviation around it. The
 #' observed range is the more defensible anchor, and it is the same quantity
-#' the predictor-scaled priors are already bounded by.
+#' the predictor-scaled priors take their own location and spread from.
 #'
-#' For \code{nec} and \code{ec50} the two readings do agree, because those
-#' priors are truncated to \code{[min(predictor), max(predictor)]}, so the
-#' range \emph{is} the scale the prior spans.
+#' For \code{nec} and \code{ec50} the two readings do agree, because the
+#' coverage rule those priors are built under puts the central 95\% or 98\% of
+#' the entry across \code{[min(predictor), max(predictor)]}, so the range is
+#' the scale the prior spans.
 #'
 #' \code{student_t(3, 0, s)} keeps the shape and heavy tail of the \pkg{brms}
 #' default and changes only its scale, so this narrows a default that was never
@@ -1473,7 +1852,8 @@ define_disp_prior <- function(disp_spec, family, response) {
 #' \strong{What the prior cannot do.} Every prior
 #' \code{\link{define_prior}} generates constrains its parameter to the region
 #' where the model is defined: \code{beta(5, 2)} on (0, 1), \code{lb = 0} for
-#' the count and Gamma families, \code{nec} truncated to the predictor range.
+#' the count and Gamma families, and \code{lb = 0} on \code{nec} and
+#' \code{ec50} where the predictor is a recorded concentration.
 #' A group-level deviation cannot be constrained that way -- \pkg{brms} declares
 #' \code{r_} unconstrained -- so a grouped fit does not inherit the property
 #' that \code{top}, \code{bot} and \code{nec} remain in range, and no choice
@@ -1689,6 +2069,7 @@ define_group_prior <- function(group_spec, predictor, response,
 #' @noRd
 define_hurdle_prior <- function(model, family, predictor, response,
                                 prior_type = "uninformative",
+                                asymptote_observed = TRUE,
                                 model_survival = NULL,
                                 prior_predictor = NULL,
                                 predictor_scale = "auto") {
@@ -1706,14 +2087,21 @@ define_hurdle_prior <- function(model, family, predictor, response,
   # (Gamma for hurdle_gamma, Beta for zero_inflated_beta), built from the
   # non-zeros only -- including the zeros would drag the top and bot quantiles
   # well below the real control level.
+  # The declaration reaches both blocks. Each is a curve of its own with its own
+  # lower asymptote, and a design that stopped before the response block's
+  # asymptote stopped before the survival block's as well, so a declaration that
+  # applied to one only would leave the other's bot prior stating a precision
+  # the design does not supply.
   mu_priors <- define_prior(model, hurdle_mu_family(family),
                             parts$mu$x, parts$mu$y, prior_type = prior_type,
+                            asymptote_observed = asymptote_observed,
                             prior_predictor = prior_predictor,
                             predictor_scale = predictor_scale)
   # second block: reuse the bernoulli/identity defaults on the proportion
   # non-zero, then rename every non-linear parameter into its namespace.
   hu_priors <- define_prior(model_survival, bernoulli(link = "identity"),
                             parts$hu$x, parts$hu$y, prior_type = prior_type,
+                            asymptote_observed = asymptote_observed,
                             prior_predictor = prior_predictor,
                             predictor_scale = predictor_scale)
   hu_priors$nlpar <- ifelse(nzchar(hu_priors$nlpar),
@@ -1730,11 +2118,13 @@ define_hurdle_prior <- function(model, family, predictor, response,
   # its prior and bounds are unchanged.
   #
   # The prior is taken from the whole predictor and not only its bounds. A prior
-  # shaped by the survivor subset but truncated to the whole predictor states
-  # that the threshold lies below the highest concentration at which anything
-  # survived, which is the same failure #302 removes from the single-block path:
-  # on a series reaching 100 whose survivors stop at 10 the mu block's nec prior
-  # placed its 97.5% point at 10.0 while its bounds permitted 100. It also
+  # shaped by the survivor subset states that the threshold lies below the
+  # highest concentration at which anything survived, which is the same failure
+  # #302 removes from the single-block path: on a series reaching 100 whose
+  # survivors stop at 10 the mu block's nec prior placed its 97.5% point at 10.0
+  # while its bounds, which were then the whole predictor's range, permitted
+  # 100. #393 has since removed the upper bound, so the shape is now the only
+  # thing that would say it. It also
   # restores the invariance the single-block path has, that the nec and ec50
   # prior is a function of the predictor alone, and it makes the two blocks of
   # one fit agree about the scale of their shared predictor, which is what #269
