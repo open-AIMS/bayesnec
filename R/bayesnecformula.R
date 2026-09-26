@@ -436,6 +436,10 @@ check_formula.bayesnecformula <- function(formula, data,
   if (!inherits(formula, "bayesnecformula")) {
     stop("Your formula must be of class bayesnecformula.")
   }
+  # First, because several checks below, split_calls() and brms read variable
+  # names back out of deparsed text, where a name needing backticks fails as a
+  # parse error naming neither the column nor the term. See #398.
+  check_syntactic_names(formula)
   rhs_calls <- gsub("\\) \\+ ", ") impossiblestr ", deparse1(rhs(formula)))
   split_rhs_calls <- strsplit(rhs_calls, " impossiblestr ")[[1]]
   x_str <- grep("crf(", split_rhs_calls, fixed = TRUE, value = TRUE)
@@ -606,6 +610,93 @@ check_formula.bayesnecformula <- function(formula, data,
     }
   }
   formula
+}
+
+#' Refuse a formula variable whose name is not a syntactic R name
+#'
+#' @param formula An object of class \code{\link{bayesnecformula}}.
+#'
+#' @details A column read from a spreadsheet or built with
+#' \code{data.frame(check.names = FALSE)} can have a name such as
+#' \code{odd name}, written in a formula as \code{`odd name`}.
+#' \code{\link{check_formula}}, \code{split_calls()} and \pkg{brms} each
+#' rebuild part of the model by parsing deparsed formula text, and the deparsed
+#' form of such a name loses its backticks, so the call ends in a parse error
+#' naming neither the column nor the term. Making the name work is not
+#' available: \code{brms::make_stancode()} gives the same parse error for a
+#' backticked name in \code{rate()}, \code{cens()}, \code{trials()},
+#' \code{weights()}, a non-linear predictor and the response (brms 2.23.0). So
+#' the name is refused, once, before anything else reads the formula. See #398.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#'
+#' @importFrom formula.tools lhs rhs
+#'
+#' @noRd
+check_syntactic_names <- function(formula) {
+  lhs_parts <- hurdle_lhs_parts(lhs(formula))
+  rhs_call <- rhs(formula)
+  rhs_terms <- list()
+  while (is.call(rhs_call) && length(rhs_call) == 3 &&
+           identical(rhs_call[[1]], quote(`+`))) {
+    rhs_terms <- c(list(rhs_call[[3]]), rhs_terms)
+    rhs_call <- rhs_call[[2]]
+  }
+  rhs_terms <- c(list(rhs_call), rhs_terms)
+  term_vars <- function(term) {
+    # Only the predictor of crf() is checked, not its model argument. A model
+    # set held in a variable is evaluated by get_model_from_formula() and never
+    # reaches brms, so crf(x, `my models`) fits, and refusing it would stop a
+    # call that works.
+    # match.call() rather than term[[2]], so that crf(model = m, x = conc) is
+    # read correctly; a call crf() cannot match falls back to every variable
+    # and is refused for what it is further down check_formula().
+    if (is.call(term) && identical(term[[1]], quote(crf))) {
+      x_arg <- tryCatch(match.call(crf, term)$x, error = function(e) NULL)
+      if (!is.null(x_arg)) {
+        return(all.vars(x_arg))
+      }
+    }
+    # The same holds for disp() given anything other than a one-sided formula.
+    # parse_disp_term() evaluates that argument in the formula's environment as
+    # the name of a variance function, so disp(`my vf`) with `my vf` <- "power"
+    # fits and names no column. disp(~ ...) is a sub-model on columns and is
+    # checked; the test matches parse_disp_term()'s own for route A.
+    if (is.call(term) && identical(term[[1]], quote(disp))) {
+      disp_arg <- if (length(term) > 1) term[[2]] else NULL
+      if (!(is.call(disp_arg) && identical(disp_arg[[1]], quote(`~`)))) {
+        return(character(0))
+      }
+    }
+    all.vars(term)
+  }
+  formula_terms <- c(list(lhs_parts$response), lhs_parts$aterms, rhs_terms)
+  term_labels <- c("the response", vapply(c(lhs_parts$aterms, rhs_terms),
+                                          deparse1, character(1)))
+  vars <- lapply(formula_terms, term_vars)
+  all_vars <- unique(unlist(vars))
+  # make.names() is R's own definition of a syntactic name, so it catches a
+  # reserved word such as `if` as well as a space or a leading digit, and it
+  # also gives the replacement the message suggests. The suggestion is made
+  # with unique = TRUE, because "a b" and "a-b" would otherwise both be told to
+  # become "a.b".
+  bad <- all_vars[all_vars != make.names(all_vars)]
+  if (length(bad) == 0) {
+    return(invisible(NULL))
+  }
+  where <- vapply(bad, function(v) {
+    in_term <- vapply(vars, function(tv) v %in% tv, logical(1))
+    paste0("\"", v, "\" in ", paste0(term_labels[in_term],
+                                        collapse = " and "))
+  }, character(1))
+  stop("The formula names variable(s) that are not syntactic R names: ",
+       paste0(where, collapse = "; "), ". bayesnec and brms both rebuild the",
+       " model from the text of the formula, where a name that has to be",
+       " written in backticks cannot be parsed. Rename the column(s) in the",
+       " data and in the formula, for example with make.names(), which gives ",
+       paste0("\"", make.names(bad, unique = TRUE), "\"", collapse = ", "),
+       ".",
+       call. = FALSE)
 }
 
 #' @rdname model.frame
@@ -1386,6 +1477,12 @@ make_brmsformula <- function(formula, data, family = NULL) {
   # parent.frame() so that a character formula resolves symbols where
   # make_brmsformula() was called from rather than in its own frame. See #319.
   formula <- bnf(formula, env = parent.frame())
+  # Called here as well as in check_formula(), which this function reaches
+  # only through model.frame() inside the loop. single_model_formula() comes
+  # first there and rebuilds the crf() term from deparsed text, so a
+  # non-syntactic predictor would otherwise fail as a parse error before the
+  # refusal is reached. See #398.
+  check_syntactic_names(formula)
   all_models <- get_model_from_formula(formula)
   out <- list()
   for (i in seq_along(all_models)) {
