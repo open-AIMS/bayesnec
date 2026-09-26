@@ -20,6 +20,19 @@ add_na <- function(x, n = 3) {
   x_b
 }
 
+# Evaluate a call, returning its value and the messages of the warnings it
+# raised, which are muffled. The `all_models` deprecation is to warn once per
+# call, so test-plot.R and test-autoplot.R assert the count as well as the
+# message; expect_warning() alone passes on one warning or several.
+collect_warnings <- function(expr) {
+  warnings <- character()
+  value <- withCallingHandlers(expr, warning = function(w) {
+    warnings <<- c(warnings, conditionMessage(w))
+    invokeRestart("muffleWarning")
+  })
+  list(value = value, warnings = warnings)
+}
+
 utils::data(nec_data)
 other_data <- nec_data
 colnames(other_data) <- c("a", "b")
@@ -64,9 +77,10 @@ transformed_response_fit <- function(fit, model) {
 # The same fixture for a model set. On the model-average branch, which is the
 # one the pinning tests use, both plotting paths read the formula off
 # mod_fits[[1]] alone (R/plot.R:258, R/autoplot.R:347), so that is the only
-# element that has to change. Not so with all_models = TRUE: plot() then draws
-# each candidate through plot.bayesnecfit, which reads that candidate's own
-# formula at R/plot.R:118. Do not use this fixture on that branch.
+# element that has to change. Not so where `model` names equations, or with
+# the deprecated all_models = TRUE: plot() then draws each named equation
+# through plot.bayesnecfit, which reads that equation's own formula. Do not use
+# this fixture on that branch.
 transformed_response_manec <- function(manec) {
   mod <- names(manec$mod_fits)[1]
   manec$mod_fits[[1]] <- transformed_response_fit(manec$mod_fits[[1]], mod)

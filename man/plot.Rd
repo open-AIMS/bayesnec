@@ -36,7 +36,9 @@
   ylab = "Response",
   xlab = "Predictor",
   xticks = NA,
-  all_models = FALSE
+  model = NULL,
+  average = TRUE,
+  all_models = NULL
 )
 }
 \arguments{
@@ -84,9 +86,23 @@ label.}
 \item{xticks}{A numeric vector indicate where to place the tick marks of
 the x-axis.}
 
-\item{all_models}{A \code{\link[base]{logical}} value indicating if all
-models in the model set should be plotted simultaneously, or if a model
-average plot should be returned.}
+\item{model}{\code{NULL} (the default), or a \code{\link[base]{character}}
+vector naming equations of the model set. Each named equation is plotted in
+a panel of its own, as \code{plot()} draws the \code{\link{bayesnecfit}}
+that \code{\link{pull_out}} returns for it. A name that is not an equation
+of the set is refused.}
+
+\item{average}{A \code{\link[base]{logical}} value indicating if the model
+averaged predictions should be plotted. Defaults to \code{TRUE}. Where
+\code{model} is also given, the model average takes the first panel and the
+named equations follow in the order given. \code{average = FALSE} requires
+\code{model}.}
+
+\item{all_models}{Deprecated, and to be removed in a later release; use
+\code{model} and \code{average}. \code{all_models = TRUE} is
+\code{model = x$success_models, average = FALSE}, and
+\code{all_models = FALSE} is the default. Supplying it gives a warning, and
+supplying it together with \code{model} or \code{average} is an error.}
 }
 \value{
 A \code{\link[graphics]{plot}} of the fitted model.
@@ -107,7 +123,10 @@ plot(nec4param, add_ec10 = TRUE)
 
 # plot model averaged predictions (bayesmanecfit)
 plot(manec_example)
-# plot all panels together
-plot(manec_example, add_ec10 = TRUE, all_models = TRUE)
+# plot the model average and one equation of the set, a panel each
+plot(manec_example, model = "nec4param")
+# plot every equation of the set without the model average
+plot(manec_example, add_ec10 = TRUE, model = manec_example$success_models,
+     average = FALSE)
 }
 }

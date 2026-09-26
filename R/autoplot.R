@@ -41,12 +41,17 @@
 #'
 #' # plot model averaged predictions
 #' autoplot(manec_example)
-#' # plot all panels together
-#' autoplot(manec_example, ecx = TRUE, ecx_val = 50, all_models = TRUE)
+#' # plot the model average and each equation of the set, a facet each
+#' autoplot(manec_example, ecx = TRUE, ecx_val = 50,
+#'          model = c("nec4param", "ecx4param"))
+#' # plot the equations alone, without the model average
+#' autoplot(manec_example, model = manec_example$success_models,
+#'          average = FALSE)
 #' }
 #' \dontrun{
 #' # plots multiple models, one at a time, with interactive prompt
-#' autoplot(manec_example, ecx = TRUE, ecx_val = 50, all_models = TRUE,
+#' autoplot(manec_example, ecx = TRUE, ecx_val = 50,
+#'          model = manec_example$success_models, average = FALSE,
 #'          multi_facet = FALSE)
 #' }
 NULL
@@ -89,23 +94,39 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
 #' @rdname autoplot
 #' @order 2
 #'
-#' @param all_models Should all individual models be plotted separately\
-#' (defaults to FALSE) or should model averaged predictions be plotted instead?
+#' @param model \code{NULL} (the default), or a \code{\link[base]{character}}
+#' vector naming equations of the model set. Each named equation is drawn in a
+#' panel of its own, as \code{autoplot()} draws the \code{\link{bayesnecfit}}
+#' that \code{\link{pull_out}} returns for it. A name that is not an equation
+#' of the set is refused.
+#' @param average Should the model averaged predictions be plotted? Defaults
+#' to TRUE. Where \code{model} is also given, the model average takes the
+#' first panel. \code{average = FALSE} requires \code{model}.
 #' @param plot Should output \code{\link[ggplot2]{ggplot}} output be plotted?
-#' Only relevant if \code{all = TRUE} and \code{multi_facet = FALSE}.
+#' Only relevant if \code{model} is given and \code{multi_facet = FALSE}.
 #' @param ask Indicates if the user is prompted before a new page is plotted.
 #' Only relevant if \code{plot = TRUE} and \code{multi_facet = FALSE}.
 #' @param newpage Indicates if the first set of plots should be plotted to a
 #' new page. Only relevant if \code{plot = TRUE} and
 #' \code{multi_facet = FALSE}.
 #' @param multi_facet Should all plots be plotted in one single panel via
-#' facets? Defaults to TRUE.
+#' facets? Defaults to TRUE, in which case the facets of the named equations
+#' are ordered by name. Only relevant if \code{model} is given. With
+#' \code{multi_facet = FALSE}, one \code{\link[ggplot2]{ggplot}} is drawn for
+#' each panel and the list of them is returned invisibly, the model average
+#' first where it is requested and then the equations in the order given in
+#' \code{model}.
+#' @param all_models Deprecated, and to be removed in a later release; use
+#' \code{model} and \code{average}. \code{all_models = TRUE} is
+#' \code{model = object$success_models, average = FALSE}, and
+#' \code{all_models = FALSE} is the default. Supplying it gives a warning, and
+#' supplying it together with \code{model} or \code{average} is an error.
 #'
 #' @method autoplot bayesmanecfit
 #'
 #' @inherit autoplot description return examples
 #'
-#' @importFrom dplyr mutate left_join
+#' @importFrom dplyr mutate left_join bind_rows
 #' @importFrom purrr map_dfr
 #' @importFrom tibble rownames_to_column
 #' @importFrom grDevices devAskNewPage
@@ -114,11 +135,12 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
 #'
 #' @export
 autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
-                                   xform = identity,
-                                   all_models = FALSE, plot = TRUE, ask = TRUE,
+                                   xform = identity, model = NULL,
+                                   average = TRUE, plot = TRUE, ask = TRUE,
                                    newpage = TRUE, multi_facet = TRUE,
                                    group = NULL,
-                                   group_aes = c("line", "colour")) {
+                                   group_aes = c("line", "colour"),
+                                   all_models = NULL) {
   x <- object
   chk_lgl(nec)
   chk_lgl(ecx)
@@ -126,81 +148,136 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   if (!inherits(xform, "function")) {
     stop("xform must be a function.")
   }
-  chk_lgl(all_models)
+  shown <- resolve_model_average(
+    x, model, average, all_models,
+    new_supplied = !missing(model) || !missing(average)
+  )
   chk_lgl(plot)
   chk_lgl(ask)
   chk_lgl(newpage)
   chk_lgl(multi_facet)
-  if (all_models) {
-    all_fits <- lapply(x$success_models, pull_out, manec = x) |>
-      suppressMessages() |>
-      suppressWarnings()
-    if (multi_facet) {
-      names(all_fits) <- x$success_models
-      nec_labs <- map_dfr(all_fits, function(x) {
-        summ <- summary(x, ecx = FALSE) |>
+  if (is.null(shown$model)) {
+    avg <- manec_average_plot_data(x, nec = nec, ecx = ecx, xform = xform,
+                                   group = group, group_aes = group_aes, ...)
+    return(ggbnec(avg$data, nec = nec, ecx = ecx, group = !is.null(group),
+                  group_aes = group_aes, group_label = avg$group_label,
+                  group_fitted = avg$group_fitted))
+  }
+  all_fits <- lapply(shown$model, pull_out, manec = x) |>
+    suppressMessages() |>
+    suppressWarnings()
+  if (multi_facet) {
+    names(all_fits) <- shown$model
+    nec_labs <- map_dfr(all_fits, function(x) {
+      summ <- summary(x, ecx = FALSE) |>
+        suppressWarnings() |>
+        suppressMessages()
+      summ$nec_vals |>
+        data.frame() |>
+        rownames_to_column(var = "tag")
+    }, .id = "model")
+    plot_data <- lapply(all_fits, function(fit) {
+      ggbnec_data(fit, add_nec = nec, add_ecx = ecx,
+                  xform = xform, group = group, ...)
+    })
+    group_label <- plot_group_label(plot_data[[1]], group, group_aes)
+    group_fitted <- !identical(
+      attr(plot_data[[1]], "group_fitted"), FALSE
+    )
+    dat <- map_dfr(plot_data, identity, .id = "model") |>
+      left_join(y = nec_labs, by = "model")
+    if (shown$average) {
+      avg <- manec_average_plot_data(x, nec = nec, ecx = ecx, xform = xform,
+                                     group = group, group_aes = group_aes,
+                                     ...)
+      # A factor puts the model average in the first facet. The equations
+      # keep the alphabetical order facet_wrap() gives a character column,
+      # which is the order all_models = TRUE drew them in; that call leaves
+      # the column as character, so its output is unchanged.
+      dat <- bind_rows(avg$data, dat)
+      dat$model <- factor(dat$model,
+                          levels = c(manec_average_label,
+                                     sort(unique(shown$model))))
+    }
+    ggbnec(dat, nec = nec, ecx = ecx, group = !is.null(group),
+           group_aes = group_aes, group_label = group_label,
+           group_fitted = group_fitted)
+  } else {
+    if (plot) {
+      default_ask <- devAskNewPage()
+      on.exit(devAskNewPage(default_ask))
+      devAskNewPage(ask = FALSE)
+    }
+    n_average <- as.integer(shown$average)
+    plots <- vector(mode = "list", length = length(all_fits) + n_average)
+    for (i in seq_along(plots)) {
+      if (i <= n_average) {
+        avg <- manec_average_plot_data(x, nec = nec, ecx = ecx,
+                                       xform = xform, group = group,
+                                       group_aes = group_aes, ...)
+        plots[[i]] <- ggbnec(avg$data, nec = nec, ecx = ecx,
+                             group = !is.null(group), group_aes = group_aes,
+                             group_label = avg$group_label,
+                             group_fitted = avg$group_fitted)
+      } else {
+        j <- i - n_average
+        summ_j <- summary(all_fits[[j]], ecx = FALSE) |>
           suppressWarnings() |>
           suppressMessages()
-        summ$nec_vals |>
-          data.frame() |>
-          rownames_to_column(var = "tag")
-      }, .id = "model")
-      plot_data <- lapply(all_fits, function(fit) {
-        ggbnec_data(fit, add_nec = nec, add_ecx = ecx,
-                    xform = xform, group = group, ...)
-      })
-      group_label <- plot_group_label(plot_data[[1]], group, group_aes)
-      group_fitted <- !identical(
-        attr(plot_data[[1]], "group_fitted"), FALSE
-      )
-      map_dfr(plot_data, identity, .id = "model") |>
-        left_join(y = nec_labs, by = "model") |>
-        ggbnec(nec = nec, ecx = ecx, group = !is.null(group),
-               group_aes = group_aes, group_label = group_label,
-               group_fitted = group_fitted)
-    } else {
-      if (plot) {
-        default_ask <- devAskNewPage()
-        on.exit(devAskNewPage(default_ask))
-        devAskNewPage(ask = FALSE)
-      }
-      plots <- vector(mode = "list", length = length(all_fits))
-      for (i in seq_along(all_fits)) {
-        summ_i <- summary(all_fits[[i]], ecx = FALSE) |>
-          suppressWarnings() |>
-          suppressMessages()
-        dat_i <- ggbnec_data(all_fits[[i]], add_nec = nec, add_ecx = ecx,
+        dat_j <- ggbnec_data(all_fits[[j]], add_nec = nec, add_ecx = ecx,
                              xform = xform, group = group, ...)
-        group_label <- plot_group_label(dat_i, group, group_aes)
-        plots[[i]] <- dat_i |>
-          mutate(model = x$success_models[i],
-                 tag = rownames(.env$summ_i$nec_vals)) |>
+        group_label <- plot_group_label(dat_j, group, group_aes)
+        plots[[i]] <- dat_j |>
+          mutate(model = shown$model[j],
+                 tag = rownames(.env$summ_j$nec_vals)) |>
           ggbnec(nec = nec, ecx = ecx, group = !is.null(group),
                  group_aes = group_aes, group_label = group_label,
                  group_fitted = !identical(
-                   attr(dat_i, "group_fitted"), FALSE
+                   attr(dat_j, "group_fitted"), FALSE
                  ))
-        plot(plots[[i]], newpage = newpage || i > 1)
-        if (i == 1) {
-          devAskNewPage(ask = ask)
-        }
       }
-      invisible(plots)
+      plot(plots[[i]], newpage = newpage || i > 1)
+      if (i == 1) {
+        devAskNewPage(ask = ask)
+      }
     }
-  } else {
-    summ <- summary(x, ecx = FALSE) |>
-      suppressWarnings() |>
-      suppressMessages()
-    dat <- ggbnec_data(x, add_nec = nec, add_ecx = ecx, xform = xform,
-                       group = group, ...)
-    group_label <- plot_group_label(dat, group, group_aes)
-    dat |>
-      mutate(model = "Model averaged predictions",
-             tag = rownames(.env$summ$nec_vals)) |>
-      ggbnec(nec = nec, ecx = ecx, group = !is.null(group),
-             group_aes = group_aes, group_label = group_label,
-             group_fitted = !identical(attr(dat, "group_fitted"), FALSE))
+    invisible(plots)
   }
+}
+
+# The label of the model average, shared by the plot that shows it alone,
+# the facet it takes beside named equations and its panel in plot().
+manec_average_label <- "Model averaged predictions"
+
+#' The plotting frame of a model set's model-averaged predictions
+#'
+#' Separated from \code{autoplot.bayesmanecfit()} so that one frame serves
+#' the plot of the model average alone, its facet beside named equations,
+#' and its page when \code{multi_facet = FALSE}.
+#'
+#' @return A list: \code{data}, the \code{\link{ggbnec_data}} frame with
+#' \code{model} and \code{tag} columns added; \code{group_label} and
+#' \code{group_fitted}, as \code{ggbnec()} takes them.
+#'
+#' @importFrom dplyr mutate
+#' @importFrom rlang .env
+#'
+#' @noRd
+manec_average_plot_data <- function(x, nec, ecx, xform, group, group_aes,
+                                    ...) {
+  summ <- summary(x, ecx = FALSE) |>
+    suppressWarnings() |>
+    suppressMessages()
+  dat <- ggbnec_data(x, add_nec = nec, add_ecx = ecx, xform = xform,
+                     group = group, ...)
+  group_label <- plot_group_label(dat, group, group_aes)
+  list(
+    data = dat |>
+      mutate(model = manec_average_label,
+             tag = rownames(.env$summ$nec_vals)),
+    group_label = group_label,
+    group_fitted = !identical(attr(dat, "group_fitted"), FALSE)
+  )
 }
 
 #' @param brms_fit A \code{\link[brms]{brmsfit}} object.
