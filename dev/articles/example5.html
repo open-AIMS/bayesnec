@@ -122,7 +122,7 @@
       <h1 data-toc-skip>Installation and setup</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/vignettes/example5.Rmd" class="external-link"><code>vignettes/example5.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/vignettes/example5.Rmd" class="external-link"><code>vignettes/example5.Rmd</code></a></small>
       <div class="hidden name"><code>example5.Rmd</code></div>
 
     </div>
@@ -202,7 +202,7 @@ the default installation location.</p>
 page states which Rtools goes with which R. A mismatch is the most
 common single cause of a failed setup, so install R first and read that
 page rather than reusing an Rtools already on the machine.</p>
-<p><code><a href="https://mc-stan.org/cmdstanr/reference/install_cmdstan.html" class="external-link">cmdstanr::check_cmdstan_toolchain()</a></code> names the version it
+<p><code>cmdstanr::check_cmdstan_toolchain()</code> names the version it
 is looking for, and that is the version to install. It becomes available
 once the next section has installed <code>cmdstanr</code>. Under
 <code>cmdstanr</code> 0.9.0 and R 4.6.1 it reports</p>
@@ -234,13 +234,13 @@ project’s own repository:</p>
 passes without doing anything; <code>fix = TRUE</code> repairs the
 problems it can rather than only reporting them.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/install_cmdstan.html" class="external-link">check_cmdstan_toolchain</a></span><span class="op">(</span>fix <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu">check_cmdstan_toolchain</span><span class="op">(</span>fix <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p>Then install CmdStan. Three things are set here, and each of them has
 been observed to stop a fresh installation on Windows.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="st">"C:/cmdstan"</span><span class="op">)</span>           <span class="co"># install_cmdstan() does not create it</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>timeout <span class="op">=</span> <span class="fl">1800</span><span class="op">)</span>            <span class="co"># R's default of 60 seconds is too short</span></span>
-<span><span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/install_cmdstan.html" class="external-link">install_cmdstan</a></span><span class="op">(</span>dir <span class="op">=</span> <span class="st">"C:/cmdstan"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu">install_cmdstan</span><span class="op">(</span>dir <span class="op">=</span> <span class="st">"C:/cmdstan"</span><span class="op">)</span></span></code></pre></div>
 <p>The directory has to exist first. <code>install_cmdstan()</code> does
 not create it and stops with
 <code>Assertion on 'dir' failed: Directory 'C:/cmdstan' does not exist.</code></p>
@@ -284,7 +284,7 @@ installation, <code>cmdstanr</code> takes the newest
 <code>cmdstan-*</code> installation inside it, so the line above
 survives the next CmdStan upgrade unedited. The by-hand alternative does
 need it, and this asymmetry is easy to trip over:
-<code><a href="https://mc-stan.org/cmdstanr/reference/set_cmdstan_path.html" class="external-link">cmdstanr::set_cmdstan_path()</a></code> takes the path as given, so it
+<code>cmdstanr::set_cmdstan_path()</code> takes the path as given, so it
 has to be called as
 <code>set_cmdstan_path("C:/cmdstan/cmdstan-2.39.0")</code>. Given the
 parent directory it sets the path to that directory, leaves
@@ -305,7 +305,7 @@ be set again in each session. This line applies on every platform.</p>
 <p>Where <code>install_cmdstan()</code> fails, run it again with these
 arguments.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/install_cmdstan.html" class="external-link">install_cmdstan</a></span><span class="op">(</span>overwrite <span class="op">=</span> <span class="cn">TRUE</span>, quiet <span class="op">=</span> <span class="cn">FALSE</span>, dir <span class="op">=</span> <span class="st">"C:/cmdstan"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu">install_cmdstan</span><span class="op">(</span>overwrite <span class="op">=</span> <span class="cn">TRUE</span>, quiet <span class="op">=</span> <span class="cn">FALSE</span>, dir <span class="op">=</span> <span class="st">"C:/cmdstan"</span><span class="op">)</span></span></code></pre></div>
 <p><code>overwrite = TRUE</code> is the part that matters. An attempt
 that fails partway through the build leaves a partly built directory
 behind, and a second attempt without <code>overwrite</code> declines to
@@ -326,7 +326,7 @@ requires libraries that Rtools45 does not provide: the model still
 compiles, and every chain then exits immediately with
 <code>STATUS_DLL_NOT_FOUND</code>. Rebuilding CmdStan resolves it.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/install_cmdstan.html" class="external-link">install_cmdstan</a></span><span class="op">(</span>overwrite <span class="op">=</span> <span class="cn">TRUE</span>, dir <span class="op">=</span> <span class="st">"C:/cmdstan"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu">install_cmdstan</span><span class="op">(</span>overwrite <span class="op">=</span> <span class="cn">TRUE</span>, dir <span class="op">=</span> <span class="st">"C:/cmdstan"</span><span class="op">)</span></span></code></pre></div>
 <p>Anyone who upgrades R and Rtools after installing CmdStan will meet
 this.</p>
 </div>
@@ -397,8 +397,8 @@ difficulty on macOS, so <code>dir</code> need not be set, and no
 together with the standard build tools: <code>build-essential</code> on
 Debian and Ubuntu, or the equivalent development group on other
 distributions. Install the R packages as in the Windows section, then
-run <code><a href="https://mc-stan.org/cmdstanr/reference/install_cmdstan.html" class="external-link">cmdstanr::check_cmdstan_toolchain()</a></code> followed by
-<code><a href="https://mc-stan.org/cmdstanr/reference/install_cmdstan.html" class="external-link">cmdstanr::install_cmdstan()</a></code>. The default path causes no
+run <code>cmdstanr::check_cmdstan_toolchain()</code> followed by
+<code>cmdstanr::install_cmdstan()</code>. The default path causes no
 difficulty here either, so no <code>CMDSTAN</code> variable is needed.
 <code>options(brms.backend = "cmdstanr")</code> belongs in
 <code>.Rprofile</code> as it does on Windows.</p>
@@ -409,8 +409,8 @@ difficulty here either, so no <code>CMDSTAN</code> variable is needed.
 <p>Two checks. The first inspects the toolchain and the second uses it,
 so run them in that order.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/install_cmdstan.html" class="external-link">check_cmdstan_toolchain</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/set_cmdstan_path.html" class="external-link">cmdstan_version</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu">check_cmdstan_toolchain</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu">cmdstan_version</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>A configured toolchain reports</p>
 <pre><code>The C++ toolchain required for CmdStan is setup properly!</code></pre>
 <p>and <code>cmdstan_version()</code> returns the version string of the
