@@ -164,6 +164,13 @@ observation-level group-level effect. Those are exactly the families the
 \code{\link{dispersion}} diagnostic applies to, so the two are complements
 rather than alternatives.
 
+Of the two-block families, \code{hurdle_gamma} and \code{zero_inflated_beta}
+take a dispersion sub-model on their positive block, which is modelled as
+the \code{Gamma} or \code{Beta} family it is, and \code{m} is computed from
+the positive responses; see \code{\link{bnec}}. \code{hurdle_poisson} has no
+dispersion parameter to model, and \code{hurdle_negbinomial} does not yet
+take a dispersion sub-model.
+
 \bold{What the exponent means depends on the family}, because each family
 already imposes its own mean-variance link. The form above is written for
 the dispersion parameter itself, which is what \pkg{brms} fits:

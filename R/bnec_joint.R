@@ -97,6 +97,16 @@ best_crossed <- function(object) {
 #' Nothing else transfers -- priors, control arguments and the like are
 #' defaults again unless passed through \code{...}.
 #'
+#' A \code{disp()} term in the formula held in \code{object} is kept, and in
+#' the joint model it applies to the dispersion parameter of the positive
+#' block. The variance function is written in that block's mean and centred on
+#' the positive responses, as it is for the growth component, so the joint
+#' model fits the same variance function (see \code{\link{bnec}}). A
+#' \code{formula} supplied here replaces the held one, so a \code{disp()} term
+#' is fitted only where it is written in that formula. \code{hurdle_negbinomial}
+#' does not yet take a \code{disp()} term, so a negative binomial growth
+#' component fitted with one cannot be refitted jointly with it.
+#'
 #' @return An object of class \code{\link{bayesnecfit}}.
 #'
 #' @seealso \code{\link{bnec_hurdle}}, \code{\link{crossed_weights}},
@@ -123,6 +133,18 @@ bnec_joint <- function(object, model = NULL, model_survival = NULL,
     stop("bnec_joint requires an object of class bayesnechurdlefit, as",
          " returned by bnec_hurdle().", call. = FALSE)
   }
+  # The formula is resolved and its names checked here, before anything else
+  # reads it. swap_crf_model() below rebuilds the crf() term from deparsed
+  # text, in which a non-syntactic predictor is written without backticks, so
+  # a supplied formula naming one failed as a parse error naming neither the
+  # column nor the term, before bnec() could reach its own refusal. The held
+  # formula has already passed the check in bnec_hurdle(); a supplied one has
+  # not. See #398.
+  if (is.null(formula)) {
+    formula <- object$formula
+  }
+  formula <- bayesnecformula(formula, env = parent.frame())
+  check_syntactic_names(formula)
   best <- best_crossed(object)
   if (is.null(model)) {
     model <- best$growth
@@ -146,11 +168,7 @@ bnec_joint <- function(object, model = NULL, model_survival = NULL,
          "\" growth component, so this fit cannot be refitted jointly.",
          call. = FALSE)
   }
-  if (is.null(formula)) {
-    formula <- object$formula
-  }
-  formula <- swap_crf_model(bayesnecformula(formula, env = parent.frame()),
-                            model)
+  formula <- swap_crf_model(formula, model)
   message("Refitting jointly as a ", joint_fam, " with a ", model,
           " response block and a ", model_survival, " survival block",
           " (crossed weight ", signif(best$weight, 3), ").")

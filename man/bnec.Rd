@@ -535,6 +535,18 @@ carry one, and what the exponent implies for each.
 A variance function of the fitted mean requires the mean to be modelled on
 its natural scale, which is the identity link \code{\link{bnec}} fits on.
 
+On \code{"hurdle_gamma"} and \code{"zero_inflated_beta"} the term models the
+dispersion parameter of the positive block, \code{shape} and \code{phi}
+respectively, and leaves the \code{hu} or \code{zi} block as it is. A
+variance function is written in the mean of the positive block, which is
+the Gamma or Beta component mean \code{mu} rather than the mean of the
+response, \code{(1 - hu) * mu}, and its reference value is computed from
+the positive responses alone. That is the variance function
+\code{\link{bnec_hurdle}} fits on its growth component, so the joint and
+factorised routes model the same dispersion. \code{"hurdle_poisson"} has no
+dispersion parameter to model, and \code{"hurdle_negbinomial"} does not yet
+take a \code{disp()} term.
+
 Because \code{\link{ecx}} and \code{\link{nsec}} are defined on \code{mu}, a
 dispersion sub-model changes the credible intervals of the toxicity
 estimates, and may also shift the point estimates, since the two models

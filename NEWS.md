@@ -1632,6 +1632,24 @@
   sits on the `Beta` boundary, the signature of a score normalised to the largest
   value in the dataset, and 63 of the 414 yield readings are exactly 0 (#6, #33).
 
+- `bnec()` now fits a `disp()` term on the two-block families `hurdle_gamma`
+  and `zero_inflated_beta`, which refused it. The term models the dispersion
+  parameter of the positive block, `shape` for `hurdle_gamma` and `phi` for
+  `zero_inflated_beta`, and leaves the `hu` or `zi` block unchanged. A variance
+  function such as `disp("power")` is written in the mean of the positive
+  block, which is the Gamma or Beta component mean `mu` and not the mean of the
+  response, `(1 - hu) * mu`. Its centring constant is computed from the
+  positive responses only, and its parameters take the priors and initial
+  values of the `Gamma` or `Beta` family. That is the variance function
+  `bnec_hurdle()` fits on its growth component, so the joint and factorised
+  routes model the same dispersion, and `bnec_joint()` includes a growth
+  component's `disp()` term in the joint model it fits. `hurdle_poisson` still
+  refuses the term, because its positive counts have no dispersion parameter.
+  `hurdle_negbinomial` refuses it until a decision is made on how a relative
+  `ecx()` or `ecnsec()` estimate reads the shape: it reads the shape at the
+  control, which under a `disp()` term can differ from the shape at the lower
+  asymptote. No fit that previously succeeded changes (#410).
+
 ## Bug fixes
 
 - A formula that names a column whose name is not a syntactic R name, such as
@@ -1648,10 +1666,13 @@
   `rate()`, `cens()`, `trials()`, `weights()`, the non-linear predictor and the
   response, so the column has to be renamed; it cannot be accepted. The refusal
   is raised once per call, before the model loop, by `bnec()`, `bnec_group()`,
-  `bnec_hurdle()`, `make_brmsformula()`, `get_priors()` and `check_formula()`.
-  A model set held in a variable, as in ``crf(x, `my models`)``, and a variance
-  function held in a variable, as in ``disp(`my vf`)``, are not columns, are
-  looked up where the formula was written, and are still accepted (#398).
+  `bnec_hurdle()`, `bnec_joint()`, `make_brmsformula()`, `get_priors()` and
+  `check_formula()`. `bnec_joint()` raises it before it rebuilds the `crf()`
+  term of a supplied `formula`, where such a predictor ended in the same parse
+  error. A model set held in a variable, as in ``crf(x, `my models`)``, and a
+  variance function held in a variable, as in ``disp(`my vf`)``, are not
+  columns, are looked up where the formula was written, and are still accepted
+  (#398).
 
 - `ecxhormebc5` is now excluded before fitting when the predictor contains
   negative values and an identity-linked response family requires a positive

@@ -20,16 +20,42 @@
 # formula. bayesnec owns every curve expression in sysdata, so what is awkward
 # by hand is mechanical here -- the same argument that make_hu_block() rests on.
 
+#' The family whose dispersion parameter a disp() term models
+#'
+#' @param family Either a \code{\link[stats]{family}} object or a family tag.
+#'
+#' @details For a joint two-block family this is the family of the positive
+#' block: \code{Gamma} for \code{hurdle_gamma}, \code{beta} for
+#' \code{zero_inflated_beta}, and the count family for the count hurdles. The
+#' dispersion parameter of a two-block family belongs to that block alone,
+#' since the \code{hu} or \code{zi} block is a probability and has none, so the
+#' positive block's family decides which parameter is modelled, which variance
+#' functions apply, and where its priors and initial values are centred. The
+#' mapping is read from \code{hurdle_mu_fams}, which already records it for
+#' the priors, rather than by adding the two-block tags to \code{disp_dpars},
+#' so that the family of each positive block is stated in one place. See #410.
+#'
+#' @return A \code{\link[base]{character}} string, the family tag.
+#'
+#' @noRd
+disp_family_tag <- function(family) {
+  fam_tag <- if (inherits(family, "family")) family$family else family
+  if (is_hurdle_family(fam_tag)) {
+    return(unname(hurdle_mu_fams[[fam_tag]]))
+  }
+  fam_tag
+}
+
 #' Does this family have a free dispersion parameter?
 #'
 #' @param family Either a \code{\link[stats]{family}} object or a family tag.
 #'
-#' @return A \code{\link[base]{logical}}.
+#' @return A \code{\link[base]{logical}}. For a joint two-block family, whether
+#' its positive block has one; see \code{disp_family_tag()}.
 #'
 #' @noRd
 has_disp_par <- function(family) {
-  fam_tag <- if (inherits(family, "family")) family$family else family
-  isTRUE(fam_tag %in% names(disp_dpars))
+  isTRUE(disp_family_tag(family) %in% names(disp_dpars))
 }
 
 #' Name brms gives the dispersion parameter for this family
@@ -37,15 +63,17 @@ has_disp_par <- function(family) {
 #' @param family Either a \code{\link[stats]{family}} object or a family tag.
 #'
 #' @return A \code{\link[base]{character}} string, or \code{NULL} where the
-#' family has no free dispersion parameter.
+#' family has no free dispersion parameter. For a joint two-block family it is
+#' the positive block's parameter, which \pkg{brms} names as it does for the
+#' single-block family: \code{shape} for \code{hurdle_gamma} and
+#' \code{hurdle_negbinomial}, \code{phi} for \code{zero_inflated_beta}.
 #'
 #' @noRd
 disp_dpar <- function(family) {
-  fam_tag <- if (inherits(family, "family")) family$family else family
-  if (!has_disp_par(fam_tag)) {
+  if (!has_disp_par(family)) {
     return(NULL)
   }
-  unname(disp_dpars[[fam_tag]])
+  unname(disp_dpars[[disp_family_tag(family)]])
 }
 
 #' Extract the disp() specification from a bayesnec formula
@@ -112,13 +140,37 @@ parse_disp_term <- function(formula) {
 #' @noRd
 check_disp_spec <- function(spec, family, response = NULL) {
   fam_tag <- if (inherits(family, "family")) family$family else family
-  if (is_hurdle_family(fam_tag)) {
-    stop("A disp() term is not currently supported for the two-block family ",
-         fam_tag, ". Its dispersion parameter belongs to the response block",
-         " alone, and coupling a variance function to one block of a joint fit",
-         " needs a decision about the other that has not been made. Fit the",
-         " response block on its own with bnec_hurdle() if you need this.",
-         call. = FALSE)
+  # The joint two-block families take the term on the dispersion parameter of
+  # their positive block, which is the only block that has one; the hu or zi
+  # block is a probability and is left as it is. hurdle_gamma and
+  # zero_inflated_beta pass on to the checks below, which read the positive
+  # block's family through disp_family_tag(). RF, D29 on #410.
+  #
+  # hurdle_negbinomial is refused although its positive block has a shape.
+  # count_positive_asymptote() reads that shape at the first row of the
+  # prediction grid, the control, to put a relative ecx() or ecnsec() asymptote
+  # on the scale of the positive counts. Under a disp() term the shape varies
+  # along the curve, so the control's value is not the shape at the asymptote,
+  # and how it should be evaluated there is a decision that has not been made.
+  # Refused here rather than fitted with a known-wrong estimator downstream.
+  if (identical(fam_tag, "hurdle_negbinomial")) {
+    stop("A disp() term is not yet supported for the two-block family",
+         " hurdle_negbinomial. A relative ecx() or ecnsec() estimate of its",
+         " positive counts reads the shape parameter at the control, and under",
+         " a disp() term the shape changes along the curve, so the value at",
+         " the lower asymptote can differ from it. How the shape is evaluated",
+         " there is pending a decision. Fit the model without disp(), which",
+         " estimates one shape for the whole curve.", call. = FALSE)
+  }
+  # Given its own message because the general one below names the remedy for
+  # a single-block family, poisson to negbinomial; for a count hurdle the
+  # corresponding family is refused above, so the remedy is a constant shape.
+  if (identical(fam_tag, "hurdle_poisson")) {
+    stop("Family hurdle_poisson has no free dispersion parameter, so there is",
+         " nothing for disp() to model: the variance of its positive counts is",
+         " a deterministic function of their mean. Over-dispersion in the",
+         " positive counts is modelled by family = \"hurdle_negbinomial\",",
+         " which estimates a constant shape.", call. = FALSE)
   }
   if (fam_tag %in% c("zero_inflated_poisson", "zero_inflated_negbinomial")) {
     # Refused before the has_disp_par() check below, whose message ("no free
@@ -177,7 +229,10 @@ check_disp_spec <- function(spec, family, response = NULL) {
            call. = FALSE)
     }
     vf <- disp_functions[[spec$value]]
-    if (!fam_tag %in% vf$families) {
+    # Read against the positive block's family for a two-block family, so that
+    # hurdle_gamma takes the forms Gamma takes and zero_inflated_beta those of
+    # beta, "twosided" included.
+    if (!disp_family_tag(fam_tag) %in% vf$families) {
       stop("Variance function \"", spec$value, "\" is not valid for the ",
            fam_tag, " family. It applies to: ",
            paste0(vf$families, collapse = ", "), ".", call. = FALSE)
@@ -292,7 +347,10 @@ disp_inits <- function(spec, family, response) {
   if (length(pars) == 0) {
     return(list())
   }
-  fam_tag <- if (inherits(family, "family")) family$family else family
+  # The positive block's family for a two-block family, whose dispersion
+  # parameter is that block's. Read from the two-block tag, hurdle_gamma would
+  # fall through to 0, a shape of 1, against a c0 prior centred on 2.
+  fam_tag <- disp_family_tag(family)
   # the same centres define_disp_prior() uses, so the chains start at the
   # middle of their own priors rather than somewhere else
   c0 <- switch(fam_tag,

@@ -154,6 +154,13 @@
 #' \code{\link{dispersion}} diagnostic applies to, so the two are complements
 #' rather than alternatives.
 #'
+#' Of the two-block families, \code{hurdle_gamma} and \code{zero_inflated_beta}
+#' take a dispersion sub-model on their positive block, which is modelled as
+#' the \code{Gamma} or \code{Beta} family it is, and \code{m} is computed from
+#' the positive responses; see \code{\link{bnec}}. \code{hurdle_poisson} has no
+#' dispersion parameter to model, and \code{hurdle_negbinomial} does not yet
+#' take a dispersion sub-model.
+#'
 #' \bold{What the exponent means depends on the family}, because each family
 #' already imposes its own mean-variance link. The form above is written for
 #' the dispersion parameter itself, which is what \pkg{brms} fits:
@@ -903,6 +910,16 @@ wrangle_model_formula <- function(model, formula, data, family = NULL,
     }
     if (!is.null(rate_var)) {
       disp_y <- disp_y / rate_var
+    }
+    # A two-block family models the dispersion of its positive block, whose mean
+    # the variance function is written in, so the constant is taken from the
+    # positive responses alone. This is also the response bnec_hurdle() gives
+    # its growth component, so the joint and factorised routes build the same
+    # literal and fit the same variance function. Kept, the zeros lowered
+    # "loglinear"'s median and entered "twosided"'s second term as log(1 - 0);
+    # "power" already dropped them before taking a log. See #410.
+    if (is_hurdle_family(family)) {
+      disp_y <- disp_y[which(disp_y > 0)]
     }
     check_disp_spec(disp_spec, family, response = disp_y)
     brms_bf <- add_disp_block(brms_bf, model, disp_spec, family, new_x, disp_y)

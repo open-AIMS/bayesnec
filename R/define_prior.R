@@ -1419,6 +1419,18 @@ define_prior <- function(model, family, predictor, response,
     if (!is.null(group_priors)) {
       hurdle_priors <- hurdle_priors + group_priors
     }
+    # A disp() term models the positive block's dispersion parameter, so its
+    # priors are the ones the positive block's family takes, built from the
+    # survivors for the reason given above. That is the family and the
+    # response bnec_hurdle() gives its growth component, so the two routes put
+    # the same prior on the same variance function. Added here because this
+    # branch returns before the point below where a single-block family's
+    # disp() priors are added; missed, c0 and the slopes would take the flat
+    # brms default. See #410.
+    disp_priors <- define_disp_prior(disp_spec, mu_family, mu_response)
+    if (!is.null(disp_priors)) {
+      hurdle_priors <- hurdle_priors + disp_priors
+    }
     return(hurdle_priors)
   }
   link_tag <- family$link

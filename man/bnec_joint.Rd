@@ -60,6 +60,16 @@ fitted as a Gamma, \code{zero_inflated_beta} where it was a Beta, and the
 corresponding count hurdle where it was Poisson or negative binomial.
 Nothing else transfers -- priors, control arguments and the like are
 defaults again unless passed through \code{...}.
+
+A \code{disp()} term in the formula held in \code{object} is kept, and in
+the joint model it applies to the dispersion parameter of the positive
+block. The variance function is written in that block's mean and centred on
+the positive responses, as it is for the growth component, so the joint
+model fits the same variance function (see \code{\link{bnec}}). A
+\code{formula} supplied here replaces the held one, so a \code{disp()} term
+is fitted only where it is written in that formula. \code{hurdle_negbinomial}
+does not yet take a \code{disp()} term, so a negative binomial growth
+component fitted with one cannot be refitted jointly with it.
 }
 \examples{
 \dontrun{
