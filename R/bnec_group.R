@@ -202,6 +202,13 @@ bnec_group <- function(formula, data, group_var, family = NULL,
             ". Pass `family` to override.")
   }
   family <- validate_family(family, link_source = link_source)
+  # Refused for every level before any level is fitted. Left to the inner
+  # bnec() calls, a level at a bound would be reached only after the levels
+  # before it had compiled and sampled, which is the reason check_disp_finite()
+  # is raised above. Placed before the flatness report, which would otherwise
+  # assess a level whose response does not vary. See #400 and D30.
+  check_response_at_bound(mod_dat, family, group = grp,
+                          group_name = group_var)
   # Checked over every level before any of them is fitted. Left to the inner
   # bnec() calls it would report one level at a time, and would reach an
   # affected level only after the levels before it had compiled and sampled --

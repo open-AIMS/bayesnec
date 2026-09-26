@@ -854,6 +854,14 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # family object is stored in the brmsfit, so it is dropped before brms sees
   # it rather than serialised into every saved fit.
   brm_args$family <- unmark_family(brm_args$family)
+  # A bounded response with every observation at one bound identifies no curve.
+  # Raised here, once, for the reason check_inline_boundary() gives below: from
+  # check_data() it would be printed once per model and the call would end on
+  # the generic all-models-failed advice. Placed before every other check that
+  # reads the response, so that no report on the response's shape and no
+  # substitution message precedes the refusal. check_data() keeps it as a
+  # backstop. See #400.
+  check_response_at_bound(bdat, brm_args$family)
   # Emitted here rather than from check_data() so that it fires once per bnec()
   # call: check_data() runs once per model, and a model set would otherwise
   # repeat the message ten or more times.

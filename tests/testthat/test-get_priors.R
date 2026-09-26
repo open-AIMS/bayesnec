@@ -407,3 +407,45 @@ test_that("get_priors reports the substitution its priors are built from", {
   expect_false(any(grepl("bnec_record", msgs)))
   expect_true(any(grepl("priors below are derived", msgs)))
 })
+
+test_that("a response at one bound is refused by name, not by quantile() (#400)", {
+  # The route the default-prior audit of #391 reached the defect by: nine
+  # bernoulli cells ended in "missing values and NaN's not allowed if 'na.rm'
+  # is FALSE", raised from inside define_prior().
+  cases <- at_bound_cases()
+  for (nm in names(cases)) {
+    cs <- cases[[nm]]
+    msgs <- character(0)
+    err <- tryCatch(
+      withCallingHandlers(
+        get_priors(cs$formula, data = cs$data, family = cs$family),
+        message = function(m) {
+          msgs <<- c(msgs, conditionMessage(m))
+          invokeRestart("muffleMessage")
+        }
+      ),
+      error = conditionMessage
+    )
+    expect_match(err, paste0("The response \"", cs$column, "\" is at the ",
+                             cs$bound, " bound"), fixed = TRUE, info = nm)
+    expect_false(grepl("na.rm", err, fixed = TRUE), info = nm)
+    # Raised before the substitution report, which for beta at 1 would
+    # otherwise announce a shift to 0.999 that is never made.
+    expect_length(msgs, 0)
+  }
+})
+
+test_that("one observation off the bound still builds priors (#400)", {
+  cases <- at_bound_cases()
+  for (nm in names(cases)) {
+    cs <- cases[[nm]]
+    pr <- suppressMessages(
+      get_priors(cs$formula, data = cs$near, family = cs$family)
+    )
+    expect_named(pr, c("nec3param", "ecx4param"))
+    for (m in names(pr)) {
+      expect_s3_class(pr[[m]], "brmsprior")
+      expect_false(anyNA(pr[[m]]$prior), info = paste(nm, m))
+    }
+  }
+})

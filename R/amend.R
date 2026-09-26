@@ -288,6 +288,15 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   needs_fit <- !vapply(model_set, function(model) {
     inherits(try(old_fits[[model]], silent = TRUE), "prebayesnecfit")
   }, logical(1))
+  # The backstop for this route, which builds priors with define_prior() and
+  # fits with skip_check = TRUE, so check_data() never runs on it. Raised once,
+  # before the loop, and only where a model is to be fitted: dropping a model
+  # builds no prior. A fit made by bnec() does not reach it, since bnec()
+  # refuses such a response; it guards the stored data of an object assembled
+  # or altered by other means. See #400.
+  if (any(needs_fit)) {
+    check_response_at_bound(bdat, family)
+  }
   # Carried over here, in the parent, rather than returned from the applied
   # function. Under a parallel plan the alternative serialises every existing
   # fit out to a worker and straight back again for a model that is not

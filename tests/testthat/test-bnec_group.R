@@ -445,3 +445,44 @@ test_that("bnec_group resolves a dot argument the way do.call will (#394)", {
   expect_true(bayesnec:::dots_arg(list(chains = 2), "asymptote_observed",
                                   TRUE))
 })
+
+test_that("a level at a bound refuses the whole call before any level (#400)", {
+  # D30: refused rather than fitting the other levels and reporting this one as
+  # skipped, so that the user removes the level and the omission is visible in
+  # their script. Left to the inner bnec() calls, level "b" would be reached
+  # only after level "a" had compiled and sampled.
+  x <- rep(c(0.1, 0.5, 1, 3, 10, 30), each = 5)
+  a <- rep(1L, length(x))
+  a[x == max(x)] <- c(0L, 0L, 1L, 0L, 1L)
+  d <- data.frame(x = rep(x, 2), alive = c(a, rep(1L, length(x))),
+                  site = rep(c("a", "b"), each = length(x)))
+  calls <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      calls <<- calls + 1L
+      stop("level fit should not start")
+    },
+    .package = "bayesnec"
+  )
+  msgs <- character(0)
+  err <- tryCatch(
+    withCallingHandlers(
+      bnec_group(alive ~ crf(x, c("nec3param", "ecx4param")), d,
+                 group_var = "site", family = "bernoulli"),
+      message = function(m) {
+        msgs <<- c(msgs, conditionMessage(m))
+        invokeRestart("muffleMessage")
+      }
+    ),
+    error = conditionMessage
+  )
+  expect_match(err, "The response \"alive\" is at a bound", fixed = TRUE)
+  expect_match(err, "1 level(s) of \"site\": \"b\", where every value is 1",
+               fixed = TRUE)
+  expect_match(err, "Remove that level from `data`", fixed = TRUE)
+  expect_false(grepl("\"a\"", err, fixed = TRUE))
+  expect_identical(calls, 0L)
+  # Nothing about the levels' response precedes it, the flatness report
+  # included.
+  expect_length(msgs, 0)
+})

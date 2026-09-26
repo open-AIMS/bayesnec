@@ -184,6 +184,10 @@ get_priors.formula <- function(object, data, family = NULL,
   link_source <- family_link_source(substitute(family), env = parent.frame())
   fam_args <- if (is.null(family)) list() else list(family = family)
   family <- retrieve_valid_family(fam_args, bdat, link_source = link_source)
+  # Raised once, before the substitution report below: a beta response at 1
+  # in every observation would otherwise be reported as shifted to 0.999 and
+  # then refused by check_data() inside the loop. See #400.
+  check_response_at_bound(bdat, family)
   model <- check_models(get_model_from_formula(object), family, bdat)
   model_survival <- check_model_survival(model_survival, family, bdat)
   if (length(model) == 0) {

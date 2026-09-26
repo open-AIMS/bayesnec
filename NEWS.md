@@ -1451,6 +1451,23 @@
   predictors, unconstrained Gaussian means and support-preserving links are
   unaffected ([#344](https://github.com/open-AIMS/bayesnec/issues/344)).
 
+- A `bernoulli`, `binomial`, `beta_binomial` or `beta` response with every
+  observation at one bound is now refused before anything is fitted, with a
+  message that names the response column and the bound. The bound is 1 or 0
+  for a response recorded as a proportion, and for a `binomial` or
+  `beta_binomial` response it is every count equal to its trials or every count
+  0. Such a response does not vary, so it identifies no concentration-response
+  curve. The three discrete families previously failed inside prior
+  construction with "missing values and NaN's not allowed if 'na.rm' is FALSE",
+  which named neither the column nor the cause. A `beta` response of 1 in every
+  observation was shifted to 0.999 and fitted, and one of 0 was shifted to
+  `Inf`. The refusal is raised once per call, before the model loop, by `bnec()`
+  and `get_priors()`, and by `amend()` and `update(newdata = )`. `bnec_group()`
+  refuses the whole call before any level is fitted where any one level has
+  every observation at a bound, and names each such level, so that it is
+  removed from the data explicitly. A response with one observation off the
+  bound is fitted as before (#400).
+
 - A fit now reproduces under a `set.seed()` in the caller's session. The
   initial-value search called `set.seed(seed)` whatever it was given, and
   `set.seed(NULL)` does not leave the random number stream alone: it

@@ -130,3 +130,26 @@ test_that("amend refuses a resolution below 2", {
   expect_error(amend(manec_example, drop = "nec4param", resolution = 1),
                "must be at least 2")
 })
+
+test_that("amend refuses stored data at a bound before fitting a model (#400)", {
+  # The backstop for this route, which builds priors with define_prior() and
+  # fits with skip_check = TRUE, so check_data() never runs on it. bnec()
+  # refuses such a response, so the stored data are altered by hand here: the
+  # packaged example is a gaussian fit, and it is given a beta family and a
+  # response of 1 in every observation.
+  m <- manec_example
+  m$mod_fits[[1]]$fit$data$y <- 1
+  m$mod_fits[[1]]$fit$family <- brms::Beta(link = "identity")
+  calls <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      calls <<- calls + 1L
+      stop("model fit should not start")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(suppressMessages(amend(m, add = "nec3param")),
+               "The response \"y\" is at the upper bound of a beta response",
+               fixed = TRUE)
+  expect_identical(calls, 0L)
+})
