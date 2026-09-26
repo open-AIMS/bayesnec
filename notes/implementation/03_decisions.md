@@ -390,3 +390,117 @@ whichever draws crossed. No fit in which the class is non-empty over the full
 tested range has been measured; the only demonstration was obtained by
 truncating a prediction grid, which is not a design that would have been fitted.
 RF, 2026-09-12: a real example is needed before deciding.
+
+---
+
+# The backlog run
+
+Answers given by RF on 2026-09-26 on the plan in
+`notes/tasks/backlog-run-human.md`. The evidence and alternatives for each are in
+`notes/tasks/backlog-run-claude.md` §5, under the question number given, and each
+ruling is also posted as a comment headed "Decision" on its issue.
+
+## D18 — The run merges into `predev` in order
+
+Every pull request targets `predev` and is merged by the run once every check
+has passed; branches are cut from the tip of `predev` and do not stack. This
+replaces D1 and D14 for this run. RF reviews `predev` as a whole before it
+reaches `dev`, which is expected to become the 3.0 release.
+
+`DESCRIPTION` `Version` is bumped in item 1, and afterwards only by an item that
+changes what a fit produces. A per-pull-request bump was judged excessive for
+bug fixes to code that has never been released.
+
+Items 13 and 14 wait for PR #402, but not indefinitely: if it has not merged when
+item 12 is finished, they are done on `predev` and PR #402 takes them in when it
+is next brought up to date.
+
+The run ends by submitting a precompile of the vignettes to the AIMS HPC before
+RF's VPN connection closes, near 16:30 AEST on 2026-09-27.
+
+## D19 — #120 and #44 are in the run (Q1)
+
+Both are taken in `bayesnec` rather than deferred to the toxval migration, on
+D11's reasoning, and each is recorded on its toxval issue when it lands. #120
+follows D5.
+
+## D20 — The combined hurdle bound (Q3, #415)
+
+The existing one-sided censoring record: a combined draw whose minimum is not
+identified is marked censored above the smaller of the two components' limits.
+
+## D21 — A missing component in an average (Q4, #403)
+
+Propagated through the censoring record: the averaged draw is marked censored in
+the direction of its censored component and summarised as a bound. A zero
+component is treated as censored below at the grid's lower limit; an all-missing
+input returns `NA`, marked censored.
+
+## D22 — Censoring in group tables and comparisons (Q5, Q6, #404)
+
+Group and joint tables carry the mark as a column. A comparison over censored
+draws reports `prob_diff` as a lower and an upper probability with each
+component's censored fraction, and does not refuse.
+
+## D23 — The scale of a returned estimate (Q8, #299)
+
+Option 3: a message once per call where the predictor is transformed inline and
+no `xform` is supplied. Option 1, the recorded scale as the default, is left to
+the 3.0 release.
+
+## D24 — Measuring `example8` (Q9, #413)
+
+A minimum-version check in `vignettes/fit_store.R` and documentation. The store
+is refitted on the HPC within the run, once PR #402 has merged.
+
+## D25 — The exceedance interface (Q12, #44)
+
+A new exported function, `exceedance()`, returning a probability with its lower
+and upper bound; a threshold beyond the prediction range is reported as an
+interval.
+
+## D26 — The extent of #418 (Q13)
+
+One data seed and the gaussian family first.
+
+## D27 — #27 stays open (Q2)
+
+Not closed. An investigation fits a truncated gaussian to the `nassarius` growth
+data and drafts the issue body, including a hurdle version if the growth-only
+result shows value. Not part of the run; its implementation needs RF's
+decisions.
+
+## D28 — The hurdle ECx grid (Q7, #412)
+
+Growth's estimates are read from growth's own observed range; survival's and the
+combined estimates from the survival range; `summary()` and the bare estimators
+alike. RF first accepted a recommendation that read the combined estimate on the
+intersection of the two grids; it conflicted with the design of
+`hurdle_component_preds()`, which reads the combined endpoint on the survival
+range because growth has no data above the last concentration with survivors,
+and was replaced.
+
+## D29 — `disp()` in both hurdle routes (Q10, #410)
+
+The dispersion is modelled, not refused. In `bnec_hurdle()` a `disp()` term
+stays on the growth formula and is removed from the survival formula. The joint
+families `hurdle_gamma`, `hurdle_negbinomial` and `zero_inflated_beta` accept
+`disp()` on the dispersion parameter of their positive block, written in that
+block's component mean; `hurdle_poisson` keeps refusing. `bnec_joint()` includes
+the growth block's term in the joint model.
+
+## D30 — Responses at a bound (Q11, #400)
+
+Refused by name through `bnec()` and `get_priors()`. `bnec_group()` refuses the
+whole call where any one level has every observation at a bound, naming the
+level. `beta` at 1 is refused rather than shifted to 0.999. The constant equation
+RF proposed as an alternative is #419.
+
+## D31 — The constant equation (Q14, #419)
+
+Named `ecxflat`, following the prefix convention of `?bnec`. Available by name in
+this run and in no group; it joins `all`, `ecx` and `decline` at the 3.0 release.
+A response with no variation, fitted with any model set, is fitted with
+`ecxflat` alone with a message, which replaces D30's refusal on the fitting
+routes once it lands. The two checks in `R/nec.R` that read the `"ecx"` substring
+are changed to test for a `nec` parameter.

@@ -1,154 +1,53 @@
-# Work queue — the training-course run
+# Work queue for the backlog run
 
-Read `00_protocol.md` first, then `03_decisions.md`.
+Read `00_protocol.md` first. The specification for every item is
+`notes/tasks/backlog-run-claude.md`, cited below by section; RF's rulings are in
+`03_decisions.md`. The plan for a reader who was not in the conversation is
+`notes/tasks/backlog-run-human.md`.
 
-## The rebuild
+Rebuilt 2026-09-26. The queue that stood here was the training-course run of
+2026-09-14. Every issue and pull request it listed has since closed or merged,
+so it is replaced rather than amended; it is in the history of this file.
 
-Rebuilt 2026-09-14. The queue that stood here was written on 2026-09-06 and
-gave four stacked pull requests as the state of the work. All four have merged,
-and so has the second of the three vignettes, so every batch it describes is
-complete and none of it says so. The board has since gained a set of open issues
-that no queue covers. The file is rebuilt rather than amended, on the same
-reasoning `02_deferred.md` records: an entry describing work already done sends a
-reader to the wrong place.
+`predev` was at `21472c39` when this queue was written, with the same tree as
+`dev` at `c3824643`. `DESCRIPTION` `Version` was 2.1.3.39. New `NEWS.md` entries
+go under `# bayesnec 2.2.0`.
 
-## The goal this queue serves
+## The queue
 
-A training course is to be written against the development version of
-`bayesnec`. That fixes the end state: `dev` must be installable, its estimators
-must return correct values, and its vignettes must be finalised and re-rendered,
-because the course teaches from them. The release to CRAN is still not a gate on
-anything here.
+Work down the table. The status column holds the pull request once one is open,
+and `merged`, `stopped` or `skipped` after it; a stopped or skipped item has a
+line in `05_run_log.md` saying why. An item whose decision is still open is
+skipped when reached, and taken up once the decision is recorded in
+`03_decisions.md`. §3 of the specification gives the reason for each position.
 
-`dev` is at 2.1.3.35. `NEWS.md` headings are `# bayesnec 2.2.0` and
-`# bayesnec 2.1.4`; new entries go under 2.2.0.
+| # | issue | specification | decision | status |
+|---|---|---|---|---|
+| 1 | #416 | §4 item 1 | none | |
+| 2 | #417 | §4 item 2 | none | |
+| 3 | #415 | §4 item 3 | D20 | |
+| 4 | #299 | §4 item 4 | D23 | |
+| 5 | #120 | §4 item 5 | D19 | |
+| 6 | #404, #403 | §4 item 6 | D21, D22 | |
+| 7 | #412 | §4 item 7 | D28 | |
+| 8 | #398 | §4 item 8 | none | |
+| 9 | #400 | §4 item 9 | D30 | |
+| 10 | #397 | §4 item 10 | none | |
+| 11 | #44 | §4 item 11 | D19, D25 | |
+| 12 | #410 | §4 item 12 | D29 | |
+| 13 | #404 | §4 item 13 | D22 | after PR #402, or after item 12 if it has not merged |
+| 14 | #413 | §4 item 14 | D24 | after PR #402, or after item 12 if it has not merged |
+| 15 | #410 | §4 item 15 | D29 | after PR #402, or after item 12 if it has not merged |
+| 16 | #419 | §4 item 16 | D31 | after PR #402, or after item 12 if it has not merged |
+| bg | #418 | §4, the background item | D26 | notes only, straight to `predev`; start at the beginning |
+| end | precompile | §4, the precompile and the store refit | D18 | test at the start; submit by 14:00 AEST 2026-09-27 |
 
----
+## At the end of the run
 
-# Current state
-
-## Merged since the last rebuild
-
-| PR | closed |
-|---|---|
-| #281 | #195, #196, #39, #206, #268, #160, #161 |
-| #282 | #274, #271, #272, #266, #93, #262, #261, #218 |
-| #284 | #257 |
-| #286 | #273 |
-| #238 | #219, the `example9` workflow vignette |
-| #348 | #343, estimates and prior samples reproducible |
-
-#184 and #285 are also closed, and #333 was closed on 2026-09-14 with the
-measurement in `notes/ci_devel_cancellation.md` and no change to the workflow. Batches 1 to 4 and batch 5b of the 2026-09-06
-queue are therefore finished, and #228's blocker was settled by #284 as that
-queue expected.
-
-## Open pull requests
-
-| PR | closes | state |
-|---|---|---|
-| #349 | #311; verifies #328 | open |
-| #347 | #338, #329 | open |
-| #243 | #193, `example7` | open, batch 5a |
-| #228 | #6, #33 | open, batch 5c |
-| #225 | #209 | draft, blocked on `brms` through #249 |
-
-Except for #311 and #328, the open issues below are covered by none of them.
-
----
-
-# The constraint that sets the order
-
-#190, the full re-run of `precompile.R`, takes more compute than anything else on
-the board: `example7` alone takes about 137 minutes locally and about 2 h 56 m
-in CI.
-Five open issues change what a vignette prints, so each of them either lands
-before the re-render or is spent on a second one.
-
-| # | what it changes in the rendered output |
-|---|---|
-| #317 | the `nec` and `ec50` prior, so every fit changes |
-| #319 | whether `example8` renders at all — the precompile errors at its first fit |
-| #344 | `ecxhormebc5` becomes an exclusion with a reason in all six `lum31` fits |
-| #310 | whether the committed output is the same from one run to the next |
-| #299 | every ECx, NEC and NSEC reported, if it is decided as a change |
-
-#340 is the sixth precondition and is of a different kind: until `precompile.R`
-loads the checkout it is run from, a render cannot be attributed to a branch, so
-the re-run cannot be checked. #190 now names #319, #340 and #310 in its
-`Blocked by:` line.
-
----
-
-# The order
-
-## Throughput
-
-Hours rather than days, and taken first because five pull requests are open
-against `dev` and each item after this one is read through the same check
-matrix.
-
-#328's fixture reuse merged through #331 before work on #311 began. Its proposed
-worker-count change was withdrawn after paired runs could not distinguish the
-effect from runner variance. #349 is based on that merged fixture reuse and
-completes the batch by removing the backend-specific arguments from #311.
-
-| # | what |
-|---|---|
-| #311 | #349 removes twelve `open_progress = FALSE` calls from `tests/testthat/`, which lets those fits run under either `brms` backend |
-| #328 | #331 memoises the repeated fixtures, reducing fourteen compilations to five with the assertion counts unchanged; no worker count is set on ordinary CI runs |
-
-## Defects that change a reported number
-
-| # | what |
-|---|---|
-| #317 | the predictor is classified as already logged by `min(x) < 0`, so a series whose lowest dose is at or above 1 receives a prior built from the log of a log. Present on `master`, so it is in the released package, and which prior a user receives depends on the units the concentrations were recorded in |
-| #319 | `crf()` resolves its `model` argument in its own frame, so a variable model set is found only in the global environment. The same call fails inside a function and under `knitr` |
-| #344 | `ecxhormebc5` fails to initialise on a negative predictor under a positive family. `check_models()` already declines `ecxsigm` on a negative predictor with a reason |
-| #299 | the estimators return the fitted scale and `autoplot()` draws the recorded one. Three options are on the issue and the choice is RF's; its position in this order depends on whether it is wanted in the next release |
-
-## The re-render
-
-| # | what |
-|---|---|
-| #340 | `precompile.R` renders against the installed package rather than the checkout |
-| #310 | re-measure on current `dev` before working on it. #309 and #343 have both merged since the measurement was taken; the variable-length loop at `R/inits_functions.R:988` is still there, so the finding is expected to stand |
-| #190 | the full precompile, attended, once the two sections above it are settled |
-
-## The decision behind #296 and #283
-
-Both wait on PR #243 merging, and they are one decision rather than two tasks.
-#283 re-runs the precision sweep under a dispersion sub-model; #296 proposes
-retiring the design that sweep scores. Take the #296 decision first, because
-running the sweep before it spends about three hours of CI on a study that may
-not survive.
-
-## Features with no gate
-
-#301, then #27, last. Neither blocks anything else.
-
----
-
-# Not in this queue
-
-| # | why |
-|---|---|
-| #255, #120, #44 | the toxval migration. #255's own table records #120 (toxval registers the same `predict`, `plot` and `autoplot` methods) and #44 ("new API, belongs with the estimators") as gated on toxval#39 and toxval#45 |
-| #249, PR #225 | the factorised count hurdle, blocked on `brms` upstream. `issue-136-rate-aterm` is PR #225's base and **must not be deleted** |
-| #27 | zero-truncated gaussian. The body is empty, and a title is not a specification. Listed under features with no gate, not as something a session can start from the issue alone |
-
----
-
-# Housekeeping
-
-- **Prune the worktrees.** Twenty-one are registered and every branch among them
-  has merged into `dev`: `issue-310-init-seed`, `issue-319-crf-env`,
-  `issue-333-devel-cancellation` and `issue-344-ecxhormebc5-init` are all zero
-  commits ahead, so #310, #319 and #344 have no work in progress anywhere and
-  #333 is closed. `00_protocol.md` names the worktrees that must not be touched.
-- **Every pull request here targets `dev` rather than the default branch, so
-  `Closes #n` never fires.** Close issues by hand after verifying the work is on
-  `dev`. #328 is merged-and-open through #331; close it after #349 verifies the
-  combined state on `dev`. #338 and #329 will need the same step when #347 merges.
-- `DESCRIPTION` requires `brms (>= 2.23.0)`; earlier versions mis-generate
-  `beta_binomial`.
+- File the issues listed in §6 of the specification.
+- Record in `05_run_log.md` the precompile job identifiers, the `predev` commit
+  submitted, and every item merged after it.
+- Leave every issue the run implemented open, with its comment. They close when
+  `predev` reaches `dev`.
+- State in `05_run_log.md` where the run finished and what, if anything, it
+  stopped on.

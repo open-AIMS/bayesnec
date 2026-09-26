@@ -1,5 +1,13 @@
 # Normalisation, grouping and model averaging in concentration-response analysis — plan
 
+Status, 2026-09-26: not started, and outside the package. `vignette("example8")`
+merged with PR #228 on 2026-09-17, which settles the question below of whether
+the paper waits for it. The dispersion sub-model screen described as running has
+its scripts under `notes/scripts/example8/`; its outcome is not recorded here.
+The measurements cite `prompts/grouping-vignette-dataset.md` and
+`cache/section-fits/`, which are git-ignored and exist only in RF's main
+checkout. No issue tracks the paper.
+
 Companion specification: `lum31-normalisation-paper-claude.md`. Written
 2026-09-11 from measurements made while preparing `vignette("example8")` (#6,
 #33). Every measurement cited is recorded in

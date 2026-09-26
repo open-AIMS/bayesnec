@@ -1,5 +1,13 @@
 # The grouping vignette (#6, #33) — plan
 
+Status, 2026-09-26: complete, and kept as a record rather than a plan. PR #228
+merged on 2026-09-17 and #6 and #33 closed. The vignette shipped as three case
+studies rather than the sections planned below, and `lum31`, `coral_colour` and
+`coral_pam` ship with the package. The remaining scope, fitted `pgl()` and
+named-parameter comparisons and the joint refit, was taken up in #382 and #388, which
+PR #402 implements. The questions below for the data provider, whether blank-well
+readings exist and whether the gain was recorded, are not tracked anywhere else.
+
 Companion specification: `228-grouping-vignette-claude.md`. Every decision below
 is stated in full there, with the measurements behind it.
 

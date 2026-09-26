@@ -1,5 +1,10 @@
 # Task — bayesnec #216: model-averaged output is not reproducible
 
+Status, 2026-09-26: complete, and kept as a record rather than a task. PR #217
+merged on 2026-08-21 and #216 closed the same day. The "out of scope" list below
+no longer holds: PR #217 edited `R/ecx.R` and `R/nsec.R`. The line references are
+those of the time of writing.
+
 **Point a Claude Code session at this file from the `bayesnec` repo root.**
 Read `notes/implementation/00_protocol.md` first for the working rules, then
 this. Self-contained otherwise.

@@ -1,5 +1,15 @@
 # Task — bayesnec #148: model fit diagnostics
 
+Status, 2026-09-26: complete except part D5, and kept as a record rather than a
+task. Parts A and B merged in PR #226 and part D in PR #240, both on 2026-08-24;
+the combined hurdle check and the control lack-of-fit message are commits
+`4c485ab4` and `8c81ad83`. #148 closed on 2026-08-25. Part D5, divergent
+transitions reported by `summary()`, was not done: neither `R/summary.R` nor
+`R/print.R` reports them, while `example2.Rmd.orig:97` says the summary would
+warn of them. It is to be filed as an issue (`backlog-run-claude.md` §6). The
+blockers named below (#217, #219, #190) have all closed, and the line references
+are those of the time of writing.
+
 **Point a Claude Code session at this file from the `bayesnec` repo root.**
 Read `notes/implementation/00_protocol.md` first for the working rules, then
 this. Self-contained otherwise.

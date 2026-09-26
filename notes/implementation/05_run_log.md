@@ -304,3 +304,11 @@ which PR to read; nothing here restates one.
 Release tiers were revised in the #227 pass: `2.1.4` is everything through the
 feature work, **`2.2.0` is the factor covariate release**, and the short-lived
 `2.3.0` tier is gone.
+
+---
+
+# The backlog run
+
+Started after 2026-09-26. Records only what GitHub cannot: an item stopped or
+skipped, and why, and where the run finished. The procedure is `00_protocol.md`
+and the order `01_work_queue.md`.

@@ -1,5 +1,10 @@
 # Review run — the pre-CRAN loop
 
+Status, 2026-09-26: the review loop this file describes is finished, and every
+pull request it names has merged. Kept as a record. Phase 4, the CRAN release
+gate, has not run: `master` is at 2.1.3.1 and no issue tracks the release. The
+run in progress follows `00_protocol.md` and `01_work_queue.md`.
+
 > ## START HERE — 2026-08-25
 >
 > **Do not look for the state of the stack in this file.** It lives on GitHub,

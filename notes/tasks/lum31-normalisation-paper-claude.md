@@ -1,5 +1,8 @@
 # Specification — normalisation, grouping and model averaging
 
+Status, 2026-09-26: see the note at the head of
+`lum31-normalisation-paper-human.md`. Nothing below has changed.
+
 Companion to `lum31-normalisation-paper-human.md`. Written 2026-09-11. Every
 measurement below was made while preparing `vignette("example8")` and is
 recorded, with the settings that produced it, in
