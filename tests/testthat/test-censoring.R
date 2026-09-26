@@ -623,3 +623,188 @@ test_that("a hurdle fit censored in both blocks stays censored", {
   expect_equal(cs$upper, 10)
   expect_true(any(nzchar(cs$bound)))
 })
+
+# The combined hurdle threshold across unequal prediction ranges (#415, D20).
+# Growth is fitted to survivors only, so its grid can stop short of the survival
+# grid, and a component draw known only to exceed its own limit cannot be
+# compared with an identified draw of the other component above that limit.
+# Structural fixtures throughout: the combination reads only the stored
+# posteriors and their records.
+hurdle_necfit <- function(post, cens) {
+  out <- structure(list(model = "nec3param", ne_type = "NEC",
+                        ne_posterior = post,
+                        fit = list(family = list(family = "gaussian"))),
+                   class = c("bayesnecfit", "bnecfit"))
+  attr(out$ne_posterior, "censored") <- cens
+  out
+}
+hurdle_of <- function(growth, survival) {
+  structure(
+    list(growth = growth, survival = survival,
+         data = data.frame(x = 1:4, y = c(2, 1, 0, 0)),
+         formula = bnf(y ~ crf(x, "nec3param")), y_var = "y",
+         n_exposed = 4L, n_dead = 2L),
+    class = c("bayesnechurdlefit", "bnecfit")
+  )
+}
+# The fixture in #415: growth draws of 12 known only to exceed 10, survival
+# draws identified at `s_value` within its range of 0 to 40.
+issue_415_hurdle <- function(s_value) {
+  hurdle_of(
+    hurdle_necfit(rep(12, 4), cens_record(rep(TRUE, 4), logical(4))),
+    hurdle_necfit(rep(s_value, 4), cens_record(logical(4), logical(4),
+                                               upper = 40))
+  )
+}
+
+test_that("a threshold above the other component's limit is not identified", {
+  obj <- issue_415_hurdle(20)
+  est <- suppressWarnings(nec(obj))
+  cs <- attr(est, "censored_summary")
+  # The minimum of a draw above 10 and a draw at 20 lies between the two. The
+  # release reported 20 as the median and both limits, with no mark.
+  expect_false(any(as.numeric(est) == 20))
+  expect_identical(cs$bound, c(">=", ">=", ">="))
+  expect_equal(cs$upper, 10)
+  expect_identical(cs$n_above, 4L)
+  post <- suppressWarnings(nec(obj, posterior = TRUE))
+  expect_true(all(is.na(post)))
+  expect_identical(attr(post, "censored")$above, rep(TRUE, 4))
+  expect_warning(nec(obj), "not identified for 4 of 4 draws")
+})
+
+test_that("a threshold at or below the other component's limit is kept", {
+  est <- nec(issue_415_hurdle(5))
+  expect_equal(as.numeric(est), c(5, 5, 5))
+  expect_null(attr(est, "censored_summary"))
+  # A value at the limit itself is the minimum whatever the censored draw is,
+  # so it is identified too.
+  est_at <- nec(issue_415_hurdle(10))
+  expect_equal(as.numeric(est_at), c(10, 10, 10))
+  expect_null(attr(est_at, "censored_summary"))
+})
+
+test_that("the combined threshold does not depend on component order", {
+  g <- c(NA_real_, NA_real_, NA_real_, 3, NA_real_, 7, 9)
+  attr(g, "censored") <- cens_record(
+    above = c(TRUE, TRUE, FALSE, FALSE, TRUE, FALSE, FALSE),
+    below = c(FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE)
+  )
+  s <- c(20, 5, 20, NA_real_, NA_real_, NA_real_, 30)
+  attr(s, "censored") <- cens_record(
+    above = c(FALSE, FALSE, FALSE, TRUE, TRUE, FALSE, FALSE),
+    below = c(FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE),
+    upper = 40
+  )
+  gs <- bayesnec:::combine_censored_min(g, s, 7)
+  sg <- bayesnec:::combine_censored_min(s, g, 7)
+  expect_identical(gs, sg)
+  # Censoring at both ends in one posterior. Draw by draw: above 10 against
+  # 20; above 10 against 5; below 0 against 20; 3 against above 40; above
+  # both limits; 7 against below 0; 9 against 30.
+  expect_equal(gs$values, c(NA, 5, NA, 3, NA, NA, 9))
+  expect_identical(gs$censored$above,
+                   c(TRUE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE))
+  expect_identical(gs$censored$below,
+                   c(FALSE, FALSE, TRUE, FALSE, FALSE, TRUE, FALSE))
+  expect_equal(c(gs$censored$lower, gs$censored$upper), c(0, 10))
+  # And through the public method, with the components exchanged.
+  obj <- issue_415_hurdle(20)
+  swapped <- hurdle_of(obj$survival, obj$growth)
+  expect_identical(suppressWarnings(nec(swapped)),
+                   suppressWarnings(nec(obj)))
+})
+
+test_that("the shorter range bounds the combination in either direction", {
+  # Survival's range is the shorter one here, the reverse of the usual case.
+  # Survival known only to exceed 10 against growth identified at 20 and at 8.
+  g <- c(20, 8)
+  attr(g, "censored") <- cens_record(logical(2), logical(2), upper = 40)
+  s <- c(NA_real_, NA_real_)
+  attr(s, "censored") <- cens_record(c(TRUE, TRUE), logical(2))
+  out <- bayesnec:::combine_censored_min(g, s, 2)
+  expect_equal(out$values, c(NA, 8))
+  expect_identical(out$censored$above, c(TRUE, FALSE))
+  # Both censored above, at unequal limits: the minimum exceeds the smaller
+  # limit, which is the one bound true of it.
+  attr(g, "censored") <- cens_record(c(TRUE, TRUE), logical(2), upper = 40)
+  both <- bayesnec:::combine_censored_min(g, s, 2)
+  expect_identical(both$censored$above, c(TRUE, TRUE))
+  expect_equal(both$censored$upper, 10)
+})
+
+test_that("a draw below the foot of its range stays below it", {
+  # The below-range branch is unchanged by #415: a draw below the foot of its
+  # own range puts the minimum below that foot whatever the other draw is, so
+  # it is marked below and the recorded limit is the larger of the two feet.
+  # The unequal feet are what a decreasing crf() gives on the fitted scale,
+  # where growth's shorter range is cut at the foot rather than the top.
+  g <- c(NA_real_, NA_real_, 7)
+  attr(g, "censored") <- cens_record(logical(3), c(TRUE, TRUE, FALSE),
+                                     lower = 5)
+  attr(attr(g, "censored"), "swapped") <- TRUE
+  s <- c(8, 3, NA_real_)
+  attr(s, "censored") <- cens_record(logical(3), c(FALSE, FALSE, TRUE))
+  attr(attr(s, "censored"), "swapped") <- TRUE
+  out <- bayesnec:::combine_censored_min(g, s, 3)
+  expect_true(all(is.na(out$values)))
+  expect_identical(out$censored$below, c(TRUE, TRUE, TRUE))
+  expect_false(any(out$censored$above))
+  expect_equal(out$censored$lower, 5)
+  expect_true(attr(out$censored, "swapped"))
+})
+
+test_that("an unexplained missing draw is not marked by the combination", {
+  g <- c(NA_real_, 4)
+  attr(g, "censored") <- cens_record(c(TRUE, FALSE), logical(2))
+  s <- c(NA_real_, 6)
+  attr(s, "censored") <- cens_record(logical(2), logical(2), upper = 40)
+  out <- bayesnec:::combine_censored_min(g, s, 2)
+  # The survival draw is NA with no mark, so nothing is known of the minimum
+  # and it is left unexplained, as before #415, rather than called censored.
+  expect_equal(out$values, c(NA, 4))
+  expect_false(any(out$censored$above))
+})
+
+test_that("a curve-derived NSEC with no stored value combines as censored", {
+  # A model-averaged growth component holding a smooth equation, whose NSEC is
+  # read off its curve and is NA with a mark wherever the curve does not reach
+  # the reference within growth's range.
+  growth <- structure(
+    list(mod_fits = list(
+      nec3param = list(fit = list(family = list(family = "gaussian"))),
+      ecx4param = list()
+    ),
+    ne_type = "N(S)EC", w_ne_posterior = c(NA_real_, NA_real_, 3, 8),
+    success_models = c("nec3param", "ecx4param")),
+    class = c("bayesmanecfit", "bnecfit")
+  )
+  attr(growth$w_ne_posterior, "censored") <-
+    cens_record(c(TRUE, TRUE, FALSE, FALSE), logical(4))
+  survival <- hurdle_necfit(c(20, 5, 20, 20),
+                            cens_record(logical(4), logical(4), upper = 40))
+  obj <- hurdle_of(growth, survival)
+  post <- suppressMessages(suppressWarnings(nec(obj, posterior = TRUE)))
+  expect_equal(as.numeric(post), c(NA, 5, 3, 8))
+  expect_identical(attr(post, "censored")$above, c(TRUE, FALSE, FALSE, FALSE))
+  msgs <- testthat::capture_messages(suppressWarnings(nec(obj)))
+  expect_true(any(grepl("mixture of NEC and NSEC draws", msgs)))
+})
+
+test_that("the hurdle summary and a decreasing xform keep the bound", {
+  obj <- issue_415_hurdle(20)
+  sm <- suppressWarnings(summary(obj))
+  cs <- attr(sm$ne$combined, "censored_summary")
+  expect_identical(cs$bound, c(">=", ">=", ">="))
+  expect_equal(cs$upper, 10)
+  printed <- utils::capture.output(print(sm))
+  combined_row <- printed[grepl("^combined", printed)]
+  expect_false(any(grepl("20.00", combined_row, fixed = TRUE)))
+  expect_true(grepl(">= 10.00", combined_row, fixed = TRUE))
+  # A decreasing xform names the same draws at the other end of the new scale.
+  flipped <- suppressWarnings(nec(obj, xform = function(x) -x))
+  fcs <- attr(flipped, "censored_summary")
+  expect_identical(fcs$bound, c("<=", "<=", "<="))
+  expect_equal(fcs$lower, -10)
+  expect_identical(fcs$n_below, 4L)
+})

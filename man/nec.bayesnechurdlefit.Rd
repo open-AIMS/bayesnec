@@ -63,6 +63,15 @@ thresholds the growth curve sits at \code{top} and the survival curve at its
 own control value, so their product is flat; it departs that plateau at
 whichever threshold binds first.
 
+A component draw beyond the top of its prediction range is known only to
+exceed that limit. The two components' ranges can differ, because growth
+is fitted to survivors only and its range stops short of any
+concentration at which nothing survived. Where one component is known
+only to exceed its limit and the other is estimated above that limit, the
+combined draw is not identified. It is reported as beyond the top of the
+range, at the smaller of the two components' upper limits, which is true
+of every such draw.
+
 \bold{The combined estimate is therefore the smaller of the two, and reduces
 to the growth estimate whenever growth is the more sensitive endpoint} --
 which it usually is, since a contaminant that kills has generally slowed

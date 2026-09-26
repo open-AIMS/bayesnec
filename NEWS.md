@@ -148,6 +148,22 @@
   smaller of the two is now above the range only where both blocks are, and
   below it where either is (#395).
 
+- The combined no-effect estimate of a factorised hurdle fit, returned by
+  `nec()` and reported by `summary()` on a `bnec_hurdle()` fit, is marked as
+  beyond the prediction range wherever it is not identified. The two
+  components can be predicted over different ranges, because growth is fitted
+  to survivors only and its range stops short of any concentration at which
+  nothing survived. A growth draw known only to exceed the top of its range,
+  combined with a survival draw estimated above that limit, gives a minimum
+  that lies between the two and is not identified. The development version
+  reported the survival value for such a draw: growth above 10 and survival at
+  20 gave 20 as the median and as both interval limits, with no mark. The draw
+  is now marked as above the smaller of the two components' upper limits,
+  which is true of it, and the finite upper limit implied by the survival draw
+  is not reported. A survival draw at or below the growth limit is still the
+  combined value, and the rule is the same with the two components exchanged
+  (#415).
+
 - The quantile estimator behind a censored summary is the inverse empirical
   distribution function, `quantile(type = 1)`. A posterior with no beyond-range
   draw is summarised exactly as it was in 2.1.3, with `median()` and
