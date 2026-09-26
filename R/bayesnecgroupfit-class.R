@@ -96,6 +96,7 @@ group_lapply <- function(object, fun, ...) {
 #'
 #' @noRd
 group_estimate_table <- function(object, what, fun, ...) {
+  levels <- object$levels
   dots <- list(...)
   if (isTRUE(dots$posterior)) {
     stop(what, " on a bayesnecgroupfit returns one row per level, which a",
@@ -116,18 +117,18 @@ group_estimate_table <- function(object, what, fun, ...) {
     # Matched by name, so a level whose method returned the quantiles in a
     # different order cannot silently land in the wrong column.
     if (!identical(names(e), nms)) {
-      stop("Level \"", object$levels[i], "\" returned ", what, " estimates",
-           " named differently from level \"", object$levels[1], "\".",
+      stop("Level \"", levels[i], "\" returned ", what, " estimates",
+           " named differently from level \"", levels[1], "\".",
            call. = FALSE)
     }
-    cbind(data.frame(level = object$levels[i], stringsAsFactors = FALSE),
+    cbind(data.frame(level = levels[i], stringsAsFactors = FALSE),
           as.data.frame(as.list(unclass(e)[nms])))
   }))
   # The numeric columns are built from the bare numbers, which drops each
   # level's "censored_summary" attribute, so the marks are read from the
   # estimates themselves and added beside them. Writing them into the numbers,
   # as print() does, would turn every numeric column into text.
-  out <- cbind(out, estimate_marks(est, nms, object$levels, what))
+  out <- cbind(out, estimate_marks(est, nms, levels, what))
   rownames(out) <- NULL
   out
 }
