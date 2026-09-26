@@ -344,7 +344,13 @@
   40 counts with exposures of 1, 2, 4 and 8 that the `rate()` tests use, the
   `disp("power")` constant changes from 3.02013, the median log count, to
   2.19722, the median log rate, and the `disp("loglinear")` constant changes
-  from 20.5 to 9 (#397).
+  from 20.5 to 9. A fit made before this change keeps the constant computed
+  from the counts through `update()`, including `update(newdata = )`, because
+  `update()` reuses the stored formula rather than building it again. Refit it
+  through `bnec()`, or `bnec_group()` for a grouped fit, to obtain the
+  corrected constant. `amend()` computes the corrected constant for an equation
+  it adds to a set, and keeps the equations already in the set as they were
+  fitted (#397).
 
 ## Count hurdles
 
