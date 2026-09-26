@@ -76,12 +76,13 @@
 #' \code{x_range} begins at a higher concentration, a draw already at or below
 #' the reference at the first grid point reached it somewhere below the range
 #' asked for, which is not identified within that range: such a draw returns
-#' \code{NA} and is reported with those that never reach the reference.
+#' \code{NA} and is reported as lying at or below the start of the range.
 #'
 #' Where a draw's curve does not reach the reference at any tested concentration
 #' its NSEC is above the highest concentration in the prediction grid. Such a
-#' draw returns \code{NA} and is excluded from the summary, which is therefore
-#' censored above that concentration, and a warning reports how many draws were
+#' draw returns \code{NA}, keeps its rank in the summary and is given no value,
+#' so the summary is censored above that concentration, as the \emph{Capping
+#' and dropping} section describes, and a warning reports how many draws were
 #' affected. Extending \code{x_range} will estimate it, at the price of reading
 #' the curve where there are no data.
 #' 
