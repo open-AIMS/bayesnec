@@ -340,3 +340,13 @@ and the order `01_work_queue.md`.
 - 2026-09-27 01:25 AEST. PR #402 passes all five checks at `fc2e7e8c` but is
   open; its preconditions (the #382 plan document, the PR body's base line, an
   issue for #388's open questions) are not done. The run does not merge it.
+- 2026-09-27 03:50 AEST. #431's ubuntu-devel job was cancelled after 59 min with
+  no newer push and a 90-minute limit, which is the unexplained termination
+  `notes/ci_devel_cancellation.md` records. It was re-run alone and passed, and
+  the PR merged.
+- 2026-09-27 04:00 to 06:20 AEST. A second usage-limit pause of the
+  orchestrating session.
+- 2026-09-27 06:25 AEST. PR #402 still unmerged (head `fc2e7e8c`), so the
+  `example8` store refit is not started and `example8` is left out of the
+  precompile, as §4 provides. Seventeen issues were filed for defects found
+  during the run: #435 to #451.
