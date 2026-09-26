@@ -22,7 +22,7 @@ request, as the #386 programme did. That merge is expected to become the 3.0
 release.
 
 The run ends by launching a precompile of the vignettes on the AIMS HPC. RF's
-VPN connection closes about 22 hours after the plan was approved, and a job can
+VPN connection closes near 18:00 AEST on 2026-09-27, and a job can
 only be submitted while it is open, so the launch has a deadline and the order
 of work puts first the fixes that change what a vignette prints.
 
@@ -141,7 +141,7 @@ submits it and does not wait for it.
 
 - At the start, one short vignette is precompiled as a test, so that a problem
   with the image or the cluster is found early rather than at the deadline.
-- The full precompile is submitted when the list is finished, or at 14:00 AEST
+- The full precompile is submitted when the list is finished, or at 16:00 AEST
   on 2026-09-27, whichever comes first, against the tip of `predev` at that
   moment. Fixes merged after it are listed in the run log as not reflected in
   the rendered vignettes.
@@ -149,8 +149,8 @@ submits it and does not wait for it.
   before PR #409 changed the priors. That refit runs on the HPC through the
   `grouping-structures` compendium, and is launched as soon as PR #402 has
   merged, since `example8`'s source is part of PR #402. If PR #402 has not merged
-  in time for the refit to finish before the deadline, `example8` is left out of
-  this precompile.
+  by 10:00 AEST on 2026-09-27, the refit is not started and `example8` is left
+  out of this precompile.
 - Collecting the output needs the VPN. RF, or a later session, fetches it and
   opens one pull request with the rendered vignettes.
 

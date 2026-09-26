@@ -158,7 +158,7 @@ rebase, push to or edit the branch of PR #402.
 ## The deadline
 
 The run ends by submitting a precompile of the vignettes to the AIMS HPC, which
-needs RF's VPN connection. That connection closes near 16:30 AEST on 2026-09-27.
+needs RF's VPN connection. That connection closes near 18:00 AEST on 2026-09-27.
 The times at which the store refit and the precompile are submitted, and what is
 done when they are missed, are in `notes/tasks/backlog-run-claude.md` §4, under
 the precompile and the store refit. Check the clock at each item boundary.

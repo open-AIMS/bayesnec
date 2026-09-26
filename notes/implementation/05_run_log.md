@@ -312,3 +312,10 @@ feature work, **`2.2.0` is the factor covariate release**, and the short-lived
 Started after 2026-09-26. Records only what GitHub cannot: an item stopped or
 skipped, and why, and where the run finished. The procedure is `00_protocol.md`
 and the order `01_work_queue.md`.
+
+- 2026-09-26 19:45 AEST. Precompile smoke test: `example2b` as job 914152 from
+  `predev` at `efce694a`, completed in 40 s, "Precompiled without error", output
+  identical to the committed `example2b.Rmd`. The HPC path works; the container
+  on the cluster matches `hpc/image.lock`.
+- 2026-09-26 19:50 AEST. RF renewed the VPN connection; it closes near 18:00 AEST
+  on 2026-09-27. Cut-offs moved to 10:00 (store refit) and 16:00 (precompile).

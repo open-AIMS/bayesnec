@@ -416,7 +416,8 @@ item 12 is finished, they are done on `predev` and PR #402 takes them in when it
 is next brought up to date.
 
 The run ends by submitting a precompile of the vignettes to the AIMS HPC before
-RF's VPN connection closes, near 16:30 AEST on 2026-09-27.
+RF's VPN connection closes, near 18:00 AEST on 2026-09-27, after RF renewed it at
+19:50 AEST on 2026-09-26.
 
 ## D19 — #120 and #44 are in the run (Q1)
 

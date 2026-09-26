@@ -540,8 +540,8 @@ unobserved part of a curve can be recovered from the data.
 
 ### The precompile and the store refit
 
-D18. RF's VPN connection, needed to submit to the AIMS HPC, closes about 22 hours
-after 18:50 AEST on 2026-09-26, so near 16:30 AEST on 2026-09-27. A job already
+D18. RF's VPN connection, needed to submit to the AIMS HPC, was renewed at 19:50
+AEST on 2026-09-26 and closes near 18:00 AEST on 2026-09-27. A job already
 submitted keeps running after it closes; fetching the output needs the VPN
 again. The run therefore submits and does not wait.
 
@@ -561,11 +561,11 @@ The `example8` store. Once PR #402 has merged into `predev`, from
 commit>`, following that repository's `README.md` and `CLAUDE.md`. It records
 the commit in `hpc/bayesnec.lock` and chains install, 189 units, assembly and the
 joint refit on the cluster; commit the lock in that repository. If PR #402 has
-not merged by 08:00 AEST on 2026-09-27, the refit is not started and `example8`
+not merged by 10:00 AEST on 2026-09-27, the refit is not started and `example8`
 is left out of this precompile. None of items 1 to 14 changes what `example8`
 fits, so the store needs no refit after this one.
 
-The full submission, at the end of the list or at 14:00 AEST on 2026-09-27,
+The full submission, at the end of the list or at 16:00 AEST on 2026-09-27,
 whichever is first, from the run worktree, clean and at the tip of `predev`:
 `./hpc/precompile-hpc.sh --no-wait` naming every vignette except `example8`.
 Where the store's assembly and joint jobs have finished, submit `example8`

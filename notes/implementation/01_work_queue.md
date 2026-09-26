@@ -40,7 +40,7 @@ skipped when reached, and taken up once the decision is recorded in
 | 15 | #410 | §4 item 15 | D29 | after PR #402, or after item 12 if it has not merged |
 | 16 | #419 | §4 item 16 | D31 | after PR #402, or after item 12 if it has not merged |
 | bg | #418 | §4, the background item | D26 | notes only, straight to `predev`; start at the beginning |
-| end | precompile | §4, the precompile and the store refit | D18 | test at the start; submit by 14:00 AEST 2026-09-27 |
+| end | precompile | §4, the precompile and the store refit | D18 | test passed (job 914152); submit by 16:00 AEST 2026-09-27 |
 
 ## At the end of the run
 
