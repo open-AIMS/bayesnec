@@ -95,6 +95,14 @@
 #' that needs the admissible set should ask for it directly, by passing the
 #' numeric range --- \code{models(c(0, 1))} --- rather than reading a group.
 #'
+#' The \code{"bot_free"} group contains the fourteen equations with no
+#' \code{bot} parameter. It includes the eleven equations in
+#' \code{"zero_bounded"}, whose fitted mean falls to zero, and the three
+#' linear-decay equations \code{"neclin"}, \code{"neclinhorme"} and
+#' \code{"ecxlin"}, whose fitted mean is unbounded below. The name therefore
+#' does not mean that \code{bot} is estimated freely or that every equation in
+#' the group approaches zero.
+#'
 #' Set \code{max_pars} to restrict the resolved set to equations with no more
 #' than that number of curve parameters. The limit can be used by itself or
 #' combined with a model group, response range, or fitted object. The returned

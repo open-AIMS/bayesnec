@@ -197,7 +197,8 @@ so a model set holding both is reported. Whether the response can reach the
 floor is a property of the endpoint rather than of the data --- zero is
 attainable for a lethality endpoint and usually not for a growth or
 photosynthetic yield endpoint --- so the set is left as requested and the
-choice is the user's. \code{mod_groups$bot_free} names the fourteen.}
+choice is the user's. \code{models()$bot_free} returns the fourteen, and
+\code{models()$zero_bounded} returns the eleven that fall to zero.}
 
 \item{timeout}{A positive \code{\link[base]{numeric}} giving the maximum
 number of seconds allowed for fitting any single model, passed to
