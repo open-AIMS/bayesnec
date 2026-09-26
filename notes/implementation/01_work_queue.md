@@ -23,23 +23,23 @@ skipped when reached, and taken up once the decision is recorded in
 
 | # | issue | specification | decision | status |
 |---|---|---|---|---|
-| 1 | #416 | §4 item 1 | none | |
-| 2 | #417 | §4 item 2 | none | |
-| 3 | #415 | §4 item 3 | D20 | |
+| 1 | #416 | §4 item 1 | none | merged, #420 |
+| 2 | #417 | §4 item 2 | none | #422 |
+| 3 | #415 | §4 item 3 | D20 | #423; lower end is #421 |
 | 4 | #299 | §4 item 4 | D23 | |
 | 5 | #120 | §4 item 5 | D19 | |
-| 6 | #404, #403 | §4 item 6 | D21, D22 | |
+| 6 | #404, #403 | §4 item 6 | D21, D22 | #425 for #404; #403 stopped, see run log |
 | 7 | #412 | §4 item 7 | D28 | |
-| 8 | #398 | §4 item 8 | none | |
+| 8 | #398 | §4 item 8 | none | #424 |
 | 9 | #400 | §4 item 9 | D30 | |
-| 10 | #397 | §4 item 10 | none | |
+| 10 | #397 | §4 item 10 | none | #426 |
 | 11 | #44 | §4 item 11 | D19, D25 | |
 | 12 | #410 | §4 item 12 | D29 | |
 | 13 | #404 | §4 item 13 | D22 | after PR #402, or after item 12 if it has not merged |
 | 14 | #413 | §4 item 14 | D24 | after PR #402, or after item 12 if it has not merged |
 | 15 | #410 | §4 item 15 | D29 | after PR #402, or after item 12 if it has not merged |
 | 16 | #419 | §4 item 16 | D31 | after PR #402, or after item 12 if it has not merged |
-| bg | #418 | §4, the background item | D26 | notes only, straight to `predev`; start at the beginning |
+| bg | #418 | §4, the background item | D26 | committed, `528f0667` |
 | end | precompile | §4, the precompile and the store refit | D18 | test passed (job 914152); submit by 16:00 AEST 2026-09-27 |
 
 ## At the end of the run
