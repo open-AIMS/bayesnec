@@ -554,6 +554,18 @@
 #' A variance function of the fitted mean requires the mean to be modelled on
 #' its natural scale, which is the identity link \code{\link{bnec}} fits on.
 #'
+#' On \code{"hurdle_gamma"} and \code{"zero_inflated_beta"} the term models the
+#' dispersion parameter of the positive block, \code{shape} and \code{phi}
+#' respectively, and leaves the \code{hu} or \code{zi} block as it is. A
+#' variance function is written in the mean of the positive block, which is
+#' the Gamma or Beta component mean \code{mu} rather than the mean of the
+#' response, \code{(1 - hu) * mu}, and its reference value is computed from
+#' the positive responses alone. That is the variance function
+#' \code{\link{bnec_hurdle}} fits on its growth component, so the joint and
+#' factorised routes model the same dispersion. \code{"hurdle_poisson"} has no
+#' dispersion parameter to model, and \code{"hurdle_negbinomial"} does not yet
+#' take a \code{disp()} term.
+#'
 #' Because \code{\link{ecx}} and \code{\link{nsec}} are defined on \code{mu}, a
 #' dispersion sub-model changes the credible intervals of the toxicity
 #' estimates, and may also shift the point estimates, since the two models
@@ -942,7 +954,24 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   loo_controls <- define_loo_controls(loo_controls, brm_args$family$family)
   if (length(model) == 0) {
     stop("No valid models have been supplied for this data type.")
-  } else if (length(model) > 1) {
+  }
+  # Whether the family can take the disp() term is a property of the formula,
+  # the family and the response, fixed for the whole call, so it is checked
+  # once here. Left to wrangle_model_formula(), which runs once per equation
+  # inside the try() of the model loop, a refusal on a model set was printed
+  # once per equation and the call ended on the all-models-failed advice,
+  # which names neither the cause nor the remedy. The response is the one the
+  # loop would pass, from disp_response(), so the refusal raised here is the
+  # one the loop would have raised. Placed after every check and report above
+  # so that the output before the refusal is what it was when the refusal came
+  # from the loop. wrangle_model_formula() keeps the check as the backstop for
+  # make_brmsformula() and the routes that do not come through here. See #410.
+  disp_spec <- parse_disp_term(formula)
+  if (!is.null(disp_spec)) {
+    check_disp_spec(disp_spec, brm_args$family,
+                    response = disp_response(bdat, brm_args$family))
+  }
+  if (length(model) > 1) {
     mod_fits <- vector(mode = "list", length = length(model))
     names(mod_fits) <- model
     failed <- list()

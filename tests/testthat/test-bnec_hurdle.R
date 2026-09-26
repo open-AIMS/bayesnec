@@ -371,6 +371,33 @@ test_that("the hurdle methods run on a growth disp() term (#410)", {
   expect_s3_class(autoplot(fit), "ggplot")
 })
 
+test_that("bnec_joint builds the growth disp() term into the joint model (#410)", {
+  skip_on_cran()
+  # The joint refit of the fitted fixture, with bnec() replaced so that the
+  # joint model is built but not sampled. Its shape sub-model has to be the one
+  # the growth component was fitted with: the same curve and the same
+  # centring literal, computed from the survivors in both routes.
+  f <- disp_hurdle_fixture()
+  captured <- NULL
+  local_mocked_bindings(
+    bnec = function(formula, data, family, model_survival, ...) {
+      captured <<- list(formula = formula, data = data, family = family)
+      invisible(NULL)
+    },
+    .package = "bayesnec"
+  )
+  suppressMessages(bnec_joint(f$fit))
+  expect_equal(captured$family, "hurdle_gamma")
+  joint <- make_brmsformula(captured$formula, captured$data,
+                            family = validate_family("hurdle_gamma"))[[1]]
+  expect_identical(deparse1(joint$pforms$shape[[3]]),
+                   deparse1(f$fit$growth$fit$formula$pforms$shape[[3]]))
+  # the hu block gains no dispersion term
+  hu_rhs <- vapply(joint$pforms[grep("^hu", names(joint$pforms))], deparse1,
+                   character(1))
+  expect_false(any(grepl("c0|c1|shape", hu_rhs)))
+})
+
 test_that("swap_crf_model swaps a single model and a model group", {
   f <- bnf(y ~ crf(x, "nec3param"))
   expect_equal(

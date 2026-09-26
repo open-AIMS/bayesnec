@@ -259,12 +259,12 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
     check_hurdle_growth_family(family_growth)
   }
   # Checked here against the growth family, the only one the term applies to,
-  # rather than left to the growth fit. bnec() reaches check_disp_spec() only
-  # from wrangle_model_formula(), once per equation inside its model loop, so a
-  # model set would print the refusal once per equation and end on the generic
-  # all-models-failed advice. From here it is raised once, before either
-  # component compiles. The response is the survivors', which is what the
-  # growth fit is given. See #410.
+  # before the growth component is announced or either component compiles.
+  # The growth bnec() call makes the same check once before its own model
+  # loop, with the same function and so the same message, and passes wherever
+  # this one does; this one is kept so that a refusal is raised before
+  # anything bnec_hurdle() prints. The response is the survivors', which is
+  # what the growth fit is given. See #410.
   disp_spec <- parse_disp_term(formula)
   if (!is.null(disp_spec)) {
     check_disp_spec(disp_spec, family_growth, response = y[y > 0])
