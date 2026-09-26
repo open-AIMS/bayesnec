@@ -199,7 +199,7 @@ after an odd number of preceding normal draws. Use R's default
     <h2>Value</h2>
     <p>A named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> containing bootstrapped differences
 in posterior predictions of the <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or
-<code><a href="bayesnecfit-class.html">bayesnecfit</a></code> model fits contained in <code>x</code>. See Details.</p>
+<code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> model fits contained in <code>x</code>. See Details.</p>
     </div>
     <div id="details">
     <h2>Details</h2>
@@ -234,11 +234,20 @@ user-specific data.frame, set <code>make_newdata = FALSE</code> and provide
 an additional data.frame via the <code>newdata</code> argument. For guidance
 on how to structure <code>newdata</code>, see for example
 <code><a href="https://mc-stan.org/rstantools/reference/posterior_epred.html" class="external-link">posterior_epred</a></code>.</p>
+<p>Every comparison other than "fitted" is made by
+<code><a href="compare_estimates.html">compare_estimates</a></code>, which describes the elements returned. A
+posterior draw that lies beyond the prediction range is not deleted from
+the comparison. Where the censoring leaves the sign of some paired
+differences unknown, <code>prob_diff</code> reports the probability as a lower
+and an upper value, <code>prob_lower</code> and <code>prob_upper</code>, with the
+censored fraction of each posterior, and <code>prob</code> is <code>NA</code>. See the
+<em>Censored estimates</em> section of <code><a href="compare_estimates.html">compare_estimates</a></code>.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>
     <div class="dont-index"><p><code><a href="bnec.html">bnec</a></code> <code><a href="ecx.html">ecx</a></code> <code><a href="nsec.html">nsec</a></code>
-<code><a href="nec.html">nec</a></code> <code><a href="bnec_newdata.html">bnec_newdata</a></code></p></div>
+<code><a href="nec.html">nec</a></code> <code><a href="bnec_newdata.html">bnec_newdata</a></code>
+<code><a href="compare_estimates.html">compare_estimates</a></code></p></div>
     </div>
 
     <div id="ref-examples">

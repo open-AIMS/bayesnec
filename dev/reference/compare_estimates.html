@@ -179,7 +179,79 @@ after an odd number of preceding normal draws. Use R's default
     <h2>Value</h2>
     <p>A named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> containing bootstrapped differences
 in posterior predictions of the <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or
-<code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> model fits contained in <code>x</code>. See Details.</p>
+<code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> model fits contained in <code>x</code>, with elements:</p><dl><dt><code>posterior_list</code></dt>
+<dd><p>The posterior of the estimate for each fit,
+as the estimator returns it with <code>posterior = TRUE</code>, including the
+<code>"censored"</code> attribute that records which draws lie beyond the
+prediction range.</p></dd>
+
+<dt><code>posterior_data</code></dt>
+<dd><p>The paired draws of each posterior, in long
+format, with columns <code>model</code> and <code>value</code>. It carries no
+censoring mark; see the <em>Censored estimates</em> section.</p></dd>
+
+<dt><code>diff_list</code></dt>
+<dd><p>The paired differences for each pair of fits,
+named <code>"a-b"</code> for the first fit minus the second. A difference
+involving a censored draw has no value and is <code>NA</code>.</p></dd>
+
+<dt><code>diff_data</code></dt>
+<dd><p>The same differences in long format, with columns
+<code>comparison</code> and <code>diff</code>, and two columns that mark each
+difference: <code>positive</code>, <code>TRUE</code> where the difference is known
+to be above zero, <code>FALSE</code> where it is known to be at or below zero,
+and <code>NA</code> where it is not known; and <code>indeterminate</code>,
+<code>TRUE</code> where censoring leaves the sign unknown.</p></dd>
+
+<dt><code>prob_diff</code></dt>
+<dd><p>One row per pair of fits, with columns
+<code>comparison</code>; <code>prob</code>, the probability that the difference is
+above zero; <code>prob_lower</code> and <code>prob_upper</code>, the lowest and
+highest values of that probability consistent with the censoring
+record; and <code>censored_first</code> and <code>censored_second</code>, the
+fraction of each fit's paired draws that lie beyond the prediction
+range. See the <em>Censored estimates</em> section.</p></dd>
+
+
+</dl></div>
+    <div id="censored-estimates">
+    <h2>Censored estimates</h2>
+
+
+<p>In the differences and the probabilities, a draw that lies beyond the
+prediction range is treated as the estimator reports it: it is given no
+value, and it is known only to lie at or beyond the end of the range. This
+applies to every comparison type. An ECx or NSEC draw whose curve does not
+reach the target is such a draw, and so is a threshold equation's
+<code>nec</code> draw above the prediction range, which is sampled and has a
+number but is reported by <code><a href="nec.html">nec</a></code> as a bound. Under "nec" and
+"n(s)ec", <code>posterior_list</code> and <code>posterior_data</code> still hold that
+sampled value, as <code><a href="nec.html">nec</a></code> returns it with <code>posterior = TRUE</code>.
+The <code>"censored"</code> attribute of <code>posterior_list</code> marks the draw and
+<code>posterior_data</code> does not, so a value there beyond the prediction range
+is not an identified estimate.</p>
+<p>The comparison does not delete these draws. For many pairs the censoring
+record fixes the sign of the difference whatever the censored value is: a
+draw at or above the upper end of the range, paired with a draw identified
+below it, gives a positive difference. The sign is unknown in three cases:
+where both draws are censored at the same end; where an identified draw
+lies at or above the upper bound of a draw censored above it, or below the
+lower bound of a draw censored below it; and where a draw censored above
+one bound is paired with a draw censored below another and the two
+prediction ranges do not overlap. The second case arises from an identified
+draw exactly at the bound, since the record states "at or above", or from
+components predicted over different ranges, as does the third. Such a pair
+is indeterminate: it is counted as not positive in <code>prob_lower</code> and as
+positive in <code>prob_upper</code>, and it is marked in the <code>indeterminate</code>
+column of <code>diff_data</code>. Where no pair is indeterminate the two
+probabilities are equal, and <code>prob</code> is that value. Where any pair is
+indeterminate <code>prob</code> is <code>NA</code>, because the comparison does not
+identify a single probability. <code>censored_first</code> and
+<code>censored_second</code> state how much of each posterior was censored.</p>
+<p>A draw that is <code>NA</code> without the censoring record accounting for it
+could not be computed at all, and a pair containing one is left out of both
+probabilities. So is a pair of identified draws whose difference is not a
+number, such as two infinite draws of the same sign.</p>
     </div>
     <div id="reproducibility">
     <h2>Reproducibility</h2>
