@@ -200,6 +200,13 @@ check described above drops them where the family requires it; what the
 group name does not do is state which equations that check will keep. Code
 that needs the admissible set should ask for it directly, by passing the
 numeric range — <code>models(c(0, 1))</code> — rather than reading a group.</p>
+<p>The <code>"bot_free"</code> group contains the fourteen equations with no
+<code>bot</code> parameter. It includes the eleven equations in
+<code>"zero_bounded"</code>, whose fitted mean falls to zero, and the three
+linear-decay equations <code>"neclin"</code>, <code>"neclinhorme"</code> and
+<code>"ecxlin"</code>, whose fitted mean is unbounded below. The name therefore
+does not mean that <code>bot</code> is estimated freely or that every equation in
+the group approaches zero.</p>
 <p>Set <code>max_pars</code> to restrict the resolved set to equations with no more
 than that number of curve parameters. The limit can be used by itself or
 combined with a model group, response range, or fitted object. The returned
