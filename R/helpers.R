@@ -416,6 +416,28 @@ subset_censoring <- function(cens, idx) {
   cens
 }
 
+#' Take a subset of posterior draws together with their censoring record
+#'
+#' \code{[} drops every attribute but names, so a posterior subset with it
+#' loses the record of which draws lie beyond the prediction range, and a
+#' censored draw can no longer be told from one that is merely missing. This
+#' keeps the share of the record that belongs to the draws taken.
+#'
+#' @param m A posterior vector, optionally carrying attribute
+#' \code{"censored"}.
+#' @param idx An integer vector of draw positions.
+#'
+#' @return \code{m[idx]}, with attribute \code{"censored"} where \code{m}
+#' carries one.
+#' @noRd
+subset_draws <- function(m, idx) {
+  out <- m[idx]
+  # Assigning NULL removes nothing that is there, so the subset of a posterior
+  # with no record is exactly what m[idx] returned before.
+  attr(out, "censored") <- subset_censoring(attr(m, "censored"), idx)
+  out
+}
+
 #' Put a censoring record on another predictor scale
 #'
 #' Used for both remappings a record makes: the \code{crf()} transformation

@@ -62,13 +62,65 @@ after an odd number of preceding normal draws. Use R's default
 \value{
 A named \code{\link[base]{list}} containing bootstrapped differences
 in posterior predictions of the \code{\link{bayesnecfit}} or
-\code{\link{bayesmanecfit}} model fits contained in \code{x}. See Details.
+\code{\link{bayesmanecfit}} model fits contained in \code{x}, with elements:
+\describe{
+\item{\code{posterior_list}}{The posterior of the estimate for each fit,
+as the estimator returns it with \code{posterior = TRUE}, including the
+\code{"censored"} attribute that records which draws lie beyond the
+prediction range.}
+\item{\code{posterior_data}}{The paired draws of each posterior, in long
+format, with columns \code{model} and \code{value}.}
+\item{\code{diff_list}}{The paired differences for each pair of fits,
+named \code{"a-b"} for the first fit minus the second. A difference
+involving a censored draw has no value and is \code{NA}.}
+\item{\code{diff_data}}{The same differences in long format, with columns
+\code{comparison} and \code{diff}, and two columns that mark each
+difference: \code{positive}, \code{TRUE} where the difference is known
+to be above zero, \code{FALSE} where it is known to be at or below zero,
+and \code{NA} where it is not known; and \code{indeterminate},
+\code{TRUE} where censoring leaves the sign unknown.}
+\item{\code{prob_diff}}{One row per pair of fits, with columns
+\code{comparison}; \code{prob}, the probability that the difference is
+above zero; \code{prob_lower} and \code{prob_upper}, the lowest and
+highest values of that probability consistent with the censoring
+record; and \code{censored_first} and \code{censored_second}, the
+fraction of each fit's paired draws that lie beyond the prediction
+range. See the \emph{Censored estimates} section.}
+}
 }
 \description{
 Extracts posterior predicted values from a list of class
 \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits and
 compares these via bootstrap re sampling.
 }
+\section{Censored estimates}{
+
+A draw that lies beyond the prediction range is treated as the estimator
+reports it: it has no value, and it is known only to lie at or beyond the
+end of the range. This applies to every comparison type. An ECx or NSEC
+draw whose curve does not reach the target is such a draw, and so is a
+threshold equation's \code{nec} draw above the prediction range, which is
+sampled and has a number but is reported by \code{\link{nec}} as a bound.
+
+The comparison does not delete these draws. For many pairs the censoring
+record fixes the sign of the difference whatever the censored value is: a
+draw at or above the upper end of the range, paired with a draw identified
+below it, gives a positive difference. The sign is unknown only where both
+draws are censored at the same end, or where the identified draw lies
+beyond the bound of the censored one. Such a pair is indeterminate: it is
+counted as not positive in \code{prob_lower} and as positive in
+\code{prob_upper}, and it is marked in the \code{indeterminate} column of
+\code{diff_data}. Where no pair is indeterminate the two probabilities are
+equal, and \code{prob} is that value. Where any pair is indeterminate
+\code{prob} is \code{NA}, because the comparison does not identify a single
+probability. \code{censored_first} and \code{censored_second} state how
+much of each posterior was censored.
+
+A draw that is \code{NA} without the censoring record accounting for it
+could not be computed at all, and a pair containing one is left out of both
+probabilities.
+}
+
 \section{Reproducibility}{
 
 The draws of each posterior are paired by a random permutation, so
