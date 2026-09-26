@@ -1649,7 +1649,22 @@
   `ecx()` or `ecnsec()` estimate reads the shape: it reads the shape at the
   control, which under a `disp()` term can differ from the shape at the lower
   asymptote. `get_priors()` refuses the term on both families with the same
-  messages. No fit that previously succeeded changes (#410).
+  messages, and `bnec_joint()` refuses a negative binomial growth component
+  fitted with `disp()` before it announces the refit, naming its `formula`
+  argument as the way to refit without the term. No fit that previously
+  succeeded changes (#410).
+
+- `bnec()` now checks a `disp()` term against the family once per call, before
+  it fits any equation. The check was made once per equation inside the model
+  loop, so on a model set a refusal, such as `disp()` on `poisson`, was printed
+  once per equation and the call ended on "None of the models fit
+  successfully", which names neither the cause nor the remedy. The refusal and
+  its message are unchanged. Because it is now raised before the loop, it is
+  reported before the data checks the loop makes for each equation, such as
+  the one for a non-finite response. The refusal of a variance function a family
+  cannot take now also names the two-block families that take it, so
+  `disp("twosided")` on `Gamma` lists `zero_inflated_beta` beside `beta` and
+  `beta_binomial` (#410).
 
 ## Bug fixes
 

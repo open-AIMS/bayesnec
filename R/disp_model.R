@@ -233,9 +233,15 @@ check_disp_spec <- function(spec, family, response = NULL) {
     # hurdle_gamma takes the forms Gamma takes and zero_inflated_beta those of
     # beta, "twosided" included.
     if (!disp_family_tag(fam_tag) %in% vf$families) {
+      # The list names the two-block families that take the form as well,
+      # found through the family of their positive block. hurdle_negbinomial
+      # is left out because it is refused above whatever the form.
+      two_block <- names(hurdle_mu_fams)[hurdle_mu_fams %in% vf$families]
+      two_block <- setdiff(two_block, "hurdle_negbinomial")
       stop("Variance function \"", spec$value, "\" is not valid for the ",
            fam_tag, " family. It applies to: ",
-           paste0(vf$families, collapse = ", "), ".", call. = FALSE)
+           paste0(c(vf$families, two_block), collapse = ", "), ".",
+           call. = FALSE)
     }
     # Every implemented form takes log(mu), so a fitted mean reaching zero is
     # undefined rather than merely awkward. Only the gaussian family can put mu
@@ -258,6 +264,61 @@ check_disp_spec <- function(spec, family, response = NULL) {
     }
   }
   invisible(NULL)
+}
+
+#' The response a disp() term is checked and centred against
+#'
+#' @param data A model frame with the \code{bnec_pop} attribute, as built
+#' by \code{model.frame()} on a \code{\link{bayesnecformula}}.
+#' @param family Either a \code{\link[stats]{family}} object or a family tag.
+#' @param rate_var The \code{rate()} denominator, or \code{NULL}. Defaults to
+#' the one read from \code{data}; \code{wrangle_model_formula()} passes the
+#' read it has already made for its own family check.
+#'
+#' @details The centring constant stands in for a typical fitted mean, so it
+#' is computed on the scale of that mean rather than of the recorded response.
+#' Under the identity link bnec() assigns, brms writes a rate() denominator
+#' multiplicatively, so the mean of a negbinomial fit is a rate, and the mean
+#' of a beta_binomial fit is a proportion of its trials. Computed from the
+#' counts, the constant was displaced by the median log exposure under
+#' "power", and the LOG1MREF term of "twosided" fell back to 0 because
+#' 1 - count is never positive. The divisions are the ones fit_bayesnec()
+#' makes before building priors, on the same family condition for trials, and
+#' they are made on the formula-building path rather than in fit_bayesnec() so
+#' that bnec() and make_brmsformula() build the same literal. See #397.
+#'
+#' A two-block family models the dispersion of its positive block, whose mean
+#' the variance function is written in, so only the positive responses are
+#' returned. This is also the response bnec_hurdle() gives its growth
+#' component, so the joint and factorised routes build the same literal and
+#' fit the same variance function. Kept, the zeros lowered "loglinear"'s
+#' median and entered "twosided"'s second term as log(1 - 0); "power" already
+#' dropped them before taking a log. See #410.
+#'
+#' One function serves both \code{wrangle_model_formula()} and the check
+#' \code{\link{bnec}} makes before its model loop, so that the refusal raised
+#' there is the one the loop would have raised.
+#'
+#' @return A \code{\link[base]{numeric}} vector.
+#'
+#' @noRd
+disp_response <- function(data, family,
+                          rate_var = retrieve_var(data, "rate_var")) {
+  y <- retrieve_var(data, "y_var")
+  fam_tag <- if (inherits(family, "family")) family$family else family
+  if (fam_tag %in% c("binomial", "beta_binomial")) {
+    trials <- retrieve_var(data, "trials_var")
+    if (!is.null(trials)) {
+      y <- y / trials
+    }
+  }
+  if (!is.null(rate_var)) {
+    y <- y / rate_var
+  }
+  if (is_hurdle_family(fam_tag)) {
+    y <- y[which(y > 0)]
+  }
+  y
 }
 
 #' Non-linear parameter names introduced by a disp() specification

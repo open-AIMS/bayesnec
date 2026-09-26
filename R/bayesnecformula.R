@@ -888,39 +888,14 @@ wrangle_model_formula <- function(model, formula, data, family = NULL,
            " parameter it applies to. Pass `family` to make_brmsformula(), or",
            " build the formula through bnec().", call. = FALSE)
     }
-    # The centring constant stands in for a typical fitted mean, so it is
-    # computed on the scale of that mean rather than of the recorded response.
-    # Under the identity link bnec() assigns, brms writes a rate() denominator
-    # multiplicatively, so the mean of a negbinomial fit is a rate, and the mean
-    # of a beta_binomial fit is a proportion of its trials. Computed from the
-    # counts, the constant was displaced by the median log exposure under
-    # "power", and the LOG1MREF term of "twosided" fell back to 0 because
-    # 1 - count is never positive. The divisions are the ones fit_bayesnec()
-    # makes before building priors, on the same family condition for trials,
-    # and they are made here rather than in fit_bayesnec() so that bnec() and
-    # make_brmsformula() build the same literal. rate_var is the read made for
-    # the family check above. See #397.
-    disp_y <- retrieve_var(data, "y_var")
-    disp_fam <- if (inherits(family, "family")) family$family else family
-    if (disp_fam %in% c("binomial", "beta_binomial")) {
-      disp_trials <- retrieve_var(data, "trials_var")
-      if (!is.null(disp_trials)) {
-        disp_y <- disp_y / disp_trials
-      }
-    }
-    if (!is.null(rate_var)) {
-      disp_y <- disp_y / rate_var
-    }
-    # A two-block family models the dispersion of its positive block, whose mean
-    # the variance function is written in, so the constant is taken from the
-    # positive responses alone. This is also the response bnec_hurdle() gives
-    # its growth component, so the joint and factorised routes build the same
-    # literal and fit the same variance function. Kept, the zeros lowered
-    # "loglinear"'s median and entered "twosided"'s second term as log(1 - 0);
-    # "power" already dropped them before taking a log. See #410.
-    if (is_hurdle_family(family)) {
-      disp_y <- disp_y[which(disp_y > 0)]
-    }
+    # The response the centring constant and check_disp_spec() read, on the
+    # scale of the mean the variance function is written in. See
+    # disp_response() for the divisions and for the zeros of a two-block
+    # family; rate_var is the read made for the family check above, passed on
+    # rather than read again. See #397 and #410. bnec() makes the same check
+    # once before its model loop, and this one remains the backstop for
+    # make_brmsformula() and the other routes that build a formula directly.
+    disp_y <- disp_response(data, family, rate_var = rate_var)
     check_disp_spec(disp_spec, family, response = disp_y)
     brms_bf <- add_disp_block(brms_bf, model, disp_spec, family, new_x, disp_y)
   }

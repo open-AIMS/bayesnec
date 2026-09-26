@@ -645,6 +645,9 @@ test_that("a variance function is checked against the positive block", {
   # and hurdle_gamma, whose positive block is Gamma, does not.
   expect_error(joint_bf("g", ' + disp("twosided")', "hurdle_gamma"),
                "not valid for the hurdle_gamma family")
+  # and the refusal names the two-block family that does take it
+  expect_error(joint_bf("g", ' + disp("twosided")', "hurdle_gamma"),
+               "applies to: beta, beta_binomial, zero_inflated_beta\\.")
   expect_silent(joint_bf("y", ' + disp("twosided")', "zero_inflated_beta"))
 })
 

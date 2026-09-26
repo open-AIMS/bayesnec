@@ -139,3 +139,41 @@ test_that("one observation off the bound reaches the model loop (#400)", {
     )
   }
 })
+
+test_that("a model set states a disp() refusal once, from bnec() (#410)", {
+  # wrangle_model_formula() checks the term once per equation, inside the try()
+  # of the model loop, so a refusal from there was printed once per equation
+  # and the call ended on the all-models-failed advice. fit_bayesnec() is
+  # replaced to count calls: the refusal has to arrive before the loop does.
+  calls <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      calls <<- calls + 1L
+      stop("the model loop should not start")
+    },
+    .package = "bayesnec"
+  )
+  d <- nec_data[, c("x", "y")]
+  d$n <- as.integer(round(d$y * 20))
+  d$n[d$x > 1.8] <- 0L
+  cases <- list(
+    list(f = n ~ crf(x, c("nec3param", "ecx4param")) + disp("power"),
+         family = "hurdle_negbinomial", msg = "pending a decision"),
+    list(f = n ~ crf(x, c("nec3param", "ecx4param")) + disp("power"),
+         family = "hurdle_poisson",
+         msg = "hurdle_poisson has no free dispersion parameter"),
+    # Two single-block families: the refusal is the one the loop raised.
+    list(f = n ~ crf(x, c("nec3param", "ecx4param")) + disp("power"),
+         family = "poisson", msg = "poisson has no free dispersion parameter"),
+    list(f = y ~ crf(x, c("nec3param", "ecx4param")) + disp("twosided"),
+         family = "gaussian", msg = "not valid for the gaussian family")
+  )
+  for (cs in cases) {
+    msg <- tryCatch(suppressWarnings(suppressMessages(
+      bnec(cs$f, data = d, family = cs$family)
+    )), error = conditionMessage)
+    expect_match(msg, cs$msg)
+    expect_false(grepl("None of the models fit successfully", msg))
+  }
+  expect_equal(calls, 0L)
+})

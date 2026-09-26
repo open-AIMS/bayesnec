@@ -144,3 +144,32 @@ test_that("bnec_joint refuses a non-syntactic name before rebuilding (#398)", {
                "not syntactic R names.*odd x")
   expect_null(captured$formula)
 })
+
+test_that("bnec_joint refuses a negative binomial growth disp() up front", {
+  # hurdle_negbinomial does not take disp() yet. The refusal comes before the
+  # refit is announced and before bnec() is called, and names the `formula`
+  # argument, which is how a bnec_joint() caller leaves the term out.
+  d_counts <- function(o) {
+    o$data$y <- as.integer(round(o$data$y * 20))
+    o
+  }
+  o <- d_counts(mock_disp_crossed(
+    'y ~ crf(x, c("nec3param", "ecx4param")) + disp("power")', "negbinomial"
+  ))
+  captured <- capture_joint_call()
+  msgs <- character(0)
+  err <- withCallingHandlers(
+    tryCatch(bnec_joint(o), error = conditionMessage),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_match(err, "hurdle_negbinomial.*pending a decision.*`formula`")
+  expect_false(any(grepl("Refitting jointly", msgs)))
+  expect_null(captured$formula)
+  # the remedy the message names reaches bnec()
+  suppressMessages(bnec_joint(o, formula = y ~ crf(x, "nec3param")))
+  expect_equal(captured$family, "hurdle_negbinomial")
+  expect_null(bayesnec:::parse_disp_term(captured$formula))
+})

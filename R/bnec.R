@@ -954,7 +954,24 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   loo_controls <- define_loo_controls(loo_controls, brm_args$family$family)
   if (length(model) == 0) {
     stop("No valid models have been supplied for this data type.")
-  } else if (length(model) > 1) {
+  }
+  # Whether the family can take the disp() term is a property of the formula,
+  # the family and the response, fixed for the whole call, so it is checked
+  # once here. Left to wrangle_model_formula(), which runs once per equation
+  # inside the try() of the model loop, a refusal on a model set was printed
+  # once per equation and the call ended on the all-models-failed advice,
+  # which names neither the cause nor the remedy. The response is the one the
+  # loop would pass, from disp_response(), so the refusal raised here is the
+  # one the loop would have raised. Placed after every check and report above
+  # so that the output before the refusal is what it was when the refusal came
+  # from the loop. wrangle_model_formula() keeps the check as the backstop for
+  # make_brmsformula() and the routes that do not come through here. See #410.
+  disp_spec <- parse_disp_term(formula)
+  if (!is.null(disp_spec)) {
+    check_disp_spec(disp_spec, brm_args$family,
+                    response = disp_response(bdat, brm_args$family))
+  }
+  if (length(model) > 1) {
     mod_fits <- vector(mode = "list", length = length(model))
     names(mod_fits) <- model
     failed <- list()

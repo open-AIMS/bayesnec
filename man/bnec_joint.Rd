@@ -69,7 +69,9 @@ model fits the same variance function (see \code{\link{bnec}}). A
 \code{formula} supplied here replaces the held one, so a \code{disp()} term
 is fitted only where it is written in that formula. \code{hurdle_negbinomial}
 does not yet take a \code{disp()} term, so a negative binomial growth
-component fitted with one cannot be refitted jointly with it.
+component fitted with one is refused before anything is fitted; supply a
+\code{formula} without the term to refit it jointly with one shape for the
+whole curve.
 }
 \examples{
 \dontrun{
