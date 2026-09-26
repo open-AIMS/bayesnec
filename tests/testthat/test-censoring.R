@@ -554,6 +554,253 @@ test_that("the plot annotation marks a censored estimate", {
   expect_false(any(grepl("^>=|^<=", plain$nec_labs[!is.na(plain$nec_labs)])))
 })
 
+# ---- #417, the annotation under a decreasing map -----------------------------
+
+# The packaged nec4param fit and model set, re-expanded over grids that end
+# inside their posteriors, so nothing is compiled or sampled. Each accessor
+# builds once per file.
+#
+# Ending at 1.5 puts 14 of nec4param's 100 NEC draws above the grid, and 12 of
+# the model average's, so only the upper limit is a bound: the case where the
+# two interval entries can be told apart after a reversal. The ECx call's grid
+# ends at 1.7, where 32 of nec4param's relative EC10 draws lie above it. Under
+# an explicit xform the fit's own grid decides only the direction of the map,
+# so the model set is built once, on the NEC grid. The automatic inverse clamps
+# anything beyond the fit's grid to its end, so the single fit that test uses
+# is built on the ECx grid as well. Expanding the model set takes about ten
+# seconds, and its summary(), which plot() calls, about as long again.
+reversal_x_foot <- function() {
+  min(manec_example$mod_fits[["nec4param"]]$fit$data$x)
+}
+reversal_top <- c(nec = 1.5, ecx = 1.7)
+reversal_ecx_args <- function() {
+  list(ecx_val = 10, type = "relative",
+       x_range = c(reversal_x_foot(), reversal_top[["ecx"]]), resolution = 50)
+}
+
+reversal_fit <- local({
+  cached <- list()
+  function(which = c("nec", "ecx")) {
+    which <- match.arg(which)
+    if (is.null(cached[[which]])) {
+      f <- manec_example$mod_fits[["nec4param"]]
+      cached[[which]] <<- suppressMessages(suppressWarnings(
+        bayesnec:::expand_and_assign_nec(
+          f, f$bayesnecformula, model = "nec4param",
+          x_range = c(reversal_x_foot(), reversal_top[[which]]),
+          resolution = 50
+        )
+      ))
+    }
+    cached[[which]]
+  }
+})
+
+reversal_manec <- local({
+  cached <- NULL
+  function() {
+    if (is.null(cached)) {
+      fs <- manec_example$mod_fits
+      forms <- lapply(fs, function(z) z$bayesnecformula)
+      m <- suppressMessages(suppressWarnings(expand_manec(
+        fs, formula = forms,
+        x_range = c(reversal_x_foot(), reversal_top[["nec"]]),
+        resolution = 50
+      )))
+      cached <<- bayesnec:::allot_class(m, c("bayesmanecfit", "bnecfit"))
+    }
+    cached
+  }
+})
+
+negate <- function(z) -z
+
+# A stored fit relabelled as fitted on crf(I(-x)), its stored estimate put on
+# that scale draw by draw. I(-x) rather than -x, because inside a formula a bare
+# minus is the operator that removes a term, so model.frame() keeps x as it is
+# and the predictor is not reported as transformed. ecx() reads the formula
+# when it maps its search onto the fitted scale, so its estimates come out
+# negated with no further change.
+negated_fit <- function(fit) {
+  fit$ne <- suppressMessages(suppressWarnings(nec(fit, xform = negate)))
+  fit$bayesnecformula <- bayesnecformula(y ~ crf(I(-x), model = "nec4param"))
+  fit
+}
+
+negated_manec <- function(m) {
+  m$w_ne <- suppressMessages(suppressWarnings(nec(m, xform = negate)))
+  m$mod_fits[[1]]$bayesnecformula <- bayesnecformula(
+    stats::as.formula(paste0("y ~ crf(I(-x), model = \"",
+                             names(m$mod_fits)[1], "\")"))
+  )
+  m
+}
+
+# The three labels of one annotation, estimate first.
+annotation_labels <- function(d, what = "nec") {
+  cols <- paste0(what, c("_labs", "_labs_l", "_labs_u"))
+  vapply(cols, function(n) unique(stats::na.omit(d[[n]])), character(1),
+         USE.NAMES = FALSE)
+}
+
+# What x -> -x must make of labels on the recorded scale: each number negated,
+# each mark reversed, and the two interval entries exchanged. The annotation
+# remaps the stored summary rather than summarising the draws again, so this is
+# exact, where comparing with nec(fit, xform = negate) is not: with 100 draws a
+# censored median is a type 1 quantile, and the median of -x is then the
+# negated 51st draw rather than the 50th.
+reflected_labels <- function(labs) {
+  reflect <- function(l) {
+    if (startsWith(l, ">=")) {
+      return(paste0("<=-", substring(l, 3)))
+    }
+    if (startsWith(l, "<=")) {
+      return(paste0(">=-", substring(l, 3)))
+    }
+    paste0("-", l)
+  }
+  vapply(labs[c(1, 3, 2)], reflect, character(1), USE.NAMES = FALSE)
+}
+
+annotate <- function(obj, ...) {
+  suppressMessages(suppressWarnings(ggbnec_data(obj, ...)))
+}
+
+annotate_ecx <- function(obj, ...) {
+  do.call(annotate, c(list(obj, add_nec = FALSE, add_ecx = TRUE, ...),
+                      reversal_ecx_args()))
+}
+
+test_that("a bound above the grid is labelled as below it once negated", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # The reproduction in #417: every NEC draw lies above a grid ending at 0.9,
+  # so all three entries are the bound, and the negated axis puts it at the
+  # foot. The release labelled all three ">=-0.90".
+  f <- manec_example$mod_fits[["nec4param"]]
+  fit <- suppressMessages(suppressWarnings(
+    bayesnec:::expand_and_assign_nec(
+      f, f$bayesnecformula, model = "nec4param",
+      x_range = c(reversal_x_foot(), 0.9), resolution = 50
+    )
+  ))
+  expect_identical(annotation_labels(annotate(fit, xform = negate)),
+                   rep("<=-0.90", 3))
+})
+
+test_that("a decreasing xform reverses the NEC annotation", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  for (obj in list(reversal_fit("nec"), reversal_manec())) {
+    plain <- annotation_labels(annotate(obj))
+    expect_match(plain[3], "^>=")
+    negated <- annotate(obj, xform = negate)
+    expect_identical(annotation_labels(negated), reflected_labels(plain))
+    # The lower limit is the bound now, and it is the smaller number.
+    expect_match(annotation_labels(negated)[2], "^<=")
+    vals <- negated$nec_vals[!is.na(negated$nec_vals)]
+    expect_lt(vals[2], vals[3])
+  }
+})
+
+test_that("a decreasing xform reverses the ECx annotation", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  for (obj in list(reversal_fit("nec"), reversal_manec())) {
+    plain <- annotation_labels(annotate_ecx(obj), "ecx")
+    expect_match(plain[3], "^>=")
+    negated <- annotate_ecx(obj, xform = negate)
+    expect_identical(annotation_labels(negated, "ecx"),
+                     reflected_labels(plain))
+    vals <- negated$ecx_vals[!is.na(negated$ecx_vals)]
+    expect_lt(vals[2], vals[3])
+  }
+})
+
+test_that("the inverse of a decreasing crf() term restores the annotation", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # No xform: the estimate is on the negated scale and is inverted on the grid
+  # for the axis, which is drawn on the recorded one. The interval entries and
+  # their marks must come back as the untransformed fit has them. The estimate
+  # is compared for its mark only, for the type 1 reason given above.
+  pairs <- list(
+    list(plain = annotation_labels(annotate(reversal_fit("nec"))),
+         inverted = annotation_labels(
+           annotate(negated_fit(reversal_fit("nec"))))),
+    list(plain = annotation_labels(annotate(reversal_manec())),
+         inverted = annotation_labels(
+           annotate(negated_manec(reversal_manec())))),
+    list(plain = annotation_labels(annotate_ecx(reversal_fit("ecx")), "ecx"),
+         inverted = annotation_labels(
+           annotate_ecx(negated_fit(reversal_fit("ecx"))), "ecx"))
+  )
+  for (p in pairs) {
+    expect_identical(p$inverted[2:3], p$plain[2:3])
+    expect_match(p$inverted[3], "^>=")
+    expect_no_match(p$inverted[1], "^[<>]=")
+  }
+})
+
+test_that("identity and increasing maps leave the annotation as it was", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  fit <- reversal_fit("nec")
+  plain <- annotation_labels(annotate(fit))
+  expect_identical(plain[c(1, 2)],
+                   unname(bayesnec:::rounded(fit$ne[c(1, 2)], 2)))
+  expect_identical(plain[3], paste0(">=", bayesnec:::rounded(fit$ne[[3]], 2)))
+  doubled <- annotation_labels(annotate(fit, xform = function(z) z * 2))
+  expect_identical(doubled[3],
+                   paste0(">=", bayesnec:::rounded(fit$ne[[3]] * 2, 2)))
+  expect_no_match(doubled[1:2], "^[<>]=")
+})
+
+test_that("the base plot legend takes the same reversal", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # plot() returns nothing, so the legend text is read off a mocked legend().
+  legend_text <- function(obj, ...) {
+    got <- NULL
+    local_mocked_bindings(
+      legend = function(x, y = NULL, legend, ...) got <<- legend,
+      .package = "bayesnec"
+    )
+    grDevices::pdf(NULL)
+    on.exit(grDevices::dev.off(), add = TRUE)
+    suppressMessages(suppressWarnings(plot(obj, ...)))
+    got
+  }
+  fit <- reversal_fit("nec")
+  plain <- legend_text(fit)
+  expect_match(plain, "->= 1.5)", fixed = TRUE)
+  # lxform relabels the axis, and a decreasing one is remapped by the same
+  # rule: negating the axis and then its labels gives the plain legend back.
+  # Applying lxform to the numbers alone left "<=" beside 1.5. Before #417
+  # this pair was right by accident, the marks reversed by neither map, which
+  # is why the negated axis alone is asserted too.
+  expect_identical(legend_text(fit, xform = negate, lxform = negate), plain)
+  # The model-set method has its own copy of the legend code. Two calls, not
+  # three, because each one spends about ten seconds in summary().
+  for (obj in list(fit, reversal_manec())) {
+    negated <- legend_text(obj, xform = negate)
+    expect_match(negated, "(<= -1.5--", fixed = TRUE)
+    expect_no_match(negated, ">=", fixed = TRUE)
+  }
+  relabelled <- legend_text(reversal_manec(), xform = negate, lxform = negate)
+  expect_match(relabelled, "->= 1.5)", fixed = TRUE)
+  expect_no_match(relabelled, "<=", fixed = TRUE)
+  inverted <- legend_text(negated_fit(reversal_fit("nec")))
+  expect_match(inverted, ">= 1.5)", fixed = TRUE)
+  expect_no_match(inverted, "<=", fixed = TRUE)
+})
+
 test_that("a hurdle fit with one block censored reports the other block", {
   # Specification 4.11's hurdle case, on a mock rather than a fit: no packaged
   # two-block fit exists and compiling one for this costs minutes. The growth

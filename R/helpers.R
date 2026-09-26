@@ -2370,6 +2370,10 @@ control_posterior <- function(object, newdata, epred_fun, x_at = NULL) {
 #' numerical inverse is what makes the default case correct without the caller
 #' having to know that an inverse was needed.
 #'
+#' Whichever map applies, it is applied by \code{remap_summary()}, so that a
+#' decreasing one also puts the interval back in order and reverses the marks
+#' of a censored entry (#417).
+#'
 #' @param values A \code{\link[base]{numeric}} vector on the fitted scale.
 #' @param bdat A model frame carrying the \code{bnec_pop} attribute.
 #' @param formula A \code{\link{bayesnecformula}}.
@@ -2378,6 +2382,48 @@ control_posterior <- function(object, newdata, epred_fun, x_at = NULL) {
 #' @param xform A function supplied by the caller.
 #'
 #' @return A \code{\link[base]{numeric}} vector on the axis scale.
+#'
+#' @noRd
+to_axis_scale <- function(values, bdat, formula, x_grid_raw,
+                          xform = identity) {
+  if (!pop_var_is_transformed(bdat, "x_var")) {
+    return(remap_summary(values, xform, x_grid_raw))
+  }
+  # The fitted-scale grid is what a decreasing map is detected on in both
+  # branches below. Before #417 the xform branch returned without computing it,
+  # because xform(values) needed nothing else.
+  fitted_grid <- sub_x_transformation(x_grid_raw, formula)
+  if (!identical(xform, identity)) {
+    return(remap_summary(values, xform, fitted_grid))
+  }
+  inverse <- grid_inverse(formula, x_grid_raw)
+  if (is.null(inverse)) {
+    return(values)
+  }
+  remap_summary(values, inverse, fitted_grid)
+}
+
+#' The inverse of an inline predictor transformation, read off the grid
+#'
+#' A \code{crf()} term such as \code{crf(log(x))} names a function the package
+#' has no general inverse for, but the prediction grid holds the same points on
+#' both scales: the recorded values, and those values put through the term by
+#' \code{sub_x_transformation()}. Interpolating between the two inverts the term
+#' to within the resolution of the grid, whatever function it names.
+#'
+#' It is a function of its own so that an estimator returning values on the
+#' recorded scale (#299, option 1) can call the inverse the plots use, rather
+#' than a second implementation that could disagree with it. The function it
+#' returns takes a vector, so it can also be passed to
+#' \code{xform_censoring()} to move a censoring record.
+#'
+#' @param formula A \code{\link{bayesnecformula}}.
+#' @param x_grid_raw The prediction grid's predictor values, on the recorded
+#' scale.
+#'
+#' @return A \code{\link[base]{function}} taking values on the fitted scale and
+#' returning them on the recorded scale with their attributes kept, or
+#' \code{NULL} where fewer than two grid points are finite on both scales.
 #'
 #' @details \code{approx(rule = 2)} clamps an estimate outside the grid to the
 #' nearer end of it rather than returning \code{NA}. That is deliberate: the
@@ -2390,32 +2436,134 @@ control_posterior <- function(object, newdata, epred_fun, x_at = NULL) {
 #'
 #' @importFrom stats approx
 #' @noRd
-to_axis_scale <- function(values, bdat, formula, x_grid_raw,
-                          xform = identity) {
-  if (!pop_var_is_transformed(bdat, "x_var")) {
-    return(xform(values))
-  }
-  if (!identical(xform, identity)) {
-    return(xform(values))
-  }
+grid_inverse <- function(formula, x_grid_raw) {
   fitted_grid <- sub_x_transformation(x_grid_raw, formula)
   keep <- is.finite(fitted_grid) & is.finite(x_grid_raw)
   if (sum(keep) < 2) {
-    return(values)
+    return(NULL)
   }
-  # Built from `values` rather than as a fresh rep(NA_real_, ...), so that the
-  # attributes ecx() sets travel with the estimate. bind_ecx() reads
-  # attr(ecx_vals, "ecx_val") and assigns it into a data frame, so a stripped
-  # vector made autoplot(x, add_ecx = TRUE) fail with "replacement has length
-  # zero". The two branches above return xform(values), and R's arithmetic
-  # keeps attributes, so only this branch lost them -- which made the failure
-  # specific to an inline-transformed predictor with xform left at its default,
-  # the shape vignette("example1") uses.
-  out <- values
-  out[] <- NA_real_
-  finite_v <- is.finite(values)
-  out[finite_v] <- approx(x = fitted_grid[keep], y = x_grid_raw[keep],
-                          xout = values[finite_v], rule = 2)$y
+  fitted_grid <- fitted_grid[keep]
+  raw_grid <- x_grid_raw[keep]
+  function(values) {
+    # Built from `values` rather than as a fresh rep(NA_real_, ...), so that
+    # the attributes ecx() sets travel with the estimate. bind_ecx() reads
+    # attr(ecx_vals, "ecx_val") and assigns it into a data frame, so a stripped
+    # vector made autoplot(x, add_ecx = TRUE) fail with "replacement has length
+    # zero". An xform is usually arithmetic, and R's arithmetic keeps
+    # attributes, so only this inverse lost them -- which made the failure
+    # specific to an inline-transformed predictor with xform left at its
+    # default, the shape vignette("example1") uses.
+    out <- values
+    out[] <- NA_real_
+    finite_v <- is.finite(values)
+    out[finite_v] <- approx(x = fitted_grid, y = raw_grid,
+                            xout = values[finite_v], rule = 2)$y
+    out
+  }
+}
+
+#' Whether a map reverses the order of a grid
+#'
+#' @param map A monotone \code{\link[base]{function}}.
+#' @param grid A \code{\link[base]{numeric}} vector on the scale \code{map}
+#' takes values from.
+#'
+#' @return A \code{\link[base]{logical}} value.
+#' @noRd
+map_is_decreasing <- function(map, grid) {
+  grid <- grid[is.finite(grid)]
+  if (length(grid) < 2) {
+    return(FALSE)
+  }
+  ends <- map(range(grid))
+  # isTRUE() so that an end the map cannot evaluate, a NaN, leaves the summary
+  # in the order it arrived in, which is what every map did before #417.
+  isTRUE(ends[[1]] > ends[[2]])
+}
+
+#' Put a summarised estimate on another predictor scale
+#'
+#' The counterpart, for a summary, of \code{xform_censoring()}. A summary is an
+#' estimate followed by the lower and upper limits of its interval, and its
+#' \code{"censored_summary"} record marks which of those entries are bounds.
+#' Applying a map to the three numbers alone is correct only where the map is
+#' increasing. A decreasing one takes the lower limit to the top of the new
+#' scale, so the numbers come out with the larger second, and it takes a draw
+#' known to lie beyond the top of the old range to the foot of the new one, so
+#' a mark kept as it was states the opposite bound. That was #417:
+#' \code{ggbnec_data(fit, xform = function(x) -x)} labelled an estimate
+#' censored above 0.9 as \code{">=-0.90"}, where \code{"<=-0.90"} is correct.
+#'
+#' The direction is read once, from the images of the two ends of the grid, and
+#' not from the record's bounds as \code{xform_censoring()} reads it, because an
+#' uncensored summary carries no record and its interval has to be put in order
+#' all the same.
+#'
+#' @param values A summarised estimate: the estimate, then the lower and upper
+#' limits of its interval.
+#' @param map A monotone \code{\link[base]{function}} taking \code{values} to
+#' the new scale.
+#' @param grid The prediction grid, on the scale \code{values} are on.
+#'
+#' @return \code{values} on the new scale, with the interval in order and the
+#' record remapped.
+#' @noRd
+remap_summary <- function(values, map, grid) {
+  decreasing <- map_is_decreasing(map, grid)
+  out <- map(values)
+  if (decreasing && length(out) >= 3) {
+    out[2:3] <- out[3:2]
+  }
+  # Read off the input and set on the output, rather than left to travel
+  # through the map with the numbers. Carried through, the record kept the
+  # marks of the old scale, which is the defect; and a map that is not
+  # arithmetic may drop it, which would take the marks off the labels.
+  attr(out, "censored_summary") <- remap_censored_summary(
+    attr(values, "censored_summary"), map, decreasing
+  )
+  out
+}
+
+#' Put the censoring record of a summary on another predictor scale
+#'
+#' The rule \code{xform_censoring()} applies to the per-draw record, applied to
+#' the record \code{summarise_censored()} leaves on a summary. Both bounds are
+#' mapped. Under a decreasing map the two bounds exchange names, the counts of
+#' draws above and below exchange, each mark is reversed, and the marks of the
+#' two interval entries exchange places with the entries themselves.
+#'
+#' @param cens The \code{"censored_summary"} attribute of a summary, or
+#' \code{NULL}.
+#' @param map A monotone \code{\link[base]{function}}.
+#' @param decreasing A \code{\link[base]{logical}} value, whether \code{map}
+#' reverses the order of the grid.
+#'
+#' @return A record on the new scale, or \code{NULL}.
+#' @noRd
+remap_censored_summary <- function(cens, map, decreasing) {
+  if (is.null(cens)) {
+    return(NULL)
+  }
+  out <- cens
+  new_upper <- map(cens$upper)
+  new_lower <- map(cens$lower)
+  if (!decreasing) {
+    out$upper <- new_upper
+    out$lower <- new_lower
+    return(out)
+  }
+  reversed <- c(">=" = "<=", "<=" = ">=")
+  bound <- cens$bound
+  marked <- nzchar(bound)
+  bound[marked] <- reversed[bound[marked]]
+  if (length(bound) >= 3) {
+    bound[2:3] <- bound[3:2]
+  }
+  out$bound <- unname(bound)
+  out$upper <- new_lower
+  out$lower <- new_upper
+  out$n_above <- cens$n_below
+  out$n_below <- cens$n_above
   out
 }
 

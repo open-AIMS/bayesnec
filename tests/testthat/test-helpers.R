@@ -318,6 +318,144 @@ test_that("to_axis_scale carries the estimate's attributes through", {
   expect_true(is.na(to_axis_scale(c(log(50), NA), b_log, f_log, raw)[2]))
 })
 
+# ---- #417, a decreasing map and the censoring marks --------------------------
+
+# A posterior on the recorded scale whose top 30 of 101 draws lie beyond the
+# upper end of a grid on 1 to 100. Its summary has an ordinary estimate and
+# lower limit and an upper limit that is the bound ">= 100", so the two interval
+# entries can be told apart after a reversal. 101 draws rather than 100 because
+# a censored summary takes type 1 quantiles, which are symmetric under a
+# reflection only where no probability falls exactly on an order statistic: with
+# 101 draws the summary of -x is exactly the reflection of the summary of x, so
+# the summary-level remapping to_axis_scale() applies can be compared with the
+# per-draw one xform_censoring() applies, entry for entry.
+reversal_probs <- c(0.5, 0.025, 0.975)
+reversal_draws <- c(seq(40, 99, length.out = 71), rep(NA_real_, 30))
+reversal_cens <- bayesnec:::censoring_record(100, 1, is.na(reversal_draws),
+                                             logical(101))
+negate <- function(z) -z
+# The summary of the same draws on the scale negate() takes them to, built per
+# draw: the answer a summary-level remapping has to reproduce.
+reversal_summary <- function(map = identity) {
+  bayesnec:::summarise_censored(map(reversal_draws), reversal_probs,
+                                bayesnec:::xform_censoring(reversal_cens, map))
+}
+
+expect_same_summary <- function(object, expected) {
+  expect_equal(as.numeric(object), as.numeric(expected), tolerance = 1e-8)
+  got <- attr(object, "censored_summary")
+  want <- attr(expected, "censored_summary")
+  expect_identical(got$bound, want$bound)
+  expect_equal(got$upper, want$upper, tolerance = 1e-8)
+  expect_equal(got$lower, want$lower, tolerance = 1e-8)
+  expect_identical(got$n_above, want$n_above)
+  expect_identical(got$n_below, want$n_below)
+  expect_identical(got$n_draws, want$n_draws)
+}
+
+test_that("a decreasing xform reverses the marks and the interval", {
+  raw <- seq(1, 100, length.out = 100)
+  f_plain <- bayesnecformula(y ~ crf(x, model = "nec3param"))
+  b_plain <- stats::model.frame(f_plain,
+                                data = data.frame(x = raw, y = seq_len(100)))
+  on_recorded <- reversal_summary()
+  expect_identical(attr(on_recorded, "censored_summary")$bound,
+                   c("", "", ">="))
+  out <- to_axis_scale(on_recorded, b_plain, f_plain, raw, negate)
+  # The draws beyond the top of the recorded range are below the foot of the
+  # negated one, so the bound is "<= -100", and it is now the lower limit.
+  # Transforming the three numbers alone gave c(-Q50, -Q2.5, -100) marked
+  # c("", "", ">="): the larger number second and the opposite bound.
+  expect_identical(attr(out, "censored_summary")$bound, c("", "<=", ""))
+  expect_lt(out[[2]], out[[3]])
+  expect_same_summary(out, reversal_summary(negate))
+  # The names stay with the positions, so "Q2.5" still names the lower limit.
+  expect_identical(names(out), names(on_recorded))
+})
+
+test_that("the inverse of a decreasing crf() term reverses them as well", {
+  raw <- seq(1, 100, length.out = 100)
+  # I(-x) rather than -x: inside a formula a bare minus is the operator that
+  # removes a term, so model.frame() keeps x untransformed and the predictor is
+  # not reported as transformed at all.
+  f_neg <- bayesnecformula(y ~ crf(I(-x), model = "nec3param"))
+  b_neg <- stats::model.frame(f_neg,
+                              data = data.frame(x = raw, y = seq_len(100)))
+  on_fitted <- reversal_summary(negate)
+  # No xform: the estimate is inverted on the grid. The linear grid inverts
+  # -x exactly, so the result is the per-draw summary on the recorded scale.
+  expect_same_summary(to_axis_scale(on_fitted, b_neg, f_neg, raw),
+                      reversal_summary())
+  # An xform supplied as the inverse takes the other branch to the same place.
+  expect_same_summary(to_axis_scale(on_fitted, b_neg, f_neg, raw, negate),
+                      reversal_summary())
+})
+
+test_that("identity and increasing maps keep the order and the marks", {
+  raw <- seq(1, 100, length.out = 100)
+  f_plain <- bayesnecformula(y ~ crf(x, model = "nec3param"))
+  f_log <- bayesnecformula(y ~ crf(log(x), model = "nec3param"))
+  d <- data.frame(x = raw, y = seq_len(100))
+  b_plain <- stats::model.frame(f_plain, data = d)
+  b_log <- stats::model.frame(f_log, data = d)
+  on_recorded <- reversal_summary()
+  expect_same_summary(to_axis_scale(on_recorded, b_plain, f_plain, raw),
+                      on_recorded)
+  doubled <- function(z) z * 2
+  expect_same_summary(
+    to_axis_scale(on_recorded, b_plain, f_plain, raw, doubled),
+    reversal_summary(doubled)
+  )
+  # The automatic inverse of an increasing crf() term. The grid inverts log()
+  # only to within its resolution, hence the looser tolerance.
+  out <- to_axis_scale(reversal_summary(log), b_log, f_log, raw)
+  expect_identical(attr(out, "censored_summary")$bound, c("", "", ">="))
+  expect_equal(as.numeric(out), as.numeric(on_recorded), tolerance = 1e-2)
+})
+
+test_that("an uncensored interval is put in order and gains no record", {
+  raw <- seq(1, 100, length.out = 100)
+  f_plain <- bayesnecformula(y ~ crf(x, model = "nec3param"))
+  b_plain <- stats::model.frame(f_plain,
+                                data = data.frame(x = raw, y = seq_len(100)))
+  v <- c(Estimate = 50, Q2.5 = 40, Q97.5 = 60)
+  out <- to_axis_scale(v, b_plain, f_plain, raw, negate)
+  expect_identical(out, c(Estimate = -50, Q2.5 = -60, Q97.5 = -40))
+  expect_null(attr(out, "censored_summary"))
+  # A single value has no interval to reorder.
+  expect_identical(to_axis_scale(50, b_plain, f_plain, raw, negate), -50)
+})
+
+test_that("the direction of a map is read off the ends of the grid", {
+  grid <- c(0, 1, 5, 10)
+  expect_true(bayesnec:::map_is_decreasing(negate, grid))
+  expect_false(bayesnec:::map_is_decreasing(identity, grid))
+  # An end the map sends to an infinity still orders the pair.
+  expect_true(bayesnec:::map_is_decreasing(function(z) 1 / z, grid))
+  expect_false(bayesnec:::map_is_decreasing(log, grid))
+  # Fewer than two finite points leave the summary as it arrived.
+  expect_false(bayesnec:::map_is_decreasing(negate, c(1, NA, Inf)))
+})
+
+test_that("grid_inverse inverts the crf() term on the grid", {
+  raw <- seq(1, 100, length.out = 100)
+  f_neg <- bayesnecformula(y ~ crf(I(-x), model = "nec3param"))
+  inverse <- bayesnec:::grid_inverse(f_neg, raw)
+  expect_equal(inverse(c(-50, -20)), c(50, 20))
+  # The function returned serves xform_censoring() as well, which is what an
+  # estimator reporting on the recorded scale (#299) would pass it to.
+  moved <- bayesnec:::xform_censoring(
+    bayesnec:::censoring_record(-1, -100, c(FALSE, TRUE), c(TRUE, FALSE)),
+    inverse
+  )
+  expect_equal(c(moved$upper, moved$lower), c(100, 1))
+  expect_identical(moved$above, c(TRUE, FALSE))
+  # log(0) is not finite, so only one grid point is usable and there is nothing
+  # to interpolate between.
+  f_log <- bayesnecformula(y ~ crf(log(x), model = "nec3param"))
+  expect_null(bayesnec:::grid_inverse(f_log, c(0, 5)))
+})
+
 test_that("define_loo_controls always names a weighting method", {
   # The documented default is pseudo-BMA. Every route that assembles a model
   # set passes through here, so a missing method at this point is what reaches

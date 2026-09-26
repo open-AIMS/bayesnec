@@ -465,10 +465,9 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   }
   x_grid_raw <- x$pred_vals$data$x
   if (add_nec) {
-    # to_axis_scale() moves the estimates onto the recorded scale and keeps
-    # the record's marks, which is all bind_nec() reads: the annotation is
-    # built from the moved values, so the bounds inside the record are not
-    # consulted and are left on the scale they were computed on.
+    # to_axis_scale() puts the estimates and the record's marks onto the axis
+    # scale together, reversing both under a decreasing map (#417). The marks
+    # are all bind_nec() reads from the record.
     out <- bind_nec(out, to_axis_scale(x$ne, bdat, x$bayesnecformula,
                                        x_grid_raw, xform))
   }
