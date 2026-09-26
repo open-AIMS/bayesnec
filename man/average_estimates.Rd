@@ -92,7 +92,10 @@ models are more stable on a log-transformed or sqrt scaling. If the input
 \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits are
 already based on a re-scaling of the x (concentration) axis, it is important
 to pass an appropriate xform argument to ensure these are back transformed
-before the the geometric mean calculation is applied.
+before the the geometric mean calculation is applied. Where \code{crf()}
+transforms the predictor inline and \code{xform} is left at its default, a
+message says so once per call, naming the transformation and the
+\code{xform} that inverts it.
 }
 \section{Reproducibility}{
 

@@ -144,6 +144,10 @@ print.bayesnecgroupfit <- function(x, ...) {
 #' @method nec bayesnecgroupfit
 #' @export
 nec.bayesnecgroupfit <- function(object, ...) {
+  # Once for the group rather than once per level: every level is fitted with
+  # the one formula. See report_fitted_scale().
+  quiet <- report_fitted_scale(object, dots_xform(nec, list(...)), "nec")
+  on.exit(options(quiet), add = TRUE)
   group_estimate_table(object, "nec", function(f, ...) nec(f, ...), ...)
 }
 
@@ -151,6 +155,9 @@ nec.bayesnecgroupfit <- function(object, ...) {
 #' @method ecx bayesnecgroupfit
 #' @export
 ecx.bayesnecgroupfit <- function(object, ...) {
+  # Once for the group, as in nec.bayesnecgroupfit().
+  quiet <- report_fitted_scale(object, dots_xform(ecx, list(...)), "ecx")
+  on.exit(options(quiet), add = TRUE)
   group_estimate_table(object, "ecx", function(f, ...) ecx(f, ...), ...)
 }
 
@@ -158,6 +165,9 @@ ecx.bayesnecgroupfit <- function(object, ...) {
 #' @method nsec bayesnecgroupfit
 #' @export
 nsec.bayesnecgroupfit <- function(object, ...) {
+  # Once for the group, as in nec.bayesnecgroupfit().
+  quiet <- report_fitted_scale(object, dots_xform(nsec, list(...)), "nsec")
+  on.exit(options(quiet), add = TRUE)
   group_estimate_table(object, "nsec", function(f, ...) nsec(f, ...), ...)
 }
 
@@ -165,6 +175,13 @@ nsec.bayesnecgroupfit <- function(object, ...) {
 #' @method summary bayesnecgroupfit
 #' @export
 summary.bayesnecgroupfit <- function(object, ...) {
+  # With ecx = TRUE each level's summary() reports the scale of its ECx rows,
+  # so it is reported once for the group. The level summaries take no xform.
+  # See report_fitted_scale().
+  if (isTRUE(list(...)[["ecx"]])) {
+    quiet <- report_fitted_scale(object, identity, "ecx")
+    on.exit(options(quiet), add = TRUE)
+  }
   group_lapply(object, summary, ...)
 }
 

@@ -55,6 +55,12 @@
 #' returns an unlabelled vector. Use \code{\link{nsec}} where a NSEC is wanted
 #' from every model regardless of type.
 #'
+#' Where \code{crf()} transforms the predictor inline, as in
+#' \code{crf(log(concentration))}, the estimate is on the transformed scale
+#' unless \code{xform} is supplied, and a message says so once per call. It
+#' names the transformation and the \code{xform} that returns the estimate on
+#' the recorded scale.
+#'
 #' @return A vector containing the estimated no-effect value, including upper
 #' and lower 95% credible interval bounds (or other interval as specified by
 #' prob_vals). Where any posterior draw lies beyond the range the model was
@@ -201,6 +207,10 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
   if (mod_class == "ecx") {
     stop("nec is not a parameter in ecx model types.")
   }
+  # Once for the call. The gate it sets also covers the nsec() that extrapolate
+  # reaches below. See report_fitted_scale().
+  quiet <- report_fitted_scale(object, xform, "nec")
+  on.exit(options(quiet), add = TRUE)
   nec_out <- object$ne_posterior
   # extrapolate names a bound on top of that record rather than replacing it:
   # the default returns the stored posterior and the stored record untouched,
@@ -289,6 +299,9 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
   }
+  # Once for the set, not once per equation. See report_fitted_scale().
+  quiet <- report_fitted_scale(object, xform, "nec")
+  on.exit(options(quiet), add = TRUE)
   if (max(grepl("ecx", names(object$mod_fits))) == 1) {
     message("This bayesmanecfit contains smooth (ecx) models, which have no",
             " threshold parameter, so the returned estimate is a weighted",

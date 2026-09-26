@@ -678,6 +678,12 @@ report_scales <- function(object, xform, what) {
 #' whenever \code{xform} was left at \code{identity} --- a caller who supplied
 #' one has already inverted the transformation and does not need telling.
 #'
+#' The transformation is found, and the inverse to pass is named, by the same
+#' helpers the estimators use (\code{report_fitted_scale()}), so that
+#' \code{curve_params()} and \code{nec()} on one fit give the same advice.
+#' Unlike that function this one does not set the gate: the methods that
+#' dispatch \code{curve_params()} more than once set it themselves.
+#'
 #' @param object A \code{\link{bayesnecfit}} or \code{prebayesnecfit}.
 #' @param xform The function the caller supplied.
 #' @param what A \code{\link[base]{character}} noun phrase naming what was
@@ -685,7 +691,6 @@ report_scales <- function(object, xform, what) {
 #'
 #' @return \code{NULL}, invisibly. Called for the message.
 #'
-#' @importFrom stats model.frame
 #' @noRd
 report_x_transform <- function(object, xform, what) {
   if (isTRUE(getOption("bayesnec.xform_reported", FALSE))) {
@@ -694,17 +699,11 @@ report_x_transform <- function(object, xform, what) {
   if (!identical(xform, identity)) {
     return(invisible(NULL))
   }
-  bdat <- tryCatch(model.frame(object$bayesnecformula, object$fit$data),
-                   error = function(e) NULL)
-  if (is.null(bdat) || !pop_var_is_transformed(bdat, "x_var")) {
+  tr <- inline_x_transform(object)
+  if (is.null(tr)) {
     return(invisible(NULL))
   }
-  x_pos <- which(names(attr(bdat, "bnec_pop")) == "x_var")
-  message("The ", what, " transforms its predictor inline as ",
-          names(bdat)[x_pos], ", so nec and ec50 are on that transformed ",
-          "scale, as the values nec() and ecx() return are. Pass the inverse ",
-          "as xform to read them as concentrations. top, bot and the shape ",
-          "parameters are not on the predictor axis and are unaffected.")
+  message(fitted_scale_text(what, tr, "curve_params"))
   invisible(NULL)
 }
 

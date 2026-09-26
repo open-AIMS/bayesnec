@@ -253,6 +253,9 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
   if (!inherits(xform, "function")) {
     stop("xform must be a function.")
   }
+  # Once for the call. See report_fitted_scale().
+  quiet <- report_fitted_scale(object, xform, "nsec")
+  on.exit(options(quiet), add = TRUE)
   # As in nsec.bayesnecfit: extrapolate resolves into the grid the curve is
   # searched on, and adds to x_range the refusal to narrow and the refusal of
   # an infinite limit.
@@ -373,6 +376,15 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
   chk_numeric(ecx_vals)
   ecs <- NULL
   if (ecx) {
+    # The nine ecx() calls below would each report the scale of what they
+    # return, so it is reported once for the table. The no-effect rows are read
+    # under suppressMessages() below and report nothing either way. The dots
+    # are matched as ecx() will match them, with ecx_val named as ecx_row()
+    # names it. See report_fitted_scale().
+    quiet <- report_fitted_scale(
+      object, dots_xform(ecx, c(list(ecx_val = ecx_vals[1]), list(...))), "ecx"
+    )
+    on.exit(options(quiet), add = TRUE)
     # On the grid the two component fits were predicted over, not the range of
     # the data. ecx() rebuilds its own grid when x_range is absent, so the ECx
     # block described a different range from the no-effect estimates printed
@@ -912,7 +924,9 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
     }
     lines(xv, p$est)
     if (add_nec) {
-      ne <- xform(nec(x, which = if (w == "combined") "combined" else w))
+      ne <- xform(without_scale_report(
+        nec(x, which = if (w == "combined") "combined" else w)
+      ))
       abline(v = ne, col = "red", lty = c(1, 3, 3))
       legend("topright", bty = "n", lty = 1, col = "red",
              legend = paste0("N(S)EC: ", signif(ne[1], 2), " (",
@@ -1033,6 +1047,13 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
 #' parameter to measure towards. \code{"direct"} is refused because it names a
 #' response value rather than a percentage.
 #'
+#' \code{nsec} is read on the recorded predictor scale as supplied, and
+#' \code{xform} is applied to the percentage returned rather than to
+#' \code{nsec}. Where \code{crf()} transforms the predictor inline,
+#' \code{\link{nsec}} returns its estimate on the transformed scale unless given
+#' an \code{xform}, so a message says so once per call and names the
+#' \code{xform} to give \code{\link{nsec}}.
+#'
 #' @return A vector of estimates.
 #'
 #' @method ecnsec bayesnechurdlefit
@@ -1059,6 +1080,14 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
          "asymptote is not a single fitted parameter. Use ",
          "type = \"absolute\" or type = \"range\".", call. = FALSE)
   }
+  # A message of its own rather than ecnsec.bnecfit()'s. This method reads nsec
+  # on the recorded grid as supplied and applies xform to the percentage it
+  # returns, so the advice to pass the inverse as xform would be wrong here;
+  # the nsec itself has to arrive on the recorded scale. identity is passed in
+  # place of the caller's xform, because no xform changes the scale nsec is
+  # read on, so the message is raised whatever xform was given.
+  quiet <- report_fitted_scale(object, identity, "ecnsec_hurdle")
+  on.exit(options(quiet), add = TRUE)
   preds <- hurdle_component_preds(object, resolution = resolution,
                                   x_range = x_range)
   p_samples <- preds[[which]]
