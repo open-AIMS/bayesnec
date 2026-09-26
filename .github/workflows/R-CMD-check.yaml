@@ -158,6 +158,14 @@ jobs:
               file = Sys.getenv("GITHUB_ENV"), append = TRUE)
         shell: Rscript {0}
 
+      # R-devel has failed while decoding an oversized result from a parallel
+      # testthat worker. The serial R-devel diagnostic passed every test file.
+      # Leave the dispatch worker override available for further diagnosis.
+      - name: Run R-devel tests serially
+        if: matrix.config.r == 'devel' && (github.event_name != 'workflow_dispatch' || github.event.inputs.testthat_cpus == '')
+        shell: bash
+        run: echo 'TESTTHAT_PARALLEL=false' >> "$GITHUB_ENV"
+
       # Vignettes ARE built and checked. They are precompiled -- precompile.R
       # renders every .Rmd.orig to a .Rmd whose chunks are display-only -- so
       # building them is markdown to HTML and costs ~16s, not a refit. Skipping
