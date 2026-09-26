@@ -134,9 +134,10 @@ hurdle_check_which <- function(which) {
 #' combined draw is not identified. It is reported as beyond the top of the
 #' range, at the smaller of the two components' upper limits, which is true
 #' of every such draw. At the foot of the range the larger of the two lower
-#' limits is reported. Where the lower limits differ, a combined draw
-#' estimated below the larger of them is reported as below that limit, so that
-#' it is ranked consistently with the draws known only to lie below it.
+#' limits is reported. Where the lower limits differ and some combined draws
+#' are known only to lie below the larger of them, a combined draw estimated
+#' below that limit is reported as below it as well, so that it is ranked
+#' consistently with those draws. Without such draws it keeps its value.
 #'
 #' \bold{The combined estimate is therefore the smaller of the two, and reduces
 #' to the growth estimate whenever growth is the more sensitive endpoint} --
@@ -423,9 +424,9 @@ print.bayesnechurdlefit <- function(x, ...) {
 #' survived (\code{hurdle_summary_range()}), and a survival draw identified
 #' at 20 is not the minimum when growth is known only to exceed 10 (#415).
 #' The record holds one limit at each end, the smaller upper limit and the
-#' larger lower one. Where the lower limits differ, a minimum identified below
-#' the larger of them is marked as below it, which keeps every identified
-#' value inside the recorded limits.
+#' larger lower one. Where the lower limits differ and some draw is marked
+#' below, a minimum identified below the larger limit is marked as below it as
+#' well, which keeps every identified value inside the recorded limits.
 #'
 #' \code{pmin()} on the raw vectors cannot do this. It propagates the
 #' \code{NA} that an ecx-type component returns for a beyond-range draw, so a
@@ -485,18 +486,28 @@ combine_censored_min <- function(g, s, n) {
   # summarise_censored() ranks every draw marked below lower than every
   # identified draw, and every draw marked above higher. That is true only
   # where each identified value lies inside the recorded limits. The
-  # comparison above ensures it at the top. At the foot, where the two lower
-  # limits differ, a minimum identified below the larger limit was left
-  # unmarked, although a draw marked below that limit may lie above it. With
-  # growth on 5 to 10 at 7 and survival on 0 to 10 at 3 in one draw, and
-  # growth below 5 with survival at 8 in the other, the 97.5 per cent entry
-  # was an unmarked 3 where the second draw may be 4. D20's rule is therefore
-  # applied at the foot as well: such a minimum is marked below the larger
-  # limit, which is true of it and weaker than its value. Only where the
-  # limits differ, so that a posterior whose components share a foot is
-  # unchanged. The feet differ only where nothing survived at the foot of the
-  # fitted range, or where one component has no record.
-  if (g_cens$lower != s_cens$lower) {
+  # comparison above ensures it at the top without weakening any identified
+  # value, because an identified minimum is always at or below the smaller
+  # upper limit. At the foot, where the two lower limits differ, a minimum
+  # identified below the larger limit was left unmarked, although a draw
+  # marked below that limit may lie above it. With growth on 5 to 10 at 7 and
+  # survival on 0 to 10 at 3 in one draw, and growth below 5 with survival at
+  # 8 in the other, the 97.5 per cent entry was an unmarked 3 where the second
+  # draw may be 4. D20's rule is therefore applied at the foot as well: such a
+  # minimum is marked below the larger limit, which is true of it and weaker
+  # than its value.
+  #
+  # The mark is applied only where some draw of the posterior is marked
+  # below, because that is the only case in which the ranking needs it. With
+  # no draw marked below, an identified minimum under the larger limit is
+  # ranked only against other identified values and stays exact, so growth at
+  # 7 and survival at 3 is still 3. An unconditional mark was tried and not
+  # adopted, because it weakened such values where nothing required it. It is
+  # also applied only where the limits differ, so a posterior whose
+  # components share a foot is unchanged. The feet differ only where nothing
+  # survived at the foot of the fitted range, or where one component has no
+  # record.
+  if (g_cens$lower != s_cens$lower && any(is.infinite(out) & out < 0)) {
     out[is.finite(out) & out < lower] <- -Inf
   }
   above <- is.infinite(out) & out > 0

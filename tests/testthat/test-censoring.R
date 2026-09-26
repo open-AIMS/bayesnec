@@ -738,7 +738,8 @@ test_that("a minimum below the larger foot is marked below it", {
   # It is true draw by draw, but where the two feet differ an identified
   # minimum can lie below the larger one, which the record reports, and the
   # summary ranked every draw marked below lower than it. D20's rule is applied
-  # at the foot as well. Growth's range is 5 to 10 and survival's 0 to 10.
+  # at the foot as well, where some draw of the posterior is marked below.
+  # Growth's range is 5 to 10 and survival's 0 to 10.
   g <- c(NA_real_, NA_real_, 7, 7, 9)
   attr(g, "censored") <- cens_record(logical(5),
                                      c(TRUE, TRUE, FALSE, FALSE, FALSE),
@@ -765,6 +766,25 @@ test_that("a minimum below the larger foot is marked below it", {
   equal <- bayesnec:::combine_censored_min(g, s, 5)
   expect_equal(equal$values, c(NA, NA, NA, 3, 6))
   expect_identical(equal$censored$below, c(TRUE, TRUE, TRUE, FALSE, FALSE))
+})
+
+test_that("a minimum below the larger foot stays exact with no draw below", {
+  # The same unequal feet, with no draw of either component below its own
+  # foot. An identified minimum is then ranked only against other identified
+  # values, so the ranking does not need it marked and it keeps its value.
+  g <- c(7, 9)
+  attr(g, "censored") <- cens_record(logical(2), logical(2), lower = 5)
+  s <- c(3, 6)
+  attr(s, "censored") <- cens_record(logical(2), logical(2))
+  out <- bayesnec:::combine_censored_min(g, s, 2)
+  expect_equal(out$values, c(3, 6))
+  expect_false(any(out$censored$below))
+  expect_equal(out$censored$lower, 5)
+  expect_identical(bayesnec:::combine_censored_min(s, g, 2), out)
+  x <- out$values
+  attr(x, "censored") <- out$censored
+  expect_null(attr(bayesnec:::summarise_censored(x, c(0.5, 0.025, 0.975)),
+                   "censored_summary"))
 })
 
 test_that("the summary ranks a minimum below the larger foot as a bound", {
