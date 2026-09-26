@@ -184,6 +184,15 @@ response value rather than a percentage.</p>
 <code><a href="nsec.html">nsec</a></code> returns its estimate on the transformed scale unless given
 an <code>xform</code>, so a message says so once per call and names the
 <code>xform</code> to give <code><a href="nsec.html">nsec</a></code>.</p>
+<p>Without <code>x_range</code>, the growth curve is read over the growth
+component's own observed range, and the survival and combined curves over
+the survival component's, as in <code><a href="ecx.bayesnechurdlefit.html">ecx.bayesnechurdlefit</a></code>. The
+range sets the lowest predicted response that <code>type = "range"</code>
+measures towards, and the grid point nearest <code>nsec</code> at which the curve
+is read. With <code>which = "growth"</code> and no <code>x_range</code>, an <code>nsec</code>
+outside growth's observed range is refused, because the growth fit has no
+data there. An <code>x_range</code> that includes <code>nsec</code> reads the growth
+curve extended past its data, as it does for <code><a href="ecx.html">ecx</a></code>.</p>
     </div>
 
   </div>

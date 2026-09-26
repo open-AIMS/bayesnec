@@ -174,6 +174,17 @@ See the <em>Extrapolation</em> section of <code><a href="nsec.html">nsec</a></co
     <h2>Value</h2>
     <p>A vector containing the estimated NSEC value and credible bounds.</p>
     </div>
+    <div id="details">
+    <h2>Details</h2>
+    <p>Without <code>x_range</code>, a growth NSEC is searched for over the
+growth component's own observed range, which ends at the highest
+concentration at which anything survived, and is reported as censored there
+where the curve has not reached the reference by that concentration. A
+survival or combined NSEC is searched for over the survival component's
+range. <code>extrapolate</code> extends the range the call would otherwise use,
+so for <code>which = "growth"</code> it is measured against growth's range. See
+<code><a href="ecx.bayesnechurdlefit.html">ecx.bayesnechurdlefit</a></code> for the reasoning.</p>
+    </div>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
