@@ -20,7 +20,8 @@ R formula or an actual \code{\link[stats]{formula}} object. See
 values in it are taken to mean the individual did not survive. A
 \code{cens()} aterm is allowed for continuous growth families. It is refused
 for count growth families because \pkg{brms} does not combine left censoring
-with zero truncation correctly. Other aterms are refused; see Details.}
+with zero truncation correctly. Other aterms are refused; see Details. A
+\code{disp()} term applies to the growth component only; see Details.}
 
 \item{data}{A \code{\link[base]{data.frame}} containing the data to use with
 the \code{formula}. Every unit that entered the experiment must be present,
@@ -153,6 +154,23 @@ makes \pkg{brms} subtract the truncation normaliser from an unconditioned
 cumulative probability, which can yield a likelihood contribution greater
 than one. \code{bnec_hurdle} therefore refuses \code{cens()} with a count
 growth family before fitting.
+
+\bold{Non-constant dispersion}
+
+A \code{disp()} term in \code{formula} models the dispersion parameter of
+the growth component, as it does for \code{\link{bnec}}; see
+\code{\link{bayesnecformula}}. It is removed from the survival component,
+whose \code{\link[brms]{bernoulli}} likelihood has no dispersion parameter.
+The parameters of the dispersion sub-model belong to the growth component
+alone, so the factorisation described above still holds. The term is checked
+against \code{family_growth} before either component is fitted, so a
+specification that family cannot take is refused before anything is
+sampled: any \code{disp()} term on a \code{poisson} growth component, for
+example, or \code{disp("twosided")} on a \code{Gamma} one. A variance
+function such as \code{disp("power")} is written in the mean of the growth
+component as \pkg{brms} parameterises it. For a count growth family that is
+the mean of the untruncated distribution, not the mean of the positive
+counts that \pkg{bayesnec} reports.
 }
 \examples{
 \dontrun{

@@ -31,7 +31,8 @@
 #' values in it are taken to mean the individual did not survive. A
 #' \code{cens()} aterm is allowed for continuous growth families. It is refused
 #' for count growth families because \pkg{brms} does not combine left censoring
-#' with zero truncation correctly. Other aterms are refused; see Details.
+#' with zero truncation correctly. Other aterms are refused; see Details. A
+#' \code{disp()} term applies to the growth component only; see Details.
 #' @param data A \code{\link[base]{data.frame}} containing the data to use with
 #' the \code{formula}. Every unit that entered the experiment must be present,
 #' with \code{0} recorded for those that gave no response. Rows omitted rather
@@ -132,6 +133,23 @@
 #' than one. \code{bnec_hurdle} therefore refuses \code{cens()} with a count
 #' growth family before fitting.
 #'
+#' \bold{Non-constant dispersion}
+#'
+#' A \code{disp()} term in \code{formula} models the dispersion parameter of
+#' the growth component, as it does for \code{\link{bnec}}; see
+#' \code{\link{bayesnecformula}}. It is removed from the survival component,
+#' whose \code{\link[brms]{bernoulli}} likelihood has no dispersion parameter.
+#' The parameters of the dispersion sub-model belong to the growth component
+#' alone, so the factorisation described above still holds. The term is checked
+#' against \code{family_growth} before either component is fitted, so a
+#' specification that family cannot take is refused before anything is
+#' sampled: any \code{disp()} term on a \code{poisson} growth component, for
+#' example, or \code{disp("twosided")} on a \code{Gamma} one. A variance
+#' function such as \code{disp("power")} is written in the mean of the growth
+#' component as \pkg{brms} parameterises it. For a count growth family that is
+#' the mean of the untruncated distribution, not the mean of the positive
+#' counts that \pkg{bayesnec} reports.
+#'
 #' @return An object of class \code{\link{bayesnechurdlefit}}.
 #'
 #' @seealso \code{\link{bnec}} for the equivalent joint fit via
@@ -208,9 +226,16 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
   # cens(): the Bernoulli response is alive/dead, which is observed exactly, so
   # there is nothing for a censoring declaration to bound. The censoring
   # indicator stays in surv_data as an ordinary unused column.
+  #
+  # A disp() term is removed before the survival formula is built, and stays on
+  # the growth formula. The survival component is bernoulli, whose variance is
+  # fixed by its mean, so there is no dispersion parameter for the term to
+  # model and check_disp_spec() refuses it. Passed through, as it was before
+  # #410, that refusal arrived only after the growth component had been
+  # sampled, so no hurdle fit could model the growth dispersion at all.
   surv_data <- data
   surv_data[[".alive"]] <- as.integer(y > 0)
-  surv_formula <- swap_response(formula, ".alive")
+  surv_formula <- swap_response(drop_disp_term(formula), ".alive")
   if (!is.null(model_survival)) {
     surv_formula <- swap_crf_model(surv_formula, model_survival)
   }
@@ -226,6 +251,17 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
     family_growth <- validate_family(family_growth,
                                      link_source = growth_link_source)
     check_hurdle_growth_family(family_growth)
+  }
+  # Checked here against the growth family, the only one the term applies to,
+  # rather than left to the growth fit. bnec() reaches check_disp_spec() only
+  # from wrangle_model_formula(), once per equation inside its model loop, so a
+  # model set would print the refusal once per equation and end on the generic
+  # all-models-failed advice. From here it is raised once, before either
+  # component compiles. The response is the survivors', which is what the
+  # growth fit is given. See #410.
+  disp_spec <- parse_disp_term(formula)
+  if (!is.null(disp_spec)) {
+    check_disp_spec(disp_spec, family_growth, response = y[y > 0])
   }
   growth_formula <- formula
   if (family_growth$family %in% c("poisson", "negbinomial")) {
@@ -572,6 +608,48 @@ swap_response <- function(formula, new_response) {
     as.formula(paste0(new_response, " ~ ", deparse1(rhs(formula))),
                env = formula_env(formula))
   )
+}
+
+#' Remove a disp() term from the right-hand side of a bayesnecformula
+#'
+#' @param formula An object of class \code{\link{bayesnecformula}}.
+#'
+#' @details The right-hand side is taken apart at its top-level \code{+}
+#' operators and rebuilt without the term, so the remaining terms keep the
+#' order they were written in. \code{update()} with
+#' \code{~ . - disp(...)}, which \code{swap_crf_model()} uses for the
+#' \code{crf()} term, was not used, because it passes the formula through
+#' \code{terms()}, which can reorder and simplify what is left. A term is a
+#' \code{disp()} term where its function name, less any namespace qualifier,
+#' is \code{disp}, which is how \code{hurdle_lhs_parts()} names an aterm.
+#'
+#' @return \code{formula} without its \code{disp()} term, with its class,
+#' attributes and environment kept, or \code{formula} unchanged where it has
+#' none.
+#'
+#' @importFrom formula.tools rhs
+#'
+#' @noRd
+drop_disp_term <- function(formula) {
+  split_sum <- function(expr) {
+    if (is.call(expr) && length(expr) == 3 &&
+          identical(expr[[1]], quote(`+`))) {
+      return(c(split_sum(expr[[2]]), split_sum(expr[[3]])))
+    }
+    list(expr)
+  }
+  is_disp <- function(term) {
+    is.call(term) &&
+      identical(sub("^.*:::?", "", deparse1(term[[1]])), "disp")
+  }
+  rhs_terms <- split_sum(rhs(formula))
+  keep <- !vapply(rhs_terms, is_disp, logical(1))
+  if (all(keep)) {
+    return(formula)
+  }
+  formula[[3]] <- Reduce(function(left, right) call("+", left, right),
+                         rhs_terms[keep])
+  formula
 }
 
 #' Replace the model argument inside a crf term

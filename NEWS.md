@@ -2116,6 +2116,17 @@
   draws, and permuting them widens the difference posterior and pulls
   `prob_diff` toward 0.5, which under-detects a real difference (#218).
 
+- `bnec_hurdle()` now fits a `disp()` term on the growth component. The term
+  was previously copied into the survival formula as well, and the bernoulli
+  survival fit refused it because that family has no dispersion parameter, so
+  no hurdle fit could model the growth dispersion, and the refusal arrived only
+  after the growth component had been sampled. The term is now removed from
+  the survival formula, and it is checked against `family_growth` before either
+  component is fitted, so a specification the growth family cannot take, such
+  as any `disp()` term on a `poisson` growth component, is refused before
+  anything is sampled. `?bnec_hurdle` states that the term applies to the
+  growth component only. No fit that previously succeeded changes (#410).
+
 ## Documentation
 
 - `vignette("example5")` is rewritten as *Installation and setup*, and no chunk
