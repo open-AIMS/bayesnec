@@ -814,6 +814,9 @@ are to be filed as issues and are not part of the run:
   condition on extent;
 - whether `MASS` belongs in `Suggests` (`notes/prior_audit.md:868-872`);
 - a ruling on the gamma `bot` coverage measured in `notes/prior_audit.md:1147`.
+- the flatness report advising `asymptote_observed = FALSE` in a fit that has
+  already declared it, found by the #418 fits on 2026-09-26
+  (`notes/incomplete_design_fits.md`).
 
 ## 7. Documents brought up to date with this plan
 
