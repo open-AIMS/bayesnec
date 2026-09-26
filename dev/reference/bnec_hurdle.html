@@ -127,7 +127,8 @@ R formula or an actual <code><a href="https://rdrr.io/r/stats/formula.html" clas
 values in it are taken to mean the individual did not survive. A
 <code>cens()</code> aterm is allowed for continuous growth families. It is refused
 for count growth families because <span class="pkg">brms</span> does not combine left censoring
-with zero truncation correctly. Other aterms are refused; see Details.</p></dd>
+with zero truncation correctly. Other aterms are refused; see Details. A
+<code>disp()</code> term applies to the growth component only; see Details.</p></dd>
 
 
 <dt id="arg-data">data<a class="anchor" aria-label="anchor" href="#arg-data"></a></dt>
@@ -253,6 +254,21 @@ makes <span class="pkg">brms</span> subtract the truncation normaliser from an u
 cumulative probability, which can yield a likelihood contribution greater
 than one. <code>bnec_hurdle</code> therefore refuses <code>cens()</code> with a count
 growth family before fitting.</p>
+<p><b>Non-constant dispersion</b></p>
+<p>A <code>disp()</code> term in <code>formula</code> models the dispersion parameter of
+the growth component, as it does for <code><a href="bnec.html">bnec</a></code>; see
+<code><a href="bayesnecformula.html">bayesnecformula</a></code>. It is removed from the survival component,
+whose <code><a href="https://paulbuerkner.com/brms/reference/brmsfamily.html" class="external-link">bernoulli</a></code> likelihood has no dispersion parameter.
+The parameters of the dispersion sub-model belong to the growth component
+alone, so the factorisation described above still holds. The term is checked
+against <code>family_growth</code> before either component is fitted, so a
+specification that family cannot take is refused before anything is
+sampled: any <code>disp()</code> term on a <code>poisson</code> growth component, for
+example, or <code>disp("twosided")</code> on a <code>Gamma</code> one. A variance
+function such as <code>disp("power")</code> is written in the mean of the growth
+component as <span class="pkg">brms</span> parameterises it. For a count growth family that is
+the mean of the untruncated distribution, not the mean of the positive
+counts that <span class="pkg">bayesnec</span> reports.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>
