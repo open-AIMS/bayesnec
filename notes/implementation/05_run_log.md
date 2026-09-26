@@ -319,10 +319,10 @@ and the order `01_work_queue.md`.
   on the cluster matches `hpc/image.lock`.
 - 2026-09-26 19:50 AEST. RF renewed the VPN connection; it closes near 18:00 AEST
   on 2026-09-27. Cut-offs moved to 10:00 (store refit) and 16:00 (precompile).
-- 2026-09-26 20:25 AEST. The local full test suites of items 1 to 3 deadlocked:
+- 2026-09-26 21:25 AEST. The local full test suites of items 1 to 3 deadlocked:
   after 36 to 85 minutes every testthat worker slept on a socket read with its
   CPU time unchanged over 45 s, at machine load 0.3. Killed by PID. The
   protocol now runs touched test files serially against an installed build and
   leaves the full suite to CI.
-- 2026-09-26 21:00 AEST. #418 recorded in `notes/incomplete_design_fits.md`
+- 2026-09-26 20:55 AEST. #418 recorded in `notes/incomplete_design_fits.md`
   (`528f0667`).
