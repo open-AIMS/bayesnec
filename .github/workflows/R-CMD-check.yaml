@@ -1,5 +1,5 @@
 name: R-CMD-check
-run-name: PR 402 serial R-devel diagnostic
+run-name: PR 402 full serial R-devel check
 
 on:
   workflow_dispatch:
@@ -9,15 +9,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  serial-diagnostic:
-    name: ubuntu-latest (devel, serial diagnostic)
+  serial-full-check:
+    name: ubuntu-latest (devel, full serial check)
     runs-on: ubuntu-latest
-    # Serial execution may exceed the normal 90-minute parallel-job limit.
     timeout-minutes: 180
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
-      NOT_CRAN: 'true'
       TESTTHAT_PARALLEL: 'false'
 
     steps:
@@ -38,38 +36,8 @@ jobs:
       - name: Check the existing Stan toolchain
         run: cmdstanr::check_cmdstan_toolchain(fix = TRUE)
         shell: Rscript {0}
-      - name: Install the PR package
-        shell: bash
-        run: R CMD INSTALL --no-docs . 2>&1 | tee "$RUNNER_TEMP/pr402-install.log"
-      - name: Run the joint-fit tests serially
-        shell: bash
-        run: |
-          Rscript - <<'RS' 2>&1 | tee "$RUNNER_TEMP/pr402-joint.log"
-          set.seed(402)
-          cat(R.version.string, "\n")
-          cat("TESTTHAT_PARALLEL=", Sys.getenv("TESTTHAT_PARALLEL"), "\n", sep = "")
-          stopifnot(toupper(Sys.getenv("TESTTHAT_PARALLEL")) == "FALSE")
-          testthat::test_dir("tests/testthat", filter = "^bnec_joint$",
-                            package = "bayesnec", load_package = "installed",
-                            reporter = c("location", "summary"),
-                            stop_on_failure = TRUE)
-          RS
-      - name: Run the remaining tests serially
-        shell: bash
-        run: |
-          Rscript - <<'RS' 2>&1 | tee "$RUNNER_TEMP/pr402-remaining.log"
-          set.seed(402)
-          stopifnot(toupper(Sys.getenv("TESTTHAT_PARALLEL")) == "FALSE")
-          testthat::test_dir("tests/testthat", filter = "^bnec_joint$",
-                            invert = TRUE, package = "bayesnec",
-                            load_package = "installed",
-                            reporter = c("location", "summary"),
-                            stop_on_failure = TRUE)
-          RS
-      - name: Upload diagnostic logs
-        if: always()
-        uses: actions/upload-artifact@v4
+      - uses: r-lib/actions/check-r-package@v2
         with:
-          name: pr402-serial-rdevel-logs
-          path: ${{ runner.temp }}/pr402-*.log
-          retention-days: 7
+          build_args: 'c("--no-manual")'
+          args: 'c("--no-manual", "--as-cran")'
+          upload-snapshots: true
