@@ -1,5 +1,5 @@
 name: R-CMD-check
-run-name: PR 402 worker file-order diagnostic
+run-name: PR 402 bnecfit worker diagnostic
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   worker-file-order-diagnostic:
-    name: ubuntu-latest (devel, worker file-order diagnostic)
+    name: ubuntu-latest (devel, bnecfit worker diagnostic)
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -41,15 +41,26 @@ jobs:
       - name: Install the PR package
         run: R CMD INSTALL --no-docs .
         shell: bash
-      - name: Trace worker results through the group tests
+      - name: Trace bnecfit worker events
         shell: bash
         run: |
           cat >> tests/testthat/setup.R <<'RS'
           testthat:::SubprocessReporter$set(
+            "public", "start_test",
+            function(context, test) {
+              private$context <- context
+              private$test <- test
+              cat("TEST_BEGIN", private$filename, test, "\n", file = stderr())
+              private$event("start_test", context, test)
+            },
+            overwrite = TRUE
+          )
+          testthat:::SubprocessReporter$set(
             "public", "add_result",
             function(context, test, result) {
               cat("REPORTER_RESULT", private$filename, test,
-                  class(result)[1], as.numeric(utils::object.size(result)),
+                  class(result)[1], "\n", file = stderr())
+              cat("RESULT_SIZE", as.numeric(utils::object.size(result)),
                   "\n", file = stderr())
               if (inherits(result, "expectation_success")) {
                 result[["srcref"]] <- NULL
@@ -66,12 +77,7 @@ jobs:
           cat("TESTTHAT_PARALLEL=", Sys.getenv("TESTTHAT_PARALLEL"), "\n", sep = "")
           cat("TESTTHAT_CPUS=", Sys.getenv("TESTTHAT_CPUS"), "\n", sep = "")
           setwd("tests")
-          testthat::test_check("bayesnec",
-                               filter = paste0("^(amend|autoplot|",
-                                               "average_estimates|bayesmanec_methods|",
-                                               "bayesnec_methods|bayesnecformula|",
-                                               "bayesnechurdlefit-methods|bnec_group|",
-                                               "bnec_hurdle|bnec_joint)$"))
+          testthat::test_check("bayesnec", filter = "^bnecfit-methods$")
           RS
       - name: Upload diagnostic log
         if: always()
