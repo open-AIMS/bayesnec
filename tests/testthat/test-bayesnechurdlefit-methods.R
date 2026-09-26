@@ -369,6 +369,21 @@ test_that("a component with no stored grid leaves ecx() its own default", {
   }
 })
 
+test_that("x_range = NULL leaves ecx() its own default, not the stored grids", {
+  # Both components store a grid, so the summary's default would be c(0, 10).
+  # An explicit NULL is not that default: the call reaches ecx() without an
+  # x_range, and ecx() then applies its own default of NA and builds its grid.
+  o <- summary_hurdle(summary_component(c(0, 10)),
+                      summary_component(c(0, 40), averaged = TRUE))
+  calls <- record_summary_calls()
+  summary(o, ecx = TRUE, ecx_vals = 50, x_range = NULL, resolution = 50)
+  expect_length(calls$ecx, 3)
+  for (args in calls$ecx) {
+    expect_equal(n_named(args, "x_range"), 0)
+    expect_equal(args$resolution, 50)
+  }
+})
+
 test_that("x_range without ecx = TRUE reaches neither estimator", {
   o <- summary_hurdle(summary_component(c(0, 10)),
                       summary_component(c(0, 40)))

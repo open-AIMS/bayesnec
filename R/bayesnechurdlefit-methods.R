@@ -329,7 +329,7 @@ hurdle_xform_x <- function(object, out) {
 #' @param ... Passed to \code{\link{nec}} and \code{\link{ecx}} for each
 #' component, so that \code{xform} in particular applies to every estimate in
 #' the table. \code{x_range} is the exception: it is passed to
-#' \code{\link{ecx}} only. See Details.
+#' \code{\link{ecx}} only, and must be given by its full name. See Details.
 #' @param ecx Should ECx estimates be included? Defaults to \code{FALSE}.
 #' @param ecx_vals The ECx levels to report.
 #'
@@ -344,11 +344,16 @@ hurdle_xform_x <- function(object, out) {
 #' prediction grids stored with the two components, or over the grid
 #' \code{\link{ecx}} builds by default where either component stores none. An
 #' \code{x_range} supplied in \code{...} replaces that grid, and sets the grid
-#' of the ECx rows only. It is not passed to \code{\link{nec}}, because each
-#' no-effect estimate is read from the posterior stored when its component was
-#' fitted, and is censored at the bound of the prediction grid stored then. To
-#' report a no-effect estimate beyond that bound, supply \code{extrapolate},
-#' which is passed to \code{\link{nec}}.
+#' of the ECx rows only. \code{x_range = NULL} leaves \code{\link{ecx}} to
+#' build its own grid, as it does where a component stores none. The argument
+#' must be given by its full name, because an abbreviation can be ignored
+#' without a message.
+#'
+#' \code{x_range} is not passed to \code{\link{nec}}, because each no-effect
+#' estimate is read from the posterior stored when its component was fitted,
+#' and is censored at the bound of the prediction grid stored then. To report a
+#' no-effect estimate beyond that bound, supply \code{extrapolate}, which is
+#' passed to \code{\link{nec}}.
 #'
 #' @return An object of class \code{hurdlesummary}.
 #'
@@ -386,9 +391,14 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
     # the default, so ecx() receives it once. Left in ... it was passed beside
     # x_range = hurdle_range and the call stopped with "formal argument
     # "x_range" matched by multiple actual arguments" (#416). The formal
-    # follows ... so that only the full name matches it; before ... it would
-    # also take an argument whose name is a prefix of x_range. A NULL, from
-    # either source, leaves ecx() to build its own grid.
+    # follows ... so that it cannot take a positional argument meant for ecx(),
+    # and it matches only the full name. An abbreviation such as x_ran is not
+    # matched here and reaches ecx() through .... Where the components store a
+    # grid, the generic has already matched x_range exactly to the default, so
+    # the abbreviation is ignored without a message, as it was before this
+    # change. The help page asks for the full name rather than this code
+    # partially matching names itself. A NULL, from either source, leaves ecx()
+    # to build its own grid.
     ecx_row <- function(w, v, ..., x_range = hurdle_range) {
       if (is.null(x_range)) {
         ecx(object, ecx_val = v, which = w, ...)

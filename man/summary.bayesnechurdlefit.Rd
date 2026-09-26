@@ -12,7 +12,7 @@
 \item{...}{Passed to \code{\link{nec}} and \code{\link{ecx}} for each
 component, so that \code{xform} in particular applies to every estimate in
 the table. \code{x_range} is the exception: it is passed to
-\code{\link{ecx}} only. See Details.}
+\code{\link{ecx}} only, and must be given by its full name. See Details.}
 
 \item{ecx}{Should ECx estimates be included? Defaults to \code{FALSE}.}
 
@@ -36,11 +36,16 @@ With \code{ecx = TRUE}, the ECx rows are read over the intersection of the
 prediction grids stored with the two components, or over the grid
 \code{\link{ecx}} builds by default where either component stores none. An
 \code{x_range} supplied in \code{...} replaces that grid, and sets the grid
-of the ECx rows only. It is not passed to \code{\link{nec}}, because each
-no-effect estimate is read from the posterior stored when its component was
-fitted, and is censored at the bound of the prediction grid stored then. To
-report a no-effect estimate beyond that bound, supply \code{extrapolate},
-which is passed to \code{\link{nec}}.
+of the ECx rows only. \code{x_range = NULL} leaves \code{\link{ecx}} to
+build its own grid, as it does where a component stores none. The argument
+must be given by its full name, because an abbreviation can be ignored
+without a message.
+
+\code{x_range} is not passed to \code{\link{nec}}, because each no-effect
+estimate is read from the posterior stored when its component was fitted,
+and is censored at the bound of the prediction grid stored then. To report a
+no-effect estimate beyond that bound, supply \code{extrapolate}, which is
+passed to \code{\link{nec}}.
 }
 \references{
 Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
