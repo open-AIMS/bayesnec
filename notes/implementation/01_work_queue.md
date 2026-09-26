@@ -26,19 +26,19 @@ skipped when reached, and taken up once the decision is recorded in
 | 1 | #416 | §4 item 1 | none | merged, #420 |
 | 2 | #417 | §4 item 2 | none | merged, #422 |
 | 3 | #415 | §4 item 3 | D20 | merged, #423; lower end is #421 |
-| 4 | #299 | §4 item 4 | D23 | #427, rebasing after conflicts |
-| 5 | #120 | §4 item 5 | D19 | in review |
+| 4 | #299 | §4 item 4 | D23 | merged, #427 |
+| 5 | #120 | §4 item 5 | D19 | #434 |
 | 6 | #404, #403 | §4 item 6 | D21, D22 | merged, #425, for #404; #403 stopped, see run log |
-| 7 | #412 | §4 item 7 | D28 | review fixes in progress |
+| 7 | #412 | §4 item 7 | D28 | #430 |
 | 8 | #398 | §4 item 8 | none | merged, #424 |
-| 9 | #400 | §4 item 9 | D30 | #428 |
+| 9 | #400 | §4 item 9 | D30 | merged, #428 |
 | 10 | #397 | §4 item 10 | none | merged, #426 |
-| 11 | #44 | §4 item 11 | D19, D25 | reviewed; rebasing onto predev |
-| 12 | #410 | §4 item 12 | D29 | in review |
-| 13 | #404 | §4 item 13 | D22 | after PR #402, or after item 12 if it has not merged |
-| 14 | #413 | §4 item 14 | D24 | after PR #402, or after item 12 if it has not merged |
-| 15 | #410 | §4 item 15 | D29 | after PR #402, or after item 12 if it has not merged |
-| 16 | #419 | §4 item 16 | D31 | after PR #402, or after item 12 if it has not merged |
+| 11 | #44 | §4 item 11 | D19, D25 | #429 |
+| 12 | #410 | §4 item 12 | D29 | #431 |
+| 13 | #404 | §4 item 13 | D22 | #433, without PR #402 |
+| 14 | #413 | §4 item 14 | D24 | #432, without PR #402 |
+| 15 | #410 | §4 item 15 | D29 | reviewed; merges after #431; `hurdle_negbinomial` pending RF |
+| 16 | #419 | §4 item 16 | D31 | in progress, on item 9 |
 | bg | #418 | §4, the background item | D26 | committed, `528f0667` |
 | end | precompile | §4, the precompile and the store refit | D18 | test passed (job 914152); submit by 16:00 AEST 2026-09-27 |
 
