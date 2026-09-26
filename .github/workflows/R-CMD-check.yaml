@@ -1,5 +1,5 @@
 name: R-CMD-check
-run-name: PR 402 joint worker diagnostic
+run-name: PR 402 worker file-order diagnostic
 
 on:
   workflow_dispatch:
@@ -9,8 +9,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  joint-worker-diagnostic:
-    name: ubuntu-latest (devel, joint worker diagnostic)
+  worker-file-order-diagnostic:
+    name: ubuntu-latest (devel, worker file-order diagnostic)
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -41,7 +41,7 @@ jobs:
       - name: Install the PR package
         run: R CMD INSTALL --no-docs .
         shell: bash
-      - name: Trace worker results and run the joint tests
+      - name: Trace worker results through the group tests
         shell: bash
         run: |
           cat >> tests/testthat/setup.R <<'RS'
@@ -60,19 +60,22 @@ jobs:
             overwrite = TRUE
           )
           RS
-          Rscript - <<'RS' 2>&1 | tee "$RUNNER_TEMP/pr402-joint-worker.log"
+          Rscript - <<'RS' 2>&1 | tee "$RUNNER_TEMP/pr402-worker-file-order.log"
           set.seed(402)
           cat(R.version.string, "\n")
           cat("TESTTHAT_PARALLEL=", Sys.getenv("TESTTHAT_PARALLEL"), "\n", sep = "")
           cat("TESTTHAT_CPUS=", Sys.getenv("TESTTHAT_CPUS"), "\n", sep = "")
-          testthat::test_dir("tests/testthat", filter = "^(bnec_joint|data)$",
-                            package = "bayesnec", load_package = "installed",
-                            reporter = "check", stop_on_failure = TRUE)
+          setwd("tests")
+          testthat::test_check("bayesnec",
+                               filter = paste0("^(amend|autoplot|",
+                                               "average_estimates|bayesmanec_methods|",
+                                               "bayesnec_methods|bayesnecformula|",
+                                               "bayesnechurdlefit-methods|bnec_group)$"))
           RS
       - name: Upload diagnostic log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pr402-joint-worker-log
-          path: ${{ runner.temp }}/pr402-joint-worker.log
+          name: pr402-worker-file-order-log
+          path: ${{ runner.temp }}/pr402-worker-file-order.log
           retention-days: 7
