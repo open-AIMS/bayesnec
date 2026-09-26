@@ -334,3 +334,9 @@ and the order `01_work_queue.md`.
 - 2026-09-26, item 3. The lower-end extension of D20 was tried in two forms and
   reverted after review; the lower end is #421. Item 3 implements D20 at the
   upper end only.
+- 2026-09-26 23:20 to 2026-09-27 01:20 AEST. The orchestrating session hit a
+  usage limit and paused for about two hours. Nothing was lost; merges resumed
+  at 01:21.
+- 2026-09-27 01:25 AEST. PR #402 passes all five checks at `fc2e7e8c` but is
+  open; its preconditions (the #382 plan document, the PR body's base line, an
+  issue for #388's open questions) are not done. The run does not merge it.
