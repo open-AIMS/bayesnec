@@ -164,6 +164,17 @@ fitted as a Gamma, <code>zero_inflated_beta</code> where it was a Beta, and the
 corresponding count hurdle where it was Poisson or negative binomial.
 Nothing else transfers – priors, control arguments and the like are
 defaults again unless passed through <code>...</code>.</p>
+<p>A <code>disp()</code> term in the formula held in <code>object</code> is kept, and in
+the joint model it applies to the dispersion parameter of the positive
+block. The variance function is written in that block's mean and centred on
+the positive responses, as it is for the growth component, so the joint
+model fits the same variance function (see <code><a href="bnec.html">bnec</a></code>). A
+<code>formula</code> supplied here replaces the held one, so a <code>disp()</code> term
+is fitted only where it is written in that formula. <code>hurdle_negbinomial</code>
+does not yet take a <code>disp()</code> term, so a negative binomial growth
+component fitted with one is refused before anything is fitted; supply a
+<code>formula</code> without the term to refit it jointly with one shape for the
+whole curve.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>
