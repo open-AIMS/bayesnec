@@ -1648,7 +1648,8 @@
   `hurdle_negbinomial` refuses it until a decision is made on how a relative
   `ecx()` or `ecnsec()` estimate reads the shape: it reads the shape at the
   control, which under a `disp()` term can differ from the shape at the lower
-  asymptote. No fit that previously succeeded changes (#410).
+  asymptote. `get_priors()` refuses the term on both families with the same
+  messages. No fit that previously succeeded changes (#410).
 
 ## Bug fixes
 

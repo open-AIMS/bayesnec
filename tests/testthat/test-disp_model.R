@@ -724,3 +724,21 @@ test_that("a two-block family gets the positive block's disp() priors", {
     4
   )
 })
+
+test_that("get_priors refuses what bnec refuses on a two-block family", {
+  # get_priors() builds no formula, so the check is made where the two-block
+  # priors are built rather than left to wrangle_model_formula().
+  d <- hurdle_dat
+  d$n <- as.integer(round(d$y * 20))
+  f <- n ~ crf(x, "nec3param") + disp("power")
+  expect_error(suppressMessages(get_priors(f, data = d,
+                                           family = "hurdle_negbinomial")),
+               "pending a decision")
+  expect_error(suppressMessages(get_priors(f, data = d,
+                                           family = "hurdle_poisson")),
+               "hurdle_poisson has no free dispersion parameter")
+  pr <- suppressMessages(get_priors(g ~ crf(x, "nec3param") + disp("power"),
+                                    data = hurdle_dat,
+                                    family = "hurdle_gamma"))
+  expect_true(all(c("c0", "c1") %in% pr$nlpar))
+})
