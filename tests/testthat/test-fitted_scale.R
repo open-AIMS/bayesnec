@@ -274,6 +274,27 @@ test_that("the plotting paths raise no scale message", {
   expect_length(scale_messages(plot(tf, add_ec10 = TRUE)), 0)
 })
 
+test_that("a model set's plotting paths raise no scale message (#120)", {
+  # The model-average drawing moved into plot_manec_average() and
+  # manec_average_plot_data() when model and average were added, and the
+  # named equations are drawn through the single-fit paths. Each is asserted,
+  # so that a panel drawn outside the gating would be seen. nec() on the same
+  # set is the control: the fixture does raise the message.
+  skip_on_cran()
+  ts <- logged_x_set(manec_example)
+  expect_length(scale_messages(nec(ts)), 1)
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  both <- c("nec4param", "ecx4param")
+  expect_length(scale_messages(plot(ts, add_ec10 = TRUE)), 0)
+  expect_length(scale_messages(plot(ts, add_ec10 = TRUE, model = both)), 0)
+  expect_length(scale_messages(autoplot(ts, ecx = TRUE)), 0)
+  expect_length(scale_messages(autoplot(ts, ecx = TRUE, model = both)), 0)
+  expect_length(scale_messages(
+    autoplot(ts, ecx = TRUE, model = both, multi_facet = FALSE, ask = FALSE)
+  ), 0)
+})
+
 test_that("curve_params() names the inverse as the estimators do", {
   tf <- logged_x_fit(nec4param, "nec4param")
   msgs <- scale_messages(curve_params(tf))
