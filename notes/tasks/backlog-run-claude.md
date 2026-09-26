@@ -817,6 +817,16 @@ are to be filed as issues and are not part of the run:
 - the flatness report advising `asymptote_observed = FALSE` in a fit that has
   already declared it, found by the #418 fits on 2026-09-26
   (`notes/incomplete_design_fits.md`).
+- `crf(-x)` read two ways: `model.frame()` and `make_brmsformula()` take the bare
+  minus as the formula operator and keep `x`, while `sub_x_transformation()`
+  evaluates it as negation, so `ecx()` returns negated values on a fit whose
+  predictor is reported as untransformed. Found by item 2 on a relabelled
+  packaged fit; no real fit was made.
+- `plot.bayesnechurdlefit()` prints its interval high to low under a decreasing
+  `xform` and draws no bound marks. Found by item 2.
+- the message in `nec.bayesnechurdlefit()` that a combined value involving an
+  NSEC component is approximate can never be printed, because both `nec()`
+  methods set `toxicity_estimate` to `"nec"`. Found by item 3.
 
 ## 7. Documents brought up to date with this plan
 
