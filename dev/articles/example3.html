@@ -199,18 +199,37 @@ respectively.</p>
 <p>The parameters <strong>nec</strong> and <strong>ec50</strong> scale
 with respect to the predictor because both of these are parameters in
 concentration-response curves that are estimated in units of
-concentration. To stabilise model fitting the <strong>nec</strong> and
-<strong>ec50</strong> parameters are bounded to the upper and lower
-observed range in the predictor, under the assumption that the range of
-concentrations in the experiment was sufficient to cover the full range
-of the response outcomes. Within those bounds the prior is a
-<code>normal</code> distribution on the <em>logarithm</em> of the
-predictor, which is the scale a dilution series is designed on. Where
-the predictor is supplied on the concentration scale the prior is
-written as a <code>lognormal</code>; where it spans negative values, and
-has therefore already been log transformed by the user, it is written as
-a <code>normal</code>. The two are the same rule stated on two
-scales.</p>
+concentration. The prior on each is a <code>normal</code> distribution
+on the <em>logarithm</em> of the predictor, which is the scale a
+dilution series is designed on. Where the predictor is supplied on the
+concentration scale the prior is written as a <code>lognormal</code>;
+where it spans negative values, and has therefore already been log
+transformed by the user, it is written as a <code>normal</code>. The two
+are the same rule stated on two scales.</p>
+<p>The only bound on either entry is the support of its own
+distribution. A <code>lognormal</code> has zero density below zero, so
+that entry is given a lower bound of <code>0</code>; without it
+<code>brms</code> declares an unconstrained parameter and Stan rejects
+every negative proposal. A <code>normal</code> is supported on the whole
+line and is given no bound, because a concentration the user has already
+logged may legitimately be negative. Neither entry reads the range of
+the predictor for its bounds. Up to and including version 2.1.4 both
+were truncated to that range as well, on the assumption that the
+concentrations tested covered the full range of the response. Where that
+assumption fails the truncation is not conservative: a threshold above
+the highest concentration tested is then outside the prior support
+rather than in its tail, the posterior can place no mass there and piles
+against the bound, and <code><a href="../reference/nec.html">nec()</a></code> returns the highest
+concentration tested with a narrow credible interval around it, which
+reads as a precise estimate of something the experiment did not measure.
+Removing the truncation does not identify such a threshold. What it
+changes is the shape of the posterior: the mass spreads over the region
+the data cannot distinguish and the interval becomes wide. What holds a
+reported estimate inside the tested range is now the censoring of the
+posterior at the range the model was predicted over, which every
+estimator marks and counts, together with the <code>extrapolate</code>
+argument of <code><a href="../reference/nec.html">nec()</a></code> and <code><a href="../reference/nsec.html">nsec()</a></code> that releases it.
+See <code><a href="../reference/nec.html">?nec</a></code>.</p>
 <p>For a predictor supplied on the concentration scale, the mean of the
 prior on the log scale is the median of the <em>distinct</em> positive
 predictor values, logged. Distinct values are used rather than the
@@ -222,44 +241,65 @@ odd, and the log of the geometric mean of the two central concentrations
 where it is even, that being their midpoint on the log axis rather than
 on the concentration axis. This places the maximum density of the prior
 at that concentration measured on the log scale, and makes the median of
-the untruncated prior on the concentration scale that same
-concentration, which is the convention Fisher et al. (2024) describe.
-Both statements describe the untruncated prior; truncation at the
-highest concentration removes part of the upper tail and so pulls the
-median down, to <code>0.58</code> against a median concentration of
-<code>0.88</code> on <code>nec_data</code>. The standard deviation is
-set so that the central 95% interval of the untruncated prior covers
-every concentration tested: it is the larger of the two half-widths from
-the mean to the ends of the logged series, divided by
-<code>qnorm(0.975)</code>. A prior on a threshold should not exclude a
-concentration the experiment applied, at either end, and that criterion
-is the whole of the rule. The width is therefore stated rather than
-chosen, and it adapts to the design: expressed as a multiple of
-<code>sd(log(x))</code> it lands between <code>0.73</code> and
-<code>1.18</code> across five designs, at <code>0.92</code> to
-<code>1.03</code> on the four <code>nassarius</code> series, and at
-<code>1.75</code> on <code>nec_data</code>, whose predictor is
-continuous and densely sampled. Because the width is set by the two
-extreme concentrations rather than by the spread of the series between
-them, it responds to how a control is recorded. The prior is built from
-the concentrations as recorded, so a control entered as a nominal small
-positive value states that the value was applied and the prior widens to
-cover it; on the <code>nassarius</code> contaminant A series the
-standard deviation is <code>2.30</code> with the control recorded as
-<code>0</code>, <code>2.59</code> with it recorded as <code>0.001</code>
-and <code>6.11</code> with it recorded as <code>1e-6</code>. Record a
+the prior on the concentration scale that same concentration, which is
+the convention Fisher et al. (2024) describe. The prior is not
+truncated, so both statements describe the entry as it is used: on
+<code>nec_data</code> its median is <code>0.876</code>, which is the
+median concentration. The standard deviation is set so that the central
+95% interval of the prior covers every concentration tested: it is the
+larger of the two half-widths from the mean to the ends of the logged
+series, divided by <code>qnorm(0.975)</code>. A prior on a threshold
+should not place a concentration the experiment applied in its far tail,
+at either end, and that criterion is the whole of the rule. It fixes the
+width and not the support: the mass the prior places above the highest
+concentration tested is <code>0.025</code> where that concentration is
+the farther of the two ends from the location on the log scale, and
+larger otherwise, reaching <code>0.220</code> on <code>nec_data</code>,
+whose series extends much further below its median than above it. Those
+two figures are the <code>"uninformative"</code> set;
+<code>"regularizing"</code> states the same rule at the 98% level and
+gives <code>0.01</code> and <code>0.179</code> on the same series. The
+width is therefore stated rather than chosen, and it adapts to the
+design: expressed as a multiple of <code>sd(log(x))</code> it lands
+between <code>0.73</code> and <code>1.18</code> across five designs, at
+<code>0.92</code> to <code>1.03</code> on the four
+<code>nassarius</code> series, and at <code>1.75</code> on
+<code>nec_data</code>, whose predictor is continuous and densely
+sampled. Because the width is set by the two extreme concentrations
+rather than by the spread of the series between them, it responds to how
+a control is recorded. The prior is built from the concentrations as
+recorded, so a control entered as a nominal small positive value states
+that the value was applied and the prior widens to cover it; on the
+<code>nassarius</code> contaminant A series the standard deviation is
+<code>2.30</code> with the control recorded as <code>0</code>,
+<code>2.59</code> with it recorded as <code>0.001</code> and
+<code>6.11</code> with it recorded as <code>1e-6</code>. Record a
 control as <code>0</code>.</p>
 <p>For a predictor supplied already logged, the prior is
 <code>normal</code> with a mean at the median of the distinct predictor
 values and a standard deviation of <code>10</code> times their standard
 deviation. The multiplier of <code>10</code> is the one Fisher et
-al. (2024) describe and it is unchanged. The mean and the standard
-deviation are read from the distinct values rather than from the
-observations, as on the concentration-scale branch, so that replication
-has no effect on the prior; that part of the entry does differ from
-earlier versions. Over the pooled
-<code>log(herbicide$concentration)</code> column, 580 rows and 9
-distinct values, the mean changes from <code>1.10</code> to
+al. (2024) describe and it is unchanged. That is a stated constant
+rather than a coverage width, and it is the one combination of branch
+and prior set that is wide once the truncation is removed: on
+<code>log(herbicide$concentration)</code> the entry is
+<code>normal(2.30, 31.5)</code>, which places <code>0.116</code> of its
+mass inside the tested range and <code>0.442</code> above the highest
+concentration. A threshold above the series is therefore barely in the
+tail here, and the prior does correspondingly little to locate one. Note
+that this is a property of the <code>"uninformative"</code> set on this
+branch and not of the branch: the <code>"regularizing"</code> entry on
+the same data is <code>normal(2.30, 1.98)</code>, a coverage width like
+the other three, which places <code>0.980</code> of its mass inside the
+tested range and <code>0.010</code> above it. Where the design does not
+reach the asymptote and the predictor is supplied logged, supply a prior
+through the <code>prior</code> argument rather than relying on the
+<code>"uninformative"</code> set. The mean and the standard deviation
+are read from the distinct values rather than from the observations, as
+on the concentration-scale branch, so that replication has no effect on
+the prior; that part of the entry does differ from earlier versions.
+Over the pooled <code>log(herbicide$concentration)</code> column, 580
+rows and 9 distinct values, the mean changes from <code>1.10</code> to
 <code>2.30</code> and the standard deviation from <code>26.3</code> to
 <code>31.5</code>.</p>
 <p>Up to version 2.1.4 the predictor-scaled prior took one of three
@@ -314,8 +354,8 @@ on the concentration scale over the whole tested range of the
 the concentration scale, so the density falls because the change of
 variable from the log scale redistributes it, and where the mass lies is
 what separates the two. On the contaminant A series the median of the
-untruncated prior used here is <code>0.223</code>, which is the location
-the rule specifies exactly; that series has an even number of positive
+prior used here is <code>0.223</code>, which is the location the rule
+specifies exactly; that series has an even number of positive
 concentrations, so the location is the geometric mean of the two central
 ones rather than one of the concentrations itself. The
 shape-<code>1.03</code> <code>Gamma</code> has a median of
@@ -371,17 +411,19 @@ has a prior standard deviation of <code>2.5</code> times that of the
 response, which is a reasonable statement of ignorance about a
 <em>level</em> and a poor one about <em>deviation around</em> that
 level. For <strong>nec</strong> and <strong>ec50</strong> the
-distinction does not arise, since those priors are already truncated to
-the observed predictor range. Under <code>student_t(3, 0, s)</code>
-there is a prior probability of about <code>0.39</code> that the
-group-level standard deviation exceeds <em>s</em>, so this is a weakly
-informative prior rather than a tight one.</p>
+distinction does not arise, since <em>s</em> for those two is read from
+the predictor range, which is the scale the parameter itself is on.
+Under <code>student_t(3, 0, s)</code> there is a prior probability of
+about <code>0.39</code> that the group-level standard deviation exceeds
+<em>s</em>, so this is a weakly informative prior rather than a tight
+one.</p>
 <p>There is one property of the default priors that a grouped fit does
 not inherit. Every prior described above constrains its parameter to the
 region in which the model is defined—<code>beta(5, 2)</code> on
 <code>0</code> to <code>1</code>, a lower bound of <code>0</code> for
-the count and Gamma families, <strong>nec</strong> truncated to the
-predictor range—and this is what allows <code>bayesnec</code> to fit on
+the count and Gamma families, and the same bound on <strong>nec</strong>
+and <strong>ec50</strong> where the predictor is a recorded
+concentration—and this is what allows <code>bayesnec</code> to fit on
 the <code>"identity"</code> link and keep <strong>top</strong>,
 <strong>bot</strong> and <strong>nec</strong> directly interpretable. A
 group-level deviation cannot be constrained in the same way, because
@@ -646,8 +688,9 @@ a constant Fisher et al. (2024) state rather than one derived from
 coverage. A factor applied to that constant leaves a prior that is
 uniform across the tested series: on a 0.1 to 100 series over seven
 doses the spread is <code>24.87</code> against a tested range of
-<code>6.91</code> on the log scale, and the truncated prior CDF at each
-dose is that dose’s position within the range to three decimal places.
+<code>6.91</code> on the log scale, and the prior CDF at each dose,
+computed over the tested range as the entry was then truncated to it, is
+that dose’s position within the range to three decimal places.
 <code>prior_type</code> was therefore inert for <strong>nec</strong> and
 <strong>ec50</strong> on that route until issue #314. The two routes now
 agree on the spread where the series has no zero control and its lowest
@@ -663,8 +706,9 @@ series that gives <code>lognormal(5.7565, 1.4847)</code> on the
 concentration scale against <code>lognormal(1.7503, 0.3939)</code>
 supplied logged. Both <code>"uninformative"</code> entries are
 unchanged, as is the regularizing entry for a predictor supplied on the
-concentration scale. The location, the distribution and the truncation
-to the observed predictor range are the same under both sets.</p>
+concentration scale. The location and the distribution are the same
+under both sets, and so are the bounds, which are the support of the
+distribution and not a reading of the predictor range.</p>
 <p>Before issue #305 the <code>"regularizing"</code> set was anchored on
 the maximum and minimum of the response and each branch was written out
 separately. Neither change affects a published result, because
@@ -733,49 +777,29 @@ fixed <strong>beta</strong> prior is unchanged.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/pull_prior.html">pull_prior</a></span><span class="op">(</span><span class="va">exmp_uninformative</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [[1]]</span></span>
-<span><span class="co">#&gt;                                            prior class      coef group resp dpar nlpar               lb</span></span>
-<span><span class="co">#&gt;                                     normal(0, 5)     b                            beta                 </span></span>
-<span><span class="co">#&gt;                                     normal(0, 5)     b Intercept                  beta                 </span></span>
-<span><span class="co">#&gt;                                       beta(2, 5)     b                             bot                0</span></span>
-<span><span class="co">#&gt;                                       beta(2, 5)     b Intercept                   bot                0</span></span>
-<span><span class="co">#&gt;  lognormal(-0.132723577442522, 1.68292842267636)     b                             nec 0.03234801324009</span></span>
-<span><span class="co">#&gt;  lognormal(-0.132723577442522, 1.68292842267636)     b Intercept                   nec 0.03234801324009</span></span>
-<span><span class="co">#&gt;                                       beta(5, 2)     b                             top                0</span></span>
-<span><span class="co">#&gt;                                       beta(5, 2)     b Intercept                   top                0</span></span>
-<span><span class="co">#&gt;                                gamma(0.01, 0.01)   phi                                                0</span></span>
-<span><span class="co">#&gt;                ub tag       source</span></span>
-<span><span class="co">#&gt;                               user</span></span>
-<span><span class="co">#&gt;                       (vectorized)</span></span>
-<span><span class="co">#&gt;                 1             user</span></span>
-<span><span class="co">#&gt;                 1     (vectorized)</span></span>
-<span><span class="co">#&gt;  3.22051966293556             user</span></span>
-<span><span class="co">#&gt;  3.22051966293556     (vectorized)</span></span>
-<span><span class="co">#&gt;                 1             user</span></span>
-<span><span class="co">#&gt;                 1     (vectorized)</span></span>
-<span><span class="co">#&gt;                            default</span></span></code></pre></div>
+<span><span class="co">#&gt;                                            prior class      coef group resp dpar nlpar lb ub tag       source</span></span>
+<span><span class="co">#&gt;                                     normal(0, 5)     b                            beta                   user</span></span>
+<span><span class="co">#&gt;                                     normal(0, 5)     b Intercept                  beta           (vectorized)</span></span>
+<span><span class="co">#&gt;                                       beta(2, 5)     b                             bot  0  1             user</span></span>
+<span><span class="co">#&gt;                                       beta(2, 5)     b Intercept                   bot  0  1     (vectorized)</span></span>
+<span><span class="co">#&gt;  lognormal(-0.132723577442522, 1.68292842267636)     b                             nec  0                user</span></span>
+<span><span class="co">#&gt;  lognormal(-0.132723577442522, 1.68292842267636)     b Intercept                   nec  0        (vectorized)</span></span>
+<span><span class="co">#&gt;                                       beta(5, 2)     b                             top  0  1             user</span></span>
+<span><span class="co">#&gt;                                       beta(5, 2)     b Intercept                   top  0  1     (vectorized)</span></span>
+<span><span class="co">#&gt;                                gamma(0.01, 0.01)   phi                                  0             default</span></span></code></pre></div>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/pull_prior.html">pull_prior</a></span><span class="op">(</span><span class="va">exmp_regularizing</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [[1]]</span></span>
-<span><span class="co">#&gt;                                            prior class      coef group resp dpar nlpar               lb</span></span>
-<span><span class="co">#&gt;                                     normal(0, 5)     b                            beta                 </span></span>
-<span><span class="co">#&gt;                                     normal(0, 5)     b Intercept                  beta                 </span></span>
-<span><span class="co">#&gt;                           beta(6.46262, 29.0272)     b                             bot                0</span></span>
-<span><span class="co">#&gt;                           beta(6.46262, 29.0272)     b Intercept                   bot                0</span></span>
-<span><span class="co">#&gt;  lognormal(-0.132723577442522, 1.41787869897336)     b                             nec 0.03234801324009</span></span>
-<span><span class="co">#&gt;  lognormal(-0.132723577442522, 1.41787869897336)     b Intercept                   nec 0.03234801324009</span></span>
-<span><span class="co">#&gt;                           beta(21.3016, 2.79077)     b                             top                0</span></span>
-<span><span class="co">#&gt;                           beta(21.3016, 2.79077)     b Intercept                   top                0</span></span>
-<span><span class="co">#&gt;                                gamma(0.01, 0.01)   phi                                                0</span></span>
-<span><span class="co">#&gt;                ub tag       source</span></span>
-<span><span class="co">#&gt;                               user</span></span>
-<span><span class="co">#&gt;                       (vectorized)</span></span>
-<span><span class="co">#&gt;                 1             user</span></span>
-<span><span class="co">#&gt;                 1     (vectorized)</span></span>
-<span><span class="co">#&gt;  3.22051966293556             user</span></span>
-<span><span class="co">#&gt;  3.22051966293556     (vectorized)</span></span>
-<span><span class="co">#&gt;                 1             user</span></span>
-<span><span class="co">#&gt;                 1     (vectorized)</span></span>
-<span><span class="co">#&gt;                            default</span></span></code></pre></div>
+<span><span class="co">#&gt;                                            prior class      coef group resp dpar nlpar lb ub tag       source</span></span>
+<span><span class="co">#&gt;                                     normal(0, 5)     b                            beta                   user</span></span>
+<span><span class="co">#&gt;                                     normal(0, 5)     b Intercept                  beta           (vectorized)</span></span>
+<span><span class="co">#&gt;                           beta(6.46262, 29.0272)     b                             bot  0  1             user</span></span>
+<span><span class="co">#&gt;                           beta(6.46262, 29.0272)     b Intercept                   bot  0  1     (vectorized)</span></span>
+<span><span class="co">#&gt;  lognormal(-0.132723577442522, 1.41787869897336)     b                             nec  0                user</span></span>
+<span><span class="co">#&gt;  lognormal(-0.132723577442522, 1.41787869897336)     b Intercept                   nec  0        (vectorized)</span></span>
+<span><span class="co">#&gt;                           beta(21.3016, 2.79077)     b                             top  0  1             user</span></span>
+<span><span class="co">#&gt;                           beta(21.3016, 2.79077)     b Intercept                   top  0  1     (vectorized)</span></span>
+<span><span class="co">#&gt;                                gamma(0.01, 0.01)   phi                                  0             default</span></span></code></pre></div>
 <p>Plotting the prior and posterior densities with
 <code>check_priors</code> makes the difference clear: the
 <code>"regularizing"</code> priors place their density where the data
@@ -827,7 +851,7 @@ response serves both parameters.</p>
 <span><span class="co">#&gt;                                    normal(0, 5)     b                       beta &lt;NA&gt; &lt;NA&gt;       user</span></span>
 <span><span class="co">#&gt;                        gamma(17.0943, 0.442962)     b                        top    0 &lt;NA&gt;       user</span></span>
 <span><span class="co">#&gt;                         gamma(7.76467, 1.22994)     b                        bot    0 &lt;NA&gt;       user</span></span>
-<span><span class="co">#&gt;  lognormal(1.70059869083108, 0.731016504370499)     b                        nec    0   10       user</span></span></code></pre></div>
+<span><span class="co">#&gt;  lognormal(1.70059869083108, 0.731016504370499)     b                        nec    0 &lt;NA&gt;       user</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -891,22 +915,14 @@ those priors to be more desirable.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/pull_prior.html">pull_prior</a></span><span class="op">(</span><span class="va">exmp_a</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [[1]]</span></span>
-<span><span class="co">#&gt;                                            prior class      coef group resp dpar nlpar               lb</span></span>
-<span><span class="co">#&gt;                                     normal(0, 5)     b                            beta                 </span></span>
-<span><span class="co">#&gt;                                     normal(0, 5)     b Intercept                  beta                 </span></span>
-<span><span class="co">#&gt;  lognormal(-0.132723577442522, 1.68292842267636)     b                             nec 0.03234801324009</span></span>
-<span><span class="co">#&gt;  lognormal(-0.132723577442522, 1.68292842267636)     b Intercept                   nec 0.03234801324009</span></span>
-<span><span class="co">#&gt;                                       beta(5, 2)     b                             top                0</span></span>
-<span><span class="co">#&gt;                                       beta(5, 2)     b Intercept                   top                0</span></span>
-<span><span class="co">#&gt;                                gamma(0.01, 0.01)   phi                                                0</span></span>
-<span><span class="co">#&gt;                ub tag       source</span></span>
-<span><span class="co">#&gt;                               user</span></span>
-<span><span class="co">#&gt;                       (vectorized)</span></span>
-<span><span class="co">#&gt;  3.22051966293556             user</span></span>
-<span><span class="co">#&gt;  3.22051966293556     (vectorized)</span></span>
-<span><span class="co">#&gt;                 1             user</span></span>
-<span><span class="co">#&gt;                 1     (vectorized)</span></span>
-<span><span class="co">#&gt;                            default</span></span></code></pre></div>
+<span><span class="co">#&gt;                                            prior class      coef group resp dpar nlpar lb ub tag       source</span></span>
+<span><span class="co">#&gt;                                     normal(0, 5)     b                            beta                   user</span></span>
+<span><span class="co">#&gt;                                     normal(0, 5)     b Intercept                  beta           (vectorized)</span></span>
+<span><span class="co">#&gt;  lognormal(-0.132723577442522, 1.68292842267636)     b                             nec  0                user</span></span>
+<span><span class="co">#&gt;  lognormal(-0.132723577442522, 1.68292842267636)     b Intercept                   nec  0        (vectorized)</span></span>
+<span><span class="co">#&gt;                                       beta(5, 2)     b                             top  0  1             user</span></span>
+<span><span class="co">#&gt;                                       beta(5, 2)     b Intercept                   top  0  1     (vectorized)</span></span>
+<span><span class="co">#&gt;                                gamma(0.01, 0.01)   phi                                  0             default</span></span></code></pre></div>
 <p><code>bnec</code> chose a <code>lognormal</code> prior on the
 <em>NEC</em> parameter of <strong>nec3param</strong> because the
 predictor <code>nec_data$x</code> is non-zero positive, so the prior is
@@ -1049,7 +1065,7 @@ one row.</p>
 <span><span class="co">#&gt;                                            prior class coef group resp dpar nlpar   lb   ub tag source</span></span>
 <span><span class="co">#&gt;                                     normal(0, 5)     b                       beta &lt;NA&gt; &lt;NA&gt;       user</span></span>
 <span><span class="co">#&gt;                                    constant(0.5)     b                        top    0    1       user</span></span>
-<span><span class="co">#&gt;  lognormal(0.470003629245736, 0.707306038302134)     b                        nec    0    3       user</span></span></code></pre></div>
+<span><span class="co">#&gt;  lognormal(0.470003629245736, 0.707306038302134)     b                        nec    0 &lt;NA&gt;       user</span></span></code></pre></div>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
 <span><span class="va">exmp_f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">avoid_data</span>,</span>
@@ -1060,10 +1076,10 @@ error, because it was never sampled. Stan does not declare a parameter
 whose prior is constant, so it contributes nothing to the posterior.</p>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/nlme/man/fixed.effects.html" class="external-link">fixef</a></span><span class="op">(</span><span class="fu"><a href="../reference/pull_brmsfit.html">pull_brmsfit</a></span><span class="op">(</span><span class="va">exmp_f</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt;                 Estimate  Est.Error     Q2.5    Q97.5</span></span>
-<span><span class="co">#&gt; beta_Intercept 0.3090778 0.09874436 0.132746 0.547551</span></span>
-<span><span class="co">#&gt; nec_Intercept  1.1439555 0.07488724 1.025699 1.331653</span></span>
-<span><span class="co">#&gt; top_Intercept  0.5000000 0.00000000 0.500000 0.500000</span></span></code></pre></div>
+<span><span class="co">#&gt;                 Estimate  Est.Error      Q2.5     Q97.5</span></span>
+<span><span class="co">#&gt; beta_Intercept 0.3141329 0.10062548 0.1416226 0.5569962</span></span>
+<span><span class="co">#&gt; nec_Intercept  1.1470191 0.07684609 1.0280213 1.3373339</span></span>
+<span><span class="co">#&gt; top_Intercept  0.5000000 0.00000000 0.5000000 0.5000000</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="consequences-of-fixing-an-asymptote">Consequences of fixing an asymptote<a class="anchor" aria-label="anchor" href="#consequences-of-fixing-an-asymptote"></a>
 </h3>
@@ -1085,9 +1101,9 @@ it.</p>
 <div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/nlme/man/fixed.effects.html" class="external-link">fixef</a></span><span class="op">(</span><span class="fu"><a href="../reference/pull_brmsfit.html">pull_brmsfit</a></span><span class="op">(</span><span class="va">exmp_g</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                 Estimate  Est.Error      Q2.5     Q97.5</span></span>
-<span><span class="co">#&gt; top_Intercept  0.4881983 0.01607557 0.4579751 0.5206909</span></span>
-<span><span class="co">#&gt; beta_Intercept 0.3442712 0.11532955 0.1471181 0.5850865</span></span>
-<span><span class="co">#&gt; nec_Intercept  1.1925197 0.09868096 1.0310962 1.3852201</span></span></code></pre></div>
+<span><span class="co">#&gt; top_Intercept  0.4886573 0.01618016 0.4579046 0.5206609</span></span>
+<span><span class="co">#&gt; beta_Intercept 0.3419506 0.11103326 0.1539501 0.5788864</span></span>
+<span><span class="co">#&gt; nec_Intercept  1.1888325 0.09679835 1.0344582 1.3796306</span></span></code></pre></div>
 <p>That check only works while <code>top</code> is free, and here it
 passes: the interval covers 0.5, so this assay was unbiased at dose
 zero. The point is what it would have cost to be unable to ask. Had the
@@ -1103,8 +1119,8 @@ generated from.</p>
 <div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span>fixed <span class="op">=</span> <span class="fu"><a href="../reference/nec.html">nec</a></span><span class="op">(</span><span class="va">exmp_f</span><span class="op">)</span>, free <span class="op">=</span> <span class="fu"><a href="../reference/nec.html">nec</a></span><span class="op">(</span><span class="va">exmp_g</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;            Q50     Q2.5    Q97.5</span></span>
-<span><span class="co">#&gt; fixed 1.131594 1.025699 1.331653</span></span>
-<span><span class="co">#&gt; free  1.168708 1.031096 1.385220</span></span></code></pre></div>
+<span><span class="co">#&gt; fixed 1.131941 1.028021 1.337334</span></span>
+<span><span class="co">#&gt; free  1.165099 1.034458 1.379631</span></span></code></pre></div>
 <p>The second is uncertainty. A constant asserts the value is known
 exactly, so none of it propagates into ECx or the <em>NEC</em>, and the
 credible intervals narrow. That reads as a better analysis and is the

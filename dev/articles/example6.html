@@ -459,18 +459,18 @@ threshold model, every no-effect estimate is a true NEC.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; No-effect toxicity estimates</span></span>
 <span><span class="co">#&gt;                 Q50 Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; combined (NEC) 1.08 0.78  1.37</span></span>
-<span><span class="co">#&gt; growth (NEC)   1.08 0.78  1.37</span></span>
-<span><span class="co">#&gt; survival (NEC) 2.18 1.89  2.59</span></span>
+<span><span class="co">#&gt; combined (NEC) 1.08 0.79  1.37</span></span>
+<span><span class="co">#&gt; growth (NEC)   1.08 0.79  1.37</span></span>
+<span><span class="co">#&gt; survival (NEC) 2.18 1.90  2.57</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; ECx estimates</span></span>
 <span><span class="co">#&gt;                Q50 Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; combined ec10 1.26 1.00  1.53</span></span>
-<span><span class="co">#&gt; combined ec50 2.21 2.03  2.42</span></span>
-<span><span class="co">#&gt; growth ec10   1.26 1.00  1.53</span></span>
-<span><span class="co">#&gt; growth ec50   2.32 2.13  2.51</span></span>
-<span><span class="co">#&gt; survival ec10 2.28 2.01  2.66</span></span>
-<span><span class="co">#&gt; survival ec50 2.84 2.58  3.11</span></span>
+<span><span class="co">#&gt; combined ec10 1.27 1.00  1.53</span></span>
+<span><span class="co">#&gt; combined ec50 2.21 2.04  2.41</span></span>
+<span><span class="co">#&gt; growth ec10   1.27 1.00  1.53</span></span>
+<span><span class="co">#&gt; growth ec50   2.32 2.14  2.50</span></span>
+<span><span class="co">#&gt; survival ec10 2.28 2.02  2.65</span></span>
+<span><span class="co">#&gt; survival ec50 2.83 2.58  3.11</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; The combined endpoint is the expected response per individual exposed,</span></span>
 <span><span class="co">#&gt; i.e. growth * survival. Use which = to select a component.</span></span></code></pre></div>
@@ -523,12 +523,12 @@ separate only above that point.</p>
 <span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                 Q50  Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; growth NSEC   1.194 0.952 1.458</span></span>
-<span><span class="co">#&gt; combined NSEC 1.225 0.971 1.488</span></span>
-<span><span class="co">#&gt; growth EC10   1.265 0.996 1.529</span></span>
-<span><span class="co">#&gt; combined EC10 1.265 0.996 1.529</span></span>
-<span><span class="co">#&gt; growth EC50   2.319 2.128 2.507</span></span>
-<span><span class="co">#&gt; combined EC50 2.212 2.035 2.416</span></span></code></pre></div>
+<span><span class="co">#&gt; growth NSEC   1.193 0.950 1.454</span></span>
+<span><span class="co">#&gt; combined NSEC 1.216 0.959 1.476</span></span>
+<span><span class="co">#&gt; growth EC10   1.267 1.003 1.532</span></span>
+<span><span class="co">#&gt; combined EC10 1.267 1.003 1.532</span></span>
+<span><span class="co">#&gt; growth EC50   2.320 2.135 2.497</span></span>
+<span><span class="co">#&gt; combined EC50 2.214 2.039 2.414</span></span></code></pre></div>
 <p>In this simulation survival is unaffected until a concentration of
 2.0, so the NSEC and the EC10 — both of which fall below that — are
 effectively the same on the two curves, while the EC50 is reached
@@ -571,16 +571,16 @@ The two blocks appear as <code>nec</code> and <code>hunec</code>.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Regression Coefficients:</span></span>
 <span><span class="co">#&gt;        Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; top       24.76      0.72    23.40    26.29 1.00     6285     5306</span></span>
-<span><span class="co">#&gt; beta      -0.58      0.09    -0.75    -0.40 1.00     4791     5399</span></span>
-<span><span class="co">#&gt; nec        1.08      0.16     0.79     1.37 1.00     4507     4379</span></span>
-<span><span class="co">#&gt; hutop      0.96      0.01     0.93     0.99 1.00     6902     4163</span></span>
-<span><span class="co">#&gt; hubeta     0.09      0.20    -0.27     0.54 1.00     5793     5669</span></span>
-<span><span class="co">#&gt; hunec      2.18      0.21     1.90     2.59 1.00     5723     6518</span></span>
+<span><span class="co">#&gt; top       24.77      0.74    23.44    26.32 1.00     6813     5383</span></span>
+<span><span class="co">#&gt; beta      -0.58      0.09    -0.75    -0.41 1.00     5216     5580</span></span>
+<span><span class="co">#&gt; nec        1.08      0.16     0.79     1.37 1.00     4930     4462</span></span>
+<span><span class="co">#&gt; hutop      0.96      0.01     0.93     0.99 1.00     7553     4865</span></span>
+<span><span class="co">#&gt; hubeta     0.09      0.20    -0.29     0.53 1.00     5826     5188</span></span>
+<span><span class="co">#&gt; hunec      2.19      0.21     1.89     2.59 1.00     5681     5998</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Further Distributional Parameters:</span></span>
 <span><span class="co">#&gt;       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; shape    11.03      1.23     8.77    13.65 1.00     8154     5124</span></span>
+<span><span class="co">#&gt; shape    11.04      1.23     8.82    13.57 1.00     8161     5225</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Draws were sampled using sample(hmc). For each parameter, Bulk_ESS</span></span>
 <span><span class="co">#&gt; and Tail_ESS are effective sample size measures, and Rhat is the potential</span></span>
@@ -619,12 +619,12 @@ Comparing like with like:</p>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">comparison</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                             Q50  Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; factorised, combined      1.075 0.783 1.365</span></span>
-<span><span class="co">#&gt; joint, combined           1.081 0.793 1.366</span></span>
-<span><span class="co">#&gt; factorised, growth EC10   1.265 0.996 1.529</span></span>
-<span><span class="co">#&gt; joint, growth EC10        1.269 1.006 1.530</span></span>
-<span><span class="co">#&gt; factorised, survival EC10 2.278 2.010 2.660</span></span>
-<span><span class="co">#&gt; joint, survival EC10      2.278 2.014 2.658</span></span></code></pre></div>
+<span><span class="co">#&gt; factorised, combined      1.079 0.792 1.366</span></span>
+<span><span class="co">#&gt; joint, combined           1.081 0.786 1.369</span></span>
+<span><span class="co">#&gt; factorised, growth EC10   1.267 1.003 1.532</span></span>
+<span><span class="co">#&gt; joint, growth EC10        1.269 1.002 1.533</span></span>
+<span><span class="co">#&gt; factorised, survival EC10 2.280 2.016 2.648</span></span>
+<span><span class="co">#&gt; joint, survival EC10      2.285 2.010 2.658</span></span></code></pre></div>
 <p>Differences between the two routes are Monte Carlo noise rather than
 a modelling choice.</p>
 </div>
@@ -640,9 +640,9 @@ ordinary Gamma model to the non-zero rows only:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span>`survivors only` <span class="op">=</span> <span class="fu"><a href="../reference/nec.html">nec</a></span><span class="op">(</span><span class="va">fit_s</span><span class="op">)</span>,</span>
 <span>      `hurdle, growth` <span class="op">=</span> <span class="fu"><a href="../reference/nec.html">nec</a></span><span class="op">(</span><span class="va">fit_f</span>, which <span class="op">=</span> <span class="st">"growth"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt;                    Q50      Q2.5    Q97.5</span></span>
-<span><span class="co">#&gt; survivors only 1.07513 0.7834951 1.365483</span></span>
-<span><span class="co">#&gt; hurdle, growth 1.07513 0.7834951 1.365483</span></span></code></pre></div>
+<span><span class="co">#&gt;                     Q50      Q2.5    Q97.5</span></span>
+<span><span class="co">#&gt; survivors only 1.079043 0.7915475 1.366318</span></span>
+<span><span class="co">#&gt; hurdle, growth 1.079043 0.7915475 1.366318</span></span></code></pre></div>
 <p>These are identical to every printed digit, because the factorised
 route <em>is</em> this fit, run on the same subset with the same seed.
 The survivors-only analysis is a correct estimate of the response of
@@ -660,12 +660,12 @@ of exposure on growth. Comparing the two on the response scale:</p>
 <span>  combined  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu">med</span><span class="op">(</span><span class="fu"><a href="../reference/posterior_epred.html">posterior_epred</a></span><span class="op">(</span><span class="va">fit_f</span>, which <span class="op">=</span> <span class="st">"combined"</span>, newdata <span class="op">=</span> <span class="va">nd</span><span class="op">)</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span><span class="co">#&gt;   x growth survival combined</span></span>
-<span><span class="co">#&gt; 1 0  24.77    0.964    23.83</span></span>
-<span><span class="co">#&gt; 2 1  24.44    0.964    23.53</span></span>
-<span><span class="co">#&gt; 3 2  14.80    0.961    14.14</span></span>
-<span><span class="co">#&gt; 4 3   8.44    0.403     3.40</span></span>
-<span><span class="co">#&gt; 5 4   4.81    0.132     0.64</span></span>
-<span><span class="co">#&gt; 6 5   2.75    0.044     0.12</span></span></code></pre></div>
+<span><span class="co">#&gt; 1 0  24.77    0.964    23.84</span></span>
+<span><span class="co">#&gt; 2 1  24.48    0.964    23.54</span></span>
+<span><span class="co">#&gt; 3 2  14.78    0.961    14.16</span></span>
+<span><span class="co">#&gt; 4 3   8.43    0.403     3.39</span></span>
+<span><span class="co">#&gt; 5 4   4.80    0.133     0.64</span></span>
+<span><span class="co">#&gt; 6 5   2.73    0.044     0.12</span></span></code></pre></div>
 <p>At the control the two agree, because almost all individuals survive.
 At the top concentration the survivors-only analysis reports a growth of
 about 2.7 while the expected growth per individual <em>exposed</em> is
@@ -705,12 +705,12 @@ component as for the growth component.</p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="../reference/crossed_weights.html">crossed_weights</a></span><span class="op">(</span><span class="va">fit_m</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;            survival</span></span>
 <span><span class="co">#&gt; growth      nec3param nec4param ecx4param ecxexp ecxwb1 ecxll3</span></span>
-<span><span class="co">#&gt;   nec3param     0.379     0.110     0.030      0  0.025  0.053</span></span>
-<span><span class="co">#&gt;   nec4param     0.121     0.035     0.010      0  0.008  0.017</span></span>
-<span><span class="co">#&gt;   ecx4param     0.030     0.009     0.002      0  0.002  0.004</span></span>
+<span><span class="co">#&gt;   nec3param     0.373     0.101     0.039      0  0.025  0.049</span></span>
+<span><span class="co">#&gt;   nec4param     0.131     0.035     0.014      0  0.009  0.017</span></span>
+<span><span class="co">#&gt;   ecx4param     0.028     0.007     0.003      0  0.002  0.004</span></span>
 <span><span class="co">#&gt;   ecxexp        0.001     0.000     0.000      0  0.000  0.000</span></span>
-<span><span class="co">#&gt;   ecxwb1        0.011     0.003     0.001      0  0.001  0.002</span></span>
-<span><span class="co">#&gt;   ecxll3        0.092     0.027     0.007      0  0.006  0.013</span></span></code></pre></div>
+<span><span class="co">#&gt;   ecxwb1        0.012     0.003     0.001      0  0.001  0.002</span></span>
+<span><span class="co">#&gt;   ecxll3        0.092     0.025     0.010      0  0.006  0.012</span></span></code></pre></div>
 <p>Rows are growth models, columns survival models, and the entries are
 weights over every combination of the two. Because the components are
 independent, the crossed weights are exactly the outer product of the
@@ -733,9 +733,9 @@ product.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; No-effect toxicity estimates</span></span>
 <span><span class="co">#&gt;                    Q50 Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; combined (N(S)EC) 1.04 0.29  1.42</span></span>
-<span><span class="co">#&gt; growth (N(S)EC)   1.04 0.31  1.42</span></span>
-<span><span class="co">#&gt; survival (N(S)EC) 2.20 1.43  2.81</span></span>
+<span><span class="co">#&gt; combined (N(S)EC) 1.05 0.30  1.42</span></span>
+<span><span class="co">#&gt; growth (N(S)EC)   1.05 0.32  1.42</span></span>
+<span><span class="co">#&gt; survival (N(S)EC) 2.20 1.45  2.81</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; NSEC values appear where a model set contains smooth (ECx) models, which</span></span>
 <span><span class="co">#&gt; carry no threshold parameter; N(S)EC is a model-averaged combination</span></span>
@@ -743,12 +743,12 @@ product.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; ECx estimates</span></span>
 <span><span class="co">#&gt;                Q50 Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; combined ec10 1.23 0.48  1.56</span></span>
-<span><span class="co">#&gt; combined ec50 2.21 1.95  2.42</span></span>
-<span><span class="co">#&gt; growth ec10   1.23 0.49  1.56</span></span>
-<span><span class="co">#&gt; growth ec50   2.31 2.10  2.51</span></span>
-<span><span class="co">#&gt; survival ec10 2.30 1.90  2.84</span></span>
-<span><span class="co">#&gt; survival ec50 2.86 2.53  3.16</span></span>
+<span><span class="co">#&gt; combined ec10 1.24 0.49  1.56</span></span>
+<span><span class="co">#&gt; combined ec50 2.21 1.97  2.42</span></span>
+<span><span class="co">#&gt; growth ec10   1.24 0.49  1.56</span></span>
+<span><span class="co">#&gt; growth ec50   2.30 2.11  2.52</span></span>
+<span><span class="co">#&gt; survival ec10 2.30 1.88  2.84</span></span>
+<span><span class="co">#&gt; survival ec50 2.86 2.53  3.15</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; The combined endpoint is the expected response per individual exposed,</span></span>
 <span><span class="co">#&gt; i.e. growth * survival. Use which = to select a component.</span></span></code></pre></div>
@@ -782,7 +782,7 @@ model.</p>
 <span><span class="co">#&gt; [1] "nec3param"</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $weight</span></span>
-<span><span class="co">#&gt; [1] 0.3785072</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 0.3734894</span></span></code></pre></div>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_bj</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec_joint.html">bnec_joint</a></span><span class="op">(</span><span class="va">fit_m</span>, seed <span class="op">=</span> <span class="fl">333</span>, refresh <span class="op">=</span> <span class="fl">0</span>, iter <span class="op">=</span> <span class="fl">4e3</span>, cores <span class="op">=</span> <span class="fl">4</span>,</span>
 <span>                     control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
@@ -806,16 +806,16 @@ model.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Regression Coefficients:</span></span>
 <span><span class="co">#&gt;        Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; top       24.75      0.70    23.45    26.30 1.00     2426     1957</span></span>
-<span><span class="co">#&gt; beta      -0.58      0.10    -0.75    -0.39 1.00     1592     2072</span></span>
-<span><span class="co">#&gt; nec        1.08      0.16     0.80     1.37 1.00     1588     2116</span></span>
-<span><span class="co">#&gt; hutop      0.96      0.01     0.93     0.99 1.00     2429     1563</span></span>
-<span><span class="co">#&gt; hubeta     0.09      0.20    -0.28     0.51 1.00     1720     1710</span></span>
-<span><span class="co">#&gt; hunec      2.18      0.20     1.89     2.59 1.00     1605     2057</span></span>
+<span><span class="co">#&gt; top       24.75      0.71    23.42    26.33 1.00     2338     1954</span></span>
+<span><span class="co">#&gt; beta      -0.58      0.10    -0.74    -0.40 1.00     1871     2102</span></span>
+<span><span class="co">#&gt; nec        1.08      0.16     0.80     1.37 1.00     1641     1825</span></span>
+<span><span class="co">#&gt; hutop      0.96      0.01     0.93     0.99 1.00     2745     1719</span></span>
+<span><span class="co">#&gt; hubeta     0.09      0.21    -0.27     0.57 1.00     1968     2254</span></span>
+<span><span class="co">#&gt; hunec      2.18      0.21     1.89     2.60 1.00     1914     2408</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Further Distributional Parameters:</span></span>
 <span><span class="co">#&gt;       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; shape    11.04      1.21     8.78    13.61 1.00     2692     2075</span></span>
+<span><span class="co">#&gt; shape    11.01      1.26     8.82    13.60 1.00     2807     2437</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Draws were sampled using sample(hmc). For each parameter, Bulk_ESS</span></span>
 <span><span class="co">#&gt; and Tail_ESS are effective sample size measures, and Rhat is the potential</span></span>
@@ -1003,9 +1003,9 @@ Refitting that block on progressively more of the reconstruction:</p>
 <div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="va">sens</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                              Q50       Q2.5      Q97.5</span></span>
-<span><span class="co">#&gt; recorded deaths only  0.06596914 0.03669723 0.09693471</span></span>
-<span><span class="co">#&gt; + first all-dead dose 0.08320376 0.05272932 0.09830386</span></span>
-<span><span class="co">#&gt; + all all-dead doses  0.08480641 0.05635826 0.09806783</span></span></code></pre></div>
+<span><span class="co">#&gt; recorded deaths only  0.06594502 0.03742340 0.09538154</span></span>
+<span><span class="co">#&gt; + first all-dead dose 0.08308250 0.05244899 0.09803818</span></span>
+<span><span class="co">#&gt; + all all-dead doses  0.08454490 0.05470653 0.09844514</span></span></code></pre></div>
 <p>Two conclusions follow, and they have different implications.</p>
 <p><strong>Reinstating the first all-dead dose changes the survival
 threshold</strong>, moving it by about 25% and halving the credible
@@ -1163,9 +1163,9 @@ scale.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; No-effect toxicity estimates</span></span>
 <span><span class="co">#&gt;                    Q50 Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; combined (N(S)EC) 0.59 0.15  1.12</span></span>
-<span><span class="co">#&gt; growth (N(S)EC)   0.59 0.19  1.13</span></span>
-<span><span class="co">#&gt; survival (N(S)EC) 1.69 1.10  2.40</span></span>
+<span><span class="co">#&gt; combined (N(S)EC) 0.60 0.08  1.14</span></span>
+<span><span class="co">#&gt; growth (N(S)EC)   0.60 0.18  1.14</span></span>
+<span><span class="co">#&gt; survival (N(S)EC) 1.69 1.08  2.38</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; NSEC values appear where a model set contains smooth (ECx) models, which</span></span>
 <span><span class="co">#&gt; carry no threshold parameter; N(S)EC is a model-averaged combination</span></span>
@@ -1173,12 +1173,14 @@ scale.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; ECx estimates</span></span>
 <span><span class="co">#&gt;                Q50 Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; combined ec10 0.64 0.25  1.14</span></span>
-<span><span class="co">#&gt; combined ec50 1.05 0.76  1.24</span></span>
-<span><span class="co">#&gt; growth ec10   0.64 0.25  1.14</span></span>
-<span><span class="co">#&gt; growth ec50   1.06 0.76  1.24</span></span>
-<span><span class="co">#&gt; survival ec10 1.78 1.28  2.41</span></span>
-<span><span class="co">#&gt; survival ec50 2.10 1.45  2.47</span></span>
+<span><span class="co">#&gt; combined ec10 0.64 0.25  1.15</span></span>
+<span><span class="co">#&gt; combined ec50 1.06 0.74  1.24</span></span>
+<span><span class="co">#&gt; growth ec10   0.64 0.25  1.15</span></span>
+<span><span class="co">#&gt; growth ec50   1.06 0.74  1.25</span></span>
+<span><span class="co">#&gt; survival ec10 1.77 1.27  2.40</span></span>
+<span><span class="co">#&gt; survival ec50 2.09 1.47  2.47</span></span>
+<span><span class="co">#&gt; NB: 20 of 3200 draws of the growth ec50 lie above 2.5, the upper bound</span></span>
+<span><span class="co">#&gt;     of the prediction range. An entry marked &gt;= is that bound and not a quantile.</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; The combined endpoint is the expected response per individual exposed,</span></span>
 <span><span class="co">#&gt; i.e. growth * survival. Use which = to select a component.</span></span></code></pre></div>
@@ -1193,18 +1195,18 @@ not pure NEC values and should not be described as such.</p>
 <span><span class="va">endpoints</span><span class="op">[</span>, <span class="fl">3</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">signif</a></span><span class="op">(</span><span class="va">endpoints</span><span class="op">[</span>, <span class="fl">3</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span>, <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="va">endpoints</span></span>
 <span><span class="co">#&gt;     contaminant endpoint     ne   ec10   ec50</span></span>
-<span><span class="co">#&gt; A.1           A   growth  0.590  0.640  1.100</span></span>
+<span><span class="co">#&gt; A.1           A   growth  0.600  0.640  1.100</span></span>
 <span><span class="co">#&gt; A.2           A survival  1.700  1.800  2.100</span></span>
-<span><span class="co">#&gt; A.3           A combined  0.590  0.640  1.100</span></span>
-<span><span class="co">#&gt; B.1           B   growth  0.048  0.048  0.072</span></span>
-<span><span class="co">#&gt; B.2           B survival  0.080  0.082  0.100</span></span>
-<span><span class="co">#&gt; B.3           B combined  0.048  0.047  0.070</span></span>
-<span><span class="co">#&gt; C.1           C   growth  0.028  0.030  3.500</span></span>
+<span><span class="co">#&gt; A.3           A combined  0.600  0.640  1.100</span></span>
+<span><span class="co">#&gt; B.1           B   growth  0.049  0.048  0.073</span></span>
+<span><span class="co">#&gt; B.2           B survival  0.079  0.082  0.100</span></span>
+<span><span class="co">#&gt; B.3           B combined  0.048  0.048  0.071</span></span>
+<span><span class="co">#&gt; C.1           C   growth  0.029  0.027  3.400</span></span>
 <span><span class="co">#&gt; C.2           C survival 14.000 15.000 16.000</span></span>
-<span><span class="co">#&gt; C.3           C combined  0.028  0.030  3.500</span></span>
-<span><span class="co">#&gt; D.1           D   growth  0.034  0.081  7.600</span></span>
-<span><span class="co">#&gt; D.2           D survival 13.000 13.000 15.000</span></span>
-<span><span class="co">#&gt; D.3           D combined  0.034  0.081  7.600</span></span></code></pre></div>
+<span><span class="co">#&gt; C.3           C combined  0.029  0.027  3.400</span></span>
+<span><span class="co">#&gt; D.1           D   growth  0.033  0.080  7.700</span></span>
+<span><span class="co">#&gt; D.2           D survival 12.000 13.000 15.000</span></span>
+<span><span class="co">#&gt; D.3           D combined  0.033  0.080  7.600</span></span></code></pre></div>
 <p>Three features of these results are notable.</p>
 <p><strong>The combined and growth rows are all but identical.</strong>
 The combined no-effect estimate matches the growth estimate exactly for
@@ -1255,12 +1257,12 @@ crossed combinations, all available from the two fits.</p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="../reference/crossed_weights.html">crossed_weights</a></span><span class="op">(</span><span class="va">fit_a</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;            survival</span></span>
 <span><span class="co">#&gt; growth      nec3param nec4param ecx4param ecxexp ecxwb1 ecxll3</span></span>
-<span><span class="co">#&gt;   nec3param     0.163     0.025     0.024      0  0.022  0.121</span></span>
-<span><span class="co">#&gt;   nec4param     0.087     0.013     0.013      0  0.012  0.064</span></span>
-<span><span class="co">#&gt;   ecx4param     0.056     0.009     0.008      0  0.008  0.042</span></span>
+<span><span class="co">#&gt;   nec3param     0.162     0.030     0.024      0  0.023  0.109</span></span>
+<span><span class="co">#&gt;   nec4param     0.084     0.016     0.013      0  0.012  0.056</span></span>
+<span><span class="co">#&gt;   ecx4param     0.078     0.015     0.012      0  0.011  0.052</span></span>
 <span><span class="co">#&gt;   ecxexp        0.006     0.001     0.001      0  0.001  0.004</span></span>
-<span><span class="co">#&gt;   ecxwb1        0.058     0.009     0.009      0  0.008  0.043</span></span>
-<span><span class="co">#&gt;   ecxll3        0.089     0.014     0.013      0  0.012  0.066</span></span></code></pre></div>
+<span><span class="co">#&gt;   ecxwb1        0.052     0.010     0.008      0  0.008  0.035</span></span>
+<span><span class="co">#&gt;   ecxll3        0.082     0.015     0.012      0  0.012  0.055</span></span></code></pre></div>
 <p>Weight is spread across several combinations rather than concentrated
 in one, which is the situation model averaging exists to handle.
 Reporting a single crossed combination would discard that uncertainty,
@@ -1392,18 +1394,18 @@ than the Gamma appropriate to the snail example.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; No-effect toxicity estimates</span></span>
 <span><span class="co">#&gt;                 Q50 Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; combined (NEC) 1.68 1.32  1.91</span></span>
-<span><span class="co">#&gt; growth (NEC)   1.69 1.41  1.91</span></span>
-<span><span class="co">#&gt; survival (NEC) 2.96 1.44  3.95</span></span>
+<span><span class="co">#&gt; combined (NEC) 1.67 1.32  1.91</span></span>
+<span><span class="co">#&gt; growth (NEC)   1.68 1.39  1.92</span></span>
+<span><span class="co">#&gt; survival (NEC) 2.99 1.45  3.99</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; ECx estimates</span></span>
 <span><span class="co">#&gt;                Q50 Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; combined ec10 1.98 1.72  2.19</span></span>
-<span><span class="co">#&gt; combined ec50 3.41 2.99  3.77</span></span>
-<span><span class="co">#&gt; growth ec10   1.99 1.75  2.19</span></span>
+<span><span class="co">#&gt; combined ec10 1.98 1.71  2.20</span></span>
+<span><span class="co">#&gt; combined ec50 3.42 3.00  3.79</span></span>
+<span><span class="co">#&gt; growth ec10   1.99 1.74  2.20</span></span>
 <span><span class="co">#&gt; growth ec50   3.69 3.44  3.99</span></span>
-<span><span class="co">#&gt; survival ec10 3.47 2.19  4.37</span></span>
-<span><span class="co">#&gt; survival ec50 6.30 5.21  8.12</span></span>
+<span><span class="co">#&gt; survival ec10 3.49 2.21  4.43</span></span>
+<span><span class="co">#&gt; survival ec50 6.31 5.21  8.04</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; The combined endpoint is the expected response per individual exposed,</span></span>
 <span><span class="co">#&gt; i.e. growth * survival. Use which = to select a component.</span></span></code></pre></div>
@@ -1434,16 +1436,16 @@ parameters appear as <code>zitop</code>, <code>zibeta</code> and
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Regression Coefficients:</span></span>
 <span><span class="co">#&gt;        Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; top        0.68      0.01     0.66     0.71 1.00     5533     5155</span></span>
-<span><span class="co">#&gt; beta      -1.07      0.09    -1.25    -0.90 1.00     4987     4738</span></span>
-<span><span class="co">#&gt; nec        1.69      0.13     1.40     1.91 1.00     4326     3697</span></span>
-<span><span class="co">#&gt; zitop      0.97      0.02     0.91     0.99 1.00     6661     4402</span></span>
-<span><span class="co">#&gt; zibeta    -1.58      0.26    -2.15    -1.10 1.00     4056     3824</span></span>
-<span><span class="co">#&gt; zinec      2.96      0.52     1.34     3.95 1.00     3966     2926</span></span>
+<span><span class="co">#&gt; top        0.68      0.01     0.66     0.71 1.00     5340     4825</span></span>
+<span><span class="co">#&gt; beta      -1.06      0.09    -1.24    -0.90 1.00     5058     4745</span></span>
+<span><span class="co">#&gt; nec        1.68      0.13     1.39     1.91 1.00     4720     4057</span></span>
+<span><span class="co">#&gt; zitop      0.97      0.02     0.91     0.99 1.00     5579     4590</span></span>
+<span><span class="co">#&gt; zibeta    -1.57      0.26    -2.14    -1.11 1.00     3954     3545</span></span>
+<span><span class="co">#&gt; zinec      2.97      0.51     1.39     3.94 1.00     3685     2500</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Further Distributional Parameters:</span></span>
 <span><span class="co">#&gt;     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; phi    28.41      4.11    21.09    37.47 1.00     5893     5081</span></span>
+<span><span class="co">#&gt; phi    28.42      4.15    21.08    37.40 1.00     5775     5101</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Draws were sampled using sample(hmc). For each parameter, Bulk_ESS</span></span>
 <span><span class="co">#&gt; and Tail_ESS are effective sample size measures, and Rhat is the potential</span></span>
@@ -1451,7 +1453,7 @@ parameters appear as <code>zitop</code>, <code>zibeta</code> and
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;     Estimate Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; NEC     1.68 1.27  1.91</span></span>
+<span><span class="co">#&gt; NEC     1.67 1.31  1.91</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Bayesian R2 estimates:</span></span>
@@ -1502,8 +1504,8 @@ parameters appear as <code>zitop</code>, <code>zibeta</code> and
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span>factorised <span class="op">=</span> <span class="fu"><a href="../reference/nec.html">nec</a></span><span class="op">(</span><span class="va">zib_f</span><span class="op">)</span>,</span>
 <span>      joint      <span class="op">=</span> <span class="fu"><a href="../reference/nec.html">nec</a></span><span class="op">(</span><span class="va">zib_j</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                 Q50     Q2.5    Q97.5</span></span>
-<span><span class="co">#&gt; factorised 1.681525 1.318349 1.906091</span></span>
-<span><span class="co">#&gt; joint      1.675964 1.271652 1.906585</span></span></code></pre></div>
+<span><span class="co">#&gt; factorised 1.673466 1.323606 1.914105</span></span>
+<span><span class="co">#&gt; joint      1.674684 1.305112 1.905051</span></span></code></pre></div>
 <p>Every generating value falls inside its credible interval. The two
 thresholds are the least precisely recovered, and both point estimates
 sit above the truth — the growth threshold at 1.69 against a generating

@@ -441,10 +441,10 @@ parameters using:</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Regression Coefficients:</span></span>
 <span><span class="co">#&gt;      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; bot      0.05      0.02     0.02     0.08 1.00     3037     2949</span></span>
-<span><span class="co">#&gt; top      0.83      0.01     0.81     0.84 1.00     4454     4379</span></span>
-<span><span class="co">#&gt; beta     0.80      0.13     0.56     1.08 1.00     2663     3153</span></span>
-<span><span class="co">#&gt; nec      4.42      0.03     4.36     4.48 1.00     3270     3747</span></span>
+<span><span class="co">#&gt; bot      0.05      0.02     0.02     0.08 1.00     2982     3265</span></span>
+<span><span class="co">#&gt; top      0.83      0.01     0.81     0.84 1.00     4702     4222</span></span>
+<span><span class="co">#&gt; beta     0.80      0.14     0.55     1.08 1.00     2551     3607</span></span>
+<span><span class="co">#&gt; nec      4.42      0.03     4.36     4.48 1.00     3040     4437</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Draws were sampled using sample(hmc). For each parameter, Bulk_ESS</span></span>
 <span><span class="co">#&gt; and Tail_ESS are effective sample size measures, and Rhat is the potential</span></span>
@@ -496,7 +496,7 @@ such as the Beta-Binomial.</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_1</span><span class="op">$</span><span class="va">dispersion</span></span>
 <span><span class="co">#&gt; Estimate     Q2.5    Q97.5    P(&gt;1) </span></span>
-<span><span class="co">#&gt; 17.59272 11.96617 27.20065  1.00000</span></span></code></pre></div>
+<span><span class="co">#&gt; 17.59751 11.98486 26.93841  1.00000</span></span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="beta-binomial">Beta-Binomial<a class="anchor" aria-label="anchor" href="#beta-binomial"></a>
@@ -530,7 +530,7 @@ the fitted model object. As explained above, we need to transform
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">exp_1b</span><span class="op">$</span><span class="va">ne_posterior</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
-<span><span class="co">#&gt;   18.06   65.26   78.59   76.11   87.95  191.89</span></span></code></pre></div>
+<span><span class="co">#&gt;   17.73   65.40   78.74   76.59   88.44  198.23</span></span></code></pre></div>
 <p>EC<em>x</em> estimates can also be obtained from the <em>NEC</em>
 model fit, using the function <code>ecx</code>. Note these may differ
 from a typical 4-parameter non-linear model, as the <em>NEC</em> model
@@ -541,7 +541,7 @@ posterior predictions</a> vignettes for more information.</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_1b</span>, xform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span></span>
 <span><span class="co">#&gt;       Q50      Q2.5     Q97.5 </span></span>
-<span><span class="co">#&gt;  82.91855  44.27608 106.87492 </span></span>
+<span><span class="co">#&gt;  83.16503  44.57296 110.90310 </span></span>
 <span><span class="co">#&gt; attr(,"resolution")</span></span>
 <span><span class="co">#&gt; [1] 200</span></span>
 <span><span class="co">#&gt; attr(,"ecx_val")</span></span>
@@ -570,14 +570,14 @@ its value will depend on the scale of the predictor variable.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Regression Coefficients:</span></span>
 <span><span class="co">#&gt;      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; bot      0.13      0.05     0.03     0.24 1.00     2134     3083</span></span>
-<span><span class="co">#&gt; top      0.84      0.03     0.77     0.88 1.00     1277     1570</span></span>
-<span><span class="co">#&gt; beta     0.84      0.68    -0.17     3.41 1.01      477      170</span></span>
-<span><span class="co">#&gt; nec      4.36      0.20     3.66     4.66 1.01      486      182</span></span>
+<span><span class="co">#&gt; bot      0.13      0.05     0.03     0.23 1.00     1896     2563</span></span>
+<span><span class="co">#&gt; top      0.84      0.03     0.77     0.88 1.00     1498     1166</span></span>
+<span><span class="co">#&gt; beta     0.84      0.71    -0.18     4.37 1.00      518      186</span></span>
+<span><span class="co">#&gt; nec      4.37      0.21     3.67     4.70 1.00      539      180</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Further Distributional Parameters:</span></span>
 <span><span class="co">#&gt;     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; phi     5.29      1.21     3.26     8.28 1.00     1832     3452</span></span>
+<span><span class="co">#&gt; phi     5.28      1.24     3.26     8.11 1.00     1859     2777</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Draws were sampled using sample(hmc). For each parameter, Bulk_ESS</span></span>
 <span><span class="co">#&gt; and Tail_ESS are effective sample size measures, and Rhat is the potential</span></span>
@@ -585,12 +585,12 @@ its value will depend on the scale of the predictor variable.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;     Estimate Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; NEC     4.36 3.66  4.66</span></span>
+<span><span class="co">#&gt; NEC     4.37 3.67  4.70</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Bayesian R2 estimates:</span></span>
 <span><span class="co">#&gt;    Estimate Est.Error Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; R2     0.76      0.04 0.66  0.81</span></span></code></pre></div>
+<span><span class="co">#&gt; R2     0.76      0.04 0.68  0.81</span></span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="beta-data">Beta data<a class="anchor" aria-label="anchor" href="#beta-data"></a>
@@ -695,7 +695,7 @@ plot of chunk exmp1-poisson
 <div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_3</span><span class="op">$</span><span class="va">dispersion</span></span>
 <span><span class="co">#&gt;  Estimate      Q2.5     Q97.5     P(&gt;1) </span></span>
-<span><span class="co">#&gt; 0.9614115 0.7338588 1.2965095 0.3903750</span></span></code></pre></div>
+<span><span class="co">#&gt; 0.9635490 0.7336119 1.2851574 0.3975000</span></span></code></pre></div>
 <p>The dispersion estimate, described in the Binomial example above, is
 near one here, as it should be for data simulated from a Poisson, and
 the credible bands are commensurate with the spread of the points. We
@@ -733,7 +733,7 @@ plot of chunk exmp1-poisson-od
 <div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_3b</span><span class="op">$</span><span class="va">dispersion</span></span>
 <span><span class="co">#&gt; Estimate     Q2.5    Q97.5    P(&gt;1) </span></span>
-<span><span class="co">#&gt; 4.890548 3.733693 6.565285 1.000000</span></span></code></pre></div>
+<span><span class="co">#&gt; 4.889823 3.754817 6.578114 1.000000</span></span></code></pre></div>
 <p>We can refit these data by deliberately specifying the Negative
 binomial distribution via the <code>family</code> argument.</p>
 <div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
@@ -804,10 +804,10 @@ plot of chunk exmp1-rate
 <div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_3d</span><span class="op">$</span><span class="va">ne</span></span>
 <span><span class="co">#&gt; Estimate     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 1.525997 1.454212 1.607317</span></span>
+<span><span class="co">#&gt; 1.526470 1.453376 1.607691</span></span>
 <span><span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_3d</span>, ecx_val <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
 <span><span class="co">#&gt;      Q50     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 1.611800 1.550901 1.679368 </span></span>
+<span><span class="co">#&gt; 1.611954 1.552050 1.679677 </span></span>
 <span><span class="co">#&gt; attr(,"resolution")</span></span>
 <span><span class="co">#&gt; [1] 200</span></span>
 <span><span class="co">#&gt; attr(,"ecx_val")</span></span>
@@ -816,7 +816,7 @@ plot of chunk exmp1-rate
 <span><span class="co">#&gt; [1] "ecx"</span></span>
 <span><span class="va">exp_3d</span><span class="op">$</span><span class="va">dispersion</span></span>
 <span><span class="co">#&gt;  Estimate      Q2.5     Q97.5     P(&gt;1) </span></span>
-<span><span class="co">#&gt; 0.8803188 0.6675821 1.1898829 0.1976250</span></span></code></pre></div>
+<span><span class="co">#&gt; 0.8812035 0.6682100 1.1809228 0.1966250</span></span></code></pre></div>
 <p>One caveat is worth stating explicitly. If the exposure varies for
 reasons unrelated to the treatment — a replicate simply received fewer
 animals — then <code>rate</code> is doing exactly what is wanted. If
@@ -869,14 +869,14 @@ plot of chunk exmp1-gammabase
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Regression Coefficients:</span></span>
 <span><span class="co">#&gt;      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; bot      0.98      0.05     0.88     1.07 1.00     4057     4441</span></span>
-<span><span class="co">#&gt; top      2.44      0.01     2.41     2.46 1.00     6760     5215</span></span>
-<span><span class="co">#&gt; beta     0.65      0.10     0.45     0.84 1.00     3674     4223</span></span>
-<span><span class="co">#&gt; nec      1.50      0.02     1.46     1.54 1.00     4335     4845</span></span>
+<span><span class="co">#&gt; bot      0.98      0.05     0.88     1.07 1.00     3564     4249</span></span>
+<span><span class="co">#&gt; top      2.44      0.01     2.41     2.46 1.00     5744     5055</span></span>
+<span><span class="co">#&gt; beta     0.65      0.10     0.46     0.84 1.00     3007     4119</span></span>
+<span><span class="co">#&gt; nec      1.50      0.02     1.46     1.54 1.00     3614     4942</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Further Distributional Parameters:</span></span>
 <span><span class="co">#&gt;       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; shape   515.06     74.50   379.72   680.88 1.00     6939     5087</span></span>
+<span><span class="co">#&gt; shape   515.84     73.80   382.69   673.16 1.00     6209     4973</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Draws were sampled using sample(hmc). For each parameter, Bulk_ESS</span></span>
 <span><span class="co">#&gt; and Tail_ESS are effective sample size measures, and Rhat is the potential</span></span>
@@ -1352,8 +1352,8 @@ therefore corresponds to
 <div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">brms</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/nlme/man/fixed.effects.html" class="external-link">fixef</a></span><span class="op">(</span><span class="fu"><a href="../reference/pull_brmsfit.html">pull_brmsfit</a></span><span class="op">(</span><span class="va">disp_power</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"c0_Intercept"</span>, <span class="st">"c1_Intercept"</span><span class="op">)</span>, <span class="op">]</span></span>
 <span><span class="co">#&gt;               Estimate Est.Error      Q2.5      Q97.5</span></span>
-<span><span class="co">#&gt; c0_Intercept  4.675853 0.1861967  4.296957  5.0273887</span></span>
-<span><span class="co">#&gt; c1_Intercept -1.085597 0.1962002 -1.458667 -0.6865293</span></span></code></pre></div>
+<span><span class="co">#&gt; c0_Intercept  4.677736 0.1813607  4.303550  5.0193925</span></span>
+<span><span class="co">#&gt; c1_Intercept -1.085440 0.1930693 -1.452408 -0.7029879</span></span></code></pre></div>
 <p>A value of zero would correspond to the constant-dispersion model,
 and is where the prior on this parameter is centred, so an interval
 excluding zero reflects the data rather than the prior.</p>
@@ -1371,12 +1371,12 @@ that a variance function would conceal rather than resolve.</p>
 <span><span class="va">lof</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"x"</span>, <span class="st">"replicate_sd"</span>, <span class="st">"misfit_in_sds"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;       x replicate_sd misfit_in_sds</span></span>
 <span><span class="co">#&gt; 1   0.1   2.33524353          0.06</span></span>
-<span><span class="co">#&gt; 2   0.3   1.37693794          0.09</span></span>
+<span><span class="co">#&gt; 2   0.3   1.37693794          0.10</span></span>
 <span><span class="co">#&gt; 3   1.0   2.04860393          0.15</span></span>
 <span><span class="co">#&gt; 4   3.0   1.27943964          0.27</span></span>
 <span><span class="co">#&gt; 5  10.0   0.39614047          0.15</span></span>
 <span><span class="co">#&gt; 6  30.0   0.14681633          0.08</span></span>
-<span><span class="co">#&gt; 7 100.0   0.06481783          0.02</span></span></code></pre></div>
+<span><span class="co">#&gt; 7 100.0   0.06481783          0.03</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="what-it-changes">What it changes<a class="anchor" aria-label="anchor" href="#what-it-changes"></a>
@@ -1468,12 +1468,12 @@ seeing why.</p>
 <span><span class="op">}</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="fu">tox</span><span class="op">(</span><span class="va">disp_const</span>, <span class="st">"constant dispersion"</span><span class="op">)</span>, <span class="fu">tox</span><span class="op">(</span><span class="va">disp_power</span>, <span class="st">"disp(\"power\")"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                 model estimate median lower upper width</span></span>
-<span><span class="co">#&gt; 1 constant dispersion     ec10   1.79  1.46  2.18  0.73</span></span>
-<span><span class="co">#&gt; 2 constant dispersion     ec50   7.18  6.56  7.81  1.25</span></span>
-<span><span class="co">#&gt; 3 constant dispersion     nsec   0.91  0.30  1.28  0.99</span></span>
-<span><span class="co">#&gt; 4       disp("power")     ec10   1.86  1.58  2.17  0.59</span></span>
-<span><span class="co">#&gt; 5       disp("power")     ec50   7.27  6.69  7.85  1.16</span></span>
-<span><span class="co">#&gt; 6       disp("power")     nsec   1.10  0.37  1.50  1.13</span></span></code></pre></div>
+<span><span class="co">#&gt; 1 constant dispersion     ec10   1.78  1.45  2.15  0.70</span></span>
+<span><span class="co">#&gt; 2 constant dispersion     ec50   7.17  6.56  7.77  1.21</span></span>
+<span><span class="co">#&gt; 3 constant dispersion     nsec   0.90  0.29  1.27  0.98</span></span>
+<span><span class="co">#&gt; 4       disp("power")     ec10   1.86  1.59  2.17  0.58</span></span>
+<span><span class="co">#&gt; 5       disp("power")     ec50   7.27  6.71  7.85  1.14</span></span>
+<span><span class="co">#&gt; 6       disp("power")     nsec   1.09  0.36  1.49  1.13</span></span></code></pre></div>
 <p>The <code>ecx</code> intervals narrow, while the <code>nsec</code>
 interval widens. The explanation is what each estimate is referenced
 against, and it follows from the reweighting the variance function
@@ -1490,10 +1490,10 @@ themselves.</p>
 <span>  power <span class="op">=</span> <span class="fu">brms</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/nlme/man/fixed.effects.html" class="external-link">fixef</a></span><span class="op">(</span><span class="fu"><a href="../reference/pull_brmsfit.html">pull_brmsfit</a></span><span class="op">(</span><span class="va">disp_power</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="va">curve_pars</span>, <span class="st">"Est.Error"</span><span class="op">]</span></span>
 <span><span class="op">)</span>, <span class="fl">4</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                constant  power</span></span>
-<span><span class="co">#&gt; top_Intercept    0.2958 0.3416</span></span>
-<span><span class="co">#&gt; bot_Intercept    0.0737 0.0338</span></span>
-<span><span class="co">#&gt; beta_Intercept   0.0529 0.0362</span></span>
-<span><span class="co">#&gt; ec50_Intercept   0.0468 0.0420</span></span></code></pre></div>
+<span><span class="co">#&gt; top_Intercept    0.2903 0.3438</span></span>
+<span><span class="co">#&gt; bot_Intercept    0.0739 0.0334</span></span>
+<span><span class="co">#&gt; beta_Intercept   0.0523 0.0356</span></span>
+<span><span class="co">#&gt; ec50_Intercept   0.0453 0.0417</span></span></code></pre></div>
 <p>The parameters set by the high-concentration end, <code>bot</code>
 and <code>beta</code>, are estimated more precisely, and
 <code>top</code>, which is set by the control end, less so.
