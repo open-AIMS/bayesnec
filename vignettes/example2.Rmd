@@ -82,19 +82,18 @@ The fitted `bayesmanecfit` object contains different elements to the `bayesnecfi
 ``` r
 exp_5$mod_stats
 #>               model      waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5
-#> nec3param nec3param -72.14396 2.148698e-02                  NA              NA               NA
-#> nec4param nec4param -84.95172 3.950980e-01                  NA              NA               NA
-#> neclin       neclin -52.29203 8.972298e-04                  NA              NA               NA
-#> ecxlin       ecxlin -26.28965 4.647118e-07                  NA              NA               NA
-#> ecxexp       ecxexp  65.94475 7.877696e-25                  NA              NA               NA
-#> ecxsigm     ecxsigm -77.63117 3.594643e-02                  NA              NA               NA
-#> ecx4param ecx4param -81.86810 9.735072e-02                  NA              NA               NA
-#> ecxwb1       ecxwb1 -75.21155 1.214995e-02                  NA              NA               NA
-#> ecxwb2       ecxwb2 -85.06792 2.791782e-01                  NA              NA               NA
-#> ecxwb1p3   ecxwb1p3 -74.45185 1.508941e-02                  NA              NA               NA
-#> ecxwb2p3   ecxwb2p3 -77.25285 4.235898e-02                  NA              NA               NA
-#> ecxll4       ecxll4 -81.18987 7.016793e-02                  NA              NA               NA
-#> ecxll3       ecxll3 -77.20556 3.027576e-02                  NA              NA               NA
+#> nec3param nec3param -71.76806 2.073396e-02                  NA              NA               NA
+#> nec4param nec4param -83.95316 3.248930e-01                  NA              NA               NA
+#> neclin       neclin -52.76156 1.088830e-03                  NA              NA               NA
+#> ecxlin       ecxlin -26.16132 1.626269e-06                  NA              NA               NA
+#> ecxexp       ecxexp  65.83363 2.305765e-24                  NA              NA               NA
+#> ecxsigm     ecxsigm -78.03461 4.760362e-02                  NA              NA               NA
+#> ecx4param ecx4param -81.66479 9.432600e-02                  NA              NA               NA
+#> ecxwb1       ecxwb1 -75.24824 1.262473e-02                  NA              NA               NA
+#> ecxwb2       ecxwb2 -85.13580 3.529190e-01                  NA              NA               NA
+#> ecxwb1p3   ecxwb1p3 -74.79770 1.820788e-02                  NA              NA               NA
+#> ecxwb2p3   ecxwb2p3 -77.07837 5.315629e-02                  NA              NA               NA
+#> ecxll4       ecxll4 -81.18123 7.444504e-02                  NA              NA               NA
 #>           dispersion_P_over_1
 #> nec3param                  NA
 #> nec4param                  NA
@@ -108,7 +107,6 @@ exp_5$mod_stats
 #> ecxwb1p3                   NA
 #> ecxwb2p3                   NA
 #> ecxll4                     NA
-#> ecxll3                     NA
 ```
 
 We can obtain a neater summary of the model fit by using the `summary` method for a `bayesmanecfit` object. A list of fitted models, and model weights are provided. In addition, the model averaged no-effect estimate is reported, in this case as an N(S)EC. For this example the **nec4param** and **ecxwb2** models have the highest weights.
@@ -127,19 +125,18 @@ summary(exp_5)
 #> 
 #> Model weights (Method: pseudobma_bb_weights):
 #>             waic   wi
-#> nec3param -72.14 0.02
-#> nec4param -84.95 0.40
-#> neclin    -52.29 0.00
-#> ecxlin    -26.29 0.00
-#> ecxexp     65.94 0.00
-#> ecxsigm   -77.63 0.04
-#> ecx4param -81.87 0.10
-#> ecxwb1    -75.21 0.01
-#> ecxwb2    -85.07 0.28
-#> ecxwb1p3  -74.45 0.02
-#> ecxwb2p3  -77.25 0.04
-#> ecxll4    -81.19 0.07
-#> ecxll3    -77.21 0.03
+#> nec3param -71.77 0.02
+#> nec4param -83.95 0.32
+#> neclin    -52.76 0.00
+#> ecxlin    -26.16 0.00
+#> ecxexp     65.83 0.00
+#> ecxsigm   -78.03 0.05
+#> ecx4param -81.66 0.09
+#> ecxwb1    -75.25 0.01
+#> ecxwb2    -85.14 0.35
+#> ecxwb1p3  -74.80 0.02
+#> ecxwb2p3  -77.08 0.05
+#> ecxll4    -81.18 0.07
 #> 
 #> 
 #> Summary of weighted N(S)EC posterior estimates:
@@ -147,7 +144,7 @@ summary(exp_5)
 #>     models, and is therefore a model averaged
 #>     combination of NEC and NSEC estimates.
 #>        Estimate Q2.5 Q97.5
-#> N(S)EC     3.31 1.94  4.01
+#> N(S)EC     3.30 1.92  3.99
 #> 
 #> 
 #> Bayesian R2 estimates:
@@ -158,16 +155,15 @@ summary(exp_5)
 #> ecxlin        0.80      0.01 0.77  0.82
 #> ecxexp        0.61      0.03 0.55  0.65
 #> ecxsigm       0.84      0.01 0.82  0.85
-#> ecx4param     0.85      0.01 0.84  0.87
+#> ecx4param     0.85      0.01 0.83  0.87
 #> ecxwb1        0.85      0.01 0.83  0.86
 #> ecxwb2        0.86      0.01 0.84  0.87
 #> ecxwb1p3      0.84      0.01 0.82  0.85
 #> ecxwb2p3      0.84      0.01 0.82  0.85
-#> ecxll4        0.85      0.01 0.84  0.87
-#> ecxll3        0.84      0.01 0.82  0.85
+#> ecxll4        0.85      0.01 0.83  0.87
 #> 
 #> 
-#> 1 model(s) failed to fit: ecxll5
+#> 2 model(s) failed to fit: ecxll5, ecxll3
 #> See ?failed_models for the priors and initial values used.
 ```
 
@@ -184,11 +180,11 @@ autoplot(exp_5_nec4param)
 <p class="caption">plot of chunk exmp2-ecx4param</p>
 </div>
 
-This would extract the **nec4param** model from the `bayesmanecfit` and create a new object of class `bayesnecfit` which contains just a single fit. This would be identical to fitting the **ecx4param** as a single model using `bnec`. All of the models in the `bayesmanecfit` can be simultaneously plotted using the argument `all_models = TRUE`.
+This would extract the **nec4param** model from the `bayesmanecfit` and create a new object of class `bayesnecfit` which contains just a single fit. This would be identical to fitting the **ecx4param** as a single model using `bnec`. Models in the `bayesmanecfit` can be plotted together by naming them in the argument `model`, and `average = FALSE` leaves out the panel of model averaged predictions. Here every model in the set is plotted.
 
 
 ``` r
-autoplot(exp_5, all_models = TRUE)
+autoplot(exp_5, model = exp_5$success_models, average = FALSE)
 ```
 
 <div class="figure" style="text-align: center">
@@ -241,9 +237,9 @@ Where  a large number of models are failing to converge, obviously it would be b
 rhat(exp_5) |>
   sapply("[[", "failed")
 #> nec3param nec4param    neclin    ecxlin    ecxexp   ecxsigm ecx4param    ecxwb1    ecxwb2  ecxwb1p3  ecxwb2p3 
-#>     FALSE      TRUE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE 
-#>    ecxll4    ecxll3 
-#>      TRUE     FALSE
+#>      TRUE     FALSE      TRUE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE 
+#>    ecxll4 
+#>     FALSE
 ```
 
 The default cut off is 1.01, following @Vehtari2021, whose recommendation is that
@@ -262,8 +258,8 @@ rhat(exp_5, rhat_cutoff = 1.05) |>
   sapply("[[", "failed")
 #> nec3param nec4param    neclin    ecxlin    ecxexp   ecxsigm ecx4param    ecxwb1    ecxwb2  ecxwb1p3  ecxwb2p3 
 #>     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE 
-#>    ecxll4    ecxll3 
-#>     FALSE     FALSE
+#>    ecxll4 
+#>     FALSE
 ```
 
 `rhat()` reports Rhat alone. `check_sampling()` reports all three sampler
@@ -274,19 +270,18 @@ divergent transitions:
 ``` r
 check_sampling(exp_5)
 #>        model max_rhat  min_ess min_ess_ratio n_divergent failed
-#> 1  nec3param 1.009273 332.1574     0.2075984           0   TRUE
-#> 2  nec4param 1.010144 480.7366     0.3004604           0   TRUE
-#> 3     neclin 1.005700 624.0328     0.3900205           0  FALSE
-#> 4     ecxlin 1.007916 626.0950     0.3913094           0  FALSE
-#> 5     ecxexp 1.008185 697.0696     0.4356685           0  FALSE
-#> 6    ecxsigm 1.004028 556.1325     0.3475828           0  FALSE
-#> 7  ecx4param 1.004052 754.9726     0.4718579           0  FALSE
-#> 8     ecxwb1 1.006168 681.2412     0.4257757           0  FALSE
-#> 9     ecxwb2 1.009685 598.0465     0.3737791           0  FALSE
-#> 10  ecxwb1p3 1.006678 705.5896     0.4409935           0  FALSE
-#> 11  ecxwb2p3 1.009592 842.8158     0.5267599           0  FALSE
-#> 12    ecxll4 1.010013 517.1654     0.3232284           0   TRUE
-#> 13    ecxll3 1.002405 758.4739     0.4740462           0  FALSE
+#> 1  nec3param 1.010708 399.0785     0.2494240           0   TRUE
+#> 2  nec4param 1.005172 401.2819     0.2508012           0  FALSE
+#> 3     neclin 1.016389 548.2886     0.3426804           0   TRUE
+#> 4     ecxlin 1.007485 663.1816     0.4144885           0  FALSE
+#> 5     ecxexp 1.009911 795.2739     0.4970462           0  FALSE
+#> 6    ecxsigm 1.008363 566.1037     0.3538148           0  FALSE
+#> 7  ecx4param 1.005429 518.3097     0.3239436           0  FALSE
+#> 8     ecxwb1 1.005447 732.5172     0.4578232           0  FALSE
+#> 9     ecxwb2 1.006158 597.6551     0.3735344           0  FALSE
+#> 10  ecxwb1p3 1.003042 715.7980     0.4473738           0  FALSE
+#> 11  ecxwb2p3 1.005991 853.1119     0.5331949           0  FALSE
+#> 12    ecxll4 1.006715 354.8392     0.2217745           0   TRUE
 ```
 
 `screen_models()` screens on those three together and drops every candidate that
@@ -296,14 +291,14 @@ exclusion: a step that removes models without naming them cannot be written up.
 
 ``` r
 exp_5_screened <- screen_models(exp_5)
-#> Dropping 3 of 13 candidate models that failed the sampler screen:
-#>   -  nec3param: ESS 332.2
-#>   -  nec4param: Rhat 1.01
-#>   -  ecxll4: Rhat 1.01
-#> Fitted models are: neclin ecxlin ecxexp ecxsigm ecx4param ecxwb1 ecxwb2 ecxwb1p3 ecxwb2p3 ecxll3
+#> Dropping 3 of 12 candidate models that failed the sampler screen:
+#>   -  nec3param: Rhat 1.011, ESS 399.1
+#>   -  neclin: Rhat 1.016
+#>   -  ecxll4: ESS 354.8
+#> Fitted models are: nec4param ecxlin ecxexp ecxsigm ecx4param ecxwb1 ecxwb2 ecxwb1p3 ecxwb2p3
 ```
 
-Here it removed 3 of the 13 candidates, naming each one and the diagnostic it failed. `exp_5_screened` holds the candidates that passed; `exp_5` still holds all of them.
+Here it removed 3 of the 12 candidates, naming each one and the diagnostic it failed. `exp_5_screened` holds the candidates that passed; `exp_5` still holds all of them.
 
 ### Extracting toxicity values
 
@@ -328,7 +323,7 @@ ECx10 <- ecx(exp_5, ecx_val = 10)
 ECx50 <- ecx(exp_5, ecx_val = 50)
 ECx10
 #>      Q50     Q2.5    Q97.5 
-#> 3.624947 2.776549 4.182345 
+#> 3.614370 2.687910 4.162698 
 #> attr(,"resolution")
 #> [1] 200
 #> attr(,"ecx_val")
@@ -337,7 +332,7 @@ ECx10
 #> [1] "ecx"
 ECx50
 #>      Q50     Q2.5    Q97.5 
-#> 5.086540 4.838239 5.365963 
+#> 5.094764 4.831337 5.370868 
 #> attr(,"resolution")
 #> [1] 200
 #> attr(,"ecx_val")
@@ -353,7 +348,7 @@ The weighted *NEC* estimates can be extracted directly from the *NEC* model set 
 NECvals <- exp_5_nec$w_ne
 NECvals
 #> Estimate     Q2.5    Q97.5 
-#> 3.531917 3.145371 4.100437
+#> 3.547172 3.094213 4.100937
 ```
 
 Note that the new *NEC* estimates from the **nec**-containing model fits are slightly higher than those reported in the summary output of all the fitted models. This can happen for smooth curves, which is what was used as the underlying data generation model in the simulations here, and is explored in more detail in the [Comparing posterior predictions][e4] vignette.
@@ -366,7 +361,7 @@ Now we can make a combined plot of our output, showing the model averaged *NEC* 
 ``` r
 preds <- exp_5_nec$w_pred_vals$data
 
-autoplot(exp_5, nec = FALSE, all = FALSE) +
+autoplot(exp_5, nec = FALSE) +
   geom_vline(mapping = aes(xintercept = ECx10, colour = "ECx 10"),
              linetype = c(1, 3, 3), key_glyph = "path") +
   geom_vline(mapping = aes(xintercept = ECx50, colour = "ECx 50"),
