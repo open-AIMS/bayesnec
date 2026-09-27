@@ -372,3 +372,6 @@ and the order `01_work_queue.md`.
   from the `negative-response-conventions` compendium and fits nothing.
   Tasks 7 to 9 collected at 09:55 and opened with tasks 1 to 6 as #454 into
   `predev`. No rendered file contains a local path.
+- 2026-09-27 10:59 AEST. #454 merged. The run is finished. Open for RF: #403
+  with #421; the `hurdle_negbinomial` `disp()` decision (#410); the departures
+  listed on #453; PR #402 and, after it, the `example8` store refit and render.

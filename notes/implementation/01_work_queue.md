@@ -40,7 +40,7 @@ skipped when reached, and taken up once the decision is recorded in
 | 15 | #410 | §4 item 15 | D29 | merged, #452; `hurdle_negbinomial` pending RF |
 | 16 | #419 | §4 item 16 | D31 | merged, #453 |
 | bg | #418 | §4, the background item | D26 | committed, `528f0667` |
-| end | precompile | §4, the precompile and the store refit | D18 | job 914176, all nine renders collected; #454; `example8` left out |
+| end | precompile | §4, the precompile and the store refit | D18 | merged, #454 (job 914176); `example8` left out |
 
 ## At the end of the run
 
