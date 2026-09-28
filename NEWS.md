@@ -496,11 +496,16 @@
   #388).
 
 - `bnec_joint()` refuses a grouped fit whose grouping variable is not a
-  syntactic R name, such as `odd site`, before the refit is announced. The
-  refit writes the name into the formula it builds, where it cannot be parsed.
-  Rename the column, for example with `make.names()`, and fit the grouped model
-  again. `bnec_group()` still accepts such a column, because its per-level fits
-  do not write the name into a formula (#398).
+  syntactic R name, such as `odd site`, before the refit is announced. Where
+  every level is fitted one equation, and wherever the dispersion takes a value
+  per level, the refit writes the name into the formula it builds, where it
+  cannot be parsed. The refusal applies to every refit, including a composed
+  refit with `disp_by_level = FALSE` or of a family with no dispersion
+  parameter, which never writes the name, because which equations the levels
+  are fitted follows from their weights rather than from the call. Rename the
+  column, for example with `make.names()`, and fit the grouped model again.
+  `bnec_group()` still accepts such a column, because its per-level fits do not
+  write the name into a formula (#398).
 
 ## The centring constant of a variance function
 
