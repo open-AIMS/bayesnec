@@ -518,6 +518,38 @@ test_that("no dispersion prior is added where disp_by_level is FALSE", {
   expect_null(out$init[[1]]$b_phi)
 })
 
+test_that("a two-block family's dispersion prior and init name one family", {
+  # The dispersion of hurdle_gamma and zero_inflated_beta is their positive
+  # block's, so the per-level prior and the initial value are both keyed
+  # through disp_family_tag(), as disp_intercept_centre() is. Keyed on the
+  # two-block tag, the prior lookup found no entry and the initial value fell
+  # through to 0, the centre of neither prior. See #410.
+  y <- c(0, 0, 0.3, 0.5, 0.8, 0.9)
+  expected <- list(
+    hurdle_gamma = list(dpar = "shape", prior = "normal(2, 2)", init = 2),
+    zero_inflated_beta = list(dpar = "phi", prior = "normal(4, 3)", init = 4)
+  )
+  for (f in names(expected)) {
+    ex <- expected[[f]]
+    fam <- unmark_family(validate_family(f))
+    brm_args <- list(prior = brms::empty_prior(),
+                     init = list(list(b_top = 1), list(b_top = 1)))
+    out <- add_level_disp_defaults(brm_args, list(disp = TRUE), fam, y, 2L)
+    pr <- as.data.frame(out$prior)
+    expect_equal(pr$class, "b")
+    expect_equal(pr$dpar, ex$dpar)
+    expect_equal(pr$prior, ex$prior)
+    # Every chain starts each level's coefficient at the location of that
+    # same prior.
+    for (chain in out$init) {
+      expect_equal(as.numeric(chain[[paste0("b_", ex$dpar)]]),
+                   rep(ex$init, 2))
+    }
+    expect_equal(as.numeric(sub("^normal\\(([^,]+),.*$", "\\1", pr$prior)),
+                 ex$init)
+  }
+})
+
 # One fixture for every test that needs a posterior. Compiling Stan programs is
 # what makes this file slow, and this one costs three of them: two levels and
 # the joint refit.
