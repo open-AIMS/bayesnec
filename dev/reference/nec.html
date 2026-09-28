@@ -104,7 +104,8 @@ bayesnecfit or bayesmanecfit."><meta property="og:image" content="https://open-a
 <span>  xform <span class="op">=</span> <span class="va">identity</span>,</span>
 <span>  prob_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span>,</span>
 <span>  extrapolate <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  <span class="va">...</span></span>
+<span>  <span class="va">...</span>,</span>
+<span>  no_effect <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -148,6 +149,17 @@ order. See the <em>Extrapolation</em> section of <code>nec</code>.</p></dd>
 <code>extrapolate</code> limit requires a curve to be re-evaluated, and are
 otherwise unused.</p></dd>
 
+
+<dt id="arg-no-effect">no_effect<a class="anchor" aria-label="anchor" href="#arg-no-effect"></a></dt>
+<dd><p>For a <code><a href="bayesnecjointfit-class.html">bayesnecjointfit</a></code> only, a
+<code><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></code> value. <code>FALSE</code>, the default, reports the
+<code>nec</code> parameter alone, so a level whose equation has none returns
+<code>NA</code>. <code>TRUE</code> reports instead the no-effect estimate each level's
+own equation supports — the <code>nec</code> parameter for a threshold equation,
+the NSEC of the fitted curve for a smooth one — labelled by type in an
+<code>ne_type</code> column. The other classes have no such argument and reject it
+rather than discarding it.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
@@ -183,10 +195,21 @@ with NSEC draws from the smooth ones, in proportion to the model
 weights. The result is the model-averaged <b>N(S)EC</b>, and a message is
 emitted to say so. It is not a pure NEC and should not be reported as
 one.</p></li>
+<li><p>For a <code><a href="bayesnecjointfit-class.html">bayesnecjointfit</a></code>, a
+<code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code> with one row per level of the grouping
+factor, the equation fitted at that level in a <code>model</code> column and
+the type of the estimate in an <code>ne_type</code> column. A composed joint
+refit fits one equation per level, so each level's estimate is a NEC or
+an NSEC and never a mixture of the two. <code>no_effect = FALSE</code>, the
+default, therefore reports the <code>nec</code> parameter and <code>NA</code> where
+the level's equation has none, and <code>no_effect = TRUE</code> reports a NEC
+at a threshold level and the NSEC of the fitted curve at a smooth one.
+The <code>ne_type</code> column is what a model-averaged N(S)EC cannot report.</p></li>
 </ul><p><code><a href="summary.html">summary</a></code> labels the estimate NEC, NSEC or N(S)EC accordingly,
-and is the better choice where the type matters, because <code>nec</code> always
-returns an unlabelled vector. Use <code><a href="nsec.html">nsec</a></code> where a NSEC is wanted
-from every model regardless of type.</p>
+and is the better choice where the type matters, because for every class but
+the joint refit <code>nec</code> returns an unlabelled vector. Use
+<code><a href="nsec.html">nsec</a></code> where a NSEC is wanted from every model regardless of
+type.</p>
 <p>Where <code>crf()</code> transforms the predictor inline, as in
 <code>crf(log(concentration))</code>, the estimate is on the transformed scale
 unless <code>xform</code> is supplied, and a message says so once per call. It

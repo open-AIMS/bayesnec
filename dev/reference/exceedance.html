@@ -118,8 +118,8 @@ counted from the censoring record rather than deleted.</p>
 
 <dl><dt id="arg-object">object<a class="anchor" aria-label="anchor" href="#arg-object"></a></dt>
 <dd><p>An object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code>,
-<code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code>, <code><a href="bayesnechurdlefit.html">bayesnechurdlefit</a></code> or
-<code><a href="bayesnecgroupfit-class.html">bayesnecgroupfit</a></code>.</p></dd>
+<code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code>, <code><a href="bayesnechurdlefit.html">bayesnechurdlefit</a></code>,
+<code><a href="bayesnecgroupfit-class.html">bayesnecgroupfit</a></code> or <code><a href="bayesnecjointfit-class.html">bayesnecjointfit</a></code>.</p></dd>
 
 
 <dt id="arg-threshold">threshold<a class="anchor" aria-label="anchor" href="#arg-threshold"></a></dt>
@@ -147,16 +147,17 @@ only where <code>estimate = "ecx"</code>, and refused for the other two.</p></dd
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Further arguments passed to <code><a href="nec.html">nec</a></code>, <code><a href="nsec.html">nsec</a></code>
 or <code><a href="ecx.html">ecx</a></code>, such as <code>x_range</code>, <code>resolution</code>,
-<code>type</code>, <code>sig_val</code> or <code>extrapolate</code>, and <code>which</code> for a
-<code><a href="bayesnechurdlefit.html">bayesnechurdlefit</a></code>. <code>posterior</code> is not accepted: the
+<code>type</code>, <code>sig_val</code> or <code>extrapolate</code>, <code>which</code> for a
+<code><a href="bayesnechurdlefit.html">bayesnechurdlefit</a></code>, and <code>no_effect</code> for a
+<code><a href="bayesnecjointfit-class.html">bayesnecjointfit</a></code>. <code>posterior</code> is not accepted: the
 full posterior is always read.</p></dd>
 
 </dl></div>
     <div id="value">
     <h2>Value</h2>
     <p>A <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code> with one row, and for a
-<code><a href="bayesnecgroupfit-class.html">bayesnecgroupfit</a></code> one row per level preceded by a column
-<code>level</code>. The columns are:</p><dl><dt><code>threshold</code></dt>
+<code><a href="bayesnecgroupfit-class.html">bayesnecgroupfit</a></code> or a <code><a href="bayesnecjointfit-class.html">bayesnecjointfit</a></code> one
+row per level preceded by a column <code>level</code>. The columns are:</p><dl><dt><code>threshold</code></dt>
 <dd><p>The threshold supplied.</p></dd>
 
 <dt><code>prob</code></dt>
@@ -192,7 +193,14 @@ where the model set contains smooth equations. For a
 <code><a href="bayesnechurdlefit.html">bayesnechurdlefit</a></code> it is the combined endpoint unless
 <code>which</code> names a component; under <code>"nec"</code> that is the combined
 no-effect concentration described in <code><a href="nec.bayesnechurdlefit.html">nec.bayesnechurdlefit</a></code>.
-For a <code><a href="bayesnecgroupfit-class.html">bayesnecgroupfit</a></code> each level is compared in turn.</p>
+For a <code><a href="bayesnecgroupfit-class.html">bayesnecgroupfit</a></code> each level is compared in turn.
+For a <code><a href="bayesnecjointfit-class.html">bayesnecjointfit</a></code> each level is compared in turn as
+well, on the draws the estimator returns for that level of the joint refit.
+Under <code>"nec"</code> a level whose equation has no <code>nec</code> parameter has
+only <code>NA</code> draws, as <code><a href="nec.html">nec</a></code> reports for it, so its
+probabilities are <code>NA</code> and its <code>n_draws</code> is 0. Passing
+<code>no_effect = TRUE</code> compares the NSEC of that level's fitted curve
+instead, as <code>nec(x, no_effect = TRUE)</code> reports it.</p>
 <p><code>threshold</code> and the estimate are compared on one scale, the scale the
 estimator returns the estimate on. Without <code>xform</code> that is the
 predictor scale the model was fitted on, so under

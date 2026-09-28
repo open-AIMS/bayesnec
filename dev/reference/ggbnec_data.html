@@ -113,7 +113,8 @@
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>An object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or
 <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code>, as returned by function <code><a href="bnec.html">bnec</a></code>,
-or a <code><a href="bayesnecgroupfit-class.html">bayesnecgroupfit</a></code> returned by <code><a href="bnec_group.html">bnec_group</a></code>.</p></dd>
+a <code><a href="bayesnecgroupfit-class.html">bayesnecgroupfit</a></code> returned by <code><a href="bnec_group.html">bnec_group</a></code>, or
+a <code><a href="bayesnecjointfit-class.html">bayesnecjointfit</a></code> returned by <code><a href="bnec_joint.html">bnec_joint</a></code>.</p></dd>
 
 
 <dt id="arg-add-nec">add_nec<a class="anchor" aria-label="anchor" href="#arg-add-nec"></a></dt>
@@ -148,9 +149,10 @@ panels use it. A
     <div id="value">
     <h2>Value</h2>
     <p>A <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code>. When <code>group</code> is supplied, or
-<code>x</code> is a <code>bayesnecgroupfit</code>, the frame includes a <code>group</code>
-column and a <code>"group_var"</code> attribute. A <code>bayesnecgroupfit</code> also
-includes a <code>panel</code> column containing the level fitted in each panel.</p>
+<code>x</code> is a <code>bayesnecgroupfit</code> or a <code>bayesnecjointfit</code>, the
+frame includes a <code>group</code> column and a <code>"group_var"</code> attribute.
+Those two classes also include a <code>panel</code> column containing the level
+drawn in each panel.</p>
     </div>
 
     <div id="ref-examples">
