@@ -251,6 +251,22 @@
   drawn beyond the growth data is a prediction rather than an estimate
   (#412).
 
+- `summary(x, ecx = TRUE)` on a `bayesnecfit` or a `bayesmanecfit` now passes
+  the arguments in `...` to `ecx()` for each ECx row, as the
+  `bayesnechurdlefit` method already did. They were absorbed and ignored
+  without a message, so an `x_range`, `resolution` or `xform` named in the
+  call had no effect. On `manec_example`, `summary()` with
+  `x_range = c(0.5, 1)` printed an EC50 of 1.67 (1.60 to 1.72), the value on
+  the stored grid, where `ecx()` over that range reports every draw as
+  censored at 1. A supplied `x_range` replaces the stored grid and reaches
+  each `ecx()` call once, so each ECx row equals a bare `ecx()` call given the
+  same arguments. `x_range = NULL` is not passed on, and leaves `ecx()` to
+  build its own grid from the data. The arguments apply to the ECx rows only:
+  the no-effect row is read from the posterior stored at fit time and is
+  unchanged. `summary()` on a `bayesnecgroupfit` passes its arguments to each
+  level's summary, so the same applies to every level. A summary called
+  without these arguments reports what it did before (#439).
+
 - Behaviour change, measured across the nine vignettes. A fit with no draw
   beyond its prediction range is unaffected, and the summary it reports is
   unchanged to the last bit. Which estimates each vignette reports was taken

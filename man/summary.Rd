@@ -22,7 +22,10 @@
 \item{object}{An object of class \code{\link{bayesnecfit}} or
 \code{\link{bayesmanecfit}}.}
 
-\item{...}{Unused.}
+\item{...}{With \code{ecx = TRUE}, passed to \code{\link{ecx}} for each
+ECx row and to nothing else, so that \code{x_range}, \code{resolution} and
+\code{xform} in particular apply to the ECx rows only. See Details. Unused
+where \code{ecx = FALSE}.}
 
 \item{ecx}{Should summary ECx values be calculated? Defaults to FALSE.}
 
@@ -72,6 +75,23 @@ no-significant-effect-concentration (NSEC, see Fisher and Fox 2023). In the
 case of a \code{\link{bayesmanecfit}} that contains a mixture of both NEC and
 ECx models, the no-effect estimate is a model averaged combination of the NEC
 and NSEC estimates, and is reported as the N(S)EC (see Fisher et al. 2023).
+
+With \code{ecx = TRUE}, each ECx row is computed by \code{\link{ecx}} over
+the prediction grid stored with the fit, which is the grid the no-effect
+estimate is censored at. An \code{x_range} supplied in \code{...} replaces
+that grid. It and the other arguments in \code{...}, such as
+\code{resolution} and \code{xform}, reach \code{\link{ecx}} as given, so
+an ECx row equals a bare \code{\link{ecx}} call given the same arguments.
+\code{x_range = NULL} is the exception: it is not passed on, and
+\code{\link{ecx}} builds its grid from the data, as it does when given no
+\code{x_range}. \code{x_range} must be given by its full name, because an
+abbreviation such as \code{x_ran} is ignored without a message.
+
+The no-effect estimate is read from the posterior stored when the model was
+fitted, and is censored at the bound of the prediction grid stored then, so
+a range supplied now cannot change it. It is reported on the scale the model
+was fitted on whatever \code{xform} is supplied; \code{\link{nec}} and
+\code{\link{nsec}} take an \code{xform} of their own.
 }
 \examples{
 \donttest{
