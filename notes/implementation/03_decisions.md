@@ -550,3 +550,23 @@ The count is always reported, and flagged at the cutoff of 10 that
 RF, 2026-09-28: the run merges `predev` into PR #402's branch, resolves the
 conflicts, takes in the changes listed in the `[claude]` comment on it, fixes
 its plan document and body, and merges it once green.
+
+## D39 — `disp()` on `hurdle_negbinomial` (#410)
+
+RF, 2026-09-28: accepted. The dispersion sub-model is read at `mu = bot` for a
+variance function of the mean, and a relative ECx or NSEC under `disp(~x)` is
+refused.
+
+## D40 — The joint refit across factor levels (#448)
+
+RF, 2026-09-28: each level's estimates are read over that level's own
+concentration range, and a joint refit raises `adapt_delta` to 0.99 by default.
+The two untested cases are tested. After PR #402.
+
+## D41 — The recorded scale by default (#299)
+
+RF, 2026-09-28: for the 3.0 release, the estimators default to the recorded
+scale for a fit with an inline-transformed predictor: the exact inverse where
+one is known, numeric inversion on the prediction grid otherwise.
+
+#27 was closed by RF on 2026-09-28.
