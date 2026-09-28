@@ -311,6 +311,84 @@ test_that("a group fit is compared level by level", {
                "ecx_val applies only")
 })
 
+# A joint refit that holds no posterior of its own. Every estimator reaches a
+# level through joint_level_fit(), which the tests replace with a packaged
+# single fit, so the refit's own nec(), nsec() and ecx() run unchanged and
+# nothing is sampled. Level b is fitted ecx4param, which has no nec parameter.
+# The refit's `fit` is nec4param's brmsfit only so that ndraws() has something
+# to count for that level's NA draws.
+joint_of <- function(models = list(a = "nec4param", b = "ecx4param")) {
+  bayesnec:::allot_class(
+    list(fit = nec4param$fit, group_var = "site", levels = names(models),
+         models = models, model = NA_character_,
+         bayesnecformula = nec4param$bayesnecformula,
+         level_spec = list(composed = TRUE)),
+    c("bayesnecjointfit", "bnecfit")
+  )
+}
+
+test_that("a joint refit is compared level by level (#388)", {
+  local_mocked_bindings(
+    joint_level_fit = function(object, level) eight_draws(),
+    .package = "bayesnec"
+  )
+  j <- joint_of()
+  out <- quiet_exceedance(j, threshold = 5)
+  expect_equal(out$level, c("a", "b"))
+  expect_equal(names(out), c("level", "threshold", "prob", "prob_lower",
+                             "prob_upper", "n_above", "n_below", "n_draws"))
+  expect_equal(rownames(out), c("1", "2"))
+  # The threshold level is compared on the draws the refit's nec() returns for
+  # it, which are those of the single fit behind it, record included.
+  expect_equal(out[1, -1], quiet_exceedance(eight_draws(), threshold = 5),
+               ignore_attr = TRUE)
+  expect_equal(out$prob[1], 5 / 8)
+  # nec() returns NA draws where the level's equation has no nec parameter, and
+  # says so. No probability is reported for a quantity nec() does not report.
+  expect_message(suppressWarnings(exceedance(j, threshold = 5)),
+                 "No NEC is defined at \"b\" \\(ecx4param\\)")
+  expect_true(all(is.na(out[2, c("prob", "prob_lower", "prob_upper")])))
+  expect_equal(out$n_draws[2], 0)
+  # xform reaches each level's estimate and its censoring record.
+  beyond <- quiet_exceedance(j, threshold = -12, xform = function(x) -x)
+  expect_equal(beyond[1, -1],
+               quiet_exceedance(eight_draws(), threshold = -12,
+                                xform = function(x) -x),
+               ignore_attr = TRUE)
+  # Arguments are refused before any level is read.
+  expect_error(exceedance(j, threshold = 5, ecx_val = 50),
+               "ecx_val applies only")
+  expect_error(exceedance(j, threshold = 5, posterior = TRUE),
+               "posterior is not an argument")
+  expect_error(exceedance(j, threshold = Inf), "finite")
+})
+
+test_that("a joint refit reads nsec, ecx and no_effect through its methods", {
+  skip_on_cran()
+  local_mocked_bindings(
+    joint_level_fit = function(object, level) nec4param,
+    .package = "bayesnec"
+  )
+  j <- joint_of()
+  single_nsec <- quiet_exceedance(nec4param, threshold = 1.5,
+                                  estimate = "nsec")
+  out <- quiet_exceedance(j, threshold = 1.5, estimate = "nsec")
+  expect_equal(out[1, -1], single_nsec, ignore_attr = TRUE)
+  expect_equal(out[2, -1], single_nsec, ignore_attr = TRUE)
+  ecx50 <- quiet_exceedance(j, threshold = 1.5, estimate = "ecx",
+                            ecx_val = 50)
+  expect_equal(ecx50[2, -1],
+               quiet_exceedance(nec4param, threshold = 1.5, estimate = "ecx",
+                                ecx_val = 50),
+               ignore_attr = TRUE)
+  # no_effect = TRUE is passed on to the refit's nec(), which then reads the
+  # NSEC off the smooth level's curve and the nec parameter at the other.
+  ne <- quiet_exceedance(j, threshold = 1.5, no_effect = TRUE)
+  expect_equal(ne[1, -1], quiet_exceedance(nec4param, threshold = 1.5),
+               ignore_attr = TRUE)
+  expect_equal(ne[2, -1], single_nsec, ignore_attr = TRUE)
+})
+
 test_that("the arguments are validated", {
   fit <- eight_draws()
   expect_error(exceedance(fit, threshold = "a"), "threshold")

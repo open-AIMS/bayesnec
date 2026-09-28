@@ -54,10 +54,9 @@ jobs:
     # a job that was merely slow. A bound above the longest observed job makes a
     # hang a deterministic event at a known boundary instead. See #328.
     #
-    # The 42-minute maximum this was set against is superseded: #333 measured a
-    # devel job of 72.7 minutes. 90 still clears the routine distribution by
-    # about half again, so it is left alone. See `notes/ci_devel_cancellation.md`.
-    timeout-minutes: 90
+    # The serial R-devel check took 64 minutes and cold dependency setup took
+    # 27 minutes on PR #402. Allow both within one job; release jobs retain 90.
+    timeout-minutes: ${{ matrix.config.r == 'devel' && 120 || 90 }}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -157,6 +156,14 @@ jobs:
           cat(sprintf("TESTTHAT_CPUS=%d\n", workers),
               file = Sys.getenv("GITHUB_ENV"), append = TRUE)
         shell: Rscript {0}
+
+      # R-devel has failed while decoding an oversized result from a parallel
+      # testthat worker. The serial R-devel diagnostic passed every test file.
+      # Leave the dispatch worker override available for further diagnosis.
+      - name: Run R-devel tests serially
+        if: matrix.config.r == 'devel' && (github.event_name != 'workflow_dispatch' || github.event.inputs.testthat_cpus == '')
+        shell: bash
+        run: echo 'TESTTHAT_PARALLEL=false' >> "$GITHUB_ENV"
 
       # Vignettes ARE built and checked. They are precompiled -- precompile.R
       # renders every .Rmd.orig to a .Rmd whose chunks are display-only -- so

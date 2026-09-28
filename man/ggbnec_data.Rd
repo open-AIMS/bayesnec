@@ -16,7 +16,8 @@ ggbnec_data(
 \arguments{
 \item{x}{An object of class \code{\link{bayesnecfit}} or
 \code{\link{bayesmanecfit}}, as returned by function \code{\link{bnec}},
-or a \code{\link{bayesnecgroupfit}} returned by \code{\link{bnec_group}}.}
+a \code{\link{bayesnecgroupfit}} returned by \code{\link{bnec_group}}, or
+a \code{\link{bayesnecjointfit}} returned by \code{\link{bnec_joint}}.}
 
 \item{add_nec}{Should NEC values be added to the plot? Defaults to TRUE.}
 
@@ -39,9 +40,10 @@ panels use it. A
 }
 \value{
 A \code{\link[base]{data.frame}}. When \code{group} is supplied, or
-\code{x} is a \code{bayesnecgroupfit}, the frame includes a \code{group}
-column and a \code{"group_var"} attribute. A \code{bayesnecgroupfit} also
-includes a \code{panel} column containing the level fitted in each panel.
+\code{x} is a \code{bayesnecgroupfit} or a \code{bayesnecjointfit}, the
+frame includes a \code{group} column and a \code{"group_var"} attribute.
+Those two classes also include a \code{panel} column containing the level
+drawn in each panel.
 }
 \description{
 Creates the data.frame for plotting with \code{\link{autoplot}}.

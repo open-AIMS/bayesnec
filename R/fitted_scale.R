@@ -23,8 +23,9 @@
 #' transformation, so the two cannot report the same thing twice.
 #'
 #' @param object The object the caller named: a \code{\link{bayesnecfit}},
-#' \code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}} or
-#' \code{\link{bayesnecgroupfit}}, or \code{NULL} for nothing to report.
+#' \code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}},
+#' \code{\link{bayesnecgroupfit}} or \code{\link{bayesnecjointfit}}, or
+#' \code{NULL} for nothing to report.
 #' @param xform The function the caller supplied.
 #' @param kind The \code{\link[base]{character}} name of the function whose
 #' result is described. See \code{fitted_scale_text()}.
@@ -183,6 +184,11 @@ scale_source_fit <- function(object) {
 scale_subject <- function(object) {
   if (inherits(object, "bayesnecgroupfit")) {
     "fitted group"
+  } else if (inherits(object, "bayesnecjointfit")) {
+    # Before the test on `model` below, which a composed refit sets to NA and
+    # a dummy-coded one to the equation fitted at every level. Neither names
+    # the object the caller passed.
+    "fitted joint refit"
   } else if (inherits(object, "bayesnechurdlefit")) {
     "fitted hurdle pair"
   } else if (inherits(object, "bayesmanecfit")) {

@@ -231,6 +231,51 @@ test_that("a group and a hurdle pair report once for the call", {
   expect_length(scale_messages(ecx(g, 10, 20, FALSE, "absolute", NA, exp)), 0)
 })
 
+# A joint refit carries one formula for every level, as a group does. Only the
+# fields report_fitted_scale() and the method's own argument handling read are
+# set; the per-level tables are replaced below.
+fake_scale_joint <- function(tr = "log(x)") {
+  structure(list(group_var = "site", levels = c("a", "b"),
+                 models = list(a = "nec4param", b = "ecx4param"),
+                 model = NA_character_,
+                 bayesnecformula = bnf(stats::as.formula(
+                   paste0("y ~ crf(", tr, ", model = \"nec4param\")")
+                 )),
+                 level_spec = list(composed = TRUE)),
+            class = c("bayesnecjointfit", "bnecfit"))
+}
+
+test_that("a joint refit reports once for the call, not once per level", {
+  j <- fake_scale_joint()
+  # The per-level estimates are calls on bayesnecfit views, each of which
+  # reports unless the gate is already set, so what is asserted is that the
+  # gate is set by the time the per-level tables are built.
+  gate <- logical(0)
+  record_gate <- function(...) {
+    gate <<- c(gate, isTRUE(getOption("bayesnec.xform_reported")))
+    data.frame()
+  }
+  local_mocked_bindings(joint_ne_table = record_gate,
+                        joint_estimate_table = record_gate,
+                        .package = "bayesnec")
+  msgs <- scale_messages(nec(j))
+  expect_length(msgs, 1)
+  expect_match(msgs, "The fitted joint refit", fixed = TRUE)
+  expect_length(scale_messages(nec(j, xform = exp)), 0)
+  expect_length(scale_messages(nec(j, FALSE, exp)), 0)
+  expect_length(scale_messages(ecx(j)), 1)
+  expect_length(scale_messages(nsec(j)), 1)
+  expect_length(scale_messages(nsec(j, 0.01, 20, NA, exp)), 0)
+  expect_length(scale_messages(ecnsec(j, nsec = 1)), 1)
+  # xform found by position behind nsec, which the method takes as a formal
+  expect_length(scale_messages(ecnsec(j, 1, 200, NA, "absolute", exp)), 0)
+  expect_true(all(gate))
+  expect_length(gate, 8L)
+  expect_null(getOption("bayesnec.xform_reported"))
+  # An untransformed predictor reports nothing.
+  expect_length(scale_messages(nec(fake_scale_joint("x"))), 0)
+})
+
 test_that("ecnsec() on a hurdle pair asks for nsec on the recorded scale", {
   # This method reads nsec on the recorded grid as supplied and applies xform
   # to the percentage it returns, so an nsec() value left on the transformed

@@ -453,6 +453,60 @@
   would reach the posterior. Compute the column before the call and name it in
   `rate()` (#389).
 
+## Joint refit across factor levels
+
+- `bnec_joint()` is now generic and has a method for `bayesnecgroupfit`. It
+  refits a grouped fit as one model in which every curve parameter takes a
+  separate value per level of the grouping factor, estimated in a single
+  posterior. Each level is fitted the equation its own model weights favour,
+  which may differ between levels: one model fits a different functional form
+  at each level, each multiplied by an indicator for that level's rows. Where
+  every level favours the same equation the model reduces to that equation
+  dummy coded on the factor, and `model` forces one equation everywhere.
+  `disp_by_level` decides whether the family's dispersion parameter also
+  varies by level, and defaults to `TRUE`. The returned object has class
+  `bayesnecjointfit`, and `ecx()`, `nsec()`, `nec()`, `ecnsec()` and
+  `autoplot()` report one row or one panel per level (#382, #388). The tables
+  from `ecx()`, `nsec()` and `nec()` have the columns a `bayesnecgroupfit`
+  returns, including the `bound_` columns that mark a censored entry, and the
+  no-effect annotation of `autoplot()` marks a censored NSEC with `>=` or `<=`
+  as it does for a single fit (#404). `ecnsec()` has no `bayesnecgroupfit`
+  method. On a joint refit it returns, at each level, the percent effect at
+  the `nsec` supplied, read off that level's own curve, with the columns of the
+  `ecx()` table; its `bound_` columns are empty, because `ecnsec()` records
+  no censoring.
+
+- `nec()` on a joint refit names the equation fitted at each level in a `model`
+  column and the type of that level's estimate in an `ne_type` column, and
+  reports `NA` where the level's equation has no `nec` parameter rather than
+  failing for the whole fit. `nec(x, no_effect = TRUE)` reports instead the
+  no-effect estimate each level's own equation does support --- the `nec`
+  parameter at a threshold level, the NSEC of the fitted curve at a smooth one
+  --- labelled by type. A joint refit fits exactly one equation per level, so
+  unlike the model-averaged N(S)EC of a `bayesmanecfit` each value is a NEC or
+  an NSEC and never a weighted mixture of both. `no_effect` applies to no other
+  class and is refused rather than discarded by them (#388).
+
+- `exceedance()` on a joint refit returns one row per level, preceded by a
+  `level` column, as it does for a `bayesnecgroupfit`. Each level is compared
+  on the draws `nec()`, `nsec()` or `ecx()` returns for it on the refit. Under
+  `estimate = "nec"` a level whose equation has no `nec` parameter has only
+  `NA` draws, so its probabilities are `NA` and its `n_draws` is 0;
+  `no_effect = TRUE` compares the NSEC of that level's curve instead (#44,
+  #388).
+
+- `bnec_joint()` refuses a grouped fit whose grouping variable is not a
+  syntactic R name, such as `odd site`, before the refit is announced. Where
+  every level is fitted one equation, and wherever the dispersion takes a value
+  per level, the refit writes the name into the formula it builds, where it
+  cannot be parsed. The refusal applies to every refit, including a composed
+  refit with `disp_by_level = FALSE` or of a family with no dispersion
+  parameter, which never writes the name, because which equations the levels
+  are fitted follows from their weights rather than from the call. Rename the
+  column, for example with `make.names()`, and fit the grouped model again.
+  `bnec_group()` still accepts such a column, because its per-level fits do not
+  write the name into a formula (#398).
+
 ## The centring constant of a variance function
 
 - The centring constant of a `disp()` variance function of the fitted mean is

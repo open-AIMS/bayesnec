@@ -408,21 +408,75 @@ disp_inits <- function(spec, family, response) {
   if (length(pars) == 0) {
     return(list())
   }
-  # The positive block's family for a two-block family, whose dispersion
-  # parameter is that block's. Read from the two-block tag, hurdle_gamma would
-  # fall through to 0, a shape of 1, against a c0 prior centred on 2.
-  fam_tag <- disp_family_tag(family)
   # the same centres define_disp_prior() uses, so the chains start at the
   # middle of their own priors rather than somewhere else
+  c0 <- disp_intercept_centre(family, response)
+  out <- lapply(pars, function(p) as.array(if (identical(p, "c0")) c0 else 0))
+  names(out) <- paste0("b_", pars)
+  out
+}
+
+#' Priors for a dispersion parameter modelled on the log scale
+#'
+#' @param response A \code{\link[base]{numeric}} vector, on the link scale.
+#'
+#' @details One statement of where a family's dispersion parameter sits once
+#' brms has put it behind a log link, keyed by family tag. It is read by
+#' \code{define_disp_prior()} for the \code{c0} intercept of a variance
+#' function and by \code{\link{add_level_defaults}} for the per-level
+#' coefficients of a joint refit. Both are the same quantity --- the log of the
+#' dispersion parameter at a typical response --- so they are derived once
+#' here rather than twice.
+#'
+#' @return A named \code{\link[base]{character}} vector of prior strings.
+#'
+#' @importFrom stats sd
+#'
+#' @noRd
+disp_intercept_priors <- function(response) {
+  c(
+    gaussian = paste0("normal(", round(log(sd(response)), 3), ", 2)"),
+    # shape is an inverse dispersion for both of these: a CV of 0.1 to 0.5 puts
+    # a Gamma shape between about 4 and 100, i.e. 1.4 to 4.6 on the log scale.
+    Gamma = "normal(2, 2)",
+    negbinomial = "normal(2, 2)",
+    # phi likewise, on the wider scale the PAM fits needed.
+    beta = "normal(4, 3)",
+    beta_binomial = "normal(4, 3)"
+  )
+}
+
+#' The log-scale centre of a family's dispersion parameter
+#'
+#' @param family An object of class \code{\link[stats]{family}} or a family
+#' tag.
+#' @param response A \code{\link[base]{numeric}} vector.
+#'
+#' @details The location of the corresponding entry in
+#' \code{\link{disp_intercept_priors}}, as a number, so that a chain starts at
+#' the middle of its own prior. \code{\link{disp_inits}} carried this table
+#' inline; it is shared because \code{\link{add_level_defaults}} needs the
+#' same value.
+#'
+#' @return A \code{\link[base]{numeric}} of length one, finite.
+#'
+#' @importFrom stats sd
+#'
+#' @noRd
+disp_intercept_centre <- function(family, response) {
+  # The positive block's family for a two-block family, whose dispersion
+  # parameter is that block's. Read from the two-block tag, hurdle_gamma would
+  # fall through to 0, a shape of 1, against a c0 prior centred on 2. Read
+  # here rather than by each caller, so that disp_inits() and
+  # add_level_disp_defaults() cannot disagree about it. See #410.
+  fam_tag <- disp_family_tag(family)
   c0 <- switch(fam_tag,
     gaussian = log(sd(response[is.finite(response)])),
     Gamma = 2, negbinomial = 2, beta = 4, beta_binomial = 4, 0)
   if (!is.finite(c0)) {
     c0 <- 0
   }
-  out <- lapply(pars, function(p) as.array(if (identical(p, "c0")) c0 else 0))
-  names(out) <- paste0("b_", pars)
-  out
+  c0
 }
 
 #' Build the dispersion sub-model for a bayesnec equation
