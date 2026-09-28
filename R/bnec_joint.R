@@ -324,6 +324,27 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
   # deparsed text, for the reason given in the bayesnechurdlefit method: a
   # supplied formula has not been through bnec_group()'s own check. See #398.
   check_syntactic_names(formula)
+  # The grouping variable is written into formula text as well: as
+  # `0 + <group_var>` on each curve parameter where the levels share one
+  # equation (add_formula_level_terms()), and on the dispersion wherever it
+  # takes a value per level. A name that has to be written in backticks then
+  # failed as a parse error naming neither the column nor the term, after the
+  # refit had been announced. Refused for every refit, not only where the name
+  # reaches a formula: whether the levels are composed follows from their
+  # weights rather than from anything in the call, so a conditional refusal
+  # would accept a column for one grouped fit and refuse it for the next, and
+  # a composed refit with one shared dispersion has not been tested end to end
+  # with such a name. Not refused in bnec_group(), whose per-level fits never
+  # write it into a formula. See #398, whose wording this follows.
+  if (!identical(object$group_var, make.names(object$group_var))) {
+    stop("The grouping variable \"", object$group_var, "\" is not a",
+         " syntactic R name. bnec_joint() writes it into the formula it",
+         " builds, as `0 + ", object$group_var, "`, where a name that has to",
+         " be written in backticks cannot be parsed. Rename the column in the",
+         " data, for example with make.names(), which gives \"",
+         make.names(object$group_var), "\", and fit the grouped model again",
+         " with bnec_group().", call. = FALSE)
+  }
   family <- unmark_family(validate_family(object$family))
   if (isTRUE(disp_by_level) && !is.null(parse_disp_term(formula))) {
     stop("The formula already has a disp() term, which models the",

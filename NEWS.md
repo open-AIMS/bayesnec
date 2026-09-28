@@ -495,6 +495,13 @@
   `no_effect = TRUE` compares the NSEC of that level's curve instead (#44,
   #388).
 
+- `bnec_joint()` refuses a grouped fit whose grouping variable is not a
+  syntactic R name, such as `odd site`, before the refit is announced. The
+  refit writes the name into the formula it builds, where it cannot be parsed.
+  Rename the column, for example with `make.names()`, and fit the grouped model
+  again. `bnec_group()` still accepts such a column, because its per-level fits
+  do not write the name into a formula (#398).
+
 ## The centring constant of a variance function
 
 - The centring constant of a `disp()` variance function of the fitted mean is

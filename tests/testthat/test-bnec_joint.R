@@ -1017,6 +1017,46 @@ test_that("a supplied formula with a non-syntactic name is refused (#398)", {
   expect_false(any(grepl("Refitting jointly", msgs)))
 })
 
+test_that("a grouping variable with a non-syntactic name is refused (#398)", {
+  # The refit writes the grouping variable into the formula it builds, where
+  # "odd site" was a parse error raised after the refit had been announced.
+  g <- spread_group_fit()
+  names(g$data)[names(g$data) == "site"] <- "odd site"
+  g$group_var <- "odd site"
+  for (m in list(NULL, "nec3param")) {
+    msgs <- character(0)
+    err <- withCallingHandlers(
+      tryCatch(bnec_joint(g, model = m), error = conditionMessage),
+      message = function(cnd) {
+        msgs <<- c(msgs, conditionMessage(cnd))
+        invokeRestart("muffleMessage")
+      }
+    )
+    # Composed and dummy coded alike, before the refit is announced.
+    expect_match(err, "grouping variable \"odd site\" is not a syntactic")
+    expect_match(err, "\"odd.site\"", fixed = TRUE)
+    expect_false(any(grepl("Refitting jointly", msgs)))
+  }
+})
+
+test_that("bnec_group() accepts a grouping variable the refit refuses", {
+  # A per-level fit never writes the grouping variable into a formula, so the
+  # refusal belongs to bnec_joint() alone. The first per-level bnec() call is
+  # replaced, so that reaching it is the evidence and nothing is fitted.
+  d <- rbind(transform(nec_data[, c("x", "y")], g = "a"),
+             transform(nec_data[, c("x", "y")], g = "b"))
+  names(d)[3] <- "odd site"
+  local_mocked_bindings(
+    bnec = function(...) stop("reached the per-level bnec() call"),
+    .package = "bayesnec"
+  )
+  expect_error(
+    suppressMessages(bnec_group(y ~ crf(x, "nec3param"), data = d,
+                                group_var = "odd site", family = "beta")),
+    "reached the per-level bnec\\(\\) call"
+  )
+})
+
 test_that("the membership test is the nec group, not the equation name", {
   # mod_groups$nec is the group of equations that estimate a nec parameter.
   # A match on "ecx" in the name agrees across the 23 equations shipped, so
