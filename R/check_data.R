@@ -207,8 +207,8 @@ flatness_blocks <- function(x, y, trials, denominator, family) {
   block <- list(x = x, y = y, spec = spec)
   if (identical(spec$kind, "matrix")) {
     # A binomial family with no trials() term is refused by
-    # check_trials_term(), which bnec(), bnec_group() and get_priors() run
-    # before this report, so no call through them reaches this branch. Kept
+    # check_trials_term(), which bnec() and bnec_group() run before this
+    # report, so no call through them reaches this branch. Kept
     # for a direct call: nothing is said, because the contrast has no trials
     # to count against, and a report that it could not be computed would name
     # a symptom rather than the missing term. See #442.
