@@ -51,3 +51,27 @@ skipped when reached, and taken up once the decision is recorded in
   `predev` reaches `dev`.
 - State in `05_run_log.md` where the run finished and what, if anything, it
   stopped on.
+
+## Second run
+
+Queued 2026-09-28 after RF closed the resolved issues and settled D32–D38.
+Open issues that need a decision are not in it: #27, #299, #403 with #421, #410's
+`hurdle_negbinomial` part, #448 and #449's three questions. Each has a
+"Decision needed" comment.
+
+| # | issue | decision | status |
+|---|---|---|---|
+| S1 | PR #402 (#382, #388) | D38 | |
+| S2 | #442 `binomial` without `trials()` | none | |
+| S3 | #444 `autoplot(plot = FALSE)` | none | |
+| S4 | #446 hurdle NSEC message | none | |
+| S5 | #439 `summary(ecx = TRUE)` arguments | none | |
+| S6 | #440 decreasing `xform`, remaining cases | none | |
+| S7 | #445 and #436 `disp()` in `get_priors()` and `amend()` | none | |
+| S8 | #449, the advice in a declared fit only | none | |
+| S9 | #435 `update()` and the family | D32 | |
+| S10 | #437 `ecnsec()` beyond the range | D33 | |
+| S11 | #438 `crf(-x)` | D34 | |
+| S12 | #441 `zero_inflated_beta` at a bound | D35 | |
+| S13 | #443 `disp(~z)` | D36 | |
+| S14 | #447 divergences in `summary()` | D37 | |

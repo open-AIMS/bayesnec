@@ -505,3 +505,48 @@ A response with no variation, fitted with any model set, is fitted with
 `ecxflat` alone with a message, which replaces D30's refusal on the fitting
 routes once it lands. The two checks in `R/nec.R` that read the `"ecx"` substring
 are changed to test for a `nec` parameter.
+
+---
+
+# The second backlog run
+
+Answers given by RF on 2026-09-28 for the issues filed during the first run.
+The procedure is unchanged (`00_protocol.md`); the queue is the "Second run"
+section of `01_work_queue.md`.
+
+## D32 — `update()` never infers a family (#435)
+
+`update(newdata = )` keeps the fitted family, changes it only when the caller
+passes `family =`, and checks the new data against that family's requirements.
+It no longer re-derives a family from the new data or compares one against the
+fit. RF: "why does update change anything about a family?"
+
+## D33 — `ecnsec()` beyond the prediction range (#437)
+
+Refused with a message naming the range, as #430 does for hurdle growth. On a
+hurdle fit, `xform` is changed to apply to `nsec` rather than to the returned
+percentage, with a deprecation warning for one release.
+
+## D34 — `crf(-x)` (#438)
+
+Refused, with a message suggesting `crf(I(-x))`.
+
+## D35 — `zero_inflated_beta` at a bound (#441)
+
+A response of 1 throughout is fitted with `ecxflat` alone, as D31 does for the
+other bounded families; a response of 0 throughout is refused.
+
+## D36 — `disp(~z)` on a column other than the predictor (#443)
+
+Refused before fitting, and the restriction stated in `?bayesnecformula`.
+
+## D37 — Divergent transitions in `summary()` (#447)
+
+The count is always reported, and flagged at the cutoff of 10 that
+`check_sampling()` uses.
+
+## D38 — #402 is taken over by the run
+
+RF, 2026-09-28: the run merges `predev` into PR #402's branch, resolves the
+conflicts, takes in the changes listed in the `[claude]` comment on it, fixes
+its plan document and body, and merges it once green.
