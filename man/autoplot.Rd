@@ -98,8 +98,9 @@ new page. Only relevant if \code{plot = TRUE} and
 \item{multi_facet}{Should all plots be plotted in one single panel via
 facets? Defaults to TRUE, in which case the facets of the named equations
 are ordered by name. Only relevant if \code{model} is given. With
-\code{multi_facet = FALSE}, one \code{\link[ggplot2]{ggplot}} is drawn for
-each panel and the list of them is returned invisibly, the model average
+\code{multi_facet = FALSE}, one \code{\link[ggplot2]{ggplot}} is built for
+each panel, drawn in turn only where \code{plot = TRUE}, and the list of
+them is returned invisibly, the model average
 first where it is requested and then the equations in the order given in
 \code{model}.}
 

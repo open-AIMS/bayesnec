@@ -1729,6 +1729,15 @@
 
 ## Bug fixes
 
+- `autoplot()` for a `bayesmanecfit` with `multi_facet = FALSE` and
+  `plot = FALSE` now returns the list of plots without drawing them, and
+  leaves the device's prompt before a new page as it found it. It previously
+  drew every plot whatever `plot` was set to. After the first plot it set the
+  prompt to `ask`, which defaults to `TRUE`, and restored the previous setting
+  only where `plot = TRUE`, so after a call with `plot = FALSE` an interactive
+  session waited for a key press before each later plot on that device. With
+  `plot = TRUE` the plots drawn and the list returned are unchanged (#444).
+
 - A formula that names a column whose name is not a syntactic R name, such as
   `` `conc (mg/L)` `` read from a spreadsheet, is now refused before anything
   is fitted. The message names each such column, the term it appears in, and
