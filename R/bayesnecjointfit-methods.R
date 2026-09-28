@@ -120,7 +120,8 @@ joint_row_levels <- function(x) {
 #' A level term names its coefficients \code{b_<parameter>_<group_var><level>}
 #' rather than \code{b_<parameter>_Intercept}, which is why the existing readers
 #' of \code{b_nec_Intercept} and \code{b_bot_Intercept} find nothing on a joint
-#' refit.
+#' refit. The level part of the name is the label as \pkg{brms} renames it,
+#' which is not always the label; see \code{joint_level_coef()}.
 #'
 #' @param object An object of class \code{\link{bayesnecjointfit}}, or an
 #' internal \code{bayesnecjointlevel}.
@@ -138,17 +139,72 @@ joint_level_draws <- function(object, par, level = object$level) {
   # parameter and the name carries the factor and the level. Composed, the
   # level's parameter is a non-linear parameter in its own right with an
   # intercept, so the level is in the parameter name and the coefficient is
-  # named Intercept like any other.
+  # named Intercept like any other. The composed tag is built by
+  # level_par_tags() and is the name as written; the dummy-coded name is built
+  # by brms from the label and is found by joint_level_coef().
   tag <- object$level_spec$tags[[level]]
+  vars <- variables(object$fit)
   var <- if (is.null(tag)) {
-    paste0("b_", par, "_", object$group_var, level)
+    joint_level_coef(vars, par, object$group_var, object$levels, level)
   } else {
     paste0("b_", par, tag, "_Intercept")
   }
-  if (!var %in% variables(object$fit)) {
+  if (is.null(var) || !var %in% vars) {
     return(NULL)
   }
   as.numeric(as_draws_df(object$fit, variable = var)[[var]])
+}
+
+#' The name of one level's coefficient on a dummy-coded joint refit
+#'
+#' @param vars The variable names of the fit, as \code{brms::variables()}
+#' returns them.
+#' @param par The curve parameter, e.g. \code{"nec"} or \code{"bot"}.
+#' @param group_var The name of the grouping column.
+#' @param levels The levels of the refit, in the order of its factor.
+#' @param level The level wanted.
+#'
+#' @details \pkg{brms} names a coefficient of \code{top ~ 0 + site} after the
+#' design-matrix column, and renames that column from the label: a space is
+#' dropped and some punctuation is spelled out, so under \pkg{brms} 2.23.0 the
+#' level \code{"Site A"} is \code{b_top_siteSiteA} and \code{"site-b"} is
+#' \code{b_top_sitesiteMb}. Pasting the label onto the prefix found nothing for
+#' such a level, and every reader then took the parameter to be absent:
+#' \code{nec()} stopped and \code{ecx(type = "relative")} measured towards 0
+#' instead of towards \code{bot}.
+#'
+#' The level is found by its position instead. The columns follow the order of
+#' the factor's levels, which \code{\link{bnec_joint}} pins to \code{levels}
+#' before fitting, so the coefficient of the \emph{k}th level is the
+#' \emph{k}th variable carrying the prefix. Position does not depend on how
+#' \pkg{brms} renames a label, or on how a later version does, and two labels
+#' that the renaming would make identical are refused by \pkg{brms} before
+#' anything is fitted. The prefix identifies the level coefficients alone
+#' because a \pkg{brms} parameter name cannot contain an underscore, so
+#' \code{b_<par>_} belongs to one parameter, and the level term is the only
+#' population-level term on it.
+#'
+#' @return A \code{\link[base]{character}} string, or \code{NULL} where the
+#' parameter has no coefficient, which is where the equation has no such
+#' parameter.
+#'
+#' @noRd
+joint_level_coef <- function(vars, par, group_var, levels, level) {
+  prefix <- paste0("b_", par, "_", group_var)
+  coefs <- vars[startsWith(vars, prefix)]
+  if (length(coefs) == 0) {
+    return(NULL)
+  }
+  # Refused rather than read by position regardless: with a different number
+  # of coefficients from levels the position no longer identifies a level, and
+  # the draws of one level would be reported for another without a word.
+  if (length(coefs) != length(levels) || !level %in% levels) {
+    stop("The ", par, " coefficients of the joint refit (",
+         paste0(coefs, collapse = ", "), ") cannot be matched to its levels (",
+         paste0("\"", levels, "\"", collapse = ", "), "). This should not",
+         " happen; please report it.", call. = FALSE)
+  }
+  coefs[match(level, levels)]
 }
 
 #' The level structure of a joint refit, as prediction_grid takes it

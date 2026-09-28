@@ -1089,6 +1089,73 @@ test_that("bnec_group() accepts a grouping variable the refit refuses", {
   )
 })
 
+test_that("brms renames a level label and keeps the level order", {
+  # What joint_level_coef() relies on, read off the design matrix brms builds,
+  # which needs no compilation. The labels are renamed -- a space dropped, a
+  # hyphen spelled out -- so the label pasted onto the prefix is not the name,
+  # while the columns stay in the order of the factor's levels, which is not
+  # the sorted order here.
+  lv <- c("Site A", "site-b", "10", "2")
+  d <- data.frame(x = rep(1:5, 4), y = seq(0.1, 0.9, length.out = 20),
+                  site = factor(rep(lv, each = 5), levels = lv))
+  sd <- brms::standata(
+    brms::bf(y ~ top * exp(-x), top ~ 0 + site, nl = TRUE),
+    data = d, family = gaussian()
+  )
+  cols <- paste0("b_top_", colnames(sd$X_top))
+  expect_false(any(paste0("b_top_site", lv[1:2]) %in% cols))
+  expect_equal(vapply(lv, joint_level_coef, character(1), vars = cols,
+                      par = "top", group_var = "site", levels = lv),
+               setNames(cols, lv))
+})
+
+test_that("a dummy-coded refit reads a level whose label brms renamed", {
+  # No sampling. A refit of levels "Site A" and "Site B" names its
+  # coefficients b_<par>_siteSiteA and b_<par>_siteSiteB, as a fit measured
+  # under brms 2.23.0 did. The label pasted onto the prefix found neither, so
+  # nec() stopped and ecx(type = "relative") measured towards 0 rather than
+  # towards bot. The fit is replaced by those draws.
+  draws <- list(b_bot_siteSiteA = c(0.10, 0.12, 0.14, 0.16),
+                b_bot_siteSiteB = c(0.20, 0.22, 0.24, 0.26),
+                b_nec_siteSiteA = c(1.1, 1.2, 1.3, 1.4),
+                b_nec_siteSiteB = c(2.1, 2.2, 2.3, 2.4),
+                b_phi_siteSiteA = c(4, 4, 4, 4),
+                b_phi_siteSiteB = c(5, 5, 5, 5))
+  local_mocked_bindings(
+    variables = function(x, ...) names(draws),
+    as_draws_df = function(x, variable = NULL, ...) {
+      as.data.frame(draws[variable])
+    },
+    .package = "bayesnec"
+  )
+  lv <- c("Site A", "Site B")
+  j <- allot_class(
+    list(fit = structure(list(), class = "brmsfit"), group_var = "site",
+         levels = lv, models = list(`Site A` = "nec4param",
+                                    `Site B` = "nec4param"),
+         model = "nec4param", bayesnecformula = bnf(y ~ crf(x, "nec4param")),
+         level_spec = list(composed = FALSE)),
+    c("bayesnecjointfit", "bnecfit")
+  )
+  expect_equal(joint_level_draws(j, "nec", "Site B"), draws$b_nec_siteSiteB)
+  n <- nec(j)
+  expect_equal(n$level, lv)
+  expect_equal(n$Q50, c(1.25, 2.25))
+  # The relative ECx is measured towards the level's own bot.
+  expect_equal(ecx_asymptote(joint_level_fit(j, "Site A"), "relative"),
+               draws$b_bot_siteSiteA)
+  expect_equal(unname(joint_level_ne(j, "Site B")[["Estimate"]]), 2.25)
+  e <- exceedance(j, threshold = 1.5)
+  expect_equal(e$prob, c(0, 1))
+  # A parameter the equation does not have is still absent rather than an
+  # error, and a set of coefficients that cannot be matched to the levels is
+  # refused rather than read by position.
+  expect_null(joint_level_draws(j, "ec50", "Site A"))
+  expect_error(joint_level_coef(names(draws)[1:2], "bot", "site",
+                                c("Site A", "Site B", "Site C"), "Site A"),
+               "cannot be matched to its levels")
+})
+
 test_that("the membership test is the nec group, not the equation name", {
   # mod_groups$nec is the group of equations that estimate a nec parameter.
   # A match on "ecx" in the name agrees across the 23 equations shipped, so

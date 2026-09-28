@@ -62,8 +62,11 @@ first level's crossing and report it for the fit.
 The coefficient one level holds on one parameter is named
 \code{b_<parameter>_<group_var><level>} in the draws --- \code{b_top_sitea}
 for level \code{"a"} of a grouping variable named \code{site} --- where
-every level was fitted the same equation. Where they were not, each level's
-parameters are \pkg{brms} non-linear parameters in their own right and the
+every level was fitted the same equation. The level part is the label as
+\pkg{brms} renames it, which drops a space and spells out some punctuation,
+so level \code{"Site A"} is \code{b_top_siteSiteA}. Where the levels were
+fitted different equations, each level's parameters are \pkg{brms}
+non-linear parameters in their own right and the
 name is \code{b_<parameter><level tag>_Intercept}, the tag being the level
 name reduced to letters and digits followed by \code{Lv} and its rank in the
 sorted level set. \code{print()} reports the tags.
