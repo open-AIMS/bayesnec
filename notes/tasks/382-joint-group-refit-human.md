@@ -10,8 +10,9 @@ This document decides to add that third route, as a method of the existing
 
 The route is called a **joint refit** here: one `brms` model in which each
 parameter of the concentration-response equation takes a separate value per
-level, estimated in a single posterior. Statisticians call this dummy coding,
-and the two names mean the same thing.
+level, estimated in a single posterior. Each level can be fitted a different
+equation. Where every level is fitted the same one, the model is that equation
+with the factor dummy coded onto every curve parameter.
 
 ## The gap in the supported routes
 
@@ -52,15 +53,40 @@ could not.
 
 ### Phase 1
 
-This phase makes the joint refit fit at all. It adds `bnec_joint.bayesnecgroupfit()`. It picks one equation, builds the model
-in which each curve parameter varies by level, and fits it.
+This phase makes the joint refit fit at all. It adds
+`bnec_joint.bayesnecgroupfit()`, which picks an equation for each level, builds
+the model in which each curve parameter varies by level, and fits it.
 
-One equation has to be chosen for all levels, because a single model has a
-single functional form, and the levels of a `bnec_group()` fit may each favour
-a different one. The default is the equation with the highest total weight
-across levels, and the user can name another. Where the levels disagree
-strongly about the equation, that is a result about the data and the function
-says so rather than choosing silently.
+Each level is fitted the equation its own model weights favour. The levels of a
+`bnec_group()` fit may favour different equations, and one model can hold a
+different equation at each level. Each level's equation is multiplied by an
+indicator column, which is one on that level's rows and zero elsewhere, and the
+terms are summed. This is the rule `best_crossed()` already applies to a hurdle
+fit, whose growth and survival blocks take their equations separately.
+
+For example, a grouped fit whose level `a` favours `nec3param` and whose level
+`b` favours `ecx4param` is refitted with `nec3param` at `a` and `ecx4param` at
+`b`, and the call says so:
+
+```
+Refitting jointly as one model composing nec3param at "a", ecx4param at "b",
+each level with its own curve parameters, and a separate phi per level.
+```
+
+Where every level favours the same equation, the model is that equation dummy
+coded on the factor. `model = "ecx4param"` fits one named equation at every
+level instead, which is also the form a group-level term such as `ogl()` needs.
+
+Every level's equation is evaluated on every row, including the rows of other
+levels. On those rows its predictor is replaced by one of that level's own
+observed predictor values. Without that replacement, one level's equation can
+overflow on another level's rows and stop the sampler (specification,
+*The guard and its evidence*).
+
+This rule replaced an earlier one on 2026-09-19, after phases 1 and 2 had been
+built. The earlier rule fitted one equation at every level, the one with the
+highest total weight across levels. It imposed that equation on levels whose
+own weights rejected it (specification, *Correction: one equation per level*).
 
 The priors and initial values for the level coefficients come from the
 machinery that already derives them, extended to cover the extra coefficients,
@@ -108,9 +134,10 @@ is through `bnec_group()` first. That is deliberate. The equation choice should
 be made against the per-level model weights, and requiring the grouped fit
 first means it always is.
 
-Model averaging is not available in the joint route. It fits one equation. The
-averaging happens in the `bnec_group()` call that precedes it, which is the
-same division of labour `bnec_joint()` already documents for hurdle fits.
+Model averaging is not available in the joint route. It fits one equation per
+level. The averaging happens in the `bnec_group()` call that precedes it, which
+is the same division of labour `bnec_joint()` already documents for hurdle
+fits.
 
 ## Evidence and rejected alternatives
 

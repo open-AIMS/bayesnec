@@ -856,15 +856,24 @@ check_asymptote_declaration <- function(data, family, models,
   # keeps all three for a gaussian family, which is the branch where the floor
   # comes from the response being non-negative, so the claim would be false on
   # the common path and the advice that follows it would be acted on.
+  #
+  # The second side is read off each equation's parameters rather than taken
+  # as the complement of the group. ecxflat has no bot and belongs to no group,
+  # so the complement counted it as estimating a lower asymptote; and it does
+  # not belong on the first side either, because a constant is told from a
+  # declining curve whether or not the asymptote was observed. For the 23
+  # equations of mod_groups$all the two readings agree. See #419.
   bot_free <- intersect(models, mod_groups$bot_free)
-  bot_est <- setdiff(models, mod_groups$bot_free)
+  bot_est <- models[vapply(models, function(m) {
+    "bot" %in% equation_par_names(m)
+  }, logical(1))]
   if (length(bot_free) > 0 && length(bot_est) > 0) {
     message(
       "This set mixes equations that estimate a lower asymptote with ones that",
       " have no lower asymptote to estimate. With the asymptote unobserved the",
-      " fit cannot distinguish them. Restrict the set to mod_groups$bot_free",
-      " if the response can reach zero for this endpoint, or away from it if",
-      " it cannot."
+      " fit cannot distinguish them. Use `model = \"zero_bounded\"` if the",
+      " response can reach zero for this endpoint; otherwise, exclude the",
+      " equations in `models()$bot_free`."
     )
   }
   supplied <- length(models) > 0 &&
@@ -1365,6 +1374,373 @@ check_inline_boundary <- function(data, family) {
     stop_inline_boundary(expr, fam_tag, bound = 1)
   }
   invisible(NULL)
+}
+
+#' The bound at which every observation of a bounded response sits
+#'
+#' @param y The response, as read from the model frame.
+#' @param trials The number of trials of a \code{binomial} or
+#' \code{beta_binomial} response, or \code{NULL} for a response recorded as a
+#' proportion.
+#'
+#' @return 0 or 1, the bound every observation sits at, or \code{NA} where the
+#' response is not at one bound throughout.
+#' @noRd
+response_bound_reached <- function(y, trials = NULL) {
+  if (length(y) == 0) {
+    return(NA_real_)
+  }
+  if (all(y == 0)) {
+    return(0)
+  }
+  # Compared as counts against their own trials rather than as y / trials
+  # against 1, so that the test is exact for integer counts and does not
+  # depend on how a division rounds.
+  upper <- if (is.null(trials)) 1 else trials
+  if (all(y == upper)) {
+    return(1)
+  }
+  NA_real_
+}
+
+#' The bound a bounded response sits at in every observation
+#'
+#' The reading \code{\link{check_response_at_bound}},
+#' \code{constant_fallback()} and \code{\link{bnec_group}} share, so that the
+#' decision to refuse such a response and the decision to fit the constant
+#' equation to it are taken on the same test.
+#'
+#' @inheritParams check_response_at_bound
+#'
+#' @return \code{NULL} where the family has no bound or the response cannot be
+#' read. Otherwise a \code{\link[base]{list}} holding the family tag, the name
+#' of the response column, whether the response is counted against its trials,
+#' and \code{bounds}: 0, 1 or \code{NA} for the whole response, or one such
+#' value per level of \code{group}, named by level.
+#' @noRd
+response_bound_state <- function(data, family, group = NULL) {
+  fam_tag <- if (inherits(family, "family")) family$family else family
+  if (!fam_tag %in% c("bernoulli", "binomial", "beta_binomial", "beta")) {
+    return(NULL)
+  }
+  y <- try(retrieve_var(data, "y_var", error = TRUE), silent = TRUE)
+  if (inherits(y, "try-error")) {
+    return(NULL)
+  }
+  trials <- NULL
+  if (fam_tag %in% c("binomial", "beta_binomial")) {
+    trials <- retrieve_var(data, "trials_var")
+    # A binomial response with no trials() term is refused by check_data().
+    # Without the trials there is no upper bound to test against, so nothing
+    # is said here and that refusal is left to arrive.
+    if (is.null(trials)) {
+      return(NULL)
+    }
+  }
+  bnec_pop_vars <- attr(data, "bnec_pop")
+  y_name <- names(data)[which(names(bnec_pop_vars) == "y_var")]
+  bounds <- if (is.null(group)) {
+    response_bound_reached(y, trials)
+  } else {
+    rows <- split(seq_along(y), group, drop = TRUE)
+    vapply(rows, function(i) {
+      response_bound_reached(y[i], trials[i])
+    }, numeric(1))
+  }
+  list(fam_tag = fam_tag, y_name = y_name, counted = !is.null(trials),
+       bounds = bounds)
+}
+
+#' Whether the constant equation can be fitted at a bound
+#'
+#' It can at every bound but one. A \code{beta} distribution cannot represent
+#' a zero, and \code{\link{check_data}} shifts a zero off the boundary by a
+#' tenth of the smallest positive observation, which a response of 0 in every
+#' observation does not have: the shift is \code{Inf}. Its ones are shifted to
+#' 0.999, which needs no other observation, so a \code{beta} response of 1 in
+#' every observation can be fitted. The discrete families are fitted at either
+#' bound as recorded.
+#'
+#' @param fam_tag The family tag.
+#' @param bound 0 or 1.
+#'
+#' @return A \code{\link[base]{logical}} of length 1.
+#' @noRd
+constant_fits_bound <- function(fam_tag, bound) {
+  !(identical(fam_tag, "beta") && bound == 0)
+}
+
+#' Refuse a bounded response with every observation at one of its bounds
+#'
+#' A \code{bernoulli}, \code{binomial}, \code{beta_binomial} or \code{beta}
+#' response whose every observation is 0, or 1 (every count equal to its
+#' trials), does not vary, so it identifies no concentration-response curve.
+#' Before #400 the three discrete families failed inside prior construction:
+#' \code{response_link_scale()} anchors a response at a bound on the largest
+#' observation strictly inside it, which does not exist here, and
+#' \code{define_prior()} then stopped in \code{quantile()} with a message that
+#' named neither the column nor the cause. \code{beta} at 1 was shifted to
+#' 0.999 and fitted. \code{beta} at 0 was shifted by a tenth of the smallest
+#' positive observation, which with none present is \code{Inf}.
+#'
+#' Such a response does identify the constant equation \code{ecxflat}, whose
+#' one parameter is the level of the response, so the refusal applies to the
+#' curve equations only (#419). \code{\link{bnec}} and \code{\link{bnec_group}}
+#' fit \code{ecxflat} alone in place of whatever set was requested, through
+#' \code{constant_fallback()}, and reach this function only for the one case
+#' \code{ecxflat} cannot be fitted to either, a \code{beta} response of 0 in
+#' every observation (see \code{constant_fits_bound()}). The other routes keep
+#' the refusal for a set holding any curve equation and let a set of
+#' \code{ecxflat} alone through: \code{\link{get_priors}}, whose curve
+#' equations have no prior to give on such a response, and
+#' \code{\link{bnec_hurdle}}, \code{amend()} and \code{update()}, which were
+#' not given the substitution. Each passes the equations it is about to build
+#' a prior for as \code{model}.
+#'
+#' A property of the data and the family, fixed for the whole call, so it is
+#' raised once from \code{\link{bnec}} and \code{\link{get_priors}} before any
+#' model is considered, and from \code{\link{bnec_group}} for every level
+#' before any level is fitted, following the placement of
+#' \code{\link{check_inline_boundary}}. \code{\link{bnec_hurdle}} raises it on
+#' the growth component before either component is fitted. \code{amend()} and
+#' \code{update()} call it for the routes that do not come through those entry
+#' points, each with the family its refit uses. It is not called from
+#' \code{\link{check_data}}, which is given whatever family its caller chose:
+#' on the \code{update()} route that is the family read off the new data, not
+#' the one the refit uses. The whole decision is made here, so that a change to
+#' what is done with such a response is made in one place.
+#'
+#' Censoring is not consulted: the response is judged on its recorded values,
+#' because the default priors are built from them. A value left- or
+#' right-censored at a bound of one of these families states either what the
+#' family cannot represent (beyond the bound) or nothing at all (anywhere
+#' within its support). An interval-censored observation whose upper end, the
+#' second variable of \code{cens()}, lies inside the support holds
+#' information the recorded value does not, but \code{check_data()},
+#' \code{response_link_scale()} and \code{define_prior()} read only the
+#' recorded values, so such a response reached the same \code{quantile()}
+#' error as one with no censoring at all when it was let through. It is refused
+#' by name instead. Supplying \code{prior} does not change this: the refusal is
+#' raised before any prior is read.
+#'
+#' @param data A model frame from \code{model.frame()} on a
+#' \code{\link{bayesnecformula}}.
+#' @param family A \code{\link[stats]{family}}, or its name.
+#' @param group A factor with one element per row of \code{data}, or
+#' \code{NULL}. Where supplied, each level is tested separately and every level
+#' refused is named.
+#' @param group_name The name of the grouping column, for the message.
+#' @param subject The subject of the message, where the rows tested are not the
+#' whole response; \code{NULL} names the response column.
+#' @param model The equations the caller is about to fit or build priors for,
+#' or \code{NULL}, which is read as a set holding a curve equation. A set of
+#' constant equations alone is refused only where it cannot be fitted either.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#' @noRd
+check_response_at_bound <- function(data, family, group = NULL,
+                                    group_name = NULL, subject = NULL,
+                                    model = NULL) {
+  state <- response_bound_state(data, family, group)
+  if (is.null(state)) {
+    return(invisible(NULL))
+  }
+  fam_tag <- state$fam_tag
+  if (is.null(subject)) {
+    subject <- paste0("The response \"", state$y_name, "\"")
+  }
+  constant_only <- length(model) > 0 && all(model %in% constant_equations())
+  describe <- function(bound) {
+    if (bound == 1 && state$counted) {
+      "every count equals its number of trials, a proportion of 1"
+    } else if (state$counted) {
+      "every count is 0"
+    } else {
+      paste("every value is", bound)
+    }
+  }
+  side <- function(bound) if (bound == 1) "upper" else "lower"
+  why <- " A response that does not vary identifies no concentration-response"
+  # The remedy depends on whether the constant equation can be fitted at the
+  # bound. Where it can, the message names it, because it is the one equation
+  # that can be; where it cannot, naming it would send the user to a second
+  # refusal. See #419.
+  no_zero <- function(held, it) {
+    paste0(" A beta distribution cannot represent a zero, and bayesnec",
+           " shifts a zero off the boundary by a tenth of the smallest",
+           " positive value,",
+           " which ", held, ", so no equation can be fitted to ", it, ", the",
+           " constant equation ecxflat included.")
+  }
+  use_flat <- paste0(" The constant equation ecxflat, whose mean does not",
+                     " change with concentration, is the only one that can be",
+                     " fitted to it: name it, as in crf(x, \"ecxflat\"), or",
+                     " call bnec(), which fits it alone in place of the",
+                     " equations requested.")
+  if (is.null(group)) {
+    bound <- state$bounds
+    if (is.na(bound)) {
+      return(invisible(NULL))
+    }
+    fits <- constant_fits_bound(fam_tag, bound)
+    if (constant_only && fits) {
+      return(invisible(NULL))
+    }
+    stop(subject, " is at the ", side(bound), " bound of a ", fam_tag,
+         " response in every observation: ", describe(bound), ".", why,
+         " curve, so bayesnec does not fit one to it or derive default priors",
+         " from it.",
+         if (fits) use_flat else no_zero("this response does not have", "it"),
+         call. = FALSE)
+  }
+  bounds <- state$bounds
+  hit <- bounds[!is.na(bounds)]
+  if (constant_only) {
+    # Only the levels the constant equation cannot be fitted to are refused;
+    # bnec_group() fits every other level at a bound with ecxflat alone.
+    hit <- hit[!vapply(hit, function(b) constant_fits_bound(fam_tag, b),
+                       logical(1))]
+  }
+  if (length(hit) == 0) {
+    return(invisible(NULL))
+  }
+  # Refused for the whole call rather than fitting the other levels and
+  # reporting this one as skipped, so that the omission is made by the user and
+  # is visible in their script (D30). Every such level is named at once, so
+  # that one call finds them all.
+  where <- vapply(names(hit), function(lev) {
+    paste0("\"", lev, "\", where ", describe(hit[[lev]]), " (the ",
+           side(hit[[lev]]), " bound)")
+  }, character(1))
+  fits <- all(vapply(hit, function(b) constant_fits_bound(fam_tag, b),
+                     logical(1)))
+  reason <- if (fits) {
+    paste0(why, " curve.")
+  } else {
+    no_zero("these levels do not have", "them")
+  }
+  stop(subject, " is at a bound of a ", fam_tag, " response in every",
+       " observation of ", length(hit), " level(s) of \"", group_name, "\": ",
+       paste(where, collapse = "; "), ".", reason, " No level has been",
+       " fitted. Remove ", if (length(hit) == 1) "that level" else
+         "those levels", " from `data` to fit the others, so that the",
+       " omission is recorded in the call.", call. = FALSE)
+}
+
+#' Fit the constant equation alone to a response with no variation
+#'
+#' A bounded response with every observation at one bound identifies no curve,
+#' and it does identify \code{ecxflat}, whose one parameter is the level of the
+#' response and whose every estimate lies above the tested range. So
+#' \code{\link{bnec}} fits \code{ecxflat} alone in place of the set requested,
+#' whatever that set was, rather than refusing the call as it did under #400
+#' (D31). Decided once, before the model loop, for the reason
+#' \code{\link{check_response_at_bound}} is raised there. The one bound
+#' \code{ecxflat} cannot be fitted at is refused by that function first.
+#'
+#' The requested equations are recorded as excluded, with the reason, so that
+#' \code{\link{bnec_record}} states why the set fitted is not the set asked for.
+#' That is the record #261 keeps for every other equation \code{\link{bnec}}
+#' declines to attempt.
+#'
+#' @param data A model frame.
+#' @param family The validated family.
+#' @param model The equations requested, as read from the formula.
+#' @param report Whether to say so. \code{FALSE} where \code{\link{bnec_group}}
+#' has already said it for the level, before any level was fitted.
+#'
+#' @return \code{NULL} where the response varies, and otherwise a
+#' \code{\link[base]{list}} of \code{model}, the set to fit, and
+#' \code{excluded}, the rows to add to the exclusion record.
+#' @noRd
+constant_fallback <- function(data, family, model, report = TRUE) {
+  state <- response_bound_state(data, family)
+  if (is.null(state) || is.na(state$bounds)) {
+    return(NULL)
+  }
+  # Before the set is replaced. check_models() refuses a name that is no
+  # equation, and it is given ecxflat alone from here, so without this a
+  # misspelt name was recorded as excluded for the bound and the fit went on.
+  check_equation_names(model)
+  check_response_at_bound(data, family, model = constant_equations())
+  flat <- constant_equations()
+  dropped <- setdiff(model, flat)
+  side <- if (state$bounds == 1) "upper" else "lower"
+  reason <- paste0("the response is at the ", side, " bound of a ",
+                   state$fam_tag, " response in every observation, so",
+                   " ecxflat was fitted alone")
+  if (report && length(dropped) > 0) {
+    message("The response \"", state$y_name, "\" is at the ", side,
+            " bound of a ", state$fam_tag, " response in every observation.",
+            " A response that does not vary identifies no",
+            " concentration-response curve, so it is fitted with the constant",
+            " equation ecxflat alone, and the ", length(dropped), " other",
+            " equation(s) requested are not fitted. The fit states that the",
+            " response did not change over the concentrations tested. The",
+            " equations not fitted are recorded; see ?bnec_record.")
+  }
+  list(model = flat,
+       excluded = data.frame(model = dropped,
+                             reason = rep(reason, length(dropped)),
+                             stringsAsFactors = FALSE))
+}
+
+#' The levels of a grouped call that are fitted with the constant equation
+#'
+#' \code{\link{bnec_group}} fits each level with \code{\link{bnec}}, which fits
+#' \code{ecxflat} alone to a level whose response does not vary. The levels are
+#' found and reported here, once and before any level is fitted, so that the
+#' report names them all and is not left to arrive from inside a level loop
+#' that may run in parallel workers, from which a message arrives out of order
+#' or not at all. A level \code{ecxflat} cannot be fitted to either is refused
+#' first, for the whole call, as \code{\link{check_response_at_bound}}
+#' refused every level at a bound under #400.
+#'
+#' @param data The model frame of the whole response.
+#' @param family The validated family.
+#' @param group The grouping factor, one element per row of \code{data}.
+#' @param group_name The name of the grouping column.
+#' @param model The equations the formula requests, or \code{NULL} where they
+#' could not be read. Where they are \code{ecxflat} alone nothing is set aside,
+#' so nothing is reported, as \code{constant_fallback()} reports nothing then.
+#'
+#' @return A \code{\link[base]{character}} vector of the levels at a bound,
+#' possibly empty.
+#' @noRd
+constant_fallback_levels <- function(data, family, group, group_name,
+                                     model = NULL) {
+  if (!is.null(model)) {
+    check_equation_names(model)
+  }
+  check_response_at_bound(data, family, group = group,
+                          group_name = group_name,
+                          model = constant_equations())
+  state <- response_bound_state(data, family, group)
+  if (is.null(state)) {
+    return(character(0))
+  }
+  hit <- state$bounds[!is.na(state$bounds)]
+  if (length(hit) == 0) {
+    return(character(0))
+  }
+  # Silent where ecxflat alone was requested: every level then fits the set
+  # asked for, and there is nothing set aside to explain.
+  if (!is.null(model) && all(model %in% constant_equations())) {
+    return(names(hit))
+  }
+  where <- vapply(names(hit), function(lev) {
+    paste0("\"", lev, "\" (the ", if (hit[[lev]] == 1) "upper" else "lower",
+           " bound)")
+  }, character(1))
+  message("The response \"", state$y_name, "\" is at a bound of a ",
+          state$fam_tag, " response in every observation of ", length(hit),
+          " level(s) of \"", group_name, "\": ", paste(where, collapse = "; "),
+          ". A response that does not vary identifies no",
+          " concentration-response curve, so each such level is fitted with",
+          " the constant equation ecxflat alone, and every other level with",
+          " the equations requested. The equations not fitted are recorded on",
+          " the fit of each such level; see ?bnec_record.")
+  names(hit)
 }
 
 #' Reject a boundary value on a response transformed inside the formula

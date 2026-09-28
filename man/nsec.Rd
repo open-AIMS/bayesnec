@@ -84,6 +84,12 @@ the \code{hormesis_def} argument selected between the control and the
 maximum of the predicted curve and has been removed, because a target
 below the control is crossed exactly once whatever the curve does above it.
 
+Where \code{crf()} transforms the predictor inline, as in
+\code{crf(log(concentration))}, the NSEC is on the transformed scale unless
+\code{xform} is supplied, and a message says so once per call. It names the
+transformation and the \code{xform} that returns the estimate on the
+recorded scale.
+
 The attached \code{ecnsec} attribute is the percent effect at the NSEC,
 defined as \code{\link{ecx}} defines it under \code{type = "absolute"}:
 the decline from the control towards zero. Up to 2.1.3 it was measured
@@ -110,12 +116,13 @@ estimate. And it applies where the prediction grid begins at the control. Where
 \code{x_range} begins at a higher concentration, a draw already at or below
 the reference at the first grid point reached it somewhere below the range
 asked for, which is not identified within that range: such a draw returns
-\code{NA} and is reported with those that never reach the reference.
+\code{NA} and is reported as lying at or below the start of the range.
 
 Where a draw's curve does not reach the reference at any tested concentration
 its NSEC is above the highest concentration in the prediction grid. Such a
-draw returns \code{NA} and is excluded from the summary, which is therefore
-censored above that concentration, and a warning reports how many draws were
+draw returns \code{NA}, keeps its rank in the summary and is given no value,
+so the summary is censored above that concentration, as the \emph{Capping
+and dropping} section describes, and a warning reports how many draws were
 affected. Extending \code{x_range} will estimate it, at the price of reading
 the curve where there are no data.
 

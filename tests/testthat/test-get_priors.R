@@ -407,3 +407,106 @@ test_that("get_priors reports the substitution its priors are built from", {
   expect_false(any(grepl("bnec_record", msgs)))
   expect_true(any(grepl("priors below are derived", msgs)))
 })
+
+test_that("a response at one bound is refused by name, not by quantile() (#400)", {
+  # The route the default-prior audit of #391 reached the defect by: nine
+  # bernoulli cells ended in "missing values and NaN's not allowed if 'na.rm'
+  # is FALSE", raised from inside define_prior().
+  cases <- at_bound_cases()
+  for (nm in names(cases)) {
+    cs <- cases[[nm]]
+    msgs <- character(0)
+    err <- tryCatch(
+      withCallingHandlers(
+        get_priors(cs$formula, data = cs$data, family = cs$family),
+        message = function(m) {
+          msgs <<- c(msgs, conditionMessage(m))
+          invokeRestart("muffleMessage")
+        }
+      ),
+      error = conditionMessage
+    )
+    expect_match(err, paste0("The response \"", cs$column, "\" is at the ",
+                             cs$bound, " bound"), fixed = TRUE, info = nm)
+    expect_false(grepl("na.rm", err, fixed = TRUE), info = nm)
+    # Raised before the substitution report, which for beta at 1 would
+    # otherwise announce a shift to 0.999 that is never made.
+    expect_length(msgs, 0)
+  }
+})
+
+test_that("ecxflat named alone gets its prior at a bound (#419)", {
+  # A curve equation has no prior to give on such a response, and the set
+  # above is refused for that reason. ecxflat has one parameter, the level of
+  # the response, and its prior is built without reaching the NaN of #400:
+  # response_link_scale() shifts the response inside the support first.
+  cases <- at_bound_cases()
+  for (nm in setdiff(names(cases), "beta_zero")) {
+    cs <- cases[[nm]]
+    f <- stats::update(cs$formula, . ~ crf(x, "ecxflat"))
+    for (type in c("uninformative", "regularizing")) {
+      pr <- suppressMessages(
+        get_priors(f, data = cs$data, family = cs$family, prior_type = type)
+      )
+      expect_s3_class(pr, "brmsprior")
+      expect_identical(pr$nlpar, "top", info = paste(nm, type))
+      expect_false(anyNA(pr$prior), info = paste(nm, type))
+      expect_false(any(grepl("NaN|Inf", pr$prior)), info = paste(nm, type))
+    }
+  }
+  # The regularizing entry is placed at the bound the response sits at.
+  one <- suppressMessages(get_priors(
+    alive ~ crf(x, "ecxflat"), data = cases$bernoulli_one$data,
+    family = "bernoulli", prior_type = "regularizing"
+  ))
+  zero <- suppressMessages(get_priors(
+    alive ~ crf(x, "ecxflat"), data = cases$bernoulli_zero$data,
+    family = "bernoulli", prior_type = "regularizing"
+  ))
+  shapes <- function(p) as.numeric(regmatches(p, gregexpr("[0-9.]+", p))[[1]])
+  expect_gt(shapes(one$prior)[1], shapes(one$prior)[2])
+  expect_lt(shapes(zero$prior)[1], shapes(zero$prior)[2])
+  # Beta at 0 cannot be fitted by any equation and is refused by name.
+  bz <- cases$beta_zero
+  expect_error(
+    suppressMessages(get_priors(cover ~ crf(x, "ecxflat"), data = bz$data,
+                                family = bz$family)),
+    "A beta distribution cannot represent a zero", fixed = TRUE
+  )
+  # ecxflat beside a curve equation is refused, and the message names ecxflat.
+  expect_error(
+    get_priors(alive ~ crf(x, c("ecxflat", "nec3param")),
+               data = cases$bernoulli_one$data, family = "bernoulli"),
+    "is the only one that can be fitted to it", fixed = TRUE
+  )
+})
+
+test_that("one observation off the bound still builds priors (#400)", {
+  cases <- at_bound_cases()
+  for (nm in names(cases)) {
+    cs <- cases[[nm]]
+    pr <- suppressMessages(
+      get_priors(cs$formula, data = cs$near, family = cs$family)
+    )
+    expect_named(pr, c("nec3param", "ecx4param"))
+    for (m in names(pr)) {
+      expect_s3_class(pr[[m]], "brmsprior")
+      expect_false(anyNA(pr[[m]]$prior), info = paste(nm, m))
+    }
+  }
+})
+
+test_that("a missing value is refused before the bound is read (#400)", {
+  # The model frame drops an incomplete row. Read before check_complete_cases(),
+  # the bound check saw a response whose only 0 had been dropped with its
+  # missing predictor, and refused it as every value 1.
+  x <- rep(c(0.1, 0.5, 1, 3, 10, 30), each = 5)
+  d <- data.frame(x = x, alive = 1L)
+  d$alive[30] <- 0L
+  d$x[30] <- NA
+  err <- expect_error(
+    get_priors(alive ~ crf(x, "nec3param"), data = d, family = "bernoulli")
+  )
+  expect_match(conditionMessage(err), "row\\(s\\) with missing values")
+  expect_false(grepl("upper bound", conditionMessage(err)))
+})

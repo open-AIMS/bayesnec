@@ -881,8 +881,13 @@ below 1, and `linear_rescale()` then produces `NaN` for every element.
 allowed if 'na.rm' is FALSE", which names neither the column nor the cause. Nine
 of the 5,760 cells reached it, all `bernoulli` and all at the two flattest
 settings, where the true mean is 0.95 at every dose and a draw of 60 or 66
-observations can contain no zero. A user meets it as a failed fit rather than as
-a refusal. Not filed yet.
+observations can contain no zero. A user met it as a failed fit rather than as
+a refusal. It was filed as #400, and since the change for #400 `get_priors()`
+refuses such a response by name before any prior is built: the message names the
+response column and says that every observation is at the upper bound of 1. The
+nine cells are therefore now refused by name rather than lost to the
+`quantile()` error. The audit was not re-run after the change, so the counts in
+this document are those of the run described here.
 
 The flatness rule reports on a design whose lower asymptote is identified,
 wherever the last dose step is wide. Measured above at 0.944 on `log_wide` at
@@ -1206,5 +1211,6 @@ Four rows of the 2,880 report "missing values and NaN's not allowed if 'na.rm'
 is FALSE", on two `bernoulli` cells at `f02` under `crf(log(x))`. They appear in
 both arms of each cell, so they are not the declaration's. Every observation of
 those responses is 1, and `response_link_scale()` then takes
-`max(response[response < 1])` of an empty vector. This is #400 and is not fixed
-here.
+`max(response[response < 1])` of an empty vector. This is #400. Since the
+change for #400 these cells are refused by name, with a message naming the
+response column and the upper bound; this part was not re-run after it.

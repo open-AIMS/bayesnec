@@ -6,6 +6,11 @@ that were rejected.
 
 Written 2026-09-19, from the measurements in #386 and a review of PR #387.
 
+Status, 2026-09-26: complete. All seven phases reached `dev`, the last four
+through PR #409 (`c3824643`), and #386 and its issues are closed. PR #387, whose
+rule phase 2 replaced, closed unmerged on 2026-09-25. The follow-up work is in the
+backlog run, `backlog-run-human.md`.
+
 ---
 
 ## Summary
@@ -148,7 +153,7 @@ Specification §5.4.
 
 ## The order of work
 
-Six phases, one issue each.
+Seven phases, one issue each.
 
 | phase | issue | what it changes |
 |---|---|---|

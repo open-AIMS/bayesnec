@@ -244,13 +244,29 @@ the names, because a position indexes whatever subset the frame was built from,
 which for one level of a `bnec_group()` call is not a row of the data the user
 supplied.
 
+### Model weights are pseudo-BMA
+
+`bayesnec` weights the equations of a model set by pseudo-BMA unless the caller
+names another method in `loo_controls`. `bnec()` sets
+`loo_controls$weights$method = "pseudobma"` when none is given
+(`R/helpers.R:1075`), and every function that assembles a set resolves to the
+same default (`?bnec`, the `loo_controls` argument). Stacking is used only where
+a user asks for it, and `crossed_group_weights()` refuses a set weighted by it,
+because the crossed table of a grouped fit does not factorise under stacking.
+
+Write "model weight", or "pseudo-BMA weight" where the method matters, when
+describing a set's weights. "Stacking weight" names a method the package does
+not use by default, and reads as a claim about how the average was formed. The
+error reached this file and the global one, and from them a vignette figure
+axis and a planning conversation, before RF corrected it on 2026-09-26.
+
 ### Diagnostics against the weight an equation carries
 
 In a model-averaged set every equation is fitted, including ones whose shape
 suits the data badly. Such an equation fails the over-dispersion test whatever
 the data are doing, because the residual variation its curve cannot account for
 is counted as dispersion, and it is often the one the sampler struggles with as
-well. It is given almost no stacking weight for the same reason, so a check it
+well. It is given almost no model weight for the same reason, so a check it
 fails says something about that curve and nothing about the model-averaged
 estimates.
 

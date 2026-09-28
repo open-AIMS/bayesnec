@@ -574,6 +574,142 @@ test_that("autoplot accepts xform without error on both classes", {
 })
 
 
+# ---- model and average on a model set (#120) --------------------------------
+#
+# model names equations of the set and average chooses whether the model
+# average is drawn; all_models, which they replace, is deprecated and maps
+# onto them. The frames compared are the data each layer was given, which is
+# everything ggbnec() draws from.
+
+layers_data <- function(p) lapply(p$layers, function(layer) layer$data)
+
+# The columns ggbnec() reads, for comparing a panel against the plot of the
+# same fit drawn on its own; the facet path adds columns joined from the
+# summary that ggbnec() does not read.
+drawn_columns <- c("x_e", "y_e", "y_ci", "x_r", "y_r", "nec_vals", "nec_labs",
+                   "nec_labs_l", "nec_labs_u", "model", "tag")
+
+facet_models <- function(p) {
+  layers_data(p)[[1]]$model
+}
+
+test_that("all_models = TRUE warns once and draws what model draws", {
+  skip_on_cran()
+  old <- collect_warnings(
+    suppressMessages(autoplot(manec_example, all_models = TRUE))
+  )
+  expect_length(old$warnings, 1)
+  expect_match(old$warnings, "`all_models` is deprecated", fixed = TRUE)
+  new <- suppressMessages(
+    autoplot(manec_example, model = manec_example$success_models,
+             average = FALSE)
+  )
+  expect_identical(layers_data(old$value), layers_data(new))
+  # What all_models = TRUE drew: a facet per equation and no model average.
+  # The column stays character, so facet_wrap() orders the equations
+  # alphabetically, as it did.
+  expect_type(facet_models(new), "character")
+  expect_setequal(unique(facet_models(new)), manec_example$success_models)
+})
+
+test_that("all_models = FALSE warns once and draws the model average alone", {
+  skip_on_cran()
+  old <- collect_warnings(
+    suppressMessages(autoplot(manec_example, all_models = FALSE))
+  )
+  expect_length(old$warnings, 1)
+  default <- suppressMessages(autoplot(manec_example))
+  expect_identical(layers_data(old$value), layers_data(default))
+  expect_identical(unique(facet_models(default)),
+                   "Model averaged predictions")
+})
+
+test_that("model adds a facet per equation after the model average", {
+  skip_on_cran()
+  p <- suppressMessages(autoplot(manec_example, model = "nec4param"))
+  m <- facet_models(p)
+  expect_s3_class(m, "factor")
+  expect_identical(levels(m), c("Model averaged predictions", "nec4param"))
+  expect_setequal(as.character(unique(m)), levels(m))
+  # The model-average facet is the plot of the model average alone.
+  avg <- layers_data(p)[[1]]
+  avg <- avg[avg$model == "Model averaged predictions", drawn_columns]
+  alone <- layers_data(suppressMessages(autoplot(manec_example)))[[1]]
+  alone <- alone[, drawn_columns]
+  rownames(avg) <- rownames(alone) <- NULL
+  avg$model <- as.character(avg$model)
+  expect_identical(avg, alone)
+  # With both equations the model average stays first, and the equations
+  # take the alphabetical order their facets have always had.
+  p2 <- suppressMessages(
+    autoplot(manec_example, model = c("nec4param", "ecx4param"))
+  )
+  expect_identical(levels(facet_models(p2)),
+                   c("Model averaged predictions", "ecx4param", "nec4param"))
+  # One vertical line layer entry per estimate and bound: three per facet.
+  nec_rows <- layers_data(p2)[[which(vapply(p2$layers, function(layer) {
+    inherits(layer$geom, "GeomVline")
+  }, logical(1)))]]
+  expect_equal(nrow(nec_rows), 9)
+})
+
+test_that("average = FALSE draws a named equation as it is drawn alone", {
+  skip_on_cran()
+  p <- suppressMessages(
+    autoplot(manec_example, model = "nec4param", average = FALSE)
+  )
+  expect_identical(unique(facet_models(p)), "nec4param")
+  single <- suppressMessages(autoplot(nec4param))
+  a <- layers_data(p)[[1]][, drawn_columns]
+  b <- layers_data(single)[[1]][, drawn_columns]
+  rownames(a) <- rownames(b) <- NULL
+  expect_identical(a, b)
+})
+
+test_that("multi_facet = FALSE returns a plot per panel, the average first", {
+  skip_on_cran()
+  pdf(NULL)
+  on.exit(dev.off(), add = TRUE)
+  pl <- suppressMessages(
+    autoplot(manec_example, model = c("nec4param", "ecx4param"),
+             multi_facet = FALSE, ask = FALSE)
+  )
+  expect_length(pl, 3)
+  expect_identical(
+    vapply(pl, function(p) unique(as.character(facet_models(p))),
+           character(1)),
+    c("Model averaged predictions", "nec4param", "ecx4param")
+  )
+  # The deprecated call returns the list it returned, one plot per equation
+  # in the order of the set, and warns once.
+  old <- collect_warnings(suppressMessages(
+    autoplot(manec_example, all_models = TRUE, multi_facet = FALSE,
+             ask = FALSE)
+  ))
+  expect_length(old$warnings, 1)
+  expect_identical(
+    vapply(old$value, function(p) unique(facet_models(p)), character(1)),
+    manec_example$success_models
+  )
+})
+
+test_that("autoplot refuses a model outside the set and an empty selection", {
+  skip_on_cran()
+  msg <- tryCatch(autoplot(manec_example, model = c("ecx", "nope")),
+                  error = conditionMessage)
+  expect_match(msg, "not in this set: \"ecx\", \"nope\"", fixed = TRUE)
+  # A group name, which pull_out() would accept, is named as such.
+  expect_match(msg, "\"ecx\" names a group of equations", fixed = TRUE)
+  expect_error(autoplot(manec_example, average = FALSE),
+               "Nothing is selected")
+  expect_error(autoplot(manec_example, model = character(0)),
+               "must be NULL or a character vector")
+  expect_error(autoplot(manec_example, average = NA), "flag")
+  expect_error(autoplot(manec_example, all_models = FALSE, model = NULL),
+               "cannot be combined")
+})
+
+
 # ---- the ECx annotation on an inline-transformed predictor -------------------
 
 # to_axis_scale()'s numerical-inverse branch built a fresh vector, dropping the

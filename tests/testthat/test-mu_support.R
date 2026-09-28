@@ -138,7 +138,8 @@ test_that("no link any accepted family takes falls to the default unintended", {
 
 test_that("the model range table covers every model exactly once", {
   tab <- bayesnec:::model_mu_ranges()
-  expect_setequal(tab$model, models()$all)
+  # Every equation, ecxflat included although it is in no group (#419).
+  expect_setequal(tab$model, bayesnec:::equation_names())
   expect_equal(anyDuplicated(tab$model), 0)
   expect_setequal(names(tab), c("model", "below_zero", "unscaled_excess",
                                "can_exceed_one", "ceiling_at_one",
@@ -660,8 +661,7 @@ test_that("mu_confined_by_pars tests the excess term on every support", {
   }
   # Every equation is decided, and the two functions agree only where the
   # support is the unit interval.
-  expect_setequal(c(models()$all),
-                  model_mu_ranges()$model)
+  expect_setequal(equation_names(), model_mu_ranges()$model)
   beta <- validate_family("Beta")
   for (m in hormesis) {
     expect_equal(ogl_transform_kind(m, beta), "none")
@@ -687,4 +687,27 @@ test_that("group_zero_intercepts names ogl and nothing else", {
     "ogl"
   )
   expect_equal(group_zero_intercepts(NULL, beta), character(0))
+})
+
+test_that("ecxflat is confined as top is, and is not zero-bounded (#419)", {
+  # Its mean is top, so it takes the transform of the equations whose mean
+  # stays inside the support, and a group-level term on it does not raise
+  # adapt_delta. Without a row it fell to "none" and FALSE, the defaults for an
+  # equation the table does not know.
+  tab <- bayesnec:::model_mu_ranges()
+  row <- tab[tab$model == "ecxflat", ]
+  expect_false(any(unlist(row[setdiff(names(row), "model")])))
+  expect_true(bayesnec:::mu_confined_by_pars("ecxflat"))
+  expect_identical(bayesnec:::ogl_transform_kind("ecxflat",
+                                                 validate_family("Beta")),
+                   "logit")
+  expect_identical(bayesnec:::ogl_transform_kind("ecxflat",
+                                                 validate_family("Gamma")),
+                   "log")
+  expect_identical(bayesnec:::ogl_transform_kind("ecxflat", gaussian()),
+                   "none")
+  # The formula agrees: the mean is top whatever the predictor, an infinite
+  # one included, so it can be neither below top nor above it.
+  mus <- eval_mu("ecxflat", data.frame(top = 0.4), c(-Inf, 0, 3, Inf))
+  expect_identical(mus, rep(0.4, 4))
 })

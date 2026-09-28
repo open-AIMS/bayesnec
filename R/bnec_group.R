@@ -202,6 +202,29 @@ bnec_group <- function(formula, data, group_var, family = NULL,
             ". Pass `family` to override.")
   }
   family <- validate_family(family, link_source = link_source)
+  # A level whose every observation is at a bound is fitted with ecxflat alone
+  # by its own bnec() call, and every other level with the set requested (D31,
+  # which replaced the refusal of the whole call D30 placed here). Found and
+  # reported for every level before any level is fitted, and the one bound
+  # ecxflat cannot be fitted at is still refused for the whole call, because
+  # left to the inner bnec() calls it would be reached only after the levels
+  # before it had compiled and sampled, which is the reason check_disp_finite()
+  # is raised above. Placed before the flatness report, which reads the set
+  # each level will fit. See #400 and #419.
+  #
+  # The requested set is read here, before the flatness report reads it below,
+  # so that a name that is no equation is refused before any level is fitted
+  # and a request for ecxflat alone is not reported as set aside.
+  requested_models <- try(get_model_from_formula(formula), silent = TRUE)
+  flat_levels <- constant_fallback_levels(
+    mod_dat, family, grp, group_var,
+    model = if (inherits(requested_models, "try-error")) {
+      NULL
+    } else {
+      requested_models
+    }
+  )
+  dots[[".bayesnec_bound_reported"]] <- TRUE
   # Checked over every level before any of them is fitted. Left to the inner
   # bnec() calls it would report one level at a time, and would reach an
   # affected level only after the levels before it had compiled and sampled --
@@ -212,13 +235,20 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # there cannot make that level's default priors sensitive. A formula the set
   # cannot be read from is one bnec() is about to refuse, so the failure is
   # left to arrive from there and nothing is reported meanwhile.
-  requested_models <- try(get_model_from_formula(formula), silent = TRUE)
   level_sets <- character(0)
   level_survival <- NULL
   if (!inherits(requested_models, "try-error")) {
+    # A level at a bound fits ecxflat alone, so that is its set here: its
+    # default priors read no bot, nec or ec50 row, and it has no lower
+    # asymptote for the declaration below to count.
     level_models <- setNames(lapply(levs, function(level) {
+      level_set <- if (level %in% flat_levels) {
+        constant_equations()
+      } else {
+        requested_models
+      }
       suppressMessages(
-        check_models(requested_models, family,
+        check_models(level_set, family,
                      mod_dat[grp == level, , drop = FALSE])
       )
     }), levs)

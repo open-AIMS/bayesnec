@@ -135,7 +135,9 @@ is descriptive: it says noise is larger at one end of the dose axis.
 mean} — a variance function in the GLM sense, and a statement about the
 measurement process rather than about the dose axis. The functions available,
 on the log link every eligible family gives its dispersion parameter, with
-\code{m} a fixed reference value computed from the response before fitting:
+\code{m} a fixed reference value computed from the response before fitting,
+on the scale of \code{mu} (a count divided by its number of trials or by its
+\code{rate()} denominator):
 }
 
 \tabular{lll}{
@@ -161,6 +163,13 @@ over-dispersion there is remedied by changing family (\code{poisson} to
 observation-level group-level effect. Those are exactly the families the
 \code{\link{dispersion}} diagnostic applies to, so the two are complements
 rather than alternatives.
+
+Of the two-block families, \code{hurdle_gamma} and \code{zero_inflated_beta}
+take a dispersion sub-model on their positive block, which is modelled as
+the \code{Gamma} or \code{Beta} family it is, and \code{m} is computed from
+the positive responses; see \code{\link{bnec}}. \code{hurdle_poisson} has no
+dispersion parameter to model, and \code{hurdle_negbinomial} does not yet
+take a dispersion sub-model.
 
 \bold{What the exponent means depends on the family}, because each family
 already imposes its own mean-variance link. The form above is written for

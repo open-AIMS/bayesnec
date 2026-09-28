@@ -228,3 +228,32 @@ test_that("ecxhormebc5 is declined only where negative x can invalidate mu", {
   gamma_log <- validate_family(Gamma(link = "log"), link_source = "chosen")
   expect_silent(check_models("ecxhormebc5", gamma_log, negative))
 })
+
+test_that("ecxflat is valid by name for every family and in no group (#419)", {
+  # It belongs to no model group in this release, so the validity check reads
+  # every equation rather than the default set, and nothing that lists a group
+  # or the default set returns it.
+  fams <- c("gaussian", "Gamma", "poisson", "negbinomial", "bernoulli",
+            "binomial", "beta_binomial", "Beta", "hurdle_gamma",
+            "zero_inflated_beta", "zero_inflated_poisson")
+  for (fam in fams) {
+    expect_identical(check_models("ecxflat", validate_family(fam)), "ecxflat",
+                     info = fam)
+  }
+  # Kept on a negative predictor, which only the fractional powers refuse.
+  negative <- model.frame(bnf(y ~ crf(x, "ecxflat")),
+                          data.frame(y = c(3, 2, 1), x = c(-1, 0, 1)))
+  expect_identical(check_models("ecxflat", validate_family("gaussian"),
+                                negative), "ecxflat")
+  expect_false("ecxflat" %in% unlist(models(), use.names = FALSE))
+  expect_false("ecxflat" %in% names(models(max_pars = 1e3)))
+  expect_false("ecxflat" %in% names(models(c(0, 1))))
+  expect_true("ecxflat" %in% bayesnec:::equation_names())
+  expect_setequal(setdiff(bayesnec:::equation_names(), mod_groups$all),
+                  "ecxflat")
+  expect_identical(bayesnec:::equation_par_names("ecxflat"), "top")
+  expect_named(show_params("ecxflat")[[1]]$pforms, "top")
+  # A name that is no equation is still refused.
+  expect_error(check_models("ecxflatter", validate_family("gaussian")),
+               "is not a valid model entry")
+})

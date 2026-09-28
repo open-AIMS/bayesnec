@@ -115,11 +115,17 @@ test_that("per-level estimates come back as one row per level", {
   expect_equal(nrow(out), 2)
   expect_setequal(out$level, c("a", "b"))
   # Columns are the names nec() itself returns, not fixed positions -- see the
-  # posterior/prob_vals tests below for why that matters.
-  expect_equal(names(out), c("level", "Q50", "Q2.5", "Q97.5"))
+  # posterior/prob_vals tests below for why that matters. The bound_ columns
+  # hold each entry's censoring mark (#404) and follow the numeric columns,
+  # which keep the positions they had before the marks were added.
+  expect_equal(names(out), c("level", "Q50", "Q2.5", "Q97.5",
+                             "bound_Q50", "bound_Q2.5", "bound_Q97.5"))
   # the same fit at both levels must give the same numbers -- the map must not
   # be reordering or recycling anything
   expect_equal(out$Q50[1], out$Q50[2])
+  # manec_example is identified inside its own grid, so nothing is a bound.
+  expect_true(all(unlist(out[c("bound_Q50", "bound_Q2.5", "bound_Q97.5")]) ==
+                    ""))
 })
 
 # #33 second review: group_estimate_table() read positions 1:3 of whatever the
@@ -143,8 +149,115 @@ test_that("a non-default prob_vals is carried through, not truncated", {
   # Five quantiles, in nec()'s required central/lower/upper order. Reading
   # positions 1:3 dropped the last two without a word.
   out <- nec(gf, prob_vals = c(0.5, 0.05, 0.95, 0.25, 0.75))
-  expect_equal(names(out), c("level", "Q50", "Q5", "Q95", "Q25", "Q75"))
+  q <- c("Q50", "Q5", "Q95", "Q25", "Q75")
+  expect_equal(names(out), c("level", q, paste0("bound_", q)))
   expect_equal(nrow(out), 2)
+})
+
+# #404: the table dropped each level's "censored_summary" record, so a level
+# whose own nec() reported ">= 0.9" came back from nec() on the group as a plain
+# 0.9. The censored level is manec_example re-expanded over a grid ending at
+# 0.9, inside its posterior, as test-censoring.R does; nothing is compiled or
+# sampled. Built once, because expand_manec() predicts every equation over the
+# grid.
+censored_level <- local({
+  fit <- NULL
+  function() {
+    if (is.null(fit)) {
+      fs <- manec_example$mod_fits
+      forms <- lapply(fs, function(z) z$bayesnecformula)
+      x_range <- c(min(fs[["ecx4param"]]$fit$data$x), 0.9)
+      fit <<- bayesnec:::allot_class(
+        suppressMessages(suppressWarnings(bayesnec:::expand_manec(
+          fs, formula = forms, x_range = x_range, resolution = 50
+        ))),
+        c("bayesmanecfit", "bnecfit")
+      )
+    }
+    fit
+  }
+})
+
+# The number and the mark a level's own fit reports, in the form the group
+# table holds them: the numbers as they were, and "" where there is no record.
+own_estimate <- function(e) {
+  bound <- attr(e, "censored_summary")$bound
+  list(values = unname(as.numeric(e)), names = names(e),
+       bound = if (is.null(bound)) rep("", length(e)) else bound)
+}
+
+expect_level_agrees <- function(out, row, e) {
+  own <- own_estimate(e)
+  expect_identical(unname(unlist(out[row, own$names])), own$values)
+  expect_identical(unname(unlist(out[row, paste0("bound_", own$names)])),
+                   own$bound)
+}
+
+test_that("the table marks a censored level as its own fit does", {
+  skip_if(Sys.getenv("NOT_CRAN") == "")
+  cens <- censored_level()
+  gf <- fake_group_fit(list(a = cens, b = manec_example))
+  out <- suppressMessages(suppressWarnings(nec(gf)))
+  own_a <- suppressMessages(suppressWarnings(nec(cens)))
+  own_b <- suppressMessages(suppressWarnings(nec(manec_example)))
+  # The fixture must be censored above, or every mark checked here is empty.
+  expect_true(any(attr(own_a, "censored_summary")$bound == ">="))
+  expect_level_agrees(out, 1, own_a)
+  # An uncensored level is unchanged: its numbers are its own nec(), and none
+  # of its entries is marked.
+  expect_null(attr(own_b, "censored_summary"))
+  expect_level_agrees(out, 2, own_b)
+  # A column survives the subsetting and stacking an attribute would not (D22).
+  expect_identical(out[1, "bound_Q50"],
+                   attr(own_a, "censored_summary")$bound[1])
+  expect_identical(rbind(out, out)$bound_Q97.5, rep(out$bound_Q97.5, 2))
+})
+
+test_that("nsec() and ecx() on the group agree with each level's own fit", {
+  skip_if(Sys.getenv("NOT_CRAN") == "")
+  cens <- censored_level()
+  gf <- fake_group_fit(list(a = cens, b = manec_example))
+  # Above: an ECx50 the curves do not reach before 0.9.
+  x_top <- c(min(manec_example$mod_fits[[1]]$fit$data$x), 0.9)
+  out <- suppressWarnings(ecx(gf, ecx_val = 50, x_range = x_top))
+  for (i in 1:2) {
+    own <- suppressWarnings(ecx(gf$fits[[i]], ecx_val = 50, x_range = x_top))
+    expect_level_agrees(out, i, own)
+  }
+  expect_true(any(out$bound_Q50 == ">="))
+  # Below: a grid starting at 2.5 leaves the crossings before its foot, so
+  # the marks are "<=" rather than ">=".
+  out <- suppressWarnings(nsec(gf, x_range = c(2.5, 3.2), resolution = 50))
+  for (i in 1:2) {
+    own <- suppressWarnings(nsec(gf$fits[[i]], x_range = c(2.5, 3.2),
+                                 resolution = 50))
+    expect_level_agrees(out, i, own)
+  }
+  expect_true(any(out$bound_Q50 == "<="))
+  expect_false(any(unlist(out[grep("^bound_", names(out))]) == ">="))
+})
+
+test_that("the marks are each record's bound vector, and empty without one", {
+  plain <- c(Q50 = 1.2, Q2.5 = 0.5, Q97.5 = 1.4)
+  marked <- c(Q50 = 0.9, Q2.5 = 0.5, Q97.5 = 0.9)
+  attr(marked, "censored_summary") <- list(bound = c(">=", "", ">="))
+  out <- bayesnec:::estimate_marks(list(marked, plain), names(plain),
+                                   c("a", "b"), "nec")
+  expect_identical(names(out), c("bound_Q50", "bound_Q2.5", "bound_Q97.5"))
+  expect_identical(unlist(out[1, ], use.names = FALSE), c(">=", "", ">="))
+  expect_identical(unlist(out[2, ], use.names = FALSE), rep("", 3))
+  expect_type(out$bound_Q50, "character")
+})
+
+test_that("a record that cannot be aligned with the entries is refused", {
+  # summarise_censored() writes one mark per entry, so this is a guard against a
+  # record built elsewhere, not a path a fit reaches.
+  e <- c(Q50 = 0.9, Q2.5 = 0.5, Q97.5 = 0.9)
+  attr(e, "censored_summary") <- list(bound = c(">=", ""))
+  expect_error(
+    bayesnec:::estimate_marks(list(e), names(e), "a", "nec"),
+    "marks 2 entries and its nec estimate has 3"
+  )
 })
 
 test_that("printing reports the shared family and the per-level model sets", {
@@ -154,6 +267,38 @@ test_that("printing reports the shared family and the per-level model sets", {
   expect_true(any(grepl("site", out)))
   # the family is shared, so it is reported once rather than per level
   expect_equal(sum(grepl("family", out)), 1)
+})
+
+test_that("plot() of a group fit gives the all_models warning once (#120)", {
+  # plot.bayesnecgroupfit() calls plot() once per level, each of which maps
+  # the deprecated all_models onto its own set and would warn. The warning
+  # belongs to the caller's one call. The panel labels are read off a mocked
+  # legend() to show that every level still drew every equation of its set.
+  skip_on_cran()
+  gf <- fake_group_fit(list(a = manec_example, b = manec_example,
+                            c = manec_example))
+  labels <- character()
+  local_mocked_bindings(
+    legend = function(..., legend = NULL) {
+      labels <<- c(labels, as.character(legend))
+    },
+    .package = "bayesnec"
+  )
+  pdf(NULL)
+  on.exit(dev.off(), add = TRUE)
+  first <- collect_warnings(plot(gf, all_models = TRUE))
+  expect_length(first$warnings, 1)
+  expect_match(first$warnings, "`all_models` is deprecated", fixed = TRUE)
+  for (m in manec_example$success_models) {
+    expect_equal(sum(labels == m), 3)
+  }
+  # The muffling lasts one call: the next call warns again, once.
+  second <- collect_warnings(plot(gf, all_models = FALSE))
+  expect_length(second$warnings, 1)
+  # And the replacement arguments reach every level without a warning.
+  labels <- character()
+  expect_silent(plot(gf, model = "nec4param", average = FALSE))
+  expect_equal(sum(labels == "nec4param"), 3)
 })
 
 # #33 review finding: the outer-product identity holds for pseudo-BMA only, and
@@ -444,4 +589,96 @@ test_that("bnec_group resolves a dot argument the way do.call will (#394)", {
   expect_true(bayesnec:::dots_arg(list(), "asymptote_observed", TRUE))
   expect_true(bayesnec:::dots_arg(list(chains = 2), "asymptote_observed",
                                   TRUE))
+})
+
+test_that("a level at a bound is fitted with ecxflat, the others as asked (#419)", {
+  # D31 replaced D30's refusal of the whole call: the level whose response does
+  # not vary is fitted with ecxflat alone by its own bnec() call, and every
+  # other level with the set requested. bnec_group() names the level once,
+  # before any level is fitted, and marks the level calls so that bnec() does
+  # not say it again. The level fits are mocked: what is asserted is the
+  # dispatch, and bnec()'s substitution is asserted in test-bnec.R on a fit.
+  x <- rep(c(0.1, 0.5, 1, 3, 10, 30), each = 5)
+  a <- rep(1L, length(x))
+  a[x == max(x)] <- c(0L, 0L, 1L, 0L, 1L)
+  d <- data.frame(x = rep(x, 2), alive = c(a, rep(1L, length(x))),
+                  site = rep(c("a", "b"), each = length(x)))
+  seen <- list()
+  local_mocked_bindings(
+    bnec = function(formula, data, ...) {
+      seen[[length(seen) + 1L]] <<- list(
+        rows = nrow(data), all_one = all(data$alive == 1L),
+        reported = isTRUE(list(...)[[".bayesnec_bound_reported"]])
+      )
+      manec_example
+    },
+    .package = "bayesnec"
+  )
+  msgs <- character(0)
+  fit <- withCallingHandlers(
+    bnec_group(alive ~ crf(x, c("nec3param", "ecx4param")), d,
+               group_var = "site", family = "bernoulli"),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_s3_class(fit, "bayesnecgroupfit")
+  expect_length(seen, 2)
+  expect_false(seen[[1]]$all_one)
+  expect_true(seen[[2]]$all_one)
+  expect_true(all(vapply(seen, `[[`, logical(1), "reported")))
+  report <- grep("fitted with the constant equation ecxflat alone", msgs,
+                 fixed = TRUE, value = TRUE)
+  expect_length(report, 1)
+  expect_match(report, "1 level(s) of \"site\": \"b\" (the upper bound)",
+               fixed = TRUE)
+  # Said before the first level is fitted.
+  expect_lt(which(msgs == report),
+            min(grep("Fitting level", msgs, fixed = TRUE)))
+})
+
+test_that("a beta level at 0 still refuses the whole call before any level (#419)", {
+  # ecxflat cannot be fitted to a beta response of 0 throughout: its zeros are
+  # shifted off the boundary by a tenth of the smallest positive value, and
+  # there is none. So that level refuses the whole call, as #400 did for every
+  # level at a bound, before any level is fitted.
+  x <- rep(c(0.1, 0.5, 1, 3, 10, 30), each = 5)
+  d <- data.frame(x = rep(x, 2),
+                  cover = c(seq(0.9, 0.2, length.out = length(x)),
+                            rep(0, length(x))),
+                  site = rep(c("a", "b"), each = length(x)))
+  calls <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      calls <<- calls + 1L
+      stop("level fit should not start")
+    },
+    .package = "bayesnec"
+  )
+  err <- tryCatch(
+    suppressMessages(
+      bnec_group(cover ~ crf(x, c("nec3param", "ecx4param")), d,
+                 group_var = "site", family = "Beta")
+    ),
+    error = conditionMessage
+  )
+  expect_match(err, "1 level(s) of \"site\": \"b\", where every value is 0",
+               fixed = TRUE)
+  expect_match(err, "Remove that level from `data`", fixed = TRUE)
+  expect_identical(calls, 0L)
+})
+
+test_that("the group tables hold a level fitted with a single equation (#419)", {
+  # A level fitted with ecxflat alone is a bayesnecfit among bayesmanecfits.
+  # The crossed weights give it weight 1 on its one equation and take the
+  # diagonal over the equations every level fitted; the nsec() table reads one
+  # row per level whatever each level fitted. ecx4param stands in for the
+  # single-equation level, which needs no fit.
+  g <- fake_group_fit(list(a = manec_example, b = ecx4param))
+  cw <- crossed_group_weights(g)
+  expect_identical(cw$per_level$b, c(ecx4param = 1))
+  expect_identical(cw$common_models, "ecx4param")
+  tab <- suppressWarnings(suppressMessages(nsec(g)))
+  expect_identical(tab$level, c("a", "b"))
 })

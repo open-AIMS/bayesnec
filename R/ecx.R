@@ -80,6 +80,12 @@
 #' Where the curve does not reach the target anywhere in the predictor range
 #' the ECx is not identified and \code{NA} is returned, with a warning
 #' reporting how many draws were affected.
+#'
+#' Where \code{crf()} transforms the predictor inline, as in
+#' \code{crf(log(concentration))}, the ECx is on the transformed scale unless
+#' \code{xform} is supplied, and a message says so once per call. It names the
+#' transformation and the \code{xform} that returns the estimate on the
+#' recorded scale.
 #' 
 #' Calls to functions \code{\link{ecx}} and \code{\link{nsec}} and
 #' \code{\link{compare_fitted}} do not require the same level of flexibility
@@ -222,6 +228,9 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
     stop("Supplied ecx_val is not in the required range. ",
          "Please supply a percentage value greater than 0.", call. = FALSE)
   }
+  # Once for the call. See report_fitted_scale().
+  quiet <- report_fitted_scale(object, xform, "ecx")
+  on.exit(options(quiet), add = TRUE)
   # The refusal that stood here rejected an absolute ECx for a gaussian
   # response fitted without a bot parameter, on the grounds that the curve
   # cannot reach 0. It is removed with #206: absolute measures towards 0
@@ -377,6 +386,9 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 200,
   # once for the set and once more for every equation in it. See D15 ruling 8.
   warned <- options(bayesnec.relative_warned = TRUE)
   on.exit(options(warned), add = TRUE)
+  # The scale message likewise, by the same device. See report_fitted_scale().
+  quiet <- report_fitted_scale(object, xform, "ecx")
+  on.exit(options(quiet), add = TRUE)
   sample_size <- object$sample_size
   # The same weighted index every other quantity on this object uses, rather
   # than a fresh unseeded sample() here. Without it a model-averaged ECx was a

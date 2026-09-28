@@ -2599,22 +2599,24 @@ test_that("a mixed model set is reported under the declaration (#394)", {
   bdat <- stats::model.frame(bnf(y ~ crf(x, c("nec3param", "nec4param"))),
                              data = d)
   fam <- validate_family("gaussian")
-  expect_message(
-    bayesnec:::check_asymptote_declaration(
-      bdat, fam, c("nec3param", "nec4param"), asymptote_observed = FALSE),
-    "mod_groups\\$bot_free"
-  )
   msg <- tryCatch(
     bayesnec:::check_asymptote_declaration(
       bdat, fam, c("nec3param", "nec4param"), asymptote_observed = FALSE),
     message = conditionMessage)
-  expect_match(msg, "no lower asymptote to estimate", fixed = TRUE)
-  expect_match(msg, "if the response can reach zero", fixed = TRUE)
+  expect_identical(
+    msg,
+    paste0(
+      "This set mixes equations that estimate a lower asymptote with ones that",
+      " have no lower asymptote to estimate. With the asymptote unobserved the",
+      " fit cannot distinguish them. Use `model = \"zero_bounded\"` if the",
+      " response can reach zero for this endpoint; otherwise, exclude the",
+      " equations in `models()$bot_free`.\n"
+    )
+  )
   # neclin, neclinhorme and ecxlin decay by subtraction and are unbounded
   # below, so the report must not claim that every bot_free equation falls to
   # zero. All three are kept for a gaussian family.
   expect_false(grepl("falls to zero", msg, fixed = TRUE))
-  expect_match(msg, "or away from it if it cannot", fixed = TRUE)
   # A set on one side of the divide says nothing, and neither does the default.
   expect_silent(bayesnec:::check_asymptote_declaration(
     bdat, fam, c("nec3param", "ecxexp"), asymptote_observed = FALSE))
@@ -2826,10 +2828,10 @@ test_that("a complete supplied bot prior is not refused (#394)", {
 
 test_that("a supplied prior does not silence the mixed-set report (#394)", {
   # Whether a set mixes equations that estimate a lower asymptote with ones
-  # that assert the response reaches zero is a property of the set and of the
-  # design. Supplying a bot prior does not make the region that would separate
-  # them observed, so the gate that suppresses the refusals must not reach the
-  # report.
+  # that have no lower asymptote to estimate is a property of the set and of
+  # the design. Supplying a bot prior does not make the region that would
+  # separate them observed, so the gate that suppresses the refusals must not
+  # reach the report.
   d <- incomplete_design(0.36, "gaussian")
   fam <- validate_family("gaussian")
   bdat <- stats::model.frame(bnf(y ~ crf(x, c("nec3param", "nec4param"))),
@@ -2840,7 +2842,7 @@ test_that("a supplied prior does not silence the mixed-set report (#394)", {
     bayesnec:::check_asymptote_declaration(
       bdat, fam, c("nec3param", "nec4param"), asymptote_observed = FALSE,
       prior = complete),
-    "mod_groups\\$bot_free")
+    "model = \"zero_bounded\"", fixed = TRUE)
   # And it still raises no refusal, which is what the gate is for.
   expect_no_error(suppressMessages(bayesnec:::check_asymptote_declaration(
     bdat, fam, c("nec3param", "nec4param"), asymptote_observed = FALSE,

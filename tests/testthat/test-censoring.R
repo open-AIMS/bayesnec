@@ -554,6 +554,281 @@ test_that("the plot annotation marks a censored estimate", {
   expect_false(any(grepl("^>=|^<=", plain$nec_labs[!is.na(plain$nec_labs)])))
 })
 
+# ---- #417, the annotation under a decreasing map -----------------------------
+
+# The packaged nec4param fit and model set, re-expanded over grids that end
+# inside their posteriors, so nothing is compiled or sampled. Each accessor
+# builds once per file.
+#
+# Ending at 1.5 puts 14 of nec4param's 100 NEC draws above the grid, and 12 of
+# the model average's, so only the upper limit is a bound: the case where the
+# two interval entries can be told apart after a reversal. The ECx call's grid
+# ends at 1.7, where 32 of nec4param's relative EC10 draws lie above it. Under
+# an explicit xform the fit's own grid decides only the direction of the map,
+# so the model set is built once, on the NEC grid. The automatic inverse clamps
+# anything beyond the fit's grid to its end, so the single fit that test uses
+# is built on the ECx grid as well. Expanding the model set takes about ten
+# seconds, and its summary(), which plot() calls, about as long again.
+reversal_x_foot <- function() {
+  min(manec_example$mod_fits[["nec4param"]]$fit$data$x)
+}
+reversal_top <- c(nec = 1.5, ecx = 1.7)
+reversal_ecx_args <- function() {
+  list(ecx_val = 10, type = "relative",
+       x_range = c(reversal_x_foot(), reversal_top[["ecx"]]), resolution = 50)
+}
+
+reversal_fit <- local({
+  cached <- list()
+  function(which = c("nec", "ecx")) {
+    which <- match.arg(which)
+    if (is.null(cached[[which]])) {
+      f <- manec_example$mod_fits[["nec4param"]]
+      cached[[which]] <<- suppressMessages(suppressWarnings(
+        bayesnec:::expand_and_assign_nec(
+          f, f$bayesnecformula, model = "nec4param",
+          x_range = c(reversal_x_foot(), reversal_top[[which]]),
+          resolution = 50
+        )
+      ))
+    }
+    cached[[which]]
+  }
+})
+
+reversal_manec <- local({
+  cached <- NULL
+  function() {
+    if (is.null(cached)) {
+      fs <- manec_example$mod_fits
+      forms <- lapply(fs, function(z) z$bayesnecformula)
+      m <- suppressMessages(suppressWarnings(expand_manec(
+        fs, formula = forms,
+        x_range = c(reversal_x_foot(), reversal_top[["nec"]]),
+        resolution = 50
+      )))
+      cached <<- bayesnec:::allot_class(m, c("bayesmanecfit", "bnecfit"))
+    }
+    cached
+  }
+})
+
+negate <- function(z) -z
+
+# A stored fit relabelled as fitted on crf(I(-x)), its stored estimate put on
+# that scale draw by draw. I(-x) rather than -x, because inside a formula a bare
+# minus is the operator that removes a term, so model.frame() keeps x as it is
+# and the predictor is not reported as transformed. ecx() reads the formula
+# when it maps its search onto the fitted scale, so its estimates come out
+# negated with no further change.
+negated_fit <- function(fit) {
+  fit$ne <- suppressMessages(suppressWarnings(nec(fit, xform = negate)))
+  fit$bayesnecformula <- bayesnecformula(y ~ crf(I(-x), model = "nec4param"))
+  fit
+}
+
+negated_manec <- function(m) {
+  m$w_ne <- suppressMessages(suppressWarnings(nec(m, xform = negate)))
+  m$mod_fits[[1]]$bayesnecformula <- bayesnecformula(
+    stats::as.formula(paste0("y ~ crf(I(-x), model = \"",
+                             names(m$mod_fits)[1], "\")"))
+  )
+  m
+}
+
+# The three labels of one annotation, estimate first.
+annotation_labels <- function(d, what = "nec") {
+  cols <- paste0(what, c("_labs", "_labs_l", "_labs_u"))
+  vapply(cols, function(n) unique(stats::na.omit(d[[n]])), character(1),
+         USE.NAMES = FALSE)
+}
+
+# What x -> -x must make of labels on the recorded scale: each number negated,
+# each mark reversed, and the two interval entries exchanged. The annotation
+# remaps the stored summary rather than summarising the draws again, so this is
+# exact, where comparing with nec(fit, xform = negate) is not: with 100 draws a
+# censored median is a type 1 quantile, and the median of -x is then the
+# negated 51st draw rather than the 50th.
+reflected_labels <- function(labs) {
+  reflect <- function(l) {
+    if (startsWith(l, ">=")) {
+      return(paste0("<=-", substring(l, 3)))
+    }
+    if (startsWith(l, "<=")) {
+      return(paste0(">=-", substring(l, 3)))
+    }
+    paste0("-", l)
+  }
+  vapply(labs[c(1, 3, 2)], reflect, character(1), USE.NAMES = FALSE)
+}
+
+annotation_frame <- function(obj, ...) {
+  suppressMessages(suppressWarnings(ggbnec_data(obj, ...)))
+}
+
+annotation_frame_ecx <- function(obj, ...) {
+  do.call(annotation_frame,
+          c(list(obj, add_nec = FALSE, add_ecx = TRUE, ...),
+            reversal_ecx_args()))
+}
+
+test_that("a bound above the grid is labelled as below it once negated", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # The reproduction in #417: every NEC draw lies above a grid ending at 0.9,
+  # so all three entries are the bound, and the negated axis puts it at the
+  # foot. The release labelled all three ">=-0.90".
+  f <- manec_example$mod_fits[["nec4param"]]
+  fit <- suppressMessages(suppressWarnings(
+    bayesnec:::expand_and_assign_nec(
+      f, f$bayesnecformula, model = "nec4param",
+      x_range = c(reversal_x_foot(), 0.9), resolution = 50
+    )
+  ))
+  expect_identical(annotation_labels(annotation_frame(fit, xform = negate)),
+                   rep("<=-0.90", 3))
+})
+
+test_that("a decreasing xform reverses the NEC annotation", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  for (obj in list(reversal_fit("nec"), reversal_manec())) {
+    plain <- annotation_labels(annotation_frame(obj))
+    expect_match(plain[3], "^>=")
+    negated <- annotation_frame(obj, xform = negate)
+    expect_identical(annotation_labels(negated), reflected_labels(plain))
+    # The lower limit is the bound now, and it is the smaller number.
+    expect_match(annotation_labels(negated)[2], "^<=")
+    vals <- negated$nec_vals[!is.na(negated$nec_vals)]
+    expect_lt(vals[2], vals[3])
+  }
+})
+
+test_that("a decreasing xform reverses the ECx annotation", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  for (obj in list(reversal_fit("nec"), reversal_manec())) {
+    plain <- annotation_labels(annotation_frame_ecx(obj), "ecx")
+    expect_match(plain[3], "^>=")
+    negated <- annotation_frame_ecx(obj, xform = negate)
+    expect_identical(annotation_labels(negated, "ecx"),
+                     reflected_labels(plain))
+    vals <- negated$ecx_vals[!is.na(negated$ecx_vals)]
+    expect_lt(vals[2], vals[3])
+  }
+})
+
+test_that("the inverse of a decreasing crf() term restores the annotation", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # No xform: the estimate is on the negated scale and is inverted on the grid
+  # for the axis, which is drawn on the recorded one. The interval entries and
+  # their marks must come back as the untransformed fit has them. The estimate
+  # is compared for its mark only, for the type 1 reason given above.
+  pairs <- list(
+    list(plain = annotation_labels(annotation_frame(reversal_fit("nec"))),
+         inverted = annotation_labels(
+           annotation_frame(negated_fit(reversal_fit("nec"))))),
+    list(plain = annotation_labels(annotation_frame(reversal_manec())),
+         inverted = annotation_labels(
+           annotation_frame(negated_manec(reversal_manec())))),
+    list(plain = annotation_labels(
+           annotation_frame_ecx(reversal_fit("ecx")), "ecx"),
+         inverted = annotation_labels(
+           annotation_frame_ecx(negated_fit(reversal_fit("ecx"))), "ecx"))
+  )
+  for (p in pairs) {
+    expect_identical(p$inverted[2:3], p$plain[2:3])
+    expect_match(p$inverted[3], "^>=")
+    expect_no_match(p$inverted[1], "^[<>]=")
+  }
+})
+
+test_that("identity and increasing maps leave the annotation as it was", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  fit <- reversal_fit("nec")
+  plain <- annotation_labels(annotation_frame(fit))
+  expect_identical(plain[c(1, 2)],
+                   unname(bayesnec:::rounded(fit$ne[c(1, 2)], 2)))
+  expect_identical(plain[3], paste0(">=", bayesnec:::rounded(fit$ne[[3]], 2)))
+  doubled <- annotation_labels(annotation_frame(fit, xform = function(z) z * 2))
+  expect_identical(doubled[3],
+                   paste0(">=", bayesnec:::rounded(fit$ne[[3]] * 2, 2)))
+  expect_no_match(doubled[1:2], "^[<>]=")
+})
+
+test_that("the annotation marks what nec() marks at a whole n times p", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # A grid ending between the 50th and 51st of nec4param's 100 NEC draws
+  # leaves exactly 50 above it. 100 * 0.5 is whole, so the median is the 50th
+  # draw: identified on the recorded scale, and censored once the draws are
+  # negated, where the 50 beyond the range are the lowest. Reversing the marks
+  # where they stood left the negated estimate unmarked.
+  f <- manec_example$mod_fits[["nec4param"]]
+  ranked <- sort(nec4param$ne_posterior)
+  fit <- suppressMessages(suppressWarnings(
+    bayesnec:::expand_and_assign_nec(
+      f, f$bayesnecformula, model = "nec4param",
+      x_range = c(reversal_x_foot(), mean(ranked[50:51])), resolution = 50
+    )
+  ))
+  expect_identical(attr(fit$ne, "censored_summary")$n_above, 50L)
+  per_draw <- suppressMessages(suppressWarnings(nec(fit, xform = negate)))
+  per_draw_marks <- attr(per_draw, "censored_summary")$bound
+  expect_identical(per_draw_marks[1], "<=")
+  labels <- annotation_labels(annotation_frame(fit, xform = negate))
+  expect_identical(regmatches(labels, regexpr("^([<>]=)?", labels)),
+                   per_draw_marks)
+})
+
+test_that("the base plot legend takes the same reversal", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # plot() returns nothing, so the legend text is read off a mocked legend().
+  legend_text <- function(obj, ...) {
+    got <- NULL
+    local_mocked_bindings(
+      legend = function(x, y = NULL, legend, ...) got <<- legend,
+      .package = "bayesnec"
+    )
+    grDevices::pdf(NULL)
+    on.exit(grDevices::dev.off(), add = TRUE)
+    suppressMessages(suppressWarnings(plot(obj, ...)))
+    got
+  }
+  fit <- reversal_fit("nec")
+  plain <- legend_text(fit)
+  expect_match(plain, "->= 1.5)", fixed = TRUE)
+  # lxform relabels the axis, and a decreasing one is remapped by the same
+  # rule: negating the axis and then its labels gives the plain legend back.
+  # Applying lxform to the numbers alone left "<=" beside 1.5. Before #417
+  # this pair was right by accident, the marks reversed by neither map, which
+  # is why the negated axis alone is asserted too.
+  expect_identical(legend_text(fit, xform = negate, lxform = negate), plain)
+  # The model-set method has its own copy of the legend code. Two calls, not
+  # three, because each one spends about ten seconds in summary().
+  for (obj in list(fit, reversal_manec())) {
+    negated <- legend_text(obj, xform = negate)
+    expect_match(negated, "(<= -1.5--", fixed = TRUE)
+    expect_no_match(negated, ">=", fixed = TRUE)
+  }
+  relabelled <- legend_text(reversal_manec(), xform = negate, lxform = negate)
+  expect_match(relabelled, "->= 1.5)", fixed = TRUE)
+  expect_no_match(relabelled, "<=", fixed = TRUE)
+  inverted <- legend_text(negated_fit(reversal_fit("nec")))
+  expect_match(inverted, ">= 1.5)", fixed = TRUE)
+  expect_no_match(inverted, "<=", fixed = TRUE)
+})
+
 test_that("a hurdle fit with one block censored reports the other block", {
   # Specification 4.11's hurdle case, on a mock rather than a fit: no packaged
   # two-block fit exists and compiling one for this costs minutes. The growth
@@ -622,4 +897,214 @@ test_that("a hurdle fit censored in both blocks stays censored", {
   expect_identical(cs$n_above, 1L)
   expect_equal(cs$upper, 10)
   expect_true(any(nzchar(cs$bound)))
+})
+
+# The combined hurdle threshold across unequal prediction ranges (#415, D20).
+# Growth is fitted to survivors only, so its grid can stop short of the survival
+# grid, and a component draw known only to exceed its own limit cannot be
+# compared with an identified draw of the other component above that limit.
+# Structural fixtures throughout: the combination reads only the stored
+# posteriors and their records.
+hurdle_necfit <- function(post, cens) {
+  out <- structure(list(model = "nec3param", ne_type = "NEC",
+                        ne_posterior = post,
+                        fit = list(family = list(family = "gaussian"))),
+                   class = c("bayesnecfit", "bnecfit"))
+  attr(out$ne_posterior, "censored") <- cens
+  out
+}
+hurdle_of <- function(growth, survival) {
+  structure(
+    list(growth = growth, survival = survival,
+         data = data.frame(x = 1:4, y = c(2, 1, 0, 0)),
+         formula = bnf(y ~ crf(x, "nec3param")), y_var = "y",
+         n_exposed = 4L, n_dead = 2L),
+    class = c("bayesnechurdlefit", "bnecfit")
+  )
+}
+# The fixture in #415: growth draws of 12 known only to exceed 10, survival
+# draws identified at `s_value` within its range of 0 to 40.
+issue_415_hurdle <- function(s_value) {
+  hurdle_of(
+    hurdle_necfit(rep(12, 4), cens_record(rep(TRUE, 4), logical(4))),
+    hurdle_necfit(rep(s_value, 4), cens_record(logical(4), logical(4),
+                                               upper = 40))
+  )
+}
+
+test_that("a threshold above the other component's limit is not identified", {
+  obj <- issue_415_hurdle(20)
+  est <- suppressWarnings(nec(obj))
+  cs <- attr(est, "censored_summary")
+  # The minimum of a draw above 10 and a draw at 20 lies between the two. The
+  # release reported 20 as the median and both limits, with no mark.
+  expect_false(any(as.numeric(est) == 20))
+  expect_identical(cs$bound, c(">=", ">=", ">="))
+  expect_equal(cs$upper, 10)
+  expect_identical(cs$n_above, 4L)
+  post <- suppressWarnings(nec(obj, posterior = TRUE))
+  expect_true(all(is.na(post)))
+  expect_identical(attr(post, "censored")$above, rep(TRUE, 4))
+  expect_warning(nec(obj), "not identified for 4 of 4 draws")
+})
+
+test_that("a threshold at or below the other component's limit is kept", {
+  est <- nec(issue_415_hurdle(5))
+  expect_equal(as.numeric(est), c(5, 5, 5))
+  expect_null(attr(est, "censored_summary"))
+  # A value at the limit itself is the minimum whatever the censored draw is,
+  # so it is identified too.
+  est_at <- nec(issue_415_hurdle(10))
+  expect_equal(as.numeric(est_at), c(10, 10, 10))
+  expect_null(attr(est_at, "censored_summary"))
+})
+
+test_that("the combined threshold does not depend on component order", {
+  g <- c(NA_real_, NA_real_, NA_real_, 3, NA_real_, 7, 9)
+  attr(g, "censored") <- cens_record(
+    above = c(TRUE, TRUE, FALSE, FALSE, TRUE, FALSE, FALSE),
+    below = c(FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE)
+  )
+  s <- c(20, 5, 20, NA_real_, NA_real_, NA_real_, 30)
+  attr(s, "censored") <- cens_record(
+    above = c(FALSE, FALSE, FALSE, TRUE, TRUE, FALSE, FALSE),
+    below = c(FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE),
+    upper = 40
+  )
+  gs <- bayesnec:::combine_censored_min(g, s, 7)
+  sg <- bayesnec:::combine_censored_min(s, g, 7)
+  expect_identical(gs, sg)
+  # Censoring at both ends in one posterior. Draw by draw: above 10 against
+  # 20; above 10 against 5; below 0 against 20; 3 against above 40; above
+  # both limits; 7 against below 0; 9 against 30.
+  expect_equal(gs$values, c(NA, 5, NA, 3, NA, NA, 9))
+  expect_identical(gs$censored$above,
+                   c(TRUE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE))
+  expect_identical(gs$censored$below,
+                   c(FALSE, FALSE, TRUE, FALSE, FALSE, TRUE, FALSE))
+  expect_equal(c(gs$censored$lower, gs$censored$upper), c(0, 10))
+  # And through the public method, with the components exchanged.
+  obj <- issue_415_hurdle(20)
+  swapped <- hurdle_of(obj$survival, obj$growth)
+  expect_identical(suppressWarnings(nec(swapped)),
+                   suppressWarnings(nec(obj)))
+})
+
+test_that("the shorter range bounds the combination in either direction", {
+  # Survival's range is the shorter one here, the reverse of the usual case.
+  # Survival known only to exceed 10 against growth identified at 20 and at 8.
+  g <- c(20, 8)
+  attr(g, "censored") <- cens_record(logical(2), logical(2), upper = 40)
+  s <- c(NA_real_, NA_real_)
+  attr(s, "censored") <- cens_record(c(TRUE, TRUE), logical(2))
+  out <- bayesnec:::combine_censored_min(g, s, 2)
+  expect_equal(out$values, c(NA, 8))
+  expect_identical(out$censored$above, c(TRUE, FALSE))
+  # Both censored above, at unequal limits: the minimum exceeds the smaller
+  # limit, which is the one bound true of it.
+  attr(g, "censored") <- cens_record(c(TRUE, TRUE), logical(2), upper = 40)
+  both <- bayesnec:::combine_censored_min(g, s, 2)
+  expect_identical(both$censored$above, c(TRUE, TRUE))
+  expect_equal(both$censored$upper, 10)
+})
+
+test_that("a draw below the foot of its range stays below it", {
+  # The below-range branch is unchanged by #415: a draw below the foot of its
+  # own range puts the minimum below that foot whatever the other draw is, so
+  # it is marked below and the recorded limit is the larger of the two feet.
+  # Per draw only: where the feet differ, the summary of such a posterior can
+  # misrank an identified value below the larger foot, which is #421.
+  g <- c(NA_real_, NA_real_, 7)
+  attr(g, "censored") <- cens_record(logical(3), c(TRUE, TRUE, FALSE),
+                                     lower = 5)
+  attr(attr(g, "censored"), "swapped") <- TRUE
+  s <- c(8, 3, NA_real_)
+  attr(s, "censored") <- cens_record(logical(3), c(FALSE, FALSE, TRUE))
+  attr(attr(s, "censored"), "swapped") <- TRUE
+  out <- bayesnec:::combine_censored_min(g, s, 3)
+  expect_true(all(is.na(out$values)))
+  expect_identical(out$censored$below, c(TRUE, TRUE, TRUE))
+  expect_false(any(out$censored$above))
+  expect_equal(out$censored$lower, 5)
+  # A record remapped by a decreasing crf() keeps its flag.
+  expect_true(attr(out$censored, "swapped"))
+  expect_identical(bayesnec:::combine_censored_min(s, g, 3), out)
+})
+
+test_that("an identified minimum keeps its value at either foot", {
+  # Unequal feet with no draw below either: the minimum of growth at 7 and
+  # survival at 3 is 3, although 3 is below growth's foot of 5, and nothing
+  # is marked.
+  g <- c(7, 9)
+  attr(g, "censored") <- cens_record(logical(2), logical(2), lower = 5)
+  s <- c(3, 6)
+  attr(s, "censored") <- cens_record(logical(2), logical(2))
+  out <- bayesnec:::combine_censored_min(g, s, 2)
+  expect_equal(out$values, c(3, 6))
+  expect_false(any(out$censored$below))
+  expect_equal(out$censored$lower, 5)
+  expect_identical(bayesnec:::combine_censored_min(s, g, 2), out)
+  # Equal feet with a draw below: the identified minimum in the other draw is
+  # unchanged, and every identified value is inside the recorded limits.
+  attr(g, "censored") <- cens_record(logical(2), c(TRUE, FALSE))
+  g[1] <- NA_real_
+  equal <- bayesnec:::combine_censored_min(g, s, 2)
+  expect_equal(equal$values, c(NA, 6))
+  expect_identical(equal$censored$below, c(TRUE, FALSE))
+  expect_equal(equal$censored$lower, 0)
+})
+
+test_that("an unexplained missing draw is not marked by the combination", {
+  g <- c(NA_real_, 4)
+  attr(g, "censored") <- cens_record(c(TRUE, FALSE), logical(2))
+  s <- c(NA_real_, 6)
+  attr(s, "censored") <- cens_record(logical(2), logical(2), upper = 40)
+  out <- bayesnec:::combine_censored_min(g, s, 2)
+  # The survival draw is NA with no mark, so nothing is known of the minimum
+  # and it is left unexplained, as before #415, rather than called censored.
+  expect_equal(out$values, c(NA, 4))
+  expect_false(any(out$censored$above))
+})
+
+test_that("a curve-derived NSEC with no stored value combines as censored", {
+  # A model-averaged growth component holding a smooth equation, whose NSEC is
+  # read off its curve and is NA with a mark wherever the curve does not reach
+  # the reference within growth's range.
+  growth <- structure(
+    list(mod_fits = list(
+      nec3param = list(fit = list(family = list(family = "gaussian"))),
+      ecx4param = list()
+    ),
+    ne_type = "N(S)EC", w_ne_posterior = c(NA_real_, NA_real_, 3, 8),
+    success_models = c("nec3param", "ecx4param")),
+    class = c("bayesmanecfit", "bnecfit")
+  )
+  attr(growth$w_ne_posterior, "censored") <-
+    cens_record(c(TRUE, TRUE, FALSE, FALSE), logical(4))
+  survival <- hurdle_necfit(c(20, 5, 20, 20),
+                            cens_record(logical(4), logical(4), upper = 40))
+  obj <- hurdle_of(growth, survival)
+  post <- suppressMessages(suppressWarnings(nec(obj, posterior = TRUE)))
+  expect_equal(as.numeric(post), c(NA, 5, 3, 8))
+  expect_identical(attr(post, "censored")$above, c(TRUE, FALSE, FALSE, FALSE))
+  msgs <- testthat::capture_messages(suppressWarnings(nec(obj)))
+  expect_true(any(grepl("mixture of NEC and NSEC draws", msgs)))
+})
+
+test_that("the hurdle summary and a decreasing xform keep the bound", {
+  obj <- issue_415_hurdle(20)
+  sm <- suppressWarnings(summary(obj))
+  cs <- attr(sm$ne$combined, "censored_summary")
+  expect_identical(cs$bound, c(">=", ">=", ">="))
+  expect_equal(cs$upper, 10)
+  printed <- utils::capture.output(print(sm))
+  combined_row <- printed[grepl("^combined", printed)]
+  expect_false(any(grepl("20.00", combined_row, fixed = TRUE)))
+  expect_true(grepl(">= 10.00", combined_row, fixed = TRUE))
+  # A decreasing xform names the same draws at the other end of the new scale.
+  flipped <- suppressWarnings(nec(obj, xform = function(x) -x))
+  fcs <- attr(flipped, "censored_summary")
+  expect_identical(fcs$bound, c("<=", "<=", "<="))
+  expect_equal(fcs$lower, -10)
+  expect_identical(fcs$n_below, 4L)
 })

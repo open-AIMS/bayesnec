@@ -6,6 +6,12 @@ evidence, the signatures, the edge cases and the rejected alternatives.
 
 Written 2026-09-19. Line references are against `dev` at `76d07a13`.
 
+Status, 2026-09-26: complete. #389, #390 and #391 reached `dev` directly, and
+#392 to #395 through PR #409 (`c3824643`); #386 and its seven issues are closed.
+Where the implementation departed from this document, the departure is recorded
+as a dated amendment beside the section it changes: §2.2, §3.4, §5.3 and §6.
+Follow-up work is in the backlog run, `backlog-run-human.md`.
+
 ---
 
 ## 1. Terms
@@ -256,6 +262,23 @@ cell and a varying-trials cell and reports how often the rule misses a genuinely
 incomplete design. If that rate is material, the escalation is `MASS::glm.nb` in
 `Suggests` with this test as the fallback where it does not converge, not
 `glmmTMB` in `Imports`. `MASS` ships with R.
+
+#### Amendment from the implementation
+
+Written 2026-09-26, after the programme merged to `dev` through PR #409. The
+statistic above is described as a contrast measured against its standard error,
+which is the Wald statistic `summary.glm()` prints. The implementation in
+`R/check_data.R` uses analysis of deviance instead: the drop in deviance between
+the model with and without the level contrast, referred to a chi-squared
+distribution on one degree of freedom where the family's dispersion is fixed and
+to an F distribution where it is estimated, made one-sided from the sign of the
+fitted contrast. The two agree exactly for a gaussian response. They differ under
+the separation a survival block routinely produces: a series running from every
+individual alive to none alive gives a Wald standard error of several thousand
+and a p-value near one half, which would miss the clearest incomplete design
+there is. The roxygen of the test function in `R/check_data.R` records the same
+reasoning. The definition of the flatness rule in §1 is read with this
+amendment.
 
 ### 2.3 `report_nec_prior_bound()`
 
@@ -903,3 +926,7 @@ checked against that block, which PR #387 already does through
 
 `nsec()` is unchanged. It reads its estimate off the curve like `ecx()` and
 already censors to the prediction grid.
+
+Amended 2026-09-26: the sentence above did not hold. §4.2 applies the censored
+summary to `nsec()`, and #392 added `extrapolate` to `nsec()` as well as to
+`nec()`.

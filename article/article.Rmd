@@ -746,7 +746,8 @@ Finally, we also use the \code{compare\_posterior()} function to extract and plo
 post_comp <- compare_posterior(cleaned_fits, comparison = "n(s)ec")
 prob_diff <- post_comp$prob_diff |>
   tidyr::separate(col = comparison, into = c("herbicide", "columns")) |>
-  tidyr::pivot_wider(names_from = columns, values_from = prob) |>
+  tidyr::pivot_wider(id_cols = herbicide, names_from = columns,
+                     values_from = prob) |>
   dplyr::mutate(across(where(is.numeric), ~round(.x, 3)))
 colnames(prob_diff) <- stringr::str_to_sentence(colnames(prob_diff))
 prob_diff$Herbicide <- stringr::str_to_sentence(prob_diff$Herbicide)

@@ -68,6 +68,116 @@ test_that("bnec_joint errors where there is no two-block family", {
   expect_error(bnec_joint(o), "no two-block family")
 })
 
+# A crossed mock whose growth component was fitted with `growth_family`, on
+# nec_data with the responses above x = 1.8 recorded as zeros. bnec_joint()
+# reads the family off the first stored growth fit and nothing else from it.
+mock_disp_crossed <- function(formula, growth_family, scale = 1) {
+  o <- mock_crossed()
+  d <- nec_data[, c("x", "y")]
+  d$y[d$x > 1.8] <- 0
+  d$y <- d$y * scale
+  o$data <- d
+  o$formula <- bnf(formula)
+  o$growth$mod_fits[[1]] <- list(
+    fit = structure(list(family = validate_family(growth_family)),
+                    class = "brmsfit")
+  )
+  o
+}
+
+# Replaces bnec() inside bnec_joint() and records what it was given, so the
+# joint model can be built without being fitted.
+capture_joint_call <- function(env = parent.frame()) {
+  captured <- new.env()
+  local_mocked_bindings(
+    bnec = function(formula, data, family, model_survival, ...) {
+      captured$formula <- formula
+      captured$data <- data
+      captured$family <- family
+      invisible(NULL)
+    },
+    .package = "bayesnec", .env = env
+  )
+  captured
+}
+
+test_that("bnec_joint includes the growth component's disp() term (#410)", {
+  cases <- list(
+    list(family = "Gamma", scale = 10, joint = "hurdle_gamma", dpar = "shape",
+         disp = 'disp("power")'),
+    list(family = "Beta", scale = 1, joint = "zero_inflated_beta",
+         dpar = "phi", disp = 'disp("twosided")')
+  )
+  for (cs in cases) {
+    f <- paste0('y ~ crf(x, c("nec3param", "ecx4param")) + ', cs$disp)
+    o <- mock_disp_crossed(f, cs$family, cs$scale)
+    captured <- capture_joint_call()
+    suppressMessages(bnec_joint(o))
+    expect_equal(captured$family, cs$joint)
+    expect_false(is.null(bayesnec:::parse_disp_term(captured$formula)))
+    # The joint model's dispersion sub-model is the one the growth component
+    # is built with: same curve, same centring literal. ecx4param is the
+    # growth equation best_crossed() picks from mock_crossed()'s weights.
+    joint <- make_brmsformula(captured$formula, captured$data,
+                              family = validate_family(cs$joint))[[1]]
+    growth <- make_brmsformula(
+      bnf(paste0('y ~ crf(x, "ecx4param") + ', cs$disp)),
+      o$data[o$data$y > 0, ], family = validate_family(cs$family)
+    )[[1]]
+    expect_identical(deparse1(joint$pforms[[cs$dpar]][[3]]),
+                     deparse1(growth$pforms[[cs$dpar]][[3]]))
+  }
+})
+
+test_that("a formula passed to bnec_joint replaces the held disp() term", {
+  o <- mock_disp_crossed(
+    'y ~ crf(x, c("nec3param", "ecx4param")) + disp("power")', "Gamma", 10
+  )
+  captured <- capture_joint_call()
+  suppressMessages(bnec_joint(o, formula = y ~ crf(x, "nec3param")))
+  expect_null(bayesnec:::parse_disp_term(captured$formula))
+})
+
+test_that("bnec_joint refuses a non-syntactic name before rebuilding (#398)", {
+  # swap_crf_model() rebuilds crf() from deparsed text, which dropped the
+  # backticks and failed as a parse error naming neither column nor term.
+  o <- mock_disp_crossed('y ~ crf(x, c("nec3param", "ecx4param"))', "Gamma",
+                         10)
+  captured <- capture_joint_call()
+  expect_error(bnec_joint(o, formula = y ~ crf(`odd x`, "nec3param")),
+               "not syntactic R names.*odd x")
+  expect_null(captured$formula)
+})
+
+test_that("bnec_joint refuses a negative binomial growth disp() up front", {
+  # hurdle_negbinomial does not take disp() yet. The refusal comes before the
+  # refit is announced and before bnec() is called, and names the `formula`
+  # argument, which is how a bnec_joint() caller leaves the term out.
+  d_counts <- function(o) {
+    o$data$y <- as.integer(round(o$data$y * 20))
+    o
+  }
+  o <- d_counts(mock_disp_crossed(
+    'y ~ crf(x, c("nec3param", "ecx4param")) + disp("power")', "negbinomial"
+  ))
+  captured <- capture_joint_call()
+  msgs <- character(0)
+  err <- withCallingHandlers(
+    tryCatch(bnec_joint(o), error = conditionMessage),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_match(err, "hurdle_negbinomial.*pending a decision.*`formula`")
+  expect_false(any(grepl("Refitting jointly", msgs)))
+  expect_null(captured$formula)
+  # the remedy the message names reaches bnec()
+  suppressMessages(bnec_joint(o, formula = y ~ crf(x, "nec3param")))
+  expect_equal(captured$family, "hurdle_negbinomial")
+  expect_null(bayesnec:::parse_disp_term(captured$formula))
+})
+
 # The joint refit of a grouped fit (#382). Everything that can be decided
 # before a model is compiled is decided against a mock carrying only the model
 # weights and a data frame with no response column, which stops fit_bayesnec()
@@ -533,7 +643,9 @@ test_that("the estimators report one row per level of a joint refit", {
   e <- suppressWarnings(suppressMessages(ecx(f$joint, ecx_val = 10)))
   expect_s3_class(e, "data.frame")
   expect_equal(e$level, c("a", "b"))
-  expect_equal(ncol(e), 4L)
+  # The level, three quantiles and a bound_ column for each quantile (#404).
+  expect_equal(ncol(e), 7L)
+  expect_equal(names(e)[5:7], c("bound_Q50", "bound_Q2.5", "bound_Q97.5"))
   n <- nec(f$joint)
   expect_equal(n$level, c("a", "b"))
   s <- suppressWarnings(suppressMessages(nsec(f$joint)))
@@ -846,12 +958,63 @@ test_that("a refit whose levels are all smooth gives NA, not an error", {
   expect_true(all(is.na(n$ne_type)))
   expect_true(all(is.na(unlist(n[, c("Q50", "Q2.5", "Q97.5")]))))
   expect_equal(names(n), c("level", "model", "ne_type",
-                           "Q50", "Q2.5", "Q97.5"))
+                           "Q50", "Q2.5", "Q97.5",
+                           "bound_Q50", "bound_Q2.5", "bound_Q97.5"))
+  # An NA row has no censoring record, so no entry of it is marked as a bound.
+  expect_true(all(unlist(n[, c("bound_Q50", "bound_Q2.5", "bound_Q97.5")]) ==
+                    ""))
   # prob_vals still names the columns where no level reaches a per-level
   # method to validate it.
   n2 <- suppressMessages(nec(o, prob_vals = c(0.5, 0.3, 0.7)))
-  expect_equal(names(n2), c("level", "model", "ne_type", "Q50", "Q30", "Q70"))
+  expect_equal(names(n2), c("level", "model", "ne_type", "Q50", "Q30", "Q70",
+                            "bound_Q50", "bound_Q30", "bound_Q70"))
   expect_error(nec(o, prob_vals = c(0.5, 0.7)), "central, lower and upper")
+})
+
+test_that("the joint annotation keeps the marks of a censored NSEC (#404)", {
+  # No sampling. joint_level_ne() is what ggbnec_data() annotates at a smooth
+  # level, and it used to return as.numeric() of nsec(), which dropped the
+  # censoring record, so the plot drew a bound as though it were a quantile.
+  est <- c(Q50 = 2.5, Q2.5 = 1.5, Q97.5 = 3.2)
+  attr(est, "censored_summary") <- list(bound = c("", "", ">="), upper = 3.2,
+                                        lower = 0.1, n_above = 150L,
+                                        n_below = 0L, n_draws = 4000L)
+  attr(est, "resolution") <- 200
+  local_mocked_bindings(
+    joint_level_fit = function(object, level) list(ne_posterior = NULL),
+    nsec = function(object, ...) est,
+    .package = "bayesnec"
+  )
+  out <- joint_level_ne(list(), "a")
+  expect_equal(unname(as.numeric(out)), c(2.5, 1.5, 3.2))
+  expect_named(out, c("Estimate", "Q2.5", "Q97.5"))
+  expect_equal(attr(out, "censored_summary")$bound, c("", "", ">="))
+  # Only the record travels; the estimator's other attributes are not the
+  # annotation's.
+  expect_null(attr(out, "resolution"))
+  # And the mark reaches the label, through the remapping every plotting path
+  # applies before bind_nec().
+  mapped <- remap_summary(out, identity, seq(0.1, 3.2, length.out = 10))
+  labs <- bind_nec(data.frame(x = 1:3, y = 1:3), mapped)
+  expect_equal(labs$nec_labs_u[4], ">=3.20")
+  expect_equal(labs$nec_labs[4], "2.50")
+})
+
+test_that("a supplied formula with a non-syntactic name is refused (#398)", {
+  # The grouped method rebuilds the crf() term from deparsed text as the
+  # hurdle method does, so the same refusal comes first.
+  g <- spread_group_fit()
+  msgs <- character(0)
+  err <- withCallingHandlers(
+    tryCatch(bnec_joint(g, formula = y ~ crf(`odd x`, "nec3param")),
+             error = conditionMessage),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_match(err, "not syntactic R names.*odd x")
+  expect_false(any(grepl("Refitting jointly", msgs)))
 })
 
 test_that("the membership test is the nec group, not the equation name", {

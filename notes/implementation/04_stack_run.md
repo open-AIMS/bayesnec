@@ -1,5 +1,9 @@
 # Stack run instructions
 
+Status, 2026-09-26: the run this file instructed finished in August 2026, and
+every pull request it produced has merged. Kept as a record. The run in progress
+follows `00_protocol.md` and `01_work_queue.md`, not this file.
+
 The literal procedure for the unattended run. Read `00_protocol.md` and
 `01_work_queue.md` first; this file says how to execute them, not what to build.
 

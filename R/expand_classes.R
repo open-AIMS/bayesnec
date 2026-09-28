@@ -475,10 +475,17 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   })
   object <- mod_fits
   formula <- formula[success_models]
+  # Read off each equation's parameters, as nec() reads them, rather than off
+  # group membership: ecxflat is in neither mod_groups$ecx nor mod_groups$nec,
+  # so a set holding it was labelled a NEC. For the equations of mod_groups$all
+  # the two readings agree. See has_nec_parameter() and #419.
+  has_nec <- vapply(names(object), function(m) {
+    has_nec_parameter(m, object[[m]]$fit)
+  }, logical(1))
   ne_lab <- "NEC"
-  if (all(success_models %in% mod_groups$ecx)) {
+  if (!any(has_nec)) {
     ne_lab <- "NSEC"
-  } else if (any(success_models %in% mod_groups$ecx) & any(success_models %in% mod_groups$nec)) {
+  } else if (!all(has_nec)) {
     ne_lab <- "N(S)EC"
   }
   # define_loo_controls() rather than validate_loo_controls(), and on both

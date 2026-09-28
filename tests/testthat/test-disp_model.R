@@ -255,12 +255,28 @@ test_that("disp is rejected for families with no dispersion parameter", {
   }
 })
 
-test_that("disp is rejected for the two-block families", {
+test_that("disp is still rejected for the two count hurdles (#410)", {
+  # hurdle_gamma and zero_inflated_beta now take the term; see the #410 section
+  # at the end of this file. hurdle_poisson has no dispersion parameter, and
+  # hurdle_negbinomial waits on how the shape is read at the asymptote.
+  f <- bnf(count ~ crf(x, "ecx4param") + disp("power"))
   expect_error(
-    make_brmsformula(bnf(y ~ crf(x, "ecx4param") + disp("power")), disp_dat,
-                     brms::hurdle_gamma(link = "identity",
-                                        link_hu = "identity")),
-    "not currently supported for the two-block family"
+    make_brmsformula(f, disp_dat, validate_family("hurdle_poisson")),
+    "hurdle_poisson has no free dispersion parameter"
+  )
+  expect_error(
+    make_brmsformula(f, disp_dat, validate_family("hurdle_negbinomial")),
+    "not yet supported .* hurdle_negbinomial.*pending a decision"
+  )
+  # route A as well: the refusal is of the term, not of a variance function
+  f_a <- bnf(count ~ crf(x, "ecx4param") + disp(~x))
+  expect_error(
+    make_brmsformula(f_a, disp_dat, validate_family("hurdle_negbinomial")),
+    "pending a decision"
+  )
+  expect_error(
+    make_brmsformula(f_a, disp_dat, validate_family("hurdle_poisson")),
+    "no free dispersion parameter"
   )
 })
 
@@ -502,4 +518,230 @@ test_that("a disp sub-model reaches Stan with a locally defined function", {
                         family = brms::Beta(link = "identity"))
   }
   expect_match(build(), "phi", fixed = TRUE)
+})
+
+
+# ---- #397, the centring constant on the scale of the mean --------------------
+
+# The constants are spliced into the variance function as "- <literal>)", which
+# no curve expression contains, so this reads them back in order of appearance.
+centring_literals <- function(rhs) {
+  m <- regmatches(rhs, gregexpr("- -?[0-9.]+\\)", rhs))[[1]]
+  as.numeric(gsub("^- |\\)$", "", m))
+}
+
+# disp_dat's curve recorded as counts out of varying trials. One row at each
+# bound, so that the filters disp_centre() applies before taking a log are
+# exercised on the proportion rather than on the count.
+bb_dat <- disp_dat
+bb_dat$n <- rep(c(20, 30, 40), 10)
+bb_dat$count <- as.integer(round(bb_dat$y * bb_dat$n))
+bb_dat$count[1] <- bb_dat$n[1]
+bb_dat$count[30] <- 0L
+
+bb_phi_rhs <- function(vf) {
+  f <- bnf(paste0('count | trials(n) ~ crf(x, "ecx4param") + disp("', vf,
+                  '")'))
+  bf <- make_brmsformula(f, bb_dat, family = validate_family("beta_binomial"))
+  deparse1(bf[[1]]$pforms$phi[[3]])
+}
+
+test_that("a trials fit centres its variance function on the proportion", {
+  # Under the identity link the beta_binomial mean is the proportion of trials.
+  # Centred on the counts, power's reference was the log of a count.
+  p <- bb_dat$count / bb_dat$n
+  expect_equal(centring_literals(bb_phi_rhs("power")),
+               signif(median(log(p[p > 0])), 6))
+})
+
+test_that("twosided centres both terms on the proportion (#397)", {
+  # log(1 - count) is undefined for every count above zero, so centred on the
+  # counts the second reference fell back to 0 and c2 was left uncentred.
+  p <- bb_dat$count / bb_dat$n
+  refs <- centring_literals(bb_phi_rhs("twosided"))
+  expect_equal(refs, c(signif(median(log(p[p > 0])), 6),
+                       signif(median(log(1 - p[p < 1])), 6)))
+  expect_false(refs[2] == 0)
+})
+
+
+# ---- #410, disp() on the positive block of a joint two-block family ----------
+
+# nec_data with every response above x = 1.8 recorded as a zero, which is 16 of
+# the 100 rows. `g` is the same response scaled for a Gamma block, so that its
+# positive values are not all below one.
+hurdle_dat <- nec_data[, c("x", "y")]
+hurdle_dat$y[hurdle_dat$x > 1.8] <- 0
+hurdle_dat$g <- hurdle_dat$y * 10
+
+joint_bf <- function(resp, disp_txt, family, data = hurdle_dat) {
+  f <- bnf(paste0(resp, ' ~ crf(x, "nec3param")', disp_txt))
+  make_brmsformula(f, data, family = validate_family(family))[[1]]
+}
+pform_rhs <- function(bf, dpar) deparse1(bf$pforms[[dpar]][[3]])
+block_rhs <- function(bf, prefix) {
+  vapply(bf$pforms[grep(paste0("^", prefix), names(bf$pforms))], deparse1,
+         character(1))
+}
+
+test_that("a two-block family reports its positive block's parameter", {
+  expect_true(bayesnec:::has_disp_par("hurdle_gamma"))
+  expect_true(bayesnec:::has_disp_par(validate_family("zero_inflated_beta")))
+  expect_false(bayesnec:::has_disp_par("hurdle_poisson"))
+  expect_equal(bayesnec:::disp_dpar("hurdle_gamma"), "shape")
+  expect_equal(bayesnec:::disp_dpar("zero_inflated_beta"), "phi")
+  expect_equal(bayesnec:::disp_dpar("hurdle_negbinomial"), "shape")
+  expect_null(bayesnec:::disp_dpar("hurdle_poisson"))
+})
+
+test_that("hurdle_gamma takes disp() on shape and leaves hu alone", {
+  bf0 <- joint_bf("g", "", "hurdle_gamma")
+  bf_b <- joint_bf("g", ' + disp("power")', "hurdle_gamma")
+  bf_a <- joint_bf("g", " + disp(~x)", "hurdle_gamma")
+  expect_false("shape" %in% names(bf0$pforms))
+  expect_true(all(c("shape", "c0", "c1") %in% names(bf_b$pforms)))
+  expect_equal(pform_rhs(bf_a, "shape"), "x")
+  # The hu block is the one built without the term, and no hu formula names
+  # a dispersion parameter.
+  expect_identical(block_rhs(bf_b, "hu"), block_rhs(bf0, "hu"))
+  expect_identical(block_rhs(bf_a, "hu"), block_rhs(bf0, "hu"))
+  expect_false(any(grepl("c0|c1|shape", block_rhs(bf_b, "hu"))))
+  # The variance function is written in the positive block's curve, which is
+  # brms's component mean, and not in the hu curve.
+  shape_rhs <- pform_rhs(bf_b, "shape")
+  expect_true(grepl(deparse1(bf0$formula[[3]]), shape_rhs, fixed = TRUE))
+  expect_false(grepl("hutop", shape_rhs, fixed = TRUE))
+})
+
+test_that("brms accepts shape formulas beside the hu formula", {
+  # make_stancode() generates the program without compiling or sampling it. A
+  # constant shape is declared as a scalar parameter; a modelled one is a
+  # vector over the observations.
+  fam <- validate_family("hurdle_gamma")
+  for (txt in c(' + disp("power")', " + disp(~x)")) {
+    sc <- brms::make_stancode(joint_bf("g", txt, "hurdle_gamma"),
+                              data = hurdle_dat, family = fam)
+    expect_match(sc, "vector[N] shape", fixed = TRUE)
+    hu_lines <- grep("hu\\[n\\] =", strsplit(sc, "\n")[[1]], value = TRUE)
+    expect_length(hu_lines, 1)
+    expect_false(grepl("c0|shape", hu_lines))
+  }
+})
+
+test_that("zero_inflated_beta takes disp() on phi and leaves zi alone", {
+  bf0 <- joint_bf("y", "", "zero_inflated_beta")
+  fam <- validate_family("zero_inflated_beta")
+  for (txt in c(' + disp("power")', ' + disp("twosided")', " + disp(~x)")) {
+    bf <- joint_bf("y", txt, "zero_inflated_beta")
+    expect_true("phi" %in% names(bf$pforms))
+    expect_identical(block_rhs(bf, "zi"), block_rhs(bf0, "zi"))
+    sc <- brms::make_stancode(bf, data = hurdle_dat, family = fam)
+    expect_match(sc, "vector[N] phi", fixed = TRUE)
+  }
+})
+
+test_that("a variance function is checked against the positive block", {
+  # "twosided" is a form for the beta families, so zero_inflated_beta takes it
+  # and hurdle_gamma, whose positive block is Gamma, does not.
+  expect_error(joint_bf("g", ' + disp("twosided")', "hurdle_gamma"),
+               "not valid for the hurdle_gamma family")
+  # and the refusal names the two-block family that does take it
+  expect_error(joint_bf("g", ' + disp("twosided")', "hurdle_gamma"),
+               "applies to: beta, beta_binomial, zero_inflated_beta\\.")
+  expect_silent(joint_bf("y", ' + disp("twosided")', "zero_inflated_beta"))
+})
+
+test_that("the centring constant is computed without the zeros", {
+  g <- hurdle_dat$g
+  pos <- g[g > 0]
+  ll <- centring_literals(pform_rhs(joint_bf("g", ' + disp("loglinear")',
+                                             "hurdle_gamma"), "shape"))
+  expect_equal(ll, signif(median(pos), 6))
+  # with the zeros the median is a different number, so the test can fail
+  expect_false(isTRUE(all.equal(ll, signif(median(g), 6))))
+  pw <- centring_literals(pform_rhs(joint_bf("g", ' + disp("power")',
+                                             "hurdle_gamma"), "shape"))
+  expect_equal(pw, signif(median(log(pos)), 6))
+  # twosided's second reference is where a zero entered as log(1 - 0) = 0
+  y <- hurdle_dat$y
+  ts <- centring_literals(pform_rhs(joint_bf("y", ' + disp("twosided")',
+                                             "zero_inflated_beta"), "phi"))
+  expect_equal(ts, c(signif(median(log(y[y > 0])), 6),
+                     signif(median(log(1 - y[y > 0])), 6)))
+  expect_false(isTRUE(all.equal(ts[2], signif(median(log(1 - y)), 6))))
+})
+
+test_that("the joint block fits the growth component's variance function", {
+  # bnec_hurdle() fits the growth component to the positive rows with the
+  # positive block's family, so the two routes must build the same dispersion
+  # sub-model, literal included.
+  growth <- hurdle_dat[hurdle_dat$y > 0, ]
+  for (txt in c(' + disp("power")', ' + disp("loglinear")')) {
+    expect_identical(
+      pform_rhs(joint_bf("g", txt, "hurdle_gamma"), "shape"),
+      pform_rhs(joint_bf("g", txt, "Gamma", data = growth), "shape")
+    )
+  }
+  expect_identical(
+    pform_rhs(joint_bf("y", ' + disp("twosided")', "zero_inflated_beta"),
+              "phi"),
+    pform_rhs(joint_bf("y", ' + disp("twosided")', "beta", data = growth),
+              "phi")
+  )
+})
+
+test_that("a two-block family gets the positive block's disp() priors", {
+  keep <- hurdle_dat$y > 0
+  disp_rows <- function(pr) {
+    as.data.frame(pr)[pr$nlpar %in% c("c0", "c1", "c2"),
+                      c("prior", "nlpar")]
+  }
+  for (vf in c("power", "loglinear")) {
+    spec <- list(route = "B", value = vf)
+    joint <- bayesnec:::define_prior("nec3param",
+                                     validate_family("hurdle_gamma"),
+                                     hurdle_dat$x, hurdle_dat$g,
+                                     disp_spec = spec)
+    growth <- bayesnec:::define_prior("nec3param", validate_family("Gamma"),
+                                      hurdle_dat$x[keep], hurdle_dat$g[keep],
+                                      disp_spec = spec)
+    expect_equal(disp_rows(joint), disp_rows(growth), ignore_attr = TRUE)
+  }
+  zib <- bayesnec:::define_prior("nec3param",
+                                 validate_family("zero_inflated_beta"),
+                                 hurdle_dat$x, hurdle_dat$y,
+                                 disp_spec = list(route = "B",
+                                                  value = "twosided"))
+  expect_equal(zib$prior[zib$nlpar == "c0"], "normal(4, 3)")
+  expect_true(all(c("c1", "c2") %in% zib$nlpar))
+  # the chains start at the centre of those priors
+  expect_equal(
+    as.numeric(bayesnec:::disp_inits(list(route = "B", value = "power"),
+                                     validate_family("hurdle_gamma"),
+                                     hurdle_dat$g)$b_c0),
+    2
+  )
+  expect_equal(
+    as.numeric(bayesnec:::disp_inits(list(route = "B", value = "power"),
+                                     "zero_inflated_beta", hurdle_dat$y)$b_c0),
+    4
+  )
+})
+
+test_that("get_priors refuses what bnec refuses on a two-block family", {
+  # get_priors() builds no formula, so the check is made where the two-block
+  # priors are built rather than left to wrangle_model_formula().
+  d <- hurdle_dat
+  d$n <- as.integer(round(d$y * 20))
+  f <- n ~ crf(x, "nec3param") + disp("power")
+  expect_error(suppressMessages(get_priors(f, data = d,
+                                           family = "hurdle_negbinomial")),
+               "pending a decision")
+  expect_error(suppressMessages(get_priors(f, data = d,
+                                           family = "hurdle_poisson")),
+               "hurdle_poisson has no free dispersion parameter")
+  pr <- suppressMessages(get_priors(g ~ crf(x, "nec3param") + disp("power"),
+                                    data = hurdle_dat,
+                                    family = "hurdle_gamma"))
+  expect_true(all(c("c0", "c1") %in% pr$nlpar))
 })

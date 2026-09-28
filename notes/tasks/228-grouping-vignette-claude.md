@@ -1,5 +1,13 @@
 # Specification — the grouping vignette (#6, #33)
 
+Status, 2026-09-26: complete, and kept as a record rather than a specification.
+PR #228 merged on 2026-09-17. Section 1 describes a branch state that no longer
+exists; the per-plate setting it lists as an open refinement is done at
+`data-raw/lum31.R`; the equation choice for `lum31` it lists as not yet made has
+been made. `notes/tasks/dataset-response-gradients.md`, cited below, exists only
+on the unmerged branch `notes-dataset-gradients`. Remaining scope is #382 and
+#388, implemented by PR #402.
+
 Companion to `228-grouping-vignette-human.md`. Written 2026-09-09 against `dev`
 at `eebccdb3` and branch `issue-6-33-grouping-vignette-v2` at `815b80c9`.
 Supersedes the version of 2026-09-08, kept at `superceded/228-plan-2026-09-09/`.

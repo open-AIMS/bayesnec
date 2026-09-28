@@ -77,6 +77,12 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
   ecs <- NULL
   if (ecx) {
     message("ECx calculation takes a few seconds per model, calculating...\n")
+    # Once for the table rather than once per ecx_vals entry. summary() takes
+    # no xform, so the ECx rows are on the fitted scale, and the message names
+    # the ecx() call that returns them on the recorded one. See
+    # report_fitted_scale().
+    quiet <- report_fitted_scale(x, identity, "ecx")
+    on.exit(options(quiet), add = TRUE)
     ecs <- list()
     for (i in seq_along(ecx_vals)) {
       # On the grid the fit was built over, not the range of the data. ecx()
@@ -91,7 +97,10 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
     }
     names(ecs) <- paste0("ECx (", ecx_vals, "%) estimate:")
   }
-  is_ecx <- x$model %in% mod_groups$ecx
+  # Read off the equation's parameters rather than group membership, so that
+  # ecxflat, which belongs to no group, is reported as the NSEC it gives. See
+  # #419 and has_nec_parameter().
+  is_ecx <- !has_nec_parameter(x$model, x$fit)
   ecx_mod <- NULL
   if (is_ecx) {
     ecx_mod <- x$model
@@ -151,6 +160,9 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
   ecs <- NULL
   if (ecx) {
     message("ECx calculation takes a few seconds per model, calculating...\n")
+    # Once for the table, as in summary.bayesnecfit.
+    quiet <- report_fitted_scale(x, identity, "ecx")
+    on.exit(options(quiet), add = TRUE)
     ecs <- list()
     for (i in seq_along(ecx_vals)) {
       # The grid the set was built over, for the reason given in
@@ -160,9 +172,13 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
     }
     names(ecs) <- paste0("ECx (", ecx_vals, "%) estimate:")
   }
+  # As in summary.bayesnecfit(): the parameters, not group membership.
+  no_nec <- !vapply(x$success_models, function(m) {
+    has_nec_parameter(m, x$mod_fits[[m]]$fit)
+  }, logical(1))
   ecx_mods <- NULL
-  if (any(x$success_models %in% mod_groups$ecx)) {
-    ecx_mods <- x$success_models[x$success_models %in% mod_groups$ecx]
+  if (any(no_nec)) {
+    ecx_mods <- x$success_models[no_nec]
   }
   out <- list(
     models = x$success_models,

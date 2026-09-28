@@ -114,6 +114,12 @@ Where the curve does not reach the target anywhere in the predictor range
 the ECx is not identified and \code{NA} is returned, with a warning
 reporting how many draws were affected.
 
+Where \code{crf()} transforms the predictor inline, as in
+\code{crf(log(concentration))}, the ECx is on the transformed scale unless
+\code{xform} is supplied, and a message says so once per call. It names the
+transformation and the \code{xform} that returns the estimate on the
+recorded scale.
+
 Calls to functions \code{\link{ecx}} and \code{\link{nsec}} and
 \code{\link{compare_fitted}} do not require the same level of flexibility
 in the context of allowing argument \code{newdata}

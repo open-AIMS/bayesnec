@@ -92,3 +92,15 @@ test_that("bayesnec's decay rate is positive by construction", {
     expect_true(all(diff(y) <= 0))
   }
 })
+
+test_that("pred_ecxflat is its top at every concentration (#419)", {
+  top <- 0.7
+  dim(top) <- 1
+  expect_identical(bayesnec:::pred_ecxflat(top, c(0, 0.5, 10, 1e6)),
+                   rep(0.7, 4))
+  # The fitted formula agrees: its second term is exactly zero for any finite
+  # predictor, which is what keeps the predictor in the fitted object's data.
+  rhs <- bayesnec:::bf_ecxflat$formula[[3]]
+  expect_identical(eval(rhs, list(top = 0.7, x = c(-3, 0, 1e6))),
+                   rep(0.7, 3))
+})

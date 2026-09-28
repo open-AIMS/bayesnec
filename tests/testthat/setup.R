@@ -20,6 +20,20 @@ add_na <- function(x, n = 3) {
   x_b
 }
 
+# Evaluate a call, returning its value and the messages of the warnings it
+# raised, which are muffled. The `all_models` warnings are to be raised once
+# per call, so test-plot.R, test-autoplot.R, test-bnec_group.R and
+# test-bayesmanec_methods.R assert the count as well as the message;
+# expect_warning() alone passes on one warning or several.
+collect_warnings <- function(expr) {
+  warnings <- character()
+  value <- withCallingHandlers(expr, warning = function(w) {
+    warnings <<- c(warnings, conditionMessage(w))
+    invokeRestart("muffleWarning")
+  })
+  list(value = value, warnings = warnings)
+}
+
 utils::data(nec_data)
 other_data <- nec_data
 colnames(other_data) <- c("a", "b")
@@ -64,9 +78,10 @@ transformed_response_fit <- function(fit, model) {
 # The same fixture for a model set. On the model-average branch, which is the
 # one the pinning tests use, both plotting paths read the formula off
 # mod_fits[[1]] alone (R/plot.R:258, R/autoplot.R:347), so that is the only
-# element that has to change. Not so with all_models = TRUE: plot() then draws
-# each candidate through plot.bayesnecfit, which reads that candidate's own
-# formula at R/plot.R:118. Do not use this fixture on that branch.
+# element that has to change. Not so where `model` names equations, or with
+# the deprecated all_models = TRUE: plot() then draws each named equation
+# through plot.bayesnecfit, which reads that equation's own formula. Do not use
+# this fixture on that branch.
 transformed_response_manec <- function(manec) {
   mod <- names(manec$mod_fits)[1]
   manec$mod_fits[[1]] <- transformed_response_fit(manec$mod_fits[[1]], mod)
@@ -104,4 +119,49 @@ unfitted_group_plot_fit <- function(fit = nec4param, values = NULL) {
   }
   d$climate <- factor(values)
   bayesnec:::retain_unused_data(fit, d)
+}
+
+# A bounded response with every observation at one of its bounds, once for each
+# case #400 names: bernoulli at 1 and at 0, binomial with every count equal to
+# its trials and with every count 0, beta at 1, and beta at 0, which a numeric
+# response of zeros reaches because it is the family chosen for one. The
+# response is not called y, so that a message naming the column is seen to
+# name it. `near` is the same data with one observation set off the bound, at
+# the concentration where a decline would place it, which is a response that
+# varies and must still pass. Shared by test-bnec.R and test-get_priors.R,
+# which assert the refusal through the two entry points.
+at_bound_cases <- function() {
+  x <- rep(c(0.1, 0.5, 1, 3, 10, 30), each = 5)
+  n <- length(x)
+  exposed <- rep(c(8L, 10L), length.out = n)
+  top <- which.max(x)
+  low <- which.min(x)
+  set_crf <- "c(\"nec3param\", \"ecx4param\")"
+  f <- function(lhs) {
+    stats::as.formula(paste0(lhs, " ~ crf(x, ", set_crf, ")"))
+  }
+  one <- function(data, family, column, bound, lhs, near_row, near_value) {
+    near <- data
+    near[[column]][near_row] <- near_value
+    list(formula = f(lhs), data = data, near = near, family = family,
+         column = column, bound = bound)
+  }
+  list(
+    bernoulli_one = one(data.frame(x = x, alive = rep(1L, n)), "bernoulli",
+                        "alive", "upper", "alive", top, 0L),
+    bernoulli_zero = one(data.frame(x = x, alive = rep(0L, n)), "bernoulli",
+                         "alive", "lower", "alive", low, 1L),
+    binomial_trials = one(data.frame(x = x, alive = exposed,
+                                     exposed = exposed),
+                          "binomial", "alive", "upper",
+                          "alive | trials(exposed)", top, exposed[top] - 1L),
+    binomial_zero = one(data.frame(x = x, alive = rep(0L, n),
+                                   exposed = exposed),
+                        "binomial", "alive", "lower",
+                        "alive | trials(exposed)", low, 1L),
+    beta_one = one(data.frame(x = x, cover = rep(1, n)), "Beta", "cover",
+                   "upper", "cover", top, 0.9),
+    beta_zero = one(data.frame(x = x, cover = rep(0, n)), "Beta", "cover",
+                    "lower", "cover", low, 0.1)
+  )
 }

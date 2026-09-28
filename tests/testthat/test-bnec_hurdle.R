@@ -229,6 +229,175 @@ test_that("swap_response preserves group-level terms", {
   expect_true(grepl("pgl(tank)", deparse1(out), fixed = TRUE))
 })
 
+# #410. A disp() term models the growth component's dispersion and is removed
+# from the survival component, which is bernoulli and has no dispersion
+# parameter. Passed to both, the survival fit refused it after the growth
+# component had been sampled.
+
+test_that("drop_disp_term removes the disp() term and keeps the rest (#410)", {
+  f <- bnf(y ~ crf(x, "nec3param") + (nec | tank) + disp(~x) + pgl(tank))
+  out <- bayesnec:::drop_disp_term(f)
+  expect_s3_class(out, "bayesnecformula")
+  expect_null(bayesnec:::parse_disp_term(out))
+  # The other terms are kept in the order they were written.
+  expect_equal(deparse1(out),
+               "y ~ crf(x, \"nec3param\") + (nec | tank) + pgl(tank)")
+  expect_identical(environment(out), environment(f))
+  expect_null(bayesnec:::parse_disp_term(
+    bayesnec:::drop_disp_term(bnf(y ~ crf(x, "nec3param") + disp("power")))
+  ))
+  # A formula without the term is returned as it was.
+  f0 <- bnf(y ~ crf(x, "nec3param"))
+  expect_identical(bayesnec:::drop_disp_term(f0), f0)
+})
+
+test_that("bnec_hurdle passes a disp() term to the growth fit only (#410)", {
+  dat <- data.frame(x = rep(1:4, each = 5),
+                    y = c(seq(1.1, 3.9, length.out = 15), rep(0, 5)))
+  seen <- list()
+  local_mocked_bindings(
+    bnec = function(formula, data, family, ...) {
+      seen[[length(seen) + 1]] <<- list(formula = formula,
+                                        family = family$family)
+      structure(list(model = "nec3param"), class = c("bayesnecfit", "bnecfit"))
+    },
+    .package = "bayesnec"
+  )
+  for (term in c("disp(\"power\")", "disp(~x)")) {
+    seen <- list()
+    f <- stats::as.formula(paste("y ~ crf(x, \"nec3param\") +", term))
+    out <- suppressMessages(bnec_hurdle(f, data = dat))
+    expect_length(seen, 2)
+    expect_equal(seen[[1]]$family, "Gamma")
+    expect_equal(bayesnec:::parse_disp_term(seen[[1]]$formula),
+                 bayesnec:::parse_disp_term(bnf(f)))
+    expect_equal(seen[[2]]$family, "bernoulli")
+    expect_null(bayesnec:::parse_disp_term(seen[[2]]$formula))
+    # The stored formula is the one the user wrote, term included.
+    expect_false(is.null(bayesnec:::parse_disp_term(out$formula)))
+  }
+})
+
+test_that("a disp() term the growth family cannot take is refused first (#410)", {
+  dat <- data.frame(x = rep(1:4, each = 5),
+                    y = c(seq(1.1, 3.9, length.out = 15), rep(0, 5)))
+  calls <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      calls <<- calls + 1L
+      stop("component fit should not start")
+    },
+    .package = "bayesnec"
+  )
+  # poisson has no dispersion parameter. Refused ahead of the count-truncation
+  # check, which would otherwise answer first on a brms without the fix.
+  expect_error(
+    bnec_hurdle(y ~ crf(x, "nec3param") + disp("power"), data = dat,
+                family_growth = poisson()),
+    "Family poisson has no free dispersion parameter"
+  )
+  # A variance function outside the ones the growth family takes.
+  expect_error(
+    bnec_hurdle(y ~ crf(x, "nec3param") + disp("twosided"), data = dat),
+    "not valid for the Gamma family"
+  )
+  expect_equal(calls, 0L)
+})
+
+# Fitted once and reused across the blocks below: bnec_hurdle() compiles two
+# Stan programs per call. The growth response is simulated with a shape that
+# rises with the mean, which is what disp("power") describes, so the fit has a
+# dispersion trend to estimate.
+disp_hurdle_fixture <- local({
+  cached <- NULL
+  function() {
+    if (is.null(cached)) {
+      set.seed(410)
+      x <- rep(seq(0, 5, length.out = 15), each = 6)
+      alive <- stats::rbinom(length(x), 1, 1 / (1 + exp(-(2.5 - 0.9 * x))))
+      mu <- pmax(3 - 0.35 * x, 0.3)
+      shape <- 2 * mu^1.5
+      g <- stats::rgamma(length(x), shape = shape, rate = shape / mu)
+      dat <- data.frame(x = x, y = ifelse(alive == 1, g, 0))
+      fit <- suppressWarnings(suppressMessages(
+        bnec_hurdle(y ~ crf(x, "nec3param") + disp("power"), data = dat,
+                    iter = 400, warmup = 200, chains = 2, seed = 410,
+                    refresh = 0)
+      ))
+      cached <<- list(dat = dat, fit = fit)
+    }
+    cached
+  }
+})
+
+test_that("a disp() term is fitted in the growth component only (#410)", {
+  skip_on_cran()
+  fit <- disp_hurdle_fixture()$fit
+  expect_s3_class(fit, "bayesnechurdlefit")
+  expect_true("shape" %in% names(fit$growth$fit$formula$pforms))
+  expect_true(all(c("b_c0_Intercept", "b_c1_Intercept") %in%
+                    brms::variables(fit$growth$fit)))
+  expect_false("shape" %in% names(fit$survival$fit$formula$pforms))
+  expect_false(any(grepl("^b_c[01]_", brms::variables(fit$survival$fit))))
+  expect_null(bayesnec:::parse_disp_term(fit$survival$bayesnecformula))
+  # The growth predictions read the sub-model: the shape differs across the
+  # range, where a constant-dispersion fit would return one value.
+  shp <- brms::posterior_epred(fit$growth$fit, dpar = "shape",
+                               newdata = data.frame(x = c(0, 5)))
+  expect_false(isTRUE(all.equal(shp[, 1], shp[, 2])))
+})
+
+test_that("the hurdle methods run on a growth disp() term (#410)", {
+  skip_on_cran()
+  f <- disp_hurdle_fixture()
+  fit <- f$fit
+  res <- suppressWarnings(check_fit(fit))
+  expect_named(res, c("growth", "survival", "combined"))
+  expect_equal(sum(as.data.frame(res$combined)$n), nrow(f$dat))
+  for (w in c("combined", "growth", "survival")) {
+    pp <- posterior_predict(fit, which = w, resolution = 10)
+    expect_equal(ncol(pp), 10)
+    expect_true(all(is.finite(pp)))
+    fv <- fitted(fit, which = w, resolution = 10)
+    expect_equal(nrow(fv), 10)
+    expect_true(all(is.finite(fv)))
+  }
+  # dispersion() computes its statistic for poisson and binomial only, so for
+  # a Gamma growth component and a bernoulli survival one it returns no draws.
+  d <- dispersion(fit)
+  expect_named(d, c("growth", "survival"))
+  expect_length(d$growth, 0)
+  expect_true(all(is.finite(nec(fit))))
+  expect_s3_class(autoplot(fit), "ggplot")
+})
+
+test_that("bnec_joint builds the growth disp() term into the joint model (#410)", {
+  skip_on_cran()
+  # The joint refit of the fitted fixture, with bnec() replaced so that the
+  # joint model is built but not sampled. Its shape sub-model has to be the one
+  # the growth component was fitted with: the same curve and the same
+  # centring literal, computed from the survivors in both routes.
+  f <- disp_hurdle_fixture()
+  captured <- NULL
+  local_mocked_bindings(
+    bnec = function(formula, data, family, model_survival, ...) {
+      captured <<- list(formula = formula, data = data, family = family)
+      invisible(NULL)
+    },
+    .package = "bayesnec"
+  )
+  suppressMessages(bnec_joint(f$fit))
+  expect_equal(captured$family, "hurdle_gamma")
+  joint <- make_brmsformula(captured$formula, captured$data,
+                            family = validate_family("hurdle_gamma"))[[1]]
+  expect_identical(deparse1(joint$pforms$shape[[3]]),
+                   deparse1(f$fit$growth$fit$formula$pforms$shape[[3]]))
+  # the hu block gains no dispersion term
+  hu_rhs <- vapply(joint$pforms[grep("^hu", names(joint$pforms))], deparse1,
+                   character(1))
+  expect_false(any(grepl("c0|c1|shape", hu_rhs)))
+})
+
 test_that("swap_crf_model swaps a single model and a model group", {
   f <- bnf(y ~ crf(x, "nec3param"))
   expect_equal(
@@ -284,6 +453,79 @@ test_that("bnec_hurdle rejects inputs that break the zero-as-death convention", 
   expect_error(
     bnec_hurdle(y ~ crf(x, "nec3param"), data = chr_dat), "must be numeric"
   )
+})
+
+test_that("a growth component at a bound is named as that component (#400)", {
+  # Every survivor is 1, so the growth component, a Beta response here, does
+  # not vary although the response as a whole does. Left to the growth bnec()
+  # call, the refusal named the response and said that every value of it is 1,
+  # of a column that also holds the zeros.
+  dat <- data.frame(x = as.numeric(rep(1:4, each = 5)),
+                    y = c(rep(1, 15), rep(0, 5)))
+  calls <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      calls <<- calls + 1L
+      stop("component fit should not start")
+    },
+    .package = "bayesnec"
+  )
+  err <- expect_error(suppressMessages(
+    bnec_hurdle(y ~ crf(x, "nec3param"), data = dat)
+  ))
+  expect_match(conditionMessage(err),
+               paste0("The growth component of the response \"y\" (its 15",
+                      " non-zero values) is at the upper bound of a beta",
+                      " response in every observation: every value is 1."),
+               fixed = TRUE)
+  expect_identical(calls, 0L)
+})
+
+test_that("ecxflat named for the growth component is let through (#419)", {
+  # bnec_hurdle() was not given bnec()'s substitution, so a growth set holding a
+  # curve equation is still refused, and the message now names ecxflat. Named
+  # alone, ecxflat is fitted to the survivors.
+  dat <- data.frame(x = as.numeric(rep(1:4, each = 5)),
+                    y = c(rep(1, 15), rep(0, 5)))
+  calls <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      calls <<- calls + 1L
+      stop("component fit reached")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(suppressMessages(
+    bnec_hurdle(y ~ crf(x, "nec3param"), data = dat)
+  ), "The constant equation ecxflat", fixed = TRUE)
+  expect_identical(calls, 0L)
+  expect_error(suppressMessages(
+    bnec_hurdle(y ~ crf(x, "ecxflat"), data = dat)
+  ), "component fit reached", fixed = TRUE)
+  expect_identical(calls, 1L)
+})
+
+test_that("a missing predictor is refused before the growth bound (#400)", {
+  # model.frame() drops the row, so read after it the survivors were all 1 and
+  # the call was refused as a growth component at the bound.
+  dat <- data.frame(x = as.numeric(rep(1:4, each = 5)),
+                    y = c(rep(1, 14), 0.6, rep(0, 5)))
+  dat$x[15] <- NA
+  calls <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      calls <<- calls + 1L
+      stop("component fit should not start")
+    },
+    .package = "bayesnec"
+  )
+  err <- expect_error(suppressMessages(
+    bnec_hurdle(y ~ crf(x, "nec3param"), data = dat)
+  ))
+  expect_match(conditionMessage(err), "row\\(s\\) with missing values")
+  expect_match(conditionMessage(err), "at row\\(s\\) 15")
+  expect_false(grepl("upper bound", conditionMessage(err)))
+  expect_identical(calls, 0L)
 })
 
 test_that("crossed_weights is the outer product of component weights", {

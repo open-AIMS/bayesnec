@@ -1,5 +1,13 @@
 # Re-fitting example8
 
+Status, 2026-09-26: the measurements below stand; five statements about the
+state of the code do not. "The open pull request" is PR #228, merged 2026-09-17.
+The `expand_manec()` question attributed to #380 was fixed by PR #385. The grouped
+fits are no longer unscreened: PR #383 fixed #376 and `example8.Rmd.orig` now
+screens them, although the rendered `example8.Rmd` still contains the old sentence.
+The environment line under "Left alone" is resolved, since `check_formula()` is
+now wrapped in `invisible()`. The `R/helpers.R` line references are out of date.
+
 What the vignette's fits require, and what each re-run established. Two re-runs
 have happened: the change to a log axis, and the change to `bnec()`'s sampling
 defaults that followed review.

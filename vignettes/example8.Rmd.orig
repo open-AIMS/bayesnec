@@ -961,7 +961,7 @@ fit_nec_ogl <- screen_models(fit_nec_ogl)
 ### The group-level standard deviations
 
 `VarCorr()` reports the deviations on the scale of the parameter each applies
-to. They are read against the stacking weight of the equation they were computed
+to. They are read against the model weight of the equation they were computed
 on, because an equation holding no weight says nothing about the model average.
 
 ```{r varcorr-plate-terms}
@@ -1425,7 +1425,7 @@ ggplot(pam_thr, aes(x = est, y = equation)) +
   geom_linerange(aes(xmin = lo, xmax = hi, colour = wi)) +
   geom_point(aes(colour = wi, size = wi)) +
   scale_colour_gradient(low = "grey80", high = "#2c6a5a",
-                        name = "stacking\nweight") +
+                        name = "model\nweight") +
   scale_size_area(max_size = 5, guide = "none") +
   log_x +
   theme_classic() +

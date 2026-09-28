@@ -1419,6 +1419,27 @@ define_prior <- function(model, family, predictor, response,
     if (!is.null(group_priors)) {
       hurdle_priors <- hurdle_priors + group_priors
     }
+    # A disp() term models the positive block's dispersion parameter, so its
+    # priors are the ones the positive block's family takes, built from the
+    # survivors for the reason given above. That is the family and the
+    # response bnec_hurdle() gives its growth component, so the two routes put
+    # the same prior on the same variance function. Added here because this
+    # branch returns before the point below where a single-block family's
+    # disp() priors are added; missed, c0 and the slopes would take the flat
+    # brms default. See #410.
+    #
+    # The term is checked against the two-block family first. bnec() checks it
+    # in wrangle_model_formula(), but get_priors() reaches this function
+    # without building a formula, and would otherwise return priors for
+    # hurdle_negbinomial, which bnec() refuses, and fail on hurdle_poisson
+    # inside brms with a message naming neither the family nor the term.
+    if (!is.null(disp_spec)) {
+      check_disp_spec(disp_spec, family, response = mu_response)
+    }
+    disp_priors <- define_disp_prior(disp_spec, mu_family, mu_response)
+    if (!is.null(disp_priors)) {
+      hurdle_priors <- hurdle_priors + disp_priors
+    }
     return(hurdle_priors)
   }
   link_tag <- family$link
@@ -1701,6 +1722,14 @@ define_prior <- function(model, family, predictor, response,
   }
   if (model == "ecxexp") {
     priors <- pr_beta + pr_top
+  }
+  # The top entry every other equation takes, unchanged. It is placed for the
+  # level of an undeclined response, which for a constant is the whole response.
+  # On a response with every observation at a bound it is still built:
+  # response_link_scale() shifts such a response inside the support before any
+  # quantile is taken of it. See #419.
+  if (model == "ecxflat") {
+    priors <- pr_top
   }
   if (model == "ecxhormebc4") {
     priors <- pr_top + pr_beta + pr_ec50 + pr_slope

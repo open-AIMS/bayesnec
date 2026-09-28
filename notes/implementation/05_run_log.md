@@ -304,3 +304,74 @@ which PR to read; nothing here restates one.
 Release tiers were revised in the #227 pass: `2.1.4` is everything through the
 feature work, **`2.2.0` is the factor covariate release**, and the short-lived
 `2.3.0` tier is gone.
+
+---
+
+# The backlog run
+
+Started after 2026-09-26. Records only what GitHub cannot: an item stopped or
+skipped, and why, and where the run finished. The procedure is `00_protocol.md`
+and the order `01_work_queue.md`.
+
+- 2026-09-26 19:45 AEST. Precompile smoke test: `example2b` as job 914152 from
+  `predev` at `efce694a`, completed in 40 s, "Precompiled without error", output
+  identical to the committed `example2b.Rmd`. The HPC path works; the container
+  on the cluster matches `hpc/image.lock`.
+- 2026-09-26 19:50 AEST. RF renewed the VPN connection; it closes near 18:00 AEST
+  on 2026-09-27. Cut-offs moved to 10:00 (store refit) and 16:00 (precompile).
+- 2026-09-26 21:25 AEST. The local full test suites of items 1 to 3 deadlocked:
+  after 36 to 85 minutes every testthat worker slept on a socket read with its
+  CPU time unchanged over 45 s, at machine load 0.3. Killed by PID. The
+  protocol now runs touched test files serially against an installed build and
+  leaves the full suite to CI.
+- 2026-09-26 20:55 AEST. #418 recorded in `notes/incomplete_design_fits.md`
+  (`528f0667`).
+- 2026-09-26, item 6. #403 stopped: D21 cannot be implemented as written. The
+  geometric mean of a censored and an identified draw has a per-draw bound
+  below the grid limit, and `summarise_censored()` holds one bound per end.
+  Options and measurements are on #403; the ruling is to be made with #421. The
+  comparison half of #404 went ahead in item 6.
+- 2026-09-26, item 3. The lower-end extension of D20 was tried in two forms and
+  reverted after review; the lower end is #421. Item 3 implements D20 at the
+  upper end only.
+- 2026-09-26 23:20 to 2026-09-27 01:20 AEST. The orchestrating session hit a
+  usage limit and paused for about two hours. Nothing was lost; merges resumed
+  at 01:21.
+- 2026-09-27 01:25 AEST. PR #402 passes all five checks at `fc2e7e8c` but is
+  open; its preconditions (the #382 plan document, the PR body's base line, an
+  issue for #388's open questions) are not done. The run does not merge it.
+- 2026-09-27 03:50 AEST. #431's ubuntu-devel job was cancelled after 59 min with
+  no newer push and a 90-minute limit, which is the unexplained termination
+  `notes/ci_devel_cancellation.md` records. It was re-run alone and passed, and
+  the PR merged.
+- 2026-09-27 04:00 to 06:20 AEST. A second usage-limit pause of the
+  orchestrating session.
+- 2026-09-27 06:25 AEST. PR #402 still unmerged (head `fc2e7e8c`), so the
+  `example8` store refit is not started and `example8` is left out of the
+  precompile, as §4 provides. Seventeen issues were filed for defects found
+  during the run: #435 to #451.
+- 2026-09-27 06:30 AEST. Full precompile submitted to the AIMS HPC as job 914176,
+  nine array tasks (`example1`, `example2b`, `example2`, `example3`, `example4`,
+  `example5`, `example6`, `example7`, `example9`), from `predev` at `a806fb7c`.
+  `example8` is left out because PR #402 has not merged. The two items still
+  open at submission, #452 (#410 joint families) and #453 (#419 `ecxflat`),
+  change no vignette's output, so the rendered vignettes are current for the
+  whole list. Collect with `./hpc/precompile-hpc.sh --fetch <names>` from a
+  worktree with `hpc/local.conf`; the VPN connection closes near 18:00 AEST.
+- 2026-09-27 08:55 AEST. The list is finished: every item is merged into
+  `predev` except #403, stopped for RF's ruling with #421. #453 failed its first
+  check run on all four platforms (seven errors in `test-censoring.R`: the new
+  `nec`-parameter test read a fitted `brms` object the structural hurdle fixtures
+  do not hold); fixed in `77a72e67` and merged on a green re-run.
+- 2026-09-27 08:10 AEST. Precompile tasks 1 to 6 (`example1` to `example5`,
+  `example2b`) collected and committed on branch `precompile-backlog-run`
+  (`1fb714ab`). `example2b` and `example5` were unchanged. Tasks 7 to 9
+  (`example6`, `example7`, `example9`) still running one at a time.
+- 2026-09-27 09:49 AEST. Precompile job 914176 finished: all nine tasks
+  `COMPLETED`, exit 0. `example7` took 38 s because it transcribes its figures
+  from the `negative-response-conventions` compendium and fits nothing.
+  Tasks 7 to 9 collected at 09:55 and opened with tasks 1 to 6 as #454 into
+  `predev`. No rendered file contains a local path.
+- 2026-09-27 10:59 AEST. #454 merged. The run is finished. Open for RF: #403
+  with #421; the `hurdle_negbinomial` `disp()` decision (#410); the departures
+  listed on #453; PR #402 and, after it, the `example8` store refit and render.

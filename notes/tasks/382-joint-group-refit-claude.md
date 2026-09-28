@@ -53,6 +53,10 @@ silent, which is why phase 1 can land before phase 2 without producing a wrong
 number. Confirm this rather than assuming it: the first joint refit fitted must
 have `ecx()` called on it, and the error recorded here.
 
+Noted 2026-09-28: this describes the grid before phase 2. `prediction_grid()`
+now takes an optional `level_spec` and adds the level column only when one is
+supplied; see *The grid* under phase 2 for how the estimators use it.
+
 ### The parameter sub-formula accessor
 
 `add_formula_glef()` (`R/bayesnecformula.R:923`) reaches `brmform[[2]][[p]]`
@@ -253,8 +257,18 @@ current body verbatim, including `model_survival`, which has no meaning here.
 
 ### Choosing the equation
 
+Superseded, noted 2026-09-28. This rule was replaced on 2026-09-19 by
+*Correction: one equation per level, not one for the set*, above, and the code
+implements the correction: each level is fitted the equation its own model
+weights favour, and `joint_level_equations()` returns that choice. The summed
+weight described below survives only where `model` forces one equation at every
+level, as `model_weight_share` on the returned object; under the default it is
+`NA`, and no message about a spread of weight is raised. The text is kept as
+the record of the rule that was replaced. It said "stacking weights" where the
+weights are pseudo-BMA unless the grouped fit asked for stacking.
+
 One equation is fitted for all levels. The default is the equation maximising
-the sum of per-level stacking weights, which is the `bayesnecgroupfit` analogue
+the sum of per-level model weights, which is the `bayesnecgroupfit` analogue
 of `best_crossed()`.
 
 Where the favoured equation holds less than half the summed weight, message
@@ -265,6 +279,12 @@ joint fit. Record it in the returned object so that phase 3 can report it.
 `model` names an equation directly and skips the choice.
 
 ### Building the formula
+
+Noted 2026-09-28: this is now the branch taken where every level favours the
+same equation, or where `model` names one. Where the levels favour different
+equations the formula is composed per level instead, by
+`compose_level_data()` and the `composed` branch of `level_spec`, with the
+predictor masked as *The guard and its evidence* describes.
 
 Take the `bayesnecformula` from `object`, swap in the chosen equation with
 `swap_crf_model()` as the hurdle method does, build the `brmsformula`, then for
@@ -345,6 +365,16 @@ Taken from `object`, which chose it once from the whole response for the reason
 
 ### The grid
 
+Superseded in part, noted 2026-09-28. The grid does gain the level column
+under a `level_spec`, and `bnec_newdata()` on a joint refit returns
+`resolution` rows per level. The estimators do not predict on that grid. Each
+level is estimated on a grid for that level alone, through the internal
+`bayesnecjointlevel` view, because `control_posterior()`,
+`ecx_from_posterior()`, `nsec_from_posterior()` and
+`count_positive_asymptote()` each read a single monotone curve and return a
+wrong number without an error on a grid holding every level concatenated.
+`?bayesnecjointfit` states the rule.
+
 `prediction_grid()` gains the level column. It must not gain it unconditionally:
 every existing caller passes a fit with no population-level factor, and adding a
 column those models do not use would change nothing for them but is an untested
@@ -383,6 +413,11 @@ so run it with the priors pinned explicitly the first time.
 ## Phase 3
 
 ### The store cannot hold a joint refit yet
+
+Resolved, noted 2026-09-28. `vignettes/fit_store.R` now lists `bnec_joint` in
+`FIT_FUNS` and keys a joint refit with `joint_key()`, on its call and the key
+of the grouped fit it refits. The paragraphs below are the measurement that
+led to it.
 
 Measured on the `grouping-structures` compendium on 2026-09-19, before any
 vignette work. Three things block a `bnec_joint()` call in `example8`, and all
@@ -427,13 +462,16 @@ rather than starting a file, since the generic is shared.
 - dispatch: a `bayesmanecfit` is refused with a message naming both accepted
   classes;
 - equation choice: a grouped fit whose levels favour different equations gets
-  the summed-weight winner, and messages;
+  the summed-weight winner, and messages. Superseded 2026-09-19 with the rule
+  it tests; the test now asserts that each level gets its own favoured
+  equation;
 - `model` overrides the choice;
 - `disp_by_level = FALSE` produces one dispersion coefficient, `TRUE` produces
   one per level;
 - the agreement test above, as the phase 2 gate;
 - `ecx()` on a phase 1 fit, before phase 2, errors rather than returning a
   number. Remove this test when phase 2 lands, and say so in its comment.
+  Removed when phase 2 landed, as planned.
 
 Every fitting test is `skip_on_cran()` and reuses one fixture. Compiling Stan
 programs is what makes the suite slow, not the number of assertions.

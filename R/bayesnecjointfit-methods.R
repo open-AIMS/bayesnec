@@ -344,6 +344,11 @@ joint_ne_table <- function(object, no_effect, ...) {
 #' @export
 nec.bayesnecjointfit <- function(object, ..., no_effect = FALSE) {
   chk_lgl(no_effect)
+  # Once for the refit rather than once per level, as for a bayesnecgroupfit:
+  # each level's estimate is a call on a bayesnecfit view, which would
+  # otherwise raise the message itself. See report_fitted_scale().
+  quiet <- report_fitted_scale(object, dots_xform(nec, list(...)), "nec")
+  on.exit(options(quiet), add = TRUE)
   joint_ne_table(object, no_effect = no_effect, ...)
 }
 
@@ -351,6 +356,9 @@ nec.bayesnecjointfit <- function(object, ..., no_effect = FALSE) {
 #' @method ecx bayesnecjointfit
 #' @export
 ecx.bayesnecjointfit <- function(object, ...) {
+  # Once for the refit, as in nec.bayesnecjointfit().
+  quiet <- report_fitted_scale(object, dots_xform(ecx, list(...)), "ecx")
+  on.exit(options(quiet), add = TRUE)
   joint_estimate_table(object, "ecx", function(f, ...) ecx(f, ...), ...)
 }
 
@@ -358,6 +366,9 @@ ecx.bayesnecjointfit <- function(object, ...) {
 #' @method nsec bayesnecjointfit
 #' @export
 nsec.bayesnecjointfit <- function(object, ...) {
+  # Once for the refit, as in nec.bayesnecjointfit().
+  quiet <- report_fitted_scale(object, dots_xform(nsec, list(...)), "nsec")
+  on.exit(options(quiet), add = TRUE)
   joint_estimate_table(object, "nsec", function(f, ...) nsec(f, ...), ...)
 }
 
@@ -376,6 +387,13 @@ ecnsec.bayesnecjointfit <- function(object, nsec, ...) {
   # as.data.frame() renames it X50. -- which reads as neither a quantile nor a
   # percentage. Renamed to the Q50 that ecx(), nsec() and nec() already use, so
   # the four tables have one set of column names between them.
+  # Once for the refit, as in nec.bayesnecjointfit(). `nsec` is put back in
+  # front of the dots so that a positional xform is matched to the formal it
+  # would reach on a single fit, rather than one place earlier.
+  quiet <- report_fitted_scale(
+    object, dots_xform(ecnsec, c(list(nsec = nsec), list(...))), "ecnsec"
+  )
+  on.exit(options(quiet), add = TRUE)
   tabulate <- !isTRUE(list(...)$posterior)
   joint_estimate_table(object, "ecnsec", function(f, ...) {
     out <- ecnsec(f, nsec = nsec, ...)
@@ -425,7 +443,9 @@ joint_level_curve <- function(object, level, resolution = 1000,
 #' @param object An object of class \code{\link{bayesnecjointfit}}.
 #' @param level One level of \code{object$group_var}.
 #'
-#' @return A \code{\link[base]{numeric}} vector of three, on the fitted scale.
+#' @return A named \code{\link[base]{numeric}} vector of three, on the fitted
+#' scale, with attribute \code{"censored_summary"} where any entry is the end
+#' of the prediction range rather than a quantile.
 #'
 #' @noRd
 joint_level_ne <- function(object, level) {
@@ -434,7 +454,15 @@ joint_level_ne <- function(object, level) {
     return(estimates_summary(lvl_fit$ne_posterior))
   }
   out <- suppressWarnings(suppressMessages(nsec(lvl_fit)))
-  as.numeric(out)
+  # The numbers and the censoring record only, named as the threshold branch
+  # names them. as.numeric() alone dropped the record, so to_axis_scale() and
+  # bind_nec() drew a censored NSEC's bound as though it were a quantile and
+  # the annotation lost its ">=" or "<=" (#404). The other attributes nsec()
+  # sets describe the estimator call, and the annotation reads none of them.
+  vals <- as.numeric(out)
+  names(vals) <- c("Estimate", "Q2.5", "Q97.5")
+  attr(vals, "censored_summary") <- attr(out, "censored_summary")
+  vals
 }
 
 #' Creates the data.frame for plotting a joint refit

@@ -416,6 +416,28 @@ subset_censoring <- function(cens, idx) {
   cens
 }
 
+#' Take a subset of posterior draws together with their censoring record
+#'
+#' \code{[} drops every attribute but names, so a posterior subset with it
+#' loses the record of which draws lie beyond the prediction range, and a
+#' censored draw can no longer be told from one that is merely missing. This
+#' keeps the share of the record that belongs to the draws taken.
+#'
+#' @param m A posterior vector, optionally carrying attribute
+#' \code{"censored"}.
+#' @param idx An integer vector of draw positions.
+#'
+#' @return \code{m[idx]}, with attribute \code{"censored"} where \code{m}
+#' carries one.
+#' @noRd
+subset_draws <- function(m, idx) {
+  out <- m[idx]
+  # Assigning NULL removes nothing that is there, so the subset of a posterior
+  # with no record is exactly what m[idx] returned before.
+  attr(out, "censored") <- subset_censoring(attr(m, "censored"), idx)
+  out
+}
+
 #' Put a censoring record on another predictor scale
 #'
 #' Used for both remappings a record makes: the \code{crf()} transformation
@@ -852,6 +874,23 @@ contains_negative <- function(x) {
 #' @noRd
 response_link_scale <- function(response, family) {
   link_tag <- family$link
+  # A bounded response with every observation at one bound has no value strictly
+  # inside the support to rescale towards, so the branches below returned NaN
+  # (at 1, the largest value below 1 does not exist) or Inf (at 0, nor does the
+  # smallest above 0), and define_prior() then stopped in quantile(). Only
+  # ecxflat reaches here with such a response, because bnec() fits it alone in
+  # place of any curve and every other route refuses the response first. It is
+  # shifted inside the support by 1 / (2n), the correction survival_by_x()
+  # applies to a proportion of exactly 0 or 1, so that its top prior and initial
+  # value are built from a level the likelihood can evaluate. See #400 and
+  # #419.
+  if (isTRUE(family$family %in% c("bernoulli", "binomial", "beta_binomial",
+                                  "beta")) &&
+        length(response) > 0 && !anyNA(response) &&
+        !is.na(response_bound_reached(response))) {
+    eps <- 1 / (2 * length(response))
+    response <- pmin(pmax(response, eps), 1 - eps)
+  }
   # Computed on demand rather than eagerly. An all-zero response is legitimate
   # input for a zero-inflated family, and reaches none of the branches below --
   # but min(response[response > 0]) on it is Inf and emits a warning the caller
@@ -1011,6 +1050,104 @@ check_no_effect_arg <- function(dots, object) {
          " for a NSEC from every model regardless of type.", call. = FALSE)
   }
   invisible(TRUE)
+}
+
+#' Resolve which equations and whether the model average a method shows
+#'
+#' \code{predict()}, \code{plot()} and \code{autoplot()} on a
+#' \code{\link{bayesmanecfit}} take \code{model}, naming equations of the set,
+#' and \code{average}, choosing whether the model-averaged outcome is included
+#' (D5, #120). The two are separate arguments because the single logical
+#' \code{all_models} they replace could ask for every equation or for the
+#' model average, but not for a subset of the equations, nor for equations and
+#' the model average together.
+#'
+#' @param x A \code{\link{bayesmanecfit}}.
+#' @param model \code{NULL}, or a character vector of equation names.
+#' @param average A single logical value.
+#' @param all_models \code{NULL}, or the deprecated argument as supplied.
+#' @param new_supplied Whether the calling method was given \code{model} or
+#' \code{average} explicitly.
+#'
+#' @return A list with elements \code{model}, \code{NULL} or a character
+#' vector of equation names in the order given and without duplicates, and
+#' \code{average}, a single logical value.
+#'
+#' @importFrom chk chk_flag
+#'
+#' @noRd
+resolve_model_average <- function(x, model, average, all_models = NULL,
+                                  new_supplied = FALSE) {
+  if (!is.null(all_models)) {
+    # Refused rather than resolved in favour of one side: a call giving both
+    # asks for two things, and neither argument can be read as overriding the
+    # other without guessing which the caller meant.
+    if (new_supplied) {
+      stop("`all_models` cannot be combined with `model` or `average`, ",
+           "which replace it. Remove `all_models` from the call.",
+           call. = FALSE)
+    }
+    chk_flag(all_models)
+    # A warning() rather than lifecycle::deprecate_warn(), because lifecycle
+    # is not in Imports; validate_ecx_type() sets the same precedent. Raised
+    # on every call that supplies the argument, so a script run again after an
+    # upgrade reports it each time until it is changed. The condition carries
+    # a class of its own so that plot.bayesnecgroupfit(), which calls this
+    # method once per level, can let the first through and muffle the rest.
+    warning(structure(
+      class = c("bayesnec_all_models_deprecated", "warning", "condition"),
+      list(message = paste0(
+        "`all_models` is deprecated and will be removed in a later ",
+        "release. Use `model` to name the equations to show and ",
+        "`average` to choose whether the model average is shown. ",
+        "`all_models = TRUE` is `model = <fit>$success_models, ",
+        "average = FALSE`, and `all_models = FALSE` is the default, ",
+        "`model = NULL, average = TRUE`."
+      ), call = NULL)
+    ))
+    # The mapping reproduces what each value drew before: TRUE drew every
+    # equation of the set, in the order of the set, and no model average;
+    # FALSE drew the model average alone.
+    if (all_models) {
+      return(list(model = x$success_models, average = FALSE))
+    }
+    return(list(model = NULL, average = TRUE))
+  }
+  chk_flag(average)
+  if (!is.null(model)) {
+    if (!is.character(model) || length(model) == 0 || anyNA(model) ||
+        !all(nzchar(model))) {
+      stop("`model` must be NULL or a character vector naming equations of ",
+           "the set.", call. = FALSE)
+    }
+    model <- unique(model)
+    unknown <- setdiff(model, x$success_models)
+    if (length(unknown) > 0) {
+      groups <- intersect(unknown, names(mod_groups))
+      # pull_out() accepts a group name and expands it; `model` here does
+      # not, because D5 has it name equations. Saying so stops the refusal
+      # reading as though the group were absent from the set.
+      group_note <- if (length(groups) > 0) {
+        paste0(" ", paste0("\"", groups, "\"", collapse = ", "),
+               " names a group of equations (see ?models), not an ",
+               "equation; name the equations themselves.")
+      } else {
+        ""
+      }
+      stop("`model` names ",
+           if (length(unknown) == 1) "an equation" else "equations",
+           " not in this set: ", paste0("\"", unknown, "\"", collapse = ", "),
+           ". The set holds ",
+           paste0("\"", x$success_models, "\"", collapse = ", "), ".",
+           group_note, call. = FALSE)
+    }
+  }
+  if (is.null(model) && !average) {
+    stop("Nothing is selected: `model` is NULL and `average` is FALSE. Name ",
+         "one or more equations in `model`, or set `average = TRUE`.",
+         call. = FALSE)
+  }
+  list(model = model, average = average)
 }
 
 #' @noRd
@@ -1518,6 +1655,21 @@ check_update_data <- function(x, data, family = NULL, on_fit = TRUE) {
     formula <- extract_formula(x[[i]])
     bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
     model <- get_model_from_formula(formula)
+    # Tested against the family the refit uses: the one supplied, otherwise the
+    # fit's own, which brms::update() keeps. `fam` below is read off the new
+    # data where no family is supplied, which is right for asking whether the
+    # data suggest a different family and wrong for this: a bernoulli fit given
+    # a response of 1 in every row would be tested as poisson and refitted, and
+    # a gaussian fit given a response of exactly 1 would be refused as beta.
+    # After check_complete_cases(), for the reason get_priors() gives;
+    # check_data() runs that again below. Given the fit's own equation, so that
+    # an ecxflat fit, which is what bnec() fits to such a response, can be
+    # refitted to one, and a curve equation cannot. See #400 and #419.
+    check_complete_cases(bdat)
+    check_response_at_bound(
+      bdat, if (is.null(family)) x[[i]]$fit$family else family,
+      model = model
+    )
     # Named fam, not family: reassigning the argument inside its own loop
     # would leave the second iteration reading the validated object rather
     # than what the caller supplied.
@@ -2036,6 +2188,24 @@ fill_missing_priors <- function(priors, defaults, model) {
   out
 }
 
+#' The predictor expression written in a formula's crf() term
+#'
+#' Shared by \code{sub_x_transformation()}, which applies it to an estimate,
+#' and \code{inline_x_transform()}, which reports it, so that an estimate is
+#' said to be on a transformed scale exactly where it has been put on one.
+#'
+#' @param formula A \code{\link{bayesnecformula}}.
+#'
+#' @return The expression as a call, such as \code{log(x + 1)}, or a symbol
+#' where the predictor is named untransformed.
+#'
+#' @importFrom stats terms
+#' @noRd
+crf_x_call <- function(formula) {
+  x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
+  str2lang(eval(parse(text = x_str)))
+}
+
 #' Put an estimate read off the prediction grid back on the fitted scale
 #'
 #' The prediction grid is built on the raw predictor column
@@ -2064,11 +2234,10 @@ fill_missing_priors <- function(priors, defaults, model) {
 #'
 #' @return A \code{\link[base]{numeric}} vector on the fitted scale.
 #'
-#' @importFrom stats terms setNames
+#' @importFrom stats setNames
 #' @noRd
 sub_x_transformation <- function(value, formula) {
-  x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
-  x_call <- str2lang(eval(parse(text = x_str)))
+  x_call <- crf_x_call(formula)
   if (!inherits(x_call, "call")) {
     return(value)
   }
@@ -2416,6 +2585,10 @@ control_posterior <- function(object, newdata, epred_fun, x_at = NULL) {
 #' numerical inverse is what makes the default case correct without the caller
 #' having to know that an inverse was needed.
 #'
+#' Whichever map applies, it is applied by \code{remap_summary()}, so that a
+#' decreasing one also puts the interval back in order and reverses the marks
+#' of a censored entry (#417).
+#'
 #' @param values A \code{\link[base]{numeric}} vector on the fitted scale.
 #' @param bdat A model frame carrying the \code{bnec_pop} attribute.
 #' @param formula A \code{\link{bayesnecformula}}.
@@ -2424,6 +2597,48 @@ control_posterior <- function(object, newdata, epred_fun, x_at = NULL) {
 #' @param xform A function supplied by the caller.
 #'
 #' @return A \code{\link[base]{numeric}} vector on the axis scale.
+#'
+#' @noRd
+to_axis_scale <- function(values, bdat, formula, x_grid_raw,
+                          xform = identity) {
+  if (!pop_var_is_transformed(bdat, "x_var")) {
+    return(remap_summary(values, xform, x_grid_raw))
+  }
+  # The fitted-scale grid is what a decreasing map is detected on in both
+  # branches below. Before #417 the xform branch returned without computing it,
+  # because xform(values) needed nothing else.
+  fitted_grid <- sub_x_transformation(x_grid_raw, formula)
+  if (!identical(xform, identity)) {
+    return(remap_summary(values, xform, fitted_grid))
+  }
+  inverse <- grid_inverse(formula, x_grid_raw)
+  if (is.null(inverse)) {
+    return(values)
+  }
+  remap_summary(values, inverse, fitted_grid)
+}
+
+#' The inverse of an inline predictor transformation, read off the grid
+#'
+#' A \code{crf()} term such as \code{crf(log(x))} names a function the package
+#' has no general inverse for, but the prediction grid holds the same points on
+#' both scales: the recorded values, and those values put through the term by
+#' \code{sub_x_transformation()}. Interpolating between the two inverts the term
+#' to within the resolution of the grid, whatever function it names.
+#'
+#' It is a function of its own so that an estimator returning values on the
+#' recorded scale (#299, option 1) can call the inverse the plots use, rather
+#' than a second implementation that could disagree with it. The function it
+#' returns takes a vector, so it can also be passed to
+#' \code{xform_censoring()} to move a censoring record.
+#'
+#' @param formula A \code{\link{bayesnecformula}}.
+#' @param x_grid_raw The prediction grid's predictor values, on the recorded
+#' scale.
+#'
+#' @return A \code{\link[base]{function}} taking values on the fitted scale and
+#' returning them on the recorded scale with their attributes kept, or
+#' \code{NULL} where fewer than two grid points are finite on both scales.
 #'
 #' @details \code{approx(rule = 2)} clamps an estimate outside the grid to the
 #' nearer end of it rather than returning \code{NA}. That is deliberate: the
@@ -2436,32 +2651,227 @@ control_posterior <- function(object, newdata, epred_fun, x_at = NULL) {
 #'
 #' @importFrom stats approx
 #' @noRd
-to_axis_scale <- function(values, bdat, formula, x_grid_raw,
-                          xform = identity) {
-  if (!pop_var_is_transformed(bdat, "x_var")) {
-    return(xform(values))
-  }
-  if (!identical(xform, identity)) {
-    return(xform(values))
-  }
+grid_inverse <- function(formula, x_grid_raw) {
   fitted_grid <- sub_x_transformation(x_grid_raw, formula)
   keep <- is.finite(fitted_grid) & is.finite(x_grid_raw)
   if (sum(keep) < 2) {
-    return(values)
+    return(NULL)
   }
-  # Built from `values` rather than as a fresh rep(NA_real_, ...), so that the
-  # attributes ecx() sets travel with the estimate. bind_ecx() reads
-  # attr(ecx_vals, "ecx_val") and assigns it into a data frame, so a stripped
-  # vector made autoplot(x, add_ecx = TRUE) fail with "replacement has length
-  # zero". The two branches above return xform(values), and R's arithmetic
-  # keeps attributes, so only this branch lost them -- which made the failure
-  # specific to an inline-transformed predictor with xform left at its default,
-  # the shape vignette("example1") uses.
-  out <- values
-  out[] <- NA_real_
-  finite_v <- is.finite(values)
-  out[finite_v] <- approx(x = fitted_grid[keep], y = x_grid_raw[keep],
-                          xout = values[finite_v], rule = 2)$y
+  fitted_grid <- fitted_grid[keep]
+  raw_grid <- x_grid_raw[keep]
+  function(values) {
+    # Built from `values` rather than as a fresh rep(NA_real_, ...), so that
+    # the attributes ecx() sets travel with the estimate. bind_ecx() reads
+    # attr(ecx_vals, "ecx_val") and assigns it into a data frame, so a stripped
+    # vector made autoplot(x, add_ecx = TRUE) fail with "replacement has length
+    # zero". An xform is usually arithmetic, and R's arithmetic keeps
+    # attributes, so only this inverse lost them -- which made the failure
+    # specific to an inline-transformed predictor with xform left at its
+    # default, the shape vignette("example1") uses.
+    out <- values
+    out[] <- NA_real_
+    finite_v <- is.finite(values)
+    out[finite_v] <- approx(x = fitted_grid, y = raw_grid,
+                            xout = values[finite_v], rule = 2)$y
+    out
+  }
+}
+
+#' Whether a map reverses the order of a grid
+#'
+#' @param map A monotone \code{\link[base]{function}}.
+#' @param grid A \code{\link[base]{numeric}} vector on the scale \code{map}
+#' takes values from.
+#'
+#' @return A \code{\link[base]{logical}} value.
+#' @noRd
+map_is_decreasing <- function(map, grid) {
+  grid <- grid[is.finite(grid)]
+  if (length(grid) < 2) {
+    return(FALSE)
+  }
+  ends <- map(range(grid))
+  # isTRUE() so that an end the map cannot evaluate, a NaN, leaves the summary
+  # in the order it arrived in, which is what every map did before #417.
+  isTRUE(ends[[1]] > ends[[2]])
+}
+
+#' Put a summarised estimate on another predictor scale
+#'
+#' The counterpart, for a summary, of \code{xform_censoring()}. A summary is an
+#' estimate followed by the lower and upper limits of its interval, and its
+#' \code{"censored_summary"} record marks which of those entries are bounds.
+#' Applying a map to the three numbers alone is correct only where the map is
+#' increasing. A decreasing one takes the lower limit to the top of the new
+#' scale, so the numbers come out with the larger second, and it takes a draw
+#' known to lie beyond the top of the old range to the foot of the new one, so
+#' a mark kept as it was states the opposite bound. That was #417:
+#' \code{ggbnec_data(fit, xform = function(x) -x)} labelled an estimate
+#' censored above 0.9 as \code{">=-0.90"}, where \code{"<=-0.90"} is correct.
+#'
+#' The direction is read once, from the mapped values of the two ends of the
+#' grid, and not from the record's bounds as \code{xform_censoring()} reads it,
+#' because an uncensored summary carries no record and its interval has to be
+#' put in order all the same.
+#'
+#' The summary is remapped, not the draws, so an entry that is not a bound can
+#' differ by one order statistic from the estimator given the same map: a type
+#' 1 quantile is not symmetric under a reflection where the number of draws
+#' times the probability is a whole number. The marks do not differ, because
+#' \code{remap_censored_summary()} works them out again from the counts, and an
+#' entry marked as a bound is set to that bound, as \code{summarise_censored()}
+#' sets it.
+#'
+#' @param values A summarised estimate: the estimate, then the lower and upper
+#' limits of its interval.
+#' @param map A monotone \code{\link[base]{function}} taking \code{values} to
+#' the new scale.
+#' @param grid The prediction grid, on the scale \code{values} are on.
+#'
+#' @return \code{values} on the new scale, with the interval in order and the
+#' record remapped.
+#' @noRd
+remap_summary <- function(values, map, grid) {
+  decreasing <- map_is_decreasing(map, grid)
+  out <- map(values)
+  if (decreasing && length(out) >= 3) {
+    out[2:3] <- out[3:2]
+  }
+  # Read off the input and set on the output, rather than left to travel
+  # through the map with the numbers. Carried through, the record kept the
+  # marks of the old scale, which is the defect; and a map that is not
+  # arithmetic may drop it, which would take the marks off the labels.
+  cens <- remap_censored_summary(attr(values, "censored_summary"), map,
+                                 decreasing, summary_probs(values))
+  if (decreasing && !is.null(cens) && length(cens$bound) == length(out)) {
+    # A mark worked out again from the counts can fall on an entry whose
+    # remapped value is a draw, where the number of draws times the probability
+    # is a whole number. The entry is then set to the bound it is marked with,
+    # which is the value summarise_censored() gives every marked entry, so that
+    # the label never pairs a mark with a number that is not the bound.
+    out[cens$bound == ">="] <- cens$upper
+    out[cens$bound == "<="] <- cens$lower
+  }
+  attr(out, "censored_summary") <- cens
+  out
+}
+
+#' The probability each entry of a summary is the quantile at
+#'
+#' Read from the names a summary is given: \code{"Estimate"} for the median
+#' of \code{estimates_summary()}, \code{"Q"} followed by a percentage from
+#' \code{clean_names()}, and a percentage followed by \code{"%"} as
+#' \code{quantile()} writes it before \code{clean_names()} is applied. The
+#' record does not keep the probabilities, and the names are the only place
+#' they survive.
+#'
+#' @param values A summarised estimate.
+#'
+#' @return A \code{\link[base]{numeric}} vector, one probability per entry, or
+#' \code{NULL} where any name is missing or of none of those forms.
+#' @noRd
+summary_probs <- function(values) {
+  nms <- names(values)
+  if (is.null(nms)) {
+    return(NULL)
+  }
+  num <- "[0-9]*\\.?[0-9]+(e[-+]?[0-9]+)?"
+  pct <- rep(NA_character_, length(nms))
+  pct[nms == "Estimate"] <- "50"
+  q_form <- grepl(paste0("^Q", num, "$"), nms)
+  pct[q_form] <- sub("^Q", "", nms[q_form])
+  pct_form <- grepl(paste0("^", num, "%$"), nms)
+  pct[pct_form] <- sub("%$", "", nms[pct_form])
+  probs <- as.numeric(pct) / 100
+  if (anyNA(probs)) {
+    return(NULL)
+  }
+  probs
+}
+
+#' The marks a censored summary gives each entry, from the counts alone
+#'
+#' Runs \code{quantile(type = 1)} over a sample holding only the ranks the
+#' record states, \code{-Inf} for each draw below the range, \code{Inf} for
+#' each above it and a finite value for the rest, so the index rule is the one
+#' \code{summarise_censored()} applied and is not rewritten here.
+#'
+#' @param n_below,n_above,n_draws \code{\link[base]{integer}} counts from the
+#' record.
+#' @param probs The probability of each entry.
+#'
+#' @return A \code{\link[base]{character}} vector of marks.
+#' @importFrom stats quantile
+#' @noRd
+marks_from_counts <- function(n_below, n_above, n_draws, probs) {
+  ranked <- c(rep(-Inf, n_below), numeric(n_draws - n_below - n_above),
+              rep(Inf, n_above))
+  q <- quantile(ranked, probs = probs, type = 1, names = FALSE)
+  out <- rep("", length(q))
+  out[q == Inf] <- ">="
+  out[q == -Inf] <- "<="
+  out
+}
+
+#' Put the censoring record of a summary on another predictor scale
+#'
+#' The rule \code{xform_censoring()} applies to the per-draw record, applied to
+#' the record \code{summarise_censored()} leaves on a summary. Both bounds are
+#' mapped. Under a decreasing map the two bounds exchange names and the counts
+#' of draws above and below exchange.
+#'
+#' The marks are then worked out again from the exchanged counts, rather than
+#' reversed where they stand. A type 1 quantile is not symmetric under a
+#' reflection where the number of draws times the probability is a whole
+#' number: of 4000 draws with exactly 100 above the range, the 97.5 per cent
+#' quantile is the 3900th draw and identified, while the 2.5 per cent quantile
+#' of the reflected draws is the 100th and censored. Reversing the marks left
+#' that entry unmarked where \code{nec(fit, xform = function(x) -x)} marks it.
+#' Where the probabilities cannot be read from the names, the marks are
+#' reversed and exchanged with their entries instead, which is exact away from
+#' such a count.
+#'
+#' @param cens The \code{"censored_summary"} attribute of a summary, or
+#' \code{NULL}.
+#' @param map A monotone \code{\link[base]{function}}.
+#' @param decreasing A \code{\link[base]{logical}} value, whether \code{map}
+#' reverses the order of the grid.
+#' @param probs The probability of each entry, from \code{summary_probs()}, or
+#' \code{NULL}.
+#'
+#' @return A record on the new scale, or \code{NULL}.
+#' @noRd
+remap_censored_summary <- function(cens, map, decreasing, probs = NULL) {
+  if (is.null(cens)) {
+    return(NULL)
+  }
+  out <- cens
+  new_upper <- map(cens$upper)
+  new_lower <- map(cens$lower)
+  if (!decreasing) {
+    out$upper <- new_upper
+    out$lower <- new_lower
+    return(out)
+  }
+  out$upper <- new_lower
+  out$lower <- new_upper
+  out$n_above <- cens$n_below
+  out$n_below <- cens$n_above
+  counts <- c(out$n_below, out$n_above, cens$n_draws)
+  if (length(probs) == length(cens$bound) && length(counts) == 3 &&
+      all(is.finite(counts)) && counts[3] >= counts[1] + counts[2]) {
+    out$bound <- marks_from_counts(out$n_below, out$n_above, cens$n_draws,
+                                   probs)
+    return(out)
+  }
+  reversed <- c(">=" = "<=", "<=" = ">=")
+  bound <- cens$bound
+  marked <- nzchar(bound)
+  bound[marked] <- reversed[bound[marked]]
+  if (length(bound) >= 3) {
+    bound[2:3] <- bound[3:2]
+  }
+  out$bound <- unname(bound)
   out
 }
 
@@ -2653,5 +3063,8 @@ plot_ecx <- function(object, family, dots = list()) {
   if (!("type" %in% names(dots)) && identical(family, "gaussian")) {
     dots$type <- "range"
   }
-  do.call(ecx, c(list(object), dots))
+  # Without the scale message: both callers put the estimate on the axis scale
+  # with to_axis_scale(), so the message would describe a number the plot does
+  # not show.
+  without_scale_report(do.call(ecx, c(list(object), dots)))
 }
