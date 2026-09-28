@@ -7,6 +7,19 @@ should be corrected, not worked around.
 
 ## Terms
 
+Superseded in part, noted 2026-09-28. Both definitions below describe only the
+form built where every level is fitted the same equation. Where the levels
+favour different equations the refit composes them instead. Each level's
+parameters are then separate `brms` non-linear parameters named with a level
+tag, such as `topaLv1`, each with its own `~ 1`, and each level's equation is
+multiplied by an indicator column that is one on that level's rows and zero
+elsewhere (`compose_level_formula()`, with the predictor masked as *The guard
+and its evidence* describes). That model is not dummy coding of the factor, and
+none of its curve parameters takes `~ 0 + <group_var>`. The level term survives
+on both branches in the dispersion sub-model, `<dpar> ~ 0 + <group_var>`, under
+`disp_by_level = TRUE`. The human document states the definition the code
+implements.
+
 **Joint refit** --- one `brms` model in which each parameter of the
 concentration-response equation takes a separate value per level of a factor,
 estimated in a single posterior. Equivalent to dummy coding the factor onto
@@ -298,7 +311,37 @@ is available by not applying the replacement to it, and should be reachable
 through an argument rather than by editing code. Name it `disp_by_level`,
 default `TRUE`.
 
+Noted 2026-09-28: the default is per level, and that is what makes a joint
+refit of one equation differ from a `bnec_group()` fit of that equation only in
+its priors. Under a shared dispersion the likelihood no longer factorises by
+level, so the two are different models. *The check that the priors are right*
+and the phase 2 agreement test compare the two, and both tests fit the
+default. On the composed branch the dispersion
+sub-model is the same `<dpar> ~ 0 + <group_var>`, written by
+`wrangle_model_formula()` rather than by `add_formula_level_terms()`.
+
 ### Priors and initial values
+
+Superseded in part, noted 2026-09-28. The table below is not what was built.
+No sibling of `parse_group_terms()` exists: `level_spec` is built in
+`bnec_joint()` and handed to `fit_bayesnec()`, as the paragraph after the table
+says. `define_prior()` and `group_inits()` are unchanged. The level
+coefficients' defaults are added by `add_level_defaults()`
+(`R/inits_functions.R`), which `add_brm_defaults()` (`R/helpers.R`) calls last,
+after the initial-value search, so that the rows it appends cannot reach
+`make_inits()`. On the dummy-coded branch it replicates each curve parameter's
+initial value across the levels and adds no curve prior, because one class
+`"b"` row with an `nlpar` reaches every coefficient of that parameter. On the
+composed branch `compose_level_defaults()` calls `define_prior()` and
+`make_good_inits()` once per distinct equation, over the whole predictor and
+response, and renames each prior row's `nlpar` and each initial value to the
+level's tagged parameter. On both branches `add_level_disp_defaults()` gives the
+per-level dispersion coefficients a log-scale prior from
+`disp_intercept_priors()` and an initial value from `disp_intercept_centre()`,
+both keyed through `disp_family_tag()`. The rule stated after the table, that
+each level coefficient takes the prior its parameter would have with no level
+term and that the prior is derived once rather than per level subset, is the
+rule the code implements.
 
 The level term is threaded through the existing prior and initial-value
 machinery as a `level_spec`, beside the `group_spec` that already exists. It is
@@ -444,6 +487,14 @@ assembled, or in a second array submitted behind the first.
 None of this is hard, and none of it is phase 3. Settle it before the vignette
 section is written, or the section cannot be rendered from the store.
 
+
+Superseded in part, noted 2026-09-28. The refit described in the next
+paragraph does not condition on a shared dispersion. `bnec_joint()` defaults to
+`disp_by_level = TRUE`, one dispersion coefficient per level, and the herbicide
+refit in `example8` uses that default and reports a separate dispersion for
+each of its seven levels. A shared dispersion is `disp_by_level = FALSE`, which
+`example8` does not fit. The section sets `compare_posterior()` beside the
+difference of the joint refit's per-level draws under the default.
 
 The `example8` section demonstrating a question the other two routes cannot
 answer. The contrast within one posterior is the clearest: `compare_posterior()`

@@ -77,6 +77,13 @@ Where every level favours the same equation, the model is that equation dummy
 coded on the factor. `model = "ecx4param"` fits one named equation at every
 level instead, which is also the form a group-level term such as `ogl()` needs.
 
+Each level takes its own dispersion parameter by default, so that a refit of
+one equation differs from a `bnec_group()` fit of it only in its priors, which
+is the comparison that shows this phase is done (specification, *Building the
+formula*). `disp_by_level = FALSE` estimates one dispersion across the levels
+instead, which is the shared dispersion described under *The gap in the
+supported routes*.
+
 Every level's equation is evaluated on every row, including the rows of other
 levels. On those rows its predictor is replaced by one of that level's own
 observed predictor values. Without that replacement, one level's equation can
