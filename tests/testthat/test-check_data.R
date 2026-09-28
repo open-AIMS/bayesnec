@@ -731,8 +731,9 @@ test_that("check_response_at_bound leaves every other response alone", {
   near <- cd_bdat(y ~ crf(x, model = "nec3param"),
                   data.frame(x = x, y = c(rep(1L, 29), 0L)))
   expect_silent(check_response_at_bound(near, bernoulli()))
-  # No trials() term: check_data() refuses that, so this says nothing rather
-  # than testing counts against a bound it cannot see.
+  # No trials() term: check_trials_term() refuses that, before this runs on
+  # every route but update(), so this says nothing rather than testing counts
+  # against a bound it cannot see (#442).
   expect_silent(check_response_at_bound(zeros, binomial()))
 })
 
@@ -898,4 +899,44 @@ test_that("the asymptote report does not count ecxflat on either side (#419)", {
   expect_false(report(c("ecxflat", "nec3param")))
   expect_false(report(c("ecxflat", "nec4param")))
   expect_true(report(c("nec3param", "nec4param")))
+})
+
+# ---- #442, a binomial formula with no trials() term ---------------------------
+
+test_that("check_trials_term refuses binomial and beta_binomial alone (#442)", {
+  # nec_data's count and trials columns are added in setup.R. The predictor is
+  # transformed so that the example in the message is seen to write it as the
+  # formula did.
+  no_trials <- cd_bdat(count ~ crf(log(x), model = "nec3param"), nec_data)
+  with_trials <- cd_bdat(count | trials(trials) ~ crf(x, model = "nec3param"),
+                         nec_data)
+  err <- expect_error(check_trials_term(no_trials, validate_family("binomial")))
+  msg <- conditionMessage(err)
+  expect_match(msg, paste("The binomial family needs the number of trials for",
+                          "each observation, and the formula has no trials()",
+                          "term"), fixed = TRUE)
+  expect_match(msg, "count | trials(n) ~ crf(log(x), \"nec3param\")",
+               fixed = TRUE)
+  expect_error(check_trials_term(no_trials, "beta_binomial"),
+               "The beta_binomial family needs", fixed = TRUE)
+  expect_silent(check_trials_term(with_trials, validate_family("binomial")))
+  expect_silent(check_trials_term(with_trials, "beta_binomial"))
+  # No other family reads a number of trials.
+  expect_silent(check_trials_term(no_trials, poisson()))
+  expect_silent(check_trials_term(no_trials, "negbinomial"))
+  expect_silent(check_trials_term(no_trials, bernoulli()))
+})
+
+test_that("check_data() keeps the trials() refusal as the backstop (#442)", {
+  # update() with new data or a new family reaches check_data() without a
+  # call-level check, and the trials were read there with error = TRUE, which
+  # stopped on "subscript out of bounds".
+  err <- expect_error(cd_run(count ~ crf(x, model = "nec3param"), nec_data,
+                             validate_family("beta_binomial")))
+  expect_match(conditionMessage(err), "has no trials() term", fixed = TRUE)
+  expect_false(grepl("subscript", conditionMessage(err), fixed = TRUE))
+  # With the term, the trials reach the checked frame as recorded.
+  res <- cd_run(count | trials(trials) ~ crf(x, model = "nec3param"),
+                nec_data, validate_family("binomial"))
+  expect_identical(res$mod_dat$trials, nec_data$trials)
 })

@@ -206,10 +206,12 @@ flatness_blocks <- function(x, y, trials, denominator, family) {
   }
   block <- list(x = x, y = y, spec = spec)
   if (identical(spec$kind, "matrix")) {
-    # A binomial family with no trials() term is refused by check_data(), which
-    # runs after this report. Nothing is said here, so that the refusal is what
-    # the user sees rather than a report that the contrast could not be
-    # computed.
+    # A binomial family with no trials() term is refused by
+    # check_trials_term(), which bnec(), bnec_group() and get_priors() run
+    # before this report, so no call through them reaches this branch. Kept
+    # for a direct call: nothing is said, because the contrast has no trials
+    # to count against, and a report that it could not be computed would name
+    # a symptom rather than the missing term. See #442.
     if (is.null(trials)) {
       return(list())
     }
@@ -1111,6 +1113,48 @@ check_reserved_names <- function(data) {
   invisible(NULL)
 }
 
+#' Refuse a binomial or beta_binomial formula with no trials() term
+#'
+#' Both families model each response as a count out of a number of trials,
+#' and \pkg{brms} reads that number from a \code{trials()} term on the
+#' left-hand side of the formula. Without one there is nothing to divide the
+#' count by, so neither the default priors nor the fit can be built.
+#'
+#' Raised by \code{\link{bnec}}, \code{\link{bnec_group}} and
+#' \code{\link{get_priors}} once per call, before any equation or level is
+#' fitted, and kept in \code{\link{check_data}} and \code{\link{amend}} as the
+#' backstop for the routes that do not come through those. See #442.
+#'
+#' @param data A model frame for a \code{\link{bayesnecformula}}.
+#' @param family A validated \code{\link[stats]{family}}, or a family name.
+#'
+#' @return \code{NULL}, invisibly. Called for the error.
+#' @noRd
+check_trials_term <- function(data, family) {
+  fam_tag <- if (inherits(family, "family")) family$family else family
+  if (!fam_tag %in% c("binomial", "beta_binomial")) {
+    return(invisible(NULL))
+  }
+  # Read off bnec_pop rather than through retrieve_var(): model.frame() leaves
+  # the trials slot out of bnec_pop where the formula has no trials() term, so
+  # its absence there is the absence of the term, and nothing needs to be read
+  # from the data to establish it.
+  if ("trials_var" %in% names(attr(data, "bnec_pop"))) {
+    return(invisible(NULL))
+  }
+  # The example is written with the response and predictor as the formula
+  # wrote them, so that the only unfamiliar part of it is the term to add. The
+  # trials column and the equation are placeholders, as in ?bayesnecformula.
+  y_label <- pop_var_label(data, "y_var", "y")
+  x_label <- pop_var_label(data, "x_var", "x")
+  stop("The ", fam_tag, " family needs the number of trials for each",
+       " observation, and the formula has no trials() term to supply it. Name",
+       " the column that holds them in a trials() term on the left-hand side",
+       " of the formula, for example ", y_label, " | trials(n) ~ crf(",
+       x_label, ", \"nec3param\"), where n is that column. See",
+       " ?bayesnecformula.", call. = FALSE)
+}
+
 #' check_data
 #'
 #' Check data input for a Bayesian NEC model fit
@@ -1138,6 +1182,14 @@ check_data <- function(data, family, model) {
   # before any model is fitted, for the reason given at those call sites.
   # See #278.
   check_complete_cases(data)
+  # The backstop for the routes that reach this function without a call-level
+  # check: update() with new data or a new family, and a direct
+  # fit_bayesnec() call. bnec(), bnec_group() and get_priors() raise it once
+  # before their loops, which is where a user meets it. Placed before the
+  # finiteness checks and the direction warning below, as it is placed
+  # before the checks on the response there, so that nothing about the
+  # response is reported for a formula that cannot be fitted. See #442.
+  check_trials_term(data, family)
   # is.finite() elementwise rather than on the mean, so that a column reaching
   # this point with NA still present -- a user with options(na.action =
   # "na.pass"), for which check_complete_cases() sees nothing -- is named as
@@ -1430,9 +1482,12 @@ response_bound_state <- function(data, family, group = NULL) {
   trials <- NULL
   if (fam_tag %in% c("binomial", "beta_binomial")) {
     trials <- retrieve_var(data, "trials_var")
-    # A binomial response with no trials() term is refused by check_data().
-    # Without the trials there is no upper bound to test against, so nothing
-    # is said here and that refusal is left to arrive.
+    # A binomial response with no trials() term is refused by
+    # check_trials_term(), which bnec(), bnec_group(), get_priors() and
+    # amend() run before this, and which check_data() raises after it on the
+    # update() route. Without the trials there is no upper bound to test
+    # against, so nothing is said here and that refusal is left to arrive.
+    # See #442.
     if (is.null(trials)) {
       return(NULL)
     }
