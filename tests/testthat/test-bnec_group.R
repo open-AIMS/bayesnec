@@ -682,3 +682,54 @@ test_that("the group tables hold a level fitted with a single equation (#419)", 
   tab <- suppressWarnings(suppressMessages(nsec(g)))
   expect_identical(tab$level, c("a", "b"))
 })
+
+test_that("a binomial formula with no trials() term is refused before any level (#442)", {
+  # The first level's bnec() call refused it with "subscript out of bounds"
+  # from inside its model loop, once per equation. bnec() is replaced so that
+  # starting a level fails the test.
+  d <- nec_data
+  d$site <- rep(c("a", "b"), length.out = nrow(d))
+  calls <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      calls <<- calls + 1L
+      stop("level fit should not start")
+    },
+    .package = "bayesnec"
+  )
+  for (fam in c("binomial", "beta_binomial")) {
+    msgs <- capture.output(
+      err <- tryCatch(
+        bnec_group(count ~ crf(x, c("nec3param", "nec4param")), d,
+                   group_var = "site", family = fam),
+        error = conditionMessage
+      ),
+      type = "message"
+    )
+    expect_match(err, paste("The", fam, "family needs the number of trials"),
+                 fixed = TRUE, info = fam)
+    expect_false(any(grepl("Fitting level", msgs)), info = fam)
+  }
+  expect_identical(calls, 0L)
+})
+
+test_that("with a trials() term every level is fitted (#442)", {
+  d <- nec_data
+  d$site <- rep(c("a", "b"), length.out = nrow(d))
+  calls <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      calls <<- calls + 1L
+      manec_example
+    },
+    .package = "bayesnec"
+  )
+  for (fam in c("binomial", "beta_binomial")) {
+    fit <- suppressWarnings(suppressMessages(
+      bnec_group(count | trials(trials) ~ crf(x, c("nec3param", "nec4param")),
+                 d, group_var = "site", family = fam)
+    ))
+    expect_s3_class(fit, "bayesnecgroupfit")
+  }
+  expect_identical(calls, 4L)
+})

@@ -1245,6 +1245,20 @@ retrieve_var <- function(data, var, error = FALSE) {
   bnec_vars <- attr(data, "bnec_pop")
   bnec_pop <- names(bnec_vars)
   v_pos <- which(bnec_pop == var)
+  # A role the formula does not include has no entry in bnec_pop. The message
+  # further down names the variable by indexing bnec_vars with the role, so
+  # for such a role it stopped on "subscript out of bounds", which names
+  # neither the missing term nor the formula; the role is named here. The
+  # entry points refuse the one case users reach, a binomial formula with no
+  # trials() term, before this is called (check_trials_term()), so this is
+  # what any other route asking for an absent role reports. See #442.
+  if (length(v_pos) == 0) {
+    if (error) {
+      stop("The formula has no ", pop_var_role(var),
+           ". See ?bayesnecformula", call. = FALSE)
+    }
+    return(NULL)
+  }
   out <- try(data[[v_pos]], silent = TRUE)
   if (inherits(out, "try-error")) {
     if (error) {
@@ -1269,6 +1283,23 @@ retrieve_var <- function(data, var, error = FALSE) {
   } else {
     stop("The input variable \"", bnec_vars[[var]], "\" is not numeric.")
   }
+}
+
+#' The term of a formula that a role in \code{bnec_pop} stands for
+#'
+#' @param var The name of an entry of \code{attr(data, "bnec_pop")}, such as
+#' \code{"trials_var"}.
+#'
+#' @return A \code{\link[base]{character}} string naming the term as a user
+#' writes it, or \code{var} in quotes where the role is not one of these.
+#'
+#' @noRd
+pop_var_role <- function(var) {
+  roles <- c(y_var = "response", x_var = "predictor in crf()",
+             trials_var = "trials() term", cens_var = "cens() term",
+             cens_y2_var = "upper bound in its cens() term",
+             rate_var = "rate() term")
+  if (var %in% names(roles)) roles[[var]] else paste0("\"", var, "\"")
 }
 
 #' Retrieve the censoring indicator from a model frame, as -1/0/1/2

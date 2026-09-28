@@ -297,7 +297,15 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   # reaches here when a curve equation is added to it; amend() does not
   # substitute ecxflat for the equations asked for, as bnec() does. See #400
   # and #419.
+  #
+  # The trials() refusal is the backstop here for the same reason: the prior
+  # rebuilt below divides the response by its trials, and check_data(), which
+  # would otherwise refuse a binomial formula without them, never runs on this
+  # route. A fit bnec() made always has the term, so this is reached only by an
+  # object assembled some other way. Placed first, because the bound test reads
+  # the trials. See #442.
   if (any(needs_fit)) {
+    check_trials_term(bdat, family)
     check_response_at_bound(bdat, family, model = model_set[needs_fit])
   }
   # Carried over here, in the parent, rather than returned from the applied

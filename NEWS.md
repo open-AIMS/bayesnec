@@ -1729,6 +1729,15 @@
 
 ## Bug fixes
 
+- A `binomial` or `beta_binomial` formula with no `trials()` term is now
+  refused once per call, before any model is fitted, with a message that names
+  the family and the missing term and gives the formula with one added.
+  `bnec()` and `get_priors()` previously stopped with "subscript out of
+  bounds", which named neither. Through `bnec()` that message was printed once
+  per equation of a model set, and the call then ended on the advice that none
+  of the models had fitted. `bnec_group()` raises the refusal before it fits
+  any level. A formula with a `trials()` term is fitted as before (#442).
+
 - A formula that names a column whose name is not a syntactic R name, such as
   `` `conc (mg/L)` `` read from a spreadsheet, is now refused before anything
   is fitted. The message names each such column, the term it appears in, and

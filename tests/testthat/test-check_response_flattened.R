@@ -449,8 +449,9 @@ test_that("a family with no row is passed over", {
 })
 
 test_that("a binomial family with no trials term is passed over", {
-  # check_data() refuses it, and does so after this report, so nothing is said
-  # here and the refusal is what the user sees.
+  # check_trials_term() refuses it before this report runs from bnec() or
+  # bnec_group(), so a direct call says nothing here rather than report a
+  # contrast with no trials to count against (#442).
   expect_identical(
     flatness_blocks(flat_x, declining_successes, NULL, NULL,
                     binomial(link = "identity")),
