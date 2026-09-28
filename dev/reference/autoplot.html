@@ -221,8 +221,9 @@ new page. Only relevant if <code>plot = TRUE</code> and
 <dd><p>Should all plots be plotted in one single panel via
 facets? Defaults to TRUE, in which case the facets of the named equations
 are ordered by name. Only relevant if <code>model</code> is given. With
-<code>multi_facet = FALSE</code>, one <code><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></code> is drawn for
-each panel and the list of them is returned invisibly, the model average
+<code>multi_facet = FALSE</code>, one <code><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></code> is built for
+each panel, drawn in turn only where <code>plot = TRUE</code>, and the list of
+them is returned invisibly, the model average
 first where it is requested and then the equations in the order given in
 <code>model</code>.</p></dd>
 
