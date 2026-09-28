@@ -570,3 +570,18 @@ scale for a fit with an inline-transformed predictor: the exact inverse where
 one is known, numeric inversion on the prediction grid otherwise.
 
 #27 was closed by RF on 2026-09-28.
+
+## D42 — The flatness report and the declared prior (#449, #450, #451)
+
+RF, 2026-09-28: no addition to `?bnec` for the wide last step; `MASS` not added;
+the declared gamma-branch `bot` prior fixed to shape 2 with its 97.5th percentile
+at the endpoint mean. The advice in an already-declared fit is fixed.
+
+## D43 — The 3.0 changes go into `predev` now
+
+RF, 2026-09-28: "we want 3.0 to be released as complete as possible". Because
+`predev` becomes 3.0, the changes decided for that release are made in this run:
+D41 (#299, the recorded scale by default) and D31's second part (`ecxflat`
+joins `all`, `ecx` and `decline`). Both change published numbers, so the
+vignettes are precompiled again after them, and the `example8` fit store is
+refitted after the `ecxflat` change, since the store's units follow the model set.
