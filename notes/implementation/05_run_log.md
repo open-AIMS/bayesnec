@@ -375,3 +375,73 @@ and the order `01_work_queue.md`.
 - 2026-09-27 10:59 AEST. #454 merged. The run is finished. Open for RF: #403
   with #421; the `hurdle_negbinomial` `disp()` decision (#410); the departures
   listed on #453; PR #402 and, after it, the `example8` store refit and render.
+
+## Second run
+
+Times are AWST (+0800).
+
+- 2026-09-28 20:50. Items S1 (#402), S2 (#442), S3 (#444) and S5 (#439) were
+  started in the worktrees `bayesnec-run/s1-402`, `s2`, `s3` and `s5`.
+- 2026-09-28 21:20. RF, through session bayesnec-05, stopped the run after
+  those four items. No other item was started, and nothing was merged or
+  opened against `dev`. bayesnec-05 merges the pull requests into `predev`.
+- 2026-09-28 21:30. The run was asked to push at once for a shutdown, so the
+  local tests and reviews were stopped and each branch was committed and
+  pushed. A correction followed: the shutdown is at about 05:30 on 2026-09-29.
+  The 42 test files the stop had cut short were then run to completion, each
+  against an installed build of its branch, one file per `Rscript` process
+  with `NOT_CRAN=true` and `TESTTHAT_PARALLEL=false`. All 42 passed. Every
+  item was then reviewed independently.
+
+| item | pull request | branch | head | state at handover |
+|---|---|---|---|---|
+| S1 (#382, #388) | #402 | `issue-382-example8-group-terms` | `e7e0fbe5` | ready |
+| S2 (#442) | #455 | `issue-442-binomial-trials` | `51ffe1d1` | ready |
+| S3 (#444) | #456 | `issue-444-autoplot-plot-false` | `b8ccbc96` | ready |
+| S5 (#439) | #457 | `issue-439-summary-ecx-args` | `54c2dfbf` | draft, for RF's decision on #439 |
+
+- S1. `predev` at `ffacf942` was merged into the branch in `972c6f9b`. The
+  merge resolved eight conflicting files, and the plan documents were brought
+  up to the code under D38. The review of the merge found five gaps where the
+  joint refit meets what `predev` added. They were fixed in five commits:
+  `exceedance()` on a joint refit, a non-syntactic grouping variable, the plan
+  documents, the `ecnsec()` documentation and a test of the dispersion keying.
+  A second review of those fixes found that a dummy-coded refit did not find a
+  level whose label brms renames, such as `"Site A"`: `nec()` stopped and
+  `ecx(type = "relative")` measured towards 0. The coefficient is now found by
+  its position among the levels (`d5ea012c`). A further finding was left as it is, because the PR states its order on
+  purpose: `nec()` on a grouped fit prints the scale message before refusing
+  `no_effect`. The local branch in the worktree is `s1-402-review-fixes`. The
+  main checkout holds `issue-382-example8-group-terms` at the older
+  `15214d22`, behind `origin`. Still to do after the merge: close #382 and
+  #388 by hand, refit the `example8` store, and port the version check into
+  `grouping-structures/shim/fit_store_body.R`.
+- S2. The review found nothing blocking. Two comments naming the wrong callers
+  of the flatness report were corrected.
+- S3. The review found nothing blocking.
+- S5. With `xform`, `summary()` prints the ECx rows on the recorded scale and
+  the no-effect row on the fitted scale, with the scale message suppressed. The
+  decision is posted on #439, option A recommended: apply `xform` to the
+  no-effect row, as the hurdle summary does.
+
+Defects found by the reviews outside the four items, recorded here and not
+filed as issues:
+
+- `check_priors.bayesmanecfit()` (`R/check_priors.R:85-104`) leaves the
+  device's new-page prompt at `FALSE`, whatever it was before, and restores
+  nothing on error.
+- The inherited `@return` of `autoplot()` says a ggplot object is returned.
+  With `multi_facet = FALSE` a list is returned.
+- `bnec_hurdle()` accepts `binomial` and `beta_binomial` for its growth
+  component. The growth fit then asks for a `trials()` term, and
+  `bnec_hurdle()` refuses one.
+- `summary.bayesnechurdlefit()` passes its logical `ecx` argument to
+  `dots_xform()` where the generic was meant. The scale message is therefore
+  raised even when `xform` is supplied.
+- `summary(ecx = TRUE, posterior = TRUE)` on a single fit or a set prints
+  columns of `NA` with no censoring note (#457; settled with #439).
+- `exceedance()` discards `no_effect` without a message under
+  `estimate = "nsec"` or `"ecx"`, on every class, where `ecx_val` under a
+  non-ECx estimate is refused (`check_exceedance_args()`).
+
+Items S4 and S6 to S19 of `01_work_queue.md` were not started.

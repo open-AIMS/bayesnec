@@ -510,3 +510,35 @@ test_that("a missing value is refused before the bound is read (#400)", {
   expect_match(conditionMessage(err), "row\\(s\\) with missing values")
   expect_false(grepl("upper bound", conditionMessage(err)))
 })
+
+test_that("a binomial formula with no trials() term is refused by name (#442)", {
+  # The check_data() call for the first equation stopped the call on
+  # "subscript out of bounds". The refusal is now raised with the family, before
+  # that call: check_data() is replaced so that reaching it fails the test.
+  local_mocked_bindings(
+    check_data = function(...) stop("check_data reached"),
+    .package = "bayesnec"
+  )
+  for (fam in c("binomial", "beta_binomial")) {
+    err <- expect_error(
+      get_priors(count ~ crf(x, c("nec3param", "nec4param")), data = nec_data,
+                 family = fam)
+    )
+    expect_match(conditionMessage(err),
+                 paste("The", fam, "family needs the number of trials"),
+                 fixed = TRUE, info = fam)
+    expect_match(conditionMessage(err), "has no trials() term", fixed = TRUE,
+                 info = fam)
+  }
+})
+
+test_that("a binomial formula with a trials() term still returns priors (#442)", {
+  for (fam in c("binomial", "beta_binomial")) {
+    out <- suppressWarnings(suppressMessages(
+      get_priors(count | trials(trials) ~ crf(x, c("nec3param", "nec4param")),
+                 data = nec_data, family = fam)
+    ))
+    expect_named(out, c("nec3param", "nec4param"))
+    expect_s3_class(out$nec3param, "brmsprior")
+  }
+})

@@ -909,6 +909,16 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # family object is stored in the brmsfit, so it is dropped before brms sees
   # it rather than serialised into every saved fit.
   brm_args$family <- unmark_family(brm_args$family)
+  # A binomial or beta_binomial formula with no trials() term is refused here,
+  # once, as soon as the family is known. Left to check_data(), which runs once
+  # per model inside the try() of the model loop, it was printed once per
+  # equation and the call ended on the all-models-failed advice, which names
+  # neither the missing term nor the remedy. It is a property of the formula
+  # and the family, fixed for the whole call. Placed before constant_fallback()
+  # and the flatness report, which both need the trials for these families and
+  # pass over the response without them. check_data() keeps it as the backstop
+  # for the routes that do not come through here. See #442.
+  check_trials_term(bdat, brm_args$family)
   # A bounded response with every observation at one bound identifies no curve,
   # and does identify the constant equation, so ecxflat is fitted alone in place
   # of the set requested (D31). This replaced the refusal #400 placed here; the

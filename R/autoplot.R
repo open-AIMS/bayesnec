@@ -115,8 +115,9 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
 #' @param multi_facet Should all plots be plotted in one single panel via
 #' facets? Defaults to TRUE, in which case the facets of the named equations
 #' are ordered by name. Only relevant if \code{model} is given. With
-#' \code{multi_facet = FALSE}, one \code{\link[ggplot2]{ggplot}} is drawn for
-#' each panel and the list of them is returned invisibly, the model average
+#' \code{multi_facet = FALSE}, one \code{\link[ggplot2]{ggplot}} is built for
+#' each panel, drawn in turn only where \code{plot = TRUE}, and the list of
+#' them is returned invisibly, the model average
 #' first where it is requested and then the equations in the order given in
 #' \code{model}.
 #' @param all_models Deprecated, and to be removed in a later release; use
@@ -239,9 +240,17 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                    attr(dat_j, "group_fitted"), FALSE
                  ))
       }
-      plot(plots[[i]], newpage = newpage || i > 1)
-      if (i == 1) {
-        devAskNewPage(ask = ask)
+      # Drawing and the prompt are gated on the same flag as the save and
+      # restore of the device's prompt setting above. Only the restore was
+      # gated before, so plot = FALSE drew every page and left the prompt set
+      # after the call returned (#444). Each page is still drawn as soon as it
+      # is built, rather than after the whole list, so that plot = TRUE shows
+      # its pages at the same points as before.
+      if (plot) {
+        plot(plots[[i]], newpage = newpage || i > 1)
+        if (i == 1) {
+          devAskNewPage(ask = ask)
+        }
       }
     }
     invisible(plots)

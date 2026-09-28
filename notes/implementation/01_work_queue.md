@@ -61,17 +61,24 @@ Open issues that need a decision are not in it: #27, #299, #403 with #421, #410'
 
 | # | issue | decision | status |
 |---|---|---|---|
-| S1 | PR #402 (#382, #388) | D38 | |
-| S2 | #442 `binomial` without `trials()` | none | |
-| S3 | #444 `autoplot(plot = FALSE)` | none | |
+| S1 | PR #402 (#382, #388) | D38 | PR #402 |
+| S2 | #442 `binomial` without `trials()` | none | PR #455 |
+| S3 | #444 `autoplot(plot = FALSE)` | none | PR #456 |
 | S4 | #446 hurdle NSEC message | none | |
-| S5 | #439 `summary(ecx = TRUE)` arguments | none | |
+| S5 | #439 `summary(ecx = TRUE)` arguments | none | PR #457, draft for a decision on #439 |
 | S6 | #440 decreasing `xform`, remaining cases | none | |
 | S7 | #445 and #436 `disp()` in `get_priors()` and `amend()` | none | |
-| S8 | #449, the advice in a declared fit only | none | |
+| S8 | #449 the advice in a declared fit, and the declared gamma `bot` prior | D42 | |
 | S9 | #435 `update()` and the family | D32 | |
 | S10 | #437 `ecnsec()` beyond the range | D33 | |
 | S11 | #438 `crf(-x)` | D34 | |
 | S12 | #441 `zero_inflated_beta` at a bound | D35 | |
 | S13 | #443 `disp(~z)` | D36 | |
 | S14 | #447 divergences in `summary()` | D37 | |
+| S15 | #448 joint refit: per-level ranges, `adapt_delta`, untested cases | D40 | after S1 |
+| S16 | #410 `disp()` on `hurdle_negbinomial` | D39 | |
+| S17 | #299 the recorded scale by default | D41, D43 | after S10 and S5 |
+| S18 | #419 `ecxflat` joins `all`, `ecx` and `decline` | D31, D43 | last before the precompile |
+| S19 | precompile again, then the `example8` store refit and render | D43 | needs RF's VPN |
+
+The run was stopped at RF's request on 2026-09-28 after S1, S2, S3 and S5; S4 and S6 to S19 were not started. See `05_run_log.md`.

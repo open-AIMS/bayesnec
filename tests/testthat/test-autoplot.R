@@ -693,6 +693,75 @@ test_that("multi_facet = FALSE returns a plot per panel, the average first", {
   )
 })
 
+
+# ---- plot = FALSE with multi_facet = FALSE (#444) ---------------------------
+#
+# The drawing call and the prompt sat outside the if (plot) block that saves
+# the device's prompt setting and restores it on exit, so plot = FALSE drew
+# every page and left the prompt set after the call returned. Pages are
+# counted with grid's before.grid.newpage hook, which runs once for each page
+# ggplot2 draws with newpage = TRUE, the default. Counting at the hook needs
+# no device of a particular kind, and so behaves the same on every platform.
+
+count_pages <- function(expr) {
+  pages <- 0L
+  old <- getHook("before.grid.newpage")
+  setHook("before.grid.newpage", function() pages <<- pages + 1L)
+  on.exit(setHook("before.grid.newpage", old, "replace"), add = TRUE)
+  value <- expr
+  list(value = value, pages = pages)
+}
+
+test_that("plot = FALSE draws nothing and leaves the prompt as it was", {
+  skip_on_cran()
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  # The prompt is on at entry and ask = FALSE is passed, so a call that
+  # reached devAskNewPage(ask = ask) leaves it off and the change is seen.
+  grDevices::devAskNewPage(TRUE)
+  off <- count_pages(suppressMessages(
+    autoplot(manec_example, model = "nec4param", multi_facet = FALSE,
+             plot = FALSE, ask = FALSE)
+  ))
+  expect_identical(off$pages, 0L)
+  expect_true(grDevices::devAskNewPage())
+  # plot = TRUE turns the prompt off for the first page and applies ask
+  # after it; the setting found at entry is back once the call returns. It
+  # is set again so that this half does not depend on the half above.
+  grDevices::devAskNewPage(TRUE)
+  on <- count_pages(suppressMessages(
+    autoplot(manec_example, model = "nec4param", multi_facet = FALSE,
+             plot = TRUE, ask = FALSE)
+  ))
+  expect_length(on$value, 2)
+  expect_identical(on$pages, 2L)
+  expect_true(grDevices::devAskNewPage())
+  # Drawing changes nothing in what is returned.
+  expect_identical(lapply(off$value, layers_data),
+                   lapply(on$value, layers_data))
+})
+
+test_that("plot = FALSE opens no device on the deprecated all_models path", {
+  skip_on_cran()
+  # The call named in #444: no model average, so the first page is an
+  # equation. With no device open, a single page drawn would open one, so the
+  # device list is compared as well as the page count; where a device is
+  # already open the count alone detects drawing.
+  before <- grDevices::dev.list()
+  res <- count_pages(collect_warnings(suppressMessages(
+    autoplot(manec_example, all_models = TRUE, multi_facet = FALSE,
+             plot = FALSE, ask = FALSE)
+  )))
+  expect_identical(grDevices::dev.list(), before)
+  expect_identical(res$pages, 0L)
+  expect_length(res$value$warnings, 1)
+  expect_identical(
+    vapply(res$value$value, function(p) unique(facet_models(p)),
+           character(1)),
+    manec_example$success_models
+  )
+})
+
 test_that("autoplot refuses a model outside the set and an empty selection", {
   skip_on_cran()
   msg <- tryCatch(autoplot(manec_example, model = c("ecx", "nope")),
