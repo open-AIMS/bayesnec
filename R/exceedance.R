@@ -6,8 +6,8 @@
 #' counted from the censoring record rather than deleted.
 #'
 #' @param object An object of class \code{\link{bayesnecfit}},
-#' \code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}} or
-#' \code{\link{bayesnecgroupfit}}.
+#' \code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}},
+#' \code{\link{bayesnecgroupfit}} or \code{\link{bayesnecjointfit}}.
 #' @param threshold A single finite number, the concentration the estimate is
 #' compared with. It is read on the scale the estimate is returned on; see
 #' Details.
@@ -20,8 +20,9 @@
 #' \code{threshold}, as in \code{\link{nec}}.
 #' @param ... Further arguments passed to \code{\link{nec}}, \code{\link{nsec}}
 #' or \code{\link{ecx}}, such as \code{x_range}, \code{resolution},
-#' \code{type}, \code{sig_val} or \code{extrapolate}, and \code{which} for a
-#' \code{\link{bayesnechurdlefit}}. \code{posterior} is not accepted: the
+#' \code{type}, \code{sig_val} or \code{extrapolate}, \code{which} for a
+#' \code{\link{bayesnechurdlefit}}, and \code{no_effect} for a
+#' \code{\link{bayesnecjointfit}}. \code{posterior} is not accepted: the
 #' full posterior is always read.
 #'
 #' @details The probability is the share of the posterior draws of the
@@ -35,6 +36,13 @@
 #' \code{which} names a component; under \code{"nec"} that is the combined
 #' no-effect concentration described in \code{\link{nec.bayesnechurdlefit}}.
 #' For a \code{\link{bayesnecgroupfit}} each level is compared in turn.
+#' For a \code{\link{bayesnecjointfit}} each level is compared in turn as
+#' well, on the draws the estimator returns for that level of the joint refit.
+#' Under \code{"nec"} a level whose equation has no \code{nec} parameter has
+#' only \code{NA} draws, as \code{\link{nec}} reports for it, so its
+#' probabilities are \code{NA} and its \code{n_draws} is 0. Passing
+#' \code{no_effect = TRUE} compares the NSEC of that level's fitted curve
+#' instead, as \code{nec(x, no_effect = TRUE)} reports it.
 #'
 #' \code{threshold} and the estimate are compared on one scale, the scale the
 #' estimator returns the estimate on. Without \code{xform} that is the
@@ -96,8 +104,8 @@
 #' ratio.
 #'
 #' @return A \code{\link[base]{data.frame}} with one row, and for a
-#' \code{\link{bayesnecgroupfit}} one row per level preceded by a column
-#' \code{level}. The columns are:
+#' \code{\link{bayesnecgroupfit}} or a \code{\link{bayesnecjointfit}} one
+#' row per level preceded by a column \code{level}. The columns are:
 #' \describe{
 #'   \item{\code{threshold}}{The threshold supplied.}
 #'   \item{\code{prob}}{The posterior probability that the estimate exceeds
@@ -177,6 +185,38 @@ exceedance.bayesnecgroupfit <- function(object, threshold,
   out
 }
 
+#' @inheritParams exceedance
+#'
+#' @noRd
+#'
+#' @export
+exceedance.bayesnecjointfit <- function(object, threshold,
+                                        estimate = c("nec", "nsec", "ecx"),
+                                        ecx_val = 10, xform = identity, ...) {
+  estimate <- match.arg(estimate)
+  # Validated once, before any level is read, as for a bayesnecgroupfit.
+  check_exceedance_args(threshold, estimate, ecx_val, !missing(ecx_val),
+                        list(...))
+  xform <- if (missing(xform)) NULL else xform
+  # Read once for the refit and compared level by level, where the grouped
+  # method maps over its fits. A joint refit has no per-level fits to map over,
+  # and its own nec(), nsec() and ecx() already return one element of draws
+  # per level under posterior = TRUE, each read off that level's curve. Going
+  # through them keeps the draws compared the ones those estimators report for
+  # the same call, which is the contract exceedance_fit() keeps for a single
+  # fit. Under estimate = "nec" that includes the NA draws nec() returns at a
+  # level whose equation has no nec parameter; exceedance_from_draws() leaves
+  # them out, so that level's row is NA rather than a probability for a
+  # quantity nec() does not report.
+  post <- exceedance_posterior(object, estimate, ecx_val, xform, ...)
+  out <- do.call(rbind, lapply(object$levels, function(lev) {
+    cbind(data.frame(level = lev, stringsAsFactors = FALSE),
+          exceedance_from_draws(post[[lev]], threshold))
+  }))
+  rownames(out) <- NULL
+  out
+}
+
 #' Validate the arguments of exceedance()
 #'
 #' @param threshold,estimate,ecx_val As in \code{exceedance()}.
@@ -223,6 +263,29 @@ check_exceedance_args <- function(threshold, estimate, ecx_val, ecx_val_given,
 #'
 #' @noRd
 exceedance_fit <- function(object, threshold, estimate, ecx_val, xform, ...) {
+  exceedance_from_draws(
+    exceedance_posterior(object, estimate, ecx_val, xform, ...), threshold
+  )
+}
+
+#' The posterior of the estimate exceedance() compares
+#'
+#' Kept apart from \code{exceedance_fit()} so that the method for a
+#' \code{\link{bayesnecjointfit}}, whose estimators return one element of
+#' draws per level, reads its posterior through the same call.
+#'
+#' @param object A \code{\link{bayesnecfit}}, \code{\link{bayesmanecfit}},
+#' \code{\link{bayesnechurdlefit}} or \code{\link{bayesnecjointfit}}.
+#' @param estimate,ecx_val As in \code{exceedance()}.
+#' @param xform A function, or \code{NULL} where the caller supplied none.
+#' @param ... Passed to the estimator.
+#'
+#' @return What the estimator returns under \code{posterior = TRUE}: a vector
+#' of draws, or for a \code{\link{bayesnecjointfit}} a named
+#' \code{\link[base]{list}} of them, one per level.
+#'
+#' @noRd
+exceedance_posterior <- function(object, estimate, ecx_val, xform, ...) {
   read_posterior <- switch(
     estimate,
     nec = function(...) nec(object, posterior = TRUE, ...),
@@ -236,12 +299,11 @@ exceedance_fit <- function(object, threshold, estimate, ecx_val, xform, ...) {
   # transformed predictor with no xform, and if that tests whether xform was
   # supplied, forwarding identity by name would suppress it for every call
   # made from here.
-  post <- if (is.null(xform)) {
+  if (is.null(xform)) {
     read_posterior(...)
   } else {
     read_posterior(xform = xform, ...)
   }
-  exceedance_from_draws(post, threshold)
 }
 
 #' The probability that posterior draws exceed a threshold, with the bounds the

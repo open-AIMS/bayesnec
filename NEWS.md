@@ -483,6 +483,14 @@
   an NSEC and never a weighted mixture of both. `no_effect` applies to no other
   class and is refused rather than discarded by them (#388).
 
+- `exceedance()` on a joint refit returns one row per level, preceded by a
+  `level` column, as it does for a `bayesnecgroupfit`. Each level is compared
+  on the draws `nec()`, `nsec()` or `ecx()` returns for it on the refit. Under
+  `estimate = "nec"` a level whose equation has no `nec` parameter has only
+  `NA` draws, so its probabilities are `NA` and its `n_draws` is 0;
+  `no_effect = TRUE` compares the NSEC of that level's curve instead (#44,
+  #388).
+
 ## The centring constant of a variance function
 
 - The centring constant of a `disp()` variance function of the fitted mean is
