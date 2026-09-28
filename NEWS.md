@@ -467,10 +467,14 @@
   varies by level, and defaults to `TRUE`. The returned object has class
   `bayesnecjointfit`, and `ecx()`, `nsec()`, `nec()`, `ecnsec()` and
   `autoplot()` report one row or one panel per level (#382, #388). The tables
-  have the columns a `bayesnecgroupfit` returns, including the `bound_`
-  columns that mark a censored entry, and the no-effect annotation of
-  `autoplot()` marks a censored NSEC with `>=` or `<=` as it does for a single
-  fit (#404).
+  from `ecx()`, `nsec()` and `nec()` have the columns a `bayesnecgroupfit`
+  returns, including the `bound_` columns that mark a censored entry, and the
+  no-effect annotation of `autoplot()` marks a censored NSEC with `>=` or `<=`
+  as it does for a single fit (#404). `ecnsec()` has no `bayesnecgroupfit`
+  method. On a joint refit it returns, at each level, the percent effect at
+  the `nsec` supplied, read off that level's own curve, with the columns of the
+  `ecx()` table; its `bound_` columns are empty, because `ecnsec()` records
+  no censoring.
 
 - `nec()` on a joint refit names the equation fitted at each level in a `model`
   column and the type of that level's estimate in an `ne_type` column, and
