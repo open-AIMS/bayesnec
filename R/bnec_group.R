@@ -202,6 +202,13 @@ bnec_group <- function(formula, data, group_var, family = NULL,
             ". Pass `family` to override.")
   }
   family <- validate_family(family, link_source = link_source)
+  # Refused before the level loop, once for the whole call. The bnec() call for
+  # the first level refuses it as well, but only after the bound and flatness
+  # reports below have passed over a response they cannot read without its
+  # trials, and after that level has been announced as being fitted. A
+  # trials() term is a property of the formula, so it cannot differ by level
+  # and is checked on the whole model frame. See #442.
+  check_trials_term(mod_dat, family)
   # A level whose every observation is at a bound is fitted with ecxflat alone
   # by its own bnec() call, and every other level with the set requested (D31,
   # which replaced the refusal of the whole call D30 placed here). Found and

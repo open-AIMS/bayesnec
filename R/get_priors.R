@@ -191,6 +191,12 @@ get_priors.formula <- function(object, data, family = NULL,
   link_source <- family_link_source(substitute(family), env = parent.frame())
   fam_args <- if (is.null(family)) list() else list(family = family)
   family <- retrieve_valid_family(fam_args, bdat, link_source = link_source)
+  # Raised here, once, where bnec() raises it, rather than left to the
+  # check_data() call for the first equation below: that one would also stop
+  # the call, but only after the bound check, check_models() and the
+  # substitution report had run on a response that cannot be modelled without
+  # its trials. check_data() keeps it as the backstop. See #442.
+  check_trials_term(bdat, family)
   # Raised once, before the model loop and before the substitution report
   # below, which would otherwise report a beta response at 1 in every
   # observation as shifted to 0.999. A curve equation has no prior to give on

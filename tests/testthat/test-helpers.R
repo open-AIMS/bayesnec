@@ -728,3 +728,23 @@ test_that("subset_draws keeps the censoring record of the draws it takes", {
   # Without a record the subset is exactly what `[` returns.
   expect_identical(bayesnec:::subset_draws(c(4, 5, 6), c(3, 1)), c(6, 4))
 })
+
+test_that("retrieve_var names a role the formula does not include (#442)", {
+  # bnec_pop has no entry for a term the formula lacks, and the message indexed
+  # it by the role, so it stopped on "subscript out of bounds" instead.
+  mf <- model.frame(bayesnecformula(count ~ crf(x, "nec3param")),
+                    data = nec_data)
+  expect_error(retrieve_var(mf, "trials_var", error = TRUE),
+               "The formula has no trials() term", fixed = TRUE)
+  expect_error(retrieve_var(mf, "rate_var", error = TRUE),
+               "The formula has no rate() term", fixed = TRUE)
+  expect_error(retrieve_var(mf, "cens_var", error = TRUE),
+               "The formula has no cens() term", fixed = TRUE)
+  # A name that is no role is quoted as given.
+  expect_error(retrieve_var(mf, "other_var", error = TRUE),
+               "The formula has no \"other_var\"", fixed = TRUE)
+  # Without error = TRUE an absent role is NULL, as before, and a present one
+  # is read as before.
+  expect_null(retrieve_var(mf, "trials_var"))
+  expect_identical(retrieve_var(mf, "y_var", error = TRUE), nec_data$count)
+})

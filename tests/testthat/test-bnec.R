@@ -493,3 +493,58 @@ test_that("a model set states a disp() refusal once, from bnec() (#410)", {
   }
   expect_equal(calls, 0L)
 })
+
+# ---- #442, a binomial formula with no trials() term ---------------------------
+
+test_that("a binomial formula with no trials() term is refused once (#442)", {
+  # check_data() read the trials inside the try() of the model loop, where
+  # retrieve_var()'s own message stopped on "subscript out of bounds". A model
+  # set printed that once per equation and the call ended on the
+  # all-models-failed advice. fit_bayesnec() is replaced to count calls: the
+  # refusal has to arrive before the loop does. nec_data's count and trials
+  # columns are added in setup.R.
+  calls <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      calls <<- calls + 1L
+      stop("the model loop should not start")
+    },
+    .package = "bayesnec"
+  )
+  for (fam in c("binomial", "beta_binomial")) {
+    printed <- capture.output(
+      msg <- tryCatch(
+        bnec(count ~ crf(x, c("nec3param", "nec4param")), data = nec_data,
+             family = fam),
+        error = conditionMessage
+      ),
+      type = "message"
+    )
+    expect_match(msg, paste("The", fam, "family needs the number of trials"),
+                 fixed = TRUE, info = fam)
+    expect_match(msg, "count | trials(n) ~ crf(x, \"nec3param\")",
+                 fixed = TRUE, info = fam)
+    expect_false(grepl("subscript out of bounds", msg), info = fam)
+    expect_false(grepl("None of the models fit successfully", msg), info = fam)
+    # Nothing is printed before it: no per-equation error, and no report on a
+    # response that cannot be read without its trials.
+    expect_length(printed, 0)
+  }
+  expect_identical(calls, 0L)
+})
+
+test_that("the same call with a trials() term reaches the model loop (#442)", {
+  local_mocked_bindings(
+    bnec_parallel_lapply = function(...) stop("reached the model loop"),
+    .package = "bayesnec"
+  )
+  for (fam in c("binomial", "beta_binomial")) {
+    expect_error(
+      suppressWarnings(suppressMessages(
+        bnec(count | trials(trials) ~ crf(x, c("nec3param", "nec4param")),
+             data = nec_data, family = fam)
+      )),
+      "reached the model loop", info = fam
+    )
+  }
+})

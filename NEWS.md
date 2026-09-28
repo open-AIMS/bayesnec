@@ -1729,6 +1729,15 @@
 
 ## Bug fixes
 
+- A `binomial` or `beta_binomial` formula with no `trials()` term is now
+  refused once per call, before any model is fitted, with a message that names
+  the family and the missing term and gives the formula with one added.
+  `bnec()` and `get_priors()` previously stopped with "subscript out of
+  bounds", which named neither. Through `bnec()` that message was printed once
+  per equation of a model set, and the call then ended on the advice that none
+  of the models had fitted. `bnec_group()` raises the refusal before it fits
+  any level. A formula with a `trials()` term is fitted as before (#442).
+
 - `autoplot()` for a `bayesmanecfit` with `multi_facet = FALSE` and
   `plot = FALSE` now returns the list of plots without drawing them, and
   leaves the device's prompt before a new page as it found it. It previously
