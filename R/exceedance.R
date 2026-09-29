@@ -244,6 +244,14 @@ check_exceedance_args <- function(threshold, estimate, ecx_val, ecx_val_given,
     stop("ecx_val applies only to estimate = \"ecx\"; this call compares ",
          "estimate = \"", estimate, "\".", call. = FALSE)
   }
+  # Refused for the same reason: nsec() and ecx() absorb an argument they do
+  # not use, so no_effect = TRUE under either estimate returned the
+  # probability for that estimate with no sign that no_effect had been
+  # dropped (#459). FALSE asks for nothing, so it is let through.
+  if (estimate != "nec" && isTRUE(dots[["no_effect"]])) {
+    stop("no_effect applies only to estimate = \"nec\"; this call compares ",
+         "estimate = \"", estimate, "\".", call. = FALSE)
+  }
   if ("posterior" %in% names(dots)) {
     stop("exceedance() always reads the full posterior of the estimate, so ",
          "posterior is not an argument to it.", call. = FALSE)

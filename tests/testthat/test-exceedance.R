@@ -406,4 +406,14 @@ test_that("the arguments are validated", {
                "posterior is not an argument")
   expect_error(exceedance(data.frame(x = 1), threshold = 5),
                "no applicable method")
+  # no_effect under a non-NEC estimate was dropped without a message (#459).
+  expect_error(exceedance(fit, threshold = 5, estimate = "nsec",
+                          no_effect = TRUE),
+               "no_effect applies only to estimate = \"nec\"")
+  expect_error(exceedance(fit, threshold = 5, estimate = "ecx", ecx_val = 50,
+                          no_effect = TRUE),
+               "no_effect applies only to estimate = \"nec\"")
+  check <- bayesnec:::check_exceedance_args
+  expect_invisible(check(5, "nsec", 10, FALSE, list(no_effect = FALSE)))
+  expect_invisible(check(5, "nec", 10, FALSE, list(no_effect = TRUE)))
 })
