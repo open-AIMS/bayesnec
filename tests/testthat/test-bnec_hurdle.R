@@ -173,6 +173,32 @@ test_that("bnec_hurdle validates the full predictor before either fit (#317)", {
   expect_equal(calls, 0L)
 })
 
+test_that("bnec_hurdle predicts growth over the whole concentration series", {
+  # Growth is fitted to the survivors, whose concentrations stop at 3 here,
+  # while the series tested runs to 4. The growth fit is given the series as
+  # its x_range, so both components share their limits (D44, #412). A caller's
+  # own x_range reaches both fits unchanged.
+  dat <- data.frame(x = rep(1:4, each = 5),
+                    y = c(seq(1, 3, length.out = 15), rep(0, 5)))
+  calls <- list()
+  local_mocked_bindings(
+    bnec = function(formula, data, ...) {
+      calls[[length(calls) + 1]] <<- list(...)
+      structure(list(), class = c("bayesnecfit", "bnecfit"))
+    },
+    .package = "bayesnec"
+  )
+  suppressMessages(bnec_hurdle(y ~ crf(x, "nec3param"), data = dat))
+  expect_length(calls, 2)
+  expect_equal(calls[[1]]$x_range, c(1, 4))
+  expect_null(calls[[2]]$x_range)
+  calls <- list()
+  suppressMessages(bnec_hurdle(y ~ crf(x, "nec3param"), data = dat,
+                               x_range = c(0.5, 6)))
+  expect_equal(calls[[1]]$x_range, c(0.5, 6))
+  expect_equal(calls[[2]]$x_range, c(0.5, 6))
+})
+
 test_that("bnec_hurdle fits a censored response and routes it correctly", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()

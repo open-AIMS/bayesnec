@@ -61,14 +61,13 @@ is_bayesnechurdlefit <- function(x) {
 #'
 #' @noRd
 hurdle_component_preds <- function(object, resolution = 1000, x_range = NA) {
-  # Default to the survival fit's predictor range, not the growth fit's. The
-  # growth fit is built on survivors only, so it does not see concentrations
-  # where nothing lived -- exactly the upper end the combined endpoint needs.
-  # Growth is therefore extrapolated over that stretch, which is harmless in
-  # the product because survival there is ~0, but it is why the range comes
-  # from the survival side. The default stays here for the curves, which the
-  # plots and posterior_epred() read. An estimate of growth alone is given
-  # growth's own range by hurdle_estimate_range() before it reaches here.
+  # Default to the survival fit's predictor range, the whole concentration
+  # series, for every curve and every estimate read from one (D44, #412). The
+  # growth fit's data stop at the last concentration at which anything
+  # survived, but the concentrations above it were tested, and the combined
+  # endpoint needs them. A fit made before D44 stores a growth grid that stops
+  # at the last survivor; reading from the survival side gives it the same
+  # range as a fit made after.
   if (any(is.na(x_range))) {
     nd_s <- newdata_eval(object$survival, resolution = resolution,
                          x_range = NA)
@@ -101,47 +100,6 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA) {
        control = list(growth = c_g, survival = c_s, combined = c_g * c_s))
 }
 
-#' The predictor range a hurdle estimate is read over
-#'
-#' An \code{x_range} the caller supplied is returned unchanged. Without one, a
-#' growth estimate is read over the growth component's own observed range, and
-#' a survival or combined estimate is left to the survival range that
-#' \code{hurdle_component_preds()} takes by default.
-#'
-#' @param object An object of class \code{\link{bayesnechurdlefit}}.
-#' @param which The curve the estimate is read from, as returned by
-#' \code{hurdle_check_which()}.
-#' @param x_range The caller's \code{x_range}.
-#'
-#' @return \code{x_range}, or the growth component's observed range as a
-#' \code{\link[base]{numeric}} vector of length 2.
-#' @noRd
-hurdle_estimate_range <- function(object, which, x_range) {
-  # D28 (#412). The growth fit has no data above the highest concentration at
-  # which anything survived, so a growth ECx or NSEC read over the survival
-  # range was read off the growth curve extended past its data. Over growth's
-  # own range such an estimate is censored at growth's highest concentration
-  # instead, through the record each estimator already builds from its grid.
-  # The combined estimate keeps the survival range: it needs the
-  # concentrations above growth's, where survival falls towards zero, and the
-  # intersection of the two ranges would censor combined estimates the
-  # survival range identifies. Resolved in the estimators rather than as a
-  # default inside hurdle_component_preds(), because the plots and
-  # posterior_epred() read every curve from that function and keep the
-  # survival range: a plotted growth curve beyond its data is a prediction,
-  # not an estimate.
-  #
-  # any(), as in hurdle_component_preds(), so that the two read the same
-  # x_range as absent.
-  if (!identical(which, "growth") || !any(is.na(x_range))) {
-    return(x_range)
-  }
-  # Through the constructor hurdle_component_preds() builds its grids with, so
-  # the two cannot disagree on where the growth fit's observed range ends.
-  bounds <- grid_x_range(object$growth, NA)
-  c(bounds$lower, bounds$upper)
-}
-
 #' @noRd
 hurdle_check_which <- function(which) {
   which <- match.arg(which, c("combined", "growth", "survival"))
@@ -170,10 +128,11 @@ hurdle_check_which <- function(which) {
 #' whichever threshold binds first.
 #'
 #' A component draw beyond the top of its prediction range is known only to
-#' exceed that limit. The two components' ranges can differ, because growth
-#' is fitted to survivors only and its range stops short of any
-#' concentration at which nothing survived. Where one component is known
-#' only to exceed its limit and the other is estimated above that limit, the
+#' exceed that limit. Both components are predicted over the whole
+#' concentration series, so they share their limits, unless a fit made before
+#' that rule stores a growth range ending at the last concentration with
+#' survivors. Where the limits differ and one component is known only to
+#' exceed its limit while the other is estimated above that limit, the
 #' combined draw is not identified. It is reported as beyond the top of the
 #' range, at the smaller of the two components' upper limits, which is true
 #' of every such draw.
@@ -232,10 +191,11 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
   # separate fits with prediction ranges of their own, and combine_censored_min
   # below already reduces the two records to the bound true of both. Each
   # refusal is re-raised under the name of the component that raised it,
-  # because the growth fit stops short of the survival fit wherever nothing
-  # survived at the top concentrations, so a limit between the two ranges is an
-  # extension for one component and inside the range for the other, and the
-  # error otherwise names a range without saying whose.
+  # because in a fit made before D44 (#412) the growth fit's grid stops short
+  # of the survival fit's wherever nothing survived at the top concentrations,
+  # so a limit between the two ranges is an extension for one component and
+  # inside the range for the other, and the error otherwise names a range
+  # without saying whose.
   component_nec <- function(part, what) {
     call_it <- function() {
       without_censored_warning(
@@ -308,21 +268,17 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
 #' survival curve. Because both decline, the combined ECx is always reached at
 #' or below either component's own ECx.
 #'
-#' Without \code{x_range}, a growth ECx is read over the growth component's
-#' own observed range, and a survival or combined ECx over the survival
-#' component's. The growth component is fitted to survivors only, so its range
-#' ends at the highest concentration at which anything survived. A growth ECx
-#' above that concentration is reported as censored there, rather than read
-#' off the growth curve extended past its data. The survival range covers every
-#' concentration tested, and the combined curve needs the stretch above
-#' growth's range, where survival falls towards zero. A supplied
-#' \code{x_range} applies to all three curves alike.
-#' \code{\link{summary.bayesnechurdlefit}} reads its ECx rows by the same rule,
-#' and \code{\link{nsec.bayesnechurdlefit}} and
-#' \code{\link{ecnsec.bayesnechurdlefit}} use the same ranges. The plots and
-#' \code{\link{posterior_epred.bayesnechurdlefit}} draw every curve, growth
-#' included, over the survival range: a curve drawn beyond the growth data is a
-#' prediction, not an estimate.
+#' Without \code{x_range}, every ECx is read over the whole concentration
+#' series, the range the survival component is fitted over. The growth
+#' component is fitted to survivors only, so it has no observations above the
+#' highest concentration at which anything survived. Those concentrations were
+#' tested, so a growth ECx that falls there is reported as a value, read off
+#' the growth curve, and its credible interval reflects that the curve there is
+#' constrained by the data at lower concentrations. A supplied \code{x_range}
+#' applies to all three curves alike. \code{\link{summary.bayesnechurdlefit}},
+#' \code{\link{nsec.bayesnechurdlefit}},
+#' \code{\link{ecnsec.bayesnechurdlefit}}, the plots and
+#' \code{\link{posterior_epred.bayesnechurdlefit}} use the same range.
 #'
 #' @return A vector containing the estimated ECx value, including upper and
 #' lower credible interval bounds.
@@ -361,12 +317,10 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 200,
   # Once for the call. See report_fitted_scale().
   quiet <- report_fitted_scale(object, xform, "ecx")
   on.exit(options(quiet), add = TRUE)
-  # Growth's own range for a growth ECx, so that one beyond it is censored at
-  # growth's highest concentration by the record built below (D28, #412).
-  preds <- hurdle_component_preds(
-    object, resolution = resolution,
-    x_range = hurdle_estimate_range(object, which, x_range)
-  )
+  # The whole concentration series for every curve, growth included (D44,
+  # #412). See hurdle_component_preds().
+  preds <- hurdle_component_preds(object, resolution = resolution,
+                                  x_range = x_range)
   p_samples <- preds[[which]]
   # The control comes from hurdle_component_preds(), which reads it at the
   # lowest observed concentration. Taking p_samples[, 1] instead made every
@@ -487,11 +441,11 @@ print.bayesnechurdlefit <- function(x, ...) {
 #' minimum is the other draw where that draw is identified at or below
 #' \code{U}, and is otherwise known only to exceed \code{U} as well.
 #'
-#' The two components need not share a range. Growth is fitted to survivors
-#' only, so its observed range stops short of any concentration at which
-#' nothing survived (\code{hurdle_estimate_range()}), and a survival draw
-#' identified at 20 is not the minimum when growth is known only to exceed 10
-#' (#415).
+#' The two components need not share a range. \code{bnec_hurdle()} predicts
+#' both over the whole concentration series (D44, #412), but a fit made before
+#' that rule stores a growth range ending at the last concentration with
+#' survivors, and there a survival draw identified at 20 is not the minimum
+#' when growth is known only to exceed 10 (#415).
 #'
 #' \code{pmin()} on the raw vectors cannot do this. It propagates the
 #' \code{NA} that an ecx-type component returns for a beyond-range draw, so a

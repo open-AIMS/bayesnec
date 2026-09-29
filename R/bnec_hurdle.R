@@ -310,9 +310,27 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
   # ordinary data column, so the subset carries it to the block it belongs to.
   # A survivor measured below the recording limit is an observation of this
   # component, not a structural zero.
-  growth_fit <- bnec(growth_formula, data = data[y > 0, , drop = FALSE],
-                     family = family_growth,
-                     predictor_scale = predictor_scale, ...)
+  #
+  # Predicted over the whole concentration series, the range the survival
+  # component is fitted over, rather than over the concentrations at which
+  # something survived (D44, #412, superseding D28). Those concentrations were
+  # tested, so a growth estimate above the last survivor lies inside the tested
+  # range and is reported as a value, not censored at the last survivor. The
+  # two components then share their limits, so the combined threshold is never
+  # read across unequal bounds (#415, #421). Given as x_range on the recorded
+  # scale, the scale prediction_grid() reads it on, and only where the caller
+  # gave none: a caller's x_range reaches both fits through ... unchanged.
+  if ("x_range" %in% ...names()) {
+    growth_fit <- bnec(growth_formula, data = data[y > 0, , drop = FALSE],
+                       family = family_growth,
+                       predictor_scale = predictor_scale, ...)
+  } else {
+    series <- range(data[[attr(full_frame, "bnec_pop")[["x_var"]]]])
+    growth_fit <- bnec(growth_formula, data = data[y > 0, , drop = FALSE],
+                       family = family_growth,
+                       predictor_scale = predictor_scale, x_range = series,
+                       ...)
+  }
   message("Fitting the survival component (", n_dead, " deaths of ",
           length(y), ").")
   survival_fit <- bnec(surv_formula, data = surv_data,
