@@ -264,10 +264,10 @@
   build its own grid from the data. The no-effect row is read from the
   posterior stored at fit time, so `x_range` and `resolution` do not change
   it, but an `xform` is applied to its draws and to the bound they are
-  censored at, as `nec()` applies it. The no-effect row and the ECx rows are
-  therefore on one scale: with a `crf(log(x))` predictor and `xform = exp`,
-  the NEC row reads 4.31, as `nec()` does, where it read 1.46 on the log scale
-  beside an EC50 on the recorded one. An `xform` reaches the no-effect row
+  censored at, as `nec()` applies it, so the no-effect row and the ECx rows
+  are printed on one scale. Before, with `xform` the no-effect row stayed on
+  the fitted scale beside ECx rows on the recorded one, and no message said
+  so. An `xform` reaches the no-effect row
   with or without `ecx = TRUE`, as it already did in the `bayesnechurdlefit`
   method. `posterior = TRUE` is refused by all three methods, because a table
   of quantiles cannot show a posterior sample; it printed columns of `NA`.
