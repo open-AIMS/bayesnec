@@ -601,3 +601,12 @@ over the whole series, which is what a bare `ecx()` did before #412. With both
 components on one range the combined threshold is never read across unequal
 bounds, so #421 does not arise for a fit made after D44; a fit made before it
 keeps its growth grid until refitted.
+
+## D45 — The removal of `average_estimates()` (#403)
+
+RF, 2026-09-29: `average_estimates()` is removed rather than fixed. Nothing in the
+package calls it and no vignette uses it. D21 had ruled that a missing component
+enters the average as a censored value; implementing that needs a bound for
+each averaged draw, which no summary in the package represents, and D44 left
+this function as the only place that would need it. Removal is a breaking change
+for the 3.0 release. `gm_mean()`, used only by it, is removed with it.

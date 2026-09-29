@@ -1170,21 +1170,6 @@ return_nec_post <- function(m, xform) {
 }
 
 #' @noRd
-gm_mean <- function(x, na_rm = TRUE, zero_propagate = FALSE) {
-  if (any(x < 0, na.rm = TRUE)) {
-    return(NaN)
-  }
-  if (zero_propagate) {
-    if (any(x == 0, na.rm = TRUE)) {
-      return(0)
-    }
-    exp(mean(log(x), na.rm = na_rm))
-  } else {
-    exp(sum(log(x[x > 0]), na.rm = na_rm) / length(x))
-  }
-}
-
-#' @noRd
 summarise_posterior <- function(mat, x_vec) {
   cbind(x = x_vec, data.frame(t(apply(mat, 2, estimates_summary))))
 }
