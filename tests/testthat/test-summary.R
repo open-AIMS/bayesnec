@@ -1,8 +1,9 @@
 # summary(ecx = TRUE) on a single fit and on a model set passes the rest of
 # ... to ecx() for each ECx row (#439), by the rule the hurdle summary applies
 # (#416): a supplied x_range replaces the stored grid and reaches each ecx()
-# call once, x_range = NULL leaves ecx() its own default, and the no-effect
-# rows stay on the record stored at fit time.
+# call once, and x_range = NULL leaves ecx() its own default. The no-effect row
+# stays on the record stored at fit time, and an xform is applied to it as to
+# the ECx rows (#439, option A).
 
 # Replaces ecx() with a recorder. Each call's arguments are kept as supplied,
 # so an argument passed twice appears twice rather than stopping the call as
@@ -147,21 +148,59 @@ test_that("the xform for the scale message is matched as ecx() matches it", {
                    identity)
 })
 
-test_that("the ECx arguments leave the no-effect rows as stored", {
+test_that("x_range leaves the no-effect row as stored and xform transforms it", {
   # The no-effect estimate is read from the posterior stored at fit time and
-  # is censored at the grid stored then, so neither x_range nor xform changes
-  # it. Without ecx = TRUE nothing is passed to ecx() at all.
+  # is censored at the grid stored then, so x_range does not change it. An
+  # xform is applied to those stored draws as nec() applies it (#439, option
+  # A), so the row is on the scale of the ECx rows. Without ecx = TRUE nothing
+  # is passed to ecx() at all, and the xform still reaches the row.
   for (fit in list(nec4param, manec_example)) {
     stored <- if (inherits(fit, "bayesmanecfit")) fit$w_ne else fit$ne
+    by_nec <- suppressMessages(suppressWarnings(nec(fit, xform = exp)))
+    calls <- record_ecx_calls()
+    out <- summarise(fit, ecx = TRUE, ecx_vals = 50, x_range = c(0.5, 1))
+    expect_identical(as.numeric(out$nec_vals), as.numeric(stored))
     calls <- record_ecx_calls()
     out <- summarise(fit, ecx = TRUE, ecx_vals = 50, x_range = c(0.5, 1),
                      xform = exp)
-    expect_equal(as.numeric(out$nec_vals), as.numeric(stored))
+    expect_equal(as.numeric(out$nec_vals), as.numeric(by_nec))
     calls <- record_ecx_calls()
     out <- summarise(fit, x_range = c(0.5, 1), xform = exp)
     expect_length(calls$ecx, 0)
     expect_null(out$ecs)
-    expect_equal(as.numeric(out$nec_vals), as.numeric(stored))
+    expect_equal(as.numeric(out$nec_vals), as.numeric(by_nec))
+  }
+})
+
+test_that("the no-effect row is summarised as the stored row was", {
+  # An xform that changes nothing gives the stored row, so option A changes
+  # the row by the transformation and by nothing else. The single ECx fit is
+  # included because its row is an NSEC, which nec() refuses to return.
+  ecx4 <- suppressMessages(pull_out(manec_example, "ecx4param"))
+  ne_vals <- bayesnec:::summary_ne_vals
+  for (fit in list(nec4param, manec_example, ecx4)) {
+    set <- inherits(fit, "bayesmanecfit")
+    stored <- if (set) fit$w_ne else fit$ne
+    post <- if (set) fit$w_ne_posterior else fit$ne_posterior
+    expect_identical(ne_vals(fit, identity), stored)
+    expect_equal(as.numeric(ne_vals(fit, function(z) z)), as.numeric(stored))
+    expect_equal(as.numeric(ne_vals(fit, exp)),
+                 as.numeric(bayesnec:::estimates_summary(exp(post))))
+  }
+  expect_error(ne_vals(nec4param, "exp"), "xform must be a function")
+})
+
+test_that("posterior = TRUE is refused rather than printed (#439)", {
+  # A summary prints quantiles; with posterior = TRUE the estimators return
+  # draws, and the table showed columns of NA with no censoring note.
+  for (fit in list(nec4param, manec_example)) {
+    expect_error(summarise(fit, ecx = TRUE, ecx_vals = 50, posterior = TRUE),
+                 "posterior sample")
+    # By position, as ecx() reads it: resolution, then posterior.
+    expect_error(summarise(fit, 20, TRUE, ecx = TRUE, ecx_vals = 50),
+                 "posterior sample")
+    expect_error(summarise(fit, posterior = TRUE), "posterior sample")
+    expect_no_error(summarise(fit, posterior = FALSE))
   }
 })
 

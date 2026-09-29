@@ -282,6 +282,16 @@ test_that("summary() reports once where it calls ecx(), and never otherwise", {
                                        resolution = 20, xform = exp)), 0)
   expect_length(scale_messages(summary(g, 20, FALSE, "absolute", exp,
                                        ecx = TRUE, ecx_vals = 50)), 0)
+  # The hurdle summary resolves its xform the same way. It handed dots_xform()
+  # its own logical ecx argument, matched nothing, and reported the fitted
+  # scale beside rows an xform had put on the recorded one (#439).
+  h <- fake_scale_hurdle(tf, tf)
+  expect_length(scale_messages(summary(h, ecx = TRUE, ecx_vals = 50,
+                                       resolution = 20)), 1)
+  expect_length(scale_messages(summary(h, ecx = TRUE, ecx_vals = 50,
+                                       resolution = 20, xform = exp)), 0)
+  expect_error(suppressMessages(summary(h, posterior = TRUE)),
+               "posterior sample")
   expect_null(getOption("bayesnec.xform_reported"))
 })
 

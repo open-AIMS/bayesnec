@@ -10,9 +10,9 @@
 #' @param object An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}}.
 #' @param ... With \code{ecx = TRUE}, passed to \code{\link{ecx}} for each
-#' ECx row and to nothing else, so that \code{x_range}, \code{resolution} and
-#' \code{xform} in particular apply to the ECx rows only. See Details. Unused
-#' where \code{ecx = FALSE}.
+#' ECx row, so that \code{x_range} and \code{resolution} in particular apply
+#' to the ECx rows only. An \code{xform} is also applied to the no-effect row,
+#' with or without \code{ecx = TRUE}. See Details.
 #'
 #' @return A summary of the fitted model. In the case of a
 #' \code{\link{bayesnecfit}} object, the summary contains most of the original
@@ -47,9 +47,14 @@
 #'
 #' The no-effect estimate is read from the posterior stored when the model was
 #' fitted, and is censored at the bound of the prediction grid stored then, so
-#' a range supplied now cannot change it. It is reported on the scale the model
-#' was fitted on whatever \code{xform} is supplied; \code{\link{nec}} and
-#' \code{\link{nsec}} take an \code{xform} of their own.
+#' a range supplied now cannot change it. An \code{xform} supplied in
+#' \code{...} is applied to those stored draws and to the bound they are
+#' censored at, as \code{\link{nec}} applies it, so the no-effect row and the
+#' ECx rows are reported on one scale.
+#'
+#' \code{posterior = TRUE} is refused. A summary reports each estimate as
+#' quantiles; the draws themselves are returned by \code{\link{nec}},
+#' \code{\link{nsec}} and \code{\link{ecx}} with \code{posterior = TRUE}.
 #' 
 #' @references
 #' Fisher R, Fox DR (2023). Introducing the no significant effect concentration 
@@ -94,6 +99,11 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
   chk_lgl(ecx)
   chk_numeric(ecx_vals)
   x <- object
+  check_summary_ecx_posterior(list(...))
+  # Resolved from the dots as ecx() matches them, so that the no-effect row is
+  # given the xform the ECx rows are given (#439, option A). See
+  # summary_ne_vals().
+  ne_xform <- summary_ecx_xform(list(...))
   ecs <- NULL
   if (ecx) {
     message("ECx calculation takes a few seconds per model, calculating...\n")
@@ -121,7 +131,8 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
     model = x$model,
     is_ecx = is_ecx,
     ne_type = x$ne_type,
-    nec_vals = clean_nec_vals(x, x$model, ecx_mod),
+    nec_vals = clean_nec_vals(x, x$model, ecx_mod,
+                              summary_ne_vals(x, ne_xform)),
     ecs = ecs,
     bayesr2 = bayes_R2(x$fit),
     failed_models = failed_models(x)
@@ -168,6 +179,9 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
   chk_number(fit_ratio_cutoff)
   chk_lgl(check_fit)
   x <- object
+  # As in summary.bayesnecfit().
+  check_summary_ecx_posterior(list(...))
+  ne_xform <- summary_ecx_xform(list(...))
   ecs <- NULL
   if (ecx) {
     message("ECx calculation takes a few seconds per model, calculating...\n")
@@ -191,7 +205,8 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
     mod_weights = clean_mod_weights(x),
     mod_weights_method = class(x$mod_stats$wi),
     ecx_mods = ecx_mods,
-    nec_vals = clean_nec_vals(x, x$success_models, ecx_mods),
+    nec_vals = clean_nec_vals(x, x$success_models, ecx_mods,
+                              summary_ne_vals(x, ne_xform)),
     ecs = ecs,
     bayesr2 = x$mod_fits |>
       lapply(function(y)bayes_R2(y$fit)) |>
@@ -299,6 +314,20 @@ summary_ecx_rows <- function(..., .fit, .ecx_vals, .stored_range) {
 #'
 #' @noRd
 summary_ecx_xform <- function(dots) {
+  dots_xform(ecx, summary_ecx_dots(dots))
+}
+
+#' The dots of a summary method as ecx_row() passes them to ecx()
+#'
+#' @param dots The dots of a summary method, as a \code{\link[base]{list}},
+#' less \code{ecx} and \code{ecx_vals}.
+#'
+#' @return \code{dots}, led by the arguments \code{ecx_row()} names, so that
+#' matching the list against \code{\link{ecx}} finds each argument where
+#' \code{ecx()} will. See \code{summary_ecx_xform()}.
+#'
+#' @noRd
+summary_ecx_dots <- function(dots) {
   nm <- names(dots)
   given <- !is.null(nm) && "x_range" %in% nm
   # The values stand in for what ecx_row() passes; only the names and their
@@ -310,7 +339,89 @@ summary_ecx_xform <- function(dots) {
   if (given) {
     dots <- dots[nm != "x_range"]
   }
-  dots_xform(ecx, c(lead, dots))
+  c(lead, dots)
+}
+
+#' Refuse posterior = TRUE in a summary
+#'
+#' A summary prints each estimate as a row of quantiles. With
+#' \code{posterior = TRUE} the estimators return the draws instead, and the
+#' printed table showed columns of \code{NA} with no censoring note. The group
+#' tables refuse it for the same reason (\code{group_estimate_table()}).
+#'
+#' @param generic The estimator the dots are passed to, \code{\link{ecx}} or
+#' \code{\link{nec}}, against whose formals they are matched, so that a
+#' \code{posterior} given by position is found where that estimator takes it.
+#' @param dots The dots as they are passed, as a \code{\link[base]{list}}.
+#'
+#' @return \code{NULL}, invisibly, or an error.
+#'
+#' @noRd
+check_summary_posterior <- function(generic, dots) {
+  # Matched as dots_xform() matches, with the object slot filled. A call that
+  # does not match is left to the estimator, which raises the error with the
+  # caller's own call in it.
+  matched <- tryCatch(
+    match.call(generic, as.call(c(list(quote(f), quote(object)), dots))),
+    error = function(e) NULL
+  )
+  if (!is.null(matched) && isTRUE(matched[["posterior"]])) {
+    stop("summary() reports each estimate as quantiles, which a posterior",
+         " sample is not. Use ecx(), nec() or nsec() with posterior = TRUE",
+         " for the draws.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+#' Refuse posterior = TRUE among the dots a summary passes to ecx()
+#'
+#' Defined here rather than inlined, because in the summary methods the name
+#' \code{ecx} is the logical argument and masks the generic.
+#'
+#' @param dots The dots of a summary method, as a \code{\link[base]{list}}.
+#'
+#' @noRd
+check_summary_ecx_posterior <- function(dots) {
+  check_summary_posterior(ecx, summary_ecx_dots(dots))
+}
+
+#' The no-effect row of a summary of a single fit or a model set
+#'
+#' The row summary() has always printed is the one stored when the model was
+#' fitted, \code{object$ne} or \code{object$w_ne}. Given an \code{xform}, the
+#' stored posterior is transformed, with its censoring record, and summarised
+#' by the function that built the stored row, so that the row is on the scale
+#' of the ECx rows (#439, option A). The steps are those of
+#' \code{nec.bayesnecfit()}; nec() itself is not called, because it refuses a
+#' single fit of an ECx equation, whose no-effect row is an NSEC.
+#'
+#' @param x A \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
+#' @param xform The \code{xform} resolved from the summary's dots, as
+#' \code{summary_ecx_xform()} returns it: \code{identity} where none was
+#' supplied.
+#'
+#' @return The stored summary where \code{xform} is \code{identity}, and
+#' otherwise a summary of the same form, from \code{estimates_summary()}.
+#'
+#' @noRd
+summary_ne_vals <- function(x, xform) {
+  stored <- if (is_bayesnecfit(x)) x$ne else x$w_ne
+  # Returned as stored rather than recomputed, so that a summary called
+  # without an xform prints exactly what it printed before.
+  if (identical(xform, identity)) {
+    return(stored)
+  }
+  if (!inherits(xform, "function")) {
+    stop("xform must be a function.", call. = FALSE)
+  }
+  post <- if (is_bayesnecfit(x)) x$ne_posterior else x$w_ne_posterior
+  cens <- attr(post, "censored")
+  post <- xform(post)
+  # Set after xform rather than relied on, because a general function need not
+  # keep an attribute. A decreasing xform swaps the end the draws are censored
+  # at; xform_censoring() handles that, as it does for nec().
+  attr(post, "censored") <- xform_censoring(cens, xform)
+  estimates_summary(post)
 }
 
 #' Which candidate models mis-state the control, by ratio

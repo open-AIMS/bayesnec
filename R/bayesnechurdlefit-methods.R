@@ -403,16 +403,22 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
                                       ecx_vals = c(10, 50, 90)) {
   chk_lgl(ecx)
   chk_numeric(ecx_vals)
+  # The no-effect rows pass the dots to nec() whatever ecx is, and the ECx
+  # rows pass them to ecx(), so posterior = TRUE is looked for as each matches
+  # it. See check_summary_posterior().
+  check_summary_posterior(nec, c(list(which = "combined"), list(...)))
   ecs <- NULL
   if (ecx) {
+    check_summary_ecx_posterior(list(...))
     # The nine ecx() calls below would each report the scale of what they
     # return, so it is reported once for the table. The no-effect rows are read
     # under suppressMessages() below and report nothing either way. The dots
-    # are matched as ecx() will match them, with ecx_val named as ecx_row()
-    # names it. See report_fitted_scale().
-    quiet <- report_fitted_scale(
-      object, dots_xform(ecx, c(list(ecx_val = ecx_vals[1]), list(...))), "ecx"
-    )
+    # are matched as ecx() will match them, by summary_ecx_xform(). In this
+    # method the name ecx is the logical argument, not the generic, so
+    # dots_xform(ecx, ...) called here matched nothing, and the message was
+    # raised beside rows an xform had already put on the recorded scale
+    # (#439). See report_fitted_scale().
+    quiet <- report_fitted_scale(object, summary_ecx_xform(list(...)), "ecx")
     on.exit(options(quiet), add = TRUE)
     # On the grid the component fits were predicted over, not the range of
     # the data. ecx() rebuilds its own grid when x_range is absent, so the ECx

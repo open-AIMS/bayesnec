@@ -261,11 +261,24 @@
   censored at 1. A supplied `x_range` replaces the stored grid and reaches
   each `ecx()` call once, so each ECx row equals a bare `ecx()` call given the
   same arguments. `x_range = NULL` is not passed on, and leaves `ecx()` to
-  build its own grid from the data. The arguments apply to the ECx rows only:
-  the no-effect row is read from the posterior stored at fit time and is
-  unchanged. `summary()` on a `bayesnecgroupfit` passes its arguments to each
-  level's summary, so the same applies to every level. A summary called
-  without these arguments reports what it did before (#439).
+  build its own grid from the data. The no-effect row is read from the
+  posterior stored at fit time, so `x_range` and `resolution` do not change
+  it, but an `xform` is applied to its draws and to the bound they are
+  censored at, as `nec()` applies it. The no-effect row and the ECx rows are
+  therefore on one scale: with a `crf(log(x))` predictor and `xform = exp`,
+  the NEC row reads 4.31, as `nec()` does, where it read 1.46 on the log scale
+  beside an EC50 on the recorded one. An `xform` reaches the no-effect row
+  with or without `ecx = TRUE`, as it already did in the `bayesnechurdlefit`
+  method. `posterior = TRUE` is refused by all three methods, because a table
+  of quantiles cannot show a posterior sample; it printed columns of `NA`.
+  `summary()` on a `bayesnecgroupfit` passes its arguments to each level's
+  summary, so the same applies to every level. A summary called without these
+  arguments reports what it did before (#439).
+- `summary(x, ecx = TRUE, xform = )` on a `bayesnechurdlefit` no longer says
+  that the estimates are on the fitted scale. It looked for `xform` with the
+  method's own logical `ecx` argument in place of the `ecx()` generic, so it
+  never found one and raised the message beside rows already on the recorded
+  scale (#439).
 
 - Behaviour change, measured across the nine vignettes. A fit with no draw
   beyond its prediction range is unaffected, and the summary it reports is

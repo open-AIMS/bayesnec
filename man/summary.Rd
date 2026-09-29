@@ -23,9 +23,9 @@
 \code{\link{bayesmanecfit}}.}
 
 \item{...}{With \code{ecx = TRUE}, passed to \code{\link{ecx}} for each
-ECx row and to nothing else, so that \code{x_range}, \code{resolution} and
-\code{xform} in particular apply to the ECx rows only. See Details. Unused
-where \code{ecx = FALSE}.}
+ECx row, so that \code{x_range} and \code{resolution} in particular apply
+to the ECx rows only. An \code{xform} is also applied to the no-effect row,
+with or without \code{ecx = TRUE}. See Details.}
 
 \item{ecx}{Should summary ECx values be calculated? Defaults to FALSE.}
 
@@ -89,9 +89,14 @@ abbreviation such as \code{x_ran} is ignored without a message.
 
 The no-effect estimate is read from the posterior stored when the model was
 fitted, and is censored at the bound of the prediction grid stored then, so
-a range supplied now cannot change it. It is reported on the scale the model
-was fitted on whatever \code{xform} is supplied; \code{\link{nec}} and
-\code{\link{nsec}} take an \code{xform} of their own.
+a range supplied now cannot change it. An \code{xform} supplied in
+\code{...} is applied to those stored draws and to the bound they are
+censored at, as \code{\link{nec}} applies it, so the no-effect row and the
+ECx rows are reported on one scale.
+
+\code{posterior = TRUE} is refused. A summary reports each estimate as
+quantiles; the draws themselves are returned by \code{\link{nec}},
+\code{\link{nsec}} and \code{\link{ecx}} with \code{posterior = TRUE}.
 }
 \examples{
 \donttest{
