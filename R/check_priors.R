@@ -77,7 +77,7 @@ check_priors.bayesnecfit <- function(object, filename = NA, ask = TRUE) {
 #' @inherit check_priors examples return
 #'
 #' @importFrom ggplot2 ggtitle
-#' @importFrom grDevices devAskNewPage pdf
+#' @importFrom grDevices devAskNewPage pdf dev.cur dev.list dev.off
 #'
 #' @noRd
 #'
@@ -86,10 +86,20 @@ check_priors.bayesmanecfit <- function(object, filename = NA, ask = TRUE) {
   if (!is.na(filename)) {
     chk_character(filename)
   }
+  # The devices are left as they were found, including when a plot stops the
+  # call: the PDF is closed on exit, and the screen device's page prompt is
+  # restored, as autoplot() restores it. Setting the prompt to FALSE on the
+  # way out, as this did, switched off a prompt the user had asked for, and
+  # with filename it opened a new screen device after the PDF was closed
+  # (#459).
   if (!is.na(filename)) {
     pdf(file = paste(filename, ".pdf", sep = ""), onefile = TRUE,
         width = 12, height = 4)
+    pdf_dev <- dev.cur()
+    on.exit(if (pdf_dev %in% dev.list()) dev.off(pdf_dev), add = TRUE)
   } else {
+    default_ask <- devAskNewPage()
+    on.exit(devAskNewPage(default_ask), add = TRUE)
     devAskNewPage(ask = ask)
   }
   for (m in seq_len(length(object$mod_fits))) {
@@ -98,8 +108,8 @@ check_priors.bayesmanecfit <- function(object, filename = NA, ask = TRUE) {
     print(out_plot)
   }
   if (!is.na(filename)) {
-    dev.off()
+    dev.off(pdf_dev)
     message("Probability density plots saved to file ", filename, ".pdf")
   }
-  devAskNewPage(ask = FALSE)
+  invisible(NULL)
 }

@@ -124,7 +124,10 @@ first where it is requested and then the equations in the order given in
 supplying it together with \code{model} or \code{average} is an error.}
 }
 \value{
-A \code{\link[ggplot2]{ggplot}} object.
+A \code{\link[ggplot2]{ggplot}} object, or, for a
+\code{\link{bayesmanecfit}} with \code{multi_facet = FALSE}, a
+\code{\link[base]{list}} of them, returned invisibly, as described under
+\code{multi_facet}.
 }
 \description{
 \code{\link[bayesnec:bayesnec-package]{bayesnec}} standard \pkg{ggplot2}

@@ -20,6 +20,55 @@ test_that("returns pdf for bayesmanecfit objects", {
   on.exit(file.remove(paste(filename, ".pdf", sep = "")))
 })
 
+# A null PDF device stands in for the screen: check_priors() sets its page
+# prompt while it draws a model set and must restore it afterwards (#459).
+test_that("check_priors on a model set restores the page prompt it set", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  pdf(NULL)
+  screen <- dev.cur()
+  on.exit(if (screen %in% dev.list()) dev.off(screen), add = TRUE)
+  devAskNewPage(TRUE)
+  check_priors(manec_example, ask = FALSE)
+  expect_true(devAskNewPage())
+  devAskNewPage(FALSE)
+  check_priors(manec_example, ask = TRUE)
+  expect_false(devAskNewPage())
+})
+
+test_that("check_priors restores the prompt and closes its PDF on an error", {
+  local_mocked_bindings(pull_out = function(...) stop("drawing failed"),
+                        .package = "bayesnec")
+  pdf(NULL)
+  screen <- dev.cur()
+  on.exit(if (screen %in% dev.list()) dev.off(screen), add = TRUE)
+  devAskNewPage(FALSE)
+  expect_error(check_priors(manec_example, ask = TRUE), "drawing failed")
+  expect_false(devAskNewPage())
+  before <- dev.list()
+  filename <- tempfile()
+  expect_error(check_priors(manec_example, filename = filename),
+               "drawing failed")
+  expect_identical(dev.list(), before)
+  unlink(paste0(filename, ".pdf"))
+})
+
+test_that("check_priors with filename opens no device besides its PDF", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # It set the prompt on the way out, which opened a screen device after the
+  # PDF had been closed.
+  before <- dev.list()
+  filename <- tempfile()
+  on.exit(unlink(paste0(filename, ".pdf")), add = TRUE)
+  expect_message(check_priors(manec_example, filename = filename),
+                 "saved to file")
+  expect_identical(dev.list(), before)
+  expect_true(file.exists(paste0(filename, ".pdf")))
+})
+
 
 # ---- #257, what the transform changes downstream of the formula --------------
 

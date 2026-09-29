@@ -42,7 +42,9 @@ positive continuous response, \code{Beta} for one bounded on (0, 1), and
 two-block family (\code{hurdle_gamma}, \code{zero_inflated_beta}) is refused,
 because \code{bnec_hurdle} is itself the two-part model, and so are the
 zero-inflated count families, which are mixtures rather than hurdles -- see
-\code{\link{bnec}}. For \code{poisson} and \code{negbinomial}, the positive
+\code{\link{bnec}}. \code{binomial} and \code{beta_binomial} are refused as
+well: each needs the number of trials in a \code{trials()} term, and
+\code{bnec_hurdle} takes none. For \code{poisson} and \code{negbinomial}, the positive
 subset is fitted with the corresponding zero-truncated likelihood. The
 truncation is added internally because every row in that subset is known to
 be positive; it is not a user-selectable response transformation. This path

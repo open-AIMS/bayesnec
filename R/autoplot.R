@@ -31,7 +31,10 @@
 #' \code{"colour"} is available when \code{group} is not a group-level term
 #' in the fitted formula.
 #'
-#' @return A \code{\link[ggplot2]{ggplot}} object.
+#' @return A \code{\link[ggplot2]{ggplot}} object, or, for a
+#' \code{\link{bayesmanecfit}} with \code{multi_facet = FALSE}, a
+#' \code{\link[base]{list}} of them, returned invisibly, as described under
+#' \code{multi_facet}.
 #'
 #' @examples
 #' \dontrun{
