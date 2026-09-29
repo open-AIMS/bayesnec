@@ -473,6 +473,8 @@ decisions.
 
 ## D28 — The hurdle ECx grid (Q7, #412)
 
+Superseded by D44.
+
 Growth's estimates are read from growth's own observed range; survival's and the
 combined estimates from the survival range; `summary()` and the bare estimators
 alike. RF first accepted a recommendation that read the combined estimate on the
@@ -585,3 +587,17 @@ D41 (#299, the recorded scale by default) and D31's second part (`ecxflat`
 joins `all`, `ecx` and `decline`). Both change published numbers, so the
 vignettes are precompiled again after them, and the `example8` fit store is
 refitted after the `ecxflat` change, since the store's units follow the model set.
+
+## D44 — The growth range of a hurdle fit (#412)
+
+RF, 2026-09-29, superseding D28: every hurdle estimate, growth included, is read
+over the whole concentration series, and `bnec_hurdle()` predicts the growth
+component over it.
+D28 read growth's estimates over the concentrations at which something survived,
+on a recommendation that called an estimate above the last survivor
+extrapolated. Those concentrations were tested, so such an estimate lies inside
+the tested range. The option list for D28 also left out reading every estimate
+over the whole series, which is what a bare `ecx()` did before #412. With both
+components on one range the combined threshold is never read across unequal
+bounds, so #421 does not arise for a fit made after D44; a fit made before it
+keeps its growth grid until refitted.
