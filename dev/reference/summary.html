@@ -125,7 +125,10 @@ bayesmanecfit."><meta property="og:image" content="https://open-aims.github.io/b
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Unused.</p></dd>
+<dd><p>With <code>ecx = TRUE</code>, passed to <code><a href="ecx.html">ecx</a></code> for each
+ECx row, so that <code>x_range</code> and <code>resolution</code> in particular apply
+to the ECx rows only. An <code>xform</code> is also applied to the no-effect row,
+with or without <code>ecx = TRUE</code>. See Details.</p></dd>
 
 
 <dt id="arg-ecx">ecx<a class="anchor" aria-label="anchor" href="#arg-ecx"></a></dt>
@@ -183,6 +186,25 @@ no-significant-effect-concentration (NSEC, see Fisher and Fox 2023). In the
 case of a <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> that contains a mixture of both NEC and
 ECx models, the no-effect estimate is a model averaged combination of the NEC
 and NSEC estimates, and is reported as the N(S)EC (see Fisher et al. 2023).</p>
+<p>With <code>ecx = TRUE</code>, each ECx row is computed by <code><a href="ecx.html">ecx</a></code> over
+the prediction grid stored with the fit, which is the grid the no-effect
+estimate is censored at. An <code>x_range</code> supplied in <code>...</code> replaces
+that grid. It and the other arguments in <code>...</code>, such as
+<code>resolution</code> and <code>xform</code>, reach <code><a href="ecx.html">ecx</a></code> as given, so
+an ECx row equals a bare <code><a href="ecx.html">ecx</a></code> call given the same arguments.
+<code>x_range = NULL</code> is the exception: it is not passed on, and
+<code><a href="ecx.html">ecx</a></code> builds its grid from the data, as it does when given no
+<code>x_range</code>. <code>x_range</code> must be given by its full name, because an
+abbreviation such as <code>x_ran</code> is ignored without a message.</p>
+<p>The no-effect estimate is read from the posterior stored when the model was
+fitted, and is censored at the bound of the prediction grid stored then, so
+a range supplied now cannot change it. An <code>xform</code> supplied in
+<code>...</code> is applied to those stored draws and to the bound they are
+censored at, as <code><a href="nec.html">nec</a></code> applies it, so the no-effect row and the
+ECx rows are reported on one scale.</p>
+<p><code>posterior = TRUE</code> is refused. A summary reports each estimate as
+quantiles; the draws themselves are returned by <code><a href="nec.html">nec</a></code>,
+<code><a href="nsec.html">nsec</a></code> and <code><a href="ecx.html">ecx</a></code> with <code>posterior = TRUE</code>.</p>
     </div>
     <div id="references">
     <h2>References</h2>
