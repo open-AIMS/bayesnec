@@ -50,7 +50,9 @@
 #' two-block family (\code{hurdle_gamma}, \code{zero_inflated_beta}) is refused,
 #' because \code{bnec_hurdle} is itself the two-part model, and so are the
 #' zero-inflated count families, which are mixtures rather than hurdles -- see
-#' \code{\link{bnec}}. For \code{poisson} and \code{negbinomial}, the positive
+#' \code{\link{bnec}}. \code{binomial} and \code{beta_binomial} are refused as
+#' well: each needs the number of trials in a \code{trials()} term, and
+#' \code{bnec_hurdle} takes none. For \code{poisson} and \code{negbinomial}, the positive
 #' subset is fitted with the corresponding zero-truncated likelihood. The
 #' truncation is added internally because every row in that subset is known to
 #' be positive; it is not a user-selectable response transformation. This path
@@ -376,6 +378,19 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
 #' @noRd
 check_hurdle_growth_family <- function(family) {
   fam_tag <- family$family
+  # Refused here, before the growth component is announced. Left to the
+  # growth fit, the call stopped asking for a trials() term, and with one it
+  # stopped in check_hurdle_aterms(), which refuses trials() because the
+  # survival component has no trial count; two messages that contradicted
+  # each other (#459).
+  if (fam_tag %in% c("binomial", "beta_binomial")) {
+    stop("bnec_hurdle cannot use ", fam_tag, " as the growth family: it needs",
+         " the number of trials in a trials() term, and bnec_hurdle takes",
+         " none, because the survival component has no trial count. For a",
+         " proportion among the survivors, give the response as a proportion,",
+         " for which Beta is chosen. For counts of successes out of a number",
+         " of trials, use bnec() with a trials() term.", call. = FALSE)
+  }
   if (fam_tag %in% c("zero_inflated_poisson", "zero_inflated_negbinomial")) {
     stop("bnec_hurdle cannot use ", fam_tag, " as the growth family. A hurdle",
          " treats every zero as structural, which is what lets the two",

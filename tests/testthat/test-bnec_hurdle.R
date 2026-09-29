@@ -154,6 +154,23 @@ test_that("bnec_hurdle rejects a censored structural zero", {
   )
 })
 
+test_that("bnec_hurdle refuses a binomial growth family before fitting (#459)", {
+  # Each needs a trials() term, which bnec_hurdle refuses. Left to the growth
+  # fit, the call announced the growth component and then asked for trials().
+  dat <- data.frame(x = rep(1:4, each = 5),
+                    y = as.integer(c(rep(3, 15), rep(0, 5))))
+  for (fam in list(binomial(), "beta_binomial")) {
+    msgs <- testthat::capture_messages(
+      err <- expect_error(
+        bnec_hurdle(y ~ crf(x, "nec3param"), data = dat, family_growth = fam),
+        "cannot use (beta_)?binomial as the growth family"
+      )
+    )
+    expect_match(conditionMessage(err), "trials\\(\\)")
+    expect_false(any(grepl("Fitting the growth component", msgs)))
+  }
+})
+
 test_that("bnec_hurdle validates the full predictor before either fit (#317)", {
   dat <- data.frame(x = c(1, 2, -1, -2), y = c(2, 1, 0, 0))
   calls <- 0L

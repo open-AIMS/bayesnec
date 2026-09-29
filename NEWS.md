@@ -1797,6 +1797,20 @@
 
 ## Bug fixes
 
+- `check_priors()` on a `bayesmanecfit` leaves the graphics devices as it
+  found them. It set the page prompt to `FALSE` on its way out whatever it had
+  been, restored nothing when a plot stopped the call, and with `filename`
+  opened a screen device after closing the PDF. The prompt is now restored on
+  exit, and the PDF is closed on exit, including after an error (#459).
+- `bnec_hurdle()` refuses `binomial` and `beta_binomial` as the growth family
+  before anything is fitted. Each needs a `trials()` term, which
+  `bnec_hurdle()` does not take, so the call could not succeed: without the
+  term the growth fit asked for it, and with it `bnec_hurdle()` refused it.
+  The message gives the alternatives (#459).
+- `exceedance()` refuses `no_effect = TRUE` where `estimate` is `"nsec"` or
+  `"ecx"`, as it refuses `ecx_val` under a non-ECx estimate. It was dropped
+  without a message, and the probability returned was the one for the
+  estimate without it (#459).
 - A `binomial` or `beta_binomial` formula with no `trials()` term is now
   refused once per call, before any model is fitted, with a message that names
   the family and the missing term and gives the formula with one added.
@@ -2523,6 +2537,9 @@
 
 ## Documentation
 
+- `?autoplot` states that a `bayesmanecfit` with `multi_facet = FALSE`
+  returns a list of ggplot objects, invisibly. It said a ggplot object was
+  returned in every case (#459).
 - `vignette("example5")` is rewritten as *Installation and setup*, and no chunk
   in it is evaluated. It previously evaluated seven chunks, so the rendered
   vignette recorded the machine that built it: the shipped file named one
