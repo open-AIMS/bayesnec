@@ -54,13 +54,26 @@ jobs:
     # a job that was merely slow. A bound above the longest observed job makes a
     # hang a deterministic event at a known boundary instead. See #328.
     #
-    # The serial R-devel check took 64 minutes and cold dependency setup took
-    # 27 minutes on PR #402. Allow both within one job; release jobs retain 90.
-    timeout-minutes: ${{ matrix.config.r == 'devel' && 120 || 90 }}
+    # 90 on every job. The R-devel job was given 120 while it ran its tests
+    # serially; that is undone below, and a cold R-devel dependency install
+    # (about 25 minutes) plus the parallel test phase (32 to 44) fits in 90.
+    timeout-minutes: 90
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
-      R_KEEP_PKG_SOURCE: yes
+      # Not kept on R-devel. P3M has no R-devel binaries, so every dependency is
+      # built from source there, and with R_KEEP_PKG_SOURCE=yes each keeps its
+      # srcrefs. A srcref reaches its package's lazy-load frame, and through
+      # registered S3 methods the frames of loo, rstan and ggplot2, whose
+      # .last_plot holds a fitted model and its compiled Stan environments.
+      # testthat serialises every warning expectation's trace to send it from
+      # a parallel worker, and after test-bnec_hurdle.R and test-bnec_joint.R
+      # had run in the same worker one such payload passed R's 2^31-byte limit
+      # on the base64 text: "gsub: result string is too long". Measured on
+      # R-devel r90591: 696.7 MB with srcrefs kept, 904 KB without. On release
+      # the dependencies are binaries without srcrefs, so it stays "yes" there
+      # and keeps bayesnec's own srcrefs in its tracebacks.
+      R_KEEP_PKG_SOURCE: ${{ matrix.config.r == 'devel' && 'no' || 'yes' }}
 
     steps:
       - uses: actions/checkout@v3
@@ -78,6 +91,11 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
+          # Raised from the default of 1 so that R-devel does not restore the
+          # library it cached while dependencies were built with srcrefs kept;
+          # runs restore a cache by prefix, so an old entry would otherwise be
+          # reused. See R_KEEP_PKG_SOURCE above.
+          cache-version: 2
           extra-packages: |
             rcmdcheck
             BH
@@ -156,14 +174,6 @@ jobs:
           cat(sprintf("TESTTHAT_CPUS=%d\n", workers),
               file = Sys.getenv("GITHUB_ENV"), append = TRUE)
         shell: Rscript {0}
-
-      # R-devel has failed while decoding an oversized result from a parallel
-      # testthat worker. The serial R-devel diagnostic passed every test file.
-      # Leave the dispatch worker override available for further diagnosis.
-      - name: Run R-devel tests serially
-        if: matrix.config.r == 'devel' && (github.event_name != 'workflow_dispatch' || github.event.inputs.testthat_cpus == '')
-        shell: bash
-        run: echo 'TESTTHAT_PARALLEL=false' >> "$GITHUB_ENV"
 
       # Vignettes ARE built and checked. They are precompiled -- precompile.R
       # renders every .Rmd.orig to a .Rmd whose chunks are display-only -- so
