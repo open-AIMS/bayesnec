@@ -251,6 +251,35 @@
   drawn beyond the growth data is a prediction rather than an estimate
   (#412).
 
+- `summary(x, ecx = TRUE)` on a `bayesnecfit` or a `bayesmanecfit` now passes
+  the arguments in `...` to `ecx()` for each ECx row, as the
+  `bayesnechurdlefit` method already did. They were absorbed and ignored
+  without a message, so an `x_range`, `resolution` or `xform` named in the
+  call had no effect. On `manec_example`, `summary()` with
+  `x_range = c(0.5, 1)` printed an EC50 of 1.67 (1.60 to 1.72), the value on
+  the stored grid, where `ecx()` over that range reports every draw as
+  censored at 1. A supplied `x_range` replaces the stored grid and reaches
+  each `ecx()` call once, so each ECx row equals a bare `ecx()` call given the
+  same arguments. `x_range = NULL` is not passed on, and leaves `ecx()` to
+  build its own grid from the data. The no-effect row is read from the
+  posterior stored at fit time, so `x_range` and `resolution` do not change
+  it, but an `xform` is applied to its draws and to the bound they are
+  censored at, as `nec()` applies it, so the no-effect row and the ECx rows
+  are printed on one scale. Before, with `xform` the no-effect row stayed on
+  the fitted scale beside ECx rows on the recorded one, and no message said
+  so. An `xform` reaches the no-effect row
+  with or without `ecx = TRUE`, as it already did in the `bayesnechurdlefit`
+  method. `posterior = TRUE` is refused by all three methods, because a table
+  of quantiles cannot show a posterior sample; it printed columns of `NA`.
+  `summary()` on a `bayesnecgroupfit` passes its arguments to each level's
+  summary, so the same applies to every level. A summary called without these
+  arguments reports what it did before (#439).
+- `summary(x, ecx = TRUE, xform = )` on a `bayesnechurdlefit` no longer says
+  that the estimates are on the fitted scale. It looked for `xform` with the
+  method's own logical `ecx` argument in place of the `ecx()` generic, so it
+  never found one and raised the message beside rows already on the recorded
+  scale (#439).
+
 - Behaviour change, measured across the nine vignettes. A fit with no draw
   beyond its prediction range is unaffected, and the summary it reports is
   unchanged to the last bit. Which estimates each vignette reports was taken

@@ -22,7 +22,10 @@
 \item{object}{An object of class \code{\link{bayesnecfit}} or
 \code{\link{bayesmanecfit}}.}
 
-\item{...}{Unused.}
+\item{...}{With \code{ecx = TRUE}, passed to \code{\link{ecx}} for each
+ECx row, so that \code{x_range} and \code{resolution} in particular apply
+to the ECx rows only. An \code{xform} is also applied to the no-effect row,
+with or without \code{ecx = TRUE}. See Details.}
 
 \item{ecx}{Should summary ECx values be calculated? Defaults to FALSE.}
 
@@ -72,6 +75,28 @@ no-significant-effect-concentration (NSEC, see Fisher and Fox 2023). In the
 case of a \code{\link{bayesmanecfit}} that contains a mixture of both NEC and
 ECx models, the no-effect estimate is a model averaged combination of the NEC
 and NSEC estimates, and is reported as the N(S)EC (see Fisher et al. 2023).
+
+With \code{ecx = TRUE}, each ECx row is computed by \code{\link{ecx}} over
+the prediction grid stored with the fit, which is the grid the no-effect
+estimate is censored at. An \code{x_range} supplied in \code{...} replaces
+that grid. It and the other arguments in \code{...}, such as
+\code{resolution} and \code{xform}, reach \code{\link{ecx}} as given, so
+an ECx row equals a bare \code{\link{ecx}} call given the same arguments.
+\code{x_range = NULL} is the exception: it is not passed on, and
+\code{\link{ecx}} builds its grid from the data, as it does when given no
+\code{x_range}. \code{x_range} must be given by its full name, because an
+abbreviation such as \code{x_ran} is ignored without a message.
+
+The no-effect estimate is read from the posterior stored when the model was
+fitted, and is censored at the bound of the prediction grid stored then, so
+a range supplied now cannot change it. An \code{xform} supplied in
+\code{...} is applied to those stored draws and to the bound they are
+censored at, as \code{\link{nec}} applies it, so the no-effect row and the
+ECx rows are reported on one scale.
+
+\code{posterior = TRUE} is refused. A summary reports each estimate as
+quantiles; the draws themselves are returned by \code{\link{nec}},
+\code{\link{nsec}} and \code{\link{ecx}} with \code{posterior = TRUE}.
 }
 \examples{
 \donttest{

@@ -306,6 +306,38 @@ test_that("summary() reports once where it calls ecx(), and never otherwise", {
   expect_match(msgs, "Pass xform = exp to ecx()", fixed = TRUE)
   expect_length(scale_messages(summary(logged_x_set(manec_example),
                                        ecx = TRUE, check_fit = FALSE)), 1)
+  # An xform given to summary() reaches ecx() (#439), so the ECx rows are on
+  # the recorded scale and there is nothing to report. The group reads it
+  # from the dots its levels pass on.
+  expect_length(scale_messages(summary(tf, ecx = TRUE, ecx_vals = 50,
+                                       resolution = 20, xform = exp)), 0)
+  expect_length(scale_messages(summary(logged_x_set(manec_example),
+                                       ecx = TRUE, ecx_vals = 50,
+                                       resolution = 20, xform = exp,
+                                       check_fit = FALSE)), 0)
+  # By position, as ecx() reads it: resolution, posterior, type, xform.
+  expect_length(scale_messages(summary(tf, 20, FALSE, "absolute", exp,
+                                       ecx = TRUE, ecx_vals = 50)), 0)
+  g <- fake_scale_group(list(a = tf, b = tf))
+  msgs <- scale_messages(summary(g, ecx = TRUE, ecx_vals = 50,
+                                 resolution = 20))
+  expect_length(msgs, 1)
+  expect_match(msgs, "The fitted group", fixed = TRUE)
+  expect_length(scale_messages(summary(g, ecx = TRUE, ecx_vals = 50,
+                                       resolution = 20, xform = exp)), 0)
+  expect_length(scale_messages(summary(g, 20, FALSE, "absolute", exp,
+                                       ecx = TRUE, ecx_vals = 50)), 0)
+  # The hurdle summary resolves its xform the same way. It handed dots_xform()
+  # its own logical ecx argument, matched nothing, and reported the fitted
+  # scale beside rows an xform had put on the recorded one (#439).
+  h <- fake_scale_hurdle(tf, tf)
+  expect_length(scale_messages(summary(h, ecx = TRUE, ecx_vals = 50,
+                                       resolution = 20)), 1)
+  expect_length(scale_messages(summary(h, ecx = TRUE, ecx_vals = 50,
+                                       resolution = 20, xform = exp)), 0)
+  expect_error(suppressMessages(summary(h, posterior = TRUE)),
+               "posterior sample")
+  expect_null(getOption("bayesnec.xform_reported"))
 })
 
 test_that("the plotting paths raise no scale message", {

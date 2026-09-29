@@ -272,10 +272,16 @@ nsec.bayesnecgroupfit <- function(object, ...) {
 #' @export
 summary.bayesnecgroupfit <- function(object, ...) {
   # With ecx = TRUE each level's summary() reports the scale of its ECx rows,
-  # so it is reported once for the group. The level summaries take no xform.
-  # See report_fitted_scale().
-  if (isTRUE(list(...)[["ecx"]])) {
-    quiet <- report_fitted_scale(object, identity, "ecx")
+  # so it is reported once for the group. The level summaries pass the rest of
+  # ... to ecx() (#439), so the xform is read from those dots as the levels
+  # will pass them, with ecx and ecx_vals taken out as the level summaries
+  # take them. Read as identity, a supplied xform would leave the message
+  # naming a scale the ECx rows had already been returned from. See
+  # summary_ecx_xform() and report_fitted_scale().
+  dots <- list(...)
+  if (isTRUE(dots[["ecx"]])) {
+    rest <- dots[!names(dots) %in% c("ecx", "ecx_vals")]
+    quiet <- report_fitted_scale(object, summary_ecx_xform(rest), "ecx")
     on.exit(options(quiet), add = TRUE)
   }
   group_lapply(object, summary, ...)

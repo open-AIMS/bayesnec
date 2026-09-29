@@ -810,13 +810,14 @@ clean_mod_weights <- function(x) {
 }
 
 #' @noRd
-clean_nec_vals <- function(x, all_models, ecx_models) {
-  if (is_bayesnecfit(x)) {
-    vals <- x$ne
-  } else if (is_bayesmanecfit(x)) {
-    vals <- x$w_ne
-  } else {
+clean_nec_vals <- function(x, all_models, ecx_models, vals = NULL) {
+  if (!is_bayesnecfit(x) && !is_bayesmanecfit(x)) {
     stop("Wrong input class.")
+  }
+  # The stored summary, unless summary() supplies it transformed by an xform
+  # (#439). See summary_ne_vals().
+  if (is.null(vals)) {
+    vals <- if (is_bayesnecfit(x)) x$ne else x$w_ne
   }
   mat <- t(as.matrix(vals))
   # as.matrix() keeps names and drops everything else, so the censoring record
