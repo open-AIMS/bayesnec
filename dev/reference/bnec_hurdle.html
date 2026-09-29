@@ -155,7 +155,9 @@ positive continuous response, <code>Beta</code> for one bounded on (0, 1), and
 two-block family (<code>hurdle_gamma</code>, <code>zero_inflated_beta</code>) is refused,
 because <code>bnec_hurdle</code> is itself the two-part model, and so are the
 zero-inflated count families, which are mixtures rather than hurdles – see
-<code><a href="bnec.html">bnec</a></code>. For <code>poisson</code> and <code>negbinomial</code>, the positive
+<code><a href="bnec.html">bnec</a></code>. <code>binomial</code> and <code>beta_binomial</code> are refused as
+well: each needs the number of trials in a <code>trials()</code> term, and
+<code>bnec_hurdle</code> takes none. For <code>poisson</code> and <code>negbinomial</code>, the positive
 subset is fitted with the corresponding zero-truncated likelihood. The
 truncation is added internally because every row in that subset is known to
 be positive; it is not a user-selectable response transformation. This path
