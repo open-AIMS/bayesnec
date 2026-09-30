@@ -1170,21 +1170,6 @@ return_nec_post <- function(m, xform) {
 }
 
 #' @noRd
-gm_mean <- function(x, na_rm = TRUE, zero_propagate = FALSE) {
-  if (any(x < 0, na.rm = TRUE)) {
-    return(NaN)
-  }
-  if (zero_propagate) {
-    if (any(x == 0, na.rm = TRUE)) {
-      return(0)
-    }
-    exp(mean(log(x), na.rm = na_rm))
-  } else {
-    exp(sum(log(x[x > 0]), na.rm = na_rm) / length(x))
-  }
-}
-
-#' @noRd
 summarise_posterior <- function(mat, x_vec) {
   cbind(x = x_vec, data.frame(t(apply(mat, 2, estimates_summary))))
 }
@@ -2422,6 +2407,11 @@ control_x <- function(object) {
     grid_obj <- suppressMessages(
       pull_out(grid_obj, model = names(grid_obj$mod_fits)[1])
     )
+  }
+  # One level of a joint refit reads its own lowest concentration, not the
+  # lowest of every level together (D40, #448). See joint_level_x().
+  if (inherits(grid_obj, "bayesnecjointlevel") && length(grid_obj$level_x)) {
+    return(min(grid_obj$level_x))
   }
   mod_dat <- model.frame(grid_obj$bayesnecformula, grid_obj$fit$data)
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]

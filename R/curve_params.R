@@ -45,8 +45,8 @@
 #' not sum to 1 and would sum to something different for the next number. The
 #' model weight is reported beside each row instead, so a reader can see what
 #' share of the model average each curve holds, and no quantity is reported
-#' that the weights do not support. See \code{\link{average_estimates}} for the
-#' estimates that are averaged.
+#' that the weights do not support. The model-averaged estimates are returned
+#' by \code{\link{nec}}, \code{\link{nsec}} and \code{\link{ecx}} on the set.
 #'
 #' \code{\link{show_params}} names the parameters of each equation without
 #' fitting anything; this function reports their estimates from a fit.
@@ -118,7 +118,7 @@
 #' \code{\link{nec}} and \code{\link{ecx}} on that class.
 #'
 #' @seealso \code{\link{summary}}, \code{\link{show_params}},
-#' \code{\link{nec}}, \code{\link{ecx}}, \code{\link{average_estimates}}
+#' \code{\link{nec}}, \code{\link{ecx}}
 #'
 #' @examples
 #' library(bayesnec)

@@ -26,7 +26,8 @@ joint_level_fit <- function(object, level) {
   out <- list(fit = object$fit, bayesnecformula = object$bayesnecformula,
               model = model, group_var = object$group_var,
               level = level, levels = object$levels,
-              level_spec = object$level_spec, retained_data = NULL)
+              level_spec = object$level_spec, retained_data = NULL,
+              level_x = joint_level_x(object, level))
   out <- allot_class(out, c("bayesnecjointlevel", "bayesnecfit", "bnecfit"))
   # Only a threshold equation has a nec parameter to read, so ne_posterior
   # being NULL is the single record that this level has none: nec() reports NA
@@ -40,6 +41,43 @@ joint_level_fit <- function(object, level) {
     out$ne_type <- "NSEC"
   }
   out
+}
+
+#' The recorded predictor values of one level of a joint refit
+#'
+#' A joint refit holds every level in one \code{\link[brms]{brmsfit}}, so its
+#' data span every level's concentrations together. Read from there, a
+#' level's prediction grid and control value were those of the whole data
+#' (#448): on the herbicide refit of \code{vignette("example8")} the grid ran
+#' from 0.1 to 1000 µg/L in 200 steps of about 5 µg/L for every level, and
+#' irgarol's EC50 of 0.53 µg/L, fitted identically to its per-level fit, was
+#' interpolated between the first two grid points and reported as 2.68. Each
+#' level's estimates are read over that level's own concentrations instead
+#' (D40), which is what \code{\link{bnec_group}} gives each level.
+#'
+#' @param object An object of class \code{\link{bayesnecjointfit}}.
+#' @param level One level of \code{object$group_var}.
+#'
+#' @return A \code{\link[base]{numeric}} vector on the recorded scale, or
+#' \code{NULL} where the refit holds no data column to read the level from,
+#' in which case the whole data are used as before.
+#'
+#' @noRd
+joint_level_x <- function(object, level) {
+  dat <- object$data
+  group_var <- object$group_var
+  if (is.null(dat) || is.null(group_var) || !group_var %in% names(dat)) {
+    return(NULL)
+  }
+  # The predictor's column name, found as prediction_grid() finds it.
+  x_var <- attr(model.frame(object$bayesnecformula, data = object$fit$data),
+                "bnec_pop")[["x_var"]]
+  if (is.null(x_var) || !x_var %in% names(dat)) {
+    return(NULL)
+  }
+  x <- dat[[x_var]][as.character(dat[[group_var]]) == level]
+  x <- x[is.finite(x)]
+  if (!length(x)) NULL else x
 }
 
 #' Whether the equation fitted at one level estimates a nec parameter
@@ -253,6 +291,11 @@ bnec_newdata.bayesnecjointfit <- function(x, resolution = 100, x_range = NA) {
 bnec_newdata.bayesnecjointlevel <- function(x, resolution = 100,
                                             x_range = NA) {
   check_args_newdata(resolution, x_range)
+  # The level's own range by default, as bnec_group() gives each level (D40,
+  # #448). A caller's x_range is used as given.
+  if (all(is.na(x_range)) && length(x$level_x)) {
+    x_range <- range(x$level_x)
+  }
   prediction_grid(x$fit, x$bayesnecformula, x_range = x_range,
                   resolution = resolution,
                   level_spec = joint_level_spec(x))$newdata

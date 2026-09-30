@@ -185,23 +185,6 @@ test_that("a comparison reports once, not once per fit", {
   expect_null(getOption("bayesnec.xform_reported"))
 })
 
-test_that("average_estimates() reports once, and not with an xform", {
-  skip_on_cran()
-  tf <- logged_x_fit(nec4param, "nec4param")
-  te <- logged_x_fit(ecx4param, "ecx4param")
-  msgs <- scale_messages(average_estimates(list(a = tf, b = tf)))
-  expect_length(msgs, 1)
-  expect_match(msgs, "Pass xform = exp to average_estimates()", fixed = TRUE)
-  expect_length(scale_messages(
-    average_estimates(list(a = tf, b = te), estimate = "ecx",
-                      resolution = 20)
-  ), 1)
-  expect_length(scale_messages(
-    average_estimates(list(a = tf, b = te), estimate = "ecx",
-                      resolution = 20, xform = exp)
-  ), 0)
-})
-
 test_that("a group and a hurdle pair report once for the call", {
   tf <- logged_x_fit(nec4param, "nec4param")
   g <- fake_scale_group(list(a = tf, b = tf))

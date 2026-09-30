@@ -1167,3 +1167,62 @@ test_that("the membership test is the nec group, not the equation name", {
   expect_setequal(c(mod_groups$nec, mod_groups$ecx), mod_groups$all)
   expect_length(intersect(mod_groups$nec, mod_groups$ecx), 0L)
 })
+
+# ---- #448, D40: each level read over its own concentrations -----------------
+
+# A joint refit holds every level in one brmsfit, whose data span every level's
+# concentrations together. The herbicide refit of example8 read irgarol's EC50
+# on a grid from 0.1 to 1000 ug/L in steps of about 5, and reported 2.68 for a
+# curve whose EC50 is 0.53. These use nec4param's data split into two levels
+# observed over different ranges, which is the case that differs from a
+# crossed design.
+level_split <- function() {
+  d <- nec4param$fit$data
+  d$site <- ifelse(d$x < 1, "low", "high")
+  list(fit = nec4param$fit, bayesnecformula = nec4param$bayesnecformula,
+       group_var = "site", data = d)
+}
+
+joint_level_view <- function(level_x) {
+  structure(list(fit = nec4param$fit,
+                 bayesnecformula = nec4param$bayesnecformula,
+                 level_x = level_x),
+            class = c("bayesnecjointlevel", "bayesnecfit", "bnecfit"))
+}
+
+test_that("a joint level's concentrations are read from its own rows", {
+  obj <- level_split()
+  d <- obj$data
+  expect_equal(range(joint_level_x(obj, "low")), range(d$x[d$site == "low"]))
+  expect_equal(range(joint_level_x(obj, "high")),
+               range(d$x[d$site == "high"]))
+  # Without a data column to read the level from, the whole data are used as
+  # before, which is what a NULL leads to.
+  expect_null(joint_level_x(modifyList(obj, list(data = NULL)), "low"))
+  expect_null(joint_level_x(modifyList(obj, list(group_var = "plate")), "low"))
+  expect_null(joint_level_x(obj, "absent"))
+})
+
+test_that("a joint level's grid and control value are its own", {
+  captured <- NULL
+  local_mocked_bindings(
+    prediction_grid = function(fit, formula, x_range, resolution,
+                               level_spec) {
+      captured <<- x_range
+      list(newdata = data.frame(x = x_range))
+    },
+    joint_level_spec = function(object, ...) NULL
+  )
+  lvl <- joint_level_view(c(0.5, 2, 3))
+  bnec_newdata(lvl, resolution = 10)
+  expect_equal(captured, c(0.5, 3))
+  expect_equal(control_x(lvl), 0.5)
+  # A range the caller supplies is used as given.
+  bnec_newdata(lvl, resolution = 10, x_range = c(0.1, 9))
+  expect_equal(captured, c(0.1, 9))
+  # With no level values recorded, the whole data are used, as before.
+  whole <- joint_level_view(NULL)
+  bnec_newdata(whole, resolution = 10)
+  expect_true(all(is.na(captured)))
+  expect_equal(control_x(whole), min(nec4param$fit$data$x))
+})

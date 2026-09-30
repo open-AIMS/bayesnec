@@ -7,6 +7,17 @@
   3.2.0 and the test suite calls them 36 times across 13 files, so the recorded
   bound understated what running the tests requires. No package code changes.
 
+## Removed functions
+
+- `average_estimates()` is removed. It combined the NEC, NSEC or ECx
+  posteriors of several separate fits into a geometric mean, draw by draw.
+  Where a component's estimate lay beyond its fit's tested range, the missing
+  draw was averaged in as 1, so the result was pulled towards 1 without a
+  message. Reporting such an average correctly needs a separate bound for
+  each averaged draw, and nothing else in the package uses the function, so
+  it is removed rather than rebuilt. For the draws to combine, call `nec()`,
+  `nsec()` or `ecx()` with `posterior = TRUE` on each fit (#403).
+
 ## Designs that have not reached the lower asymptote
 
 - `bnec()` now reports, before anything is fitted, where the response is still
@@ -165,19 +176,20 @@
 
 - The combined no-effect estimate of a factorised hurdle fit, returned by
   `nec()` and reported by `summary()` on a `bnec_hurdle()` fit, is marked as
-  beyond the prediction range wherever it is not identified. The two
-  components can be predicted over different ranges, because growth is fitted
-  to survivors only and its range stops short of any concentration at which
-  nothing survived. A growth draw known only to exceed the top of its range,
-  combined with a survival draw estimated above that limit, gives a minimum
-  that lies between the two and is not identified. The development version
-  reported the survival value for such a draw: growth above 10 and survival at
-  20 gave 20 as the median and as both interval limits, with no mark. The draw
-  is now marked as above the smaller of the two components' upper limits,
-  which is true of it, and the finite upper limit implied by the survival draw
-  is not reported. A survival draw at or below the growth limit is still the
-  combined value, and the rule is the same with the two components exchanged
-  (#415).
+  beyond the prediction range wherever it is not identified. `bnec_hurdle()`
+  now predicts both components over the whole concentration series (#412), but
+  in a fit made with an earlier version the growth component's range stops
+  short of any concentration at which nothing survived, because growth is
+  fitted to survivors only. A growth draw known only to exceed the top of its
+  range, combined with a survival draw estimated above that limit, gives a
+  minimum that lies between the two and is not identified. The development
+  version reported the survival value for such a draw: growth above 10 and
+  survival at 20 gave 20 as the median and as both interval limits, with no
+  mark. The draw is now marked as above the smaller of the two components'
+  upper limits, which is true of it, and the finite upper limit implied by
+  the survival draw is not reported. A survival draw at or below the growth
+  limit is still the combined value, and the rule is the same with the two
+  components exchanged (#415).
 
 - The quantile estimator behind a censored summary is the inverse empirical
   distribution function, `quantile(type = 1)`. A posterior with no beyond-range
@@ -212,44 +224,28 @@
   and names other limits. `x_range` changes neither, so it is no longer passed
   to `nec()`, which had ignored it without a message (#416).
 
-- On a `bayesnechurdlefit`, a growth ECx or NSEC is now read over the growth
-  component's own observed range, which ends at the highest concentration at
-  which anything survived. Without an `x_range`, `ecx()`, `nsec()` and
-  `ecnsec()` with `which = "growth"` had read the growth curve over the
-  survival component's range, which covers every concentration tested, and
-  now read it over growth's. A growth ECx or NSEC above growth's highest
-  concentration was therefore read off the growth curve extended past the
-  data it was fitted to. It is now reported as censored at that
-  concentration, marked `>=` as any other censored estimate is. `ecnsec()`
-  returns a percentage effect rather than a concentration, so there is no
-  concentration to censor: with `which = "growth"` and no `x_range` it now
-  refuses an `nsec` outside growth's observed range and names that range.
-  An `x_range` that includes `nsec` reads the growth curve extended past its
-  data, as it does for `ecx()`. The survival and combined estimates are read
-  over the survival range as before, because the combined curve needs the
-  concentrations above growth's range, where survival falls towards zero.
-  With `extrapolate`, a growth NSEC is measured against growth's range, so a
-  limit between the tops of the two ranges now extends the growth search
-  where it was refused before (#412).
+- `bnec_hurdle()` predicts the growth component over the whole concentration
+  series, the range the survival component is fitted over, instead of over the
+  concentrations at which something survived. Growth is fitted to survivors
+  only, so it has no observations above the last concentration with survivors,
+  but those concentrations were tested, and a growth estimate there lies
+  inside the tested range. It is reported as a value, and the growth
+  component's no-effect estimate is censored only beyond the top of the
+  series. The two components now share their limits, so the combined
+  no-effect estimate is never read across unequal bounds. A supplied
+  `x_range` reaches both components unchanged, as before. `ecx()`, `nsec()`,
+  `ecnsec()`, `summary()`, the plots and `posterior_epred()` read every curve,
+  growth included, over the whole series, for a fit made with an earlier
+  version as well (#412).
 
-- `summary(x, ecx = TRUE)` on a `bayesnechurdlefit` now reads its growth ECx
-  rows over the grid stored with the growth component, clipped to growth's
-  observed range, and its survival and combined rows over the grid stored
-  with the survival component. All three were read over the intersection of
-  the two grids, which ends at growth's highest concentration. A survival or
-  combined ECx above that concentration was therefore reported as censored
-  there, while a bare `ecx()` call identified it. The survival ECx rows also
-  covered a shorter range than the survival no-effect row above them, which
-  is censored at the end of the survival grid. The clip applies where
-  `bnec_hurdle()` was given an `x_range`, which it stores on both components:
-  the growth rows are then read no further than growth's highest
-  concentration, as a bare `ecx()` reads them. Each ECx row now agrees with a
-  bare `ecx()` call for the same curve wherever the components were fitted
-  without an `x_range`, and each growth row also agrees where that range
-  reaches past the growth data. `plot()`, `autoplot()` and `posterior_epred()`
-  still draw every curve, growth included, over the survival range: a curve
-  drawn beyond the growth data is a prediction rather than an estimate
-  (#412).
+- `summary(x, ecx = TRUE)` on a `bayesnechurdlefit` reads every ECx row over
+  the grid stored with the survival component, which is the range a bare
+  `ecx()` reads every curve over. All three rows were read over the
+  intersection of the two components' grids, which ends at the highest
+  concentration at which anything survived. A survival or combined ECx above
+  that concentration was therefore reported as censored there, while a bare
+  `ecx()` call identified it, and the survival ECx rows covered a shorter range
+  than the survival no-effect row above them (#412).
 
 - `summary(x, ecx = TRUE)` on a `bayesnecfit` or a `bayesmanecfit` now passes
   the arguments in `...` to `ecx()` for each ECx row, as the
@@ -536,6 +532,17 @@
   `bnec_group()` still accepts such a column, because its per-level fits do not
   write the name into a formula (#398).
 
+- Each level of a joint refit is read over its own concentrations. `ecx()`,
+  `nsec()`, `nec()` and `ecnsec()` on a `bayesnecjointfit` built each level's
+  prediction grid, and read its control value, from the refit's whole data,
+  which spans every level's concentrations together. Where the levels were
+  tested over different ranges, a level tested at low concentrations was read
+  on a grid far coarser than its own series, and its ECx and NSEC could differ
+  several-fold from those of the per-level fit it was refitted from. Each
+  level's grid and control value are now taken from that level's own data, as
+  `bnec_group()` takes them. An `x_range` supplied to the estimator is used as
+  given (#448).
+
 ## The centring constant of a variance function
 
 - The centring constant of a `disp()` variance function of the fitted mean is
@@ -656,8 +663,7 @@
 
 ## Reproducible posterior comparisons and prior samples
 
-- `average_estimates()`, `compare_estimates()`, `compare_fitted()` and
-  `sample_priors()` now accept `seed = 10` and restore the caller's random
+- `compare_estimates()`, `compare_fitted()` and `sample_priors()` now accept `seed = 10` and restore the caller's random
   number state, including after an error. The Box-Muller normal generator's
   cached value is not part of this state and cannot be restored; use the default
   Inversion normal generator when subsequent normal draws must be preserved.
@@ -1281,12 +1287,12 @@
   where the bound is infinite --- an equation with no `bot` under a family
   unbounded below --- because there is then no denominator (#195). The same
   four values are accepted wherever `type` is taken: `ecx()`, `nsec()`,
-  `ecnsec()`, `compare_estimates()`, `compare_posterior()` and
-  `average_estimates()`, each validating against one shared definition, and each
+  `ecnsec()`, `compare_estimates()` and `compare_posterior()`, each validating
+  against one shared definition, and each
   warning about the rename once for the call rather than once per fit.
 
 - **`hormesis_def` is removed** from `ecx()`, `nsec()`, `ecnsec()`,
-  `compare_estimates()`, `compare_posterior()` and `average_estimates()`. With
+  `compare_estimates()` and `compare_posterior()`. With
   the control always the reference it selects nothing. Its documented `"max"`
   behaviour was what `ecx()` did unconditionally, while its `ecx()` consumer had
   been commented out for several releases, so the argument was inert there and
@@ -1358,7 +1364,7 @@
   series (#325).
 
 - **The default `resolution` is reduced from 1000 to 200** in `ecx()`,
-  `nsec()`, `ecnsec()` and `average_estimates()`. The value of 1000 was
+  `nsec()` and `ecnsec()`. The value of 1000 was
   calibrated for the nearest-grid-point search that interpolation replaces,
   where the grid spacing set the precision directly. With interpolation the
   precision saturates: measured on the equations of `manec_example` at 100
@@ -2173,8 +2179,8 @@
   is why the failure was specific to the default (#160, #161).
 
 - Where `crf()` transforms the predictor inline, as in
-  `crf(log(concentration))`, `nec()`, `ecx()`, `nsec()`, `ecnsec()`,
-  `average_estimates()` and `compare_estimates()` now say so in a message once
+  `crf(log(concentration))`, `nec()`, `ecx()`, `nsec()`, `ecnsec()` and
+  `compare_estimates()` now say so in a message once
   per call. These functions return values on the transformed scale unless
   `xform` is supplied, while `autoplot()` draws the recorded scale, and nothing
   in the returned number said which scale it was on. A log-scale estimate that
@@ -2530,7 +2536,7 @@
   machine is idle and exceeded a ten-second budget under a parallel test run on
   the same machine (#266).
 
-- `average_estimates()`, `compare_estimates()` and `compare_fitted()` took the
+- `compare_estimates()` and `compare_fitted()` took the
   *first* `n_samples` draws of a longer posterior and permuted those, rather
   than a random subset, so where components had unequal draw counts the tail of
   the longer one was never used. Their documentation now states that the pairing

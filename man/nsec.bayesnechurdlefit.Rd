@@ -60,12 +60,9 @@ A vector containing the estimated NSEC value and credible bounds.
 Extracts the predicted NSEC value from a \code{\link{bayesnechurdlefit}}
 }
 \details{
-Without \code{x_range}, a growth NSEC is searched for over the
-growth component's own observed range, which ends at the highest
-concentration at which anything survived, and is reported as censored there
-where the curve has not reached the reference by that concentration. A
-survival or combined NSEC is searched for over the survival component's
-range. \code{extrapolate} extends the range the call would otherwise use,
-so for \code{which = "growth"} it is measured against growth's range. See
-\code{\link{ecx.bayesnechurdlefit}} for the reasoning.
+Without \code{x_range}, every NSEC, growth included, is searched
+for over the whole concentration series, the survival component's range, and
+is reported as censored at its top where the curve has not reached the
+reference by the highest concentration tested. \code{extrapolate} extends
+that range. See \code{\link{ecx.bayesnechurdlefit}} for the reasoning.
 }

@@ -101,7 +101,7 @@ dots_xform <- function(generic, dots) {
 #' The first fit in a list whose predictor is transformed inline
 #'
 #' @param x A \code{\link[base]{list}} of fitted objects, as
-#' \code{\link{compare_estimates}} and \code{\link{average_estimates}} take.
+#' \code{\link{compare_estimates}} takes.
 #'
 #' @return One element of \code{x}, or \code{NULL}.
 #' @noRd
@@ -286,7 +286,6 @@ x_literal_shift <- function(arg) {
 #' \code{nsec} has to be supplied on the recorded scale; the advice names the
 #' \code{xform} to give \code{\link{nsec}} instead. \code{"curve_params"} reports
 #' two parameters on the predictor axis among others that are not.
-#' \code{"average_estimates"} averages on whichever scale it is given, and
 #' \code{"compare_estimates"} takes no \code{xform} at all.
 #'
 #' @return A \code{\link[base]{character}} string.
@@ -331,11 +330,6 @@ fitted_scale_text <- function(what, tr, kind) {
       "to nsec. nsec() returns its estimate on the transformed scale unless ",
       "given an xform, so supply nsec ", recorded, ", as nsec() returns it ",
       nsec_with, "."
-    ),
-    average_estimates = paste0(
-      opening, ", so average_estimates() averages the estimates on that ",
-      "transformed scale. ",
-      pass("average_estimates()", paste("to average them", recorded))
     ),
     compare_estimates = paste0(
       opening, ", so the estimates compare_estimates() compares, and their ",

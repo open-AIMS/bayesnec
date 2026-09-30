@@ -4,8 +4,6 @@ rng_calls <- function() {
   priors <- data.frame(prior = "normal(1, 1)", class = "b", nlpar = "top",
                        lb = "0", ub = "3")
   list(
-    average = function(seed = 10) average_estimates(
-      fits, posterior = TRUE, seed = seed),
     estimates = function(seed = 10) compare_estimates(
       fits, comparison = "ecx", resolution = 20, seed = seed),
     fitted = function(seed = 10) compare_fitted(
@@ -91,11 +89,8 @@ test_that("model-averaged inputs repeat across estimate types", {
   for (estimate in c("nec", "ecx", "nsec")) {
     set.seed(343)
     before <- .Random.seed
-    average <- average_estimates(fits, estimate = estimate, resolution = 20)
     comparison <- compare_estimates(fits, comparison = estimate,
                                     resolution = 20)
-    expect_identical(average_estimates(fits, estimate = estimate,
-                                       resolution = 20), average)
     expect_identical(compare_estimates(fits, comparison = estimate,
                                        resolution = 20), comparison)
     expect_identical(.Random.seed, before)
