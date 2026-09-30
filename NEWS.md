@@ -7,6 +7,17 @@
   3.2.0 and the test suite calls them 36 times across 13 files, so the recorded
   bound understated what running the tests requires. No package code changes.
 
+## Removed functions
+
+- `average_estimates()` is removed. It combined the NEC, NSEC or ECx
+  posteriors of several separate fits into a geometric mean, draw by draw.
+  Where a component's estimate lay beyond its fit's tested range, the missing
+  draw was averaged in as 1, so the result was pulled towards 1 without a
+  message. Reporting such an average correctly needs a separate bound for
+  each averaged draw, and nothing else in the package uses the function, so
+  it is removed rather than rebuilt. For the draws to combine, call `nec()`,
+  `nsec()` or `ecx()` with `posterior = TRUE` on each fit (#403).
+
 ## Designs that have not reached the lower asymptote
 
 - `bnec()` now reports, before anything is fitted, where the response is still
@@ -641,8 +652,7 @@
 
 ## Reproducible posterior comparisons and prior samples
 
-- `average_estimates()`, `compare_estimates()`, `compare_fitted()` and
-  `sample_priors()` now accept `seed = 10` and restore the caller's random
+- `compare_estimates()`, `compare_fitted()` and `sample_priors()` now accept `seed = 10` and restore the caller's random
   number state, including after an error. The Box-Muller normal generator's
   cached value is not part of this state and cannot be restored; use the default
   Inversion normal generator when subsequent normal draws must be preserved.
@@ -1266,12 +1276,12 @@
   where the bound is infinite --- an equation with no `bot` under a family
   unbounded below --- because there is then no denominator (#195). The same
   four values are accepted wherever `type` is taken: `ecx()`, `nsec()`,
-  `ecnsec()`, `compare_estimates()`, `compare_posterior()` and
-  `average_estimates()`, each validating against one shared definition, and each
+  `ecnsec()`, `compare_estimates()` and `compare_posterior()`, each validating
+  against one shared definition, and each
   warning about the rename once for the call rather than once per fit.
 
 - **`hormesis_def` is removed** from `ecx()`, `nsec()`, `ecnsec()`,
-  `compare_estimates()`, `compare_posterior()` and `average_estimates()`. With
+  `compare_estimates()` and `compare_posterior()`. With
   the control always the reference it selects nothing. Its documented `"max"`
   behaviour was what `ecx()` did unconditionally, while its `ecx()` consumer had
   been commented out for several releases, so the argument was inert there and
@@ -1343,7 +1353,7 @@
   series (#325).
 
 - **The default `resolution` is reduced from 1000 to 200** in `ecx()`,
-  `nsec()`, `ecnsec()` and `average_estimates()`. The value of 1000 was
+  `nsec()` and `ecnsec()`. The value of 1000 was
   calibrated for the nearest-grid-point search that interpolation replaces,
   where the grid spacing set the precision directly. With interpolation the
   precision saturates: measured on the equations of `manec_example` at 100
@@ -2158,8 +2168,8 @@
   is why the failure was specific to the default (#160, #161).
 
 - Where `crf()` transforms the predictor inline, as in
-  `crf(log(concentration))`, `nec()`, `ecx()`, `nsec()`, `ecnsec()`,
-  `average_estimates()` and `compare_estimates()` now say so in a message once
+  `crf(log(concentration))`, `nec()`, `ecx()`, `nsec()`, `ecnsec()` and
+  `compare_estimates()` now say so in a message once
   per call. These functions return values on the transformed scale unless
   `xform` is supplied, while `autoplot()` draws the recorded scale, and nothing
   in the returned number said which scale it was on. A log-scale estimate that
@@ -2515,7 +2525,7 @@
   machine is idle and exceeded a ten-second budget under a parallel test run on
   the same machine (#266).
 
-- `average_estimates()`, `compare_estimates()` and `compare_fitted()` took the
+- `compare_estimates()` and `compare_fitted()` took the
   *first* `n_samples` draws of a longer posterior and permuted those, rather
   than a random subset, so where components had unequal draw counts the tail of
   the longer one was never used. Their documentation now states that the pairing

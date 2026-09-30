@@ -42,16 +42,6 @@ test_that("the relative rename is warned once for the call, not once per fit", {
   expect_equal(sum(grepl("now measures from the control", w)), 1)
 })
 
-test_that("average_estimates validates type on the same vocabulary", {
-  skip_on_cran()
-  x <- list(ecx4param = ecx4param, nec4param = nec4param)
-  expect_error(average_estimates(x, estimate = "ecx", type = "nonsense"),
-               "type must be one of")
-  out <- average_estimates(x, estimate = "ecx", type = "range",
-                           resolution = 50)
-  expect_equal(length(out), 3)
-})
-
 
 # ---- #39 and #404, a censored draw is compared through its record ------------
 

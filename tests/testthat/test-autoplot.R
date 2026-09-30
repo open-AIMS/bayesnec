@@ -7,8 +7,7 @@
 # particular xform, which exists so that a
 # fit on a transformed predictor can be drawn on the recorded scale, has never
 # been asserted anywhere on the plotting path. It is asserted only on the
-# estimators, in test-ecx.R, test-nec.R, test-nsec.R, test-ecnsec.R and
-# test-average_estimates.R.
+# estimators, in test-ecx.R, test-nec.R, test-nsec.R and test-ecnsec.R.
 #
 # That gap is #268, and the defect is not that xform is ignored. The decision
 # to apply it is made with an all-or-nothing guard on the formula as a whole
