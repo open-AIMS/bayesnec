@@ -2408,6 +2408,11 @@ control_x <- function(object) {
       pull_out(grid_obj, model = names(grid_obj$mod_fits)[1])
     )
   }
+  # One level of a joint refit reads its own lowest concentration, not the
+  # lowest of every level together (D40, #448). See joint_level_x().
+  if (inherits(grid_obj, "bayesnecjointlevel") && length(grid_obj$level_x)) {
+    return(min(grid_obj$level_x))
+  }
   mod_dat <- model.frame(grid_obj$bayesnecformula, grid_obj$fit$data)
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
   min(grid_obj$fit$data[[x_var]])
