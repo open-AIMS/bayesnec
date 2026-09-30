@@ -532,6 +532,17 @@
   `bnec_group()` still accepts such a column, because its per-level fits do not
   write the name into a formula (#398).
 
+- Each level of a joint refit is read over its own concentrations. `ecx()`,
+  `nsec()`, `nec()` and `ecnsec()` on a `bayesnecjointfit` built each level's
+  prediction grid, and read its control value, from the refit's whole data,
+  which spans every level's concentrations together. Where the levels were
+  tested over different ranges, a level tested at low concentrations was read
+  on a grid far coarser than its own series, and its ECx and NSEC could differ
+  several-fold from those of the per-level fit it was refitted from. Each
+  level's grid and control value are now taken from that level's own data, as
+  `bnec_group()` takes them. An `x_range` supplied to the estimator is used as
+  given (#448).
+
 ## The centring constant of a variance function
 
 - The centring constant of a `disp()` variance function of the fitted mean is
