@@ -12,8 +12,10 @@ bibliography: bayesnec.bib
 
 
 [e1]: https://open-aims.github.io/bayesnec/articles/example1.html
+[e3]: https://open-aims.github.io/bayesnec/articles/example3.html
 [e4]: https://open-aims.github.io/bayesnec/articles/example4.html
 [e6]: https://open-aims.github.io/bayesnec/articles/example6.html
+[e9]: https://open-aims.github.io/bayesnec/articles/example9.html
 
 # Overview
 
@@ -33,8 +35,11 @@ decision to make:
   level its own complete model set, and lets the *functional form* differ
   between levels.
 
-They answer different questions and suit different data. The bioluminescent
-assay below uses both, on the same dataset.
+They answer different questions and suit different data. A third route,
+`bnec_joint()`, refits the per-level fits of a `bnec_group()` call as one model,
+so that two levels can be contrasted draw by draw. The first two are both
+applied to the bioluminescent assay data in `lum31`, and the third to the
+`herbicide` data.
 
 
 ``` r
@@ -48,7 +53,12 @@ magnitude, so each figure is drawn on a log axis. `autoplot()` and
 `ggbnec_data()` return the predictor on the scale it was recorded on, having
 already inverted any transformation written inside `crf()`. The axis is
 therefore set by transforming the scale, and not by transforming the values or
-the breaks. The same scale object serves every figure.
+the breaks. The same scale object is added to every figure.
+
+Every model in the case studies is fitted on the logarithm of concentration, for
+the same reason. The argument for modelling the predictor on a transformed scale
+is given in the *The scale of the predictor* section of the [Single model
+usage][e1] vignette.
 
 
 ``` r
@@ -64,11 +74,13 @@ concentration or **across** it, because it decides which route applies.
 A grouping within a concentration occurs at one concentration only ---
 replicate tanks, vials, chambers. The group cannot have its own
 concentration-response curve, because it spans no concentrations. What it can do
-is shift the response level up or down, and that is a **group-level term**.
+is shift the response level up or down, and a **group-level term** estimates
+that shift.
 
 A grouping across concentration spans the whole concentration range ---
 different genotypes, chemicals, seasons. Every level *could* have its own curve,
-and the question is usually whether it does. That is **`bnec_group()`**.
+and the question is usually whether it does. **`bnec_group()`** answers it by
+fitting a complete model set to each level.
 
 # Group-level term syntax
 
@@ -82,9 +94,7 @@ group-level term can be placed on --- `top`, `bot`, `beta` and `nec` --- is
 present in it.
 
 `make_brmsformula()` resolves the names in a formula against a data frame, and
-needs nothing else from it, so the frame below is a small synthetic one. No
-dataset is introduced here: the section is about the syntax, and a real
-experiment would bring with it an argument the syntax does not depend on. The
+needs nothing else from it, so the frame below is a small synthetic one. The
 response is a proportion and is modelled with a `Beta` family, with the link
 stated explicitly because `Beta()` defaults to `logit` and `bnec()` fits every
 family on the identity link.
@@ -131,9 +141,9 @@ deviation `ogl` is applied to it through
 log-odds of the mean. `top`, `bot`, `beta` and `nec` each retain a
 population-level intercept and nothing more, so one displacement per level is
 the whole of what `ogl()` estimates. The multiplicative form is used because a
-`Beta` response restricts the mean to $(0, 1)$; `vignette("example3")`, section
-"Priors for group-level parameters", states which deviations are applied that
-way and why.
+`Beta` response restricts the mean to $(0, 1)$. The *Priors for group-level
+parameters* section of the [Priors][e3] vignette states which deviations are
+applied that way and why.
 
 ## Deviation on a named parameter
 
@@ -194,6 +204,9 @@ invisible(check_formula(
 #> The parameter(s) "bot" not valid parameters in nec3param. If this was a mistake, check ?models and ?show_params, otherwise ignore.
 ```
 
+The message names `nec3param` as the equation without a `bot` parameter, so the
+term is dropped there and kept for `nec4param`.
+
 ## Deviation on every parameter
 
 `pgl()` places a deviation on every parameter of the equation at once, so each
@@ -218,8 +231,8 @@ All four parameters gain a group-level term. `beta` and `nec` are on unbounded
 scales and take theirs additively; `top` and `bot` are restricted by the
 response distribution and take theirs through `topgl` and `botgl` in the same
 transformed form as above. Four group-level standard deviations are estimated
-from however many levels the grouping has, which is the widest of the three
-claims and the one the data are least likely to support.
+from however many levels the grouping has, more than either of the other two
+terms requires, so `pgl()` is the term the data are least likely to support.
 
 ## An unconstrained mean
 
@@ -250,19 +263,16 @@ brms_form(response ~ crf(conc, "nec4param") + pgl(group), family = gaussian())
 ```
 
 `ogl` is added to the equation rather than applied to its odds, and `pgl()`
-reduces to `+ (1 | group)` on each of the four parameters. Compared with the
-`Beta` formulae above, this isolates the transformation as a consequence of the
-support of the response distribution rather than of the grouping term.
+reduces to `+ (1 | group)` on each of the four parameters. The transformation
+in the `Beta` formulae above therefore follows from the support of the response
+distribution, and not from the grouping term.
 
 ## Term choice and design structure
 
-The within and across distinction decides which of the three terms applies, and
-the decision follows from the design rather than from preference.
-
-A grouping whose levels each sit at one concentration --- replicate tanks,
-vessels or chambers --- admits only a displacement. Such a level spans no part
-of the curve, so there is nothing in the data from which to estimate a
-difference in shape, and `ogl()` is the term.
+The distinction between a grouping within a concentration and one across it,
+drawn under *Types of grouping*, decides which of the three terms applies. A
+grouping within a concentration admits only a displacement, so `ogl()` is the
+term.
 
 A grouping whose levels each span the whole concentration series --- genotypes,
 plates, separate runs of the same test --- admits a difference in shape. Where
@@ -280,10 +290,7 @@ different question from the one being asked, and their functional forms may
 differ from one another. `bnec_group()` fits each level separately and is the
 route for these.
 
-# Case study 1
-
-<small>*A bioluminescent bacterial toxicity assay for tropical marine
-environments*</small>
+# Bacterial bioluminescence assay
 
 ## The assay
 
@@ -301,13 +308,13 @@ anything that interferes with electron transport reduces the light emitted.
 Nothing separate is scored: the endpoint is the reading itself, in relative
 light units.
 
-Two features of the assay design decide how the response behaves, and both
-matter below. Twenty microlitres of cell suspension goes into 180 µL of sample
-in a white 96-well plate. @luter2025 chose that cell density to keep control
+Two features of the assay design determine how the response behaves. The first
+is the cell density: twenty microlitres of cell suspension goes into 180 µL of
+sample in a white 96-well plate, a density @luter2025 chose to keep control
 luminescence above 250 000 relative light units while still resolving an effect
-threshold, so the lower end of the control readings is a design target rather
-than an accident. The second is that the plate reader sets its gain per read,
-which is where the between-plate differences come from.
+threshold. Control readings near 250 000 are therefore at the level the design
+aimed for. The second is that the plate reader sets its gain per read, which is
+the source of the differences between plates.
 
 Copper and zinc are reference toxicants here rather than contaminants under
 investigation, run repeatedly to establish that the assay is reproducible:
@@ -330,7 +337,7 @@ str(lum31)
 #>  $ rlu_cens  : num  1064085 1107620 990758 1067172 1032736 ...
 ```
 
-The design supplies replication at three scales, and each is used in turn:
+The design has replication at three scales:
 
 - **`conc_group`** --- the four replicate wells at one concentration on one
   plate. Every well of a concentration group sits at the same concentration, so
@@ -339,8 +346,9 @@ The design supplies replication at three scales, and each is used in turn:
   wells, read twice. A plate spans the whole series, so it could in principle
   differ in the shape of its curve and not only in its level.
 - **`toxicant` by `minutes`** --- copper against zinc, at 15 and 30 minutes of
-  exposure. These are four fixed arms chosen for their interest rather than a
-  sample from a population of arms, so they are levels rather than a grouping.
+  exposure. These four arms were chosen for their interest and not sampled from
+  a population of arms, so they are fixed levels, fitted separately, and not a
+  grouping to be shrunk towards a common curve.
 
 
 ``` r
@@ -360,8 +368,8 @@ lum31 |>
 Every well of every plate is drawn below, one panel per toxicant and exposure
 time, with the wells of one plate joined at their concentration means. The
 response is `rlu_cens`, which is the recorded luminescence with the readings
-that reached the instrument's floor marked as censored; *Preparing the response*
-sets out why they are treated that way.
+that reached the instrument's floor marked as censored; the reason for
+censoring them is given under *Preparing the response*.
 
 
 ``` r
@@ -391,9 +399,9 @@ and 0.93 mg/L of zinc. Zinc is therefore the weaker of the two by roughly an
 order of magnitude, and both are more potent at the longer exposure. At the top
 concentrations of every arm the readings reach a floor.
 
-Two further features are taken up below. The plates of one arm are separated
-vertically by a factor of four to five at the control. And at low zinc
-concentrations luminescence rises above the control level before declining.
+The figure shows two further features. The plates of one arm are separated
+vertically by a factor of four to five at the control. At low zinc
+concentrations, luminescence rises above the control level before declining.
 
 `well` identifies an individual well, which is read at both exposure times.
 Concentrations are measured dissolved metal rather than nominal, and each batch
@@ -458,7 +466,9 @@ This assay normalises each plate by four control wells.
 Their recommended approach is to model the raw response and derive inhibition
 from the fitted control, treating the control level as a parameter. In
 `bayesnec` that parameter is `top`, and `ecx()` is measured from the modelled
-control, so a `bnec()` fit on raw luminescence is that approach.
+control, so a `bnec()` fit on raw luminescence is that approach. The per-plate
+gain that the division removed is then estimated by a plate term, set out under
+*Across-concentration grouping*.
 
 The published estimates are what the fits in this case study are read against.
 @luter2025 fitted
@@ -469,62 +479,15 @@ range of 0.069 to 0.201 over sixteen plates, and 0.085 at 30 minutes. For zinc,
 30 minutes. The spread across plates is what a per-plate analysis leaves as
 variation between tests, and what a plate term estimates instead.
 
-### A group-level term as the division
-
-A group-level term on the control parameter targets the same per-plate constant
-the division removes, and propagates its uncertainty instead of conditioning on
-a point estimate. Generating the `brms` formula shows the form directly:
-
-
-``` r
-gfam <- Gamma(link = "identity")
-make_brmsformula(
-  bayesnecformula(rlu_cens | cens(censoring) ~ crf(log(conc), "nec3param") + (top | plate)),
-  data = subset(lum31, toxicant == "Zn" & minutes == 15), family = gfam
-)
-#> $nec3param
-#> rlu_cens | cens(censoring) ~ bnectop * exp(-exp(beta) * (log(conc) - nec) * step(log(conc) - nec)) 
-#> top ~ 1
-#> beta ~ 1
-#> nec ~ 1
-#> topgl ~ 0 + (1 | plate)
-#> bnectop ~ top * exp(topgl)
-```
-
-`bnectop ~ top * exp(topgl)` with `topgl ~ 0 + (1 | plate)` is a per-plate
-multiplicative factor on the curve, which is the form gain takes. `ogl()` gives
-the same multiplicative structure applied to the whole fitted value rather than
-to `top` alone:
-
-
-``` r
-make_brmsformula(
-  bayesnecformula(rlu_cens | cens(censoring) ~ crf(log(conc), "nec3param") + ogl(plate)),
-  data = subset(lum31, toxicant == "Zn" & minutes == 15), family = gfam
-)
-#> $nec3param
-#> rlu_cens | cens(censoring) ~ bnecmu * exp(ogl) 
-#> bnecmu ~ top * exp(-exp(beta) * (log(conc) - nec) * step(log(conc) - nec))
-#> top ~ 1
-#> beta ~ 1
-#> nec ~ 1
-#> ogl ~ 1 + (1 | plate)
-```
-
-The distinction matters once the equation has a lower asymptote. Gain multiplies
-the whole curve, `bot` included, so `ogl()` is the match; `(top | plate)` scales
-`top` and leaves `bot` common between plates. For a three-parameter equation
-whose curve is `top` times a function of the predictor the two coincide.
-
 ### A global divisor
 
 A divisor that is one constant for the whole dataset is only a change of units.
 It uses no estimate and induces no correlation, so it is not what @Ritz2026
-object to. This assay nonetheless does not use one, and the reason is a
-property of the instrument rather than a preference.
+object to. This analysis nonetheless does not use one, because of the plate
+reader's per-read gain.
 
 The benefit of normalisation is not the divisor itself. It is that every curve's
-control lands near the top of a bounded scale, where a `Beta` variance
+control is placed near the top of a bounded scale, where a `Beta` variance
 `mu * (1 - mu) / (1 + phi)` is small, so the upper asymptote is well determined
 and any effect concentration measured from it is stable. That requires the
 curves to share a scale, and under per-read gain they do not:
@@ -545,29 +508,13 @@ lum31 |>
 #> 1     17  0.171   0.898              15
 ```
 
-Dividing by the largest reading in the dataset leaves most plates in the middle
-of the interval, where a `Beta` variance is at its largest, so the stability a
-normalised analysis relies on is not obtained. No universal ceiling in luminance
+Divided by the largest reading in the dataset, the seventeen zinc controls at
+15 minutes range from 0.171 to 0.898, and 15 of them are below 0.61. Most plates
+therefore sit in the middle of the interval, where a `Beta` variance is at its
+largest, so the stability a normalised analysis relies on is not obtained. No universal ceiling in luminance
 exists for the same reason: the supplementary material of @luter2025 measures 44
 technical replicates of undosed cells, but at one gain, so it bounds that read
 only.
-
-### Limits of the plate term
-
-Gain and genuine plate-to-plate biological variation are confounded in the
-estimated per-plate factor, and nothing in these data separates them. This does
-not affect the N(S)EC or an ECx, for which both are nuisance plate effects, but
-the plate-level standard deviation is not a biological quantity and should not
-be reported as one.
-
-A related caution from @Ritz2026 applies to the scope of an `ogl(plate)` term. Normalising,
-or sharing a plate term, is legitimate only within curves of the same treatment.
-Plates within one toxicant-by-exposure-time arm qualify. A plate term is not
-placed across the copper-versus-zinc or 15-versus-30-minute contrasts; those are
-handled by `bnec_group()` below.
-
-The argument for modelling the predictor on a transformed scale is made in
-`vignette("example3")` and is not repeated here.
 
 ## Preparing the response
 
@@ -619,9 +566,9 @@ lum31 |>
 #> 2      none 741
 ```
 
-The estimates are more sensitive to this bound where more readings reach the
-floor, which is 0.9 per cent for zinc at 15 minutes and 28 per cent for copper
-at 30. No detection limit is recorded for the instrument, so the bound is an
+Seven of the 748 zinc readings at 15 minutes are censored, 0.9 per cent,
+against 28 per cent of the copper readings at 30 minutes. The estimates are more
+sensitive to the bound where more readings reach the floor. No detection limit is recorded for the instrument, so the bound is an
 inference from the readings rather than a stated resolution.
 
 ### Non-constant dispersion
@@ -657,63 +604,68 @@ zn15 |>
 #> 11    11     3560 0.361
 ```
 
-One shape parameter cannot serve a series whose own coefficient of variation
-runs from about 0.05 at the control to about 0.36 at the bottom, and the
-compromise it reaches is dominated by the noisy low end. The consequence falls
-on the control, where the fitted variance is then far larger than the data show.
+One shape parameter cannot describe a series whose own coefficient of variation
+runs from about 0.05 at the control to about 0.36 at the bottom, and the single
+value estimated is dominated by the noisy low end. At the control, the fitted
+variance is then far larger than the data show.
 That matters for two reasons: `nsec()` is defined against the control's lower
 quantile, and the relative fit of the candidate equations --- and so the model
 weights --- depends on how the variance is apportioned along the series.
 
 `disp()` models the dispersion parameter rather than holding it constant.
-`disp("power")` writes `log(shape)` as a linear function of `log(mu)`, a
-variance function of the fitted mean, which is a statement about the measurement
-process rather than about the dose axis:
+`disp("power")` writes `log(shape)` as a linear function of `log(mu)`, so the
+variance depends on the fitted mean and not directly on concentration:
 
 
 ``` r
+gfam <- Gamma(link = "identity")
 make_brmsformula(
   bayesnecformula(rlu_cens | cens(censoring) ~ crf(log(conc), "nec3param") +
-                    ogl(plate) + disp("power")),
+                    disp("power")),
   data = zn15, family = gfam
 )
 #> $nec3param
-#> rlu_cens | cens(censoring) ~ bnecmu * exp(ogl) 
-#> bnecmu ~ top * exp(-exp(beta) * (log(conc) - nec) * step(log(conc) - nec))
+#> rlu_cens | cens(censoring) ~ top * exp(-exp(beta) * (log(conc) - nec) * step(log(conc) - nec)) 
 #> top ~ 1
 #> beta ~ 1
 #> nec ~ 1
-#> ogl ~ 1 + (1 | plate)
-#> shape ~ c0 + c1 * (log((bnecmu * exp(ogl))) - 12.9867)
+#> shape ~ c0 + c1 * (log((top * exp(-exp(beta) * (log(conc) - nec) * step(log(conc) - nec)))) - 12.9867)
 #> c0 ~ 1
 #> c1 ~ 1
 ```
 
-The alternative form, `disp(~log(conc))`, is an ordinary distributional formula
-and describes noise as a function of the dose axis instead. Both are used below,
-and `vignette("example1")` covers the dispersion machinery in general.
+The sub-model is the `shape` line: `c0` plus `c1` times the logarithm of the
+fitted mean, which here is the `nec3param` curve itself, centred at 12.99. The alternative form,
+`disp(~log(conc))`, is an ordinary distributional formula and describes noise as
+a function of concentration instead. Every `lum31` fit below uses
+`disp("power")`. The *Non-constant dispersion* section of the [Single model
+usage][e1] vignette explains where the two forms differ, and `?bayesnecformula`
+lists the variance functions available for each family.
 
 The coefficient-of-variation table is a summary of the recorded response rather
 than of a fit, so it diagnoses the problem without confirming the remedy. The
-posterior check that does confirm it is worked in `vignette("example9")`, on one
+posterior check that does confirm it is worked in the *A non-constant
+coefficient of variation* section of [A complete analysis workflow][e9], on one
 plate of the copper series: it fits the `decline` set with and without the
 sub-model and compares the spread each simulates against the spread the wells
-show. What transfers from there to another dataset is the check rather than the
-arm, and a single plate is used so that the gain differences between plates need
-no `ogl(plate)`.
+show. A single plate is used there so that the gain differences between plates
+need no `ogl(plate)`, and the same check applies to any dataset fitted with a
+dispersion sub-model.
 
 ## Within-concentration grouping
 
 The commonest structure in ecotoxicology is replication within a concentration:
 several vessels, chambers or wells at each exposure level, each sitting at one
-point on the dose axis. Such a level spans no part of the curve, so only a
-displacement is estimable and `ogl()` is the term.
+point on the dose axis.
 
 In `lum31` that unit is `conc_group`, the four wells at one concentration on one
-plate. A single plate is fitted here, because a plate is the only portion of
-these data free of the gain differences between plates, and fitting a whole arm
-would let a concentration-group term absorb plate structure as well. That plate
-holds 44 readings over 11 concentration groups.
+plate. The term is placed on `conc_group` and not on `well`: within one exposure
+time each well has a single reading, so a term on `well` would give every
+observation its own deviation, which cannot be separated from the residual. A
+single plate is fitted, read at 15 minutes, because a plate is the only portion
+of these data free of the gain differences between plates, and fitting a whole
+arm would let a concentration-group term absorb plate structure as well. That
+plate holds 44 readings over 11 concentration groups, four to a group.
 
 
 ``` r
@@ -753,8 +705,10 @@ zn15 |>
 #> 6     6                    0      0.864
 ```
 
-Excluding the hormesis equations would be a decision about the curve made
-against that, so they are kept and the weights are left to settle it.
+At the second to fifth concentrations, 12 or 13 of the 17 plates have a mean
+above their own control, with median ratios of 1.01 to 1.03. At the sixth the
+median is 0.864. The hormesis equations are therefore kept, and the model
+weights determine how much each contributes.
 
 No fit in this vignette names `iter`, `warmup` or `control`, so every one of
 them samples at `bnec()`'s defaults. A diagnostic reported here is therefore a
@@ -799,13 +753,15 @@ check_sampling(fit_ogl)
 Five of the fourteen equations fail. Three of those five fail on every count at
 once, with R-hats from 1.53 to 2.23 and effective sample sizes between 5 and 8
 of the 8000 draws retained, which is a chain that never converged rather than
-one that converged imprecisely. The other two are the ones to look at. `ecxexp`
+one that converged imprecisely. The other two fail on divergent transitions
+alone. `ecxexp`
 has an R-hat of 1.0087 and an effective sample size of 1141, both unremarkable,
 and records 159 divergent transitions; `nechorme4` has an R-hat of 1.0033 and an
 effective sample size of 860, and records 13. A check on R-hat alone would have
 kept both.
 
-`vignette("example9")` gives the cutoffs and the reasoning behind them,
+Section 3 of [A complete analysis workflow][e9], *Sampler diagnostics and
+screening*, gives the cutoffs and the reasoning behind them,
 including that Stan's own guidance is that any divergent transition means the
 sampler failed to explore the posterior, and that the default of ten is a
 package convention rather than a published recommendation.
@@ -832,13 +788,16 @@ fit_ogl <- screen_models(fit_ogl)
 #> Fitted models are: nec3param nechorme ecx4param ecxwb1 ecxwb1p3 ecxwb2p3 ecxll5 ecxll4 ecxll3
 ```
 
-Three of fourteen go from the ungrouped fit and five from the grouped one, each
-named with the count that failed it. What remains in both is a set whose chains
+Three of fourteen are dropped from the ungrouped fit, all of them hormesis
+equations failing on divergent transitions, and five from the grouped one. Each
+is named with the count that failed it. What remains in both is a set whose chains
 converged, and the estimates below are averages over those.
 
-`ogl(conc_group)` estimates one deviation per concentration group, so its
-standard deviation summarises how much the four wells at a concentration depart
-from the fitted curve beyond what the family allows.
+`ogl(conc_group)` estimates one deviation per concentration group, shared by
+its four wells. On one plate there is one group per concentration, so the
+deviation is the departure of that concentration's mean from the fitted curve.
+Its standard deviation measures how far those means depart from the curve,
+beyond what the variation between the four wells would produce.
 
 
 ``` r
@@ -969,9 +928,9 @@ variation with, and reports the narrow band as though it were the evidence.
 
 ## Across-concentration grouping
 
-A grouping whose levels each span the whole series admits a difference in shape,
-and the plates of one arm are that case. Each plate is a complete test, and the
-gain differences shown above mean the plates are not on a common vertical scale.
+The plates of one arm each span the whole series, so they admit a difference in
+shape. Each plate is a complete test, and the gain differences shown above mean
+the plates are not on a common vertical scale.
 
 Admitting a difference in shape is not a reason to fit one, and whether these
 plates have one is a question for the data rather than for the design. The two
@@ -980,12 +939,74 @@ so every curve parameter is shared and the plates differ by a multiplicative
 constant. `pgl()` places a deviation on each parameter instead, so the threshold
 and the slope may differ from plate to plate as well as the level. Seventeen
 plates can support either --- five levels is the conventional minimum for one
-group-level standard deviation --- so the choice is settled by fitting both and
-reading the standard deviations, which *The structure a plate term states*
-below does.
+group-level standard deviation --- so the choice is made by fitting both and
+reading the standard deviations, under *The structure a plate term states*.
 
-A model-free reading of the same question is available first, and it does not
-depend on any of this. The concentration at which a plate falls to half its own
+### A group-level term as the division
+
+A group-level term on the control parameter targets the same per-plate constant
+that the published per-plate division removes, and propagates its uncertainty
+instead of conditioning on a point estimate. Generating the `brms` formula shows
+the form directly:
+
+
+``` r
+make_brmsformula(
+  bayesnecformula(rlu_cens | cens(censoring) ~ crf(log(conc), "nec3param") + (top | plate)),
+  data = subset(lum31, toxicant == "Zn" & minutes == 15), family = gfam
+)
+#> $nec3param
+#> rlu_cens | cens(censoring) ~ bnectop * exp(-exp(beta) * (log(conc) - nec) * step(log(conc) - nec)) 
+#> top ~ 1
+#> beta ~ 1
+#> nec ~ 1
+#> topgl ~ 0 + (1 | plate)
+#> bnectop ~ top * exp(topgl)
+```
+
+`bnectop ~ top * exp(topgl)` with `topgl ~ 0 + (1 | plate)` is a per-plate
+multiplicative factor on the curve, which is the form gain takes. `ogl()` gives
+the same multiplicative structure applied to the whole fitted value rather than
+to `top` alone:
+
+
+``` r
+make_brmsformula(
+  bayesnecformula(rlu_cens | cens(censoring) ~ crf(log(conc), "nec3param") + ogl(plate)),
+  data = subset(lum31, toxicant == "Zn" & minutes == 15), family = gfam
+)
+#> $nec3param
+#> rlu_cens | cens(censoring) ~ bnecmu * exp(ogl) 
+#> bnecmu ~ top * exp(-exp(beta) * (log(conc) - nec) * step(log(conc) - nec))
+#> top ~ 1
+#> beta ~ 1
+#> nec ~ 1
+#> ogl ~ 1 + (1 | plate)
+```
+
+The distinction matters once the equation has a lower asymptote. Gain multiplies
+the whole curve, `bot` included, so `ogl()` is the match; `(top | plate)` scales
+`top` and leaves `bot` common between plates. For a three-parameter equation
+whose curve is `top` times a function of the predictor the two coincide.
+
+### Limits of the plate term
+
+Gain and genuine plate-to-plate biological variation are confounded in the
+estimated per-plate factor, and nothing in these data separates them. This does
+not affect the N(S)EC or an ECx, for which both are nuisance plate effects, but
+the plate-level standard deviation is not a biological quantity and should not
+be reported as one.
+
+A related caution from @Ritz2026 applies to the scope of an `ogl(plate)` term. Normalising,
+or sharing a plate term, is legitimate only within curves of the same treatment.
+Plates within one toxicant-by-exposure-time arm qualify. A plate term is not
+placed across the copper-versus-zinc or 15-versus-30-minute contrasts; those are
+handled by `bnec_group()` below.
+
+### Half-control crossings
+
+Whether the plates differ in position can be answered before any model is
+fitted. The concentration at which a plate falls to half its own
 control level can be read off the observed series by interpolation. That
 crossing is measured against each plate's own control, so a purely
 multiplicative difference between plates cannot change it.
@@ -1024,11 +1045,17 @@ The crossing has a standard deviation of 0.193 on the log concentration scale
 across the seventeen plates, so the plates do not share a curve position. The
 control level itself varies more, at 0.45, and the two are almost unrelated: a
 correlation of -0.23 between a plate's crossing and its gain. Two things differ
-between plates rather than one, and `ogl()` states only the first of them.
+between plates rather than one, and `ogl()` states only the difference in
+level.
 
 The difference in position is a property of the plate and not of the reading.
 Each plate is read twice, at 15 and at 30 minutes, and the crossings from the
 two reads correlate at 0.87 across the seventeen plates.
+
+### Pooled and plate-term fits
+
+`fit_pooled` ignores the plates and `fit_plate` adds `ogl(plate)`. Both use the
+whole candidate set, the censored response and the dispersion sub-model.
 
 
 ``` r
@@ -1204,26 +1231,25 @@ from the control on a narrow band; with `ogl(plate)` the spread is attributed to
 the plates and the population curve holds nearer the control before falling.
 
 EC10 is 0.301 mg/L pooled against 0.346 with the plate term, a difference of
-about 15 per cent, and its interval closes from 0.213--0.725 to 0.313--0.382 ---
-from a factor of 3.4 between the bounds to a factor of 1.2. The N(S)EC changes
-by more: 0.18 mg/L (0.045--0.55) pooled against 0.70 (0.19--1.15). A reader
-who took the pooled fit at face value would report a no-effect concentration a
-quarter of the one the plate term gives, with an EC10 interval seven times as
-wide, 0.51 mg/L from end to end against 0.07.
+about 15 per cent, and its interval narrows from 0.213--0.725 to 0.313--0.382
+--- from a factor of 3.4 between the bounds to a factor of 1.2. The N(S)EC
+changes by more: 0.18 mg/L (0.045--0.55) pooled against 0.70 (0.19--1.15).
+Reported from the pooled fit, the no-effect concentration would be a quarter of
+the one the plate term gives, and the EC10 interval seven times as wide, 0.51
+mg/L from end to end against 0.07.
 
 The weights account for it. With the plate term `ecxll5` takes all of the
 weight; pooled it takes 0.46, with 0.38 on `ecxwb1`, 0.11 on `ecxll3`, and 0.03
 and 0.02 on `ecxll4` and `ecx4param`. The two averages are not over the same
 set: the sampler screen dropped eight equations from `fit_plate`, `ecxwb1` among
-them, against one from `fit_pooled`. Pooling curves that differ in scale leaves
-the candidate set less certain of which shape it is looking at, and the
-threshold estimate is what that uncertainty lands on. The equations that
-estimate a threshold --- `nec3param`, `nec4param`, `nechorme` and `nechorme4`
---- take no weight in the pooled fit; in `fit_plate` the first two take none
-and the screen dropped the other two. A term on the fitted value rescales
-each plate's curve by a constant and leaves the shape of the transition alone,
-so it does not make a threshold easier to place, and pooling curves of different
-scale smears the transition rather than sharpening it.
+them, against one from `fit_pooled`. Pooling curves that differ in scale spreads
+the weight over more functional forms. The pooled N(S)EC interval spans a factor
+of 12, against 3.4 for the pooled EC10. The equations that estimate a threshold
+--- `nec3param`, `nec4param`, `nechorme` and `nechorme4` --- take no weight in
+the pooled fit; in `fit_plate` the first two take none and the screen dropped
+the other two. A term on the fitted value rescales each plate's curve by a
+constant and leaves the shape of the transition unchanged, so it does not make a
+threshold easier to place.
 
 The direction here is the opposite of the within-concentration result, and both
 follow from what the grouping has to explain. A concentration group sits at one
@@ -1237,7 +1263,8 @@ over plates that differ in gain.
 A `bnec_group()` fit holds one model-averaged fit per level, and `plot()` on it
 draws each in turn through base graphics. `ggbnec_data()` returns the same
 model-averaged curve as a data frame, so stacking those frames gives one object
-that a single `ggplot()` call can facet. Both figures below use it.
+that a single `ggplot()` call can facet. The copper and zinc figure and the
+herbicide figure are drawn from it.
 
 
 ``` r
@@ -1250,13 +1277,12 @@ group_curves <- function(x) {
 
 ## The structure a plate term states
 
-The crossings above show that the plates differ in two ways, and `ogl(plate)`
-states only one of them. This section fits the alternatives and reads their
-group-level standard deviations, which is what decides whether the second
-difference is large enough to model. Three fits vary the term while holding the
-candidate set, the data and the dispersion sub-model fixed. The sampler screen
-then drops different equations from each, so the model averages compared below
-are taken over different sets of equations.
+Alternatives to `ogl(plate)` are fitted below, and their group-level standard
+deviations decide whether the difference in position shown by the crossings is
+large enough to model. Three fits vary the term while holding the candidate
+set, the data and the dispersion sub-model fixed. The sampler screen then drops
+different equations from each, so the model averages compared below are taken
+over different sets of equations.
 
 The named-parameter fits below place `(nec | plate)` on `nec3param` and
 `nec4param`. Both equations estimate `nec`, so `check_formula()` with
@@ -1359,10 +1385,10 @@ fit_nec_ogl <- screen_models(fit_nec_ogl)
 
 The screen removes most of the set from the two fits that state more than a
 single difference between plates: twelve of fourteen equations from `fit_pgl`
-and eleven from `fit_plate_batch`, against one from `fit_batch`, and both
-equations of each named-parameter fit pass. Most of the removals are chains that
-did not converge, with R-hats above 1.5, so what those two fits report rests on
-the two or three equations that sampled.
+and eleven from `fit_plate_batch`, against one from `fit_batch`. Both equations
+of each named-parameter fit pass. Most of the removals are chains that did not
+converge, with R-hats above 1.5, so what `fit_pgl` and `fit_plate_batch` report
+rests on the two or three equations that sampled.
 
 ### The group-level standard deviations
 
@@ -1490,7 +1516,8 @@ rbind(
 #> 5 ogl(plate) + ogl(batch) 1.0768040 0.31430827 1.8208179
 ```
 
-The two estimates answer differently. EC10 sits between 0.30 and 0.35 mg/L
+The EC10 and the N(S)EC differ in how much the structure changes them. EC10
+sits between 0.30 and 0.35 mg/L
 under four of the five structures, and at 0.50 (0.45--0.57) under `pgl(plate)`,
 whose interval does not overlap that of `ogl(plate)`. The N(S)EC is more
 sensitive still: 0.18 pooled, 0.70 with `ogl(plate)`, 0.87 with `pgl(plate)`,
@@ -1498,14 +1525,14 @@ and 1.08 to 1.12 once a batch term is present. That is a factor of six driven
 by the grouping structure alone, on one dataset with one response.
 
 The reason is in what each estimate is read off. An ECx is a fixed percentage
-drop from the control, and the control is re-estimated per plate by any of these
-terms, so the drop is measured from a reference that is re-estimated with it,
-and under a term on the fitted value the answer changes little. Under
-`pgl(plate)` it is read off a different equation, `ecxll3` in place of `ecxll5`,
-and from a population curve whose position is itself allowed to vary between
-plates, and the EC10 changes from 0.35 to 0.50 mg/L. The N(S)EC is the point at
-which the curve departs from the control band, and the width of that band is
-exactly what a group-level term reallocates. Where the two estimates disagree
+drop from the control. Any of these terms re-estimates the control per plate, so
+the drop is measured from a reference that is re-estimated with it, and under a
+term on the fitted value the EC10 changes little. Under `pgl(plate)` the EC10 is
+read off a different equation, `ecxll3` in place of `ecxll5`, and from a
+population curve whose position is itself allowed to vary between plates; it
+changes from 0.35 to 0.50 mg/L. The N(S)EC is the point at which the curve
+departs from the control band. A group-level term changes the width of that
+band, by attributing part of the residual variation to the groups. Where the two estimates disagree
 about how much a structural choice matters, an assessment should state which of
 them it reports.
 
@@ -1530,8 +1557,8 @@ On the same two equations and the same data, `ogl(plate)` gives an EC10 of 0.49
 (0.47--0.51) and `(nec | plate)` gives 1.45 (1.20--1.75). The deviation on `nec`
 is 0.31 (0.21--0.45) under `nec3param` and 0.31 (0.22--0.47) under `nec4param`,
 so the plates do differ in threshold, which is consistent with the crossings.
-The two fits nonetheless answer a question about the population curve
-differently by a factor of three, and the intervals do not overlap.
+The two fits nonetheless give EC10s for the population curve that differ by a
+factor of three, and the intervals do not overlap.
 
 Neither is a correction of the other. `ogl(plate)` asks what the average plate's
 curve is once each plate's gain is removed; `(nec | plate)` asks what the average
@@ -1562,12 +1589,13 @@ estimate is treated as approximate. The largest is 0.68, one observation of 748
 under `nec4param` in `(nec | plate)`, an equation that holds 0.68 of that fit's
 weight. `pgl(plate)` reaches 0.44 on `ecxll3`, which holds all of its weight,
 and 0.58 on `ecxexp`, which holds none, so estimating three deviations across
-seventeen levels has not made the fit fragile.
+seventeen levels has left no observation with enough influence to make the
+leave-one-out estimate approximate.
 
-### The term this case study uses
+### Choice of plate term
 
-`ogl(plate)` is kept for the sections that follow, and the reason is now stated
-from the fits rather than assumed. The gain difference is the large one, at 0.45
+`ogl(plate)` is retained as the plate term for the copper and zinc fits, on the
+evidence of the fits above. The gain difference is the large one, at 0.45
 on the log scale against 0.19 for the difference in position, and `ogl()` is the
 term that states it. `pgl(plate)` finds differences in position and slope beyond
 it, and it changes the EC10 from 0.35 to 0.50 mg/L, so the choice matters to the
@@ -1602,13 +1630,11 @@ the transition, where the deviations on `ec50` and `beta` act.
 
 ## Copper against zinc
 
-Copper and zinc are two contaminants of interest, not a sample from a
-population of metals, so they are levels rather than a grouping. Each is fitted
-with the structure the sections above arrived at: the censored response, a plate
-term for the gain, and a dispersion sub-model. `bnec_group()` fits each level
-separately and returns one object. The call keeps `model = "all"` for the reason
-given under *Within-concentration grouping*, that luminescence rises above the
-control level at low zinc concentrations.
+Copper and zinc are fixed levels, so `bnec_group()` fits each separately and
+returns one object. Each is fitted with the structure chosen above: the censored
+response, a plate term for the gain, and a dispersion sub-model. The call keeps
+`model = "all"` because luminescence rises above the control level at low zinc
+concentrations.
 
 
 ``` r
@@ -1764,8 +1790,9 @@ different gains and their relative light units are not comparable between them.
 What is comparable is where each falls, and the two panels put that an order of
 magnitude apart: copper's threshold rules sit between 0.04 and 0.09 mg/L and
 zinc's between 0.19 and 1.2. In both the observations scatter widely at every
-concentration while the fitted band stays narrow, which is the plate term
-holding the between-plate spread out of the population curve.
+concentration while the fitted band stays narrow, because the plate term
+attributes the between-plate spread to the plates and not to the population
+curve.
 
 
 ``` r
@@ -1806,19 +1833,16 @@ Copper is both the more potent metal and the better determined one on these
 data, and the single pairwise comparison of 0.0146 is what that separation
 reduces to.
 
-# Case study 2
-
-<small>*Combined effects of climate change and the herbicide diuron on the coral
-Acropora millepora*</small>
+# Diuron and climate change in coral
 
 ## Design and model complexity
 
-A concentration-response design has to be wide enough for the curve being asked
-of it. Five concentrations is the conventional minimum, and at that minimum the
-number of parameters in an equation matters: the design has enough information
-to place a threshold or a midpoint but not enough to place both asymptotes as
-well. Nothing refuses: every equation is offered, each returns an object, and the
-divergent transitions are the only sign that the design was too narrow for it.
+A concentration-response design needs enough concentrations for the equation
+fitted to it. Five concentrations is the conventional minimum, and at that
+minimum the number of parameters in an equation matters: the design has enough
+information to place a threshold or a midpoint but not enough to place both
+asymptotes as well. `bnec()` does not refuse an equation on these grounds, and
+every equation of the set is fitted and returns an object.
 
 `coral_colour` and `coral_pam` are two endpoints of one exposure of *Acropora
 millepora* to the herbicide diuron under three climate scenarios [@flores2021],
@@ -1838,11 +1862,11 @@ read by pulse-amplitude modulated fluorometry. `proportion` is a colour index
 standing in for bleaching: a photograph of about half a square centimetre of
 live tissue, reduced to its mean grey pixel value and then rescaled between the
 smallest and largest values observed. That rescaling has a consequence for the
-family: one observation is bound to sit on 1, and one does.
+family: the largest observation is necessarily 1, and only one observation
+takes that value.
 
-Both are within-concentration designs, a chamber sitting at one concentration,
-and they differ in the width of the design and in nothing else that matters
-here.
+Both are within-concentration designs, each chamber sitting at one
+concentration.
 
 
 ``` r
@@ -1859,18 +1883,19 @@ rbind(
 #> pam     414              6       54
 ```
 
-The two differ in width rather than in kind: 180 colour readings over five
-concentrations in 45 chambers, against 414 yield readings over six in 54. The
-colour endpoint is the narrower design and the one this section turns on.
+The colour endpoint has 180 readings over five concentrations in 45 chambers,
+and the yield endpoint 414 readings over six in 54. The colour endpoint is the
+narrower design, and the comparison of equations by their number of parameters
+is made on it.
 
 ## The control on a log axis
 
 Both endpoints include an untreated control recorded as an exact zero. A log
 axis has no position for it, and `crf(log(diuron))` has no value for it either:
 the column reaches the data check as `-Inf` and `bnec()` refuses the fit,
-naming it. Some value has to be put in its place. That substitution is made
-here, in the vignette, and not in the shipped data, so that `data-raw/coral_diuron.R`
-continues to record what the experiment measured.
+naming it. Some value has to be put in its place. The substitution is made in
+the code below and not in the shipped data, so that `coral_colour` and
+`coral_pam` continue to record what the experiment measured.
 
 `coral_pam` was dosed at 0.29, 0.96, 2.9, 9.6 and 29 µg/L, each step about 3.16
 times the last, which is half an order of magnitude. One further step below the lowest
@@ -1901,10 +1926,13 @@ so `log(diuron_adj)` runs from -2.30 to 3.37. Three of the 18 equations that
 `model = "all"` offers for this family cannot be fitted on a predictor that
 reaches a negative value. `necsigm` and `ecxsigm` raise the predictor to a
 fractional power, which is undefined there. `ecxhormebc5` cannot be reliably
-initialised where an identity-linked `Beta` mean must stay positive, because
-its hormesis term is negative wherever the predictor is. `bnec()` reports each
-exclusion and fits the remaining 15. Every `lum31` fit in this vignette meets
-the same condition, its concentrations being in mg/L and mostly below 1.
+initialised where an identity-linked `Beta` mean must stay positive: its
+hormesis term `exp(slope) * x` is negative wherever the predictor is, so a
+starting value drawn from the prior puts the mean below zero. `bnec()` reports
+each exclusion and fits the remaining 15. Every `lum31` fit in this vignette
+meets the same condition under a `Gamma` family. Its concentrations are in mg/L,
+and their logarithm is negative for 60 per cent of the zinc readings and 74 per
+cent of the copper ones.
 
 
 ``` r
@@ -1933,9 +1961,8 @@ one of its six concentrations. The colour panel has none between 2.9 and 29
 µg/L, a full order of magnitude and the widest unsampled interval in either
 endpoint.
 
-The colour panel's top concentration is worth reading carefully, because it is
-the only observation below the gap and so is the only thing that can place a
-lower asymptote. At 29 µg/L the underlying photographs average 211 of 255 on
+The colour panel's top concentration is the only one beyond the gap, and so the
+only one from which a lower asymptote can be placed. At 29 µg/L the underlying photographs average 211 of 255 on
 the grey scale at day 14, against 90 to 128 at every lower concentration. The
 day-0 values run from 91 to 103 throughout, so those fragments started like the
 others and ended white. @flores2021 record that all corals at 29 µg/L had died by day 10. The
@@ -1957,9 +1984,9 @@ separation at all.
 Climate is a fixed set of three levels of interest in themselves, so the route
 for it is `bnec_group()`, the route the factor covariates take. The fits below
 pool over it, which the yield result above licenses and the colour result does
-not. That is a deliberate simplification: what these fits are used to show is
-how the number of curve parameters behaves against a design of a given width,
-and one curve per endpoint shows it most directly.
+not. That is a deliberate simplification: the fits compare equations with
+different numbers of curve parameters against a design of a given width, and one
+curve per endpoint makes that comparison directly.
 
 The yield endpoint has six concentrations and 54 chambers of five to eight
 readings. `ogl(chamber)` is fitted to it over the whole set:
@@ -2121,20 +2148,13 @@ ggplot(pam_thr, aes(x = est, y = equation)) +
 </div>
 
 The solid line is the model-averaged median and the dashed line its upper
-bound, with the averaged interval shaded. The ordering is what the paragraph
-above states in numbers: the three darkest points sit at the left of the range,
-the two furthest to the right sit an order of magnitude away from them and are
-pale, with `nec4param` on the dashed line itself, and between them the weight
-is unrelated to the position. An
-equation's threshold and the weight it holds are separate quantities, and that
-is what lets 0.04 of the weight decide where the averaged interval ends.
-
-The same draws are visible in the figure below. The credible band steps down at
-about 2 µg/L, its upper edge falling from about 0.58 to about 0.30, because the
-equations that place a threshold there hold the curve near the control until it
-and drop afterwards. Less than a tenth of the weight has no effect on the median
-and still decides where the interval ends, which is a reason to read a
-model-averaged interval against the weights rather than on its own.
+bound, with the averaged interval shaded. The three darkest points sit at the
+left of the range. The two furthest to the right sit an order of magnitude away
+from them and are pale, with `nec4param` on the dashed line itself. Between
+them the weight is unrelated to the position. An equation's threshold and the
+weight it holds are separate quantities, so 0.04 of the weight can set where the
+averaged interval ends, and a model-averaged interval is read against the
+weights rather than on its own.
 
 
 ``` r
@@ -2146,22 +2166,24 @@ autoplot(fit_pam, group = "climate", group_aes = "colour") + log_x
 <p class="caption">plot of chunk fig-pam</p>
 </div>
 
+The credible band steps down at about 2 µg/L, its upper edge falling from about
+0.58 to about 0.30. The equations that place a threshold there hold the curve
+near the control up to that concentration and drop afterwards.
+
 `climate` is not in the fitted formula --- the model estimates a deviation per
 chamber, not per scenario --- so `autoplot()` takes it from the columns `bnec()`
 retained from the supplied data and labels the legend "climate (not fitted)".
 The curve and the band are pooled over the three scenarios, and the colour marks
 the observations only.
 
-The scenarios overlap over most of the series. The scenario means of `yield`
-differ by at most 0.014 at 0.1, 0.29, 0.96 and 2.9 µg/L, and separate only at
-9.6 and 29 µg/L, where they are 0.052, 0.040, 0.022 and 0.027, 0.006, 0.000 ---
-a separation between quantities that have already fallen to a twelfth of the
-control. @flores2021 report the same result from these data, giving a
-probability of 0.615 and 0.539 that yield differs between the warming scenarios.
+In the figure the scenarios overlap over most of the series. They separate only
+at 9.6 and 29 µg/L, where the scenario means of `yield` are 0.052, 0.040, 0.022
+and 0.027, 0.006, 0.000 --- a separation between quantities that are already no
+more than a twelfth of the control.
 
 The colour endpoint has five concentrations and 45 chambers of four fragments.
-Fitting equations of three and of four curve parameters to it separately shows
-where the design runs out:
+Two equations of three curve parameters and two of four are fitted to it
+separately:
 
 
 ``` r
@@ -2214,8 +2236,7 @@ its R-hat is 1.009, inside the cutoff of 1.01 and within 0.007 of the two
 three-parameter equations, while an eighth of its transitions diverged. Of the
 two diagnostics in the table, only the divergent transitions report the problem.
 On the single zinc plate they were also the only one of the three that
-`check_sampling()` reports to fail `ecxexp`. A check read alone can pass an
-equation that another check fails.
+`check_sampling()` reports to fail `ecxexp`.
 
 
 ``` r
@@ -2242,24 +2263,21 @@ The figures show where those divergences come from. Nothing between 2.9 and 29
 colour design has no observation across that tenfold range. At 10 µg/L the
 four-parameter credible band is 0.65 wide on a response that runs from 0 to
 about 0.9, so it covers most of the values the endpoint can take; the
-three-parameter band is 0.31 there. Both close to about 0.06 at the top of the
+three-parameter band is 0.31 there. Both narrow to about 0.06 at the top of the
 series, where the observations resume. A three-parameter equation fixes the
 lower asymptote instead of estimating it, and so has nothing to place in the
 gap.
 
-The four-parameter equations are worse served than the gap alone suggests. What
-they have to estimate a lower asymptote from is one concentration, and the
+The four-parameter equations have less information about the lower asymptote
+than the gap alone implies. They estimate it from one concentration, and the
 reading at that concentration is of fragments that had bleached completely.
 
 The climate scenarios separate in these two figures where they did not in
 `fit_pam`. The scenario means of `proportion` are 0.779, 0.737 and 0.672 at
-0.96 µg/L and 0.728, 0.611 and 0.456 at 2.9, a spread of 0.27 on a response
-running to about 0.9, and the 2100 points sit below the 2018 points at every
-concentration above the control. @flores2021 report a probability of 0.956 and
-0.970 that the colour index differs between the warming scenarios, against
-0.615 and 0.539 for yield. Neither figure fits that difference: both curves are
-pooled over the scenarios, and separating them would need `climate` in the
-formula or a `bnec_group()` call over it.
+0.96 µg/L, and the 2100 points sit below the 2018 points at every concentration
+above the control. Neither figure fits that difference, because both curves are
+pooled over the scenarios. Separating them would need `climate` in the formula
+or a `bnec_group()` call over it.
 
 The threshold estimates differ in the same way. The three-parameter set returns
 an NSEC of 1.61 µg/L (0.63--4.53), as its figure reports. The four-parameter set
@@ -2274,12 +2292,13 @@ this reason.
 The colour score has exactly one observation on the `Beta` boundary, which
 follows from the rescaling described above, and the yield endpoint has 63
 readings at zero.
-Neither is a defect in the data; both are decisions about the response that have
-to be made before the family is chosen, and `vignette("example6")` covers them.
+Neither is a defect in the data, but each requires a decision about the response
+before the family is chosen. The *Preparing the response* section of the
+[Single model usage][e1] vignette covers a response divided by its maximum, and
+the *Data preparation and the meaning of zero* section of the [Hurdle and
+zero-inflated concentration-response models][e6] vignette covers zeros.
 
-# Case study 3
-
-<small>*Phytotoxicity of photosystem II herbicides to coral*</small>
+# Photosystem II herbicides in coral
 
 `herbicide` [@jones2003] holds the effective quantum yield of photosystem II in
 the symbiotic dinoflagellates of the coral *Seriatopora hystrix*, measured after
@@ -2316,12 +2335,9 @@ them. Yield is at half its lowest-dose mean by 1 µg/L of irgarol and 3 µg/L of
 diuron or ametryn, against 100 µg/L of tebuthiuron and 300 of simazine, which is
 the highest concentration simazine was tested at.
 
-Seven herbicides are a fixed set chosen for their interest, not a sample from a
-population of herbicides, so shrinking them towards a common curve answers a
-different question from the one being asked, and their functional forms may
-differ. `bnec_group()` fits each level separately and returns one object. This
-call uses `decline` rather than `"all"`, which is what Figure 11 of @fisher2024
-was fitted with.
+The seven herbicides are fixed levels of interest, so `bnec_group()` fits each
+separately and returns one object. The call uses the `decline` set rather than
+`"all"`, because Figure 11 of @fisher2024 was fitted with `decline`.
 
 
 ``` r
@@ -2358,8 +2374,8 @@ Every equation passes for every herbicide, so each herbicide's model average is
 taken over all eleven equations of `decline`.
 
 `summary()` on a `bayesnecgroupfit` prints a full summary for every level, which
-for seven herbicides is several hundred lines. What the sections below draw on
-is the model weights, and those are worth seeing together:
+for seven herbicides is several hundred lines. The model weights of all seven
+are drawn together instead:
 
 
 ``` r
@@ -2368,7 +2384,7 @@ herb_wi <- do.call(rbind, Map(function(f, lev) {
   data.frame(herbicide = lev, equation = names(w), wi = as.numeric(w))
 }, fits_herb$fits, fits_herb$levels))
 # Ordered by the weight each equation takes over all seven, so that the
-# equations the set actually uses sit together at the top.
+# equations holding the most weight sit together at the top.
 herb_wi$equation <- reorder(factor(herb_wi$equation), herb_wi$wi, sum)
 
 ggplot(herb_wi, aes(x = herbicide, y = equation, fill = wi)) +
@@ -2398,7 +2414,6 @@ is the case for fitting the levels separately rather than shrinking them towards
 a common curve: the curve they would be shrunk towards is not one the data agree
 on.
 
-Toxicity estimates for the seven herbicides span two orders of magnitude.
 `nec()` returns each herbicide's N(S)EC, back-transformed from the fitted scale:
 
 
@@ -2414,7 +2429,8 @@ nec(fits_herb, xform = exp)
 #> 7 tebuthiuron 10.5215413 4.2807827 14.0294702
 ```
 
-It runs from irgarol at 0.135 µg/L (0.107--0.174) and diuron at 0.152
+The estimates span nearly two orders of magnitude, from irgarol at 0.135 µg/L
+(0.107--0.174) and diuron at 0.152
 (0.110--0.195), through ametryn at 0.198, hexazinone at 0.631 and atrazine at
 1.120, to simazine at 4.391 and tebuthiuron at 10.522 (4.281--14.029).
 
@@ -2436,8 +2452,10 @@ ecx(fits_herb, ecx_val = 50, xform = exp)
 #> 7 tebuthiuron  90.4028480  84.0568413  95.4276526
 ```
 
-Their values are irgarol 0.7 µg/L, ametryn 1.7, diuron 2.3, hexazinone 8.8,
-atrazine 45, simazine 150 and tebuthiuron 175. Six of the seven agree closely,
+Here the medians are irgarol 0.540 µg/L, ametryn 1.50, diuron 2.04, hexazinone
+7.43, atrazine 39.5, simazine 124 and tebuthiuron 90.4. The published values are
+irgarol 0.7 µg/L, ametryn 1.7, diuron 2.3, hexazinone 8.8, atrazine 45, simazine
+150 and tebuthiuron 175. Six of the seven agree closely,
 the published figure sitting between 13 and 30 per cent above the one here, and
 the ordering of those six is the same in both. Tebuthiuron is the exception at
 roughly half the published value, and it is also the herbicide whose ordering
@@ -2448,8 +2466,7 @@ the tested concentrations, in ToxCalc 5.0, while the values above come from a
 model average over eleven fitted curves. Linear interpolation across a
 log-spaced series cuts the chord of a curve that is concave over that interval,
 which places the half-effect concentration higher than a fitted curve does, and
-the published value is higher in all seven. That six of the seven agree within a
-third is the agreement worth having. Nothing in these data settles which
+the published value is higher in all seven. Nothing in these data settles which
 estimate is closer to the truth for tebuthiuron.
 
 
@@ -2544,16 +2561,15 @@ ggplot(data = herb_post, mapping = aes(x = value)) +
 <p class="caption">plot of chunk fig-cmp-herbicides</p>
 </div>
 
-This reproduces Figure 11 of @fisher2024. Two things the pairwise probabilities
-do not say are visible in the densities.
-
-The two most potent overlap almost entirely. Irgarol at 0.135 and diuron at
+This reproduces Figure 11 of @fisher2024. The two most potent overlap almost
+entirely. Irgarol at 0.135 and diuron at
 0.152 have intervals of 0.107 to 0.174 and 0.110 to 0.195, so one sits almost
 inside the other; that is what a `prob_diff` of 0.727 looks like as a
 distribution. Ametryn overlaps both only in part: its median, 0.198, lies above
 both of their upper bounds, and its interval runs on to 0.619.
 
-The posteriors differ in width as much as in position. From end to end,
+The densities also show two things the pairwise probabilities do not. The
+posteriors differ in width as much as in position. From end to end,
 irgarol's interval spans a factor of 1.6 and diuron's 1.8, against 9.7 for
 simazine and 7.3 for atrazine. Hexazinone and simazine are a factor of seven
 apart in median and still overlap, because both are poorly determined:
@@ -2570,13 +2586,10 @@ difference of two independent posteriors and is valid only where the posteriors
 come from separate fits. `bnec_group()` fits every level separately, so that
 holds here.
 
-The two `bnec_group()` fits are screened per level, as specified in their calls.
-Their independently fitted levels can retain different equation sets when an
-equation samples adequately for one level and fails for another. Two levels of
-a single fit share draws, and permuting them discards
-the correlation between them, widening the difference and pulling `prob_diff`
-towards 0.5 --- so a contrast between parts of one fit needs draw-wise
-differencing and must not be routed through this function.
+Two levels of a single fit share draws. Permuting them discards the correlation
+between them, which widens the posterior of the difference and brings
+`prob_diff` closer to 0.5, so a contrast between parts of one fit is taken draw
+by draw and not with `compare_posterior()`.
 
 ## Contrasts from a joint refit
 
@@ -2620,12 +2633,11 @@ Five different equations are composed across the seven herbicides: `ecxll4`
 for ametryn, `ecxwb1` for atrazine, `ecx4param` for diuron and irgarol, `ecxll3`
 for hexazinone and simazine, and `ecxwb2p3` for tebuthiuron. That is the
 reason to build the model this way rather than to fit one equation to all of
-them. It is also what the herbicide set looks like generally: the weight each
-chosen equation holds at its own level runs from 0.279 for diuron to 0.623 for
-hexazinone, and is below 0.4 for five of the seven.
+them. The weight each chosen equation holds at its own level runs from 0.279
+for diuron to 0.623 for hexazinone, and is below 0.4 for five of the seven.
 
-Every estimate from a joint refit reports per level, one row each, which is the
-shape `bnec_group()` returns.
+Every estimator applied to a joint refit returns one row per level, as it does
+for a `bnec_group()` fit.
 
 
 ``` r
@@ -2639,6 +2651,10 @@ ecx(herb_joint, ecx_val = 50, xform = exp)
 #> 6    simazine 126.6209286 117.1441126 136.7584620                                 
 #> 7 tebuthiuron  90.9676220  86.7387337  95.2485272
 ```
+
+Each per-level EC50 is within 2.5 per cent of the model-averaged one from
+`fits_herb`: irgarol's is 0.538 µg/L against 0.540, and the largest difference
+is simazine's, 126.6 against 123.7.
 
 The contrast is then taken on the draws. `posterior = TRUE` returns the
 per-level draws as a named list, and because they come from one fit they are
@@ -2675,8 +2691,7 @@ a probability of 0.79 that diuron's is the higher, with a median difference of
 0.020 µg/L (-0.031 to 0.067). `compare_posterior()` gave 0.727. The two routes
 agree in direction, and neither separates this pair on the N(S)EC.
 
-That split between the two estimates is the one the zinc case study met as well.
-An ECx is a fixed drop from each level's own control and is read where the curve
+The zinc fits showed the same difference between the two estimates. An ECx is a fixed drop from each level's own control and is read where the curve
 is steep; the N(S)EC is a departure from a control band, and a small shift in
 where that band ends puts the crossing a long way further along a curve that is
 nearly flat there.
@@ -2699,7 +2714,7 @@ c(divergent = sum(np$Value[np$Parameter == "divergent__"]),
 no divergent transitions in 8000 post-warmup draws, a maximum R-hat of 1.002 and
 a minimum bulk effective sample size of 5373.
 
-One caution survives all of this. A joint refit conditions on one equation per
+A joint refit conditions on one equation per
 level, so the model uncertainty the per-level averages represent is absent from
 it. Here the difference is small: irgarol's EC50 spans 0.494 to 0.595 µg/L in
 the joint refit, a factor of 1.20, against 0.491 to 0.598 and a factor of 1.22
@@ -2716,10 +2731,9 @@ herbicides compare, each with its own model uncertainty, which is what a
 reader wants when the seven were tested separately and are being ranked. The
 joint refit asks how two levels of one model compare, holding the dispersion
 structure and the sampling common between them, which is what a reader wants
-when the question is whether these two differ. The herbicide case study reports
-the model-averaged per-level estimates for the first reason; a controlled
-contrast --- a treatment against its control, two sites of one experiment ---
-is the second.
+when the question is whether these two differ. The first applies to the
+herbicides, and the second to a controlled contrast --- a treatment against its
+control, two sites of one experiment.
 
 
 # Choosing a route for a factor
@@ -2736,8 +2750,8 @@ an answer on any dataset with enough levels.
 
 Separate fits are the only route that lets the functional form differ between
 levels. Each level gets its own model set and its own weights, so one level may
-be described by `nec3param` and another by `ecxll5`, and the herbicide case
-study above is that case. In exchange nothing is shared: each level is
+be described by `nec3param` and another by `ecxll5`, as the herbicide fits above
+differ between levels. Nothing is shared between levels: each level is
 estimated from its own data alone, and a level with few observations is
 estimated imprecisely.
 
@@ -2746,10 +2760,10 @@ route for a grouping that is a nuisance rather than a subject --- plates,
 chambers, tanks --- where the levels are exchangeable and the question is about
 the population curve rather than about any level. `ogl()` displaces the whole
 curve, `pgl()` gives every parameter its own deviation, and `(par | group)`
-names one parameter. The zinc case study above chooses between them by fitting
-all three and reading the group-level standard deviations, which is the general
-method: the term is a claim about which differences exist, and the standard
-deviations say whether the data support it.
+names one parameter. For the zinc plates the term was chosen by fitting all
+three and reading the group-level standard deviations: the term is a claim about
+which differences exist, and the standard deviations show whether the data
+support it.
 
 A joint refit estimates every level's curve parameters in one posterior, with
 no pooling between them. It is reached from a `bnec_group()` fit rather than
@@ -2761,13 +2775,10 @@ And the dispersion can be estimated across levels rather than per level, which
 is the right model where the measurement error is a property of the assay and
 not of the level. See `?bnec_joint`.
 
-The comparison in *Within-concentration grouping* and *Across-concentration
-grouping* above is between the first two routes on one dataset, and its result
-does not transfer: `ogl(conc_group)` widened the intervals and `ogl(plate)`
-narrowed them, on the same response, because a grouping whose levels sit at one
-concentration and a grouping whose levels span the series have different work to
-do. What transfers is the method, which is to fit the alternatives and read the
-standard deviations rather than to argue from the design.
+The direction of the change a group-level term makes is not general. On the
+same response, `ogl(conc_group)` widened the EC10 interval and `ogl(plate)`
+narrowed it, because one grouping sits within a concentration and the other
+spans the series.
 
 
 # Provenance
@@ -2804,17 +2815,9 @@ none on that fit at the same 0.8, and holds 0.12 of the weight.
 @luter2025 sampled the published `lum31` analysis longer again, at 20000
 iterations with 19000 warmup and `adapt_delta = 0.99` named explicitly.
 
-`ecxhormebc5` is excluded before fitting wherever the predictor reaches a
-negative value and the response family requires a positive mean on an identity
-link. Its hormesis term `exp(slope) * x` is negative wherever the predictor is,
-and a starting value drawn from the prior then puts the mean below zero, which
-neither a Gamma nor a `Beta` on an identity link can represent. That covers
-every fit in this vignette on a logged predictor: the `lum31` concentrations
-are in mg/L and negative on the log scale for 60 per cent of the zinc readings
-at 15 minutes and 74 per cent of the copper ones,
-and `log(diuron_adj)` is negative below 1 µg/L. `necsigm` and `ecxsigm` are
-excluded on the same predictor for a different reason, that a fractional power
-of a negative number is undefined. See #344.
+The exclusion of `ecxhormebc5`, `necsigm` and `ecxsigm` on a predictor that
+reaches negative values, described under *The control on a log axis*, is
+recorded in #344.
 
 `lum31` was built from the AIMS data repository deposit accompanying
 @luter2025 by `data-raw/lum31.R`. `coral_colour` and `coral_pam` were built from
