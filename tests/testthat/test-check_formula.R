@@ -88,6 +88,17 @@ test_that("Parameter checks", {
   expect_s3_class(check_formula(bnf(f_21), data), "bayesnecformula")
 })
 
+test_that("every (par | group) term has its grouping checked against the data", {
+  # Only the first bar term was checked, so a missing variable in a later one
+  # passed here and failed inside brms instead.
+  f <- y ~ crf(x, "nec3param") + (nec | group_1) + (top | not_here)
+  expect_error(check_formula(bnf(f), data), "\"not_here\" not found")
+  f <- y ~ crf(x, "nec3param") + (nec | group_1) + (top | group_1 / not_here)
+  expect_error(check_formula(bnf(f), data), "\"not_here\" not found")
+  f <- y ~ crf(x, "nec3param") + (nec | group_1) + (top | group_1:group_2)
+  expect_s3_class(check_formula(bnf(f), data), "bayesnecformula")
+})
+
 # Each measured column is held twice, under a syntactic name and under the kind
 # of name a spreadsheet gives it, so that every refusal below can be set beside
 # the same formula written with a name that is accepted. See #398.

@@ -310,3 +310,62 @@ test_that("a knitted chunk resolves a variable model set", {
   expect_match(out, "ecxll3")
   expect_false(grepl("Error", out, fixed = TRUE))
 })
+
+
+# ---- nested and interaction groupings inside ogl() and pgl() ----------------
+
+# Two factors with b's levels repeated across a's, so that a term on b alone and
+# a term on b within a are different groupings.
+nested_fixture <- function() {
+  set.seed(1)
+  d <- data.frame(x = rep(c(1, 5, 20, 100), each = 12),
+                  a = factor(rep(c("p", "q", "r"), 16)),
+                  b = factor(rep(c("u", "v"), each = 3, length.out = 48)))
+  d$y <- pmin(pmax(stats::rnorm(48, 0.9 - 0.8 * (d$x > 5), 0.05), 0.01), 0.99)
+  d
+}
+
+nested_pforms <- function(f, d = nested_fixture()) {
+  make_brmsformula(bnf(f), data = d, family = Beta(link = "identity"))[[1]]
+}
+
+test_that("ogl() fits a nested grouping rather than its variables", {
+  # Every version up to this one reduced the argument with all.vars(), so
+  # ogl(a/b) and ogl(a:b) both became (1 | a) + (1 | b) without a message.
+  bfm <- nested_pforms(y ~ crf(x, "nec3param") + ogl(a/b))
+  expect_identical(deparse1(bfm$pforms$ogl), "ogl ~ 1 + (1 | a) + (1 | a:b)")
+  bfm <- nested_pforms(y ~ crf(x, "nec3param") + ogl(a:b))
+  expect_identical(deparse1(bfm$pforms$ogl), "ogl ~ 1 + (1 | a:b)")
+})
+
+test_that("ogl(a + b) remains two separate terms", {
+  bfm <- nested_pforms(y ~ crf(x, "nec3param") + ogl(a + b))
+  expect_identical(deparse1(bfm$pforms$ogl), "ogl ~ 1 + (1 | a) + (1 | b)")
+})
+
+test_that("a grouping repeated across ogl() terms is fitted once", {
+  # Passed to brms unexpanded, ogl(a/b) + ogl(a) is (1 | a/b) + (1 | a), which
+  # brms refuses as a duplicated group-level effect.
+  bfm <- nested_pforms(y ~ crf(x, "nec3param") + ogl(a/b) + ogl(a))
+  expect_identical(deparse1(bfm$pforms$ogl), "ogl ~ 1 + (1 | a) + (1 | a:b)")
+})
+
+test_that("pgl() puts a nested grouping on every parameter", {
+  bfm <- nested_pforms(y ~ crf(x, "nec3param") + pgl(a/b))
+  # top is bounded by a Beta mean, so its deviation is declared on topgl.
+  for (p in c("topgl", "nec", "beta")) {
+    rhs_txt <- deparse1(bfm$pforms[[p]][[3]])
+    expect_match(rhs_txt, "(1 | a) + (1 | a:b)", fixed = TRUE)
+    expect_false(grepl("(1 | b)", rhs_txt, fixed = TRUE))
+  }
+})
+
+test_that("brms reads the expanded ogl() terms as the nested grouping", {
+  d <- nested_fixture()
+  bfm <- nested_pforms(y ~ crf(x, "nec3param") + ogl(a/b), d)
+  gp <- as.data.frame(brms::get_prior(bfm, data = d,
+                                      family = Beta(link = "identity")))
+  groups <- unique(gp$group[gp$class == "sd" & gp$nlpar == "ogl" &
+                              gp$group != ""])
+  expect_setequal(groups, c("a", "a:b"))
+})
