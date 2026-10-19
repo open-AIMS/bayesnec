@@ -1159,8 +1159,8 @@ leave-one-out estimate approximate.
 
 ### Choice of plate term
 
-`ogl(plate)` is retained as the plate term for the copper and zinc fits, on the
-evidence of the fits above. The gain difference is the large one, at 0.45
+`ogl(plate)` is retained as the plate term, on the evidence of the fits
+above. The gain difference is the large one, at 0.45
 on the log scale against 0.19 for the difference in position, and `ogl()` is the
 term that states it. `pgl(plate)` finds differences in position and slope beyond
 it, and it changes the EC10 from 0.35 to 0.50 mg/L, so the choice matters to the
@@ -1186,20 +1186,210 @@ steeply, which is the higher EC10 in the table above. Its band is slightly wider
 than the `ogl(plate)` band over the flat part of the series and wider through
 the transition, where the deviations on `ec50` and `beta` act.
 
+## Replication and position within an arm
+
+The plate-term fits above give every well a residual of its own. The four wells
+of a cell, one `conc_group` level, share a plate and a concentration, so they
+are not four independent observations of the curve, and the within-concentration
+term of the single-plate fit is the term that states it. On one plate that term
+could not be told apart from a failure of the curve to fit, because each
+concentration held a single cell, so a deviation per cell was also a deviation
+per concentration. An arm holds seventeen cells at each concentration, which
+separates the two.
+
+The grouping that separates them is the dilution step, `conc_rank`: the position
+of a concentration in its plate's series, numbered 1 to 11 in ascending order.
+It is not a column of `lum31`, and is read from the suffix of `conc_group`:
+
+```{r arm-data}
+zn15_step <- zn15 |>
+  mutate(conc_rank = factor(as.integer(sub(".*-c", "", as.character(conc_group)))))
+```
+
+`ogl(conc_rank/plate)` expands to a deviation per step, shared by every plate,
+and a further deviation per plate at each step, which is the cell. Where an
+equation misses the data at a step, the step deviation estimates the miss, so
+its standard deviation measures that equation's lack of fit, and the cell
+deviation estimates only the variation between plates at a step. `ogl(plate)` is
+kept beside it for the gain.
+
+### Dilution step and measured concentration
+
+Concentrations are measured, and each batch was dosed separately, so one step
+sits at a different concentration in each batch. Each cell mean is divided below
+by its plate's step-1 cell and averaged over the plates of a batch, then drawn
+twice: against the batch's measured concentration, and against the step, placed
+at the geometric mean over batches of that step's concentrations.
+
+```{r fig-step-measured, fig.asp = 0.75, out.width = "90%"}
+step_cells <- lum31 |>
+  filter(minutes == 15) |>
+  mutate(conc_rank = as.integer(sub(".*-c", "", as.character(conc_group)))) |>
+  group_by(toxicant, batch, plate, conc_rank, conc) |>
+  summarise(m = mean(rlu_cens), .groups = "drop") |>
+  group_by(plate) |>
+  mutate(rel = m / m[conc_rank == 1]) |>
+  group_by(toxicant, batch, conc_rank, conc) |>
+  summarise(rel = mean(rel), .groups = "drop") |>
+  group_by(toxicant, conc_rank) |>
+  mutate(step_conc = exp(mean(log(conc)))) |>
+  ungroup()
+
+axes <- c("measured concentration", "dilution step")
+step_long <- rbind(
+  data.frame(step_cells, axis = axes[1], x = step_cells$conc),
+  data.frame(step_cells, axis = axes[2], x = step_cells$step_conc)
+)
+step_long$axis <- factor(step_long$axis, levels = axes)
+
+ggplot(step_long, aes(x = x, y = rel, colour = batch)) +
+  geom_line(linewidth = 0.4) +
+  geom_point(size = 1) +
+  facet_grid(toxicant ~ axis) +
+  log_x +
+  theme_classic() +
+  labs(x = "Dissolved metal (mg/L)",
+       y = "Mean relative to the plate's lowest concentration",
+       colour = "Batch")
+```
+
+```{r step-ratio}
+step_cells |>
+  filter(conc_rank > 1) |>
+  group_by(toxicant, conc_rank) |>
+  summarise(conc_ratio = max(conc) / min(conc), .groups = "drop_last") |>
+  summarise(lowest_ratio = round(min(conc_ratio), 2),
+            highest_ratio = round(max(conc_ratio), 2), .groups = "drop")
+
+step_cells |>
+  filter(toxicant == "Cu", conc_rank == 6) |>
+  transmute(batch, conc = signif(conc, 2), rel = round(rel, 2))
+```
+
+RESULT-STEP
+
+The term that states a displacement of each batch's curve along the axis is a
+deviation on the parameter that places the curve there. `(nec | batch)` and
+`(ec50 | batch)` give each batch one deviation on `nec` or `ec50`, added on the
+scale of the predictor, which moves that batch's transition along the log
+concentration axis. A term naming a parameter an equation does not have is
+dropped from that equation with a message, so each equation receives whichever
+of the two it has. Twenty of the 23 equations have one. `ecxlin`, `ecxexp` and
+`ecxsigm` have neither and fit no batch term. Five batches is the conventional
+minimum for one group-level standard deviation. For `nec3param` the structure
+is:
+
+```{r form-arm, message = TRUE}
+make_brmsformula(
+  bayesnecformula(rlu_cens | cens(censoring) ~ crf(log(conc), "nec3param") +
+                    ogl(plate) + ogl(conc_rank/plate) +
+                    (nec | batch) + (ec50 | batch) + disp("power")),
+  data = zn15_step, family = gfam
+)
+```
+
+### The arm fits
+
+`fit_cell` adds the step and cell terms to `fit_plate`, and `fit_arm` adds the
+batch location term as well. The candidate set, the data and the dispersion
+sub-model are those of `fit_plate`, so reading the three in turn separates what
+each part of the structure changes.
+
+```{r fit-arm, results = "hide"}
+fit_cell <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + ogl(conc_rank/plate) + disp("power"),
+                 data = zn15_step, family = gfam,
+                 seed = 228, refresh = 0)
+
+fit_arm <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + ogl(conc_rank/plate) + (nec | batch) + (ec50 | batch) + disp("power"),
+                data = zn15_step, family = gfam,
+                seed = 228, refresh = 0)
+```
+
+```{r screen-arm, message = TRUE}
+fit_cell <- screen_models(fit_cell)
+fit_arm <- screen_models(fit_arm)
+```
+
+RESULT-SCREEN
+
+```{r varcorr-arm}
+subset(rbind(sd_table(fit_cell, "+ step and cell"),
+             sd_table(fit_arm, "+ batch location")), wi >= 0.01)
+```
+
+RESULT-SD
+
+```{r weights-arm}
+do.call(rbind, Map(function(x, label) {
+  w <- summary(x)$mod_weights
+  data.frame(fit = label, model = rownames(w), wi = round(w[, "wi"], 3))[w[, "wi"] >= 0.01, ]
+}, list(fit_plate, fit_cell, fit_arm),
+   list("ogl(plate)", "+ step and cell", "+ batch location")))
+```
+
+RESULT-WEIGHTS
+
+```{r ecx-arm}
+rbind(
+  data.frame(fit = "ogl(plate)", t(ecx(fit_plate, ecx_val = 10, xform = exp))),
+  data.frame(fit = "+ step and cell", t(ecx(fit_cell, ecx_val = 10, xform = exp))),
+  data.frame(fit = "+ batch location", t(ecx(fit_arm, ecx_val = 10, xform = exp)))
+)
+rbind(
+  data.frame(fit = "ogl(plate)", t(nsec(fit_plate, xform = exp))),
+  data.frame(fit = "+ step and cell", t(nsec(fit_cell, xform = exp))),
+  data.frame(fit = "+ batch location", t(nsec(fit_arm, xform = exp)))
+)
+```
+
+RESULT-ESTIMATES
+
+The batch deviations can be set against the concentrations themselves. Where
+the response follows the step, a batch dosed at concentrations higher by a
+constant factor needs its transition moved along the log axis by the logarithm
+of that factor. The offset below is each batch's mean log concentration over
+steps 2 to 11, less the mean of the five.
+
+```{r batch-offsets}
+w_arm <- summary(fit_arm)$mod_weights
+best_arm <- rownames(w_arm)[which.max(w_arm[, "wi"])]
+re_batch <- brms::ranef(pull_out(fit_arm, model = best_arm)$fit)$batch
+loc <- grep("^(nec|ec50)_", dimnames(re_batch)[[3]], value = TRUE)
+offsets <- step_cells |>
+  filter(toxicant == "Zn", conc_rank > 1) |>
+  group_by(batch) |>
+  summarise(lc = mean(log(conc)), .groups = "drop") |>
+  mutate(offset = lc - mean(lc))
+data.frame(model = best_arm, batch = rownames(re_batch),
+           deviation = round(re_batch[, "Estimate", loc], 2),
+           lower = round(re_batch[, "Q2.5", loc], 2),
+           upper = round(re_batch[, "Q97.5", loc], 2),
+           offset = round(offsets$offset[match(rownames(re_batch),
+                                               offsets$batch)], 2))
+```
+
+RESULT-OFFSETS
+
+```{r fig-arm}
+autoplot(fit_arm, group = "plate") + log_x
+```
+
+RESULT-FIG
 
 ## Copper against zinc
 
 Copper and zinc are fixed levels, so `bnec_group()` fits each separately and
-returns one object. Each is fitted with the structure chosen above: the censored
-response, a plate term for the gain, and a dispersion sub-model. The call keeps
-`model = "all"` because luminescence rises above the control level at low zinc
-concentrations.
+returns one object. Each is fitted with the structure of `fit_arm`: the censored
+response, a plate term for the gain, the step and cell terms, the batch location
+term, and a dispersion sub-model. The call keeps `model = "all"` because
+luminescence rises above the control level at low zinc concentrations.
 
 ```{r fit-metals, results = "hide"}
-zn_cu_15 <- droplevels(subset(lum31, minutes == 15))
+zn_cu_15 <- droplevels(subset(lum31, minutes == 15)) |>
+  mutate(conc_rank = factor(as.integer(sub(".*-c", "", as.character(conc_group)))))
 
 fits_tox <- bnec_group(
-  rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + disp("power"),
+  rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + ogl(conc_rank/plate) + (nec | batch) + (ec50 | batch) + disp("power"),
   data = zn_cu_15, group_var = "toxicant", family = gfam,
   seed = 228, refresh = 0)
 ```
