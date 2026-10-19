@@ -1282,25 +1282,66 @@ is:
 ```{r form-arm, message = TRUE}
 make_brmsformula(
   bayesnecformula(rlu_cens | cens(censoring) ~ crf(log(conc), "nec3param") +
-                    ogl(plate) + ogl(conc_rank/plate) +
+                    ogl(plate/conc_rank) +
                     (nec | batch) + (ec50 | batch) + disp("power")),
   data = zn15_step, family = gfam
 )
 ```
 
-### The arm fits
+### A deviation per dilution step
 
-`fit_cell` adds the step and cell terms to `fit_plate`, and `fit_arm` adds the
-batch location term as well. The candidate set, the data and the dispersion
-sub-model are those of `fit_plate`, so reading the three in turn separates what
-each part of the structure changes.
+RESULT-STEP-TERM-METHOD
 
-```{r fit-arm, results = "hide"}
-fit_cell <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + ogl(conc_rank/plate) + disp("power"),
+```{r fit-step, results = "hide"}
+fit_step <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + ogl(conc_rank/plate) + disp("power"),
                  data = zn15_step, family = gfam,
                  seed = 228, refresh = 0)
 
-fit_arm <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + ogl(conc_rank/plate) + (nec | batch) + (ec50 | batch) + disp("power"),
+fit_step_batch <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + ogl(conc_rank/plate) + (nec | batch) + (ec50 | batch) + disp("power"),
+                       data = zn15_step, family = gfam,
+                       seed = 228, refresh = 0)
+```
+
+```{r sampling-step}
+sampling_step <- rbind(
+  data.frame(fit = "step", check_sampling(fit_step)),
+  data.frame(fit = "step + batch", check_sampling(fit_step_batch))
+)
+sampling_step[, c("max_rhat", "min_ess")] <- round(sampling_step[, c("max_rhat", "min_ess")], 2)
+sampling_step
+```
+
+RESULT-STEP-SAMPLING
+
+```{r chains-step}
+# Per-chain means show whether the chains found one posterior or several, which
+# an R-hat above the cutoff reports without saying where they part.
+chain_means <- function(x, label, model) {
+  d <- as.data.frame(brms::as_draws_df(x$mod_fits[[model]]$fit))
+  out <- aggregate(d[, c("b_ec50_Intercept", "sd_conc_rank__ogl_Intercept",
+                         "r_conc_rank__ogl[1,Intercept]",
+                         "r_conc_rank__ogl[11,Intercept]")],
+                   list(chain = d$.chain), mean)
+  names(out) <- c("chain", "ec50", "sd_step", "step_1", "step_11")
+  data.frame(fit = label, model = model, round(out, 2))
+}
+rbind(chain_means(fit_step, "step", "ecxll3"),
+      chain_means(fit_step_batch, "step + batch", "ecxll3"),
+      chain_means(fit_step_batch, "step + batch", "ecxll5"))
+```
+
+RESULT-STEP-CHAINS
+
+### The arm fits
+
+RESULT-ARM-METHOD
+
+```{r fit-arm, results = "hide"}
+fit_cell <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate/conc_rank) + disp("power"),
+                 data = zn15_step, family = gfam,
+                 seed = 228, refresh = 0)
+
+fit_arm <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate/conc_rank) + (nec | batch) + (ec50 | batch) + disp("power"),
                 data = zn15_step, family = gfam,
                 seed = 228, refresh = 0)
 ```
@@ -1313,7 +1354,7 @@ fit_arm <- screen_models(fit_arm)
 RESULT-SCREEN
 
 ```{r varcorr-arm}
-subset(rbind(sd_table(fit_cell, "+ step and cell"),
+subset(rbind(sd_table(fit_cell, "+ cell"),
              sd_table(fit_arm, "+ batch location")), wi >= 0.01)
 ```
 
@@ -1324,7 +1365,7 @@ do.call(rbind, Map(function(x, label) {
   w <- summary(x)$mod_weights
   data.frame(fit = label, model = rownames(w), wi = round(w[, "wi"], 3))[w[, "wi"] >= 0.01, ]
 }, list(fit_plate, fit_cell, fit_arm),
-   list("ogl(plate)", "+ step and cell", "+ batch location")))
+   list("ogl(plate)", "+ cell", "+ batch location")))
 ```
 
 RESULT-WEIGHTS
@@ -1332,12 +1373,12 @@ RESULT-WEIGHTS
 ```{r ecx-arm}
 rbind(
   data.frame(fit = "ogl(plate)", t(ecx(fit_plate, ecx_val = 10, xform = exp))),
-  data.frame(fit = "+ step and cell", t(ecx(fit_cell, ecx_val = 10, xform = exp))),
+  data.frame(fit = "+ cell", t(ecx(fit_cell, ecx_val = 10, xform = exp))),
   data.frame(fit = "+ batch location", t(ecx(fit_arm, ecx_val = 10, xform = exp)))
 )
 rbind(
   data.frame(fit = "ogl(plate)", t(nsec(fit_plate, xform = exp))),
-  data.frame(fit = "+ step and cell", t(nsec(fit_cell, xform = exp))),
+  data.frame(fit = "+ cell", t(nsec(fit_cell, xform = exp))),
   data.frame(fit = "+ batch location", t(nsec(fit_arm, xform = exp)))
 )
 ```
@@ -1389,7 +1430,7 @@ zn_cu_15 <- droplevels(subset(lum31, minutes == 15)) |>
   mutate(conc_rank = factor(as.integer(sub(".*-c", "", as.character(conc_group)))))
 
 fits_tox <- bnec_group(
-  rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + ogl(conc_rank/plate) + (nec | batch) + (ec50 | batch) + disp("power"),
+  rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate/conc_rank) + (nec | batch) + (ec50 | batch) + disp("power"),
   data = zn_cu_15, group_var = "toxicant", family = gfam,
   seed = 228, refresh = 0)
 ```
