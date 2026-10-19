@@ -1818,6 +1818,21 @@
 
 ## Bug fixes
 
+- A nested or interaction grouping inside `ogl()` or `pgl()` is now fitted as
+  written. `ogl(a/b)` fits one deviation per level of `a` and a further one
+  per level of `b` within each level of `a`, as `(1 | a/b)` does in `brms`,
+  and `ogl(a:b)` fits one per combination of the two. Both were reduced to
+  their variable names and fitted as `(1 | a) + (1 | b)` without a message.
+  The term on `b` within `a` was lost, and a term on `b` across every level of
+  `a` was fitted in its place. Where the levels of `b` repeat across `a`, as
+  plate labels repeat across batches, that is a different model. An explicit
+  `(par | a/b)` term was already passed to `brms` as written. `ogl(a + b)`
+  remains two separate terms, and a grouping written in more than one `ogl()`
+  term is fitted once (#466).
+- A grouping variable missing from the data in a second or later
+  `(par | group)` term is now refused by `bnec()` before anything is fitted,
+  with the message that names it. Only the first such term was checked, so the
+  call reached `brms` and failed there (#466).
 - `check_priors()` on a `bayesmanecfit` leaves the graphics devices as it
   found them. It set the page prompt to `FALSE` on its way out whatever it had
   been, restored nothing when a plot stopped the call, and with `filename`

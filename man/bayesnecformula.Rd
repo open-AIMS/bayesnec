@@ -88,6 +88,14 @@ or model suite. For example, the parameter \code{bot} exists in model
 \code{model = "nec"} in \code{crf}, the term \code{(bot | group_variable)}
 will be dropped in models where that parameter does not exist.
 
+The grouping inside \code{ogl()} and \code{pgl()} is written as it would
+be on the right of the bar in a \pkg{brms} group-level term, and is passed
+to \pkg{brms} as written. \code{ogl(a/b)} fits one deviation per level of
+\code{a} and a further one per level of \code{b} within each level of
+\code{a}, as \code{(1 | a/b)} does, and \code{ogl(a:b)} fits one per
+combination of the two. \code{ogl(a + b)} is two separate terms,
+\code{(1 | a) + (1 | b)}, the same as \code{ogl(a) + ogl(b)}.
+
 \bold{The scale a group-level deviation is applied on}
 
 \pkg{brms} declares a group-level deviation unconstrained, and under the
