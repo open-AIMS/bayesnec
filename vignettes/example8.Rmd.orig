@@ -1194,24 +1194,25 @@ are not four independent observations of the curve, and the within-concentration
 term of the single-plate fit is the term that states it. On one plate that term
 could not be told apart from a failure of the curve to fit, because each
 concentration held a single cell, so a deviation per cell was also a deviation
-per concentration. An arm holds seventeen cells at each concentration, which
-separates the two.
+per concentration. An arm holds seventeen cells at each concentration, one on
+each plate, so a deviation per cell is no longer a deviation per concentration.
 
-The grouping that separates them is the dilution step, `conc_rank`: the position
-of a concentration in its plate's series, numbered 1 to 11 in ascending order.
-It is not a column of `lum31`, and is read from the suffix of `conc_group`:
+A cell is identified by its plate and its dilution step, `conc_rank`: the
+position of a concentration in its plate's series, numbered 1 to 11 in ascending
+order. `conc_rank` is not a column of `lum31`, and is read from the suffix of
+`conc_group`:
 
 ```{r arm-data}
 zn15_step <- zn15 |>
   mutate(conc_rank = factor(as.integer(sub(".*-c", "", as.character(conc_group)))))
 ```
 
-`ogl(conc_rank/plate)` expands to a deviation per step, shared by every plate,
-and a further deviation per plate at each step, which is the cell. Where an
-equation misses the data at a step, the step deviation estimates the miss, so
-its standard deviation measures that equation's lack of fit, and the cell
-deviation estimates only the variation between plates at a step. `ogl(plate)` is
-kept beside it for the gain.
+`ogl(plate/conc_rank)` expands to `(1 | plate) + (1 | plate:conc_rank)`: a
+deviation per plate, which is the gain term of `fit_plate`, and a further
+deviation per cell within its plate. The 187 cell deviations are drawn from one
+distribution centred on zero. The seventeen cells at one step cannot all deviate
+in one direction without enlarging that distribution's standard deviation, so
+the mean response at each step is left to the curve.
 
 ### Dilution step and measured concentration
 
@@ -1266,13 +1267,25 @@ step_cells |>
   transmute(batch, conc = signif(conc, 2), rel = round(rel, 2))
 ```
 
-RESULT-STEP
+Over steps 2 to 11, the measured concentrations at one step differ between
+batches by a factor of 1.39 to 1.55 for zinc and 2.26 to 2.57 for copper.
+Against measured concentration, the batches separate. At copper's step 6 the
+five batches were dosed at 0.13 to 0.32 mg/L, and three of them give 0.16 to
+0.17 of the step-1 mean, while 28Mar24 gives 0.50 and 1Oct24 gives 0.29. The
+1Oct24 curve lies to the right of the others for both metals. Against the step,
+four of the five copper batches and all five zinc batches lie close together
+through the transition, and 28Mar24 alone stays above the rest at copper's
+step 6 and zinc's steps 6 and 7. Each batch's curve is displaced along the
+concentration axis, and for most batches by about the amount that brings its
+steps into line with the other batches' steps. The data do not identify the
+cause, and a term on the location of each batch's curve estimates the
+displacement whatever it is.
 
 The term that states a displacement of each batch's curve along the axis is a
 deviation on the parameter that places the curve there. `(nec | batch)` and
 `(ec50 | batch)` give each batch one deviation on `nec` or `ec50`, added on the
-scale of the predictor, which moves that batch's transition along the log
-concentration axis. A term naming a parameter an equation does not have is
+scale of the predictor, which changes the log concentration at which that
+batch's transition occurs. A term naming a parameter an equation does not have is
 dropped from that equation with a message, so each equation receives whichever
 of the two it has. Twenty of the 23 equations have one. `ecxlin`, `ecxexp` and
 `ecxsigm` have neither and fit no batch term. Five batches is the conventional
@@ -1287,50 +1300,6 @@ make_brmsformula(
   data = zn15_step, family = gfam
 )
 ```
-
-### A deviation per dilution step
-
-RESULT-STEP-TERM-METHOD
-
-```{r fit-step, results = "hide"}
-fit_step <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + ogl(conc_rank/plate) + disp("power"),
-                 data = zn15_step, family = gfam,
-                 seed = 228, refresh = 0)
-
-fit_step_batch <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + ogl(conc_rank/plate) + (nec | batch) + (ec50 | batch) + disp("power"),
-                       data = zn15_step, family = gfam,
-                       seed = 228, refresh = 0)
-```
-
-```{r sampling-step}
-sampling_step <- rbind(
-  data.frame(fit = "step", check_sampling(fit_step)),
-  data.frame(fit = "step + batch", check_sampling(fit_step_batch))
-)
-sampling_step[, c("max_rhat", "min_ess")] <- round(sampling_step[, c("max_rhat", "min_ess")], 2)
-sampling_step
-```
-
-RESULT-STEP-SAMPLING
-
-```{r chains-step}
-# Per-chain means show whether the chains found one posterior or several, which
-# an R-hat above the cutoff reports without saying where they part.
-chain_means <- function(x, label, model) {
-  d <- as.data.frame(brms::as_draws_df(x$mod_fits[[model]]$fit))
-  out <- aggregate(d[, c("b_ec50_Intercept", "sd_conc_rank__ogl_Intercept",
-                         "r_conc_rank__ogl[1,Intercept]",
-                         "r_conc_rank__ogl[11,Intercept]")],
-                   list(chain = d$.chain), mean)
-  names(out) <- c("chain", "ec50", "sd_step", "step_1", "step_11")
-  data.frame(fit = label, model = model, round(out, 2))
-}
-rbind(chain_means(fit_step, "step", "ecxll3"),
-      chain_means(fit_step_batch, "step + batch", "ecxll3"),
-      chain_means(fit_step_batch, "step + batch", "ecxll5"))
-```
-
-RESULT-STEP-CHAINS
 
 ### The arm fits
 
@@ -1387,8 +1356,8 @@ RESULT-ESTIMATES
 
 The batch deviations can be set against the concentrations themselves. Where
 the response follows the step, a batch dosed at concentrations higher by a
-constant factor needs its transition moved along the log axis by the logarithm
-of that factor. The offset below is each batch's mean log concentration over
+constant factor needs a location deviation equal to the logarithm of that
+factor. The offset below is each batch's mean log concentration over
 steps 2 to 11, less the mean of the five.
 
 ```{r batch-offsets}
@@ -1416,6 +1385,90 @@ autoplot(fit_arm, group = "plate") + log_x
 ```
 
 RESULT-FIG
+
+### A deviation per dilution step
+
+A deviation per dilution step, shared by every plate, would estimate where an
+equation misses the data at a step, and its standard deviation would then
+measure that equation's lack of fit. `ogl(conc_rank/plate)` writes it, and
+expands to `(1 | conc_rank) + (1 | conc_rank:plate)`: the step term, and the
+same cell term as `ogl(plate/conc_rank)`. `fit_step` fits it beside
+`ogl(plate)`, and `fit_step_batch` adds the batch location term. Both use the
+data, candidate set and dispersion sub-model of the arm fits above.
+
+```{r fit-step, results = "hide"}
+fit_step <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + ogl(conc_rank/plate) + disp("power"),
+                 data = zn15_step, family = gfam,
+                 seed = 228, refresh = 0)
+
+fit_step_batch <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + ogl(conc_rank/plate) + (nec | batch) + (ec50 | batch) + disp("power"),
+                       data = zn15_step, family = gfam,
+                       seed = 228, refresh = 0)
+```
+
+```{r sampling-step}
+sampling_step <- rbind(
+  data.frame(fit = "step", check_sampling(fit_step)),
+  data.frame(fit = "step + batch", check_sampling(fit_step_batch))
+)
+sampling_step[, c("max_rhat", "min_ess")] <- round(sampling_step[, c("max_rhat", "min_ess")], 2)
+sampling_step
+```
+
+Every equation of `fit_step` fails the sampler screen, with R-hat between 1.08
+and 2.79 and between 4.7 and 39 effective draws of 8000. Under `fit_step_batch`
+three equations pass, `ecxwb1p3`, `ecxwb2p3` and `ecxll3`, each with R-hat of
+1.01 or below and over 560 effective draws. `ecxhormebc4` has an R-hat of 1.01
+but 293 effective draws, short of the 400 the screen requires. The other nine
+fail with R-hat between 1.54 and 2.72. `ecxexp` is absent from the second fit
+for the reason given under the arm fits.
+
+```{r chains-step}
+# Per-chain means show whether the chains found one posterior or several, which
+# an R-hat above the cutoff reports without saying where they part.
+chain_means <- function(x, label, model) {
+  d <- as.data.frame(brms::as_draws_df(x$mod_fits[[model]]$fit))
+  out <- aggregate(d[, c("b_ec50_Intercept", "sd_conc_rank__ogl_Intercept",
+                         "r_conc_rank__ogl[1,Intercept]",
+                         "r_conc_rank__ogl[11,Intercept]")],
+                   list(chain = d$.chain), mean)
+  names(out) <- c("chain", "ec50", "sd_step", "step_1", "step_11")
+  data.frame(fit = label, model = model, round(out, 2))
+}
+rbind(chain_means(fit_step, "step", "ecxll3"),
+      chain_means(fit_step_batch, "step + batch", "ecxll3"),
+      chain_means(fit_step_batch, "step + batch", "ecxll5"))
+```
+
+The per-chain means show where the chains part. Under `fit_step`, every chain of
+`ecxll3` places `ec50` between 4.1 and 7.6 on the log scale, which is 60 to
+1900 mg/L, above the highest concentration tested, 23 mg/L. The curve is flat
+over the tested range, and the decline is fitted by the step deviations instead.
+Their means run from 0.54 to 0.88 at step 1 down to −3.17 to −3.69 at step 11,
+with a standard deviation of 1.34 to 1.57. Under `fit_step_batch`, the four
+chains of `ecxll3` agree on an `ec50` of 0.65 to 0.66, which is 1.9 mg/L, with
+step deviations within 0.14 of zero at both ends of the series and a standard
+deviation of 0.15. The chains of `ecxll5` divide. Chains 1 and 4 hold step
+deviations near zero, with a standard deviation of 0.06. Chain 3 holds the flat
+curve of `fit_step`, with `ec50` at 12 and a step-11 deviation of −3.23. Chain 2
+holds a third solution, with a step-11 deviation of 6.07.
+
+A step deviation is shared by every cell at that step, and every cell at one
+step sits at nearly one concentration: exactly one within a batch, and within a
+factor of 1.39 to 1.55 across batches. Eleven step deviations can therefore
+reproduce any curve through the eleven steps, and the likelihood cannot divide
+the response between the curve and the step term. The division is set by the
+step deviations' shared standard deviation, and with seventeen cells at each
+step the data outweigh it. Without the batch term the data favour a flat curve,
+because the response follows the step more closely than it follows the measured
+concentration, and the step deviations represent that directly. With the batch
+term a curve displaced per batch represents it as well, and different chains of
+one equation settle in different solutions.
+
+The step term is therefore not used. A term whose levels coincide with the
+concentration series is confounded with the curve, however many cells each
+level holds. The cell term is not, because the seventeen cells at one step
+belong to seventeen plates and share no deviation.
 
 ## Copper against zinc
 
