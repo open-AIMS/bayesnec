@@ -132,7 +132,8 @@ matches <code><a href="ecx.html">ecx</a></code> and <code><a href="nsec.html">ns
 
 
 <dt id="arg-x-range">x_range<a class="anchor" aria-label="anchor" href="#arg-x-range"></a></dt>
-<dd><p>A range of x values over which to consider extracting NSEC.</p></dd>
+<dd><p>A range of x values over which to predict the curve. An
+<code>nsec</code> outside it is refused; see Details.</p></dd>
 
 
 <dt id="arg-type">type<a class="anchor" aria-label="anchor" href="#arg-type"></a></dt>
@@ -184,6 +185,12 @@ in <code>crf(log(concentration))</code>, <code><a href="nsec.html">nsec</a></cod
 on the transformed scale unless given an <code>xform</code>, so a message says so
 once per call where <code>xform</code> is left at its default, and names the
 <code>xform</code> that puts such a value on the recorded scale.</p>
+<p>The curve is read at <code>nsec</code> only inside the range it is predicted
+over: the observed range of the predictor, or <code>x_range</code> where one is
+supplied. An <code>nsec</code> outside that range once <code>xform</code> has been
+applied is refused with a message naming the range, rather than read off
+the curve extended past the data without a message. Supply an
+<code>x_range</code> that includes <code>nsec</code> to read the curve there.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>
