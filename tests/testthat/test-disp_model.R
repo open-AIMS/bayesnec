@@ -179,14 +179,22 @@ test_that("a non-identity link is refused end to end", {
   )
 })
 
-test_that("disp_inits starts every slope at the constant-dispersion null", {
+test_that("disp_inits starts every slope at the middle of its own prior", {
   y <- c(0.5, 1, 2, 4)
   ii <- bayesnec:::disp_inits(list(route = "B", value = "power"), gaussian(), y)
   expect_named(ii, c("b_c0", "b_c1"))
-  # a slope of zero is the no-relationship model: the sign of a slope is tied
-  # to the direction of the mean curve, so chains must not each pick their own
-  expect_equal(as.numeric(ii$b_c1), 0)
+  # Every chain starts at one value: the sign of a slope is tied to the
+  # direction of the mean curve, so chains must not each pick their own. A
+  # gaussian c1 is bounded to [0, 1] (#472), so the constant-dispersion null is
+  # the lower bound and Stan would refuse it; the chains start at the mean of
+  # normal(0, 2) truncated to that interval instead.
+  expect_equal(as.numeric(ii$b_c1),
+               2 * (dnorm(0) - dnorm(0.5)) / (pnorm(0.5) - pnorm(0)))
   expect_equal(as.numeric(ii$b_c0), log(sd(y)))
+  # an unbounded slope keeps the null
+  ll <- bayesnec:::disp_inits(list(route = "B", value = "loglinear"),
+                              gaussian(), y)
+  expect_equal(as.numeric(ll$b_c1), 0)
   # brms wants one-dimensional arrays, not bare scalars
   expect_true(all(vapply(ii, function(z) !is.null(dim(z)), TRUE)))
 
@@ -698,9 +706,10 @@ test_that("the joint block fits the growth component's variance function", {
 
 test_that("a two-block family gets the positive block's disp() priors", {
   keep <- hurdle_dat$y > 0
+  # The bounds are compared as well as the densities (#472).
   disp_rows <- function(pr) {
     as.data.frame(pr)[pr$nlpar %in% c("c0", "c1", "c2"),
-                      c("prior", "nlpar")]
+                      c("prior", "nlpar", "lb", "ub")]
   }
   for (vf in c("power", "loglinear")) {
     spec <- list(route = "B", value = vf)
@@ -911,4 +920,298 @@ test_that("a joint refit across levels reads the curve before ogl() (#468)", {
   expect_true(startsWith(deparse1(grouped$formula[[3]]), "ogl + "))
   expect_false(grepl("ogl", pform_rhs(grouped, "sigma"), fixed = TRUE))
   expect_identical(pform_rhs(grouped, "sigma"), pform_rhs(ungrouped, "sigma"))
+})
+
+
+# ---- #472, the range of c1 and its regularizing centre -----------------------
+
+# A declining curve over six concentrations with `n` replicates each, and a
+# response whose dispersion parameter is proportional to mu^c1: the Gamma
+# shape, the gaussian sigma, or the negative binomial shape. The replicates at
+# one concentration share one mean, so the slope disp_replicate_slope() reads
+# from them estimates c1. Over 500 draws at n = 30 the estimate had a standard
+# deviation of 0.12 (Gamma, c1 = 0.8), 0.06 (gaussian, c1 = 0.6) and 0.14
+# (negbinomial, c1 = 0.5), which sets the tolerances below at about two of
+# them. No model is compiled or sampled in this section.
+slope_sim <- function(family, c1, n = 30, seed = 472) {
+  set.seed(seed)
+  x <- rep(c(0.1, 0.3, 1, 3, 10, 30), each = n)
+  top <- if (identical(family, "negbinomial")) 100 else 10
+  bot <- if (identical(family, "negbinomial")) 2 else 0.2
+  mu <- bot + (top - bot) / (1 + exp((log(x) - log(3)) * 1.5))
+  y <- switch(family,
+    Gamma = {
+      shape <- 30 * (mu / 2)^c1
+      stats::rgamma(length(mu), shape = shape, rate = shape / mu)
+    },
+    gaussian = stats::rnorm(length(mu), mu, 0.05 * mu^c1),
+    negbinomial = stats::rnbinom(length(mu), size = 2 * (mu / 20)^c1, mu = mu)
+  )
+  data.frame(x = x, y = y)
+}
+
+disp_fam <- function(tag) {
+  switch(tag,
+         Gamma = Gamma(link = "identity"),
+         gaussian = gaussian(link = "identity"),
+         negbinomial = validate_family("negbinomial"),
+         beta = brms::Beta(link = "identity"),
+         beta_binomial = validate_family("beta_binomial"))
+}
+
+c1_row <- function(pr) {
+  as.data.frame(pr)[pr$nlpar == "c1", c("prior", "lb", "ub")]
+}
+
+test_that("c1 of power is bounded by family (#472)", {
+  spec <- list(route = "B", value = "power")
+  ranges <- list(Gamma = c(0, 2), gaussian = c(0, 1), negbinomial = c(0, 1),
+                 beta = c(NA_real_, NA_real_),
+                 beta_binomial = c(NA_real_, NA_real_))
+  for (tag in names(ranges)) {
+    y <- switch(tag, negbinomial = disp_dat$count,
+                beta = , beta_binomial = disp_dat$prop, disp_dat$y)
+    for (pt in c("uninformative", "regularizing")) {
+      row <- c1_row(bayesnec:::define_prior("ecx4param", disp_fam(tag),
+                                            disp_dat$x, y, prior_type = pt,
+                                            disp_spec = spec))
+      expect_equal(as.numeric(c(row$lb, row$ub)), ranges[[tag]],
+                   label = paste(tag, pt))
+    }
+    # the density inside the bounds is the one c1 had before them
+    row <- c1_row(bayesnec:::define_prior("ecx4param", disp_fam(tag),
+                                          disp_dat$x, y, disp_spec = spec))
+    expect_identical(row$prior, "normal(0, 2)")
+  }
+  # a two-block family takes its positive block's range
+  expect_equal(bayesnec:::disp_slope_bounds(spec, "hurdle_gamma"),
+               c(lb = 0, ub = 2))
+  expect_true(all(is.na(
+    bayesnec:::disp_slope_bounds(spec, "zero_inflated_beta")
+  )))
+  # route A has no c1
+  expect_true(all(is.na(
+    bayesnec:::disp_slope_bounds(list(route = "A", value = "x"), "Gamma")
+  )))
+})
+
+test_that("twosided and loglinear are unchanged by the range (#472)", {
+  for (pt in c("uninformative", "regularizing")) {
+    for (tag in c("beta", "beta_binomial")) {
+      pr <- as.data.frame(bayesnec:::define_prior(
+        "ecx4param", disp_fam(tag), disp_dat$x, disp_dat$prop,
+        prior_type = pt, disp_spec = list(route = "B", value = "twosided")
+      ))
+      slopes <- pr[pr$nlpar %in% c("c1", "c2"), ]
+      expect_identical(slopes$prior, rep("normal(0, 2)", 2))
+      expect_true(all(is.na(slopes$lb) & is.na(slopes$ub)))
+    }
+    for (tag in c("Gamma", "gaussian", "negbinomial")) {
+      y <- if (tag == "negbinomial") disp_dat$count else disp_dat$y
+      row <- c1_row(bayesnec:::define_prior(
+        "ecx4param", disp_fam(tag), disp_dat$x, y, prior_type = pt,
+        disp_spec = list(route = "B", value = "loglinear")
+      ))
+      # the string define_disp_prior() wrote before #472
+      expect_identical(row$prior,
+                       paste0("normal(0, ", signif(2 / sd(y), 4), ")"))
+      expect_true(is.na(row$lb) && is.na(row$ub))
+    }
+  }
+})
+
+test_that("the regularizing centre recovers a known exponent (#472)", {
+  spec <- list(route = "B", value = "power")
+  truth <- c(Gamma = 0.8, gaussian = 0.6, negbinomial = 0.5)
+  tol <- c(Gamma = 0.25, gaussian = 0.15, negbinomial = 0.3)
+  for (tag in names(truth)) {
+    d <- slope_sim(tag, truth[[tag]])
+    slope <- bayesnec:::disp_replicate_slope(tag, d$x, d$y)
+    expect_lt(abs(slope - truth[[tag]]), tol[[tag]])
+    reg <- c1_row(bayesnec:::define_prior("ecx4param", disp_fam(tag), d$x, d$y,
+                                          prior_type = "regularizing",
+                                          disp_spec = spec))
+    expect_identical(reg$prior, paste0("normal(", signif(slope, 4), ", 2)"))
+    # the default set does not read the replicates
+    uni <- c1_row(bayesnec:::define_prior("ecx4param", disp_fam(tag), d$x, d$y,
+                                          disp_spec = spec))
+    expect_identical(uni$prior, "normal(0, 2)")
+    expect_equal(as.numeric(c(reg$lb, reg$ub)), as.numeric(c(uni$lb, uni$ub)))
+  }
+})
+
+test_that("the regularizing centre is clamped into the bounds (#472)", {
+  spec <- list(route = "B", value = "power")
+  # a Gamma shape rising as mu^3 is a variance falling as the response rises
+  d <- slope_sim("Gamma", 3)
+  expect_gt(bayesnec:::disp_replicate_slope("Gamma", d$x, d$y), 2)
+  row <- c1_row(bayesnec:::define_prior("ecx4param", disp_fam("Gamma"), d$x,
+                                        d$y, prior_type = "regularizing",
+                                        disp_spec = spec))
+  expect_identical(row$prior, "normal(2, 2)")
+  # a gaussian sigma falling as the response rises
+  d <- slope_sim("gaussian", -0.5)
+  expect_lt(bayesnec:::disp_replicate_slope("gaussian", d$x, d$y), 0)
+  row <- c1_row(bayesnec:::define_prior("ecx4param", disp_fam("gaussian"),
+                                        d$x, d$y, prior_type = "regularizing",
+                                        disp_spec = spec))
+  expect_identical(row$prior, "normal(0, 2)")
+})
+
+test_that("the regularizing centre falls back without replicates (#472)", {
+  spec <- list(route = "B", value = "power")
+  reg_c1 <- function(fam, x, y) {
+    c1_row(bayesnec:::define_prior("ecx4param", fam, x, y,
+                                   prior_type = "regularizing",
+                                   disp_spec = spec))$prior
+  }
+  # an unreplicated series
+  d <- slope_sim("Gamma", 0.8, n = 1)
+  d$x <- d$x * seq(1, 1.5, length.out = nrow(d))
+  expect_true(is.na(bayesnec:::disp_replicate_slope("Gamma", d$x, d$y)))
+  expect_identical(reg_c1(disp_fam("Gamma"), d$x, d$y), "normal(0, 2)")
+  # two replicated concentrations among unreplicated ones
+  d <- slope_sim("Gamma", 0.8, n = 1)
+  d <- rbind(d, d[1:2, ])
+  expect_true(is.na(bayesnec:::disp_replicate_slope("Gamma", d$x, d$y)))
+  expect_identical(reg_c1(disp_fam("Gamma"), d$x, d$y), "normal(0, 2)")
+  # a count divided by a rate() denominator is not read
+  d <- slope_sim("negbinomial", 0.5)
+  expect_false(is.na(bayesnec:::disp_replicate_slope("negbinomial", d$x,
+                                                     d$y)))
+  expect_true(is.na(bayesnec:::disp_replicate_slope("negbinomial", d$x,
+                                                    d$y / 7)))
+  # beta has no statistic and no bound, so its slope is not centred
+  expect_true(is.na(bayesnec:::disp_replicate_slope("beta", disp_dat$x,
+                                                    disp_dat$prop)))
+  expect_identical(reg_c1(disp_fam("beta"), disp_dat$x, disp_dat$prop),
+                   "normal(0, 2)")
+  # nor is the slope of loglinear, which is unbounded
+  d <- slope_sim("Gamma", 0.8)
+  row <- c1_row(bayesnec:::define_prior(
+    "ecx4param", disp_fam("Gamma"), d$x, d$y, prior_type = "regularizing",
+    disp_spec = list(route = "B", value = "loglinear")
+  ))
+  expect_identical(row$prior, paste0("normal(0, ", signif(2 / sd(d$y), 4), ")"))
+})
+
+test_that("a two-block family centres c1 on its survivors (#472)", {
+  spec <- list(route = "B", value = "power")
+  d <- slope_sim("Gamma", 0.8)
+  d$y[d$x == 30][1:20] <- 0
+  pos <- d$y > 0
+  joint <- c1_row(bayesnec:::define_prior("nec3param",
+                                          validate_family("hurdle_gamma"),
+                                          d$x, d$y,
+                                          prior_type = "regularizing",
+                                          disp_spec = spec))
+  growth <- c1_row(bayesnec:::define_prior("nec3param", disp_fam("Gamma"),
+                                           d$x[pos], d$y[pos],
+                                           prior_type = "regularizing",
+                                           disp_spec = spec))
+  expect_equal(joint, growth, ignore_attr = TRUE)
+  expect_identical(joint$prior, paste0(
+    "normal(", signif(bayesnec:::disp_replicate_slope("Gamma", d$x[pos],
+                                                      d$y[pos]), 4), ", 2)"
+  ))
+})
+
+test_that("make_stancode declares the bounds on c1 (#472)", {
+  f <- bnf(y ~ crf(x, "ecx4param") + disp("power"))
+  decl <- c(Gamma = "vector<lower=0,upper=2>[K_c1] b_c1;",
+            gaussian = "vector<lower=0,upper=1>[K_c1] b_c1;")
+  for (tag in names(decl)) {
+    fam <- disp_fam(tag)
+    bf <- make_brmsformula(f, disp_dat, fam)[[1]]
+    pr <- suppressMessages(get_priors(f, data = disp_dat, family = fam))
+    sc <- brms::make_stancode(bf, data = disp_dat, family = fam, prior = pr)
+    expect_true(grepl(decl[[tag]], sc, fixed = TRUE), label = tag)
+    # the density is normalised over the interval, not over the real line
+    ub <- if (tag == "Gamma") 2 else 1
+    expect_true(grepl(paste0("normal_lcdf(", ub, " | 0, 2)"), sc, fixed = TRUE),
+                label = tag)
+  }
+  # an unbounded slope stays unbounded
+  fb <- bnf(prop ~ crf(x, "ecx4param") + disp("twosided"))
+  fam <- disp_fam("beta")
+  sc <- brms::make_stancode(
+    make_brmsformula(fb, disp_dat, fam)[[1]], data = disp_dat, family = fam,
+    prior = suppressMessages(get_priors(fb, data = disp_dat, family = fam))
+  )
+  expect_true(grepl("vector[K_c1] b_c1;", sc, fixed = TRUE))
+})
+
+test_that("initial values for c1 lie inside its bounds (#472)", {
+  spec <- list(route = "B", value = "power")
+  inside <- function(v, lb, ub) v > lb && v < ub
+  for (tag in c("Gamma", "gaussian", "negbinomial")) {
+    d <- slope_sim(tag, 0.5)
+    bnd <- bayesnec:::disp_slope_bounds(spec, tag)
+    for (pt in c("uninformative", "regularizing")) {
+      ii <- bayesnec:::disp_inits(spec, disp_fam(tag), d$y, d$x,
+                                  prior_type = pt)
+      expect_true(inside(as.numeric(ii$b_c1), bnd[["lb"]], bnd[["ub"]]),
+                  label = paste(tag, pt))
+    }
+  }
+  # a centre clamped onto a bound still starts the chains inside it
+  d <- slope_sim("Gamma", 3)
+  ii <- bayesnec:::disp_inits(spec, disp_fam("Gamma"), d$y, d$x,
+                              prior_type = "regularizing")
+  expect_true(inside(as.numeric(ii$b_c1), 0, 2))
+  # a two-block family, whose slope prior is built from the survivors
+  d$y[d$x == 30] <- 0
+  ii <- bayesnec:::disp_inits(spec, validate_family("hurdle_gamma"), d$y, d$x,
+                              prior_type = "regularizing")
+  expect_true(inside(as.numeric(ii$b_c1), 0, 2))
+})
+
+test_that("add_brm_defaults starts c1 inside the bounds in force (#472)", {
+  # The curve search is mocked to return one list per chain, so that the
+  # dispersion initial values are appended as they are for a fit. Nothing is
+  # compiled.
+  local_mocked_bindings(
+    make_good_inits = function(..., chains) {
+      replicate(chains, list(b_top = as.array(1)), simplify = FALSE)
+    },
+    .package = "bayesnec"
+  )
+  spec <- list(route = "B", value = "power")
+  d <- slope_sim("Gamma", 0.8, n = 6)
+  fam <- disp_fam("Gamma")
+  run <- function(brm_args) {
+    suppressMessages(suppressWarnings(bayesnec:::add_brm_defaults(
+      c(list(chains = 2), brm_args), "ecx4param", fam, d$x, d$y,
+      skip_check = TRUE, custom_name = NULL, prior_type = "regularizing",
+      disp_spec = spec
+    )))
+  }
+  out <- run(list())
+  c1 <- c1_row(out$prior)
+  expect_equal(as.numeric(c(c1$lb, c1$ub)), c(0, 2))
+  starts <- vapply(out$init, function(ch) as.numeric(ch$b_c1), numeric(1))
+  expect_true(all(starts > 0 & starts < 2))
+  # A user prior on c1 replaces the default row whole, bounds included, and the
+  # chains start inside the bounds it declares.
+  defaults <- bayesnec:::define_prior("ecx4param", fam, d$x, d$y,
+                                      disp_spec = spec)
+  user <- defaults[defaults$nlpar != "c1", ] +
+    brms::prior_string("normal(-0.5, 0.5)", nlpar = "c1", lb = -1, ub = 0)
+  out <- run(list(prior = user))
+  c1 <- c1_row(out$prior)
+  expect_identical(c1$prior, "normal(-0.5, 0.5)")
+  expect_equal(as.numeric(c(c1$lb, c1$ub)), c(-1, 0))
+  starts <- vapply(out$init, function(ch) as.numeric(ch$b_c1), numeric(1))
+  expect_true(all(starts > -1 & starts < 0))
+  # A user prior with no bounds leaves c1 unbounded and starts it at the
+  # centre of the default.
+  user <- defaults[defaults$nlpar != "c1", ] +
+    brms::prior_string("normal(0, 1)", nlpar = "c1")
+  out <- run(list(prior = user))
+  c1 <- c1_row(out$prior)
+  expect_true(is.na(c1$lb) && is.na(c1$ub))
+  starts <- vapply(out$init, function(ch) as.numeric(ch$b_c1), numeric(1))
+  centre <- bayesnec:::disp_slope_priors(spec, fam, d$y, d$x,
+                                         prior_type = "regularizing")$c1$centre
+  expect_equal(starts, rep(centre, 2))
 })

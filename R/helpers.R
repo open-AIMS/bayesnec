@@ -1545,8 +1545,8 @@ add_brm_defaults <- function(
     # search validates prior names against the model's own parameter set and
     # only ever evaluates the mean curve, so those are filtered out here rather
     # than taught to it: they play no part in getting the curve inside the
-    # response range. They are added back at the constant-dispersion null once
-    # the search has run -- see disp_inits(), and note that leaving them to
+    # response range. They are added back at the middle of their own priors
+    # once the search has run -- see disp_inits(), and note that leaving them to
     # Stan's own draw is NOT benign.
     init_priors <- brm_args$prior
     disp_par_names <- disp_pars(disp_spec)
@@ -1601,8 +1601,14 @@ add_brm_defaults <- function(
     }
     # Only when the search returned per-chain values; where it fell back to
     # "random" there is no list to append to and Stan initialises everything.
+    #
+    # The priors in force are passed so that a slope starts inside the bounds
+    # they declare, which are the user's where a prior on it was supplied. A
+    # bounded c1 started at its default centre would sit on the bound, where
+    # Stan refuses the initial value. See #472.
     if (length(disp_par_names) > 0 && !is.character(inits)) {
-      d_init <- disp_inits(disp_spec, family, response)
+      d_init <- disp_inits(disp_spec, family, response, predictor = predictor,
+                           prior_type = prior_type, priors = brm_args$prior)
       inits <- lapply(inits, function(chain) c(chain, d_init))
     }
     # Stan does not declare a parameter whose prior is constant -- stancode()

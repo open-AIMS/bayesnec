@@ -388,23 +388,47 @@ disp_centre <- function(spec, response) {
 #' @param spec The output of \code{\link{parse_disp_term}}.
 #' @param family An object of class \code{\link[stats]{family}}.
 #' @param response A \code{\link[base]{numeric}} vector.
+#' @param predictor A \code{\link[base]{numeric}} vector aligned with
+#' \code{response}, or \code{NULL}. Read only for the centre the
+#' \code{"regularizing"} set takes from the replicates.
+#' @param prior_type One of \code{"uninformative"} or \code{"regularizing"}.
+#' @param priors The \code{\link[brms]{brmsprior}} the fit will use, or
+#' \code{NULL}. Read only for the bounds it declares on each slope.
 #'
 #' @return A named \code{\link[base]{list}} of one-dimensional arrays, suitable
 #' for appending to a chain's init list, or an empty list for route (A).
 #'
-#' @details Every slope starts at zero, which is the constant-dispersion model.
-#' This is not cosmetic tidiness: the sign of a slope is tied to the direction
-#' of the mean curve, so a chain that Stan starts in the mirror-image basin
-#' converges to a solution with the curve and the slope both inverted. Leaving
-#' these to Stan's default draw produced an R-hat of 1.85 on the loglinear
-#' regression test, with one chain reporting a slope of the wrong sign. Starting
-#' from the null lets the data choose the direction once, rather than once per
-#' chain.
+#' @details Every slope starts at the mean of its own default prior, truncated
+#' to the bounds the prior in force declares. For an unbounded slope that is the
+#' centre of the prior, which is zero, the constant-dispersion model, except
+#' where the \code{"regularizing"} set has centred it on the replicate slope
+#' instead. This is not cosmetic tidiness: the sign of a slope is tied to the
+#' direction of the mean curve, so a chain that Stan starts in the mirror-image
+#' basin converges to a solution with the curve and the slope both inverted.
+#' Leaving these to Stan's default draw produced an R-hat of 1.85 on the
+#' loglinear regression test, with one chain reporting a slope of the wrong
+#' sign. Starting every chain at one value lets the data choose the direction
+#' once, rather than once per chain.
+#'
+#' A bounded slope cannot start at zero where zero is a bound, as it is for
+#' \code{c1} of \code{"power"} on a Gamma, gaussian or negative binomial
+#' response: Stan maps a bounded parameter to the unconstrained scale through
+#' a logit, which is infinite at the bound, and refuses the initial value. The
+#' mean of the truncated prior is strictly inside any interval of positive
+#' width, and is the middle of the prior in the sense the centre is for an
+#' unbounded one. On \code{normal(0, 2)} truncated to the interval from 0 to
+#' 2 it is 0.92, and on the interval from 0 to 1 it is 0.49. See #472.
+#'
+#' The bounds are read from \code{priors} rather than from the default, so that
+#' a user who supplied their own prior on a slope, with bounds of their own,
+#' gets an initial value inside those bounds. Without a row for the slope the
+#' default bounds apply.
 #'
 #' @importFrom stats sd
 #'
 #' @noRd
-disp_inits <- function(spec, family, response) {
+disp_inits <- function(spec, family, response, predictor = NULL,
+                       prior_type = "uninformative", priors = NULL) {
   pars <- disp_pars(spec)
   if (length(pars) == 0) {
     return(list())
@@ -412,8 +436,331 @@ disp_inits <- function(spec, family, response) {
   # the same centres define_disp_prior() uses, so the chains start at the
   # middle of their own priors rather than somewhere else
   c0 <- disp_intercept_centre(family, response)
-  out <- lapply(pars, function(p) as.array(if (identical(p, "c0")) c0 else 0))
+  # The slope priors of a two-block family are built from its positive block,
+  # which is what define_prior() hands define_disp_prior().
+  # response_link_scale() is left out because it is the identity for every
+  # family that has a bound or a replicate centre on its slope (Gamma, gaussian
+  # and negbinomial under the identity link check_disp_spec() requires); for
+  # the beta families it would rescale a response that reaches a bound, which
+  # only the c0 prior reads.
+  slope_y <- response
+  slope_x <- predictor
+  if (is_hurdle_family(family)) {
+    keep <- which(response > 0)
+    slope_y <- response[keep]
+    slope_x <- if (is.null(predictor)) NULL else predictor[keep]
+  }
+  slopes <- disp_slope_priors(spec, family, slope_y, slope_x,
+                              prior_type = prior_type)
+  out <- lapply(pars, function(p) {
+    if (identical(p, "c0")) {
+      return(as.array(c0))
+    }
+    s <- slopes[[p]]
+    bounds <- prior_in_force_bounds(priors, p, c(s$lb, s$ub))
+    as.array(truncated_normal_mean(s$centre, s$scale, bounds[1], bounds[2]))
+  })
   names(out) <- paste0("b_", pars)
+  out
+}
+
+#' The bounds a prior declares on one non-linear parameter
+#'
+#' @param priors A \code{\link[brms]{brmsprior}}, or \code{NULL}.
+#' @param nlpar The name of the non-linear parameter.
+#' @param default A \code{\link[base]{numeric}} vector of length 2, the lower
+#' and upper bound to return where \code{priors} has no row for
+#' \code{nlpar}.
+#'
+#' @details A row whose bound is \code{NA} or \code{""} is unbounded on that
+#' side, which is how \code{define_prior()} and a fitted object record an
+#' absent bound respectively; see \code{blank_bounds_to_na()}.
+#'
+#' @return A \code{\link[base]{numeric}} vector of length 2, \code{NA} where
+#' unbounded.
+#'
+#' @noRd
+prior_in_force_bounds <- function(priors, nlpar, default) {
+  if (is.null(priors) || nrow(priors) == 0) {
+    return(default)
+  }
+  pr <- as.data.frame(priors)
+  row <- pr[pr$class == "b" & pr$nlpar == nlpar & !nzchar(pr$coef), ,
+            drop = FALSE]
+  if (nrow(row) == 0) {
+    return(default)
+  }
+  read <- function(v) suppressWarnings(as.numeric(as.character(v[[1]])))
+  c(read(row$lb), read(row$ub))
+}
+
+#' The mean of a normal distribution truncated to an interval
+#'
+#' @param mean,sd The location and scale of the normal distribution.
+#' @param lb,ub The bounds, \code{NA} or infinite where absent.
+#'
+#' @details Returns \code{mean} where neither bound is finite, so that an
+#' unbounded slope keeps the initial value it had before #472. Where the
+#' interval is far in a tail of the normal, both terms of the closed-form ratio
+#' underflow to zero and the ratio is not finite, and the midpoint of the
+#' interval is returned, or a point one \code{sd} inside a single finite bound.
+#'
+#' @return A \code{\link[base]{numeric}} of length 1, strictly inside the
+#' interval.
+#'
+#' @importFrom stats pnorm dnorm
+#'
+#' @noRd
+truncated_normal_mean <- function(mean, sd, lb, ub) {
+  lb <- if (is.na(lb)) -Inf else lb
+  ub <- if (is.na(ub)) Inf else ub
+  if (!is.finite(lb) && !is.finite(ub)) {
+    return(mean)
+  }
+  a <- (lb - mean) / sd
+  b <- (ub - mean) / sd
+  out <- mean + sd * (dnorm(a) - dnorm(b)) / (pnorm(b) - pnorm(a))
+  if (is.finite(out) && out > lb && out < ub) {
+    return(out)
+  }
+  if (is.finite(lb) && is.finite(ub)) {
+    (lb + ub) / 2
+  } else if (is.finite(lb)) {
+    lb + sd
+  } else {
+    ub - sd
+  }
+}
+
+#' The range of the exponent of a variance function
+#'
+#' @param spec The output of \code{\link{parse_disp_term}}.
+#' @param family An object of class \code{\link[stats]{family}} or a family
+#' tag.
+#'
+#' @details The bounds on \code{c1} of the scale-free forms, by family. Each is
+#' derived from a variance proportional to \code{mean^b} with \code{b} from
+#' 0 to 2, which runs from a constant variance to a constant coefficient of
+#' variation and is the span of Taylor's power law. The dispersion parameter is
+#' proportional to \code{mu^c1}, and each family maps that onto the variance
+#' through its own mean-variance relationship:
+#'
+#' \itemize{
+#'   \item \code{Gamma}: the variance is \code{mu^2 / shape}, which is
+#'     proportional to \code{mu^(2 - c1)}, so \code{c1} runs from 0 to 2.
+#'     Below 0 the coefficient of variation would fall as the response
+#'     falls; above 2 the variance would rise as the response falls.
+#'   \item \code{gaussian}: the variance is \code{sigma^2}, proportional to
+#'     \code{mu^(2 c1)}, so \code{c1} runs from 0 to 1.
+#'   \item \code{negbinomial}: the overdispersion term is \code{mu^2 / shape},
+#'     proportional to \code{mu^(2 - c1)}. \code{c1} runs from 0 to 1, from that
+#'     term proportional to \code{mu^2} to proportional to \code{mu}. Above 1
+#'     it would grow more slowly than the Poisson part of the variance.
+#'   \item \code{beta} and \code{beta_binomial}: unbounded. The variance already
+#'     falls at both ends through \code{mu (1 - mu)}, and the precision can
+#'     plausibly rise in either direction, which \code{"twosided"} exists to
+#'     model.
+#' }
+#'
+#' \code{"loglinear"} is unbounded, because its slope is in units of
+#' 1 / response and no fixed range means the same thing for every response. A
+#' two-block family takes the range of its positive block's family through
+#' \code{disp_family_tag()}. The ranges are RF's decision on #472, recorded
+#' there with the \code{example8} fits that reached \code{c1} near -8.
+#'
+#' The bounds are hard bounds on the non-linear parameter, written as
+#' \code{lb} and \code{ub} on its prior row, the way \code{define_prior()}
+#' bounds \code{top} and \code{bot} to the support of the response. A posterior
+#' that piles up at a bound shows that the data disagree with the range, which
+#' a soft prior would hide.
+#'
+#' @return A named \code{\link[base]{numeric}} vector, \code{lb} and
+#' \code{ub}, with \code{NA} where unbounded.
+#'
+#' @noRd
+disp_slope_bounds <- function(spec, family) {
+  unbounded <- c(lb = NA_real_, ub = NA_real_)
+  if (is.null(spec) || spec$route != "B" ||
+        !isTRUE(disp_functions[[spec$value]]$scale_free)) {
+    return(unbounded)
+  }
+  switch(disp_family_tag(family),
+         Gamma = c(lb = 0, ub = 2),
+         gaussian = c(lb = 0, ub = 1),
+         negbinomial = c(lb = 0, ub = 1),
+         unbounded)
+}
+
+#' The exponent of a variance function read from the replicates
+#'
+#' @param family An object of class \code{\link[stats]{family}} or a family
+#' tag.
+#' @param predictor A \code{\link[base]{numeric}} vector, the predictor.
+#' @param response A \code{\link[base]{numeric}} vector aligned with
+#' \code{predictor}, on the scale of \code{mu}.
+#'
+#' @details The observations at one predictor value share one mean, so their
+#' spread estimates the variance at that mean without a fitted curve. Each
+#' family's dispersion parameter can be written as a statistic of a group's
+#' mean and variance, and the slope of its log on the log of the group mean is
+#' then an estimate of \code{c1} under \code{"power"}:
+#'
+#' \itemize{
+#'   \item \code{Gamma}: \code{log(mean^2 / var)}, the log of
+#'     \code{1 / CV^2}, which is the log of the shape;
+#'   \item \code{gaussian}: \code{log(var) / 2}, the log of the standard
+#'     deviation, which is the log of \code{sigma};
+#'   \item \code{negbinomial}: \code{log(mean^2 / (var - mean))}, the shape
+#'     implied by the overdispersion term.
+#' }
+#'
+#' A group enters where it holds at least two observations, its mean is
+#' positive and its statistic is finite. A negative binomial group with a
+#' variance at or below its mean shows no overdispersion and has no statistic.
+#' Each group is weighted by its degrees of freedom, \code{n - 1}, because the
+#' sampling variance of the log of a sample variance is close to
+#' \code{2 / (n - 1)}; on a balanced design that is ordinary least squares.
+#'
+#' Three groups are needed. Two determine a slope exactly, but it is then the
+#' difference of two log variances, each with a sampling standard deviation of
+#' about 0.8 at four replicates, and there is no residual to show whether a
+#' power law describes them at all.
+#'
+#' The groups are the distinct predictor values, pooled over any group-level
+#' term, so on a design with one the spread includes the variation between
+#' groups as well as within them. A censored response enters at its recorded
+#' value. A negative binomial response divided by a \code{rate()} denominator is
+#' not read: the Poisson part of its variance is on the count scale, and the
+#' exposure is not available here to put it on the scale of the rate.
+#'
+#' @return A \code{\link[base]{numeric}} of length 1, \code{NA} where the
+#' design has too few replicated groups or the family has no statistic.
+#'
+#' @importFrom stats var
+#'
+#' @noRd
+disp_replicate_slope <- function(family, predictor, response) {
+  fam_tag <- disp_family_tag(family)
+  if (!fam_tag %in% c("Gamma", "gaussian", "negbinomial") ||
+        is.null(predictor) || length(predictor) != length(response)) {
+    return(NA_real_)
+  }
+  ok <- is.finite(predictor) & is.finite(response)
+  y <- response[ok]
+  if (identical(fam_tag, "negbinomial") &&
+        any(abs(y - round(y)) > sqrt(.Machine$double.eps))) {
+    return(NA_real_)
+  }
+  # Split as replicated_group_means() splits, by the distinct values of the
+  # predictor, so that a group here is a group there.
+  groups <- split(y, factor(predictor[ok]))
+  groups <- groups[lengths(groups) > 1]
+  if (length(groups) < 3) {
+    return(NA_real_)
+  }
+  m <- vapply(groups, mean, numeric(1), USE.NAMES = FALSE)
+  v <- vapply(groups, var, numeric(1), USE.NAMES = FALSE)
+  w <- lengths(groups) - 1
+  stat <- suppressWarnings(switch(fam_tag,
+    Gamma = log(m^2 / v),
+    gaussian = log(v) / 2,
+    negbinomial = log(m^2 / (v - m))
+  ))
+  keep <- m > 0 & is.finite(stat)
+  if (sum(keep) < 3) {
+    return(NA_real_)
+  }
+  lx <- log(m[keep])
+  ly <- stat[keep]
+  w <- w[keep]
+  dx <- lx - sum(w * lx) / sum(w)
+  if (sum(w * dx^2) <= 0) {
+    return(NA_real_)
+  }
+  out <- sum(w * dx * ly) / sum(w * dx^2)
+  if (is.finite(out)) out else NA_real_
+}
+
+#' The priors on the slopes of a variance function
+#'
+#' @param spec The output of \code{\link{parse_disp_term}}, route (B).
+#' @param family An object of class \code{\link[stats]{family}} or a family
+#' tag; for a two-block family, the positive block's family or the two-block
+#' tag.
+#' @param response A \code{\link[base]{numeric}} vector, on the scale of
+#' \code{mu}; for a two-block family, the positive responses.
+#' @param predictor A \code{\link[base]{numeric}} vector aligned with
+#' \code{response}, or \code{NULL}.
+#' @param prior_type One of \code{"uninformative"} or \code{"regularizing"}.
+#'
+#' @details One statement of each slope's prior, read by
+#' \code{define_disp_prior()} for the prior rows and by \code{disp_inits()} for
+#' the initial values, so that a chain starts inside the bounds its own prior
+#' declares.
+#'
+#' Every slope is \code{normal(centre, scale)}. The scale is 2 for a slope on
+#' \code{log(mu)} and \code{2 / sd(response)} for a slope on \code{mu}, for the
+#' reason \code{define_disp_prior()} gives. \code{c1} of a scale-free form takes
+#' the bounds \code{disp_slope_bounds()} gives its family, and \code{c2} of
+#' \code{"twosided"} takes none.
+#'
+#' The centre is zero, the family's own mean-variance relationship, except
+#' under \code{prior_type = "regularizing"} on a bounded \code{c1}. There it is
+#' the slope \code{disp_replicate_slope()} reads from the replicates, clamped
+#' into the bounds and rounded to four significant figures, and zero where that
+#' slope cannot be read. The same set already places \code{top} and \code{bot}
+#' at observed responses. The default \code{"uninformative"} set does not use
+#' the replicates, so they enter its fit once, through the likelihood.
+#'
+#' @return A named \code{\link[base]{list}}, one element per slope parameter,
+#' each a list with elements \code{prior} (a \pkg{brms} prior string),
+#' \code{centre}, \code{scale}, \code{lb} and \code{ub}.
+#'
+#' @importFrom stats sd
+#'
+#' @noRd
+disp_slope_priors <- function(spec, family, response, predictor = NULL,
+                              prior_type = "uninformative") {
+  vf <- disp_functions[[spec$value]]
+  slopes <- setdiff(vf$pars, "c0")
+  # A slope on log(mu) is dimensionless, so a fixed scale means the same thing
+  # whatever the response is measured in. A slope on mu itself is not: it
+  # has units of 1/response, and normal(0, 2) would be near-flat for a
+  # response spanning thousands and highly informative for one spanning a
+  # fraction. Scaling by the observed spread restores the intended meaning --
+  # that a one-standard-deviation change in the mean changes the log of the
+  # dispersion parameter by about two units at the edge of the prior.
+  scale <- if (isTRUE(vf$scale_free)) 2 else signif(2 / sd(response), 4)
+  bounds <- disp_slope_bounds(spec, family)
+  out <- lapply(slopes, function(p) {
+    lb <- ub <- NA_real_
+    centre <- 0
+    if (identical(p, "c1")) {
+      lb <- bounds[["lb"]]
+      ub <- bounds[["ub"]]
+      # The width is left at the scale above rather than narrowed, as the
+      # regularizing set narrows top and bot by regularizing_factor. The
+      # centre is read from the spread of the replicates, and that spread is
+      # also what the likelihood fits c1 to, so a narrowed prior would count
+      # the same information twice. The statistic is noisy as well: the log
+      # of a variance from n replicates has a sampling standard deviation near
+      # sqrt(2 / (n - 1)), 0.8 at four, so on a design with few concentrations
+      # the slope through those values is uncertain by a large fraction of the
+      # range. The prior is therefore relocated and not narrowed. Inside the
+      # bounds a scale of 2 still tilts it: on [0, 2] centred at 0.8, the
+      # density at the far bound is 0.83 of that at the centre.
+      if (identical(prior_type, "regularizing") && is.finite(lb) &&
+            is.finite(ub)) {
+        slope <- disp_replicate_slope(family, predictor, response)
+        if (is.finite(slope)) {
+          centre <- signif(min(max(slope, lb), ub), 4)
+        }
+      }
+    }
+    list(prior = paste0("normal(", centre, ", ", scale, ")"),
+         centre = centre, scale = scale, lb = lb, ub = ub)
+  })
+  names(out) <- slopes
   out
 }
 

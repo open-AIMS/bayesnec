@@ -1409,9 +1409,8 @@ define_prior <- function(model, family, predictor, response,
     # is a no-op only for as long as the fit is on the identity link, which is
   # what bnec() assigns unless the caller wrote a link argument (#256).
     mu_family <- hurdle_mu_family(family)
-    mu_response <- response_link_scale(
-      split_hurdle_response(predictor, response)$mu$y, mu_family
-    )
+    mu_split <- split_hurdle_response(predictor, response)$mu
+    mu_response <- response_link_scale(mu_split$y, mu_family)
     group_priors <- define_group_prior(group_spec, predictor, mu_response,
                                        prior_type = prior_type,
                                        ogl_transform = ogl_kind,
@@ -1436,7 +1435,12 @@ define_prior <- function(model, family, predictor, response,
     if (!is.null(disp_spec)) {
       check_disp_spec(disp_spec, family, response = mu_response)
     }
-    disp_priors <- define_disp_prior(disp_spec, mu_family, mu_response)
+    # The survivors' own predictor values go with them, so that the replicate
+    # centre of the regularizing set groups each positive response by the
+    # concentration it was observed at. See #472.
+    disp_priors <- define_disp_prior(disp_spec, mu_family, mu_response,
+                                     predictor = mu_split$x,
+                                     prior_type = prior_type)
     if (!is.null(disp_priors)) {
       hurdle_priors <- hurdle_priors + disp_priors
     }
@@ -1737,7 +1741,9 @@ define_prior <- function(model, family, predictor, response,
   if (model == "ecxhormebc5") {
     priors <- pr_bot + pr_top + pr_beta + pr_ec50 + pr_slope
   }
-  disp_priors <- define_disp_prior(disp_spec, family, response)
+  disp_priors <- define_disp_prior(disp_spec, family, response,
+                                   predictor = predictor,
+                                   prior_type = prior_type)
   if (!is.null(disp_priors)) {
     priors <- priors + disp_priors
   }
@@ -1760,14 +1766,26 @@ define_prior <- function(model, family, predictor, response,
 #' @param disp_spec The output of \code{\link{parse_disp_term}}.
 #' @param family A \code{\link[stats]{family}} function.
 #' @param response The response variable, already on the link scale.
+#' @param predictor The predictor, aligned with \code{response}, or
+#' \code{NULL}. Read only for the replicate centre of the
+#' \code{"regularizing"} set.
+#' @param prior_type One of \code{"uninformative"} or \code{"regularizing"}.
 #'
 #' @details Only route (B) is given priors here. Route (A) is an ordinary
 #' distributional formula and is left to the \pkg{brms} defaults, which already
 #' suit a linear predictor on a log link.
 #'
 #' \code{c1} and \code{c2} are centred on zero, which is the constant-dispersion
-#' case, so the prior asserts no mean-variance relationship and lets the data
-#' supply one. \code{c0} is the dispersion parameter on the log scale at the
+#' case, so the prior asserts no mean-variance relationship beyond the family's
+#' own and lets the data supply one. \code{c1} of \code{"power"} on a Gamma,
+#' gaussian or negative binomial response is bounded to the range
+#' \code{disp_slope_bounds()} records, and under
+#' \code{prior_type = "regularizing"} is centred on the slope the replicates
+#' show. \code{disp_slope_priors()} builds each slope's entry, for this function
+#' and for \code{disp_inits()}, and records why its width is not narrowed. See
+#' #472.
+#'
+#' \code{c0} is the dispersion parameter on the log scale at the
 #' variance function's reference value (see \code{\link{disp_centre}}) -- that
 #' is, at a typical response rather than at \code{mu = 1}. That is what makes
 #' these priors mean anything at all: uncentred, \code{c0} and the slope are
@@ -1779,31 +1797,21 @@ define_prior <- function(model, family, predictor, response,
 #' @return An object of class \code{\link[brms]{brmsprior}}, or \code{NULL}.
 #'
 #' @importFrom brms prior_string
-#' @importFrom stats sd
 #'
 #' @noRd
-define_disp_prior <- function(disp_spec, family, response) {
+define_disp_prior <- function(disp_spec, family, response, predictor = NULL,
+                              prior_type = "uninformative") {
   if (is.null(disp_spec) || disp_spec$route != "B") {
     return(NULL)
   }
   fam_tag <- family$family
   c0_prs <- disp_intercept_priors(response)
-  vf <- disp_functions[[disp_spec$value]]
-  # A slope on log(mu) is dimensionless, so a fixed scale means the same thing
-  # whatever the response is measured in. A slope on mu itself is not: it
-  # carries units of 1/response, and normal(0, 2) would be near-flat for a
-  # response spanning thousands and highly informative for one spanning a
-  # fraction. Scaling by the observed spread restores the intended meaning --
-  # that a one-standard-deviation change in the mean moves the dispersion
-  # parameter by about two units on the log scale at the edge of the prior.
-  slope_prior <- if (isTRUE(vf$scale_free)) {
-    "normal(0, 2)"
-  } else {
-    paste0("normal(0, ", signif(2 / sd(response), 4), ")")
-  }
   out <- prior_string(unname(c0_prs[fam_tag]), nlpar = "c0")
-  for (p in setdiff(vf$pars, "c0")) {
-    out <- out + prior_string(slope_prior, nlpar = p)
+  slopes <- disp_slope_priors(disp_spec, family, response, predictor,
+                              prior_type = prior_type)
+  for (p in names(slopes)) {
+    s <- slopes[[p]]
+    out <- out + prior_string(s$prior, nlpar = p, lb = s$lb, ub = s$ub)
   }
   out
 }
