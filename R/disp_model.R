@@ -7,7 +7,8 @@
 #                   predictor. Descriptive: "noise is larger at high dose".
 #   disp("power")   route (B) -- a variance function of the FITTED MEAN. A
 #                   statement about the measurement process rather than about
-#                   the dose axis.
+#                   the dose axis. Under ogl() the mean it reads is the curve
+#                   before the group's deviation; see disp_curve().
 #
 # The two are near-observationally equivalent for a monotone curve, since mu is
 # then a monotone function of x. They separate under hormesis, or where a
@@ -557,8 +558,9 @@ make_disp_block <- function(model, spec, dpar, x_var, response = NULL,
 add_disp_block <- function(brms_bf, model, spec, family, x_var,
                            response = NULL) {
   dpar <- disp_dpar(family)
-  # The curve as it now stands, which is the one the fit uses. See
-  # make_disp_block() for what rebuilding it from the template discarded.
+  # The curve as it now stands, which is the one the fit uses, read before any
+  # ogl() deviation; see disp_curve(). See make_disp_block() for what
+  # rebuilding it from the template discarded.
   db <- make_disp_block(model, spec, dpar, x_var, response,
                         curve = disp_curve(brms_bf))
   if (spec$route == "A") {
@@ -587,8 +589,23 @@ add_disp_block <- function(brms_bf, model, spec, family, x_var,
 #' \code{"power"} --- a deviation that lowered a group's mean far below its
 #' data also shrank the Gamma shape until those data were tolerably likely
 #' again, which is a second optimum. On the \code{lum31} zinc arm in
-#' \code{example8} warmup carried cells into it from a start at zero, and every
-#' equation of a fit with a cell term failed the sampler screen.
+#' \code{example8} the deviations of several cells, each started at zero,
+#' reached it during warmup, and every equation of a fit with a cell term
+#' failed the sampler screen.
+#'
+#' With the curve before the deviation read instead, a group's deviation no
+#' longer changes the variance of its observations. At the power exponents
+#' fitted on that arm, a plate read at 0.6
+#' of the population gain has its variance overstated by a factor of 1.07 to
+#' 1.47.
+#'
+#' Every route that combines \code{ogl()} with a variance function reaches this
+#' function: a single-block fit, the joint two-block families, the growth
+#' component of \code{bnec_hurdle()}, which is a single-block fit, and a joint
+#' refit of a grouped fit in which every level is fitted one equation, whose
+#' level terms are applied after the dispersion block and leave \code{bnecmu}
+#' and the leading \code{ogl} as they are. A joint refit whose levels chose
+#' different equations refuses a group-level term.
 #'
 #' @return A \code{\link[base]{character}} string.
 #'

@@ -154,6 +154,18 @@
 #' identity-link note in \code{\link{bnec}}. Form 1) is an ordinary
 #' distributional formula and is valid under any link.
 #'
+#' Where the formula also has an \code{ogl()} term, \code{mu} in form 2) is the
+#' curve before the group-level deviation is applied, not the fitted mean of
+#' the group. The deviation therefore changes the mean of each group and not
+#' its dispersion. A deviation on a parameter, as in \code{(bot | group)} or
+#' \code{pgl(group)}, changes the curve itself, and so is included in the
+#' variance function as well. Read from the mean after an \code{ogl()}
+#' deviation, the
+#' variance function would give each group a second posterior mode at a very
+#' low mean wherever the variance rises more slowly than the mean, which for
+#' \code{"power"} on a \code{Gamma} response is \code{c1 > 1}. Markov chains
+#' that reach that mode during warmup do not leave it.
+#'
 #' A dispersion sub-model requires a family with a free dispersion parameter.
 #' For \code{poisson}, \code{bernoulli} and \code{binomial} the variance is a
 #' deterministic function of the mean and there is nothing to model;
