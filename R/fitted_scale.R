@@ -280,11 +280,9 @@ x_literal_shift <- function(arg) {
 #' @param kind The name of the function whose result is described.
 #' \code{"nec"}, \code{"ecx"} and \code{"nsec"} return an estimate on the
 #' predictor axis. \code{"ecnsec"} returns a percentage, and it is the
-#' \code{nsec} it is given that has a scale. \code{"ecnsec_hurdle"} is the
-#' same for a \code{\link{bayesnechurdlefit}}, whose method applies
-#' \code{xform} to the percentage rather than to \code{nsec}, so the
-#' \code{nsec} has to be supplied on the recorded scale; the advice names the
-#' \code{xform} to give \code{\link{nsec}} instead. \code{"curve_params"} reports
+#' \code{nsec} it is given that has a scale; every \code{ecnsec} method,
+#' \code{\link{bayesnechurdlefit}} included, applies \code{xform} to that
+#' \code{nsec}. \code{"curve_params"} reports
 #' two parameters on the predictor axis among others that are not.
 #' \code{"compare_estimates"} takes no \code{xform} at all.
 #'
@@ -292,12 +290,6 @@ x_literal_shift <- function(arg) {
 #' @noRd
 fitted_scale_text <- function(what, tr, kind) {
   inv <- x_inverse_text(tr$call)
-  # The inverse as an argument to nsec(), for the hurdle ecnsec() message.
-  nsec_with <- if (is.null(inv)) {
-    paste0("given the inverse of ", tr$label, " as xform")
-  } else {
-    paste0("given xform = ", inv)
-  }
   pass <- function(fun, purpose, lead = "Pass") {
     if (is.null(inv)) {
       paste0(lead, " the inverse of ", tr$label, " as xform to ", fun, " ",
@@ -323,13 +315,6 @@ fitted_scale_text <- function(what, tr, kind) {
       "to it, and nsec() returns its estimate on the transformed scale unless ",
       "given an xform. Where nsec is on the transformed scale, ",
       pass("ecnsec()", paste("to read it", recorded), lead = "pass")
-    ),
-    ecnsec_hurdle = paste0(
-      opening, ". ecnsec() on a hurdle pair reads nsec ", recorded,
-      " as supplied: its xform is applied to the percentage it returns, not ",
-      "to nsec. nsec() returns its estimate on the transformed scale unless ",
-      "given an xform, so supply nsec ", recorded, ", as nsec() returns it ",
-      nsec_with, "."
     ),
     compare_estimates = paste0(
       opening, ", so the estimates compare_estimates() compares, and their ",

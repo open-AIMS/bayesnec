@@ -711,3 +711,240 @@ test_that("exceedance() reads a growth estimate over the whole series (D44)", {
   expect_false(is.na(out$prob))
   expect_equal(out$prob_lower, out$prob_upper)
 })
+
+# ---- A hurdle pair over the whole series --------------------------------------
+
+# Both components are the packaged nec4param fit over every row, so every curve
+# spans the concentrations 0.0323 to 3.22 and no component's range stops short
+# of the other's. Sharing one set of draws is enough for what is asserted
+# here: the range each curve is read over, the point it is read at, and what
+# xform is applied to.
+hurdle_pair <- function(growth = nec4param, survival = nec4param) {
+  structure(list(growth = growth, survival = survival,
+                 data = nec4param$fit$data,
+                 formula = growth$bayesnecformula, y_var = "y",
+                 n_exposed = nrow(nec4param$fit$data), n_dead = 0L),
+            class = c("bayesnechurdlefit", "bnecfit"))
+}
+
+# ---- ecnsec() beyond the range, between grid points, and xform (#437) --------
+
+test_that("ecnsec refuses an nsec beyond the range on every hurdle curve", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # D33. The nearest grid point was read, so 1000 on a series ending at 3.22
+  # returned the effect at 3.22 for every curve, with nothing said.
+  obj <- hurdle_pair()
+  x <- obj$survival$fit$data$x
+  for (w in c("combined", "growth", "survival")) {
+    expect_error(ecnsec(obj, nsec = 1000, which = w),
+                 paste0("nsec = 1000 lies outside the observed range of the ",
+                        "predictor, 0.03235 to 3.221. ecnsec() reads the ", w,
+                        " curve over that range only."),
+                 fixed = TRUE)
+    expect_error(ecnsec(obj, nsec = 0.01, which = w),
+                 "lies outside the observed range of the predictor")
+    # A supplied x_range is the range refused against, and the advice is to
+    # widen it.
+    expect_error(ecnsec(obj, nsec = 2.5, x_range = c(0.1, 2), which = w),
+                 paste0("nsec = 2.5 lies outside the x_range supplied, 0.1 to ",
+                        "2. ecnsec() reads the ", w, " curve over that range ",
+                        "only. Supply an x_range that includes nsec."),
+                 fixed = TRUE)
+    expect_length(ecnsec(obj, nsec = 4, x_range = c(min(x), 5), which = w), 3)
+    # The ends are inside, including an end that has been through a
+    # transformation and its inverse, as a censored nsec() bound may have.
+    at_top <- ecnsec(obj, nsec = max(x), which = w)
+    expect_length(at_top, 3)
+    expect_equal(ecnsec(obj, nsec = exp(log(max(x))), which = w), at_top)
+  }
+  # A survival NSEC passed to the combined curve, the likely call, is inside.
+  s_nsec <- suppressWarnings(nsec(obj, which = "survival"))[["Q50"]]
+  expect_length(ecnsec(obj, nsec = s_nsec, which = "combined"), 3)
+  # One value: the curve is interpolated at one point.
+  expect_error(ecnsec(obj, nsec = c(1, 2)), "nsec")
+})
+
+test_that("ecnsec reads a hurdle curve between grid points, not at the nearer", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  obj <- hurdle_pair()
+  preds <- bayesnec:::hurdle_component_preds(obj, resolution = 5)
+  x <- preds$x
+  # Three tenths of the way from the second grid point to the third, so the
+  # nearer point is the second.
+  at <- x[2] + 0.3 * (x[3] - x[2])
+  for (w in c("combined", "growth", "survival")) {
+    p <- preds[[w]]
+    control <- preds$control[[w]]
+    got <- ecnsec(obj, nsec = at, resolution = 5, which = w, posterior = TRUE)
+    interpolated <- 0.7 * p[, 2] + 0.3 * p[, 3]
+    expect_equal(got, (control - interpolated) / control * 100,
+                 label = paste(w, "interpolated"))
+    nearer <- (control - p[, 2]) / control * 100
+    expect_false(isTRUE(all.equal(got, nearer)), label = paste(w, "nearer"))
+    # At a grid point the column itself is read.
+    expect_equal(ecnsec(obj, nsec = x[3], resolution = 5, which = w,
+                        posterior = TRUE),
+                 (control - p[, 3]) / control * 100)
+  }
+})
+
+test_that("ecnsec applies xform to nsec on a hurdle fit, with a warning", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # D33: xform was applied to the percentage returned. It is now applied to
+  # nsec, as on every other class, and a call supplying one is warned for one
+  # release.
+  obj <- hurdle_pair()
+  plain <- ecnsec(obj, nsec = 1.5)
+  expect_warning(via <- ecnsec(obj, nsec = log(1.5), xform = exp),
+                 class = "bayesnec_ecnsec_xform_changed")
+  expect_equal(via, plain)
+  expect_warning(ecnsec(obj, nsec = log(1.5), xform = exp),
+                 "now applied to nsec before the curve is read")
+  expect_no_warning(ecnsec(obj, nsec = 1.5))
+  expect_no_warning(ecnsec(obj, nsec = 1.5, xform = identity))
+  expect_error(ecnsec(obj, nsec = 1.5, xform = "log"),
+               "xform must be a function")
+  # The range is checked after xform, and the message gives both values.
+  expect_error(suppressWarnings(ecnsec(obj, nsec = log(1000), xform = exp)),
+               "nsec = 6.908, which xform takes to 1000, lies outside",
+               fixed = TRUE)
+})
+
+test_that("ecnsec on a crf(log(x)) hurdle pair reads log(v) under exp at v", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # The pair is relabelled, not refitted: the formula says crf(log(x)) and the
+  # stored fits are those of crf(x), so the grid and the draws are the same and
+  # only the value nsec arrives as differs. Before D33 the inverse had to be
+  # applied to nsec by hand.
+  logged <- nec4param
+  logged$bayesnecformula <- bnf(y ~ crf(log(x), model = "nec4param"))
+  h_log <- hurdle_pair(logged, logged)
+  h_plain <- hurdle_pair()
+  for (v in c(0.5, 1.5, 3)) {
+    for (w in c("combined", "growth", "survival")) {
+      expect_equal(
+        suppressWarnings(ecnsec(h_log, nsec = log(v), xform = exp, which = w)),
+        ecnsec(h_plain, nsec = v, which = w),
+        label = paste(w, "at", v)
+      )
+    }
+  }
+})
+
+# ---- The hurdle plot legend (#440) --------------------------------------------
+
+# The legend() and abline() calls a base plot of obj makes, read off the calls
+# rather than the device.
+hurdle_legend <- function(obj, ...) {
+  drawn <- list(legend = character(), v = list())
+  local_mocked_bindings(
+    legend = function(..., legend = NULL) {
+      drawn$legend <<- c(drawn$legend, legend)
+    },
+    abline = function(v = NULL, ...) drawn$v[[length(drawn$v) + 1L]] <<- v,
+    .package = "bayesnec"
+  )
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  suppressWarnings(plot(obj, ...))
+  drawn
+}
+
+# The survival component with the top tenth of its no-effect draws recorded as
+# beyond the top of the range, as a fit records a threshold above every
+# concentration tested.
+censored_survival_pair <- function() {
+  s <- nec4param
+  post <- s$ne_posterior
+  top <- as.numeric(post) >= stats::quantile(as.numeric(post), 0.9)
+  attr(s$ne_posterior, "censored") <- bayesnec:::censoring_record(
+    max(s$fit$data$x), min(s$fit$data$x), top, logical(length(post))
+  )
+  hurdle_pair(survival = s)
+}
+
+test_that("the hurdle legend reads low to high under a decreasing xform", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # The legend applied xform to the summary nec() returned, so under
+  # function(x) -x the interval was printed from high to low (#440).
+  obj <- hurdle_pair()
+  negate <- function(z) -z
+  ne <- nec(obj, xform = negate)
+  expect_lt(ne[[2]], ne[[3]])
+  drawn <- hurdle_legend(obj, xform = negate)
+  expect_identical(drawn$legend,
+                   paste0("N(S)EC: ", signif(ne[[1]], 2), " (",
+                          signif(ne[[2]], 2), "-", signif(ne[[3]], 2), ")"))
+  expect_equal(as.numeric(drawn$v[[1]]), as.numeric(ne))
+  # An identity xform draws what nec() returns.
+  plain <- nec(obj)
+  expect_identical(hurdle_legend(obj)$legend,
+                   paste0("N(S)EC: ", signif(plain[[1]], 2), " (",
+                          signif(plain[[2]], 2), "-", signif(plain[[3]], 2),
+                          ")"))
+})
+
+test_that("the hurdle legend marks a censored no-effect estimate", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # The legend formatted signif() values only, so a bound read as a number
+  # under any xform (#440).
+  obj <- censored_survival_pair()
+  top <- signif(max(obj$survival$fit$data$x), 2)
+  plain <- hurdle_legend(obj, which = "survival")$legend
+  expect_match(plain, paste0("->= ", top, ")"), fixed = TRUE)
+  # Under a decreasing xform the bound is the lower limit, marked <=.
+  negated <- hurdle_legend(obj, which = "survival",
+                           xform = function(z) -z)$legend
+  expect_match(negated, paste0("(<= ", -top, "-"), fixed = TRUE)
+  expect_no_match(negated, ">=", fixed = TRUE)
+  ne <- suppressWarnings(nec(obj, which = "survival", xform = function(z) -z))
+  expect_identical(negated, paste0(
+    "N(S)EC: ", bayesnec:::bound_prefix(ne, 1), signif(ne[[1]], 2), " (",
+    bayesnec:::bound_prefix(ne, 2), signif(ne[[2]], 2), "-",
+    bayesnec:::bound_prefix(ne, 3), signif(ne[[3]], 2), ")"
+  ))
+})
+
+# ---- The NSEC message on the combined no-effect estimate (#446) ---------------
+
+test_that("nec() says when the combined value includes NSEC draws", {
+  # The message read the "toxicity_estimate" attribute, which both nec()
+  # methods set to "nec" whatever the equation, so it was never printed.
+  # Decided now from each component's ne_type.
+  approx_msgs <- function(expr) {
+    msgs <- testthat::capture_messages(suppressWarnings(expr))
+    grep("combined value is approximate", msgs, value = TRUE)
+  }
+  expect_length(approx_msgs(nec(hurdle_pair())), 0)
+  # A model set holding a smooth equation, on either component.
+  for (pair in list(hurdle_pair(growth = manec_example),
+                    hurdle_pair(survival = manec_example))) {
+    expect_length(approx_msgs(nec(pair)), 1)
+    # Only the combined value is a combination.
+    expect_length(approx_msgs(nec(pair, which = "growth")), 0)
+    expect_length(approx_msgs(nec(pair, which = "survival")), 0)
+  }
+  # nec() refuses a single smooth equation, which has no nec parameter, so an
+  # NSEC component is stood in for by relabelling a threshold one. The rule is
+  # read off ne_type alone.
+  nsec_kind <- nec4param
+  nsec_kind$ne_type <- "NSEC"
+  expect_length(approx_msgs(nec(hurdle_pair(survival = nsec_kind))), 1)
+  # A component built before ne_type was recorded states no kind, and the
+  # message would assert one.
+  unrecorded <- nec4param
+  unrecorded$ne_type <- NULL
+  expect_length(approx_msgs(nec(hurdle_pair(unrecorded, unrecorded))), 0)
+})

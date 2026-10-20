@@ -28,7 +28,8 @@ predicted. It affects only \code{type = "range"}, where the denominator is
 the lowest response the curve predicts over the grid. The default of 200
 matches \code{\link{ecx}} and \code{\link{nsec}}.}
 
-\item{x_range}{A range of x values over which to consider extracting NSEC.}
+\item{x_range}{A range of x values over which to predict the curve. An
+\code{nsec} outside it is refused; see Details.}
 
 \item{type}{A \code{\link[base]{character}} vector, taking values of
 "absolute" (the default), "relative" or "range". See Details.}
@@ -76,6 +77,13 @@ in \code{crf(log(concentration))}, \code{\link{nsec}} returns its estimate
 on the transformed scale unless given an \code{xform}, so a message says so
 once per call where \code{xform} is left at its default, and names the
 \code{xform} that puts such a value on the recorded scale.
+
+The curve is read at \code{nsec} only inside the range it is predicted
+over: the observed range of the predictor, or \code{x_range} where one is
+supplied. An \code{nsec} outside that range once \code{xform} has been
+applied is refused with a message naming the range, rather than read off
+the curve extended past the data without a message. Supply an
+\code{x_range} that includes \code{nsec} to read the curve there.
 }
 \examples{
 \donttest{
