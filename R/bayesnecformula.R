@@ -1652,13 +1652,17 @@ group_term_exclusions <- function(formula, models) {
 #'
 #' @return A \code{\link[base]{list}} with elements \code{model}, the equations
 #' kept, in their order, and \code{excluded}, the rows to add to the exclusion
-#' record. Stops where no equation is kept.
+#' record. Stops where the rule leaves no equation.
 #'
 #' @noRd
 check_group_terms <- function(model, formula, report = TRUE) {
   excluded <- group_term_exclusions(formula, model)
   kept <- setdiff(model, excluded$model)
-  if (length(kept) == 0) {
+  # Refused only where this rule emptied the set. A set that check_models()
+  # has already emptied is passed through, so that the refusal the caller
+  # raises for it, which names the family or the predictor, is the one
+  # reported.
+  if (length(kept) == 0 && nrow(excluded) > 0) {
     stop(group_terms_refusal(excluded), call. = FALSE)
   }
   if (report && nrow(excluded) > 0) {

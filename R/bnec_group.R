@@ -272,7 +272,7 @@ bnec_group <- function(formula, data, group_var, family = NULL,
     for (level in levs) {
       level_excluded <- group_term_exclusions(formula, level_models[[level]])
       level_kept <- setdiff(level_models[[level]], level_excluded$model)
-      if (length(level_kept) == 0) {
+      if (length(level_kept) == 0 && nrow(level_excluded) > 0) {
         stop("At level \"", level, "\" of \"", group_var, "\": ",
              group_terms_refusal(level_excluded), call. = FALSE)
       }
