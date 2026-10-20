@@ -684,3 +684,35 @@ test_that("the hurdle legend marks a censored no-effect estimate", {
     bayesnec:::bound_prefix(ne, 3), signif(ne[[3]], 2), ")"
   ))
 })
+
+# ---- The NSEC message on the combined no-effect estimate (#446) ---------------
+
+test_that("nec() says when the combined value includes NSEC draws", {
+  # The message read the "toxicity_estimate" attribute, which both nec()
+  # methods set to "nec" whatever the equation, so it was never printed.
+  # Decided now from each component's ne_type.
+  approx_msgs <- function(expr) {
+    msgs <- testthat::capture_messages(suppressWarnings(expr))
+    grep("combined value is approximate", msgs, value = TRUE)
+  }
+  expect_length(approx_msgs(nec(hurdle_pair())), 0)
+  # A model set holding a smooth equation, on either component.
+  for (pair in list(hurdle_pair(growth = manec_example),
+                    hurdle_pair(survival = manec_example))) {
+    expect_length(approx_msgs(nec(pair)), 1)
+    # Only the combined value is a combination.
+    expect_length(approx_msgs(nec(pair, which = "growth")), 0)
+    expect_length(approx_msgs(nec(pair, which = "survival")), 0)
+  }
+  # nec() refuses a single smooth equation, which has no nec parameter, so an
+  # NSEC component is stood in for by relabelling a threshold one. The rule is
+  # read off ne_type alone.
+  nsec_kind <- nec4param
+  nsec_kind$ne_type <- "NSEC"
+  expect_length(approx_msgs(nec(hurdle_pair(survival = nsec_kind))), 1)
+  # A component built before ne_type was recorded states no kind, and the
+  # message would assert one.
+  unrecorded <- nec4param
+  unrecorded$ne_type <- NULL
+  expect_length(approx_msgs(nec(hurdle_pair(unrecorded, unrecorded))), 0)
+})

@@ -1866,6 +1866,15 @@
 
 ## Bug fixes
 
+- `nec()` on a `bayesnechurdlefit` prints the message its help page
+  describes, that the combined value is approximate, where either component
+  contributes NSEC draws. The message was decided from the
+  `"toxicity_estimate"` attribute of each component's `nec()`, which both
+  `nec()` methods set to `"nec"` whatever the equation, so it was never
+  printed. The kind of each component's estimate is now read from the type
+  recorded when the component was fitted, which `summary()` prints beside each
+  row. It is printed for the combined value only. A component built by a
+  version that recorded no type raises nothing (#446).
 - A nested or interaction grouping inside `ogl()` or `pgl()` is now fitted as
   written. `ogl(a/b)` fits one deviation per level of `a` and a further one
   per level of `b` within each level of `a`, as `(1 | a/b)` does in `brms`,

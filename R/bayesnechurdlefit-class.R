@@ -228,11 +228,16 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
     combined <- combine_censored_min(g_post, s_post, n)
     out <- combined$values
     cens <- combined$censored
-    g_type <- attr(without_censored_warning(nec(object$growth)),
-                   "toxicity_estimate")
-    s_type <- attr(without_censored_warning(nec(object$survival)),
-                   "toxicity_estimate")
-    if (!identical(g_type, "nec") || !identical(s_type, "nec")) {
+    # The kind of each component's estimate is read from ne_label(), the
+    # ne_type recorded when the component was expanded. The
+    # "toxicity_estimate" attribute read here before names the estimator, and
+    # both nec() methods set it to "nec" whatever the equation, so the message
+    # was never raised (#446). It is raised for a label that names NSEC draws
+    # rather than for any label other than "NEC": a component built by a
+    # version that recorded no ne_type has the label "no-effect estimate", and
+    # the message would then state a kind of estimate that nothing records.
+    kinds <- c(ne_label(object$growth), ne_label(object$survival))
+    if (any(kinds %in% c("NSEC", "N(S)EC"))) {
       message("At least one component is an ecx-type (NSEC) estimate, so the",
               " combined value is approximate. See ?nec.bayesnechurdlefit.")
     }
