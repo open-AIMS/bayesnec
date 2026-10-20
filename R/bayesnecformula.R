@@ -78,13 +78,14 @@
 #' \code{model = "nec"} in \code{crf}, the term \code{(bot | group_variable)}
 #' will be dropped in models where that parameter does not exist.
 #'
-#' The grouping inside \code{ogl()} and \code{pgl()} is written as it would
-#' be on the right of the bar in a \pkg{brms} group-level term, and is passed
-#' to \pkg{brms} as written. \code{ogl(a/b)} fits one deviation per level of
-#' \code{a} and a further one per level of \code{b} within each level of
-#' \code{a}, as \code{(1 | a/b)} does, and \code{ogl(a:b)} fits one per
+#' The grouping inside \code{ogl()} and \code{pgl()} uses the formula operators
+#' accepted on the right of the bar in a \pkg{brms} group-level term. The terms
+#' are expanded before they are passed to \pkg{brms}. \code{ogl(a/b)} fits one
+#' deviation per level of \code{a} and a further one per level of \code{b}
+#' within each level of \code{a}, as \code{(1 | a/b)} does. \code{ogl(a:b)} fits one per
 #' combination of the two. \code{ogl(a + b)} is two separate terms,
 #' \code{(1 | a) + (1 | b)}, the same as \code{ogl(a) + ogl(b)}.
+#' \code{ogl(a*b)} also includes \code{(1 | a:b)}.
 #'
 #' \bold{The scale a group-level deviation is applied on}
 #'
@@ -975,11 +976,12 @@ clean_bar_glef <- function(x) {
 #' \code{ogl()} or \code{pgl()} calls, as split from the right-hand side of a
 #' \code{\link{bayesnecformula}}.
 #'
-#' @details Each argument is split on a top-level \code{+}, so that
+#' @details R's formula terms expand each argument, so that
 #' \code{ogl(a + b)} remains the two terms \code{(1 | a) + (1 | b)}. A nesting
-#' operator is expanded by the rule \pkg{brms} and \pkg{lme4} apply,
+#' operator is expanded by the rule \pkg{brms} applies,
 #' \code{a/b} to \code{a} and \code{a:b}, and \code{a/b/c} to \code{a},
-#' \code{a:b} and \code{a:b:c}. An interaction \code{a:b} is kept as written.
+#' \code{a:b} and \code{a:b:c}. The same expansion also resolves \code{a*b}
+#' to \code{a}, \code{b} and \code{a:b}, so these terms can be deduplicated.
 #'
 #' The nesting is expanded here rather than passed to \pkg{brms} as
 #' \code{(1 | a/b)} so that duplicates can be removed across terms.
@@ -1001,28 +1003,14 @@ clean_bar_glef <- function(x) {
 #'
 #' @noRd
 gl_term_groups <- function(str_calls) {
-  expand <- function(e) {
-    if (is.call(e) && identical(e[[1]], as.name("("))) {
-      return(expand(e[[2]]))
-    }
-    if (is.call(e) && identical(e[[1]], as.name("+")) && length(e) == 3) {
-      return(c(expand(e[[2]]), expand(e[[3]])))
-    }
-    if (is.call(e) && identical(e[[1]], as.name("/")) && length(e) == 3) {
-      left <- expand(e[[2]])
-      # The nested term interacts every variable on the left with each term
-      # on the right, which is how R's formula algebra reads (a + b)/c as
-      # a + b + a:b:c rather than a + b + b:c.
-      left_int <- paste(unique(unlist(strsplit(left, ":", fixed = TRUE))),
-                        collapse = ":")
-      return(c(left, paste(left_int, expand(e[[3]]), sep = ":")))
-    }
-    gsub(" ", "", deparse1(e), fixed = TRUE)
-  }
+  # Use the same formula algebra that brms applies to a bar term. Keeping an
+  # expression such as a*b intact would hide its a term from deduplication.
   groups <- lapply(str_calls, function(s) {
-    lapply(as.list(str2lang(s))[-1], expand)
+    lapply(as.list(str2lang(s))[-1], function(arg) {
+      attr(stats::terms(stats::as.formula(call("~", arg))), "term.labels")
+    })
   })
-  unique(unlist(groups))
+  unique(unlist(groups, use.names = FALSE))
 }
 
 #' Apply a group-level deviation to one parameter multiplicatively
