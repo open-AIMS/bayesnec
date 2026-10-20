@@ -337,3 +337,123 @@ test_that("a bayesmanecfit saved with the old weighted cache still works", {
     expect_s3_class(autoplot(obj), "ggplot")
   }
 })
+
+
+# ---- #470, the grid of an equation that left out a group-level term ----------
+
+test_that("the grid is built from the equation's own terms (#470)", {
+  # ecx4param has no nec, so a fit of it under (nec | plate) stores data
+  # without plate, and the formula as written cannot build a frame from them.
+  written <- bnf(y ~ crf(x, model = "ecx4param") + (nec | plate))
+  expect_error(prediction_grid(fit2$fit, written),
+               "\"plate\" not found in dataset", fixed = TRUE)
+  expect_identical(
+    prediction_grid(fit2$fit, equation_formula(written, "ecx4param")),
+    prediction_grid(fit2$fit, fit2$bayesnecformula)
+  )
+})
+
+test_that("a fit whose terms were all kept gives the same grid (#470)", {
+  # nec4param has both nec and bot, so neither term is left out: the formula
+  # reaching the grid is the object passed in, and the grid is the one built
+  # with no group-level term at all.
+  grouped <- fit1
+  grouped$fit$data$plate <- factor(rep(letters[1:4],
+                                       length.out = nrow(fit1$fit$data)))
+  kept <- bnf(y ~ crf(x, model = "nec4param") + (nec | plate) + (bot | plate))
+  expect_identical(equation_formula(kept, "nec4param"), kept)
+  expect_identical(prediction_grid(grouped$fit, kept),
+                   prediction_grid(fit1$fit, fit1$bayesnecformula))
+})
+
+test_that("expand_nec() reduces a formula given as written (#470)", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # bnec() passes the formula as written for a single equation and for the
+  # one left of a set, so expand_nec() reduces it to the equation's own.
+  written <- bnf(y ~ crf(x, model = "ecx4param") + (nec | plate))
+  out <- expand_nec(fit2, written, model = "ecx4param", resolution = 20) |>
+    suppressWarnings()
+  ref <- expand_nec(fit2, fit2$bayesnecformula, model = "ecx4param",
+                    resolution = 20) |>
+    suppressWarnings()
+  expect_equal(out$pred_vals, ref$pred_vals)
+  expect_equal(out$ec50, ref$ec50)
+})
+
+# The smallest set that reproduces #470: ecxexp has neither nec nor ec50, so
+# it leaves out both terms and stores no g, and ecxll3 keeps (ec50 | g). One
+# chain of 200 iterations, which is enough to sample and to build the grid;
+# nothing here reads a posterior summary. The data and seed are those of the
+# reproduction recorded on the issue.
+gamma_group_set <- local({
+  cached <- NULL
+  function() {
+    if (is.null(cached)) {
+      set.seed(1)
+      d <- data.frame(x = rep(seq(0.1, 10, length.out = 20), 3),
+                      g = factor(rep(c("a", "b", "c"), each = 20)))
+      d$y <- stats::rgamma(60, shape = 20,
+                           rate = 20 / (5 * exp(-0.3 * d$x)))
+      fit <- suppressWarnings(suppressMessages(
+        bnec(y ~ crf(x, c("ecxexp", "ecxll3")) + (nec | g) + (ec50 | g),
+             data = d, family = Gamma(link = "identity"), iter = 200,
+             warmup = 100, chains = 1, refresh = 0, seed = 1)
+      ))
+      cached <<- list(data = d, fit = fit)
+    }
+    cached
+  }
+})
+
+test_that("an equation that leaves out every group-level term fits (#470)", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  fit <- gamma_group_set()$fit
+  expect_s3_class(fit, "bayesmanecfit")
+  expect_setequal(fit$success_models, c("ecxexp", "ecxll3"))
+  expect_length(failed_models(fit), 0)
+  ecxexp <- fit$mod_fits$ecxexp
+  expect_false("g" %in% names(ecxexp$fit$data))
+  expect_identical(labels(terms(ecxexp$bayesnecformula)),
+                   "crf(x, model = \"ecxexp\")")
+  expect_setequal(labels(terms(ecxexp$requested_formula)),
+                  c("nec | g", "ec50 | g", "crf(x, model = \"ecxexp\")"))
+  # The objects made from the set build their frames from the same pair.
+  single <- suppressWarnings(suppressMessages(pull_out(fit, "ecxexp")))
+  expect_s3_class(single, "bayesnecfit")
+  expect_named(bnec_newdata(single), "x")
+})
+
+test_that("the other equation of the set keeps its term on ec50 (#470)", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  ll3 <- gamma_group_set()$fit$mod_fits$ecxll3
+  expect_match(deparse1(ll3$fit$formula$pforms$ec50), "(1 | g)", fixed = TRUE)
+  expect_true("g" %in% names(ll3$fit$data))
+  expect_setequal(labels(terms(ll3$bayesnecformula)),
+                  c("ec50 | g", "crf(x, model = \"ecxll3\")"))
+})
+
+test_that("bnec() returns a single such equation rather than failing (#470)", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # The reproduction on the issue, which sampled and then failed on the grid.
+  # The equation sampled for the set is returned in place of a second fit,
+  # because what is tested is the route bnec() takes after sampling.
+  fx <- gamma_group_set()
+  local_mocked_bindings(
+    fit_bayesnec = function(...) fx$fit$mod_fits$ecxexp,
+    .package = "bayesnec"
+  )
+  single <- suppressWarnings(suppressMessages(
+    bnec(y ~ crf(x, "ecxexp") + (nec | g) + (ec50 | g), data = fx$data,
+         family = Gamma(link = "identity"))
+  ))
+  expect_s3_class(single, "bayesnecfit")
+  expect_identical(dim(single$pred_vals$data), c(1000L, 4L))
+})

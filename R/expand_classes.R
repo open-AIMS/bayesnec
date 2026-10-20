@@ -32,6 +32,16 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   extract_params <- extract_par_order()
   extracted_params <- lapply(extract_params, extract_pars, fit)
   names(extracted_params) <- gsub("^nec$", "ne", extract_params)
+  # Reduced here as well as stored reduced by fit_bayesnec(), because bnec()
+  # and amend() pass the formula as written rather than the stored one: for a
+  # single equation, and for the one equation left of a set. The grid is built
+  # from this formula and fit$data, which hold only the variables the equation
+  # fitted (#470). Where no term was left out the formula is returned as the
+  # same object, so the grid is the one built before.
+  if (is.character(object$model) && length(object$model) == 1 &&
+        !is.na(object$model)) {
+    formula <- equation_formula(formula, object$model)
+  }
   grid <- prediction_grid(fit, formula, x_range = x_range,
                           resolution = resolution)
   new_dat <- grid$newdata

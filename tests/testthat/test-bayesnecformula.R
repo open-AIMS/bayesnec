@@ -379,3 +379,61 @@ test_that("brms reads the expanded ogl() terms as the nested grouping", {
                               gp$group != ""])
   expect_setequal(groups, c("a", "a:b"))
 })
+
+
+# ---- #470, the formula of one equation ---------------------------------------
+
+test_that("terms naming a parameter the equation lacks are left out (#470)", {
+  f <- bnf(y ~ crf(x, "all") + ogl(plate) + (nec + ec50 | g) + (top | h) +
+             disp(~x))
+  terms_for <- function(model) {
+    labels(terms(equation_formula(single_model_formula(f, model), model)))
+  }
+  # ecxexp has neither nec nor ec50, so the whole term goes; ecxll3 has ec50
+  # and nec3param has nec, so each keeps its own half of it. ogl(), disp() and
+  # the term on top apply to every equation and are kept.
+  shared <- c("ogl(plate)", "top | h", "disp(~x)")
+  expect_setequal(terms_for("ecxexp"),
+                  c(shared, "crf(x, model = \"ecxexp\")"))
+  expect_setequal(terms_for("ecxll3"),
+                  c(shared, "ec50 | g", "crf(x, model = \"ecxll3\")"))
+  expect_setequal(terms_for("nec3param"),
+                  c(shared, "nec | g", "crf(x, model = \"nec3param\")"))
+})
+
+test_that("a formula whose terms all apply is returned unchanged (#470)", {
+  # The same object, not an equal one, so a fit whose terms were all kept
+  # stores exactly the formula it stored before.
+  f <- single_model_formula(
+    bnf(y ~ crf(x, "nec3param") + (nec | g) + (top | g) + pgl(h)), "nec3param"
+  )
+  expect_identical(equation_formula(f, "nec3param"), f)
+  f0 <- single_model_formula(bnf(y ~ crf(x, "ecxexp")), "ecxexp")
+  expect_identical(equation_formula(f0, "ecxexp"), f0)
+})
+
+test_that("a reduced formula keeps its class, environment and marker (#470)", {
+  # The internal truncation marker is what is_factorised_count_formula()
+  # reads, so a hurdle growth formula that lost a term must keep it.
+  f <- single_model_formula(bnf(y ~ crf(x, "ecxexp") + (nec | g)), "ecxexp")
+  attr(f, "bayesnec_internal_truncation") <- TRUE
+  out <- equation_formula(f, "ecxexp")
+  expect_s3_class(out, "bayesnecformula")
+  expect_identical(environment(out), environment(f))
+  expect_true(attr(out, "bayesnec_internal_truncation"))
+  expect_identical(labels(terms(out)), "crf(x, model = \"ecxexp\")")
+})
+
+test_that("a reduced formula builds a frame without the grouping (#470)", {
+  # The columns brms stores for an ecxexp fit of this formula: g is absent,
+  # because neither term on it reached the brms formula.
+  d <- data.frame(x = seq(0.1, 10, length.out = 6), y = seq(6, 1))
+  f <- single_model_formula(
+    bnf(y ~ crf(x, "ecxexp") + (nec | g) + (ec50 | g)), "ecxexp"
+  )
+  expect_error(model.frame(f, data = d), "\"g\" not found in dataset",
+               fixed = TRUE)
+  mf <- model.frame(equation_formula(f, "ecxexp"), data = d)
+  expect_identical(unname(attr(mf, "bnec_pop")["x_var"]), "x")
+  expect_true(all(is.na(attr(mf, "bnec_group"))))
+})

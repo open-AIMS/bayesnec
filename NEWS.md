@@ -1818,6 +1818,24 @@
 
 ## Bug fixes
 
+- An equation from which every `(par | group)` term on a grouping variable is
+  dropped, because each term names a parameter the equation does not have, is
+  now fitted and returned. `ecxexp` under `(nec | g) + (ec50 | g)` sampled and
+  then stopped with "Group-level variable(s) "g" not found in dataset" when
+  the prediction grid was built. `brms` stores only the variables of the
+  formula it fitted, so `g` was absent from the stored data while the stored
+  `bayesnecformula` still named it. In a model set the error ended the whole
+  `bnec()` call after every equation had sampled. The formula stored on each
+  fitted equation, which `formula()` returns, is now the one that equation was
+  fitted with, and the formula as written is stored beside it as
+  `requested_formula` where the two differ. A fit whose terms all apply to its
+  equation stores the formula it stored before, and its grid and estimates are
+  unchanged. `amend()` fits an added equation from the formula as written and
+  from the stored data of an equation that holds every grouping variable, and
+  refuses before fitting where no equation in the set holds them. A parameter
+  the equation lacks, named in two terms as in `(nec | g) + (nec | h)`, is now
+  dropped from both; the second term previously failed the formula build
+  before sampling (#470).
 - A nested or interaction grouping inside `ogl()` or `pgl()` is now fitted as
   written. `ogl(a/b)` fits one deviation per level of `a` and a further one
   per level of `b` within each level of `a`, as `(1 | a/b)` does in `brms`,

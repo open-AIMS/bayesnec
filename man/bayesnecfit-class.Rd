@@ -29,7 +29,13 @@ the fitted model.}
 to fit the model.}
 
 \item{\code{bayesnecformula}}{An object of class \code{\link{bayesnecformula}} and
-\code{\link[stats]{formula}}.}
+\code{\link[stats]{formula}}: the formula the equation was fitted with. A
+\code{(par | group)} term naming a parameter the equation does not have is
+left out of it, as it is left out of the fit.}
+
+\item{\code{requested_formula}}{The formula as written, with the equation named in
+\code{crf()}. Present only where a \code{(par | group)} term was left out of
+\code{bayesnecformula}; \code{\link{amend}} fits a new equation from it.}
 
 \item{\code{retained_data}}{A \code{\link[base]{data.frame}} containing columns of
 the data supplied to \code{\link{bnec}} that \code{brm()} omitted from its

@@ -180,8 +180,24 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   msg_tag <- family$family
   message(paste0("Response variable modelled as a ", model, " model using a ",
                  msg_tag, " distribution."))
+  # The formula stored is the equation's own, without the (par | group) terms
+  # naming a parameter it lacks. Every later model frame on this fit is built
+  # from the stored formula and fit$data, and brms limits fit$data to the
+  # variables of the formula it fitted. Stored as written, a grouping variable
+  # that only left-out terms name is absent from fit$data, and the frame fails
+  # in check_formula(): after sampling, on the prediction grid, and in plot(),
+  # autoplot(), check_fit() and bnec_newdata() on the returned object. Building
+  # those frames from the data the user supplied was the alternative, and was
+  # rejected because those data are not stored on the fit, so every one of
+  # those functions would need them passed back in. The formula as written is
+  # kept beside it, only where a term was left out, because amend() fits a new
+  # equation from it. See #470.
+  fitted_formula <- equation_formula(formula, model)
   out <- list(fit = fit, model = model, init = all_args$init,
-              bayesnecformula = formula)
+              bayesnecformula = fitted_formula)
+  if (!identical(fitted_formula, formula)) {
+    out$requested_formula <- formula
+  }
   allot_class(out, "prebayesnecfit")
 }
 

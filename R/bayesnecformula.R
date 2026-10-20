@@ -76,7 +76,10 @@
 #' or model suite. For example, the parameter \code{bot} exists in model
 #' \code{"nec4param"} but not in \code{"nec3param"}, so if the user specifies
 #' \code{model = "nec"} in \code{crf}, the term \code{(bot | group_variable)}
-#' will be dropped in models where that parameter does not exist.
+#' will be dropped in models where that parameter does not exist. The formula
+#' stored on each fitted equation, which \code{\link{formula}} returns, is the
+#' one that equation was fitted with, so it does not hold the dropped term;
+#' the formula as written is kept beside it as \code{requested_formula}.
 #'
 #' The grouping inside \code{ogl()} and \code{pgl()} uses the formula operators
 #' accepted on the right of the bar in a \pkg{brms} group-level term. The terms
@@ -964,6 +967,80 @@ single_model_formula <- function(formula, model) {
   bayesnecformula(formula)
 }
 
+#' The formula of one equation, without the group-level terms it does not fit
+#'
+#' @param formula An object of class \code{\link{bayesnecformula}}.
+#' @param model A \code{\link[base]{character}} string naming the equation.
+#'
+#' @details A \code{(par | group)} term naming a parameter the equation does
+#' not have is left out when the equation is fitted:
+#' \code{add_formula_glef()} reports it and builds the \pkg{brms} formula
+#' without it. The data \pkg{brms} stores on the fit hold only the variables of
+#' that formula, so where every term on a grouping variable is left out, the
+#' variable is absent from them. A model frame built from the formula as
+#' written and the stored data then fails in \code{check_formula()}, which
+#' looks every grouping variable up: \code{ecxexp}, which has neither
+#' \code{nec} nor \code{ec50}, sampled under \code{(nec | g) + (ec50 | g)} and
+#' was then discarded on the prediction grid with "Group-level variable(s)
+#' "g" not found in dataset". See #470.
+#'
+#' The parameters of a term are read separately, as \code{add_formula_glef()}
+#' reads them, so \code{(nec + ec50 | g)} becomes \code{(ec50 | g)} for
+#' \code{ecxll3} and is removed for \code{ecxexp}. \code{ogl()} and
+#' \code{pgl()} apply to every equation and are kept, as is \code{disp()}.
+#'
+#' The formula is returned unchanged, as the same object, where nothing is
+#' left out, so the formula stored on a fit whose terms were all kept is the one
+#' stored before #470. Otherwise only the right-hand side is replaced, which
+#' keeps the class, the environment and the internal truncation attribute
+#' \code{is_factorised_count_formula()} reads.
+#'
+#' @return An object of class \code{\link{bayesnecformula}}.
+#'
+#' @noRd
+equation_formula <- function(formula, model) {
+  model_pars <- names(get(paste0("bf_", model))[[2]])
+  # The terms are read off the call rather than split from deparsed text, so a
+  # term is replaced whole and the order the others were written in is kept.
+  rhs_call <- formula[[3]]
+  rhs_terms <- list()
+  while (is.call(rhs_call) && length(rhs_call) == 3 &&
+           identical(rhs_call[[1]], quote(`+`))) {
+    rhs_terms <- c(list(rhs_call[[3]]), rhs_terms)
+    rhs_call <- rhs_call[[2]]
+  }
+  rhs_terms <- c(list(rhs_call), rhs_terms)
+  changed <- FALSE
+  kept <- list()
+  for (term in rhs_terms) {
+    is_bar <- is.call(term) && identical(term[[1]], quote(`(`)) &&
+      is.call(term[[2]]) && identical(term[[2]][[1]], quote(`|`))
+    if (!is_bar) {
+      kept <- c(kept, list(term))
+      next
+    }
+    pars <- trimws(strsplit(deparse1(term[[2]][[2]]), " + ",
+                            fixed = TRUE)[[1]])
+    has_par <- pars %in% model_pars
+    if (all(has_par)) {
+      kept <- c(kept, list(term))
+      next
+    }
+    changed <- TRUE
+    if (any(has_par)) {
+      kept <- c(kept, list(str2lang(paste0(
+        "(", paste0(pars[has_par], collapse = " + "), " | ",
+        deparse1(term[[2]][[3]]), ")"
+      ))))
+    }
+  }
+  if (!changed) {
+    return(formula)
+  }
+  formula[[3]] <- Reduce(function(a, b) call("+", a, b), kept)
+  formula
+}
+
 #' @noRd
 clean_bar_glef <- function(x) {
   x <- strsplit(x, split = " | ", fixed = TRUE)[[1]]
@@ -1177,7 +1254,11 @@ add_formula_glef <- function(model, brmform, bnecform, data,
       to_flag <- pars[!pars %in% model_pars]
       message("The parameter(s) ", paste0("\"", to_flag, "\"", collapse = "; "),
               " are not valid parameters in ", model, ". Ignoring...")
-      split_str_calls <- split_str_calls[-match(to_flag, pars)]
+      # Subset by membership rather than by match(), which returns the first
+      # position only: a parameter the equation lacks, named in two terms as in
+      # (nec | g) + (nec | h), kept its second term, whose sub-formula does not
+      # exist, and the formula build failed in rhs() before sampling. #470.
+      split_str_calls <- split_str_calls[pars %in% model_pars]
       pars <- sapply(split_str_calls, `[[`, 1)
       vars <- sapply(split_str_calls, `[[`, 2)
     }

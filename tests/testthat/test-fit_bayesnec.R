@@ -324,3 +324,61 @@ test_that("an arithmetic trials term is not written over", {
                    binomial(link = "identity"))
   expect_identical(seen$n, d$n)
 })
+
+
+# ---- #470, the formula stored on the fit -------------------------------------
+
+# fit_bayesnec() with brm() mocked, returning the fit object as well as the
+# brms formula brm() was handed. The stored formula is what every later model
+# frame on the fit is built from, and the brms formula is what was fitted, so
+# the two are asserted together.
+grouped_fit_call <- function(formula, model) {
+  seen <- new.env(parent = emptyenv())
+  local_mocked_bindings(
+    brm = function(formula, data, ...) {
+      seen$formula <- formula
+      structure(list(), class = "brmsfit")
+    },
+    are_chains_correct = function(...) TRUE,
+    .package = "bayesnec"
+  )
+  set.seed(1)
+  d <- data.frame(x = rep(c(0.1, 1, 3, 10), each = 6),
+                  g = factor(rep(c("a", "b", "c"), 8)))
+  d$y <- 5 * exp(-0.3 * d$x) * stats::rgamma(24, shape = 20, rate = 20)
+  out <- suppressMessages(suppressWarnings(
+    bayesnec:::fit_bayesnec(
+      formula = bnf(formula), data = d, model = model,
+      brm_args = list(family = Gamma(link = "identity"), init = list(list()),
+                      chains = 1, iter = 10)
+    )
+  ))
+  list(out = out, brm_formula = seen$formula)
+}
+
+test_that("the fit stores the formula its equation was fitted with (#470)", {
+  f <- y ~ crf(x, "ecxll3") + (nec | g) + (ec50 | g)
+  res <- grouped_fit_call(f, "ecxll3")
+  expect_setequal(labels(terms(res$out$bayesnecformula)),
+                  c("ec50 | g", "crf(x, model = \"ecxll3\")"))
+  expect_identical(res$out$requested_formula,
+                   single_model_formula(bnf(f), "ecxll3"))
+  expect_match(deparse1(res$brm_formula$pforms$ec50), "(1 | g)", fixed = TRUE)
+  expect_null(res$brm_formula$pforms$nec)
+  res <- grouped_fit_call(y ~ crf(x, "ecxexp") + (nec | g) + (ec50 | g),
+                          "ecxexp")
+  expect_identical(labels(terms(res$out$bayesnecformula)),
+                   "crf(x, model = \"ecxexp\")")
+  expect_false(any(grepl("|", vapply(res$brm_formula$pforms, deparse1,
+                                     character(1)), fixed = TRUE)))
+})
+
+test_that("a fit whose terms all apply stores the formula as before (#470)", {
+  # The formula and the element names are those of every earlier version, so
+  # nothing reading a fit of this kind sees a difference.
+  f <- y ~ crf(x, "nec3param") + (nec | g) + (top | g)
+  res <- grouped_fit_call(f, "nec3param")
+  expect_identical(res$out$bayesnecformula,
+                   single_model_formula(bnf(f), "nec3param"))
+  expect_identical(names(res$out), c("fit", "model", "init", "bayesnecformula"))
+})

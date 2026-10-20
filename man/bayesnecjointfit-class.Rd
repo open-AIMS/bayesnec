@@ -94,7 +94,9 @@ that level, from the grouped fit. A level's own weights sum to one, so this
 is the share of that level's evidence behind the equation used there.}
 
 \item{\code{bayesnecformula}}{The \code{\link{bayesnecformula}} the fit was built
-from, carrying the equation of the first level.}
+from, naming the equation of the first level. A \code{(par | group)} term
+naming a parameter that equation does not have is left out of it, as it is
+left out of the fit.}
 
 \item{\code{init}}{The initial values the fit was given.}
 
