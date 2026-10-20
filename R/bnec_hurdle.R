@@ -247,6 +247,15 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
   if (!is.null(model_survival)) {
     surv_formula <- swap_crf_model(surv_formula, model_survival)
   }
+  # Each component's bnec() call excludes the equations that keep no
+  # group-level term on a grouping variable, and records them. A component
+  # with no equation left is refused here, before either is fitted: the
+  # survival call would otherwise refuse only after the growth component had
+  # compiled and sampled. Nothing is reported here, so the report is made once,
+  # by the component call that makes the exclusion. See #470.
+  check_group_terms(get_model_from_formula(formula), formula, report = FALSE)
+  check_group_terms(get_model_from_formula(surv_formula), surv_formula,
+                    report = FALSE)
 
   if (is.null(family_growth)) {
     # Chosen from the non-zero subset, not the whole response: the zeros would

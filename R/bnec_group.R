@@ -259,6 +259,30 @@ bnec_group <- function(formula, data, group_var, family = NULL,
                      mod_dat[grp == level, , drop = FALSE])
       )
     }), levs)
+    # An equation that keeps no group-level term on a grouping variable is
+    # excluded for every level here, before any level is fitted, and reported
+    # once. Left to the inner bnec() calls, a level whose whole set is
+    # excluded -- a level at a bound fits ecxflat alone, which has no nec --
+    # would be refused only after the levels before it had compiled and
+    # sampled, and the report would be printed once per level. Each level's
+    # bnec() call still makes the exclusion and records it; the private
+    # marker below silences only its report. Placed before the flatness
+    # report, which reads the set each level will fit. See #470.
+    group_excluded <- NULL
+    for (level in levs) {
+      level_excluded <- group_term_exclusions(formula, level_models[[level]])
+      level_kept <- setdiff(level_models[[level]], level_excluded$model)
+      if (length(level_kept) == 0) {
+        stop("At level \"", level, "\" of \"", group_var, "\": ",
+             group_terms_refusal(level_excluded), call. = FALSE)
+      }
+      level_models[[level]] <- level_kept
+      group_excluded <- rbind(group_excluded, level_excluded)
+    }
+    if (!is.null(group_excluded) && nrow(group_excluded) > 0) {
+      message(group_terms_report(unique(group_excluded)))
+    }
+    dots[[".bayesnec_group_terms_reported"]] <- TRUE
     level_survival <- suppressMessages(
       check_model_survival(dots_arg(dots, "model_survival"), family, mod_dat)
     )

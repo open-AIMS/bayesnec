@@ -379,3 +379,55 @@ test_that("brms reads the expanded ogl() terms as the nested grouping", {
                               gp$group != ""])
   expect_setequal(groups, c("a", "a:b"))
 })
+
+
+# ---- #470, equations that keep no group-level term on a variable -------------
+
+test_that("an equation with no term on a grouping variable is excluded (#470)", {
+  # ecxexp has neither nec nor ec50, so both terms on batch are left out of it
+  # and it would be fitted as one curve pooled over the batches.
+  f <- bnf(y ~ crf(x, "all") + (nec | batch) + (ec50 | batch))
+  out <- group_term_exclusions(f, c("nec3param", "ecxll3", "ecxexp"))
+  expect_identical(out$model, "ecxexp")
+  expect_match(out$reason, "keeps no group-level term on \"batch\"",
+               fixed = TRUE)
+  expect_match(out$reason, "(nec | batch), (ec50 | batch)", fixed = TRUE)
+})
+
+test_that("an equation that keeps one of the terms is fitted (#470)", {
+  # The partial drop stays: nec3param keeps the term on nec and ecxll3 the
+  # term on ec50, so neither is excluded.
+  f <- bnf(y ~ crf(x, "all") + (nec | batch) + (ec50 | batch))
+  expect_identical(nrow(group_term_exclusions(f, c("nec3param", "ecxll3"))),
+                   0L)
+  # A term naming two parameters counts where the equation has either.
+  f2 <- bnf(y ~ crf(x, "all") + (nec + ec50 | batch))
+  expect_identical(group_term_exclusions(f2, c("ecxll3", "ecxexp"))$model,
+                   "ecxexp")
+})
+
+test_that("an ogl() or pgl() term on the variable counts (#470)", {
+  for (gl in c("ogl(g)", "pgl(g)")) {
+    f <- bnf(paste0("y ~ crf(x, \"ecxexp\") + (nec | g) + ", gl))
+    expect_identical(nrow(group_term_exclusions(f, "ecxexp")), 0L, info = gl)
+  }
+  # A term on another variable does not.
+  f <- bnf(y ~ crf(x, "ecxexp") + (nec | g) + ogl(h))
+  expect_identical(group_term_exclusions(f, "ecxexp")$model, "ecxexp")
+})
+
+test_that("each variable of a nested grouping is read separately (#470)", {
+  # ecxll3 keeps (ec50 | a), which names a alone, so b is held only by the
+  # term on nec, which it leaves out.
+  f <- bnf(y ~ crf(x, "all") + (nec | a/b) + (ec50 | a))
+  out <- group_term_exclusions(f, c("nec3param", "ecxll3"))
+  expect_identical(out$model, "ecxll3")
+  expect_match(out$reason, "on \"b\"", fixed = TRUE)
+  expect_false(grepl("on \"a\"", out$reason, fixed = TRUE))
+})
+
+test_that("a formula with no (par | group) term excludes nothing (#470)", {
+  f <- bnf(y ~ crf(x, "all") + ogl(g) + disp(~x))
+  expect_identical(nrow(group_term_exclusions(f, c("ecxexp", "nec3param"))),
+                   0L)
+})

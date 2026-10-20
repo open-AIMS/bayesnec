@@ -81,12 +81,22 @@ does not need to know the internal syntax and name of each parameter in the
 model. 3) A more classic approach where the user can specify which
 specific parameters --- NB: that requires prior knowledge on the model
 structure and parameter names --- to vary according to a grouping variable
-(as in e.g. \code{(bot | group_variable)}). \code{\link{bayesnecformula}}
-will ignore this term should the parameter not exist in the specified model
-or model suite. For example, the parameter \code{bot} exists in model
-\code{"nec4param"} but not in \code{"nec3param"}, so if the user specifies
-\code{model = "nec"} in \code{crf}, the term \code{(bot | group_variable)}
-will be dropped in models where that parameter does not exist.
+(as in e.g. \code{(bot | group_variable)}). A term naming a parameter an
+equation does not have is left out of that equation, but each equation must
+keep at least one group-level term on every grouping variable such a term
+names; an \code{ogl()} or \code{pgl()} term on the variable counts. An
+equation that keeps none would be fitted as one curve pooled over the levels
+of the variable while the rest of the set fits the curve of a typical level,
+so \code{\link{bnec}} excludes it before fitting, with a message, and records
+the reason (see \code{\link{bnec_record}}). A call from which every equation
+is excluded is refused. For example, the parameter \code{bot} exists in
+model \code{"nec4param"} but not in \code{"nec3param"}, so if the user
+specifies \code{model = "nec"} in \code{crf}, the term
+\code{(bot | group_variable)} excludes \code{"nec3param"}, which would keep
+no term on \code{group_variable}. Under
+\code{(bot | group_variable) + (nec | group_variable)}, \code{"nec3param"}
+is fitted with the term on \code{nec} alone, and \code{"nec4param"} with
+both.
 
 The grouping inside \code{ogl()} and \code{pgl()} uses the formula operators
 accepted on the right of the bar in a \pkg{brms} group-level term. The terms

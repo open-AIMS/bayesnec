@@ -277,6 +277,21 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   # expects makes it compare unequal to the plain character vector.
   amend_excluded <- attr(model_set, "excluded")
   model_set <- as.character(model_set)
+  # An added equation that keeps no group-level term on a grouping variable is
+  # excluded before anything is fitted, as bnec() excludes it, and recorded
+  # with the family exclusions above. Only the additions are tested: an
+  # equation already in the set was fitted, so it kept a term on every
+  # grouping variable, and before #470 one that kept none failed on the
+  # prediction grid and could not be in a set. A call adding only such
+  # equations is refused. See group_term_exclusions().
+  added <- model_set[!vapply(model_set, function(model) {
+    inherits(try(mod_fits[[model]], silent = TRUE), "prebayesnecfit")
+  }, logical(1))]
+  if (length(added) > 0) {
+    group_check <- check_group_terms(added, formula)
+    model_set <- setdiff(model_set, group_check$excluded$model)
+    amend_excluded <- rbind(amend_excluded, group_check$excluded)
+  }
   old_fits <- mod_fits
   mod_fits <- vector(mode = "list", length = length(model_set))
   names(mod_fits) <- model_set
