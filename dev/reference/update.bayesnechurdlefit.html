@@ -113,7 +113,12 @@
 same way <code><a href="bnec_hurdle.html">bnec_hurdle</a></code> does, so zeros continue to denote the
 hurdle rather than being modelled as small responses, and checked the same
 way: a row that is both zero and censored is refused here as it is at
-construction.</p></dd>
+construction. Each component is refitted with the family it was fitted
+with, as <code><a href="update.bnecfit.html">update.bnecfit</a></code> describes. Both components are checked
+against their families before either is refitted, so new data that put one
+component at a bound in every observation are refused, naming that
+component. New data with no zero are such a case: every individual
+survived, so the survival response is 1 in every observation.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
