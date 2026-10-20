@@ -479,9 +479,15 @@ test_that("route B reads the curve the fit uses, not the template (#294)", {
                     fixed = TRUE))
   expect_true(grepl("bnecbot", phi_of('pgl(grp) + disp("twosided")'),
                     fixed = TRUE))
-  # So does #257's deviation on the whole curve, which route B had never seen.
-  expect_true(grepl("bnecmu", phi_of('ogl(grp) + disp("twosided")'),
-                    fixed = TRUE))
+  # #257's deviation on the whole curve does not. The variance function reads
+  # the curve before it, bnecmu, rather than the fitted mean of the group, in
+  # whose value depends on ogl (on the odds scale for this Beta family).
+  # Reading the fitted mean produced a second posterior mode in the zinc fit.
+  # See #468.
+  under_ogl <- phi_of('ogl(grp) + disp("twosided")')
+  expect_true(grepl("bnecmu", under_ogl, fixed = TRUE))
+  expect_false(grepl("exp(ogl)", under_ogl, fixed = TRUE))
+  expect_false(grepl("ogl", under_ogl, fixed = TRUE))
   # An ungrouped fit is unchanged: the curve it reads is the template's.
   ungrouped <- phi_of('disp("twosided")')
   expect_true(grepl("bot + (top - bot)", ungrouped, fixed = TRUE))
@@ -744,4 +750,165 @@ test_that("get_priors refuses what bnec refuses on a two-block family", {
                                     data = hurdle_dat,
                                     family = "hurdle_gamma"))
   expect_true(all(c("c0", "c1") %in% pr$nlpar))
+})
+
+
+# ---- #468, the variance function reads the curve before ogl() ---------------
+
+# The response block's curve and dispersion sub-formula of a built formula. No
+# model is compiled or sampled.
+disp_parts <- function(bf, dpar) {
+  list(main = deparse1(bf$formula[[3]]),
+       disp = deparse1(bf$pforms[[dpar]][[3]]))
+}
+
+test_that("a Gamma variance function reads bnecmu under ogl() (#468)", {
+  fam <- Gamma(link = "identity")
+  bf <- make_brmsformula(
+    bnf(y ~ crf(x, "ecx4param") + ogl(tank) + disp("power")), disp_dat, fam
+  )[[1]]
+  parts <- disp_parts(bf, "shape")
+  # The multiplicative form is in force, so the deviation is on the mean and
+  # the assertions below are not met trivially.
+  expect_identical(parts$main, "bnecmu * exp(ogl)")
+  expect_true(grepl("log((bnecmu))", parts$disp, fixed = TRUE))
+  expect_false(grepl("ogl", parts$disp, fixed = TRUE))
+  # brms writes the shape from the intermediate, and the mean from the
+  # intermediate and the deviation. make_stancode() generates the program
+  # without compiling it.
+  sc <- strsplit(brms::make_stancode(bf, data = disp_dat, family = fam),
+                 "\n")[[1]]
+  shape_line <- grep("shape[n] =", sc, fixed = TRUE, value = TRUE)
+  expect_length(shape_line, 1)
+  expect_match(shape_line, "log((nlp_bnecmu[n]))", fixed = TRUE)
+  expect_false(grepl("ogl", shape_line, fixed = TRUE))
+  expect_match(sc, "mu[n] = (nlp_bnecmu[n] * exp(nlp_ogl[n]))", fixed = TRUE,
+               all = FALSE)
+})
+
+test_that("the additive ogl() form leaves the variance curve (#468)", {
+  # Under the additive form the main right-hand side is ogl + <curve>, and the
+  # variance function takes <curve> alone: the sub-formula is the one the same
+  # formula without ogl() builds. gaussian is the family that always takes the
+  # additive form; Beta takes it for nechormepwr, whose mean can exceed 1.
+  cases <- list(
+    list(model = "ecx4param", fam = gaussian(link = "identity"),
+         dpar = "sigma"),
+    list(model = "nec4param", fam = gaussian(link = "identity"),
+         dpar = "sigma"),
+    list(model = "nechormepwr", fam = validate_family("Beta"), dpar = "phi")
+  )
+  for (cs in cases) {
+    build <- function(txt) {
+      f <- bnf(paste0('y ~ crf(x, "', cs$model, '")', txt))
+      disp_parts(make_brmsformula(f, disp_dat, cs$fam)[[1]], cs$dpar)
+    }
+    grouped <- build(' + ogl(tank) + disp("power")')
+    ungrouped <- build(' + disp("power")')
+    expect_identical(grouped$main, paste("ogl +", ungrouped$main))
+    expect_true(grepl(ungrouped$main, grouped$disp, fixed = TRUE))
+    expect_false(grepl("ogl", grouped$disp, fixed = TRUE))
+    expect_identical(grouped$disp, ungrouped$disp)
+  }
+})
+
+test_that("a malformed additive ogl() formula is refused", {
+  bf <- make_brmsformula(
+    bnf(y ~ crf(x, "ecx4param") + ogl(tank) + disp("power")),
+    disp_dat, gaussian(link = "identity")
+  )[[1]]
+  bf$formula[[3]] <- str2lang("top + ogl")
+  expect_error(bayesnec:::disp_curve(bf), "must start with ogl +", fixed = TRUE)
+})
+
+test_that("a formula without ogl() builds what it did before (#468)", {
+  # Before #468 add_disp_block() passed the whole right-hand side of the main
+  # formula as the curve. The sub-formula is rebuilt that way here, through
+  # make_disp_block(), and compared with what the formula builder now gives,
+  # for parameter-level terms that rewrite the curve and for none.
+  fams <- list(gaussian(link = "identity"), Gamma(link = "identity"),
+               validate_family("Beta"))
+  terms <- c("", " + (bot | tank)", " + pgl(tank)", " + (nec | tank)")
+  models <- c("nec4param", "ecx4param", "ecxll5", "nechorme4")
+  for (fam in fams) {
+    dpar <- bayesnec:::disp_dpar(fam)
+    for (txt in terms) {
+      for (m in models) {
+        f <- bnf(paste0('y ~ crf(x, "', m, '")', txt, ' + disp("power")'))
+        bf <- suppressMessages(make_brmsformula(f, disp_dat, fam))[[1]]
+        old <- bayesnec:::make_disp_block(
+          m, list(route = "B", value = "power"), dpar, "x",
+          response = disp_dat$y, curve = deparse1(bf$formula[[3]])
+        )
+        expect_identical(deparse1(bf$pforms[[dpar]]), deparse1(old$nlf))
+        expect_identical(bayesnec:::disp_curve(bf),
+                         deparse1(bf$formula[[3]]))
+      }
+    }
+  }
+})
+
+test_that("the two-block families read the curve before ogl() (#468)", {
+  # The joint route, bnec() on hurdle_gamma or zero_inflated_beta, which
+  # bnec_joint() on a hurdle fit also takes. The deviation is on the positive
+  # block only, and the hu or zi block is the one built without it.
+  d <- hurdle_dat
+  d$tank <- factor(rep(1:5, length.out = nrow(d)))
+  for (cs in list(list(resp = "g", fam = "hurdle_gamma", dpar = "shape",
+                       vf = "power", block = "hu"),
+                  list(resp = "y", fam = "zero_inflated_beta", dpar = "phi",
+                       vf = "twosided", block = "zi"))) {
+    vf_txt <- paste0(' + disp("', cs$vf, '")')
+    grouped <- joint_bf(cs$resp, paste0(" + ogl(tank)", vf_txt), cs$fam,
+                        data = d)
+    ungrouped <- joint_bf(cs$resp, vf_txt, cs$fam, data = d)
+    disp_rhs <- pform_rhs(grouped, cs$dpar)
+    expect_true("bnecmu" %in% names(grouped$pforms))
+    expect_true(grepl("log((bnecmu))", disp_rhs, fixed = TRUE))
+    expect_false(grepl("ogl", disp_rhs, fixed = TRUE))
+    expect_identical(block_rhs(grouped, cs$block),
+                     block_rhs(ungrouped, cs$block))
+  }
+  # bnec_hurdle() fits its growth component with bnec() on the survivors and
+  # the positive block's family, keeping the ogl() term, so the factorised
+  # route builds the same sub-formula as the joint one.
+  growth <- d[d$y > 0, ]
+  f_txt <- ' + ogl(tank) + disp("power")'
+  expect_identical(
+    pform_rhs(joint_bf("g", f_txt, "hurdle_gamma", data = d), "shape"),
+    pform_rhs(joint_bf("g", f_txt, "Gamma", data = growth), "shape")
+  )
+})
+
+test_that("a joint refit across levels reads the curve before ogl() (#468)", {
+  # bnec_joint() on a grouped fit with one equation at every level and
+  # disp_by_level = FALSE, the one level-term route that takes ogl() and
+  # disp() together. The level terms are applied after the dispersion block
+  # and rewrite only the curve parameters, so bnecmu reads the per-level curve
+  # and the variance function reads bnecmu.
+  d <- disp_dat
+  d$site <- factor(rep(c("a", "b"), 15))
+  spec <- list(group_var = "site", levels = c("a", "b"),
+               models = list(a = "ecx4param", b = "ecx4param"),
+               composed = FALSE, disp = FALSE)
+  build <- function(txt, fam) {
+    f <- bnf(paste0('y ~ crf(x, "ecx4param")', txt))
+    suppressMessages(
+      wrangle_model_formula("ecx4param", f, model.frame(f, data = d), fam,
+                            level_spec = spec)
+    )
+  }
+  bf <- build(' + ogl(tank) + disp("power")', Gamma(link = "identity"))
+  expect_identical(deparse1(bf$pforms$top), "top ~ 0 + site")
+  expect_identical(deparse1(bf$formula[[3]]), "bnecmu * exp(ogl)")
+  shape_rhs <- pform_rhs(bf, "shape")
+  expect_true(grepl("log((bnecmu))", shape_rhs, fixed = TRUE))
+  expect_false(grepl("ogl", shape_rhs, fixed = TRUE))
+  # and the additive form, as for a single fit
+  fam <- gaussian(link = "identity")
+  grouped <- build(' + ogl(tank) + disp("power")', fam)
+  ungrouped <- build(' + disp("power")', fam)
+  expect_true(startsWith(deparse1(grouped$formula[[3]]), "ogl + "))
+  expect_false(grepl("ogl", pform_rhs(grouped, "sigma"), fixed = TRUE))
+  expect_identical(pform_rhs(grouped, "sigma"), pform_rhs(ungrouped, "sigma"))
 })

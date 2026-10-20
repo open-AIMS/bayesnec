@@ -1262,6 +1262,32 @@
   have reached Stan unbounded, and outside [0, 1] the expression has a pole and
   changes sign across it. The error names the parameter and the bounds to add.
 
+- A `disp()` variance function of the mean now reads the curve before an
+  `ogl()` deviation is applied: `bnecmu` under the multiplicative form, and the
+  curve without its leading `ogl` under the additive form. It previously read
+  the fitted mean of the group, which is `bnecmu * exp(ogl)` for Gamma and is
+  transformed on the odds scale for Beta. An `ogl()` deviation now
+  changes the mean of its group without changing its dispersion parameter.
+  The observation variance can still change with the fitted mean; for Gamma
+  it is the squared fitted mean divided by the shape. A deviation on `top`
+  or `bot`, written as `(par | group)` or through `pgl()`, is part of the
+  curve and is still included in the variance function, as #294 made it.
+
+  Reading the fitted mean produced a second optimum in the zinc fit. Under
+  `disp("power")` on a Gamma response the variance is proportional to
+  `mu^(2 - c1)`, so wherever `c1 > 1` a deviation that lowered a group's mean
+  far below its data also lowered the shape, and a Gamma with a small shape
+  gives a tolerable density to readings far above its mean. On the `lum31` zinc
+  15 minute arm of `example8`, fitted with `ogl(plate/conc_rank)`, all 14
+  equations failed the sampler screen with R-hat 2.47 to 2.97, and in each chain
+  a different set of cells had deviations of -4 to -5 on ordinary uncensored
+  readings. `ecxll3` and `ecxwb1p3` were refitted to the same 748 readings
+  from a build with this change, with the same structure written as
+  `ogl(plate) + ogl(conc_group)`, at the same seed and default sampler
+  settings. Each reaches a maximum R-hat of 1.003 with no divergent
+  transitions, and the mean `lp__` of its four chains agree to within 1.5 log
+  units. A formula without `ogl()` builds the same model as before (#468).
+
 ## Breaking changes to ECx, NSEC and ECNSEC
 
 - **Every ECx, NSEC and ECNSEC is now measured from the control** --- the
