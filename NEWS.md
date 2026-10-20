@@ -182,6 +182,29 @@
   `xform` is now passed to `nec()`, and the legend is formatted as the legend
   of `plot()` on a `bayesnecfit` is (#440).
 
+- `ecnsec()` refuses an `nsec` outside the range it reads the curve over, with
+  a message that names the range: the observed range of the predictor, or
+  `x_range` where one is supplied. On a `bayesnechurdlefit` the curve was read
+  at the grid point nearest `nsec`, so an `nsec` beyond the grid was read at
+  its end. On a `bayesnecfit` or a `bayesmanecfit` the curve was evaluated at
+  `nsec` itself, extended past the data. Neither said so. On the `bnec_hurdle()`
+  fit #437 reports, with a predictor from 0 to 5, `nsec = 1000` returned the
+  percentage effect at 5 for each of the combined, growth and survival curves,
+  and the growth component on its own returned 100 per cent. The rule is the
+  same on every class and on every curve of a hurdle fit, a supplied `x_range`
+  included, and it is applied to `nsec` after `xform`. An `nsec` at either end
+  of the range is accepted, to within a rounding error. Supply an `x_range`
+  that includes `nsec` to read the curve beyond the data. Inside the range,
+  `ecnsec()` on a `bayesnecfit` or a `bayesmanecfit` returns what it returned
+  before (#437).
+
+- `ecnsec()` on a `bayesnechurdlefit` reads each curve at `nsec` by linear
+  interpolation between the two grid points either side of it, rather than at
+  the nearer of them, so the value no longer depends on where the grid points
+  fall. It takes a single `nsec`, and refuses a vector, which the
+  nearest-point reading accepted and read at one grid point chosen by
+  recycling the vector against the grid (#437).
+
 - The two ends are recorded separately. A draw whose curve had already passed
   the target where the prediction range begins is reported as `<=` the foot of
   that range, which an `NA` alone could not distinguish from a draw whose curve
@@ -1436,6 +1459,19 @@
   zero, which is a real measurement on a response that can go negative and is
   what OECD TG 201 reports rather than truncating at 100 per cent.
 
+- `xform` in `ecnsec()` on a `bayesnechurdlefit` is applied to `nsec`, as on
+  every other class, rather than to the percentage returned.
+  `ecnsec(h, nsec = 2, xform = log)` returned the logarithm of the percentage,
+  and an NSEC from a pair fitted with an inline-transformed predictor had to be
+  put on the recorded scale by hand before it was passed. On a pair fitted with
+  `crf(log(x))`, `ecnsec(h, nsec = nsec(h)[[1]], xform = exp)` now reads the
+  curve at the concentration that NSEC names, as it does on a `bayesnecfit`.
+  A call that supplies an `xform` other than `identity` is warned of the
+  change in this release. To transform the percentage, apply the function to
+  the value `ecnsec()` returns. Where `crf()` transforms the predictor inline,
+  the message is the one the other classes raise, naming the `xform` to give
+  `ecnsec()` (#437).
+
 ## New
 
 - `predict()`, `plot()` and `autoplot()` for a `bayesmanecfit` take two new
@@ -2271,10 +2307,9 @@
   `compare_estimates()` takes no `xform`, so its message names the estimators
   that do. `summary(ecx = TRUE)` raises it once for its ECx rows. `plot()` and
   `autoplot()` do not raise it, because they put every estimate on the axis
-  scale themselves. `ecnsec()` on a `bayesnechurdlefit` reads `nsec` on the
-  recorded scale as supplied and applies `xform` to the percentage it returns,
-  so its message asks for `nsec` on the recorded scale, as `nsec()` returns it
-  given the inverse as `xform`, and is raised whatever `xform` was given.
+  scale themselves. `ecnsec()` returns a percentage, so its message is about
+  the `nsec` it is given and names the `xform` that puts that value on the
+  recorded scale, on a `bayesnechurdlefit` as on every other class (#437).
 
   `curve_params()` already said where `nec` and `ec50` were on a transformed
   scale. Its message now names the inverse to pass, where it said only "pass

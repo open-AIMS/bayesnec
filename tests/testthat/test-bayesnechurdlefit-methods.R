@@ -607,6 +607,118 @@ hurdle_pair <- function(growth = nec4param, survival = nec4param) {
             class = c("bayesnechurdlefit", "bnecfit"))
 }
 
+# ---- ecnsec() beyond the range, between grid points, and xform (#437) --------
+
+test_that("ecnsec refuses an nsec beyond the range on every hurdle curve", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # D33. The nearest grid point was read, so 1000 on a series ending at 3.22
+  # returned the effect at 3.22 for every curve, with nothing said.
+  obj <- hurdle_pair()
+  x <- obj$survival$fit$data$x
+  for (w in c("combined", "growth", "survival")) {
+    expect_error(ecnsec(obj, nsec = 1000, which = w),
+                 paste0("nsec = 1000 lies outside the observed range of the ",
+                        "predictor, 0.03235 to 3.221. ecnsec() reads the ", w,
+                        " curve over that range only."),
+                 fixed = TRUE)
+    expect_error(ecnsec(obj, nsec = 0.01, which = w),
+                 "lies outside the observed range of the predictor")
+    # A supplied x_range is the range refused against, and the advice is to
+    # widen it.
+    expect_error(ecnsec(obj, nsec = 2.5, x_range = c(0.1, 2), which = w),
+                 paste0("nsec = 2.5 lies outside the x_range supplied, 0.1 to ",
+                        "2. ecnsec() reads the ", w, " curve over that range ",
+                        "only. Supply an x_range that includes nsec."),
+                 fixed = TRUE)
+    expect_length(ecnsec(obj, nsec = 4, x_range = c(min(x), 5), which = w), 3)
+    # The ends are inside, including an end that has been through a
+    # transformation and its inverse, as a censored nsec() bound may have.
+    at_top <- ecnsec(obj, nsec = max(x), which = w)
+    expect_length(at_top, 3)
+    expect_equal(ecnsec(obj, nsec = exp(log(max(x))), which = w), at_top)
+  }
+  # A survival NSEC passed to the combined curve, the likely call, is inside.
+  s_nsec <- suppressWarnings(nsec(obj, which = "survival"))[["Q50"]]
+  expect_length(ecnsec(obj, nsec = s_nsec, which = "combined"), 3)
+  # One value: the curve is interpolated at one point.
+  expect_error(ecnsec(obj, nsec = c(1, 2)), "nsec")
+})
+
+test_that("ecnsec reads a hurdle curve between grid points, not at the nearer", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  obj <- hurdle_pair()
+  preds <- bayesnec:::hurdle_component_preds(obj, resolution = 5)
+  x <- preds$x
+  # Three tenths of the way from the second grid point to the third, so the
+  # nearer point is the second.
+  at <- x[2] + 0.3 * (x[3] - x[2])
+  for (w in c("combined", "growth", "survival")) {
+    p <- preds[[w]]
+    control <- preds$control[[w]]
+    got <- ecnsec(obj, nsec = at, resolution = 5, which = w, posterior = TRUE)
+    interpolated <- 0.7 * p[, 2] + 0.3 * p[, 3]
+    expect_equal(got, (control - interpolated) / control * 100,
+                 label = paste(w, "interpolated"))
+    nearer <- (control - p[, 2]) / control * 100
+    expect_false(isTRUE(all.equal(got, nearer)), label = paste(w, "nearer"))
+    # At a grid point the column itself is read.
+    expect_equal(ecnsec(obj, nsec = x[3], resolution = 5, which = w,
+                        posterior = TRUE),
+                 (control - p[, 3]) / control * 100)
+  }
+})
+
+test_that("ecnsec applies xform to nsec on a hurdle fit, with a warning", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # D33: xform was applied to the percentage returned. It is now applied to
+  # nsec, as on every other class, and a call supplying one is warned for one
+  # release.
+  obj <- hurdle_pair()
+  plain <- ecnsec(obj, nsec = 1.5)
+  expect_warning(via <- ecnsec(obj, nsec = log(1.5), xform = exp),
+                 class = "bayesnec_ecnsec_xform_changed")
+  expect_equal(via, plain)
+  expect_warning(ecnsec(obj, nsec = log(1.5), xform = exp),
+                 "now applied to nsec before the curve is read")
+  expect_no_warning(ecnsec(obj, nsec = 1.5))
+  expect_no_warning(ecnsec(obj, nsec = 1.5, xform = identity))
+  expect_error(ecnsec(obj, nsec = 1.5, xform = "log"),
+               "xform must be a function")
+  # The range is checked after xform, and the message gives both values.
+  expect_error(suppressWarnings(ecnsec(obj, nsec = log(1000), xform = exp)),
+               "nsec = 6.908, which xform takes to 1000, lies outside",
+               fixed = TRUE)
+})
+
+test_that("ecnsec on a crf(log(x)) hurdle pair reads log(v) under exp at v", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # The pair is relabelled, not refitted: the formula says crf(log(x)) and the
+  # stored fits are those of crf(x), so the grid and the draws are the same and
+  # only the value nsec arrives as differs. Before D33 the inverse had to be
+  # applied to nsec by hand.
+  logged <- nec4param
+  logged$bayesnecformula <- bnf(y ~ crf(log(x), model = "nec4param"))
+  h_log <- hurdle_pair(logged, logged)
+  h_plain <- hurdle_pair()
+  for (v in c(0.5, 1.5, 3)) {
+    for (w in c("combined", "growth", "survival")) {
+      expect_equal(
+        suppressWarnings(ecnsec(h_log, nsec = log(v), xform = exp, which = w)),
+        ecnsec(h_plain, nsec = v, which = w),
+        label = paste(w, "at", v)
+      )
+    }
+  }
+})
+
 # ---- The hurdle plot legend (#440) --------------------------------------------
 
 # The legend() and abline() calls a base plot of obj makes, read off the calls
