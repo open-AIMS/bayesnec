@@ -95,10 +95,11 @@ test_that("a local R transformation that Stan defines reaches valid code", {
 
 test_that("a missing parameter named in two terms is left out of both (#470)", {
   # match() found the first of the two terms only, so the second reached the
-  # formula build and failed in rhs() before anything was sampled.
+  # formula build and failed in rhs() before anything was sampled. ecxll3 has
+  # ec50 and no nec, so it keeps both ec50 terms and drops both nec terms.
   d <- transform(dat, group8 = "e")
-  f <- y | trials(tr) ~ crf(x, "ecxexp") + (nec | group6) + (nec | group8) +
-    (top | group7)
+  f <- y | trials(tr) ~ crf(x, "ecxll3") + (nec | group6) + (nec | group8) +
+    (ec50 | group6) + (ec50 | group8)
   # The messages are collected rather than asserted with expect_message(),
   # which returns the condition and not the formula.
   msgs <- character(0)
@@ -106,9 +107,10 @@ test_that("a missing parameter named in two terms is left out of both (#470)", {
     msgs <<- c(msgs, conditionMessage(m))
     invokeRestart("muffleMessage")
   })
-  expect_true(any(grepl("\"nec\"; \"nec\" are not valid parameters in ecxexp",
+  expect_true(any(grepl("\"nec\"; \"nec\" are not valid parameters in ecxll3",
                         msgs, fixed = TRUE)))
-  pforms <- vapply(bf$ecxexp$pforms, deparse1, character(1))
-  expect_false(any(grepl("group6|group8", pforms)))
-  expect_true(any(grepl("(1 | group7)", pforms, fixed = TRUE)))
+  pforms <- bf$ecxll3$pforms
+  expect_null(pforms$nec)
+  expect_identical(deparse1(pforms$ec50),
+                   "ec50 ~ 1 + (1 | group6) + (1 | group8)")
 })

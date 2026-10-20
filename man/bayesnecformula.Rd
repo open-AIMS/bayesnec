@@ -86,10 +86,7 @@ will ignore this term should the parameter not exist in the specified model
 or model suite. For example, the parameter \code{bot} exists in model
 \code{"nec4param"} but not in \code{"nec3param"}, so if the user specifies
 \code{model = "nec"} in \code{crf}, the term \code{(bot | group_variable)}
-will be dropped in models where that parameter does not exist. The formula
-stored on each fitted equation, which \code{\link{formula}} returns, is the
-one that equation was fitted with, so it does not hold the dropped term;
-the formula as written is kept beside it as \code{requested_formula}.
+will be dropped in models where that parameter does not exist.
 
 The grouping inside \code{ogl()} and \code{pgl()} uses the formula operators
 accepted on the right of the bar in a \pkg{brms} group-level term. The terms

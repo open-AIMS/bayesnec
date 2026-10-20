@@ -83,9 +83,7 @@
 #' that level, from the grouped fit. A level's own weights sum to one, so this
 #' is the share of that level's evidence behind the equation used there.
 #' @slot bayesnecformula The \code{\link{bayesnecformula}} the fit was built
-#' from, naming the equation of the first level. A \code{(par | group)} term
-#' naming a parameter that equation does not have is left out of it, as it is
-#' left out of the fit.
+#' from, carrying the equation of the first level.
 #' @slot init The initial values the fit was given.
 #' @slot group_var The name of the grouping column.
 #' @slot levels The factor levels, in the order their coefficients are in.

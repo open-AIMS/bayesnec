@@ -20,12 +20,7 @@
 #' @slot init A \code{\link[base]{list}} containing the initialisation values
 #' to fit the model.
 #' @slot bayesnecformula An object of class \code{\link{bayesnecformula}} and
-#' \code{\link[stats]{formula}}: the formula the equation was fitted with. A
-#' \code{(par | group)} term naming a parameter the equation does not have is
-#' left out of it, as it is left out of the fit.
-#' @slot requested_formula The formula as written, with the equation named in
-#' \code{crf()}. Present only where a \code{(par | group)} term was left out of
-#' \code{bayesnecformula}; \code{\link{amend}} fits a new equation from it.
+#' \code{\link[stats]{formula}}.
 #' @slot retained_data A \code{\link[base]{data.frame}} containing columns of
 #' the data supplied to \code{\link{bnec}} that \code{brm()} omitted from its
 #' stored model frame. Rows are in fitted-data order. The element is absent
