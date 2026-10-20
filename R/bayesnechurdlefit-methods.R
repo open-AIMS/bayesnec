@@ -722,6 +722,37 @@ amend.bayesnechurdlefit <- function(object, drop, add, loo_controls,
                 amend_part(object$survival, "survival"))
 }
 
+#' Refuse a component's new response where it is at a bound of its refit
+#' family in every observation
+#'
+#' @param part One component of a \code{\link{bayesnechurdlefit}}: a
+#' \code{\link{bayesnecfit}} or a \code{\link{bayesmanecfit}}.
+#' @param data The data that component's refit is given.
+#' @param family The validated family passed to \code{update()}, or
+#' \code{NULL}.
+#' @param subject The subject of the message, naming the component.
+#'
+#' @details The bound check \code{update.bnecfit()} makes for each model
+#' through \code{check_update_data()}, made once for a whole component so that
+#' \code{update.bayesnechurdlefit()} can make it for both components before
+#' either is refitted. It uses the family that check uses, from
+#' \code{refit_family()}, and the component's whole set of equations, so that a
+#' component fitted with \code{ecxflat} alone is let through as it is there.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#'
+#' @noRd
+check_refit_bound <- function(part, data, family = NULL, subject = NULL) {
+  fits <- recover_prebayesnecfit(part)
+  bdat <- model.frame(extract_formula(fits[[1]]), data = data,
+                      run_par_checks = TRUE)
+  # First, as check_update_data() places it: model.frame() drops a row with a
+  # missing value, and the bound would otherwise be read without it. See #278.
+  check_complete_cases(bdat)
+  check_response_at_bound(bdat, refit_family(fits[[1]]$fit$family, family),
+                          subject = subject, model = names(fits))
+}
+
 #' Updates both components of a \code{\link{bayesnechurdlefit}}
 #'
 #' @inheritParams update.bnecfit
@@ -731,7 +762,12 @@ amend.bayesnechurdlefit <- function(object, drop, add, loo_controls,
 #' same way \code{\link{bnec_hurdle}} does, so zeros continue to denote the
 #' hurdle rather than being modelled as small responses, and checked the same
 #' way: a row that is both zero and censored is refused here as it is at
-#' construction.
+#' construction. Each component is refitted with the family it was fitted
+#' with, as \code{\link{update.bnecfit}} describes. Both components are checked
+#' against their families before either is refitted, so new data that put one
+#' component at a bound in every observation are refused, naming that
+#' component. New data with no zero are such a case: every individual
+#' survived, so the survival response is 1 in every observation.
 #'
 #' @return An object of class \code{\link{bayesnechurdlefit}}.
 #'
@@ -757,13 +793,39 @@ update.bayesnechurdlefit <- function(object, newdata = NULL, ...) {
   # bnec_hurdle() exists to prevent.
   check_hurdle_cens(check_hurdle_aterms(object$formula), newdata, y,
                     object$y_var)
+  growth_data <- newdata[y > 0, , drop = FALSE]
   surv_data <- newdata
   surv_data[[".alive"]] <- as.integer(y > 0)
-  out <- hurdle_rewrap(
-    object,
-    update(object$growth, newdata = newdata[y > 0, , drop = FALSE], ...),
-    update(object$survival, newdata = surv_data, ...)
+  # Both components are checked before either is refitted. Each update() below
+  # makes the same check for its own component only, so new data with no zero,
+  # whose survival response is 1 in every observation, were refused after the
+  # growth component had been refitted, and the refusal named the generated
+  # column .alive rather than the survival component. The components are named
+  # as bnec_hurdle() names the growth component since #400. See #435.
+  #
+  # A supplied family is read only for its tag, which is all the bound check
+  # uses. update.bnecfit() validates it again for the refit, reading the link
+  # from the expression the caller wrote, which cannot be recovered here.
+  supplied <- if ("family" %in% ...names()) {
+    validate_family(list(...)[["family"]])
+  }
+  check_refit_bound(
+    object$growth, growth_data, supplied,
+    subject = paste0("The growth component of the response \"", object$y_var,
+                     "\" (its ", sum(y > 0), " non-zero values)")
   )
+  check_refit_bound(
+    object$survival, surv_data, supplied,
+    subject = paste0("The survival component of the response \"",
+                     object$y_var, "\" (", sum(y == 0), " deaths of ",
+                     length(y), ")")
+  )
+  # Assigned in turn rather than passed as two arguments to hurdle_rewrap(),
+  # so that the order of the refits, growth first, is written here rather than
+  # set by the order in which hurdle_rewrap() forces its arguments.
+  growth <- update(object$growth, newdata = growth_data, ...)
+  survival <- update(object$survival, newdata = surv_data, ...)
+  out <- hurdle_rewrap(object, growth, survival)
   out$data <- newdata
   out$n_exposed <- length(y)
   out$n_dead <- sum(y == 0)

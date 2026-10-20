@@ -121,6 +121,126 @@ test_that("update() re-checks the zero-vs-censored invariant on newdata", {
   expect_false(grepl("zero and also carry", msg))
 })
 
+# ---- #435: update(newdata = ) on a hurdle fit -------------------------------
+# A hurdle fit assembled from the packaged nec4param fit, as bnec_hurdle()
+# builds one: a growth component storing the Gamma family under the tag brms
+# records, "gamma", and a bernoulli survival component on `.alive`. The refit is
+# mocked in every test that uses it, so nothing is sampled and the stored
+# posterior, a gaussian one, is never read.
+hurdle_update_fixture <- function(growth_family = brms::brmsfamily(
+                                    "Gamma", link = "identity")) {
+  growth <- nec4param
+  growth$fit$family <- growth_family
+  survival <- nec4param
+  survival$fit$family <- brms::bernoulli(link = "identity")
+  survival$bayesnecformula <- bnf(.alive ~ crf(x, model = "nec4param"))
+  d <- data.frame(x = nec4param$fit$data$x,
+                  y = stats::plogis(nec4param$fit$data$y))
+  d$y[d$x > stats::quantile(d$x, 0.8)] <- 0
+  structure(list(growth = growth, survival = survival, data = d,
+                 formula = bnf(y ~ crf(x, model = "nec4param")), y_var = "y",
+                 n_exposed = nrow(d), n_dead = sum(d$y == 0)),
+            class = c("bayesnechurdlefit", "bnecfit"))
+}
+
+test_that("update() on a hurdle fit reaches both refits, growth first (#435)", {
+  # The Gamma growth component was refused as a change of family, and the
+  # survival component would have been as well: its 0/1 response, read off
+  # the data, was poisson against a stored bernoulli.
+  #
+  # `update` is mocked where the package finds it, in its imports
+  # environment: a binding mocked in stats is not seen, and the refit then
+  # samples. The mock passes a component through to its own update() method,
+  # so that method's family checks run, and halts at brms, recording what
+  # brms would have received. stats::update() is called explicitly to reach
+  # the methods rather than the mock.
+  h <- hurdle_update_fixture()
+  reached <- list()
+  local_mocked_bindings(
+    update = function(object, ...) {
+      if (inherits(object, "brmsfit")) {
+        reached[[length(reached) + 1]] <<- list(
+          family = object$family$family, newdata = list(...)$newdata
+        )
+        stop("halted by test")
+      }
+      if (inherits(object, "bnecfit")) {
+        try(stats::update(object, ...), silent = TRUE)
+        return(object)
+      }
+      stats::update(object, ...)
+    },
+    .package = "bayesnec"
+  )
+  # try(silent = FALSE) in the refit loop prints the halt to stderr.
+  out <- NULL
+  invisible(capture.output(
+    out <- suppressMessages(stats::update(h, newdata = h$data)),
+    type = "message"
+  ))
+  expect_equal(vapply(reached, `[[`, character(1), "family"),
+               c("gamma", "bernoulli"))
+  n_dead <- sum(h$data$y == 0)
+  growth_data <- reached[[1]]$newdata
+  expect_equal(nrow(growth_data), nrow(h$data) - n_dead)
+  expect_false(any(growth_data$y == 0))
+  surv_data <- reached[[2]]$newdata
+  expect_equal(nrow(surv_data), nrow(h$data))
+  expect_equal(sum(surv_data$.alive == 0), n_dead)
+  expect_s3_class(out, "bayesnechurdlefit")
+  expect_equal(out$n_dead, n_dead)
+})
+
+test_that("update() on a hurdle fit refuses new data with no zero first (#435)", {
+  # Every individual survived, so the survival response is 1 in every
+  # observation. That was refused only after the growth component had been
+  # refitted, naming the generated column .alive.
+  h <- hurdle_update_fixture()
+  calls <- 0L
+  local_mocked_bindings(
+    update = function(...) {
+      calls <<- calls + 1L
+      stop("refit reached")
+    },
+    .package = "bayesnec"
+  )
+  nd <- h$data
+  nd$y[nd$y == 0] <- 0.01
+  err <- expect_error(stats::update(h, newdata = nd))
+  expect_match(conditionMessage(err),
+               paste0("The survival component of the response \"y\" (0 deaths",
+                      " of ", nrow(nd), ") is at the upper bound of a",
+                      " bernoulli response"),
+               fixed = TRUE)
+  expect_false(grepl(".alive", conditionMessage(err), fixed = TRUE))
+  expect_identical(calls, 0L)
+})
+
+test_that("update() on a hurdle fit checks the growth family first (#435)", {
+  # A Beta growth component whose every survivor is 1 is at the upper bound of
+  # its family. Refused before either refit, naming the growth component as
+  # bnec_hurdle() does.
+  h <- hurdle_update_fixture(brms::Beta(link = "identity"))
+  calls <- 0L
+  local_mocked_bindings(
+    update = function(...) {
+      calls <<- calls + 1L
+      stop("refit reached")
+    },
+    .package = "bayesnec"
+  )
+  nd <- h$data
+  nd$y[nd$y > 0] <- 1
+  n_alive <- sum(nd$y > 0)
+  expect_error(
+    stats::update(h, newdata = nd),
+    paste0("The growth component of the response \"y\" (its ", n_alive,
+           " non-zero values) is at the upper bound of a beta response"),
+    fixed = TRUE
+  )
+  expect_identical(calls, 0L)
+})
+
 test_that("summary carries its own class and print method", {
   expect_true(!is.null(getS3method("print", "hurdlesummary", optional = TRUE)))
   expect_true(!is.null(getS3method("summary", "bayesnechurdlefit", optional = TRUE)))
