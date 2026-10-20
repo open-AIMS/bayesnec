@@ -213,7 +213,41 @@ taking \code{"power"} for concreteness:
 }
 
 In every case \code{c1 = 0} returns the constant-dispersion model, which is
-where the prior on \code{c1} is centred.
+where the default prior on \code{c1} is centred.
+
+Under \code{"power"} that prior is \code{normal(0, 2)} restricted to a range
+of \code{c1} that depends on the family. The range is derived from a
+variance proportional to \code{mu^b} with \code{b} between 0 and 2, which
+runs from a constant variance to a constant coefficient of variation:
+
+\tabular{lll}{
+\bold{family} \tab \bold{range of c1} \tab \bold{at the two ends} \cr
+\code{Gamma} \tab 0 to 2 \tab constant CV; constant variance \cr
+\code{gaussian} \tab 0 to 1 \tab constant variance; constant CV \cr
+\code{negbinomial} \tab 0 to 1 \tab
+overdispersion proportional to \code{mu^2}; to \code{mu} \cr
+\code{Beta}, \code{beta_binomial} \tab unbounded \tab \code{--}
+}
+
+Outside the range for a Gamma or gaussian response, the variance function
+describes a variance that rises as the mean falls, or a coefficient of
+variation that falls as the mean falls. For a negative binomial response
+above 1, the overdispersion term would grow more slowly than the Poisson
+part of the variance. The beta families are not bounded, because their
+variance already falls towards both ends of the unit interval through
+\code{mu * (1 - mu)}, and their precision can plausibly rise in either
+direction, which is what \code{"twosided"} models. Neither slope of
+\code{"twosided"} is bounded, nor is the slope of \code{"loglinear"}, which
+is in units of one over the response. A two-block family takes the range of
+its positive block's family.
+
+The range is a hard bound on the parameter, as the support of the response
+is for \code{top} and \code{bot}. A posterior for \code{c1} concentrated
+against one end of it is evidence that the data do not follow the range; a
+prior on \code{c1} supplied through the \code{prior} argument of
+\code{\link{bnec}} replaces the default, bounds included. Under
+\code{prior_type = "regularizing"} the prior is centred on the slope the
+replicates show rather than on zero; see \code{\link{bnec}}.
 
 Both \code{"power"} and \code{"twosided"} take \code{log(mu)}, so a fitted
 mean that reaches zero is undefined. This rules them out for a response on

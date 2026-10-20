@@ -118,7 +118,23 @@
 #' entries with \code{\link{get_priors}} and pass a scientifically justified
 #' prior through \code{prior} where information beyond the design is available.
 #' Neither value of \code{prior_type} corrects a design that stopped before the
-#' asymptote; \code{asymptote_observed} is the argument for that.
+#' asymptote; \code{asymptote_observed} is the argument for that. With a
+#' \code{disp("power")} term on a \code{Gamma}, \code{gaussian} or
+#' \code{negbinomial} response, \code{"regularizing"} also centres the prior on
+#' the exponent \code{c1} on the slope the replicates show. Each predictor value
+#' with two or more observations gives the family's dispersion parameter from
+#' their mean and variance: \code{1 / CV^2} for \code{Gamma}, the standard
+#' deviation for \code{gaussian}, and \code{mean^2 / (variance - mean)} for
+#' \code{negbinomial}. The centre is the slope of its log on the log of the
+#' mean, weighted by degrees of freedom and clamped into the range of \code{c1}
+#' given in \code{?\link{bayesnecformula}}. The width stays at that of the
+#' \code{"uninformative"} entry, because the same replicates also enter the
+#' likelihood and a narrower prior would count them twice. The centre is zero,
+#' as under \code{"uninformative"}, where fewer than three predictor values are
+#' replicated or the slope cannot be computed, and for a \code{negbinomial}
+#' response with a \code{rate()} denominator. The replicates are grouped by
+#' predictor value alone, so under a group-level term their spread includes the
+#' variation between groups.
 #' @param asymptote_observed A \code{\link[base]{logical}} declaring whether the
 #' highest predictor level reached the lower asymptote of the curve. The default
 #' \code{TRUE} is the assumption both default prior sets are built on, and
