@@ -122,13 +122,28 @@ c.bnecfit <- function(x, ...) {
 #' Update an object of class \code{\link{bnecfit}} as fitted by function
 #' \code{\link{bnec}}.
 #'
-#' @details A \code{family} passed through \code{...} is read exactly as
+#' @details The models are refitted with the family they were fitted with
+#' unless \code{family} is supplied. No family is read off \code{newdata}, so
+#' new data alone never change the family and never require
+#' \code{force_fit = TRUE}. The new data are checked against the requirements
+#' of the family the refit uses, as \code{\link{bnec}} checks its data. A value
+#' at a boundary that family excludes, such as a zero for \code{Gamma} or a 1
+#' for \code{beta}, is shifted off it, and the shift is reported and stored in
+#' the fit's \code{\link{bnec_record}} where it has one. A value the family
+#' admits is passed on as recorded, so a \code{gaussian} fit keeps an exact 1
+#' and a joint \code{hurdle_gamma} fit keeps its zeros. A bounded response at
+#' one of its bounds in every observation is refused before any model is
+#' refitted, unless the fit is of the constant equation \code{ecxflat} alone.
+#'
+#' A \code{family} passed through \code{...} is read exactly as
 #' \code{\link{bnec}} reads it: the link is assigned by \pkg{bayesnec} unless
 #' the caller writes one, an unsupported link is refused before any model is
 #' refitted, and the validated family is the one \pkg{brms} receives. See the
 #' \emph{The link} section of \code{\link{bnec}}. Supplying a family that
 #' differs from the fitted one requires \code{force_fit = TRUE}, because the
 #' priors carried over from the original fit were built for the original family.
+#' Families are compared by name and links, so \code{Gamma(link = "identity")}
+#' supplied for a Gamma fit is not a change of family.
 #'
 #' @inheritParams bnec
 #'
@@ -141,8 +156,9 @@ c.bnecfit <- function(x, ...) {
 #' model should be recompiled. If \code{NULL} (the default), \code{update}
 #' tries to figure out internally, if recompilation is necessary. Setting it to
 #' \code{FALSE} will cause all Stan code changing arguments to be ignored.
-#' @param force_fit Should model truly be updated in case either
-#' \code{newdata} of a new family is provided?
+#' @param force_fit Whether to refit where \code{family} names a family or
+#' link that differs from the one the model was fitted with. New data alone
+#' never require it.
 #'
 #' @return An object of class \code{\link{bnecfit}}. If one single model is
 #' returned, then also an object of class \code{\link{bayesnecfit}}; otherwise,
@@ -159,9 +175,9 @@ c.bnecfit <- function(x, ...) {
 #' # stanfit DSO, so need to recompile here
 #' smaller_manec <- update(manec_example, chains = 2, iter = 50,
 #'                         recompile = TRUE)
-#' # original `manec_example` is fit with a Gaussian
-#' # change to Beta distribution by adding newdata with original `nec_data$y`
-#' # function will throw informative message.
+#' # original `manec_example` is fit with a Gaussian. Refitting it to the
+#' # original `nec_data$y` with a Beta distribution changes the family, so it
+#' # requires `force_fit = TRUE`, and a message says the priors may not suit it.
 #' beta_manec <- update(manec_example, newdata = nec_data, recompile = TRUE,
 #'                      chains = 2, iter = 50,
 #'                      family = Beta(link = "identity"), force_fit = TRUE)
@@ -275,20 +291,24 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
   } else {
     changed_family <- FALSE
   }
+  # Raised only for a family the caller supplied. New data no longer reach
+  # this: the refit keeps the fitted family, so the clause stating that the
+  # data "might be best fitted with a different distribution" described a
+  # judgement this method no longer makes (D32, #435).
   if (changed_family) {
     if (!force_fit) {
-      stop("You either input new data which might be best fitted with a\n",
-           "  different distribution, or you indicated a new family/link.\n",
-           "Either change might require different priors than originally\n",
-           "  defined. If this was intentional, set `force_fit = TRUE`;\n",
-           "  otherwise please use function `bnec` instead to redefine priors.",
+      stop("The family or link supplied differs from the one the model was\n",
+           "  fitted with. The priors reused from the original fit were built\n",
+           "  for the original family and may not suit the new one.\n",
+           "If this was intentional, set `force_fit = TRUE`; otherwise\n",
+           "  please use function `bnec` instead to redefine priors.",
            call. = FALSE)
     } else {
-      message("You either input new data which might be best fitted with a\n",
-              "  different distribution, or you indicated a new family/link.\n",
-              "Either change might require different priors than originally\n",
-              "  defined. You may want to consider refitting models from\n",
-              "  scratch via function `bnec`.")
+      message("The family or link supplied differs from the one the model was\n",
+              "  fitted with. The priors reused from the original fit were\n",
+              "  built for the original family and may not suit the new one.\n",
+              "  You may want to consider refitting models from scratch via\n",
+              "  function `bnec`.")
     }
   }
   # The marker validate_family() uses to stay idempotent is bayesnec's own and

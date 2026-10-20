@@ -13,7 +13,12 @@
 same way \code{\link{bnec_hurdle}} does, so zeros continue to denote the
 hurdle rather than being modelled as small responses, and checked the same
 way: a row that is both zero and censored is refused here as it is at
-construction.}
+construction. Each component is refitted with the family it was fitted
+with, as \code{\link{update.bnecfit}} describes. Both components are checked
+against their families before either is refitted, so new data that put one
+component at a bound in every observation are refused, naming that
+component. New data with no zero are such a case: every individual
+survived, so the survival response is 1 in every observation.}
 
 \item{...}{Further arguments to \code{\link[brms]{brm}}.}
 }

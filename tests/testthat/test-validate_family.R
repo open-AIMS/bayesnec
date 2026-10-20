@@ -426,3 +426,40 @@ test_that("a family forwarded through dots is read from the caller's expression"
   )
   expect_false(any(grepl("taken from the family", msgs)))
 })
+
+# --- #435: one reading of a family's tag ---------------------------------------
+# brms records Gamma as "gamma" in a fitted object, and bayesnec keys on
+# "Gamma". canonical_fam_tag() is the one place the two are reconciled, and it
+# takes the stored family object as well as a tag.
+
+test_that("canonical_fam_tag names Gamma one way, from a tag or an object", {
+  f <- bayesnec:::canonical_fam_tag
+  expect_identical(f("gamma"), "Gamma")
+  expect_identical(f("Gamma"), "Gamma")
+  # The object brms stores in a fit, and the one stats builds.
+  expect_identical(f(brms::brmsfamily("Gamma", link = "identity")), "Gamma")
+  expect_identical(f(stats::Gamma(link = "identity")), "Gamma")
+  # The two-block family keeps its own tag: it is not an alias of Gamma.
+  expect_identical(f(brms::hurdle_gamma()), "hurdle_gamma")
+  expect_identical(f("hurdle_gamma"), "hurdle_gamma")
+  # Every other tag brms reports is bayesnec's own.
+  expect_identical(f(brms::Beta()), "beta")
+  expect_identical(f(brms::bernoulli()), "bernoulli")
+  # Nothing to read.
+  expect_identical(f(NULL), NA_character_)
+  expect_identical(f(structure(list(), class = "family")), NA_character_)
+})
+
+test_that("canonical_fam_tag is a no-op on every family bnec() fits with", {
+  # bnec() reaches canonical_fam_tag() only through validate_family(), whose
+  # families already have the canonical tag. Accepting an object as well as a
+  # tag must leave that path as it was: every tag bayesnec implements maps to
+  # itself, and so does the family validate_family() builds for it.
+  f <- bayesnec:::canonical_fam_tag
+  for (tag in names(mod_fams)) {
+    fam <- validate_family(tag)
+    expect_identical(f(tag), tag, label = tag)
+    expect_identical(f(fam), fam$family, label = tag)
+    expect_identical(f(fam$family), fam$family, label = tag)
+  }
+})
