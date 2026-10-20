@@ -481,8 +481,9 @@ test_that("route B reads the curve the fit uses, not the template (#294)", {
                     fixed = TRUE))
   # #257's deviation on the whole curve does not. The variance function reads
   # the curve before it, bnecmu, rather than the fitted mean of the group, in
-  # which exp(ogl) scales the odds of bnecmu. Reading the fitted mean gave each
-  # group a second posterior mode at a very low mean. See #468.
+  # whose value depends on ogl (on the odds scale for this Beta family).
+  # Reading the fitted mean produced a second posterior mode in the zinc fit.
+  # See #468.
   under_ogl <- phi_of('ogl(grp) + disp("twosided")')
   expect_true(grepl("bnecmu", under_ogl, fixed = TRUE))
   expect_false(grepl("exp(ogl)", under_ogl, fixed = TRUE))
@@ -809,6 +810,15 @@ test_that("the additive ogl() form leaves the variance curve (#468)", {
     expect_false(grepl("ogl", grouped$disp, fixed = TRUE))
     expect_identical(grouped$disp, ungrouped$disp)
   }
+})
+
+test_that("a malformed additive ogl() formula is refused", {
+  bf <- make_brmsformula(
+    bnf(y ~ crf(x, "ecx4param") + ogl(tank) + disp("power")),
+    disp_dat, gaussian(link = "identity")
+  )[[1]]
+  bf$formula[[3]] <- str2lang("top + ogl")
+  expect_error(bayesnec:::disp_curve(bf), "must start with ogl +", fixed = TRUE)
 })
 
 test_that("a formula without ogl() builds what it did before (#468)", {

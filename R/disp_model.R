@@ -5,7 +5,7 @@
 #
 #   disp(~x)        route (A) -- an ordinary brms distributional formula on the
 #                   predictor. Descriptive: "noise is larger at high dose".
-#   disp("power")   route (B) -- a variance function of the FITTED MEAN. A
+#   disp("power")   route (B) -- a variance function of the mean curve. A
 #                   statement about the measurement process rather than about
 #                   the dose axis. Under ogl() the mean it reads is the curve
 #                   before the group's deviation; see disp_curve().
@@ -558,11 +558,12 @@ make_disp_block <- function(model, spec, dpar, x_var, response = NULL,
 add_disp_block <- function(brms_bf, model, spec, family, x_var,
                            response = NULL) {
   dpar <- disp_dpar(family)
-  # The curve as it now stands, which is the one the fit uses, read before any
-  # ogl() deviation; see disp_curve(). See make_disp_block() for what
-  # rebuilding it from the template discarded.
+  # Route A does not use the curve. For route B read the assembled curve before
+  # any ogl() deviation. Rebuilding from the template would discard
+  # parameter-level group terms; see make_disp_block().
+  curve <- if (spec$route == "B") disp_curve(brms_bf) else NULL
   db <- make_disp_block(model, spec, dpar, x_var, response,
-                        curve = disp_curve(brms_bf))
+                        curve = curve)
   if (spec$route == "A") {
     # lf() rather than nlf(): the right-hand side is an ordinary linear
     # predictor in the data, so brms should apply its usual design-matrix
@@ -572,7 +573,7 @@ add_disp_block <- function(brms_bf, model, spec, family, x_var,
   brms_bf + nlf(db$nlf) + lf(db$lf)
 }
 
-#' The curve a variance function of the fitted mean is written in
+#' The curve used by a disp() variance function
 #'
 #' @param brms_bf An object of class \code{\link[brms]{brmsformula}}, with every
 #' group-level block already added.
@@ -583,7 +584,9 @@ add_disp_block <- function(brms_bf, model, spec, family, x_var,
 #' leading \code{ogl}. A parameter-level deviation, \code{(bot | g)} or
 #' \code{pgl(g)}, is part of the curve and is kept, as #294 made it.
 #'
-#' The fitted mean, \code{bnecmu * exp(ogl)}, was read here until #468. It let
+#' The fitted mean after \code{ogl()} was read here until #468. For a Gamma
+#' response it is \code{bnecmu * exp(ogl)}; for a Beta response the deviation
+#' acts on the odds. Reading the fitted mean let
 #' one deviation set both the mean and the spread of its group. Where the
 #' variance rises more slowly than the mean --- \code{c1 > 1} for
 #' \code{"power"} --- a deviation that lowered a group's mean far below its
@@ -593,11 +596,10 @@ add_disp_block <- function(brms_bf, model, spec, family, x_var,
 #' reached it during warmup, and every equation of a fit with a cell term
 #' failed the sampler screen.
 #'
-#' With the curve before the deviation read instead, a group's deviation no
-#' longer changes the variance of its observations. At the power exponents
-#' fitted on that arm, a plate read at 0.6
-#' of the population gain has its variance overstated by a factor of 1.07 to
-#' 1.47.
+#' With the curve before the deviation read instead, the dispersion parameter
+#' no longer depends on the \code{ogl()} deviation. The family's observation
+#' variance may still depend on the fitted mean: for a Gamma response it is
+#' the squared fitted mean divided by the shape.
 #'
 #' Every route that combines \code{ogl()} with a variance function reaches this
 #' function: a single-block fit, the joint two-block families, the growth
@@ -616,8 +618,12 @@ disp_curve <- function(brms_bf) {
   }
   rhs_txt <- deparse1(brms_bf$formula[[3]])
   if (!is.null(brms_bf$pforms$ogl)) {
-    # add_formula_glef() writes the additive form as paste0("ogl + ", curve),
-    # so the offset is always the leftmost operand of the outermost sum.
+    # add_formula_glef() prefixes the curve with "ogl + ". A curve with several
+    # sums is left-associated after parsing, so inspect the deparsed prefix.
+    # Refuse a changed structure instead of silently including ogl in disp().
+    if (!startsWith(rhs_txt, "ogl + ")) {
+      stop("The additive ogl() curve must start with ogl +.", call. = FALSE)
+    }
     rhs_txt <- sub("^ogl \\+ ", "", rhs_txt)
   }
   rhs_txt

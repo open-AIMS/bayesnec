@@ -1265,12 +1265,15 @@
 - A `disp()` variance function of the mean now reads the curve before an
   `ogl()` deviation is applied: `bnecmu` under the multiplicative form, and the
   curve without its leading `ogl` under the additive form. It previously read
-  the fitted mean of the group, `bnecmu * exp(ogl)`. An `ogl()` deviation now
-  changes the mean of its group and not its dispersion. A deviation on `top`
+  the fitted mean of the group, which is `bnecmu * exp(ogl)` for Gamma and is
+  transformed on the odds scale for Beta. An `ogl()` deviation now
+  changes the mean of its group without changing its dispersion parameter.
+  The observation variance can still change with the fitted mean; for Gamma
+  it is the squared fitted mean divided by the shape. A deviation on `top`
   or `bot`, written as `(par | group)` or through `pgl()`, is part of the
   curve and is still included in the variance function, as #294 made it.
 
-  Reading the fitted mean gave every group a second optimum. Under
+  Reading the fitted mean produced a second optimum in the zinc fit. Under
   `disp("power")` on a Gamma response the variance is proportional to
   `mu^(2 - c1)`, so wherever `c1 > 1` a deviation that lowered a group's mean
   far below its data also lowered the shape, and a Gamma with a small shape
@@ -1283,10 +1286,7 @@
   `ogl(plate) + ogl(conc_group)`, at the same seed and default sampler
   settings. Each reaches a maximum R-hat of 1.003 with no divergent
   transitions, and the mean `lp__` of its four chains agree to within 1.5 log
-  units. A group's deviation no longer changes the variance of its
-  observations, so at the exponents fitted on that arm a plate read at 0.6 of
-  the population gain has its variance overstated by a factor of 1.07 to 1.47.
-  A formula without `ogl()` builds the same model as before (#468).
+  units. A formula without `ogl()` builds the same model as before (#468).
 
 ## Breaking changes to ECx, NSEC and ECNSEC
 
