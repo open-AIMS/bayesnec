@@ -1826,9 +1826,11 @@
   The term on `b` within `a` was lost, and a term on `b` across every level of
   `a` was fitted in its place. Where the levels of `b` repeat across `a`, as
   plate labels repeat across batches, that is a different model. An explicit
-  `(par | a/b)` term was already passed to `brms` as written. `ogl(a + b)`
+  `(par | a/b)` term was already passed to `brms` as written. `ogl(a*b)` now
+  includes the `a:b` grouping, as `(1 | a*b)` does in `brms`. `ogl(a + b)`
   remains two separate terms, and a grouping written in more than one `ogl()`
-  term is fitted once (#466).
+  term, including one reached by expanding `a/b` or `a*b`, is fitted once
+  (#466).
 - A grouping variable missing from the data in a second or later
   `(par | group)` term is now refused by `bnec()` before anything is fitted,
   with the message that names it. Only the first such term was checked, so the

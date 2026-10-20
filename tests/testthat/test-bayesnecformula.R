@@ -350,6 +350,16 @@ test_that("a grouping repeated across ogl() terms is fitted once", {
   expect_identical(deparse1(bfm$pforms$ogl), "ogl ~ 1 + (1 | a) + (1 | a:b)")
 })
 
+test_that("formula operators expand before repeated groupings are removed", {
+  bfm <- nested_pforms(y ~ crf(x, "nec3param") + ogl(a*b) + ogl(a))
+  expect_identical(deparse1(bfm$pforms$ogl),
+                   "ogl ~ 1 + (1 | a) + (1 | b) + (1 | a:b)")
+  bfm <- nested_pforms(y ~ crf(x, "nec3param") + ogl(a:(b + c)) +
+                         ogl(a:b), transform(nested_fixture(), c = a))
+  expect_identical(deparse1(bfm$pforms$ogl),
+                   "ogl ~ 1 + (1 | a:b) + (1 | a:c)")
+})
+
 test_that("pgl() puts a nested grouping on every parameter", {
   bfm <- nested_pforms(y ~ crf(x, "nec3param") + pgl(a/b))
   # top is bounded by a Beta mean, so its deviation is declared on topgl.
