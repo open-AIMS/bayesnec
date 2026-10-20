@@ -467,7 +467,8 @@ xform_censoring <- function(cens, xform) {
   new_upper <- xform(cens$upper)
   new_lower <- xform(cens$lower)
   swapped <- isTRUE(attr(cens, "swapped"))
-  if (is.finite(new_upper) && is.finite(new_lower) && new_upper < new_lower) {
+  if (record_map_decreasing(xform, cens$lower, cens$upper, new_lower,
+                            new_upper)) {
     # A decreasing remapping takes the top of the old scale to the bottom of
     # the new one, so a draw known to be beyond the top of the range is stated
     # as below the bottom of the transformed one. The same draws are censored;
@@ -485,6 +486,71 @@ xform_censoring <- function(cens, xform) {
   # the reported scale those draws actually landed at.
   attr(out, "swapped") <- swapped
   out
+}
+
+#' Whether a map reverses the two ends of a censoring record
+#'
+#' Read from the map at two points strictly inside the record's range, not
+#' from the images of the two ends. A grid that starts at 0 under
+#' \code{function(x) -log(x)} maps its lower end to \code{Inf}, and a test that
+#' required both images to be finite kept such a record in its old
+#' orientation: the 11 draws censored above 100 in #440 were marked
+#' \code{>=} -4.6, the foot of the new scale, where they lie below it. A probe
+#' inside the range is finite wherever the map is defined there, whatever it
+#' does at the ends.
+#'
+#' Where the probe gives no answer -- a range of one point, or a map that is
+#' not finite at either probe -- the images of the two ends decide, infinite
+#' values included. No increasing map reverses the record under either test,
+#' so every increasing \code{xform}, \code{exp} among them, gives the record it
+#' gave before #440.
+#'
+#' @param xform A monotone \code{\link[base]{function}}.
+#' @param lower,upper The two ends of the record, on the scale \code{xform}
+#' takes values from.
+#' @param new_lower,new_upper Their images under \code{xform}.
+#'
+#' @return A \code{\link[base]{logical}} value.
+#' @noRd
+record_map_decreasing <- function(xform, lower, upper, new_lower, new_upper) {
+  probe <- interior_probe(lower, upper)
+  if (!is.null(probe)) {
+    # Muffled because a probe is not a value the caller asked for: a map that
+    # is undefined there, such as log() on a range reaching below 0, warns
+    # about a NaN nothing reports, and the ends below then decide.
+    img <- suppressWarnings(xform(probe))
+    if (length(img) == 2 && all(is.finite(img)) && img[[1]] != img[[2]]) {
+      return(img[[2]] < img[[1]])
+    }
+  }
+  isTRUE(new_upper < new_lower)
+}
+
+#' Two points in increasing order strictly inside a range
+#'
+#' @param lower,upper The ends of the range, either of which may be infinite.
+#'
+#' @return A \code{\link[base]{numeric}} vector of length 2, or \code{NULL}
+#' where the range is a single point or an end is missing.
+#' @noRd
+interior_probe <- function(lower, upper) {
+  lo <- min(lower, upper)
+  hi <- max(lower, upper)
+  if (!isTRUE(hi > lo)) {
+    return(NULL)
+  }
+  # One unit from a finite end where the other is infinite. Any two interior
+  # points answer the question for a monotone map, so the spacing does not
+  # need to follow the scale of the range.
+  if (is.finite(lo) && is.finite(hi)) {
+    lo + (hi - lo) * c(1, 2) / 3
+  } else if (is.finite(hi)) {
+    hi - c(2, 1)
+  } else if (is.finite(lo)) {
+    lo + c(1, 2)
+  } else {
+    c(-1, 1)
+  }
 }
 
 #' The bound a class of beyond-range draw is reported at

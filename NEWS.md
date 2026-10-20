@@ -160,6 +160,28 @@
   `nec(fit, xform = function(x) -x)` reports it. Identity and increasing
   transformations give the same annotation as before (#417).
 
+- A decreasing `xform` that takes one end of the prediction range to infinity
+  now reverses the interval and the bound marks of `nec()`, `nsec()` and
+  `ecx()`, as #417 made every other decreasing transformation do. Whether the
+  transformation was decreasing was decided from the transformed ends of the
+  range, and only where both were finite, so a grid starting at 0 under
+  `xform = function(x) -log(x)` kept the old orientation. On a constructed
+  posterior of 101 draws over a grid from 0 to 100, 11 of them beyond the top,
+  the per-draw summary was -3.808 (-4.480 to -4.605), with the lower limit the
+  larger and `>=` on the upper one. It is now -4.006 (`<=` -4.605 to -2.468),
+  which is what the annotations of `plot()`, `autoplot()` and `ggbnec_data()`
+  already gave. The direction is now read from the transformation at two
+  points inside the range. Identity and increasing transformations, `exp`
+  among them, give the same values and marks as before (#440).
+
+- The legend of `plot()` on a `bayesnechurdlefit` gives the no-effect
+  estimate in increasing order under a decreasing `xform`, and marks a
+  censored entry `>=` or `<=`. `xform` was applied to the summary `nec()`
+  returned, so under `xform = function(x) -x` the interval was printed from
+  high to low, and under any `xform` a censored entry was printed as a number.
+  `xform` is now passed to `nec()`, and the legend is formatted as the legend
+  of `plot()` on a `bayesnecfit` is (#440).
+
 - The two ends are recorded separately. A draw whose curve had already passed
   the target where the prediction range begins is reported as `<=` the foot of
   that range, which an `NA` alone could not distinguish from a draw whose curve

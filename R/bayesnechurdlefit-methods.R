@@ -948,13 +948,22 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
     }
     lines(xv, p$est)
     if (add_nec) {
-      ne <- xform(without_scale_report(
-        nec(x, which = if (w == "combined") "combined" else w)
-      ))
+      # xform is given to nec() rather than applied to the summary it returns.
+      # nec() applies it to each draw and to the censoring record, so the
+      # interval comes back in order and each bound is marked. Applied
+      # to the summary, a decreasing xform printed the interval from high to
+      # low, -0.19 to -1.6 under function(x) -x, and a censored estimate read
+      # as a number under any xform (#440). The marks are formatted as
+      # plot.bayesnecfit() formats them.
+      ne <- without_scale_report(
+        nec(x, which = if (w == "combined") "combined" else w, xform = xform)
+      )
       abline(v = ne, col = "red", lty = c(1, 3, 3))
       legend("topright", bty = "n", lty = 1, col = "red",
-             legend = paste0("N(S)EC: ", signif(ne[1], 2), " (",
-                             signif(ne[2], 2), "-", signif(ne[3], 2), ")"))
+             legend = paste0("N(S)EC: ", bound_prefix(ne, 1),
+                             signif(ne[[1]], 2), " (", bound_prefix(ne, 2),
+                             signif(ne[[2]], 2), "-", bound_prefix(ne, 3),
+                             signif(ne[[3]], 2), ")"))
     }
   }
   invisible(x)
