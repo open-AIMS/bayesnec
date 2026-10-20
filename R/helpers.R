@@ -1658,6 +1658,25 @@ extract_formula <- function(x) {
   }
 }
 
+#' Check new data against the family a refit uses, and correct them for it
+#'
+#' @param x A \code{\link[base]{list}} of \code{\link{prebayesnecfit}}
+#' objects, one per model of the set being refitted.
+#' @param data The data the refit is given: the caller's \code{newdata}, or
+#' the fit's stored data where only a family was supplied.
+#' @param family The family passed to \code{update()}, or \code{NULL}.
+#' @param on_fit Whether the caller returns an object that stores the
+#' substitution record; see \code{report_substitutions()}.
+#'
+#' @details Every check follows one family, the one the refit uses (see
+#' \code{refit_family()}). No family is read off the data, so new data never
+#' produce a change of family, and \code{changed_family} is \code{TRUE} only
+#' where the caller supplied a family that differs from the fitted one (D32,
+#' #435).
+#'
+#' @return A named \code{\link[base]{list}}: \code{changed_family}, the
+#' corrected \code{data}, and the \code{substitutions} record.
+#'
 #' @noRd
 #' @importFrom stats model.frame
 check_update_data <- function(x, data, family = NULL, on_fit = TRUE) {
@@ -1666,31 +1685,32 @@ check_update_data <- function(x, data, family = NULL, on_fit = TRUE) {
   # FALSE in retrieve_valid_family(), and the family was re-derived from the
   # data. The guard then compared the data-derived family against the fitted
   # one and could not detect a family change at all. See #256.
-  brm_args <- if (is.null(family)) list() else list(family = family)
+  #
+  # Validated once, before the loop. update.bnecfit() passes a family it has
+  # validated already, which validate_family() returns unchanged.
+  if (!is.null(family)) {
+    family <- validate_family(family)
+  }
   substitutions <- NULL
   for (i in seq_along(x)) {
     formula <- extract_formula(x[[i]])
     bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
     model <- get_model_from_formula(formula)
-    # Tested against the family the refit uses: the one supplied, otherwise the
-    # fit's own, which brms::update() keeps. `fam` below is read off the new
-    # data where no family is supplied, which is right for asking whether the
-    # data suggest a different family and wrong for this: a bernoulli fit given
-    # a response of 1 in every row would be tested as poisson and refitted, and
-    # a gaussian fit given a response of exactly 1 would be refused as beta.
+    # Every check below follows the family the refit uses: the one supplied,
+    # otherwise the fit's own, which brms::update() keeps. Until D32 the bound
+    # check alone did, and the boundary adjustments of check_data() followed a
+    # family read off the new data. A gaussian fit given a response with an
+    # exact 1 had the 1 shifted to 0.999 as though it were beta, a joint
+    # hurdle_gamma fit had its zeros shifted as though it were Gamma, and under
+    # force_fit = TRUE those shifted responses were what the refit received.
+    # See #435.
+    fam <- refit_family(x[[i]]$fit$family, family)
     # After check_complete_cases(), for the reason get_priors() gives;
     # check_data() runs that again below. Given the fit's own equation, so that
     # an ecxflat fit, which is what bnec() fits to such a response, can be
     # refitted to one, and a curve equation cannot. See #400 and #419.
     check_complete_cases(bdat)
-    check_response_at_bound(
-      bdat, if (is.null(family)) x[[i]]$fit$family else family,
-      model = model
-    )
-    # Named fam, not family: reassigning the argument inside its own loop
-    # would leave the second iteration reading the validated object rather
-    # than what the caller supplied.
-    fam <- retrieve_valid_family(brm_args, bdat)
+    check_response_at_bound(bdat, fam, model = model)
     model <- check_models(model, fam, bdat)
     checked_df <- check_data(data = bdat, family = fam, model = model)
     # The corrections check_data() reports have to reach the data frame brms
@@ -1728,12 +1748,55 @@ check_update_data <- function(x, data, family = NULL, on_fit = TRUE) {
   # would otherwise print "recorded on the fitted object; see ?bnec_record" and
   # return an object whose bnec_record() is NULL.
   report_substitutions(substitutions, on_fit = on_fit)
+  # Only a supplied family can differ from the fitted one. Without one the
+  # refit keeps the fitted family, so there is nothing to compare: a family
+  # read off the data was compared here before D32, and every Gamma fit given
+  # new data was refused as a change of family because the stored tag is
+  # "gamma" and the tag read off the data "Gamma". See #435.
   list(
-    changed_family = !identical(family_signature(checked_df$family),
-                                family_signature(x[[1]]$fit$family)),
+    changed_family = !is.null(family) &&
+      !identical(family_signature(family),
+                 family_signature(x[[1]]$fit$family)),
     data = data,
     substitutions = substitutions
   )
+}
+
+#' The family a refit uses, under the tag bayesnec's checks key on
+#'
+#' @param fitted The family stored in the \code{brmsfit} being refitted.
+#' @param supplied The validated family passed to \code{update()}, or
+#' \code{NULL}.
+#'
+#' @details \code{brms::update()} keeps the stored family unless it is given
+#' another, so that is the family new data are checked against. Nothing is read
+#' off the data: a \code{gaussian} fit given a response with an exact 1 is
+#' checked as a \code{gaussian} fit, and a joint \code{hurdle_gamma} fit keeps
+#' its zeros (D32, #435).
+#'
+#' The stored family is a \code{brmsfamily}, which records Gamma under the tag
+#' \code{gamma}, while \code{check_data()} and \code{check_models()} key on
+#' \code{Gamma}. Read under the stored tag, a Gamma fit given new data with a
+#' zero would pass it to \code{brms} unshifted. The tag is rewritten through
+#' \code{canonical_fam_tag()} on a copy that only those checks read. The copy
+#' is never handed to \code{brms}, which dispatches on its own tag (see
+#' \code{bnec_default_family()}): where no family is supplied the refit is
+#' given none, and \code{brms} keeps the object it stored.
+#'
+#' The stored family is not passed through \code{validate_family()}, which
+#' would refuse a fit made by an earlier version on a link this version does
+#' not support. Refitting such a fit with \code{update()} keeps its link, and
+#' is not refused for it.
+#'
+#' @return An object of class \code{\link[stats]{family}}.
+#'
+#' @noRd
+refit_family <- function(fitted, supplied = NULL) {
+  if (!is.null(supplied)) {
+    return(supplied)
+  }
+  fitted$family <- canonical_fam_tag(fitted)
+  fitted
 }
 
 #' The tag and the links, which is what "a different family" means here
@@ -1747,13 +1810,37 @@ check_update_data <- function(x, data, family = NULL, on_fit = TRUE) {
 #' family identical to the one fitted, and \code{update(fit, family =
 #' "gaussian")} on a gaussian fit asked for \code{force_fit = TRUE}.
 #'
+#' The tag is read through \code{canonical_fam_tag()}, because \pkg{brms}
+#' records Gamma as \code{gamma}. A link the object does not record is given
+#' the value \pkg{brms} assigns it by default, because the two kinds of object
+#' record different sets of links: \code{stats::Gamma(link = "identity")}
+#' records \code{link} alone, while the \code{brmsfamily} stored for the same
+#' family also records \code{link_shape = "log"}, which is the value
+#' \pkg{brms} fits on when given the \pkg{stats} object. Without both, a
+#' supplied \code{Gamma(link = "identity")} was a change of family against a
+#' Gamma fit (#435).
+#'
 #' @return A named \code{\link[base]{character}} vector.
+#'
+#' @importFrom brms brmsfamily
 #'
 #' @noRd
 family_signature <- function(family) {
-  links <- family[grepl("^link", names(family))]
-  links <- unlist(links[vapply(links, is.character, logical(1))])
-  c(family = family$family, links[order(names(links))])
+  tag <- canonical_fam_tag(family)
+  char_links <- function(f) {
+    links <- f[grepl("^link", names(f))]
+    unlist(links[vapply(links, is.character, logical(1))])
+  }
+  links <- char_links(family)
+  # NULL for a tag brms does not know, in which case the links are compared as
+  # recorded.
+  stock <- tryCatch(brmsfamily(tag), error = function(e) NULL)
+  if (!is.null(stock)) {
+    stock_links <- char_links(stock)
+    unset <- setdiff(names(stock_links), names(links))
+    links <- c(links, stock_links[unset])
+  }
+  c(family = tag, links[order(names(links))])
 }
 
 #' @noRd
