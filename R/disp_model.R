@@ -560,7 +560,7 @@ add_disp_block <- function(brms_bf, model, spec, family, x_var,
   # The curve as it now stands, which is the one the fit uses. See
   # make_disp_block() for what rebuilding it from the template discarded.
   db <- make_disp_block(model, spec, dpar, x_var, response,
-                        curve = deparse1(brms_bf$formula[[3]]))
+                        curve = disp_curve(brms_bf))
   if (spec$route == "A") {
     # lf() rather than nlf(): the right-hand side is an ordinary linear
     # predictor in the data, so brms should apply its usual design-matrix
@@ -568,4 +568,40 @@ add_disp_block <- function(brms_bf, model, spec, family, x_var,
     return(brms_bf + lf(db$nlf))
   }
   brms_bf + nlf(db$nlf) + lf(db$lf)
+}
+
+#' The curve a variance function of the fitted mean is written in
+#'
+#' @param brms_bf An object of class \code{\link[brms]{brmsformula}}, with every
+#' group-level block already added.
+#'
+#' @details The curve before an \code{ogl()} deviation is applied. Under the
+#' multiplicative form that is the intermediate \code{bnecmu}; under the
+#' additive form, \code{ogl + <curve>}, it is the right-hand side without its
+#' leading \code{ogl}. A parameter-level deviation, \code{(bot | g)} or
+#' \code{pgl(g)}, is part of the curve and is kept, as #294 made it.
+#'
+#' The fitted mean, \code{bnecmu * exp(ogl)}, was read here until #468. It let
+#' one deviation set both the mean and the spread of its group. Where the
+#' variance rises more slowly than the mean --- \code{c1 > 1} for
+#' \code{"power"} --- a deviation that lowered a group's mean far below its
+#' data also shrank the Gamma shape until those data were tolerably likely
+#' again, which is a second optimum. On the \code{lum31} zinc arm in
+#' \code{example8} warmup carried cells into it from a start at zero, and every
+#' equation of a fit with a cell term failed the sampler screen.
+#'
+#' @return A \code{\link[base]{character}} string.
+#'
+#' @noRd
+disp_curve <- function(brms_bf) {
+  if ("bnecmu" %in% names(brms_bf$pforms)) {
+    return("bnecmu")
+  }
+  rhs_txt <- deparse1(brms_bf$formula[[3]])
+  if (!is.null(brms_bf$pforms$ogl)) {
+    # add_formula_glef() writes the additive form as paste0("ogl + ", curve),
+    # so the offset is always the leftmost operand of the outermost sum.
+    rhs_txt <- sub("^ogl \\+ ", "", rhs_txt)
+  }
+  rhs_txt
 }
