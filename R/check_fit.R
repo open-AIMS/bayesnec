@@ -429,13 +429,14 @@ check_fit_combined <- function(x, group = NULL, ndraws = 1000, seed = 10) {
   grp <- check_fit_groups(predictor, group)
   n_av <- min(brms::ndraws(gb), brms::ndraws(sb))
   nd <- min(ndraws, n_av)
+  g_rows <- hurdle_growth_rows(x, sb$data)
   with_preserved_rng_state({
     set.seed(seed)
     alive <- posterior_predict(sb, ndraws = nd)
-    grow <- posterior_predict(gb, newdata = sb$data, ndraws = nd)
+    grow <- posterior_predict(gb, newdata = g_rows, ndraws = nd)
     mu_alive <- apply(posterior_epred(sb), 2, median)
     mu_grow <- apply(factorised_count_epred(
-      gb, x$growth$bayesnecformula, newdata = sb$data, ndraws = nd
+      gb, x$growth$bayesnecformula, newdata = g_rows, ndraws = nd
     ), 2, median)
   })
   n <- min(nrow(alive), nrow(grow))
@@ -443,6 +444,46 @@ check_fit_combined <- function(x, group = NULL, ndraws = 1000, seed = 10) {
   mu <- mu_alive * mu_grow
   out <- check_fit_stats(y_obs, yrep, mu, grp, is_mixture = TRUE)
   allot_class(out, c("checkfit", "data.frame"))
+}
+
+#' The exposed rows of a hurdle fit, with the growth component's disp() columns
+#'
+#' @param x A \code{\link{bayesnechurdlefit}}.
+#' @param frame The survival component's fitted data, one row per exposed
+#' individual.
+#'
+#' @details The growth component is simulated for every exposed row in
+#' \code{check_fit_combined()}, over the survival component's data. That frame
+#' holds only the columns of the survival formula, from which the
+#' \code{disp()} term is removed, so it has none of the columns a growth
+#' \code{disp(~z)} term names, and the simulation stopped in \pkg{brms}
+#' (#443). The rows are observations, so each takes its own recorded value,
+#' from the data \code{bnec_hurdle()} was given, not a value drawn from the
+#' design as a predicted reading on a grid does. Matched by position, which
+#' holds because both components are fitted from the rows of that data
+#' without reordering, the survival component from all of them; see
+#' \code{hurdle_observed_response()}.
+#'
+#' @return \code{frame}, unchanged where the growth formula has no such
+#' column.
+#'
+#' @noRd
+hurdle_growth_rows <- function(x, frame) {
+  columns <- setdiff(disp_covariates(x$formula), names(frame))
+  if (length(columns) == 0) {
+    return(frame)
+  }
+  if (nrow(x$data) != nrow(frame)) {
+    stop("The survival component of this hurdle fit has ", nrow(frame),
+         " rows and its data ", nrow(x$data), ", so the growth component's",
+         " disp() ", if (length(columns) == 1) "column" else "columns", " ",
+         paste0("\"", columns, "\"", collapse = ", "), " cannot be matched",
+         " to the rows it is simulated for.", call. = FALSE)
+  }
+  for (v in columns) {
+    frame[[v]] <- x$data[[v]]
+  }
+  frame
 }
 
 #' The observed response of a hurdle fit, zeros included

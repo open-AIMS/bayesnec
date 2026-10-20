@@ -48,6 +48,9 @@ NULL
 #'
 #' @export
 posterior_epred.bayesnecfit <- function(object, ...) {
+  # Refused here with the term named, rather than by brms; see
+  # check_newdata_disp().
+  check_newdata_disp(object$bayesnecformula, list(...)[["newdata"]])
   factorised_count_epred(
     pull_brmsfit(object), object$bayesnecformula, ...
   )
@@ -66,6 +69,7 @@ posterior_epred.bayesnecfit <- function(object, ...) {
 posterior_epred.bayesmanecfit <- function(object, ...) {
   mod_fits <- object$mod_fits
   model_set <- names(mod_fits)
+  check_newdata_disp(mod_fits[[1]]$bayesnecformula, list(...)[["newdata"]])
   pred_list <- lapply(mod_fits, function(x, ...) {
     factorised_count_epred(x$fit, x$bayesnecformula, ...)
   }, ...)

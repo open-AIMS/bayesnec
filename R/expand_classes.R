@@ -346,6 +346,13 @@ prediction_grid <- function(fit, formula, x_range = NA, resolution = 1000,
   if (!is.null(level_spec)) {
     newdata <- add_grid_levels(newdata, level_spec, length(x_seq))
   }
+  # A disp(~z) column other than the predictor is needed on the grid, because
+  # brms evaluates the dispersion parameter for posterior_epred() as well, and
+  # without it every model sampled and then failed here (#443). Added after the
+  # level term, so that a column the grid already sets is left as it is, and
+  # marked as a placeholder for the prediction methods. A fit without such a
+  # column gets the grid it had before. See add_disp_placeholders().
+  newdata <- add_disp_placeholders(newdata, fit$data, formula, x_var)
   list(newdata = newdata, x_seq = x_seq, x_var = x_var)
 }
 

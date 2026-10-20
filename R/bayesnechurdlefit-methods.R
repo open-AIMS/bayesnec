@@ -221,7 +221,36 @@ bnec_newdata.bayesnechurdlefit <- function(x, resolution = 100,
   # Taken from the survival component, which sees every row and therefore the
   # full exposed predictor range; the growth component stops short of any
   # concentration where nothing survived.
-  bnec_newdata(object$survival, resolution = resolution, x_range = x_range)
+  newdata <- bnec_newdata(object$survival, resolution = resolution,
+                          x_range = x_range)
+  hurdle_disp_placeholders(newdata, object)
+}
+
+#' The growth component's disp(~...) columns on a hurdle fit's grid
+#'
+#' @param newdata A grid built from the survival component.
+#' @param object An object of class \code{\link{bayesnechurdlefit}}.
+#'
+#' @details The survival formula has no \code{disp()} term, so a grid
+#' built from it has none of the columns the growth component's term names,
+#' and a prediction of the combined endpoint over it stopped in \pkg{brms} on
+#' the growth side (#443). The columns are added at the growth component's
+#' fixed values, from the survivors it was fitted to, and marked as
+#' placeholders, as \code{prediction_grid()} adds them for a single fit.
+#'
+#' @return \code{newdata}, unchanged where the growth component's formula has
+#' no such column.
+#'
+#' @noRd
+hurdle_disp_placeholders <- function(newdata, object) {
+  if (length(disp_covariates(object$formula)) == 0) {
+    return(newdata)
+  }
+  growth <- object$growth
+  if (inherits(growth, "bayesmanecfit")) {
+    growth <- growth$mod_fits[[1]]
+  }
+  add_disp_placeholders(newdata, growth$fit$data, object$formula)
 }
 
 #' Extracts the predicted NSEC value from a \code{\link{bayesnechurdlefit}}

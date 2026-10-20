@@ -1844,6 +1844,32 @@
 
 ## Bug fixes
 
+- A `disp(~z)` term naming a column other than the predictor is now fitted
+  and predicted from. Every model sampled and then stopped on the prediction
+  grid, which held the predictor and any trials or `rate()` denominator but
+  not `z`. The grid now holds `z`. The fitted curve stored on a fit, `ecx()`,
+  `nec()`, `nsec()` and `ecnsec()` take it at one fixed value, the first
+  level of a factor or the median of a numeric column. That value does not
+  change them, because no family the term is fitted for has a mean that
+  involves the dispersion parameter. `bnec_newdata()` writes the same value
+  and names the column in the attribute `bnec_disp_placeholders`.
+  `posterior_predict()` and `predict()` replace a column named there draw by
+  draw with the value of a row sampled from the fitted data, so a predicted
+  reading is one from the design's mix of `z` rather than from its first
+  level, and `set.seed()` before the call reproduces the draws. A `newdata`
+  without `z` is refused with a message naming it by `posterior_predict()`,
+  `predict()`, `posterior_epred()` and `fitted()`, and one that holds `z`
+  without the attribute is used as given. Without `newdata`,
+  `posterior_predict()` and `predict()` predict for the fitted rows, each with
+  its own value, as before. The same holds for the growth component of
+  `bnec_hurdle()`, whose predicted readings draw `z` from the survivors, and
+  `check_fit()` on a hurdle fit gives each exposed row its own recorded value.
+  On a `negbinomial` growth component of `bnec_hurdle()` the term is refused
+  before anything is fitted: that component's curve is the mean of the
+  zero-truncated counts, which depends on the shape parameter, so the curve
+  and every estimate read from it would depend on the value given to `z`.
+  Output for a fit whose `disp()` term names no such column is unchanged
+  (#443).
 - A nested or interaction grouping inside `ogl()` or `pgl()` is now fitted as
   written. `ogl(a/b)` fits one deviation per level of `a` and a further one
   per level of `b` within each level of `a`, as `(1 | a/b)` does in `brms`,
