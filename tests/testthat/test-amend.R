@@ -177,3 +177,81 @@ test_that("amend lets ecxflat alone through at a bound, and names it (#419)", {
   expect_identical(fitted, "ecxflat")
   expect_false(grepl("upper bound", paste(res, collapse = " ")))
 })
+
+
+# ---- #470, the formula and data a new equation is fitted from ----------------
+
+# manec_example's two equations stored as bnec() stores them under a term on
+# `plate` written for `par`. An equation without that parameter stores its
+# formula without the term, keeps the formula as written as requested_formula,
+# and has no plate column in its stored data, which is the state brms leaves.
+# An equation with the parameter keeps the term, and its stored data are given
+# the column. NB: the brmsfit components were not fitted with these terms.
+# amend() reads only the formula and the data before it fits, which is what
+# these tests assert, and nothing here reads a posterior quantity.
+grouped_manec <- function(par) {
+  m <- manec_example
+  n <- nrow(m$mod_fits[[1]]$fit$data)
+  plate <- factor(rep(letters[1:4], length.out = n))
+  for (eq in names(m$mod_fits)) {
+    written <- bnf(stats::as.formula(paste0(
+      "y ~ crf(x, model = \"", eq, "\") + (", par, " | plate)"
+    )))
+    fitted <- equation_formula(written, eq)
+    m$mod_fits[[eq]]$bayesnecformula <- fitted
+    if (identical(fitted, written)) {
+      m$mod_fits[[eq]]$fit$data$plate <- plate
+    } else {
+      m$mod_fits[[eq]]$requested_formula <- written
+    }
+  }
+  m
+}
+
+test_that("an added equation gets the terms as written and their data (#470)", {
+  # nec4param, first in the set, has no ec50, so its stored formula and data
+  # hold neither the term nor plate. Read off it alone, as amend() read the
+  # first equation before #470, ecxll3 would be fitted without (ec50 | plate)
+  # and without a message.
+  m <- grouped_manec("ec50")
+  seen <- new.env(parent = emptyenv())
+  local_mocked_bindings(
+    fit_bayesnec = function(formula, data, model, ...) {
+      seen$formula <- formula
+      seen$data <- data
+      stop("model fit reached")
+    },
+    expand_manec = function(...) stop("set assembly reached"),
+    .package = "bayesnec"
+  )
+  expect_error(suppressWarnings(suppressMessages(amend(m, add = "ecxll3"))),
+               "set assembly reached", fixed = TRUE)
+  expect_true("ec50 | plate" %in% labels(terms(seen$formula)))
+  expect_true("plate" %in% names(seen$data))
+})
+
+test_that("amend refuses to fit where no stored data hold a grouping (#470)", {
+  # Neither equation has slope, so each left out (slope | plate) and neither
+  # stored the column. An equation with slope cannot be given its term from
+  # these data, and fitting it without the term would fit a different model
+  # from the one the formula states.
+  m <- grouped_manec("slope")
+  calls <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      calls <<- calls + 1L
+      stop("model fit reached")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(suppressMessages(amend(m, add = "ecxlin")),
+               "amend() cannot fit \"ecxlin\" to this set", fixed = TRUE)
+  expect_identical(calls, 0L)
+  # Dropping an equation fits nothing and reads only the population-level
+  # variables, which every stored fit holds, so it is not refused.
+  dropped <- amend(m, drop = "ecx4param") |>
+    suppressMessages() |>
+    suppressWarnings()
+  expect_s3_class(dropped, "bayesnecfit")
+  expect_identical(calls, 0L)
+})

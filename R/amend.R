@@ -258,9 +258,17 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
     return(object)
   }
   simdat <- extract_simdat(mod_fits[[1]])
-  data <- mod_fits[[1]]$fit$data
   family <- mod_fits[[1]]$fit$family
-  formula <- mod_fits[[1]]$bayesnecformula
+  # A new equation is fitted from the formula as written and from the data one
+  # fit stored. Since #470 the stored formula is the equation's own, without
+  # the (par | group) terms naming a parameter it lacks, and brms stores only
+  # the variables of the formula it fitted. Read off the first equation alone,
+  # as before, an ecxexp at the head of a (nec | g) + (ec50 | g) set would give
+  # an added ecxll3 neither its (ec50 | g) term nor the column g, and it would
+  # be fitted without the term and without a message. See amend_source().
+  src <- amend_source(mod_fits)
+  data <- mod_fits[[src$index]]$fit$data
+  formula <- src$formula
   # Narrowed here as bnec() narrows it, and for the same reason: the model
   # frame below holds the formula's environment in the .Environment of
   # its terms attribute, and amend() exports that frame to every worker. A fit
@@ -288,6 +296,18 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   needs_fit <- !vapply(model_set, function(model) {
     inherits(try(old_fits[[model]], silent = TRUE), "prebayesnecfit")
   }, logical(1))
+  # Refused only where an equation is to be fitted: dropping one or changing
+  # the weighting reads the population-level variables alone, which every
+  # stored fit holds.
+  if (any(needs_fit) && !src$can_fit) {
+    stop("amend() cannot fit ",
+         paste0("\"", model_set[needs_fit], "\"", collapse = ", "),
+         " to this set. Each equation in it left out every (par | group) term",
+         " on at least one grouping variable, because those terms name",
+         " parameters it does not have, so the data stored with the fits do",
+         " not hold that variable. Refit the set with bnec(), naming the",
+         " equations to add in crf().", call. = FALSE)
+  }
   # The backstop for this route, which builds priors with define_prior() and
   # fits with skip_check = TRUE, so check_data() never runs on it. Raised once,
   # before the loop, and only where a model is to be fitted: dropping a model
@@ -439,6 +459,51 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
     )
   }
   carry_retained_data(out, object)
+}
+
+#' The formula and the stored data amend() fits a new equation from
+#'
+#' @param mod_fits A named \code{\link[base]{list}} of
+#' \code{\link{prebayesnecfit}} objects.
+#'
+#' @details The first equation whose stored data hold every variable of the
+#' formula as written. Where the first equation has no
+#' \code{requested_formula}, because it kept all of its terms or was fitted
+#' before #470, that is the first equation and its stored formula, so the
+#' formula and the data are the ones amend() read before. Otherwise the formula
+#' as written is its \code{requested_formula}, and the data are tested by
+#' building the model frame from the two:
+#' \code{check_formula()} is the package's own test of whether a grouping
+#' variable is present, so the test cannot disagree with the one the new fit
+#' will meet.
+#'
+#' Where no equation's data hold every variable, as under
+#' \code{(nec | g1) + (ec50 | g2)} on a set mixing the two groups, or
+#' \code{(nec | g)} on a set of ECx equations, \code{can_fit} is \code{FALSE}
+#' and the first equation's stored formula is returned, which is consistent
+#' with its data and gives the population-level variables that dropping an
+#' equation or reweighting reads.
+#'
+#' @return A \code{\link[base]{list}} with elements \code{index}, the position
+#' of the equation in \code{mod_fits}; \code{formula}; and \code{can_fit}.
+#'
+#' @importFrom stats model.frame
+#'
+#' @noRd
+amend_source <- function(mod_fits) {
+  for (i in seq_along(mod_fits)) {
+    requested <- mod_fits[[i]][["requested_formula"]]
+    if (is.null(requested)) {
+      return(list(index = i, formula = mod_fits[[i]]$bayesnecformula,
+                  can_fit = TRUE))
+    }
+    frame <- try(model.frame(requested, data = mod_fits[[i]]$fit$data),
+                 silent = TRUE)
+    if (!inherits(frame, "try-error")) {
+      return(list(index = i, formula = requested, can_fit = TRUE))
+    }
+  }
+  list(index = 1L, formula = mod_fits[[1]]$bayesnecformula, can_fit = FALSE)
 }
 
 #' The candidate set an amended object was asked for
