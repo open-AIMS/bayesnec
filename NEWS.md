@@ -1911,6 +1911,28 @@
   recorded when the component was fitted, which `summary()` prints beside each
   row. It is printed for the combined value only. A component built by a
   version that recorded no type raises nothing (#446).
+- `update(newdata = )` refits with the family the model was fitted with,
+  changes it only where `family =` is supplied, and checks the new data
+  against that family's requirements. It read a family off the new data,
+  compared that with the fitted family, and adjusted the response for the
+  family read off. Every Gamma fit given new data was refused as a change of
+  family, because `brms` records the Gamma tag as `gamma` and `bayesnec` as
+  `Gamma`; so was the growth component of a `bnec_hurdle()` fit with a Gamma
+  growth family, and `family = Gamma(link = "identity")` did not avoid it. A
+  joint `hurdle_gamma` fit was read as Gamma, its zeros were reported as
+  shifted, and under `force_fit = TRUE` the refit received them shifted, so
+  its hurdle block had no zeros to model. A `gaussian` fit given a response
+  with an exact 1 was read as beta, and the refit was made on 0.999. New data
+  now never produce a change of family, a message about one, or an adjustment
+  for one. A supplied family that names the fitted one, in any of the forms
+  `validate_family()` accepts, is not a change; one that differs still
+  requires `force_fit = TRUE` (#435).
+- `update(newdata = )` on a `bnec_hurdle()` fit checks both components
+  against the families their refits use before either is refitted. New data
+  with no zero, whose survival response is 1 in every observation, were
+  refused only after the growth component had been refitted, and the refusal
+  named the generated column `.alive`. It now names the survival component,
+  as `bnec_hurdle()` names the growth component (#435).
 - A nested or interaction grouping inside `ogl()` or `pgl()` is now fitted as
   written. `ogl(a/b)` fits one deviation per level of `a` and a further one
   per level of `b` within each level of `a`, as `(1 | a/b)` does in `brms`,

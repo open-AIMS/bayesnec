@@ -57,8 +57,9 @@ ignores one given in "weights" and always keeps the set's own.
 see \code{\link{c.bnecfit}} for how they decide the method. See
 ?\code{\link[loo]{loo_model_weights}} for further info.}
 
-\item{force_fit}{Should model truly be updated in case either
-\code{newdata} of a new family is provided?}
+\item{force_fit}{Whether to refit where \code{family} names a family or
+link that differs from the one the model was fitted with. New data alone
+never require it.}
 
 \item{...}{Further arguments to \code{\link[brms]{brm}}.}
 }
@@ -73,6 +74,19 @@ Update an object of class \code{\link{bnecfit}} as fitted by function
 \code{\link{bnec}}.
 }
 \details{
+The models are refitted with the family they were fitted with
+unless \code{family} is supplied. No family is read off \code{newdata}, so
+new data alone never change the family and never require
+\code{force_fit = TRUE}. The new data are checked against the requirements
+of the family the refit uses, as \code{\link{bnec}} checks its data. A value
+at a boundary that family excludes, such as a zero for \code{Gamma} or a 1
+for \code{beta}, is shifted off it, and the shift is reported and stored in
+the fit's \code{\link{bnec_record}} where it has one. A value the family
+admits is passed on as recorded, so a \code{gaussian} fit keeps an exact 1
+and a joint \code{hurdle_gamma} fit keeps its zeros. A bounded response at
+one of its bounds in every observation is refused before any model is
+refitted, unless the fit is of the constant equation \code{ecxflat} alone.
+
 A \code{family} passed through \code{...} is read exactly as
 \code{\link{bnec}} reads it: the link is assigned by \pkg{bayesnec} unless
 the caller writes one, an unsupported link is refused before any model is
@@ -80,6 +94,8 @@ refitted, and the validated family is the one \pkg{brms} receives. See the
 \emph{The link} section of \code{\link{bnec}}. Supplying a family that
 differs from the fitted one requires \code{force_fit = TRUE}, because the
 priors carried over from the original fit were built for the original family.
+Families are compared by name and links, so \code{Gamma(link = "identity")}
+supplied for a Gamma fit is not a change of family.
 }
 \examples{
 \dontrun{
@@ -89,9 +105,9 @@ data(manec_example)
 # stanfit DSO, so need to recompile here
 smaller_manec <- update(manec_example, chains = 2, iter = 50,
                         recompile = TRUE)
-# original `manec_example` is fit with a Gaussian
-# change to Beta distribution by adding newdata with original `nec_data$y`
-# function will throw informative message.
+# original `manec_example` is fit with a Gaussian. Refitting it to the
+# original `nec_data$y` with a Beta distribution changes the family, so it
+# requires `force_fit = TRUE`, and a message says the priors may not suit it.
 beta_manec <- update(manec_example, newdata = nec_data, recompile = TRUE,
                      chains = 2, iter = 50,
                      family = Beta(link = "identity"), force_fit = TRUE)

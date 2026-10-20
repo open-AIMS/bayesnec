@@ -608,12 +608,10 @@ test_that("response_bound_reached names the bound every observation is at", {
 })
 
 test_that("the update route tests the family the refit uses (#400)", {
-  # check_update_data() reads a family off the new data where none is
-  # supplied, to ask whether the data suggest a different one. The refit keeps
-  # the fit's own family, so that is the family the bound is tested against.
-  # A bernoulli fit given a response of 1 in every row: read off the data that
-  # is a poisson response, which is not bounded, so nothing was refused and
-  # under force_fit = TRUE brms refitted the bernoulli on it.
+  # The refit keeps the fit's own family, so that is the family the bound is
+  # tested against. A bernoulli fit given a response of 1 in every row: read
+  # off the data that is a poisson response, which is not bounded, so nothing
+  # was refused and under force_fit = TRUE brms refitted the bernoulli on it.
   bern <- nec4param
   bern$fit$family <- brms::bernoulli(link = "identity")
   d <- bern$fit$data
@@ -623,12 +621,15 @@ test_that("the update route tests the family the refit uses (#400)", {
                "The response \"y\" is at the upper bound of a bernoulli",
                fixed = TRUE)
   # A gaussian fit given a response of exactly 1: read off the data that is a
-  # beta response, but the refit is gaussian, so nothing is refused and the
-  # suggested change of family is reported as before.
+  # beta response, but the refit is gaussian, so nothing is refused.
+  #
+  # INVERTED. This asserted that the data still suggested a change of family.
+  # No family is read off new data since D32, so there is none. See #435.
   d1 <- nec4param$fit$data
   d1$y <- 1
   res <- suppressMessages(check_update_data(list(nec4param), d1))
-  expect_true(res$changed_family)
+  expect_false(res$changed_family)
+  expect_true(all(res$data$y == 1))
   # A supplied family is the one the refit uses, so it is the one tested.
   expect_error(
     check_update_data(list(nec4param), d1, Beta(link = "identity")),

@@ -1559,11 +1559,12 @@ constant_fits_bound <- function(fam_tag, bound) {
 #' \code{\link{check_inline_boundary}}. \code{\link{bnec_hurdle}} raises it on
 #' the growth component before either component is fitted. \code{amend()} and
 #' \code{update()} call it for the routes that do not come through those entry
-#' points, each with the family its refit uses. It is not called from
-#' \code{\link{check_data}}, which is given whatever family its caller chose:
-#' on the \code{update()} route that is the family read off the new data, not
-#' the one the refit uses. The whole decision is made here, so that a change to
-#' what is done with such a response is made in one place.
+#' points, each with the family its refit uses, and \code{update()} on a
+#' \code{\link{bayesnechurdlefit}} raises it on both components before either
+#' is refitted. It is not called from \code{\link{check_data}}: each caller
+#' raises it before \code{check_data()} is reached. The whole decision is made
+#' here, so that a change to what is done with such a response is made in one
+#' place.
 #'
 #' Censoring is not consulted: the response is judged on its recorded values,
 #' because the default priors are built from them. A value left- or
