@@ -141,8 +141,8 @@
 #' understands is allowed, e.g. \code{disp(~log(x))} or \code{disp(~s(x))}. It
 #' is descriptive: it says noise is larger at one end of the dose axis.
 #'
-#' 2) \code{disp("power")} models dispersion as a function of the \bold{fitted
-#' mean} — a variance function in the GLM sense, and a statement about the
+#' 2) \code{disp("power")} models dispersion as a function of the \bold{mean
+#' curve} — a variance function in the GLM sense, and a statement about the
 #' measurement process rather than about the dose axis. The functions available,
 #' on the log link every eligible family gives its dispersion parameter, with
 #' \code{m} a fixed reference value computed from the response before fitting,
@@ -163,6 +163,18 @@
 #' Form 2) requires the mean to be modelled on its natural scale; see the
 #' identity-link note in \code{\link{bnec}}. Form 1) is an ordinary
 #' distributional formula and is valid under any link.
+#'
+#' Where the formula also has an \code{ogl()} term, \code{mu} in form 2) is the
+#' curve before the group-level deviation is applied, not the fitted mean of
+#' the group. The deviation therefore changes the mean of each group without
+#' changing its dispersion parameter. The observation variance can still
+#' change with the fitted mean; for Gamma it is the squared fitted mean divided
+#' by the shape. A deviation on a parameter, as in \code{(bot | group)} or
+#' \code{pgl(group)}, changes the curve itself, and so is included in the
+#' variance function as well. Reading the fitted mean after an \code{ogl()}
+#' deviation can produce a second posterior mode at a very low mean when
+#' \code{"power"} on a \code{Gamma} response has \code{c1 > 1}. This occurred
+#' in the zinc fit reported in #468.
 #'
 #' A dispersion sub-model requires a family with a free dispersion parameter.
 #' For \code{poisson}, \code{bernoulli} and \code{binomial} the variance is a

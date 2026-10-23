@@ -29,7 +29,8 @@ predicted. It affects only \code{type = "range"}, where the denominator is
 the lowest response the curve predicts over the grid. The default of 200
 matches \code{\link{ecx}} and \code{\link{nsec}}.}
 
-\item{x_range}{A range of x values over which to consider extracting NSEC.}
+\item{x_range}{A range of x values over which to predict the curve. An
+\code{nsec} outside it is refused; see Details.}
 
 \item{type}{A \code{\link[base]{character}} vector, taking values of
 "absolute" (the default), "relative" or "range". See Details.}
@@ -63,15 +64,24 @@ the same \code{type}. \code{"relative"} is refused, as it is by
 parameter to measure towards. \code{"direct"} is refused because it names a
 response value rather than a percentage.
 
-\code{nsec} is read on the recorded predictor scale as supplied, and
-\code{xform} is applied to the percentage returned rather than to
-\code{nsec}. Where \code{crf()} transforms the predictor inline,
-\code{\link{nsec}} returns its estimate on the transformed scale unless given
-an \code{xform}, so a message says so once per call and names the
-\code{xform} to give \code{\link{nsec}}.
+\code{xform} is applied to \code{nsec}, and the curve is read at the
+result on the recorded predictor scale, as in \code{\link{ecnsec}} on a
+\code{\link{bayesnecfit}}. Where \code{crf()} transforms the predictor
+inline, \code{\link{nsec}} returns its estimate on the transformed scale
+unless given an \code{xform}, so a message says so once per call where
+\code{xform} is left at its default, and names the \code{xform} that puts
+such a value on the recorded scale. In earlier versions this method applied
+\code{xform} to the percentage it returned. A call that supplies an
+\code{xform} other than \code{identity} is warned of the change in this
+release. To transform the percentage, apply the function to the value
+returned.
 
 Without \code{x_range}, every curve is read over the whole concentration
 series, as in \code{\link{ecx.bayesnechurdlefit}}. The range sets the
-lowest predicted response that \code{type = "range"} measures towards, and
-the grid point nearest \code{nsec} at which the curve is read.
+lowest predicted response that \code{type = "range"} measures towards. The
+curve is read at \code{nsec} by linear interpolation between the two grid
+points either side of it. An \code{nsec} outside the range is refused with a
+message naming the range, for the combined, growth and survival curves
+alike and whether or not \code{x_range} is supplied. Supply an
+\code{x_range} that includes \code{nsec} to read the curve there.
 }

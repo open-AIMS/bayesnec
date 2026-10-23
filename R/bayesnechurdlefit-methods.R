@@ -722,6 +722,37 @@ amend.bayesnechurdlefit <- function(object, drop, add, loo_controls,
                 amend_part(object$survival, "survival"))
 }
 
+#' Refuse a component's new response where it is at a bound of its refit
+#' family in every observation
+#'
+#' @param part One component of a \code{\link{bayesnechurdlefit}}: a
+#' \code{\link{bayesnecfit}} or a \code{\link{bayesmanecfit}}.
+#' @param data The data that component's refit is given.
+#' @param family The validated family passed to \code{update()}, or
+#' \code{NULL}.
+#' @param subject The subject of the message, naming the component.
+#'
+#' @details The bound check \code{update.bnecfit()} makes for each model
+#' through \code{check_update_data()}, made once for a whole component so that
+#' \code{update.bayesnechurdlefit()} can make it for both components before
+#' either is refitted. It uses the family that check uses, from
+#' \code{refit_family()}, and the component's whole set of equations, so that a
+#' component fitted with \code{ecxflat} alone is let through as it is there.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#'
+#' @noRd
+check_refit_bound <- function(part, data, family = NULL, subject = NULL) {
+  fits <- recover_prebayesnecfit(part)
+  bdat <- model.frame(extract_formula(fits[[1]]), data = data,
+                      run_par_checks = TRUE)
+  # First, as check_update_data() places it: model.frame() drops a row with a
+  # missing value, and the bound would otherwise be read without it. See #278.
+  check_complete_cases(bdat)
+  check_response_at_bound(bdat, refit_family(fits[[1]]$fit$family, family),
+                          subject = subject, model = names(fits))
+}
+
 #' Updates both components of a \code{\link{bayesnechurdlefit}}
 #'
 #' @inheritParams update.bnecfit
@@ -731,7 +762,12 @@ amend.bayesnechurdlefit <- function(object, drop, add, loo_controls,
 #' same way \code{\link{bnec_hurdle}} does, so zeros continue to denote the
 #' hurdle rather than being modelled as small responses, and checked the same
 #' way: a row that is both zero and censored is refused here as it is at
-#' construction.
+#' construction. Each component is refitted with the family it was fitted
+#' with, as \code{\link{update.bnecfit}} describes. Both components are checked
+#' against their families before either is refitted, so new data that put one
+#' component at a bound in every observation are refused, naming that
+#' component. New data with no zero are such a case: every individual
+#' survived, so the survival response is 1 in every observation.
 #'
 #' @return An object of class \code{\link{bayesnechurdlefit}}.
 #'
@@ -757,13 +793,39 @@ update.bayesnechurdlefit <- function(object, newdata = NULL, ...) {
   # bnec_hurdle() exists to prevent.
   check_hurdle_cens(check_hurdle_aterms(object$formula), newdata, y,
                     object$y_var)
+  growth_data <- newdata[y > 0, , drop = FALSE]
   surv_data <- newdata
   surv_data[[".alive"]] <- as.integer(y > 0)
-  out <- hurdle_rewrap(
-    object,
-    update(object$growth, newdata = newdata[y > 0, , drop = FALSE], ...),
-    update(object$survival, newdata = surv_data, ...)
+  # Both components are checked before either is refitted. Each update() below
+  # makes the same check for its own component only, so new data with no zero,
+  # whose survival response is 1 in every observation, were refused after the
+  # growth component had been refitted, and the refusal named the generated
+  # column .alive rather than the survival component. The components are named
+  # as bnec_hurdle() names the growth component since #400. See #435.
+  #
+  # A supplied family is read only for its tag, which is all the bound check
+  # uses. update.bnecfit() validates it again for the refit, reading the link
+  # from the expression the caller wrote, which cannot be recovered here.
+  supplied <- if ("family" %in% ...names()) {
+    validate_family(list(...)[["family"]])
+  }
+  check_refit_bound(
+    object$growth, growth_data, supplied,
+    subject = paste0("The growth component of the response \"", object$y_var,
+                     "\" (its ", sum(y > 0), " non-zero values)")
   )
+  check_refit_bound(
+    object$survival, surv_data, supplied,
+    subject = paste0("The survival component of the response \"",
+                     object$y_var, "\" (", sum(y == 0), " deaths of ",
+                     length(y), ")")
+  )
+  # Assigned in turn rather than passed as two arguments to hurdle_rewrap(),
+  # so that the order of the refits, growth first, is written here rather than
+  # set by the order in which hurdle_rewrap() forces its arguments.
+  growth <- update(object$growth, newdata = growth_data, ...)
+  survival <- update(object$survival, newdata = surv_data, ...)
+  out <- hurdle_rewrap(object, growth, survival)
   out$data <- newdata
   out$n_exposed <- length(y)
   out$n_dead <- sum(y == 0)
@@ -948,13 +1010,22 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
     }
     lines(xv, p$est)
     if (add_nec) {
-      ne <- xform(without_scale_report(
-        nec(x, which = if (w == "combined") "combined" else w)
-      ))
+      # xform is given to nec() rather than applied to the summary it returns.
+      # nec() applies it to each draw and to the censoring record, so the
+      # interval comes back in order and each bound is marked. Applied
+      # to the summary, a decreasing xform printed the interval from high to
+      # low, -0.19 to -1.6 under function(x) -x, and a censored estimate read
+      # as a number under any xform (#440). The marks are formatted as
+      # plot.bayesnecfit() formats them.
+      ne <- without_scale_report(
+        nec(x, which = if (w == "combined") "combined" else w, xform = xform)
+      )
       abline(v = ne, col = "red", lty = c(1, 3, 3))
       legend("topright", bty = "n", lty = 1, col = "red",
-             legend = paste0("N(S)EC: ", signif(ne[1], 2), " (",
-                             signif(ne[2], 2), "-", signif(ne[3], 2), ")"))
+             legend = paste0("N(S)EC: ", bound_prefix(ne, 1),
+                             signif(ne[[1]], 2), " (", bound_prefix(ne, 2),
+                             signif(ne[[2]], 2), "-", bound_prefix(ne, 3),
+                             signif(ne[[3]], 2), ")"))
     }
   }
   invisible(x)
@@ -1071,19 +1142,30 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
 #' parameter to measure towards. \code{"direct"} is refused because it names a
 #' response value rather than a percentage.
 #'
-#' \code{nsec} is read on the recorded predictor scale as supplied, and
-#' \code{xform} is applied to the percentage returned rather than to
-#' \code{nsec}. Where \code{crf()} transforms the predictor inline,
-#' \code{\link{nsec}} returns its estimate on the transformed scale unless given
-#' an \code{xform}, so a message says so once per call and names the
-#' \code{xform} to give \code{\link{nsec}}.
+#' \code{xform} is applied to \code{nsec}, and the curve is read at the
+#' result on the recorded predictor scale, as in \code{\link{ecnsec}} on a
+#' \code{\link{bayesnecfit}}. Where \code{crf()} transforms the predictor
+#' inline, \code{\link{nsec}} returns its estimate on the transformed scale
+#' unless given an \code{xform}, so a message says so once per call where
+#' \code{xform} is left at its default, and names the \code{xform} that puts
+#' such a value on the recorded scale. In earlier versions this method applied
+#' \code{xform} to the percentage it returned. A call that supplies an
+#' \code{xform} other than \code{identity} is warned of the change in this
+#' release. To transform the percentage, apply the function to the value
+#' returned.
 #'
 #' Without \code{x_range}, every curve is read over the whole concentration
 #' series, as in \code{\link{ecx.bayesnechurdlefit}}. The range sets the
-#' lowest predicted response that \code{type = "range"} measures towards, and
-#' the grid point nearest \code{nsec} at which the curve is read.
+#' lowest predicted response that \code{type = "range"} measures towards. The
+#' curve is read at \code{nsec} by linear interpolation between the two grid
+#' points either side of it. An \code{nsec} outside the range is refused with a
+#' message naming the range, for the combined, growth and survival curves
+#' alike and whether or not \code{x_range} is supplied. Supply an
+#' \code{x_range} that includes \code{nsec} to read the curve there.
 #'
 #' @return A vector of estimates.
+#'
+#' @importFrom chk chk_number
 #'
 #' @method ecnsec bayesnechurdlefit
 #'
@@ -1095,6 +1177,10 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
                                      posterior = FALSE, which = "combined") {
   which <- hurdle_check_which(which)
   check_removed_args(list(...))
+  # One value, because the curve is interpolated at one point. The nearest-grid
+  # reading this replaced took a vector without complaint and returned the
+  # curve at a single column chosen by recycling it against the grid.
+  chk_number(nsec)
   type <- validate_ecx_type(type, match.call())
   if (identical(type, "direct")) {
     stop("type = \"direct\" names a response value rather than a ",
@@ -1109,22 +1195,45 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
          "asymptote is not a single fitted parameter. Use ",
          "type = \"absolute\" or type = \"range\".", call. = FALSE)
   }
-  # A message of its own rather than ecnsec.bnecfit()'s. This method reads nsec
-  # on the recorded grid as supplied and applies xform to the percentage it
-  # returns, so the advice to pass the inverse as xform would be wrong here;
-  # the nsec itself has to arrive on the recorded scale. identity is passed in
-  # place of the caller's xform, because no xform changes the scale nsec is
-  # read on, so the message is raised whatever xform was given.
-  quiet <- report_fitted_scale(object, identity, "ecnsec_hurdle")
+  if (!inherits(xform, "function")) {
+    stop("xform must be a function.")
+  }
+  if (!identical(xform, identity)) {
+    # xform was applied to the percentage returned, which no caller needs, and
+    # left an nsec() value on the transformed scale to be inverted by hand
+    # (#437). It is now applied to nsec, as on every other class. D33 asks for
+    # a warning of the change for one release: remove it in the release after
+    # the one that makes it. A warning() with a class of its own, as the
+    # all_models deprecation raises (#120), rather than
+    # lifecycle::deprecate_warn(), which is not in Imports.
+    warning(structure(
+      class = c("bayesnec_ecnsec_xform_changed", "warning", "condition"),
+      list(message = paste0(
+        "xform in ecnsec() on a hurdle pair is now applied to nsec before ",
+        "the curve is read, as it is on every other class. In earlier ",
+        "versions it was applied to the percentage returned. To transform the ",
+        "percentage, apply the function to the value ecnsec() returns."
+      ), call = NULL)
+    ))
+  }
+  # The message ecnsec.bnecfit() raises, now that xform means here what it
+  # means there. The "ecnsec_hurdle" message it replaces told the caller to
+  # supply nsec on the recorded scale, because no xform could put it there.
+  quiet <- report_fitted_scale(object, xform, "ecnsec")
   on.exit(options(quiet), add = TRUE)
+  nsec_use <- xform(nsec)
   # The range ecx() and nsec() read the same curve over, the whole
   # concentration series for every curve (D44, #412), so that the three answer
-  # their questions of one curve on one grid. Under D28 the growth curve was
-  # read over growth's own range and an nsec above it was refused here; that
-  # refusal went with D28. An nsec beyond the whole series is read at the
-  # grid's end, as for every curve (#437).
+  # their questions of one curve on one grid.
   preds <- hurdle_component_preds(object, resolution = resolution,
                                   x_range = x_range)
+  # Checked against the grid the curve was predicted over rather than a range
+  # worked out beforehand, so that the range refused and the range read cannot
+  # differ. The grid ends at the range of the predictor, or of x_range where
+  # one is supplied. An nsec beyond it was read at the grid's end: 1000 on a
+  # series ending at 5 returned the effect at 5 for every curve (#437, D33).
+  check_ecnsec_range(object, nsec, nsec_use, range(preds$x), x_range, xform,
+                     curve = paste("the", which, "curve"))
   p_samples <- preds[[which]]
   # ecnsec asks: what percentage effect does a given predictor value
   # correspond to? Read off the same curve everything else uses, and inverted
@@ -1137,15 +1246,48 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
   floor_draws <- switch(type,
                         absolute = 0,
                         range = apply(p_samples, 1, min, na.rm = TRUE))
-  at_nsec <- p_samples[, which.min(abs(preds$x - nsec))]
+  at_nsec <- curve_draws_at(p_samples, preds$x, nsec_use)
   out <- (control - at_nsec) / (control - floor_draws) * 100
-  if (inherits(xform, "function")) {
-    out <- xform(out)
-  }
   estimate <- quantile(out, probs = prob_vals, na.rm = TRUE)
   names(estimate) <- clean_names(estimate)
   attr(estimate, "component") <- which
   if (!posterior) estimate else out
+}
+
+#' Each posterior draw of a curve read at one predictor value
+#'
+#' Interpolated linearly between the two grid points either side of
+#' \code{at}, as \code{zero_crossings()} interpolates a crossing, rather than
+#' taken at the nearer of them. Read at the nearer point, an \code{nsec}
+#' half-way between two points of a coarse grid returned the curve at one of
+#' them, so the answer depended on \code{resolution} (#437). A value at a grid
+#' point returns that point's column exactly.
+#'
+#' A value outside the grid is held at the nearer end. \code{ecnsec()} refuses
+#' such a value before this is reached, except within the rounding tolerance
+#' \code{check_ecnsec_range()} allows at either end.
+#'
+#' @param p_samples A \code{\link[base]{matrix}} with draws as rows and grid
+#' points as columns.
+#' @param x The increasing grid the columns are predicted at.
+#' @param at A single predictor value.
+#'
+#' @return A \code{\link[base]{numeric}} vector, one value per draw.
+#' @noRd
+curve_draws_at <- function(p_samples, x, at) {
+  n <- length(x)
+  if (at <= x[1]) {
+    return(p_samples[, 1])
+  }
+  if (at >= x[n]) {
+    return(p_samples[, n])
+  }
+  i <- findInterval(at, x)
+  if (x[i] == at) {
+    return(p_samples[, i])
+  }
+  w <- (at - x[i]) / (x[i + 1] - x[i])
+  (1 - w) * p_samples[, i] + w * p_samples[, i + 1]
 }
 
 #' The prediction grid a hurdle summary reads its ECx rows over

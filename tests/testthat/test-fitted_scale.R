@@ -259,22 +259,22 @@ test_that("a joint refit reports once for the call, not once per level", {
   expect_length(scale_messages(nec(fake_scale_joint("x"))), 0)
 })
 
-test_that("ecnsec() on a hurdle pair asks for nsec on the recorded scale", {
-  # This method reads nsec on the recorded grid as supplied and applies xform
-  # to the percentage it returns, so an nsec() value left on the transformed
-  # scale is read as a concentration. The message names the xform to give
-  # nsec() rather than one to give ecnsec(), and it is raised whatever xform
-  # was given, because none changes the scale nsec is read on.
+test_that("ecnsec() on a hurdle pair reports as on every other class", {
+  # The hurdle method applies xform to nsec, as the other classes do (#437,
+  # D33), so it raises their message: it names the xform to give ecnsec(), and
+  # is not raised where one is supplied. Before D33 it applied xform to the
+  # percentage it returned, and raised a message of its own whatever xform was
+  # given, asking for nsec on the recorded scale.
   skip_on_cran()
   tf <- logged_x_fit(nec4param, "nec4param")
   h <- fake_scale_hurdle(tf, tf)
   msgs <- scale_messages(ecnsec(h, nsec = 1, resolution = 20))
   expect_length(msgs, 1)
-  expect_match(msgs, "reads nsec on the scale of x as supplied", fixed = TRUE)
-  expect_match(msgs, "as nsec() returns it given xform = exp", fixed = TRUE)
-  expect_false(grepl("to ecnsec()", msgs, fixed = TRUE))
-  expect_length(scale_messages(ecnsec(h, nsec = 1, resolution = 20,
-                                      xform = exp)), 1)
+  expect_match(msgs, "ecnsec() reads nsec on the scale of x", fixed = TRUE)
+  expect_match(msgs, "pass xform = exp to ecnsec()", fixed = TRUE)
+  expect_match(msgs, "The fitted hurdle pair", fixed = TRUE)
+  expect_length(scale_messages(ecnsec(h, nsec = 0, resolution = 20,
+                                      xform = exp)), 0)
   expect_length(scale_messages(ecnsec(fake_scale_hurdle(nec4param, nec4param),
                                       nsec = 1, resolution = 20)), 0)
   expect_null(getOption("bayesnec.xform_reported"))

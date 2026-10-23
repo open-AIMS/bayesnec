@@ -5,9 +5,10 @@
 #
 #   disp(~x)        route (A) -- an ordinary brms distributional formula on the
 #                   predictor. Descriptive: "noise is larger at high dose".
-#   disp("power")   route (B) -- a variance function of the FITTED MEAN. A
+#   disp("power")   route (B) -- a variance function of the mean curve. A
 #                   statement about the measurement process rather than about
-#                   the dose axis.
+#                   the dose axis. Under ogl() the mean it reads is the curve
+#                   before the group's deviation; see disp_curve().
 #
 # The two are near-observationally equivalent for a monotone curve, since mu is
 # then a monotone function of x. They separate under hormesis, or where a
@@ -557,10 +558,12 @@ make_disp_block <- function(model, spec, dpar, x_var, response = NULL,
 add_disp_block <- function(brms_bf, model, spec, family, x_var,
                            response = NULL) {
   dpar <- disp_dpar(family)
-  # The curve as it now stands, which is the one the fit uses. See
-  # make_disp_block() for what rebuilding it from the template discarded.
+  # Route A does not use the curve. For route B read the assembled curve before
+  # any ogl() deviation. Rebuilding from the template would discard
+  # parameter-level group terms; see make_disp_block().
+  curve <- if (spec$route == "B") disp_curve(brms_bf) else NULL
   db <- make_disp_block(model, spec, dpar, x_var, response,
-                        curve = deparse1(brms_bf$formula[[3]]))
+                        curve = curve)
   if (spec$route == "A") {
     # lf() rather than nlf(): the right-hand side is an ordinary linear
     # predictor in the data, so brms should apply its usual design-matrix
@@ -568,4 +571,60 @@ add_disp_block <- function(brms_bf, model, spec, family, x_var,
     return(brms_bf + lf(db$nlf))
   }
   brms_bf + nlf(db$nlf) + lf(db$lf)
+}
+
+#' The curve used by a disp() variance function
+#'
+#' @param brms_bf An object of class \code{\link[brms]{brmsformula}}, with every
+#' group-level block already added.
+#'
+#' @details The curve before an \code{ogl()} deviation is applied. Under the
+#' multiplicative form that is the intermediate \code{bnecmu}; under the
+#' additive form, \code{ogl + <curve>}, it is the right-hand side without its
+#' leading \code{ogl}. A parameter-level deviation, \code{(bot | g)} or
+#' \code{pgl(g)}, is part of the curve and is kept, as #294 made it.
+#'
+#' The fitted mean after \code{ogl()} was read here until #468. For a Gamma
+#' response it is \code{bnecmu * exp(ogl)}; for a Beta response the deviation
+#' acts on the odds. Reading the fitted mean let
+#' one deviation set both the mean and the spread of its group. Where the
+#' variance rises more slowly than the mean --- \code{c1 > 1} for
+#' \code{"power"} --- a deviation that lowered a group's mean far below its
+#' data also shrank the Gamma shape until those data were tolerably likely
+#' again, which is a second optimum. On the \code{lum31} zinc arm in
+#' \code{example8} the deviations of several cells, each started at zero,
+#' reached it during warmup, and every equation of a fit with a cell term
+#' failed the sampler screen.
+#'
+#' With the curve before the deviation read instead, the dispersion parameter
+#' no longer depends on the \code{ogl()} deviation. The family's observation
+#' variance may still depend on the fitted mean: for a Gamma response it is
+#' the squared fitted mean divided by the shape.
+#'
+#' Every route that combines \code{ogl()} with a variance function reaches this
+#' function: a single-block fit, the joint two-block families, the growth
+#' component of \code{bnec_hurdle()}, which is a single-block fit, and a joint
+#' refit of a grouped fit in which every level is fitted one equation, whose
+#' level terms are applied after the dispersion block and leave \code{bnecmu}
+#' and the leading \code{ogl} as they are. A joint refit whose levels chose
+#' different equations refuses a group-level term.
+#'
+#' @return A \code{\link[base]{character}} string.
+#'
+#' @noRd
+disp_curve <- function(brms_bf) {
+  if ("bnecmu" %in% names(brms_bf$pforms)) {
+    return("bnecmu")
+  }
+  rhs_txt <- deparse1(brms_bf$formula[[3]])
+  if (!is.null(brms_bf$pforms$ogl)) {
+    # add_formula_glef() prefixes the curve with "ogl + ". A curve with several
+    # sums is left-associated after parsing, so inspect the deparsed prefix.
+    # Refuse a changed structure instead of silently including ogl in disp().
+    if (!startsWith(rhs_txt, "ogl + ")) {
+      stop("The additive ogl() curve must start with ogl +.", call. = FALSE)
+    }
+    rhs_txt <- sub("^ogl \\+ ", "", rhs_txt)
+  }
+  rhs_txt
 }
