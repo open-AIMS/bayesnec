@@ -307,13 +307,13 @@ disp_marginal_draws <- function(fit, newdata, columns, ndraws = NULL,
   draw_ids <- sort(as.integer(draw_ids))
   obs <- fit$data[, columns, drop = FALSE]
   rows <- sample.int(nrow(obs), length(draw_ids), replace = TRUE)
-  # Rows with the same joint value share a call. A double is keyed on its
-  # exact binary value rather than its 15-digit print, so two values that
-  # differ are never merged.
-  exact_key <- function(col) {
-    if (is.double(col)) sprintf("%a", col) else as.character(col)
-  }
-  key <- do.call(paste, c(lapply(obs, exact_key), sep = "\r"))
+  # Encode each column as integer value IDs before joining them. Joining the
+  # original strings with a separator would merge distinct tuples if a value
+  # itself contained that separator. match() also distinguishes doubles that
+  # have the same printed value but differ in their stored value.
+  key <- do.call(paste, c(lapply(obs, function(col) {
+    match(col, unique(col))
+  }), sep = ":"))
   value_row <- match(key, key)[rows]
   out <- matrix(NA, nrow = length(draw_ids), ncol = nrow(newdata))
   for (v in sort(unique(value_row))) {

@@ -425,4 +425,10 @@ test_that("check_fit gives a growth disp(~z) column each row's value (#443)", {
                                   sfit$data),
     "cannot be matched"
   )
+  # A level present only among non-survivors has no fitted growth dispersion.
+  expect_error(
+    bayesnec:::hurdle_growth_rows(list(formula = f, data = d), sfit$data,
+                                  growth_data = d[d$z != "c", ]),
+    'column "z" at value "c": no surviving response'
+  )
 })

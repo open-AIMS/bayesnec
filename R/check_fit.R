@@ -429,7 +429,7 @@ check_fit_combined <- function(x, group = NULL, ndraws = 1000, seed = 10) {
   grp <- check_fit_groups(predictor, group)
   n_av <- min(brms::ndraws(gb), brms::ndraws(sb))
   nd <- min(ndraws, n_av)
-  g_rows <- hurdle_growth_rows(x, sb$data)
+  g_rows <- hurdle_growth_rows(x, sb$data, growth_data = gb$data)
   with_preserved_rng_state({
     set.seed(seed)
     alive <- posterior_predict(sb, ndraws = nd)
@@ -451,6 +451,8 @@ check_fit_combined <- function(x, group = NULL, ndraws = 1000, seed = 10) {
 #' @param x A \code{\link{bayesnechurdlefit}}.
 #' @param frame The survival component's fitted data, one row per exposed
 #' individual.
+#' @param growth_data The rows fitted by the growth component. Where supplied,
+#' categorical dispersion values absent from those rows are refused.
 #'
 #' @details The growth component is simulated for every exposed row in
 #' \code{check_fit_combined()}, over the survival component's data. That frame
@@ -462,18 +464,21 @@ check_fit_combined <- function(x, group = NULL, ndraws = 1000, seed = 10) {
 #' design as a predicted reading on a grid does. Matched by position, which
 #' holds because both components are fitted from the rows of that data
 #' without reordering, the survival component from all of them; see
-#' \code{hurdle_observed_response()}.
+#' \code{hurdle_observed_response()}. A category found only among non-survivors
+#' has no fitted growth dispersion parameter, so simulating growth for that
+#' category is refused before \pkg{brms} reports an unknown factor level.
 #'
 #' @return \code{frame}, unchanged where the growth formula has no such
 #' column.
 #'
 #' @noRd
-hurdle_growth_rows <- function(x, frame) {
-  columns <- setdiff(disp_covariates(x$formula), names(frame))
-  if (length(columns) == 0) {
+hurdle_growth_rows <- function(x, frame, growth_data = NULL) {
+  required <- disp_covariates(x$formula)
+  if (length(required) == 0) {
     return(frame)
   }
-  if (nrow(x$data) != nrow(frame)) {
+  columns <- setdiff(required, names(frame))
+  if (length(columns) > 0 && nrow(x$data) != nrow(frame)) {
     stop("The survival component of this hurdle fit has ", nrow(frame),
          " rows and its data ", nrow(x$data), ", so the growth component's",
          " disp() ", if (length(columns) == 1) "column" else "columns", " ",
@@ -482,6 +487,25 @@ hurdle_growth_rows <- function(x, frame) {
   }
   for (v in columns) {
     frame[[v]] <- x$data[[v]]
+  }
+  if (!is.null(growth_data)) {
+    for (v in required) {
+      if (!(is.factor(frame[[v]]) || is.character(frame[[v]]) ||
+            is.logical(frame[[v]]))) {
+        next
+      }
+      absent <- setdiff(unique(as.character(frame[[v]])),
+                        unique(as.character(growth_data[[v]])))
+      if (length(absent) > 0) {
+        stop("check_fit() cannot simulate the growth component for disp()",
+             " column \"", v, "\" at ",
+             if (length(absent) == 1) "value " else "values ",
+             paste0("\"", absent, "\"", collapse = ", "),
+             ": no surviving response with ",
+             if (length(absent) == 1) "that value was" else "those values were",
+             " used to fit the growth component.", call. = FALSE)
+      }
+    }
   }
   frame
 }

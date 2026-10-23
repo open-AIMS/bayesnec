@@ -148,7 +148,21 @@ test_that("a newdata without z is refused with the column named (#443)", {
   expect_error(posterior_predict(fit, newdata = nd), msg)
   expect_error(predict(fit, newdata = nd), msg)
   expect_error(posterior_epred(fit, newdata = nd), msg)
+  expect_error(posterior_epred(fit, nd), msg)
   expect_error(fitted(fit, newdata = nd), msg)
+})
+
+test_that("positional newdata is checked before prediction for both fit classes", {
+  formula <- bnf(y ~ crf(x, "nec3param") + disp(~z))
+  single <- structure(list(bayesnecformula = formula), class = "bayesnecfit")
+  model_set <- structure(
+    list(mod_fits = list(nec3param = list(bayesnecformula = formula))),
+    class = "bayesmanecfit"
+  )
+  for (fit in list(single, model_set)) {
+    expect_error(posterior_epred(fit, data.frame(x = 1)),
+                 "`newdata` has no column \"z\"")
+  }
 })
 
 test_that("a z the user wrote is used as given (#443)", {
@@ -221,6 +235,26 @@ test_that("a numeric z is marginalised exactly, one call per value (#443)", {
   expect_true(any(values == 0.3) && any(values == 0.1 + 0.2))
   expect_equal(sum(vapply(calls, function(cl) length(cl$ids), integer(1))),
                300)
+})
+
+test_that("joint character values with separators remain distinct", {
+  obs <- data.frame(z1 = c("a\r", "a"), z2 = c("b", "\rb"))
+  fake <- list(data = obs)
+  nd <- data.frame(x = 1, z1 = "a\r", z2 = "b")
+  calls <- integer(0)
+  local_mocked_bindings(
+    posterior_predict = function(object, newdata, draw_ids, ...) {
+      value <- if (newdata$z1[1] == "a\r") 1 else 2
+      calls <<- c(calls, value)
+      matrix(rep(value, length(draw_ids)), ncol = 1)
+    },
+    .package = "bayesnec"
+  )
+  set.seed(474)
+  res <- bayesnec:::disp_marginal_draws(fake, nd, c("z1", "z2"),
+                                        draw_ids = seq_len(100))
+  expect_setequal(calls, c(1L, 2L))
+  expect_identical(res$draws[, 1], as.numeric(res$rows))
 })
 
 test_that("prediction for a fit with no disp(~z) column is unchanged (#443)", {
