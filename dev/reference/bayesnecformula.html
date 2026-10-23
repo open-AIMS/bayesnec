@@ -20,7 +20,7 @@ models to be defined."><meta property="og:image" content="https://open-aims.gith
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.42</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.43</span>
       </span>
     </div>
 
@@ -175,12 +175,22 @@ does not need to know the internal syntax and name of each parameter in the
 model. 3) A more classic approach where the user can specify which
 specific parameters — NB: that requires prior knowledge on the model
 structure and parameter names — to vary according to a grouping variable
-(as in e.g. <code>(bot | group_variable)</code>). <code>bayesnecformula</code>
-will ignore this term should the parameter not exist in the specified model
-or model suite. For example, the parameter <code>bot</code> exists in model
-<code>"nec4param"</code> but not in <code>"nec3param"</code>, so if the user specifies
-<code>model = "nec"</code> in <code>crf</code>, the term <code>(bot | group_variable)</code>
-will be dropped in models where that parameter does not exist.</p>
+(as in e.g. <code>(bot | group_variable)</code>). A term naming a parameter an
+equation does not have is left out of that equation, but each equation must
+keep at least one group-level term on every grouping variable such a term
+names; an <code>ogl()</code> or <code>pgl()</code> term on the variable counts. An
+equation that keeps none would be fitted as one curve pooled over the levels
+of the variable while the rest of the set fits the curve of a typical level,
+so <code><a href="bnec.html">bnec</a></code> excludes it before fitting, with a message, and records
+the reason (see <code><a href="bnec_record.html">bnec_record</a></code>). A call from which every equation
+is excluded is refused. For example, the parameter <code>bot</code> exists in
+model <code>"nec4param"</code> but not in <code>"nec3param"</code>, so if the user
+specifies <code>model = "nec"</code> in <code>crf</code>, the term
+<code>(bot | group_variable)</code> excludes <code>"nec3param"</code>, which would keep
+no term on <code>group_variable</code>. Under
+<code>(bot | group_variable) + (nec | group_variable)</code>, <code>"nec3param"</code>
+is fitted with the term on <code>nec</code> alone, and <code>"nec4param"</code> with
+both.</p>
 <p>The grouping inside <code>ogl()</code> and <code>pgl()</code> uses the formula operators
 accepted on the right of the bar in a <span class="pkg">brms</span> group-level term. The terms
 are expanded before they are passed to <span class="pkg">brms</span>. <code>ogl(a/b)</code> fits one
@@ -380,34 +390,34 @@ formula.</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">bayesnecformula</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y ~ crf(x, "nec3param")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x5564006f0fc0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55bb0048b190&gt;</span>
 <span class="r-in"><span><span class="co"># or use shot alias bnf</span></span></span>
 <span class="r-in"><span><span class="fu">bayesnecformula</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span> <span class="op">==</span> <span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(sqrt(x), "nec3param")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x5564006f0fc0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55bb0048b190&gt;</span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">ogl</span><span class="op">(</span><span class="va">group_1</span><span class="op">)</span> <span class="op">+</span> <span class="fu">pgl</span><span class="op">(</span><span class="va">group_2</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(x, "nec3param") + ogl(group_1) + pgl(group_2)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x5564006f0fc0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55bb0048b190&gt;</span>
 <span class="r-in"><span><span class="co"># dispersion as a function of the predictor</span></span></span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">disp</span><span class="op">(</span><span class="op">~</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y ~ crf(x, "nec3param") + disp(~x)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x5564006f0fc0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55bb0048b190&gt;</span>
 <span class="r-in"><span><span class="co"># dispersion as a function of the fitted mean</span></span></span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">disp</span><span class="op">(</span><span class="st">"power"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y ~ crf(x, "nec3param") + disp("power")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x5564006f0fc0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55bb0048b190&gt;</span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="va">nec</span> <span class="op">+</span> <span class="va">top</span> <span class="op">|</span> <span class="va">group_1</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x5564006f0fc0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55bb0048b190&gt;</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span><span class="co"># The predictor expression is passed to Stan by brms. Precompute a</span></span></span>
 <span class="r-in"><span><span class="co"># transformation unless its function is also defined for Stan.</span></span></span>
 <span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/try.html" class="external-link">try</a></span><span class="op">(</span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/scale.html" class="external-link">scale</a></span><span class="op">(</span><span class="va">x</span>, scale <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(scale(x, scale = TRUE), "nec3param")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x5564006f0fc0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55bb0048b190&gt;</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
