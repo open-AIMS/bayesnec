@@ -213,6 +213,29 @@ test_that("bnec_hurdle refuses a component with no equation left (#470)", {
   expect_identical(calls, 0L)
 })
 
+test_that("hurdle preflight checks the survival set after family exclusions (#470)", {
+  # Bernoulli drops neclin, which has nec. The remaining ecxexp has no nec,
+  # so the survival component must be refused before the growth fit starts.
+  dat <- data.frame(x = rep(1:4, each = 6),
+                    y = c(seq(1, 3, length.out = 18), rep(0, 6)),
+                    tank = rep(c("a", "b", "c"), 8))
+  calls <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      calls <<- calls + 1L
+      stop("component fit should not start")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(
+    suppressMessages(bnec_hurdle(y ~ crf(x, "neclin") + (nec | tank),
+                                 data = dat, model_survival = c("neclin", "ecxexp"),
+                                 family_growth = gaussian())),
+    "ecxexp keeps no group-level term on \"tank\"", fixed = TRUE
+  )
+  expect_identical(calls, 0L)
+})
+
 test_that("bnec_hurdle predicts growth over the whole concentration series", {
   # Growth is fitted to the survivors, whose concentrations stop at 3 here,
   # while the series tested runs to 4. The growth fit is given the series as
