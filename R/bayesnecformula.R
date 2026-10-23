@@ -71,12 +71,22 @@
 #' model. 3) A more classic approach where the user can specify which
 #' specific parameters --- NB: that requires prior knowledge on the model
 #' structure and parameter names --- to vary according to a grouping variable
-#' (as in e.g. \code{(bot | group_variable)}). \code{\link{bayesnecformula}}
-#' will ignore this term should the parameter not exist in the specified model
-#' or model suite. For example, the parameter \code{bot} exists in model
-#' \code{"nec4param"} but not in \code{"nec3param"}, so if the user specifies
-#' \code{model = "nec"} in \code{crf}, the term \code{(bot | group_variable)}
-#' will be dropped in models where that parameter does not exist.
+#' (as in e.g. \code{(bot | group_variable)}). A term naming a parameter an
+#' equation does not have is left out of that equation, but each equation must
+#' keep at least one group-level term on every grouping variable such a term
+#' names; an \code{ogl()} or \code{pgl()} term on the variable counts. An
+#' equation that keeps none would be fitted as one curve pooled over the levels
+#' of the variable while the rest of the set fits the curve of a typical level,
+#' so \code{\link{bnec}} excludes it before fitting, with a message, and records
+#' the reason (see \code{\link{bnec_record}}). A call from which every equation
+#' is excluded is refused. For example, the parameter \code{bot} exists in
+#' model \code{"nec4param"} but not in \code{"nec3param"}, so if the user
+#' specifies \code{model = "nec"} in \code{crf}, the term
+#' \code{(bot | group_variable)} excludes \code{"nec3param"}, which would keep
+#' no term on \code{group_variable}. Under
+#' \code{(bot | group_variable) + (nec | group_variable)}, \code{"nec3param"}
+#' is fitted with the term on \code{nec} alone, and \code{"nec4param"} with
+#' both.
 #'
 #' The grouping inside \code{ogl()} and \code{pgl()} uses the formula operators
 #' accepted on the right of the bar in a \pkg{brms} group-level term. The terms
@@ -1189,7 +1199,11 @@ add_formula_glef <- function(model, brmform, bnecform, data,
       to_flag <- pars[!pars %in% model_pars]
       message("The parameter(s) ", paste0("\"", to_flag, "\"", collapse = "; "),
               " are not valid parameters in ", model, ". Ignoring...")
-      split_str_calls <- split_str_calls[-match(to_flag, pars)]
+      # Subset by membership rather than by match(), which returns the first
+      # position only: a parameter the equation lacks, named in two terms as in
+      # (nec | g) + (nec | h), kept its second term, whose sub-formula does not
+      # exist, and the formula build failed in rhs() before sampling. #470.
+      split_str_calls <- split_str_calls[pars %in% model_pars]
       pars <- sapply(split_str_calls, `[[`, 1)
       vars <- sapply(split_str_calls, `[[`, 2)
     }
@@ -1523,6 +1537,182 @@ parse_group_terms <- function(formula, model) {
     return(NULL)
   }
   list(nlpars = nlpars, ogl = has_ogl)
+}
+
+#' The equations that keep no group-level term on a grouping variable
+#'
+#' @param formula An object of class \code{\link{bayesnecformula}}.
+#' @param models A \code{\link[base]{character}} vector of equation names.
+#'
+#' @details A \code{(par | group)} term naming a parameter an equation does
+#' not have is left out of that equation by \code{add_formula_glef()}. Where
+#' every term on a grouping variable is left out, the equation is fitted as one
+#' curve pooled over the levels of that variable, while the rest of the set
+#' fits the curve of a typical level with a deviation per level. The two are
+#' different quantities for a non-linear curve, the pooled fit treats the
+#' observations of one level as independent and so reports a narrower
+#' interval, and the model weight then compares the group-level structure as
+#' well as the shape of the curve. Such an equation is therefore excluded
+#' before it is fitted, under the rule decided on #471 for #470.
+#'
+#' The rule is applied per grouping variable: an equation must keep at least
+#' one term on each variable a \code{(par | group)} term names. An
+#' \code{ogl()} or \code{pgl()} term on the variable counts, because both
+#' apply to every equation. A term that is only partly left out still counts:
+#' under \code{(nec | batch) + (ec50 | batch)}, \code{nec3param} keeps the term
+#' on \code{nec} and \code{ecxll3} the term on \code{ec50}, and both are
+#' fitted.
+#'
+#' Under the rule the data \pkg{brms} stores on every fitted equation hold
+#' every grouping variable, because each is named by a term the equation's
+#' \pkg{brms} formula includes, so the formula as written builds the model
+#' frame on the prediction grid. Before the rule, \code{ecxexp} under
+#' \code{(nec | g) + (ec50 | g)} sampled and then failed there with
+#' "Group-level variable(s) "g" not found in dataset". See #470.
+#'
+#' The terms are parsed as \code{parse_group_terms()} and
+#' \code{add_formula_glef()} parse them, for the reason recorded at
+#' \code{parse_group_terms()}.
+#'
+#' @return A \code{\link[base]{data.frame}} with columns \code{model} and
+#' \code{reason}, one row per equation excluded, in the form
+#' \code{check_models()} records its exclusions in.
+#'
+#' @importFrom stats terms
+#' @importFrom formula.tools rhs
+#'
+#' @noRd
+group_term_exclusions <- function(formula, models) {
+  out <- data.frame(model = character(), reason = character(),
+                    stringsAsFactors = FALSE)
+  crf_term <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
+  if (length(crf_term) == 0) {
+    return(out)
+  }
+  to_eval <- paste0("update(formula, ~ . - ", crf_term, ")")
+  random_call <- rhs(eval(parse(text = to_eval)))
+  random_call <- gsub("\\) \\+ ", ") impossiblestr ", deparse1(random_call))
+  split_random_call <- strsplit(random_call, " impossiblestr ")[[1]]
+  split_random_call <- split_random_call[!grepl("disp(", split_random_call,
+                                                fixed = TRUE)]
+  is_gl <- grepl("pgl(", split_random_call, fixed = TRUE) |
+    grepl("ogl(", split_random_call, fixed = TRUE)
+  bar_calls <- split_random_call[grepl("|", split_random_call, fixed = TRUE) &
+                                   !is_gl]
+  if (length(bar_calls) == 0) {
+    return(out)
+  }
+  gl_vars <- if (any(is_gl)) {
+    all.vars(str2lang(paste0(split_random_call[is_gl], collapse = " + ")))
+  } else {
+    character(0)
+  }
+  # The variables of a nested or interaction grouping, a/b or a:b, are each
+  # held in the stored data only if a kept term names them, so the rule is
+  # read per variable rather than per grouping expression.
+  bars <- lapply(bar_calls, function(term) {
+    parts <- clean_bar_glef(term)
+    list(term = term, pars = trimws(strsplit(parts[1], " \\+ ")[[1]]),
+         vars = all.vars(str2lang(parts[2])))
+  })
+  bar_vars <- setdiff(unique(unlist(lapply(bars, `[[`, "vars"))), gl_vars)
+  for (m in models) {
+    m_pars <- names(get(paste0("bf_", m))[[2]])
+    lost <- character(0)
+    for (v in bar_vars) {
+      on_v <- Filter(function(b) v %in% b$vars, bars)
+      keeps_one <- any(vapply(on_v, function(b) any(b$pars %in% m_pars),
+                              logical(1)))
+      if (!keeps_one) {
+        terms_v <- vapply(on_v, `[[`, character(1), "term")
+        lost <- c(lost, paste0(
+          "keeps no group-level term on \"", v, "\": ",
+          if (length(terms_v) == 1) {
+            paste0(terms_v, " names no parameter it has")
+          } else {
+            paste0("none of ", paste0(terms_v, collapse = ", "),
+                   " names a parameter it has")
+          }
+        ))
+      }
+    }
+    if (length(lost) > 0) {
+      out <- rbind(out, data.frame(model = m,
+                                   reason = paste0(lost, collapse = "; "),
+                                   stringsAsFactors = FALSE))
+    }
+  }
+  out
+}
+
+#' Exclude the equations that keep no group-level term on a variable
+#'
+#' @param model A \code{\link[base]{character}} vector of equation names.
+#' @param formula An object of class \code{\link{bayesnecformula}}.
+#' @param report Whether to report the exclusions by message.
+#' \code{bnec_group()} reports them once for every level and sets this to
+#' \code{FALSE} for each level's \code{bnec()} call.
+#'
+#' @details Raised where the model set is fixed for the whole call: in
+#' \code{bnec()} before its model loop, in \code{bnec_group()} before its level
+#' loop, and in \code{amend()} for the equations it adds. Left to
+#' \code{fit_bayesnec()}, which runs inside the \code{try()} of the model loop,
+#' a refusal would be printed once per equation and the call would end on the
+#' advice that none of the models fitted. \code{fit_bayesnec()} keeps the test
+#' as the backstop for \code{bnec_joint()} on a \code{bayesnecgroupfit}, which
+#' fits through it directly. See \code{group_term_exclusions()} for the rule.
+#'
+#' @return A \code{\link[base]{list}} with elements \code{model}, the equations
+#' kept, in their order, and \code{excluded}, the rows to add to the exclusion
+#' record. Stops where the rule leaves no equation.
+#'
+#' @noRd
+check_group_terms <- function(model, formula, report = TRUE) {
+  excluded <- group_term_exclusions(formula, model)
+  kept <- setdiff(model, excluded$model)
+  # Refused only where this rule emptied the set. A set that check_models()
+  # has already emptied is passed through, so that the refusal the caller
+  # raises for it, which names the family or the predictor, is the one
+  # reported.
+  if (length(kept) == 0 && nrow(excluded) > 0) {
+    stop(group_terms_refusal(excluded), call. = FALSE)
+  }
+  if (report && nrow(excluded) > 0) {
+    message(group_terms_report(excluded))
+  }
+  list(model = kept, excluded = excluded)
+}
+
+#' The report of the equations excluded for their group-level terms
+#'
+#' @param excluded The rows \code{group_term_exclusions()} returns.
+#'
+#' @return A \code{\link[base]{character}} string.
+#' @noRd
+group_terms_report <- function(excluded) {
+  paste0("Dropping the model(s) ", paste0(excluded$model, collapse = ", "),
+         " as each would be fitted as one curve pooled over the levels of a",
+         " grouping variable the formula gives a group-level term: ",
+         paste0(excluded$model, " ", excluded$reason, collapse = "; "),
+         ". The reasons are recorded; see ?bnec_record.")
+}
+
+#' The refusal for a set from which every equation is excluded
+#'
+#' @param excluded The rows \code{group_term_exclusions()} returns.
+#'
+#' @return A \code{\link[base]{character}} string.
+#' @noRd
+group_terms_refusal <- function(excluded) {
+  paste0("No equation requested can be fitted with the group-level terms in",
+         " the formula: ",
+         paste0(excluded$model, " ", excluded$reason, collapse = "; "),
+         ". An equation is fitted only where it keeps at least one term on",
+         " each grouping variable a (par | group) term names, because without",
+         " one it would be fitted as one curve pooled over the levels of that",
+         " variable. Write a term on a parameter the equations have (see",
+         " ?show_params), or use ogl() or pgl(), which apply to every",
+         " equation. See ?bayesnecformula.")
 }
 
 #' @noRd

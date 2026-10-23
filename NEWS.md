@@ -18,6 +18,32 @@
   it is removed rather than rebuilt. For the draws to combine, call `nec()`,
   `nsec()` or `ecx()` with `posterior = TRUE` on each fit (#403).
 
+## Equations that keep no group-level term on a grouping variable
+
+- `bnec()` now excludes, before fitting, an equation that keeps no
+  group-level term on a grouping variable the formula names. A
+  `(par | group)` term naming a parameter an equation does not have is still
+  left out of that equation, but the equation must keep at least one term on
+  each grouping variable such a term names. An `ogl()` or `pgl()` term on the
+  variable counts. Under `(nec | g) + (ec50 | g)`, `ecxexp`, which has neither
+  parameter, is excluded, while `nec3param` keeps the term on `nec` and
+  `ecxll3` the term on `ec50`. Fitted without a term on `g`, an equation
+  estimates one curve pooled over the levels of `g` where the rest of the set
+  estimates the curve of a typical level. Its interval treats the observations
+  of one level as independent, and its model weight compares the group-level
+  structure as well as the shape of the curve. Such an equation previously
+  sampled and then stopped with "Group-level variable(s) "g" not found in
+  dataset" when the prediction grid was built, because `brms` had not stored
+  `g`. In a model set fitted by one `bnec()` call, that error ended the whole
+  call after every equation had sampled. The exclusion is reported once by a
+  message and recorded with its reason in `bnec_record()`, as the exclusions
+  for the family are. A call from which every equation is excluded is refused
+  before anything is fitted. `bnec_group()` applies the rule to every level
+  before it fits any, `amend(add = )` applies it to the equations added, and
+  `bnec_hurdle()` refuses a component with no equation left before either is
+  fitted. Under `model = "nec"`, `(bot | group)` now excludes `nec3param`
+  rather than fitting it without the term (#470).
+
 ## Designs that have not reached the lower asymptote
 
 - `bnec()` now reports, before anything is fitted, where the response is still
@@ -1902,6 +1928,11 @@
 
 ## Bug fixes
 
+- A parameter an equation does not have, named in more than one
+  `(par | group)` term, is now left out of every such term. Only the first
+  was removed, so `(nec | g) + (nec | h) + (ec50 | g) + (ec50 | h)` on
+  `ecxll3` failed while the formula was built, before anything was sampled
+  (#470).
 - `nec()` on a `bayesnechurdlefit` prints the message its help page
   describes, that the combined value is approximate, where either component
   contributes NSEC draws. The message was decided from the
