@@ -205,7 +205,10 @@ check_models <- function(model, family, data, record = FALSE) {
     }
     invisible(NULL)
   }
-  fam_tag <- family$family
+  # The canonical tag, because amend() passes the family stored in the fit,
+  # which records Gamma as gamma. Read as stored, the equations the Gamma block
+  # below drops were kept for an equation added to a Gamma fit (#436).
+  fam_tag <- canonical_fam_tag(family)
   link_tag <- family$link
   if (link_tag %in% c("logit", "log")) {
     use_model <-  model[!model %in% mod_groups$zero_bounded]
