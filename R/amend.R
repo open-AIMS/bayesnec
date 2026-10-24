@@ -377,13 +377,27 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
         if (!is.null(denom)) {
           y <- y / denom
         }
-        # Note this path still does not pass disp_spec, which predates #245
-        # and is left alone here rather than changed as a side effect.
+        # Every argument fit_bayesnec() passes to define_prior() for this
+        # equation on the bnec() route, read from the formula it would read
+        # them from, so that the prior set is the one bnec() builds. Without
+        # disp_spec the c0 and slope rows of a variance function were missing,
+        # and add_brm_defaults() added them with a warning that the supplied
+        # prior had no entry for them, although none had been supplied. The two
+        # flags decide the replicate centre of the regularizing c1 prior for a
+        # negative binomial response. The prior is built here rather than left
+        # to add_brm_defaults(), as before, so that a refusal from
+        # define_prior() stops the call instead of being recorded as a failed
+        # fit of each added equation. See #436.
+        single_form <- single_model_formula(formula, model)
         brm_args$prior <- define_prior(
           model, family, x, y, prior_type = prior_type,
           asymptote_observed = asymptote_observed,
           predictor_scale = predictor_scale,
-          group_spec = parse_group_terms(formula, model)
+          disp_spec = parse_disp_term(single_form),
+          group_spec = parse_group_terms(single_form, model),
+          rate_response = !is.null(denom),
+          truncated_response = isTRUE(attr(
+            single_form, "bayesnec_internal_truncation"))
         )
       } else {
         brm_args$prior <- model_priors

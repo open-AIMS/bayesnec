@@ -2004,6 +2004,19 @@
   fit on these families that makes the declaration and takes the default `bot`
   prior. The gaussian and bounded families, the survival block of a hurdle fit
   and every fit that does not make the declaration are unchanged (#449).
+- `amend(add = )` builds the priors and initial values of an added equation
+  as `bnec()` builds them for that equation on the same data, formula and
+  family. On every Gamma fit it stopped before sampling with "Processing
+  arguments of 'set_prior' has failed", because `brms` records the Gamma tag
+  as `gamma` and the prior tables are keyed `Gamma`. The growth component of a
+  `bnec_hurdle()` fit with a Gamma growth family could not be extended for the
+  same reason. On every family the priors were built without the fit's
+  `disp()` term, so the `c0` and slope priors of a variance function were added
+  afterwards with a warning that the supplied prior had no entry for them,
+  although no prior had been supplied. The prior that resulted was the default
+  one. An equation that `bnec()` does not fit for Gamma on the identity link,
+  `neclin`, `neclinhorme`, `ecxlin` or `nechormepwr01`, is dropped when added
+  to a Gamma fit, with the message `bnec()` gives (#436).
 - A `disp(~z)` term naming a column other than the predictor is now fitted
   and predicted from. Every model sampled and then stopped on the prediction
   grid, which held the predictor and any trials or `rate()` denominator but

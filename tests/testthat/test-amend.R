@@ -284,3 +284,143 @@ test_that("amend(add = ) refuses a call adding only excluded ones (#470)", {
                "No equation requested can be fitted", fixed = TRUE)
   expect_identical(calls, 0L)
 })
+
+
+# ---- #436, the priors of an added equation ----------------------------------
+
+# A single-equation fit, ecx4param, given the family brms records for the one
+# bnec() validates, a positive response and a formula holding `term`. The
+# packaged fit is gaussian, so its family, data and formula are replaced, as
+# bnec() stores them for such a fit. NB: the brmsfit was not fitted with them.
+# amend() reads them before it fits, which is what these tests assert, and no
+# posterior quantity is read.
+amend_fixture <- function(family, term = "") {
+  fit <- ecx4param
+  fit$fit$family <- brms::bf(y ~ x, family = unmark_family(family))$family
+  fit$fit$data <- data.frame(x = nec_data$x, y = nec_data$y * 10)
+  fit$bayesnecformula <- bnf(stats::as.formula(
+    paste0('y ~ crf(x, model = "ecx4param")', term)
+  ))
+  fit
+}
+
+# The prior, the initial values and the family each brm() call is handed, with
+# brm() mocked. The curve search is replaced by a fixed start, one list per
+# chain, and its own inputs are recorded, so that what is compared is what each
+# route builds rather than a stochastic search. The disp() initial values are
+# appended to that start as they are for a fit. Nothing is compiled or
+# sampled; the call itself then fails on the empty fit, which is not under
+# test.
+fit_inputs <- function(expr) {
+  seen <- new.env(parent = emptyenv())
+  seen$calls <- list()
+  seen$search <- list()
+  local_mocked_bindings(
+    brm = function(formula, data, ...) {
+      a <- list(...)
+      seen$calls[[length(seen$calls) + 1]] <- list(
+        prior = a$prior, init = a$init, family = a$family
+      )
+      structure(list(), class = "brmsfit")
+    },
+    are_chains_correct = function(...) TRUE,
+    make_good_inits = function(model, x, y, family, ..., priors, chains) {
+      seen$search[[length(seen$search) + 1]] <- list(
+        model = model, x = x, y = y, priors = priors,
+        tag = canonical_fam_tag(family), link = family$link
+      )
+      replicate(chains, list(b_top = as.array(1)), simplify = FALSE)
+    },
+    .package = "bayesnec"
+  )
+  warns <- msgs <- character()
+  withCallingHandlers(
+    try(expr, silent = TRUE),
+    warning = function(w) {
+      warns <<- c(warns, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    },
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  list(calls = seen$calls, search = seen$search, warnings = warns,
+       messages = msgs)
+}
+
+expect_same_fit_inputs <- function(amended, fitted, label) {
+  expect_length(amended$calls, 1)
+  expect_length(fitted$calls, 1)
+  expect_identical(amended$calls[[1]]$prior, fitted$calls[[1]]$prior,
+                   label = label)
+  expect_identical(amended$calls[[1]]$init, fitted$calls[[1]]$init,
+                   label = label)
+  expect_identical(amended$search, fitted$search, label = label)
+  expect_false(any(grepl("has no entry for", amended$warnings)),
+               label = label)
+}
+
+test_that("amend(add = ) on a Gamma fit builds the priors bnec() does (#436)", {
+  # The stored family records Gamma as gamma, which define_prior() indexed its
+  # tables with, and the call stopped inside brms. Without a disp() term as
+  # well as with one, and under both prior sets amend() takes.
+  d <- data.frame(x = nec_data$x, y = nec_data$y * 10)
+  for (term in c("", ' + disp("power")', ' + disp("loglinear")')) {
+    for (pt in c("uninformative", "regularizing")) {
+      label <- paste0("Gamma", term, ", ", pt)
+      obj <- amend_fixture(validate_family("Gamma"), term)
+      expect_identical(obj$fit$family$family, "gamma")
+      amended <- fit_inputs(amend(obj, add = "nec4param", prior_type = pt))
+      fitted <- fit_inputs(bnec(
+        stats::as.formula(paste0('y ~ crf(x, "nec4param")', term)),
+        data = d, family = Gamma(link = "identity"), chains = 2,
+        prior_type = pt
+      ))
+      expect_same_fit_inputs(amended, fitted, label)
+      # The family handed to brms is the one the fit stored, not a rebuilt one.
+      expect_identical(amended$calls[[1]]$family, obj$fit$family,
+                       label = label)
+      if (nzchar(term)) {
+        pr <- amended$calls[[1]]$prior
+        expect_true(all(c("c0", "c1") %in% pr$nlpar), label = label)
+        expect_true(all(c("b_c0", "b_c1") %in%
+                          names(amended$calls[[1]]$init[[1]])), label = label)
+      }
+    }
+  }
+})
+
+test_that("amend(add = ) passes the disp() term to the added prior (#436)", {
+  # gaussian has no tag mismatch. The c0 and c1 rows were added afterwards by
+  # fill_missing_priors(), with a warning that the user's prior had no entry
+  # for them, although no prior had been supplied.
+  d <- data.frame(x = nec_data$x, y = nec_data$y * 10)
+  for (pt in c("uninformative", "regularizing")) {
+    obj <- amend_fixture(validate_family("gaussian"), ' + disp("power")')
+    amended <- fit_inputs(amend(obj, add = "nec4param", prior_type = pt))
+    fitted <- fit_inputs(bnec(y ~ crf(x, "nec4param") + disp("power"),
+                              data = d, family = gaussian(), chains = 2,
+                              prior_type = pt))
+    expect_same_fit_inputs(amended, fitted, paste("gaussian", pt))
+    c1 <- as.data.frame(amended$calls[[1]]$prior)
+    c1 <- c1[c1$nlpar == "c1", ]
+    expect_equal(as.numeric(c(c1$lb, c1$ub)), c(0, 1))
+  }
+})
+
+test_that("amend(add = ) drops what bnec() drops for a Gamma fit (#436)", {
+  # check_models() read the stored tag as well, so the equations it drops for
+  # Gamma on the identity link were fitted when added to a Gamma fit.
+  obj <- amend_fixture(validate_family("Gamma"))
+  amended <- fit_inputs(amend(obj, add = c("neclin", "nec4param")))
+  expect_length(amended$calls, 1)
+  expect_identical(vapply(amended$search, `[[`, character(1), "model"),
+                   "nec4param")
+  expect_true(any(grepl(paste("Dropping the model neclin as they are not",
+                              "valid in the case of a Gamma with identity",
+                              "link"),
+                        amended$messages, fixed = TRUE)))
+  # No message names the tag brms records rather than the family written.
+  expect_false(any(grepl("gamma", amended$messages, fixed = TRUE)))
+})
