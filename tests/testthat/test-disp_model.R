@@ -1797,6 +1797,37 @@ test_that("a model set reads each equation's shape at its own bot (#410)", {
   )
 })
 
+test_that("a joint count hurdle centres c1 as a truncated count (#410)", {
+  # The positive block of hurdle_negbinomial is zero-truncated in its
+  # likelihood, as the bnec_hurdle() growth component is, so the replicate
+  # centre of the regularizing set falls back to 0 there too. The range is
+  # negbinomial's.
+  spec <- list(route = "B", value = "power")
+  d <- nb_hurdle_dat()
+  pos <- d$y > 0
+  # the replicates do show a slope, so the test can fail
+  expect_gt(bayesnec:::disp_replicate_slope("negbinomial", d$x[pos], d$y[pos]),
+            0.1)
+  for (pt in c("uninformative", "regularizing")) {
+    row <- c1_row(bayesnec:::define_prior(
+      "nec4param", validate_family("hurdle_negbinomial"), d$x, d$y,
+      prior_type = pt, disp_spec = spec
+    ))
+    expect_identical(row$prior, "normal(0, 2)", label = pt)
+    expect_equal(as.numeric(c(row$lb, row$ub)), c(0, 1), label = pt)
+  }
+  pr <- suppressMessages(get_priors(y ~ crf(x, "nec4param") + disp("power"),
+                                    data = d, family = "hurdle_negbinomial",
+                                    prior_type = "regularizing"))
+  expect_identical(c1_row(pr)$prior, "normal(0, 2)")
+  expect_equal(as.numeric(c(c1_row(pr)$lb, c1_row(pr)$ub)), c(0, 1))
+  ii <- bayesnec:::disp_inits(spec, validate_family("hurdle_negbinomial"),
+                              d$y, d$x, prior_type = "regularizing")
+  expect_equal(as.numeric(ii$b_c1),
+               bayesnec:::truncated_normal_mean(0, 2, 0, 1))
+  expect_equal(as.numeric(ii$b_c0), 2)
+})
+
 test_that("a joint hurdle_negbinomial fit reads its shape at bot (#410)", {
   skip_on_cran()
   skip_on_ci()
