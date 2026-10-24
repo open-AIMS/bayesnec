@@ -728,6 +728,12 @@ is applied as "mean at half the endpoint mean", which keeps the existing
 the realised coverage per family in the phase 3 audit rather than asserting it
 here.
 
+D42 (#449) superseded the gamma row. The audit measured the span of "mean at
+half the endpoint mean" as 0.0606 to 1.393 times the endpoint, with 9.2% of the
+mass above it, and the entry is now `gamma(2, qgamma(0.975, 2) / e)`: the same
+shape, with the 97.5th percentile at the endpoint mean and a span of 0.0435 to 1
+times it. See `notes/prior_audit.md` part 5.
+
 The gaussian row with negative values has no derivable floor. Refuse, naming
 `bot` and the `prior` argument, rather than inventing one. A response expressed
 as a log ratio or a growth increment is ordinary input to this package (#229),
