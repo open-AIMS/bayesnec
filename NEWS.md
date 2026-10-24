@@ -1952,6 +1952,24 @@
 
 ## Bug fixes
 
+- A `zero_inflated_beta` response with every observation at one bound is now
+  handled as a `beta` response is. A response of 1 in every observation is
+  fitted by `bnec()` and `bnec_group()` with the constant equation `ecxflat`
+  alone, its ones shifted to 0.999 as before, and the equations requested are
+  recorded as not fitted. Its ones were previously shifted and the set
+  requested was fitted, so such a call now returns an `ecxflat` fit where it
+  returned a fit of that set. `get_priors()`, `amend()` and `update(newdata = )`
+  refuse such a response for a set holding any other equation and accept
+  `ecxflat` named alone. A response of 0 in every observation is refused on
+  every route, `ecxflat` included, once per call and before any model is
+  fitted, with a message that names the family and says that no observation
+  is above zero, so the beta block has no data. Through `bnec()` it
+  previously reached the initial-value search, where `min()` warned "no
+  non-missing arguments to min; returning Inf" repeatedly, and
+  `get_priors()` returned priors after the same warning.
+  `bnec_group()` refuses the whole call where any level is 0 in every
+  observation, naming the level. A response with one observation off the
+  bound is fitted as before (#441).
 - A `disp(~z)` term naming a column other than the predictor is now fitted
   and predicted from. Every model sampled and then stopped on the prediction
   grid, which held the predictor and any trials or `rate()` denominator but

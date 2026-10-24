@@ -456,15 +456,18 @@ test_that("ecxflat named alone gets its prior at a bound (#419)", {
   # the response, and its prior is built without reaching the NaN of #400:
   # response_link_scale() shifts the response inside the support first.
   cases <- at_bound_cases()
-  for (nm in setdiff(names(cases), "beta_zero")) {
+  for (nm in setdiff(names(cases), at_bound_refused)) {
     cs <- cases[[nm]]
     f <- stats::update(cs$formula, . ~ crf(x, "ecxflat"))
+    # A zero_inflated_beta fit has a second block, whose ecxflat is the
+    # proportion of observations above zero (#441).
+    pars <- if (cs$family == "zero_inflated_beta") c("top", "zitop") else "top"
     for (type in c("uninformative", "regularizing")) {
       pr <- suppressMessages(
         get_priors(f, data = cs$data, family = cs$family, prior_type = type)
       )
       expect_s3_class(pr, "brmsprior")
-      expect_identical(pr$nlpar, "top", info = paste(nm, type))
+      expect_identical(pr$nlpar, pars, info = paste(nm, type))
       expect_false(anyNA(pr$prior), info = paste(nm, type))
       expect_false(any(grepl("NaN|Inf", pr$prior)), info = paste(nm, type))
     }
@@ -488,12 +491,41 @@ test_that("ecxflat named alone gets its prior at a bound (#419)", {
                                 family = bz$family)),
     "A beta distribution cannot represent a zero", fixed = TRUE
   )
+  # Nor can zero_inflated_beta at 0, whose beta block has no data (#441).
+  zz <- cases$zib_zero
+  expect_error(
+    suppressMessages(get_priors(cover ~ crf(x, "ecxflat"), data = zz$data,
+                                family = zz$family)),
+    "no observation of this response is above zero", fixed = TRUE
+  )
   # ecxflat beside a curve equation is refused, and the message names ecxflat.
   expect_error(
     get_priors(alive ~ crf(x, c("ecxflat", "nec3param")),
                data = cases$bernoulli_one$data, family = "bernoulli"),
     "is the only one that can be fitted to it", fixed = TRUE
   )
+})
+
+test_that("a zero_inflated_beta response of 0 is refused without a warning (#441)", {
+  # It reached prior construction, where min() over the observations above
+  # zero, of which there are none, warned "no non-missing arguments to min;
+  # returning Inf" and the priors were returned. The refusal names the family
+  # and the cause, and is raised before anything reads the response.
+  zz <- at_bound_cases()$zib_zero
+  for (f in list(zz$formula, cover ~ crf(x, "ecxflat"))) {
+    err <- NULL
+    expect_no_warning(
+      err <- tryCatch(
+        get_priors(f, data = zz$data, family = zz$family),
+        error = conditionMessage
+      )
+    )
+    expect_match(err, "lower bound of a zero_inflated_beta response",
+                 fixed = TRUE)
+    expect_match(err, paste("no observation of this response is above zero,",
+                            "so the beta block has no data"), fixed = TRUE)
+    expect_false(grepl("non-missing", err, fixed = TRUE))
+  }
 })
 
 test_that("one observation off the bound still builds priors (#400)", {
