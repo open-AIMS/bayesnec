@@ -1446,8 +1446,7 @@ define_prior <- function(model, family, predictor, response,
     #
     # The term is checked against the two-block family first. bnec() checks it
     # in wrangle_model_formula(), but get_priors() reaches this function
-    # without building a formula, and would otherwise return priors for
-    # hurdle_negbinomial, which bnec() refuses, and fail on hurdle_poisson
+    # without building a formula, and would otherwise fail on hurdle_poisson
     # inside brms with a message naming neither the family nor the term.
     if (!is.null(disp_spec)) {
       check_disp_spec(disp_spec, family, response = mu_response)

@@ -169,10 +169,10 @@ test_that("bnec_joint refuses a crf() predictor with a leading minus (#438)", {
   expect_null(captured$formula)
 })
 
-test_that("bnec_joint refuses a negative binomial growth disp() up front", {
-  # hurdle_negbinomial does not take disp() yet. The refusal comes before the
-  # refit is announced and before bnec() is called, and names the `formula`
-  # argument, which is how a bnec_joint() caller leaves the term out.
+test_that("bnec_joint refits a negative binomial growth disp() jointly (#410)", {
+  # hurdle_negbinomial takes disp() under D39, so the term held in the hurdle
+  # fit's formula reaches the joint model, with the variance function and the
+  # centring literal the growth component is built with.
   d_counts <- function(o) {
     o$data$y <- as.integer(round(o$data$y * 20))
     o
@@ -181,21 +181,18 @@ test_that("bnec_joint refuses a negative binomial growth disp() up front", {
     'y ~ crf(x, c("nec3param", "ecx4param")) + disp("power")', "negbinomial"
   ))
   captured <- capture_joint_call()
-  msgs <- character(0)
-  err <- withCallingHandlers(
-    tryCatch(bnec_joint(o), error = conditionMessage),
-    message = function(m) {
-      msgs <<- c(msgs, conditionMessage(m))
-      invokeRestart("muffleMessage")
-    }
-  )
-  expect_match(err, "hurdle_negbinomial.*pending a decision.*`formula`")
-  expect_false(any(grepl("Refitting jointly", msgs)))
-  expect_null(captured$formula)
-  # the remedy the message names reaches bnec()
-  suppressMessages(bnec_joint(o, formula = y ~ crf(x, "nec3param")))
+  suppressMessages(bnec_joint(o))
   expect_equal(captured$family, "hurdle_negbinomial")
-  expect_null(bayesnec:::parse_disp_term(captured$formula))
+  expect_equal(bayesnec:::parse_disp_term(captured$formula),
+               list(route = "B", value = "power"))
+  joint <- make_brmsformula(captured$formula, captured$data,
+                            family = validate_family("hurdle_negbinomial"))[[1]]
+  growth <- make_brmsformula(
+    bnf('y ~ crf(x, "ecx4param") + disp("power")'),
+    o$data[o$data$y > 0, ], family = validate_family("negbinomial")
+  )[[1]]
+  expect_identical(deparse1(joint$pforms$shape[[3]]),
+                   deparse1(growth$pforms$shape[[3]]))
 })
 
 # The joint refit of a grouped fit (#382). Everything that can be decided

@@ -52,7 +52,11 @@
 #'   \item \code{"relative"} --- control to the equation's theoretical
 #'     asymptote, the \code{bot} parameter where the equation has one and 0
 #'     otherwise. Refused where the equation has no \code{bot} and the family
-#'     is unbounded below, because there is then no finite denominator.
+#'     is unbounded below, because there is then no finite denominator. On the
+#'     positive counts of a negative binomial count hurdle the asymptote is
+#'     their zero-truncated mean at \code{bot}, which needs the shape there,
+#'     and it is refused where the shape is modelled by \code{disp(~...)};
+#'     see \code{\link{bnec}}.
 #'   \item \code{"range"} --- control to the lowest response the curve
 #'     predicts over the predictor range.
 #'   \item \code{"direct"} --- \code{ecx_val} is a response value rather than
@@ -531,6 +535,15 @@ ecx_asymptote <- function(object, type) {
 #' @param asymptote Draws of the underlying count-mean asymptote.
 #' @param newdata Prediction data used to obtain shape draws.
 #'
+#' @details The negative binomial zero-truncated mean depends on the shape,
+#' which is read at the asymptote. Without a \code{disp()} term the shape is
+#' one value for the whole curve, or one per level of a joint refit, and is
+#' read at the first row of \code{newdata}, the control. Under a variance
+#' function of the mean, such as \code{disp("power")}, the shape varies along
+#' the curve, and it is the sub-model evaluated at \code{mu = bot}; see
+#' \code{disp_positive_asymptote()}. Under \code{disp(~...)} the request is
+#' refused, because the asymptote has no single shape. RF, D39 on #410.
+#'
 #' @return \code{asymptote}, transformed where the reported curve is
 #' \code{E[Y | Y > 0]}.
 #'
@@ -569,19 +582,95 @@ count_positive_asymptote <- function(object, dpar, asymptote, newdata) {
   if (!factorised && !joint) {
     return(asymptote)
   }
-  shape <- NULL
-  if (family %in% c("negbinomial", "hurdle_negbinomial")) {
-    shape <- posterior_epred(
-      object, newdata = newdata[1, , drop = FALSE], re_formula = NA,
-      dpar = "shape"
-    )
-  }
   # Nonlinear equation parameters are stored on the family's link scale.
   # Predictions have already passed through linkinv(), so the theoretical bot
   # (or the equation's zero limit where there is no bot) must do the same
   # before it is converted to E[Y | Y > 0].
   mean_asymptote <- object$fit$family$linkinv(asymptote)
+  shape <- NULL
+  if (family %in% c("negbinomial", "hurdle_negbinomial")) {
+    spec <- parse_disp_term(object$bayesnecformula)
+    if (!is.null(spec)) {
+      return(disp_positive_asymptote(object, spec, mean_asymptote))
+    }
+    shape <- posterior_epred(
+      object, newdata = newdata[1, , drop = FALSE], re_formula = NA,
+      dpar = "shape"
+    )
+  }
   as.numeric(hurdle_positive_mean(mean_asymptote, family, shape))
+}
+
+#' A count-hurdle asymptote on the expected-positive scale under disp()
+#'
+#' @param object A \code{bayesnecfit} with a negative binomial positive block
+#' and a \code{disp()} term.
+#' @param spec The output of \code{\link{parse_disp_term}}.
+#' @param mean_asymptote Draws of the count-mean asymptote on the response
+#' scale, or 0 for an equation without \code{bot}.
+#'
+#' @details Under a variance function of the mean the shape at the asymptote
+#' is the dispersion sub-model evaluated at \code{mu = bot}, draw by draw
+#' (\code{disp_at_mean()}). Read at the control instead, as it is for a
+#' constant shape, it is the shape at the control's mean. Under
+#' \code{disp("power")} with \code{c1} above zero on a declining curve, that
+#' shape is larger than the one at \code{bot}, and the positive-count
+#' asymptote it gives is too low, because the zero-truncated mean falls as
+#' the shape rises.
+#'
+#' An equation without \code{bot} declines towards a mean of 0, where the
+#' zero-truncated mean is \code{0 / 0} and its limit is taken instead. With
+#' \code{r} the limit of \code{mu / shape}, the limit is \code{r / log1p(r)},
+#' which is 1 at \code{r = 0}. \code{r} is 0 wherever the shape falls more
+#' slowly than the mean: under \code{"loglinear"}, whose shape at a mean of 0
+#' is finite, and under \code{"power"} with \code{c1 < 1}, which its default
+#' bounds on a negative binomial hold. With a shape on the log or softplus
+#' link, \code{"power"} has \code{shape} proportional to \code{mu^c1} near 0,
+#' so \code{r} is \code{exp(LOGREF - c0)} at \code{c1 = 1} and infinite above
+#' it, which a prior bounding \code{c1} above 1 allows.
+#'
+#' Under \code{disp(~...)} the shape is a function of the predictor or of
+#' another column, and the asymptote, which the curve reaches only beyond the
+#' data, has no single shape. The request is refused (D39).
+#'
+#' @return A \code{\link[base]{numeric}} vector, one value per draw.
+#'
+#' @importFrom brms ndraws
+#'
+#' @noRd
+disp_positive_asymptote <- function(object, spec, mean_asymptote) {
+  family <- object$fit$family$family
+  if (identical(spec$route, "A")) {
+    stop("type = \"relative\" measures towards the asymptote of the",
+         " positive-count curve, the zero-truncated mean",
+         " mu / (1 - (shape / (mu + shape))^shape) at mu = bot, and so needs",
+         " the negative binomial shape at the asymptote. The disp(~",
+         spec$value, ") term of this ", object$model, " fit models the shape",
+         " as a function of ", spec$value, ", and the asymptote, which the",
+         " curve reaches only beyond the data, has no single shape. Use",
+         " type = \"absolute\" or",
+         " type = \"range\", or fit a variance function of the mean, such as",
+         " disp(\"power\"), whose shape at the asymptote is the sub-model at",
+         " mu = bot.", call. = FALSE)
+  }
+  n_draws <- ndraws(object$fit)
+  mu <- rep_len(mean_asymptote, n_draws)
+  shape <- disp_at_mean(object$fit, spec, mu)
+  out <- as.numeric(hurdle_positive_mean(mu, family, shape$value))
+  zero <- mu == 0
+  if (any(zero)) {
+    r <- numeric(n_draws)
+    if (identical(spec$value, "power") &&
+          shape$link %in% c("log", "softplus")) {
+      c1 <- shape$pars$c1
+      r <- ifelse(c1 < 1, 0, ifelse(c1 > 1, Inf,
+                                    exp(shape$centre[["LOGREF"]] -
+                                          shape$pars$c0)))
+    }
+    limit <- ifelse(r == 0, 1, ifelse(is.infinite(r), Inf, r / log1p(r)))
+    out[zero] <- limit[zero]
+  }
+  out
 }
 
 #' The model-averaged theoretical asymptote

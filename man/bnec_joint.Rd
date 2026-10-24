@@ -91,11 +91,9 @@ block. The variance function is written in that block's mean and centred on
 the positive responses, as it is for the growth component, so the joint
 model fits the same variance function (see \code{\link{bnec}}). A
 \code{formula} supplied here replaces the held one, so a \code{disp()} term
-is fitted only where it is written in that formula. \code{hurdle_negbinomial}
-does not yet take a \code{disp()} term, so a negative binomial growth
-component fitted with one is refused before anything is fitted; supply a
-\code{formula} without the term to refit it jointly with one shape for the
-whole curve.
+is fitted only where it is written in that formula. A negative binomial
+growth component fitted with one is refitted as a \code{hurdle_negbinomial}
+whose shape follows the same sub-model.
 
 \bold{The joint refit of a grouped fit}
 

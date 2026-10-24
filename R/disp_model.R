@@ -153,35 +153,23 @@ check_disp_spec <- function(spec, family, response = NULL) {
   fam_tag <- canonical_fam_tag(family)
   # The joint two-block families take the term on the dispersion parameter of
   # their positive block, which is the only block that has one; the hu or zi
-  # block is a probability and is left as it is. hurdle_gamma and
-  # zero_inflated_beta pass on to the checks below, which read the positive
-  # block's family through disp_family_tag(). RF, D29 on #410.
+  # block is a probability and is left as it is. hurdle_gamma,
+  # zero_inflated_beta and hurdle_negbinomial pass on to the checks below,
+  # which read the positive block's family through disp_family_tag(). RF, D29
+  # and D39 on #410. The shape of hurdle_negbinomial is also read at the
+  # asymptote of a relative ecx() of its positive counts, and
+  # count_positive_asymptote() evaluates it there; see
+  # disp_positive_asymptote().
   #
-  # hurdle_negbinomial is refused although its positive block has a shape.
-  # count_positive_asymptote() reads that shape at the first row of the
-  # prediction grid, the control, to put a relative ecx() or ecnsec() asymptote
-  # on the scale of the positive counts. Under a disp() term the shape varies
-  # along the curve, so the control's value is not the shape at the asymptote,
-  # and how it should be evaluated there is a decision that has not been made.
-  # Refused here rather than fitted with a known-wrong estimator downstream.
-  if (identical(fam_tag, "hurdle_negbinomial")) {
-    stop("A disp() term is not yet supported for the two-block family",
-         " hurdle_negbinomial. A relative ecx() or ecnsec() estimate of its",
-         " positive counts reads the shape parameter at the control, and under",
-         " a disp() term the shape changes along the curve, so the value at",
-         " the lower asymptote can differ from it. How the shape is evaluated",
-         " there is pending a decision. Fit the model without disp(), which",
-         " estimates one shape for the whole curve.", call. = FALSE)
-  }
   # Given its own message because the general one below names the remedy for
-  # a single-block family, poisson to negbinomial; for a count hurdle the
-  # corresponding family is refused above, so the remedy is a constant shape.
+  # a single-block family, poisson to negbinomial, and the corresponding
+  # two-block family is named here instead.
   if (identical(fam_tag, "hurdle_poisson")) {
     stop("Family hurdle_poisson has no free dispersion parameter, so there is",
          " nothing for disp() to model: the variance of its positive counts is",
          " a deterministic function of their mean. Over-dispersion in the",
          " positive counts is modelled by family = \"hurdle_negbinomial\",",
-         " which estimates a constant shape.", call. = FALSE)
+         " whose shape parameter disp() can model.", call. = FALSE)
   }
   if (fam_tag %in% c("zero_inflated_poisson", "zero_inflated_negbinomial")) {
     # Refused before the has_disp_par() check below, whose message ("no free
@@ -245,10 +233,8 @@ check_disp_spec <- function(spec, family, response = NULL) {
     # beta, "twosided" included.
     if (!disp_family_tag(fam_tag) %in% vf$families) {
       # The list names the two-block families that take the form as well,
-      # found through the family of their positive block. hurdle_negbinomial
-      # is left out because it is refused above whatever the form.
+      # found through the family of their positive block.
       two_block <- names(hurdle_mu_fams)[hurdle_mu_fams %in% vf$families]
-      two_block <- setdiff(two_block, "hurdle_negbinomial")
       stop("Variance function \"", spec$value, "\" is not valid for the ",
            fam_tag, " family. It applies to: ",
            paste0(c(vf$families, two_block), collapse = ", "), ".",
@@ -948,6 +934,95 @@ add_disp_block <- function(brms_bf, model, spec, family, x_var,
     return(brms_bf + lf(db$nlf))
   }
   brms_bf + nlf(db$nlf) + lf(db$lf)
+}
+
+#' A variance function's form with the curve and its constants left open
+#'
+#' @param vf An element of \code{disp_functions}.
+#'
+#' @details \code{@MU@} becomes \code{(.bnec_mu)}, wrapped as
+#' \code{make_disp_block()} wraps the curve, and each constant \code{@NAME@}
+#' becomes \code{.bnec_NAME}, so that the form has the structure of the
+#' fitted sub-model with a symbol wherever the fit has a curve or a literal.
+#'
+#' @return A \code{\link[base]{call}}.
+#'
+#' @noRd
+disp_form_template <- function(vf) {
+  txt <- gsub("@MU@", "(.bnec_mu)", vf$expr, fixed = TRUE)
+  str2lang(gsub("@([A-Z0-9]+)@", ".bnec_\\1", txt))
+}
+
+#' The dispersion parameter a variance function gives at a stated mean
+#'
+#' @param fit A \code{\link[brms]{brmsfit}} whose formula has a route (B)
+#' \code{disp()} term.
+#' @param spec The output of \code{\link{parse_disp_term}}, route (B).
+#' @param mu A \code{\link[base]{numeric}} vector of means on the response
+#' scale, one per posterior draw, or of length one.
+#'
+#' @details The sub-model is evaluated draw by draw from the posterior draws of
+#' its parameters, in the form \code{disp_functions} records, and passed
+#' through the inverse of the family's link on the dispersion parameter.
+#' \code{count_positive_asymptote()} needs the negative binomial shape at
+#' \code{mu = bot}, a mean the curve approaches only beyond the data, so the
+#' shape cannot be read off a row of a prediction grid as
+#' \code{posterior_epred(dpar = "shape")} reads it. RF, D39 on #410.
+#'
+#' The centring constants are read from the fitted formula rather than
+#' recomputed from the data: the dispersion formula is matched against
+#' \code{disp_form_template()}, and each constant is the literal found where
+#' the form has one. Recomputing them would need the response exactly as
+#' \code{wrangle_model_formula()} saw it, after any division by trials or a
+#' \code{rate()} denominator and with the zeros of a two-block family removed.
+#'
+#' The inverse link is taken from the \pkg{brms} negative binomial family
+#' built with the dispersion link as its mean link, so that the definition is
+#' the one \pkg{brms} fitted with. Every link \pkg{brms} accepts on the
+#' negative binomial shape is one it accepts on that family's mean.
+#'
+#' @return A \code{\link[base]{list}} with elements \code{value}, the
+#' dispersion parameter, one per draw; \code{pars}, the draws of each
+#' parameter of the form; \code{centre}, the constants; and \code{link}.
+#'
+#' @importFrom brms as_draws_df brmsfamily
+#'
+#' @noRd
+disp_at_mean <- function(fit, spec, mu) {
+  vf <- disp_functions[[spec$value]]
+  dpar <- disp_dpar(fit$family)
+  template <- disp_form_template(vf)
+  fitted_rhs <- fit$formula$pforms[[dpar]][[3]]
+  found <- list()
+  match_form <- function(t, e) {
+    if (is.name(t) && startsWith(as.character(t), ".bnec_")) {
+      found[[as.character(t)]] <<- e
+      return(TRUE)
+    }
+    if (!is.call(t)) {
+      return(identical(t, e))
+    }
+    is.call(e) && length(e) == length(t) &&
+      all(vapply(seq_along(t), function(i) match_form(t[[i]], e[[i]]),
+                 logical(1)))
+  }
+  if (is.null(fitted_rhs) || !match_form(template, fitted_rhs)) {
+    stop("The ", dpar, " formula of this fit does not have the form of",
+         " disp(\"", spec$value, "\"), so the sub-model cannot be evaluated",
+         " at a stated mean.", call. = FALSE)
+  }
+  consts <- setdiff(names(found), ".bnec_mu")
+  centre <- vapply(found[consts], function(e) eval(e, baseenv()), numeric(1))
+  names(centre) <- sub("^\\.bnec_", "", consts)
+  vars <- paste0("b_", vf$pars, "_Intercept")
+  drws <- as_draws_df(fit, variable = vars)
+  pars <- lapply(vars, function(v) as.numeric(drws[[v]]))
+  names(pars) <- vf$pars
+  env <- c(pars, list(.bnec_mu = mu), as.list(stats::setNames(centre, consts)))
+  eta <- eval(template, env, baseenv())
+  link <- fit$family[[paste0("link_", dpar)]]
+  list(value = brmsfamily("negbinomial", link = link)$linkinv(eta),
+       pars = pars, centre = centre, link = link)
 }
 
 #' The curve used by a disp() variance function

@@ -85,7 +85,11 @@ per posterior draw. \code{type} names what the percentage is measured
 \item \code{"relative"} --- control to the equation's theoretical
 asymptote, the \code{bot} parameter where the equation has one and 0
 otherwise. Refused where the equation has no \code{bot} and the family
-is unbounded below, because there is then no finite denominator.
+is unbounded below, because there is then no finite denominator. On the
+positive counts of a negative binomial count hurdle the asymptote is
+their zero-truncated mean at \code{bot}, which needs the shape there,
+and it is refused where the shape is modelled by \code{disp(~...)};
+see \code{\link{bnec}}.
 \item \code{"range"} --- control to the lowest response the curve
 predicts over the predictor range.
 \item \code{"direct"} --- \code{ecx_val} is a response value rather than
