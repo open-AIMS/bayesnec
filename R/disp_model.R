@@ -444,6 +444,9 @@ disp_inits <- function(spec, family, response, predictor = NULL,
     keep <- which(response > 0)
     slope_y <- response[keep]
     slope_x <- if (is.null(predictor)) NULL else predictor[keep]
+    # As define_prior() reads it, so that the chain starts at the centre of
+    # the prior: the positive block of a count hurdle is zero-truncated.
+    truncated_response <- truncated_response || is_count_hurdle(family)
   }
   slopes <- disp_slope_priors(spec, family, slope_y, slope_x,
                               prior_type = prior_type,
