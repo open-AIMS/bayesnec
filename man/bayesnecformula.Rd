@@ -67,6 +67,12 @@ function call must also be valid Stan syntax, either because Stan provides
 it or because the corresponding Stan function is supplied through
 \code{stanvars}. Otherwise, transform the predictor in the data first.
 
+A predictor written with a leading minus, as in \code{crf(-x)} or
+\code{crf(-log(x))}, is refused. A model formula reads that minus as the
+operator that removes a term, so the model would be fitted on \code{x} or
+\code{log(x)}. Write the negation inside \code{I()}, as in
+\code{crf(I(-x))}, or compute it into a column of the data.
+
 \bold{Group-level terms: \code{glterms}}
 
 The user has three options to define group-level effects in a

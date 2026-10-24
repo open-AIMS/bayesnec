@@ -149,6 +149,26 @@ test_that("bnec_joint refuses a non-syntactic name before rebuilding (#398)", {
   expect_null(captured$formula)
 })
 
+test_that("bnec_joint refuses a crf() predictor with a leading minus (#438)", {
+  # Raised beside the #398 refusal, before swap_crf_model() and before bnec()
+  # is called, so that the refit is never announced for it.
+  o <- mock_disp_crossed('y ~ crf(x, c("nec3param", "ecx4param"))', "Gamma",
+                         10)
+  captured <- capture_joint_call()
+  msgs <- character(0)
+  err <- withCallingHandlers(
+    tryCatch(bnec_joint(o, formula = y ~ crf(-x, "nec3param")),
+             error = conditionMessage),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_match(err, "is written with a leading minus")
+  expect_false(any(grepl("Refitting jointly", msgs)))
+  expect_null(captured$formula)
+})
+
 test_that("bnec_joint refuses a negative binomial growth disp() up front", {
   # hurdle_negbinomial does not take disp() yet. The refusal comes before the
   # refit is announced and before bnec() is called, and names the `formula`
@@ -1046,6 +1066,21 @@ test_that("a supplied formula with a non-syntactic name is refused (#398)", {
     }
   )
   expect_match(err, "not syntactic R names.*odd x")
+  expect_false(any(grepl("Refitting jointly", msgs)))
+})
+
+test_that("a supplied formula with a leading minus in crf() is refused (#438)", {
+  g <- spread_group_fit()
+  msgs <- character(0)
+  err <- withCallingHandlers(
+    tryCatch(bnec_joint(g, formula = y ~ crf(-x, "nec3param")),
+             error = conditionMessage),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_match(err, "is written with a leading minus")
   expect_false(any(grepl("Refitting jointly", msgs)))
 })
 
