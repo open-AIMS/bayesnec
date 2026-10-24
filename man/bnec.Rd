@@ -349,10 +349,10 @@ prefix of its name.
 
 \bold{A response that does not vary}
 
-A bernoulli, binomial, beta_binomial or beta response whose every
-observation is at one bound of its family --- every value 0 or every value
-1, or for a counted response every count 0 or every count equal to its
-trials --- identifies no concentration-response curve. \code{bnec} fits
+A bernoulli, binomial, beta_binomial, beta or zero_inflated_beta response
+whose every observation is at one bound of its family --- every value 0 or
+every value 1, or for a counted response every count 0 or every count equal
+to its trials --- identifies no concentration-response curve. \code{bnec} fits
 "ecxflat" alone to such a response, whatever model set was requested, and a
 message says so. The equations requested and not fitted are recorded, with
 the reason, by \code{\link{bnec_record}}. The fit states that the response
@@ -366,8 +366,11 @@ of the whole, take the control concentration, as they do for every equation.
 A beta response of 0 in every observation is refused instead. A beta
 distribution cannot represent a zero, and \code{bnec} shifts a zero off the
 boundary by a tenth of the smallest positive value, which such a response
-does not have. A beta response of 1 in every observation is fitted, its ones
-shifted to 0.999 as they are for any beta response.
+does not have. A zero_inflated_beta response of 0 in every observation is
+refused as well. Its zeros are fitted by the zero-inflation block and its
+other values by the beta block, which for such a response has no data. A
+beta or zero_inflated_beta response of 1 in every observation is fitted, its
+ones shifted to 0.999 as they are for any response of those families.
 
 \code{\link{bnec_group}} applies the same rule to each level, so that a
 level whose response does not vary is fitted with "ecxflat" alone and the

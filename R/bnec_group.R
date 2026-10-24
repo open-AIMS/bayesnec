@@ -212,12 +212,13 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # A level whose every observation is at a bound is fitted with ecxflat alone
   # by its own bnec() call, and every other level with the set requested (D31,
   # which replaced the refusal of the whole call D30 placed here). Found and
-  # reported for every level before any level is fitted, and the one bound
-  # ecxflat cannot be fitted at is still refused for the whole call, because
-  # left to the inner bnec() calls it would be reached only after the levels
-  # before it had compiled and sampled, which is the reason check_disp_finite()
-  # is raised above. Placed before the flatness report, which reads the set
-  # each level will fit. See #400 and #419.
+  # reported for every level before any level is fitted, and a level ecxflat
+  # cannot be fitted to either, a beta or zero_inflated_beta level of 0
+  # throughout, still refuses the whole call, because left to the inner bnec()
+  # calls it would be reached only after the levels before it had compiled and
+  # sampled, which is the reason check_disp_finite() is raised above. Placed
+  # before the flatness report, which reads the set each level will fit. See
+  # #400, #419 and #441.
   #
   # The requested set is read here, before the flatness report reads it below,
   # so that a name that is no equation is refused before any level is fitted

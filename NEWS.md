@@ -1952,6 +1952,39 @@
 
 ## Bug fixes
 
+- A `zero_inflated_beta` response with every observation at one bound is now
+  handled as a `beta` response is. A response of 1 in every observation is
+  fitted by `bnec()` and `bnec_group()` with the constant equation `ecxflat`
+  alone, its ones shifted to 0.999 as before, and the equations requested are
+  recorded as not fitted. Its ones were previously shifted and the set
+  requested was fitted, so such a call now returns an `ecxflat` fit where it
+  returned a fit of that set. `get_priors()`, `amend()` and `update(newdata = )`
+  refuse such a response for a set holding any other equation and accept
+  `ecxflat` named alone. A response of 0 in every observation is refused on
+  every route, `ecxflat` included, once per call and before any model is
+  fitted, with a message that names the family and says that no observation
+  is above zero, so the beta block has no data. Through `bnec()` it
+  previously reached the initial-value search, where `min()` warned "no
+  non-missing arguments to min; returning Inf" repeatedly, and
+  `get_priors()` returned priors after the same warning.
+  `bnec_group()` refuses the whole call where any level is 0 in every
+  observation, naming the level. A response with one observation off the
+  bound is fitted as before (#441).
+- A `crf()` predictor written with a leading minus, as in `crf(-x)` or
+  `crf(-log(x))`, is now refused, with a message that gives the predictor
+  written inside `I()`, as in `crf(I(-x))`. The model frame and the `brms`
+  formula read the minus as the formula operator that removes a term, so such
+  a model was fitted on `x`, or on `log(x)`, while `ecx()` and `nsec()` read
+  the predictor as a negation and returned their estimates with the sign
+  reversed. Nothing said so. The refusal is raised once per call, before
+  anything is fitted, by `bnec()`, `bnec_group()`, `bnec_hurdle()`,
+  `bnec_joint()`, `make_brmsformula()`, `get_priors()` and `check_formula()`.
+  A predictor in parentheses, as in `crf((-x))`, is refused as well. A fit
+  made with such a predictor by an earlier version is refused by the functions
+  that rebuild its model frame, among them `ecx()`, `nsec()` and `autoplot()`,
+  where they previously returned estimates on the wrong scale. `crf(I(-x))`
+  and a minus inside a call, as in `crf(log(x - 1))`, are fitted as before
+  (#438).
 - A `disp(~z)` term naming a column other than the predictor is now fitted
   and predicted from. Every model sampled and then stopped on the prediction
   grid, which held the predictor and any trials or `rate()` denominator but

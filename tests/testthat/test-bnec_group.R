@@ -669,6 +669,59 @@ test_that("a beta level at 0 still refuses the whole call before any level (#419
   expect_identical(calls, 0L)
 })
 
+test_that("a zero_inflated_beta level at a bound follows beta (#441)", {
+  # D35: a level of 1 throughout is fitted with ecxflat alone by its own bnec()
+  # call, and a level of 0 throughout refuses the whole call before any level
+  # is fitted, because its beta block has no data.
+  x <- rep(c(0.1, 0.5, 1, 3, 10, 30), each = 5)
+  varying <- seq(0.9, 0.2, length.out = length(x))
+  varying[x == max(x)] <- c(0, 0, 0.2, 0, 0.1)
+  seen <- list()
+  local_mocked_bindings(
+    bnec = function(formula, data, ...) {
+      seen[[length(seen) + 1L]] <<- list(
+        all_one = all(data$cover == 1),
+        reported = isTRUE(list(...)[[".bayesnec_bound_reported"]])
+      )
+      manec_example
+    },
+    .package = "bayesnec"
+  )
+  one <- data.frame(x = rep(x, 2), cover = c(varying, rep(1, length(x))),
+                    site = rep(c("a", "b"), each = length(x)))
+  msgs <- character(0)
+  withCallingHandlers(
+    bnec_group(cover ~ crf(x, c("nec3param", "ecx4param")), one,
+               group_var = "site", family = "zero_inflated_beta"),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_length(seen, 2)
+  expect_identical(vapply(seen, `[[`, logical(1), "all_one"), c(FALSE, TRUE))
+  report <- grep("fitted with the constant equation ecxflat alone", msgs,
+                 fixed = TRUE, value = TRUE)
+  expect_length(report, 1)
+  expect_match(report, "zero_inflated_beta response in every observation of 1",
+               fixed = TRUE)
+  expect_match(report, "\"b\" (the upper bound)", fixed = TRUE)
+  seen <- list()
+  zero <- one
+  zero$cover[zero$site == "b"] <- 0
+  err <- tryCatch(
+    suppressMessages(
+      bnec_group(cover ~ crf(x, c("nec3param", "ecx4param")), zero,
+                 group_var = "site", family = "zero_inflated_beta")
+    ),
+    error = conditionMessage
+  )
+  expect_match(err, "1 level(s) of \"site\": \"b\", where every value is 0",
+               fixed = TRUE)
+  expect_match(err, "so the beta block has no data", fixed = TRUE)
+  expect_length(seen, 0)
+})
+
 test_that("the group tables hold a level fitted with a single equation (#419)", {
   # A level fitted with ecxflat alone is a bayesnecfit among bayesmanecfits.
   # The crossed weights give it weight 1 on its one equation and take the

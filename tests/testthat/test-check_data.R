@@ -635,6 +635,17 @@ test_that("the update route tests the family the refit uses (#400)", {
     check_update_data(list(nec4param), d1, Beta(link = "identity")),
     "at the upper bound of a beta response", fixed = TRUE
   )
+  # zero_inflated_beta is tested at both bounds since D35 (#441).
+  expect_error(
+    check_update_data(list(nec4param), d1, "zero_inflated_beta"),
+    "at the upper bound of a zero_inflated_beta response", fixed = TRUE
+  )
+  d0 <- d1
+  d0$y <- 0
+  expect_error(
+    check_update_data(list(nec4param), d0, "zero_inflated_beta"),
+    "so the beta block has no data", fixed = TRUE
+  )
 })
 
 test_that("the update route lets an ecxflat fit through at a bound (#419)", {
@@ -727,8 +738,15 @@ test_that("check_response_at_bound leaves every other response alone", {
   # for the prior construction of those families, not for this refusal.
   expect_silent(check_response_at_bound(ones, gaussian()))
   expect_silent(check_response_at_bound(zeros, poisson()))
-  # zero_inflated_beta is outside the ruling, which names beta.
-  expect_silent(check_response_at_bound(ones, "zero_inflated_beta"))
+  # INVERTED. This asserted that zero_inflated_beta was outside the ruling,
+  # which named beta. D35 brings it in at both bounds (#441).
+  expect_error(check_response_at_bound(ones, "zero_inflated_beta"),
+               "upper bound of a zero_inflated_beta response", fixed = TRUE)
+  # Its zeros are inside its support, so a response with any value above zero
+  # varies and is left alone.
+  zib_near <- cd_bdat(y ~ crf(x, model = "nec3param"),
+                      data.frame(x = x, y = c(rep(0, 29), 0.4)))
+  expect_silent(check_response_at_bound(zib_near, "zero_inflated_beta"))
   near <- cd_bdat(y ~ crf(x, model = "nec3param"),
                   data.frame(x = x, y = c(rep(1L, 29), 0L)))
   expect_silent(check_response_at_bound(near, bernoulli()))
@@ -762,7 +780,7 @@ test_that("a grouped response names every level at a bound, and only those", {
 
 # ---- #419, the constant equation in place of the refusal ----------------------
 
-test_that("ecxflat alone is let through at a bound, except beta at 0 (#419)", {
+test_that("ecxflat alone is let through at a bound, except at 0 of beta (#419)", {
   # The routes that keep #400's refusal -- get_priors(), amend(), update() and
   # bnec_hurdle() -- pass the equations they are about to build a prior for. A
   # set holding any curve equation is refused and the message names ecxflat;
@@ -775,13 +793,19 @@ test_that("ecxflat alone is let through at a bound, except beta at 0 (#419)", {
     err <- expect_error(
       check_response_at_bound(bdat, fam, model = c("ecxflat", "nec3param"))
     )
-    if (nm == "beta_zero") {
+    if (nm %in% at_bound_refused) {
       expect_match(conditionMessage(err),
                    "no equation can be fitted to it, the constant equation",
                    fixed = TRUE, info = nm)
+      # Each beta family is refused for its own reason, and the message gives
+      # that one: a zero_inflated_beta response can hold a zero (#441).
+      reason <- if (nm == "zib_zero") {
+        "no observation of this response is above zero, so the beta block"
+      } else {
+        "A beta distribution cannot represent a zero"
+      }
       expect_error(check_response_at_bound(bdat, fam, model = "ecxflat"),
-                   "A beta distribution cannot represent a zero",
-                   fixed = TRUE, info = nm)
+                   reason, fixed = TRUE, info = nm)
       next
     }
     expect_match(conditionMessage(err),
@@ -829,6 +853,26 @@ test_that("constant_fallback replaces the set and records why (#419)", {
                       validate_family(bz$family), "nec3param"),
     "A beta distribution cannot represent a zero", fixed = TRUE
   )
+  # Nor can zero_inflated_beta at 0, and at 1 it is replaced as beta is (#441).
+  cases <- at_bound_cases()
+  zz <- cases$zib_zero
+  expect_error(
+    constant_fallback(cd_bdat(zz$formula, zz$data),
+                      validate_family(zz$family), "nec3param"),
+    "so the beta block has no data", fixed = TRUE
+  )
+  zo <- cases$zib_one
+  out <- suppressMessages(
+    constant_fallback(cd_bdat(zo$formula, zo$data), validate_family(zo$family),
+                      c("nec3param", "ecx4param"))
+  )
+  expect_identical(out$model, "ecxflat")
+  expect_match(out$excluded$reason,
+               "upper bound of a zero_inflated_beta response", fixed = TRUE)
+  expect_null(constant_fallback(cd_bdat(zo$formula, zo$near),
+                                validate_family(zo$family), "nec3param"))
+  expect_null(constant_fallback(cd_bdat(zz$formula, zz$near),
+                                validate_family(zz$family), "nec3param"))
 })
 
 test_that("a grouped call names the levels fitted with ecxflat (#419)", {
@@ -876,6 +920,32 @@ test_that("a grouped call names the levels fitted with ecxflat (#419)", {
   expect_match(msg, "these levels do not have, so no equation can be fitted",
                fixed = TRUE)
   expect_false(grepl("north", msg))
+  # The same for zero_inflated_beta, with the reason that applies to it: a
+  # level of 0 throughout is refused, and a level of 1 throughout is fitted
+  # with ecxflat (#441).
+  zmsgs <- character(0)
+  zerr <- tryCatch(
+    withCallingHandlers(
+      constant_fallback_levels(bb, validate_family("zero_inflated_beta"),
+                               factor(b$site), "site"),
+      message = function(m) {
+        zmsgs <<- c(zmsgs, conditionMessage(m))
+        invokeRestart("muffleMessage")
+      }
+    ),
+    error = conditionMessage
+  )
+  expect_match(zerr, "1 level(s) of \"site\": \"south\"", fixed = TRUE)
+  expect_match(zerr, paste("no observation of these levels is above zero,",
+                           "so the beta block has no data"), fixed = TRUE)
+  expect_false(grepl("north", zerr))
+  expect_length(zmsgs, 0)
+  b1 <- b[b$site != "south", ]
+  zlevs <- suppressMessages(constant_fallback_levels(
+    cd_bdat(cover ~ crf(x, model = "nec3param"), b1),
+    validate_family("zero_inflated_beta"), factor(b1$site), "site"
+  ))
+  expect_identical(zlevs, "north")
 })
 
 test_that("the asymptote report does not count ecxflat on either side (#419)", {
