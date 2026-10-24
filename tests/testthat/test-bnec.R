@@ -551,8 +551,6 @@ test_that("a model set states a disp() refusal once, from bnec() (#410)", {
   d$n[d$x > 1.8] <- 0L
   cases <- list(
     list(f = n ~ crf(x, c("nec3param", "ecx4param")) + disp("power"),
-         family = "hurdle_negbinomial", msg = "pending a decision"),
-    list(f = n ~ crf(x, c("nec3param", "ecx4param")) + disp("power"),
          family = "hurdle_poisson",
          msg = "hurdle_poisson has no free dispersion parameter"),
     # Two single-block families: the refusal is the one the loop raised.

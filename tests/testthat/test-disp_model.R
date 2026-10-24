@@ -263,28 +263,32 @@ test_that("disp is rejected for families with no dispersion parameter", {
   }
 })
 
-test_that("disp is still rejected for the two count hurdles (#410)", {
-  # hurdle_gamma and zero_inflated_beta now take the term; see the #410 section
-  # at the end of this file. hurdle_poisson has no dispersion parameter, and
-  # hurdle_negbinomial waits on how the shape is read at the asymptote.
+test_that("hurdle_poisson refuses disp() and hurdle_negbinomial takes it (#410)", {
+  # hurdle_gamma and zero_inflated_beta take the term; see the #410 section at
+  # the end of this file. hurdle_poisson has no dispersion parameter, and
+  # hurdle_negbinomial takes the term on its shape under D39.
   f <- bnf(count ~ crf(x, "ecx4param") + disp("power"))
   expect_error(
     make_brmsformula(f, disp_dat, validate_family("hurdle_poisson")),
-    "hurdle_poisson has no free dispersion parameter"
+    "hurdle_poisson has no free dispersion parameter.*hurdle_negbinomial"
   )
-  expect_error(
-    make_brmsformula(f, disp_dat, validate_family("hurdle_negbinomial")),
-    "not yet supported .* hurdle_negbinomial.*pending a decision"
-  )
-  # route A as well: the refusal is of the term, not of a variance function
   f_a <- bnf(count ~ crf(x, "ecx4param") + disp(~x))
-  expect_error(
-    make_brmsformula(f_a, disp_dat, validate_family("hurdle_negbinomial")),
-    "pending a decision"
-  )
   expect_error(
     make_brmsformula(f_a, disp_dat, validate_family("hurdle_poisson")),
     "no free dispersion parameter"
+  )
+  fam <- validate_family("hurdle_negbinomial")
+  for (txt in c(' + disp("power")', ' + disp("loglinear")', " + disp(~x)")) {
+    bf <- make_brmsformula(bnf(paste0('count ~ crf(x, "ecx4param")', txt)),
+                           disp_dat, fam)[[1]]
+    expect_true("shape" %in% names(bf$pforms))
+  }
+  # "twosided" is a form for the beta families, and the refusal lists the
+  # two-block family that takes it, not hurdle_negbinomial
+  expect_error(
+    make_brmsformula(bnf(count ~ crf(x, "ecx4param") + disp("twosided")),
+                     disp_dat, fam),
+    "not valid for the hurdle_negbinomial family.*zero_inflated_beta\\.$"
   )
 })
 
@@ -750,11 +754,12 @@ test_that("get_priors refuses what bnec refuses on a two-block family", {
   d$n <- as.integer(round(d$y * 20))
   f <- n ~ crf(x, "nec3param") + disp("power")
   expect_error(suppressMessages(get_priors(f, data = d,
-                                           family = "hurdle_negbinomial")),
-               "pending a decision")
-  expect_error(suppressMessages(get_priors(f, data = d,
                                            family = "hurdle_poisson")),
                "hurdle_poisson has no free dispersion parameter")
+  # hurdle_negbinomial takes the term (D39)
+  pr_nb <- suppressMessages(get_priors(f, data = d,
+                                       family = "hurdle_negbinomial"))
+  expect_true(all(c("c0", "c1") %in% pr_nb$nlpar))
   pr <- suppressMessages(get_priors(g ~ crf(x, "nec3param") + disp("power"),
                                     data = hurdle_dat,
                                     family = "hurdle_gamma"))
@@ -1494,4 +1499,250 @@ test_that("every family bayesnec fits reads as before through the tag (#436)", {
                        label = tag)
     }
   }
+})
+
+# ---- D39 on #410: disp() on the joint hurdle_negbinomial ---------------------
+# hurdle_negbinomial takes disp() on its shape. The shape is read at the
+# asymptote of a relative ecx() on the positive counts, at mu = bot for a
+# variance function of the mean, and the request is refused under disp(~x).
+# No model is compiled or sampled except in the last test.
+
+nb_hurdle_dat <- function() {
+  d <- slope_sim("negbinomial", 0.5)
+  d$y[d$x == max(d$x)][1:5] <- 0L
+  d$z <- factor(rep(c("a", "b"), length.out = nrow(d)))
+  d
+}
+
+# A stand-in for a joint hurdle_negbinomial fit: the formula bnec() builds,
+# the family, and the draws of the curve and dispersion parameters, which
+# as_draws_df() and ndraws() are mocked to return.
+nb_disp_object <- function(disp_txt, family = "hurdle_negbinomial",
+                           d = nb_hurdle_dat()) {
+  f <- bnf(paste0('y ~ crf(x, "nec4param")', disp_txt))
+  fam <- if (is.character(family)) validate_family(family) else family
+  bf <- make_brmsformula(f, d, family = fam)[[1]]
+  structure(list(model = "nec4param",
+                 fit = list(family = fam, formula = bf),
+                 bayesnecformula = f),
+            class = c("bayesnecfit", "bnecfit"))
+}
+nb_draws <- data.frame(b_c0_Intercept = c(1.2, 2.5, 0.4),
+                       b_c1_Intercept = c(0.3, 0.75, 0.05))
+
+test_that("disp_at_mean evaluates the sub-model at a stated mean (#410)", {
+  local_mocked_bindings(
+    as_draws_df = function(x, variable = NULL, ...) nb_draws[, variable],
+    .package = "bayesnec"
+  )
+  mu <- c(3, 8.5, 0.7)
+  for (vf in c("power", "loglinear")) {
+    obj <- nb_disp_object(paste0(' + disp("', vf, '")'))
+    ref <- centring_literals(pform_rhs(obj$fit$formula, "shape"))
+    eta <- switch(vf,
+      power = nb_draws$b_c0_Intercept +
+        nb_draws$b_c1_Intercept * (log(mu) - ref),
+      loglinear = nb_draws$b_c0_Intercept +
+        nb_draws$b_c1_Intercept * (mu - ref)
+    )
+    got <- bayesnec:::disp_at_mean(obj$fit, list(route = "B", value = vf), mu)
+    expect_equal(got$value, exp(eta), label = vf)
+    expect_equal(unname(got$centre), ref, label = vf)
+    expect_identical(got$link, "log")
+  }
+  # a negative centring literal, written "- -0.5", is read as -0.5
+  d <- nb_hurdle_dat()
+  d$y <- d$y / 100
+  obj <- nb_disp_object(' + disp("power")', d = d)
+  ref <- centring_literals(pform_rhs(obj$fit$formula, "shape"))
+  expect_lt(ref, 0)
+  got <- bayesnec:::disp_at_mean(obj$fit, list(route = "B", value = "power"),
+                                 mu)
+  expect_equal(unname(got$centre), ref)
+  # the dispersion link is the family's own
+  fam <- validate_family(brms::hurdle_negbinomial(link = "identity",
+                                                  link_shape = "softplus",
+                                                  link_hu = "identity"))
+  obj <- nb_disp_object(' + disp("power")', family = fam)
+  ref <- centring_literals(pform_rhs(obj$fit$formula, "shape"))
+  got <- bayesnec:::disp_at_mean(obj$fit, list(route = "B", value = "power"),
+                                 mu)
+  eta <- nb_draws$b_c0_Intercept + nb_draws$b_c1_Intercept * (log(mu) - ref)
+  expect_equal(got$value, log1p(exp(eta)))
+  # a formula of another form is refused rather than misread
+  obj <- nb_disp_object(' + disp("loglinear")')
+  expect_error(
+    bayesnec:::disp_at_mean(obj$fit, list(route = "B", value = "power"), mu),
+    "does not have the form of disp\\(\"power\"\\)"
+  )
+})
+
+test_that("disp_at_mean reads the formula a brmsfit stores (#410)", {
+  # brm(empty = TRUE) validates the formula as a fit does, without compiling.
+  local_mocked_bindings(
+    as_draws_df = function(x, variable = NULL, ...) nb_draws[, variable],
+    .package = "bayesnec"
+  )
+  obj <- nb_disp_object(' + disp("power")')
+  d <- nb_hurdle_dat()
+  empty <- suppressMessages(brms::brm(obj$fit$formula, data = d,
+                                      family = obj$fit$family, empty = TRUE))
+  mu <- c(3, 8.5, 0.7)
+  spec <- list(route = "B", value = "power")
+  expect_equal(bayesnec:::disp_at_mean(empty, spec, mu),
+               bayesnec:::disp_at_mean(obj$fit, spec, mu))
+})
+
+test_that("the asymptote shape under disp() is the sub-model at bot (#410)", {
+  bot <- c(4, 2.5, 6)
+  local_mocked_bindings(
+    as_draws_df = function(x, variable = NULL, ...) nb_draws[, variable],
+    ndraws = function(x) nrow(nb_draws),
+    posterior_epred = function(...) stop("the control is not read"),
+    .package = "bayesnec"
+  )
+  obj <- nb_disp_object(' + disp("power")')
+  ref <- centring_literals(pform_rhs(obj$fit$formula, "shape"))
+  shape_bot <- exp(nb_draws$b_c0_Intercept +
+                     nb_draws$b_c1_Intercept * (log(bot) - ref))
+  expected <- as.numeric(bayesnec:::hurdle_positive_mean(
+    bot, "hurdle_negbinomial", shape_bot
+  ))
+  got <- bayesnec:::count_positive_asymptote(obj, "mu", bot,
+                                             data.frame(x = 0))
+  expect_equal(got, expected)
+  # read at a larger mean, the control's, the shape is larger and the
+  # positive-count asymptote lower, which is what the control reading gave
+  shape_ctrl <- exp(nb_draws$b_c0_Intercept +
+                      nb_draws$b_c1_Intercept * (log(10 * bot) - ref))
+  expect_true(all(got > as.numeric(bayesnec:::hurdle_positive_mean(
+    bot, "hurdle_negbinomial", shape_ctrl
+  ))))
+  # the factorised growth component reads it the same way
+  tf_obj <- obj
+  tf_obj$fit$family <- validate_family("negbinomial")
+  tf_obj$bayesnecformula <- bayesnec:::add_hurdle_truncation(
+    obj$bayesnecformula
+  )
+  tf_obj$fit$formula <- make_brmsformula(
+    tf_obj$bayesnecformula, nb_hurdle_dat()[nb_hurdle_dat()$y > 0, ],
+    family = tf_obj$fit$family
+  )[[1]]
+  ref_g <- centring_literals(pform_rhs(tf_obj$fit$formula, "shape"))
+  expect_equal(ref_g, ref)
+  expect_equal(
+    bayesnec:::count_positive_asymptote(tf_obj, NULL, bot, data.frame(x = 0)),
+    expected
+  )
+  # the combined endpoint and the hu block read no shape, and are unchanged
+  expect_identical(
+    bayesnec:::count_positive_asymptote(obj, NULL, bot, data.frame(x = 0)),
+    bot
+  )
+  expect_identical(
+    bayesnec:::count_positive_asymptote(obj, "hu", bot, data.frame(x = 0)),
+    bot
+  )
+})
+
+test_that("an equation without bot takes the limit at a mean of zero (#410)", {
+  draws <- data.frame(b_c0_Intercept = c(1.2, 2.5, 0.4, 1),
+                      b_c1_Intercept = c(0.3, 0.999, 1, 1.4))
+  local_mocked_bindings(
+    as_draws_df = function(x, variable = NULL, ...) draws[, variable],
+    ndraws = function(x) nrow(draws),
+    .package = "bayesnec"
+  )
+  obj <- nb_disp_object(' + disp("power")')
+  ref <- centring_literals(pform_rhs(obj$fit$formula, "shape"))
+  got <- bayesnec:::count_positive_asymptote(obj, "mu", 0, data.frame(x = 0))
+  # mu / shape tends to 0 for c1 < 1, to exp(LOGREF - c0) at c1 = 1, and
+  # without bound above it
+  r <- exp(ref - draws$b_c0_Intercept[3])
+  expect_equal(got, c(1, 1, r / log1p(r), Inf))
+  # the shape of "loglinear" is finite at a mean of zero
+  obj <- nb_disp_object(' + disp("loglinear")')
+  expect_equal(
+    bayesnec:::count_positive_asymptote(obj, "mu", 0, data.frame(x = 0)),
+    rep(1, 4)
+  )
+})
+
+test_that("a relative estimate under disp(~x) is refused (#410)", {
+  local_mocked_bindings(
+    posterior_epred = function(...) stop("the shape is not read"),
+    .package = "bayesnec"
+  )
+  obj <- nb_disp_object(" + disp(~x)")
+  expect_error(
+    bayesnec:::count_positive_asymptote(obj, "mu", c(4, 2.5),
+                                        data.frame(x = 0)),
+    paste0("type = \"relative\" measures towards the asymptote.*disp\\(~x\\)",
+           ".*has no single shape.*type = \"absolute\".*disp\\(\"power\"\\)")
+  )
+  # the estimators that read no asymptote reach no refusal
+  expect_identical(
+    bayesnec:::count_positive_asymptote(obj, "mu", NA_real_,
+                                        data.frame(x = 0)),
+    NA_real_
+  )
+  expect_identical(
+    bayesnec:::count_positive_asymptote(obj, NULL, c(4, 2.5),
+                                        data.frame(x = 0)),
+    c(4, 2.5)
+  )
+})
+
+test_that("a model set reads each equation's shape at its own bot (#410)", {
+  parts <- list(a = nb_disp_object(' + disp("power")'),
+                b = nb_disp_object(' + disp("power")'))
+  object <- structure(list(
+    mod_fits = list(a = list(fit = 1), b = list(fit = 2))
+  ), class = c("bayesmanecfit", "bnecfit"))
+  bot <- c(4, 2.5, 6)
+  draw_index <- list(a = c(1L, 3L), b = 2L)
+  local_mocked_bindings(
+    as_draws_df = function(x, variable = NULL, ...) {
+      if (is.null(variable)) nb_draws else nb_draws[, variable]
+    },
+    ndraws = function(x) nrow(nb_draws),
+    pull_draw_index = function(...) draw_index,
+    pull_out = function(object, model) parts[[model]],
+    ecx_asymptote = function(object, type) bot,
+    .package = "bayesnec"
+  )
+  ref <- centring_literals(pform_rhs(parts$a$fit$formula, "shape"))
+  each <- as.numeric(bayesnec:::hurdle_positive_mean(
+    bot, "hurdle_negbinomial",
+    exp(nb_draws$b_c0_Intercept + nb_draws$b_c1_Intercept * (log(bot) - ref))
+  ))
+  expect_equal(
+    bayesnec:::count_positive_asymptote(object, "mu", rep(0, 3),
+                                        data.frame(x = 0)),
+    c(each[draw_index$a], each[draw_index$b])
+  )
+})
+
+test_that("a joint hurdle_negbinomial fit reads its shape at bot (#410)", {
+  skip_on_cran()
+  skip_on_ci()
+  d <- nb_hurdle_dat()
+  fit <- suppressWarnings(suppressMessages(
+    bnec(y ~ crf(x, "nec4param") + disp("power"), data = d,
+         family = "hurdle_negbinomial", chains = 1, iter = 600, warmup = 300,
+         seed = 410, refresh = 0)
+  ))
+  drws <- brms::as_draws_df(fit$fit)
+  ref <- centring_literals(pform_rhs(fit$fit$formula, "shape"))
+  bot <- drws$b_bot_Intercept
+  shape_bot <- exp(drws$b_c0_Intercept +
+                     drws$b_c1_Intercept * (log(bot) - ref))
+  expect_equal(
+    bayesnec:::count_positive_asymptote(fit, "mu", bot, data.frame(x = 0)),
+    as.numeric(bayesnec:::hurdle_positive_mean(bot, "hurdle_negbinomial",
+                                               shape_bot))
+  )
+  est <- suppressWarnings(ecx(fit, type = "relative", dpar = "mu",
+                              ecx_val = 50))
+  expect_true(all(is.finite(est)))
 })
