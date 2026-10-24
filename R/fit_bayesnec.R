@@ -26,6 +26,16 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
                          timeout = Inf, model_survival = NULL,
                          predictor_scale = "auto", level_spec = NULL) {
   formula <- single_model_formula(formula, model)
+  # The backstop for the rule check_group_terms() applies. bnec(),
+  # bnec_group() and amend() exclude such an equation before their loops, so
+  # it is not reached from them; bnec_joint() on a bayesnecgroupfit fits
+  # through this function directly, with an equation the caller may name.
+  # Raised before the model frame and the initial-value search, so nothing is
+  # built for an equation that will not be fitted. See #470.
+  group_excluded <- group_term_exclusions(formula, model)
+  if (nrow(group_excluded) > 0) {
+    stop(group_terms_refusal(group_excluded), call. = FALSE)
+  }
   bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
   x <- retrieve_var(bdat, "x_var", error = TRUE)
   y <- retrieve_var(bdat, "y_var", error = TRUE)
@@ -95,7 +105,9 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
                                disp_spec = parse_disp_term(formula),
                                group_spec = group_spec,
                                level_spec = level_spec,
-                               rate_response = !is.null(denominator))
+                               rate_response = !is.null(denominator),
+                               truncated_response = isTRUE(attr(
+                                 formula, "bayesnec_internal_truncation")))
   # A group-level term needs initial values as well as a prior. Stan's own
   # draw for a lower-bounded standard deviation is uniform(-2, 2) on the
   # unconstrained scale and ignores whatever prior was declared, so a prior

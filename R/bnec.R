@@ -133,7 +133,8 @@
 #' this noisy centre. The centre is zero,
 #' as under \code{"uninformative"}, where fewer than three predictor values are
 #' replicated or the slope cannot be computed, and for a \code{negbinomial}
-#' response with a \code{rate()} denominator. The replicates are grouped by
+#' response with a \code{rate()} denominator or the zero-truncated growth
+#' component of \code{bnec_hurdle()}. The replicates are grouped by
 #' predictor value alone, so under a group-level term their spread includes the
 #' variation between groups.
 #' @param asymptote_observed A \code{\link[base]{logical}} declaring whether the
@@ -899,6 +900,12 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # removed here before anything reaches brms.
   asymptote_checked <- isTRUE(brm_args[[".bayesnec_asymptote_checked"]])
   brm_args[[".bayesnec_asymptote_checked"]] <- NULL
+  # The same device for the report of equations that keep no group-level term
+  # on a grouping variable, which bnec_group() makes once for every level.
+  # The exclusion itself is still made, and recorded, by each level's call.
+  # Private, and removed here. See #470.
+  group_terms_reported <- isTRUE(brm_args[[".bayesnec_group_terms_reported"]])
+  brm_args[[".bayesnec_group_terms_reported"]] <- NULL
   # `prior` is an explicit argument (rather than relying on `...`) so that a
   # user-supplied `prior =` is matched exactly and cannot be captured by partial
   # matching against `prior_type`. Only fold it into brm_args when supplied, so
@@ -985,6 +992,19 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # multi-model branch escaped it only because `model[m]` drops attributes.
   # check_models() warns about exactly this at its record block. See #261.
   model <- as.character(model)
+  # An equation that keeps no group-level term on a grouping variable the
+  # formula names is excluded here, before the model loop, and recorded beside
+  # the family exclusions above, which it follows because it is applied to the
+  # set they leave. The rule is a property of the formula and the set, fixed
+  # for the whole call: left to fit_bayesnec(), inside the try() of the loop,
+  # a set with no equation left would print the refusal once per equation and
+  # end on the advice that none of the models fitted. Placed before the
+  # flatness report and the asymptote declaration, which read the set that
+  # will be fitted. See group_term_exclusions() and #470.
+  group_check <- check_group_terms(model, formula,
+                                   report = !group_terms_reported)
+  model <- group_check$model
+  excluded_models <- rbind(excluded_models, group_check$excluded)
   # Moved above the flatness report, which needs it: the survival block of a
   # two-block fit is checked against the equation that block will use.
   model_survival <- check_model_survival(model_survival, brm_args$family, bdat)
@@ -1051,6 +1071,12 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   if (!is.null(disp_spec)) {
     check_disp_spec(disp_spec, brm_args$family,
                     response = disp_response(bdat, brm_args$family))
+    # The zero-truncated count of a bnec_hurdle() growth component, the one
+    # route whose reported mean depends on the dispersion parameter. Checked
+    # once here for the same reason as the line above. See #443.
+    if (is_factorised_count_formula(formula, brm_args$family)) {
+      check_disp_count_truncation(formula)
+    }
   }
   if (length(model) > 1) {
     mod_fits <- vector(mode = "list", length = length(model))

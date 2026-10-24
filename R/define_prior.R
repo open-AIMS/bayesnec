@@ -1369,7 +1369,8 @@ define_prior <- function(model, family, predictor, response,
                          asymptote_observed = TRUE,
                          model_survival = NULL, disp_spec = NULL,
                          group_spec = NULL, prior_predictor = NULL,
-                         predictor_scale = "auto", rate_response = FALSE) {
+                         predictor_scale = "auto", rate_response = FALSE,
+                         truncated_response = FALSE) {
   if (is.null(prior_predictor)) {
     prior_predictor <- predictor
   }
@@ -1441,7 +1442,8 @@ define_prior <- function(model, family, predictor, response,
     disp_priors <- define_disp_prior(disp_spec, mu_family, mu_response,
                                      predictor = mu_split$x,
                                      prior_type = prior_type,
-                                     rate_response = rate_response)
+                                     rate_response = rate_response,
+                                     truncated_response = truncated_response)
     if (!is.null(disp_priors)) {
       hurdle_priors <- hurdle_priors + disp_priors
     }
@@ -1745,7 +1747,8 @@ define_prior <- function(model, family, predictor, response,
   disp_priors <- define_disp_prior(disp_spec, family, response,
                                    predictor = predictor,
                                    prior_type = prior_type,
-                                   rate_response = rate_response)
+                                   rate_response = rate_response,
+                                   truncated_response = truncated_response)
   if (!is.null(disp_priors)) {
     priors <- priors + disp_priors
   }
@@ -1774,6 +1777,7 @@ define_prior <- function(model, family, predictor, response,
 #' @param prior_type One of \code{"uninformative"} or \code{"regularizing"}.
 #' @param rate_response Whether the response was divided by a \code{rate()}
 #' denominator before the prior was built.
+#' @param truncated_response Whether the count likelihood is zero-truncated.
 #'
 #' @details Only route (B) is given priors here. Route (A) is an ordinary
 #' distributional formula and is left to the \pkg{brms} defaults, which already
@@ -1805,7 +1809,8 @@ define_prior <- function(model, family, predictor, response,
 #' @noRd
 define_disp_prior <- function(disp_spec, family, response, predictor = NULL,
                               prior_type = "uninformative",
-                              rate_response = FALSE) {
+                              rate_response = FALSE,
+                              truncated_response = FALSE) {
   if (is.null(disp_spec) || disp_spec$route != "B") {
     return(NULL)
   }
@@ -1814,7 +1819,8 @@ define_disp_prior <- function(disp_spec, family, response, predictor = NULL,
   out <- prior_string(unname(c0_prs[fam_tag]), nlpar = "c0")
   slopes <- disp_slope_priors(disp_spec, family, response, predictor,
                               prior_type = prior_type,
-                              rate_response = rate_response)
+                              rate_response = rate_response,
+                              truncated_response = truncated_response)
   for (p in names(slopes)) {
     s <- slopes[[p]]
     out <- out + prior_string(s$prior, nlpar = p, lb = s$lb, ub = s$ub)

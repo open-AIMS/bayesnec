@@ -52,6 +52,7 @@ fitted.bayesnecfit <- function(object, newdata = NULL, re_formula = NULL,
                                draw_ids = NULL, sort = FALSE, summary = TRUE,
                                robust = FALSE, probs = c(0.025, 0.975), ...) {
   scale <- match.arg(scale)
+  check_newdata_disp(object$bayesnecformula, newdata)
   fit <- pull_brmsfit(object)
   if (!is_factorised_count_formula(object$bayesnecformula, fit$family) ||
       scale == "linear" || !is.null(dpar) || !is.null(nlpar)) {

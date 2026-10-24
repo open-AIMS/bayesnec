@@ -152,6 +152,17 @@
 #' the mean of the untruncated distribution, not the mean of the positive
 #' counts that \pkg{bayesnec} reports.
 #'
+#' A \code{disp(~z)} term naming a column other than the predictor is refused
+#' for a \code{negbinomial} growth component, before either component is
+#' fitted. The curve of that component is the mean of the positive counts,
+#' \code{mu / (1 - (shape / (mu + shape))^shape)}, which depends on the shape
+#' parameter, so with the shape modelled on \code{z} the curve and every
+#' estimate read from it would depend on the value \code{z} is given when
+#' predicting. On a \code{Gamma} or \code{Beta} growth component the term is
+#' fitted, and \code{z} is treated on a prediction grid as
+#' \code{\link{bayesnecformula}} describes, with the values a predicted
+#' reading takes drawn from the survivors the growth component is fitted to.
+#'
 #' @return An object of class \code{\link{bayesnechurdlefit}}.
 #'
 #' @seealso \code{\link{bnec}} for the equivalent joint fit via
@@ -247,7 +258,6 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
   if (!is.null(model_survival)) {
     surv_formula <- swap_crf_model(surv_formula, model_survival)
   }
-
   if (is.null(family_growth)) {
     # Chosen from the non-zero subset, not the whole response: the zeros would
     # otherwise be read as part of a continuous distribution rather than as the
@@ -260,6 +270,27 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
                                      link_source = growth_link_source)
     check_hurdle_growth_family(family_growth)
   }
+  # Apply the group-term check to each component's family-compatible set.
+  # Checking the requested set would miss a survival component where its only
+  # equation with a group-level term is excluded by the Bernoulli family;
+  # that refusal would arrive after the growth component had sampled. The
+  # component calls make and record their own exclusions, so silence these
+  # preliminary family and group reports. See #470.
+  growth_frame <- suppressMessages(model.frame(
+    formula, data = data[y > 0, , drop = FALSE], run_par_checks = TRUE
+  ))
+  survival_family <- bernoulli(link = "identity")
+  survival_frame <- suppressMessages(model.frame(
+    surv_formula, data = surv_data, run_par_checks = TRUE
+  ))
+  growth_models <- suppressMessages(check_models(
+    get_model_from_formula(formula), family_growth, growth_frame
+  ))
+  survival_models <- suppressMessages(check_models(
+    get_model_from_formula(surv_formula), survival_family, survival_frame
+  ))
+  check_group_terms(growth_models, formula, report = FALSE)
+  check_group_terms(survival_models, surv_formula, report = FALSE)
   # Checked here against the growth family, the only one the term applies to,
   # before the growth component is announced or either component compiles.
   # The growth bnec() call makes the same check once before its own model
@@ -270,6 +301,12 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
   disp_spec <- parse_disp_term(formula)
   if (!is.null(disp_spec)) {
     check_disp_spec(disp_spec, family_growth, response = y[y > 0])
+    # Before check_count_truncation_support(), so that a model refused for
+    # what it is does not first send the user to upgrade brms. The growth
+    # bnec() call and wrangle_model_formula() repeat it as backstops. See #443.
+    if (identical(family_growth$family, "negbinomial")) {
+      check_disp_count_truncation(formula)
+    }
   }
   growth_formula <- formula
   if (family_growth$family %in% c("poisson", "negbinomial")) {
@@ -299,8 +336,7 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
   # with no variation is not made here: #419 gave it to bnec() and bnec_group()
   # only, so a growth set holding a curve equation is still refused.
   check_response_at_bound(
-    model.frame(formula, data = data[y > 0, , drop = FALSE],
-                run_par_checks = TRUE),
+    growth_frame,
     family_growth,
     subject = paste0("The growth component of the response \"", y_var,
                      "\" (its ", sum(y > 0), " non-zero values)"),
@@ -336,7 +372,7 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
   message("Fitting the survival component (", n_dead, " deaths of ",
           length(y), ").")
   survival_fit <- bnec(surv_formula, data = surv_data,
-                       family = bernoulli(link = "identity"),
+                       family = survival_family,
                        predictor_scale = predictor_scale, ...)
 
   out <- list(growth = growth_fit, survival = survival_fit,

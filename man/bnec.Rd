@@ -170,7 +170,8 @@ stays at that of the \code{"uninformative"} entry to limit the influence of
 this noisy centre. The centre is zero,
 as under \code{"uninformative"}, where fewer than three predictor values are
 replicated or the slope cannot be computed, and for a \code{negbinomial}
-response with a \code{rate()} denominator. The replicates are grouped by
+response with a \code{rate()} denominator or the zero-truncated growth
+component of \code{bnec_hurdle()}. The replicates are grouped by
 predictor value alone, so under a group-level term their spread includes the
 variation between groups.}
 

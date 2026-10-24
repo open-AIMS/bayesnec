@@ -177,3 +177,81 @@ test_that("amend lets ecxflat alone through at a bound, and names it (#419)", {
   expect_identical(fitted, "ecxflat")
   expect_false(grepl("upper bound", paste(res, collapse = " ")))
 })
+
+
+# ---- #470, an added equation that keeps no group-level term ------------------
+
+# manec_example's two equations given a term on bot, which both have. The term
+# is written into each stored formula and plate into each stored data, which is
+# what bnec() stores for such a fit. NB: the brmsfit components were not
+# fitted with the term. amend() reads the formula and the data before it fits,
+# which is what these tests assert, and nothing here reads a posterior
+# quantity.
+bot_plate_manec <- function() {
+  m <- manec_example
+  n <- nrow(m$mod_fits[[1]]$fit$data)
+  for (eq in names(m$mod_fits)) {
+    m$mod_fits[[eq]]$bayesnecformula <- bnf(stats::as.formula(paste0(
+      "y ~ crf(x, model = \"", eq, "\") + (bot | plate)"
+    )))
+    m$mod_fits[[eq]]$fit$data$plate <- factor(rep(letters[1:4],
+                                                  length.out = n))
+  }
+  attr(m, "bnec_record") <- list(
+    requested = names(m$mod_fits), attempted = names(m$mod_fits),
+    excluded = data.frame(model = character(), reason = character(),
+                          stringsAsFactors = FALSE),
+    substitutions = NULL
+  )
+  m
+}
+
+test_that("amend(add = ) excludes an added equation and records it (#470)", {
+  # ecxexp has no bot, so it would keep no term on plate; ecxll4 has bot and
+  # is fitted. The fit and the set assembly are replaced, so that what is
+  # asserted is which equations reach the loop and what reaches the record.
+  fitted <- character(0)
+  seen <- NULL
+  local_mocked_bindings(
+    fit_bayesnec = function(..., model) {
+      fitted <<- c(fitted, model)
+      stop("model fit reached")
+    },
+    expand_manec = function(object, ...) {
+      object[vapply(object, is_prebayesnecfit, logical(1))]
+    },
+    attach_bnec_record = function(out, requested, attempted, excluded,
+                                  substitutions) {
+      seen <<- list(requested = requested, attempted = attempted,
+                    excluded = excluded)
+      stop("record reached")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(
+    suppressWarnings(suppressMessages(
+      amend(bot_plate_manec(), add = c("ecxexp", "ecxll4"))
+    )),
+    "record reached", fixed = TRUE
+  )
+  expect_identical(fitted, "ecxll4")
+  expect_false("ecxexp" %in% seen$attempted)
+  expect_identical(seen$excluded$model, "ecxexp")
+  expect_match(seen$excluded$reason, "keeps no group-level term on \"plate\"",
+               fixed = TRUE)
+  expect_setequal(c(seen$attempted, seen$excluded$model), seen$requested)
+})
+
+test_that("amend(add = ) refuses a call adding only excluded ones (#470)", {
+  calls <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      calls <<- calls + 1L
+      stop("model fit reached")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(suppressMessages(amend(bot_plate_manec(), add = "ecxexp")),
+               "No equation requested can be fitted", fixed = TRUE)
+  expect_identical(calls, 0L)
+})

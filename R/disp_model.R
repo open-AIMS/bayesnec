@@ -396,6 +396,8 @@ disp_centre <- function(spec, response) {
 #' \code{NULL}. Read only for the bounds it declares on each slope.
 #' @param rate_response Whether the response was divided by a \code{rate()}
 #' denominator before reaching this function.
+#' @param truncated_response Whether the count likelihood is conditioned on
+#' a positive response by the internal hurdle-growth truncation.
 #'
 #' @return A named \code{\link[base]{list}} of one-dimensional arrays, suitable
 #' for appending to a chain's init list, or an empty list for route (A).
@@ -431,7 +433,7 @@ disp_centre <- function(spec, response) {
 #' @noRd
 disp_inits <- function(spec, family, response, predictor = NULL,
                        prior_type = "uninformative", priors = NULL,
-                       rate_response = FALSE) {
+                       rate_response = FALSE, truncated_response = FALSE) {
   pars <- disp_pars(spec)
   if (length(pars) == 0) {
     return(list())
@@ -455,7 +457,8 @@ disp_inits <- function(spec, family, response, predictor = NULL,
   }
   slopes <- disp_slope_priors(spec, family, slope_y, slope_x,
                               prior_type = prior_type,
-                              rate_response = rate_response)
+                              rate_response = rate_response,
+                              truncated_response = truncated_response)
   out <- lapply(pars, function(p) {
     if (identical(p, "c0")) {
       return(as.array(c0))
@@ -635,7 +638,8 @@ disp_slope_bounds <- function(spec, family) {
 #' groups as well as within them. A censored response enters at its recorded
 #' value. A non-integer negative binomial response has no count-scale variance
 #' statistic. The caller also excludes a response divided by a \code{rate()}
-#' denominator, including when the resulting rates happen to be integers.
+#' denominator, including when the resulting rates happen to be integers, and
+#' positive-only counts from a zero-truncated negative binomial likelihood.
 #'
 #' @return A \code{\link[base]{numeric}} of length 1, \code{NA} where the
 #' design has too few replicated groups or the family has no statistic.
@@ -698,6 +702,9 @@ disp_replicate_slope <- function(family, predictor, response) {
 #' @param prior_type One of \code{"uninformative"} or \code{"regularizing"}.
 #' @param rate_response Whether the response was divided by a \code{rate()}
 #' denominator. The negative binomial statistic needs count-scale variance.
+#' @param truncated_response Whether the count likelihood is zero-truncated.
+#' The ordinary negative binomial variance formula does not apply to the
+#' positive-only sample.
 #'
 #' @details One statement of each slope's prior, read by
 #' \code{define_disp_prior()} for the prior rows and by \code{disp_inits()} for
@@ -727,7 +734,8 @@ disp_replicate_slope <- function(family, predictor, response) {
 #' @noRd
 disp_slope_priors <- function(spec, family, response, predictor = NULL,
                               prior_type = "uninformative",
-                              rate_response = FALSE) {
+                              rate_response = FALSE,
+                              truncated_response = FALSE) {
   vf <- disp_functions[[spec$value]]
   slopes <- setdiff(vf$pars, "c0")
   # A slope on log(mu) is dimensionless, so a fixed scale means the same thing
@@ -757,9 +765,12 @@ disp_slope_priors <- function(spec, family, response, predictor = NULL,
       # density at the far bound is 0.83 of that at the centre.
       # A rate() response needs the exposure to separate the Poisson variance
       # from overdispersion. Integer rates alone do not supply that information.
+      # Truncation changes both the mean and variance of positive-only counts,
+      # so the ordinary negative binomial variance identity also fails there.
       if (identical(prior_type, "regularizing") && is.finite(lb) &&
             is.finite(ub) &&
-            !(rate_response && disp_family_tag(family) == "negbinomial")) {
+            !((rate_response || truncated_response) &&
+                disp_family_tag(family) == "negbinomial")) {
         slope <- disp_replicate_slope(family, predictor, response)
         if (is.finite(slope)) {
           centre <- signif(min(max(slope, lb), ub), 4)
@@ -983,4 +994,145 @@ disp_curve <- function(brms_bf) {
     rhs_txt <- sub("^ogl \\+ ", "", rhs_txt)
   }
   rhs_txt
+}
+
+#' The columns a disp(~...) sub-model names other than the predictor
+#'
+#' @param formula An object of class \code{\link{bayesnecformula}}.
+#' @param x_var The predictor's column names. Defaults to the variables of the
+#' \code{crf()} term.
+#'
+#' @details A \code{disp(~z)} term may name a column other than the predictor
+#' (#443). \pkg{brms} evaluates every distributional parameter when it
+#' predicts, so such a column must be on every grid a prediction is made over,
+#' the expected value included, although the mean does not involve it. This is
+#' the one definition of that set, read by the prediction grid, by the refusal
+#' of a \code{newdata} that lacks one, by the marginalisation of predicted
+#' readings, and by the refusal on a zero-truncated count. A variance function,
+#' \code{disp("power")}, names no column, and a term on the predictor alone,
+#' \code{disp(~log(x))}, names none other than it.
+#'
+#' @return A \code{\link[base]{character}} vector, empty where there is no such
+#' column.
+#'
+#' @noRd
+disp_covariates <- function(formula, x_var = all.vars(crf_x_call(formula))) {
+  if (is.null(formula)) {
+    return(character(0))
+  }
+  spec <- parse_disp_term(formula)
+  if (is.null(spec) || !identical(spec$route, "A")) {
+    return(character(0))
+  }
+  setdiff(all.vars(str2lang(spec$value)), x_var)
+}
+
+#' The value a disp(~...) column takes on a prediction grid
+#'
+#' @param x The column, as the fitted data hold it.
+#'
+#' @details The first level of a factor, and the median of a numeric column. A
+#' character or logical column takes the first of its sorted values, which is
+#' the level \code{\link[base]{factor}} would put first and so the reference
+#' level \pkg{brms} codes it against. The value cannot change a quantity read
+#' from the mean, because no family a \code{disp(~...)} column is fitted for
+#' has a mean that involves the dispersion parameter. The one route where it
+#' would, a zero-truncated negative binomial growth component, refuses the
+#' column; see \code{check_disp_count_truncation()}. For a predicted reading
+#' the value is a placeholder, which the prediction methods replace; see
+#' \code{disp_marginal_draws()}.
+#'
+#' @return A vector of length one, of the class of \code{x}; a factor keeps
+#' every level of \code{x}, because \pkg{brms} builds the design matrix
+#' against the levels the fit was given.
+#'
+#' @importFrom stats median
+#'
+#' @noRd
+disp_fixed_value <- function(x) {
+  if (is.factor(x)) {
+    return(factor(levels(x)[1], levels = levels(x), ordered = is.ordered(x)))
+  }
+  if (is.character(x) || is.logical(x)) {
+    return(sort(unique(x))[1])
+  }
+  median(x)
+}
+
+#' Write and mark the disp(~...) columns of a prediction grid
+#'
+#' @param newdata The grid, holding the predictor and any column the grid sets
+#' itself.
+#' @param data The data the fit was made from, \code{fit$data}.
+#' @param formula An object of class \code{\link{bayesnecformula}}.
+#' @param x_var The predictor's column names.
+#'
+#' @details A column the grid already holds is left as it is: the trials or
+#' \code{rate()} denominator, pinned at 1, and the level factor of a joint
+#' refit. Each added column is named in the attribute
+#' \code{"bnec_disp_placeholders"}, which is what tells the prediction methods
+#' that its value is a placeholder rather than one a user chose. Nothing is
+#' added, and no attribute is set, for a fit without such a column, so its grid
+#' is the one it was before #443.
+#'
+#' @return \code{newdata}, with the columns added and marked.
+#'
+#' @noRd
+add_disp_placeholders <- function(newdata, data, formula,
+                                  x_var = all.vars(crf_x_call(formula))) {
+  columns <- setdiff(disp_covariates(formula, x_var), names(newdata))
+  if (length(columns) == 0) {
+    return(newdata)
+  }
+  for (v in columns) {
+    newdata[[v]] <- disp_fixed_value(data[[v]])
+  }
+  attr(newdata, "bnec_disp_placeholders") <- union(
+    attr(newdata, "bnec_disp_placeholders"), columns
+  )
+  newdata
+}
+
+#' Refuse a disp(~...) column on a zero-truncated negative binomial count
+#'
+#' @param formula An object of class \code{\link{bayesnecformula}}.
+#'
+#' @details The growth component \code{bnec_hurdle()} fits to positive counts
+#' with \code{family_growth = negbinomial()} reports the mean of the
+#' zero-truncated counts, \code{mu / (1 - (shape / (mu + shape))^shape)}
+#' (\code{hurdle_positive_mean()}), and that depends on the shape. Under a
+#' \code{disp(~z)} term the shape varies with \code{z}, so the value a
+#' prediction grid gives \code{z} would change the curve and every estimate
+#' read from it: at \code{mu = 5} the mean is 7.16 at a shape of 0.5 and 5.04
+#' at 50. Refused rather than fitted, as \code{check_disp_spec()} refuses any
+#' \code{disp()} term on the joint \code{hurdle_negbinomial} for the same
+#' reason. A term on the predictor alone, \code{disp(~x)}, and a variance
+#' function, \code{disp("power")}, are not refused here: neither names a
+#' column the grid would have to choose a value for. RF, on #443.
+#'
+#' Raised by \code{bnec_hurdle()} before anything is fitted, by \code{bnec()}
+#' before its model loop, and by \code{wrangle_model_formula()} as the backstop
+#' for the routes that build a formula directly, the placement
+#' \code{check_disp_spec()} has.
+#'
+#' @return \code{invisible(NULL)}, called for its side effect.
+#'
+#' @noRd
+check_disp_count_truncation <- function(formula) {
+  columns <- disp_covariates(formula)
+  if (length(columns) == 0) {
+    return(invisible(NULL))
+  }
+  stop("A disp() term naming ", paste0("\"", columns, "\"", collapse = ", "),
+       " cannot be fitted on a negbinomial growth component of",
+       " bnec_hurdle(). That component's curve is the mean of the",
+       " zero-truncated counts, mu / (1 - (shape / (mu + shape))^shape),",
+       " which depends on the shape parameter. With the shape modelled on ",
+       if (length(columns) == 1) "a column" else "columns",
+       " other than the predictor, the curve and every estimate read from it",
+       " would depend on the value given to ",
+       if (length(columns) == 1) "that column" else "those columns",
+       " when predicting. A disp() term on the predictor, such as disp(~",
+       all.vars(crf_x_call(formula))[1], "), or a variance function, such",
+       " as disp(\"power\"), can be fitted.", call. = FALSE)
 }

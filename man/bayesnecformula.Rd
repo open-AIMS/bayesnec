@@ -81,12 +81,22 @@ does not need to know the internal syntax and name of each parameter in the
 model. 3) A more classic approach where the user can specify which
 specific parameters --- NB: that requires prior knowledge on the model
 structure and parameter names --- to vary according to a grouping variable
-(as in e.g. \code{(bot | group_variable)}). \code{\link{bayesnecformula}}
-will ignore this term should the parameter not exist in the specified model
-or model suite. For example, the parameter \code{bot} exists in model
-\code{"nec4param"} but not in \code{"nec3param"}, so if the user specifies
-\code{model = "nec"} in \code{crf}, the term \code{(bot | group_variable)}
-will be dropped in models where that parameter does not exist.
+(as in e.g. \code{(bot | group_variable)}). A term naming a parameter an
+equation does not have is left out of that equation, but each equation must
+keep at least one group-level term on every grouping variable such a term
+names; an \code{ogl()} or \code{pgl()} term on the variable counts. An
+equation that keeps none would be fitted as one curve pooled over the levels
+of the variable while the rest of the set fits the curve of a typical level,
+so \code{\link{bnec}} excludes it before fitting, with a message, and records
+the reason (see \code{\link{bnec_record}}). A call from which every equation
+is excluded is refused. For example, the parameter \code{bot} exists in
+model \code{"nec4param"} but not in \code{"nec3param"}, so if the user
+specifies \code{model = "nec"} in \code{crf}, the term
+\code{(bot | group_variable)} excludes \code{"nec3param"}, which would keep
+no term on \code{group_variable}. Under
+\code{(bot | group_variable) + (nec | group_variable)}, \code{"nec3param"}
+is fitted with the term on \code{nec} alone, and \code{"nec4param"} with
+both.
 
 The grouping inside \code{ogl()} and \code{pgl()} uses the formula operators
 accepted on the right of the bar in a \pkg{brms} group-level term. The terms
@@ -163,6 +173,25 @@ all eligible
 Form 2) requires the mean to be modelled on its natural scale; see the
 identity-link note in \code{\link{bnec}}. Form 1) is an ordinary
 distributional formula and is valid under any link.
+
+Form 1) may name a column other than the predictor, as in \code{disp(~z)},
+which fits a dispersion parameter for each level of a factor \code{z}, or
+one that changes with a numeric \code{z}. \pkg{brms} needs \code{z}
+wherever it predicts, so every prediction grid \pkg{bayesnec} builds holds
+it. The fitted curve stored on a fit, \code{\link{ecx}},
+\code{\link{nec}}, \code{\link{nsec}} and \code{\link{ecnsec}} take
+\code{z} at one fixed value: the first level of a factor, or the median of
+a numeric column. The mean of every family the term can be fitted for does
+not involve the dispersion parameter, so that value does not change them.
+\code{\link{bnec_newdata}} writes the same value and marks the column as a
+placeholder. \code{\link{posterior_predict}} and \code{\link{predict}}
+replace a marked column draw by draw with the value of a row sampled from
+the data the fit was made from, so a predicted reading is one from the
+design's mix of \code{z} rather than from its first level. A
+\code{newdata} without \code{z} is refused with a message naming it. The
+term is refused for a \code{negbinomial} growth component of
+\code{\link{bnec_hurdle}}, whose curve is the mean of the zero-truncated
+counts and depends on the shape parameter.
 
 Where the formula also has an \code{ogl()} term, \code{mu} in form 2) is the
 curve before the group-level deviation is applied, not the fitted mean of
