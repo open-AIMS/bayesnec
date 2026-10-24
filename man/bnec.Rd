@@ -607,7 +607,9 @@ dispersion. \code{"hurdle_poisson"} has no dispersion parameter to model.
 
 On \code{"hurdle_negbinomial"} the curve of the positive counts is their
 zero-truncated mean, \code{mu / (1 - (shape / (mu + shape))^shape)}, which
-depends on the shape. \code{\link{ecx}} with \code{type = "relative"} and
+depends on the shape. A \code{disp(~z)} term naming a column other than the
+predictor is therefore refused, because the curve would depend on the value
+given to \code{z}. \code{\link{ecx}} with \code{type = "relative"} and
 \code{dpar = "mu"} measures towards that curve's asymptote, the
 zero-truncated mean at \code{mu = bot}, and needs the shape there. Under a
 variance function of the mean the shape at the asymptote is the sub-model

@@ -195,6 +195,35 @@ test_that("bnec_joint refits a negative binomial growth disp() jointly (#410)", 
                    deparse1(growth$pforms$shape[[3]]))
 })
 
+test_that("bnec_joint refuses a disp(~z) column on hurdle_negbinomial up front", {
+  # A held formula cannot carry such a column, because bnec_hurdle() refuses it
+  # on a negative binomial growth component; a supplied one can. The refusal
+  # comes before the refit is announced and before bnec() is called, and
+  # names the `formula` argument.
+  o <- mock_disp_crossed('y ~ crf(x, c("nec3param", "ecx4param"))',
+                         "negbinomial")
+  o$data$y <- as.integer(round(o$data$y * 20))
+  o$data$z <- factor(rep(c("a", "b"), length.out = nrow(o$data)))
+  captured <- capture_joint_call()
+  msgs <- character(0)
+  err <- withCallingHandlers(
+    tryCatch(bnec_joint(o, formula = y ~ crf(x, "nec3param") + disp(~z)),
+             error = conditionMessage),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_match(err, paste0("\"z\" cannot be fitted on the two-block family",
+                           " hurdle_negbinomial.*`formula`"))
+  expect_false(any(grepl("Refitting jointly", msgs)))
+  expect_null(captured$formula)
+  # a term on the predictor reaches bnec()
+  suppressMessages(bnec_joint(o, formula = y ~ crf(x, "nec3param") + disp(~x)))
+  expect_equal(captured$family, "hurdle_negbinomial")
+  expect_equal(bayesnec:::parse_disp_term(captured$formula)$route, "A")
+})
+
 # The joint refit of a grouped fit (#382). Everything that can be decided
 # before a model is compiled is decided against a mock carrying only the model
 # weights and a data frame with no response column, which stops fit_bayesnec()

@@ -626,7 +626,9 @@
 #'
 #' On \code{"hurdle_negbinomial"} the curve of the positive counts is their
 #' zero-truncated mean, \code{mu / (1 - (shape / (mu + shape))^shape)}, which
-#' depends on the shape. \code{\link{ecx}} with \code{type = "relative"} and
+#' depends on the shape. A \code{disp(~z)} term naming a column other than the
+#' predictor is therefore refused, because the curve would depend on the value
+#' given to \code{z}. \code{\link{ecx}} with \code{type = "relative"} and
 #' \code{dpar = "mu"} measures towards that curve's asymptote, the
 #' zero-truncated mean at \code{mu = bot}, and needs the shape there. Under a
 #' variance function of the mean the shape at the asymptote is the sub-model
@@ -1085,11 +1087,12 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   if (!is.null(disp_spec)) {
     check_disp_spec(disp_spec, brm_args$family,
                     response = disp_response(bdat, brm_args$family))
-    # The zero-truncated count of a bnec_hurdle() growth component, the one
-    # route whose reported mean depends on the dispersion parameter. Checked
-    # once here for the same reason as the line above. See #443.
-    if (is_factorised_count_formula(formula, brm_args$family)) {
-      check_disp_count_truncation(formula)
+    # The zero-truncated count of a bnec_hurdle() growth component and the
+    # joint hurdle_negbinomial, the two routes whose reported mean depends on
+    # the dispersion parameter. Checked once here for the same reason as the
+    # line above. See #443 and #410.
+    if (shape_in_reported_mean(formula, brm_args$family)) {
+      check_disp_count_truncation(formula, brm_args$family)
     }
   }
   if (length(model) > 1) {

@@ -196,8 +196,9 @@ the data the fit was made from, so a predicted reading is one from the
 design's mix of \code{z} rather than from its first level. A
 \code{newdata} without \code{z} is refused with a message naming it. The
 term is refused for a \code{negbinomial} growth component of
-\code{\link{bnec_hurdle}}, whose curve is the mean of the zero-truncated
-counts and depends on the shape parameter.
+\code{\link{bnec_hurdle}} and for the \code{hurdle_negbinomial} family,
+whose curves are the mean of the zero-truncated counts, or that mean
+multiplied by \code{1 - hu}, and so depend on the shape parameter.
 
 Where the formula also has an \code{ogl()} term, \code{mu} in form 2) is the
 curve before the group-level deviation is applied, not the fitted mean of
