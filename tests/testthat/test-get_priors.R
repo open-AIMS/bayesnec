@@ -111,6 +111,21 @@ test_that("a disp variance function's priors come back with the curve's", {
   expect_setequal(route_a$nlpar, c("top", "bot", "beta", "nec"))
 })
 
+test_that("get_priors reports the range of the disp() exponent (#472)", {
+  # The bounds are part of the prior a fit uses, so a user reading the defaults
+  # has to see them, and a set passed back through `prior` has to keep them.
+  ranges <- list(gaussian = c(0, 1), Gamma = c(0, 2))
+  for (fam in names(ranges)) {
+    out <- suppressMessages(get_priors(
+      y ~ crf(x, "nec4param") + disp("power"), data = nec_data,
+      family = fam
+    ))
+    c1 <- out[out$nlpar == "c1", ]
+    expect_identical(c1$prior, "normal(0, 2)")
+    expect_equal(as.numeric(c(c1$lb, c1$ub)), ranges[[fam]], label = fam)
+  }
+})
+
 test_that("the fit entry point keeps disp parameters and drops brms defaults", {
   # The stored form of a fitted route B model: bayesnec's own rows, the
   # vectorized duplicates brms adds, and a default brms would have chosen.

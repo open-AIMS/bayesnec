@@ -641,6 +641,30 @@
   it adds to a set, and keeps the equations already in the set as they were
   fitted (#397).
 
+## The range of a variance function's exponent
+
+- The default prior on `c1`, the exponent of `disp("power")`, is now bounded
+  by family: from 0 to 2 for `Gamma` and `hurdle_gamma`, and from 0 to 1 for
+  `gaussian` and `negbinomial`. The density inside the bounds is the
+  `normal(0, 2)` it was before. Each range corresponds to a variance
+  proportional to the mean raised to a power from 0 to 2, which runs from a
+  constant variance to a constant coefficient of variation. Without bounds the
+  prior admitted, on a `Gamma` response, a coefficient of variation that falls
+  as the response falls (`c1` below 0) and a variance that rises as the
+  response falls (`c1` above 2). In the `example8` fit with a deviation per
+  plate and concentration, one chain of four reached `c1` near -8 in each of
+  three equations that estimate a lower asymptote. `Beta` and `beta_binomial`
+  stay unbounded, as do both slopes of `disp("twosided")` and the slope of
+  `disp("loglinear")`. Under `prior_type = "regularizing"` the bounded prior is
+  centred on the slope the replicates show, clamped into the range, with its
+  width unchanged; where fewer than three predictor values are replicated the
+  centre stays at 0. Initial values for `c1` start at the mean of the prior
+  truncated to the range, 0.92 for `Gamma` and 0.49 for the other two under the
+  default prior set, because 0 is now a bound and Stan refuses a starting value
+  on one. A prior on `c1` supplied through `prior` replaces the default, bounds
+  included. Fitted results change for every `disp("power")` fit on these
+  families; `disp()` is not in a released version (#472).
+
 ## Count hurdles
 
 - `hurdle_poisson` and `hurdle_negbinomial` are available as joint two-block

@@ -104,7 +104,10 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
                                model_survival = model_survival,
                                disp_spec = parse_disp_term(formula),
                                group_spec = group_spec,
-                               level_spec = level_spec)
+                               level_spec = level_spec,
+                               rate_response = !is.null(denominator),
+                               truncated_response = isTRUE(attr(
+                                 formula, "bayesnec_internal_truncation")))
   # A group-level term needs initial values as well as a prior. Stan's own
   # draw for a lower-bounded standard deviation is uniform(-2, 2) on the
   # unconstrained scale and ignores whatever prior was declared, so a prior

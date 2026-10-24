@@ -1445,7 +1445,9 @@ add_brm_defaults <- function(
   model_survival = NULL,
   disp_spec = NULL,
   group_spec = NULL,
-  level_spec = NULL
+  level_spec = NULL,
+  rate_response = FALSE,
+  truncated_response = FALSE
 ) {
   # Recorded before anything below fills them in. A composed joint refit
   # rebuilds both from the per-level equations, and it must not overwrite a set
@@ -1551,7 +1553,9 @@ add_brm_defaults <- function(
       predictor_scale = predictor_scale,
       model_survival = model_survival,
       disp_spec = disp_spec,
-      group_spec = group_spec
+      group_spec = group_spec,
+      rate_response = rate_response,
+      truncated_response = truncated_response
     )
   }
   priors <- try(validate_priors(brm_args$prior, model), silent = TRUE)
@@ -1611,8 +1615,8 @@ add_brm_defaults <- function(
     # search validates prior names against the model's own parameter set and
     # only ever evaluates the mean curve, so those are filtered out here rather
     # than taught to it: they play no part in getting the curve inside the
-    # response range. They are added back at the constant-dispersion null once
-    # the search has run -- see disp_inits(), and note that leaving them to
+    # response range. They are added back at the middle of their own priors
+    # once the search has run -- see disp_inits(), and note that leaving them to
     # Stan's own draw is NOT benign.
     init_priors <- brm_args$prior
     disp_par_names <- disp_pars(disp_spec)
@@ -1667,8 +1671,16 @@ add_brm_defaults <- function(
     }
     # Only when the search returned per-chain values; where it fell back to
     # "random" there is no list to append to and Stan initialises everything.
+    #
+    # The priors in force are passed so that a slope starts inside the bounds
+    # they declare, which are the user's where a prior on it was supplied. A
+    # bounded c1 started at its default centre would sit on the bound, where
+    # Stan refuses the initial value. See #472.
     if (length(disp_par_names) > 0 && !is.character(inits)) {
-      d_init <- disp_inits(disp_spec, family, response)
+      d_init <- disp_inits(disp_spec, family, response, predictor = predictor,
+                           prior_type = prior_type, priors = brm_args$prior,
+                           rate_response = rate_response,
+                           truncated_response = truncated_response)
       inits <- lapply(inits, function(chain) c(chain, d_init))
     }
     # Stan does not declare a parameter whose prior is constant -- stancode()
