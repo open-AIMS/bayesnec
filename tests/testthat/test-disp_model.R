@@ -1081,6 +1081,22 @@ test_that("the regularizing centre falls back without replicates (#472)", {
                                                      d$y)))
   expect_true(is.na(bayesnec:::disp_replicate_slope("negbinomial", d$x,
                                                     d$y / 7)))
+  # Dividing counts by an exposure can also leave whole numbers. The formula,
+  # not the numeric appearance of the rates, determines this fallback.
+  d <- slope_sim("negbinomial", 0.5)
+  d$ex <- 2
+  d$y <- 2 * d$y
+  expect_false(is.na(bayesnec:::disp_replicate_slope("negbinomial", d$x,
+                                                     d$y / d$ex)))
+  row <- get_priors(y | rate(ex) ~ crf(x, "ecx4param") + disp("power"),
+                    data = d, family = "negbinomial",
+                    prior_type = "regularizing")
+  expect_identical(c1_row(row)$prior, "normal(0, 2)")
+  ii <- bayesnec:::disp_inits(spec, disp_fam("negbinomial"), d$y / d$ex,
+                              d$x, prior_type = "regularizing",
+                              rate_response = TRUE)
+  expect_equal(as.numeric(ii$b_c1),
+               bayesnec:::truncated_normal_mean(0, 2, 0, 1))
   # beta has no statistic and no bound, so its slope is not centred
   expect_true(is.na(bayesnec:::disp_replicate_slope("beta", disp_dat$x,
                                                     disp_dat$prop)))

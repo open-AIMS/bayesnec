@@ -394,6 +394,8 @@ disp_centre <- function(spec, response) {
 #' @param prior_type One of \code{"uninformative"} or \code{"regularizing"}.
 #' @param priors The \code{\link[brms]{brmsprior}} the fit will use, or
 #' \code{NULL}. Read only for the bounds it declares on each slope.
+#' @param rate_response Whether the response was divided by a \code{rate()}
+#' denominator before reaching this function.
 #'
 #' @return A named \code{\link[base]{list}} of one-dimensional arrays, suitable
 #' for appending to a chain's init list, or an empty list for route (A).
@@ -428,7 +430,8 @@ disp_centre <- function(spec, response) {
 #'
 #' @noRd
 disp_inits <- function(spec, family, response, predictor = NULL,
-                       prior_type = "uninformative", priors = NULL) {
+                       prior_type = "uninformative", priors = NULL,
+                       rate_response = FALSE) {
   pars <- disp_pars(spec)
   if (length(pars) == 0) {
     return(list())
@@ -451,7 +454,8 @@ disp_inits <- function(spec, family, response, predictor = NULL,
     slope_x <- if (is.null(predictor)) NULL else predictor[keep]
   }
   slopes <- disp_slope_priors(spec, family, slope_y, slope_x,
-                              prior_type = prior_type)
+                              prior_type = prior_type,
+                              rate_response = rate_response)
   out <- lapply(pars, function(p) {
     if (identical(p, "c0")) {
       return(as.array(c0))
@@ -629,9 +633,9 @@ disp_slope_bounds <- function(spec, family) {
 #' The groups are the distinct predictor values, pooled over any group-level
 #' term, so on a design with one the spread includes the variation between
 #' groups as well as within them. A censored response enters at its recorded
-#' value. A negative binomial response divided by a \code{rate()} denominator is
-#' not read: the Poisson part of its variance is on the count scale, and the
-#' exposure is not available here to put it on the scale of the rate.
+#' value. A non-integer negative binomial response has no count-scale variance
+#' statistic. The caller also excludes a response divided by a \code{rate()}
+#' denominator, including when the resulting rates happen to be integers.
 #'
 #' @return A \code{\link[base]{numeric}} of length 1, \code{NA} where the
 #' design has too few replicated groups or the family has no statistic.
@@ -692,6 +696,8 @@ disp_replicate_slope <- function(family, predictor, response) {
 #' @param predictor A \code{\link[base]{numeric}} vector aligned with
 #' \code{response}, or \code{NULL}.
 #' @param prior_type One of \code{"uninformative"} or \code{"regularizing"}.
+#' @param rate_response Whether the response was divided by a \code{rate()}
+#' denominator. The negative binomial statistic needs count-scale variance.
 #'
 #' @details One statement of each slope's prior, read by
 #' \code{define_disp_prior()} for the prior rows and by \code{disp_inits()} for
@@ -720,7 +726,8 @@ disp_replicate_slope <- function(family, predictor, response) {
 #'
 #' @noRd
 disp_slope_priors <- function(spec, family, response, predictor = NULL,
-                              prior_type = "uninformative") {
+                              prior_type = "uninformative",
+                              rate_response = FALSE) {
   vf <- disp_functions[[spec$value]]
   slopes <- setdiff(vf$pars, "c0")
   # A slope on log(mu) is dimensionless, so a fixed scale means the same thing
@@ -738,19 +745,21 @@ disp_slope_priors <- function(spec, family, response, predictor = NULL,
     if (identical(p, "c1")) {
       lb <- bounds[["lb"]]
       ub <- bounds[["ub"]]
-      # The width is left at the scale above rather than narrowed, as the
-      # regularizing set narrows top and bot by regularizing_factor. The
-      # centre is read from the spread of the replicates, and that spread is
-      # also what the likelihood fits c1 to, so a narrowed prior would count
-      # the same information twice. The statistic is noisy as well: the log
+      # The centre is estimated from the same observations used in the
+      # likelihood, so this is an empirical prior even at the default width.
+      # Keeping scale 2 limits its influence; narrowing it by the factor used
+      # for top and bot would give the noisy centre more influence. The log
       # of a variance from n replicates has a sampling standard deviation near
       # sqrt(2 / (n - 1)), 0.8 at four, so on a design with few concentrations
       # the slope through those values is uncertain by a large fraction of the
       # range. The prior is therefore relocated and not narrowed. Inside the
       # bounds a scale of 2 still tilts it: on [0, 2] centred at 0.8, the
       # density at the far bound is 0.83 of that at the centre.
+      # A rate() response needs the exposure to separate the Poisson variance
+      # from overdispersion. Integer rates alone do not supply that information.
       if (identical(prior_type, "regularizing") && is.finite(lb) &&
-            is.finite(ub)) {
+            is.finite(ub) &&
+            !(rate_response && disp_family_tag(family) == "negbinomial")) {
         slope <- disp_replicate_slope(family, predictor, response)
         if (is.finite(slope)) {
           centre <- signif(min(max(slope, lb), ub), 4)

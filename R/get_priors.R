@@ -252,7 +252,8 @@ get_priors.formula <- function(object, data, family = NULL,
                  model_survival = model_survival,
                  predictor_scale = predictor_scale,
                  disp_spec = disp_spec,
-                 group_spec = parse_group_terms(single_form, m))
+                 group_spec = parse_group_terms(single_form, m),
+                 rate_response = !is.null(checked$mod_dat$denom))
   })
   names(out) <- model
   if (length(out) == 1) {

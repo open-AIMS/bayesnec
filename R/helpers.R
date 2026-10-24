@@ -1379,7 +1379,8 @@ add_brm_defaults <- function(
   model_survival = NULL,
   disp_spec = NULL,
   group_spec = NULL,
-  level_spec = NULL
+  level_spec = NULL,
+  rate_response = FALSE
 ) {
   # Recorded before anything below fills them in. A composed joint refit
   # rebuilds both from the per-level equations, and it must not overwrite a set
@@ -1485,7 +1486,8 @@ add_brm_defaults <- function(
       predictor_scale = predictor_scale,
       model_survival = model_survival,
       disp_spec = disp_spec,
-      group_spec = group_spec
+      group_spec = group_spec,
+      rate_response = rate_response
     )
   }
   priors <- try(validate_priors(brm_args$prior, model), silent = TRUE)
@@ -1608,7 +1610,8 @@ add_brm_defaults <- function(
     # Stan refuses the initial value. See #472.
     if (length(disp_par_names) > 0 && !is.character(inits)) {
       d_init <- disp_inits(disp_spec, family, response, predictor = predictor,
-                           prior_type = prior_type, priors = brm_args$prior)
+                           prior_type = prior_type, priors = brm_args$prior,
+                           rate_response = rate_response)
       inits <- lapply(inits, function(chain) c(chain, d_init))
     }
     # Stan does not declare a parameter whose prior is constant -- stancode()

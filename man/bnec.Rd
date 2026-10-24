@@ -164,9 +164,10 @@ their mean and variance: \code{1 / CV^2} for \code{Gamma}, the standard
 deviation for \code{gaussian}, and \code{mean^2 / (variance - mean)} for
 \code{negbinomial}. The centre is the slope of its log on the log of the
 mean, weighted by degrees of freedom and clamped into the range of \code{c1}
-given in \code{?\link{bayesnecformula}}. The width stays at that of the
-\code{"uninformative"} entry, because the same replicates also enter the
-likelihood and a narrower prior would count them twice. The centre is zero,
+given in \code{?\link{bayesnecformula}}. This data-derived centre makes the
+prior empirical: the same observations also enter the likelihood. Its width
+stays at that of the \code{"uninformative"} entry to limit the influence of
+this noisy centre. The centre is zero,
 as under \code{"uninformative"}, where fewer than three predictor values are
 replicated or the slope cannot be computed, and for a \code{negbinomial}
 response with a \code{rate()} denominator. The replicates are grouped by
