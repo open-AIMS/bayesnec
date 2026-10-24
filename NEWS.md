@@ -18,6 +18,32 @@
   it is removed rather than rebuilt. For the draws to combine, call `nec()`,
   `nsec()` or `ecx()` with `posterior = TRUE` on each fit (#403).
 
+## Equations that keep no group-level term on a grouping variable
+
+- `bnec()` now excludes, before fitting, an equation that keeps no
+  group-level term on a grouping variable the formula names. A
+  `(par | group)` term naming a parameter an equation does not have is still
+  left out of that equation, but the equation must keep at least one term on
+  each grouping variable such a term names. An `ogl()` or `pgl()` term on the
+  variable counts. Under `(nec | g) + (ec50 | g)`, `ecxexp`, which has neither
+  parameter, is excluded, while `nec3param` keeps the term on `nec` and
+  `ecxll3` the term on `ec50`. Fitted without a term on `g`, an equation
+  estimates one curve pooled over the levels of `g` where the rest of the set
+  estimates the curve of a typical level. Its interval treats the observations
+  of one level as independent, and its model weight compares the group-level
+  structure as well as the shape of the curve. Such an equation previously
+  sampled and then stopped with "Group-level variable(s) "g" not found in
+  dataset" when the prediction grid was built, because `brms` had not stored
+  `g`. In a model set fitted by one `bnec()` call, that error ended the whole
+  call after every equation had sampled. The exclusion is reported once by a
+  message and recorded with its reason in `bnec_record()`, as the exclusions
+  for the family are. A call from which every equation is excluded is refused
+  before anything is fitted. `bnec_group()` applies the rule to every level
+  before it fits any, `amend(add = )` applies it to the equations added, and
+  `bnec_hurdle()` refuses a component with no equation left before either is
+  fitted. Under `model = "nec"`, `(bot | group)` now excludes `nec3param`
+  rather than fitting it without the term (#470).
+
 ## Designs that have not reached the lower asymptote
 
 - `bnec()` now reports, before anything is fitted, where the response is still
@@ -159,6 +185,51 @@
   labelled `<=-0.90` under `xform = function(x) -x`, as
   `nec(fit, xform = function(x) -x)` reports it. Identity and increasing
   transformations give the same annotation as before (#417).
+
+- A decreasing `xform` that takes one end of the prediction range to infinity
+  now reverses the interval and the bound marks of `nec()`, `nsec()` and
+  `ecx()`, as #417 made every other decreasing transformation do. Whether the
+  transformation was decreasing was decided from the transformed ends of the
+  range, and only where both were finite, so a grid starting at 0 under
+  `xform = function(x) -log(x)` kept the old orientation. On a constructed
+  posterior of 101 draws over a grid from 0 to 100, 11 of them beyond the top,
+  the per-draw summary was -3.808 (-4.480 to -4.605), with the lower limit the
+  larger and `>=` on the upper one. It is now -4.006 (`<=` -4.605 to -2.468),
+  which is what the annotations of `plot()`, `autoplot()` and `ggbnec_data()`
+  already gave. The direction is now read from the transformation at two
+  points inside the range. Identity and increasing transformations, `exp`
+  among them, give the same values and marks as before (#440).
+
+- The legend of `plot()` on a `bayesnechurdlefit` gives the no-effect
+  estimate in increasing order under a decreasing `xform`, and marks a
+  censored entry `>=` or `<=`. `xform` was applied to the summary `nec()`
+  returned, so under `xform = function(x) -x` the interval was printed from
+  high to low, and under any `xform` a censored entry was printed as a number.
+  `xform` is now passed to `nec()`, and the legend is formatted as the legend
+  of `plot()` on a `bayesnecfit` is (#440).
+
+- `ecnsec()` refuses an `nsec` outside the range it reads the curve over, with
+  a message that names the range: the observed range of the predictor, or
+  `x_range` where one is supplied. On a `bayesnechurdlefit` the curve was read
+  at the grid point nearest `nsec`, so an `nsec` beyond the grid was read at
+  its end. On a `bayesnecfit` or a `bayesmanecfit` the curve was evaluated at
+  `nsec` itself, extended past the data. Neither said so. On the `bnec_hurdle()`
+  fit #437 reports, with a predictor from 0 to 5, `nsec = 1000` returned the
+  percentage effect at 5 for each of the combined, growth and survival curves,
+  and the growth component on its own returned 100 per cent. The rule is the
+  same on every class and on every curve of a hurdle fit, a supplied `x_range`
+  included, and it is applied to `nsec` after `xform`. An `nsec` at either end
+  of the range is accepted, to within a rounding error. Supply an `x_range`
+  that includes `nsec` to read the curve beyond the data. Inside the range,
+  `ecnsec()` on a `bayesnecfit` or a `bayesmanecfit` returns what it returned
+  before (#437).
+
+- `ecnsec()` on a `bayesnechurdlefit` reads each curve at `nsec` by linear
+  interpolation between the two grid points either side of it, rather than at
+  the nearer of them, so the value no longer depends on where the grid points
+  fall. It takes a single `nsec`, and refuses a vector, which the
+  nearest-point reading accepted and read at one grid point chosen by
+  recycling the vector against the grid (#437).
 
 - The two ends are recorded separately. A draw whose curve had already passed
   the target where the prediction range begins is reported as `<=` the foot of
@@ -1414,6 +1485,19 @@
   zero, which is a real measurement on a response that can go negative and is
   what OECD TG 201 reports rather than truncating at 100 per cent.
 
+- `xform` in `ecnsec()` on a `bayesnechurdlefit` is applied to `nsec`, as on
+  every other class, rather than to the percentage returned.
+  `ecnsec(h, nsec = 2, xform = log)` returned the logarithm of the percentage,
+  and an NSEC from a pair fitted with an inline-transformed predictor had to be
+  put on the recorded scale by hand before it was passed. On a pair fitted with
+  `crf(log(x))`, `ecnsec(h, nsec = nsec(h)[[1]], xform = exp)` now reads the
+  curve at the concentration that NSEC names, as it does on a `bayesnecfit`.
+  A call that supplies an `xform` other than `identity` is warned of the
+  change in this release. To transform the percentage, apply the function to
+  the value `ecnsec()` returns. Where `crf()` transforms the predictor inline,
+  the message is the one the other classes raise, naming the `xform` to give
+  `ecnsec()` (#437).
+
 ## New
 
 - `predict()`, `plot()` and `autoplot()` for a `bayesmanecfit` take two new
@@ -1864,12 +1948,50 @@
   its own value, as before. The same holds for the growth component of
   `bnec_hurdle()`, whose predicted readings draw `z` from the survivors, and
   `check_fit()` on a hurdle fit gives each exposed row its own recorded value.
+  A categorical value found only among non-survivors is refused by
+  `check_fit()`, because the growth component has no fitted effect for it.
   On a `negbinomial` growth component of `bnec_hurdle()` the term is refused
   before anything is fitted: that component's curve is the mean of the
   zero-truncated counts, which depends on the shape parameter, so the curve
   and every estimate read from it would depend on the value given to `z`.
   Output for a fit whose `disp()` term names no such column is unchanged
   (#443).
+- A parameter an equation does not have, named in more than one
+  `(par | group)` term, is now left out of every such term. Only the first
+  was removed, so `(nec | g) + (nec | h) + (ec50 | g) + (ec50 | h)` on
+  `ecxll3` failed while the formula was built, before anything was sampled
+  (#470).
+- `nec()` on a `bayesnechurdlefit` prints the message its help page
+  describes, that the combined value is approximate, where either component
+  contributes NSEC draws. The message was decided from the
+  `"toxicity_estimate"` attribute of each component's `nec()`, which both
+  `nec()` methods set to `"nec"` whatever the equation, so it was never
+  printed. The kind of each component's estimate is now read from the type
+  recorded when the component was fitted, which `summary()` prints beside each
+  row. It is printed for the combined value only. A component built by a
+  version that recorded no type raises nothing (#446).
+- `update(newdata = )` refits with the family the model was fitted with,
+  changes it only where `family =` is supplied, and checks the new data
+  against that family's requirements. It read a family off the new data,
+  compared that with the fitted family, and adjusted the response for the
+  family read off. Every Gamma fit given new data was refused as a change of
+  family, because `brms` records the Gamma tag as `gamma` and `bayesnec` as
+  `Gamma`; so was the growth component of a `bnec_hurdle()` fit with a Gamma
+  growth family, and `family = Gamma(link = "identity")` did not avoid it. A
+  joint `hurdle_gamma` fit was read as Gamma, its zeros were reported as
+  shifted, and under `force_fit = TRUE` the refit received them shifted, so
+  its hurdle block had no zeros to model. A `gaussian` fit given a response
+  with an exact 1 was read as beta, and the refit was made on 0.999. New data
+  now never produce a change of family, a message about one, or an adjustment
+  for one. A supplied family that names the fitted one, in any of the forms
+  `validate_family()` accepts, is not a change; one that differs still
+  requires `force_fit = TRUE` (#435).
+- `update(newdata = )` on a `bnec_hurdle()` fit checks both components
+  against the families their refits use before either is refitted. New data
+  with no zero, whose survival response is 1 in every observation, were
+  refused only after the growth component had been refitted, and the refusal
+  named the generated column `.alive`. It now names the survival component,
+  as `bnec_hurdle()` names the growth component (#435).
 - A nested or interaction grouping inside `ogl()` or `pgl()` is now fitted as
   written. `ogl(a/b)` fits one deviation per level of `a` and a further one
   per level of `b` within each level of `a`, as `(1 | a/b)` does in `brms`,
@@ -2266,10 +2388,9 @@
   `compare_estimates()` takes no `xform`, so its message names the estimators
   that do. `summary(ecx = TRUE)` raises it once for its ECx rows. `plot()` and
   `autoplot()` do not raise it, because they put every estimate on the axis
-  scale themselves. `ecnsec()` on a `bayesnechurdlefit` reads `nsec` on the
-  recorded scale as supplied and applies `xform` to the percentage it returns,
-  so its message asks for `nsec` on the recorded scale, as `nsec()` returns it
-  given the inverse as `xform`, and is raised whatever `xform` was given.
+  scale themselves. `ecnsec()` returns a percentage, so its message is about
+  the `nsec` it is given and names the `xform` that puts that value on the
+  recorded scale, on a `bayesnechurdlefit` as on every other class (#437).
 
   `curve_params()` already said where `nec` and `ec50` were on a transformed
   scale. Its message now names the inverse to pass, where it said only "pass

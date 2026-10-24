@@ -733,3 +733,67 @@ test_that("with a trials() term every level is fitted (#442)", {
   }
   expect_identical(calls, 4L)
 })
+
+
+# ---- #470, equations that keep no group-level term on a variable -------------
+
+grouped_levels_data <- function() {
+  d <- nec_data
+  d$site <- rep(c("a", "b"), length.out = nrow(d))
+  d$tank <- rep(c("t1", "t2", "t3"), length.out = nrow(d))
+  d
+}
+
+test_that("bnec_group() reports the exclusion once, before any level (#470)", {
+  # Each level's bnec() call still makes the exclusion and records it; the
+  # private marker silences only its report. The level fits are mocked.
+  seen <- list()
+  local_mocked_bindings(
+    bnec = function(formula, data, ...) {
+      seen[[length(seen) + 1L]] <<-
+        isTRUE(list(...)[[".bayesnec_group_terms_reported"]])
+      manec_example
+    },
+    .package = "bayesnec"
+  )
+  msgs <- character(0)
+  fit <- withCallingHandlers(
+    bnec_group(y ~ crf(x, c("ecxexp", "ecxll3")) + (ec50 | tank),
+               grouped_levels_data(), group_var = "site",
+               family = "gaussian"),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_s3_class(fit, "bayesnecgroupfit")
+  expect_length(seen, 2)
+  expect_true(all(unlist(seen)))
+  report <- grep("Dropping the model(s) ecxexp", msgs, fixed = TRUE,
+                 value = TRUE)
+  expect_length(report, 1)
+  expect_lt(which(msgs == report),
+            min(grep("Fitting level", msgs, fixed = TRUE)))
+})
+
+test_that("bnec_group() refuses a set excluded at every level (#470)", {
+  calls <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      calls <<- calls + 1L
+      stop("level fit should not start")
+    },
+    .package = "bayesnec"
+  )
+  err <- tryCatch(
+    suppressMessages(
+      bnec_group(y ~ crf(x, "ecxexp") + (nec | tank),
+                 grouped_levels_data(), group_var = "site",
+                 family = "gaussian")
+    ),
+    error = conditionMessage
+  )
+  expect_match(err, "At level \"a\" of \"site\"", fixed = TRUE)
+  expect_match(err, "No equation requested can be fitted", fixed = TRUE)
+  expect_identical(calls, 0L)
+})

@@ -548,3 +548,119 @@ test_that("the same call with a trials() term reaches the model loop (#442)", {
     )
   }
 })
+
+
+# ---- #470, equations that keep no group-level term on a variable -------------
+
+gamma_group_data <- function() {
+  set.seed(1)
+  d <- data.frame(x = rep(c(0.1, 1, 3, 10), each = 6),
+                  g = factor(rep(c("a", "b", "c"), 8)))
+  d$y <- 5 * exp(-0.3 * d$x) * stats::rgamma(24, shape = 20, rate = 20)
+  d
+}
+
+test_that("bnec() refuses a call naming only an excluded equation (#470)", {
+  # The reproduction on #470, which sampled and then failed on the grid. It is
+  # now refused before anything is fitted.
+  calls <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      calls <<- calls + 1L
+      stop("fit reached")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(
+    suppressMessages(bnec(y ~ crf(x, "ecxexp") + (nec | g) + (ec50 | g),
+                          data = gamma_group_data(),
+                          family = Gamma(link = "identity"))),
+    "ecxexp keeps no group-level term on \"g\"", fixed = TRUE
+  )
+  expect_identical(calls, 0L)
+})
+
+test_that("bnec() refuses a set from which every equation is excluded (#470)", {
+  calls <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      calls <<- calls + 1L
+      stop("fit reached")
+    },
+    .package = "bayesnec"
+  )
+  err <- tryCatch(
+    suppressMessages(bnec(y ~ crf(x, c("ecxexp", "ecxsigm")) + (nec | g),
+                          data = gamma_group_data(),
+                          family = Gamma(link = "identity"))),
+    error = conditionMessage
+  )
+  expect_match(err, "No equation requested can be fitted", fixed = TRUE)
+  expect_match(err, "ecxexp keeps no", fixed = TRUE)
+  expect_match(err, "ecxsigm keeps no", fixed = TRUE)
+  expect_identical(calls, 0L)
+})
+
+test_that("bnec() records an excluded equation with its reason (#470)", {
+  # The fit and its expansion are replaced, so that what is asserted is which
+  # equations reach the loop and what reaches the record, with nothing
+  # sampled. One equation is left, so this is the single-equation route.
+  fitted <- character(0)
+  seen <- NULL
+  local_mocked_bindings(
+    fit_bayesnec = function(..., model) {
+      fitted <<- c(fitted, model)
+      list(model = model)
+    },
+    expand_nec = function(object, ...) object,
+    attach_bnec_record = function(out, requested, attempted, excluded,
+                                  substitutions) {
+      seen <<- list(requested = requested, attempted = attempted,
+                    excluded = excluded)
+      stop("record reached")
+    },
+    .package = "bayesnec"
+  )
+  msgs <- character(0)
+  expect_error(
+    withCallingHandlers(
+      bnec(y ~ crf(x, c("ecxexp", "ecxll3")) + (nec | g) + (ec50 | g),
+           data = gamma_group_data(), family = Gamma(link = "identity")),
+      message = function(m) {
+        msgs <<- c(msgs, conditionMessage(m))
+        invokeRestart("muffleMessage")
+      }
+    ),
+    "record reached", fixed = TRUE
+  )
+  expect_identical(fitted, "ecxll3")
+  expect_setequal(seen$requested, c("ecxexp", "ecxll3"))
+  expect_identical(seen$attempted, "ecxll3")
+  expect_identical(seen$excluded$model, "ecxexp")
+  expect_match(seen$excluded$reason, "keeps no group-level term on \"g\"",
+               fixed = TRUE)
+  # Reported once, by message, as the exclusions for the family are.
+  expect_length(grep("Dropping the model(s) ecxexp", msgs, fixed = TRUE), 1)
+})
+
+test_that("terms every equation keeps exclude nothing (#470)", {
+  fitted <- character(0)
+  local_mocked_bindings(
+    fit_bayesnec = function(..., model) {
+      fitted <<- c(fitted, model)
+      stop("fit reached")
+    },
+    .package = "bayesnec"
+  )
+  msgs <- character(0)
+  try(withCallingHandlers(
+    bnec(y ~ crf(x, c("nec3param", "ecxll3")) + (nec | g) + (ec50 | g),
+         data = gamma_group_data(), family = Gamma(link = "identity")),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  ), silent = TRUE)
+  expect_identical(fitted, c("nec3param", "ecxll3"))
+  expect_false(any(grepl("Dropping the model(s)", msgs, fixed = TRUE)))
+})

@@ -47,8 +47,11 @@ test_that("family_signature compares the tag and the links, not the object", {
   # brms stores a brmsfamily in the fit while mod_fams builds gaussian and
   # Gamma from stats, so the two objects never matched even for the same
   # family. See #256.
+  # A link the object does not record is the one brms assigns: stats builds
+  # gaussian() with `link` alone, and brms fits sigma on the log link. See
+  # #435.
   expect_equal(bayesnec:::family_signature(gaussian()),
-               c(family = "gaussian", link = "identity"))
+               c(family = "gaussian", link = "identity", link_sigma = "log"))
   expect_identical(
     bayesnec:::family_signature(validate_family("gaussian")),
     bayesnec:::family_signature(manec_example$mod_fits[[1]]$fit$family)
@@ -72,10 +75,42 @@ test_that("check_update_data reads the family it is given", {
   expect_true(bayesnec:::check_update_data(o, dat, validate_family("Beta"))$changed_family)
 })
 
-test_that("check_update_data still derives the family from new data", {
+test_that("family_signature names a stored Gamma family as bayesnec does", {
+  # brms records Gamma as "gamma", and the stored brmsfamily records
+  # link_shape where stats::Gamma() does not, so a supplied
+  # Gamma(link = "identity") differed from every Gamma fit on both counts.
+  # See #435.
+  stored <- brms::brmsfamily("Gamma", link = "identity")
+  expect_identical(
+    bayesnec:::family_signature(validate_family(Gamma(link = "identity"))),
+    bayesnec:::family_signature(stored)
+  )
+  expect_identical(
+    bayesnec:::family_signature(validate_family("hurdle_gamma")),
+    bayesnec:::family_signature(
+      brms::hurdle_gamma(link = "identity", link_hu = "identity")
+    )
+  )
+  # A link that is recorded and differs is still a difference.
+  expect_false(identical(
+    bayesnec:::family_signature(validate_family(Beta(link_phi = "identity"))),
+    bayesnec:::family_signature(validate_family("Beta"))
+  ))
+  expect_false(identical(
+    bayesnec:::family_signature(validate_family(Gamma(link = "log"),
+                                                link_source = "link")),
+    bayesnec:::family_signature(stored)
+  ))
+})
+
+test_that("check_update_data reads no family off new data (D32)", {
+  # INVERTED. This pinned the family read off the new data: nec_data's
+  # response lies in (0, 1), so it was read as beta and compared against the
+  # gaussian fit. update(newdata = ) keeps the fitted family, so new data are
+  # never a change of family. See #435.
   o <- recover_prebayesnecfit(manec_example)
   expect_false(bayesnec:::check_update_data(o, o[[1]]$fit$data)$changed_family)
-  expect_true(bayesnec:::check_update_data(o, nec_data)$changed_family)
+  expect_false(bayesnec:::check_update_data(o, nec_data)$changed_family)
 })
 
 test_that("update refuses an unsupported link before refitting", {
@@ -89,7 +124,10 @@ test_that("update refuses an unsupported link before refitting", {
 
 test_that("update stops on a family change unless force_fit is set", {
   expect_error(update(manec_example, family = Beta()), "force_fit = TRUE")
-  expect_error(update(manec_example, newdata = nec_data), "force_fit = TRUE")
+  # New data alone are no longer a change of family (D32); with a family that
+  # differs they still require force_fit. See #435.
+  expect_error(update(manec_example, newdata = nec_data, family = Beta()),
+               "force_fit = TRUE")
 })
 
 test_that("brms receives the validated family, not the one written", {
@@ -156,6 +194,134 @@ test_that("a link the caller writes is honoured on update", {
     update(manec_example, family = Beta("logit"), force_fit = TRUE)
   )
   expect_equal(got$family$link, "logit")
+})
+
+# ---- #435, D32: update(newdata = ) keeps the fitted family -------------------
+# Structural fixtures built from the packaged nec4param fit: the family brms
+# stored is relabelled and the stored response replaced by one that family
+# admits. Nothing is sampled. Every update() below halts the refit at the brms
+# entry point, so the stored posterior, which is a gaussian one, is never read.
+
+gamma_fixture <- function() {
+  f <- nec4param
+  f$fit$family <- brms::brmsfamily("Gamma", link = "identity")
+  f$fit$data$y <- plogis(f$fit$data$y)
+  f
+}
+
+# A joint fit whose zeros are the hurdle: the top fifth of the concentrations.
+joint_gamma_fixture <- function() {
+  f <- gamma_fixture()
+  f$fit$family <- brms::hurdle_gamma(link = "identity", link_hu = "identity")
+  d <- f$fit$data
+  d$y[d$x > stats::quantile(d$x, 0.8)] <- 0
+  f$fit$data <- d
+  f
+}
+
+test_that("a Gamma fit given new data is not a change of family (#435)", {
+  # The stored tag is "gamma" and the one bayesnec builds "Gamma", so every
+  # Gamma fit was refused as a change of family, with or without a family
+  # supplied.
+  g <- gamma_fixture()
+  o <- recover_prebayesnecfit(g)
+  expect_false(check_update_data(o, g$fit$data)$changed_family)
+  expect_false(
+    check_update_data(o, g$fit$data, Gamma(link = "identity"))$changed_family
+  )
+  # The refit is reached in both forms. With no family supplied none is passed
+  # on, so brms keeps the one it stored.
+  got <- capture_brms_update(update(g, newdata = g$fit$data))
+  expect_false(is.null(got))
+  expect_null(got$family)
+  expect_equal(got$newdata_val$y, g$fit$data$y)
+  got <- capture_brms_update(
+    update(g, newdata = g$fit$data, family = Gamma(link = "identity"))
+  )
+  expect_false(is.null(got))
+  expect_equal(got$family$family, "Gamma")
+  expect_equal(got$family$link, "identity")
+})
+
+test_that("a Gamma fit's zeros are shifted under the stored family (#435)", {
+  # With no family supplied the checks follow the stored one, whose tag brms
+  # records as "gamma". check_data() keys its shift on "Gamma", so read under
+  # the stored tag the zeros would reach brms unshifted and Stan would fail on
+  # them.
+  g <- gamma_fixture()
+  d <- g$fit$data
+  d$y[1:3] <- 0
+  res <- NULL
+  expect_message(
+    res <- check_update_data(recover_prebayesnecfit(g), d),
+    "shifted to"
+  )
+  expect_false(res$changed_family)
+  expect_equal(sum(res$data$y == 0), 0)
+  expect_equal(res$data$y[-(1:3)], d$y[-(1:3)])
+})
+
+test_that("a joint hurdle_gamma fit keeps its zeros on update (#435)", {
+  # Read off the data, the response was Gamma: the zeros were reported as
+  # shifted, and under force_fit = TRUE the hurdle_gamma refit received a
+  # response with no zeros for its hurdle block to model.
+  h <- joint_gamma_fixture()
+  d <- h$fit$data
+  d$y[d$y > 0] <- d$y[d$y > 0] * 1.01
+  n_zero <- sum(d$y == 0)
+  expect_gt(n_zero, 0)
+  res <- NULL
+  expect_no_message(res <- check_update_data(recover_prebayesnecfit(h), d))
+  expect_false(res$changed_family)
+  expect_null(res$substitutions)
+  expect_equal(sum(res$data$y == 0), n_zero)
+  # A supplied family naming the stored one is not a change either.
+  expect_false(
+    check_update_data(recover_prebayesnecfit(h), d, "hurdle_gamma")$changed_family
+  )
+  got <- capture_brms_update(update(h, newdata = d))
+  expect_false(is.null(got))
+  expect_equal(sum(got$newdata_val$y == 0), n_zero)
+})
+
+test_that("a gaussian fit keeps an exact 1 on update (#435)", {
+  # Read off the data, a response in [0, 1] was beta: the 1 was shifted to
+  # 0.999, and under force_fit = TRUE the gaussian refit was made on 0.999.
+  nd <- nec_data
+  nd$y[which.max(nd$y)] <- 1
+  res <- NULL
+  expect_no_message(
+    res <- check_update_data(recover_prebayesnecfit(manec_example), nd)
+  )
+  expect_false(res$changed_family)
+  expect_equal(max(res$data$y), 1)
+  for (force in c(FALSE, TRUE)) {
+    got <- capture_brms_update(
+      update(manec_example, newdata = nd, force_fit = force)
+    )
+    expect_false(is.null(got))
+    expect_equal(max(got$newdata_val$y), 1)
+  }
+})
+
+test_that("a family that differs still needs force_fit, and its checks (#435)", {
+  # D32 does not say whether a supplied family that differs from the fitted
+  # one still needs force_fit = TRUE. It keeps the requirement, because the
+  # priors reused from the original fit were built for the fitted family.
+  nd <- nec_data
+  nd$y[which.max(nd$y)] <- 1
+  # The shift of the 1 is reported before the refusal, so it is suppressed.
+  expect_error(
+    suppressMessages(update(manec_example, newdata = nd, family = Beta())),
+    "force_fit = TRUE"
+  )
+  # With it, the data are adjusted for the family supplied, which is the one
+  # the refit uses.
+  got <- capture_brms_update(
+    update(manec_example, newdata = nd, family = Beta(), force_fit = TRUE)
+  )
+  expect_equal(got$family$family, "beta")
+  expect_equal(max(got$newdata_val$y), 0.999)
 })
 
 test_that("update returns a bayesnecfit when only one model survives", {
