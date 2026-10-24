@@ -1985,6 +1985,13 @@
   where they previously returned estimates on the wrong scale. `crf(I(-x))`
   and a minus inside a call, as in `crf(log(x - 1))`, are fitted as before
   (#438).
+- The report that the response is still declining at the top of the series
+  no longer advises `asymptote_observed = FALSE` in a call that has already
+  set it. `bnec()` and `bnec_group()` now pass the declaration to the report,
+  which in a declared call omits that one sentence and is otherwise unchanged:
+  it still ends on the advice to inspect the generated entries with
+  `get_priors()` and to supply justified ones through `prior`. A call that
+  does not make the declaration prints the report as before (#449).
 - A `disp(~z)` term naming a column other than the predictor is now fitted
   and predicted from. Every model sampled and then stopped on the prediction
   grid, which held the predictor and any trials or `rate()` denominator but
