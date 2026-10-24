@@ -255,15 +255,22 @@ bnec_joint.bayesnechurdlefit <- function(object, model = NULL,
   # refit is announced. bnec() checks it as well, once before its model loop,
   # but only after the message below has said the refit is under way, and its
   # remedy cannot name the `formula` argument, which is how a caller of
-  # bnec_joint() leaves out a term held in the hurdle fit's formula. The case
-  # this is for is a negative binomial growth component fitted with disp(),
-  # which maps to hurdle_negbinomial. tryCatch() rather than a message of its
-  # own, so that the reason stays the one check_disp_spec() gives and is
+  # bnec_joint() leaves out a term. A held formula has passed the same checks
+  # on the growth component's family in bnec_hurdle(), which refuses a term
+  # neither route can fit, so what reaches a refusal here is a supplied
+  # formula: a term on hurdle_poisson, which has no dispersion parameter, or
+  # a disp(~z) column on hurdle_negbinomial. tryCatch() rather than a message
+  # of its own, so that each reason stays the one its check gives and is
   # stated in one place. See #410.
   disp_spec <- parse_disp_term(formula)
   if (!is.null(disp_spec)) {
     tryCatch(
-      check_disp_spec(disp_spec, joint_fam),
+      {
+        check_disp_spec(disp_spec, joint_fam)
+        if (shape_in_reported_mean(formula, joint_fam)) {
+          check_disp_count_truncation(formula, joint_fam)
+        }
+      },
       error = function(e) {
         stop(conditionMessage(e), " To refit this fit jointly without the",
              " term, pass bnec_joint() a `formula` that leaves out disp().",

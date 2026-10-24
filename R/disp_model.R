@@ -1115,9 +1115,10 @@ disp_covariates <- function(formula, x_var = all.vars(crf_x_call(formula))) {
 #' the level \code{\link[base]{factor}} would put first and so the reference
 #' level \pkg{brms} codes it against. The value cannot change a quantity read
 #' from the mean, because no family a \code{disp(~...)} column is fitted for
-#' has a mean that involves the dispersion parameter. The one route where it
-#' would, a zero-truncated negative binomial growth component, refuses the
-#' column; see \code{check_disp_count_truncation()}. For a predicted reading
+#' has a mean that involves the dispersion parameter. The two routes where it
+#' would, a zero-truncated negative binomial growth component and the joint
+#' \code{hurdle_negbinomial}, refuse the column; see
+#' \code{check_disp_count_truncation()}. For a predicted reading
 #' the value is a placeholder, which the prediction methods replace; see
 #' \code{disp_marginal_draws()}.
 #'
@@ -1172,41 +1173,79 @@ add_disp_placeholders <- function(newdata, data, formula,
   newdata
 }
 
+#' Does the reported mean of this fit depend on the negative binomial shape?
+#'
+#' @param formula An object of class \code{\link{bayesnecformula}}.
+#' @param family Either a \code{\link[stats]{family}} object or a family tag.
+#'
+#' @details Two routes report the mean of zero-truncated negative binomial
+#' counts, \code{mu / (1 - (shape / (mu + shape))^shape)}
+#' (\code{hurdle_positive_mean()}). One is the growth component
+#' \code{bnec_hurdle()} fits with \code{family_growth = negbinomial()}, whose
+#' formula carries the internal truncation. The other is the joint
+#' \code{hurdle_negbinomial}, whose \code{dpar = "mu"} curve is that mean
+#' (\code{joint_hurdle_epred()}) and whose combined curve, the default of
+#' \code{ecx()}, \code{nsec()}, \code{autoplot()} and the stored
+#' predictions, is that mean multiplied by \code{1 - hu}, as \pkg{brms}
+#' computes it. The truncated Poisson routes report a mean that depends on
+#' \code{mu} alone, and have no shape to model.
+#'
+#' @return A \code{\link[base]{logical}}.
+#'
+#' @noRd
+shape_in_reported_mean <- function(formula, family) {
+  if (identical(canonical_fam_tag(family), "hurdle_negbinomial")) {
+    return(TRUE)
+  }
+  inherits(family, "family") && is_factorised_count_formula(formula, family)
+}
+
 #' Refuse a disp(~...) column on a zero-truncated negative binomial count
 #'
 #' @param formula An object of class \code{\link{bayesnecformula}}.
+#' @param family The family the term is fitted on, or its tag: the growth
+#' component's \code{negbinomial}, the default, or the joint
+#' \code{hurdle_negbinomial}. It decides only which route the message names.
 #'
-#' @details The growth component \code{bnec_hurdle()} fits to positive counts
-#' with \code{family_growth = negbinomial()} reports the mean of the
-#' zero-truncated counts, \code{mu / (1 - (shape / (mu + shape))^shape)}
-#' (\code{hurdle_positive_mean()}), and that depends on the shape. Under a
-#' \code{disp(~z)} term the shape varies with \code{z}, so the value a
-#' prediction grid gives \code{z} would change the curve and every estimate
-#' read from it: at \code{mu = 5} the mean is 7.16 at a shape of 0.5 and 5.04
-#' at 50. Refused rather than fitted, as \code{check_disp_spec()} refuses any
-#' \code{disp()} term on the joint \code{hurdle_negbinomial} for the same
-#' reason. A term on the predictor alone, \code{disp(~x)}, and a variance
-#' function, \code{disp("power")}, are not refused here: neither names a
-#' column the grid would have to choose a value for. RF, on #443.
+#' @details The routes \code{shape_in_reported_mean()} names report a mean
+#' that depends on the shape. Under a \code{disp(~z)} term the shape varies
+#' with \code{z}, so the value a prediction grid gives \code{z} would change
+#' the curve and every estimate read from it: at \code{mu = 5} the mean is
+#' 7.16 at a shape of 0.5 and 5.04 at 50. Refused rather than fitted. A term
+#' on the predictor alone, \code{disp(~x)}, and a variance function,
+#' \code{disp("power")}, are not refused here: neither names a column the grid
+#' would have to choose a value for. RF, on #443 for the growth component;
+#' the joint family is refused for the same reason once it takes \code{disp()}
+#' (D39 on #410).
 #'
-#' Raised by \code{bnec_hurdle()} before anything is fitted, by \code{bnec()}
-#' before its model loop, and by \code{wrangle_model_formula()} as the backstop
-#' for the routes that build a formula directly, the placement
-#' \code{check_disp_spec()} has.
+#' Raised by \code{bnec_hurdle()} before anything is fitted, by
+#' \code{bnec_joint()} before the refit is announced, by \code{bnec()} and
+#' \code{get_priors()} before their model loops, and by
+#' \code{wrangle_model_formula()} as the backstop for the routes that build a
+#' formula directly, the placement \code{check_disp_spec()} has.
 #'
 #' @return \code{invisible(NULL)}, called for its side effect.
 #'
 #' @noRd
-check_disp_count_truncation <- function(formula) {
+check_disp_count_truncation <- function(formula, family = "negbinomial") {
   columns <- disp_covariates(formula)
   if (length(columns) == 0) {
     return(invisible(NULL))
   }
+  curve <- if (identical(canonical_fam_tag(family), "hurdle_negbinomial")) {
+    paste0(" on the two-block family hurdle_negbinomial. Its positive-count",
+           " curve, dpar = \"mu\", is the mean of the zero-truncated counts,",
+           " mu / (1 - (shape / (mu + shape))^shape), and its combined curve",
+           " is that mean multiplied by 1 - hu, so both depend on the shape",
+           " parameter.")
+  } else {
+    paste0(" on a negbinomial growth component of bnec_hurdle(). That",
+           " component's curve is the mean of the zero-truncated counts,",
+           " mu / (1 - (shape / (mu + shape))^shape), which depends on the",
+           " shape parameter.")
+  }
   stop("A disp() term naming ", paste0("\"", columns, "\"", collapse = ", "),
-       " cannot be fitted on a negbinomial growth component of",
-       " bnec_hurdle(). That component's curve is the mean of the",
-       " zero-truncated counts, mu / (1 - (shape / (mu + shape))^shape),",
-       " which depends on the shape parameter. With the shape modelled on ",
+       " cannot be fitted", curve, " With the shape modelled on ",
        if (length(columns) == 1) "a column" else "columns",
        " other than the predictor, the curve and every estimate read from it",
        " would depend on the value given to ",

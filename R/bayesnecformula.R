@@ -187,8 +187,9 @@
 #' design's mix of \code{z} rather than from its first level. A
 #' \code{newdata} without \code{z} is refused with a message naming it. The
 #' term is refused for a \code{negbinomial} growth component of
-#' \code{\link{bnec_hurdle}}, whose curve is the mean of the zero-truncated
-#' counts and depends on the shape parameter.
+#' \code{\link{bnec_hurdle}} and for the \code{hurdle_negbinomial} family,
+#' whose curves are the mean of the zero-truncated counts, or that mean
+#' multiplied by \code{1 - hu}, and so depend on the shape parameter.
 #'
 #' Where the formula also has an \code{ogl()} term, \code{mu} in form 2) is the
 #' curve before the group-level deviation is applied, not the fitted mean of
@@ -1122,9 +1123,8 @@ wrangle_model_formula <- function(model, formula, data, family = NULL,
     # make_brmsformula() and the other routes that build a formula directly.
     disp_y <- disp_response(data, family, rate_var = rate_var)
     check_disp_spec(disp_spec, family, response = disp_y)
-    if (inherits(family, "family") &&
-          is_factorised_count_formula(formula, family)) {
-      check_disp_count_truncation(formula)
+    if (shape_in_reported_mean(formula, family)) {
+      check_disp_count_truncation(formula, family)
     }
     brms_bf <- add_disp_block(brms_bf, model, disp_spec, family, new_x, disp_y)
   }

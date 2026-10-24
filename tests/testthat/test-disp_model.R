@@ -756,10 +756,18 @@ test_that("get_priors refuses what bnec refuses on a two-block family", {
   expect_error(suppressMessages(get_priors(f, data = d,
                                            family = "hurdle_poisson")),
                "hurdle_poisson has no free dispersion parameter")
-  # hurdle_negbinomial takes the term (D39)
+  # hurdle_negbinomial takes the term (D39), and refuses a column other than
+  # the predictor, once, before its equation loop
   pr_nb <- suppressMessages(get_priors(f, data = d,
                                        family = "hurdle_negbinomial"))
   expect_true(all(c("c0", "c1") %in% pr_nb$nlpar))
+  d$z <- factor(rep(c("a", "b"), length.out = nrow(d)))
+  expect_error(
+    suppressMessages(get_priors(n ~ crf(x, c("nec3param", "ecx4param")) +
+                                  disp(~z), data = d,
+                                family = "hurdle_negbinomial")),
+    "\"z\" cannot be fitted on the two-block family hurdle_negbinomial"
+  )
   pr <- suppressMessages(get_priors(g ~ crf(x, "nec3param") + disp("power"),
                                     data = hurdle_dat,
                                     family = "hurdle_gamma"))
@@ -1529,6 +1537,69 @@ nb_disp_object <- function(disp_txt, family = "hurdle_negbinomial",
 }
 nb_draws <- data.frame(b_c0_Intercept = c(1.2, 2.5, 0.4),
                        b_c1_Intercept = c(0.3, 0.75, 0.05))
+
+test_that("shape_in_reported_mean names the two truncated routes (#410)", {
+  expect_true(bayesnec:::shape_in_reported_mean(NULL, "hurdle_negbinomial"))
+  expect_true(bayesnec:::shape_in_reported_mean(
+    NULL, validate_family("hurdle_negbinomial")
+  ))
+  tf <- bayesnec:::add_hurdle_truncation(bnf(y ~ crf(x, "nec3param")))
+  expect_true(bayesnec:::shape_in_reported_mean(
+    tf, validate_family("negbinomial")
+  ))
+  # an untruncated negbinomial, and the two-block families whose mean is
+  # mu * (1 - hu), report a mean free of the dispersion parameter
+  expect_false(bayesnec:::shape_in_reported_mean(
+    bnf(y ~ crf(x, "nec3param")), validate_family("negbinomial")
+  ))
+  for (tag in c("hurdle_gamma", "zero_inflated_beta", "hurdle_poisson")) {
+    expect_false(bayesnec:::shape_in_reported_mean(NULL, tag), label = tag)
+  }
+})
+
+test_that("disp(~z) is refused on the joint hurdle_negbinomial (#410)", {
+  f <- bnf(y ~ crf(x, "nec3param") + disp(~z))
+  expect_error(
+    bayesnec:::check_disp_count_truncation(f, "hurdle_negbinomial"),
+    paste0("\"z\" cannot be fitted on the two-block family hurdle_negbinomial",
+           ".*1 - hu, so both depend on the shape parameter.*disp\\(~x\\)")
+  )
+  # the growth component's message is the one it was (#443)
+  expect_error(bayesnec:::check_disp_count_truncation(f),
+               "\"z\" cannot be fitted on a negbinomial growth component")
+  d <- nb_hurdle_dat()
+  fam <- validate_family("hurdle_negbinomial")
+  # the formula builder is the backstop
+  expect_error(make_brmsformula(f, d, family = fam),
+               "cannot be fitted on the two-block family hurdle_negbinomial")
+  # bnec() refuses once, before its model loop
+  fitted <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      fitted <<- fitted + 1L
+      stop("nothing should be fitted")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(
+    suppressMessages(bnec(y ~ crf(x, c("nec3param", "ecx4param")) + disp(~z),
+                          data = d, family = fam)),
+    "cannot be fitted on the two-block family hurdle_negbinomial"
+  )
+  expect_equal(fitted, 0L)
+  # a term on the predictor alone, and a variance function, are fitted
+  for (txt in c(" + disp(~x)", " + disp(~log(x + 1))", ' + disp("power")')) {
+    expect_error(
+      suppressMessages(bnec(bnf(paste0('y ~ crf(x, "nec3param")', txt)),
+                            data = d, family = fam)),
+      "nothing should be fitted", label = txt
+    )
+  }
+  # hurdle_gamma's curve does not involve its shape, so z is accepted there
+  d$g <- ifelse(d$y > 0, d$y + 0.5, 0)
+  expect_silent(make_brmsformula(bnf(g ~ crf(x, "nec3param") + disp(~z)), d,
+                                 family = validate_family("hurdle_gamma")))
+})
 
 test_that("disp_at_mean evaluates the sub-model at a stated mean (#410)", {
   local_mocked_bindings(
