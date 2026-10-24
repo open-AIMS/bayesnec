@@ -1053,6 +1053,12 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   if (!is.null(disp_spec)) {
     check_disp_spec(disp_spec, brm_args$family,
                     response = disp_response(bdat, brm_args$family))
+    # The zero-truncated count of a bnec_hurdle() growth component, the one
+    # route whose reported mean depends on the dispersion parameter. Checked
+    # once here for the same reason as the line above. See #443.
+    if (is_factorised_count_formula(formula, brm_args$family)) {
+      check_disp_count_truncation(formula)
+    }
   }
   if (length(model) > 1) {
     mod_fits <- vector(mode = "list", length = length(model))

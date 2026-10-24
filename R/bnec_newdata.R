@@ -15,6 +15,17 @@
 #' level of the grouping factor, in a column of that name, with the level
 #' varying slowest; every other class gives \code{resolution} rows.
 #'
+#' Where the formula has a \code{disp(~...)} term naming a column other than
+#' the predictor, the data frame holds that column at one fixed value, the
+#' first level of a factor or the median of a numeric column, and names it in
+#' the attribute \code{"bnec_disp_placeholders"}. The value is the one the
+#' fitted curve and the estimates are read at, and the mean does not depend on
+#' it. \code{\link{posterior_predict}} and \code{\link{predict}} treat a
+#' column named there as a placeholder, and draw its value for each posterior
+#' draw from the data the fit was made from; see
+#' \code{\link{posterior_predict}}. A column whose values have been changed
+#' from the placeholder is used as given.
+#'
 #' @examples
 #' \dontrun{
 #' library(bayesnec)

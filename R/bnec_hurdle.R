@@ -152,6 +152,17 @@
 #' the mean of the untruncated distribution, not the mean of the positive
 #' counts that \pkg{bayesnec} reports.
 #'
+#' A \code{disp(~z)} term naming a column other than the predictor is refused
+#' for a \code{negbinomial} growth component, before either component is
+#' fitted. The curve of that component is the mean of the positive counts,
+#' \code{mu / (1 - (shape / (mu + shape))^shape)}, which depends on the shape
+#' parameter, so with the shape modelled on \code{z} the curve and every
+#' estimate read from it would depend on the value \code{z} is given when
+#' predicting. On a \code{Gamma} or \code{Beta} growth component the term is
+#' fitted, and \code{z} is treated on a prediction grid as
+#' \code{\link{bayesnecformula}} describes, with the values a predicted
+#' reading takes drawn from the survivors the growth component is fitted to.
+#'
 #' @return An object of class \code{\link{bayesnechurdlefit}}.
 #'
 #' @seealso \code{\link{bnec}} for the equivalent joint fit via
@@ -290,6 +301,12 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
   disp_spec <- parse_disp_term(formula)
   if (!is.null(disp_spec)) {
     check_disp_spec(disp_spec, family_growth, response = y[y > 0])
+    # Before check_count_truncation_support(), so that a model refused for
+    # what it is does not first send the user to upgrade brms. The growth
+    # bnec() call and wrangle_model_formula() repeat it as backstops. See #443.
+    if (identical(family_growth$family, "negbinomial")) {
+      check_disp_count_truncation(formula)
+    }
   }
   growth_formula <- formula
   if (family_growth$family %in% c("poisson", "negbinomial")) {

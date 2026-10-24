@@ -2121,8 +2121,11 @@ newdata_eval <- function(object, resolution, x_range) {
   # its survival component -- that one sees every row, and therefore the full
   # exposed predictor range, whereas the growth component stops short of any
   # concentration where nothing survived. posterior_epred() is still called on
-  # the hurdle object itself, so the prediction remains the combined endpoint.
+  # the hurdle object itself, so the prediction remains the combined endpoint,
+  # and the grid needs the growth component's disp(~...) columns for it.
+  hurdle <- NULL
   if (is_bayesnechurdlefit(object)) {
+    hurdle <- object
     object <- object$survival
   }
   if (inherits(object, "bayesmanecfit")) {
@@ -2132,6 +2135,9 @@ newdata_eval <- function(object, resolution, x_range) {
   data <- model.frame(object$bayesnecformula, object$fit$data)
   bnec_pop_vars <- attr(data, "bnec_pop")
   newdata <- bnec_newdata(object, resolution = resolution, x_range = x_range)
+  if (!is.null(hurdle)) {
+    newdata <- hurdle_disp_placeholders(newdata, hurdle)
+  }
   x_vec <- newdata[[bnec_pop_vars[["x_var"]]]]
   list(newdata = newdata, x_vec = x_vec)
 }
@@ -2150,8 +2156,11 @@ newdata_eval_fitted <- function(
   # A hurdle fit has no single underlying brmsfit, so the grid comes from its
   # survival component -- that one sees every row and therefore the full
   # exposed predictor range. posterior_epred() is still called on the hurdle
-  # object itself downstream, so predictions remain the combined endpoint.
+  # object itself downstream, so predictions remain the combined endpoint, and
+  # the grid needs the growth component's disp(~...) columns for it.
+  hurdle <- NULL
   if (is_bayesnechurdlefit(object)) {
+    hurdle <- object
     object <- object$survival
   }
   if (inherits(object, "bayesmanecfit")) {
@@ -2176,6 +2185,9 @@ newdata_eval_fitted <- function(
         resolution = resolution,
         x_range = x_range
       )
+      if (!is.null(hurdle)) {
+        newdata <- hurdle_disp_placeholders(newdata, hurdle)
+      }
       x_vec <- newdata[[bnec_pop_vars[["x_var"]]]]
       if ("re_formula" %in% names(dot_list)) {
         message(

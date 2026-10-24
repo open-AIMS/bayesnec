@@ -912,3 +912,198 @@ test_that("a joint refit across levels reads the curve before ogl() (#468)", {
   expect_false(grepl("ogl", pform_rhs(grouped, "sigma"), fixed = TRUE))
   expect_identical(pform_rhs(grouped, "sigma"), pform_rhs(ungrouped, "sigma"))
 })
+
+# #443. A disp(~z) term naming a column other than the predictor. None of the
+# blocks below samples: the grid is built from a list holding the data and the
+# family, which is all prediction_grid() reads, and the refusals are reached
+# before anything is fitted.
+disp_z_dat <- data.frame(
+  x = rep(c(0.1, 1, 3, 10), 3),
+  y = c(2.1, 1.9, 1.2, 0.4, 2.0, 1.7, 1.1, 0.5, 2.2, 1.8, 1.0, 0.3),
+  z = factor(rep(c("b", "a", "c"), each = 4), levels = c("b", "a", "c")),
+  w = c(5, 1, 2, 9, 3, 3, 4, 8, 7, 6, 2, 1)
+)
+disp_z_grid <- function(rhs, data = disp_z_dat, ...) {
+  fake <- list(data = data, family = list(family = "Gamma"))
+  f <- bnf(stats::as.formula(paste0('y ~ crf(x, "nec3param")', rhs)))
+  bayesnec:::prediction_grid(fake, f, resolution = 5, ...)$newdata
+}
+
+test_that("disp_covariates names the columns other than the predictor (#443)", {
+  cov <- function(txt) {
+    bayesnec:::disp_covariates(bnf(stats::as.formula(
+      paste0('y ~ crf(x, "nec3param")', txt)
+    )))
+  }
+  expect_identical(cov(" + disp(~z)"), "z")
+  expect_identical(cov(" + disp(~z + w)"), c("z", "w"))
+  expect_identical(cov(" + disp(~x + z)"), "z")
+  expect_identical(cov(" + disp(~x)"), character(0))
+  expect_identical(cov(" + disp(~log(x))"), character(0))
+  expect_identical(cov(' + disp("power")'), character(0))
+  expect_identical(cov(""), character(0))
+  # the predictor is read through a transformation in crf()
+  expect_identical(bayesnec:::disp_covariates(
+    bnf(y ~ crf(log(x), "nec3param") + disp(~x + z))
+  ), "z")
+  expect_identical(bayesnec:::disp_covariates(
+    bnf(y ~ crf(log(x), "nec3param") + disp(~x))
+  ), character(0))
+})
+
+test_that("the grid holds a disp(~z) factor at its first level (#443)", {
+  g <- disp_z_grid(" + disp(~z)")
+  expect_named(g, c("x", "z"))
+  expect_s3_class(g$z, "factor")
+  # every level is kept, so that brms builds the same contrast as in the fit
+  expect_identical(levels(g$z), c("b", "a", "c"))
+  expect_true(all(g$z == "b"))
+  expect_identical(attr(g, "bnec_disp_placeholders"), "z")
+})
+
+test_that("the grid holds a numeric disp(~w) column at its median (#443)", {
+  g <- disp_z_grid(" + disp(~w)")
+  expect_identical(unique(g$w), stats::median(disp_z_dat$w))
+  expect_identical(attr(g, "bnec_disp_placeholders"), "w")
+  # several columns, each at its own fixed value, all marked
+  g2 <- disp_z_grid(" + disp(~z + w)")
+  expect_true(all(g2$z == "b") && all(g2$w == 3.5))
+  expect_identical(attr(g2, "bnec_disp_placeholders"), c("z", "w"))
+  # a character column takes the first of its sorted values, the level brms
+  # codes it against
+  chr <- disp_z_dat
+  chr$z <- as.character(chr$z)
+  expect_identical(unique(disp_z_grid(" + disp(~z)", data = chr)$z), "a")
+})
+
+test_that("a grid with no disp(~z) column is the grid it was (#443)", {
+  for (rhs in c("", " + disp(~x)", " + disp(~log(x))", ' + disp("power")')) {
+    g <- disp_z_grid(rhs)
+    expect_named(g, "x")
+    expect_null(attr(g, "bnec_disp_placeholders"))
+    expect_identical(names(attributes(g)), c("names", "class", "row.names"))
+  }
+})
+
+test_that("the level column of a joint refit is not a placeholder (#443)", {
+  d <- disp_z_dat
+  d$g <- factor(rep(c("A", "B"), 6))
+  spec <- list(group_var = "g", levels = c("A", "B"))
+  g <- disp_z_grid(" + disp(~z)", data = d, level_spec = spec)
+  expect_equal(nrow(g), 10)
+  expect_true(all(g$z == "b"))
+  expect_identical(attr(g, "bnec_disp_placeholders"), "z")
+  # a disp() term on the level factor itself: the grid writes every level and
+  # the column is not marked, because its values are not a placeholder
+  g2 <- disp_z_grid(" + disp(~g)", data = d, level_spec = spec)
+  expect_identical(as.character(g2$g), rep(c("A", "B"), each = 5))
+  expect_null(attr(g2, "bnec_disp_placeholders"))
+})
+
+test_that("a hurdle grid takes the growth component's disp(~z) value (#443)", {
+  f <- bnf(y ~ crf(x, "nec3param") + disp(~z))
+  # the survivors the growth component was fitted to, whose first level of z
+  # is the one the grid takes
+  growth_dat <- disp_z_dat[disp_z_dat$z != "b", ]
+  growth_dat$z <- factor(growth_dat$z, levels = c("c", "a"))
+  growth <- structure(list(fit = list(data = growth_dat)),
+                      class = c("bayesnecfit", "bnecfit"))
+  hurdle <- list(formula = f, growth = growth)
+  nd <- bayesnec:::hurdle_disp_placeholders(data.frame(x = 1:3), hurdle)
+  expect_true(all(nd$z == "c"))
+  expect_identical(attr(nd, "bnec_disp_placeholders"), "z")
+  # and from the first equation of a model set
+  hurdle$growth <- structure(
+    list(mod_fits = list(nec3param = list(fit = list(data = growth_dat)))),
+    class = c("bayesmanecfit", "bnecfit")
+  )
+  nd2 <- bayesnec:::hurdle_disp_placeholders(data.frame(x = 1:3), hurdle)
+  expect_identical(nd2, nd)
+  # unchanged without such a term
+  hurdle$formula <- bnf(y ~ crf(x, "nec3param") + disp("power"))
+  expect_identical(
+    bayesnec:::hurdle_disp_placeholders(data.frame(x = 1:3), hurdle),
+    data.frame(x = 1:3)
+  )
+})
+
+hurdle_count_dat <- function() {
+  set.seed(443)
+  d <- data.frame(x = rep(0:4, each = 8),
+                  z = factor(rep(c("a", "b"), 20)))
+  d$y <- stats::rnbinom(nrow(d), mu = 8 * exp(-0.4 * d$x), size = 3)
+  d$y[d$x == 4][1:3] <- 0L
+  d
+}
+
+test_that("disp(~z) is refused on a negbinomial growth component (#443)", {
+  f <- bnf(y ~ crf(x, "nec3param") + disp(~z))
+  expect_error(bayesnec:::check_disp_count_truncation(f),
+               paste0("\"z\" cannot be fitted on a negbinomial growth",
+                      ".*depends on the shape parameter.*disp\\(~x\\)"))
+  # a term on the predictor alone, and a variance function, are not refused
+  for (ok in list(bnf(y ~ crf(x, "nec3param") + disp(~x)),
+                  bnf(y ~ crf(x, "nec3param") + disp(~log(x + 1))),
+                  bnf(y ~ crf(x, "nec3param") + disp("power")))) {
+    expect_null(bayesnec:::check_disp_count_truncation(ok))
+  }
+  d <- hurdle_count_dat()
+  calls <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      calls <<- calls + 1L
+      stop("no component should be fitted")
+    },
+    .package = "bayesnec"
+  )
+  # before either component is fitted, and before the brms version check,
+  # which would otherwise ask for an upgrade to fit a model that is refused
+  expect_error(
+    bnec_hurdle(y ~ crf(x, "nec3param") + disp(~z), data = d,
+                family_growth = negbinomial()),
+    "cannot be fitted on a negbinomial growth component"
+  )
+  expect_equal(calls, 0L)
+  # a Gamma growth component takes the term and reaches its fit
+  d$y <- ifelse(d$y > 0, d$y + 0.5, 0)
+  expect_error(
+    suppressMessages(bnec_hurdle(y ~ crf(x, "nec3param") + disp(~z),
+                                 data = d, family_growth = Gamma())),
+    "no component should be fitted"
+  )
+  expect_equal(calls, 1L)
+})
+
+test_that("bnec() and the formula builder refuse it as backstops (#443)", {
+  d <- hurdle_count_dat()
+  d <- d[d$y > 0, ]
+  tf <- bayesnec:::add_hurdle_truncation(
+    bnf(y ~ crf(x, "nec3param") + disp(~z))
+  )
+  fam <- validate_family("negbinomial")
+  expect_error(
+    bayesnec:::wrangle_model_formula("nec3param", tf,
+                                     model.frame(tf, data = d), family = fam),
+    "cannot be fitted on a negbinomial growth component"
+  )
+  fitted <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      fitted <<- fitted + 1L
+      stop("nothing should be fitted")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(
+    suppressMessages(bnec(tf, data = d, family = fam)),
+    "cannot be fitted on a negbinomial growth component"
+  )
+  expect_equal(fitted, 0L)
+  # the untruncated negbinomial of an ordinary bnec() fit has a mean free of
+  # the shape, so the term is not refused there
+  expect_error(
+    suppressMessages(bnec(y ~ crf(x, "nec3param") + disp(~z), data = d,
+                          family = fam)),
+    "nothing should be fitted"
+  )
+})

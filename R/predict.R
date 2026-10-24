@@ -15,6 +15,16 @@
 #' \code{\link[brms]{posterior_predict.brmsfit}} if object is of class
 #' \code{\link{bayesmanecfit}}.
 #'
+#' @details A \code{newdata} for a fit with a \code{disp(~z)} term, \code{z}
+#' a column other than the predictor, is treated as
+#' \code{\link{posterior_predict}} treats it. One without \code{z} is
+#' refused. In one from \code{\link{bnec_newdata}}, which holds \code{z} at
+#' a marked placeholder value, \code{z} is drawn for each posterior draw from
+#' a row of the fitted data, so the summaries describe a new reading from the
+#' design's mix of \code{z}. One that holds \code{z} unmarked, or changed
+#' from the placeholder, is used as given. Without \code{newdata},
+#' predictions are for the fitted rows, each with its own value.
+#'
 #' @return See \code{?brms::predict.brmsfit}.
 #'
 #' @examples
@@ -43,11 +53,16 @@ NULL
 #'
 #' @inherit predict description return examples
 #'
+#' @param newdata An optional \code{\link[base]{data.frame}} to predict over.
+#'  Where it is \code{NULL}, the default, predictions are made for the data
+#'  the fit was made from. See Details.
+#'
 #' @importFrom stats predict
 #'
 #' @export
-predict.bayesnecfit <- function(object, ...) {
-  predict(pull_brmsfit(object), ...)
+predict.bayesnecfit <- function(object, newdata = NULL, ...) {
+  disp_predict(pull_brmsfit(object), object$bayesnecformula,
+               newdata = newdata, ...)
 }
 
 #' @rdname predict
@@ -129,8 +144,10 @@ predict.bayesmanecfit <- function(object, summary = TRUE,
     # The equation's brmsfit directly rather than through pull_out(), which
     # rebuilds the whole bayesnecfit, prediction grid included, to reach the
     # same brmsfit that predict.bayesnecfit() would then use.
-    out[[m]] <- predict(object$mod_fits[[m]]$fit, summary = summary,
-                        robust = robust, probs = probs, ...)
+    out[[m]] <- disp_predict(object$mod_fits[[m]]$fit,
+                             object$mod_fits[[m]]$bayesnecformula,
+                             summary = summary, robust = robust,
+                             probs = probs, ...)
   }
   out
 }

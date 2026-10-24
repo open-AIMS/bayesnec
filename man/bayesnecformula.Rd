@@ -174,6 +174,25 @@ Form 2) requires the mean to be modelled on its natural scale; see the
 identity-link note in \code{\link{bnec}}. Form 1) is an ordinary
 distributional formula and is valid under any link.
 
+Form 1) may name a column other than the predictor, as in \code{disp(~z)},
+which fits a dispersion parameter for each level of a factor \code{z}, or
+one that changes with a numeric \code{z}. \pkg{brms} needs \code{z}
+wherever it predicts, so every prediction grid \pkg{bayesnec} builds holds
+it. The fitted curve stored on a fit, \code{\link{ecx}},
+\code{\link{nec}}, \code{\link{nsec}} and \code{\link{ecnsec}} take
+\code{z} at one fixed value: the first level of a factor, or the median of
+a numeric column. The mean of every family the term can be fitted for does
+not involve the dispersion parameter, so that value does not change them.
+\code{\link{bnec_newdata}} writes the same value and marks the column as a
+placeholder. \code{\link{posterior_predict}} and \code{\link{predict}}
+replace a marked column draw by draw with the value of a row sampled from
+the data the fit was made from, so a predicted reading is one from the
+design's mix of \code{z} rather than from its first level. A
+\code{newdata} without \code{z} is refused with a message naming it. The
+term is refused for a \code{negbinomial} growth component of
+\code{\link{bnec_hurdle}}, whose curve is the mean of the zero-truncated
+counts and depends on the shape parameter.
+
 Where the formula also has an \code{ogl()} term, \code{mu} in form 2) is the
 curve before the group-level deviation is applied, not the fitted mean of
 the group. The deviation therefore changes the mean of each group without

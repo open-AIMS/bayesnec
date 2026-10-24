@@ -173,6 +173,17 @@ function such as \code{disp("power")} is written in the mean of the growth
 component as \pkg{brms} parameterises it. For a count growth family that is
 the mean of the untruncated distribution, not the mean of the positive
 counts that \pkg{bayesnec} reports.
+
+A \code{disp(~z)} term naming a column other than the predictor is refused
+for a \code{negbinomial} growth component, before either component is
+fitted. The curve of that component is the mean of the positive counts,
+\code{mu / (1 - (shape / (mu + shape))^shape)}, which depends on the shape
+parameter, so with the shape modelled on \code{z} the curve and every
+estimate read from it would depend on the value \code{z} is given when
+predicting. On a \code{Gamma} or \code{Beta} growth component the term is
+fitted, and \code{z} is treated on a prediction grid as
+\code{\link{bayesnecformula}} describes, with the values a predicted
+reading takes drawn from the survivors the growth component is fitted to.
 }
 \examples{
 \dontrun{
