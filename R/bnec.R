@@ -1029,7 +1029,8 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     check_response_flattened(
       bdat, brm_args$family,
       blocks = names(sensitive_blocks)[sensitive_blocks],
-      pool_dispersion = is.null(parse_disp_term(formula))
+      pool_dispersion = is.null(parse_disp_term(formula)),
+      asymptote_observed = asymptote_observed
     )
   }
   # Immediately after the report the declaration answers, and before the model

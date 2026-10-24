@@ -233,6 +233,21 @@ bnec_group <- function(formula, data, group_var, family = NULL,
     }
   )
   dots[[".bayesnec_bound_reported"]] <- TRUE
+  # The declaration is read before the flatness report below, which omits its
+  # advice to make the declaration where the call has made it (#449), and by
+  # the declaration's own check after the report.
+  # dots_arg(), not an exact lookup. `dots` is forwarded to bnec() through
+  # do.call(), where these are formals before `...` and so match an
+  # abbreviation. Reading `asymptote_observed` exactly would leave an
+  # abbreviated argument declared for the fit and undeclared for this check,
+  # which sets .bayesnec_asymptote_checked and drops the refusal back into the
+  # per-level model loop -- the failure the hoist exists to prevent.
+  declared <- dots_arg(dots, "asymptote_observed", TRUE)
+  # Validated here as well as in bnec(), because this function reads it first
+  # and an invalid value would otherwise raise the flatness report, the floor
+  # refusal or the mixed-set report before bnec() reports what is actually
+  # wrong.
+  chk_flag(declared, x_name = "`asymptote_observed`")
   # Checked over every level before any of them is fitted. Left to the inner
   # bnec() calls it would report one level at a time, and would reach an
   # affected level only after the levels before it had compiled and sampled --
@@ -297,7 +312,8 @@ bnec_group <- function(formula, data, group_var, family = NULL,
         blocks = lapply(sensitive_blocks, function(blocks) {
           names(blocks)[blocks]
         }),
-        pool_dispersion = is.null(parse_disp_term(formula))
+        pool_dispersion = is.null(parse_disp_term(formula)),
+        asymptote_observed = declared
       )
     }
     # The union of the per-level sets, which is what a crossed model average
@@ -314,17 +330,6 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # level. Where the formula's set could not be read, level_sets is empty and
   # only the refusal is reachable, which is the same resolution the flatness
   # report above takes for that case.
-  # dots_arg(), not an exact lookup. `dots` is forwarded to bnec() through
-  # do.call(), where these are formals before `...` and so match an
-  # abbreviation. Reading `asymptote_observed` exactly would leave an
-  # abbreviated argument declared for the fit and undeclared for this check,
-  # which sets .bayesnec_asymptote_checked and drops the refusal back into the
-  # per-level model loop -- the failure the hoist exists to prevent.
-  declared <- dots_arg(dots, "asymptote_observed", TRUE)
-  # Validated here as well as in bnec(), because this check reads it first and
-  # an invalid value would otherwise raise the floor refusal or the mixed-set
-  # report before bnec() reports what is actually wrong.
-  chk_flag(declared, x_name = "`asymptote_observed`")
   check_asymptote_declaration(mod_dat, family, level_sets,
                               asymptote_observed = declared,
                               prior = dots_arg(dots, "prior"),
