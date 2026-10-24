@@ -123,10 +123,10 @@
   floor is zero for every family but gaussian, and zero for a gaussian response
   that is non-negative throughout. The entry is `normal(e/2, e/(2 qnorm(0.975)))`
   on the gaussian branch, `beta(1, log(0.025) / log(1 - e))` on the four
-  bounded families and `gamma(2, 4/e)` on `Gamma`, `poisson` and `negbinomial`,
-  for an endpoint mean *e*. The first two meet the rule exactly at the upper end;
-  a gamma at a fixed shape of 2 cannot, and its realised central 95 per cent is
-  0.0606*e* to 1.393*e*. The initial-value band is extended to the same floor,
+  bounded families and `gamma(2, qgamma(0.975, 2) / e)` on `Gamma`, `poisson`
+  and `negbinomial`, for an endpoint mean *e*. All three meet the rule exactly at
+  the upper end; the gamma entry, at its fixed shape of 2, starts at 0.0435*e*
+  rather than at the floor. The initial-value band is extended to the same floor,
   because a band built from the observed response rejects the draws the new
   prior exists to produce.
 
@@ -1992,6 +1992,18 @@
   it still ends on the advice to inspect the generated entries with
   `get_priors()` and to supply justified ones through `prior`. A call that
   does not make the declaration prints the report as before (#449).
+- The `bot` prior generated under `asymptote_observed = FALSE` now ends its
+  central 95 per cent at the mean response at the highest predictor level on
+  `Gamma`, `poisson`, `negbinomial`, the two zero-inflated count families and
+  the response block of `hurdle_gamma`, `hurdle_poisson` and
+  `hurdle_negbinomial`. The entry was `gamma(2, 4/e)` for an endpoint mean *e*,
+  whose central 95 per cent ran from 0.0606*e* to 1.393*e*: 9.2 per cent of its
+  mass lay above the value the declaration reads as an upper bound on `bot`,
+  where the rule places 2.5 per cent. It is now `gamma(2, qgamma(0.975, 2) / e)`,
+  which keeps the shape of 2 and runs from 0.0435*e* to *e*. This changes every
+  fit on these families that makes the declaration and takes the default `bot`
+  prior. The gaussian and bounded families, the survival block of a hurdle fit
+  and every fit that does not make the declaration are unchanged (#449).
 - A `disp(~z)` term naming a column other than the predictor is now fitted
   and predicted from. Every model sampled and then stopped on the prediction
   grid, which held the predictor and any trials or `rate()` denominator but
