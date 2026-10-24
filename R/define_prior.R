@@ -1465,6 +1465,17 @@ define_prior <- function(model, family, predictor, response,
     }
     return(hurdle_priors)
   }
+  # The backstop on this branch, as on the two-block branch above.
+  # get_priors() checks the term once before its equation loop, as bnec()
+  # does, so this is reached first only from amend() and a direct call. Placed
+  # before anything is built from the response, so that a term the family
+  # cannot take is reported as that, rather than as an NA indexed from the
+  # table of c0 priors inside brms. The response is taken before it is put on
+  # the link scale below. The check reads it for a gaussian family alone, whose
+  # response arrives here as bnec() checks it. See #445.
+  if (!is.null(disp_spec)) {
+    check_disp_spec(disp_spec, family, response = response)
+  }
   link_tag <- family$link
   custom_name <- check_custom_name(family)
   # Both rewrites the tag applies -- the link one and the zero-inflated one --

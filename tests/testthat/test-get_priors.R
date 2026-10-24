@@ -589,3 +589,94 @@ test_that("a binomial formula with a trials() term still returns priors (#442)",
     expect_s3_class(out$nec3param, "brmsprior")
   }
 })
+
+# ---- #445: a disp() term checked against the family -------------------------
+
+# The message bnec() refuses a call with, read with the fit replaced so that
+# nothing is fitted if the call is not refused.
+bnec_refusal <- function(formula, data, family) {
+  local_mocked_bindings(
+    fit_bayesnec = function(...) stop("fit reached"),
+    .package = "bayesnec"
+  )
+  tryCatch(suppressWarnings(suppressMessages(
+    bnec(formula, data = data, family = family)
+  )), error = conditionMessage)
+}
+
+test_that("get_priors refuses a disp() term bnec() refuses, before its loop (#445)", {
+  # A family with no dispersion parameter failed inside brms on a variance
+  # function and returned priors for disp(~x); a variance function the family
+  # does not take returned priors. The refusal is the one bnec() raises, and it
+  # is raised before any equation's prior is built: define_prior() is replaced
+  # so that reaching it is recorded.
+  d <- nec_data
+  d$alive <- as.integer(d$y > 0.5)
+  d$pos <- d$y * 10
+  cases <- list(
+    list(lhs = "count", family = "poisson", term = 'disp("power")',
+         msg = "Family poisson has no free dispersion parameter"),
+    list(lhs = "count", family = "poisson", term = "disp(~x)",
+         msg = "Family poisson has no free dispersion parameter"),
+    list(lhs = "alive", family = "bernoulli", term = 'disp("power")',
+         msg = "Family bernoulli has no free dispersion parameter"),
+    list(lhs = "count | trials(trials)", family = "binomial",
+         term = "disp(~x)",
+         msg = "Family binomial has no free dispersion parameter"),
+    list(lhs = "pos", family = "gaussian", term = 'disp("twosided")',
+         msg = "Variance function \"twosided\" is not valid for the gaussian"),
+    list(lhs = "pos", family = "Gamma", term = 'disp("twosided")',
+         msg = "Variance function \"twosided\" is not valid for the Gamma"),
+    list(lhs = "count", family = "negbinomial", term = 'disp("twosided")',
+         msg = "Variance function \"twosided\" is not valid for the negbinomial")
+  )
+  built <- 0L
+  local_mocked_bindings(
+    define_prior = function(...) {
+      built <<- built + 1L
+      stop("prior built")
+    },
+    .package = "bayesnec"
+  )
+  for (cs in cases) {
+    f <- stats::as.formula(paste0(cs$lhs,
+                                  ' ~ crf(x, c("nec3param", "ecx4param")) + ',
+                                  cs$term))
+    built <- 0L
+    err <- tryCatch(suppressMessages(get_priors(f, data = d,
+                                                family = cs$family)),
+                    error = conditionMessage)
+    label <- paste(cs$family, cs$term)
+    expect_match(err, cs$msg, fixed = TRUE, label = label)
+    expect_identical(built, 0L, label = label)
+    expect_identical(err, bnec_refusal(f, d, cs$family), label = label)
+  }
+})
+
+test_that("get_priors still returns priors for a disp() term bnec() takes (#445)", {
+  d <- nec_data
+  d$pos <- d$y * 10
+  for (fam in c("gaussian", "Gamma")) {
+    out <- suppressMessages(get_priors(pos ~ crf(x, "nec4param") +
+                                         disp("power"),
+                                       data = d, family = fam))
+    expect_setequal(out$nlpar, c("top", "bot", "beta", "nec", "c0", "c1"))
+  }
+  out <- suppressMessages(get_priors(y ~ crf(x, "nec4param") +
+                                       disp("twosided"),
+                                     data = d, family = "beta"))
+  expect_setequal(out$nlpar,
+                  c("top", "bot", "beta", "nec", "c0", "c1", "c2"))
+})
+
+test_that("get_priors refuses a non-finite disp(~...) column as bnec() does (#445)", {
+  d <- nec_data
+  d$w <- d$x
+  d$w[3] <- Inf
+  f <- y ~ crf(x, "nec3param") + disp(~w)
+  err <- tryCatch(suppressMessages(get_priors(f, data = d,
+                                              family = "gaussian")),
+                  error = conditionMessage)
+  expect_identical(err, bnec_refusal(f, d, "gaussian"))
+  expect_match(err, "w", fixed = TRUE)
+})

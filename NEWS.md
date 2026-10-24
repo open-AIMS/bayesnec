@@ -2017,6 +2017,16 @@
   one. An equation that `bnec()` does not fit for Gamma on the identity link,
   `neclin`, `neclinhorme`, `ecxlin` or `nechormepwr01`, is dropped when added
   to a Gamma fit, with the message `bnec()` gives (#436).
+- `get_priors()` refuses a `disp()` term that `bnec()` refuses, with the
+  message `bnec()` gives, before the priors of any equation are built. On a
+  family with no dispersion parameter, such as `poisson`, `bernoulli` or
+  `binomial`, a variance function failed inside `brms` with "Cannot coerce
+  'prior' to a single character value", and `disp(~x)` returned priors for a
+  model `bnec()` does not fit. A variance function the family does not take,
+  such as `disp("twosided")` on `gaussian`, `Gamma` or `negbinomial`, also
+  returned priors, as did a `disp(~z)` term whose column holds a value that is
+  not finite. The priors returned for a term `bnec()` accepts are unchanged
+  (#445).
 - A `disp(~z)` term naming a column other than the predictor is now fitted
   and predicted from. Every model sampled and then stopped on the prediction
   grid, which held the predictor and any trials or `rate()` denominator but

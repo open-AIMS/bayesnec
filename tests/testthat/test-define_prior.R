@@ -3009,3 +3009,33 @@ test_that("a Gamma family read off a fit builds the priors bnec() builds (#436)"
     }
   }
 })
+
+# ---- #445, the disp() backstop on the single-block branch ------------------
+
+test_that("define_prior refuses a disp() term the family cannot take (#445)", {
+  # The single-block branch had no check, so a variance function on a family
+  # without a dispersion parameter indexed the c0 table to NA and failed inside
+  # brms, and one the family does not take returned priors.
+  power <- list(route = "B", value = "power")
+  expect_error(
+    define_prior("nec3param", validate_family("poisson"), nec_data$x,
+                 nec_data$count, disp_spec = power),
+    "Family poisson has no free dispersion parameter", fixed = TRUE
+  )
+  expect_error(
+    define_prior("nec3param", validate_family("bernoulli"), nec_data$x,
+                 as.integer(nec_data$y > 0.5),
+                 disp_spec = list(route = "A", value = "x")),
+    "Family bernoulli has no free dispersion parameter", fixed = TRUE
+  )
+  expect_error(
+    define_prior("nec3param", validate_family("gaussian"), nec_data$x,
+                 nec_data$y, disp_spec = list(route = "B", value = "twosided")),
+    "Variance function \"twosided\" is not valid for the gaussian family",
+    fixed = TRUE
+  )
+  # A term the family takes is unchanged.
+  pr <- define_prior("nec3param", validate_family("gaussian"), nec_data$x,
+                     nec_data$y, disp_spec = power)
+  expect_setequal(pr$nlpar, c("beta", "top", "nec", "c0", "c1"))
+})
