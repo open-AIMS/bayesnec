@@ -22,7 +22,7 @@ them."><meta property="og:image" content="https://open-aims.github.io/bayesnec/l
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.43</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
       </span>
     </div>
 
@@ -271,6 +271,16 @@ function such as <code>disp("power")</code> is written in the mean of the growth
 component as <span class="pkg">brms</span> parameterises it. For a count growth family that is
 the mean of the untruncated distribution, not the mean of the positive
 counts that <span class="pkg">bayesnec</span> reports.</p>
+<p>A <code>disp(~z)</code> term naming a column other than the predictor is refused
+for a <code>negbinomial</code> growth component, before either component is
+fitted. The curve of that component is the mean of the positive counts,
+<code>mu / (1 - (shape / (mu + shape))^shape)</code>, which depends on the shape
+parameter, so with the shape modelled on <code>z</code> the curve and every
+estimate read from it would depend on the value <code>z</code> is given when
+predicting. On a <code>Gamma</code> or <code>Beta</code> growth component the term is
+fitted, and <code>z</code> is treated on a prediction grid as
+<code><a href="bayesnecformula.html">bayesnecformula</a></code> describes, with the values a predicted
+reading takes drawn from the survivors the growth component is fitted to.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>

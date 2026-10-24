@@ -19,7 +19,7 @@ bayesnecfit or bayesmanecfit."><meta property="og:image" content="https://open-a
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.43</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
       </span>
     </div>
 
@@ -101,7 +101,7 @@ bayesnecfit or bayesmanecfit."><meta property="og:image" content="https://open-a
 
     <div id="ref-usage">
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for class 'bayesnecfit'</span></span>
-<span><span class="fu">predict</span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span></span>
+<span><span class="fu">predict</span><span class="op">(</span><span class="va">object</span>, newdata <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'bayesmanecfit'</span></span>
 <span><span class="fu">predict</span><span class="op">(</span></span>
@@ -122,6 +122,12 @@ bayesnecfit or bayesmanecfit."><meta property="og:image" content="https://open-a
 <dl><dt id="arg-object">object<a class="anchor" aria-label="anchor" href="#arg-object"></a></dt>
 <dd><p>An object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or
 <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code>.</p></dd>
+
+
+<dt id="arg-newdata">newdata<a class="anchor" aria-label="anchor" href="#arg-newdata"></a></dt>
+<dd><p>An optional <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code> to predict over.
+Where it is <code>NULL</code>, the default, predictions are made for the data
+the fit was made from. See Details.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
@@ -176,6 +182,18 @@ describes. Where <code>model</code> is given, a named
 by the equation, in the order given in <code>model</code>. The list is returned
 even when it has one element, so that its form depends on whether
 <code>model</code> is given and on nothing else.</p>
+    </div>
+    <div id="details">
+    <h2>Details</h2>
+    <p>A <code>newdata</code> for a fit with a <code>disp(~z)</code> term, <code>z</code>
+a column other than the predictor, is treated as
+<code><a href="posterior_predict.html">posterior_predict</a></code> treats it. One without <code>z</code> is
+refused. In one from <code><a href="bnec_newdata.html">bnec_newdata</a></code>, which holds <code>z</code> at
+a marked placeholder value, <code>z</code> is drawn for each posterior draw from
+a row of the fitted data, so the summaries describe a new reading from the
+design's mix of <code>z</code>. One that holds <code>z</code> unmarked, or changed
+from the placeholder, is used as given. Without <code>newdata</code>,
+predictions are for the fitted rows, each with its own value.</p>
     </div>
 
     <div id="ref-examples">
