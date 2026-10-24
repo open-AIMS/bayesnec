@@ -270,7 +270,25 @@ generated
 entries with <code><a href="get_priors.html">get_priors</a></code> and pass a scientifically justified
 prior through <code>prior</code> where information beyond the design is available.
 Neither value of <code>prior_type</code> corrects a design that stopped before the
-asymptote; <code>asymptote_observed</code> is the argument for that.</p></dd>
+asymptote; <code>asymptote_observed</code> is the argument for that. With a
+<code>disp("power")</code> term on a <code>Gamma</code>, <code>gaussian</code> or
+<code>negbinomial</code> response, <code>"regularizing"</code> also centres the prior on
+the exponent <code>c1</code> on the slope the replicates show. Each predictor value
+with two or more observations gives the family's dispersion parameter from
+their mean and variance: <code>1 / CV^2</code> for <code>Gamma</code>, the standard
+deviation for <code>gaussian</code>, and <code>mean^2 / (variance - mean)</code> for
+<code>negbinomial</code>. The centre is the slope of its log on the log of the
+mean, weighted by degrees of freedom and clamped into the range of <code>c1</code>
+given in <code>?<a href="bayesnecformula.html">bayesnecformula</a></code>. This data-derived centre makes the
+prior empirical: the same observations also enter the likelihood. Its width
+stays at that of the <code>"uninformative"</code> entry to limit the influence of
+this noisy centre. The centre is zero,
+as under <code>"uninformative"</code>, where fewer than three predictor values are
+replicated or the slope cannot be computed, and for a <code>negbinomial</code>
+response with a <code>rate()</code> denominator or the zero-truncated growth
+component of <code><a href="bnec_hurdle.html">bnec_hurdle()</a></code>. The replicates are grouped by
+predictor value alone, so under a group-level term their spread includes the
+variation between groups.</p></dd>
 
 
 <dt id="arg-asymptote-observed">asymptote_observed<a class="anchor" aria-label="anchor" href="#arg-asymptote-observed"></a></dt>

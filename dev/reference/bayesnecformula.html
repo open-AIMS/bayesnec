@@ -295,7 +295,29 @@ the dispersion parameter itself, which is what <span class="pkg">brms</span> fit
 <p>Writing <code>r = mu / m</code> for the response relative to the reference, and
 taking <code>"power"</code> for concreteness:</p>
 <table class="table table"><tr><td><b>family</b></td><td><b>parameter</b></td><td><b>implied variance</b></td><td><b>constant CV at</b></td></tr><tr><td><code>gaussian</code></td><td><code>sigma</code></td><td><code>(exp(c0) * r^c1)^2</code></td><td><code>c1 = 1</code></td></tr><tr><td><code>Gamma</code></td><td><code>shape</code></td><td><code>mu^2 / (exp(c0) * r^c1)</code></td><td><code>c1 = 0</code></td></tr><tr><td><code>negbinomial</code></td><td><code>shape</code></td><td><code>mu + mu^2 / (exp(c0) * r^c1)</code></td><td><code>--</code></td></tr><tr><td><code>Beta</code>, <code>beta_binomial</code></td><td><code>phi</code></td><td><code>mu * (1 - mu) / (1 + exp(c0) * r^c1)</code></td><td><code>--</code></td></tr></table><p>In every case <code>c1 = 0</code> returns the constant-dispersion model, which is
-where the prior on <code>c1</code> is centred.</p>
+where the default prior on <code>c1</code> is centred.</p>
+<p>Under <code>"power"</code> that prior is <code>normal(0, 2)</code> restricted to a range
+of <code>c1</code> that depends on the family. The range is derived from a
+variance proportional to <code>mu^b</code> with <code>b</code> between 0 and 2, which
+runs from a constant variance to a constant coefficient of variation:</p>
+<table class="table table"><tr><td><b>family</b></td><td><b>range of c1</b></td><td><b>at the two ends</b></td></tr><tr><td><code>Gamma</code></td><td>0 to 2</td><td>constant CV; constant variance</td></tr><tr><td><code>gaussian</code></td><td>0 to 1</td><td>constant variance; constant CV</td></tr><tr><td><code>negbinomial</code></td><td>0 to 1</td><td>overdispersion proportional to <code>mu^2</code>; to <code>mu</code></td></tr><tr><td><code>Beta</code>, <code>beta_binomial</code></td><td>unbounded</td><td><code>--</code></td></tr></table><p>Outside the range for a Gamma or gaussian response, the variance function
+describes a variance that rises as the mean falls, or a coefficient of
+variation that falls as the mean falls. For a negative binomial response
+above 1, the overdispersion term would grow more slowly than the Poisson
+part of the variance. The beta families are not bounded, because their
+variance already falls towards both ends of the unit interval through
+<code>mu * (1 - mu)</code>, and their precision can plausibly rise in either
+direction, which is what <code>"twosided"</code> models. Neither slope of
+<code>"twosided"</code> is bounded, nor is the slope of <code>"loglinear"</code>, which
+is in units of one over the response. A two-block family takes the range of
+its positive block's family.</p>
+<p>The range is a hard bound on the parameter, as the support of the response
+is for <code>top</code> and <code>bot</code>. A posterior for <code>c1</code> concentrated
+against one end of it is evidence that the data do not follow the range; a
+prior on <code>c1</code> supplied through the <code>prior</code> argument of
+<code><a href="bnec.html">bnec</a></code> replaces the default, bounds included. Under
+<code>prior_type = "regularizing"</code> the prior is centred on the slope the
+replicates show rather than on zero; see <code><a href="bnec.html">bnec</a></code>.</p>
 <p>Both <code>"power"</code> and <code>"twosided"</code> take <code>log(mu)</code>, so a fitted
 mean that reaches zero is undefined. This rules them out for a response on
 the real line — a specific growth rate, yield or increment can be negative —
@@ -408,34 +430,34 @@ formula.</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">bayesnecformula</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y ~ crf(x, "nec3param")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55b4b0363fe8&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55a4df7a7b98&gt;</span>
 <span class="r-in"><span><span class="co"># or use shot alias bnf</span></span></span>
 <span class="r-in"><span><span class="fu">bayesnecformula</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span> <span class="op">==</span> <span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(sqrt(x), "nec3param")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55b4b0363fe8&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55a4df7a7b98&gt;</span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">ogl</span><span class="op">(</span><span class="va">group_1</span><span class="op">)</span> <span class="op">+</span> <span class="fu">pgl</span><span class="op">(</span><span class="va">group_2</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(x, "nec3param") + ogl(group_1) + pgl(group_2)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55b4b0363fe8&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55a4df7a7b98&gt;</span>
 <span class="r-in"><span><span class="co"># dispersion as a function of the predictor</span></span></span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">disp</span><span class="op">(</span><span class="op">~</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y ~ crf(x, "nec3param") + disp(~x)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55b4b0363fe8&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55a4df7a7b98&gt;</span>
 <span class="r-in"><span><span class="co"># dispersion as a function of the fitted mean</span></span></span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">disp</span><span class="op">(</span><span class="st">"power"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y ~ crf(x, "nec3param") + disp("power")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55b4b0363fe8&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55a4df7a7b98&gt;</span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="va">nec</span> <span class="op">+</span> <span class="va">top</span> <span class="op">|</span> <span class="va">group_1</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55b4b0363fe8&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55a4df7a7b98&gt;</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span><span class="co"># The predictor expression is passed to Stan by brms. Precompute a</span></span></span>
 <span class="r-in"><span><span class="co"># transformation unless its function is also defined for Stan.</span></span></span>
 <span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/try.html" class="external-link">try</a></span><span class="op">(</span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/scale.html" class="external-link">scale</a></span><span class="op">(</span><span class="va">x</span>, scale <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(scale(x, scale = TRUE), "nec3param")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55b4b0363fe8&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55a4df7a7b98&gt;</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
