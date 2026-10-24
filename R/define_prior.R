@@ -1446,8 +1446,7 @@ define_prior <- function(model, family, predictor, response,
     #
     # The term is checked against the two-block family first. bnec() checks it
     # in wrangle_model_formula(), but get_priors() reaches this function
-    # without building a formula, and would otherwise return priors for
-    # hurdle_negbinomial, which bnec() refuses, and fail on hurdle_poisson
+    # without building a formula, and would otherwise fail on hurdle_poisson
     # inside brms with a message naming neither the family nor the term.
     if (!is.null(disp_spec)) {
       check_disp_spec(disp_spec, family, response = mu_response)
@@ -1455,11 +1454,19 @@ define_prior <- function(model, family, predictor, response,
     # The survivors' own predictor values go with them, so that the replicate
     # centre of the regularizing set groups each positive response by the
     # concentration it was observed at. See #472.
+    #
+    # The positive block of a count hurdle is a zero-truncated count, as the
+    # growth component bnec_hurdle() fits is, so the replicate centre falls
+    # back to 0 here for the reason it does there: the untruncated negative
+    # binomial variance identity does not hold for positive-only counts. The
+    # truncation is the likelihood's own, so no formula attribute records it.
+    # See #410.
     disp_priors <- define_disp_prior(disp_spec, mu_family, mu_response,
                                      predictor = mu_split$x,
                                      prior_type = prior_type,
                                      rate_response = rate_response,
-                                     truncated_response = truncated_response)
+                                     truncated_response = truncated_response ||
+                                       is_count_hurdle(family))
     if (!is.null(disp_priors)) {
       hurdle_priors <- hurdle_priors + disp_priors
     }

@@ -238,8 +238,8 @@ get_priors.formula <- function(object, data, family = NULL,
   # define_prior() keeps check_disp_spec() as the backstop. See #445.
   if (!is.null(disp_spec)) {
     check_disp_spec(disp_spec, family, response = disp_response(bdat, family))
-    if (is_factorised_count_formula(object, family)) {
-      check_disp_count_truncation(object)
+    if (shape_in_reported_mean(object, family)) {
+      check_disp_count_truncation(object, family)
     }
   }
   out <- lapply(model, function(m) {
