@@ -584,6 +584,12 @@ regularizing_location <- function(predictor, response, side,
 #' \code{NA} reaches \pkg{brms} as "Cannot coerce 'prior' to a single character
 #' value".
 #'
+#' The tag is read through \code{canonical_fam_tag()} before either rewrite.
+#' A family taken from a fitted object records Gamma as \code{gamma}, which
+#' indexed the \code{top} and \code{bot} tables to \code{NA} and stopped with
+#' the same \pkg{brms} error; \code{\link{amend}} builds the priors of an added
+#' equation from that stored family (#436).
+#'
 #' @param family A \code{\link[stats]{family}} object.
 #'
 #' @return A \code{\link[base]{character}} string.
@@ -596,7 +602,8 @@ prior_family_tag <- function(family) {
   if (isTRUE(family$link %in% c("logit", "log"))) {
     return("gaussian")
   }
-  sub("^zero_inflated_(poisson|negbinomial)$", "\\1", family$family)
+  sub("^zero_inflated_(poisson|negbinomial)$", "\\1",
+      canonical_fam_tag(family))
 }
 
 #' Whether a family's response-scaled parameters are bounded below at zero
@@ -1823,7 +1830,9 @@ define_disp_prior <- function(disp_spec, family, response, predictor = NULL,
   if (is.null(disp_spec) || disp_spec$route != "B") {
     return(NULL)
   }
-  fam_tag <- family$family
+  # Through canonical_fam_tag() for the reason prior_family_tag() gives: a
+  # family taken from a fitted object records Gamma as gamma (#436).
+  fam_tag <- canonical_fam_tag(family)
   c0_prs <- disp_intercept_priors(response)
   out <- prior_string(unname(c0_prs[fam_tag]), nlpar = "c0")
   slopes <- disp_slope_priors(disp_spec, family, response, predictor,

@@ -2980,3 +2980,32 @@ test_that("the flatness report offers the declaration only where usable (#394)",
   expect_identical(
     bayesnec:::declaration_advice(Gamma(link = "log"), d$y * 10), "")
 })
+
+# ---- #436, a family read off a fit ----------------------------------------
+
+test_that("a Gamma family read off a fit builds the priors bnec() builds (#436)", {
+  # brms records Gamma as gamma, which indexed the top and bot tables, and the
+  # table of c0 priors, to NA. amend() builds an added equation's priors from
+  # that stored family.
+  stored <- brms::bf(y ~ x, family = Gamma(link = "identity"))$family
+  expect_identical(stored$family, "gamma")
+  expect_identical(prior_family_tag(stored), "Gamma")
+  expect_true(zero_bounded_family(stored))
+  expect_identical(asymptote_floor(stored, nec_data$y), 0)
+  validated <- validate_family("Gamma")
+  x <- nec_data$x
+  y <- nec_data$y * 10
+  models <- suppressMessages(check_models(mod_groups$all, validated))
+  specs <- list(none = NULL, power = list(route = "B", value = "power"),
+                loglinear = list(route = "B", value = "loglinear"))
+  for (m in models) for (pt in c("uninformative", "regularizing")) {
+    for (s in names(specs)) {
+      expect_identical(
+        define_prior(m, stored, x, y, prior_type = pt, disp_spec = specs[[s]]),
+        define_prior(m, validated, x, y, prior_type = pt,
+                     disp_spec = specs[[s]]),
+        label = paste(m, pt, s)
+      )
+    }
+  }
+})

@@ -1591,7 +1591,9 @@ add_brm_defaults <- function(
   # already in the set, to a model being added to it, so the search had to run
   # to overwrite them. amend() no longer passes them. See #290.
   if (!("init" %in% names(brm_args))) {
-    msg_tag <- family$family
+    # canonical_fam_tag() for the reason fit_bayesnec() gives at its own
+    # message: amend() passes a stored family, which records Gamma as gamma.
+    msg_tag <- canonical_fam_tag(family)
     model_tag <- if (is.null(model_survival) || identical(model_survival,
                                                           model)) {
       model
@@ -2341,7 +2343,8 @@ check_transformed_par_bounds <- function(priors, group_spec, family) {
   if (length(bad) > 0) {
     bounds <- if (need_ub) "lb = 0 and ub = 1" else "lb = 0"
     stop("The prior(s) for ", paste0("\"", bad, "\"", collapse = "; "),
-         " do not bound the parameter to the range the ", family$family,
+         " do not bound the parameter to the range the ",
+         canonical_fam_tag(family),
          " mean is defined on. A group-level term on ",
          paste0("\"", bad, "\"", collapse = "; "),
          " applies its deviation multiplicatively, which is only defined while",
