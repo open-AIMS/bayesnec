@@ -70,7 +70,8 @@ it or because the corresponding Stan function is supplied through
 A predictor written with a leading minus, as in \code{crf(-x)} or
 \code{crf(-log(x))}, is refused. A model formula reads that minus as the
 operator that removes a term, so the model would be fitted on \code{x} or
-\code{log(x)}. Write the negation inside \code{I()}, as in
+\code{log(x)}. This also applies to \code{crf(+(-x))}, where a unary plus
+encloses the negation. Write the negation inside \code{I()}, as in
 \code{crf(I(-x))}, or compute it into a column of the data.
 
 \bold{Group-level terms: \code{glterms}}
