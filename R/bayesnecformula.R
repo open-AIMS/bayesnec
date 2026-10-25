@@ -60,7 +60,8 @@
 #' A predictor written with a leading minus, as in \code{crf(-x)} or
 #' \code{crf(-log(x))}, is refused. A model formula reads that minus as the
 #' operator that removes a term, so the model would be fitted on \code{x} or
-#' \code{log(x)}. Write the negation inside \code{I()}, as in
+#' \code{log(x)}. This also applies to \code{crf(+(-x))}, where a unary plus
+#' encloses the negation. Write the negation inside \code{I()}, as in
 #' \code{crf(I(-x))}, or compute it into a column of the data.
 #'
 #' \bold{Group-level terms: \code{glterms}}
@@ -821,11 +822,12 @@ check_syntactic_names <- function(formula) {
 #' refused with that form as the remedy (D34), rather than wrapped in
 #' \code{I()} wherever the term is rebuilt from its text.
 #'
-#' Only the outermost call is tested, once any enclosing parentheses are
-#' removed: the formula removes them as well, so \code{crf((-x))} was fitted on
-#' \code{x}, and \code{sub_x_transformation()}, which returns a value
-#' unchanged where the predictor is not a call, reported it on \code{x} too,
-#' not on the \code{-x} written. A minus inside a call, as in
+#' Only a negation outside \code{I()} is tested, once any enclosing parentheses
+#' or unary pluses are removed: the formula removes them as well, so
+#' \code{crf((-x))} and \code{crf(+(-x))} were both fitted on \code{x}.
+#' \code{sub_x_transformation()} reported \code{crf((-x))} on \code{x}, because
+#' it returns a value unchanged for a parenthesised predictor, but reported
+#' \code{crf(+(-x))} on \code{-x}. A minus inside a call, as in
 #' \code{crf(log(x - 1))}, is an argument of that call and is read the same way
 #' on every path. A binary minus at the top, as in \code{crf(log(x) - 1)}, is
 #' outside D34 and is not refused here.
@@ -840,13 +842,19 @@ check_syntactic_names <- function(formula) {
 #' @noRd
 check_crf_leading_minus <- function(formula) {
   rhs_call <- rhs(formula)
-  rhs_terms <- list()
-  while (is.call(rhs_call) && length(rhs_call) == 3 &&
-           identical(rhs_call[[1]], quote(`+`))) {
-    rhs_terms <- c(list(rhs_call[[3]]), rhs_terms)
-    rhs_call <- rhs_call[[2]]
+  # Parentheses around a whole crf() term also disappear when the model frame
+  # reads the formula. Inspect inside them so (crf(-x)) cannot bypass the check.
+  collect_rhs_terms <- function(expr) {
+    if (is.call(expr) && identical(expr[[1]], quote(`(`))) {
+      return(collect_rhs_terms(expr[[2]]))
+    }
+    if (is.call(expr) && length(expr) == 3 &&
+        identical(expr[[1]], quote(`+`))) {
+      return(c(collect_rhs_terms(expr[[2]]), collect_rhs_terms(expr[[3]])))
+    }
+    list(expr)
   }
-  rhs_terms <- c(list(rhs_call), rhs_terms)
+  rhs_terms <- collect_rhs_terms(rhs_call)
   is_crf <- vapply(rhs_terms, function(term) {
     is.call(term) && identical(term[[1]], quote(crf))
   }, logical(1))
@@ -864,7 +872,17 @@ check_crf_leading_minus <- function(formula) {
     }
     expr
   }
-  negated <- unparen(x_arg)
+  negated <- x_arg
+  plus_wrapped <- FALSE
+  repeat {
+    negated <- unparen(negated)
+    if (!(is.call(negated) && length(negated) == 2 &&
+          identical(negated[[1]], quote(`+`)))) {
+      break
+    }
+    plus_wrapped <- TRUE
+    negated <- negated[[2]]
+  }
   if (!(is.call(negated) && identical(negated[[1]], quote(`-`)) &&
           length(negated) == 2)) {
     return(invisible(NULL))
@@ -883,8 +901,10 @@ check_crf_leading_minus <- function(formula) {
   }
   remedy <- term
   remedy[[slot + 1L]] <- call("I", negated)
-  stop("The predictor in ", deparse1(term), " is written with a leading",
-       " minus, which a model formula reads as the operator that removes a",
+  stop("The predictor in ", deparse1(term),
+       if (plus_wrapped) " contains a negation outside I()" else
+         " is written with a leading minus",
+       ", which a model formula reads as the operator that removes a",
        " term, so the model would be fitted on ",
        deparse1(unparen(negated[[2]])), ", not on ", deparse1(negated),
        ". Write the negation inside I(), as in ",

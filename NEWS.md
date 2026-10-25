@@ -1979,8 +1979,9 @@
   reversed. Nothing said so. The refusal is raised once per call, before
   anything is fitted, by `bnec()`, `bnec_group()`, `bnec_hurdle()`,
   `bnec_joint()`, `make_brmsformula()`, `get_priors()` and `check_formula()`.
-  A predictor in parentheses, as in `crf((-x))`, is refused as well. A fit
-  made with such a predictor by an earlier version is refused by the functions
+  A predictor in parentheses, as in `crf((-x))`, or with a unary plus
+  enclosing the negation, as in `crf(+(-x))`, is refused as well. A fit made
+  with such a predictor by an earlier version is refused by the functions
   that rebuild its model frame, among them `ecx()`, `nsec()` and `autoplot()`,
   where they previously returned estimates on the wrong scale. `crf(I(-x))`
   and a minus inside a call, as in `crf(log(x - 1))`, are fitted as before

@@ -338,6 +338,29 @@ test_that("a crf() predictor with a leading minus is refused (#438)", {
                "as in crf(I(-x), \"nec3param\")", fixed = TRUE)
   expect_error(check_formula(bnf(y ~ crf(-(x), "nec3param")), minus_data),
                "is written with a leading minus")
+  err <- expect_error(
+    check_formula(bnf(y ~ crf(+(-x), "nec3param")), minus_data),
+    "contains a negation outside I()", fixed = TRUE
+  )
+  expect_match(conditionMessage(err), "fitted on x, not on -x.", fixed = TRUE)
+  expect_match(conditionMessage(err), "crf(I(-x), \"nec3param\")",
+               fixed = TRUE)
+  expect_error(check_formula(bnf(y ~ crf((+(-x)), "nec3param")), minus_data),
+               "contains a negation outside I()", fixed = TRUE)
+  # Parentheses around the whole crf() term also disappear in model.frame().
+  expect_error(check_formula(bnf(y ~ (crf(-x, "nec3param"))), minus_data),
+               "is written with a leading minus")
+  expect_error(
+    model.frame(bnf(y ~ (crf(-x, "nec3param"))), data = minus_data),
+    "is written with a leading minus"
+  )
+  expect_error(model.frame(bnf(y ~ crf(+(-x), "nec3param")),
+                           data = minus_data),
+               "contains a negation outside I()", fixed = TRUE)
+  expect_error(
+    check_formula(bnf(y ~ (crf(-x, "nec3param")) + ogl(grp)), minus_data),
+    "is written with a leading minus"
+  )
   # The argument named, and the model set before it.
   expect_error(
     check_formula(bnf(y ~ crf(model = "nec3param", x = -x)), minus_data),
@@ -354,7 +377,9 @@ test_that("a minus inside the predictor or under I() is not refused (#438)", {
   for (f in list(bnf(y ~ crf(I(-x), "nec3param")),
                  bnf(y ~ crf(log(x - 1), "nec3param")),
                  bnf(y ~ crf(I(-log(x)), "nec3param")),
-                 bnf(y ~ crf(exp(-x), "nec3param")))) {
+                 bnf(y ~ crf(exp(-x), "nec3param")),
+                 bnf(y ~ crf(+(x), "nec3param")),
+                 bnf(y ~ (crf(x, "nec3param"))))) {
     expect_identical(check_formula(f, minus_data), f)
   }
   mf <- model.frame(bnf(y ~ crf(I(-x), "nec3param")), data = minus_data)
