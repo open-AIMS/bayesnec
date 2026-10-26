@@ -92,7 +92,8 @@ test_that("a response at one bound is fitted as ecxflat alone (#400, #419)", {
   # them; D31 fits the constant equation to them instead, decided once before
   # the model loop. The two-equation set asked for is replaced, so the call
   # takes the single-model branch and never reaches the model loop. Beta at 0
-  # cannot be fitted by ecxflat either and is still refused.
+  # cannot be fitted by ecxflat either and is still refused, and neither can
+  # zero_inflated_beta at 0, whose beta block has no data (#441).
   loop_calls <- 0L
   fitted <- character(0)
   local_mocked_bindings(
@@ -120,7 +121,7 @@ test_that("a response at one bound is fitted as ecxflat alone (#400, #419)", {
       ),
       error = conditionMessage
     )
-    if (nm == "beta_zero") {
+    if (nm %in% at_bound_refused) {
       expect_match(err, paste0("The response \"", cs$column, "\" is at the ",
                                cs$bound, " bound"), fixed = TRUE, info = nm)
       expect_match(err, "the constant equation ecxflat included",
@@ -136,7 +137,8 @@ test_that("a response at one bound is fitted as ecxflat alone (#400, #419)", {
                                 "alone, and the 2 other equation(s) requested",
                                 "are not fitted"), fixed = TRUE, info = nm)
   }
-  expect_identical(fitted, rep("ecxflat", length(cases) - 1L))
+  expect_identical(fitted, rep("ecxflat",
+                               length(cases) - length(at_bound_refused)))
   expect_identical(loop_calls, 0L)
 })
 
@@ -182,6 +184,81 @@ test_that("one observation off the bound reaches the model loop (#400)", {
       "reached the model loop", info = nm
     )
   }
+})
+
+test_that("zero_inflated_beta at 1 takes the path beta does (#441)", {
+  # D35: a response of 1 throughout is fitted with ecxflat alone, as D31 does
+  # for beta. Before it the ones were shifted to 0.999 and the set requested
+  # was fitted. The messages and the equation reaching the fit are compared
+  # with those for beta on the same data, the family name aside.
+  fitted <- list()
+  local_mocked_bindings(
+    fit_bayesnec = function(..., model) {
+      fitted[[length(fitted) + 1L]] <<- model
+      stop("fit reached")
+    },
+    .package = "bayesnec"
+  )
+  run <- function(family) {
+    msgs <- character(0)
+    err <- tryCatch(
+      withCallingHandlers(
+        bnec(cover ~ crf(x, c("nec3param", "ecx4param")),
+             data = at_bound_cases()$zib_one$data, family = family),
+        message = function(m) {
+          msgs <<- c(msgs, conditionMessage(m))
+          invokeRestart("muffleMessage")
+        }
+      ),
+      error = conditionMessage
+    )
+    list(err = err, msgs = msgs)
+  }
+  zib <- run("zero_inflated_beta")
+  beta <- run("Beta")
+  expect_identical(zib$err, "fit reached")
+  expect_identical(fitted, list("ecxflat", "ecxflat"))
+  expect_length(zib$msgs, 2)
+  expect_match(zib$msgs[1], "upper bound of a zero_inflated_beta response",
+               fixed = TRUE)
+  expect_match(zib$msgs[2], "They have been shifted to 0.999", fixed = TRUE)
+  expect_identical(sub("zero_inflated_beta", "beta", zib$msgs, fixed = TRUE),
+                   beta$msgs)
+})
+
+test_that("zero_inflated_beta at 0 is refused once, before any fit (#441)", {
+  # A model set, because bnec() wraps each model's fit in try(): the call
+  # reached the model loop, and every equation failed there.
+  calls <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      calls <<- calls + 1L
+      stop("fit reached")
+    },
+    .package = "bayesnec"
+  )
+  zz <- at_bound_cases()$zib_zero
+  msgs <- character(0)
+  err <- NULL
+  expect_no_warning(
+    err <- tryCatch(
+      withCallingHandlers(
+        bnec(zz$formula, data = zz$data, family = zz$family),
+        message = function(m) {
+          msgs <<- c(msgs, conditionMessage(m))
+          invokeRestart("muffleMessage")
+        }
+      ),
+      error = conditionMessage
+    )
+  )
+  expect_match(err, paste0("The response \"cover\" is at the lower bound of",
+                           " a zero_inflated_beta response"), fixed = TRUE)
+  expect_match(err, "no observation of this response is above zero",
+               fixed = TRUE)
+  expect_false(grepl("None of the models fit successfully", err, fixed = TRUE))
+  expect_length(msgs, 0)
+  expect_identical(calls, 0L)
 })
 
 # ---- #419, the constant equation, fitted --------------------------------------

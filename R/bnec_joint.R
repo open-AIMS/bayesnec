@@ -227,6 +227,9 @@ bnec_joint.bayesnechurdlefit <- function(object, model = NULL,
   }
   formula <- bayesnecformula(formula, env = parent.frame())
   check_syntactic_names(formula)
+  # Beside it, so that a supplied crf(-x) is refused before the refit is
+  # announced rather than by the bnec() call that follows it. See #438.
+  check_crf_leading_minus(formula)
   best <- best_crossed(object)
   if (is.null(model)) {
     model <- best$growth
@@ -323,7 +326,10 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
   # Checked before swap_crf_model() below rebuilds the crf() term from
   # deparsed text, for the reason given in the bayesnechurdlefit method: a
   # supplied formula has not been through bnec_group()'s own check. See #398.
+  # The leading-minus refusal is raised beside it for the reason given in the
+  # bayesnechurdlefit method. See #438.
   check_syntactic_names(formula)
+  check_crf_leading_minus(formula)
   # The grouping variable reaches formula text on two routes: as
   # `0 + <group_var>` on each curve parameter where every level is fitted one
   # equation (add_formula_level_terms()), and as `<dpar> ~ 0 + <group_var>`

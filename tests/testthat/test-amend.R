@@ -178,6 +178,35 @@ test_that("amend lets ecxflat alone through at a bound, and names it (#419)", {
   expect_false(grepl("upper bound", paste(res, collapse = " ")))
 })
 
+test_that("amend tests a zero_inflated_beta response at both bounds (#441)", {
+  # D35 brings zero_inflated_beta into the rule beta follows. At 1 a curve
+  # equation is refused and ecxflat let through; at 0 ecxflat is refused too,
+  # because the beta block has no data. The stored data are altered by hand,
+  # as in the beta test above.
+  m <- manec_example
+  m$mod_fits[[1]]$fit$data$y <- 1
+  m$mod_fits[[1]]$fit$family <- brms::zero_inflated_beta(
+    link = "identity", link_zi = "identity"
+  )
+  fitted <- character(0)
+  local_mocked_bindings(
+    fit_bayesnec = function(..., model) {
+      fitted <<- c(fitted, model)
+      stop("model fit reached")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(suppressMessages(amend(m, add = "nec3param")),
+               "upper bound of a zero_inflated_beta response", fixed = TRUE)
+  res <- tryCatch(suppressWarnings(suppressMessages(amend(m, add = "ecxflat"))),
+                  error = conditionMessage)
+  expect_identical(fitted, "ecxflat")
+  m$mod_fits[[1]]$fit$data$y <- 0
+  expect_error(suppressMessages(amend(m, add = "ecxflat")),
+               "so the beta block has no data", fixed = TRUE)
+  expect_identical(fitted, "ecxflat")
+})
+
 
 # ---- #470, an added equation that keeps no group-level term ------------------
 

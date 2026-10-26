@@ -1472,7 +1472,16 @@ response_bound_reached <- function(y, trials = NULL) {
 #' @noRd
 response_bound_state <- function(data, family, group = NULL) {
   fam_tag <- if (inherits(family, "family")) family$family else family
-  if (!fam_tag %in% c("bernoulli", "binomial", "beta_binomial", "beta")) {
+  # zero_inflated_beta is listed although 0 lies inside its support, because
+  # both of its bounds leave a response that does not vary. Its ones are shifted
+  # to 0.999 as beta's are, so a response of 1 throughout is the beta case and
+  # is fitted with ecxflat alone. Its zeros go to the zero-inflation block, so a
+  # response of 0 throughout leaves the beta block with no data, and
+  # constant_fits_bound() refuses it. Before D35 it was left out, and both
+  # reached fitting: the ones shifted, the zeros with no positive value for the
+  # beta block's default priors. See #441.
+  if (!fam_tag %in% c("bernoulli", "binomial", "beta_binomial", "beta",
+                      "zero_inflated_beta")) {
     return(NULL)
   }
   y <- try(retrieve_var(data, "y_var", error = TRUE), silent = TRUE)
@@ -1508,13 +1517,16 @@ response_bound_state <- function(data, family, group = NULL) {
 
 #' Whether the constant equation can be fitted at a bound
 #'
-#' It can at every bound but one. A \code{beta} distribution cannot represent
-#' a zero, and \code{\link{check_data}} shifts a zero off the boundary by a
-#' tenth of the smallest positive observation, which a response of 0 in every
-#' observation does not have: the shift is \code{Inf}. Its ones are shifted to
-#' 0.999, which needs no other observation, so a \code{beta} response of 1 in
-#' every observation can be fitted. The discrete families are fitted at either
-#' bound as recorded.
+#' It can at every bound but 0 of the two beta families. A \code{beta}
+#' distribution cannot represent a zero, and \code{\link{check_data}} shifts a
+#' zero off the boundary by a tenth of the smallest positive observation, which
+#' a response of 0 in every observation does not have: the shift is
+#' \code{Inf}. A \code{zero_inflated_beta} response keeps its zeros for the
+#' zero-inflation block and fits its beta block to the observations above zero,
+#' of which a response of 0 in every observation has none (#441). The ones of
+#' both families are shifted to 0.999, which needs no other observation, so a
+#' response of 1 in every observation can be fitted. The discrete families are
+#' fitted at either bound as recorded.
 #'
 #' @param fam_tag The family tag.
 #' @param bound 0 or 1.
@@ -1522,29 +1534,35 @@ response_bound_state <- function(data, family, group = NULL) {
 #' @return A \code{\link[base]{logical}} of length 1.
 #' @noRd
 constant_fits_bound <- function(fam_tag, bound) {
-  !(identical(fam_tag, "beta") && bound == 0)
+  !(fam_tag %in% c("beta", "zero_inflated_beta") && bound == 0)
 }
 
 #' Refuse a bounded response with every observation at one of its bounds
 #'
-#' A \code{bernoulli}, \code{binomial}, \code{beta_binomial} or \code{beta}
-#' response whose every observation is 0, or 1 (every count equal to its
-#' trials), does not vary, so it identifies no concentration-response curve.
+#' A \code{bernoulli}, \code{binomial}, \code{beta_binomial}, \code{beta} or
+#' \code{zero_inflated_beta} response whose every observation is 0, or 1 (every
+#' count equal to its trials), does not vary, so it identifies no
+#' concentration-response curve.
 #' Before #400 the three discrete families failed inside prior construction:
 #' \code{response_link_scale()} anchors a response at a bound on the largest
 #' observation strictly inside it, which does not exist here, and
 #' \code{define_prior()} then stopped in \code{quantile()} with a message that
 #' named neither the column nor the cause. \code{beta} at 1 was shifted to
 #' 0.999 and fitted. \code{beta} at 0 was shifted by a tenth of the smallest
-#' positive observation, which with none present is \code{Inf}.
+#' positive observation, which with none present is \code{Inf}. Before #441
+#' \code{zero_inflated_beta} at 1 was shifted to 0.999 and fitted with the set
+#' requested, and at 0 reached prior construction with no value above zero for
+#' its beta block, where \code{min()} warned that it had no non-missing
+#' arguments.
 #'
 #' Such a response does identify the constant equation \code{ecxflat}, whose
 #' one parameter is the level of the response, so the refusal applies to the
 #' curve equations only (#419). \code{\link{bnec}} and \code{\link{bnec_group}}
 #' fit \code{ecxflat} alone in place of whatever set was requested, through
-#' \code{constant_fallback()}, and reach this function only for the one case
-#' \code{ecxflat} cannot be fitted to either, a \code{beta} response of 0 in
-#' every observation (see \code{constant_fits_bound()}). The other routes keep
+#' \code{constant_fallback()}, and reach this function only for the cases
+#' \code{ecxflat} cannot be fitted to either, a \code{beta} or
+#' \code{zero_inflated_beta} response of 0 in every observation (see
+#' \code{constant_fits_bound()}). The other routes keep
 #' the refusal for a set holding any curve equation and let a set of
 #' \code{ecxflat} alone through: \code{\link{get_priors}}, whose curve
 #' equations have no prior to give on such a response, and
@@ -1621,11 +1639,28 @@ check_response_at_bound <- function(data, family, group = NULL,
   # bound. Where it can, the message names it, because it is the one equation
   # that can be; where it cannot, naming it would send the user to a second
   # refusal. See #419.
-  no_zero <- function(held, it) {
+  #
+  # The two beta families cannot be fitted at 0 for different reasons, and the
+  # message gives the one that applies. A zero_inflated_beta response of 0 is
+  # inside its support, so the beta message, that a zero cannot be represented,
+  # would be false for it. See #441.
+  no_zero <- function(grouped) {
+    it <- if (grouped) "them" else "it"
+    if (identical(fam_tag, "zero_inflated_beta")) {
+      return(paste0(
+        " A zero_inflated_beta response fits its zeros in the zero-inflation",
+        " block and its other values in the beta block, and no observation of ",
+        if (grouped) "these levels" else "this response", " is above zero,",
+        " so the beta block has no data and no equation can be fitted to ", it,
+        ", the constant equation ecxflat included."
+      ))
+    }
     paste0(" A beta distribution cannot represent a zero, and bayesnec",
            " shifts a zero off the boundary by a tenth of the smallest",
            " positive value,",
-           " which ", held, ", so no equation can be fitted to ", it, ", the",
+           " which ", if (grouped) "these levels do not have" else
+             "this response does not have",
+           ", so no equation can be fitted to ", it, ", the",
            " constant equation ecxflat included.")
   }
   use_flat <- paste0(" The constant equation ecxflat, whose mean does not",
@@ -1646,7 +1681,7 @@ check_response_at_bound <- function(data, family, group = NULL,
          " response in every observation: ", describe(bound), ".", why,
          " curve, so bayesnec does not fit one to it or derive default priors",
          " from it.",
-         if (fits) use_flat else no_zero("this response does not have", "it"),
+         if (fits) use_flat else no_zero(grouped = FALSE),
          call. = FALSE)
   }
   bounds <- state$bounds
@@ -1673,7 +1708,7 @@ check_response_at_bound <- function(data, family, group = NULL,
   reason <- if (fits) {
     paste0(why, " curve.")
   } else {
-    no_zero("these levels do not have", "them")
+    no_zero(grouped = TRUE)
   }
   stop(subject, " is at a bound of a ", fam_tag, " response in every",
        " observation of ", length(hit), " level(s) of \"", group_name, "\": ",
@@ -1691,8 +1726,10 @@ check_response_at_bound <- function(data, family, group = NULL,
 #' \code{\link{bnec}} fits \code{ecxflat} alone in place of the set requested,
 #' whatever that set was, rather than refusing the call as it did under #400
 #' (D31). Decided once, before the model loop, for the reason
-#' \code{\link{check_response_at_bound}} is raised there. The one bound
-#' \code{ecxflat} cannot be fitted at is refused by that function first.
+#' \code{\link{check_response_at_bound}} is raised there. A response
+#' \code{ecxflat} cannot be fitted to either, a \code{beta} or
+#' \code{zero_inflated_beta} response of 0 throughout, is refused by that
+#' function first.
 #'
 #' The requested equations are recorded as excluded, with the reason, so that
 #' \code{\link{bnec_record}} states why the set fitted is not the set asked for.

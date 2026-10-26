@@ -124,9 +124,9 @@ unfitted_group_plot_fit <- function(fit = nec4param, values = NULL) {
 # A bounded response with every observation at one of its bounds, once for each
 # case #400 names: bernoulli at 1 and at 0, binomial with every count equal to
 # its trials and with every count 0, beta at 1, and beta at 0, which a numeric
-# response of zeros reaches because it is the family chosen for one. The
-# response is not called y, so that a message naming the column is seen to
-# name it. `near` is the same data with one observation set off the bound, at
+# response of zeros reaches because it is the family chosen for one. #441 adds
+# zero_inflated_beta at 1 and at 0. The response is not called y, so that a
+# message naming the column is seen to name it. `near` is the same data with one observation set off the bound, at
 # the concentration where a decline would place it, which is a response that
 # varies and must still pass. Shared by test-bnec.R and test-get_priors.R,
 # which assert the refusal through the two entry points.
@@ -162,6 +162,15 @@ at_bound_cases <- function() {
     beta_one = one(data.frame(x = x, cover = rep(1, n)), "Beta", "cover",
                    "upper", "cover", top, 0.9),
     beta_zero = one(data.frame(x = x, cover = rep(0, n)), "Beta", "cover",
-                    "lower", "cover", low, 0.1)
+                    "lower", "cover", low, 0.1),
+    zib_one = one(data.frame(x = x, cover = rep(1, n)), "zero_inflated_beta",
+                  "cover", "upper", "cover", top, 0.9),
+    zib_zero = one(data.frame(x = x, cover = rep(0, n)), "zero_inflated_beta",
+                   "cover", "lower", "cover", low, 0.1)
   )
 }
+
+# The cases of at_bound_cases() that no equation can be fitted to, ecxflat
+# included: a beta response of 0 throughout (#419) and a zero_inflated_beta one
+# (#441).
+at_bound_refused <- c("beta_zero", "zib_zero")
