@@ -251,17 +251,9 @@ bnec_joint.bayesnechurdlefit <- function(object, model = NULL,
          "\" growth component, so this fit cannot be refitted jointly.",
          call. = FALSE)
   }
-  # The disp() term is checked against the two-block family here, before the
-  # refit is announced. bnec() checks it as well, once before its model loop,
-  # but only after the message below has said the refit is under way, and its
-  # remedy cannot name the `formula` argument, which is how a caller of
-  # bnec_joint() leaves out a term. A held formula has passed the same checks
-  # on the growth component's family in bnec_hurdle(), which refuses a term
-  # neither route can fit, so what reaches a refusal here is a supplied
-  # formula: a term on hurdle_poisson, which has no dispersion parameter, or
-  # a disp(~z) column on hurdle_negbinomial. tryCatch() rather than a message
-  # of its own, so that each reason stays the one its check gives and is
-  # stated in one place. See #410.
+  # Checked before the refit is announced, so that the refusal can name the
+  # `formula` argument; bnec() repeats the checks but cannot. tryCatch() adds
+  # that remedy to each check's own message.
   disp_spec <- parse_disp_term(formula)
   if (!is.null(disp_spec)) {
     tryCatch(

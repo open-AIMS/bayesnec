@@ -535,14 +535,9 @@ ecx_asymptote <- function(object, type) {
 #' @param asymptote Draws of the underlying count-mean asymptote.
 #' @param newdata Prediction data used to obtain shape draws.
 #'
-#' @details The negative binomial zero-truncated mean depends on the shape,
-#' which is read at the asymptote. Without a \code{disp()} term the shape is
-#' one value for the whole curve, or one per level of a joint refit, and is
-#' read at the first row of \code{newdata}, the control. Under a variance
-#' function of the mean, such as \code{disp("power")}, the shape varies along
-#' the curve, and it is the sub-model evaluated at \code{mu = bot}; see
-#' \code{disp_positive_asymptote()}. Under \code{disp(~...)} the request is
-#' refused, because the asymptote has no single shape. RF, D39 on #410.
+#' @details The negative binomial zero-truncated mean needs the shape at the
+#' asymptote. A constant shape is read at the first row of \code{newdata};
+#' under any other \code{disp()} term see \code{disp_positive_asymptote()}.
 #'
 #' @return \code{asymptote}, transformed where the reported curve is
 #' \code{E[Y | Y > 0]}.
@@ -612,29 +607,14 @@ count_positive_asymptote <- function(object, dpar, asymptote, newdata) {
 #' @param mean_asymptote Draws of the count-mean asymptote on the response
 #' scale, or 0 for an equation without \code{bot}.
 #'
-#' @details Under a variance function of the mean the shape at the asymptote
-#' is the dispersion sub-model evaluated at \code{mu = bot}, draw by draw
-#' (\code{disp_at_mean()}). Read at the control instead, as it is for a
-#' constant shape, it is the shape at the control's mean. Under
-#' \code{disp("power")} with \code{c1} above zero on a declining curve, that
-#' shape is larger than the one at \code{bot}, and the positive-count
-#' asymptote it gives is too low, because the zero-truncated mean falls as
-#' the shape rises.
+#' @details Under a variance function of the mean the shape is the sub-model
+#' at \code{mu = bot}, draw by draw. Under \code{disp(~x)} the request is
+#' refused, because the asymptote lies beyond the data and has no single shape.
 #'
-#' An equation without \code{bot} declines towards a mean of 0, where the
-#' zero-truncated mean is \code{0 / 0} and its limit is taken instead. With
-#' \code{r} the limit of \code{mu / shape}, the limit is \code{r / log1p(r)},
-#' which is 1 at \code{r = 0}. \code{r} is 0 wherever the shape falls more
-#' slowly than the mean: under \code{"loglinear"}, whose shape at a mean of 0
-#' is finite, and under \code{"power"} with \code{c1 < 1}, which its default
-#' bounds on a negative binomial hold. With a shape on the log or softplus
-#' link, \code{"power"} has \code{shape} proportional to \code{mu^c1} near 0,
-#' so \code{r} is \code{exp(LOGREF - c0)} at \code{c1 = 1} and infinite above
-#' it, which a prior bounding \code{c1} above 1 allows.
-#'
-#' Under \code{disp(~...)} the shape is a function of the predictor or of
-#' another column, and the asymptote, which the curve reaches only beyond the
-#' data, has no single shape. The request is refused (D39).
+#' At a mean of 0, for an equation without \code{bot}, the zero-truncated mean
+#' is 0/0 and its limit \code{r / log1p(r)} is used, where \code{r} is the
+#' limit of \code{mu / shape}. \code{r} is 0, giving 1, unless \code{"power"}
+#' has \code{c1 >= 1} on a log or softplus shape link.
 #'
 #' @return A \code{\link[base]{numeric}} vector, one value per draw.
 #'

@@ -1439,12 +1439,8 @@ define_prior <- function(model, family, predictor, response,
     # centre of the regularizing set groups each positive response by the
     # concentration it was observed at. See #472.
     #
-    # The positive block of a count hurdle is a zero-truncated count, as the
-    # growth component bnec_hurdle() fits is, so the replicate centre falls
-    # back to 0 here for the reason it does there: the untruncated negative
-    # binomial variance identity does not hold for positive-only counts. The
-    # truncation is the likelihood's own, so no formula attribute records it.
-    # See #410.
+    # A count hurdle's positive block is zero-truncated in the likelihood, and
+    # no formula attribute records it, so the flag is set from the family.
     disp_priors <- define_disp_prior(disp_spec, mu_family, mu_response,
                                      predictor = mu_split$x,
                                      prior_type = prior_type,

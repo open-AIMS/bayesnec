@@ -145,19 +145,11 @@ parse_disp_term <- function(formula) {
 check_disp_spec <- function(spec, family, response = NULL) {
   # A family taken from a fit records Gamma as gamma.
   fam_tag <- canonical_fam_tag(family)
-  # The joint two-block families take the term on the dispersion parameter of
-  # their positive block, which is the only block that has one; the hu or zi
-  # block is a probability and is left as it is. hurdle_gamma,
-  # zero_inflated_beta and hurdle_negbinomial pass on to the checks below,
-  # which read the positive block's family through disp_family_tag(). RF, D29
-  # and D39 on #410. The shape of hurdle_negbinomial is also read at the
-  # asymptote of a relative ecx() of its positive counts, and
-  # count_positive_asymptote() evaluates it there; see
-  # disp_positive_asymptote().
+  # A two-block family takes the term on its positive block's dispersion
+  # parameter; disp_family_tag() gives the checks below that block's family.
   #
-  # Given its own message because the general one below names the remedy for
-  # a single-block family, poisson to negbinomial, and the corresponding
-  # two-block family is named here instead.
+  # hurdle_poisson has its own message so that the remedy names
+  # hurdle_negbinomial, where the general message below names negbinomial.
   if (identical(fam_tag, "hurdle_poisson")) {
     stop("Family hurdle_poisson has no free dispersion parameter, so there is",
          " nothing for disp() to model: the variance of its positive counts is",
@@ -444,8 +436,8 @@ disp_inits <- function(spec, family, response, predictor = NULL,
     keep <- which(response > 0)
     slope_y <- response[keep]
     slope_x <- if (is.null(predictor)) NULL else predictor[keep]
-    # As define_prior() reads it, so that the chain starts at the centre of
-    # the prior: the positive block of a count hurdle is zero-truncated.
+    # A count hurdle's positive block is zero-truncated. Match define_prior()
+    # so that the chain starts at the centre of the prior.
     truncated_response <- truncated_response || is_count_hurdle(family)
   }
   slopes <- disp_slope_priors(spec, family, slope_y, slope_x,
@@ -937,10 +929,9 @@ add_disp_block <- function(brms_bf, model, spec, family, x_var,
 #'
 #' @param vf An element of \code{disp_functions}.
 #'
-#' @details \code{@MU@} becomes \code{(.bnec_mu)}, wrapped as
-#' \code{make_disp_block()} wraps the curve, and each constant \code{@NAME@}
-#' becomes \code{.bnec_NAME}, so that the form has the structure of the
-#' fitted sub-model with a symbol wherever the fit has a curve or a literal.
+#' @details \code{@MU@} becomes \code{(.bnec_mu)} and each constant
+#' \code{@NAME@} becomes \code{.bnec_NAME}. Keep the parentheses: they match
+#' the ones \code{make_disp_block()} puts around the curve.
 #'
 #' @return A \code{\link[base]{call}}.
 #'
@@ -958,25 +949,11 @@ disp_form_template <- function(vf) {
 #' @param mu A \code{\link[base]{numeric}} vector of means on the response
 #' scale, one per posterior draw, or of length one.
 #'
-#' @details The sub-model is evaluated draw by draw from the posterior draws of
-#' its parameters, in the form \code{disp_functions} records, and passed
-#' through the inverse of the family's link on the dispersion parameter.
-#' \code{count_positive_asymptote()} needs the negative binomial shape at
-#' \code{mu = bot}, a mean the curve approaches only beyond the data, so the
-#' shape cannot be read off a row of a prediction grid as
-#' \code{posterior_epred(dpar = "shape")} reads it. RF, D39 on #410.
-#'
-#' The centring constants are read from the fitted formula rather than
-#' recomputed from the data: the dispersion formula is matched against
-#' \code{disp_form_template()}, and each constant is the literal found where
-#' the form has one. Recomputing them would need the response exactly as
-#' \code{wrangle_model_formula()} saw it, after any division by trials or a
-#' \code{rate()} denominator and with the zeros of a two-block family removed.
-#'
-#' The inverse link is taken from the \pkg{brms} negative binomial family
-#' built with the dispersion link as its mean link, so that the definition is
-#' the one \pkg{brms} fitted with. Every link \pkg{brms} accepts on the
-#' negative binomial shape is one it accepts on that family's mean.
+#' @details Evaluates the sub-model draw by draw. \code{mu} can lie beyond the
+#' data, where no prediction grid reaches. The centring constants are read
+#' from the fitted formula, because recomputing them needs the response
+#' exactly as \code{wrangle_model_formula()} saw it. The inverse link comes
+#' from \code{brmsfamily("negbinomial")}, which accepts every shape link.
 #'
 #' @return A \code{\link[base]{list}} with elements \code{value}, the
 #' dispersion parameter, one per draw; \code{pars}, the draws of each
@@ -1118,10 +1095,9 @@ disp_covariates <- function(formula, x_var = all.vars(crf_x_call(formula))) {
 #' the level \code{\link[base]{factor}} would put first and so the reference
 #' level \pkg{brms} codes it against. The value cannot change a quantity read
 #' from the mean, because no family a \code{disp(~...)} column is fitted for
-#' has a mean that involves the dispersion parameter. The two routes where it
-#' would, a zero-truncated negative binomial growth component and the joint
-#' \code{hurdle_negbinomial}, refuse the column; see
-#' \code{check_disp_count_truncation()}. For a predicted reading
+#' has a mean that involves the dispersion parameter. Where the mean does
+#' involve it, the column is refused; see \code{shape_in_reported_mean()}. For
+#' a predicted reading
 #' the value is a placeholder, which the prediction methods replace; see
 #' \code{disp_marginal_draws()}.
 #'
@@ -1181,17 +1157,10 @@ add_disp_placeholders <- function(newdata, data, formula,
 #' @param formula An object of class \code{\link{bayesnecformula}}.
 #' @param family Either a \code{\link[stats]{family}} object or a family tag.
 #'
-#' @details Two routes report the mean of zero-truncated negative binomial
-#' counts, \code{mu / (1 - (shape / (mu + shape))^shape)}
-#' (\code{hurdle_positive_mean()}). One is the growth component
-#' \code{bnec_hurdle()} fits with \code{family_growth = negbinomial()}, whose
-#' formula carries the internal truncation. The other is the joint
-#' \code{hurdle_negbinomial}, whose \code{dpar = "mu"} curve is that mean
-#' (\code{joint_hurdle_epred()}) and whose combined curve, the default of
-#' \code{ecx()}, \code{nsec()}, \code{autoplot()} and the stored
-#' predictions, is that mean multiplied by \code{1 - hu}, as \pkg{brms}
-#' computes it. The truncated Poisson routes report a mean that depends on
-#' \code{mu} alone, and have no shape to model.
+#' @details True for the joint \code{hurdle_negbinomial} and for a
+#' \code{negbinomial} growth component of \code{bnec_hurdle()}. Both report
+#' the zero-truncated mean, \code{hurdle_positive_mean()}, which depends on
+#' the shape.
 #'
 #' @return A \code{\link[base]{logical}}.
 #'
@@ -1210,22 +1179,10 @@ shape_in_reported_mean <- function(formula, family) {
 #' component's \code{negbinomial}, the default, or the joint
 #' \code{hurdle_negbinomial}. It decides only which route the message names.
 #'
-#' @details The routes \code{shape_in_reported_mean()} names report a mean
-#' that depends on the shape. Under a \code{disp(~z)} term the shape varies
-#' with \code{z}, so the value a prediction grid gives \code{z} would change
-#' the curve and every estimate read from it: at \code{mu = 5} the mean is
-#' 7.16 at a shape of 0.5 and 5.04 at 50. Refused rather than fitted. A term
-#' on the predictor alone, \code{disp(~x)}, and a variance function,
-#' \code{disp("power")}, are not refused here: neither names a column the grid
-#' would have to choose a value for. RF, on #443 for the growth component;
-#' the joint family is refused for the same reason once it takes \code{disp()}
-#' (D39 on #410).
-#'
-#' Raised by \code{bnec_hurdle()} before anything is fitted, by
-#' \code{bnec_joint()} before the refit is announced, by \code{bnec()} and
-#' \code{get_priors()} before their model loops, and by
-#' \code{wrangle_model_formula()} as the backstop for the routes that build a
-#' formula directly, the placement \code{check_disp_spec()} has.
+#' @details On the routes \code{shape_in_reported_mean()} names, a shape
+#' modelled on a column other than the predictor would make the reported curve
+#' depend on the value a prediction grid gives that column. \code{disp(~x)}
+#' and a variance function are accepted.
 #'
 #' @return \code{invisible(NULL)}, called for its side effect.
 #'

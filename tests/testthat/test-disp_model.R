@@ -264,9 +264,6 @@ test_that("disp is rejected for families with no dispersion parameter", {
 })
 
 test_that("hurdle_poisson refuses disp() and hurdle_negbinomial takes it (#410)", {
-  # hurdle_gamma and zero_inflated_beta take the term; see the #410 section at
-  # the end of this file. hurdle_poisson has no dispersion parameter, and
-  # hurdle_negbinomial takes the term on its shape under D39.
   f <- bnf(count ~ crf(x, "ecx4param") + disp("power"))
   expect_error(
     make_brmsformula(f, disp_dat, validate_family("hurdle_poisson")),
@@ -283,8 +280,7 @@ test_that("hurdle_poisson refuses disp() and hurdle_negbinomial takes it (#410)"
                            disp_dat, fam)[[1]]
     expect_true("shape" %in% names(bf$pforms))
   }
-  # "twosided" is a form for the beta families, and the refusal lists the
-  # two-block family that takes it, not hurdle_negbinomial
+  # "twosided" suits the beta families only
   expect_error(
     make_brmsformula(bnf(count ~ crf(x, "ecx4param") + disp("twosided")),
                      disp_dat, fam),
@@ -756,8 +752,8 @@ test_that("get_priors refuses what bnec refuses on a two-block family", {
   expect_error(suppressMessages(get_priors(f, data = d,
                                            family = "hurdle_poisson")),
                "hurdle_poisson has no free dispersion parameter")
-  # hurdle_negbinomial takes the term (D39), and refuses a column other than
-  # the predictor, once, before its equation loop
+  # hurdle_negbinomial takes the term but refuses a column other than the
+  # predictor
   pr_nb <- suppressMessages(get_priors(f, data = d,
                                        family = "hurdle_negbinomial"))
   expect_true(all(c("c0", "c1") %in% pr_nb$nlpar))
@@ -1509,11 +1505,8 @@ test_that("every family bayesnec fits reads as before through the tag (#436)", {
   }
 })
 
-# ---- D39 on #410: disp() on the joint hurdle_negbinomial ---------------------
-# hurdle_negbinomial takes disp() on its shape. The shape is read at the
-# asymptote of a relative ecx() on the positive counts, at mu = bot for a
-# variance function of the mean, and the request is refused under disp(~x).
-# No model is compiled or sampled except in the last test.
+# ---- disp() on the joint hurdle_negbinomial ----------------------------------
+# Only the last test compiles a model.
 
 nb_hurdle_dat <- function() {
   d <- slope_sim("negbinomial", 0.5)
@@ -1522,9 +1515,8 @@ nb_hurdle_dat <- function() {
   d
 }
 
-# A stand-in for a joint hurdle_negbinomial fit: the formula bnec() builds,
-# the family, and the draws of the curve and dispersion parameters, which
-# as_draws_df() and ndraws() are mocked to return.
+# A stand-in for a joint hurdle_negbinomial fit. Tests mock as_draws_df() and
+# ndraws() to supply its draws.
 nb_disp_object <- function(disp_txt, family = "hurdle_negbinomial",
                            d = nb_hurdle_dat()) {
   f <- bnf(paste0('y ~ crf(x, "nec4param")', disp_txt))
@@ -1564,7 +1556,7 @@ test_that("disp(~z) is refused on the joint hurdle_negbinomial (#410)", {
     paste0("\"z\" cannot be fitted on the two-block family hurdle_negbinomial",
            ".*1 - hu, so both depend on the shape parameter.*disp\\(~x\\)")
   )
-  # the growth component's message is the one it was (#443)
+  # the growth component keeps its own message
   expect_error(bayesnec:::check_disp_count_truncation(f),
                "\"z\" cannot be fitted on a negbinomial growth component")
   d <- nb_hurdle_dat()
@@ -1810,10 +1802,7 @@ test_that("a model set reads each equation's shape at its own bot (#410)", {
 })
 
 test_that("a joint count hurdle centres c1 as a truncated count (#410)", {
-  # The positive block of hurdle_negbinomial is zero-truncated in its
-  # likelihood, as the bnec_hurdle() growth component is, so the replicate
-  # centre of the regularizing set falls back to 0 there too. The range is
-  # negbinomial's.
+  # The replicate centre falls back to 0, as it does for a growth component.
   spec <- list(route = "B", value = "power")
   d <- nb_hurdle_dat()
   pos <- d$y > 0

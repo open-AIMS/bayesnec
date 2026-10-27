@@ -1087,10 +1087,8 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   if (!is.null(disp_spec)) {
     check_disp_spec(disp_spec, brm_args$family,
                     response = disp_response(bdat, brm_args$family))
-    # The zero-truncated count of a bnec_hurdle() growth component and the
-    # joint hurdle_negbinomial, the two routes whose reported mean depends on
-    # the dispersion parameter. Checked once here for the same reason as the
-    # line above. See #443 and #410.
+    # Checked once here, as check_disp_spec() is, on the routes whose
+    # reported mean depends on the shape.
     if (shape_in_reported_mean(formula, brm_args$family)) {
       check_disp_count_truncation(formula, brm_args$family)
     }

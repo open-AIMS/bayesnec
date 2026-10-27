@@ -170,9 +170,8 @@ test_that("bnec_joint refuses a crf() predictor with a leading minus (#438)", {
 })
 
 test_that("bnec_joint refits a negative binomial growth disp() jointly (#410)", {
-  # hurdle_negbinomial takes disp() under D39, so the term held in the hurdle
-  # fit's formula reaches the joint model, with the variance function and the
-  # centring literal the growth component is built with.
+  # The joint model takes the growth component's variance function and
+  # centring literal.
   d_counts <- function(o) {
     o$data$y <- as.integer(round(o$data$y * 20))
     o
@@ -196,10 +195,8 @@ test_that("bnec_joint refits a negative binomial growth disp() jointly (#410)", 
 })
 
 test_that("bnec_joint refuses a disp(~z) column on hurdle_negbinomial up front", {
-  # A held formula cannot carry such a column, because bnec_hurdle() refuses it
-  # on a negative binomial growth component; a supplied one can. The refusal
-  # comes before the refit is announced and before bnec() is called, and
-  # names the `formula` argument.
+  # Only a supplied formula can hold the column, because bnec_hurdle() refuses
+  # it on a held one.
   o <- mock_disp_crossed('y ~ crf(x, c("nec3param", "ecx4param"))',
                          "negbinomial")
   o$data$y <- as.integer(round(o$data$y * 20))
