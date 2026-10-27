@@ -1950,9 +1950,11 @@
   the shape at the control, which a fit without `disp()` reads and which
   differs from it once the shape changes with the mean. Under `disp(~x)` the
   asymptote has no single shape, and a relative ECx of the positive counts is
-  refused, as are a relative `ecx()` and `ecnsec()` of a `negbinomial` growth
-  component of `bnec_hurdle()` fitted with such a term. `type = "absolute"`
-  and `"range"`, `nec()` and `nsec()` do not read the shape at the asymptote.
+  refused. A relative `ecx()` or `ecnsec()` of a `negbinomial` growth
+  component of `bnec_hurdle()` fitted with `disp()` reads the shape at `bot`
+  in the same way, and is refused in the same way under `disp(~x)`.
+  `type = "absolute"` and `"range"`, `nec()` and `nsec()` do not read the
+  shape at the asymptote.
   A `disp(~z)` term naming a column other than the predictor is refused before
   anything is fitted, for the reason it is refused on the growth component:
   the positive-count curve and the combined curve both depend on the shape,
