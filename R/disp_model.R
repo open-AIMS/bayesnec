@@ -1158,18 +1158,20 @@ add_disp_placeholders <- function(newdata, data, formula,
 #' @param family Either a \code{\link[stats]{family}} object or a family tag.
 #'
 #' @details True for the joint \code{hurdle_negbinomial} and for a
-#' \code{negbinomial} growth component of \code{bnec_hurdle()}. Every curve
-#' either reports is built from the zero-truncated mean,
-#' \code{hurdle_positive_mean()}, which depends on the shape.
+#' \code{negbinomial} growth component of \code{bnec_hurdle()}. Their
+#' positive-count curve, and the joint family's combined curve, are built from
+#' the zero-truncated mean, which depends on the shape.
 #'
 #' @return A \code{\link[base]{logical}}.
 #'
 #' @noRd
 shape_in_reported_mean <- function(formula, family) {
-  if (identical(canonical_fam_tag(family), "hurdle_negbinomial")) {
+  fam_tag <- canonical_fam_tag(family)
+  if (identical(fam_tag, "hurdle_negbinomial")) {
     return(TRUE)
   }
-  inherits(family, "family") && is_factorised_count_formula(formula, family)
+  identical(fam_tag, "negbinomial") && inherits(family, "family") &&
+    is_factorised_count_formula(formula, family)
 }
 
 #' Refuse a disp(~...) column on a zero-truncated negative binomial count

@@ -1544,6 +1544,10 @@ test_that("shape_in_reported_mean names the two truncated routes (#410)", {
   expect_false(bayesnec:::shape_in_reported_mean(
     bnf(y ~ crf(x, "nec3param")), validate_family("negbinomial")
   ))
+  # a truncated poisson growth component has no shape
+  expect_false(bayesnec:::shape_in_reported_mean(
+    tf, validate_family("poisson")
+  ))
   for (tag in c("hurdle_gamma", "zero_inflated_beta", "hurdle_poisson")) {
     expect_false(bayesnec:::shape_in_reported_mean(NULL, tag), label = tag)
   }
