@@ -191,9 +191,9 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   check_reserved_names(data)
   dots <- list(...)
   # dots_arg() matches an abbreviation such as `asymptote = FALSE`, as bnec()
-  # does when do.call() passes it these arguments. See #394.
+  # does when do.call() passes it these arguments.
   declared <- dots_arg(dots, "asymptote_observed", TRUE)
-  # Check the value before printing any message, as bnec() does (#449).
+  # Check the value before printing any message, as bnec() does.
   chk_flag(declared, x_name = "`asymptote_observed`")
   # The response substitutions are not reported here. bnec_group() fits each
   # level on its own subset, so the values substituted differ between levels

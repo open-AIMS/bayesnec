@@ -765,7 +765,7 @@ uses_response_range_defaults <- function(prior, models, family,
 #'
 #' The sentence is also left out where the call already sets
 #' \code{asymptote_observed = FALSE}. The rest of the report still applies
-#' then, so only this sentence is dropped (#449).
+#' then, so only this sentence is dropped.
 #'
 #' @param family The validated response family.
 #' @param y The response as supplied.

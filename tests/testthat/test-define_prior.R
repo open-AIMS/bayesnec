@@ -2301,7 +2301,7 @@ test_that("the bot prior spans the floor to the endpoint mean (#394)", {
   # differs by branch and is recorded in notes/prior_audit.md.
   #
   # The gamma row meets it at the upper end only: its interval runs from 0.0435
-  # to 1 times the endpoint mean (#449), so the lower end is checked per branch.
+  # to 1 times the endpoint mean, so the lower end is checked per branch.
   cases <- list(
     list(tag = "gaussian", branch = "normal"),
     list(tag = "Gamma", branch = "gamma"),

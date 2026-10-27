@@ -754,7 +754,7 @@ asymptote_floor_error <- function(reason) {
 #'   \item gamma: \code{gamma(2, qgamma(0.975, 2) / e)}, whose 97.5th
 #'   percentile is exactly \emph{e}. With the shape fixed at 2, the same shape
 #'   as the \code{"uninformative"} entry, the interval cannot also start at
-#'   zero: its 2.5th percentile is 0.0435\emph{e}. See #449 and #451.
+#'   zero: its 2.5th percentile is 0.0435\emph{e}.
 #' }
 #'
 #' \strong{The beta branch matches quantiles rather than a mode and a spread.}
@@ -814,7 +814,7 @@ unobserved_bot_entry <- function(branch, endpoint) {
     branch,
     normal = paste0("normal(", signif(half, 6), ", ",
                     signif(endpoint / (2 * qnorm(0.975)), 6), ")"),
-    # The rate places the 97.5th percentile at the endpoint mean (#449).
+    # The rate places the 97.5th percentile at the endpoint mean.
     gamma = paste0("gamma(2, ", signif(qgamma(0.975, 2) / endpoint, 6), ")"),
     beta = {
       # The endpoint is tested before the logarithm rather than the shape
