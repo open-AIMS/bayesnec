@@ -590,7 +590,10 @@ count_positive_asymptote <- function(object, dpar, asymptote, newdata) {
   shape <- NULL
   if (family %in% c("negbinomial", "hurdle_negbinomial")) {
     spec <- parse_disp_term(object$bayesnecformula)
-    if (!is.null(spec)) {
+    # disp(~1) fits one shape, so it is read at the control as without disp().
+    constant <- is.null(spec) ||
+      (spec$route == "A" && length(all.vars(str2lang(spec$value))) == 0)
+    if (!constant) {
       return(disp_positive_asymptote(object, spec, mean_asymptote))
     }
     shape <- posterior_epred(

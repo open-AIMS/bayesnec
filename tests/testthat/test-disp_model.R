@@ -1764,6 +1764,21 @@ test_that("a relative estimate under disp(~x) is refused (#410)", {
   )
 })
 
+test_that("disp(~1) reads its one shape at the control (#410)", {
+  shape <- matrix(c(2, 5), ncol = 1)
+  local_mocked_bindings(
+    posterior_epred = function(...) shape,
+    .package = "bayesnec"
+  )
+  obj <- nb_disp_object(" + disp(~1)")
+  expect_equal(
+    bayesnec:::count_positive_asymptote(obj, "mu", c(4, 2.5),
+                                        data.frame(x = 0)),
+    as.numeric(bayesnec:::hurdle_positive_mean(c(4, 2.5),
+                                               "hurdle_negbinomial", shape))
+  )
+})
+
 test_that("a model set reads each equation's shape at its own bot (#410)", {
   parts <- list(a = nb_disp_object(' + disp("power")'),
                 b = nb_disp_object(' + disp("power")'))
