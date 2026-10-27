@@ -751,11 +751,10 @@ asymptote_floor_error <- function(reason) {
 #'   \item beta: \code{beta(1, log(0.025) / log(1 - e))}, whose 97.5th
 #'   percentile is exactly \emph{e} and whose 2.5th is 0.0084 to 0.0087 of it,
 #'   median by family over the audit's designs.
-#'   \item gamma: \code{gamma(2, 2/q)} at \code{q = e/2}, which is the idiom the
-#'   \code{"uninformative"} entry already uses. At a fixed shape of 2 the
-#'   central 95\% cannot both start at zero and end at a chosen value, so the
-#'   rule is applied as "mean at half the endpoint mean" and the realised
-#'   interval is \code{[0.0606 e, 1.393 e]}.
+#'   \item gamma: \code{gamma(2, qgamma(0.975, 2) / e)}, whose 97.5th
+#'   percentile is exactly \emph{e}. With the shape fixed at 2, the same shape
+#'   as the \code{"uninformative"} entry, the interval cannot also start at
+#'   zero: its 2.5th percentile is 0.0435\emph{e}. See #449 and #451.
 #' }
 #'
 #' \strong{The beta branch matches quantiles rather than a mode and a spread.}
@@ -792,14 +791,12 @@ asymptote_floor_error <- function(reason) {
 #' gaussian 0.107 against 0.220, \code{beta} 0.160 against 0.253,
 #' \code{bernoulli} 0.160 against 0.297, \code{binomial} and
 #' \code{beta_binomial} 0.160 against 0.256. On the gamma branch the declared
-#' entry is narrower --- \code{Gamma} 0.558 against 0.297, \code{poisson} 23.4
-#' against 13.1, \code{negbinomial} 15.5 against 8.84 --- and narrower by
-#' exactly a half by construction, since a gamma at shape 2 has a standard
-#' deviation of its mean over the square root of two and the rule halves the
-#' mean. Narrower there is not worse: what the entry changes is where the mass
-#' sits, and #386 measured the prior CDF at the true \code{bot} at 6.43e-14
-#' under \code{"uninformative"} and 2.30e-90 under \code{"regularizing"} on
-#' its flattest design.
+#' entry is narrower --- \code{Gamma} 0.558 against 0.213, \code{poisson} 23.3
+#' against 9.39, \code{negbinomial} 15.5 against 6.35. Its standard deviation is
+#' 0.254 times the endpoint mean on any design. Narrower there is not worse:
+#' what the entry changes is where the mass sits, and #386 measured the prior
+#' CDF at the true \code{bot} at 6.43e-14 under \code{"uninformative"} and
+#' 2.30e-90 under \code{"regularizing"} on its flattest design.
 #'
 #' @param branch One of \code{"normal"}, \code{"gamma"} or \code{"beta"}.
 #' @param endpoint The mean response at the highest predictor level, strictly
@@ -808,7 +805,7 @@ asymptote_floor_error <- function(reason) {
 #' @return A \code{\link[base]{character}} string of length 1, a \pkg{brms}
 #' prior string.
 #'
-#' @importFrom stats qnorm
+#' @importFrom stats qgamma qnorm
 #'
 #' @noRd
 unobserved_bot_entry <- function(branch, endpoint) {
@@ -817,7 +814,8 @@ unobserved_bot_entry <- function(branch, endpoint) {
     branch,
     normal = paste0("normal(", signif(half, 6), ", ",
                     signif(endpoint / (2 * qnorm(0.975)), 6), ")"),
-    gamma = paste0("gamma(2, ", signif(1 / (half / 2), 6), ")"),
+    # The rate places the 97.5th percentile at the endpoint mean (#449).
+    gamma = paste0("gamma(2, ", signif(qgamma(0.975, 2) / endpoint, 6), ")"),
     beta = {
       # The endpoint is tested before the logarithm rather than the shape
       # after it, so that an endpoint at or above 1 does not emit a "NaNs

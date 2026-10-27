@@ -596,13 +596,16 @@ capitalise_first <- function(x) {
 #' @param pool_dispersion Whether a gaussian dispersion is estimated over the
 #' whole series. \code{TRUE} where the formula carries no \code{disp()} term,
 #' which is the case in which \code{\link{bnec}} fits a single \code{sigma}.
+#' @param asymptote_observed The \code{asymptote_observed} argument of
+#' \code{\link{bnec}}. \code{FALSE} drops the advice to set it.
 #'
 #' @return \code{NULL}, invisibly. Called for its message.
 #'
 #' @noRd
 check_response_flattened <- function(data, family, group = NULL,
                                      blocks = c("response", "survival"),
-                                     alpha = 0.05, pool_dispersion = TRUE) {
+                                     alpha = 0.05, pool_dispersion = TRUE,
+                                     asymptote_observed = TRUE) {
   y <- try(retrieve_var(data, "y_var", error = TRUE), silent = TRUE)
   x <- try(retrieve_var(data, "x_var", error = TRUE), silent = TRUE)
   if (inherits(y, "try-error") || inherits(x, "try-error")) {
@@ -667,7 +670,7 @@ check_response_flattened <- function(data, family, group = NULL,
       " Inspect the entries with get_priors() and",
       " supply scientifically justified ones through the prior argument where",
       " information beyond the design is available.",
-      declaration_advice(family, y)
+      declaration_advice(family, y, asymptote_observed)
     )
   }
   if (length(untestable) > 0) {
@@ -760,15 +763,22 @@ uses_response_range_defaults <- function(prior, models, family,
 #' the joint family for the same reason --- its mu family has the same link, and
 #' the link is what decides the answer for a non-identity fit.
 #'
+#' The sentence is also left out where the call already sets
+#' \code{asymptote_observed = FALSE}. The rest of the report still applies
+#' then, so only this sentence is dropped (#449).
+#'
 #' @param family The validated response family.
 #' @param y The response as supplied.
+#' @param asymptote_observed The \code{asymptote_observed} argument of
+#' \code{\link{bnec}}.
 #'
 #' @return A \code{\link[base]{character}} string, empty where no floor can be
-#' derived.
+#' derived or where \code{asymptote_observed} is \code{FALSE}.
 #'
 #' @noRd
-declaration_advice <- function(family, y) {
-  if (!is.finite(asymptote_floor(family, y))) {
+declaration_advice <- function(family, y, asymptote_observed = TRUE) {
+  if (!isTRUE(asymptote_observed) ||
+      !is.finite(asymptote_floor(family, y))) {
     return("")
   }
   paste0(" Where the design did stop before the asymptote, declare it with",

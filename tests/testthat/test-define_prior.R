@@ -2300,9 +2300,8 @@ test_that("the bot prior spans the floor to the endpoint mean (#394)", {
   # order of magnitude rather than as digits, because the realised coverage
   # differs by branch and is recorded in notes/prior_audit.md.
   #
-  # The gamma row cannot satisfy it exactly. At a fixed shape of 2 the central
-  # 95 per cent runs from 0.0606 to 1.393 times the mean, so the tolerance is
-  # stated per branch and the gamma one is the wider.
+  # The gamma row meets it at the upper end only: its interval runs from 0.0435
+  # to 1 times the endpoint mean (#449), so the lower end is checked per branch.
   cases <- list(
     list(tag = "gaussian", branch = "normal"),
     list(tag = "Gamma", branch = "gamma"),
@@ -2342,11 +2341,14 @@ test_that("the bot prior spans the floor to the endpoint mean (#394)", {
       # Stated per branch, because the three meet the rule to different
       # degrees and a single tolerance would hide which.
       if (identical(case$branch, "gamma")) {
-        # A gamma at a fixed shape of 2 cannot start at zero and end at a
-        # chosen value, so the realised interval is a fixed multiple of the
-        # endpoint mean either side of it.
-        expect_equal(qs[1] / e, 0.0606, tolerance = 1e-2)
-        expect_equal(qs[2] / e, 1.3929, tolerance = 1e-3)
+        # With the 97.5th percentile at the endpoint mean and the shape fixed
+        # at 2, the 2.5th is qgamma(0.025, 2) / qgamma(0.975, 2) of it.
+        expect_match(entry, "^gamma\\(2, ", info = paste(case$tag, ptype))
+        expect_equal(qs[2], e, tolerance = 1e-5)
+        expect_equal(qs[1] / e,
+                     stats::qgamma(0.025, 2) / stats::qgamma(0.975, 2),
+                     tolerance = 1e-5)
+        expect_equal(qs[1] / e, 0.0435, tolerance = 1e-3)
       } else if (identical(case$branch, "beta")) {
         expect_equal(qs[2], e, tolerance = 1e-5)
         expect_lt(qs[1], 0.05 * e)
@@ -2364,6 +2366,52 @@ test_that("the bot prior spans the floor to the endpoint mean (#394)", {
       expect_identical(pr$prior[pr$nlpar != "bot"],
                        base$prior[base$nlpar != "bot"],
                        info = paste(case$tag, ptype))
+    }
+  }
+})
+
+test_that("every gamma-branch family ends its bot prior at the endpoint (#449)", {
+  # The zero-inflated count families and the mu block of the three hurdle
+  # families use the same gamma entry. One observation at the highest
+  # concentration is zero: the zero-inflated families include it in the
+  # endpoint mean, and the hurdle families leave it out.
+  set.seed(449)
+  x <- rep(c(0, 1, 2, 4, 8, 16), each = 5)
+  mu <- 20 * exp(-0.1 * x) + 2
+  counts <- as.integer(stats::rpois(length(x), mu))
+  positive <- stats::rgamma(length(x), 20, 20 / (mu / 20))
+  zeros <- c(7, 13, 18, length(x))
+  counts[zeros] <- 0L
+  positive[zeros] <- 0
+  top_level <- x == max(x)
+  ratio <- stats::qgamma(0.025, 2) / stats::qgamma(0.975, 2)
+  for (tag in c("zero_inflated_poisson", "zero_inflated_negbinomial",
+                "hurdle_poisson", "hurdle_negbinomial", "hurdle_gamma")) {
+    y <- if (identical(tag, "hurdle_gamma")) positive else counts
+    d <- data.frame(x = x, y = y)
+    e <- if (grepl("^hurdle_", tag)) {
+      mean(y[top_level & y > 0])
+    } else {
+      mean(y[top_level])
+    }
+    for (ptype in c("uninformative", "regularizing")) {
+      pr <- as.data.frame(suppressWarnings(suppressMessages(get_priors(
+        y ~ crf(x, "nec4param"), data = d, family = tag, prior_type = ptype,
+        asymptote_observed = FALSE))))
+      entry <- pr$prior[pr$nlpar == "bot"]
+      expect_match(entry, "^gamma\\(2, ", info = paste(tag, ptype))
+      qs <- prior_quantiles(entry)
+      expect_equal(qs[2], e, tolerance = 1e-5, info = paste(tag, ptype))
+      expect_equal(qs[1] / e, ratio, tolerance = 1e-5,
+                   info = paste(tag, ptype))
+      # The survival block of a hurdle family is a probability, and its bot
+      # prior stays on the beta branch.
+      hubot <- pr$prior[pr$nlpar == "hubot"]
+      if (grepl("^hurdle_", tag)) {
+        expect_match(hubot, "^beta\\(1, ", info = paste(tag, ptype))
+      } else {
+        expect_length(hubot, 0)
+      }
     }
   }
 })
