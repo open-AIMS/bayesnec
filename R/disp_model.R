@@ -949,12 +949,13 @@ disp_form_template <- function(vf) {
 #' @param mu A \code{\link[base]{numeric}} vector of means on the response
 #' scale, one per posterior draw, or of length one.
 #'
-#' @details Evaluates the sub-model draw by draw. \code{mu} can lie beyond the
-#' data, where no prediction grid reaches. The centring constants are read
-#' from the fitted formula, because recomputing them needs the response
-#' exactly as \code{wrangle_model_formula()} saw it. The inverse link comes
-#' from \code{brmsfamily("negbinomial")}, which accepts as a mean link every
-#' link \pkg{brms} allows on the shape.
+#' @details Evaluates the sub-model draw by draw. A mean such as \code{bot} is
+#' reached only as the predictor grows without bound, so no row of a
+#' prediction grid gives it. The centring constants are read from the fitted
+#' formula, because recomputing them needs the response exactly as
+#' \code{wrangle_model_formula()} saw it. The inverse link comes from
+#' \code{brmsfamily("negbinomial")}, which accepts as a mean link every link
+#' \pkg{brms} allows on the shape.
 #'
 #' @return A \code{\link[base]{list}} with elements \code{value}, the
 #' dispersion parameter, one per draw; \code{pars}, the draws of each
