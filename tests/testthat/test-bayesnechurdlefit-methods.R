@@ -949,13 +949,9 @@ test_that("nec() says when the combined value includes NSEC draws", {
   expect_length(approx_msgs(nec(hurdle_pair(unrecorded, unrecorded))), 0)
 })
 
-# ---- #436: amend(add = ) on a hurdle fit with a Gamma growth component -------
-# The growth component stores the family brms records for Gamma, gamma, with a
-# disp("power") term, and the survival component a bernoulli family on
-# `.alive`, as bnec_hurdle() builds them. The packaged ecx4param fit supplies
-# the rest. Its brmsfit was not fitted with these data, and no posterior
-# quantity is read: brm() is mocked, and expand_manec() returns the fits it is
-# given, so that each component's amend() completes and the next is reached.
+# ---- amend(add = ) on a hurdle fit with a Gamma growth component -----------
+# Both components are built from ecx4param. brm() is mocked and expand_manec()
+# returns the fits it is given, so each component's amend() completes.
 test_that("amend(add = ) reaches both components of a Gamma hurdle (#436)", {
   d <- data.frame(x = nec_data$x, y = nec_data$y * 10)
   growth <- ecx4param

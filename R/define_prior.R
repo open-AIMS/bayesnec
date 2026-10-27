@@ -584,11 +584,8 @@ regularizing_location <- function(predictor, response, side,
 #' \code{NA} reaches \pkg{brms} as "Cannot coerce 'prior' to a single character
 #' value".
 #'
-#' The tag is read through \code{canonical_fam_tag()} before either rewrite.
-#' A family taken from a fitted object records Gamma as \code{gamma}, which
-#' indexed the \code{top} and \code{bot} tables to \code{NA} and stopped with
-#' the same \pkg{brms} error; \code{\link{amend}} builds the priors of an added
-#' equation from that stored family (#436).
+#' The tag is read through \code{canonical_fam_tag()}, because a family taken
+#' from a fit records Gamma as \code{gamma}.
 #'
 #' @param family A \code{\link[stats]{family}} object.
 #'
@@ -1465,14 +1462,8 @@ define_prior <- function(model, family, predictor, response,
     }
     return(hurdle_priors)
   }
-  # The backstop on this branch, as on the two-block branch above.
-  # get_priors() checks the term once before its equation loop, as bnec()
-  # does, so this is reached first only from amend() and a direct call. Placed
-  # before anything is built from the response, so that a term the family
-  # cannot take is reported as that, rather than as an NA indexed from the
-  # table of c0 priors inside brms. The response is taken before it is put on
-  # the link scale below. The check reads it for a gaussian family alone, whose
-  # response arrives here as bnec() checks it. See #445.
+  # Backstop for amend() and direct calls: bnec() and get_priors() check the
+  # term before their model loops.
   if (!is.null(disp_spec)) {
     check_disp_spec(disp_spec, family, response = response)
   }
@@ -1841,8 +1832,7 @@ define_disp_prior <- function(disp_spec, family, response, predictor = NULL,
   if (is.null(disp_spec) || disp_spec$route != "B") {
     return(NULL)
   }
-  # Through canonical_fam_tag() for the reason prior_family_tag() gives: a
-  # family taken from a fitted object records Gamma as gamma (#436).
+  # A family taken from a fit records Gamma as gamma.
   fam_tag <- canonical_fam_tag(family)
   c0_prs <- disp_intercept_priors(response)
   out <- prior_string(unname(c0_prs[fam_tag]), nlpar = "c0")

@@ -286,14 +286,11 @@ test_that("amend(add = ) refuses a call adding only excluded ones (#470)", {
 })
 
 
-# ---- #436, the priors of an added equation ----------------------------------
+# ---- the priors of an added equation ---------------------------------------
 
-# A single-equation fit, ecx4param, given the family brms records for the one
-# bnec() validates, a positive response and a formula holding `term`. The
-# packaged fit is gaussian, so its family, data and formula are replaced, as
-# bnec() stores them for such a fit. NB: the brmsfit was not fitted with them.
-# amend() reads them before it fits, which is what these tests assert, and no
-# posterior quantity is read.
+# ecx4param with the family brms stores, a positive response and a formula
+# holding `term`. The brmsfit was not fitted to these data, so read nothing
+# from its posterior.
 amend_fixture <- function(family, term = "") {
   fit <- ecx4param
   fit$fit$family <- brms::bf(y ~ x, family = unmark_family(family))$family
@@ -304,13 +301,9 @@ amend_fixture <- function(family, term = "") {
   fit
 }
 
-# The prior, the initial values and the family each brm() call is handed, with
-# brm() mocked. The curve search is replaced by a fixed start, one list per
-# chain, and its own inputs are recorded, so that what is compared is what each
-# route builds rather than a stochastic search. The disp() initial values are
-# appended to that start as they are for a fit. Nothing is compiled or
-# sampled; the call itself then fails on the empty fit, which is not under
-# test.
+# Records what each mocked brm() call is handed. The curve search returns a
+# fixed start and records its inputs. The call then fails on the empty fit,
+# which is not under test.
 fit_inputs <- function(expr) {
   seen <- new.env(parent = emptyenv())
   seen$calls <- list()
@@ -362,9 +355,7 @@ expect_same_fit_inputs <- function(amended, fitted, label) {
 }
 
 test_that("amend(add = ) on a Gamma fit builds the priors bnec() does (#436)", {
-  # The stored family records Gamma as gamma, which define_prior() indexed its
-  # tables with, and the call stopped inside brms. Without a disp() term as
-  # well as with one, and under both prior sets amend() takes.
+  # No disp() term and two variance functions, under both prior types.
   d <- data.frame(x = nec_data$x, y = nec_data$y * 10)
   for (term in c("", ' + disp("power")', ' + disp("loglinear")')) {
     for (pt in c("uninformative", "regularizing")) {
@@ -392,9 +383,7 @@ test_that("amend(add = ) on a Gamma fit builds the priors bnec() does (#436)", {
 })
 
 test_that("amend(add = ) passes the disp() term to the added prior (#436)", {
-  # gaussian has no tag mismatch. The c0 and c1 rows were added afterwards by
-  # fill_missing_priors(), with a warning that the user's prior had no entry
-  # for them, although no prior had been supplied.
+  # gaussian has no tag mismatch, so only the disp() term is under test.
   d <- data.frame(x = nec_data$x, y = nec_data$y * 10)
   for (pt in c("uninformative", "regularizing")) {
     obj <- amend_fixture(validate_family("gaussian"), ' + disp("power")')
@@ -410,8 +399,6 @@ test_that("amend(add = ) passes the disp() term to the added prior (#436)", {
 })
 
 test_that("amend(add = ) drops what bnec() drops for a Gamma fit (#436)", {
-  # check_models() read the stored tag as well, so the equations it drops for
-  # Gamma on the identity link were fitted when added to a Gamma fit.
   obj <- amend_fixture(validate_family("Gamma"))
   amended <- fit_inputs(amend(obj, add = c("neclin", "nec4param")))
   expect_length(amended$calls, 1)
@@ -421,7 +408,6 @@ test_that("amend(add = ) drops what bnec() drops for a Gamma fit (#436)", {
                               "valid in the case of a Gamma with identity",
                               "link"),
                         amended$messages, fixed = TRUE)))
-  # No message names the tag brms records rather than the family written.
-  # A word match, so a message naming hurdle_gamma does not fail it.
+  # No message names the stored tag. Match the word, so hurdle_gamma is allowed.
   expect_false(any(grepl("\\bgamma\\b", amended$messages, perl = TRUE)))
 })

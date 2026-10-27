@@ -2981,12 +2981,10 @@ test_that("the flatness report offers the declaration only where usable (#394)",
     bayesnec:::declaration_advice(Gamma(link = "log"), d$y * 10), "")
 })
 
-# ---- #436, a family read off a fit ----------------------------------------
+# ---- a family read off a fit -----------------------------------------------
 
 test_that("a Gamma family read off a fit builds the priors bnec() builds (#436)", {
-  # brms records Gamma as gamma, which indexed the top and bot tables, and the
-  # table of c0 priors, to NA. amend() builds an added equation's priors from
-  # that stored family.
+  # brms records Gamma as gamma, and amend() builds priors from that family.
   stored <- brms::bf(y ~ x, family = Gamma(link = "identity"))$family
   expect_identical(stored$family, "gamma")
   expect_identical(prior_family_tag(stored), "Gamma")
@@ -3010,12 +3008,9 @@ test_that("a Gamma family read off a fit builds the priors bnec() builds (#436)"
   }
 })
 
-# ---- #445, the disp() backstop on the single-block branch ------------------
+# ---- the disp() backstop on the single-block branch ------------------------
 
 test_that("define_prior refuses a disp() term the family cannot take (#445)", {
-  # The single-block branch had no check, so a variance function on a family
-  # without a dispersion parameter indexed the c0 table to NA and failed inside
-  # brms, and one the family does not take returned priors.
   power <- list(route = "B", value = "power")
   expect_error(
     define_prior("nec3param", validate_family("poisson"), nec_data$x,

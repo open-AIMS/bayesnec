@@ -590,10 +590,10 @@ test_that("a binomial formula with a trials() term still returns priors (#442)",
   }
 })
 
-# ---- #445: a disp() term checked against the family -------------------------
+# ---- a disp() term checked against the family ------------------------------
 
-# The message bnec() refuses a call with, read with the fit replaced so that
-# nothing is fitted if the call is not refused.
+# The message bnec() refuses the call with. The fit is mocked, so nothing is
+# fitted if bnec() accepts the call.
 bnec_refusal <- function(formula, data, family) {
   local_mocked_bindings(
     fit_bayesnec = function(...) stop("fit reached"),
@@ -605,11 +605,7 @@ bnec_refusal <- function(formula, data, family) {
 }
 
 test_that("get_priors refuses a disp() term bnec() refuses, before its loop (#445)", {
-  # A family with no dispersion parameter failed inside brms on a variance
-  # function and returned priors for disp(~x); a variance function the family
-  # does not take returned priors. The refusal is the one bnec() raises, and it
-  # is raised before any equation's prior is built: define_prior() is replaced
-  # so that reaching it is recorded.
+  # define_prior() is mocked to record whether any prior is built first.
   d <- nec_data
   d$alive <- as.integer(d$y > 0.5)
   d$pos <- d$y * 10

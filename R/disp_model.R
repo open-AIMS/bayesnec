@@ -37,10 +37,7 @@
 #' so that the family of each positive block is stated in one place. See #410.
 #'
 #' The tag is read through \code{canonical_fam_tag()}, because a family taken
-#' from a fitted object records Gamma as \code{gamma}, which
-#' \code{disp_dpars} and every table read through this function key as
-#' \code{Gamma}. \code{\link{amend}} builds the priors and the formula of an
-#' added equation from that stored family (#436).
+#' from a fit records Gamma as \code{gamma}.
 #'
 #' @return A \code{\link[base]{character}} string, the family tag.
 #'
@@ -146,10 +143,7 @@ parse_disp_term <- function(formula) {
 #'
 #' @noRd
 check_disp_spec <- function(spec, family, response = NULL) {
-  # The canonical tag, so that a family taken from a fitted object, which
-  # records Gamma as gamma, is checked as the Gamma family and named as the
-  # user wrote it. Read as stored, it was refused as having no dispersion
-  # parameter (#436).
+  # A family taken from a fit records Gamma as gamma.
   fam_tag <- canonical_fam_tag(family)
   # The joint two-block families take the term on the dispersion parameter of
   # their positive block, which is the only block that has one; the hu or zi

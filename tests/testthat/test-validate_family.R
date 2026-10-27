@@ -465,10 +465,7 @@ test_that("canonical_fam_tag is a no-op on every family bnec() fits with", {
 })
 
 test_that("canonical_fam_tag reads every stored family as validated (#436)", {
-  # The family brms records in a fit is the one amend() builds an added
-  # equation from. For every family bnec() fits with, two-block families
-  # included, its canonical tag is the tag validate_family() gives, and Gamma
-  # is the one family whose recorded tag differs.
+  # Gamma is the one family whose stored tag differs from the validated one.
   f <- bayesnec:::canonical_fam_tag
   differs <- character(0)
   for (tag in names(mod_fams)) {

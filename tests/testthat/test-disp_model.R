@@ -1443,10 +1443,8 @@ test_that("bnec() and the formula builder refuse it as backstops (#443)", {
   )
 })
 
-# ---- #436: a Gamma family read off a fit -------------------------------------
-# brms records Gamma as gamma, and the tables these functions read are keyed
-# Gamma. amend() builds the formula, the priors and the initial values of an
-# added equation from that stored family. No model is compiled or sampled.
+# ---- a Gamma family read off a fit -----------------------------------------
+# brms records Gamma as gamma. No model is compiled or sampled.
 
 test_that("the disp() readers take a stored Gamma family as Gamma (#436)", {
   stored <- brms::bf(y ~ x, family = Gamma(link = "identity"))$family
@@ -1479,9 +1477,8 @@ test_that("the disp() readers take a stored Gamma family as Gamma (#436)", {
 })
 
 test_that("every family bayesnec fits reads as before through the tag (#436)", {
-  # canonical_fam_tag() is the identity on the families validate_family()
-  # builds, so routing the readers through it changes nothing on the bnec()
-  # route; and brms records every one of them but Gamma under the same tag.
+  # Reading through canonical_fam_tag() changes nothing for a validated
+  # family, or for a stored one other than Gamma.
   for (tag in names(mod_fams)) {
     validated <- validate_family(tag)
     stored <- brms::bf(y ~ x, family = unmark_family(validated))$family

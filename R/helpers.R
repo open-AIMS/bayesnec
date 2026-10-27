@@ -1591,8 +1591,7 @@ add_brm_defaults <- function(
   # already in the set, to a model being added to it, so the search had to run
   # to overwrite them. amend() no longer passes them. See #290.
   if (!("init" %in% names(brm_args))) {
-    # canonical_fam_tag() for the reason fit_bayesnec() gives at its own
-    # message: amend() passes a stored family, which records Gamma as gamma.
+    # amend() passes the family stored in the fit, which records Gamma as gamma.
     msg_tag <- canonical_fam_tag(family)
     model_tag <- if (is.null(model_survival) || identical(model_survival,
                                                           model)) {
