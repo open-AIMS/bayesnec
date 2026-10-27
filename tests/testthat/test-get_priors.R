@@ -674,5 +674,5 @@ test_that("get_priors refuses a non-finite disp(~...) column as bnec() does (#44
                                               family = "gaussian")),
                   error = conditionMessage)
   expect_identical(err, bnec_refusal(f, d, "gaussian"))
-  expect_match(err, "w", fixed = TRUE)
+  expect_match(err, '"w"', fixed = TRUE)
 })

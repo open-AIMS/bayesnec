@@ -992,7 +992,7 @@ test_that("amend(add = ) reaches both components of a Gamma hurdle (#436)", {
   # With expand_manec() mocked, each component is the list of its fits.
   expect_setequal(names(out$growth), c("ecx4param", "nec4param"))
   expect_setequal(names(out$survival), c("ecx4param", "nec4param"))
-  # The growth prior is the one bnec() builds for that component's equation.
+  # The growth prior is define_prior()'s for the validated Gamma family.
   expected <- define_prior("nec4param", validate_family("Gamma"), d$x, d$y,
                            disp_spec = list(route = "B", value = "power"))
   expect_identical(seen[[1]]$prior, expected)

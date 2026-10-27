@@ -291,10 +291,12 @@ test_that("amend(add = ) refuses a call adding only excluded ones (#470)", {
 # ecx4param with the family brms stores, a positive response and a formula
 # holding `term`. The brmsfit was not fitted to these data, so read nothing
 # from its posterior.
-amend_fixture <- function(family, term = "") {
+amend_fixture <- function(family, term = "",
+                          data = data.frame(x = nec_data$x,
+                                            y = nec_data$y * 10)) {
   fit <- ecx4param
   fit$fit$family <- brms::bf(y ~ x, family = unmark_family(family))$family
-  fit$fit$data <- data.frame(x = nec_data$x, y = nec_data$y * 10)
+  fit$fit$data <- data
   fit$bayesnecformula <- bnf(stats::as.formula(
     paste0('y ~ crf(x, model = "ecx4param")', term)
   ))
@@ -320,6 +322,14 @@ fit_inputs <- function(expr) {
     make_good_inits = function(model, x, y, family, ..., priors, chains) {
       seen$search[[length(seen$search) + 1]] <- list(
         model = model, x = x, y = y, priors = priors,
+        tag = canonical_fam_tag(family), link = family$link
+      )
+      replicate(chains, list(b_top = as.array(1)), simplify = FALSE)
+    },
+    make_good_hurdle_inits = function(model, predictor, response, priors,
+                                      chains, family, ...) {
+      seen$search[[length(seen$search) + 1]] <- list(
+        model = model, x = predictor, y = response, priors = priors,
         tag = canonical_fam_tag(family), link = family$link
       )
       replicate(chains, list(b_top = as.array(1)), simplify = FALSE)
@@ -396,6 +406,46 @@ test_that("amend(add = ) passes the disp() term to the added prior (#436)", {
     c1 <- c1[c1$nlpar == "c1", ]
     expect_equal(as.numeric(c(c1$lb, c1$ub)), c(0, 1))
   }
+})
+
+test_that("amend(add = ) builds bnec()'s priors on a hurdle_gamma fit (#436)", {
+  # The two-block branch of define_prior() builds its own disp() priors.
+  d <- data.frame(x = nec_data$x, y = nec_data$y * 10)
+  d$y[d$x > stats::quantile(d$x, 0.8)] <- 0
+  for (pt in c("uninformative", "regularizing")) {
+    obj <- amend_fixture(validate_family("hurdle_gamma"), ' + disp("power")',
+                         data = d)
+    amended <- fit_inputs(amend(obj, add = "nec4param", prior_type = pt))
+    fitted <- fit_inputs(bnec(y ~ crf(x, "nec4param") + disp("power"),
+                              data = d, family = "hurdle_gamma", chains = 2,
+                              prior_type = pt))
+    expect_same_fit_inputs(amended, fitted, paste("hurdle_gamma", pt))
+    expect_true(all(c("c0", "c1") %in% amended$calls[[1]]$prior$nlpar))
+  }
+})
+
+test_that("amend(add = ) keeps the truncation of a hurdle growth fit (#436)", {
+  # Without truncation the regularizing c1 prior is centred on the replicate
+  # slope, 0.29 on these counts, and with it on 0. So the comparison with
+  # bnec() fails if amend() drops the truncation.
+  set.seed(5)
+  x <- rep(c(0.1, 0.5, 1, 2, 4), each = 20)
+  mu <- 30 / (1 + (x / 1.5)^2) * rep(c(1, 2), length.out = length(x))
+  y <- pmax(stats::rnbinom(length(x), mu = mu, size = 5), 1L)
+  d <- data.frame(x = x, y = y)
+  f <- add_hurdle_truncation(bnf(y ~ crf(x, "nec4param") + disp("power")))
+  obj <- amend_fixture(validate_family("negbinomial"), ' + disp("power")',
+                       data = d)
+  obj$bayesnecformula <- add_hurdle_truncation(obj$bayesnecformula)
+  amended <- fit_inputs(amend(obj, add = "nec4param",
+                              prior_type = "regularizing"))
+  fitted <- fit_inputs(bnec(f, data = d, family = "negbinomial", chains = 2,
+                            prior_type = "regularizing"))
+  expect_same_fit_inputs(amended, fitted, "truncated negbinomial")
+  untruncated <- define_prior("nec4param", validate_family("negbinomial"),
+                              d$x, d$y, prior_type = "regularizing",
+                              disp_spec = parse_disp_term(f))
+  expect_false(identical(amended$calls[[1]]$prior, untruncated))
 })
 
 test_that("amend(add = ) drops what bnec() drops for a Gamma fit (#436)", {
