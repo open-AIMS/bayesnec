@@ -377,9 +377,9 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
         if (!is.null(denom)) {
           y <- y / denom
         }
-        # Pass define_prior() every argument fit_bayesnec() passes it, so the
-        # prior is the one bnec() builds. Build it here, outside the try()
-        # below, so an error from define_prior() stops amend() once.
+        # Pass define_prior() every argument fit_bayesnec() passes it, except
+        # model_survival, which the fit does not record. Build it here, outside
+        # the try() below, so an error from define_prior() stops amend() once.
         single_form <- single_model_formula(formula, model)
         brm_args$prior <- define_prior(
           model, family, x, y, prior_type = prior_type,

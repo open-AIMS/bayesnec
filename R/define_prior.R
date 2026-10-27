@@ -1441,11 +1441,8 @@ define_prior <- function(model, family, predictor, response,
     # disp() priors are added; missed, c0 and the slopes would take the flat
     # brms default. See #410.
     #
-    # The term is checked against the two-block family first. bnec() checks it
-    # in wrangle_model_formula(), but get_priors() reaches this function
-    # without building a formula, and would otherwise return priors for
-    # hurdle_negbinomial, which bnec() refuses, and fail on hurdle_poisson
-    # inside brms with a message naming neither the family nor the term.
+    # Backstop for amend() and direct calls: bnec() and get_priors() check the
+    # term before their model loops.
     if (!is.null(disp_spec)) {
       check_disp_spec(disp_spec, family, response = mu_response)
     }
