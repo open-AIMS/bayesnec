@@ -422,5 +422,6 @@ test_that("amend(add = ) drops what bnec() drops for a Gamma fit (#436)", {
                               "link"),
                         amended$messages, fixed = TRUE)))
   # No message names the tag brms records rather than the family written.
-  expect_false(any(grepl("gamma", amended$messages, fixed = TRUE)))
+  # A word match, so a message naming hurdle_gamma does not fail it.
+  expect_false(any(grepl("\\bgamma\\b", amended$messages, perl = TRUE)))
 })
