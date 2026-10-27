@@ -752,16 +752,9 @@ asymptote_floor_error <- function(reason) {
 #'   percentile is exactly \emph{e} and whose 2.5th is 0.0084 to 0.0087 of it,
 #'   median by family over the audit's designs.
 #'   \item gamma: \code{gamma(2, qgamma(0.975, 2) / e)}, whose 97.5th
-#'   percentile is exactly \emph{e}. At a fixed shape of 2 the central 95\%
-#'   cannot both start at zero and end at a chosen value, so the upper end is
-#'   met and the 2.5th percentile is the fixed multiple
-#'   \code{qgamma(0.025, 2) / qgamma(0.975, 2)} of it: the realised interval is
-#'   \code{[0.0435 e, e]}. The shape is the one the \code{"uninformative"} entry
-#'   uses. A shape of 1, which parallels the beta branch, would put the 2.5th
-#'   percentile at 0.0069\emph{e}; RF ruled for 2 (D42, #449). The entry was
-#'   \code{gamma(2, 4/e)} before #449, a mean at half the endpoint mean, whose
-#'   central 95\% ran from 0.0606\emph{e} to 1.393\emph{e} and put 9.2\% of its
-#'   mass above \emph{e}.
+#'   percentile is exactly \emph{e}. With the shape fixed at 2, the same shape
+#'   as the \code{"uninformative"} entry, the interval cannot also start at
+#'   zero: its 2.5th percentile is 0.0435\emph{e}. See #449 and #451.
 #' }
 #'
 #' \strong{The beta branch matches quantiles rather than a mode and a spread.}
@@ -799,14 +792,11 @@ asymptote_floor_error <- function(reason) {
 #' \code{bernoulli} 0.160 against 0.297, \code{binomial} and
 #' \code{beta_binomial} 0.160 against 0.256. On the gamma branch the declared
 #' entry is narrower --- \code{Gamma} 0.558 against 0.213, \code{poisson} 23.3
-#' against 9.39, \code{negbinomial} 15.5 against 6.35. A gamma at shape 2 has a
-#' standard deviation of its mean over the square root of two, and the declared
-#' entry's mean is \code{2 / qgamma(0.975, 2)}, or 0.359, times the endpoint
-#' mean, so its standard deviation is 0.254 times the endpoint mean whatever the
-#' design. Narrower there is not worse: what the entry changes is where the mass
-#' sits, and #386 measured the prior CDF at the true \code{bot} at 6.43e-14
-#' under \code{"uninformative"} and 2.30e-90 under \code{"regularizing"} on
-#' its flattest design.
+#' against 9.39, \code{negbinomial} 15.5 against 6.35. Its standard deviation is
+#' 0.254 times the endpoint mean on any design. Narrower there is not worse:
+#' what the entry changes is where the mass sits, and #386 measured the prior
+#' CDF at the true \code{bot} at 6.43e-14 under \code{"uninformative"} and
+#' 2.30e-90 under \code{"regularizing"} on its flattest design.
 #'
 #' @param branch One of \code{"normal"}, \code{"gamma"} or \code{"beta"}.
 #' @param endpoint The mean response at the highest predictor level, strictly
@@ -824,8 +814,7 @@ unobserved_bot_entry <- function(branch, endpoint) {
     branch,
     normal = paste0("normal(", signif(half, 6), ", ",
                     signif(endpoint / (2 * qnorm(0.975)), 6), ")"),
-    # The 97.5th percentile at the endpoint rather than the mean at half of it;
-    # Details gives the mass the earlier construction put above it (D42, #449).
+    # The rate places the 97.5th percentile at the endpoint mean (#449).
     gamma = paste0("gamma(2, ", signif(qgamma(0.975, 2) / endpoint, 6), ")"),
     beta = {
       # The endpoint is tested before the logarithm rather than the shape

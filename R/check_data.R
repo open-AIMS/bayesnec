@@ -596,8 +596,8 @@ capitalise_first <- function(x) {
 #' @param pool_dispersion Whether a gaussian dispersion is estimated over the
 #' whole series. \code{TRUE} where the formula carries no \code{disp()} term,
 #' which is the case in which \code{\link{bnec}} fits a single \code{sigma}.
-#' @param asymptote_observed The declaration, as passed to \code{\link{bnec}}.
-#' Read by \code{\link{declaration_advice}} alone.
+#' @param asymptote_observed The \code{asymptote_observed} argument of
+#' \code{\link{bnec}}. \code{FALSE} drops the advice to set it.
 #'
 #' @return \code{NULL}, invisibly. Called for its message.
 #'
@@ -763,19 +763,17 @@ uses_response_range_defaults <- function(prior, models, family,
 #' the joint family for the same reason --- its mu family has the same link, and
 #' the link is what decides the answer for a non-identity fit.
 #'
-#' The sentence is omitted as well where the call has already made the
-#' declaration. The fitted validation of #418 found it advising the declaration
-#' in every declared fit the report was raised on (#449). The rest of the report
-#' stands in such a fit: the declared \code{bot} prior is still built from the
-#' observed response at the end of the series, and the declaration leaves the
-#' \code{nec} and \code{ec50} priors unchanged.
+#' The sentence is also left out where the call already sets
+#' \code{asymptote_observed = FALSE}. The rest of the report still applies
+#' then, so only this sentence is dropped (#449).
 #'
 #' @param family The validated response family.
 #' @param y The response as supplied.
-#' @param asymptote_observed The declaration, as passed to \code{\link{bnec}}.
+#' @param asymptote_observed The \code{asymptote_observed} argument of
+#' \code{\link{bnec}}.
 #'
 #' @return A \code{\link[base]{character}} string, empty where no floor can be
-#' derived or where the declaration has been made.
+#' derived or where \code{asymptote_observed} is \code{FALSE}.
 #'
 #' @noRd
 declaration_advice <- function(family, y, asymptote_observed = TRUE) {

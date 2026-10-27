@@ -190,22 +190,10 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   check_disp_finite(formula, data)
   check_reserved_names(data)
   dots <- list(...)
-  # The declaration is read by the flatness report below, which omits its
-  # advice to make the declaration where the call has made it (#449), and by
-  # the declaration's own check after the report.
-  # dots_arg(), not an exact lookup. `dots` is forwarded to bnec() through
-  # do.call(), where these are formals before `...` and so match an
-  # abbreviation. Reading `asymptote_observed` exactly would leave an
-  # abbreviated argument declared for the fit and undeclared for
-  # check_asymptote_declaration() below, which sets .bayesnec_asymptote_checked
-  # and drops the refusal back into the per-level model loop -- the failure the
-  # hoist exists to prevent.
+  # dots_arg() matches an abbreviation such as `asymptote = FALSE`, as bnec()
+  # does when do.call() passes it these arguments. See #394.
   declared <- dots_arg(dots, "asymptote_observed", TRUE)
-  # Validated here as well as in bnec(), and before the first report this
-  # function prints, as bnec() validates it before its own. Validated any later,
-  # an invalid value would let the family, bound, group-term and flatness
-  # reports print, or the floor refusal or mixed-set report be raised, before
-  # the refusal that names it.
+  # Check the value before printing any message, as bnec() does (#449).
   chk_flag(declared, x_name = "`asymptote_observed`")
   # The response substitutions are not reported here. bnec_group() fits each
   # level on its own subset, so the values substituted differ between levels

@@ -613,18 +613,14 @@ test_that("bnec_group reports every level once and marks the inner calls", {
   expect_identical(marked, c(TRUE, TRUE))
 })
 
-# ---- a call that has made the declaration ----------------------------------
+# ---- a call that sets asymptote_observed = FALSE ---------------------------
 
-# The sentence advising the declaration, as declaration_advice() writes it for
-# a response with a derivable floor.
+# Part of the sentence that advises setting asymptote_observed = FALSE.
 declare_advice <- "declare it with asymptote_observed = FALSE"
 
 test_that("a declared call is not advised to declare (#449)", {
-  # The fitted validation of #418 found the report advising
-  # asymptote_observed = FALSE in every declared fit it was raised on. Only
-  # that sentence is dropped: the rest of the report is the same text, because
-  # the declared bot prior is still built from the observed response and the
-  # nec and ec50 priors are not changed by the declaration.
+  # Only the advice to set asymptote_observed = FALSE is dropped. The rest of
+  # the report is unchanged.
   bdat <- flat_bdat(y ~ crf(x, "nec4param"),
                     data.frame(x = flat_x, y = declining_y))
   fam <- gaussian(link = "identity")
@@ -637,9 +633,7 @@ test_that("a declared call is not advised to declare (#449)", {
   expect_match(undeclared, declare_advice, fixed = TRUE)
   expect_match(declared, still_declining, fixed = TRUE)
   expect_false(grepl("asymptote_observed", declared, fixed = TRUE))
-  # The declared report is the undeclared one with the advice removed and
-  # nothing else changed, and it still ends on the advice to inspect and
-  # supply priors.
+  # The declared report is the undeclared one minus the advice.
   advice <- bayesnec:::declaration_advice(fam, declining_y)
   expect_true(nzchar(advice))
   expect_identical(declared, sub(advice, "", undeclared, fixed = TRUE))
@@ -676,8 +670,7 @@ test_that("bnec passes the declaration to the report (#449)", {
 })
 
 test_that("bnec_group passes the declaration to the report (#449)", {
-  # Read through dots_arg(), so an abbreviation that reaches the inner bnec()
-  # calls as a declaration is read as one by the report as well.
+  # Covers the abbreviation `asymptote = FALSE` as well as the full name.
   d <- data.frame(
     x = rep(flat_x, 2),
     y = c(declining_y, declining_y),
@@ -706,10 +699,8 @@ test_that("bnec_group passes the declaration to the report (#449)", {
 })
 
 test_that("bnec_group refuses an invalid declaration before any report (#449)", {
-  # The declaration is read before the first report bnec_group() prints, as
-  # bnec() reads it before its own. family = NULL makes the first of those the
-  # message naming the family chosen, which is printed before the bound,
-  # group-term and flatness reports.
+  # With family = NULL the first message would name the family chosen. An
+  # invalid value must be refused before that message is printed.
   d <- data.frame(
     x = rep(flat_x, 2),
     y = c(declining_y, declining_y),
