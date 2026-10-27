@@ -930,8 +930,8 @@ add_disp_block <- function(brms_bf, model, spec, family, x_var,
 #' @param vf An element of \code{disp_functions}.
 #'
 #' @details \code{@MU@} becomes \code{(.bnec_mu)} and each constant
-#' \code{@NAME@} becomes \code{.bnec_NAME}. Keep the parentheses: they match
-#' the ones \code{make_disp_block()} puts around the curve.
+#' \code{@NAME@} becomes \code{.bnec_NAME}. Each placeholder matches whatever
+#' expression the fitted formula has in its place.
 #'
 #' @return A \code{\link[base]{call}}.
 #'
@@ -953,7 +953,8 @@ disp_form_template <- function(vf) {
 #' data, where no prediction grid reaches. The centring constants are read
 #' from the fitted formula, because recomputing them needs the response
 #' exactly as \code{wrangle_model_formula()} saw it. The inverse link comes
-#' from \code{brmsfamily("negbinomial")}, which accepts every shape link.
+#' from \code{brmsfamily("negbinomial")}, which accepts as a mean link every
+#' link \pkg{brms} allows on the shape.
 #'
 #' @return A \code{\link[base]{list}} with elements \code{value}, the
 #' dispersion parameter, one per draw; \code{pars}, the draws of each
@@ -1096,10 +1097,9 @@ disp_covariates <- function(formula, x_var = all.vars(crf_x_call(formula))) {
 #' level \pkg{brms} codes it against. The value cannot change a quantity read
 #' from the mean, because no family a \code{disp(~...)} column is fitted for
 #' has a mean that involves the dispersion parameter. Where the mean does
-#' involve it, the column is refused; see \code{shape_in_reported_mean()}. For
-#' a predicted reading
-#' the value is a placeholder, which the prediction methods replace; see
-#' \code{disp_marginal_draws()}.
+#' involve it, \code{check_disp_count_truncation()} refuses the column. For a
+#' predicted reading the value is a placeholder, which the prediction methods
+#' replace; see \code{disp_marginal_draws()}.
 #'
 #' @return A vector of length one, of the class of \code{x}; a factor keeps
 #' every level of \code{x}, because \pkg{brms} builds the design matrix
@@ -1158,9 +1158,9 @@ add_disp_placeholders <- function(newdata, data, formula,
 #' @param family Either a \code{\link[stats]{family}} object or a family tag.
 #'
 #' @details True for the joint \code{hurdle_negbinomial} and for a
-#' \code{negbinomial} growth component of \code{bnec_hurdle()}. Both report
-#' the zero-truncated mean, \code{hurdle_positive_mean()}, which depends on
-#' the shape.
+#' \code{negbinomial} growth component of \code{bnec_hurdle()}. Every curve
+#' either reports is built from the zero-truncated mean,
+#' \code{hurdle_positive_mean()}, which depends on the shape.
 #'
 #' @return A \code{\link[base]{logical}}.
 #'
