@@ -124,9 +124,10 @@
   that is non-negative throughout. The entry is `normal(e/2, e/(2 qnorm(0.975)))`
   on the gaussian branch, `beta(1, log(0.025) / log(1 - e))` on the four
   bounded families and `gamma(2, qgamma(0.975, 2) / e)` on `Gamma`, `poisson`
-  and `negbinomial`, for an endpoint mean *e*. All three meet the rule exactly at
-  the upper end; the gamma entry, at its fixed shape of 2, starts at 0.0435*e*
-  rather than at the floor. The initial-value band is extended to the same floor,
+  and `negbinomial`, for an endpoint mean *e*. All three end the interval at *e*
+  exactly. The gaussian entry starts it at the floor, and the beta and gamma
+  entries start it above the floor: the gamma entry at 0.0435*e*, because its
+  shape is fixed at 2. The initial-value band is extended to the same floor,
   because a band built from the observed response rejects the draws the new
   prior exists to produce.
 
