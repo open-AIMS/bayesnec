@@ -705,6 +705,30 @@ test_that("bnec_group passes the declaration to the report (#449)", {
   }
 })
 
+test_that("bnec_group refuses an invalid declaration before any report (#449)", {
+  # The declaration is read before the first report bnec_group() prints, as
+  # bnec() reads it before its own. family = NULL makes the first of those the
+  # message naming the family chosen, which is printed before the bound,
+  # group-term and flatness reports.
+  d <- data.frame(
+    x = rep(flat_x, 2),
+    y = c(declining_y, declining_y),
+    site = rep(c("a", "b"), each = 16)
+  )
+  local_mocked_bindings(
+    bnec = function(...) stop("bnec() reached"),
+    .package = "bayesnec"
+  )
+  msg <- capture_messages(
+    expect_error(
+      bnec_group(y ~ crf(x, "nec4param"), d, group_var = "site",
+                 asymptote_observed = NA),
+      "asymptote_observed", fixed = TRUE
+    )
+  )
+  expect_identical(msg, character(0))
+})
+
 # ---- calibration ------------------------------------------------------------
 
 test_that("the report rate on a flat top is near the stated alpha", {
