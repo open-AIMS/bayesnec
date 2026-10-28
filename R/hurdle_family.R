@@ -1,17 +1,14 @@
-# Internals supporting the joint two-block families, where the response and the
-# probability of a zero are two parameter blocks inside a single brms fit.
+# Internals for the joint two-block families, where the response and the
+# probability of a zero are two parameter blocks inside one brms fit.
 #
-# brms names that second block "hu" for the hurdle families and "zi" for the
-# zero-inflated ones. Structurally they are the same model -- zero-inflation
-# only differs from a hurdle when the base distribution can itself emit zeros,
-# which neither Gamma nor Beta can -- so bayesnec treats those families
-# identically and carries the name through rather than branching on it. Count
-# hurdles also factorise because their zeros are declared structural and their
-# positive block is zero-truncated. The block is
-# distinguished in a fit by that name used as a prefix on every non-linear
-# parameter: `top` belongs to mu, `hutop` or `zitop` to the second block.
+# brms names the second block "hu" for the hurdle families and "zi" for the
+# zero-inflated ones. bayesnec treats the two alike and passes the name through
+# rather than branching on it. That is safe because Gamma and Beta emit no zeros
+# of their own, and a count hurdle's positive block is zero-truncated. In a fit
+# the name prefixes every non-linear parameter of the second block: `top`
+# belongs to mu, `hutop` or `zitop` to the second block.
 
-#' Is this family one of the joint two-block (hurdle / zero-inflated) families?
+#' Whether a family is a joint two-block (hurdle or zero-inflated) family
 #'
 #' @param family Either a \code{\link[stats]{family}} object or a family tag.
 #'
@@ -52,40 +49,27 @@ hurdle_dpar <- function(family) {
   unname(hurdle_fams[[fam_tag]])
 }
 
-#' Family whose defaults the mu block should reuse
+#' Family whose defaults the mu block reuses
 #'
-#' The mu block describes the response with the zeros set aside, so its priors
-#' and initial values should come from whatever family that subset looks like:
-#' Gamma for hurdle_gamma, Beta for zero_inflated_beta, and the corresponding
-#' count family for hurdle_poisson and hurdle_negbinomial.
+#' The mu block describes the response with the zeros set aside. Its priors
+#' and initial values reuse its base family: Gamma for hurdle_gamma, Beta for
+#' zero_inflated_beta, and the count family for hurdle_poisson and
+#' hurdle_negbinomial. The positive count likelihood is zero-truncated.
 #'
-#' The mean link the caller chose is used here rather than replaced. brms
-#' applies the inverse mean link to the whole non-linear expression, so under
-#' \code{hurdle_gamma(link = "log")} the generated Stan code reads
-#' \code{mu = exp(nlp_bot + (nlp_top - nlp_bot) * ...)} and \code{top} and
-#' \code{bot} are on the log scale. Returning an identity-link family here made
-#' \code{\link{define_prior}} build their priors from the untransformed
-#' response, as it does for a fit that really is on the identity link, so the
-#' priors described a different scale from the parameters. On
-#' \code{zero_inflated_beta(link = "logit")} that produced \code{beta(5, 2)}
-#' bounded to [0, 1] for a \code{top} whose true value on the logit scale was
-#' 2.2, and \code{beta(2, 5)} for a \code{bot} that must be negative for any
-#' response floor below 0.5 --- a support that excludes the answer rather than
-#' merely misplacing density. The non-hurdle route has always handled this, by
-#' reading the response on the link scale and taking the unbounded normal
-#' entries for a log or logit link, which is what Fisher et al. (2024) describe
-#' for "any response variable for which the link ensures valid values of the
-#' response can take from -Inf to Inf, including log and logit". See #302.
+#' The caller's mean link is kept. brms applies the inverse mean link to the
+#' whole non-linear expression, so under a log or logit link \code{top} and
+#' \code{bot} are on the link scale, and \code{\link{define_prior}} must build
+#' their priors on that scale. An identity-link family here gives priors on the
+#' wrong scale, such as a prior bounded to \code{[0, 1]} for a logit-scale
+#' \code{bot} that must be negative when the response floor is below 0.5.
 #'
-#' The second block is unaffected and is deliberately left on the identity
-#' link: \code{\link{validate_family}} requires \code{link_hu} and
-#' \code{link_zi} to be \code{"identity"}, because that block is written as
-#' \code{1 - <non-zero probability>} and any other link would model something
-#' else.
+#' The second block stays on the identity link, which
+#' \code{\link{validate_family}} requires because the block is written as
+#' \code{1 - <non-zero probability>}.
 #'
 #' @param family Either a \code{\link[stats]{family}} object or a family tag.
-#' A tag names a family and nothing more, so it takes the identity link ---
-#' the one \code{\link{bnec}} assigns where it chooses one.
+#' A tag takes the identity link, the one \code{\link{bnec}} assigns where it
+#' chooses one.
 #'
 #' @return An object of class \code{\link[stats]{family}}.
 #'
@@ -160,7 +144,7 @@ hurdle_positive_variance <- function(mu, family, shape = NULL) {
   out
 }
 
-#' Does this fit carry the internal count-hurdle truncation?
+#' Whether a formula is the truncated positive block of a count hurdle
 #'
 #' @param formula A bayesnec formula.
 #' @param family A family object.
@@ -274,13 +258,11 @@ hu_pars <- function(model, dpar) {
 
 #' Build the zero-probability sub-model for a bayesnec equation
 #'
-#' Derives the second block mechanically from an existing bayesnec equation
-#' rather than requiring a hand-written counterpart for each of the 23. Every
-#' non-linear parameter is given the block's prefix and the right-hand side is
-#' wrapped as \code{1 - (...)}, so that the curve being modelled is the
-#' probability of a *non*-zero -- declining with the predictor, matching the
-#' sign convention of every bayesnec equation -- while the block itself, the
-#' probability of a zero, increases.
+#' Derives the second block from an existing bayesnec equation. Every
+#' non-linear parameter takes the block's prefix and the right-hand side is
+#' wrapped as \code{1 - (...)}. The curve then models the probability of a
+#' *non*-zero, which declines with the predictor like every bayesnec equation,
+#' while the block itself, the probability of a zero, increases.
 #'
 #' @param model A \code{\link[base]{character}} string naming a bayesnec model.
 #' @param dpar The second block's name, "hu" or "zi".
@@ -342,13 +324,9 @@ add_hu_block <- function(brms_bf, model, x_var, dpar) {
 survival_by_x <- function(predictor, response) {
   ux <- sort(unique(predictor))
   p <- vapply(ux, function(z) mean(response[predictor == z] > 0), numeric(1))
-  # Stan needs mu strictly inside (0, 1) under an identity link, and a
-  # proportion of exactly 0 or 1 makes that unsatisfiable. Clamp exactly as
-  # response_link_scale() does elsewhere. Note that eps is now also the floor
-  # of the band this block's initial curve is tested against: init_limits()
-  # sets its band back from the boundary of the support by a tenth of the
-  # distance to the nearest observed value, and on this block the nearest
-  # observed value is eps wherever a proportion was clamped. See #309.
+  # Keep proportions inside (0, 1) for priors and initial values, as
+  # response_link_scale() does. boundary_inset() derives a separate inset
+  # for the initial-curve band from these clamped values.
   eps <- 1 / (2 * length(response))
   list(x = ux, y = pmin(pmax(p, eps), 1 - eps))
 }
