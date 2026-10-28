@@ -123,25 +123,19 @@ compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
     stop("comparison must be one of nec, n(s)ec, ecx or nsec.")
   }
   chk_numeric(ecx_val)
-  # The same validator ecx() uses, rather than a second copy of the vocabulary.
-  # The copy that stood here still listed the 2.1.3 three-value set, so it
-  # refused type = "range" -- which is the name the rename warning gives users
-  # for the behaviour they had, making the migration it names impossible from
-  # here and from compare_posterior(), which forwards to this function.
+  # Use ecx()'s validator rather than a copy of the type vocabulary, which
+  # would fall out of step with it.
   type <- validate_ecx_type(type, match.call())
-  # Warned once for the call rather than once per fit in x: the ecx() calls
-  # below name type explicitly, so each would otherwise repeat the message.
-  # Same reasoning as ecx.bayesmanecfit. See D15 ruling 8.
+  # Warn once for the call: the ecx() calls below name `type`, so each would
+  # otherwise repeat the message.
   warned <- options(bayesnec.relative_warned = TRUE)
   on.exit(options(warned), add = TRUE)
   chk_numeric(sig_val)
   chk_numeric(resolution)
   chk_number(seed)
-  # The scale message is reported once for the call, as the rename warning is
-  # above. It is decided here rather than left to the per-fit calls below,
-  # which name xform = identity whatever the caller wants, and because the
-  # "n(s)ec" comparison reads the stored posteriors without calling an
-  # estimator. See report_fitted_scale().
+  # Report the scale once for the call. The per-fit calls below pass
+  # xform = identity whatever the caller wants, and the "n(s)ec" comparison
+  # calls no estimator. See report_fitted_scale().
   quiet <- report_fitted_scale(first_transformed_fit(x), identity,
                                "compare_estimates")
   on.exit(options(quiet), add = TRUE)
@@ -168,19 +162,13 @@ compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
   }
   names(posterior_list) <- names(x)
   n_samples <- min(sapply(posterior_list, length))
-  # Random pairing affects the reported estimates. Seed it locally so calls
-  # repeat without changing the caller's RNG state (#343).
+  # Random pairing affects the reported estimates. Seed it locally so that
+  # calls repeat without changing the caller's random number stream.
   with_preserved_rng_state({
     set.seed(seed, sample.kind = "Rejection")
     r_posterior_list <- lapply(posterior_list, function(m, n_samples) {
-      # A random subset of a longer posterior, not its first n_samples draws.
-      # sample(seq_len(n_samples)) permuted only the head of the vector, so
-      # where components had unequal draw counts the tail of the longer one was
-      # never used -- systematic rather than random thinning. Harmless when the
-      # counts are equal, which is the normal case. See #218.
-      # subset_draws() rather than `[`, which drops the censoring record, after
-      # which a draw beyond the prediction range cannot be told from one that
-      # is merely missing (#404).
+      # Take a random subset of a longer posterior, not its first n_samples
+      # draws. Use subset_draws(), not `[`, which drops the censoring record.
       subset_draws(m, sample(seq_along(m), n_samples, replace = FALSE))
     }, n_samples = n_samples)
   })
@@ -212,27 +200,17 @@ compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
   prob_diff <- lapply(seq_along(all_combn), function(i, r_list) {
     a <- all_combn[[i]]
     s <- pair_signs[[i]]
-    # The sign is read from the censoring record, per D22, rather than from the
-    # differences that have a value. A draw beyond the prediction range has no
-    # value, but it is known to lie beyond the bound, and against a draw on the
-    # near side of that bound the sign of the difference is fixed whatever the
-    # censored value is. Only a pair whose sign the record leaves open is
-    # indeterminate, and it is counted as not positive for the lower
-    # probability and as positive for the upper one, rather than deleted. The
-    # earlier na.rm deleted every pair with a censored draw and reported the
-    # probability over the rest as though it were the whole comparison.
-    #
-    # A pair that is missing without being censored -- an NA the record does
-    # not account for -- could not be computed at all, and is left out of both
-    # probabilities, as summarise_censored() leaves it out of a quantile.
+    # Read the sign from the censoring record. A draw beyond the prediction
+    # range has no value, but against a draw on the near side of the bound the
+    # sign of the difference is known. A pair whose sign the record leaves
+    # open is indeterminate: it counts as not positive for prob_lower and as
+    # positive for prob_upper. A pair missing without being censored is left
+    # out of both, as summarise_censored() leaves it out of a quantile.
     sign01 <- as.numeric(s$positive)
     prob_lower <- mean(replace(sign01, s$indeterminate, 0), na.rm = TRUE)
     prob_upper <- mean(replace(sign01, s$indeterminate, 1), na.rm = TRUE)
-    # prob is kept, and computed by the expression that computed it before, so
-    # that a comparison with no indeterminate pair returns the number it
-    # returned before to the last bit. Where the two probabilities differ the
-    # comparison does not identify a single one, and NA says so; any number
-    # here would be one end of the interval presented as the whole of it.
+    # Where no pair is indeterminate, prob is computed as it always was. Where
+    # the two probabilities differ, no single value is identified, so NA.
     prob <- if (any(s$indeterminate)) {
       NA_real_
     } else {
@@ -252,13 +230,10 @@ compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
 
 #' The values a posterior draw is known to lie between
 #'
-#' A draw the censoring record marks beyond an end has no value, or a value
-#' that the estimator itself reports only as a bound: a threshold equation's
-#' \code{nec} draw above the prediction range is sampled and has a number, and
-#' \code{\link{nec}} still reports it as lying at or above the bound. Both are
-#' read here as the interval the record places them in, so that every
-#' comparison type treats a draw beyond the range as the estimator that
-#' produced it reports it (#404).
+#' A draw the censoring record marks beyond an end is read as the interval the
+#' record places it in, even where it has a sampled value: \code{\link{nec}}
+#' reports a threshold draw above the range as a bound. Every comparison type
+#' then treats such a draw as its estimator reports it.
 #'
 #' @param m A posterior vector, optionally carrying attribute
 #' \code{"censored"}.
@@ -303,26 +278,21 @@ draw_limits <- function(m) {
 difference_sign <- function(first, second) {
   a <- draw_limits(first)
   b <- draw_limits(second)
-  # The subtraction the function has always made, so that where nothing is
-  # censored the differences are the ones it has always returned. Arithmetic
-  # copies the record from the operands, and a difference is not on the
-  # scale that record describes, so it is removed.
+  # Arithmetic copies the record from the operands, but a difference is not on
+  # the scale it describes, so remove it.
   diff <- first - second
   attr(diff, "censored") <- NULL
   diff[a$censored | b$censored] <- NA
   smallest <- a$lo - b$hi
   largest <- a$hi - b$lo
   positive <- rep(NA, length(smallest))
-  # Above zero is the event prob has always counted, and at or below zero its
-  # complement, so a difference known to be exactly zero is not positive.
+  # prob counts a difference above zero, so one known to be exactly zero is
+  # not positive.
   positive[which(smallest > 0)] <- TRUE
   positive[which(largest <= 0)] <- FALSE
-  # Two identified draws whose difference is not a number -- Inf against Inf
-  # -- have no sign. The earlier na.rm dropped such a pair, and it is dropped
-  # here too rather than counted as indeterminate, so that a comparison with
-  # nothing censored returns what it returned before. A NaN limit on a pair
-  # with a censored draw is a sign the record leaves open, and stays
-  # indeterminate.
+  # Two identified draws whose difference is NaN (Inf against Inf) have no
+  # sign and are dropped as missing, not counted as indeterminate. A NaN on a
+  # pair with a censored draw stays indeterminate.
   undefined <- !a$censored & !b$censored & is.nan(smallest)
   missing <- a$missing | b$missing | undefined
   positive[missing] <- NA
