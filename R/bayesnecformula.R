@@ -1179,9 +1179,9 @@ gl_term_groups <- function(str_calls) {
 #'
 #' \code{bot} is still a population-level non-linear parameter with its own
 #' prior and name, so \code{b_bot_Intercept} and everything that reads it are
-#' unchanged. The deviation is zero-centred and \code{m * exp(0) == m}, so
-#' \code{bot} keeps its meaning, and no value of \code{botgl} can put
-#' \code{bnecbot} outside \code{(0, 1)}.
+#' unchanged. A zero deviation leaves \code{bot} unchanged. For an admissible
+#' \code{bot}, the logit form above preserves \code{(0, 1)}; the log form
+#' \code{bot * exp(botgl)} preserves positivity.
 #'
 #' The deviation has no population intercept. \code{bnecbot} depends on
 #' \code{bot} and \code{botgl} only through their combination, so a free
@@ -1220,9 +1220,9 @@ add_par_gl_term <- function(brmform, par, var, kind) {
     brmform[[2]][[nms[["inter"]]]] <- inter_form
   }
   tmp_rhs <- deparse1(rhs(brmform[[2]][[nms[["dev"]]]]))
-    # Test for the term, not the variable name: a name test would drop a
-    # grouping whose name is a substring of one already added, such as grp
-    # after grp2.
+  # Test for the term, not the variable name: a name test would drop a
+  # grouping whose name is a substring of one already added, such as grp
+  # after grp2.
   if (!has_gl_term(tmp_rhs, var)) {
     rhs(brmform[[2]][[nms[["dev"]]]]) <-
       str2lang(paste0(tmp_rhs, " + (1 |", var, ")"))
