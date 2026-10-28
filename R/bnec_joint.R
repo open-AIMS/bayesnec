@@ -111,15 +111,14 @@ best_crossed <- function(object) {
 #'
 #' A \code{disp()} term in the formula held in \code{object} is kept, and in
 #' the joint model it applies to the dispersion parameter of the positive
-#' block. The variance function is written in that block's mean and centred on
-#' the positive responses, as it is for the growth component, so the joint
-#' model fits the same variance function (see \code{\link{bnec}}). A
-#' \code{formula} supplied here replaces the held one, so a \code{disp()} term
-#' is fitted only where it is written in that formula. \code{hurdle_negbinomial}
-#' does not yet take a \code{disp()} term, so a negative binomial growth
-#' component fitted with one is refused before anything is fitted; supply a
-#' \code{formula} without the term to refit it jointly with one shape for the
-#' whole curve.
+#' block. The variance function is written in the component mean \code{mu} of
+#' that block and centred on the positive responses, as it is for the growth
+#' component, so the joint model fits the same variance function (see
+#' \code{\link{bnec}}). A \code{formula} supplied here replaces the held one,
+#' so a \code{disp()} term is fitted only where it is written in that formula.
+#' A negative binomial growth component fitted with a \code{disp()} term is
+#' refitted as a \code{hurdle_negbinomial} whose shape follows the same
+#' sub-model.
 #'
 #' \bold{The joint refit of a grouped fit}
 #'
@@ -253,19 +252,17 @@ bnec_joint.bayesnechurdlefit <- function(object, model = NULL,
          "\" growth component, so this fit cannot be refitted jointly.",
          call. = FALSE)
   }
-  # The disp() term is checked against the two-block family here, before the
-  # refit is announced. bnec() checks it as well, once before its model loop,
-  # but only after the message below has said the refit is under way, and its
-  # remedy cannot name the `formula` argument, which is how a caller of
-  # bnec_joint() leaves out a term held in the hurdle fit's formula. The case
-  # this is for is a negative binomial growth component fitted with disp(),
-  # which maps to hurdle_negbinomial. tryCatch() rather than a message of its
-  # own, so that the reason stays the one check_disp_spec() gives and is
-  # stated in one place. See #410.
+  # Check the disp() term before message() announces the refit, so that a
+  # refusal can add the `formula` remedy, which bnec()'s own cannot name.
   disp_spec <- parse_disp_term(formula)
   if (!is.null(disp_spec)) {
     tryCatch(
-      check_disp_spec(disp_spec, joint_fam),
+      {
+        check_disp_spec(disp_spec, joint_fam)
+        if (shape_in_reported_mean(formula, joint_fam)) {
+          check_disp_count_truncation(formula, joint_fam)
+        }
+      },
       error = function(e) {
         stop(conditionMessage(e), " To refit this fit jointly without the",
              " term, pass bnec_joint() a `formula` that leaves out disp().",
