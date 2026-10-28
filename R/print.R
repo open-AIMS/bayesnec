@@ -183,7 +183,8 @@ print.manecsummary <- function(x, ...) {
 ")))
     }
     if (length(div_bad) > 0) {
-      msg <- c(msg, divergence_message(div_bad, x$divergence_cutoff))
+      msg <- c(msg, divergence_message(div_bad, x$divergence_cutoff,
+                                       x$mod_weights[names(div_bad), "wi"]))
     }
     if (length(fit_bad) > 0) {
       msg <- c(msg,
@@ -249,13 +250,20 @@ divergent_models <- function(x) {
 #' @param div_bad A named \code{\link[base]{numeric}} vector of counts, from
 #' \code{divergent_models()}.
 #' @param cutoff The cutoff the counts exceed.
+#' @param weights The model weight of each model in \code{div_bad}, in the
+#' same order, or \code{NULL} for a single fit.
 #'
 #' @return A \code{\link[base]{character}} string.
 #'
 #' @noRd
-divergence_message <- function(div_bad, cutoff) {
+divergence_message <- function(div_bad, cutoff, weights = NULL) {
+  detail <- if (is.null(weights)) {
+    div_bad
+  } else {
+    paste0(div_bad, ", model weight ", sprintf("%.2f", weights))
+  }
   paste0("Divergent transitions > ", cutoff, " (see ?check_sampling):\n",
-         paste0("  -  ", names(div_bad), " (", div_bad, ")", collapse = "\n"))
+         paste0("  -  ", names(div_bad), " (", detail, ")", collapse = "\n"))
 }
 
 #' One line in a summary naming the models that did not fit
