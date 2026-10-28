@@ -536,8 +536,9 @@ ecx_asymptote <- function(object, type) {
 #' @param newdata Prediction data used to obtain shape draws.
 #'
 #' @details The negative binomial zero-truncated mean needs the shape at the
-#' asymptote. A constant shape is read at the first row of \code{newdata};
-#' under any other \code{disp()} term see \code{disp_positive_asymptote()}.
+#' asymptote. The function reads a constant shape at the first row of
+#' \code{newdata}, and passes any other \code{disp()} term to
+#' \code{disp_positive_asymptote()}.
 #'
 #' @return \code{asymptote}, transformed where the reported curve is
 #' \code{E[Y | Y > 0]}.
@@ -577,15 +578,13 @@ count_positive_asymptote <- function(object, dpar, asymptote, newdata) {
   if (!factorised && !joint) {
     return(asymptote)
   }
-  # Nonlinear equation parameters are stored on the family's link scale.
-  # Predictions have already passed through linkinv(), so the theoretical bot
-  # (or the equation's zero limit where there is no bot) must do the same
-  # before it is converted to E[Y | Y > 0].
+  # The asymptote is on the link scale and the predictions on the response
+  # scale, so apply linkinv() before converting to E[Y | Y > 0].
   mean_asymptote <- object$fit$family$linkinv(asymptote)
   shape <- NULL
   if (family %in% c("negbinomial", "hurdle_negbinomial")) {
     spec <- parse_disp_term(object$bayesnecformula)
-    # disp(~1) fits one shape, so it is read at the control as without disp().
+    # disp(~1) fits one shape, so read it at the control, as without disp().
     constant <- is.null(spec) ||
       (spec$route == "A" && length(all.vars(str2lang(spec$value))) == 0)
     if (!constant) {
@@ -608,13 +607,13 @@ count_positive_asymptote <- function(object, dpar, asymptote, newdata) {
 #' scale, or 0 for an equation without \code{bot}.
 #'
 #' @details Under a variance function of the mean the shape is the sub-model
-#' at \code{mu = bot}, draw by draw. Under \code{disp(~x)} the request is
-#' refused, because the asymptote lies beyond the data and has no single shape.
+#' at \code{mu = bot}, draw by draw. Under \code{disp(~x)} the function stops,
+#' because the asymptote lies beyond the data and has no single shape.
 #'
 #' At a mean of 0, for an equation without \code{bot}, the zero-truncated mean
-#' is 0/0 and its limit \code{r / log1p(r)} is used, where \code{r} is the
-#' limit of \code{mu / shape}. \code{r} is 0, giving 1, unless \code{"power"}
-#' has \code{c1 >= 1} on a log or softplus shape link.
+#' is 0/0, and the function returns its limit \code{r / log1p(r)}, where
+#' \code{r} is the limit of \code{mu / shape}. \code{r} is 0, giving 1,
+#' unless \code{"power"} has \code{c1 >= 1} on a log or softplus shape link.
 #'
 #' @return A \code{\link[base]{numeric}} vector, one value per draw.
 #'

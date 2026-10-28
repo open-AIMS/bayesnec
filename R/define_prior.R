@@ -1439,8 +1439,8 @@ define_prior <- function(model, family, predictor, response,
     # centre of the regularizing set groups each positive response by the
     # concentration it was observed at. See #472.
     #
-    # A count hurdle's positive block is zero-truncated in the likelihood, and
-    # no formula attribute records it, so the flag is set from the family.
+    # brms truncates a count hurdle's positive block at zero, and no formula
+    # attribute records it, so is_count_hurdle() sets the flag.
     disp_priors <- define_disp_prior(disp_spec, mu_family, mu_response,
                                      predictor = mu_split$x,
                                      prior_type = prior_type,

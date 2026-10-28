@@ -1087,8 +1087,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   if (!is.null(disp_spec)) {
     check_disp_spec(disp_spec, brm_args$family,
                     response = disp_response(bdat, brm_args$family))
-    # Checked once here, as check_disp_spec() is, on the routes whose
-    # reported mean depends on the shape.
+    # This check is also fixed for the whole call, so it runs here too.
     if (shape_in_reported_mean(formula, brm_args$family)) {
       check_disp_count_truncation(formula, brm_args$family)
     }

@@ -251,9 +251,8 @@ bnec_joint.bayesnechurdlefit <- function(object, model = NULL,
          "\" growth component, so this fit cannot be refitted jointly.",
          call. = FALSE)
   }
-  # Checked before the refit is announced, so that the refusal can name the
-  # `formula` argument; bnec() repeats the checks but cannot. tryCatch() adds
-  # that remedy to each check's own message.
+  # Run the disp() checks before announcing the refit, so that the refusal can
+  # name the `formula` argument. bnec() repeats them, but its message cannot.
   disp_spec <- parse_disp_term(formula)
   if (!is.null(disp_spec)) {
     tryCatch(

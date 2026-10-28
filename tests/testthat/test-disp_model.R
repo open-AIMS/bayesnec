@@ -1678,8 +1678,7 @@ test_that("the asymptote shape under disp() is the sub-model at bot (#410)", {
   got <- bayesnec:::count_positive_asymptote(obj, "mu", bot,
                                              data.frame(x = 0))
   expect_equal(got, expected)
-  # read at a larger mean, the control's, the shape is larger and the
-  # positive-count asymptote lower, which is what the control reading gave
+  # reading the shape at the control, a larger mean, gives a lower asymptote
   shape_ctrl <- exp(nb_draws$b_c0_Intercept +
                       nb_draws$b_c1_Intercept * (log(10 * bot) - ref))
   expect_true(all(got > as.numeric(bayesnec:::hurdle_positive_mean(

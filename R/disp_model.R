@@ -949,13 +949,12 @@ disp_form_template <- function(vf) {
 #' @param mu A \code{\link[base]{numeric}} vector of means on the response
 #' scale, one per posterior draw, or of length one.
 #'
-#' @details Evaluates the sub-model draw by draw. A mean such as \code{bot} is
-#' reached only as the predictor grows without bound, so no row of a
-#' prediction grid gives it. The centring constants are read from the fitted
-#' formula, because recomputing them needs the response exactly as
-#' \code{wrangle_model_formula()} saw it. The inverse link comes from
-#' \code{brmsfamily("negbinomial")}, which accepts as a mean link every link
-#' \pkg{brms} allows on the shape.
+#' @details No row of a prediction grid reaches a mean such as \code{bot}, so
+#' the function evaluates the sub-model itself, draw by draw. It reads the
+#' centring constants from the fitted formula, because recomputing them needs
+#' the response exactly as \code{wrangle_model_formula()} saw it. It takes the
+#' inverse link from \code{brmsfamily("negbinomial")}, whose mean accepts every
+#' link \pkg{brms} allows on the shape.
 #'
 #' @return A \code{\link[base]{list}} with elements \code{value}, the
 #' dispersion parameter, one per draw; \code{pars}, the draws of each
@@ -1178,9 +1177,9 @@ shape_in_reported_mean <- function(formula, family) {
 #' Refuse a disp(~...) column on a zero-truncated negative binomial count
 #'
 #' @param formula An object of class \code{\link{bayesnecformula}}.
-#' @param family The family the term is fitted on, or its tag: the growth
-#' component's \code{negbinomial}, the default, or the joint
-#' \code{hurdle_negbinomial}. It decides only which route the message names.
+#' @param family \code{"negbinomial"}, the default, for a growth component of
+#' \code{bnec_hurdle()}, or \code{"hurdle_negbinomial"}, as a family or its
+#' tag. It changes only the message.
 #'
 #' @details On the routes \code{shape_in_reported_mean()} names, a shape
 #' modelled on a column other than the predictor would make the reported curve
