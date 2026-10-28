@@ -181,7 +181,12 @@ inverted to survival before computing, so ECx keeps its usual meaning of a
 percentage decline from the fitted control value. See Details.
 For the count hurdles, <code>"mu"</code> is converted to the positive-count mean
 <code>E[Y | Y &gt; 0]</code> so it matches the growth component returned by
-<code><a href="bnec_hurdle.html">bnec_hurdle</a></code>.</p></dd>
+<code><a href="bnec_hurdle.html">bnec_hurdle</a></code>. With <code>type = "relative"</code>, <code>"mu"</code> is
+measured towards the response block's asymptote and <code>"hu"</code> or
+<code>"zi"</code> towards the zero block's own <code>bot</code>, or 0 where its
+equation has none. The combined curve, <code>dpar = NULL</code>, is refused under
+<code>type = "relative"</code>, because its asymptote is the product of the two
+blocks' asymptotes rather than a fitted parameter.</p></dd>
 
 </dl></div>
     <div id="value">
