@@ -2986,7 +2986,9 @@
   `autoplot()` or `plot(add_nec = FALSE)`. The component contributes the NSEC
   draws stored when it was fitted, as a component fitted to a model set
   contributes its N(S)EC draws, and `summary()` labels its row NSEC.
-  `nec()` on a `bayesnecfit` holding a smooth equation still refuses (#487).
+  `nec()` on a `bayesnecfit` holding a smooth equation still refuses. A smooth
+  hurdle component saved before the estimate type was recorded also retains
+  NSEC extrapolation rules (#487).
 
 - `nec(which = "growth")` and `nec(which = "survival")` on a
   `bayesnechurdlefit` compute only the component named. Both components were
@@ -3004,7 +3006,9 @@
   inverting the transformation on the prediction grid, as `plot()` does for a
   `bayesnecfit`. `xform` is then not applied to the points or the curve, also
   as for a `bayesnecfit`. A predictor that `crf()` does not transform is drawn
-  as before (#487).
+  as before. The automatic inverse also preserves estimates identified over
+  a stored prediction range beyond the observations, including where the
+  plotted range is narrower (#487).
 
 - `summary()` on a `bayesnechurdlefit` names a Gamma growth family `Gamma`,
   as `bnec_hurdle()` names it when fitting. It printed `gamma`, the name
