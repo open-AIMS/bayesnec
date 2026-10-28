@@ -27,8 +27,9 @@
 #' @slot success_models A \code{\link[base]{character}} vector indicating the
 #' name of the successfully fitted models.
 #' @slot mod_stats A \code{\link[base]{data.frame}} of model fit statistics.
-#' @slot sample_size The size of the posterior sample.
-#' Information on the priors used in the model.
+#' @slot sample_size The number of posterior draws each component model holds,
+#' from which model averaging draws. Where the models hold different numbers,
+#' it is the smallest.
 #' @slot w_draw_index The realised model-averaging draw: a
 #' \code{\link[base]{list}} of the row indices kept for each component model.
 #' Model averaging keeps a weighted subset of each model's draws, and this

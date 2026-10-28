@@ -2889,6 +2889,26 @@
   anything is sampled. `?bnec_hurdle` states that the term applies to the
   growth component only. No fit that previously succeeded changes (#410).
 
+- The `sample_size` stored on a `bayesmanecfit` is now the number of draws
+  each model holds, counted from the fits. It was computed as
+  `ceiling((iter - warmup) / thin * chains)`, while Stan keeps
+  `ceiling((iter - warmup) / thin)` draws in each chain, so the count fell
+  short whenever `thin` does not divide `iter - warmup`. Four chains of 500
+  post-warmup iterations thinned by 3 keep 668 draws, and `sample_size`
+  recorded 667. The stored summaries, `ecx()` and `nsec()` used the stored
+  draw index, while `posterior_epred()` and `posterior_predict()`, and
+  `fitted()`, `predict()` and `ecnsec()` through them, found 668 draws and
+  rebuilt a different index from the seed. A credible band computed from
+  `posterior_epred()` therefore differed from the one the plot methods draw,
+  and an `nsec()` and its `ecnsec()` were not the same draws. All of them now
+  use the stored index. A thinned set fitted again draws its index from all
+  the draws, so its model-averaged estimates differ from those of the earlier
+  fit. A set saved by an earlier version keeps the `sample_size` it recorded,
+  and every method now uses its stored index whenever the caller takes all
+  the draws, so such a set agrees with its own stored summaries without being
+  refitted. The default `thin = 1` and a single fit, a `bayesnecfit`, are
+  unaffected (#477).
+
 ## Documentation
 
 - `?autoplot` states that a `bayesmanecfit` with `multi_facet = FALSE`

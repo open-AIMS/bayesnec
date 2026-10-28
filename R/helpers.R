@@ -182,13 +182,40 @@ pull_draw_index <- function(object, model_set, sample_size) {
   idx <- object$w_draw_index
   # `==`, not identical(): sample_size is a double on the object and an integer
   # from nrow(), and identical() would always take the fallback.
-  same_n <- isTRUE(object$sample_size == sample_size)
+  same_n <- isTRUE(object$sample_size == sample_size) ||
+    undercounted_set(object, sample_size)
   if (!is.null(idx) && same_n && all(model_set %in% names(idx))) {
     idx[model_set]
   } else {
     weighted_draw_index(model_set, sample_size, object$mod_stats,
                         object$w_draw_seed)
   }
+}
+
+#' Whether an undercounted set is asked for every draw its fits hold
+#'
+#' Sets saved by earlier versions store as \code{sample_size} the count
+#' \code{ceiling((iter - warmup) / thin * chains)}, which falls short of the
+#' draws the fits hold when \code{thin} does not divide \code{iter - warmup}.
+#' The stored index of such a set draws from its first \code{sample_size}
+#' rows, so it remains valid for a caller holding every draw, and the stored
+#' summaries were built from it.
+#'
+#' @param object An object of class \code{\link{bayesmanecfit}}.
+#' @param sample_size A \code{\link[base]{numeric}} vector of length 1, the
+#' number of draws available per component.
+#'
+#' @return A \code{\link[base]{logical}} of length 1.
+#' @noRd
+undercounted_set <- function(object, sample_size) {
+  fits <- object$mod_fits
+  if (length(fits) == 0) {
+    return(FALSE)
+  }
+  sim <- extract_simdat(fits[[1]])
+  formula_n <- ceiling((sim$iter - sim$warmup) / sim$thin * sim$chains)
+  isTRUE(object$sample_size == formula_n) &&
+    isTRUE(sample_size == set_draw_count(fits))
 }
 
 #' @noRd
