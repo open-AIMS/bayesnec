@@ -1,15 +1,9 @@
 # Methods for bayesnechurdlefit, the paired object returned by bnec_hurdle().
 #
-# Almost every method takes a `which` argument selecting one of the three
-# curves the model describes. It defaults to "combined" throughout: the
-# combined endpoint is the reason for fitting a hurdle model at all -- a user
-# who only wanted the components would fit them separately with bnec() and not
-# reach for this wrapper.
-#
-# Methods fall into two groups. Those that describe a curve compute it from
-# both components ("implement"); those that describe a *fit* -- convergence
-# diagnostics, priors, the underlying brmsfit -- have no combined analogue and
-# return one result per component ("delegate").
+# Most methods take `which`, defaulting to "combined", to select one of the
+# three curves. Methods that describe a curve compute it from both components;
+# methods that describe a fit, such as diagnostics and priors, return one
+# result per component.
 
 #' @noRd
 hurdle_check_which <- function(which) {
@@ -57,10 +51,8 @@ posterior_epred.bayesnechurdlefit <- function(object, which = "combined",
     return(hurdle_component_preds(object, resolution = resolution,
                                   x_range = x_range)[[which]])
   }
-  # A supplied grid must be honoured rather than regenerated, or callers that
-  # build their own -- compare_fitted() among them -- get a different number of
-  # columns than the x vector they are about to pair it with. The two
-  # components share the same predictor term, so one grid serves both.
+  # Use a supplied grid as given: a caller such as compare_fitted() pairs its
+  # columns with its own x vector. Both components share the predictor term.
   g <- posterior_epred(object$growth, newdata = newdata, re_formula = NA)
   s <- posterior_epred(object$survival, newdata = newdata, re_formula = NA)
   n <- min(nrow(g), nrow(s))
@@ -231,12 +223,10 @@ bnec_newdata.bayesnechurdlefit <- function(x, resolution = 100,
 #' @param newdata A grid built from the survival component.
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
 #'
-#' @details The survival formula has no \code{disp()} term, so a grid
-#' built from it has none of the columns the growth component's term names,
-#' and a prediction of the combined endpoint over it stopped in \pkg{brms} on
-#' the growth side (#443). The columns are added at the growth component's
-#' fixed values, from the survivors it was fitted to, and marked as
-#' placeholders, as \code{prediction_grid()} adds them for a single fit.
+#' @details A grid built from the survival formula, which has no \code{disp()}
+#' term, lacks the columns the growth term names, and \pkg{brms} would stop on
+#' it. The columns are added at the growth component's fixed values and marked
+#' as placeholders, as \code{prediction_grid()} does for a single fit.
 #'
 #' @return \code{newdata}, unchanged where the growth component's formula has
 #' no such column.
@@ -292,12 +282,8 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
   # Once for the call. See report_fitted_scale().
   quiet <- report_fitted_scale(object, xform, "nsec")
   on.exit(options(quiet), add = TRUE)
-  # As in nsec.bayesnecfit: extrapolate resolves into the grid the curve is
-  # searched on, and adds to x_range the refusal to narrow and the refusal of
-  # an infinite limit.
-  #
-  # Measured against the range this call would otherwise search, the whole
-  # concentration series for every curve, growth included (D44, #412).
+  # As in nsec.bayesnecfit(), extrapolate sets the searched grid. It is
+  # measured against the whole concentration series.
   lims <- extrapolate_limits(extrapolate,
                              searched_or_stored_bounds(object, x_range),
                              "NSEC")
@@ -305,14 +291,11 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
     report_curve_read_lower_limit(object, lims)
     x_range <- c(lims$lower, lims$upper)
   }
-  # The whole concentration series for every curve (D44, #412). See
-  # hurdle_component_preds().
   preds <- hurdle_component_preds(object, resolution = resolution,
                                   x_range = x_range)
   p_samples <- preds[[which]]
-  # The control is read at the lowest observed concentration rather than at the
-  # first column of the grid, so supplying x_range does not change the reference
-  # and therefore the estimate, exactly as in nsec.bayesnecfit. See D15 ruling 2.
+  # The control is read at the lowest observed concentration, not the first
+  # grid column, so x_range does not change the reference.
   reference <- quantile(preds$control[[which]], sig_val)
   out <- nsec_from_posterior(p_samples, reference, preds$x, control_x(object),
                              preds$control[[which]])
@@ -323,11 +306,9 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
   attr(out, "below_range") <- NULL
   attr(out, "x_searched_from") <- NULL
   out <- hurdle_xform_x(object, out)
-  # The lower bound is the point the search started from, not the foot of the
-  # grid: those differ wherever the grid reaches below the control, and it is
-  # the search start a below-range draw is known to lie beneath. Built on the
-  # recorded grid, the scale the search ran on, and remapped onto the fitted
-  # scale, which swaps the two ends under a decreasing crf().
+  # The lower bound is where the search started, not the foot of the grid,
+  # which can reach below the control. Build the record on the recorded grid,
+  # then remap it: a decreasing crf() swaps its two ends.
   cens <- xform_censoring(
     censoring_record(max(preds$x), searched_from, above, below),
     function(value) hurdle_xform_x(object, value)
@@ -337,9 +318,8 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
     cens <- xform_censoring(cens, xform)
   }
   attr(out, "censored") <- cens
-  # After xform, as in ecx.bayesnecfit and nsec.bayesnecfit: the bound the
-  # report names and the numbers the caller is about to read are then on one
-  # scale.
+  # After xform, so that the bound the warning names is on the scale of the
+  # numbers returned.
   warn_censored_draws(out, "NSEC", cens = cens)
   estimate <- summarise_censored(out, prob_vals, cens)
   names(estimate) <- clean_names(estimate)
@@ -420,50 +400,22 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
                                       ecx_vals = c(10, 50, 90)) {
   chk_lgl(ecx)
   chk_numeric(ecx_vals)
-  # The no-effect rows pass the dots to nec() whatever ecx is, and the ECx
-  # rows pass them to ecx(), so posterior = TRUE is looked for as each matches
-  # it. See check_summary_posterior().
+  # The dots go to nec() and, with ecx = TRUE, to ecx(), so look for
+  # posterior = TRUE as each of them will match it.
   check_summary_posterior(nec, c(list(which = "combined"), list(...)))
   ecs <- NULL
   if (ecx) {
     check_summary_ecx_posterior(list(...))
-    # The nine ecx() calls below would each report the scale of what they
-    # return, so it is reported once for the table. The no-effect rows are read
-    # under suppressMessages() below and report nothing either way. The dots
-    # are matched as ecx() will match them, by summary_ecx_xform(). In this
-    # method the name ecx is the logical argument, not the generic, so
-    # dots_xform(ecx, ...) called here matched nothing, and the message was
-    # raised beside rows an xform had already put on the recorded scale
-    # (#439). See report_fitted_scale().
+    # Report the scale once for the table rather than in each ecx() call.
+    # Use summary_ecx_xform(), not dots_xform(ecx, ...): here `ecx` is the
+    # logical argument, not the generic.
     quiet <- report_fitted_scale(object, summary_ecx_xform(list(...)), "ecx")
     on.exit(options(quiet), add = TRUE)
-    # On the grid the component fits were predicted over, not the range of
-    # the data. ecx() rebuilds its own grid when x_range is absent, so the ECx
-    # block described a different range from the no-effect estimates printed
-    # directly above it, and those are now marked with the end they are
-    # censored at. See the same argument in summary.bayesnecfit.
-    #
-    # Every row on the survival component's stored grid, the whole
-    # concentration series, which is the range a bare ecx() reads every curve
-    # over (D44, #412). The intersection of the two components' grids, used
-    # before #412, cut every row at growth's highest concentration, and D28
-    # then read the growth rows over growth's own range; both left the
-    # summary disagreeing with the concentrations the experiment tested. NULL
-    # where the survival component has no stored grid, which leaves ecx() to
-    # build its own.
-    #
-    # A caller's x_range is matched by this helper's own formal and replaces
-    # the default, so ecx() receives it once. Left in ... it was passed beside
-    # the default and the call stopped with "formal argument "x_range"
-    # matched by multiple actual arguments" (#416). The formal follows ... so
-    # that it cannot take a positional argument meant for ecx(), and it
-    # matches only the full name. An abbreviation such as x_ran is not matched
-    # here and reaches ecx() through .... Where the component stores a grid,
-    # the generic has already matched x_range exactly to the default, so the
-    # abbreviation is ignored without a message, as it was before #416. The
-    # help page asks for the full name rather than this code partially
-    # matching names itself. A NULL, from either source, leaves ecx() to build
-    # its own grid.
+    # Read every ECx row over the survival component's stored grid, the whole
+    # concentration series, so that the rows match the no-effect estimates
+    # above them. NULL, where there is no stored grid, lets ecx() build one.
+    # The x_range formal takes a caller's x_range out of `...`, so ecx() does
+    # not receive it twice. It follows `...`, so it matches only the full name.
     ecx_row <- function(w, v, ..., x_range = hurdle_summary_range(object)) {
       if (is.null(x_range)) {
         ecx(object, ecx_val = v, which = w, ...)
@@ -478,17 +430,9 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
     })
     names(ecs) <- c("combined", "growth", "survival")
   }
-  # nec() warns once per call that a mixed model set yields an N(S)EC rather
-  # than a NEC, which would be repeated up to six times here. The table labels
-  # every estimate by type, so the message is redundant and is suppressed.
-  #
-  # x_range is taken out of ... here rather than forwarded. A no-effect
-  # estimate is read from the posterior stored when its component was fitted,
-  # and is censored at the prediction grid stored then, so a range named now
-  # cannot change it; extrapolate, which is forwarded, is the argument that
-  # does. nec() absorbed x_range without a message, so nothing told the
-  # caller that the no-effect rows had not used it (#416). It sets the grid of
-  # the ECx rows only, which ?summary.bayesnechurdlefit states.
+  # Suppress nec()'s N(S)EC message: the table labels every estimate by type.
+  # nec_row() drops x_range, which cannot change a no-effect estimate read
+  # from the stored posterior; it sets the grid of the ECx rows only.
   nec_row <- function(w, ..., x_range) {
     suppressMessages(nec(object, which = w, ...))
   }
@@ -499,9 +443,8 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
   mods <- function(f) {
     if (inherits(f, "bayesmanecfit")) names(f$mod_fits) else f$model
   }
-  # ne_type is what distinguishes a NEC from a NSEC or a mixture of the two,
-  # and each component carries its own. The combined estimate is the smaller of
-  # the two per draw, so it is a pure NEC only when both components are.
+  # The combined estimate is the smaller of the two per draw, so it is a NEC
+  # only where both components' ne_type is NEC.
   ne_type_of <- function(f) {
     if (is.null(f$ne_type)) NA_character_ else f$ne_type
   }
@@ -549,10 +492,8 @@ print.hurdlesummary <- function(x, ...) {
       paste0(x$growth_models, collapse = ", "), "\n")
   cat("  survival : bernoulli --",
       paste0(x$survival_models, collapse = ", "), "\n\n")
-  # Directly under the model lists rather than at the foot of the summary as in
-  # the other two print methods: a hurdle fit runs two model sets, so this is
-  # the line that explains why either list above is shorter than it was asked
-  # for, and it is only useful next to them.
+  # Directly under the model lists, unlike the other print methods, because it
+  # explains why either list is shorter than requested.
   print_failed_models(x$failed_models)
   # One matrix rather than one line per component: a per-line cat() prefix puts
   # the label above the column headings rather than beside the values.
@@ -561,11 +502,8 @@ print.hurdlesummary <- function(x, ...) {
   tp <- x$ne_types[names(x$ne)]
   rownames(ne_mat) <- ifelse(is.na(tp), names(x$ne),
                              paste0(names(x$ne), " (", tp, ")"))
-  # rbind() keeps the numbers and drops every attribute, so the marks that say
-  # which entries are the end of the prediction range rather than a quantile
-  # are collected and attached by hand. Without this a censored estimate
-  # printed here as a bare number while nec() on the same object returned it
-  # marked, which is the disagreement #395 exists to remove.
+  # rbind() drops the censoring marks, so collect and attach them again, or a
+  # censored estimate would print here as a bare number.
   attr(ne_mat, "censored_summary") <- row_censoring(x$ne)
   print_mat(ne_mat)
   print_row_censoring_notes(attr(ne_mat, "censored_summary"),
@@ -595,9 +533,8 @@ print.hurdlesummary <- function(x, ...) {
 # ---------------------------------------------------------------------------
 # Delegating methods
 #
-# These describe a model *fit* rather than a curve. The combined endpoint is
-# not a fit -- it is derived from two -- so there is nothing to return for it,
-# and each yields one element per component instead.
+# These describe a model fit, and the combined endpoint is not one, so each
+# returns one element per component.
 # ---------------------------------------------------------------------------
 
 #' @noRd
@@ -690,9 +627,8 @@ model.frame.bayesnechurdlefit <- function(formula, ...) {
 # ---------------------------------------------------------------------------
 # Model-set operations
 #
-# All delegate to both components. The pair must stay in step: an object whose
-# growth and survival fits describe different data, or different model sets
-# than the user thinks, is worse than no method at all.
+# Each applies to both components, which must stay in step: their fits must
+# describe the same data.
 # ---------------------------------------------------------------------------
 
 #' @noRd
@@ -728,9 +664,8 @@ amend.bayesnechurdlefit <- function(object, drop, add, loo_controls,
                                     timeout = Inf,
                                     predictor_scale = "auto") {
   predictor_scale <- validate_predictor_scale(predictor_scale)
-  # A factorised hurdle fit is amended growth first and survival second. The
-  # growth data omit deaths, so validate against the complete stored predictor
-  # before either component can be refitted. See #317.
+  # Validate against the whole stored predictor before either component is
+  # refitted: the growth data omit deaths, and growth is amended first.
   validate_predictor_scale(predictor_scale, hurdle_raw_data(object)$x)
   args <- list(x_range = x_range, resolution = resolution, sig_val = sig_val,
                prior_type = prior_type,
@@ -761,12 +696,9 @@ amend.bayesnechurdlefit <- function(object, drop, add, loo_controls,
 #' \code{NULL}.
 #' @param subject The subject of the message, naming the component.
 #'
-#' @details The bound check \code{update.bnecfit()} makes for each model
-#' through \code{check_update_data()}, made once for a whole component so that
-#' \code{update.bayesnechurdlefit()} can make it for both components before
-#' either is refitted. It uses the family that check uses, from
-#' \code{refit_family()}, and the component's whole set of equations, so that a
-#' component fitted with \code{ecxflat} alone is let through as it is there.
+#' @details Makes the check \code{check_update_data()} makes per model, once
+#' for a whole component, so that both components are checked before either
+#' is refitted. A component fitted with \code{ecxflat} alone passes, as there.
 #'
 #' @return \code{NULL}, invisibly. Called for its error.
 #'
@@ -775,8 +707,8 @@ check_refit_bound <- function(part, data, family = NULL, subject = NULL) {
   fits <- recover_prebayesnecfit(part)
   bdat <- model.frame(extract_formula(fits[[1]]), data = data,
                       run_par_checks = TRUE)
-  # First, as check_update_data() places it: model.frame() drops a row with a
-  # missing value, and the bound would otherwise be read without it. See #278.
+  # First, as in check_update_data(): model.frame() drops a row with a missing
+  # value, and the bound would otherwise be read without it.
   check_complete_cases(bdat)
   check_response_at_bound(bdat, refit_family(fits[[1]]$fit$family, family),
                           subject = subject, model = names(fits))
@@ -815,26 +747,16 @@ update.bayesnechurdlefit <- function(object, newdata = NULL, ...) {
     stop("\"newdata\" must contain the response column \"", object$y_var,
          "\".", call. = FALSE)
   }
-  # The zero-vs-censored invariant belongs to the data, not to the fit, so it
-  # has to be re-checked against newdata. Without this a row that is both zero
-  # and censored is dropped from the growth refit and coded as a death in the
-  # survival refit, silently -- the confusion the construction-time check in
-  # bnec_hurdle() exists to prevent.
+  # Check newdata for rows that are both zero and censored, as bnec_hurdle()
+  # checks its data.
   check_hurdle_cens(check_hurdle_aterms(object$formula), newdata, y,
                     object$y_var)
   growth_data <- newdata[y > 0, , drop = FALSE]
   surv_data <- newdata
   surv_data[[".alive"]] <- as.integer(y > 0)
-  # Both components are checked before either is refitted. Each update() below
-  # makes the same check for its own component only, so new data with no zero,
-  # whose survival response is 1 in every observation, were refused after the
-  # growth component had been refitted, and the refusal named the generated
-  # column .alive rather than the survival component. The components are named
-  # as bnec_hurdle() names the growth component since #400. See #435.
-  #
-  # A supplied family is read only for its tag, which is all the bound check
-  # uses. update.bnecfit() validates it again for the refit, reading the link
-  # from the expression the caller wrote, which cannot be recovered here.
+  # Check both components before either is refitted, naming the component
+  # rather than the generated .alive column. A supplied family is read here for
+  # its tag only; update.bnecfit() validates it again, with its link.
   supplied <- if ("family" %in% ...names()) {
     validate_family(list(...)[["family"]])
   }
@@ -849,9 +771,8 @@ update.bayesnechurdlefit <- function(object, newdata = NULL, ...) {
                      object$y_var, "\" (", sum(y == 0), " deaths of ",
                      length(y), ")")
   )
-  # Assigned in turn rather than passed as two arguments to hurdle_rewrap(),
-  # so that the order of the refits, growth first, is written here rather than
-  # set by the order in which hurdle_rewrap() forces its arguments.
+  # Refit in turn, growth first, rather than inside hurdle_rewrap(), whose
+  # argument evaluation would set the order.
   growth <- update(object$growth, newdata = growth_data, ...)
   survival <- update(object$survival, newdata = surv_data, ...)
   out <- hurdle_rewrap(object, growth, survival)
@@ -914,11 +835,8 @@ c.bayesnechurdlefit <- function(x, ...) {
 # ---------------------------------------------------------------------------
 # Plotting
 #
-# The default shows the combined endpoint alone, because that is what the
-# hurdle model exists to estimate. which = "all" adds the two components as
-# separate panels rather than overlaying them: growth is in response units and
-# survival is a probability, so a single pair of axes would mean two y-scales,
-# which misleads about relative magnitude.
+# which = "all" draws the components as separate panels: growth is in
+# response units and survival is a probability, so they share no y-axis.
 # ---------------------------------------------------------------------------
 
 #' @noRd
@@ -939,10 +857,8 @@ hurdle_raw_data <- function(object) {
   x_str <- grep("crf(", labels(terms(object$formula)), fixed = TRUE,
                 value = TRUE)
   x_expr <- str2lang(eval(parse(text = x_str)))
-  # enclos is the stored formula's environment rather than eval()'s default of
-  # parent.frame(), which is a frame inside the namespace. A predictor written
-  # as crf(sq(x), ...) with sq() defined by the user resolves only through the
-  # formula's own environment. See #319.
+  # Evaluate in the formula's environment, not eval()'s default, so that a
+  # user's function in crf(sq(x), ...) resolves.
   data.frame(x = eval(x_expr, object$data,
                       enclos = formula_env(object$formula)),
              y = object$data[[object$y_var]])
@@ -1039,13 +955,9 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
     }
     lines(xv, p$est)
     if (add_nec) {
-      # xform is given to nec() rather than applied to the summary it returns.
-      # nec() applies it to each draw and to the censoring record, so the
-      # interval comes back in order and each bound is marked. Applied
-      # to the summary, a decreasing xform printed the interval from high to
-      # low, -0.19 to -1.6 under function(x) -x, and a censored estimate read
-      # as a number under any xform (#440). The marks are formatted as
-      # plot.bayesnecfit() formats them.
+      # Give xform to nec() rather than apply it to the summary: nec() applies
+      # it to each draw and to the censoring record, so a decreasing xform
+      # still gives the interval in order, with each bound marked.
       ne <- without_scale_report(
         nec(x, which = if (w == "combined") "combined" else w, xform = xform)
       )
@@ -1206,9 +1118,7 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
                                      posterior = FALSE, which = "combined") {
   which <- hurdle_check_which(which)
   check_removed_args(list(...))
-  # One value, because the curve is interpolated at one point. The nearest-grid
-  # reading this replaced took a vector without complaint and returned the
-  # curve at a single column chosen by recycling it against the grid.
+  # One value: the curve is interpolated at one point.
   chk_number(nsec)
   type <- validate_ecx_type(type, match.call())
   if (identical(type, "direct")) {
@@ -1217,9 +1127,7 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
          "Use type = \"absolute\" (the default) or \"range\".", call. = FALSE)
   }
   if (identical(type, "relative")) {
-    # Refused for the same reason ecx.bayesnechurdlefit refuses it: the
-    # combined endpoint is a product of two equations and has no single fitted
-    # asymptote to measure towards. See D15 ruling 6.
+    # Refused for the reason ecx.bayesnechurdlefit() gives.
     stop("type = \"relative\" is not defined for a hurdle fit, whose ",
          "asymptote is not a single fitted parameter. Use ",
          "type = \"absolute\" or type = \"range\".", call. = FALSE)
@@ -1228,13 +1136,9 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
     stop("xform must be a function.")
   }
   if (!identical(xform, identity)) {
-    # xform was applied to the percentage returned, which no caller needs, and
-    # left an nsec() value on the transformed scale to be inverted by hand
-    # (#437). It is now applied to nsec, as on every other class. D33 asks for
-    # a warning of the change for one release: remove it in the release after
-    # the one that makes it. A warning() with a class of its own, as the
-    # all_models deprecation raises (#120), rather than
-    # lifecycle::deprecate_warn(), which is not in Imports.
+    # Warn for one release that xform now applies to nsec rather than to the
+    # percentage returned, then remove this warning. It is a classed
+    # warning() because lifecycle is not in Imports.
     warning(structure(
       class = c("bayesnec_ecnsec_xform_changed", "warning", "condition"),
       list(message = paste0(
@@ -1245,32 +1149,20 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
       ), call = NULL)
     ))
   }
-  # The message ecnsec.bnecfit() raises, now that xform means here what it
-  # means there. The "ecnsec_hurdle" message it replaces told the caller to
-  # supply nsec on the recorded scale, because no xform could put it there.
+  # As in ecnsec.bnecfit().
   quiet <- report_fitted_scale(object, xform, "ecnsec")
   on.exit(options(quiet), add = TRUE)
   nsec_use <- xform(nsec)
-  # The range ecx() and nsec() read the same curve over, the whole
-  # concentration series for every curve (D44, #412), so that the three answer
-  # their questions of one curve on one grid.
+  # The grid ecx() and nsec() read, so that all three read one curve.
   preds <- hurdle_component_preds(object, resolution = resolution,
                                   x_range = x_range)
-  # Checked against the grid the curve was predicted over rather than a range
-  # worked out beforehand, so that the range refused and the range read cannot
-  # differ. The grid ends at the range of the predictor, or of x_range where
-  # one is supplied. An nsec beyond it was read at the grid's end: 1000 on a
-  # series ending at 5 returned the effect at 5 for every curve (#437, D33).
+  # Check nsec against the grid the curve was predicted over, so that the range
+  # refused and the range read cannot differ.
   check_ecnsec_range(object, nsec, nsec_use, range(preds$x), x_range, xform,
                      curve = paste("the", which, "curve"))
   p_samples <- preds[[which]]
-  # ecnsec asks: what percentage effect does a given predictor value
-  # correspond to? Read off the same curve everything else uses, and inverted
-  # from the same reference construction ecx uses under the same type, so that
-  # the two answer the same question of the same curve. The version this
-  # replaces was the absolute form written out, applied whatever type was
-  # supplied, and it took the control from the grid's first column rather than
-  # from the lowest observed concentration. See D15 rulings 2 and 5.
+  # The percentage effect at nsec, against the reference ecx() uses for the
+  # same type, with the control at the lowest observed concentration.
   control <- preds$control[[which]]
   floor_draws <- switch(type,
                         absolute = 0,
@@ -1285,16 +1177,10 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
 
 #' Each posterior draw of a curve read at one predictor value
 #'
-#' Interpolated linearly between the two grid points either side of
-#' \code{at}, as \code{zero_crossings()} interpolates a crossing, rather than
-#' taken at the nearer of them. Read at the nearer point, an \code{nsec}
-#' half-way between two points of a coarse grid returned the curve at one of
-#' them, so the answer depended on \code{resolution} (#437). A value at a grid
-#' point returns that point's column exactly.
-#'
-#' A value outside the grid is held at the nearer end. \code{ecnsec()} refuses
-#' such a value before this is reached, except within the rounding tolerance
-#' \code{check_ecnsec_range()} allows at either end.
+#' Interpolates linearly between the grid points either side of \code{at}, so
+#' that the answer does not depend on \code{resolution}. A value at a grid
+#' point returns that column exactly, and one outside the grid is held at the
+#' nearer end.
 #'
 #' @param p_samples A \code{\link[base]{matrix}} with draws as rows and grid
 #' points as columns.
@@ -1321,16 +1207,10 @@ curve_draws_at <- function(p_samples, x, at) {
 
 #' The prediction grid a hurdle summary reads its ECx rows over
 #'
-#' The grid stored with the survival component, which covers the whole
-#' concentration series. That is the range \code{hurdle_component_preds()}
-#' reads every curve over when a bare \code{\link{ecx}} is called (D44, #412),
-#' so each summary row agrees with that call.
-#'
-#' A component is a \code{\link{bayesnecfit}} or a \code{\link{bayesmanecfit}}
-#' depending on whether \code{crf()} named one equation or a set, and the two
-#' classes store their grid under different names -- \code{pred_vals} and
-#' \code{w_pred_vals} -- so reading one of them alone returns \code{NULL} for
-#' the commoner case and \code{range()} of nothing is \code{c(Inf, -Inf)}.
+#' The grid stored with the survival component, the whole concentration series,
+#' which a bare \code{\link{ecx}} also reads. A \code{\link{bayesmanecfit}}
+#' stores it in \code{w_pred_vals} and a \code{\link{bayesnecfit}} in
+#' \code{pred_vals}, so both are read.
 #'
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
 #'
