@@ -494,8 +494,12 @@ hurdle_data <- function() {
 }
 
 # The record fit_bayesnec() stores, with nothing supplied by default.
-call_record <- function(model_survival = NULL, control = NULL, seed = NULL) {
-  list(model_survival = model_survival, control = control, seed = seed)
+call_record <- function(model_survival = NULL, control = NULL, seed = NULL,
+                        prior_type = "uninformative",
+                        asymptote_observed = TRUE, predictor_scale = "auto") {
+  list(model_survival = model_survival, control = control, seed = seed,
+       prior_type = prior_type, asymptote_observed = asymptote_observed,
+       predictor_scale = predictor_scale)
 }
 
 hu_rhs <- function(model) {

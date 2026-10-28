@@ -324,6 +324,123 @@ test_that("a family that differs still needs force_fit, and its checks (#435)", 
   expect_equal(max(got$newdata_val$y), 0.999)
 })
 
+# ---- the family a refit's stored formula can follow --------------------------
+# Structural fixtures built from the packaged nec4param fit with a disp() term
+# written into its formula. Each refusal below comes before brms is called, and
+# each accepted call halts at the brms entry point.
+
+disp_fixture <- function(family, rescale, disp = "disp(~x)") {
+  f <- nec4param
+  f$bayesnecformula <- bnf(stats::as.formula(
+    paste0("y ~ crf(x, model = \"nec4param\") + ", disp)
+  ))
+  f$fit$family <- family
+  f$fit$data$y <- rescale(f$fit$data$y)
+  f
+}
+
+# bnec()'s refusal of the same formula, family and data, raised before its
+# model loop.
+bnec_refusal <- function(fit, family) {
+  local_mocked_bindings(
+    fit_bayesnec = function(...) stop("fit reached"),
+    .package = "bayesnec"
+  )
+  err <- tryCatch(
+    suppressMessages(bnec(fit$bayesnecformula, data = fit$fit$data,
+                          family = family)),
+    error = function(e) e
+  )
+  conditionMessage(err)
+}
+
+test_that("update() checks a disp() term against the new family (#514)", {
+  gamma_disp <- disp_fixture(brms::brmsfamily("Gamma", link = "identity"),
+                             function(y) round(stats::plogis(y) * 20) + 1)
+  beta_disp <- disp_fixture(brms::brmsfamily("beta", link = "identity"),
+                            stats::plogis)
+  # poisson has no dispersion parameter. The refusal is bnec()'s, and it comes
+  # first whether or not force_fit is set. brms failed on it, naming shape.
+  from_bnec <- bnec_refusal(gamma_disp, "poisson")
+  expect_match(from_bnec, "Family poisson has no free dispersion parameter",
+               fixed = TRUE)
+  for (force in c(FALSE, TRUE)) {
+    err <- expect_error(update(gamma_disp, family = "poisson",
+                               force_fit = force))
+    expect_identical(conditionMessage(err), from_bnec)
+    expect_null(capture_brms_update(
+      update(gamma_disp, family = "poisson", force_fit = force)
+    ))
+  }
+  # gaussian has a dispersion parameter, so bnec() would fit the term, but the
+  # stored sub-model and its priors name beta's phi. brms failed on it,
+  # asking whether nl = TRUE had been set.
+  for (force in c(FALSE, TRUE)) {
+    expect_error(
+      update(beta_disp, family = "gaussian", force_fit = force),
+      "names its dispersion parameter \"sigma\"", fixed = TRUE
+    )
+    expect_null(capture_brms_update(
+      update(beta_disp, family = "gaussian", force_fit = force)
+    ))
+  }
+  # negbinomial names its dispersion parameter shape, as Gamma does, so the
+  # refit passes through unchanged.
+  got <- capture_brms_update(
+    update(gamma_disp, family = "negbinomial", force_fit = TRUE)
+  )
+  expect_equal(got$family$family, "negbinomial")
+  got <- capture_brms_update(
+    update(gamma_disp, family = Gamma(link = "identity"))
+  )
+  expect_equal(got$family$family, "Gamma")
+})
+
+test_that("update(newdata = ) checks a variance function as bnec() does", {
+  # The stored response spans negative values, where "power" takes log(mu).
+  power_fit <- disp_fixture(brms::brmsfamily("gaussian", link = "identity"),
+                            identity, disp = "disp(\"power\")")
+  expect_lt(min(power_fit$fit$data$y), 0)
+  from_bnec <- bnec_refusal(power_fit, "gaussian")
+  expect_match(from_bnec, "takes log(mu)", fixed = TRUE)
+  err <- expect_error(update(power_fit, newdata = power_fit$fit$data))
+  expect_identical(conditionMessage(err), from_bnec)
+  # A positive response passes to the refit.
+  nd <- power_fit$fit$data
+  nd$y <- stats::plogis(nd$y)
+  expect_false(is.null(capture_brms_update(update(power_fit, newdata = nd))))
+})
+
+test_that("update() refuses a family that adds or removes a second block", {
+  # The stored formula holds the fitted family's blocks only. brms fitted a
+  # Gamma fit updated to hurdle_gamma with a constant hu, and failed on a
+  # hurdle_gamma fit updated to Gamma, asking whether nl = TRUE had been set.
+  g <- gamma_fixture()
+  h <- joint_gamma_fixture()
+  for (force in c(FALSE, TRUE)) {
+    expect_error(
+      update(g, family = "hurdle_gamma", force_fit = force),
+      "the hurdle_gamma family has a second block, \"hu\"", fixed = TRUE
+    )
+    expect_null(capture_brms_update(
+      update(g, family = "hurdle_gamma", force_fit = force)
+    ))
+    expect_error(
+      update(h, family = Gamma(link = "identity"), force_fit = force),
+      "the Gamma family has a single block", fixed = TRUE
+    )
+  }
+  f <- bnf(y ~ crf(x, model = "nec4param"))
+  hu_fit <- brms::hurdle_gamma(link = "identity", link_hu = "identity")
+  expect_error(
+    check_refit_family(f, hu_fit, validate_family("zero_inflated_beta")),
+    "a second block, \"zi\"", fixed = TRUE
+  )
+  expect_null(
+    check_refit_family(f, hu_fit, validate_family("hurdle_negbinomial"))
+  )
+})
+
 # The messages update() prints, stopped where brms would refit.
 messages_before_refit <- function(expr) {
   msgs <- character()

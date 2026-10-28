@@ -149,6 +149,17 @@ c.bnecfit <- function(x, ...) {
 #' Families are compared by name and links, so \code{Gamma(link = "identity")}
 #' supplied for a Gamma fit is not a change of family.
 #'
+#' A family the stored formula cannot describe is refused before any model is
+#' refitted, whether or not \code{force_fit} is set. A \code{disp()} term is
+#' checked against it as \code{\link{bnec}} checks it, so \code{poisson} is
+#' refused for a fit with a \code{disp()} term. A family that names its
+#' dispersion parameter differently from the fitted one is refused as well,
+#' such as \code{gaussian}, whose parameter is \code{sigma}, for a \code{Beta}
+#' fit, whose parameter is \code{phi}. So is a change that adds or removes the
+#' second block of a two-block family such as \code{hurdle_gamma}. Fit such a
+#' model with \code{\link{bnec}}. New data are checked against a variance
+#' function in \code{disp()} as \code{\link{bnec}} checks its data.
+#'
 #' @inheritParams bnec
 #'
 #' @param object An object of class \code{\link{bnecfit}} as fitted by function
@@ -243,6 +254,15 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
         " (", simdat$chains, ") when the original model object has a seed."
       )
     }
+  }
+  # Before the force_fit guard, because setting force_fit cannot make the
+  # stored formula fit a family it does not describe.
+  if (!is.null(newdata) || "family" %in% names(dot_args)) {
+    check_refit_family(
+      extract_formula(object[[1]]), object[[1]]$fit$family,
+      refit_family(object[[1]]$fit$family, dot_args$family),
+      data = if (is.null(newdata)) object[[1]]$fit$data else newdata
+    )
   }
   # Compare the families before checking the data, so that a refused call
   # reports no shift. New data keep the fitted family; only a supplied one

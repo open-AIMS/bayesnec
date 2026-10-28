@@ -29,7 +29,10 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   # Read control before add_brm_defaults() raises adapt_delta, so that amend()
   # decides the raise again for each equation it adds.
   call_args <- list(model_survival = model_survival,
-                    control = brm_args$control, seed = brm_args$seed)
+                    control = brm_args$control, seed = brm_args$seed,
+                    prior_type = prior_type,
+                    asymptote_observed = asymptote_observed,
+                    predictor_scale = predictor_scale)
   # A backstop: bnec(), bnec_group() and amend() exclude such an equation
   # before their loops, but bnec_joint() fits through here directly.
   group_excluded <- group_term_exclusions(formula, model)

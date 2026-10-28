@@ -954,12 +954,14 @@ add_level_defaults <- function(brm_args, level_spec, family, response,
                                prior_type = "uninformative",
                                predictor_scale = "auto",
                                init_supplied = FALSE,
-                               prior_supplied = FALSE) {
+                               prior_supplied = FALSE,
+                               asymptote_observed = TRUE) {
   n_lev <- length(level_spec$levels)
   if (isTRUE(level_spec$composed)) {
     brm_args <- compose_level_defaults(brm_args, level_spec, family, predictor,
                                        response, prior_type, predictor_scale,
-                                       init_supplied, prior_supplied)
+                                       init_supplied, prior_supplied,
+                                       asymptote_observed = asymptote_observed)
     return(add_level_disp_defaults(brm_args, level_spec, family, response,
                                    n_lev))
   }
@@ -1031,6 +1033,8 @@ add_level_disp_defaults <- function(brm_args, level_spec, family, response,
 #' @param init_supplied Whether the caller supplied \code{init}, in which case
 #' the search never ran and what is there is theirs.
 #' @param prior_supplied Whether the caller supplied \code{prior}.
+#' @param asymptote_observed Passed to \code{\link{define_prior}} and to the
+#' initial-value search.
 #'
 #' @details The composed branch of a joint refit, where each level's
 #' parameters are separate \pkg{brms} non-linear parameters and need their own
@@ -1049,10 +1053,12 @@ add_level_disp_defaults <- function(brm_args, level_spec, family, response,
 #' @noRd
 compose_level_defaults <- function(brm_args, level_spec, family, predictor,
                                    response, prior_type, predictor_scale,
-                                   init_supplied, prior_supplied) {
+                                   init_supplied, prior_supplied,
+                                   asymptote_observed = TRUE) {
   eqs <- unique(unlist(level_spec$models))
   per_eq <- lapply(eqs, function(m) {
     define_prior(m, family, predictor, response, prior_type = prior_type,
+                 asymptote_observed = asymptote_observed,
                  predictor_scale = predictor_scale)
   })
   names(per_eq) <- eqs
@@ -1082,7 +1088,8 @@ compose_level_defaults <- function(brm_args, level_spec, family, predictor,
     pr <- pr[!pr$nlpar %in% generated_term_names(), ]
     suppressMessages(
       make_good_inits(m, predictor, response_link, family = family,
-                      priors = pr, chains = chains, seed = seed)
+                      priors = pr, chains = chains, seed = seed,
+                      asymptote_observed = asymptote_observed)
     )
   })
   names(per_eq_init) <- eqs

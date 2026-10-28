@@ -721,10 +721,12 @@ check_refit_bound <- function(part, data, family = NULL, subject = NULL,
 #' \code{NULL}.
 #'
 #' @details Checks a supplied family as \code{\link{bnec_hurdle}} checks
-#' \code{family_growth}, and gives the growth formulas \code{trunc(lb = 1)}
-#' where it is a count family and removes it where it is not. Without a family
-#' the stored formulas are kept, and a growth component that holds the
-#' truncation still needs the \pkg{brms} version \code{bnec_hurdle} needs.
+#' \code{family_growth}, and against the stored growth formula as
+#' \code{\link{update.bnecfit}} checks it. Gives the growth formulas
+#' \code{trunc(lb = 1)} where it is a count family and removes it where it is
+#' not. Without a family the stored formulas are kept, and a growth component
+#' that holds the truncation still needs the \pkg{brms} version
+#' \code{bnec_hurdle} needs.
 #'
 #' @return The growth component, a \code{\link{bayesnecfit}} or a
 #' \code{\link{bayesmanecfit}}, for \code{update()} to refit.
@@ -732,8 +734,8 @@ check_refit_bound <- function(part, data, family = NULL, subject = NULL,
 #' @noRd
 hurdle_refit_growth <- function(object, family = NULL) {
   growth <- object$growth
+  fits <- recover_prebayesnecfit(growth)
   if (is.null(family)) {
-    fits <- recover_prebayesnecfit(growth)
     if (is_factorised_count_formula(fits[[1]]$bayesnecformula,
                                     fits[[1]]$fit$family)) {
       check_count_truncation_support()
@@ -741,6 +743,9 @@ hurdle_refit_growth <- function(object, family = NULL) {
     return(growth)
   }
   check_hurdle_growth_family(family)
+  # Before check_hurdle_count_growth(), the order bnec_hurdle() checks in, so
+  # that both routes refuse a disp() term on poisson with the same message.
+  check_refit_family(fits[[1]]$bayesnecformula, fits[[1]]$fit$family, family)
   check_hurdle_count_growth(object$formula, family)
   set_hurdle_growth_truncation(growth, is_hurdle_count_growth(family))
 }
@@ -797,7 +802,9 @@ set_hurdle_growth_truncation <- function(part, truncate) {
 #' family is checked as \code{\link{bnec_hurdle}} checks
 #' \code{family_growth}, before either component is refitted. A family
 #' \code{bnec_hurdle} refuses for the growth component, such as
-#' \code{hurdle_gamma}, is refused. A \code{poisson} or \code{negbinomial}
+#' \code{hurdle_gamma}, is refused. So is a family the growth component's
+#' \code{disp()} term cannot be refitted under, as \code{\link{update.bnecfit}}
+#' describes, such as \code{poisson}. A \code{poisson} or \code{negbinomial}
 #' family needs \pkg{brms} 2.23.2 or later, and the growth component is then
 #' refitted with the zero-truncated likelihood \code{bnec_hurdle} uses.
 #'

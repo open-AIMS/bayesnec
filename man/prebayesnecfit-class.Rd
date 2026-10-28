@@ -35,7 +35,11 @@ for to fit the model.}
 call that \code{\link{amend}} reuses for an added model:
 \code{model_survival}, and the \code{control} and \code{seed} passed to
 \code{\link[brms]{brm}}. Each is \code{NULL} where the call did not supply
-it. Absent from an object fitted by an earlier version of \pkg{bayesnec}.}
+it. It also holds the \code{prior_type}, \code{asymptote_observed} and
+\code{predictor_scale} the default priors were built with, which
+\code{\link{bnec_joint}} reuses. Absent from an object fitted by an earlier
+version of \pkg{bayesnec}, and those three are absent from one fitted before
+they were recorded.}
 
 \item{\code{retained_data}}{An optional \code{\link[base]{data.frame}} containing
 columns retained by \code{\link{bnec}} for plotting. This element is present

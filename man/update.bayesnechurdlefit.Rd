@@ -27,7 +27,9 @@ The survival component is always refitted as \code{bernoulli}. The growth
 family is checked as \code{\link{bnec_hurdle}} checks
 \code{family_growth}, before either component is refitted. A family
 \code{bnec_hurdle} refuses for the growth component, such as
-\code{hurdle_gamma}, is refused. A \code{poisson} or \code{negbinomial}
+\code{hurdle_gamma}, is refused. So is a family the growth component's
+\code{disp()} term cannot be refitted under, as \code{\link{update.bnecfit}}
+describes, such as \code{poisson}. A \code{poisson} or \code{negbinomial}
 family needs \pkg{brms} 2.23.2 or later, and the growth component is then
 refitted with the zero-truncated likelihood \code{bnec_hurdle} uses.}
 }

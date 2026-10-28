@@ -135,9 +135,10 @@
   from the data, and neither does any response fitted on a link other than the
   identity, where the floor of the mean maps to minus infinity. `FALSE` is
   refused for both, naming `bot` and the `prior` argument, rather than a floor
-  being invented. The refusal is raised by `bnec()` before its model loop and by
-  `bnec_group()` before its level loop, so it is stated once rather than once
-  per equation or after the earlier levels have been fitted.
+  being invented, unless `prior` supplies `bot` (#516). The refusal is raised
+  by `bnec()` before its model loop and by `bnec_group()` before its level
+  loop, so it is stated once rather than once per equation or after the
+  earlier levels have been fitted.
 
   Fourteen of the 23 equations have no `bot` parameter and so have no lower
   asymptote to estimate; eleven of them fall to zero, and `neclin`,
@@ -3202,6 +3203,73 @@
   precompiled vignettes were rendered with the earlier groups, and their
   fitted output changes at the next precompile; the `example8` fit store is
   refitted then, since its fits follow the model set (#485).
+
+- `update()` checks the `disp()` term of a fit against the family the refit
+  uses, before any model is refitted and whether or not `force_fit` is set. A
+  family `bnec()` refuses for the term is refused with `bnec()`'s message, so
+  a `Gamma` fit with `disp(~x)` updated to `poisson` is refused because
+  `poisson` has no dispersion parameter. A family that names its dispersion
+  parameter differently from the fitted one is refused as well, because
+  `update()` reuses the stored sub-model and its priors. A `Beta` fit with
+  `disp(~x)`, whose sub-model is on `phi`, updated to `gaussian`, whose
+  parameter is `sigma`, is one such case. `brms` stopped on both after the
+  message about the change of family, saying that `shape` or `phi` was not a
+  valid parameter and asking whether `nl = TRUE` had been set. A family with
+  the same dispersion parameter, such as `negbinomial` for a `Gamma` fit, is
+  refitted as before. New data are checked against a variance function in
+  `disp()` as `bnec()` checks its data, so a gaussian fit with
+  `disp("power")` given a response below zero is refused with `bnec()`'s
+  message. On a `bayesnechurdlefit`, the growth family is checked in the order
+  `bnec_hurdle()` checks `family_growth`, so `poisson` for a growth component
+  with a `disp()` term is refused for the term, as `bnec_hurdle()` refuses it,
+  and not for the installed version of `brms` (#514).
+
+- `update()` refuses a family that adds, removes or replaces the second block
+  of a two-block family such as `hurdle_gamma`, before any model is refitted.
+  The stored formula holds the blocks of the fitted family only. A `Gamma` fit
+  updated to `hurdle_gamma` reached `brms` with no `hu` block, which `brms`
+  then fits as a single constant rather than as the survival curve `bnec()`
+  builds. A `hurdle_gamma` fit updated to `Gamma` stopped in `brms` on the
+  `hu` block. Fit such a model with `bnec()`.
+
+- `bnec_joint()` takes `prior_type`, `asymptote_observed` and
+  `predictor_scale`, and by default builds the priors of the joint refit with
+  the values the `bnec_group()` or `bnec_hurdle()` fit was made with. On a
+  grouped fit the three were passed through `...` to `brm()`, so the default
+  priors of the refit were built with the defaults of `bnec()`. A grouped fit
+  made with `asymptote_observed = FALSE` was refitted under `TRUE`, which
+  bounds the `nec` and `ec50` priors to the tested range and builds the `bot`
+  prior from the observed response, and nothing reported it. Where the levels
+  favour different equations, the declaration also reaches the priors and
+  initial values built for each equation. On a hurdle fit the three reached
+  `bnec()` when passed, and otherwise took its defaults. Each fit made by
+  `bnec()` now records the three in its `call_args` element. A fit that
+  records none is refitted with the defaults of `bnec()`, as before (#516).
+
+- `bnec(asymptote_observed = FALSE)` with a `bot` prior supplied through
+  `prior` is fitted on a response for which no floor can be derived: a
+  gaussian response spanning negative values, or a fit on a link other than
+  the identity. The supplied entry takes the place of the one the declaration
+  builds from the floor, the other default priors are built, and the
+  declaration still removes the upper bound of the `nec` and `ec50` priors.
+  The check before the model loop accepted the call, which then stopped with
+  "user-specific parameter prior names (bot) do not match expectation",
+  because none of the other default priors had been built. `amend()` given a
+  `bot` prior through `priors` adds an equation in the same way, where it
+  printed that message and kept the set unchanged. Without a `bot` prior the
+  call is refused as before, and the message now says that a supplied `bot`
+  prior keeps the declaration (#516).
+
+- `bnec()` and `bnec_group()` no longer report the survival block of a
+  two-block family, such as `hurdle_gamma`, as still declining at the top of
+  the series where the equation of that block estimates none of `bot`, `nec`
+  and `ec50`. Those equations are `ecxexp`, `ecxsigm` and `ecxflat`, and
+  `ecxlin` where the family admits it, whether named in `crf()` or in
+  `model_survival`. The report concerns the default priors of those three
+  parameters, and it was raised for every such survival block. Under
+  `asymptote_observed = FALSE` on a link other than the identity, such a
+  survival block also led `bnec()` and `bnec_group()` to refuse the call for
+  want of a floor, although no `bot` prior was to be built from one.
 
 ## Documentation
 

@@ -578,6 +578,97 @@ test_that("the two blocks of a hurdle fit are silenced separately", {
   )
 })
 
+test_that("a survival block with none of bot, nec or ec50 is not sensitive", {
+  # paste0() returns the bare prefix "hu" for an empty set of rows, which no
+  # supplied prior can name, so the block was always reported as sensitive.
+  for (m in c("ecxlin", "ecxexp", "ecxsigm", "ecxflat")) {
+    expect_identical(uses_response_range_defaults(NULL, m, hurdle_family),
+                     c(response = FALSE, survival = FALSE), info = m)
+    expect_identical(
+      uses_response_range_defaults(NULL, m, hurdle_family, affected = "bot"),
+      c(response = FALSE, survival = FALSE), info = m
+    )
+  }
+  expect_identical(
+    uses_response_range_defaults(NULL, "nec4param", hurdle_family,
+                                 model_survival = "ecxexp"),
+    c(response = TRUE, survival = FALSE)
+  )
+  expect_identical(
+    uses_response_range_defaults(NULL, "ecxexp", hurdle_family,
+                                 model_survival = "nec4param"),
+    c(response = FALSE, survival = TRUE)
+  )
+})
+
+# A hurdle response whose survival falls between the two highest
+# concentrations while the survivors' response stays flat.
+declining_survival <- function() {
+  x <- rep(c(0, 1, 2, 4), each = 12)
+  alive <- c(rep(1, 12), c(rep(1, 11), 0), c(rep(1, 8), rep(0, 4)),
+             c(rep(1, 2), rep(0, 10)))
+  data.frame(x = x,
+             y = ifelse(alive == 1, rep(c(5.0, 5.2, 4.9, 5.1), 12), 0))
+}
+
+test_that("bnec() reports no survival block whose equation has no bot", {
+  d <- declining_survival()
+  local_mocked_bindings(
+    fit_bayesnec = function(...) stop("mock fit"),
+    .package = "bayesnec"
+  )
+  survival_report <- "The survival block is still declining"
+  report_of <- function(...) {
+    msg <- capture_messages(try(bnec(..., data = d, family = hurdle_family),
+                                silent = TRUE))
+    length(grep(survival_report, msg))
+  }
+  # The survival block of a curve with bot and nec is reported, so the data
+  # do raise the report.
+  expect_identical(report_of(y ~ crf(x, "nec4param")), 1L)
+  for (m in c("ecxexp", "ecxsigm", "ecxflat")) {
+    expect_identical(report_of(stats::as.formula(
+      paste0("y ~ crf(x, \"", m, "\")")
+    )), 0L, info = m)
+  }
+  expect_identical(
+    report_of(y ~ crf(x, "nec4param"), model_survival = "ecxexp"), 0L
+  )
+  # bnec_group() reads the same function for each level.
+  d2 <- rbind(transform(d, site = "a"), transform(d, site = "b"))
+  msg <- capture_messages(try(
+    bnec_group(y ~ crf(x, "ecxexp"), data = d2, group_var = "site",
+               family = hurdle_family),
+    silent = TRUE
+  ))
+  expect_length(grep("still declining", msg), 0)
+})
+
+test_that("the declaration needs no floor where no equation estimates bot", {
+  # Under a log link the mu block has no floor. An ecxexp survival block has no
+  # bot, so a bot prior for the response block is all the declaration needs.
+  d <- declining_survival()
+  # Unvalidated: validate_family() without a link source assigns identity.
+  log_family <- brms::hurdle_gamma(link = "log", link_hu = "identity")
+  bdat <- flat_bdat(y ~ crf(x, "ecxexp"), d)
+  expect_silent(bayesnec:::check_asymptote_declaration(
+    bdat, log_family, "ecxexp", asymptote_observed = FALSE
+  ))
+  bot_prior <- brms::prior_string("gamma(2, 1)", nlpar = "bot")
+  expect_silent(bayesnec:::check_asymptote_declaration(
+    bdat, log_family, "nec4param", asymptote_observed = FALSE,
+    prior = bot_prior, model_survival = "ecxexp"
+  ))
+  # Without the bot prior the response block still has no floor.
+  expect_error(
+    bayesnec:::check_asymptote_declaration(
+      bdat, log_family, "nec4param", asymptote_observed = FALSE,
+      model_survival = "ecxexp"
+    ),
+    "\"log\" link", fixed = TRUE
+  )
+})
+
 # ---- placement --------------------------------------------------------------
 
 test_that("the report is raised once per bnec() call, not once per equation", {
