@@ -1,73 +1,249 @@
-#' Say once per call that an estimate is on a transformed predictor scale
+#' Validate the xform a caller supplied
 #'
-#' Where \code{crf()} transforms the predictor inline, as \code{crf(log(x))},
-#' the estimators return values on the transformed scale unless the caller
-#' supplies \code{xform}, and nothing in the returned number says so. The
-#' message names the transformation and the \code{xform} that inverts it.
+#' @param xform \code{NULL} or a function.
 #'
-#' The first method to reach this function sets the
-#' \code{bayesnec.xform_reported} option for the rest of the call, whether or
-#' not it raised the message, so the calls it makes per equation, level,
-#' component or fit add nothing. Those inner calls often receive no
-#' \code{xform} even where the caller gave one, because the outer method
-#' applies it afterwards, so they cannot decide. \code{\link{curve_params}}
-#' sets the same option.
-#'
-#' @param object The object the caller named: a \code{\link{bayesnecfit}},
-#' \code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}},
-#' \code{\link{bayesnecgroupfit}} or \code{\link{bayesnecjointfit}}, or
-#' \code{NULL} for nothing to report.
-#' @param xform The function the caller supplied.
-#' @param kind The \code{\link[base]{character}} name of the function whose
-#' result is described. See \code{fitted_scale_text()}.
-#'
-#' @return The previous value of the option, invisibly, for the caller to
-#' restore with \code{on.exit(options(...), add = TRUE)}.
+#' @return \code{NULL}, invisibly, or an error.
 #' @noRd
-report_fitted_scale <- function(object, xform, kind) {
-  # Test identical(xform, identity), not missing(xform): the group methods
-  # receive xform through `...`, where missing() cannot be asked.
-  if (!isTRUE(getOption("bayesnec.xform_reported", FALSE)) &&
-      identical(xform, identity)) {
-    tr <- inline_x_transform(object)
-    if (!is.null(tr)) {
-      message(fitted_scale_text(scale_subject(object), tr, kind))
-    }
+check_xform <- function(xform) {
+  if (!is.null(xform) && !inherits(xform, "function")) {
+    stop("xform must be a function, or NULL for the recorded scale.",
+         call. = FALSE)
   }
-  # Set the option last. The caller registers its restore only once this
-  # returns, so an error after setting it would leave it set for the session.
-  invisible(options(bayesnec.xform_reported = TRUE))
+  invisible(NULL)
 }
 
-#' Evaluate an expression without the scale message
+#' Whether an estimator returns its estimate on the recorded scale
 #'
-#' For a caller that uses an estimate internally rather than returning it.
-#' \code{plot()} and \code{autoplot()} put every estimate they draw onto the
-#' axis scale themselves, so the message would describe a number the caller
-#' never sees.
+#' \code{xform = NULL} asks for the recorded scale. That differs from the
+#' fitted scale only where \code{crf()} transforms the predictor inline, so on
+#' any other fit \code{NULL} gives what \code{identity} gives.
 #'
-#' @param expr An expression.
+#' @param object A fitted object.
+#' @param xform The \code{xform} the caller supplied, or \code{NULL}.
 #'
-#' @return The value of \code{expr}.
+#' @return A \code{\link[base]{logical}} value.
 #' @noRd
-without_scale_report <- function(expr) {
-  quiet <- options(bayesnec.xform_reported = TRUE)
-  on.exit(options(quiet), add = TRUE)
-  expr
+returns_recorded <- function(object, xform) {
+  is.null(xform) && !is.null(inline_x_transform(object))
+}
+
+#' The function a parameter-read estimator applies to its draws
+#'
+#' For \code{\link{nec}}, \code{\link{curve_params}} and the no-effect row of
+#' \code{\link{summary}}, whose draws are on the fitted scale. A supplied
+#' \code{xform} is returned as it is. \code{NULL} gives the inverse of the
+#' \code{crf()} transformation, or \code{identity} where there is none.
+#'
+#' @param object A fitted object.
+#' @param xform The \code{xform} the caller supplied, or \code{NULL}.
+#' @param extrapolate The caller's \code{extrapolate}. A numeric limit widens
+#' the grid the inverse is read off, so that every draw inside it has a value.
+#'
+#' @return A \code{\link[base]{function}}.
+#' @noRd
+recorded_xform <- function(object, xform, extrapolate = FALSE) {
+  if (!is.null(xform)) {
+    return(xform)
+  }
+  tr <- inline_x_transform(object)
+  if (is.null(tr)) {
+    return(identity)
+  }
+  grid <- recorded_grid(object)
+  if (is.numeric(extrapolate)) {
+    lims <- range(c(grid, extrapolate[is.finite(extrapolate)]))
+    grid <- sort(unique(c(grid, seq(lims[1], lims[2],
+                                    length.out = length(grid)))))
+  }
+  recorded_x_map(scale_source_fit(object)$bayesnecformula, grid, tr)
+}
+
+#' The prediction grid a fit's inverse is read off, on the recorded scale
+#'
+#' The grid stored with the fit, or for an object that stores none, such as
+#' one level of a joint refit, 1000 points over the observed predictor.
+#'
+#' @param object A fitted object.
+#'
+#' @return A \code{\link[base]{numeric}} vector.
+#'
+#' @importFrom stats model.frame
+#' @noRd
+recorded_grid <- function(object) {
+  grid <- ne_grid_data(object)$x
+  if (length(grid) >= 2) {
+    return(grid)
+  }
+  fit <- scale_source_fit(object)
+  bdat <- model.frame(fit$bayesnecformula, fit$fit$data)
+  x <- fit$fit$data[[attr(bdat, "bnec_pop")[["x_var"]]]]
+  x <- x[is.finite(x)]
+  seq(min(x), max(x), length.out = 1000)
+}
+
+#' The map from the fitted scale back to the recorded scale
+#'
+#' The closed-form inverse \code{x_inverse_text()} names, where it reproduces
+#' the grid from its own transformation. Otherwise, linear interpolation
+#' between the grid's points on the two scales, after
+#' \code{refine_inverse_grid()} has added points where the grid is coarse on
+#' the fitted scale.
+#'
+#' @param formula A \code{\link{bayesnecformula}}.
+#' @param x_grid_raw The prediction grid, on the recorded scale.
+#' @param tr The list \code{inline_x_transform()} returns.
+#'
+#' @return A \code{\link[base]{function}}. One read off the grid carries
+#' attribute \code{"grid_inverse"}, the transformation it inverts, and gives
+#' \code{NA} beyond the grid; see \code{map_draws()}.
+#'
+#' @importFrom stats approx
+#' @noRd
+recorded_x_map <- function(formula, x_grid_raw, tr) {
+  fitted_grid <- suppressWarnings(sub_x_transformation(x_grid_raw, formula))
+  keep <- is.finite(fitted_grid) & is.finite(x_grid_raw)
+  inv_text <- x_inverse_text(tr$call)
+  if (!is.null(inv_text)) {
+    inv <- eval(str2lang(inv_text), baseenv())
+    # Check the round trip, so that a formula whose environment redefines a
+    # function such as log() is not inverted by the base one.
+    back <- suppressWarnings(inv(as.numeric(fitted_grid[keep])))
+    if (isTRUE(all.equal(back, as.numeric(x_grid_raw[keep]),
+                         tolerance = 1e-8))) {
+      return(inv)
+    }
+  }
+  if (sum(keep) < 2) {
+    stop("The prediction grid holds fewer than two points at which ",
+         tr$label, " is finite, so the estimate cannot be returned on the ",
+         "scale of ", tr$variable, ". Pass the inverse of ", tr$label,
+         " as xform.", call. = FALSE)
+  }
+  o <- order(x_grid_raw[keep])
+  o <- o[!duplicated(x_grid_raw[keep][o])]
+  grid <- refine_inverse_grid(
+    as.numeric(x_grid_raw[keep][o]), as.numeric(fitted_grid[keep][o]),
+    function(x) suppressWarnings(as.numeric(sub_x_transformation(x, formula)))
+  )
+  steps <- diff(grid$fitted)
+  if (!(all(steps > 0) || all(steps < 0))) {
+    stop("The transformation ", tr$label, " is not strictly monotone over ",
+         "the prediction grid, so it has no inverse to return the estimate ",
+         "to the scale of ", tr$variable, ". Pass xform, or xform = identity ",
+         "for the fitted scale.", call. = FALSE)
+  }
+  fitted_grid <- grid$fitted
+  raw_grid <- grid$raw
+  out <- function(values) {
+    # Build from `values` to keep the attributes the estimators set.
+    res <- values
+    res[] <- NA_real_
+    finite_v <- is.finite(values)
+    res[finite_v] <- approx(x = fitted_grid, y = raw_grid,
+                            xout = as.numeric(values[finite_v]),
+                            rule = 1)$y
+    res
+  }
+  attr(out, "grid_inverse") <- tr
+  out
+}
+
+#' Add grid points where the grid is coarse on the fitted scale
+#'
+#' A grid evenly spaced on the recorded scale is coarse on a scale such as
+#' \code{log(x)} near its foot, and interpolation error grows with the square
+#' of the step. Each step wider than the median step on the fitted scale is
+#' divided evenly on the recorded scale, until none is or the grid reaches
+#' 20000 points.
+#'
+#' @param raw The grid on the recorded scale, increasing.
+#' @param fitted The same points on the fitted scale.
+#' @param transform The function taking \code{raw} to \code{fitted}.
+#'
+#' @return A \code{\link[base]{list}} with elements \code{raw} and
+#' \code{fitted}.
+#'
+#' @importFrom stats median
+#' @noRd
+refine_inverse_grid <- function(raw, fitted, transform) {
+  target <- median(abs(diff(fitted)))
+  if (!is.finite(target) || target <= 0) {
+    return(list(raw = raw, fitted = fitted))
+  }
+  for (i in seq_len(20)) {
+    span <- abs(diff(fitted))
+    wide <- which(span > target)
+    if (length(wide) == 0 || length(raw) >= 20000) {
+      break
+    }
+    extra <- unlist(lapply(wide, function(k) {
+      n <- min(ceiling(span[k] / target), 100)
+      seq(raw[k], raw[k + 1], length.out = n + 1)[-c(1, n + 1)]
+    }))
+    extra_fitted <- transform(extra)
+    ok <- is.finite(extra_fitted)
+    raw <- c(raw, extra[ok])
+    fitted <- c(fitted, extra_fitted[ok])
+    o <- order(raw)
+    raw <- raw[o]
+    fitted <- fitted[o]
+  }
+  list(raw = raw, fitted = fitted)
+}
+
+#' Apply a map to posterior draws, refusing a draw it cannot place
+#'
+#' A map read off the grid gives \code{NA} beyond it. A censored draw has no
+#' value in any summary, so it may be \code{NA}. Any other draw would be
+#' dropped from the quantiles without a word, so the call stops, or with
+#' \code{refuse = FALSE} says so and leaves the draw \code{NA}.
+#'
+#' @param values A \code{\link[base]{numeric}} vector of draws.
+#' @param map The function from \code{recorded_xform()}.
+#' @param cens The draws' censoring record, or \code{NULL}.
+#' @param what A \code{\link[base]{character}} naming the estimate.
+#' @param refuse \code{TRUE} to stop on such a draw, \code{FALSE} for a
+#' message.
+#'
+#' @return \code{map(values)}.
+#' @noRd
+map_draws <- function(values, map, cens = NULL, what = "estimate",
+                      refuse = TRUE) {
+  out <- map(values)
+  tr <- attr(map, "grid_inverse")
+  if (is.null(tr)) {
+    return(out)
+  }
+  lost <- is.na(out) & !is.na(values)
+  if (!is.null(cens) && length(cens$above) == length(values)) {
+    lost <- lost & !cens$above & !cens$below
+  }
+  if (any(lost)) {
+    text <- paste0(
+      "No closed-form inverse of ", tr$label, " is known, so the ", what,
+      " is returned on the scale of ", tr$variable, " by interpolating on ",
+      "the prediction grid, and ", sum(lost), " of ", length(values),
+      " draws lie beyond that grid. ",
+      if (refuse) "" else "Those draws are NA, and so is their summary. ",
+      "Pass the inverse of ", tr$label, " as xform, or xform = identity for ",
+      "the fitted scale."
+    )
+    if (refuse) stop(text, call. = FALSE) else message(text)
+  }
+  out
 }
 
 #' The xform a method received through its dots
 #'
-#' For the methods that take \code{xform} in \code{...} and pass the dots on
-#' to a per-fit method. The dots are matched against that method's generic, so
-#' that \code{xform} is found by position and by partial name as the method
-#' will find it: \code{nec(g, FALSE, exp)} supplies \code{xform} on a group as
-#' \code{nec(fit, FALSE, exp)} does on one fit.
+#' For the summary methods, which pass their dots to \code{\link{ecx}}. The
+#' dots are matched against the generic's formals, so that \code{xform} is
+#' found by position and by partial name as the method will find it.
 #'
-#' @param generic The generic the dots are passed to, such as \code{nec}.
+#' @param generic The generic the dots are passed to, such as \code{ecx}.
 #' @param dots The \code{...} of the calling method, as a list.
 #'
-#' @return A function, or whatever was supplied.
+#' @return A function, or whatever was supplied, or \code{NULL} where nothing
+#' was.
 #' @noRd
 dots_xform <- function(generic, dots) {
   # A placeholder fills the object slot, so that the dots are matched from the
@@ -77,26 +253,31 @@ dots_xform <- function(generic, dots) {
     match.call(generic, as.call(c(list(quote(f), quote(object)), dots))),
     error = function(e) NULL
   )
-  xform <- if (is.null(matched)) NULL else matched[["xform"]]
-  if (is.null(xform)) identity else xform
+  if (is.null(matched)) NULL else matched[["xform"]]
 }
 
-#' The first fit in a list whose predictor is transformed inline
+#' Whether a plot draws its estimates as the estimators return them by default
 #'
-#' @param x A \code{\link[base]{list}} of fitted objects, as
-#' \code{\link{compare_estimates}} takes.
+#' Where the predictor is transformed inline, the axis is the recorded scale,
+#' and \code{xform} left at \code{NULL} or \code{identity} asks for nothing
+#' more. The estimates are then taken from the estimators' default, so the
+#' figure and \code{\link{nec}} or \code{\link{ecx}} report the same numbers.
 #'
-#' @return One element of \code{x}, or \code{NULL}.
+#' @param bdat A model frame carrying the \code{bnec_pop} attribute.
+#' @param xform The \code{xform} the caller supplied, or \code{NULL}.
+#'
+#' @return A \code{\link[base]{logical}} value.
 #' @noRd
-first_transformed_fit <- function(x) {
-  Find(function(fit) !is.null(inline_x_transform(fit)), x)
+plot_reads_recorded <- function(bdat, xform) {
+  pop_var_is_transformed(bdat, "x_var") &&
+    (is.null(xform) || identical(xform, identity))
 }
 
 #' The inline transformation of the predictor, where there is one
 #'
 #' Read from the \code{crf()} term by \code{crf_x_call()}, the parse
-#' \code{sub_x_transformation()} applies to every estimate, so the message is
-#' raised exactly where an estimate is on a transformed scale.
+#' \code{sub_x_transformation()} applies to every estimate, so an estimate is
+#' inverted exactly where it was put on a transformed scale.
 #'
 #' @param object A fitted object or a \code{prebayesnecfit}. A model set, a
 #' group and a hurdle pair are read from their first equation, their first
@@ -115,9 +296,8 @@ inline_x_transform <- function(object) {
     return(NULL)
   }
   formula <- fit$bayesnecformula
-  # Caught, because this only decides whether to print a message. A formula
-  # that cannot be parsed fails in whatever the estimator computes next, and is
-  # reported there.
+  # Caught: a formula that cannot be parsed fails in whatever the estimator
+  # computes next, and is reported there.
   x_call <- tryCatch(crf_x_call(formula), error = function(e) NULL)
   # inherits() rather than is.call(), as sub_x_transformation() tests it, so
   # that the two agree on which predictors are transformed.
@@ -150,38 +330,13 @@ scale_source_fit <- function(object) {
   representative_fit(object)
 }
 
-#' The noun phrase a message uses for what was fitted
-#'
-#' The same phrases \code{\link{curve_params}} passes to
-#' \code{report_scales()}.
-#'
-#' @noRd
-scale_subject <- function(object) {
-  if (inherits(object, "bayesnecgroupfit")) {
-    "fitted group"
-  } else if (inherits(object, "bayesnecjointfit")) {
-    # Before the test on `model` below, which a composed refit sets to NA and
-    # a dummy-coded one to the equation fitted at every level. Neither names
-    # the object the caller passed.
-    "fitted joint refit"
-  } else if (inherits(object, "bayesnechurdlefit")) {
-    "fitted hurdle pair"
-  } else if (inherits(object, "bayesmanecfit")) {
-    "fitted model set"
-  } else if (is.character(object$model) && length(object$model) == 1) {
-    paste(object$model, "fit")
-  } else {
-    "fit"
-  }
-}
-
-#' The xform that inverts an inline transformation, as code to print
+#' The inverse of an inline transformation, as code
 #'
 #' A closed form is given for a one-argument \code{log}, \code{log10},
 #' \code{log2}, \code{log1p}, \code{sqrt} or \code{exp} of the predictor,
 #' alone or shifted by a numeric constant. Anything else returns \code{NULL},
-#' and the message asks for the inverse by name rather than guessing one: a
-#' wrong inverse would be followed, and would give a wrong number.
+#' and \code{recorded_x_map()} interpolates on the grid instead. Do not add a
+#' form whose inverse is not exact: it would be applied without a message.
 #'
 #' @param x_call The transformation as a call, such as \code{log(x + 1)}.
 #'
@@ -244,58 +399,3 @@ x_literal_shift <- function(arg) {
   NULL
 }
 
-#' The text of the scale message
-#'
-#' @param what A \code{\link[base]{character}} noun phrase naming what was
-#' fitted, from \code{scale_subject()}.
-#' @param tr The list \code{inline_x_transform()} returns.
-#' @param kind The name of the function whose result is described:
-#' \code{"nec"}, \code{"ecx"} or \code{"nsec"}, whose estimate is on the
-#' predictor axis; \code{"ecnsec"}, whose \code{nsec} argument has the scale,
-#' since every \code{ecnsec} method applies \code{xform} to it;
-#' \code{"curve_params"}; or \code{"compare_estimates"}, which takes no
-#' \code{xform}.
-#'
-#' @return A \code{\link[base]{character}} string.
-#' @noRd
-fitted_scale_text <- function(what, tr, kind) {
-  inv <- x_inverse_text(tr$call)
-  pass <- function(fun, purpose, lead = "Pass") {
-    if (is.null(inv)) {
-      paste0(lead, " the inverse of ", tr$label, " as xform to ", fun, " ",
-             purpose, ".")
-    } else {
-      paste0(lead, " xform = ", inv, " to ", fun, " ", purpose, ".")
-    }
-  }
-  opening <- paste0("The ", what, " transforms its predictor inline as ",
-                    tr$label)
-  recorded <- paste("on the scale of", tr$variable)
-  switch(
-    kind,
-    curve_params = paste0(
-      opening, ", so nec and ec50 are on that transformed scale, as the ",
-      "values nec() and ecx() return are. ",
-      pass("curve_params()", paste("to return them", recorded)),
-      " top, bot and the shape parameters are not on the predictor axis and ",
-      "are unaffected."
-    ),
-    ecnsec = paste0(
-      opening, ". ecnsec() reads nsec ", recorded, ", after applying xform ",
-      "to it, and nsec() returns its estimate on the transformed scale unless ",
-      "given an xform. Where nsec is on the transformed scale, ",
-      pass("ecnsec()", paste("to read it", recorded), lead = "pass")
-    ),
-    compare_estimates = paste0(
-      opening, ", so the estimates compare_estimates() compares, and their ",
-      "differences, are on that transformed scale. compare_estimates() takes ",
-      "no xform. ",
-      pass("nec(), ecx() or nsec()", paste("to return an estimate", recorded))
-    ),
-    paste0(
-      opening, ", so the estimate ", kind, "() returns is on that ",
-      "transformed scale. ",
-      pass(paste0(kind, "()"), paste("to return it", recorded))
-    )
-  )
-}

@@ -12,8 +12,9 @@
 #' matches \code{\link{ecx}} and \code{\link{nsec}}.
 #' @param type A \code{\link[base]{character}} vector, taking values of
 #' "absolute" (the default), "relative" or "range". See Details.
-#' @param xform A function to apply to the returned estimated NSEC concentration
-#' values prior to estimating the percentage effect.
+#' @param xform \code{NULL}, the default, or a function applied to
+#' \code{nsec} before the curve is read there. \code{NULL} reads \code{nsec}
+#' as given, on the recorded scale. See Details.
 #' @param x_range A range of x values over which to predict the curve. An
 #' \code{nsec} outside it is refused; see Details.
 #' @param prob_vals A vector indicating the probability values over which to
@@ -53,11 +54,12 @@
 #' always the reference. See \code{\link{ecx}}.
 #'
 #' \code{nsec} is read on the recorded predictor scale once \code{xform} has
-#' been applied to it. Where \code{crf()} transforms the predictor inline, as
-#' in \code{crf(log(concentration))}, \code{\link{nsec}} returns its estimate
-#' on the transformed scale unless given an \code{xform}, so a message says so
-#' once per call where \code{xform} is left at its default, and names the
-#' \code{xform} that puts such a value on the recorded scale.
+#' been applied to it. \code{\link{nsec}} returns its estimate on that scale
+#' by default, so \code{ecnsec(fit, nsec = nsec(fit)[1])} reads the curve at
+#' the NSEC whether or not \code{crf()} transforms the predictor inline. Where
+#' it does, as in \code{crf(log(concentration))}, an NSEC taken with
+#' \code{xform = identity} is on the transformed scale, and needs the inverse,
+#' here \code{xform = exp}.
 #'
 #' The curve is read at \code{nsec} only inside the range it is predicted
 #' over: the observed range of the predictor, or \code{x_range} where one is
@@ -84,7 +86,7 @@
 #' @export
 ecnsec <- function(object, nsec, resolution = 200, x_range = NA, 
                    type = "absolute",
-                 xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...) {
+                 xform = NULL, prob_vals = c(0.5, 0.025, 0.975), ...) {
   UseMethod("ecnsec")
 }
 
@@ -107,7 +109,7 @@ ecnsec <- function(object, nsec, resolution = 200, x_range = NA,
 #' @export
 ecnsec.bnecfit <- function(object, nsec, resolution = 200, x_range = NA, 
                                type = "absolute",
-                             xform = identity, prob_vals = c(0.5, 0.025, 0.975), ..., 
+                             xform = NULL, prob_vals = c(0.5, 0.025, 0.975), ..., 
                              posterior = FALSE) {
   # One value: the curve is read at one point.
   chk_number(nsec)
@@ -129,21 +131,16 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 200, x_range = NA,
     }
     check_combined_relative(fit_family, "ecnsec")
   }
-  if(!inherits(xform, "function")) { 
-    stop("xform must be a function.")}  
+  check_xform(xform)
+  if (is.null(xform)) {
+    xform <- identity
+  }
   if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[2] |
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
   }
-  # The percentage returned has no predictor scale; the nsec supplied does. It
-  # is read on the recorded scale after xform, so the message says what to pass
-  # where nsec came from nsec() without one. See report_fitted_scale().
-  quiet <- report_fitted_scale(object, xform, "ecnsec")
-  on.exit(options(quiet), add = TRUE)
-  if (inherits(xform, "function")) {
-    nsec_use <- xform(nsec)
-  }
+  nsec_use <- xform(nsec)
 
   newdata_list <- newdata_eval(
     object, resolution = resolution, x_range = x_range

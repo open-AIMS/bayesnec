@@ -284,11 +284,9 @@ test_that("the link is reported in a column and named when it is not identity", 
 })
 
 # A fit whose formula transforms the PREDICTOR, in the style of setup.R's
-# transformed_response_fit(). The stored fit was not fitted with this formula;
-# that is safe for report_scales(), which reads the formula only to decide
-# whether the predictor was transformed, and it is not safe for reading any
-# posterior quantity off the fit. sqrt() rather than log(), because
-# manec_example's predictor reaches zero.
+# transformed_response_fit(). The stored fit was not fitted with this formula,
+# so its numbers mean nothing in themselves; the tests compare two calls on the
+# same stored posterior.
 transformed_x_fit <- function(fit, model) {
   fit$bayesnecformula <- bnf(stats::as.formula(
     paste0("y ~ crf(sqrt(x), model = \"", model, "\")")
@@ -296,13 +294,23 @@ transformed_x_fit <- function(fit, model) {
   fit
 }
 
-test_that("a predictor transformed inline is reported unless xform was given", {
+test_that("nec and ec50 default to the recorded scale on a transformed fit", {
   tf <- transformed_x_fit(nec4param, "nec4param")
-  expect_message(curve_params(tf), "nec and ec50 are on that transformed scale")
-  expect_message(curve_params(tf), "sqrt\\(x\\)")
-  # A caller who supplied an inverse has already dealt with it.
-  expect_silent(curve_params(tf, xform = function(x) x^2))
-  expect_silent(curve_params(nec4param))
+  # The default inverts sqrt() exactly, so it matches the inverse supplied by
+  # hand, and says nothing.
+  expect_silent(by_default <- curve_params(tf))
+  expect_equal(by_default, curve_params(tf, xform = function(x) x^2))
+  # xform = identity is the fitted scale, which is what the parameters were
+  # sampled on and what an untransformed fit reports.
+  fitted <- curve_params(tf, xform = identity)
+  expect_identical(fitted, curve_params(nec4param))
+  on_x <- fitted$parameter %in% c("nec", "ec50")
+  expect_true(any(on_x))
+  expect_false(isTRUE(all.equal(by_default[on_x, ], fitted[on_x, ])))
+  expect_identical(by_default[!on_x, ], fitted[!on_x, ])
+  # The draws form takes the same map.
+  expect_equal(curve_params(tf, summary = FALSE)$nec4param[, "nec"],
+               curve_params(nec4param, summary = FALSE)$nec4param[, "nec"]^2)
 })
 
 fake_group <- function(fits = list(a = manec_example, b = nec4param)) {
@@ -330,20 +338,10 @@ test_that("a hurdle fit returns one table per component", {
   expect_equal(nrow(out$growth), 4L)
 })
 
-test_that("a hurdle pair reports the transformation once, the link per fit", {
-  # The two components are fitted from one formula on one predictor, so a
-  # second paragraph about the transformation says nothing the first did not.
+test_that("a hurdle pair reports the link per component", {
   # The link is not shared: growth takes the family of the non-zero response
-  # and survival is bernoulli, so each component reports its own.
-  tf <- transformed_x_fit(nec4param, "nec4param")
-  msgs <- capture_messages(curve_params(fake_hurdle(tf, tf)))
-  expect_equal(sum(grepl("transformed scale", msgs)), 1L)
-  # The gate is restored, so the next call reports again.
-  expect_message(curve_params(tf), "transformed scale")
-  # The half the split exists to protect: two components on different links
-  # both report, and each paragraph names its component. Gating the link for
-  # the pair, as the transformation is gated, would suppress one of them and
-  # the suite would not notice.
+  # and survival is bernoulli, so each component reports its own, and each
+  # paragraph names its component.
   g <- nec4param
   g$fit$family <- brms::brmsfamily("gaussian", link = "log")
   s <- nec4param
@@ -377,14 +375,9 @@ test_that("a group fit returns one table with a level column", {
   expect_named(dr$b, "nec4param")
 })
 
-test_that("the scale is reported once for a group, not once per level", {
-  # Every level is fitted with the same family and the same formula, so a
-  # per-level report prints the same paragraph once per level: twelve times on
-  # a twelve-level fit.
+test_that("each level of a group takes the recorded scale", {
   tf <- transformed_x_fit(nec4param, "nec4param")
   gf <- fake_group(list(a = tf, b = tf, c = tf))
-  msgs <- capture_messages(curve_params(gf))
-  expect_equal(sum(grepl("transformed scale", msgs)), 1L)
-  # And the option it is gated on is restored, so the next call reports again.
-  expect_message(curve_params(tf), "transformed scale")
+  expect_silent(out <- curve_params(gf))
+  expect_equal(out, curve_params(gf, xform = function(x) x^2))
 })

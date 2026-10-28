@@ -50,7 +50,13 @@ NULL
 #' vector of length two giving the x and y coordinates of the legend in user
 #' units. \code{legend}'s ninth keyword, \code{"center"}, is not accepted;
 #' give the coordinates instead.
-#' @param xform A function to be applied as a transformation of the x data.
+#' @param xform \code{NULL}, the default, or a function. Where \code{crf()}
+#' does not transform the predictor inline, a function is applied to the x data
+#' and to the annotated estimates. Where it does, the x data are drawn on the
+#' recorded scale, and the annotation is the estimate \code{\link{nec}} or
+#' \code{\link{ecx}} returns by default, which is on that scale. A function
+#' other than \code{identity} is then applied to the estimates on the
+#' transformed scale instead, as the estimators apply it.
 #' @param lxform A function to be applied as a transformation only to axis
 #' labels and the annotated NEC / EC10 values.
 #' @param jitter_x A \code{\link[base]{logical}} value indicating if the x
@@ -76,16 +82,14 @@ NULL
 #' @export
 plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                              position_legend = "topright", add_ec10 = FALSE,
-                             xform = identity, lxform = identity,
+                             xform = NULL, lxform = identity,
                              jitter_x = FALSE, jitter_y = FALSE,
                              ylab = "Response", xlab = "Predictor",
                              xticks = NA) {
   chk_lgl(CI)
   chk_lgl(add_nec)
   chk_lgl(add_ec10)
-  if (!inherits(xform, "function")) {
-    stop("xform must be a function.")
-  }
+  check_xform(xform)
   if (!inherits(lxform, "function")) { 
     stop("lxform must be a function.")
   }
@@ -109,34 +113,41 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   } else {
     y_dat <- x$fit$data[[y_var]]
   }
+  bdat <- model.frame(x$bayesnecformula, data = x$fit$data, run_par_checks = TRUE)
+  # On the recorded axis with no xform, draw what the estimators return.
+  recorded <- plot_reads_recorded(bdat, xform)
+  est_xform <- if (recorded) NULL else identity
+  axis_xform <- if (is.null(xform)) identity else xform
   ec10 <- c(NA, NA, NA)
-  # Without the scale message: the EC10 is put on the axis scale below by
-  # to_axis_scale(), so the message would describe a number the plot does not
-  # show.
   if (add_ec10 & family != "gaussian") {
-    ec10 <- without_scale_report(ecx(x))
+    ec10 <- ecx(x, xform = est_xform)
   }
   if (add_ec10 & family == "gaussian") {
     # "range", not "relative": a gaussian response can go negative, so the
     # annotation measures the span from the control to the minimum, not to
     # bot. "relative" would also fail for a bot-free equation.
-    ec10 <- without_scale_report(ecx(x, type = "range"))
+    ec10 <- ecx(x, type = "range", xform = est_xform)
   }
 
-  bdat <- model.frame(x$bayesnecformula, data = x$fit$data, run_par_checks = TRUE)
   x_dat <- x$fit$data[[x_var]]
   x_vec <- x$pred_vals$data$x  
   
   # Ask about the predictor alone: a transformation on the response must not
   # stop xform being applied to the predictor axis.
   if (!pop_var_is_transformed(bdat, "x_var")) {
-      x_dat <- xform(x_dat)
-      x_vec <- xform(x_vec)
+      x_dat <- axis_xform(x_dat)
+      x_vec <- axis_xform(x_vec)
   }
       
   x_grid_raw <- x$pred_vals$data$x
-  ec10 <- to_axis_scale(ec10, bdat, x$bayesnecformula, x_grid_raw, xform)
-  nec <- to_axis_scale(x$ne, bdat, x$bayesnecformula, x_grid_raw, xform)
+  if (recorded) {
+    nec <- summary_ne_vals(x, NULL)
+  } else {
+    ec10 <- to_axis_scale(ec10, bdat, x$bayesnecformula, x_grid_raw,
+                          axis_xform)
+    nec <- to_axis_scale(x$ne, bdat, x$bayesnecformula, x_grid_raw,
+                         axis_xform)
+  }
 
   if (jitter_x) {
     x_dat <- jitter(x_dat)
@@ -230,7 +241,7 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 #' @export
 plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                                position_legend = "topright", add_ec10 = FALSE,
-                               xform = identity, lxform = identity,
+                               xform = NULL, lxform = identity,
                                jitter_x = FALSE, jitter_y = FALSE,
                                ylab = "Response", xlab = "Predictor",
                                xticks = NA, model = NULL, average = TRUE,
@@ -238,9 +249,7 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   chk_lgl(CI)
   chk_lgl(add_nec)
   chk_lgl(add_ec10)
-  if (!inherits(xform, "function")) {
-    stop("xform must be a function.")
-  }
+  check_xform(xform)
   if (!inherits(lxform, "function")) { 
     stop("lxform must be a function.")
   }
@@ -322,25 +331,33 @@ plot_manec_average <- function(x, ..., CI, add_nec, legend_pos, add_ec10,
   } else {
     y_dat <- mod_dat[[y_var]]
   }
+  # As in plot.bayesnecfit().
+  recorded <- plot_reads_recorded(bdat, xform)
+  est_xform <- if (recorded) NULL else identity
+  axis_xform <- if (is.null(xform)) identity else xform
   ec10 <- c(NA, NA, NA)
   if (add_ec10 & family != "gaussian") {
-    ec10 <- without_scale_report(ecx(x))
+    ec10 <- ecx(x, xform = est_xform)
   }
   if (add_ec10 & family == "gaussian") {
     # "range" rather than "relative", for the reasons given in
     # plot.bayesnecfit above.
-    ec10 <- without_scale_report(ecx(x, type = "range"))
+    ec10 <- ecx(x, type = "range", xform = est_xform)
   }
   x_dat <- mod_dat[[x_var]]
   x_vec <- x$w_pred_vals$data$x
   if (!pop_var_is_transformed(bdat, "x_var")) {
-    x_dat <- xform(x_dat)
-    x_vec <- xform(x_vec)
+    x_dat <- axis_xform(x_dat)
+    x_vec <- axis_xform(x_vec)
   }
   x_grid_raw <- x$w_pred_vals$data$x
   manec_formula <- x$mod_fits[[1]]$bayesnecformula
-  nec <- to_axis_scale(x$w_ne, bdat, manec_formula, x_grid_raw, xform)
-  ec10 <- to_axis_scale(ec10, bdat, manec_formula, x_grid_raw, xform)
+  if (recorded) {
+    nec <- summary_ne_vals(x, NULL)
+  } else {
+    nec <- to_axis_scale(x$w_ne, bdat, manec_formula, x_grid_raw, axis_xform)
+    ec10 <- to_axis_scale(ec10, bdat, manec_formula, x_grid_raw, axis_xform)
+  }
   if (jitter_x) {
     x_dat <- jitter(x_dat)
   }

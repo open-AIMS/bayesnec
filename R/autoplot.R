@@ -12,8 +12,8 @@
 #' @param ... Additional arguments to be passed to \code{\link{ggbnec_data}}.
 #' @param nec Should NEC values be added to the plot? Defaults to TRUE.
 #' @param ecx Should ECx values be added to the plot? Defaults to FALSE..
-#' @param xform A function to apply to the returned estimated concentration
-#' values.
+#' @param xform \code{NULL}, the default, or a function. See
+#' \code{\link{ggbnec_data}}.
 #' @param group An optional character string naming a categorical variable in
 #' the data supplied to \code{\link{bnec}}. Observations are joined through
 #' their per-level means when the variable occurs as a group-level term in the
@@ -74,15 +74,13 @@ NULL
 #'
 #' @export
 autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
-                                 xform = identity, group = NULL,
+                                 xform = NULL, group = NULL,
                                  group_aes = c("line", "colour")) {
   x <- object
   chk_lgl(nec)
   chk_lgl(ecx)
   group_aes <- match.arg(group_aes)
-  if (!inherits(xform, "function")) {
-    stop("xform must be a function.")
-  }
+  check_xform(xform)
   summ <- summary(x, ecx = FALSE) |>
     suppressWarnings() |>
     suppressMessages()
@@ -142,7 +140,7 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
 #'
 #' @export
 autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
-                                   xform = identity, model = NULL,
+                                   xform = NULL, model = NULL,
                                    average = TRUE, plot = TRUE, ask = TRUE,
                                    newpage = TRUE, multi_facet = TRUE,
                                    group = NULL,
@@ -152,9 +150,7 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   chk_lgl(nec)
   chk_lgl(ecx)
   group_aes <- match.arg(group_aes)
-  if (!inherits(xform, "function")) {
-    stop("xform must be a function.")
-  }
+  check_xform(xform)
   shown <- resolve_model_average(
     x, model, average, all_models,
     new_supplied = !missing(model) || !missing(average)
@@ -471,8 +467,13 @@ bind_ecx <- function(data, ecx_vals) {
 #' a \code{\link{bayesnecjointfit}} returned by \code{\link{bnec_joint}}.
 #' @param add_nec Should NEC values be added to the plot? Defaults to TRUE.
 #' @param add_ecx Should ECx values be added to the plot? Defaults to FALSE.
-#' @param xform A function to apply to the returned estimated concentration
-#' values.
+#' @param xform \code{NULL}, the default, or a function. Where \code{crf()}
+#' does not transform the predictor inline, a function is applied to the
+#' predictor and to the estimates. Where it does, the predictor is on the
+#' recorded scale, and the estimates are those \code{\link{nec}} and
+#' \code{\link{ecx}} return by default, which are on that scale. A function
+#' other than \code{identity} is then applied to the estimates on the
+#' transformed scale instead, as the estimators apply it.
 #' @param group An optional character string naming a categorical variable in
 #' the data supplied to \code{\link{bnec}}. When supplied, its values are
 #' returned in a column named \code{group}, with the source name in attribute
@@ -502,7 +503,7 @@ bind_ecx <- function(data, ecx_vals) {
 #'
 #' @export
 ggbnec_data <- function(x, add_nec = TRUE, add_ecx = FALSE,
-                        xform = identity, ..., group = NULL) {
+                        xform = NULL, ..., group = NULL) {
   UseMethod("ggbnec_data")
 }
 
@@ -523,11 +524,10 @@ ggbnec_data <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #'
 #' @export
 ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
-                                    xform = identity, ..., group = NULL) {
+                                    xform = NULL, ..., group = NULL) {
   chk_lgl(add_nec)
   chk_lgl(add_ecx)
-  if(!inherits(xform, "function")){ 
-    stop("xform must be a function.")} 
+  check_xform(xform)
   brms_fit <- x$fit
   plot_obj <- brms_fit |>
     conditional_effects(method = "posterior_epred") |>
@@ -544,20 +544,31 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   }
   bdat <- model.frame(x$bayesnecformula, data = x$fit$data, run_par_checks = TRUE)
   out <- rbind(e_df, r_df)
+  # On the recorded axis with no xform, draw what the estimators return.
+  recorded <- plot_reads_recorded(bdat, xform)
+  axis_xform <- if (is.null(xform)) identity else xform
   if (!pop_var_is_transformed(bdat, "x_var")) {
     out <- out |>
-      mutate(x_e = xform(.data$x_e), x_r = xform(.data$x_r))
+      mutate(x_e = axis_xform(.data$x_e), x_r = axis_xform(.data$x_r))
   }
   x_grid_raw <- x$pred_vals$data$x
   if (add_nec) {
     # to_axis_scale() puts the estimates and the censoring marks onto the axis
     # scale together, reversing both under a decreasing map.
-    out <- bind_nec(out, to_axis_scale(x$ne, bdat, x$bayesnecformula,
-                                       x_grid_raw, xform))
+    ne_vals <- if (recorded) {
+      summary_ne_vals(x, NULL)
+    } else {
+      to_axis_scale(x$ne, bdat, x$bayesnecformula, x_grid_raw, axis_xform)
+    }
+    out <- bind_nec(out, ne_vals)
   }
   if (add_ecx) {
-    ecx_vals <- to_axis_scale(plot_ecx(x, x$fit$family$family, list(...)),
-                              bdat, x$bayesnecformula, x_grid_raw, xform)
+    ecx_vals <- plot_ecx(x, x$fit$family$family, list(...),
+                         if (recorded) NULL else identity)
+    if (!recorded) {
+      ecx_vals <- to_axis_scale(ecx_vals, bdat, x$bayesnecformula,
+                                x_grid_raw, axis_xform)
+    }
     out <- bind_ecx(out, ecx_vals)
   }
   if (!is.null(group)) {
@@ -583,14 +594,12 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #'
 #' @export
 ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
-                                      xform = identity, ..., group = NULL) {
+                                      xform = NULL, ..., group = NULL) {
   chk_lgl(add_nec)
   chk_lgl(add_ecx)
   # Check xform as the bayesnecfit method does. Otherwise mutate() fails with
   # an error that names neither the argument nor the remedy.
-  if (!inherits(xform, "function")) {
-    stop("xform must be a function.")
-  }
+  check_xform(xform)
   e_df <- x$w_pred_vals$data
   e_df <- data.frame(x_e = c(e_df$x, rev(e_df$x)),
                      y_e = c(e_df$Estimate, rep(NA, nrow(e_df))),
@@ -608,19 +617,28 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   manec_formula <- x$mod_fits[[1]]$bayesnecformula
   x_grid_raw <- x$w_pred_vals$data$x
   out <- rbind(e_df, r_df)
+  # As in the bayesnecfit method.
+  recorded <- plot_reads_recorded(bdat, xform)
+  axis_xform <- if (is.null(xform)) identity else xform
   if (!pop_var_is_transformed(bdat, "x_var")) {
     out <- out |>
-      mutate(x_e = xform(.data$x_e), x_r = xform(.data$x_r))
+      mutate(x_e = axis_xform(.data$x_e), x_r = axis_xform(.data$x_r))
   }
   if (add_nec) {
-    out <- bind_nec(out, to_axis_scale(x$w_ne, bdat, manec_formula,
-                                       x_grid_raw, xform))
+    ne_vals <- if (recorded) {
+      summary_ne_vals(x, NULL)
+    } else {
+      to_axis_scale(x$w_ne, bdat, manec_formula, x_grid_raw, axis_xform)
+    }
+    out <- bind_nec(out, ne_vals)
   }
   if (add_ecx) {
-    ecx_vals <- to_axis_scale(
-      plot_ecx(x, x$mod_fits[[1]]$fit$family$family, list(...)),
-      bdat, manec_formula, x_grid_raw, xform
-    )
+    ecx_vals <- plot_ecx(x, x$mod_fits[[1]]$fit$family$family, list(...),
+                         if (recorded) NULL else identity)
+    if (!recorded) {
+      ecx_vals <- to_axis_scale(ecx_vals, bdat, manec_formula, x_grid_raw,
+                                axis_xform)
+    }
     out <- bind_ecx(out, ecx_vals)
   }
   if (!is.null(group)) {
@@ -643,7 +661,7 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #'
 #' @export
 ggbnec_data.bayesnecgroupfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
-                                         xform = identity, ..., group = NULL) {
+                                         xform = NULL, ..., group = NULL) {
   panel_group <- is.null(group) || identical(group, x$group_var)
   pieces <- lapply(seq_along(x$fits), function(i) {
     out <- ggbnec_data(x$fits[[i]], add_nec = add_nec, add_ecx = add_ecx,
@@ -675,14 +693,12 @@ ggbnec_data.bayesnecgroupfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #'
 #' @export
 autoplot.bayesnecgroupfit <- function(object, ..., nec = TRUE, ecx = FALSE,
-                                      xform = identity, group = NULL,
+                                      xform = NULL, group = NULL,
                                       group_aes = c("line", "colour")) {
   chk_lgl(nec)
   chk_lgl(ecx)
   group_aes <- match.arg(group_aes)
-  if (!inherits(xform, "function")) {
-    stop("xform must be a function.")
-  }
+  check_xform(xform)
   dat <- ggbnec_data(object, add_nec = nec, add_ecx = ecx,
                      xform = xform, group = group, ...)
   tags <- vapply(object$fits, function(fit) {

@@ -263,10 +263,10 @@ test_that("to_axis_scale brings an estimate onto the axis scale", {
   expect_equal(to_axis_scale(50, b_plain, f_plain, raw), 50)
   expect_equal(to_axis_scale(50, b_plain, f_plain, raw, function(z) z * 2), 100)
   # Predictor transformed and no xform supplied: the estimate is on the fitted
-  # scale and the axis on the recorded one, so it is inverted numerically.
-  # This is the default case #160 reports, where the annotation was drawn at
-  # its own fitted value on an axis in concentrations.
-  expect_equal(to_axis_scale(log(50), b_log, f_log, raw), 50, tolerance = 1e-3)
+  # scale and the axis on the recorded one, so it is inverted, here by the
+  # closed form. This is the default case #160 reports, where the annotation
+  # was drawn at its own fitted value on an axis in concentrations.
+  expect_equal(to_axis_scale(log(50), b_log, f_log, raw), 50, tolerance = 1e-8)
   # Predictor transformed and xform supplied: that is what xform is for, and
   # it is used rather than the numerical inverse.
   expect_equal(to_axis_scale(log(50), b_log, f_log, raw, exp), 50,
@@ -304,18 +304,20 @@ test_that("plot_ecx asks for range under gaussian and the default otherwise", {
 
 test_that("to_axis_scale carries the estimate's attributes through", {
   raw <- seq(1, 100, length.out = 100)
-  f_log <- bayesnecformula(y ~ crf(log(x), model = "nec3param"))
-  b_log <- stats::model.frame(f_log, data = data.frame(x = raw, y = runif(100)))
-  v <- structure(log(c(50, 40, 60)), ecx_val = 10, toxicity_estimate = "ecx")
-  # The numerical-inverse branch. bind_ecx() reads attr(., "ecx_val") and
-  # assigns it into a data frame, so a stripped vector is an error there rather
-  # than a missing label.
-  out <- to_axis_scale(v, b_log, f_log, raw)
+  # asinh() has no closed-form inverse in x_inverse_text(), so this is the
+  # branch that interpolates on the grid.
+  f_tr <- bayesnecformula(y ~ crf(asinh(x), model = "nec3param"))
+  b_tr <- stats::model.frame(f_tr, data = data.frame(x = raw, y = runif(100)))
+  v <- structure(asinh(c(50, 40, 60)), ecx_val = 10,
+                 toxicity_estimate = "ecx")
+  # bind_ecx() reads attr(., "ecx_val") and assigns it into a data frame, so a
+  # stripped vector is an error there rather than a missing label.
+  out <- to_axis_scale(v, b_tr, f_tr, raw)
   expect_equal(attr(out, "ecx_val"), 10)
   expect_equal(attr(out, "toxicity_estimate"), "ecx")
   expect_equal(as.numeric(out), c(50, 40, 60), tolerance = 1e-3)
   # An unidentified draw stays NA rather than being interpolated to an endpoint.
-  expect_true(is.na(to_axis_scale(c(log(50), NA), b_log, f_log, raw)[2]))
+  expect_true(is.na(to_axis_scale(c(asinh(50), NA), b_tr, f_tr, raw)[2]))
 })
 
 # ---- #417, a decreasing map and the censoring marks --------------------------
@@ -406,11 +408,10 @@ test_that("identity and increasing maps keep the order and the marks", {
     to_axis_scale(on_recorded, b_plain, f_plain, raw, doubled),
     reversal_summary(doubled)
   )
-  # The automatic inverse of an increasing crf() term. The grid inverts log()
-  # only to within its resolution, hence the looser tolerance.
+  # The automatic inverse of an increasing crf() term, here the closed form.
   out <- to_axis_scale(reversal_summary(log), b_log, f_log, raw)
   expect_identical(attr(out, "censored_summary")$bound, c("", "", ">="))
-  expect_equal(as.numeric(out), as.numeric(on_recorded), tolerance = 1e-2)
+  expect_equal(as.numeric(out), as.numeric(on_recorded), tolerance = 1e-8)
 })
 
 test_that("an uncensored interval is put in order and gains no record", {
@@ -437,23 +438,34 @@ test_that("the direction of a map is read off the ends of the grid", {
   expect_false(bayesnec:::map_is_decreasing(negate, c(1, NA, Inf)))
 })
 
-test_that("grid_inverse inverts the crf() term on the grid", {
+test_that("recorded_x_map inverts the crf() term on the grid", {
   raw <- seq(1, 100, length.out = 100)
+  map_for <- function(f, grid = raw) {
+    tr <- bayesnec:::inline_x_transform(list(bayesnecformula = f))
+    bayesnec:::recorded_x_map(f, grid, tr)
+  }
   f_neg <- bayesnecformula(y ~ crf(I(-x), model = "nec3param"))
-  inverse <- bayesnec:::grid_inverse(f_neg, raw)
+  inverse <- map_for(f_neg)
+  expect_false(is.null(attr(inverse, "grid_inverse")))
   expect_equal(inverse(c(-50, -20)), c(50, 20))
-  # The function returned serves xform_censoring() as well, which is what an
-  # estimator reporting on the recorded scale (#299) would pass it to.
+  # Beyond the grid there is nothing to read, so the value is NA, not clamped.
+  expect_true(is.na(inverse(-150)))
+  # The function returned serves xform_censoring() as well, which is how an
+  # estimator moves its censoring record onto the recorded scale.
   moved <- bayesnec:::xform_censoring(
     bayesnec:::censoring_record(-1, -100, c(FALSE, TRUE), c(TRUE, FALSE)),
     inverse
   )
   expect_equal(c(moved$upper, moved$lower), c(100, 1))
   expect_identical(moved$above, c(TRUE, FALSE))
-  # log(0) is not finite, so only one grid point is usable and there is nothing
-  # to interpolate between.
+  # A closed form is returned as the base function, with no grid attached.
   f_log <- bayesnecformula(y ~ crf(log(x), model = "nec3param"))
-  expect_null(bayesnec:::grid_inverse(f_log, c(0, 5)))
+  expect_identical(map_for(f_log), exp)
+  expect_identical(map_for(f_log, c(0, 5)), exp)
+  # -log(x) has no closed form here, and log(0) is not finite, so only one
+  # grid point is usable and there is nothing to interpolate between.
+  f_nlog <- bayesnecformula(y ~ crf(I(-log(x)), model = "nec3param"))
+  expect_error(map_for(f_nlog, c(0, 5)), "fewer than two points")
 })
 
 test_that("the marks agree with the per-draw path where n times p is whole", {

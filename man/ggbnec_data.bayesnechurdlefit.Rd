@@ -8,7 +8,7 @@
   x,
   add_nec = TRUE,
   add_ecx = FALSE,
-  xform = identity,
+  xform = NULL,
   ...,
   which = "combined",
   resolution = 1000,
@@ -22,10 +22,10 @@
 
 \item{add_ecx}{Unused; retained for consistency with the generic.}
 
-\item{xform}{A function to apply to the predictor where \code{crf()} does
-not transform it inline. Where it does, the predictor is returned on the
-recorded scale, the scale the prediction grid is built on, and \code{xform}
-is not applied.}
+\item{xform}{\code{NULL}, the default, or a function to apply to the
+predictor where \code{crf()} does not transform it inline. Where it does,
+the predictor is returned on the recorded scale, the scale the prediction
+grid is built on, and \code{xform} is not applied.}
 
 \item{...}{Unused.}
 

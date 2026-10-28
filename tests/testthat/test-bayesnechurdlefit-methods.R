@@ -1509,14 +1509,15 @@ test_that("the hurdle plot draws its no-effect line on the recorded scale (#487)
   drawn <- hurdle_legend(logged, xform = exp, resolution = 50)
   expect_equal(as.numeric(drawn$v[[1]]),
                as.numeric(nec(logged, xform = exp)))
-  # Without one, the transformation is inverted on the prediction grid. Read
-  # as square roots, the stored draws square to values inside the series.
+  # Without one, the line is the estimate nec() returns by default, on the
+  # recorded scale. Read as square roots, the stored draws square to values
+  # inside the series.
   rooted <- relabelled_pair(bnf(y ~ crf(sqrt(x), model = "nec4param")))
-  on_fitted <- as.numeric(suppressMessages(nec(rooted)))
+  on_fitted <- as.numeric(nec(rooted, xform = identity))
   drawn <- hurdle_legend(rooted)
   line <- as.numeric(drawn$v[[1]])
-  expect_equal(line, as.numeric(nec(rooted, xform = function(z) z^2)),
-               tolerance = 1e-5)
+  expect_equal(line, as.numeric(nec(rooted)))
+  expect_equal(line, as.numeric(nec(rooted, xform = function(z) z^2)))
   expect_true(all(line > min(x) & line < max(x)))
   expect_false(isTRUE(all.equal(line, on_fitted)))
   expect_identical(drawn$legend,
