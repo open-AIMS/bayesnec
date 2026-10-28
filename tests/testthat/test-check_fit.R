@@ -1,9 +1,9 @@
 # Check variability by predictor group: a global dispersion statistic can
 # miss opposing discrepancies in different regions.
 
-# Cache seeded diagnostic tables only for read-only tests; a test that
-# modifies one must build its own. All consumers must keep compatible skip
-# guards so none depends on a fixture skipped by another test.
+# Cache diagnostic tables only for read-only tests; a test that changes
+# one must build its own. Apply skip guards before requesting these
+# expensive fixtures, which are built lazily on the first request.
 nec4param_checkfit_g4 <- local({
   cached <- NULL
   function() {
