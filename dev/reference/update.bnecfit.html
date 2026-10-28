@@ -207,6 +207,8 @@ refitted, and the validated family is the one <span class="pkg">brms</span> rece
 <em>The link</em> section of <code><a href="bnec.html">bnec</a></code>. Supplying a family that
 differs from the fitted one requires <code>force_fit = TRUE</code>, because the
 priors carried over from the original fit were built for the original family.
+Without it the call is refused before the data are checked, so nothing is
+reported as shifted.
 Families are compared by name and links, so <code>Gamma(link = "identity")</code>
 supplied for a Gamma fit is not a change of family.</p>
     </div>

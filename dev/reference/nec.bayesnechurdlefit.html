@@ -194,7 +194,12 @@ is what the hurdle model adds over a survivors-only analysis.</p>
 the underlying model(s) are threshold models. A component whose model set
 contains smooth (<code>ecx</code>-type) models contributes NSEC draws instead, and
 the combination is then an N(S)EC; a message is emitted in that case and
-<code>summary</code> labels each component. <code><a href="nsec.html">nsec</a></code> with
+<code>summary</code> labels each component. A component fitted to a single smooth
+equation, such as <code>ecx4param</code>, contributes the NSEC draws stored when it
+was fitted, although <code><a href="nec.html">nec()</a></code> refuses that equation fitted on its own
+with <code><a href="bnec.html">bnec</a></code>. Only the component or components that <code>which</code>
+names are computed, so <code>which = "growth"</code> reads nothing from the
+survival component. <code><a href="nsec.html">nsec</a></code> with
 <code>which = "combined"</code> is the alternative that reads a single value off
 the combined curve itself rather than taking the minimum of two component
 estimates, and it does not reduce to the growth value.</p>

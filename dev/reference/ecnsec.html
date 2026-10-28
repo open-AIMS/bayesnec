@@ -120,8 +120,9 @@ object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or
 
 
 <dt id="arg-nsec">nsec<a class="anchor" aria-label="anchor" href="#arg-nsec"></a></dt>
-<dd><p>A numeric value indicating the NSEC value for which to extract
-the percentage effect.</p></dd>
+<dd><p>A single number, the concentration at which to read the
+percentage effect. A vector is refused, including the three values
+<code><a href="nsec.html">nsec</a></code> returns; pass the one wanted.</p></dd>
 
 
 <dt id="arg-resolution">resolution<a class="anchor" aria-label="anchor" href="#arg-resolution"></a></dt>
@@ -182,6 +183,12 @@ than a percentage and is refused here. On a joint two-block fit
 the combined one, <code>(1 - hu) * E[Y | Y &gt; 0]</code>, and "relative" is refused,
 because that curve's asymptote is the product of the two blocks' asymptotes
 rather than a fitted parameter.</p>
+<p>Each posterior draw of the control is compared with the same draw's value
+of the curve at <code>nsec</code>, as <code><a href="ecx.html">ecx</a></code> reads each draw's own
+curve. The interval therefore includes the uncertainty of the curve at
+<code>nsec</code> as well as that of the control. On <code>nec4param</code>, for
+example, every draw returns 0 at an <code>nsec</code> below the <code>nec</code> of
+every draw, where every draw of the curve still equals its control.</p>
 <p>The <code>hormesis_def</code> argument has been removed; the control is now
 always the reference. See <code><a href="ecx.html">ecx</a></code>.</p>
 <p><code>nsec</code> is read on the recorded predictor scale once <code>xform</code> has
@@ -195,7 +202,9 @@ over: the observed range of the predictor, or <code>x_range</code> where one is
 supplied. An <code>nsec</code> outside that range once <code>xform</code> has been
 applied is refused with a message naming the range, rather than read off
 the curve extended past the data without a message. Supply an
-<code>x_range</code> that includes <code>nsec</code> to read the curve there.</p>
+<code>x_range</code> that includes <code>nsec</code> to read the curve there. On a
+<code><a href="bayesnecjointfit-class.html">bayesnecjointfit</a></code> each level is read over its own observed
+range, and the message names the level that refused <code>nsec</code>.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>
@@ -210,7 +219,7 @@ the curve extended past the data without a message. Supply an
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">ecnsec</span><span class="op">(</span><span class="va">manec_example</span>, nsec <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      50%     2.5%    97.5% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 115.1307 113.8823 116.0049 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 115.3088  94.6385 129.3796 </span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
