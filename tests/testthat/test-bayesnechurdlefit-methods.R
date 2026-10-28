@@ -792,6 +792,30 @@ test_that("ecnsec reads a hurdle curve between grid points, not at the nearer", 
   }
 })
 
+test_that("ecnsec on a fit agrees with the growth curve of a pair built from it", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # Read at grid points, where the hurdle method reads the column itself and
+  # interpolates nothing. x[24] lies inside the spread of the nec draws, and
+  # x[37] above all of them.
+  for (fit in list(nec4param, manec_example)) {
+    obj <- hurdle_pair(fit, fit)
+    x <- bayesnec:::hurdle_component_preds(obj, resolution = 50)$x
+    for (at in x[c(24, 37)]) {
+      for (ty in c("absolute", "range")) {
+        on_fit <- suppressWarnings(ecnsec(fit, nsec = at, resolution = 50,
+                                          type = ty, posterior = TRUE))
+        on_pair <- suppressWarnings(ecnsec(obj, nsec = at, resolution = 50,
+                                           type = ty, which = "growth",
+                                           posterior = TRUE))
+        expect_equal(on_fit, on_pair,
+                     label = paste(class(fit)[1], ty, "at", signif(at, 3)))
+      }
+    }
+  }
+})
+
 test_that("ecnsec applies xform to nsec on a hurdle fit, with a warning", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
@@ -813,6 +837,9 @@ test_that("ecnsec applies xform to nsec on a hurdle fit, with a warning", {
   # The range is checked after xform, and the message gives both values.
   expect_error(suppressWarnings(ecnsec(obj, nsec = log(1000), xform = exp)),
                "nsec = 6.908, which xform takes to 1000, lies outside",
+               fixed = TRUE)
+  expect_error(suppressWarnings(ecnsec(obj, nsec = -1, xform = log)),
+               "nsec = -1, which xform takes to NaN, lies outside",
                fixed = TRUE)
 })
 

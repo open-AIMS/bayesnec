@@ -21,8 +21,9 @@
 \arguments{
 \item{object}{An object of class \code{\link{bayesnechurdlefit}}.}
 
-\item{nsec}{A numeric value indicating the NSEC value for which to extract
-the percentage effect.}
+\item{nsec}{A single number, the concentration at which to read the
+percentage effect. A vector is refused, including the three values
+\code{\link{nsec}} returns; pass the one wanted.}
 
 \item{resolution}{The number of unique x values over which the curve is
 predicted. It affects only \code{type = "range"}, where the denominator is

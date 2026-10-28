@@ -20,8 +20,9 @@ ecnsec(
 \item{object}{An object of class \code{\link{bayesnecfit}} or
 \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.}
 
-\item{nsec}{A numeric value indicating the NSEC value for which to extract
-the percentage effect.}
+\item{nsec}{A single number, the concentration at which to read the
+percentage effect. A vector is refused, including the three values
+\code{\link{nsec}} returns; pass the one wanted.}
 
 \item{resolution}{The number of unique x values over which the curve is
 predicted. It affects only \code{type = "range"}, where the denominator is
@@ -68,6 +69,13 @@ reference construction under the same \code{type}, so the two answer the
 same question of the same curve. "direct" names a response value rather
 than a percentage and is refused here.
 
+Each posterior draw of the control is compared with the same draw's value
+of the curve at \code{nsec}, as \code{\link{ecx}} reads each draw's own
+curve. The interval therefore includes the uncertainty of the curve at
+\code{nsec} as well as that of the control. On \code{nec4param}, for
+example, every draw returns 0 at an \code{nsec} below the \code{nec} of
+every draw, where every draw of the curve still equals its control.
+
 The \code{hormesis_def} argument has been removed; the control is now
 always the reference. See \code{\link{ecx}}.
 
@@ -83,7 +91,9 @@ over: the observed range of the predictor, or \code{x_range} where one is
 supplied. An \code{nsec} outside that range once \code{xform} has been
 applied is refused with a message naming the range, rather than read off
 the curve extended past the data without a message. Supply an
-\code{x_range} that includes \code{nsec} to read the curve there.
+\code{x_range} that includes \code{nsec} to read the curve there. On a
+\code{\link{bayesnecjointfit}} each level is read over its own observed
+range, and the message names the level that refused \code{nsec}.
 }
 \examples{
 \donttest{

@@ -221,9 +221,8 @@
   same on every class and on every curve of a hurdle fit, a supplied `x_range`
   included, and it is applied to `nsec` after `xform`. An `nsec` at either end
   of the range is accepted, to within a rounding error. Supply an `x_range`
-  that includes `nsec` to read the curve beyond the data. Inside the range,
-  `ecnsec()` on a `bayesnecfit` or a `bayesmanecfit` returns what it returned
-  before (#437).
+  that includes `nsec` to read the curve beyond the data. The refusal itself
+  changes no value inside the range (#437).
 
 - `ecnsec()` on a `bayesnechurdlefit` reads each curve at `nsec` by linear
   interpolation between the two grid points either side of it, rather than at
@@ -231,6 +230,21 @@
   fall. It takes a single `nsec`, and refuses a vector, which the
   nearest-point reading accepted and read at one grid point chosen by
   recycling the vector against the grid (#437).
+
+- `ecnsec()` on a `bayesnecfit` or a `bayesmanecfit` also takes a single
+  `nsec`, and refuses a vector, `NA` or `NA_real_` with a message naming
+  `nsec`. A vector was read at the largest of its values, so
+  `ecnsec(fit, nsec = nsec(fit))` returned the effect at the upper bound of
+  the NSEC with nothing said, and `NA_real_` was refused by a message about
+  `x_range`, which the caller had not supplied. An `xform` that takes `nsec`
+  to a value that is not finite, such as `log()` of a negative number, is
+  refused by the range message on every class. It was refused as an `x_range`,
+  and on a `bayesnechurdlefit` it stopped with "missing value where TRUE/FALSE
+  needed". On a `bayesnecjointfit` each
+  level reads its curve over its own observed range, and an `nsec` outside one
+  level's range is refused with a message that names the level and states
+  that the range is that level's. The message gave the range alone, which can
+  be narrower than the range of the data (#488).
 
 - The two ends are recorded separately. A draw whose curve had already passed
   the target where the prediction range begins is reported as `<=` the foot of
@@ -1522,6 +1536,18 @@
   the value `ecnsec()` returns. Where `crf()` transforms the predictor inline,
   the message is the one the other classes raise, naming the `xform` to give
   `ecnsec()` (#437).
+
+- `ecnsec()` on a `bayesnecfit` or a `bayesmanecfit` compares each posterior
+  draw of the control with the same draw's value of the curve at `nsec`, as
+  `ecnsec()` on a `bayesnechurdlefit` already did and as `ecx()` reads each
+  draw's own curve. Every draw was compared with the posterior median of the
+  curve at `nsec`, so the interval reflected the uncertainty of the control
+  alone. The reported median and interval both change. On the
+  `nec4param` fit in `manec_example`, `ecnsec(fit, nsec = 1.5)` returned 9.67
+  per cent (4.53 to 13.41) and now returns 9.55 (0 to 27.68). At
+  `nsec = 0.5`, below every draw of `nec`, no draw of the curve has declined
+  from its control. That call returned -0.0000047 (-5.69 to 4.14), an interval
+  set by the spread of the control, and now returns 0 in every draw (#488).
 
 ## New
 
