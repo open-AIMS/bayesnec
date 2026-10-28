@@ -1103,8 +1103,9 @@ test_that("the shorter range bounds the combination in either direction", {
 })
 
 test_that("a draw below the foot of its range stays below it", {
-  # Keep this check per draw: combining unequal lower limits uses the larger
-  # limit, which can misrank an identified value below it in a summary.
+  # Legacy or structural objects can have unequal lower bounds; new fits
+  # predict both components on the whole concentration series. Keep this
+  # check per draw because unequal-bound summaries can misrank values.
   g <- c(NA_real_, NA_real_, 7)
   attr(g, "censored") <- cens_record(logical(3), c(TRUE, TRUE, FALSE),
                                      lower = 5)
