@@ -226,10 +226,9 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order")
   }
-  # Do not cap ecx_val at 100. Under "absolute" the reference is 0, so a value
-  # above 100 names a target below zero, which is a real measurement on an
-  # unbounded response and is what OECD TG 201 reports. A target the curve
-  # never crosses gives NA for that draw, with the warning below.
+  # Allow ecx_val > 100: with a positive control, "absolute" then targets a
+  # negative response, as OECD TG 201 permits. An unreached target gives NA
+  # for that draw, with the warning below.
   if (type != "direct" && ecx_val <= 0) {
     stop("Supplied ecx_val is not in the required range. ",
          "Please supply a percentage value greater than 0.", call. = FALSE)
@@ -246,11 +245,10 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
   newdata_list <- newdata_eval(
     object, resolution = resolution, x_range = x_range
   )
-  # dpar reports one block of a two-block fit. NULL gives the combined mean,
-  # (1 - hu) times the positive-part mean, or the single mean of any other
-  # family. The zero-probability block is inverted, so that a decline from the
-  # control means the same as elsewhere. brms names that block "hu" for hurdle
-  # families and "zi" for zero-inflated ones.
+  # NULL gives a two-block fit's combined mean: positive-part mean times its
+  # non-zero probability (1 - hu or 1 - zi). dpar selects one block; invert
+  # the zero-probability block so that declines represent decreasing response.
+
   # The closure applies the same dpar handling to the control prediction as to
   # the curve, so that both are read on one quantity.
   epred_fun <- function(nd) joint_hurdle_epred(object, nd, dpar)
@@ -455,8 +453,8 @@ validate_ecx_type <- function(type, mc) {
 #'
 #' Used by \code{type = "relative"} only, and \code{NA} for every other type.
 #' An equation with a \code{bot} parameter declines towards it, and one
-#' without declines towards 0. Under a family not bounded below, 0 is no bound,
-#' so the request is refused.
+#' without declines towards 0. An equation without \code{bot} is refused under
+#' a family not bounded below, because 0 is then no bound.
 #'
 #' A \code{\link{bayesmanecfit}} has no single \code{fit}, and its curve is the
 #' model-averaged one, so \code{manec_asymptote()} assembles the model-averaged
@@ -748,12 +746,9 @@ ecx_from_posterior <- function(p_samples, x_vec, ecx_val, type, control,
       direct = ecx_val
     )
     val <- crossing_x(y, target, x_vec)
-    # A draw is below range only where its curve passed the target before the
-    # grid began, which needs a target below the control. A declining curve
-    # never reaches a target at or above the control, so that draw is reported
-    # at the upper end with the draws that did not reach the target. That
-    # includes type = "direct" with a value above the whole curve, and an
-    # absolute ECx where the control is negative.
+    # With no crossing, mark a draw below range only if its first grid response
+    # is at or below a target below the control. Classify every other missing
+    # crossing at the upper end, whether outside the grid or absent altogether.
     if (is.na(val) && !is.na(y[1]) && !is.na(target) && y[1] <= target &&
         target < control[i]) {
       below_range[i] <<- TRUE
