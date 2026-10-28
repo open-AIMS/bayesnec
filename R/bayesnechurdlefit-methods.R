@@ -949,6 +949,9 @@ hurdle_ne_axis_map <- function(object, xform, resolution) {
   }
   grid <- newdata_eval(object$survival, resolution = resolution,
                        x_range = NA)$x_vec
+  # A fit-time x_range can identify estimates beyond the observed range.
+  grid <- sort(unique(c(grid, ne_grid_data(object$growth)$x,
+                        ne_grid_data(object$survival)$x)))
   inverse <- grid_inverse(object$formula, grid)
   if (is.null(inverse)) identity else inverse
 }
@@ -1256,10 +1259,9 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
 
 #' Each posterior draw of a curve read at one predictor value
 #'
-#' Interpolates linearly between the grid points either side of \code{at}, so
-#' that the answer does not depend on \code{resolution}. A value at a grid
-#' point returns that column exactly, and one outside the grid is held at the
-#' nearer end.
+#' Interpolates between grid points rather than taking the nearest one.
+#' At a grid point, returns its column exactly; outside the grid, returns
+#' the nearer end.
 #'
 #' @param p_samples A \code{\link[base]{matrix}} with draws as rows and grid
 #' points as columns.
