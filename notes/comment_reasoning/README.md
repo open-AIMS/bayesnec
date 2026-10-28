@@ -154,35 +154,23 @@ the tracked R files under `tests/testthat/`.
   reasons for separate plotting paths, cleanup of mocks, skip guards and
   comparisons of numeric values or literal prior strings.
 
-## Provenance and remaining work
+## Provenance
 
 The evidence files preserve historical observations. Read their original
 design, version and limitations before applying a numerical claim to a new
 case. Current tests also establish only the cases they exercise.
 
-[`.git-blame-ignore-revs`](../../.git-blame-ignore-revs) lists the original 60
-source-comment cleanup commits from PRs #492–#497 and #507–#509, followed by
-the test-comment cleanup commits in #510. Each commit was checked for
-identical parsed R code before and after. Notes-only commits,
-merges, functional changes and the subsequent retention and accuracy
-corrections remain visible in blame, including the new review corrections to
-#507–#509 and the factual corrections to test comments. `.Rbuildignore`
-excludes the file from the package build. After integration, enable it in a
-local checkout with:
+[`.git-blame-ignore-revs`](../../.git-blame-ignore-revs) lists 63 commits: the
+60 source-comment cleanup commits from PRs #492–#497 and #507–#509, and the
+three test-comment cleanup commits from #510. Each listed commit has one
+parent, changes only R files under `R/` or `tests/testthat/`, and leaves the
+parsed code of every file it changes identical. Merges, notes-only commits,
+functional changes, and the later retention and accuracy corrections are not
+listed, so they stay visible in blame. A rebase or squash that rewrites a
+listed commit changes its hash, and the list must then be regenerated.
+`.Rbuildignore` excludes the file from the package build. GitHub's blame view
+reads the file without configuration; a local checkout needs:
 
 ```sh
 git config blame.ignoreRevsFile .git-blame-ignore-revs
 ```
-
-This follow-up is based on [PR #509](https://github.com/open-AIMS/bayesnec/pull/509).
-Its base includes 54 of the original 60 cleanup commits; the final review
-commit from each of PRs #492–#497 must still be integrated. After those PRs
-and #507–#509 merge, retarget the follow-up to `predev`. Verify the original
-source-cleanup hashes against `predev` and the test-cleanup hashes against
-the head of #510, where those commits are introduced.
-
-Merge #510 with a merge commit so that its test-cleanup hashes remain in the
-resulting history. Squashing or rebasing those commits would require a later
-update to the ignore list. After merging, every listed hash should be an
-ancestor of `predev` before the provenance requirement of
-[issue #484](https://github.com/open-AIMS/bayesnec/issues/484) is complete.
