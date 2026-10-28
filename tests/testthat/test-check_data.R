@@ -519,6 +519,26 @@ test_that("both boundary nudges are reported, with counts", {
   expect_silent(report_substitutions(NULL))
 })
 
+test_that("the substitution message ends as its caller requires (#486)", {
+  # bnec() stores the record, get_priors() prints priors built from the
+  # shifted response, and update() on a fit with no record does neither.
+  y <- c(rep(0.9, 6), rep(0.6, 6), rep(0.2, 6), rep(0, 3), rep(0.05, 3))
+  rec <- substitution_record(y, NULL, validate_family("Beta"))
+  ending <- function(...) {
+    paste(capture.output(report_substitutions(rec, ...), type = "message"),
+          collapse = " ")
+  }
+  on_fit <- ending()
+  expect_match(on_fit, "see ?bnec_record.", fixed = TRUE)
+  expect_no_match(on_fit, "prior")
+  priors <- ending(on_fit = FALSE)
+  expect_match(priors, "The priors below are derived", fixed = TRUE)
+  expect_no_match(priors, "bnec_record")
+  neither <- ending(on_fit = FALSE, prints_priors = FALSE)
+  expect_match(neither, "shifted to 0.005. If those zeros", fixed = TRUE)
+  expect_no_match(neither, "prior|bnec_record")
+})
+
 test_that("a hurdle family keeps its zeros and reports no substitution", {
   # The zeros are the hurdle signal, not a boundary artefact.
   y <- c(rep(3, 6), rep(2, 6), rep(0, 6))

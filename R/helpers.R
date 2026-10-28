@@ -183,12 +183,43 @@ pull_draw_index <- function(object, model_set, sample_size) {
   # `==`, not identical(): sample_size is a double on the object and an integer
   # from nrow(), and identical() would always take the fallback.
   same_n <- isTRUE(object$sample_size == sample_size)
+  if (!same_n && undercounted_set(object, sample_size)) {
+    # Rebuild from the stored count too when an older set has no index.
+    sample_size <- object$sample_size
+    same_n <- TRUE
+  }
   if (!is.null(idx) && same_n && all(model_set %in% names(idx))) {
     idx[model_set]
   } else {
     weighted_draw_index(model_set, sample_size, object$mod_stats,
                         object$w_draw_seed)
   }
+}
+
+#' Whether an undercounted set is asked for every draw its fits hold
+#'
+#' Sets saved by earlier versions store as \code{sample_size} the count
+#' \code{ceiling((iter - warmup) / thin * chains)}, which falls short of the
+#' draws the fits hold when \code{thin} does not divide \code{iter - warmup}.
+#' The stored index of such a set draws from its first \code{sample_size}
+#' rows, so it remains valid for a caller holding every draw, and the stored
+#' summaries were built from it.
+#'
+#' @param object An object of class \code{\link{bayesmanecfit}}.
+#' @param sample_size A \code{\link[base]{numeric}} vector of length 1, the
+#' number of draws available per component.
+#'
+#' @return A \code{\link[base]{logical}} of length 1.
+#' @noRd
+undercounted_set <- function(object, sample_size) {
+  fits <- object$mod_fits
+  if (length(fits) == 0) {
+    return(FALSE)
+  }
+  sim <- extract_simdat(fits[[1]])
+  formula_n <- ceiling((sim$iter - sim$warmup) / sim$thin * sim$chains)
+  isTRUE(object$sample_size == formula_n) &&
+    isTRUE(sample_size == set_draw_count(fits))
 }
 
 #' @noRd
@@ -1550,16 +1581,30 @@ check_update_data <- function(x, data, family = NULL, on_fit = TRUE) {
   }
   # Report once, outside the loop. on_fit says whether the returned object
   # stores the record: a fit saved before bnec_record() existed does not, and
-  # the message must not point to it.
-  report_substitutions(substitutions, on_fit = on_fit)
-  # Only a supplied family can differ from the fitted one.
+  # the message must not point to it. A refit reuses the fitted priors.
+  report_substitutions(substitutions, on_fit = on_fit, prints_priors = FALSE)
   list(
-    changed_family = !is.null(family) &&
-      !identical(family_signature(family),
-                 family_signature(x[[1]]$fit$family)),
+    changed_family = family_changed(family, x[[1]]$fit$family),
     data = data,
     substitutions = substitutions
   )
+}
+
+#' Whether a family supplied to a refit differs from the fitted one
+#'
+#' @param supplied The validated family passed to \code{update()}, or
+#' \code{NULL}.
+#' @param fitted The family stored in the \code{brmsfit} being refitted.
+#'
+#' @details Takes no data, because only a supplied family can differ from the
+#' fitted one. Families are compared through \code{family_signature()}.
+#'
+#' @return A \code{\link[base]{logical}} of length 1.
+#'
+#' @noRd
+family_changed <- function(supplied, fitted) {
+  !is.null(supplied) &&
+    !identical(family_signature(supplied), family_signature(fitted))
 }
 
 #' The family a refit uses, under the tag bayesnec's checks key on

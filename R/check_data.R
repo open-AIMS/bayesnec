@@ -1077,21 +1077,29 @@ substitution_record <- function(y, cens, family) {
 #'
 #' @param record The \code{substitutions} element of \code{check_data()}'s
 #' return.
-#' @param on_fit Whether the caller returns a fit that stores the record.
-#' \code{FALSE} for \code{\link{get_priors}}, whose message must not point to
-#' \code{?bnec_record}.
+#' @param on_fit Whether the caller returns a fit that stores the record. The
+#' message then points to \code{?bnec_record}.
+#' @param prints_priors Whether the caller returns priors derived from the
+#' substituted response, as \code{\link{get_priors}} does. The default makes
+#' \code{on_fit = FALSE} mean \code{get_priors()}, so \code{update()} on a fit
+#' with no record must pass \code{FALSE} for both.
 #'
 #' @return \code{NULL}, invisibly. Called for the message.
 #' @noRd
-report_substitutions <- function(record, on_fit = TRUE) {
+report_substitutions <- function(record, on_fit = TRUE,
+                                 prints_priors = !on_fit) {
   if (is.null(record) || nrow(record) == 0) {
     return(invisible(NULL))
   }
-  where <- if (on_fit) {
-    " The substitution is recorded on the fitted object; see ?bnec_record."
-  } else {
-    " The priors below are derived from the substituted response."
-  }
+  where <- paste0(
+    "",
+    if (on_fit) {
+      " The substitution is recorded on the fitted object; see ?bnec_record."
+    },
+    if (prints_priors) {
+      " The priors below are derived from the substituted response."
+    }
+  )
   for (i in seq_len(nrow(record))) {
     r <- record[i, ]
     extra <- if (!is.na(r$remedy)) {
@@ -1263,12 +1271,15 @@ constant_fits_bound <- function(fam_tag, bound) {
 #' @param model The equations the caller is about to fit or build priors for,
 #' or \code{NULL}, which is read as a set holding a curve equation. A set of
 #' constant equations alone is refused only where it cannot be fitted either.
+#' @param flat_remedy The end of the sentence that names \code{ecxflat},
+#' saying how to fit it from the caller, or \code{NULL} to name \code{crf()}
+#' and \code{bnec()}. Read only where \code{group} is \code{NULL}.
 #'
 #' @return \code{NULL}, invisibly. Called for its error.
 #' @noRd
 check_response_at_bound <- function(data, family, group = NULL,
                                     group_name = NULL, subject = NULL,
-                                    model = NULL) {
+                                    model = NULL, flat_remedy = NULL) {
   state <- response_bound_state(data, family, group)
   if (is.null(state)) {
     return(invisible(NULL))
@@ -1310,11 +1321,14 @@ check_response_at_bound <- function(data, family, group = NULL,
            ", so no equation can be fitted to ", it, ", the",
            " constant equation ecxflat included.")
   }
+  if (is.null(flat_remedy)) {
+    flat_remedy <- paste0("name it, as in crf(x, \"ecxflat\"), or call bnec(),",
+                          " which fits it alone in place of the equations",
+                          " requested.")
+  }
   use_flat <- paste0(" The constant equation ecxflat, whose mean does not",
                      " change with concentration, is the only one that can be",
-                     " fitted to it: name it, as in crf(x, \"ecxflat\"), or",
-                     " call bnec(), which fits it alone in place of the",
-                     " equations requested.")
+                     " fitted to it: ", flat_remedy)
   if (is.null(group)) {
     bound <- state$bounds
     if (is.na(bound)) {

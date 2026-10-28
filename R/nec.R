@@ -227,6 +227,26 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
   if (!has_nec_parameter(object$model, object$fit)) {
     stop("nec is not a parameter in ecx model types.")
   }
+  necfit_ne(object, posterior = posterior, xform = xform,
+            prob_vals = prob_vals, extrapolate = extrapolate, ...)
+}
+
+#' The no-effect estimate of one fit, whatever its equation
+#'
+#' The body of \code{nec.bayesnecfit()} after its argument checks. It does not
+#' refuse an equation that has no \code{nec} parameter, and returns that
+#' equation's stored NSEC draws instead. A hurdle component fitted to one
+#' smooth equation is read through here; \code{nec()} on such a fit alone
+#' still refuses.
+#'
+#' @inheritParams nec
+#' @param object A \code{\link{bayesnecfit}}.
+#'
+#' @return As \code{\link{nec}}.
+#' @noRd
+necfit_ne <- function(object, posterior = FALSE, xform = identity,
+                      prob_vals = c(0.5, 0.025, 0.975), extrapolate = FALSE,
+                      ...) {
   # Once for the call, including the nsec() that extrapolate may call below.
   # See report_fitted_scale().
   quiet <- report_fitted_scale(object, xform, "nec")

@@ -617,10 +617,9 @@ manec_ne_types <- function(object) {
 #' The class of no-effect estimate a single fit holds
 #'
 #' \code{expand_nec()} records it in \code{ne_type}, taking both blocks of a
-#' two-block fit into account, and that record decides. The fallback is for an
-#' object saved before the slot existed: a single-block fit samples its
-#' threshold, since \code{\link{nec}} has already refused an \code{ecx}
-#' equation, and a two-block fit is treated as read off a curve.
+#' two-block fit into account, and that record decides. For an object saved
+#' before the slot existed, only a single-block equation with a \code{nec}
+#' parameter is treated as sampling its threshold.
 #'
 #' @param object A \code{\link{bayesnecfit}}.
 #'
@@ -631,7 +630,8 @@ necfit_ne_type <- function(object) {
   if (is.character(label) && length(label) == 1) {
     return(if (identical(label, "NEC")) "NEC" else "NSEC")
   }
-  if (is.null(object$hurdle) && !is_hurdle_family(object$fit$family)) {
+  if (is.null(object$hurdle) && !is_hurdle_family(object$fit$family) &&
+        has_nec_parameter(object$model, object$fit)) {
     "NEC"
   } else {
     "NSEC"

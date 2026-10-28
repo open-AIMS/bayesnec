@@ -603,16 +603,17 @@ test_that("a hurdle component error is relabelled only when it is one", {
     skip_on_cran()
   }
   # The default names no extrapolate, so nothing on that path may be reported
-  # as a refusal of it. Measured before this was gated: a growth component
-  # holding an ecx-type equation reported "the growth component refused
-  # extrapolate: nec is not a parameter in ecx model types".
-  smooth <- suppressMessages(suppressWarnings(pull_out(manec_example,
-                                                       model = "ecx4param")))
-  obj <- structure(list(growth = smooth, survival = smooth),
+  # as a refusal of it. The mock stands in for any failure of a component.
+  local_mocked_bindings(
+    necfit_ne = function(...) stop("the component failed"),
+    .package = "bayesnec"
+  )
+  part <- suppressMessages(suppressWarnings(pull_out(manec_example,
+                                                     model = "nec4param")))
+  obj <- structure(list(growth = part, survival = part),
                    class = c("bayesnechurdlefit", "bnecfit"))
   plain <- tryCatch(suppressMessages(nec(obj)), error = conditionMessage)
-  expect_match(plain, "not a parameter in ecx model types")
-  expect_false(grepl("refused extrapolate", plain, fixed = TRUE))
+  expect_identical(plain, "the component failed")
   # Where extrapolate is named, the component that raised the error is named
   # too, because the two components have prediction ranges of their own.
   named <- tryCatch(suppressMessages(nec(obj, extrapolate = 5)),

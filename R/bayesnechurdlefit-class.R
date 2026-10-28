@@ -140,7 +140,12 @@ hurdle_check_which <- function(which) {
 #' the underlying model(s) are threshold models. A component whose model set
 #' contains smooth (\code{ecx}-type) models contributes NSEC draws instead, and
 #' the combination is then an N(S)EC; a message is emitted in that case and
-#' \code{summary} labels each component. \code{\link{nsec}} with
+#' \code{summary} labels each component. A component fitted to a single smooth
+#' equation, such as \code{ecx4param}, contributes the NSEC draws stored when it
+#' was fitted, although \code{nec()} refuses that equation fitted on its own
+#' with \code{\link{bnec}}. Only the component or components that \code{which}
+#' names are computed, so \code{which = "growth"} reads nothing from the
+#' survival component. \code{\link{nsec}} with
 #' \code{which = "combined"} is the alternative that reads a single value off
 #' the combined curve itself rather than taking the minimum of two component
 #' estimates, and it does not reduce to the growth value.
@@ -177,7 +182,7 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
   component_nec <- function(part, what) {
     call_it <- function() {
       without_censored_warning(
-        nec(part, posterior = TRUE, extrapolate = extrapolate, ...)
+        hurdle_component_ne(part, extrapolate = extrapolate, ...)
       )
     }
     # Relabel an error only where extrapolate was given; otherwise an unrelated
@@ -190,15 +195,19 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
            conditionMessage(e), call. = FALSE)
     })
   }
-  g_post <- component_nec(object$growth, "growth")
-  s_post <- component_nec(object$survival, "survival")
+  # Compute only what `which` names, so that the other component can neither
+  # print a message nor stop the call.
   if (which == "growth") {
+    g_post <- component_nec(object$growth, "growth")
     out <- unlist(g_post)
     cens <- attr(g_post, "censored")
   } else if (which == "survival") {
+    s_post <- component_nec(object$survival, "survival")
     out <- unlist(s_post)
     cens <- attr(s_post, "censored")
   } else {
+    g_post <- component_nec(object$growth, "growth")
+    s_post <- component_nec(object$survival, "survival")
     n <- min(length(g_post), length(s_post))
     combined <- combine_censored_min(g_post, s_post, n)
     out <- combined$values
@@ -226,6 +235,27 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
   attr(out, "toxicity_estimate") <- "nec"
   attr(estimate, "component") <- which
   if (!posterior) estimate else out
+}
+
+#' The no-effect draws one hurdle component contributes
+#'
+#' A component fitted to one smooth equation has no \code{nec} parameter, so
+#' \code{nec()} refuses it. It contributes its stored NSEC draws instead, as an
+#' equation of a model set does.
+#'
+#' @param part The \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}
+#' of one component.
+#' @param extrapolate As for \code{\link{nec}}.
+#' @param ... Passed to \code{\link{nec}}.
+#'
+#' @return The posterior, as \code{nec(part, posterior = TRUE)} returns it.
+#' @noRd
+hurdle_component_ne <- function(part, extrapolate, ...) {
+  if (inherits(part, "bayesnecfit") &&
+        !has_nec_parameter(part$model, part$fit)) {
+    return(necfit_ne(part, posterior = TRUE, extrapolate = extrapolate, ...))
+  }
+  nec(part, posterior = TRUE, extrapolate = extrapolate, ...)
 }
 
 #' Extracts the predicted ECx value from a \code{\link{bayesnechurdlefit}}

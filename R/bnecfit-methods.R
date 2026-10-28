@@ -138,6 +138,8 @@ c.bnecfit <- function(x, ...) {
 #' \emph{The link} section of \code{\link{bnec}}. Supplying a family that
 #' differs from the fitted one requires \code{force_fit = TRUE}, because the
 #' priors carried over from the original fit were built for the original family.
+#' Without it the call is refused before the data are checked, so nothing is
+#' reported as shifted.
 #' Families are compared by name and links, so \code{Gamma(link = "identity")}
 #' supplied for a Gamma fit is not a change of family.
 #'
@@ -236,11 +238,29 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
       )
     }
   }
+  # Compare the families before checking the data, so that a refused call
+  # reports no shift. New data keep the fitted family; only a supplied one
+  # can differ.
+  if (family_changed(dot_args$family, object[[1]]$fit$family)) {
+    if (!force_fit) {
+      stop("The family or link supplied differs from the one the model was\n",
+           "  fitted with. The priors reused from the original fit were built\n",
+           "  for the original family and may not suit the new one.\n",
+           "If this was intentional, set `force_fit = TRUE`; otherwise\n",
+           "  please use function `bnec` instead to redefine priors.",
+           call. = FALSE)
+    } else {
+      message("The family or link supplied differs from the one the model was\n",
+              "  fitted with. The priors reused from the original fit were\n",
+              "  built for the original family and may not suit the new one.\n",
+              "  You may want to consider refitting models from scratch via\n",
+              "  function `bnec`.")
+    }
+  }
   if (!is.null(newdata) || "family" %in% names(dot_args)) {
     data_to_check <- if (is.null(newdata)) object[[1]]$fit$data else newdata
     checked <- check_update_data(object, data_to_check, dot_args$family,
                                  on_fit = !is.null(bnec_rec))
-    changed_family <- checked$changed_family
     # The substitutions describe the data this call fitted, so they replace
     # bnec()'s; the candidate set is unchanged. Assign with `[`, not `$<-`,
     # which deletes the name when the value is NULL: attach_bnec_record()
@@ -255,26 +275,6 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
     # and keeps the data_name attribute it prints.
     if (!is.null(newdata) || !identical(checked$data, data_to_check)) {
       newdata <- checked$data
-    }
-  } else {
-    changed_family <- FALSE
-  }
-  # Reached only for a family the caller supplied: new data keep the fitted
-  # family.
-  if (changed_family) {
-    if (!force_fit) {
-      stop("The family or link supplied differs from the one the model was\n",
-           "  fitted with. The priors reused from the original fit were built\n",
-           "  for the original family and may not suit the new one.\n",
-           "If this was intentional, set `force_fit = TRUE`; otherwise\n",
-           "  please use function `bnec` instead to redefine priors.",
-           call. = FALSE)
-    } else {
-      message("The family or link supplied differs from the one the model was\n",
-              "  fitted with. The priors reused from the original fit were\n",
-              "  built for the original family and may not suit the new one.\n",
-              "  You may want to consider refitting models from scratch via\n",
-              "  function `bnec`.")
     }
   }
   # The marker validate_family() uses to stay idempotent is bayesnec's own and

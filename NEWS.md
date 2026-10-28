@@ -221,9 +221,8 @@
   same on every class and on every curve of a hurdle fit, a supplied `x_range`
   included, and it is applied to `nsec` after `xform`. An `nsec` at either end
   of the range is accepted, to within a rounding error. Supply an `x_range`
-  that includes `nsec` to read the curve beyond the data. Inside the range,
-  `ecnsec()` on a `bayesnecfit` or a `bayesmanecfit` returns what it returned
-  before (#437).
+  that includes `nsec` to read the curve beyond the data. The refusal itself
+  changes no value inside the range (#437).
 
 - `ecnsec()` on a `bayesnechurdlefit` reads each curve at `nsec` by linear
   interpolation between the two grid points either side of it, rather than at
@@ -231,6 +230,21 @@
   fall. It takes a single `nsec`, and refuses a vector, which the
   nearest-point reading accepted and read at one grid point chosen by
   recycling the vector against the grid (#437).
+
+- `ecnsec()` on a `bayesnecfit` or a `bayesmanecfit` also takes a single
+  `nsec`, and refuses a vector, `NA` or `NA_real_` with a message naming
+  `nsec`. A vector was read at the largest of its values, so
+  `ecnsec(fit, nsec = nsec(fit))` returned the effect at the upper bound of
+  the NSEC with nothing said, and `NA_real_` was refused by a message about
+  `x_range`, which the caller had not supplied. An `xform` that takes `nsec`
+  to a value that is not finite, such as `log()` of a negative number, is
+  refused by the range message on every class. It was refused as an `x_range`,
+  and on a `bayesnechurdlefit` it stopped with "missing value where TRUE/FALSE
+  needed". On a `bayesnecjointfit` each
+  level reads its curve over its own observed range, and an `nsec` outside one
+  level's range is refused with a message that names the level and states
+  that the range is that level's. The message gave the range alone, which can
+  be narrower than the range of the data (#488).
 
 - The two ends are recorded separately. A draw whose curve had already passed
   the target where the prediction range begins is reported as `<=` the foot of
@@ -1523,6 +1537,17 @@
   the message is the one the other classes raise, naming the `xform` to give
   `ecnsec()` (#437).
 
+- `ecnsec()` on a `bayesnecfit` or a `bayesmanecfit` compares each posterior
+  draw of the control with the same draw's value of the curve at `nsec`, as
+  `ecnsec()` on a `bayesnechurdlefit` already did and as `ecx()` reads each
+  draw's own curve. Every draw was compared with the posterior median of the
+  curve at `nsec`, so the interval reflected the uncertainty of the control
+  alone. The reported median and interval both change. On the
+  `nec4param` fit in `manec_example`, `ecnsec(fit, nsec = 1.5)` returned 9.67
+  per cent (4.53 to 13.41) and now returns 9.55 (0 to 27.68). At
+  `nsec = 0.5`, below every draw of `nec`, no draw of the curve has declined
+  from its control. That call returned -0.0000047 (-5.69 to 4.14), an interval
+  set by the spread of the control, and now returns 0 in every draw (#488).
 - On a joint two-block fit from `bnec()`, with `hurdle_gamma`,
   `zero_inflated_beta`, `hurdle_poisson` or `hurdle_negbinomial`,
   `ecx(type = "relative")` with the default `dpar = NULL` and
@@ -2898,6 +2923,95 @@
   as any `disp()` term on a `poisson` growth component, is refused before
   anything is sampled. `?bnec_hurdle` states that the term applies to the
   growth component only. No fit that previously succeeded changes (#410).
+
+- The `sample_size` stored on a `bayesmanecfit` is now the number of draws
+  each model holds, counted from the fits. It was computed as
+  `ceiling((iter - warmup) / thin * chains)`, while Stan keeps
+  `ceiling((iter - warmup) / thin)` draws in each chain, so the count could fall
+  short when `thin` does not divide `iter - warmup`. Four chains of 500
+  post-warmup iterations thinned by 3 keep 668 draws, and `sample_size`
+  recorded 667. The stored summaries, `ecx()` and `nsec()` used the stored
+  draw index, while `posterior_epred()` and `posterior_predict()`, and
+  `fitted()`, `predict()` and `ecnsec()` through them, found 668 draws and
+  rebuilt a different index from the seed. A credible band computed from
+  `posterior_epred()` therefore differed from the one the plot methods draw,
+  and an `nsec()` and its `ecnsec()` were not the same draws. All of them now
+  use the stored index. A thinned set fitted again draws its index from all
+  the draws, so its model-averaged estimates differ from those of the earlier
+  fit. A set saved by an earlier version keeps the `sample_size` it recorded,
+  and every method now uses its stored index whenever the caller takes all
+  the draws, so such a set agrees with its own stored summaries without being
+  refitted. Without a stored index, methods rebuild one from the same saved
+  count and seed. Sets predating the stored seed use a fixed seed, so their
+  recalculated estimates agree across methods but cannot reproduce the
+  historical summaries. The default `thin = 1` and a single fit, a
+  `bayesnecfit`, are unaffected (#477).
+
+- `update()` on a `bayesnechurdlefit` passes a supplied `family` to the growth
+  component only. It reached the survival component as well, which is always
+  `bernoulli`. `update(fit, family = Gamma(link = "identity"))` on a hurdle fit
+  with a Gamma growth component therefore refitted the growth component, then
+  reported the deaths as zeros shifted to 0.1 and refused the survival refit as
+  a change of family. Under `force_fit = TRUE` the survival component would
+  have been refitted to its shifted 0/1 response under the Gamma family. The
+  survival component's bound check, which runs before either refit, also read
+  the growth family (#486).
+
+- `update(newdata = )` on a `bayesnechurdlefit` checks the response in the new
+  data as `bnec_hurdle()` checks its data, before either component is refitted,
+  and refuses it with the same message. New data with no zero were refused as
+  a survival component at its upper bound, with advice to name `ecxflat` or to
+  call `bnec()`, neither of which `update()` can apply to one component. A
+  negative value was read as a death, a missing value was reported as a
+  missing value "at row(s) NA", and a character response was passed to the
+  refit. A growth component at a bound of its family in every observation,
+  such as a `Beta` growth component of 1 throughout, is now pointed by both
+  `update()` and `bnec_hurdle()` to a `bnec_hurdle()` call that names
+  `ecxflat` in `crf()` and gives the survival component its equations through
+  `model_survival` (#486).
+
+- `update()` refuses a change of family without `force_fit = TRUE` before it
+  checks the data, so a refused call no longer reports that values were
+  shifted off a boundary of the new family. On a fit with no `bnec_record()`,
+  such as `manec_example`, the shift message no longer ends "The priors below
+  are derived from the substituted response". That sentence describes
+  `get_priors()`; `update()` prints no priors and reuses those of the original
+  fit (#486).
+
+- `nec()`, `summary()` and `plot()` on a `bayesnechurdlefit` whose growth or
+  survival component was fitted to a single smooth equation, such as
+  `ecx4param`, now return. Each stopped with "nec is not a parameter in ecx
+  model types.", so such a fit could be read only through `nsec()`, `ecx()`,
+  `autoplot()` or `plot(add_nec = FALSE)`. The component contributes the NSEC
+  draws stored when it was fitted, as a component fitted to a model set
+  contributes its N(S)EC draws, and `summary()` labels its row NSEC.
+  `nec()` on a `bayesnecfit` holding a smooth equation still refuses. A smooth
+  hurdle component saved before the estimate type was recorded also retains
+  NSEC extrapolation rules (#487).
+
+- `nec(which = "growth")` and `nec(which = "survival")` on a
+  `bayesnechurdlefit` compute only the component named. Both components were
+  computed, so a call for the growth estimate printed the N(S)EC message of a
+  survival model set holding a smooth equation, and stopped where the survival
+  component was a single smooth equation (#487).
+
+- Where `crf()` transforms the predictor inline, as `crf(log(x))` does,
+  `plot()`, `autoplot()` and `ggbnec_data()` on a `bayesnechurdlefit` draw the
+  observed points on the recorded scale, the scale of the prediction grid and
+  of the fitted curve. The points were drawn on the transformed scale, so they
+  and the curve did not overlay. `plot()` also draws the N(S)EC line on the
+  recorded scale. `nec()` returns the estimate on the transformed scale, so the
+  line is returned through `xform` where one is supplied, and otherwise by
+  inverting the transformation on the prediction grid, as `plot()` does for a
+  `bayesnecfit`. `xform` is then not applied to the points or the curve, also
+  as for a `bayesnecfit`. A predictor that `crf()` does not transform is drawn
+  as before. The automatic inverse also preserves estimates identified over
+  a stored prediction range beyond the observations, including where the
+  plotted range is narrower (#487).
+
+- `summary()` on a `bayesnechurdlefit` names a Gamma growth family `Gamma`,
+  as `bnec_hurdle()` names it when fitting. It printed `gamma`, the name
+  `brms` records (#487).
 
 ## Documentation
 
