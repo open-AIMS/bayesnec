@@ -46,6 +46,8 @@
 #' @slot failed_models Any models from the requested set that could not be
 #' fitted, with the priors and initial values used. See
 #' \code{\link{failed_models}}.
+#' @slot bnec_version The installation of \pkg{bayesnec} that fitted each
+#' model, as \code{\link{bnec_version}} reports it.
 #'
 #' @seealso
 #'   \code{\link{bayesnec}},

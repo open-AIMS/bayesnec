@@ -440,6 +440,9 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
       bnec_rec$substitutions
     )
   }
+  # Retained equations keep their record; added ones get the current one.
+  out <- attach_version(out, stored_version(object))
+  report_mixed_versions(out)
   carry_retained_data(out, object)
 }
 

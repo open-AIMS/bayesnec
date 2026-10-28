@@ -67,7 +67,9 @@ contents of a \code{\link[brms]{brmsfit}} object with the addition of
 an R2. In the case of a \code{\link{bayesmanecfit}} object, summary
 displays the family distribution information, model weights and averaging
 method, and Bayesian R2 estimates for each individual model.
-Both report the number of divergent transitions after warmup for each model.
+Both report the number of divergent transitions after warmup for each model,
+and the installation of \pkg{bayesnec} that fitted it (see
+\code{\link{bnec_version}}).
 Warning messages are also printed to screen in case
 model fits are not satisfactory with regards to their Rhats or their
 divergent transitions.
