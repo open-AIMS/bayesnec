@@ -465,7 +465,7 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   mod_stats$wi <- do.call(loo_model_weights, loo_mw_args)
   attr(mod_stats$wi, "method") <- loo_w_controls$method
   mod_stats <- cbind(mod_stats, disp)
-  sample_size <- extract_simdat(object[[1]])$n_samples
+  sample_size <- set_draw_count(object)
   # Realise the weighted draw once and store both the index and its seed.
   # Later calls reuse the index, so repeated calls agree, and a stored index
   # cannot change if sample() changes between R versions. The seed covers a
