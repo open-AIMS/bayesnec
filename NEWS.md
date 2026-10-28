@@ -1929,15 +1929,40 @@
   `bnec_hurdle()` fits on its growth component, so the joint and factorised
   routes model the same dispersion, and `bnec_joint()` includes a growth
   component's `disp()` term in the joint model it fits. `hurdle_poisson` still
-  refuses the term, because its positive counts have no dispersion parameter.
-  `hurdle_negbinomial` refuses it until a decision is made on how a relative
-  `ecx()` or `ecnsec()` estimate reads the shape: it reads the shape at the
-  control, which under a `disp()` term can differ from the shape at the lower
-  asymptote. `get_priors()` refuses the term on both families with the same
-  messages, and `bnec_joint()` refuses a negative binomial growth component
-  fitted with `disp()` before it announces the refit, naming its `formula`
-  argument as the way to refit without the term. No fit that previously
+  refuses the term, because its positive counts have no dispersion parameter,
+  and `get_priors()` refuses it with the same message. No fit that previously
   succeeded changes (#410).
+
+- `bnec()` now fits a `disp()` term on `hurdle_negbinomial`, which refused it.
+  The term models the shape of the positive block, as on `hurdle_gamma`: a
+  variance function is written in `mu`, the negative binomial mean before
+  zero-truncation; its centring constant is computed from the positive
+  counts; and its parameters take the priors and initial values of
+  `negbinomial`, including the range of 0 to 1 on the exponent of
+  `disp("power")`. Under
+  `prior_type = "regularizing"` that exponent's prior stays centred on 0, as
+  it is for a `negbinomial` growth component of `bnec_hurdle()`, because the
+  positive counts come from a zero-truncated likelihood. `bnec_joint()` refits
+  a negative binomial growth component fitted with `disp()` as a
+  `hurdle_negbinomial` with the same sub-model. `ecx(type = "relative",
+  dpar = "mu")` measures towards the zero-truncated mean at `mu = bot`, which
+  depends on the shape there. Under a variance function of the mean that
+  shape is the sub-model evaluated at `mu = bot`, draw by draw, rather than
+  the shape at the control, which a fit without `disp()` reads and which
+  differs from it once the shape changes with the mean. Under `disp(~x)` the
+  asymptote has no single shape, and a relative ECx of the positive counts is
+  refused. A relative `ecx()` or `ecnsec()` of a `negbinomial` growth
+  component of `bnec_hurdle()` fitted with `disp()` reads the shape at `bot`
+  in the same way, and is refused in the same way under `disp(~x)`.
+  `type = "absolute"`, `"range"` and `"direct"`, `nec()` and `nsec()` do not
+  read the shape at the asymptote.
+  A `disp(~z)` term naming a column other than the predictor is refused before
+  anything is fitted, for the reason it is refused on the growth component:
+  the positive-count curve and the combined curve both depend on the shape,
+  and so would depend on the value given to `z`. `get_priors()` and
+  `bnec_joint()` refuse it as `bnec()` does, and on a `bnec_hurdle()` fit
+  `bnec_joint()` refuses it before it announces the refit. Fits without
+  `disp()` are unchanged (#410).
 
 - `bnec()` now checks a `disp()` term against the family once per call, before
   it fits any equation. The check was made once per equation inside the model
