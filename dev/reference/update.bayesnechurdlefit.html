@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
       </span>
     </div>
 
@@ -87,7 +87,7 @@
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Updates both components of a <code><a href="bayesnechurdlefit.html">bayesnechurdlefit</a></code></h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/bayesnechurdlefit-methods.R" class="external-link"><code>R/bayesnechurdlefit-methods.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/bayesnechurdlefit-methods.R" class="external-link"><code>R/bayesnechurdlefit-methods.R</code></a></small>
     <div class="hidden name"><code>update.bayesnechurdlefit.Rd</code></div>
     </div>
 
@@ -113,12 +113,7 @@
 same way <code><a href="bnec_hurdle.html">bnec_hurdle</a></code> does, so zeros continue to denote the
 hurdle rather than being modelled as small responses, and checked the same
 way: a row that is both zero and censored is refused here as it is at
-construction. Each component is refitted with the family it was fitted
-with, as <code><a href="update.bnecfit.html">update.bnecfit</a></code> describes. Both components are checked
-against their families before either is refitted, so new data that put one
-component at a bound in every observation are refused, naming that
-component. New data with no zero are such a case: every individual
-survived, so the survival response is 1 in every observation.</p></dd>
+construction.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

@@ -19,7 +19,7 @@ everything that works on those works per level."><meta property="og:image" conte
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
       </span>
     </div>
 
@@ -89,7 +89,7 @@ everything that works on those works per level."><meta property="og:image" conte
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Class <code>bayesnecgroupfit</code> of models fitted separately at each level of a factor</h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/bayesnecgroupfit-class.R" class="external-link"><code>R/bayesnecgroupfit-class.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/bayesnecgroupfit-class.R" class="external-link"><code>R/bayesnecgroupfit-class.R</code></a></small>
     <div class="hidden name"><code>bayesnecgroupfit-class.Rd</code></div>
     </div>
 
@@ -104,16 +104,6 @@ everything that works on those works per level.</p>
     <h2>Details</h2>
     <p>See <code>methods(class = "bayesnecgroupfit")</code> for an overview of
 available methods.</p>
-<p><code><a href="nec.html">nec</a></code>, <code><a href="ecx.html">ecx</a></code> and <code><a href="nsec.html">nsec</a></code> on a
-<code>bayesnecgroupfit</code> return a <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code> with one row
-per level: a <code>level</code> column; one numeric column per quantile, named as
-the same method names them on a single fit; and, after those, one character
-column per quantile, named <code>bound_</code> followed by that quantile's column
-name, for example <code>bound_Q97.5</code>. A <code>bound_</code> entry is <code>"&gt;="</code> or
-<code>"&lt;="</code> where the matching number is the end of the prediction range
-rather than a quantile, and <code>""</code> where it is a quantile. These are the
-marks the level's own fit returns in attribute <code>"censored_summary"</code> and
-prints beside the number.</p>
     </div>
     <div id="slots">
     <h2>Slots</h2>

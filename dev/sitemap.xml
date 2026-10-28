@@ -22,13 +22,13 @@
 <url><loc>https://open-aims.github.io/bayesnec/reference/amend.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/autoplot.bayesnechurdlefit.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/autoplot.html</loc></url>
+<url><loc>https://open-aims.github.io/bayesnec/reference/average_estimates.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/bayesmanecfit-class.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/bayesnec-package.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/bayesnecfit-class.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/bayesnecformula.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/bayesnecgroupfit-class.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/bayesnechurdlefit.html</loc></url>
-<url><loc>https://open-aims.github.io/bayesnec/reference/bayesnecjointfit-class.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/best_crossed.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/bnec.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/bnec_group.html</loc></url>
@@ -60,7 +60,6 @@
 <url><loc>https://open-aims.github.io/bayesnec/reference/ecnsec.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/ecx.bayesnechurdlefit.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/ecx.html</loc></url>
-<url><loc>https://open-aims.github.io/bayesnec/reference/exceedance.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/expand_manec.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/expand_nec.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/failed_models.html</loc></url>
@@ -70,7 +69,6 @@
 <url><loc>https://open-aims.github.io/bayesnec/reference/get_priors.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/ggbnec_data.bayesnecgroupfit.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/ggbnec_data.bayesnechurdlefit.html</loc></url>
-<url><loc>https://open-aims.github.io/bayesnec/reference/ggbnec_data.bayesnecjointfit.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/ggbnec_data.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/herbicide.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/index.html</loc></url>

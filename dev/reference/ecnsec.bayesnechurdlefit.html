@@ -18,7 +18,7 @@ bayesnechurdlefit"><meta property="og:image" content="https://open-aims.github.i
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
       </span>
     </div>
 
@@ -88,7 +88,7 @@ bayesnechurdlefit"><meta property="og:image" content="https://open-aims.github.i
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Extracts ECx corresponding to an NSEC from a <code><a href="bayesnechurdlefit.html">bayesnechurdlefit</a></code></h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/bayesnechurdlefit-methods.R" class="external-link"><code>R/bayesnechurdlefit-methods.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/bayesnechurdlefit-methods.R" class="external-link"><code>R/bayesnechurdlefit-methods.R</code></a></small>
     <div class="hidden name"><code>ecnsec.bayesnechurdlefit.Rd</code></div>
     </div>
 
@@ -134,8 +134,7 @@ matches <code><a href="ecx.html">ecx</a></code> and <code><a href="nsec.html">ns
 
 
 <dt id="arg-x-range">x_range<a class="anchor" aria-label="anchor" href="#arg-x-range"></a></dt>
-<dd><p>A range of x values over which to predict the curve. An
-<code>nsec</code> outside it is refused; see Details.</p></dd>
+<dd><p>A range of x values over which to consider extracting NSEC.</p></dd>
 
 
 <dt id="arg-type">type<a class="anchor" aria-label="anchor" href="#arg-type"></a></dt>
@@ -179,25 +178,6 @@ the same <code>type</code>. <code>"relative"</code> is refused, as it is by
 <code><a href="ecx.html">ecx</a></code> for this class: a two-block fit has no single <code>bot</code>
 parameter to measure towards. <code>"direct"</code> is refused because it names a
 response value rather than a percentage.</p>
-<p><code>xform</code> is applied to <code>nsec</code>, and the curve is read at the
-result on the recorded predictor scale, as in <code><a href="ecnsec.html">ecnsec</a></code> on a
-<code><a href="bayesnecfit-class.html">bayesnecfit</a></code>. Where <code>crf()</code> transforms the predictor
-inline, <code><a href="nsec.html">nsec</a></code> returns its estimate on the transformed scale
-unless given an <code>xform</code>, so a message says so once per call where
-<code>xform</code> is left at its default, and names the <code>xform</code> that puts
-such a value on the recorded scale. In earlier versions this method applied
-<code>xform</code> to the percentage it returned. A call that supplies an
-<code>xform</code> other than <code>identity</code> is warned of the change in this
-release. To transform the percentage, apply the function to the value
-returned.</p>
-<p>Without <code>x_range</code>, every curve is read over the whole concentration
-series, as in <code><a href="ecx.bayesnechurdlefit.html">ecx.bayesnechurdlefit</a></code>. The range sets the
-lowest predicted response that <code>type = "range"</code> measures towards. The
-curve is read at <code>nsec</code> by linear interpolation between the two grid
-points either side of it. An <code>nsec</code> outside the range is refused with a
-message naming the range, for the combined, growth and survival curves
-alike and whether or not <code>x_range</code> is supplied. Supply an
-<code>x_range</code> that includes <code>nsec</code> to read the curve there.</p>
     </div>
 
   </div>

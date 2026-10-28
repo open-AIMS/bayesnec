@@ -20,7 +20,7 @@ models to be defined."><meta property="og:image" content="https://open-aims.gith
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
       </span>
     </div>
 
@@ -90,7 +90,7 @@ models to be defined."><meta property="og:image" content="https://open-aims.gith
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Set up a model formula for use in <code><a href="bayesnec-package.html">bayesnec</a></code></h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/bayesnecformula.R" class="external-link"><code>R/bayesnecformula.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/bayesnecformula.R" class="external-link"><code>R/bayesnecformula.R</code></a></small>
     <div class="hidden name"><code>bayesnecformula.Rd</code></div>
     </div>
 
@@ -162,12 +162,6 @@ on the R side to a function used to transform the predictor inside
 function call must also be valid Stan syntax, either because Stan provides
 it or because the corresponding Stan function is supplied through
 <code>stanvars</code>. Otherwise, transform the predictor in the data first.</p>
-<p>A predictor written with a leading minus, as in <code>crf(-x)</code> or
-<code>crf(-log(x))</code>, is refused. A model formula reads that minus as the
-operator that removes a term, so the model would be fitted on <code>x</code> or
-<code>log(x)</code>. This also applies to <code>crf(+(-x))</code>, where a unary plus
-encloses the negation. Write the negation inside <code><a href="https://rdrr.io/r/base/AsIs.html" class="external-link">I()</a></code>, as in
-<code>crf(I(-x))</code>, or compute it into a column of the data.</p>
 <p><b>Group-level terms: <code>glterms</code></b></p>
 <p>The user has three options to define group-level effects in a
 <code>bayesnecformula</code>: 1) a general "offset" group-level effect
@@ -181,30 +175,12 @@ does not need to know the internal syntax and name of each parameter in the
 model. 3) A more classic approach where the user can specify which
 specific parameters — NB: that requires prior knowledge on the model
 structure and parameter names — to vary according to a grouping variable
-(as in e.g. <code>(bot | group_variable)</code>). A term naming a parameter an
-equation does not have is left out of that equation, but each equation must
-keep at least one group-level term on every grouping variable such a term
-names; an <code>ogl()</code> or <code>pgl()</code> term on the variable counts. An
-equation that keeps none would be fitted as one curve pooled over the levels
-of the variable while the rest of the set fits the curve of a typical level,
-so <code><a href="bnec.html">bnec</a></code> excludes it before fitting, with a message, and records
-the reason (see <code><a href="bnec_record.html">bnec_record</a></code>). A call from which every equation
-is excluded is refused. For example, the parameter <code>bot</code> exists in
-model <code>"nec4param"</code> but not in <code>"nec3param"</code>, so if the user
-specifies <code>model = "nec"</code> in <code>crf</code>, the term
-<code>(bot | group_variable)</code> excludes <code>"nec3param"</code>, which would keep
-no term on <code>group_variable</code>. Under
-<code>(bot | group_variable) + (nec | group_variable)</code>, <code>"nec3param"</code>
-is fitted with the term on <code>nec</code> alone, and <code>"nec4param"</code> with
-both.</p>
-<p>The grouping inside <code>ogl()</code> and <code>pgl()</code> uses the formula operators
-accepted on the right of the bar in a <span class="pkg">brms</span> group-level term. The terms
-are expanded before they are passed to <span class="pkg">brms</span>. <code>ogl(a/b)</code> fits one
-deviation per level of <code>a</code> and a further one per level of <code>b</code>
-within each level of <code>a</code>, as <code>(1 | a/b)</code> does. <code>ogl(a:b)</code> fits one per
-combination of the two. <code>ogl(a + b)</code> is two separate terms,
-<code>(1 | a) + (1 | b)</code>, the same as <code>ogl(a) + ogl(b)</code>.
-<code>ogl(a*b)</code> also includes <code>(1 | a:b)</code>.</p>
+(as in e.g. <code>(bot | group_variable)</code>). <code>bayesnecformula</code>
+will ignore this term should the parameter not exist in the specified model
+or model suite. For example, the parameter <code>bot</code> exists in model
+<code>"nec4param"</code> but not in <code>"nec3param"</code>, so if the user specifies
+<code>model = "nec"</code> in <code>crf</code>, the term <code>(bot | group_variable)</code>
+will be dropped in models where that parameter does not exist.</p>
 <p><b>The scale a group-level deviation is applied on</b></p>
 <p><span class="pkg">brms</span> declares a group-level deviation unconstrained, and under the
 <code>"identity"</code> link <code><a href="bnec.html">bnec</a></code> assigns, the quantity it is added
@@ -242,45 +218,14 @@ parameter vary, and takes one of two forms.</p><ol><li><p><code>disp(~x)</code> 
 an ordinary <span class="pkg">brms</span> distributional formula, so anything <span class="pkg">brms</span>
 understands is allowed, e.g. <code>disp(~log(x))</code> or <code>disp(~s(x))</code>. It
 is descriptive: it says noise is larger at one end of the dose axis.</p></li>
-<li><p><code>disp("power")</code> models dispersion as a function of the <b>mean
-curve</b> — a variance function in the GLM sense, and a statement about the
+<li><p><code>disp("power")</code> models dispersion as a function of the <b>fitted
+mean</b> — a variance function in the GLM sense, and a statement about the
 measurement process rather than about the dose axis. The functions available,
 on the log link every eligible family gives its dispersion parameter, with
-<code>m</code> a fixed reference value computed from the response before fitting,
-on the scale of <code>mu</code> (a count divided by its number of trials or by its
-<code>rate()</code> denominator):</p></li>
+<code>m</code> a fixed reference value computed from the response before fitting:</p></li>
 </ol><table class="table table"><tr><td><b>name</b></td><td><b>form</b></td><td><b>families</b></td></tr><tr><td><code>"power"</code></td><td><code>log(dpar) = c0 + c1 * (log(mu) - log(m))</code></td><td>all eligible</td></tr><tr><td><code>"twosided"</code></td><td><code>log(phi) = c0 + c1 * (log(mu) - log(m)) + c2 * (log(1 - mu) - log(1 - m))</code></td><td><code>Beta</code>, <code>beta_binomial</code></td></tr><tr><td><code>"loglinear"</code></td><td><code>log(dpar) = c0 + c1 * (mu - m)</code></td><td>all eligible</td></tr></table><p>Form 2) requires the mean to be modelled on its natural scale; see the
 identity-link note in <code><a href="bnec.html">bnec</a></code>. Form 1) is an ordinary
 distributional formula and is valid under any link.</p>
-<p>Form 1) may name a column other than the predictor, as in <code>disp(~z)</code>,
-which fits a dispersion parameter for each level of a factor <code>z</code>, or
-one that changes with a numeric <code>z</code>. <span class="pkg">brms</span> needs <code>z</code>
-wherever it predicts, so every prediction grid <span class="pkg">bayesnec</span> builds holds
-it. The fitted curve stored on a fit, <code><a href="ecx.html">ecx</a></code>,
-<code><a href="nec.html">nec</a></code>, <code><a href="nsec.html">nsec</a></code> and <code><a href="ecnsec.html">ecnsec</a></code> take
-<code>z</code> at one fixed value: the first level of a factor, or the median of
-a numeric column. The mean of every family the term can be fitted for does
-not involve the dispersion parameter, so that value does not change them.
-<code><a href="bnec_newdata.html">bnec_newdata</a></code> writes the same value and marks the column as a
-placeholder. <code><a href="posterior_predict.html">posterior_predict</a></code> and <code><a href="predict.html">predict</a></code>
-replace a marked column draw by draw with the value of a row sampled from
-the data the fit was made from, so a predicted reading is one from the
-design's mix of <code>z</code> rather than from its first level. A
-<code>newdata</code> without <code>z</code> is refused with a message naming it. The
-term is refused for a <code>negbinomial</code> growth component of
-<code><a href="bnec_hurdle.html">bnec_hurdle</a></code>, whose curve is the mean of the zero-truncated
-counts and depends on the shape parameter.</p>
-<p>Where the formula also has an <code>ogl()</code> term, <code>mu</code> in form 2) is the
-curve before the group-level deviation is applied, not the fitted mean of
-the group. The deviation therefore changes the mean of each group without
-changing its dispersion parameter. The observation variance can still
-change with the fitted mean; for Gamma it is the squared fitted mean divided
-by the shape. A deviation on a parameter, as in <code>(bot | group)</code> or
-<code>pgl(group)</code>, changes the curve itself, and so is included in the
-variance function as well. Reading the fitted mean after an <code>ogl()</code>
-deviation can produce a second posterior mode at a very low mean when
-<code>"power"</code> on a <code>Gamma</code> response has <code>c1 &gt; 1</code>. This occurred
-in the zinc fit reported in #468.</p>
 <p>A dispersion sub-model requires a family with a free dispersion parameter.
 For <code>poisson</code>, <code>bernoulli</code> and <code>binomial</code> the variance is a
 deterministic function of the mean and there is nothing to model;
@@ -289,41 +234,13 @@ over-dispersion there is remedied by changing family (<code>poisson</code> to
 observation-level group-level effect. Those are exactly the families the
 <code><a href="dispersion.html">dispersion</a></code> diagnostic applies to, so the two are complements
 rather than alternatives.</p>
-<p>Of the two-block families, <code>hurdle_gamma</code> and <code>zero_inflated_beta</code>
-take a dispersion sub-model on their positive block, which is modelled as
-the <code>Gamma</code> or <code>Beta</code> family it is, and <code>m</code> is computed from
-the positive responses; see <code><a href="bnec.html">bnec</a></code>. <code>hurdle_poisson</code> has no
-dispersion parameter to model, and <code>hurdle_negbinomial</code> does not yet
-take a dispersion sub-model.</p>
 <p><b>What the exponent means depends on the family</b>, because each family
 already imposes its own mean-variance link. The form above is written for
 the dispersion parameter itself, which is what <span class="pkg">brms</span> fits:</p>
 <p>Writing <code>r = mu / m</code> for the response relative to the reference, and
 taking <code>"power"</code> for concreteness:</p>
 <table class="table table"><tr><td><b>family</b></td><td><b>parameter</b></td><td><b>implied variance</b></td><td><b>constant CV at</b></td></tr><tr><td><code>gaussian</code></td><td><code>sigma</code></td><td><code>(exp(c0) * r^c1)^2</code></td><td><code>c1 = 1</code></td></tr><tr><td><code>Gamma</code></td><td><code>shape</code></td><td><code>mu^2 / (exp(c0) * r^c1)</code></td><td><code>c1 = 0</code></td></tr><tr><td><code>negbinomial</code></td><td><code>shape</code></td><td><code>mu + mu^2 / (exp(c0) * r^c1)</code></td><td><code>--</code></td></tr><tr><td><code>Beta</code>, <code>beta_binomial</code></td><td><code>phi</code></td><td><code>mu * (1 - mu) / (1 + exp(c0) * r^c1)</code></td><td><code>--</code></td></tr></table><p>In every case <code>c1 = 0</code> returns the constant-dispersion model, which is
-where the default prior on <code>c1</code> is centred.</p>
-<p>Under <code>"power"</code> that prior is <code>normal(0, 2)</code> restricted to a range
-of <code>c1</code> that depends on the family. The range is derived from a
-variance proportional to <code>mu^b</code> with <code>b</code> between 0 and 2, which
-runs from a constant variance to a constant coefficient of variation:</p>
-<table class="table table"><tr><td><b>family</b></td><td><b>range of c1</b></td><td><b>at the two ends</b></td></tr><tr><td><code>Gamma</code></td><td>0 to 2</td><td>constant CV; constant variance</td></tr><tr><td><code>gaussian</code></td><td>0 to 1</td><td>constant variance; constant CV</td></tr><tr><td><code>negbinomial</code></td><td>0 to 1</td><td>overdispersion proportional to <code>mu^2</code>; to <code>mu</code></td></tr><tr><td><code>Beta</code>, <code>beta_binomial</code></td><td>unbounded</td><td><code>--</code></td></tr></table><p>Outside the range for a Gamma or gaussian response, the variance function
-describes a variance that rises as the mean falls, or a coefficient of
-variation that falls as the mean falls. For a negative binomial response
-above 1, the overdispersion term would grow more slowly than the Poisson
-part of the variance. The beta families are not bounded, because their
-variance already falls towards both ends of the unit interval through
-<code>mu * (1 - mu)</code>, and their precision can plausibly rise in either
-direction, which is what <code>"twosided"</code> models. Neither slope of
-<code>"twosided"</code> is bounded, nor is the slope of <code>"loglinear"</code>, which
-is in units of one over the response. A two-block family takes the range of
-its positive block's family.</p>
-<p>The range is a hard bound on the parameter, as the support of the response
-is for <code>top</code> and <code>bot</code>. A posterior for <code>c1</code> concentrated
-against one end of it is evidence that the data do not follow the range; a
-prior on <code>c1</code> supplied through the <code>prior</code> argument of
-<code><a href="bnec.html">bnec</a></code> replaces the default, bounds included. Under
-<code>prior_type = "regularizing"</code> the prior is centred on the slope the
-replicates show rather than on zero; see <code><a href="bnec.html">bnec</a></code>.</p>
+where the prior on <code>c1</code> is centred.</p>
 <p>Both <code>"power"</code> and <code>"twosided"</code> take <code>log(mu)</code>, so a fitted
 mean that reaches zero is undefined. This rules them out for a response on
 the real line — a specific growth rate, yield or increment can be negative —
@@ -436,34 +353,34 @@ formula.</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">bayesnecformula</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y ~ crf(x, "nec3param")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x654d34e19940&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x5bdf8b653f78&gt;</span>
 <span class="r-in"><span><span class="co"># or use shot alias bnf</span></span></span>
 <span class="r-in"><span><span class="fu">bayesnecformula</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span> <span class="op">==</span> <span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(sqrt(x), "nec3param")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x654d34e19940&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x5bdf8b653f78&gt;</span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">ogl</span><span class="op">(</span><span class="va">group_1</span><span class="op">)</span> <span class="op">+</span> <span class="fu">pgl</span><span class="op">(</span><span class="va">group_2</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(x, "nec3param") + ogl(group_1) + pgl(group_2)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x654d34e19940&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x5bdf8b653f78&gt;</span>
 <span class="r-in"><span><span class="co"># dispersion as a function of the predictor</span></span></span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">disp</span><span class="op">(</span><span class="op">~</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y ~ crf(x, "nec3param") + disp(~x)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x654d34e19940&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x5bdf8b653f78&gt;</span>
 <span class="r-in"><span><span class="co"># dispersion as a function of the fitted mean</span></span></span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">disp</span><span class="op">(</span><span class="st">"power"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y ~ crf(x, "nec3param") + disp("power")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x654d34e19940&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x5bdf8b653f78&gt;</span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="va">nec</span> <span class="op">+</span> <span class="va">top</span> <span class="op">|</span> <span class="va">group_1</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x654d34e19940&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x5bdf8b653f78&gt;</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span><span class="co"># The predictor expression is passed to Stan by brms. Precompute a</span></span></span>
 <span class="r-in"><span><span class="co"># transformation unless its function is also defined for Stan.</span></span></span>
 <span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/try.html" class="external-link">try</a></span><span class="op">(</span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/scale.html" class="external-link">scale</a></span><span class="op">(</span><span class="va">x</span>, scale <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(scale(x, scale = TRUE), "nec3param")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x654d34e19940&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x5bdf8b653f78&gt;</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>

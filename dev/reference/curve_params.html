@@ -20,7 +20,7 @@ parameter per equation."><meta property="og:image" content="https://open-aims.gi
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
       </span>
     </div>
 
@@ -90,7 +90,7 @@ parameter per equation."><meta property="og:image" content="https://open-aims.gi
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Curve parameter estimates from a fitted model</h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/curve_params.R" class="external-link"><code>R/curve_params.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/curve_params.R" class="external-link"><code>R/curve_params.R</code></a></small>
     <div class="hidden name"><code>curve_params.Rd</code></div>
     </div>
 
@@ -213,8 +213,8 @@ the whole set, so the weights of the rows contributing to one number would
 not sum to 1 and would sum to something different for the next number. The
 model weight is reported beside each row instead, so a reader can see what
 share of the model average each curve holds, and no quantity is reported
-that the weights do not support. The model-averaged estimates are returned
-by <code><a href="nec.html">nec</a></code>, <code><a href="nsec.html">nsec</a></code> and <code><a href="ecx.html">ecx</a></code> on the set.</p>
+that the weights do not support. See <code><a href="average_estimates.html">average_estimates</a></code> for the
+estimates that are averaged.</p>
 <p><code><a href="show_params.html">show_params</a></code> names the parameters of each equation without
 fitting anything; this function reports their estimates from a fit.</p>
 <p><b>The parameters are on the scale the model was fitted on.</b>
@@ -238,7 +238,7 @@ scale.</p>
     <div id="see-also">
     <h2>See also</h2>
     <div class="dont-index"><p><code><a href="summary.html">summary</a></code>, <code><a href="show_params.html">show_params</a></code>,
-<code><a href="nec.html">nec</a></code>, <code><a href="ecx.html">ecx</a></code></p></div>
+<code><a href="nec.html">nec</a></code>, <code><a href="ecx.html">ecx</a></code>, <code><a href="average_estimates.html">average_estimates</a></code></p></div>
     </div>
 
     <div id="ref-examples">
