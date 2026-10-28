@@ -232,8 +232,8 @@ get_priors.formula <- function(object, data, family = NULL,
   # on the same response, so a term bnec() refuses gets the same message here.
   if (!is.null(disp_spec)) {
     check_disp_spec(disp_spec, family, response = disp_response(bdat, family))
-    if (is_factorised_count_formula(object, family)) {
-      check_disp_count_truncation(object)
+    if (shape_in_reported_mean(object, family)) {
+      check_disp_count_truncation(object, family)
     }
   }
   out <- lapply(model, function(m) {

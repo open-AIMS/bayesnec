@@ -23,6 +23,23 @@ is_hurdle_family <- function(family) {
   isTRUE(fam_tag %in% names(hurdle_fams))
 }
 
+#' Is this family a joint count hurdle?
+#'
+#' @param family Either a \code{\link[stats]{family}} object or a family tag.
+#'
+#' @details \code{hurdle_poisson} and \code{hurdle_negbinomial}, whose
+#' positive block is a zero-truncated count in the likelihood \pkg{brms}
+#' writes for them.
+#'
+#' @return A \code{\link[base]{logical}}.
+#'
+#' @noRd
+is_count_hurdle <- function(family) {
+  is_hurdle_family(family) &&
+    isTRUE(unname(hurdle_mu_fams[[canonical_fam_tag(family)]]) %in%
+             c("poisson", "negbinomial"))
+}
+
 #' Name brms gives the second parameter block for this family
 #'
 #' @param family Either a \code{\link[stats]{family}} object or a family tag.
