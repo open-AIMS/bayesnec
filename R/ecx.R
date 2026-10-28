@@ -180,10 +180,9 @@
 #' }
 #'
 #' @export
-# dpar sits after `...` to match the methods, which all declare their
-# class-specific arguments there. Naming it on the generic is what puts it in
-# the \usage section; documented-but-absent arguments are an R CMD check
-# WARNING, and methods are @noRd so the generic is the only place it can appear.
+# Keep dpar on the generic, after `...` as in the methods. The methods are
+# @noRd, so the generic's usage is the only place it can appear, and R CMD
+# check warns about a documented argument missing from the usage.
 ecx <- function(object, ecx_val = 10, resolution = 200,
                 posterior = FALSE, type = "absolute", x_range = NA,
                 xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...,
@@ -227,12 +226,10 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order")
   }
-  # No upper cap. Under "absolute" the reference is 0, so an ecx_val above 100
-  # names a target below zero -- 120% inhibition of a growth rate is a rate of
-  # -0.2 times the control, which is a real measurement on an unbounded
-  # response and is what OECD TG 201 reports rather than truncating at 100.
-  # Unreachable targets are not an error either: the curve simply never crosses
-  # them and the draw returns NA with the warning below. See D15 ruling 7.
+  # Do not cap ecx_val at 100. Under "absolute" the reference is 0, so a value
+  # above 100 names a target below zero, which is a real measurement on an
+  # unbounded response and is what OECD TG 201 reports. A target the curve
+  # never crosses gives NA for that draw, with the warning below.
   if (type != "direct" && ecx_val <= 0) {
     stop("Supplied ecx_val is not in the required range. ",
          "Please supply a percentage value greater than 0.", call. = FALSE)
@@ -243,26 +240,19 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
   # Once for the call. See report_fitted_scale().
   quiet <- report_fitted_scale(object, xform, "ecx")
   on.exit(options(quiet), add = TRUE)
-  # The refusal that stood here rejected an absolute ECx for a gaussian
-  # response fitted without a bot parameter, on the grounds that the curve
-  # cannot reach 0. It is removed with #206: absolute measures towards 0
-  # deliberately, following OECD TG 201, and a gaussian mean function
-  # asymptoting to zero is internally consistent -- the likelihood evaluates
-  # y - mu and never tests the sign of y. See D15 ruling 7.
+  # Do not refuse an absolute ECx for a gaussian response without a bot
+  # parameter. Absolute measures towards 0 by design, and a gaussian mean that
+  # declines towards 0 is consistent: the likelihood never tests the sign of y.
   newdata_list <- newdata_eval(
     object, resolution = resolution, x_range = x_range
   )
-  # dpar lets a two-block fit report its components separately. The default
-  # (NULL) gives what posterior_epred always gave: the positive-part mean times
-  # (1 - hu) for such a family, the single mean curve otherwise. The
-  # zero-probability block is
-  # inverted so that "decline from control" means the same thing as it does
-  # everywhere else. Valid names are "mu" and whichever brms uses for the
-  # second block: "hu" for hurdle families, "zi" for zero-inflated ones.
-  # Written as a closure so the two-block handling reaches the control
-  # prediction as well as the curve. Reading the control off a matrix that had
-  # had the dpar inversion applied, or not applied, inconsistently with the
-  # curve would put the reference and the curve on different quantities.
+  # dpar reports one block of a two-block fit. NULL gives the combined mean,
+  # (1 - hu) times the positive-part mean, or the single mean of any other
+  # family. The zero-probability block is inverted, so that a decline from the
+  # control means the same as elsewhere. brms names that block "hu" for hurdle
+  # families and "zi" for zero-inflated ones.
+  # The closure applies the same dpar handling to the control prediction as to
+  # the curve, so that both are read on one quantity.
   epred_fun <- function(nd) joint_hurdle_epred(object, nd, dpar)
   p_samples <- epred_fun(newdata_list$newdata)
   x_vec <- newdata_list$x_vec
@@ -277,24 +267,18 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
   above <- is.na(ecx_out) & !below
   attr(ecx_out, "below_range") <- NULL
   ecx_out <- sub_x_transformation(ecx_out, object$bayesnecformula)
-  # The record is built here rather than read off the fit, because ecx() works
-  # on a grid the caller may have changed through x_range. It is built on the
-  # recorded scale, which is the scale the curve was searched on and therefore
-  # the scale a beyond-range draw is beyond an end of, and then remapped onto
-  # the fitted scale that sub_x_transformation() has just put the estimates on.
-  # Comparing against fitted bounds directly would keep above and below naming
-  # the ends of the recorded scale, which a decreasing crf() reverses.
+  # Build the censoring record here, not from the fit, because x_range may
+  # have changed the grid. Build it on the recorded scale, where the curve was
+  # searched, then remap it with sub_x_transformation() as the estimates were.
+  # Comparing against fitted-scale bounds directly would misname the ends
+  # under a decreasing crf() transformation.
   x_kept <- x_vec[is.finite(x_vec)]
   cens <- xform_censoring(
     censoring_record(max(x_kept), min(x_kept), above, below),
     function(value) sub_x_transformation(value, object$bayesnecformula)
   )
-  # xform is applied to the censoring bounds as well as to the estimates, and
-  # the warning is raised after both, so that the bound and the numbers the
-  # caller is about to read are on one scale. Reporting the bound before xform
-  # named the fitted scale beside estimates in concentrations -- on
-  # vignette("example1")'s xform = function(x) exp(x) - 1, a bound of 4.6 beside
-  # an estimate of 99.
+  # Apply xform to the censoring bounds as well as the estimates, before the
+  # warning, so that the bound it reports is on the estimates' scale.
   if (inherits(xform, "function")) {
     ecx_out <- xform(ecx_out)
     cens <- xform_censoring(cens, xform)
@@ -324,17 +308,13 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
   attr(ecx_out, "ecx_val") <- ecx_val
   attr(ecx_estimate, "toxicity_estimate") <- "ecx"
   attr(ecx_out, "toxicity_estimate") <-  "ecx"
-  # Both advisory messages compare estimates, so neither can be evaluated when
-  # every draw returned NA -- signif(NA) == signif(NA) is NA, not FALSE, and
-  # if() on it is an error. An all-NA estimate has already been reported by the
-  # warning above, which says the same thing more precisely.
+  # Skip both advisory messages when every draw is NA: signif(NA) == signif(NA)
+  # is NA, and if() on it is an error. The warning above has reported it.
   if (all(is.na(ecx_estimate))) {
     NULL
   } else if (!is.null(attr(ecx_estimate, "censored_summary"))) {
-    # The censored summary above has already said this, with the count and the
-    # bound, and has reported the affected entries as bounds rather than as
-    # numbers. The advisory asked the caller to do by hand what the summary now
-    # does, so repeating it here would say the work was still outstanding.
+    # The censored summary already reports the affected entries as bounds,
+    # which is what the advisories below ask the caller to do by hand.
     NULL
   } else if (signif(ecx_estimate[1], 3) == signif(ecx_estimate[3], 3)) {
     message("The estimated mean is identical or nearly identical to your",
@@ -392,29 +372,21 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 200,
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order")
   }
-  # The rename warning belongs to the call, not to each member of the set.
-  # sample_ecx() below calls ecx() once per equation with type passed
-  # explicitly, so without this a model-averaged ecx(type = "relative") warned
-  # once for the set and once more for every equation in it. See D15 ruling 8.
+  # Warn about the relative rename once for the call. sample_ecx() below calls
+  # ecx() for each equation with type passed explicitly, which would otherwise
+  # warn again for every equation.
   warned <- options(bayesnec.relative_warned = TRUE)
   on.exit(options(warned), add = TRUE)
   # The scale message likewise, by the same device. See report_fitted_scale().
   quiet <- report_fitted_scale(object, xform, "ecx")
   on.exit(options(quiet), add = TRUE)
   sample_size <- object$sample_size
-  # The same weighted index every other quantity on this object uses, rather
-  # than a fresh unseeded sample() here. Without it a model-averaged ECx was a
-  # different number on every call -- and it is the lower bound, the end a
-  # protective concentration is read off, that moved most. Which draws are kept
-  # is unchanged in kind; only the redraw is gone. See #216.
+  # Use the weighted draw index every other quantity on this object uses. A
+  # fresh unseeded sample() would give a different estimate on every call.
   draw_index <- pull_draw_index(object, names(object$mod_fits), sample_size)
-  # Written as a closure over the arguments rather than a function taking them
-  # all positionally: the previous form dispatched through
-  # sapply(to_iter, sample_ecx, object, ecx_val, ...), which matched by
-  # position, and any argument not named in that list -- dpar among them -- was
-  # dropped before reaching the per-model call. That returned the combined
-  # endpoint for a two-block fit with no error, which is a wrong answer rather
-  # than a missing feature.
+  # Close over the arguments rather than pass them by position. Positional
+  # dispatch through sapply() drops any argument it does not list, dpar among
+  # them, and would silently return a two-block fit's combined curve.
   sample_ecx <- function(x) {
     mod <- names(object$mod_fits)[x]
     target <- suppressMessages(pull_out(object, model = mod))
@@ -424,10 +396,9 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 200,
                dpar = dpar)
     idx <- draw_index[[mod]]
     sample_out <- out[idx]
-    # Subsetting drops the record, so the share of it that belongs to these
-    # draws is rebuilt here. Without this a single ecx-type fit and
-    # the one-model average of it would report the same quantity two different
-    # ways, and pull_out() would change a number without changing a model.
+    # Subsetting drops the censoring record, so rebuild the part for these
+    # draws. Otherwise a single fit and its one-model average would report the
+    # same estimate differently.
     attr(sample_out, "censored") <-
       subset_censoring(attr(out, "censored"), idx)
     sample_out
@@ -455,14 +426,11 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 200,
 
 #' Validate the type argument, and warn on the relative rename
 #'
-#' \code{"relative"} named the control-to-minimum span up to 2.1.3 and names
-#' the control-to-asymptote span from 2.2.0. The two are different quantities,
-#' so a caller who wrote it explicitly is told once, by name, what to write for
-#' the old behaviour. Warned rather than errored: the new meaning is a valid
-#' request and the majority of callers will want it. See D15 ruling 8.
-#'
-#' A plain warning rather than \code{lifecycle::deprecate_warn()}, to avoid
-#' adding a dependency for one message.
+#' \code{"relative"} meant the control-to-minimum span up to 2.1.3 and means
+#' the control-to-asymptote span from 2.2.0. A caller who writes it explicitly
+#' is warned once, and told to write \code{"range"} for the old behaviour. It
+#' warns rather than stops, because the new meaning is a valid request, and
+#' uses a plain warning to avoid a dependency on \pkg{lifecycle}.
 #'
 #' @noRd
 validate_ecx_type <- function(type, mc) {
@@ -486,18 +454,13 @@ validate_ecx_type <- function(type, mc) {
 #' The theoretical asymptote each draw's curve declines towards
 #'
 #' Used by \code{type = "relative"} only, and \code{NA} for every other type.
-#' An equation with a \code{bot} parameter declines towards it; the fourteen
-#' equations without one decline towards 0, which is their theoretical minimum
-#' and is a finite bound under any family bounded below. Under a family that is
-#' not, there is no bound and no denominator, so the request is refused rather
-#' than answered with a number that means nothing. See D15 ruling 6.
+#' An equation with a \code{bot} parameter declines towards it, and one
+#' without declines towards 0. Under a family not bounded below, 0 is no bound,
+#' so the request is refused.
 #'
-#' A \code{\link{bayesmanecfit}} has no single \code{fit} to read \code{bot}
-#' from, and the quantity it needs is the model-averaged asymptote, because the
-#' curve it is the denominator for is the model-averaged curve. Assembled by
-#' \code{manec_asymptote()}. Without that branch, \code{ecnsec()} on a model set
-#' with \code{type = "relative"} failed inside \pkg{posterior} on a \code{NULL}
-#' \code{fit}, with a message naming neither the argument nor the class.
+#' A \code{\link{bayesmanecfit}} has no single \code{fit}, and its curve is the
+#' model-averaged one, so \code{manec_asymptote()} assembles the model-averaged
+#' asymptote.
 #'
 #' With \code{dpar} naming the zero block of a two-block fit, the curve is
 #' that block's and so is the asymptote; see \code{zero_block_asymptote()}.
@@ -515,11 +478,9 @@ ecx_asymptote <- function(object, type, dpar = NULL) {
         identical(dpar, hurdle_dpar(object$fit$family))) {
     return(zero_block_asymptote(object, dpar))
   }
-  # One level of a joint refit names its coefficient b_bot_<group_var><level>,
-  # so the b_bot_Intercept read below finds nothing on it. Without this branch
-  # a four-parameter equation with a bot would be measured towards 0 instead of
-  # towards bot, silently, wherever the family is bounded below -- which is
-  # every family a joint refit of a bounded response is fitted with.
+  # A joint refit level names its coefficient b_bot_<group_var><level>, which
+  # the b_bot_Intercept read below does not find. Without this branch such a
+  # level would be measured towards 0 instead of bot, without an error.
   if (inherits(object, "bayesnecjointlevel")) {
     bot_draws <- joint_level_draws(object, "bot")
     if (!is.null(bot_draws)) {
@@ -729,21 +690,16 @@ disp_positive_asymptote <- function(object, spec, mean_asymptote) {
 
 #' The model-averaged theoretical asymptote
 #'
-#' Each equation's own asymptote --- its \code{bot} draws, or 0 where it has no
-#' \code{bot} --- thinned to the draws the weighting keeps and stacked in the
-#' order the model-averaged posterior stacks them.
+#' Each equation's own asymptote, its \code{bot} draws or 0 where it has no
+#' \code{bot}, thinned to the draws the weighting keeps and concatenated in the
+#' order the model-averaged posterior concatenates them.
 #'
-#' The stacking must match \code{posterior_epred.bayesmanecfit()} exactly, or
-#' element \emph{i} of the asymptote belongs to a different (equation, draw)
-#' pair than row \emph{i} of the curve it is the denominator for, and the
-#' resulting ECNSEC is a ratio of two unrelated quantities. Both use
-#' \code{names(mod_fits)} for the order and \code{pull_draw_index()} for the
-#' draws, which is what makes the pairing correct rather than coincidental.
-#' See #216.
+#' The order must match \code{posterior_epred.bayesmanecfit()} exactly, or
+#' element \emph{i} of the asymptote and row \emph{i} of the curve belong to
+#' different draws. Both take the order from \code{names(mod_fits)} and the
+#' draws from \code{pull_draw_index()}.
 #'
-#' An equation that refuses \code{"relative"} --- no \code{bot} under a family
-#' unbounded below --- refuses here too, so the model set fails exactly where
-#' \code{ecx(type = "relative")} on the same set fails.
+#' An equation that refuses \code{"relative"} refuses here too.
 #'
 #' @param object An object of class \code{\link{bayesmanecfit}}.
 #'
@@ -767,8 +723,8 @@ manec_asymptote <- function(object) {
 
 #' The x value at which each draw reaches its ECx target
 #'
-#' The reference is the control -- this draw's predicted mean at the lowest
-#' observed concentration -- for every type. See D15.
+#' The reference for every type is the control, this draw's predicted mean at
+#' the lowest observed concentration.
 #'
 #' @noRd
 ecx_from_posterior <- function(p_samples, x_vec, ecx_val, type, control,
@@ -776,12 +732,10 @@ ecx_from_posterior <- function(p_samples, x_vec, ecx_val, type, control,
   n_draws <- nrow(p_samples)
   control <- rep_len(control, n_draws)
   asymptote <- rep_len(asymptote, n_draws)
-  # Separated for the same reason nsec_from_posterior() separates them: an NA
-  # on its own does not say which end of the range produced it, and the two are
-  # opposite statements about where the estimate is. A curve already below the
-  # target where the grid begins is reachable wherever x_range starts above the
-  # lowest observed concentration, because the control is read there and not at
-  # the first grid point (D15 ruling 2).
+  # Record which end of the range an NA comes from, as nsec_from_posterior()
+  # does: the two ends are opposite statements about the estimate. A curve can
+  # already be below the target where the grid begins when x_range starts above
+  # the lowest observed concentration, where the control is read.
   below_range <- logical(n_draws)
   out <- vapply(seq_len(n_draws), function(i) {
     y <- p_samples[i, ]
@@ -794,17 +748,12 @@ ecx_from_posterior <- function(p_samples, x_vec, ecx_val, type, control,
       direct = ecx_val
     )
     val <- crossing_x(y, target, x_vec)
-    # A below-range draw is one whose curve had already declined past the
-    # target before the grid began, which requires the target to sit below the
-    # control -- the control is read at the lowest observed concentration, at
-    # or below the foot of the grid. A target at or above the control is one
-    # the curve never declines to at all, and is reported at the upper end with
-    # the draws that did not reach the target, which is what specification 4.5
-    # asks for a draw whose estimate may not exist at any concentration. Two
-    # shapes reach that branch: type = "direct" with a response value above the
-    # whole curve, which is what D15 ruling 3 is about; and an absolute ECx on
-    # a response whose control is negative, where the target is above the
-    # control and the curve declines away from it. Neither has a crossing.
+    # A draw is below range only where its curve passed the target before the
+    # grid began, which needs a target below the control. A declining curve
+    # never reaches a target at or above the control, so that draw is reported
+    # at the upper end with the draws that did not reach the target. That
+    # includes type = "direct" with a value above the whole curve, and an
+    # absolute ECx where the control is negative.
     if (is.na(val) && !is.na(y[1]) && !is.na(target) && y[1] <= target &&
         target < control[i]) {
       below_range[i] <<- TRUE
