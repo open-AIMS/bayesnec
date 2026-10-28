@@ -72,6 +72,12 @@ their own review.
 
 ## Diagnostics and external methods
 
+- [`count_divergent()`](../../R/check_sampling.R) reads diagnostics through
+  `brms`, which is a required dependency; `bayesnec` lists `rstan` only in
+  `Suggests`. The former claim that the direct `rstan` call fails under
+  CmdStanR was incorrect: `brms` 2.23.0 imports `rstan` and converts CmdStanR
+  output to a `stanfit`. [PR #490](https://github.com/open-AIMS/bayesnec/pull/490)
+  records the correction in its coordination section.
 - [The dispersion guidance](../../CLAUDE.md#dispersion-on-a-model-average)
   distinguishes per-equation results from a statistic for the model average.
   [Dispersion tests](../../tests/testthat/test-dispersion.R) cover the results.
