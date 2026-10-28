@@ -13,7 +13,6 @@ test_that("make_hu_block prefixes every parameter and inverts the curve", {
   expect_equal(sort(hb$pars), sort(c("hutop", "hubeta", "hunec")))
   rhs <- deparse1(hb$nlf[[3]])
   expect_true(grepl("^1 - ", rhs))
-  # every original name is gone, every prefixed one present
   for (p in c("hutop", "hubeta", "hunec")) expect_true(grepl(p, rhs, fixed = TRUE))
   expect_false(grepl("(?<![[:alnum:]_])top(?![[:alnum:]_])", rhs, perl = TRUE))
   expect_false(grepl("(?<![[:alnum:]_])nec(?![[:alnum:]_])", rhs, perl = TRUE))
@@ -49,7 +48,7 @@ test_that("add_hu_block substitutes the real predictor name", {
   )
   hu_rhs <- deparse1(bb$pforms$hu[[3]])
   expect_true(grepl("log_x", hu_rhs, fixed = TRUE))
-  # the generic "x" must not survive as a bare variable
+  # The generic x must not remain as a bare variable.
   expect_false(grepl("(?<![[:alnum:]_])x(?![[:alnum:]_])", hu_rhs, perl = TRUE))
 })
 
@@ -83,10 +82,8 @@ test_that("validate_family sets identity links for the character form", {
 })
 
 test_that("validate_family rejects a non-identity link_hu the caller chose", {
-  # hu is written as `1 - survival` on the link scale, so a logit link_hu
-  # would silently pass that through inv_logit. Where the caller wrote link_hu
-  # the object is honoured, so the guard still has to fire. Both reachable
-  # forms: link_hu on its own, and link_hu alongside a mean link.
+  # The second block is written as 1 - survival. A logit link_hu would apply
+  # inv_logit to that probability, so reject it whether or not link is supplied.
   src <- bayesnec:::family_link_source
   expect_error(
     bayesnec:::validate_family(
@@ -107,18 +104,14 @@ test_that("validate_family rejects a non-identity link_hu the caller chose", {
 })
 
 test_that("a link is read per block, not for the family as a whole", {
-  # Writing link_hu says nothing about the mean, and writing link says nothing
-  # about hu. A single flag for the whole family left the block the caller did
-  # not write at the brms default: hurdle_gamma(link_hu = "identity") fitted
-  # the mean on log, which is the silent substitution #256 removes.
+  # Choosing link_hu does not choose the mean link; resolve each block separately.
   v <- bayesnec:::validate_family
   src <- bayesnec:::family_link_source
   hu <- v(brms::hurdle_gamma(link_hu = "identity"),
           link_source = src(quote(hurdle_gamma(link_hu = "identity"))))
   expect_equal(hu$link, "identity")
   expect_equal(hu$link_hu, "identity")
-  # and the converse: link written, link_hu left to bayesnec. This errored
-  # before, on a link_hu default the caller had not chosen.
+  # Choosing only the mean link must leave link_hu at the package default.
   mu <- v(brms::hurdle_gamma(link = "identity"),
           link_source = src(quote(hurdle_gamma(link = "identity"))))
   expect_equal(mu$link, "identity")
@@ -130,10 +123,7 @@ test_that("a link is read per block, not for the family as a whole", {
 })
 
 test_that("a hurdle family named without a link gets both links assigned", {
-  # Previously `family = hurdle_gamma()` errored, because link_hu defaults to
-  # logit and the guard above fired on a link the user had not chosen. Naming
-  # the family now leaves both links to bayesnec, which is the whole point of
-  # #256: the caller named a family and nothing more.
+  # Naming the family without links lets bayesnec assign both links.
   fam <- bayesnec:::validate_family(brms::hurdle_gamma())
   expect_equal(fam$family, "hurdle_gamma")
   expect_equal(fam$link, "identity")
@@ -158,9 +148,8 @@ test_that("check_data still nudges zeros for Gamma, and now says so", {
   dat <- data.frame(x = as.numeric(rep(1:4, each = 5)),
                     y = c(rep(10, 15), rep(3, 3), 0, 0))
   bdat <- model.frame(bnf(y ~ crf(x, "nec3param")), data = dat)
-  # The nudge still happens; the message that names hurdle_gamma as the remedy
-  # now comes from report_substitutions(), which bnec() calls once per call.
-  # See #93.
+  # check_data() shifts the zeros; report_substitutions() reports the shift
+  # once at the entry point.
   expect_silent(
     out <- bayesnec:::check_data(bdat, Gamma(link = "identity"), "nec3param")
   )
@@ -170,9 +159,8 @@ test_that("check_data still nudges zeros for Gamma, and now says so", {
 })
 
 test_that("extract_pars anchors on the parameter name", {
-  # Regression test for the cascade: unanchored matching returns a 2-row
-  # matrix, tt["Estimate"] is then NA, every parameter comes back NA, and
-  # expand_nec() misclassifies a nec model as ecx.
+  # Anchor parameter names so top does not also select hutop and produce
+  # missing summaries from a two-row match.
   rn <- c("top_Intercept", "beta_Intercept", "nec_Intercept",
           "hutop_Intercept", "hubeta_Intercept", "hunec_Intercept")
   fef <- matrix(seq_along(rn), nrow = length(rn), ncol = 3,
@@ -219,12 +207,8 @@ test_that("define_prior builds both blocks for a hurdle family", {
   # hu block is a probability: 0-1 bounded
   hutop <- pr[pr$nlpar == "hutop", ]
   expect_equal(hutop$lb, "0"); expect_equal(hutop$ub, "1")
-  # Both thresholds are built from the whole predictor, not just the part their
-  # own block was primed from, so the two entries are the same string. This
-  # predictor spans negative values, so both take the normal branch and neither
-  # is bounded: #393 removed the truncation to the tested range, and a logged
-  # concentration may legitimately be negative, so there is no distributional
-  # bound to keep either.
+  # Both threshold priors use the full predictor. Negative logged values select
+  # unbounded normal priors; the tested range supplies no truncation bounds.
   whole <- bayesnec:::predictor_prior(x)
   for (p in c("nec", "hunec")) {
     row <- pr[pr$nlpar == p, ]
@@ -247,7 +231,7 @@ test_that("hurdle mu priors are built from survivors, not from the zeros", {
   )
   expect_equal(hurdle$prior[hurdle$nlpar == "top"],
                survivors$prior[survivors$nlpar == "top"])
-  # and it must differ from the naive version that includes the zeros
+  # Including zeros would change the positive-component prior.
   with_zeros <- as.data.frame(
     bayesnec:::define_prior("nec3param", Gamma(link = "identity"), x, y + 1e-6)
   )
@@ -271,7 +255,6 @@ test_that("make_good_hurdle_inits returns both blocks per chain", {
   expect_length(inits, 2)
   expect_setequal(names(inits[[1]]),
                   c("b_top", "b_beta", "b_nec", "b_hutop", "b_hubeta", "b_hunec"))
-  # hu block is a probability
   expect_gte(inits[[1]]$b_hutop, 0)
   expect_lte(inits[[1]]$b_hutop, 1)
 })
@@ -289,10 +272,7 @@ test_that("wrangle_model_formula only adds a hu block for hurdle families", {
   expect_true(all(c("hutop", "hubeta", "hunec") %in% names(hurdle$pforms)))
 })
 
-# ---------------------------------------------------------------------------
-# zero_inflated_beta: the same two-block structure, brms just calls the second
-# block "zi" instead of "hu"
-# ---------------------------------------------------------------------------
+# zero_inflated_beta uses zi for the second block instead of hu.
 
 test_that("hurdle_dpar reports the name brms uses for the second block", {
   expect_equal(bayesnec:::hurdle_dpar("hurdle_gamma"), "hu")
@@ -328,9 +308,8 @@ test_that("hurdle_mu_family uses the mean link the caller chose", {
     )$link,
     "identity"
   )
-  # brms applies the inverse mean link to the whole non-linear expression, so
-  # under these links top and bot are on the log or logit scale and their
-  # priors have to be measured there. See #302.
+  # The inverse mean link applies to the whole curve, so top and bot priors
+  # must use the chosen log or logit scale.
   expect_equal(
     bayesnec:::hurdle_mu_family(
       brms::hurdle_gamma(link = "log", link_hu = "identity")
@@ -363,7 +342,7 @@ test_that("validate_family sets both identity links for zero_inflated_beta", {
 })
 
 test_that("validate_family names the right link argument in its error", {
-  # the guard must reference link_zi, not link_hu, for this family
+  # Name link_zi in this family’s refusal, not link_hu.
   expect_error(
     bayesnec:::validate_family(brms::zero_inflated_beta(link = "identity"),
                                link_source = "chosen"),
@@ -413,7 +392,6 @@ test_that("check_models keeps nechormepwr01 for zero_inflated_beta", {
   ))
   expect_true("nechormepwr01" %in% zib)
   expect_false("nechormepwr01" %in% hg)
-  # the linear-decay models go for both
   for (m in c("neclin", "neclinhorme", "ecxlin")) {
     expect_false(m %in% zib)
     expect_false(m %in% hg)
@@ -449,9 +427,7 @@ test_that("make_good_hurdle_inits uses the zi prefix", {
                   c("b_top", "b_beta", "b_nec", "b_zitop", "b_zibeta", "b_zinec"))
 })
 
-# ---------------------------------------------------------------------------
-# model_survival: a different equation on each of the two blocks
-# ---------------------------------------------------------------------------
+# model_survival selects a separate equation for the second block.
 
 test_that("wrangle_model_formula uses model_survival for the hu block", {
   dat <- data.frame(lx = as.numeric(1:10), y = c(rep(5, 8), 0, 0))
@@ -461,12 +437,10 @@ test_that("wrangle_model_formula uses model_survival for the hu block", {
     "nec3param", f, bdat, bayesnec:::validate_family("hurdle_gamma"),
     model_survival = "ecx4param"
   )
-  # response block keeps nec3param's parameters, hu block takes ecx4param's
   expect_true(all(c("top", "beta", "nec") %in% names(mixed$pforms)))
   expect_true(all(c("hutop", "hubot", "huec50", "hubeta") %in%
                     names(mixed$pforms)))
   expect_false("hunec" %in% names(mixed$pforms))
-  # and the block is still written as 1 - <declining equation>
   expect_true(grepl("^1 - ", deparse1(mixed$pforms$hu[[3]])))
 })
 
@@ -510,19 +484,17 @@ test_that("check_model_survival validates against the survival block", {
   expect_equal(
     bayesnec:::check_model_survival("ecx4param", hurdle_fam, bdat), "ecx4param"
   )
-  # only meaningful for a two-block family
   expect_error(
     bayesnec:::check_model_survival("ecx4param", Gamma(link = "identity"),
                                     bdat),
     "only applies to the two-block families"
   )
-  # a set is not accepted: averaging over both blocks means fitting every pair
+  # A set would require fitting and averaging every pair of equations.
   expect_error(
     bayesnec:::check_model_survival(c("nec3param", "ecx4param"), hurdle_fam,
                                     bdat),
     "must be a single model name"
   )
-  # the survival block is 0-1 bounded, so the linear models are not valid
   expect_error(
     suppressMessages(
       bayesnec:::check_model_survival("ecxlin", hurdle_fam, bdat)

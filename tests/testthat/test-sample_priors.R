@@ -1,7 +1,4 @@
-# #244: sample_priors() looks a prior's distribution name up in the same
-# hard-coded sampling table make_inits() uses, so any prior set containing a
-# constant() prior made the whole call error -- a user could not inspect the
-# prior set they had just written a fixed parameter into.
+# A constant prior must return its fixed value alongside draws from other priors.
 
 const_prior_set <- function(lb = c("", ""), ub = c("", "")) {
   data.frame(
@@ -17,7 +14,6 @@ test_that("sample_priors returns the fixed value for a constant prior", {
   expect_setequal(names(out), c("b_top", "b_bot"))
   expect_length(out$b_bot, 100)
   expect_true(all(out$b_bot == 0))
-  # the other parameters are still drawn from their own distributions
   expect_gt(length(unique(out$b_top)), 50)
 })
 
@@ -33,9 +29,7 @@ test_that("a constant prior does not stop the plot being drawn", {
   expect_s3_class(sample_priors(const_prior_set(), n_samples = 50), "ggplot")
 })
 
-# #244: plot = NA is documented as the option that returns the draws, but the
-# guard tested `!plot %in% c("ggplot", "base")`, and `NA %in% ...` is FALSE, so
-# the documented value was rejected and there was no route to the values at all.
+# plot = NA must return draws without opening a plotting device.
 
 test_that("plot = NA returns the draws rather than erroring", {
   out <- sample_priors(const_prior_set(), n_samples = 20, plot = NA)
@@ -49,8 +43,7 @@ test_that("plot still rejects a value that is neither NA nor a known option", {
     sample_priors(const_prior_set(), n_samples = 20, plot = "nonsense"),
     "plot must be NA"
   )
-  # NULL and a length-2 value reached `if` with something that is not a single
-  # TRUE/FALSE, and failed with an R internals message rather than this one.
+  # Reject non-scalar options before they reach an if condition.
   expect_error(
     sample_priors(const_prior_set(), n_samples = 20, plot = NULL),
     "plot must be NA"
@@ -62,10 +55,7 @@ test_that("plot still rejects a value that is neither NA nor a known option", {
   )
 })
 
-# #302: the sampling table was written out at each of the three places that
-# needed it, so a distribution present at one was absent at the others, and an
-# unrecognised name reached fcts[[dist]](...) as NULL and failed with "attempt
-# to apply non-function", naming neither the prior nor the distribution.
+# Sampling and initialisation must recognise the same prior distributions.
 
 test_that("lognormal priors can be sampled and drawn from", {
   ps <- data.frame(
@@ -77,7 +67,6 @@ test_that("lognormal priors can be sampled and drawn from", {
   out <- sample_priors(ps, n_samples = 200, plot = NA)
   expect_setequal(names(out), c("b_top", "b_nec"))
   expect_length(out$b_nec, 200)
-  # a lognormal is strictly positive, and the bounds are respected
   expect_true(all(out$b_nec > 0 & out$b_nec <= 10))
 })
 

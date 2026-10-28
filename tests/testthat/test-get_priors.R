@@ -11,15 +11,9 @@ test_that("get_priors returns only what bnec accepts back", {
   expect_false("sigma" %in% out$class)
   # An absent bound is NA, as define_prior() writes it, not "".
   expect_true(all(is.na(out$lb[out$nlpar != "nec"])))
-  # A bound the stored fit holds is returned unchanged. Read off that fit rather
-  # than asserted to be present, because the default nec prior is no longer
-  # truncated to the tested range (#393) and this fixture was fitted before that
-  # change; the property under test is the round trip, not which bounds a
-  # current default would set. The comparison is against the fit's bounds put
-  # through blank_bounds_to_na(), because a brmsfit writes an absent bound as ""
-  # and usable_prior() rewrites it to NA, which is the whole of this test's
-  # first assertion above; comparing the raw forms would fail on a rebuilt
-  # fixture for a difference the package makes on purpose.
+  # Compare stored bounds after converting absent bounds from empty strings
+  # to NA. This tests the round trip without assuming that the fixture uses
+  # the current default priors.
   stored <- as.data.frame(nec4param$fit$prior)
   stored <- bayesnec:::blank_bounds_to_na(stored)
   stored <- stored[stored$class == "b" & stored$nlpar == "nec" &
@@ -27,10 +21,7 @@ test_that("get_priors returns only what bnec accepts back", {
   expect_equal(nrow(stored), 1L)
   expect_equal(out$lb[out$nlpar == "nec"], stored$lb)
   expect_equal(out$ub[out$nlpar == "nec"], stored$ub)
-  # Not vacuous: this fixture predates #302 and still holds a two-sided gamma
-  # entry, so at least one of the two bounds is a number rather than NA. A
-  # fixture rebuilt on this branch would hold lb = 0 and ub = NA and still
-  # satisfy it.
+  # Require at least one bound so the round-trip assertion is not vacuous.
   expect_false(all(is.na(c(stored$lb, stored$ub))))
 })
 
@@ -48,7 +39,6 @@ test_that("get_priors builds priors from a formula and data without fitting", {
                     family = gaussian())
   expect_s3_class(out, "brmsprior")
   expect_setequal(out$nlpar, c("top", "bot", "beta", "nec"))
-  # The three ways of naming a formula agree.
   expect_equal(
     out,
     get_priors(bnf(y ~ crf(x, "nec4param")), data = nec_data,
@@ -59,19 +49,16 @@ test_that("get_priors builds priors from a formula and data without fitting", {
     get_priors("y ~ crf(x, \"nec4param\")", data = nec_data,
                family = gaussian())
   )
-  # A model set comes back named, as bnec expects a named prior list.
+  # Model sets need named prior lists for bnec().
   many <- get_priors(bnf(y ~ crf(x, c("nec4param", "ecx4param"))),
                      data = nec_data, family = gaussian())
   expect_named(many, c("nec4param", "ecx4param"))
-  # The family is chosen from the data when not supplied, exactly as bnec does.
   expect_s3_class(get_priors(y ~ crf(x, "nec4param"), data = nec_data),
                   "brmsprior")
 })
 
 test_that("nec3param under gaussian now returns priors (#206)", {
-  # The exclusion this replaces refused every zero-bounded equation for a
-  # gaussian response, so the package's namesake equation could not be fitted
-  # to the growth-rate data OECD TG 201 recommends it for.
+  # An identity-link Gaussian fit can use a zero-bounded curve.
   out <- suppressMessages(
     get_priors(y ~ crf(x, "nec3param"), data = nec_data, family = gaussian())
   )
@@ -83,11 +70,8 @@ test_that("get_priors rejects what it cannot build priors from", {
   expect_error(get_priors(y ~ crf(x, "nec4param")), "`data` is required")
   expect_error(get_priors(1:3), "fitted by bnec")
   expect_error(get_priors(list()), "fitted by bnec")
-  # A model invalid for the family is dropped, as it is at fit time. nec3param
-  # under gaussian is no longer one: #206 removed that exclusion, so this uses
-  # a case the rule still covers -- a zero-bounded equation under a log link,
-  # where the mean cannot produce the negative values the linear predictor
-  # needs.
+  # A zero-bounded curve cannot span the negative linear predictor required
+  # by these positive responses under a log link.
   expect_error(
     get_priors(y ~ crf(x, "nec3param"), data = nec_data,
                family = gaussian(link = "log")) |> suppressMessages(),
@@ -96,11 +80,8 @@ test_that("get_priors rejects what it cannot build priors from", {
 })
 
 test_that("a disp variance function's priors come back with the curve's", {
-  # bnec() takes a supplied prior whole, so a set returned without the
-  # parameters a route B disp term adds would leave brms to put a flat prior on
-  # each -- which define_disp_prior() exists to avoid, c0 and the slope being
-  # near-confounded without it. They are part of the model's own non-linear
-  # formula and must round trip with the rest.
+  # Include the variance-function coefficients in the returned prior set.
+  # Omitting them lets brms use flat priors on nearly confounded parameters.
   out <- get_priors(y ~ crf(x, "nec4param") + disp("power"), data = nec_data,
                     family = gaussian())
   expect_setequal(out$nlpar, c("top", "bot", "beta", "nec", "c0", "c1"))
@@ -127,10 +108,8 @@ test_that("get_priors reports the range of the disp() exponent (#472)", {
 })
 
 test_that("the fit entry point keeps disp parameters and drops brms defaults", {
-  # The stored form of a fitted route B model: bayesnec's own rows, the
-  # vectorized duplicates brms adds, and a default brms would have chosen.
-  # Asserted on the stored object rather than on a fit so that the filter is
-  # covered without paying for a disp model to be compiled and sampled.
+  # Construct the stored prior table directly to test filtering of brms
+  # defaults and vectorised duplicates without compiling a dispersion model.
   stored <- data.frame(
     prior = c("normal(0, 5)", "normal(0, 5)", "normal(-1.515, 2)",
               "normal(-1.515, 2)", "normal(0, 2)", "normal(0, 2)",
@@ -160,23 +139,19 @@ test_that("get_priors splits the two components of a hurdle fit", {
 })
 
 test_that("a blank prior bound is read as absent", {
-  # brms records an absent bound as "" in the prior a fitted object carries,
-  # where define_prior() and brms::prior() write NA. All mean unbounded; before
-  # this the "" form took a different path through make_inits() and errored
-  # with "missing value where TRUE/FALSE needed".
+  # brms stores an absent bound as an empty string; prior construction uses
+  # NA. Both representations must be treated as unbounded.
   pr <- data.frame(prior = "normal(0, 1)", class = "b", nlpar = "top",
                    lb = "", ub = "", stringsAsFactors = FALSE)
   out <- bayesnec:::blank_bounds_to_na(pr)
   expect_true(is.na(out$lb))
   expect_true(is.na(out$ub))
-  # An existing bound and an existing NA are both left alone.
   pr2 <- data.frame(prior = "gamma(5, 2)", class = "b", nlpar = "nec",
                     lb = "0.1", ub = NA_character_, stringsAsFactors = FALSE)
   out2 <- bayesnec:::blank_bounds_to_na(pr2)
   expect_equal(out2$lb, "0.1")
   expect_true(is.na(out2$ub))
-  # And a prior carrying blank bounds -- the form a fitted object stores --
-  # now produces inits rather than erroring.
+  # Initialisation must also accept the stored empty-string representation.
   stored <- data.frame(
     prior = c("normal(1, 1)", "normal(0, 5)", "normal(0.5, 1)", "gamma(5, 2)"),
     class = "b", coef = "", group = "", resp = "", dpar = "",
@@ -208,11 +183,8 @@ test_that("get_priors round trips through bnec", {
   from_fit <- get_priors(fit)
   from_data <- get_priors(y ~ crf(x, "nec4param"), data = nec_data,
                           family = gaussian())
-  # With no user override the two entry points answer the same question the
-  # same way. This is what makes the formula-and-data form a usable preview.
   expect_equal(ord(from_fit), ord(from_data))
-  # The round trip is the point of the issue: a returned object that looks
-  # right but is not accepted by bnec(prior = ) would fail it.
+  # Pass the returned object back to bnec() to check usability, not just shape.
   again <- bnec(y ~ crf(x, "nec4param"), data = nec_data, family = gaussian(),
                 prior = from_fit, iter = 400, warmup = 200, chains = 2,
                 seed = 141, refresh = 0) |>
@@ -220,8 +192,7 @@ test_that("get_priors round trips through bnec", {
     suppressWarnings()
   expect_s3_class(again, "bayesnecfit")
   expect_equal(ord(get_priors(again)), ord(from_fit))
-  # pull_prior(), by contrast, returns the whole brmsprior a fit carries and is
-  # not accepted -- the difference the two functions exist to keep straight.
+  # pull_prior() exposes the full brms table, including rows bnec() cannot reuse.
   whole <- pull_prior(fit)[[1]]
   expect_gt(nrow(whole), nrow(from_fit))
   expect_true("sigma" %in% whole$class)
@@ -239,9 +210,7 @@ test_that("get_priors honours an explicit predictor scale (#317)", {
 
   expect_match(auto_nec, "^lognormal\\(")
   expect_match(log_nec, "^normal\\(")
-  # Neither branch is truncated to the tested range (#393), and the normal
-  # branch takes no lower bound either, because a logged concentration may
-  # legitimately be negative.
+  # The logged normal prior has no bounds; logged concentrations may be negative.
   expect_true(is.na(logged$lb[logged$nlpar == "nec"]))
   expect_true(is.na(logged$ub[logged$nlpar == "nec"]))
   expect_equal(as.numeric(automatic$lb[automatic$nlpar == "nec"]), 0)
@@ -259,19 +228,15 @@ test_that("a user prior makes the two entry points disagree", {
     suppressMessages() |>
     suppressWarnings()
   got <- get_priors(fit)
-  # The fit reports what it used, override included ...
   expect_equal(got$prior[got$nlpar == "top"], "normal(0.8, 0.2)")
-  # ... which is no longer what the defaults would generate.
   generated <- get_priors(y ~ crf(x, "nec4param"), data = nec_data,
                           family = gaussian())
   expect_false(identical(sort(got$prior), sort(generated$prior)))
 })
 
-# #231: `zi` is a genuine class-"zi" brms parameter for the zero-inflated COUNT
-# families, which bayesnec fits as a single block -- unlike hurdle_gamma and
-# zero_inflated_beta, whose second block carries class "b" with a prefixed
-# nlpar. usable_prior() dropped it, so get_priors() reported a set that was
-# silently incomplete for the one parameter those families exist to estimate.
+# For zero-inflated counts, retain a user prior on brms class zi. The
+# factorised hurdle and zero-inflated-beta curves instead use class b
+# with prefixed parameter names.
 
 test_that("a user prior on zi round trips for a zero-inflated count family", {
   set.seed(1)
@@ -283,13 +248,12 @@ test_that("a user prior on zi round trips for a zero-inflated count family", {
   out <- bayesnec:::usable_prior(with_zi)
   expect_true("zi" %in% out$class)
   expect_identical(out$prior[out$class == "zi"], "beta(2, 5)")
-  # the curve's own rows are untouched
   expect_setequal(out$nlpar[out$class == "b"], c("beta", "top", "bot", "nec"))
 })
 
 test_that("a brms default on zi is still dropped", {
-  # source == "user" is what keeps this safe: reporting a prior brms chose for
-  # itself would suggest bayesnec had made a choice it did not make.
+  # Keep only user rows so the output does not imply that bayesnec chose
+  # a brms default.
   pr <- data.frame(prior = c("normal(0, 5)", "beta(1, 1)"),
                    class = c("b", "zi"), coef = "", group = "", resp = "",
                    dpar = "", nlpar = c("beta", ""), lb = NA_character_,
@@ -316,10 +280,8 @@ test_that("a zi prior does not disturb the initial-value search", {
 })
 
 test_that("the two-block families are unaffected", {
-  # zero_inflated_beta carries its second block as class "b" with a prefixed
-  # nlpar, so adding "zi" to the kept classes is a no-op there rather than a
-  # conflict. Asserted so the no-op claim in auxiliary_classes() is not just an
-  # assertion in a comment.
+  # The zero-inflated-beta second block already uses class b and prefixed
+  # parameter names; retaining class zi must not change it.
   pr <- data.frame(prior = rep("normal(0, 5)", 3), class = "b", coef = "",
                    group = "", resp = "", dpar = "",
                    nlpar = c("top", "zitop", "zinec"), lb = NA_character_,
@@ -330,16 +292,12 @@ test_that("the two-block families are unaffected", {
   expect_setequal(out$nlpar, c("top", "zitop", "zinec"))
 })
 
-# --- #245: a group-level sd row is part of the record ------------------------
-# bayesnec now generates an sd prior, so leaving it out of usable_prior() would
-# make get_priors() a record of everything except the parameter a grouped model
-# is hardest to get right -- the same reasoning #207 and #231 applied to the
-# dispersion and mixing parameters.
+# The returned prior set must include the group-level standard deviation.
 
 test_that("a group-level sd prior round trips", {
   set.seed(245)
   x <- as.numeric(rep(1:10, each = 5))
-  # declining, so check_data() has no cause to warn about the direction
+  # Use a declining response to avoid a direction warning in this prior test.
   y <- plogis(2 - 0.4 * x + rnorm(50, 0, 0.2))
   d <- data.frame(x = x, y = y, tank = factor(rep(1:10, 5)))
   gp <- suppressMessages(
@@ -351,14 +309,12 @@ test_that("a group-level sd prior round trips", {
   expect_true("sd" %in% out$class)
   expect_identical(out$prior[out$class == "sd"],
                    gp$prior[gp$class == "sd"])
-  # the curve's own rows, and the ogl offset, come back untouched
   expect_setequal(out$nlpar[out$class == "b"],
                   c("beta", "top", "bot", "nec", "ogl"))
 })
 
 test_that("a brms default on sd is still dropped", {
-  # As for zi: reporting a prior brms chose for itself would suggest bayesnec
-  # had made a choice it did not make. This is the row the bug left behind.
+  # A brms default must not be reported as a bayesnec prior choice.
   pr <- data.frame(prior = c("normal(0, 5)", "student_t(3, 0, 2.5)"),
                    class = c("b", "sd"), coef = "", group = c("", "tank"),
                    resp = "", dpar = "", nlpar = c("beta", "ogl"),
@@ -369,12 +325,8 @@ test_that("a brms default on sd is still dropped", {
 })
 
 test_that("nec is bounded by the support of its prior, not by the series", {
-  # The bound a user sees. lb comes from the lognormal, which has zero density
-  # below zero, and not from min(x): earlier versions returned lb = 0.1 because
-  # the zero control had been replaced before the prior was built, and then
-  # lb = 0 from the recorded minimum (#269, #302). There is no upper bound,
-  # because truncating at max(x) put a threshold above the highest concentration
-  # tested outside the prior support rather than in its tail (#393).
+  # The lognormal support sets lb = 0 regardless of the lowest tested dose.
+  # An upper bound at the highest dose would wrongly exclude higher thresholds.
   d <- data.frame(x = rep(c(0, 1, 10, 100), each = 5),
                   y = rep(c(8, 6, 3, 1), each = 5))
   pr <- suppressMessages(
@@ -384,8 +336,7 @@ test_that("nec is bounded by the support of its prior, not by the series", {
   expect_match(pr$prior[pr$nlpar == "nec"], "^lognormal\\(")
   expect_equal(as.numeric(pr$lb[pr$nlpar == "nec"]), 0)
   expect_true(is.na(pr$ub[pr$nlpar == "nec"]))
-  # A design with no zero control takes the same bound, so the lower end is not
-  # a restatement of min(x) under another name.
+  # Omit a zero control to distinguish distributional support from min(x).
   d2 <- data.frame(x = rep(c(1, 10, 100), each = 5),
                    y = rep(c(8, 3, 1), each = 5))
   pr2 <- suppressMessages(
@@ -397,12 +348,8 @@ test_that("nec is bounded by the support of its prior, not by the series", {
 })
 
 test_that("get_priors reports the substitution its priors are built from", {
-  # check_data() can shift the response off a boundary before the prior is
-  # derived from it, and every prior this function returns is derived from that
-  # response. The messages were moved out of check_data() so that a model set
-  # would not repeat them once per member; without a call at this entry point
-  # that made the route silent, where it previously reported the Gamma
-  # correction. See #93 and D16.
+  # Report response substitutions at this entry point before returning priors
+  # derived from the substituted response.
   d <- data.frame(x = rep(c(0, 1, 10, 100), each = 5),
                   y = rep(c(8, 6, 3, 0), each = 5))
   expect_message(
@@ -417,16 +364,13 @@ test_that("get_priors reports the substitution its priors are built from", {
     type = "message"
   )
   expect_equal(sum(grepl("have been shifted", msgs)), 1)
-  # And it does not point the user at ?bnec_record, which names something this
-  # call does not produce.
+  # This route produces priors, not a bnec_record.
   expect_false(any(grepl("bnec_record", msgs)))
   expect_true(any(grepl("priors below are derived", msgs)))
 })
 
 test_that("a response at one bound is refused by name, not by quantile() (#400)", {
-  # The route the default-prior audit of #391 reached the defect by: nine
-  # bernoulli cells ended in "missing values and NaN's not allowed if 'na.rm'
-  # is FALSE", raised from inside define_prior().
+  # Refuse an all-bound response before prior construction reaches NaN quantiles.
   cases <- at_bound_cases()
   for (nm in names(cases)) {
     cs <- cases[[nm]]
@@ -451,16 +395,13 @@ test_that("a response at one bound is refused by name, not by quantile() (#400)"
 })
 
 test_that("ecxflat named alone gets its prior at a bound (#419)", {
-  # A curve equation has no prior to give on such a response, and the set
-  # above is refused for that reason. ecxflat has one parameter, the level of
-  # the response, and its prior is built without reaching the NaN of #400:
-  # response_link_scale() shifts the response inside the support first.
+  # ecxflat has a single level parameter. Shifting the response inside support
+  # lets its prior be built even where a curve prior is undefined.
   cases <- at_bound_cases()
   for (nm in setdiff(names(cases), at_bound_refused)) {
     cs <- cases[[nm]]
     f <- stats::update(cs$formula, . ~ crf(x, "ecxflat"))
-    # A zero_inflated_beta fit has a second block, whose ecxflat is the
-    # proportion of observations above zero (#441).
+    # The zero-inflated-beta second block describes the proportion above zero.
     pars <- if (cs$family == "zero_inflated_beta") c("top", "zitop") else "top"
     for (type in c("uninformative", "regularizing")) {
       pr <- suppressMessages(
@@ -491,7 +432,7 @@ test_that("ecxflat named alone gets its prior at a bound (#419)", {
                                 family = bz$family)),
     "A beta distribution cannot represent a zero", fixed = TRUE
   )
-  # Nor can zero_inflated_beta at 0, whose beta block has no data (#441).
+  # An all-zero response leaves no data for the positive Beta block.
   zz <- cases$zib_zero
   expect_error(
     suppressMessages(get_priors(cover ~ crf(x, "ecxflat"), data = zz$data,
@@ -507,10 +448,8 @@ test_that("ecxflat named alone gets its prior at a bound (#419)", {
 })
 
 test_that("a zero_inflated_beta response of 0 is refused without a warning (#441)", {
-  # It reached prior construction, where min() over the observations above
-  # zero, of which there are none, warned "no non-missing arguments to min;
-  # returning Inf" and the priors were returned. The refusal names the family
-  # and the cause, and is raised before anything reads the response.
+  # Refuse an all-zero zero-inflated-beta response before a positive-subset
+  # minimum can warn and prior construction continues.
   zz <- at_bound_cases()$zib_zero
   for (f in list(zz$formula, cover ~ crf(x, "ecxflat"))) {
     err <- NULL
@@ -544,9 +483,8 @@ test_that("one observation off the bound still builds priors (#400)", {
 })
 
 test_that("a missing value is refused before the bound is read (#400)", {
-  # The model frame drops an incomplete row. Read before check_complete_cases(),
-  # the bound check saw a response whose only 0 had been dropped with its
-  # missing predictor, and refused it as every value 1.
+  # Check missing values first: model.frame() can drop the only zero with a
+  # missing predictor and make an incomplete response appear to be all ones.
   x <- rep(c(0.1, 0.5, 1, 3, 10, 30), each = 5)
   d <- data.frame(x = x, alive = 1L)
   d$alive[30] <- 0L
@@ -559,9 +497,7 @@ test_that("a missing value is refused before the bound is read (#400)", {
 })
 
 test_that("a binomial formula with no trials() term is refused by name (#442)", {
-  # The check_data() call for the first equation stopped the call on
-  # "subscript out of bounds". The refusal is now raised with the family, before
-  # that call: check_data() is replaced so that reaching it fails the test.
+  # Mock check_data() to ensure the missing-trials refusal occurs before it.
   local_mocked_bindings(
     check_data = function(...) stop("check_data reached"),
     .package = "bayesnec"
@@ -590,7 +526,6 @@ test_that("a binomial formula with a trials() term still returns priors (#442)",
   }
 })
 
-# ---- a disp() term checked against the family ------------------------------
 
 # The message bnec() refuses the call with. The fit is mocked, so nothing is
 # fitted if bnec() accepts the call.

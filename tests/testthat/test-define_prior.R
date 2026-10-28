@@ -102,13 +102,8 @@ test_that("prior_type selects between default prior sets", {
                    paste0("normal(", quantile(resp, 0.9), ", ", sd(resp) * 2.5, ")"))
   expect_identical(unin$prior[unin$nlpar == "bot"],
                    paste0("normal(", quantile(resp, 0.1), ", ", sd(resp) * 2.5, ")"))
-  # regularizing places top at the mean response over the lowest predictor
-  # values and bot at the mean over the highest, and takes regularizing_factor
-  # of the uninformative spread. On this branch the normal's location parameter
-  # is its mode as well as its mean, so no solving is involved (#305). A
-  # replicated design is used so the extreme group is a whole dose group, and
-  # the response is ordered against it so the expected values can be written
-  # out rather than recovered from the function under test.
+  # Use complete, constant dose groups so the endpoint locations are known
+  # independently of the function under test. Normal location equals its mode.
   x_rep <- as.numeric(rep(1:10, each = 10))
   y_rep <- as.numeric(rep(seq(100, 10, length.out = 10), each = 10))
   reg_rep <- define_prior("nec4param", gaussian(), x_rep, y_rep,
@@ -125,8 +120,7 @@ test_that("prior_type selects between default prior sets", {
                    paste0("normal(10, ",
                           bayesnec:::regularizing_factor * sd(y_rep) * 2.5, ")"))
   expect_false(identical(unin$prior, regu$prior))
-  # beta-family entries differ between sets, and the regularizing one now reads
-  # the response rather than being a second constant (#305).
+  # The regularizing beta prior reads the response.
   rb <- rbeta(100, 1, 5)
   unin_b <- define_prior("nec4param", Beta(link = "identity"), pred_a, rb,
                          prior_type = "uninformative")
@@ -140,11 +134,7 @@ test_that("prior_type selects between default prior sets", {
                             prior_type = "nonsense"))
 })
 
-# #210: the `top` and `bot` gamma rates are set from quantiles of the response.
-# Where a large share of the response is exactly zero those quantiles are zero
-# and the rate either collapses onto the fudge term or divides by zero. These
-# tests assert the priors stay finite and stay on the scale of the data, at the
-# zero fractions the issue names.
+# Zero-heavy responses must yield finite priors on the data scale.
 
 # Helper: a nec4param-shaped count response with a true lower asymptote of 5,
 # zero-inflated at rate `1 - p`. Seeded inside so each call is reproducible
@@ -165,9 +155,7 @@ gamma_rate <- function(prior_df, par) {
 
 test_that("top and bot priors stay finite across zero fractions", {
   fam <- validate_family("zero_inflated_poisson")
-  # 30%, 50% and 80% zeros: the issue's three regimes, spanning the 25%
-  # threshold where `bot` used to collapse and the 75% one where `top` became
-  # gamma(2, Inf).
+  # Cross both zero fractions at which raw response quartiles collapse.
   for (p in c(0.7, 0.5, 0.2)) {
     d <- zi_response(p)
     for (type in c("uninformative", "regularizing")) {
@@ -183,10 +171,7 @@ test_that("top and bot priors stay finite across zero fractions", {
 })
 
 test_that("bot is not pinned at zero once a quarter of the response is zero", {
-  # The specific failure in #210: at zi = 0.30 the prior mean for `bot` was
-  # 0.03 against a true lower asymptote of 5. Asserted as an order-of-magnitude
-  # sanity bound rather than a pinned constant -- the point is that the prior
-  # is on the scale of the data, not that it takes any particular value.
+  # Check the scale against the generating bot, without pinning a prior mean.
   d <- zi_response(0.7)
   expect_gt(mean(d$y == 0), 0.25)
   pr <- define_prior("nec4param", validate_family("zero_inflated_poisson"),
@@ -196,11 +181,9 @@ test_that("bot is not pinned at zero once a quarter of the response is zero", {
 })
 
 test_that("regularizing stays on the scale of the data for a single zero", {
-  # Under prior_type = "regularizing" the location was quantile(response, 0) --
-  # the minimum -- so a single zero was enough to collapse it. The location is
-  # now read from the observations at the highest concentration (#305) and the
-  # spread still passes through positive_scale(), so this asserts what it
-  # always asserted: that one zero does not put the rate at zero or infinity.
+  # A single zero must not collapse the regularizing rate. The location
+  # comes from the highest-concentration observations and the spread uses
+  # positive_scale().
   set.seed(42)
   x <- as.numeric(rep(1:10, each = 5))
   y <- as.numeric(rpois(length(x), 20))
@@ -213,9 +196,7 @@ test_that("regularizing stays on the scale of the data for a single zero", {
 })
 
 test_that("a response with no zeros is left alone", {
-  # The guard must not move priors for the ordinary case. Compared against the
-  # same response with the guard bypassed, i.e. the raw quantile, which for a
-  # strictly positive response is what positive_scale() returns anyway.
+  # A positive response must retain its raw quantile.
   set.seed(7)
   x <- as.numeric(rep(1:10, each = 5))
   y <- as.numeric(rpois(length(x), 20)) + 1
@@ -227,9 +208,7 @@ test_that("a response with no zeros is left alone", {
 })
 
 test_that("an all-zero response errors rather than returning a broken prior", {
-  # Edge case: there is no scale to put top and bot on. Erroring names the
-  # problem; the previous behaviour was gamma(2, Inf), which brms would have
-  # rejected far downstream with a much less useful message.
+  # An all-zero count response supplies no scale for the gamma prior.
   x <- as.numeric(rep(1:10, each = 5))
   expect_error(
     define_prior("nec4param", validate_family("zero_inflated_poisson"),
@@ -239,23 +218,17 @@ test_that("an all-zero response errors rather than returning a broken prior", {
 })
 
 test_that("response_link_scale does not warn on an all-zero response", {
-  # response_link_scale() computed min(response[response > 0]) eagerly, so an
-  # all-zero response warned even though the value is never used for an
-  # identity-link count family. Surfaced by the test above.
+  # Do not evaluate a minimum positive response when this family does not need it.
   expect_silent(
     bayesnec:::response_link_scale(rep(0, 20),
                                    validate_family("zero_inflated_poisson"))
   )
 })
 
-# #229: the #210 guard was evaluated for every family, not only the ones whose
-# priors use it, so a response with no positive values errored even where the
-# family's own top/bot priors are perfectly well defined on it.
+# Do not evaluate gamma scales for families whose priors do not use them.
 
 test_that("a gaussian response with no positive values still builds priors", {
-  # Ordinary gaussian input: log ratios, growth increments, anything expressed
-  # as a change. The gaussian entries in the prior tables come from quantile()
-  # and sd() and never read the gamma-scaled strings.
+  # Negative Gaussian responses have valid quantile and standard-deviation priors.
   set.seed(1)
   x <- as.numeric(rep(1:10, each = 5))
   y <- -rexp(50, 1) - 0.5
@@ -288,8 +261,7 @@ test_that("the bounded families are unaffected by zeros in the response", {
 })
 
 test_that("the count families still error when there is no scale to use", {
-  # The #210 behaviour must survive: for these three the gamma rate genuinely
-  # cannot be placed, so the informative error is still the right answer.
+  # Count priors still require a positive response scale.
   x <- as.numeric(rep(1:10, each = 5))
   for (fam in c("poisson", "negbinomial", "zero_inflated_poisson")) {
     expect_error(
@@ -301,20 +273,15 @@ test_that("the count families still error when there is no scale to use", {
 })
 
 test_that("a supplied prior is not blocked by an unbuildable default", {
-  # #207 made add_brm_defaults() build the defaults unconditionally, so a
-  # failure inside define_prior() became a hard stop even for a user who had
-  # supplied a complete set of their own. An all-zero poisson response is the
-  # case that reaches it.
+  # A complete supplied prior must bypass an unbuildable default.
   x <- as.numeric(rep(1:10, each = 5))
   y <- rep(0, length(x))
   up <- brms::prior_string("normal(0, 5)", nlpar = "beta") +
     brms::prior_string("gamma(2, 0.1)", nlpar = "top", lb = 0) +
     brms::prior_string("gamma(2, 0.5)", nlpar = "bot", lb = 0) +
     brms::prior_string("gamma(5, 0.36)", nlpar = "nec", lb = 1, ub = 10)
-  # `init` is supplied so the initial-value search is skipped. It is not being
-  # avoided for speed: on an all-zero response no draw can put the curve inside
-  # the response range, so make_good_inits() retries until it gives up, and this
-  # test is about prior construction, not about inits.
+  # Supply init: the all-zero response gives the search no usable response
+  # band, and this test concerns prior construction.
   out <- suppressMessages(
     bayesnec:::add_brm_defaults(list(prior = up, init = "random"), "nec4param",
                                validate_family("poisson"), x, y,
@@ -324,11 +291,8 @@ test_that("a supplied prior is not blocked by an unbuildable default", {
   expect_setequal(out$prior$nlpar, c("beta", "top", "bot", "nec"))
 })
 
-# #232: the #210 guard fired only on an exactly-zero quantile, while the
-# collapse it fixes is continuous. These tests constrain the prior to be on the
-# scale of the data across the whole zero-fraction range, which is what the
-# #210 tests above do not do -- they assert only that the rate is finite and
-# positive, and pass just as well on a prior centred at a sixth of the truth.
+# Finiteness alone misses priors far below the data scale. Check the
+# whole zero-fraction range, including just below a raw-quantile collapse.
 
 test_that("the top prior stays on the scale of the data at every zero fraction", {
   x <- as.numeric(rep(1:10, each = 15))
@@ -343,9 +307,7 @@ test_that("the top prior stays on the scale of the data at every zero fraction",
     y <- as.numeric(rpois(length(x), mu) * rbinom(length(x), 1, p))
     pr <- define_prior("nec4param", fam, x, y)
     top_mean <- 2 / gamma_rate(pr, "top")
-    # Within a factor of three of the true upper asymptote, both ways. Before
-    # #232 the worst case -- just under 75% zeros, where the guard did not fire
-    # -- was 6.8 against a true 40, which is outside this by a wide margin.
+    # Require the prior mean to remain within a factor of three of the true top.
     expect_gt(top_mean, 40 / 3)
     expect_lt(top_mean, 40 * 3)
   }
@@ -378,9 +340,7 @@ test_that("the rescaled level is the conditional quantile, not its inverse", {
 })
 
 test_that("the rescaling degrades smoothly rather than in a jump", {
-  # The specific defect: the old guard was a step function, so the prior was at
-  # its worst immediately below the threshold and recovered discontinuously
-  # above it. Asserted as monotone-ish stability rather than a pinned value.
+  # Check stability across the old guard threshold without pinning a value.
   x <- as.numeric(rep(1:10, each = 15))
   mu <- 40 * exp(-0.35 * pmax(x - 2, 0)) + 5
   scales <- vapply(c(0.5, 0.4, 0.35, 0.3, 0.28, 0.26, 0.24, 0.2), function(p) {
@@ -388,19 +348,14 @@ test_that("the rescaling degrades smoothly rather than in a jump", {
     y <- as.numeric(rpois(length(x), mu) * rbinom(length(x), 1, p))
     bayesnec:::positive_scale(y, 0.75)
   }, numeric(1))
-  # no adjacent pair differs by more than a factor of two; the old guard's
-  # threshold crossing was a factor of four in one step (6.75 -> 29)
+  # No adjacent pair may differ by more than a factor of two.
   expect_true(all(scales > 0))
   ratios <- scales[-1] / scales[-length(scales)]
   expect_true(all(ratios > 0.5 & ratios < 2))
 })
 
-# --- #245: priors for the parameters a group-level term introduces -----------
-# Without these, a group-level standard deviation falls through to the brms
-# default student_t(3, 0, 2.5). Under the identity link bnec() forces, an offset
-# at that scale puts a bounded mean outside its support and the fit cannot
-# initialise. The tests below pin the scale, not just the presence of a row:
-# a row carrying the wrong scale would pass a presence check and still fail.
+# Check group-prior scales as well as row presence: an oversized deviation
+# can put an identity-link bounded mean outside support.
 
 test_that("parse_group_terms describes each accepted group-level form", {
   f_none <- bayesnecformula(y ~ crf(x, "nec4param"))
@@ -452,10 +407,8 @@ test_that("a group-level sd prior is scaled to the parameter it belongs to", {
 })
 
 test_that("the ogl intercept is given a zero-centred prior of its own", {
-  # ogl enters as an offset on the whole curve, so its population intercept is
-  # confounded with top and bot: a constant added to ogl comes back out of
-  # them with no change to the likelihood. brms leaves such a parameter flat,
-  # so centring it at zero is what identifies the decomposition.
+  # The ogl intercept is confounded with a constant shift in top and bot.
+  # A zero-centred prior anchors that decomposition.
   set.seed(245)
   x <- runif(100, 0, 10)
   y <- runif(100, 0.1, 0.9)
@@ -493,9 +446,7 @@ test_that("no group-level term leaves the prior set untouched", {
 })
 
 test_that("a hurdle family gets group-level priors too", {
-  # define_prior() returns early for a hurdle family, so without handling the
-  # group priors there as well the hurdle families kept the whole of #245 --
-  # which is exactly the fit vignette("example8") part 3 needs.
+  # The early hurdle return must also construct group-level priors.
   set.seed(245)
   x <- rep(seq(0, 4, length.out = 20), 4)
   y <- c(rep(0, 20), rgamma(60, 2, 1))
@@ -508,12 +459,8 @@ test_that("a hurdle family gets group-level priors too", {
   # both blocks' own parameters are still there and untouched
   expect_true(all(c("top", "beta", "nec", "hutop", "hubeta", "hunec") %in%
                     pr$nlpar))
-  # Scaled from the survivors, not from the whole response including the
-  # structural zeros -- and then converted onto the scale the deviation is
-  # applied on. The mu block of hurdle_gamma is (0, Inf), so #257 applies the
-  # deviation multiplicatively and the width is the delta-method log-scale
-  # conversion s_y / mean(y), capped at a coefficient of variation of 1,
-  # rather than the response-scale s_y this used to assert.
+  # Scale from survivors only, then convert to the multiplicative deviation
+  # scale: s_y / mean(y), capped at a coefficient of variation of 1.
   surv <- y[y > 0]
   s_y <- diff(range(surv)) / 10
   expected <- signif(min(s_y / mean(surv), 1), 4)
@@ -529,15 +476,8 @@ test_that("a hurdle family gets group-level priors too", {
 })
 
 test_that("a hurdle mu block on a non-identity link is given link-scale priors", {
-  # brms applies the inverse mean link to the whole non-linear expression, so
-  # under a log or logit mean link the mu block's top and bot are on that link
-  # scale. define_prior() takes the unbounded normal entries for such a fit --
-  # what Fisher et al. (2024) describe for any link mapping to the whole real
-  # line -- and the hurdle route now does the same. Previously the mu family
-  # was rebuilt on the identity link, so zero_inflated_beta(link = "logit")
-  # returned beta(5, 2) bounded to [0, 1] for a top whose value on the logit
-  # scale is outside that interval whenever the response plateau exceeds 0.73.
-  # See #302.
+  # brms applies the inverse mean link to the whole curve. A log or logit
+  # mu link therefore needs link-scale top and bot priors in the hurdle route.
   set.seed(302)
   x <- rep(seq(0, 4, length.out = 10), 6)
   y <- rbeta(60, 6, 2) * rbinom(60, 1, 0.8)
@@ -566,9 +506,7 @@ test_that("a hurdle mu block on a non-identity link is given link-scale priors",
 })
 
 test_that("a group-level term on a hurdle reaches the mu block only", {
-  # add_formula_glef() runs before the hu sub-formulas are attached, so ogl and
-  # pgl never see them. Pinned because the prior scaling above depends on it,
-  # and because vignette("example8") tells the reader so.
+  # Group terms are attached before hu sub-formulas, so they reach only mu.
   set.seed(245)
   d <- data.frame(x = rep(seq(0, 4, length.out = 20), 4),
                   y = c(rep(0, 20), rgamma(60, 2, 1)),
@@ -580,18 +518,15 @@ test_that("a group-level term on a hurdle reaches the mu block only", {
                                      validate_family("hurdle_gamma"))
   ))
   subs <- vapply(bb$pforms, function(z) deparse1(z), character(1))
-  # top is transformed on a hurdle_gamma mu block, so its grouping is declared
-  # on topgl rather than on top itself (#294). What is being asserted is that
-  # the grouping reaches the mu block at all, whichever term it lands on.
+  # A transformed top groups through topgl. Check that grouping reaches mu
+  # without being attached to the population parameter.
   expect_true(all(grepl("site", subs[c("topgl", "beta", "nec")])))
   expect_false(grepl("site", subs[["top"]]))
   expect_false(any(grepl("site", subs[c("hutop", "hubeta", "hunec")])))
 })
 
 test_that("prior_type narrows the group-level scales too", {
-  # Before this, "regularizing" narrowed top and bot and left the group-level
-  # parameters at the uninformative scale -- inert on exactly the parameter a
-  # user selecting the narrower set for a grouped fit is selecting it for.
+  # The regularizing prior type must also narrow group-level scales.
   set.seed(245)
   x <- runif(100, 0, 10)
   y <- runif(100, 0.1, 0.9)
@@ -629,10 +564,8 @@ test_that("prior_type reaches define_group_prior through define_prior", {
     ))
     pr[pr$class == "sd", ]
   }
-  # Beta transforms top, so the standard deviation is declared on topgl and its
-  # width is the delta-method conversion of the response-scale rule (#294).
-  # narrow enters the response-scale width before the conversion, so the
-  # regularizing scale is still regularizing_factor of the uninformative one.
+  # Beta groups top through topgl. Narrow the response-scale width before
+  # the delta-method conversion, preserving the requested spread ratio.
   m_y <- mean(y)
   conv <- function(narrow) {
     signif(min((diff(range(y)) / (10 * narrow)) / (m_y * (1 - m_y)),
@@ -656,10 +589,8 @@ test_that("a degenerate scale is not narrowed by prior_type", {
   expect_equal(pr$prior, "student_t(3, 0, 0.5)")
 })
 
-# The nec and ec50 prior: one construction, on whichever scale the predictor
-# was supplied on. #269 established that the prior describes the concentration
-# series and not the replication of it; #302 replaced the three support-selected
-# entries with a normal on the log of the predictor.
+# Build the threshold prior from the concentration series, independently
+# of replication, on the declared or inferred predictor scale.
 
 # The prior string is written with paste0(), so comparing strings would pin the
 # formatting of a double as well as the value. These read the numbers back.
@@ -677,12 +608,8 @@ nec_prior_for <- function(x, family = Beta(link = "identity"), y = NULL) {
 }
 
 test_that("the nec prior is finite when most observations are controls", {
-  # More than half the observations at a zero control made the observation
-  # median zero, and under the gamma entry 1 / (0 / 4) put "gamma(5, Inf)" into
-  # the prior table. The location is stated as a value rather than recomputed,
-  # so that the test says what the prior should be and not how define_prior()
-  # arrives at it: the distinct positive values are 5, 15, 45, 135, 300, whose
-  # median is 45. See #269.
+  # The distinct positive doses have median 45 despite the repeated controls.
+  # State the expected location independently of the prior builder.
   x <- c(rep(0, 12), 5, 15, 45, 135, 300)
   y <- rev(seq_along(x)) + 1
   pr <- define_prior(model = "nec3param", family = Gamma(link = "identity"),
@@ -694,10 +621,8 @@ test_that("the nec prior is finite when most observations are controls", {
 })
 
 test_that("the nec prior location ignores replication, not just zeros", {
-  # The location is taken from the concentration series, so an unbalanced
-  # design gets a different prior from the one an observation median would
-  # build whether or not a zero is present. Distinct values 0.5, 1, 3, 10, 30
-  # have median 3, against an observation median of 6.5. See #269.
+  # An unbalanced design has distinct-dose median 3 and observation median
+  # 6.5. The prior must describe the concentration series.
   x <- c(0.5, rep(1, 3), rep(3, 6), rep(10, 8), rep(30, 2))
   y <- rev(seq_along(x)) + 1
   pr <- define_prior(model = "nec3param", family = Gamma(link = "identity"),
@@ -706,12 +631,8 @@ test_that("the nec prior location ignores replication, not just zeros", {
 })
 
 test_that("replication does not change the nec prior at all", {
-  # Under the gamma entry the distinct-value median and the observation median
-  # agreed only where replication was balanced. The width is now taken from the
-  # range of the tested doses, which no amount of replication changes, and the
-  # location from the distinct values, so the two designs below -- the same
-  # concentration series replicated evenly and unevenly -- receive the identical
-  # prior.
+  # Balanced and unbalanced replication of the same series must give
+  # identical prior location and width.
   series <- c(0, 5, 15, 45, 135)
   even <- rep(series, each = 6)
   uneven <- rep(series, times = c(20, 2, 9, 2, 3))
@@ -719,10 +640,8 @@ test_that("replication does not change the nec prior at all", {
 })
 
 test_that("the nec prior median is the median dose tested (#302)", {
-  # Fisher et al. (2024) specify maximum density at the median predictor. The
-  # median is taken after logging, so for an odd number of distinct positive
-  # doses it is the log of their median: the prior peaks at the median dose
-  # measured on the log scale, and its median on the dose scale is that dose.
+  # For an odd number of distinct positive doses, the median after logging
+  # is the log of the dose median; the lognormal median is that dose.
   x <- rep(c(0, 0.1, 1, 10, 100, 1000), each = 6)
   s <- nec_prior_for(x)
   expect_equal(prior_dist(s), "lognormal")
@@ -730,11 +649,9 @@ test_that("the nec prior median is the median dose tested (#302)", {
 })
 
 test_that("an even count of doses centres on their log midpoint (#302)", {
-  # Taking the median after logging interpolates between the two central doses
-  # on the log axis rather than on the dose axis, so it returns their geometric
-  # mean and not their arithmetic one. That is the midpoint of the scale the
-  # series is spaced on, and it is stated here because the two coincide for an
-  # odd count and the difference is otherwise invisible.
+  # With an even number of distinct positive doses, the log midpoint gives
+  # the geometric mean of the central doses. Odd counts cannot expose this
+  # difference from the arithmetic median.
   x <- rep(c(0, 1, 10, 100, 1000), each = 6)
   s <- nec_prior_for(x)
   # 55 is the arithmetic median of the four doses; the prior's median is 31.6.
@@ -742,12 +659,8 @@ test_that("an even count of doses centres on their log midpoint (#302)", {
 })
 
 test_that("the nec prior covers every dose tested (#302)", {
-  # The width is set so the untruncated central 95% interval reaches both ends
-  # of the concentration series. That is the criterion the width is chosen by,
-  # so it is asserted directly rather than through a constant, and it is
-  # asserted on series that are asymmetric about their median on the log axis
-  # in each direction -- which is where setting the width from half the range
-  # instead leaves the interval correctly wide and wrongly centred.
+  # Require the central 95% interval to reach both dose extremes on
+  # log-asymmetric series. Half the log range alone can miss an extreme.
   data(nassarius, package = "bayesnec", envir = environment())
   series <- list(
     symmetric = c(0, 0.01, 0.1, 1, 10, 100),
@@ -765,19 +678,15 @@ test_that("the nec prior covers every dose tested (#302)", {
     expect_lte(qlnorm(0.025, p[1], p[2]), min(pos) * (1 + 1e-8), label = nm)
     expect_gte(qlnorm(0.975, p[1], p[2]), max(pos) * (1 - 1e-8), label = nm)
   }
-  # Stated as a failing alternative so the reason for the rule is recorded: a
-  # width taken from half the range stops at 9.96 on the contaminant A series,
-  # against a highest dose applied of 20.
+  # A half-range width misses the highest contaminant A dose.
   z <- log(unique(series$top_heavy)[unique(series$top_heavy) > 0])
   expect_lt(qlnorm(0.975, median(z), diff(range(z)) / (2 * qnorm(0.975))),
             max(series$top_heavy))
 })
 
 test_that("a low threshold on a wide series is inside the prior (#302)", {
-  # The design sweep behind this change placed every true value in the upper
-  # half of its series, so it could not detect a prior that fails at the bottom.
-  # The nassarius contaminant B series has sparse low doses, so its median sits
-  # above its log mid-range and this is the direction at risk.
+  # Test a low threshold: designs with truths only in their upper halves
+  # cannot detect exclusion near the bottom of a wide series.
   data(nassarius, package = "bayesnec", envir = environment())
   x <- rep(sort(unique(nassarius$dose[nassarius$contaminant == "B"])), each = 6)
   p <- prior_pars(nec_prior_for(x))
@@ -799,11 +708,8 @@ test_that("two distinct doses give a prior spanning both (#302)", {
 })
 
 test_that("the prior is built from the concentrations as recorded (#302)", {
-  # sigma is set by the two extreme doses, so recording a control as a nominal
-  # small positive value states that the value was applied and widens the prior
-  # to cover it. Pinned because it is a change from the gamma entry, whose rate
-  # came from the median and barely noticed the substitution, and because the
-  # remedy is to record a control as 0.
+  # A nominal positive control is treated as an applied dose and widens the
+  # prior. Record an untreated control as zero.
   base <- c(0, 0.01, 0.1, 1, 10, 100)
   s0 <- prior_pars(nec_prior_for(rep(base, each = 6)))
   eps <- base
@@ -814,12 +720,8 @@ test_that("the prior is built from the concentrations as recorded (#302)", {
 })
 
 test_that("the nec prior reaches the top of a log-spaced series (#302)", {
-  # gamma(5, 4/m) placed its central 95% interval at 0.41m to 2.56m whatever
-  # the data were, so it reached the highest dose only where that dose was
-  # within about 2.6 times the median. On the nassarius contaminant A series
-  # the ratio is 125, and a true NEC of 1.25 sat beyond the 99.99th percentile
-  # of the truncated prior. Both the old and the new prior are evaluated here,
-  # so the test states the defect as well as the correction.
+  # Compare the old gamma entry directly: its fixed relative width can
+  # exclude a threshold well inside a wide concentration series.
   x <- rep(c(0, 0.01, 0.02, 0.04, 0.08, 0.16, 0.31, 0.63, 1.25, 2.5, 20),
            each = 6)
   m <- median(unique(x))
@@ -834,13 +736,8 @@ test_that("the nec prior reaches the top of a log-spaced series (#302)", {
 })
 
 test_that("the predictor's support no longer selects the prior (#302)", {
-  # The three entries were selected by set_distribution(predictor, ...), which
-  # reads the support: above 1 took gamma(5, 4/m), within [0, 1] took the fixed
-  # beta(2, 2), and spanning negatives took the normal entry. Support is a
-  # property of the units a dose is recorded in, so the same series in mg/L and
-  # in g/L received priors differing roughly fiftyfold in width. It is now the
-  # same construction rescaled, so the prior is equivariant under a change of
-  # units: the g/L prior is the mg/L prior shifted by log(1000).
+  # Changing concentration units must shift the lognormal location by the
+  # log conversion factor and preserve its width.
   mg <- rep(c(0, 1, 10, 100, 1000), each = 6)
   g <- mg / 1000
   p_mg <- prior_pars(nec_prior_for(mg))
@@ -851,10 +748,8 @@ test_that("the predictor's support no longer selects the prior (#302)", {
 })
 
 test_that("a predictor spanning negative values keeps its published prior", {
-  # normal(median(x), 10 sd(x)) is the entry Fisher et al. (2024) describe for a
-  # predictor a user has log transformed, and it is unchanged. The location and
-  # spread are read from the distinct values, as everywhere else, which is the
-  # only part of this entry #302 alters.
+  # For a predictor spanning negatives, use the published normal rule
+  # with location and spread from distinct values.
   x <- rep(log(c(0.05, 0.1, 1, 10, 100)), each = 6)
   s <- nec_prior_for(x)
   expect_equal(prior_dist(s), "normal")
@@ -862,10 +757,8 @@ test_that("a predictor spanning negative values keeps its published prior", {
 })
 
 test_that("the nec prior is chosen from the predictor, not the response", {
-  # The prior is a function of the predictor alone: no family and no link
-  # changes it. Confirmed in the #302 sweep over all 48 family by link by
-  # prior-type combinations; four families are asserted here. prior_type is the
-  # one thing that does change it, and only its spread; see the test below.
+  # Family and link must not change the threshold prior. The prior type
+  # changes its spread and is tested separately.
   x <- rep(c(0, 25, 50, 75, 100), each = 6)
   target <- nec_prior_for(x)
   expect_equal(prior_dist(target), "lognormal")
@@ -894,10 +787,7 @@ audit_designs <- function() {
   )
 }
 
-# The spread the regularizing set states, read from the predictor on the scale
-# the prior is written on. Stated here as the rule rather than taken from the
-# package, so that the tests say what the spread should be and not how
-# predictor_prior() arrives at it.
+# State the spread rule independently of predictor_prior().
 reg_spread <- function(z, q = 0.99) {
   z <- unique(z)
   max(median(z) - min(z), max(z) - median(z)) / qnorm(q)
@@ -924,14 +814,8 @@ trunc_prior_cdf <- function(s, x) {
 }
 
 test_that("prior_type narrows the nec and ec50 prior and nothing else (#314)", {
-  # The predictor-scaled prior was identical under both prior types, so
-  # selecting the regularizing set left the two parameters a user most often
-  # selects it for untouched (#305). The regularizing spread is now stated as
-  # its own coverage rule -- the width whose central 98% interval reaches the
-  # farthest concentration tested -- with the location, the distribution and the
-  # truncation unchanged. #305 stated it as a multiple of the uninformative
-  # spread instead, which meant one thing on each of the two branches; see the
-  # tests below.
+  # The regularizing spread makes the central 98% interval reach the
+  # farthest tested dose, preserving the location and distribution.
   for (x in list(rep(c(0, 25, 50, 75, 100), each = 6),
                  rep(log(c(0.05, 0.1, 1, 10, 100)), each = 6))) {
     u <- bayesnec:::predictor_prior(x)
@@ -941,8 +825,7 @@ test_that("prior_type narrows the nec and ec50 prior and nothing else (#314)", {
     expect_equal(prior_pars(r)[2], reg_spread(prior_scale(x)))
     expect_lt(prior_pars(r)[2], prior_pars(u)[2])
   }
-  # and it reaches both nec and ec50 through define_prior(), bounded by the
-  # support of the distribution rather than by the tested series (#393)
+  # Check nec and ec50 bounds against distributional support.
   x <- rep(c(0, 25, 50, 75, 100), each = 6)
   d <- data.frame(x = x, y = seq(0.9, 0.1, length.out = length(x)))
   reg <- suppressMessages(get_priors(
@@ -955,11 +838,9 @@ test_that("prior_type narrows the nec and ec50 prior and nothing else (#314)", {
   expect_true(is.na(reg$ub[reg$nlpar == "ec50"]))
 })
 
-# The uninformative entry for every cell of the #302 audit: five designs by
-# three predictor transforms. Written out as the strings predictor_prior()
-# returns, so that the gate is a pin on the released entry and not a
-# restatement of the rule that produces it. The log column substitutes half the
-# lowest non-zero dose for the zero control, as prior_audit.R does.
+# Literal uninformative prior strings cover all five audit designs and
+# three transforms. The log transform replaces a zero control with half
+# the lowest positive dose, as notes/scripts/prior_audit.R does.
 audit_uninformative <- c(
   linear_identity = "lognormal(1.70059869083108, 0.867668336890465)",
   linear_sqrt = "lognormal(0.850299345415539, 0.433834168445233)",
@@ -990,12 +871,8 @@ audit_x <- function(d, transform) {
 }
 
 test_that("the uninformative nec and ec50 entry is unchanged (#314)", {
-  # The regression gate of #314, as literal prior strings: the claim is that the
-  # released entry did not change at all, on either branch. It is asserted over
-  # every cell of the #302 audit rather than the two transforms whose
-  # regularizing entry is also unchanged, because the log column is the normal
-  # branch, and that is the branch #314 refactors -- half_width is now computed
-  # before the branch rather than inside the lognormal arm.
+  # Pin the uninformative entries across every audit cell, including the
+  # normal branch selected by logged predictors.
   pp <- bayesnec:::predictor_prior
   for (dn in names(audit_designs())) {
     for (tn in c("identity", "sqrt", "log")) {
@@ -1011,25 +888,8 @@ test_that("the uninformative nec and ec50 entry is unchanged (#314)", {
 })
 
 test_that("the regularizing entry is unchanged for recorded doses (#314)", {
-  # The cancellation identity. #305 multiplied half_width / qnorm(0.975) by
-  # qnorm(0.975) / qnorm(0.99); the rule is now stated as half_width /
-  # qnorm(0.99), which is the same quantity with the qnorm(0.975) cancelled, so
-  # a predictor on the recorded concentration scale receives the entry it
-  # already received.
-  #
-  # Compared as numbers, not as literal strings. The two expressions are the
-  # same quantity but not always the same double: the factor form rounds three
-  # times and the stated form once. Measured over 200,000 randomly generated
-  # dilution series the largest relative difference was 2.22e-16, exactly one
-  # unit in the last place, and the 15 significant digits paste0() writes
-  # differed on 1.6% of them. Two prior strings of the #302 audit are affected,
-  # both the nassarius contaminant A series: 1.93333703285197 against
-  # 1.93333703285198 read on the recorded scale and 0.966668516425987 against
-  # 0.966668516425988 on the square-root scale, which is four of its 30 design
-  # by transform by parameter cells because nec and ec50 share a string. A
-  # literal string here would therefore pin the formatting of a double, which is
-  # what the note at the top of this block of tests says these helpers exist to
-  # avoid.
+  # Compare the algebraically equivalent spread rules numerically: the
+  # extra operations can change rounding and therefore the prior string.
   factor_form <- function(x) {
     z <- prior_scale(x)
     reg_spread(z, 0.975) * (qnorm(0.975) / qnorm(0.99))
@@ -1045,25 +905,9 @@ test_that("the regularizing entry is unchanged for recorded doses (#314)", {
 })
 
 test_that("both routes agree below a lowest dose of 1 and not above (#314)", {
-  # prior_type is a statement about belief, not about which column the user
-  # passed. Under #305 the first series here received a spread of 20.96 supplied
-  # as log(conc) against 1.51 supplied as conc, because the uninformative spread
-  # it was a multiple of is the constant 10 sd(z) on that branch rather than a
-  # coverage width.
-  #
-  # Two conditions are needed for the routes to agree and both are pinned here,
-  # because neither is a property of the rule. Neither series has a zero
-  # control, which is the first: the lognormal branch drops non-positive values
-  # and a logged series must substitute for a control, so a design with one is
-  # not the same predictor on the two routes.
-  #
-  # The second is the discriminator. spans_negative is min(u) < 0, so a logged
-  # series whose lowest tested concentration is at or above 1 stays
-  # non-negative, is not recognised as logged, and is logged a second time. The
-  # location then differs as well as the spread, and both are asserted rather
-  # than left to be rediscovered;
-  # the discriminator is out of scope for #314 because correcting it would also
-  # change the uninformative entry for those users.
+  # The routes agree only without a substituted zero control and when the
+  # logged series spans negatives. Non-negative logged values are treated
+  # as concentrations by the automatic discriminator and logged again.
   pp <- bayesnec:::predictor_prior
   below_one <- c(0.1, 0.3, 1, 3, 10, 30, 100)
   raw <- pp(rep(below_one, each = 6), "regularizing")
@@ -1081,9 +925,8 @@ test_that("both routes agree below a lowest dose of 1 and not above (#314)", {
   expect_false(isTRUE(all.equal(prior_pars(logged2), prior_pars(raw2))))
   expect_lt(prior_pars(logged2)[1], prior_pars(raw2)[1])
   expect_lt(prior_pars(logged2)[2], prior_pars(raw2)[2])
-  # and the misclassified entry is still peaked inside the tested range and is
-  # still narrowed by prior_type, which is why this is second-order against the
-  # uniform prior #314 removes.
+  # Check the misclassified prior still peaks inside this tested range
+  # and still narrows under the regularizing type.
   lx <- rep(log(above_one), each = 6)
   mode <- exp(prior_pars(logged2)[1] - prior_pars(logged2)[2]^2)
   expect_gt(mode, min(lx))
@@ -1127,10 +970,8 @@ test_that("an explicit log scale retains log(1) and validates declarations (#317
 })
 
 test_that("the regularizing prior is not uniform once logged (#314)", {
-  # The defect #314 removes. On a 0.1 to 100 series supplied as log(conc) the
-  # #305 entry had a spread of 20.96 against a tested range of 6.91, so the
-  # truncated prior CDF at each dose was that dose's position within the range,
-  # which is what a uniform prior gives, to three decimal places.
+  # Compare against the previous wide normal entry, whose truncated CDF
+  # was nearly uniform across the tested range.
   conc <- c(0.1, 0.3, 1, 3, 10, 30, 100)
   x <- rep(log(conc), each = 6)
   z <- log(conc)
@@ -1139,24 +980,16 @@ test_that("the regularizing prior is not uniform once logged (#314)", {
                 10 * sd(z) * qnorm(0.975) / qnorm(0.99), ")")
   new <- bayesnec:::predictor_prior(x, prior_type = "regularizing")
   expect_lt(max(abs(trunc_prior_cdf(old, x)(z) - position)), 1e-3)
-  # and the stated rule is not uniform: it puts 0.052 below the second dose,
-  # which is at 0.158 of the range, and 0.945 below the sixth, which is at
-  # 0.826.
+  # The new truncated CDF must differ materially from a uniform one.
   got <- trunc_prior_cdf(new, x)(z)
   expect_lt(got[2], position[2] / 2)
   expect_gt(got[6], position[6] * 1.1)
 })
 
 test_that("the regularizing prior admits a low threshold (#314)", {
-  # Why q = 0.99 and not a larger quantile: the prior mass below the
-  # second-lowest concentration tested is what keeps a true threshold at the
-  # bottom of the series admissible, and #302 exists because an entry that
-  # excluded one shipped. Four designs, each supplied both ways.
-  #
-  # Each design is divided by its highest dose before being logged. That shifts
-  # the prior, its truncation bounds and the doses together, so every
-  # probability below is unchanged, and it puts min(log(x)) below zero, which is
-  # what selects the branch for a predictor supplied logged.
+  # Keep mass below a low threshold when selecting the coverage quantile.
+  # Divide doses by their maximum before logging so the automatic rule
+  # recognises a logged predictor; this common shift preserves probabilities.
   designs <- list(
     wide = c(0.1, 0.3, 1, 3, 10, 30, 100),
     narrow = round(exp(seq(log(1), log(20), length.out = 5)), 3),
@@ -1174,19 +1007,8 @@ test_that("the regularizing prior admits a low threshold (#314)", {
 })
 
 test_that("the regularizing prior keeps a true threshold inside it (#314)", {
-  # The change gate of #314. The ten cells of the #302 audit whose regularizing
-  # entry changes are its five designs read on the log scale, by nec and ec50,
-  # and none may put the true value outside the central 95% of the truncated
-  # prior. Measured here rather than by rerunning notes/scripts/prior_audit.R,
-  # which builds the same priors through get_priors() over 12 families and both
-  # links; the prior is a function of the predictor alone, so the families add
-  # no cells. Measured range: 0.536 to 0.974, against 0.626 to 0.890 under #305.
-  #
-  # The gate has two halves and both are asserted: the ten cells must change,
-  # and none may put the true value outside the central 95%. Without the first,
-  # an implementation that changed nothing would pass, because the #305 entry
-  # covers those cells as well -- it covers them by being uniform across the
-  # tested range, which is the defect.
+  # Require both a changed regularizing entry and coverage of every audit
+  # truth. Coverage alone also passes for the nearly uniform old entry.
   for (dn in names(audit_designs())) {
     d <- audit_designs()[[dn]]
     x <- audit_x(d, "log")
@@ -1199,9 +1021,8 @@ test_that("the regularizing prior keeps a true threshold inside it (#314)", {
       expect_lt(p, 0.975)
     }
   }
-  # q = 0.99 rather than a larger quantile is settled by this gate and not only
-  # by the prior mass below the lowest dose: at q = 0.995 and q = 0.999 the
-  # log_unit ec50 cell sits at 0.9823 and 0.9929, outside the central 95%.
+  # Larger coverage quantiles exclude the log_unit ec50 truth from the
+  # central 95% interval.
   d <- audit_designs()$log_unit
   x <- audit_x(d, "log")
   for (q in c(0.995, 0.999)) {
@@ -1235,10 +1056,8 @@ test_that("ec50 reads the same predictor prior as nec", {
 })
 
 test_that("a design with no range to span still yields a usable prior (#302)", {
-  # sd() is NA and the range is zero on a single distinct positive value, so
-  # both would put a non-finite or zero sigma into the prior string. Such a
-  # design cannot identify a concentration-response curve, so the fallback of 1
-  # on the log scale is chosen to be harmless rather than to be right.
+  # A single distinct positive dose cannot identify the curve. Use a finite
+  # fallback spread of 1 instead of a zero or non-finite scale.
   pp <- bayesnec:::predictor_prior
   expect_equal(pp(rep(c(0, 5), 10)), paste0("lognormal(", log(5), ", 1)"))
   expect_equal(pp(rep(5, 10)), paste0("lognormal(", log(5), ", 1)"))
@@ -1253,19 +1072,9 @@ test_that("a predictor with no positive values is refused (#302)", {
 })
 
 test_that("a hurdle mu block reads the whole predictor for nec (#302)", {
-  # Both blocks of a hurdle fit are evaluated over the whole predictor range, so
-  # the prior locating their threshold is built from the whole of it. Priming
-  # the mu block's nec from the survivors alone would state that the threshold
-  # is below the highest concentration at which anything survived, which is the
-  # failure this change removes elsewhere. The bounds are no longer read from
-  # the predictor at all (#393), so they are asserted here as the lognormal's
-  # own support.
-  #
-  # Only the mu block moves. survival_by_x() returns sort(unique(predictor)), so
-  # the second block already had the whole predictor's distinct values and its
-  # hunec assertion below held before this change as well; it is kept because
-  # the two blocks agreeing about their shared predictor is the property, and
-  # one of the two would otherwise go unasserted.
+  # Both hurdle blocks use the whole predictor series for their thresholds.
+  # The survival block already has its distinct values; test both blocks
+  # and require bounds from distributional support.
   set.seed(302)
   x <- rep(c(0, 1, 10, 100), each = 6)
   y_sub <- c(rgamma(18, 25, 25 / 8), rep(0, 6))     # survivors up to x = 10
@@ -1289,9 +1098,7 @@ test_that("a hurdle fit uses the declared scale for both blocks (#317)", {
 
   expect_match(pr$prior[pr$nlpar == "nec"], "^normal\\(")
   expect_match(pr$prior[pr$nlpar == "hunec"], "^normal\\(")
-  # The normal branch takes neither bound (#393): a predictor supplied already
-  # logged may legitimately be negative, so there is no distributional lower
-  # bound to keep.
+  # The normal branch has neither bound, including for negative logged doses.
   expect_true(is.na(pr$lb[pr$nlpar == "nec"]))
   expect_true(is.na(pr$ub[pr$nlpar == "nec"]))
 })
@@ -1309,9 +1116,8 @@ test_that("a hurdle mu block with no surviving dose still builds (#302)", {
 })
 
 test_that("define_prior still refuses an integer predictor", {
-  # set_distribution() is called for this error alone; its value is no longer
-  # read. Pinned here so that a later change to set_distribution() cannot
-  # remove the check from this route without a test noticing.
+  # Keep the integer-predictor refusal even though the distribution label
+  # from set_distribution() no longer selects the threshold prior.
   x <- as.integer(rep(c(0L, 1L, 10L, 100L), each = 6))
   y <- rep(c(0.9, 0.6, 0.3, 0.1), each = 6)
   expect_error(
@@ -1320,13 +1126,11 @@ test_that("define_prior still refuses an integer predictor", {
   )
 })
 
-# ---- #294, priors for a transformed parameter-level deviation ---------------
+# Priors for transformed parameter-level deviations.
 
 test_that("a transformed term declares its sd on the deviation, not the parameter", {
-  # bot keeps the population-level prior define_prior() already builds for it;
-  # what the group-level term adds is a standard deviation on botgl. A prior on
-  # nlpar "bot" of class "sd" would match nothing in the fit and brms would drop
-  # it silently.
+  # Keep bot’s population prior and place the group standard deviation on
+  # botgl. An sd prior on bot would match no grouping term.
   set.seed(294)
   x <- runif(100, 0, 10)
   y <- runif(100, 0.1, 0.9)
@@ -1337,13 +1141,8 @@ test_that("a transformed term declares its sd on the deviation, not the paramete
   sd_rows <- pr[pr$class == "sd", ]
   expect_setequal(sd_rows$nlpar, c("topgl", "botgl", "nec", "beta"))
   expect_false(any(sd_rows$nlpar %in% c("top", "bot")))
-  # And it adds nothing else. The deviation has no population intercept to give
-  # a prior to -- add_par_gl_term() writes botgl ~ 0 + (1 | group) precisely
-  # because a free intercept would be exactly unidentified against bot, which
-  # would stop b_bot_Intercept being the asymptote the population-level curve
-  # declines towards. ogl is the other case and does keep an intercept prior.
-  # define_group_prior() returns the group-level rows alone, and for a
-  # transformed term that is the standard deviation and nothing else.
+  # The transformed deviation has no population intercept: it would be
+  # unidentified against bot. Its group-prior rows contain only sd.
   expect_true(all(pr$class == "sd"))
 })
 
@@ -1359,8 +1158,7 @@ test_that("the transformed scale is the delta-method conversion, capped", {
   }
   s_y <- diff(range(y)) / 10
   m_y <- mean(y)
-  # logit: the response-scale width divided by the Jacobian at the response
-  # mean, which is the same conversion #257 uses for ogl.
+  # Convert the response-scale width by the logit Jacobian at the response mean.
   logit_pr <- bayesnec:::define_group_prior(spec, x, y, par_transform = "logit")
   expect_equal(get_scale(logit_pr, "sd", "botgl"),
                signif(s_y / (m_y * (1 - m_y)), 4))
@@ -1376,11 +1174,9 @@ test_that("the transformed scale is the delta-method conversion, capped", {
 })
 
 test_that("the parameter-level conversion is capped in both branches", {
-  # The difference from the ogl conversion, which caps the log branch only.
-  # A response whose own mean is close to a bound makes the logit Jacobian
-  # small and the ratio large; the parameter the deviation is applied to is bot,
-  # which is not the response mean, so the self-limiting argument #257 makes for
-  # ogl does not hold for it, and the cap is applied to both branches.
+  # Near a boundary, the logit Jacobian can make the converted width large.
+  # The deviation acts on bot, not the response mean, so cap both parameter
+  # transform branches rather than applying the ogl argument.
   set.seed(294)
   x <- runif(100, 0, 10)
   y <- c(runif(99, 0, 0.02), 1 - 1e-4)
@@ -1401,7 +1197,7 @@ test_that("the parameter-level conversion is capped in both branches", {
   expect_equal(get_scale(bayesnec:::define_group_prior(
     spec, x, y, prior_type = "regularizing", par_transform = "logit"),
     "botgl"), bayesnec:::regularizing_factor)
-  # #257's ogl conversion is deliberately left as it was.
+  # Keep the separate ogl conversion rule.
   ogl_spec <- list(nlpars = "ogl", ogl = TRUE)
   expect_equal(get_scale(bayesnec:::define_group_prior(ogl_spec, x, y,
                                                        ogl_transform = "logit"),
@@ -1454,9 +1250,8 @@ prior_moments <- function(s) {
   )
 }
 
-# A nec4param response with known asymptotes, simulated on each branch's own
-# scale. The counts are the case #305 exists for: the true bot of 5 is well
-# above the smallest observation, which is what the released anchor used.
+# Simulate each branch with known asymptotes. A count minimum can be far
+# below the bot that the prior should locate.
 branch_response <- function(branch, seed = 305) {
   set.seed(seed)
   x <- as.numeric(rep(seq(0, 10, length.out = 11), each = 6))
@@ -1481,10 +1276,7 @@ priors_for <- function(d, prior_type) {
 }
 
 test_that("regularizing is never wider than uninformative, in any branch", {
-  # Measured before #305 the ratio ran 0.40 on the normal branch, 0.87 and 0.34
-  # on the gamma branch for top and bot, 1.15 -- wider -- for a negbinomial top,
-  # and 0.88 on the beta branch, and over the whole audit it reached 2.71. The
-  # cap is what a user selecting the narrower set is entitled to.
+  # Selecting the regularizing set must not increase the prior spread.
   for (branch in c("normal", "gamma", "beta")) {
     d <- branch_response(branch)
     u <- priors_for(d, "uninformative")
@@ -1501,10 +1293,8 @@ test_that("regularizing is never wider than uninformative, in any branch", {
 })
 
 test_that("the regularizing spread is the stated factor for a precise anchor", {
-  # The floor at the standard error of the location binds only where the
-  # observations at one end of the predictor are few or individually
-  # uninformative. A well replicated gaussian design is neither, so the ratio is
-  # regularizing_factor exactly there.
+  # A precise replicated anchor leaves the standard-error floor inactive,
+  # so the spread ratio equals regularizing_factor.
   d <- branch_response("normal")
   u <- priors_for(d, "uninformative")
   r <- priors_for(d, "regularizing")
@@ -1517,19 +1307,14 @@ test_that("the regularizing spread is the stated factor for a precise anchor", {
 })
 
 test_that("the regularizing prior peaks at the level of the curve's own end", {
-  # The contract is stated on the mode, so that one rule means the same thing
-  # whichever distribution a branch uses. A gamma stated by its mean peaks
-  # somewhere else, which is the ambiguity that produced #273 and #302. The
-  # location is the mean response at the end of the predictor where the
-  # parameter is the level of the curve.
+  # State the location through the mode for every distribution. A gamma
+  # mean would locate its peak elsewhere.
   for (branch in c("normal", "gamma", "beta")) {
     d <- branch_response(branch)
     r <- priors_for(d, "regularizing")
     yl <- bayesnec:::response_link_scale(d$y, validate_family(d$family))
-    # Computed here rather than read back from regularizing_location(), so the
-    # location half of the contract is pinned to a quantity this file states
-    # independently. Every design in branch_response() is replicated six deep,
-    # so the extreme group is one whole dose group.
+    # Compute the endpoint mean independently. Six replicates per dose
+    # make the extreme group exactly one complete dose group.
     for (par in c("top", "bot")) {
       grp <- if (par == "top") d$x == min(d$x) else d$x == max(d$x)
       y_grp <- yl[grp]
@@ -1543,10 +1328,8 @@ test_that("the regularizing prior peaks at the level of the curve's own end", {
 })
 
 test_that("regularizing_location reads the predictor end, not the tail", {
-  # A quantile of the pooled response is a proxy for the level of one plateau
-  # whose quality depends on what share of the design sits on it, and the
-  # over-dispersed count is where that fails: the 95th percentile of the pooled
-  # response reached 72 against a true top of 40.
+  # A pooled upper quantile can reflect count dispersion rather than top.
+  # Use the mean at the predictor endpoint.
   d <- branch_response("gamma")
   loc <- bayesnec:::regularizing_location(d$x, d$y, "top",
                                           zero_bounded = TRUE)
@@ -1576,11 +1359,8 @@ test_that("regularizing_location extends past one value without replication", {
 })
 
 test_that("the regularizing prior does not exclude a count asymptote (#305)", {
-  # The released entry was gamma(5, 5 / (min(y) + min(y > 0) / 10)), whose
-  # maximum density is at about 0.8 times the smallest observation. On a count
-  # response the smallest observation sits well below the asymptote it is meant
-  # to locate, so the prior excluded the value it was built to find: the
-  # truncated CDF at the true bot ran 0.988 to 0.99999 across the audit's cells.
+  # Compare against the old minimum-based count anchor, which could place
+  # the true bot above almost all the prior mass.
   d <- branch_response("gamma")
   expect_lt(min(d$y), d$bot)
   r <- priors_for(d, "regularizing")
@@ -1595,10 +1375,8 @@ test_that("the regularizing prior does not exclude a count asymptote (#305)", {
 })
 
 test_that("the beta branch reads the response under regularizing (#305)", {
-  # beta(5, 1) against beta(5, 2) changed the width by 12 per cent and did not
-  # change what the prior was anchored to, because there was no anchor. Two
-  # responses with different control levels must now receive different priors,
-  # and the same uninformative one.
+  # Different control levels must change regularizing beta priors while
+  # leaving the uninformative entries identical.
   set.seed(305)
   x <- as.numeric(rep(seq(0, 10, length.out = 11), each = 6))
   high <- rbeta(length(x), 18, 2)
@@ -1653,16 +1431,11 @@ test_that("beta_from_mode_sd returns the uniform for an unattainable spread", {
   expect_equal(bayesnec:::beta_sd(1, 1), sqrt(1 / 12))
 })
 
-# The cases the review of PR #307 showed the first version of #305 handled worse
-# than the released set. Each is a design the archived prior audit does not
-# contain, which is why the sweep did not catch them.
+# These endpoint designs exercise cases absent from the archived prior audit.
 
 test_that("a bot anchor survives complete effect at the highest concentration", {
-  # The zero-bounded branch filtered the anchor subset to its positive
-  # observations at both ends. Where every observation at the highest
-  # concentration is zero that empties the subset, and the fallback was an
-  # extreme quantile of the pooled response -- the anchor type this replaced.
-  # It put the bot prior's maximum density at 10.8 against a true bot of zero.
+  # Keep zero observations at the bot end. Removing them can empty the
+  # anchor subset and relocate bot to a pooled-response quantile.
   set.seed(305)
   x <- as.numeric(rep(0:5, each = 6))
   mu <- c(41, 42, 41, 12, 1e-6, 1e-6)[x + 1]
@@ -1680,10 +1453,8 @@ test_that("a bot anchor survives complete effect at the highest concentration", 
 })
 
 test_that("a bot anchor is the group mean, not the mean of its survivors", {
-  # A zero at the highest concentration is the endpoint responding, and it is
-  # the observation that says most about how low bot is. Filtering left one
-  # observation of six and reported a location six times the group mean, with a
-  # standard error of zero, which also switched off the floor.
+  # Filtering zeros from the bot group would inflate its mean and can
+  # leave one survivor with a zero standard error.
   set.seed(305)
   x <- as.numeric(rep(0:5, each = 6))
   y <- as.numeric(c(rep(40, 24), rep(12, 6), 0, 0, 0, 0, 0, 4))
@@ -1704,11 +1475,8 @@ test_that("the top anchor still excludes structural zeros", {
 })
 
 test_that("a hurdle second block reads one concentration, not three", {
-  # split_hurdle_response() primes the second block from one survival
-  # proportion per concentration, so every group there is a single value and
-  # the minimum-observation rule alone averaged the three most extreme
-  # concentrations of a six-concentration design. That put the hubot prior's
-  # maximum density at 0.34 against a true value of 0.014.
+  # The hurdle second block has one survival proportion per concentration.
+  # Do not extend its endpoint group across most of a short dose series.
   set.seed(305)
   x <- as.numeric(rep(c(0, 0.3125, 0.625, 1.25, 2.5, 10), each = 6))
   surv <- c(0.99, 0.99, 0.95, 0.5, 0.05, 0.014)[match(x, sort(unique(x)))]
@@ -1727,10 +1495,8 @@ test_that("a hurdle second block reads one concentration, not three", {
 })
 
 test_that("a group with no spread of its own still floors the prior", {
-  # sd() is zero on a homogeneous group, which is the ordinary case for a
-  # binary response: every control individual survived. That is not the same as
-  # estimating the proportion exactly, and a standard error of zero switched off
-  # the floor on exactly the group that says least about a proportion.
+  # A homogeneous binary group does not estimate its proportion exactly.
+  # Its zero empirical spread must not disable the uncertainty floor.
   set.seed(305)
   x <- as.numeric(rep(0:5, each = 6))
   y <- as.numeric(c(rep(1, 18), 1, 0, 1, 1, 0, 1, rep(0, 12)))
@@ -1750,10 +1516,8 @@ test_that("a group with no spread of its own still floors the prior", {
 })
 
 test_that("prior_type is not inert for the ogl scale where the cap binds", {
-  # #294 capped a parameter-level conversion at 1 / narrow so that selecting
-  # the regularizing set was not inert wherever the cap bound. The ogl branch
-  # kept a constant cap of 1, so on a response whose range is more than 25 times
-  # its mean both prior types returned student_t(3, 0, 1).
+  # When the ogl log-scale cap binds, its width must still narrow with
+  # the regularizing prior type.
   set.seed(305)
   x <- runif(100, 0, 10)
   y <- c(rep(0.001, 50), runif(50, 0, 30))
@@ -1785,10 +1549,8 @@ test_that("regularizing_entry falls back where the response has no spread", {
 })
 
 test_that("the uninformative entries are the ones Fisher et al. (2024) state", {
-  # The claim that #305 changes nothing released is only as good as a test that
-  # would fail if it did. Each entry is reconstructed from the published rule
-  # rather than pinned as a literal string, so a change to how it is built has
-  # to change the rule to pass.
+  # Reconstruct uninformative entries from their published rules,
+  # independently of the helpers that build them.
   set.seed(305)
   x <- as.numeric(rep(seq(0, 10, length.out = 11), each = 6))
   cases <- list(
@@ -1809,11 +1571,8 @@ test_that("the uninformative entries are the ones Fisher et al. (2024) state", {
       expect_identical(bot, paste0("normal(", quantile(yl, 0.1), ", ",
                                    sd(yl) * 2.5, ")"))
     } else if (cs$branch == "gamma") {
-      # gamma with shape 2 and its mean at the quartile. The quantile is taken
-      # with stats::quantile() rather than through positive_scale(), which is an
-      # internal of the code under test; the response here has no zeros, which
-      # is the case positive_scale() is documented to leave untouched, so the
-      # two agree and the assertion does not depend on it.
+      # The no-zero response makes stats::quantile() agree with the intended
+      # scale rule, without calling positive_scale() in the expectation.
       expect_equal(sum(cs$y == 0), 0)
       expect_identical(top, paste0("gamma(2, ",
                                    1 / (unname(quantile(yl, 0.75)) / 2), ")"))
@@ -1827,15 +1586,10 @@ test_that("the uninformative entries are the ones Fisher et al. (2024) state", {
   }
 })
 
-# Two further defects found in the second round of review of PR #307.
 
 test_that("an all-zero control does not put top at the detection floor", {
-  # The detection-floor fallback -- a tenth of the smallest positive
-  # observation -- is the right location for bot where the highest
-  # concentration is entirely zero. Applied at the other end it is the #210
-  # collapse: a control of structural zeros, which a zero-inflated family
-  # produces routinely, put top at 0.1 against a true top of 40 and made the
-  # two asymptotes near-identical.
+  # An all-zero control must not put top at the detection floor used for
+  # a fully affected bot endpoint; that would collapse the two asymptotes.
   set.seed(305)
   x <- as.numeric(rep(0:5, each = 6))
   y <- as.numeric(rpois(36, c(40, 40, 40, 20, 6, 5)[x + 1]) *
@@ -1857,22 +1611,18 @@ test_that("an all-zero control does not put top at the detection floor", {
 })
 
 test_that("the extension limit is a fifth of the concentrations, and binds", {
-  # A design with few concentrations and no replication presents the same input
-  # as the second block of a hurdle fit -- one observation per concentration,
-  # and fewer than ten of them -- so the two cannot be told apart from the data
-  # and the limit resolves both the same way. This pins that choice and the
-  # consequence, which is that the entry is relocated rather than narrowed.
+  # A short unreplicated design and a hurdle survival block both supply
+  # one value per concentration. The same extension limit must apply;
+  # the prior can be relocated without being narrowed.
   x <- seq(0, 10, length.out = 8)
   set.seed(305)
   y <- 5 + 35 * exp(-0.5 * pmax(x - 3, 0)) + rnorm(8, 0, 3)
   loc <- bayesnec:::regularizing_location(x, y, "top")
   expect_equal(floor(0.2 * length(unique(x))), 1)
   expect_equal(loc[["location"]], y[1])
-  # The standard error stands in for a group that cannot supply one. How far it
-  # then widens the entry depends on the branch: on a Gamma response the
-  # uninformative width is a fraction of a quartile and the floor reaches the
-  # cap, while on a gaussian one the uninformative width is 2.5 sd(y) and the
-  # stand-in of sd(y) is exactly the stated spread, so nothing changes there.
+  # For this sparse design, the fallback uncertainty reaches the gamma
+  # spread cap. For Gaussian data, sd(y) equals the regularizing spread
+  # and leaves that width unchanged.
   r <- as.data.frame(define_prior("nec4param", Gamma(link = "identity"), x, y,
                                   prior_type = "regularizing"))
   u <- as.data.frame(define_prior("nec4param", Gamma(link = "identity"), x, y,
@@ -1914,9 +1664,7 @@ test_that("the extension limit is a fifth of the concentrations, and binds", {
 rate_prior_data <- function(seed = 389) {
   set.seed(seed)
   x <- rep(seq(0, 10, length.out = 10), 4)
-  # A varying exposure, so that dividing it out is not the same as dividing by
-  # a constant, and a mean exposure of 3.75 that is far enough from 1 for the
-  # displacement to be unambiguous.
+  # Vary exposure so division cannot be replaced by a constant scaling.
   ex <- rep(c(1, 2, 4, 8), each = 10)
   nec3 <- function(beta, nec, top, x) {
     top * exp(-exp(beta) * (x - nec) * (x > nec))
@@ -1925,12 +1673,8 @@ rate_prior_data <- function(seed = 389) {
              y = as.integer(stats::rpois(40, nec3(-0.5, 4, 20, x) * ex)))
 }
 
-# The prior fit_bayesnec() hands to brm(), with brm() mocked: the assertion is
-# about the object it receives and not about anything the sampler does with it.
-# `init` is supplied so that add_brm_defaults() skips the initial-value search,
-# which is stochastic and slow (#266). Modelled on fit_call() in
-# test-fit_bayesnec.R, which cannot be shared because testthat runs each file
-# in its own subprocess.
+# Capture the prior passed to brm(). Supply init to skip stochastic search.
+# Keep this helper local because test files run in separate subprocesses.
 rate_fitted_prior <- function(formula, data, family, model = "nec4param") {
   seen <- new.env(parent = emptyenv())
   local_mocked_bindings(
@@ -1964,9 +1708,7 @@ test_that("a rate denominator scales the default top and bot priors (#389)", {
     expect_false(identical(prior_entry(fitted_prior, np),
                            prior_entry(on_counts, np)))
   }
-  # The size of the displacement, stated rather than left to the equality
-  # above: gamma(2, rate) has mean 2 / rate, the true top of these data is 20,
-  # and the count-scale entry put the prior mean at 64.
+  # Compare the gamma prior mean against the generating rate-scale top.
   prior_mean <- function(txt) {
     2 / as.numeric(sub("^gamma\\([^,]+,\\s*([^)]+)\\)$", "\\1", txt))
   }
@@ -1977,9 +1719,7 @@ test_that("a rate denominator scales the default top and bot priors (#389)", {
 })
 
 test_that("a fit with no rate term is unchanged by the division (#389)", {
-  # The guard on the new branch. `denominator` is NULL wherever the formula
-  # has no rate() term, and a poisson fit without one keeps the entries it
-  # had before #389.
+  # Without rate(), a NULL denominator must leave the prior unchanged.
   d <- rate_prior_data()
   fam <- validate_family("poisson")
   fitted_prior <- rate_fitted_prior(y ~ crf(x, "nec4param"), d, fam)
@@ -1997,10 +1737,7 @@ test_that("a rate denominator of one leaves the prior alone (#389)", {
 })
 
 test_that("bnec and get_priors agree on a rate default prior (#389)", {
-  # ?get_priors states that the priors previewed from a formula and the priors
-  # a fit used agree where no prior was supplied. On rate() data they did not:
-  # get_priors() divided the denominator out and fit_bayesnec() did not, so the
-  # documented guarantee was false for every poisson and negbinomial rate fit.
+  # The previewed default prior must match the prior used by a rate fit.
   d <- rate_prior_data()
   fam <- validate_family("negbinomial")
   fitted_prior <- rate_fitted_prior(y | rate(ex) ~ crf(x, "nec4param"), d, fam)
@@ -2015,12 +1752,9 @@ test_that("bnec and amend build the same default rate prior (#389)", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # The defect's own statement: the two routes built the prior from different
-  # scales for the same data, and nothing asserted that they agree. amend()
-  # rebuilds a default prior only for a model added to a set it has already
-  # fitted, so the fit below cannot be mocked away; it is kept to one equation,
-  # two chains and 400 iterations, since the compilation is the cost and the
-  # posterior is never read.
+  # amend() rebuilds priors only for a newly added model. Fit one equation
+  # with two chains and 400 iterations to reach that route; no posterior
+  # quantity is used in the comparison.
   d <- rate_prior_data()
   fit <- suppressMessages(suppressWarnings(
     bnec(y | rate(ex) ~ crf(x, "nec3param"), data = d, family = "poisson",
@@ -2035,10 +1769,8 @@ test_that("bnec and amend build the same default rate prior (#389)", {
     are_chains_correct = function(...) TRUE,
     .package = "bayesnec"
   )
-  # The added model's prior is read off the mocked brm() call rather than off
-  # the returned object: the fake fit holds no posterior, so amend() fails
-  # once it reaches the model weights. The prior has been built by then, which
-  # is the only part under test, and the second compilation is avoided.
+  # Capture the added model’s prior at brm(). The fake posterior makes
+  # later model weighting fail, after the quantity under test is captured.
   suppressMessages(suppressWarnings(
     try(amend(fit, add = "nec4param"), silent = TRUE)
   ))
@@ -2052,10 +1784,8 @@ test_that("bnec and amend build the same default rate prior (#389)", {
 })
 
 test_that("the initial-value search reads the rate scale as well (#389)", {
-  # The division is applied to `response`, which add_brm_defaults() passes to
-  # define_prior() and to make_good_inits() alike, so the starting band moves
-  # with the prior. Asserted by capturing what the search is given rather than
-  # by running it: the search itself is stochastic and can take minutes (#266).
+  # Capture the response passed to initial-value search, avoiding the
+  # stochastic search while checking it receives rates too.
   d <- rate_prior_data()
   fam <- validate_family("poisson")
   seen <- new.env(parent = emptyenv())
@@ -2106,16 +1836,11 @@ test_that("the amend path divides without check_data (#389)", {
   }
 })
 
-# ---------------------------------------------------------------------------
-# The tested-range truncation, removed in #393
-# ---------------------------------------------------------------------------
+# Threshold bounds follow distributional support.
 
 test_that("the threshold priors are bounded by their own support (#393)", {
-  # On a predictor supplied as a concentration the entry is a lognormal, which
-  # has zero density below zero, so lb = 0 is kept: without it brms declares an
-  # unconstrained parameter whose every negative proposal Stan rejects. There
-  # is no upper bound, so a threshold above the highest concentration tested is
-  # in the tail of the prior rather than outside its support.
+  # Keep lb = 0 for a lognormal so Stan does not propose negative values.
+  # Leave the upper tail available beyond the highest tested concentration.
   x <- rep(c(0, 25, 50, 75, 100), each = 6)
   d <- data.frame(x = x, y = seq(0.9, 0.1, length.out = length(x)))
   for (ptype in c("uninformative", "regularizing")) {
@@ -2134,11 +1859,8 @@ test_that("the threshold priors are bounded by their own support (#393)", {
 })
 
 test_that("a logged predictor keeps neither threshold bound (#393)", {
-  # The branch test is on the distribution and not on the sign of the data. A
-  # normal is supported on the whole line, and a logged concentration may
-  # legitimately be negative, so neither bound is set. The "auto" rule and the
-  # explicit declaration are both exercised, because they reach the same branch
-  # by different routes.
+  # A normal threshold prior has neither bound. Exercise both automatic
+  # and explicit recognition of logged predictors.
   x_neg <- rep(log(c(0.05, 0.1, 1, 10, 100)), each = 6)
   x_pos <- rep(log(c(1, 3, 10, 30, 100)), each = 6)
   cases <- list(
@@ -2159,11 +1881,8 @@ test_that("a logged predictor keeps neither threshold bound (#393)", {
 })
 
 test_that("the threshold prior places mass beyond the tested range (#393)", {
-  # The measurement the change exists for, on #386's own design: the prior CDF
-  # at a true ec50 of 45 against a highest concentration of 40 was exactly 1 and
-  # is now below it. The CDF is computed over the bounds the entry is given, as
-  # the prior audit computes it, because that is the density the sampler sees,
-  # and it is the bounds and not the prior string that #393 changed.
+  # Compute the CDF with the actual prior bounds: removing truncation
+  # changes support even when the distribution string stays identical.
   x <- rep(c(0, 0.31, 0.63, 1.25, 2.5, 5, 10, 40), each = 5)
   d <- data.frame(x = x, y = seq(0.9, 0.1, length.out = length(x)))
   pr <- as.data.frame(suppressMessages(get_priors(
@@ -2172,14 +1891,11 @@ test_that("the threshold prior places mass beyond the tested range (#393)", {
   row <- pr[pr$nlpar == "ec50", ]
   pars <- as.numeric(strsplit(gsub("^[^(]*\\(|\\)$", "", row$prior),
                               ",[[:space:]]*")[[1]])
-  # The bounds are what holds the finding. Without these two the rest is
-  # satisfied by the released prior string as well, since the string is the
-  # same on both sides of the change.
+  # Assert bounds explicitly; the unchanged prior string alone cannot
+  # detect restored tested-range truncation.
   expect_equal(as.numeric(row$lb), 0)
   expect_true(is.na(row$ub))
-  # The truth is above the bound the entry was given until #393, so the CDF of
-  # the truncated prior there was exactly 1: the support excluded it. That is
-  # what #386 reported and what this change removes.
+  # The true threshold exceeds the highest tested concentration.
   expect_gt(45, max(x))
   cdf <- function(q) stats::plnorm(q, pars[1], pars[2])
   lo <- if (is.na(row$lb)) 0 else as.numeric(row$lb)
@@ -2197,21 +1913,9 @@ test_that("the threshold prior places mass beyond the tested range (#393)", {
 })
 
 test_that("a single distinct predictor value builds and draws (#393)", {
-  # The old two-bound branch of make_inits() ran
-  # while (draw <= min(bounds) | draw >= max(bounds)), which is a tautology
-  # where min equals max, so a nec prior built from a predictor with one
-  # distinct positive value hung the initial-value search rather than failing.
-  # With lb = 0 and no ub that branch is unreachable from the default priors.
-  # predictor_prior() already had the degenerate fallback of sigma = 1 for this
-  # case; nothing else did.
-  #
-  # Driven through define_prior() rather than get_priors(), because a constant
-  # predictor does not reach the prior through a formula: check_data() compares
-  # the response means of the two halves of the predictor, which is NaN here,
-  # and stops on "missing value where TRUE/FALSE needed". That refusal is
-  # unhelpful and is not this change's business; what is asserted here is that
-  # the prior and the initial-value search no longer have a defect of their own
-  # behind it.
+  # Coincident lower and upper bounds make the rejection loop endless.
+  # Use define_prior() directly: check_data() rejects this constant
+  # predictor before formula-based prior construction can reach it.
   x <- rep(5, 12)
   y <- seq(0.9, 0.1, length.out = 12)
   pr <- as.data.frame(suppressMessages(
@@ -2235,16 +1939,11 @@ test_that("a single distinct predictor value builds and draws (#393)", {
   expect_true(all(vapply(inits, function(z) z$b_nec > 0, logical(1))))
 })
 
-# ---------------------------------------------------------------------------
-# The declaration that the lower asymptote was not observed, #394
-# ---------------------------------------------------------------------------
+# Priors for a declared unobserved lower asymptote.
 
-# A nec4param response whose series stops at a stated fraction of its span.
-# The threshold is placed so that the mean at the highest predictor value has
-# travelled `reached` of the way from top to bot, which is the device
-# notes/scripts/prior_audit.R uses and the reason it uses it: the series, the
-# replication and the decay rate are then identical across settings and the
-# only thing that differs is how much of the curve the design shows.
+# Vary only the observed fraction of the curve by placing the threshold.
+# Hold the dose series, replication and decay rate fixed, as in
+# notes/scripts/prior_audit.R.
 incomplete_design <- function(reached, family_tag, seed = 394, top = 0.9,
                               bot = 0.1) {
   x <- rep(c(0, 0.31, 0.63, 1.25, 2.5, 5, 10, 40), each = 5)
@@ -2275,9 +1974,8 @@ incomplete_formula <- function(family_tag, model = "nec4param") {
   }
 }
 
-# The quantiles of a prior string, which is what the rule of #394 is stated
-# on. No truncation is applied: the bot entry takes the family's own support
-# as its bounds and the distribution already lies inside it.
+# The bot distribution already respects its family support, so evaluate
+# its quantiles without additional truncation.
 prior_quantiles <- function(txt, probs = c(0.025, 0.975)) {
   fam <- sub("\\(.*$", "", txt)
   args <- as.numeric(strsplit(gsub("^[^(]*\\(|\\)$", "", txt),
@@ -2294,14 +1992,9 @@ prior_args <- function(txt) {
 }
 
 test_that("the bot prior spans the floor to the endpoint mean (#394)", {
-  # The rule of specification section 5.3, one sentence on every family: the
-  # central 95 per cent of the bot prior runs from the support floor to the
-  # mean response at the highest predictor level. Asserted as direction and
-  # order of magnitude rather than as digits, because the realised coverage
-  # differs by branch and is recorded in notes/prior_audit.md.
-  #
-  # The gamma row meets it at the upper end only: its interval runs from 0.0435
-  # to 1 times the endpoint mean (#449), so the lower end is checked per branch.
+  # Check coverage by branch, against the floor and endpoint mean. The
+  # gamma rule fixes only the upper endpoint; its lower quantile remains
+  # positive and needs a different assertion.
   cases <- list(
     list(tag = "gaussian", branch = "normal"),
     list(tag = "Gamma", branch = "gamma"),
@@ -2371,10 +2064,8 @@ test_that("the bot prior spans the floor to the endpoint mean (#394)", {
 })
 
 test_that("every gamma-branch family ends its bot prior at the endpoint (#449)", {
-  # The zero-inflated count families and the mu block of the three hurdle
-  # families use the same gamma entry. One observation at the highest
-  # concentration is zero: the zero-inflated families include it in the
-  # endpoint mean, and the hurdle families leave it out.
+  # Zero-inflated count anchors include endpoint zeros. Hurdle mu anchors
+  # exclude them; both use the gamma entry.
   set.seed(449)
   x <- rep(c(0, 1, 2, 4, 8, 16), each = 5)
   mu <- 20 * exp(-0.1 * x) + 2
@@ -2417,9 +2108,8 @@ test_that("every gamma-branch family ends its bot prior at the endpoint (#449)",
 })
 
 test_that("the declared prior covers a bot the released sets exclude (#394)", {
-  # The measurement #394 exists for, on #386's flattest gaussian design. The
-  # released entries put the true bot of 0.1 far outside their own central 95
-  # per cent; the declaration puts it inside.
+  # On the flattest Gaussian design, check that the declaration admits the
+  # true bot excluded by both default prior sets.
   d <- incomplete_design(0.02, "gaussian", seed = 386)
   bot_entry <- function(ptype, declared) {
     pr <- as.data.frame(suppressWarnings(suppressMessages(get_priors(
@@ -2440,10 +2130,8 @@ test_that("the declared prior covers a bot the released sets exclude (#394)", {
 })
 
 test_that("the regularizing cap does not hold the declared entry (#394)", {
-  # regularizing_entry() caps a spread at the uninformative width, which is
-  # what holds the released prior at a width that excludes the truth. The
-  # declared entry is a separate construction, so on a flat design it is wider
-  # than both released sets rather than being capped at the wider of them.
+  # A declared unobserved bot needs its own spread construction: the
+  # regularizing cap would otherwise retain a prior that excludes the truth.
   d <- incomplete_design(0.02, "gaussian", seed = 386)
   bot_entry <- function(ptype, declared) {
     pr <- as.data.frame(suppressWarnings(suppressMessages(get_priors(
@@ -2462,10 +2150,8 @@ test_that("the regularizing cap does not hold the declared entry (#394)", {
 })
 
 test_that("a response with no derivable floor is refused (#394)", {
-  # The gaussian row of the table in section 5.3 with no floor available.
-  # Refused, naming bot and the prior argument, rather than a floor being
-  # invented: a response expressed as a log ratio or a growth increment is
-  # ordinary input here (#229).
+  # Without a derivable Gaussian floor, report the missing prior rather
+  # than inventing a bound for a log ratio or growth increment.
   d <- incomplete_design(0.36, "gaussian")
   d$y <- d$y - 1.2
   expect_true(any(d$y < 0))
@@ -2482,10 +2168,9 @@ test_that("a response with no derivable floor is refused (#394)", {
 })
 
 test_that("a non-identity link is refused as well (#394)", {
-  # prior_family_tag() rewrites a log or logit link onto the gaussian entries,
-  # and on that scale the floor of the mean maps to -Inf. A response that is
-  # non-negative once logged says only that every observation exceeds one in
-  # response units, which is a property of the units and not a floor.
+  # On a log or logit mean scale the support floor maps to -Inf. Even
+  # non-negative logged responses provide no finite floor: they may only
+  # reflect a change of response units.
   d <- incomplete_design(0.36, "gaussian")
   d$y <- d$y * 10
   err <- expect_error(suppressWarnings(suppressMessages(get_priors(
@@ -2496,11 +2181,8 @@ test_that("a non-identity link is refused as well (#394)", {
 })
 
 test_that("the default leaves every generated entry bit-identical (#394)", {
-  # The regression guard for every released analysis. The strings below were
-  # captured on predev at 5fee2e9a, before this change, by the generator
-  # recorded in the pull request for #394. They are compared as text and not
-  # as numbers, because a prior string is what define_prior() returns and a
-  # change of rounding is exactly what this has to catch.
+  # Pin prior strings captured before the declaration was added, including
+  # their rounding. Fixture provenance is in the test reasoning notes.
   released <- c(
     "gaussian|uninformative|top" =
       "normal(0.95277185372616, 0.697777486264628)",
@@ -2621,11 +2303,8 @@ test_that("the default leaves every generated entry bit-identical (#394)", {
 })
 
 test_that("bnec refuses the declaration before its model loop (#394)", {
-  # The placement rule recorded in CLAUDE.md. check_data() runs once per model
-  # from inside fit_bayesnec(), and bnec() wraps that call in try() for a model
-  # set, so a refusal raised from there is printed once per equation and the
-  # call then ends on the generic all-models-failed advice. Raised before the
-  # loop it is raised once, and nothing is compiled.
+  # Refuse before the model loop: an error inside its try() would be
+  # repeated per equation and replaced by generic all-models-failed advice.
   d <- incomplete_design(0.36, "gaussian")
   d$y <- d$y - 1.2
   err <- expect_error(suppressWarnings(suppressMessages(bnec(
@@ -2637,12 +2316,9 @@ test_that("bnec refuses the declaration before its model loop (#394)", {
 })
 
 test_that("a mixed model set is reported under the declaration (#394)", {
-  # Fourteen of the 23 equations have no bot parameter and so have no lower
-  # asymptote to estimate. On a design that did not reach the asymptote the
-  # data cannot separate them from the equations that estimate bot, so the set
-  # is reported and left alone. The message states both branches, because
-  # whether the response can reach zero is a property of the endpoint and not
-  # of the data.
+  # Report a mixed set when the unobserved region prevents distinguishing
+  # equations that estimate bot from those that do not. Whether an endpoint
+  # can reach zero cannot be inferred from this incomplete design.
   d <- incomplete_design(0.36, "gaussian")
   bdat <- stats::model.frame(bnf(y ~ crf(x, c("nec3param", "nec4param"))),
                              data = d)
@@ -2685,10 +2361,7 @@ test_that("bnec and get_priors validate the declaration (#394)", {
 })
 
 test_that("a fit is built with the declared prior (#394)", {
-  # The argument reaches the prior brm() is handed and not only get_priors().
-  # brm() is mocked and `init` supplied, so nothing compiles and the
-  # initial-value search does not run; what is asserted is the object
-  # fit_bayesnec() passes on.
+  # Capture the prior passed to brm(), with init supplied and the fit mocked.
   d <- incomplete_design(0.36, "gaussian")
   fam <- validate_family("gaussian")
   seen <- new.env(parent = emptyenv())
@@ -2718,11 +2391,8 @@ test_that("a fit is built with the declared prior (#394)", {
 })
 
 test_that("amend honours the declaration for an added model (#394)", {
-  # amend() rebuilds a default prior only for a model that is not already in
-  # the set, so the declaration has to reach that rebuild and the refit that
-  # follows it. The stored manec_example supplies the set; nothing is fitted
-  # here, because both are mocked and what is asserted is the argument each
-  # receives.
+  # Mock both amend() rebuild and refit to check the declaration reaches
+  # each route for an added model.
   seen <- new.env(parent = emptyenv())
   local_mocked_bindings(
     define_prior = function(model, family, predictor, response,
@@ -2751,10 +2421,8 @@ test_that("amend honours the declaration for an added model (#394)", {
 })
 
 test_that("amend refuses a response with no derivable floor (#394)", {
-  # The backstop define_prior() keeps for the routes that do not come through
-  # bnec(). manec_example is fitted on a response spanning negative values, so
-  # the declaration cannot be acted on and amend() reports that rather than
-  # adding a model under a prior it could not build.
+  # amend() must also refuse an undeclared floor: its stored example
+  # spans negative responses and cannot supply the requested bot prior.
   err <- expect_error(suppressMessages(suppressWarnings(
     amend(manec_example, add = "nechorme4", asymptote_observed = FALSE)
   )))
@@ -2762,10 +2430,8 @@ test_that("amend refuses a response with no derivable floor (#394)", {
 })
 
 test_that("the declaration reaches both blocks of a hurdle fit (#394)", {
-  # define_hurdle_prior() builds the mu block from the survivors and the second
-  # block from the proportion surviving at each predictor value, and the design
-  # stopped before both curves' asymptotes. The declaration replaces both
-  # entries and leaves everything else in either block as it was.
+  # The design misses both hurdle asymptotes. Replace both bot entries
+  # from their own response blocks and preserve all other entries.
   set.seed(394)
   x <- rep(c(0, 0.31, 0.63, 1.25, 2.5, 5, 10, 40), each = 5)
   mu <- 2 + 8 * exp(-2.5 * (x - 39.82) * ifelse(x - 39.82 < 0, 0, 1))
@@ -2843,10 +2509,8 @@ test_that("the declared entry is built on the rate scale (#394)", {
 })
 
 test_that("a complete supplied bot prior is not refused (#394)", {
-  # add_brm_defaults() wraps the default build in try() so that a user who
-  # supplied their own complete set is never blocked by a default they will not
-  # use (#207, #229). A refusal raised before the model loop would take that
-  # back, so it is gated on whether a bot row will be generated at all.
+  # A complete supplied prior bypasses default construction. Gate early
+  # refusal on whether a bot row will actually be generated.
   d <- incomplete_design(0.36, "gaussian")
   d$y <- d$y - 1.2
   fam <- validate_family("gaussian")
@@ -2875,11 +2539,8 @@ test_that("a complete supplied bot prior is not refused (#394)", {
 })
 
 test_that("a supplied prior does not silence the mixed-set report (#394)", {
-  # Whether a set mixes equations that estimate a lower asymptote with ones
-  # that have no lower asymptote to estimate is a property of the set and of
-  # the design. Supplying a bot prior does not make the region that would
-  # separate them observed, so the gate that suppresses the refusals must not
-  # reach the report.
+  # Supplying a bot prior does not make the unobserved region informative.
+  # It must suppress only refusal, leaving the mixed-set report intact.
   d <- incomplete_design(0.36, "gaussian")
   fam <- validate_family("gaussian")
   bdat <- stats::model.frame(bnf(y ~ crf(x, c("nec3param", "nec4param"))),
@@ -2898,9 +2559,8 @@ test_that("a supplied prior does not silence the mixed-set report (#394)", {
 })
 
 test_that("a response with no value above the floor is refused early (#394)", {
-  # The second refusal unobserved_endpoint_mean() can raise. Hoisted for the
-  # same reason as the first: from inside the model loop it is printed once per
-  # equation and the call then ends on the generic all-models-failed advice.
+  # Raise the no-positive-response refusal before the model loop can
+  # replace it with generic all-models-failed advice.
   d <- incomplete_design(0.36, "gaussian")
   d$y <- 0
   fam <- validate_family("gaussian")
@@ -2909,12 +2569,8 @@ test_that("a response with no value above the floor is refused early (#394)", {
     bdat, fam, "nec4param", asymptote_observed = FALSE))
   expect_match(conditionMessage(err), "no value above that floor", fixed = TRUE)
   expect_match(conditionMessage(err), "`prior` argument", fixed = TRUE)
-  # On a zero-bounded family the same response reaches positive_scale(), whose
-  # refusal names the construction of top and bot and not the declaration. The
-  # declaration's own message is what must arrive; this pins the behaviour
-  # rather than the implementation, and it holds for the construction that
-  # tests for a positive value before reading the anchor and for the one that
-  # caught positive_scale()'s error afterwards.
+  # For a zero-bounded family, report the declaration refusal instead of
+  # the lower-level positive_scale() error.
   pois <- validate_family("poisson")
   d$y <- as.integer(d$y)
   bpois <- stats::model.frame(bnf(y ~ crf(x, "nec4param")), data = d)
@@ -2926,12 +2582,9 @@ test_that("a response with no value above the floor is refused early (#394)", {
 })
 
 test_that("an endpoint group at the floor is not refused (#394)", {
-  # The guard on the test hoisted above the anchor: an early stop() can only
-  # break this by refusing something it should accept, and a zero-bounded
-  # response whose endpoint group is entirely zero is the case that separates
-  # "no positive value at the endpoint" from "no positive value at all".
-  # regularizing_location() stands a tenth of the smallest positive observation
-  # in there, which is a scale the entry can be placed on.
+  # Distinguish an endpoint with no positive observations from a whole
+  # response with none. The endpoint can use a tenth of the smallest
+  # positive observation elsewhere as its fallback scale.
   d <- incomplete_design(0.36, "Gamma")
   d$y[d$x == max(d$x)] <- 0
   fam <- validate_family("Gamma")
@@ -2944,11 +2597,9 @@ test_that("an endpoint group at the floor is not refused (#394)", {
 })
 
 test_that("the refusal counts the observations below the floor (#394)", {
-  # min(response) >= 0 is the test, so one reading below zero decides it. That
-  # is the right test, because a response that goes below zero is measured on a
-  # scale that admits negative values; the message says how many did, so that a
-  # single stray reading and a response that is negative throughout are
-  # distinguishable.
+  # One reading below zero prevents deriving a non-negative floor.
+  # Report the count so a stray reading differs from an entirely negative
+  # response.
   d <- incomplete_design(0.36, "gaussian")
   d$y[1] <- -0.001
   expect_true(min(d$y) < 0 && sum(d$y < 0) == 1)
@@ -2974,7 +2625,7 @@ test_that("the flatness report offers the declaration only where usable (#394)",
     bayesnec:::declaration_advice(Gamma(link = "log"), d$y * 10), "")
 })
 
-# ---- a family read off a fit -----------------------------------------------
+# Family objects recovered from a stored fit.
 
 test_that("a Gamma family read off a fit builds the priors bnec() builds (#436)", {
   # brms records Gamma as gamma, and amend() builds priors from that family.
@@ -3001,7 +2652,7 @@ test_that("a Gamma family read off a fit builds the priors bnec() builds (#436)"
   }
 })
 
-# ---- the disp() backstop on the single-block branch ------------------------
+# The disp() backstop on the single-block branch.
 
 test_that("define_prior refuses a disp() term the family cannot take (#445)", {
   power <- list(route = "B", value = "power")

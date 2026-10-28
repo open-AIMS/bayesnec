@@ -1,8 +1,5 @@
-# --- #256: one statement of what mu may be, and what each model can produce ---
-# The point of these tests is that the two artefacts cannot silently disagree
-# with the code they describe. #170 was opened because ?models and
-# check_models() had drifted apart; a table that is written down and never
-# checked is the same failure with an extra file.
+# Check the support and equation-range tables against the formulas and
+# family restrictions so their descriptions cannot drift from the code.
 
 expected_supports <- function() {
   # Keyed on the constructor names mod_fams holds as values, which is the form
@@ -36,8 +33,7 @@ test_that("mu_support is a property of the response distribution", {
 })
 
 test_that("every family in mod_fams has a decided support", {
-  # This is the test the comment claims: an unlisted family errors here rather
-  # than passing on a fallback that happens to satisfy a range check.
+  # Require an explicit entry for every supported family.
   expect_setequal(names(expected_supports()), unname(bayesnec:::mod_fams))
 })
 
@@ -61,11 +57,8 @@ test_that("mu_is_constrained asks family and link together, not either alone", {
   expect_false(f(poisson(link = "sqrt")))
   expect_false(f(Gamma(link = "log")))
 
-  # The case that shows neither family nor link decides it alone. exp(eta) is
-  # positive but unbounded above, so on a (0, 1) response a log link can hand
-  # beta_lpdf a negative second shape parameter -- while guaranteeing a valid
-  # mean for every count family. Confirmed against the generated Stan code,
-  # which emits `mu = exp(mu)` then `beta_lpdf(Y | mu .* phi, (1 - mu) .* phi)`.
+  # A log link ensures positivity but can exceed one. For a Beta mean that
+  # makes (1 - mu) * phi invalid even though the same link suits count means.
   expect_true(f(Beta(link = "log")))
   expect_true(f(binomial(link = "log")))
   expect_true(f(brms::bernoulli(link = "log")))
@@ -85,10 +78,8 @@ test_that("mu_is_constrained asks family and link together, not either alone", {
 })
 
 test_that("a two-block family is asked about the block's own link", {
-  # validate_family() requires link_hu = "identity", so the hu block is always
-  # on identity with (0, 1) support and is always reachable, whatever the mu
-  # link is. Reading family$link for the hu block would answer the mu question
-  # twice.
+  # Read the second block’s own link: its identity-link probability can leave
+  # support even when the mu block has a support-preserving link.
   f <- bayesnec:::mu_is_constrained
   hg <- validate_family("hurdle_gamma")
   expect_true(f(hg, dpar = "hu"))
@@ -96,10 +87,8 @@ test_that("a two-block family is asked about the block's own link", {
   expect_false(f(hg_log))
   expect_true(f(hg_log, dpar = "hu"))
 
-  # The case that discriminates. On hurdle_gamma both readings answer TRUE for
-  # the hu block, so reverting to family$link would leave the tests passing. A
-  # zero_inflated_beta on a logit mu link does not: the mu block is guaranteed
-  # and the zi block, on identity, is not.
+  # Use logit mu with identity zi to distinguish the two link lookups.
+  # The default hurdle Gamma would give TRUE under either lookup.
   zib <- validate_family("zero_inflated_beta")
   zib$link <- "logit"
   expect_false(f(zib))
@@ -108,10 +97,8 @@ test_that("a two-block family is asked about the block's own link", {
 })
 
 test_that("no link any accepted family takes falls to the default unintended", {
-  # link_range()'s default is c(-Inf, Inf), which reports the mean as reachable.
-  # That is correct for identity, inverse and 1/mu^2 and wrong for anything
-  # else, so the enumeration is asserted rather than assumed. Obtained by
-  # constructing every family in mod_fams against every candidate link.
+  # Enumerate constructor-accepted links to catch an accidental fallback to
+  # the unconstrained range.
   fams <- list(gaussian = stats::gaussian, Gamma = stats::Gamma,
                poisson = stats::poisson, binomial = stats::binomial,
                negbinomial = brms::negbinomial, bernoulli = brms::bernoulli,
@@ -138,7 +125,7 @@ test_that("no link any accepted family takes falls to the default unintended", {
 
 test_that("the model range table covers every model exactly once", {
   tab <- bayesnec:::model_mu_ranges()
-  # Every equation, ecxflat included although it is in no group (#419).
+  # Include ecxflat even though it belongs to no model group.
   expect_setequal(tab$model, bayesnec:::equation_names())
   expect_equal(anyDuplicated(tab$model), 0)
   expect_setequal(names(tab), c("model", "below_zero", "unscaled_excess",
@@ -146,10 +133,7 @@ test_that("the model range table covers every model exactly once", {
                                "zero_asymptote"))
 })
 
-# --- the table regenerated from the formulas -------------------------------
-# Rather than trusting the flags, evaluate each model's mean over a grid of
-# parameter values inside the constraints a 0-1 bounded family imposes, and
-# read the flags back off the result.
+# Evaluate formulas over admissible parameter grids to check the range flags.
 
 eval_mu <- function(model, pars, x) {
   expr <- get(paste0("bf_", model))[[1]][[3]]
@@ -198,10 +182,8 @@ test_that("unscaled_excess is an excess the fit cannot shrink away", {
     expect_true(max(sweep_mu(m, slope_val = 2)) > 1, info = m)
     expect_false(tab$unscaled_excess[tab$model == m], info = m)
   }
-  # the flag is FALSE for the thirteen equations with no slope at all, and that
-  # is asserted rather than assumed: each is either top times a factor in
-  # (0, 1] or a convex combination of top and bot, so none can exceed 1 when
-  # both are inside it
+  # Without slope, these curves are a bounded multiple of top or a convex
+  # combination of top and bot, so bounded parameters keep the mean below one.
   for (m in tab$model[!has_slope]) {
     expect_lte(max(sweep_mu(m)), 1 + 1e-8, label = m)
     expect_false(tab$unscaled_excess[tab$model == m], info = m)
@@ -210,10 +192,8 @@ test_that("unscaled_excess is an excess the fit cannot shrink away", {
 
 test_that("zero_asymptote is what the formulas do, and matches mod_groups", {
   tab <- bayesnec:::model_mu_ranges()
-  # The mean of a zero-asymptote model decays onto zero, so at a large
-  # predictor value it is a negligible fraction of its own level. Checked as a
-  # ratio rather than against a fixed tolerance, because necsigm and ecxsigm
-  # approach zero slowly enough that any single cutoff is arbitrary.
+  # Compare the distant response with each curve’s own level: necsigm and
+  # ecxsigm approach zero slowly, making a fixed absolute cutoff unsuitable.
   for (m in tab$model[tab$zero_asymptote]) {
     g <- par_grid(m)
     ratios <- vapply(seq_len(nrow(g)), function(i) {
@@ -230,15 +210,12 @@ test_that("zero_asymptote is what the formulas do, and matches mod_groups", {
       eval_mu(m, g[i, , drop = FALSE], 1e6), numeric(1))
     expect_true(all(tail_vals > 0.01), info = m)
   }
-  # and the derivation reproduces the group the package already ships
   expect_setequal(tab$model[tab$zero_asymptote], mod_groups$zero_bounded)
 })
 
 test_that("ceiling_at_one is a saturating hormetic term, not a support failure", {
-  # Read off bf_nechormepwr01 rather than a hand-written copy of its hormetic
-  # term, so that editing the equation breaks this test. nec is placed beyond
-  # the evaluated predictor range so the decay factor is exactly 1 and what is
-  # left is the hormetic term alone.
+  # Read the actual formula and put nec beyond the grid so the decay factor
+  # is one. The remaining response isolates the hormetic term.
   x <- c(0, 0.5, 1, 2, 4, 10)
   fac <- function(top, slope = 0) {
     eval_mu("nechormepwr01",
@@ -270,12 +247,7 @@ test_that("ceiling_at_one is a saturating hormetic term, not a support failure",
   }
 })
 
-# --- the gates derive from the two artefacts --------------------------------
-# This is the test that stops the table becoming a second source of truth. It
-# does not change check_models(); it asserts that what check_models() does is
-# what the table says it should. A later change makes the gates read the table
-# directly, and any difference found then is a decision rather than a
-# regression. See #256.
+# Check that check_models() applies the restrictions described by the tables.
 
 test_that("check_models' gates agree with the model range table", {
   tab <- bayesnec:::model_mu_ranges()
@@ -306,22 +278,15 @@ test_that("check_models' gates agree with the model range table", {
   expect_setequal(dropped(gaussian(link = "log")),
                   tab$model[tab$zero_asymptote])
 
-  # INVERTED with #206. The gaussian exclusion was keyed on the family
-  # irrespective of link and dropped every zero-asymptote equation; it was
-  # asserted here as current behaviour and explicitly not endorsed. It is
-  # removed: the exclusion conflated the range of the mean function with the
-  # support of the likelihood, and a gaussian likelihood evaluates y - mu and
-  # never tests the sign of y. Nothing is dropped for gaussian now.
+  # A Gaussian likelihood permits negative observations around a zero-bounded
+  # mean, so identity-link Gaussian fits need no such equation exclusion.
   expect_length(dropped(validate_family("gaussian")), 0)
-  # The link exclusion above is a different condition and still applies, which
-  # is what stops this reading as "gaussian drops nothing ever".
+  # The log-link restriction remains a separate condition.
   expect_setequal(dropped(gaussian(link = "log")),
                   tab$model[tab$zero_asymptote])
 
-  # the two-block families apply both blocks' restrictions at once, which is
-  # why mu_support() takes a dpar. hurdle_gamma is the case that needs it:
-  # (0, Inf) on mu and (0, 1) on hu, so it drops the union of what each block
-  # would drop on its own. Nothing else in the model set exercises that.
+  # A hurdle Gamma has positive mu and unit-interval hu. Apply the union
+  # of the restrictions required by those two blocks.
   hg <- validate_family("hurdle_gamma")
   expect_equal(bayesnec:::mu_support(hg), c(0, Inf))
   expect_equal(bayesnec:::mu_support(hg, dpar = "hu"), c(0, 1))
@@ -339,8 +304,7 @@ test_that("check_models' gates agree with the model range table", {
 })
 
 test_that("the agreement test covers every family in mod_fams", {
-  # Finding from review: the first version asserted "every family" and covered
-  # ten of twelve, omitting the two-block branch of check_models() entirely.
+  # Include the two-block families in the completeness check.
   covered <- c("Beta", "binomial", "beta_binomial", "bernoulli",
                "Gamma", "poisson", "negbinomial", "zero_inflated_poisson",
                "zero_inflated_negbinomial", "gaussian",
@@ -350,11 +314,9 @@ test_that("the agreement test covers every family in mod_fams", {
 })
 
 test_that("the slope and beta observations hold over the admissible equations", {
-  # The roxygen records two observations rather than a per-parameter column.
-  # They are asserted here over the equations that are actually admissible for
-  # a (0, 1) response, which is the domain they are stated for -- the two the
-  # numerical derivation could not baseline, nechormepwr and nechorme4pwr, are
-  # excluded by that gate anyway.
+  # Check slope and beta over the equations admissible for unit-interval
+  # responses. The gate excludes nechormepwr and nechorme4pwr, which cannot
+  # be baselined by the numerical comparison.
   admissible <- suppressMessages(
     bayesnec:::check_models(models()$all, validate_family("Beta"))
   )
@@ -399,14 +361,12 @@ test_that("the slope and beta observations hold over the admissible equations", 
   # below_zero rather than on anything to do with beta
   expect_false("neclinhorme" %in% admissible)
   expect_true(leaves_range("neclinhorme", "beta", seq(-5, 5, length.out = 25)))
-  # 21 of the 23 equations carry beta
   expect_equal(sum(vapply(models()$all, has_par, logical(1), "beta")), 21)
   expect_setequal(models()$all[!vapply(models()$all, has_par, logical(1), "beta")],
                   c("neclin", "ecxlin"))
 })
 
 
-# ---- #257, the scale a group-level deviation is applied on -------------------
 
 test_that("ogl_transform_kind picks the scale from the family's support", {
   # Gate 1: the likelihood constrains mu and the link cannot keep it inside.
@@ -421,8 +381,7 @@ test_that("ogl_transform_kind picks the scale from the family's support", {
                "log")
   expect_equal(ogl_transform_kind("nec3param", validate_family("poisson")),
                "log")
-  # gaussian is unconstrained, so there is nothing to protect against and the
-  # additive offset is kept. #245 measured 0% divergent for exactly this case.
+  # Keep additive deviations for unconstrained Gaussian means.
   expect_equal(ogl_transform_kind("nec3param", validate_family("gaussian")),
                "none")
   # A link that already maps into the support does the same job.
@@ -435,22 +394,16 @@ test_that("ogl_transform_kind picks the scale from the family's support", {
 })
 
 test_that("ogl_transform_kind refuses the equations the transform is undefined for", {
-  # Gate 2, and it is a blocker rather than a caveat. These keep the additive
-  # offset and the raised adapt_delta permanently.
+  # Keep additive offsets and the adapt_delta raise where the mean transform
+  # is undefined.
   beta <- validate_family("Beta")
   # Unbounded below: log and logit of a negative mean are both NaN.
   for (m in c("neclin", "neclinhorme", "ecxlin")) {
     expect_equal(ogl_transform_kind(m, beta), "none")
     expect_equal(ogl_transform_kind(m, validate_family("Gamma")), "none")
   }
-  # Can exceed 1: logit is NaN, and the collapsed form has a pole at
-  # o = log((m - 1) / m) once m > 1 and changes sign across it. ALL SIX
-  # hormesis equations with an excess term are excluded, not only the two whose
-  # excess carries no coefficient -- the gate needs the mean to be provably
-  # strictly inside (0, 1), and "the fit can shrink the term" is not that.
-  # An earlier version of this test asserted "logit" for nechorme on the
-  # grounds that scaled hormesis is bounded by top; model_mu_ranges()'s own
-  # documentation says otherwise, and it is right.
+  # A mean above one makes logit undefined and the collapsed expression can
+  # have a pole. A shrinkable excess term does not guarantee a mean in (0, 1).
   for (m in c("nechormepwr", "nechorme4pwr", "nechorme", "nechorme4",
               "ecxhormebc4", "ecxhormebc5")) {
     expect_equal(ogl_transform_kind(m, beta), "none")
@@ -464,17 +417,14 @@ test_that("ogl_transform_kind refuses the equations the transform is undefined f
                "log")
   # A bot fixed at 0 is not a problem: the mean is still strictly inside.
   expect_equal(ogl_transform_kind("ecxwb1p3", beta), "logit")
-  # Degenerate input.
   expect_equal(ogl_transform_kind("nec3param", NULL), "none")
   expect_equal(ogl_transform_kind("notamodel", beta), "none")
   expect_equal(ogl_transform_kind(character(0), beta), "none")
 })
 
 test_that("can_exceed_one is stronger than unscaled_excess, and is what gates", {
-  # The two columns answer different questions and must not be conflated.
-  # unscaled_excess is about admissibility -- can the fit shrink the excess --
-  # and check_models() is right to admit an equation whose excess it can.
-  # can_exceed_one is about whether a logit is defined, and holds for all six.
+  # unscaled_excess tests whether a fit can shrink the excess. can_exceed_one
+  # tests whether any such mean can make logit undefined; it covers more equations.
   tab <- model_mu_ranges()
   excess <- tab$model[tab$unscaled_excess]
   exceeds <- tab$model[tab$can_exceed_one]
@@ -484,11 +434,11 @@ test_that("can_exceed_one is stronger than unscaled_excess, and is what gates", 
   # Strictly stronger: everything unscaled_excess flags, can_exceed_one flags.
   expect_true(all(excess %in% exceeds))
   expect_false(all(exceeds %in% excess))
-  # And the pole this exists to avoid is real.
+  # Evaluate both sides of the pole.
   ev <- function(m, o) m * exp(o) / (1 - m + m * exp(o))
   expect_gt(ev(1.5, -1.0986), 1e4)
   expect_lt(ev(1.5, -1.1), 0)
-  # while an equation the gate admits is well behaved over the same range
+  # The same deviations must stay in range for an admissible mean.
   expect_true(all(vapply(c(-1.0986, -1.1, -5, 5),
                          function(o) ev(0.7, o) > 0 && ev(0.7, o) < 1,
                          logical(1))))
@@ -519,11 +469,9 @@ test_that("the transform is collapsed, and is the identity at zero deviation", {
     expect_gt(ev("log", 3.2, o), 0)
     expect_true(is.finite(ev("log", 3.2, o)))
   }
-  # In exact arithmetic the logit form cannot reach 1 for any finite deviation.
-  # In double precision it rounds to 1 once (1 - m) / (m * exp(o)) falls below
-  # 2^-53, which for m = 0.7 is about o = 36 -- seventy standard deviations of
-  # the prior. Asserted rather than claimed, so the limit of the guarantee is
-  # recorded rather than implied away.
+  # Double precision can round the transformed mean to one for large finite
+  # deviations. Check this limit explicitly rather than promising strict bounds
+  # for every floating-point input.
   expect_lt(ev("logit", 0.7, 35), 1)
   expect_equal(ev("logit", 0.7, 40), 1)
   # The log form overflows to Inf only beyond exp()'s own range.
@@ -541,7 +489,6 @@ test_that("the transform is collapsed, and is the identity at zero deviation", {
 })
 
 
-# ---- #294, a group-level deviation on a single parameter ---------------------
 
 test_that("par_transform_kind picks the scale from the family alone", {
   expect_equal(par_transform_kind(validate_family("Beta")), "logit")
@@ -551,10 +498,7 @@ test_that("par_transform_kind picks the scale from the family alone", {
   expect_equal(par_transform_kind(validate_family("Gamma")), "log")
   expect_equal(par_transform_kind(validate_family("poisson")), "log")
   expect_equal(par_transform_kind(validate_family("negbinomial")), "log")
-  # gaussian is unconstrained, so top and bot are not against a boundary and
-  # the additive deviation is kept. The issue's isolating arm: the same term on
-  # the same data gives 51 divergent transitions of 2000 under Beta and none
-  # under gaussian.
+  # An unconstrained Gaussian parameter keeps its additive deviation.
   expect_equal(par_transform_kind(validate_family("gaussian")), "none")
   # A link that already maps into the support does the job itself.
   expect_equal(
@@ -566,13 +510,9 @@ test_that("par_transform_kind picks the scale from the family alone", {
 })
 
 test_that("the parameter gate is not the mean gate", {
-  # The deliberate divergence from ogl_transform_kind(). That function needs the
-  # MEAN provably strictly inside (0, 1) and so refuses every equation whose
-  # mean can reach or pass 1. A parameter is not the mean: define_prior() bounds
-  # top and bot to the family's support with lb and ub whatever equation they
-  # appear in, so the transform is defined for them there. Those equations keep
-  # the raised adapt_delta for the separate reason that their mean can leave the
-  # support with every parameter inside it -- see add_brm_defaults().
+  # The parameter transform uses bounds on top and bot, not bounds on the
+  # whole mean. A hormetic mean can still leave support, so its adapt_delta
+  # raise remains necessary.
   beta <- validate_family("Beta")
   hormesis <- c("nechorme", "nechorme4", "nechormepwr", "nechorme4pwr",
                 "nechormepwr01", "ecxhormebc4", "ecxhormebc5")
@@ -588,12 +528,9 @@ test_that("the parameter gate is not the mean gate", {
 })
 
 test_that("only the response-scale parameters are transformed", {
-  # nec and ec50 are on the predictor scale and are routinely negative on a log
-  # predictor, so log and logit of them are undefined; beta, slope, d and f are
-  # dimensionless and enter through an exponential. None of them is bounded by
-  # the likelihood, so none needs a transform, and the issue measured 0
-  # divergent transitions of 2000 for a (nec | group) term at Stan's default
-  # adapt_delta of 0.8.
+  # nec and ec50 use the predictor scale; beta, slope, d and f are unbounded
+  # parameters used through exponentials. Only top and bot need these
+  # likelihood-support transforms.
   expect_setequal(par_transform_pars(), c("top", "bot"))
   for (p in c("top", "bot")) {
     expect_true(par_is_transformed(p, "logit"))
@@ -642,13 +579,9 @@ test_that("the parameter transform is the identity at zero deviation", {
 
 
 test_that("mu_confined_by_pars tests the excess term on every support", {
-  # The raise gate. It must not delegate to ogl_transform_kind(), which tests
-  # can_exceed_one on the (0, 1) branch only -- there the question is whether a
-  # logit is defined -- and on (0, Inf) returns "log" after testing below_zero
-  # alone. An excess term in exp(slope) * x makes the mean negative for a
-  # sufficiently negative predictor: nechorme's mean is negative for
-  # x < -top / exp(slope), and crf(log(x), ...) supplies a negative predictor as
-  # a matter of course.
+  # Do not use the mean-transform gate to decide the adapt_delta raise.
+  # A hormetic excess can violate positive support on negative predictors,
+  # including those produced by crf(log(x)).
   hormesis <- c("nechorme", "nechorme4", "nechormepwr", "nechorme4pwr",
                 "nechormepwr01", "ecxhormebc4", "ecxhormebc5")
   for (m in c(hormesis, "neclin", "neclinhorme", "ecxlin")) {
@@ -659,13 +592,12 @@ test_that("mu_confined_by_pars tests the excess term on every support", {
               "ecxll5", "ecxll4", "ecxll3")) {
     expect_true(mu_confined_by_pars(m))
   }
-  # Every equation is decided, and the two functions agree only where the
-  # support is the unit interval.
+  # Cover every equation, including the different Gamma gate decisions.
   expect_setequal(equation_names(), model_mu_ranges()$model)
   beta <- validate_family("Beta")
   for (m in hormesis) {
     expect_equal(ogl_transform_kind(m, beta), "none")
-    # The divergence this test exists for.
+    # The Gamma mean transform can be log even when parameters do not confine it.
     expect_equal(ogl_transform_kind(m, validate_family("Gamma")), "log")
   }
   expect_false(mu_confined_by_pars(NULL))
@@ -690,10 +622,8 @@ test_that("group_zero_intercepts names ogl and nothing else", {
 })
 
 test_that("ecxflat is confined as top is, and is not zero-bounded (#419)", {
-  # Its mean is top, so it takes the transform of the equations whose mean
-  # stays inside the support, and a group-level term on it does not raise
-  # adapt_delta. Without a row it fell to "none" and FALSE, the defaults for an
-  # equation the table does not know.
+  # ecxflat has mean top, so its bounds determine the transform and whether
+  # an excursion-specific adapt_delta raise is needed.
   tab <- bayesnec:::model_mu_ranges()
   row <- tab[tab$model == "ecxflat", ]
   expect_false(any(unlist(row[setdiff(names(row), "model")])))

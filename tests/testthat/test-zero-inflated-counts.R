@@ -11,10 +11,9 @@ test_that("the zero-inflated count families are accepted, on identity mu", {
 })
 
 test_that("the zero-inflated count families are not two-block families", {
-  # This is the whole of the design decision. zero_inflated_beta is a two-block
-  # family here because Beta cannot emit a zero, so zero-inflation collapses to
-  # a hurdle and the likelihood factorises. Poisson and negbinomial can emit a
-  # zero, so it does not, and the two-block machinery must not be reached.
+  # Beta cannot emit zero, so its zero-inflated likelihood factorises. Poisson
+  # and negative-binomial observations can be zero in either component, so
+  # these mixtures must not enter the two-block machinery.
   for (tag in c("zero_inflated_poisson", "zero_inflated_negbinomial")) {
     expect_false(bayesnec:::is_hurdle_family(tag))
     expect_false(bayesnec:::is_hurdle_family(validate_family(tag)))
@@ -52,8 +51,7 @@ test_that("priors come from the base count family", {
 })
 
 test_that("model_survival is refused for the zero-inflated count families", {
-  # model_survival names the equation for a second parameter block. There is no
-  # second block here, so asking for one is a mistake worth naming.
+  # model_survival requires a separate curve for the zero-probability block.
   for (tag in c("zero_inflated_poisson", "zero_inflated_negbinomial")) {
     expect_error(
       check_model_survival("nec3param", validate_family(tag)),
@@ -70,12 +68,9 @@ test_that("bnec_hurdle refuses the zero-inflated count families", {
                 family_growth = zero_inflated_poisson()),
     "cannot use zero_inflated_poisson"
   )
-  # The message has to say why, and point somewhere useful.
   expect_match(conditionMessage(err), "does not factorise")
   expect_match(conditionMessage(err), "bnec\\(family = \"zero_inflated_poisson\"\\)")
-  # It must not send the user to the untruncated count fit, which is a
-  # different model from the hurdle on counts they would be asking for. See
-  # #209.
+  # An untruncated count fit is not a replacement for a count hurdle model.
   expect_match(conditionMessage(err), "zero-truncated")
   expect_false(grepl("leave family_growth unset --", conditionMessage(err)))
   expect_error(
@@ -83,7 +78,6 @@ test_that("bnec_hurdle refuses the zero-inflated count families", {
                 family_growth = zero_inflated_negbinomial()),
     "cannot use zero_inflated_negbinomial"
   )
-  # A two-block family is refused too, for the simpler reason.
   expect_error(
     bnec_hurdle(y ~ crf(x, "nec3param"), data = dat,
                 family_growth = "hurdle_gamma"),
@@ -128,13 +122,11 @@ test_that("a zero-inflated count response fits through bnec", {
   expect_s3_class(fit, "bayesnecfit")
   expect_equal(fit$fit$family$family, "zero_inflated_poisson")
   pars <- rownames(fixef(fit$fit))
-  # The curve is on mu only. No bayesnec equation is written for zi -- that is
-  # what would make this a two-block fit, and it is the thing D4 rules out.
+  # The curve describes mu; zi is a constant mixing probability, not a second
+  # concentration-response equation.
   expect_setequal(pars, c("top_Intercept", "beta_Intercept", "nec_Intercept"))
   expect_false(any(grepl("^zi(top|beta|nec)", pars)))
-  # zi is estimated, as a single constant.
   expect_true("zi" %in% variables(fit$fit))
-  # The usual accessors work.
   expect_true(is.numeric(nec(fit)))
   expect_equal(nrow(predict(fit)), nrow(dat))
   expect_equal(nrow(fit$pred_vals$data), 1000)
