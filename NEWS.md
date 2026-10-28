@@ -2892,8 +2892,8 @@
 - The `sample_size` stored on a `bayesmanecfit` is now the number of draws
   each model holds, counted from the fits. It was computed as
   `ceiling((iter - warmup) / thin * chains)`, while Stan keeps
-  `ceiling((iter - warmup) / thin)` draws in each chain, so the count fell
-  short whenever `thin` does not divide `iter - warmup`. Four chains of 500
+  `ceiling((iter - warmup) / thin)` draws in each chain, so the count could fall
+  short when `thin` does not divide `iter - warmup`. Four chains of 500
   post-warmup iterations thinned by 3 keep 668 draws, and `sample_size`
   recorded 667. The stored summaries, `ecx()` and `nsec()` used the stored
   draw index, while `posterior_epred()` and `posterior_predict()`, and
@@ -2906,8 +2906,11 @@
   fit. A set saved by an earlier version keeps the `sample_size` it recorded,
   and every method now uses its stored index whenever the caller takes all
   the draws, so such a set agrees with its own stored summaries without being
-  refitted. The default `thin = 1` and a single fit, a `bayesnecfit`, are
-  unaffected (#477).
+  refitted. Without a stored index, methods rebuild one from the same saved
+  count and seed. Sets predating the stored seed use a fixed seed, so their
+  recalculated estimates agree across methods but cannot reproduce the
+  historical summaries. The default `thin = 1` and a single fit, a
+  `bayesnecfit`, are unaffected (#477).
 
 ## Documentation
 

@@ -182,8 +182,12 @@ pull_draw_index <- function(object, model_set, sample_size) {
   idx <- object$w_draw_index
   # `==`, not identical(): sample_size is a double on the object and an integer
   # from nrow(), and identical() would always take the fallback.
-  same_n <- isTRUE(object$sample_size == sample_size) ||
-    undercounted_set(object, sample_size)
+  same_n <- isTRUE(object$sample_size == sample_size)
+  if (!same_n && undercounted_set(object, sample_size)) {
+    # Rebuild from the stored count too when an older set has no index.
+    sample_size <- object$sample_size
+    same_n <- TRUE
+  }
   if (!is.null(idx) && same_n && all(model_set %in% names(idx))) {
     idx[model_set]
   } else {
