@@ -178,10 +178,12 @@ log-odds and not as a proportion.
 
 The term names a parameter, and not every equation of a model set has every
 parameter: `bot` is a parameter of `nec4param` and not of `nec3param`. Where the
-named parameter is absent the `(par | group)` term is dropped for that equation
-and the fit proceeds without it. The drop is reported by a message, which is easily lost
-among Stan's compilation output. `check_formula()` reports it for every equation
-of the set before any model is fitted.
+named parameter is absent, the `(par | group)` term is dropped from that
+equation. An equation left with no group-level term on a grouping variable is
+excluded from the set, because it would otherwise be fitted as one curve pooled
+over the levels that the other equations separate. `bnec()` reports an
+exclusion before any model is fitted. `check_formula()` reports the dropped
+terms for every equation of the set without fitting anything.
 
 ```{r check-formula, message = TRUE}
 invisible(check_formula(
@@ -191,8 +193,10 @@ invisible(check_formula(
 ))
 ```
 
-The message names `nec3param` as the equation without a `bot` parameter, so the
-term is dropped there and kept for `nec4param`.
+The message names `nec3param` as the equation without a `bot` parameter.
+`(bot | group)` is the only term on `group` in this formula, so `bnec()` would
+exclude `nec3param` and fit `nec4param` alone. With `(nec | group)` added,
+`nec3param` would keep that term and be fitted with it.
 
 ## Deviation on every parameter
 
@@ -1286,11 +1290,12 @@ deviation on the parameter that places the curve there. `(nec | batch)` and
 `(ec50 | batch)` give each batch one deviation on `nec` or `ec50`, added on the
 scale of the predictor, which changes the log concentration at which that
 batch's transition occurs. A term naming a parameter an equation does not have is
-dropped from that equation with a message, so each equation receives whichever
-of the two it has. Twenty of the 23 equations have one. `ecxlin`, `ecxexp` and
-`ecxsigm` have neither and fit no batch term. Five batches is the conventional
-minimum for one group-level standard deviation. For `nec3param` the structure
-is:
+dropped from that equation, so each equation receives whichever of the two it
+has. Twenty of the 23 equations have one. `ecxlin`, `ecxexp` and `ecxsigm` have
+neither, and an equation with neither keeps no term on `batch` and is excluded.
+Of the three, only `ecxexp` is in the set fitted to these data. Five batches is
+the conventional minimum for one group-level standard deviation. For
+`nec3param` the structure is:
 
 ```{r form-arm, message = TRUE}
 make_brmsformula(
