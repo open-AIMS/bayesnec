@@ -35,7 +35,12 @@
 #' the curve predicts. \code{ecnsec} is the inverse of the \code{ecx}
 #' reference construction under the same \code{type}, so the two answer the
 #' same question of the same curve. "direct" names a response value rather
-#' than a percentage and is refused here.
+#' than a percentage and is refused here. On a joint two-block fit
+#' (\code{family = "hurdle_gamma"}, \code{"zero_inflated_beta"},
+#' \code{"hurdle_poisson"} or \code{"hurdle_negbinomial"}) the curve read is
+#' the combined one, \code{(1 - hu) * E[Y | Y > 0]}, and "relative" is refused,
+#' because that curve's asymptote is the product of the two blocks' asymptotes
+#' rather than a fitted parameter.
 #'
 #' Each posterior draw of the control is compared with the same draw's value
 #' of the curve at \code{nsec}, as \code{\link{ecx}} reads each draw's own
@@ -115,6 +120,14 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 200, x_range = NA,
          "percentage, so there is no percent effect for ecnsec to report. ",
          "Use type = \"absolute\" (the default), \"relative\" or ",
          "\"range\".", call. = FALSE)
+  }
+  if (identical(type, "relative")) {
+    fit_family <- if (inherits(object, "bayesmanecfit")) {
+      object$mod_fits[[1]]$fit$family
+    } else {
+      object$fit$family
+    }
+    check_combined_relative(fit_family, "ecnsec")
   }
   if(!inherits(xform, "function")) { 
     stop("xform must be a function.")}  

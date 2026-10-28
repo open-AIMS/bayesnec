@@ -297,3 +297,114 @@ test_that("the estimate is insensitive to resolution above the default", {
   })
   expect_equal(n200, n1000, tolerance = 1e-3)
 })
+
+# ---- relative ECx on a joint two-block fit ----------------------------------
+
+# A stand-in for a joint fit. Tests mock the grid, the curve and the draws.
+joint_relative_object <- function(family = "hurdle_gamma") {
+  structure(list(model = "nec4param",
+                 fit = list(family = validate_family(family)),
+                 bayesnecformula = bnf(y ~ crf(x, "nec4param"))),
+            class = c("bayesnecfit", "bnecfit"))
+}
+
+test_that("a relative ECx of a joint fit's combined curve is refused (#491)", {
+  for (fam in c("hurdle_gamma", "zero_inflated_beta", "hurdle_poisson",
+                "hurdle_negbinomial")) {
+    block <- bayesnec:::hurdle_dpar(fam)
+    expect_error(
+      suppressWarnings(ecx(joint_relative_object(fam), type = "relative")),
+      paste0("not defined for the combined curve of the ", fam,
+             " family.*dpar = \"mu\" or dpar = \"", block, "\""),
+      label = fam
+    )
+  }
+  # every equation of a model set goes through the single-fit method
+  set <- structure(list(mod_fits = list(a = joint_relative_object()),
+                        success_models = "a", sample_size = 10),
+                   class = c("bayesmanecfit", "bnecfit"))
+  local_mocked_bindings(
+    pull_draw_index = function(...) list(a = 1:10),
+    pull_out = function(object, model) object$mod_fits[[model]],
+    .package = "bayesnec"
+  )
+  expect_error(suppressWarnings(ecx(set, type = "relative")),
+               "combined curve of the hurdle_gamma family")
+  # families with one block are not affected
+  for (fam in c("gaussian", "Gamma", "negbinomial")) {
+    expect_null(bayesnec:::check_combined_relative(validate_family(fam)),
+                label = fam)
+  }
+})
+
+test_that("the zero block's bot is the floor of the curve ecx reads (#491)", {
+  # ecx(dpar = "hu") reads 1 - hu, so 1 - hu declines towards hubot
+  d <- data.frame(x = rep(c(0, 1, 2, 3), each = 5), y = c(rep(1, 15), rep(0, 5)))
+  for (fam in c("hurdle_gamma", "zero_inflated_beta")) {
+    block <- bayesnec:::hurdle_dpar(fam)
+    dd <- d
+    if (fam == "zero_inflated_beta") dd$y <- ifelse(dd$y > 0, 0.5, 0)
+    bf <- make_brmsformula(y ~ crf(x, "nec4param"), dd,
+                           family = validate_family(fam))[[1]]
+    expect_match(deparse1(bf$pforms[[block]][[3]]),
+                 paste0("^1 - \\(", block, "bot \\+"), label = fam)
+  }
+})
+
+test_that("a relative ECx of the zero block is measured towards its own bot (#491)", {
+  grid <- seq(0, 5, length.out = 1001)
+  ctrl <- c(0.9, 0.8, 0.95)
+  floor_draws <- c(0.1, 0.2, 0.05)
+  # each draw closes half its distance to the floor at x = log(2)
+  curve <- t(vapply(1:3, function(i) {
+    floor_draws[i] + (ctrl[i] - floor_draws[i]) * exp(-grid)
+  }, numeric(length(grid))))
+  # the response block's bot lies above every control here
+  draws <- data.frame(b_bot_Intercept = c(2, 3, 1.5),
+                      b_hubot_Intercept = floor_draws)
+  local_mocked_bindings(
+    newdata_eval = function(...) {
+      list(newdata = data.frame(x = grid), x_vec = grid)
+    },
+    joint_hurdle_epred = function(object, newdata, dpar = NULL) curve,
+    control_posterior = function(...) ctrl,
+    as_draws_df = function(x, ...) draws,
+    .package = "bayesnec"
+  )
+  obj <- joint_relative_object()
+  est <- suppressWarnings(ecx(obj, ecx_val = 50, type = "relative",
+                              dpar = "hu", posterior = TRUE))
+  expect_equal(as.numeric(est), rep(log(2), 3), tolerance = 0.01)
+  expect_equal(bayesnec:::ecx_asymptote(obj, "relative", "hu"), floor_draws)
+  # the response block is still measured towards its own bot
+  expect_equal(bayesnec:::ecx_asymptote(obj, "relative", "mu"), c(2, 3, 1.5))
+  expect_equal(bayesnec:::ecx_asymptote(obj, "relative"), c(2, 3, 1.5))
+  # an equation without bot in the zero block declines towards 0
+  draws$b_hubot_Intercept <- NULL
+  curve <- t(vapply(1:3, function(i) ctrl[i] * exp(-grid),
+                    numeric(length(grid))))
+  expect_identical(bayesnec:::ecx_asymptote(obj, "relative", "hu"), 0)
+  est0 <- suppressWarnings(ecx(obj, ecx_val = 50, type = "relative",
+                               dpar = "hu", posterior = TRUE))
+  expect_equal(as.numeric(est0), rep(log(2), 3), tolerance = 0.01)
+})
+
+test_that("one level of a joint refit reads the zero block's bot (#491)", {
+  obj <- joint_relative_object()
+  class(obj) <- c("bayesnecjointlevel", class(obj))
+  level_draws <- NULL
+  local_mocked_bindings(
+    joint_level_draws = function(object, par, ...) {
+      if (identical(par, "hubot")) level_draws else NULL
+    },
+    as_draws_df = function(x, ...) {
+      data.frame(b_bot_Intercept = 2, b_hubot_Intercept = 0.15)
+    },
+    .package = "bayesnec"
+  )
+  # the zero block takes no level term, so the plain name is read
+  expect_equal(bayesnec:::ecx_asymptote(obj, "relative", "hu"), 0.15)
+  # a level's own term is read where the refit has one
+  level_draws <- c(0.3, 0.4)
+  expect_equal(bayesnec:::ecx_asymptote(obj, "relative", "hu"), c(0.3, 0.4))
+})

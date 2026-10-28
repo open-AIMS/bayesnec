@@ -1548,6 +1548,17 @@
   `nsec = 0.5`, below every draw of `nec`, no draw of the curve has declined
   from its control. That call returned -0.0000047 (-5.69 to 4.14), an interval
   set by the spread of the control, and now returns 0 in every draw (#488).
+- On a joint two-block fit from `bnec()`, with `hurdle_gamma`,
+  `zero_inflated_beta`, `hurdle_poisson` or `hurdle_negbinomial`,
+  `ecx(type = "relative")` with the default `dpar = NULL` and
+  `ecnsec(type = "relative")` are now refused. Both read the combined curve,
+  `(1 - hu) * E[Y | Y > 0]`, and measured it towards `bot` of the response
+  block, which is not that curve's asymptote. Its asymptote is the product of
+  the two blocks' asymptotes. The refusal matches `bnec_hurdle()` fits, on
+  which both were already refused. `ecx(type = "relative", dpar = "hu")`, or
+  `dpar = "zi"`, is now measured towards the zero block's own `bot`, or 0
+  where its equation has none, rather than towards the response block's `bot`,
+  which is on the response scale rather than a probability (#491).
 
 ## New
 
