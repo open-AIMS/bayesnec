@@ -2,8 +2,8 @@
 # Local use after integration:
 # git config blame.ignoreRevsFile .git-blame-ignore-revs
 # Recheck hashes after a rebase or squash; ignore no functional or merge commit.
-# The PR #510 retention changes and the later #507-#509 review corrections
-# remain visible in blame.
+# Retention changes and accuracy corrections in #507-#510 remain visible
+# in blame, including the factual corrections to test comments.
 
 # PR #492
 3643937bf69900a18f3408fb4a4cd71e30fc839c
@@ -82,3 +82,8 @@ adb1d63b7cbcc3dba09ff9f47000a802f3606009
 b5af1d77af8681be8b206b548cdd1b3a74dcd70d
 496e8fd62724d3ed4a59eff313f9513f09395e57
 64cfc05828692ddf0064790b9f7094fe2e2f35f7
+
+# PR #510 test-comment cleanup (accuracy corrections excluded)
+467b47abe1ace033f26ced46321508eabfb06634
+eb9deebc46440e7d78416d2bbc6dad3e504a7601
+8f29925c2650da3b21a445a116123c909ae1a05d

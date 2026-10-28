@@ -6,8 +6,8 @@ removed comments with the retained code, tests, decision records and PR
 descriptions. Most constraints remain beside the code. The references
 below locate the longer reasoning and the qualifications needed to interpret
 it. The later three PRs cover the eleven source files that waited for #482
-and #490. Comments in `tests/testthat/` have not been reviewed or shortened
-under this work; their cleanup remains outside this review.
+and #490. The test-comment pass in #510 applies the same retention rule to
+the tracked R files under `tests/testthat/`.
 
 ## Estimator definitions, censoring and scales
 
@@ -142,28 +142,47 @@ under this work; their cleanup remains outside this review.
   method against `drc` fits. The comment cleanup does not establish numerical
   validation of that external method.
 
+## Test fixtures and regression evidence
+
+- [Test reasoning](tests.md) preserves the measurements behind numerical
+  tolerances and search caps, together with the limits of mocked and stored-fit
+  fixtures. Changing a stored formula without refitting can exercise metadata
+  handling, but cannot validate the posterior for that changed model.
+- The short comments distinguish draw retention from numerical interpolation,
+  per-model reproducibility from model-average resampling, and interface
+  checks from tests that execute another backend. They retain the
+  reasons for separate plotting paths, cleanup of mocks, skip guards and
+  comparisons of numeric values or literal prior strings.
+
 ## Provenance and remaining work
 
 The evidence files preserve historical observations. Read their original
 design, version and limitations before applying a numerical claim to a new
 case. Current tests also establish only the cases they exercise.
 
-[`.git-blame-ignore-revs`](../../.git-blame-ignore-revs) lists the 60
-comment-only commits recorded by PRs #492–#497 and #507–#509. Each commit was
-checked for identical parsed R code before and after. Notes-only commits,
+[`.git-blame-ignore-revs`](../../.git-blame-ignore-revs) lists the original 60
+source-comment cleanup commits from PRs #492–#497 and #507–#509, followed by
+the test-comment cleanup commits in #510. Each commit was checked for
+identical parsed R code before and after. Notes-only commits,
 merges, functional changes and the subsequent retention and accuracy
 corrections remain visible in blame, including the new review corrections to
-#507–#509. `.Rbuildignore` excludes the file from
-the package build. After integration, enable it in a local checkout with:
+#507–#509 and the factual corrections to test comments. `.Rbuildignore`
+excludes the file from the package build. After integration, enable it in a
+local checkout with:
 
 ```sh
 git config blame.ignoreRevsFile .git-blame-ignore-revs
 ```
 
 This follow-up is based on [PR #509](https://github.com/open-AIMS/bayesnec/pull/509).
-Its base includes 54 of the listed commits; the final review commit from each
-of PRs #492–#497 must still be integrated. After those PRs and #507–#509 merge,
-retarget the follow-up to `predev` and verify that every listed hash is an
-ancestor of `predev`. A rebase or squash requires the list to be checked
-against the resulting commits and updated before this requirement of
+Its base includes 54 of the original 60 cleanup commits; the final review
+commit from each of PRs #492–#497 must still be integrated. After those PRs
+and #507–#509 merge, retarget the follow-up to `predev`. Verify the original
+source-cleanup hashes against `predev` and the test-cleanup hashes against
+the head of #510, where those commits are introduced.
+
+Merge #510 with a merge commit so that its test-cleanup hashes remain in the
+resulting history. Squashing or rebasing those commits would require a later
+update to the ignore list. After merging, every listed hash should be an
+ancestor of `predev` before the provenance requirement of
 [issue #484](https://github.com/open-AIMS/bayesnec/issues/484) is complete.
