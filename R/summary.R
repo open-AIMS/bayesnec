@@ -91,7 +91,9 @@ NULL
 #' and EC90.
 #' @param divergence_cutoff A \code{\link[base]{numeric}} vector of length 1.
 #' The summary warns of a model with more divergent transitions after warmup
-#' than this. Defaults to the cutoff \code{\link{check_sampling}} uses, 10.
+#' than this. Defaults to 10, the cutoff \code{\link{check_sampling}} and
+#' \code{\link{screen_models}} use. On a model set the warning gives each
+#' flagged equation's model weight beside its count.
 #'
 #' @method summary bayesnecfit
 #'
@@ -103,8 +105,7 @@ NULL
 #' @export
 summary.bayesnecfit <- function(object, ..., ecx = FALSE,
                                 ecx_vals = c(10, 50, 90),
-                                divergence_cutoff =
-                                  formals(check_sampling)$divergence_cutoff) {
+                                divergence_cutoff = 10) {
   chk_lgl(ecx)
   chk_numeric(ecx_vals)
   chk_number(divergence_cutoff)
@@ -175,8 +176,7 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
 summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
                                   ecx_vals = c(10, 50, 90),
                                   rhat_cutoff = 1.01,
-                                  divergence_cutoff =
-                                    formals(check_sampling)$divergence_cutoff,
+                                  divergence_cutoff = 10,
                                   fit_ratio_cutoff = 1.15,
                                   check_fit = TRUE) {
   chk_lgl(ecx)
