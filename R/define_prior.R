@@ -195,11 +195,11 @@ beta_from_mode_sd <- function(mode, spread) {
 #' standard-error floor does not cover. \code{asymptote_observed = FALSE}
 #' replaces the entry for such a design; see \code{unobserved_bot_entry()}.
 #'
-#' On the zero-bounded branch the two ends treat zeros differently. At the
-#' control a zero is structural, so the \code{top} mean is taken over the
-#' positive observations, as in \code{positive_scale()}. At the highest
-#' concentration a zero is the endpoint responding, so the \code{bot} mean
-#' keeps it. Under zero-inflation some of those zeros are structural, which
+#' On the zero-bounded branch the \code{top} mean uses positive observations
+#' to avoid zero-inflation reducing the scale, as in \code{positive_scale()}.
+#' This does not distinguish structural zeros from zeros of the count process.
+#' The \code{bot} mean keeps zeros because they inform the lower endpoint.
+#' Under zero-inflation some of those zeros are structural, which
 #' biases the \code{bot} location low. On the other branches
 #' \code{response_link_scale()} has already shifted any zero, and every
 #' observation is used.
@@ -240,8 +240,8 @@ regularizing_location <- function(predictor, response, side,
     }
   }
   y <- response[idx]
-  # A zero at the control is structural and is dropped from the top mean. A
-  # zero at the highest concentration is the response, and is kept.
+  # Use positive observations for top to guard against zero-inflation. Keep
+  # zeros for bot because they inform the lower endpoint.
   if (zero_bounded && side == "top") {
     pos <- y[y > 0]
     if (length(pos)) {
@@ -256,9 +256,9 @@ regularizing_location <- function(predictor, response, side,
       # smallest positive observation places bot below anything resolved.
       location <- min(pos) / 10
     } else {
-      # The whole control group is zero, which under zero-inflation is a run of
-      # structural zeros. Use the scale of the positive part, not a detection
-      # floor, or the top prior collapses.
+      # An all-zero control group does not resolve the positive process's
+      # level. Use the scale of the positive part, not a detection floor, or
+      # the top prior collapses.
       location <- positive_scale(response, probs = 0.95)
     }
   }
@@ -415,9 +415,10 @@ asymptote_floor_error <- function(reason) {
 
 #' The bot prior for a design that did not reach the lower asymptote
 #'
-#' @details The central 95\% of the prior spans from the floor
-#' \code{\link{asymptote_floor}} returns to the mean response at the highest
-#' predictor level, which on such a design bounds \code{bot} from above. The
+#' @details The prior's 97.5th percentile is the mean response at the highest
+#' predictor level, which on such a design bounds \code{bot} from above. Its
+#' lower tail lies near the floor \code{\link{asymptote_floor}} returns,
+#' with the branch-specific limits below. The
 #' endpoint mean is the \code{"bot"} location of
 #' \code{\link{regularizing_location}}, so its treatment of zeros applies here.
 #'
@@ -439,8 +440,8 @@ asymptote_floor_error <- function(reason) {
 #' which puts the 2.5th percentile well above the floor and excludes a true
 #' \code{bot} near it.
 #'
-#' The cap in \code{\link{regularizing_entry}} is not applied. The rule fixes
-#' both ends of the interval, so the width follows from the endpoint mean, and
+#' The cap in \code{\link{regularizing_entry}} is not applied. The width
+#' follows from the endpoint mean rather than from an existing prior, and
 #' the entry can be wider than the \code{"uninformative"} one.
 #'
 #' @param branch One of \code{"normal"}, \code{"gamma"} or \code{"beta"}.
@@ -541,10 +542,9 @@ unobserved_endpoint_mean <- function(predictor, response, zero_bounded) {
 #' @noRd
 regularizing_entry <- function(branch, location, uninformative_sd,
                                location_se = 0) {
-  # Floor the spread at the standard error of the location, so that the prior
-  # is never narrower than the noise in its own anchor. Cap it at the
-  # uninformative width, so that this set is never the wider of the two. The
-  # cap takes precedence where they conflict.
+  # Floor the spread at the standard error of the location, then cap it at the
+  # uninformative width. The cap takes precedence, so the resulting spread can
+  # be smaller than that standard error.
   spread <- min(max(regularizing_factor * uninformative_sd, location_se),
                 uninformative_sd)
   # A response with no spread gives no scale to narrow, and every branch below
@@ -608,8 +608,9 @@ validate_predictor_scale <- function(predictor_scale, predictor = NULL) {
 #' truncate the prior to the tested range.
 #'
 #' @details \code{mu} is the median of the distinct logged values, so that
-#' replication does not change the prior. The maximum density on the log scale,
-#' and the median on the concentration scale, are then at the median dose.
+#' replication does not change the prior. The concentration-scale median is
+#' \code{exp(mu)}: with an even number of doses, it is the geometric mean of
+#' the two central doses, not their arithmetic mean.
 #' Fisher et al. (2024) place the maximum density at the median predictor
 #' without naming the scale; this reads it on the log scale, on which a
 #' dilution series is designed.
@@ -628,8 +629,8 @@ validate_predictor_scale <- function(predictor_scale, predictor = NULL) {
 #' \code{"regularizing"} changes the spread only, to
 #' \code{half_width / qnorm(0.99)} on both branches, so that the central 98\%
 #' interval reaches the farthest dose. It does not use
-#' \code{regularizing_factor}: a narrower width would exclude doses that were
-#' applied.
+#' \code{regularizing_factor}: further narrowing would put tested doses
+#' outside that central interval, even though they remain in the prior's support.
 #'
 #' Under \code{predictor_scale = "auto"} the branch is chosen by
 #' \code{min(u) < 0}. That cannot recognise a logged series whose lowest
@@ -638,9 +639,10 @@ validate_predictor_scale <- function(predictor_scale, predictor = NULL) {
 #' log scale a zero is \code{log(1)} and is kept; on the concentration scale it
 #' is the control and is dropped.
 #'
-#' A design with fewer than two distinct positive values gives no range, and
-#' \code{sigma} falls back to 1. A predictor with no positive value is refused,
-#' though \code{check_data()} normally refuses it first. The share of the prior
+#' With fewer than two distinct values on the selected log scale,
+#' \code{sigma} falls back to 1. The concentration branch refuses a predictor
+#' with no positive value; the logged branch accepts zero and negative values.
+#' The share of the prior
 #' above the highest dose, by branch and \code{prior_type}, is tabulated under
 #' \code{prior_type} in \code{?\link{bnec}}.
 #'
@@ -686,8 +688,8 @@ predictor_prior <- function(predictor, prior_type = "uninformative",
     dist <- "lognormal"
     sigma <- half_width / qnorm(0.975)
   }
-  # Both branches degenerate on a single distinct (positive) value: sd() is NA
-  # and both half-widths are zero.
+  # Both branches degenerate on a single distinct value after selecting the
+  # scale: sd() is NA and both half-widths are zero.
   if (!is.finite(sigma) || sigma <= 0) {
     sigma <- 1
   } else if (prior_type == "regularizing") {
@@ -1114,10 +1116,9 @@ define_disp_prior <- function(disp_spec, family, response, predictor = NULL,
 #' family, or \code{"none"}.
 #'
 #' @details Without this, a group-level standard deviation takes the
-#' \pkg{brms} default \code{student_t(3, 0, 2.5)}. Under the identity link
-#' \code{\link{bnec}} assigns, an offset at that scale puts a bounded mean
-#' outside its support, and no inverse link brings it back, so the prior must
-#' keep the mean in range.
+#' \pkg{brms} default \code{student_t(3, 0, 2.5)}. An additive offset at that
+#' scale can put a bounded mean outside its support under the identity link.
+#' A smaller prior scale reduces such excursions but cannot prevent them.
 #'
 #' The scale is one tenth of the observed range of the scale the parameter is
 #' on:
@@ -1136,9 +1137,9 @@ define_disp_prior <- function(disp_spec, family, response, predictor = NULL,
 #' scale is chosen to be diffuse. \code{student_t(3, 0, s)} keeps the shape of
 #' the \pkg{brms} default and changes only its scale.
 #'
-#' \pkg{brms} declares the deviations \code{r_} unconstrained, so no prior here
-#' keeps \code{top}, \code{bot} or \code{nec} inside their support. A grouped
-#' fit on a bounded response can therefore diverge; see
+#' \pkg{brms} declares the deviations \code{r_} unconstrained, so an additive
+#' deviation can put \code{top}, \code{bot} or \code{nec} outside its support.
+#' A grouped fit on a bounded response can therefore diverge; see
 #' \code{\link{add_brm_defaults}} for the raised \code{adapt_delta}.
 #'
 #' Where the deviation is applied multiplicatively, as
@@ -1289,8 +1290,8 @@ define_hurdle_prior <- function(model, family, predictor, response,
   }
   parts <- split_hurdle_response(predictor, response)
   # mu block: the defaults of the non-zero response's family, built from the
-  # non-zeros only. The declaration reaches both blocks, because a design that
-  # stopped before one block's lower asymptote stopped before the other's.
+  # non-zeros only. Apply the user's asymptote declaration to both blocks;
+  # neither block's endpoint establishes whether the other reached its asymptote.
   mu_priors <- define_prior(model, hurdle_mu_family(family),
                             parts$mu$x, parts$mu$y, prior_type = prior_type,
                             asymptote_observed = asymptote_observed,
@@ -1305,10 +1306,8 @@ define_hurdle_prior <- function(model, family, predictor, response,
                             predictor_scale = predictor_scale)
   hu_priors$nlpar <- ifelse(nzchar(hu_priors$nlpar),
                             paste0(dpar, hu_priors$nlpar), hu_priors$nlpar)
-  # Each block is primed from a subset but evaluated over the whole predictor,
-  # so prior_predictor builds the nec and ec50 prior from the whole predictor.
-  # A prior from the survivors alone would place the threshold below the
-  # highest concentration at which anything survived, and has no scale where
-  # the only survivors are at the zero control.
+  # Both blocks predict across the full design, so use its predictor for nec
+  # and ec50 priors. Survivors alone change their location and spread, and a
+  # concentration-scale subset containing only zero has no positive dose.
   mu_priors + hu_priors
 }

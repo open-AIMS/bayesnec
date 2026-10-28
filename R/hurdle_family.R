@@ -51,17 +51,17 @@ hurdle_dpar <- function(family) {
 
 #' Family whose defaults the mu block reuses
 #'
-#' The mu block describes the response with the zeros set aside, so its priors
-#' and initial values come from the family that subset follows: Gamma for
-#' hurdle_gamma, Beta for zero_inflated_beta, and the count family for
-#' hurdle_poisson and hurdle_negbinomial.
+#' The mu block describes the response with the zeros set aside. Its priors
+#' and initial values reuse its base family: Gamma for hurdle_gamma, Beta for
+#' zero_inflated_beta, and the count family for hurdle_poisson and
+#' hurdle_negbinomial. The positive count likelihood is zero-truncated.
 #'
 #' The caller's mean link is kept. brms applies the inverse mean link to the
 #' whole non-linear expression, so under a log or logit link \code{top} and
 #' \code{bot} are on the link scale, and \code{\link{define_prior}} must build
 #' their priors on that scale. An identity-link family here gives priors on the
-#' wrong scale, such as a prior bounded to [0, 1] for a logit-scale \code{bot}
-#' that must be negative.
+#' wrong scale, such as a prior bounded to \code{[0, 1]} for a logit-scale
+#' \code{bot} that must be negative when the response floor is below 0.5.
 #'
 #' The second block stays on the identity link, which
 #' \code{\link{validate_family}} requires because the block is written as
@@ -338,9 +338,9 @@ hu_block_formula <- function(model, x_var, dpar) {
 survival_by_x <- function(predictor, response) {
   ux <- sort(unique(predictor))
   p <- vapply(ux, function(z) mean(response[predictor == z] > 0), numeric(1))
-  # Stan needs mu strictly inside (0, 1) under an identity link, so clamp a
-  # proportion of 0 or 1 as response_link_scale() does. eps is also the floor
-  # of the band that init_limits() tests this block's initial curve against.
+  # Keep proportions inside (0, 1) for priors and initial values, as
+  # response_link_scale() does. boundary_inset() derives a separate inset
+  # for the initial-curve band from these clamped values.
   eps <- 1 / (2 * length(response))
   list(x = ux, y = pmin(pmax(p, eps), 1 - eps))
 }
