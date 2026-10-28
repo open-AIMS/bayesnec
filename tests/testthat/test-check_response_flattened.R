@@ -541,6 +541,30 @@ test_that("a complete prior for every sensitive row silences the report", {
   )
 })
 
+test_that("ecxflat in a set neither raises nor silences the report (#485)", {
+  # It estimates none of bot, nec or ec50, so it adds no sensitive row, and a
+  # prior complete for the other equations still silences the report.
+  fam <- gaussian(link = "identity")
+  expect_identical(uses_response_range_defaults(NULL, "ecxflat", fam),
+                   c(response = FALSE))
+  nec_prior <- brms::prior_string("normal(1, 1)", nlpar = "nec")
+  bot_prior <- brms::prior_string("normal(0, 1)", nlpar = "bot")
+  for (p in list(NULL, nec_prior, nec_prior + bot_prior)) {
+    expect_identical(
+      uses_response_range_defaults(p, c("nec4param", "ecxflat"), fam),
+      uses_response_range_defaults(p, "nec4param", fam)
+    )
+  }
+  for (grp in c("all", "ecx", "decline")) {
+    expect_identical(
+      uses_response_range_defaults(NULL, mod_groups[[grp]], hurdle_family),
+      uses_response_range_defaults(NULL, setdiff(mod_groups[[grp]], "ecxflat"),
+                                   hurdle_family),
+      info = grp
+    )
+  }
+})
+
 test_that("the two blocks of a hurdle fit are silenced separately", {
   response_prior <- brms::prior_string("normal(1, 1)", nlpar = "nec")
   survival_prior <- brms::prior_string("normal(1, 1)", nlpar = "hunec")

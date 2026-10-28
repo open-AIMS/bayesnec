@@ -1,9 +1,7 @@
 #' Every equation that can be requested by name
 #'
-#' The members of \code{mod_groups$all} and the equations in no group, such as
-#' \code{ecxflat}. Read from the \code{pred_functions} registry, not from a
-#' group: \code{mod_groups$all} is the default set, and an equation can be valid
-#' by name without being in it.
+#' Read from the \code{pred_functions} registry, not from a group, so that an
+#' equation is valid by name whether or not a group holds it.
 #'
 #' @return A \code{\link[base]{character}} vector.
 #'
@@ -14,9 +12,9 @@ equation_names <- function() {
 
 #' Refuse a name that is no equation
 #'
-#' Checks against every equation, not \code{mod_groups$all}, since
-#' \code{ecxflat} is in no group. \code{constant_fallback()} calls it before it
-#' replaces the requested set, so that a misspelt name is refused there too.
+#' Checks against every equation, not against a group.
+#' \code{constant_fallback()} calls it before it replaces the requested set, so
+#' that a misspelt name is refused there too.
 #'
 #' @param model A \code{\link[base]{character}} vector of equation names.
 #'

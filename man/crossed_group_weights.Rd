@@ -29,8 +29,8 @@ Levels partition the data disjointly and share no parameters, so
 \code{elpd(m_1, ..., m_G) = sum_g elpd_g(m_g)}. Under pseudo-BMA the crossed
 weight of a combination is proportional to the product of its per-level
 weights, so the whole table follows from the per-level vectors and never has
-to be materialised --- which matters, because with 23 models and \emph{G}
-levels it has \code{23^G} cells.
+to be materialised --- which matters, because with the 24 equations of the
+default set and \emph{G} levels it has \code{24^G} cells.
 
 \bold{This identity is specific to pseudo-BMA}, the package default, and
 \code{crossed_group_weights()} enforces it rather than assuming it: a fit

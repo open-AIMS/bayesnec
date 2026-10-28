@@ -138,7 +138,7 @@ test_that("no link any accepted family takes falls to the default unintended", {
 
 test_that("the model range table covers every model exactly once", {
   tab <- bayesnec:::model_mu_ranges()
-  # Every equation, ecxflat included although it is in no group (#419).
+  # Every equation in the registry.
   expect_setequal(tab$model, bayesnec:::equation_names())
   expect_equal(anyDuplicated(tab$model), 0)
   expect_setequal(names(tab), c("model", "below_zero", "unscaled_excess",
@@ -399,10 +399,10 @@ test_that("the slope and beta observations hold over the admissible equations", 
   # below_zero rather than on anything to do with beta
   expect_false("neclinhorme" %in% admissible)
   expect_true(leaves_range("neclinhorme", "beta", seq(-5, 5, length.out = 25)))
-  # 21 of the 23 equations carry beta
+  # Every equation carries beta but neclin, ecxlin and ecxflat
   expect_equal(sum(vapply(models()$all, has_par, logical(1), "beta")), 21)
   expect_setequal(models()$all[!vapply(models()$all, has_par, logical(1), "beta")],
-                  c("neclin", "ecxlin"))
+                  c("neclin", "ecxlin", "ecxflat"))
 })
 
 

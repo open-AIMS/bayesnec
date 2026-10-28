@@ -131,10 +131,13 @@ directory. `notes/references.md` lists what is there and gives the key in
 ## Naming the models in prose
 
 Section 12 rule 6 of the global file applies with these specifics. `bayesnec`
-has 23 model equations and ten of them are NEC models, so "the nec model" never
-identifies one: name `nec3param`, `nec4param` or `nechorme`. Distinguish the
-equations whose names begin `nec`, the `nec` parameter they estimate, and
-`mod_groups$nec`, the group of equations. The same care applies to `ecx`.
+has 24 model equations, all of them in the `all` group, and ten of them are NEC
+models, so "the nec model" never identifies one: name `nec3param`, `nec4param`
+or `nechorme`. `ecxflat`, the constant equation, is an ECx-type equation in the
+`ecx` group with no `nec` parameter, so its no-effect estimate is an NSEC.
+Distinguish the equations whose names begin `nec`, the `nec` parameter they
+estimate, and `mod_groups$nec`, the group of equations. The same care applies
+to `ecx`.
 `bayesnec` and `brms` are packages; `bnec()` and `brm()` are functions.
 
 ## Modelling gotchas
@@ -211,7 +214,7 @@ models fit successfully, try using bnec with a single model ... or check
 argument is a set, so this is the common path, not an edge case.
 
 Measured on R 4.6.1: a two-model set with one `NA` printed the refusal twice and
-then that message; the default 23-model set would print it 23 times.
+then that message; the default 24-model set would print it 24 times.
 
 **Rule:** a check that is a property of the data and the formula together, fixed
 for the whole call, is raised in `bnec()` before the model loop, and kept in

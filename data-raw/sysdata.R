@@ -9,14 +9,14 @@ mod_groups <- list(nec = c("nec3param", "nec4param", "nechorme",
                    ecx = c("ecx4param", "ecxlin", "ecxexp", "ecxsigm",
                            "ecxwb1", "ecxwb2", "ecxwb1p3", "ecxwb2p3",
                            "ecxll5", "ecxll4", "ecxll3", "ecxhormebc4",
-                           "ecxhormebc5"),
+                           "ecxhormebc5", "ecxflat"),
                    all = c("nec3param", "nec4param", "nechorme", "nechorme4",
                            "necsigm", "neclin", "neclinhorme",
                            "nechormepwr", "nechorme4pwr", "nechormepwr01",
                            "ecxlin", "ecxexp", "ecxsigm", "ecx4param",
                            "ecxwb1", "ecxwb2", "ecxwb1p3", "ecxwb2p3",
                            "ecxll5", "ecxll4", "ecxll3", "ecxhormebc4",
-                           "ecxhormebc5"),
+                           "ecxhormebc5", "ecxflat"),
                    bot_free = c("nec3param", "nechorme", "necsigm", "neclin",
                                 "neclinhorme", "nechormepwr", "ecxlin",
                                 "ecxexp", "ecxsigm", "ecxwb1p3", "ecxwb2p3",
@@ -29,7 +29,7 @@ mod_groups <- list(nec = c("nec3param", "nec4param", "nechorme",
                                "neclin",
                                "ecxlin", "ecxexp", "ecxsigm", "ecx4param",
                                "ecxwb1", "ecxwb2", "ecxwb1p3", "ecxwb2p3",
-                               "ecxll5", "ecxll4", "ecxll3"),
+                               "ecxll5", "ecxll4", "ecxll3", "ecxflat"),
                    hormesis = c("nechorme", "nechorme4", "neclinhorme", 
                                 "nechormepwr", "nechorme4pwr", "nechormepwr01", 
                                 "ecxhormebc4", "ecxhormebc5"))
@@ -305,12 +305,10 @@ bf_ecxhormebc4 <- brms::bf(y ~ 0 + (top - 0 + exp(slope) * x) /
 # CONSTANT MODEL
 ################
 # ecxflat: a mean that does not change with concentration, with `top` as its
-# only curve parameter. Named with the ecx prefix because it has no step and no
-# nec parameter, so under the convention ?bnec states its no-effect estimate is
-# an NSEC. It belongs to no group in mod_groups above: joining "all", "ecx" and
-# "decline" would change every model-averaged result, and is left to the 3.0
-# release (#419, D31). It is available by name and is what bnec() fits to a
-# response with no variation.
+# only curve parameter. It has no step and no nec parameter, so its no-effect
+# estimate is an NSEC. It is in the "all", "ecx" and "decline" groups and no
+# other. It has no bot but belongs in neither bot_free nor zero_bounded,
+# because its mean does not decline.
 #
 # The `0 * atan(x)` term is not decoration. brms builds the model data from the
 # variables the non-linear formula names, and a formula of `top` alone names no

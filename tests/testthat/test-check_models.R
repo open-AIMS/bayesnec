@@ -121,7 +121,7 @@ test_that("models() filters equations by curve-parameter count (#301)", {
     nechormepwr = 4L, nechormepwr01 = 4L, ecx4param = 4L,
     ecxwb1 = 4L, ecxwb2 = 4L, ecxll4 = 4L, ecxhormebc4 = 4L,
     nechorme4 = 5L, nechorme4pwr = 5L, ecxll5 = 5L,
-    ecxhormebc5 = 5L
+    ecxhormebc5 = 5L, ecxflat = 1L
   )
   all_models <- models("all")
   observed <- vapply(
@@ -142,8 +142,10 @@ test_that("models() filters equations by curve-parameter count (#301)", {
 })
 
 test_that("models() validates parameter-count limits (#301)", {
-  expect_error(models(max_pars = 1),
-               "No selected model equations have 1 or fewer curve parameters")
+  # ecxflat is the one equation of "all" with a single curve parameter.
+  expect_named(models(max_pars = 1), "ecxflat")
+  expect_error(models("nec", max_pars = 2),
+               "No selected model equations have 2 or fewer curve parameters")
   expect_error(models("hormesis", max_pars = 3),
                "No selected model equations have 3 or fewer curve parameters")
   for (bad in list(0, -1, 2.5, Inf, NA_real_, c(2, 3), "3")) {
@@ -229,10 +231,7 @@ test_that("ecxhormebc5 is declined only where negative x can invalidate mu", {
   expect_silent(check_models("ecxhormebc5", gamma_log, negative))
 })
 
-test_that("ecxflat is valid by name for every family and in no group (#419)", {
-  # It belongs to no model group in this release, so the validity check reads
-  # every equation rather than the default set, and nothing that lists a group
-  # or the default set returns it.
+test_that("ecxflat is valid by name for every family (#419)", {
   fams <- c("gaussian", "Gamma", "poisson", "negbinomial", "bernoulli",
             "binomial", "beta_binomial", "Beta", "hurdle_gamma",
             "zero_inflated_beta", "zero_inflated_poisson")
@@ -245,15 +244,45 @@ test_that("ecxflat is valid by name for every family and in no group (#419)", {
                           data.frame(y = c(3, 2, 1), x = c(-1, 0, 1)))
   expect_identical(check_models("ecxflat", validate_family("gaussian"),
                                 negative), "ecxflat")
-  expect_false("ecxflat" %in% unlist(models(), use.names = FALSE))
-  expect_false("ecxflat" %in% names(models(max_pars = 1e3)))
-  expect_false("ecxflat" %in% names(models(c(0, 1))))
-  expect_true("ecxflat" %in% bayesnec:::equation_names())
-  expect_setequal(setdiff(bayesnec:::equation_names(), mod_groups$all),
-                  "ecxflat")
   expect_identical(bayesnec:::equation_par_names("ecxflat"), "top")
   expect_named(show_params("ecxflat")[[1]]$pforms, "top")
   # A name that is no equation is still refused.
   expect_error(check_models("ecxflatter", validate_family("gaussian")),
                "is not a valid model entry")
+})
+
+test_that("ecxflat is in all, ecx and decline, and in no other group (#485)", {
+  holding <- names(Filter(function(g) "ecxflat" %in% g, models()))
+  expect_setequal(holding, c("all", "ecx", "decline"))
+  # It was added at the end of each, so no other equation changes position.
+  for (grp in holding) {
+    expect_identical(utils::tail(models()[[grp]], 1), "ecxflat", info = grp)
+  }
+  expect_setequal(bayesnec:::equation_names(), mod_groups$all)
+  # It has no bot but does not decline, which is why bot_free leaves it out.
+  expect_false("bot" %in% bayesnec:::equation_par_names("ecxflat"))
+})
+
+test_that("no family drops ecxflat from a group (#485)", {
+  # Every family bnec() accepts, with its default link and with a log or logit
+  # link where a caller names one.
+  fams <- lapply(names(mod_fams), validate_family)
+  chosen <- list(Beta(link = "logit"), binomial(link = "logit"),
+                 poisson(link = "log"), Gamma(link = "log"),
+                 negbinomial(link = "log"), gaussian(link = "log"))
+  fams <- c(fams, lapply(chosen, validate_family, link_source = "chosen"))
+  for (fam in fams) {
+    label <- paste(fam$family, fam$link)
+    kept <- suppressMessages(check_models(mod_groups$all, fam, record = TRUE))
+    expect_true("ecxflat" %in% kept, info = label)
+    expect_false("ecxflat" %in% attr(kept, "excluded")$model, info = label)
+  }
+  negative <- model.frame(bnf(y ~ crf(x, "all")),
+                          data.frame(y = c(3, 2, 1), x = c(-1, 0, 1)))
+  kept <- suppressMessages(check_models(mod_groups$all,
+                                        validate_family("Gamma"), negative))
+  expect_true("ecxflat" %in% kept)
+  for (range in list(c(-Inf, Inf), c(0, 1), c(0, Inf))) {
+    expect_true("ecxflat" %in% names(models(range)), info = toString(range))
+  }
 })
