@@ -2,11 +2,8 @@
 # family restrictions so their descriptions cannot drift from the code.
 
 expected_supports <- function() {
-  # Keyed on the constructor names mod_fams holds as values, which is the form
-  # validate_family() accepts. The tag brms reports differs for one family --
-  # "beta" against the constructor "Beta" -- and validate_family("beta") errors,
-  # which is recorded on #256 and not this test's subject. A family added to
-  # mod_fams without a decision here fails the completeness test below.
+  # Key this table on the constructor names in mod_fams. A newly supported
+  # family must receive an explicit support entry here.
   list(gaussian = c(-Inf, Inf),
        Gamma = c(0, Inf), poisson = c(0, Inf), negbinomial = c(0, Inf),
        zero_inflated_poisson = c(0, Inf),
@@ -445,10 +442,8 @@ test_that("can_exceed_one is stronger than unscaled_excess, and is what gates", 
 })
 
 test_that("the transform is collapsed, and is the identity at zero deviation", {
-  # Never the literal inv_logit(logit(m) + o) sandwich: logit(m) underflows to
-  # -Inf once the decay term exceeds about 709, and inv_logit(-Inf + o) is
-  # exactly 0, which fails the likelihood's positivity check as surely as
-  # mu > 1 does. The collapsed forms are stable as m -> 0.
+  # Use collapsed expressions to avoid nested log/logit evaluation near
+  # the support boundaries.
   expect_false(grepl("logit", ogl_transform_expr("logit")))
   expect_false(grepl("log\\(", ogl_transform_expr("log")))
   expect_error(ogl_transform_expr("nonsense"))
@@ -460,9 +455,8 @@ test_that("the transform is collapsed, and is the identity at zero deviation", {
   # bot, nec and beta keep their meanings.
   expect_equal(ev("logit", 0.7, 0), 0.7)
   expect_equal(ev("log", 3.2, 0), 3.2)
-  # The mean stays strictly inside its support across everything the prior
-  # makes reachable. The ogl prior is normal(0, s) with s of order 0.5 for a
-  # proportion, so +/- 20 is about forty standard deviations.
+  # Check finite deviations over this grid; an unbounded prior also allows
+  # values beyond those tested here.
   for (o in c(-20, -5, -1, 1, 5, 20)) {
     expect_gt(ev("logit", 0.7, o), 0)
     expect_lt(ev("logit", 0.7, o), 1)
@@ -555,11 +549,9 @@ test_that("the generated term names are reserved and are the ones generated", {
 })
 
 test_that("the parameter transform is the identity at zero deviation", {
-  # Same collapsed expression as the mean transform, applied to the parameter,
-  # so the same two properties are what matter: it does not change the model
-  # when the deviation is zero, and no deviation can put the parameter outside
-  # its support. bot lives near zero, which is exactly where the literal
-  # inv_logit(logit(m) + o) sandwich fails.
+  # The parameter transform uses the same collapsed expression as the mean
+  # transform. Check its identity at zero and its range for the tested values,
+  # including a bot near zero.
   ev <- function(kind, m, o) {
     eval(str2lang(ogl_transform_expr(kind, "bot", "botgl")),
          list(bot = m, botgl = o))
@@ -571,8 +563,7 @@ test_that("the parameter transform is the identity at zero deviation", {
     expect_lt(ev("logit", 0.02, o), 1)
     expect_gt(ev("log", 0.02, o), 0)
   }
-  # A bot estimated at 1e-8 is still strictly inside after a deviation of forty
-  # prior standard deviations, which is what the additive form cannot promise.
+  # Check that a bot of 1e-8 stays inside the interval at deviations of ±20.
   expect_gt(ev("logit", 1e-8, -20), 0)
   expect_lt(ev("logit", 1e-8, 20), 1)
 })

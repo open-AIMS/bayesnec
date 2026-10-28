@@ -19,8 +19,7 @@ test_that("make_hu_block prefixes every parameter and inverts the curve", {
 })
 
 test_that("make_hu_block does not double-prefix overlapping names", {
-  # bot/top are substrings of one another once prefixed; a naive gsub would
-  # turn "hutop" into "huhutop" on a second pass.
+  # Unanchored replacement can prefix an already prefixed parameter again.
   hb <- bayesnec:::make_hu_block("nec4param", "hu")
   rhs <- deparse1(hb$nlf[[3]])
   expect_false(grepl("huhu", rhs, fixed = TRUE))

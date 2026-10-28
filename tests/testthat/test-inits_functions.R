@@ -464,8 +464,7 @@ test_that("a fixed parameter does not break rhat on a multi-model fit", {
   x <- rep(seq(0, 5, length.out = 20), 3)
   y <- 3 * exp(-exp(-0.5) * pmax(x - 2, 0)) + rnorm(length(x), 0, 0.1)
   d <- data.frame(x = x, y = y)
-  # nec4param and ecx4param, not nec3param: nec3param is dropped for a Gaussian
-  # response, and this needs two candidates to reach rhat.bayesmanecfit.
+  # Use two candidate equations so this reaches the model-set rhat method.
   f <- y ~ crf(x, model = c("nec4param", "ecx4param"))
   p <- lapply(get_priors(f, data = d, family = gaussian()), function(z) {
     z$prior[z$nlpar == "top"] <- "constant(3)"
@@ -707,14 +706,9 @@ test_that("a constant ogl intercept gets no initial value", {
 })
 
 test_that("group_inits works when the response is invalid for the fit's family", {
-  # The regression for the bug that hid inside this function's own error
-  # handling. group_inits() asks make_standata() for the group-level
-  # dimensions, and make_standata() validates the response against the family's
-  # support. A Beta response still carrying exact zeros and ones -- which is
-  # what reaches here before check_data() has nudged them -- made that call
-  # error, the try() turned it into an empty init list, and the fit then failed
-  # to initialise for a reason nothing reported. The dimensions do not depend
-  # on the family at all, so the query uses gaussian() and cannot fail this way.
+  # Group-term dimensions must remain available for exact boundary responses.
+  # The fit-family standata query can reject them; the Gaussian fallback
+  # obtains the dimensions without that response-support refusal.
   set.seed(245)
   d <- data.frame(x = rep(seq(0, 4, length.out = 15), 4),
                   colony = factor(rep(1:5, 12)))
@@ -1037,10 +1031,8 @@ test_that("a long search says it is still running", {
   expect_match(msg, "failed to find initial values")
 })
 
-# #302: the sampling table was written out at each of the three places that
-# needed it, and lognormal was in none of them. lognormal is now the default
-# prior for nec on a predictor supplied on the dose scale, so every fit draws
-# initial values from one, and it is drawn under truncation to the tested range.
+# Exercise a user-supplied lognormal prior with explicit bounds. The
+# default threshold prior is not truncated to the tested range.
 
 lognormal_prior_df <- function(nec_prior = "lognormal(0, 2.3496)") {
   data.frame(prior = c("normal(1,1)", "normal(0,5)", "normal(0.5,1)",
@@ -1184,10 +1176,9 @@ test_that("zero_bounded_family names the families define_prior scales on zero", 
 })
 
 test_that("a chain is accepted on its own, so a low per-chain rate still succeeds", {
-  # The released rule required four chains to pass at the same time and re-drew
-  # the complete set when any one failed, which raises the number of proposals
-  # to the fourth power of the per-chain rate. Both rules are run here under
-  # the same band so the comparison is of the structure alone.
+  # For independent chains with per-chain acceptance p, the all-at-once
+  # rule accepts a round with probability p^4. Compare the search structures
+  # under the same acceptance band.
   skip_on_cran()
   d <- alga_a()
   pr <- suppressMessages(
@@ -1210,9 +1201,8 @@ test_that("a chain is accepted on its own, so a low per-chain rate still succeed
       n <- n + 1
       passed <- all(vapply(make_inits("nec3param", fa, pr, 4), ok, logical(1)))
     }
-    # The success flag is returned with the count, so a capped run is not read
-    # as a measured one: at this per-chain rate the released rule usually does
-    # not succeed inside the cap at all.
+    # Return success with the count so a capped run cannot be mistaken
+    # for a measured completion count.
     c(drawn = 4 * n, ok = passed)
   }
   changed_drawn <- function(seed, cap = 2000) {
@@ -1304,12 +1294,10 @@ test_that("the band is bounded by the support of the mean", {
   unconstrained <- init_limits(x, y)
   bounded <- init_limits(x, y, support = mu_support(validate_family("Beta")))
   expect_gt(unconstrained[2], 1)
-  # Inside the support, and inside it strictly: where the band reaches the
-  # boundary it stops at the nearest value the response takes.
+  # Keep the band strictly inside the finite support boundaries.
   expect_lt(bounded[2], 1)
   expect_gt(bounded[1], 0)
-  # a tenth of the way from the boundary towards the nearest observed value, so
-  # outside the observed range and inside the support
+  # The inset remains no stricter than the nearest observed interior value.
   expect_gte(bounded[2], max(y))
   expect_lte(bounded[1], min(y))
   expect_equal(init_limits(x, y, support = mu_support(validate_family("gaussian"))),
@@ -1413,9 +1401,9 @@ test_that("the support is mapped onto the scale the curve is on", {
 })
 
 test_that("an unreplicated design uses the successive differences, not sd(y)", {
-  # sd(y) grows with the size of the effect, which is the reason it is not the
-  # spread on a replicated design either. The successive differences of a
-  # smooth curve have twice the noise variance.
+  # Avoid sd(y), which includes the decline. For independent equal-variance
+  # noise, the noise part of a successive difference has twice that variance;
+  # changes in the curve also contribute to the observed differences.
   x <- c(0, 0.5, 1, 2, 4, 8, 16, 32)
   y <- c(0.98, 0.95, 0.88, 0.70, 0.42, 0.20, 0.08, 0.04)
   expect_equal(group_spread(x, y), successive_difference_spread(x, y))
@@ -1458,9 +1446,9 @@ test_that("ecxsigm succeeds on the alga c_proliferum series", {
 })
 
 test_that("the band stops short of the support boundary", {
-  # A mean at the boundary is one the likelihood cannot evaluate. Where the
-  # band reaches it the band stops at the nearest value the response takes, so
-  # that a bounded response cannot be started at a mean no design resolves.
+  # Inset a finite support boundary using level means and spread, capped
+  # by the nearest interior observation; do not place the edge at that
+  # observation by default.
   x <- rep(c(0, 1, 5, 20), each = 5)
   set.seed(164)
   y <- pmin(pmax(rep(c(0.98, 0.6, 0.2, 0.02), each = 5) + rnorm(20, 0, 0.05),
@@ -1491,8 +1479,8 @@ test_that("the second block of a hurdle fit is not started at zero survival", {
   fam <- validate_family("hurdle_gamma")
   parts <- split_hurdle_response(conc, y)
   hu_band <- init_limits(parts$hu$x, parts$hu$y, support = c(0, 1))
-  # Two orders of magnitude above the 1e-66 that failed, and below the smallest
-  # proportion the design records, so the band still contains every level.
+  # Exclude near-zero survival while keeping the smallest observed
+  # survival proportion inside the band.
   expect_gt(hu_band[1], 1e-5)
   expect_lte(hu_band[1], min(parts$hu$y))
   pr <- suppressMessages(define_prior("nec3param", fam, conc, y))
@@ -1549,11 +1537,9 @@ test_that("a band with nothing to anchor on rejects every draw", {
 })
 
 test_that("the count floor tracks the level means, not the integer scale", {
-  # min(y[y > 0]) is 1 for any integer response, so a floor read from an
-  # observation is the same for eight replicates as for eight hundred. Read from
-  # the level means it is a tenth of the smallest of them, which is a quantity
-  # the design can say something about. Replication concentrates it rather than
-  # lowering it, so the assertion is on the spread and not on the level.
+  # Use level means to obtain a floor below integer granularity. On this
+  # design, replication concentrates the floor, so compare its spread as
+  # well as its level.
   floor_at <- function(reps, seed) {
     set.seed(seed)
     x <- rep(c(0, 1, 2, 4, 8, 16), each = reps)

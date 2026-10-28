@@ -240,15 +240,8 @@ test_that("a gaussian response with no positive values still builds priors", {
 })
 
 test_that("the bounded families are unaffected by zeros in the response", {
-  # Their top/bot priors are literals -- beta(5, 2), beta(2, 5) -- so nothing
-  # about the response can make them unbuildable. Asserted because the eager
-  # evaluation of the gamma-scaled strings reached them too, and a proportion
-  # containing zeros is the ordinary case these families are used for.
-  #
-  # Note "Beta", not "beta": validate_family() dispatches on the brms
-  # constructor name. Not tested on an all-zero response, which no bounded
-  # family would be handed and which trips an unrelated pre-existing warning in
-  # response_link_scale() -- see the comment at R/helpers.R on min_z_val.
+  # The uninformative bounded-family priors remain defined for responses
+  # containing zeros. Use the brms constructor name Beta.
   set.seed(3)
   x <- as.numeric(rep(1:10, each = 5))
   y <- c(rep(0, 12), runif(38, 0.05, 0.95))
@@ -664,9 +657,9 @@ test_that("the nec prior covers every dose tested (#302)", {
   data(nassarius, package = "bayesnec", envir = environment())
   series <- list(
     symmetric = c(0, 0.01, 0.1, 1, 10, 100),
-    # median above the log mid-range: one dose far above the rest
+    # A wide contaminant A series, asymmetric about its log median.
     top_heavy = sort(unique(nassarius$dose[nassarius$contaminant == "A"])),
-    # median below the log mid-range: the low doses are sparse
+    # A wide contaminant B series with sparse low doses.
     bottom_heavy = sort(unique(nassarius$dose[nassarius$contaminant == "B"]))
   )
   for (nm in names(series)) {
@@ -799,7 +792,7 @@ prior_scale <- function(x) {
   u <- unique(x)
   if (min(u) < 0) u else log(u[u > 0])
 }
-# The prior truncated to the tested range, as define_prior() truncates it.
+# For historical comparisons, truncate the supplied prior to the tested range.
 trunc_prior_cdf <- function(s, x) {
   p <- prior_pars(s)
   cdf <- if (prior_dist(s) == "normal") {
@@ -1227,14 +1220,7 @@ test_that("define_prior picks the parameter transform from the family", {
   expect_false("botgl" %in% gauss_pr$nlpar)
 })
 
-# ---------------------------------------------------------------------------
-# The regularizing prior set: one contract, applied to every branch. #305.
-#
-# The set is defined by a location quantile and a spread multiple, and each
-# branch uses whichever distribution matches its parameter's support with its
-# mode at the location and its standard deviation at the spread. These tests
-# assert the two halves of that separately -- the ratio of spreads, and the
-# placement of the mode -- so that a failure says which half moved.
+# Check the regularizing mode and spread separately on each support branch.
 
 # The mode and standard deviation of a prior string, whichever branch built it.
 prior_moments <- function(s) {
@@ -1424,9 +1410,7 @@ test_that("beta_from_mode_sd solves for the mode and standard deviation", {
 })
 
 test_that("beta_from_mode_sd returns the uniform for an unattainable spread", {
-  # The unit interval bounds how disperse a beta can be: no beta with an
-  # interior mode has a standard deviation at or above 1/sqrt(12). The widest
-  # available is returned rather than the request being met on another support.
+  # An unattainable requested spread returns the uniform fallback.
   expect_equal(unname(bayesnec:::beta_from_mode_sd(0.9, 0.5)), c(1, 1))
   expect_equal(bayesnec:::beta_sd(1, 1), sqrt(1 / 12))
 })
@@ -1464,9 +1448,8 @@ test_that("a bot anchor is the group mean, not the mean of its survivors", {
 })
 
 test_that("the top anchor still excludes structural zeros", {
-  # The other end keeps the filter, for the reason positive_scale() records: a
-  # zero at the control is a structural one, and top is the mean of the count
-  # process rather than of the mixture.
+  # The top-anchor rule excludes zeros to recover the count-process scale.
+  # Observed control zeros need not all be structural zeros.
   set.seed(305)
   x <- as.numeric(rep(0:5, each = 6))
   y <- as.numeric(c(0, 40, 41, 39, 0, 42, rep(40, 18), rep(5, 12)))
@@ -1651,15 +1634,9 @@ test_that("the extension limit is a fifth of the concentrations, and binds", {
                mean(yr[xr == min(xr)]))
 })
 
-# #389: the default top and bot priors for a rate() fit.
-#
-# bnec() fits on link = "identity", so brms writes a rate denominator
-# multiplicatively on the response scale: the mean is the rate and top, bot and
-# nec are counts per unit exposure. fit_bayesnec() built the defaults from the
-# raw counts, which displaced every entry by the exposure and displaced the
-# initial-value band with it, because `response` is what reaches both
-# define_prior() and make_good_inits(). get_priors() and amend() already
-# divided the denominator out, so the routes disagreed on the same data.
+# For an identity-link rate fit, top and bot use response per exposure;
+# nec stays on the predictor scale. Prior construction and initial-value
+# search must receive the same exposure-adjusted response.
 
 rate_prior_data <- function(seed = 389) {
   set.seed(seed)
@@ -1904,9 +1881,7 @@ test_that("the threshold prior places mass beyond the tested range (#393)", {
   expect_lt((cdf(45) - cdf(lo)) / mass, 1)
   # The value notes/prior_audit.md part 4 reports for this cell.
   expect_equal(signif((cdf(45) - cdf(lo)) / mass, 4), 0.9795)
-  # The spread rule of #314 puts the central 95 per cent of the uninformative
-  # entry inside the tested range, so the mass above it is small and is not
-  # zero.
+  # Some upper-tail mass remains beyond the highest tested dose.
   above <- 1 - cdf(max(x))
   expect_gt(above, 0)
   expect_lt(above, 0.05)
@@ -1924,10 +1899,8 @@ test_that("a single distinct predictor value builds and draws (#393)", {
   row <- pr[pr$nlpar == "nec", ]
   expect_match(row$prior, "^lognormal\\(")
   expect_equal(as.numeric(row$lb), 0)
-  # This is the assertion that fails fast on a regression. The make_inits()
-  # call below would hang rather than fail if the upper bound came back, since
-  # the tautology it restores is an infinite while loop; do not remove this as
-  # redundant.
+  # Assert the missing upper bound explicitly. Coincident bounds can make
+  # the subsequent make_inits() rejection loop run forever.
   expect_true(is.na(row$ub))
   set.seed(393)
   inits <- bayesnec:::make_inits(
@@ -2484,10 +2457,8 @@ test_that("the declaration reads a zero-inflated count block (#394)", {
 })
 
 test_that("the declared entry is built on the rate scale (#394)", {
-  # bnec() fits on the identity link, so brms writes a rate() denominator
-  # multiplicatively and the mean is the rate. The endpoint mean the entry is
-  # built from is therefore a rate, which #389 established for the released
-  # entries and this asserts for the declared one.
+  # This fit uses the identity link, so the endpoint mean supplied to the
+  # declared prior must be a rate after dividing by exposure.
   set.seed(394)
   x <- rep(c(0, 0.31, 0.63, 1.25, 2.5, 5, 10, 40), each = 5)
   ex <- rep(c(1, 2, 4, 8), length.out = length(x))

@@ -3,8 +3,9 @@ test_that("the zero-inflated count families are accepted, on identity mu", {
     fam <- validate_family(tag)
     expect_s3_class(fam, "family")
     expect_equal(fam$family, tag)
-    # bayesnec forces identity on mu so that top, bot and nec stay on the
-    # response scale. zi is not a bayesnec parameter, so its link is left alone.
+    # A family name without a chosen link defaults to identity for mu. top and
+    # bot then use the response scale; nec uses the predictor scale. Leave the
+    # constant mixing parameter zi on its family link.
     expect_equal(fam$link, "identity")
     expect_equal(fam$link_zi, "logit")
   }
