@@ -1,19 +1,6 @@
-# #258: check_data() corrects a response sitting on a boundary its family
-# cannot represent, and fit_bayesnec() writes that correction into the data
-# frame brm() is handed. The write-back was decided for the formula as a whole,
-# so a transformation written inline in crf() -- on any population variable --
-# discarded every correction, and brm() then failed naming the condition the
-# package had just reported it had repaired.
-#
-# #269: the predictor is no longer corrected at all, so the assertions here
-# about the predictor are that it reaches brm() exactly as recorded.
-#
-# Three levels of assertion are made. fit_data() drives fit_bayesnec() itself
-# with brm() mocked, which is what proves the write-back reaches the fit; one
-# case drives bnec() over a model set, which is where the conflict is raised;
-# and brm_data() runs check_data() and write_back_checks() in the order
-# fit_bayesnec() calls them, which is cheap enough to cover the boundary cases
-# exhaustively.
+# Check boundary-correction write-back at the mocked brm() call, through
+# a model set, and through the data helpers. Predictor transformations
+# must not discard response corrections or change recorded predictors.
 
 gamma_boundary_data <- function() {
   d <- data.frame(x = rep(c(0.1, 1, 10, 100), each = 5))
@@ -21,11 +8,9 @@ gamma_boundary_data <- function() {
   d
 }
 
-# The data frame brm() is actually given. brm() is mocked rather than run: the
-# assertion is about the object it receives and not about anything the sampler
-# does with it. `init` is supplied so that add_brm_defaults() skips the
-# initial-value search, which is stochastic and can take minutes (#266), and
-# are_chains_correct() is mocked because the fake fit has no chains to count.
+# Mock brm() to inspect its input, not sampler behaviour. Supply init to
+# bypass a stochastic search that can take minutes; mock chain validation
+# because the fake fit has no chains.
 fit_call <- function(formula, data, family, brm_args = list(),
                      predictor_scale = "auto") {
   seen <- new.env(parent = emptyenv())
@@ -57,8 +42,7 @@ test_that("fit_bayesnec passes an explicit predictor scale to its prior (#317)",
   prior <- as.data.frame(seen$prior)
 
   expect_match(prior$prior[prior$nlpar == "nec"], "^normal\\(")
-  # The normal branch takes neither bound (#393); what the declared scale
-  # decides here is the distribution, not the truncation.
+  # The normal branch is unbounded; predictor scale selects its distribution.
   expect_true(is.na(prior$lb[prior$nlpar == "nec"]))
   expect_true(is.na(prior$ub[prior$nlpar == "nec"]))
 })
@@ -92,9 +76,8 @@ test_that("a Gamma zero is repaired when the predictor is transformed inline", {
 })
 
 test_that("a beta zero is repaired when the predictor is transformed inline", {
-  # The reproduction reported in the issue, on packaged data. herbicide records
-  # one exact zero in fvfm for hexazinone, which check_data() shifts to 0.001;
-  # before the fix brm() received the zero and refused it.
+  # The herbicide fixture has one exact zero in hexazinone fvfm; check that
+  # the Beta boundary correction reaches brm() as 0.001.
   hex <- herbicide[herbicide$herbicide == "hexazinone", ]
   bet <- Beta(link = "identity")
   inline <- brm_data(fvfm ~ crf(log(concentration), model = "nec3param"),
@@ -122,21 +105,13 @@ test_that("the write-back still reaches brm() with no transformation at all", {
   gam <- Gamma(link = "identity")
   out <- brm_data(y ~ crf(x, model = "nec3param"), gamma_boundary_data(), gam)
   expect_equal(min(out$y), 0.3)
-  # The predictor is not asserted here. brm_data() applies the response
-  # write-back alone, so its x column is the input column whatever check_data()
-  # did; the predictor is covered by the two cases below, which read
-  # check_data() and fit_bayesnec() directly.
+  # This helper checks response write-back only. Its predictor stays as
+  # supplied; separate tests exercise predictor checking and fit_bayesnec().
 })
 
 test_that("an incomplete case is refused before the write-back", {
-  # This case used to reach the write-back: model.frame() dropped the row, the
-  # write-back matched the remainder by name, and the fit proceeded on one row
-  # fewer than was supplied without saying so. check_data() refuses it as of
-  # #278, so the write-back is never asked to align around a missing row.
-  #
-  # The row-name matching the write-back does is still asserted, by the case
-  # below that gives the data frame names other than 1:n. It is what makes the
-  # write-back correct rather than what makes it survive a dropped row.
+  # Reject missing rows before write-back. The separate non-default
+  # row-name case checks alignment when no row has been dropped.
   d <- gamma_boundary_data()
   d$y[2] <- NA
   expect_error(brm_data(y ~ crf(x, model = "nec3param"), d,
@@ -175,15 +150,14 @@ test_that("check_data() leaves the predictor alone, transformed or not", {
     bayesnec:::check_data(bdat, Gamma(link = "identity"),
                           "nec3param")$mod_dat$x
   }
-  # A zero control is an ordinary observation: no family constrains the support
-  # of a predictor, so there is nothing for check_data() to repair (#269).
+  # A zero predictor is valid data; response-family support does not
+  # authorise altering predictor values.
   expect_identical(checked_x(y ~ crf(x, model = "nec3param")), d$x)
   expect_identical(checked_x(y ~ crf(sqrt(x), model = "nec3param")), sqrt(d$x))
 })
 
 test_that("a 0-1 bounded predictor keeps both of its bounds", {
-  # The corrections #265 records as unreachable are removed rather than
-  # repaired, so a proportion predictor keeps both a zero and a one (#269).
+  # Proportion predictors retain both boundary values.
   d <- data.frame(x = rep(c(0, 0.25, 0.5, 1), each = 5),
                   y = rep(c(8, 6, 3, 1), each = 5))
   bdat <- model.frame(bnf(y ~ crf(x, model = "nec3param")), data = d)
@@ -192,11 +166,8 @@ test_that("a 0-1 bounded predictor keeps both of its bounds", {
 })
 
 test_that("an integer predictor is still refused by check_data()", {
-  # check_data() no longer reads a distribution off the predictor, so the
-  # set_distribution() call it keeps looks unused. It is not: this is where the
-  # integer predictor is refused. define_prior() would raise the same error, so
-  # deleting the call relocates it into prior construction rather than removing
-  # it, which is why the assertion is made of check_data() specifically.
+  # Keep set_distribution() here to reject integer predictors before prior
+  # construction. Testing check_data() specifically protects that ordering.
   d <- data.frame(x = rep(c(0L, 1L, 10L, 100L), each = 5),
                   y = rep(c(8, 6, 3, 1), each = 5))
   bdat <- model.frame(bnf(y ~ crf(x, model = "nec3param")), data = d)
@@ -239,10 +210,8 @@ test_that("fit_bayesnec() hands brm() the predictor as recorded", {
 })
 
 test_that("a disp() sub-model is built from the predictor as recorded", {
-  # The behaviour change #269 records for disp(~log(x)): the sub-model is
-  # evaluated by brm() from the column it is handed, which now holds the zero.
-  # Asserted on the data frame rather than by fitting, because the failure is
-  # Stan's and the assertion here is about what brms is given.
+  # disp(~log(x)) reaches brm() with the recorded zero still present.
+  # Inspect both formula and data; this mock does not test Stan behaviour.
   d <- data.frame(x = rep(c(0, 1, 10, 100), each = 5),
                   y = rep(c(8, 6, 3, 1), each = 5))
   seen <- fit_call(y ~ crf(x, model = "nec3param") + disp(~log(x)), d,
@@ -257,10 +226,8 @@ test_that("a disp() sub-model is built from the predictor as recorded", {
 })
 
 test_that("a binomial fit reaches brm() with its trials column untouched", {
-  # There is no trials write-back, because check_data() never corrects trials.
-  # The assertion is that the column arrives exactly as recorded, which is what
-  # the all-variable write-back this replaced did not do: it mapped the aterm
-  # back to the bare column name and overwrote it.
+  # Trials are never boundary-corrected. Preserve their recorded column
+  # rather than writing an evaluated additional term back into it.
   d <- data.frame(x = rep(c(1, 10, 100), each = 4),
                   y = as.integer(rep(c(9, 5, 1), each = 4)),
                   n = as.integer(rep(10, 12)))
@@ -272,10 +239,8 @@ test_that("a binomial fit reaches brm() with its trials column untouched", {
 })
 
 test_that("an incomplete case is refused for a binomial fit too", {
-  # The trials aterm and the response are both population variables, so an NA
-  # in either is dropped by model.frame() and refused by check_data(). Asserted
-  # on the trials column, which the response case above does not cover. See
-  # #278.
+  # Missing trials are refused just like missing responses; either would
+  # otherwise cause model.frame() to drop a population-data row.
   d <- data.frame(x = rep(c(1, 10, 100), each = 4),
                   y = as.integer(rep(c(9, 5, 1), each = 4)),
                   n = as.integer(rep(10, 12)))
@@ -288,10 +253,8 @@ test_that("an incomplete case is refused for a binomial fit too", {
 })
 
 test_that("a model set stops once on the conflict, not once per model", {
-  # check_data() runs per model, so leaving the check there alone printed the
-  # paragraph for every member of the set and then ended on the generic
-  # all-models-failed advice, long after the cause. bnec() raises it
-  # before the model loop instead.
+  # Reject the model-set conflict before looping, so callers receive one
+  # specific error rather than repeated messages and an all-models-failed error.
   d <- gamma_boundary_data()
   d$y[d$y == 0] <- 1
   msgs <- character(0)
@@ -314,9 +277,8 @@ test_that("a model set stops once on the conflict, not once per model", {
 })
 
 test_that("an arithmetic trials term is not written over", {
-  # clean_aterms() maps `trials(n * 2)` back to `n`, so the write-back this
-  # change removes overwrote the user's `n` with the doubled values, and brm()
-  # then evaluated `trials(n * 2)` against those: a recorded 10 became 40.
+  # Writing evaluated trials(n * 2) back to n would double twice:
+  # a recorded 10 would reach brm() as 40.
   d <- data.frame(x = rep(c(1, 10, 100, 1000), each = 4),
                   y = as.integer(rep(c(18, 12, 6, 2), each = 4)),
                   n = as.integer(rep(10, 16)))
@@ -326,7 +288,7 @@ test_that("an arithmetic trials term is not written over", {
 })
 
 
-# ---- #470, the rule on group-level terms -------------------------------------
+# Group-level terms
 
 grouped_data <- function() {
   set.seed(1)
@@ -360,10 +322,8 @@ test_that("fit_bayesnec() refuses an equation with no grouping term (#470)", {
 })
 
 test_that("an equation the rule admits stores every grouping variable (#470)", {
-  # brm() is run with empty = TRUE, which builds the brmsfit and its stored
-  # data without compiling or sampling. Each equation kept a term on g, so g is
-  # in the stored data and the formula as written builds the prediction grid,
-  # which is where #470 failed.
+  # empty = TRUE builds a brmsfit without compilation or sampling. Keep
+  # the grouping column in its data so the written formula builds the grid.
   local_mocked_bindings(
     brm = function(...) {
       args <- list(...)

@@ -18,10 +18,8 @@ test_that("predict/fitted is a matrix of appropriately name elements", {
 
 test_that("predict() with neither model nor average is unchanged (#120)", {
   skip_on_cran()
-  # The model-averaged summary as predict() computed it before model and
-  # average existed, recomputed here from posterior_predict() so that the
-  # default is compared against the earlier body rather than against itself.
-  # Seeded, because posterior_predict() simulates new observations.
+  # Build the expected summary independently from posterior_predict(). Seed
+  # the likelihood simulation so comparison with predict() is reproducible.
   nd <- bnec_newdata(manec_example, resolution = 20)
   set.seed(120)
   expected <- t(apply(posterior_predict(manec_example, newdata = nd), 2,
@@ -79,9 +77,8 @@ test_that("predict() returns a named list where model is given", {
 })
 
 test_that("predict() ignores all_models, with a warning (#120)", {
-  # predict() never took all_models; it fell into the dots and brms ignored
-  # it. It is still ignored, so the result is what the call always returned,
-  # and the warning is new.
+  # predict() warns on all_models but ignores its value. Check that the
+  # warning does not change the returned prediction.
   skip_on_cran()
   nd <- bnec_newdata(manec_example, resolution = 20)
   set.seed(123)
@@ -145,12 +142,8 @@ test_that("summary behaves as expected", {
   }
   summary.p <- suppressWarnings(summary(manec_example))
   expect_equal(class(summary.p), "manecsummary")
-  # `rhat_cutoff` added under #148 Part D: print.manecsummary reports the
-  # threshold actually in use rather than the hard-coded 1.05 it printed
-  # before, so the summary object has to carry it.
-  # `fit_issues`/`fit_ratio_cutoff` added under #148 decision (b): the summary
-  # block covers both the sampler and the fit axis, so it has to carry both
-  # verdicts and both thresholds.
+  # Store both diagnostic verdicts and their actual thresholds so printing
+  # can describe the sampler and control-fit checks consistently.
   expect_equal(names(summary.p), c("models", "family", "sample_size",
                                    "mod_weights", "mod_weights_method",
                                    "ecx_mods", "nec_vals", "ecs", "bayesr2",
@@ -162,20 +155,16 @@ test_that("summary behaves as expected", {
   # and it is honoured rather than decorative
   expect_equal(suppressWarnings(summary(manec_example,
                                         rhat_cutoff = 1.5))$rhat_cutoff, 1.5)
-  # The verdict itself is computed, not stored. This is the assertion that
-  # catches a regression to has_r_hat_warnings(), which grepped brms's warning
-  # text for the literal "some Rhats are > 1.05" and so returned the same
-  # answer whatever cutoff was asked for.
+  # Recompute the verdict from the requested cutoff; stored warning text
+  # cannot detect a changed cutoff.
   expect_true(all(unlist(summary.p$rhat_issues)))
   loose <- suppressWarnings(summary(manec_example, rhat_cutoff = 1.5))
   expect_false(any(unlist(loose$rhat_issues)))
 })
 
 test_that("print.manecsummary names models, never NA", {
-  # An older stored manecsummary can carry an NA rhat_issues, from before
-  # zero-variance parameters were excluded. Logical indexing turns that into an
-  # element named NA, and the warning then reads "- NA" as though a model
-  # called NA had failed.
+  # An NA diagnostic in an older summary must not become a fictitious model
+  # named NA through logical indexing.
   skip_on_cran()
   s <- suppressWarnings(summary(manec_example))
   s$rhat_issues <- list(nec4param = NA, ecx4param = TRUE)
@@ -185,13 +174,8 @@ test_that("print.manecsummary names models, never NA", {
 })
 
 test_that("print.manecsummary falls back to 1.05 for an object with no cutoff", {
-  # rhat_cutoff post-dates the move to 1.01, so an object without it was
-  # assessed against the old 1.05 grep; reporting 1.01 would attribute a
-  # threshold to it that was never applied.
-  #
-  # Wording is "Rhat", not "Rhats": #148 decision (b) folded this warning into
-  # a single block covering both the sampler and the fit axis, which restated
-  # the line. The 1.05 fallback it guards is unchanged and is what this asserts.
+  # A summary without rhat_cutoff predates the recorded threshold and was
+  # assessed against 1.05. Printing 1.01 would misstate that assessment.
   skip_on_cran()
   s <- suppressWarnings(summary(manec_example))
   s$rhat_cutoff <- NULL
@@ -237,19 +221,15 @@ test_that("model-averaged output does not change between identical calls", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # #216: every quantity taken through the averaged posterior used to redraw the
-  # component index with an unseeded sample(), so no two calls agreed. Asserted
-  # on the expectation and on the summaries built from it, not on stored
-  # constants -- the point is that repeated calls agree, whatever the values.
+  # Check reproducibility of expectations and derived summaries, rather than
+  # fixed numerical values, across model-average calls.
   nd <- bnec_newdata(manec_example, resolution = 20)
   expect_identical(posterior_epred(manec_example, newdata = nd),
                    posterior_epred(manec_example, newdata = nd))
   expect_identical(fitted(manec_example, newdata = nd),
                    fitted(manec_example, newdata = nd))
-  # Edge case: a single grid column. Asserted on the *shape* as well as on
-  # agreement between calls -- two equally malformed results compare identical,
-  # so reproducibility alone would not have caught the dropped dimension this
-  # originally hid (see w_pred_list_calc).
+  # Check one-column shape as well as reproducibility: two equally malformed
+  # results would still compare identical.
   nd_1 <- bnec_newdata(manec_example, resolution = 1)
   expect_identical(posterior_epred(manec_example, newdata = nd_1),
                    posterior_epred(manec_example, newdata = nd_1))
@@ -271,10 +251,9 @@ test_that("model-averaged output does not change between identical calls", {
   })
   expect_gte(ma_est, min(cmp_est))
   expect_lte(ma_est, max(cmp_est))
-  # posterior_predict() stays stochastic on purpose: it simulates new
-  # observations, exactly as brms does for a single fit, so it varies for a
-  # bayesnecfit too. What #216 fixes is the weighting, which is now the same
-  # draw every time -- so seeding the likelihood is enough to pin it down.
+  # posterior_predict() simulates new observations and remains stochastic.
+  # Its model-index draw is reproducible, so seeding the likelihood is enough
+  # to reproduce predictions.
   set.seed(216)
   p1 <- predict(manec_example, newdata = nd)
   set.seed(216)
@@ -285,16 +264,15 @@ test_that("model-averaged ecx and nsec are reproducible and internally paired", 
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # These are the numbers that go into a report, and the instability landed on
-  # the lower bound -- the end a protective concentration is read off. See #216.
+  # Check interval bounds as well as the point estimate: protective
+  # concentrations can be read from the lower bound.
   expect_identical(suppressMessages(ecx(manec_example)),
                    suppressMessages(ecx(manec_example)))
   post <- suppressMessages(nsec(manec_example, posterior = TRUE))
   expect_identical(post, suppressMessages(nsec(manec_example,
                                                posterior = TRUE)))
-  # The NSEC and its ecnsec used to be drawn by two independent sample() calls,
-  # so a pair was two unrelated draws of possibly different models. One index
-  # now covers both: element i of each is draw idx[i] of the same component.
+  # Pair NSEC and ECNSEC by the same draw index and component, rather than
+  # independent draws that can come from different models.
   idx <- bayesnec:::pull_draw_index(manec_example,
                                     manec_example$success_models,
                                     manec_example$sample_size)

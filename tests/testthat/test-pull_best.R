@@ -87,26 +87,18 @@ test_that("classes other than the three fitted ones are refused", {
 })
 
 test_that("a hurdle fit selects within each component", {
-  # Both components are model sets, and the survival set is weighted the other
-  # way round, so each has to be selected from on its own to land where it
-  # does. A component left untouched would still be a bayesmanecfit. Built by
-  # hand from the stored fits: the only elements pull_best() reads are the two
-  # components, and fitting a hurdle pair would take minutes.
+  # Hand-build hurdle components from stored fits and reverse survival
+  # weights to require independent selection. This tests component dispatch
+  # without fitting a new hurdle pair.
   flipped <- manec_example
-  # `wi[]` rather than `wi`: assigning the vector whole would strip the
-  # pseudobma_bb_weights class and the `method` attribute pull_out() reads, and
-  # the fixture would then exercise its unknown-method path rather than the one
-  # a fitted object takes.
+  # Assign wi[] to preserve the pseudobma_bb_weights class and method
+  # attribute, so pull_out() follows the fitted-object weighting path.
   flipped$mod_stats$wi[] <- rev(as.numeric(flipped$mod_stats$wi))
   hurdle <- structure(list(growth = manec_example, survival = flipped,
                            y_var = "y"),
                       class = c("bayesnechurdlefit", "bnecfit"))
-  # The labels are what tells the two components' reports apart, so they are
-  # asserted on the call that is made anyway rather than by calling twice.
-  # capture_messages() rather than nested expect_message() calls: the latter
-  # returns the condition it matched rather than the value of the expression,
-  # so the fit would have to be bound by an assignment written inside the
-  # expectations.
+  # Capture labelled component messages while preserving the returned fit.
+  # Nested expect_message() returns matched conditions, not the fit value.
   msgs <- capture_messages(out <- pull_best(hurdle))
   expect_match(msgs, "Growth component:", all = FALSE)
   expect_match(msgs, "Survival component:", all = FALSE)

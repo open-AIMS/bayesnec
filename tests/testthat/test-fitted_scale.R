@@ -1,14 +1,6 @@
-# #299, D23. Where crf() transforms the predictor inline and no xform is
-# supplied, the estimators say once per call that the result is on the
-# transformed scale and name the xform that inverts it. The returned values are
-# unchanged.
-#
-# The fixtures relabel a stored fit's formula, as transformed_response_fit() in
-# setup.R and transformed_x_fit() in test-curve_params.R do. The stored fit was
-# not fitted with this formula. That is safe here: the message reads the
-# formula only, and every assertion is about the message or about the value
-# being the one the unrelabelled fit returns. manec_example's x runs from 0.032
-# to 3.22, so log() is finite throughout.
+# Relabel stored formulas solely to test scale messages and unchanged
+# returned values; these fits were not sampled under the new formulas.
+# The fixture predictor is positive, so log(x) is finite throughout.
 logged_x_fit <- function(fit, model, tr = "log(x)") {
   fit$bayesnecformula <- bnf(stats::as.formula(
     paste0("y ~ crf(", tr, ", model = \"", model, "\")")
@@ -260,11 +252,8 @@ test_that("a joint refit reports once for the call, not once per level", {
 })
 
 test_that("ecnsec() on a hurdle pair reports as on every other class", {
-  # The hurdle method applies xform to nsec, as the other classes do (#437,
-  # D33), so it raises their message: it names the xform to give ecnsec(), and
-  # is not raised where one is supplied. Before D33 it applied xform to the
-  # percentage it returned, and raised a message of its own whatever xform was
-  # given, asking for nsec on the recorded scale.
+  # The hurdle method applies xform to the supplied NSEC, not the returned
+  # percentage. Report its fitted scale only when no inverse is supplied.
   skip_on_cran()
   tf <- logged_x_fit(nec4param, "nec4param")
   h <- fake_scale_hurdle(tf, tf)
@@ -289,9 +278,8 @@ test_that("summary() reports once where it calls ecx(), and never otherwise", {
   expect_match(msgs, "Pass xform = exp to ecx()", fixed = TRUE)
   expect_length(scale_messages(summary(logged_x_set(manec_example),
                                        ecx = TRUE, check_fit = FALSE)), 1)
-  # An xform given to summary() reaches ecx() (#439), so the ECx rows are on
-  # the recorded scale and there is nothing to report. The group reads it
-  # from the dots its levels pass on.
+  # Forward summary() xform to ECx rows, including through group dots,
+  # so transformed results do not carry a fitted-scale message.
   expect_length(scale_messages(summary(tf, ecx = TRUE, ecx_vals = 50,
                                        resolution = 20, xform = exp)), 0)
   expect_length(scale_messages(summary(logged_x_set(manec_example),
@@ -310,9 +298,8 @@ test_that("summary() reports once where it calls ecx(), and never otherwise", {
                                        resolution = 20, xform = exp)), 0)
   expect_length(scale_messages(summary(g, 20, FALSE, "absolute", exp,
                                        ecx = TRUE, ecx_vals = 50)), 0)
-  # The hurdle summary resolves its xform the same way. It handed dots_xform()
-  # its own logical ecx argument, matched nothing, and reported the fitted
-  # scale beside rows an xform had put on the recorded one (#439).
+  # The hurdle summary must resolve xform against the ecx function,
+  # not its own logical ecx argument.
   h <- fake_scale_hurdle(tf, tf)
   expect_length(scale_messages(summary(h, ecx = TRUE, ecx_vals = 50,
                                        resolution = 20)), 1)
@@ -335,11 +322,9 @@ test_that("the plotting paths raise no scale message", {
 })
 
 test_that("a model set's plotting paths raise no scale message (#120)", {
-  # The model-average drawing moved into plot_manec_average() and
-  # manec_average_plot_data() when model and average were added, and the
-  # named equations are drawn through the single-fit paths. Each is asserted,
-  # so that a panel drawn outside the gating would be seen. nec() on the same
-  # set is the control: the fixture does raise the message.
+  # Exercise both model-average drawing helpers and named-equation paths.
+  # Each suppresses the scale message; nec() on the same set is the
+  # positive control proving the fixture would otherwise report it.
   skip_on_cran()
   ts <- logged_x_set(manec_example)
   expect_length(scale_messages(nec(ts)), 1)

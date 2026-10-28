@@ -1,22 +1,9 @@
 # Check variability by predictor group: a global dispersion statistic can
 # miss opposing discrepancies in different regions.
 
-# Each checkfit table below is computed once and reused by the blocks that read
-# it, following degenerate_fit() in test-dispersion.R. The reused object is the
-# one those blocks built for themselves: check_fit() takes `seed = 10` by
-# default and calls set.seed() before the only stochastic step it runs
-# (R/check_fit.R:168), so its result does not depend on the stream it is entered
-# with, and setup.R's `nec4param` is the pull_out() call these blocks used to
-# make for themselves. Safe only because no test modifies the object it is
-# handed --- every one reads it. A test that needs to modify one must build its
-# own.
-#
-# Whichever block runs first pays for the build, so the invariant that matters is
-# that every block reading an accessor carries the same skip guard: if one of
-# them can skip, all of them can, and none is left needing a table that was
-# never built. Calling the accessor as the first statement after skip_on_cran()
-# is the convention that makes this visible at a glance; it is not the invariant
-# itself, and a block that grows a second guard has to keep the first one true.
+# Cache seeded diagnostic tables only for read-only tests; a test that
+# modifies one must build its own. All consumers must keep compatible skip
+# guards so none depends on a fixture skipped by another test.
 nec4param_checkfit_g4 <- local({
   cached <- NULL
   function() {
@@ -59,18 +46,15 @@ test_that("posterior predictive p-values are probabilities", {
 })
 
 test_that("ndraws is reduced to what the fit holds rather than erroring", {
-  # brms errors instead of truncating, and manec_example carries 100 draws, so
-  # the default of 1000 would fail on the package's own example object -- which
-  # is exactly what someone runs a diagnostic on first.
+  # brms refuses excess ndraws instead of truncating. Cap requests at the
+  # 100 draws in this stored fixture.
   skip_on_cran()
   expect_no_error(check_fit(nec4param, group = 3, ndraws = 1e6))
 })
 
 test_that("an unreplicated predictor is binned, with a warning", {
-  # Requiring replication is defensible and matches how these designs are run,
-  # but it would refuse nec_data, which is the package's own example. Binning
-  # always returns something, including where the answer is meaningless, so it
-  # has to say so.
+  # Unreplicated data need binning, which can hide local structure. The
+  # diagnostic must warn that bins are not replicated design points.
   skip_on_cran()
   expect_warning(check_fit(nec4param, ndraws = 50), "not a design point")
 })
@@ -116,10 +100,8 @@ test_that("a bayesmanecfit reports per-model rows carrying their weights", {
 })
 
 test_that("check_fit reproduces the local finding a global statistic misses", {
-  # The demonstration #148 rests on: manec_example passes a global dispersion
-  # check (1.011 [0.71, 1.44]) while simulating materially more variability
-  # than the data show in the control region. If check_fit cannot see that, it
-  # does not do the job it was written for.
+  # This fixture can pass a global dispersion check while overstating
+  # control variability. Check that the regional diagnostic detects it.
   skip_on_cran()
   out <- suppressWarnings(check_fit(nec4param, ndraws = 200, seed = 10))
   ctrl <- out[out$control, ]
@@ -129,14 +111,11 @@ test_that("check_fit reproduces the local finding a global statistic misses", {
   expect_gt(max(out$sd_ratio), 1.2)
 })
 
-# #148: the settled scope was "deliver both a numeric test and a plot". The
-# table answers whether a group is off; the plot answers by how much and in
-# which direction, which is what decides whether it matters.
+# Keep separate location and scale panels: either discrepancy can occur
+# without the other.
 
-# check_fit() on the packaged model set warns that the predictor is not a design
-# point, and all four blocks below already suppressed it. The accessor does the
-# same; the block that asserts that warning calls check_fit() directly and has
-# to keep doing so, because a memoised accessor emits it on the first call only.
+# Cache the table for read-only plot tests. Test warning emission through
+# a fresh check_fit() call: a cached accessor warns only on its first call.
 manec_checkfit <- local({
   cached <- NULL
   function() {
@@ -191,14 +170,11 @@ test_that("the interval brackets the simulated median", {
   expect_true(all(d$sim_sd_lo <= d$sim_sd & d$sim_sd <= d$sim_sd_hi))
 })
 
-# #148 decision (d): the combined hurdle check. The per-component tables check
-# each half against its own subset; neither asks whether the fit reproduces the
-# observed response, which contains the zeros and is what was measured.
+# Compare the combined hurdle response, including zeros. Component checks
+# on their own subsets cannot test the observed response distribution.
 
-# Fitted once and reused across the five blocks below. bnec_hurdle() fits two
-# brms models, so a call per block compiled the same two Stan programs five
-# times each: 10 compilations of which 8 were redundant, in a file that compiled
-# 10 in total. See #328.
+# Cache this seeded hurdle fit for read-only tests to avoid repeatedly
+# compiling its two Stan models.
 hurdle_fixture <- local({
   cached <- NULL
   function() {
@@ -220,9 +196,8 @@ hurdle_fixture <- local({
 })
 
 test_that("the observed response is reconstructed exactly, zeros included", {
-  # The load-bearing assumption: bnec_hurdle() subsets rather than reorders, so
-  # the growth response drops into the alive positions. If that ever stops
-  # holding, the combined check silently compares against the wrong vector.
+  # The growth response must retain the order of surviving rows so it can be
+  # inserted at the survival fit's alive positions.
   skip_on_cran()
   f <- hurdle_fixture()
   y_obs <- bayesnec:::hurdle_observed_response(f$fit)
@@ -269,10 +244,8 @@ test_that("the combined simulation is on the full exposed set", {
   expect_equal(sum(as.data.frame(res$combined)$n), nrow(f$dat))
 })
 
-# #148 decision (b): a control lack-of-fit is surfaced automatically, in the
-# summary and once at the end of the fit. Thresholded on the RATIO, not the
-# posterior predictive p-value -- a measured ~19% control overshoot carried a
-# ppp of ~0.82 and would never have flagged.
+# Threshold the automatic control message on ratios. A posterior
+# predictive p-value can fail to flag a control discrepancy.
 
 test_that("summary carries both diagnostic axes and their cutoffs", {
   skip_on_cran()
@@ -285,8 +258,8 @@ test_that("summary carries both diagnostic axes and their cutoffs", {
 })
 
 test_that("the fit axis can be switched off", {
-  # It recomputes on every call -- caching it on the object is ruled out by
-  # #180, which removed the stored prediction matrices deliberately.
+  # Recompute the diagnostic on each call; do not cache prediction matrices
+  # on the fitted object.
   skip_on_cran()
   s <- suppressWarnings(summary(manec_example, check_fit = FALSE))
   expect_null(s$fit_issues)
@@ -304,9 +277,8 @@ test_that("the cutoff is honoured rather than decorative", {
 })
 
 test_that("print reports both axes in one block, with different advice", {
-  # D5: one block, because both feed the same decision about which candidates
-  # belong in the set. But a convergence failure is unusable while a control
-  # mis-fit is a result, so the advice must not be the same.
+  # Report sampler failure and control misfit together but give different
+  # advice: a converged model's control discrepancy is a modelling result.
   skip_on_cran()
   s <- suppressWarnings(summary(manec_example))
   msg <- tryCatch({ print(s); "" }, warning = function(w) conditionMessage(w))
@@ -316,20 +288,17 @@ test_that("print reports both axes in one block, with different advice", {
 })
 
 test_that("the end-of-fit message never breaks a fit that succeeded", {
-  # A diagnostic that breaks the thing it is diagnosing is worse than no
-  # diagnostic, so message_control_fit() swallows its own failures.
+  # A diagnostic failure must not invalidate an otherwise usable fit.
   expect_silent(bayesnec:::message_control_fit(list(not = "a fit")))
   expect_null(bayesnec:::message_control_fit(1:10))
 })
 
-# #337. A diagnostic is a summary computed from a fit, so running one must not
-# change what the next random operation in the session returns. check_fit()
-# called set.seed(seed) and left the stream where that reached.
+# Diagnostics must restore the caller's random stream after seeded
+# posterior prediction.
 
 test_that("check_fit leaves the caller's RNG stream alone", {
   skip_on_cran()
-  # Built before the stream is set, so that the cost of the build -- which does
-  # touch the RNG -- is not what is being measured.
+  # Build the cached table before setting the stream under test.
   nec4param_checkfit_g4()
   set.seed(99)
   expected <- runif(3)
@@ -366,14 +335,12 @@ test_that("check_fit still repeats itself under the same seed", {
 })
 
 test_that("check_fit refuses a seed set.seed() would take silently", {
-  # set.seed(NULL) re-initialises from the clock, so the diagnostic would not
-  # repeat and the caller's seed would be discarded without a word. This is
-  # #310's defect reached through a second door.
+  # Refuse NULL: set.seed(NULL) would reseed from the clock and make the
+  # diagnostic irreproducible.
   skip_on_cran()
   expect_error(check_fit(nec4param, seed = NULL), "seed")
-  # NA is how brms writes "no seed", and the initial-value search reads it that
-  # way, so a user could plausibly pass it here. set.seed(NA) is an error
-  # rather than a reseed, but it is refused with a message naming the argument.
+  # NA means no seed on some fitting routes, but this diagnostic requires a
+  # number and must refuse it by argument name.
   expect_error(check_fit(nec4param, seed = NA), "must be a number")
   expect_error(check_fit(nec4param, seed = "ten"), "seed")
   expect_error(check_fit(nec4param, seed = c(1, 2)), "seed")

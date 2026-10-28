@@ -1,9 +1,7 @@
 test_that("the unscaled power hormesis models are dropped for 0-1 bounded families", {
-  # nechormepwr and nechorme4pwr carry the hormesis term x^(1/(1 + exp(slope))),
-  # which has no coefficient. At x = 1 it contributes exactly 1 whatever slope
-  # is, so below the threshold -- where the decay factor is exactly 1 -- the
-  # fitted mean is at least top + 1. No parameter value keeps that inside
-  # (0, 1) for a predictor that reaches 1. See #177.
+  # Below nec, the unscaled power increment is one at x = 1 for every slope.
+  # The mean then exceeds one for positive top, so successful initial values
+  # cannot establish support over all later sampler proposals.
   bounded <- list(
     bernoulli = validate_family(bernoulli(link = "identity")),
     beta = validate_family(Beta(link = "identity")),
@@ -32,9 +30,8 @@ test_that("the unscaled power hormesis models are dropped for 0-1 bounded famili
 })
 
 test_that("the two-block families drop them too", {
-  # The zero-probability block of a joint fit is 0-1 bounded whatever the
-  # response family is, so a model that cannot be held inside (0, 1) cannot be
-  # used for it. This is the "9 of 11 rather than 11" the issue reports.
+  # The zero-probability block is unit bounded regardless of the response
+  # family, so these unscaled equations cannot be used for it.
   for (fam_tag in c("hurdle_gamma", "zero_inflated_beta")) {
     got <- suppressMessages(
       check_models(models()$all, validate_family(fam_tag))
@@ -42,7 +39,7 @@ test_that("the two-block families drop them too", {
     expect_false("nechormepwr" %in% got)
     expect_false("nechorme4pwr" %in% got)
   }
-  # zero_bounded under hurdle_gamma is now an honest count.
+  # Check the filtered zero-bounded group as well as the full equation set.
   zb <- suppressMessages(
     check_models(models()$zero_bounded, validate_family("hurdle_gamma"))
   )

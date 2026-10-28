@@ -1,8 +1,5 @@
-# #297. The curve parameters of a fitted set had no reporting function: for a
-# bayesmanecfit nothing returned them at all. Everything here runs on the
-# packaged manec_example or on a mock, because the quantity is read straight
-# off the stored draws and nothing about it needs sampling to exercise.
-# nec4param and ecx4param are the fits setup.R pulls out of manec_example.
+# Read parameters from the packaged fits or mocks. These reporting tests
+# need stored draws or formula metadata, not new samples.
 
 # Build a joint formula without sampling to check survival-equation labels.
 # Embed equation names in the formula text so the mock does not depend on
@@ -39,9 +36,8 @@ test_that("the table has the documented columns and one row per parameter", {
 })
 
 test_that("the rows are in the documented parameter order", {
-  # Promised by the Rd, and not implied by anything brms returns: fixef() lists
-  # nec4param as bot, top, beta, nec. A table whose row order moved with the
-  # formula would read differently from one fit to the next.
+  # Use the documented parameter order, independently of fixef()'s column
+  # order or the order of terms in a formula.
   out <- curve_params(nec4param)
   expect_equal(out$parameter, c("top", "bot", "beta", "nec"))
   expect_equal(curve_params(ecx4param)$parameter,
@@ -154,19 +150,15 @@ test_that("xform and summary are validated", {
 })
 
 test_that("the reported parameters are every parameter of every equation", {
-  # A guard on curve_par_names(), which is fixed rather than derived. An
-  # equation added with a parameter not in that vector would be reported with
-  # the parameter silently missing from its rows, which is the failure mode
-  # this whole function exists to remove.
+  # Check the fixed parameter-name list against every equation so a new
+  # parameter cannot disappear silently from the report.
   pars <- unique(unlist(lapply(models()$all, function(m) {
     all.vars(show_params(m)[[1]]$formula)
   })))
   pars <- setdiff(pars, c("x", "y"))
   expect_setequal(pars, bayesnec:::curve_par_names())
-  # expand_nec() extracts the same set in a different order, which it keeps
-  # because the extracted elements are appended to the bayesnecfit in it. The
-  # two are asserted to agree here, so a parameter added for a new equation
-  # cannot reach one and not the other.
+  # Keep reporting and fit extraction consistent even though their parameter
+  # orders differ.
   expect_setequal(bayesnec:::extract_par_order(), bayesnec:::curve_par_names())
   expect_setequal(
     bayesnec:::equation_par_names("ecxll5"),
@@ -324,19 +316,16 @@ test_that("a hurdle fit returns one table per component", {
 })
 
 test_that("a hurdle pair reports the transformation once, the link per fit", {
-  # The two components are fitted from one formula on one predictor, so a
-  # second paragraph about the transformation says nothing the first did not.
-  # The link is not shared: growth takes the family of the non-zero response
-  # and survival is bernoulli, so each component reports its own.
+  # A shared predictor transformation needs one report for a hurdle pair.
+  # The components can use different mean links, which must be reported
+  # separately.
   tf <- transformed_x_fit(nec4param, "nec4param")
   msgs <- capture_messages(curve_params(fake_hurdle(tf, tf)))
   expect_equal(sum(grepl("transformed scale", msgs)), 1L)
   # The gate is restored, so the next call reports again.
   expect_message(curve_params(tf), "transformed scale")
-  # The half the split exists to protect: two components on different links
-  # both report, and each paragraph names its component. Gating the link for
-  # the pair, as the transformation is gated, would suppress one of them and
-  # the suite would not notice.
+  # Report each component's mean link independently; suppressing repeated
+  # predictor-scale messages must not suppress a distinct link.
   g <- nec4param
   g$fit$family <- brms::brmsfamily("gaussian", link = "log")
   s <- nec4param
@@ -371,9 +360,8 @@ test_that("a group fit returns one table with a level column", {
 })
 
 test_that("the scale is reported once for a group, not once per level", {
-  # Every level is fitted with the same family and the same formula, so a
-  # per-level report prints the same paragraph once per level: twelve times on
-  # a twelve-level fit.
+  # Grouped levels share their predictor formula and family. Report that
+  # scale information once per call rather than once per level.
   tf <- transformed_x_fit(nec4param, "nec4param")
   gf <- fake_group(list(a = tf, b = tf, c = tf))
   msgs <- capture_messages(curve_params(gf))

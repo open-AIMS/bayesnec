@@ -14,8 +14,7 @@ test_that("expand_nec defaults work for nec model", {
                                  "residuals", "ne_posterior", "ne_type"))
   expect_equal(class(nec_fit$fit), "brmsfit")
   expect_equal(nec_fit$model, "nec4param")
-  # The n_draws x resolution matrix is no longer stored (#180); only the
-  # summary it was used to build.
+  # Keep the prediction summary only; do not store the full draw-by-grid matrix.
   expect_named(nec_fit$pred_vals, "data")
   expect_null(nec_fit$pred_vals$posterior)
   expect_equal(dim(nec_fit$pred_vals$data), c(1000, 4))
@@ -114,8 +113,7 @@ test_that("expand_manec defaults work correctly", {
   tt3 <- expand_manec(tt1, formulas) |>
     suppressMessages() |>
     suppressWarnings()
-  # The weighted n_draws x resolution matrix is no longer stored either (#213);
-  # only the summary built from it.
+  # Keep the weighted prediction summary without its full draw-by-grid matrix.
   expect_named(tt3$w_pred_vals, "data")
   expect_null(tt3$w_pred_vals$posterior)
   expect_equal(dim(tt3$w_pred_vals$data), c(1000, 4))
@@ -141,19 +139,15 @@ test_that("new loo_controls are incorporated", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # The default is supplied here, not only by bnec(). Absent it, `method` went
-  # to loo::loo_model_weights() as NULL, loo applied its own default of
-  # stacking, and the attribute recorded nothing -- so the weighting method
-  # depended on which function assembled the set. See #320.
+  # Apply the package weighting default here too. Passing NULL into loo
+  # would select its own stacking default instead.
   expand_manec(tt1, formulas) |>
     get_new_method() |>
     expect_equal("pseudobma") |>
     expect_message() |>
     suppressWarnings()
-  # Named but NULL is the shape pull_out() and update.bnecfit() pass when the
-  # object they are operating on records no method. match.arg() resolves that
-  # to stacking inside loo, so it has to be caught here rather than only in the
-  # missing-argument branch.
+  # Treat an explicitly named NULL method as unspecified. Older objects can
+  # reach this branch through pull_out() or update().
   expand_manec(tt1, formulas,
                loo_controls = list(weights = list(method = NULL))) |>
     get_new_method() |>
@@ -178,14 +172,9 @@ test_that("each model is thinned to exactly its share of the weighted draws", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # expand_manec() used to read each model's posterior back off the object and
-  # thin it there; it now computes and thins one model at a time in
-  # w_grid_pred_calc(). "The weighted draws are the same" means two specific
-  # things, both asserted here rather than inferred from a range: each model
-  # contributes exactly round(sample_size * wi) rows, and every row it
-  # contributes is a row of that model's own posterior. Checked against the
-  # arithmetic of the weights rather than a stored constant, so this stays
-  # meaningful if the example objects are ever refitted.
+  # Check each model's contribution count against round(sample_size * wi)
+  # and check membership in its posterior. Derive counts from the fixture
+  # weights so regenerated example objects remain testable.
   set.seed(180)
   tt5 <- expand_manec(tt1, formulas) |>
     suppressMessages() |>
@@ -245,11 +234,8 @@ test_that("posterior_epred() on the build grid reproduces w_pred_vals", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # Since #216 the weighted draw is realised once and the seed kept on the
-  # object, so the summaries stored at build time and a later posterior_epred()
-  # over the same grid are the same set of draws, not two independent ones.
-  # This is the property the migration note in the class docs promises; before
-  # #216 it held only in distribution.
+  # Stored summaries and later posterior_epred() calls on the same grid
+  # must reuse the same model-index draw, not merely agree in distribution.
   tt6 <- expand_manec(tt1, formulas) |>
     suppressMessages() |>
     suppressWarnings() |>
@@ -264,9 +250,7 @@ test_that("posterior_epred() on the build grid reproduces w_pred_vals", {
 })
 
 test_that("a partially specified x_range is rejected rather than guessed at", {
-  # bnec_newdata() used to ignore it silently while expand_nec() turned it into
-  # seq(NA, NA). Now one grid builder, one behaviour. See #211.
-  # Rejected whichever end is missing -- the two used to behave differently.
+  # Reject a partially missing x_range whichever endpoint is absent.
   expect_error(bayesnec:::check_args_newdata(10, c(1, NA)), "fully specified")
   expect_error(bayesnec:::check_args_newdata(10, c(NA_real_, 4)),
                "fully specified")
@@ -311,10 +295,9 @@ test_that("a bayesmanecfit saved with the old weighted cache still works", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # Same again for w_pred_vals$posterior, dropped in #213. The shipped
-  # manec_example was built before that change, so it is a genuinely old
-  # serialised object rather than a synthesised one -- which is the case worth
-  # testing. Nothing needs the matrix and nothing should trip over it.
+  # Check compatibility with an old object containing w_pred_vals$posterior.
+  # If the fixture is regenerated without it, add a synthetic cache so the
+  # compatibility assertion remains exercised.
   old_style <- manec_example
   if (is.null(old_style$w_pred_vals$posterior)) {
     # Only reached if the example data is ever regenerated under the new code;

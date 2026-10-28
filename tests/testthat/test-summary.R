@@ -1,9 +1,6 @@
-# summary(ecx = TRUE) on a single fit and on a model set passes the rest of
-# ... to ecx() for each ECx row (#439), by the rule the hurdle summary applies
-# (#416): a supplied x_range replaces the stored grid and reaches each ecx()
-# call once, and x_range = NULL leaves ecx() its own default. The no-effect row
-# stays on the record stored at fit time, and an xform is applied to it as to
-# the ECx rows (#439, option A).
+# Forward ECx arguments once, including replacement x_range or NULL
+# for its default. The no-effect row keeps the fit-time grid and draws;
+# apply xform to both kinds of estimate.
 
 # Replaces ecx() with a recorder. Each call's arguments are kept as supplied,
 # so an argument passed twice appears twice rather than stopping the call as
@@ -25,11 +22,9 @@ record_ecx_calls <- function(env = parent.frame()) {
 
 n_named <- function(args, name) sum(names(args) == name)
 
-# check_fit is a formal of the model-set method only. Given to the single-fit
-# method it would sit in ... and be forwarded to ecx(), where the recorder
-# would report it. It is set FALSE to skip the posterior simulation, which
-# nothing here reads. The warnings muffled are brms's convergence warnings on
-# the packaged fits and the censoring warnings of ecx().
+# Disable posterior simulation only for the model-set method, whose
+# formal check_fit consumes it. On single fits it would reach ecx()
+# through dots. Muffle stored-fit convergence and censoring warnings.
 summarise <- function(fit, ...) {
   if (inherits(fit, "bayesmanecfit")) {
     suppressWarnings(suppressMessages(summary(fit, ..., check_fit = FALSE)))
@@ -42,10 +37,8 @@ stored_grid <- function(fit) {
   if (inherits(fit, "bayesmanecfit")) fit$w_pred_vals else fit$pred_vals
 }
 
-# The stored grid cut to x <= 1, so that it differs from the range of the
-# data, 0.032 to 3.22, over which ecx() builds its own grid when given no
-# x_range. Only the grid is cut: summary() reads nothing else of it once ecx()
-# is mocked.
+# Cut only the stored grid to x <= 1, distinct from the observed range
+# 0.032 to 3.22. Mocked ecx() reads no other grid-derived quantity.
 narrowed_grid <- function(fit) {
   grid <- stored_grid(fit)
   grid$data <- grid$data[grid$data$x <= 1, , drop = FALSE]
@@ -81,7 +74,7 @@ test_that("without x_range the summary ECx rows use the stored grid", {
     calls <- record_ecx_calls()
     summarise(fit, ecx = TRUE, ecx_vals = 50)
     expect_length(calls$ecx, 1)
-    # Only the target and the stored grid, as before #439.
+    # Only the target and stored grid are forwarded by default.
     expect_setequal(names(calls$ecx[[1]]), c("ecx_val", "x_range"))
     expect_equal(calls$ecx[[1]]$x_range, expected)
     # resolution and xform reach ecx() beside the stored grid.
@@ -109,13 +102,9 @@ test_that("x_range = NULL leaves ecx() its own default, not the stored grid", {
 })
 
 test_that("an ecx_val given to summary() does not displace its arguments", {
-  # ecx_val is ecx()'s name for the target, and summary() takes ecx_vals.
-  # Matched by partial name to a formal of the internal helper, it was once
-  # taken as ecx_vals, and every positional argument moved along one place:
-  # the stored range reached ecx() as resolution and c(10, 50, 90) as the
-  # grid. It now reaches ecx() beside the target the summary names, and the
-  # real generic stops on the pair. That is asserted before ecx() is mocked,
-  # since the mock lasts to the end of the test.
+  # ecx_val must reach the real generic beside the summary target and
+  # raise a duplicate-argument error. Assert before mocking: partial
+  # matching in the helper must not shift the remaining arguments.
   expect_error(summarise(nec4param, ecx = TRUE, ecx_val = 50),
                "matched by multiple actual arguments")
   for (fit in list(nec4param, manec_example)) {
@@ -149,11 +138,8 @@ test_that("the xform for the scale message is matched as ecx() matches it", {
 })
 
 test_that("x_range leaves the no-effect row as stored and xform transforms it", {
-  # The no-effect estimate is read from the posterior stored at fit time and
-  # is censored at the grid stored then, so x_range does not change it. An
-  # xform is applied to those stored draws as nec() applies it (#439, option
-  # A), so the row is on the scale of the ECx rows. Without ecx = TRUE nothing
-  # is passed to ecx() at all, and the xform still reaches the row.
+  # The no-effect row uses fit-time draws and censoring bounds, so
+  # x_range does not change it. Apply xform even without ECx rows.
   for (fit in list(nec4param, manec_example)) {
     stored <- if (inherits(fit, "bayesmanecfit")) fit$w_ne else fit$ne
     by_nec <- suppressMessages(suppressWarnings(nec(fit, xform = exp)))
@@ -173,9 +159,8 @@ test_that("x_range leaves the no-effect row as stored and xform transforms it", 
 })
 
 test_that("the no-effect row is summarised as the stored row was", {
-  # An xform that changes nothing gives the stored row, so option A changes
-  # the row by the transformation and by nothing else. The single ECx fit is
-  # included because its row is an NSEC, which nec() refuses to return.
+  # Identity transformation preserves the stored row. Include an ECx
+  # fit whose stored no-effect row is an NSEC, which nec() refuses.
   ecx4 <- suppressMessages(pull_out(manec_example, "ecx4param"))
   ne_vals <- bayesnec:::summary_ne_vals
   for (fit in list(nec4param, manec_example, ecx4)) {
@@ -206,10 +191,8 @@ test_that("posterior = TRUE is refused rather than printed (#439)", {
 
 test_that("each summary ECx row equals a bare ecx() call (#439)", {
   skip_on_cran()
-  # Over x_range = c(0.5, 1) every draw of the EC50 lies above 1 on both
-  # packaged fits, so the row is censored at the supplied upper limit, and
-  # xform = exp puts that limit at 2.72. Before #439 the summary ignored both
-  # arguments and printed 1.67, unmarked, the value on the stored grid.
+  # Both fixtures have EC50 above the supplied upper bound 1. Report
+  # that censoring on the transformed scale: exp(1), approximately 2.72.
   for (fit in list(nec4param, manec_example)) {
     s <- summarise(fit, ecx = TRUE, ecx_vals = 50, x_range = c(0.5, 1),
                    resolution = 50, xform = exp)
@@ -228,10 +211,9 @@ test_that("each summary ECx row equals a bare ecx() call (#439)", {
   }
 })
 
-# Replaces nuts_params() so that each stored fit of manec_example reports the
-# number of divergent transitions named for its model in `counts`. An unnamed
-# count is given to every fit. A pulled-out fit needs one, because pull_out()
-# returns a brmsfit that is not identical to the stored one.
+# Mock nuts_params() with per-model divergence counts, or one unnamed
+# count for every fit. Pulled-out brmsfits differ from their stored
+# versions and need the unnamed fallback.
 local_divergences <- function(counts, env = parent.frame()) {
   fits <- lapply(manec_example$mod_fits, "[[", "fit")
   local_mocked_bindings(

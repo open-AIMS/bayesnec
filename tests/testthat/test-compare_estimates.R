@@ -12,13 +12,10 @@ test_that("output is a list of appropriately name elements", {
 })
 
 
-# ---- the four-value type vocabulary ------------------------------------------
+# ECx type arguments
 
-# compare_estimates() and compare_posterior() forward type to ecx(), but kept a
-# second copy of the vocabulary that still listed the 2.1.3 three-value set. It
-# therefore refused "range" -- the name the rename warning gives callers for the
-# behaviour they had -- so the migration the warning names was impossible from
-# the two functions that exist to compare an ECx across fits.
+# Comparison wrappers must accept every ECx type, including range, so they
+# do not block the migration named by the relative-type warning.
 
 test_that("compare_estimates accepts every type ecx accepts", {
   skip_on_cran()
@@ -43,7 +40,7 @@ test_that("the relative rename is warned once for the call, not once per fit", {
 })
 
 
-# ---- #39 and #404, a censored draw is compared through its record ------------
+# Censoring records in paired comparisons
 
 # A posterior vector carrying a censoring record, for the tests that exercise the
 # pairing rule directly rather than through a fit.
@@ -68,17 +65,9 @@ censor_nec_draws <- function(fit, idx, beyond = 1) {
 }
 
 test_that("the sign of a paired difference is read from the censoring record", {
-  # One pair per position:
-  #  1  5 against 3, both identified            positive
-  #  2  3 against 5, both identified            not positive
-  #  3  4 against 4, both identified            not positive: zero is not above
-  #  4  at or above 10 against 3                positive, whatever the value
-  #  5  3 against at or above 10                not positive
-  #  6  at or above 10 against at or above 10   indeterminate
-  #  7  at or below 1 against 3                 not positive
-  #  8  at or below 1 against at or below 1     indeterminate
-  #  9  at or above 10 against at or below 1    positive
-  # 10  NA the record does not explain          missing, neither
+  # Include identified ties, opposite bounds, common bounds and unexplained
+  # NA values. Common bounds leave the sign indeterminate; an unexplained
+  # NA is missing rather than censored.
   first <- with_record(
     c(5, 3, 4, NA, 3, NA, NA, NA, NA, NA),
     above = c(FALSE, FALSE, FALSE, TRUE, FALSE, TRUE, FALSE, FALSE, TRUE,
@@ -105,11 +94,8 @@ test_that("the sign of a paired difference is read from the censoring record", {
 })
 
 test_that("a draw censored at a bound is not compared by its value", {
-  # The first draw is a sampled nec of 15 that the record marks as at or above
-  # 10. Against an identified 12 from a component with a wider range, the value
-  # would say positive, but nec() reports only that it is at or above 10, and
-  # at or above 10 against 12 leaves the sign open. The second pair is fixed:
-  # at or above 10 against 9 is positive.
+  # The record reports a draw only as >= 10, even if its sampled value is 15.
+  # Its sign against 12 is unknown; against 9 it is positive.
   first <- with_record(c(15, 15), above = c(TRUE, TRUE))
   second <- with_record(c(12, 9), upper = 20)
   s <- bayesnec:::difference_sign(first, second)
@@ -123,9 +109,8 @@ test_that("a draw censored at a bound is not compared by its value", {
 })
 
 test_that("two identified infinite draws are left out, as before", {
-  # Inf - Inf is NaN, which has no sign. The earlier na.rm dropped such a pair,
-  # so it is missing rather than indeterminate, and a comparison with nothing
-  # censored keeps a single probability.
+  # Inf - Inf is NaN and has no sign. Without a censoring record, such pairs
+  # are missing rather than indeterminate.
   s <- bayesnec:::difference_sign(c(Inf, Inf, -Inf, 2), c(Inf, 3, -Inf, Inf))
   expect_identical(s$positive, c(NA, TRUE, NA, FALSE))
   expect_identical(s$indeterminate, c(FALSE, FALSE, FALSE, FALSE))
@@ -150,8 +135,8 @@ test_that("two identified infinite draws are left out, as before", {
 })
 
 test_that("a comparison with nothing censored returns what it returned before", {
-  # The regression guard. prob is recomputed here by the expression the
-  # function used before #404, and must agree to the last bit.
+  # For uncensored draws, retain bit-for-bit agreement with the direct
+  # probability calculation below.
   skip_on_cran()
   x <- list(a = nec4param, b = ecx4param, m = manec_example)
   ce <- suppressWarnings(
@@ -185,11 +170,8 @@ test_that("a comparison with nothing censored returns what it returned before", 
 })
 
 test_that("one component censored and one not gives one probability", {
-  # Thirty of the first fit's nec draws are above the prediction range, and
-  # every draw of the second is identified inside it. Each censored draw is
-  # therefore above its partner whatever its value, so no pair is
-  # indeterminate and the probability is a single number, computed over all
-  # one hundred pairs rather than over the seventy with a value.
+  # The censored draws are above every partner, so their signs are known.
+  # Count all 100 pairs, not only the 70 with numerical differences.
   skip_on_cran()
   a <- censor_nec_draws(nec4param, 1:30)
   ce <- suppressWarnings(suppressMessages(
@@ -210,10 +192,9 @@ test_that("one component censored and one not gives one probability", {
 })
 
 test_that("a sampled nec beyond the range is compared as nec() reports it", {
-  # Both fits have forty draws above the range, at different values. Compared
-  # by value, a pair of two such draws has a definite sign; nec() reports each
-  # only as at or above the bound, so the pair is indeterminate. The difference
-  # draws are kept and marked, and the probability becomes an interval.
+  # Two draws above the same bound have unknown ordering even when their
+  # sampled values differ. Keep and mark those pairs when constructing the
+  # probability interval.
   skip_on_cran()
   a <- censor_nec_draws(nec4param, 1:40, beyond = 1)
   b <- censor_nec_draws(nec4param, 1:40, beyond = 2)
@@ -236,11 +217,9 @@ test_that("a sampled nec beyond the range is compared as nec() reports it", {
 })
 
 test_that("the ECx comparison of #404 reports an interval, not the survivors", {
-  # The reproduction in #404: over this range 74 and 59 of the 100 ECx50 draws
-  # are censored above it. The earlier na.rm kept the 10 pairs in which both
-  # had a value and reported 0.6 over them. Pairs of two censored draws have
-  # no known sign, so the probability is an interval, and every pair in which
-  # one draw is censored and the other identified has a known sign.
+  # A restricted range censors draws in both fits. Pairs of censored draws
+  # may be indeterminate; one censored and one identified draw can still have
+  # a known sign. Do not compute probability from identified pairs alone.
   skip_on_cran()
   x <- list(a = nec4param, b = ecx4param)
   ce <- suppressWarnings(
@@ -256,11 +235,9 @@ test_that("the ECx comparison of #404 reports an interval, not the survivors", {
 })
 
 test_that("an NSEC censored in one component only is still one probability", {
-  # Over this range almost every NSEC draw of the threshold fit is above the
-  # range and none of the smooth fit's is. The earlier na.rm reported the
-  # probability over the few pairs in which both had a value. The precondition
-  # depends on where the packaged curves sit, so it is measured and the case
-  # skipped if a regenerated fixture no longer meets it.
+  # This fixture must have censored NSEC draws in only one fit. Check that
+  # precondition and skip if regenerated stored fits no longer meet it;
+  # otherwise all pairs have known signs despite missing numerical differences.
   skip_on_cran()
   x <- list(a = nec4param, b = ecx4param)
   out <- suppressWarnings(

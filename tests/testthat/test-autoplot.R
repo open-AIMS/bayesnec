@@ -3,7 +3,7 @@
 # path does not establish that the others agree.
 
 
-# ---- what ggbnec_data returns -----------------------------------------------
+# Plotting-frame columns
 
 test_that("ggbnec_data returns the columns autoplot draws from", {
   skip_on_cran()
@@ -16,10 +16,7 @@ test_that("ggbnec_data returns the same frame shape for a model set", {
   skip_on_cran()
   d <- suppressMessages(ggbnec_data(manec_example))
   expect_true(all(c("x_e", "y_e", "y_ci", "x_r", "y_r") %in% names(d)))
-  # add_nec on the model-set branch, R/autoplot.R:356. Asserted here rather
-  # than in a block of its own so the frame above is computed once: making that
-  # condition unconditional failed nothing until this line was added, while its
-  # bayesnecfit twin at :312 was already observed.
+  # Check add_nec on the model-set path as well as the single-fit path.
   expect_true("nec_vals" %in% names(d))
   without <- suppressMessages(ggbnec_data(manec_example, add_nec = FALSE))
   expect_false("nec_vals" %in% names(without))
@@ -350,11 +347,9 @@ test_that("the nec annotation is present by default and suppressible", {
 })
 
 test_that("ggbnec_data takes add_nec, and absorbs nec = FALSE into dots", {
-  # autoplot() takes nec = and forwards it as add_nec =. ggbnec_data() is
-  # exported and documented separately, and the obvious transfer of the
-  # autoplot argument name does nothing at all: nec = FALSE is swallowed by
-  # ... and the annotation is still computed and returned. Pinned as current
-  # behaviour rather than asserted to be correct.
+  # ggbnec_data() takes add_nec, while autoplot() takes nec. The former
+  # currently swallows nec through dots; this records that behaviour without
+  # endorsing the argument mismatch.
   skip_on_cran()
   swallowed <- suppressMessages(ggbnec_data(nec4param, nec = FALSE))
   expect_true("nec_vals" %in% names(swallowed))
@@ -362,11 +357,8 @@ test_that("ggbnec_data takes add_nec, and absorbs nec = FALSE into dots", {
 
 
 test_that("a non-function xform is refused the same way on both classes", {
-  # The bayesnecfit method guarded xform and the bayesmanecfit method did not,
-  # so the same user error gave "xform must be a function." for one class and
-  # "could not find function \"xform\"" -- raised from inside mutate(), naming
-  # neither the argument nor what it should have been -- for the other. The
-  # guard was added to the model-set method in #278.
+  # Check both method guards so a bad xform fails by argument name before
+  # reaching the transformation code.
   skip_on_cran()
   expect_error(ggbnec_data(nec4param, xform = "no"),
                "xform must be a function")
@@ -375,7 +367,7 @@ test_that("a non-function xform is refused the same way on both classes", {
 })
 
 
-# ---- xform on the predictor axis --------------------------------------------
+# Predictor-axis transformations
 
 test_that("xform is applied to the predictor axis of a single fit", {
   skip_on_cran()
@@ -390,9 +382,7 @@ test_that("xform is applied to the predictor axis of a model set", {
                                          xform = function(x) x * 100))
   expect_equal(max(scaled$x_e, na.rm = TRUE),
                max(plain$x_e, na.rm = TRUE) * 100, tolerance = 1e-8)
-  # And the raw data column, R/autoplot.R:354. Dropping x_r from that mutate()
-  # failed nothing until this line was added, while its bayesnecfit twin at
-  # :310 was already observed.
+  # Check raw-data coordinates separately from the fitted-curve coordinates.
   expect_equal(max(scaled$x_r, na.rm = TRUE),
                max(plain$x_r, na.rm = TRUE) * 100, tolerance = 1e-8)
 })
@@ -407,7 +397,7 @@ test_that("xform reaches the raw data as well as the fitted curve", {
 })
 
 
-# ---- #268, pinned on both halves of the frame -------------------------------
+# Response transformations and annotations
 
 test_that("find_transformations reports the response for this fixture", {
   # Only the response is transformed in this fixture. The plotting guard
@@ -421,13 +411,7 @@ test_that("find_transformations reports the response for this fixture", {
 })
 
 test_that("a transformed response no longer suppresses xform (#268)", {
-  # INVERTED. The guard was the length of find_transformations(), which answers
-  # for the formula as a whole, so a transformation on the response suppressed
-  # xform on a predictor nobody had transformed.
-  #
-  # INVERTED: the guard is now per-variable, so the two differ by the factor
-  # xform applies, as in "xform is applied to the predictor axis of a single
-  # fit" above.
+  # The response transformation must not suppress predictor-axis xform.
   skip_on_cran()
   f <- transformed_response_fit(nec4param, "nec4param")
   expect_equal(gg_x_max(f, xform = function(x) x * 100), gg_x_max(f) * 100,
@@ -435,8 +419,7 @@ test_that("a transformed response no longer suppresses xform (#268)", {
 })
 
 test_that("a transformed response no longer suppresses xform for a set", {
-  # INVERTED with its sibling above. The bayesmanecfit branch had the same
-  # guard and the same defect.
+  # The model-set axis has a separate transformation path.
   skip_on_cran()
   m <- transformed_response_manec(manec_example)
   expect_equal(gg_x_max(m, xform = function(x) x * 100), gg_x_max(m) * 100,
@@ -493,7 +476,7 @@ test_that("the model set returns its ecx annotation on the other scale too", {
 })
 
 
-# ---- autoplot itself --------------------------------------------------------
+# Plot objects
 
 test_that("autoplot returns a ggplot for both fit classes", {
   skip_on_cran()
@@ -512,12 +495,8 @@ test_that("autoplot accepts xform without error on both classes", {
 })
 
 
-# ---- model and average on a model set (#120) --------------------------------
-#
-# model names equations of the set and average chooses whether the model
-# average is drawn; all_models, which they replace, is deprecated and maps
-# onto them. The frames compared are the data each layer was given, which is
-# everything ggbnec() draws from.
+# Compare layer data to check the model and average arguments and their
+# deprecated all_models mapping.
 
 layers_data <- function(p) lapply(p$layers, function(layer) layer$data)
 
@@ -543,9 +522,8 @@ test_that("all_models = TRUE warns once and draws what model draws", {
              average = FALSE)
   )
   expect_identical(layers_data(old$value), layers_data(new))
-  # What all_models = TRUE drew: a facet per equation and no model average.
-  # The column stays character, so facet_wrap() orders the equations
-  # alphabetically, as it did.
+  # The deprecated call keeps character model names, so facet_wrap() orders
+  # its equation panels alphabetically.
   expect_type(facet_models(new), "character")
   expect_setequal(unique(facet_models(new)), manec_example$success_models)
 })
@@ -577,8 +555,7 @@ test_that("model adds a facet per equation after the model average", {
   rownames(avg) <- rownames(alone) <- NULL
   avg$model <- as.character(avg$model)
   expect_identical(avg, alone)
-  # With both equations the model average stays first, and the equations
-  # take the alphabetical order their facets have always had.
+  # The model average comes first; equation facets follow alphabetically.
   p2 <- suppressMessages(
     autoplot(manec_example, model = c("nec4param", "ecx4param"))
   )
@@ -618,8 +595,8 @@ test_that("multi_facet = FALSE returns a plot per panel, the average first", {
            character(1)),
     c("Model averaged predictions", "nec4param", "ecx4param")
   )
-  # The deprecated call returns the list it returned, one plot per equation
-  # in the order of the set, and warns once.
+  # The deprecated call returns one plot per equation in set order and warns
+  # once.
   old <- collect_warnings(suppressMessages(
     autoplot(manec_example, all_models = TRUE, multi_facet = FALSE,
              ask = FALSE)
@@ -632,14 +609,9 @@ test_that("multi_facet = FALSE returns a plot per panel, the average first", {
 })
 
 
-# ---- plot = FALSE with multi_facet = FALSE (#444) ---------------------------
-#
-# The drawing call and the prompt sat outside the if (plot) block that saves
-# the device's prompt setting and restores it on exit, so plot = FALSE drew
-# every page and left the prompt set after the call returned. Pages are
-# counted with grid's before.grid.newpage hook, which runs once for each page
-# ggplot2 draws with newpage = TRUE, the default. Counting at the hook needs
-# no device of a particular kind, and so behaves the same on every platform.
+# Count pages with grid's before.grid.newpage hook, which runs for each
+# page ggplot2 draws with its default newpage = TRUE. This observes drawing
+# without requiring a particular device type.
 
 count_pages <- function(expr) {
   pages <- 0L
@@ -681,10 +653,8 @@ test_that("plot = FALSE draws nothing and leaves the prompt as it was", {
 
 test_that("plot = FALSE opens no device on the deprecated all_models path", {
   skip_on_cran()
-  # The call named in #444: no model average, so the first page is an
-  # equation. With no device open, a single page drawn would open one, so the
-  # device list is compared as well as the page count; where a device is
-  # already open the count alone detects drawing.
+  # Without an open device, drawing opens one; with a device already open,
+  # only the page count detects drawing. Check both effects.
   before <- grDevices::dev.list()
   res <- count_pages(collect_warnings(suppressMessages(
     autoplot(manec_example, all_models = TRUE, multi_facet = FALSE,
@@ -717,21 +687,11 @@ test_that("autoplot refuses a model outside the set and an empty selection", {
 })
 
 
-# ---- the ECx annotation on an inline-transformed predictor -------------------
+# ECx annotations on transformed predictors
 
-# to_axis_scale()'s numerical-inverse branch built a fresh vector, dropping the
-# ecx_val attribute that bind_ecx() reads and assigns into the data frame, so
-# the assignment received NULL and the call failed with "replacement has length
-# zero". The branch runs only when the predictor is transformed inline AND
-# xform is left at its default, which is why no existing test reached it: every
-# transformed-predictor test here supplies an xform, and every default-xform
-# test uses an untransformed predictor. That combination is the one
-# vignette("example1") uses.
-#
-# The formula is rewritten on a stored fit rather than fitted, the same trick
-# transformed_response_fit() uses in setup.R, applied to the predictor instead
-# of the response. manec_example's x is 0.032 to 3.22, so log() is finite
-# throughout.
+# An inline-transformed predictor with no xform uses the numerical inverse,
+# which must preserve ecx_val for annotation labels. This fixture changes
+# formula metadata only; its positive stored x values keep log(x) finite.
 transformed_predictor_fit <- function(fit, model) {
   fit$bayesnecformula <- bayesnecformula(
     stats::as.formula(paste0("y ~ crf(log(x), model = \"", model, "\")"))
@@ -746,8 +706,7 @@ test_that("ggbnec_data annotates an ecx on a transformed predictor", {
     ggbnec_data(tf, add_ecx = TRUE)
   ))
   expect_s3_class(out, "data.frame")
-  # The ecx_val attribute survives the inverse and reaches the data frame; it
-  # is what labels the annotation, so a NULL here is the failure above.
+  # The numerical inverse must preserve ecx_val, which labels the annotation.
   expect_equal(out$ecx_int[!is.na(out$ecx_int)], 10)
 })
 
@@ -757,7 +716,7 @@ test_that("autoplot draws that annotation without error", {
   expect_s3_class(
     suppressMessages(suppressWarnings(autoplot(tf, ecx = TRUE))),
     "ggplot")
-  # An xform supplied takes the other branch, which never lost the attribute.
+  # An explicit xform exercises the separate user-supplied inverse path.
   expect_s3_class(
     suppressMessages(suppressWarnings(
       autoplot(tf, ecx = TRUE, xform = exp))),

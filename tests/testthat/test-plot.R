@@ -2,10 +2,8 @@
 # Check both predictor axes and annotations on each class; a correction to
 # one path does not establish that the others agree.
 
-# The x-axis limits the call produced, read off the device rather than from a
-# returned object, because these are base-graphics methods that return nothing.
-# No suppression: an assertion of silence made through a helper that suppresses
-# messages cannot fail, and these methods are silent today.
+# Read axis limits from the device because base plot() returns no plot data.
+# Do not suppress messages here: callers use this helper to assert silence.
 pl_x_max <- function(obj, ...) {
   pdf(NULL)
   on.exit(dev.off(), add = TRUE)
@@ -13,33 +11,19 @@ pl_x_max <- function(obj, ...) {
   par("usr")[2]
 }
 
-# The factor by which xform changed the axis. A ratio rather than a pair of
-# limits: it is scale-free, so it does not encode base graphics' 4% default
-# axis expansion the way a comparison against a fixed number would, and it is
-# directly comparable with the same ratio taken from the ggplot2 path.
+# Compare scale ratios so base graphics' axis expansion cancels. The same
+# ratio can then be checked against the ggplot2 path.
 pl_x_ratio <- function(obj) {
   pl_x_max(obj, xform = function(x) x * 100) / pl_x_max(obj)
 }
 
 
-# ---- the argument combinations nothing else covers --------------------------
-#
-# plot() on a plain bayesnecfit and bayesmanecfit is already asserted silent
-# and invisible in test-bayesnec_methods.R and test-bayesmanec_methods.R, so it
-# is not repeated. all_models, add_nec and add_ec10 are asserted nowhere else,
-# and each is asserted here on what it changes rather than on the call
-# completing, which any value of the argument would satisfy.
+# Check drawing calls and values; a silent call alone cannot show that a
+# plotting argument took effect.
 
 test_that("add_nec and add_ec10 decide what is annotated for a model set too", {
-  # R/plot.R:331-346 repeats the three-branch structure of :179-195 for a
-  # bayesmanecfit, and until this block was added nothing observed which
-  # annotation each branch drew: changing R/plot.R:337 to draw nec in the ec10
-  # branch -- the model-set analogue of the mutation the bayesnecfit block
-  # below names -- passed every assertion in this branch. The combined branch
-  # at :341-343 was executed by nothing.
-  #
-  # This was the fourth occasion in review on which a bayesmanecfit site was
-  # found uncovered after its bayesnecfit twin was covered.
+  # The model-set annotation uses a separate path. Check its values as well
+  # as call counts; drawing NEC in the EC10 branch would preserve the count.
   skip_on_cran()
   drawn <- list()
   local_mocked_bindings(
@@ -62,29 +46,22 @@ test_that("add_nec and add_ec10 decide what is annotated for a model set too", {
 })
 
 test_that("all_models draws a panel per candidate, named", {
-  # Asserting only that the call is silent would pass just as well with
-  # all_models = FALSE, and so would not detect the argument being ignored.
-  # R/plot.R:253 labels each panel with the model name, and that legend() call
-  # is reached only from the all_models loop, so the names it is given are
-  # evidence of which candidates were drawn.
+  # Panel legend names identify the candidates actually drawn. A silent call
+  # would not detect all_models being ignored.
   skip_on_cran()
   labels <- character()
   local_mocked_bindings(
     legend = function(..., legend = NULL) labels <<- c(labels, as.character(legend)),
     .package = "bayesnec"
   )
-  # all_models is deprecated (#120) and still draws what it drew, with one
-  # warning per call.
+  # The deprecated all_models argument must warn once per call.
   old <- collect_warnings(pl_x_max(manec_example, all_models = TRUE))
   expect_length(old$warnings, 1)
   expect_match(old$warnings, "`all_models` is deprecated", fixed = TRUE)
   expect_true(all(names(manec_example$mod_fits) %in% labels))
-  # all_models = TRUE drew no model average, and its mapping, average = FALSE,
-  # keeps it that way.
+  # The deprecated all_models = TRUE call draws no model average.
   expect_false("Model averaged predictions" %in% labels)
-  # And not otherwise. The model-average plot does call legend(), in
-  # plot_manec_average(), but with the estimate string rather than a model
-  # name, so no candidate name appears.
+  # The model-average legend uses an estimate string, not a candidate name.
   labels <- character()
   old <- collect_warnings(pl_x_max(manec_example, all_models = FALSE))
   expect_length(old$warnings, 1)
@@ -92,10 +69,8 @@ test_that("all_models draws a panel per candidate, named", {
 })
 
 test_that("all_models draws what its replacement arguments draw", {
-  # The deprecation maps all_models onto model and average, so each old call
-  # and its mapping must reach the same drawing calls with the same values.
-  # Read off the legend() and abline() calls rather than off the device, as
-  # the tests above do.
+  # Compare recorded drawing calls so each deprecated argument combination
+  # matches its replacement in both values and layout.
   skip_on_cran()
   drawn <- list()
   local_mocked_bindings(
@@ -120,10 +95,8 @@ test_that("all_models draws what its replacement arguments draw", {
 })
 
 test_that("model and average choose the panels and their layout", {
-  # One panel per named equation, labelled with its name, and the model
-  # average in the first panel unless average = FALSE. par() is intercepted to
-  # read the layout: a single panel takes the whole device, and two or more
-  # keep the two columns all_models = TRUE drew.
+  # Read the layout through par(). A lone panel uses the whole device;
+  # multiple panels use two columns with the model average first.
   skip_on_cran()
   labels <- character()
   layouts <- list()
@@ -186,12 +159,8 @@ test_that("plot() refuses a model outside the set and an empty selection", {
 })
 
 test_that("add_nec and add_ec10 decide what is annotated", {
-  # Same reasoning: silence is not evidence that either argument was read.
-  # The three branches at R/plot.R:179-195 are mutually exclusive, so the
-  # abline() calls are counted AND their values identified. Counting alone does
-  # not discriminate: one call is drawn whether the branch taken is the nec at
-  # R/plot.R:180 or the ec10 at :185, so drawing ec10 from the nec branch would
-  # pass a count-only assertion.
+  # Count annotation calls and check their values: NEC and EC10 each draw
+  # one line set, so a count alone cannot distinguish their branches.
   skip_on_cran()
   drawn <- list()
   local_mocked_bindings(
@@ -205,16 +174,13 @@ test_that("add_nec and add_ec10 decide what is annotated", {
   pl_x_max(nec4param, add_nec = TRUE)
   expect_length(drawn, 1)
   expect_equal(unname(drawn[[1]]), unname(nec4param$ne), tolerance = 1e-8)
-  # The ec10 alone. nec4param is gaussian, so R/plot.R:114-115 takes the
-  # relative branch. The value is not asserted here beyond its being a
-  # different one, because ecx() is under test in test-ecx.R.
+  # This Gaussian fixture uses the relative EC10. Check that it differs from
+  # NEC here; test-ecx.R checks the estimator value.
   pl_x_max(nec4param, add_nec = FALSE, add_ec10 = TRUE)
   expect_length(drawn, 2)
   expect_false(isTRUE(all.equal(unname(drawn[[2]]), unname(nec4param$ne))))
-  # Both, in the order R/plot.R:189-191 draws them: the nec in red, then the
-  # ec10 in orange. The second call must repeat the ec10 of the previous block;
-  # ecx() on a bayesnecfit reads stored draws with no resampling, so the value
-  # is deterministic across the two plot() calls.
+  # NEC precedes EC10. The single-fit estimator reuses stored draws, so the
+  # EC10 values must match the earlier call without resampling.
   pl_x_max(nec4param, add_nec = TRUE, add_ec10 = TRUE)
   expect_length(drawn, 4)
   expect_equal(unname(drawn[[3]]), unname(nec4param$ne), tolerance = 1e-8)
@@ -222,16 +188,10 @@ test_that("add_nec and add_ec10 decide what is annotated", {
 })
 
 
-# ---- the axis and the argument guards ---------------------------------------
+# Axis arguments and guards
 
 test_that("the axis is always drawn with at and labels, on either class", {
-  # plot() used to branch on lxform not being a function, and neither branch
-  # could run: the guard at the head of each method has already stopped on that
-  # input and lxform is not reassigned between them. Both branches were removed
-  # in #278, leaving one axis call per method.
-  #
-  # Both classes are asserted. Pinning one and not the other is how the
-  # bayesmanecfit half of #268 escaped notice for six review rounds.
+  # Check both fit classes: each has a separate axis path and argument guard.
   skip_on_cran()
   expect_error(pl_x_max(nec4param, lxform = "not a function"),
                "lxform must be a function")
@@ -246,30 +206,19 @@ test_that("the axis is always drawn with at and labels, on either class", {
   pl_x_max(nec4param, xticks = c(0, 1, 2, 3))
   pl_x_max(manec_example)
   pl_x_max(manec_example, xticks = c(0, 1, 2, 3))
-  # The count first. all() of an empty list is TRUE, so without this the
-  # assertion below would also pass if axis() were never called at all -- which
-  # is a reachable state, since xaxt = "n" is set before the axis is drawn and
-  # these calls are the only thing that draws it.
+  # Check the count before all(): an empty collection would otherwise pass
+  # even if no axis were drawn.
   expect_length(calls, 4)
-  # The surviving call always supplies at and labels. A reinstated
-  # axis(side = 1) would produce a call with neither name; a reinstated
-  # axis(side = 1, at = signif(xticks, 2)) would produce one with at but no
-  # labels. Requiring both names excludes both.
+  # Require both tick positions and labels; an axis() call with either
+  # argument missing would pass a weaker call-count check.
   expect_true(all(vapply(calls, function(nm) all(c("at", "labels") %in% nm),
                          logical(1))))
 })
 
 test_that("position_legend accepts both forms legend() accepts", {
-  # position_legend was documented as "a numeric vector indicating the location
-  # of the NEC or EC10 legend, as per a call to legend" and its guard accepted
-  # only the eight keyword strings, so the documented form was refused. #278
-  # resolved the conflict in favour of the documentation: both forms are
-  # accepted, as legend() accepts both.
-  #
-  # A length-2 numeric cannot be passed to legend() as its x alone -- with
-  # y = NULL it reads as the two corners of a rectangle -- so the pair is split
-  # across x and y. Asserted on what legend() was given rather than on the
-  # device, since the legend position does not change par("usr").
+  # Pass numeric legend coordinates as separate x and y arguments. A pair
+  # given as x alone describes rectangle corners when y is NULL. Intercept
+  # legend(), since its position does not change the axis limits.
   skip_on_cran()
   seen <- list()
   local_mocked_bindings(
@@ -289,16 +238,8 @@ test_that("position_legend accepts both forms legend() accepts", {
 })
 
 test_that("position_legend refuses what legend() cannot use, either class", {
-  # The arguments to match() used to be the wrong way round -- the vector of
-  # valid keywords was matched into the user's value rather than the reverse --
-  # so a value holding one valid keyword passed however much else was in it,
-  # and failed later inside legend() with "'arg' must be of length 1", naming
-  # neither the argument nor the valid values. Same shape as #265: a condition
-  # that does not test what it reads as testing.
-  #
-  # Both halves on both classes. Asserting the refusal on both and the
-  # inversion on one is how the earlier bayesmanecfit gaps in this file arose:
-  # repairing one call site alone left every assertion here passing.
+  # Check each class and reject mixed valid/invalid keywords before legend()
+  # raises an error that does not name position_legend.
   skip_on_cran()
   for (obj in list(nec4param, manec_example)) {
     msg <- tryCatch(pl_x_max(obj, position_legend = c("topright", "bogus")),
@@ -311,16 +252,15 @@ test_that("position_legend refuses what legend() cannot use, either class", {
                  "position_legend must be one of")
     expect_error(pl_x_max(obj, position_legend = c(0.5, 0.5, 0.5)),
                  "position_legend must be one of")
-    # "center" is legend()'s ninth keyword and was not among the eight the
-    # guard this replaces listed. Pinned because ?plot now names the exclusion,
-    # so widening the set later is a decision rather than an oversight.
+    # The documented keyword set deliberately excludes legend()'s "center".
+    # Widening it changes that contract.
     expect_error(pl_x_max(obj, position_legend = "center"),
                  "position_legend must be one of")
   }
 })
 
 
-# ---- xform on the predictor axis --------------------------------------------
+# Predictor-axis transformations
 
 test_that("xform widens the predictor axis of a single fit", {
   skip_on_cran()
@@ -333,23 +273,17 @@ test_that("xform widens the predictor axis of a model set", {
 })
 
 
-# ---- #268, pinned on both halves of the figure ------------------------------
+# Response transformations and annotations
 
 test_that("a transformed response no longer suppresses xform (#268)", {
-  # INVERTED. This pinned the #268 defect: the guard was the length of
-  # find_transformations(), which answers for the formula as a whole, so a
-  # transformation on the response suppressed xform on a predictor nobody had
-  # transformed and the ratio was 1. The guard is now per-variable, so the
-  # ratio is the factor xform applies, as it is for a formula with no
-  # transformation at all.
+  # A response transformation must not suppress xform on the predictor axis.
   skip_on_cran()
   f <- transformed_response_fit(nec4param, "nec4param")
   expect_equal(pl_x_ratio(f), 100, tolerance = 1e-6)
 })
 
 test_that("a transformed response no longer suppresses xform for a set", {
-  # INVERTED with its sibling above. The bayesmanecfit branch had the same
-  # guard and the same defect.
+  # The model-set axis has a separate transformation path.
   skip_on_cran()
   m <- transformed_response_manec(manec_example)
   expect_equal(pl_x_ratio(m), 100, tolerance = 1e-6)
@@ -410,14 +344,8 @@ test_that("the model set draws its ec10 annotation off the axis too", {
 })
 
 test_that("plot and autoplot make the xform decision the same way", {
-  # The two paths make that decision independently. Today this assertion is
-  # implied by the two axis pins above -- both ratios are now pinned to 100
-  # separately, so it cannot fail unless one of those fails first -- and it is
-  # kept because it goes on requiring the two paths to agree whatever scale a
-  # later change settles on.
-  #
-  # Ratios rather than limits, so the base path's axis expansion does not enter
-  # the comparison.
+  # Compare the two plotting paths directly as well as their individual
+  # expected ratios. Ratios remove base graphics' axis expansion.
   skip_on_cran()
   f <- transformed_response_fit(nec4param, "nec4param")
   gg_ratio <- gg_x_max(f, xform = function(x) x * 100) / gg_x_max(f)

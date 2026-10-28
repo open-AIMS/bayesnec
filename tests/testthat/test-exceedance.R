@@ -1,10 +1,6 @@
-# exceedance() (#44, D25). The probability that an estimate exceeds a threshold,
-# with draws beyond the prediction range counted from the censoring record.
-#
-# Most tests replace a stored posterior with draws and a record the test fixes,
-# so that the expected probabilities can be counted by hand and nothing is
-# sampled. The tests that read a curve off the packaged fits are marked
-# skip_on_cran().
+# Use fixed posterior draws and censoring records so probabilities can be
+# counted without sampling. Tests that evaluate packaged fitted curves keep
+# their skip_on_cran() guards.
 
 # A threshold fit whose stored nec posterior is the one given. nec() reads the
 # stored posterior and its record, applies xform to both, and returns them, so
@@ -61,10 +57,8 @@ test_that("a threshold inside the range is decided by the record", {
 })
 
 test_that("a threshold beyond the upper end is reported as an interval", {
-  # [P(identified > T), P(identified > T) + P(censored above)]: no identified
-  # draw exceeds 12, and the two censored above may or may not. Their sampled
-  # values (12 and 15) are not read, because nec() reports them only as lying
-  # at or above 10.
+  # The record reports only >= 10, so neither censored draw is decidable
+  # against 12. Their sampled values must not determine the probability.
   out <- quiet_exceedance(eight_draws(), threshold = 12)
   expect_true(is.na(out$prob))
   expect_equal(out$prob_lower, 0)
@@ -123,11 +117,8 @@ test_that("a posterior without a record is compared by its values", {
 
 test_that("the EC50 of nec4param on a capped range counts its censored draws", {
   skip_on_cran()
-  # The measurement behind the design. With the prediction range capped at
-  # 1.67, 57 of 100 EC50 draws of nec4param lie above it, and a threshold of
-  # 1.65 is inside the range, so each of those draws exceeds it. The
-  # probability then equals the one on the full range, where no draw is
-  # censored.
+  # With the range capped at 1.67, draws censored above it still exceed 1.65.
+  # The probability must match the uncensored calculation on the full range.
   x_min <- min(nec4param$fit$data$x)
   capped <- quiet_exceedance(nec4param, threshold = 1.65, estimate = "ecx",
                              ecx_val = 50, x_range = c(x_min, 1.67))
@@ -202,12 +193,9 @@ test_that("a model set's ECx is compared with its censored draws counted", {
 })
 
 test_that("a hurdle fit is compared through its combined threshold", {
-  # Two threshold components on the same range of 1 to 10. The combined
-  # threshold is the smaller of the two per draw, and a draw is censored above
-  # only where both components are:
-  #   growth    2  4  >=10  >=10  6     9  3     8
-  #   survival  5  3  >=10  7     >=10  2  >=10  <=1
-  #   combined  2  3  >=10  7     6     2  3     <=1
+  # The combined threshold is the per-draw minimum. With equal component
+  # ranges, it is censored above only when both components are; lower
+  # censoring in either component also constrains the minimum.
   growth <- with_ne_posterior(
     nec4param, c(2, 4, 12, 15, 6, 9, 3, 8),
     above = c(FALSE, FALSE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE)
@@ -234,15 +222,9 @@ test_that("a hurdle fit is compared through its combined threshold", {
 })
 
 test_that("a hurdle fit on unequal ranges leaves an unresolved minimum open", {
-  # Growth is predicted to 8 and survival to 10, as where nothing survived at
-  # the top concentrations. In the second draw growth is known only to lie at
-  # or above 8 and survival is identified at 9, so the combined threshold lies
-  # somewhere from 8 to 9 and is marked censored above 8 (#415). Before that
-  # correction the draw was returned as an identified 9, and exceedance() would
-  # have counted it as exceeding 8.5.
-  #   growth    2  >=8  5  >=8
-  #   survival  6  9    3  >=10
-  #   combined  2  >=8  3  >=8
+  # Growth censored at >= 8 and survival identified at 9 leave their minimum
+  # known only within [8, 9]. Report it as censored above 8 rather than as an
+  # identified 9, which would falsely decide exceedance of 8.5.
   growth <- with_ne_posterior(
     nec4param, c(2, 9, 5, 9),
     above = c(FALSE, TRUE, FALSE, TRUE), upper = 8
@@ -311,12 +293,9 @@ test_that("a group fit is compared level by level", {
                "ecx_val applies only")
 })
 
-# A joint refit that holds no posterior of its own. Every estimator reaches a
-# level through joint_level_fit(), which the tests replace with a packaged
-# single fit, so the refit's own nec(), nsec() and ecx() run unchanged and
-# nothing is sampled. Level b is fitted ecx4param, which has no nec parameter.
-# The refit's `fit` is nec4param's brmsfit only so that ndraws() has something
-# to count for that level's NA draws.
+# Mock each joint level with a packaged fit so estimator dispatch runs
+# without sampling. The joint object's brmsfit supplies only a draw count;
+# it is not a fitted posterior for these synthetic levels.
 joint_of <- function(models = list(a = "nec4param", b = "ecx4param")) {
   bayesnec:::allot_class(
     list(fit = nec4param$fit, group_var = "site", levels = names(models),
@@ -406,7 +385,7 @@ test_that("the arguments are validated", {
                "posterior is not an argument")
   expect_error(exceedance(data.frame(x = 1), threshold = 5),
                "no applicable method")
-  # no_effect under a non-NEC estimate was dropped without a message (#459).
+  # Refuse no_effect under a non-NEC estimate instead of ignoring it.
   expect_error(exceedance(fit, threshold = 5, estimate = "nsec",
                           no_effect = TRUE),
                "no_effect applies only to estimate = \"nec\"")
