@@ -62,6 +62,10 @@ print.necsummary <- function(x, ...) {
   cat("Object of class bayesnecfit containing the", x$model,
       "model\n\n", sep = " ")
   print(x$brmssummary)
+  # Absent from a necsummary stored before the count was recorded.
+  if (!is.null(x$divergences)) {
+    cat("\nDivergent transitions after warmup: ", x$divergences, "\n", sep = "")
+  }
   cat("\n\n")
   if (x$is_ecx) {
     cat("NB: Model", x$model, "is an ECx model, thus",
@@ -89,6 +93,12 @@ print.necsummary <- function(x, ...) {
   print_mat(x$bayesr2)
   cat("\n\n")
   print_failed_models(x$failed_models)
+  div_bad <- divergent_models(x)
+  if (length(div_bad) > 0) {
+    warning(divergence_message(div_bad, x$divergence_cutoff),
+            "\nConsider refitting with a larger adapt_delta, passed to bnec()",
+            " as control = list(adapt_delta = ...).\n")
+  }
   invisible(x)
 }
 
@@ -133,6 +143,12 @@ print.manecsummary <- function(x, ...) {
   cat("Bayesian R2 estimates:\n")
   print_mat(x$bayesr2)
   cat("\n\n")
+  # Absent from a manecsummary stored before the count was recorded.
+  if (!is.null(x$divergences)) {
+    cat("Divergent transitions after warmup:\n")
+    print(cbind(n_divergent = x$divergences))
+    cat("\n\n")
+  }
   print_failed_models(x$failed_models)
   # One block covering both axes rather than two independent warnings, per D5
   # of #148: the sampler question (did this model converge) and the fit
@@ -149,7 +165,9 @@ print.manecsummary <- function(x, ...) {
   } else {
     names(x$fit_issues)[which(unlist(x$fit_issues))]
   }
-  if (length(rhat_bad) > 0 || length(fit_bad) > 0) {
+  div_bad <- divergent_models(x)
+  sampler_bad <- length(rhat_bad) > 0 || length(div_bad) > 0
+  if (sampler_bad || length(fit_bad) > 0) {
     msg <- character(0)
     if (length(rhat_bad) > 0) {
       msg <- c(msg,
@@ -163,6 +181,10 @@ print.manecsummary <- function(x, ...) {
 ",
                       paste0("  -  ", rhat_bad, collapse = "
 ")))
+    }
+    if (length(div_bad) > 0) {
+      msg <- c(msg, divergence_message(div_bad, x$divergence_cutoff,
+                                       x$mod_weights[names(div_bad), "wi"]))
     }
     if (length(fit_bad) > 0) {
       msg <- c(msg,
@@ -184,12 +206,12 @@ print.manecsummary <- function(x, ...) {
     # unusable and should be dropped; a model that converged but reproduces the
     # control badly is a modelling result, and dropping it silently would hide
     # what the user most needs to see.
-    tail_txt <- if (length(rhat_bad) > 0 && length(fit_bad) > 0) {
+    tail_txt <- if (sampler_bad && length(fit_bad) > 0) {
       "
-Convergence failures should be dropped (see ?amend or ?screen_models).
+Sampler failures should be dropped (see ?amend or ?screen_models).
 A control mis-fit is a result, not a fault: inspect it with check_fit().
 "
-    } else if (length(rhat_bad) > 0) {
+    } else if (sampler_bad) {
       "
 Consider dropping them (see ?amend or ?screen_models)
 "
@@ -203,6 +225,45 @@ This is a modelling result rather than a fault; inspect with check_fit().
 "), tail_txt, sep = "")
   }
   invisible(x)
+}
+
+#' The models of a summary with more divergent transitions than its cutoff
+#'
+#' @param x A \code{necsummary} or \code{manecsummary}.
+#'
+#' @return A named \code{\link[base]{numeric}} vector of counts, empty for a
+#' summary stored before the count was recorded.
+#'
+#' @noRd
+divergent_models <- function(x) {
+  n <- x$divergences
+  if (is.null(n)) {
+    return(numeric(0))
+  }
+  # Strictly greater, as check_sampling() fails a model. which() drops the NA
+  # of a model not sampled by NUTS.
+  n[which(n > x$divergence_cutoff)]
+}
+
+#' The lines of a summary warning that name the divergent models
+#'
+#' @param div_bad A named \code{\link[base]{numeric}} vector of counts, from
+#' \code{divergent_models()}.
+#' @param cutoff The cutoff the counts exceed.
+#' @param weights The model weight of each model in \code{div_bad}, in the
+#' same order, or \code{NULL} for a single fit.
+#'
+#' @return A \code{\link[base]{character}} string.
+#'
+#' @noRd
+divergence_message <- function(div_bad, cutoff, weights = NULL) {
+  detail <- if (is.null(weights)) {
+    div_bad
+  } else {
+    paste0(div_bad, ", model weight ", sprintf("%.2f", weights))
+  }
+  paste0("Divergent transitions > ", cutoff, " (see ?check_sampling):\n",
+         paste0("  -  ", names(div_bad), " (", detail, ")", collapse = "\n"))
 }
 
 #' One line in a summary naming the models that did not fit
