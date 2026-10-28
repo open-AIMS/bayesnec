@@ -49,16 +49,9 @@ ecx4param <- pull_out(manec_example, model = "ecx4param") |>
   suppressMessages() |>
   suppressWarnings()
 
-# Give a stored fit a formula that transforms its RESPONSE and nothing else.
-# This is the fixture that reproduces #268 without fitting anything: no packaged
-# fit transforms its response, and find_transformations() answers for the
-# formula as a whole, so a transformation here is enough to make the plotting
-# paths treat the untransformed predictor as transformed. exp() rather than
-# log(): manec_example's response reaches -6.9 and log() of it is NaN, and only
-# the presence of a transformation matters.
-#
-# Shared by test-plot.R and test-autoplot.R, which pin the same defect on the
-# base-graphics and ggplot2 paths and would otherwise define it twice.
+# Change only formula metadata on a stored fit to exercise response-transform
+# handling in plotting. Use exp(y): this fixture includes negative responses,
+# so log(y) would produce NaN.
 transformed_response_fit <- function(fit, model) {
   # The model name is substituted into the formula text rather than referenced,
   # so that the stored formula records the equation itself. Since #319 crf()

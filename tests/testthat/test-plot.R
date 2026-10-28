@@ -1,28 +1,6 @@
-# plot() for the bayesnec classes had no test file of its own in any release.
-# What coverage existed asserted that the call did not error; nothing asserted
-# what was drawn.
-#
-# The base-graphics paths cannot be inspected by reading a returned object, so
-# the assertions here read the device instead: plotting to a null pdf() device
-# and reading par("usr") gives the x-axis limits the call produced.
-# That is enough to assert the one thing about these paths that has been
-# reported wrong, whether xform reached the predictor axis, without
-# comparing images.
-#
-# #268 is the defect, and it is not that xform is ignored. The decision to
-# apply it is made with an all-or-nothing guard on the formula as a whole
-# (R/plot.R:125 and :279), so a transformation on the RESPONSE suppresses xform
-# on the PREDICTOR axis -- but the nec and ec10 annotations are transformed
-# unconditionally at R/plot.R:130-131, outside that guard. The two halves of
-# the figure are therefore drawn on different scales, and the abline() at
-# R/plot.R:180 is drawn beyond the axis limit. Both halves are asserted below,
-# because a fix that corrects either one alone leaves the figure wrong.
-#
-# The issue records that this could only be read from source. It is reproduced
-# here with no fitting, using transformed_response_fit() from setup.R.
-#
-# Nothing here fits a model. Every assertion runs off nec4param and
-# manec_example, both built in setup.R.
+# Use stored fits and changed formula metadata to check plotting only.
+# Check both predictor axes and annotations on each class; a correction to
+# one path does not establish that the others agree.
 
 # The x-axis limits the call produced, read off the device rather than from a
 # returned object, because these are base-graphics methods that return nothing.
@@ -378,23 +356,9 @@ test_that("a transformed response no longer suppresses xform for a set", {
 })
 
 test_that("the nec annotation is drawn off the end of the axis", {
-  # PINS THE OTHER HALF OF #268, which the issue does not state and the PR
-  # that added this file originally described as xform being "silently
-  # skipped". It is not skipped. R/plot.R:130-131 apply it to nec and ec10
-  # unconditionally, outside the guard, so with a transformed response the
-  # abline() at R/plot.R:180 is drawn at the transformed NEC on an axis left
-  # untransformed, and the line is not on the figure at all.
-  #
-  # abline() is intercepted rather than the value recomputed here: what has to
-  # be asserted is the number the package passed to it, not a number this file
-  # worked out for itself, which would still pass if R/plot.R:130-131 changed.
-  # The suite already mocks this way in test-fit_bayesnec.R and
-  # test-inits_functions.R.
-  #
-  # INVERTED. The annotation and the axis are now put on one scale by
-  # to_axis_scale(), so the NEC line falls inside the axis. Asserting both this
-  # and the axis ratio above is what catches a half-fix: correcting the guard
-  # alone, or the annotation alone, fails one and leaves the other passing.
+  # Intercept abline() to check what plot() actually draws. The NEC and its
+  # bounds must fit inside the transformed axis, independently of the axis
+  # ratio check above.
   skip_on_cran()
   f <- transformed_response_fit(nec4param, "nec4param")
   drawn <- NULL
@@ -406,14 +370,8 @@ test_that("the nec annotation is drawn off the end of the axis", {
 })
 
 test_that("the model set draws its nec annotation off the axis too", {
-  # The bayesmanecfit branch has the same split: R/plot.R:279 guards the axis
-  # and R/plot.R:283 transforms the weighted nec unconditionally. Asserted
-  # separately from the bayesnecfit case above because it is a separate pair of
-  # lines -- correcting one pair and not the other is exactly the half-fix this
-  # file exists to catch, and until this assertion was added the model-set
-  # annotation was the one site of the four that nothing observed.
-  #
-  # INVERTED with the sibling above it.
+  # Check the model-set NEC annotation separately: it has its own plotting
+  # path, so the single-fit assertion cannot detect a mismatch here.
   skip_on_cran()
   m <- transformed_response_manec(manec_example)
   drawn <- NULL
@@ -425,12 +383,7 @@ test_that("the model set draws its nec annotation off the axis too", {
 })
 
 test_that("the ec10 annotation is drawn off the axis as well", {
-  # The other annotation. R/plot.R:130 transforms ec10 outside the guard,
-  # exactly as :131 does nec, and until this assertion was added the ec10 half
-  # of the claim made at the top of this file was not read: gating ec10 alone
-  # left every assertion in the branch passing.
-  #
-  # INVERTED with its siblings above.
+  # Check EC10 separately from NEC; the two annotations use different paths.
   skip_on_cran()
   f <- transformed_response_fit(nec4param, "nec4param")
   drawn <- NULL
@@ -443,13 +396,7 @@ test_that("the ec10 annotation is drawn off the axis as well", {
 })
 
 test_that("the model set draws its ec10 annotation off the axis too", {
-  # The fourth and last of the annotation sites: R/plot.R:284 transforms ec10
-  # on the bayesmanecfit branch, outside the guard at :279. Adding the
-  # single-fit ec10 pin alone left this one unobserved, which is the third time
-  # in this review that a bayesmanecfit site was missed after its bayesnecfit
-  # twin was covered.
-  #
-  # INVERTED with its siblings above.
+  # Check the model-set EC10 path independently of its single-fit counterpart.
   skip_on_cran()
   m <- transformed_response_manec(manec_example)
   drawn <- NULL

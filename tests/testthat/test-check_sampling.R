@@ -37,9 +37,8 @@ test_that("min_ess is neff_ratio times ndraws, not a ratio", {
 })
 
 test_that("divergences come from nuts_params, which is backend-agnostic", {
-  # Deliberately not rstan::get_num_divergent(x$fit): rstan is Suggests-only
-  # and that route reaches past brms into the stanfit slot, so it fails under
-  # cmdstanr. Asserted because it is the obvious thing to reach for.
+  # Read through brms, a required dependency; bayesnec lists rstan only
+  # in Suggests. This checks the interface used by count_divergent().
   skip_on_cran()
   tab <- check_sampling(manec_example)
   fit <- bayesnec:::pull_brmsfit(
