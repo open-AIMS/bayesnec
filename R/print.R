@@ -71,8 +71,8 @@ print.necsummary <- function(x, ...) {
     cat("NB: Model", x$model, "is an ECx model, thus",
         "the NEC estimate is an\n", "   NSEC surrogate.\n", sep = " ")
   } else if (identical(x$ne_type, "N(S)EC")) {
-    # Reachable only for a two-block fit whose blocks carry different equation
-    # types, e.g. a threshold response block with a smooth survival block.
+    # Reachable only for a two-block fit whose blocks use different equation
+    # types, such as a threshold response block with a smooth survival block.
     cat("NB: The two blocks of this fit use a threshold model on one and a\n",
         "   smooth model on the other, so the combined estimate is a\n",
         "   combination of a NEC and a NSEC.\n", sep = "")
@@ -150,15 +150,10 @@ print.manecsummary <- function(x, ...) {
     cat("\n\n")
   }
   print_failed_models(x$failed_models)
-  # One block covering both axes rather than two independent warnings, per D5
-  # of #148: the sampler question (did this model converge) and the fit
-  # question (does it reproduce the control) feed the same decision about which
-  # candidates belong in the averaged set, so they are read together.
-  #
-  # which() rather than logical indexing on both axes: the issue lists are
-  # FALSE-by-construction now, but a manecsummary stored by an older version
-  # can still carry an NA, and an NA index yields an element named NA --
-  # printing "- NA" as though a model called NA had failed.
+  # Report both axes in one block: convergence and the control fit inform one
+  # decision about which candidates belong in the averaged set.
+  # Use which() rather than logical indexing. A manecsummary stored by an older
+  # version can hold an NA, which would print "- NA" as a failed model.
   rhat_bad <- names(x$rhat_issues)[which(unlist(x$rhat_issues))]
   fit_bad <- if (is.null(x$fit_issues)) {
     character(0)
@@ -172,10 +167,8 @@ print.manecsummary <- function(x, ...) {
     if (length(rhat_bad) > 0) {
       msg <- c(msg,
                paste0("Rhat > ",
-                      # 1.05 for a stored object with no cutoff recorded: that
-                      # field post-dates the move to 1.01, so an object without
-                      # it was assessed against the old 1.05 grep and reporting
-                      # 1.01 would attribute the wrong threshold to it.
+                      # An object stored without a cutoff was assessed
+                      # against the earlier threshold of 1.05, so report that.
                       if (is.null(x$rhat_cutoff)) 1.05 else x$rhat_cutoff,
                       " (no convergence):
 ",
@@ -188,9 +181,8 @@ print.manecsummary <- function(x, ...) {
     if (length(fit_bad) > 0) {
       msg <- c(msg,
                paste0("control observed/simulated ratio beyond ",
-                      # Same reasoning as rhat_cutoff above: an object stored
-                      # before the field existed cannot report a cutoff it was
-                      # never assessed against, so fall back to the default.
+                      # As for rhat_cutoff above, an object stored without
+                      # the field was assessed against the default.
                       if (is.null(x$fit_ratio_cutoff)) {
                         1.15
                       } else {
@@ -201,10 +193,9 @@ print.manecsummary <- function(x, ...) {
                       paste0("  -  ", fit_bad, collapse = "
 ")))
     }
-    # Deliberately different advice per axis. A model that did not converge is
-    # unusable and should be dropped; a model that converged but reproduces the
-    # control badly is a modelling result, and dropping it silently would hide
-    # what the user most needs to see.
+    # Give different advice per axis. A model that did not converge should be
+    # dropped; a converged model that reproduces the control badly is a result,
+    # and dropping it silently would hide it.
     tail_txt <- if (sampler_bad && length(fit_bad) > 0) {
       "
 Sampler failures should be dropped (see ?amend or ?screen_models).
