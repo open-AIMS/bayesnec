@@ -66,7 +66,12 @@ the equation's theoretical asymptote, "range" towards the lowest response
 the curve predicts. \code{ecnsec} is the inverse of the \code{ecx}
 reference construction under the same \code{type}, so the two answer the
 same question of the same curve. "direct" names a response value rather
-than a percentage and is refused here.
+than a percentage and is refused here. On a joint two-block fit
+(\code{family = "hurdle_gamma"}, \code{"zero_inflated_beta"},
+\code{"hurdle_poisson"} or \code{"hurdle_negbinomial"}) the curve read is
+the combined one, \code{(1 - hu) * E[Y | Y > 0]}, and "relative" is refused,
+because that curve's asymptote is the product of the two blocks' asymptotes
+rather than a fitted parameter.
 
 The \code{hormesis_def} argument has been removed; the control is now
 always the reference. See \code{\link{ecx}}.

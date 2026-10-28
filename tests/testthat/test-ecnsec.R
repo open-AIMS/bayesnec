@@ -185,3 +185,19 @@ test_that("ecnsec inside the range returns what it returned before #437", {
                ecnsec(nec4param, nsec = max(x), resolution = 50),
                tolerance = 1e-8)
 })
+
+test_that("ecnsec refuses relative on a joint two-block fit (#491)", {
+  fit <- structure(list(model = "nec4param",
+                        fit = list(family = validate_family("hurdle_gamma")),
+                        bayesnecformula = bnf(y ~ crf(x, "nec4param"))),
+                   class = c("bayesnecfit", "bnecfit"))
+  expect_error(
+    suppressWarnings(ecnsec(fit, nsec = 1, type = "relative")),
+    paste0("not defined for the combined curve of the hurdle_gamma family.*",
+           "Use type = \"absolute\" or type = \"range\"\\.$")
+  )
+  set <- structure(list(mod_fits = list(a = fit)),
+                   class = c("bayesmanecfit", "bnecfit"))
+  expect_error(suppressWarnings(ecnsec(set, nsec = 1, type = "relative")),
+               "combined curve of the hurdle_gamma family")
+})

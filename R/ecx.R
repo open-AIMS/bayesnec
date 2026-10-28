@@ -39,7 +39,12 @@
 #' percentage decline from the fitted control value. See Details.
 #' For the count hurdles, \code{"mu"} is converted to the positive-count mean
 #' \code{E[Y | Y > 0]} so it matches the growth component returned by
-#' \code{\link{bnec_hurdle}}.
+#' \code{\link{bnec_hurdle}}. With \code{type = "relative"}, \code{"mu"} is
+#' measured towards the response block's asymptote and \code{"hu"} or
+#' \code{"zi"} towards the zero block's own \code{bot}, or 0 where its
+#' equation has none. The combined curve, \code{dpar = NULL}, is refused under
+#' \code{type = "relative"}, because its asymptote is the product of the two
+#' blocks' asymptotes rather than a fitted parameter.
 #' @param ... Additional arguments passed to methods.
 #'
 #' @details \bold{Every ECx is measured from the control.} The control is the
@@ -228,6 +233,9 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
     stop("Supplied ecx_val is not in the required range. ",
          "Please supply a percentage value greater than 0.", call. = FALSE)
   }
+  if (identical(type, "relative") && is.null(dpar)) {
+    check_combined_relative(object$fit$family, "ecx")
+  }
   # Once for the call. See report_fitted_scale().
   quiet <- report_fitted_scale(object, xform, "ecx")
   on.exit(options(quiet), add = TRUE)
@@ -255,7 +263,7 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
   p_samples <- epred_fun(newdata_list$newdata)
   x_vec <- newdata_list$x_vec
   control <- control_posterior(object, newdata_list$newdata, epred_fun)
-  asymptote <- ecx_asymptote(object, type)
+  asymptote <- ecx_asymptote(object, type, dpar)
   asymptote <- count_positive_asymptote(
     object, dpar, asymptote, newdata_list$newdata
   )
@@ -487,14 +495,21 @@ validate_ecx_type <- function(type, mc) {
 #' with \code{type = "relative"} failed inside \pkg{posterior} on a \code{NULL}
 #' \code{fit}, with a message naming neither the argument nor the class.
 #'
+#' With \code{dpar} naming the zero block of a two-block fit, the curve is
+#' that block's and so is the asymptote; see \code{zero_block_asymptote()}.
+#'
 #' @importFrom brms as_draws_df
 #' @noRd
-ecx_asymptote <- function(object, type) {
+ecx_asymptote <- function(object, type, dpar = NULL) {
   if (!identical(type, "relative")) {
     return(NA_real_)
   }
   if (inherits(object, "bayesmanecfit")) {
     return(manec_asymptote(object))
+  }
+  if (!is.null(dpar) && is_hurdle_family(object$fit$family) &&
+        identical(dpar, hurdle_dpar(object$fit$family))) {
+    return(zero_block_asymptote(object, dpar))
   }
   # One level of a joint refit names its coefficient b_bot_<group_var><level>,
   # so the b_bot_Intercept read below finds nothing on it. Without this branch
@@ -522,6 +537,63 @@ ecx_asymptote <- function(object, type) {
          call. = FALSE)
   }
   0
+}
+
+#' The asymptote of a two-block fit's zero block
+#'
+#' @param object A \code{bayesnecfit}, or one level of a joint refit.
+#' @param dpar The zero block's name, \code{"hu"} or \code{"zi"}.
+#'
+#' @details \code{ecx(dpar = "hu")} reads \code{1 - hu}, and the block's
+#' \code{bot} parameter is the floor of that curve. An equation without
+#' \code{bot} declines towards 0. Only the response block takes level terms on
+#' a joint refit, so the plain name is the fallback for a level.
+#'
+#' @return Draws of the asymptote, or 0.
+#'
+#' @importFrom brms as_draws_df
+#' @noRd
+zero_block_asymptote <- function(object, dpar) {
+  par <- paste0(dpar, "bot")
+  draws <- NULL
+  if (inherits(object, "bayesnecjointlevel")) {
+    draws <- joint_level_draws(object, par)
+  }
+  if (is.null(draws)) {
+    draws <- as_draws_df(object$fit)[[paste0("b_", par, "_Intercept")]]
+  }
+  if (is.null(draws)) 0 else as.numeric(draws)
+}
+
+#' Refuse a relative estimate of a two-block fit's combined curve
+#'
+#' @param family The family of the fit.
+#' @param fun \code{"ecx"}, whose message names \code{dpar}, or
+#' \code{"ecnsec"}, which has no \code{dpar} argument.
+#'
+#' @details The combined curve is \code{(1 - hu) * E[Y | Y > 0]}, and its
+#' floor is the product of the two blocks' asymptotes, not a fitted parameter.
+#'
+#' @return \code{invisible(NULL)}, called for its side effect.
+#'
+#' @noRd
+check_combined_relative <- function(family, fun = c("ecx", "ecnsec")) {
+  fun <- match.arg(fun)
+  if (!is_hurdle_family(family)) {
+    return(invisible(NULL))
+  }
+  block <- hurdle_dpar(family)
+  remedy <- if (identical(fun, "ecx")) {
+    paste0(" Use dpar = \"mu\" or dpar = \"", block, "\" to measure one",
+           " block towards its own asymptote, or type = \"absolute\" or",
+           " type = \"range\" for the combined curve.")
+  } else {
+    " Use type = \"absolute\" or type = \"range\"."
+  }
+  stop("type = \"relative\" is not defined for the combined curve of the ",
+       canonical_fam_tag(family), " family, (1 - ", block,
+       ") * E[Y | Y > 0], whose asymptote is the product of the two blocks'",
+       " asymptotes rather than a fitted parameter.", remedy, call. = FALSE)
 }
 
 #' Put a count-hurdle asymptote on the expected-positive scale

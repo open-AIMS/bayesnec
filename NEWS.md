@@ -1523,6 +1523,18 @@
   the message is the one the other classes raise, naming the `xform` to give
   `ecnsec()` (#437).
 
+- On a joint two-block fit from `bnec()`, with `hurdle_gamma`,
+  `zero_inflated_beta`, `hurdle_poisson` or `hurdle_negbinomial`,
+  `ecx(type = "relative")` with the default `dpar = NULL` and
+  `ecnsec(type = "relative")` are now refused. Both read the combined curve,
+  `(1 - hu) * E[Y | Y > 0]`, and measured it towards `bot` of the response
+  block, which is not that curve's asymptote. Its asymptote is the product of
+  the two blocks' asymptotes. The refusal matches `bnec_hurdle()` fits, on
+  which both were already refused. `ecx(type = "relative", dpar = "hu")`, or
+  `dpar = "zi"`, is now measured towards the zero block's own `bot`, or 0
+  where its equation has none, rather than towards the response block's `bot`,
+  which is on the response scale rather than a probability (#491).
+
 ## New
 
 - `predict()`, `plot()` and `autoplot()` for a `bayesmanecfit` take two new

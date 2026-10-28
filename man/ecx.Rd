@@ -64,7 +64,12 @@ inverted to survival before computing, so ECx keeps its usual meaning of a
 percentage decline from the fitted control value. See Details.
 For the count hurdles, \code{"mu"} is converted to the positive-count mean
 \code{E[Y | Y > 0]} so it matches the growth component returned by
-\code{\link{bnec_hurdle}}.}
+\code{\link{bnec_hurdle}}. With \code{type = "relative"}, \code{"mu"} is
+measured towards the response block's asymptote and \code{"hu"} or
+\code{"zi"} towards the zero block's own \code{bot}, or 0 where its
+equation has none. The combined curve, \code{dpar = NULL}, is refused under
+\code{type = "relative"}, because its asymptote is the product of the two
+blocks' asymptotes rather than a fitted parameter.}
 }
 \value{
 A vector containing the estimated ECx value, including upper and
