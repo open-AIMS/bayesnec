@@ -613,6 +613,7 @@ nsec.drc <- function(object, sig_val = 0.01, resolution = 200,
                      x_var,
                      horme = FALSE,
                      curveid = NA) {
+  # The test suite does not exercise this method against drc fits.
   check_no_extrapolate(extrapolate, "drc")
   chk_numeric(sig_val)
   chk_numeric(resolution)

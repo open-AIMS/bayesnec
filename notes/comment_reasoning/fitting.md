@@ -161,12 +161,17 @@ exactly 0 or 1.
 
 ### The search in `make_good_inits()`
 
-Accepting each chain on its own changes the set of accepted values only through
+The removed comment attributed the change in accepted values to
 `refine_inits()`: the released loop did not refine the set it drew before
-entering the loop, and this one refines from the first round. The difference
-is of the order of the fourth power of the per-chain rate, between 4e-5 and
-9e-3 on the designs measured. On the `alga` series above the per-chain rate
-runs from 9 to 31 per cent.
+entering the loop, and the replacement refines from the first round. It
+estimated the difference as the fourth power of the per-chain rate, between
+4e-5 and 9e-3 on the designs measured. On the `alga` series above the
+per-chain rate ran from 9 to 31 per cent.
+
+That historical calculation does not establish that the accepted distribution
+is unchanged after refinement. The current `make_good_inits()` documentation
+specifies which chains are redrawn and refined without claiming
+distributional equivalence.
 
 The cap of 1e4 was kept after #266 proposed a lower one on the grounds that
 Stan's own initialisation is available at the first attempt. On a twenty-row,

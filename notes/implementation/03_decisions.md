@@ -540,7 +540,27 @@ other bounded families; a response of 0 throughout is refused.
 
 ## D36 — `disp(~z)` on a column other than the predictor (#443)
 
-Refused before fitting, and the restriction stated in `?bayesnecformula`.
+The original ruling refused the term before fitting. RF superseded that
+ruling on 2026-10-20 in [issue #443](https://github.com/open-AIMS/bayesnec/issues/443#issuecomment-6285103724),
+with a [family-specific qualification](https://github.com/open-AIMS/bayesnec/issues/443#issuecomment-6285491821).
+
+The term is allowed where the reported mean is independent of dispersion.
+Generated grids hold each non-predictor column at its first factor level or
+numeric median when reading the mean curve and its estimates. For predicted
+readings, `posterior_predict()` and `predict()` replace marked placeholders
+with values sampled from the fitted rows, once per draw with equal row
+probabilities. Supplied `newdata` is used as given and is refused if it lacks
+a required column. Predictions over the observed rows, including
+`check_fit_combined()`, use each row's recorded covariates.
+
+A term naming a non-predictor column is refused for a `negbinomial` growth
+component of `bnec_hurdle()` and for the joint `hurdle_negbinomial` family:
+their reported means depend on the shape of the zero-truncated counts.
+This restriction does not refuse every `disp()` term on those routes; D39
+and [PR #482](https://github.com/open-AIMS/bayesnec/pull/482) cover the permitted
+forms. [PR #474](https://github.com/open-AIMS/bayesnec/pull/474) implemented
+the grid and prediction rules. The public description is in
+[`?bayesnecformula`](../../man/bayesnecformula.Rd).
 
 ## D37 — Divergent transitions in `summary()` (#447)
 
