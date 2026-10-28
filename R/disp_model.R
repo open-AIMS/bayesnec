@@ -1,25 +1,18 @@
-# Internals supporting the disp() term, which lets a family's dispersion
-# parameter vary rather than being held constant across the whole curve.
+# Internals for the disp() term, which lets a family's dispersion parameter
+# vary rather than stay constant across the curve.
 #
 # Two routes, told apart by what disp() is given:
 #
-#   disp(~x)        route (A) -- an ordinary brms distributional formula on the
-#                   predictor. Descriptive: "noise is larger at high dose".
-#   disp("power")   route (B) -- a variance function of the mean curve. A
-#                   statement about the measurement process rather than about
-#                   the dose axis. Under ogl() the mean it reads is the curve
-#                   before the group's deviation; see disp_curve().
+#   disp(~x)        route (A): an ordinary brms distributional formula on the
+#                   predictor, such as "noise is larger at high dose".
+#   disp("power")   route (B): a variance function of the mean curve. Under
+#                   ogl() the mean it reads is the curve before the group's
+#                   deviation; see disp_curve().
 #
-# The two are near-observationally equivalent for a monotone curve, since mu is
-# then a monotone function of x. They separate under hormesis, or where a
-# design revisits the same mu.
-#
-# Route (B) needs the curve expression written out a second time inside the
-# dispersion formula, because mu is not in scope for another distributional
-# parameter's formula in brms. Only the source is duplicated, not the fitted
-# quantity: the curve parameters are shared, being declared once for the whole
-# formula. bayesnec owns every curve expression in sysdata, so what is awkward
-# by hand is mechanical here -- the same argument that make_hu_block() rests on.
+# Route (B) writes the curve expression a second time inside the dispersion
+# formula, because brms does not put mu in scope for the formula of another
+# distributional parameter. Only the source is duplicated: the curve
+# parameters are declared once and shared by both formulas.
 
 #' The family whose dispersion parameter a disp() term models
 #'
@@ -28,17 +21,12 @@
 #' @details For a joint two-block family this is the family of the positive
 #' block: \code{Gamma} for \code{hurdle_gamma}, \code{beta} for
 #' \code{zero_inflated_beta}, and the count family for the count hurdles. The
-#' dispersion parameter of a two-block family belongs to that block alone,
-#' since the \code{hu} or \code{zi} block is a probability and has none, so the
-#' positive block's family decides which parameter is modelled, which variance
-#' functions apply, and where its priors and initial values are centred. The
-#' mapping is read from \code{hurdle_mu_fams}, which already records it for
-#' the priors, rather than by adding the two-block tags to \code{disp_dpars},
-#' so that the family of each positive block is stated in one place. See #410.
+#' \code{hu} or \code{zi} block is a probability and has no dispersion
+#' parameter. The mapping is read from \code{hurdle_mu_fams}, so that the
+#' family of each positive block is stated in one place.
 #'
 #' The tag is read through \code{canonical_fam_tag()}, because a family taken
 #' from a fit records Gamma as \code{gamma}.
-#'
 #' @return A \code{\link[base]{character}} string, the family tag.
 #'
 #' @noRd
@@ -50,7 +38,7 @@ disp_family_tag <- function(family) {
   fam_tag
 }
 
-#' Does this family have a free dispersion parameter?
+#' Whether a family has a free dispersion parameter
 #'
 #' @param family Either a \code{\link[stats]{family}} object or a family tag.
 #'
@@ -124,10 +112,9 @@ parse_disp_term <- function(formula) {
     # brms to interpret.
     list(route = "A", value = deparse1(as.formula(arg)[[2]]))
   } else {
-    # Resolved in the formula's own environment, so that a variance function
-    # name held in a variable is looked up where the user wrote it rather than
-    # in this frame, whose lexical parent is the package namespace. The same
-    # defect as the crf() model set. See #319.
+    # Evaluate in the formula's own environment, so that a variance function
+    # name held in a variable is found where the user wrote it, not in the
+    # package namespace.
     list(route = "B", value = eval(arg, envir = formula_env(formula)))
   }
 }
@@ -158,12 +145,10 @@ check_disp_spec <- function(spec, family, response = NULL) {
          " whose shape parameter disp() can model.", call. = FALSE)
   }
   if (fam_tag %in% c("zero_inflated_poisson", "zero_inflated_negbinomial")) {
-    # Refused before the has_disp_par() check below, whose message ("no free
-    # dispersion parameter") would be wrong for zero_inflated_negbinomial, which
-    # does have a shape. The reason is different: the parameter belongs to the
-    # count component of a mixture, and what a variance function on it means for
-    # the observed response -- which is a mixture, not that component -- has not
-    # been worked out. See #104.
+    # Refuse before the has_disp_par() check, whose message would be wrong for
+    # zero_inflated_negbinomial, which has a shape. The shape belongs to the
+    # count component of a mixture, so a variance function on it does not
+    # describe the dispersion of the response.
     stop("A disp() term is not currently supported for the zero-inflated count",
          " family ", fam_tag, ". Its dispersion parameter describes the count",
          " component alone, while the response is a mixture of that component",
@@ -181,15 +166,10 @@ check_disp_spec <- function(spec, family, response = NULL) {
          " diagnostic that applies to these families.", call. = FALSE)
   }
   if (spec$route == "B") {
-    # A variance function of the fitted mean is built by substituting the
-    # model's own curve expression into the form. That expression is the linear
-    # predictor on the LINK scale, so it is the mean only under an identity
-    # link. bnec() assigns identity unless the caller wrote a link argument, or
-    # supplied a family it could not read intent from (#256), so this fires on
-    # those two routes. The failure it refuses is silent: under an inverse link
-    # the block computes
-    # log(1/mu) = -log(mu) and the slope is estimated with the wrong sign,
-    # converging cleanly and excluding zero. Refuse rather than fit that.
+    # The curve substituted into the form is the linear predictor on the link
+    # scale, so it is the mean only under an identity link. bnec() assigns
+    # identity unless the caller chose a link. Under an inverse link the slope
+    # is estimated with the wrong sign, and the fit still converges cleanly.
     link <- if (inherits(family, "family")) family$link else "identity"
     if (!identical(link, "identity")) {
       stop("A variance function of the fitted mean needs the mean modelled on",
@@ -226,13 +206,9 @@ check_disp_spec <- function(spec, family, response = NULL) {
            paste0(c(vf$families, two_block), collapse = ", "), ".",
            call. = FALSE)
     }
-    # Every implemented form takes log(mu), so a fitted mean reaching zero is
-    # undefined rather than merely awkward. Only the gaussian family can put mu
-    # at or below zero: Gamma and negbinomial are positive by construction, and
-    # the beta families live on (0, 1). Testing the response is a proxy for
-    # testing the fitted curve -- a strictly positive response can still be
-    # fitted with a negative lower asymptote -- so this catches the common case
-    # and Stan reports the rest at initialisation.
+    # Every form takes log(mu), and only a gaussian fit can put mu at or below
+    # zero. The response stands in for the fitted curve, which can still cross
+    # zero on a positive response; Stan reports that case at initialisation.
     if (isTRUE(vf$positive_mu) && identical(fam_tag, "gaussian") &&
           !is.null(response) && any(response <= 0, na.rm = TRUE)) {
       stop("Variance function \"", spec$value, "\" takes log(mu), but your",
@@ -262,25 +238,19 @@ check_disp_spec <- function(spec, family, response = NULL) {
 #' is computed on the scale of that mean rather than of the recorded response.
 #' Under the identity link bnec() assigns, brms writes a rate() denominator
 #' multiplicatively, so the mean of a negbinomial fit is a rate, and the mean
-#' of a beta_binomial fit is a proportion of its trials. Computed from the
-#' counts, the constant was displaced by the median log exposure under
-#' "power", and the LOG1MREF term of "twosided" fell back to 0 because
-#' 1 - count is never positive. The divisions are the ones fit_bayesnec()
-#' makes before building priors, on the same family condition for trials, and
-#' they are made on the formula-building path rather than in fit_bayesnec() so
-#' that bnec() and make_brmsformula() build the same literal. See #397.
+#' of a beta_binomial fit is a proportion of its trials. These are the
+#' divisions fit_bayesnec() makes before building priors. They are made here,
+#' on the formula-building path, so that bnec() and make_brmsformula() build
+#' the same literal.
 #'
-#' A two-block family models the dispersion of its positive block, whose mean
-#' the variance function is written in, so only the positive responses are
-#' returned. This is also the response bnec_hurdle() gives its growth
-#' component, so the joint and factorised routes build the same literal and
-#' fit the same variance function. Kept, the zeros lowered "loglinear"'s
-#' median and entered "twosided"'s second term as log(1 - 0); "power" already
-#' dropped them before taking a log. See #410.
+#' A two-block family models the dispersion of its positive block, so only the
+#' positive responses are returned. \code{bnec_hurdle()} gives its growth
+#' component the same response, so a joint fit and \code{bnec_hurdle()} fit
+#' the same variance function.
 #'
-#' One function serves both \code{wrangle_model_formula()} and the check
-#' \code{\link{bnec}} makes before its model loop, so that the refusal raised
-#' there is the one the loop would have raised.
+#' \code{wrangle_model_formula()} and the check \code{\link{bnec}} makes before
+#' its model loop both call this, so that the early refusal is the one the
+#' loop would raise.
 #'
 #' @return A \code{\link[base]{numeric}} vector.
 #'
@@ -327,12 +297,11 @@ disp_pars <- function(spec) {
 #' @return A named \code{\link[base]{numeric}} vector of the constants the
 #' form's expression refers to, or an empty one where it needs none.
 #'
-#' @details The reference is a summary of the RESPONSE standing in for a typical
-#' fitted mean. It only has to be near the data for the centring to do its job,
-#' so a robust summary is preferred to an exact one: the median for the linear
-#' form, and the geometric median for the log forms, which is the median on the
-#' scale the covariate is actually measured on. Both are computed once from the
-#' data and baked into the formula as literals.
+#' @details The reference is a summary of the response standing in for a
+#' typical fitted mean. It only has to be near the data for the centring to
+#' work, so a robust summary is used: the median for the linear form, and the
+#' geometric median for the log forms. Both are computed once from the data
+#' and written into the formula as literals.
 #'
 #' @importFrom stats median
 #'
@@ -351,10 +320,8 @@ disp_centre <- function(spec, response) {
     return(c(REF = signif(median(y), 6)))
   }
   pos <- y[y > 0]
-  # An all-non-positive response cannot reach a log form at all, and
-  # check_disp_spec() has already refused that case for gaussian. Falling back
-  # to 0 (i.e. no centring) keeps this total for the families that cannot get
-  # here rather than erroring twice for the same reason.
+  # check_disp_spec() has already refused a non-positive response where it
+  # matters, so fall back to 0, no centring, rather than raise a second error.
   logref <- if (length(pos)) signif(median(log(pos)), 6) else 0
   out <- c(LOGREF = logref)
   if (grepl("@LOG1MREF@", vf$expr, fixed = TRUE)) {
@@ -385,30 +352,22 @@ disp_centre <- function(spec, response) {
 #' for appending to a chain's init list, or an empty list for route (A).
 #'
 #' @details Every slope starts at the mean of its own default prior, truncated
-#' to the bounds the prior in force declares. For an unbounded slope that is the
-#' centre of the prior, which is zero, the constant-dispersion model, except
-#' where the \code{"regularizing"} set has centred it on the replicate slope
-#' instead. This is not cosmetic tidiness: the sign of a slope is tied to the
-#' direction of the mean curve, so a chain that Stan starts in the mirror-image
-#' basin converges to a solution with the curve and the slope both inverted.
-#' Leaving these to Stan's default draw produced an R-hat of 1.85 on the
-#' loglinear regression test, with one chain reporting a slope of the wrong
-#' sign. Starting every chain at one value lets the data choose the direction
-#' once, rather than once per chain.
+#' to the bounds of the prior in force. For an unbounded slope that is the
+#' centre of the prior: zero, the constant-dispersion model, or the replicate
+#' slope under the \code{"regularizing"} set. Do not leave these to Stan's
+#' default draw. The sign of a slope is tied to the direction of the mean
+#' curve, so a chain started in the mirror-image basin converges with the
+#' curve and the slope both inverted. One start for every chain lets the data
+#' choose the direction once.
 #'
-#' A bounded slope cannot start at zero where zero is a bound, as it is for
-#' \code{c1} of \code{"power"} on a Gamma, gaussian or negative binomial
-#' response: Stan maps a bounded parameter to the unconstrained scale through
-#' a logit, which is infinite at the bound, and refuses the initial value. The
-#' mean of the truncated prior is strictly inside any interval of positive
-#' width, and is the middle of the prior in the sense the centre is for an
-#' unbounded one. On \code{normal(0, 2)} truncated to the interval from 0 to
-#' 2 it is 0.92, and on the interval from 0 to 1 it is 0.49. See #472.
+#' A bounded slope cannot start at a bound, such as zero for \code{c1} of
+#' \code{"power"}, because Stan maps it to the unconstrained scale through a
+#' logit, which is infinite there. The mean of the truncated prior is strictly
+#' inside any interval of positive width.
 #'
-#' The bounds are read from \code{priors} rather than from the default, so that
-#' a user who supplied their own prior on a slope, with bounds of their own,
-#' gets an initial value inside those bounds. Without a row for the slope the
-#' default bounds apply.
+#' The bounds are read from \code{priors}, so that a slope with a user-supplied
+#' prior starts inside the bounds that prior declares. Without a row for the
+#' slope the default bounds apply.
 #'
 #' @importFrom stats sd
 #'
@@ -420,16 +379,14 @@ disp_inits <- function(spec, family, response, predictor = NULL,
   if (length(pars) == 0) {
     return(list())
   }
-  # the same centres define_disp_prior() uses, so the chains start at the
-  # middle of their own priors rather than somewhere else
+  # Use the centres define_disp_prior() uses, so each chain starts at the
+  # middle of its own prior.
   c0 <- disp_intercept_centre(family, response)
-  # The slope priors of a two-block family are built from its positive block,
-  # which is what define_prior() hands define_disp_prior().
-  # response_link_scale() is left out because it is the identity for every
-  # family that has a bound or a replicate centre on its slope (Gamma, gaussian
-  # and negbinomial under the identity link check_disp_spec() requires); for
-  # the beta families it would rescale a response that reaches a bound, which
-  # only the c0 prior reads.
+  # Build a two-block family's slope priors from its positive block, as
+  # define_prior() does for define_disp_prior(). Do not apply
+  # response_link_scale() here: it is the identity for every family with a
+  # bound or a replicate centre on its slope, and for a beta family it would
+  # rescale a response at a bound, which only the c0 prior reads.
   slope_y <- response
   slope_x <- predictor
   if (is_hurdle_family(family)) {
@@ -492,10 +449,10 @@ prior_in_force_bounds <- function(priors, nlpar, default) {
 #' @param lb,ub The bounds, \code{NA} or infinite where absent.
 #'
 #' @details Returns \code{mean} where neither bound is finite, so that an
-#' unbounded slope keeps the initial value it had before #472. Where the
-#' interval is far in a tail of the normal, both terms of the closed-form ratio
-#' underflow to zero and the ratio is not finite, and the midpoint of the
-#' interval is returned, or a point one \code{sd} inside a single finite bound.
+#' unbounded slope starts at the centre of its prior. Where the interval is far
+#' in a tail of the normal, both terms of the closed-form ratio underflow to
+#' zero and the ratio is not finite. The midpoint of the interval is returned
+#' then, or a point one \code{sd} inside a single finite bound.
 #'
 #' @return A \code{\link[base]{numeric}} of length 1, strictly inside the
 #' interval.
@@ -530,41 +487,32 @@ truncated_normal_mean <- function(mean, sd, lb, ub) {
 #' @param family An object of class \code{\link[stats]{family}} or a family
 #' tag.
 #'
-#' @details The bounds on \code{c1} of the scale-free forms, by family. Each is
-#' derived from a variance proportional to \code{mean^b} with \code{b} from
-#' 0 to 2, which runs from a constant variance to a constant coefficient of
-#' variation and is the span of Taylor's power law. The dispersion parameter is
-#' proportional to \code{mu^c1}, and each family maps that onto the variance
-#' through its own mean-variance relationship:
+#' @details The bounds on \code{c1} of the scale-free forms, by family. Each
+#' allows a variance proportional to \code{mean^b} with \code{b} from 0 to 2,
+#' from a constant variance to a constant coefficient of variation, which is
+#' the span of Taylor's power law. The dispersion parameter is proportional to
+#' \code{mu^c1}, and each family maps that onto the variance through its own
+#' mean-variance relationship:
 #'
 #' \itemize{
-#'   \item \code{Gamma}: the variance is \code{mu^2 / shape}, which is
-#'     proportional to \code{mu^(2 - c1)}, so \code{c1} runs from 0 to 2.
-#'     Below 0 the coefficient of variation would fall as the response
-#'     falls; above 2 the variance would rise as the response falls.
+#'   \item \code{Gamma}: the variance is \code{mu^2 / shape}, proportional to
+#'     \code{mu^(2 - c1)}, so \code{c1} runs from 0 to 2.
 #'   \item \code{gaussian}: the variance is \code{sigma^2}, proportional to
 #'     \code{mu^(2 c1)}, so \code{c1} runs from 0 to 1.
 #'   \item \code{negbinomial}: the overdispersion term is \code{mu^2 / shape},
-#'     proportional to \code{mu^(2 - c1)}. \code{c1} runs from 0 to 1, from that
-#'     term proportional to \code{mu^2} to proportional to \code{mu}. Above 1
-#'     it would grow more slowly than the Poisson part of the variance.
-#'   \item \code{beta} and \code{beta_binomial}: unbounded. The variance already
-#'     falls at both ends through \code{mu (1 - mu)}, and the precision can
-#'     plausibly rise in either direction, which \code{"twosided"} exists to
-#'     model.
+#'     proportional to \code{mu^(2 - c1)}, so \code{c1} runs from 0 to 1.
+#'     Above 1 that term would grow more slowly than the Poisson part.
+#'   \item \code{beta} and \code{beta_binomial}: unbounded, because the
+#'     variance already falls at both ends through \code{mu (1 - mu)}.
 #' }
 #'
 #' \code{"loglinear"} is unbounded, because its slope is in units of
-#' 1 / response and no fixed range means the same thing for every response. A
-#' two-block family takes the range of its positive block's family through
-#' \code{disp_family_tag()}. The ranges are RF's decision on #472, recorded
-#' there with the \code{example8} fits that reached \code{c1} near -8.
+#' 1 / response. A two-block family takes the range of its positive block's
+#' family through \code{disp_family_tag()}.
 #'
-#' The bounds are hard bounds on the non-linear parameter, written as
-#' \code{lb} and \code{ub} on its prior row, the way \code{define_prior()}
-#' bounds \code{top} and \code{bot} to the support of the response. A posterior
-#' that piles up at a bound shows that the data disagree with the range, which
-#' a soft prior would hide.
+#' The bounds are hard bounds, written as \code{lb} and \code{ub} on the prior
+#' row, so that a posterior piling up at a bound shows that the data disagree
+#' with the range.
 #'
 #' @return A named \code{\link[base]{numeric}} vector, \code{lb} and
 #' \code{ub}, with \code{NA} where unbounded.
@@ -592,39 +540,30 @@ disp_slope_bounds <- function(spec, family) {
 #' \code{predictor}, on the scale of \code{mu}.
 #'
 #' @details The observations at one predictor value share one mean, so their
-#' spread estimates the variance at that mean without a fitted curve. Each
-#' family's dispersion parameter can be written as a statistic of a group's
-#' mean and variance, and the slope of its log on the log of the group mean is
-#' then an estimate of \code{c1} under \code{"power"}:
+#' spread estimates the variance at that mean without a fitted curve. The
+#' slope of each family's dispersion statistic on the log of the group mean
+#' then estimates \code{c1} under \code{"power"}:
 #'
 #' \itemize{
-#'   \item \code{Gamma}: \code{log(mean^2 / var)}, the log of
-#'     \code{1 / CV^2}, which is the log of the shape;
-#'   \item \code{gaussian}: \code{log(var) / 2}, the log of the standard
-#'     deviation, which is the log of \code{sigma};
+#'   \item \code{Gamma}: \code{log(mean^2 / var)}, the log of the shape;
+#'   \item \code{gaussian}: \code{log(var) / 2}, the log of \code{sigma};
 #'   \item \code{negbinomial}: \code{log(mean^2 / (var - mean))}, the shape
 #'     implied by the overdispersion term.
 #' }
 #'
 #' A group enters where it holds at least two observations, its mean is
 #' positive and its statistic is finite. A negative binomial group with a
-#' variance at or below its mean shows no overdispersion and has no statistic.
-#' Each group is weighted by its degrees of freedom, \code{n - 1}, because the
-#' sampling variance of the log of a sample variance is close to
-#' \code{2 / (n - 1)}; on a balanced design that is ordinary least squares.
-#'
-#' Three groups are needed. Two determine a slope exactly, but it is then the
-#' difference of two log variances, each with a sampling standard deviation of
-#' about 0.8 at four replicates, and there is no residual to show whether a
-#' power law describes them at all.
+#' variance at or below its mean has no statistic. Each group is weighted by
+#' \code{n - 1}, because the sampling variance of the log of a sample variance
+#' is close to \code{2 / (n - 1)}. Three groups are needed, so that there is a
+#' residual to show whether a power law describes them at all.
 #'
 #' The groups are the distinct predictor values, pooled over any group-level
-#' term, so on a design with one the spread includes the variation between
-#' groups as well as within them. A censored response enters at its recorded
-#' value. A non-integer negative binomial response has no count-scale variance
-#' statistic. The caller also excludes a response divided by a \code{rate()}
-#' denominator, including when the resulting rates happen to be integers, and
-#' positive-only counts from a zero-truncated negative binomial likelihood.
+#' term, so their spread includes the variation between groups. A censored
+#' response enters at its recorded value. A non-integer negative binomial
+#' response has no statistic. The caller also excludes a response divided by
+#' a \code{rate()} denominator, and positive-only counts from a zero-truncated
+#' negative binomial likelihood.
 #'
 #' @return A \code{\link[base]{numeric}} of length 1, \code{NA} where the
 #' design has too few replicated groups or the family has no statistic.
@@ -697,17 +636,15 @@ disp_replicate_slope <- function(family, predictor, response) {
 #' declares.
 #'
 #' Every slope is \code{normal(centre, scale)}. The scale is 2 for a slope on
-#' \code{log(mu)} and \code{2 / sd(response)} for a slope on \code{mu}, for the
-#' reason \code{define_disp_prior()} gives. \code{c1} of a scale-free form takes
-#' the bounds \code{disp_slope_bounds()} gives its family, and \code{c2} of
-#' \code{"twosided"} takes none.
+#' \code{log(mu)} and \code{2 / sd(response)} for a slope on \code{mu}.
+#' \code{c1} of a scale-free form takes the bounds \code{disp_slope_bounds()}
+#' gives its family, and \code{c2} of \code{"twosided"} takes none.
 #'
 #' The centre is zero, the family's own mean-variance relationship, except
 #' under \code{prior_type = "regularizing"} on a bounded \code{c1}. There it is
 #' the slope \code{disp_replicate_slope()} reads from the replicates, clamped
-#' into the bounds and rounded to four significant figures, and zero where that
-#' slope cannot be read. The same set already places \code{top} and \code{bot}
-#' at observed responses. The default \code{"uninformative"} set does not use
+#' into the bounds and rounded to four significant figures, or zero where that
+#' slope cannot be read. The default \code{"uninformative"} set does not read
 #' the replicates, so they enter its fit once, through the likelihood.
 #'
 #' @return A named \code{\link[base]{list}}, one element per slope parameter,
@@ -724,12 +661,8 @@ disp_slope_priors <- function(spec, family, response, predictor = NULL,
   vf <- disp_functions[[spec$value]]
   slopes <- setdiff(vf$pars, "c0")
   # A slope on log(mu) is dimensionless, so a fixed scale means the same thing
-  # whatever the response is measured in. A slope on mu itself is not: it
-  # has units of 1/response, and normal(0, 2) would be near-flat for a
-  # response spanning thousands and highly informative for one spanning a
-  # fraction. Scaling by the observed spread restores the intended meaning --
-  # that a one-standard-deviation change in the mean changes the log of the
-  # dispersion parameter by about two units at the edge of the prior.
+  # for any response. A slope on mu has units of 1 / response, so its scale is
+  # divided by the spread of the response.
   scale <- if (isTRUE(vf$scale_free)) 2 else signif(2 / sd(response), 4)
   bounds <- disp_slope_bounds(spec, family)
   out <- lapply(slopes, function(p) {
@@ -738,20 +671,12 @@ disp_slope_priors <- function(spec, family, response, predictor = NULL,
     if (identical(p, "c1")) {
       lb <- bounds[["lb"]]
       ub <- bounds[["ub"]]
-      # The centre is estimated from the same observations used in the
-      # likelihood, so this is an empirical prior even at the default width.
-      # Keeping scale 2 limits its influence; narrowing it by the factor used
-      # for top and bot would give the noisy centre more influence. The log
-      # of a variance from n replicates has a sampling standard deviation near
-      # sqrt(2 / (n - 1)), 0.8 at four, so on a design with few concentrations
-      # the slope through those values is uncertain by a large fraction of the
-      # range. The prior is therefore relocated and not narrowed. Inside the
-      # bounds a scale of 2 still tilts it: on [0, 2] centred at 0.8, the
-      # density at the far bound is 0.83 of that at the centre.
-      # A rate() response needs the exposure to separate the Poisson variance
-      # from overdispersion. Integer rates alone do not supply that information.
-      # Truncation changes both the mean and variance of positive-only counts,
-      # so the ordinary negative binomial variance identity also fails there.
+      # The centre comes from the same observations as the likelihood. Keep the
+      # scale at 2 rather than narrow it, because a slope through a few
+      # replicated groups is uncertain by a large fraction of the range.
+      # A negbinomial rate() response needs the exposure to separate the
+      # Poisson variance from overdispersion, and truncation changes the mean
+      # and variance of positive-only counts, so neither takes this centre.
       if (identical(prior_type, "regularizing") && is.finite(lb) &&
             is.finite(ub) &&
             !((rate_response || truncated_response) &&
@@ -777,9 +702,8 @@ disp_slope_priors <- function(spec, family, response, predictor = NULL,
 #' brms has put it behind a log link, keyed by family tag. It is read by
 #' \code{define_disp_prior()} for the \code{c0} intercept of a variance
 #' function and by \code{\link{add_level_defaults}} for the per-level
-#' coefficients of a joint refit. Both are the same quantity --- the log of the
-#' dispersion parameter at a typical response --- so they are derived once
-#' here rather than twice.
+#' coefficients of a joint refit. Both are the log of the dispersion parameter
+#' at a typical response.
 #'
 #' @return A named \code{\link[base]{character}} vector of prior strings.
 #'
@@ -807,9 +731,8 @@ disp_intercept_priors <- function(response) {
 #'
 #' @details The location of the corresponding entry in
 #' \code{\link{disp_intercept_priors}}, as a number, so that a chain starts at
-#' the middle of its own prior. \code{\link{disp_inits}} carried this table
-#' inline; it is shared because \code{\link{add_level_defaults}} needs the
-#' same value.
+#' the middle of its own prior. \code{\link{disp_inits}} and
+#' \code{\link{add_level_defaults}} both read it.
 #'
 #' @return A \code{\link[base]{numeric}} of length one, finite.
 #'
@@ -817,11 +740,8 @@ disp_intercept_priors <- function(response) {
 #'
 #' @noRd
 disp_intercept_centre <- function(family, response) {
-  # The positive block's family for a two-block family, whose dispersion
-  # parameter is that block's. Read from the two-block tag, hurdle_gamma would
-  # fall through to 0, a shape of 1, against a c0 prior centred on 2. Read
-  # here rather than by each caller, so that disp_inits() and
-  # add_level_disp_defaults() cannot disagree about it. See #410.
+  # Use the positive block's family for a two-block family. The two-block tag
+  # would fall through to 0, a shape of 1, against a c0 prior centred on 2.
   fam_tag <- disp_family_tag(family)
   c0 <- switch(fam_tag,
     gaussian = log(sd(response[is.finite(response)])),
@@ -844,20 +764,17 @@ disp_intercept_centre <- function(family, response) {
 #' the fit's own predictor name. Defaults to \code{NULL}, which rebuilds it
 #' from the \code{bf_<model>} template.
 #'
-#' @details \strong{The curve is taken from the formula being built, not from
-#' the template}, whenever the caller supplies it. \code{\link{add_formula_glef}}
-#' rewrites the main expression where a group-level deviation is applied
-#' multiplicatively --- \code{bot} becomes \code{bnecbot} (#294), and the whole
-#' curve becomes \code{bnecmu} under \code{ogl()} (#257) --- and rebuilding from
-#' the template discards that, so route (B) modelled the dispersion as a
-#' function of a mean the fit was not using. \code{\link{wrangle_model_formula}}
-#' already adds the dispersion block last for exactly this reason; the rebuild
-#' was what stopped that having any effect.
+#' @details The curve is taken from the formula being built whenever the
+#' caller supplies it, not rebuilt from the template.
+#' \code{\link{add_formula_glef}} rewrites the main expression where a
+#' group-level deviation is applied multiplicatively, \code{bot} becoming
+#' \code{bnecbot} and the whole curve \code{bnecmu} under \code{ogl()}. A
+#' rebuilt curve would not include that, and route (B) would model the
+#' dispersion as a function of a mean the fit does not use. For the same
+#' reason \code{\link{wrangle_model_formula}} adds the dispersion block last.
 #'
-#' The template remains the fallback for the direct callers in
-#' \code{tests/testthat/test-disp_model.R}, which have no assembled formula to
-#' read a curve from and are testing the variance function rather than the
-#' grouping.
+#' The template is the fallback for direct callers in the tests, which have no
+#' assembled formula to read a curve from.
 #'
 #' @return A \code{\link[base]{list}} with elements \code{nlf} (the block's
 #' formula) and, for route (B), \code{lf} (the parameter formula).
@@ -868,10 +785,9 @@ disp_intercept_centre <- function(family, response) {
 make_disp_block <- function(model, spec, dpar, x_var, response = NULL,
                             curve = NULL) {
   if (spec$route == "A") {
-    # The environment is not set here. brms resolves a distributional sub-model
-    # against the top-level brmsformula, not against this one, so
-    # wrangle_model_formula() sets it there instead; measured on
-    # disp(~cent(x)) with cent() defined by the caller. See #319.
+    # Do not set the environment here. brms resolves a distributional
+    # sub-model against the top-level brmsformula, so wrangle_model_formula()
+    # sets it there.
     return(list(nlf = as.formula(paste0(dpar, " ~ ", spec$value)), lf = NULL))
   }
   vf <- disp_functions[[spec$value]]
@@ -1010,32 +926,18 @@ disp_at_mean <- function(fit, spec, mu) {
 #' multiplicative form that is the intermediate \code{bnecmu}; under the
 #' additive form, \code{ogl + <curve>}, it is the right-hand side without its
 #' leading \code{ogl}. A parameter-level deviation, \code{(bot | g)} or
-#' \code{pgl(g)}, is part of the curve and is kept, as #294 made it.
+#' \code{pgl(g)}, is part of the curve and is kept.
 #'
-#' The fitted mean after \code{ogl()} was read here until #468. For a Gamma
-#' response it is \code{bnecmu * exp(ogl)}; for a Beta response the deviation
-#' acts on the odds. Reading the fitted mean let
-#' one deviation set both the mean and the spread of its group. Where the
-#' variance rises more slowly than the mean --- \code{c1 > 1} for
-#' \code{"power"} --- a deviation that lowered a group's mean far below its
-#' data also shrank the Gamma shape until those data were tolerably likely
-#' again, which is a second optimum. On the \code{lum31} zinc arm in
-#' \code{example8} the deviations of several cells, each started at zero,
-#' reached it during warmup, and every equation of a fit with a cell term
-#' failed the sampler screen.
+#' Do not read the fitted mean after \code{ogl()}. One deviation would then set
+#' both the mean and the spread of its group. Where the variance rises more
+#' slowly than the mean, a deviation that lowers a group's mean far below its
+#' data also shrinks the Gamma shape until those data are likely again. That
+#' is a second optimum, and chains reach it during warmup. The family's
+#' observation variance still depends on the fitted mean: for a Gamma response
+#' it is the squared fitted mean divided by the shape.
 #'
-#' With the curve before the deviation read instead, the dispersion parameter
-#' no longer depends on the \code{ogl()} deviation. The family's observation
-#' variance may still depend on the fitted mean: for a Gamma response it is
-#' the squared fitted mean divided by the shape.
-#'
-#' Every route that combines \code{ogl()} with a variance function reaches this
-#' function: a single-block fit, the joint two-block families, the growth
-#' component of \code{bnec_hurdle()}, which is a single-block fit, and a joint
-#' refit of a grouped fit in which every level is fitted one equation, whose
-#' level terms are applied after the dispersion block and leave \code{bnecmu}
-#' and the leading \code{ogl} as they are. A joint refit whose levels chose
-#' different equations refuses a group-level term.
+#' A joint refit applies its level terms after the dispersion block, so they
+#' leave \code{bnecmu} and the leading \code{ogl} as they are.
 #'
 #' @return A \code{\link[base]{character}} string.
 #'
@@ -1063,15 +965,12 @@ disp_curve <- function(brms_bf) {
 #' @param x_var The predictor's column names. Defaults to the variables of the
 #' \code{crf()} term.
 #'
-#' @details A \code{disp(~z)} term may name a column other than the predictor
-#' (#443). \pkg{brms} evaluates every distributional parameter when it
-#' predicts, so such a column must be on every grid a prediction is made over,
-#' the expected value included, although the mean does not involve it. This is
-#' the one definition of that set, read by the prediction grid, by the refusal
-#' of a \code{newdata} that lacks one, by the marginalisation of predicted
-#' readings, and by the refusal on a zero-truncated count. A variance function,
-#' \code{disp("power")}, names no column, and a term on the predictor alone,
-#' \code{disp(~log(x))}, names none other than it.
+#' @details \pkg{brms} evaluates every distributional parameter when it
+#' predicts, so a column that a \code{disp(~z)} term names must be on every
+#' prediction grid, the expected value included, although the mean does not
+#' involve it. Every reader of that set calls this function. A variance
+#' function, \code{disp("power")}, names no column, and a term on the
+#' predictor alone, \code{disp(~log(x))}, names none other than it.
 #'
 #' @return A \code{\link[base]{character}} vector, empty where there is no such
 #' column.
@@ -1130,10 +1029,9 @@ disp_fixed_value <- function(x) {
 #' @details A column the grid already holds is left as it is: the trials or
 #' \code{rate()} denominator, pinned at 1, and the level factor of a joint
 #' refit. Each added column is named in the attribute
-#' \code{"bnec_disp_placeholders"}, which is what tells the prediction methods
-#' that its value is a placeholder rather than one a user chose. Nothing is
-#' added, and no attribute is set, for a fit without such a column, so its grid
-#' is the one it was before #443.
+#' \code{"bnec_disp_placeholders"}, which tells the prediction methods that its
+#' value is a placeholder rather than one a user chose. A fit without such a
+#' column gets no added column and no attribute.
 #'
 #' @return \code{newdata}, with the columns added and marked.
 #'
