@@ -161,9 +161,9 @@ joint_key <- function(cl, depends_on, fn_name = fit_fun_name(cl)) {
 ## models with no number changed. In exchange the value has to be raised by
 ## hand, by the change that does alter what example8 fits.
 ##
-## Added to this copy in bayesnec before the compendium's shim/fit_store_body.R
-## has it. Add it there before this file is next regenerated, or the
-## regeneration drops it.
+## First added to the copy in bayesnec (PR #432, #413), then to
+## shim/fit_store_body.R in the compendium, so that regenerating the copy
+## keeps it.
 FIT_STORE_MIN_BAYESNEC <- "2.1.3.40"
 
 ## Refuse a store whose MANIFEST records a bayesnec older than the minimum.
