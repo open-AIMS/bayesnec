@@ -1,7 +1,5 @@
-# The selection itself is tested on a fabricated weights table rather than on a
-# fitted set: pull_out() rebuilds the weighted quantities of the object it
-# returns and takes seconds to do it, and none of the tie, the empty and the
-# non-finite cases can be produced by a real fit anyway.
+# Fabricated weights isolate ties, empty tables and non-finite weights
+# without rebuilding fitted quantities through pull_out().
 mod_stats_frame <- function(model, wi) {
   data.frame(model = model, waic = seq_along(model), wi = wi)
 }

@@ -34,10 +34,9 @@ test_that("fit_bayesnec aborts a fit that exceeds timeout", {
     skip_on_cran()
   }
   skip_if_not_installed("R.utils")
-  # A tiny timeout guarantees the brm call is interrupted. In a multi-model
-  # call the resulting failure is caught by try() and the model dropped, so
-  # bnec still returns rather than erroring, but with fewer than the two
-  # requested models. Kept behind NOT_CRAN as it triggers a real fit attempt.
+  # Attempt a real fit with a 1 ms timeout behind the CRAN guard. Where
+  # the timeout interrupts execution, failed models are caught and dropped;
+  # the precise operation interrupted depends on the runtime.
   fit <- try(
     bnec(y ~ crf(x, model = c("nec3param", "ecx4param")),
          data = nec_data, timeout = 1e-3, chains = 1, iter = 200,
@@ -46,7 +45,7 @@ test_that("fit_bayesnec aborts a fit that exceeds timeout", {
   ) |>
     suppressWarnings() |>
     suppressMessages()
-  # The call must complete (not hang) and yield either a caught failure or a
-  # valid bnec object; it must not return normally with both models intact.
+  # Accept either a caught failure or a bnecfit. This assertion does not
+  # check how many models survived or independently impose a wall-clock bound.
   expect_true(inherits(fit, "try-error") || inherits(fit, "bnecfit"))
 })

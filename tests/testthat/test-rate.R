@@ -1,10 +1,6 @@
-# #136: rate() support for the poisson and negbinomial families. Modelled on
-# test-cens.R, which is the other aterm carried as a plain column.
-#
-# Because bnec() forces link = "identity", brms writes the denominator
-# multiplicatively on the response scale -- `poisson_lpmf(Y | mu .* denom)` --
-# so mu IS the rate and top/bot/nec stay interpretable as counts per unit
-# exposure. That is the property every assertion below is protecting.
+# Under the default identity link, the Poisson mean is the rate times
+# exposure. Response asymptotes are rates; nec remains on the predictor
+# scale. Rate terms must survive parsing, priors and prediction.
 
 rate_data <- function(seed = 1) {
   set.seed(seed)
