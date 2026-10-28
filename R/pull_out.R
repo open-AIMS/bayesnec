@@ -46,11 +46,10 @@ pull_out <- function(manec, model, loo_controls, ...) {
     stop("Argument model can only take one value. See ?pull_out and ?models.")
   }
   old_method <- fit_weights_method(manec)
-  # weights_controls() rather than list(method = old_method): a set that
-  # recorded no method -- one assembled by c() before #320, or one whose
-  # attribute was dropped by row-subsetting -- gave method = NULL, which
-  # loo::loo_model_weights() resolves to stacking. An unknown method is left
-  # for define_loo_controls() to fill with the documented default instead.
+  # weights_controls(), not list(method = old_method): a set that records no
+  # method would pass method = NULL, which loo::loo_model_weights() resolves
+  # to stacking. define_loo_controls() fills an unknown method with the
+  # pseudo-BMA default.
   if (missing(loo_controls)) {
     loo_controls <- list(fitting = list(),
                          weights = weights_controls(old_method))
@@ -116,11 +115,10 @@ pull_out <- function(manec, model, loo_controls, ...) {
     suppressWarnings()
     out <- allot_class(mod_fits, c("bayesnecfit", "bnecfit"))
   }
-  # Carried across, unlike in amend(): pull_out() refits nothing, it only
-  # subsets a set that has already been fitted, so the record of what bnec()
-  # attempted is still accurate for the object being returned. Read from the
-  # element rather than through failed_models() so that an object fitted before
-  # the record existed yields NULL and is left untouched.
+  # Carry the record of failed models across, unlike amend(): pull_out()
+  # refits nothing, so the record is still accurate. Read the element, not
+  # failed_models(), so that an object fitted before the record existed is
+  # left untouched.
   out <- attach_failed_models(out, manec[["failed_models"]])
   carry_retained_data(out, manec)
 }

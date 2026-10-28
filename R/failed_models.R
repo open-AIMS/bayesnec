@@ -112,10 +112,9 @@ print.bnecfailures <- function(x, ...) {
 
 #' A condition carrying the priors and initial values of a failed fit
 #'
-#' Raised by \code{fit_bayesnec} in place of a bare \code{stop()} so that the
-#' caller, which catches the error and carries on with the remaining models, can
-#' recover what the attempt was given. There is nowhere else to get it from: the
-#' prior and the initial values are constructed inside the failed call.
+#' Raised by \code{fit_bayesnec} in place of \code{stop()}, so that a caller
+#' that catches the error and moves on can recover the prior and initial
+#' values, which were built inside the failed call.
 #'
 #' @param model A \code{\link[base]{character}} string naming the model.
 #' @param message The error message.
@@ -148,9 +147,8 @@ failure_record <- function(model, cond) {
     list(model = model, message = conditionMessage(cond),
          prior = cond$prior, init = cond$init)
   } else {
-    # A failure raised before the priors and inits were built -- a formula or
-    # data problem rather than a sampling one. Recorded anyway, because "which
-    # models are missing and why" is the first question either way.
+    # A failure before the priors and inits were built, from a formula or data
+    # problem. It is still recorded.
     list(model = model,
          message = if (is.null(cond)) {
            "Model failed for an unrecorded reason."
@@ -172,10 +170,8 @@ failure_record <- function(model, cond) {
 #'
 #' @noRd
 attach_failed_models <- function(object, failed) {
-  # Added only when non-empty. Appending unconditionally would change names() on
-  # every fitted object, which is a gratuitous break for anything indexing one
-  # positionally or checking its structure -- the same reasoning as the hurdle
-  # element in expand_nec().
+  # Add the element only when non-empty, so that names() of a fit with no
+  # failures is unchanged.
   if (length(failed) == 0) {
     return(object)
   }

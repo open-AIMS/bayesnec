@@ -48,13 +48,9 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot",
                           seed = 10) {
   chk_numeric(n_samples)
   chk_number(seed)
-  # NA is documented as the "return the draws" option, but `NA %in% c(...)` is
-  # FALSE, so the guard rejected the very value the documentation offers and
-  # there was no route to the sampled values at all. `%in%` cannot express it,
-  # hence the explicit is.na() branch. The length check leads, because both
-  # NULL and a length-2 `plot` reach `if` with something that is not a single
-  # TRUE/FALSE and fail with an R internals message instead of this one.
-  # See #244.
+  # Test is.na() explicitly: NA is the documented "return the draws" value,
+  # and `NA %in% c(...)` is FALSE. Check the length first, so that NULL or a
+  # length-2 `plot` gets this message rather than an R internals one.
   if (!(length(plot) == 1 &&
           (is.na(plot) || plot %in% c("ggplot", "base")))) {
     stop("plot must be NA, or a character string of either ",
@@ -75,10 +71,7 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot",
     set.seed(seed, sample.kind = "Rejection")
     for (j in seq_len(nrow(priors))) {
       # A constant() prior is a point mass: every draw is the fixed value, and
-      # the bound filtering below is skipped because there is nothing to reject
-      # against. Without this branch the whole call failed on any prior set
-      # containing a fixed parameter, so a user could not inspect the priors they
-      # had just written. See #244.
+      # there is nothing for the bound filter below to reject.
       if (is_constant_prior(priors$prior[j])) {
         out[[j]] <- rep(constant_prior_value(priors$prior[j]), n_samples)
         next
