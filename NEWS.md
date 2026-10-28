@@ -2018,16 +2018,15 @@
   of a model with more than `divergence_cutoff` of them. The new argument
   defaults to 10, the default of `check_sampling()`, and a model is flagged
   exactly where `check_sampling()` would fail it on divergences alone. On a
-  model set the warning names each such equation with its count, in the block
-  that lists the Rhat and control lack-of-fit failures, and gives the advice
-  given for an Rhat failure. Where a set fails on the sampler and on the
-  control fit, the advice now begins "Sampler failures" rather than
-  "Convergence failures". The count is read with `nuts_params()`, as
-  `check_sampling()` reads it, and is `NA` for a model fitted by a variational
-  algorithm. A grouped fit reports the count for each level; the summary of a
-  `bnec_hurdle()` fit reports neither Rhat nor divergences, and is unchanged.
-  `vignette("example2")` stated that the summary would warn of divergent
-  transitions, which it did not (#447).
+  model set the warning names each such equation with its count and its model
+  weight, in the block that lists the Rhat and control lack-of-fit failures,
+  and gives the advice given for an Rhat failure. Where a set fails on the
+  sampler and on the control fit, the advice now begins "Sampler failures"
+  rather than "Convergence failures". The count is `NA` for a model not
+  sampled by NUTS, such as a variational fit. A grouped fit reports the count
+  for each level; the summary of a `bnec_hurdle()` fit reports neither Rhat
+  nor divergences, and is unchanged. `vignette("example2")` stated that the
+  summary would warn of divergent transitions, which it did not (#447).
 
 ## Bug fixes
 

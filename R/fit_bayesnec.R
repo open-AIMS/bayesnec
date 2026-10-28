@@ -64,10 +64,9 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   } else {
     response <- y
   }
-  # Divide out a rate() denominator, as trials is above. Under the identity
-  # link the mean is the rate, so top, bot and nec are per unit exposure.
-  # `response` reaches both define_prior() and the initial-value search.
-  # amend() divides in the same way.
+  # Divide counts by rate() exposure before calculating priors and initial
+  # values. The fitted mean, top and bot are rates; nec stays on the predictor
+  # scale. amend() divides the response in the same way.
   if (!is.null(denominator)) {
     response <- response / denominator
   }

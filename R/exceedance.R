@@ -146,8 +146,8 @@ exceedance <- function(object, threshold, estimate = c("nec", "nsec", "ecx"),
 exceedance.bnecfit <- function(object, threshold,
                                estimate = c("nec", "nsec", "ecx"),
                                ecx_val = 10, xform = identity, ...) {
-  # One method for every single-fit class: reading the posterior through the
-  # estimator generics compares the same draws nec(), nsec() and ecx() report.
+  # Read each fitted class through the estimator generics, so exceedance()
+  # compares the same draws that nec(), nsec() and ecx() report.
   estimate <- match.arg(estimate)
   check_exceedance_args(threshold, estimate, ecx_val, !missing(ecx_val),
                         list(...))
