@@ -62,11 +62,12 @@ bounded_linear_drops <- function() {
 #'
 #' \code{nechormepwr} and \code{nechorme4pwr} have the hormesis term
 #' \code{x^(1 / (1 + exp(slope)))}, which has no coefficient. As \code{slope}
-#' grows the term tends to 1 for every \code{x} above 0, so below the threshold
-#' the mean tends to \code{top + 1} and exceeds 1 at ordinary values of
-#' \code{slope}, on any predictor. The exclusion therefore does not depend on
-#' the data. Bounding \code{nec} below 1 does not fix it, and an initial-value
-#' search that finds an admissible draw does not make the model usable.
+#' grows the term tends to 1 for each positive \code{x}. At a positive
+#' \code{x} below \code{nec}, the mean tends to \code{top + 1}, above the upper
+#' bound when \code{top} is positive. The term remains zero at \code{x = 0}.
+#' The exclusion is conservative and does not inspect the predictor. Bounding
+#' \code{nec} below 1 or finding an admissible initial draw does not ensure
+#' that the mean stays within (0, 1).
 #'
 #' @return A \code{\link[base]{character}} vector.
 #'
@@ -240,7 +241,7 @@ check_models <- function(model, family, data, record = FALSE) {
   }
   # The zero-bounded equations are not dropped for gaussian: its likelihood
   # never tests the sign of y, so a mean falling to zero with gaussian error is
-  # consistent, and the model weights reject that shape where it is wrong.
+  # consistent. Model weights can then assess that shape against the data.
   if (!missing(data)) {
     x <- retrieve_var(data, "x_var")
     if (contains_negative(x)) {

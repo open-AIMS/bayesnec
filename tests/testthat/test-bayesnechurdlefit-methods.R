@@ -1475,6 +1475,25 @@ test_that("plot() draws a component fitted to one smooth equation (#487)", {
   }
 })
 
+test_that("legacy smooth hurdle components retain NSEC extrapolation rules", {
+  smooth <- ecx4param
+  smooth$ne_type <- NULL
+  for (w in c("growth", "survival")) {
+    h <- if (w == "growth") hurdle_pair(growth = smooth) else
+      hurdle_pair(survival = smooth)
+    expect_equal(as.numeric(nec(h, which = w, posterior = TRUE)),
+                 as.numeric(smooth$ne_posterior))
+    expect_error(nec(h, which = w, extrapolate = TRUE),
+                 paste0(w, " component refused extrapolate:.*infinite"))
+    expect_error(nec(h, extrapolate = TRUE),
+                 paste0(w, " component refused extrapolate:.*infinite"))
+  }
+  threshold <- nec4param
+  threshold$ne_type <- NULL
+  expect_equal(nec(hurdle_pair(threshold, threshold), extrapolate = TRUE),
+               nec(hurdle_pair(), extrapolate = TRUE))
+})
+
 test_that("nec() computes only the component which names (#487)", {
   seen <- character()
   real <- bayesnec:::hurdle_component_ne
@@ -1557,6 +1576,56 @@ test_that("the hurdle plot draws its no-effect line on the recorded scale (#487)
   expect_identical(drawn$legend,
                    paste0("N(S)EC: ", signif(line[1], 2), " (",
                           signif(line[2], 2), "-", signif(line[3], 2), ")"))
+})
+
+test_that("the hurdle plot maps estimates over the stored prediction range", {
+  f <- nec4param
+  f$bayesnecformula <- bnf(y ~ crf(sqrt(x), model = "nec4param"))
+  # Set the grid and draws together: these draws are identified above the data.
+  f$pred_vals$data <- data.frame(x = seq(min(f$fit$data$x), 5,
+                                         length.out = 1000))
+  f$ne_posterior <- sqrt(seq(3.6, 4.4, length.out = 100))
+  h <- hurdle_pair(f, f)
+  for (w in c("growth", "survival", "combined")) {
+    expected <- as.numeric(nec(h, which = w, xform = function(z) z^2))
+    for (xr in list(c(0.1, 5), c(0.2, 1))) {
+      drawn <- hurdle_legend(h, which = w, x_range = xr, resolution = 50)
+      actual <- as.numeric(drawn$v[[1]])
+      expect_equal(actual, expected, tolerance = 1e-5)
+      expect_identical(drawn$legend,
+                       paste0("N(S)EC: ", signif(expected[1], 2), " (",
+                              signif(expected[2], 2), "-",
+                              signif(expected[3], 2), ")"))
+    }
+  }
+})
+
+test_that("a grid-read inverse covers the growth component's stored range", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # I(x^0.5) has no closed-form inverse, so nec() reads it off the grid. Only
+  # the growth component stores a grid reaching 5, above the observations, and
+  # its draws lie there; the survival component's grid ends at the data.
+  g <- nec4param
+  g$bayesnecformula <- bnf(y ~ crf(I(x^0.5), model = "nec4param"))
+  g$pred_vals$data <- data.frame(x = seq(min(g$fit$data$x), 5,
+                                         length.out = 1000))
+  g$ne_posterior <- seq(3.6, 4.4, length.out = 100)^0.5
+  s <- nec4param
+  s$bayesnecformula <- g$bayesnecformula
+  h <- hurdle_pair(g, s)
+  back <- function(z) z^2
+  expected <- as.numeric(nec(h, which = "growth", xform = back))
+  expect_true(all(expected > max(g$fit$data$x)))
+  expect_equal(as.numeric(nec(h, which = "growth")), expected,
+               tolerance = 1e-6)
+  expect_equal(as.numeric(nec(g)), as.numeric(nec(g, xform = back)),
+               tolerance = 1e-6)
+  for (xr in list(c(0.1, 5), c(0.2, 1))) {
+    drawn <- hurdle_legend(h, which = "growth", x_range = xr, resolution = 50)
+    expect_equal(as.numeric(drawn$v[[1]]), expected, tolerance = 1e-6)
+  }
 })
 
 # ---- The growth family in the hurdle summary ----------------------------------

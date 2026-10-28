@@ -614,8 +614,8 @@ boundary_inset <- function(edge, bound, centres, spread, y, side,
 #' @param ... Additional arguments to \code{\link{make_inits}}.
 #'
 #' @details Each chain is accepted on its own, and each round redraws only the
-#' chains still empty. The chains are independent, so this accepts the same
-#' values as requiring all to pass at once, with far fewer proposals.
+#' chains still empty. Failed proposals are refined and tested again,
+#' including in the first round.
 #'
 #' The search seeds itself only where \code{seed} is given:
 #' \code{set.seed(NULL)} re-initialises the stream from the clock, which would

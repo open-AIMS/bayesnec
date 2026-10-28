@@ -109,9 +109,9 @@ searched_or_stored_bounds <- function(object, x_range) {
 #'
 #' \code{extrapolate} is read on the recorded predictor scale, the scale of the
 #' data and of \code{x_range}, not the scale \code{crf()} fits on or the scale
-#' \code{xform} displays. A limit given on the fitted scale by mistake falls
-#' inside the prediction range under any increasing transformation, so the
-#' check below refuses it.
+#' \code{xform} displays. A fitted-scale limit may fall inside the recorded
+#' prediction range and be refused, or be accepted as a different recorded
+#' limit. Convert it to the recorded scale before passing it here.
 #'
 #' @param extrapolate The caller's argument.
 #' @param bounds The current prediction range, from \code{ne_grid_bounds()} or
@@ -467,7 +467,7 @@ extrapolated_necfit_ne <- function(object, lims, bounds, sig_val, resolution) {
               x_range = c(lims$lower, lims$upper), xform = identity,
               posterior = TRUE)
   # Keep the draws and the censoring record only. The other attributes nsec()
-  # attaches describe a grid the caller of nec() did not name.
+  # attaches describe an NSEC calculation, not the NEC returned here.
   cens <- attr(out, "censored")
   out <- as.numeric(out)
   attr(out, "censored") <- cens
@@ -621,10 +621,9 @@ manec_ne_types <- function(object) {
 #' The class of no-effect estimate a single fit holds
 #'
 #' \code{expand_nec()} records it in \code{ne_type}, taking both blocks of a
-#' two-block fit into account, and that record decides. The fallback is for an
-#' object saved before the slot existed: a single-block fit samples its
-#' threshold, since \code{\link{nec}} has already refused an \code{ecx}
-#' equation, and a two-block fit is treated as read off a curve.
+#' two-block fit into account, and that record decides. For an object saved
+#' before the slot existed, only a single-block equation with a \code{nec}
+#' parameter is treated as sampling its threshold.
 #'
 #' @param object A \code{\link{bayesnecfit}}.
 #'
@@ -635,7 +634,8 @@ necfit_ne_type <- function(object) {
   if (is.character(label) && length(label) == 1) {
     return(if (identical(label, "NEC")) "NEC" else "NSEC")
   }
-  if (is.null(object$hurdle) && !is_hurdle_family(object$fit$family)) {
+  if (is.null(object$hurdle) && !is_hurdle_family(object$fit$family) &&
+        has_nec_parameter(object$model, object$fit)) {
     "NEC"
   } else {
     "NSEC"

@@ -171,13 +171,9 @@ joint_level_draws <- function(object, par, level = object$level) {
 #' @param levels The levels of the refit, in the order of its factor.
 #' @param level The level wanted.
 #'
-#' @details \pkg{brms} names the coefficient after the design-matrix column and
-#' renames the label: \code{"Site A"} becomes \code{b_top_siteSiteA}. The level
-#' is therefore found by position. The columns follow the factor's levels,
-#' which \code{\link{bnec_joint}} pins to \code{levels}, so the coefficient of
-#' the \emph{k}th level is the \emph{k}th variable with the prefix. A
-#' \pkg{brms} parameter name has no underscore, so the prefix matches only this
-#' parameter's level coefficients.
+#' @details \pkg{brms} can rename level labels in coefficient names, so find
+#' a level by its position in the factor levels pinned by \code{bnec_joint()}.
+#' The prefix matches only this parameter, whose name has no underscore.
 #'
 #' @return A \code{\link[base]{character}} string, or \code{NULL} where the
 #' parameter has no coefficient, which is where the equation has no such

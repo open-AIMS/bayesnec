@@ -60,25 +60,33 @@ recorded_xform <- function(object, xform, extrapolate = FALSE) {
 
 #' The prediction grid a fit's inverse is read off, on the recorded scale
 #'
-#' The grid stored with the fit, or for an object that stores none, such as
-#' one level of a joint refit, 1000 points over the observed predictor.
+#' The grids stored with the fit, joined to 1000 points over the observed
+#' predictor. A fit-time \code{x_range} can store a grid reaching beyond the
+#' observations, and an estimate identified there must still be inverted. A
+#' hurdle pair joins both components' grids, since the growth component's can
+#' differ from the survival component's.
 #'
 #' @param object A fitted object.
 #'
-#' @return A \code{\link[base]{numeric}} vector.
+#' @return A \code{\link[base]{numeric}} vector, increasing.
 #'
 #' @importFrom stats model.frame
 #' @noRd
 recorded_grid <- function(object) {
-  grid <- ne_grid_data(object)$x
-  if (length(grid) >= 2) {
-    return(grid)
+  parts <- if (is_bayesnechurdlefit(object)) {
+    list(object$growth, object$survival)
+  } else {
+    list(object)
   }
-  fit <- scale_source_fit(object)
-  bdat <- model.frame(fit$bayesnecformula, fit$fit$data)
-  x <- fit$fit$data[[attr(bdat, "bnec_pop")[["x_var"]]]]
-  x <- x[is.finite(x)]
-  seq(min(x), max(x), length.out = 1000)
+  stored <- unlist(lapply(parts, function(p) ne_grid_data(p)$x))
+  observed <- unlist(lapply(parts, function(p) {
+    fit <- scale_source_fit(p)
+    bdat <- model.frame(fit$bayesnecformula, fit$fit$data)
+    fit$fit$data[[attr(bdat, "bnec_pop")[["x_var"]]]]
+  }))
+  observed <- observed[is.finite(observed)]
+  grid <- c(stored, seq(min(observed), max(observed), length.out = 1000))
+  sort(unique(grid[is.finite(grid)]))
 }
 
 #' The map from the fitted scale back to the recorded scale

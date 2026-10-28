@@ -48,8 +48,9 @@ unit_interval_families <- function() {
 #' @param link A \code{\link[base]{character}} string naming a link.
 #'
 #' @details \code{sqrt} maps onto [0, Inf) and reaches zero only at
-#' \code{eta = 0}, which continuous sampling does not hit, so it is listed with
-#' (0, Inf). \code{identity}, \code{inverse}, \code{1/mu^2} and any
+#' \code{eta = 0}, a set of measure zero under continuous sampling. The support
+#' check therefore treats its range as (0, Inf). \code{identity},
+#' \code{inverse}, \code{1/mu^2} and any
 #' unrecognised link fall to the default, the whole real line. That is the
 #' conservative answer: \code{\link{mu_is_constrained}} then reports the mean
 #' as reachable, and \code{\link{add_brm_defaults}} raises \code{adapt_delta}
@@ -401,8 +402,9 @@ mu_confined_by_pars <- function(model) {
 #' Every generated term name a group-level structure can introduce
 #'
 #' @details A data column with one of these names would be resolved in place
-#' of the generated term. The list is fixed rather than derived from the
-#' formula, so that every caller refuses the same names whatever the formula.
+#' of the generated term, so \code{\link{check_reserved_names}} refuses it.
+#' Initialisation code also removes these names from prior sets. The fixed
+#' list keeps both uses independent of any one formula.
 #'
 #' @return A \code{\link[base]{character}} vector.
 #' @noRd
