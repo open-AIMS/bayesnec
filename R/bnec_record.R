@@ -43,7 +43,7 @@
 #'
 #' The record is kept through \code{\link[stats]{update}},
 #' \code{\link{amend}}, \code{\link{pull_out}}, \code{\link[base]{c}} and
-#' \code{+}. \code{\link{pull_out}} moves each equation it does not keep to
+#' \code{+}. \code{\link{pull_out}} lists each equation it does not keep in
 #' \code{excluded}, with the reason "not kept by pull_out()", as
 #' \code{\link{amend}} does with the reason "dropped by amend()" for an
 #' equation it drops. An equation whose failure \code{\link{failed_models}}

@@ -42,7 +42,7 @@ Subsets model(s) from an existing object of class \code{\link{bayesmanecfit}}
 \details{
 Nothing is refitted, so the records of the set are kept. Each
 equation keeps its \code{\link{bnec_version}} record, the
-\code{\link{failed_models}} record is carried unchanged, and
+\code{\link{failed_models}} record is kept unchanged, and
 \code{\link{bnec_record}} lists each equation not kept as excluded, with the
 reason "not kept by pull_out()".
 }
