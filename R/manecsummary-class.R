@@ -43,6 +43,11 @@
 #' calculated by \code{\link[brms]{bayes_R2}}.
 #' @slot rhat_issues A \code{\link[base]{list}} detailing whether each fitted
 #' model exhibited convergence issues based on the Rhat evaluation.
+#' @slot divergences A named \code{\link[base]{numeric}} vector giving the
+#' number of divergent transitions after warmup for each model, \code{NA} for
+#' a model not sampled by NUTS.
+#' @slot divergence_cutoff The number of divergent transitions above which the
+#' printed summary warns of a model.
 #' @slot failed_models Any models from the requested set that could not be
 #' fitted, with the priors and initial values used. See
 #' \code{\link{failed_models}}.
