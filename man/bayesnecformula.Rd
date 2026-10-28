@@ -197,8 +197,9 @@ the data the fit was made from, so a predicted reading is one from the
 design's mix of \code{z} rather than from its first level. A
 \code{newdata} without \code{z} is refused with a message naming it. The
 term is refused for a \code{negbinomial} growth component of
-\code{\link{bnec_hurdle}}, whose curve is the mean of the zero-truncated
-counts and depends on the shape parameter.
+\code{\link{bnec_hurdle}} and for the \code{hurdle_negbinomial} family,
+whose curves are the mean of the zero-truncated counts, or that mean
+multiplied by \code{1 - hu}, and so depend on the shape parameter.
 
 Where the formula also has an \code{ogl()} term, \code{mu} in form 2) is the
 curve before the group-level deviation is applied, not the fitted mean of
@@ -221,12 +222,12 @@ observation-level group-level effect. Those are exactly the families the
 \code{\link{dispersion}} diagnostic applies to, so the two are complements
 rather than alternatives.
 
-Of the two-block families, \code{hurdle_gamma} and \code{zero_inflated_beta}
-take a dispersion sub-model on their positive block, which is modelled as
-the \code{Gamma} or \code{Beta} family it is, and \code{m} is computed from
-the positive responses; see \code{\link{bnec}}. \code{hurdle_poisson} has no
-dispersion parameter to model, and \code{hurdle_negbinomial} does not yet
-take a dispersion sub-model.
+Of the two-block families, \code{hurdle_gamma}, \code{zero_inflated_beta}
+and \code{hurdle_negbinomial} take a dispersion sub-model on their positive
+block, a \code{Gamma}, \code{Beta} or zero-truncated \code{negbinomial}
+distribution, and \code{m} is computed from the positive responses; see
+\code{\link{bnec}}. \code{hurdle_poisson} has no dispersion parameter to
+model.
 
 \bold{What the exponent means depends on the family}, because each family
 already imposes its own mean-variance link. The form above is written for

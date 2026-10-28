@@ -94,7 +94,7 @@ exp_5$mod_stats
 
 We can obtain a neater summary of the model fit by using the `summary` method for a `bayesmanecfit` object. A list of fitted models, and model weights are provided. In addition, the model averaged no-effect estimate is reported, in this case as an N(S)EC. For this example the **nec4param** and **ecxwb2** models have the highest weights.
 
-All these model fits are satisfactory despite the relatively low number of iterations set in our example, but the summary would also include a warning if there were fits with divergent transitions.
+All these model fits are satisfactory despite the relatively low number of iterations set in our example. The summary also reports the number of divergent transitions after warmup for each model, and would include a warning for any model with more than 10, the cutoff `check_sampling()` uses.
 
 ```{r}
 summary(exp_5)
