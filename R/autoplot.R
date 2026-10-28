@@ -198,9 +198,7 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                                      group = group, group_aes = group_aes,
                                      ...)
       # A factor puts the model average in the first facet. The equations
-      # keep the alphabetical order facet_wrap() gives a character column,
-      # which is the order all_models = TRUE drew them in; that call leaves
-      # the column as character, so its output is unchanged.
+      # follow in alphabetical order, as facet_wrap() orders a character column.
       dat <- bind_rows(avg$data, dat)
       dat$model <- factor(dat$model,
                           levels = c(manec_average_label,
@@ -243,12 +241,8 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                    attr(dat_j, "group_fitted"), FALSE
                  ))
       }
-      # Drawing and the prompt are gated on the same flag as the save and
-      # restore of the device's prompt setting above. Only the restore was
-      # gated before, so plot = FALSE drew every page and left the prompt set
-      # after the call returned (#444). Each page is still drawn as soon as it
-      # is built, rather than after the whole list, so that plot = TRUE shows
-      # its pages at the same points as before.
+      # Draw each page as soon as it is built, and only where `plot` is TRUE,
+      # the flag that also guards the device's prompt setting above.
       if (plot) {
         plot(plots[[i]], newpage = newpage || i > 1)
         if (i == 1) {
@@ -414,18 +408,15 @@ bind_nec <- function(data, nec_vals) {
   df <- data[1:3, ]
   df[ ] <- NA
 
-  # The transformation is applied by to_axis_scale() before this is called, and
-  # the xform argument that stood here was always identity. It is removed
-  # rather than left: a decreasing transformation applied at this point would
-  # reorder the three entries while the marks read off the record stayed where
-  # they were, so a ">=" would end up on what had become a lower bound.
+  # nec_vals is already on the axis scale; see to_axis_scale(). Transforming
+  # here would reorder the three entries under a decreasing map while the
+  # censoring marks stayed where they were.
   cens <- attr(nec_vals, "censored_summary")
 
   df$nec_vals <- nec_vals
-  # A censored entry is the end of the prediction range, not a quantile, and
-  # the annotation says so. The vertical line is still drawn there, because
-  # that is where the estimate is known to be at least: what the prefix stops
-  # is reading the number off the axis as though it were the estimate itself.
+  # A censored entry is the end of the prediction range, not a quantile, so
+  # its label carries the bound's prefix. The line is still drawn there,
+  # where the estimate is known to lie at or beyond.
   df$nec_labs[1] <- censored_label(nec_vals, cens, 1)
   df$nec_labs_l[1] <- censored_label(nec_vals, cens, 2)
   df$nec_labs_u[1] <- censored_label(nec_vals, cens, 3)
@@ -559,9 +550,8 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   }
   x_grid_raw <- x$pred_vals$data$x
   if (add_nec) {
-    # to_axis_scale() puts the estimates and the record's marks onto the axis
-    # scale together, reversing both under a decreasing map (#417). The marks
-    # are all bind_nec() reads from the record.
+    # to_axis_scale() puts the estimates and the censoring marks onto the axis
+    # scale together, reversing both under a decreasing map.
     out <- bind_nec(out, to_axis_scale(x$ne, bdat, x$bayesnecformula,
                                        x_grid_raw, xform))
   }
@@ -596,9 +586,8 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                                       xform = identity, ..., group = NULL) {
   chk_lgl(add_nec)
   chk_lgl(add_ecx)
-  # Matching the bayesnecfit method. Without it a non-function xform reached
-  # mutate() and failed with "could not find function \"xform\"", which names
-  # neither the argument nor what it should have been. See #278.
+  # Check xform as the bayesnecfit method does. Otherwise mutate() fails with
+  # an error that names neither the argument nor the remedy.
   if (!inherits(xform, "function")) {
     stop("xform must be a function.")
   }
