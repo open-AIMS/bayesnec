@@ -54,10 +54,9 @@
 #'     otherwise. Refused where the equation has no \code{bot} and the family
 #'     is unbounded below, because there is then no finite denominator. On the
 #'     positive counts of a negative binomial count hurdle the asymptote is
-#'     their zero-truncated mean at \code{bot}, which needs the shape there,
-#'     and the estimate is refused where the shape is modelled by
-#'     \code{disp(~x)};
-#'     see \code{\link{bnec}}.
+#'     their zero-truncated mean at \code{mu = bot}, which needs the shape
+#'     there, and the estimate is refused where the shape is modelled by
+#'     \code{disp(~x)}; see \code{\link{bnec}}.
 #'   \item \code{"range"} --- control to the lowest response the curve
 #'     predicts over the predictor range.
 #'   \item \code{"direct"} --- \code{ecx_val} is a response value rather than

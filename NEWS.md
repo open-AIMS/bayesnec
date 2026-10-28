@@ -1935,10 +1935,11 @@
 
 - `bnec()` now fits a `disp()` term on `hurdle_negbinomial`, which refused it.
   The term models the shape of the positive block, as on `hurdle_gamma`: a
-  variance function is written in the negative binomial component mean, its
-  centring constant is computed from the positive counts, and its parameters
-  take the priors and initial values of `negbinomial`, including the range of
-  0 to 1 on the exponent of `disp("power")`. Under
+  variance function is written in `mu`, the negative binomial mean before
+  zero-truncation; its centring constant is computed from the positive
+  counts; and its parameters take the priors and initial values of
+  `negbinomial`, including the range of 0 to 1 on the exponent of
+  `disp("power")`. Under
   `prior_type = "regularizing"` that exponent's prior stays centred on 0, as
   it is for a `negbinomial` growth component of `bnec_hurdle()`, because the
   positive counts come from a zero-truncated likelihood. `bnec_joint()` refits

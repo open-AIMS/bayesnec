@@ -90,11 +90,11 @@ the joint model it applies to the dispersion parameter of the positive
 block. The variance function is written in the component mean \code{mu} of
 that block and centred on the positive responses, as it is for the growth
 component, so the joint model fits the same variance function (see
-\code{\link{bnec}}). A
-\code{formula} supplied here replaces the held one, so a \code{disp()} term
-is fitted only where it is written in that formula. A negative binomial
-growth component fitted with a \code{disp()} term is refitted as a
-\code{hurdle_negbinomial} whose shape follows the same sub-model.
+\code{\link{bnec}}). A \code{formula} supplied here replaces the held one,
+so a \code{disp()} term is fitted only where it is written in that formula.
+A negative binomial growth component fitted with a \code{disp()} term is
+refitted as a \code{hurdle_negbinomial} whose shape follows the same
+sub-model.
 
 \bold{The joint refit of a grouped fit}
 
