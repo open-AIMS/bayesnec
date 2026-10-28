@@ -41,9 +41,22 @@
 #' equation whose refit failed stays in \code{attempted} and is not reported
 #' by \code{\link{failed_models}}.
 #'
-#' The record is kept through \code{\link[stats]{update}} and
-#' \code{\link{amend}}. \code{NULL} for an object fitted by a version that
-#' did not record it.
+#' The record is kept through \code{\link[stats]{update}},
+#' \code{\link{amend}}, \code{\link{pull_out}}, \code{\link[base]{c}} and
+#' \code{+}. \code{\link{pull_out}} moves each equation it does not keep to
+#' \code{excluded}, with the reason "not kept by pull_out()", as
+#' \code{\link{amend}} does with the reason "dropped by amend()" for an
+#' equation it drops. An equation whose failure \code{\link{failed_models}}
+#' still reports stays in \code{attempted}. \code{\link[base]{c}} and \code{+}
+#' join the records of the objects they combine. \code{requested} and
+#' \code{attempted} are the unions of theirs, and an equation attempted in any
+#' of them is not in \code{excluded}. An equation excluded by more than one of
+#' them keeps the reason the first gives, as \code{\link[base]{c}} keeps the
+#' first of two fits of one equation. \code{substitutions} holds the distinct
+#' rows of theirs. Where any of the objects combined has no record, the result
+#' has none, because what was done to its part of the request is not known.
+#'
+#' \code{NULL} for an object fitted by a version that did not record it.
 #'
 #' @seealso \code{\link{bnec}}, \code{\link{models}},
 #' \code{\link{check_data}}, \code{\link{bnec_version}}
@@ -92,4 +105,68 @@ attach_bnec_record <- function(out, requested, attempted, excluded,
     substitutions = substitutions
   )
   out
+}
+
+#' Copy the records of the objects a fitted set was built from
+#'
+#' For the functions that build a set from fitted objects: \code{c()},
+#' \code{pull_out()} and \code{amend()}. Each attribute \pkg{bayesnec}
+#' attaches to a fit is derived here, so give a new one its rule here too.
+#' \code{amend()} then rebuilds the request record for the equations it
+#' fitted. \code{bnec()} and \code{update()} attach their records themselves.
+#'
+#' @param out The set built. Attach its failures first: an equation that
+#' failed stays attempted.
+#' @param inputs A \code{\link[base]{list}} of the objects \code{out} was
+#' built from.
+#' @param reason The reason recorded for an equation that was attempted and
+#' that \code{out} does not keep.
+#'
+#' @return \code{out}, with attributes \code{"bnec_version"} and
+#' \code{"bnec_record"}.
+#' @noRd
+copy_fit_records <- function(out, inputs, reason) {
+  out <- attach_version(out, do.call(rbind, lapply(inputs, stored_version)))
+  kept <- c(fit_equations(out), names(out[["failed_models"]]))
+  attr(out, "bnec_record") <- joined_record(
+    lapply(inputs, attr, "bnec_record"), kept, reason
+  )
+  out
+}
+
+#' The request record of a set built from fitted objects
+#'
+#' @param records A \code{\link[base]{list}} of records, one per object the
+#' set was built from.
+#' @param kept The equations the set holds or reports as failed.
+#' @param reason As for \code{copy_fit_records()}.
+#'
+#' @return A record, or \code{NULL} where any element of \code{records} is.
+#' @noRd
+joined_record <- function(records, kept, reason) {
+  if (length(records) == 0 ||
+        any(vapply(records, is.null, logical(1)))) {
+    return(NULL)
+  }
+  field <- function(name) unique(unlist(lapply(records, `[[`, name)))
+  requested <- field("requested")
+  attempted <- intersect(field("attempted"), kept)
+  # Drop the exclusions of an equation another record attempted: if the set
+  # no longer keeps it, `reason` says why, not the earlier exclusion.
+  excluded <- do.call(rbind, lapply(records, `[[`, "excluded"))
+  if (!is.null(excluded)) {
+    excluded <- excluded[!excluded$model %in% field("attempted"), ,
+                         drop = FALSE]
+  }
+  substitutions <- do.call(rbind, lapply(records, `[[`, "substitutions"))
+  if (!is.null(substitutions)) {
+    substitutions <- unique(substitutions)
+    rownames(substitutions) <- NULL
+  }
+  list(requested = requested, attempted = attempted,
+       excluded = amend_exclusions(
+         list(requested = requested, excluded = excluded), NULL, attempted,
+         NULL, reason = reason
+       ),
+       substitutions = substitutions)
 }

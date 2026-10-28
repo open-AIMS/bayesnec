@@ -32,9 +32,22 @@ that reason. \code{\link[stats]{update}} does not record failures, so an
 equation whose refit failed stays in \code{attempted} and is not reported
 by \code{\link{failed_models}}.
 
-The record is kept through \code{\link[stats]{update}} and
-\code{\link{amend}}. \code{NULL} for an object fitted by a version that
-did not record it.
+The record is kept through \code{\link[stats]{update}},
+\code{\link{amend}}, \code{\link{pull_out}}, \code{\link[base]{c}} and
+\code{+}. \code{\link{pull_out}} moves each equation it does not keep to
+\code{excluded}, with the reason "not kept by pull_out()", as
+\code{\link{amend}} does with the reason "dropped by amend()" for an
+equation it drops. An equation whose failure \code{\link{failed_models}}
+still reports stays in \code{attempted}. \code{\link[base]{c}} and \code{+}
+join the records of the objects they combine. \code{requested} and
+\code{attempted} are the unions of theirs, and an equation attempted in any
+of them is not in \code{excluded}. An equation excluded by more than one of
+them keeps the reason the first gives, as \code{\link[base]{c}} keeps the
+first of two fits of one equation. \code{substitutions} holds the distinct
+rows of theirs. Where any of the objects combined has no record, the result
+has none, because what was done to its part of the request is not known.
+
+\code{NULL} for an object fitted by a version that did not record it.
 }
 \description{
 Reports the candidate set as requested, the candidate set attempted, the

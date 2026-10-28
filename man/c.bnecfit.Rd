@@ -34,6 +34,10 @@ default is used and a message reports the disagreement.
 Each equation keeps the record of the installation of \pkg{bayesnec} that
 fitted it, and a message reports a combined set whose equations were fitted
 by different installations. See \code{\link{bnec_version}}.
+
+The records of what \code{\link{bnec}} did to each request, and of the
+equations that failed to fit, are joined; see \code{\link{bnec_record}} and
+\code{\link{failed_models}}.
 }
 \examples{
 \dontrun{

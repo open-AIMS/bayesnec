@@ -13,6 +13,12 @@
 #' @param ... Additional arguments to \code{\link{expand_nec}} or
 #' \code{\link{expand_manec}}.
 #'
+#' @details Nothing is refitted, so the records of the set are kept. Each
+#' equation keeps its \code{\link{bnec_version}} record, the
+#' \code{\link{failed_models}} record is kept unchanged, and
+#' \code{\link{bnec_record}} lists each equation not kept as excluded, with the
+#' reason "not kept by pull_out()".
+#'
 #' @return If \code{model} is a string representing a single model, an object
 #' of class \code{\link{bayesnecfit}}; If \code{model} is instead a string
 #' depicting a suite of models, and object of class \code{\link{bayesmanecfit}}.
@@ -120,6 +126,6 @@ pull_out <- function(manec, model, loo_controls, ...) {
   # failed_models(), so that an object fitted before the record existed is
   # left untouched.
   out <- attach_failed_models(out, manec[["failed_models"]])
-  out <- attach_version(out, stored_version(manec))
+  out <- copy_fit_records(out, list(manec), "not kept by pull_out()")
   carry_retained_data(out, manec)
 }

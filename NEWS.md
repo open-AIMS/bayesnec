@@ -3277,6 +3277,19 @@
   survival block also led `bnec()` and `bnec_group()` to refuse the call for
   want of a floor, although no `bot` prior was to be built from one.
 
+- `pull_out()`, `c()` and `+` keep the `bnec_record()` of the objects they are
+  given. `bnec_record()` of the result returned `NULL`, which `?bnec_record`
+  documents as meaning that no record was made, so the equations `bnec()`
+  excluded and the substitutions it made in the response could no longer be
+  read from the object. `pull_out()` lists each equation it does not keep as
+  excluded, with the reason "not kept by pull_out()", as `amend()` does for an
+  equation it drops. `c()` and `+` join the records of the objects combined,
+  and return no record where any of them has none. They also keep the
+  `failed_models()` record of each object combined, which they dropped, so
+  that an equation recorded as attempted and not held by the combined set is
+  reported as failed. An object fitted before the record existed still
+  returns `NULL` (#522).
+
 ## Documentation
 
 - `?autoplot` states that a `bayesmanecfit` with `multi_facet = FALSE`

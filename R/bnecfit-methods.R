@@ -15,6 +15,10 @@
 #' fitted it, and a message reports a combined set whose equations were fitted
 #' by different installations. See \code{\link{bnec_version}}.
 #'
+#' The records of what \code{\link{bnec}} did to each request, and of the
+#' equations that failed to fit, are joined; see \code{\link{bnec_record}} and
+#' \code{\link{failed_models}}.
+#'
 #' @param x An object of class \code{\link{bnecfit}}.
 #' @param ... Additional objects of class \code{\link{bnecfit}}.
 #'
@@ -74,7 +78,11 @@ c.bnecfit <- function(x, ...) {
     x
   } else {
     out <- allot_class(out, c("bayesmanecfit", "bnecfit"))
-    out <- attach_version(out, do.call(rbind, lapply(inputs, stored_version)))
+    out <- attach_failed_models(
+      out, joined_failures(inputs, fit_equations(out))
+    )
+    out <- copy_fit_records(out, inputs,
+                             "not in any of the objects c() combined")
     report_mixed_versions(out)
     out
   }

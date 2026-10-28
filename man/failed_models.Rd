@@ -44,6 +44,9 @@ they were built -- a formula or data problem rather than a sampling one.
 
 \code{\link{pull_out}} carries the record across unchanged, since it subsets
 a set that has already been fitted rather than refitting it.
+\code{\link[base]{c}} and \code{+} carry the failures of every object they
+combine, except for an equation that another of those objects fitted and
+the combined set therefore holds.
 \code{\link{amend}} instead records only the models that call attempted:
 a model that failed before may have been dropped now, or is being retried
 there with different priors.

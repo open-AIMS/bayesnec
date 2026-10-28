@@ -429,6 +429,9 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   # amended are not carried forward: a model that failed then may have been
   # dropped now, or is being retried here with different priors.
   out <- attach_failed_models(out, failed)
+  # Retained equations keep their installation record; added ones get the
+  # current one. The request record is rebuilt below.
+  out <- copy_fit_records(out, list(object), "dropped by amend()")
   # Rebuild the record, since the candidate set changed, but keep
   # `substitutions`: amend() fits the stored data with skip_check = TRUE, so
   # bnec()'s substitution still describes the response. An object with no
@@ -440,8 +443,6 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
       bnec_rec$substitutions
     )
   }
-  # Retained equations keep their record; added ones get the current one.
-  out <- attach_version(out, stored_version(object))
   report_mixed_versions(out)
   carry_retained_data(out, object)
 }
@@ -550,10 +551,13 @@ amend_requested <- function(requested, add) {
 #' \code{check_models()}.
 #' @param attempted The set this call attempted.
 #' @param add The equations added by this call, or \code{NULL}.
+#' @param reason The reason recorded for an equation the record gives none
+#' for. \code{joined_record()} passes its own.
 #'
 #' @return A \code{\link[base]{data.frame}} of equation and reason.
 #' @noRd
-amend_exclusions <- function(bnec_rec, excluded, attempted, add) {
+amend_exclusions <- function(bnec_rec, excluded, attempted, add,
+                             reason = "dropped by amend()") {
   out <- if (is.null(excluded)) {
     data.frame(model = character(), reason = character(),
                stringsAsFactors = FALSE)
@@ -571,7 +575,7 @@ amend_exclusions <- function(bnec_rec, excluded, attempted, add) {
     if (length(hit) > 0) {
       prior$reason[hit[1]]
     } else {
-      "dropped by amend()"
+      reason
     }
   }, character(1), USE.NAMES = FALSE)
   rbind(out, data.frame(model = unaccounted, reason = reasons,
