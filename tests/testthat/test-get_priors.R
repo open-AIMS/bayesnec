@@ -192,8 +192,7 @@ test_that("get_priors round trips through bnec", {
     suppressWarnings()
   expect_s3_class(again, "bayesnecfit")
   expect_equal(ord(get_priors(again)), ord(from_fit))
-  # pull_prior() exposes the full brms table, including rows bnec() cannot
-  # reuse.
+  # pull_prior() returns the full brms table, with rows bnec() cannot reuse.
   whole <- pull_prior(fit)[[1]]
   expect_gt(nrow(whole), nrow(from_fit))
   expect_true("sigma" %in% whole$class)
@@ -211,8 +210,7 @@ test_that("get_priors honours an explicit predictor scale (#317)", {
 
   expect_match(auto_nec, "^lognormal\\(")
   expect_match(log_nec, "^normal\\(")
-  # The logged normal prior has no bounds; logged concentrations may be
-  # negative.
+  # The logged normal prior is unbounded: logged concentrations can be negative.
   expect_true(is.na(logged$lb[logged$nlpar == "nec"]))
   expect_true(is.na(logged$ub[logged$nlpar == "nec"]))
   expect_equal(as.numeric(automatic$lb[automatic$nlpar == "nec"]), 0)
@@ -372,8 +370,7 @@ test_that("get_priors reports the substitution its priors are built from", {
 })
 
 test_that("a response at one bound is refused by name, not by quantile() (#400)", {
-  # Refuse an all-bound response before prior construction reaches NaN
-  # quantiles.
+  # Refuse an all-bound response before prior construction gets NaN quantiles.
   cases <- at_bound_cases()
   for (nm in names(cases)) {
     cs <- cases[[nm]]

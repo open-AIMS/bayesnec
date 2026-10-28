@@ -476,8 +476,7 @@ test_that("a pooled fit on different observations leaves the SE NA", {
 
 test_that("a model-averaged level yields a WAIC difference but no SE", {
   # expand_manec() snapshots mod_fits before expand_nec() adds pointwise WAIC.
-  # The stored mod_stats still supports point estimates; omit the unavailable
-  # SE.
+  # The stored mod_stats still gives point estimates, so omit only the SE.
   expect_null(manec_example$mod_fits[[1]]$fit$criteria$waic$pointwise)
   gf <- fake_group_fit()
   res <- crossed_group_weights(gf, pooled = manec_example)$pooled

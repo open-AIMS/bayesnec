@@ -189,8 +189,7 @@ test_that("get_priors resolves a variable model set from inside a function", {
 
 test_that("the brms formula is built from a locally defined transformation", {
   # Preserve the environment through both per-model formula builders after
-  # model.frame(). Formula construction checks this before brm(), without
-  # sampling.
+  # model.frame(). The builders check this before brm(), without sampling.
   build <- function() {
     # square() is defined here for R's model frame and is also a Stan built-in.
     # An arbitrary R helper would still need a Stan definition at fit time.

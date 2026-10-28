@@ -420,9 +420,9 @@ test_that("ogl_transform_kind refuses the equations the transform is undefined f
 })
 
 test_that("can_exceed_one is stronger than unscaled_excess, and is what gates", {
-  # unscaled_excess tests whether a fit can shrink the excess. can_exceed_one
-  # tests whether any such mean can make logit undefined; it covers more
-  # equations.
+  # unscaled_excess flags an excess above one that no parameter value can
+  # shrink. can_exceed_one flags any equation whose mean can exceed one, where
+  # logit is undefined, so it covers more equations.
   tab <- model_mu_ranges()
   excess <- tab$model[tab$unscaled_excess]
   exceeds <- tab$model[tab$can_exceed_one]
@@ -589,8 +589,8 @@ test_that("mu_confined_by_pars tests the excess term on every support", {
   beta <- validate_family("Beta")
   for (m in hormesis) {
     expect_equal(ogl_transform_kind(m, beta), "none")
-    # The Gamma mean transform can be log even when parameters do not confine
-    # it.
+    # The Gamma mean transform can be log even where the parameters leave the
+    # mean unconfined.
     expect_equal(ogl_transform_kind(m, validate_family("Gamma")), "log")
   }
   expect_false(mu_confined_by_pars(NULL))

@@ -1,5 +1,4 @@
-# A constant prior must return its fixed value alongside draws from other
-# priors.
+# A constant prior must return its fixed value beside other priors' draws.
 
 const_prior_set <- function(lb = c("", ""), ub = c("", "")) {
   data.frame(

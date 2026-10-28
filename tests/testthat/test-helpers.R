@@ -236,8 +236,7 @@ test_that("to_axis_scale brings an estimate onto the axis scale", {
   # xform applies to it exactly as it applies to the axis.
   expect_equal(to_axis_scale(50, b_plain, f_plain, raw), 50)
   expect_equal(to_axis_scale(50, b_plain, f_plain, raw, function(z) z * 2), 100)
-  # Numerically invert a transformed predictor when no explicit xform is
-  # supplied.
+  # With no xform supplied, invert a transformed predictor numerically.
   expect_equal(to_axis_scale(log(50), b_log, f_log, raw), 50, tolerance = 1e-3)
   # An explicit xform takes precedence over the numerical inverse.
   expect_equal(to_axis_scale(log(50), b_log, f_log, raw, exp), 50,

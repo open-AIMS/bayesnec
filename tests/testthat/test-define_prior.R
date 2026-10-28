@@ -218,8 +218,7 @@ test_that("an all-zero response errors rather than returning a broken prior", {
 })
 
 test_that("response_link_scale does not warn on an all-zero response", {
-  # Do not evaluate a minimum positive response when this family does not need
-  # it.
+  # Do not evaluate a minimum positive response for a family that needs none.
   expect_silent(
     bayesnec:::response_link_scale(rep(0, 20),
                                    validate_family("zero_inflated_poisson"))
@@ -229,8 +228,7 @@ test_that("response_link_scale does not warn on an all-zero response", {
 # Do not evaluate gamma scales for families whose priors do not use them.
 
 test_that("a gaussian response with no positive values still builds priors", {
-  # Negative Gaussian responses have valid quantile and standard-deviation
-  # priors.
+  # Negative Gaussian responses still give valid quantile and sd priors.
   set.seed(1)
   x <- as.numeric(rep(1:10, each = 5))
   y <- -rexp(50, 1) - 0.5
@@ -1915,8 +1913,8 @@ test_that("a single distinct predictor value builds and draws (#393)", {
   expect_true(all(vapply(inits, function(z) z$b_nec > 0, logical(1))))
 })
 
-# Priors for a lower asymptote declared unobserved by asymptote_observed =
-# FALSE, which the comments below call the declaration.
+# Priors for a lower asymptote declared unobserved. The comments below call
+# asymptote_observed = FALSE the declaration.
 
 # Vary only the observed fraction of the curve by placing the threshold.
 # Hold the dose series, replication and decay rate fixed, as in
