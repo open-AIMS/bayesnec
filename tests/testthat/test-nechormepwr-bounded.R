@@ -71,8 +71,8 @@ test_that("initialisation confirms why they are excluded", {
     skip_on_cran()
   }
   # A successful initial draw does not constrain later sampler proposals.
-  # When a tested concentration >= 1 is below nec, the unscaled increment
-  # forces the mean above one; the NEC prior does not exclude that region.
+  # Below nec the decay factor is 1, so a concentration >= 1 gives a mean of
+  # at least top + 1. The nec prior does not exclude that region.
   fam <- validate_family(bernoulli(link = "identity"))
   search <- function(model, x, y, priors = NULL) {
     if (is.null(priors)) {
