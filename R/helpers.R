@@ -1576,16 +1576,30 @@ check_update_data <- function(x, data, family = NULL, on_fit = TRUE) {
   }
   # Report once, outside the loop. on_fit says whether the returned object
   # stores the record: a fit saved before bnec_record() existed does not, and
-  # the message must not point to it.
-  report_substitutions(substitutions, on_fit = on_fit)
-  # Only a supplied family can differ from the fitted one.
+  # the message must not point to it. A refit reuses the fitted priors.
+  report_substitutions(substitutions, on_fit = on_fit, prints_priors = FALSE)
   list(
-    changed_family = !is.null(family) &&
-      !identical(family_signature(family),
-                 family_signature(x[[1]]$fit$family)),
+    changed_family = family_changed(family, x[[1]]$fit$family),
     data = data,
     substitutions = substitutions
   )
+}
+
+#' Whether a family supplied to a refit differs from the fitted one
+#'
+#' @param supplied The validated family passed to \code{update()}, or
+#' \code{NULL}.
+#' @param fitted The family stored in the \code{brmsfit} being refitted.
+#'
+#' @details Takes no data, because only a supplied family can differ from the
+#' fitted one. Families are compared through \code{family_signature()}.
+#'
+#' @return A \code{\link[base]{logical}} of length 1.
+#'
+#' @noRd
+family_changed <- function(supplied, fitted) {
+  !is.null(supplied) &&
+    !identical(family_signature(supplied), family_signature(fitted))
 }
 
 #' The family a refit uses, under the tag bayesnec's checks key on

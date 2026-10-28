@@ -695,6 +695,8 @@ amend.bayesnechurdlefit <- function(object, drop, add, loo_controls,
 #' @param family The validated family passed to \code{update()}, or
 #' \code{NULL}.
 #' @param subject The subject of the message, naming the component.
+#' @param flat_remedy How to fit \code{ecxflat} to the component; see
+#' \code{check_response_at_bound()}.
 #'
 #' @details Makes the check \code{check_update_data()} makes per model, once
 #' for a whole component, so that both components are checked before either
@@ -703,7 +705,8 @@ amend.bayesnechurdlefit <- function(object, drop, add, loo_controls,
 #' @return \code{NULL}, invisibly. Called for its error.
 #'
 #' @noRd
-check_refit_bound <- function(part, data, family = NULL, subject = NULL) {
+check_refit_bound <- function(part, data, family = NULL, subject = NULL,
+                              flat_remedy = NULL) {
   fits <- recover_prebayesnecfit(part)
   bdat <- model.frame(extract_formula(fits[[1]]), data = data,
                       run_par_checks = TRUE)
@@ -711,24 +714,27 @@ check_refit_bound <- function(part, data, family = NULL, subject = NULL) {
   # value, and the bound would otherwise be read without it.
   check_complete_cases(bdat)
   check_response_at_bound(bdat, refit_family(fits[[1]]$fit$family, family),
-                          subject = subject, model = names(fits))
+                          subject = subject, model = names(fits),
+                          flat_remedy = flat_remedy)
 }
 
 #' Updates both components of a \code{\link{bayesnechurdlefit}}
-#'
-#' @inheritParams update.bnecfit
 #'
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
 #' @param newdata Optional new data. Split into the two component datasets the
 #' same way \code{\link{bnec_hurdle}} does, so zeros continue to denote the
 #' hurdle rather than being modelled as small responses, and checked the same
-#' way: a row that is both zero and censored is refused here as it is at
-#' construction. Each component is refitted with the family it was fitted
+#' way. A response that is not numeric, holds a missing or negative value, or
+#' has no zero or no value above zero is refused with the message
+#' \code{bnec_hurdle} gives, as is a row that is both zero and censored.
+#' Each component is refitted with the family it was fitted
 #' with, as \code{\link{update.bnecfit}} describes. Both components are checked
-#' against their families before either is refitted, so new data that put one
-#' component at a bound in every observation are refused, naming that
-#' component. New data with no zero are such a case: every individual
-#' survived, so the survival response is 1 in every observation.
+#' against their families before either is refitted, so new data that put the
+#' growth component at a bound in every observation, such as a \code{Beta}
+#' growth component of 1 throughout, are refused, naming that component.
+#' @param ... Further arguments passed to \code{\link{update.bnecfit}} for
+#' each component. A \code{family} is passed to the growth component only.
+#' The survival component is always refitted as \code{bernoulli}.
 #'
 #' @return An object of class \code{\link{bayesnechurdlefit}}.
 #'
@@ -738,15 +744,20 @@ check_refit_bound <- function(part, data, family = NULL, subject = NULL) {
 #'
 #' @export
 update.bayesnechurdlefit <- function(object, newdata = NULL, ...) {
+  # Take `family` out of `...`, so that the growth family never reaches the
+  # survival component. Forward `...` unchanged to the growth component:
+  # update.bnecfit() reads the link the caller wrote off the unevaluated call.
+  update_survival <- function(..., family) update(object$survival, ...)
   if (is.null(newdata)) {
     return(hurdle_rewrap(object, update(object$growth, ...),
-                         update(object$survival, ...)))
+                         update_survival(...)))
   }
   y <- newdata[[object$y_var]]
   if (is.null(y)) {
     stop("\"newdata\" must contain the response column \"", object$y_var,
          "\".", call. = FALSE)
   }
+  check_hurdle_response(y, object$y_var)
   # Check newdata for rows that are both zero and censored, as bnec_hurdle()
   # checks its data.
   check_hurdle_cens(check_hurdle_aterms(object$formula), newdata, y,
@@ -755,18 +766,20 @@ update.bayesnechurdlefit <- function(object, newdata = NULL, ...) {
   surv_data <- newdata
   surv_data[[".alive"]] <- as.integer(y > 0)
   # Check both components before either is refitted, naming the component
-  # rather than the generated .alive column. A supplied family is read here for
-  # its tag only; update.bnecfit() validates it again, with its link.
+  # rather than the generated .alive column. A supplied family is the growth
+  # component's. It is read here for its tag only; update.bnecfit() validates
+  # it again, with its link.
   supplied <- if ("family" %in% ...names()) {
     validate_family(list(...)[["family"]])
   }
   check_refit_bound(
     object$growth, growth_data, supplied,
     subject = paste0("The growth component of the response \"", object$y_var,
-                     "\" (its ", sum(y > 0), " non-zero values)")
+                     "\" (its ", sum(y > 0), " non-zero values)"),
+    flat_remedy = hurdle_growth_flat_remedy()
   )
   check_refit_bound(
-    object$survival, surv_data, supplied,
+    object$survival, surv_data,
     subject = paste0("The survival component of the response \"",
                      object$y_var, "\" (", sum(y == 0), " deaths of ",
                      length(y), ")")
@@ -774,7 +787,7 @@ update.bayesnechurdlefit <- function(object, newdata = NULL, ...) {
   # Refit in turn, growth first, rather than inside hurdle_rewrap(), whose
   # argument evaluation would set the order.
   growth <- update(object$growth, newdata = growth_data, ...)
-  survival <- update(object$survival, newdata = surv_data, ...)
+  survival <- update_survival(newdata = surv_data, ...)
   out <- hurdle_rewrap(object, growth, survival)
   out$data <- newdata
   out$n_exposed <- length(y)

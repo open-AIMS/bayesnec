@@ -12,15 +12,18 @@
 \item{newdata}{Optional new data. Split into the two component datasets the
 same way \code{\link{bnec_hurdle}} does, so zeros continue to denote the
 hurdle rather than being modelled as small responses, and checked the same
-way: a row that is both zero and censored is refused here as it is at
-construction. Each component is refitted with the family it was fitted
+way. A response that is not numeric, holds a missing or negative value, or
+has no zero or no value above zero is refused with the message
+\code{bnec_hurdle} gives, as is a row that is both zero and censored.
+Each component is refitted with the family it was fitted
 with, as \code{\link{update.bnecfit}} describes. Both components are checked
-against their families before either is refitted, so new data that put one
-component at a bound in every observation are refused, naming that
-component. New data with no zero are such a case: every individual
-survived, so the survival response is 1 in every observation.}
+against their families before either is refitted, so new data that put the
+growth component at a bound in every observation, such as a \code{Beta}
+growth component of 1 throughout, are refused, naming that component.}
 
-\item{...}{Further arguments to \code{\link[brms]{brm}}.}
+\item{...}{Further arguments passed to \code{\link{update.bnecfit}} for
+each component. A \code{family} is passed to the growth component only.
+The survival component is always refitted as \code{bernoulli}.}
 }
 \value{
 An object of class \code{\link{bayesnechurdlefit}}.

@@ -195,31 +195,8 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
          call. = FALSE)
   }
   y <- data[[y_var]]
-  if (!is.numeric(y)) {
-    stop("The response variable \"", y_var, "\" must be numeric.",
-         call. = FALSE)
-  }
-  if (anyNA(y)) {
-    stop("The response variable \"", y_var, "\" contains NA values. Every",
-         " individual that entered the experiment must be present, with 0",
-         " recorded for those that died -- missing rows cannot be",
-         " distinguished from deaths.", call. = FALSE)
-  }
-  if (any(y < 0)) {
-    stop("The response variable \"", y_var, "\" contains negative values,",
-         " which a zero-bounded growth component cannot represent. If these",
-         " encode deaths, recode them as 0; if they are real declines, this",
-         " family is not appropriate.", call. = FALSE)
-  }
+  check_hurdle_response(y, y_var)
   n_dead <- sum(y == 0)
-  if (n_dead == 0) {
-    stop("The response variable \"", y_var, "\" contains no zeros, so there",
-         " is no survival signal to model. Use bnec() directly.",
-         call. = FALSE)
-  }
-  if (n_dead == length(y)) {
-    stop("Every value of \"", y_var, "\" is zero.", call. = FALSE)
-  }
   check_hurdle_cens(aterms, data, y, y_var)
   # Check the whole predictor here. The growth subset can omit the rows that
   # contradict the predictor_scale declaration, and the growth component is
@@ -311,7 +288,8 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
     family_growth,
     subject = paste0("The growth component of the response \"", y_var,
                      "\" (its ", sum(y > 0), " non-zero values)"),
-    model = get_model_from_formula(formula)
+    model = get_model_from_formula(formula),
+    flat_remedy = hurdle_growth_flat_remedy()
   )
   message("Fitting the growth component (", sum(y > 0), " survivors of ",
           length(y), ") with a ", family_growth$family, " distribution.")
@@ -342,6 +320,63 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
               data = data, formula = formula, y_var = y_var,
               n_exposed = length(y), n_dead = n_dead)
   allot_class(out, c("bayesnechurdlefit", "bnecfit"))
+}
+
+#' Refuse a hurdle response that cannot be split into its two components
+#'
+#' @param y The response column.
+#' @param y_var The name of the response column, for the message.
+#'
+#' @details Called by \code{\link{bnec_hurdle}} and by \code{update()} on a
+#' \code{\link{bayesnechurdlefit}}, so that the same data get the same
+#' message on both routes.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#'
+#' @noRd
+check_hurdle_response <- function(y, y_var) {
+  if (!is.numeric(y)) {
+    stop("The response variable \"", y_var, "\" must be numeric.",
+         call. = FALSE)
+  }
+  if (anyNA(y)) {
+    stop("The response variable \"", y_var, "\" contains NA values. Every",
+         " individual that entered the experiment must be present, with 0",
+         " recorded for those that died -- missing rows cannot be",
+         " distinguished from deaths.", call. = FALSE)
+  }
+  if (any(y < 0)) {
+    stop("The response variable \"", y_var, "\" contains negative values,",
+         " which a zero-bounded growth component cannot represent. If these",
+         " encode deaths, recode them as 0; if they are real declines, this",
+         " family is not appropriate.", call. = FALSE)
+  }
+  n_dead <- sum(y == 0)
+  if (n_dead == 0) {
+    stop("The response variable \"", y_var, "\" contains no zeros, so there",
+         " is no survival signal to model. Use bnec() directly.",
+         call. = FALSE)
+  }
+  if (n_dead == length(y)) {
+    stop("Every value of \"", y_var, "\" is zero.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+#' The remedy a growth component at a bound is given
+#'
+#' @details Completes the sentence \code{check_response_at_bound()} builds
+#' around \code{ecxflat}. One component cannot be given its own formula
+#' through \code{update()} or \code{amend()}, so the remedy is a
+#' \code{\link{bnec_hurdle}} call.
+#'
+#' @return A \code{\link[base]{character}} string.
+#'
+#' @noRd
+hurdle_growth_flat_remedy <- function() {
+  paste0("name it in the bnec_hurdle() formula, as in crf(x, \"ecxflat\"),",
+         " and give the survival component its equations through",
+         " model_survival.")
 }
 
 #' Refuse a growth family that is itself a two-part or mixture family

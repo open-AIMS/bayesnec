@@ -94,6 +94,8 @@ refitted, and the validated family is the one \pkg{brms} receives. See the
 \emph{The link} section of \code{\link{bnec}}. Supplying a family that
 differs from the fitted one requires \code{force_fit = TRUE}, because the
 priors carried over from the original fit were built for the original family.
+Without it the call is refused before the data are checked, so nothing is
+reported as shifted.
 Families are compared by name and links, so \code{Gamma(link = "identity")}
 supplied for a Gamma fit is not a change of family.
 }
