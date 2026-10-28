@@ -1,19 +1,10 @@
-#' on_rational_grid
+#' Whether every value is k / n for one integer n up to max_n
 #'
-#' Are all values expressible as k / n for a single small integer n?
-#'
-#' Genuine proportion data derived from counts (survival, fertilisation,
-#' bleaching scores) lies on such a grid; a continuous response divided by a
-#' continuous maximum does not. This is the discriminator that makes the
-#' divided-by-maximum check usable: without it the check fires on up to 38% of
-#' simulated genuine count proportions, purely because one replicate happened
-#' to record every individual as alive. With it the false positive rate is zero
-#' in both the simulation and the real-data sweep (see
-#' notes/normalisation_detection.md).
-#'
-#' The cost is that a count proportion that really was divided by its own
-#' maximum stays on a rational grid and is therefore missed. That is the safe
-#' direction to fail for a diagnostic message.
+#' Proportions derived from counts lie on such a grid, and a continuous
+#' response divided by a continuous maximum does not.
+#' \code{check_normalisation()} uses it so that a count proportion with every
+#' individual alive in one replicate is not reported as divided by its
+#' maximum. A count proportion that was divided by its maximum is missed.
 #'
 #' @noRd
 on_rational_grid <- function(y, max_n = 100, tol = 1e-8) {
@@ -31,21 +22,13 @@ on_rational_grid <- function(y, max_n = 100, tol = 1e-8) {
 
 #' check_normalisation
 #'
-#' Detect a response that has been normalised to a quantity estimated from the
-#' dataset being analysed, and say why that is a problem.
+#' Report a response normalised to a quantity estimated from the same data:
+#' divided by the observed maximum, which leaves a maximum of exactly 1 at one
+#' observation, or by the control mean, which leaves a mean of exactly 1 at the
+#' lowest predictor value.
 #'
-#' Two practices leave an exact arithmetic trace:
-#'
-#' A. divided by the observed maximum -- the maximum is exactly 1 and exactly
-#'    one observation attains it, because \code{v / max(v)} is exactly 1 in
-#'    floating point at the maximum and nowhere else.
-#' B. divided by the control mean -- the mean of the observations at the lowest
-#'    predictor value is exactly 1.
-#'
-#' Messages rather than warnings: neither is fatal, both are recoverable by
-#' refitting the raw response, and the user may have a reason. They are emitted
-#' from \code{\link{bnec}} rather than \code{check_data} so that they fire once
-#' per call rather than once per model in a set.
+#' Raises messages, not warnings. Call it from \code{\link{bnec}}, not
+#' \code{check_data}, so that it reports once per call, not once per model.
 #'
 #' @noRd
 check_normalisation <- function(data) {
@@ -91,31 +74,13 @@ check_normalisation <- function(data) {
 
 #' The generalised linear model whose variance function is a family's own
 #'
-#' The contrast at the top of the series is tested under the mean-variance
-#' relationship the fit itself assumes, so that the standard error it is judged
-#' against is the one the family implies. The quasi-likelihood families supply
-#' that variance function exactly for every row but two: \code{quasipoisson} is
-#' linear in the mean where the negative binomial variance is quadratic, and
-#' \code{quasibinomial} absorbs a beta-binomial over-dispersion as a constant
-#' multiplier only where the number of trials is constant within a level.
-#' Neither is remedied by a parametric fit at this size, because the shape
-#' parameter of a negative binomial or a beta-binomial is not identified by two
-#' levels of a handful of replicates, and a pre-fit advisory message that
-#' reports its own convergence failure is worse than one that is slightly
-#' conservative.
-#'
-#' The \code{log} link is written out for the Gamma and count rows. The
-#' \code{inverse} link \code{stats::Gamma()} takes by default reverses the sign
-#' of the contrast, so a declining response would be tested as a rising one.
-#'
-#' The Beta row is the one that looks as though it needs a beta regression. Its
-#' variance is \code{mu (1 - mu) / (1 + phi)}, which is \code{mu (1 - mu)} times
-#' a constant, and that is what \code{quasibinomial} fits; the precision
-#' parameter reappears as the estimated dispersion.
-#'
-#' The zero-inflated count families are not two-block families here, so the
-#' check runs on their whole response and the extra zeros are carried by the
-#' estimated dispersion.
+#' The flatness contrast is tested under the mean-variance relationship the fit
+#' assumes. quasipoisson stands in for the negative binomial and quasibinomial
+#' for the beta-binomial, because their shape parameters cannot be estimated
+#' from two levels. The beta row is quasibinomial because the beta variance is
+#' \code{mu (1 - mu)} times a constant. The Gamma and count rows need the log
+#' link: the inverse link \code{stats::Gamma()} takes by default reverses the
+#' sign of the contrast.
 #'
 #' @param family Either a \code{\link[stats]{family}} object or a family tag.
 #'
@@ -150,16 +115,10 @@ flatness_spec <- function(family) {
 
 #' The blocks of a response the flatness contrast is computed on
 #'
-#' A two-block family is split into the response of the individuals past the
-#' hurdle and the survival that put them there, because the two describe
-#' different curves and either can be the one that has not flattened.
-#'
-#' The survival block is built from the raw counts rather than from the
-#' proportions \code{survival_by_x()} returns, which are clamped to
-#' \code{[eps, 1 - eps]} so that Stan can fit them under an identity link. It
-#' holds one proportion per predictor value, so there is no replication within
-#' a level anywhere in it, and its information comes instead from the number of
-#' individuals behind each proportion.
+#' A hurdle family is split into the response past the hurdle and the
+#' survival, since either can be the curve that has not flattened. The survival
+#' block is built from the raw counts, not from \code{survival_by_x()}, whose
+#' proportions are clamped to \code{[eps, 1 - eps]}.
 #'
 #' @param x A \code{\link[base]{numeric}} predictor.
 #' @param y A \code{\link[base]{numeric}} response.
@@ -182,11 +141,9 @@ flatness_blocks <- function(x, y, trials, denominator, family) {
     alive <- vapply(ux, function(z) sum(y[x == z] > 0), numeric(1))
     mu_spec <- flatness_spec(hurdle_mu_family(family))
     mu_block <- list(x = parts$mu$x, y = parts$mu$y, spec = mu_spec)
-    # Unreachable today: make_brmsformula() refuses a rate() term for anything
-    # but poisson and negbinomial, so no hurdle fit has a denominator. Attached
-    # anyway, because the mu block of a count hurdle has a count spec whose
-    # offset is TRUE, and leaving it off would put that block's contrast on
-    # counts rather than rates the day a rate() hurdle is allowed.
+    # No hurdle fit has a rate() denominator yet: make_brmsformula() refuses
+    # one. Attach it anyway, since a count hurdle's spec has an offset and the
+    # contrast would otherwise be on counts, not rates.
     if (isTRUE(mu_spec$offset)) {
       mu_block$denominator <- denominator[y > 0]
     }
@@ -206,12 +163,9 @@ flatness_blocks <- function(x, y, trials, denominator, family) {
   }
   block <- list(x = x, y = y, spec = spec)
   if (identical(spec$kind, "matrix")) {
-    # A binomial family with no trials() term is refused by
-    # check_trials_term(), which bnec() and bnec_group() run before this
-    # report, so no call through them reaches this branch. Kept
-    # for a direct call: nothing is said, because the contrast has no trials
-    # to count against, and a report that it could not be computed would name
-    # a symptom rather than the missing term. See #442.
+    # bnec() and bnec_group() refuse a missing trials() term before this
+    # report. A direct call returns nothing here, since a report would name the
+    # symptom rather than the missing term.
     if (is.null(trials)) {
       return(list())
     }
@@ -226,13 +180,10 @@ flatness_blocks <- function(x, y, trials, denominator, family) {
 
 #' Test one block for a decline between its two highest predictor values
 #'
-#' The two levels are compared by analysis of deviance rather than by the Wald
-#' statistic \code{summary.glm()} prints. The two agree exactly for a gaussian
-#' response, where both are the two-sample t test, and the deviance test is the
-#' one that survives the separation the survival block routinely produces: a
-#' series running from every individual alive to none alive gives a Wald
-#' standard error of several thousand and a p-value near a half, which would
-#' miss the clearest incomplete design there is.
+#' Compares the two levels by analysis of deviance, not by the Wald statistic
+#' \code{summary.glm()} prints. The Wald test fails under the separation the
+#' survival block often shows, with every individual alive at one level and
+#' none at the other.
 #'
 #' @param block One element of \code{\link{flatness_blocks}}.
 #' @param alpha The one-sided significance level.
@@ -256,13 +207,10 @@ flatness_contrast <- function(block, alpha = 0.05, pool_dispersion = TRUE) {
   }
   upper <- ux[length(ux)]
   lower <- ux[length(ux) - 1]
-  # The dispersion is estimated from the two levels being compared, because for
-  # every family here but gaussian the variance depends on the mean: one
-  # estimated over a whole declining series is pulled up by the high-mean
-  # levels and overstates the variance at the top, which is where the rule has
-  # to work. bnec() fits a single sigma for a gaussian response unless a disp()
-  # term is supplied, so pooling there is the assumption the fit itself makes,
-  # and the caller passes in which of the two it is.
+  # Estimate the dispersion from the two levels compared: for every family but
+  # gaussian the variance depends on the mean, so a whole-series estimate
+  # overstates it at the top. A gaussian fit with no disp() term has one sigma,
+  # so pool_dispersion pools it there.
   pool <- isTRUE(pool_dispersion) && identical(spec$family$family, "gaussian")
   keep <- if (pool) is.finite(x) else x %in% c(lower, upper)
   if (identical(spec$kind, "matrix")) {
@@ -280,10 +228,8 @@ flatness_contrast <- function(block, alpha = 0.05, pool_dispersion = TRUE) {
     if (any(!is.finite(denominator) | denominator <= 0)) {
       return(list(status = "failed"))
     }
-    # An offset rather than a divided response, which keeps the counts integral
-    # and puts the contrast on the rate scale. #389 refuses a rate() written as
-    # an expression, so the denominator is a bare column and this is the same
-    # exposure the fit uses.
+    # An offset keeps the counts integral and puts the contrast on the rate
+    # scale, with the same exposure column the fit uses.
     offset_term <- log(denominator)
   }
   x_keep <- x[keep]
@@ -295,69 +241,22 @@ flatness_contrast <- function(block, alpha = 0.05, pool_dispersion = TRUE) {
   estimates_dispersion <- !identical(spec$family$family, "binomial")
   ux_keep <- sort(unique(x_keep))
   replicated <- max(tabulate(match(x_keep, ux_keep))) > 1
-  # A binomial or beta-binomial design with one row per concentration falls
-  # back to a fixed dispersion rather than being passed over.
-  #
-  # Those two rows are mapped to quasibinomial, whose dispersion needs
-  # replication, so the replication rule below would pass over one composite
-  # sample per dilution with twenty individuals scored in it --- the ordinary
-  # whole effluent binomial layout, and the design this rule exists for. The
-  # identical counts reaching this function as the survival block of a hurdle
-  # fit are tested, so the same data would give two answers depending on which
-  # family declared them.
-  #
-  # The denominator is known here, so the information is the individuals rather
-  # than the replication, exactly as it is for the hu block. The fallback
-  # trades the over-dispersion estimate for a test that exists at all, which is
-  # the same trade the hu block makes for the same reason. Where replication is
-  # present quasibinomial is kept, because over-dispersion between replicate
-  # vessels is real and worth accounting for.
-  #
-  # One consequence is stated rather than left implicit: a beta_binomial
-  # response with no replication is tested under a model that assumes no
-  # over-dispersion, on a family whose declaration says to expect it, so the
-  # test is anti-conservative there, and by more than the fallback's other
-  # rows. Measured on a flat top, four levels of twenty trials, one row at
-  # each, 4000 replicates: binomial reports on 0.058 and beta_binomial at an
-  # intra-class correlation of 0.1 on 0.184, against the nominal 0.05. The
-  # alternative was to pass the design over, which reports on none of the
-  # designs that are genuinely incomplete, and a rate of 0.184 on a message
-  # whose only consequence is to prompt the user is the better of the two. It
-  # is stated in NEWS and is an audit item for #391 beside the varying-trials
-  # rate.
+  # Without replication, a binomial or beta-binomial block falls back to a
+  # fixed dispersion rather than being passed over: quasibinomial needs
+  # replication, and one sample of many individuals per concentration is the
+  # common binomial design. For a beta-binomial response, which is
+  # over-dispersed, the test is then anti-conservative.
   if (estimates_dispersion && identical(spec$kind, "matrix") && !replicated) {
     spec$family <- binomial()
     estimates_dispersion <- FALSE
   }
-  # A block carrying too little information at the two levels is passed over in
-  # silence, and what counts as information differs by family.
-  #
-  # Where the dispersion is estimated it is replication: a factor fit with one
-  # observation per predictor value is saturated, so no dispersion can be
-  # estimated and no contrast is defined. That is the ordinary shape of a
-  # continuous predictor rather than a defect in the design --- the package's
-  # own nec_data has 100 distinct predictor values in 100 rows, and every
-  # vignette fits it --- so reporting would put an advisory on the documented
-  # example of the package.
-  #
-  # Where it is fixed it is the number of individuals behind each level. One
-  # observation per level is informative where each carries twenty individuals
-  # and is not where each carries one: two single Bernoulli trials reading
-  # (1, 0) give a deviance p of 0.048, against an exact conditional p of a
-  # half, and an unreplicated bernoulli design reported on a fifth of flat
-  # tops. Two individuals are required at each of the two levels, which a
-  # dilution series of ten or twenty passes and one individual per
-  # concentration does not.
-  #
-  # Section 2.2 of the plan asks for a report on an unreplicated design. It was
-  # written for a designed series, and an advisory raised on the commonest call
-  # there is teaches users to ignore the rule, which is the failure the rule
-  # exists to avoid. What section 2.2 wants protected is the degenerate case
-  # below, where the information is present and every observation is identical.
-  #
-  # tabulate(match(...)) rather than table(): table() builds its factor through
-  # as.character(), which is both the rounding the comment below rules out and
-  # 18 times slower on a 200,000-value predictor.
+  # Pass over in silence a block with too little information at the two
+  # levels. Where the dispersion is estimated, that is a block without
+  # replication: a continuous predictor with one observation per value, as in
+  # nec_data, is common and not a defect. Where it is fixed, that is fewer than
+  # two individuals at either level, where the deviance test is unreliable.
+  # `replicated` above uses tabulate(match()), because table() rounds the
+  # predictor through as.character().
   thin <- if (estimates_dispersion) {
     !replicated
   } else {
@@ -402,14 +301,10 @@ flatness_contrast <- function(block, alpha = 0.05, pool_dispersion = TRUE) {
   if (nrow(coefs) < index || !is.finite(coefs[index, 1])) {
     return(list(status = "failed"))
   }
-  # Where no observation differs from another at its own predictor value the
-  # dispersion is zero, and the contrast is then either exactly zero or
-  # infinitely significant. Tested on the observations rather than on the
-  # estimate, because the estimate of a zero dispersion is a rounding residue
-  # -- 1.8e-32 on a constant response, which no comparison against zero
-  # catches. Families whose dispersion is fixed are exempt: the variance of a
-  # binomial count is fixed by its mean and its number of trials, so a standard
-  # error is defined there with one observation per level.
+  # Where no observation differs from another at its own predictor value, the
+  # dispersion is zero and the contrast is undefined. Test the observations,
+  # not the estimate, which is a rounding residue rather than zero. A fixed
+  # dispersion needs no such check.
   if (estimates_dispersion) {
     working <- if (identical(spec$kind, "matrix")) {
       block$successes[keep] / block$trials[keep]
@@ -483,10 +378,9 @@ flatness_label <- function(block, family, level, named_levels) {
 #' Name the quantity a block's reported mean is a mean of
 #'
 #' The model frame holds the predictor and the response as the formula wrote
-#' them, so a fit on \code{crf(log(concentration))} reports log concentrations.
-#' Naming the expression is what stops a log concentration being read as a
-#' concentration, which is the trap \code{bayesnec/CLAUDE.md} records for the
-#' estimators.
+#' them, so a fit on \code{crf(log(concentration))} reports log
+#' concentrations. Naming the expression keeps them from being read as
+#' concentrations.
 #'
 #' @param block One element of \code{\link{flatness_blocks}}.
 #' @param y_label The response as the formula wrote it.
@@ -518,11 +412,8 @@ pop_var_label <- function(data, var, fallback) {
   if (is.null(pop_vars)) {
     return(fallback)
   }
-  # The column name of the model frame, not the entry of bnec_pop. bnec_pop
-  # records the bare variable, "x", while the column is named for the term the
-  # formula wrote, "log(x)", and it is the term that says which scale the
-  # numbers reported beside it are on. make_brmsformula() reads the name the
-  # same way.
+  # Use the model frame's column name, "log(x)", not the bnec_pop entry, "x":
+  # the term says which scale the reported numbers are on.
   position <- which(names(pop_vars) == var)
   if (length(position) != 1) {
     return(fallback)
@@ -552,38 +443,13 @@ capitalise_first <- function(x) {
 
 #' Report a response still declining at the top of the tested series
 #'
-#' The default \code{bot} prior takes its location and spread from the observed
-#' response, and the default \code{nec} and \code{ec50} priors take their
-#' location and spread from the tested predictor range, so on a design whose
-#' response is still falling at the highest concentration all three describe the
-#' design rather than the curve. The condition is reported before anything is
-#' fitted, because what the user does about it is a choice of prior. The two
-#' threshold priors are no longer truncated to that range (#393), so a threshold
-#' above the highest concentration is in the tail of the prior rather than
-#' outside its support; the report still stands, because a tail is not a
-#' statement that the design measured the threshold.
-#'
-#' The statistic is a one-sided contrast between the two highest distinct
-#' predictor values present in a block, fitted as a generalised linear model
-#' with the level as a two-valued factor and tested at \code{alpha}. The level
-#' is stated rather than a multiple of a standard error, so that the number in
-#' the code has a meaning: on a design whose top is flat the true contrast is
-#' zero and the rule reports at \code{alpha}, which is its false-positive rate
-#' by construction. The realised rate is measured in #391.
-#'
-#' The rule never reads the control, so a hormesis design, where the response
-#' rises before it falls, is assessed against the top of its own series and
-#' needs no special case, and a response on a log-ratio or centred scale whose
-#' control mean is not positive is assessed like any other (#229).
-#'
-#' Each block is assessed against its own two highest levels. For a two-block
-#' family the response block holds the individuals past the hurdle only, so
-#' where none survived the highest concentration its two highest levels are not
-#' the design's, and the levels used are named in the report.
-#'
-#' Called from \code{\link{bnec}} once before its model loop and from
-#' \code{\link{bnec_group}} once before its level loop, so that it is reported
-#' once per call rather than once per equation or once per level.
+#' The default \code{bot} prior is built from the observed response, and the
+#' default \code{nec} and \code{ec50} priors from the tested predictor range,
+#' so on such a design all three describe the design rather than the curve.
+#' The test is a one-sided generalised linear model contrast between the two
+#' highest predictor values of each block, at level \code{alpha}. In a hurdle
+#' family the response block holds survivors only, so the report names the
+#' levels it used. Call it once, before the model or level loop.
 #'
 #' @param data A model frame, as returned by \code{\link{model.frame}} for a
 #' \code{\link{bayesnecformula}}.
@@ -594,8 +460,7 @@ capitalise_first <- function(x) {
 #' named list giving them separately for each group level.
 #' @param alpha The one-sided significance level of the contrast.
 #' @param pool_dispersion Whether a gaussian dispersion is estimated over the
-#' whole series. \code{TRUE} where the formula carries no \code{disp()} term,
-#' which is the case in which \code{\link{bnec}} fits a single \code{sigma}.
+#' whole series. \code{TRUE} where the formula has no \code{disp()} term.
 #' @param asymptote_observed The \code{asymptote_observed} argument of
 #' \code{\link{bnec}}. \code{FALSE} drops the advice to set it.
 #'
@@ -697,9 +562,8 @@ check_response_flattened <- function(data, family, group = NULL,
 #' @param models Character vector of concrete model names.
 #' @param family The validated response family.
 #' @param model_survival Optional equation for a hurdle survival block.
-#' @param affected The parameter rows to read. The default is the three the
-#' flatness report is raised for; \code{\link{check_asymptote_declaration}}
-#' passes \code{"bot"} alone, because that is the only row the declaration
+#' @param affected The parameter rows to read: the three the flatness report
+#' reads by default, or \code{"bot"} alone, the only row the declaration
 #' generates.
 #'
 #' @return A named logical vector, one element per response block.
@@ -750,22 +614,12 @@ uses_response_range_defaults <- function(prior, models, family,
 
 #' The sentence naming the declaration, where the declaration is available
 #'
-#' @details \code{asymptote_observed = FALSE} needs a floor, and there are
-#' responses for which none can be derived. Recommending it for one of those
-#' would send the user to a hard error, so the sentence is omitted there and
-#' the report ends on the prior advice that precedes it.
-#'
-#' The floor is read from the response as supplied rather than from the link
-#' scale, which is what \code{\link{asymptote_floor}} expects. The two agree:
-#' the only branch that reads the response is the gaussian one, where an
-#' identity link leaves \code{\link{response_link_scale}} a no-op, and every
-#' other tag returns zero without reading it. A two-block family is passed as
-#' the joint family for the same reason --- its mu family has the same link, and
-#' the link is what decides the answer for a non-identity fit.
-#'
-#' The sentence is also left out where the call already sets
-#' \code{asymptote_observed = FALSE}. The rest of the report still applies
-#' then, so only this sentence is dropped (#449).
+#' @details The sentence is omitted where no floor can be derived, since
+#' \code{asymptote_observed = FALSE} would then be refused, and where the call
+#' already sets it. \code{\link{asymptote_floor}} expects the link scale but is
+#' given the response as supplied. The two agree, because only its gaussian
+#' branch reads the response, under an identity link. A hurdle family can be
+#' passed whole, since its mu family has the same link.
 #'
 #' @param family The validated response family.
 #' @param y The response as supplied.
@@ -789,53 +643,21 @@ declaration_advice <- function(family, y, asymptote_observed = TRUE) {
 
 #' Act on a declaration that the lower asymptote was not observed
 #'
-#' \code{asymptote_observed = FALSE} needs a floor --- the smallest value the
-#' mean can take --- and there are responses for which none can be derived. This
-#' refuses those, and reports a model set that mixes equations estimating a
-#' lower asymptote with equations asserting the response falls to that floor.
+#' \code{asymptote_observed = FALSE} needs a floor, the smallest value the mean
+#' can take. This refuses a response for which none can be derived, unless the
+#' supplied prior covers every \code{bot} row, and reports a model set that
+#' mixes equations estimating a lower asymptote with ones that have none. Call
+#' it once, before the model or level loop.
 #'
-#' Both are properties of the data, the family and the model set together, fixed
-#' for the whole call, so they are raised here and called once from
-#' \code{\link{bnec}} before its model loop and once from
-#' \code{\link{bnec_group}} before its level loop. \code{\link{define_prior}}
-#' keeps the refusal as the backstop for \code{\link{get_priors}} and
-#' \code{\link{amend}}, which do not come through either. The placement follows
-#' \code{\link{check_complete_cases}}, and matters for the same reason: from
-#' inside the model loop the refusal is printed once per equation and the call
-#' then ends on the generic all-models-failed advice, and from inside the level
-#' loop it arrives only after the earlier levels have compiled and sampled.
-#'
-#' The response is built the way \code{fit_bayesnec()} builds it --- divided by
-#' the trials or the \code{rate()} denominator, then put on the link scale ---
-#' so the floor is derived from the quantity the prior will be derived from.
-#' It is read from the model frame, before \code{\link{check_data}} has nudged a
-#' zero or a one off a boundary, and the two agree because a nudge leaves a
-#' value within its own support and the floor depends on the sign of the response and
-#' on the link alone. Both divisors are positive wherever the fit is meaningful,
-#' so neither changes that sign either.
-#'
-#' The model-set report states both branches, because the data decide neither.
-#' The region that would separate an equation estimating \code{bot} from one
-#' with no lower asymptote to estimate is the region the design did not reach,
-#' so a model average over both is averaging over the assumption at issue with
-#' weights the data cannot inform. Whether the response can reach zero is a
-#' property of the endpoint, which the user knows and the package cannot infer,
-#' so the set is reported and left alone.
+#' The floor is derived from the response divided by its trials or
+#' \code{rate()} denominator and put on the link scale, as
+#' \code{fit_bayesnec()} builds it. Reading it before \code{\link{check_data}}
+#' moves a value off a boundary is safe: the floor depends only on the sign of
+#' the response and on the link.
 #'
 #' @param data A model frame, as returned by the \code{\link{model.frame}}
 #' method for a \code{\link{bayesnecformula}}.
 #' @param family The validated response family.
-#' The model-set report is raised whatever prior was supplied, because the set
-#' and the design are what decide it. The two refusals are raised only where a
-#' \code{bot} prior will be generated from the declaration.
-#' \code{\link{add_brm_defaults}} wraps the default-prior build in
-#' \code{try()} so that a user who supplied a complete set is never blocked by
-#' a default they will not use (#207, #229), and a check raised before the loop
-#' would take that back. So the refusal is gated on
-#' \code{\link{uses_response_range_defaults}} reading the \code{bot} row
-#' alone, the same test that gates the flatness report above it. The
-#' initial-value band is unaffected either way: with no floor to extend it to,
-#' \code{\link{make_good_inits}} leaves it where it was.
 #'
 #' @param models A \code{\link[base]{character}} vector of concrete equation
 #' names.
@@ -854,27 +676,12 @@ check_asymptote_declaration <- function(data, family, models,
   if (isTRUE(asymptote_observed)) {
     return(invisible(NULL))
   }
-  # Reported before the gate below and not behind it. Whether a set mixes
-  # equations that estimate a lower asymptote with ones that do not is a
-  # property of the set and of the design, and supplying a bot prior does not
-  # make the region that would separate them observed. The gate exists for the
-  # refusals alone.
-  #
-  # The message says the fourteen have no lower asymptote to estimate, which is
-  # what having no bot parameter means, rather than that they fall to zero.
-  # Eleven of them do fall to zero -- nec3param is top * exp(-exp(beta)
-  # (x - nec)) -- but neclin, neclinhorme and ecxlin decay by subtraction and
-  # are unbounded below, which ?models records at R/models.R. check_models()
-  # keeps all three for a gaussian family, which is the branch where the floor
-  # comes from the response being non-negative, so the claim would be false on
-  # the common path and the advice that follows it would be acted on.
-  #
-  # The second side is read off each equation's parameters rather than taken
-  # as the complement of the group. ecxflat has no bot and belongs to no group,
-  # so the complement counted it as estimating a lower asymptote; and it does
-  # not belong on the first side either, because a constant is told from a
-  # declining curve whether or not the asymptote was observed. For the 23
-  # equations of mod_groups$all the two readings agree. See #419.
+  # Report a mixed set whatever prior was supplied: a bot prior does not make
+  # the region that separates the two kinds observed. The gate below is for
+  # the refusals alone. The message says the bot_free equations have no lower
+  # asymptote, not that they fall to zero: neclin, neclinhorme and ecxlin are
+  # unbounded below. Read the other side off each equation's parameters, not
+  # as the complement of bot_free, so that ecxflat is on neither side.
   bot_free <- intersect(models, mod_groups$bot_free)
   bot_est <- models[vapply(models, function(m) {
     "bot" %in% equation_par_names(m)
@@ -937,11 +744,9 @@ check_asymptote_declaration <- function(data, family, models,
     stop(asymptote_floor_error(no_floor_reason(floor_family, response)),
          call. = FALSE)
   }
-  # The second refusal unobserved_endpoint_mean() can raise, hoisted here for
-  # the same reason as the first: from inside define_prior() it is printed once
-  # per equation and the call then ends on the generic all-models-failed
-  # advice. Reached only on a response with no value above the floor at all,
-  # which for a gaussian response is every observation at zero.
+  # Raise unobserved_endpoint_mean()'s refusal here too, so that define_prior()
+  # does not print it once per equation. It is reached only where no value lies
+  # above the floor.
   invisible(unobserved_endpoint_mean(x, response,
                                      zero_bounded_family(floor_family)))
   invisible(NULL)
@@ -949,19 +754,11 @@ check_asymptote_declaration <- function(data, family, models,
 
 #' Refuse a model frame from which incomplete cases were removed
 #'
-#' \code{stats::model.frame()} drops an incomplete case before \pkg{bayesnec}
-#' sees the data, so an \code{NA} or \code{NaN} never reached the finiteness
-#' guard in \code{\link{check_data}} and the fit ran on fewer rows than were
-#' supplied with nothing said. Refused rather than announced: \code{Inf} is
-#' refused already, and the sample the estimates are derived from is not
-#' something the package should change silently.
-#'
-#' The rows removed are recorded on the model frame by
-#' \code{\link[stats]{na.omit}}, which is the only remaining evidence that
-#' they existed. They are reported by row name rather than by position: a name
-#' is what the user sees in their own data frame, and where the model frame was
-#' built from a subset --- one level of a \code{\link{bnec_group}} call --- a
-#' position indexes the subset and names no row of the data that was supplied.
+#' \code{stats::model.frame()} drops an incomplete case before
+#' \code{\link{check_data}} sees it, so the fit would run on fewer rows with
+#' nothing said. The rows removed are reported by row name, not position: for
+#' one level of a \code{\link{bnec_group}} call a position indexes the subset,
+#' not the data supplied.
 #'
 #' @param data A model frame, as returned by the \code{\link{model.frame}}
 #' method for a \code{\link{bayesnecformula}}.
@@ -986,26 +783,12 @@ check_complete_cases <- function(data) {
 
 #' Does every dispersion sub-model term evaluate to finite values?
 #'
-#' \code{check_data()} tests the predictor and the response for finiteness and
-#' names the column when either fails, but it inspects only the population
-#' variables \code{crf()} declares. A \code{disp(~...)} term is an arbitrary
-#' \pkg{brms} formula evaluated against the user's data frame, and its
-#' variables are deliberately kept out of the model frame -- \code{brm()} is
-#' handed the full data frame and resolves them itself -- so nothing tested
-#' them and an infinite value reached Stan. The fit then did not run, reporting
-#' a \pkg{brms} warning about the data in general with nothing naming the term
-#' responsible. See #271.
-#'
-#' Raised from \code{\link{bnec}} and \code{bnec_group()} rather than from
-#' \code{\link{check_data}}, which is the placement rule for a refusal that is
-#' a property of the data and the formula together. Here there is a second
-#' reason: \code{check_data()} is given the model frame, which by design does
-#' not contain the dispersion sub-model's columns, so it could not perform this
-#' check even if it were the right place for it.
-#'
-#' Only terms that evaluate to a numeric vector are tested. A smooth,
-#' \code{disp(~s(x))}, evaluates to a specification object rather than to
-#' numbers and is left to \pkg{brms}.
+#' \code{check_data()} tests only the variables \code{crf()} declares, and a
+#' \code{disp(~...)} term's variables are kept out of the model frame, so an
+#' infinite value would reach Stan with nothing naming the term. Call it from
+#' \code{\link{bnec}} and \code{bnec_group()}: \code{check_data()} is given the
+#' model frame and cannot see these columns. A term that does not evaluate to
+#' numbers, such as a smooth, is left to \pkg{brms}.
 #'
 #' @param formula A \code{\link{bayesnecformula}}.
 #' @param data A \code{\link[base]{data.frame}}, the one the user supplied.
@@ -1015,20 +798,14 @@ check_complete_cases <- function(data) {
 #' @importFrom stats as.formula terms
 #' @noRd
 check_disp_finite <- function(formula, data) {
-  # parse_disp_term()'s own refusals -- more than one disp() term, and a term
-  # it cannot parse -- are raised from here rather than swallowed by a try().
-  # Suppressing them did not avoid the error, it deferred it to
-  # add_brm_defaults(), which runs inside the per-model try() in bnec(), so one
-  # malformed formula printed the refusal once for every member of the model
-  # set and ended on the generic all-models-failed advice. That is the pattern
-  # this check exists to remove.
+  # Let parse_disp_term() raise its own refusals here. Under a try() they would
+  # recur inside bnec()'s per-model try(), once per equation.
   disp_spec <- parse_disp_term(formula)
   if (is.null(disp_spec) || !identical(disp_spec$route, "A")) {
     return(invisible(NULL))
   }
-  # parse_disp_term() returns the right-hand side as an expression string
-  # ("log(x)"), not as a formula string, so the tilde is added here. Without it
-  # as.formula() errors and the check silently passed everything.
+  # disp_spec$value is an expression string, "log(x)", so add the tilde.
+  # Without it as.formula() fails and the check passes everything.
   disp_formula <- try(as.formula(paste("~", disp_spec$value)), silent = TRUE)
   if (inherits(disp_formula, "try-error")) {
     return(invisible(NULL))
@@ -1037,23 +814,15 @@ check_disp_finite <- function(formula, data) {
   bad <- character(0)
   incomplete <- character(0)
   for (label in labels) {
-    # enclos is the formula's own environment. With eval()'s default of
-    # parent.frame(), a term written with a function the user defined --
-    # disp(~cent(x)) -- could not be evaluated, and the try() below then
-    # skipped it, so the check silently passed rather than checking anything.
-    # The skip is kept for a term that genuinely cannot be evaluated here, such
-    # as a smooth. See #319.
+    # Evaluate in the formula's environment, so that a user-defined function
+    # such as disp(~cent(x)) is found; otherwise the term is skipped unchecked.
     values <- try(eval(str2lang(label), envir = data,
                        enclos = formula_env(formula)), silent = TRUE)
     if (inherits(values, "try-error") || !is.numeric(values)) {
       next
     }
-    # NA and Inf are separated, and tested independently so a term with both
-    # is reported for both. They have different causes and different remedies,
-    # and check_complete_cases() cannot report the NA because it is given the
-    # model frame, which by design does not contain the dispersion sub-model's
-    # columns. Reporting a missing value as non-finite named log() of a zero
-    # as the usual cause, which is the wrong diagnosis.
+    # Test NA and non-finite values separately: they have different causes,
+    # and check_complete_cases() cannot see these columns.
     if (anyNA(values)) {
       incomplete <- c(incomplete, label)
     }
@@ -1090,19 +859,11 @@ check_disp_finite <- function(formula, data) {
 
 #' Refuse a data column whose name collides with a generated parameter
 #'
-#' The group-level transform (#257) introduces an intermediate non-linear term
-#' named \code{bnecmu}, \code{ogl()} introduces one named \code{ogl}, and the
-#' parameter-level transform (#294) introduces \code{topgl}, \code{botgl},
-#' \code{bnectop} and \code{bnecbot}. All are resolved by \pkg{brms} against
-#' the user's data frame, so a column of any of those names would be silently
-#' preferred over the generated term and the fit would be a different model with
-#' no error. Refused by name here rather than left to produce a confusing
-#' \pkg{brms} message about a formula the user did not write.
-#'
-#' The set is refused in full whatever the formula is, rather than only where
-#' the term would actually be generated. Which terms a fit generates depends on
-#' the family and on the group-level structure, so a conditional refusal would
-#' accept a column on one call and refuse it on the next with the same data.
+#' \pkg{brms} resolves the generated non-linear terms that
+#' \code{generated_term_names()} lists against the user's data first, so a
+#' column of one of those names would silently replace the term. The whole set
+#' is refused whatever the formula, so that the same data are not accepted on
+#' one call and refused on the next.
 #'
 #' @param data A \code{\link[base]{data.frame}}, the one the user supplied.
 #'
@@ -1125,15 +886,10 @@ check_reserved_names <- function(data) {
 
 #' Refuse a binomial or beta_binomial formula with no trials() term
 #'
-#' Both families model each response as a count out of a number of trials,
-#' and \pkg{brms} reads that number from a \code{trials()} term on the
-#' left-hand side of the formula. Without one there is nothing to divide the
-#' count by, so neither the default priors nor the fit can be built.
-#'
-#' Raised by \code{\link{bnec}}, \code{\link{bnec_group}} and
-#' \code{\link{get_priors}} once per call, before any equation or level is
-#' fitted, and kept in \code{\link{check_data}} and \code{\link{amend}} as the
-#' backstop for the routes that do not come through those. See #442.
+#' \pkg{brms} reads the number of trials from a \code{trials()} term, and
+#' without it neither the default priors nor the fit can be built. Call it once
+#' per call, before any equation or level is fitted; \code{\link{check_data}}
+#' and \code{\link{amend}} keep it as a backstop.
 #'
 #' @param data A model frame for a \code{\link{bayesnecformula}}.
 #' @param family A validated \code{\link[stats]{family}}, or a family name.
@@ -1145,16 +901,13 @@ check_trials_term <- function(data, family) {
   if (!fam_tag %in% c("binomial", "beta_binomial")) {
     return(invisible(NULL))
   }
-  # Read off bnec_pop rather than through retrieve_var(): model.frame() leaves
-  # the trials slot out of bnec_pop where the formula has no trials() term, so
-  # its absence there is the absence of the term, and nothing needs to be read
-  # from the data to establish it.
+  # model.frame() leaves trials_var out of bnec_pop where the formula has no
+  # trials() term, so its absence is the test.
   if ("trials_var" %in% names(attr(data, "bnec_pop"))) {
     return(invisible(NULL))
   }
-  # The example is written with the response and predictor as the formula
-  # wrote them, so that the only unfamiliar part of it is the term to add. The
-  # trials column and the equation are placeholders, as in ?bayesnecformula.
+  # Write the example with the formula's own response and predictor, so that
+  # only the term to add is new.
   y_label <- pop_var_label(data, "y_var", "y")
   x_label <- pop_var_label(data, "x_var", "x")
   stop("The ", fam_tag, " family needs the number of trials for each",
@@ -1186,24 +939,15 @@ check_data <- function(data, family, model) {
   bnec_pop_vars <- attr(data, "bnec_pop")
   y_pos <- which(names(bnec_pop_vars) == "y_var")
   x_pos <- which(names(bnec_pop_vars) == "x_var")
-  # Kept here for the routes that do not come through bnec(): get_priors(),
-  # which checks each model of the set in turn, and amend(), which refits from
-  # the data frame an existing fit stores. bnec() and bnec_group() run it
-  # before any model is fitted, for the reason given at those call sites.
-  # See #278.
+  # bnec() and bnec_group() run this before any model is fitted. It stays here
+  # for get_priors() and amend(), which do not come through them.
   check_complete_cases(data)
-  # The backstop for the routes that reach this function without a call-level
-  # check: update() with new data or a new family, and a direct
-  # fit_bayesnec() call. bnec(), bnec_group() and get_priors() raise it once
-  # before their loops, which is where a user meets it. Placed before the
-  # finiteness checks and the direction warning below, as it is placed
-  # before the checks on the response there, so that nothing about the
-  # response is reported for a formula that cannot be fitted. See #442.
+  # A backstop for update() and a direct fit_bayesnec() call. It precedes the
+  # checks on the response, so that nothing about the response is reported for
+  # a formula that cannot be fitted.
   check_trials_term(data, family)
-  # is.finite() elementwise rather than on the mean, so that a column reaching
-  # this point with NA still present -- a user with options(na.action =
-  # "na.pass"), for which check_complete_cases() sees nothing -- is named as
-  # well.
+  # Test every element, so that an NA left by options(na.action = "na.pass")
+  # is reported too.
   if (!all(is.finite(x))) {
     stop("Your predictor column contains values that are not finite.")
   }
@@ -1219,59 +963,34 @@ check_data <- function(data, family, model) {
             "response values to decline with increasing values of predictor.")
   }
   fam_tag <- family$family
-  # A censored response states that the truth lies in an interval whose bound is
-  # the recorded value. The boundary nudges below assert a point instead, so
-  # where the two meet the nudge would silently move the bound the user declared.
-  # NULL when the formula carried no cens() term, in which case nothing changes.
+  # A censored value is a bound the user declared, so the nudges below leave
+  # it alone. NULL where the formula has no cens() term.
   cens <- retrieve_cens(data)
-  # Called for its errors, not its value: nothing here needs to know which
-  # distribution describes the predictor, but this call rejects an integer one,
-  # which reaches this point unchallenged because is.numeric() is TRUE for an
-  # integer and retrieve_var() preserves the type. define_prior() makes the same
-  # call and would raise the same error, so deleting this one would relocate the
-  # error rather than remove it -- but it belongs here, in the documented data
-  # check, rather than inside prior construction. See #269.
+  # Called for its error, not its value: it refuses an integer predictor,
+  # which is.numeric() lets through.
   set_distribution(x, silence_y_msgs = TRUE, silence_x_msgs = FALSE)
-  # Families whose support is open at a boundary cannot express a censored
-  # observation sitting exactly on it: the censored likelihood contribution is
-  # F(0) = 0 on the left and 1 - F(1) = 0 on the right, so Stan sees log(0) and
-  # initialisation fails with nothing informative to point at. Catch it here,
-  # where the remedy can be named. Checked before the nudges below, so the
-  # diagnostic does not depend on whether a nudge would have fired.
+  # A family open at a boundary cannot fit a censored value on it: Stan sees
+  # log(0) and initialisation fails without explanation. Check before the
+  # nudges below, so that the result does not depend on them.
   if (fam_tag %in% c("Gamma", "hurdle_gamma", "beta", "zero_inflated_beta")) {
     check_cens_support(y, cens, bound = 0, direction = -1L, fam_tag = fam_tag)
   }
   if (fam_tag %in% c("beta", "zero_inflated_beta")) {
     check_cens_support(y, cens, bound = 1, direction = 1L, fam_tag = fam_tag)
   }
-  # Runs here as a backstop for get_priors() and for a direct fit_bayesnec()
-  # call. bnec() runs it once for the whole call, before the model loop, so that
-  # a model set stops once rather than repeating the message per model.
+  # A backstop for get_priors() and a direct fit_bayesnec() call; bnec() runs
+  # it once, before the model loop.
   check_inline_boundary(data, family)
-  # The corrections below concern the response alone. No family constrains the
-  # values a predictor may take, so a zero concentration is an ordinary control
-  # and reaches brm() as recorded; the predictor corrections that used to sit
-  # here were written by symmetry with these rather than for a reason of their
-  # own. See #269.
+  # The corrections below change the response only. No family constrains the
+  # predictor, so a zero concentration reaches brm() as recorded.
 
-  # Which zeros are a boundary artefact to be nudged. A censored row is exempt
-  # for the same reason a hurdle zero is: the value there is a declared bound,
-  # not an artefact, and moving it would restate the bound the user chose.
+  # A censored zero is a declared bound, not an artefact, so it is not nudged.
   to_shift <- y == 0 & !is_censored(cens)
-  # NB: this nudge must never apply to a hurdle family. There the zeros are the
-  # hurdle signal, not a boundary problem -- moving them off zero would leave
-  # the hu block with nothing to identify itself from. fam_tag is
-  # "hurdle_gamma" rather than "Gamma" in that case, so the condition below
-  # already excludes it; the guard is explicit so it survives refactoring.
-  # The three nudges below are silent here and reported once from the
-  # user-facing entry points instead -- bnec(), bnec_group(), get_priors() and
-  # update(). check_data() runs once per model, so a message from here is
-  # repeated for every member of a model set; the substitution itself is a
-  # property of the data and the family, fixed for the whole call. This is the
-  # placement check_normalisation() and check_inline_boundary() already use.
-  # Two of the three were silent altogether, so a user comparing bayesnec
-  # against another engine had no way to see that the data had been altered.
-  # See #93 and D16.
+  # Never nudge a hurdle family's zeros: they identify the hu block. The
+  # is_hurdle_family() test below repeats what fam_tag == "Gamma" already
+  # ensures, and is kept on purpose.
+  # The nudges are silent here, because check_data() runs once per model. The
+  # entry points report them once, from substitution_record().
   if (any(to_shift) & fam_tag == "Gamma" & !is_hurdle_family(fam_tag)) {
     min_val <- min(y[y > 0])
     data[to_shift, y_pos] <- y[to_shift] + (min_val / 10)
@@ -1305,12 +1024,9 @@ check_data <- function(data, family, model) {
 
 #' What check_data() substitutes in the response, and why
 #'
-#' The conditions mirror the three nudges in \code{\link{check_data}} exactly,
-#' censoring exemptions included, so the record describes what was done rather
-#' than restating the rule. Returned by \code{\link{check_data}}, reported
-#' once by \code{report_substitutions()} at each user-facing entry point, and
-#' stored on the fitted object so that a user comparing \pkg{bayesnec} against
-#' another engine can recover what was altered. See #93.
+#' Keep the conditions identical to the nudges in \code{\link{check_data}},
+#' censoring exemptions included, so that the record describes what was done.
+#' \code{report_substitutions()} reports it, and the fit stores it.
 #'
 #' @param y The response, as read from the model frame.
 #' @param cens The censoring indicator, or \code{NULL}.
@@ -1359,11 +1075,9 @@ substitution_record <- function(y, cens, family) {
 #'
 #' @param record The \code{substitutions} element of \code{check_data()}'s
 #' return.
-#' @param on_fit Does this caller return a fitted object that stores the
-#' record? \code{TRUE} for \code{\link{bnec}} and \code{update()};
-#' \code{FALSE} for \code{\link{get_priors}}, which returns priors, so
-#' pointing the user at \code{?bnec_record} there would name something the
-#' call does not produce.
+#' @param on_fit Whether the caller returns a fit that stores the record.
+#' \code{FALSE} for \code{\link{get_priors}}, whose message must not point to
+#' \code{?bnec_record}.
 #'
 #' @return \code{NULL}, invisibly. Called for the message.
 #' @noRd
@@ -1395,16 +1109,9 @@ report_substitutions <- function(record, on_fit = TRUE) {
 #' Refuse a formula whose transformed response sits on a boundary its family
 #' excludes
 #'
-#' A property of the data and the formula together, fixed for a whole
-#' \code{\link{bnec}} call, so it is checked once there rather than once per
-#' model. \code{\link{check_normalisation}} is hoisted out of
-#' \code{\link{check_data}} for the same reason: a model set would otherwise
-#' repeat the diagnostic for each of its members and end on the generic
-#' all-models-failed advice, long after the cause.
-#'
-#' The conditions mirror the corrections in \code{\link{check_data}} exactly,
-#' censoring exemptions included, because a value this refuses is precisely one
-#' that would otherwise have been corrected.
+#' \code{\link{bnec}} calls it once, before the model loop. Keep its conditions
+#' identical to the nudges in \code{\link{check_data}}: a value it refuses is
+#' one that would otherwise have been nudged.
 #'
 #' @noRd
 check_inline_boundary <- function(data, family) {
@@ -1482,14 +1189,9 @@ response_bound_reached <- function(y, trials = NULL) {
 #' @noRd
 response_bound_state <- function(data, family, group = NULL) {
   fam_tag <- if (inherits(family, "family")) family$family else family
-  # zero_inflated_beta is listed although 0 lies inside its support, because
-  # both of its bounds leave a response that does not vary. Its ones are shifted
-  # to 0.999 as beta's are, so a response of 1 throughout is the beta case and
-  # is fitted with ecxflat alone. Its zeros go to the zero-inflation block, so a
-  # response of 0 throughout leaves the beta block with no data, and
-  # constant_fits_bound() refuses it. Before D35 it was left out, and both
-  # reached fitting: the ones shifted, the zeros with no positive value for the
-  # beta block's default priors. See #441.
+  # zero_inflated_beta is listed although 0 is inside its support: its zeros
+  # go to the zero-inflation block, so a response of 0 throughout leaves the
+  # beta block no data. Its ones are shifted as beta's are.
   if (!fam_tag %in% c("bernoulli", "binomial", "beta_binomial", "beta",
                       "zero_inflated_beta")) {
     return(NULL)
@@ -1501,12 +1203,8 @@ response_bound_state <- function(data, family, group = NULL) {
   trials <- NULL
   if (fam_tag %in% c("binomial", "beta_binomial")) {
     trials <- retrieve_var(data, "trials_var")
-    # A binomial response with no trials() term is refused by
-    # check_trials_term(), which bnec(), bnec_group(), get_priors() and
-    # amend() run before this, and which check_data() raises after it on the
-    # update() route. Without the trials there is no upper bound to test
-    # against, so nothing is said here and that refusal is left to arrive.
-    # See #442.
+    # Without trials there is no upper bound to test. check_trials_term()
+    # refuses that case, before or after this on every route.
     if (is.null(trials)) {
       return(NULL)
     }
@@ -1527,16 +1225,10 @@ response_bound_state <- function(data, family, group = NULL) {
 
 #' Whether the constant equation can be fitted at a bound
 #'
-#' It can at every bound but 0 of the two beta families. A \code{beta}
-#' distribution cannot represent a zero, and \code{\link{check_data}} shifts a
-#' zero off the boundary by a tenth of the smallest positive observation, which
-#' a response of 0 in every observation does not have: the shift is
-#' \code{Inf}. A \code{zero_inflated_beta} response keeps its zeros for the
-#' zero-inflation block and fits its beta block to the observations above zero,
-#' of which a response of 0 in every observation has none (#441). The ones of
-#' both families are shifted to 0.999, which needs no other observation, so a
-#' response of 1 in every observation can be fitted. The discrete families are
-#' fitted at either bound as recorded.
+#' It can at every bound but 0 of the two beta families. A beta response of 0
+#' throughout has no positive value to set the shift off zero, and a
+#' zero_inflated_beta response of 0 throughout leaves its beta block no data.
+#' A value of 1 is shifted to 0.999, which needs no other observation.
 #'
 #' @param fam_tag The family tag.
 #' @param bound 0 or 1.
@@ -1549,63 +1241,13 @@ constant_fits_bound <- function(fam_tag, bound) {
 
 #' Refuse a bounded response with every observation at one of its bounds
 #'
-#' A \code{bernoulli}, \code{binomial}, \code{beta_binomial}, \code{beta} or
-#' \code{zero_inflated_beta} response whose every observation is 0, or 1 (every
-#' count equal to its trials), does not vary, so it identifies no
-#' concentration-response curve.
-#' Before #400 the three discrete families failed inside prior construction:
-#' \code{response_link_scale()} anchors a response at a bound on the largest
-#' observation strictly inside it, which does not exist here, and
-#' \code{define_prior()} then stopped in \code{quantile()} with a message that
-#' named neither the column nor the cause. \code{beta} at 1 was shifted to
-#' 0.999 and fitted. \code{beta} at 0 was shifted by a tenth of the smallest
-#' positive observation, which with none present is \code{Inf}. Before #441
-#' \code{zero_inflated_beta} at 1 was shifted to 0.999 and fitted with the set
-#' requested, and at 0 reached prior construction with no value above zero for
-#' its beta block, where \code{min()} warned that it had no non-missing
-#' arguments.
-#'
-#' Such a response does identify the constant equation \code{ecxflat}, whose
-#' one parameter is the level of the response, so the refusal applies to the
-#' curve equations only (#419). \code{\link{bnec}} and \code{\link{bnec_group}}
-#' fit \code{ecxflat} alone in place of whatever set was requested, through
-#' \code{constant_fallback()}, and reach this function only for the cases
-#' \code{ecxflat} cannot be fitted to either, a \code{beta} or
-#' \code{zero_inflated_beta} response of 0 in every observation (see
-#' \code{constant_fits_bound()}). The other routes keep
-#' the refusal for a set holding any curve equation and let a set of
-#' \code{ecxflat} alone through: \code{\link{get_priors}}, whose curve
-#' equations have no prior to give on such a response, and
-#' \code{\link{bnec_hurdle}}, \code{amend()} and \code{update()}, which were
-#' not given the substitution. Each passes the equations it is about to build
-#' a prior for as \code{model}.
-#'
-#' A property of the data and the family, fixed for the whole call, so it is
-#' raised once from \code{\link{bnec}} and \code{\link{get_priors}} before any
-#' model is considered, and from \code{\link{bnec_group}} for every level
-#' before any level is fitted, following the placement of
-#' \code{\link{check_inline_boundary}}. \code{\link{bnec_hurdle}} raises it on
-#' the growth component before either component is fitted. \code{amend()} and
-#' \code{update()} call it for the routes that do not come through those entry
-#' points, each with the family its refit uses, and \code{update()} on a
-#' \code{\link{bayesnechurdlefit}} raises it on both components before either
-#' is refitted. It is not called from \code{\link{check_data}}: each caller
-#' raises it before \code{check_data()} is reached. The whole decision is made
-#' here, so that a change to what is done with such a response is made in one
-#' place.
-#'
-#' Censoring is not consulted: the response is judged on its recorded values,
-#' because the default priors are built from them. A value left- or
-#' right-censored at a bound of one of these families states either what the
-#' family cannot represent (beyond the bound) or nothing at all (anywhere
-#' within its support). An interval-censored observation whose upper end, the
-#' second variable of \code{cens()}, lies inside the support holds
-#' information the recorded value does not, but \code{check_data()},
-#' \code{response_link_scale()} and \code{define_prior()} read only the
-#' recorded values, so such a response reached the same \code{quantile()}
-#' error as one with no censoring at all when it was let through. It is refused
-#' by name instead. Supplying \code{prior} does not change this: the refusal is
-#' raised before any prior is read.
+#' A bernoulli, binomial, beta_binomial, beta or zero_inflated_beta response
+#' that is 0 throughout, or 1 throughout (every count equal to its trials),
+#' identifies no curve. It does identify the constant equation \code{ecxflat},
+#' so a set of \code{ecxflat} alone passes where \code{constant_fits_bound()}
+#' allows. Call it before \code{\link{check_data}} and before any model or
+#' level is fitted. Censoring is not consulted, because the default priors are
+#' built from the recorded values.
 #'
 #' @param data A model frame from \code{model.frame()} on a
 #' \code{\link{bayesnecformula}}.
@@ -1645,15 +1287,8 @@ check_response_at_bound <- function(data, family, group = NULL,
   }
   side <- function(bound) if (bound == 1) "upper" else "lower"
   why <- " A response that does not vary identifies no concentration-response"
-  # The remedy depends on whether the constant equation can be fitted at the
-  # bound. Where it can, the message names it, because it is the one equation
-  # that can be; where it cannot, naming it would send the user to a second
-  # refusal. See #419.
-  #
-  # The two beta families cannot be fitted at 0 for different reasons, and the
-  # message gives the one that applies. A zero_inflated_beta response of 0 is
-  # inside its support, so the beta message, that a zero cannot be represented,
-  # would be false for it. See #441.
+  # Name ecxflat as the remedy only where it can be fitted at the bound. A
+  # zero_inflated_beta response can hold a zero, so it gets its own reason.
   no_zero <- function(grouped) {
     it <- if (grouped) "them" else "it"
     if (identical(fam_tag, "zero_inflated_beta")) {
@@ -1705,10 +1340,8 @@ check_response_at_bound <- function(data, family, group = NULL,
   if (length(hit) == 0) {
     return(invisible(NULL))
   }
-  # Refused for the whole call rather than fitting the other levels and
-  # reporting this one as skipped, so that the omission is made by the user and
-  # is visible in their script (D30). Every such level is named at once, so
-  # that one call finds them all.
+  # Refuse the whole call rather than skip the level, so that the user makes
+  # the omission in their script. Name every such level at once.
   where <- vapply(names(hit), function(lev) {
     paste0("\"", lev, "\", where ", describe(hit[[lev]]), " (the ",
            side(hit[[lev]]), " bound)")
@@ -1730,27 +1363,17 @@ check_response_at_bound <- function(data, family, group = NULL,
 
 #' Fit the constant equation alone to a response with no variation
 #'
-#' A bounded response with every observation at one bound identifies no curve,
-#' and it does identify \code{ecxflat}, whose one parameter is the level of the
-#' response and whose every estimate lies above the tested range. So
-#' \code{\link{bnec}} fits \code{ecxflat} alone in place of the set requested,
-#' whatever that set was, rather than refusing the call as it did under #400
-#' (D31). Decided once, before the model loop, for the reason
-#' \code{\link{check_response_at_bound}} is raised there. A response
-#' \code{ecxflat} cannot be fitted to either, a \code{beta} or
-#' \code{zero_inflated_beta} response of 0 throughout, is refused by that
-#' function first.
-#'
-#' The requested equations are recorded as excluded, with the reason, so that
-#' \code{\link{bnec_record}} states why the set fitted is not the set asked for.
-#' That is the record #261 keeps for every other equation \code{\link{bnec}}
-#' declines to attempt.
+#' A bounded response at one bound throughout identifies no curve but does
+#' identify \code{ecxflat}. \code{\link{bnec}} fits \code{ecxflat} alone in
+#' place of the set requested, and records the other equations as excluded so
+#' that \code{\link{bnec_record}} says why. \code{check_response_at_bound()}
+#' first refuses a response \code{ecxflat} cannot be fitted to either.
 #'
 #' @param data A model frame.
 #' @param family The validated family.
 #' @param model The equations requested, as read from the formula.
-#' @param report Whether to say so. \code{FALSE} where \code{\link{bnec_group}}
-#' has already said it for the level, before any level was fitted.
+#' @param report Whether to report. \code{FALSE} where \code{\link{bnec_group}}
+#' has already reported the level.
 #'
 #' @return \code{NULL} where the response varies, and otherwise a
 #' \code{\link[base]{list}} of \code{model}, the set to fit, and
@@ -1761,9 +1384,8 @@ constant_fallback <- function(data, family, model, report = TRUE) {
   if (is.null(state) || is.na(state$bounds)) {
     return(NULL)
   }
-  # Before the set is replaced. check_models() refuses a name that is no
-  # equation, and it is given ecxflat alone from here, so without this a
-  # misspelt name was recorded as excluded for the bound and the fit went on.
+  # Check the names before the set is replaced: check_models() sees only
+  # ecxflat from here, so a misspelt name would be recorded as excluded.
   check_equation_names(model)
   check_response_at_bound(data, family, model = constant_equations())
   flat <- constant_equations()
@@ -1790,22 +1412,18 @@ constant_fallback <- function(data, family, model, report = TRUE) {
 
 #' The levels of a grouped call that are fitted with the constant equation
 #'
-#' \code{\link{bnec_group}} fits each level with \code{\link{bnec}}, which fits
-#' \code{ecxflat} alone to a level whose response does not vary. The levels are
-#' found and reported here, once and before any level is fitted, so that the
-#' report names them all and is not left to arrive from inside a level loop
-#' that may run in parallel workers, from which a message arrives out of order
-#' or not at all. A level \code{ecxflat} cannot be fitted to either is refused
-#' first, for the whole call, as \code{\link{check_response_at_bound}}
-#' refused every level at a bound under #400.
+#' Finds and reports, once and before any level is fitted, the levels that
+#' \code{\link{bnec}} will fit with \code{ecxflat} alone, since a message from
+#' a level fitted in a worker arrives out of order or not at all. It first
+#' refuses a name that is not an equation, and a level \code{ecxflat} cannot be
+#' fitted to.
 #'
 #' @param data The model frame of the whole response.
 #' @param family The validated family.
 #' @param group The grouping factor, one element per row of \code{data}.
 #' @param group_name The name of the grouping column.
 #' @param model The equations the formula requests, or \code{NULL} where they
-#' could not be read. Where they are \code{ecxflat} alone nothing is set aside,
-#' so nothing is reported, as \code{constant_fallback()} reports nothing then.
+#' could not be read. Nothing is reported where they are \code{ecxflat} alone.
 #'
 #' @return A \code{\link[base]{character}} vector of the levels at a bound,
 #' possibly empty.
@@ -1848,12 +1466,9 @@ constant_fallback_levels <- function(data, family, group, group_name,
 
 #' Reject a boundary value on a response transformed inside the formula
 #'
-#' The shift a boundary value would receive is computed on the transformed
-#' scale, but \code{brm()} is handed the user's data frame and re-evaluates the
-#' transformation from the recorded column, so the shift cannot reach the fit.
-#' Before #258 it was computed, reported to the user and then discarded, and
-#' \code{brm()} failed naming the condition the package had just said it had
-#' repaired. Raising the conflict here names the variable and gives a remedy.
+#' \code{brm()} re-evaluates an inline transformation from the user's data, so
+#' a shift off the boundary computed on the transformed scale cannot reach the
+#' fit. This names the variable and the remedy instead.
 #'
 #' @param expr The response as written in the formula, e.g. \code{"log(y)"}.
 #' @param fam_tag The family name, as \code{family$family} gives it.
