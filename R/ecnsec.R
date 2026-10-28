@@ -124,8 +124,8 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 200, x_range = NA,
   newdata_list <- newdata_eval(
     object, resolution = resolution, x_range = x_range
   )
-  # Refuse an nsec beyond the grid. The curve is evaluated at nsec itself
-  # below, and past the data that would be an extrapolation nothing reports.
+  # Refuse an nsec outside the chosen grid. Otherwise the curve is evaluated
+  # past that grid without reporting the extrapolation.
   check_ecnsec_range(object, nsec, nsec_use, range(newdata_list$x_vec),
                      x_range, xform)
 
