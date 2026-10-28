@@ -1,11 +1,9 @@
 #' Every equation that can be requested by name
 #'
-#' The members of \code{mod_groups$all} and the equations that belong to no
-#' group, which in this release is \code{ecxflat}. Read from
-#' \code{pred_functions}, the registry \code{data-raw/sysdata.R} builds with one
-#' entry per equation, rather than from a group: \code{mod_groups$all} is the
-#' default model set, and an equation can be valid by name without being in
-#' it. See #419.
+#' The members of \code{mod_groups$all} and the equations in no group, such as
+#' \code{ecxflat}. Read from the \code{pred_functions} registry, not from a
+#' group: \code{mod_groups$all} is the default set, and an equation can be valid
+#' by name without being in it.
 #'
 #' @return A \code{\link[base]{character}} vector.
 #'
@@ -16,11 +14,9 @@ equation_names <- function() {
 
 #' Refuse a name that is no equation
 #'
-#' Checked against every equation rather than against \code{mod_groups$all},
-#' which is the default set: \code{ecxflat} belongs to no group and is valid by
-#' name. Raised from \code{\link{check_models}} and, before it replaces the set
-#' requested, from \code{constant_fallback()}, so that a misspelt name is
-#' refused on a response at a bound as it is on any other. See #419.
+#' Checks against every equation, not \code{mod_groups$all}, since
+#' \code{ecxflat} is in no group. \code{constant_fallback()} calls it before it
+#' replaces the requested set, so that a misspelt name is refused there too.
 #'
 #' @param model A \code{\link[base]{character}} vector of equation names.
 #'
@@ -39,10 +35,8 @@ check_equation_names <- function(model) {
 #' Equations whose mean does not change with the predictor
 #'
 #' \code{ecxflat}, whose mean is its one curve parameter \code{top}. Named in
-#' one place because three things treat it differently from every other
-#' equation: \code{\link{bnec}} fits it alone to a response with no variation,
-#' the refusal of such a response exempts it, and the initial-value search
-#' cannot apply its test of a declining curve to it. See #419.
+#' one place because \code{\link{bnec}}, the refusal of a response at a bound,
+#' and the initial-value search each treat it differently.
 #'
 #' @return A \code{\link[base]{character}} vector.
 #'
@@ -68,63 +62,14 @@ bounded_linear_drops <- function() {
 
 #' Models excluded from 0-1 bounded identity families because they can exceed 1
 #'
-#' \code{nechormepwr} and \code{nechorme4pwr} carry the hormesis term
-#' \code{x^(1 / (1 + exp(slope)))}, which has no coefficient. The exponent lies
-#' in (0, 1), so at \code{x = 1} the term contributes exactly 1 whatever
-#' \code{slope} is, and below the threshold -- where the decay factor is exactly
-#' 1 -- the fitted mean is at least \code{top + 1}. Wherever a concentration at
-#' or above 1 falls strictly below \code{nec} there is therefore a point at
-#' which no parameter value keeps the mean inside (0, 1). The prior on
-#' \code{nec} places mass over the whole predictor range, so on a predictor
-#' reaching above 1 every such \code{nec} is a value the sampler is free to
-#' propose, and each proposal is outside the likelihood's support. Since #393
-#' it places mass above that range as well, which widens the set of such values
-#' rather than narrowing it.
-#'
-#' \strong{That is the sharpest case, not the whole reason.} It is a statement
-#' about a predictor reaching above 1, and the exclusion is unconditional on the
-#' data. What justifies that is the exponent. \code{1 / (1 + exp(slope))} tends
-#' to 0 as \code{slope} grows, so \code{x^(1 / (1 + exp(slope)))} tends to 1 for
-#' \emph{every} \code{x} above 0, however small. Below the threshold the mean is
-#' then \code{top + 1} in the limit, so for any \code{top} above 0 there is a
-#' \code{slope} at which the mean exceeds 1 --- on any predictor, at any
-#' concentration. At \code{x = 0.001}, the smallest case, that slope is 4.90 for
-#' \code{top = 0.05}, 2.19 for \code{top = 0.5} and 0.27 for \code{top = 0.95},
-#' against a \code{normal(0, 5)} prior on \code{slope}. These are ordinary
-#' values, not tail values.
-#'
-#' This is what \code{\link{mu_support}} records as \code{unscaled_excess}: the
-#' mean can exceed 1 through a term with no coefficient, so the fit cannot
-#' shrink it. Corroborated by measurement: on a predictor confined below 1,
-#' where the \code{top + 1} argument says nothing, 2,899 of 3,591 grid points
-#' over \code{top}, \code{slope}, \code{beta} and \code{nec} put the mean above
-#' 1, reaching 1.95.
-#'
-#' It is also why bounding \code{nec} below 1 is not the fix it appears to be.
-#' On \code{nec_data}, with \code{nec} below 1, 3,696 of 4,788 grid points put
-#' the mean above 1, reaching 3.03: a low \code{nec} is necessary and nowhere
-#' near sufficient, and the admissible set is a curved region in \code{top},
-#' \code{slope} and \code{nec} jointly rather than a bound on \code{nec}.
-#'
-#' So the initial-value search finding an admissible draw does not make the
-#' model usable. It does now find one, where the gamma prior it replaced did
-#' not, because the draws that succeed sit near \code{nec} = 0.08 to 0.24 and
-#' the prior probability of reaching there changed by a factor of 40 to 900:
-#' \code{P(nec < 0.25)} from 0.0063 to 0.269 and \code{P(nec < 0.1)} from
-#' 0.00011 to 0.0975. \code{P(nec < 1)} shifted only from 0.481 to 0.670, which
-#' would not explain it. Each of those six figures is the CDF of the entry
-#' truncated to the tested range, which is what both entries had when they were
-#' measured. #393 removed that truncation, and reading the same quantity on the
-#' whole distribution is an affine map and not a rescaling: with \code{a} and
-#' \code{b} the prior CDF at the two bounds, the untruncated value is
-#' \code{T * (b - a) + a}, which reduces to multiplication by \code{b} only
-#' where the series has a zero control. On \code{\link{nec_data}}, where
-#' \code{a} is 0.025 for the lognormal and 5e-7 for the gamma, the first two
-#' gamma figures are unchanged to the precision printed, the third moves from
-#' 0.481 to 0.480, and the three lognormal ones become 0.2282, 0.0986 and
-#' 0.5314. The factor of 40 to 900 survives, at 36 and
-#' 896; the last pair becomes 0.480 against 0.531, which is a weaker version of
-#' the same point. See #177 and #302.
+#' \code{nechormepwr} and \code{nechorme4pwr} have the hormesis term
+#' \code{x^(1 / (1 + exp(slope)))}, which has no coefficient. As \code{slope}
+#' grows the term tends to 1 for each positive \code{x}. At a positive
+#' \code{x} below \code{nec}, the mean tends to \code{top + 1}, above the upper
+#' bound when \code{top} is positive. The term remains zero at \code{x = 0}.
+#' The exclusion is conservative and does not inspect the predictor. Bounding
+#' \code{nec} below 1 or finding an admissible initial draw does not ensure
+#' that the mean stays within (0, 1).
 #'
 #' @return A \code{\link[base]{character}} vector.
 #'
@@ -135,10 +80,7 @@ bounded_power_drops <- function() {
 
 #' The message explaining an unscaled-power exclusion
 #'
-#' Separate from the generic drop message because the reason is different, and
-#' because the previous behaviour -- roughly eight minutes of failed
-#' initialisation followed by "Initialization failed" buried in a long run --
-#' is exactly what makes an explicit reason worth the extra line.
+#' Separate from the generic drop message because the reason differs.
 #'
 #' @param drop_model The models being dropped.
 #' @param fam_tag The family tag.
@@ -181,20 +123,10 @@ unscaled_power_message <- function(drop_model, fam_tag) {
 #'
 #' @noRd
 check_models <- function(model, family, data, record = FALSE) {
-  # The exclusions are recorded as well as messaged, but only when the caller
-  # asks. The record is attached as an attribute, and several callers pass this
-  # function's return straight on -- check_model_survival(), get_priors(),
-  # amend(), check_update_data() -- where an attribute nobody expects makes the
-  # value compare unequal to the plain character vector it used to be. bnec()
-  # is the only consumer that wants the record, so it is the only one that asks.
-  #
-  # The exclusions are recorded as well as messaged. bnec() decides which of
-  # the requested equations it will not attempt, tells the user once by
-  # message(), and used to discard the decision, so the composition of the
-  # candidate set could not be recovered from the fit -- only from console
-  # output, which a knitted document or a suppressMessages() call does not
-  # keep. The set as requested, the set as fitted, and the reason for the
-  # difference are what a methods section has to state. See #261.
+  # Record the exclusions only where the caller asks. Callers such as
+  # check_model_survival() and get_priors() compare the return with a plain
+  # character vector, which an unexpected attribute breaks. bnec() asks, so that
+  # the fit records the set requested, the set fitted and the reason.
   excluded <- data.frame(model = character(), reason = character(),
                          stringsAsFactors = FALSE)
   note_drop <- function(dropped, reason) {
@@ -251,12 +183,11 @@ check_models <- function(model, family, data, record = FALSE) {
     }
   }
   if (link_tag == "identity" & is_hurdle_family(fam_tag)) {
-    # A two-block fit must satisfy both sets of restrictions at once. The
-    # zero-probability block is always 0-1 bounded (as bernoulli/identity), so
-    # the linear-decay models go in every case. The mu block depends on the
-    # family: zero-bounded for hurdle_gamma, which additionally rules out
-    # nechormepwr01; 0-1 bounded for zero_inflated_beta, which does not, since
-    # nechormepwr01 is the equation designed for that range.
+    # A two-block fit must satisfy both blocks' restrictions. The
+    # zero-probability block is 0-1 bounded, so the linear-decay models always
+    # go. A count or Gamma mu block also rules out nechormepwr01; a
+    # zero_inflated_beta mu block does not, since nechormepwr01 is built for
+    # that range.
     drop_always <- bounded_linear_drops()
     mu_fam <- unname(hurdle_mu_fams[[fam_tag]])
     if (mu_fam %in% c("Gamma", "poisson", "negbinomial")) {
@@ -272,11 +203,8 @@ check_models <- function(model, family, data, record = FALSE) {
                     fam_tag, "with identity link."))
     }
     model <- use_model
-    # The zero-probability block is 0-1 bounded whatever the response family
-    # is, so the unscaled-power hormesis models cannot be used for it either.
-    # Without this a `model = "zero_bounded"` call under hurdle_gamma silently
-    # averaged over 9 equations rather than 11 -- one dropped by design and one
-    # lost to an eight-minute initialisation failure. See #177.
+    # The zero-probability block is 0-1 bounded whatever the family, so the
+    # unscaled-power hormesis models go too.
     use_model <- model[!model %in% bounded_power_drops()]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model) > 0) {
@@ -294,10 +222,9 @@ check_models <- function(model, family, data, record = FALSE) {
         fam_tag %in% c("Gamma", "poisson", "negbinomial",
                        "zero_inflated_poisson",
                        "zero_inflated_negbinomial")) {
-    # The zero-inflated count families sit here rather than with the two-block
-    # families: their mu block is an ordinary count mean, unbounded above, and
-    # the mixture at zero is fitted by brms with a constant zi rather than by a
-    # second bayesnec equation. See ?bnec and #104.
+    # The zero-inflated count families belong here, not with the two-block
+    # families: brms fits their zero mixture with a constant zi, and their mu
+    # is an ordinary count mean.
     use_model <-  model[!model %in% c("neclin", "neclinhorme",
                                       "ecxlin", "nechormepwr01")]
     drop_model <- setdiff(model, use_model)
@@ -314,27 +241,9 @@ check_models <- function(model, family, data, record = FALSE) {
       model <- use_model
     }
   }
-  # The block that stood here dropped every zero-bounded equation --
-  # nec3param, ecxexp, ecxsigm, ecxwb1p3, ecxwb2p3, ecxll3 -- whenever the
-  # family was gaussian, on the grounds that they "cannot generate predictions
-  # of negative response values". That conflates the range of the mean
-  # function with the support of the likelihood: a gaussian likelihood
-  # evaluates f(y | mu, sigma) and the data enter only through y - mu, so the
-  # sign of y is never tested. A mean function asymptoting to zero with
-  # gaussian error is internally consistent -- near the asymptote it predicts
-  # negative observations at a rate set by mu and sigma, which are ordinary
-  # negative residuals.
-  #
-  # Removed with #206. The exclusion prevented the curve shape OECD TG 201 and
-  # Ritz, Gerhard & Streibig (2026) both recommend for algal growth-rate data
-  # -- a lower asymptote fixed at zero, representing complete inhibition --
-  # from being fitted at all, nec3param, the package's namesake equation,
-  # included. #206 measured that these equations fit cleanly under gaussian
-  # and that model weights reject them where the shape is wrong, so the
-  # candidate set is the right place for that judgement rather than a
-  # pre-fit refusal. The separate link exclusion above is unaffected and still
-  # applies: it is keyed on a log or logit link, which is a different
-  # condition and a correct one.
+  # The zero-bounded equations are not dropped for gaussian: its likelihood
+  # never tests the sign of y, so a mean falling to zero with gaussian error is
+  # consistent. Model weights can then assess that shape against the data.
   if (!missing(data)) {
     x <- retrieve_var(data, "x_var")
     if (contains_negative(x)) {
@@ -352,14 +261,10 @@ check_models <- function(model, family, data, record = FALSE) {
                 "values.")
         )
       }
-      # ecxhormebc5 is defined for some parameter values on a negative
-      # predictor, unlike the fractional-power equations above, but its extra
-      # free bot parameter makes an admissible starting point unreliable in
-      # practice. Restrict this empirical exclusion to an identity-linked mean
-      # whose likelihood requires positivity: a Gaussian mean may be negative,
-      # and a log link maps any linear predictor back into positive support.
-      # ecxhormebc4 remains available because it fitted the same measured cases,
-      # including one where it received appreciable model weight. See #344.
+      # ecxhormebc5 cannot be reliably initialised on a negative predictor where
+      # an identity link must keep the mean positive. A gaussian mean may be
+      # negative and a log link keeps it positive, so neither is affected.
+      # ecxhormebc4 is kept: it fitted the same cases.
       support <- mu_support(family)
       constrained_identity <- identical(link_tag, "identity") &&
         isTRUE(support[1] == 0)

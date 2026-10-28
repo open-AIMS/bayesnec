@@ -215,16 +215,12 @@ models <- function(object, max_pars = NULL) {
   } else if (is_bayesmanecfit(object)) {
     use_mods <- names(object$mod_fits)
   } else if (object[1] %in% names(mod_groups)) {
-    # names(mod_groups) rather than a hard-coded subset: "decline" and
-    # "hormesis" are accepted by bnec(model = ) via handle_set() but were not
-    # listed here, the same kind of drift as #170 itself.
+    # Read names(mod_groups), not a fixed subset, so that every set bnec()
+    # accepts is listed.
     use_mods <- mod_groups[[object[1]]]
   } else if (is.numeric(object)) {
-    # Derived from check_models() rather than restated here. The two lists had
-    # drifted apart -- this branch dropped nechorme and nechorme4 for a 0-1
-    # bounded response, which bnec() fits happily, and kept nechormepwr01 for a
-    # zero-bounded one, which bnec() drops. Asking the same function the fitting
-    # path asks is what stops that happening again. See #170.
+    # Ask check_models(), as bnec() does, rather than restate its lists, which
+    # drift apart.
     use_mods <- suppressMessages(
       check_models(mod_groups$all, range_to_family(object))
     )
@@ -278,8 +274,6 @@ range_to_family <- function(object) {
   } else if (is.infinite(hi)) {
     Gamma(link = "identity")
   } else {
-    # Previously fell through leaving `use_mods` undefined, so models(c(0, 100))
-    # failed with "object 'use_mods' not found".
     stop("A numeric `object` must be one of the response ranges bayesnec",
          " distinguishes: c(-Inf, Inf) for an unbounded response, c(0, 1) for a",
          " 0-1 bounded one, or c(0, Inf) for a zero-bounded one. You supplied a",

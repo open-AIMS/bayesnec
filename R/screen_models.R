@@ -119,14 +119,11 @@ screen_models <- function(x, rhat_cutoff = 1.01, ess_cutoff = 400,
   }
   held <- if (is_bayesmanecfit(x)) names(x$mod_fits) else x$model
   to_drop <- intersect(failed, held)
-  # Decided from the table rather than from an error out of amend(), so that
-  # amend()'s own errors are not all reported as "everything failed". Both
-  # numbers are already in hand. See #148 Part D.
+  # Decide the all-failed case from the table, not from an error out of
+  # amend(), so that amend()'s own errors are not reported as all failed.
   if (length(to_drop) == nrow(tab)) {
-    # The reasons go into the error, not only into the drop message: the
-    # all-failed case is the one a methods section most has to account for, and
-    # an error that says only "everything failed" makes the user re-run
-    # check_sampling() to find out what failed and by how much.
+    # Put the reasons in the error, so that the user need not re-run
+    # check_sampling() to see what failed.
     stop("Every candidate model failed the sampler screen, so there is",
          " nothing left to return. This is a result rather than a usage",
          " error: none of the models sampled well enough to be reported.",
