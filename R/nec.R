@@ -186,10 +186,8 @@
 #' nec(manec_example)
 #'
 #' @export
-# no_effect sits after `...` for the same reason dpar does in nsec(): it applies
-# to one class only, and naming it on the generic is what puts it in \usage
-# where a user can find it. The methods that have no use for it absorb it
-# through their own `...` and refuse it there, rather than discarding it.
+# no_effect follows `...` so that it appears in \usage, although only one class
+# uses it. The other methods take it through `...` and refuse it.
 nec <- function(object, posterior = FALSE, xform = identity,
                 prob_vals = c(0.5, 0.025, 0.975), extrapolate = FALSE, ...,
                 no_effect = FALSE) {
@@ -224,28 +222,21 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
   }
-  # Classified by whether the equation has a nec parameter, rather than by the
-  # substring "ecx" in its name. The name is a convention ?bnec states, and a
-  # classification resting on it would return an NSEC as a NEC for any
-  # equation spelled without the prefix. See has_nec_parameter() and #419.
+  # Test for a nec parameter, not for "ecx" in the equation name: an equation
+  # named without that prefix would otherwise return an NSEC as a NEC.
   if (!has_nec_parameter(object$model, object$fit)) {
     stop("nec is not a parameter in ecx model types.")
   }
-  # Once for the call. The gate it sets also covers the nsec() that extrapolate
-  # reaches below. See report_fitted_scale().
+  # Once for the call, including the nsec() that extrapolate may call below.
+  # See report_fitted_scale().
   quiet <- report_fitted_scale(object, xform, "nec")
   on.exit(options(quiet), add = TRUE)
   nec_out <- object$ne_posterior
-  # extrapolate names a bound on top of that record rather than replacing it:
-  # the default returns the stored posterior and the stored record untouched,
-  # so every existing call is unaffected. The bounds are read off the
-  # prediction grid the fit stored, which is the value the record censors at
-  # and the value ecx() censors at, so the whole package reports against one
-  # number.
-  # ne_grid_bounds() is left as a promise rather than assigned: under the
-  # default, extrapolate_limits() returns before forcing it, so a fit that
-  # stores no prediction grid raises nothing on the path every existing call
-  # takes. It is read again below, where the limits say it is needed.
+  # The default returns the stored posterior and record untouched. The bounds
+  # are the stored prediction grid, the value the record and ecx() censor at.
+  # ne_grid_bounds() is passed unevaluated: under the default,
+  # extrapolate_limits() returns before evaluating it, so a fit with no stored
+  # grid raises nothing.
   lims <- extrapolate_limits(extrapolate, ne_grid_bounds(object),
                              necfit_ne_type(object), object$model)
   if (!is.null(lims)) {
@@ -261,28 +252,22 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
       }
     )
   }
-  # Read before xform, which for a general function need not preserve an
-  # attribute. It says whether the record below is the prediction range or a
-  # limit the caller named, which is what the report has to state.
+  # Read the label before xform, which need not keep attributes. It says
+  # whether the bounds are the prediction range or limits the caller named.
   range_label <- censoring_range_label(nec_out)
   attr(nec_out, "extrapolated") <- NULL
-  # The record expand_nec() wrote when the posterior was realised, read rather
-  # than derived. This is the whole point of #395: summary() reports object$ne,
-  # which is the summary of exactly this vector, so a censoring report invented
-  # here would not be the one a user reads.
+  # Read the record expand_nec() wrote rather than derive one, so that this
+  # reports the same censoring as summary().
   cens <- attr(nec_out, "censored")
   if (inherits(xform, "function")) {
     nec_out <- xform(nec_out)
     cens <- xform_censoring(cens, xform)
     attr(nec_out, "censored") <- cens
   }
-  # The stored posterior can hold a draw that is beyond the prediction range. A
-  # threshold equation's b_nec_Intercept is such a draw wherever the prior no
-  # longer holds it inside; a joint two-block fit whose survival block is smooth
-  # has its combined no-effect estimate read off the curve by nsec_off_curve(),
-  # which returns NA for any draw that never reaches the reference. Either way
-  # the draw keeps its rank and is given no value. See #39 and D15 ruling 3 for
-  # why it is not given max(x_vec) instead.
+  # The stored posterior can hold draws beyond the prediction range: a
+  # b_nec_Intercept draw the prior does not confine, or an NA from
+  # nsec_off_curve() for a joint fit with a smooth survival block. Such a draw
+  # keeps its rank and is given no value, not max(x_vec).
   warn_censored_draws(nec_out, ne_label(object), cens = cens,
                       range_label = range_label)
   nec_estimate <- summarise_censored(unlist(nec_out), prob_vals, cens)
@@ -327,10 +312,8 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
   # Once for the set, not once per equation. See report_fitted_scale().
   quiet <- report_fitted_scale(object, xform, "nec")
   on.exit(options(quiet), add = TRUE)
-  # Read off each equation's parameters, for the reason given in
-  # nec.bayesnecfit(). ecxflat belongs to no group, but it has no nec parameter
-  # and contributes NSEC draws, so a set holding it is a mixture and says so.
-  # See #419.
+  # Classify each equation by its parameters, as nec.bayesnecfit() does.
+  # ecxflat has no nec parameter, so a set holding it is a mixture.
   if (!all(vapply(names(object$mod_fits), function(m) {
     has_nec_parameter(m, object$mod_fits[[m]]$fit)
   }, logical(1)))) {
@@ -340,11 +323,9 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
             " rather than a NEC. See ?nec and summary(), which labels it.")
   }
   nec_out <- object$w_ne_posterior
-  # Validated against every equation in the set, not against the set's own
-  # label: an infinite limit turns on whether each component samples a NEC,
-  # and the label of a mixed set says only that at least one does not.
-  # As in nec.bayesnecfit(), left as a promise so that the default path reads
-  # nothing off the object.
+  # Check the limits against every equation, not the set's label: an infinite
+  # limit depends on whether each component samples a NEC. As in
+  # nec.bayesnecfit(), ne_grid_bounds() is passed unevaluated.
   lims <- extrapolate_limits(extrapolate, ne_grid_bounds(object),
                              manec_ne_types(object), object$success_models)
   if (!is.null(lims)) {
@@ -362,20 +343,16 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
   }
   range_label <- censoring_range_label(nec_out)
   attr(nec_out, "extrapolated") <- NULL
-  # As above, and the record expand_manec() wrote is the weighted one: it was
-  # assembled under the draw index that built the mixture, so its fraction is
-  # the share of the model-averaged posterior that is censored rather than the
-  # share of equations that are.
+  # As above. expand_manec() built this record under the mixture's draw index,
+  # so its fraction is the censored share of the averaged posterior.
   cens <- attr(nec_out, "censored")
   if (inherits(xform, "function")) {
     nec_out <- xform(nec_out)
     cens <- xform_censoring(cens, xform)
     attr(nec_out, "censored") <- cens
   }
-  # Censoring arrives by a second route here: every smooth equation in the set
-  # contributes NSEC draws read off its own curve, so a set containing one whose
-  # curve does not reach the reference is censored even where every threshold
-  # equation in it is inside the range.
+  # Smooth equations add a second route to censoring: their NSEC draws can be
+  # censored even where every threshold equation is inside the range.
   warn_censored_draws(nec_out, ne_label(object), cens = cens,
                       range_label = range_label)
   nec_estimate <- summarise_censored(unlist(nec_out), prob_vals, cens)
@@ -391,23 +368,14 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
 
 #' Whether an equation has a nec parameter
 #'
-#' Read first from the equation's own formula, through
-#' \code{\link{equation_par_names}}, which is what \code{\link{show_params}}
-#' displays. That needs no fitted \code{\link[brms]{brmsfit}}, so it answers for
-#' an object assembled without one, which several tests build and which a
-#' first version of this function, reading the fit alone, could not: it called
-#' \code{fixef()} on a \code{NULL} \code{fit} and stopped. Where the name is no
-#' equation the fit is read instead, by the test \code{\link{expand_nec}}
-#' applies: \code{extract_pars()} returns \code{NA} for a parameter the fit does
-#' not have. Only where neither is available does the substring convention
-#' \code{?bnec} states decide, as it decided every case before #419; no fit
-#' made by \code{\link{bnec}} reaches that branch, since its equation is always
-#' known.
-#'
-#' Neither of the first two readings depends on how an equation is spelled, so
-#' \code{ecxflat} and any later equation are classified by what they estimate.
-#' For a two-block fit the name and the unprefixed \code{nec} both describe the
-#' response block. See #419.
+#' Read from the equation's own formula through
+#' \code{\link{equation_par_names}}, which needs no fitted
+#' \code{\link[brms]{brmsfit}} and so also answers for an object assembled
+#' without one, as several tests build. Where the name is no equation, the fit
+#' is read as \code{\link{expand_nec}} reads it. Only where neither is
+#' available does the \code{"ecx"} prefix of the name decide; no fit made by
+#' \code{\link{bnec}} reaches that branch. For a two-block fit both readings
+#' describe the response block.
 #'
 #' @param model A \code{\link[base]{character}} naming the equation.
 #' @param fit The \code{\link[brms]{brmsfit}}, or \code{NULL}.
