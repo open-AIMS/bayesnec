@@ -50,11 +50,8 @@ is_bayesnecgroupfit <- function(x) {
 
 #' Apply a per-fit function across the levels of a bayesnecgroupfit
 #'
-#' Every element of \code{fits} is an ordinary bayesnec object, so the
-#' level-aware forms of \code{nec}, \code{ecx} and friends are a map rather than
-#' a reimplementation. Keeping it that way is deliberate: stage 1 of #33 must
-#' not need changes inside \code{nec()}/\code{ecx()}/\code{bnec_newdata()},
-#' because those are the files the toxval migration moves.
+#' Applies \code{fun} to the fit of each level, since every element of
+#' \code{fits} is an ordinary bayesnec object.
 #'
 #' @param object An object of class \code{\link{bayesnecgroupfit}}.
 #' @param fun A function taking a fit as its first argument.
@@ -76,19 +73,8 @@ group_lapply <- function(object, fun, ...) {
 #' @param fun A function taking a fit as its first argument.
 #' @param ... Passed to the underlying method.
 #'
-#' @details The columns are taken from the \emph{names} of the vector each
-#' underlying method returns, not from its positions. \code{nec()} and
-#' \code{ecx()} both take \code{prob_vals}, so the returned vector is
-#' \code{length(prob_vals)} long and named for the quantiles actually asked
-#' for; reading positions 1 to 3 silently truncated a longer request and
-#' mislabelled a reordered one.
-#'
-#' \code{posterior = TRUE} is refused rather than accommodated. It makes the
-#' underlying methods return the full draw vector instead of a summary, and a
-#' positional table then reported draws 1, 2 and 3 as an estimate and its
-#' credible interval --- wrong, plausible-looking and silent. There is no
-#' sensible one-row-per-level table of posteriors, so the user is sent to the
-#' per-level fits, where the posteriors are exactly what they already were.
+#' @details Refuses \code{posterior = TRUE}: a table with one row per level
+#' cannot hold a vector of draws.
 #'
 #' @return A \code{\link[base]{data.frame}} with one row per level: the level,
 #' one numeric column per entry of the estimate, and one \code{bound_} column
@@ -109,10 +95,8 @@ group_estimate_table <- function(object, what, fun, ...) {
 
 #' Stack per-level estimates into one row per level
 #'
-#' Shared with \code{\link{bayesnecjointfit}}, whose levels are coefficients of
-#' one posterior rather than separate fits. The two routes answer the same
-#' question and a user comparing them reads one table against the other, so the
-#' columns are built once here rather than twice.
+#' Shared with \code{\link{bayesnecjointfit}}, so that the grouped and joint
+#' routes return the same columns.
 #'
 #' @param est A named \code{\link[base]{list}} of estimate vectors, one per
 #' level.
@@ -143,10 +127,9 @@ estimate_table <- function(est, levels, what) {
     cbind(data.frame(level = levels[i], stringsAsFactors = FALSE),
           as.data.frame(as.list(unclass(e)[nms])))
   }))
-  # The numeric columns are built from the bare numbers, which drops each
-  # level's "censored_summary" attribute, so the marks are read from the
-  # estimates themselves and added beside them. Writing them into the numbers,
-  # as print() does, would turn every numeric column into text.
+  # Building the numeric columns drops each level's "censored_summary"
+  # attribute, so add the marks as separate columns. Writing them into the
+  # numbers, as print() does, would turn the numeric columns into text.
   out <- cbind(out, estimate_marks(est, nms, levels, what))
   rownames(out) <- NULL
   out
@@ -161,18 +144,9 @@ estimate_table <- function(est, levels, what) {
 #' \code{""} where it is a quantile. A level whose estimate has no record
 #' has \code{""} throughout, which is what its own \code{print()} shows.
 #'
-#' Columns rather than an attribute of the table, by D22: an attribute does not
-#' print, and \code{rbind()} and subsetting drop it, which is how the marks
-#' were lost from this table in the first place. One column per entry rather
-#' than one per level, because the record marks entries and not estimates: a
-#' level censored above typically has its estimate and upper limit marked
-#' \code{">="} and its lower limit an ordinary quantile, and a single column
-#' could say that the level is censored without saying which of its numbers
-#' are bounds. Appended after the numeric columns, so every column that was
-#' there before keeps its position as well as its name and its values.
-#'
-#' Kept apart from the table body so that any other table stacking per-level
-#' estimates can apply it unchanged.
+#' The marks are columns because an attribute does not print, and
+#' \code{rbind()} and subsetting drop it. They follow the numeric columns, so
+#' those keep their positions.
 #'
 #' @param est A \code{\link[base]{list}} of summarised estimates, one per
 #' level, each named \code{nms}.
@@ -190,10 +164,8 @@ estimate_marks <- function(est, nms, levels, what) {
     if (is.null(bound)) {
       return(rep("", length(nms)))
     }
-    # summarise_censored() writes one mark per entry, so a record of any other
-    # length cannot be aligned with the columns. Refused rather than recycled
-    # or truncated, since either would report a bound as a quantile or the
-    # reverse without a word.
+    # summarise_censored() writes one mark per entry. Refuse any other length:
+    # recycling or truncating it would label a bound as a quantile.
     if (length(bound) != length(nms)) {
       stop("The censoring record of level \"", levels[i], "\" marks ",
            length(bound), " entries and its ", what, " estimate has ",
@@ -241,8 +213,7 @@ nec.bayesnecgroupfit <- function(object, ...) {
   # the one formula. See report_fitted_scale().
   quiet <- report_fitted_scale(object, dots_xform(nec, list(...)), "nec")
   on.exit(options(quiet), add = TRUE)
-  # Raised here rather than left to arrive from the per-level call, which would
-  # name the class of one level's fit and not the class the user called.
+  # Check here, so that the error names this class rather than a level's.
   check_no_effect_arg(list(...), object)
   group_estimate_table(object, "nec", function(f, ...) nec(f, ...), ...)
 }
@@ -271,13 +242,9 @@ nsec.bayesnecgroupfit <- function(object, ...) {
 #' @method summary bayesnecgroupfit
 #' @export
 summary.bayesnecgroupfit <- function(object, ...) {
-  # With ecx = TRUE each level's summary() reports the scale of its ECx rows,
-  # so it is reported once for the group. The level summaries pass the rest of
-  # ... to ecx() (#439), so the xform is read from those dots as the levels
-  # will pass them, with ecx and ecx_vals taken out as the level summaries
-  # take them. Read as identity, a supplied xform would leave the message
-  # naming a scale the ECx rows had already been returned from. See
-  # summary_ecx_xform() and report_fitted_scale().
+  # Report the scale of the ECx rows once for the group. Read `xform` from the
+  # dots that the level summaries pass on to ecx(), or the message would name
+  # the wrong scale. See summary_ecx_xform().
   dots <- list(...)
   if (isTRUE(dots[["ecx"]])) {
     rest <- dots[!names(dots) %in% c("ecx", "ecx_vals")]
@@ -295,10 +262,8 @@ plot.bayesnecgroupfit <- function(x, ...) {
   n <- length(x$levels)
   old <- par(mfrow = c(ceiling(n / 2), min(2, n)))
   on.exit(par(old), add = TRUE)
-  # The all_models deprecation belongs to the caller's one call, not to each
-  # level, so only its first warning is let through. It is muffled here rather
-  # than mapped once for the whole group because the mapping names the
-  # equations of each level's own set, and those can differ between levels.
+  # Let through only the first all_models deprecation warning. Each level maps
+  # the argument itself, because the levels' equation sets can differ.
   deprecation_seen <- FALSE
   for (i in seq_along(x$levels)) {
     withCallingHandlers(
