@@ -64,7 +64,7 @@ print.necsummary <- function(x, ...) {
   print(x$brmssummary)
   # Absent from a necsummary stored before the count was recorded.
   if (!is.null(x$divergences)) {
-    cat("Divergent transitions after warmup: ", x$divergences, "\n", sep = "")
+    cat("\nDivergent transitions after warmup: ", x$divergences, "\n", sep = "")
   }
   cat("\n\n")
   if (x$is_ecx) {

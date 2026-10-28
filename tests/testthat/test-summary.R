@@ -228,10 +228,9 @@ test_that("each summary ECx row equals a bare ecx() call (#439)", {
   }
 })
 
-# Replaces nuts_params() so that each stored fit of manec_example reports the
-# number of divergent transitions named for its model in `counts`. An unnamed
-# count is given to every fit. A pulled-out fit needs one, because pull_out()
-# returns a brmsfit that is not identical to the stored one.
+# Replaces nuts_params() so that each fit of manec_example reports the count
+# named for its model in `counts`. An unnamed count is given to every fit,
+# including a pulled-out one, which is not identical to the stored fit.
 local_divergences <- function(counts, env = parent.frame()) {
   fits <- lapply(manec_example$mod_fits, "[[", "fit")
   local_mocked_bindings(
@@ -291,7 +290,12 @@ test_that("a model over the divergence cutoff is named in the summary warning", 
   out <- print_summary(s)
   expect_length(out$warnings, 1)
   expect_match(out$warnings, "Divergent transitions > 10", fixed = TRUE)
-  expect_match(out$warnings, flagged_line(s, "ecx4param", 14), fixed = TRUE)
+  # A literal weight, so that a lookup returning the wrong equation's weight
+  # fails here.
+  expect_match(out$warnings, paste0(
+    "(see ?check_sampling):\n  -  ecx4param (14, model weight 0.17)\n",
+    "Consider dropping"
+  ), fixed = TRUE)
   expect_no_match(out$warnings, "nec4param", fixed = TRUE)
   expect_match(out$warnings, "screen_models", fixed = TRUE)
 })
@@ -327,6 +331,9 @@ test_that("a single fit reports its divergences under the cutoff", {
   out <- print_summary(s)
   expect_true("Divergent transitions after warmup: 4" %in% out$printed)
   expect_length(out$warnings, 0)
+  s <- summarise(nec4param, divergence_cutoff = 3)
+  expect_equal(s$divergence_cutoff, 3)
+  expect_match(print_summary(s)$warnings, "nec4param (4)", fixed = TRUE)
 })
 
 test_that("a single fit over the divergence cutoff is flagged", {
