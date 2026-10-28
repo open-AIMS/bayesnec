@@ -949,6 +949,9 @@ hurdle_ne_axis_map <- function(object, xform, resolution) {
   }
   grid <- newdata_eval(object$survival, resolution = resolution,
                        x_range = NA)$x_vec
+  # A fit-time x_range can identify estimates beyond the observed range.
+  grid <- sort(unique(c(grid, ne_grid_data(object$growth)$x,
+                        ne_grid_data(object$survival)$x)))
   inverse <- grid_inverse(object$formula, grid)
   if (is.null(inverse)) identity else inverse
 }
