@@ -192,9 +192,9 @@ test_that("update() on a hurdle fit reaches both refits, growth first (#435)", {
 })
 
 test_that("update() on a hurdle fit refuses new data with no zero first (#435)", {
-  # Every individual survived, so the survival response is 1 in every
-  # observation. That was refused only after the growth component had been
-  # refitted, naming the generated column .alive.
+  # Every individual survived, so there is no survival response to fit. The
+  # refusal comes before either refit, with bnec_hurdle()'s message for the
+  # same data, whether or not a growth family is supplied.
   h <- hurdle_update_fixture()
   calls <- 0L
   local_mocked_bindings(
@@ -206,14 +206,127 @@ test_that("update() on a hurdle fit refuses new data with no zero first (#435)",
   )
   nd <- h$data
   nd$y[nd$y == 0] <- 0.01
-  err <- expect_error(stats::update(h, newdata = nd))
-  expect_match(conditionMessage(err),
-               paste0("The survival component of the response \"y\" (0 deaths",
-                      " of ", nrow(nd), ") is at the upper bound of a",
-                      " bernoulli response"),
+  from_hurdle <- expect_error(
+    bnec_hurdle(y ~ crf(x, model = "nec4param"), data = nd)
+  )
+  expect_match(conditionMessage(from_hurdle),
+               "contains no zeros, so there is no survival signal to model.",
                fixed = TRUE)
+  err <- expect_error(stats::update(h, newdata = nd))
+  expect_identical(conditionMessage(err), conditionMessage(from_hurdle))
+  err <- expect_error(
+    stats::update(h, newdata = nd, family = Gamma(link = "identity"))
+  )
+  expect_identical(conditionMessage(err), conditionMessage(from_hurdle))
   expect_false(grepl(".alive", conditionMessage(err), fixed = TRUE))
+  # Every individual died: bnec_hurdle()'s message too, not the growth or
+  # survival component's bound.
+  all_dead <- h$data
+  all_dead$y <- 0
+  from_hurdle <- expect_error(
+    bnec_hurdle(y ~ crf(x, model = "nec4param"), data = all_dead)
+  )
+  err <- expect_error(stats::update(h, newdata = all_dead))
+  expect_identical(conditionMessage(err), conditionMessage(from_hurdle))
   expect_identical(calls, 0L)
+})
+
+test_that("update() on a hurdle fit refuses a negative response (#486)", {
+  # Read as a death, a negative value would reach the survival component as
+  # one, with no message.
+  h <- hurdle_update_fixture()
+  local_mocked_bindings(
+    update = function(...) stop("refit reached"),
+    .package = "bayesnec"
+  )
+  nd <- h$data
+  nd$y[1] <- -0.5
+  expect_error(stats::update(h, newdata = nd), "contains negative values")
+})
+
+test_that("a family supplied to a hurdle update() reaches growth only (#486)", {
+  # The survival component is always bernoulli. Given the growth family, its
+  # refit was refused as a change of family after growth had been refitted.
+  h <- hurdle_update_fixture()
+  reached <- list()
+  local_mocked_bindings(
+    update = function(object, ...) {
+      reached[[length(reached) + 1]] <<- list(
+        component = object$fit$family$family, args = ...names()
+      )
+      object
+    },
+    .package = "bayesnec"
+  )
+  for (nd in list(NULL, h$data)) {
+    reached <- list()
+    stats::update(h, newdata = nd, family = Gamma(link = "identity"),
+                  chains = 4)
+    expect_equal(vapply(reached, `[[`, character(1), "component"),
+                 c("gamma", "bernoulli"))
+    expect_true("family" %in% reached[[1]]$args)
+    expect_false("family" %in% reached[[2]]$args)
+    expect_true("chains" %in% reached[[2]]$args)
+  }
+})
+
+test_that("the survival bound check reads the survival family (#486)", {
+  h <- hurdle_update_fixture()
+  seen <- list()
+  local_mocked_bindings(
+    check_refit_bound = function(part, data, family = NULL, ...) {
+      seen <<- c(seen, list(family))
+      invisible(NULL)
+    },
+    update = function(...) stop("refit reached"),
+    .package = "bayesnec"
+  )
+  expect_error(
+    stats::update(h, newdata = h$data, family = Gamma(link = "identity")),
+    "refit reached"
+  )
+  expect_length(seen, 2)
+  expect_equal(seen[[1]]$family, "Gamma")
+  expect_null(seen[[2]])
+})
+
+test_that("a Gamma growth family leaves the survival refit bernoulli (#486)", {
+  # Each component passes through its own update() method to the point where
+  # brms would be called, as in the test above that refits both.
+  h <- hurdle_update_fixture()
+  reached <- list()
+  local_mocked_bindings(
+    update = function(object, ...) {
+      if (inherits(object, "brmsfit")) {
+        reached[[length(reached) + 1]] <<- list(
+          stored = object$family$family, supplied = list(...)$family
+        )
+        stop("halted by test")
+      }
+      if (inherits(object, "bnecfit")) {
+        try(stats::update(object, ...), silent = TRUE)
+        return(object)
+      }
+      stats::update(object, ...)
+    },
+    .package = "bayesnec"
+  )
+  msgs <- character()
+  invisible(capture.output(
+    withCallingHandlers(
+      stats::update(h, newdata = h$data, family = Gamma(link = "identity")),
+      message = function(m) {
+        msgs <<- c(msgs, conditionMessage(m))
+        invokeRestart("muffleMessage")
+      }
+    ),
+    type = "message"
+  ))
+  expect_equal(vapply(reached, `[[`, character(1), "stored"),
+               c("gamma", "bernoulli"))
+  expect_equal(reached[[1]]$supplied$family, "Gamma")
+  expect_null(reached[[2]]$supplied)
+  expect_false(any(grepl("shifted|differs", msgs)))
 })
 
 test_that("update() on a hurdle fit checks the growth family first (#435)", {
@@ -239,6 +352,46 @@ test_that("update() on a hurdle fit checks the growth family first (#435)", {
     fixed = TRUE
   )
   expect_identical(calls, 0L)
+})
+
+test_that("a growth component at a bound is pointed to bnec_hurdle() (#486)", {
+  # update() cannot give one component its own equations, so the remedy is a
+  # bnec_hurdle() call, and bnec_hurdle() gives the same message for the same
+  # data.
+  h <- hurdle_update_fixture(brms::Beta(link = "identity"))
+  # bnec_hurdle() updates formulas, so only a refit is halted.
+  local_mocked_bindings(
+    update = function(object, ...) {
+      if (inherits(object, "bnecfit")) stop("refit reached")
+      stats::update(object, ...)
+    },
+    bnec = function(...) stop("fit reached"),
+    .package = "bayesnec"
+  )
+  nd <- h$data
+  nd$y[nd$y > 0] <- 1
+  err <- expect_error(stats::update(h, newdata = nd))
+  msg <- conditionMessage(err)
+  expect_match(msg, paste0("name it in the bnec_hurdle() formula, as in",
+                           " crf(x, \"ecxflat\"), and give the survival",
+                           " component its equations through",
+                           " model_survival."),
+               fixed = TRUE)
+  expect_false(grepl("call bnec()", msg, fixed = TRUE))
+  from_hurdle <- expect_error(suppressMessages(
+    bnec_hurdle(y ~ crf(x, model = "nec4param"), data = nd,
+                family_growth = Beta(link = "identity"))
+  ))
+  expect_identical(conditionMessage(from_hurdle), msg)
+  # The remedy passes every check before the first fit.
+  expect_error(
+    suppressMessages(
+      bnec_hurdle(y ~ crf(x, model = "ecxflat"), data = nd,
+                  family_growth = Beta(link = "identity"),
+                  model_survival = "nec4param")
+    ),
+    "fit reached"
+  )
 })
 
 test_that("summary carries its own class and print method", {

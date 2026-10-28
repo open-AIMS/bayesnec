@@ -2912,6 +2912,37 @@
   historical summaries. The default `thin = 1` and a single fit, a
   `bayesnecfit`, are unaffected (#477).
 
+- `update()` on a `bayesnechurdlefit` passes a supplied `family` to the growth
+  component only. It reached the survival component as well, which is always
+  `bernoulli`. `update(fit, family = Gamma(link = "identity"))` on a hurdle fit
+  with a Gamma growth component therefore refitted the growth component, then
+  reported the deaths as zeros shifted to 0.1 and refused the survival refit as
+  a change of family. Under `force_fit = TRUE` the survival component would
+  have been refitted to its shifted 0/1 response under the Gamma family. The
+  survival component's bound check, which runs before either refit, also read
+  the growth family (#486).
+
+- `update(newdata = )` on a `bayesnechurdlefit` checks the response in the new
+  data as `bnec_hurdle()` checks its data, before either component is refitted,
+  and refuses it with the same message. New data with no zero were refused as
+  a survival component at its upper bound, with advice to name `ecxflat` or to
+  call `bnec()`, neither of which `update()` can apply to one component. A
+  negative value was read as a death, a missing value was reported as a
+  missing value "at row(s) NA", and a character response was passed to the
+  refit. A growth component at a bound of its family in every observation,
+  such as a `Beta` growth component of 1 throughout, is now pointed by both
+  `update()` and `bnec_hurdle()` to a `bnec_hurdle()` call that names
+  `ecxflat` in `crf()` and gives the survival component its equations through
+  `model_survival` (#486).
+
+- `update()` refuses a change of family without `force_fit = TRUE` before it
+  checks the data, so a refused call no longer reports that values were
+  shifted off a boundary of the new family. On a fit with no `bnec_record()`,
+  such as `manec_example`, the shift message no longer ends "The priors below
+  are derived from the substituted response". That sentence describes
+  `get_priors()`; `update()` prints no priors and reuses those of the original
+  fit (#486).
+
 ## Documentation
 
 - `?autoplot` states that a `bayesmanecfit` with `multi_facet = FALSE`

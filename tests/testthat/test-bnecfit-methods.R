@@ -310,11 +310,11 @@ test_that("a family that differs still needs force_fit, and its checks (#435)", 
   # priors reused from the original fit were built for the fitted family.
   nd <- nec_data
   nd$y[which.max(nd$y)] <- 1
-  # The shift of the 1 is reported before the refusal, so it is suppressed.
-  expect_error(
-    suppressMessages(update(manec_example, newdata = nd, family = Beta())),
+  # Refused before the data are checked, so the 1 is not reported as shifted.
+  expect_no_message(expect_error(
+    update(manec_example, newdata = nd, family = Beta()),
     "force_fit = TRUE"
-  )
+  ))
   # With it, the data are adjusted for the family supplied, which is the one
   # the refit uses.
   got <- capture_brms_update(
@@ -322,6 +322,53 @@ test_that("a family that differs still needs force_fit, and its checks (#435)", 
   )
   expect_equal(got$family$family, "beta")
   expect_equal(max(got$newdata_val$y), 0.999)
+})
+
+# The messages update() prints, stopped where brms would refit.
+messages_before_refit <- function(expr) {
+  msgs <- character()
+  local_mocked_bindings(
+    update = function(...) stop("halted by test"),
+    .package = "bayesnec"
+  )
+  # try(silent = FALSE) in the refit loop prints the halt to stderr.
+  invisible(capture.output(
+    tryCatch(
+      withCallingHandlers(expr, message = function(m) {
+        msgs <<- c(msgs, conditionMessage(m))
+        invokeRestart("muffleMessage")
+      }),
+      error = function(e) NULL
+    ),
+    type = "message"
+  ))
+  msgs
+}
+
+test_that("update() reports a shift without naming priors (#486)", {
+  # update() reuses the fitted priors, so a message about priors derived from
+  # the shifted response describes get_priors(), not this call.
+  nd <- nec_data
+  nd$y[which.max(nd$y)] <- 1
+  msgs <- messages_before_refit(
+    stats::update(manec_example, newdata = nd,
+                  family = Beta(link = "identity"), force_fit = TRUE)
+  )
+  shift <- grep("shifted to", msgs, value = TRUE)
+  expect_length(shift, 1)
+  expect_match(shift, "1 value(s) at 1", fixed = TRUE)
+  # manec_example holds no bnec_record(), so the message cannot point to it.
+  expect_no_match(shift, "prior|bnec_record")
+  # A fit that holds a record is pointed to it.
+  with_record <- manec_example
+  attr(with_record, "bnec_record") <- list(substitutions = NULL)
+  msgs <- messages_before_refit(
+    stats::update(with_record, newdata = nd,
+                  family = Beta(link = "identity"), force_fit = TRUE)
+  )
+  shift <- grep("shifted to", msgs, value = TRUE)
+  expect_match(shift, "see ?bnec_record.", fixed = TRUE)
+  expect_no_match(shift, "prior")
 })
 
 test_that("update returns a bayesnecfit when only one model survives", {
