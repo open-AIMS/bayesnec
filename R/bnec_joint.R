@@ -358,10 +358,9 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
                      models = as.list(models), composed = composed,
                      nlpars = names(get(paste0("bf_", rep_model))[[2]]),
                      disp = isTRUE(disp_by_level))
-  # On the composed branch the parameters take internal per-level names, such
-  # as topaLv1, that a caller cannot know. Refuse `prior` and `init` there:
-  # add_brm_defaults() checks them against rep_model's parameters and would
-  # drop a set written for the curve parameters without a word.
+  # Refuse `prior` and `init` on the composed branch, whose parameters use
+  # internal per-level names such as topaLv1. Values written for the ordinary
+  # curve parameters do not name the coefficients fitted here.
   dot_names <- names(list(...))
   if (composed && any(c("prior", "init") %in% dot_names)) {
     stop("`", paste0(intersect(c("prior", "init"), dot_names),
