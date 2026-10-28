@@ -73,8 +73,8 @@ compare_fitted <- function(x, resolution = 50, x_range = NA,
   dot_list <- list(...)
   posterior_list <- vector(mode = "list", length = length(x))
   names(posterior_list) <- names(x)
-  # Random pairing affects the reported estimates. Seed it locally so calls
-  # repeat without changing the caller's RNG state (#343).
+  # Random pairing affects the reported estimates. Seed it locally so that
+  # calls repeat without changing the caller's random number stream.
   # Prediction also samples when ndraws or new group levels are requested.
   with_preserved_rng_state({
     set.seed(seed, sample.kind = "Rejection")
@@ -93,7 +93,6 @@ compare_fitted <- function(x, resolution = 50, x_range = NA,
     n_samples <- min(sapply(posterior_list, nrow))
     r_posterior_list <- lapply(posterior_list, function(m, n_samples) {
       # A random subset of a longer posterior, not its first n_samples rows.
-      # See #218.
       m[sample(seq_len(nrow(m)), n_samples, replace = FALSE), ]
     }, n_samples = n_samples)
   })

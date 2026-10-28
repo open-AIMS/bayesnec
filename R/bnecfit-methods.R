@@ -53,13 +53,9 @@ c.bnecfit <- function(x, ...) {
   # whether one retained frame can describe the combined set.
   attr(mod_fits, "retained_data_sources") <- inputs
   formulas <- lapply(mod_fits, extract_formula)
-  # c() has no loo_controls argument, so the only place an explicit weighting
-  # request can come from is the objects being combined. Inherited where every
-  # input that records a method names the same one, which is what amend() and
-  # pull_out() do for the set they operate on; otherwise the documented default
-  # is supplied by expand_manec(). Two inputs weighted differently have no
-  # answer that is right for both, so the fallback is reported rather than
-  # chosen silently. See #320.
+  # c() has no loo_controls argument, so keep the weighting method where every
+  # input that records one names the same method. Otherwise expand_manec()
+  # supplies the default, and a disagreement is reported.
   methods_in <- unique(unlist(lapply(c(list(x), dots), fit_weights_method)))
   if (length(methods_in) > 1) {
     message("The objects being combined were weighted by different methods (",
@@ -191,31 +187,21 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
   if (!original_class %in% c("bayesnecfit", "bayesmanecfit")) {
     stop("Object is not of class bayesnecfit or bayesmanecfit.")
   }
-  # Before the refit, not after it: this method samples every model in the set
-  # again, and a resolution the no-effect estimate cannot be read off would
-  # otherwise stop the call once that work was already done. See #325.
+  # Check before the refit, which samples every model again.
   check_resolution(resolution)
-  # Read before recover_prebayesnecfit() replaces `object` with the list of
-  # prebayesnecfits. expand_manec() and expand_nec() build a new object, so an
-  # attribute not re-attached at the end of this method is lost, and
-  # bnec_record() then returned NULL for a fit this version had recorded --
-  # which is the one thing the documented NULL is supposed to rule out.
+  # Read before recover_prebayesnecfit() replaces `object`: expand_manec() and
+  # expand_nec() build a new object, so the record must be re-attached at the
+  # end.
   bnec_rec <- attr(object, "bnec_record")
   retained_data <- object[["retained_data"]]
   supplied_newdata <- !is.null(newdata)
-  # Read here for the same reason as the record above. update() refits an
-  # existing set; it is not a request to reweight it, so the method the set was
-  # built with is the one it keeps unless the caller names another. Without
-  # this the method was whatever loo defaulted to, so a set the caller had
-  # asked to weight by stacking came back weighted by something else. See #320.
+  # update() refits a set; it does not reweight it. Keep the method the set
+  # was built with unless the caller names another.
   old_method <- fit_weights_method(object)
   object <- recover_prebayesnecfit(object)
-  # Filled in on both branches, not only where loo_controls is absent
-  # altogether: loo_controls names `fitting` and `weights` separately, so a
-  # call changing a LOO fitting argument names no method and would otherwise
-  # have the set reweighted as a side effect of asking for something else.
-  # amend_model_set() fills old_method in the same way, and the two have to
-  # agree.
+  # Fill in the method on both branches: a call that changes only a LOO
+  # fitting argument names no method, and must not reweight the set.
+  # amend_model_set() does the same, and the two must agree.
   if (missing(loo_controls)) {
     loo_controls <- list(fitting = list(),
                          weights = weights_controls(old_method))
@@ -229,13 +215,11 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
     }
   }
   dot_args <- list(...)
-  # The family is validated at this entry point rather than forwarded untouched
-  # to brms::update(). Beta() and Beta(link = "logit") produce identical family
-  # objects, so the only place the caller's intent can be read is the
-  # unevaluated expression, and only the function it was written in can see it.
-  # substitute() rather than match.call(): a `...` forwarded from
-  # update.bayesnechurdlefit() is recorded by match.call() as the placeholder
-  # `..1`. See family_link_source() and #256.
+  # Validate the family here, not in brms::update(). Beta() and
+  # Beta(link = "logit") are identical objects, so the caller's intent is
+  # readable only from the unevaluated expression. Use substitute(), not
+  # match.call(), which records a `...` forwarded from
+  # update.bayesnechurdlefit() as `..1`. See family_link_source().
   if ("family" %in% names(dot_args)) {
     link_source <- family_link_source(substitute(list(...))[-1]$family,
                                       env = parent.frame())
@@ -257,44 +241,26 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
     checked <- check_update_data(object, data_to_check, dot_args$family,
                                  on_fit = !is.null(bnec_rec))
     changed_family <- checked$changed_family
-    # The substitutions are those of the data this call fitted, so they replace
-    # rather than add to the ones bnec() recorded. The candidate set is not
-    # touched by update(), so `requested`, `attempted` and `excluded` are
-    # carried through unchanged.
-    #
-    # Single-bracket assignment of a one-element list, not `$<-`: `$<-` with a
-    # NULL value deletes the name, so an update that substituted nothing
-    # returned a three-name record where bnec() and amend() return four. The
-    # element has to stay present and NULL, which is how attach_bnec_record()
-    # builds it.
+    # The substitutions describe the data this call fitted, so they replace
+    # bnec()'s; the candidate set is unchanged. Assign with `[`, not `$<-`,
+    # which deletes the name when the value is NULL: attach_bnec_record()
+    # keeps the element present and NULL.
     if (!is.null(bnec_rec)) {
       bnec_rec["substitutions"] <- list(checked$substitutions)
     }
-    # The corrected frame replaces the caller's newdata, so a boundary shift
-    # check_data() reported is the one brms::update() is given. Without this
-    # the message was emitted and the correction thrown away. See #274.
-    #
-    # The family-only route needs the substitution too, and guarding this on
-    # `!is.null(newdata)` alone left it out. update(family = Beta(link =
-    # "identity"), force_fit = TRUE) on a fit whose stored response holds an
-    # exact 0 or 1 checks object[[1]]$fit$data, reports the shift, and then
-    # passed newdata = NULL to brms::update() -- so brms refitted the
-    # unshifted stored data and Stan failed on the boundary just reported
-    # repaired. That is #274's failure mode on the second of its two routes.
-    #
-    # NULL is still passed where nothing was corrected. That is what tells
-    # brms to reuse the stored data rather than treat it as new, and it keeps
-    # the data_name attribute brms deparses and prints.
+    # Pass the corrected frame to brms::update(), so that the boundary shift
+    # check_data() reported is the one fitted. This applies on the family-only
+    # route too, where the stored data were checked. Where nothing was
+    # corrected, newdata stays NULL, which tells brms to reuse the stored data
+    # and keeps the data_name attribute it prints.
     if (!is.null(newdata) || !identical(checked$data, data_to_check)) {
       newdata <- checked$data
     }
   } else {
     changed_family <- FALSE
   }
-  # Raised only for a family the caller supplied. New data no longer reach
-  # this: the refit keeps the fitted family, so the clause stating that the
-  # data "might be best fitted with a different distribution" described a
-  # judgement this method no longer makes (D32, #435).
+  # Reached only for a family the caller supplied: new data keep the fitted
+  # family.
   if (changed_family) {
     if (!force_fit) {
       stop("The family or link supplied differs from the one the model was\n",
@@ -318,11 +284,9 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
   }
   for (i in seq_along(object)) {
     fit_i <- object[[i]]$fit
-    # Assembled as a call rather than forwarded through `...`, because the
-    # family brms must receive is the validated one and `...` cannot be
-    # rewritten. do.call() would work but would inline newdata as a value, and
-    # brms deparses that argument's expression into the data_name attribute it
-    # prints -- so newdata is kept as a symbol here.
+    # Build a call rather than forward `...`, which cannot be rewritten to hold
+    # the validated family. Keep newdata a symbol: brms deparses it into the
+    # data_name attribute it prints, and do.call() would inline the value.
     upd_call <- as.call(c(quote(update), quote(fit_i),
                           list(formula. = NULL, newdata = quote(newdata),
                                recompile = quote(recompile)), dot_args))
@@ -336,13 +300,10 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
     mod_fits <- expand_manec(object, formula = formulas, x_range = x_range,
                              resolution = resolution, sig_val = sig_val,
                              loo_controls = loo_controls)
-    # Guard on the length of the result, not on the length of the set that went
-    # in. Where all but one model fails to refit, expand_manec() returns a bare
-    # one-element list of prebayesnecfit, which has none of a bayesmanecfit's
-    # structure; classing that as one gave an object whose every method failed
-    # on a missing `mod_fits`. bnec() and amend() already guard this way and
-    # route the single survivor through expand_nec(); the three entry points
-    # now agree, which is what stopped this being noticed. See #288.
+    # Guard on the length of the result, not of the set: where all but one
+    # model fails to refit, expand_manec() returns a one-element list that is
+    # not a bayesmanecfit. Route the survivor through expand_nec(), as bnec()
+    # and amend() do.
     if (length(mod_fits) > 1) {
       out <- allot_class(mod_fits, c("bayesmanecfit", "bnecfit"))
     } else {

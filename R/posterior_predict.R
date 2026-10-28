@@ -92,10 +92,9 @@ posterior_predict.bayesmanecfit <- function(object, newdata = NULL, ...) {
     disp_posterior_predict(x$fit, x$bayesnecformula, newdata = newdata, ...)
   }, ...)
   sample_size <- min(sapply(pred_list, nrow))
-  # The index realised when the object was built, not a fresh draw here, so the
-  # weighting is the same on every call. What each component contributes still
-  # varies, because posterior_predict() simulates new observations -- as it does
-  # for a single brmsfit. Only the averaging is fixed here. See #216.
+  # Use the index stored when the object was built, so that the weighting is
+  # the same on every call. The simulated readings still vary, as they do for
+  # a single brmsfit.
   draw_index <- pull_draw_index(object, model_set, sample_size)
   do_wrapper(model_set, w_pred_list_calc, pred_list, draw_index, fct = "rbind")
 }
@@ -105,11 +104,9 @@ posterior_predict.bayesmanecfit <- function(object, newdata = NULL, ...) {
 #' @param formula An object of class \code{\link{bayesnecformula}}.
 #' @param newdata A \code{\link[base]{data.frame}}, or \code{NULL}.
 #'
-#' @details Raised before \pkg{brms} sees the \code{newdata}, where the
-#' failure names the variable but not the term it comes from or what to do
-#' about it. Not marginalised instead: a \code{newdata} written by the user
-#' says what it is for, and filling in a column it left out would be a choice
-#' made on the user's behalf (RF, #443).
+#' @details Raised before \pkg{brms} sees \code{newdata}, whose error names
+#' neither the term nor the remedy. A user's \code{newdata} is used as given,
+#' never filled in.
 #'
 #' @return \code{invisible(NULL)}, called for its side effect.
 #'
@@ -144,13 +141,9 @@ check_newdata_disp <- function(formula, newdata) {
 #'
 #' @details A column is resolved by draws only where it is named in the
 #' \code{"bnec_disp_placeholders"} attribute, is a \code{disp(~...)} column of
-#' this fit, and holds on every row the value \code{disp_fixed_value()} gives
-#' it. The last condition is the one that needs a reason. Assigning to a column
-#' keeps a data frame's attributes, so a user who takes a grid from
-#' \code{bnec_newdata()} and sets \code{z} to the level to predict for would
-#' otherwise have that choice replaced by draws without a message. A changed
-#' value is a value the user chose, and it is used as given, as an unmarked
-#' column is.
+#' this fit, and still holds on every row the value \code{disp_fixed_value()}
+#' gives it. The attribute survives assignment to a column, so a value the
+#' user has set is used as given rather than replaced by draws.
 #'
 #' @return A \code{\link[base]{character}} vector, possibly empty.
 #'
@@ -177,10 +170,8 @@ disp_placeholder_columns <- function(newdata, formula, data) {
 #' @param newdata A \code{\link[base]{data.frame}}, or \code{NULL}.
 #' @param ... Further arguments to \code{\link[brms]{posterior_predict}}.
 #'
-#' @details Without \code{newdata} the call is passed to \pkg{brms}
-#' unchanged, and predicts for the fitted rows with their own values. With a
-#' \code{newdata} that marks no placeholder it is passed on as given, so a fit
-#' without a \code{disp(~...)} column predicts exactly as before #443.
+#' @details Without \code{newdata}, or with one that marks no placeholder, the
+#' call is passed to \pkg{brms} unchanged.
 #'
 #' @return A \code{\link[base]{matrix}} of draws by rows of \code{newdata}.
 #'
@@ -204,11 +195,8 @@ disp_posterior_predict <- function(fit, formula, newdata = NULL, ...) {
 #' @inheritParams disp_posterior_predict
 #' @param ... Further arguments to \code{\link[brms]{predict.brmsfit}}.
 #'
-#' @details Where placeholders are resolved, the draws are summarised as
-#' \code{\link[brms]{predict.brmsfit}} summarises its own, with
-#' \code{\link[brms]{posterior_summary}} and the same defaults for
-#' \code{summary}, \code{robust} and \code{probs}, so the result has the
-#' same form either way.
+#' @details Resolved draws are summarised as \code{\link[brms]{predict.brmsfit}}
+#' summarises its own, with the same defaults, so the result has the same form.
 #'
 #' @return See \code{?brms::predict.brmsfit}.
 #'
@@ -249,12 +237,10 @@ disp_predict <- function(fit, formula, newdata = NULL, ...) {
 #' @param ... Further arguments to \code{\link[brms]{posterior_predict}}.
 #'
 #' @details Each posterior draw is paired with one row of the fitted data,
-#' sampled with replacement and with equal probability, and that row's values
-#' of \code{columns} are put on the whole grid for that draw. A draw therefore
-#' predicts one reading at a value of the columns the design holds, and across
-#' draws the values occur in the proportions the design holds them. A
-#' \code{weights()} term does not enter: the distribution is of the rows of
-#' the design.
+#' sampled with replacement and equal probability, and that row's values of
+#' \code{columns} are put on the whole grid for that draw. Across draws the
+#' values occur in the proportions the design holds; a \code{weights()} term
+#' does not enter.
 #'
 #' @return A \code{\link[base]{list}} of \code{draws}, the matrix of draws by
 #' grid rows, in increasing order of draw, as \pkg{brms} orders its own; and
@@ -265,29 +251,16 @@ disp_predict <- function(fit, formula, newdata = NULL, ...) {
 #' @noRd
 disp_marginal_draws <- function(fit, newdata, columns, ndraws = NULL,
                                 draw_ids = NULL, ...) {
-  # Draw by draw, from the fitted rows, and not at one fixed value: a fixed
-  # value gives the spread of a reading at that value alone, the first level of
-  # a factor say, while a predicted reading on a grid bayesnec builds is meant
-  # to be one from the design. Sampling a row per draw, rather than averaging
-  # the predictive distribution over the rows, keeps the output one reading per
-  # draw, the form posterior_predict() returns everywhere else. RF, on #443.
+  # Sample a row per draw rather than fix one value or average over rows: a
+  # fixed value gives the spread at that value alone, and averaging would not
+  # return one reading per draw as posterior_predict() does.
   #
-  # The draws are grouped by the value they were paired with and brms is called
-  # once per group, with draw_ids and that value written on the grid. Exact,
-  # and holds the draws-by-grid output and one group's block of it at a time.
-  # Stacking the grid once per distinct value and predicting every draw over
-  # all of them would be one call, but would hold draws x grid x values, which
-  # for a numeric column with a distinct value on every row is the size of the
-  # data times the grid. The number of calls is at most the smaller of the
-  # number of draws and the number of distinct values, at about 0.34 s each on
-  # a Gamma nec3param fit with 400 draws and a 100-point grid.
+  # Call brms once per distinct value, with that value's draw_ids. Stacking
+  # the grid once per value would hold draws x grid x values at once.
   #
-  # The rows are sampled from the session's stream and not from a seed stored
-  # on the object, which is where they differ from the model-averaging index
-  # (#216). That index is fixed so that repeated calls average the same draws;
-  # this sampling is part of simulating a new reading, which posterior_predict()
-  # draws afresh on every call, so set.seed() before the call reproduces both
-  # together, as it does for brms alone.
+  # The rows come from the session's stream, not a stored seed: like the
+  # readings posterior_predict() simulates, they are drawn afresh on each call,
+  # and set.seed() before the call reproduces both.
   if (is.null(draw_ids)) {
     n_total <- ndraws(fit)
     if (is.null(ndraws)) {
@@ -300,17 +273,14 @@ disp_marginal_draws <- function(fit, newdata, columns, ndraws = NULL,
       draw_ids <- sample.int(n_total, ndraws)
     }
   }
-  # brms returns the draws of a draw_ids call in increasing order whatever
-  # order they were given in, so the groups are only reassembled correctly if
-  # each group's ids are increasing. Sorting once here makes them so, and
-  # returns the rows in the order brms would have.
+  # brms returns a draw_ids call's draws in increasing order, so sort the ids
+  # for the groups to be reassembled correctly.
   draw_ids <- sort(as.integer(draw_ids))
   obs <- fit$data[, columns, drop = FALSE]
   rows <- sample.int(nrow(obs), length(draw_ids), replace = TRUE)
-  # Encode each column as integer value IDs before joining them. Joining the
-  # original strings with a separator would merge distinct tuples if a value
-  # itself contained that separator. match() also distinguishes doubles that
-  # have the same printed value but differ in their stored value.
+  # Key rows by integer value IDs. Pasting the values themselves could merge
+  # distinct tuples that contain the separator, and match() separates doubles
+  # that print alike.
   key <- do.call(paste, c(lapply(obs, function(col) {
     match(col, unique(col))
   }), sep = ":"))

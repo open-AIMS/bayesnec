@@ -82,11 +82,10 @@
 #'
 #' @export
 pull_best <- function(object, ...) {
-  # Refused here rather than in each method, and before dispatch, so that the
-  # refusal cannot depend on the class of `object` and cannot arrive after the
-  # selection has already been reported. `model` reaches pull_out() as a second
-  # value for an argument this function sets itself, which base R reports as
-  # "matched by multiple actual arguments" several frames away.
+  # Refuse `...` in the generic, before dispatch, so that the refusal cannot
+  # depend on the class or follow the selection report. A `model` argument
+  # would otherwise fail in pull_out() as "matched by multiple actual
+  # arguments".
   if (...length() > 0) {
     supplied <- ...names()
     supplied <- supplied[nzchar(supplied)]
@@ -114,13 +113,9 @@ pull_best.default <- function(object, ...) {
 #' @noRd
 #' @export
 pull_best.bayesnecfit <- function(object, ...) {
-  # Not a usage error. The pass-through is the reason the function exists:
-  # screen_models() returns a bayesnecfit whenever the screen leaves one
-  # equation, so a caller that had to test the class would still be writing the
-  # block this replaces. Reported all the same, on screen_models()'s principle
-  # that the record is the point: a workflow that prints which equation was
-  # selected on one branch and nothing on the other records the choice only
-  # when the set happened to hold more than one equation.
+  # Not a usage error: screen_models() returns a bayesnecfit when one equation
+  # is left, and this saves the caller testing the class. Report it anyway, so
+  # that the record of the selection does not depend on the branch.
   message("This fit holds the single model ", object$model,
           "; returning it unchanged.")
   object
@@ -130,23 +125,17 @@ pull_best.bayesnecfit <- function(object, ...) {
 #' @export
 pull_best.bayesmanecfit <- function(object, ...) {
   model <- best_weighted_model(object$mod_stats)
-  # Delegated rather than reimplemented: pull_out() rebuilds the object's
-  # weighted quantities and copies the record of failed models onto the object
-  # it returns, and a direct expand_nec() call here would repeat both. It
-  # returns a bayesnecfit for every set reachable through the public API, since
-  # amend(), update() and screen_models() each collapse a set reduced to one
-  # model to that class rather than leaving a one-model bayesmanecfit. `...` is
-  # empty by the time this runs: the generic refuses anything in it.
+  # Delegate to pull_out(), which rebuilds the weighted quantities and copies
+  # the record of failed models. It returns a bayesnecfit for every set the
+  # public API can produce. `...` is empty here: the generic refuses it.
   pull_out(object, model = model)
 }
 
 #' @noRd
 #' @export
 pull_best.bayesnechurdlefit <- function(object, ...) {
-  # Labelled, because each component reports its own selection and the two
-  # reports are otherwise indistinguishable. The components hold different
-  # candidate sets -- survival is 0-1 bounded and growth need not be -- so they
-  # regularly select different equations.
+  # Label each component's report. The components hold different candidate
+  # sets, so they often select different equations.
   message("Growth component:")
   growth <- pull_best(object$growth)
   message("Survival component:")
@@ -159,24 +148,18 @@ pull_best.bayesnechurdlefit <- function(object, ...) {
 #' @param mod_stats The \code{mod_stats} element of a
 #' \code{\link{bayesmanecfit}}.
 #'
-#' @details Read from the \code{model} column rather than from
-#' \code{rownames()}. Both name the models of a set as \code{expand_manec()}
-#' returns it, but only the column is set by name:
-#' \code{data.frame(model = success_models)} takes automatic row names, since
-#' \code{success_models} is unnamed, and the model names reach the row names
-#' only at \code{cbind(mod_stats, disp)}, from the row names of the dispersion
-#' matrix. A change to how those columns are attached would drop the row names
-#' without touching the column or raising anything.
+#' @details Reads the \code{model} column, not \code{rownames()}: only the
+#' column is set by name in \code{expand_manec()}. The row names come from the
+#' dispersion matrix at \code{cbind()}, and would be lost without warning if
+#' that step changed.
 #'
 #' @return A \code{\link[base]{character}} string naming one model.
 #'
 #' @noRd
 best_weighted_model <- function(mod_stats) {
-  # The refusals below are unreachable through the public API, and are here
-  # because the alternative is a failure several frames away from its
-  # cause: which.max() on an all-NA vector returns integer(0), and a missing
-  # `model` column reports NA as the name and then reaches pull_out(), which
-  # answers that NA is not in the set and returns the object it was given.
+  # Unreachable through the public API. These refusals stop which.max() on an
+  # all-NA vector, or a missing `model` column, from failing several frames
+  # away in pull_out().
   if (is.null(mod_stats) || is.null(mod_stats$model) ||
         is.null(mod_stats$wi) || nrow(mod_stats) == 0) {
     stop("This object holds no table of model weights -- a `model` column and",

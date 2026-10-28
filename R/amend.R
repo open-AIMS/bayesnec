@@ -146,9 +146,8 @@ amend.bayesnecfit <- function(object, drop, add, loo_controls, x_range = NA,
   }
   if (!missing(drop)) {
     chk_character(drop)
-    # Erroring rather than silently returning the object: a bayesnecfit holds
-    # exactly one model, so honouring `drop` would have to return an empty
-    # object, and quietly ignoring it would hide a user mistake.
+    # Refuse rather than ignore `drop`: a bayesnecfit holds one model, so
+    # dropping it would leave nothing.
     stop("Cannot drop models from a bayesnecfit: it contains the single model",
          " \"", object$model, "\". Refit with bnec(..., model = ) to change",
          " which model is fitted.", call. = FALSE)
@@ -162,9 +161,8 @@ amend.bayesnecfit <- function(object, drop, add, loo_controls, x_range = NA,
   chk_numeric(resolution)
   check_resolution(resolution)
   chk_numeric(sig_val)
-  # Promote the single fit to a one-element model set and hand it to the same
-  # worker the bayesmanecfit method uses, so the two cannot drift apart. This
-  # is the reachable-through-amend() version of what `+` and `c()` already do.
+  # Promote the single fit to a one-model set and use the same worker as the
+  # bayesmanecfit method, so that the two cannot differ.
   amend_model_set(
     object = object, mod_fits = recover_prebayesnecfit(object),
     old_method = NULL, drop = NULL,
@@ -221,10 +219,8 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   if (!is.null(loo_controls)) {
     fam_tag <- mod_fits[[1]]$fit$family$family
     loo_controls <- validate_loo_controls(loo_controls, fam_tag)
-    # is.null() rather than a name test, for the reason define_loo_controls()
-    # gives: a name present with a NULL value is not a request for a method,
-    # and reading it as one had the two functions disagree about the same
-    # argument.
+    # Test is.null(), not the name, as define_loo_controls() does: a method
+    # given as NULL is not a request for one.
     if (is.null(loo_controls$weights$method)) {
       loo_controls$weights$method <- old_method
     }
@@ -238,10 +234,9 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
       }
     }
   } else {
-    # A bayesnecfit records no weighting method, so leave `weights` empty
-    # rather than passing method = NULL down to loo_model_weights(), which
-    # resolves it to stacking. expand_manec() fills an empty `weights` with the
-    # documented default. See #320.
+    # A bayesnecfit records no weighting method. Leave `weights` empty rather
+    # than pass method = NULL, which loo_model_weights() resolves to stacking;
+    # expand_manec() fills it with the pseudo-BMA default.
     loo_controls <- list(fitting = list(),
                          weights = weights_controls(old_method))
   }
@@ -261,29 +256,23 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   data <- mod_fits[[1]]$fit$data
   family <- mod_fits[[1]]$fit$family
   formula <- mod_fits[[1]]$bayesnecformula
-  # Narrowed here as bnec() narrows it, and for the same reason: the model
-  # frame below holds the formula's environment in the .Environment of
-  # its terms attribute, and amend() exports that frame to every worker. A fit
-  # made by an earlier version of bayesnec still holds the session it was
-  # fitted in, so this is not redundant with bnec(). See #329.
+  # Narrow the formula's environment, as bnec() does: amend() sends the model
+  # frame, which holds it, to every worker. A fit made by an earlier version
+  # of bayesnec still holds the session it was fitted in.
   formula <- narrow_formula_environment(formula, data)
   bdat <- model.frame(formula, data = data)
   validate_predictor_scale(
     predictor_scale, retrieve_var(bdat, "x_var", error = TRUE)
   )
   model_set <- check_models(model_set, family, bdat, record = TRUE)
-  # Stripped as soon as it is read, for the reason check_models() gives at its
-  # record block: `model_set` is passed on from here, and an attribute nobody
-  # expects makes it compare unequal to the plain character vector.
+  # Strip the attribute once read: `model_set` is passed on, and the attribute
+  # makes it compare unequal to a plain character vector.
   amend_excluded <- attr(model_set, "excluded")
   model_set <- as.character(model_set)
-  # An added equation that keeps no group-level term on a grouping variable is
-  # excluded before anything is fitted, as bnec() excludes it, and recorded
-  # with the family exclusions above. Only the additions are tested: an
-  # equation already in the set was fitted, so it kept a term on every
-  # grouping variable, and before #470 one that kept none failed on the
-  # prediction grid and could not be in a set. A call adding only such
-  # equations is refused. See group_term_exclusions().
+  # Exclude an added equation that keeps no group-level term on a grouping
+  # variable, as bnec() does, and record it with the exclusions above. Only
+  # additions are tested: an equation already in the set kept its terms when
+  # it was fitted. A call adding only such equations is refused.
   added <- model_set[!vapply(model_set, function(model) {
     inherits(try(mod_fits[[model]], silent = TRUE), "prebayesnecfit")
   }, logical(1))]
@@ -296,39 +285,23 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   mod_fits <- vector(mode = "list", length = length(model_set))
   names(mod_fits) <- model_set
   failed <- list()
-  # Which models this call has to fit. A model already in the set is carried
-  # over from old_fits without a brm() call, so a set of twenty with one
-  # addition is a one-model run, and only the additions decide whether a
-  # parallel plan is worth using.
+  # Only models not already in the set are fitted, and only they decide
+  # whether a parallel plan is worth using.
   needs_fit <- !vapply(model_set, function(model) {
     inherits(try(old_fits[[model]], silent = TRUE), "prebayesnecfit")
   }, logical(1))
-  # The backstop for this route, which builds priors with define_prior() and
-  # fits with skip_check = TRUE, so check_data() never runs on it. Raised once,
-  # before the loop, and only where a model is to be fitted: dropping a model
-  # builds no prior. It is given the equations to be fitted, so that a curve
-  # equation added to such a response is refused and ecxflat alone is let
-  # through. bnec() fits ecxflat alone to such a response, so a fit it made
-  # reaches here when a curve equation is added to it; amend() does not
-  # substitute ecxflat for the equations asked for, as bnec() does. See #400
-  # and #419.
-  #
-  # The trials() refusal is the backstop here for the same reason: the prior
-  # rebuilt below divides the response by its trials, and check_data(), which
-  # would otherwise refuse a binomial formula without them, never runs on this
-  # route. A fit bnec() made always has the term, so this is reached only by an
-  # object assembled some other way. Placed first, because the bound test reads
-  # the trials. See #442.
+  # check_data() never runs on this route, which fits with skip_check = TRUE,
+  # so refuse a missing trials() term and a response at a bound here, once,
+  # before the loop. Only the equations to be fitted are tested: ecxflat alone
+  # passes, and a curve equation added to such a response is refused, because
+  # amend() does not substitute ecxflat as bnec() does. The trials check comes
+  # first, because the bound test reads the trials.
   if (any(needs_fit)) {
     check_trials_term(bdat, family)
     check_response_at_bound(bdat, family, model = model_set[needs_fit])
   }
-  # Carried over here, in the parent, rather than returned from the applied
-  # function. Under a parallel plan the alternative serialises every existing
-  # fit out to a worker and straight back again for a model that is not
-  # refitted, which is the memory multiplication #184 raises. Doing it here is
-  # necessary and not sufficient: old_fits also has to stay out of what the
-  # applied function exports, which is what narrow_environment() below is for.
+  # Carry existing fits over here, in the parent. Returned from a worker, each
+  # would be sent out and back under a parallel plan.
   for (m in which(!needs_fit)) {
     mod_fits[[model_set[m]]] <- old_fits[[model_set[m]]]
   }
@@ -336,21 +309,13 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   # taking one from the user, so what plan_model_set() decides has to be
   # passed into the loop body and merged there.
   set_plan <- plan_model_set(list(), sum(needs_fit), caller = "amend")
-  # narrow_environment(), for the reason bnec() gives at its own call: future
-  # exports the applied function with its enclosing environment, and this frame
-  # holds old_fits and the partly filled mod_fits. Carrying existing fits over
-  # in the parent saves nothing unless they are also kept out of what is
-  # exported, which is what this does.
+  # narrow_environment() keeps old_fits and the partly filled mod_fits, which
+  # this frame holds, out of what future exports with the function.
   fit_one <- narrow_environment(
     function(m) {
       model <- model_set[m]
-      # No `init`. This branch is reached only for a model that is not already
-      # in the set, and simdat$init holds the stanfit initial values of a model
-      # that is -- values named for another equation's parameters, which are
-      # meaningless here. add_brm_defaults() overwrote them with its own search
-      # in every case, so omitting them changes nothing that happened; what it
-      # changes is that the search is now requested by the absence of `init`
-      # rather than compelled by skip_check. See #290.
+      # No `init`: simdat$init holds initial values named for another
+      # equation's parameters. Leaving it out requests the initial-value search.
       brm_args <- c(
         list(
           family = family, iter = simdat$iter, thin = simdat$thin,
@@ -370,9 +335,8 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
           tr <- retrieve_var(bdat, "trials_var", error = TRUE)
           y <- y / tr
         }
-        # The rate denominator, for the same reason as trials above: this path
-        # rebuilds priors for a model added to an existing set, and they have to
-        # be on the same scale as the ones the original fit used. See #136.
+        # Divide by the rate denominator, as by trials above, so that the
+        # priors are on the scale the original fit used.
         denom <- retrieve_var(bdat, "rate_var")
         if (!is.null(denom)) {
           y <- y / denom
@@ -413,10 +377,8 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   )
   attempts <- bnec_parallel_lapply(which(needs_fit), fit_one,
                                 parallel = set_plan$parallel)
-  # Assembled in the parent, as in bnec(): what the applied function returns is
-  # the fit, or the try-error whose condition attribute records it, and
-  # failure_record() then
-  # reads the same object whichever plan produced it.
+  # Assemble in the parent, as bnec() does: each attempt is the fit or a
+  # try-error whose condition attribute failure_record() reads.
   for (i in seq_along(attempts)) {
     model <- model_set[which(needs_fit)[i]]
     fit_m <- attempts[[i]]
@@ -443,15 +405,10 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   # amended are not carried forward: a model that failed then may have been
   # dropped now, or is being retried here with different priors.
   out <- attach_failed_models(out, failed)
-  # The candidate set changed, so the record is rebuilt rather than carried
-  # through. `substitutions` is not: amend() fits from the stored data with
-  # skip_check = TRUE, so it makes no substitution of its own and the one
-  # bnec() made still describes the response every model here was fitted to.
-  #
-  # Rebuilt only where there was a record to begin with. An object fitted by a
-  # version that did not record one has no `requested` to extend, and inventing
-  # `substitutions = NULL` for it would state that no substitution was made
-  # when what is true is that it is not known.
+  # Rebuild the record, since the candidate set changed, but keep
+  # `substitutions`: amend() fits the stored data with skip_check = TRUE, so
+  # bnec()'s substitution still describes the response. An object with no
+  # record gets none, rather than one that claims no substitution was made.
   if (!is.null(bnec_rec)) {
     out <- attach_bnec_record(
       out, amend_requested(bnec_rec$requested, add), model_set,
@@ -475,12 +432,10 @@ amend_requested <- function(requested, add) {
 
 #' The exclusions of an amended object, keeping requested partitioned exactly
 #'
-#' Three things can put an equation in \code{requested} but not in the set
-#' attempted: \code{check_models()} declined it in this call, it was declined
-#' in the call being amended and has not been asked for again, or the user
-#' dropped it here. All three are recorded, so that \code{requested} is
-#' partitioned by the set attempted and this table, as it is for
-#' \code{\link{bnec}}.
+#' An equation can be requested but not attempted because \code{check_models()}
+#' declined it now, it was declined in the call being amended and not asked for
+#' again, or the user dropped it here. All three are recorded, so that
+#' \code{requested} is split exactly between the set attempted and this table.
 #'
 #' @param bnec_rec The record being amended.
 #' @param excluded The \code{excluded} attribute from this call's

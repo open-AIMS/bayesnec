@@ -36,12 +36,8 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
                           resolution = resolution)
   new_dat <- grid$newdata
   x_seq <- grid$x_seq
-  # Computed only where it is used, and never stored. The full n_draws x
-  # resolution matrix dominated the size of a fitted object -- 30.5 MB against a
-  # 1.2 MB brmsfit at the defaults -- and had exactly one reader, the
-  # model-averaging path in expand_manec(), which now builds its own. A
-  # threshold model with a single block needs it for nothing at all, so this is
-  # a saving rather than a trade. See #180.
+  # Compute the grid posterior only where it is used, and never store it: it
+  # would be by far the largest part of a fitted object.
   pred_posterior <- NULL
   get_pred_posterior <- function() {
     if (is.null(pred_posterior)) {
@@ -65,14 +61,11 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   } else {
     mod_class <- "nec"
   }
-  # The two scales the bounds are needed on. A curve is searched on the
-  # recorded grid, so a draw the search did not identify is beyond an end of
-  # THAT grid, and its record is built there and remapped with
-  # xform_censoring(), which swaps the two ends for a decreasing crf(). A
-  # sampled b_nec_Intercept is already on the fitted scale and is compared
-  # against the fitted bounds directly. Non-finite entries are dropped because
-  # an x_range reaching 0 under crf(log(x)) puts -Inf at the foot of the fitted
-  # grid.
+  # The bounds on both scales. A curve is searched on the recorded grid, so its
+  # censoring record is built there and remapped with xform_censoring(), which
+  # swaps the ends for a decreasing crf(). A sampled b_nec_Intercept is already
+  # on the fitted scale. Non-finite grid points are dropped: an x_range
+  # reaching 0 under crf(log(x)) gives -Inf.
   grid_recorded <- pred_data$x[is.finite(pred_data$x)]
   grid_fitted <- sub_x_transformation(pred_data$x, formula)
   grid_fitted <- grid_fitted[is.finite(grid_fitted)]
@@ -84,12 +77,10 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   # and for any two-block fit where at least one block is smooth.
   nsec_off_curve <- function(post) {
     reference <- quantile(post[, 1], sig_val)
-    # The reference and the start of the search are the same grid point by
-    # construction, so a draw at or below the reference there takes that point
-    # as its NSEC. Unlike nsec.bayesnecfit() this is the first column of the
-    # grid rather than the lowest observed predictor value; the two differ only
-    # where bnec() was given an x_range, which this path has never honoured
-    # (D15 ruling 2). See #325.
+    # The reference and the start of the search are the same grid point, so a
+    # draw at or below the reference there takes that point as its NSEC. The
+    # start is the first grid point, not the lowest observed predictor as in
+    # nsec.bayesnecfit(); the two differ only where bnec() was given an x_range.
     out <- nsec_from_posterior(post, reference, pred_data$x, pred_data$x[1],
                                post[, 1])
     below <- attr(out, "below_range")
@@ -99,12 +90,9 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
       to_fitted_scale
     )
     if (sum(above) > 0) {
-      # Names the equation. bnec() calls this once per model, so on the default
-      # 23-model set an unnamed message says only that something somewhere is
-      # censored, which is not enough to act on. It names the bound as a value
-      # rather than as "the highest concentration tested", which is the top of
-      # the prediction grid and is a higher concentration than any tested
-      # wherever bnec() was given an x_range above the data.
+      # Name the equation, since bnec() calls this once per model. Give the
+      # bound as a value: the top of the grid exceeds the highest concentration
+      # tested wherever an x_range extends beyond the data.
       message("The fitted ", object$model, " curve does not fall to the ",
               "control's ", sig_val, " quantile within the predictor range ",
               "for ", sum(above), " of ", length(out), " draws. The NSEC ",
@@ -128,11 +116,8 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     attr(out, "censored") <- cens
     out
   }
-  # Memoised alongside get_pred_posterior(). A smooth block on a hurdle fit
-  # reaches this twice on the same posterior -- once for the response block and
-  # once for the combined endpoint -- and crossing_x() is a root search per
-  # draw, so the second pass is measurable where the nearest-grid-point search
-  # it replaced was not.
+  # Memoised: a smooth block on a hurdle fit reaches this twice on the same
+  # posterior, and crossing_x() runs a root search per draw.
   ne_off_curve <- NULL
   get_ne_off_curve <- function() {
     if (is.null(ne_off_curve)) {
@@ -148,14 +133,9 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     attr(ne_posterior, "censored") <- censoring_record(
       ne_upper, ne_lower, ne_posterior >= ne_upper, ne_posterior <= ne_lower
     )
-    # Only where a draw is beyond the grid. Left alone otherwise, so that the
-    # stored summary of an uncensored threshold posterior is still the one
-    # extract_pars() read off fixef(robust = TRUE) -- the same three statistics
-    # by a different route, and the number every archived analysis reports.
-    # A nec prior truncated to the tested range holds every draw inside the
-    # grid, so this branch was silent until #393 removed that truncation. It is
-    # live for a fit made since; for one made before, or for a user prior that
-    # bounds nec, it is silent unless the fit is amended with a wider bound.
+    # Replace the summary only where a draw is beyond the grid. Otherwise keep
+    # the one extract_pars() read off fixef(robust = TRUE), which is the number
+    # archived analyses report.
     if (has_censoring(attr(ne_posterior, "censored"))) {
       extracted_params$ne <- estimates_summary(ne_posterior)
       report_ne_censoring(attr(extracted_params$ne, "censored_summary"),
@@ -163,12 +143,9 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     }
   }
   pred_vals <- list(data = pred_data)
-  # Hurdle fits carry a second block. Keep its threshold alongside the combined
-  # one, and make the *combined* threshold the headline value --
-  # posterior_epred() already returns mu * (1 - hu), so pred_vals and everything
-  # downstream of it describe the combined endpoint, and the NEC should describe
-  # the same curve. The two component curves used to be stored here as well;
-  # nothing ever read them, so they are no longer computed (#214).
+  # A hurdle fit has a second block. Keep its threshold beside the combined
+  # one, and report the combined threshold: posterior_epred() returns
+  # mu * (1 - hu), so pred_vals describes the combined endpoint.
   hurdle_parts <- NULL
   if (is_hurdle_family(fit$family)) {
     hu_dpar <- hurdle_dpar(fit$family)
@@ -185,20 +162,17 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
       # so the product is flat; it leaves that plateau at whichever threshold
       # binds first. Exact for threshold models on both blocks.
       combined_ne <- pmin(ne_posterior, hu_ne_posterior)
-      # Recorded off the combination rather than merged from the two blocks'
-      # records. The minimum of two draws is above the grid only where both
-      # are, and below it where either is, so deriving it here states that
-      # once instead of twice.
+      # Build the record from the minimum itself: it is above the grid only
+      # where both draws are, and below it where either is.
       attr(combined_ne, "censored") <- censoring_record(
         ne_upper, ne_lower, combined_ne >= ne_upper, combined_ne <= ne_lower
       )
       ne_lab <- "NEC"
     } else {
-      # With a smooth block on either side there is no threshold to take the
-      # minimum of, so the no-effect estimate is interpolated off the combined
-      # curve itself rather than combined from the parts. When only one block
-      # is smooth this is an N(S)EC in the sense of Fisher et al. (2023): a
-      # threshold on one process and a significant-effect point on the other.
+      # With a smooth block there is no threshold to take the minimum of, so
+      # interpolate off the combined curve. With one smooth block this is an
+      # N(S)EC (Fisher et al. 2023): a threshold on one process and a
+      # significant-effect point on the other.
       combined_ne <- get_ne_off_curve()
       ne_lab <- if (mod_class == "ecx" && hu_class == "ecx") {
         "NSEC"
@@ -244,9 +218,8 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
            list(dispersion = od, predicted_y = predicted_y,
                 residuals = residuals, ne_posterior = ne_posterior,
                 ne_type = ne_type))
-  # Only hurdle fits carry the extra element. Appending it unconditionally
-  # would change names() on every bayesnecfit, which is a gratuitous break for
-  # anything indexing the object positionally or checking its structure.
+  # Only hurdle fits get the extra element, so that names() of every other
+  # bayesnecfit is unchanged.
   if (!is.null(hurdle_parts)) {
     out <- c(out, list(hurdle = hurdle_parts))
   }
@@ -255,13 +228,9 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
 
 #' The curve parameters, in the order they are appended to a bayesnecfit
 #'
-#' The same set as \code{curve_par_names()}, which \code{\link{curve_params}}
-#' reports from, in a different order. The order is kept because the extracted
-#' elements are appended to the \code{\link{bayesnecfit}} in it, so anything
-#' indexing that object positionally would read a different element if it
-#' changed; \code{test-curve_params.R} asserts that the two vectors hold the same
-#' parameters, so a parameter added for a new equation cannot reach one and not
-#' the other.
+#' The same set as \code{curve_par_names()} in a different order. Keep the
+#' order: code indexing a fit by position depends on it.
+#' \code{test-curve_params.R} checks that the two hold the same parameters.
 #'
 #' @return A \code{\link[base]{character}} vector.
 #' @noRd
@@ -271,37 +240,25 @@ extract_par_order <- function() {
 
 #' The grid predictions are made over
 #'
-#' The single definition of the prediction grid. \code{\link{expand_nec}},
-#' \code{posterior_on_grid} and the exported \code{\link{bnec_newdata}} all
-#' build the same grid from the same code, so they cannot drift apart. Takes a
-#' \code{\link[brms]{brmsfit}} and a formula rather than a
-#' \code{\link{bayesnecfit}} because inside \code{\link{expand_manec}} the
-#' object has not been given its class yet. See #211.
+#' The single definition of the prediction grid, used by
+#' \code{\link{expand_nec}}, \code{posterior_on_grid} and
+#' \code{\link{bnec_newdata}}. Takes a \code{\link[brms]{brmsfit}} and a
+#' formula because inside \code{\link{expand_manec}} the object has no class
+#' yet.
 #'
-#' A level term is the one thing the grid cannot ignore. Every other structure
-#' \code{bayesnec} fits to a factor --- \code{ogl()}, \code{pgl()},
-#' \code{(par | group)} --- is group-level, and every prediction in the package
-#' is made with \code{re_formula = NA}, which drops it. A joint refit
-#' (\code{\link{bnec_joint}} on a \code{\link{bayesnecgroupfit}}) puts the
-#' factor in the population-level part of every curve parameter, so it is part
-#' of the mean and the grid has to name a level. \code{level_spec} is therefore
-#' \code{NULL} for every caller that existed before #382, and the grid those
-#' callers get is byte-for-byte what it was: adding a column no other model
-#' reads would change nothing for them and test nothing, while touching every
-#' prediction path in the package.
+#' Every prediction is made with \code{re_formula = NA}, which drops
+#' group-level terms. A joint refit (\code{\link{bnec_joint}} on a
+#' \code{\link{bayesnecgroupfit}}) puts the factor in the population-level part
+#' of the curve, so the grid must then name a level through \code{level_spec}.
 #'
 #' @param fit An object of class \code{\link[brms]{brmsfit}}.
 #' @param formula An object of class \code{\link{bayesnecformula}}.
-#' @param level_spec \code{NULL}, the default, or a
-#' \code{\link[base]{list}} with elements \code{group_var}, the name of the
-#' factor column the level term is written on; \code{levels}, every level of
-#' it, in the order the coefficients are in; and optionally
-#' \code{predict_levels}, the subset to build rows for. The grid then has
-#' \code{resolution} rows per predicted level rather than \code{resolution}
-#' rows, with the level varying slowest, and the factor is built with all of
-#' \code{levels} whichever subset is predicted --- \pkg{brms} builds the design
-#' matrix against the levels the fit was given, so a factor missing one of them
-#' is a different contrast.
+#' @param level_spec \code{NULL}, or a \code{\link[base]{list}} with
+#' \code{group_var}, the factor column of the level term; \code{levels}, every
+#' level in coefficient order; and optionally \code{predict_levels}, the levels
+#' to build rows for. The grid then has \code{resolution} rows per predicted
+#' level, the level varying slowest. The factor always holds every level,
+#' because \pkg{brms} builds the design matrix against the fitted levels.
 #'
 #' @return A \code{\link[base]{list}} of \code{newdata}, the
 #' \code{\link[base]{data.frame}} to predict over; \code{x_seq}, the unique
@@ -328,17 +285,11 @@ prediction_grid <- function(fit, formula, x_range = NA, resolution = 1000,
   if (fam_tag == "binomial" || fam_tag == "beta_binomial") {
     newdata[[attr(mod_dat, "bnec_pop")[["trials_var"]]]] <- 1
   }
-  # A rate() denominator has to be pinned at 1 on the grid, not carried through
-  # at its observed values. With a varying exposure the "fitted curve" would not
-  # be a curve at all -- it would be the curve times whatever denominator each
-  # grid row happened to inherit -- and ecx()/nsec() read off it would be
-  # meaningless. At 1 the grid reports the rate itself, which under bnec()'s
-  # forced identity link is exactly what top, bot and nec are expressed in.
-  # This is also what makes bnec_newdata() work at all for a rate model: the
-  # grid previously had no denominator column, so posterior_epred() errored on a
-  # variable it could not find. See #136.
+  # Pin a rate() denominator at 1 on the grid, so that the grid reports the
+  # rate itself, the scale top, bot and nec are on. At the observed values each
+  # grid row would be scaled by whatever exposure it inherited.
   # Single bracket, not [[: bnec_pop is a named character vector, so [[ on a
-  # name that is not there is a subscript error rather than NULL.
+  # missing name is a subscript error rather than NULL.
   rate_var <- unname(attr(mod_dat, "bnec_pop")["rate_var"])
   if (!is.na(rate_var)) {
     newdata[[rate_var]] <- 1
@@ -346,23 +297,19 @@ prediction_grid <- function(fit, formula, x_range = NA, resolution = 1000,
   if (!is.null(level_spec)) {
     newdata <- add_grid_levels(newdata, level_spec, length(x_seq))
   }
-  # A disp(~z) column other than the predictor is needed on the grid, because
-  # brms evaluates the dispersion parameter for posterior_epred() as well, and
-  # without it every model sampled and then failed here (#443). Added after the
-  # level term, so that a column the grid already sets is left as it is, and
-  # marked as a placeholder for the prediction methods. A fit without such a
-  # column gets the grid it had before. See add_disp_placeholders().
+  # brms evaluates the dispersion for posterior_epred() too, so a disp(~z)
+  # column other than the predictor must be on the grid. Add it after the
+  # level term, so that a column the grid already sets is left alone. See
+  # add_disp_placeholders().
   newdata <- add_disp_placeholders(newdata, fit$data, formula, x_var)
   list(newdata = newdata, x_seq = x_seq, x_var = x_var)
 }
 
 #' Repeat a prediction grid once per level of a level term
 #'
-#' The level varies slowest, so rows \code{1:resolution} are the first
-#' predicted level and the matrix \code{\link[brms]{posterior_epred}} returns
-#' splits into contiguous blocks of \code{resolution} columns. That is what
-#' lets a per-level estimate be read off the same posterior the other levels
-#' were drawn from, rather than from a second prediction.
+#' The level varies slowest, so the matrix \code{\link[brms]{posterior_epred}}
+#' returns splits into contiguous blocks of \code{n_x} columns, one per
+#' predicted level.
 #'
 #' @param newdata The single-level grid.
 #' @param level_spec See \code{prediction_grid}.
@@ -382,11 +329,9 @@ add_grid_levels <- function(newdata, level_spec, n_x) {
                  drop = FALSE]
   out[[level_spec$group_var]] <- factor(rep(predict_levels, each = n_x),
                                         levels = all_levels)
-  # Where the levels chose different equations the mean is an indicator sum
-  # rather than a dummy-coded curve, and the indicators are data columns the
-  # factor cannot stand in for. Every level's column is written, including the
-  # ones not being predicted, because the composed mean reads all of them on
-  # every row.
+  # Where the levels chose different equations, the mean reads a 0/1 indicator
+  # column per level. Write every level's column, predicted or not, because the
+  # composed mean reads all of them on every row.
   if (!is.null(level_spec$inds)) {
     row_level <- rep(predict_levels, each = n_x)
     for (l in all_levels) {
@@ -399,9 +344,8 @@ add_grid_levels <- function(newdata, level_spec, n_x) {
 
 #' Posterior expectation over the prediction grid
 #'
-#' The posterior on the grid \code{\link{expand_nec}} predicts over. Factored
-#' out because \code{\link{expand_manec}} needs the same matrix for the
-#' model-averaged draws and no longer finds it stored on the object.
+#' The posterior on the grid \code{\link{expand_nec}} predicts over, used by
+#' \code{\link{expand_manec}} for the model-averaged draws.
 #'
 #' @inheritParams prediction_grid
 #'
@@ -482,10 +426,8 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   })
   object <- mod_fits
   formula <- formula[success_models]
-  # Read off each equation's parameters, as nec() reads them, rather than off
-  # group membership: ecxflat is in neither mod_groups$ecx nor mod_groups$nec,
-  # so a set holding it was labelled a NEC. For the equations of mod_groups$all
-  # the two readings agree. See has_nec_parameter() and #419.
+  # Classify by each equation's parameters, as nec() does, not by group
+  # membership: ecxflat is in neither mod_groups$ecx nor mod_groups$nec.
   has_nec <- vapply(names(object), function(m) {
     has_nec_parameter(m, object[[m]]$fit)
   }, logical(1))
@@ -495,14 +437,10 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   } else if (!all(has_nec)) {
     ne_lab <- "N(S)EC"
   }
-  # define_loo_controls() rather than validate_loo_controls(), and on both
-  # branches. Validation alone leaves `weights` empty, `method` is then NULL in
-  # the do.call() below, and loo::loo_model_weights() applies its own default of
-  # "stacking" -- so a set assembled by c(), `+`, amend() or update() was
-  # weighted by stacking while the same set fitted by bnec() was weighted by
-  # pseudo-BMA, and attr(wi, "method") recorded nothing. This is the single
-  # point every route reaches, so the default is supplied here rather than at
-  # each entry point. See #320.
+  # define_loo_controls(), not validate_loo_controls(), on both branches.
+  # Validation leaves `method` NULL, and loo::loo_model_weights() then
+  # defaults to stacking. Every route that assembles a set reaches this line,
+  # so the pseudo-BMA default is supplied here.
   fam_tag <- object[[1]]$fit$family$family
   loo_controls <- if (missing(loo_controls)) {
     define_loo_controls(family_str = fam_tag)
@@ -528,28 +466,17 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   attr(mod_stats$wi, "method") <- loo_w_controls$method
   mod_stats <- cbind(mod_stats, disp)
   sample_size <- extract_simdat(object[[1]])$n_samples
-  # The weighted draw is realised once, here, and the seed that produced it is
-  # kept on the object. Every later call -- posterior_epred(), fitted() and the
-  # weighting inside predict() -- rebuilds the same index from that seed, so
-  # repeated calls agree with each other and with the summaries below.
-  # Previously each site drew its own unseeded sample(), so no two calls
-  # returned the same answer. Drawing the seed rather than fixing one keeps the
-  # realisation genuinely random per object, and responsive to a set.seed() in
-  # the caller's session. Both the index and the seed behind it are kept: the
-  # index is what later calls use, because a stored index cannot drift the way
-  # a regenerated one can if sample()'s algorithm changes again as it did in
-  # R 3.6.0, and these objects are archived and reopened years later. The seed
-  # is kept for the cases the stored index cannot cover -- a caller thinning to
-  # a different number of draws. See #216.
+  # Realise the weighted draw once and store both the index and its seed.
+  # Later calls reuse the index, so repeated calls agree, and a stored index
+  # cannot change if sample() changes between R versions. The seed covers a
+  # caller thinning to a different number of draws.
   draw_seed <- sample.int(.Machine$integer.max, 1)
   draw_index <- weighted_draw_index(success_models, sample_size, mod_stats,
                                     draw_seed)
   ne_posterior <- unlist(lapply(success_models, w_nec_calc,
                                  object, draw_index))
-  # The combined record, assembled under the same draw index as the mixture
-  # itself, so that the censored fraction it reports is the weighted one. A
-  # count over equations would give a component holding one per cent of the
-  # weight the same standing in that fraction as the dominant one.
+  # Build the combined record under the same draw index as the mixture, so
+  # that the censored fraction is weighted by model weight.
   attr(ne_posterior, "censored") <- concat_censoring(
     lapply(success_models, function(m) {
       subset_censoring(attr(object[[m]]$ne_posterior, "censored"),
@@ -559,12 +486,9 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   )
   y_pred <- rowSums(do_wrapper(success_models, w_pred_calc,
                                object, mod_stats))
-  # Each model's posterior over the prediction grid is computed here and
-  # immediately thinned to the round(sample_size * wi) rows the weighting keeps,
-  # one model at a time. Accumulating them into a list first would hold every
-  # model's full n_draws x resolution matrix at once -- the same peak #180 is
-  # about, merely not retained afterwards. The weights do not depend on the
-  # posteriors, so nothing forces them to be built together. See #180.
+  # Thin each model's grid posterior to the rows the weighting keeps as soon
+  # as it is computed. Building them all first would hold every model's full
+  # draws-by-grid matrix at once.
   post_pred <- do_wrapper(success_models, w_grid_pred_calc, object, formula,
                           x_range, resolution, draw_index,
                           fct = "rbind")
@@ -573,14 +497,10 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
                      data.frame(t(apply(post_pred, 2,
                                         estimates_summary))))
   nec <- estimates_summary(ne_posterior)
-  # Once for the set. The per-equation reports above say which curves did not
-  # reach the reference; this one says what that leaves of the estimate the
-  # user reports, which was available nowhere before.
+  # Report once for the set what censoring leaves of the model-averaged
+  # estimate; the per-equation reports above name the curves.
   report_ne_censoring(attr(nec, "censored_summary"), "model-averaged", ne_lab)
-  # post_pred itself is not kept: it was w_pred_vals$posterior, which nothing in
-  # the package read and which became the dominant cost once the per-model
-  # matrices went. pred_data, the summary the plot methods use, is built from it
-  # here and is what survives. See #213.
+  # Do not store post_pred: only pred_data, built from it, is read.
   out <- list(mod_fits = mod_fits, success_models = success_models,
               mod_stats = mod_stats, sample_size = sample_size,
               w_draw_seed = draw_seed, w_draw_index = draw_index,
@@ -593,11 +513,9 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
 
 #' Report the censoring of a stored no-effect summary, once
 #'
-#' Raised from \code{\link{expand_nec}} and \code{expand_manec()} as the
-#' posterior is realised, which is where \code{\link{bnec}} reaches it. A
-#' message rather than a warning: the estimate is reported and usable, and the
-#' warning channel is already carrying the per-draw reports the estimators
-#' raise.
+#' Raised from \code{\link{expand_nec}} and \code{expand_manec()}. A message,
+#' not a warning: the estimate is usable, and the estimators already raise
+#' their own warnings per draw.
 #'
 #' @param cens The \code{"censored_summary"} attribute of a summary.
 #' @param what A \code{\link[base]{character}} naming the fit or equation.

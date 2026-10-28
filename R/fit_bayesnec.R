@@ -26,12 +26,8 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
                          timeout = Inf, model_survival = NULL,
                          predictor_scale = "auto", level_spec = NULL) {
   formula <- single_model_formula(formula, model)
-  # The backstop for the rule check_group_terms() applies. bnec(),
-  # bnec_group() and amend() exclude such an equation before their loops, so
-  # it is not reached from them; bnec_joint() on a bayesnecgroupfit fits
-  # through this function directly, with an equation the caller may name.
-  # Raised before the model frame and the initial-value search, so nothing is
-  # built for an equation that will not be fitted. See #470.
+  # A backstop: bnec(), bnec_group() and amend() exclude such an equation
+  # before their loops, but bnec_joint() fits through here directly.
   group_excluded <- group_term_exclusions(formula, model)
   if (nrow(group_excluded) > 0) {
     stop(group_terms_refusal(group_excluded), call. = FALSE)
@@ -47,32 +43,20 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
     x <- checked_df$mod_dat$x
     y <- checked_df$mod_dat$y
     tr <- checked_df$mod_dat$trials
-    # Taken from the checked frame rather than left as the value read from bdat
-    # above, so that the denominator and the response it divides come from one
-    # object and stay aligned: check_data() substitutes into the response, and
-    # the substituted values are what y holds here. NULL where the formula has
-    # no rate() term, because check_data() adds the column only when one is
-    # present.
+    # Take the denominator from the checked frame, so that it stays aligned
+    # with the response check_data() may have substituted into. NULL without a
+    # rate() term.
     denominator <- checked_df$mod_dat$denom
     family <- checked_df$family
     custom_name <- check_custom_name(family)
     brm_args$family <- family
-    # The corrections check_data() makes have to reach the data frame brm() is
-    # given, and whether they can is a property of one variable at a time. The
-    # guard here used to be all-or-nothing -- an inline transformation on any
-    # population variable suppressed the write-back for all of them -- so a
-    # log() on the predictor discarded a shift applied to the response and
-    # brm() then failed naming a condition the package had reported it had
-    # repaired (#258). check_data() no longer corrects a transformed variable
-    # at all, so anything it did change can be written back.
+    # Write check_data()'s corrections back to the data brm() is given, one
+    # variable at a time. check_data() does not correct a transformed
+    # variable, so anything it changed can be written back.
     data <- write_back_checks(data, bdat, "y_var", y)
-    # The response is the only variable written back. check_data() corrects
-    # neither the predictor (#269) nor the trials variable, so a write-back for
-    # either could only restate what the column already holds, or damage it. The
-    # all-variable write-back that these per-variable calls replaced did damage
-    # the trials column: clean_aterms() maps `trials(n * 2)` back to `n`, so the doubled
-    # values were written into the user's `n` and brm() then evaluated
-    # `trials(n * 2)` against them -- a recorded 10 fitted as 40.
+    # Write back the response only. check_data() corrects neither the predictor
+    # nor the trials, and writing back `trials(n * 2)` would put the doubled
+    # values into the user's `n`.
   }
   custom_name <- check_custom_name(family)
   if (family$family == "binomial" || family$family == "beta_binomial") {
@@ -80,15 +64,10 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   } else {
     response <- y
   }
-  # A rate() denominator is divided out for the same reason trials is above.
-  # bnec() fits on link = "identity", so brms writes the denominator
-  # multiplicatively on the response scale and the mean is the rate: top, bot
-  # and nec are counts per unit exposure, not counts. Built from the raw counts
-  # the defaults were displaced by the exposure, and because `response` is what
-  # reaches both define_prior() and the initial-value search, one division
-  # serves both. amend() already divides, on the same reasoning, at the point
-  # it rebuilds priors for a model added to an existing set (#136); this is the
-  # bnec() route agreeing with it. See #389.
+  # Divide out a rate() denominator, as trials is above. Under the identity
+  # link the mean is the rate, so top, bot and nec are per unit exposure.
+  # `response` reaches both define_prior() and the initial-value search.
+  # amend() divides in the same way.
   if (!is.null(denominator)) {
     response <- response / denominator
   }
@@ -108,23 +87,12 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
                                rate_response = !is.null(denominator),
                                truncated_response = isTRUE(attr(
                                  formula, "bayesnec_internal_truncation")))
-  # A group-level term needs initial values as well as a prior. Stan's own
-  # draw for a lower-bounded standard deviation is uniform(-2, 2) on the
-  # unconstrained scale and ignores whatever prior was declared, so a prior
-  # alone does not stop the mean starting outside a bounded response's support.
-  # Appended here rather than inside add_brm_defaults(), alongside the
-  # dispersion inits, because the group-level indices are read from
-  # make_standata(), which needs the brms formula and the data -- neither of
-  # which that function is given. Names the caller already supplied are left
-  # alone: a user who wrote their own initial values meant them. See #245.
-  #
-  # The list test is a real constraint, not a formality. brms takes `init`
-  # either as one list per chain or as a single keyword, so where the curve
-  # search gave up and fell back to "random" there is nothing to append to and
-  # the group-level protection is simply not available -- on the datasets where
-  # the search struggled, which are the ones most likely to need it. Announced
-  # rather than dropped quietly: this is the same outcome group_inits() warns
-  # about, reached by a different route.
+  # A group-level term needs initial values as well as a prior: Stan's own
+  # draw for a lower-bounded standard deviation ignores the prior, so the mean
+  # can start outside a bounded response's support. Append them here, where
+  # the brms formula and data make_standata() needs are available, and leave
+  # names the caller supplied alone. Where the curve search fell back to
+  # "random", `init` is a keyword with nothing to append to, so say so.
   if (!is.null(group_spec) && identical(brm_args$init, "random")) {
     message("bayesnec fell back to Stan's default initialisation for the curve",
             " parameters, so no initial values could be set for the",
@@ -135,14 +103,9 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   if (!is.null(group_spec) && is.list(brm_args$init)) {
     g_init <- group_inits(brms_bf, data, family, brm_args$prior,
                           group_spec = group_spec)
-    # A deviation intercept may itself be fixed with a constant() prior, which
-    # is the cleanest way to remove its confounding with the parameter it is
-    # applied to. Stan then does not declare b_ogl -- or b_botgl -- at all, so
-    # an init for it has nothing to initialise. add_brm_defaults() strips
-    # inits for constant parameters, but
-    # it does so before these are appended, so the same strip is applied here.
-    # Hygiene rather than a fix for a binding constraint, for the reasons #244
-    # records at the original site.
+    # A deviation intercept fixed by a constant() prior is not declared by
+    # Stan, so drop its init. add_brm_defaults() strips such inits before these
+    # are appended, so strip them again here.
     const_prior <- as.data.frame(brm_args$prior)
     b_const <- is_constant_prior(const_prior$prior) &
       const_prior$class == "b" & nzchar(const_prior$nlpar)
@@ -155,22 +118,17 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
     }
   }
   all_args <- c(list(formula = brms_bf, data = quote(data)), brm_args)
-  # Any failure from here on is re-raised carrying the priors and initial values
-  # this attempt was given. Both are constructed inside this function rather
-  # than supplied by the user, so a caller that catches the error and moves on
-  # to the next model -- which is what bnec() does for a model set -- has no
-  # other way to recover them. See ?failed_models.
+  # Re-raise any failure with the priors and initial values this attempt was
+  # given. They are built here, so a caller that catches the error, as bnec()
+  # does for a model set, cannot otherwise recover them. See ?failed_models.
   fit_failed <- function(e) {
     stop(fit_failure_condition(model, conditionMessage(e),
                                all_args$prior, all_args$init))
   }
   if (is.finite(timeout)) {
-    # R.utils::withTimeout aborts the brm call once `timeout` seconds elapse
-    # (including chains running on parallel worker processes), raising a
-    # TimeoutException. This lets a caller's try() move on to the remaining
-    # models rather than hanging on a single, highly divergent fit. R.utils is
-    # only needed for this optional feature, so it is a Suggests dependency and
-    # accessed conditionally.
+    # R.utils::withTimeout() aborts brm() after `timeout` seconds, including
+    # chains on worker processes, so that a caller's try() can move on.
+    # R.utils is in Suggests, so check for it.
     if (!requireNamespace("R.utils", quietly = TRUE)) {
       stop("Package \"R.utils\" is required to use the `timeout` argument. ",
            "Please install it.", call. = FALSE)
@@ -201,16 +159,12 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
 
 #' Write a correction from \code{\link{check_data}} back into the fitted data
 #'
-#' Returns \code{data} unchanged where the variable is written into the formula
-#' as a transformation: the correction was computed on the transformed scale,
-#' which is not the scale of the column \code{brm()} would re-evaluate it from.
-#' \code{\link{check_data}} does not correct such a variable, so there is
-#' nothing to lose by skipping it.
+#' Returns \code{data} unchanged where the variable is transformed in the
+#' formula: \code{brm()} would re-evaluate the transformation from the column,
+#' and \code{\link{check_data}} does not correct such a variable anyway.
 #'
-#' The rows are matched by name rather than assigned wholesale. The model frame
-#' drops incomplete cases, so it is shorter than \code{data} wherever any
-#' population variable carries an NA, and a wholesale assignment fails there
-#' with "replacement has n rows, data has m".
+#' Rows are matched by name, because the model frame drops incomplete cases
+#' and can be shorter than \code{data}.
 #'
 #' @noRd
 write_back_checks <- function(data, bdat, var, values) {

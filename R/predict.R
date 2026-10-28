@@ -115,11 +115,8 @@ predict.bayesmanecfit <- function(object, summary = TRUE,
     object, model, average,
     new_supplied = !missing(model) || !missing(average)
   )
-  # predict() never had all_models: it fell into the dots and brms ignored
-  # it. It is ignored still, rather than mapped as plot() and autoplot() map
-  # it, because mapping all_models = TRUE would turn the matrix such a call
-  # has always returned into a list. The warning says so, since the same
-  # argument now changes what the plotting methods draw.
+  # all_models is ignored, not mapped as plot() and autoplot() map it:
+  # mapping it would turn the matrix such a call returns into a list.
   if ("all_models" %in% ...names()) {
     warning("`all_models` is not an argument of predict() for a model set ",
             "and is ignored, as it always has been. Use `model` to name ",
@@ -132,18 +129,15 @@ predict.bayesmanecfit <- function(object, summary = TRUE,
                                  probs = probs, ...))
   }
   out <- list()
-  # The model average is computed before the equations so that, for a given
-  # seed, it matches what predict() returns with model = NULL: the equations
-  # draw from the random number stream as well, and computed first they would
-  # change the stream the average starts from.
+  # Compute the model average before the equations, which also draw from the
+  # random number stream, so that it matches predict() with model = NULL.
   if (shown$average) {
     out$average <- predict_manec_average(object, summary = summary,
                                          robust = robust, probs = probs, ...)
   }
   for (m in shown$model) {
-    # The equation's brmsfit directly rather than through pull_out(), which
-    # rebuilds the whole bayesnecfit, prediction grid included, to reach the
-    # same brmsfit that predict.bayesnecfit() would then use.
+    # Use the equation's brmsfit directly; pull_out() would rebuild the whole
+    # bayesnecfit to reach it.
     out[[m]] <- disp_predict(object$mod_fits[[m]]$fit,
                              object$mod_fits[[m]]$bayesnecformula,
                              summary = summary, robust = robust,
@@ -154,8 +148,8 @@ predict.bayesmanecfit <- function(object, summary = TRUE,
 
 #' The model averaged predictions of a model set
 #'
-#' The body of \code{predict.bayesmanecfit()} before \code{model} and
-#' \code{average} were added, unchanged.
+#' Summarises the model-averaged \code{\link{posterior_predict}} draws, as
+#' \code{predict.bayesmanecfit()} returns them with \code{model = NULL}.
 #'
 #' @importFrom brms posterior_summary posterior_predict
 #'
