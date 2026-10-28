@@ -518,8 +518,8 @@ estimated an 80-second compilation saving; this is an old local estimate.
 The broader dated compilation inventory and environment are in
 [Issue328](https://github.com/open-AIMS/bayesnec/issues/328).
 
-The `test-rate.R` fixture uses seed 1, 40 observations and exposures of 1, 2,
-4 and 8. Its true top is 20; the old count-based prior mean was about 61. Recorded
+The `test-rate.R` fixture uses seed 1, 40 observations and exposures of 1, 2, 4
+and 8. Its true top is 20; the old count-based prior mean was about 61. Recorded
 count-scale versus rate-scale dispersion centres were 3.02013 versus 2.19722 for
 the power form and 20.5 versus 9 for the loglinear form. The assertions use
 broad prior bounds and directly computed centres instead of freezing those old

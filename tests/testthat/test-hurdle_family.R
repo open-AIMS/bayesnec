@@ -103,7 +103,8 @@ test_that("validate_family rejects a non-identity link_hu the caller chose", {
 })
 
 test_that("a link is read per block, not for the family as a whole", {
-  # Choosing link_hu does not choose the mean link; resolve each separately.
+  # Choosing link_hu does not choose the mean link. Resolve the link of each
+  # block separately.
   v <- bayesnec:::validate_family
   src <- bayesnec:::family_link_source
   hu <- v(brms::hurdle_gamma(link_hu = "identity"),

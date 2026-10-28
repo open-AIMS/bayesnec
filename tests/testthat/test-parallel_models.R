@@ -898,8 +898,8 @@ test_that("a seeded level gives one answer with either model arrangement", {
 })
 
 test_that("a level seed means one thing whatever sampler the session is in", {
-  # group_level_seeds() pins the sample.int() sampler: set.seed(sample.kind =
-  # NULL) would keep the session's choice and realise different level seeds.
+  # group_level_seeds() pins the sampler: set.seed(sample.kind = NULL) would
+  # keep the session's sample.int() choice and realise different level seeds.
   kind <- RNGkind()
   on.exit(suppressWarnings(do.call(RNGkind, as.list(kind))), add = TRUE)
   suppressWarnings(RNGkind(sample.kind = "Rejection"))
