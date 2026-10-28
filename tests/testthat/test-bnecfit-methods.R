@@ -134,10 +134,8 @@ test_that("brms receives the validated family, not the one written", {
   got <- capture_brms_update(
     update(manec_example, family = Beta(), force_fit = TRUE)
   )
-  # The caller wrote no link, so bayesnec assigns identity. Forwarded through
-  # `...` untouched this was beta's own logit, and the curve was fitted to the
-  # logit of the mean while top, bot and nec were reported on the response
-  # scale.
+  # An unspecified mean link defaults to identity. top and bot then describe
+  # the response scale; nec remains on the predictor scale.
   expect_equal(got$family$family, "beta")
   expect_equal(got$family$link, "identity")
   # The idempotence marker is bayesnec's own and must not be serialised into

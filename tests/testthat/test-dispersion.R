@@ -3,11 +3,9 @@ test_that("dispersion fails because family is gaussian", {
   expect_length(dispersion(ecx4param, summary = TRUE), 0)
 })
 
-# The regression tests below all concern #247: dispersion() rebuilt the family
-# with get(fam)(), which carries that family's DEFAULT link -- log for Poisson,
-# logit for Binomial -- and applied its linkinv() to posterior_linpred(). Since
-# bnec() forces link = "identity", the linear predictor is already on the
-# response scale, so the value was transformed a second time.
+# Use the fitted family link, not a reconstructed family's default. This
+# Poisson fixture uses identity, so posterior_linpred() is already on the
+# response scale and must not be exponentiated again.
 
 # Fitted once and reused, as degenerate_fit() below already is: the two tests
 # that follow need the same fit, and a call in each compiled the same Stan

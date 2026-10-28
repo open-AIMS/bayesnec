@@ -22,10 +22,9 @@ test_that("min_ess is neff_ratio times ndraws, not a ratio", {
   fit <- bayesnec:::pull_brmsfit(
     suppressMessages(pull_out(manec_example, model = "nec4param"))
   )
-  # The screened vector, not the raw one -- prior_* draws are excluded (see the
-  # exclusion tests below). They are iid draws, so their ESS is close to ndraws
-  # and they are never the minimum in practice; asserted here so that a change
-  # to the exclusion set shows up as a failure rather than passing by luck.
+  # Use the screened parameters. Prior draws are excluded; on this fixture
+  # they do not determine the minimum ESS, but that is not guaranteed for
+  # every finite sample.
   ratio <- min(bayesnec:::screenable_pars(brms::neff_ratio(fit)))
   expect_equal(ratio, min(brms::neff_ratio(fit)))
   expect_equal(tab$min_ess[tab$model == "nec4param"],

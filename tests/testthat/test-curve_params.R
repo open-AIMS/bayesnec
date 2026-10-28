@@ -4,12 +4,9 @@
 # off the stored draws and nothing about it needs sampling to exercise.
 # nec4param and ecx4param are the fits setup.R pulls out of manec_example.
 
-# A joint two-block fit, built as far as the brms formula and no further. The
-# formula is what identifies the survival block's equation, and
-# wrangle_model_formula() builds it deterministically, so the labelling can be
-# pinned without sampling. The model name is pasted into the formula text
-# rather than referenced, because crf() evaluates its model argument where the
-# formula is used rather than where it is written.
+# Build a joint formula without sampling to check survival-equation labels.
+# Embed equation names in the formula text so the mock does not depend on
+# resolving a model variable from its formula environment.
 joint_mock <- function(model = "nec3param", model_survival = "ecx4param",
                        x_term = "x") {
   d <- data.frame(x = c(1, 2, 3, 4, 1, 2, 3, 4),
@@ -130,10 +127,9 @@ test_that("xform applies to the predictor-scale parameters and to no other", {
 })
 
 test_that("xform is applied to the draws rather than to the summary", {
-  # The distinction the median cannot pin: for a monotone xform the median of
-  # the transformed draws equals the transform of the median exactly. The
-  # interval separates them, because quantile() interpolates between order
-  # statistics, and a non-monotone xform separates them outright.
+  # Transform draws before summarising them. Nonlinear transforms need not
+  # commute with interpolated sample quantiles, including the median of an
+  # even sample; the interval and folded transform exercise that distinction.
   sq <- curve_params(nec4param, xform = function(x) x^2)
   drawn <- curve_params(nec4param, summary = FALSE,
                       xform = function(x) x^2)$nec4param[, "nec"]
@@ -283,12 +279,9 @@ test_that("the link is reported in a column and named when it is not identity", 
   expect_silent(bayesnec:::report_link(c(mu = "identity"), "x fit"))
 })
 
-# A fit whose formula transforms the PREDICTOR, in the style of setup.R's
-# transformed_response_fit(). The stored fit was not fitted with this formula;
-# that is safe for report_scales(), which reads the formula only to decide
-# whether the predictor was transformed, and it is not safe for reading any
-# posterior quantity off the fit. sqrt() rather than log(), because
-# manec_example's predictor reaches zero.
+# Change predictor-formula metadata only to test scale messages; the stored
+# fit was not fitted with this formula. Do not use the resulting object to
+# validate posterior values or numerical back-transformation.
 transformed_x_fit <- function(fit, model) {
   fit$bayesnecformula <- bnf(stats::as.formula(
     paste0("y ~ crf(sqrt(x), model = \"", model, "\")")

@@ -1,7 +1,5 @@
-# #148. The point of check_fit is that it is LOCAL: a global dispersion
-# statistic is structurally incapable of seeing a fit that mis-states
-# variability in one region, because a free dispersion parameter absorbs exactly
-# the discrepancy the global statistic measures.
+# Check variability by predictor group: a global dispersion statistic can
+# miss opposing discrepancies in different regions.
 
 # Each checkfit table below is computed once and reused by the blocks that read
 # it, following degenerate_fit() in test-dispersion.R. The reused object is the
@@ -103,10 +101,8 @@ test_that("ppp_value is the tail probability, and handles degenerate input", {
 })
 
 test_that("a bayesmanecfit reports per-model rows carrying their weights", {
-  # Stacking weights come from a global elpd, so a candidate can hold high
-  # weight while fitting the control badly -- it wins on the bulk of the curve
-  # and pays almost nothing for the control. Without per-model rows the table
-  # cannot say which model is doing the damage.
+  # Global model weights do not guarantee a good control fit. Keep per-model
+  # rows so the control diagnostic can be read against each model's weight.
   skip_on_cran()
   out <- check_fit(manec_example, group = 3, ndraws = 50)
   expect_true(all(c("model", "wi") %in% names(out)))
@@ -301,7 +297,8 @@ test_that("the cutoff is honoured rather than decorative", {
   # nothing can be beyond a ratio cutoff of infinity
   s <- suppressWarnings(summary(manec_example, fit_ratio_cutoff = Inf))
   expect_false(any(unlist(s$fit_issues)))
-  # everything is beyond a cutoff of 1
+  # This fixture has ratios different from one, so at least one is flagged
+  # when the cutoff admits only exact agreement.
   s2 <- suppressWarnings(summary(manec_example, fit_ratio_cutoff = 1))
   expect_true(any(unlist(s2$fit_issues)))
 })

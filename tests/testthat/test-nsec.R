@@ -126,9 +126,8 @@ test_that("ecnsec is the absolute percent effect at the nsec", {
     suppressWarnings()
   ec <- attr(out, "ecnsec_relativeP")
   expect_length(ec, 3)
-  # A percentage, and a small one: the NSEC is by construction the point at
-  # which the curve first leaves the control's own lower tail, so the effect
-  # there is a few per cent rather than tens of per cent.
+  # This fixture gives positive effects below 100 percent. Their magnitude
+  # depends on the fitted control distribution and significance level.
   expect_true(all(ec > 0))
   expect_true(all(ec < 100))
   expect_lt(ec[1], 25)
@@ -176,11 +175,9 @@ test_that("a draw at or below the reference at the control returns the control",
 })
 
 test_that("an x_range above the control does not report the control", {
-  # The control is the estimate only where the search begins at the control. With
-  # x_range starting higher, a draw already at or below the reference at the first
-  # grid point reached it below the range asked for, and reporting the control
-  # would name a concentration below the whole grid. It is NA and is reported with
-  # the draws that never reach the reference. See D17 ruling 1.
+  # Draws whose control is at or below the reference keep the control even
+  # when x_range starts higher. Other draws crossing before the requested
+  # grid return NA and are reported as below range.
   skip_on_cran()
   x_control <- min(nec_data$x)
   n_draws <- brms::ndraws(ecx4param$fit)
@@ -198,12 +195,9 @@ test_that("an x_range above the control does not report the control", {
   expect_equal(sum(out == x_control, na.rm = TRUE), 0.01 * n_draws)
   expect_true(sum(is.na(out)) > 0.01 * n_draws)
   expect_true(all(out >= 1 | out == x_control, na.rm = TRUE))
-  # And the estimate does not depend on x_range where the grid reaches the
-  # control. Extending it below the data moves the grid off the control, and
-  # extending it far above coarsens the grid so that the next point after the
-  # control is well beyond it; the control is made the first point searched, so
-  # neither loses a draw. Measured at sig_val = 0.05, where the class is large
-  # enough to be countable on a 100 draw fixture.
+  # Prepending the control preserves these draws when the grid extends below
+  # the data or becomes coarser. This checks draw retention; interpolated
+  # values can still depend on grid spacing.
   full <- nsec(ecx4param, resolution = 200, sig_val = 0.05, posterior = TRUE)
   for (x_range in list(c(0, max(nec_data$x)), c(0, 100))) {
     wide <- nsec(ecx4param, resolution = 200, sig_val = 0.05,
