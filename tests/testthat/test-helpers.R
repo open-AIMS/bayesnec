@@ -748,3 +748,91 @@ test_that("retrieve_var names a role the formula does not include (#442)", {
   expect_null(retrieve_var(mf, "trials_var"))
   expect_identical(retrieve_var(mf, "y_var", error = TRUE), nec_data$count)
 })
+
+# ---- the control of one level of a joint refit -------------------------------
+
+# Every nec draw of nec4param lies above both levels' lowest concentrations,
+# so the control value is the same at either. Record the concentration instead.
+record_control_x <- function(env = parent.frame()) {
+  seen <- new.env()
+  seen$x <- numeric()
+  real <- control_posterior
+  local_mocked_bindings(
+    control_posterior = function(object, newdata, epred_fun, x_at = NULL) {
+      real(object, newdata, function(nd) {
+        seen$x <- c(seen$x, nd$x)
+        epred_fun(nd)
+      }, x_at)
+    },
+    .env = env
+  )
+  seen
+}
+
+test_that("each level of a joint refit reads its control at its own lowest x", {
+  skip_on_cran()
+  j <- joint_split()
+  lowest <- vapply(j$levels, function(lev) min(j$data$x[j$data$site == lev]),
+                   numeric(1))
+  seen <- record_control_x()
+  # One control prediction per level, in level order.
+  calls <- list(
+    ecx = function() ecx(j, resolution = 50),
+    nsec = function() nsec(j, resolution = 50),
+    ecnsec = function() ecnsec(j, nsec = 1.5, resolution = 50,
+                               x_range = range(j$data$x))
+  )
+  for (what in names(calls)) {
+    seen$x <- numeric()
+    suppressMessages(suppressWarnings(calls[[what]]()))
+    expect_equal(seen$x, unname(lowest), label = what)
+  }
+  expect_gt(lowest[["high"]], min(j$data$x))
+})
+
+test_that("nsec on a joint level searches from the concentration of its reference", {
+  skip_on_cran()
+  lvl <- joint_level_fit(joint_split(), "high")
+  seen <- record_control_x()
+  start <- NULL
+  real <- nsec_from_posterior
+  local_mocked_bindings(
+    nsec_from_posterior = function(post, reference, x_vec, x_control,
+                                   control) {
+      start <<- x_control
+      real(post, reference, x_vec, x_control, control)
+    }
+  )
+  # A grid that reaches below the level's data changes neither concentration.
+  for (x_range in list(NA, range(nec4param$fit$data$x))) {
+    seen$x <- numeric()
+    suppressMessages(suppressWarnings(
+      nsec(lvl, resolution = 50, x_range = x_range)
+    ))
+    expect_equal(start, seen$x)
+    expect_equal(start, min(lvl$level_x))
+  }
+})
+
+test_that("a joint refit whose levels share their lowest x keeps its estimates", {
+  skip_on_cran()
+  j <- joint_split()
+  d <- nec4param$fit$data
+  j$data <- rbind(cbind(d, site = "low"), cbind(d, site = "high"))
+  seen <- record_control_x()
+  quiet <- function(e) suppressMessages(suppressWarnings(e))
+  for (lev in j$levels) {
+    lvl <- joint_level_fit(j, lev)
+    expect_equal(control_x(lvl), min(d$x))
+    for (est in list(ecx, nsec)) {
+      expect_equal(quiet(est(lvl, resolution = 50)),
+                   quiet(est(nec4param, resolution = 50)),
+                   ignore_attr = TRUE)
+    }
+    expect_equal(quiet(ecnsec(lvl, nsec = 1.5, resolution = 50)),
+                 quiet(ecnsec(nec4param, nsec = 1.5, resolution = 50)),
+                 ignore_attr = TRUE)
+  }
+  expect_length(seen$x, 12)
+  expect_equal(unique(seen$x), min(d$x))
+})

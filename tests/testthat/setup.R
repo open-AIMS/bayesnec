@@ -174,3 +174,18 @@ at_bound_cases <- function() {
 # included: a beta response of 0 throughout (#419) and a zero_inflated_beta one
 # (#441).
 at_bound_refused <- c("beta_zero", "zib_zero")
+
+# One fit split into two levels at x = 1: "low" observed from 0.0323 to 0.971
+# and "high" from 1.02 to 3.22. Both levels read the same curve, so only the
+# range each level is read over differs.
+joint_split <- function() {
+  d <- nec4param$fit$data
+  d$site <- factor(ifelse(d$x < 1, "low", "high"), levels = c("low", "high"))
+  bayesnec:::allot_class(
+    list(fit = nec4param$fit, data = d, group_var = "site",
+         levels = c("low", "high"), model = "nec4param",
+         bayesnecformula = nec4param$bayesnecformula,
+         level_spec = list(composed = FALSE)),
+    c("bayesnecjointfit", "bnecfit")
+  )
+}

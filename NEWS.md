@@ -3028,6 +3028,20 @@
   passes the backend to the added equation but not `control` or `seed`, and
   reads the survival-block equation from the stored formulas (#489).
 
+- On a `bayesnecjointfit` whose levels start at different concentrations,
+  `ecx()`, `nsec()` and `ecnsec()` now predict each level's control at that
+  level's own lowest concentration. They predicted it at the lowest
+  concentration of all levels together, which for a level observed from a
+  higher concentration lies below its data. Every estimate for such a level
+  that is defined relative to the control, which excludes only
+  `ecx(type = "direct")`, was measured from that prediction. Inside `nsec()`
+  the reference was read there, while the search for the NSEC started at the
+  level's own lowest concentration. What is read through these functions
+  changes with them: `nec(no_effect = TRUE)` on a level fitted with a smooth
+  equation, `exceedance()` under `estimate = "nsec"` or `"ecx"`, and the NSEC
+  and ECx annotations of `autoplot()`. A refit whose levels share their lowest
+  concentration, as most designs do, is unchanged (#500).
+
 ## Documentation
 
 - `?autoplot` states that a `bayesmanecfit` with `multi_facet = FALSE`
