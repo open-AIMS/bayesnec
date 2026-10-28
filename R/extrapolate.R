@@ -4,12 +4,9 @@
 #' on and the scale \code{extrapolate} is read on.
 #'
 #' A grid point is kept only where it is finite on the fitted scale as well as
-#' on the recorded one. \code{expand_nec()} takes its own bounds from the
-#' fitted grid with the non-finite entries dropped, because an \code{x_range}
-#' reaching zero under \code{crf(log(x))} puts \code{-Inf} at the foot of it.
-#' Filtering the recorded grid alone keeps that zero here, and the lower limit
-#' of a single-number \code{extrapolate} defaults to this bound, so such a fit
-#' refused every upper limit for naming a value the caller had not given.
+#' on the recorded one, as \code{expand_nec()} does for its own bounds. Under
+#' \code{crf(log(x))} an \code{x_range} reaching zero is finite when recorded
+#' and \code{-Inf} when fitted.
 #'
 #' @param object A \code{\link{bayesnecfit}}, \code{\link{bayesmanecfit}} or
 #' \code{\link{bayesnechurdlefit}}.
@@ -41,10 +38,8 @@ ne_grid_bounds <- function(object) {
 #' @noRd
 ne_grid_data <- function(object) {
   if (is_bayesnechurdlefit(object)) {
-    # The survival component, which is the one newdata_eval() takes the grid
-    # from: it sees every row and therefore the full exposed predictor range,
-    # whereas the growth component stops short of any concentration where
-    # nothing survived.
+    # Use the survival component, as newdata_eval() does. The growth component
+    # stops short of any concentration where nothing survived.
     return(ne_grid_data(object$survival))
   }
   if (inherits(object, "bayesmanecfit")) {
@@ -83,27 +78,13 @@ grid_x_range <- function(object, x_range) {
 
 #' The range a limit given to a curve-read estimator is measured against
 #'
-#' The range the call would otherwise use, which is what \code{extrapolate}
-#' must not narrow.
-#'
-#' Where the caller named an \code{x_range}, that is the range, at both ends.
-#' They have chosen the range deliberately, and measuring against anything
-#' wider both discards their lower bound and refuses the pair that would keep
-#' it: \code{nsec(x_range = c(0.5, 0.9), extrapolate = 9)} searched from
-#' 0.0324 rather than 0.5 without saying so, and
-#' \code{extrapolate = c(0.5, 9)}, the form that states the intent, was
-#' refused for naming a lower limit inside a range the caller had already
-#' narrowed.
-#'
-#' Where they did not, it is the wider of the range this call will search and
-#' the prediction range the fit stores. Those differ for a fit built over a
-#' grid above the data, where \code{\link{nsec}} with no \code{x_range}
-#' returns to the observed range: measured on a fit re-expanded with
-#' \code{x_range = c(0.0324, 8)}, the search range ends at 3.22, so
-#' \code{extrapolate = 5} read against it alone was accepted and censored the
-#' estimate at 5, inside the grid the fit itself stores. Taking the wider of
-#' the two there makes \code{\link{nec}} and \code{\link{nsec}} refuse the
-#' same numbers, which is what specification 4.6 asks for.
+#' This is the range \code{extrapolate} must not narrow. Where the caller named
+#' an \code{x_range}, it is that range at both ends, since anything wider would
+#' discard their lower bound. Otherwise it is the wider of the range this call
+#' searches and the prediction range the fit stores. Those differ for a fit
+#' expanded over a grid above the data, where \code{\link{nsec}} searches the
+#' observed range only. Taking the wider makes \code{\link{nec}} and
+#' \code{\link{nsec}} refuse the same limits.
 #'
 #' @param object A fit.
 #' @param x_range The caller's \code{x_range}.
@@ -126,12 +107,11 @@ searched_or_stored_bounds <- function(object, x_range) {
 
 #' Resolve \code{extrapolate} into the pair of limits it names
 #'
-#' \code{extrapolate} is read on the recorded predictor scale, the scale the
-#' data were supplied on and the scale \code{x_range} takes, not the scale
-#' \code{crf()} fits on and not the scale \code{xform} displays. A limit given
-#' on the fitted scale where the recorded one is wanted is smaller than the top
-#' of the prediction range under every increasing transformation, so it is
-#' refused by the check below rather than acted on.
+#' \code{extrapolate} is read on the recorded predictor scale, the scale of the
+#' data and of \code{x_range}, not the scale \code{crf()} fits on or the scale
+#' \code{xform} displays. A limit given on the fitted scale by mistake falls
+#' inside the prediction range under any increasing transformation, so the
+#' check below refuses it.
 #'
 #' @param extrapolate The caller's argument.
 #' @param bounds The current prediction range, from \code{ne_grid_bounds()} or
@@ -160,9 +140,8 @@ extrapolate_limits <- function(extrapolate, bounds, ne_types,
     lims <- list(lower = -Inf, upper = Inf)
   } else if (is.numeric(extrapolate) && length(extrapolate) %in% c(1, 2) &&
              !anyNA(extrapolate)) {
-    # Forced only here, so that extrapolate = FALSE reaches nothing that reads
-    # the object. A fit with no stored prediction grid took min() and max()
-    # over an empty vector on the default path and warned twice at each end.
+    # `bounds` is first evaluated here, so that extrapolate = FALSE returns
+    # before the object is read. Do not refer to it above this point.
     if (is.null(bounds)) {
       stop("extrapolate is measured against a prediction range and this ",
            "object stores none, so there is nothing to extend. Set the grid ",
@@ -225,13 +204,10 @@ extrapolate_limits <- function(extrapolate, bounds, ne_types,
 
 #' Put a pair of extrapolation limits on the fitted predictor scale
 #'
-#' The comparison against a sampled draw happens on the scale the draw is on,
-#' which is the scale \code{crf()} fitted (specification 4.8). A decreasing
-#' \code{crf()} takes the top of the recorded scale to the foot of the fitted
-#' one, so the two limits are transformed and then ordered rather than kept
-#' under the names they arrived with. An infinite recorded limit stays
-#' infinite, with its sign decided by the direction the finite grid bounds map
-#' in.
+#' Draws are compared on the scale \code{crf()} fitted. A decreasing
+#' \code{crf()} transformation maps the top of the recorded range to the foot
+#' of the fitted one, so the limits are transformed and then reordered. An
+#' infinite limit stays infinite, with the sign the finite grid bounds give it.
 #'
 #' @param lims A pair of limits from \code{extrapolate_limits()}.
 #' @param bounds The current prediction range, on the recorded scale.
@@ -263,10 +239,10 @@ fitted_extrapolate_limits <- function(lims, bounds, formula) {
 
 #' Record which sampled draws lie beyond a pair of limits
 #'
-#' For a threshold posterior, whose every draw has a value. Releasing it to a
-#' wider limit is a comparison and nothing more; no curve is re-evaluated. An
-#' infinite limit leaves the record empty, so the summary reverts to the
-#' uncensored one.
+#' For a threshold posterior, every draw of which has a value. Releasing the
+#' posterior to wider limits means censoring each draw against them afresh; no
+#' curve is re-evaluated. An infinite limit leaves the record empty, so the
+#' summary reverts to the uncensored one.
 #'
 #' @param values A \code{\link[base]{numeric}} vector of draws, on the fitted
 #' scale.
@@ -281,8 +257,8 @@ recensor_sampled <- function(values, lims) {
 
 #' The bounds a fit's stored nec prior places on its threshold posterior
 #'
-#' Read off the prior stored on the fitted object rather than recomputed from
-#' the data, so a bound a user supplied is handled (specification 2.3).
+#' Read off the prior stored on the fit rather than recomputed from the data,
+#' so that a bound the user supplied is found.
 #'
 #' @param fit A \code{\link[brms]{brmsfit}}.
 #'
@@ -299,12 +275,9 @@ ne_prior_bounds <- function(fit) {
   if (nrow(rows) == 0) {
     return(NULL)
   }
-  # The tightest bound across the rows, not the first of them. A joint
-  # two-block fit declares a nec parameter in each block and the combined
-  # estimate is their per-draw minimum, which is at or below the smaller upper
-  # bound and at or above the smaller lower bound, so those are the two values
-  # true of the quantity being reported. For a single-block fit there is one
-  # row pair and this selects it.
+  # Take the smallest bound over the rows, not the first row. A joint two-block
+  # fit has a nec in each block, and the reported estimate is their per-draw
+  # minimum, to which the smaller of each pair of bounds applies.
   tightest <- function(values) {
     values <- values[!is.na(values) & nzchar(values)]
     values <- suppressWarnings(as.numeric(values))
@@ -329,12 +302,9 @@ ne_prior_bounds <- function(fit) {
 #' @return \code{NULL}, invisibly. Called for the message.
 #' @noRd
 report_bounded_ne_prior <- function(priors, lims) {
-  # brms stores a prior bound as the character form of the number, at fifteen
-  # significant digits, so a bound taken from the prediction grid parses back a
-  # few units in the last place either side of the grid value it was set from.
-  # Without the tolerance, a request that reaches exactly the grid bound -- the
-  # default lower limit of a single-number extrapolate, which extends nothing
-  # at that end -- was reported as blocked by the prior.
+  # brms stores a bound as text at fifteen significant digits, so a bound set
+  # from the grid parses back slightly either side of it. Without the
+  # tolerance, a limit at exactly the grid bound is reported as blocked.
   binds <- function(bound, asked) {
     vapply(priors, function(p) {
       !is.null(p) && is.finite(p[[bound]]) &&
@@ -410,16 +380,12 @@ check_no_extrapolate <- function(extrapolate, what) {
 
 #' What the two bounds of a censoring record are the ends of
 #'
-#' \code{warn_censored_draws()} names them, and its default is right wherever
-#' the record came from the grid the estimate was read on. Under
-#' \code{extrapolate} the bound is the limit the caller named, which is
-#' somewhere the prediction range does not reach, so calling it the end of that
-#' range states the wrong number twice over.
-#'
-#' The flag is put on the posterior by the branches that replace the record,
-#' rather than derived from whether \code{extrapolate} was given: a
-#' limit equal to the current bounds, and a limit on a fit with nothing
-#' censored, both return the stored record and are still the prediction range.
+#' \code{warn_censored_draws()} names the bounds. Under \code{extrapolate} a
+#' bound is the limit the caller named, not the end of the prediction range.
+#' The flag is set by the branches that replace the record, not inferred from
+#' \code{extrapolate}: a limit equal to the current bounds, or a fit with
+#' nothing censored, returns the stored record, whose bounds are still the
+#' prediction range.
 #'
 #' @param values A posterior, possibly marked by an extrapolation.
 #'
@@ -449,10 +415,8 @@ extends_range <- function(lims, bounds) {
 #' The resolution a re-evaluated curve is read on
 #'
 #' The number of points in the grid the fit stored, rather than
-#' \code{\link{nsec}}'s lighter default of 200. It is a count and not a
-#' spacing, so over a range wider than the stored one the re-read grid is
-#' proportionally coarser; the roxygen of \code{\link{nec}} says so, and a
-#' caller who needs a given spacing passes \code{resolution}.
+#' \code{\link{nsec}}'s default of 200. It is a count, not a spacing, so the
+#' grid over a wider range is coarser.
 #'
 #' @noRd
 stored_resolution <- function(object) {
@@ -463,11 +427,9 @@ stored_resolution <- function(object) {
 #' The no-effect posterior of a single fit, released to a pair of limits
 #'
 #' A threshold posterior is released by comparison alone. A no-effect estimate
-#' read off a curve -- which on a \code{\link{bayesnecfit}} arises only for a
-#' joint two-block fit with a smooth block -- is re-evaluated on a grid
-#' extended to the limits, through the \code{x_range} argument
-#' \code{\link{nsec}} already takes, which recomputes from the stored fit and
-#' needs no refit.
+#' read off a curve, which on a \code{\link{bayesnecfit}} arises only for a
+#' joint two-block fit with a smooth block, is re-evaluated by
+#' \code{\link{nsec}} over the extended \code{x_range}, without a refit.
 #'
 #' @param object A \code{\link{bayesnecfit}}.
 #' @param lims A pair of limits on the recorded scale.
@@ -482,19 +444,13 @@ extrapolated_necfit_ne <- function(object, lims, bounds, sig_val, resolution) {
                                            object$bayesnecformula)
   if (!extends_range(lims, bounds) ||
       !has_censoring(attr(object$ne_posterior, "censored"))) {
-    # Two cases with one answer. The limits may be the prediction range, in
-    # which case there is nothing to release and nothing to re-evaluate. Or no
-    # draw may lie beyond either end, in which case every draw was identified
-    # inside the range the fit used, a wider bound censors none of them, and a
-    # wider grid has no draw left to identify. Returned unaltered in both, so
-    # that extrapolating a fit with nothing censored reports what
-    # extrapolate = FALSE reports rather than a number recomputed for no gain.
+    # Return the stored posterior unaltered where the limits are the
+    # prediction range, or where no draw is censored: a wider bound then
+    # changes nothing, and the result matches extrapolate = FALSE.
     return(object$ne_posterior)
   }
-  # After the short-circuit, not before it. A call that returns the stored
-  # estimate bit for bit recomputed nothing and could not have reported
-  # anything different, so advice to refit with a wider prior bound had no
-  # bearing on the number beside it.
+  # After the early return: advice to widen the prior has no bearing on a
+  # stored estimate returned unchanged.
   report_bounded_ne_prior(
     setNames(list(ne_prior_bounds(object$fit)), object$model), fitted_lims
   )
@@ -507,9 +463,8 @@ extrapolated_necfit_ne <- function(object, lims, bounds, sig_val, resolution) {
   report_curve_read_lower_limit(object, lims)
   out <- nsec(object, sig_val = sig_val, resolution = resolution,
               x_range = c(lims$lower, lims$upper), posterior = TRUE)
-  # The draws and the record, and nothing else. nsec() also attaches its own
-  # sig_val, resolution and ecnsec_relativeP, which describe an NSEC read on a
-  # grid the caller of nec() did not name, and which nec() has never returned.
+  # Keep the draws and the censoring record only. The other attributes nsec()
+  # attaches describe a grid the caller of nec() did not name.
   cens <- attr(out, "censored")
   out <- as.numeric(out)
   attr(out, "censored") <- cens
@@ -518,20 +473,9 @@ extrapolated_necfit_ne <- function(object, lims, bounds, sig_val, resolution) {
 
 #' One equation of a set, classed for a curve-read estimator and no more
 #'
-#' \code{\link{nsec}} reads its estimate from the stored \pkg{brms} fit and the
-#' formula, on a grid it builds itself. Everything else a
-#' \code{\link{bayesnecfit}} holds -- the prediction grid, the stored no-effect
-#' posterior, the dispersion, the information criteria -- is built by
-#' \code{expand_nec()} and none of it is read on that path.
-#'
-#' Reaching the component through \code{\link{pull_out}} therefore paid for a
-#' full expansion whose every product was discarded: a
-#' \code{\link[brms]{posterior_epred}} over a thousand grid points, a per-draw
-#' root search, \code{dispersion()} and the \pkg{loo} weights, all at the
-#' default grid rather than the one the caller asked for. Measured on the
-#' two-equation, hundred-draw packaged fixture, \code{pull_out()} was 1.37 s of
-#' the 3.39 s a finite limit took; on the twenty-three-equation default set the
-#' saving is proportionally larger.
+#' \code{\link{nsec}} reads only the stored \pkg{brms} fit and the formula.
+#' \code{\link{pull_out}} would also run the whole of \code{expand_nec()}, all
+#' of whose products this path discards.
 #'
 #' @param object A \code{\link{bayesmanecfit}}.
 #' @param model A \code{\link[base]{character}} naming one successful equation.
@@ -545,16 +489,11 @@ component_fit <- function(object, model) {
 #' One equation's stored threshold posterior, without expanding the component
 #'
 #' \code{expand_nec()} stores a single-block threshold posterior as
-#' \code{as_draws_df(fit)[["b_nec_Intercept"]]} and nothing else, so reading
-#' it back needs no expansion. Reaching it through \code{\link{pull_out}} paid
-#' for a discarded \code{posterior_epred()} over the grid, a per-draw root
-#' search, \code{dispersion()} and the \pkg{loo} weights, on the one path
-#' \code{extrapolate} takes for an object saved before the weighted draw index
-#' was kept.
-#'
-#' A joint two-block fit is the exception: its stored estimate is the per-draw
-#' minimum of two blocks, or a value read off the combined curve, neither of
-#' which is a single parameter. Those go through \code{\link{pull_out}}.
+#' \code{as_draws_df(fit)[["b_nec_Intercept"]]}, so it is read back directly
+#' rather than through \code{\link{pull_out}}, which expands the component. A
+#' joint two-block fit is the exception: its estimate is the per-draw minimum
+#' of two blocks, or a value read off the combined curve, so it goes through
+#' \code{\link{pull_out}}.
 #'
 #' @param object A \code{\link{bayesmanecfit}}.
 #' @param model A \code{\link[base]{character}} naming one equation.
@@ -592,14 +531,11 @@ extrapolated_manec_ne <- function(object, lims, bounds, sig_val, resolution) {
   fitted_lims <- fitted_extrapolate_limits(lims, bounds, formula)
   if (!extends_range(lims, bounds) ||
       !has_censoring(attr(object$w_ne_posterior, "censored"))) {
-    # As in extrapolated_necfit_ne(). The second test also keeps a set whose
-    # stored weighted draw index predates #216 from being resampled where
-    # there is nothing to gain: on manec_example, which has no stored index and
-    # nothing censored, the rebuilt mixture read 1.449 (0.808, 1.528) against
-    # the stored 1.450 (0.749, 1.527).
+    # As in extrapolated_necfit_ne(). This also keeps a set saved without a
+    # weighted draw index from being resampled where nothing would change.
     return(object$w_ne_posterior)
   }
-  # As in extrapolated_necfit_ne(), after the short-circuit.
+  # As in extrapolated_necfit_ne(), after the early return.
   report_bounded_ne_prior(
     setNames(lapply(seq_along(success), function(i) {
       if (types[i] == "NEC") {
@@ -627,16 +563,11 @@ extrapolated_manec_ne <- function(object, lims, bounds, sig_val, resolution) {
          "the set with c() or amend() before extrapolating.", call. = FALSE)
   }
   starts <- cumsum(lens) - lens + 1
-  # Whether the index that built the stored mixture is the index being used
-  # now. Where it is, a threshold component is sliced straight out of that
-  # mixture and no posterior is recomputed for it. Where it is not -- an object
-  # stored before the weighted index was kept, #216 -- pull_draw_index()
-  # regenerates a different draw, and slicing would put those draws beside
-  # curve-read draws taken under the new one. Measured on manec_example, whose
-  # stored index is empty: the regenerated ecx4param draws are a different
-  # seventeen of the hundred, and the mixed lower bound at the stored bounds
-  # read 0.81 against the stored 0.75. Every component is therefore rebuilt
-  # under the one index instead.
+  # Slice a threshold component out of the stored mixture only where the
+  # stored weighted draw index is the one in use. For an object saved without
+  # it, pull_draw_index() regenerates a different index, and slicing would pair
+  # the old draws with curve-read draws taken under the new index. Every
+  # component is then rebuilt under the new one.
   have_stored_index <- !is.null(object$w_draw_index) &&
     all(success %in% names(object$w_draw_index))
   parts <- lapply(seq_along(success), function(i) {
@@ -666,17 +597,13 @@ extrapolated_manec_ne <- function(object, lims, bounds, sig_val, resolution) {
 
 #' The class of no-effect estimate each equation of a set contributes
 #'
-#' Derived from the equation name, which is how \code{expand_manec()} derives
-#' the label it puts on the set, rather than by expanding every component. Two
-#' things follow. The type of a single-block fit is a property of its equation
-#' and needs no posterior, so this is exact and free for the sets
-#' \code{\link{bnec}} usually fits. And where the components are joint
-#' two-block fits, the equation name describes the response block alone, so a
-#' set whose survival blocks hold a smooth equation is named \code{"NEC"} here
-#' exactly as \code{expand_manec()} names it. \code{extrapolated_manec_ne()}
-#' catches that case on the posterior itself rather than by second-guessing the
-#' label, so that \code{\link{nec}} and \code{\link{summary}} do not disagree
-#' about what the set is.
+#' Derived from the equation name, as \code{expand_manec()} derives the label
+#' of the set, rather than by expanding every component. For joint two-block
+#' fits the name describes the response block only, so a set whose survival
+#' blocks hold a smooth equation is labelled \code{"NEC"} here, as
+#' \code{expand_manec()} labels it. \code{extrapolated_manec_ne()} catches that
+#' case on the posterior instead, so that \code{\link{nec}} and
+#' \code{\link{summary}} agree about the set.
 #'
 #' @param object A \code{\link{bayesmanecfit}}.
 #'
@@ -690,12 +617,10 @@ manec_ne_types <- function(object) {
 #' The class of no-effect estimate a single fit holds
 #'
 #' \code{expand_nec()} records it in \code{ne_type}, taking both blocks of a
-#' two-block fit into account, and that record is the authority. The fallback
-#' is for an object stored before the slot existed: a single-block fit reaching
-#' \code{\link{nec}} has already had an \code{ecx}-type equation refused, so it
-#' samples its threshold, while a two-block fit's combined estimate depends on
-#' a block the equation name does not describe and is treated as read off a
-#' curve.
+#' two-block fit into account, and that record decides. The fallback is for an
+#' object saved before the slot existed: a single-block fit samples its
+#' threshold, since \code{\link{nec}} has already refused an \code{ecx}
+#' equation, and a two-block fit is treated as read off a curve.
 #'
 #' @param object A \code{\link{bayesnecfit}}.
 #'
@@ -715,13 +640,11 @@ necfit_ne_type <- function(object) {
 
 #' Refuse to release a posterior that has no value to release
 #'
-#' A threshold component is released by comparing each draw against the new
-#' bound, which states nothing about a draw that has no value. Such a draw can
-#' only reach this path where the class of the estimate was read from the
-#' equation name and the name did not describe it --- a model-averaged set of
-#' joint two-block fits whose survival blocks hold a smooth equation. Refusing
-#' is the alternative to reporting the deleted-draw summary the censored
-#' summary replaced, which would be silent.
+#' Releasing a threshold component compares each draw with the new bound, which
+#' says nothing about a draw with no value. Such draws reach this path only
+#' from a model-averaged set of joint two-block fits whose survival blocks hold
+#' a smooth equation. Refuse rather than silently summarise the remaining
+#' draws.
 #'
 #' @param values A \code{\link[base]{numeric}} vector of draws.
 #' @param what A \code{\link[base]{character}} naming the equation.
