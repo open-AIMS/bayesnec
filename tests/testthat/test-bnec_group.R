@@ -1,10 +1,6 @@
-# #33 stage 1. Levels are fitted independently and model-averaged within level;
-# the crossed weights across levels follow from the per-level weights alone.
-#
-# The fitting itself is exercised by hand rather than here: two real fits per
-# test would dominate the suite. What is tested here is everything around it --
-# validation, the crossed-weight arithmetic, and the per-level dispatch -- using
-# manec_example as a stand-in for a fitted level.
+# Levels are fitted independently and model-averaged within level.
+# Use manec_example as each fitted level to check validation, dispatch and
+# crossed weights without repeated sampling.
 
 fake_group_fit <- function(fits = list(a = manec_example, b = manec_example)) {
   out <- list(fits = fits, group_var = "site", levels = names(fits),
@@ -38,12 +34,8 @@ test_that("a level too small to support a fit is refused", {
 })
 
 test_that("a missing value is refused before the first level is fitted", {
-  # Each level is a complete fit, so without a check before the loop a missing
-  # value in level "b" would be reached only after level "a" had compiled and
-  # sampled. Measured on two levels of twelve: level "a" ran to completion
-  # before level "b" raised. The whole data frame is checked, so the row is
-  # named as the user recorded it rather than by its position within a subset.
-  # See #278.
+  # Validate the whole data frame before any level compiles or samples.
+  # Report the original row number, not its position within a level.
   d <- data.frame(x = rep(1:10, 2), y = rep(seq(0.9, 0.1, length = 10), 2),
                   site = rep(c("a", "b"), each = 10))
   d$y[14] <- NA
@@ -114,10 +106,8 @@ test_that("per-level estimates come back as one row per level", {
   expect_s3_class(out, "data.frame")
   expect_equal(nrow(out), 2)
   expect_setequal(out$level, c("a", "b"))
-  # Columns are the names nec() itself returns, not fixed positions -- see the
-  # posterior/prob_vals tests below for why that matters. The bound_ columns
-  # hold each entry's censoring mark (#404) and follow the numeric columns,
-  # which keep the positions they had before the marks were added.
+  # Read estimate columns by name: posterior draws and custom quantiles change
+  # the returned shape. Append censoring marks after the numeric columns.
   expect_equal(names(out), c("level", "Q50", "Q2.5", "Q97.5",
                              "bound_Q50", "bound_Q2.5", "bound_Q97.5"))
   # the same fit at both levels must give the same numbers -- the map must not
@@ -128,9 +118,8 @@ test_that("per-level estimates come back as one row per level", {
                     ""))
 })
 
-# #33 second review: group_estimate_table() read positions 1:3 of whatever the
-# underlying method returned, while passing `...` straight through to methods
-# that take `posterior` and `prob_vals`. Both are silent-wrong-answer routes.
+# Forwarded posterior and prob_vals arguments must not turn draws or
+# truncated quantile vectors into apparently valid estimate tables.
 
 test_that("posterior = TRUE is refused rather than tabulated", {
   # nec(posterior = TRUE) returns the draws, not a summary, so a positional
@@ -154,12 +143,8 @@ test_that("a non-default prob_vals is carried through, not truncated", {
   expect_equal(nrow(out), 2)
 })
 
-# #404: the table dropped each level's "censored_summary" record, so a level
-# whose own nec() reported ">= 0.9" came back from nec() on the group as a plain
-# 0.9. The censored level is manec_example re-expanded over a grid ending at
-# 0.9, inside its posterior, as test-censoring.R does; nothing is compiled or
-# sampled. Built once, because expand_manec() predicts every equation over the
-# grid.
+# Use manec_example on a grid ending inside its posterior to test censoring
+# marks without sampling. Expand once because every equation is predicted.
 censored_level <- local({
   fit <- NULL
   function() {
@@ -207,7 +192,7 @@ test_that("the table marks a censored level as its own fit does", {
   # of its entries is marked.
   expect_null(attr(own_b, "censored_summary"))
   expect_level_agrees(out, 2, own_b)
-  # A column survives the subsetting and stacking an attribute would not (D22).
+  # A column survives the subsetting and stacking that would drop an attribute.
   expect_identical(out[1, "bound_Q50"],
                    attr(own_a, "censored_summary")$bound[1])
   expect_identical(rbind(out, out)$bound_Q97.5, rep(out$bound_Q97.5, 2))
@@ -270,10 +255,8 @@ test_that("printing reports the shared family and the per-level model sets", {
 })
 
 test_that("plot() of a group fit gives the all_models warning once (#120)", {
-  # plot.bayesnecgroupfit() calls plot() once per level, each of which maps
-  # the deprecated all_models onto its own set and would warn. The warning
-  # belongs to the caller's one call. The panel labels are read off a mocked
-  # legend() to show that every level still drew every equation of its set.
+  # Each level maps deprecated all_models onto its own set, but the caller
+  # should receive one warning. Mock legend() to check every panel and equation.
   skip_on_cran()
   gf <- fake_group_fit(list(a = manec_example, b = manec_example,
                             c = manec_example))
@@ -301,10 +284,8 @@ test_that("plot() of a group fit gives the all_models warning once (#120)", {
   expect_equal(sum(labels == "nec4param"), 3)
 })
 
-# #33 review finding: the outer-product identity holds for pseudo-BMA only, and
-# was documented but not enforced. `loo_controls` reaches bnec() through `...`,
-# so stacking weights were reachable and would have produced a crossed table
-# that looked right and was not.
+# The crossed-weight product requires pseudo-BMA. loo_controls reaches
+# bnec() through dots, so stacking must be rejected before building the table.
 
 test_that("crossed_group_weights refuses a non-pseudo-BMA fit", {
   # Built directly rather than fitted: the check is on what the object records,
@@ -319,10 +300,8 @@ test_that("crossed_group_weights refuses a non-pseudo-BMA fit", {
 })
 
 test_that("an absent weights_method is treated as the default", {
-  # Defensive: the class is new, so no object should lack the field, but a
-  # hand-built one must not be refused on a technicality. Asserted as "does not
-  # fail the method check" rather than "does not fail", because an object with
-  # no fits has nothing to compute and will error further down for that reason.
+  # A hand-built object without the method field may reach the calculation.
+  # Its missing fits can still fail later; assert only that method checking passes.
   fake <- structure(
     list(fits = list(), group_var = "site", levels = c("a", "b")),
     class = c("bayesnecgroupfit", "bnecfit")
@@ -335,10 +314,9 @@ test_that("an absent weights_method is treated as the default", {
 })
 
 test_that("the method is read off the fits where they still carry it", {
-  # Correction to the earlier rationale: expand_manec() *does* stamp the method
-  # on the weight vector, as attr(mod_stats$wi, "method"). It survives cbind but
-  # not row-subsetting, so it is a reliable cross-check where present and no
-  # substitute for capturing the request at fit time where it is not.
+  # expand_manec() records the method on mod_stats$wi. The attribute survives
+  # cbind but not row-subsetting, so cross-check it where present and keep the
+  # method captured at fit time as well.
   expect_equal(attr(manec_example$mod_stats$wi, "method"), "pseudobma")
   stacked <- manec_example
   attr(stacked$mod_stats$wi, "method") <- "stacking"
@@ -368,9 +346,8 @@ test_that("a missing value in the grouping column is refused", {
 })
 
 test_that("the pooled comparison is on the same observations", {
-  # The third reading from the queue: does the factor matter at all? A pooled
-  # fit ignoring the factor is scored on the same observations, so the WAICs
-  # are directly comparable.
+  # A pooled fit scores the same observations while ignoring the factor,
+  # so its WAIC can be compared with the grouped fit.
   gf <- fake_group_fit()
   cw <- crossed_group_weights(gf, pooled = manec_example)
   ms <- manec_example$mod_stats
@@ -400,10 +377,9 @@ test_that("no pooled argument leaves the result as it was", {
                  "common_models", "diagonal"))
 })
 
-# RF, on review of #228: compare_posterior() should compare the levels of a
-# bayesnecgroupfit. The levels are fitted independently, so `$fits` is already
-# the named list compare_posterior() takes -- this is dispatch, not new
-# machinery, the same shape as the pp_check() methods in #148 part A.
+# Each level is fitted independently, so compare_posterior() can use its
+# random-permutation pairing on the named list of fits. That pairing does not
+# apply to dependent levels within one fit.
 
 test_that("compare_posterior is a generic with a default and a group method", {
   expect_true(is.function(compare_posterior))
@@ -439,10 +415,8 @@ test_that("the group method passes the per-level fits through", {
   expect_match(paste(deparse(body(m)), collapse = " "), "x\\$fits")
 })
 
-# The standard error on the pooled comparison pairs each observation's pointwise
-# WAIC across the two fits, so the level-ordered grouped values have to line up
-# with the pooled fit's row order. Built from synthetic pointwise values rather
-# than fitted: the hazard is the reordering, and a fit would only obscure it.
+# Pair pointwise WAIC values by original observation when comparing grouped
+# and pooled fits. Synthetic values isolate ordering errors without sampling.
 
 fake_waic_fit <- function(pointwise) {
   structure(
@@ -501,10 +475,8 @@ test_that("a pooled fit on different observations leaves the SE NA", {
 })
 
 test_that("a model-averaged level yields a WAIC difference but no SE", {
-  # expand_manec() snapshots mod_fits *before* the expand_nec() loop that calls
-  # add_criteria(), so a bayesmanecfit keeps each model's WAIC point estimate in
-  # mod_stats and none of the pointwise values. The comparison still works; the
-  # standard error is not available and must not be invented.
+  # expand_manec() snapshots mod_fits before expand_nec() adds pointwise WAIC.
+  # The stored mod_stats still supports point estimates; omit the unavailable SE.
   expect_null(manec_example$mod_fits[[1]]$fit$criteria$waic$pointwise)
   gf <- fake_group_fit()
   res <- crossed_group_weights(gf, pooled = manec_example)$pooled
@@ -513,10 +485,8 @@ test_that("a model-averaged level yields a WAIC difference but no SE", {
 })
 
 test_that("the asymptote declaration is refused before any level (#394)", {
-  # bnec_group() fits each level with bnec() in sequence, so a refusal left to
-  # the inner call arrives only after the levels before it have compiled and
-  # sampled. Raised over the whole response before the loop, it names the
-  # remedy where the generic all-levels-failed path would not.
+  # Validate the whole response before the level loop, so no earlier level
+  # samples before a later refusal and the message can name the remedy.
   set.seed(394)
   x <- rep(c(0, 1, 2, 4, 8, 16), each = 4)
   mu <- 0.9 - 0.4 * (x / max(x))
@@ -533,11 +503,9 @@ test_that("the asymptote declaration is refused before any level (#394)", {
 })
 
 test_that("bnec_group reads an abbreviated declaration (#394)", {
-  # `dots` is forwarded to bnec() through do.call(), where asymptote_observed
-  # is a formal before `...` and so matches an abbreviation. Read exactly, an
-  # abbreviated argument would be declared for the fit and undeclared for the
-  # hoisted check, which sets .bayesnec_asymptote_checked either way and drops
-  # the refusal back into the per-level model loop.
+  # do.call() partially matches asymptote_observed. The hoisted check must
+  # read the same abbreviation before setting its checked marker, or a refusal
+  # can fall back into the per-level model loop.
   set.seed(394)
   x <- rep(c(0, 1, 2, 4, 8, 16), each = 4)
   mu <- 0.9 - 0.4 * (x / max(x))
@@ -572,12 +540,9 @@ test_that("bnec_group validates the declaration before any level (#394)", {
 })
 
 test_that("bnec_group resolves a dot argument the way do.call will (#394)", {
-  # dots_arg() is what makes the hoisted checks read the same value the
-  # forwarded call will receive. `model_survival` is the case that was already
-  # wrong before the declaration existed: `model_s` upward is unambiguous
-  # against bnec()'s formals, so do.call() matches it while an exact lookup
-  # returns NULL, and the flatness report and the declaration's hurdle gate
-  # would then be given no survival equation at all.
+  # dots_arg() must match the value do.call() forwards, including unambiguous
+  # model_survival abbreviations. Exact lookup would give the flatness report
+  # and hurdle gate no survival equation.
   dots <- list(asymptote = FALSE, model_s = "nec3param", prior_type = "x")
   expect_false(bayesnec:::dots_arg(dots, "asymptote_observed", TRUE))
   expect_identical(bayesnec:::dots_arg(dots, "model_survival"), "nec3param")
@@ -592,12 +557,9 @@ test_that("bnec_group resolves a dot argument the way do.call will (#394)", {
 })
 
 test_that("a level at a bound is fitted with ecxflat, the others as asked (#419)", {
-  # D31 replaced D30's refusal of the whole call: the level whose response does
-  # not vary is fitted with ecxflat alone by its own bnec() call, and every
-  # other level with the set requested. bnec_group() names the level once,
-  # before any level is fitted, and marks the level calls so that bnec() does
-  # not say it again. The level fits are mocked: what is asserted is the
-  # dispatch, and bnec()'s substitution is asserted in test-bnec.R on a fit.
+  # Constant-response levels dispatch to ecxflat; other levels keep their set.
+  # Report each substitution before fitting and silence its repeated report.
+  # Mocked fits check dispatch; test-bnec.R checks the actual fitted substitution.
   x <- rep(c(0.1, 0.5, 1, 3, 10, 30), each = 5)
   a <- rep(1L, length(x))
   a[x == max(x)] <- c(0L, 0L, 1L, 0L, 1L)
@@ -639,10 +601,8 @@ test_that("a level at a bound is fitted with ecxflat, the others as asked (#419)
 })
 
 test_that("a beta level at 0 still refuses the whole call before any level (#419)", {
-  # ecxflat cannot be fitted to a beta response of 0 throughout: its zeros are
-  # shifted off the boundary by a tenth of the smallest positive value, and
-  # there is none. So that level refuses the whole call, as #400 did for every
-  # level at a bound, before any level is fitted.
+  # A beta response of zero throughout has no positive value to define its
+  # boundary shift. Refuse the whole call before fitting any level.
   x <- rep(c(0.1, 0.5, 1, 3, 10, 30), each = 5)
   d <- data.frame(x = rep(x, 2),
                   cover = c(seq(0.9, 0.2, length.out = length(x)),
@@ -670,9 +630,8 @@ test_that("a beta level at 0 still refuses the whole call before any level (#419
 })
 
 test_that("a zero_inflated_beta level at a bound follows beta (#441)", {
-  # D35: a level of 1 throughout is fitted with ecxflat alone by its own bnec()
-  # call, and a level of 0 throughout refuses the whole call before any level
-  # is fitted, because its beta block has no data.
+  # A level of ones dispatches to ecxflat; a level of zeros has no beta-block
+  # data and refuses the whole call before fitting.
   x <- rep(c(0.1, 0.5, 1, 3, 10, 30), each = 5)
   varying <- seq(0.9, 0.2, length.out = length(x))
   varying[x == max(x)] <- c(0, 0, 0.2, 0, 0.1)
@@ -723,11 +682,9 @@ test_that("a zero_inflated_beta level at a bound follows beta (#441)", {
 })
 
 test_that("the group tables hold a level fitted with a single equation (#419)", {
-  # A level fitted with ecxflat alone is a bayesnecfit among bayesmanecfits.
-  # The crossed weights give it weight 1 on its one equation and take the
-  # diagonal over the equations every level fitted; the nsec() table reads one
-  # row per level whatever each level fitted. ecx4param stands in for the
-  # single-equation level, which needs no fit.
+  # A single-equation level has weight one; common forms use the intersection
+  # of fitted equations. ecx4param stands in for that level without sampling,
+  # and nsec() must still return one row per level.
   g <- fake_group_fit(list(a = manec_example, b = ecx4param))
   cw <- crossed_group_weights(g)
   expect_identical(cw$per_level$b, c(ecx4param = 1))
@@ -788,7 +745,7 @@ test_that("with a trials() term every level is fitted (#442)", {
 })
 
 
-# ---- #470, equations that keep no group-level term on a variable -------------
+# Equations that keep no group-level term on a variable.
 
 grouped_levels_data <- function() {
   d <- nec_data

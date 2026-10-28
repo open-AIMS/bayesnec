@@ -1,10 +1,6 @@
-# check_response_flattened() reports, before anything is fitted, that the
-# response is still declining between the two highest concentrations tested.
-# The rule replaces the decline-from-the-control ratio of PR #387, which
-# measured the size of the effect rather than whether the series had flattened.
-# See #390 and notes/tasks/386-incomplete-designs-claude.md section 2.2.
-#
-# Nothing here fits a model, so no Stan program is compiled.
+# Check the contrast between the two highest tested concentrations before
+# fitting. Decline from the control measures effect size, not flattening.
+# These tests compile no Stan programs.
 
 set.seed(390)
 
@@ -58,12 +54,8 @@ test_that("a gaussian response is reported where its top two levels differ", {
     check_response_flattened(bdat, gaussian(link = "identity")),
     "falls from 0.805 to 0.602 as x rises from 2 to 4"
   )
-  # What the report says about the threshold priors, pinned because it went
-  # stale once and nothing failed: it said they "exclude a threshold above the
-  # tested range", which stopped being true when #393 removed the truncation.
-  # This is the only sentence of the message that makes a claim about the
-  # priors rather than about the data, and it is the only one that was not
-  # already asserted here.
+  # Pin the claim about threshold priors: they allow thresholds above the
+  # tested range. Data-only assertions would miss a stale truncation claim.
   expect_message(
     check_response_flattened(bdat, gaussian(link = "identity")),
     "put a threshold above the tested range in their tail"
@@ -74,9 +66,8 @@ test_that("a gaussian response is reported where its top two levels differ", {
 })
 
 test_that("a high lower asymptote is not reported", {
-  # The case PR #387's decline ratio warned on and this rule does not: a
-  # sublethal endpoint whose response has fallen by a fifth and then flattened
-  # is a complete design.
+  # A sublethal response that falls by a fifth and then flattens is complete;
+  # effect size alone must not trigger the report.
   y <- c(1.02, 0.98, 1.01, 0.99,
          0.90, 0.92, 0.88, 0.91,
          0.81, 0.83, 0.80, 0.82,
@@ -235,8 +226,8 @@ test_that("a hormesis design is assessed against the top of its own series", {
 })
 
 test_that("a response with a non-positive control mean is still assessed", {
-  # A log-ratio or centred response, for which the PR #387 decline ratio was
-  # undefined and the check was skipped silently (#229).
+  # A log-ratio or centred response must not be skipped because a ratio to
+  # the control would be undefined.
   y <- declining_y - 1
   bdat <- flat_bdat(y ~ crf(x, "nec4param"), data.frame(x = flat_x, y = y))
   expect_message(
@@ -324,11 +315,9 @@ test_that("fewer than two predictor levels is passed over in silence", {
 })
 
 test_that("a design with no replication is passed over in silence", {
-  # A factor fit on one observation per predictor value is saturated, so no
-  # contrast is defined. Section 2.2 of the plan asks for a report here, and it
-  # is not given: that shape is an ordinary continuous predictor rather than a
-  # degenerate design, and reporting on it would put an advisory on every fit
-  # of the package's own example data.
+  # One observation per predictor value gives a saturated factor fit with no
+  # contrast. Skip this ordinary continuous-predictor layout, otherwise every
+  # fit of the package example data would receive an advisory.
   bdat <- flat_bdat(y ~ crf(x, "nec4param"),
                     data.frame(x = c(0, 1, 2, 4),
                                y = c(1, 0.9, 0.8, 0.6)))
@@ -348,11 +337,9 @@ test_that("nec_data, which every vignette fits, is passed over", {
 })
 
 test_that("an unreplicated binomial design falls back to a fixed dispersion", {
-  # One composite sample per dilution with twenty individuals scored in it is
-  # the ordinary whole effluent binomial layout. quasibinomial would need
-  # replication it does not have, so the contrast is taken on the individuals
-  # instead, which is what the survival block of a hurdle fit does with the
-  # same counts.
+  # One composite sample of twenty individuals per dilution has no replicate
+  # vessels to estimate quasibinomial dispersion. Test individuals, as the
+  # hurdle survival block does for the same counts.
   d <- data.frame(x = c(0, 1, 2, 4), succ = c(20, 16, 11, 2), tr = 20)
   bdat <- flat_bdat(succ | trials(tr) ~ crf(x, "nec3param"), d)
   for (family in list(binomial(link = "identity"),
@@ -370,11 +357,8 @@ test_that("an unreplicated binomial design falls back to a fixed dispersion", {
   )
   expect_identical(as_binomial$status, "tested")
   expect_equal(as_binomial$p_value, flatness_contrast(survival)$p_value)
-  # A replicated design keeps quasibinomial, because over-dispersion between
-  # replicate vessels is real and is worth accounting for. Asserted on the
-  # p-value, not on the status: both routes return "tested", so a status
-  # assertion would pass whether or not the fallback had fired on a design
-  # that supplies its own dispersion, which is the regression this guards.
+  # Replicate vessels support quasibinomial dispersion. Assert the p-value: both
+  # routes report "tested", which alone cannot detect an incorrect fallback.
   replicated <- list(x = rep(c(2, 4), each = 3),
                      successes = c(11, 10, 12, 4, 5, 3),
                      trials = rep(20, 6), spec = flatness_spec("binomial"))
@@ -386,11 +370,9 @@ test_that("an unreplicated binomial design falls back to a fixed dispersion", {
 })
 
 test_that("a binomial block with one individual per level is passed over", {
-  # The dispersion is fixed for these two, so replication is not what carries
-  # the information: the number of individuals is. One individual at each of
-  # the two levels leaves a two-by-two table of single trials, on which the
-  # deviance test reads p = 0.048 for any pair (1, 0) and the exact conditional
-  # p is a half.
+  # With fixed dispersion, information comes from individuals. One trial at
+  # each level gives deviance p = 0.048 for (1, 0), but exact conditional p = 0.5;
+  # do not treat that pair as sufficient information.
   x <- seq_len(30)
   y <- rep(c(1, 0), length.out = 30)
   bdat <- flat_bdat(y ~ crf(x, "nec3param"), data.frame(x = x, y = y))
@@ -449,9 +431,8 @@ test_that("a family with no row is passed over", {
 })
 
 test_that("a binomial family with no trials term is passed over", {
-  # check_trials_term() refuses it before this report runs from bnec() or
-  # bnec_group(), so a direct call says nothing here rather than report a
-  # contrast with no trials to count against (#442).
+  # Entry points reject missing trials before this report. A direct call must
+  # remain silent rather than assess a contrast without its denominators.
   expect_identical(
     flatness_blocks(flat_x, declining_successes, NULL, NULL,
                     binomial(link = "identity")),
@@ -723,10 +704,8 @@ test_that("bnec_group refuses an invalid declaration before any report (#449)", 
 # ---- calibration ------------------------------------------------------------
 
 test_that("the report rate on a flat top is near the stated alpha", {
-  # On a design whose top is flat the true contrast is zero, so the rule
-  # reports at alpha by construction. This is a small self-contained check that
-  # the realised rate is of that order; the audit over the incomplete-design
-  # cells is #391.
+  # On a flat top, the null contrast is zero. Check that the realised reporting
+  # rate is near alpha across these simulated replicates.
   skip_on_cran()
   set.seed(3901)
   reps <- 500
