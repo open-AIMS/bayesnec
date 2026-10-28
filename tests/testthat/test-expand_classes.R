@@ -490,3 +490,36 @@ test_that("a set saved with the formula count keeps its stored index", {
   expect_false(identical(small, saved$w_draw_index))
   expect_true(all(unlist(small) <= 10))
 })
+
+test_that("an undercounted set without an index rebuilds consistently", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  fit <- thinned_set()
+  sim <- extract_simdat(fit$mod_fits[[1]])
+  saved <- fit
+  saved$sample_size <- ceiling((sim$iter - sim$warmup) / sim$thin * sim$chains)
+  saved$w_draw_index <- NULL
+  per_model <- lapply(saved$mod_fits, function(m) brms::posterior_epred(m$fit))
+  for (seed in list(fit$w_draw_seed, NULL)) {
+    saved$w_draw_seed <- seed
+    expected <- weighted_draw_index(saved$success_models, saved$sample_size,
+                                     saved$mod_stats, seed)
+    expect_identical(pull_draw_index(saved, saved$success_models,
+                                      saved$sample_size), expected)
+    expect_identical(pull_draw_index(saved, saved$success_models,
+                                      set_draw_count(saved$mod_fits)), expected)
+    rows <- do.call(rbind, lapply(saved$success_models, function(m) {
+      per_model[[m]][expected[[m]], , drop = FALSE]
+    }))
+    expect_equal(unname(posterior_epred(saved)), unname(rows))
+    ecx_draws <- ecx(saved, posterior = TRUE) |>
+      suppressMessages() |>
+      suppressWarnings()
+    expect_length(ecx_draws, nrow(rows))
+    small <- pull_draw_index(saved, saved$success_models, 10)
+    expect_identical(small, weighted_draw_index(saved$success_models, 10,
+                                                saved$mod_stats, seed))
+    expect_true(all(unlist(small) <= 10))
+  }
+})
