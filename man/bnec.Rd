@@ -615,8 +615,9 @@ given to \code{z}. \code{\link{ecx}} with \code{type = "relative"} and
 zero-truncated mean at \code{mu = bot}, and needs the shape there. Under a
 variance function of the mean the shape at the asymptote is the sub-model
 evaluated at \code{mu = bot}. Under \code{disp(~x)} the asymptote has no
-single shape and the request is refused; \code{type = "absolute"} and
-\code{"range"}, \code{\link{nec}} and \code{\link{nsec}} do not read it.
+single shape and the request is refused; \code{type = "absolute"},
+\code{"range"} and \code{"direct"}, \code{\link{nec}} and
+\code{\link{nsec}} do not read it.
 
 Because \code{\link{ecx}} and \code{\link{nsec}} are defined on \code{mu}, a
 dispersion sub-model changes the credible intervals of the toxicity
