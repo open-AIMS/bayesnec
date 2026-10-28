@@ -472,9 +472,11 @@ ecx_asymptote <- function(object, type, dpar = NULL) {
   if (inherits(object, "bayesmanecfit")) {
     return(manec_asymptote(object))
   }
-  if (!is.null(dpar) && is_hurdle_family(object$fit$family) &&
-        identical(dpar, hurdle_dpar(object$fit$family))) {
-    return(zero_block_asymptote(object, dpar))
+  if (!is.null(dpar) && is_hurdle_family(object$fit$family)) {
+    dpar <- match.arg(dpar, c("mu", hurdle_dpar(object$fit$family)))
+    if (identical(dpar, hurdle_dpar(object$fit$family))) {
+      return(zero_block_asymptote(object, dpar))
+    }
   }
   # A joint refit level names its coefficient b_bot_<group_var><level>, which
   # the b_bot_Intercept read below does not find. Without this branch such a

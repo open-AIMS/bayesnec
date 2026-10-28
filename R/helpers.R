@@ -182,8 +182,12 @@ pull_draw_index <- function(object, model_set, sample_size) {
   idx <- object$w_draw_index
   # `==`, not identical(): sample_size is a double on the object and an integer
   # from nrow(), and identical() would always take the fallback.
-  same_n <- isTRUE(object$sample_size == sample_size) ||
-    undercounted_set(object, sample_size)
+  same_n <- isTRUE(object$sample_size == sample_size)
+  if (!same_n && undercounted_set(object, sample_size)) {
+    # Rebuild from the stored count too when an older set has no index.
+    sample_size <- object$sample_size
+    same_n <- TRUE
+  }
   if (!is.null(idx) && same_n && all(model_set %in% names(idx))) {
     idx[model_set]
   } else {
@@ -538,7 +542,8 @@ concat_censoring <- function(parts, n_draws) {
   uppers <- vapply(parts[present], function(p) p$upper, numeric(1))
   lowers <- vapply(parts[present], function(p) p$lower, numeric(1))
   out <- censoring_record(min(uppers), max(lowers), above, below)
-  # The components share a formula, so take the flag from the first.
+  # Components from one bnec() call share a formula, so take the flag from the
+  # first. A set assembled from separate fits must use a common orientation.
   # censored_end() and warn_censored_draws() read it from the combined record.
   attr(out, "swapped") <- isTRUE(attr(parts[present][[1]], "swapped"))
   out
@@ -1341,8 +1346,8 @@ add_brm_defaults <- function(
   }
   # Raise adapt_delta where a group-level offset can carry mu outside its
   # support: the likelihood then throws and Stan counts a divergent
-  # transition. A smaller step size is the only remedy here, and it is costly,
-  # so it is raised only where needed.
+  # transition. Raising adapt_delta reduces boundary crossings, but remains a
+  # costly mitigation, so apply it only where needed.
   #
   # It is not needed where every deviation is applied on a scale it cannot
   # leave and the equation's mean lies between bot and top. Test that with
@@ -2247,9 +2252,9 @@ control_x <- function(object) {
 #'
 #' A draw whose own control value is at or below the reference reaches it at
 #' the control, and its NSEC is the control concentration, not a failure to
-#' estimate one. These draws are found from the control posterior, not from
-#' the first grid point, so that the result does not depend on
-#' \code{x_range}.
+#' estimate one. These draws are identified from the control posterior, not
+#' from the first grid point, so that changing \code{x_range} below the control
+#' does not change which draws take the control concentration.
 #'
 #' Only the grid above the control is searched, because the reference is
 #' defined there. Where the grid reaches the control, the control posterior
@@ -2420,9 +2425,9 @@ to_axis_scale <- function(values, bdat, formula, x_grid_raw,
 #'
 #' The prediction grid holds the same points on both scales, so interpolating
 #' between them inverts any \code{crf()} transformation to within the grid's
-#' resolution. Estimators that return values on the recorded scale call this
-#' too, so that they and the plots agree. The returned function takes a
-#' vector, so it can also be passed to \code{xform_censoring()}.
+#' resolution. \code{to_axis_scale()} uses this inverse to place annotations
+#' on the plot's recorded scale. The returned function takes a vector, so it
+#' can also be passed to \code{xform_censoring()}.
 #'
 #' @param formula A \code{\link{bayesnecformula}}.
 #' @param x_grid_raw The prediction grid's predictor values, on the recorded

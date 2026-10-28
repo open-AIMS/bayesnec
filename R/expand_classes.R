@@ -285,9 +285,8 @@ prediction_grid <- function(fit, formula, x_range = NA, resolution = 1000,
   if (fam_tag == "binomial" || fam_tag == "beta_binomial") {
     newdata[[attr(mod_dat, "bnec_pop")[["trials_var"]]]] <- 1
   }
-  # Pin a rate() denominator at 1 on the grid, so that the grid reports the
-  # rate itself, the scale top, bot and nec are on. At the observed values each
-  # grid row would be scaled by whatever exposure it inherited.
+  # Set rate() exposure to 1 so predictions report the rate, the scale of
+  # response parameters such as top and bot. nec stays on the predictor scale.
   # Single bracket, not [[: bnec_pop is a named character vector, so [[ on a
   # missing name is a subscript error rather than NULL.
   rate_var <- unname(attr(mod_dat, "bnec_pop")["rate_var"])
