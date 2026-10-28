@@ -204,8 +204,8 @@ test_that("each model is thinned to exactly its share of the weighted draws", {
                                          NA, 1000, idx)
     expect_equal(nrow(drawn), round(n * tt5$mod_stats[mod, "wi"]))
     expect_equal(ncol(drawn), 1000)
-    # Row sums identify a row uniquely here because the values are copied, not
-    # recomputed, so they compare exactly.
+    # Copied values permit exact row-sum comparison on this fixture. Equal
+    # row sums alone do not establish row identity for arbitrary matrices.
     expect_true(all(rowSums(drawn) %in% rowSums(full)))
   }
   # The rows contributed across all models account for the whole weighted set.

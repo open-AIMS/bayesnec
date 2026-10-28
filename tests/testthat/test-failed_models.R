@@ -179,8 +179,8 @@ test_that("a model that fails in a set is reported with its priors and inits", {
     skip_on_cran()
   }
   skip_if_not_installed("R.utils")
-  # A tiny timeout is a deterministic, fast way to make one model fail: the two
-  # models already in manec_example are not refitted, so the set still returns.
+  # Use a tiny timeout to force failure while keeping the existing models,
+  # which are not refitted. The interrupted operation and message can vary.
   out <- amend(manec_example, add = "ecxwb1", timeout = 1e-3) |>
     suppressMessages() |>
     suppressWarnings()

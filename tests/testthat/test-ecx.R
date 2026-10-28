@@ -27,10 +27,9 @@ test_that("ecx_val warnings behave as expected", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # 0.9 is now accepted: the lower bound is 0, not 1, and there is no upper
-  # bound. Under "absolute" the reference is the control and OECD TG 201
-  # permits an effect above 100% for a response that can go negative rather
-  # than truncating it. See #195 and D15 ruling 7.
+  # Accept effects between zero and one and above 100 percent. For absolute
+  # ECx with a positive control, effects above 100 target a negative response;
+  # that can be meaningful for an unbounded response.
   expect_length(
     suppressWarnings(
       ecx(manec_example, ecx_val = 0.9, type = "relative", resolution = 10)

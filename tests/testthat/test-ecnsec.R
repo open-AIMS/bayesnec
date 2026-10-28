@@ -32,9 +32,8 @@ test_that("ecnsec argument validation behaves as expected", {
   # prob_vals must supply central, lower and upper quantiles, in that order
   expect_error(ecnsec(manec_example, nsec = 1.5, prob_vals = 0.9))
   expect_error(ecnsec(manec_example, nsec = 1.5, prob_vals = c(0.6, 0.9, 0.1)))
-  # hormesis_def must be one of "max" or "control"
-  # hormesis_def is removed, and a call still passing it is refused by name
-  # rather than absorbed by ... in silence. See D15 ruling 4.
+  # Refuse the removed hormesis_def argument by name instead of silently
+  # absorbing it through dots.
   expect_error(ecnsec(manec_example, nsec = 1.5, hormesis_def = "invalid"),
                "hormesis_def has been removed")
   expect_error(ecnsec(manec_example, nsec = 1.5, hormesis_def = "control"),
