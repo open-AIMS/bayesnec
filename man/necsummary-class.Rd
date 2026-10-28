@@ -47,6 +47,13 @@ should the user decide to calculate them (see the non-exported
 \item{\code{bayesr2}}{The model Bayesian R2 as calculated by
 \code{\link[brms]{bayes_R2}}.}
 
+\item{\code{divergences}}{A named \code{\link[base]{numeric}} vector of length 1
+giving the number of divergent transitions after warmup, \code{NA} for a
+model not sampled by NUTS.}
+
+\item{\code{divergence_cutoff}}{The number of divergent transitions above which the
+printed summary warns.}
+
 \item{\code{failed_models}}{Any models from the original set that could not be
 fitted, with the priors and initial values used. See
 \code{\link{failed_models}}.}

@@ -2018,16 +2018,15 @@
   of a model with more than `divergence_cutoff` of them. The new argument
   defaults to 10, the default of `check_sampling()`, and a model is flagged
   exactly where `check_sampling()` would fail it on divergences alone. On a
-  model set the warning names each such equation with its count, in the block
-  that lists the Rhat and control lack-of-fit failures, and gives the advice
-  given for an Rhat failure. Where a set fails on the sampler and on the
-  control fit, the advice now begins "Sampler failures" rather than
-  "Convergence failures". The count is read with `nuts_params()`, as
-  `check_sampling()` reads it, and is `NA` for a model fitted by a variational
-  algorithm. A grouped fit reports the count for each level; the summary of a
-  `bnec_hurdle()` fit reports neither Rhat nor divergences, and is unchanged.
-  `vignette("example2")` stated that the summary would warn of divergent
-  transitions, which it did not (#447).
+  model set the warning names each such equation with its count and its model
+  weight, in the block that lists the Rhat and control lack-of-fit failures,
+  and gives the advice given for an Rhat failure. Where a set fails on the
+  sampler and on the control fit, the advice now begins "Sampler failures"
+  rather than "Convergence failures". The count is `NA` for a model not
+  sampled by NUTS, such as a variational fit. A grouped fit reports the count
+  for each level; the summary of a `bnec_hurdle()` fit reports neither Rhat
+  nor divergences, and is unchanged. `vignette("example2")` stated that the
+  summary would warn of divergent transitions, which it did not (#447).
 
 - **`bnec_version()`** reports the installation of `bayesnec` that fitted each
   equation of a fitted object: the version, where the installation came from,
@@ -2920,8 +2919,8 @@
 - The `sample_size` stored on a `bayesmanecfit` is now the number of draws
   each model holds, counted from the fits. It was computed as
   `ceiling((iter - warmup) / thin * chains)`, while Stan keeps
-  `ceiling((iter - warmup) / thin)` draws in each chain, so the count fell
-  short whenever `thin` does not divide `iter - warmup`. Four chains of 500
+  `ceiling((iter - warmup) / thin)` draws in each chain, so the count could fall
+  short when `thin` does not divide `iter - warmup`. Four chains of 500
   post-warmup iterations thinned by 3 keep 668 draws, and `sample_size`
   recorded 667. The stored summaries, `ecx()` and `nsec()` used the stored
   draw index, while `posterior_epred()` and `posterior_predict()`, and
@@ -2934,8 +2933,11 @@
   fit. A set saved by an earlier version keeps the `sample_size` it recorded,
   and every method now uses its stored index whenever the caller takes all
   the draws, so such a set agrees with its own stored summaries without being
-  refitted. The default `thin = 1` and a single fit, a `bayesnecfit`, are
-  unaffected (#477).
+  refitted. Without a stored index, methods rebuild one from the same saved
+  count and seed. Sets predating the stored seed use a fixed seed, so their
+  recalculated estimates agree across methods but cannot reproduce the
+  historical summaries. The default `thin = 1` and a single fit, a
+  `bayesnecfit`, are unaffected (#477).
 
 - `update()` on a `bayesnechurdlefit` passes a supplied `family` to the growth
   component only. It reached the survival component as well, which is always
@@ -2975,7 +2977,9 @@
   `autoplot()` or `plot(add_nec = FALSE)`. The component contributes the NSEC
   draws stored when it was fitted, as a component fitted to a model set
   contributes its N(S)EC draws, and `summary()` labels its row NSEC.
-  `nec()` on a `bayesnecfit` holding a smooth equation still refuses (#487).
+  `nec()` on a `bayesnecfit` holding a smooth equation still refuses. A smooth
+  hurdle component saved before the estimate type was recorded also retains
+  NSEC extrapolation rules (#487).
 
 - `nec(which = "growth")` and `nec(which = "survival")` on a
   `bayesnechurdlefit` compute only the component named. Both components were
@@ -2992,7 +2996,9 @@
   estimate on the transformed scale put through `xform` where one is supplied.
   `xform` is then not applied to the points or the curve, as for a
   `bayesnecfit`. A predictor that `crf()` does not transform is drawn
-  as before (#487).
+  as before. An estimate identified over a stored prediction range beyond the
+  observations is drawn where it lies, including where the plotted range is
+  narrower (#487).
 
 - `summary()` on a `bayesnechurdlefit` names a Gamma growth family `Gamma`,
   as `bnec_hurdle()` names it when fitting. It printed `gamma`, the name

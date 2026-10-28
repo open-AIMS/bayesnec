@@ -35,6 +35,11 @@
 #' \code{bayesnec:::summary.bayesnecfit} help file for details).
 #' @slot bayesr2 The model Bayesian R2 as calculated by
 #' \code{\link[brms]{bayes_R2}}.
+#' @slot divergences A named \code{\link[base]{numeric}} vector of length 1
+#' giving the number of divergent transitions after warmup, \code{NA} for a
+#' model not sampled by NUTS.
+#' @slot divergence_cutoff The number of divergent transitions above which the
+#' printed summary warns.
 #' @slot failed_models Any models from the original set that could not be
 #' fitted, with the priors and initial values used. See
 #' \code{\link{failed_models}}.
