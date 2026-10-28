@@ -72,15 +72,17 @@ check_normalisation <- function(data) {
 }
 
 
-#' The generalised linear model whose variance function is a family's own
+#' The generalised linear model used for the flatness contrast
 #'
-#' The flatness contrast is tested under the mean-variance relationship the fit
-#' assumes. quasipoisson stands in for the negative binomial and quasibinomial
-#' for the beta-binomial, because their shape parameters cannot be estimated
-#' from two levels. The beta row is quasibinomial because the beta variance is
-#' \code{mu (1 - mu)} times a constant. The Gamma and count rows need the log
-#' link: the inverse link \code{stats::Gamma()} takes by default reverses the
-#' sign of the contrast.
+#' The contrast uses each family's variance function where possible.
+#' \code{quasipoisson} approximates the negative binomial's quadratic variance
+#' with one proportional to the mean. \code{quasibinomial} absorbs
+#' beta-binomial over-dispersion as a constant only when trials are constant
+#' across the observations compared. Their shape parameters are unreliable
+#' with few replicates at the two levels. The beta variance is
+#' \code{mu (1 - mu)} times a constant.
+#' The Gamma and count rows need the log link: the inverse link that
+#' \code{stats::Gamma()} takes by default reverses the contrast's sign.
 #'
 #' @param family Either a \code{\link[stats]{family}} object or a family tag.
 #'
@@ -302,9 +304,9 @@ flatness_contrast <- function(block, alpha = 0.05, pool_dispersion = TRUE) {
     return(list(status = "failed"))
   }
   # Where no observation differs from another at its own predictor value, the
-  # dispersion is zero and the contrast is undefined. Test the observations,
-  # not the estimate, which is a rounding residue rather than zero. A fixed
-  # dispersion needs no such check.
+  # estimated dispersion is zero and the contrast cannot use it. Test the
+  # observations, not the estimate, which is a rounding residue rather than
+  # zero. A fixed dispersion needs no such check.
   if (estimates_dispersion) {
     working <- if (identical(spec$kind, "matrix")) {
       block$successes[keep] / block$trials[keep]
