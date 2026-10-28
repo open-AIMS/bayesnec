@@ -93,11 +93,9 @@ check_fit <- function(x, group = NULL, ndraws = 1000, seed = 10, ...) {
 
 #' Assign each observation to a group of the predictor
 #'
-#' Replication is preferred over binning because it is what the design actually
-#' provides: a concentration-response experiment has replicates at each
-#' concentration, and grouping by them asks a question about the design rather
-#' than about an arbitrary cut. Binning always returns something, including
-#' where the answer is meaningless, so it warns.
+#' Groups by the replicated predictor values where every value is replicated,
+#' since those are the design points. Otherwise cuts the predictor into bins,
+#' with a warning, because a bin is not a design point.
 #'
 #' @param predictor A \code{\link[base]{numeric}} vector.
 #' @param group The user's \code{group} argument.
@@ -165,23 +163,19 @@ ppp_value <- function(sim, obs) {
 #'
 #' @noRd
 check_fit_table <- function(fit, formula, y, grp, ndraws, seed, is_mixture) {
-  # brms errors rather than truncating when ndraws exceeds what the fit holds,
-  # so the default has to bend to the object. A short fit -- manec_example has
-  # 100 draws -- is exactly what someone runs a diagnostic on first.
+  # brms errors when ndraws exceeds the draws a fit holds, so cap it.
   available <- brms::ndraws(fit)
   if (ndraws > available) {
     ndraws <- available
   }
-  # The seeding is wrapped rather than called outright so that the caller's
-  # stream is where they left it once the diagnostic returns. A summary
-  # computed from a fit is not part of fitting and must not move it. See #337.
+  # Leave the caller's random number stream where it was: a diagnostic must
+  # not change it.
   with_preserved_rng_state({
     set.seed(seed)
     yrep <- posterior_predict(fit, ndraws = ndraws)
-    # The fitted mean is what residuals are taken against, for both the
-    # observed and the simulated response, so that the two are comparable.
-    # Using each draw's own mean instead would remove the very discrepancy
-    # being measured.
+    # Take the residuals of both the observed and the simulated response
+    # against one fitted mean. Each draw's own mean would remove the
+    # discrepancy being measured.
     mu <- apply(factorised_count_epred(fit, formula, ndraws = ndraws),
                 2, median)
   })
@@ -190,10 +184,8 @@ check_fit_table <- function(fit, formula, y, grp, ndraws, seed, is_mixture) {
 
 #' The per-group statistics, given a response and a simulated response
 #'
-#' Split out from \code{check_fit_table()} so that the combined hurdle check can
-#' reuse it with a \code{yrep} it built itself rather than one drawn from a
-#' single fit. Everything about the statistics is identical; only the source of
-#' \code{yrep} and \code{mu} differs.
+#' Split out from \code{check_fit_table()} so that the combined hurdle check
+#' can pass a \code{yrep} and \code{mu} it built itself.
 #'
 #' @param y The observed response.
 #' @param yrep A draws-by-observations matrix of simulated responses.
@@ -227,13 +219,8 @@ check_fit_stats <- function(y, yrep, mu, grp, is_mixture) {
       sim_sd = median(sim_sd),
       sd_ratio = obs_sd / median(sim_sd),
       ppp_sd = ppp_value(sim_sd, obs_sd),
-      # The 95% span of the simulated statistic, carried so plot() can show the
-      # observed value against what the model actually simulates rather than
-      # against a point summary of it. A posterior predictive p-value says a
-      # group is off; the interval says by how much and in which direction,
-      # which is what decides whether it matters. Hidden by print() -- see
-      # print.checkfit() -- because it would take the console table past what
-      # fits on a line. See #148.
+      # The 95% span of each simulated statistic, for plot(). print() hides
+      # it to keep the table within one line width.
       sim_mean_lo = unname(quantile(sim_mean, 0.025)),
       sim_mean_hi = unname(quantile(sim_mean, 0.975)),
       sim_sd_lo = unname(quantile(sim_sd, 0.025)),
@@ -241,9 +228,8 @@ check_fit_stats <- function(y, yrep, mu, grp, is_mixture) {
       stringsAsFactors = FALSE
     )
     if (is_mixture) {
-      # Only these families can emit a structural zero, and whether the zero
-      # fraction is right is the whole question they were added for (#104).
-      # Nothing else in the package reports it.
+      # Only the hurdle families can emit a structural zero, so only they are
+      # checked for the zero fraction.
       obs_zero <- mean(obs_y == 0)
       sim_zero <- rowMeans(sim_y == 0)
       row$obs_zero <- obs_zero
@@ -270,11 +256,8 @@ check_fit_stats <- function(y, yrep, mu, grp, is_mixture) {
 #' @export
 check_fit.bayesnecfit <- function(x, group = NULL, ndraws = 1000, seed = 10,
                                   ...) {
-  # chk_number rather than leaving it to set.seed(): set.seed(NULL) is not an
-  # error, it re-initialises the stream from the clock and the process id, so
-  # an unvalidated NULL gives a diagnostic that does not repeat and discards
-  # the caller's seed without saying so. This is #310's defect in a second
-  # place. dispersion() validates for the same reason. See #337.
+  # Validate the seed: set.seed(NULL) is not an error but reseeds from the
+  # clock, so the diagnostic would not repeat.
   chk_number(seed)
   mod_dat <- model.frame(x$bayesnecformula, data = x$fit$data)
   y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
@@ -386,31 +369,20 @@ check_fit.bayesnechurdlefit <- function(x, group = NULL, ndraws = 1000,
   out
 }
 
-#' The hurdle fit checked against the data the user actually handed in
+#' The hurdle fit checked against the response as measured
 #'
-#' The per-component tables check each half against its own subset: growth
-#' against the survivors, survival against everyone. Neither asks whether the
-#' fit reproduces the \emph{observed response} --- which contains the zeros, and
-#' which is what was measured. This does: draw alive/dead from the survival fit,
-#' draw a growth value for every exposed row, and multiply. The product is zero
-#' wherever the draw died, so it reconstructs the full response including its
-#' point mass at zero.
+#' The per-component tables check growth against the survivors and survival
+#' against everyone, and neither against the observed response with its
+#' zeros. This draws alive or dead from the survival fit, draws growth for
+#' every exposed row, and multiplies. Draws are paired row by row and
+#' truncated to the smaller count; the hurdle likelihood factorises, so any
+#' pairing is valid.
 #'
-#' Draws are paired row-wise and truncated to the smaller count, which is what
-#' \code{hurdle_component_preds()} already does and rests on the same fact: the
-#' hurdle likelihood factorises, so the two posteriors are independent and any
-#' pairing is as good as any other.
-#'
-#' \code{newdata} is the \strong{full} exposed set, not the growth fit's own
-#' data. The growth component is fitted on survivors only, so predicting from
-#' its own model frame would give a shorter vector that cannot be multiplied
-#' against the survival draws or compared with the observed response. This is
-#' the one thing to get right here.
-#'
-#' Growth is therefore extrapolated past the highest concentration where
-#' anything survived. That is harmless, for the reason
-#' \code{hurdle_component_preds()} gives: survival there is near zero, so the
-#' product is carried by the survival term whatever growth predicts.
+#' \code{newdata} must be the full exposed set, not the growth fit's own data,
+#' which holds survivors only and would give a vector of the wrong length.
+#' Growth is then extrapolated past the last survivor, which is harmless:
+#' survival there is near zero, so the product is near zero whatever growth
+#' predicts.
 #'
 #' @inheritParams check_fit
 #'
@@ -454,19 +426,12 @@ check_fit_combined <- function(x, group = NULL, ndraws = 1000, seed = 10) {
 #' @param growth_data The rows fitted by the growth component. Where supplied,
 #' categorical dispersion values absent from those rows are refused.
 #'
-#' @details The growth component is simulated for every exposed row in
-#' \code{check_fit_combined()}, over the survival component's data. That frame
-#' holds only the columns of the survival formula, from which the
-#' \code{disp()} term is removed, so it has none of the columns a growth
-#' \code{disp(~z)} term names, and the simulation stopped in \pkg{brms}
-#' (#443). The rows are observations, so each takes its own recorded value,
-#' from the data \code{bnec_hurdle()} was given, not a value drawn from the
-#' design as a predicted reading on a grid does. Matched by position, which
-#' holds because both components are fitted from the rows of that data
-#' without reordering, the survival component from all of them; see
-#' \code{hurdle_observed_response()}. A category found only among non-survivors
-#' has no fitted growth dispersion parameter, so simulating growth for that
-#' category is refused before \pkg{brms} reports an unknown factor level.
+#' @details The survival component's data lacks the columns a growth
+#' \code{disp(~z)} term names, since the survival formula has no \code{disp()}
+#' term. Each row takes its recorded value from the data \code{bnec_hurdle()}
+#' was given, matched by position: both components keep the order of those
+#' rows. A category found only among non-survivors has no fitted growth
+#' dispersion, so it is refused before \pkg{brms} reports an unknown level.
 #'
 #' @return \code{frame}, unchanged where the growth formula has no such
 #' column.
