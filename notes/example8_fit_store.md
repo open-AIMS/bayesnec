@@ -16,7 +16,7 @@ A stored fit is keyed on its call and its data, not on the code that fitted it.
 A store fitted before a change to what `bayesnec` fits therefore resolves every
 key and loads without an error. `fit_store_install()` in `vignettes/fit_store.R`
 now reads the `bayesnec:` line of the store's `MANIFEST` and stops where it
-records a version older than `FIT_STORE_MIN_BAYESNEC`, 2.1.3.42. The message
+records a version older than `FIT_STORE_MIN_BAYESNEC`, 2.1.3.44. The message
 names both versions and the refit below, including the renaming in its step 2.
 
 The minimum is raised by hand, and only by a change to what `example8` fits: a

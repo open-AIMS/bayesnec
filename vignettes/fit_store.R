@@ -153,9 +153,6 @@ joint_key <- function(cl, depends_on, fn_name = fit_fun_name(cl)) {
 ## and loads without complaint. PR #409 changed the default priors and left
 ## Version at 2.1.3.39, which is what the store assembled on 2026-09-18 records;
 ## 2.1.3.40 is the first version that can only be a build after it (#413).
-## 2.1.3.42 (#468) computes a disp() variance function from the curve before
-## an ogl() deviation rather than from the fitted mean, which changes every
-## example8 fit that has both terms, so the minimum was raised to it.
 ##
 ## A minimum rather than equality with the installed version, because most
 ## version bumps change nothing example8 fits: 2.1.3.41 (#397) changes the
@@ -167,7 +164,7 @@ joint_key <- function(cl, depends_on, fn_name = fit_fun_name(cl)) {
 ## First added to the copy in bayesnec (PR #432, #413), then to
 ## shim/fit_store_body.R in the compendium, so that regenerating the copy
 ## keeps it.
-FIT_STORE_MIN_BAYESNEC <- "2.1.3.42"
+FIT_STORE_MIN_BAYESNEC <- "2.1.3.44"
 
 ## Refuse a store whose MANIFEST records a bayesnec older than the minimum.
 ##
