@@ -166,7 +166,10 @@ three test-comment cleanup commits from #510. Each listed commit has one
 parent, changes only R files under `R/` or `tests/testthat/`, and leaves the
 parsed code of every file it changes identical. Merges, notes-only commits,
 functional changes, and the later retention and accuracy corrections are not
-listed, so they stay visible in blame. A rebase or squash that rewrites a
+listed, so they stay visible in blame. A listed commit can reword a comment as
+well as shorten it, and blame then credits the new wording to the commit that
+wrote the line before it; run blame without the ignore file to see the
+rewording. A rebase or squash that rewrites a
 listed commit changes its hash, and the list must then be regenerated.
 `.Rbuildignore` excludes the file from the package build. GitHub's blame view
 reads the file without configuration; a local checkout needs:
