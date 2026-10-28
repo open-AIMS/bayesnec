@@ -183,7 +183,7 @@
 #' @export
 bnec_hurdle <- function(formula, data, model_survival = NULL,
                         family_growth = NULL, predictor_scale = "auto", ...) {
-  # Captured before anything can rebind it; see family_link_source() and #256.
+  # Read the family argument unevaluated, before `family_growth` is reassigned.
   growth_link_source <- family_link_source(substitute(family_growth),
                                            env = parent.frame())
   formula <- bayesnecformula(formula, env = parent.frame())
@@ -221,37 +221,23 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
     stop("Every value of \"", y_var, "\" is zero.", call. = FALSE)
   }
   check_hurdle_cens(aterms, data, y, y_var)
-  # Both components are fitted in sequence, and the growth subset can omit the
-  # rows that contradict a concentration-scale declaration. Check the complete
-  # predictor here so the first component is not sampled before the second
-  # discovers the contradiction. See #317.
+  # Check the whole predictor here. The growth subset can omit the rows that
+  # contradict the predictor_scale declaration, and the growth component is
+  # fitted first, so it would sample before the survival fit refused them.
   full_frame <- model.frame(formula, data = data, run_par_checks = TRUE)
-  # Immediately after the frame, as bnec() places it. model.frame() drops a
-  # row with a missing predictor, so the growth bound check below would
-  # otherwise read the survivors without it: a growth response whose only
-  # value off the bound sat in that row was refused as every value at the
-  # bound, rather than as the missing value it is. See #278 and #400.
+  # Keep this immediately after the frame. model.frame() drops a row with a
+  # missing predictor, so the growth bound check below would otherwise refuse
+  # the wrong condition.
   check_complete_cases(full_frame)
   validate_predictor_scale(
     predictor_scale, retrieve_var(full_frame, "x_var", error = TRUE)
   )
 
-  # Survival component: one Bernoulli trial per individual, 1 = survived. The
-  # curve therefore declines with concentration, matching the sign convention
-  # of every bayesnec equation, and hu = 1 - fitted survival.
-  #
-  # swap_response() rebuilds the formula from rhs() alone, so any aterm on the
-  # response is dropped here rather than carried over. That is deliberate for
-  # cens(): the Bernoulli response is alive/dead, which is observed exactly, so
-  # there is nothing for a censoring declaration to bound. The censoring
-  # indicator stays in surv_data as an ordinary unused column.
-  #
-  # A disp() term is removed before the survival formula is built, and stays on
-  # the growth formula. The survival component is bernoulli, whose variance is
-  # fixed by its mean, so there is no dispersion parameter for the term to
-  # model and check_disp_spec() refuses it. Passed through, as it was before
-  # #410, that refusal arrived only after the growth component had been
-  # sampled, so no hurdle fit could model the growth dispersion at all.
+  # Survival component: one Bernoulli trial per individual, 1 = survived, so
+  # the curve declines with concentration like every bayesnec equation and
+  # hu = 1 - fitted survival. swap_response() drops any aterm on the response,
+  # which is correct for cens(): survival is observed exactly. The disp() term
+  # is dropped too, because a Bernoulli response has no dispersion parameter.
   surv_data <- data
   surv_data[[".alive"]] <- as.integer(y > 0)
   surv_formula <- swap_response(drop_disp_term(formula), ".alive")
@@ -270,12 +256,10 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
                                      link_source = growth_link_source)
     check_hurdle_growth_family(family_growth)
   }
-  # Apply the group-term check to each component's family-compatible set.
-  # Checking the requested set would miss a survival component where its only
-  # equation with a group-level term is excluded by the Bernoulli family;
-  # that refusal would arrive after the growth component had sampled. The
-  # component calls make and record their own exclusions, so silence these
-  # preliminary family and group reports. See #470.
+  # Check group-level terms against each component's set after check_models()
+  # has applied its family, not against the requested set, so that a refusal
+  # comes before either component samples. The component bnec() calls repeat
+  # and record the exclusions, so the reports here are silenced.
   growth_frame <- suppressMessages(model.frame(
     formula, data = data[y > 0, , drop = FALSE], run_par_checks = TRUE
   ))
@@ -291,19 +275,13 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
   ))
   check_group_terms(growth_models, formula, report = FALSE)
   check_group_terms(survival_models, surv_formula, report = FALSE)
-  # Checked here against the growth family, the only one the term applies to,
-  # before the growth component is announced or either component compiles.
-  # The growth bnec() call makes the same check once before its own model
-  # loop, with the same function and so the same message, and passes wherever
-  # this one does; this one is kept so that a refusal is raised before
-  # anything bnec_hurdle() prints. The response is the survivors', which is
-  # what the growth fit is given. See #410.
+  # Check the disp() term against the growth family and the survivors'
+  # response before anything is printed. The growth bnec() call repeats it.
   disp_spec <- parse_disp_term(formula)
   if (!is.null(disp_spec)) {
     check_disp_spec(disp_spec, family_growth, response = y[y > 0])
     # Before check_count_truncation_support(), so that a model refused for
-    # what it is does not first send the user to upgrade brms. The growth
-    # bnec() call and wrangle_model_formula() repeat it as backstops. See #443.
+    # what it is does not first tell the user to upgrade brms.
     if (identical(family_growth$family, "negbinomial")) {
       check_disp_count_truncation(formula)
     }
@@ -323,18 +301,11 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
     # part of the likelihood without exposing trunc() as a user-facing aterm.
     growth_formula <- add_hurdle_truncation(growth_formula)
   }
-  # The growth component is fitted to the survivors alone, so it can be at a
-  # bound of its family where the response as a whole is not: a Beta growth
-  # component whose every survivor is 1. Raised here rather than left to the
-  # growth bnec() call, which would name the response column and say that
-  # every value is 1 of a column that also holds the zeros. Built from
-  # `formula`, which is growth_formula without the count truncation, since the
-  # response rows are what is tested. See #400.
-  #
-  # Given the growth set, so that ecxflat named alone for the growth component
-  # is let through and fitted. The substitution bnec() makes for a response
-  # with no variation is not made here: #419 gave it to bnec() and bnec_group()
-  # only, so a growth set holding a curve equation is still refused.
+  # The survivors can all sit at a bound of the growth family, such as a Beta
+  # growth component of 1 throughout. Check here so that the message names the
+  # growth component, not the whole response column. A growth set of ecxflat
+  # alone passes, but unlike bnec() this does not substitute ecxflat for a
+  # curve equation.
   check_response_at_bound(
     growth_frame,
     family_growth,
@@ -344,20 +315,12 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
   )
   message("Fitting the growth component (", sum(y > 0), " survivors of ",
           length(y), ") with a ", family_growth$family, " distribution.")
-  # User aterms are passed through unchanged. A censoring indicator is an
-  # ordinary data column, so the subset carries it to the block it belongs to.
-  # A survivor measured below the recording limit is an observation of this
-  # component, not a structural zero.
-  #
-  # Predicted over the whole concentration series, the range the survival
-  # component is fitted over, rather than over the concentrations at which
-  # something survived (D44, #412, superseding D28). Those concentrations were
-  # tested, so a growth estimate above the last survivor lies inside the tested
-  # range and is reported as a value, not censored at the last survivor. The
-  # two components then share their limits, so the combined threshold is never
-  # read across unequal bounds (#415, #421). Given as x_range on the recorded
-  # scale, the scale prediction_grid() reads it on, and only where the caller
-  # gave none: a caller's x_range reaches both fits through ... unchanged.
+  # User aterms pass through unchanged: a survivor below the recording limit is
+  # censored growth, not a structural zero.
+  # Predict growth over the whole concentration series, as for survival, so
+  # that both components share their limits; an estimate above the last
+  # survivor is inside the tested range. x_range is on the recorded scale, and
+  # a caller's own x_range reaches both fits through `...` unchanged.
   if ("x_range" %in% ...names()) {
     growth_fit <- bnec(growth_formula, data = data[y > 0, , drop = FALSE],
                        family = family_growth,
@@ -385,40 +348,17 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
 #'
 #' @param family An object of class \code{\link[stats]{family}}.
 #'
-#' @details \code{bnec_hurdle} \emph{is} the two-part model, so a growth
-#' component that is itself two-part would be a second hurdle inside the first.
-#'
-#' The zero-inflated count families are refused for a further reason, and it is
-#' the substantive one. A hurdle says every zero is structural: the response
-#' component never emits one, so the likelihood separates exactly into a
-#' Bernoulli term over all individuals and a positive-response term over the
-#' survivors, and the two can be fitted separately. \code{poisson} and
-#' \code{negbinomial} can emit a zero of their own, so a zero-inflated count
-#' model is a genuine mixture -- a zero is evidence about both components at
-#' once, the likelihood carries a \code{log_sum_exp} over them, and it does not
-#' factorise. Fitting it as two independent pieces would give a different model
-#' from the one asked for, and would do it silently.
-#'
-#' Note what this refusal does \emph{not} claim. It rules out the factorised
-#' two-fit procedure only; a joint fit carrying a curve on \code{zi} is a
-#' well-defined model that \pkg{brms} can express. bayesnec declines to offer
-#' that for reasons of identifiability and interpretation rather than of
-#' likelihood algebra, set out under \code{\link{bnec}}.
-#'
-#' For structural count zeros, pass the ordinary \code{poisson} or
-#' \code{negbinomial} family. \code{bnec_hurdle} adds the zero truncation that
-#' conditioning on the positive subset requires.
+#' @details A two-part growth family would nest a hurdle within this one.
+#' A zero-inflated count likelihood cannot separate into these two fits. For
+#' structural count zeros, use \code{poisson} or \code{negbinomial}; growth is truncated.
 #'
 #' @return \code{invisible(NULL)}, called for its side effect.
 #'
 #' @noRd
 check_hurdle_growth_family <- function(family) {
   fam_tag <- family$family
-  # Refused here, before the growth component is announced. Left to the
-  # growth fit, the call stopped asking for a trials() term, and with one it
-  # stopped in check_hurdle_aterms(), which refuses trials() because the
-  # survival component has no trial count; two messages that contradicted
-  # each other (#459).
+  # Refuse here. Left to the growth fit, the call would ask for a trials()
+  # term, which check_hurdle_aterms() then refuses.
   if (fam_tag %in% c("binomial", "beta_binomial")) {
     stop("bnec_hurdle cannot use ", fam_tag, " as the growth family: it needs",
          " the number of trials in a trials() term, and bnec_hurdle takes",
@@ -496,11 +436,8 @@ add_hurdle_truncation <- function(formula) {
 
 #' Extract the response variable name from a hurdle formula
 #'
-#' Errors informatively if the response itself is transformed, which makes the
-#' zero-as-death convention ambiguous. Aterms alongside the response are left
-#' alone here and validated by \code{\link{check_hurdle_aterms}}: what
-#' \code{bnec_hurdle} needs is a bare response variable, not a bare left-hand
-#' side.
+#' Refuses a transformed response, since a zero marks a death. Aterms beside
+#' the response are left to \code{\link{check_hurdle_aterms}}.
 #'
 #' @param formula An object of class \code{\link{bayesnecformula}}.
 #'
@@ -534,10 +471,8 @@ hurdle_lhs_parts <- function(lhs_call) {
   if (!(length(lhs_call) == 3 && identical(lhs_call[[1]], quote(`|`)))) {
     return(list(response = lhs_call, aterms = list()))
   }
-  # aterms are joined by "+", so peel the chain apart from the right. The `+`
-  # test matters for the same reason it does in split_calls(): without it a
-  # two-argument aterm such as cens(indicator, upper_bound) is itself length 3
-  # and would be destructured as though it were a chain.
+  # Peel the "+" chain of aterms apart from the right. Test for `+`: a
+  # two-argument aterm such as cens(indicator, upper_bound) also has length 3.
   aterm_call <- lhs_call[[3]]
   out <- list()
   while (length(aterm_call) == 3 && identical(aterm_call[[1]], quote(`+`))) {
@@ -547,10 +482,8 @@ hurdle_lhs_parts <- function(lhs_call) {
   out[[length(out) + 1]] <- aterm_call
   names(out) <- vapply(out, function(tt) {
     nm <- if (is.call(tt)) deparse1(tt[[1]]) else deparse1(tt)
-    # brms::cens() and cens() are the same aterm. Everything else in the
-    # package matches aterms on the bare name (split_calls() greps for
-    # "cens("), so strip any namespace qualifier here too rather than let
-    # check_hurdle_aterms() refuse the qualified form as unrecognised.
+    # Strip a namespace qualifier, so that brms::cens() is read as cens(), as
+    # the rest of the package reads it.
     sub("^.*:::?", "", nm)
   }, character(1))
   list(response = lhs_call[[2]], aterms = rev(out))
@@ -560,24 +493,9 @@ hurdle_lhs_parts <- function(lhs_call) {
 #'
 #' @param formula An object of class \code{\link{bayesnecformula}}.
 #'
-#' @details Only \code{cens()} is accepted. The candidate set is the three
-#' aterms \code{bnec} supports at all -- \code{trials()}, \code{weights()} and
-#' \code{cens()} -- since \code{model.frame} drops the rest before they reach
-#' brms; \code{cens()} is the one of the three that survives the split. A
-#' censored response is also the case \code{bnec_hurdle} needs it for: a growth
-#' endpoint can be both zero-bounded
-#' with structural zeros and left-censored at the recording resolution, and only
-#' a two-part model with a censored response component can tell a death from a
-#' survivor measured below the limit.
-#'
-#' Every other aterm is refused by name. \code{trials()} has no meaning for
-#' either component -- the growth component is continuous and the survival
-#' component is one Bernoulli trial per individual -- and an aggregated count
-#' could not be split into survivors and deaths row by row anyway.
-#' \code{weights()} is refused because whether a weight belongs to the growth
-#' component, the survival component or both is a modelling decision, and
-#' guessing it would silently change the model; a user who knows which they want
-#' can make the two \code{\link{bnec}} calls directly.
+#' @details Only \code{cens()} is accepted: it lets the growth component hold
+#' a survivor measured below the recording limit, which is not a death. Every
+#' other aterm is refused, with the reason given in \code{reasons} below.
 #'
 #' @return A \code{\link[base]{list}} of the accepted aterm calls, named by
 #' function.
@@ -631,13 +549,9 @@ check_hurdle_aterms <- function(formula) {
 #' @param y The response vector.
 #' @param y_var The response variable name.
 #'
-#' @details The two kinds of zero a hurdle model exists to separate must stay
-#' separate in the input. A \code{0} response is a structural zero belonging to
-#' the Bernoulli component; a left-censored row is an observation of the growth
-#' component whose value is known only to be at or below a bound. A row claiming
-#' to be both is not a model this function can fit, and accepting it silently
-#' would reproduce exactly the confusion \code{vignette("example6")} warns
-#' about.
+#' @details Refuses a row that is both 0 and censored. A 0 is a structural zero
+#' of the survival component, and a censored row is a growth observation at or
+#' below a bound.
 #'
 #' @return \code{invisible(NULL)}, called for its side effect.
 #'
@@ -653,16 +567,12 @@ check_hurdle_cens <- function(aterms, data, y, y_var) {
          " censoring codes, e.g. \"", y_var, " | cens(censored) ~ ...\".",
          call. = FALSE)
   }
-  # The first argument positionally, matching how split_calls() reads the same
-  # term downstream. Resolving named arguments properly here would be more
-  # correct in isolation but would make this check disagree with the term brms
-  # is actually given, which is worse than agreeing and being wrong together.
+  # Take the first argument by position, as split_calls() does. Matching by
+  # name here could read a different column from the one the fit is given.
   cens_arg <- cens_args[[1]]
   cens_vals <- if (length(all.vars(cens_arg)) == 0) {
-    # A literal, e.g. cens("left"), which brms recycles over every row.
-    # check_formula() already warns about this; here it still has to be checked
-    # against the zeros, because recycled over a response containing zeros it
-    # declares those zeros censored.
+    # A literal such as cens("left"), which brms recycles over every row, and
+    # so declares every zero censored.
     eval(cens_arg)
   } else {
     data[[all.vars(cens_arg)[1]]]
@@ -695,10 +605,8 @@ check_hurdle_cens <- function(aterms, data, y, y_var) {
 #'
 #' @noRd
 swap_response <- function(formula, new_response) {
-  # The right-hand side is rebuilt from its deparsed text, which drops the
-  # environment the user wrote it in. Carried over explicitly, so that a model
-  # set or a predictor transformation held in a variable still resolves in the
-  # component formulas. See #319.
+  # Deparsing the right-hand side drops its environment. Pass it on, so that a
+  # model set or transformation held in a variable still resolves.
   bayesnecformula(
     as.formula(paste0(new_response, " ~ ", deparse1(rhs(formula))),
                env = formula_env(formula))
@@ -709,14 +617,10 @@ swap_response <- function(formula, new_response) {
 #'
 #' @param formula An object of class \code{\link{bayesnecformula}}.
 #'
-#' @details The right-hand side is taken apart at its top-level \code{+}
-#' operators and rebuilt without the term, so the remaining terms keep the
-#' order they were written in. \code{update()} with
-#' \code{~ . - disp(...)}, which \code{swap_crf_model()} uses for the
-#' \code{crf()} term, was not used, because it passes the formula through
-#' \code{terms()}, which can reorder and simplify what is left. A term is a
-#' \code{disp()} term where its function name, less any namespace qualifier,
-#' is \code{disp}, which is how \code{hurdle_lhs_parts()} names an aterm.
+#' @details Rebuilds the right-hand side from its top-level \code{+} terms, so
+#' the others keep their order. \code{update()} would pass it through
+#' \code{terms()}, which can reorder and simplify them. A qualified
+#' \code{bayesnec::disp()} counts as \code{disp()}.
 #'
 #' @return \code{formula} without its \code{disp()} term, with its class,
 #' attributes and environment kept, or \code{formula} unchanged where it has
