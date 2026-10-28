@@ -2940,6 +2940,41 @@
   `get_priors()`; `update()` prints no priors and reuses those of the original
   fit (#486).
 
+- `nec()`, `summary()` and `plot()` on a `bayesnechurdlefit` whose growth or
+  survival component was fitted to a single smooth equation, such as
+  `ecx4param`, now return. Each stopped with "nec is not a parameter in ecx
+  model types.", so such a fit could be read only through `nsec()`, `ecx()`,
+  `autoplot()` or `plot(add_nec = FALSE)`. The component contributes the NSEC
+  draws stored when it was fitted, as a component fitted to a model set
+  contributes its N(S)EC draws, and `summary()` labels its row NSEC.
+  `nec()` on a `bayesnecfit` holding a smooth equation still refuses. A smooth
+  hurdle component saved before the estimate type was recorded also retains
+  NSEC extrapolation rules (#487).
+
+- `nec(which = "growth")` and `nec(which = "survival")` on a
+  `bayesnechurdlefit` compute only the component named. Both components were
+  computed, so a call for the growth estimate printed the N(S)EC message of a
+  survival model set holding a smooth equation, and stopped where the survival
+  component was a single smooth equation (#487).
+
+- Where `crf()` transforms the predictor inline, as `crf(log(x))` does,
+  `plot()`, `autoplot()` and `ggbnec_data()` on a `bayesnechurdlefit` draw the
+  observed points on the recorded scale, the scale of the prediction grid and
+  of the fitted curve. The points were drawn on the transformed scale, so they
+  and the curve did not overlay. `plot()` also draws the N(S)EC line on the
+  recorded scale. `nec()` returns the estimate on the transformed scale, so the
+  line is returned through `xform` where one is supplied, and otherwise by
+  inverting the transformation on the prediction grid, as `plot()` does for a
+  `bayesnecfit`. `xform` is then not applied to the points or the curve, also
+  as for a `bayesnecfit`. A predictor that `crf()` does not transform is drawn
+  as before. The automatic inverse also preserves estimates identified over
+  a stored prediction range beyond the observations, including where the
+  plotted range is narrower (#487).
+
+- `summary()` on a `bayesnechurdlefit` names a Gamma growth family `Gamma`,
+  as `bnec_hurdle()` names it when fitting. It printed `gamma`, the name
+  `brms` records (#487).
+
 ## Documentation
 
 - `?autoplot` states that a `bayesmanecfit` with `multi_facet = FALSE`

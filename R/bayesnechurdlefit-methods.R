@@ -470,7 +470,8 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
   }
   out <- list(
     n_exposed = object$n_exposed, n_dead = object$n_dead,
-    growth_family = growth_fit$family$family,
+    # brms records Gamma() as "gamma". Print the tag bnec_hurdle() reported.
+    growth_family = canonical_fam_tag(growth_fit$family$family),
     growth_models = mods(object$growth),
     survival_models = mods(object$survival),
     ne = nes, ne_types = ne_types, ecs = ecs,
@@ -860,16 +861,21 @@ hurdle_check_plot_which <- function(which) {
 #' Raw observed data underlying a \code{\link{bayesnechurdlefit}}
 #'
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
+#' @param recorded \code{FALSE}, the default, returns the predictor as
+#' \code{crf()} transforms it, the scale the model is fitted on. \code{TRUE}
+#' returns the column \code{crf()} names, the scale the plots and the
+#' prediction grid are on.
 #'
 #' @return A \code{\link[base]{data.frame}} with columns \code{x} and \code{y}.
 #'
 #' @importFrom stats terms
 #'
 #' @noRd
-hurdle_raw_data <- function(object) {
-  x_str <- grep("crf(", labels(terms(object$formula)), fixed = TRUE,
-                value = TRUE)
-  x_expr <- str2lang(eval(parse(text = x_str)))
+hurdle_raw_data <- function(object, recorded = FALSE) {
+  x_expr <- crf_x_call(object$formula)
+  if (recorded) {
+    x_expr <- as.name(all.vars(x_expr)[1])
+  }
   # Evaluate in the formula's environment, not eval()'s default, so that a
   # user's function in crf(sq(x), ...) resolves.
   data.frame(x = eval(x_expr, object$data,
@@ -884,7 +890,8 @@ hurdle_panel <- function(object, which, resolution, x_range) {
   preds <- hurdle_component_preds(object, resolution = resolution,
                                   x_range = x_range)
   p <- preds[[which]]
-  raw <- hurdle_raw_data(object)
+  # On the recorded scale, as preds$x is.
+  raw <- hurdle_raw_data(object, recorded = TRUE)
   if (which == "survival") {
     # The observed analogue of a survival curve is the proportion non-zero at
     # each predictor value, not the individual responses.
@@ -904,6 +911,51 @@ hurdle_panel <- function(object, which, resolution, x_range) {
                      survival = "Probability of survival"))
 }
 
+#' The map the hurdle plots apply to the points and the curve
+#'
+#' \code{xform}, except where \code{crf()} transforms the predictor inline. The
+#' points and the grid are then left on the recorded scale, as the
+#' \code{\link{bayesnecfit}} plots leave them.
+#'
+#' @param object An object of class \code{\link{bayesnechurdlefit}}.
+#' @param xform The function the caller supplied.
+#'
+#' @return A \code{\link[base]{function}}.
+#' @noRd
+hurdle_axis_xform <- function(object, xform) {
+  if (is.null(inline_x_transform(object))) xform else identity
+}
+
+#' The map that puts a hurdle no-effect estimate on the plot's predictor axis
+#'
+#' The same choice \code{to_axis_scale()} makes for a
+#' \code{\link{bayesnecfit}}: \code{xform} where the predictor is not
+#' transformed or the caller supplied one, and otherwise the inverse of the
+#' \code{crf()} transformation read off the whole-series prediction grid.
+#' Read the inverse off that grid, not off a panel's \code{x_range}: the
+#' inverse clamps at the grid ends, and the legend would print the clamped
+#' value.
+#'
+#' @param object An object of class \code{\link{bayesnechurdlefit}}.
+#' @param xform The function the caller supplied.
+#' @param resolution The number of grid points.
+#'
+#' @return A \code{\link[base]{function}}, for \code{\link{nec}} to apply to
+#' each draw.
+#' @noRd
+hurdle_ne_axis_map <- function(object, xform, resolution) {
+  if (is.null(inline_x_transform(object)) || !identical(xform, identity)) {
+    return(xform)
+  }
+  grid <- newdata_eval(object$survival, resolution = resolution,
+                       x_range = NA)$x_vec
+  # A fit-time x_range can identify estimates beyond the observed range.
+  grid <- sort(unique(c(grid, ne_grid_data(object$growth)$x,
+                        ne_grid_data(object$survival)$x)))
+  inverse <- grid_inverse(object$formula, grid)
+  if (is.null(inverse)) identity else inverse
+}
+
 #' Plots a \code{\link{bayesnechurdlefit}}
 #'
 #' @param x An object of class \code{\link{bayesnechurdlefit}}.
@@ -915,7 +967,9 @@ hurdle_panel <- function(object, which, resolution, x_range) {
 #' \code{TRUE}.
 #' @param resolution The number of unique predictor values to predict over.
 #' @param x_range A range of predictor values to plot over.
-#' @param xform A function to apply to the predictor.
+#' @param xform A function to apply to the predictor where \code{crf()} does
+#' not transform it inline. Where it does, the function that returns the
+#' no-effect estimate to the recorded scale. See Details.
 #' @param ylab Y axis label. Defaults to a label describing \code{which}.
 #' @param xlab X axis label.
 #'
@@ -925,6 +979,15 @@ hurdle_panel <- function(object, which, resolution, x_range) {
 #' separate panels; they are not overlaid because the growth curve is in
 #' response units and the survival curve is a probability, so sharing one pair
 #' of axes would misrepresent their relative magnitude.
+#'
+#' Where \code{crf()} transforms the predictor inline, as
+#' \code{crf(log(concentration))} does, the observed points, the curve and the
+#' no-effect line are drawn on the recorded scale, the scale the prediction
+#' grid is built on, as \code{\link{plot}} draws a \code{\link{bayesnecfit}}.
+#' \code{\link{nec}} returns its estimate on the transformed scale, so the line
+#' is returned to the recorded scale through \code{xform} where one is
+#' supplied, and otherwise by inverting the transformation on the prediction
+#' grid. \code{xform} is not applied to the points or the curve in that case.
 #'
 #' @return A plot.
 #'
@@ -955,10 +1018,14 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
     old_par <- par(mfrow = c(1, length(panels)))
     on.exit(par(old_par), add = TRUE)
   }
+  axis_x <- hurdle_axis_xform(x, xform)
+  if (add_nec) {
+    ne_map <- hurdle_ne_axis_map(x, xform, resolution)
+  }
   for (w in panels) {
     p <- hurdle_panel(x, w, resolution, x_range)
-    xv <- xform(p$x)
-    plot(xform(p$raw$x), p$raw$y, pch = 16, cex = 1.5,
+    xv <- axis_x(p$x)
+    plot(axis_x(p$raw$x), p$raw$y, pch = 16, cex = 1.5,
          col = adjustcolor(1, alpha.f = 0.25),
          ylab = if (is.null(ylab)) p$ylab else ylab, xlab = xlab,
          ylim = range(c(p$raw$y, p$lo, p$up), na.rm = TRUE), ...)
@@ -968,12 +1035,10 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
     }
     lines(xv, p$est)
     if (add_nec) {
-      # Give xform to nec() rather than apply it to the summary: nec() applies
-      # it to each draw and to the censoring record, so a decreasing xform
-      # still gives the interval in order, with each bound marked.
-      ne <- without_scale_report(
-        nec(x, which = if (w == "combined") "combined" else w, xform = xform)
-      )
+      # Give the map to nec() rather than apply it to the summary: nec()
+      # applies it to each draw and to the censoring record, so a decreasing
+      # map still gives the interval in order, with each bound marked.
+      ne <- without_scale_report(nec(x, which = w, xform = ne_map))
       abline(v = ne, col = "red", lty = c(1, 3, 3))
       legend("topright", bty = "n", lty = 1, col = "red",
              legend = paste0("N(S)EC: ", bound_prefix(ne, 1),
@@ -990,7 +1055,10 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
 #' @param x An object of class \code{\link{bayesnechurdlefit}}.
 #' @param add_nec Unused; retained for consistency with the generic.
 #' @param add_ecx Unused; retained for consistency with the generic.
-#' @param xform A function to apply to the predictor.
+#' @param xform A function to apply to the predictor where \code{crf()} does
+#' not transform it inline. Where it does, the predictor is returned on the
+#' recorded scale, the scale the prediction grid is built on, and \code{xform}
+#' is not applied.
 #' @param ... Unused.
 #' @param which Which curve(s) to return. See \code{\link{plot}}.
 #' @param resolution The number of unique predictor values.
@@ -1012,13 +1080,14 @@ ggbnec_data.bayesnechurdlefit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   } else {
     which
   }
+  axis_x <- hurdle_axis_xform(x, xform)
   curve <- list()
   raw <- list()
   for (w in panels) {
     p <- hurdle_panel(x, w, resolution, x_range)
-    curve[[w]] <- data.frame(panel = p$ylab, x = xform(p$x), y = p$est,
+    curve[[w]] <- data.frame(panel = p$ylab, x = axis_x(p$x), y = p$est,
                              lo = p$lo, up = p$up)
-    raw[[w]] <- data.frame(panel = p$ylab, x = xform(p$raw$x), y = p$raw$y)
+    raw[[w]] <- data.frame(panel = p$ylab, x = axis_x(p$raw$x), y = p$raw$y)
   }
   curve <- do.call(rbind, curve)
   raw <- do.call(rbind, raw)

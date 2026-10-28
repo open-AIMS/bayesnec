@@ -88,7 +88,12 @@ As for \code{\link{nec}} on any fit, what is returned is a NEC only where
 the underlying model(s) are threshold models. A component whose model set
 contains smooth (\code{ecx}-type) models contributes NSEC draws instead, and
 the combination is then an N(S)EC; a message is emitted in that case and
-\code{summary} labels each component. \code{\link{nsec}} with
+\code{summary} labels each component. A component fitted to a single smooth
+equation, such as \code{ecx4param}, contributes the NSEC draws stored when it
+was fitted, although \code{nec()} refuses that equation fitted on its own
+with \code{\link{bnec}}. Only the component or components that \code{which}
+names are computed, so \code{which = "growth"} reads nothing from the
+survival component. \code{\link{nsec}} with
 \code{which = "combined"} is the alternative that reads a single value off
 the combined curve itself rather than taking the minimum of two component
 estimates, and it does not reduce to the growth value.
