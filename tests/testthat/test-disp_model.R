@@ -267,7 +267,7 @@ test_that("hurdle_poisson refuses disp() and hurdle_negbinomial takes it (#410)"
   f <- bnf(count ~ crf(x, "ecx4param") + disp("power"))
   expect_error(
     make_brmsformula(f, disp_dat, validate_family("hurdle_poisson")),
-    "hurdle_poisson has no free dispersion parameter.*hurdle_negbinomial"
+    "hurdle_poisson has no free dispersion parameter.*disp\\(\\) can model"
   )
   f_a <- bnf(count ~ crf(x, "ecx4param") + disp(~x))
   expect_error(
@@ -1539,8 +1539,7 @@ test_that("shape_in_reported_mean names the two truncated routes (#410)", {
   expect_true(bayesnec:::shape_in_reported_mean(
     tf, validate_family("negbinomial")
   ))
-  # an untruncated negbinomial, and the two-block families whose mean is
-  # mu * (1 - hu), report a mean free of the dispersion parameter
+  # an untruncated negbinomial reports a mean free of the shape
   expect_false(bayesnec:::shape_in_reported_mean(
     bnf(y ~ crf(x, "nec3param")), validate_family("negbinomial")
   ))
@@ -1548,6 +1547,8 @@ test_that("shape_in_reported_mean names the two truncated routes (#410)", {
   expect_false(bayesnec:::shape_in_reported_mean(
     tf, validate_family("poisson")
   ))
+  # hurdle_gamma and zero_inflated_beta report mu * (1 - hu), and
+  # hurdle_poisson has no shape
   for (tag in c("hurdle_gamma", "zero_inflated_beta", "hurdle_poisson")) {
     expect_false(bayesnec:::shape_in_reported_mean(NULL, tag), label = tag)
   }
@@ -1722,7 +1723,7 @@ test_that("an equation without bot takes the limit at a mean of zero (#410)", {
   obj <- nb_disp_object(' + disp("power")')
   ref <- centring_literals(pform_rhs(obj$fit$formula, "shape"))
   got <- bayesnec:::count_positive_asymptote(obj, "mu", 0, data.frame(x = 0))
-  # mu / shape tends to 0 for c1 < 1, to exp(LOGREF - c0) at c1 = 1, and
+  # mu / shape tends to 0 for c1 < 1, to exp(ref - c0) at c1 = 1, and
   # without bound above it
   r <- exp(ref - draws$b_c0_Intercept[3])
   expect_equal(got, c(1, 1, r / log1p(r), Inf))
@@ -1777,10 +1778,12 @@ test_that("disp(~1) reads its one shape at the control (#410)", {
 test_that("a model set reads each equation's shape at its own bot (#410)", {
   parts <- list(a = nb_disp_object(' + disp("power")'),
                 b = nb_disp_object(' + disp("power")'))
+  parts$a$model <- "a"
+  parts$b$model <- "b"
   object <- structure(list(
     mod_fits = list(a = list(fit = 1), b = list(fit = 2))
   ), class = c("bayesmanecfit", "bnecfit"))
-  bot <- c(4, 2.5, 6)
+  bot <- list(a = c(4, 2.5, 6), b = c(8, 5, 12))
   draw_index <- list(a = c(1L, 3L), b = 2L)
   local_mocked_bindings(
     as_draws_df = function(x, variable = NULL, ...) {
@@ -1789,23 +1792,26 @@ test_that("a model set reads each equation's shape at its own bot (#410)", {
     ndraws = function(x) nrow(nb_draws),
     pull_draw_index = function(...) draw_index,
     pull_out = function(object, model) parts[[model]],
-    ecx_asymptote = function(object, type) bot,
+    ecx_asymptote = function(object, type) bot[[object$model]],
     .package = "bayesnec"
   )
   ref <- centring_literals(pform_rhs(parts$a$fit$formula, "shape"))
-  each <- as.numeric(bayesnec:::hurdle_positive_mean(
-    bot, "hurdle_negbinomial",
-    exp(nb_draws$b_c0_Intercept + nb_draws$b_c1_Intercept * (log(bot) - ref))
-  ))
+  each <- lapply(bot, function(b) {
+    as.numeric(bayesnec:::hurdle_positive_mean(
+      b, "hurdle_negbinomial",
+      exp(nb_draws$b_c0_Intercept + nb_draws$b_c1_Intercept * (log(b) - ref))
+    ))
+  })
   expect_equal(
     bayesnec:::count_positive_asymptote(object, "mu", rep(0, 3),
                                         data.frame(x = 0)),
-    c(each[draw_index$a], each[draw_index$b])
+    c(each$a[draw_index$a], each$b[draw_index$b])
   )
 })
 
 test_that("a joint count hurdle centres c1 as a truncated count (#410)", {
-  # The replicate centre falls back to 0, as it does for a growth component.
+  # Under "regularizing" the c1 prior centres on 0 rather than on the
+  # replicate slope, as for a growth component.
   spec <- list(route = "B", value = "power")
   d <- nb_hurdle_dat()
   pos <- d$y > 0

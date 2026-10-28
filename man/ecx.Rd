@@ -88,7 +88,8 @@ otherwise. Refused where the equation has no \code{bot} and the family
 is unbounded below, because there is then no finite denominator. On the
 positive counts of a negative binomial count hurdle the asymptote is
 their zero-truncated mean at \code{bot}, which needs the shape there,
-and it is refused where the shape is modelled by \code{disp(~x)};
+and the estimate is refused where the shape is modelled by
+\code{disp(~x)};
 see \code{\link{bnec}}.
 \item \code{"range"} --- control to the lowest response the curve
 predicts over the predictor range.

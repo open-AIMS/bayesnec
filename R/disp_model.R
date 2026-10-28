@@ -958,7 +958,8 @@ disp_form_template <- function(vf) {
 #'
 #' @return A \code{\link[base]{list}} with elements \code{value}, the
 #' dispersion parameter, one per draw; \code{pars}, the draws of each
-#' parameter of the form; \code{centre}, the constants; and \code{link}.
+#' parameter of the form; \code{centre}, the constants; and \code{link}, the
+#' name of the shape's link function.
 #'
 #' @importFrom brms as_draws_df brmsfamily
 #'
@@ -1155,7 +1156,9 @@ add_disp_placeholders <- function(newdata, data, formula,
 #' Does the reported mean of this fit depend on the negative binomial shape?
 #'
 #' @param formula An object of class \code{\link{bayesnecformula}}.
-#' @param family Either a \code{\link[stats]{family}} object or a family tag.
+#' @param family A \code{\link[stats]{family}} object. A family tag is enough
+#' for \code{hurdle_negbinomial}, but gives \code{FALSE} for a
+#' \code{negbinomial} growth component.
 #'
 #' @details True for the joint \code{hurdle_negbinomial} and for a
 #' \code{negbinomial} growth component of \code{bnec_hurdle()}. Their

@@ -1440,7 +1440,7 @@ define_prior <- function(model, family, predictor, response,
     # concentration it was observed at. See #472.
     #
     # brms truncates a count hurdle's positive block at zero, and no formula
-    # attribute records it, so is_count_hurdle() sets the flag.
+    # attribute records it, so is_count_hurdle() sets truncated_response.
     disp_priors <- define_disp_prior(disp_spec, mu_family, mu_response,
                                      predictor = mu_split$x,
                                      prior_type = prior_type,
