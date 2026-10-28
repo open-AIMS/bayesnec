@@ -137,8 +137,9 @@ get_priors.bayesnechurdlefit <- function(object, ...) {
 #' \code{\link{bnec}}.
 #' @param asymptote_observed A \code{\link[base]{logical}} declaring whether
 #' the highest predictor level reached the lower asymptote of the curve.
-#' \code{FALSE} replaces the \code{bot} entry, which is how the entries a fit
-#' under that declaration would use can be read without fitting. See
+#' \code{FALSE} replaces the \code{bot} entry and removes the upper bound of
+#' the \code{nec} and \code{ec50} entries, which is how the entries a fit under
+#' that declaration would use can be read without fitting. See
 #' \code{\link{bnec}}.
 #' @param predictor_scale A \code{\link[base]{character}} string declaring
 #' whether the predictor is supplied as \code{"concentration"}, already

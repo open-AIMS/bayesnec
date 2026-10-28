@@ -1320,7 +1320,8 @@ add_brm_defaults <- function(
   group_spec = NULL,
   level_spec = NULL,
   rate_response = FALSE,
-  truncated_response = FALSE
+  truncated_response = FALSE,
+  tested_range = NULL
 ) {
   # Recorded before anything below fills them in. A composed joint refit
   # rebuilds both from the per-level equations, and it must not overwrite a set
@@ -1372,7 +1373,8 @@ add_brm_defaults <- function(
       disp_spec = disp_spec,
       group_spec = group_spec,
       rate_response = rate_response,
-      truncated_response = truncated_response
+      truncated_response = truncated_response,
+      tested_range = tested_range
     )
   }
   priors <- try(validate_priors(brm_args$prior, model), silent = TRUE)

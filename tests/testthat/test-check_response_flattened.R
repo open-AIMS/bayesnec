@@ -58,14 +58,15 @@ test_that("a gaussian response is reported where its top two levels differ", {
     check_response_flattened(bdat, gaussian(link = "identity")),
     "falls from 0.805 to 0.602 as x rises from 2 to 4"
   )
-  # What the report says about the threshold priors, pinned because it went
-  # stale once and nothing failed: it said they "exclude a threshold above the
-  # tested range", which stopped being true when #393 removed the truncation.
-  # This is the only sentence of the message that makes a claim about the
-  # priors rather than about the data, and it is the only one that was not
-  # already asserted here.
+  # Pin what the report says about the threshold priors. It is the one claim
+  # about the priors rather than the data, and it must follow the declaration.
   expect_message(
     check_response_flattened(bdat, gaussian(link = "identity")),
+    "priors are bounded to the tested range, so they exclude a threshold"
+  )
+  expect_message(
+    check_response_flattened(bdat, gaussian(link = "identity"),
+                             asymptote_observed = FALSE),
     "put a threshold above the tested range in their tail"
   )
   flat <- flat_bdat(y ~ crf(x, "nec4param"),
@@ -619,8 +620,8 @@ test_that("bnec_group reports every level once and marks the inner calls", {
 declare_advice <- "declare it with asymptote_observed = FALSE"
 
 test_that("a declared call is not advised to declare (#449)", {
-  # Only the advice to set asymptote_observed = FALSE is dropped. The rest of
-  # the report is unchanged.
+  # The advice to set asymptote_observed = FALSE is dropped, and the sentence
+  # on the threshold priors describes the priors the declaration builds.
   bdat <- flat_bdat(y ~ crf(x, "nec4param"),
                     data.frame(x = flat_x, y = declining_y))
   fam <- gaussian(link = "identity")
@@ -632,11 +633,12 @@ test_that("a declared call is not advised to declare (#449)", {
   expect_length(declared, 1)
   expect_match(undeclared, declare_advice, fixed = TRUE)
   expect_match(declared, still_declining, fixed = TRUE)
-  expect_false(grepl("asymptote_observed", declared, fixed = TRUE))
-  # The declared report is the undeclared one minus the advice.
+  expect_false(grepl(declare_advice, declared, fixed = TRUE))
   advice <- bayesnec:::declaration_advice(fam, declining_y)
   expect_true(nzchar(advice))
-  expect_identical(declared, sub(advice, "", undeclared, fixed = TRUE))
+  expect_match(advice, "removes the upper bound of the nec and ec50 priors",
+               fixed = TRUE)
+  expect_false(grepl(advice, declared, fixed = TRUE))
   expect_match(declared, "where information beyond the design is available.\n",
                fixed = TRUE)
   expect_identical(

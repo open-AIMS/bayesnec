@@ -1103,13 +1103,16 @@ wrangle_model_formula <- function(model, formula, data, family = NULL,
 #' @noRd
 #' @importFrom stats update terms
 single_model_formula <- function(formula, model) {
+  # update() drops attributes, so carry the internal ones across by hand.
   internal_truncation <- attr(formula, "bayesnec_internal_truncation")
+  tested_range <- attr(formula, "bayesnec_tested_range")
   x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
   x_term <- eval(parse(text = x_str))
   new_crf <- paste0("crf(", x_term, ", model = \"", model, "\")")
   to_eval <- paste0("update(formula, ~ . - ", x_str, " + ", new_crf, ")")
   formula <- eval(parse(text = to_eval))
   attr(formula, "bayesnec_internal_truncation") <- internal_truncation
+  attr(formula, "bayesnec_tested_range") <- tested_range
   bayesnecformula(formula)
 }
 

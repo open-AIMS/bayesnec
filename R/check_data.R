@@ -462,7 +462,9 @@ capitalise_first <- function(x) {
 #' @param pool_dispersion Whether a gaussian dispersion is estimated over the
 #' whole series. \code{TRUE} where the formula has no \code{disp()} term.
 #' @param asymptote_observed The \code{asymptote_observed} argument of
-#' \code{\link{bnec}}. \code{FALSE} drops the advice to set it.
+#' \code{\link{bnec}}. \code{FALSE} drops the advice to set it, and changes
+#' the sentence on the \code{nec} and \code{ec50} priors to match the priors
+#' it builds.
 #'
 #' @return \code{NULL}, invisibly. Called for its message.
 #'
@@ -523,15 +525,23 @@ check_response_flattened <- function(data, family, group = NULL,
     }
   }
   if (length(declining) > 0) {
+    # The declaration changes what the threshold priors admit, so the sentence
+    # about them follows it.
+    threshold_priors <- if (isTRUE(asymptote_observed)) {
+      paste0(" the default nec and ec50 priors are bounded to the tested",
+             " range, so they exclude a threshold above it.")
+    } else {
+      paste0(" the default nec and ec50 priors put a threshold above the",
+             " tested range in their tail, where how much of the prior lies",
+             " there depends on prior_type and on whether the predictor was",
+             " supplied as a concentration or already logged; ?bnec tabulates",
+             " the four under asymptote_observed.")
+    }
     message(
       paste(declining, collapse = "\n"), "\n",
       "The lower asymptote may not be identified by this design: where an",
       " equation estimates bot its default prior is derived from the observed",
-      " response, and the default nec and ec50 priors put a threshold above the",
-      " tested range in their tail, where how much of the prior lies there",
-      " depends on prior_type and on whether the predictor was supplied as a",
-      " concentration or already logged; ?bnec tabulates the four under",
-      " prior_type.",
+      " response, and", threshold_priors,
       " Inspect the entries with get_priors() and",
       " supply scientifically justified ones through the prior argument where",
       " information beyond the design is available.",
@@ -637,8 +647,9 @@ declaration_advice <- function(family, y, asymptote_observed = TRUE) {
   }
   paste0(" Where the design did stop before the asymptote, declare it with",
          " asymptote_observed = FALSE, which spans the bot prior from the",
-         " floor of the response to the mean at the highest predictor level",
-         " and widens the initial-value search to match.")
+         " floor of the response to the mean at the highest predictor level,",
+         " removes the upper bound of the nec and ec50 priors, and widens the",
+         " initial-value search to match.")
 }
 
 #' Act on a declaration that the lower asymptote was not observed

@@ -318,9 +318,11 @@ report_bounded_ne_prior <- function(priors, lims) {
     message("The nec prior on ", paste0(names(priors)[above], collapse = ", "),
             " is bounded above at ", signif(max(values), 3),
             ", so its posterior holds no draw above that value and ",
-            "extrapolate cannot report one. The fit itself is bounded: refit ",
-            "with a wider bound on the nec prior for the estimate to reach ",
-            "further.")
+            "extrapolate cannot report one. The fit itself is bounded. The ",
+            "default nec prior is bounded at the highest concentration ",
+            "tested: refit with asymptote_observed = FALSE, which removes ",
+            "that bound, or with a nec prior of your own, for the estimate ",
+            "to reach further.")
   }
   if (any(below)) {
     values <- vapply(priors[below], function(p) p$lb, numeric(1))
