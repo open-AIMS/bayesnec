@@ -154,10 +154,15 @@ the zero-bounded branch of `regularizing_location()` substitutes
 of 0.1 did not, and it is the mechanism behind the one simulated cell no width
 covers.
 
-On the hurdle block the floor is 6e-4 and the draw that failed was 1e-66; a
-draw at 1e-5 would be accepted and gives a finite log likelihood. On that block
-the floor is the `eps` of `survival_by_x()`, `1/(2n)`, wherever a proportion is
-exactly 0 or 1.
+The removed comment reported a floor of 6e-4 on the hurdle block, failure at
+1e-66 and a finite log likelihood at 1e-5. Finite likelihood does not establish
+acceptance by the initial-value band: 1e-5 is below that reported floor.
+`survival_by_x()` clamps proportions with `eps = 1/(2n)`, where `n` is the
+number of response observations. `boundary_inset()` then derives a separate
+gap from the level means and spread, capped by the closest interior
+observation. The clamp is not generally the band floor. This distinction
+follows the construction recorded in
+[PR #312](https://github.com/open-AIMS/bayesnec/pull/312).
 
 ### The search in `make_good_inits()`
 

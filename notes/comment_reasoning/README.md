@@ -1,12 +1,13 @@
 # Comment reasoning index
 
-The review of PRs #492–#497 under
+The reviews of PRs #492–#497 and #507–#509 under
 [issue #484](https://github.com/open-AIMS/bayesnec/issues/484) compared the
 removed comments with the retained code, tests, decision records and PR
 descriptions. Most constraints remain beside the code. The references
 below locate the longer reasoning and the qualifications needed to interpret
-it. Coverage is limited to those six PRs; later comment-cleanup PRs require
-their own review.
+it. The later three PRs cover the eleven source files that waited for #482
+and #490. Comments in `tests/testthat/` have not been reviewed or shortened
+under this work; their cleanup remains outside this review.
 
 ## Estimator definitions, censoring and scales
 
@@ -21,6 +22,12 @@ their own review.
   values. A wider search range can change the estimate at fixed resolution.
   [The scale guidance](../../CLAUDE.md#estimates-and-plot-data-on-different-scales)
   distinguishes fitted-scale estimates from recorded-scale plot data.
+- [The summary-call evidence](entry.md) preserves the partial-argument match
+  and positional `x_range` failures. The short comments retain the guards
+  against those failures. `ecx_asymptote()` retains the qualification that its
+  unbounded-family refusal applies to equations without `bot`; the
+  no-crossing classification describes draws without a crossing. A hormetic
+  curve can reach a target above its control.
 
 ## Family links and admissible means
 
@@ -36,6 +43,25 @@ their own review.
 
 ## Priors and initial values
 
+- [Prior measurements](priors.md),
+  [PR #307](https://github.com/open-AIMS/bayesnec/pull/307) and
+  [the hard-case audit](../scripts/prior_hard_cases.R) preserve the empirical
+  comparisons behind the endpoint anchors and widths. A location's sampling
+  error, a prior's central interval and its support are different quantities.
+  The spread cap can override the standard-error floor; narrowing an
+  untruncated prior does not remove doses from its support.
+- [Issue #350](https://github.com/open-AIMS/bayesnec/issues/350) records why
+  nonnegative logged predictors need an explicit scale declaration. A zero on
+  that scale is `log(1)`, whereas a concentration-scale zero is the control.
+  `predictor_prior()` now states the geometric-median qualification for an
+  even number of distinct doses. The prior audit's older truncated-prior
+  measurements must not be read as measurements of the current priors.
+- [The incomplete-design specification](../tasks/386-incomplete-designs-claude.md)
+  records the limits of inferring an asymptote from an endpoint. The
+  declaration applies to both hurdle blocks; neither block's observed
+  endpoint establishes whether the other reached its asymptote. The
+  corrected `unobserved_bot_entry()` description distinguishes its specified
+  upper quantile from its branch-dependent lower tail.
 - [Initial-value evidence](fitting.md#rinits_functionsr),
   [PR #312](https://github.com/open-AIMS/bayesnec/pull/312) and its
   [audit script](../scripts/init_search_audit.R) record the band, spread,
@@ -46,6 +72,27 @@ their own review.
   [fitting.md](fitting.md#the-search-in-make_good_inits) does not establish
   equality of the accepted distribution after refinement; the algorithm is
   checked in [initial-value tests](../../tests/testthat/test-inits_functions.R).
+- [The boundary-inset record](fitting.md#the-gap-in-boundary_inset) distinguishes
+  the survival-proportion clamp from the derived initial-value floor. A
+  finite log likelihood alone does not establish acceptance by that band.
+
+## Group effects and dispersion
+
+- [Issue #294](https://github.com/open-AIMS/bayesnec/issues/294) preserves the
+  evidence for transforming constrained parameter deviations. Reducing an
+  additive deviation's prior scale cannot guarantee support. The log and
+  logit transforms enforce different ranges, retained in the formula comments
+  and exercised by [formula tests](../../tests/testthat/test-make_brmsformula.R).
+- [Issue #468](https://github.com/open-AIMS/bayesnec/issues/468), including its
+  correction to the original trade-off, records why the dispersion parameter
+  reads the curve before `ogl()`. Parameter-level deviations still enter that
+  curve. Excluding `ogl()` from a Gamma shape does not fix the observation
+  variance: the fitted mean still changes it.
+- [Issue #472](https://github.com/open-AIMS/bayesnec/issues/472) records the
+  family-specific dispersion-exponent bounds and the measurements behind
+  them. The comments retain the distinction between those bounds and an
+  empirical prior, and between forms that require a positive mean and
+  `loglinear`, which does not.
 
 ## Random streams and parallel execution
 
@@ -69,6 +116,10 @@ their own review.
   explains why data-and-formula refusals belong before the model or level loop,
   with a backstop for other callers. [Check evidence](checks.md) records why
   numeric predictor replication is counted without `table()` rounding.
+- [Issue #319](https://github.com/open-AIMS/bayesnec/issues/319) records why
+  formula construction must preserve the caller's environment.
+  [Issue #398](https://github.com/open-AIMS/bayesnec/issues/398) retains the
+  tested `brms` version and failures behind the backticked-name restriction.
 
 ## Diagnostics and external methods
 
@@ -81,6 +132,11 @@ their own review.
 - [The dispersion guidance](../../CLAUDE.md#dispersion-on-a-model-average)
   distinguishes per-equation results from a statistic for the model average.
   [Dispersion tests](../../tests/testthat/test-dispersion.R) cover the results.
+- [The control-diagnostic evidence](../tasks/148-model-fit-diagnostics.md#hazards)
+  records two parameterisations of one simulated dataset, with six control
+  observations. Their p-values near 0.82 motivated a ratio-based message;
+  they do not establish that p-values always miss control misfit. The source
+  now states the mean/SD ratios and their reciprocal cutoffs explicitly.
 - [`nsec.drc()`](../../R/nsec.R) retains its confidence-limit crossing
   qualification and now states that the test suite does not exercise the
   method against `drc` fits. The comment cleanup does not establish numerical
