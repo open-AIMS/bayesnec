@@ -174,7 +174,7 @@ test_that("add_nec and add_ec10 decide what is annotated", {
   pl_x_max(nec4param, add_nec = TRUE)
   expect_length(drawn, 1)
   expect_equal(unname(drawn[[1]]), unname(nec4param$ne), tolerance = 1e-8)
-  # This Gaussian fixture uses the relative EC10. Check that it differs from
+  # This Gaussian fixture uses the range EC10. Check that it differs from
   # NEC here; test-ecx.R checks the estimator value.
   pl_x_max(nec4param, add_nec = FALSE, add_ec10 = TRUE)
   expect_length(drawn, 2)
