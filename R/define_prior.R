@@ -1438,11 +1438,15 @@ define_prior <- function(model, family, predictor, response,
     # The survivors' own predictor values go with them, so that the replicate
     # centre of the regularizing set groups each positive response by the
     # concentration it was observed at. See #472.
+    #
+    # brms truncates a count hurdle's positive block at zero, and no formula
+    # attribute records it, so read the truncation from the family.
     disp_priors <- define_disp_prior(disp_spec, mu_family, mu_response,
                                      predictor = mu_split$x,
                                      prior_type = prior_type,
                                      rate_response = rate_response,
-                                     truncated_response = truncated_response)
+                                     truncated_response = truncated_response ||
+                                       is_count_hurdle(family))
     if (!is.null(disp_priors)) {
       hurdle_priors <- hurdle_priors + disp_priors
     }

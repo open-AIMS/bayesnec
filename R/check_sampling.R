@@ -172,8 +172,7 @@ sampling_row <- function(fit, model, rhat_cutoff, ess_cutoff,
   # and works often enough to look correct, but it reaches past brms into the
   # stanfit slot and rstan is Suggests-only here -- so it would fail under
   # cmdstanr and on any install without rstan. See #148.
-  np <- nuts_params(fit, pars = "divergent__")
-  n_div <- sum(np$Value)
+  n_div <- count_divergent(fit)
   # Both reductions go through screenable_pars() (see R/rhat.R), so the screen
   # and rhat() agree on what counts as a parameter: no prior_* draws, and no
   # zero-variance parameter for which the diagnostic is undefined. Reducing
@@ -199,6 +198,22 @@ sampling_row <- function(fit, model, rhat_cutoff, ess_cutoff,
       isTRUE(n_div > divergence_cutoff),
     stringsAsFactors = FALSE
   )
+}
+
+#' The number of divergent transitions after warmup in one brmsfit
+#'
+#' Used by \code{check_sampling()} and \code{summary()}, so that the two report
+#' the same count. It reads the count through brms's \code{nuts_params()}, so
+#' that bayesnec's own code calls nothing from rstan, which it lists only in
+#' Suggests.
+#'
+#' @param fit A \code{\link[brms]{brmsfit}} sampled by NUTS.
+#'
+#' @return A \code{\link[base]{numeric}} vector of length 1.
+#'
+#' @noRd
+count_divergent <- function(fit) {
+  sum(nuts_params(fit, pars = "divergent__")$Value)
 }
 
 #' max() and min() that return NA rather than -Inf/Inf on an empty vector
