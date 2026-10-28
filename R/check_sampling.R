@@ -194,7 +194,9 @@ sampling_row <- function(fit, model, rhat_cutoff, ess_cutoff,
 #' The number of divergent transitions after warmup in one brmsfit
 #'
 #' Used by \code{check_sampling()} and \code{summary()}, so that the two report
-#' the same count.
+#' the same count. It reads the count through brms's \code{nuts_params()}, so
+#' that bayesnec's own code calls nothing from rstan, which it lists only in
+#' Suggests.
 #'
 #' @param fit A \code{\link[brms]{brmsfit}} sampled by NUTS.
 #'

@@ -441,13 +441,13 @@ plan_group_levels <- function(n_levels, n_models) {
 #' without the restore one \code{seed} would give different initial values in
 #' a worker and in the parent, with no error or warning.
 #'
-#' The caller's stream is restored afterwards by
-#' \code{with_preserved_rng_state()}. Generating the per-element streams
-#' advances it, so the model-averaging draw \code{expand_manec()} makes next
-#' would otherwise differ between two parallel runs of one call. With a
-#' \code{seed} the fits match a sequential run; the model-averaging draw never
-#' does, because the sequential loop advances the parent's stream and a
-#' parallel run cannot replay that.
+#' \code{with_preserved_rng_state()} restores the caller's stream after
+#' \pkg{future} generates per-element streams. This leaves the following
+#' model-averaging draw in \code{expand_manec()} to use the caller's stream at
+#' entry. With a supplied \code{seed}, initial values match a sequential run.
+#' Its model-averaging draw can still differ: the sequential loop advances
+#' the parent's stream while fitting each model, but the parallel loop
+#' makes those draws in workers.
 #'
 #' Keep \code{future.seed = TRUE}. \code{NULL} leaves each worker's stream to
 #' the backend, and \code{FALSE} warns \code{UNRELIABLE VALUE} for any body
