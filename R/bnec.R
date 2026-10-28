@@ -1099,11 +1099,12 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
 
 #' Say at the end of a fit if the control is not reproduced
 #'
-#' Prints one message after a fit where the observed and simulated control
-#' response of any model differ, as a ratio, by more than \code{cutoff}. It
-#' thresholds the ratio rather than the posterior predictive p-value, which
-#' does not flag a large control overshoot. It is a message, not a warning,
-#' and is wrapped in \code{try()} so that it cannot fail a fit that succeeded.
+#' Prints one message after a fit where a model's observed/simulated control
+#' mean or standard deviation ratio lies outside \code{1/cutoff} to
+#' \code{cutoff}. It thresholds the ratios rather than the posterior predictive
+#' p-values, which can fail to flag a large control overshoot. It is a message,
+#' not a warning, and is wrapped in \code{try()} so that it cannot fail a fit
+#' that succeeded.
 #'
 #' @param x A fitted \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 #' @param cutoff A \code{\link[base]{numeric}} vector of length 1.
