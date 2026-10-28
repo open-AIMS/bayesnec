@@ -719,6 +719,69 @@ check_refit_bound <- function(part, data, family = NULL, subject = NULL,
                           flat_remedy = flat_remedy)
 }
 
+#' The growth component a hurdle \code{update()} refits
+#'
+#' @param object An object of class \code{\link{bayesnechurdlefit}}.
+#' @param family The validated family passed to \code{update()}, or
+#' \code{NULL}.
+#'
+#' @details Checks a supplied family as \code{\link{bnec_hurdle}} checks
+#' \code{family_growth}, and gives the growth formulas \code{trunc(lb = 1)}
+#' where it is a count family and removes it where it is not. Without a family
+#' the stored formulas are kept, and a growth component that holds the
+#' truncation still needs the \pkg{brms} version \code{bnec_hurdle} needs.
+#'
+#' @return The growth component, a \code{\link{bayesnecfit}} or a
+#' \code{\link{bayesmanecfit}}, for \code{update()} to refit.
+#'
+#' @noRd
+hurdle_refit_growth <- function(object, family = NULL) {
+  growth <- object$growth
+  if (is.null(family)) {
+    fits <- recover_prebayesnecfit(growth)
+    if (is_factorised_count_formula(fits[[1]]$bayesnecformula,
+                                    fits[[1]]$fit$family)) {
+      check_count_truncation_support()
+    }
+    return(growth)
+  }
+  check_hurdle_growth_family(family)
+  check_hurdle_count_growth(object$formula, family)
+  set_hurdle_growth_truncation(growth, is_hurdle_count_growth(family))
+}
+
+#' Set the count-hurdle truncation on every equation of a growth component
+#'
+#' @param part The growth component of a \code{\link{bayesnechurdlefit}}: a
+#' \code{\link{bayesnecfit}} or a \code{\link{bayesmanecfit}}.
+#' @param truncate Whether each response should hold \code{trunc(lb = 1)}.
+#'
+#' @details Rewrites both formulas of each equation. \pkg{brms} refits from the
+#' one stored in the \code{brmsfit}, and the \pkg{bayesnec} methods read the
+#' truncation off the other.
+#'
+#' @return \code{part}, rewritten.
+#'
+#' @noRd
+set_hurdle_growth_truncation <- function(part, truncate) {
+  set_one <- function(m) {
+    m$bayesnecformula[[2]] <- hurdle_truncation_lhs(lhs(m$bayesnecformula),
+                                                    truncate)
+    attr(m$bayesnecformula, "bayesnec_internal_truncation") <-
+      if (truncate) TRUE
+    m$fit$formula$formula[[2]] <- hurdle_truncation_lhs(
+      m$fit$formula$formula[[2]], truncate
+    )
+    m
+  }
+  if (is_bayesmanecfit(part)) {
+    part$mod_fits <- lapply(part$mod_fits, set_one)
+  } else {
+    part <- set_one(part)
+  }
+  part
+}
+
 #' Updates both components of a \code{\link{bayesnechurdlefit}}
 #'
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
@@ -735,7 +798,13 @@ check_refit_bound <- function(part, data, family = NULL, subject = NULL,
 #' growth component of 1 throughout, are refused, naming that component.
 #' @param ... Further arguments passed to \code{\link{update.bnecfit}} for
 #' each component. A \code{family} is passed to the growth component only.
-#' The survival component is always refitted as \code{bernoulli}.
+#' The survival component is always refitted as \code{bernoulli}. The growth
+#' family is checked as \code{\link{bnec_hurdle}} checks
+#' \code{family_growth}, before either component is refitted. A family
+#' \code{bnec_hurdle} refuses for the growth component, such as
+#' \code{hurdle_gamma}, is refused. A \code{poisson} or \code{negbinomial}
+#' family needs \pkg{brms} 2.23.2 or later, and the growth component is then
+#' refitted with the zero-truncated likelihood \code{bnec_hurdle} uses.
 #'
 #' @return An object of class \code{\link{bayesnechurdlefit}}.
 #'
@@ -749,32 +818,34 @@ update.bayesnechurdlefit <- function(object, newdata = NULL, ...) {
   # survival component. Forward `...` unchanged to the growth component:
   # update.bnecfit() reads the link the caller wrote off the unevaluated call.
   update_survival <- function(..., family) update(object$survival, ...)
+  if (!is.null(newdata)) {
+    y <- newdata[[object$y_var]]
+    if (is.null(y)) {
+      stop("\"newdata\" must contain the response column \"", object$y_var,
+           "\".", call. = FALSE)
+    }
+    check_hurdle_response(y, object$y_var)
+    # Check newdata for rows that are both zero and censored, as bnec_hurdle()
+    # checks its data.
+    check_hurdle_cens(check_hurdle_aterms(object$formula), newdata, y,
+                      object$y_var)
+  }
+  # A supplied family is the growth component's. It is read here for its tag
+  # only; update.bnecfit() validates it again, with its link.
+  supplied <- if ("family" %in% ...names()) {
+    validate_family(list(...)[["family"]])
+  }
+  growth <- hurdle_refit_growth(object, supplied)
   if (is.null(newdata)) {
-    return(hurdle_rewrap(object, update(object$growth, ...),
-                         update_survival(...)))
+    return(hurdle_rewrap(object, update(growth, ...), update_survival(...)))
   }
-  y <- newdata[[object$y_var]]
-  if (is.null(y)) {
-    stop("\"newdata\" must contain the response column \"", object$y_var,
-         "\".", call. = FALSE)
-  }
-  check_hurdle_response(y, object$y_var)
-  # Check newdata for rows that are both zero and censored, as bnec_hurdle()
-  # checks its data.
-  check_hurdle_cens(check_hurdle_aterms(object$formula), newdata, y,
-                    object$y_var)
   growth_data <- newdata[y > 0, , drop = FALSE]
   surv_data <- newdata
   surv_data[[".alive"]] <- as.integer(y > 0)
   # Check both components before either is refitted, naming the component
-  # rather than the generated .alive column. A supplied family is the growth
-  # component's. It is read here for its tag only; update.bnecfit() validates
-  # it again, with its link.
-  supplied <- if ("family" %in% ...names()) {
-    validate_family(list(...)[["family"]])
-  }
+  # rather than the generated .alive column.
   check_refit_bound(
-    object$growth, growth_data, supplied,
+    growth, growth_data, supplied,
     subject = paste0("The growth component of the response \"", object$y_var,
                      "\" (its ", sum(y > 0), " non-zero values)"),
     flat_remedy = hurdle_growth_flat_remedy()
@@ -787,7 +858,7 @@ update.bayesnechurdlefit <- function(object, newdata = NULL, ...) {
   )
   # Refit in turn, growth first, rather than inside hurdle_rewrap(), whose
   # argument evaluation would set the order.
-  growth <- update(object$growth, newdata = growth_data, ...)
+  growth <- update(growth, newdata = growth_data, ...)
   survival <- update_survival(newdata = surv_data, ...)
   out <- hurdle_rewrap(object, growth, survival)
   out$data <- newdata
@@ -1032,10 +1103,10 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
     }
     lines(xv, p$est)
     if (add_nec) {
-      # Give the map to nec() rather than apply it to the summary: nec()
-      # applies it to each draw and to the censoring record, so a decreasing
-      # map still gives the interval in order, with each bound marked.
-      ne <- without_scale_report(nec(x, which = w, xform = ne_map))
+      # Give nec() the map rather than apply it to the summary, so that a
+      # decreasing map keeps the interval and its censoring marks in order.
+      # Suppress its messages, which describe the estimate, not the figure.
+      ne <- suppressMessages(nec(x, which = w, xform = ne_map))
       abline(v = ne, col = "red", lty = c(1, 3, 3))
       legend("topright", bty = "n", lty = 1, col = "red",
              legend = paste0("N(S)EC: ", bound_prefix(ne, 1),

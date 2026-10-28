@@ -397,6 +397,224 @@ test_that("a growth component at a bound is pointed to bnec_hurdle() (#486)", {
   )
 })
 
+# ---- #503: the growth family a hurdle update() refits -------------------------
+
+hurdle_counts <- function(y) as.integer(round(y * 20)) + as.integer(y > 0)
+
+# The growth fit stores counts, so that a count family passes the check
+# update.bnecfit() makes of the stored data when no newdata are given.
+count_ready_fixture <- function(growth_family = brms::brmsfamily(
+                                  "Gamma", link = "identity")) {
+  h <- hurdle_update_fixture(growth_family)
+  h$growth$fit$data$y <- hurdle_counts(stats::plogis(h$growth$fit$data$y))
+  h
+}
+
+# Replace the installed brms version, and nothing else, in the version check.
+local_brms_version <- function(version, env = parent.frame()) {
+  real <- bayesnec:::check_count_truncation_support
+  local_mocked_bindings(
+    check_count_truncation_support = function(...) {
+      real(package_version(version))
+    },
+    .package = "bayesnec", .env = env
+  )
+}
+
+# Pass each component through its own update() method and halt where brms
+# would be called. Records the bayesnec formula each method received, and the
+# response and family brms received.
+local_refit_recorder <- function(env = parent.frame()) {
+  rec <- new.env()
+  rec$bnf <- list()
+  rec$brms <- list()
+  local_mocked_bindings(
+    update = function(object, ...) {
+      if (inherits(object, "brmsfit")) {
+        rec$brms[[length(rec$brms) + 1]] <- list(
+          lhs = deparse1(object$formula$formula[[2]]),
+          family = list(...)$family
+        )
+        stop("halted by test")
+      }
+      if (inherits(object, "bnecfit")) {
+        rec$bnf[[length(rec$bnf) + 1]] <- object$bayesnecformula
+        try(stats::update(object, ...), silent = TRUE)
+        return(object)
+      }
+      stats::update(object, ...)
+    },
+    .package = "bayesnec", .env = env
+  )
+  rec
+}
+
+# try(silent = FALSE) in the refit loop prints the halt to stderr.
+quiet_refit <- function(expr) {
+  invisible(capture.output(
+    {
+      suppressMessages(expr)
+      invisible(NULL)
+    },
+    type = "message"
+  ))
+}
+
+test_that("a growth family bnec_hurdle() refuses is refused by update() (#503)", {
+  h <- hurdle_update_fixture()
+  # bnec_hurdle() updates formulas, so only a refit is halted.
+  calls <- 0L
+  local_mocked_bindings(
+    update = function(object, ...) {
+      if (inherits(object, "bnecfit")) {
+        calls <<- calls + 1L
+        stop("refit reached")
+      }
+      stats::update(object, ...)
+    },
+    bnec = function(...) stop("fit reached"),
+    .package = "bayesnec"
+  )
+  for (fam in c("hurdle_gamma", "zero_inflated_poisson", "binomial")) {
+    from_hurdle <- expect_error(
+      bnec_hurdle(y ~ crf(x, model = "nec4param"), data = h$data,
+                  family_growth = fam)
+    )
+    expect_match(conditionMessage(from_hurdle),
+                 paste("cannot use", fam, "as the growth family"))
+    for (nd in list(NULL, h$data)) {
+      err <- expect_error(
+        stats::update(h, newdata = nd, family = fam, force_fit = TRUE)
+      )
+      expect_identical(conditionMessage(err), conditionMessage(from_hurdle))
+    }
+  }
+  # bnec_hurdle() refuses the logit link of hurdle_gamma() before the family.
+  # update() reads the family alone first, so the refusal names the family.
+  expect_error(
+    stats::update(h, family = hurdle_gamma(), force_fit = TRUE),
+    "bnec_hurdle cannot use hurdle_gamma as the growth family",
+    fixed = TRUE
+  )
+  expect_identical(calls, 0L)
+})
+
+test_that("a count growth refit needs brms 2.23.2, as bnec_hurdle() does (#503)", {
+  h <- count_ready_fixture()
+  nd <- h$data
+  nd$y <- hurdle_counts(nd$y)
+  local_brms_version("2.23.1")
+  # bnec_hurdle() updates formulas, so only a refit is halted.
+  calls <- 0L
+  local_mocked_bindings(
+    update = function(object, ...) {
+      if (inherits(object, "bnecfit")) {
+        calls <<- calls + 1L
+        stop("refit reached")
+      }
+      stats::update(object, ...)
+    },
+    bnec = function(...) stop("fit reached"),
+    .package = "bayesnec"
+  )
+  from_hurdle <- expect_error(suppressMessages(
+    bnec_hurdle(y ~ crf(x, model = "nec4param"), data = nd,
+                family_growth = poisson())
+  ))
+  expect_match(conditionMessage(from_hurdle),
+               "require brms 2.23.2 or later.*Installed brms is 2.23.1")
+  for (d in list(NULL, nd)) {
+    for (fam in list(poisson(), negbinomial())) {
+      err <- expect_error(
+        stats::update(h, newdata = d, family = fam, force_fit = TRUE)
+      )
+      expect_identical(conditionMessage(err), conditionMessage(from_hurdle))
+    }
+    # A growth component already fitted with the truncation needs the same
+    # version when no family is supplied.
+    truncated <- h
+    truncated$growth <- bayesnec:::set_hurdle_growth_truncation(h$growth, TRUE)
+    truncated$growth$fit$family <- brms::brmsfamily("poisson",
+                                                    link = "identity")
+    err <- expect_error(stats::update(truncated, newdata = d))
+    expect_identical(conditionMessage(err), conditionMessage(from_hurdle))
+  }
+  expect_identical(calls, 0L)
+})
+
+test_that("a count growth family is refitted with trunc(lb = 1) (#503)", {
+  h <- count_ready_fixture()
+  nd <- h$data
+  nd$y <- hurdle_counts(nd$y)
+  local_brms_version("2.23.2")
+  rec <- local_refit_recorder()
+  for (d in list(NULL, nd)) {
+    for (fam in list(poisson(), negbinomial())) {
+      rec$bnf <- list()
+      rec$brms <- list()
+      quiet_refit(
+        stats::update(h, newdata = d, family = fam, force_fit = TRUE)
+      )
+      # Growth first, then survival.
+      expect_length(rec$brms, 2)
+      expect_identical(rec$brms[[1]]$lhs, "y | trunc(lb = 1)")
+      expect_identical(rec$brms[[1]]$family$family, fam$family)
+      expect_true(isTRUE(attr(rec$bnf[[1]], "bayesnec_internal_truncation")))
+      expect_match(deparse1(rec$bnf[[1]]), "y | trunc(lb = 1) ~",
+                   fixed = TRUE)
+      expect_false(grepl("trunc", rec$brms[[2]]$lhs, fixed = TRUE))
+      expect_null(rec$brms[[2]]$family)
+      expect_null(attr(rec$bnf[[2]], "bayesnec_internal_truncation"))
+    }
+  }
+  # The fit passed to update() is not changed.
+  expect_null(attr(h$growth$bayesnecformula, "bayesnec_internal_truncation"))
+  expect_identical(deparse1(h$growth$fit$formula$formula[[2]]), "y")
+})
+
+test_that("a count growth component keeps or loses trunc(lb = 1) by its refit family (#503)", {
+  h <- count_ready_fixture(brms::brmsfamily("poisson", link = "identity"))
+  h$growth <- bayesnec:::set_hurdle_growth_truncation(h$growth, TRUE)
+  nd <- h$data
+  nd$y <- hurdle_counts(nd$y)
+  rec <- local_refit_recorder()
+  # Without a family the stored formulas are refitted as they are.
+  local_brms_version("2.23.2")
+  for (d in list(NULL, nd)) {
+    rec$brms <- list()
+    quiet_refit(stats::update(h, newdata = d))
+    expect_identical(rec$brms[[1]]$lhs, "y | trunc(lb = 1)")
+    expect_null(rec$brms[[1]]$family)
+  }
+  # A Gamma refit takes the truncation off, and needs no particular brms.
+  local_brms_version("2.23.1")
+  for (d in list(NULL, nd)) {
+    rec$bnf <- list()
+    rec$brms <- list()
+    quiet_refit(stats::update(h, newdata = d, family = Gamma(link = "identity"),
+                              force_fit = TRUE))
+    expect_identical(rec$brms[[1]]$lhs, "y")
+    expect_identical(rec$brms[[1]]$family$family, "Gamma")
+    expect_null(attr(rec$bnf[[1]], "bayesnec_internal_truncation"))
+    expect_identical(deparse1(rec$bnf[[1]]), "y ~ crf(x, model = \"nec4param\")")
+  }
+})
+
+test_that("cens() with a count growth family is refused by update() (#503)", {
+  h <- count_ready_fixture()
+  h$formula <- bnf(y | cens(cens) ~ crf(x, model = "nec4param"))
+  local_brms_version("2.23.2")
+  local_mocked_bindings(
+    update = function(...) stop("refit reached"),
+    .package = "bayesnec"
+  )
+  expect_error(
+    stats::update(h, family = poisson(), force_fit = TRUE),
+    "bnec_hurdle cannot combine cens() with a count growth family.",
+    fixed = TRUE
+  )
+})
+
 test_that("summary carries its own class and print method", {
   expect_true(!is.null(getS3method("print", "hurdlesummary", optional = TRUE)))
   expect_true(!is.null(getS3method("summary", "bayesnechurdlefit", optional = TRUE)))
@@ -1316,4 +1534,40 @@ test_that("the hurdle summary names a Gamma growth family as Gamma (#487)", {
   expect_identical(s$growth_family, "Gamma")
   expect_true(any(grepl("growth   : Gamma -- nec4param",
                         utils::capture.output(print(s)), fixed = TRUE)))
+})
+
+# ---- The messages of the nec() calls plot() makes -----------------------------
+
+test_that("plot() on a hurdle fit prints no message from nec() (#506)", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  h <- hurdle_pair(survival = manec_example)
+  msgs <- character()
+  withCallingHandlers(nec(h), message = function(m) {
+    msgs <<- c(msgs, conditionMessage(m))
+    invokeRestart("muffleMessage")
+  })
+  expect_true(any(grepl("weighted mixture of NEC and NSEC", msgs)))
+  expect_true(any(grepl("the combined value is approximate", msgs)))
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  expect_no_message(plot(h, which = "all", resolution = 50))
+  # Warnings still reach the caller. Only the call plot() makes warns, not
+  # the calls nec() makes on each component.
+  real_nec <- bayesnec:::nec
+  local_mocked_bindings(
+    nec = function(object, ...) {
+      if (inherits(object, "bayesnechurdlefit")) {
+        warning("a warning from nec()")
+      }
+      real_nec(object, ...)
+    },
+    .package = "bayesnec"
+  )
+  expect_warning(
+    expect_no_message(plot(h, resolution = 50)),
+    "a warning from nec()",
+    fixed = TRUE
+  )
 })
