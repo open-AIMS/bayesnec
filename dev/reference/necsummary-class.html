@@ -157,6 +157,17 @@ should the user decide to calculate them (see the non-exported
 <code><a href="https://mc-stan.org/rstantools/reference/bayes_R2.html" class="external-link">bayes_R2</a></code>.</p></dd>
 
 
+<dt><code>divergences</code></dt>
+<dd><p>A named <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></code> vector of length 1
+giving the number of divergent transitions after warmup, <code>NA</code> for a
+model not sampled by NUTS.</p></dd>
+
+
+<dt><code>divergence_cutoff</code></dt>
+<dd><p>The number of divergent transitions above which the
+printed summary warns.</p></dd>
+
+
 <dt><code>failed_models</code></dt>
 <dd><p>Any models from the original set that could not be
 fitted, with the priors and initial values used. See
