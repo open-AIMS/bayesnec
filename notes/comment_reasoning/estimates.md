@@ -1,4 +1,4 @@
-# Reasoning removed from comments: estimators
+# Reasoning removed from the comments on the estimators
 
 The comments in the estimator files of `R/` were shortened under #484. This
 file holds the reasoning that they recorded and that no pull request, issue or
