@@ -206,9 +206,9 @@ check_disp_spec <- function(spec, family, response = NULL) {
            paste0(c(vf$families, two_block), collapse = ", "), ".",
            call. = FALSE)
     }
-    # Every form takes log(mu), and only a gaussian fit can put mu at or below
-    # zero. The response stands in for the fitted curve, which can still cross
-    # zero on a positive response; Stan reports that case at initialisation.
+    # Forms marked positive_mu take log(mu); loglinear does not. For gaussian,
+    # the response is only a proxy: a fitted curve can cross zero even on a
+    # positive response, which Stan reports at initialisation.
     if (isTRUE(vf$positive_mu) && identical(fam_tag, "gaussian") &&
           !is.null(response) && any(response <= 0, na.rm = TRUE)) {
       stop("Variance function \"", spec$value, "\" takes log(mu), but your",
@@ -766,12 +766,11 @@ disp_intercept_centre <- function(family, response) {
 #'
 #' @details The curve is taken from the formula being built whenever the
 #' caller supplies it, not rebuilt from the template.
-#' \code{\link{add_formula_glef}} rewrites the main expression where a
-#' group-level deviation is applied multiplicatively, \code{bot} becoming
-#' \code{bnecbot} and the whole curve \code{bnecmu} under \code{ogl()}. A
-#' rebuilt curve would not include that, and route (B) would model the
-#' dispersion as a function of a mean the fit does not use. For the same
-#' reason \code{\link{wrangle_model_formula}} adds the dispersion block last.
+#' \code{\link{disp_curve}} reads it after the group-level blocks are built,
+#' keeping parameter-level deviations such as \code{bnecbot} but excluding
+#' the \code{ogl()} deviation. Rebuilding from the template would discard
+#' those parameter-level effects. \code{\link{wrangle_model_formula}} therefore
+#' adds the dispersion block after the group-level blocks.
 #'
 #' The template is the fallback for direct callers in the tests, which have no
 #' assembled formula to read a curve from.

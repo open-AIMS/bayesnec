@@ -165,9 +165,6 @@ sampling_fits <- function(x) {
 #' @noRd
 sampling_row <- function(fit, model, rhat_cutoff, ess_cutoff,
                          divergence_cutoff) {
-  # Use the brmsfit generics nuts_params() and neff_ratio(), which work under
-  # either backend. rstan::get_num_divergent() reaches into the stanfit slot
-  # and fails under cmdstanr or without rstan, which is only in Suggests.
   n_div <- count_divergent(fit)
   # Reduce both diagnostics through screenable_pars(), as rhat() does, so that
   # the screen and rhat() agree on what counts as a parameter. Over the raw
@@ -205,6 +202,8 @@ sampling_row <- function(fit, model, rhat_cutoff, ess_cutoff,
 #'
 #' @noRd
 count_divergent <- function(fit) {
+  # Read through brms, a required dependency; bayesnec lists rstan only
+  # in Suggests.
   sum(nuts_params(fit, pars = "divergent__")$Value)
 }
 

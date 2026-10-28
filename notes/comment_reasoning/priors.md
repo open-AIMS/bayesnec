@@ -28,9 +28,10 @@ its asymptote at zero, and how close it comes is governed by
 `ecxwb2` and `ecxwb2p3` were within 1e-7 of `top`, and `ecx4param`, `ecxll3`,
 `ecxll4`, `ecxll5`, `ecxwb1`, `ecxwb1p3`, `ecxhormebc4` and `ecxhormebc5`
 returned 38.06 to 38.34, an error of 4 per cent. `ecxll5` also depends on its
-shape parameter `f`. `ecxhormebc4` and `ecxhormebc5` appear in both groups:
-their excess term is zero at zero, and their denominator is not at its
-asymptote. The shallow-curve range of 17.6 to 29.7 is in #307.
+shape parameter `f`. The excess terms of `ecxhormebc4` and `ecxhormebc5` are
+zero at zero, but their denominators are not at their asymptotes, so their
+full curves belong to the latter group. The shallow-curve range of 17.6 to
+29.7 is in #307.
 
 ### The comparators in `regularizing_location()`
 
@@ -51,8 +52,9 @@ Up to and including 2.1.4 the `nec` and `ec50` prior was truncated at the
 highest dose tested, which removed part of the upper tail and lowered the
 median. On `nec_data` the truncated median was 0.58 against a median dose of
 0.88, and on the `nassarius` contaminant B series 1.23 against 2.00. #393
-removed the truncation, so the median of the prior on the dose scale is now the
-median dose.
+removed the truncation. The dose-scale median is now the exponential of the
+median of the distinct logged positive doses: the geometric mean of the two
+central doses when their number is even.
 
 ### The spreads `beta_from_mode_sd()` receives
 
