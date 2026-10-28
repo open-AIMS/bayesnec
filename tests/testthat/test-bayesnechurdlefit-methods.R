@@ -1274,6 +1274,101 @@ test_that("ecnsec on a crf(log(x)) hurdle pair reads log(v) under exp at v", {
   }
 })
 
+# ---- The combined no-effect estimate under a transformed predictor (#520) -----
+
+# The packaged nec4param fit relabelled to crf(`term`, ...), holding `recorded`
+# as its no-effect draws on the recorded scale. The draws are stored on the
+# fitted scale and censored against the fitted grid, as expand_nec() stores a
+# sampled nec, so a recorded value beyond the series is censored.
+relabelled_component <- function(recorded, term = "I(-x)", fwd = function(v) -v) {
+  fit <- nec4param
+  fit$bayesnecformula <- bnf(stats::as.formula(
+    paste0("y ~ crf(", term, ", model = \"nec4param\")")
+  ))
+  ends <- fwd(range(fit$fit$data$x))
+  ne <- fwd(recorded)
+  attr(ne, "censored") <- bayesnec:::censoring_record(
+    max(ends), min(ends), ne >= max(ends), ne <= min(ends)
+  )
+  fit$ne_posterior <- ne
+  fit
+}
+
+test_that("nec() combines a crf(I(-x)) pair where the product leaves its plateau", {
+  g <- as.numeric(nec4param$ne_posterior)
+  s <- 0.8 * g
+  h <- hurdle_pair(relabelled_component(g), relabelled_component(s))
+  expect_equal(as.numeric(nec(h, which = "growth", posterior = TRUE)), g)
+  expect_equal(as.numeric(nec(h, which = "survival", posterior = TRUE)), s)
+  # Each curve is flat above its threshold on the recorded scale, so the
+  # combined value is the larger, here the growth threshold.
+  combined <- nec(h, posterior = TRUE)
+  expect_equal(as.numeric(combined), pmax(g, s))
+  # Evaluate the curve brms is given: the product of the two is at its plateau
+  # just above the combined value and below it just beneath. The smaller
+  # recorded threshold lies where survival has already declined.
+  rhs <- make_brmsformula(bnf(y ~ crf(I(-x), model = "nec3param")),
+                          nec4param$fit$data)$nec3param$formula[[3]]
+  curve <- function(x, nec) {
+    eval(rhs, list(top = 1, beta = 0, nec = nec, x = x,
+                   step = function(z) as.numeric(z >= 0)))
+  }
+  for (i in 1:5) {
+    at <- combined[[i]] + c(-1e-3, 1e-3)
+    product <- curve(at, -g[i]) * curve(at, -s[i])
+    expect_lt(product[1], 1)
+    expect_equal(product[2], 1)
+    expect_lt(curve(s[i], -g[i]) * curve(s[i], -s[i]), 0.9)
+  }
+  # An xform reports the same threshold on another scale.
+  expect_equal(as.numeric(nec(h, posterior = TRUE, xform = function(z) -z)),
+               pmax(g, s))
+  expect_equal(as.numeric(nec(h, posterior = TRUE, xform = identity)),
+               -pmax(g, s))
+})
+
+test_that("nec() combines an increasingly transformed pair on its minimum", {
+  g <- as.numeric(nec4param$ne_posterior)
+  s <- 0.8 * g
+  h <- hurdle_pair(relabelled_component(g, "log(x)", log),
+                   relabelled_component(s, "log(x)", log))
+  expect_equal(as.numeric(nec(h, posterior = TRUE)), pmin(g, s))
+  # A decreasing xform on an untransformed pair reverses the scale reported,
+  # and the threshold is still the smaller.
+  plain <- hurdle_pair(relabelled_component(g, "x", identity),
+                       relabelled_component(s, "x", identity))
+  expect_equal(as.numeric(nec(plain, posterior = TRUE,
+                              xform = function(z) -z)),
+               -pmin(g, s))
+})
+
+test_that("nec() keeps the censoring direction of a crf(I(-x)) pair", {
+  x <- nec4param$fit$data$x
+  g <- as.numeric(nec4param$ne_posterior)
+  s <- 0.8 * g
+  # Growth flat over the whole series in draws 1 to 10, and declining over all
+  # of it in draws 11 to 20.
+  g[1:10] <- min(x) / 2
+  g[11:20] <- max(x) + 1
+  h <- hurdle_pair(relabelled_component(g), relabelled_component(s))
+  expect_warning(
+    combined <- nec(h, posterior = TRUE),
+    paste0("not identified for 10 of 100 draws, which lie at or above ",
+           signif(max(x), 3), ", the upper bound"),
+    fixed = TRUE
+  )
+  cens <- attr(combined, "censored")
+  # A flat growth curve leaves the survival threshold.
+  expect_equal(as.numeric(combined)[1:10], s[1:10])
+  # A growth curve declining over the whole series puts the combined
+  # threshold above the series.
+  expect_true(all(cens$above[11:20]))
+  expect_false(any(cens$above[-(11:20)]))
+  expect_false(any(cens$below))
+  expect_equal(cens$upper, max(x))
+  expect_equal(as.numeric(combined)[-(1:20)], pmax(g, s)[-(1:20)])
+})
+
 # ---- The hurdle plot legend (#440) --------------------------------------------
 
 # The legend() and abline() calls a base plot of obj makes, read off the calls

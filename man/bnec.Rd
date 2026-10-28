@@ -477,7 +477,8 @@ individual \emph{exposed}.
 \code{\link{ecx}}, \code{\link{nsec}} and \code{\link{plot}} describe it by
 default; pass \code{dpar = "mu"} or \code{dpar = "hu"} to \code{\link{ecx}}
 for a component. \code{\link{nec}} returns the combined threshold, which for
-threshold models on both blocks is the smaller of the two.
+threshold models on both blocks is the smaller of the two on the scale the
+model was fitted on.
 For the count hurdles, \pkg{brms} calls the untruncated count mean
 \code{mu}; \code{ecx(dpar = "mu")} and \code{nsec(dpar = "mu")} convert it
 to \code{E[Y | Y > 0]} so that "response of survivors" has the same meaning

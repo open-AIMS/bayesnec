@@ -3292,6 +3292,13 @@
 
 ## Documentation
 
+- `?nec.bayesnechurdlefit` states that the combined no-effect estimate of a
+  `bnec_hurdle()` fit is the smaller of the two component thresholds on the
+  scale the model was fitted on. Under a decreasing transformation in `crf()`,
+  such as `crf(I(-x))`, that is the larger of the two on the recorded scale,
+  because each curve is then flat above its threshold. The value returned is
+  unchanged (#520).
+
 - `?autoplot` states that a `bayesmanecfit` with `multi_facet = FALSE`
   returns a list of ggplot objects, invisibly. It said a ggplot object was
   returned in every case (#459).
