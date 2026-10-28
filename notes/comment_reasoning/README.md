@@ -152,7 +152,8 @@ case. Current tests also establish only the cases they exercise.
 comment-only commits recorded by PRs #492–#497 and #507–#509. Each commit was
 checked for identical parsed R code before and after. Notes-only commits,
 merges, functional changes and the subsequent retention and accuracy
-corrections remain visible in blame. `.Rbuildignore` excludes the file from
+corrections remain visible in blame, including the new review corrections to
+#507–#509. `.Rbuildignore` excludes the file from
 the package build. After integration, enable it in a local checkout with:
 
 ```sh
