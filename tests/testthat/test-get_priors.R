@@ -70,8 +70,8 @@ test_that("get_priors rejects what it cannot build priors from", {
   expect_error(get_priors(y ~ crf(x, "nec4param")), "`data` is required")
   expect_error(get_priors(1:3), "fitted by bnec")
   expect_error(get_priors(list()), "fitted by bnec")
-  # A zero-bounded curve cannot span the negative linear predictor required
-  # by these positive responses under a log link.
+  # check_models() drops every zero-bounded equation under a log link,
+  # whatever the data, so a set of nec3param alone is refused.
   expect_error(
     get_priors(y ~ crf(x, "nec3param"), data = nec_data,
                family = gaussian(link = "log")) |> suppressMessages(),
@@ -80,8 +80,8 @@ test_that("get_priors rejects what it cannot build priors from", {
 })
 
 test_that("a disp variance function's priors come back with the curve's", {
-  # Include the variance-function coefficients in the returned prior set.
-  # Omitting them lets brms use flat priors on nearly confounded parameters.
+  # Return the variance-function coefficients with the curve's priors. A set
+  # without c0 and c1 is incomplete, and bnec() refills them with a warning.
   out <- get_priors(y ~ crf(x, "nec4param") + disp("power"), data = nec_data,
                     family = gaussian())
   expect_setequal(out$nlpar, c("top", "bot", "beta", "nec", "c0", "c1"))
@@ -192,7 +192,8 @@ test_that("get_priors round trips through bnec", {
     suppressWarnings()
   expect_s3_class(again, "bayesnecfit")
   expect_equal(ord(get_priors(again)), ord(from_fit))
-  # pull_prior() exposes the full brms table, including rows bnec() cannot reuse.
+  # pull_prior() exposes the full brms table, including rows bnec() cannot
+  # reuse.
   whole <- pull_prior(fit)[[1]]
   expect_gt(nrow(whole), nrow(from_fit))
   expect_true("sigma" %in% whole$class)
@@ -210,7 +211,8 @@ test_that("get_priors honours an explicit predictor scale (#317)", {
 
   expect_match(auto_nec, "^lognormal\\(")
   expect_match(log_nec, "^normal\\(")
-  # The logged normal prior has no bounds; logged concentrations may be negative.
+  # The logged normal prior has no bounds; logged concentrations may be
+  # negative.
   expect_true(is.na(logged$lb[logged$nlpar == "nec"]))
   expect_true(is.na(logged$ub[logged$nlpar == "nec"]))
   expect_equal(as.numeric(automatic$lb[automatic$nlpar == "nec"]), 0)
@@ -234,9 +236,9 @@ test_that("a user prior makes the two entry points disagree", {
   expect_false(identical(sort(got$prior), sort(generated$prior)))
 })
 
-# For zero-inflated counts, retain a user prior on brms class zi. The
-# factorised hurdle and zero-inflated-beta curves instead use class b
-# with prefixed parameter names.
+# For zero-inflated counts, keep a user prior on brms class zi. The joint
+# hurdle_gamma and zero_inflated_beta fits instead give their second block
+# class b with a prefixed nlpar.
 
 test_that("a user prior on zi round trips for a zero-inflated count family", {
   set.seed(1)
@@ -370,7 +372,8 @@ test_that("get_priors reports the substitution its priors are built from", {
 })
 
 test_that("a response at one bound is refused by name, not by quantile() (#400)", {
-  # Refuse an all-bound response before prior construction reaches NaN quantiles.
+  # Refuse an all-bound response before prior construction reaches NaN
+  # quantiles.
   cases <- at_bound_cases()
   for (nm in names(cases)) {
     cs <- cases[[nm]]

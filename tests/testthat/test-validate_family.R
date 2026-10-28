@@ -1,4 +1,4 @@
-# Resolve links from the caller’s expression so equivalent ways of naming
+# Resolve links from the caller's expression so equivalent ways of naming
 # a family use the same package defaults.
 
 test_that("family_link_source reads the expression, not the object", {
@@ -61,7 +61,7 @@ test_that("a family object reached through a variable is honoured, and said so",
 })
 
 test_that("a family object is rebuilt without changing its specification", {
-  # Family constructors can retain promises to a caller’s environment. Rebuild
+  # Family constructors can retain promises to a caller's environment. Rebuild
   # from the specification to avoid serialising a whole knitr chunk to workers.
   make_family <- function() {
     big <- numeric(1e6)
@@ -126,7 +126,7 @@ test_that("a link written positionally is a link the caller chose", {
 })
 
 test_that("a link on the second block is a link the caller chose", {
-  # A link_hu or link_zi argument explicitly chooses the second block’s link.
+  # A link_hu or link_zi argument explicitly chooses the second block's link.
   f <- bayesnec:::family_link_source
   expect_equal(f(quote(hurdle_gamma(link_hu = "logit"))), "link_hu")
   expect_equal(f(quote(zero_inflated_beta(link_zi = "logit"))), "link_zi")
@@ -282,7 +282,7 @@ test_that("a family carrying the tag brms reports is keyed correctly", {
   expect_equal(length(check_models(models()$all, canonical)),
                length(check_models(models()$all, v("Gamma")))) |>
     suppressMessages()
-  # Preserve the object’s link while canonicalising its family tag.
+  # Preserve the object's link while canonicalising its family tag.
   logit_off_a_fit <- brms::brmsfamily("gamma", link = "log")
   expect_message(kept <- v(logit_off_a_fit, link_source = "symbol"), "log")
   expect_equal(kept$family, "Gamma")
@@ -358,7 +358,7 @@ test_that("an unimplemented family is named before its link is", {
 
 test_that("a family forwarded through dots is read from the caller's expression", {
   # match.call() can record forwarded dots as ..1. Follow the promise with
-  # substitute() so a wrapper preserves the caller’s family expression.
+  # substitute() so a wrapper preserves the caller's family expression.
   d <- data.frame(x = rep(1:4, each = 5), y = rep(c(1, 2, 3, 0), 5))
   f <- y ~ crf(x, "nec3param")
   wrap <- function(...) bnec(f, data = d, ...)

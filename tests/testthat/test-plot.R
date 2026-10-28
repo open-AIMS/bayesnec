@@ -3,7 +3,7 @@
 # one path does not establish that the others agree.
 
 # Read axis limits from the device because base plot() returns no plot data.
-# Do not suppress messages here: callers use this helper to assert silence.
+# Do not suppress conditions here: callers collect its deprecation warnings.
 pl_x_max <- function(obj, ...) {
   pdf(NULL)
   on.exit(dev.off(), add = TRUE)
@@ -69,8 +69,8 @@ test_that("all_models draws a panel per candidate, named", {
 })
 
 test_that("all_models draws what its replacement arguments draw", {
-  # Compare recorded drawing calls so each deprecated argument combination
-  # matches its replacement in both values and layout.
+  # Compare recorded legend() and abline() calls: each deprecated call must
+  # draw what its replacement draws. The next test checks the panel layout.
   skip_on_cran()
   drawn <- list()
   local_mocked_bindings(

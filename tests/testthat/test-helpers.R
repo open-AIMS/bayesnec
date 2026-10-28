@@ -165,8 +165,8 @@ test_that("empty defaults are a no-op", {
 
 
 test_that("sub_x_transformation keeps arithmetic inside the crf() call", {
-  # Substitute the predictor symbol, not the first argument expression: replacing
-  # the latter would discard the + 1 in log(x + 1).
+  # Substitute the predictor symbol, not the first argument expression:
+  # replacing the latter would discard the + 1 in log(x + 1).
   f <- function(txt) {
     bayesnecformula(stats::as.formula(
       paste0("y ~ crf(", txt, ", model = \"nec3param\")")
@@ -196,7 +196,8 @@ test_that("crossing_x interpolates, and returns NA where there is no crossing", 
   # x_start must not replace a failed search that begins above the target.
   expect_true(is.na(crossing_x(y, -5, x, x_start = x[1])))
   # A curve already at or below its target takes x_start, including equality.
-  # ECx leaves the default NA; NSEC callers can supply the control concentration.
+  # ECx leaves the default NA; NSEC callers can supply the control
+  # concentration.
   expect_true(is.na(crossing_x(y, 10, x)))
   expect_equal(crossing_x(y, 10, x, x_start = x[1]), x[1])
   expect_equal(crossing_x(y, 12, x, x_start = x[1]), x[1])
@@ -235,7 +236,8 @@ test_that("to_axis_scale brings an estimate onto the axis scale", {
   # xform applies to it exactly as it applies to the axis.
   expect_equal(to_axis_scale(50, b_plain, f_plain, raw), 50)
   expect_equal(to_axis_scale(50, b_plain, f_plain, raw, function(z) z * 2), 100)
-  # Numerically invert a transformed predictor when no explicit xform is supplied.
+  # Numerically invert a transformed predictor when no explicit xform is
+  # supplied.
   expect_equal(to_axis_scale(log(50), b_log, f_log, raw), 50, tolerance = 1e-3)
   # An explicit xform takes precedence over the numerical inverse.
   expect_equal(to_axis_scale(log(50), b_log, f_log, raw, exp), 50,
@@ -259,7 +261,7 @@ test_that("plot_ecx asks for range under gaussian and the default otherwise", {
   expect_equal(plot_ecx(nec4param, "gaussian"),
                ecx(nec4param, type = "range"))
   expect_equal(plot_ecx(nec4param, "beta"), ecx(nec4param))
-  # The caller’s explicit type takes precedence.
+  # The caller's explicit type takes precedence.
   expect_equal(plot_ecx(nec4param, "gaussian", list(type = "absolute")),
                ecx(nec4param, type = "absolute"))
 })
@@ -467,7 +469,7 @@ test_that("summary_probs reads the probabilities from the names", {
 })
 
 test_that("define_loo_controls always names a weighting method", {
-  # Always name the package’s pseudo-BMA default; omitting it lets loo
+  # Always name the package's pseudo-BMA default; omitting it lets loo
   # choose stacking.
   expect_equal(bayesnec:::define_loo_controls(family_str = "gaussian"),
                list(fitting = list(), weights = list(method = "pseudobma")))
@@ -480,7 +482,7 @@ test_that("define_loo_controls always names a weighting method", {
                                    "gaussian")$weights$method,
     "pseudobma"
   )
-  # Treat an explicit NULL as unspecified instead of forwarding it to loo’s
+  # Treat an explicit NULL as unspecified instead of forwarding it to loo's
   # match.arg() default.
   expect_equal(
     bayesnec:::define_loo_controls(list(weights = list(method = NULL)),

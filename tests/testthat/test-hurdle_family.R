@@ -103,7 +103,8 @@ test_that("validate_family rejects a non-identity link_hu the caller chose", {
 })
 
 test_that("a link is read per block, not for the family as a whole", {
-  # Choosing link_hu does not choose the mean link; resolve each block separately.
+  # Choosing link_hu does not choose the mean link; resolve each block
+  # separately.
   v <- bayesnec:::validate_family
   src <- bayesnec:::family_link_source
   hu <- v(brms::hurdle_gamma(link_hu = "identity"),
@@ -341,7 +342,7 @@ test_that("validate_family sets both identity links for zero_inflated_beta", {
 })
 
 test_that("validate_family names the right link argument in its error", {
-  # Name link_zi in this family’s refusal, not link_hu.
+  # Name link_zi in this family's refusal, not link_hu.
   expect_error(
     bayesnec:::validate_family(brms::zero_inflated_beta(link = "identity"),
                                link_source = "chosen"),

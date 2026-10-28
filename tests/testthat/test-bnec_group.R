@@ -300,8 +300,8 @@ test_that("crossed_group_weights refuses a non-pseudo-BMA fit", {
 })
 
 test_that("an absent weights_method is treated as the default", {
-  # A hand-built object without the method field may reach the calculation.
-  # Its missing fits can still fail later; assert only that method checking passes.
+  # A hand-built object without the method field may reach the calculation. Its
+  # missing fits can still fail later; assert only that method checking passes.
   fake <- structure(
     list(fits = list(), group_var = "site", levels = c("a", "b")),
     class = c("bayesnecgroupfit", "bnecfit")
@@ -476,7 +476,8 @@ test_that("a pooled fit on different observations leaves the SE NA", {
 
 test_that("a model-averaged level yields a WAIC difference but no SE", {
   # expand_manec() snapshots mod_fits before expand_nec() adds pointwise WAIC.
-  # The stored mod_stats still supports point estimates; omit the unavailable SE.
+  # The stored mod_stats still supports point estimates; omit the unavailable
+  # SE.
   expect_null(manec_example$mod_fits[[1]]$fit$criteria$waic$pointwise)
   gf <- fake_group_fit()
   res <- crossed_group_weights(gf, pooled = manec_example)$pooled
@@ -503,9 +504,9 @@ test_that("the asymptote declaration is refused before any level (#394)", {
 })
 
 test_that("bnec_group reads an abbreviated declaration (#394)", {
-  # do.call() partially matches asymptote_observed. The hoisted check must
-  # read the same abbreviation before setting its checked marker, or a refusal
-  # can fall back into the per-level model loop.
+  # do.call() partially matches asymptote_observed. bnec_group() checks it
+  # before the level loop and must read the abbreviation before setting its
+  # checked marker, or a refusal can fall into each level's model loop.
   set.seed(394)
   x <- rep(c(0, 1, 2, 4, 8, 16), each = 4)
   mu <- 0.9 - 0.4 * (x / max(x))
@@ -557,9 +558,9 @@ test_that("bnec_group resolves a dot argument the way do.call will (#394)", {
 })
 
 test_that("a level at a bound is fitted with ecxflat, the others as asked (#419)", {
-  # Constant-response levels dispatch to ecxflat; other levels keep their set.
-  # Report each substitution before fitting and silence its repeated report.
-  # Mocked fits check dispatch; test-bnec.R checks the actual fitted substitution.
+  # A level at one bound throughout gets ecxflat; other levels keep their set.
+  # Report each substitution once, before fitting; level calls do not repeat it.
+  # Mocked fits check dispatch; test-bnec.R checks the fitted substitution.
   x <- rep(c(0.1, 0.5, 1, 3, 10, 30), each = 5)
   a <- rep(1L, length(x))
   a[x == max(x)] <- c(0L, 0L, 1L, 0L, 1L)
@@ -682,9 +683,9 @@ test_that("a zero_inflated_beta level at a bound follows beta (#441)", {
 })
 
 test_that("the group tables hold a level fitted with a single equation (#419)", {
-  # A single-equation level has weight one; common forms use the intersection
-  # of fitted equations. ecx4param stands in for that level without sampling,
-  # and nsec() must still return one row per level.
+  # A single-equation level has weight one, and common_models is the
+  # intersection of the equations each level fitted. ecx4param stands in for
+  # that level without sampling; nsec() must still return one row per level.
   g <- fake_group_fit(list(a = manec_example, b = ecx4param))
   cw <- crossed_group_weights(g)
   expect_identical(cw$per_level$b, c(ecx4param = 1))

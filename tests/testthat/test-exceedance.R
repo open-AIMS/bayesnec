@@ -207,6 +207,7 @@ test_that("a hurdle fit is compared through its combined threshold", {
   )
   hurdle <- structure(list(growth = growth, survival = survival),
                       class = c("bayesnechurdlefit", "bnecfit"))
+  # Combined per draw on the range 1 to 10: 2, 3, >=10, 7, 6, 2, 3, <=1.
   # 7 and 6 exceed 5, as does the draw censored above; 3 of 8.
   out <- quiet_exceedance(hurdle, threshold = 5)
   expect_equal(out$prob, 3 / 8)

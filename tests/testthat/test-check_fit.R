@@ -46,8 +46,8 @@ test_that("posterior predictive p-values are probabilities", {
 })
 
 test_that("ndraws is reduced to what the fit holds rather than erroring", {
-  # brms refuses excess ndraws instead of truncating. Cap requests at the
-  # 100 draws in this stored fixture.
+  # brms refuses an ndraws above the draws a fit holds, so check_fit() caps
+  # it. The packaged fits hold 100 draws; the 1e6 below is deliberate.
   skip_on_cran()
   expect_no_error(check_fit(nec4param, group = 3, ndraws = 1e6))
 })
@@ -114,8 +114,8 @@ test_that("check_fit reproduces the local finding a global statistic misses", {
 # Keep separate location and scale panels: either discrepancy can occur
 # without the other.
 
-# Cache the table for read-only plot tests. Test warning emission through
-# a fresh check_fit() call: a cached accessor warns only on its first call.
+# Cache the table for read-only plot tests. The accessor suppresses
+# check_fit()'s warnings, so test warnings through a fresh call.
 manec_checkfit <- local({
   cached <- NULL
   function() {

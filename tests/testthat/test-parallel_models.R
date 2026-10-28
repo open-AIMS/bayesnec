@@ -184,8 +184,8 @@ test_that("the initial-value search draws the same values in a worker", {
 
 test_that("a forking plan gives the same guarantees as a socket one", {
   skip_unless_future()
-  # Forked workers inherit memory and RNG state. Check the seed and narrowed
-  # closure here as well as through multisession serialisation.
+  # Forked workers inherit memory and RNG state rather than receive them.
+  # Check the seeded draws, the caller's stream and the failure record here.
   draw <- function(i) {
     set.seed(100 + i)
     stats::runif(3)
@@ -421,14 +421,14 @@ test_that("the two arrangements of one plan are counted in rounds of one fit", {
   # inside a worker on either arrangement. ceiling() on both sides: a round is
   # set by its slowest member, so a part-filled round still takes a whole one.
   rounds <- bayesnec:::group_loop_rounds
-  # With four workers, dispatching models requires fewer rounds.
+  # Seven levels of eleven equations at four workers: the models take fewer.
   expect_equal(rounds(7, 11, 4)$models, 21)
   expect_equal(rounds(7, 11, 4)$levels, 22)
-  # The same shape at eight workers, where the levels become the smaller.
+  # The same seven by eleven shape at eight workers: the levels take fewer.
   expect_equal(rounds(7, 11, 8)$models, 14)
   expect_equal(rounds(7, 11, 8)$levels, 11)
-  # Two levels of fifteen equations cannot benefit from dispatching levels:
-  # that arrangement needs at least fifteen rounds.
+  # At four workers, two levels of fifteen equations favour the models: the
+  # level arrangement cannot take fewer than fifteen rounds.
   expect_equal(rounds(2, 15, 4)$models, 8)
   expect_equal(rounds(2, 15, 4)$levels, 15)
   # One worker is parallel in name only and gives a tie, which the caller
@@ -823,8 +823,9 @@ test_that("a NULL binding is kept rather than deleted", {
 })
 
 test_that("the levels of a grouped call are seeded from the caller", {
-  # Fix each level's seed before choosing an arrangement so model averaging
-  # does not depend on the worker count or the parent's ambient stream.
+  # Draw each level's seed in the caller before choosing an arrangement, so
+  # model averaging does not depend on the worker count or on which process
+  # fits a level.
   seeds <- bayesnec:::group_level_seeds
   # A supplied seed fixes them outright, so a grouped call repeats with no
   # set.seed() in the session.
@@ -897,7 +898,7 @@ test_that("a seeded level gives one answer with either model arrangement", {
 })
 
 test_that("a level seed means one thing whatever sampler the session is in", {
-  # Pin the sample.int() sampler: set.seed(kind = NULL) otherwise retains
+  # Pin the sample.int() sampler: set.seed(sample.kind = NULL) otherwise keeps
   # the session's choice and can realise different level seeds.
   kind <- RNGkind()
   on.exit(suppressWarnings(do.call(RNGkind, as.list(kind))), add = TRUE)

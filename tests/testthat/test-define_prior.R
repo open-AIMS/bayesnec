@@ -218,7 +218,8 @@ test_that("an all-zero response errors rather than returning a broken prior", {
 })
 
 test_that("response_link_scale does not warn on an all-zero response", {
-  # Do not evaluate a minimum positive response when this family does not need it.
+  # Do not evaluate a minimum positive response when this family does not need
+  # it.
   expect_silent(
     bayesnec:::response_link_scale(rep(0, 20),
                                    validate_family("zero_inflated_poisson"))
@@ -228,7 +229,8 @@ test_that("response_link_scale does not warn on an all-zero response", {
 # Do not evaluate gamma scales for families whose priors do not use them.
 
 test_that("a gaussian response with no positive values still builds priors", {
-  # Negative Gaussian responses have valid quantile and standard-deviation priors.
+  # Negative Gaussian responses have valid quantile and standard-deviation
+  # priors.
   set.seed(1)
   x <- as.numeric(rep(1:10, each = 5))
   y <- -rexp(50, 1) - 0.5
@@ -453,7 +455,7 @@ test_that("a hurdle family gets group-level priors too", {
   expect_true(all(c("top", "beta", "nec", "hutop", "hubeta", "hunec") %in%
                     pr$nlpar))
   # Scale from survivors only, then convert to the multiplicative deviation
-  # scale: s_y / mean(y), capped at a coefficient of variation of 1.
+  # scale: s_y / mean(surv), capped at a coefficient of variation of 1.
   surv <- y[y > 0]
   s_y <- diff(range(surv)) / 10
   expected <- signif(min(s_y / mean(surv), 1), 4)
@@ -792,7 +794,8 @@ prior_scale <- function(x) {
   u <- unique(x)
   if (min(u) < 0) u else log(u[u > 0])
 }
-# For historical comparisons, truncate the supplied prior to the tested range.
+# Truncate a prior to the tested range. define_prior() no longer truncates, so
+# a check through this helper tests the truncated rule, not the fitted prior.
 trunc_prior_cdf <- function(s, x) {
   p <- prior_pars(s)
   cdf <- if (prior_dist(s) == "normal") {
@@ -1122,7 +1125,7 @@ test_that("define_prior still refuses an integer predictor", {
 # Priors for transformed parameter-level deviations.
 
 test_that("a transformed term declares its sd on the deviation, not the parameter", {
-  # Keep bot’s population prior and place the group standard deviation on
+  # Keep bot's population prior and place the group standard deviation on
   # botgl. An sd prior on bot would match no grouping term.
   set.seed(294)
   x <- runif(100, 0, 10)
@@ -1746,7 +1749,7 @@ test_that("bnec and amend build the same default rate prior (#389)", {
     are_chains_correct = function(...) TRUE,
     .package = "bayesnec"
   )
-  # Capture the added model’s prior at brm(). The fake posterior makes
+  # Capture the added model's prior at brm(). The fake posterior makes
   # later model weighting fail, after the quantity under test is captured.
   suppressMessages(suppressWarnings(
     try(amend(fit, add = "nec4param"), silent = TRUE)
@@ -1912,7 +1915,8 @@ test_that("a single distinct predictor value builds and draws (#393)", {
   expect_true(all(vapply(inits, function(z) z$b_nec > 0, logical(1))))
 })
 
-# Priors for a declared unobserved lower asymptote.
+# Priors for a lower asymptote declared unobserved by asymptote_observed =
+# FALSE, which the comments below call the declaration.
 
 # Vary only the observed fraction of the curve by placing the threshold.
 # Hold the dose series, replication and decay rate fixed, as in

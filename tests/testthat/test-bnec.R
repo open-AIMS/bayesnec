@@ -71,9 +71,9 @@ test_that("bnec refuses a resolution below 2 before fitting anything", {
 })
 
 test_that("a response at one bound is fitted as ecxflat alone (#400, #419)", {
-  # Constant responses replace the requested set with ecxflat before the loop.
-  # Beta and zero-inflated beta responses of zero throughout still refuse: the
-  # former has no positive boundary shift and the latter has no beta-block data.
+  # A response at one bound throughout is fitted as ecxflat alone, before the
+  # model loop. bnec() refuses beta at 0, which has no positive value to shift
+  # a zero by, and zero_inflated_beta at 0, whose beta block has no data.
   loop_calls <- 0L
   fitted <- character(0)
   local_mocked_bindings(

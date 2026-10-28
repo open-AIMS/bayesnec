@@ -97,8 +97,8 @@ test_that("adapt_delta is not raised for a transformed ogl term", {
   gs_lin <- parse_group_terms(bnf(y ~ crf(x, model = "neclin") + ogl(g)),
                               "neclin")
   expect_equal(args_for("Beta", "neclin", gs_lin), 0.99)
-  # On nec3param, transformed top and bot deviations keep the mean in support,
-  # so pgl does not require the excursion-specific raise.
+  # On nec3param the mean lies between zero and top, and the top deviation is
+  # transformed, so no pgl deviation takes it outside and no raise applies.
   gs_pgl <- parse_group_terms(bnf(y ~ crf(x, model = "nec3param") + pgl(g)),
                               "nec3param")
   expect_null(args_for("Beta", "nec3param", gs_pgl))

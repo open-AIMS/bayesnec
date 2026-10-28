@@ -491,8 +491,9 @@ test_that("the parameter-level generated terms are reserved too (#294)", {
     dd[[nm]] <- 1
     expect_error(check_reserved_names(dd), nm)
   }
-  # Leave ordinary parameter names outside the generated-name refusal.
-  # Collisions with predictor or response symbols are a separate check.
+  # Do not reserve the parameter names themselves: that would refuse data that
+  # fitted under earlier releases. This check does not cover a predictor or
+  # response named after a parameter.
   for (nm in c("top", "bot", "nec", "beta")) {
     dd <- d
     dd[[nm]] <- 1
@@ -865,7 +866,7 @@ test_that("a grouped call names the levels fitted with ecxflat (#419)", {
 })
 
 test_that("the asymptote report does not count ecxflat on either side (#419)", {
-  # Exclude ecxflat from both sides of the asymptote-declaration report: it
+  # Exclude ecxflat from both sides of the report on asymptote_observed: it
   # has no bot, and a constant can be distinguished from a declining curve
   # without observing that curve's lower asymptote.
   bdat <- cd_bdat(y ~ crf(x, model = "nec4param"), nec_data)

@@ -75,7 +75,7 @@ test_that("mu_is_constrained asks family and link together, not either alone", {
 })
 
 test_that("a two-block family is asked about the block's own link", {
-  # Read the second block’s own link: its identity-link probability can leave
+  # Read the second block's own link: its identity-link probability can leave
   # support even when the mu block has a support-preserving link.
   f <- bayesnec:::mu_is_constrained
   hg <- validate_family("hurdle_gamma")
@@ -189,7 +189,7 @@ test_that("unscaled_excess is an excess the fit cannot shrink away", {
 
 test_that("zero_asymptote is what the formulas do, and matches mod_groups", {
   tab <- bayesnec:::model_mu_ranges()
-  # Compare the distant response with each curve’s own level: necsigm and
+  # Compare the distant response with each curve's own level: necsigm and
   # ecxsigm approach zero slowly, making a fixed absolute cutoff unsuitable.
   for (m in tab$model[tab$zero_asymptote]) {
     g <- par_grid(m)
@@ -421,7 +421,8 @@ test_that("ogl_transform_kind refuses the equations the transform is undefined f
 
 test_that("can_exceed_one is stronger than unscaled_excess, and is what gates", {
   # unscaled_excess tests whether a fit can shrink the excess. can_exceed_one
-  # tests whether any such mean can make logit undefined; it covers more equations.
+  # tests whether any such mean can make logit undefined; it covers more
+  # equations.
   tab <- model_mu_ranges()
   excess <- tab$model[tab$unscaled_excess]
   exceeds <- tab$model[tab$can_exceed_one]
@@ -563,7 +564,7 @@ test_that("the parameter transform is the identity at zero deviation", {
     expect_lt(ev("logit", 0.02, o), 1)
     expect_gt(ev("log", 0.02, o), 0)
   }
-  # Check that a bot of 1e-8 stays inside the interval at deviations of ±20.
+  # Check that a bot of 1e-8 stays inside the interval at deviations of +/-20.
   expect_gt(ev("logit", 1e-8, -20), 0)
   expect_lt(ev("logit", 1e-8, 20), 1)
 })
@@ -588,7 +589,8 @@ test_that("mu_confined_by_pars tests the excess term on every support", {
   beta <- validate_family("Beta")
   for (m in hormesis) {
     expect_equal(ogl_transform_kind(m, beta), "none")
-    # The Gamma mean transform can be log even when parameters do not confine it.
+    # The Gamma mean transform can be log even when parameters do not confine
+    # it.
     expect_equal(ogl_transform_kind(m, validate_family("Gamma")), "log")
   }
   expect_false(mu_confined_by_pars(NULL))

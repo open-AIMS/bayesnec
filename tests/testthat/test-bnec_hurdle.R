@@ -285,7 +285,7 @@ test_that("bnec_hurdle fits a censored response and routes it correctly", {
   # Every survivor, censored or not, is in the growth component.
   expect_equal(nrow(fit$growth$fit$data), sum(dat$y > 0))
   expect_equal(sum(fit$survival$fit$data$.alive), sum(dat$y > 0))
-  # The declaration reached the growth block and only the growth block.
+  # The censoring term reached the growth block and only the growth block.
   expect_true("cens" %in% names(fit$growth$fit$data))
   expect_false(is.null(standata(fit$growth$fit)$cens))
   expect_true(is.null(standata(fit$survival$fit)$cens))

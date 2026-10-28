@@ -128,9 +128,9 @@ test_that("an unrecognised aterm is an error, not a message", {
 })
 
 test_that("a rate denominator written as an expression is refused (#389)", {
-  # Require a bare rate column: retrieve_var() reduces rate(exh / 24) to
-  # exh while brms retains the expression. Otherwise priors, initial values,
-  # prediction grids and plotting would use inconsistent denominators.
+  # Require a bare rate column. bayesnec keeps only exh from rate(exh / 24)
+  # while brms keeps the expression, so priors, initial values, prediction
+  # grids and plots would divide by a different denominator from the fit.
   d <- rate_data()
   d$exh <- d$ex * 24
   expect_error(model.frame(bnf(y | rate(exh / 24) ~ crf(x, "nec3param")),

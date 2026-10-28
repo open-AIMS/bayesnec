@@ -154,7 +154,7 @@ run_init_test <- function(model, prior_type = "uninformative") {
                                     response_link,
                                     prior_type = prior_type)
   set.seed(42)
-  # Pass the family so the search enforces the mean’s support.
+  # Pass the family so the search enforces the mean's support.
   inits <- bayesnec:::make_good_inits(
     model, bb_predictor, response_link, family = bb_family,
     priors = priors, chains = 4, seed = 42
@@ -388,7 +388,7 @@ test_that("a fixed nec still reads as a nec, not silently as an NSEC", {
   out <- bayesnec:::extract_pars("nec", structure(list(), class = "brmsfit"))
   expect_false(identical(out, NA))
   expect_equal(unname(out["Estimate"]), 4)
-  # A fixed parameter’s zero-width interval is not missing.
+  # A fixed parameter's zero-width interval is not missing.
   expect_equal(unname(out["Q2.5"]), 4)
 })
 
@@ -757,7 +757,7 @@ test_that("pgl on a bounded family initialises and samples", {
 })
 
 test_that("group_inits works for a family whose formula carries trials()", {
-  # Ask make_standata() with the fit’s own family before the Gaussian
+  # Ask make_standata() with the fit's own family before the Gaussian
   # fallback: Gaussian does not accept trials(), so it cannot query these
   # binomial group-term dimensions.
   set.seed(245)
@@ -828,7 +828,7 @@ test_that("a hurdle grouped fit initialises and samples", {
 })
 
 test_that("group_inits works for a formula carrying a rate() aterm", {
-  # rate() also excludes a Gaussian-only standata query. Trying the fit’s
+  # rate() also excludes a Gaussian-only standata query. Trying the fit's
   # own family first supports family-specific terms without special cases.
   set.seed(245)
   d <- data.frame(y = rpois(60, 40), expo = rep(2, 60),
@@ -882,7 +882,7 @@ test_that("the search is deterministic given a seed", {
 })
 
 # A session may lack .Random.seed. Preserve that absence as well as any
-# existing seed, and register restore_stream() in the test’s own frame
+# existing seed, and register restore_stream() in the test's own frame
 # so its on.exit() handler runs when the test ends.
 saved_stream <- function() {
   if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
@@ -1408,7 +1408,7 @@ test_that("an unreplicated design uses the successive differences, not sd(y)", {
   y <- c(0.98, 0.95, 0.88, 0.70, 0.42, 0.20, 0.08, 0.04)
   expect_equal(group_spread(x, y), successive_difference_spread(x, y))
   expect_lt(group_spread(x, y), sd(y) / 3)
-  # Check the band width relative to this fixture’s response range.
+  # Check the band width relative to this fixture's response range.
   expect_lt(diff(init_limits(x, y)) / diff(range(y)), 2)
   # fewer than three observations leave too few differences to read
   expect_equal(group_spread(c(1, 2), c(1, 2)), sd(c(1, 2)))
@@ -1586,7 +1586,8 @@ test_that("the spread threshold prefers the differences at two degrees of freedo
                                 successive_difference_spread(x3, y3))))
 })
 
-# Initial-value bands for a declared unobserved asymptote.
+# Initial-value bands for an asymptote declared unobserved by
+# asymptote_observed = FALSE, which the comments below call the declaration.
 
 # Vary only the fraction of the Gaussian nec4param decline observed: hold
 # the dose series, replication and rate fixed while placing the threshold.

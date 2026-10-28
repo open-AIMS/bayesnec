@@ -418,9 +418,9 @@ test_that("a draw with no value is refused rather than dropped in silence", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # Joint fits can be named for a threshold equation while their smooth
-  # survival component requires curve evaluation. Infinite release must not
-  # restore unidentified combined draws merely by comparing bounds.
+  # A joint fit named for a threshold equation can hold a smooth survival
+  # block, so an NA draw needs the curve. Refuse it rather than release it to
+  # a wider bound by comparison.
   post <- as.numeric(manec_example$w_ne_posterior)
   post[1:40] <- post[1:40] + 3
   post[c(5, 11)] <- NA_real_

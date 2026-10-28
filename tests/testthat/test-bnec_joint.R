@@ -742,8 +742,8 @@ test_that("per-level ecx from a joint refit agrees with bnec_group", {
       ecx(f$grouped$fits[[lev]], ecx_val = 10, posterior = TRUE)
     ))
     j <- jp[[lev]]
-    # Combine sd/sqrt(n) from the independent fits as a comparison scale.
-    # This does not estimate median-specific error or adjust for autocorrelation.
+    # Combine sd/sqrt(n) from the independent fits as a comparison scale. This
+    # does not estimate median-specific error or adjust for autocorrelation.
     mcse <- sqrt(stats::sd(j, na.rm = TRUE)^2 / sum(!is.na(j)) +
                    stats::sd(gp, na.rm = TRUE)^2 / sum(!is.na(gp)))
     expect_lt(
@@ -1105,6 +1105,7 @@ test_that("bnec_group() accepts a grouping variable the refit refuses", {
 test_that("brms renames a level label and keeps the level order", {
   # Read coefficient names from brms's design matrix: sanitised labels need
   # not equal the original labels, and columns follow factor-level order.
+  # lv is deliberately unsorted, so that order is not alphabetical.
   lv <- c("Site A", "site-b", "10", "2")
   d <- data.frame(x = rep(1:5, 4), y = seq(0.1, 0.9, length.out = 20),
                   site = factor(rep(lv, each = 5), levels = lv))

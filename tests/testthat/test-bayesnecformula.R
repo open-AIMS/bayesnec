@@ -189,7 +189,8 @@ test_that("get_priors resolves a variable model set from inside a function", {
 
 test_that("the brms formula is built from a locally defined transformation", {
   # Preserve the environment through both per-model formula builders after
-  # model.frame(). Formula construction checks this before brm(), without sampling.
+  # model.frame(). Formula construction checks this before brm(), without
+  # sampling.
   build <- function() {
     # square() is defined here for R's model frame and is also a Stan built-in.
     # An arbitrary R helper would still need a Stan definition at fit time.
@@ -214,7 +215,7 @@ test_that("the hurdle component formulas keep the user's environment", {
 })
 
 test_that("the fitting entry points resolve a character formula", {
-  # The six fitting/prior entry points pass their caller frame. Exercise
+  # The fitting and prior entry points pass their caller frame. Exercise
   # get_priors(), which returns a result without sampling.
   build <- function() {
     eqs <- "nec3param"
@@ -282,8 +283,8 @@ test_that("a knitted chunk resolves a variable model set", {
   # Knit inside a function so chunk variables belong to its frame, matching
   # the precompile workflow rather than falling back to the global environment.
   skip_if_not_installed("knitr")
-  # Suppress echoed code so equation names must come from the chunk result.
-  # Also reject rendered errors: knitr can include failures as text and continue.
+  # Suppress echoed code so equation names must come from the chunk result. Also
+  # reject rendered errors: knitr can include failures as text and continue.
   txt <- c("```{r echo = FALSE}", "eqs <- c(\"nec3param\", \"ecxll3\")",
            "bayesnec:::get_model_from_formula(bayesnec::bnf(y ~ crf(x, eqs)))",
            "```")

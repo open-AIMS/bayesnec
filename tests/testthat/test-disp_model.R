@@ -477,8 +477,9 @@ test_that("route B reads the curve the fit uses, not the template (#294)", {
                     fixed = TRUE))
   expect_true(grepl("bnecbot", phi_of('pgl(grp) + disp("twosided")'),
                     fixed = TRUE))
-  # An overall deviation is excluded: use bnecmu before ogl(), including
-  # the Beta odds-scale deviation. Including it produced a second posterior mode.
+  # Under ogl() the dispersion reads bnecmu, the curve before the overall
+  # deviation, and no form of that deviation, such as Beta's exp(ogl).
+  # Reading the deviated curve gave the posterior a second mode.
   under_ogl <- phi_of('ogl(grp) + disp("twosided")')
   expect_true(grepl("bnecmu", under_ogl, fixed = TRUE))
   expect_false(grepl("exp(ogl)", under_ogl, fixed = TRUE))

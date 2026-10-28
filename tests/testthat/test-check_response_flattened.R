@@ -370,9 +370,9 @@ test_that("an unreplicated binomial design falls back to a fixed dispersion", {
 })
 
 test_that("a binomial block with one individual per level is passed over", {
-  # With fixed dispersion, information comes from individuals. One trial at
-  # each level gives deviance p = 0.048 for (1, 0), but exact conditional p = 0.5;
-  # do not treat that pair as sufficient information.
+  # With fixed dispersion, information comes from individuals. One trial at each
+  # level gives deviance p = 0.048 for (1, 0), but exact conditional p = 0.5; do
+  # not treat that pair as sufficient information.
   x <- seq_len(30)
   y <- rep(c(1, 0), length.out = 30)
   bdat <- flat_bdat(y ~ crf(x, "nec3param"), data.frame(x = x, y = y))
