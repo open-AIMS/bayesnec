@@ -307,10 +307,8 @@ test_that("a group-level term is refused where the equations differ", {
 })
 
 test_that("prior and init are refused where the equations differ", {
-  # The composed parameter names are internal, so a set written against the
-  # equation's own names names nothing in the model. Refused rather than
-  # dropped: add_brm_defaults() validates a supplied prior against the
-  # representative equation and discards it silently when it does not match.
+  # Composed fits use internal per-level parameter names. Priors and initial
+  # values written for ordinary curve parameters do not name those coefficients.
   g <- spread_group_fit()
   expect_error(bnec_joint(g, prior = brms::prior(normal(0, 1), nlpar = "top")),
                "cannot be supplied where the levels favour different")
@@ -643,11 +641,9 @@ test_that("the joint refit carries a coefficient per level", {
 })
 
 test_that("per-level estimates agree with bnec_group on the same equation", {
-  # The phase 1 gate of #382. The two fits are the same model written two ways
-  # once the priors match, so their per-level posteriors must agree to Monte
-  # Carlo error. A joint posterior tighter than the grouped one means a prior
-  # has been applied twice; a wider one means a level coefficient is running on
-  # brms's improper default.
+  # Matching priors give the two representations the same target posterior.
+  # Compare their fitted parameters within the tolerance below; this is a
+  # finite-sample check, not a diagnosis of why a comparison might fail.
   skip_on_cran()
   f <- joint_gate_fixture()
   jf <- suppressWarnings(summary(f$joint$fit))$fixed
@@ -768,9 +764,8 @@ test_that("per-level ecx from a joint refit agrees with bnec_group", {
       ecx(f$grouped$fits[[lev]], ecx_val = 10, posterior = TRUE)
     ))
     j <- jp[[lev]]
-    # Monte Carlo error of each median, from the draws themselves. The two fits
-    # are independent samples of the same posterior, so the difference of the
-    # medians is compared against the two errors added in quadrature.
+    # Combine sd/sqrt(n) from the independent fits as a comparison scale.
+    # This does not estimate median-specific error or adjust for autocorrelation.
     mcse <- sqrt(stats::sd(j, na.rm = TRUE)^2 / sum(!is.na(j)) +
                    stats::sd(gp, na.rm = TRUE)^2 / sum(!is.na(gp)))
     expect_lt(
