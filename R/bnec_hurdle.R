@@ -348,12 +348,9 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
 #'
 #' @param family An object of class \code{\link[stats]{family}}.
 #'
-#' @details \code{bnec_hurdle} is itself the two-part model, so a two-part
-#' growth family is refused. A zero-inflated count family is refused as well:
-#' \code{poisson} and \code{negbinomial} can emit zeros of their own, so the
-#' likelihood is a mixture that does not separate into the two fits. For
-#' structural count zeros, pass \code{poisson} or \code{negbinomial};
-#' \code{bnec_hurdle} adds the zero truncation.
+#' @details A two-part growth family would nest a hurdle within this one.
+#' A zero-inflated count likelihood cannot separate into these two fits. For
+#' structural count zeros, use \code{poisson} or \code{negbinomial}; growth is truncated.
 #'
 #' @return \code{invisible(NULL)}, called for its side effect.
 #'

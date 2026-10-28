@@ -1177,10 +1177,9 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
 
 #' Each posterior draw of a curve read at one predictor value
 #'
-#' Interpolates linearly between the grid points either side of \code{at}, so
-#' that the answer does not depend on \code{resolution}. A value at a grid
-#' point returns that column exactly, and one outside the grid is held at the
-#' nearer end.
+#' Interpolates between grid points rather than taking the nearest one.
+#' At a grid point, returns its column exactly; outside the grid, returns
+#' the nearer end.
 #'
 #' @param p_samples A \code{\link[base]{matrix}} with draws as rows and grid
 #' points as columns.

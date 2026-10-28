@@ -39,17 +39,15 @@ is_bayesnechurdlefit <- function(x) {
 #' @details Draws are paired by row, which is valid because the two posteriors
 #' are independent. Where the fits hold different numbers of draws, both are
 #' truncated to the smaller.
-#' truncated to the smaller.
+#'
+#' The control is the prediction at the lowest observed concentration,
+#' not the first column of the grid, so that \code{x_range} does not change
+#' the reference. It is computed here so that the control and the curve are
+#' truncated to the same draws.
 #'
 #' @return A \code{\link[base]{list}} with elements \code{x}, \code{growth},
 #' \code{survival} and \code{combined}, and \code{control}, a list of the same
 #' three names holding one control value per draw.
-#' @details The control is the prediction at the lowest observed concentration,
-#' not the first column of the grid, so that \code{x_range} changes no
-#' estimate. It is computed here so that the control and the curve are
-#' truncated to the same draws.
-#' class: without it, supplying \code{x_range} changes every reported ECx and
-#' NSEC.
 #'
 #' @importFrom brms posterior_epred
 #'
@@ -398,12 +396,9 @@ print.bayesnechurdlefit <- function(x, ...) {
 
 #' Take the smaller of two component no-effect posteriors, keeping censoring
 #'
-#' The combined endpoint leaves its plateau at whichever component binds
-#' first, so each combined draw is the minimum of the two. A draw below the
-#' foot of its range is the minimum whatever the other is. A draw known only
-#' to exceed its upper limit \code{U} gives the other draw where that is
-#' identified at or below \code{U}, and otherwise a draw known only to exceed
-#' \code{U}. Plain \code{pmin()} would return \code{NA} for such draws.
+#' Takes the minimum of the component no-effect draws. Censoring flags and
+#' upper limits decide whether an outside-range minimum is identified;
+#' plain \code{pmin()} would propagate \code{NA} for a censored component draw.
 #'
 #' @param g,s The two component posteriors, each carrying its \code{"censored"}
 #' record where it has one.
