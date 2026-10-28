@@ -393,7 +393,7 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
 #' \code{\link[brms]{brmsfit}} and so also answers for an object assembled
 #' without one, as several tests build. Where the name is no equation, the fit
 #' is read as \code{\link{expand_nec}} reads it. Only where neither is
-#' available does the \code{"ecx"} prefix of the name decide; no fit made by
+#' available does the \code{"ecx"} substring in the name decide; no fit made by
 #' \code{\link{bnec}} reaches that branch. For a two-block fit both readings
 #' describe the response block.
 #'
