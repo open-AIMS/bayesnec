@@ -105,11 +105,12 @@ kept_links <- function(family, link_source) {
   out[vapply(out, function(x) is.character(x) && length(x) == 1, logical(1))]
 }
 
-#' Constructor arguments that state a link bayesnec fits a curve on
+#' Constructor arguments for mean and zero-probability links
 #'
 #' @details \code{link} is the mean, and \code{link_hu} and \code{link_zi} the
-#' second block of a two-block family. A curve on that block is written as
-#' \code{1 - <probability>}, so its link must be the identity.
+#' second block of a family. Where bayesnec fits a curve on that block, it
+#' writes \code{1 - <probability>} and assigns the identity link. The
+#' zero-inflated count families keep \code{zi} constant instead.
 #'
 #' \code{link_phi} and \code{link_shape} are excluded on purpose: reading a
 #' dispersion link as a choice of mean link would fit
