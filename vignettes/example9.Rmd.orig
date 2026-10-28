@@ -290,8 +290,9 @@ arguments are the ones to reach for:
 
 ## The set as fitted
 
-`model = "decline"` requests the equations that describe a declining response,
-of which there are `r length(models()$decline)` currently in `bayesnec`. The
+`model = "decline"` requests the equations that describe a declining response
+and the constant equation `ecxflat`, `r length(models()$decline)` in all in the
+current version of `bayesnec`. The
 remaining equations in the package describe hormesis, a response that rises
 above the control before it falls. There is no evidence of hormesis in these
 data, so they are not considered here. Two mechanisms then reduce it from this
