@@ -1,19 +1,31 @@
 # Workflow derived from https://github.com/r-lib/actions/tree/master/examples
 # Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
-# A push to a branch that has an open pull request fires both `push` and
-# `pull_request`, so an unfiltered trigger ran the four-job matrix twice for
-# every push. With a stacked set of pull requests that is eight runs for one
-# propagated fix, and the queue never drained. Every other workflow here already
-# filters; this one did not.
 #
-# `push` is now limited to the integration branches, and a branch with a pull
-# request is still checked through `pull_request`. Nothing loses coverage: a
-# stacked branch is checked on its own pull request, and again once GitHub
-# retargets that pull request to `dev` as the one below it merges.
+# A branch with a pull request is checked through `pull_request`, so `push`
+# lists only the integration branches; listing more checks each push twice.
 on:
   push:
     branches: [master, dev]
+    # Each path here must also be in `.Rbuildignore`, so that R CMD check never
+    # reads it. `.github/` is build-ignored too, but must stay checked.
+    paths-ignore:
+      - 'notes/**'
+      - 'prompts/**'
+      - 'hpc/**'
+      - '.claude/**'
+      - 'CLAUDE.md'
+      - 'AGENTS.md'
   pull_request:
+    # `edited` fires when a stacked pull request is retargeted, which changes
+    # the platforms the plan job chooses. The plan job skips every other edit.
+    types: [opened, synchronize, reopened, edited]
+    paths-ignore:
+      - 'notes/**'
+      - 'prompts/**'
+      - 'hpc/**'
+      - '.claude/**'
+      - 'CLAUDE.md'
+      - 'AGENTS.md'
   # The input lets a dispatch run hold one worker count without editing the tree
   # being measured. Blank leaves TESTTHAT_CPUS unset, so an ordinary push or
   # pull_request run uses testthat's default of two workers.
@@ -26,14 +38,45 @@ on:
 
 # Supersede rather than queue. Pushing a correction to a branch whose check is
 # still running made both run to completion, and only the second was ever read.
+# An edit that leaves the base alone gets a group of its own, so that it cannot
+# cancel a running check.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}${{ github.event.action == 'edited' && !github.event.changes.base && '-edit' || '' }}
   cancel-in-progress: true
 
 name: R-CMD-check
 
 jobs:
+  # R-devel builds every dependency from source unless it restores a cache, and
+  # only a run on or into dev or master finds one. A pull request into predev
+  # drops R-devel, and one into any other branch runs ubuntu release alone.
+  plan:
+    if: github.event.action != 'edited' || github.event.changes.base
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.choose.outputs.matrix }}
+    steps:
+      - id: choose
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.base_ref }}
+        run: |
+          macos='{"os": "macOS-latest", "r": "release"}'
+          windows='{"os": "windows-latest", "r": "release"}'
+          devel='{"os": "ubuntu-latest", "r": "devel", "http-user-agent": "release"}'
+          release='{"os": "ubuntu-latest", "r": "release"}'
+          if [ "$EVENT" != pull_request ] || [ "$BASE" = dev ] || [ "$BASE" = master ]; then
+            cells="$macos, $windows, $devel, $release"
+          elif [ "$BASE" = predev ]; then
+            cells="$macos, $windows, $release"
+          else
+            cells="$release"
+          fi
+          echo "matrix=[$cells]" | tee -a "$GITHUB_OUTPUT"
+
   R-CMD-check:
+    needs: plan
+
     runs-on: ${{ matrix.config.os }}
 
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
@@ -41,12 +84,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config:
-          - {os: macOS-latest,   r: 'release'}
-          - {os: windows-latest, r: 'release'}
-          - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
-          - {os: ubuntu-latest,   r: 'release'}
-          # - {os: ubuntu-latest,   r: 'oldrel-1'}
+        config: ${{ fromJSON(needs.plan.outputs.matrix) }}
 
     # The default job timeout is six hours. Two terminations on this repository
     # arrived as a bare exit 143 partway through the test phase with no timing
