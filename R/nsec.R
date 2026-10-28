@@ -652,10 +652,9 @@ nsec.drc <- function(object, sig_val = 0.01, resolution = 200,
                          level = 1-(sig_val*2))["Lower"])
     control <- p_samples[1, "Prediction"]
     ecnsec <- as.numeric((control - reference) / control * 100)
-    # p_samples holds the fitted curve and its confidence limits, not draws.
-    # For sig_val at or above 0.025 under the default prob_vals, the lower
-    # limit begins at or below the reference, and x_start makes its crossing
-    # the control. No test covers this method, as drc is not a dependency.
+    # p_samples holds fitted means and confidence limits, not draws.
+    # With default prob_vals and sig_val >= 0.025, x_start makes the lower
+    # crossing the control; Fisher and Fox (2023) use the fitted mean alone.
     nsec_out <- apply(p_samples, 2, function(col) {
       crossing_x(col, reference, x_vec, x_start = min(x_vec))
     })

@@ -2,11 +2,27 @@
 # under review; it is in both lists so that a pull request into it is checked
 # by the same set as one into `dev`. Remove both entries when `predev` is
 # merged and retired, or this workflow keeps naming a branch that is gone.
+#
+# The ignored paths match R-CMD-check.yaml; pkgdown reads none of them.
 on:
   push:
     branches: [master, dev, predev]
+    paths-ignore:
+      - 'notes/**'
+      - 'prompts/**'
+      - 'hpc/**'
+      - '.claude/**'
+      - 'CLAUDE.md'
+      - 'AGENTS.md'
   pull_request:
     branches: [master, dev, predev]
+    paths-ignore:
+      - 'notes/**'
+      - 'prompts/**'
+      - 'hpc/**'
+      - '.claude/**'
+      - 'CLAUDE.md'
+      - 'AGENTS.md'
   workflow_dispatch:
 
 name: pkgdown
