@@ -1959,8 +1959,9 @@
   anything is fitted, for the reason it is refused on the growth component:
   the positive-count curve and the combined curve both depend on the shape,
   and so would depend on the value given to `z`. `get_priors()` and
-  `bnec_joint()` refuse it as `bnec()` does, `bnec_joint()` before it
-  announces the refit. Fits without `disp()` are unchanged (#410).
+  `bnec_joint()` refuse it as `bnec()` does, and on a `bnec_hurdle()` fit
+  `bnec_joint()` refuses it before it announces the refit. Fits without
+  `disp()` are unchanged (#410).
 
 - `bnec()` now checks a `disp()` term against the family once per call, before
   it fits any equation. The check was made once per equation inside the model

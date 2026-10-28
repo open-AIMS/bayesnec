@@ -1547,8 +1547,8 @@ test_that("shape_in_reported_mean names the two truncated routes (#410)", {
   expect_false(bayesnec:::shape_in_reported_mean(
     tf, validate_family("poisson")
   ))
-  # hurdle_gamma and zero_inflated_beta report mu * (1 - hu), and
-  # hurdle_poisson has no shape
+  # hurdle_gamma reports mu * (1 - hu) and zero_inflated_beta mu * (1 - zi),
+  # and hurdle_poisson has no shape
   for (tag in c("hurdle_gamma", "zero_inflated_beta", "hurdle_poisson")) {
     expect_false(bayesnec:::shape_in_reported_mean(NULL, tag), label = tag)
   }
@@ -1780,6 +1780,10 @@ test_that("a model set reads each equation's shape at its own bot (#410)", {
                 b = nb_disp_object(' + disp("power")'))
   parts$a$model <- "a"
   parts$b$model <- "b"
+  parts$b$fit$draws <- "b"
+  draws <- list(a = nb_draws,
+                b = data.frame(b_c0_Intercept = c(0.8, 1.9, 3),
+                               b_c1_Intercept = c(0.6, 0.2, 0.9)))
   object <- structure(list(
     mod_fits = list(a = list(fit = 1), b = list(fit = 2))
   ), class = c("bayesmanecfit", "bnecfit"))
@@ -1787,7 +1791,8 @@ test_that("a model set reads each equation's shape at its own bot (#410)", {
   draw_index <- list(a = c(1L, 3L), b = 2L)
   local_mocked_bindings(
     as_draws_df = function(x, variable = NULL, ...) {
-      if (is.null(variable)) nb_draws else nb_draws[, variable]
+      d <- if (is.list(x) && identical(x$draws, "b")) draws$b else draws$a
+      if (is.null(variable)) d else d[, variable]
     },
     ndraws = function(x) nrow(nb_draws),
     pull_draw_index = function(...) draw_index,
@@ -1796,12 +1801,14 @@ test_that("a model set reads each equation's shape at its own bot (#410)", {
     .package = "bayesnec"
   )
   ref <- centring_literals(pform_rhs(parts$a$fit$formula, "shape"))
-  each <- lapply(bot, function(b) {
+  each <- lapply(c("a", "b"), function(m) {
+    d <- draws[[m]]
     as.numeric(bayesnec:::hurdle_positive_mean(
-      b, "hurdle_negbinomial",
-      exp(nb_draws$b_c0_Intercept + nb_draws$b_c1_Intercept * (log(b) - ref))
+      bot[[m]], "hurdle_negbinomial",
+      exp(d$b_c0_Intercept + d$b_c1_Intercept * (log(bot[[m]]) - ref))
     ))
   })
+  names(each) <- c("a", "b")
   expect_equal(
     bayesnec:::count_positive_asymptote(object, "mu", rep(0, 3),
                                         data.frame(x = 0)),

@@ -251,8 +251,8 @@ bnec_joint.bayesnechurdlefit <- function(object, model = NULL,
          "\" growth component, so this fit cannot be refitted jointly.",
          call. = FALSE)
   }
-  # Refuse a disp() term before message() announces the refit, and add the
-  # `formula` remedy, which bnec()'s own refusal cannot name.
+  # Check the disp() term before message() announces the refit, so that a
+  # refusal can add the `formula` remedy, which bnec()'s own cannot name.
   disp_spec <- parse_disp_term(formula)
   if (!is.null(disp_spec)) {
     tryCatch(

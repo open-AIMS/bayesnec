@@ -617,12 +617,13 @@
 #' \code{"hurdle_negbinomial"} the term models the dispersion parameter of the
 #' positive block, \code{shape}, \code{phi} and \code{shape} respectively, and
 #' leaves the \code{hu} or \code{zi} block as it is. A variance function is
-#' written in the mean of the positive block, which is the Gamma, Beta or
-#' negative binomial component mean \code{mu} rather than the mean of the
-#' response, and its reference value is computed from the positive responses
-#' alone. That is the variance function \code{\link{bnec_hurdle}} fits on its
-#' growth component, so the joint and factorised routes model the same
-#' dispersion. \code{"hurdle_poisson"} has no dispersion parameter to model.
+#' written in the component mean \code{mu} of the positive block rather than
+#' in the mean of the response, and its reference value is computed from the
+#' positive responses alone. That is the variance function
+#' \code{\link{bnec_hurdle}} fits on its growth component, so the joint and
+#' factorised routes model the same dispersion. On \code{"hurdle_negbinomial"}
+#' \code{mu} is the negative binomial mean before zero-truncation.
+#' \code{"hurdle_poisson"} has no dispersion parameter to model.
 #'
 #' On \code{"hurdle_negbinomial"} the curve of the positive counts is their
 #' zero-truncated mean, \code{mu / (1 - (shape / (mu + shape))^shape)}, which

@@ -214,10 +214,10 @@
 #'
 #' Of the two-block families, \code{hurdle_gamma}, \code{zero_inflated_beta}
 #' and \code{hurdle_negbinomial} take a dispersion sub-model on their positive
-#' block, which is modelled as the \code{Gamma}, \code{Beta} or
-#' \code{negbinomial} family it is, and \code{m} is computed from the positive
-#' responses; see \code{\link{bnec}}. \code{hurdle_poisson} has no dispersion
-#' parameter to model.
+#' block, a \code{Gamma}, \code{Beta} or zero-truncated \code{negbinomial}
+#' distribution, and \code{m} is computed from the positive responses; see
+#' \code{\link{bnec}}. \code{hurdle_poisson} has no dispersion parameter to
+#' model.
 #'
 #' \bold{What the exponent means depends on the family}, because each family
 #' already imposes its own mean-variance link. The form above is written for
