@@ -66,8 +66,10 @@
 #' \code{log(x)}. The operators are \code{+}, \code{-}, \code{*}, \code{/},
 #' \code{:}, \code{^} and \code{\%in\%}. Where arithmetic is meant, write it
 #' inside \code{I()}, as in \code{crf(I(x - 1))} or \code{crf(I(-x))}, or
-#' compute it into a column of the data. An operator inside a function call
-#' is arithmetic and is accepted, as in \code{crf(log(x + 1))}.
+#' compute it into a column of the data. Stan has no \code{I()}, so the
+#' formula passed to \pkg{brms} holds the expression inside it, in
+#' parentheses. An operator inside a function call is arithmetic and is
+#' accepted, as in \code{crf(log(x + 1))}.
 #'
 #' \bold{Group-level terms: \code{glterms}}
 #' 
@@ -1031,10 +1033,51 @@ simplify_formula <- function(formula, data, ...) {
        pop_vars = pop_vars, group_vars = r_vars)
 }
 
+#' Write the crf() predictor into an equation's right-hand side
+#'
+#' @param new_x The predictor's column name in the model frame, such as
+#' \code{"log(x)"} or \code{"I(x - 1)"}.
+#' @param brms_rhs The equation's right-hand side as text, written in
+#' \code{x}.
+#'
+#' @return A \code{\link[base]{character}} string.
+#'
 #' @noRd
-#' @importFrom formula.tools lhs
 substitute_x_in_formula <- function(new_x, brms_rhs) {
-  gsub("[x](?![[:alpha:]])", new_x, brms_rhs, perl = TRUE)
+  gsub("[x](?![[:alpha:]])", brms_x_text(new_x), brms_rhs, perl = TRUE)
+}
+
+#' The crf() predictor as text for a brms formula
+#'
+#' @param new_x The predictor's column name in the model frame, such as
+#' \code{"log(x)"} or \code{"I(x - 1)"}.
+#'
+#' @details \pkg{brms} writes a non-linear formula into the Stan program as it
+#' stands, and Stan has no \code{I()}, so the expression inside \code{I()} is
+#' written instead. An expression that is neither a name nor a function call
+#' is put in parentheses, so that the equation cannot regroup it: written
+#' bare into \code{(x - nec)}, \code{x > 1} would read as
+#' \code{x > (1 - nec)}.
+#'
+#' Leave a name or a function call as it is. \code{stored_model_survival()}
+#' and \code{identify_dpar_model()} match a stored fit's formula against one
+#' built here, so added parentheses would match no fit made before them.
+#'
+#' @return A \code{\link[base]{character}} string.
+#'
+#' @noRd
+brms_x_text <- function(new_x) {
+  expr <- str2lang(new_x)
+  unwrapped <- FALSE
+  while (is.call(expr) && identical(expr[[1]], quote(I)) && length(expr) == 2) {
+    expr <- expr[[2]]
+    unwrapped <- TRUE
+  }
+  fun <- if (is.call(expr) && is.name(expr[[1]])) as.character(expr[[1]])
+  if (is.name(expr) || (!is.null(fun) && identical(make.names(fun), fun))) {
+    return(if (unwrapped) deparse1(expr) else new_x)
+  }
+  paste0("(", deparse1(expr), ")")
 }
 
 #' @noRd
@@ -1560,8 +1603,8 @@ compose_level_formula <- function(formula, data, level_spec) {
     pars <- names(tmpl[[2]])
     map <- setNames(lapply(paste0(pars, tag), as.name), pars)
     map[["x"]] <- str2lang(
-      paste0("(", ind, " * (", new_x, ") + (1 - ", ind, ") * ",
-             format(level_spec$x_ref[[l]], digits = 17), ")")
+      paste0("(", ind, " * (", brms_x_text(new_x), ") + (1 - ", ind,
+             ") * ", format(level_spec$x_ref[[l]], digits = 17), ")")
     )
     terms <- c(terms,
                paste0(ind, " * (", deparse1(rename_syms(tmpl[[1]][[3]], map)),

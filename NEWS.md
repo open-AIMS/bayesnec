@@ -3135,7 +3135,16 @@
   on `log(x)` while its estimates were reported on the scale of `x`, with no
   scale message, and it is now read as `crf(log(x))`. An operator inside a
   function call or under `I()` is accepted, and one inside a nested call, as
-  in `crf(sqrt(log(x) + 1))`, no longer fails with the same parse error
+  in `crf(sqrt(log(x) + 1))`, no longer fails with the same parse error.
+  Stan has no `I()`, so a predictor written inside it is now passed to `brms`
+  as the expression inside it, in parentheses: `crf(I(log(x) + 1))` is
+  written into the curve as `(log(x) + 1)`. The model frame and the
+  estimators keep the `I()`. `crf(I(-x))`, the form the refusal of `crf(-x)`
+  offers, and `crf(I(x - 1))` previously gave a Stan program that failed to
+  compile, and both now compile. Any predictor that is neither a column name
+  nor a function call is written in parentheses, so that the curve's own
+  terms cannot regroup it. The formula passed to `brms` for `crf(x)`,
+  `crf(log(x))` and every other column name or function call is unchanged
   (#479).
 
 ## Documentation

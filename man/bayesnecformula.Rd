@@ -76,8 +76,10 @@ syntax, not as arithmetic: the model would be fitted on \code{x}, or on
 \code{log(x)}. The operators are \code{+}, \code{-}, \code{*}, \code{/},
 \code{:}, \code{^} and \code{\%in\%}. Where arithmetic is meant, write it
 inside \code{I()}, as in \code{crf(I(x - 1))} or \code{crf(I(-x))}, or
-compute it into a column of the data. An operator inside a function call
-is arithmetic and is accepted, as in \code{crf(log(x + 1))}.
+compute it into a column of the data. Stan has no \code{I()}, so the
+formula passed to \pkg{brms} holds the expression inside it, in
+parentheses. An operator inside a function call is arithmetic and is
+accepted, as in \code{crf(log(x + 1))}.
 
 \bold{Group-level terms: \code{glterms}}
 
