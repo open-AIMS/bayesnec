@@ -948,3 +948,52 @@ test_that("nec() says when the combined value includes NSEC draws", {
   unrecorded$ne_type <- NULL
   expect_length(approx_msgs(nec(hurdle_pair(unrecorded, unrecorded))), 0)
 })
+
+# ---- amend(add = ) on a hurdle fit with a Gamma growth component -----------
+# Both components are built from ecx4param. brm() is mocked and expand_manec()
+# returns the fits it is given, so each component's amend() completes.
+test_that("amend(add = ) reaches both components of a Gamma hurdle (#436)", {
+  d <- data.frame(x = nec_data$x, y = nec_data$y * 10)
+  growth <- ecx4param
+  growth$fit$family <- brms::bf(y ~ x, family = Gamma(link = "identity"))$family
+  growth$fit$data <- d
+  growth$bayesnecformula <- bnf(y ~ crf(x, model = "ecx4param") +
+                                  disp("power"))
+  survival <- ecx4param
+  survival$fit$family <- brms::bernoulli(link = "identity")
+  survival$fit$data <- data.frame(x = nec_data$x,
+                                  .alive = as.integer(nec_data$y > 0.3))
+  survival$bayesnecformula <- bnf(.alive ~ crf(x, model = "ecx4param"))
+  h <- structure(list(growth = growth, survival = survival, data = d,
+                      formula = bnf(y ~ crf(x, model = "ecx4param")),
+                      y_var = "y", n_exposed = nrow(d), n_dead = 0L),
+                 class = c("bayesnechurdlefit", "bnecfit"))
+  seen <- list()
+  local_mocked_bindings(
+    brm = function(formula, data, ...) {
+      a <- list(...)
+      seen[[length(seen) + 1]] <<- list(family = a$family$family,
+                                        prior = a$prior)
+      structure(list(), class = "brmsfit")
+    },
+    are_chains_correct = function(...) TRUE,
+    make_good_inits = function(model, x, y, family, ..., chains) {
+      replicate(chains, list(b_top = as.array(1)), simplify = FALSE)
+    },
+    expand_manec = function(object, ...) {
+      object[vapply(object, is_prebayesnecfit, logical(1))]
+    },
+    .package = "bayesnec"
+  )
+  out <- suppressMessages(amend(h, add = "nec4param"))
+  expect_s3_class(out, "bayesnechurdlefit")
+  expect_identical(vapply(seen, `[[`, character(1), "family"),
+                   c("gamma", "bernoulli"))
+  # With expand_manec() mocked, each component is the list of its fits.
+  expect_setequal(names(out$growth), c("ecx4param", "nec4param"))
+  expect_setequal(names(out$survival), c("ecx4param", "nec4param"))
+  # The growth prior is define_prior()'s for the validated Gamma family.
+  expected <- define_prior("nec4param", validate_family("Gamma"), d$x, d$y,
+                           disp_spec = list(route = "B", value = "power"))
+  expect_identical(seen[[1]]$prior, expected)
+})

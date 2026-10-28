@@ -377,13 +377,19 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
         if (!is.null(denom)) {
           y <- y / denom
         }
-        # Note this path still does not pass disp_spec, which predates #245
-        # and is left alone here rather than changed as a side effect.
+        # Pass define_prior() every argument fit_bayesnec() passes it, except
+        # model_survival, which the fit does not record. Build it here, outside
+        # the try() below, so an error from define_prior() stops amend() once.
+        single_form <- single_model_formula(formula, model)
         brm_args$prior <- define_prior(
           model, family, x, y, prior_type = prior_type,
           asymptote_observed = asymptote_observed,
           predictor_scale = predictor_scale,
-          group_spec = parse_group_terms(formula, model)
+          disp_spec = parse_disp_term(single_form),
+          group_spec = parse_group_terms(single_form, model),
+          rate_response = !is.null(denom),
+          truncated_response = isTRUE(attr(
+            single_form, "bayesnec_internal_truncation"))
         )
       } else {
         brm_args$prior <- model_priors

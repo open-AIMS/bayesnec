@@ -190,7 +190,8 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
                                paste0("Failed to fit model ", model, "."),
                                all_args$prior, all_args$init))
   }
-  msg_tag <- family$family
+  # amend() passes the family stored in the fit, which records Gamma as gamma.
+  msg_tag <- canonical_fam_tag(family)
   message(paste0("Response variable modelled as a ", model, " model using a ",
                  msg_tag, " distribution."))
   out <- list(fit = fit, model = model, init = all_args$init,

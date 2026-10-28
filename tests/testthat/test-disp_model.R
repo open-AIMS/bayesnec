@@ -1442,3 +1442,56 @@ test_that("bnec() and the formula builder refuse it as backstops (#443)", {
     "nothing should be fitted"
   )
 })
+
+# ---- a Gamma family read off a fit -----------------------------------------
+# brms records Gamma as gamma. No model is compiled or sampled.
+
+test_that("the disp() readers take a stored Gamma family as Gamma (#436)", {
+  stored <- brms::bf(y ~ x, family = Gamma(link = "identity"))$family
+  expect_identical(stored$family, "gamma")
+  power <- list(route = "B", value = "power")
+  expect_identical(bayesnec:::disp_family_tag(stored), "Gamma")
+  expect_true(bayesnec:::has_disp_par(stored))
+  expect_identical(bayesnec:::disp_dpar(stored), "shape")
+  expect_identical(bayesnec:::disp_slope_bounds(power, stored),
+                   c(lb = 0, ub = 2))
+  expect_identical(bayesnec:::disp_intercept_centre(stored, disp_dat$y), 2)
+  expect_null(bayesnec:::check_disp_spec(power, stored, response = disp_dat$y))
+  expect_identical(
+    bayesnec:::define_disp_prior(power, stored, disp_dat$y, disp_dat$x),
+    bayesnec:::define_disp_prior(power, Gamma(link = "identity"), disp_dat$y,
+                                 disp_dat$x)
+  )
+  # A refusal names the family as written, not the stored tag.
+  expect_error(
+    bayesnec:::check_disp_spec(list(route = "B", value = "twosided"), stored),
+    "Variance function \"twosided\" is not valid for the Gamma family",
+    fixed = TRUE
+  )
+  # The formula amend() builds for an added equation is the one bnec() builds.
+  f <- bnf(y ~ crf(x, "ecx4param") + disp("power"))
+  built <- make_brmsformula(f, disp_dat, stored)
+  expected <- make_brmsformula(f, disp_dat, Gamma(link = "identity"))
+  expect_identical(deparse1(built$ecx4param$pforms$shape),
+                   deparse1(expected$ecx4param$pforms$shape))
+})
+
+test_that("every family bayesnec fits reads as before through the tag (#436)", {
+  # Reading through canonical_fam_tag() changes nothing for a validated
+  # family, or for a stored one other than Gamma.
+  for (tag in names(mod_fams)) {
+    validated <- validate_family(tag)
+    stored <- brms::bf(y ~ x, family = unmark_family(validated))$family
+    for (f in list(validated, stored)) {
+      expect_identical(bayesnec:::disp_family_tag(f),
+                       if (is_hurdle_family(tag)) {
+                         unname(hurdle_mu_fams[[tag]])
+                       } else {
+                         tag
+                       }, label = tag)
+      expect_identical(bayesnec:::has_disp_par(f),
+                       bayesnec:::disp_family_tag(tag) %in% names(disp_dpars),
+                       label = tag)
+    }
+  }
+})

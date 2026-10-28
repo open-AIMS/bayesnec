@@ -36,11 +36,14 @@
 #' the priors, rather than by adding the two-block tags to \code{disp_dpars},
 #' so that the family of each positive block is stated in one place. See #410.
 #'
+#' The tag is read through \code{canonical_fam_tag()}, because a family taken
+#' from a fit records Gamma as \code{gamma}.
+#'
 #' @return A \code{\link[base]{character}} string, the family tag.
 #'
 #' @noRd
 disp_family_tag <- function(family) {
-  fam_tag <- if (inherits(family, "family")) family$family else family
+  fam_tag <- canonical_fam_tag(family)
   if (is_hurdle_family(fam_tag)) {
     return(unname(hurdle_mu_fams[[fam_tag]]))
   }
@@ -140,7 +143,8 @@ parse_disp_term <- function(formula) {
 #'
 #' @noRd
 check_disp_spec <- function(spec, family, response = NULL) {
-  fam_tag <- if (inherits(family, "family")) family$family else family
+  # A family taken from a fit records Gamma as gamma.
+  fam_tag <- canonical_fam_tag(family)
   # The joint two-block families take the term on the dispersion parameter of
   # their positive block, which is the only block that has one; the hu or zi
   # block is a probability and is left as it is. hurdle_gamma and

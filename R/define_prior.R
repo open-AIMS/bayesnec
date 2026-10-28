@@ -584,6 +584,9 @@ regularizing_location <- function(predictor, response, side,
 #' \code{NA} reaches \pkg{brms} as "Cannot coerce 'prior' to a single character
 #' value".
 #'
+#' The tag is read through \code{canonical_fam_tag()}, because a family taken
+#' from a fit records Gamma as \code{gamma}.
+#'
 #' @param family A \code{\link[stats]{family}} object.
 #'
 #' @return A \code{\link[base]{character}} string.
@@ -596,7 +599,8 @@ prior_family_tag <- function(family) {
   if (isTRUE(family$link %in% c("logit", "log"))) {
     return("gaussian")
   }
-  sub("^zero_inflated_(poisson|negbinomial)$", "\\1", family$family)
+  sub("^zero_inflated_(poisson|negbinomial)$", "\\1",
+      canonical_fam_tag(family))
 }
 
 #' Whether a family's response-scaled parameters are bounded below at zero
@@ -1426,11 +1430,8 @@ define_prior <- function(model, family, predictor, response,
     # disp() priors are added; missed, c0 and the slopes would take the flat
     # brms default. See #410.
     #
-    # The term is checked against the two-block family first. bnec() checks it
-    # in wrangle_model_formula(), but get_priors() reaches this function
-    # without building a formula, and would otherwise return priors for
-    # hurdle_negbinomial, which bnec() refuses, and fail on hurdle_poisson
-    # inside brms with a message naming neither the family nor the term.
+    # Backstop for amend() and direct calls: bnec() and get_priors() check the
+    # term before their model loops.
     if (!is.null(disp_spec)) {
       check_disp_spec(disp_spec, family, response = mu_response)
     }
@@ -1446,6 +1447,11 @@ define_prior <- function(model, family, predictor, response,
       hurdle_priors <- hurdle_priors + disp_priors
     }
     return(hurdle_priors)
+  }
+  # Backstop for amend() and direct calls: bnec() and get_priors() check the
+  # term before their model loops.
+  if (!is.null(disp_spec)) {
+    check_disp_spec(disp_spec, family, response = response)
   }
   link_tag <- family$link
   custom_name <- check_custom_name(family)
@@ -1812,7 +1818,8 @@ define_disp_prior <- function(disp_spec, family, response, predictor = NULL,
   if (is.null(disp_spec) || disp_spec$route != "B") {
     return(NULL)
   }
-  fam_tag <- family$family
+  # A family taken from a fit records Gamma as gamma.
+  fam_tag <- canonical_fam_tag(family)
   c0_prs <- disp_intercept_priors(response)
   out <- prior_string(unname(c0_prs[fam_tag]), nlpar = "c0")
   slopes <- disp_slope_priors(disp_spec, family, response, predictor,

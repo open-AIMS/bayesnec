@@ -284,3 +284,180 @@ test_that("amend(add = ) refuses a call adding only excluded ones (#470)", {
                "No equation requested can be fitted", fixed = TRUE)
   expect_identical(calls, 0L)
 })
+
+
+# ---- the priors of an added equation ---------------------------------------
+
+# ecx4param with the family brms stores, a positive response and a formula
+# holding `term`. The brmsfit was not fitted to these data, so read nothing
+# from its posterior.
+amend_fixture <- function(family, term = "",
+                          data = data.frame(x = nec_data$x,
+                                            y = nec_data$y * 10)) {
+  fit <- ecx4param
+  fit$fit$family <- brms::bf(y ~ x, family = unmark_family(family))$family
+  fit$fit$data <- data
+  fit$bayesnecformula <- bnf(stats::as.formula(
+    paste0('y ~ crf(x, model = "ecx4param")', term)
+  ))
+  fit
+}
+
+# Records what each mocked brm() call is handed. The curve search returns a
+# fixed start and records its inputs. The call then fails on the empty fit,
+# which is not under test.
+fit_inputs <- function(expr) {
+  seen <- new.env(parent = emptyenv())
+  seen$calls <- list()
+  seen$search <- list()
+  local_mocked_bindings(
+    brm = function(formula, data, ...) {
+      a <- list(...)
+      seen$calls[[length(seen$calls) + 1]] <- list(
+        prior = a$prior, init = a$init, family = a$family
+      )
+      structure(list(), class = "brmsfit")
+    },
+    are_chains_correct = function(...) TRUE,
+    make_good_inits = function(model, x, y, family, ..., priors, chains) {
+      seen$search[[length(seen$search) + 1]] <- list(
+        model = model, x = x, y = y, priors = priors,
+        tag = canonical_fam_tag(family), link = family$link
+      )
+      replicate(chains, list(b_top = as.array(1)), simplify = FALSE)
+    },
+    make_good_hurdle_inits = function(model, predictor, response, priors,
+                                      chains, family, ...) {
+      seen$search[[length(seen$search) + 1]] <- list(
+        model = model, x = predictor, y = response, priors = priors,
+        tag = canonical_fam_tag(family), link = family$link
+      )
+      replicate(chains, list(b_top = as.array(1)), simplify = FALSE)
+    },
+    .package = "bayesnec"
+  )
+  warns <- msgs <- character()
+  withCallingHandlers(
+    try(expr, silent = TRUE),
+    warning = function(w) {
+      warns <<- c(warns, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    },
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  list(calls = seen$calls, search = seen$search, warnings = warns,
+       messages = msgs)
+}
+
+expect_same_fit_inputs <- function(amended, fitted, label) {
+  expect_length(amended$calls, 1)
+  expect_length(fitted$calls, 1)
+  expect_identical(amended$calls[[1]]$prior, fitted$calls[[1]]$prior,
+                   label = label)
+  expect_identical(amended$calls[[1]]$init, fitted$calls[[1]]$init,
+                   label = label)
+  expect_identical(amended$search, fitted$search, label = label)
+  expect_false(any(grepl("has no entry for", amended$warnings)),
+               label = label)
+}
+
+test_that("amend(add = ) on a Gamma fit builds the priors bnec() does (#436)", {
+  # No disp() term and two variance functions, under both prior types.
+  d <- data.frame(x = nec_data$x, y = nec_data$y * 10)
+  for (term in c("", ' + disp("power")', ' + disp("loglinear")')) {
+    for (pt in c("uninformative", "regularizing")) {
+      label <- paste0("Gamma", term, ", ", pt)
+      obj <- amend_fixture(validate_family("Gamma"), term)
+      expect_identical(obj$fit$family$family, "gamma")
+      amended <- fit_inputs(amend(obj, add = "nec4param", prior_type = pt))
+      fitted <- fit_inputs(bnec(
+        stats::as.formula(paste0('y ~ crf(x, "nec4param")', term)),
+        data = d, family = Gamma(link = "identity"), chains = 2,
+        prior_type = pt
+      ))
+      expect_same_fit_inputs(amended, fitted, label)
+      # The family handed to brms is the one the fit stored, not a rebuilt one.
+      expect_identical(amended$calls[[1]]$family, obj$fit$family,
+                       label = label)
+      if (nzchar(term)) {
+        pr <- amended$calls[[1]]$prior
+        expect_true(all(c("c0", "c1") %in% pr$nlpar), label = label)
+        expect_true(all(c("b_c0", "b_c1") %in%
+                          names(amended$calls[[1]]$init[[1]])), label = label)
+      }
+    }
+  }
+})
+
+test_that("amend(add = ) passes the disp() term to the added prior (#436)", {
+  # gaussian has no tag mismatch, so only the disp() term is under test.
+  d <- data.frame(x = nec_data$x, y = nec_data$y * 10)
+  for (pt in c("uninformative", "regularizing")) {
+    obj <- amend_fixture(validate_family("gaussian"), ' + disp("power")')
+    amended <- fit_inputs(amend(obj, add = "nec4param", prior_type = pt))
+    fitted <- fit_inputs(bnec(y ~ crf(x, "nec4param") + disp("power"),
+                              data = d, family = gaussian(), chains = 2,
+                              prior_type = pt))
+    expect_same_fit_inputs(amended, fitted, paste("gaussian", pt))
+    c1 <- as.data.frame(amended$calls[[1]]$prior)
+    c1 <- c1[c1$nlpar == "c1", ]
+    expect_equal(as.numeric(c(c1$lb, c1$ub)), c(0, 1))
+  }
+})
+
+test_that("amend(add = ) builds bnec()'s priors on a hurdle_gamma fit (#436)", {
+  # The two-block branch of define_prior() builds its own disp() priors.
+  d <- data.frame(x = nec_data$x, y = nec_data$y * 10)
+  d$y[d$x > stats::quantile(d$x, 0.8)] <- 0
+  for (pt in c("uninformative", "regularizing")) {
+    obj <- amend_fixture(validate_family("hurdle_gamma"), ' + disp("power")',
+                         data = d)
+    amended <- fit_inputs(amend(obj, add = "nec4param", prior_type = pt))
+    fitted <- fit_inputs(bnec(y ~ crf(x, "nec4param") + disp("power"),
+                              data = d, family = "hurdle_gamma", chains = 2,
+                              prior_type = pt))
+    expect_same_fit_inputs(amended, fitted, paste("hurdle_gamma", pt))
+    expect_true(all(c("c0", "c1") %in% amended$calls[[1]]$prior$nlpar))
+  }
+})
+
+test_that("amend(add = ) keeps the truncation of a hurdle growth fit (#436)", {
+  # Without truncation the regularizing c1 prior is centred on the replicate
+  # slope, 0.29 on these counts, and with it on 0. So the comparison with
+  # bnec() fails if amend() drops the truncation.
+  set.seed(5)
+  x <- rep(c(0.1, 0.5, 1, 2, 4), each = 20)
+  mu <- 30 / (1 + (x / 1.5)^2) * rep(c(1, 2), length.out = length(x))
+  y <- pmax(stats::rnbinom(length(x), mu = mu, size = 5), 1L)
+  d <- data.frame(x = x, y = y)
+  f <- add_hurdle_truncation(bnf(y ~ crf(x, "nec4param") + disp("power")))
+  obj <- amend_fixture(validate_family("negbinomial"), ' + disp("power")',
+                       data = d)
+  obj$bayesnecformula <- add_hurdle_truncation(obj$bayesnecformula)
+  amended <- fit_inputs(amend(obj, add = "nec4param",
+                              prior_type = "regularizing"))
+  fitted <- fit_inputs(bnec(f, data = d, family = "negbinomial", chains = 2,
+                            prior_type = "regularizing"))
+  expect_same_fit_inputs(amended, fitted, "truncated negbinomial")
+  untruncated <- define_prior("nec4param", validate_family("negbinomial"),
+                              d$x, d$y, prior_type = "regularizing",
+                              disp_spec = parse_disp_term(f))
+  expect_false(identical(amended$calls[[1]]$prior, untruncated))
+})
+
+test_that("amend(add = ) drops what bnec() drops for a Gamma fit (#436)", {
+  obj <- amend_fixture(validate_family("Gamma"))
+  amended <- fit_inputs(amend(obj, add = c("neclin", "nec4param")))
+  expect_length(amended$calls, 1)
+  expect_identical(vapply(amended$search, `[[`, character(1), "model"),
+                   "nec4param")
+  expect_true(any(grepl(paste("Dropping the model neclin as they are not",
+                              "valid in the case of a Gamma with identity",
+                              "link"),
+                        amended$messages, fixed = TRUE)))
+  # No message names the stored tag. Match the word, so hurdle_gamma is allowed.
+  expect_false(any(grepl("\\bgamma\\b", amended$messages, perl = TRUE)))
+})
