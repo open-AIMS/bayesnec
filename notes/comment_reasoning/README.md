@@ -92,11 +92,21 @@ The evidence files preserve historical observations. Read their original
 design, version and limitations before applying a numerical claim to a new
 case. Current tests also establish only the cases they exercise.
 
-[Issue #484](https://github.com/open-AIMS/bayesnec/issues/484) requires
-`.git-blame-ignore-revs` and its `.Rbuildignore` entry. The descriptions of
-PRs #492–#497 and [PR #509](https://github.com/open-AIMS/bayesnec/pull/509)
-defer that work to a follow-up after the series merges. Use the integrated
-hashes of comment-only commits; do not ignore a commit that also changes
-behaviour. PR #509 also proposes closing #484 when the last comment PR merges.
-The blame-ignore requirement must remain tracked until that follow-up is
-complete, either in #484 or in a separate linked issue before #484 closes.
+[`.git-blame-ignore-revs`](../../.git-blame-ignore-revs) lists the 60
+comment-only commits recorded by PRs #492–#497 and #507–#509. Each commit was
+checked for identical parsed R code before and after. Notes-only commits,
+merges, functional changes and the subsequent retention and accuracy
+corrections remain visible in blame. `.Rbuildignore` excludes the file from
+the package build. After integration, enable it in a local checkout with:
+
+```sh
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
+This follow-up is based on [PR #509](https://github.com/open-AIMS/bayesnec/pull/509).
+Its base includes 54 of the listed commits; the final review commit from each
+of PRs #492–#497 must still be integrated. After those PRs and #507–#509 merge,
+retarget the follow-up to `predev` and verify that every listed hash is an
+ancestor of `predev`. A rebase or squash requires the list to be checked
+against the resulting commits and updated before this requirement of
+[issue #484](https://github.com/open-AIMS/bayesnec/issues/484) is complete.

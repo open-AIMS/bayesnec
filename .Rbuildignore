@@ -37,3 +37,4 @@ README.Rmd
 ^CLAUDE\.md$
 ^AGENTS\.md$
 ^.*\.log$
+^\.git-blame-ignore-revs$
