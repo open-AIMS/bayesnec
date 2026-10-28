@@ -53,9 +53,9 @@ under this work; their cleanup remains outside this review.
 - [Issue #350](https://github.com/open-AIMS/bayesnec/issues/350) records why
   nonnegative logged predictors need an explicit scale declaration. A zero on
   that scale is `log(1)`, whereas a concentration-scale zero is the control.
-  `predictor_prior()` now states the geometric-median qualification for an
-  even number of distinct doses. The prior audit's older truncated-prior
-  measurements must not be read as measurements of the current priors.
+  `predictor_prior()` now states that an even dose count gives a prior median
+  at the geometric mean of the two central doses. The prior audit's older
+  truncated-prior measurements must not be read as measurements of the current priors.
 - [The incomplete-design specification](../tasks/386-incomplete-designs-claude.md)
   records the limits of inferring an asymptote from an endpoint. The
   declaration applies to both hurdle blocks; neither block's observed
