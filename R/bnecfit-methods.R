@@ -294,6 +294,7 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
     if (inherits(object[[i]]$fit, "try-error")) {
       class(object[[i]]) <- "somethingwentwrong"
     }
+    object[[i]]$call_args <- update_call_args(object[[i]]$call_args, dot_args)
   }
   formulas <- lapply(object, extract_formula)
   if (length(object) > 1) {
@@ -339,4 +340,31 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
     out$retained_data <- retained_data
   }
   out
+}
+
+#' Bring the record of a fitting call up to date after a refit
+#'
+#' @param call_args The \code{call_args} element of a
+#' \code{\link{prebayesnecfit}}, or \code{NULL} for a fit that records none.
+#' @param dot_args The \code{\link[brms]{brm}} arguments passed to
+#' \code{\link{update.bnecfit}}.
+#'
+#' @return \code{call_args}, with a supplied \code{seed} in place of the
+#' recorded one and a supplied \code{control} merged into the recorded one, as
+#' \code{brms::update()} merges it. \code{NULL} where \code{call_args} is.
+#'
+#' @noRd
+update_call_args <- function(call_args, dot_args) {
+  if (is.null(call_args)) {
+    return(NULL)
+  }
+  if ("seed" %in% names(dot_args)) {
+    call_args["seed"] <- list(dot_args$seed)
+  }
+  if (!is.null(dot_args$control)) {
+    control <- call_args$control
+    control[names(dot_args$control)] <- dot_args$control
+    call_args["control"] <- list(control)
+  }
+  call_args
 }

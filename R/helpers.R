@@ -1359,17 +1359,6 @@ add_brm_defaults <- function(
       brm_args$control <- ctrl
     }
   }
-  # The prior scale for the ogl intercept and its group-level standard
-  # deviation depends on which scale the deviation is applied on, so the kind
-  # is decided here, where family and group_spec are both in hand, and carried
-  # into define_prior() on group_spec.
-  if (!is.null(group_spec)) {
-    group_spec$ogl_transform <- if (isTRUE(group_spec$ogl)) {
-      ogl_transform_kind(model, family)
-    } else {
-      "none"
-    }
-  }
   build_defaults <- function() {
     define_prior(
       model,
