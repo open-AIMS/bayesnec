@@ -383,8 +383,10 @@ prior's 99.99th percentile. The old branches differed roughly fiftyfold in width
 under a unit change. These are historical comparisons, not current
 distributional rules.
 
-The following details are recorded neither in issue 314 nor in the other notes,
-and are retained from `test-define_prior.R` at the base revision:
+The following details are retained from `test-define_prior.R` at the base
+revision. [Issue 314](https://github.com/open-AIMS/bayesnec/issues/314) records
+the CDF positions in the second item and the ranges the third item attributes
+to it; the other figures are in neither the issue nor the other notes:
 
 - The factor-form and direct coverage spreads differed by at most `2.22e-16`
   relatively over 200,000 random dilution series. Prior strings differed on 1.6%
@@ -408,9 +410,10 @@ and are retained from `test-define_prior.R` at the base revision:
   requirement.
 - The literal default-prior fixture in the test named “the default leaves every
   generated entry bit-identical” was captured on predev at `5fee2e9a`, before
-  the unobserved-asymptote change. The old comment attributes its generator to
-  the PR for issue 394, which does not record it. Preserve this provenance and
-  the literal comparisons, including rounding.
+  the unobserved-asymptote change. [PR
+  407](https://github.com/open-AIMS/bayesnec/pull/407) records that capture, 48
+  strings over eight families, but not the code that generated them. Preserve
+  this provenance and the literal comparisons, including rounding.
 
 The stored-fit round trip in `test-get_priors.R` predates removal of
 tested-range truncation. It compares the fit's own bounds after normalising
@@ -515,8 +518,8 @@ estimated an 80-second compilation saving; this is an old local estimate.
 The broader dated compilation inventory and environment are in
 [Issue328](https://github.com/open-AIMS/bayesnec/issues/328).
 
-The `test-rate.R` fixture uses seed 1, 40 observations and exposures 1, 2, 4 and
-8. Its true top is 20; the old count-based prior mean was about 61. Recorded
+The `test-rate.R` fixture uses seed 1, 40 observations and exposures of 1, 2,
+4 and 8. Its true top is 20; the old count-based prior mean was about 61. Recorded
 count-scale versus rate-scale dispersion centres were 3.02013 versus 2.19722 for
 the power form and 20.5 versus 9 for the loglinear form. The assertions use
 broad prior bounds and directly computed centres instead of freezing those old
