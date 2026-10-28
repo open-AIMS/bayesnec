@@ -119,7 +119,7 @@
 #' @export
 bnec_group <- function(formula, data, group_var, family = NULL,
                        predictor_scale = "auto", ...) {
-  # Captured before anything can rebind it; see family_link_source() and #256.
+  # Read the family argument unevaluated, before `family` is reassigned below.
   link_source <- family_link_source(substitute(family), env = parent.frame())
   predictor_scale <- validate_predictor_scale(predictor_scale)
   if (!is.character(group_var) || length(group_var) != 1) {
@@ -129,14 +129,11 @@ bnec_group <- function(formula, data, group_var, family = NULL,
     stop("`group_var` \"", group_var, "\" is not a column of `data`.",
          call. = FALSE)
   }
-  # Coerced up front, as bnec() does. Without it `model.frame(formula, data)`
-  # below dispatches to stats::model.frame, which evaluates crf(x, "nec3param")
-  # as an ordinary call returning a length-1 string -- and reports "variable
-  # lengths differ", which points nowhere near the actual cause.
+  # Coerce before model.frame() below. A plain formula dispatches to
+  # stats::model.frame(), which fails with "variable lengths differ".
   formula <- bayesnecformula(formula, env = parent.frame())
-  # Narrowed before anything is built from it, as bnec() does. A grouped call
-  # exports the formula once per level as well as once per model, so the
-  # environment it would otherwise hold is sent L x M times. See #329.
+  # Narrow the formula's environment before anything is built from it. Every
+  # level and every model sends the formula, with that environment, to a worker.
   formula <- narrow_formula_environment(formula, data)
   grp <- data[[group_var]]
   if (is.numeric(grp)) {
@@ -145,12 +142,8 @@ bnec_group <- function(formula, data, group_var, family = NULL,
          " unambiguous; a numeric column is almost always a predictor that",
          " belongs in crf() instead.", call. = FALSE)
   }
-  # Refused rather than dropped. factor() removes NA from levels() and table()
-  # ignores it, so an NA group would pass every check below -- but
-  # data[grp == lev, ] is logical indexing with NA present, which puts an
-  # all-NA row into *every* level's subset. model.frame() would then quietly
-  # absorb them, so the fit would proceed and nothing would say why the level
-  # sizes reported here did not match what was fitted.
+  # Refuse missing groups rather than drop them. factor() and table() ignore
+  # NA, so an NA group would pass the level checks below unnoticed.
   if (anyNA(grp)) {
     stop("The grouping column \"", group_var, "\" has ", sum(is.na(grp)),
          " missing value(s). Every observation must belong to a known level,",
@@ -172,33 +165,27 @@ bnec_group <- function(formula, data, group_var, family = NULL,
          " concentration-response model in its own right, so it needs enough",
          " data to support one.", call. = FALSE)
   }
-  # Refused before the loop, not left to the bnec() call for the level that
-  # holds it. Each level is a complete fit, so a missing value in level k would
-  # otherwise be reached only after levels 1 to k-1 had sampled -- measured on
-  # two levels of twelve, level "a" compiled and sampled to completion before
-  # level "b" raised. The whole data frame is checked here, so the rows are
-  # named as the user recorded them rather than by their position within a
-  # subset. See #278.
+  # The checks from here to the level loop run once, on the whole data. Left
+  # to each level's bnec() call, a refusal would arrive only after the earlier
+  # levels had compiled and sampled, and a report would print once per level.
+  # Missing values are found here so that rows are named as the user recorded
+  # them, not by their position within a level.
   mod_dat <- model.frame(formula, data = data)
   check_complete_cases(mod_dat)
   validate_predictor_scale(
     predictor_scale, retrieve_var(mod_dat, "x_var", error = TRUE)
   )
-  # Before the loop for the same reason as the line above it: bnec_group()
-  # fits each level with bnec() in sequence, so a refusal reached at level k
-  # arrives only after levels 1 to k-1 have compiled and sampled. See #271.
   check_disp_finite(formula, data)
   check_reserved_names(data)
   dots <- list(...)
   # dots_arg() matches an abbreviation such as `asymptote = FALSE`, as bnec()
-  # does when do.call() passes it these arguments. See #394.
+  # does when do.call() passes it these arguments.
   declared <- dots_arg(dots, "asymptote_observed", TRUE)
-  # Check the value before printing any message, as bnec() does (#449).
+  # Check the value before printing any message, as bnec() does.
   chk_flag(declared, x_name = "`asymptote_observed`")
-  # The response substitutions are not reported here. bnec_group() fits each
-  # level on its own subset, so the values substituted differ between levels
-  # and the per-level bnec() call is where the report belongs. See #93.
-  # Chosen once, from the whole response, for the reason in Details.
+  # Each level's bnec() call reports its own response substitutions, because
+  # the values substituted differ between levels.
+  # Choose the family once, from the whole response; see Details.
   if (is.null(family)) {
     y <- retrieve_var(mod_dat, "y_var", error = TRUE)
     tr <- retrieve_var(mod_dat, "trials_var")
@@ -207,27 +194,14 @@ bnec_group <- function(formula, data, group_var, family = NULL,
             ". Pass `family` to override.")
   }
   family <- validate_family(family, link_source = link_source)
-  # Refused before the level loop, once for the whole call. The bnec() call for
-  # the first level refuses it as well, but only after the bound and flatness
-  # reports below have passed over a response they cannot read without its
-  # trials, and after that level has been announced as being fitted. A
-  # trials() term is a property of the formula, so it cannot differ by level
-  # and is checked on the whole model frame. See #442.
+  # Refuse a missing trials() term before the reports below read the response,
+  # which they cannot do without it.
   check_trials_term(mod_dat, family)
-  # A level whose every observation is at a bound is fitted with ecxflat alone
-  # by its own bnec() call, and every other level with the set requested (D31,
-  # which replaced the refusal of the whole call D30 placed here). Found and
-  # reported for every level before any level is fitted, and a level ecxflat
-  # cannot be fitted to either, a beta or zero_inflated_beta level of 0
-  # throughout, still refuses the whole call, because left to the inner bnec()
-  # calls it would be reached only after the levels before it had compiled and
-  # sampled, which is the reason check_disp_finite() is raised above. Placed
-  # before the flatness report, which reads the set each level will fit. See
-  # #400, #419 and #441.
-  #
-  # The requested set is read here, before the flatness report reads it below,
-  # so that a name that is no equation is refused before any level is fitted
-  # and a request for ecxflat alone is not reported as set aside.
+  # A level with every observation at a bound is fitted with ecxflat alone, and
+  # the other levels with the requested set. constant_fallback_levels() reports
+  # those levels, refuses a level ecxflat cannot fit either, and refuses a name
+  # that is not an equation. It must run before the flatness report, which
+  # reads the set each level will fit.
   requested_models <- try(get_model_from_formula(formula), silent = TRUE)
   flat_levels <- constant_fallback_levels(
     mod_dat, family, grp, group_var,
@@ -238,22 +212,15 @@ bnec_group <- function(formula, data, group_var, family = NULL,
     }
   )
   dots[[".bayesnec_bound_reported"]] <- TRUE
-  # Checked over every level before any of them is fitted. Left to the inner
-  # bnec() calls it would report one level at a time, and would reach an
-  # affected level only after the levels before it had compiled and sampled --
-  # the same reason check_disp_finite() is raised above. The private marker is
-  # removed by bnec() before brms sees it. See #390.
-  # The equation set is read per level, because check_models() may drop an
-  # equation in one level and not another, and an equation that is dropped
-  # there cannot make that level's default priors sensitive. A formula the set
-  # cannot be read from is one bnec() is about to refuse, so the failure is
-  # left to arrive from there and nothing is reported meanwhile.
+  # bnec() removes the private .bayesnec_* markers before brms sees them.
+  # Read the equation set per level, because check_models() can drop an
+  # equation in one level and keep it in another. Where the set cannot be
+  # read, report nothing here and let bnec() raise the error.
   level_sets <- character(0)
   level_survival <- NULL
   if (!inherits(requested_models, "try-error")) {
-    # A level at a bound fits ecxflat alone, so that is its set here: its
-    # default priors read no bot, nec or ec50 row, and it has no lower
-    # asymptote for the declaration below to count.
+    # A level at a bound fits ecxflat alone, which has no bot, nec or ec50
+    # prior and no lower asymptote, so use that set for it here.
     level_models <- setNames(lapply(levs, function(level) {
       level_set <- if (level %in% flat_levels) {
         constant_equations()
@@ -265,15 +232,10 @@ bnec_group <- function(formula, data, group_var, family = NULL,
                      mod_dat[grp == level, , drop = FALSE])
       )
     }), levs)
-    # An equation that keeps no group-level term on a grouping variable is
-    # excluded for every level here, before any level is fitted, and reported
-    # once. Left to the inner bnec() calls, a level whose whole set is
-    # excluded -- a level at a bound fits ecxflat alone, which has no nec --
-    # would be refused only after the levels before it had compiled and
-    # sampled, and the report would be printed once per level. Each level's
-    # bnec() call still makes the exclusion and records it; the private
-    # marker below silences only its report. Placed before the flatness
-    # report, which reads the set each level will fit. See #470.
+    # Exclude here, for every level, an equation that keeps no group-level
+    # term on a grouping variable, and report it once. Each level's bnec() call
+    # still makes and records the exclusion; the marker set below silences only
+    # its report. This must precede the flatness report.
     group_excluded <- NULL
     for (level in levs) {
       level_excluded <- group_term_exclusions(formula, level_models[[level]])
@@ -306,138 +268,71 @@ bnec_group <- function(formula, data, group_var, family = NULL,
         asymptote_observed = declared
       )
     }
-    # The union of the per-level sets, which is what a crossed model average
-    # covers: an equation check_models() keeps in any level is one some level
-    # will fit.
+    # The union of the per-level sets: every equation some level will fit.
     level_sets <- unique(unlist(level_models, use.names = FALSE))
   }
   dots[[".bayesnec_flatness_checked"]] <- TRUE
-  # Raised once over the whole response, before any level is fitted. Left to
-  # the inner bnec() calls, the refusal would arrive only after the levels
-  # before it had compiled and sampled, and the mixed-set report would be
-  # printed once per level. `mod_dat` holds the whole response, which is what
-  # decides whether a floor can be derived, and that answer cannot differ by
-  # level. Where the formula's set could not be read, level_sets is empty and
-  # only the refusal is reachable, which is the same resolution the flatness
-  # report above takes for that case.
+  # Use the whole response: it decides whether a floor can be derived, and that
+  # cannot differ by level. Where the set could not be read, level_sets is
+  # empty and only the refusal can be raised.
   check_asymptote_declaration(mod_dat, family, level_sets,
                               asymptote_observed = declared,
                               prior = dots_arg(dots, "prior"),
                               model_survival = level_survival)
   dots[[".bayesnec_asymptote_checked"]] <- TRUE
-  # The crossed weights are an outer product of the per-level weight vectors,
-  # and that identity holds for pseudo-BMA only, so the method is checked in
-  # crossed_group_weights() rather than merely documented -- multiplying
-  # stacking weights gives a wrong crossed table with nothing to signal it.
-  #
-  # Captured here as well as read off the fits, because neither route is
-  # reliable alone. expand_manec() does record the method, as
-  # attr(mod_stats$wi, "method") (R/expand_classes.R), but that attribute
-  # survives cbind and is dropped by row-subsetting, so it is present on a
-  # fresh bayesmanecfit and absent after any reordering -- and a level that
-  # fitted a single model is a bayesnecfit with no mod_stats at all. The
-  # request is therefore recorded here, and crossed_group_weights() prefers
-  # whatever the fits themselves still carry, since that is what actually
-  # happened. See #33.
-  # dots_arg(), for the reason recorded there. `loo_controls` is a bnec()
-  # formal before `...`, so an abbreviated `loo_c =` reaches the fit and reads
-  # as absent here, and the fallback to "pseudobma" would then record a method
-  # the levels were not fitted under -- which is the wrong crossed table with
-  # nothing to signal it, the failure crossed_group_weights() exists to
-  # prevent.
+  # Record the requested weighting method for crossed_group_weights(), which
+  # cannot always read it off the fits: row-subsetting mod_stats drops the
+  # method attribute, and a single-model level has no mod_stats.
   wt_method <- dots_arg(dots, "loo_controls")$weights$method
   if (is.null(wt_method)) {
     wt_method <- "pseudobma"
   }
-  # The set the formula asks for, which is what plan_group_levels() counts the
-  # two arrangements over. Read here rather than taken from an argument because
-  # bnec() itself reads it from the formula; check_models() may then drop an
-  # equation per level, so this is an upper bound. A formula this cannot be read
-  # from is one bnec() is about to refuse, so the failure is left to arrive from
-  # there and the levels stay in sequence meanwhile.
+  # Count the equations the formula asks for, an upper bound on what each level
+  # fits. Where the set cannot be read, n_models is NA, the levels run in
+  # sequence, and bnec() raises the error.
   models <- try(get_model_from_formula(formula), silent = TRUE)
   n_models <- if (inherits(models, "try-error")) NA_integer_ else length(models)
   level_plan <- plan_group_levels(length(levs), n_models)
-  # Read in the parent and passed into the worker. future exports globals and
-  # not the session's options, so a multisession worker starts with this one
-  # unset; read inside the worker instead, a deliberate persistent cache would
-  # be honoured under a forking plan and silently ignored under every other.
+  # Read the option here, not in the worker: future does not export options,
+  # so a multisession worker would see it unset.
   cache_root <- getOption("cmdstanr_write_stan_file_dir")
-  # One seed per level, realised here and applied to that level's model fits and
-  # model-averaging draw. Without both uses the arrangement decides the answer:
-  # the sequential and parallel model loops advance different streams before
-  # expand_manec() draws its seed. Since plan_group_levels() reads the
-  # arrangement from the worker count, one script at one seed would otherwise
-  # report different model-averaged estimates on different machines. See #216
-  # and the private .bayesnec_group_seed consumed by bnec().
-  #
-  # Derived from `seed` where the user supplied one, so that a grouped call
-  # repeats without a set.seed() in the session as well. The caller's stream is
-  # put back either way: bnec_group() is not entitled to move it, which is the
-  # same rule bnec_parallel_lapply() follows.
+  # One seed per level, derived from `seed` where one was given. Each level
+  # applies it to its model fits and to its model-averaging draw; without both,
+  # the estimates would depend on the number of workers.
   level_seeds <- group_level_seeds(length(levs), dots[["seed"]])
   if (level_plan$concurrent) {
-    # Announced together, before the dispatch. The per-level message the
-    # sequential path emits is dropped here: it would be emitted by the worker
-    # that fits the level, and from there it arrives out of order or not at
-    # all, so the sizes are reported once from the parent instead.
+    # Announce every level here. A message sent from a worker arrives out of
+    # order or not at all.
     message("Levels: ",
             paste0("\"", levs, "\" (", counts[levs], " observations)",
                    collapse = ", "), ".")
   }
-  # The subsets are the elements dispatched, not indices into `data`. future
-  # serialises the globals of the applied function once per future, so holding
-  # the whole data frame there would send all of it to every level -- L times
-  # what the levels between them need, and the transfer #329 exists to remove
-  # reintroduced in the loop #338 adds. Measured on a 200,000-row frame over
-  # seven levels: 5.53 MiB per future against 5.53 MiB for the seven subsets
-  # together.
-  #
-  # split() rather than data[grp == lev, ]: it is one pass, and it orders the
-  # pieces by levels(grp), which is the order `levs` is in. An empty level
-  # cannot arise -- one under four observations was refused above.
+  # Dispatch the subsets themselves, not indices into `data`: future sends a
+  # function's globals with every future, so each level would receive all of
+  # `data`. split() orders the pieces by levels(grp), the order of `levs`.
   parts <- Map(
     function(i, d) list(i = i, data = d),
     seq_along(levs), unname(split(data, grp))
   )
   concurrent <- level_plan$concurrent
-  # narrow_environment(), for the reason bnec() gives at its own call: future
-  # exports the applied function with its enclosing environment, and that would
-  # be this frame. Only the seven names below need to reach a worker, and neither
-  # `data` nor `grp` is one of them.
-  #
-  # do.call() rather than forwarding `...`, because `...` cannot be put in the
-  # replacement environment. Two things this changes were checked rather than
-  # assumed. The formula reaches bnec() with its own environment intact, which
-  # #319 needs for crf() to resolve a symbol, measured on R 4.6.1 against an
-  # environment set by hand. And the family arrives as a value rather than as
-  # the symbol it was, which family_link_source() already treats as "symbol" --
-  # R/validate_family.R names do.call() as the case -- so the link is read the
-  # same way on both paths. The family has in any event been validated and
-  # marked above, so validate_family() leaves it alone downstream.
-  #
-  # "bnec" by name rather than the function object: do.call() records the value
-  # it is given as the head of the call, so passing the object left every error
-  # raised inside a level reading `Error in (function (formula, data, ...`.
+  # narrow_environment() keeps only the names listed below, so that a worker
+  # is not sent this frame, which holds `data`. It cannot hold `...`, so the
+  # arguments are forwarded with do.call(). Pass "bnec" by name: given the
+  # function itself, do.call() prints its source in every error from a level.
   fit_level <- narrow_environment(
     function(part) {
       i <- part$i
       set.seed(level_seeds[i])
       if (concurrent) {
-        # Set inside the worker, where it is the worker's own option, and
-        # restored so that a plan evaluating in the parent leaves nothing
-        # behind. See worker_stan_cache_dir().
+        # Restore the option on exit, in case the plan evaluates in this
+        # session. See worker_stan_cache_dir().
         old <- options(
           cmdstanr_write_stan_file_dir = worker_stan_cache_dir(cache_root)
         )
         on.exit(options(old), add = TRUE)
       }
-      # Every random part of one level answers to the same realised level seed.
-      # Passing it to brms fixes model initialisation and sampling when the
-      # model loop changes arrangement. The private companion is removed by
-      # bnec() before brms sees it and fixes expand_manec()'s weighted draw,
-      # which otherwise follows the different streams advanced by sequential
-      # and parallel model loops.
+      # `seed` fixes initialisation and sampling. .bayesnec_group_seed, which
+      # bnec() removes before brms sees it, fixes the model-averaging draw.
       level_dots <- dots
       level_dots[["seed"]] <- level_seeds[i]
       level_dots[[".bayesnec_group_seed"]] <- level_seeds[i]
@@ -450,13 +345,8 @@ bnec_group <- function(formula, data, group_var, family = NULL,
          concurrent = concurrent, cache_root = cache_root,
          level_seeds = level_seeds)
   )
-  # The caller's stream is restored around the whole loop, not only inside
-  # bnec_parallel_lapply()'s parallel path. fit_level() calls set.seed() on
-  # every path, so without this a grouped call fitted with the levels in
-  # sequence left the session at the last level's seed -- and, where `seed` was
-  # supplied, at a constant, so `set.seed(i); bnec_group(..., seed = 1);
-  # rnorm(1)` returned one number for every i. The state after the call would
-  # then depend on the arrangement, which is what level_seeds exists to stop.
+  # Restore the caller's random number stream after the loop. fit_level()
+  # calls set.seed() on every path, the sequential one included.
   rng_kind <- RNGkind()
   has_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
   old_seed <- if (has_seed) {
@@ -475,15 +365,9 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   fits <- if (level_plan$concurrent) {
     bnec_parallel_lapply(parts, fit_level, parallel = TRUE)
   } else {
-    # One level per dispatch, announced before it starts. future_lapply()
-    # creates every future and then collects, and a sequential future relays
-    # its conditions at collection, so dispatching all the levels at once put
-    # every per-level message at the end of the run -- measured at 1.5 s a
-    # level, all three messages arrived at 3.0 s. On a seven-level call at
-    # eighteen minutes a fit that is the only progress signal there is.
-    # Dispatching one at a time still enters a future, which is what moves the
-    # plan on to the inner strategy, so the model loop inside each level still
-    # gets the whole of it.
+    # Dispatch one level at a time, so that each level's message prints as it
+    # starts: future_lapply() relays messages only when it collects. Entering
+    # a future still hands the inner strategy of a nested plan to the models.
     lapply(parts, function(part) {
       message("Fitting level \"", levs[part$i], "\" (",
               counts[[levs[part$i]]], " observations).")
@@ -498,25 +382,17 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   out <- list(fits = fits, group_var = group_var, levels = levs,
               formula = formula, data = data, family = unmark_family(family),
               n = as.integer(counts[levs]), weights_method = wt_method,
-              # Recorded rather than regenerated, for the reason
-              # expand_manec() stores w_draw_index beside w_draw_seed: these
-              # objects are archived and reopened years later, and what was
-              # realised cannot drift the way a fresh sample.int() can.
+              # Store the realised seeds: a seed regenerated in a later R
+              # version may differ, as sample.int() has changed before.
               level_seeds = level_seeds)
   allot_class(out, c("bayesnecgroupfit", "bnecfit"))
 }
 
 #' The weighting method a fit was built with
 #'
-#' \code{expand_manec()} stamps it on the weight vector. The attribute does not
-#' survive row-subsetting of \code{mod_stats}, and a single-model fit is a
-#' bayesnecfit with no \code{mod_stats}, so an absent attribute means "unknown"
-#' rather than "pseudo-BMA" and contributes nothing.
-#'
-#' Read per level by \code{crossed_group_weights()}, and on the whole object by
-#' \code{\link{amend}}, \code{\link{pull_out}}, \code{\link[base]{c}} and
-#' \code{update()}, each of which preserves the method of the set it operates
-#' on. See #320.
+#' Reads the method \code{expand_manec()} stores on the weight vector.
+#' Row-subsetting \code{mod_stats} drops it, and a single-model fit has no
+#' \code{mod_stats}, so \code{NULL} means unknown, not pseudo-BMA.
 #'
 #' @param x A fitted object, or one level of a
 #' \code{\link{bayesnecgroupfit}}.
@@ -536,10 +412,7 @@ fit_weights_method <- function(x) {
 #' @param x A fit for one level, of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}}.
 #'
-#' @details A single-model fit is given a weight of one on its own equation,
-#' which is what it is. Read by \code{\link{crossed_group_weights}} for the
-#' crossed table and by \code{\link{bnec_joint}} for the summed weights the
-#' joint refit chooses its equation on.
+#' @details A single-model fit has a weight of one on its own equation.
 #'
 #' @return A named \code{\link[base]{numeric}} vector.
 #'
@@ -643,13 +516,9 @@ crossed_group_weights <- function(object, pooled = NULL) {
     stop("crossed_group_weights requires an object of class",
          " bayesnecgroupfit.", call. = FALSE)
   }
-  # Refused rather than warned: under stacking there is no correct crossed
-  # table to return, so returning one that looks right is worse than returning
-  # nothing. The per-level weights remain valid and the message says so.
-  #
-  # The fits are asked first: attr(wi, "method") is what the fit actually did,
-  # where object$weights_method is only what was requested of bnec_group(), and
-  # the two can part company if a fit was amended afterwards.
+  # Refuse rather than warn: no crossed table is correct under stacking.
+  # Prefer the method the fits hold to object$weights_method, which is what was
+  # requested and can differ once a fit has been amended.
   observed <- unique(unlist(lapply(object$fits, fit_weights_method)))
   method <- if (length(observed) > 0) {
     observed[[1]]
@@ -724,11 +593,9 @@ fit_best_waic <- function(x, model = NULL) {
       waic <- NA_real_
     }
   }
-  # NULL for every component of a bayesmanecfit: expand_manec() takes its
-  # mod_fits snapshot *before* the expand_nec() loop that calls add_criteria(),
-  # so the stored component fits never carry criteria. mod_stats$waic has the
-  # point estimate, which is why the WAIC comparison still works and only the
-  # standard error is lost. See R/expand_classes.R.
+  # NULL for every component of a bayesmanecfit, whose stored fits carry no
+  # criteria. Only the standard error is lost: mod_stats$waic holds the point
+  # estimate.
   pw <- brmfit$criteria$waic$pointwise
   list(model = model,
        waic = as.numeric(waic),
@@ -750,11 +617,8 @@ compare_pooled <- function(object, pooled, best) {
          " bnec() on the whole data set with the factor ignored.",
          call. = FALSE)
   }
-  # The WAIC point estimates are always comparable, because bayesnec stores one
-  # per model on every fit. The *standard error* needs the pointwise values, and
-  # needs them to line up observation for observation -- so the checks below
-  # guard the SE only, and a mismatch leaves it NA rather than blocking the
-  # comparison or, worse, pairing values that do not correspond.
+  # The checks below guard the standard error only. Where the pointwise values
+  # are missing or do not line up by observation, se_diff stays NA.
   per_level <- lapply(seq_along(object$levels), function(i) {
     fit_best_waic(object$fits[[i]], best[[object$levels[i]]])
   })
@@ -771,10 +635,8 @@ compare_pooled <- function(object, pooled, best) {
     if (identical(as.integer(n_level), as.integer(object$n)) &&
           length(pooled_w$pointwise) == sum(n_level) &&
           nrow(object$data) == sum(n_level)) {
-      # Assembled in level order, which is the order the pooled fit's rows are
-      # in only if the data were already sorted by level. The paired difference
-      # below is therefore taken on the level-ordered pooled values, recovered
-      # by the same split as the fits themselves used.
+      # The grouped values are in level order, so put the pooled values in
+      # level order too before pairing them.
       grp <- factor(object$data[[object$group_var]], levels = object$levels)
       pooled_ordered <- pooled_w$pointwise[order(grp)]
       d <- pooled_ordered - unlist(grouped_pw, use.names = FALSE)
@@ -793,19 +655,9 @@ compare_pooled <- function(object, pooled, best) {
 
 #' One argument of \code{bnec()}, read from a \code{bnec_group()} dot list
 #'
-#' @details \code{\link{bnec_group}} inspects several of the arguments it is
-#' about to forward, so that a report or a refusal that is a property of the
-#' whole response is raised once rather than once per level. It forwards them
-#' with \code{do.call()}, where an argument named before \code{...} in
-#' \code{\link{bnec}}'s signature matches an abbreviation, so reading the dot
-#' list by exact name gives an answer the forwarded call can contradict:
-#' \code{model_s = "nec3param"} reaches \code{bnec()} as
-#' \code{model_survival} and reads as absent here.
-#'
-#' \code{pmatch()} resolves it the way the call will. It returns at most one
-#' index for a one-element table, and an exact name wins over an abbreviation,
-#' so two abbreviations of the same formal resolve to one index here and
-#' \code{do.call()} refuses the duplicate before anything is fitted.
+#' @details Matches \code{name} as \code{do.call(bnec, ...)} will, so that an
+#' abbreviation is found: \code{model_s = "nec3param"} reaches \code{bnec()} as
+#' \code{model_survival}, and an exact lookup would read it as absent.
 #'
 #' @param dots The dot list \code{\link{bnec_group}} collected.
 #' @param name The \code{\link{bnec}} formal to read.

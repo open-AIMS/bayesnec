@@ -1,18 +1,9 @@
 #' One level of a joint refit, seen as an ordinary fit
 #'
-#' The estimators are not rewritten for a joint refit. Everything
-#' \code{\link{ecx}}, \code{\link{nsec}} and \code{\link{nec}} read off a
-#' \code{\link{bayesnecfit}} --- the \code{\link[brms]{brmsfit}}, the
-#' \code{\link{bayesnecformula}}, the equation name and the prediction grid ---
-#' is the same for a joint refit once the grid names a level, so a level is
-#' presented to them as a fit in its own right and the existing methods run
-#' unchanged. A second implementation of the crossing search, the control
-#' posterior and the censoring warnings would drift from the first, and a
-#' toxicity estimate that drifts has no symptom at the point of use.
-#'
-#' The class is internal and is never returned to a user. It inherits from
-#' \code{\link{bayesnecfit}} so that the existing methods dispatch, and adds
-#' only what tells the grid and the draws which level is meant.
+#' Presents one level of a joint refit as a \code{\link{bayesnecfit}}, so that
+#' the existing \code{\link{ecx}}, \code{\link{nsec}} and \code{\link{nec}}
+#' methods run on it unchanged rather than being written again. The class is
+#' internal and adds only the fields that name the level.
 #'
 #' @param object An object of class \code{\link{bayesnecjointfit}}.
 #' @param level One level of \code{object$group_var}.
@@ -29,11 +20,8 @@ joint_level_fit <- function(object, level) {
               level_spec = object$level_spec, retained_data = NULL,
               level_x = joint_level_x(object, level))
   out <- allot_class(out, c("bayesnecjointlevel", "bayesnecfit", "bnecfit"))
-  # Only a threshold equation has a nec parameter to read, so ne_posterior
-  # being NULL is the single record that this level has none: nec() reports NA
-  # for it and joint_level_ne() reads the level's NSEC off its own curve
-  # instead. Read off this level's own equation, because a composed refit can
-  # have a threshold equation at one level and a smooth one at the next.
+  # A NULL ne_posterior is the record that this level has no nec parameter.
+  # Decide per level: a composed refit can mix threshold and smooth equations.
   if (joint_level_is_threshold(object, level)) {
     out$ne_posterior <- joint_level_draws(object, "nec", level)
     out$ne_type <- "NEC"
@@ -45,15 +33,9 @@ joint_level_fit <- function(object, level) {
 
 #' The recorded predictor values of one level of a joint refit
 #'
-#' A joint refit holds every level in one \code{\link[brms]{brmsfit}}, so its
-#' data span every level's concentrations together. Read from there, a
-#' level's prediction grid and control value were those of the whole data
-#' (#448): on the herbicide refit of \code{vignette("example8")} the grid ran
-#' from 0.1 to 1000 µg/L in 200 steps of about 5 µg/L for every level, and
-#' irgarol's EC50 of 0.53 µg/L, fitted identically to its per-level fit, was
-#' interpolated between the first two grid points and reported as 2.68. Each
-#' level's estimates are read over that level's own concentrations instead
-#' (D40), which is what \code{\link{bnec_group}} gives each level.
+#' The refit's data span every level's concentrations, so a level's grid and
+#' control are read from its own rows instead, as \code{\link{bnec_group}}
+#' gives each level.
 #'
 #' @param object An object of class \code{\link{bayesnecjointfit}}.
 #' @param level One level of \code{object$group_var}.
@@ -82,12 +64,8 @@ joint_level_x <- function(object, level) {
 
 #' Whether the equation fitted at one level estimates a nec parameter
 #'
-#' The membership test is \code{mod_groups$nec}, the group of equations that
-#' estimate a \code{nec} parameter, and not a match on \code{"ecx"} within the
-#' equation name. The two agree across the 23 equations shipped, but only the
-#' group states which parameters an equation has; the string is a fact about
-#' how the equations were named, and one added outside that convention would be
-#' classified wrongly by it.
+#' Tests membership of \code{mod_groups$nec}, not \code{"ecx"} in the equation
+#' name, which holds only by naming convention.
 #'
 #' @param object An object of class \code{\link{bayesnecjointfit}}, or an
 #' internal \code{bayesnecjointlevel}.
@@ -128,11 +106,8 @@ joint_level_model <- function(object, level = object$level) {
 #' @param x An object of class \code{\link{bayesnecjointfit}}.
 #'
 #' @details Read from the indicator columns where the levels have different
-#' equations, and from the factor column otherwise. The factor is not always
-#' there to read: a composed refit with \code{disp_by_level = FALSE} never
-#' writes the grouping variable into the formula, so \pkg{brms} does not keep
-#' the column in \code{fit$data}, and the indicators are then the only record
-#' of which rows are whose.
+#' equations, and from the factor column otherwise. A composed refit with
+#' \code{disp_by_level = FALSE} has no factor column in \code{fit$data}.
 #'
 #' @return A \code{\link[base]{character}} vector, one level name per row of
 #' \code{x$fit$data}.
@@ -155,11 +130,9 @@ joint_row_levels <- function(x) {
 
 #' Draws of one curve parameter at one level of a joint refit
 #'
-#' A level term names its coefficients \code{b_<parameter>_<group_var><level>}
-#' rather than \code{b_<parameter>_Intercept}, which is why the existing readers
-#' of \code{b_nec_Intercept} and \code{b_bot_Intercept} find nothing on a joint
-#' refit. The level part of the name is the label as \pkg{brms} renames it,
-#' which is not always the label; see \code{joint_level_coef()}.
+#' A level term names its coefficients \code{b_<parameter>_<group_var><level>},
+#' not \code{b_<parameter>_Intercept}, so the usual readers find nothing on a
+#' joint refit. \pkg{brms} can rename the level; see \code{joint_level_coef()}.
 #'
 #' @param object An object of class \code{\link{bayesnecjointfit}}, or an
 #' internal \code{bayesnecjointlevel}.
@@ -173,13 +146,9 @@ joint_row_levels <- function(x) {
 #' @importFrom brms as_draws_df variables
 #' @noRd
 joint_level_draws <- function(object, par, level = object$level) {
-  # Two namings, one per branch. Dummy coded, the level is a coefficient of the
-  # parameter and the name carries the factor and the level. Composed, the
-  # level's parameter is a non-linear parameter in its own right with an
-  # intercept, so the level is in the parameter name and the coefficient is
-  # named Intercept like any other. The composed tag is built by
-  # level_par_tags() and is the name as written; the dummy-coded name is built
-  # by brms from the label and is found by joint_level_coef().
+  # A dummy-coded refit names the coefficient after the factor and level, and
+  # joint_level_coef() finds it. A composed refit gives each level a parameter
+  # of its own, named with the tag from level_par_tags(), with an Intercept.
   tag <- object$level_spec$tags[[level]]
   vars <- variables(object$fit)
   var <- if (is.null(tag)) {
@@ -202,25 +171,13 @@ joint_level_draws <- function(object, par, level = object$level) {
 #' @param levels The levels of the refit, in the order of its factor.
 #' @param level The level wanted.
 #'
-#' @details \pkg{brms} names a coefficient of \code{top ~ 0 + site} after the
-#' design-matrix column, and renames that column from the label: a space is
-#' dropped and some punctuation is spelled out, so under \pkg{brms} 2.23.0 the
-#' level \code{"Site A"} is \code{b_top_siteSiteA} and \code{"site-b"} is
-#' \code{b_top_sitesiteMb}. Pasting the label onto the prefix found nothing for
-#' such a level, and every reader then took the parameter to be absent:
-#' \code{nec()} stopped and \code{ecx(type = "relative")} measured towards 0
-#' instead of towards \code{bot}.
-#'
-#' The level is found by its position instead. The columns follow the order of
-#' the factor's levels, which \code{\link{bnec_joint}} pins to \code{levels}
-#' before fitting, so the coefficient of the \emph{k}th level is the
-#' \emph{k}th variable carrying the prefix. Position does not depend on how
-#' \pkg{brms} renames a label, or on how a later version does, and two labels
-#' that the renaming would make identical are refused by \pkg{brms} before
-#' anything is fitted. The prefix identifies the level coefficients alone
-#' because a \pkg{brms} parameter name cannot contain an underscore, so
-#' \code{b_<par>_} belongs to one parameter, and the level term is the only
-#' population-level term on it.
+#' @details \pkg{brms} names the coefficient after the design-matrix column and
+#' renames the label: \code{"Site A"} becomes \code{b_top_siteSiteA}. The level
+#' is therefore found by position. The columns follow the factor's levels,
+#' which \code{\link{bnec_joint}} pins to \code{levels}, so the coefficient of
+#' the \emph{k}th level is the \emph{k}th variable with the prefix. A
+#' \pkg{brms} parameter name has no underscore, so the prefix matches only this
+#' parameter's level coefficients.
 #'
 #' @return A \code{\link[base]{character}} string, or \code{NULL} where the
 #' parameter has no coefficient, which is where the equation has no such
@@ -233,9 +190,8 @@ joint_level_coef <- function(vars, par, group_var, levels, level) {
   if (length(coefs) == 0) {
     return(NULL)
   }
-  # Refused rather than read by position regardless: with a different number
-  # of coefficients from levels the position no longer identifies a level, and
-  # the draws of one level would be reported for another without a word.
+  # Refuse a count mismatch: position would then attribute one level's draws
+  # to another.
   if (length(coefs) != length(levels) || !level %in% levels) {
     stop("The ", par, " coefficients of the joint refit (",
          paste0(coefs, collapse = ", "), ") cannot be matched to its levels (",
@@ -259,11 +215,9 @@ joint_level_coef <- function(vars, par, group_var, levels, level) {
 joint_level_spec <- function(object, predict_levels = NULL) {
   levels <- object$levels
   if (!is.null(object$level)) {
-    # A bayesnecjointlevel names one level and predicts that one alone. The
-    # factor still has to be built with every level the fit was given, because
-    # brms builds the design matrix against those. Carried on the object rather
-    # than recovered from fit$data: a composed refit with a shared dispersion
-    # never puts the factor in the formula, so brms does not keep the column.
+    # A bayesnecjointlevel predicts its own level, but the factor still needs
+    # every level, against which brms builds the design matrix. The levels come
+    # from the object, because fit$data may not hold the factor column.
     predict_levels <- object$level
   }
   if (is.null(levels)) {
@@ -291,8 +245,7 @@ bnec_newdata.bayesnecjointfit <- function(x, resolution = 100, x_range = NA) {
 bnec_newdata.bayesnecjointlevel <- function(x, resolution = 100,
                                             x_range = NA) {
   check_args_newdata(resolution, x_range)
-  # The level's own range by default, as bnec_group() gives each level (D40,
-  # #448). A caller's x_range is used as given.
+  # Default to the level's own range, as bnec_group() gives each level.
   if (all(is.na(x_range)) && length(x$level_x)) {
     x_range <- range(x$level_x)
   }
@@ -303,16 +256,9 @@ bnec_newdata.bayesnecjointlevel <- function(x, resolution = 100,
 
 #' Per-level toxicity estimates from a bayesnecjointfit
 #'
-#' The \code{\link{bayesnecgroupfit}} analogue, over the levels of one
-#' posterior rather than over separate fits, and sharing
-#' \code{estimate_table()} with it so that the two report the same columns in
-#' the same order.
-#'
-#' \code{posterior = TRUE} returns a named \code{\link[base]{list}} of draws
-#' rather than a table. The grouped method refuses it because a table of one
-#' row per level cannot hold a posterior and the user has the per-level fits to
-#' go to instead; a joint refit has no such fits, so refusing would leave no
-#' route to the per-level draws at all.
+#' The \code{\link{bayesnecgroupfit}} analogue, sharing \code{estimate_table()}
+#' with it. Unlike the grouped method it returns a named list of draws under
+#' \code{posterior = TRUE}, since a joint refit has no per-level fits to go to.
 #'
 #' @param object An object of class \code{\link{bayesnecjointfit}}.
 #' @param what The name of the calling method, for the error message.
@@ -336,28 +282,12 @@ joint_estimate_table <- function(object, what, fun, ...) {
 
 #' The no-effect estimate at every level of a composed joint refit
 #'
-#' A composed joint refit fits exactly one equation at each level, so each
-#' level's no-effect estimate is a NEC or an NSEC and nothing else. The
-#' model-averaged estimate of a \code{\link{bayesmanecfit}} is not: it is a
-#' weighted mixture of \code{nec} draws from the threshold equations of the set
-#' and NSEC draws from the smooth ones, and carries no label saying in what
-#' proportion. One equation per level is what makes the labelled per-level
-#' quantity available here and not there.
-#'
-#' Two forms are reported. Under \code{no_effect = FALSE} the estimate is the
-#' \code{nec} parameter and nothing else, so a level whose equation has none
-#' returns \code{NA}. Under \code{no_effect = TRUE} a smooth level returns the
-#' NSEC of its own curve, which is \code{\link{nsec}} on that level: the same
-#' function, called on the same internal single-level fit, so the two agree
-#' exactly rather than to Monte Carlo error.
-#'
-#' \code{expand_nec}'s \code{nsec_off_curve()} is not what is called for a
-#' smooth level. It is a closure over that function's own prediction grid and
-#' takes its control posterior at the first grid column rather than at the
-#' lowest observed predictor value (D15 ruling 2, see #325), so reusing it
-#' would produce a number that \code{\link{nsec}} on the same level disagrees
-#' with. Both routes share the crossing search itself,
-#' \code{nsec_from_posterior}.
+#' Each level fits one equation, so its estimate is a NEC or an NSEC, never a
+#' mixture. Under \code{no_effect = FALSE} a level without a \code{nec}
+#' parameter returns \code{NA}; under \code{no_effect = TRUE} it returns
+#' \code{\link{nsec}} on that level. Do not use \code{expand_nec()}'s
+#' \code{nsec_off_curve()} here: it reads the control at the first grid column,
+#' so its answer would differ from \code{nsec()}.
 #'
 #' @param object An object of class \code{\link{bayesnecjointfit}}.
 #' @param no_effect A \code{\link[base]{logical}} value, see
@@ -407,17 +337,13 @@ joint_ne_table <- function(object, no_effect, ...) {
     if (no_effect) {
       return(nsec(lvl_fit, ...))
     }
-    # NA per draw rather than NULL, so that the list stays one element per
-    # level of the same length and every summary of it returns NA. A zero-length
-    # element would drop out of a vapply() over the list and a vector of zeros
-    # would read as an estimate at the origin.
+    # NA per draw, not NULL or zeros: a zero-length element drops out of a
+    # vapply(), and zeros would read as an estimate at the origin.
     if (posterior) rep(NA_real_, ndraws(object$fit)) else na_row
   })
   names(est) <- levels
   if (any(!threshold) && !no_effect) {
-    # Worded so that it reads the same for one level and for every level, which
-    # is the ordinary case for a refit of data whose levels all favour a smooth
-    # equation.
+    # Worded to read the same for one level or for every level.
     message("No NEC is defined at ",
             paste0("\"", levels[!threshold], "\" (", models[!threshold], ")",
                    collapse = ", "),
@@ -443,9 +369,8 @@ joint_ne_table <- function(object, no_effect, ...) {
 #' @export
 nec.bayesnecjointfit <- function(object, ..., no_effect = FALSE) {
   chk_lgl(no_effect)
-  # Once for the refit rather than once per level, as for a bayesnecgroupfit:
-  # each level's estimate is a call on a bayesnecfit view, which would
-  # otherwise raise the message itself. See report_fitted_scale().
+  # Report the scale once for the refit, not once per level. See
+  # report_fitted_scale().
   quiet <- report_fitted_scale(object, dots_xform(nec, list(...)), "nec")
   on.exit(options(quiet), add = TRUE)
   joint_ne_table(object, no_effect = no_effect, ...)
@@ -475,20 +400,10 @@ nsec.bayesnecjointfit <- function(object, ...) {
 #' @method ecnsec bayesnecjointfit
 #' @export
 ecnsec.bayesnecjointfit <- function(object, nsec, ...) {
-  # Needed to stop ecnsec.bnecfit() answering. A bayesnecjointfit inherits from
-  # bnecfit, so before this method existed the inherited one ran on the
-  # multi-level grid: its reference was column 2 of a two-point grid, which is
-  # the first level's second point, and its type = "range" floor was the
-  # minimum over every level's curve. Both are numbers, neither is an estimate
-  # of anything, and nothing warned.
-  # ecnsec() is the one estimator that leaves quantile() 's own "50%" names on
-  # its return, and a column called 50% is not a syntactic name, so
-  # as.data.frame() renames it X50. -- which reads as neither a quantile nor a
-  # percentage. Renamed to the Q50 that ecx(), nsec() and nec() already use, so
-  # the four tables have one set of column names between them.
-  # Once for the refit, as in nec.bayesnecjointfit(). `nsec` is put back in
-  # front of the dots so that a positional xform is matched to the formal it
-  # would reach on a single fit, rather than one place earlier.
+  # Without this method, the inherited ecnsec.bnecfit() would run on the grid
+  # of every level together. clean_names() below renames quantile()'s "50%" to
+  # Q50, as the other estimators name it. `nsec` goes back in front of the dots
+  # so that a positional xform is matched as it is on a single fit.
   quiet <- report_fitted_scale(
     object, dots_xform(ecnsec, c(list(nsec = nsec), list(...))), "ecnsec"
   )
@@ -533,11 +448,8 @@ joint_level_curve <- function(object, level, resolution = 1000,
 
 #' The no-effect estimate at one level of a joint refit
 #'
-#' What \code{ggbnec_data()} annotates. A threshold equation has the estimate
-#' as a parameter, so it is summarised from the draws exactly as
-#' \code{expand_nec()} summarises \code{b_nec_Intercept}. A smooth equation has
-#' no such parameter and its no-effect estimate is the NSEC read off the level's
-#' own curve, which is what \code{nsec()} on the level returns.
+#' What \code{ggbnec_data()} annotates: the \code{nec} draws summarised for a
+#' threshold equation, and \code{nsec()} on the level for a smooth one.
 #'
 #' @param object An object of class \code{\link{bayesnecjointfit}}.
 #' @param level One level of \code{object$group_var}.
@@ -553,11 +465,8 @@ joint_level_ne <- function(object, level) {
     return(estimates_summary(lvl_fit$ne_posterior))
   }
   out <- suppressWarnings(suppressMessages(nsec(lvl_fit)))
-  # The numbers and the censoring record only, named as the threshold branch
-  # names them. as.numeric() alone dropped the record, so to_axis_scale() and
-  # bind_nec() drew a censored NSEC's bound as though it were a quantile and
-  # the annotation lost its ">=" or "<=" (#404). The other attributes nsec()
-  # sets describe the estimator call, and the annotation reads none of them.
+  # Keep the censoring record, which as.numeric() drops; without it a censored
+  # NSEC's bound is drawn as a quantile.
   vals <- as.numeric(out)
   names(vals) <- c("Estimate", "Q2.5", "Q97.5")
   attr(vals, "censored_summary") <- attr(out, "censored_summary")
