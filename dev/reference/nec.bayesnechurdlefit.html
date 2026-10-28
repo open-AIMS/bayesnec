@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
       </span>
     </div>
 
@@ -87,7 +87,7 @@
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Extracts the predicted NEC value from a <code><a href="bayesnechurdlefit.html">bayesnechurdlefit</a></code></h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/bayesnechurdlefit-class.R" class="external-link"><code>R/bayesnechurdlefit-class.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/bayesnechurdlefit-class.R" class="external-link"><code>R/bayesnechurdlefit-class.R</code></a></small>
     <div class="hidden name"><code>nec.bayesnechurdlefit.Rd</code></div>
     </div>
 
@@ -171,6 +171,15 @@ the refusal names which component raised it.</p>
 thresholds the growth curve sits at <code>top</code> and the survival curve at its
 own control value, so their product is flat; it departs that plateau at
 whichever threshold binds first.</p>
+<p>A component draw beyond the top of its prediction range is known only to
+exceed that limit. Both components are predicted over the whole
+concentration series, so they share their limits, unless a fit made before
+that rule stores a growth range ending at the last concentration with
+survivors. Where the limits differ and one component is known only to
+exceed its limit while the other is estimated above that limit, the
+combined draw is not identified. It is reported as beyond the top of the
+range, at the smaller of the two components' upper limits, which is true
+of every such draw.</p>
 <p><b>The combined estimate is therefore the smaller of the two, and reduces
 to the growth estimate whenever growth is the more sensitive endpoint</b> –
 which it usually is, since a contaminant that kills has generally slowed

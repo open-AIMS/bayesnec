@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
       </span>
     </div>
 
@@ -87,7 +87,7 @@
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Extracts the predicted ECx value from a <code><a href="bayesnechurdlefit.html">bayesnechurdlefit</a></code></h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/bayesnechurdlefit-class.R" class="external-link"><code>R/bayesnechurdlefit-class.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/bayesnechurdlefit-class.R" class="external-link"><code>R/bayesnechurdlefit-class.R</code></a></small>
     <div class="hidden name"><code>ecx.bayesnechurdlefit.Rd</code></div>
     </div>
 
@@ -181,6 +181,17 @@ lower credible interval bounds.</p>
     <p>The combined curve is the product of the growth curve and the
 survival curve. Because both decline, the combined ECx is always reached at
 or below either component's own ECx.</p>
+<p>Without <code>x_range</code>, every ECx is read over the whole concentration
+series, the range the survival component is fitted over. The growth
+component is fitted to survivors only, so it has no observations above the
+highest concentration at which anything survived. Those concentrations were
+tested, so a growth ECx that falls there is reported as a value, read off
+the growth curve, and its credible interval reflects that the curve there is
+constrained by the data at lower concentrations. A supplied <code>x_range</code>
+applies to all three curves alike. <code><a href="summary.bayesnechurdlefit.html">summary.bayesnechurdlefit</a></code>,
+<code><a href="nsec.bayesnechurdlefit.html">nsec.bayesnechurdlefit</a></code>,
+<code><a href="ecnsec.bayesnechurdlefit.html">ecnsec.bayesnechurdlefit</a></code>, the plots and
+<code><a href="posterior_epred.bayesnechurdlefit.html">posterior_epred.bayesnechurdlefit</a></code> use the same range.</p>
     </div>
 
   </div>

@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
       </span>
     </div>
 
@@ -87,7 +87,7 @@
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Creates the data.frame for plotting a grouped set of fits</h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/autoplot.R" class="external-link"><code>R/autoplot.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/autoplot.R" class="external-link"><code>R/autoplot.R</code></a></small>
     <div class="hidden name"><code>ggbnec_data.bayesnecgroupfit.Rd</code></div>
     </div>
 
@@ -148,9 +148,10 @@ panels use it. A
     <div id="value">
     <h2>Value</h2>
     <p>A <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code>. When <code>group</code> is supplied, or
-<code>x</code> is a <code>bayesnecgroupfit</code>, the frame includes a <code>group</code>
-column and a <code>"group_var"</code> attribute. A <code>bayesnecgroupfit</code> also
-includes a <code>panel</code> column containing the level fitted in each panel.</p>
+<code>x</code> is a <code>bayesnecgroupfit</code> or a <code>bayesnecjointfit</code>, the
+frame includes a <code>group</code> column and a <code>"group_var"</code> attribute.
+Those two classes also include a <code>panel</code> column containing the level
+drawn in each panel.</p>
     </div>
 
     <div id="ref-examples">

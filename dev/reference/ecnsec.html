@@ -18,7 +18,7 @@ object of class bayesnecfit or bayesmanecfit."><meta property="og:image" content
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
       </span>
     </div>
 
@@ -88,7 +88,7 @@ object of class bayesnecfit or bayesmanecfit."><meta property="og:image" content
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Extracts the percent effect associated with a predicted NSEC value from an object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code>.</h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/ecnsec.R" class="external-link"><code>R/ecnsec.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/ecnsec.R" class="external-link"><code>R/ecnsec.R</code></a></small>
     <div class="hidden name"><code>ecnsec.Rd</code></div>
     </div>
 
@@ -132,7 +132,8 @@ matches <code><a href="ecx.html">ecx</a></code> and <code><a href="nsec.html">ns
 
 
 <dt id="arg-x-range">x_range<a class="anchor" aria-label="anchor" href="#arg-x-range"></a></dt>
-<dd><p>A range of x values over which to consider extracting NSEC.</p></dd>
+<dd><p>A range of x values over which to predict the curve. An
+<code>nsec</code> outside it is refused; see Details.</p></dd>
 
 
 <dt id="arg-type">type<a class="anchor" aria-label="anchor" href="#arg-type"></a></dt>
@@ -178,6 +179,18 @@ same question of the same curve. "direct" names a response value rather
 than a percentage and is refused here.</p>
 <p>The <code>hormesis_def</code> argument has been removed; the control is now
 always the reference. See <code><a href="ecx.html">ecx</a></code>.</p>
+<p><code>nsec</code> is read on the recorded predictor scale once <code>xform</code> has
+been applied to it. Where <code>crf()</code> transforms the predictor inline, as
+in <code>crf(log(concentration))</code>, <code><a href="nsec.html">nsec</a></code> returns its estimate
+on the transformed scale unless given an <code>xform</code>, so a message says so
+once per call where <code>xform</code> is left at its default, and names the
+<code>xform</code> that puts such a value on the recorded scale.</p>
+<p>The curve is read at <code>nsec</code> only inside the range it is predicted
+over: the observed range of the predictor, or <code>x_range</code> where one is
+supplied. An <code>nsec</code> outside that range once <code>xform</code> has been
+applied is refused with a message naming the range, rather than read off
+the curve extended past the data without a message. Supply an
+<code>x_range</code> that includes <code>nsec</code> to read the curve there.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>

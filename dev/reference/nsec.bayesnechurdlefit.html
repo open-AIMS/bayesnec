@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
       </span>
     </div>
 
@@ -87,7 +87,7 @@
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Extracts the predicted NSEC value from a <code><a href="bayesnechurdlefit.html">bayesnechurdlefit</a></code></h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/bayesnechurdlefit-methods.R" class="external-link"><code>R/bayesnechurdlefit-methods.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/bayesnechurdlefit-methods.R" class="external-link"><code>R/bayesnechurdlefit-methods.R</code></a></small>
     <div class="hidden name"><code>nsec.bayesnechurdlefit.Rd</code></div>
     </div>
 
@@ -173,6 +173,14 @@ See the <em>Extrapolation</em> section of <code><a href="nsec.html">nsec</a></co
     <div id="value">
     <h2>Value</h2>
     <p>A vector containing the estimated NSEC value and credible bounds.</p>
+    </div>
+    <div id="details">
+    <h2>Details</h2>
+    <p>Without <code>x_range</code>, every NSEC, growth included, is searched
+for over the whole concentration series, the survival component's range, and
+is reported as censored at its top where the curve has not reached the
+reference by the highest concentration tested. <code>extrapolate</code> extends
+that range. See <code><a href="ecx.bayesnechurdlefit.html">ecx.bayesnechurdlefit</a></code> for the reasoning.</p>
     </div>
 
   </div>

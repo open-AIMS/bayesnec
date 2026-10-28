@@ -18,7 +18,7 @@ bayesnecfit or bayesnecfit."><meta property="og:image" content="https://open-aim
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
       </span>
     </div>
 
@@ -88,7 +88,7 @@ bayesnecfit or bayesnecfit."><meta property="og:image" content="https://open-aim
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Extracts the predicted ECx value</h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/ecx.R" class="external-link"><code>R/ecx.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/ecx.R" class="external-link"><code>R/ecx.R</code></a></small>
     <div class="hidden name"><code>ecx.Rd</code></div>
     </div>
 
@@ -199,7 +199,11 @@ per posterior draw. <code>type</code> names what the percentage is measured
 <li><p><code>"relative"</code> — control to the equation's theoretical
 asymptote, the <code>bot</code> parameter where the equation has one and 0
 otherwise. Refused where the equation has no <code>bot</code> and the family
-is unbounded below, because there is then no finite denominator.</p></li>
+is unbounded below, because there is then no finite denominator. On the
+positive counts of a negative binomial count hurdle the asymptote is
+their zero-truncated mean at <code>mu = bot</code>, which needs the shape
+there, and the estimate is refused where the shape is modelled by
+<code>disp(~x)</code>; see <code><a href="bnec.html">bnec</a></code>.</p></li>
 <li><p><code>"range"</code> — control to the lowest response the curve
 predicts over the predictor range.</p></li>
 <li><p><code>"direct"</code> — <code>ecx_val</code> is a response value rather than
@@ -222,6 +226,11 @@ cent rather than truncating it, so <code>ecx_val</code> is not capped at 100.</p
 <p>Where the curve does not reach the target anywhere in the predictor range
 the ECx is not identified and <code>NA</code> is returned, with a warning
 reporting how many draws were affected.</p>
+<p>Where <code>crf()</code> transforms the predictor inline, as in
+<code>crf(log(concentration))</code>, the ECx is on the transformed scale unless
+<code>xform</code> is supplied, and a message says so once per call. It names the
+transformation and the <code>xform</code> that returns the estimate on the
+recorded scale.</p>
 <p>Calls to functions <code>ecx</code> and <code><a href="nsec.html">nsec</a></code> and
 <code><a href="compare_fitted.html">compare_fitted</a></code> do not require the same level of flexibility
 in the context of allowing argument <code>newdata</code>
