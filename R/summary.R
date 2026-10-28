@@ -109,27 +109,21 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
   chk_number(divergence_cutoff)
   x <- object
   check_summary_ecx_posterior(list(...))
-  # Resolved from the dots as ecx() matches them, so that the no-effect row is
-  # given the xform the ECx rows are given (#439, option A). See
-  # summary_ne_vals().
+  # Resolve xform from the dots as ecx() matches them, so that the no-effect
+  # row is on the scale of the ECx rows. See summary_ne_vals().
   ne_xform <- summary_ecx_xform(list(...))
   ecs <- NULL
   if (ecx) {
     message("ECx calculation takes a few seconds per model, calculating...\n")
-    # By default on the grid the fit was built over, not the range of the
-    # data. ecx() rebuilds its own grid from the data when x_range is absent,
-    # so a fit given an x_range reported its ECx over a different range from
-    # the no-effect estimate printed three lines above it. Since #395 marks a
-    # censored no-effect estimate with the bound it is censored at, the two
-    # claims sit on one screen: a note reading "the upper bound of the
-    # prediction range is 0.9" stood directly above an unmarked ECx of 1.67.
-    # A caller's x_range replaces this default (#439); see summary_ecx_rows().
+    # Default to the grid the fit was built over, so that the ECx rows and the
+    # no-effect row describe one range. ecx() given no x_range builds its own
+    # grid from the data. A caller's x_range replaces the default; see
+    # summary_ecx_rows().
     ecs <- summary_ecx_rows(..., .fit = x, .ecx_vals = ecx_vals,
                             .stored_range = range(x$pred_vals$data$x))
   }
-  # Read off the equation's parameters rather than group membership, so that
-  # ecxflat, which belongs to no group, is reported as the NSEC it gives. See
-  # #419 and has_nec_parameter().
+  # Classify by the equation's parameters, not its group, so that ecxflat,
+  # which belongs to no group, is reported as the NSEC it gives.
   is_ecx <- !has_nec_parameter(x$model, x$fit)
   ecx_mod <- NULL
   if (is_ecx) {
@@ -224,22 +218,16 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
     bayesr2 = x$mod_fits |>
       lapply(function(y)bayes_R2(y$fit)) |>
       do.call(what = "rbind.data.frame"),
-    # Computed, not grepped. This used to be has_r_hat_warnings(), which
-    # searched brms's captured warning text for the literal string
-    # "some Rhats are > 1.05". That made the summary's threshold brms's to set
-    # rather than bayesnec's, and it fails silently: brms (>= 2.23.0) is a
-    # floor, not a ceiling, so if that warning is ever reworded every model
-    # reports FALSE and the summary quietly stops warning. Silence reads as a
-    # pass. See #148 Part D.
+    # Compute the Rhat verdict with rhat(), not by searching brms's warning
+    # text, so that bayesnec sets the threshold and a reworded brms warning
+    # cannot silence the summary.
     rhat_issues = lapply(rhat(x, rhat_cutoff = rhat_cutoff), "[[", "failed"),
     rhat_cutoff = rhat_cutoff,
     divergences = summary_divergences(x),
     divergence_cutoff = divergence_cutoff,
-    # The fit axis of the same block. Recomputed rather than cached: #180 (PR
-    # #205) removed the stored prediction matrices deliberately, and stashing
-    # one back on the object here would undo that. Thinned to 200 draws because
-    # this runs on every summary() call across every candidate model, and the
-    # ratio it reports is stable well below the 1000 check_fit() defaults to.
+    # Recompute the control check rather than store a prediction matrix on the
+    # object, which bnec() leaves out to keep fits small. It uses 200 draws,
+    # because it runs on every summary() call for every candidate model.
     fit_issues = if (check_fit) {
       control_fit_issues(x, fit_ratio_cutoff)
     } else {
@@ -255,9 +243,7 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
 #'
 #' Each row is one \code{\link{ecx}} call, given the dots of the summary
 #' method, so that a summary's ECx row equals a bare \code{\link{ecx}} call
-#' given the same arguments (#439). Before, the dots were absorbed by the
-#' summary method, and an \code{x_range} or \code{resolution} named there was
-#' ignored without a message.
+#' given the same arguments.
 #'
 #' @param ... The dots of the summary method, passed to \code{\link{ecx}}.
 #' @param .fit A \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
@@ -272,33 +258,22 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
 #' @noRd
 summary_ecx_rows <- function(..., .fit, .ecx_vals, .stored_range) {
   # The helper's own arguments follow ... and are dotted, because a formal
-  # ahead of ... is matched by partial name. With ecx_vals there, an ecx_val
-  # meant for ecx() was taken as ecx_vals and every positional argument
-  # moved along one place: summary(fit, ecx = TRUE, ecx_val = 50) returned
-  # an EC50 of 10, read over a grid of c(10, 50, 90) at a resolution equal to
-  # the stored range. After ..., a name is matched only in full, so ecx_val
-  # reaches ecx() beside the one ecx_row() names and stops the call with R's
-  # "matched by multiple actual arguments", as on the hurdle summary.
+  # before ... is matched by partial name: an ecx_val meant for ecx() would be
+  # taken as ecx_vals and shift every positional argument. After ..., a
+  # duplicate ecx_val stops with "matched by multiple actual arguments".
   #
-  # Once for the table rather than once per ecx_vals entry, from the dots as
-  # ecx() will match them. See summary_ecx_xform(). This is done here rather
-  # than in the summary methods because there the logical argument ecx masks
-  # the generic: dots_xform() would be handed TRUE in place of ecx(), match
-  # nothing, and report the fitted scale beside rows the caller's xform had
-  # already inverted.
+  # Report the fitted scale once for the table, here rather than in the
+  # summary methods, where the logical argument `ecx` masks the generic and
+  # dots_xform() would be handed TRUE.
   quiet <- report_fitted_scale(.fit, summary_ecx_xform(list(...)), "ecx")
   on.exit(options(quiet), add = TRUE)
-  # A caller's x_range is matched by ecx_row()'s own formal and replaces the
-  # default, so ecx() receives it once. Forwarded in ... beside the default,
-  # it would stop the call with "formal argument "x_range" matched by
-  # multiple actual arguments", which is what #416 found on the hurdle
-  # summary. This is the rule summary.bayesnechurdlefit() applies, so the
-  # three summary methods treat x_range alike. The formal follows ... so that
-  # it cannot take a positional argument meant for ecx(), and it matches only
-  # the full name: an abbreviation such as x_ran reaches ecx() through ...,
-  # where the default has already matched x_range exactly, and is ignored.
-  # ?summary asks for the full name. A NULL leaves ecx() to build its own
-  # grid from the data, as it does on the hurdle summary.
+  # ecx_row()'s own x_range formal takes a caller's x_range in place of the
+  # default, so ecx() receives it once; forwarded in ... beside the default it
+  # would stop with "matched by multiple actual arguments". The hurdle summary
+  # applies the same rule. The formal follows ..., so it takes no positional
+  # argument and matches only the full name: an abbreviation such as x_ran
+  # reaches ecx() through ... and is ignored. NULL leaves ecx() to build its
+  # own grid from the data.
   ecx_row <- function(..., .v, x_range = .stored_range) {
     if (is.null(x_range)) {
       ecx(.fit, ecx_val = .v, ...)
@@ -317,10 +292,7 @@ summary_ecx_rows <- function(..., .fit, .ecx_vals, .stored_range) {
 #' \code{summary_ecx_rows()} will pass them, so that an \code{xform} given by
 #' position is found at the position it takes there. That call names
 #' \code{ecx_val}, and names \code{x_range} unless the caller supplied
-#' \code{x_range = NULL}, so the rebuilt call names them too. Without
-#' \code{x_range} in it, a fourth positional argument was read as
-#' \code{xform} by \code{ecx()} and as \code{x_range} here, and the scale
-#' message was raised beside rows already on the recorded scale.
+#' \code{x_range = NULL}, so the rebuilt call names them too.
 #'
 #' @param dots The dots of a summary method, as a \code{\link[base]{list}},
 #' less \code{ecx} and \code{ecx_vals}.
@@ -361,8 +333,8 @@ summary_ecx_dots <- function(dots) {
 #'
 #' A summary prints each estimate as a row of quantiles. With
 #' \code{posterior = TRUE} the estimators return the draws instead, and the
-#' printed table showed columns of \code{NA} with no censoring note. The group
-#' tables refuse it for the same reason (\code{group_estimate_table()}).
+#' table would print columns of \code{NA}. The group tables refuse it for the
+#' same reason (\code{group_estimate_table()}).
 #'
 #' @param generic The estimator the dots are passed to, \code{\link{ecx}} or
 #' \code{\link{nec}}, against whose formals they are matched, so that a
@@ -402,13 +374,13 @@ check_summary_ecx_posterior <- function(dots) {
 
 #' The no-effect row of a summary of a single fit or a model set
 #'
-#' The row summary() has always printed is the one stored when the model was
-#' fitted, \code{object$ne} or \code{object$w_ne}. Given an \code{xform}, the
-#' stored posterior is transformed, with its censoring record, and summarised
-#' by the function that built the stored row, so that the row is on the scale
-#' of the ECx rows (#439, option A). The steps are those of
-#' \code{nec.bayesnecfit()}; nec() itself is not called, because it refuses a
-#' single fit of an ECx equation, whose no-effect row is an NSEC.
+#' Without an \code{xform} the row is the one stored at fit time,
+#' \code{object$ne} or \code{object$w_ne}. With one, the stored posterior and
+#' its censoring record are transformed and summarised by the function that
+#' built the stored row, so that the row is on the scale of the ECx rows. The
+#' steps are those of \code{nec.bayesnecfit()}; \code{nec()} is not called,
+#' because it refuses a single fit of an ECx equation, whose no-effect row is
+#' an NSEC.
 #'
 #' @param x A \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 #' @param xform The \code{xform} resolved from the summary's dots, as
@@ -421,8 +393,8 @@ check_summary_ecx_posterior <- function(dots) {
 #' @noRd
 summary_ne_vals <- function(x, xform) {
   stored <- if (is_bayesnecfit(x)) x$ne else x$w_ne
-  # Returned as stored rather than recomputed, so that a summary called
-  # without an xform prints exactly what it printed before.
+  # Return the stored row itself, not a recomputation, so that a summary
+  # without an xform prints exactly the row stored at fit time.
   if (identical(xform, identity)) {
     return(stored)
   }
@@ -445,18 +417,10 @@ summary_ne_vals <- function(x, xform) {
 #' statistic differs from the simulated one by more than
 #' \code{fit_ratio_cutoff} either way.
 #'
-#' \bold{Thresholded on the ratio, not the posterior predictive p-value.} This
-#' is settled and the evidence is specific: measured twice on independently
-#' fitted parameterisations of the same simulated data, the simulated control
-#' mean came out at 5.5--5.6 against an observed 4.50 and a true 4.77 --- a
-#' ~19\% overshoot that reproduces across fits and is a property of the curve
-#' shape rather than noise. \bold{Both p-values were about 0.82 and neither came
-#' near flagging.} A \code{ppp} threshold would stay silent on exactly the case
-#' this exists to catch, and silence reads as a pass.
-#'
-#' The control matters more than the other groups because \code{\link{nsec}}
-#' reads its reference from the control posterior, so mis-stating control
-#' variability moves a reported no-effect concentration.
+#' It thresholds the ratio, not the posterior predictive p-value: a control
+#' overshoot that reproduces across fits can leave the p-value far from any
+#' threshold. The control matters most because \code{\link{nsec}} reads its
+#' reference from the control posterior.
 #'
 #' @param x A \code{\link{bayesmanecfit}}.
 #' @param cutoff A \code{\link[base]{numeric}} vector of length 1.

@@ -835,11 +835,9 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
                  timeout = Inf, model_survival = NULL,
                  predictor_scale = "auto", ...) {
   chk_number(resolution)
-  # Raised here rather than left to arrive from expand_nec(), where the
-  # no-effect estimate of a smooth equation is read off the grid: it is a
-  # property of the call, fixed before any model is fitted, and from there it
-  # arrives after every model in the set has compiled and sampled. The same
-  # placement reasoning as check_complete_cases() below. See #325.
+  # Refuse a bad resolution here. Left to expand_nec(), which reads a smooth
+  # equation's no-effect estimate off the grid, it would arrive only after
+  # every model had compiled and sampled.
   check_resolution(resolution)
   chk_number(sig_val)
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
@@ -858,183 +856,115 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
             " are deprecated. Extracting relevant data and model information",
             " from argument formula. See ?bnec")
   }
-  # parent.frame() so that a character formula resolves symbols where the user
-  # called bnec() from. A formula object already carries its own environment
-  # and `env` is ignored for it. See #319.
+  # parent.frame() resolves a character formula's symbols where the user called
+  # bnec(). A formula object keeps its own environment and ignores `env`.
   formula <- bayesnecformula(formula, env = parent.frame())
-  # Before the model frame, so that the frame, the brms formula and the stored
-  # fit all hold the narrowed environment rather than the calling session. A
-  # formula records where it was created, and serialising it writes that
-  # environment out in full: measured at 76 MiB for a formula written beside a
-  # 76 MiB vector, which is what a parallel plan then sends to every worker and
-  # what every saved fit keeps. The environment #319 attaches above is kept,
-  # narrowed to the names the formula resolves there. See
-  # narrow_formula_environment() and #329.
+  # Narrow the formula's environment before the model frame is built, so that
+  # the frame, the brms formula and the stored fit all hold the narrowed one. A
+  # formula serialises its whole environment, which a parallel plan sends to
+  # every worker and every saved fit keeps.
   formula <- narrow_formula_environment(formula, data)
   bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
-  # Raised here rather than left to check_data(), which runs once per model
-  # inside fit_bayesnec(). bnec() wraps that call in try() for a model set, so
-  # from there the refusal was printed once per model and the call then ended
-  # on the generic all-models-failed advice, which names neither the missing
-  # values nor the remedy. The same reasoning as check_normalisation() and
-  # check_inline_boundary() below, and it applies more strongly: the default
-  # model argument is a set. Placed immediately after the model frame is built
-  # so that nothing downstream, the family choice included, is decided from a
-  # smaller sample than was supplied. check_data() keeps the check for the
-  # routes that do not come through here. See #278.
+  # The checks from here to the model loop run once, on the whole call. Left
+  # to check_data() or wrangle_model_formula(), which run once per model inside
+  # try(), a refusal would print once per model and the call would end on
+  # "None of the models fit successfully", which names neither the cause nor
+  # the remedy. Those functions keep each check for routes that bypass bnec().
+  # Check missing values first, so that nothing below, the family choice
+  # included, is decided from fewer rows than were supplied.
   check_complete_cases(bdat)
   validate_predictor_scale(
     predictor_scale, retrieve_var(bdat, "x_var", error = TRUE)
   )
-  # Checked against `data`, not `bdat`: a disp(~...) term's variables are kept
-  # out of the model frame on purpose, because brm() is handed the user's full
-  # data frame and resolves them itself. Raised here for the reason above --
-  # check_data() runs once per model, and the default model argument is a set.
-  # See #271.
+  # Check `data`, not `bdat`: a disp(~...) term's variables are kept out of the
+  # model frame, because brm() reads them from the user's data frame.
   check_disp_finite(formula, data)
   check_reserved_names(data)
   model <- get_model_from_formula(formula)
   brm_args <- list(...)
-  # bnec_group() supplies its realised per-level seed through `...` so the
-  # model-averaging draw can be fixed without adding a user-facing bnec()
-  # argument. Remove it before anything is forwarded to brms. A standalone
-  # bnec() call retains its established ambient-stream behaviour.
+  # bnec_group() passes private .bayesnec_* arguments through `...`. Remove
+  # each one here, before anything reaches brms. The seed fixes a level's
+  # model-averaging draw.
   group_seed <- brm_args[[".bayesnec_group_seed"]]
   brm_args[[".bayesnec_group_seed"]] <- NULL
-  # bnec_group() runs the flatness check over every level before it fits any of
-  # them, and marks each inner call so that the report is not repeated per
-  # level. Private, and removed here before anything reaches brms.
+  # Each flag below says that bnec_group() has already made that check or
+  # report once over every level, so this level's call does not repeat it.
   flatness_checked <- isTRUE(brm_args[[".bayesnec_flatness_checked"]])
   brm_args[[".bayesnec_flatness_checked"]] <- NULL
-  # The same device for the report that a level with no variation is fitted
-  # with ecxflat alone, which bnec_group() makes once, naming every such level,
-  # before any level is fitted. Private, and removed here. See #419.
   bound_reported <- isTRUE(brm_args[[".bayesnec_bound_reported"]])
   brm_args[[".bayesnec_bound_reported"]] <- NULL
-  # The same device for the asymptote declaration, which bnec_group() acts on
-  # once over the whole response rather than once per level. Private, and
-  # removed here before anything reaches brms.
   asymptote_checked <- isTRUE(brm_args[[".bayesnec_asymptote_checked"]])
   brm_args[[".bayesnec_asymptote_checked"]] <- NULL
-  # The same device for the report of equations that keep no group-level term
-  # on a grouping variable, which bnec_group() makes once for every level.
-  # The exclusion itself is still made, and recorded, by each level's call.
-  # Private, and removed here. See #470.
+  # Each level's call still makes and records the exclusion of equations with
+  # no group-level term; this flag silences only its report.
   group_terms_reported <- isTRUE(brm_args[[".bayesnec_group_terms_reported"]])
   brm_args[[".bayesnec_group_terms_reported"]] <- NULL
-  # `prior` is an explicit argument (rather than relying on `...`) so that a
-  # user-supplied `prior =` is matched exactly and cannot be captured by partial
-  # matching against `prior_type`. Only fold it into brm_args when supplied, so
-  # that the default-prior machinery still runs when it is not.
+  # `prior` is a named argument so that `prior =` is matched exactly, not
+  # captured by partial matching against `prior_type`. Add it to brm_args only
+  # when supplied, so the default priors are still built when it is not.
   if (!is.null(prior)) {
     brm_args$prior <- prior
   }
-  # The link is bayesnec's to assign unless the caller chose one, and telling
-  # those apart needs the expression rather than the evaluated family, since
-  # Beta() and Beta(link = "logit") produce identical objects. mf holds the
-  # dots unevaluated. Resolved on its own line rather than inside the argument
-  # list so that parent.frame() is the caller's frame and not whichever frame
-  # happens to force the promise.
-  #
-  # substitute() rather than mf, because match.call() records a `...` forwarded
-  # from a wrapper as the placeholder `..1`, which reads as a symbol and left
-  # `wrapper(family = Beta())` fitting on logit where `bnec(family = Beta())`
-  # fits on identity. substitute() follows the promise to the expression the
-  # caller wrote, through any depth of forwarding. See #256.
+  # Read the family argument unevaluated: Beta() and Beta(link = "logit") give
+  # identical objects, and bayesnec assigns the link unless the caller wrote
+  # one. Use substitute(), not mf, because match.call() records a `...`
+  # forwarded from a wrapper as `..1`. Resolve it on its own line so that
+  # parent.frame() is the caller's frame.
   link_source <- family_link_source(substitute(list(...))[-1]$family,
                                     env = parent.frame())
   brm_args$family <- retrieve_valid_family(brm_args, bdat,
                                            link_source = link_source)
-  # The marker validate_family() uses to stay idempotent is private, and the
-  # family object is stored in the brmsfit, so it is dropped before brms sees
-  # it rather than serialised into every saved fit.
+  # Drop the private marker validate_family() adds, which brms would otherwise
+  # save in the family object of every fit.
   brm_args$family <- unmark_family(brm_args$family)
-  # A binomial or beta_binomial formula with no trials() term is refused here,
-  # once, as soon as the family is known. Left to check_data(), which runs once
-  # per model inside the try() of the model loop, it was printed once per
-  # equation and the call ended on the all-models-failed advice, which names
-  # neither the missing term nor the remedy. It is a property of the formula
-  # and the family, fixed for the whole call. Placed before constant_fallback()
-  # and the flatness report, which both need the trials for these families and
-  # pass over the response without them. check_data() keeps it as the backstop
-  # for the routes that do not come through here. See #442.
+  # Refuse a binomial or beta_binomial formula with no trials() term as soon as
+  # the family is known. constant_fallback() and the flatness report below
+  # cannot read the response without the trials.
   check_trials_term(bdat, brm_args$family)
   # A bounded response with every observation at one bound identifies no curve,
-  # and does identify the constant equation, so ecxflat is fitted alone in place
-  # of the set requested (D31). This replaced the refusal #400 placed here; a
-  # response ecxflat cannot be fitted to either, a beta or zero_inflated_beta
-  # response of 0 throughout, is still refused (D35, #441). Decided here, once,
-  # for the reason check_inline_boundary() gives below: from inside the model
-  # loop a refusal would be printed once per model and the call would end on the
-  # generic all-models-failed advice.
-  # Placed after check_complete_cases(), so that a missing value is reported as
-  # that rather than read off the smaller frame, and before every other check
-  # that reads the response or the model set, so that the flatness report and
-  # the asymptote declaration are made on the set that will be fitted. See #400
-  # and #419.
+  # so ecxflat is fitted alone in place of the requested set.
+  # constant_fallback() refuses a response ecxflat cannot fit either, beta or
+  # zero_inflated_beta at 0 throughout. It must follow check_complete_cases()
+  # and precede every check that reads the response or the model set, so that
+  # the reports below describe the set that will be fitted.
   requested_models <- model
   flat_fallback <- constant_fallback(bdat, brm_args$family, model,
                                      report = !bound_reported)
   if (!is.null(flat_fallback)) {
     model <- flat_fallback$model
   }
-  # Emitted here rather than from check_data() so that it fires once per bnec()
-  # call: check_data() runs once per model, and a model set would otherwise
-  # repeat the message ten or more times.
+  # Report a normalised response here, once per call.
   check_normalisation(bdat)
-  # Raised here for the same reason: check_data() runs once per model, so a
-  # model set would print the conflict for each of its members and then end on
-  # the generic all-models-failed advice, long after the cause. The conflict is
-  # a property of the data and the formula together, fixed for the whole call,
-  # so it needs stating once. check_data() keeps the check as a backstop for
-  # get_priors() and for a direct fit_bayesnec() call.
-  #
-  # One consequence of raising it here: it now precedes check_cens_support(),
-  # which check_data() runs before its own nudges. A response that is both
-  # transformed onto a boundary and censored there therefore reports the
-  # transformation conflict from bnec() and the censoring conflict from
-  # get_priors(). Both are true and both must be resolved, so the order does
-  # not change what the user has to do.
+  # Raise the transformation conflict here, once. This places it before
+  # check_cens_support() in check_data(), so a response both transformed onto a
+  # boundary and censored there reports the second conflict from get_priors().
   check_inline_boundary(bdat, brm_args$family)
   model <- check_models(model, brm_args$family, bdat, record = TRUE)
   # The equations set aside for a response with no variation come first in the
   # record, since that decision was taken first. The family exclusions then
   # apply to ecxflat alone, which none of them drops.
   excluded_models <- rbind(flat_fallback$excluded, attr(model, "excluded"))
-  # Stripped as soon as it has been read. The single-model branch below passes
-  # `model` straight to fit_bayesnec(), which stores it as out$model, and to
-  # expand_nec(), which forwards it to brms as model_name -- so the record rode
-  # along as an attribute on a character(1), printed with every such fit, was
-  # serialised twice, and made identical(fit$model, "nec3param") FALSE. The
-  # multi-model branch escaped it only because `model[m]` drops attributes.
-  # check_models() warns about exactly this at its record block. See #261.
+  # Strip the record attribute as soon as it is read. The single-model branch
+  # stores `model` as out$model and passes it to brms, so the attribute would be
+  # printed with the fit and make identical(fit$model, "nec3param") FALSE.
   model <- as.character(model)
-  # An equation that keeps no group-level term on a grouping variable the
-  # formula names is excluded here, before the model loop, and recorded beside
-  # the family exclusions above, which it follows because it is applied to the
-  # set they leave. The rule is a property of the formula and the set, fixed
-  # for the whole call: left to fit_bayesnec(), inside the try() of the loop,
-  # a set with no equation left would print the refusal once per equation and
-  # end on the advice that none of the models fitted. Placed before the
-  # flatness report and the asymptote declaration, which read the set that
-  # will be fitted. See group_term_exclusions() and #470.
+  # Exclude here an equation that keeps no group-level term on a grouping
+  # variable the formula names. Record it after the family exclusions, since it
+  # applies to the set they leave. This must precede the flatness report and
+  # the asymptote declaration, which read the set that will be fitted.
   group_check <- check_group_terms(model, formula,
                                    report = !group_terms_reported)
   model <- group_check$model
   excluded_models <- rbind(excluded_models, group_check$excluded)
-  # Moved above the flatness report, which needs it: the survival block of a
-  # two-block fit is checked against the equation that block will use.
+  # This must precede the flatness report, which checks the survival block of a
+  # two-block fit against the equation that block will use.
   model_survival <- check_model_survival(model_survival, brm_args$family, bdat)
-  # Whether the response has flattened at the top of the series is a property
-  # of the data and the formula together, fixed for the whole call, so it is
-  # reported once here rather than from check_data(), which runs once per
-  # equation. A partial prior does not silence it: fill_missing_priors() fills
-  # the omitted bot, nec and ec50 rows from the same defaults. See #390.
-  #
-  # pool_dispersion follows the fit: bnec() fits a single sigma for a gaussian
-  # response unless a disp() term is supplied, and for every other family the
-  # variance depends on the mean, so the contrast estimates its dispersion from
-  # the two levels it compares.
+  # Report a response still declining at the top of the series. A partial prior
+  # does not silence the report, because fill_missing_priors() fills the omitted
+  # bot, nec and ec50 rows from the same defaults.
+  # pool_dispersion matches the fit: without a disp() term bnec() fits one sigma
+  # for a gaussian response. Other families' variance depends on the mean, so
+  # the contrast estimates it from the two levels it compares.
   sensitive_blocks <- uses_response_range_defaults(
     brm_args$prior, model, brm_args$family, model_survival
   )
@@ -1046,25 +976,18 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
       asymptote_observed = asymptote_observed
     )
   }
-  # Immediately after the report the declaration answers, and before the model
-  # loop, for the reason recorded at check_asymptote_declaration(). Reached with
-  # the realised model set, so an equation check_models() dropped for this
-  # family is not counted in the mixed-set report. Suppressed where
-  # bnec_group() has already raised it over every level.
+  # Make the asymptote declaration after the report it answers and before the
+  # model loop; check_asymptote_declaration() gives the reason. It reads the
+  # realised set, so an equation check_models() dropped is not counted.
   if (!asymptote_checked) {
     check_asymptote_declaration(bdat, brm_args$family, model,
                                 asymptote_observed = asymptote_observed,
                                 prior = brm_args$prior,
                                 model_survival = model_survival)
   }
-  # Reported once here rather than from check_data(), which runs once per
-  # model. Computed from the same model frame and family the loop will use, so
-  # what is reported is what will be done. See #93 and D16.
-  # retrieve_cens(), not retrieve_var(bdat, "cens_var"): a censoring indicator
-  # is often a character vector ("none", "left", "right"), and retrieve_var()
-  # refuses a non-numeric column. This is how check_data() reads it, and
-  # reading it any other way made a censored hurdle fit error before it
-  # started. See #93.
+  # Report the response substitutions from the model frame and family the loop
+  # will use. Read the censoring column with retrieve_cens(): it is often
+  # character ("none", "left", "right"), which retrieve_var() refuses.
   substitutions <- substitution_record(
     retrieve_var(bdat, "y_var", error = TRUE), retrieve_cens(bdat),
     brm_args$family
@@ -1074,17 +997,10 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   if (length(model) == 0) {
     stop("No valid models have been supplied for this data type.")
   }
-  # Whether the family can take the disp() term is a property of the formula,
-  # the family and the response, fixed for the whole call, so it is checked
-  # once here. Left to wrangle_model_formula(), which runs once per equation
-  # inside the try() of the model loop, a refusal on a model set was printed
-  # once per equation and the call ended on the all-models-failed advice,
-  # which names neither the cause nor the remedy. The response is the one the
-  # loop would pass, from disp_response(), so the refusal raised here is the
-  # one the loop would have raised. Placed after every check and report above
-  # so that the output before the refusal is what it was when the refusal came
-  # from the loop. wrangle_model_formula() keeps the check as the backstop for
-  # make_brmsformula() and the routes that do not come through here. See #410.
+  # Check the disp() term against the response the loop would pass, from
+  # disp_response(), so that this raises the refusal the loop would have
+  # raised. It follows every check and report above, so those still print
+  # before a refusal.
   disp_spec <- parse_disp_term(formula)
   if (!is.null(disp_spec)) {
     check_disp_spec(disp_spec, brm_args$family,
@@ -1101,17 +1017,13 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     failed <- list()
     set_plan <- plan_model_set(brm_args, length(model))
     brm_args <- set_plan$brm_args
-    # try() stays inside the applied function, not around the call to it. The
-    # NA-on-failure contract is what several downstream functions read, and
-    # under a parallel plan an error escaping the worker aborts the whole batch
-    # rather than one model of it. silent = FALSE is kept so the failure is
-    # reported where it happens; from a worker that report reaches the parent
-    # only if the backend relays stderr, which is why the failure is recorded
-    # in the returned object as well.
-    # narrow_environment(), not a plain closure: future exports the applied
-    # function with its enclosing environment, and that would be this frame,
-    # which holds the data, the model frame, the priors and everything else
-    # bnec() has built. Only the eight names below need to reach a worker.
+    # Keep try() inside the applied function, not around the call to it.
+    # Downstream functions read NA for a failed model, and under a parallel
+    # plan an error escaping a worker aborts the whole batch. A worker's
+    # printed failure reaches the parent only if the backend relays stderr, so
+    # the failure is also recorded in the returned object.
+    # Use narrow_environment(), not a plain closure: future exports a closure
+    # with its enclosing environment, which here holds everything bnec() built.
     fit_one <- narrow_environment(
       function(m) {
         try(
@@ -1131,11 +1043,8 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     )
     attempts <- bnec_parallel_lapply(seq_along(model), fit_one,
                                   parallel = set_plan$parallel)
-    # Assembled in the parent rather than in the worker so that what a worker
-    # returns is exactly what the sequential path returns: the fit, or the
-    # try-error whose condition attribute records it. failure_record()
-    # then reads the same
-    # object either way.
+    # Build the records in the parent, so that a worker returns exactly what
+    # the sequential path returns and failure_record() reads the same object.
     for (m in seq_along(model)) {
       fit_m <- attempts[[m]]
       if (!inherits(fit_m, "try-error")) {
@@ -1161,9 +1070,8 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
                              model = names(mod_fits))
       out <- allot_class(mod_fits, c("bayesnecfit", "bnecfit"))
     }
-    # Attached in both branches: where all but one model failed the return is a
-    # bayesnecfit, and that is exactly the case where knowing what happened to
-    # the other twenty-two matters most.
+    # Attach in both branches: where all but one model failed the return is a
+    # bayesnecfit, and the record of the other failures matters most there.
     out <- attach_failed_models(out, failed)
     out <- attach_bnec_record(out, requested_models, model,
                               excluded_models, substitutions)
@@ -1191,19 +1099,12 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
 
 #' Say at the end of a fit if the control is not reproduced
 #'
-#' A control lack-of-fit is not something a user goes looking for, so it is
-#' surfaced once, where the fit happens. \code{\link{check_data}}'s
-#' normalisation messages are the precedent.
-#'
-#' \bold{Thresholded on the ratio, not the posterior predictive p-value},
-#' for the reason given in the summary machinery: a measured ~19% control
-#' overshoot, reproducing across two independently fitted parameterisations,
-#' carried a \code{ppp} of about 0.82 and would never have flagged.
-#'
-#' A message rather than a warning, because a control mis-fit is a modelling
-#' result and not a fault. It is wrapped so that nothing here can fail a fit
-#' that otherwise succeeded --- a diagnostic that breaks the thing it is
-#' diagnosing is worse than no diagnostic.
+#' Prints one message after a fit where a model's observed/simulated control
+#' mean or standard deviation ratio lies outside \code{1/cutoff} to
+#' \code{cutoff}. It thresholds the ratios rather than the posterior predictive
+#' p-values, which can fail to flag a large control overshoot. It is a message,
+#' not a warning, and is wrapped in \code{try()} so that it cannot fail a fit
+#' that succeeded.
 #'
 #' @param x A fitted \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 #' @param cutoff A \code{\link[base]{numeric}} vector of length 1.
