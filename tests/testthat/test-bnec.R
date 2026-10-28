@@ -549,9 +549,11 @@ test_that("a model set states a disp() refusal once, from bnec() (#410)", {
   d <- nec_data[, c("x", "y")]
   d$n <- as.integer(round(d$y * 20))
   d$n[d$x > 1.8] <- 0L
+  d$z <- factor(rep(c("a", "b"), length.out = nrow(d)))
   cases <- list(
-    list(f = n ~ crf(x, c("nec3param", "ecx4param")) + disp("power"),
-         family = "hurdle_negbinomial", msg = "pending a decision"),
+    list(f = n ~ crf(x, c("nec3param", "ecx4param")) + disp(~z),
+         family = "hurdle_negbinomial",
+         msg = "\"z\" cannot be fitted on the two-block family"),
     list(f = n ~ crf(x, c("nec3param", "ecx4param")) + disp("power"),
          family = "hurdle_poisson",
          msg = "hurdle_poisson has no free dispersion parameter"),

@@ -20,8 +20,10 @@
 #' an R2. In the case of a \code{\link{bayesmanecfit}} object, summary
 #' displays the family distribution information, model weights and averaging
 #' method, and Bayesian R2 estimates for each individual model.
+#' Both report the number of divergent transitions after warmup for each model.
 #' Warning messages are also printed to screen in case
-#' model fits are not satisfactory with regards to their Rhats.
+#' model fits are not satisfactory with regards to their Rhats or their
+#' divergent transitions.
 #' 
 #' @details The summary method for both \code{\link{bayesnecfit}} and 
 #' \code{\link{bayesmanecfit}} also returns a no-effect toxicity
@@ -85,19 +87,26 @@ NULL
 #' @param ecx_vals ECx targets (between 1 and 99). Only relevant if ecx = TRUE.
 #' If no value is specified by the user, returns calculations for EC10, EC50,
 #' and EC90.
+#' @param divergence_cutoff A \code{\link[base]{numeric}} vector of length 1.
+#' The summary warns of a model with more divergent transitions after warmup
+#' than this. Defaults to 10, the cutoff \code{\link{check_sampling}} and
+#' \code{\link{screen_models}} use. On a model set the warning gives each
+#' flagged equation's model weight beside its count.
 #'
 #' @method summary bayesnecfit
 #'
 #' @inherit summary description return details examples
 #'
 #' @importFrom brms bayes_R2
-#' @importFrom chk chk_numeric chk_lgl
+#' @importFrom chk chk_numeric chk_lgl chk_number
 #'
 #' @export
 summary.bayesnecfit <- function(object, ..., ecx = FALSE,
-                                ecx_vals = c(10, 50, 90)) {
+                                ecx_vals = c(10, 50, 90),
+                                divergence_cutoff = 10) {
   chk_lgl(ecx)
   chk_numeric(ecx_vals)
+  chk_number(divergence_cutoff)
   x <- object
   check_summary_ecx_posterior(list(...))
   # Resolved from the dots as ecx() matches them, so that the no-effect row is
@@ -135,6 +144,8 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
                               summary_ne_vals(x, ne_xform)),
     ecs = ecs,
     bayesr2 = bayes_R2(x$fit),
+    divergences = summary_divergences(x),
+    divergence_cutoff = divergence_cutoff,
     failed_models = failed_models(x)
   )
   allot_class(out, "necsummary")
@@ -169,13 +180,15 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
 summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
                                   ecx_vals = c(10, 50, 90),
                                   rhat_cutoff = 1.01,
+                                  divergence_cutoff = 10,
                                   fit_ratio_cutoff = 1.15,
                                   check_fit = TRUE) {
   chk_lgl(ecx)
   chk_numeric(ecx_vals)
-  # chk_number, not chk_numeric: the documented type of both cutoffs is a
+  # chk_number, not chk_numeric: the documented type of each cutoff is a
   # vector of length 1, and chk_numeric admits any length.
   chk_number(rhat_cutoff)
+  chk_number(divergence_cutoff)
   chk_number(fit_ratio_cutoff)
   chk_lgl(check_fit)
   x <- object
@@ -220,6 +233,8 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
     # pass. See #148 Part D.
     rhat_issues = lapply(rhat(x, rhat_cutoff = rhat_cutoff), "[[", "failed"),
     rhat_cutoff = rhat_cutoff,
+    divergences = summary_divergences(x),
+    divergence_cutoff = divergence_cutoff,
     # The fit axis of the same block. Recomputed rather than cached: #180 (PR
     # #205) removed the stored prediction matrices deliberately, and stashing
     # one back on the object here would undo that. Thinned to 200 draws because
@@ -467,4 +482,23 @@ control_fit_issues <- function(x, cutoff) {
   out <- as.list(flagged)
   names(out) <- if (is.null(d$model)) x$success_models[1] else d$model
   out
+}
+
+#' The number of divergent transitions after warmup in each model of a fit
+#'
+#' @param x A \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
+#'
+#' @return A named \code{\link[base]{numeric}} vector, one element per model,
+#' \code{NA} for a model not sampled by NUTS.
+#'
+#' @noRd
+summary_divergences <- function(x) {
+  vapply(sampling_fits(x), function(fit) {
+    # nuts_params() stops on a variational fit, which has no sampler output,
+    # and the summary has to print for it. brms reads a NULL as "sampling".
+    if (!is.null(fit$algorithm) && !identical(fit$algorithm, "sampling")) {
+      return(NA_real_)
+    }
+    count_divergent(fit)
+  }, numeric(1))
 }
