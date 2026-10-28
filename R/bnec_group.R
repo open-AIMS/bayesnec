@@ -190,6 +190,11 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   check_disp_finite(formula, data)
   check_reserved_names(data)
   dots <- list(...)
+  # dots_arg() matches an abbreviation such as `asymptote = FALSE`, as bnec()
+  # does when do.call() passes it these arguments. See #394.
+  declared <- dots_arg(dots, "asymptote_observed", TRUE)
+  # Check the value before printing any message, as bnec() does (#449).
+  chk_flag(declared, x_name = "`asymptote_observed`")
   # The response substitutions are not reported here. bnec_group() fits each
   # level on its own subset, so the values substituted differ between levels
   # and the per-level bnec() call is where the report belongs. See #93.
@@ -212,12 +217,13 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # A level whose every observation is at a bound is fitted with ecxflat alone
   # by its own bnec() call, and every other level with the set requested (D31,
   # which replaced the refusal of the whole call D30 placed here). Found and
-  # reported for every level before any level is fitted, and the one bound
-  # ecxflat cannot be fitted at is still refused for the whole call, because
-  # left to the inner bnec() calls it would be reached only after the levels
-  # before it had compiled and sampled, which is the reason check_disp_finite()
-  # is raised above. Placed before the flatness report, which reads the set
-  # each level will fit. See #400 and #419.
+  # reported for every level before any level is fitted, and a level ecxflat
+  # cannot be fitted to either, a beta or zero_inflated_beta level of 0
+  # throughout, still refuses the whole call, because left to the inner bnec()
+  # calls it would be reached only after the levels before it had compiled and
+  # sampled, which is the reason check_disp_finite() is raised above. Placed
+  # before the flatness report, which reads the set each level will fit. See
+  # #400, #419 and #441.
   #
   # The requested set is read here, before the flatness report reads it below,
   # so that a name that is no equation is refused before any level is fitted
@@ -259,6 +265,30 @@ bnec_group <- function(formula, data, group_var, family = NULL,
                      mod_dat[grp == level, , drop = FALSE])
       )
     }), levs)
+    # An equation that keeps no group-level term on a grouping variable is
+    # excluded for every level here, before any level is fitted, and reported
+    # once. Left to the inner bnec() calls, a level whose whole set is
+    # excluded -- a level at a bound fits ecxflat alone, which has no nec --
+    # would be refused only after the levels before it had compiled and
+    # sampled, and the report would be printed once per level. Each level's
+    # bnec() call still makes the exclusion and records it; the private
+    # marker below silences only its report. Placed before the flatness
+    # report, which reads the set each level will fit. See #470.
+    group_excluded <- NULL
+    for (level in levs) {
+      level_excluded <- group_term_exclusions(formula, level_models[[level]])
+      level_kept <- setdiff(level_models[[level]], level_excluded$model)
+      if (length(level_kept) == 0 && nrow(level_excluded) > 0) {
+        stop("At level \"", level, "\" of \"", group_var, "\": ",
+             group_terms_refusal(level_excluded), call. = FALSE)
+      }
+      level_models[[level]] <- level_kept
+      group_excluded <- rbind(group_excluded, level_excluded)
+    }
+    if (!is.null(group_excluded) && nrow(group_excluded) > 0) {
+      message(group_terms_report(unique(group_excluded)))
+    }
+    dots[[".bayesnec_group_terms_reported"]] <- TRUE
     level_survival <- suppressMessages(
       check_model_survival(dots_arg(dots, "model_survival"), family, mod_dat)
     )
@@ -272,7 +302,8 @@ bnec_group <- function(formula, data, group_var, family = NULL,
         blocks = lapply(sensitive_blocks, function(blocks) {
           names(blocks)[blocks]
         }),
-        pool_dispersion = is.null(parse_disp_term(formula))
+        pool_dispersion = is.null(parse_disp_term(formula)),
+        asymptote_observed = declared
       )
     }
     # The union of the per-level sets, which is what a crossed model average
@@ -289,17 +320,6 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # level. Where the formula's set could not be read, level_sets is empty and
   # only the refusal is reachable, which is the same resolution the flatness
   # report above takes for that case.
-  # dots_arg(), not an exact lookup. `dots` is forwarded to bnec() through
-  # do.call(), where these are formals before `...` and so match an
-  # abbreviation. Reading `asymptote_observed` exactly would leave an
-  # abbreviated argument declared for the fit and undeclared for this check,
-  # which sets .bayesnec_asymptote_checked and drops the refusal back into the
-  # per-level model loop -- the failure the hoist exists to prevent.
-  declared <- dots_arg(dots, "asymptote_observed", TRUE)
-  # Validated here as well as in bnec(), because this check reads it first and
-  # an invalid value would otherwise raise the floor refusal or the mixed-set
-  # report before bnec() reports what is actually wrong.
-  chk_flag(declared, x_name = "`asymptote_observed`")
   check_asymptote_declaration(mod_dat, family, level_sets,
                               asymptote_observed = declared,
                               prior = dots_arg(dots, "prior"),

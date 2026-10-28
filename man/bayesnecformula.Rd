@@ -67,6 +67,13 @@ function call must also be valid Stan syntax, either because Stan provides
 it or because the corresponding Stan function is supplied through
 \code{stanvars}. Otherwise, transform the predictor in the data first.
 
+A predictor written with a leading minus, as in \code{crf(-x)} or
+\code{crf(-log(x))}, is refused. A model formula reads that minus as the
+operator that removes a term, so the model would be fitted on \code{x} or
+\code{log(x)}. This also applies to \code{crf(+(-x))}, where a unary plus
+encloses the negation. Write the negation inside \code{I()}, as in
+\code{crf(I(-x))}, or compute it into a column of the data.
+
 \bold{Group-level terms: \code{glterms}}
 
 The user has three options to define group-level effects in a
@@ -81,12 +88,22 @@ does not need to know the internal syntax and name of each parameter in the
 model. 3) A more classic approach where the user can specify which
 specific parameters --- NB: that requires prior knowledge on the model
 structure and parameter names --- to vary according to a grouping variable
-(as in e.g. \code{(bot | group_variable)}). \code{\link{bayesnecformula}}
-will ignore this term should the parameter not exist in the specified model
-or model suite. For example, the parameter \code{bot} exists in model
-\code{"nec4param"} but not in \code{"nec3param"}, so if the user specifies
-\code{model = "nec"} in \code{crf}, the term \code{(bot | group_variable)}
-will be dropped in models where that parameter does not exist.
+(as in e.g. \code{(bot | group_variable)}). A term naming a parameter an
+equation does not have is left out of that equation, but each equation must
+keep at least one group-level term on every grouping variable such a term
+names; an \code{ogl()} or \code{pgl()} term on the variable counts. An
+equation that keeps none would be fitted as one curve pooled over the levels
+of the variable while the rest of the set fits the curve of a typical level,
+so \code{\link{bnec}} excludes it before fitting, with a message, and records
+the reason (see \code{\link{bnec_record}}). A call from which every equation
+is excluded is refused. For example, the parameter \code{bot} exists in
+model \code{"nec4param"} but not in \code{"nec3param"}, so if the user
+specifies \code{model = "nec"} in \code{crf}, the term
+\code{(bot | group_variable)} excludes \code{"nec3param"}, which would keep
+no term on \code{group_variable}. Under
+\code{(bot | group_variable) + (nec | group_variable)}, \code{"nec3param"}
+is fitted with the term on \code{nec} alone, and \code{"nec4param"} with
+both.
 
 The grouping inside \code{ogl()} and \code{pgl()} uses the formula operators
 accepted on the right of the bar in a \pkg{brms} group-level term. The terms
@@ -140,8 +157,8 @@ parameter vary, and takes one of two forms.
 an ordinary \pkg{brms} distributional formula, so anything \pkg{brms}
 understands is allowed, e.g. \code{disp(~log(x))} or \code{disp(~s(x))}. It
 is descriptive: it says noise is larger at one end of the dose axis.
-\item \code{disp("power")} models dispersion as a function of the \bold{fitted
-mean} — a variance function in the GLM sense, and a statement about the
+\item \code{disp("power")} models dispersion as a function of the \bold{mean
+curve} — a variance function in the GLM sense, and a statement about the
 measurement process rather than about the dose axis. The functions available,
 on the log link every eligible family gives its dispersion parameter, with
 \code{m} a fixed reference value computed from the response before fitting,
@@ -163,6 +180,37 @@ all eligible
 Form 2) requires the mean to be modelled on its natural scale; see the
 identity-link note in \code{\link{bnec}}. Form 1) is an ordinary
 distributional formula and is valid under any link.
+
+Form 1) may name a column other than the predictor, as in \code{disp(~z)},
+which fits a dispersion parameter for each level of a factor \code{z}, or
+one that changes with a numeric \code{z}. \pkg{brms} needs \code{z}
+wherever it predicts, so every prediction grid \pkg{bayesnec} builds holds
+it. The fitted curve stored on a fit, \code{\link{ecx}},
+\code{\link{nec}}, \code{\link{nsec}} and \code{\link{ecnsec}} take
+\code{z} at one fixed value: the first level of a factor, or the median of
+a numeric column. The mean of every family the term can be fitted for does
+not involve the dispersion parameter, so that value does not change them.
+\code{\link{bnec_newdata}} writes the same value and marks the column as a
+placeholder. \code{\link{posterior_predict}} and \code{\link{predict}}
+replace a marked column draw by draw with the value of a row sampled from
+the data the fit was made from, so a predicted reading is one from the
+design's mix of \code{z} rather than from its first level. A
+\code{newdata} without \code{z} is refused with a message naming it. The
+term is refused for a \code{negbinomial} growth component of
+\code{\link{bnec_hurdle}}, whose curve is the mean of the zero-truncated
+counts and depends on the shape parameter.
+
+Where the formula also has an \code{ogl()} term, \code{mu} in form 2) is the
+curve before the group-level deviation is applied, not the fitted mean of
+the group. The deviation therefore changes the mean of each group without
+changing its dispersion parameter. The observation variance can still
+change with the fitted mean; for Gamma it is the squared fitted mean divided
+by the shape. A deviation on a parameter, as in \code{(bot | group)} or
+\code{pgl(group)}, changes the curve itself, and so is included in the
+variance function as well. Reading the fitted mean after an \code{ogl()}
+deviation can produce a second posterior mode at a very low mean when
+\code{"power"} on a \code{Gamma} response has \code{c1 > 1}. This occurred
+in the zinc fit reported in #468.
 
 A dispersion sub-model requires a family with a free dispersion parameter.
 For \code{poisson}, \code{bernoulli} and \code{binomial} the variance is a
@@ -201,7 +249,41 @@ taking \code{"power"} for concreteness:
 }
 
 In every case \code{c1 = 0} returns the constant-dispersion model, which is
-where the prior on \code{c1} is centred.
+where the default prior on \code{c1} is centred.
+
+Under \code{"power"} that prior is \code{normal(0, 2)} restricted to a range
+of \code{c1} that depends on the family. The range is derived from a
+variance proportional to \code{mu^b} with \code{b} between 0 and 2, which
+runs from a constant variance to a constant coefficient of variation:
+
+\tabular{lll}{
+\bold{family} \tab \bold{range of c1} \tab \bold{at the two ends} \cr
+\code{Gamma} \tab 0 to 2 \tab constant CV; constant variance \cr
+\code{gaussian} \tab 0 to 1 \tab constant variance; constant CV \cr
+\code{negbinomial} \tab 0 to 1 \tab
+overdispersion proportional to \code{mu^2}; to \code{mu} \cr
+\code{Beta}, \code{beta_binomial} \tab unbounded \tab \code{--}
+}
+
+Outside the range for a Gamma or gaussian response, the variance function
+describes a variance that rises as the mean falls, or a coefficient of
+variation that falls as the mean falls. For a negative binomial response
+above 1, the overdispersion term would grow more slowly than the Poisson
+part of the variance. The beta families are not bounded, because their
+variance already falls towards both ends of the unit interval through
+\code{mu * (1 - mu)}, and their precision can plausibly rise in either
+direction, which is what \code{"twosided"} models. Neither slope of
+\code{"twosided"} is bounded, nor is the slope of \code{"loglinear"}, which
+is in units of one over the response. A two-block family takes the range of
+its positive block's family.
+
+The range is a hard bound on the parameter, as the support of the response
+is for \code{top} and \code{bot}. A posterior for \code{c1} concentrated
+against one end of it is evidence that the data do not follow the range; a
+prior on \code{c1} supplied through the \code{prior} argument of
+\code{\link{bnec}} replaces the default, bounds included. Under
+\code{prior_type = "regularizing"} the prior is centred on the slope the
+replicates show rather than on zero; see \code{\link{bnec}}.
 
 Both \code{"power"} and \code{"twosided"} take \code{log(mu)}, so a fitted
 mean that reaches zero is undefined. This rules them out for a response on

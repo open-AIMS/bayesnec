@@ -155,7 +155,25 @@ generated
 entries with \code{\link{get_priors}} and pass a scientifically justified
 prior through \code{prior} where information beyond the design is available.
 Neither value of \code{prior_type} corrects a design that stopped before the
-asymptote; \code{asymptote_observed} is the argument for that.}
+asymptote; \code{asymptote_observed} is the argument for that. With a
+\code{disp("power")} term on a \code{Gamma}, \code{gaussian} or
+\code{negbinomial} response, \code{"regularizing"} also centres the prior on
+the exponent \code{c1} on the slope the replicates show. Each predictor value
+with two or more observations gives the family's dispersion parameter from
+their mean and variance: \code{1 / CV^2} for \code{Gamma}, the standard
+deviation for \code{gaussian}, and \code{mean^2 / (variance - mean)} for
+\code{negbinomial}. The centre is the slope of its log on the log of the
+mean, weighted by degrees of freedom and clamped into the range of \code{c1}
+given in \code{?\link{bayesnecformula}}. This data-derived centre makes the
+prior empirical: the same observations also enter the likelihood. Its width
+stays at that of the \code{"uninformative"} entry to limit the influence of
+this noisy centre. The centre is zero,
+as under \code{"uninformative"}, where fewer than three predictor values are
+replicated or the slope cannot be computed, and for a \code{negbinomial}
+response with a \code{rate()} denominator or the zero-truncated growth
+component of \code{bnec_hurdle()}. The replicates are grouped by
+predictor value alone, so under a group-level term their spread includes the
+variation between groups.}
 
 \item{asymptote_observed}{A \code{\link[base]{logical}} declaring whether the
 highest predictor level reached the lower asymptote of the curve. The default
@@ -331,10 +349,10 @@ prefix of its name.
 
 \bold{A response that does not vary}
 
-A bernoulli, binomial, beta_binomial or beta response whose every
-observation is at one bound of its family --- every value 0 or every value
-1, or for a counted response every count 0 or every count equal to its
-trials --- identifies no concentration-response curve. \code{bnec} fits
+A bernoulli, binomial, beta_binomial, beta or zero_inflated_beta response
+whose every observation is at one bound of its family --- every value 0 or
+every value 1, or for a counted response every count 0 or every count equal
+to its trials --- identifies no concentration-response curve. \code{bnec} fits
 "ecxflat" alone to such a response, whatever model set was requested, and a
 message says so. The equations requested and not fitted are recorded, with
 the reason, by \code{\link{bnec_record}}. The fit states that the response
@@ -348,8 +366,11 @@ of the whole, take the control concentration, as they do for every equation.
 A beta response of 0 in every observation is refused instead. A beta
 distribution cannot represent a zero, and \code{bnec} shifts a zero off the
 boundary by a tenth of the smallest positive value, which such a response
-does not have. A beta response of 1 in every observation is fitted, its ones
-shifted to 0.999 as they are for any beta response.
+does not have. A zero_inflated_beta response of 0 in every observation is
+refused as well. Its zeros are fitted by the zero-inflation block and its
+other values by the beta block, which for such a response has no data. A
+beta or zero_inflated_beta response of 1 in every observation is fitted, its
+ones shifted to 0.999 as they are for any response of those families.
 
 \code{\link{bnec_group}} applies the same rule to each level, so that a
 level whose response does not vary is fitted with "ecxflat" alone and the

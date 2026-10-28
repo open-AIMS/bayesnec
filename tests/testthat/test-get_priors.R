@@ -111,6 +111,21 @@ test_that("a disp variance function's priors come back with the curve's", {
   expect_setequal(route_a$nlpar, c("top", "bot", "beta", "nec"))
 })
 
+test_that("get_priors reports the range of the disp() exponent (#472)", {
+  # The bounds are part of the prior a fit uses, so a user reading the defaults
+  # has to see them, and a set passed back through `prior` has to keep them.
+  ranges <- list(gaussian = c(0, 1), Gamma = c(0, 2))
+  for (fam in names(ranges)) {
+    out <- suppressMessages(get_priors(
+      y ~ crf(x, "nec4param") + disp("power"), data = nec_data,
+      family = fam
+    ))
+    c1 <- out[out$nlpar == "c1", ]
+    expect_identical(c1$prior, "normal(0, 2)")
+    expect_equal(as.numeric(c(c1$lb, c1$ub)), ranges[[fam]], label = fam)
+  }
+})
+
 test_that("the fit entry point keeps disp parameters and drops brms defaults", {
   # The stored form of a fitted route B model: bayesnec's own rows, the
   # vectorized duplicates brms adds, and a default brms would have chosen.
@@ -441,15 +456,18 @@ test_that("ecxflat named alone gets its prior at a bound (#419)", {
   # the response, and its prior is built without reaching the NaN of #400:
   # response_link_scale() shifts the response inside the support first.
   cases <- at_bound_cases()
-  for (nm in setdiff(names(cases), "beta_zero")) {
+  for (nm in setdiff(names(cases), at_bound_refused)) {
     cs <- cases[[nm]]
     f <- stats::update(cs$formula, . ~ crf(x, "ecxflat"))
+    # A zero_inflated_beta fit has a second block, whose ecxflat is the
+    # proportion of observations above zero (#441).
+    pars <- if (cs$family == "zero_inflated_beta") c("top", "zitop") else "top"
     for (type in c("uninformative", "regularizing")) {
       pr <- suppressMessages(
         get_priors(f, data = cs$data, family = cs$family, prior_type = type)
       )
       expect_s3_class(pr, "brmsprior")
-      expect_identical(pr$nlpar, "top", info = paste(nm, type))
+      expect_identical(pr$nlpar, pars, info = paste(nm, type))
       expect_false(anyNA(pr$prior), info = paste(nm, type))
       expect_false(any(grepl("NaN|Inf", pr$prior)), info = paste(nm, type))
     }
@@ -473,12 +491,41 @@ test_that("ecxflat named alone gets its prior at a bound (#419)", {
                                 family = bz$family)),
     "A beta distribution cannot represent a zero", fixed = TRUE
   )
+  # Nor can zero_inflated_beta at 0, whose beta block has no data (#441).
+  zz <- cases$zib_zero
+  expect_error(
+    suppressMessages(get_priors(cover ~ crf(x, "ecxflat"), data = zz$data,
+                                family = zz$family)),
+    "no observation of this response is above zero", fixed = TRUE
+  )
   # ecxflat beside a curve equation is refused, and the message names ecxflat.
   expect_error(
     get_priors(alive ~ crf(x, c("ecxflat", "nec3param")),
                data = cases$bernoulli_one$data, family = "bernoulli"),
     "is the only one that can be fitted to it", fixed = TRUE
   )
+})
+
+test_that("a zero_inflated_beta response of 0 is refused without a warning (#441)", {
+  # It reached prior construction, where min() over the observations above
+  # zero, of which there are none, warned "no non-missing arguments to min;
+  # returning Inf" and the priors were returned. The refusal names the family
+  # and the cause, and is raised before anything reads the response.
+  zz <- at_bound_cases()$zib_zero
+  for (f in list(zz$formula, cover ~ crf(x, "ecxflat"))) {
+    err <- NULL
+    expect_no_warning(
+      err <- tryCatch(
+        get_priors(f, data = zz$data, family = zz$family),
+        error = conditionMessage
+      )
+    )
+    expect_match(err, "lower bound of a zero_inflated_beta response",
+                 fixed = TRUE)
+    expect_match(err, paste("no observation of this response is above zero,",
+                            "so the beta block has no data"), fixed = TRUE)
+    expect_false(grepl("non-missing", err, fixed = TRUE))
+  }
 })
 
 test_that("one observation off the bound still builds priors (#400)", {
@@ -541,4 +588,91 @@ test_that("a binomial formula with a trials() term still returns priors (#442)",
     expect_named(out, c("nec3param", "nec4param"))
     expect_s3_class(out$nec3param, "brmsprior")
   }
+})
+
+# ---- a disp() term checked against the family ------------------------------
+
+# The message bnec() refuses the call with. The fit is mocked, so nothing is
+# fitted if bnec() accepts the call.
+bnec_refusal <- function(formula, data, family) {
+  local_mocked_bindings(
+    fit_bayesnec = function(...) stop("fit reached"),
+    .package = "bayesnec"
+  )
+  tryCatch(suppressWarnings(suppressMessages(
+    bnec(formula, data = data, family = family)
+  )), error = conditionMessage)
+}
+
+test_that("get_priors refuses a disp() term bnec() refuses, before its loop (#445)", {
+  # define_prior() is mocked to record whether any prior is built first.
+  d <- nec_data
+  d$alive <- as.integer(d$y > 0.5)
+  d$pos <- d$y * 10
+  cases <- list(
+    list(lhs = "count", family = "poisson", term = 'disp("power")',
+         msg = "Family poisson has no free dispersion parameter"),
+    list(lhs = "count", family = "poisson", term = "disp(~x)",
+         msg = "Family poisson has no free dispersion parameter"),
+    list(lhs = "alive", family = "bernoulli", term = 'disp("power")',
+         msg = "Family bernoulli has no free dispersion parameter"),
+    list(lhs = "count | trials(trials)", family = "binomial",
+         term = "disp(~x)",
+         msg = "Family binomial has no free dispersion parameter"),
+    list(lhs = "pos", family = "gaussian", term = 'disp("twosided")',
+         msg = "Variance function \"twosided\" is not valid for the gaussian"),
+    list(lhs = "pos", family = "Gamma", term = 'disp("twosided")',
+         msg = "Variance function \"twosided\" is not valid for the Gamma"),
+    list(lhs = "count", family = "negbinomial", term = 'disp("twosided")',
+         msg = "Variance function \"twosided\" is not valid for the negbinomial")
+  )
+  built <- 0L
+  local_mocked_bindings(
+    define_prior = function(...) {
+      built <<- built + 1L
+      stop("prior built")
+    },
+    .package = "bayesnec"
+  )
+  for (cs in cases) {
+    f <- stats::as.formula(paste0(cs$lhs,
+                                  ' ~ crf(x, c("nec3param", "ecx4param")) + ',
+                                  cs$term))
+    built <- 0L
+    err <- tryCatch(suppressMessages(get_priors(f, data = d,
+                                                family = cs$family)),
+                    error = conditionMessage)
+    label <- paste(cs$family, cs$term)
+    expect_match(err, cs$msg, fixed = TRUE, label = label)
+    expect_identical(built, 0L, label = label)
+    expect_identical(err, bnec_refusal(f, d, cs$family), label = label)
+  }
+})
+
+test_that("get_priors still returns priors for a disp() term bnec() takes (#445)", {
+  d <- nec_data
+  d$pos <- d$y * 10
+  for (fam in c("gaussian", "Gamma")) {
+    out <- suppressMessages(get_priors(pos ~ crf(x, "nec4param") +
+                                         disp("power"),
+                                       data = d, family = fam))
+    expect_setequal(out$nlpar, c("top", "bot", "beta", "nec", "c0", "c1"))
+  }
+  out <- suppressMessages(get_priors(y ~ crf(x, "nec4param") +
+                                       disp("twosided"),
+                                     data = d, family = "beta"))
+  expect_setequal(out$nlpar,
+                  c("top", "bot", "beta", "nec", "c0", "c1", "c2"))
+})
+
+test_that("get_priors refuses a non-finite disp(~...) column as bnec() does (#445)", {
+  d <- nec_data
+  d$w <- d$x
+  d$w[3] <- Inf
+  f <- y ~ crf(x, "nec3param") + disp(~w)
+  err <- tryCatch(suppressMessages(get_priors(f, data = d,
+                                              family = "gaussian")),
+                  error = conditionMessage)
+  expect_identical(err, bnec_refusal(f, d, "gaussian"))
+  expect_match(err, '"w"', fixed = TRUE)
 })

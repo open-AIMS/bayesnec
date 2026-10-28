@@ -584,6 +584,9 @@ regularizing_location <- function(predictor, response, side,
 #' \code{NA} reaches \pkg{brms} as "Cannot coerce 'prior' to a single character
 #' value".
 #'
+#' The tag is read through \code{canonical_fam_tag()}, because a family taken
+#' from a fit records Gamma as \code{gamma}.
+#'
 #' @param family A \code{\link[stats]{family}} object.
 #'
 #' @return A \code{\link[base]{character}} string.
@@ -596,7 +599,8 @@ prior_family_tag <- function(family) {
   if (isTRUE(family$link %in% c("logit", "log"))) {
     return("gaussian")
   }
-  sub("^zero_inflated_(poisson|negbinomial)$", "\\1", family$family)
+  sub("^zero_inflated_(poisson|negbinomial)$", "\\1",
+      canonical_fam_tag(family))
 }
 
 #' Whether a family's response-scaled parameters are bounded below at zero
@@ -751,11 +755,10 @@ asymptote_floor_error <- function(reason) {
 #'   \item beta: \code{beta(1, log(0.025) / log(1 - e))}, whose 97.5th
 #'   percentile is exactly \emph{e} and whose 2.5th is 0.0084 to 0.0087 of it,
 #'   median by family over the audit's designs.
-#'   \item gamma: \code{gamma(2, 2/q)} at \code{q = e/2}, which is the idiom the
-#'   \code{"uninformative"} entry already uses. At a fixed shape of 2 the
-#'   central 95\% cannot both start at zero and end at a chosen value, so the
-#'   rule is applied as "mean at half the endpoint mean" and the realised
-#'   interval is \code{[0.0606 e, 1.393 e]}.
+#'   \item gamma: \code{gamma(2, qgamma(0.975, 2) / e)}, whose 97.5th
+#'   percentile is exactly \emph{e}. With the shape fixed at 2, the same shape
+#'   as the \code{"uninformative"} entry, the interval cannot also start at
+#'   zero: its 2.5th percentile is 0.0435\emph{e}. See #449 and #451.
 #' }
 #'
 #' \strong{The beta branch matches quantiles rather than a mode and a spread.}
@@ -792,14 +795,12 @@ asymptote_floor_error <- function(reason) {
 #' gaussian 0.107 against 0.220, \code{beta} 0.160 against 0.253,
 #' \code{bernoulli} 0.160 against 0.297, \code{binomial} and
 #' \code{beta_binomial} 0.160 against 0.256. On the gamma branch the declared
-#' entry is narrower --- \code{Gamma} 0.558 against 0.297, \code{poisson} 23.4
-#' against 13.1, \code{negbinomial} 15.5 against 8.84 --- and narrower by
-#' exactly a half by construction, since a gamma at shape 2 has a standard
-#' deviation of its mean over the square root of two and the rule halves the
-#' mean. Narrower there is not worse: what the entry changes is where the mass
-#' sits, and #386 measured the prior CDF at the true \code{bot} at 6.43e-14
-#' under \code{"uninformative"} and 2.30e-90 under \code{"regularizing"} on
-#' its flattest design.
+#' entry is narrower --- \code{Gamma} 0.558 against 0.213, \code{poisson} 23.3
+#' against 9.39, \code{negbinomial} 15.5 against 6.35. Its standard deviation is
+#' 0.254 times the endpoint mean on any design. Narrower there is not worse:
+#' what the entry changes is where the mass sits, and #386 measured the prior
+#' CDF at the true \code{bot} at 6.43e-14 under \code{"uninformative"} and
+#' 2.30e-90 under \code{"regularizing"} on its flattest design.
 #'
 #' @param branch One of \code{"normal"}, \code{"gamma"} or \code{"beta"}.
 #' @param endpoint The mean response at the highest predictor level, strictly
@@ -808,7 +809,7 @@ asymptote_floor_error <- function(reason) {
 #' @return A \code{\link[base]{character}} string of length 1, a \pkg{brms}
 #' prior string.
 #'
-#' @importFrom stats qnorm
+#' @importFrom stats qgamma qnorm
 #'
 #' @noRd
 unobserved_bot_entry <- function(branch, endpoint) {
@@ -817,7 +818,8 @@ unobserved_bot_entry <- function(branch, endpoint) {
     branch,
     normal = paste0("normal(", signif(half, 6), ", ",
                     signif(endpoint / (2 * qnorm(0.975)), 6), ")"),
-    gamma = paste0("gamma(2, ", signif(1 / (half / 2), 6), ")"),
+    # The rate places the 97.5th percentile at the endpoint mean (#449).
+    gamma = paste0("gamma(2, ", signif(qgamma(0.975, 2) / endpoint, 6), ")"),
     beta = {
       # The endpoint is tested before the logarithm rather than the shape
       # after it, so that an endpoint at or above 1 does not emit a "NaNs
@@ -1369,7 +1371,8 @@ define_prior <- function(model, family, predictor, response,
                          asymptote_observed = TRUE,
                          model_survival = NULL, disp_spec = NULL,
                          group_spec = NULL, prior_predictor = NULL,
-                         predictor_scale = "auto") {
+                         predictor_scale = "auto", rate_response = FALSE,
+                         truncated_response = FALSE) {
   if (is.null(prior_predictor)) {
     prior_predictor <- predictor
   }
@@ -1409,9 +1412,8 @@ define_prior <- function(model, family, predictor, response,
     # is a no-op only for as long as the fit is on the identity link, which is
   # what bnec() assigns unless the caller wrote a link argument (#256).
     mu_family <- hurdle_mu_family(family)
-    mu_response <- response_link_scale(
-      split_hurdle_response(predictor, response)$mu$y, mu_family
-    )
+    mu_split <- split_hurdle_response(predictor, response)$mu
+    mu_response <- response_link_scale(mu_split$y, mu_family)
     group_priors <- define_group_prior(group_spec, predictor, mu_response,
                                        prior_type = prior_type,
                                        ogl_transform = ogl_kind,
@@ -1428,19 +1430,28 @@ define_prior <- function(model, family, predictor, response,
     # disp() priors are added; missed, c0 and the slopes would take the flat
     # brms default. See #410.
     #
-    # The term is checked against the two-block family first. bnec() checks it
-    # in wrangle_model_formula(), but get_priors() reaches this function
-    # without building a formula, and would otherwise return priors for
-    # hurdle_negbinomial, which bnec() refuses, and fail on hurdle_poisson
-    # inside brms with a message naming neither the family nor the term.
+    # Backstop for amend() and direct calls: bnec() and get_priors() check the
+    # term before their model loops.
     if (!is.null(disp_spec)) {
       check_disp_spec(disp_spec, family, response = mu_response)
     }
-    disp_priors <- define_disp_prior(disp_spec, mu_family, mu_response)
+    # The survivors' own predictor values go with them, so that the replicate
+    # centre of the regularizing set groups each positive response by the
+    # concentration it was observed at. See #472.
+    disp_priors <- define_disp_prior(disp_spec, mu_family, mu_response,
+                                     predictor = mu_split$x,
+                                     prior_type = prior_type,
+                                     rate_response = rate_response,
+                                     truncated_response = truncated_response)
     if (!is.null(disp_priors)) {
       hurdle_priors <- hurdle_priors + disp_priors
     }
     return(hurdle_priors)
+  }
+  # Backstop for amend() and direct calls: bnec() and get_priors() check the
+  # term before their model loops.
+  if (!is.null(disp_spec)) {
+    check_disp_spec(disp_spec, family, response = response)
   }
   link_tag <- family$link
   custom_name <- check_custom_name(family)
@@ -1737,7 +1748,11 @@ define_prior <- function(model, family, predictor, response,
   if (model == "ecxhormebc5") {
     priors <- pr_bot + pr_top + pr_beta + pr_ec50 + pr_slope
   }
-  disp_priors <- define_disp_prior(disp_spec, family, response)
+  disp_priors <- define_disp_prior(disp_spec, family, response,
+                                   predictor = predictor,
+                                   prior_type = prior_type,
+                                   rate_response = rate_response,
+                                   truncated_response = truncated_response)
   if (!is.null(disp_priors)) {
     priors <- priors + disp_priors
   }
@@ -1760,14 +1775,29 @@ define_prior <- function(model, family, predictor, response,
 #' @param disp_spec The output of \code{\link{parse_disp_term}}.
 #' @param family A \code{\link[stats]{family}} function.
 #' @param response The response variable, already on the link scale.
+#' @param predictor The predictor, aligned with \code{response}, or
+#' \code{NULL}. Read only for the replicate centre of the
+#' \code{"regularizing"} set.
+#' @param prior_type One of \code{"uninformative"} or \code{"regularizing"}.
+#' @param rate_response Whether the response was divided by a \code{rate()}
+#' denominator before the prior was built.
+#' @param truncated_response Whether the count likelihood is zero-truncated.
 #'
 #' @details Only route (B) is given priors here. Route (A) is an ordinary
 #' distributional formula and is left to the \pkg{brms} defaults, which already
 #' suit a linear predictor on a log link.
 #'
 #' \code{c1} and \code{c2} are centred on zero, which is the constant-dispersion
-#' case, so the prior asserts no mean-variance relationship and lets the data
-#' supply one. \code{c0} is the dispersion parameter on the log scale at the
+#' case, so the prior asserts no mean-variance relationship beyond the family's
+#' own and lets the data supply one. \code{c1} of \code{"power"} on a Gamma,
+#' gaussian or negative binomial response is bounded to the range
+#' \code{disp_slope_bounds()} records, and under
+#' \code{prior_type = "regularizing"} is centred on the slope the replicates
+#' show. \code{disp_slope_priors()} builds each slope's entry, for this function
+#' and for \code{disp_inits()}, and records why its width is not narrowed. See
+#' #472.
+#'
+#' \code{c0} is the dispersion parameter on the log scale at the
 #' variance function's reference value (see \code{\link{disp_centre}}) -- that
 #' is, at a typical response rather than at \code{mu = 1}. That is what makes
 #' these priors mean anything at all: uncentred, \code{c0} and the slope are
@@ -1779,31 +1809,26 @@ define_prior <- function(model, family, predictor, response,
 #' @return An object of class \code{\link[brms]{brmsprior}}, or \code{NULL}.
 #'
 #' @importFrom brms prior_string
-#' @importFrom stats sd
 #'
 #' @noRd
-define_disp_prior <- function(disp_spec, family, response) {
+define_disp_prior <- function(disp_spec, family, response, predictor = NULL,
+                              prior_type = "uninformative",
+                              rate_response = FALSE,
+                              truncated_response = FALSE) {
   if (is.null(disp_spec) || disp_spec$route != "B") {
     return(NULL)
   }
-  fam_tag <- family$family
+  # A family taken from a fit records Gamma as gamma.
+  fam_tag <- canonical_fam_tag(family)
   c0_prs <- disp_intercept_priors(response)
-  vf <- disp_functions[[disp_spec$value]]
-  # A slope on log(mu) is dimensionless, so a fixed scale means the same thing
-  # whatever the response is measured in. A slope on mu itself is not: it
-  # carries units of 1/response, and normal(0, 2) would be near-flat for a
-  # response spanning thousands and highly informative for one spanning a
-  # fraction. Scaling by the observed spread restores the intended meaning --
-  # that a one-standard-deviation change in the mean moves the dispersion
-  # parameter by about two units on the log scale at the edge of the prior.
-  slope_prior <- if (isTRUE(vf$scale_free)) {
-    "normal(0, 2)"
-  } else {
-    paste0("normal(0, ", signif(2 / sd(response), 4), ")")
-  }
   out <- prior_string(unname(c0_prs[fam_tag]), nlpar = "c0")
-  for (p in setdiff(vf$pars, "c0")) {
-    out <- out + prior_string(slope_prior, nlpar = p)
+  slopes <- disp_slope_priors(disp_spec, family, response, predictor,
+                              prior_type = prior_type,
+                              rate_response = rate_response,
+                              truncated_response = truncated_response)
+  for (p in names(slopes)) {
+    s <- slopes[[p]]
+    out <- out + prior_string(s$prior, nlpar = p, lb = s$lb, ub = s$ub)
   }
   out
 }

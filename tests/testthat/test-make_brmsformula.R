@@ -92,3 +92,25 @@ test_that("a local R transformation that Stan defines reaches valid code", {
   expect_match(code, "square(C_1[n])", fixed = TRUE)
   expect_true(rstan::stanc(model_code = code, allow_undefined = FALSE)$status)
 })
+
+test_that("a missing parameter named in two terms is left out of both (#470)", {
+  # match() found the first of the two terms only, so the second reached the
+  # formula build and failed in rhs() before anything was sampled. ecxll3 has
+  # ec50 and no nec, so it keeps both ec50 terms and drops both nec terms.
+  d <- transform(dat, group8 = "e")
+  f <- y | trials(tr) ~ crf(x, "ecxll3") + (nec | group6) + (nec | group8) +
+    (ec50 | group6) + (ec50 | group8)
+  # The messages are collected rather than asserted with expect_message(),
+  # which returns the condition and not the formula.
+  msgs <- character(0)
+  bf <- withCallingHandlers(make_brmsformula(f, d), message = function(m) {
+    msgs <<- c(msgs, conditionMessage(m))
+    invokeRestart("muffleMessage")
+  })
+  expect_true(any(grepl("\"nec\"; \"nec\" are not valid parameters in ecxll3",
+                        msgs, fixed = TRUE)))
+  pforms <- bf$ecxll3$pforms
+  expect_null(pforms$nec)
+  expect_identical(deparse1(pforms$ec50),
+                   "ec50 ~ 1 + (1 | group6) + (1 | group8)")
+})

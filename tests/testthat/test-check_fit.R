@@ -382,3 +382,53 @@ test_that("check_fit refuses a seed set.seed() would take silently", {
   expect_error(check_fit(nec4param, seed = c(1, 2)), "seed")
   expect_error(suppressMessages(check_fit(manec_example, seed = NULL)), "seed")
 })
+
+test_that("check_fit gives a growth disp(~z) column each row's value (#443)", {
+  # check_fit_combined() simulates the growth component over the survival
+  # component's fitted data. That frame is built here as bnec_hurdle() builds
+  # it, but with brm(empty = TRUE), so nothing is compiled or sampled.
+  set.seed(443)
+  d <- data.frame(x = rep(c(0.1, 1, 3, 10), each = 6),
+                  z = factor(rep(c("a", "b", "c"), 8)))
+  d$y <- stats::rgamma(24, 5, 5 / (2 * exp(-0.2 * d$x)))
+  d$y[d$x == 10][1:3] <- 0
+  f <- bnf(y ~ crf(x, "nec3param") + disp(~z))
+  surv_f <- bayesnec:::swap_response(bayesnec:::drop_disp_term(f), ".alive")
+  surv_d <- d
+  surv_d$.alive <- as.integer(d$y > 0)
+  fam <- brms::bernoulli(link = "identity")
+  bf <- bayesnec:::wrangle_model_formula(
+    "nec3param", surv_f, model.frame(surv_f, data = surv_d), family = fam
+  )
+  sfit <- suppressMessages(brms::brm(
+    bf, data = surv_d, family = fam,
+    prior = get_priors(surv_f, data = surv_d, family = fam), empty = TRUE
+  ))
+  # the frame lacks z, because the survival formula has no disp() term
+  expect_false("z" %in% names(sfit$data))
+  rows <- bayesnec:::hurdle_growth_rows(list(formula = f, data = d),
+                                        sfit$data)
+  expect_identical(rows$z, d$z)
+  expect_identical(rows$x, sfit$data$x)
+  expect_identical(rows$.alive, sfit$data$.alive)
+  # unchanged where the growth formula names no such column
+  for (g in list(bnf(y ~ crf(x, "nec3param")),
+                 bnf(y ~ crf(x, "nec3param") + disp(~x)))) {
+    expect_identical(
+      bayesnec:::hurdle_growth_rows(list(formula = g, data = d), sfit$data),
+      sfit$data
+    )
+  }
+  # rows that cannot be matched are refused rather than misaligned
+  expect_error(
+    bayesnec:::hurdle_growth_rows(list(formula = f, data = d[-1, ]),
+                                  sfit$data),
+    "cannot be matched"
+  )
+  # A level present only among non-survivors has no fitted growth dispersion.
+  expect_error(
+    bayesnec:::hurdle_growth_rows(list(formula = f, data = d), sfit$data,
+                                  growth_data = d[d$z != "c", ]),
+    'column "z" at value "c": no surviving response'
+  )
+})

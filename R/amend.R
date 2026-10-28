@@ -277,6 +277,21 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   # expects makes it compare unequal to the plain character vector.
   amend_excluded <- attr(model_set, "excluded")
   model_set <- as.character(model_set)
+  # An added equation that keeps no group-level term on a grouping variable is
+  # excluded before anything is fitted, as bnec() excludes it, and recorded
+  # with the family exclusions above. Only the additions are tested: an
+  # equation already in the set was fitted, so it kept a term on every
+  # grouping variable, and before #470 one that kept none failed on the
+  # prediction grid and could not be in a set. A call adding only such
+  # equations is refused. See group_term_exclusions().
+  added <- model_set[!vapply(model_set, function(model) {
+    inherits(try(mod_fits[[model]], silent = TRUE), "prebayesnecfit")
+  }, logical(1))]
+  if (length(added) > 0) {
+    group_check <- check_group_terms(added, formula)
+    model_set <- setdiff(model_set, group_check$excluded$model)
+    amend_excluded <- rbind(amend_excluded, group_check$excluded)
+  }
   old_fits <- mod_fits
   mod_fits <- vector(mode = "list", length = length(model_set))
   names(mod_fits) <- model_set
@@ -362,13 +377,19 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
         if (!is.null(denom)) {
           y <- y / denom
         }
-        # Note this path still does not pass disp_spec, which predates #245
-        # and is left alone here rather than changed as a side effect.
+        # Pass define_prior() every argument fit_bayesnec() passes it, except
+        # model_survival, which the fit does not record. Build it here, outside
+        # the try() below, so an error from define_prior() stops amend() once.
+        single_form <- single_model_formula(formula, model)
         brm_args$prior <- define_prior(
           model, family, x, y, prior_type = prior_type,
           asymptote_observed = asymptote_observed,
           predictor_scale = predictor_scale,
-          group_spec = parse_group_terms(formula, model)
+          disp_spec = parse_disp_term(single_form),
+          group_spec = parse_group_terms(single_form, model),
+          rate_response = !is.null(denom),
+          truncated_response = isTRUE(attr(
+            single_form, "bayesnec_internal_truncation"))
         )
       } else {
         brm_args$prior <- model_priors

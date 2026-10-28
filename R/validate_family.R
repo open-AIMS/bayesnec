@@ -180,20 +180,37 @@ supported_links <- function() {
 
 #' The tag bayesnec keys on, for a family brms reports under another
 #'
-#' @param fam A \code{\link[base]{character}} string naming a family.
+#' @param family A \code{\link[stats]{family}} object, or a
+#' \code{\link[base]{character}} string naming a family.
 #'
-#' @details \code{mod_fams}, \code{check_models} and \code{mu_support} key on
-#' the constructor's own tag. \pkg{brms} rebuilds a supplied family and reports
-#' \code{gamma} where \code{stats::Gamma} reports \code{Gamma}, so a family
-#' read back off a fitted object arrives under a tag nothing downstream
-#' recognises: \code{check_models} returned all 23 equations for it rather than
-#' the 19 valid on the identity link, because the linear-decay drop is keyed on
-#' the tag. Every other family reports the same tag either way.
+#' @details \code{mod_fams}, \code{check_models}, \code{check_data} and
+#' \code{mu_support} key on the constructor's own tag. \pkg{brms} rebuilds a
+#' supplied family and reports \code{gamma} where \code{stats::Gamma} reports
+#' \code{Gamma}, so a family read back off a fitted object arrives under a tag
+#' nothing downstream recognises: \code{check_models} returned all 23 equations
+#' for it rather than the 19 valid on the identity link, because the
+#' linear-decay drop is keyed on the tag. Every other family reports the same
+#' tag either way.
 #'
-#' @return A \code{\link[base]{character}} string.
+#' This is the one place that mapping is made. Code that reads the family
+#' stored in a \code{brmsfit} --- to compare it with another, or to key a table
+#' or a check on it --- passes it through here first, so that it names the
+#' family as \code{\link{validate_family}} does. A family object is accepted as
+#' well as a tag because the stored family is an object, and reading
+#' \code{$family} off it at each call site is how the mismatch arose (#435).
+#' A family returned by \code{validate_family()} already has its canonical
+#' tag, so on the \code{\link{bnec}} path, where every family has been
+#' validated, the result is the object's own tag.
+#'
+#' @return A \code{\link[base]{character}} string, or \code{NA_character_}
+#' where \code{family} names none.
 #'
 #' @noRd
-canonical_fam_tag <- function(fam) {
+canonical_fam_tag <- function(family) {
+  fam <- if (inherits(family, "family")) family$family else family
+  if (is.null(fam)) {
+    return(NA_character_)
+  }
   aliases <- c(gamma = "Gamma")
   if (fam %in% names(aliases)) unname(aliases[[fam]]) else fam
 }

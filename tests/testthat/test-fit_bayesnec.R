@@ -324,3 +324,67 @@ test_that("an arithmetic trials term is not written over", {
                    binomial(link = "identity"))
   expect_identical(seen$n, d$n)
 })
+
+
+# ---- #470, the rule on group-level terms -------------------------------------
+
+grouped_data <- function() {
+  set.seed(1)
+  d <- data.frame(x = rep(c(0.1, 1, 3, 10), each = 6),
+                  g = factor(rep(c("a", "b", "c"), 8)))
+  d$y <- 5 * exp(-0.3 * d$x) * stats::rgamma(24, shape = 20, rate = 20)
+  d
+}
+
+test_that("fit_bayesnec() refuses an equation with no grouping term (#470)", {
+  # The backstop for bnec_joint() on a bayesnecgroupfit, which fits through
+  # fit_bayesnec() directly. Refused before brm() is reached.
+  calls <- 0L
+  local_mocked_bindings(
+    brm = function(...) {
+      calls <<- calls + 1L
+      stop("brm reached")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(
+    suppressMessages(bayesnec:::fit_bayesnec(
+      formula = bnf(y ~ crf(x, "ecxexp") + (nec | g) + (ec50 | g)),
+      data = grouped_data(), model = "ecxexp",
+      brm_args = list(family = Gamma(link = "identity"), init = list(list()),
+                      chains = 1, iter = 10)
+    )),
+    "No equation requested can be fitted", fixed = TRUE
+  )
+  expect_identical(calls, 0L)
+})
+
+test_that("an equation the rule admits stores every grouping variable (#470)", {
+  # brm() is run with empty = TRUE, which builds the brmsfit and its stored
+  # data without compiling or sampling. Each equation kept a term on g, so g is
+  # in the stored data and the formula as written builds the prediction grid,
+  # which is where #470 failed.
+  local_mocked_bindings(
+    brm = function(...) {
+      args <- list(...)
+      args$empty <- TRUE
+      do.call(brms::brm, args)
+    },
+    are_chains_correct = function(...) TRUE,
+    .package = "bayesnec"
+  )
+  f <- y ~ crf(x, "all") + (nec | g) + (ec50 | g)
+  for (m in c("nec3param", "ecxll3")) {
+    out <- suppressMessages(suppressWarnings(bayesnec:::fit_bayesnec(
+      formula = bnf(f), data = grouped_data(), model = m,
+      brm_args = list(family = Gamma(link = "identity"), init = list(list()),
+                      chains = 1, iter = 10)
+    )))
+    expect_true("g" %in% names(out$fit$data), info = m)
+    expect_setequal(labels(terms(out$bayesnecformula)),
+                    c("nec | g", "ec50 | g",
+                      paste0("crf(x, model = \"", m, "\")")))
+    grid <- prediction_grid(out$fit, out$bayesnecformula)
+    expect_identical(dim(grid$newdata), c(1000L, 1L), info = m)
+  }
+})

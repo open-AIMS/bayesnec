@@ -57,6 +57,13 @@
 #' it or because the corresponding Stan function is supplied through
 #' \code{stanvars}. Otherwise, transform the predictor in the data first.
 #' 
+#' A predictor written with a leading minus, as in \code{crf(-x)} or
+#' \code{crf(-log(x))}, is refused. A model formula reads that minus as the
+#' operator that removes a term, so the model would be fitted on \code{x} or
+#' \code{log(x)}. This also applies to \code{crf(+(-x))}, where a unary plus
+#' encloses the negation. Write the negation inside \code{I()}, as in
+#' \code{crf(I(-x))}, or compute it into a column of the data.
+#'
 #' \bold{Group-level terms: \code{glterms}}
 #' 
 #' The user has three options to define group-level effects in a
@@ -71,12 +78,22 @@
 #' model. 3) A more classic approach where the user can specify which
 #' specific parameters --- NB: that requires prior knowledge on the model
 #' structure and parameter names --- to vary according to a grouping variable
-#' (as in e.g. \code{(bot | group_variable)}). \code{\link{bayesnecformula}}
-#' will ignore this term should the parameter not exist in the specified model
-#' or model suite. For example, the parameter \code{bot} exists in model
-#' \code{"nec4param"} but not in \code{"nec3param"}, so if the user specifies
-#' \code{model = "nec"} in \code{crf}, the term \code{(bot | group_variable)}
-#' will be dropped in models where that parameter does not exist.
+#' (as in e.g. \code{(bot | group_variable)}). A term naming a parameter an
+#' equation does not have is left out of that equation, but each equation must
+#' keep at least one group-level term on every grouping variable such a term
+#' names; an \code{ogl()} or \code{pgl()} term on the variable counts. An
+#' equation that keeps none would be fitted as one curve pooled over the levels
+#' of the variable while the rest of the set fits the curve of a typical level,
+#' so \code{\link{bnec}} excludes it before fitting, with a message, and records
+#' the reason (see \code{\link{bnec_record}}). A call from which every equation
+#' is excluded is refused. For example, the parameter \code{bot} exists in
+#' model \code{"nec4param"} but not in \code{"nec3param"}, so if the user
+#' specifies \code{model = "nec"} in \code{crf}, the term
+#' \code{(bot | group_variable)} excludes \code{"nec3param"}, which would keep
+#' no term on \code{group_variable}. Under
+#' \code{(bot | group_variable) + (nec | group_variable)}, \code{"nec3param"}
+#' is fitted with the term on \code{nec} alone, and \code{"nec4param"} with
+#' both.
 #'
 #' The grouping inside \code{ogl()} and \code{pgl()} uses the formula operators
 #' accepted on the right of the bar in a \pkg{brms} group-level term. The terms
@@ -131,8 +148,8 @@
 #' understands is allowed, e.g. \code{disp(~log(x))} or \code{disp(~s(x))}. It
 #' is descriptive: it says noise is larger at one end of the dose axis.
 #'
-#' 2) \code{disp("power")} models dispersion as a function of the \bold{fitted
-#' mean} — a variance function in the GLM sense, and a statement about the
+#' 2) \code{disp("power")} models dispersion as a function of the \bold{mean
+#' curve} — a variance function in the GLM sense, and a statement about the
 #' measurement process rather than about the dose axis. The functions available,
 #' on the log link every eligible family gives its dispersion parameter, with
 #' \code{m} a fixed reference value computed from the response before fitting,
@@ -153,6 +170,37 @@
 #' Form 2) requires the mean to be modelled on its natural scale; see the
 #' identity-link note in \code{\link{bnec}}. Form 1) is an ordinary
 #' distributional formula and is valid under any link.
+#'
+#' Form 1) may name a column other than the predictor, as in \code{disp(~z)},
+#' which fits a dispersion parameter for each level of a factor \code{z}, or
+#' one that changes with a numeric \code{z}. \pkg{brms} needs \code{z}
+#' wherever it predicts, so every prediction grid \pkg{bayesnec} builds holds
+#' it. The fitted curve stored on a fit, \code{\link{ecx}},
+#' \code{\link{nec}}, \code{\link{nsec}} and \code{\link{ecnsec}} take
+#' \code{z} at one fixed value: the first level of a factor, or the median of
+#' a numeric column. The mean of every family the term can be fitted for does
+#' not involve the dispersion parameter, so that value does not change them.
+#' \code{\link{bnec_newdata}} writes the same value and marks the column as a
+#' placeholder. \code{\link{posterior_predict}} and \code{\link{predict}}
+#' replace a marked column draw by draw with the value of a row sampled from
+#' the data the fit was made from, so a predicted reading is one from the
+#' design's mix of \code{z} rather than from its first level. A
+#' \code{newdata} without \code{z} is refused with a message naming it. The
+#' term is refused for a \code{negbinomial} growth component of
+#' \code{\link{bnec_hurdle}}, whose curve is the mean of the zero-truncated
+#' counts and depends on the shape parameter.
+#'
+#' Where the formula also has an \code{ogl()} term, \code{mu} in form 2) is the
+#' curve before the group-level deviation is applied, not the fitted mean of
+#' the group. The deviation therefore changes the mean of each group without
+#' changing its dispersion parameter. The observation variance can still
+#' change with the fitted mean; for Gamma it is the squared fitted mean divided
+#' by the shape. A deviation on a parameter, as in \code{(bot | group)} or
+#' \code{pgl(group)}, changes the curve itself, and so is included in the
+#' variance function as well. Reading the fitted mean after an \code{ogl()}
+#' deviation can produce a second posterior mode at a very low mean when
+#' \code{"power"} on a \code{Gamma} response has \code{c1 > 1}. This occurred
+#' in the zinc fit reported in #468.
 #'
 #' A dispersion sub-model requires a family with a free dispersion parameter.
 #' For \code{poisson}, \code{bernoulli} and \code{binomial} the variance is a
@@ -191,7 +239,41 @@
 #' }
 #'
 #' In every case \code{c1 = 0} returns the constant-dispersion model, which is
-#' where the prior on \code{c1} is centred.
+#' where the default prior on \code{c1} is centred.
+#'
+#' Under \code{"power"} that prior is \code{normal(0, 2)} restricted to a range
+#' of \code{c1} that depends on the family. The range is derived from a
+#' variance proportional to \code{mu^b} with \code{b} between 0 and 2, which
+#' runs from a constant variance to a constant coefficient of variation:
+#'
+#' \tabular{lll}{
+#' \bold{family} \tab \bold{range of c1} \tab \bold{at the two ends} \cr
+#' \code{Gamma} \tab 0 to 2 \tab constant CV; constant variance \cr
+#' \code{gaussian} \tab 0 to 1 \tab constant variance; constant CV \cr
+#' \code{negbinomial} \tab 0 to 1 \tab
+#' overdispersion proportional to \code{mu^2}; to \code{mu} \cr
+#' \code{Beta}, \code{beta_binomial} \tab unbounded \tab \code{--}
+#' }
+#'
+#' Outside the range for a Gamma or gaussian response, the variance function
+#' describes a variance that rises as the mean falls, or a coefficient of
+#' variation that falls as the mean falls. For a negative binomial response
+#' above 1, the overdispersion term would grow more slowly than the Poisson
+#' part of the variance. The beta families are not bounded, because their
+#' variance already falls towards both ends of the unit interval through
+#' \code{mu * (1 - mu)}, and their precision can plausibly rise in either
+#' direction, which is what \code{"twosided"} models. Neither slope of
+#' \code{"twosided"} is bounded, nor is the slope of \code{"loglinear"}, which
+#' is in units of one over the response. A two-block family takes the range of
+#' its positive block's family.
+#'
+#' The range is a hard bound on the parameter, as the support of the response
+#' is for \code{top} and \code{bot}. A posterior for \code{c1} concentrated
+#' against one end of it is evidence that the data do not follow the range; a
+#' prior on \code{c1} supplied through the \code{prior} argument of
+#' \code{\link{bnec}} replaces the default, bounds included. Under
+#' \code{prior_type = "regularizing"} the prior is centred on the slope the
+#' replicates show rather than on zero; see \code{\link{bnec}}.
 #'
 #' Both \code{"power"} and \code{"twosided"} take \code{log(mu)}, so a fitted
 #' mean that reaches zero is undefined. This rules them out for a response on
@@ -458,6 +540,10 @@ check_formula.bayesnecformula <- function(formula, data,
   # names back out of deparsed text, where a name needing backticks fails as a
   # parse error naming neither the column nor the term. See #398.
   check_syntactic_names(formula)
+  # Second, because the same text is written into the formula given to
+  # model.frame() below, where a leading minus would be read as the operator
+  # that removes a term. See #438.
+  check_crf_leading_minus(formula)
   rhs_calls <- gsub("\\) \\+ ", ") impossiblestr ", deparse1(rhs(formula)))
   split_rhs_calls <- strsplit(rhs_calls, " impossiblestr ")[[1]]
   x_str <- grep("crf(", split_rhs_calls, fixed = TRUE, value = TRUE)
@@ -720,6 +806,112 @@ check_syntactic_names <- function(formula) {
        call. = FALSE)
 }
 
+#' Refuse a crf() predictor written with a leading minus
+#'
+#' @param formula An object of class \code{\link{bayesnecformula}}.
+#'
+#' @details The text of the predictor is read in two ways. The model frame and
+#' the \pkg{brms} formula are built by writing it into a formula, where a
+#' leading minus is the operator that removes a term, so \code{crf(-x)} was
+#' fitted on \code{x}. \code{sub_x_transformation()} evaluates the same text as
+#' an R expression, a negation, so the estimates read through it were put on
+#' the scale of \code{-x}. \code{pop_var_is_transformed()} reported such a
+#' predictor as untransformed, so no message said so. \code{crf(-log(x))} was
+#' fitted on \code{log(x)} and reported on the scale of \code{-log(x)}. Under
+#' \code{I()} the minus is a negation on every path, so the predictor is
+#' refused with that form as the remedy (D34), rather than wrapped in
+#' \code{I()} wherever the term is rebuilt from its text.
+#'
+#' Only a negation outside \code{I()} is tested, once any enclosing parentheses
+#' or unary pluses are removed: the formula removes them as well, so
+#' \code{crf((-x))} and \code{crf(+(-x))} were both fitted on \code{x}.
+#' \code{sub_x_transformation()} reported \code{crf((-x))} on \code{x}, because
+#' it returns a value unchanged for a parenthesised predictor, but reported
+#' \code{crf(+(-x))} on \code{-x}. A minus inside a call, as in
+#' \code{crf(log(x - 1))}, is an argument of that call and is read the same way
+#' on every path. A binary minus at the top, as in \code{crf(log(x) - 1)}, is
+#' outside D34 and is not refused here.
+#'
+#' Called beside \code{check_syntactic_names()}, wherever that is called, so
+#' that it is raised once per call, before anything is fitted. See #438.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#'
+#' @importFrom formula.tools rhs
+#'
+#' @noRd
+check_crf_leading_minus <- function(formula) {
+  rhs_call <- rhs(formula)
+  # Parentheses around a whole crf() term also disappear when the model frame
+  # reads the formula. Inspect inside them so (crf(-x)) cannot bypass the check.
+  collect_rhs_terms <- function(expr) {
+    if (is.call(expr) && identical(expr[[1]], quote(`(`))) {
+      return(collect_rhs_terms(expr[[2]]))
+    }
+    if (is.call(expr) && length(expr) == 3 &&
+        identical(expr[[1]], quote(`+`))) {
+      return(c(collect_rhs_terms(expr[[2]]), collect_rhs_terms(expr[[3]])))
+    }
+    list(expr)
+  }
+  rhs_terms <- collect_rhs_terms(rhs_call)
+  is_crf <- vapply(rhs_terms, function(term) {
+    is.call(term) && identical(term[[1]], quote(crf))
+  }, logical(1))
+  if (!any(is_crf)) {
+    return(invisible(NULL))
+  }
+  term <- rhs_terms[[which(is_crf)[1]]]
+  # match.call() rather than term[[2]], so that crf(model = m, x = -x) is read
+  # as check_syntactic_names() reads it. A term crf() cannot match is refused
+  # for what it is by check_formula().
+  x_arg <- tryCatch(match.call(crf, term)$x, error = function(e) NULL)
+  unparen <- function(expr) {
+    while (is.call(expr) && identical(expr[[1]], quote(`(`))) {
+      expr <- expr[[2]]
+    }
+    expr
+  }
+  negated <- x_arg
+  plus_wrapped <- FALSE
+  repeat {
+    negated <- unparen(negated)
+    if (!(is.call(negated) && length(negated) == 2 &&
+          identical(negated[[1]], quote(`+`)))) {
+      break
+    }
+    plus_wrapped <- TRUE
+    negated <- negated[[2]]
+  }
+  if (!(is.call(negated) && identical(negated[[1]], quote(`-`)) &&
+          length(negated) == 2)) {
+    return(invisible(NULL))
+  }
+  # The remedy is the user's own term with the predictor wrapped in I(), in the
+  # slot the predictor was written in, so that it can be copied as it stands.
+  args <- as.list(term)[-1]
+  arg_names <- names(args)
+  if (is.null(arg_names)) {
+    arg_names <- rep("", length(args))
+  }
+  slot <- if ("x" %in% arg_names) {
+    match("x", arg_names)
+  } else {
+    match("", arg_names)
+  }
+  remedy <- term
+  remedy[[slot + 1L]] <- call("I", negated)
+  stop("The predictor in ", deparse1(term),
+       if (plus_wrapped) " contains a negation outside I()" else
+         " is written with a leading minus",
+       ", which a model formula reads as the operator that removes a",
+       " term, so the model would be fitted on ",
+       deparse1(unparen(negated[[2]])), ", not on ", deparse1(negated),
+       ". Write the negation inside I(), as in ",
+       deparse1(remedy), ", or compute it into a column of the data and name",
+       " that column in crf().", call. = FALSE)
+}
+
 #' @rdname model.frame
 #' @order 4
 #'
@@ -930,6 +1122,10 @@ wrangle_model_formula <- function(model, formula, data, family = NULL,
     # make_brmsformula() and the other routes that build a formula directly.
     disp_y <- disp_response(data, family, rate_var = rate_var)
     check_disp_spec(disp_spec, family, response = disp_y)
+    if (inherits(family, "family") &&
+          is_factorised_count_formula(formula, family)) {
+      check_disp_count_truncation(formula)
+    }
     brms_bf <- add_disp_block(brms_bf, model, disp_spec, family, new_x, disp_y)
   }
   # Applied last of the blocks, so that the right-hand side a level term
@@ -1177,7 +1373,11 @@ add_formula_glef <- function(model, brmform, bnecform, data,
       to_flag <- pars[!pars %in% model_pars]
       message("The parameter(s) ", paste0("\"", to_flag, "\"", collapse = "; "),
               " are not valid parameters in ", model, ". Ignoring...")
-      split_str_calls <- split_str_calls[-match(to_flag, pars)]
+      # Subset by membership rather than by match(), which returns the first
+      # position only: a parameter the equation lacks, named in two terms as in
+      # (nec | g) + (nec | h), kept its second term, whose sub-formula does not
+      # exist, and the formula build failed in rhs() before sampling. #470.
+      split_str_calls <- split_str_calls[pars %in% model_pars]
       pars <- sapply(split_str_calls, `[[`, 1)
       vars <- sapply(split_str_calls, `[[`, 2)
     }
@@ -1513,6 +1713,182 @@ parse_group_terms <- function(formula, model) {
   list(nlpars = nlpars, ogl = has_ogl)
 }
 
+#' The equations that keep no group-level term on a grouping variable
+#'
+#' @param formula An object of class \code{\link{bayesnecformula}}.
+#' @param models A \code{\link[base]{character}} vector of equation names.
+#'
+#' @details A \code{(par | group)} term naming a parameter an equation does
+#' not have is left out of that equation by \code{add_formula_glef()}. Where
+#' every term on a grouping variable is left out, the equation is fitted as one
+#' curve pooled over the levels of that variable, while the rest of the set
+#' fits the curve of a typical level with a deviation per level. The two are
+#' different quantities for a non-linear curve, the pooled fit treats the
+#' observations of one level as independent and so reports a narrower
+#' interval, and the model weight then compares the group-level structure as
+#' well as the shape of the curve. Such an equation is therefore excluded
+#' before it is fitted, under the rule decided on #471 for #470.
+#'
+#' The rule is applied per grouping variable: an equation must keep at least
+#' one term on each variable a \code{(par | group)} term names. An
+#' \code{ogl()} or \code{pgl()} term on the variable counts, because both
+#' apply to every equation. A term that is only partly left out still counts:
+#' under \code{(nec | batch) + (ec50 | batch)}, \code{nec3param} keeps the term
+#' on \code{nec} and \code{ecxll3} the term on \code{ec50}, and both are
+#' fitted.
+#'
+#' Under the rule the data \pkg{brms} stores on every fitted equation hold
+#' every grouping variable, because each is named by a term the equation's
+#' \pkg{brms} formula includes, so the formula as written builds the model
+#' frame on the prediction grid. Before the rule, \code{ecxexp} under
+#' \code{(nec | g) + (ec50 | g)} sampled and then failed there with
+#' "Group-level variable(s) "g" not found in dataset". See #470.
+#'
+#' The terms are parsed as \code{parse_group_terms()} and
+#' \code{add_formula_glef()} parse them, for the reason recorded at
+#' \code{parse_group_terms()}.
+#'
+#' @return A \code{\link[base]{data.frame}} with columns \code{model} and
+#' \code{reason}, one row per equation excluded, in the form
+#' \code{check_models()} records its exclusions in.
+#'
+#' @importFrom stats terms
+#' @importFrom formula.tools rhs
+#'
+#' @noRd
+group_term_exclusions <- function(formula, models) {
+  out <- data.frame(model = character(), reason = character(),
+                    stringsAsFactors = FALSE)
+  crf_term <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
+  if (length(crf_term) == 0) {
+    return(out)
+  }
+  to_eval <- paste0("update(formula, ~ . - ", crf_term, ")")
+  random_call <- rhs(eval(parse(text = to_eval)))
+  random_call <- gsub("\\) \\+ ", ") impossiblestr ", deparse1(random_call))
+  split_random_call <- strsplit(random_call, " impossiblestr ")[[1]]
+  split_random_call <- split_random_call[!grepl("disp(", split_random_call,
+                                                fixed = TRUE)]
+  is_gl <- grepl("pgl(", split_random_call, fixed = TRUE) |
+    grepl("ogl(", split_random_call, fixed = TRUE)
+  bar_calls <- split_random_call[grepl("|", split_random_call, fixed = TRUE) &
+                                   !is_gl]
+  if (length(bar_calls) == 0) {
+    return(out)
+  }
+  gl_vars <- if (any(is_gl)) {
+    all.vars(str2lang(paste0(split_random_call[is_gl], collapse = " + ")))
+  } else {
+    character(0)
+  }
+  # The variables of a nested or interaction grouping, a/b or a:b, are each
+  # held in the stored data only if a kept term names them, so the rule is
+  # read per variable rather than per grouping expression.
+  bars <- lapply(bar_calls, function(term) {
+    parts <- clean_bar_glef(term)
+    list(term = term, pars = trimws(strsplit(parts[1], " \\+ ")[[1]]),
+         vars = all.vars(str2lang(parts[2])))
+  })
+  bar_vars <- setdiff(unique(unlist(lapply(bars, `[[`, "vars"))), gl_vars)
+  for (m in models) {
+    m_pars <- names(get(paste0("bf_", m))[[2]])
+    lost <- character(0)
+    for (v in bar_vars) {
+      on_v <- Filter(function(b) v %in% b$vars, bars)
+      keeps_one <- any(vapply(on_v, function(b) any(b$pars %in% m_pars),
+                              logical(1)))
+      if (!keeps_one) {
+        terms_v <- vapply(on_v, `[[`, character(1), "term")
+        lost <- c(lost, paste0(
+          "keeps no group-level term on \"", v, "\": ",
+          if (length(terms_v) == 1) {
+            paste0(terms_v, " names no parameter it has")
+          } else {
+            paste0("none of ", paste0(terms_v, collapse = ", "),
+                   " names a parameter it has")
+          }
+        ))
+      }
+    }
+    if (length(lost) > 0) {
+      out <- rbind(out, data.frame(model = m,
+                                   reason = paste0(lost, collapse = "; "),
+                                   stringsAsFactors = FALSE))
+    }
+  }
+  out
+}
+
+#' Exclude the equations that keep no group-level term on a variable
+#'
+#' @param model A \code{\link[base]{character}} vector of equation names.
+#' @param formula An object of class \code{\link{bayesnecformula}}.
+#' @param report Whether to report the exclusions by message.
+#' \code{bnec_group()} reports them once for every level and sets this to
+#' \code{FALSE} for each level's \code{bnec()} call.
+#'
+#' @details Raised where the model set is fixed for the whole call: in
+#' \code{bnec()} before its model loop, in \code{bnec_group()} before its level
+#' loop, and in \code{amend()} for the equations it adds. Left to
+#' \code{fit_bayesnec()}, which runs inside the \code{try()} of the model loop,
+#' a refusal would be printed once per equation and the call would end on the
+#' advice that none of the models fitted. \code{fit_bayesnec()} keeps the test
+#' as the backstop for \code{bnec_joint()} on a \code{bayesnecgroupfit}, which
+#' fits through it directly. See \code{group_term_exclusions()} for the rule.
+#'
+#' @return A \code{\link[base]{list}} with elements \code{model}, the equations
+#' kept, in their order, and \code{excluded}, the rows to add to the exclusion
+#' record. Stops where the rule leaves no equation.
+#'
+#' @noRd
+check_group_terms <- function(model, formula, report = TRUE) {
+  excluded <- group_term_exclusions(formula, model)
+  kept <- setdiff(model, excluded$model)
+  # Refused only where this rule emptied the set. A set that check_models()
+  # has already emptied is passed through, so that the refusal the caller
+  # raises for it, which names the family or the predictor, is the one
+  # reported.
+  if (length(kept) == 0 && nrow(excluded) > 0) {
+    stop(group_terms_refusal(excluded), call. = FALSE)
+  }
+  if (report && nrow(excluded) > 0) {
+    message(group_terms_report(excluded))
+  }
+  list(model = kept, excluded = excluded)
+}
+
+#' The report of the equations excluded for their group-level terms
+#'
+#' @param excluded The rows \code{group_term_exclusions()} returns.
+#'
+#' @return A \code{\link[base]{character}} string.
+#' @noRd
+group_terms_report <- function(excluded) {
+  paste0("Dropping the model(s) ", paste0(excluded$model, collapse = ", "),
+         " as each would be fitted as one curve pooled over the levels of a",
+         " grouping variable the formula gives a group-level term: ",
+         paste0(excluded$model, " ", excluded$reason, collapse = "; "),
+         ". The reasons are recorded; see ?bnec_record.")
+}
+
+#' The refusal for a set from which every equation is excluded
+#'
+#' @param excluded The rows \code{group_term_exclusions()} returns.
+#'
+#' @return A \code{\link[base]{character}} string.
+#' @noRd
+group_terms_refusal <- function(excluded) {
+  paste0("No equation requested can be fitted with the group-level terms in",
+         " the formula: ",
+         paste0(excluded$model, " ", excluded$reason, collapse = "; "),
+         ". An equation is fitted only where it keeps at least one term on",
+         " each grouping variable a (par | group) term names, because without",
+         " one it would be fitted as one curve pooled over the levels of that",
+         " variable. Write a term on a parameter the equations have (see",
+         " ?show_params), or use ogl() or pgl(), which apply to every",
+         " equation. See ?bayesnecformula.")
+}
+
 #' @noRd
 #' @importFrom stats terms
 get_model_from_formula <- function(formula) {
@@ -1771,8 +2147,11 @@ make_brmsformula <- function(formula, data, family = NULL) {
   # only through model.frame() inside the loop. single_model_formula() comes
   # first there and rebuilds the crf() term from deparsed text, so a
   # non-syntactic predictor would otherwise fail as a parse error before the
-  # refusal is reached. See #398.
+  # refusal is reached. See #398. The leading-minus refusal is raised beside it
+  # for the same placement, although single_model_formula() rebuilds such a
+  # term without failing. See #438.
   check_syntactic_names(formula)
+  check_crf_leading_minus(formula)
   all_models <- get_model_from_formula(formula)
   out <- list()
   for (i in seq_along(all_models)) {

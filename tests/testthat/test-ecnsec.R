@@ -111,3 +111,77 @@ test_that("the model-averaged asymptote is one value per averaged draw", {
                                                            resolution = 5),
                                     re_formula = NA)))
 })
+
+
+# ---- an nsec beyond the range (#437, D33) ------------------------------------
+
+test_that("ecnsec refuses an nsec beyond the range on a fit and a model set", {
+  skip_on_cran()
+  # The curve was evaluated at nsec itself, so 1000 on data reaching 3.22 was
+  # read off the curve extended past the data with nothing said. Every class
+  # now refuses it, naming the range.
+  for (obj in list(nec4param, manec_example)) {
+    expect_error(ecnsec(obj, nsec = 1000, resolution = 50),
+                 paste0("nsec = 1000 lies outside the observed range of the ",
+                        "predictor, 0.03235 to 3.221. ecnsec() reads the ",
+                        "curve over that range only. Supply an x_range that ",
+                        "includes nsec to read the curve extended past the ",
+                        "data."),
+                 fixed = TRUE)
+    expect_error(ecnsec(obj, nsec = 0.01, resolution = 50),
+                 "lies outside the observed range of the predictor")
+    expect_error(ecnsec(obj, nsec = 2.5, resolution = 50, x_range = c(0.5, 2)),
+                 "nsec = 2.5 lies outside the x_range supplied, 0.5 to 2.",
+                 fixed = TRUE)
+    # Checked after xform, which takes nsec to the scale the curve is read on.
+    expect_error(ecnsec(obj, nsec = log(1000), resolution = 50, xform = exp),
+                 "nsec = 6.908, which xform takes to 1000, lies outside",
+                 fixed = TRUE)
+    # An x_range that includes nsec reads the curve there, as before.
+    expect_length(
+      suppressWarnings(ecnsec(obj, nsec = 4, resolution = 50,
+                              x_range = c(0.0324, 5))),
+      3
+    )
+  }
+})
+
+test_that("ecnsec inside the range returns what it returned before #437", {
+  skip_on_cran()
+  # Pinned from an installed build of origin/predev at ba30b91e, R 4.6.1. The
+  # refusal is the only change to ecnsec.bnecfit(), so every value inside the
+  # range, the two ends included, is unchanged.
+  x <- nec4param$fit$data$x
+  pinned <- list(
+    list(ecnsec(nec4param, nsec = 1.5, resolution = 50),
+         c(9.6679346982, 4.5264663626, 13.4112060620)),
+    list(ecnsec(nec4param, nsec = 1.5, resolution = 50, type = "range"),
+         c(3.3818138375, 1.4867218674, 5.0045613634)),
+    list(ecnsec(nec4param, nsec = max(x), resolution = 50),
+         c(290.4982012775, 282.6041443962, 301.3408679053)),
+    list(ecnsec(nec4param, nsec = min(x), resolution = 50),
+         c(-0.0000046669, -5.6917471932, 4.1438965336)),
+    list(ecnsec(nec4param, nsec = 1.5, resolution = 50, x_range = c(0.5, 2)),
+         c(9.6679346982, 4.5264663626, 13.4112060620)),
+    list(ecnsec(nec4param, nsec = log(1.5), resolution = 50, xform = exp),
+         c(9.6679346982, 4.5264663626, 13.4112060620)),
+    list(suppressWarnings(ecnsec(manec_example, nsec = 1.5, resolution = 50)),
+         c(12.5097875487, 7.4548986212, 19.7283206278)),
+    list(suppressWarnings(ecnsec(manec_example, nsec = 1.5, resolution = 50,
+                                 type = "relative")),
+         c(2.6660538137, 1.2901198629, 5.7809537326)),
+    list(suppressWarnings(ecnsec(manec_example, nsec = 1.5, resolution = 50,
+                                 type = "range")),
+         c(4.3277366050, 2.4286266731, 6.6623454970)),
+    list(suppressWarnings(ecnsec(manec_example, nsec = max(x),
+                                 resolution = 50)),
+         c(291.2865280396, 275.5040983078, 302.3384174507))
+  )
+  for (p in pinned) {
+    expect_equal(unname(p[[1]]), p[[2]], tolerance = 1e-8)
+  }
+  # An end that has been through a transformation and its inverse is inside.
+  expect_equal(ecnsec(nec4param, nsec = exp(log(max(x))), resolution = 50),
+               ecnsec(nec4param, nsec = max(x), resolution = 50),
+               tolerance = 1e-8)
+})

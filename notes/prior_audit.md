@@ -1155,7 +1155,8 @@ gamma branch cannot meet it at either end: at a fixed shape of 2 the central 95%
 of a gamma is a fixed multiple of its mean, so setting the mean to half the
 endpoint puts the interval at 0.0606 to 1.393 times it. §5.3 of the
 specification anticipates that and asks for the realised figures rather than an
-assertion.
+assertion. The gamma entry was changed after this run (D42, #449), and the
+re-run of this part is recorded under "The gamma entry after #449" below.
 
 The beta branch departs from §5.3's suggested mechanism, and the measurement is
 why. `beta_from_mode_sd()` requires both shapes above 1, so the density is zero
@@ -1213,4 +1214,58 @@ both arms of each cell, so they are not the declaration's. Every observation of
 those responses is 1, and `response_link_scale()` then takes
 `max(response[response < 1])` of an empty vector. This is #400. Since the
 change for #400 these cells are refused by name, with a message naming the
-response column and the upper bound; this part was not re-run after it.
+response column and the upper bound; the re-run below reports that message
+for the same four rows.
+
+## The gamma entry after #449
+
+> **Provenance.** `notes/scripts/prior_audit.R` part 5, run on 2026-10-24 on
+> branch `flatness-declared` at `a3af212a` and on `predev` at `f5dd667b`, R
+> 4.6.1, brms 2.23.0, with the script identical between the two runs. No
+> concentration-response model was fitted and no Stan program was compiled.
+
+D42 (#449) replaced the gamma-branch entry `gamma(2, 4/e)`, a mean at half the
+endpoint mean *e*, with `gamma(2, qgamma(0.975, 2) / e)`, which keeps the shape
+of 2 and places the 97.5th percentile at *e*. The run on `predev` reproduces
+every figure recorded in this part. On the branch the default arm, the six
+families outside the gamma branch and the refusal table are unchanged, and the
+six gamma-branch rows of the span table read 0.0435 and 1.0000.
+
+Cells placing the true `bot` outside the central 95% of the declared entry, for
+the six gamma-branch families, out of 180 per setting over both prior types:
+
+| entry | complete | f92 | f36 | f02 |
+|---|---|---|---|---|
+| `gamma(2, 4/e)` | 28 | 7 | 0 | 0 |
+| `gamma(2, qgamma(0.975, 2) / e)` | 95 | 26 | 0 | 0 |
+
+Mean prior CDF at the true `bot` for the same cells:
+
+| entry | complete | f92 | f36 | f02 |
+|---|---|---|---|---|
+| `gamma(2, 4/e)` | 0.9089 | 0.8017 | 0.2465 | 0.1506 |
+| `gamma(2, qgamma(0.975, 2) / e)` | 0.9707 | 0.9142 | 0.3754 | 0.2424 |
+
+In every excluding cell of both rows the truth lies above the 97.5th
+percentile. At `f36` and `f02`, where the declaration is true, neither entry
+excludes the truth, and the new one places it nearer the centre of the prior.
+At the complete setting the declaration is false and the truth is the endpoint
+mean, so an entry whose central 95% ends at that mean places the truth at the
+top of its interval. The six families outside the gamma branch, whose entries
+already ended there, exclude it in 69 of 180 cells at that setting in both
+runs. The exclusion on a complete design recorded under "The `bot` prior" for
+those families now applies to the gamma branch as well.
+
+The declared rows of the two tables under "The `bot` prior" become:
+
+| prior type and arm | complete | f92 | f36 | f02 |
+|---|---|---|---|---|
+| `uninformative`, declared, mean CDF | 0.9587 | 0.8410 | 0.2814 | 0.1642 |
+| `regularizing`, declared, mean CDF | 0.9479 | 0.8496 | 0.2872 | 0.1669 |
+| `uninformative`, declared, cells excluding | 84 | 19 | 0 | 0 |
+| `regularizing`, declared, cells excluding | 80 | 21 | 0 | 0 |
+
+The median number of proposals to a full set of four chains under the
+declaration is 6 at every setting, against 7 at `f02` before, and the paired
+difference from the default at `f02` is −4.89 [−5.85, −3.93]. No cell fell back
+to Stan's own initialisation under the declaration.

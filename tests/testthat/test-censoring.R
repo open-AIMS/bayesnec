@@ -90,6 +90,167 @@ test_that("a decreasing xform censors the same draws at the other end", {
   expect_equal(c(rising$lower, rising$upper), c(exp(2), exp(10)))
 })
 
+# ---- #440, a decreasing map that takes one end to infinity -------------------
+
+test_that("a decreasing xform swaps a record whose end maps to infinity", {
+  # A grid starting at 0 under -log(x) maps its lower end to Inf. The record
+  # kept its old orientation where either image was infinite, so the draws
+  # censored above 100 were marked >= -4.6, the foot of the new scale (#440).
+  cens <- cens_record(above = c(TRUE, FALSE, FALSE),
+                      below = c(FALSE, FALSE, TRUE), upper = 100, lower = 0)
+  flipped <- bayesnec:::xform_censoring(cens, function(z) -log(z))
+  expect_identical(flipped$above, cens$below)
+  expect_identical(flipped$below, cens$above)
+  expect_equal(flipped$lower, -log(100))
+  expect_identical(flipped$upper, Inf)
+  expect_true(attr(flipped, "swapped"))
+  # The same where the infinite end is on the record already: a fitted-scale
+  # record under crf(log(x)) on a grid from 0 runs from -Inf, and a caller's
+  # negation then takes that end to Inf.
+  logged <- cens_record(above = c(TRUE, FALSE), below = c(FALSE, TRUE),
+                        upper = log(100), lower = -Inf)
+  negated <- bayesnec:::xform_censoring(logged, function(z) -z)
+  expect_identical(negated$above, logged$below)
+  expect_identical(negated$below, logged$above)
+  expect_equal(c(negated$lower, negated$upper), c(-log(100), Inf))
+  expect_true(attr(negated, "swapped"))
+  # An increasing map is not swapped by an infinite image either.
+  rising <- bayesnec:::xform_censoring(cens, log)
+  expect_identical(rising$above, cens$above)
+  expect_equal(c(rising$lower, rising$upper), c(-Inf, log(100)))
+  expect_false(attr(rising, "swapped"))
+})
+
+test_that("the per-draw and summary paths agree under -log on a grid from 0", {
+  # The case #440 measured: 101 points from 0 to 100, 90 draws identified
+  # between 10 and 90 and 11 censored above 100. The per-draw path returned
+  # -3.808, -4.480, -4.605 with >= on Q97.5; remap_summary() returned -4.006,
+  # -4.605, -2.468 with <= on Q2.5.
+  grid <- seq(0, 100, length.out = 101)
+  draws <- c(seq(10, 90, length.out = 90), rep(NA_real_, 11))
+  cens <- bayesnec:::censoring_record(100, 0, is.na(draws), logical(101))
+  probs <- c(0.5, 0.025, 0.975)
+  neg_log <- function(z) -log(z)
+  per_draw <- bayesnec:::summarise_censored(
+    neg_log(draws), probs, bayesnec:::xform_censoring(cens, neg_log)
+  )
+  on_recorded <- bayesnec:::summarise_censored(draws, probs, cens)
+  names(on_recorded) <- bayesnec:::clean_names(on_recorded)
+  summary_path <- bayesnec:::remap_summary(on_recorded, neg_log, grid)
+  expect_lt(per_draw[[2]], per_draw[[3]])
+  expect_equal(as.numeric(per_draw), as.numeric(summary_path))
+  expect_identical(attr(per_draw, "censored_summary")$bound, c("", "<=", ""))
+  expect_identical(attr(per_draw, "censored_summary")$bound,
+                   attr(summary_path, "censored_summary")$bound)
+  expect_equal(per_draw[[2]], -log(100))
+})
+
+test_that("every increasing xform leaves a record as it was before #440", {
+  # The rule xform_censoring() applied before #440, kept here as the
+  # reference: swap only where both images are finite and reversed. No
+  # increasing map meets that test, and none may meet the new one.
+  before_440 <- function(cens, xform) {
+    new_upper <- xform(cens$upper)
+    new_lower <- xform(cens$lower)
+    swapped <- isTRUE(attr(cens, "swapped"))
+    if (is.finite(new_upper) && is.finite(new_lower) &&
+        new_upper < new_lower) {
+      out <- bayesnec:::censoring_record(new_lower, new_upper, cens$below,
+                                         cens$above)
+      swapped <- !swapped
+    } else {
+      out <- bayesnec:::censoring_record(new_upper, new_lower, cens$above,
+                                         cens$below)
+    }
+    attr(out, "swapped") <- swapped
+    out
+  }
+  above <- c(TRUE, FALSE, FALSE, NA)
+  below <- c(FALSE, FALSE, TRUE, FALSE)
+  records <- list(
+    finite = cens_record(above, below, upper = 3.22, lower = 0.0323),
+    from_zero = cens_record(above, below, upper = 100, lower = 0),
+    from_minus_inf = cens_record(above, below, upper = log(3.22),
+                                 lower = -Inf),
+    to_inf = cens_record(above, below, upper = Inf, lower = 1),
+    one_point = cens_record(above, below, upper = 2, lower = 2),
+    negative = cens_record(above, below, upper = 5, lower = -5)
+  )
+  swapped_before <- records$finite
+  attr(swapped_before, "swapped") <- TRUE
+  records$swapped_before <- swapped_before
+  maps <- list(exp = exp, log = log, log1p = log1p, sqrt = sqrt,
+               linear = function(z) 2 * z + 1, cube = function(z) z^3,
+               plogis = stats::plogis, identity = identity)
+  for (r in names(records)) {
+    for (m in names(maps)) {
+      # log and sqrt of a negative end warn on both paths alike.
+      expect_identical(
+        suppressWarnings(bayesnec:::xform_censoring(records[[r]], maps[[m]])),
+        suppressWarnings(before_440(records[[r]], maps[[m]])),
+        label = paste(r, "under", m)
+      )
+    }
+  }
+})
+
+test_that("the estimators under xform = exp return what they did before #440", {
+  skip_on_cran()
+  # exp is the xform vignette("example8") gives ecx(), nsec() and nec() on fits
+  # with crf(log(conc)), so the change to xform_censoring() must leave it as it
+  # was: identified, censored above the range and censored below it. Pinned
+  # from an installed build of origin/predev at ba30b91e, R 4.6.1. The
+  # crf(log(x)) fit is nec4param relabelled, as test-fitted_scale.R builds it.
+  logged <- nec4param
+  logged$bayesnecformula <- bnf(y ~ crf(log(x), model = "nec4param"))
+  q <- function(expr) suppressWarnings(suppressMessages(expr))
+  same <- function(got, value, bound = NULL, ends = NULL, counts = NULL) {
+    expect_equal(unname(as.numeric(got)), value, tolerance = 1e-8)
+    cs <- attr(got, "censored_summary")
+    if (is.null(bound)) {
+      expect_null(cs)
+      return(invisible(NULL))
+    }
+    expect_identical(cs$bound, bound)
+    expect_equal(c(cs$upper, cs$lower), ends, tolerance = 1e-8)
+    expect_identical(c(cs$n_above, cs$n_below), counts)
+  }
+  same(q(ecx(logged, ecx_val = 50, xform = exp)),
+       c(1.6735243462, 1.6101967180, 1.7230802679))
+  same(q(ecx(nec4param, ecx_val = 50, xform = exp)),
+       c(5.3309227862, 5.0038420117, 5.6017580711))
+  same(q(ecx(logged, ecx_val = 90, xform = exp, x_range = c(0.0324, 1.5))),
+       rep(1.5, 3), rep(">=", 3), c(1.5, 0.0324), c(100L, 0L))
+  same(q(ecx(logged, ecx_val = 10, xform = exp, x_range = c(1.6, 3.22))),
+       rep(1.6, 3), rep("<=", 3), c(3.22, 1.6), c(0L, 100L))
+  same(q(nsec(logged, xform = exp)),
+       c(1.4847758014, 1.3936170593, 1.5506664636))
+  same(q(nsec(logged, xform = exp, x_range = c(1.6, 3.22))),
+       rep(1.6, 3), rep("<=", 3), c(3.22, 1.6), c(0L, 99L))
+  same(q(nsec(manec_example, xform = exp, x_range = c(0.0324, 1.2))),
+       c(3.3201169227, 2.0703283968, 3.3201169227), c(">=", "", ">="),
+       c(3.3201169227, 1.0329305949), c(82L, 0L))
+  same(q(nec(logged, xform = exp)),
+       c(4.3104239685, 3.8995850141, 4.6079795245))
+  # The per-draw records keep their ends and are not swapped.
+  records <- list(
+    above = list(q(ecx(logged, ecx_val = 90, xform = exp,
+                       x_range = c(0.0324, 1.5), posterior = TRUE)),
+                 c(1.5, 0.0324), c(100L, 0L)),
+    below = list(q(ecx(logged, ecx_val = 10, xform = exp,
+                       x_range = c(1.6, 3.22), posterior = TRUE)),
+                 c(3.22, 1.6), c(0L, 100L)),
+    nsec = list(q(nsec(logged, xform = exp, posterior = TRUE)),
+                c(3.2205196629, 0.0323480132), c(0L, 0L))
+  )
+  for (r in records) {
+    rec <- attr(r[[1]], "censored")
+    expect_equal(c(rec$upper, rec$lower), r[[2]], tolerance = 1e-8)
+    expect_identical(c(sum(rec$above), sum(rec$below)), r[[3]])
+    expect_false(attr(rec, "swapped"))
+  }
+})
+
 test_that("component records combine in draw order, not by component", {
   # Two components of very unequal size: one wholly censored and small, one
   # uncensored and large. Counting components would call the combination half

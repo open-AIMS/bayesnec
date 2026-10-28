@@ -118,7 +118,25 @@
 #' entries with \code{\link{get_priors}} and pass a scientifically justified
 #' prior through \code{prior} where information beyond the design is available.
 #' Neither value of \code{prior_type} corrects a design that stopped before the
-#' asymptote; \code{asymptote_observed} is the argument for that.
+#' asymptote; \code{asymptote_observed} is the argument for that. With a
+#' \code{disp("power")} term on a \code{Gamma}, \code{gaussian} or
+#' \code{negbinomial} response, \code{"regularizing"} also centres the prior on
+#' the exponent \code{c1} on the slope the replicates show. Each predictor value
+#' with two or more observations gives the family's dispersion parameter from
+#' their mean and variance: \code{1 / CV^2} for \code{Gamma}, the standard
+#' deviation for \code{gaussian}, and \code{mean^2 / (variance - mean)} for
+#' \code{negbinomial}. The centre is the slope of its log on the log of the
+#' mean, weighted by degrees of freedom and clamped into the range of \code{c1}
+#' given in \code{?\link{bayesnecformula}}. This data-derived centre makes the
+#' prior empirical: the same observations also enter the likelihood. Its width
+#' stays at that of the \code{"uninformative"} entry to limit the influence of
+#' this noisy centre. The centre is zero,
+#' as under \code{"uninformative"}, where fewer than three predictor values are
+#' replicated or the slope cannot be computed, and for a \code{negbinomial}
+#' response with a \code{rate()} denominator or the zero-truncated growth
+#' component of \code{bnec_hurdle()}. The replicates are grouped by
+#' predictor value alone, so under a group-level term their spread includes the
+#' variation between groups.
 #' @param asymptote_observed A \code{\link[base]{logical}} declaring whether the
 #' highest predictor level reached the lower asymptote of the curve. The default
 #' \code{TRUE} is the assumption both default prior sets are built on, and
@@ -281,10 +299,10 @@
 #'
 #' \bold{A response that does not vary}
 #'
-#' A bernoulli, binomial, beta_binomial or beta response whose every
-#' observation is at one bound of its family --- every value 0 or every value
-#' 1, or for a counted response every count 0 or every count equal to its
-#' trials --- identifies no concentration-response curve. \code{bnec} fits
+#' A bernoulli, binomial, beta_binomial, beta or zero_inflated_beta response
+#' whose every observation is at one bound of its family --- every value 0 or
+#' every value 1, or for a counted response every count 0 or every count equal
+#' to its trials --- identifies no concentration-response curve. \code{bnec} fits
 #' "ecxflat" alone to such a response, whatever model set was requested, and a
 #' message says so. The equations requested and not fitted are recorded, with
 #' the reason, by \code{\link{bnec_record}}. The fit states that the response
@@ -298,8 +316,11 @@
 #' A beta response of 0 in every observation is refused instead. A beta
 #' distribution cannot represent a zero, and \code{bnec} shifts a zero off the
 #' boundary by a tenth of the smallest positive value, which such a response
-#' does not have. A beta response of 1 in every observation is fitted, its ones
-#' shifted to 0.999 as they are for any beta response.
+#' does not have. A zero_inflated_beta response of 0 in every observation is
+#' refused as well. Its zeros are fitted by the zero-inflation block and its
+#' other values by the beta block, which for such a response has no data. A
+#' beta or zero_inflated_beta response of 1 in every observation is fitted, its
+#' ones shifted to 0.999 as they are for any response of those families.
 #'
 #' \code{\link{bnec_group}} applies the same rule to each level, so that a
 #' level whose response does not vary is fitted with "ecxflat" alone and the
@@ -882,6 +903,12 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # removed here before anything reaches brms.
   asymptote_checked <- isTRUE(brm_args[[".bayesnec_asymptote_checked"]])
   brm_args[[".bayesnec_asymptote_checked"]] <- NULL
+  # The same device for the report of equations that keep no group-level term
+  # on a grouping variable, which bnec_group() makes once for every level.
+  # The exclusion itself is still made, and recorded, by each level's call.
+  # Private, and removed here. See #470.
+  group_terms_reported <- isTRUE(brm_args[[".bayesnec_group_terms_reported"]])
+  brm_args[[".bayesnec_group_terms_reported"]] <- NULL
   # `prior` is an explicit argument (rather than relying on `...`) so that a
   # user-supplied `prior =` is matched exactly and cannot be captured by partial
   # matching against `prior_type`. Only fold it into brm_args when supplied, so
@@ -921,11 +948,12 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   check_trials_term(bdat, brm_args$family)
   # A bounded response with every observation at one bound identifies no curve,
   # and does identify the constant equation, so ecxflat is fitted alone in place
-  # of the set requested (D31). This replaced the refusal #400 placed here; the
-  # one bound ecxflat cannot be fitted at, a beta response of 0 throughout, is
-  # still refused. Decided here, once, for the reason check_inline_boundary()
-  # gives below: from inside the model loop a refusal would be printed once per
-  # model and the call would end on the generic all-models-failed advice.
+  # of the set requested (D31). This replaced the refusal #400 placed here; a
+  # response ecxflat cannot be fitted to either, a beta or zero_inflated_beta
+  # response of 0 throughout, is still refused (D35, #441). Decided here, once,
+  # for the reason check_inline_boundary() gives below: from inside the model
+  # loop a refusal would be printed once per model and the call would end on the
+  # generic all-models-failed advice.
   # Placed after check_complete_cases(), so that a missing value is reported as
   # that rather than read off the smaller frame, and before every other check
   # that reads the response or the model set, so that the flatness report and
@@ -968,6 +996,19 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # multi-model branch escaped it only because `model[m]` drops attributes.
   # check_models() warns about exactly this at its record block. See #261.
   model <- as.character(model)
+  # An equation that keeps no group-level term on a grouping variable the
+  # formula names is excluded here, before the model loop, and recorded beside
+  # the family exclusions above, which it follows because it is applied to the
+  # set they leave. The rule is a property of the formula and the set, fixed
+  # for the whole call: left to fit_bayesnec(), inside the try() of the loop,
+  # a set with no equation left would print the refusal once per equation and
+  # end on the advice that none of the models fitted. Placed before the
+  # flatness report and the asymptote declaration, which read the set that
+  # will be fitted. See group_term_exclusions() and #470.
+  group_check <- check_group_terms(model, formula,
+                                   report = !group_terms_reported)
+  model <- group_check$model
+  excluded_models <- rbind(excluded_models, group_check$excluded)
   # Moved above the flatness report, which needs it: the survival block of a
   # two-block fit is checked against the equation that block will use.
   model_survival <- check_model_survival(model_survival, brm_args$family, bdat)
@@ -988,7 +1029,8 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     check_response_flattened(
       bdat, brm_args$family,
       blocks = names(sensitive_blocks)[sensitive_blocks],
-      pool_dispersion = is.null(parse_disp_term(formula))
+      pool_dispersion = is.null(parse_disp_term(formula)),
+      asymptote_observed = asymptote_observed
     )
   }
   # Immediately after the report the declaration answers, and before the model
@@ -1034,6 +1076,12 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   if (!is.null(disp_spec)) {
     check_disp_spec(disp_spec, brm_args$family,
                     response = disp_response(bdat, brm_args$family))
+    # The zero-truncated count of a bnec_hurdle() growth component, the one
+    # route whose reported mean depends on the dispersion parameter. Checked
+    # once here for the same reason as the line above. See #443.
+    if (is_factorised_count_formula(formula, brm_args$family)) {
+      check_disp_count_truncation(formula)
+    }
   }
   if (length(model) > 1) {
     mod_fits <- vector(mode = "list", length = length(model))

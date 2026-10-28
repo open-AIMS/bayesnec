@@ -205,7 +205,8 @@ check_models <- function(model, family, data, record = FALSE) {
     }
     invisible(NULL)
   }
-  fam_tag <- family$family
+  # amend() passes the family stored in the fit, which records Gamma as gamma.
+  fam_tag <- canonical_fam_tag(family)
   link_tag <- family$link
   if (link_tag %in% c("logit", "log")) {
     use_model <-  model[!model %in% mod_groups$zero_bounded]

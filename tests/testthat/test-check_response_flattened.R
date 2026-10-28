@@ -613,6 +613,113 @@ test_that("bnec_group reports every level once and marks the inner calls", {
   expect_identical(marked, c(TRUE, TRUE))
 })
 
+# ---- a call that sets asymptote_observed = FALSE ---------------------------
+
+# Part of the sentence that advises setting asymptote_observed = FALSE.
+declare_advice <- "declare it with asymptote_observed = FALSE"
+
+test_that("a declared call is not advised to declare (#449)", {
+  # Only the advice to set asymptote_observed = FALSE is dropped. The rest of
+  # the report is unchanged.
+  bdat <- flat_bdat(y ~ crf(x, "nec4param"),
+                    data.frame(x = flat_x, y = declining_y))
+  fam <- gaussian(link = "identity")
+  undeclared <- capture_messages(check_response_flattened(bdat, fam))
+  declared <- capture_messages(
+    check_response_flattened(bdat, fam, asymptote_observed = FALSE)
+  )
+  expect_length(undeclared, 1)
+  expect_length(declared, 1)
+  expect_match(undeclared, declare_advice, fixed = TRUE)
+  expect_match(declared, still_declining, fixed = TRUE)
+  expect_false(grepl("asymptote_observed", declared, fixed = TRUE))
+  # The declared report is the undeclared one minus the advice.
+  advice <- bayesnec:::declaration_advice(fam, declining_y)
+  expect_true(nzchar(advice))
+  expect_identical(declared, sub(advice, "", undeclared, fixed = TRUE))
+  expect_match(declared, "where information beyond the design is available.\n",
+               fixed = TRUE)
+  expect_identical(
+    bayesnec:::declaration_advice(fam, declining_y, asymptote_observed = FALSE),
+    ""
+  )
+})
+
+test_that("bnec passes the declaration to the report (#449)", {
+  d <- data.frame(x = flat_x, y = declining_y)
+  local_mocked_bindings(
+    fit_bayesnec = function(...) stop("mock fit"),
+    .package = "bayesnec"
+  )
+  report <- function(declared) {
+    msg <- capture_messages(
+      expect_error(
+        bnec(y ~ crf(x, "nec4param"), d, family = gaussian(link = "identity"),
+             asymptote_observed = declared),
+        "mock fit"
+      )
+    )
+    msg[grepl(still_declining, msg, fixed = TRUE)]
+  }
+  undeclared <- report(TRUE)
+  declared <- report(FALSE)
+  expect_length(undeclared, 1)
+  expect_length(declared, 1)
+  expect_match(undeclared, declare_advice, fixed = TRUE)
+  expect_false(grepl(declare_advice, declared, fixed = TRUE))
+})
+
+test_that("bnec_group passes the declaration to the report (#449)", {
+  # Covers the abbreviation `asymptote = FALSE` as well as the full name.
+  d <- data.frame(
+    x = rep(flat_x, 2),
+    y = c(declining_y, declining_y),
+    site = rep(c("a", "b"), each = 16)
+  )
+  local_mocked_bindings(
+    bnec = function(...) list(),
+    .package = "bayesnec"
+  )
+  report <- function(...) {
+    msg <- capture_messages(
+      bnec_group(y ~ crf(x, "nec4param"), d, group_var = "site",
+                 family = gaussian(link = "identity"), ...)
+    )
+    msg[grepl(still_declining, msg, fixed = TRUE)]
+  }
+  undeclared <- report()
+  expect_length(undeclared, 1)
+  expect_match(undeclared, declare_advice, fixed = TRUE)
+  for (declared in list(report(asymptote_observed = FALSE),
+                        report(asymptote = FALSE))) {
+    expect_length(declared, 1)
+    expect_match(declared, "level \"b\"", fixed = TRUE)
+    expect_false(grepl(declare_advice, declared, fixed = TRUE))
+  }
+})
+
+test_that("bnec_group refuses an invalid declaration before any report (#449)", {
+  # With family = NULL the first message would name the family chosen. An
+  # invalid value must be refused before that message is printed.
+  d <- data.frame(
+    x = rep(flat_x, 2),
+    y = c(declining_y, declining_y),
+    site = rep(c("a", "b"), each = 16)
+  )
+  local_mocked_bindings(
+    bnec = function(...) stop("bnec() reached"),
+    .package = "bayesnec"
+  )
+  msg <- capture_messages(
+    expect_error(
+      bnec_group(y ~ crf(x, "nec4param"), d, group_var = "site",
+                 asymptote_observed = NA),
+      "asymptote_observed", fixed = TRUE
+    )
+  )
+  expect_identical(msg, character(0))
+})
+
 # ---- calibration ------------------------------------------------------------
 
 test_that("the report rate on a flat top is near the stated alpha", {

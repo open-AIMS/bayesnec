@@ -6,13 +6,19 @@
 \alias{posterior_predict.bayesmanecfit}
 \title{Generates posterior predictions for objects fitted by \code{\link{bnec}}}
 \usage{
-\method{posterior_predict}{bayesnecfit}(object, ...)
+\method{posterior_predict}{bayesnecfit}(object, newdata = NULL, ...)
 
-\method{posterior_predict}{bayesmanecfit}(object, ...)
+\method{posterior_predict}{bayesmanecfit}(object, newdata = NULL, ...)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecfit}} or
 \code{\link{bayesmanecfit}}.}
+
+\item{newdata}{An optional \code{\link[base]{data.frame}} to predict over.
+Where it is \code{NULL}, the default, predictions are made for the data the
+fit was made from, each row with its own values. See Details for a fit whose
+formula has a \code{disp(~...)} term naming a column other than the
+predictor.}
 
 \item{...}{Additional arguments to
 \code{\link[brms]{posterior_predict}}.}
@@ -24,6 +30,26 @@ See \code{?brms::posterior_predict}.
 Generates posterior predictions for objects fitted by \code{\link{bnec}}.
 \code{object} should be of class \code{\link{bayesnecfit}} or
 \code{\link{bayesmanecfit}}.
+}
+\details{
+A \code{disp(~z)} term, with \code{z} a column other than the
+predictor, models the dispersion parameter on \code{z}. The spread of a
+predicted reading then depends on \code{z}, so a \code{newdata} has to say
+which value of \code{z} each prediction is for, and one without the column
+is refused with a message naming it. \code{\link{bnec_newdata}} writes
+such a column at one fixed value, the first level of a factor or the median
+of a numeric column, and marks it as a placeholder. Given that
+\code{newdata}, \code{posterior_predict()} replaces the placeholder draw by
+draw: each posterior draw takes the value, or the joint values where the
+term names several columns, of a row sampled at random from the data the
+fit was made from. The predicted readings are then those of a new
+observation from the mix of \code{z} in the design, rather than of one
+level of it. The sampling uses the session's random number stream, as the
+simulation of the readings themselves does, so \code{\link[base]{set.seed}}
+before the call reproduces both. A \code{newdata} that holds the column
+without the mark is used as given, and so is a marked column whose values
+have been changed from the placeholder, as in a grid from
+\code{bnec_newdata()} with \code{z} set to the level to predict for.
 }
 \examples{
 \dontrun{

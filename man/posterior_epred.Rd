@@ -7,13 +7,18 @@
 \title{Generates posterior linear predictions for objects fitted by
 \code{\link{bnec}}}
 \usage{
-\method{posterior_epred}{bayesnecfit}(object, ...)
+\method{posterior_epred}{bayesnecfit}(object, newdata = NULL, ...)
 
-\method{posterior_epred}{bayesmanecfit}(object, ...)
+\method{posterior_epred}{bayesmanecfit}(object, newdata = NULL, ...)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecfit}} or
 \code{\link{bayesmanecfit}}.}
+
+\item{newdata}{An optional \code{\link[base]{data.frame}} to predict over.
+Where it is \code{NULL}, predictions use the fitted rows. A fit with a
+\code{disp(~...)} term requires every column named by that term in a
+supplied \code{newdata}.}
 
 \item{...}{Additional arguments to
 \code{\link[brms]{posterior_epred}}.}

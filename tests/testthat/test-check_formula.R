@@ -304,3 +304,158 @@ test_that("bnec_group() and bnec_hurdle() refuse before any fit (#398)", {
   )
   expect_equal(fits, 0L)
 })
+
+# ---- #438, a crf() predictor written with a leading minus --------------------
+
+# x runs above 1 so that log(x - 1) is finite at every row.
+minus_data <- data.frame(x = seq(1.5, 12, length.out = 12),
+                         y = seq(9, 2, length.out = 12),
+                         grp = rep(c("a", "b"), each = 6))
+
+test_that("a crf() predictor with a leading minus is refused (#438)", {
+  # The model frame and the brms formula read the minus as the formula
+  # operator and fitted on x, while the estimators evaluated it as a negation.
+  err <- expect_error(
+    check_formula(bnf(y ~ crf(-x, "nec3param")), minus_data),
+    "is written with a leading minus"
+  )
+  msg <- conditionMessage(err)
+  expect_match(msg, "crf(-x, \"nec3param\")", fixed = TRUE)
+  expect_match(msg, "fitted on x, not on -x.", fixed = TRUE)
+  expect_match(msg, "as in crf(I(-x), \"nec3param\")", fixed = TRUE)
+  # The outermost call is a unary minus, so it is refused, and the message
+  # names the expression the frame would have held.
+  err <- expect_error(
+    check_formula(bnf(y ~ crf(-log(x), "nec3param")), minus_data),
+    "is written with a leading minus"
+  )
+  expect_match(conditionMessage(err), "fitted on log(x), not on -log(x).",
+               fixed = TRUE)
+  expect_match(conditionMessage(err), "crf(I(-log(x)), \"nec3param\")",
+               fixed = TRUE)
+  # Parentheses do not hide it: the formula drops them and fits on x.
+  expect_error(check_formula(bnf(y ~ crf((-x), "nec3param")), minus_data),
+               "as in crf(I(-x), \"nec3param\")", fixed = TRUE)
+  expect_error(check_formula(bnf(y ~ crf(-(x), "nec3param")), minus_data),
+               "is written with a leading minus")
+  err <- expect_error(
+    check_formula(bnf(y ~ crf(+(-x), "nec3param")), minus_data),
+    "contains a negation outside I()", fixed = TRUE
+  )
+  expect_match(conditionMessage(err), "fitted on x, not on -x.", fixed = TRUE)
+  expect_match(conditionMessage(err), "crf(I(-x), \"nec3param\")",
+               fixed = TRUE)
+  expect_error(check_formula(bnf(y ~ crf((+(-x)), "nec3param")), minus_data),
+               "contains a negation outside I()", fixed = TRUE)
+  # Parentheses around the whole crf() term also disappear in model.frame().
+  expect_error(check_formula(bnf(y ~ (crf(-x, "nec3param"))), minus_data),
+               "is written with a leading minus")
+  expect_error(
+    model.frame(bnf(y ~ (crf(-x, "nec3param"))), data = minus_data),
+    "is written with a leading minus"
+  )
+  expect_error(model.frame(bnf(y ~ crf(+(-x), "nec3param")),
+                           data = minus_data),
+               "contains a negation outside I()", fixed = TRUE)
+  expect_error(
+    check_formula(bnf(y ~ (crf(-x, "nec3param")) + ogl(grp)), minus_data),
+    "is written with a leading minus"
+  )
+  # The argument named, and the model set before it.
+  expect_error(
+    check_formula(bnf(y ~ crf(model = "nec3param", x = -x)), minus_data),
+    "crf(model = \"nec3param\", x = I(-x))", fixed = TRUE
+  )
+  # Reached through model.frame(), which every route builds.
+  expect_error(model.frame(bnf(y ~ crf(-x, "nec3param")), data = minus_data),
+               "is written with a leading minus")
+})
+
+test_that("a minus inside the predictor or under I() is not refused (#438)", {
+  # I() is read as a negation on every path, and a minus inside a call is an
+  # argument of that call rather than a formula operator.
+  for (f in list(bnf(y ~ crf(I(-x), "nec3param")),
+                 bnf(y ~ crf(log(x - 1), "nec3param")),
+                 bnf(y ~ crf(I(-log(x)), "nec3param")),
+                 bnf(y ~ crf(exp(-x), "nec3param")),
+                 bnf(y ~ crf(+(x), "nec3param")),
+                 bnf(y ~ (crf(x, "nec3param"))))) {
+    expect_identical(check_formula(f, minus_data), f)
+  }
+  mf <- model.frame(bnf(y ~ crf(I(-x), "nec3param")), data = minus_data)
+  expect_equal(as.numeric(mf[[2]]), -minus_data$x)
+  # A binary minus at the top is outside D34 and is not refused here.
+  f <- bnf(y ~ crf(log(x) - 1, "nec3param"))
+  expect_identical(check_formula(f, minus_data), f)
+})
+
+test_that("bnec(), make_brmsformula() and get_priors() refuse crf(-x) (#438)", {
+  fits <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      fits <<- fits + 1L
+      stop("a model fit was started")
+    },
+    .package = "bayesnec"
+  )
+  # A model set, because bnec() wraps each model's fit in try(): a refusal
+  # raised per model would be printed once for each and the call would end on
+  # "None of the models fit successfully" instead of this message.
+  err <- expect_error(
+    bnec(y ~ crf(-x, c("nec3param", "ecx4param")), data = minus_data),
+    "is written with a leading minus"
+  )
+  expect_false(grepl("None of the models", conditionMessage(err)))
+  expect_error(
+    bnec(y ~ crf(-log(x), "nec3param"), data = minus_data),
+    "is written with a leading minus"
+  )
+  expect_equal(fits, 0L)
+  expect_error(
+    make_brmsformula(y ~ crf(-x, c("nec3param", "ecx4param")),
+                     data = minus_data),
+    "is written with a leading minus"
+  )
+  expect_error(
+    get_priors(y ~ crf(-x, c("nec3param", "ecx4param")), data = minus_data),
+    "is written with a leading minus"
+  )
+  # The same formulas written with I() build as before.
+  expect_named(make_brmsformula(y ~ crf(I(-x), c("nec3param", "ecx4param")),
+                                data = minus_data),
+               c("nec3param", "ecx4param"))
+})
+
+test_that("bnec_group() and bnec_hurdle() refuse crf(-x) before any fit (#438)", {
+  fits <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      fits <<- fits + 1L
+      stop("a component or level fit was started")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(
+    bnec_group(y ~ crf(-x, "nec3param"), data = minus_data,
+               group_var = "grp"),
+    "is written with a leading minus"
+  )
+  hurdle_data <- minus_data
+  hurdle_data$y[c(6, 12)] <- 0
+  expect_error(
+    bnec_hurdle(y ~ crf(-x, "nec3param"), data = hurdle_data),
+    "is written with a leading minus"
+  )
+  expect_equal(fits, 0L)
+})
+
+test_that("a fit holding crf(-x) is refused where its frame is rebuilt (#438)", {
+  # A fit made before the refusal was fitted on x. ecx() and nsec() put its
+  # estimates on the scale of -x through sub_x_transformation(), and now stop
+  # at the model frame they rebuild from the stored formula instead. The
+  # packaged fit is relabelled, so that nothing is fitted.
+  f <- nec4param
+  f$bayesnecformula <- bayesnecformula(y ~ crf(-x, model = "nec4param"))
+  expect_error(suppressMessages(ecx(f)), "is written with a leading minus")
+  expect_error(suppressMessages(nsec(f)), "is written with a leading minus")
+})

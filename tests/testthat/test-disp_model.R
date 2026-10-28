@@ -179,14 +179,22 @@ test_that("a non-identity link is refused end to end", {
   )
 })
 
-test_that("disp_inits starts every slope at the constant-dispersion null", {
+test_that("disp_inits starts every slope at the middle of its own prior", {
   y <- c(0.5, 1, 2, 4)
   ii <- bayesnec:::disp_inits(list(route = "B", value = "power"), gaussian(), y)
   expect_named(ii, c("b_c0", "b_c1"))
-  # a slope of zero is the no-relationship model: the sign of a slope is tied
-  # to the direction of the mean curve, so chains must not each pick their own
-  expect_equal(as.numeric(ii$b_c1), 0)
+  # Every chain starts at one value: the sign of a slope is tied to the
+  # direction of the mean curve, so chains must not each pick their own. A
+  # gaussian c1 is bounded to [0, 1] (#472), so the constant-dispersion null is
+  # the lower bound and Stan would refuse it; the chains start at the mean of
+  # normal(0, 2) truncated to that interval instead.
+  expect_equal(as.numeric(ii$b_c1),
+               2 * (dnorm(0) - dnorm(0.5)) / (pnorm(0.5) - pnorm(0)))
   expect_equal(as.numeric(ii$b_c0), log(sd(y)))
+  # an unbounded slope keeps the null
+  ll <- bayesnec:::disp_inits(list(route = "B", value = "loglinear"),
+                              gaussian(), y)
+  expect_equal(as.numeric(ll$b_c1), 0)
   # brms wants one-dimensional arrays, not bare scalars
   expect_true(all(vapply(ii, function(z) !is.null(dim(z)), TRUE)))
 
@@ -479,9 +487,15 @@ test_that("route B reads the curve the fit uses, not the template (#294)", {
                     fixed = TRUE))
   expect_true(grepl("bnecbot", phi_of('pgl(grp) + disp("twosided")'),
                     fixed = TRUE))
-  # So does #257's deviation on the whole curve, which route B had never seen.
-  expect_true(grepl("bnecmu", phi_of('ogl(grp) + disp("twosided")'),
-                    fixed = TRUE))
+  # #257's deviation on the whole curve does not. The variance function reads
+  # the curve before it, bnecmu, rather than the fitted mean of the group, in
+  # whose value depends on ogl (on the odds scale for this Beta family).
+  # Reading the fitted mean produced a second posterior mode in the zinc fit.
+  # See #468.
+  under_ogl <- phi_of('ogl(grp) + disp("twosided")')
+  expect_true(grepl("bnecmu", under_ogl, fixed = TRUE))
+  expect_false(grepl("exp(ogl)", under_ogl, fixed = TRUE))
+  expect_false(grepl("ogl", under_ogl, fixed = TRUE))
   # An ungrouped fit is unchanged: the curve it reads is the template's.
   ungrouped <- phi_of('disp("twosided")')
   expect_true(grepl("bot + (top - bot)", ungrouped, fixed = TRUE))
@@ -692,9 +706,10 @@ test_that("the joint block fits the growth component's variance function", {
 
 test_that("a two-block family gets the positive block's disp() priors", {
   keep <- hurdle_dat$y > 0
+  # The bounds are compared as well as the densities (#472).
   disp_rows <- function(pr) {
     as.data.frame(pr)[pr$nlpar %in% c("c0", "c1", "c2"),
-                      c("prior", "nlpar")]
+                      c("prior", "nlpar", "lb", "ub")]
   }
   for (vf in c("power", "loglinear")) {
     spec <- list(route = "B", value = vf)
@@ -744,4 +759,739 @@ test_that("get_priors refuses what bnec refuses on a two-block family", {
                                     data = hurdle_dat,
                                     family = "hurdle_gamma"))
   expect_true(all(c("c0", "c1") %in% pr$nlpar))
+})
+
+
+# ---- #468, the variance function reads the curve before ogl() ---------------
+
+# The response block's curve and dispersion sub-formula of a built formula. No
+# model is compiled or sampled.
+disp_parts <- function(bf, dpar) {
+  list(main = deparse1(bf$formula[[3]]),
+       disp = deparse1(bf$pforms[[dpar]][[3]]))
+}
+
+test_that("a Gamma variance function reads bnecmu under ogl() (#468)", {
+  fam <- Gamma(link = "identity")
+  bf <- make_brmsformula(
+    bnf(y ~ crf(x, "ecx4param") + ogl(tank) + disp("power")), disp_dat, fam
+  )[[1]]
+  parts <- disp_parts(bf, "shape")
+  # The multiplicative form is in force, so the deviation is on the mean and
+  # the assertions below are not met trivially.
+  expect_identical(parts$main, "bnecmu * exp(ogl)")
+  expect_true(grepl("log((bnecmu))", parts$disp, fixed = TRUE))
+  expect_false(grepl("ogl", parts$disp, fixed = TRUE))
+  # brms writes the shape from the intermediate, and the mean from the
+  # intermediate and the deviation. make_stancode() generates the program
+  # without compiling it.
+  sc <- strsplit(brms::make_stancode(bf, data = disp_dat, family = fam),
+                 "\n")[[1]]
+  shape_line <- grep("shape[n] =", sc, fixed = TRUE, value = TRUE)
+  expect_length(shape_line, 1)
+  expect_match(shape_line, "log((nlp_bnecmu[n]))", fixed = TRUE)
+  expect_false(grepl("ogl", shape_line, fixed = TRUE))
+  expect_match(sc, "mu[n] = (nlp_bnecmu[n] * exp(nlp_ogl[n]))", fixed = TRUE,
+               all = FALSE)
+})
+
+test_that("the additive ogl() form leaves the variance curve (#468)", {
+  # Under the additive form the main right-hand side is ogl + <curve>, and the
+  # variance function takes <curve> alone: the sub-formula is the one the same
+  # formula without ogl() builds. gaussian is the family that always takes the
+  # additive form; Beta takes it for nechormepwr, whose mean can exceed 1.
+  cases <- list(
+    list(model = "ecx4param", fam = gaussian(link = "identity"),
+         dpar = "sigma"),
+    list(model = "nec4param", fam = gaussian(link = "identity"),
+         dpar = "sigma"),
+    list(model = "nechormepwr", fam = validate_family("Beta"), dpar = "phi")
+  )
+  for (cs in cases) {
+    build <- function(txt) {
+      f <- bnf(paste0('y ~ crf(x, "', cs$model, '")', txt))
+      disp_parts(make_brmsformula(f, disp_dat, cs$fam)[[1]], cs$dpar)
+    }
+    grouped <- build(' + ogl(tank) + disp("power")')
+    ungrouped <- build(' + disp("power")')
+    expect_identical(grouped$main, paste("ogl +", ungrouped$main))
+    expect_true(grepl(ungrouped$main, grouped$disp, fixed = TRUE))
+    expect_false(grepl("ogl", grouped$disp, fixed = TRUE))
+    expect_identical(grouped$disp, ungrouped$disp)
+  }
+})
+
+test_that("a malformed additive ogl() formula is refused", {
+  bf <- make_brmsformula(
+    bnf(y ~ crf(x, "ecx4param") + ogl(tank) + disp("power")),
+    disp_dat, gaussian(link = "identity")
+  )[[1]]
+  bf$formula[[3]] <- str2lang("top + ogl")
+  expect_error(bayesnec:::disp_curve(bf), "must start with ogl +", fixed = TRUE)
+})
+
+test_that("a formula without ogl() builds what it did before (#468)", {
+  # Before #468 add_disp_block() passed the whole right-hand side of the main
+  # formula as the curve. The sub-formula is rebuilt that way here, through
+  # make_disp_block(), and compared with what the formula builder now gives,
+  # for parameter-level terms that rewrite the curve and for none.
+  fams <- list(gaussian(link = "identity"), Gamma(link = "identity"),
+               validate_family("Beta"))
+  terms <- c("", " + (bot | tank)", " + pgl(tank)", " + (nec | tank)")
+  models <- c("nec4param", "ecx4param", "ecxll5", "nechorme4")
+  for (fam in fams) {
+    dpar <- bayesnec:::disp_dpar(fam)
+    for (txt in terms) {
+      for (m in models) {
+        f <- bnf(paste0('y ~ crf(x, "', m, '")', txt, ' + disp("power")'))
+        bf <- suppressMessages(make_brmsformula(f, disp_dat, fam))[[1]]
+        old <- bayesnec:::make_disp_block(
+          m, list(route = "B", value = "power"), dpar, "x",
+          response = disp_dat$y, curve = deparse1(bf$formula[[3]])
+        )
+        expect_identical(deparse1(bf$pforms[[dpar]]), deparse1(old$nlf))
+        expect_identical(bayesnec:::disp_curve(bf),
+                         deparse1(bf$formula[[3]]))
+      }
+    }
+  }
+})
+
+test_that("the two-block families read the curve before ogl() (#468)", {
+  # The joint route, bnec() on hurdle_gamma or zero_inflated_beta, which
+  # bnec_joint() on a hurdle fit also takes. The deviation is on the positive
+  # block only, and the hu or zi block is the one built without it.
+  d <- hurdle_dat
+  d$tank <- factor(rep(1:5, length.out = nrow(d)))
+  for (cs in list(list(resp = "g", fam = "hurdle_gamma", dpar = "shape",
+                       vf = "power", block = "hu"),
+                  list(resp = "y", fam = "zero_inflated_beta", dpar = "phi",
+                       vf = "twosided", block = "zi"))) {
+    vf_txt <- paste0(' + disp("', cs$vf, '")')
+    grouped <- joint_bf(cs$resp, paste0(" + ogl(tank)", vf_txt), cs$fam,
+                        data = d)
+    ungrouped <- joint_bf(cs$resp, vf_txt, cs$fam, data = d)
+    disp_rhs <- pform_rhs(grouped, cs$dpar)
+    expect_true("bnecmu" %in% names(grouped$pforms))
+    expect_true(grepl("log((bnecmu))", disp_rhs, fixed = TRUE))
+    expect_false(grepl("ogl", disp_rhs, fixed = TRUE))
+    expect_identical(block_rhs(grouped, cs$block),
+                     block_rhs(ungrouped, cs$block))
+  }
+  # bnec_hurdle() fits its growth component with bnec() on the survivors and
+  # the positive block's family, keeping the ogl() term, so the factorised
+  # route builds the same sub-formula as the joint one.
+  growth <- d[d$y > 0, ]
+  f_txt <- ' + ogl(tank) + disp("power")'
+  expect_identical(
+    pform_rhs(joint_bf("g", f_txt, "hurdle_gamma", data = d), "shape"),
+    pform_rhs(joint_bf("g", f_txt, "Gamma", data = growth), "shape")
+  )
+})
+
+test_that("a joint refit across levels reads the curve before ogl() (#468)", {
+  # bnec_joint() on a grouped fit with one equation at every level and
+  # disp_by_level = FALSE, the one level-term route that takes ogl() and
+  # disp() together. The level terms are applied after the dispersion block
+  # and rewrite only the curve parameters, so bnecmu reads the per-level curve
+  # and the variance function reads bnecmu.
+  d <- disp_dat
+  d$site <- factor(rep(c("a", "b"), 15))
+  spec <- list(group_var = "site", levels = c("a", "b"),
+               models = list(a = "ecx4param", b = "ecx4param"),
+               composed = FALSE, disp = FALSE)
+  build <- function(txt, fam) {
+    f <- bnf(paste0('y ~ crf(x, "ecx4param")', txt))
+    suppressMessages(
+      wrangle_model_formula("ecx4param", f, model.frame(f, data = d), fam,
+                            level_spec = spec)
+    )
+  }
+  bf <- build(' + ogl(tank) + disp("power")', Gamma(link = "identity"))
+  expect_identical(deparse1(bf$pforms$top), "top ~ 0 + site")
+  expect_identical(deparse1(bf$formula[[3]]), "bnecmu * exp(ogl)")
+  shape_rhs <- pform_rhs(bf, "shape")
+  expect_true(grepl("log((bnecmu))", shape_rhs, fixed = TRUE))
+  expect_false(grepl("ogl", shape_rhs, fixed = TRUE))
+  # and the additive form, as for a single fit
+  fam <- gaussian(link = "identity")
+  grouped <- build(' + ogl(tank) + disp("power")', fam)
+  ungrouped <- build(' + disp("power")', fam)
+  expect_true(startsWith(deparse1(grouped$formula[[3]]), "ogl + "))
+  expect_false(grepl("ogl", pform_rhs(grouped, "sigma"), fixed = TRUE))
+  expect_identical(pform_rhs(grouped, "sigma"), pform_rhs(ungrouped, "sigma"))
+})
+
+# ---- #472, the range of c1 and its regularizing centre -----------------------
+
+# A declining curve over six concentrations with `n` replicates each, and a
+# response whose dispersion parameter is proportional to mu^c1: the Gamma
+# shape, the gaussian sigma, or the negative binomial shape. The replicates at
+# one concentration share one mean, so the slope disp_replicate_slope() reads
+# from them estimates c1. Over 500 draws at n = 30 the estimate had a standard
+# deviation of 0.12 (Gamma, c1 = 0.8), 0.06 (gaussian, c1 = 0.6) and 0.14
+# (negbinomial, c1 = 0.5), which sets the tolerances below at about two of
+# them. No model is compiled or sampled in this section.
+slope_sim <- function(family, c1, n = 30, seed = 472) {
+  set.seed(seed)
+  x <- rep(c(0.1, 0.3, 1, 3, 10, 30), each = n)
+  top <- if (identical(family, "negbinomial")) 100 else 10
+  bot <- if (identical(family, "negbinomial")) 2 else 0.2
+  mu <- bot + (top - bot) / (1 + exp((log(x) - log(3)) * 1.5))
+  y <- switch(family,
+    Gamma = {
+      shape <- 30 * (mu / 2)^c1
+      stats::rgamma(length(mu), shape = shape, rate = shape / mu)
+    },
+    gaussian = stats::rnorm(length(mu), mu, 0.05 * mu^c1),
+    negbinomial = stats::rnbinom(length(mu), size = 2 * (mu / 20)^c1, mu = mu)
+  )
+  data.frame(x = x, y = y)
+}
+
+disp_fam <- function(tag) {
+  switch(tag,
+         Gamma = Gamma(link = "identity"),
+         gaussian = gaussian(link = "identity"),
+         negbinomial = validate_family("negbinomial"),
+         beta = brms::Beta(link = "identity"),
+         beta_binomial = validate_family("beta_binomial"))
+}
+
+c1_row <- function(pr) {
+  as.data.frame(pr)[pr$nlpar == "c1", c("prior", "lb", "ub")]
+}
+
+test_that("c1 of power is bounded by family (#472)", {
+  spec <- list(route = "B", value = "power")
+  ranges <- list(Gamma = c(0, 2), gaussian = c(0, 1), negbinomial = c(0, 1),
+                 beta = c(NA_real_, NA_real_),
+                 beta_binomial = c(NA_real_, NA_real_))
+  for (tag in names(ranges)) {
+    y <- switch(tag, negbinomial = disp_dat$count,
+                beta = , beta_binomial = disp_dat$prop, disp_dat$y)
+    for (pt in c("uninformative", "regularizing")) {
+      row <- c1_row(bayesnec:::define_prior("ecx4param", disp_fam(tag),
+                                            disp_dat$x, y, prior_type = pt,
+                                            disp_spec = spec))
+      expect_equal(as.numeric(c(row$lb, row$ub)), ranges[[tag]],
+                   label = paste(tag, pt))
+    }
+    # the density inside the bounds is the one c1 had before them
+    row <- c1_row(bayesnec:::define_prior("ecx4param", disp_fam(tag),
+                                          disp_dat$x, y, disp_spec = spec))
+    expect_identical(row$prior, "normal(0, 2)")
+  }
+  # a two-block family takes its positive block's range
+  expect_equal(bayesnec:::disp_slope_bounds(spec, "hurdle_gamma"),
+               c(lb = 0, ub = 2))
+  expect_true(all(is.na(
+    bayesnec:::disp_slope_bounds(spec, "zero_inflated_beta")
+  )))
+  # route A has no c1
+  expect_true(all(is.na(
+    bayesnec:::disp_slope_bounds(list(route = "A", value = "x"), "Gamma")
+  )))
+})
+
+test_that("twosided and loglinear are unchanged by the range (#472)", {
+  for (pt in c("uninformative", "regularizing")) {
+    for (tag in c("beta", "beta_binomial")) {
+      pr <- as.data.frame(bayesnec:::define_prior(
+        "ecx4param", disp_fam(tag), disp_dat$x, disp_dat$prop,
+        prior_type = pt, disp_spec = list(route = "B", value = "twosided")
+      ))
+      slopes <- pr[pr$nlpar %in% c("c1", "c2"), ]
+      expect_identical(slopes$prior, rep("normal(0, 2)", 2))
+      expect_true(all(is.na(slopes$lb) & is.na(slopes$ub)))
+    }
+    for (tag in c("Gamma", "gaussian", "negbinomial")) {
+      y <- if (tag == "negbinomial") disp_dat$count else disp_dat$y
+      row <- c1_row(bayesnec:::define_prior(
+        "ecx4param", disp_fam(tag), disp_dat$x, y, prior_type = pt,
+        disp_spec = list(route = "B", value = "loglinear")
+      ))
+      # the string define_disp_prior() wrote before #472
+      expect_identical(row$prior,
+                       paste0("normal(0, ", signif(2 / sd(y), 4), ")"))
+      expect_true(is.na(row$lb) && is.na(row$ub))
+    }
+  }
+})
+
+test_that("the regularizing centre recovers a known exponent (#472)", {
+  spec <- list(route = "B", value = "power")
+  truth <- c(Gamma = 0.8, gaussian = 0.6, negbinomial = 0.5)
+  tol <- c(Gamma = 0.25, gaussian = 0.15, negbinomial = 0.3)
+  for (tag in names(truth)) {
+    d <- slope_sim(tag, truth[[tag]])
+    slope <- bayesnec:::disp_replicate_slope(tag, d$x, d$y)
+    expect_lt(abs(slope - truth[[tag]]), tol[[tag]])
+    reg <- c1_row(bayesnec:::define_prior("ecx4param", disp_fam(tag), d$x, d$y,
+                                          prior_type = "regularizing",
+                                          disp_spec = spec))
+    expect_identical(reg$prior, paste0("normal(", signif(slope, 4), ", 2)"))
+    # the default set does not read the replicates
+    uni <- c1_row(bayesnec:::define_prior("ecx4param", disp_fam(tag), d$x, d$y,
+                                          disp_spec = spec))
+    expect_identical(uni$prior, "normal(0, 2)")
+    expect_equal(as.numeric(c(reg$lb, reg$ub)), as.numeric(c(uni$lb, uni$ub)))
+  }
+})
+
+test_that("the regularizing centre is clamped into the bounds (#472)", {
+  spec <- list(route = "B", value = "power")
+  # a Gamma shape rising as mu^3 is a variance falling as the response rises
+  d <- slope_sim("Gamma", 3)
+  expect_gt(bayesnec:::disp_replicate_slope("Gamma", d$x, d$y), 2)
+  row <- c1_row(bayesnec:::define_prior("ecx4param", disp_fam("Gamma"), d$x,
+                                        d$y, prior_type = "regularizing",
+                                        disp_spec = spec))
+  expect_identical(row$prior, "normal(2, 2)")
+  # a gaussian sigma falling as the response rises
+  d <- slope_sim("gaussian", -0.5)
+  expect_lt(bayesnec:::disp_replicate_slope("gaussian", d$x, d$y), 0)
+  row <- c1_row(bayesnec:::define_prior("ecx4param", disp_fam("gaussian"),
+                                        d$x, d$y, prior_type = "regularizing",
+                                        disp_spec = spec))
+  expect_identical(row$prior, "normal(0, 2)")
+})
+
+test_that("the regularizing centre falls back without replicates (#472)", {
+  spec <- list(route = "B", value = "power")
+  reg_c1 <- function(fam, x, y) {
+    c1_row(bayesnec:::define_prior("ecx4param", fam, x, y,
+                                   prior_type = "regularizing",
+                                   disp_spec = spec))$prior
+  }
+  # an unreplicated series
+  d <- slope_sim("Gamma", 0.8, n = 1)
+  d$x <- d$x * seq(1, 1.5, length.out = nrow(d))
+  expect_true(is.na(bayesnec:::disp_replicate_slope("Gamma", d$x, d$y)))
+  expect_identical(reg_c1(disp_fam("Gamma"), d$x, d$y), "normal(0, 2)")
+  # two replicated concentrations among unreplicated ones
+  d <- slope_sim("Gamma", 0.8, n = 1)
+  d <- rbind(d, d[1:2, ])
+  expect_true(is.na(bayesnec:::disp_replicate_slope("Gamma", d$x, d$y)))
+  expect_identical(reg_c1(disp_fam("Gamma"), d$x, d$y), "normal(0, 2)")
+  # a count divided by a rate() denominator is not read
+  d <- slope_sim("negbinomial", 0.5)
+  expect_false(is.na(bayesnec:::disp_replicate_slope("negbinomial", d$x,
+                                                     d$y)))
+  expect_true(is.na(bayesnec:::disp_replicate_slope("negbinomial", d$x,
+                                                    d$y / 7)))
+  # Dividing counts by an exposure can also leave whole numbers. The formula,
+  # not the numeric appearance of the rates, determines this fallback.
+  d <- slope_sim("negbinomial", 0.5)
+  d$ex <- 2
+  d$y <- 2 * d$y
+  expect_false(is.na(bayesnec:::disp_replicate_slope("negbinomial", d$x,
+                                                     d$y / d$ex)))
+  row <- get_priors(y | rate(ex) ~ crf(x, "ecx4param") + disp("power"),
+                    data = d, family = "negbinomial",
+                    prior_type = "regularizing")
+  expect_identical(c1_row(row)$prior, "normal(0, 2)")
+  ii <- bayesnec:::disp_inits(spec, disp_fam("negbinomial"), d$y / d$ex,
+                              d$x, prior_type = "regularizing",
+                              rate_response = TRUE)
+  expect_equal(as.numeric(ii$b_c1),
+               bayesnec:::truncated_normal_mean(0, 2, 0, 1))
+  # The growth component of bnec_hurdle() keeps only positive counts and uses
+  # a zero-truncated likelihood. Its sample variance is not the ordinary
+  # negative binomial variance used by the replicate statistic.
+  d <- slope_sim("negbinomial", 0.5)
+  d <- d[d$y > 0, ]
+  expect_gt(bayesnec:::disp_replicate_slope("negbinomial", d$x, d$y), 0.1)
+  tf <- bayesnec:::add_hurdle_truncation(
+    bnf(y ~ crf(x, "ecx4param") + disp("power"))
+  )
+  row <- get_priors(tf, data = d, family = "negbinomial",
+                    prior_type = "regularizing")
+  expect_identical(c1_row(row)$prior, "normal(0, 2)")
+  ii <- bayesnec:::disp_inits(spec, disp_fam("negbinomial"), d$y, d$x,
+                              prior_type = "regularizing",
+                              truncated_response = TRUE)
+  expect_equal(as.numeric(ii$b_c1),
+               bayesnec:::truncated_normal_mean(0, 2, 0, 1))
+  # beta has no statistic and no bound, so its slope is not centred
+  expect_true(is.na(bayesnec:::disp_replicate_slope("beta", disp_dat$x,
+                                                    disp_dat$prop)))
+  expect_identical(reg_c1(disp_fam("beta"), disp_dat$x, disp_dat$prop),
+                   "normal(0, 2)")
+  # nor is the slope of loglinear, which is unbounded
+  d <- slope_sim("Gamma", 0.8)
+  row <- c1_row(bayesnec:::define_prior(
+    "ecx4param", disp_fam("Gamma"), d$x, d$y, prior_type = "regularizing",
+    disp_spec = list(route = "B", value = "loglinear")
+  ))
+  expect_identical(row$prior, paste0("normal(0, ", signif(2 / sd(d$y), 4), ")"))
+})
+
+test_that("a two-block family centres c1 on its survivors (#472)", {
+  spec <- list(route = "B", value = "power")
+  d <- slope_sim("Gamma", 0.8)
+  d$y[d$x == 30][1:20] <- 0
+  pos <- d$y > 0
+  joint <- c1_row(bayesnec:::define_prior("nec3param",
+                                          validate_family("hurdle_gamma"),
+                                          d$x, d$y,
+                                          prior_type = "regularizing",
+                                          disp_spec = spec))
+  growth <- c1_row(bayesnec:::define_prior("nec3param", disp_fam("Gamma"),
+                                           d$x[pos], d$y[pos],
+                                           prior_type = "regularizing",
+                                           disp_spec = spec))
+  expect_equal(joint, growth, ignore_attr = TRUE)
+  expect_identical(joint$prior, paste0(
+    "normal(", signif(bayesnec:::disp_replicate_slope("Gamma", d$x[pos],
+                                                      d$y[pos]), 4), ", 2)"
+  ))
+})
+
+test_that("make_stancode declares the bounds on c1 (#472)", {
+  f <- bnf(y ~ crf(x, "ecx4param") + disp("power"))
+  decl <- c(Gamma = "vector<lower=0,upper=2>[K_c1] b_c1;",
+            gaussian = "vector<lower=0,upper=1>[K_c1] b_c1;")
+  for (tag in names(decl)) {
+    fam <- disp_fam(tag)
+    bf <- make_brmsformula(f, disp_dat, fam)[[1]]
+    pr <- suppressMessages(get_priors(f, data = disp_dat, family = fam))
+    sc <- brms::make_stancode(bf, data = disp_dat, family = fam, prior = pr)
+    expect_true(grepl(decl[[tag]], sc, fixed = TRUE), label = tag)
+    # the density is normalised over the interval, not over the real line
+    ub <- if (tag == "Gamma") 2 else 1
+    expect_true(grepl(paste0("normal_lcdf(", ub, " | 0, 2)"), sc, fixed = TRUE),
+                label = tag)
+  }
+  # an unbounded slope stays unbounded
+  fb <- bnf(prop ~ crf(x, "ecx4param") + disp("twosided"))
+  fam <- disp_fam("beta")
+  sc <- brms::make_stancode(
+    make_brmsformula(fb, disp_dat, fam)[[1]], data = disp_dat, family = fam,
+    prior = suppressMessages(get_priors(fb, data = disp_dat, family = fam))
+  )
+  expect_true(grepl("vector[K_c1] b_c1;", sc, fixed = TRUE))
+})
+
+test_that("initial values for c1 lie inside its bounds (#472)", {
+  spec <- list(route = "B", value = "power")
+  inside <- function(v, lb, ub) v > lb && v < ub
+  for (tag in c("Gamma", "gaussian", "negbinomial")) {
+    d <- slope_sim(tag, 0.5)
+    bnd <- bayesnec:::disp_slope_bounds(spec, tag)
+    for (pt in c("uninformative", "regularizing")) {
+      ii <- bayesnec:::disp_inits(spec, disp_fam(tag), d$y, d$x,
+                                  prior_type = pt)
+      expect_true(inside(as.numeric(ii$b_c1), bnd[["lb"]], bnd[["ub"]]),
+                  label = paste(tag, pt))
+    }
+  }
+  # a centre clamped onto a bound still starts the chains inside it
+  d <- slope_sim("Gamma", 3)
+  ii <- bayesnec:::disp_inits(spec, disp_fam("Gamma"), d$y, d$x,
+                              prior_type = "regularizing")
+  expect_true(inside(as.numeric(ii$b_c1), 0, 2))
+  # a two-block family, whose slope prior is built from the survivors
+  d$y[d$x == 30] <- 0
+  ii <- bayesnec:::disp_inits(spec, validate_family("hurdle_gamma"), d$y, d$x,
+                              prior_type = "regularizing")
+  expect_true(inside(as.numeric(ii$b_c1), 0, 2))
+})
+
+test_that("add_brm_defaults starts c1 inside the bounds in force (#472)", {
+  # The curve search is mocked to return one list per chain, so that the
+  # dispersion initial values are appended as they are for a fit. Nothing is
+  # compiled.
+  local_mocked_bindings(
+    make_good_inits = function(..., chains) {
+      replicate(chains, list(b_top = as.array(1)), simplify = FALSE)
+    },
+    .package = "bayesnec"
+  )
+  spec <- list(route = "B", value = "power")
+  d <- slope_sim("Gamma", 0.8, n = 6)
+  fam <- disp_fam("Gamma")
+  run <- function(brm_args) {
+    suppressMessages(suppressWarnings(bayesnec:::add_brm_defaults(
+      c(list(chains = 2), brm_args), "ecx4param", fam, d$x, d$y,
+      skip_check = TRUE, custom_name = NULL, prior_type = "regularizing",
+      disp_spec = spec
+    )))
+  }
+  out <- run(list())
+  c1 <- c1_row(out$prior)
+  expect_equal(as.numeric(c(c1$lb, c1$ub)), c(0, 2))
+  starts <- vapply(out$init, function(ch) as.numeric(ch$b_c1), numeric(1))
+  expect_true(all(starts > 0 & starts < 2))
+  # A user prior on c1 replaces the default row whole, bounds included, and the
+  # chains start inside the bounds it declares.
+  defaults <- bayesnec:::define_prior("ecx4param", fam, d$x, d$y,
+                                      disp_spec = spec)
+  user <- defaults[defaults$nlpar != "c1", ] +
+    brms::prior_string("normal(-0.5, 0.5)", nlpar = "c1", lb = -1, ub = 0)
+  out <- run(list(prior = user))
+  c1 <- c1_row(out$prior)
+  expect_identical(c1$prior, "normal(-0.5, 0.5)")
+  expect_equal(as.numeric(c(c1$lb, c1$ub)), c(-1, 0))
+  starts <- vapply(out$init, function(ch) as.numeric(ch$b_c1), numeric(1))
+  expect_true(all(starts > -1 & starts < 0))
+  # A user prior with no bounds leaves c1 unbounded and starts it at the
+  # centre of the default.
+  user <- defaults[defaults$nlpar != "c1", ] +
+    brms::prior_string("normal(0, 1)", nlpar = "c1")
+  out <- run(list(prior = user))
+  c1 <- c1_row(out$prior)
+  expect_true(is.na(c1$lb) && is.na(c1$ub))
+  starts <- vapply(out$init, function(ch) as.numeric(ch$b_c1), numeric(1))
+  centre <- bayesnec:::disp_slope_priors(spec, fam, d$y, d$x,
+                                         prior_type = "regularizing")$c1$centre
+  expect_equal(starts, rep(centre, 2))
+})
+
+# #443. A disp(~z) term naming a column other than the predictor. None of the
+# blocks below samples: the grid is built from a list holding the data and the
+# family, which is all prediction_grid() reads, and the refusals are reached
+# before anything is fitted.
+disp_z_dat <- data.frame(
+  x = rep(c(0.1, 1, 3, 10), 3),
+  y = c(2.1, 1.9, 1.2, 0.4, 2.0, 1.7, 1.1, 0.5, 2.2, 1.8, 1.0, 0.3),
+  z = factor(rep(c("b", "a", "c"), each = 4), levels = c("b", "a", "c")),
+  w = c(5, 1, 2, 9, 3, 3, 4, 8, 7, 6, 2, 1)
+)
+disp_z_grid <- function(rhs, data = disp_z_dat, ...) {
+  fake <- list(data = data, family = list(family = "Gamma"))
+  f <- bnf(stats::as.formula(paste0('y ~ crf(x, "nec3param")', rhs)))
+  bayesnec:::prediction_grid(fake, f, resolution = 5, ...)$newdata
+}
+
+test_that("disp_covariates names the columns other than the predictor (#443)", {
+  cov <- function(txt) {
+    bayesnec:::disp_covariates(bnf(stats::as.formula(
+      paste0('y ~ crf(x, "nec3param")', txt)
+    )))
+  }
+  expect_identical(cov(" + disp(~z)"), "z")
+  expect_identical(cov(" + disp(~z + w)"), c("z", "w"))
+  expect_identical(cov(" + disp(~x + z)"), "z")
+  expect_identical(cov(" + disp(~x)"), character(0))
+  expect_identical(cov(" + disp(~log(x))"), character(0))
+  expect_identical(cov(' + disp("power")'), character(0))
+  expect_identical(cov(""), character(0))
+  # the predictor is read through a transformation in crf()
+  expect_identical(bayesnec:::disp_covariates(
+    bnf(y ~ crf(log(x), "nec3param") + disp(~x + z))
+  ), "z")
+  expect_identical(bayesnec:::disp_covariates(
+    bnf(y ~ crf(log(x), "nec3param") + disp(~x))
+  ), character(0))
+})
+
+test_that("the grid holds a disp(~z) factor at its first level (#443)", {
+  g <- disp_z_grid(" + disp(~z)")
+  expect_named(g, c("x", "z"))
+  expect_s3_class(g$z, "factor")
+  # every level is kept, so that brms builds the same contrast as in the fit
+  expect_identical(levels(g$z), c("b", "a", "c"))
+  expect_true(all(g$z == "b"))
+  expect_identical(attr(g, "bnec_disp_placeholders"), "z")
+})
+
+test_that("the grid holds a numeric disp(~w) column at its median (#443)", {
+  g <- disp_z_grid(" + disp(~w)")
+  expect_identical(unique(g$w), stats::median(disp_z_dat$w))
+  expect_identical(attr(g, "bnec_disp_placeholders"), "w")
+  # several columns, each at its own fixed value, all marked
+  g2 <- disp_z_grid(" + disp(~z + w)")
+  expect_true(all(g2$z == "b") && all(g2$w == 3.5))
+  expect_identical(attr(g2, "bnec_disp_placeholders"), c("z", "w"))
+  # a character column takes the first of its sorted values, the level brms
+  # codes it against
+  chr <- disp_z_dat
+  chr$z <- as.character(chr$z)
+  expect_identical(unique(disp_z_grid(" + disp(~z)", data = chr)$z), "a")
+})
+
+test_that("a grid with no disp(~z) column is the grid it was (#443)", {
+  for (rhs in c("", " + disp(~x)", " + disp(~log(x))", ' + disp("power")')) {
+    g <- disp_z_grid(rhs)
+    expect_named(g, "x")
+    expect_null(attr(g, "bnec_disp_placeholders"))
+    expect_identical(names(attributes(g)), c("names", "class", "row.names"))
+  }
+})
+
+test_that("the level column of a joint refit is not a placeholder (#443)", {
+  d <- disp_z_dat
+  d$g <- factor(rep(c("A", "B"), 6))
+  spec <- list(group_var = "g", levels = c("A", "B"))
+  g <- disp_z_grid(" + disp(~z)", data = d, level_spec = spec)
+  expect_equal(nrow(g), 10)
+  expect_true(all(g$z == "b"))
+  expect_identical(attr(g, "bnec_disp_placeholders"), "z")
+  # a disp() term on the level factor itself: the grid writes every level and
+  # the column is not marked, because its values are not a placeholder
+  g2 <- disp_z_grid(" + disp(~g)", data = d, level_spec = spec)
+  expect_identical(as.character(g2$g), rep(c("A", "B"), each = 5))
+  expect_null(attr(g2, "bnec_disp_placeholders"))
+})
+
+test_that("a hurdle grid takes the growth component's disp(~z) value (#443)", {
+  f <- bnf(y ~ crf(x, "nec3param") + disp(~z))
+  # the survivors the growth component was fitted to, whose first level of z
+  # is the one the grid takes
+  growth_dat <- disp_z_dat[disp_z_dat$z != "b", ]
+  growth_dat$z <- factor(growth_dat$z, levels = c("c", "a"))
+  growth <- structure(list(fit = list(data = growth_dat)),
+                      class = c("bayesnecfit", "bnecfit"))
+  hurdle <- list(formula = f, growth = growth)
+  nd <- bayesnec:::hurdle_disp_placeholders(data.frame(x = 1:3), hurdle)
+  expect_true(all(nd$z == "c"))
+  expect_identical(attr(nd, "bnec_disp_placeholders"), "z")
+  # and from the first equation of a model set
+  hurdle$growth <- structure(
+    list(mod_fits = list(nec3param = list(fit = list(data = growth_dat)))),
+    class = c("bayesmanecfit", "bnecfit")
+  )
+  nd2 <- bayesnec:::hurdle_disp_placeholders(data.frame(x = 1:3), hurdle)
+  expect_identical(nd2, nd)
+  # unchanged without such a term
+  hurdle$formula <- bnf(y ~ crf(x, "nec3param") + disp("power"))
+  expect_identical(
+    bayesnec:::hurdle_disp_placeholders(data.frame(x = 1:3), hurdle),
+    data.frame(x = 1:3)
+  )
+})
+
+hurdle_count_dat <- function() {
+  set.seed(443)
+  d <- data.frame(x = rep(0:4, each = 8),
+                  z = factor(rep(c("a", "b"), 20)))
+  d$y <- stats::rnbinom(nrow(d), mu = 8 * exp(-0.4 * d$x), size = 3)
+  d$y[d$x == 4][1:3] <- 0L
+  d
+}
+
+test_that("disp(~z) is refused on a negbinomial growth component (#443)", {
+  f <- bnf(y ~ crf(x, "nec3param") + disp(~z))
+  expect_error(bayesnec:::check_disp_count_truncation(f),
+               paste0("\"z\" cannot be fitted on a negbinomial growth",
+                      ".*depends on the shape parameter.*disp\\(~x\\)"))
+  # a term on the predictor alone, and a variance function, are not refused
+  for (ok in list(bnf(y ~ crf(x, "nec3param") + disp(~x)),
+                  bnf(y ~ crf(x, "nec3param") + disp(~log(x + 1))),
+                  bnf(y ~ crf(x, "nec3param") + disp("power")))) {
+    expect_null(bayesnec:::check_disp_count_truncation(ok))
+  }
+  d <- hurdle_count_dat()
+  calls <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      calls <<- calls + 1L
+      stop("no component should be fitted")
+    },
+    .package = "bayesnec"
+  )
+  # before either component is fitted, and before the brms version check,
+  # which would otherwise ask for an upgrade to fit a model that is refused
+  expect_error(
+    bnec_hurdle(y ~ crf(x, "nec3param") + disp(~z), data = d,
+                family_growth = negbinomial()),
+    "cannot be fitted on a negbinomial growth component"
+  )
+  expect_equal(calls, 0L)
+  # a Gamma growth component takes the term and reaches its fit
+  d$y <- ifelse(d$y > 0, d$y + 0.5, 0)
+  expect_error(
+    suppressMessages(bnec_hurdle(y ~ crf(x, "nec3param") + disp(~z),
+                                 data = d, family_growth = Gamma())),
+    "no component should be fitted"
+  )
+  expect_equal(calls, 1L)
+})
+
+test_that("bnec() and the formula builder refuse it as backstops (#443)", {
+  d <- hurdle_count_dat()
+  d <- d[d$y > 0, ]
+  tf <- bayesnec:::add_hurdle_truncation(
+    bnf(y ~ crf(x, "nec3param") + disp(~z))
+  )
+  fam <- validate_family("negbinomial")
+  expect_error(
+    bayesnec:::wrangle_model_formula("nec3param", tf,
+                                     model.frame(tf, data = d), family = fam),
+    "cannot be fitted on a negbinomial growth component"
+  )
+  fitted <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      fitted <<- fitted + 1L
+      stop("nothing should be fitted")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(
+    suppressMessages(bnec(tf, data = d, family = fam)),
+    "cannot be fitted on a negbinomial growth component"
+  )
+  expect_equal(fitted, 0L)
+  # the untruncated negbinomial of an ordinary bnec() fit has a mean free of
+  # the shape, so the term is not refused there
+  expect_error(
+    suppressMessages(bnec(y ~ crf(x, "nec3param") + disp(~z), data = d,
+                          family = fam)),
+    "nothing should be fitted"
+  )
+})
+
+# ---- a Gamma family read off a fit -----------------------------------------
+# brms records Gamma as gamma. No model is compiled or sampled.
+
+test_that("the disp() readers take a stored Gamma family as Gamma (#436)", {
+  stored <- brms::bf(y ~ x, family = Gamma(link = "identity"))$family
+  expect_identical(stored$family, "gamma")
+  power <- list(route = "B", value = "power")
+  expect_identical(bayesnec:::disp_family_tag(stored), "Gamma")
+  expect_true(bayesnec:::has_disp_par(stored))
+  expect_identical(bayesnec:::disp_dpar(stored), "shape")
+  expect_identical(bayesnec:::disp_slope_bounds(power, stored),
+                   c(lb = 0, ub = 2))
+  expect_identical(bayesnec:::disp_intercept_centre(stored, disp_dat$y), 2)
+  expect_null(bayesnec:::check_disp_spec(power, stored, response = disp_dat$y))
+  expect_identical(
+    bayesnec:::define_disp_prior(power, stored, disp_dat$y, disp_dat$x),
+    bayesnec:::define_disp_prior(power, Gamma(link = "identity"), disp_dat$y,
+                                 disp_dat$x)
+  )
+  # A refusal names the family as written, not the stored tag.
+  expect_error(
+    bayesnec:::check_disp_spec(list(route = "B", value = "twosided"), stored),
+    "Variance function \"twosided\" is not valid for the Gamma family",
+    fixed = TRUE
+  )
+  # The formula amend() builds for an added equation is the one bnec() builds.
+  f <- bnf(y ~ crf(x, "ecx4param") + disp("power"))
+  built <- make_brmsformula(f, disp_dat, stored)
+  expected <- make_brmsformula(f, disp_dat, Gamma(link = "identity"))
+  expect_identical(deparse1(built$ecx4param$pforms$shape),
+                   deparse1(expected$ecx4param$pforms$shape))
+})
+
+test_that("every family bayesnec fits reads as before through the tag (#436)", {
+  # Reading through canonical_fam_tag() changes nothing for a validated
+  # family, or for a stored one other than Gamma.
+  for (tag in names(mod_fams)) {
+    validated <- validate_family(tag)
+    stored <- brms::bf(y ~ x, family = unmark_family(validated))$family
+    for (f in list(validated, stored)) {
+      expect_identical(bayesnec:::disp_family_tag(f),
+                       if (is_hurdle_family(tag)) {
+                         unname(hurdle_mu_fams[[tag]])
+                       } else {
+                         tag
+                       }, label = tag)
+      expect_identical(bayesnec:::has_disp_par(f),
+                       bayesnec:::disp_family_tag(tag) %in% names(disp_dpars),
+                       label = tag)
+    }
+  }
 })

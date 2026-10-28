@@ -13,7 +13,8 @@
 #' "absolute" (the default), "relative" or "range". See Details.
 #' @param xform A function to apply to the returned estimated NSEC concentration
 #' values prior to estimating the percentage effect.
-#' @param x_range A range of x values over which to consider extracting NSEC.
+#' @param x_range A range of x values over which to predict the curve. An
+#' \code{nsec} outside it is refused; see Details.
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
@@ -44,6 +45,13 @@
 #' on the transformed scale unless given an \code{xform}, so a message says so
 #' once per call where \code{xform} is left at its default, and names the
 #' \code{xform} that puts such a value on the recorded scale.
+#'
+#' The curve is read at \code{nsec} only inside the range it is predicted
+#' over: the observed range of the predictor, or \code{x_range} where one is
+#' supplied. An \code{nsec} outside that range once \code{xform} has been
+#' applied is refused with a message naming the range, rather than read off
+#' the curve extended past the data without a message. Supply an
+#' \code{x_range} that includes \code{nsec} to read the curve there.
 #'
 #' @seealso \code{\link{bnec}}
 #'
@@ -116,8 +124,14 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 200, x_range = NA,
   newdata_list <- newdata_eval(
     object, resolution = resolution, x_range = x_range
   )
+  # Refused beyond the grid rather than read off the curve there. The curve is
+  # evaluated at nsec itself below, so an nsec of 1000 on data reaching 5
+  # returned the curve extended past the data, 100 per cent on a nec3param
+  # growth component, with nothing said (#437, D33).
+  check_ecnsec_range(object, nsec, nsec_use, range(newdata_list$x_vec),
+                     x_range, xform)
 
-  p_samples <- posterior_epred(object, 
+  p_samples <- posterior_epred(object,
                                newdata = newdata_list$newdata,
                                re_formula = NA)
   newdat_nsec <- newdata_eval(
@@ -163,3 +177,64 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 200, x_range = NA,
 
 
 
+
+#' Refuse an nsec that lies outside the range ecnsec() reads the curve over
+#'
+#' One refusal for every class, so that the same question gets the same kind
+#' of answer whichever object it is asked of (#437, D33). Before it, the
+#' hurdle method read an nsec beyond the grid at the grid's end, and
+#' \code{ecnsec.bnecfit()} read the curve extended past the data; neither said
+#' so. The wording follows the refusal #430 gave the growth curve of a hurdle
+#' pair, which D44 removed with the growth range it was measured against.
+#'
+#' The comparison is made on the recorded scale, which is the scale of the
+#' prediction grid and the scale the curve is read at once \code{xform} has
+#' been applied to \code{nsec}. Where \code{crf()} transforms the predictor
+#' inline, the message says which variable that scale belongs to. For a
+#' monotone transformation, the fitted scale would give the same answer. It
+#' would fail where the transformation is undefined, as \code{log()} is at a
+#' negative \code{nsec}.
+#'
+#' A value within a relative tolerance of an end is accepted. An estimate
+#' censored at the end of the range is reported as that end, and a round trip
+#' through a transformation and its inverse, \code{exp(log(3.22))}, can leave
+#' it a rounding error outside.
+#'
+#' @param object The object \code{ecnsec()} was called on.
+#' @param nsec The \code{nsec} supplied.
+#' @param nsec_use \code{nsec} after \code{xform}, on the recorded scale.
+#' @param grid_range The range of the prediction grid, on the recorded scale.
+#' @param x_range The \code{x_range} supplied.
+#' @param xform The \code{xform} supplied.
+#' @param curve A noun phrase naming the curve, for the message.
+#'
+#' @return \code{NULL}, invisibly. Called for the error.
+#' @noRd
+check_ecnsec_range <- function(object, nsec, nsec_use, grid_range, x_range,
+                               xform, curve = "the curve") {
+  tol <- sqrt(.Machine$double.eps) * max(1, abs(grid_range))
+  outside <- nsec_use < grid_range[1] - tol | nsec_use > grid_range[2] + tol
+  if (!any(outside, na.rm = TRUE)) {
+    return(invisible(NULL))
+  }
+  num <- function(v) paste(signif(v, 4), collapse = ", ")
+  value <- if (identical(xform, identity)) {
+    paste0("nsec = ", num(nsec))
+  } else {
+    paste0("nsec = ", num(nsec), ", which xform takes to ", num(nsec_use), ",")
+  }
+  tr <- inline_x_transform(object)
+  on_scale <- if (is.null(tr)) "" else paste(" on the scale of", tr$variable)
+  supplied <- !(length(x_range) == 1 && is.na(x_range))
+  where <- if (supplied) "the x_range supplied" else
+    "the observed range of the predictor"
+  remedy <- if (supplied) {
+    "Supply an x_range that includes nsec."
+  } else {
+    paste0("Supply an x_range that includes nsec to read ", curve,
+           " extended past the data.")
+  }
+  stop(value, " lies outside ", where, ", ", signif(grid_range[1], 4), " to ",
+       signif(grid_range[2], 4), on_scale, ". ecnsec() reads ", curve,
+       " over that range only. ", remedy, call. = FALSE)
+}
