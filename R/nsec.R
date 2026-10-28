@@ -254,11 +254,9 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
   # Once for the call. See report_fitted_scale().
   quiet <- report_fitted_scale(object, xform, "nsec")
   on.exit(options(quiet), add = TRUE)
-  # extrapolate resolves into x_range, because the grid is the only thing an
-  # NSEC can be extended over: the estimate is read off a curve and the curve
-  # is read off the grid. What extrapolate adds over x_range is the refusal to
-  # narrow and the refusal of an infinite limit, both of which a bare x_range
-  # accepts silently.
+  # extrapolate becomes x_range, since an NSEC is read off the curve on the
+  # grid. It adds two refusals a bare x_range lacks: of a limit that narrows
+  # the range, and of an infinite limit.
   lims <- extrapolate_limits(extrapolate,
                              searched_or_stored_bounds(object, x_range),
                              "NSEC")
@@ -269,67 +267,50 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
   newdata_list <- newdata_eval(
     object, resolution = resolution, x_range = x_range
   )
-  # dpar selects one block of a two-block (hurdle / zero-inflated) fit, exactly
-  # as in ecx(). The default (NULL) leaves the behaviour posterior_epred always
-  # gave: the positive-part mean times (1 - hu) for such a family, the single
-  # mean curve otherwise. The zero-probability block is inverted to survival
-  # first, so that the NSEC is
-  # read off a declining curve and "decline from control" keeps its usual
-  # meaning.
+  # dpar selects one block of a two-block fit, as in ecx(). NULL gives the
+  # positive-part mean times (1 - hu) for a two-block family, and the mean
+  # curve otherwise. The zero-probability block is inverted to survival first,
+  # so that the NSEC is read off a declining curve.
   epred_fun <- function(nd) joint_hurdle_epred(object, nd, dpar)
   p_samples <- epred_fun(newdata_list$newdata)
   x_vec <- newdata_list$x_vec
-  # The control posterior is read at the lowest observed concentration rather
-  # than at the first column of the grid, so that supplying x_range does not
-  # change the reference and therefore the estimate. See D15 ruling 2.
+  # Read the control at the lowest observed concentration, not the first grid
+  # column, so that x_range does not change the reference.
   control <- control_posterior(object, newdata_list$newdata, epred_fun)
   reference <- quantile(control, sig_val)
-  # ecnsec is the percent effect at the NSEC, defined exactly as ecx defines
-  # it and defaulting to the same reference: the decline from the control to
-  # zero. The three formulas this replaces measured the decline against the
-  # fitted range instead, and disagreed with each other. See toxval#49 and
-  # D15 ruling 5.
+  # ecnsec is the percent effect at the NSEC, defined as ecx() defines it: the
+  # decline from the control towards zero, not across the fitted range.
   ecnsecP <- as.numeric((control - reference) / control * 100)
   ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
-  # The hormesis branch that stood here switched the reference to the maximum
-  # of the predicted curve when hormesis_def was "max". The control is now
-  # always the reference, so the branch selects nothing and hormesis_def has
-  # been removed. See D15 rulings 1 and 4.
+  # The control is the reference whether or not the curve shows hormesis.
   x_control <- control_x(object)
   nsec_out <- nsec_from_posterior(p_samples, reference, x_vec, x_control,
                                   control)
-  # The two classes of draw that return NA are opposite statements about where
-  # the estimate is, and one message for both would say of each the thing that
-  # is true of the other. Counted before sub_x_transformation(), which returns a
-  # bare value.
+  # Draws above and below the range return NA for opposite reasons, so each
+  # class has its own warning. Count them before the transformations below,
+  # which need not keep the attributes.
   below <- attr(nsec_out, "below_range")
   n_below <- sum(below)
   searched_from <- attr(nsec_out, "x_searched_from")
   above <- is.na(nsec_out) & !below
   n_above <- sum(above)
   nsec_out <- sub_x_transformation(nsec_out, object$bayesnecformula)
-  # The record is built here rather than read off the fit, because nsec() works
-  # on a grid the caller may have changed through x_range. Its lower bound is
-  # the point the search started from, which is what a below-range draw is
-  # known to lie beneath, and not min(x_vec): the two differ wherever the grid
-  # reaches below the control. It is built on the recorded scale, the scale the
-  # search ran on, and remapped onto the fitted scale, which swaps the two ends
-  # under a decreasing crf(). See the same construction in ecx.bayesnecfit.
+  # Build the censoring record here, since x_range may differ from the fit's
+  # grid. Its lower bound is where the search started, not min(x_vec): they
+  # differ wherever the grid reaches below the control. It is built on the
+  # recorded scale and remapped, which swaps the ends under a decreasing crf().
   cens <- xform_censoring(
     censoring_record(max(x_vec), searched_from, above, below),
     function(value) sub_x_transformation(value, object$bayesnecformula)
   )
-  # xform reaches the censoring bounds as well as the estimates, and the
-  # warnings follow both, so that a bound is on the scale the caller reads the
-  # estimate on. See the same reordering in ecx.bayesnecfit.
+  # Apply xform to the censoring bounds as well, so that the warnings report
+  # them on the caller's scale.
   if (inherits(xform, "function")) {
     nsec_out <- xform(nsec_out)
     cens <- xform_censoring(cens, xform)
   }
-  # The end each class is named at comes from the record's own flag rather than
-  # from a local variable, so that a decreasing crf() or xform reports each set
-  # of draws at the end of the reported scale they actually lie beyond, and does
-  # so where draws sit at both ends at once.
+  # Take each end from the record's own flag, so that a decreasing crf() or
+  # xform names the end each set of draws actually lies beyond.
   if (n_above > 0) {
     warning("The ", object$model, " curve does not fall below the control's ",
             sig_val, " quantile anywhere in the predictor range for ",
@@ -346,10 +327,8 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
             " draws. The NSEC is censored at ", below_at,
             ", which this x_range does not cover.", call. = FALSE)
   }
-  # sub_x_transformation() returns the vector with its attributes, so the three
-  # nsec_from_posterior() left for the warnings would otherwise reach the caller,
-  # and only on this class: the bayesmanecfit path subsets by draw index and
-  # drops them. The censoring record replaces them and is meant to travel.
+  # Drop the attributes nsec_from_posterior() left for the warnings, which the
+  # transformation keeps. The censoring record replaces them.
   attr(nsec_out, "n_below_range") <- NULL
   attr(nsec_out, "below_range") <- NULL
   attr(nsec_out, "x_searched_from") <- NULL
@@ -396,15 +375,12 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 200,
   if (length(sig_val)>1) {
     stop("You may only pass one sig_val")
   }
-  # Once for the set, not once per equation. xform is validated by the
-  # per-equation calls below, and anything but identity raises nothing here.
-  # See report_fitted_scale().
+  # Report once for the set; the per-equation calls below validate xform. See
+  # report_fitted_scale().
   quiet <- report_fitted_scale(object, xform, "nsec")
   on.exit(options(quiet), add = TRUE)
-  # Resolved once for the set and passed down as x_range, so that every
-  # component is searched over one grid. Resolving it again inside each
-  # component call would measure each limit against that component's own
-  # range.
+  # Resolve the limits once for the set, so that every component is searched
+  # over one grid rather than against its own range.
   lims <- extrapolate_limits(extrapolate,
                              searched_or_stored_bounds(object, x_range),
                              "NSEC")
@@ -413,19 +389,12 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 200,
     x_range <- c(lims$lower, lims$upper)
   }
   sample_size <- object$sample_size
-  # The same weighted index every other quantity on this object uses, rather
-  # than a fresh unseeded sample() here. Two things follow. The model-averaged
-  # NSEC stops moving between calls -- and it was the lower bound, the end a
-  # protective concentration is read off, that moved most. And the NSEC and its
-  # ecnsec are drawn with one index instead of two independent ones, so a pair
-  # is now the same posterior draw of the same model rather than two unrelated
-  # ones. Which draws are kept is unchanged in kind, and each NSEC is still read
-  # off its own model's curve exactly as before, so this settles nothing about
-  # what those curves are anchored to (#19). See #216.
+  # Use the weighted draw index the rest of the object uses, not a fresh
+  # sample(): the estimate is then the same on every call, and each NSEC and
+  # its ecnsec come from the same draw.
   draw_index <- pull_draw_index(object, names(object$mod_fits), sample_size)
-  # A closure rather than positional dispatch through sapply(), for the reason
-  # given in ecx.bayesmanecfit: the previous form silently dropped any argument
-  # not named in the positional list, dpar included.
+  # A closure passes every argument by name. Positional dispatch through
+  # sapply() would drop any argument it did not list, dpar included.
   sample_nsec <- function(x) {
     mod <- names(object$mod_fits)[x]
     target <- suppressMessages(pull_out(object, model = mod))
@@ -436,10 +405,8 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 200,
     sample_out <- out[idx]
     attr(sample_out, "ecnsec_relativeP") <-
       attributes(out)$ecnsec_relativeP[idx]
-    # Subsetting drops the record, so the share of it that belongs to these
-    # draws is rebuilt here. Without this a single fit and the
-    # one-model average of it would report the same quantity two different
-    # ways, and pull_out() would change a number without changing a model.
+    # Subsetting drops the censoring record, so rebuild it for these draws.
+    # Otherwise a fit and its one-equation average would report differently.
     attr(sample_out, "censored") <-
       subset_censoring(attr(out, "censored"), idx)
     sample_out
@@ -603,13 +570,10 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,
   
   if(posterior & is.na(group_var)){ 
     out_vals <- unlist(nsec_out)
-    # below_range is the per-draw vector nsec_from_posterior() adds for the
-    # censoring record. This method builds no record -- it has no
-    # bayesnecformula to take a bound from, and it summarises with quantile()
-    # and no na.rm, so a beyond-range draw raises an error here rather than
-    # being deleted in silence -- so the vector it would otherwise return is
-    # dropped. The n_below_range and x_searched_from this method has always
-    # returned are left alone: they are not this branch's to change.
+    # Drop below_range, which feeds a censoring record this method cannot
+    # build without a bayesnecformula. Keep n_below_range and x_searched_from,
+    # which it has always returned. quantile() runs without na.rm, so a draw
+    # beyond the range is an error here rather than a silent deletion.
     attr(out_vals, "below_range") <- NULL
     attr(out_vals, "ecnsec_relativeP") <- ecnsecP
   }
@@ -688,17 +652,9 @@ nsec.drc <- function(object, sig_val = 0.01, resolution = 200,
                          level = 1-(sig_val*2))["Lower"])
     control <- p_samples[1, "Prediction"]
     ecnsec <- as.numeric((control - reference) / control * 100)
-    # p_samples holds the fitted curve and its two confidence limits rather than
-    # posterior draws, and the reference is the control's lower limit at
-    # level = 1 - 2 * sig_val while the curves are drawn at
-    # prob_vals[3] - prob_vals[2]. The lower curve therefore begins at or below
-    # the reference for any sig_val at or above half the excluded probability --
-    # 0.025 under the default prob_vals -- and returned NA for those. The
-    # crossing of a curve that begins on the reference is the control, which is
-    # what x_start supplies. drc is not a dependency of this package, so no test
-    # covers this method; the interval this construction builds is not from
-    # Fisher and Fox (2023), whose frequentist NSEC is the fitted-mean crossing
-    # alone. See #325.
+    # p_samples holds fitted means and confidence limits, not draws.
+    # With default prob_vals and sig_val >= 0.025, x_start makes the lower
+    # crossing the control; Fisher and Fox (2023) use the fitted mean alone.
     nsec_out <- apply(p_samples, 2, function(col) {
       crossing_x(col, reference, x_vec, x_start = min(x_vec))
     })

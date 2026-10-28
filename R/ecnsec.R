@@ -124,10 +124,8 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 200, x_range = NA,
   newdata_list <- newdata_eval(
     object, resolution = resolution, x_range = x_range
   )
-  # Refused beyond the grid rather than read off the curve there. The curve is
-  # evaluated at nsec itself below, so an nsec of 1000 on data reaching 5
-  # returned the curve extended past the data, 100 per cent on a nec3param
-  # growth component, with nothing said (#437, D33).
+  # Refuse an nsec outside the chosen grid. Otherwise the curve is evaluated
+  # past that grid without reporting the extrapolation.
   check_ecnsec_range(object, nsec, nsec_use, range(newdata_list$x_vec),
                      x_range, xform)
 
@@ -143,15 +141,11 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 200, x_range = NA,
                                    re_formula = NA)
   reference <- median(pred_val_nsec[, 2])
 
-  # The percent effect at the NSEC is the inverse of the ecx reference
-  # construction under the same type, so ecnsec and ecx answer the same
-  # question of the same curve. The control is the predicted mean at the
-  # lowest observed concentration, per draw, and the denominator is the span
-  # from the control to whatever that type measures towards. The branch this
-  # replaces used the maximum of the curve as the control when hormesis_def
-  # was "max", and the response at the highest concentration as the floor
-  # under "relative", neither of which matches ecx. See toxval#49, T8, and
-  # D15 ruling 5.
+  # The percent effect at the NSEC inverts the ecx() reference construction
+  # under the same type, so that ecnsec() and ecx() answer the same question of
+  # the same curve. The control is the predicted mean at the lowest observed
+  # concentration, per draw, and the denominator runs from the control to
+  # whatever the type measures towards.
   control_draws <- control_posterior(
     object, newdata_list$newdata,
     function(nd) posterior_epred(object, newdata = nd, re_formula = NA)
@@ -181,24 +175,16 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 200, x_range = NA,
 #' Refuse an nsec that lies outside the range ecnsec() reads the curve over
 #'
 #' One refusal for every class, so that the same question gets the same kind
-#' of answer whichever object it is asked of (#437, D33). Before it, the
-#' hurdle method read an nsec beyond the grid at the grid's end, and
-#' \code{ecnsec.bnecfit()} read the curve extended past the data; neither said
-#' so. The wording follows the refusal #430 gave the growth curve of a hurdle
-#' pair, which D44 removed with the growth range it was measured against.
+#' of answer whichever object it is asked of.
 #'
-#' The comparison is made on the recorded scale, which is the scale of the
-#' prediction grid and the scale the curve is read at once \code{xform} has
-#' been applied to \code{nsec}. Where \code{crf()} transforms the predictor
-#' inline, the message says which variable that scale belongs to. For a
-#' monotone transformation, the fitted scale would give the same answer. It
-#' would fail where the transformation is undefined, as \code{log()} is at a
+#' The comparison is made on the recorded scale, the scale of the prediction
+#' grid and of \code{nsec} once \code{xform} is applied. The fitted scale would
+#' fail where the transformation is undefined, as \code{log()} is at a
 #' negative \code{nsec}.
 #'
-#' A value within a relative tolerance of an end is accepted. An estimate
+#' A value within a relative tolerance of an end is accepted: an estimate
 #' censored at the end of the range is reported as that end, and a round trip
-#' through a transformation and its inverse, \code{exp(log(3.22))}, can leave
-#' it a rounding error outside.
+#' such as \code{exp(log(3.22))} can leave it a rounding error outside.
 #'
 #' @param object The object \code{ecnsec()} was called on.
 #' @param nsec The \code{nsec} supplied.

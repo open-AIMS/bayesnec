@@ -1,26 +1,17 @@
 #' Say once per call that an estimate is on a transformed predictor scale
 #'
-#' Where \code{crf()} transforms the predictor inline --- \code{crf(log(x))}
-#' --- the estimators return values on the transformed scale unless the caller
-#' supplies \code{xform}, while \code{\link{autoplot}} draws the recorded scale
-#' by default. Nothing in the returned number says which scale it is on, and a
-#' log-scale estimate inside the tested range reads as a concentration. The
-#' message names the transformation and the \code{xform} that inverts it. The
-#' returned values are unchanged; making the recorded scale the default changes
-#' every reported value from such a fit and is left to a release of its own
-#' (#299, D23).
+#' Where \code{crf()} transforms the predictor inline, as \code{crf(log(x))},
+#' the estimators return values on the transformed scale unless the caller
+#' supplies \code{xform}, and nothing in the returned number says so. The
+#' message names the transformation and the \code{xform} that inverts it.
 #'
-#' The message is raised once per call, by the first method to reach this
-#' function. That method sets the \code{bayesnec.xform_reported} option for the
-#' rest of the call, whether or not it raised the message, so the calls it
-#' makes in turn --- one per equation of a model set, per level of a group,
-#' per component of a hurdle pair, per fit of a comparison --- add nothing.
-#' Those calls often pass no \code{xform} even where the caller supplied one,
-#' because the outer method applies it afterwards, so they are not in a
-#' position to decide. It is the device \code{bayesnec.relative_warned} uses
-#' for the \code{"relative"} rename warning, and the gate is the one
-#' \code{\link{curve_params}} already set for its own report of the
-#' transformation, so the two cannot report the same thing twice.
+#' The first method to reach this function sets the
+#' \code{bayesnec.xform_reported} option for the rest of the call, whether or
+#' not it raised the message, so the calls it makes per equation, level,
+#' component or fit add nothing. Those inner calls often receive no
+#' \code{xform} even where the caller gave one, because the outer method
+#' applies it afterwards, so they cannot decide. \code{\link{curve_params}}
+#' sets the same option.
 #'
 #' @param object The object the caller named: a \code{\link{bayesnecfit}},
 #' \code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}},
@@ -34,10 +25,8 @@
 #' restore with \code{on.exit(options(...), add = TRUE)}.
 #' @noRd
 report_fitted_scale <- function(object, xform, kind) {
-  # identical(xform, identity) rather than missing(xform): the group methods
-  # receive xform through `...`, where missing() cannot be asked, and
-  # to_axis_scale() and report_x_transform() already read identity as "no
-  # xform supplied". A caller who writes xform = identity is told as well.
+  # Test identical(xform, identity), not missing(xform): the group methods
+  # receive xform through `...`, where missing() cannot be asked.
   if (!isTRUE(getOption("bayesnec.xform_reported", FALSE)) &&
       identical(xform, identity)) {
     tr <- inline_x_transform(object)
@@ -45,10 +34,8 @@ report_fitted_scale <- function(object, xform, kind) {
       message(fitted_scale_text(scale_subject(object), tr, kind))
     }
   }
-  # Set last, once nothing above can fail. The caller registers the restore
-  # only when this returns, so an error raised between setting the option and
-  # returning would leave it set for the rest of the session and silence every
-  # later call.
+  # Set the option last. The caller registers its restore only once this
+  # returns, so an error after setting it would leave it set for the session.
   invisible(options(bayesnec.xform_reported = TRUE))
 }
 
@@ -71,14 +58,11 @@ without_scale_report <- function(expr) {
 
 #' The xform a method received through its dots
 #'
-#' For the methods that take \code{xform} in \code{...} rather than as a
-#' formal and pass the dots on to a per-fit method. The dots are matched
-#' against the generic that per-fit method is reached through, so that
-#' \code{xform} is found by position and by partial name exactly as that
-#' method will find it: \code{nec(g, FALSE, exp)} on a group supplies
-#' \code{xform} as surely as \code{nec(fit, FALSE, exp)} does on one fit.
-#' Reading \code{dots[["xform"]]} alone took only the full name, and reported
-#' a scale the per-level calls had already inverted.
+#' For the methods that take \code{xform} in \code{...} and pass the dots on
+#' to a per-fit method. The dots are matched against that method's generic, so
+#' that \code{xform} is found by position and by partial name as the method
+#' will find it: \code{nec(g, FALSE, exp)} supplies \code{xform} on a group as
+#' \code{nec(fit, FALSE, exp)} does on one fit.
 #'
 #' @param generic The generic the dots are passed to, such as \code{nec}.
 #' @param dots The \code{...} of the calling method, as a list.
@@ -86,10 +70,9 @@ without_scale_report <- function(expr) {
 #' @return A function, or whatever was supplied.
 #' @noRd
 dots_xform <- function(generic, dots) {
-  # The object slot is filled with a placeholder so that the dots are matched
-  # from the generic's second formal on. An error here (an argument matched
-  # twice, say) is left to the per-fit call, which raises it with the caller's
-  # own call in the message.
+  # A placeholder fills the object slot, so that the dots are matched from the
+  # second formal on. An error here is left to the per-fit call, which raises
+  # it with the caller's own call in the message.
   matched <- tryCatch(
     match.call(generic, as.call(c(list(quote(f), quote(object)), dots))),
     error = function(e) NULL
@@ -113,15 +96,13 @@ first_transformed_fit <- function(x) {
 #'
 #' Read from the \code{crf()} term by \code{crf_x_call()}, the parse
 #' \code{sub_x_transformation()} applies to every estimate, so the message is
-#' raised exactly where an estimate has been put on a transformed scale.
+#' raised exactly where an estimate is on a transformed scale.
 #'
-#' \code{pop_var_is_transformed()}, which the plotting paths use, is not the
-#' test here. It reads the model frame, and \code{stats::model.frame()} takes
-#' the leading minus of \code{crf(-x)} as the removal of a term, so it reports
-#' that predictor as untransformed while \code{sub_x_transformation()} negates
-#' the estimate. The two agree on \code{log(x)}, \code{sqrt(x)},
-#' \code{log(x + 1)} and \code{log10(x + 0.01)}, the forms checked when this
-#' was written.
+#' Do not use \code{pop_var_is_transformed()} here, as the plotting paths do.
+#' It reads the model frame, and \code{stats::model.frame()} takes the leading
+#' minus of \code{crf(-x)} as the removal of a term, so it reports that
+#' predictor as untransformed while \code{sub_x_transformation()} negates the
+#' estimate.
 #'
 #' @param object A fitted object or a \code{prebayesnecfit}. A model set, a
 #' group and a hurdle pair are read from their first equation, their first
@@ -204,12 +185,9 @@ scale_subject <- function(object) {
 #'
 #' A closed form is given for a one-argument \code{log}, \code{log10},
 #' \code{log2}, \code{log1p}, \code{sqrt} or \code{exp} of the predictor,
-#' alone or shifted by a numeric constant, which covers
-#' \code{crf(log(x + 1))} as \code{vignette("example1")} writes it. Anything
-#' else returns \code{NULL}, and the message asks for the inverse of the
-#' transformation by name rather than guessing at one: an inverse printed for
-#' the wrong function would be followed, and would give a wrong number with
-#' nothing said, which is the failure the message exists to prevent.
+#' alone or shifted by a numeric constant. Anything else returns \code{NULL},
+#' and the message asks for the inverse by name rather than guessing one: a
+#' wrong inverse would be followed, and would give a wrong number.
 #'
 #' @param x_call The transformation as a call, such as \code{log(x + 1)}.
 #'
@@ -277,14 +255,12 @@ x_literal_shift <- function(arg) {
 #' @param what A \code{\link[base]{character}} noun phrase naming what was
 #' fitted, from \code{scale_subject()}.
 #' @param tr The list \code{inline_x_transform()} returns.
-#' @param kind The name of the function whose result is described.
-#' \code{"nec"}, \code{"ecx"} and \code{"nsec"} return an estimate on the
-#' predictor axis. \code{"ecnsec"} returns a percentage, and it is the
-#' \code{nsec} it is given that has a scale; every \code{ecnsec} method,
-#' \code{\link{bayesnechurdlefit}} included, applies \code{xform} to that
-#' \code{nsec}. \code{"curve_params"} reports
-#' two parameters on the predictor axis among others that are not.
-#' \code{"compare_estimates"} takes no \code{xform} at all.
+#' @param kind The name of the function whose result is described:
+#' \code{"nec"}, \code{"ecx"} or \code{"nsec"}, whose estimate is on the
+#' predictor axis; \code{"ecnsec"}, whose \code{nsec} argument has the scale,
+#' since every \code{ecnsec} method applies \code{xform} to it;
+#' \code{"curve_params"}; or \code{"compare_estimates"}, which takes no
+#' \code{xform}.
 #'
 #' @return A \code{\link[base]{character}} string.
 #' @noRd

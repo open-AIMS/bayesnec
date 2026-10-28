@@ -146,11 +146,8 @@ exceedance <- function(object, threshold, estimate = c("nec", "nsec", "ecx"),
 exceedance.bnecfit <- function(object, threshold,
                                estimate = c("nec", "nsec", "ecx"),
                                ecx_val = 10, xform = identity, ...) {
-  # One method for bayesnecfit, bayesmanecfit and bayesnechurdlefit rather
-  # than one each: the estimator generics already dispatch on those classes,
-  # and reading the posterior through them is what guarantees the draws and
-  # the record compared here are the ones nec(), nsec() and ecx() report for
-  # the same call.
+  # Read each fitted class through the estimator generics, so exceedance()
+  # compares the same draws that nec(), nsec() and ecx() report.
   estimate <- match.arg(estimate)
   check_exceedance_args(threshold, estimate, ecx_val, !missing(ecx_val),
                         list(...))
@@ -198,16 +195,10 @@ exceedance.bayesnecjointfit <- function(object, threshold,
   check_exceedance_args(threshold, estimate, ecx_val, !missing(ecx_val),
                         list(...))
   xform <- if (missing(xform)) NULL else xform
-  # Read once for the refit and compared level by level, where the grouped
-  # method maps over its fits. A joint refit has no per-level fits to map over,
-  # and its own nec(), nsec() and ecx() already return one element of draws
-  # per level under posterior = TRUE, each read off that level's curve. Going
-  # through them keeps the draws compared the ones those estimators report for
-  # the same call, which is the contract exceedance_fit() keeps for a single
-  # fit. Under estimate = "nec" that includes the NA draws nec() returns at a
-  # level whose equation has no nec parameter; exceedance_from_draws() leaves
-  # them out, so that level's row is NA rather than a probability for a
-  # quantity nec() does not report.
+  # A joint refit has no per-level fits to map over, but its estimators return
+  # one element of draws per level, so read them once. Under estimate = "nec",
+  # a level whose equation has no nec parameter returns NA draws, which
+  # exceedance_from_draws() leaves out, so that level's row is NA.
   post <- exceedance_posterior(object, estimate, ecx_val, xform, ...)
   out <- do.call(rbind, lapply(object$levels, function(lev) {
     cbind(data.frame(level = lev, stringsAsFactors = FALSE),
@@ -244,10 +235,8 @@ check_exceedance_args <- function(threshold, estimate, ecx_val, ecx_val_given,
     stop("ecx_val applies only to estimate = \"ecx\"; this call compares ",
          "estimate = \"", estimate, "\".", call. = FALSE)
   }
-  # Refused for the same reason: nsec() and ecx() absorb an argument they do
-  # not use, so no_effect = TRUE under either estimate returned the
-  # probability for that estimate with no sign that no_effect had been
-  # dropped (#459). FALSE asks for nothing, so it is let through.
+  # Refuse no_effect = TRUE for the same reason: nsec() and ecx() would accept
+  # and ignore it. FALSE asks for nothing, so it passes.
   if (estimate != "nec" && isTRUE(dots[["no_effect"]])) {
     stop("no_effect applies only to estimate = \"nec\"; this call compares ",
          "estimate = \"", estimate, "\".", call. = FALSE)
@@ -300,13 +289,8 @@ exceedance_posterior <- function(object, estimate, ecx_val, xform, ...) {
     nsec = function(...) nsec(object, posterior = TRUE, ...),
     ecx = function(...) ecx(object, ecx_val = ecx_val, posterior = TRUE, ...)
   )
-  # xform is forwarded only where the caller supplied one. Otherwise the
-  # estimator's own default applies, and the estimator receives the call a
-  # user would have made to it directly. No estimator currently distinguishes
-  # a supplied identity from its default. #299 proposes a message for a
-  # transformed predictor with no xform, and if that tests whether xform was
-  # supplied, forwarding identity by name would suppress it for every call
-  # made from here.
+  # Forward xform only where the caller supplied one, so that the estimator
+  # receives the call a user would have made to it directly.
   if (is.null(xform)) {
     read_posterior(...)
   } else {
@@ -326,23 +310,17 @@ exceedance_posterior <- function(object, estimate, ecx_val, xform, ...) {
 #'
 #' @noRd
 exceedance_from_draws <- function(post, threshold) {
-  # The limits compare_estimates() reads a draw between, so that a draw beyond
-  # the prediction range is treated here exactly as it is in a comparison of
-  # two fits and as the estimator reports it: an identified draw is its own
-  # value, a draw censored above lies in [upper, Inf), and one censored below
-  # in (-Inf, lower]. Nothing is subset, because every draw enters and none is
-  # paired, so the record is read whole and subset_draws() is not needed.
+  # draw_limits() gives the interval compare_estimates() reads each draw in:
+  # an identified draw is its own value, a draw censored above lies in
+  # [upper, Inf) and one censored below in (-Inf, lower]. No draws are paired,
+  # so the record is read whole.
   lims <- draw_limits(post)
   kept <- !lims$missing
-  # A draw is known to exceed the threshold where even its lowest possible
-  # value does, and known not to where even its highest possible value does
-  # not. Every other draw is one whose side of the threshold the record leaves
-  # open, and it is counted as not exceeding for the lower probability and as
-  # exceeding for the upper one. Inside the prediction range no draw is left
-  # open; beyond an end the draws censored at that end are, which gives the
-  # interval of D25. The limits are closed at the bound, as the record states
-  # them ("at or above"), so a threshold equal to the upper bound leaves the
-  # draws censored above open rather than counting them as exceeding it.
+  # A draw certainly exceeds the threshold where its lowest possible value
+  # does, and certainly does not where its highest does not. Any other draw is
+  # left open: it counts as not exceeding for prob_lower and as exceeding for
+  # prob_upper. The limits are closed at the bound, so a threshold equal to the
+  # upper bound leaves the draws censored above open.
   exceeds <- lims$lo[kept] > threshold
   may_exceed <- lims$hi[kept] > threshold
   n_draws <- sum(kept)
@@ -353,10 +331,9 @@ exceedance_from_draws <- function(post, threshold) {
     prob_lower <- mean(exceeds)
     prob_upper <- mean(may_exceed)
   }
-  # NA wherever the two differ, as prob is in compare_estimates(): any single
-  # number would be one end of the interval presented as the whole of it. The
-  # two means are over the same draws and differ only where some draw is left
-  # open, so an exact comparison is the right test.
+  # prob is NA wherever the two differ, as in compare_estimates(): one number
+  # would present one end of the interval as the whole. Both means are over the
+  # same draws, so an exact comparison is the right test.
   prob <- if (isTRUE(prob_lower == prob_upper)) prob_lower else NA_real_
   cens <- attr(post, "censored")
   n_above <- if (is.null(cens)) 0L else sum(cens$above)
