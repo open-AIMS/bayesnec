@@ -2069,22 +2069,55 @@ fill_missing_priors <- function(priors, defaults, model) {
   out
 }
 
-#' The predictor expression written in a formula's crf() term
+#' The predictor of a formula's crf() term, as the model frame reads it
 #'
 #' Shared by \code{sub_x_transformation()}, which applies it to an estimate,
 #' and \code{inline_x_transform()}, which reports it, so that an estimate is
 #' said to be on a transformed scale exactly where it has been put on one.
 #'
+#' The predictor is read by \code{formula_x_reading()}, as the model frame
+#' and the \pkg{brms} formula read it, so \code{crf((log(x)))} gives
+#' \code{log(x)}. Do not evaluate the written text instead: the estimates
+#' would then be put on a different scale from the one the model was fitted
+#' on.
+#'
 #' @param formula A \code{\link{bayesnecformula}}.
 #'
 #' @return The expression as a call, such as \code{log(x + 1)}, or a symbol
-#' where the predictor is named untransformed.
+#' where the predictor is named untransformed. Where the reading names no
+#' single variable, the expression as written.
 #'
 #' @importFrom stats terms
 #' @noRd
 crf_x_call <- function(formula) {
   x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
-  str2lang(eval(parse(text = x_str)))
+  x_call <- str2lang(eval(parse(text = x_str)))
+  reading <- formula_x_reading(x_call)
+  if (is.null(reading)) x_call else reading
+}
+
+#' A crf() predictor as a model formula reads it
+#'
+#' The variable \code{stats::terms()} finds in the predictor, which is the
+#' column \code{stats::model.frame()} builds and the expression the
+#' \pkg{brms} formula is written in. Enclosing parentheses and a unary plus
+#' are dropped, so \code{(log(x))} and \code{+x} give \code{log(x)} and
+#' \code{x}. An operator at the top is formula syntax: \code{x - 1},
+#' \code{x^2} and \code{-x} all give \code{x}. Inside a call, or under
+#' \code{I()}, it is arithmetic.
+#'
+#' @param expr The predictor, as a call or a symbol.
+#'
+#' @return A call or a symbol, or \code{NULL} where the reading names no
+#' variable or more than one. An error where \code{stats::terms()} refuses
+#' \code{expr}, as it refuses \code{x^0.5}.
+#'
+#' @importFrom stats terms as.formula
+#' @noRd
+formula_x_reading <- function(expr) {
+  vars <- attr(terms(as.formula(call("~", expr))), "variables")
+  vars <- as.list(vars)[-1]
+  if (length(vars) == 1) vars[[1]] else NULL
 }
 
 #' Put an estimate read off the prediction grid back on the fitted scale

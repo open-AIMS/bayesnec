@@ -75,12 +75,11 @@ test_that("the transformation is read from the crf() term", {
   tr <- bayesnec:::inline_x_transform(logged_x_fit(nec4param, "nec4param"))
   expect_identical(tr$label, "log(x)")
   expect_identical(tr$variable, "x")
-  # A leading minus is dropped by stats::model.frame(), so the model frame
-  # calls crf(-x) untransformed while sub_x_transformation() negates the
-  # estimate. The crf() term is what decides.
+  # The predictor is read as the model frame reads it, which fits crf(-x) on
+  # x, so a fit holding it reports nothing and transforms nothing.
   neg <- logged_x_fit(nec4param, "nec4param", "-x")
-  expect_identical(bayesnec:::inline_x_transform(neg)$label, "-x")
-  expect_equal(bayesnec:::sub_x_transformation(2, neg$bayesnecformula), -2)
+  expect_null(bayesnec:::inline_x_transform(neg))
+  expect_equal(bayesnec:::sub_x_transformation(2, neg$bayesnecformula), 2)
   # I(x) is the predictor itself, so there is nothing to report. I() around a
   # transformation still reports it.
   as_is <- logged_x_fit(nec4param, "nec4param", "I(x)")
@@ -362,4 +361,27 @@ test_that("curve_params() names the inverse as the estimators do", {
   expect_match(msgs, "Pass xform = exp to curve_params()", fixed = TRUE)
   expect_match(msgs, "nec and ec50 are on that transformed scale",
                fixed = TRUE)
+})
+
+test_that("crf((log(x))) is read as crf(log(x)) on every path (#479)", {
+  # The model frame and the brms formula drop the parentheses, so the
+  # estimators and the scale message must as well.
+  skip_on_cran()
+  bare <- logged_x_fit(ecx4param, "ecx4param")
+  paren <- logged_x_fit(ecx4param, "ecx4param", "(log(x))")
+  bare_msg <- scale_messages(bare_ecx <- ecx(bare, resolution = 20))
+  paren_msg <- scale_messages(paren_ecx <- ecx(paren, resolution = 20))
+  expect_equal(paren_ecx, bare_ecx)
+  expect_equal(unname(paren_ecx[1]),
+               log(unname(ecx(ecx4param, resolution = 20)[1])),
+               tolerance = 1e-3)
+  expect_identical(paren_msg, bare_msg)
+  expect_match(paren_msg, "transforms its predictor inline as log(x),",
+               fixed = TRUE)
+  expect_match(paren_msg, "Pass xform = exp to ecx()", fixed = TRUE)
+  bare_msg <- scale_messages(bare_nsec <- nsec(bare, resolution = 20))
+  paren_msg <- scale_messages(paren_nsec <- nsec(paren, resolution = 20))
+  expect_equal(paren_nsec, bare_nsec)
+  expect_identical(paren_msg, bare_msg)
+  expect_length(paren_msg, 1)
 })
