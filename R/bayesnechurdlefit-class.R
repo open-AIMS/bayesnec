@@ -110,10 +110,16 @@ hurdle_check_which <- function(which) {
 #' the refusal names which component raised it.
 #'
 #' The combined no-effect concentration is
-#' \code{pmin(ne_growth, ne_survival)} evaluated per posterior draw. Below both
-#' thresholds the growth curve sits at \code{top} and the survival curve at its
-#' own control value, so their product is flat; it departs that plateau at
-#' whichever threshold binds first.
+#' \code{pmin(ne_growth, ne_survival)} evaluated per posterior draw, on the
+#' scale the model was fitted on. Below both thresholds the growth curve sits
+#' at \code{top} and the survival curve at its own control value, so their
+#' product is flat; it departs that plateau at whichever threshold binds first.
+#' The minimum, and the rule for censored draws below, apply on that scale, and
+#' the result is then returned on the scale \code{xform} names. Under a
+#' decreasing transformation in \code{crf()}, such as \code{crf(I(-x))}, each
+#' curve is flat above its threshold on the recorded scale, so the combined
+#' value is the larger of the two recorded thresholds. An \code{xform} changes
+#' the scale the value is reported on, not which threshold it is.
 #'
 #' A component draw beyond the top of its prediction range is known only to
 #' exceed that limit. Both components are predicted over the whole
@@ -125,8 +131,8 @@ hurdle_check_which <- function(which) {
 #' range, at the smaller of the two components' upper limits, which is true
 #' of every such draw.
 #'
-#' \bold{The combined estimate is therefore the smaller of the two, and reduces
-#' to the growth estimate whenever growth is the more sensitive endpoint} --
+#' \bold{The combined estimate therefore reduces to the growth estimate
+#' whenever growth is the more sensitive endpoint} --
 #' which it usually is, since a contaminant that kills has generally slowed
 #' growth at a lower concentration first. This is not a defect of the
 #' combination but a property of thresholds: a threshold marks where an effect
@@ -203,6 +209,9 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
     g_post <- component_nec(object$growth, "growth")
     s_post <- component_nec(object$survival, "survival")
     n <- min(length(g_post), length(s_post))
+    # Keep the minimum on the fitted scale, where each curve is flat below its
+    # threshold. Under a decreasing crf() it is the larger recorded threshold,
+    # which is where the product leaves its plateau.
     combined <- combine_censored_min(g_post, s_post, n)
     out <- combined$values
     cens <- combined$censored
@@ -418,7 +427,8 @@ print.bayesnechurdlefit <- function(x, ...) {
 
 #' Take the smaller of two component no-effect posteriors, keeping censoring
 #'
-#' Takes the minimum of the component no-effect draws. Censoring flags and
+#' Takes the minimum of the component no-effect draws, which must be on the
+#' fitted scale, not the recorded one. Censoring flags and
 #' upper limits decide whether an outside-range minimum is identified;
 #' plain \code{pmin()} would propagate \code{NA} for a censored component draw.
 #'

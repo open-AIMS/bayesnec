@@ -61,10 +61,16 @@ for one and inside the range for the other. Such a limit is refused, and
 the refusal names which component raised it.
 
 The combined no-effect concentration is
-\code{pmin(ne_growth, ne_survival)} evaluated per posterior draw. Below both
-thresholds the growth curve sits at \code{top} and the survival curve at its
-own control value, so their product is flat; it departs that plateau at
-whichever threshold binds first.
+\code{pmin(ne_growth, ne_survival)} evaluated per posterior draw, on the
+scale the model was fitted on. Below both thresholds the growth curve sits
+at \code{top} and the survival curve at its own control value, so their
+product is flat; it departs that plateau at whichever threshold binds first.
+The minimum, and the rule for censored draws below, apply on that scale, and
+the result is then returned on the scale \code{xform} names. Under a
+decreasing transformation in \code{crf()}, such as \code{crf(I(-x))}, each
+curve is flat above its threshold on the recorded scale, so the combined
+value is the larger of the two recorded thresholds. An \code{xform} changes
+the scale the value is reported on, not which threshold it is.
 
 A component draw beyond the top of its prediction range is known only to
 exceed that limit. Both components are predicted over the whole
@@ -76,8 +82,8 @@ combined draw is not identified. It is reported as beyond the top of the
 range, at the smaller of the two components' upper limits, which is true
 of every such draw.
 
-\bold{The combined estimate is therefore the smaller of the two, and reduces
-to the growth estimate whenever growth is the more sensitive endpoint} --
+\bold{The combined estimate therefore reduces to the growth estimate
+whenever growth is the more sensitive endpoint} --
 which it usually is, since a contaminant that kills has generally slowed
 growth at a lower concentration first. This is not a defect of the
 combination but a property of thresholds: a threshold marks where an effect

@@ -14,7 +14,8 @@ statistics.}
 \item{...}{Additional objects of class \code{\link{bnecfit}}.}
 }
 \value{
-An object of class \code{\link{bayesmanecfit}}.
+A \code{\link{bayesnecfit}} where only one distinct model remains,
+otherwise a \code{\link{bayesmanecfit}}.
 }
 \description{
 Concatenate multiple \code{\link{bnecfit}} objects into one single
@@ -31,9 +32,21 @@ default is used and a message reports the disagreement.
 \code{\link[base]{c}} takes no \code{loo_controls} argument; use
 \code{\link{amend}} to set the weighting method explicitly.
 
+The estimates of the combined set are computed with the \code{x_range},
+\code{resolution} and \code{sig_val} the objects were fitted with, and with
+the arguments of their \code{loo_controls} other than the method, where
+every object that records an argument records the same value. Where two objects record
+different values of an argument, the \code{\link{bnec}} default is used and a
+message names the argument. An object fitted by an earlier version of
+\pkg{bayesnec} records none of them.
+
 Each equation keeps the record of the installation of \pkg{bayesnec} that
 fitted it, and a message reports a combined set whose equations were fitted
 by different installations. See \code{\link{bnec_version}}.
+
+The records of what \code{\link{bnec}} did to each request, and of the
+equations that failed to fit, are joined; see \code{\link{bnec_record}} and
+\code{\link{failed_models}}.
 }
 \examples{
 \dontrun{

@@ -28,6 +28,9 @@
 #'
 #' \code{\link{pull_out}} carries the record across unchanged, since it subsets
 #' a set that has already been fitted rather than refitting it.
+#' \code{\link[base]{c}} and \code{+} keep the failures of every object they
+#' combine, except for an equation that another of those objects fitted and
+#' the combined set therefore holds.
 #' \code{\link{amend}} instead records only the models that call attempted:
 #' a model that failed before may have been dropped now, or is being retried
 #' there with different priors.
@@ -166,7 +169,7 @@ failure_record <- function(model, cond) {
 #' @param failed A named \code{\link[base]{list}} of failure records.
 #'
 #' @return \code{object}, with a \code{failed_models} element where there were
-#' failures.
+#' failures, and with every attribute it had.
 #'
 #' @noRd
 attach_failed_models <- function(object, failed) {
@@ -175,7 +178,21 @@ attach_failed_models <- function(object, failed) {
   if (length(failed) == 0) {
     return(object)
   }
-  cls <- class(object)
-  object <- c(unclass(object), list(failed_models = failed))
-  allot_class(object, cls)
+  # Assign the element in place: c(unclass(object), ...) drops every attribute.
+  object[["failed_models"]] <- failed
+  object
+}
+
+#' The failures of the objects \code{c()} combines
+#'
+#' @param inputs A \code{\link[base]{list}} of fitted objects.
+#' @param held The equations the combined set holds.
+#'
+#' @return A named \code{\link[base]{list}} of failure records, the first for
+#' each equation, leaving out any equation the combined set holds.
+#'
+#' @noRd
+joined_failures <- function(inputs, held) {
+  failed <- do.call(c, lapply(inputs, function(x) x[["failed_models"]]))
+  failed[!duplicated(names(failed)) & !names(failed) %in% held]
 }

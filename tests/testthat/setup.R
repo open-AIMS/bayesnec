@@ -189,3 +189,37 @@ joint_split <- function() {
     c("bayesnecjointfit", "bnecfit")
   )
 }
+
+# The "bnec_expand_args" record bnec() attaches. The defaults describe a call
+# that changed every argument from its bnec() default. `draw_ids` gives loo()
+# a fixed subset of manec_example's 100 draws, so the criteria it changes are
+# reproducible.
+expand_record <- function(x_range = c(0.03, 4), resolution = 200,
+                          sig_val = 0.05, fitting = list(draw_ids = 1:50),
+                          method = "pseudobma") {
+  list(x_range = x_range, resolution = resolution, sig_val = sig_val,
+       loo_controls = list(fitting = fitting,
+                           weights = list(method = method)))
+}
+
+# The record of a call that used every bnec() default.
+default_expand_record <- function() {
+  expand_record(x_range = NA, resolution = 1000, sig_val = 0.01,
+                fitting = list())
+}
+
+with_expand_record <- function(x, record = expand_record()) {
+  attr(x, "bnec_expand_args") <- record
+  x
+}
+
+# The estimates of manec_example's ecx4param computed with a record's
+# arguments, as a reference for what the set-building functions return.
+expanded_ecx4param <- function(record) {
+  pre <- manec_example$mod_fits$ecx4param
+  suppressWarnings(suppressMessages(expand_nec(
+    pre, bayesnec:::extract_formula(pre), x_range = record$x_range,
+    resolution = record$resolution, sig_val = record$sig_val,
+    loo_controls = record$loo_controls, model = "ecx4param"
+  )))
+}

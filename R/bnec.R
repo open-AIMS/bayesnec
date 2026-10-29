@@ -30,10 +30,12 @@
 #' If no \code{method} is named in "weights", \pkg{bayesnec} sets the
 #' \code{method} argument of \code{\link[loo]{loo_model_weights}} to
 #' "pseudobma", whichever function assembles the model set.
-#' \code{\link{amend}} and \code{update} operate on an existing set and keep
-#' the method that set was built with, unless the caller names another.
-#' \code{\link{pull_out}} takes no weighting method at all: it reports and
-#' ignores one given in "weights" and always keeps the set's own.
+#' \code{\link{amend}}, \code{update} and \code{\link{pull_out}} operate on an
+#' existing set. They keep the "fitting" arguments it was built with unless
+#' the caller names "fitting", and the method it was weighted by unless the
+#' caller names another. \code{\link{pull_out}} takes no weighting method at
+#' all: it reports and ignores one given in "weights" and always keeps the
+#' set's own.
 #' \code{\link[base]{c}} and \code{+} take no \code{loo_controls} argument;
 #' see \code{\link{c.bnecfit}} for how they decide the method. See
 #' ?\code{\link[loo]{loo_model_weights}} for further info.
@@ -496,7 +498,8 @@
 #' \code{\link{ecx}}, \code{\link{nsec}} and \code{\link{plot}} describe it by
 #' default; pass \code{dpar = "mu"} or \code{dpar = "hu"} to \code{\link{ecx}}
 #' for a component. \code{\link{nec}} returns the combined threshold, which for
-#' threshold models on both blocks is the smaller of the two.
+#' threshold models on both blocks is the smaller of the two on the scale the
+#' model was fitted on.
 #' For the count hurdles, \pkg{brms} calls the untruncated count mean
 #' \code{mu}; \code{ecx(dpar = "mu")} and \code{nsec(dpar = "mu")} convert it
 #' to \code{E[Y | Y > 0]} so that "response of survivors" has the same meaning
@@ -1101,6 +1104,10 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     out <- attach_bnec_record(out, requested_models, model,
                               excluded_models, substitutions)
     out <- attach_version(out, version_records)
+    out <- attach_expand_args(out, list(
+      x_range = x_range, resolution = resolution, sig_val = sig_val,
+      loo_controls = loo_controls
+    ))
     out <- retain_unused_data(out, data)
     message_control_fit(out)
     out
@@ -1118,6 +1125,10 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     out <- attach_bnec_record(out, requested_models, model,
                               excluded_models, substitutions)
     out <- attach_version(out)
+    out <- attach_expand_args(out, list(
+      x_range = x_range, resolution = resolution, sig_val = sig_val,
+      loo_controls = loo_controls
+    ))
     out <- retain_unused_data(out, data)
     message_control_fit(out)
     out

@@ -6,6 +6,9 @@
 #' @param loo_f_controls A named \code{\link[base]{list}} containing the
 #' desired arguments to be passed on to \code{\link[brms]{loo}}.
 #'
+#' @details Criteria the fit already holds are computed again, so that they
+#' follow \code{loo_f_controls}.
+#'
 #' @return An object of class \code{\link{prebayesnecfit}}
 #'
 #' @importFrom brms add_criterion
@@ -13,7 +16,10 @@
 #' @noRd
 add_criteria <- function(object, loo_f_controls, model) {
   fit <- object$fit
-  local_loo_list <- list(x = fit, criterion = c("loo", "waic"))
+  # A bayesnecfit keeps the criteria its last expansion computed. Without
+  # overwrite, add_criterion() keeps them whatever loo_f_controls now asks.
+  local_loo_list <- list(x = fit, criterion = c("loo", "waic"),
+                         overwrite = TRUE)
   if (!"model_name" %in% names(loo_f_controls)) {
     loo_f_controls <- c(loo_f_controls, list(model_name = model))
   }

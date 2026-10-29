@@ -684,3 +684,74 @@ test_that("update refuses a resolution below 2 before refitting", {
   skip_on_cran()
   expect_error(update(manec_example, resolution = 1), "must be at least 2")
 })
+
+test_that("c() and + compute the estimates with the arguments recorded", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  q <- function(expr) suppressWarnings(suppressMessages(expr))
+  m <- with_expand_record(manec_example)
+  nec <- q(pull_out(m, "nec4param"))
+  ecx <- q(pull_out(m, "ecx4param"))
+  reference <- q(expand_manec(
+    manec_example$mod_fits, lapply(manec_example$mod_fits, extract_formula),
+    loo_controls = expand_record()$loo_controls
+  ))
+  for (out in list(q(c(nec, ecx)), q(nec + ecx))) {
+    expect_identical(attr(out, "bnec_expand_args"), expand_record())
+    expect_equal(range(out$w_pred_vals$data$x), c(0.03, 4))
+    expect_equal(nrow(out$w_pred_vals$data), 200)
+    expect_equal(out$mod_stats$waic, reference$mod_stats$waic)
+  }
+  # An object that records none does not count against one that does.
+  unrecorded <- ecx
+  attr(unrecorded, "bnec_expand_args") <- NULL
+  out <- q(c(nec, unrecorded))
+  expect_identical(attr(out, "bnec_expand_args"), expand_record())
+  # Two objects that record different values use the default for that
+  # argument, and a message names it.
+  other <- ecx
+  attr(other, "bnec_expand_args")$sig_val <- 0.1
+  msgs <- character()
+  out <- withCallingHandlers(
+    suppressWarnings(c(nec, other)),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_true(any(grepl("record different values of sig_val", msgs)))
+  expect_identical(attr(out, "bnec_expand_args"),
+                   expand_record(sig_val = 0.01))
+  # Objects that record none take the bnec() defaults.
+  attr(nec, "bnec_expand_args") <- NULL
+  out <- q(c(nec, unrecorded))
+  expect_identical(attr(out, "bnec_expand_args"), default_expand_record())
+  expect_equal(out$mod_stats$waic, manec_example$mod_stats$waic)
+})
+
+test_that("update() computes the estimates with the arguments the set records", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # The same stub as above: the stored fits are returned unrefitted.
+  tbl <- get(".__S3MethodsTable__.", envir = asNamespace("stats"))
+  orig_method <- get("update.brmsfit", envir = tbl)
+  on.exit(assign("update.brmsfit", orig_method, envir = tbl), add = TRUE)
+  assign("update.brmsfit", function(object, ...) object, envir = tbl)
+  q <- function(expr) suppressWarnings(suppressMessages(expr))
+  m <- with_expand_record(manec_example)
+  out <- q(update(m, recompile = FALSE))
+  expect_identical(attr(out, "bnec_expand_args"), expand_record())
+  expect_equal(range(out$w_pred_vals$data$x), c(0.03, 4))
+  expect_equal(nrow(out$w_pred_vals$data), 200)
+  # A value supplied replaces the record.
+  out <- q(update(m, recompile = FALSE, x_range = NA, resolution = 1000,
+                  sig_val = 0.01, loo_controls = list(fitting = list())))
+  expect_identical(attr(out, "bnec_expand_args"), default_expand_record())
+  # A set that records none takes the bnec() defaults.
+  out <- q(update(manec_example, recompile = FALSE))
+  expect_identical(attr(out, "bnec_expand_args"), default_expand_record())
+  expect_equal(range(out$w_pred_vals$data$x),
+               range(manec_example$mod_fits[[1]]$fit$data$x))
+})

@@ -228,8 +228,8 @@ bnec_joint.bayesnechurdlefit <- function(object, model = NULL,
                                          predictor_scale = NULL) {
   # The three follow `...` so that `prior` passed for brm() is not matched to
   # `prior_type` by partial matching.
-  prior_args <- joint_prior_args(object$growth, prior_type,
-                                 asymptote_observed, predictor_scale)
+  prior_args <- recorded_prior_args(object$growth, prior_type,
+                                    asymptote_observed, predictor_scale)
   # Check the formula's names before swap_crf_model() below, which rebuilds
   # the crf() term from deparsed text and fails on a non-syntactic predictor
   # with a parse error naming neither the column nor the term. A supplied
@@ -304,8 +304,8 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
                                         predictor_scale = NULL) {
   chk_logical(disp_by_level)
   # Every level is fitted by the same call, so the first records them all.
-  prior_args <- joint_prior_args(object$fits[[1]], prior_type,
-                                 asymptote_observed, predictor_scale)
+  prior_args <- recorded_prior_args(object$fits[[1]], prior_type,
+                                    asymptote_observed, predictor_scale)
   eq_weights <- joint_equation_weights(object)
   n_lev <- length(object$levels)
   favoured <- joint_level_equations(object)
@@ -451,46 +451,6 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
               model_weight_share = share)
   attr(out, "bnec_version") <- joint_version_table(out, version_record())
   allot_class(out, c("bayesnecjointfit", "bnecfit"))
-}
-
-#' The arguments that build the default priors of a joint refit
-#'
-#' @param fit The fit whose record supplies the defaults: one level of a
-#' \code{\link{bayesnecgroupfit}}, or the growth component of a
-#' \code{\link{bayesnechurdlefit}}.
-#' @param prior_type,asymptote_observed,predictor_scale The values passed to
-#' \code{\link{bnec_joint}}, or \code{NULL}.
-#'
-#' @details A \code{NULL} takes the value in the \code{call_args} record of
-#' the first equation of \code{fit}, and the \code{\link{bnec}} default where
-#' that records none.
-#'
-#' @return A named \code{\link[base]{list}} of the three, checked as
-#' \code{\link{bnec}} checks them.
-#'
-#' @importFrom chk chk_flag
-#'
-#' @noRd
-joint_prior_args <- function(fit, prior_type = NULL, asymptote_observed = NULL,
-                             predictor_scale = NULL) {
-  first <- if (is_bayesmanecfit(fit)) fit$mod_fits[[1]] else fit
-  recorded <- first$call_args
-  pick <- function(supplied, name, default) {
-    if (!is.null(supplied)) {
-      return(supplied)
-    }
-    if (!is.null(recorded[[name]])) recorded[[name]] else default
-  }
-  out <- list(
-    prior_type = pick(prior_type, "prior_type", "uninformative"),
-    asymptote_observed = pick(asymptote_observed, "asymptote_observed", TRUE),
-    predictor_scale = pick(predictor_scale, "predictor_scale", "auto")
-  )
-  out$prior_type <- match.arg(out$prior_type,
-                              c("uninformative", "regularizing"))
-  chk_flag(out$asymptote_observed, x_name = "`asymptote_observed`")
-  out$predictor_scale <- validate_predictor_scale(out$predictor_scale)
-  out
 }
 
 #' The equation each level of a grouped fit favours

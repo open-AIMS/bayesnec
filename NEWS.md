@@ -3290,7 +3290,77 @@
   survival block also led `bnec()` and `bnec_group()` to refuse the call for
   want of a floor, although no `bot` prior was to be built from one.
 
+- `pull_out()`, `c()` and `+` keep the `bnec_record()` of the objects they are
+  given. `bnec_record()` of the result returned `NULL`, which `?bnec_record`
+  documents as meaning that no record was made, so the equations `bnec()`
+  excluded and the substitutions it made in the response could no longer be
+  read from the object. `pull_out()` lists each equation it does not keep as
+  excluded, with the reason "not kept by pull_out()", as `amend()` does for an
+  equation it drops. `c()` and `+` join the records of the objects combined,
+  and return no record where any of them has none. They also keep the
+  `failed_models()` record of each object combined, which they dropped, so
+  that an equation recorded as attempted and not held by the combined set is
+  reported as failed. An object fitted before the record existed still
+  returns `NULL` (#522).
+
+- `amend()` builds the default priors of an added equation with the
+  `prior_type`, `asymptote_observed` and `predictor_scale` the set was fitted
+  with, unless they are supplied. Each took the `bnec()` default, and `?amend`
+  said that none was inherited. A set fitted with
+  `prior_type = "regularizing"` or `asymptote_observed = FALSE` and then
+  amended with `add` had the added equation fitted under different default
+  priors from the rest of the set, and its model weights then compared
+  equations fitted under different priors, with no message. An added equation
+  is also given the element of a named list of priors that names it, as
+  `bnec()` would have given it, and is sampled with the `algorithm` and
+  `save_pars` the stored fit holds. A `prior` given to `bnec()` as a single
+  `brmsprior` is not applied to an added equation, because a parameter of the
+  same name can have a different role in another equation; a message says
+  that the default priors were built instead. Each equation now records the
+  `prior` argument of its call in `call_args`. An object fitted before the
+  record existed is amended with the `bnec()` defaults, as before (#522).
+
+- `amend()`, `update()`, `pull_out()`, `c()` and `+` compute the estimates of
+  the set they return with the `x_range`, `resolution`, `sig_val` and
+  `loo_controls` it was fitted with, unless they are supplied. Each computed
+  every equation's estimates again with the `bnec()` defaults. A set fitted
+  with `sig_val = 0.05` had its NSEC draws computed against the 0.01 quantile
+  of the control after `amend(drop = )` or `pull_out()`, a set fitted with an
+  `x_range` was predicted over the range of the data instead, and a set
+  fitted with LOO fitting arguments, such as `moment_match = TRUE`, had its
+  criteria computed without them. `bnec()` records the four on the fitted
+  object. `c()` uses a value where every object combined that records it
+  agrees, and otherwise the `bnec()` default, with a message naming the
+  argument. `update()` on a `bnec_hurdle()` fit given `newdata` predicts the
+  growth component over the concentration series of the new data, as
+  `bnec_hurdle()` does. An object fitted before the record existed uses the
+  `bnec()` defaults, as before (#522).
+
+  Supplied prediction settings are also applied when `amend()` adds or drops
+  no equation, or `pull_out()` keeps every equation. `pull_out()` continues
+  to accept positional and abbreviated prediction arguments. Combining fits
+  of the same equation with `c()` or `+` joins their records and recomputes
+  the estimates with the resolved settings. On a hurdle update with new
+  data, `x_range = NULL` follows the new series where no fixed range was
+  recorded, as omission does.
+
+- The LOO and WAIC criteria of a `bayesnecfit` passed to `amend()`, `c()` or
+  `+` are computed again with the `loo_controls` of the call. They
+  were kept from the call that last computed them, because
+  `brms::add_criterion()` does not replace a criterion the fit already holds.
+  `amend(fit, loo_controls = list(fitting = ...))` therefore left the criteria
+  of the equation already fitted unchanged, and `c()` of two objects whose
+  criteria were computed from different numbers of draws stopped in
+  `loo_model_weights()` (#522).
+
 ## Documentation
+
+- `?nec.bayesnechurdlefit` states that the combined no-effect estimate of a
+  `bnec_hurdle()` fit is the smaller of the two component thresholds on the
+  scale the model was fitted on. Under a decreasing transformation in `crf()`,
+  such as `crf(I(-x))`, that is the larger of the two on the recorded scale,
+  because each curve is then flat above its threshold. The value returned is
+  unchanged (#520).
 
 - `?autoplot` states that a `bayesmanecfit` with `multi_facet = FALSE`
   returns a list of ggplot objects, invisibly. It said a ggplot object was

@@ -315,7 +315,8 @@ fit_inputs <- function(expr) {
       a <- list(...)
       seen$calls[[length(seen$calls) + 1]] <- list(
         prior = a$prior, init = a$init, family = a$family, formula = formula,
-        control = a$control, seed = a$seed, backend = a$backend
+        control = a$control, seed = a$seed, backend = a$backend,
+        algorithm = a$algorithm, save_pars = a$save_pars
       )
       structure(list(), class = "brmsfit")
     },
@@ -496,10 +497,11 @@ hurdle_data <- function() {
 # The record fit_bayesnec() stores, with nothing supplied by default.
 call_record <- function(model_survival = NULL, control = NULL, seed = NULL,
                         prior_type = "uninformative",
-                        asymptote_observed = TRUE, predictor_scale = "auto") {
+                        asymptote_observed = TRUE, predictor_scale = "auto",
+                        prior = NULL) {
   list(model_survival = model_survival, control = control, seed = seed,
        prior_type = prior_type, asymptote_observed = asymptote_observed,
-       predictor_scale = predictor_scale)
+       predictor_scale = predictor_scale, prior = prior)
 }
 
 hu_rhs <- function(model) {
@@ -684,6 +686,182 @@ test_that("the record of the call is recovered and kept up to date", {
                                     list(control = list(adapt_delta = 0.95))),
                    call_record(control = list(adapt_delta = 0.95)))
   expect_null(update_call_args(NULL, list(seed = 1)))
+  # A prior passed to brms::update() replaces the recorded one.
+  top <- brms::prior(normal(5, 1), nlpar = "top")
+  expect_identical(update_call_args(call_record(), list(prior = top)),
+                   call_record(prior = top))
+})
+
+test_that("amend(add = ) builds priors with the arguments the set records", {
+  d <- data.frame(x = nec_data$x, y = nec_data$y * 10)
+  obj <- amend_fixture(validate_family("Gamma"), data = d)
+  fitted_with <- function(...) {
+    fit_inputs(bnec(y ~ crf(x, "nec4param"), data = d,
+                    family = Gamma(link = "identity"), chains = 2, ...))
+  }
+  recorded <- fitted_with(prior_type = "regularizing",
+                          asymptote_observed = FALSE,
+                          predictor_scale = "concentration")
+  defaults <- fitted_with()
+  # The two calls build different priors, so the comparisons below can tell
+  # which one amend() followed.
+  expect_false(identical(recorded$calls[[1]]$prior,
+                         defaults$calls[[1]]$prior))
+  obj$call_args <- call_record(prior_type = "regularizing",
+                               asymptote_observed = FALSE,
+                               predictor_scale = "concentration")
+  expect_same_fit_inputs(fit_inputs(amend(obj, add = "nec4param")), recorded,
+                         "recorded")
+  # A value supplied here replaces the record.
+  expect_same_fit_inputs(
+    fit_inputs(amend(obj, add = "nec4param", prior_type = "uninformative",
+                     asymptote_observed = TRUE, predictor_scale = "auto")),
+    defaults, "supplied"
+  )
+  # An object that records no call takes the bnec() defaults.
+  obj$call_args <- NULL
+  expect_same_fit_inputs(fit_inputs(amend(obj, add = "nec4param")), defaults,
+                         "unrecorded")
+})
+
+test_that("amend(add = ) gives an added equation the prior the set records", {
+  d <- data.frame(x = nec_data$x, y = nec_data$y * 10)
+  obj <- amend_fixture(validate_family("gaussian"), data = d)
+  top <- brms::prior(normal(5, 1), nlpar = "top")
+  fitted_with <- function(...) {
+    fit_inputs(bnec(y ~ crf(x, "nec4param"), data = d, family = gaussian(),
+                    chains = 2, ...))
+  }
+  listed <- fitted_with(prior = list(nec4param = top))
+  defaults <- fitted_with()
+  top_row <- function(inputs) {
+    pr <- as.data.frame(inputs$calls[[1]]$prior)
+    pr$prior[pr$nlpar == "top"]
+  }
+  expect_identical(top_row(listed), "normal(5, 1)")
+  # A list naming the added equation gives it that element, as bnec() would.
+  obj$call_args <- call_record(prior = list(nec4param = top))
+  amended <- fit_inputs(amend(obj, add = "nec4param"))
+  expect_identical(amended$calls[[1]]$prior, listed$calls[[1]]$prior)
+  expect_identical(amended$search, listed$search)
+  # A list that does not name it gives the defaults, as bnec() does.
+  obj$call_args <- call_record(prior = list(nechorme = top))
+  amended <- fit_inputs(amend(obj, add = "nec4param"))
+  expect_identical(amended$calls[[1]]$prior, defaults$calls[[1]]$prior)
+  expect_true(any(grepl("does not contain priors for model nec4param",
+                        amended$messages)))
+  # A single brmsprior is not applied to another equation, and a message says
+  # so.
+  obj$call_args <- call_record(prior = top)
+  amended <- fit_inputs(amend(obj, add = "nec4param"))
+  expect_identical(amended$calls[[1]]$prior, defaults$calls[[1]]$prior)
+  expect_true(any(grepl("single brmsprior", amended$messages)))
+  # `priors` supplied here replaces the record, a single brmsprior included.
+  amended <- fit_inputs(amend(obj, add = "nec4param", priors = top))
+  expect_identical(amended$calls[[1]]$prior, listed$calls[[1]]$prior)
+  expect_false(any(grepl("single brmsprior", amended$messages)))
+})
+
+test_that("an equation amend() adds records the prior of the call", {
+  top <- brms::prior(normal(5, 1), nlpar = "top")
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      fit <- manec_example$mod_fits$nec4param
+      fit$call_args <- call_record(prior = "built for the equation")
+      fit
+    },
+    .package = "bayesnec"
+  )
+  obj <- ecx4param
+  obj$call_args <- call_record(prior = list(nec4param = top))
+  out <- suppressWarnings(suppressMessages(amend(obj, add = "nec4param")))
+  expect_identical(out$mod_fits$nec4param$call_args$prior,
+                   list(nec4param = top))
+  out <- suppressWarnings(suppressMessages(
+    amend(obj, add = "nec4param", priors = top)
+  ))
+  expect_identical(out$mod_fits$nec4param$call_args$prior, top)
+})
+
+test_that("amend(add = ) samples with the algorithm and save_pars stored", {
+  obj <- amend_fixture(validate_family("gaussian"))
+  obj$fit$algorithm <- "meanfield"
+  obj$fit$save_pars <- brms::save_pars(all = TRUE)
+  amended <- fit_inputs(amend(obj, add = "nec4param"))
+  expect_identical(amended$calls[[1]]$algorithm, "meanfield")
+  expect_identical(amended$calls[[1]]$save_pars, brms::save_pars(all = TRUE))
+  # A fit that holds neither passes neither, so brm() keeps its defaults.
+  obj$fit$algorithm <- NULL
+  obj$fit$save_pars <- NULL
+  amended <- fit_inputs(amend(obj, add = "nec4param"))
+  expect_length(amended$calls, 1)
+  expect_null(amended$calls[[1]]$algorithm)
+  expect_null(amended$calls[[1]]$save_pars)
+})
+
+test_that("amend() computes the estimates with the arguments the set records", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  q <- function(expr) suppressWarnings(suppressMessages(expr))
+  recorded <- expanded_ecx4param(expand_record())
+  defaults <- expanded_ecx4param(default_expand_record())
+  # The two records give different estimates, so the comparisons below can
+  # tell which one amend() used.
+  expect_false(isTRUE(all.equal(recorded$ne_posterior,
+                                defaults$ne_posterior)))
+  m <- with_expand_record(manec_example)
+  out <- q(amend(m, drop = "nec4param"))
+  expect_equal(out$ne_posterior, recorded$ne_posterior)
+  expect_equal(out$pred_vals, recorded$pred_vals)
+  expect_identical(attr(out, "bnec_expand_args"), expand_record())
+  # A value supplied here replaces the record.
+  out <- q(amend(m, drop = "nec4param", x_range = NA, resolution = 1000,
+                 sig_val = 0.01, loo_controls = list(fitting = list())))
+  expect_equal(out$ne_posterior, defaults$ne_posterior)
+  expect_identical(attr(out, "bnec_expand_args"), default_expand_record())
+  # One value supplied leaves the others to the record.
+  out <- q(amend(m, drop = "nec4param", sig_val = 0.01))
+  expect_identical(attr(out, "bnec_expand_args"),
+                   expand_record(sig_val = 0.01))
+  # An object that records none takes the bnec() defaults, and records them.
+  out <- q(amend(manec_example, drop = "nec4param"))
+  expect_equal(out$ne_posterior, defaults$ne_posterior)
+  expect_identical(attr(out, "bnec_expand_args"), default_expand_record())
+})
+
+test_that("amend() keeps the LOO fitting arguments the set records", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  q <- function(expr) suppressWarnings(suppressMessages(expr))
+  m <- with_expand_record(manec_example)
+  stacked <- list(fitting = list(draw_ids = 1:50),
+                  weights = list(method = "stacking"))
+  reference <- q(expand_manec(
+    manec_example$mod_fits,
+    lapply(manec_example$mod_fits, extract_formula),
+    loo_controls = stacked
+  ))
+  expect_false(isTRUE(all.equal(reference$mod_stats$waic,
+                                manec_example$mod_stats$waic)))
+  # Naming "weights" alone leaves "fitting" to the record.
+  out <- q(amend(m, loo_controls = list(weights = list(method = "stacking"))))
+  expect_equal(out$mod_stats$waic, reference$mod_stats$waic)
+  expect_identical(attr(out, "bnec_expand_args")$loo_controls, stacked)
+  # Naming "fitting" replaces the record.
+  out <- q(amend(m, loo_controls = list(fitting = list())))
+  expect_equal(out$mod_stats$waic, manec_example$mod_stats$waic)
+  # Repeating what the set records changes nothing.
+  general_error <- paste(
+    "Nothing to amend, please specify a proper model to either add or drop, or",
+    "changes to loo_controls;\n Returning original model set."
+  )
+  repeated <- list(fitting = list(draw_ids = 1:50))
+  amend(m, loo_controls = repeated) |>
+    expect_message(general_error) |>
+    expect_message("No new LOO fitting/weighting arguments")
+  expect_identical(suppressMessages(amend(m, loo_controls = repeated)), m)
 })
 
 test_that("update records supplied settings on a fit saved without a call", {
