@@ -388,7 +388,8 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
           group_spec = parse_group_terms(single_form, model),
           rate_response = !is.null(denom),
           truncated_response = isTRUE(attr(
-            single_form, "bayesnec_internal_truncation"))
+            single_form, "bayesnec_internal_truncation")),
+          tested_range = attr(single_form, "bayesnec_tested_range")
         )
       } else {
         brm_args$prior <- model_priors

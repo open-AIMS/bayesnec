@@ -266,6 +266,12 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
     # part of the likelihood without exposing trunc() as a user-facing aterm.
     growth_formula <- add_hurdle_truncation(growth_formula)
   }
+  # Bound the growth nec and ec50 priors to the whole series, on the fitted
+  # scale, not to the survivors' range. The stored formula keeps it for
+  # amend().
+  attr(growth_formula, "bayesnec_tested_range") <- range(
+    retrieve_var(full_frame, "x_var", error = TRUE)
+  )
   # The survivors can all sit at a bound of the growth family, such as a Beta
   # growth component of 1 throughout. Check here so that the message names the
   # growth component, not the whole response column. A growth set of ecxflat

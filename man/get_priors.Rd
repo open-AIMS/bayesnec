@@ -40,8 +40,9 @@ the way \code{\link{bnec}} would.}
 
 \item{asymptote_observed}{A \code{\link[base]{logical}} declaring whether
 the highest predictor level reached the lower asymptote of the curve.
-\code{FALSE} replaces the \code{bot} entry, which is how the entries a fit
-under that declaration would use can be read without fitting. See
+\code{FALSE} replaces the \code{bot} entry and removes the upper bound of
+the \code{nec} and \code{ec50} entries, which is how the entries a fit under
+that declaration would use can be read without fitting. See
 \code{\link{bnec}}.}
 
 \item{model_survival}{An optional \code{\link[base]{character}} string naming
