@@ -81,7 +81,7 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   chk_lgl(ecx)
   group_aes <- match.arg(group_aes)
   check_xform(xform)
-  summ <- summary(x, ecx = FALSE) |>
+  summ <- summary(x, ecx = FALSE, xform = identity) |>
     suppressWarnings() |>
     suppressMessages()
   dat <- ggbnec_data(x, add_nec = nec, add_ecx = ecx,
@@ -172,7 +172,7 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   if (multi_facet) {
     names(all_fits) <- shown$model
     nec_labs <- map_dfr(all_fits, function(x) {
-      summ <- summary(x, ecx = FALSE) |>
+      summ <- summary(x, ecx = FALSE, xform = identity) |>
         suppressWarnings() |>
         suppressMessages()
       summ$nec_vals |>
@@ -222,7 +222,7 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                              group_fitted = avg$group_fitted)
       } else {
         j <- i - n_average
-        summ_j <- summary(all_fits[[j]], ecx = FALSE) |>
+        summ_j <- summary(all_fits[[j]], ecx = FALSE, xform = identity) |>
           suppressWarnings() |>
           suppressMessages()
         dat_j <- ggbnec_data(all_fits[[j]], add_nec = nec, add_ecx = ecx,
@@ -270,7 +270,7 @@ manec_average_label <- "Model averaged predictions"
 #' @noRd
 manec_average_plot_data <- function(x, nec, ecx, xform, group, group_aes,
                                     ...) {
-  summ <- summary(x, ecx = FALSE) |>
+  summ <- summary(x, ecx = FALSE, xform = identity) |>
     suppressWarnings() |>
     suppressMessages()
   dat <- ggbnec_data(x, add_nec = nec, add_ecx = ecx, xform = xform,
@@ -702,7 +702,7 @@ autoplot.bayesnecgroupfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   dat <- ggbnec_data(object, add_nec = nec, add_ecx = ecx,
                      xform = xform, group = group, ...)
   tags <- vapply(object$fits, function(fit) {
-    summ <- summary(fit, ecx = FALSE) |>
+    summ <- summary(fit, ecx = FALSE, xform = identity) |>
       suppressWarnings() |>
       suppressMessages()
     rownames(summ$nec_vals)[1]
