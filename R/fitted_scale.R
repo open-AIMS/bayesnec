@@ -127,6 +127,8 @@ recorded_x_map <- function(formula, x_grid_raw, tr) {
          "scale of ", tr$variable, ". Pass the inverse of ", tr$label,
          " as xform.", call. = FALSE)
   }
+  # An infinite fitted endpoint still identifies a finite recorded value.
+  keep <- !is.na(fitted_grid) & is.finite(x_grid_raw)
   o <- order(x_grid_raw[keep])
   o <- o[!duplicated(x_grid_raw[keep][o])]
   grid <- refine_inverse_grid(
@@ -134,14 +136,17 @@ recorded_x_map <- function(formula, x_grid_raw, tr) {
     function(x) suppressWarnings(as.numeric(sub_x_transformation(x, formula)))
   )
   steps <- diff(grid$fitted)
-  if (!(all(steps > 0) || all(steps < 0))) {
+  if (!isTRUE(all(steps > 0) || all(steps < 0))) {
     stop("The transformation ", tr$label, " is not strictly monotone over ",
          "the prediction grid, so it has no inverse to return the estimate ",
          "to the scale of ", tr$variable, ". Pass xform, or xform = identity ",
          "for the fitted scale.", call. = FALSE)
   }
-  fitted_grid <- grid$fitted
-  raw_grid <- grid$raw
+  finite <- is.finite(grid$fitted)
+  endpoint_fitted <- grid$fitted[!finite]
+  endpoint_raw <- grid$raw[!finite]
+  fitted_grid <- grid$fitted[finite]
+  raw_grid <- grid$raw[finite]
   out <- function(values) {
     # Build from `values` to keep the attributes the estimators set.
     res <- values
@@ -150,6 +155,10 @@ recorded_x_map <- function(formula, x_grid_raw, tr) {
     res[finite_v] <- approx(x = fitted_grid, y = raw_grid,
                             xout = as.numeric(values[finite_v]),
                             rule = 1)$y
+    for (i in seq_along(endpoint_fitted)) {
+      at_endpoint <- !is.na(values) & values == endpoint_fitted[i]
+      res[at_endpoint] <- endpoint_raw[i]
+    }
     res
   }
   attr(out, "grid_inverse") <- tr
@@ -161,8 +170,9 @@ recorded_x_map <- function(formula, x_grid_raw, tr) {
 #' A grid evenly spaced on the recorded scale is coarse on a scale such as
 #' \code{log(x)} near its foot, and interpolation error grows with the square
 #' of the step. Each step wider than the median step on the fitted scale is
-#' divided evenly on the recorded scale, until none is or the grid reaches
-#' 20000 points.
+#' divided evenly on the recorded scale, for at most 20 passes or until the
+#' grid reaches 20000 points. An infinite fitted endpoint is retained while
+#' its interval is subdivided, so finite draws near it can be interpolated.
 #'
 #' @param raw The grid on the recorded scale, increasing.
 #' @param fitted The same points on the fitted scale.
@@ -174,7 +184,8 @@ recorded_x_map <- function(formula, x_grid_raw, tr) {
 #' @importFrom stats median
 #' @noRd
 refine_inverse_grid <- function(raw, fitted, transform) {
-  target <- median(abs(diff(fitted)))
+  span <- abs(diff(fitted))
+  target <- median(span[is.finite(span) & span > 0])
   if (!is.finite(target) || target <= 0) {
     return(list(raw = raw, fitted = fitted))
   }
@@ -188,6 +199,10 @@ refine_inverse_grid <- function(raw, fitted, transform) {
       n <- min(ceiling(span[k] / target), 100)
       seq(raw[k], raw[k + 1], length.out = n + 1)[-c(1, n + 1)]
     }))
+    extra <- setdiff(unique(extra), raw)
+    if (length(extra) == 0) {
+      break
+    }
     extra_fitted <- transform(extra)
     ok <- is.finite(extra_fitted)
     raw <- c(raw, extra[ok])

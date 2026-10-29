@@ -140,13 +140,17 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   }
       
   x_grid_raw <- x$pred_vals$data$x
-  if (recorded) {
-    nec <- summary_ne_vals(x, NULL)
-  } else {
+  nec <- c(NA, NA, NA)
+  if (add_nec) {
+    nec <- if (recorded) {
+      summary_ne_vals(x, NULL)
+    } else {
+      to_axis_scale(x$ne, bdat, x$bayesnecformula, x_grid_raw, axis_xform)
+    }
+  }
+  if (add_ec10 && !recorded) {
     ec10 <- to_axis_scale(ec10, bdat, x$bayesnecformula, x_grid_raw,
                           axis_xform)
-    nec <- to_axis_scale(x$ne, bdat, x$bayesnecformula, x_grid_raw,
-                         axis_xform)
   }
 
   if (jitter_x) {
@@ -163,7 +167,7 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   plot(x_dat, y_dat, ylab = ylab, xlab = xlab,
        pch = 16, xaxt = "n", cex = 1.5,
        col = adjustcolor(1, alpha.f = 0.25), ...)
-  nec_tag <- summary(x, ecx = FALSE) |>
+  nec_tag <- summary(x, ecx = FALSE, xform = identity) |>
     (`[[`)("nec_vals") |>
     rownames() |>
     suppressWarnings() |>
@@ -352,10 +356,15 @@ plot_manec_average <- function(x, ..., CI, add_nec, legend_pos, add_ec10,
   }
   x_grid_raw <- x$w_pred_vals$data$x
   manec_formula <- x$mod_fits[[1]]$bayesnecformula
-  if (recorded) {
-    nec <- summary_ne_vals(x, NULL)
-  } else {
-    nec <- to_axis_scale(x$w_ne, bdat, manec_formula, x_grid_raw, axis_xform)
+  nec <- c(NA, NA, NA)
+  if (add_nec) {
+    nec <- if (recorded) {
+      summary_ne_vals(x, NULL)
+    } else {
+      to_axis_scale(x$w_ne, bdat, manec_formula, x_grid_raw, axis_xform)
+    }
+  }
+  if (add_ec10 && !recorded) {
     ec10 <- to_axis_scale(ec10, bdat, manec_formula, x_grid_raw, axis_xform)
   }
   if (jitter_x) {
@@ -372,7 +381,7 @@ plot_manec_average <- function(x, ..., CI, add_nec, legend_pos, add_ec10,
   plot(x_dat, y_dat, ylab = ylab, xlab = xlab,
        pch = 16, xaxt = "n", cex = 1.5,
        col = adjustcolor(1, alpha.f = 0.25), ...)
-  nec_tag <- summary(x, ecx = FALSE) |>
+  nec_tag <- summary(x, ecx = FALSE, xform = identity) |>
     (`[[`)("nec_vals") |>
     rownames() |>
     suppressWarnings() |>
