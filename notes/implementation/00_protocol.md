@@ -1,23 +1,20 @@
 # Autonomous implementation protocol
 
-How a Claude Code session works through `01_work_queue.md` without supervision.
-Read this first, then the queue, then the specification the queue names, then
-`03_decisions.md`.
-
-Revised 2026-09-26 for the backlog run (`notes/tasks/backlog-run-human.md`).
-The run of 2026-08-21 stacked its branches and left every merge to RF; this run
-merges each pull request into `predev` in order and RF reviews `predev` as a
-whole. The earlier procedure is in the history of this file.
+How a Claude Code session works through a queue of issues without supervision.
+Read this first, then the run's plan in `notes/tasks/`, which gives the queue,
+its order and any deadline, then `03_decisions.md` for RF's rulings. Where a
+ruling made for one run, such as D18, differs from this file, the ruling holds
+for that run.
 
 ## Branches and merging
 
-`predev` is the integration branch for this run. Every pull request targets it,
-and `predev` reaches `dev` later as one pull request that RF reviews. `master` is
-never touched.
+`predev` is the integration branch for an unattended run. Every pull request
+targets it, and `predev` reaches `dev` later as one pull request that RF reviews.
+`master` is never touched.
 
 One item, one branch, one pull request, each cut from the tip of `predev`.
-Branches do not stack. After an item merges, the next branch is cut from the new
-tip:
+Branches do not stack unless the run's plan says so. After an item merges, the
+next branch is cut from the new tip:
 
 ```bash
 git fetch origin predev
@@ -43,10 +40,13 @@ Push once per item where possible. The repository runs one job at a time, and
 each push to an open pull request cancels and requeues its matrix. Finish the
 review before the first push.
 
-Issues stay open. A pull request into `predev` does not close anything, and RF
-has not reviewed the change. After merging, comment on each issue the item
-covers: which pull request implements it, and that the issue closes when
-`predev` reaches `dev`.
+Close each issue an item covers once its pull request has merged into `predev`.
+The closing comment names the pull request and the merge commit, and asks for the
+issue to be reopened if RF's review of `predev` finds a problem. `Closes #n` does
+not fire on a merge into `predev` or `dev`, because neither is the default
+branch, so close the issue by hand. Where branches do stack, a pull request
+merges into the branch below it rather than into `predev`. Confirm with
+`git merge-base --is-ancestor <merge commit> origin/predev` before closing.
 
 Notes-only changes go straight to `predev`, with no pull request. A commit that
 touches `notes/**` and nothing else is not read by `R CMD check`, so a pull
@@ -56,18 +56,17 @@ one line of `R/`, `tests/`, `man/`, `DESCRIPTION`, `NAMESPACE`, `vignettes/` or
 
 ## Worktree and machine
 
-One worktree for the whole run, at `/mnt/c/Rworking/bayesnec-predev-run`. Do not
-work in `/mnt/c/Rworking/bayesnec`: it is RF's main checkout, and the Windows and
-WSL paths are the same directory, so two sessions there overwrite each other.
+One worktree for the whole run, created by the run beside the main checkout. Do
+not work in `/mnt/c/Rworking/bayesnec`: it is RF's main checkout, and the Windows
+and WSL paths are the same directory, so two sessions there overwrite each other.
 
 ```bash
 git -C /mnt/c/Rworking/bayesnec fetch origin predev
 git -C /mnt/c/Rworking/bayesnec worktree add --detach \
-    /mnt/c/Rworking/bayesnec-predev-run origin/predev
+    /mnt/c/Rworking/bayesnec-<run> origin/predev
 ```
 
-Never touch a worktree this run did not create, and never touch the branch of
-PR #402 (`issue-382-example8-group-terms`), which another session is repairing.
+Never touch a worktree or a branch this run did not create.
 
 The machine has 22 cores. Check `uptime` before any fitting and take no more
 than half of the idle cores. Run each Stan fit as a separate `Rscript` process:
@@ -75,20 +74,26 @@ a fit inside a `future` `multisession` worker deadlocks on this machine. Kill
 processes by PID, never by a `pkill` pattern, which has killed the invoking shell
 in this project.
 
+Wait and launch in separate tool calls. On #207 a job launched in the same call
+as a long `until` loop that preceded it did not run, and the call still reported
+success. Before reporting a job as running, confirm that its log file exists and
+its process is alive.
+
 ## Definition of done, per item
 
 1. The behaviour in the specification is implemented, and nothing beyond it.
 2. `testthat` tests covering the main behaviour and at least one edge case, in
    `tests/testthat/test-<file>.R` following the existing names.
 3. `devtools::document()` where roxygen changed, and the regenerated `man/*.Rd`
-   committed. Check the generated Rd for `\\%` (`git grep '\\%' -- man/`); write
-   a bare `%` in roxygen under markdown.
-4. A `NEWS.md` entry under `# bayesnec 2.2.0`.
-5. `DESCRIPTION` `Version` is bumped by one in its fourth component only where
-   the specification says so: once in item 1, because the #386 programme did not
-   bump it and a build before PR #409 cannot otherwise be told from one after it
-   (#413), and in any item that changes what a fit produces. A bug fix that
-   changes no fitted result does not bump it (RF, 2026-09-26, D18).
+   committed. Then run `Rscript notes/scripts/check_rd_links.R`, which exits
+   non-zero and names any `\link{}` target that does not resolve.
+   `devtools::test()` never builds the Rd files, so a broken link otherwise
+   first appears as a warning on every CI platform. Check the generated Rd for
+   `\\%` (`git grep '\\%' -- man/`); write a bare `%` in roxygen under markdown.
+4. A `NEWS.md` entry under the development heading at the top of the file.
+5. `DESCRIPTION` `Version` is bumped by one in its fourth component in an item
+   that changes what a fit produces. A bug fix that changes no fitted result
+   does not bump it (D18).
 6. The test files the item touches pass under `NOT_CRAN=true` against an
    installed build, not only under `devtools::load_all()`, which exposes
    unexported functions that `R CMD check` will not see. Each file is run on
@@ -100,9 +105,9 @@ in this project.
    is real; up to three rounds.
 8. The pull request body follows section 14 of the global `CLAUDE.md`: what,
    why and evidence above the fold, implementation detail in a `<details>`
-   block. It names the issues the item covers and says the merge does not close
-   them. Run `python3 ~/.claude/hooks/prose-check.py` on it.
-9. The status column of `01_work_queue.md` is updated in the item's own last
+   block. It names the issues the item covers. Run
+   `python3 ~/.claude/hooks/prose-check.py` on it.
+9. The status column of the run's queue is updated in the item's own last
    commit, linking the pull request.
 
 ## Records
@@ -122,8 +127,9 @@ the run goes in `prompts/` of the main checkout, never of the worktree.
 - Do not edit `CLAUDE.md`, `.github/`, or any settings file.
 - Base R inside `R/`; tidyverse is acceptable in tests and scripts. Native pipe
   `|>` only. `snake_case`. There is no `air.toml`, so do not run a formatter.
-- Comment decision points in code: why this approach over the plausible
-  alternative.
+- Code comments follow section 6 of the global `CLAUDE.md`: a short comment
+  where a reader could make a plausible wrong change, and the reasoning in the
+  pull request body.
 - Pass `seed =` to `bnec()` for a reproducible fit; `set.seed()` does not reach
   the sampler.
 - Any raw `brms` code written to compare against a `bnec()` fit names the link
@@ -149,21 +155,12 @@ not depend on it, where any of these holds:
 Do not open a pull request that guesses at a modelling decision. A clear account
 of the blocker is worth more than a speculative implementation.
 
-## Items that need PR #402
+## Submissions to the HPC
 
-Items 13 to 16 change code that PR #402 rewrites or edits, so they are done after
-it has merged into `predev`. If it has not merged when item 12 is finished, do
-them on `predev` anyway (D18) and post a `[claude]` comment on PR #402 naming the
-changes it must take in when it is next brought up to date with `predev`. Never
-rebase, push to or edit the branch of PR #402.
-
-## The deadline
-
-The run ends by submitting a precompile of the vignettes to the AIMS HPC, which
-needs RF's VPN connection. That connection closes near 18:00 AEST on 2026-09-27.
-The times at which the store refit and the precompile are submitted, and what is
-done when they are missed, are in `notes/tasks/backlog-run-claude.md` §4, under
-the precompile and the store refit. Check the clock at each item boundary.
+A run that precompiles vignettes on the AIMS HPC needs RF's VPN connection both
+to submit and to collect the output. The run's plan states the deadline, and
+`hpc/README.md` gives the commands. A submitted job keeps running after the
+connection closes.
 
 ## Verification
 
