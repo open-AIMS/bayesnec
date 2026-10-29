@@ -166,6 +166,28 @@ test_that("an I() predictor reaches brms without I() (#479)", {
   )
 })
 
+test_that("nested I() calls preserve the predictor's arithmetic", {
+  predictors <- c("log(I(x - 1))", "I((I(x - 1)))", "I(x - I(1))",
+                  "I(I(-x)^2)", "I(2 * I(x + 1))", "I(x / I(x + 1))")
+  for (p in predictors) {
+    f <- bnf(stats::as.formula(paste0("y ~ crf(", p, ", 'nec4param')")))
+    mf <- model.frame(f, data = crf_data)
+    bf <- make_brmsformula(f, crf_data)$nec4param
+    expect_no_match(deparse1(bf$formula), "I(", fixed = TRUE)
+    predictor <- str2lang(bayesnec:::brms_x_text(names(mf)[2]))
+    expect_equal(eval(predictor, crf_data), as.numeric(mf[[2]]), info = p)
+    expect_equal(as.numeric(bayesnec:::sub_x_transformation(crf_data$x, f)),
+                  as.numeric(mf[[2]]), info = p)
+    pars <- list(bot = 1, top = 10, beta = -1, nec = 1)
+    curve <- eval(bf$formula[[3]], c(as.list(crf_data), pars,
+                                    list(step = bayesnec:::step)))
+    x <- as.numeric(mf[[2]])
+    expected <- with(pars, bot + (top - bot) *
+                       exp(-exp(beta) * (x - nec) * bayesnec:::step(x - nec)))
+    expect_equal(curve, expected, info = p)
+  }
+})
+
 test_that("an I() predictor gives Stan code that compiles (#479)", {
   skip_if_not_installed("rstan")
   stan_ok <- function(bform, family) {
@@ -174,7 +196,9 @@ test_that("an I() predictor gives Stan code that compiles (#479)", {
     isTRUE(rstan::stanc(model_code = code, allow_undefined = FALSE)$status)
   }
   gauss <- stats::gaussian(link = "identity")
-  for (p in c("I(log(x) + 1)", "I(-x)", "log(x)", "x")) {
+  for (p in c("I(log(x) + 1)", "I(-x)", "log(x)", "x",
+              "log(I(x - 1))", "I((I(x - 1)))", "I(x - I(1))",
+              "I(I(-x)^2)")) {
     for (m in c("nec4param", "ecx4param")) {
       f <- stats::as.formula(paste0("y ~ crf(", p, ", \"", m, "\")"))
       expect_true(stan_ok(make_brmsformula(f, crf_data)[[m]], gauss),

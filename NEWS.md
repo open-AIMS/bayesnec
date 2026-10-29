@@ -3145,12 +3145,14 @@
   Stan has no `I()`, so a predictor written inside it is now passed to `brms`
   as the expression inside it, in parentheses: `crf(I(log(x) + 1))` is
   written into the curve as `(log(x) + 1)`. The model frame and the
-  estimators keep the `I()`. `crf(I(-x))`, the form the refusal of `crf(-x)`
+  estimators keep the `I()`. Nested `I()` calls are removed from the Stan
+  expression too, so `crf(log(I(x - 1)))` compiles as `log((x - 1))`.
+  `crf(I(-x))`, the form the refusal of `crf(-x)`
   offers, and `crf(I(x - 1))` previously gave a Stan program that failed to
   compile, and both now compile. Any predictor that is neither a column name
   nor a function call is written in parentheses, so that the curve's own
   terms cannot regroup it. The formula passed to `brms` for `crf(x)`,
-  `crf(log(x))` and every other column name or function call is unchanged
+  `crf(log(x))` and other column names or function calls without `I()` is unchanged
   (#479).
 
 ## Documentation
