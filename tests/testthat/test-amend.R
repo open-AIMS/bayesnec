@@ -660,3 +660,147 @@ test_that("the record of the call is recovered and kept up to date", {
                    call_record(control = list(adapt_delta = 0.95)))
   expect_null(update_call_args(NULL, list(seed = 1)))
 })
+
+test_that("update records supplied settings on a fit saved without a call", {
+  local_mocked_bindings(
+    update = function(object, ...) object,
+    expand_nec = function(object, ...) object,
+    .package = "bayesnec"
+  )
+  obj <- amend_fixture(validate_family("gaussian"))
+  ctrl <- list(adapt_delta = 0.97, max_treedepth = 12)
+  updated <- update.bnecfit(obj, control = ctrl, seed = 19)
+  expect_identical(updated$call_args, call_record(control = ctrl, seed = 19))
+  amended <- fit_inputs(amend(updated, add = "nec4param"))
+  expect_length(amended$calls, 1)
+  expect_identical(amended$calls[[1]]$control, ctrl)
+  expect_identical(amended$calls[[1]]$seed, 19)
+
+  unchanged <- update.bnecfit(obj)
+  expect_identical(unchanged$call_args, call_record())
+  reset <- update.bnecfit(updated, seed = NULL)
+  expect_null(reset$call_args$seed)
+  expect_identical(reset$call_args$control, ctrl)
+})
+
+test_that("update recovers a legacy set's shared survival equation", {
+  local_mocked_bindings(
+    update = function(object, ...) object,
+    expand_manec = function(object, ...) {
+      list(mod_fits = object, success_models = names(object))
+    },
+    .package = "bayesnec"
+  )
+  d <- hurdle_data()
+  fam <- validate_family("hurdle_gamma")
+  obj <- manec_example
+  for (model in names(obj$mod_fits)) {
+    fit <- obj$mod_fits[[model]]
+    fit$fit$data <- d
+    fit$fit$family <- unmark_family(fam)
+    fit$fit$formula <- wrangle_model_formula(
+      model, fit$bayesnecformula, model.frame(fit$bayesnecformula, data = d),
+      fam, model_survival = "nec4param"
+    )
+    obj$mod_fits[[model]] <- fit
+  }
+  updated <- update.bnecfit(obj, seed = 19)
+  for (fit in updated$mod_fits) {
+    expect_identical(fit$call_args,
+                     call_record(model_survival = "nec4param", seed = 19))
+  }
+  # The matching response equation alone cannot identify a fixed block.
+  survivor <- updated$mod_fits$nec4param
+  class(survivor) <- c("bayesnecfit", "bnecfit")
+  amended <- fit_inputs(amend(survivor, add = "nec3param"))
+  expect_length(amended$calls, 1)
+  expect_identical(deparse1(amended$calls[[1]]$formula$pforms$hu[[3]]),
+                   hu_rhs("nec4param"))
+  expect_identical(amended$calls[[1]]$seed, 19)
+})
+
+test_that("amend preserves a legacy survival equation after dropping models", {
+  local_mocked_bindings(
+    expand_manec = function(object, ...) object,
+    expand_nec = function(object, ...) object,
+    .package = "bayesnec"
+  )
+  d <- hurdle_data()
+  fam <- validate_family("hurdle_gamma")
+  obj <- manec_example
+  for (model in names(obj$mod_fits)) {
+    fit <- obj$mod_fits[[model]]
+    fit$fit$data <- d
+    fit$fit$family <- unmark_family(fam)
+    fit$fit$formula <- wrangle_model_formula(
+      model, fit$bayesnecformula, model.frame(fit$bayesnecformula, data = d),
+      fam, model_survival = "nec4param"
+    )
+    obj$mod_fits[[model]] <- fit
+  }
+  reduced <- amend(obj, drop = "ecx4param")
+  expect_s3_class(reduced, "bayesnecfit")
+  expect_identical(reduced$call_args,
+                   call_record(model_survival = "nec4param"))
+  amended <- fit_inputs(amend(reduced, add = "nec3param"))
+  expect_length(amended$calls, 1)
+  expect_identical(deparse1(amended$calls[[1]]$formula$pforms$hu[[3]]),
+                   hu_rhs("nec4param"))
+})
+
+test_that("update records only settings brms reuses after backend or algorithm changes", {
+  obj <- ecx4param
+  obj$call_args <- call_record(
+    control = list(adapt_delta = 0.99, max_treedepth = 12), seed = 7
+  )
+  calls <- list()
+  local_mocked_bindings(
+    brm = function(...) {
+      args <- list(...)
+      calls[[length(calls) + 1]] <<- args
+      out <- obj$fit
+      out$backend <- args$backend
+      out$algorithm <- args$algorithm
+      out
+    },
+    .package = "brms"
+  )
+  local_mocked_bindings(
+    expand_nec = function(object, ...) object,
+    .package = "bayesnec"
+  )
+  for (changes in list(list(backend = "cmdstanr", recompile = TRUE),
+                       list(backend = "cmdstanr", recompile = FALSE),
+                       list(algorithm = "meanfield", recompile = TRUE))) {
+    updated <- do.call(stats::update, c(list(object = obj), changes))
+    received <- calls[[length(calls)]]
+    expect_null(received$control)
+    expect_null(received$seed)
+    expect_identical(updated$call_args, call_record())
+    added <- amend_call_args(recover_prebayesnecfit(updated), NULL)$brm_args
+    expect_null(added$control)
+    expect_null(added$seed)
+
+    ctrl <- list(adapt_delta = 0.95)
+    updated <- do.call(stats::update, c(
+      list(object = obj, control = ctrl, seed = 29), changes
+    ))
+    received <- calls[[length(calls)]]
+    expect_identical(received$control, ctrl)
+    expect_identical(received$seed, 29)
+    expect_identical(updated$call_args, call_record(control = ctrl, seed = 29))
+  }
+  for (changes in list(list(backend = "r"), list(algorithm = "s"),
+                       list(backend = NULL, algorithm = NULL))) {
+    updated <- do.call(stats::update, c(
+      list(object = obj, recompile = TRUE), changes
+    ))
+    expect_identical(updated$call_args, obj$call_args)
+  }
+  legacy <- obj
+  legacy$fit$backend <- NULL
+  legacy$fit$version$brms <- package_version("2.13.1")
+  legacy$fit$version$restructure <- NULL
+  updated <- stats::update(legacy, recompile = TRUE)
+  expect_identical(updated$call_args, obj$call_args)
+})

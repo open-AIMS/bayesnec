@@ -56,6 +56,14 @@
 #' is read from the stored formulas. A single model whose survival block uses
 #' its own equation is then read as fitted without \code{model_survival},
 #' because the two calls store the same formula.
+#' \code{\link{update.bnecfit}} creates a call record for such an object,
+#' using the recovered survival-block equation and any \code{control} or
+#' \code{seed} supplied to the update. Subsequent additions reuse that record.
+#' \code{amend} also records the recovered equation on retained models, so
+#' dropping models does not discard it.
+#' When an update changes the backend or algorithm, \pkg{brms} does not reuse
+#' the previous \code{control} or \code{seed}. Only settings supplied to that
+#' update are then recorded for subsequent additions.
 #'
 #' @return All successfully fitted model fits. A \code{\link{bayesmanecfit}} if
 #' more than one model remains, otherwise a \code{\link{bayesnecfit}}.
@@ -324,6 +332,11 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   # would be sent out and back under a parallel plan.
   for (m in which(!needs_fit)) {
     mod_fits[[model_set[m]]] <- old_fits[[model_set[m]]]
+    if (is.null(mod_fits[[model_set[m]]]$call_args)) {
+      mod_fits[[model_set[m]]]$call_args <- list(
+        model_survival = call_args$model_survival, control = NULL, seed = NULL
+      )
+    }
   }
   # amend() rebuilds brm_args per model from the stored simdat rather than
   # taking one from the user, so what plan_model_set() decides has to be

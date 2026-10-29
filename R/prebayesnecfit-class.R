@@ -25,7 +25,9 @@
 #' call that \code{\link{amend}} reuses for an added model:
 #' \code{model_survival}, and the \code{control} and \code{seed} passed to
 #' \code{\link[brms]{brm}}. Each is \code{NULL} where the call did not supply
-#' it. Absent from an object fitted by an earlier version of \pkg{bayesnec}.
+#' it. Absent from an object fitted by an earlier version of \pkg{bayesnec}
+#' until \code{\link{update.bnecfit}} or \code{\link{amend}} records the
+#' recoverable settings.
 #' @slot retained_data An optional \code{\link[base]{data.frame}} containing
 #' columns retained by \code{\link{bnec}} for plotting. This element is present
 #' on a recovered object when the fitted object contained retained columns.
