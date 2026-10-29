@@ -486,8 +486,10 @@ inference from the readings rather than a stated resolution.
 ### Non-constant dispersion
 
 A `Gamma` with an identity link has a constant coefficient of variation, and
-these data do not. Within-cell variation, pooled over the seventeen plates at
-each concentration, rises steadily as the response falls:
+these data do not. The four wells at one concentration on one plate, one
+`conc_group` level, are called a cell below. The variation within a cell, pooled
+over the seventeen plates at each concentration, rises steadily as the response
+falls:
 
 ```{r lum31-cv}
 zn15 <- droplevels(subset(lum31, toxicant == "Zn" & minutes == 15))
@@ -523,7 +525,28 @@ make_brmsformula(
 ```
 
 The sub-model is the `shape` line: `c0` plus `c1` times the logarithm of the
-fitted mean, which here is the `nec3param` curve itself, centred at 12.99. The alternative form,
+fitted mean, which here is the `nec3param` curve itself, centred at 12.99. For a
+`Gamma` the shape is then proportional to the mean raised to the power `c1`, so
+the variance is proportional to the mean raised to 2 − `c1`. At `c1` = 0 the
+coefficient of variation is constant, and at `c1` = 2 the variance is constant.
+`bnec()` bounds `c1` to that range by default.
+
+The cells give an estimate of `c1` without fitting a curve. The `Gamma` shape
+is mean² / variance, so under the variance function log(mean² / variance) rises
+with log(mean) at slope `c1`. Each of the 187 cells of the arm gives one mean
+and one variance, and each is weighted by its number of wells less one:
+
+```{r lum31-replicate-slope}
+cells <- zn15 |>
+  group_by(conc_group) |>
+  summarise(m = mean(rlu_cens), v = var(rlu_cens), n = n(), .groups = "drop")
+coef(lm(log(m^2 / v) ~ log(m), data = cells, weights = n - 1))[["log(m)"]]
+```
+
+The slope is 0.72. A fit whose residual variation is the variation between the
+wells of a cell should estimate `c1` near that value.
+
+The alternative form,
 `disp(~log(conc))`, is an ordinary distributional formula and describes noise as
 a function of concentration instead. Every `lum31` fit below uses
 `disp("power")`. The *Non-constant dispersion* section of the [Single model
@@ -608,15 +631,13 @@ transitions:
 check_sampling(fit_ogl)
 ```
 
-Five of the fourteen equations fail. Three of those five fail on every count at
-once, with R-hats from 1.53 to 2.23 and effective sample sizes between 5 and 8
-of the 8000 draws retained, which is a chain that never converged rather than
-one that converged imprecisely. The other two fail on divergent transitions
-alone. `ecxexp`
-has an R-hat of 1.0087 and an effective sample size of 1141, both unremarkable,
-and records 159 divergent transitions; `nechorme4` has an R-hat of 1.0033 and an
-effective sample size of 860, and records 13. A check on R-hat alone would have
-kept both.
+Three of the fourteen equations fail. `nechorme4` fails on every count at once,
+with an R-hat of 1.027, an effective sample size of 52 of the 8000 draws
+retained, and 91 divergent transitions. The other two fail on divergent
+transitions alone. `nec4param` has an R-hat of 1.0054 and an effective sample
+size of 892, and records 32 divergent transitions; `ecxexp` has an R-hat of
+1.0044 and an effective sample size of 1324, and records 133. A check on R-hat
+alone would have kept both.
 
 Section 3 of [A complete analysis workflow][e9], *Sampler diagnostics and
 screening*, gives the cutoffs and the reasoning behind them,
@@ -633,9 +654,10 @@ fit_plain <- screen_models(fit_plain)
 fit_ogl <- screen_models(fit_ogl)
 ```
 
-Three of fourteen are dropped from the ungrouped fit, all of them hormesis
-equations failing on divergent transitions, and five from the grouped one. Each
-is named with the count that failed it. What remains in both is a set whose chains
+Five of fourteen are dropped from the ungrouped fit and three from the grouped
+one. In the ungrouped fit `nec3param` and `nec4param` fail on R-hat and
+effective sample size, and `nechorme`, `nechorme4` and `ecxhormebc4` on
+divergent transitions. Each is named with the count that failed it. What remains in both is a set whose chains
 converged, and the estimates below are averages over those.
 
 `ogl(conc_group)` estimates one deviation per concentration group, shared by
@@ -660,14 +682,14 @@ best
 brms::VarCorr(pull_out(fit_ogl, model = best)$fit)$conc_group$sd
 ```
 
-That standard deviation is 0.24 (0.14--0.41), on the scale the deviation is
+That standard deviation is 0.091 (0.034--0.181), on the scale the deviation is
 applied on rather than on the response scale. It is a property of that equation
 as well as of the data: an equation
 whose curve fits the concentration means poorly attributes more of the
 difference to the group term, so a standard deviation read from a poorly
 weighted equation is not comparable with this one. Here the weights are spread
-thinly, with `nec3param` at 0.18 against 0.17 for `ecxwb2p3` and 0.15 for
-`ecxll3`, so the equation read is the most weighted by a narrow margin.
+thinly, with `ecxll5` at 0.15 against 0.14 for `ecxwb1` and `ecxhormebc4` and
+0.13 for `ecxll3`, so the equation read is the most weighted by a narrow margin.
 
 The N(S)EC in the summary above is on the scale `fit_ogl` was fitted on,
 `log(conc)`, which is why its lower bound can be negative. `ecx()` takes
@@ -698,15 +720,17 @@ autoplot(fit_ogl, group = "conc_group") + log_x
 
 `ogl(conc_group)` changes the fitted curve, not only its uncertainty. Ungrouped,
 the model-averaged curve falls from the control immediately; with the term it
-holds near the control before falling. EC10 changes with it, from 0.272 mg/L
-(0.206--0.376) to 1.038 (0.194--1.896) --- nearly four times the estimate, on an
-interval that runs a factor of 9.8 from end to end against 1.8.
+holds near the control before falling. EC10 changes with it, from 0.273 mg/L
+(0.206--0.365) to 0.852 (0.178--1.871). The estimate is about three times as
+large, and its interval runs a factor of 10.5 from end to end against 1.8.
 
 That follows from the weights rather than from any one equation. Adding
 `ogl(conc_group)`, which absorbs within-concentration variation, changes which
 curve shapes fit the concentration means best, so the average is taken over a
-different mixture. Here it is also taken over a different set: the sampler
-screen dropped `nec4param`, `ecxexp` and `ecxwb2` from the grouped fit alone.
+different mixture. Here it is also taken over a different set. The sampler
+screen dropped `ecxexp` from the grouped fit alone, and `nec3param`, `nechorme`
+and `ecxhormebc4` from the ungrouped fit alone; those three hold 0.31 of the
+weight in the grouped fit.
 The four wells at a concentration are the only replication the design has, so an
 analysis that treats them as independent has nothing left to estimate that
 variation with, and reports the narrow band as though it were the evidence.
@@ -880,28 +904,28 @@ here. Control wells run
 from about 250,000 to 1,450,000 relative light units across the seventeen
 plates, against the 250,000 floor the assay was designed to clear.
 
-The pooled fit has nowhere to put that except the residual, so its curve falls
-from the control on a narrow band; with `ogl(plate)` the spread is attributed to
-the plates and the population curve holds nearer the control before falling.
+The pooled fit has nowhere to put that except the residual, and its curve lies
+on a narrow band. With `ogl(plate)` the spread is attributed to the plates. The
+two population curves have much the same shape.
 
-EC10 is 0.301 mg/L pooled against 0.346 with the plate term, a difference of
-about 15 per cent, and its interval narrows from 0.213--0.725 to 0.313--0.382
---- from a factor of 3.4 between the bounds to a factor of 1.2. The N(S)EC
-changes by more: 0.18 mg/L (0.045--0.55) pooled against 0.70 (0.19--1.15).
-Reported from the pooled fit, the no-effect concentration would be a quarter of
-the one the plate term gives, and the EC10 interval seven times as wide, 0.51
-mg/L from end to end against 0.07.
+EC10 is 0.297 mg/L pooled against 0.333 with the plate term, a difference of
+about 12 per cent. Its interval narrows from 0.211--0.724 to 0.308--0.359, from
+a factor of 3.4 between the bounds to a factor of 1.2. The N(S)EC changes by
+more: 0.18 mg/L (0.046--0.56) pooled against 0.72 (0.21--1.19). Reported from
+the pooled fit, the no-effect concentration would be a quarter of the one the
+plate term gives, and the EC10 interval ten times as wide, 0.51 mg/L from end to
+end against 0.05.
 
-The weights account for it. With the plate term `ecxll5` takes all of the
-weight; pooled it takes 0.46, with 0.38 on `ecxwb1`, 0.11 on `ecxll3`, and 0.03
-and 0.02 on `ecxll4` and `ecx4param`. The two averages are not over the same
-set: the sampler screen dropped eight equations from `fit_plate`, `ecxwb1` among
-them, against one from `fit_pooled`. Pooling curves that differ in scale spreads
-the weight over more functional forms. The pooled N(S)EC interval spans a factor
-of 12, against 3.4 for the pooled EC10. The equations that estimate a threshold
---- `nec3param`, `nec4param`, `nechorme` and `nechorme4` --- take no weight in
-the pooled fit; in `fit_plate` the first two take none and the screen dropped
-the other two. A term on the fitted value rescales each plate's curve by a
+The weights differ as well. With the plate term `ecxwb1` takes all of the
+weight; pooled it takes 0.39, with 0.45 on `ecxll5`, 0.11 on `ecxll3`, and 0.03
+each on `ecxll4` and `ecx4param`. The two averages are not over the same set.
+The sampler screen dropped `ecxll5` from `fit_plate`, because its chains did not
+converge (R-hat 1.60), and `ecxhormebc4` from `fit_pooled` on 74 divergent
+transitions. Pooling curves that differ in scale spreads the weight over more
+functional forms. The pooled N(S)EC interval spans a factor of 12, against 3.4
+for the pooled EC10. The equations that estimate a threshold --- `nec3param`,
+`nec4param`, `nechorme` and `nechorme4` --- take no weight in either fit. A term
+on the fitted value rescales each plate's curve by a
 constant and leaves the shape of the transition unchanged, so it does not make a
 threshold easier to place.
 
@@ -999,12 +1023,12 @@ fit_nec_gl <- screen_models(fit_nec_gl)
 fit_nec_ogl <- screen_models(fit_nec_ogl)
 ```
 
-The screen removes most of the set from the two fits that state more than a
-single difference between plates: twelve of fourteen equations from `fit_pgl`
-and eleven from `fit_plate_batch`, against one from `fit_batch`. Both equations
-of each named-parameter fit pass. Most of the removals are chains that did not
-converge, with R-hats above 1.5, so what `fit_pgl` and `fit_plate_batch` report
-rests on the two or three equations that sampled.
+The screen drops one equation of fourteen from `fit_pgl`, none from
+`fit_batch` and seven from `fit_plate_batch`, and passes both equations of each
+named-parameter fit. The one dropped from `fit_pgl` is `ecxll5`, whose chains
+did not converge (R-hat 1.59), as under `ogl(plate)`. The seven dropped from
+`fit_plate_batch` pass on R-hat and effective sample size and fail on 13 to 53
+divergent transitions each.
 
 ### The group-level standard deviations
 
@@ -1032,27 +1056,35 @@ sds <- rbind(sd_table(fit_plate, "ogl(plate)"), sd_table(fit_pgl, "pgl(plate)"),
 subset(sds, wi >= 0.01)
 ```
 
-`pgl(plate)` gives all of its weight to `ecxll3`, one of the two of its fourteen
-equations that pass the sampler screen, and estimates one deviation on each of
-its three parameters. The deviation on `top` is 0.46 (0.33--0.65), which
-reproduces the 0.45 (0.32--0.63) that `ogl(plate)` estimates on its single term:
-the gain difference is the same quantity read two ways. The deviation on `ec50`
-is 0.20 (0.14--0.30), an interval spanning a factor of 2.2. The deviation on
-`beta` is 0.07 (0.01--0.12), smaller, with a lower bound near zero and an
-interval spanning a factor of 9. The plates therefore differ in where the
-transition sits as well as in its height, and the evidence for a difference in
-its steepness is weak. The deviation on `ec50` reproduces the 0.19 standard
-deviation of the half-control crossings, which reported the difference in
-position without fitting anything.
+`pgl(plate)` gives all of its weight to `ecxwb1`, the equation that
+`ogl(plate)` also puts its weight on, and estimates one deviation on each of its
+four parameters. The deviation on `top` is 0.46 (0.33--0.65), which reproduces
+the 0.45 (0.33--0.64) that `ogl(plate)` estimates on its single term: the gain
+difference is the same quantity read two ways. The deviation on `ec50` is 0.20
+(0.13--0.29), an interval spanning a factor of 2.2. It reproduces the 0.19
+standard deviation of the half-control crossings, which reported the difference
+in position without fitting anything. The deviation on `beta` is 0.11
+(0.07--0.17), smaller, on an interval spanning a factor of 2.5 that stays clear
+of zero.
+
+The deviation on `bot` is 0.75 (0.51--1.10), larger than the one on `top`. The
+readings show the same difference. Across the seventeen plates, the log of each
+plate's mean reading at the highest concentration has a standard deviation of
+0.75, against the 0.45 of its control. Those means correlate with the plate's
+control at 0.45, where the means at the second to eighth concentrations
+correlate with it at 0.95 or more. The plates therefore differ in where the
+transition sits, in its steepness and in the level the response falls to, as
+well as in gain. `ogl(plate)` multiplies the whole of a plate's curve by one
+factor, so it states the gain difference alone.
 
 The plate and the batch cannot be separated by fitting either alone.
-`ogl(batch)` on its own estimates 0.44 (0.24--0.85) under `ecxwb1` and 0.44
-(0.24--0.84) under `ecxll5`, the two equations that share its weight, which is
+`ogl(batch)` on its own estimates 0.45 (0.24--0.87) under `ecxwb1` and 0.45
+(0.24--0.88) under `ecxll5`, the two equations that share its weight, which is
 indistinguishable from the plate term, because the five batches absorb the
 differences between the plates within them. Fitted together, the plate deviation
-is 0.39 (0.26--0.58) and the batch deviation is 0.29 (0.02--0.72). The plate
-interval spans a factor of 2.2 and lies well above zero. The batch interval
-reaches down to 0.02 and spans a factor of 39. The difference between plates is
+is 0.39 (0.25--0.58) and the batch deviation is 0.31 (0.02--0.79). The plate
+interval spans a factor of 2.3 and lies well above zero. The batch interval
+reaches down to 0.02 and spans a factor of 34. The difference between plates is
 therefore established, and how much of it lies between batches is not
 determined by seventeen plates in five batches.
 
@@ -1066,15 +1098,77 @@ do.call(rbind, Map(function(x, label) {
    list("pooled", "ogl(plate)", "pgl(plate)", "ogl(plate) + ogl(batch)")))
 ```
 
-Pooled, the weight is spread over five equations, with `ecxll5` at 0.46 and
-`ecxwb1` at 0.38. With `ogl(plate)` it falls entirely on `ecxll5`, and with
-`pgl(plate)` entirely on `ecxll3`. Part of that is the term: what counts as
-residual variation changes with it, and so does which functional form the data
-support. Part of it is the sampler screen, which removes different equations
-from each fit. `ecxwb1`, the second equation of the pooled fit, did not converge
-under `ogl(plate)` (R-hat 1.53), and `ecxll5` did not converge under
-`pgl(plate)` (R-hat 1.54). The weights of a screened set therefore reflect the
-screen as well as the term.
+Pooled, the weight is spread over five equations, with `ecxll5` at 0.45 and
+`ecxwb1` at 0.39. With `ogl(plate)` or `pgl(plate)` it falls on `ecxwb1`, and
+with both the plate and the batch term it falls on `ecxll5`. Part of that is the
+term: what counts as residual variation changes with it, and so does which
+functional form the data support. Part of it is the sampler screen, which
+removes different equations from each fit. `ecxll5`, the leading equation of the
+pooled fit, did not converge under `ogl(plate)` or `pgl(plate)`, and `ecxwb1`
+failed under `ogl(plate) + ogl(batch)` on 27 divergent transitions. The weights
+of a screened set therefore reflect the screen as well as the term.
+
+### The variance function under each term
+
+The variance function is estimated from whatever variation the mean leaves
+unexplained, so its slope `c1` shows what a term has left in the residual. Two
+quantities are read for each equation. The first is the posterior median of
+`c1`, against the 0.72 the cells give. The second, called the misfit below, is
+the root mean square of the difference between each cell's observed mean and
+its fitted mean, in standard errors of the observed mean. The fitted mean
+includes the group-level deviations. Censored readings are left out of the cell
+means, and 1000 of the 8000 draws are used.
+
+```{r c1-plate-terms}
+uncensored <- zn15$censoring == "none"
+cell <- droplevels(zn15$conc_group[uncensored])
+cell_mean <- tapply(zn15$rlu_cens[uncensored], cell, mean)
+cell_se <- tapply(zn15$rlu_cens[uncensored], cell,
+                  function(v) sd(v) / sqrt(length(v)))
+
+c1_table <- function(x, label, min_wi = 0) {
+  keep <- rownames(x$mod_stats)[x$mod_stats$wi >= min_wi]
+  do.call(rbind, lapply(keep, function(m) {
+    f <- pull_out(x, model = m)$fit
+    mu <- colMeans(brms::posterior_epred(f, draw_ids = seq(8, 8000, by = 8)))
+    z <- (cell_mean - tapply(mu[uncensored], cell, mean)) / cell_se
+    c1 <- as.data.frame(f, variable = "b_c1_Intercept")[[1]]
+    data.frame(fit = label, model = m, wi = round(x$mod_stats[m, "wi"], 3),
+               c1 = round(median(c1), 2),
+               misfit = round(sqrt(mean(z[is.finite(z)]^2)), 1),
+               row.names = NULL)
+  }))
+}
+
+rbind(c1_table(fit_pooled, "pooled", 0.01),
+      c1_table(fit_plate, "ogl(plate)", 0.01),
+      c1_table(fit_pgl, "pgl(plate)", 0.01),
+      c1_table(fit_batch, "ogl(batch)", 0.01),
+      c1_table(fit_plate_batch, "ogl(plate) + ogl(batch)", 0.01))
+```
+
+Against the 0.72 the cells give, the equations holding the weight fall into
+three groups. Pooled, `c1` is 0.38 to 0.41, and under `ogl(batch)` it is 0.60.
+Under `ogl(plate)`, alone or with `ogl(batch)`, the equation holding the weight
+sits at 1.48. Under `pgl(plate)`, `ecxwb1`, which holds all of the weight, sits
+at 0.83. The misfit is 35 to 45 standard errors pooled and under `ogl(batch)`,
+29.6 and 31.0 with `ogl(plate)`, and 4.6 under `pgl(plate)`.
+
+Each departure from 0.72 follows from what the term leaves in the residual. A
+difference in gain multiplies a plate's whole curve, so the variation it leaves
+has a constant coefficient of variation, which is `c1` = 0. Pooled, the gain
+differences between all seventeen plates are in the residual, and under
+`ogl(batch)` those between the plates of one batch, so `c1` is pulled below 0.72
+in both. `ogl(plate)` removes the gain and leaves the differences in position,
+steepness and floor that `pgl(plate)` estimates. A plate whose transition sits
+further along the axis, or whose floor is higher, differs from the population
+curve by little near the control and by a large fraction of the mean where the
+curve is low. That variation falls with the mean
+more slowly than the variation within a cell does, and `c1` is raised towards 2.
+`pgl(plate)` places a deviation on each parameter of each plate's curve, its
+position among them, and `c1` returns to near the value the cells give. The 4.6
+standard errors that remain are variation between the cells of one plate that no
+curve per plate accounts for.
 
 ### The estimates the choice affects
 
@@ -1099,20 +1193,17 @@ rbind(
 ```
 
 The EC10 and the N(S)EC differ in how much the structure changes them. EC10
-sits between 0.30 and 0.35 mg/L
-under four of the five structures, and at 0.50 (0.45--0.57) under `pgl(plate)`,
-whose interval does not overlap that of `ogl(plate)`. The N(S)EC is more
-sensitive still: 0.18 pooled, 0.70 with `ogl(plate)`, 0.87 with `pgl(plate)`,
-and 1.08 to 1.12 once a batch term is present. That is a factor of six driven
-by the grouping structure alone, on one dataset with one response.
+sits between 0.30 and 0.34 mg/L under all five structures. Its interval spans a
+factor of 3.4 pooled and 2.3 under `ogl(batch)`, and 1.2 to 1.4 under each
+structure that includes a plate term. The N(S)EC is more sensitive: 0.18 pooled,
+0.72 with `ogl(plate)`, 0.68 with `pgl(plate)`, and 1.03 to 1.15 once a batch
+term is present. That is a factor of six driven by the grouping structure alone,
+on one dataset with one response.
 
 The reason is in what each estimate is read off. An ECx is a fixed percentage
 drop from the control. Any of these terms re-estimates the control per plate, so
-the drop is measured from a reference that is re-estimated with it, and under a
-term on the fitted value the EC10 changes little. Under `pgl(plate)` the EC10 is
-read off a different equation, `ecxll3` in place of `ecxll5`, and from a
-population curve whose position is itself allowed to vary between plates; it
-changes from 0.35 to 0.50 mg/L. The N(S)EC is the point at which the curve
+the drop is measured from a reference that is re-estimated with it, and the
+EC10 changes little. The N(S)EC is the point at which the curve
 departs from the control band. A group-level term changes the width of that
 band, by attributing part of the residual variation to the groups. Where the two estimates disagree
 about how much a structural choice matters, an assessment should state which of
@@ -1128,12 +1219,12 @@ rbind(
 sd_table(fit_nec_gl, "(nec | plate)")
 ```
 
-On the same two equations and the same data, `ogl(plate)` gives an EC10 of 0.49
-(0.47--0.51) and `(nec | plate)` gives 1.45 (1.20--1.75). The deviation on `nec`
-is 0.31 (0.21--0.45) under `nec3param` and 0.31 (0.22--0.47) under `nec4param`,
+On the same two equations and the same data, `ogl(plate)` gives an EC10 of 0.76
+(0.73--0.78) and `(nec | plate)` gives 1.46 (1.20--1.77). The deviation on `nec`
+is 0.31 (0.21--0.46) under `nec3param` and 0.32 (0.22--0.49) under `nec4param`,
 so the plates do differ in threshold, which is consistent with the crossings.
-The two fits nonetheless give EC10s for the population curve that differ by a
-factor of three, and the intervals do not overlap.
+The two fits nonetheless give EC10s for the population curve that differ by
+nearly a factor of two, and the intervals do not overlap.
 
 Neither is a correction of the other. `ogl(plate)` asks what the average plate's
 curve is once each plate's gain is removed; `(nec | plate)` asks what the average
@@ -1153,30 +1244,37 @@ loo_k <- function(x, label) {
 rbind(loo_k(fit_pgl, "pgl(plate)"), loo_k(fit_nec_gl, "(nec | plate)"))
 ```
 
-Neither fit has a Pareto-k above 0.7, the value above which a leave-one-out
-estimate is treated as approximate. The largest is 0.68, one observation of 748
-under `nec4param` in `(nec | plate)`, an equation that holds 0.68 of that fit's
-weight. `pgl(plate)` reaches 0.44 on `ecxll3`, which holds all of its weight,
-and 0.58 on `ecxexp`, which holds none, so estimating three deviations across
-seventeen levels has left no observation with enough influence to make the
-leave-one-out estimate approximate.
+One observation of the 748 has a Pareto-k above 0.7, the value above which a
+leave-one-out estimate is treated as approximate. Its value is 0.74, under
+`ecxwb1` in `pgl(plate)`, the equation that holds all of that fit's weight.
+Every other equation of the two fits stays below 0.7. The largest among them is
+0.62, under `nechorme` in `pgl(plate)`, which holds no weight, and
+`(nec | plate)` reaches 0.51 under `nec4param`, which holds 0.67 of its weight.
+Estimating four deviations across seventeen levels has therefore left one
+observation influential enough to make the leave-one-out estimate for `ecxwb1`
+approximate.
 
 ### Choice of plate term
 
-`ogl(plate)` is retained as the plate term, on the evidence of the fits
-above. The gain difference is the large one, at 0.45
-on the log scale against 0.19 for the difference in position, and `ogl()` is the
-term that states it. `pgl(plate)` finds differences in position and slope beyond
-it, and it changes the EC10 from 0.35 to 0.50 mg/L, so the choice matters to the
-answer. Its model average, however, rests on the two of its fourteen equations
-that sampled, where `ogl(plate)` keeps six. A structure the sampler cannot fit
-across most of the candidate set is a weaker basis for an estimate than one it
-can.
+Both plate terms sample across the candidate set. The screen passes thirteen of
+fourteen equations under each, and both put their weight on `ecxwb1`. Their
+estimates are close: EC10 is 0.33 mg/L (0.31--0.36) under `ogl(plate)` and 0.30
+(0.26--0.35) under `pgl(plate)`, and the N(S)EC is 0.72 and 0.68, on intervals
+that overlap.
 
-That is a judgement about this dataset and not a rule. Where the position
-difference is the larger of the two, or where more of the candidate set samples
-under `pgl()`, the same evidence would favour the other term. Either way the
-EC10 from these data depends on the choice, so an assessment should state which
+The two terms differ in what they leave in the residual. `pgl(plate)` states the
+differences between plates in position, steepness and floor as well as in gain.
+Its `c1` of 0.83 is near the 0.72 the cells give, and its fitted means miss the
+cell means by 4.6 standard errors. `ogl(plate)` states the gain difference
+alone. Its `c1` is 1.48, and its fitted means miss the cell means by 30 standard
+errors. On fit to the cells, `pgl(plate)` is the better of the two plate terms.
+
+The arm fits below use `ogl(plate)`, together with a term that gives each cell
+a deviation of its own. That term can take up any difference between a plate's
+cell means and the population curve, including the differences in position,
+steepness and floor that `pgl(plate)` states. `pgl(plate)` with the cell term
+was not fitted. Whichever plate term is used, `c1` and the misfit show whether
+it has left structure in the residual, and an assessment should state which
 term its estimate was read under.
 
 ```{r fig-pgl}
@@ -1184,11 +1282,10 @@ autoplot(fit_pgl, group = "plate") + log_x
 ```
 
 The figure shows the same seventeen observed traces as the `ogl(plate)` figure
-above, with the population curve of `pgl(plate)`. That curve holds at the
-control level further up the series, to about 0.25 mg/L, and then falls more
-steeply, which is the higher EC10 in the table above. Its band is slightly wider
-than the `ogl(plate)` band over the flat part of the series and wider through
-the transition, where the deviations on `ec50` and `beta` act.
+above, with the population curve of `pgl(plate)`. That curve is close to the
+`ogl(plate)` curve. It begins to fall slightly sooner, which is the lower EC10
+in the table above, and its band is of much the same width over the whole
+series.
 
 ## Replication and position within an arm
 
@@ -1214,9 +1311,11 @@ zn15_step <- zn15 |>
 `ogl(plate/conc_rank)` expands to `(1 | plate) + (1 | plate:conc_rank)`: a
 deviation per plate, which is the gain term of `fit_plate`, and a further
 deviation per cell within its plate. The 187 cell deviations are drawn from one
-distribution centred on zero. The seventeen cells at one step cannot all deviate
-in one direction without enlarging that distribution's standard deviation, so
-the mean response at each step is left to the curve.
+distribution centred on zero, with one standard deviation for all eleven steps.
+The seventeen cells at one step can deviate together in one direction only as
+far as that standard deviation allows: the mean of seventeen draws from it has a
+standard deviation of about a quarter of it. The mean response at each step is
+therefore held to the curve only where the cell standard deviation is small.
 
 ### Dilution step and measured concentration
 
@@ -1308,7 +1407,11 @@ make_brmsformula(
 
 ### The arm fits
 
-RESULT-ARM-METHOD
+`fit_cell` adds the cell term to the plate term, and `fit_arm` adds the batch
+location term to `fit_cell`. Both are fitted to the 748 readings of `fit_plate`,
+with the step column added, over the whole candidate set with the censored
+response and the dispersion sub-model. `fit_arm` holds 13 equations, because
+`ecxexp`, which has neither `nec` nor `ec50`, is excluded.
 
 ```{r fit-arm, results = "hide"}
 fit_cell <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate/conc_rank) + disp("power"),
@@ -1325,14 +1428,83 @@ fit_cell <- screen_models(fit_cell)
 fit_arm <- screen_models(fit_arm)
 ```
 
-RESULT-SCREEN
+The screen drops seven of the fourteen equations of `fit_cell` and five of the
+thirteen of `fit_arm`, all on R-hat or the effective sample size, and no
+equation of either fit records more than one divergent transition. Three of the
+seven dropped from `fit_cell` have R-hats above 1.04: `ecx4param` at 1.05,
+`ecxll4` at 1.15 and `ecxll5` at 1.59. The other four, and the five dropped from
+`fit_arm`, have R-hats of 1.008 to 1.036 with effective sample sizes of 115 to
+679.
+
+The table below gives, for each equation kept, its weight, `c1`, the misfit, the
+posterior median of the cell standard deviation, and the fraction of
+transitions that reached the sampler's maximum tree depth.
+
+```{r c1-arm}
+# zn15_step holds the rows of zn15 in the same order, so the cell means that
+# c1_table() compares against serve these fits as well.
+cell_sd <- function(x) {
+  vapply(rownames(x$mod_stats), function(m) {
+    f <- pull_out(x, model = m)$fit
+    v <- grep("^sd_.+:.+__ogl_Intercept$", brms::variables(f), value = TRUE)
+    median(as.data.frame(f, variable = v)[[1]])
+  }, numeric(1))
+}
+at_max_treedepth <- function(x) {
+  vapply(rownames(x$mod_stats), function(m) {
+    np <- brms::nuts_params(pull_out(x, model = m)$fit)
+    mean(np$Value[np$Parameter == "treedepth__"] >= 10)
+  }, numeric(1))
+}
+c1_arm <- rbind(c1_table(fit_cell, "+ cell"), c1_table(fit_arm, "+ batch location"))
+c1_arm$sd_cell <- round(c(cell_sd(fit_cell), cell_sd(fit_arm)), 2)
+c1_arm$max_treedepth <- round(c(at_max_treedepth(fit_cell),
+                                at_max_treedepth(fit_arm)), 2)
+c1_arm
+```
+
+Six of the seven equations kept from `fit_cell` hold `c1` at 0.80 to 0.83, with
+a cell standard deviation of 0.43 to 0.53, and miss the cell means by 0.4 to 0.6
+standard errors. The cell term has taken up the variation between cells that
+`ogl(plate)` left to the variance function, and `c1` has returned to near the
+0.72 the cells give. The seventh, `ecxwb1`, sits at 1.38 with a cell standard
+deviation of 0.11, misses by 17.5 and holds no weight. The fitted means include
+the cell deviations, so under a cell term the misfit measures how much of the
+variation between cells the term has taken up. It does not test the population
+curve.
+
+`fit_arm` divides the same way, with more of its equations on the side of
+`ecxwb1`.
+Three of its eight kept equations, `ecxwb1p3`, `nec3param` and `nec4param`, hold
+`c1` at 0.79 to 0.84 and a cell standard deviation of 0.39 to 0.49, and miss by
+0.5 to 1.0. The other five sit at 1.08 to 1.22 with a cell standard deviation of
+0.09 to 0.22, and miss by 8.6 to 15.9. `fit_cell` is `fit_arm` with every batch
+deviation at zero, so the solution with the larger cell standard deviation is
+open to `fit_arm` as well, and `ecxll3` and `ecxwb2p3` reach it under
+`fit_cell`. Each of the five has all four chains in the other solution, so its
+R-hat and effective sample size are unremarkable and the screen keeps it. The
+weights do not: each of the five holds 0.000 to three decimal places, and
+`ecxwb1p3` holds 0.98. The screen asks whether the chains agree, and not which
+of the two solutions they agree on.
+
+Most transitions of the equations with the larger cell standard deviation
+reached the maximum tree depth of 10, which stops a trajectory at 1023 steps: 0.88 to 0.97 of them in
+`fit_cell` and 0.95 to 0.99 in `fit_arm`. Stan treats this as a limit on the
+efficiency of the sampler rather than on the validity of the draws, and
+`check_sampling()` does not report it. The effective sample sizes in the screen
+are those reached within the limit.
 
 ```{r varcorr-arm}
 subset(rbind(sd_table(fit_cell, "+ cell"),
              sd_table(fit_arm, "+ batch location")), wi >= 0.01)
 ```
 
-RESULT-SD
+Under every equation that holds weight, the plate deviation is 0.43 to 0.47,
+as under `ogl(plate)` alone, and the cell standard deviation is 0.39 to 0.53.
+The batch location deviation is 0.30 (0.12--0.73) on `nec` under `nec4param`
+and 0.28 (0.11--0.68) on `ec50` under `ecxwb1p3`. Each interval spans a factor
+of about six, so five batches leave the batch standard deviation poorly
+determined.
 
 ```{r weights-arm}
 do.call(rbind, Map(function(x, label) {
@@ -1342,7 +1514,11 @@ do.call(rbind, Map(function(x, label) {
    list("ogl(plate)", "+ cell", "+ batch location")))
 ```
 
-RESULT-WEIGHTS
+Under `fit_cell` the weight is spread over five equations: 0.30 on `ecxll3`,
+0.22 on `ecxwb2p3`, 0.21 each on `nec3param` and `ecxwb1p3`, and 0.05 on
+`nec4param`. Under `fit_arm`, `ecxwb1p3` takes 0.98 and `nec4param` 0.02.
+`ecxwb1`, which takes all of the weight under `ogl(plate)`, takes less than
+0.01 under either.
 
 ```{r ecx-arm}
 rbind(
@@ -1357,7 +1533,68 @@ rbind(
 )
 ```
 
-RESULT-ESTIMATES
+EC10 is 0.33 mg/L (0.31--0.36) under `ogl(plate)`, 0.82 (0.06--1.72) with the
+cell term, and 0.077 (0.059--0.114) with the batch location term added. The
+N(S)EC is 0.72 (0.21--1.19), 1.25 (0.08--1.88) and 0.24 (0.04--0.67). The EC10
+of `fit_arm` lies between the third and fourth steps, where 12 or 13 of the 17
+plates have a mean above their own control.
+
+The cell term's single standard deviation has to describe variation between
+cells that differs along the series. The first table below gives, at each step
+beyond the first, the standard deviation across the seventeen plates of the log
+of the cell mean relative to that plate's step-1 cell. The second gives, for
+each equation kept from `fit_cell` and `fit_arm`, its EC10 and the posterior
+mean of its cell deviations averaged over the seventeen plates at each step,
+reported as the lowest and highest of the eleven step averages.
+
+```{r step-deviations-arm}
+zn15_step |>
+  filter(conc_rank != "1") |>
+  group_by(plate, conc_rank) |>
+  summarise(m = mean(rlu_cens), .groups = "drop") |>
+  left_join(zn15_step |>
+              filter(conc_rank == "1") |>
+              group_by(plate) |>
+              summarise(m1 = mean(rlu_cens), .groups = "drop"),
+            by = "plate") |>
+  group_by(conc_rank) |>
+  summarise(sd_between_plates = round(sd(log(m / m1)), 2), .groups = "drop")
+
+step_deviations <- function(x, label) {
+  do.call(rbind, lapply(rownames(x$mod_stats), function(m) {
+    fm <- pull_out(x, model = m)
+    re <- brms::ranef(fm$fit)[["plate:conc_rank"]][, "Estimate", "ogl_Intercept"]
+    by_step <- tapply(re, as.integer(sub(".*_", "", names(re))), mean)
+    data.frame(fit = label, model = m,
+               ec10 = round(ecx(fm, ecx_val = 10, xform = exp)[[1]], 3),
+               lowest = round(min(by_step), 2), lowest_step = which.min(by_step),
+               highest = round(max(by_step), 2), highest_step = which.max(by_step),
+               row.names = NULL)
+  }))
+}
+rbind(step_deviations(fit_cell, "+ cell"),
+      step_deviations(fit_arm, "+ batch location"))
+```
+
+The standard deviation between plates is 0.04 to 0.05 at steps 2 to 5 and 0.45
+to 1.32 at steps 9 to 11, where the plates differ in position and floor. A cell
+standard deviation near 0.45 describes the low cells. Against it, the mean of
+the seventeen cells at a high step has a prior standard deviation of about 0.11,
+so those cells can sit together 0.1 or more above or below the population curve
+while their deviations stay well inside the cell distribution.
+
+`ecxwb1` uses little of that freedom. Its step averages lie within 0.06 of zero
+in both fits, and its EC10 is 0.33 mg/L, as under `ogl(plate)`. The equations
+that hold the weight use more. Under `nec3param` the cells at step 7 sit 0.36
+below the curve on average, and under `ecxwb1p3` those at step 10 sit 0.65
+below and those at step 8 0.35 above. Their EC10s run from 0.071 mg/L under
+`ecxwb1p3` in `fit_cell` to 1.82 under `nec4param` in `fit_arm`. Without a cell
+term, a curve that misses the step means by that much misses the cell means by
+26 to 426 standard errors, as every equation but `ecxwb1` does under
+`ogl(plate)`, and holds no weight. With the cell term the cell deviations take up the departure,
+and the weights no longer distinguish the curve shapes. Every equation holding
+weight in either fit is in the solution with the larger cell standard deviation,
+and `ecxwb1` reached that solution in neither fit.
 
 The batch deviations can be set against the concentrations themselves. Where
 the response follows the step, a batch dosed at concentrations higher by a
@@ -1383,13 +1620,54 @@ data.frame(model = best_arm, batch = rownames(re_batch),
                                                offsets$batch)], 2))
 ```
 
-RESULT-OFFSETS
+Under `ecxwb1p3` every batch deviation lies within 0.24 of zero, and every
+interval includes both zero and the batch's offset. Three batches, 1Oct24,
+5Apr24 and 23Apr24, have a deviation of the same sign as their offset: 0.24
+against 0.28, −0.19 against −0.12 and −0.12 against −0.08. 28Mar24 has 0.14
+against an offset of −0.14, which is the batch that stays above the others at
+zinc's steps 6 and 7 in the step figure, and 19Mar24 has −0.09 against 0.07.
+These deviations are read from `ecxwb1p3`, whose curve departs from the step
+means as the table above shows.
 
 ```{r fig-arm}
 autoplot(fit_arm, group = "plate") + log_x
 ```
 
-RESULT-FIG
+The population curve of `fit_arm` falls from the lowest concentrations. By
+0.1 mg/L it is about 13 per cent below its own control level, while every
+plate's trace is flat to about 0.25 mg/L. Its control level, about 800,000
+relative light units, lies above the 680,000 of the `ogl(plate)` curve, and its
+band is wider.
+
+On these data the cell term takes up the variation between cells, and `c1`
+returns to near the 0.72 the cells give. With one standard deviation for every
+step, it also releases the population curve from the step means, and the EC10
+then follows the equation rather than the readings. `pgl(plate)` describes the
+differences in position and floor that make the low cells vary, and its EC10 of
+0.30 mg/L (0.26--0.35) includes the 0.33 that `ecxwb1` gives under
+`ogl(plate)`, `fit_cell` and `fit_arm`. A cell term over `pgl(plate)` is fitted
+below. A cell term whose standard deviation changes with the step was not
+fitted.
+
+### A cell term over the per-plate curves
+
+`fit_pgl_cell` places the cell term over `pgl(plate)` instead of `ogl(plate)`,
+so that each cell deviates from its own plate's curve rather than from the
+population curve. `conc_group` identifies the cell. No batch term is included:
+each plate's deviation on `ec50` already contains any displacement of its
+batch, and five batches leave the batch standard deviation undetermined.
+
+```{r fit-pgl-cell, results = "hide"}
+fit_pgl_cell <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + pgl(plate) + ogl(conc_group) + disp("power"),
+                     data = zn15, family = gfam,
+                     seed = 228, refresh = 0)
+```
+
+```{r screen-pgl-cell, message = TRUE}
+fit_pgl_cell <- screen_models(fit_pgl_cell)
+```
+
+RESULT-PGL-CELL
 
 ### A deviation per dilution step
 
@@ -1416,71 +1694,88 @@ sampling_step <- rbind(
   data.frame(fit = "step", check_sampling(fit_step)),
   data.frame(fit = "step + batch", check_sampling(fit_step_batch))
 )
+c1_step <- rbind(c1_table(fit_step, "step"), c1_table(fit_step_batch, "step + batch"))
+c1_step$sd_cell <- round(c(cell_sd(fit_step), cell_sd(fit_step_batch)), 2)
+sampling_step <- cbind(
+  sampling_step,
+  c1_step[match(paste(sampling_step$fit, sampling_step$model),
+                paste(c1_step$fit, c1_step$model)), c("c1", "misfit", "sd_cell")]
+)
 sampling_step[, c("max_rhat", "min_ess")] <- round(sampling_step[, c("max_rhat", "min_ess")], 2)
-sampling_step
+sampling_step[, c("fit", "model", "max_rhat", "min_ess", "n_divergent", "failed",
+                  "c1", "misfit", "sd_cell")]
 ```
 
-Every equation of `fit_step` fails the sampler screen, with R-hat between 1.08
-and 2.79 and between 4.7 and 39 effective draws of 8000. Under `fit_step_batch`
-three equations pass, `ecxwb1p3`, `ecxwb2p3` and `ecxll3`, each with R-hat of
-1.01 or below and over 560 effective draws. `ecxhormebc4` has an R-hat of 1.01
-but 293 effective draws, short of the 400 the screen requires. The other nine
-fail with R-hat between 1.54 and 2.72. `ecxexp` is absent from the second fit
-for the reason given under the arm fits.
+Six of the fourteen equations of `fit_step` pass the sampler screen, and eight
+of the thirteen of `fit_step_batch`. `ecxexp` is absent from the second fit for
+the reason given under the arm fits. Every equation that passes has a cell
+standard deviation of 0.05 or 0.06 and misses the cell means by 20.2 to 26.6
+standard errors. Its `c1` is 1.94 to 1.98 under `fit_step` and 1.28 to 1.79
+under `fit_step_batch`. The equations of `fit_cell` that fit the cells have a
+cell standard deviation of 0.43 to 0.53.
 
 ```{r chains-step}
 # Per-chain means show whether the chains found one posterior or several, which
 # an R-hat above the cutoff reports without saying where they part.
 chain_means <- function(x, label, model) {
   d <- as.data.frame(brms::as_draws_df(x$mod_fits[[model]]$fit))
-  out <- aggregate(d[, c("b_ec50_Intercept", "sd_conc_rank__ogl_Intercept",
+  out <- aggregate(d[, c("lp__", "b_c1_Intercept", "b_ec50_Intercept",
+                         "sd_conc_rank__ogl_Intercept",
+                         "sd_conc_rank:plate__ogl_Intercept",
                          "r_conc_rank__ogl[1,Intercept]",
                          "r_conc_rank__ogl[11,Intercept]")],
                    list(chain = d$.chain), mean)
-  names(out) <- c("chain", "ec50", "sd_step", "step_1", "step_11")
+  names(out) <- c("chain", "lp", "c1", "ec50", "sd_step", "sd_cell", "step_1",
+                  "step_11")
+  out$lp <- round(out$lp)
   data.frame(fit = label, model = model, round(out, 2))
 }
 rbind(chain_means(fit_step, "step", "ecxll3"),
-      chain_means(fit_step_batch, "step + batch", "ecxll3"),
-      chain_means(fit_step_batch, "step + batch", "ecxll5"))
+      chain_means(fit_step, "step", "ecxll4"),
+      chain_means(fit_step_batch, "step + batch", "ecxll3"))
 ```
 
-The per-chain means show where the chains part. Under `fit_step`, every chain of
-`ecxll3` places `ec50` between 4.1 and 7.6 on the log scale, which is 60 to
-1900 mg/L, above the highest concentration tested, 23 mg/L. The curve is flat
-over the tested range, and the decline is fitted by the step deviations instead.
-Their means run from 0.54 to 0.88 at step 1 down to −3.17 to −3.69 at step 11,
-with a standard deviation of 1.34 to 1.57. Under `fit_step_batch`, the four
-chains of `ecxll3` agree on an `ec50` of 0.65 to 0.66, which is 1.9 mg/L, with
-step deviations within 0.14 of zero at both ends of the series and a standard
-deviation of 0.15. The chains of `ecxll5` divide. Chains 1 and 4 hold step
-deviations near zero, with a standard deviation of 0.06. Chain 3 holds the flat
-curve of `fit_step`, with `ec50` at 12 and a step-11 deviation of −3.23. Chain 2
-holds a third solution, with a step-11 deviation of 6.07.
+The per-chain means show two solutions within one equation. Chain 1 of `ecxll3`
+under `fit_step` holds the solution of `fit_cell`: a cell standard deviation of
+0.42, `c1` of 0.83, and step deviations of 0.01 at both ends of the series with
+a standard deviation of 0.13. The step deviations stay near zero, and the cell
+deviations take up whatever the curve leaves at each step. Chains 2 to 4 hold a cell standard deviation of 0.05
+and `c1` of 1.83. Their step deviations fall from 0.12 at step 1 to −1.23 to
+−1.28 at step 11, with a standard deviation of 0.54, and their log density is
+260 below that of chain 1. All four chains of `ecxll4` hold the second solution,
+with a step-11 deviation of −2.0, so `ecxll4` passes the screen. Under
+`fit_step_batch` the four chains of `ecxll3` agree on step deviations within
+0.04 of zero, a cell standard deviation of 0.06 and `c1` of 1.28.
+
+Across `fit_step`, four equations have one chain each in the first solution and
+`ecxexp` has three. The screen rejects all five, because their chains disagree.
+The other 49 chains of `fit_step` have a cell standard deviation below 0.1, and
+so do 51 of the 52 chains of `fit_step_batch`.
 
 A step deviation is shared by every cell at that step, and every cell at one
 step sits at nearly one concentration: exactly one within a batch, and within a
 factor of 1.39 to 1.55 across batches. Eleven step deviations can therefore
 reproduce any curve through the eleven steps, and the likelihood cannot divide
-the response between the curve and the step term. The division is set by the
-step deviations' shared standard deviation, and with seventeen cells at each
-step the data outweigh it. Without the batch term the data favour a flat curve,
-because the response follows the step more closely than it follows the measured
-concentration, and the step deviations represent that directly. With the batch
-term a curve displaced per batch represents it as well, and different chains of
-one equation settle in different solutions.
+the response between the curve and the step term. Where the curve takes the
+decline, the step deviations stay near zero and the cell deviations take the
+variation between cells. Where the step deviations take part of the decline,
+the cell deviations shrink towards zero, and the variance function takes up the
+variation between cells, with `c1` raised towards its upper bound of 2.
 
 The step term is therefore not used. A term whose levels coincide with the
 concentration series is confounded with the curve, however many cells each
-level holds. The cell term is not, because the seventeen cells at one step
-belong to seventeen plates and share no deviation.
+level holds, and here most chains settle in a solution that misses the cell
+means by 20 standard errors or more. The cell term is not confounded with the
+curve in the same way, because the seventeen cells at one step belong to
+seventeen plates and share no deviation. How far they can deviate together in one
+direction is set by the cell standard deviation, as the arm fits above show.
 
 ## Copper against zinc
 
 Copper and zinc are fixed levels, so `bnec_group()` fits each separately and
-returns one object. Each is fitted with the structure of `fit_arm`: the censored
-response, a plate term for the gain, the step and cell terms, the batch location
-term, and a dispersion sub-model. The call keeps `model = "all"` because
+returns one object. Each is fitted with the structure of `fit_pgl_cell`: the
+censored response, a deviation per plate on each parameter, the cell term, and a
+dispersion sub-model. The call keeps `model = "all"` because
 luminescence rises above the control level at low zinc concentrations.
 
 ```{r fit-metals, results = "hide"}
@@ -1488,7 +1783,7 @@ zn_cu_15 <- droplevels(subset(lum31, minutes == 15)) |>
   mutate(conc_rank = factor(as.integer(sub(".*-c", "", as.character(conc_group)))))
 
 fits_tox <- bnec_group(
-  rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate/conc_rank) + (nec | batch) + (ec50 | batch) + disp("power"),
+  rlu_cens | cens(censoring) ~ crf(log(conc), "all") + pgl(plate) + ogl(conc_group) + disp("power"),
   data = zn_cu_15, group_var = "toxicant", family = gfam,
   seed = 228, refresh = 0)
 ```
@@ -1501,18 +1796,39 @@ call makes the resulting difference between candidate sets explicit.
 fits_tox <- screen_models(fits_tox, group_action = "per_level")
 ```
 
-The screen drops three equations from copper, each with an R-hat above 1.5, and
-eight from zinc. The zinc eight are those it dropped from `fit_plate` above,
-which is the same model fitted to the same zinc data.
+RESULT-METALS: the text from here to the end of the section describes the
+`fit_arm` structure, and is rewritten once the `fit_pgl_cell` structure has
+been fitted.
+
+The screen drops eight equations from copper and five from zinc. The zinc five
+are those it dropped from `fit_arm` above, which is the same model fitted to the
+same zinc data. Seven of the copper eight fail on R-hat, between 1.0102 and 1.29,
+and `ecxll3` on an effective sample size of 348. `nec4param` and `ecxhormebc4`
+also record 18 and 37 divergent transitions.
 
 ```{r summary-metals}
 summary(fits_tox)
 ```
 
-Back-transformed, the threshold is 0.074 mg/L (0.040--0.090) for copper and 0.70
-(0.19--1.15) for zinc: copper is the more potent by roughly an order of
-magnitude, which is the ordering @luter2025 report from the per-plate analysis
-and at much the same separation.
+Back-transformed, the threshold is 0.086 mg/L (0.034--0.13) for copper and 0.24
+(0.026--1.5) for zinc. Copper is the more potent, which is the ordering
+@luter2025 report from the per-plate analysis, but the medians differ by a
+factor of 2.8 and the zinc interval reaches below the copper median.
+
+Both levels are fitted with the cell term of `fit_arm`, so the table of step
+averages is repeated for the equations kept for copper:
+
+```{r step-deviations-metals}
+step_deviations(fits_tox$fits[[which(fits_tox$levels == "Cu")]], "Cu")
+```
+
+Four of the five equations kept for copper have their highest step average at
+step 6, from 0.30 under `ecxll5` to 1.09 under `ecxwb2p3`. Step 6 is where
+copper's response falls most steeply and where the batches differ most, from
+0.16 to 0.50 of the step-1 mean. Under `ecxwb2`, which holds 0.94 of the weight,
+the step-6 cells sit 0.48 above the curve, and its EC10 is 0.065 mg/L. `ecxwb1`
+keeps every step average within 0.15 of zero and gives an EC10 of 0.024 mg/L,
+on no weight.
 
 ```{r fig-metals, fig.asp = 0.85, out.width = "78%"}
 ggplot(group_curves(fits_tox), aes(x = x_e, colour = level, fill = level)) +
@@ -1530,12 +1846,12 @@ ggplot(group_curves(fits_tox), aes(x = x_e, colour = level, fill = level)) +
 
 Each panel holds its own response axis, because the two arms were read at
 different gains and their relative light units are not comparable between them.
-What is comparable is where each falls, and the two panels put that an order of
-magnitude apart: copper's threshold rules sit between 0.04 and 0.09 mg/L and
-zinc's between 0.19 and 1.2. In both the observations scatter widely at every
-concentration while the fitted band stays narrow, because the plate term
-attributes the between-plate spread to the plates and not to the population
-curve.
+What is comparable is where each falls. Copper's observations fall between about
+0.04 and 0.2 mg/L and zinc's between about 0.3 and 5, an order of magnitude
+apart. Copper's band follows that decline. Zinc's falls from the lowest concentration,
+as the `fit_arm` curve does, and has a step near 1.5 mg/L, which is the
+threshold of `nec4param`. Zinc's threshold rules sit at 0.026, 0.24 and 1.5
+mg/L, and span the whole decline.
 
 ```{r cmp-metals}
 cmp_tox <- compare_posterior(fits_tox, comparison = "n(s)ec")
@@ -1560,12 +1876,12 @@ ggplot(data = tox_post, mapping = aes(x = value)) +
 ```
 
 
-The two posteriors barely overlap, and they differ in more than their centres.
-Copper's median is 0.074 mg/L over an interval of 0.040 to 0.090, a factor of
-2.2 from end to end. Zinc's is 0.70 over 0.19 to 1.15, a factor of 6.1.
-Copper is both the more potent metal and the better determined one on these
-data, and the single pairwise comparison of 0.0146 is what that separation
-reduces to.
+Copper's posterior is concentrated near 0.09 mg/L. Zinc's is centred near
+0.25 mg/L and spreads from about 0.02 to 1 mg/L, with small modes near 0.004
+and 1.7 mg/L, and its lower tail overlaps copper's posterior. `prob_diff`
+reports a probability of 0.10 that copper's N(S)EC exceeds zinc's. That
+probability is computed under the cell term, whose behaviour on these data is
+described under the arm fits, and it inherits that behaviour.
 
 # Diuron and climate change in coral
 
@@ -1747,19 +2063,19 @@ rbind(
 )
 ```
 
-The three estimates are ordered as they should be --- 0.217, 0.477 and 1.999
-µg/L --- and their upper bounds are not. The NSEC reaches 2.086 and the EC10
-2.141, both above the EC50 median, while the EC50 interval is the narrowest of
-the three at 1.803 to 2.733.
+The three estimates are ordered as they should be --- 0.216, 0.477 and 2.001
+µg/L --- and their upper bounds are not. The NSEC reaches 2.104 and the EC10
+2.151, both above the EC50 median, while the EC50 interval is the narrowest of
+the three at 1.804 to 2.746.
 
 A model-averaged estimate is a mixture, and the median and the tail of a mixture
 can be set by different components. Three equations hold 0.89 of the weight here
-and all place the threshold low: `ecxhormebc4` (0.632) at 0.225 (0.120--0.292),
-`ecxwb1` (0.152) at 0.178 (0.114--0.231) and `ecxll5` (0.104) at 0.182
+and all place the threshold low: `ecxhormebc4` (0.621) at 0.225 (0.120--0.292),
+`ecxwb1` (0.159) at 0.178 (0.114--0.231) and `ecxll5` (0.110) at 0.182
 (0.116--0.235). None has an upper bound above 0.3, and the averaged median of
-0.217 is theirs. The averaged upper bound is not. `nec4param` places a threshold
+0.216 is theirs. The averaged upper bound is not. `nec4param` places a threshold
 at 2.106 (1.812--2.357) on a weight of 0.04. That is more than the 0.025 of the
-mixture above its 97.5th percentile, and the percentile, 2.086, falls inside the
+mixture above its 97.5th percentile, and the percentile, 2.104, falls inside the
 interval of `nec4param`. `ecxwb2` places its threshold at 1.606 (1.127--1.923)
 on 0.03, wholly below that percentile. The tail is set by `nec4param` alone.
 
