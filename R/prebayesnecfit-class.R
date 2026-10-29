@@ -27,9 +27,10 @@
 #' \code{\link[brms]{brm}}. Each is \code{NULL} where the call did not supply
 #' it. It also holds the \code{prior_type}, \code{asymptote_observed} and
 #' \code{predictor_scale} the default priors were built with, which
-#' \code{\link{bnec_joint}} reuses. Absent from an object fitted by an earlier
-#' version of \pkg{bayesnec}, and those three are absent from one fitted before
-#' they were recorded.
+#' \code{\link{bnec_joint}} reuses. On older fits this element is absent
+#' until \code{\link{update.bnecfit}} or \code{\link{amend}} records the
+#' recoverable settings. The three prior arguments remain absent where they
+#' were not recorded when fitting.
 #' @slot retained_data An optional \code{\link[base]{data.frame}} containing
 #' columns retained by \code{\link{bnec}} for plotting. This element is present
 #' on a recovered object when the fitted object contained retained columns.

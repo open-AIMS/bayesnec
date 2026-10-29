@@ -3026,7 +3026,13 @@
   `call_args` element of the fitted model, which `update()` keeps up to date.
   A fit saved by an earlier version records none of them. `amend()` then
   passes the backend to the added equation but not `control` or `seed`, and
-  reads the survival-block equation from the stored formulas (#489).
+  reads the survival-block equation from the stored formulas. Updating an
+  older fit creates the record from those formulas and any `control` or
+  `seed` supplied to `update()`, so later additions reuse them. `amend()`
+  also records the recovered survival equation on retained fits before
+  dropping models, so later additions keep that equation. After an update
+  changes the backend or algorithm, only `control` and `seed` supplied to
+  that update are recorded, matching what `brms` reuses (#489).
 
 - On a `bayesnecjointfit` whose levels start at different concentrations,
   `ecx()`, `nsec()` and `ecnsec()` now predict each level's control at that
@@ -3089,7 +3095,8 @@
   are bounded by the whole concentration series rather than by the survivors'
   range, which is the range its estimates are read over. The series is
   recorded on the growth component's formula, so `amend(add = )` bounds an
-  added equation in the same way.
+  added equation in the same way. `get_priors()` uses that recorded range
+  when it builds priors from the growth formula and survivors' data.
 
   Results change for a fit made under the default. Its `nec` or `ec50`
   posterior cannot exceed the highest concentration tested, which was also the
@@ -3134,12 +3141,14 @@
   Stan has no `I()`, so a predictor written inside it is now passed to `brms`
   as the expression inside it, in parentheses: `crf(I(log(x) + 1))` is
   written into the curve as `(log(x) + 1)`. The model frame and the
-  estimators keep the `I()`. `crf(I(-x))`, the form the refusal of `crf(-x)`
+  estimators keep the `I()`. Nested `I()` calls are removed from the Stan
+  expression too, so `crf(log(I(x - 1)))` compiles as `log((x - 1))`.
+  `crf(I(-x))`, the form the refusal of `crf(-x)`
   offers, and `crf(I(x - 1))` previously gave a Stan program that failed to
   compile, and both now compile. Any predictor that is neither a column name
   nor a function call is written in parentheses, so that the curve's own
   terms cannot regroup it. The formula passed to `brms` for `crf(x)`,
-  `crf(log(x))` and every other column name or function call is unchanged
+  `crf(log(x))` and other column names or function calls without `I()` is unchanged
   (#479).
 
 - **Where `crf()` transforms the predictor inline, the estimates are returned

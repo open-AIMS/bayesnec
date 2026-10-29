@@ -68,7 +68,8 @@
 #' inside \code{I()}, as in \code{crf(I(x - 1))} or \code{crf(I(-x))}, or
 #' compute it into a column of the data. Stan has no \code{I()}, so the
 #' formula passed to \pkg{brms} holds the expression inside it, in
-#' parentheses. An operator inside a function call is arithmetic and is
+#' parentheses, including where \code{I()} is nested inside another call.
+#' An operator inside a function call is arithmetic and is
 #' accepted, as in \code{crf(log(x + 1))}.
 #'
 #' \bold{Group-level terms: \code{glterms}}
@@ -1054,7 +1055,8 @@ substitute_x_in_formula <- function(new_x, brms_rhs) {
 #'
 #' @details \pkg{brms} writes a non-linear formula into the Stan program as it
 #' stands, and Stan has no \code{I()}, so the expression inside \code{I()} is
-#' written instead. An expression that is neither a name nor a function call
+#' written instead, including when \code{I()} is nested inside another call.
+#' An expression that is neither a name nor a function call
 #' is put in parentheses, so that the equation cannot regroup it: written
 #' bare into \code{(x - nec)}, \code{x > 1} would read as
 #' \code{x > (1 - nec)}.
@@ -1067,11 +1069,24 @@ substitute_x_in_formula <- function(new_x, brms_rhs) {
 #'
 #' @noRd
 brms_x_text <- function(new_x) {
-  expr <- str2lang(new_x)
   unwrapped <- FALSE
-  while (is.call(expr) && identical(expr[[1]], quote(I)) && length(expr) == 2) {
+  strip_i <- function(expr) {
+    if (!is.call(expr)) {
+      return(expr)
+    }
+    if (identical(expr[[1]], quote(I)) && length(expr) == 2) {
+      unwrapped <<- TRUE
+      return(call("(", strip_i(expr[[2]])))
+    }
+    for (i in seq_along(expr)[-1]) {
+      expr[[i]] <- strip_i(expr[[i]])
+    }
+    expr
+  }
+  expr <- strip_i(str2lang(new_x))
+  # Keep grouping inside the expression, but use the existing outer form.
+  while (is.call(expr) && identical(expr[[1]], quote(`(`))) {
     expr <- expr[[2]]
-    unwrapped <- TRUE
   }
   fun <- if (is.call(expr) && is.name(expr[[1]])) as.character(expr[[1]])
   if (is.name(expr) || (!is.null(fun) && identical(make.names(fun), fun))) {

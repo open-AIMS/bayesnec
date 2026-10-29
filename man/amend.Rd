@@ -123,6 +123,14 @@ earlier version of \pkg{bayesnec} does not, no \code{control} or
 is read from the stored formulas. A single model whose survival block uses
 its own equation is then read as fitted without \code{model_survival},
 because the two calls store the same formula.
+\code{\link{update.bnecfit}} creates a call record for such an object,
+using the recovered survival-block equation and any \code{control} or
+\code{seed} supplied to the update. Subsequent additions reuse that record.
+\code{amend} also records the recovered equation on retained models, so
+dropping models does not discard it.
+When an update changes the backend or algorithm, \pkg{brms} does not reuse
+the previous \code{control} or \code{seed}. Only settings supplied to that
+update are then recorded for subsequent additions.
 }
 \examples{
 library(bayesnec)
