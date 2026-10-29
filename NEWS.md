@@ -3214,6 +3214,8 @@
 
 - `update()` checks the `disp()` term of a fit against the family the refit
   uses, before any model is refitted and whether or not `force_fit` is set. A
+  set assembled with `c()` is checked equation by equation, including the
+  growth set of a factorised hurdle fit. A
   family `bnec()` refuses for the term is refused with `bnec()`'s message, so
   a `Gamma` fit with `disp(~x)` updated to `poisson` is refused because
   `poisson` has no dispersion parameter. A family that names its dispersion

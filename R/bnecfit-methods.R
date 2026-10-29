@@ -258,11 +258,13 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
   # Before the force_fit guard, because setting force_fit cannot make the
   # stored formula fit a family it does not describe.
   if (!is.null(newdata) || "family" %in% names(dot_args)) {
-    check_refit_family(
-      extract_formula(object[[1]]), object[[1]]$fit$family,
-      refit_family(object[[1]]$fit$family, dot_args$family),
-      data = if (is.null(newdata)) object[[1]]$fit$data else newdata
-    )
+    for (m in object) {
+      check_refit_family(
+        extract_formula(m), m$fit$family,
+        refit_family(m$fit$family, dot_args$family),
+        data = if (is.null(newdata)) m$fit$data else newdata
+      )
+    }
   }
   # Compare the families before checking the data, so that a refused call
   # reports no shift. New data keep the fitted family; only a supplied one

@@ -696,6 +696,38 @@ test_that("a growth disp() term is checked as bnec_hurdle() checks it (#514)", {
   expect_length(rec$brms, 0)
 })
 
+test_that("a later growth equation's disp() term is checked before refitting", {
+  h <- count_ready_fixture()
+  growth_data <- h$growth$fit$data
+  h$growth <- manec_example
+  for (m in names(h$growth$mod_fits)) {
+    h$growth$mod_fits[[m]]$fit$family <-
+      brms::brmsfamily("Gamma", link = "identity")
+    h$growth$mod_fits[[m]]$fit$data <- growth_data
+  }
+  h$growth$mod_fits$ecx4param$bayesnecformula <-
+    bnf(y ~ crf(x, "ecx4param") + disp(~x))
+  local_brms_version("2.23.1")
+  calls <- 0L
+  local_mocked_bindings(
+    update = function(...) {
+      calls <<- calls + 1L
+      stop("refit reached")
+    },
+    .package = "bayesnec"
+  )
+  for (d in list(NULL, h$data)) {
+    expect_error(stats::update(h, newdata = d, family = "poisson",
+                              force_fit = TRUE),
+                 "Family poisson has no free dispersion parameter")
+    expect_error(stats::update(h, newdata = d,
+                              family = Beta(link = "identity"),
+                              force_fit = TRUE),
+                 'names its dispersion parameter "phi"', fixed = TRUE)
+  }
+  expect_identical(calls, 0L)
+})
+
 test_that("summary carries its own class and print method", {
   expect_true(!is.null(getS3method("print", "hurdlesummary", optional = TRUE)))
   expect_true(!is.null(getS3method("summary", "bayesnechurdlefit", optional = TRUE)))
