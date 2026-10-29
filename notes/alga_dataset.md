@@ -133,8 +133,9 @@ data exclude.** `beta_ub` was closed on this basis ([#187](https://github.com/op
 The `example7` rewrite: a growth-data case study covering the endpoint definition,
 not flooring negatives, not normalising to the control mean or observed maximum,
 model choice, and a demonstration of the dispersion sub-model. Structure is in the
-[#189 plan comment](https://github.com/open-AIMS/bayesnec/pull/189#issuecomment-5235587110);
-it is blocked on #191.
+[#189 plan comment](https://github.com/open-AIMS/bayesnec/pull/189#issuecomment-5235587110).
+It waited on #191, which PR #192 closed on 2026-08-14, and the rewrite merged
+as PR #243 (#193) on 2026-09-15.
 
 Note `ecx(type = "absolute")` is algebraically `ErCx`, since TG 201 defines
 `%I_r = (µ_C − µ_T)/µ_C`. `type = "relative"` is **not** the ecotoxicological

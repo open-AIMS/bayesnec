@@ -741,7 +741,9 @@ Recommended instead:
 - Leave `set_distribution()` returning `"Gamma"` for zero-containing data.
 - Emit a **message** when zeros are present and the family is Gamma, pointing at
   `hurdle_gamma` and noting that the zeros are currently being nudged. That
-  makes the existing behaviour visible, which it currently is not.
+  makes the existing behaviour visible, which it was not when this was written.
+  PR #172 added the message, and PR #282 has `bnec()` report it once per call
+  through `report_substitutions()`, naming `hurdle_gamma()` as the remedy.
 - Make `hurdle_gamma` strictly opt-in via `family = hurdle_gamma()` for at least
   one release cycle, and revisit auto-detection once there is field experience.
 

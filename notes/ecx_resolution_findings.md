@@ -78,8 +78,10 @@ is the dominant term in the memory these functions use.
   `uniroot.all` and that the second root is usually the wanted one. `nsec_fct`
   carries the same exposure today.
 * Relatedly, the hormesis `modify_posterior()` block in `ecx.bayesnecfit()` is
-  commented out (`R/ecx.R:165-169`), so hormesis handling in `ecx` is currently
-  inert whatever is done about interpolation.
+  commented out (`R/ecx.R:165-169`), so hormesis handling in `ecx` was inert
+  whatever was done about interpolation. PR #281 removed the block and
+  `hormesis_def`: every ECx is now measured from the control, and a target below
+  the control is crossed once, past the rising limb of a hormetic curve.
 * All three `ecx_x_*` variants need the same treatment, and the no-crossing
   fallback must keep returning `max(x_vec)`.
 * **#166 bounds what interpolation can achieve.** `zero_crossings()` finds
