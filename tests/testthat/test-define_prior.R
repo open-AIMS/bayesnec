@@ -2659,8 +2659,8 @@ test_that("bnec refuses the declaration before its model loop (#394)", {
 })
 
 test_that("a mixed model set is reported under the declaration (#394)", {
-  # Fourteen of the 23 equations have no bot parameter and so have no lower
-  # asymptote to estimate. On a design that did not reach the asymptote the
+  # The fourteen equations of bot_free have no lower asymptote to estimate.
+  # On a design that did not reach the asymptote the
   # data cannot separate them from the equations that estimate bot, so the set
   # is reported and left alone. The message states both branches, because
   # whether the response can reach zero is a property of the endpoint and not
@@ -2694,6 +2694,27 @@ test_that("a mixed model set is reported under the declaration (#394)", {
     bdat, fam, c("nec4param", "ecx4param"), asymptote_observed = FALSE))
   expect_silent(bayesnec:::check_asymptote_declaration(
     bdat, fam, c("nec3param", "nec4param")))
+})
+
+test_that("ecxflat is on neither side of the mixed-set report (#485)", {
+  # It has no bot parameter but is not in bot_free, so it adds to neither the
+  # equations that estimate a lower asymptote nor those that have none.
+  d <- incomplete_design(0.36, "gaussian")
+  bdat <- stats::model.frame(bnf(y ~ crf(x, c("nec3param", "nec4param"))),
+                             data = d)
+  fam <- validate_family("gaussian")
+  for (set in list("ecxflat", c("ecxflat", "nec3param"),
+                   c("ecxflat", "nec4param"))) {
+    expect_silent(bayesnec:::check_asymptote_declaration(
+      bdat, fam, set, asymptote_observed = FALSE))
+  }
+  # A group holding it is reported, because of the other equations.
+  for (grp in c("all", "ecx", "decline")) {
+    expect_message(
+      bayesnec:::check_asymptote_declaration(
+        bdat, fam, mod_groups[[grp]], asymptote_observed = FALSE),
+      "model = \"zero_bounded\"", fixed = TRUE)
+  }
 })
 
 test_that("bnec and get_priors validate the declaration (#394)", {

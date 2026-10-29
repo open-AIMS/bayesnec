@@ -368,7 +368,8 @@ test_that("a bernoulli response of 1 throughout is fitted as ecxflat (#419)", {
   rec <- bnec_record(fit)
   expect_setequal(rec$requested, names(models("all")))
   expect_identical(rec$attempted, "ecxflat")
-  expect_setequal(rec$excluded$model, names(models("all")))
+  expect_setequal(rec$excluded$model,
+                  setdiff(names(models("all")), "ecxflat"))
   expect_true(all(grepl("upper bound of a bernoulli response",
                         rec$excluded$reason, fixed = TRUE)))
   # Its only curve parameter is the level of the response, which sits near 1.
@@ -443,6 +444,12 @@ test_that("a set holding ecxflat mixes its NSEC draws into the N(S)EC (#419)", {
   )
   expect_true(any(grepl("contains smooth (ecx) models", msgs, fixed = TRUE)))
   expect_identical(summary(fit, check_fit = FALSE)$ecx_mods, "ecxflat")
+  # Its segment of the model-averaged ECx is censored above in every draw, so
+  # the share censored is at least its share of the draws.
+  e <- suppressWarnings(suppressMessages(ecx(fit, posterior = TRUE)))
+  e_above <- attr(e, "censored")$above
+  expect_true(all(e_above[seg]))
+  expect_gte(sum(e_above), length(seg))
 })
 
 test_that("ecxflat added to a declining response takes almost no weight (#419)", {

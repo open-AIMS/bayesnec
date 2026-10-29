@@ -176,12 +176,14 @@
 #' and \code{FALSE} is refused for it rather than a floor being invented. Supply
 #' a \code{bot} prior through \code{prior} in that case.
 #'
-#' Fourteen of the 23 equations of the "all" group have no \code{bot}
-#' parameter and so have no lower asymptote to estimate. Eleven of them fall to
+#' Fifteen of the 24 equations of the "all" group have no \code{bot}
+#' parameter. One is the constant equation "ecxflat". The other fourteen
+#' change with concentration and have no lower asymptote to estimate. Eleven of
+#' them fall to
 #' zero, and \code{neclin}, \code{neclinhorme} and \code{ecxlin} decay by
 #' subtraction and are unbounded below. On a design that did not reach the
-#' asymptote the data cannot distinguish them from the equations that estimate
-#' \code{bot},
+#' asymptote the data cannot distinguish those fourteen from the equations that
+#' estimate \code{bot},
 #' so a model set holding both is reported. Whether the response can reach the
 #' floor is a property of the endpoint rather than of the data --- zero is
 #' attainable for a lethality endpoint and usually not for a growth or
@@ -225,7 +227,7 @@
 #'
 #' \bold{Overview}
 #'
-#' \code{\link{bnec}} serves as a wrapper for (currently) 23 (mostly) non-linear
+#' \code{\link{bnec}} serves as a wrapper for (currently) 24 (mostly) non-linear
 #' equations that are classically applied to concentration(dose)-response
 #' problems. The primary goal of these equations is to provide the user with
 #' estimates of No-Effect-Concentration (NEC),
@@ -266,16 +268,17 @@
 #' parameter will be fit; "bot_free" meaning only models without a "bot"
 #' parameter (without a bottom plateau) will be fit; "zero_bounded" are models
 #' that are bounded to be zero; or "decline" excludes all hormesis models, i.e.,
-#' only allows a strict decline in response across the whole predictor range.
+#' only allows a strict decline in response across the whole predictor range,
+#' or no change, for the constant equation "ecxflat".
 #' Each group names a shape rather than a set of equations admissible for a
 #' given response --- "decline" includes the linear-decay models, which are
 #' dropped for a zero-bounded or 0, 1 bounded response --- so a group string is
 #' filtered by the same family check that \code{model = "all"} is. See
 #' \code{\link{models}}.
 #' The constant equation "ecxflat", whose mean does not change with
-#' concentration, belongs to none of these groups. It is fitted where it is
-#' named, alone or with other equations, and where the response does not vary,
-#' as described below. It joins "all", "ecx" and "decline" at the 3.0 release.
+#' concentration, belongs to "all", "ecx" and "decline", so the default set
+#' includes it. It is also fitted alone where the response does not vary, as
+#' described below.
 #' Notice that if one of these group strings is provided together with a
 #' user-specified named list for the \code{\link[brms]{brm}}'s argument
 #' \code{prior}, the list names need to contain
