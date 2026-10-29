@@ -1770,3 +1770,74 @@ test_that("plot() on a hurdle fit prints no message from nec() (#506)", {
     fixed = TRUE
   )
 })
+
+test_that("amend() on a hurdle fit leaves each component its own record", {
+  h <- hurdle_update_fixture()
+  seen <- list()
+  local_mocked_bindings(
+    amend = function(object, ...) {
+      seen[[length(seen) + 1]] <<- list(...)
+      object
+    },
+    .package = "bayesnec"
+  )
+  inherited <- c("x_range", "resolution", "sig_val", "prior_type",
+                 "asymptote_observed", "predictor_scale")
+  amend.bayesnechurdlefit(h, add = "ecx4param")
+  expect_length(seen, 2)
+  for (part in seen) {
+    expect_identical(part$add, "ecx4param")
+    for (arg in inherited) {
+      expect_null(part[[arg]], label = arg)
+    }
+  }
+  # A value supplied reaches both components.
+  seen <- list()
+  amend.bayesnechurdlefit(h, add = "ecx4param", sig_val = 0.05,
+                          prior_type = "regularizing")
+  for (part in seen) {
+    expect_identical(part$sig_val, 0.05)
+    expect_identical(part$prior_type, "regularizing")
+  }
+})
+
+test_that("update() on a hurdle fit predicts growth over the new series", {
+  h <- hurdle_update_fixture()
+  seen <- list()
+  local_mocked_bindings(
+    update = function(object, ...) {
+      seen[[length(seen) + 1]] <<- list(...)
+      object
+    },
+    .package = "bayesnec"
+  )
+  nd <- h$data
+  nd$x <- nd$x * 2
+  # bnec_hurdle() was given no x_range, so the survival component records NA
+  # and the growth component the series of the data it was fitted to.
+  attr(h$survival, "bnec_expand_args") <- default_expand_record()
+  suppressMessages(stats::update(h, newdata = nd))
+  expect_equal(seen[[1]]$x_range, range(nd$x))
+  expect_null(seen[[2]]$x_range)
+  # An object fitted before the record existed is treated the same way.
+  seen <- list()
+  attr(h$survival, "bnec_expand_args") <- NULL
+  suppressMessages(stats::update(h, newdata = nd))
+  expect_equal(seen[[1]]$x_range, range(nd$x))
+  # An x_range bnec_hurdle() was given is in both records, and each component
+  # keeps its own.
+  seen <- list()
+  attr(h$survival, "bnec_expand_args") <- expand_record(x_range = c(0, 10))
+  suppressMessages(stats::update(h, newdata = nd))
+  expect_null(seen[[1]]$x_range)
+  # One passed here reaches both components.
+  seen <- list()
+  suppressMessages(stats::update(h, newdata = nd, x_range = c(0, 5)))
+  expect_equal(seen[[1]]$x_range, c(0, 5))
+  expect_equal(seen[[2]]$x_range, c(0, 5))
+  # Without new data the growth component keeps its own record.
+  seen <- list()
+  attr(h$survival, "bnec_expand_args") <- default_expand_record()
+  suppressMessages(stats::update(h))
+  expect_null(seen[[1]]$x_range)
+})

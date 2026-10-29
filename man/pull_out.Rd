@@ -20,16 +20,19 @@ containing the desired arguments to be passed on to \code{\link[brms]{loo}}
 If no \code{method} is named in "weights", \pkg{bayesnec} sets the
 \code{method} argument of \code{\link[loo]{loo_model_weights}} to
 "pseudobma", whichever function assembles the model set.
-\code{\link{amend}} and \code{update} operate on an existing set and keep
-the method that set was built with, unless the caller names another.
-\code{\link{pull_out}} takes no weighting method at all: it reports and
-ignores one given in "weights" and always keeps the set's own.
+\code{\link{amend}}, \code{update} and \code{\link{pull_out}} operate on an
+existing set. They keep the "fitting" arguments it was built with unless
+the caller names "fitting", and the method it was weighted by unless the
+caller names another. \code{\link{pull_out}} takes no weighting method at
+all: it reports and ignores one given in "weights" and always keeps the
+set's own.
 \code{\link[base]{c}} and \code{+} take no \code{loo_controls} argument;
 see \code{\link{c.bnecfit}} for how they decide the method. See
 ?\code{\link[loo]{loo_model_weights}} for further info.}
 
 \item{...}{Additional arguments to \code{\link{expand_nec}} or
-\code{\link{expand_manec}}.}
+\code{\link{expand_manec}}: \code{x_range}, \code{resolution} or
+\code{sig_val}, as for \code{\link{bnec}}.}
 }
 \value{
 If \code{model} is a string representing a single model, an object
@@ -45,6 +48,13 @@ equation keeps its \code{\link{bnec_version}} record, the
 \code{\link{failed_models}} record is kept unchanged, and
 \code{\link{bnec_record}} lists each equation not kept as excluded, with the
 reason "not kept by pull_out()".
+
+The estimates of the models kept are computed again with the
+\code{x_range}, \code{resolution}, \code{sig_val} and
+\code{loo_controls} "fitting" arguments \code{manec} was fitted with, unless
+they are supplied. The \code{\link{bnec}} defaults are used where
+\code{manec} records none, as an object fitted by an earlier version of
+\pkg{bayesnec} does not.
 }
 \examples{
 \dontrun{

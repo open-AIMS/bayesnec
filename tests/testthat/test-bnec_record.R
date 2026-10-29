@@ -88,10 +88,13 @@ test_that("bnec() records the request, and leaves $model a plain string", {
   # Amended by the weighting method rather than by adding an equation: this
   # exercises the same rebuild in amend_model_set() without compiling a second
   # Stan model, and the set arithmetic it would have tested is covered by the
-  # amend_requested() and amend_exclusions() blocks above.
+  # amend_requested() and amend_exclusions() blocks above. The method differs
+  # from the recorded default, or amend() would return the fit unchanged.
   amended <- suppressWarnings(suppressMessages(
-    amend(fit, loo_controls = list(weights = list(method = "pseudobma")))
+    amend(fit, loo_controls = list(weights = list(method = "stacking")))
   ))
+  expect_identical(attr(amended, "bnec_expand_args")$loo_controls$weights,
+                   list(method = "stacking"))
   rec2 <- bnec_record(amended)
   expect_named(rec2, c("requested", "attempted", "excluded", "substitutions"))
   expect_equal(rec2$requested, "nec4param")
@@ -269,4 +272,89 @@ test_that("a hurdle pair keeps each component's record", {
     expect_identical(bnec_record(pq[[part]])$excluded,
                      bnec_record(m)$excluded)
   }
+})
+
+# ---- The arguments the stored estimates were computed with -------------------
+
+test_that("recorded_expand_args() takes each argument supplied, then recorded", {
+  args <- function(...) {
+    recorded_expand_args(..., fam_tag = "gaussian")[
+      c("x_range", "resolution", "sig_val", "loo_controls")
+    ]
+  }
+  x <- with_expand_record(list())
+  expect_identical(args(list(x), method = "pseudobma"), expand_record())
+  expect_identical(args(list(list()), method = "pseudobma"),
+                   default_expand_record())
+  expect_identical(args(list(x), sig_val = 0.1, method = "pseudobma"),
+                   expand_record(sig_val = 0.1))
+  # NA is a value for x_range, the data range, not a request to inherit.
+  expect_identical(args(list(x), x_range = NA, method = "pseudobma")$x_range,
+                   NA)
+  # Naming "fitting" replaces the record; naming "weights" alone leaves
+  # "fitting" to it.
+  expect_identical(
+    args(list(x), loo_controls = list(fitting = list()),
+         method = "pseudobma")$loo_controls,
+    list(fitting = list(), weights = list(method = "pseudobma"))
+  )
+  expect_identical(
+    args(list(x), loo_controls = list(weights = list(method = "stacking")),
+         method = "pseudobma")$loo_controls,
+    list(fitting = list(draw_ids = 1:50), weights = list(method = "stacking"))
+  )
+  # A weights list that names no method keeps the set's.
+  expect_identical(
+    args(list(x), loo_controls = list(weights = list(BB = FALSE)),
+         method = "stacking")$loo_controls$weights,
+    list(BB = FALSE, method = "stacking")
+  )
+  # A recorded weights list is used only where it names the set's method. A
+  # bayesnecfit holds no weights, so its set takes the default.
+  bb <- x
+  attr(bb, "bnec_expand_args")$loo_controls$weights <-
+    list(method = "pseudobma", BB = FALSE)
+  expect_identical(args(list(bb), method = "pseudobma")$loo_controls$weights,
+                   list(method = "pseudobma", BB = FALSE))
+  expect_identical(args(list(bb), method = "stacking")$loo_controls$weights,
+                   list(method = "stacking"))
+  expect_identical(args(list(bb), method = NULL)$loo_controls$weights,
+                   list(method = "pseudobma"))
+  # Records that differ give the default and are named; an object that records
+  # nothing is left out.
+  y <- with_expand_record(list(), expand_record(sig_val = 0.1,
+                                                fitting = list()))
+  out <- recorded_expand_args(list(x, y, list()), method = "pseudobma",
+                              fam_tag = "gaussian")
+  expect_identical(attr(out, "disagree"),
+                   c("sig_val", "loo_controls$fitting"))
+  expect_identical(out$sig_val, 0.01)
+  expect_identical(out$loo_controls$fitting, list())
+  expect_identical(out$x_range, c(0.03, 4))
+  out <- recorded_expand_args(list(x, list()), method = "pseudobma",
+                              fam_tag = "gaussian")
+  expect_identical(attr(out, "disagree"), character())
+})
+
+test_that("bnec() records the arguments its estimates were computed with", {
+  local_mocked_bindings(
+    fit_bayesnec = function(formula, data, model, ...) {
+      manec_example$mod_fits[[model]]
+    },
+    .package = "bayesnec"
+  )
+  q <- function(expr) suppressWarnings(suppressMessages(expr))
+  d <- manec_example$mod_fits$nec4param$fit$data
+  set_fit <- q(bnec(y ~ crf(x, model = c("nec4param", "ecx4param")),
+                    data = d, x_range = c(0.03, 4), resolution = 200,
+                    sig_val = 0.05,
+                    loo_controls = list(fitting = list(draw_ids = 1:50))))
+  expect_s3_class(set_fit, "bayesmanecfit")
+  expect_identical(attr(set_fit, "bnec_expand_args"), expand_record())
+  # pull_out() then returns ecx4param as these arguments computed it.
+  expect_equal(q(pull_out(set_fit, "ecx4param"))$ne_posterior,
+               expanded_ecx4param(expand_record())$ne_posterior)
+  one <- q(bnec(y ~ crf(x, model = "ecx4param"), data = d))
+  expect_s3_class(one, "bayesnecfit")
+  expect_identical(attr(one, "bnec_expand_args"), default_expand_record())
 })

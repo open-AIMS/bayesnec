@@ -43,10 +43,12 @@ containing the desired arguments to be passed on to \code{\link[brms]{loo}}
 If no \code{method} is named in "weights", \pkg{bayesnec} sets the
 \code{method} argument of \code{\link[loo]{loo_model_weights}} to
 "pseudobma", whichever function assembles the model set.
-\code{\link{amend}} and \code{update} operate on an existing set and keep
-the method that set was built with, unless the caller names another.
-\code{\link{pull_out}} takes no weighting method at all: it reports and
-ignores one given in "weights" and always keeps the set's own.
+\code{\link{amend}}, \code{update} and \code{\link{pull_out}} operate on an
+existing set. They keep the "fitting" arguments it was built with unless
+the caller names "fitting", and the method it was weighted by unless the
+caller names another. \code{\link{pull_out}} takes no weighting method at
+all: it reports and ignores one given in "weights" and always keeps the
+set's own.
 \code{\link[base]{c}} and \code{+} take no \code{loo_controls} argument;
 see \code{\link{c.bnecfit}} for how they decide the method. See
 ?\code{\link[loo]{loo_model_weights}} for further info.}

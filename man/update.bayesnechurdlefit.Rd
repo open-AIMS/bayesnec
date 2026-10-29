@@ -31,7 +31,12 @@ family is checked as \code{\link{bnec_hurdle}} checks
 \code{disp()} term cannot be refitted under, as \code{\link{update.bnecfit}}
 describes, such as \code{poisson}. A \code{poisson} or \code{negbinomial}
 family needs \pkg{brms} 2.23.2 or later, and the growth component is then
-refitted with the zero-truncated likelihood \code{bnec_hurdle} uses.}
+refitted with the zero-truncated likelihood \code{bnec_hurdle} uses.
+An argument that is not supplied, such as \code{x_range}, is taken by each
+component from its own fit, as \code{\link{update.bnecfit}} describes.
+Where \code{newdata} is supplied and \code{bnec_hurdle} was given no
+\code{x_range}, the growth component is predicted over the whole
+concentration series of \code{newdata}, as \code{bnec_hurdle} predicts it.}
 }
 \value{
 An object of class \code{\link{bayesnechurdlefit}}.

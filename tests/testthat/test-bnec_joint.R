@@ -339,7 +339,7 @@ prior_record <- function(prior_type = "regularizing", asymptote_observed = FALSE
                          predictor_scale = "concentration") {
   list(model_survival = NULL, control = NULL, seed = NULL,
        prior_type = prior_type, asymptote_observed = asymptote_observed,
-       predictor_scale = predictor_scale)
+       predictor_scale = predictor_scale, prior = NULL)
 }
 
 # Replaces fit_bayesnec() inside bnec_joint() and records what it was given.

@@ -11,13 +11,21 @@
 #' @param model A \code{\link[base]{character}} string indicating
 #' which model or suite of models to pull out.
 #' @param ... Additional arguments to \code{\link{expand_nec}} or
-#' \code{\link{expand_manec}}.
+#' \code{\link{expand_manec}}: \code{x_range}, \code{resolution} or
+#' \code{sig_val}, as for \code{\link{bnec}}.
 #'
 #' @details Nothing is refitted, so the records of the set are kept. Each
 #' equation keeps its \code{\link{bnec_version}} record, the
 #' \code{\link{failed_models}} record is kept unchanged, and
 #' \code{\link{bnec_record}} lists each equation not kept as excluded, with the
 #' reason "not kept by pull_out()".
+#'
+#' The estimates of the models kept are computed again with the
+#' \code{x_range}, \code{resolution}, \code{sig_val} and
+#' \code{loo_controls} "fitting" arguments \code{manec} was fitted with, unless
+#' they are supplied. The \code{\link{bnec}} defaults are used where
+#' \code{manec} records none, as an object fitted by an earlier version of
+#' \pkg{bayesnec} does not.
 #'
 #' @return If \code{model} is a string representing a single model, an object
 #' of class \code{\link{bayesnecfit}}; If \code{model} is instead a string
@@ -52,23 +60,26 @@ pull_out <- function(manec, model, loo_controls, ...) {
     stop("Argument model can only take one value. See ?pull_out and ?models.")
   }
   old_method <- fit_weights_method(manec)
-  # weights_controls(), not list(method = old_method): a set that records no
-  # method would pass method = NULL, which loo::loo_model_weights() resolves
-  # to stacking. define_loo_controls() fills an unknown method with the
-  # pseudo-BMA default.
-  if (missing(loo_controls)) {
-    loo_controls <- list(fitting = list(),
-                         weights = weights_controls(old_method))
-  } else {
-    fam_tag <- pull_brmsfit(pull_out(manec, model = names(manec$mod_fits[1])))$family$family
-    loo_controls <- validate_loo_controls(loo_controls, fam_tag)
-    if (length(loo_controls$weights) > 0) {
+  supplied_loo <- NULL
+  fam_tag <- recover_prebayesnecfit(manec)[[1]]$fit$family$family
+  if (!missing(loo_controls)) {
+    if (length(validate_loo_controls(loo_controls, fam_tag)$weights) > 0) {
       message("You have specified a list of arguments in loo_control$weights; ",
               "this is ignored in pull_out. Use function ?amend first if your",
               "intention is to modify the model averaging specs.")
     }
-    loo_controls$weights <- weights_controls(old_method)
+    # The set keeps its own weighting, so pass on the fitting arguments only.
+    supplied_loo <- loo_controls[intersect(names(loo_controls), "fitting")]
   }
+  dots <- list(...)
+  expand_args <- recorded_expand_args(
+    list(manec), x_range = dots[["x_range"]],
+    resolution = dots[["resolution"]], sig_val = dots[["sig_val"]],
+    loo_controls = supplied_loo, method = old_method, fam_tag = fam_tag
+  )
+  dots <- dots[setdiff(names(dots), c("x_range", "resolution", "sig_val"))]
+  expand_call <- c(expand_args[c("x_range", "resolution", "sig_val",
+                                 "loo_controls")], dots)
   existing <- names(manec$mod_fits)
   msets <- names(mod_groups)
   if (any(model %in% msets)) {
@@ -106,17 +117,18 @@ pull_out <- function(manec, model, loo_controls, ...) {
     return(manec)
   }
   formulas <- lapply(manec$mod_fits[to_go], extract_formula)
-  mod_fits <- expand_manec(manec$mod_fits[to_go], formula = formulas,
-                           loo_controls = loo_controls, ...) |>
+  mod_fits <- do.call(expand_manec, c(list(manec$mod_fits[to_go],
+                                           formula = formulas),
+                                      expand_call)) |>
     suppressMessages() |>
     suppressWarnings()
   message("Pulling out model(s): ", paste0(to_go, collapse = ", "))
   if (length(mod_fits) > 1) {
     out <- allot_class(mod_fits, c("bayesmanecfit", "bnecfit"))
   } else {
-    mod_fits <- expand_nec(mod_fits[[1]], model = to_go,
-                           formula = mod_fits[[1]]$bayesnecformula,
-                           loo_controls = loo_controls, ...) |>
+    mod_fits <- do.call(expand_nec, c(list(
+      mod_fits[[1]], model = to_go, formula = mod_fits[[1]]$bayesnecformula
+    ), expand_call)) |>
     suppressMessages() |>
     suppressWarnings()
     out <- allot_class(mod_fits, c("bayesnecfit", "bnecfit"))
@@ -126,6 +138,7 @@ pull_out <- function(manec, model, loo_controls, ...) {
   # failed_models(), so that an object fitted before the record existed is
   # left untouched.
   out <- attach_failed_models(out, manec[["failed_models"]])
-  out <- copy_fit_records(out, list(manec), "not kept by pull_out()")
+  out <- copy_fit_records(out, list(manec), "not kept by pull_out()",
+                          expand_args)
   carry_retained_data(out, manec)
 }

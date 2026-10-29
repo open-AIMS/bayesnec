@@ -9,9 +9,9 @@
   object,
   newdata = NULL,
   recompile = NULL,
-  x_range = NA,
-  resolution = 1000,
-  sig_val = 0.01,
+  x_range = NULL,
+  resolution = NULL,
+  sig_val = NULL,
   loo_controls,
   force_fit = FALSE,
   ...
@@ -30,32 +30,14 @@ model should be recompiled. If \code{NULL} (the default), \code{update}
 tries to figure out internally, if recompilation is necessary. Setting it to
 \code{FALSE} will cause all Stan code changing arguments to be ignored.}
 
-\item{x_range}{A range of predictor values over which to consider extracting
-ECx.}
+\item{x_range, resolution, sig_val}{As for \code{\link{bnec}}. Each is taken
+from \code{object} unless supplied, and is the \code{\link{bnec}} default
+where \code{object} records none, as an object fitted by an earlier version
+of \pkg{bayesnec} does not. An \code{x_range} of \code{NA}, the default of
+\code{\link{bnec}}, follows the range of \code{newdata}.}
 
-\item{resolution}{The length of the predictor vector used for posterior
-predictions, and over which to extract ECx values. Large values will be
-slower but more precise.}
-
-\item{sig_val}{Probability value to use as the lower quantile to test
-significance of the predicted posterior values against the lowest observed
-concentration (assumed to be the control), to estimate NEC as an
-interpolated NOEC value from smooth ECx curves.}
-
-\item{loo_controls}{A named \code{\link[base]{list}} of two elements
-("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
-containing the desired arguments to be passed on to \code{\link[brms]{loo}}
-(via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
-If no \code{method} is named in "weights", \pkg{bayesnec} sets the
-\code{method} argument of \code{\link[loo]{loo_model_weights}} to
-"pseudobma", whichever function assembles the model set.
-\code{\link{amend}} and \code{update} operate on an existing set and keep
-the method that set was built with, unless the caller names another.
-\code{\link{pull_out}} takes no weighting method at all: it reports and
-ignores one given in "weights" and always keeps the set's own.
-\code{\link[base]{c}} and \code{+} take no \code{loo_controls} argument;
-see \code{\link{c.bnecfit}} for how they decide the method. See
-?\code{\link[loo]{loo_model_weights}} for further info.}
+\item{loo_controls}{As for \code{\link{bnec}}. An element not named is
+taken from \code{object}, as \code{\link{amend}} describes.}
 
 \item{force_fit}{Whether to refit where \code{family} names a family or
 link that differs from the one the model was fitted with. New data alone

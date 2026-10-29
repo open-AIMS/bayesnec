@@ -10,14 +10,14 @@
   drop,
   add,
   loo_controls,
-  x_range = NA,
-  resolution = 1000,
-  sig_val = 0.01,
+  x_range = NULL,
+  resolution = NULL,
+  sig_val = NULL,
   priors,
-  prior_type = "uninformative",
-  asymptote_observed = TRUE,
+  prior_type = NULL,
+  asymptote_observed = NULL,
   timeout = Inf,
-  predictor_scale = "auto"
+  predictor_scale = NULL
 )
 }
 \arguments{
@@ -32,52 +32,38 @@ can be dropped from it and \code{drop} is an error in that case.}
 model types you which to include to the modified fit. Adding models to a
 \code{\link{bayesnecfit}} promotes it to a \code{\link{bayesmanecfit}}.}
 
-\item{loo_controls}{A named \code{\link[base]{list}} of two elements
-("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
-containing the desired arguments to be passed on to \code{\link[brms]{loo}}
-(via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
-If no \code{method} is named in "weights", \pkg{bayesnec} sets the
-\code{method} argument of \code{\link[loo]{loo_model_weights}} to
-"pseudobma", whichever function assembles the model set.
-\code{\link{amend}} and \code{update} operate on an existing set and keep
-the method that set was built with, unless the caller names another.
-\code{\link{pull_out}} takes no weighting method at all: it reports and
-ignores one given in "weights" and always keeps the set's own.
-\code{\link[base]{c}} and \code{+} take no \code{loo_controls} argument;
-see \code{\link{c.bnecfit}} for how they decide the method. See
-?\code{\link[loo]{loo_model_weights}} for further info.}
+\item{loo_controls}{A named \code{\link[base]{list}} of two elements,
+"fitting" and "weights", as for \code{\link{bnec}}. An element not named
+is taken from \code{object}: "fitting" holds the arguments \code{object}
+was built with, and "weights" holds them where they name the method its
+model weights were computed by. A "weights" list that names no method keeps
+that method.}
 
-\item{x_range}{A range of predictor values over which to consider extracting
-ECx.}
-
-\item{resolution}{The length of the predictor vector used for posterior
-predictions, and over which to extract ECx values. Large values will be
-slower but more precise.}
-
-\item{sig_val}{Probability value to use as the lower quantile to test
-significance of the predicted posterior values against the lowest observed
-concentration (assumed to be the control), to estimate NEC as an
-interpolated NOEC value from smooth ECx curves.}
+\item{x_range, resolution, sig_val}{As for \code{\link{bnec}}. Each is taken
+from \code{object} unless supplied, and is the \code{\link{bnec}} default
+where \code{object} records none. The estimates of every model in the
+amended set are computed again with them, including the models already
+fitted.}
 
 \item{priors}{An object of class \code{\link[brms]{brmsprior}} which
-specifies user-desired prior distributions of model parameters.
-If missing, \code{\link{amend}} will figure out a baseline prior for each
-parameter. It can also be specified as a named \code{\link[base]{list}}
-where each name needs to correspond to the same string as \code{model}. See
-Details.}
+specifies user-desired prior distributions of model parameters. It can also
+be specified as a named \code{\link[base]{list}} where each name needs to
+correspond to the same string as \code{model}. Where it is not supplied, the
+\code{prior} of the call that fitted \code{object} is used as described in
+Details, and the default priors are built for each parameter it does not
+cover.}
 
 \item{prior_type}{A \code{\link[base]{character}} string selecting the set of
-default priors to build for any newly added models when \code{priors} is not
-supplied. Either \code{"uninformative"} (the default) or
-\code{"regularizing"}. See \code{\link{bnec}}. Note this is not automatically
-inherited from the original fit; pass it explicitly to match the priors used
-when the object was first fitted.}
+default priors to build for any newly added models, either
+\code{"uninformative"} or \code{"regularizing"}. See \code{\link{bnec}}.
+Taken from \code{object} unless supplied, and \code{"uninformative"} where
+\code{object} records none.}
 
 \item{asymptote_observed}{A \code{\link[base]{logical}} declaring whether
 the highest predictor level reached the lower asymptote, applied to the
 default priors and the initial-value search of any newly added models. See
-\code{\link{bnec}}. Not inherited from the original fit; pass it explicitly
-to match the declaration that fit was built under.}
+\code{\link{bnec}}. Taken from \code{object} unless supplied, and
+\code{TRUE} where \code{object} records none.}
 
 \item{timeout}{A positive \code{\link[base]{numeric}} giving the maximum
 number of seconds allowed for fitting any single model, passed to
@@ -91,9 +77,10 @@ finite value is supplied.}
 
 \item{predictor_scale}{A \code{\link[base]{character}} string declaring
 whether the predictor is supplied as \code{"concentration"}, already
-\code{"log"} transformed, or should use the existing \code{"auto"} rule for
-priors generated for newly added models. See \code{\link{bnec}}. This is not
-inherited from the original fit; pass it explicitly to match that fit.}
+\code{"log"} transformed, or should use the \code{"auto"} rule, for the
+priors of any newly added models. See \code{\link{bnec}}. Taken from
+\code{object} unless supplied, and \code{"auto"} where \code{object}
+records none.}
 }
 \value{
 An object of class \code{\link{bayesnechurdlefit}}.
@@ -108,4 +95,9 @@ step. Where a model is valid for one component but not the other -- the
 survival component is 0-1 bounded and the growth component may not be --
 \code{\link{bnec}} will drop it from that component only, and the sets will
 legitimately differ.
+
+An argument that is not supplied is taken by each component from its own
+fit, as \code{\link{amend}} describes. The growth component therefore keeps
+the whole concentration series as its \code{x_range}, which
+\code{\link{bnec_hurdle}} gave it.
 }

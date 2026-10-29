@@ -3290,6 +3290,48 @@
   reported as failed. An object fitted before the record existed still
   returns `NULL` (#522).
 
+- `amend()` builds the default priors of an added equation with the
+  `prior_type`, `asymptote_observed` and `predictor_scale` the set was fitted
+  with, unless they are supplied. Each took the `bnec()` default, and `?amend`
+  said that none was inherited. A set fitted with
+  `prior_type = "regularizing"` or `asymptote_observed = FALSE` and then
+  amended with `add` had the added equation fitted under different default
+  priors from the rest of the set, and its model weights then compared
+  equations fitted under different priors, with no message. An added equation
+  is also given the element of a named list of priors that names it, as
+  `bnec()` would have given it, and is sampled with the `algorithm` and
+  `save_pars` the stored fit holds. A `prior` given to `bnec()` as a single
+  `brmsprior` is not applied to an added equation, because a parameter of the
+  same name can have a different role in another equation; a message says
+  that the default priors were built instead. Each equation now records the
+  `prior` argument of its call in `call_args`. An object fitted before the
+  record existed is amended with the `bnec()` defaults, as before (#522).
+
+- `amend()`, `update()`, `pull_out()`, `c()` and `+` compute the estimates of
+  the set they return with the `x_range`, `resolution`, `sig_val` and
+  `loo_controls` it was fitted with, unless they are supplied. Each computed
+  every equation's estimates again with the `bnec()` defaults. A set fitted
+  with `sig_val = 0.05` had its NSEC draws computed against the 0.01 quantile
+  of the control after `amend(drop = )` or `pull_out()`, a set fitted with an
+  `x_range` was predicted over the range of the data instead, and a set
+  fitted with LOO fitting arguments, such as `moment_match = TRUE`, had its
+  criteria computed without them. `bnec()` records the four on the fitted
+  object. `c()` uses a value where every object combined that records it
+  agrees, and otherwise the `bnec()` default, with a message naming the
+  argument. `update()` on a `bnec_hurdle()` fit given `newdata` predicts the
+  growth component over the concentration series of the new data, as
+  `bnec_hurdle()` does. An object fitted before the record existed uses the
+  `bnec()` defaults, as before (#522).
+
+- The LOO and WAIC criteria of a `bayesnecfit` passed to `amend()`, `c()` or
+  `+` are computed again with the `loo_controls` of the call. They
+  were kept from the call that last computed them, because
+  `brms::add_criterion()` does not replace a criterion the fit already holds.
+  `amend(fit, loo_controls = list(fitting = ...))` therefore left the criteria
+  of the equation already fitted unchanged, and `c()` of two objects whose
+  criteria were computed from different numbers of draws stopped in
+  `loo_model_weights()` (#522).
+
 ## Documentation
 
 - `?nec.bayesnechurdlefit` states that the combined no-effect estimate of a
