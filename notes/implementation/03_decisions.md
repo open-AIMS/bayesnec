@@ -76,7 +76,7 @@ unattended queue — it needs a specific list of diagnostics first.
 
 ## D7 — Sessions
 
-**One session, sequential**, working Tier 1 of `01_work_queue.md` top to bottom
+**One session, sequential**, working Tier 1 of `01_work_queue.md` (deleted; `git show 023e6806:notes/implementation/01_work_queue.md`) top to bottom
 in a single worktree.
 
 ## D10 — Sequencing against the toxval migration
@@ -139,7 +139,7 @@ once a user has overridden a prior.
 RF, 2026-09-06. **This supersedes D10's step 3.** `ecx()`, `nsec()` and
 `ecnsec()` still migrate to `toxval`, and #255 remains the tracker, but the
 migration is not run in this pass and it no longer defers a fix to an estimator.
-#195, #196, #160, #161 and #206 are tier B of `01_work_queue.md`.
+#195, #196, #160, #161 and #206 were tier B of the deleted `01_work_queue.md`.
 
 **What changed.** D10 was written when the migration was the next structural
 piece of work. It has not started: toxval#39 is open with no commits against it,
@@ -397,7 +397,7 @@ RF, 2026-09-12: a real example is needed before deciding.
 
 Answers given by RF on 2026-09-26 on the plan in
 `notes/tasks/backlog-run-human.md`. The evidence and alternatives for each are in
-`notes/tasks/backlog-run-claude.md` §5, under the question number given, and each
+`git show 9895f097:notes/tasks/backlog-run-claude.md` §5, under the question number given, and each
 ruling is also posted as a comment headed "Decision" on its issue.
 
 ## D18 — The run merges into `predev` in order
@@ -513,8 +513,8 @@ are changed to test for a `nec` parameter.
 # The second backlog run
 
 Answers given by RF on 2026-09-28 for the issues filed during the first run.
-The procedure is unchanged (`00_protocol.md`); the queue is the "Second run"
-section of `01_work_queue.md`.
+The procedure is unchanged (`00_protocol.md`); the queue was the "Second run"
+section of the deleted `01_work_queue.md` (`023e6806`).
 
 ## D32 — `update()` never infers a family (#435)
 

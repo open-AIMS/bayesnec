@@ -8,7 +8,7 @@ implements.
 Rewritten 2026-10-29 against `predev` at `a3368faa`, to describe only the work
 that remains. The specification of the items the two runs fixed, with the
 findings and the options behind each ruling, is in the history of this file:
-`git show efce694a:notes/tasks/backlog-run-claude.md` prints it, and its §5 holds
+`git show 9895f097:notes/tasks/backlog-run-claude.md` prints it, and its §5 holds
 the questions that `03_decisions.md` D19 to D31 answer. Each issue also holds a
 comment headed "Findings on `predev`" and one headed "Decision".
 

@@ -496,7 +496,8 @@ top and bot use the corresponding response scale.
 
 ## Diagnostics, numerical choices and performance
 
-[The diagnostics specification](../tasks/148-model-fit-diagnostics.md) preserves
+The diagnostics specification
+(`git show efce694a:notes/tasks/148-model-fit-diagnostics.md`) preserves
 the rationale for surfacing control-fit ratios: a recorded roughly 19% control
 overshoot had a posterior predictive p-value around 0.82. Reporting absolute ESS
 alongside its ratio separates total effective information from efficiency;

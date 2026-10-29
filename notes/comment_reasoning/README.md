@@ -56,8 +56,8 @@ the tracked R files under `tests/testthat/`.
   `predictor_prior()` now states that an even dose count gives a prior median
   at the geometric mean of the two central doses. The prior audit's older
   truncated-prior measurements must not be read as measurements of the current priors.
-- [The incomplete-design specification](../tasks/386-incomplete-designs-claude.md)
-  records the limits of inferring an asymptote from an endpoint. The
+- The incomplete-design specification
+  (`git show f41bb2d4:notes/tasks/386-incomplete-designs-claude.md`) records the limits of inferring an asymptote from an endpoint. The
   declaration applies to both hurdle blocks; neither block's observed
   endpoint establishes whether the other reached its asymptote. The
   corrected `unobserved_bot_entry()` description distinguishes its specified
@@ -132,8 +132,8 @@ the tracked R files under `tests/testthat/`.
 - [The dispersion guidance](../../CLAUDE.md#dispersion-on-a-model-average)
   distinguishes per-equation results from a statistic for the model average.
   [Dispersion tests](../../tests/testthat/test-dispersion.R) cover the results.
-- [The control-diagnostic evidence](../tasks/148-model-fit-diagnostics.md#hazards)
-  records two parameterisations of one simulated dataset, with six control
+- The control-diagnostic evidence, in the Hazards section of
+  `git show efce694a:notes/tasks/148-model-fit-diagnostics.md`, records two parameterisations of one simulated dataset, with six control
   observations. Their p-values near 0.82 motivated a ratio-based message;
   they do not establish that p-values always miss control misfit. The source
   now states the mean/SD ratios and their reciprocal cutoffs explicitly.
