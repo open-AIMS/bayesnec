@@ -252,8 +252,10 @@ at zero — `nec3param`, `ecxexp`, `ecxsigm`, `ecxwb1p3`, `ecxwb2p3` and `ecxll3
 them. Earlier versions dropped them, on the grounds that they cannot generate a
 negative prediction, and refused an absolute ECx for a Gaussian fit without a
 `bot` parameter. Both restrictions have been removed (#206). The declining
-candidate set that `bnec()` fits by default under a Gaussian family is
-therefore fourteen equations rather than eight.
+candidate set that `bnec()` fits by default under a Gaussian family therefore
+holds these six as well as the eight that earlier versions fitted. With the
+constant equation `ecxflat`, which is also in the `"decline"` group, it is
+fifteen equations.
 
 ```{r}
 models()$decline
@@ -379,9 +381,9 @@ unchanged. What the family changes is the fitted curve, not the definition of
 the estimate.
 
 The candidate set differs between families, because the declining set is
-filtered by what each family's support allows. Under a Gaussian family it is
-the fourteen equations listed in Section 4; under a Beta and under a Gamma it
-is twelve.
+filtered by what each family's support allows. Under a Gaussian family it was
+the fourteen equations listed in Section 4 other than `ecxflat`, which joined
+the set after the study was run; under a Beta and under a Gamma it was twelve.
 
 
 ```{r, echo = FALSE}

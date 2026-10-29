@@ -310,6 +310,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
     amend_excluded <- rbind(amend_excluded, group_check$excluded)
   }
   old_fits <- mod_fits
+  version_records <- stored_version(object)
   mod_fits <- vector(mode = "list", length = length(model_set))
   names(mod_fits) <- model_set
   failed <- list()
@@ -344,6 +345,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   set_plan <- plan_model_set(list(), sum(needs_fit), caller = "amend")
   # narrow_environment() keeps old_fits and the partly filled mod_fits, which
   # this frame holds, out of what future exports with the function.
+  description_reader <- bayesnec_description
   fit_one <- narrow_environment(
     function(m) {
       model <- model_set[m]
@@ -388,12 +390,13 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
           group_spec = parse_group_terms(single_form, model),
           rate_response = !is.null(denom),
           truncated_response = isTRUE(attr(
-            single_form, "bayesnec_internal_truncation"))
+            single_form, "bayesnec_internal_truncation")),
+          tested_range = attr(single_form, "bayesnec_tested_range")
         )
       } else {
         brm_args$prior <- model_priors
       }
-      try(
+      fit <- try(
         fit_bayesnec(
           formula = formula, data = data, model = model,
           brm_args = brm_args, skip_check = TRUE, prior_type = prior_type,
@@ -403,13 +406,20 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
         ),
         silent = FALSE
       )
+      # Workers can load an installation that predates the version helpers.
+      attr(fit, "bnec_installation") <- list(
+        description = description_reader(),
+        R = as.character(getRversion())
+      )
+      fit
     },
     list(model_set = model_set, family = family, simdat = simdat,
          call_args = call_args, set_plan = set_plan, priors = priors,
          bdat = bdat,
          formula = formula, data = data, prior_type = prior_type,
          asymptote_observed = asymptote_observed,
-         predictor_scale = predictor_scale, timeout = timeout)
+         predictor_scale = predictor_scale, timeout = timeout,
+         description_reader = description_reader)
   )
   attempts <- bnec_parallel_lapply(which(needs_fit), fit_one,
                                 parallel = set_plan$parallel)
@@ -419,6 +429,8 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
     model <- model_set[which(needs_fit)[i]]
     fit_m <- attempts[[i]]
     if (!inherits(fit_m, "try-error")) {
+      version_records <- rbind(version_records, attempt_version(model, fit_m))
+      attr(fit_m, "bnec_installation") <- NULL
       mod_fits[[model]] <- fit_m
     } else {
       mod_fits[[model]] <- NA
@@ -452,6 +464,9 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
       bnec_rec$substitutions
     )
   }
+  # Retained equations keep their record; added ones report their worker.
+  out <- attach_version(out, version_records)
+  report_mixed_versions(out)
   carry_retained_data(out, object)
 }
 

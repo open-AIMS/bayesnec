@@ -223,8 +223,8 @@ bnec_joint.bayesnechurdlefit <- function(object, model = NULL,
   }
   formula <- bayesnecformula(formula, env = parent.frame())
   check_syntactic_names(formula)
-  # Refuse a supplied crf(-x) here too, before the refit is announced.
-  check_crf_leading_minus(formula)
+  # Refuse a supplied crf(x - 1) here too, before the refit is announced.
+  check_crf_formula_operator(formula)
   best <- best_crossed(object)
   if (is.null(model)) {
     model <- best$growth
@@ -316,7 +316,7 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
   # Check the formula before swap_crf_model(), as the bayesnechurdlefit method
   # does: a supplied formula has not passed bnec_group()'s check.
   check_syntactic_names(formula)
-  check_crf_leading_minus(formula)
+  check_crf_formula_operator(formula)
   # Refuse a non-syntactic grouping variable for every refit. The name is
   # written into formula text, where a name needing backticks fails to parse,
   # wherever every level is fitted one equation or the dispersion takes a value
@@ -422,6 +422,7 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
               family = family, model_weights = eq_weights,
               level_weights = joint_level_weights(object, models),
               model_weight_share = share)
+  attr(out, "bnec_version") <- joint_version_table(out, version_record())
   allot_class(out, c("bayesnecjointfit", "bnecfit"))
 }
 

@@ -20,7 +20,9 @@
 #' an R2. In the case of a \code{\link{bayesmanecfit}} object, summary
 #' displays the family distribution information, model weights and averaging
 #' method, and Bayesian R2 estimates for each individual model.
-#' Both report the number of divergent transitions after warmup for each model.
+#' Both report the number of divergent transitions after warmup for each model,
+#' and the installation of \pkg{bayesnec} that fitted it (see
+#' \code{\link{bnec_version}}).
 #' Warning messages are also printed to screen in case
 #' model fits are not satisfactory with regards to their Rhats or their
 #' divergent transitions.
@@ -49,10 +51,12 @@
 #'
 #' The no-effect estimate is read from the posterior stored when the model was
 #' fitted, and is censored at the bound of the prediction grid stored then, so
-#' a range supplied now cannot change it. An \code{xform} supplied in
-#' \code{...} is applied to those stored draws and to the bound they are
-#' censored at, as \code{\link{nec}} applies it, so the no-effect row and the
-#' ECx rows are reported on one scale.
+#' a range supplied now cannot change it. Where \code{crf()} transforms the
+#' predictor inline, that posterior is on the transformed scale, and the row is
+#' returned on the recorded scale as \code{\link{nec}} returns it. An
+#' \code{xform} supplied in \code{...} is applied to the stored draws and to
+#' the bound they are censored at instead, as \code{\link{nec}} applies it,
+#' so the no-effect row and the ECx rows are reported on one scale.
 #'
 #' \code{posterior = TRUE} is refused. A summary reports each estimate as
 #' quantiles; the draws themselves are returned by \code{\link{nec}},
@@ -122,8 +126,8 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
     ecs <- summary_ecx_rows(..., .fit = x, .ecx_vals = ecx_vals,
                             .stored_range = range(x$pred_vals$data$x))
   }
-  # Classify by the equation's parameters, not its group, so that ecxflat,
-  # which belongs to no group, is reported as the NSEC it gives.
+  # Classify by the equation's parameters, as nec() does, not by its group or
+  # name.
   is_ecx <- !has_nec_parameter(x$model, x$fit)
   ecx_mod <- NULL
   if (is_ecx) {
@@ -140,7 +144,8 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
     bayesr2 = bayes_R2(x$fit),
     divergences = summary_divergences(x),
     divergence_cutoff = divergence_cutoff,
-    failed_models = failed_models(x)
+    failed_models = failed_models(x),
+    bnec_version = bnec_version(x)
   )
   allot_class(out, "necsummary")
 }
@@ -234,7 +239,8 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
       NULL
     },
     fit_ratio_cutoff = fit_ratio_cutoff,
-    failed_models = failed_models(x)
+    failed_models = failed_models(x),
+    bnec_version = bnec_version(x)
   )
   allot_class(out, "manecsummary")
 }
@@ -262,11 +268,6 @@ summary_ecx_rows <- function(..., .fit, .ecx_vals, .stored_range) {
   # taken as ecx_vals and shift every positional argument. After ..., a
   # duplicate ecx_val stops with "matched by multiple actual arguments".
   #
-  # Report the fitted scale once for the table, here rather than in the
-  # summary methods, where the logical argument `ecx` masks the generic and
-  # dots_xform() would be handed TRUE.
-  quiet <- report_fitted_scale(.fit, summary_ecx_xform(list(...)), "ecx")
-  on.exit(options(quiet), add = TRUE)
   # ecx_row()'s own x_range formal takes a caller's x_range in place of the
   # default, so ecx() receives it once; forwarded in ... beside the default it
   # would stop with "matched by multiple actual arguments". The hurdle summary
@@ -297,7 +298,8 @@ summary_ecx_rows <- function(..., .fit, .ecx_vals, .stored_range) {
 #' @param dots The dots of a summary method, as a \code{\link[base]{list}},
 #' less \code{ecx} and \code{ecx_vals}.
 #'
-#' @return A function, or whatever was supplied. See \code{dots_xform()}.
+#' @return A function, or whatever was supplied, or \code{NULL} where nothing
+#' was. See \code{dots_xform()}.
 #'
 #' @noRd
 summary_ecx_xform <- function(dots) {
@@ -374,40 +376,39 @@ check_summary_ecx_posterior <- function(dots) {
 
 #' The no-effect row of a summary of a single fit or a model set
 #'
-#' Without an \code{xform} the row is the one stored at fit time,
-#' \code{object$ne} or \code{object$w_ne}. With one, the stored posterior and
-#' its censoring record are transformed and summarised by the function that
-#' built the stored row, so that the row is on the scale of the ECx rows. The
-#' steps are those of \code{nec.bayesnecfit()}; \code{nec()} is not called,
-#' because it refuses a single fit of an ECx equation, whose no-effect row is
-#' an NSEC.
+#' Where the map from \code{recorded_xform()} is \code{identity}, the row is
+#' the one stored at fit time, \code{object$ne} or \code{object$w_ne}.
+#' Otherwise the stored posterior and its censoring record are mapped and
+#' summarised by the function that built the stored row, so that the row is on
+#' the scale of the ECx rows. The steps are those of
+#' \code{nec.bayesnecfit()}; \code{nec()} is not called, because it refuses a
+#' single fit of an ECx equation, whose no-effect row is an NSEC.
 #'
 #' @param x A \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 #' @param xform The \code{xform} resolved from the summary's dots, as
-#' \code{summary_ecx_xform()} returns it: \code{identity} where none was
+#' \code{summary_ecx_xform()} returns it: \code{NULL} where none was
 #' supplied.
 #'
-#' @return The stored summary where \code{xform} is \code{identity}, and
+#' @return The stored summary where the map is \code{identity}, and
 #' otherwise a summary of the same form, from \code{estimates_summary()}.
 #'
 #' @noRd
 summary_ne_vals <- function(x, xform) {
+  check_xform(xform)
   stored <- if (is_bayesnecfit(x)) x$ne else x$w_ne
+  map <- recorded_xform(x, xform)
   # Return the stored row itself, not a recomputation, so that a summary
-  # without an xform prints exactly the row stored at fit time.
-  if (identical(xform, identity)) {
+  # of an untransformed fit prints exactly the row stored at fit time.
+  if (identical(map, identity)) {
     return(stored)
-  }
-  if (!inherits(xform, "function")) {
-    stop("xform must be a function.", call. = FALSE)
   }
   post <- if (is_bayesnecfit(x)) x$ne_posterior else x$w_ne_posterior
   cens <- attr(post, "censored")
-  post <- xform(post)
-  # Set after xform rather than relied on, because a general function need not
-  # keep an attribute. A decreasing xform swaps the end the draws are censored
-  # at; xform_censoring() handles that, as it does for nec().
-  attr(post, "censored") <- xform_censoring(cens, xform)
+  post <- map_draws(post, map, cens, "no-effect estimate")
+  # Set after the map rather than relied on, because a general function need
+  # not keep an attribute. A decreasing map swaps the end the draws are
+  # censored at; xform_censoring() handles that, as it does for nec().
+  attr(post, "censored") <- xform_censoring(cens, map)
   estimates_summary(post)
 }
 

@@ -11,7 +11,7 @@ ecnsec(
   resolution = 200,
   x_range = NA,
   type = "absolute",
-  xform = identity,
+  xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
   ...
 )
@@ -35,8 +35,9 @@ matches \code{\link{ecx}} and \code{\link{nsec}}.}
 \item{type}{A \code{\link[base]{character}} vector, taking values of
 "absolute" (the default), "relative" or "range". See Details.}
 
-\item{xform}{A function to apply to the returned estimated NSEC concentration
-values prior to estimating the percentage effect.}
+\item{xform}{\code{NULL}, the default, or a function applied to
+\code{nsec} before the curve is read there. \code{NULL} reads \code{nsec}
+as given, on the recorded scale. See Details.}
 
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
@@ -85,11 +86,12 @@ The \code{hormesis_def} argument has been removed; the control is now
 always the reference. See \code{\link{ecx}}.
 
 \code{nsec} is read on the recorded predictor scale once \code{xform} has
-been applied to it. Where \code{crf()} transforms the predictor inline, as
-in \code{crf(log(concentration))}, \code{\link{nsec}} returns its estimate
-on the transformed scale unless given an \code{xform}, so a message says so
-once per call where \code{xform} is left at its default, and names the
-\code{xform} that puts such a value on the recorded scale.
+been applied to it. \code{\link{nsec}} returns its estimate on that scale
+by default, so \code{ecnsec(fit, nsec = nsec(fit)[1])} reads the curve at
+the NSEC whether or not \code{crf()} transforms the predictor inline. Where
+it does, as in \code{crf(log(concentration))}, an NSEC taken with
+\code{xform = identity} is on the transformed scale, and needs the inverse,
+here \code{xform = exp}.
 
 The curve is read at \code{nsec} only inside the range it is predicted
 over: the observed range of the predictor, or \code{x_range} where one is

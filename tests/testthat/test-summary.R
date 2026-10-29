@@ -131,12 +131,12 @@ test_that("an ecx_val given to summary() does not displace its arguments", {
   }
 })
 
-test_that("the xform for the scale message is matched as ecx() matches it", {
+test_that("the xform for the no-effect row is matched as ecx() matches it", {
   # By name, by partial name and by position, with x_range named, supplied
   # or NULL, as ecx_row() passes it. A fourth positional argument is xform
   # where x_range is named in the call and x_range where it is not.
   xf <- bayesnec:::summary_ecx_xform
-  expect_identical(xf(list()), identity)
+  expect_null(xf(list()))
   expect_identical(xf(list(xform = exp)), exp)
   expect_identical(xf(list(xfo = exp)), exp)
   expect_identical(xf(list(20, FALSE, "absolute", exp)), exp)
@@ -144,8 +144,7 @@ test_that("the xform for the scale message is matched as ecx() matches it", {
                    exp)
   expect_identical(xf(list(x_range = NULL, 20, FALSE, "absolute", NA, exp)),
                    exp)
-  expect_identical(xf(list(x_range = NULL, 20, FALSE, "absolute", exp)),
-                   identity)
+  expect_null(xf(list(x_range = NULL, 20, FALSE, "absolute", exp)))
 })
 
 test_that("x_range leaves the no-effect row as stored and xform transforms it", {

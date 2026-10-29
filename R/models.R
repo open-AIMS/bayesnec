@@ -29,11 +29,12 @@
 #' is an NSEC. The curve of no draw reaches an ECx target, so every ECx it
 #' gives is reported as censored above the upper end of the prediction range,
 #' and so is its NSEC in every draw whose level is above the reference. It
-#' belongs to no model group in this release, so none of \code{models()}, a
-#' group name, a numeric range or \code{max_pars} lists it; name it to fit it,
-#' as in \code{crf(x, "ecxflat")} or \code{crf(x, c("ecxflat", "nec4param"))}.
-#' It joins "all", "ecx" and "decline" at the 3.0 release, which changes every
-#' model-averaged result and is left to a release for that reason.
+#' belongs to the "all", "ecx" and "decline" groups and to no other, so the
+#' default set includes it, and the model weights of a set built from one of
+#' those groups are computed with a mean that does not change with
+#' concentration among the candidates. Where its weight is appreciable, its
+#' censored draws enter the model-averaged ECx and NSEC in proportion to that
+#' weight.
 #' \code{\link{bnec}} fits it alone, whatever set was requested, to a bounded
 #' response with every observation at one bound; see the section of
 #' \code{?bnec} on a response that does not vary.
@@ -113,14 +114,15 @@
 #' that needs the admissible set should ask for it directly, by passing the
 #' numeric range --- \code{models(c(0, 1))} --- rather than reading a group.
 #'
-#' The \code{"bot_free"} group contains the fourteen equations of the
-#' \code{"all"} group with no \code{bot} parameter. It includes the eleven
+#' The \code{"bot_free"} group contains fourteen of the fifteen equations of
+#' the \code{"all"} group with no \code{bot} parameter. It includes the eleven
 #' equations in \code{"zero_bounded"}, whose fitted mean falls to zero, and the
 #' three
 #' linear-decay equations \code{"neclin"}, \code{"neclinhorme"} and
 #' \code{"ecxlin"}, whose fitted mean is unbounded below. The name therefore
 #' does not mean that \code{bot} is estimated freely or that every equation in
-#' the group approaches zero.
+#' the group approaches zero. The fifteenth, \code{"ecxflat"}, is left out
+#' because its mean does not change with concentration.
 #'
 #' Set \code{max_pars} to restrict the resolved set to equations with no more
 #' than that number of curve parameters. The limit can be used by itself or

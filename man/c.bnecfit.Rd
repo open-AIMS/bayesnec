@@ -30,6 +30,10 @@ default of "pseudobma" is used. Where two inputs name different methods the
 default is used and a message reports the disagreement.
 \code{\link[base]{c}} takes no \code{loo_controls} argument; use
 \code{\link{amend}} to set the weighting method explicitly.
+
+Each equation keeps the record of the installation of \pkg{bayesnec} that
+fitted it, and a message reports a combined set whose equations were fitted
+by different installations. See \code{\link{bnec_version}}.
 }
 \examples{
 \dontrun{

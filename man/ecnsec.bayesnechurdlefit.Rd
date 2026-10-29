@@ -11,7 +11,7 @@
   resolution = 200,
   x_range = NA,
   type = "absolute",
-  xform = identity,
+  xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
   ...,
   posterior = FALSE,
@@ -36,8 +36,9 @@ matches \code{\link{ecx}} and \code{\link{nsec}}.}
 \item{type}{A \code{\link[base]{character}} vector, taking values of
 "absolute" (the default), "relative" or "range". See Details.}
 
-\item{xform}{A function to apply to the returned estimated NSEC concentration
-values prior to estimating the percentage effect.}
+\item{xform}{\code{NULL}, the default, or a function applied to
+\code{nsec} before the curve is read there. \code{NULL} reads \code{nsec}
+as given, on the recorded scale. See Details.}
 
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
@@ -67,15 +68,12 @@ response value rather than a percentage.
 
 \code{xform} is applied to \code{nsec}, and the curve is read at the
 result on the recorded predictor scale, as in \code{\link{ecnsec}} on a
-\code{\link{bayesnecfit}}. Where \code{crf()} transforms the predictor
-inline, \code{\link{nsec}} returns its estimate on the transformed scale
-unless given an \code{xform}, so a message says so once per call where
-\code{xform} is left at its default, and names the \code{xform} that puts
-such a value on the recorded scale. In earlier versions this method applied
-\code{xform} to the percentage it returned. A call that supplies an
-\code{xform} other than \code{identity} is warned of the change in this
-release. To transform the percentage, apply the function to the value
-returned.
+\code{\link{bayesnecfit}}. \code{NULL}, the default, reads \code{nsec} as
+given, the scale \code{\link{nsec}} returns by default. In earlier
+versions this method applied \code{xform} to the percentage it returned. A
+call that supplies an \code{xform} other than \code{identity} is warned of
+the change in this release. To transform the percentage, apply the function
+to the value returned.
 
 Without \code{x_range}, every curve is read over the whole concentration
 series, as in \code{\link{ecx.bayesnechurdlefit}}. The range sets the

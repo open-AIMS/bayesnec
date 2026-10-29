@@ -451,6 +451,23 @@ test_that("amend(add = ) keeps the truncation of a hurdle growth fit (#436)", {
   expect_false(identical(amended$calls[[1]]$prior, untruncated))
 })
 
+test_that("amend(add = ) keeps the tested range of a hurdle growth fit (#483)", {
+  # bnec_hurdle() records the whole series on the growth formula, here wider
+  # than the data the component holds. An added equation is bounded by it, as
+  # bnec() bounds one fitted from the same formula.
+  d <- data.frame(x = nec_data$x, y = nec_data$y * 10)
+  obj <- amend_fixture(validate_family("Gamma"), data = d)
+  attr(obj$bayesnecformula, "bayesnec_tested_range") <- c(0, 10)
+  f <- bnf(y ~ crf(x, "nec4param"))
+  attr(f, "bayesnec_tested_range") <- c(0, 10)
+  amended <- fit_inputs(amend(obj, add = "nec4param"))
+  fitted <- fit_inputs(bnec(f, data = d, family = Gamma(link = "identity"),
+                            chains = 2))
+  expect_same_fit_inputs(amended, fitted, "tested range")
+  pr <- as.data.frame(amended$calls[[1]]$prior)
+  expect_equal(as.numeric(pr$ub[pr$nlpar == "nec"]), 10)
+})
+
 test_that("amend(add = ) drops what bnec() drops for a Gamma fit (#436)", {
   obj <- amend_fixture(validate_family("Gamma"))
   amended <- fit_inputs(amend(obj, add = c("neclin", "nec4param")))
@@ -546,6 +563,10 @@ test_that("a set that records no call has its survival block read", {
   # One equation with another equation's block was fitted with it named.
   one <- list(ecx4param = stored_with("ecx4param", "nec3param"))
   expect_identical(stored_model_survival(one, bdat), "nec3param")
+  # ecxflat is read as a survival equation, since it is in "all".
+  flat <- list(ecx4param = stored_with("ecx4param", "ecxflat"),
+               nec4param = stored_with("nec4param", "ecxflat"))
+  expect_identical(stored_model_survival(flat, bdat), "ecxflat")
   # One equation with its own block is read as fitted without it.
   alone <- list(ecx4param = stored_with("ecx4param", NULL))
   expect_null(stored_model_survival(alone, bdat))

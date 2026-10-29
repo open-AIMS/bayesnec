@@ -155,8 +155,8 @@ mu_is_constrained <- function(family, dpar = "mu") {
 #' holds under every bounded link, but \code{\link{check_models}} applies it
 #' under \code{log} and \code{logit} only.
 #'
-#' @return A \code{\link[base]{data.frame}}, one row per equation, the
-#' members of \code{models()$all} and \code{ecxflat}.
+#' @return A \code{\link[base]{data.frame}}, one row per equation in the
+#' \code{pred_functions} registry.
 #'
 #' @noRd
 model_mu_ranges <- function() {

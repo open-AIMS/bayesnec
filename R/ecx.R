@@ -21,8 +21,11 @@
 #' @param posterior A \code{\link[base]{logical}} value indicating if the full
 #' posterior sample of calculated ECx values should be returned instead of
 #' just the median and 95 credible intervals.
-#' @param xform A function to apply to the returned estimated concentration
-#' values.
+#' @param xform \code{NULL}, the default, or a function. \code{NULL} returns
+#' the estimate on the scale the predictor was recorded on. A function is
+#' applied to the estimate on the scale the model was fitted on. The two
+#' differ only where \code{crf()} transforms the predictor inline; see
+#' Details.
 #' @param x_range A range of x values over which to consider extracting ECx.
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
@@ -90,11 +93,13 @@
 #' the ECx is not identified and \code{NA} is returned, with a warning
 #' reporting how many draws were affected.
 #'
-#' Where \code{crf()} transforms the predictor inline, as in
-#' \code{crf(log(concentration))}, the ECx is on the transformed scale unless
-#' \code{xform} is supplied, and a message says so once per call. It names the
-#' transformation and the \code{xform} that returns the estimate on the
-#' recorded scale.
+#' The curve is searched on a grid of recorded concentrations. Where
+#' \code{crf()} transforms the predictor inline, as in
+#' \code{crf(log(concentration))}, the ECx is therefore returned on the
+#' recorded scale without \code{xform}, and no inverse is involved. A supplied
+#' \code{xform} is applied to the ECx on the transformed scale, so
+#' \code{xform = identity} returns that scale and \code{xform = exp} on
+#' \code{crf(log(concentration))} returns the recorded scale again.
 #' 
 #' Calls to functions \code{\link{ecx}} and \code{\link{nsec}} and
 #' \code{\link{compare_fitted}} do not require the same level of flexibility
@@ -185,7 +190,7 @@
 # check warns about a documented argument missing from the usage.
 ecx <- function(object, ecx_val = 10, resolution = 200,
                 posterior = FALSE, type = "absolute", x_range = NA,
-                xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...,
+                xform = NULL, prob_vals = c(0.5, 0.025, 0.975), ...,
                 dpar = NULL) {
   UseMethod("ecx")
 }
@@ -206,7 +211,7 @@ ecx <- function(object, ecx_val = 10, resolution = 200,
 #' @export
 ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
                             posterior = FALSE, type = "absolute",
-                            x_range = NA, xform = identity,
+                            x_range = NA, xform = NULL,
                             prob_vals = c(0.5, 0.025, 0.975), ...,
                             dpar = NULL) {
   check_component_arg(list(...), object)
@@ -218,9 +223,7 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
   chk_numeric(resolution)  
   chk_logical(posterior)
   type <- validate_ecx_type(type, match.call())
-  if (!inherits(xform, "function")) {
-    stop("xform must be a function.")
-  }
+  check_xform(xform)
   if (length(prob_vals) < 3 || prob_vals[1] < prob_vals[2] ||
       prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
@@ -236,9 +239,6 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
   if (identical(type, "relative") && is.null(dpar)) {
     check_combined_relative(object$fit$family, "ecx")
   }
-  # Once for the call. See report_fitted_scale().
-  quiet <- report_fitted_scale(object, xform, "ecx")
-  on.exit(options(quiet), add = TRUE)
   # Do not refuse an absolute ECx for a gaussian response without a bot
   # parameter. Absolute measures towards 0 by design, and a gaussian mean that
   # declines towards 0 is consistent: the likelihood never tests the sign of y.
@@ -264,22 +264,26 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
   below <- attr(ecx_out, "below_range")
   above <- is.na(ecx_out) & !below
   attr(ecx_out, "below_range") <- NULL
-  ecx_out <- sub_x_transformation(ecx_out, object$bayesnecformula)
   # Build the censoring record here, not from the fit, because x_range may
   # have changed the grid. Build it on the recorded scale, where the curve was
-  # searched, then remap it with sub_x_transformation() as the estimates were.
+  # searched, then remap it with sub_x_transformation() as the estimates are.
   # Comparing against fitted-scale bounds directly would misname the ends
   # under a decreasing crf() transformation.
   x_kept <- x_vec[is.finite(x_vec)]
-  cens <- xform_censoring(
-    censoring_record(max(x_kept), min(x_kept), above, below),
-    function(value) sub_x_transformation(value, object$bayesnecformula)
-  )
-  # Apply xform to the censoring bounds as well as the estimates, before the
-  # warning, so that the bound it reports is on the estimates' scale.
-  if (inherits(xform, "function")) {
-    ecx_out <- xform(ecx_out)
-    cens <- xform_censoring(cens, xform)
+  cens <- censoring_record(max(x_kept), min(x_kept), above, below)
+  # The default on an inline-transformed fit leaves both on the recorded scale.
+  if (!returns_recorded(object, xform)) {
+    to_fitted <- function(value) {
+      sub_x_transformation(value, object$bayesnecformula)
+    }
+    ecx_out <- to_fitted(ecx_out)
+    cens <- xform_censoring(cens, to_fitted)
+    # Apply xform to the censoring bounds as well as the estimates, before
+    # the warning, so that the bound it reports is on the estimates' scale.
+    if (!is.null(xform)) {
+      ecx_out <- xform(ecx_out)
+      cens <- xform_censoring(cens, xform)
+    }
   }
   attr(ecx_out, "censored") <- cens
   if (sum(above) > 0) {
@@ -326,7 +330,7 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
     message("The estimated upper credible interval is identical or nearly",
             " identical to the upper bound of your x_range value for the ",
             object$model, " model. This suggests the estimated uncertainty",
-            "may be constrained. You could try increasing x_range to ensure",
+            " may be constrained. You could try increasing x_range to ensure",
             " this is not the case.")
   }
   if (!posterior) {
@@ -351,7 +355,7 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
 #' @export
 ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 200,
                               posterior = FALSE, type = "absolute",
-                              x_range = NA, xform = identity,
+                              x_range = NA, xform = NULL,
                               prob_vals = c(0.5, 0.025, 0.975), ...,
                               dpar = NULL) {
   check_component_arg(list(...), object)
@@ -363,8 +367,7 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 200,
     stop("You may only pass one ecx_val")  
   }
   type <- validate_ecx_type(type, match.call())
-  if (!inherits(xform, "function")) { 
-    stop("xform must be a function.")}   
+  check_xform(xform)
   if (length(prob_vals) < 3 || prob_vals[1] < prob_vals[2] ||
       prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
@@ -375,9 +378,6 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 200,
   # warn again for every equation.
   warned <- options(bayesnec.relative_warned = TRUE)
   on.exit(options(warned), add = TRUE)
-  # The scale message likewise, by the same device. See report_fitted_scale().
-  quiet <- report_fitted_scale(object, xform, "ecx")
-  on.exit(options(quiet), add = TRUE)
   sample_size <- object$sample_size
   # Use the weighted draw index every other quantity on this object uses. A
   # fresh unseeded sample() would give a different estimate on every call.

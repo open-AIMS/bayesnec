@@ -114,3 +114,110 @@ test_that("a missing parameter named in two terms is left out of both (#470)", {
   expect_identical(deparse1(pforms$ec50),
                    "ec50 ~ 1 + (1 | group6) + (1 | group8)")
 })
+
+# ---- #479, the predictor as written into the brms formula --------------------
+
+crf_data <- data.frame(x = seq(1.5, 12, length.out = 12),
+                       y = seq(9, 2, length.out = 12))
+
+test_that("an I() predictor reaches brms without I() (#479)", {
+  # Stan has no I(), so the expression inside it is written, in parentheses.
+  # A name or a function call is written unchanged.
+  txt <- bayesnec:::brms_x_text
+  expect_identical(txt("x"), "x")
+  expect_identical(txt("log(x)"), "log(x)")
+  expect_identical(txt("log(x + 1)"), "log(x + 1)")
+  expect_identical(txt("I(log(x) + 1)"), "(log(x) + 1)")
+  expect_identical(txt("I(-x)"), "(-x)")
+  expect_identical(txt("I(log(x))"), "log(x)")
+  expect_identical(txt("I(I(x - 1))"), "(x - 1)")
+  expect_identical(txt("x > 1"), "(x > 1)")
+  rhs <- deparse1(bayesnec:::bf_nec4param[[1]][[3]])
+  expect_identical(
+    bayesnec:::substitute_x_in_formula("I(log(x) + 1)", rhs),
+    paste0("bot + (top - bot) * exp(-exp(beta) * ((log(x) + 1) - nec) *",
+           " step((log(x) + 1) - nec))")
+  )
+  # Parenthesised, a comparison is not regrouped with the curve's own terms:
+  # bare, (x > 1 - nec) would read as x > (1 - nec).
+  sub <- str2lang(bayesnec:::substitute_x_in_formula("x > 1", "(x - nec)"))
+  expect_identical(sub, quote(((x > 1) - nec)))
+  # The model frame and the estimators keep I().
+  f <- bnf(y ~ crf(I(log(x) + 1), "nec4param"))
+  expect_identical(names(model.frame(f, data = crf_data))[2], "I(log(x) + 1)")
+  expect_equal(bayesnec:::sub_x_transformation(2, f), log(2) + 1,
+               ignore_attr = TRUE)
+  bf <- make_brmsformula(f, crf_data)$nec4param
+  expect_identical(
+    deparse1(bf$formula[[3]]),
+    paste0("bot + (top - bot) * exp(-exp(beta) * ((log(x) + 1) - nec) *",
+           " step((log(x) + 1) - nec))")
+  )
+  # The formula built for crf(x) and crf(log(x)) is as it was.
+  expect_identical(
+    deparse1(make_brmsformula(y ~ crf(log(x), "ecx4param"),
+                              crf_data)$ecx4param$formula[[3]]),
+    "top + (bot - top)/(1 + exp((ec50 - log(x)) * exp(beta)))"
+  )
+  expect_identical(
+    deparse1(make_brmsformula(y ~ crf(x, "nec4param"),
+                              crf_data)$nec4param$formula[[3]]),
+    "bot + (top - bot) * exp(-exp(beta) * (x - nec) * step(x - nec))"
+  )
+})
+
+test_that("nested I() calls preserve the predictor's arithmetic", {
+  predictors <- c("log(I(x - 1))", "I((I(x - 1)))", "I(x - I(1))",
+                  "I(I(-x)^2)", "I(2 * I(x + 1))", "I(x / I(x + 1))")
+  for (p in predictors) {
+    f <- bnf(stats::as.formula(paste0("y ~ crf(", p, ", 'nec4param')")))
+    mf <- model.frame(f, data = crf_data)
+    bf <- make_brmsformula(f, crf_data)$nec4param
+    expect_no_match(deparse1(bf$formula), "I(", fixed = TRUE)
+    predictor <- str2lang(bayesnec:::brms_x_text(names(mf)[2]))
+    expect_equal(eval(predictor, crf_data), as.numeric(mf[[2]]), info = p)
+    expect_equal(as.numeric(bayesnec:::sub_x_transformation(crf_data$x, f)),
+                  as.numeric(mf[[2]]), info = p)
+    pars <- list(bot = 1, top = 10, beta = -1, nec = 1)
+    curve <- eval(bf$formula[[3]], c(as.list(crf_data), pars,
+                                    list(step = bayesnec:::step)))
+    x <- as.numeric(mf[[2]])
+    expected <- with(pars, bot + (top - bot) *
+                       exp(-exp(beta) * (x - nec) * bayesnec:::step(x - nec)))
+    expect_equal(curve, expected, info = p)
+  }
+})
+
+test_that("an I() predictor gives Stan code that compiles (#479)", {
+  skip_if_not_installed("rstan")
+  stan_ok <- function(bform, family) {
+    code <- brms::make_stancode(bform, data = crf_data, family = family)
+    expect_no_match(code, "I(", fixed = TRUE)
+    isTRUE(rstan::stanc(model_code = code, allow_undefined = FALSE)$status)
+  }
+  gauss <- stats::gaussian(link = "identity")
+  for (p in c("I(log(x) + 1)", "I(-x)", "log(x)", "x",
+              "log(I(x - 1))", "I((I(x - 1)))", "I(x - I(1))",
+              "I(I(-x)^2)")) {
+    for (m in c("nec4param", "ecx4param")) {
+      f <- stats::as.formula(paste0("y ~ crf(", p, ", \"", m, "\")"))
+      expect_true(stan_ok(make_brmsformula(f, crf_data)[[m]], gauss),
+                  label = paste(p, m))
+    }
+  }
+  # The hurdle block and a disp() variance function write the predictor
+  # through the same substitution.
+  hurdle <- brms::hurdle_gamma(link = "identity", link_shape = "log",
+                               link_hu = "identity")
+  expect_true(stan_ok(
+    make_brmsformula(y ~ crf(I(-x), "nec4param"), crf_data,
+                     family = hurdle)$nec4param,
+    hurdle
+  ))
+  gamma <- stats::Gamma(link = "identity")
+  expect_true(stan_ok(
+    make_brmsformula(y ~ crf(I(log(x) + 1), "ecx4param") + disp("power"),
+                     crf_data, family = gamma)$ecx4param,
+    gamma
+  ))
+})

@@ -268,7 +268,7 @@ hurdle_disp_placeholders <- function(newdata, object) {
 #' @export
 nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
                                    x_range = NA,
-                                   xform = identity,
+                                   xform = NULL,
                                    prob_vals = c(0.5, 0.025, 0.975),
                                    extrapolate = FALSE, ...,
                                    posterior = FALSE, which = "combined") {
@@ -276,12 +276,7 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
   check_removed_args(list(...))
   chk_logical(posterior)
   which <- hurdle_check_which(which)
-  if (!inherits(xform, "function")) {
-    stop("xform must be a function.")
-  }
-  # Once for the call. See report_fitted_scale().
-  quiet <- report_fitted_scale(object, xform, "nsec")
-  on.exit(options(quiet), add = TRUE)
+  check_xform(xform)
   # As in nsec.bayesnecfit(), extrapolate sets the searched grid. It is
   # measured against the whole concentration series.
   lims <- extrapolate_limits(extrapolate,
@@ -305,17 +300,20 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
   attr(out, "n_below_range") <- NULL
   attr(out, "below_range") <- NULL
   attr(out, "x_searched_from") <- NULL
-  out <- hurdle_xform_x(object, out)
   # The lower bound is where the search started, not the foot of the grid,
   # which can reach below the control. Build the record on the recorded grid,
   # then remap it: a decreasing crf() swaps its two ends.
-  cens <- xform_censoring(
-    censoring_record(max(preds$x), searched_from, above, below),
-    function(value) hurdle_xform_x(object, value)
-  )
-  if (inherits(xform, "function")) {
-    out <- xform(out)
-    cens <- xform_censoring(cens, xform)
+  cens <- censoring_record(max(preds$x), searched_from, above, below)
+  # The default on an inline-transformed fit leaves both on the recorded scale.
+  if (!returns_recorded(object, xform)) {
+    out <- hurdle_xform_x(object, out)
+    cens <- xform_censoring(cens, function(value) {
+      hurdle_xform_x(object, value)
+    })
+    if (!is.null(xform)) {
+      out <- xform(out)
+      cens <- xform_censoring(cens, xform)
+    }
   }
   attr(out, "censored") <- cens
   # After xform, so that the bound the warning names is on the scale of the
@@ -406,11 +404,6 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
   ecs <- NULL
   if (ecx) {
     check_summary_ecx_posterior(list(...))
-    # Report the scale once for the table rather than in each ecx() call.
-    # Use summary_ecx_xform(), not dots_xform(ecx, ...): here `ecx` is the
-    # logical argument, not the generic.
-    quiet <- report_fitted_scale(object, summary_ecx_xform(list(...)), "ecx")
-    on.exit(options(quiet), add = TRUE)
     # Read every ECx row over the survival component's stored grid, the whole
     # concentration series, so that the rows match the no-effect estimates
     # above them. NULL, where there is no stored grid, lets ecx() build one.
@@ -477,7 +470,8 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
     ne = nes, ne_types = ne_types, ecs = ecs,
     growth_averaged = inherits(object$growth, "bayesmanecfit"),
     survival_averaged = inherits(object$survival, "bayesmanecfit"),
-    failed_models = failed_models(object)
+    failed_models = failed_models(object),
+    bnec_version = bnec_version(object)
   )
   allot_class(out, "hurdlesummary")
 }
@@ -527,7 +521,8 @@ print.hurdlesummary <- function(x, ...) {
                               rownames(ec_mat))
   }
   cat("\nThe combined endpoint is the expected response per individual",
-      "exposed,\ni.e. growth * survival. Use which = to select a component.\n")
+      "exposed,\ni.e. growth * survival. Use which = to select a component.\n\n")
+  print_version(x$bnec_version)
   invisible(x)
 }
 
@@ -719,6 +714,71 @@ check_refit_bound <- function(part, data, family = NULL, subject = NULL,
                           flat_remedy = flat_remedy)
 }
 
+#' The growth component a hurdle \code{update()} refits
+#'
+#' @param object An object of class \code{\link{bayesnechurdlefit}}.
+#' @param family The validated family passed to \code{update()}, or
+#' \code{NULL}.
+#'
+#' @details Checks a supplied family as \code{\link{bnec_hurdle}} checks
+#' \code{family_growth}, and gives the growth formulas \code{trunc(lb = 1)}
+#' where it is a count family and removes it where it is not. Without a family
+#' the stored formulas are kept, and a growth component that holds the
+#' truncation still needs the \pkg{brms} version \code{bnec_hurdle} needs.
+#'
+#' @return The growth component, a \code{\link{bayesnecfit}} or a
+#' \code{\link{bayesmanecfit}}, for \code{update()} to refit.
+#'
+#' @noRd
+hurdle_refit_growth <- function(object, family = NULL) {
+  growth <- object$growth
+  if (is.null(family)) {
+    fits <- recover_prebayesnecfit(growth)
+    truncated <- vapply(fits, function(m) {
+      is_factorised_count_formula(m$bayesnecformula, m$fit$family)
+    }, logical(1))
+    if (any(truncated)) {
+      check_count_truncation_support()
+    }
+    return(growth)
+  }
+  check_hurdle_growth_family(family)
+  check_hurdle_count_growth(object$formula, family)
+  set_hurdle_growth_truncation(growth, is_hurdle_count_growth(family))
+}
+
+#' Set the count-hurdle truncation on every equation of a growth component
+#'
+#' @param part The growth component of a \code{\link{bayesnechurdlefit}}: a
+#' \code{\link{bayesnecfit}} or a \code{\link{bayesmanecfit}}.
+#' @param truncate Whether each response should hold \code{trunc(lb = 1)}.
+#'
+#' @details Rewrites both formulas of each equation. \pkg{brms} refits from the
+#' one stored in the \code{brmsfit}, and the \pkg{bayesnec} methods read the
+#' truncation off the other.
+#'
+#' @return \code{part}, rewritten.
+#'
+#' @noRd
+set_hurdle_growth_truncation <- function(part, truncate) {
+  set_one <- function(m) {
+    m$bayesnecformula[[2]] <- hurdle_truncation_lhs(lhs(m$bayesnecformula),
+                                                    truncate)
+    attr(m$bayesnecformula, "bayesnec_internal_truncation") <-
+      if (truncate) TRUE
+    m$fit$formula$formula[[2]] <- hurdle_truncation_lhs(
+      m$fit$formula$formula[[2]], truncate
+    )
+    m
+  }
+  if (is_bayesmanecfit(part)) {
+    part$mod_fits <- lapply(part$mod_fits, set_one)
+  } else {
+    part <- set_one(part)
+  }
+  part
+}
+
 #' Updates both components of a \code{\link{bayesnechurdlefit}}
 #'
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
@@ -735,7 +795,13 @@ check_refit_bound <- function(part, data, family = NULL, subject = NULL,
 #' growth component of 1 throughout, are refused, naming that component.
 #' @param ... Further arguments passed to \code{\link{update.bnecfit}} for
 #' each component. A \code{family} is passed to the growth component only.
-#' The survival component is always refitted as \code{bernoulli}.
+#' The survival component is always refitted as \code{bernoulli}. The growth
+#' family is checked as \code{\link{bnec_hurdle}} checks
+#' \code{family_growth}, before either component is refitted. A family
+#' \code{bnec_hurdle} refuses for the growth component, such as
+#' \code{hurdle_gamma}, is refused. A \code{poisson} or \code{negbinomial}
+#' family needs \pkg{brms} 2.23.2 or later, and the growth component is then
+#' refitted with the zero-truncated likelihood \code{bnec_hurdle} uses.
 #'
 #' @return An object of class \code{\link{bayesnechurdlefit}}.
 #'
@@ -749,32 +815,34 @@ update.bayesnechurdlefit <- function(object, newdata = NULL, ...) {
   # survival component. Forward `...` unchanged to the growth component:
   # update.bnecfit() reads the link the caller wrote off the unevaluated call.
   update_survival <- function(..., family) update(object$survival, ...)
+  if (!is.null(newdata)) {
+    y <- newdata[[object$y_var]]
+    if (is.null(y)) {
+      stop("\"newdata\" must contain the response column \"", object$y_var,
+           "\".", call. = FALSE)
+    }
+    check_hurdle_response(y, object$y_var)
+    # Check newdata for rows that are both zero and censored, as bnec_hurdle()
+    # checks its data.
+    check_hurdle_cens(check_hurdle_aterms(object$formula), newdata, y,
+                      object$y_var)
+  }
+  # A supplied family is the growth component's. It is read here for its tag
+  # only; update.bnecfit() validates it again, with its link.
+  supplied <- if ("family" %in% ...names()) {
+    validate_family(list(...)[["family"]])
+  }
+  growth <- hurdle_refit_growth(object, supplied)
   if (is.null(newdata)) {
-    return(hurdle_rewrap(object, update(object$growth, ...),
-                         update_survival(...)))
+    return(hurdle_rewrap(object, update(growth, ...), update_survival(...)))
   }
-  y <- newdata[[object$y_var]]
-  if (is.null(y)) {
-    stop("\"newdata\" must contain the response column \"", object$y_var,
-         "\".", call. = FALSE)
-  }
-  check_hurdle_response(y, object$y_var)
-  # Check newdata for rows that are both zero and censored, as bnec_hurdle()
-  # checks its data.
-  check_hurdle_cens(check_hurdle_aterms(object$formula), newdata, y,
-                    object$y_var)
   growth_data <- newdata[y > 0, , drop = FALSE]
   surv_data <- newdata
   surv_data[[".alive"]] <- as.integer(y > 0)
   # Check both components before either is refitted, naming the component
-  # rather than the generated .alive column. A supplied family is the growth
-  # component's. It is read here for its tag only; update.bnecfit() validates
-  # it again, with its link.
-  supplied <- if ("family" %in% ...names()) {
-    validate_family(list(...)[["family"]])
-  }
+  # rather than the generated .alive column.
   check_refit_bound(
-    object$growth, growth_data, supplied,
+    growth, growth_data, supplied,
     subject = paste0("The growth component of the response \"", object$y_var,
                      "\" (its ", sum(y > 0), " non-zero values)"),
     flat_remedy = hurdle_growth_flat_remedy()
@@ -787,7 +855,7 @@ update.bayesnechurdlefit <- function(object, newdata = NULL, ...) {
   )
   # Refit in turn, growth first, rather than inside hurdle_rewrap(), whose
   # argument evaluation would set the order.
-  growth <- update(object$growth, newdata = growth_data, ...)
+  growth <- update(growth, newdata = growth_data, ...)
   survival <- update_survival(newdata = surv_data, ...)
   out <- hurdle_rewrap(object, growth, survival)
   out$data <- newdata
@@ -918,42 +986,35 @@ hurdle_panel <- function(object, which, resolution, x_range) {
 #' \code{\link{bayesnecfit}} plots leave them.
 #'
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
-#' @param xform The function the caller supplied.
+#' @param xform The function the caller supplied, or \code{NULL}.
 #'
 #' @return A \code{\link[base]{function}}.
 #' @noRd
 hurdle_axis_xform <- function(object, xform) {
-  if (is.null(inline_x_transform(object))) xform else identity
+  if (!is.null(inline_x_transform(object)) || is.null(xform)) {
+    return(identity)
+  }
+  xform
 }
 
-#' The map that puts a hurdle no-effect estimate on the plot's predictor axis
+#' The xform a hurdle plot gives nec() for its no-effect line
 #'
-#' The same choice \code{to_axis_scale()} makes for a
-#' \code{\link{bayesnecfit}}: \code{xform} where the predictor is not
-#' transformed or the caller supplied one, and otherwise the inverse of the
-#' \code{crf()} transformation read off the whole-series prediction grid.
-#' Read the inverse off that grid, not off a panel's \code{x_range}: the
-#' inverse clamps at the grid ends, and the legend would print the clamped
-#' value.
+#' Where the predictor is transformed inline and the caller supplied no
+#' \code{xform}, or \code{identity}, \code{NULL}: \code{\link{nec}} then
+#' returns the recorded scale the axis is drawn on, as it does when called
+#' directly. Otherwise the caller's \code{xform}.
 #'
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
-#' @param xform The function the caller supplied.
-#' @param resolution The number of grid points.
+#' @param xform The function the caller supplied, or \code{NULL}.
 #'
-#' @return A \code{\link[base]{function}}, for \code{\link{nec}} to apply to
-#' each draw.
+#' @return A \code{\link[base]{function}}, or \code{NULL}.
 #' @noRd
-hurdle_ne_axis_map <- function(object, xform, resolution) {
-  if (is.null(inline_x_transform(object)) || !identical(xform, identity)) {
-    return(xform)
+hurdle_ne_axis_map <- function(object, xform) {
+  if (!is.null(inline_x_transform(object)) &&
+        (is.null(xform) || identical(xform, identity))) {
+    return(NULL)
   }
-  grid <- newdata_eval(object$survival, resolution = resolution,
-                       x_range = NA)$x_vec
-  # A fit-time x_range can identify estimates beyond the observed range.
-  grid <- sort(unique(c(grid, ne_grid_data(object$growth)$x,
-                        ne_grid_data(object$survival)$x)))
-  inverse <- grid_inverse(object$formula, grid)
-  if (is.null(inverse)) identity else inverse
+  xform
 }
 
 #' Plots a \code{\link{bayesnechurdlefit}}
@@ -967,9 +1028,10 @@ hurdle_ne_axis_map <- function(object, xform, resolution) {
 #' \code{TRUE}.
 #' @param resolution The number of unique predictor values to predict over.
 #' @param x_range A range of predictor values to plot over.
-#' @param xform A function to apply to the predictor where \code{crf()} does
-#' not transform it inline. Where it does, the function that returns the
-#' no-effect estimate to the recorded scale. See Details.
+#' @param xform \code{NULL}, the default, or a function to apply to the
+#' predictor where \code{crf()} does not transform it inline. Where it does,
+#' a function applied to the no-effect estimate on the transformed scale. See
+#' Details.
 #' @param ylab Y axis label. Defaults to a label describing \code{which}.
 #' @param xlab X axis label.
 #'
@@ -984,10 +1046,9 @@ hurdle_ne_axis_map <- function(object, xform, resolution) {
 #' \code{crf(log(concentration))} does, the observed points, the curve and the
 #' no-effect line are drawn on the recorded scale, the scale the prediction
 #' grid is built on, as \code{\link{plot}} draws a \code{\link{bayesnecfit}}.
-#' \code{\link{nec}} returns its estimate on the transformed scale, so the line
-#' is returned to the recorded scale through \code{xform} where one is
-#' supplied, and otherwise by inverting the transformation on the prediction
-#' grid. \code{xform} is not applied to the points or the curve in that case.
+#' The line is the estimate \code{\link{nec}} returns by default, which is on
+#' that scale. A supplied \code{xform} is applied to the estimate on the
+#' transformed scale instead, and not to the points or the curve.
 #'
 #' @return A plot.
 #'
@@ -1001,14 +1062,12 @@ hurdle_ne_axis_map <- function(object, xform, resolution) {
 #' @export
 plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
                                    add_nec = TRUE, resolution = 1000,
-                                   x_range = NA, xform = identity,
+                                   x_range = NA, xform = NULL,
                                    ylab = NULL, xlab = "Predictor") {
   which <- hurdle_check_plot_which(which)
   chk_lgl(CI)
   chk_lgl(add_nec)
-  if (!inherits(xform, "function")) {
-    stop("xform must be a function.")
-  }
+  check_xform(xform)
   panels <- if (which == "all") {
     c("combined", "growth", "survival")
   } else {
@@ -1020,7 +1079,7 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
   }
   axis_x <- hurdle_axis_xform(x, xform)
   if (add_nec) {
-    ne_map <- hurdle_ne_axis_map(x, xform, resolution)
+    ne_map <- hurdle_ne_axis_map(x, xform)
   }
   for (w in panels) {
     p <- hurdle_panel(x, w, resolution, x_range)
@@ -1035,10 +1094,10 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
     }
     lines(xv, p$est)
     if (add_nec) {
-      # Give the map to nec() rather than apply it to the summary: nec()
-      # applies it to each draw and to the censoring record, so a decreasing
-      # map still gives the interval in order, with each bound marked.
-      ne <- without_scale_report(nec(x, which = w, xform = ne_map))
+      # Give nec() the map rather than apply it to the summary, so that a
+      # decreasing map keeps the interval and its censoring marks in order.
+      # Suppress its messages, which describe the estimate, not the figure.
+      ne <- suppressMessages(nec(x, which = w, xform = ne_map))
       abline(v = ne, col = "red", lty = c(1, 3, 3))
       legend("topright", bty = "n", lty = 1, col = "red",
              legend = paste0("N(S)EC: ", bound_prefix(ne, 1),
@@ -1055,10 +1114,10 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
 #' @param x An object of class \code{\link{bayesnechurdlefit}}.
 #' @param add_nec Unused; retained for consistency with the generic.
 #' @param add_ecx Unused; retained for consistency with the generic.
-#' @param xform A function to apply to the predictor where \code{crf()} does
-#' not transform it inline. Where it does, the predictor is returned on the
-#' recorded scale, the scale the prediction grid is built on, and \code{xform}
-#' is not applied.
+#' @param xform \code{NULL}, the default, or a function to apply to the
+#' predictor where \code{crf()} does not transform it inline. Where it does,
+#' the predictor is returned on the recorded scale, the scale the prediction
+#' grid is built on, and \code{xform} is not applied.
 #' @param ... Unused.
 #' @param which Which curve(s) to return. See \code{\link{plot}}.
 #' @param resolution The number of unique predictor values.
@@ -1071,7 +1130,7 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
 #'
 #' @export
 ggbnec_data.bayesnechurdlefit <- function(x, add_nec = TRUE, add_ecx = FALSE,
-                                          xform = identity, ...,
+                                          xform = NULL, ...,
                                           which = "combined",
                                           resolution = 1000, x_range = NA) {
   which <- hurdle_check_plot_which(which)
@@ -1124,7 +1183,7 @@ ggbnec_data.bayesnechurdlefit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #' @export
 autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
                                        CI = TRUE, resolution = 1000,
-                                       x_range = NA, xform = identity,
+                                       x_range = NA, xform = NULL,
                                        xlab = "Predictor", ylab = NULL) {
   chk_lgl(CI)
   dat <- ggbnec_data(object, which = which, resolution = resolution,
@@ -1167,15 +1226,12 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
 #'
 #' \code{xform} is applied to \code{nsec}, and the curve is read at the
 #' result on the recorded predictor scale, as in \code{\link{ecnsec}} on a
-#' \code{\link{bayesnecfit}}. Where \code{crf()} transforms the predictor
-#' inline, \code{\link{nsec}} returns its estimate on the transformed scale
-#' unless given an \code{xform}, so a message says so once per call where
-#' \code{xform} is left at its default, and names the \code{xform} that puts
-#' such a value on the recorded scale. In earlier versions this method applied
-#' \code{xform} to the percentage it returned. A call that supplies an
-#' \code{xform} other than \code{identity} is warned of the change in this
-#' release. To transform the percentage, apply the function to the value
-#' returned.
+#' \code{\link{bayesnecfit}}. \code{NULL}, the default, reads \code{nsec} as
+#' given, the scale \code{\link{nsec}} returns by default. In earlier
+#' versions this method applied \code{xform} to the percentage it returned. A
+#' call that supplies an \code{xform} other than \code{identity} is warned of
+#' the change in this release. To transform the percentage, apply the function
+#' to the value returned.
 #'
 #' Without \code{x_range}, every curve is read over the whole concentration
 #' series, as in \code{\link{ecx.bayesnechurdlefit}}. The range sets the
@@ -1195,7 +1251,7 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
 #' @export
 ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
                                      x_range = NA,
-                                     type = "absolute", xform = identity,
+                                     type = "absolute", xform = NULL,
                                      prob_vals = c(0.5, 0.025, 0.975), ...,
                                      posterior = FALSE, which = "combined") {
   which <- hurdle_check_which(which)
@@ -1214,8 +1270,9 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
          "asymptote is not a single fitted parameter. Use ",
          "type = \"absolute\" or type = \"range\".", call. = FALSE)
   }
-  if (!inherits(xform, "function")) {
-    stop("xform must be a function.")
+  check_xform(xform)
+  if (is.null(xform)) {
+    xform <- identity
   }
   if (!identical(xform, identity)) {
     # Warn for one release that xform now applies to nsec rather than to the
@@ -1231,9 +1288,6 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
       ), call = NULL)
     ))
   }
-  # As in ecnsec.bnecfit().
-  quiet <- report_fitted_scale(object, xform, "ecnsec")
-  on.exit(options(quiet), add = TRUE)
   nsec_use <- xform(nsec)
   # The grid ecx() and nsec() read, so that all three read one curve.
   preds <- hurdle_component_preds(object, resolution = resolution,

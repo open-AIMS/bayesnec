@@ -13,7 +13,7 @@
   ...,
   nec = TRUE,
   ecx = FALSE,
-  xform = identity,
+  xform = NULL,
   group = NULL,
   group_aes = c("line", "colour")
 )
@@ -23,7 +23,7 @@
   ...,
   nec = TRUE,
   ecx = FALSE,
-  xform = identity,
+  xform = NULL,
   model = NULL,
   average = TRUE,
   plot = TRUE,
@@ -40,7 +40,7 @@
   ...,
   nec = TRUE,
   ecx = FALSE,
-  xform = identity,
+  xform = NULL,
   group = NULL,
   group_aes = c("line", "colour")
 )
@@ -50,7 +50,7 @@
   ...,
   nec = TRUE,
   ecx = FALSE,
-  xform = identity,
+  xform = NULL,
   group = NULL,
   group_aes = c("line", "colour")
 )
@@ -66,8 +66,8 @@
 
 \item{ecx}{Should ECx values be added to the plot? Defaults to FALSE..}
 
-\item{xform}{A function to apply to the returned estimated concentration
-values.}
+\item{xform}{\code{NULL}, the default, or a function. See
+\code{\link{ggbnec_data}}.}
 
 \item{group}{An optional character string naming a categorical variable in
 the data supplied to \code{\link{bnec}}. Observations are joined through

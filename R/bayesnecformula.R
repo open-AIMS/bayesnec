@@ -57,12 +57,20 @@
 #' it or because the corresponding Stan function is supplied through
 #' \code{stanvars}. Otherwise, transform the predictor in the data first.
 #' 
-#' A predictor written with a leading minus, as in \code{crf(-x)} or
-#' \code{crf(-log(x))}, is refused. A model formula reads that minus as the
-#' operator that removes a term, so the model would be fitted on \code{x} or
-#' \code{log(x)}. This also applies to \code{crf(+(-x))}, where a unary plus
-#' encloses the negation. Write the negation inside \code{I()}, as in
-#' \code{crf(I(-x))}, or compute it into a column of the data.
+#' The predictor is read as a model formula reads it. Parentheses around it
+#' and a unary plus are dropped, so \code{crf((log(x)))} is
+#' \code{crf(log(x))}. A formula operator at its top level, as in
+#' \code{crf(-x)}, \code{crf(x - 1)}, \code{crf(log(x) + 1)} or
+#' \code{crf(x^2)}, is refused, because a model formula reads it as formula
+#' syntax, not as arithmetic: the model would be fitted on \code{x}, or on
+#' \code{log(x)}. The operators are \code{+}, \code{-}, \code{*}, \code{/},
+#' \code{:}, \code{^} and \code{\%in\%}. Where arithmetic is meant, write it
+#' inside \code{I()}, as in \code{crf(I(x - 1))} or \code{crf(I(-x))}, or
+#' compute it into a column of the data. Stan has no \code{I()}, so the
+#' formula passed to \pkg{brms} holds the expression inside it, in
+#' parentheses, including where \code{I()} is nested inside another call.
+#' An operator inside a function call is arithmetic and is
+#' accepted, as in \code{crf(log(x + 1))}.
 #'
 #' \bold{Group-level terms: \code{glterms}}
 #' 
@@ -540,10 +548,13 @@ check_formula.bayesnecformula <- function(formula, data,
   # error naming neither the column nor the term.
   check_syntactic_names(formula)
   # Second, because the same text is written into the formula given to
-  # model.frame(), where a leading minus is the operator that removes a term.
-  check_crf_leading_minus(formula)
-  rhs_calls <- gsub("\\) \\+ ", ") impossiblestr ", deparse1(rhs(formula)))
-  split_rhs_calls <- strsplit(rhs_calls, " impossiblestr ")[[1]]
+  # model.frame(), where an operator at the top of the predictor is formula
+  # syntax.
+  check_crf_formula_operator(formula)
+  # Split the parsed terms, not the deparsed text: a text split on ") + "
+  # breaks a predictor such as crf(sqrt(log(x) + 1)).
+  split_rhs_calls <- vapply(rhs_term_calls(rhs(formula)), deparse1,
+                            character(1))
   x_str <- grep("crf(", split_rhs_calls, fixed = TRUE, value = TRUE)
   if (length(x_str) == 0) {
     stop("You must specify which non-linear function to use with crf.",
@@ -713,6 +724,25 @@ check_formula.bayesnecformula <- function(formula, data,
   formula
 }
 
+#' The terms of a formula's right-hand side
+#'
+#' @param rhs_call The right-hand side of a formula, as a call.
+#'
+#' @return A \code{\link[base]{list}} of calls and symbols, one for each term
+#' joined by a top-level \code{+}, in the order written. A term in
+#' parentheses, such as \code{(nec | group)}, is kept whole.
+#'
+#' @noRd
+rhs_term_calls <- function(rhs_call) {
+  rhs_terms <- list()
+  while (is.call(rhs_call) && length(rhs_call) == 3 &&
+           identical(rhs_call[[1]], quote(`+`))) {
+    rhs_terms <- c(list(rhs_call[[3]]), rhs_terms)
+    rhs_call <- rhs_call[[2]]
+  }
+  c(list(rhs_call), rhs_terms)
+}
+
 #' Refuse a formula variable whose name is not a syntactic R name
 #'
 #' @param formula An object of class \code{\link{bayesnecformula}}.
@@ -734,14 +764,7 @@ check_formula.bayesnecformula <- function(formula, data,
 #' @noRd
 check_syntactic_names <- function(formula) {
   lhs_parts <- hurdle_lhs_parts(lhs(formula))
-  rhs_call <- rhs(formula)
-  rhs_terms <- list()
-  while (is.call(rhs_call) && length(rhs_call) == 3 &&
-           identical(rhs_call[[1]], quote(`+`))) {
-    rhs_terms <- c(list(rhs_call[[3]]), rhs_terms)
-    rhs_call <- rhs_call[[2]]
-  }
-  rhs_terms <- c(list(rhs_call), rhs_terms)
+  rhs_terms <- rhs_term_calls(rhs(formula))
   term_vars <- function(term) {
     # Check only the predictor of crf(), not its model argument: a model set
     # held in a variable is evaluated by get_model_from_formula() and never
@@ -795,24 +818,21 @@ check_syntactic_names <- function(formula) {
        call. = FALSE)
 }
 
-#' Refuse a crf() predictor written with a leading minus
+#' Refuse a crf() predictor with a formula operator at its top level
 #'
 #' @param formula An object of class \code{\link{bayesnecformula}}.
 #'
-#' @details The text of the predictor is read in two ways. The model frame
-#' and the \pkg{brms} formula write it into a formula, where a leading minus
-#' is the operator that removes a term, so \code{crf(-x)} would be fitted on
-#' \code{x}. \code{sub_x_transformation()} evaluates the same text as a
-#' negation, so estimates would be reported on the scale of \code{-x}. Under
-#' \code{I()} the minus is a negation on every path, so that form is the
-#' remedy the refusal offers.
+#' @details Every path reads the predictor as a model formula does, where an
+#' operator at its top level is formula syntax, not arithmetic: \code{x - 1}
+#' and \code{x^2} are read as \code{x}, and the minus in \code{-x} removes the
+#' term. The model would then be fitted on an expression the user did not
+#' write. Under \code{I()}, or inside a function call, the operator is
+#' arithmetic, so the refusal offers the \code{I()} form.
 #'
-#' Only a negation outside \code{I()} is tested, once enclosing parentheses
-#' and unary pluses are removed, because the formula removes them as well:
-#' \code{crf((-x))} and \code{crf(+(-x))} are both fitted on \code{x}. A minus
-#' inside a call, as in \code{crf(log(x - 1))}, is read the same way on every
-#' path. A binary minus at the top, as in \code{crf(log(x) - 1)}, is not
-#' refused here.
+#' Enclosing parentheses and unary pluses are removed before the test, because
+#' the formula removes them as well. A binary operator in a predictor naming
+#' more than one variable is left to \code{check_formula()}, which refuses
+#' the predictor for naming them.
 #'
 #' Called beside \code{check_syntactic_names()}, wherever that is called, so
 #' that it is raised once per call, before anything is fitted.
@@ -822,7 +842,7 @@ check_syntactic_names <- function(formula) {
 #' @importFrom formula.tools rhs
 #'
 #' @noRd
-check_crf_leading_minus <- function(formula) {
+check_crf_formula_operator <- function(formula) {
   rhs_call <- rhs(formula)
   # Parentheses around a whole crf() term also disappear when the model frame
   # reads the formula. Inspect inside them so (crf(-x)) cannot bypass the check.
@@ -854,19 +874,26 @@ check_crf_leading_minus <- function(formula) {
     }
     expr
   }
-  negated <- x_arg
+  top <- x_arg
   plus_wrapped <- FALSE
   repeat {
-    negated <- unparen(negated)
-    if (!(is.call(negated) && length(negated) == 2 &&
-          identical(negated[[1]], quote(`+`)))) {
+    top <- unparen(top)
+    if (!(is.call(top) && length(top) == 2 &&
+          identical(top[[1]], quote(`+`)))) {
       break
     }
     plus_wrapped <- TRUE
-    negated <- negated[[2]]
+    top <- top[[2]]
   }
-  if (!(is.call(negated) && identical(negated[[1]], quote(`-`)) &&
-          length(negated) == 2)) {
+  if (!is.call(top) || !is.name(top[[1]])) {
+    return(invisible(NULL))
+  }
+  negated <- identical(top[[1]], quote(`-`)) && length(top) == 2
+  # The operators stats::terms() reads as formula syntax.
+  formula_ops <- c("+", "-", "*", "/", ":", "^", "%in%")
+  operator <- length(top) == 3 && as.character(top[[1]]) %in% formula_ops &&
+    length(all.vars(top)) == 1
+  if (!negated && !operator) {
     return(invisible(NULL))
   }
   # The remedy is the user's own term with the predictor wrapped in I(), in the
@@ -882,16 +909,31 @@ check_crf_leading_minus <- function(formula) {
     match("", arg_names)
   }
   remedy <- term
-  remedy[[slot + 1L]] <- call("I", negated)
-  stop("The predictor in ", deparse1(term),
-       if (plus_wrapped) " contains a negation outside I()" else
-         " is written with a leading minus",
-       ", which a model formula reads as the operator that removes a",
-       " term, so the model would be fitted on ",
-       deparse1(unparen(negated[[2]])), ", not on ", deparse1(negated),
-       ". Write the negation inside I(), as in ",
-       deparse1(remedy), ", or compute it into a column of the data and name",
-       " that column in crf().", call. = FALSE)
+  remedy[[slot + 1L]] <- call("I", top)
+  if (negated) {
+    stop("The predictor in ", deparse1(term),
+         if (plus_wrapped) " contains a negation outside I()" else
+           " is written with a leading minus",
+         ", which a model formula reads as the operator that removes a",
+         " term, so the model would be fitted on ",
+         deparse1(unparen(top[[2]])), ", not on ", deparse1(top),
+         ". Write the negation inside I(), as in ",
+         deparse1(remedy), ", or compute it into a column of the data and",
+         " name that column in crf().", call. = FALSE)
+  }
+  # terms() refuses some of these forms outright, such as x * 2, and then
+  # there is no single expression to name.
+  reading <- tryCatch(formula_x_reading(top), error = function(e) NULL)
+  stop("The predictor in ", deparse1(term), " has the formula operator ",
+       as.character(top[[1]]), " at its top level, which a model formula",
+       " reads as formula syntax, not as arithmetic",
+       if (!is.null(reading)) {
+         paste0(", so the model would be fitted on ", deparse1(reading),
+                ", not on ", deparse1(top))
+       },
+       ". Where arithmetic is meant, write it inside I(), as in ",
+       deparse1(remedy), ", or compute it into a column of the data and",
+       " name that column in crf().", call. = FALSE)
 }
 
 #' @rdname model.frame
@@ -992,10 +1034,65 @@ simplify_formula <- function(formula, data, ...) {
        pop_vars = pop_vars, group_vars = r_vars)
 }
 
+#' Write the crf() predictor into an equation's right-hand side
+#'
+#' @param new_x The predictor's column name in the model frame, such as
+#' \code{"log(x)"} or \code{"I(x - 1)"}.
+#' @param brms_rhs The equation's right-hand side as text, written in
+#' \code{x}.
+#'
+#' @return A \code{\link[base]{character}} string.
+#'
 #' @noRd
-#' @importFrom formula.tools lhs
 substitute_x_in_formula <- function(new_x, brms_rhs) {
-  gsub("[x](?![[:alpha:]])", new_x, brms_rhs, perl = TRUE)
+  gsub("[x](?![[:alpha:]])", brms_x_text(new_x), brms_rhs, perl = TRUE)
+}
+
+#' The crf() predictor as text for a brms formula
+#'
+#' @param new_x The predictor's column name in the model frame, such as
+#' \code{"log(x)"} or \code{"I(x - 1)"}.
+#'
+#' @details \pkg{brms} writes a non-linear formula into the Stan program as it
+#' stands, and Stan has no \code{I()}, so the expression inside \code{I()} is
+#' written instead, including when \code{I()} is nested inside another call.
+#' An expression that is neither a name nor a function call
+#' is put in parentheses, so that the equation cannot regroup it: written
+#' bare into \code{(x - nec)}, \code{x > 1} would read as
+#' \code{x > (1 - nec)}.
+#'
+#' Leave a name or a function call as it is. \code{stored_model_survival()}
+#' and \code{identify_dpar_model()} match a stored fit's formula against one
+#' built here, so added parentheses would match no fit made before them.
+#'
+#' @return A \code{\link[base]{character}} string.
+#'
+#' @noRd
+brms_x_text <- function(new_x) {
+  unwrapped <- FALSE
+  strip_i <- function(expr) {
+    if (!is.call(expr)) {
+      return(expr)
+    }
+    if (identical(expr[[1]], quote(I)) && length(expr) == 2) {
+      unwrapped <<- TRUE
+      return(call("(", strip_i(expr[[2]])))
+    }
+    for (i in seq_along(expr)[-1]) {
+      expr[[i]] <- strip_i(expr[[i]])
+    }
+    expr
+  }
+  expr <- strip_i(str2lang(new_x))
+  # Keep grouping inside the expression, but use the existing outer form.
+  while (is.call(expr) && identical(expr[[1]], quote(`(`))) {
+    expr <- expr[[2]]
+  }
+  fun <- if (is.call(expr) && is.name(expr[[1]])) as.character(expr[[1]])
+  if (is.name(expr) || (!is.null(fun) && identical(make.names(fun), fun))) {
+    return(if (unwrapped) deparse1(expr) else new_x)
+  }
+  paste0("(", deparse1(expr), ")")
 }
 
 #' @noRd
@@ -1103,13 +1200,16 @@ wrangle_model_formula <- function(model, formula, data, family = NULL,
 #' @noRd
 #' @importFrom stats update terms
 single_model_formula <- function(formula, model) {
+  # update() drops attributes, so carry the internal ones across by hand.
   internal_truncation <- attr(formula, "bayesnec_internal_truncation")
+  tested_range <- attr(formula, "bayesnec_tested_range")
   x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
   x_term <- eval(parse(text = x_str))
   new_crf <- paste0("crf(", x_term, ", model = \"", model, "\")")
   to_eval <- paste0("update(formula, ~ . - ", x_str, " + ", new_crf, ")")
   formula <- eval(parse(text = to_eval))
   attr(formula, "bayesnec_internal_truncation") <- internal_truncation
+  attr(formula, "bayesnec_tested_range") <- tested_range
   bayesnecformula(formula)
 }
 
@@ -1518,8 +1618,8 @@ compose_level_formula <- function(formula, data, level_spec) {
     pars <- names(tmpl[[2]])
     map <- setNames(lapply(paste0(pars, tag), as.name), pars)
     map[["x"]] <- str2lang(
-      paste0("(", ind, " * (", new_x, ") + (1 - ", ind, ") * ",
-             format(level_spec$x_ref[[l]], digits = 17), ")")
+      paste0("(", ind, " * (", brms_x_text(new_x), ") + (1 - ", ind,
+             ") * ", format(level_spec$x_ref[[l]], digits = 17), ")")
     )
     terms <- c(terms,
                paste0(ind, " * (", deparse1(rename_syms(tmpl[[1]][[3]], map)),
@@ -2017,10 +2117,10 @@ make_brmsformula <- function(formula, data, family = NULL) {
   # Also called in check_formula(), which this function reaches only through
   # model.frame() inside the loop. single_model_formula() runs first there and
   # rebuilds the crf() term from deparsed text, so a non-syntactic predictor
-  # would fail as a parse error before the refusal. The leading-minus refusal
-  # is placed beside it.
+  # would fail as a parse error before the refusal. The formula operator
+  # refusal is placed beside it.
   check_syntactic_names(formula)
-  check_crf_leading_minus(formula)
+  check_crf_formula_operator(formula)
   all_models <- get_model_from_formula(formula)
   out <- list()
   for (i in seq_along(all_models)) {

@@ -69,7 +69,9 @@ contents of a \code{\link[brms]{brmsfit}} object with the addition of
 an R2. In the case of a \code{\link{bayesmanecfit}} object, summary
 displays the family distribution information, model weights and averaging
 method, and Bayesian R2 estimates for each individual model.
-Both report the number of divergent transitions after warmup for each model.
+Both report the number of divergent transitions after warmup for each model,
+and the installation of \pkg{bayesnec} that fitted it (see
+\code{\link{bnec_version}}).
 Warning messages are also printed to screen in case
 model fits are not satisfactory with regards to their Rhats or their
 divergent transitions.
@@ -104,10 +106,12 @@ abbreviation such as \code{x_ran} is ignored without a message.
 
 The no-effect estimate is read from the posterior stored when the model was
 fitted, and is censored at the bound of the prediction grid stored then, so
-a range supplied now cannot change it. An \code{xform} supplied in
-\code{...} is applied to those stored draws and to the bound they are
-censored at, as \code{\link{nec}} applies it, so the no-effect row and the
-ECx rows are reported on one scale.
+a range supplied now cannot change it. Where \code{crf()} transforms the
+predictor inline, that posterior is on the transformed scale, and the row is
+returned on the recorded scale as \code{\link{nec}} returns it. An
+\code{xform} supplied in \code{...} is applied to the stored draws and to
+the bound they are censored at instead, as \code{\link{nec}} applies it,
+so the no-effect row and the ECx rows are reported on one scale.
 
 \code{posterior = TRUE} is refused. A summary reports each estimate as
 quantiles; the draws themselves are returned by \code{\link{nec}},

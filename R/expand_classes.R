@@ -426,7 +426,7 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   object <- mod_fits
   formula <- formula[success_models]
   # Classify by each equation's parameters, as nec() does, not by group
-  # membership: ecxflat is in neither mod_groups$ecx nor mod_groups$nec.
+  # membership or name.
   has_nec <- vapply(names(object), function(m) {
     has_nec_parameter(m, object[[m]]$fit)
   }, logical(1))

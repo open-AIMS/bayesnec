@@ -102,8 +102,8 @@
   asymptote of the curve. The default `TRUE` is the assumption both default
   prior sets are built on and leaves every generated entry unchanged, which the
   test suite pins against the strings the release produced. `FALSE` states that
-  the series stopped short, and changes the `bot` prior and the initial-value
-  search and nothing else. Both default sets place `bot` at the observed
+  the series stopped short, and changes the `bot` prior, the initial-value
+  search and the upper bound of the `nec` and `ec50` priors (#483). Both default sets place `bot` at the observed
   response over the highest concentrations, so on such a design the prior is
   located above the true value and is at its narrowest exactly where `bot` is
   least identified: on the flattest of #386's simulated designs the prior CDF at
@@ -786,7 +786,12 @@
 
 ## Default priors
 
-- The default `nec` and `ec50` priors are no longer truncated to the range of
+- Revised by #483, under "Bug fixes": the default `nec` and `ec50` priors keep
+  the tested-range bound under `asymptote_observed = TRUE`, and
+  `asymptote_observed = FALSE` removes its upper end only. This entry describes
+  the removal as #393 made it, for every fit.
+
+  The default `nec` and `ec50` priors are no longer truncated to the range of
   the tested predictor. Both entries were built with `lb = min(x)` and
   `ub = max(x)`, so a threshold above the highest concentration tested was
   outside the prior support rather than in its tail: the posterior could place
@@ -1529,13 +1534,11 @@
   `ecnsec(h, nsec = 2, xform = log)` returned the logarithm of the percentage,
   and an NSEC from a pair fitted with an inline-transformed predictor had to be
   put on the recorded scale by hand before it was passed. On a pair fitted with
-  `crf(log(x))`, `ecnsec(h, nsec = nsec(h)[[1]], xform = exp)` now reads the
-  curve at the concentration that NSEC names, as it does on a `bayesnecfit`.
-  A call that supplies an `xform` other than `identity` is warned of the
-  change in this release. To transform the percentage, apply the function to
-  the value `ecnsec()` returns. Where `crf()` transforms the predictor inline,
-  the message is the one the other classes raise, naming the `xform` to give
-  `ecnsec()` (#437).
+  `crf(log(x))`, `ecnsec(h, nsec = nsec(h)[[1]])` now reads the curve at the
+  concentration that NSEC names, as it does on a `bayesnecfit`. A call that
+  supplies an `xform` other than `identity` is warned of the change in this
+  release. To transform the percentage, apply the function to the value
+  `ecnsec()` returns (#437).
 
 - `ecnsec()` on a `bayesnecfit` or a `bayesmanecfit` compares each posterior
   draw of the control with the same draw's value of the curve at `nsec`, as
@@ -1817,9 +1820,9 @@
 
   **`xform` applies to `nec` and `ec50` and to no other parameter.** Those two
   are measured on the predictor axis, so where `crf()` transforms the predictor
-  inline they are on the transformed scale, as the values `nec()` and `ecx()`
-  return are, and a message says so where `xform` was left at its default. The
-  others are response levels or shape parameters, on which a transformation of
+  inline they are sampled on the transformed scale, and are returned on the
+  recorded scale unless `xform` is supplied, as `nec()` returns its estimate.
+  The others are response levels or shape parameters, on which a transformation of
   the predictor has no meaning. The link of each block is reported in a `link`
   column: `bnec()` assigns `link = "identity"`, and where a caller named one
   instead, `top` and `bot` are on the link scale.
@@ -1928,14 +1931,11 @@
   `plot()` draw it as a horizontal line, with the censored estimates labelled
   as bounds.
 
-  `ecxflat` is available by name only, as in `crf(x, "ecxflat")` or
-  `crf(x, c("ecxflat", "nec4param"))`, and belongs to no model group, so
-  `models()`, `model = "all"` and every other group leave it out and no
-  existing fit or default set changes. It is planned to join `all`, `ecx` and
-  `decline` at the 3.0 release. Adding it there changes every model-averaged
-  result: where it takes appreciable model weight, a constant describes the
-  data about as well as the declining curves, and its draws enter the
-  model-averaged ECx and NSEC as censored above the range.
+  Revised by #485, under "Bug fixes": `ecxflat` belongs to the `all`, `ecx`
+  and `decline` model groups, so the default set includes it. Where it takes
+  appreciable model weight, a constant describes the data about as well as the
+  declining curves, and its draws enter the model-averaged ECx and NSEC as
+  censored above the range.
 
   `bnec()` fits `ecxflat` alone to a `bernoulli`, `binomial`, `beta_binomial`
   or `beta` response with every observation at one bound, whatever model set
@@ -2027,6 +2027,30 @@
   for each level; the summary of a `bnec_hurdle()` fit reports neither Rhat
   nor divergences, and is unchanged. `vignette("example2")` stated that the
   summary would warn of divergent transitions, which it did not (#447).
+
+- **`bnec_version()`** reports the installation of `bayesnec` that fitted each
+  equation of a fitted object: the version, where the installation came from,
+  and the commit it was built from where the installation records one, with
+  the versions of R, `brms` and the Stan interface. The version alone does not
+  identify the code, because it is raised by hand at intervals and builds from
+  many commits report the same number. The record is read from the installed
+  `DESCRIPTION` when an equation is fitted, and stored as an attribute of the
+  fitted object. An installation from GitHub by `remotes` or `pak` records its
+  commit. A CRAN installation records the source `"CRAN"` and no commit, and a
+  local one, by `R CMD INSTALL`, `devtools::install()` or
+  `devtools::load_all()`, records the source `"local"` and no commit.
+  `bnec()`, `bnec_hurdle()`, `bnec_group()`, `bnec_joint()` and `update()`
+  record the running installation for every equation they fit, and `amend()`
+  for the equations it adds. `amend()`, `c()`, `+` and `pull_out()` keep the
+  record of each equation they retain, so a combined set can hold equations
+  fitted by different installations; `c()`, `+` and `amend()` then say so in a
+  message. `summary()` prints the record, on one line where every equation
+  shares it and on one line per equation where they differ, and so does
+  `print()` of a `bayesnecfit`, a `bayesmanecfit` and a `bayesnecjointfit`. An
+  object fitted before this change, including the example fits shipped with
+  the package, reports the source `"unknown"`. Under a parallel plan, each
+  equation records the installation and R version of the worker that fitted
+  it, which can differ from the calling session (#464).
 
 ## Bug fixes
 
@@ -2547,36 +2571,6 @@
   zero". Supplying an `xform` took a different branch and was unaffected, which
   is why the failure was specific to the default (#160, #161).
 
-- Where `crf()` transforms the predictor inline, as in
-  `crf(log(concentration))`, `nec()`, `ecx()`, `nsec()`, `ecnsec()` and
-  `compare_estimates()` now say so in a message once
-  per call. These functions return values on the transformed scale unless
-  `xform` is supplied, while `autoplot()` draws the recorded scale, and nothing
-  in the returned number said which scale it was on. A log-scale estimate that
-  falls inside the tested range reads as a concentration. The message names the
-  transformation and the `xform` that inverts it: `xform = exp` for `log()`,
-  `function(x) x^2` for `sqrt()` and `function(x) exp(x) - 1` for `log(x + 1)`.
-  Where no closed form is known it asks for the inverse of the transformation
-  it names. `crf(I(x))` is not a transformation and raises nothing.
-
-  It is raised once for a model set, a group, a hurdle pair or a comparison,
-  not once for each equation, level, component or fit. It is not raised where
-  an `xform` is supplied, by name or by position; an explicit
-  `xform = identity` is treated as no `xform`, and raises it.
-  `compare_estimates()` takes no `xform`, so its message names the estimators
-  that do. `summary(ecx = TRUE)` raises it once for its ECx rows. `plot()` and
-  `autoplot()` do not raise it, because they put every estimate on the axis
-  scale themselves. `ecnsec()` returns a percentage, so its message is about
-  the `nsec` it is given and names the `xform` that puts that value on the
-  recorded scale, on a `bayesnechurdlefit` as on every other class (#437).
-
-  `curve_params()` already said where `nec` and `ec50` were on a transformed
-  scale. Its message now names the inverse to pass, where it said only "pass
-  the inverse as xform". It now recognises `crf(-x)`, which it missed, and no
-  longer reports `crf(I(x))`. No returned value changes: making the recorded
-  scale the default changes every reported value from such a fit and is left to
-  the 3.0 release (#299).
-
 - `compare_estimates()` and `compare_posterior()` no longer void a comparison
   in which any draw is censored. A single unreached draw in either posterior
   previously made `prob` `NA` for the whole comparison, and silently, the
@@ -3000,14 +2994,13 @@
   observed points on the recorded scale, the scale of the prediction grid and
   of the fitted curve. The points were drawn on the transformed scale, so they
   and the curve did not overlay. `plot()` also draws the N(S)EC line on the
-  recorded scale. `nec()` returns the estimate on the transformed scale, so the
-  line is returned through `xform` where one is supplied, and otherwise by
-  inverting the transformation on the prediction grid, as `plot()` does for a
-  `bayesnecfit`. `xform` is then not applied to the points or the curve, also
-  as for a `bayesnecfit`. A predictor that `crf()` does not transform is drawn
-  as before. The automatic inverse also preserves estimates identified over
-  a stored prediction range beyond the observations, including where the
-  plotted range is narrower (#487).
+  recorded scale, at the estimate `nec()` returns by default, or at the
+  estimate on the transformed scale put through `xform` where one is supplied.
+  `xform` is then not applied to the points or the curve, as for a
+  `bayesnecfit`. A predictor that `crf()` does not transform is drawn
+  as before. An estimate identified over a stored prediction range beyond the
+  observations is drawn where it lies, including where the plotted range is
+  narrower (#487).
 
 - `summary()` on a `bayesnechurdlefit` names a Gamma growth family `Gamma`,
   as `bnec_hurdle()` names it when fitting. It printed `gamma`, the name
@@ -3039,6 +3032,193 @@
   dropping models, so later additions keep that equation. After an update
   changes the backend or algorithm, only `control` and `seed` supplied to
   that update are recorded, matching what `brms` reuses (#489).
+
+- On a `bayesnecjointfit` whose levels start at different concentrations,
+  `ecx()`, `nsec()` and `ecnsec()` now predict each level's control at that
+  level's own lowest concentration. They predicted it at the lowest
+  concentration of all levels together, which for a level observed from a
+  higher concentration lies below its data. Every estimate for such a level
+  that is defined relative to the control, which excludes only
+  `ecx(type = "direct")`, was measured from that prediction. Inside `nsec()`
+  the reference was read there, while the search for the NSEC started at the
+  level's own lowest concentration. What is read through these functions
+  changes with them: `nec(no_effect = TRUE)` on a level fitted with a smooth
+  equation, `exceedance()` under `estimate = "nsec"` or `"ecx"`, and the NSEC
+  and ECx annotations of `autoplot()`. A refit whose levels share their lowest
+  concentration, as most designs do, is unchanged (#500).
+
+- `update()` on a `bayesnechurdlefit` checks a supplied `family` as
+  `bnec_hurdle()` checks `family_growth`, before either component is refitted.
+  A family `bnec_hurdle()` refuses for the growth component, such as
+  `hurdle_gamma` or `zero_inflated_poisson`, is refused with the same message.
+  It was passed to `brms` as the growth family. A `poisson` or `negbinomial`
+  family needs `brms` 2.23.2 or later, as in `bnec_hurdle()`, and the growth
+  component is refitted with `trunc(lb = 1)`, the zero-truncated likelihood
+  `bnec_hurdle()` fits to the survivors. It was refitted without the
+  truncation on any version of `brms`, as if a zero were possible among
+  responses that hold none, and nothing was reported. A `cens()` term with a
+  count family, and a `disp()` term on a column other than the predictor with
+  `negbinomial`, are refused as `bnec_hurdle()` refuses them. A family that is
+  not a count family, supplied for a count growth component, is refitted
+  without the truncation, which the refit kept. Without `family`, a growth
+  component fitted with the truncation keeps it and needs the same version of
+  `brms` (#503).
+
+- `plot()` on a `bayesnechurdlefit` suppresses the messages of the `nec()`
+  call it makes to place the N(S)EC line on each panel, as `summary()`
+  suppresses them for its table. Where a component is a model set holding a
+  smooth equation, or the combined value is approximate, each message was
+  printed once per panel. Warnings are still printed (#506).
+
+- The default `nec` and `ec50` priors are bounded to the tested range of the
+  predictor again, from its lowest value to its highest, under the default
+  `asymptote_observed = TRUE` and under both values of `prior_type`.
+  `asymptote_observed = FALSE` removes the upper bound and keeps the lower one.
+  The bound had been removed for every fit, so the two values of
+  `asymptote_observed` built the same `nec` and `ec50` priors, and beside a
+  default `bot` prior that assumes the series reached the lower asymptote the
+  `"uninformative"` threshold priors placed 2.5 per cent or more of their mass
+  above the highest concentration. On a simulated Beta response at six
+  concentrations from 0 to 16, `get_priors()` now returns `ub = 16` for `nec`
+  and `ec50` under the default and no upper bound under
+  `asymptote_observed = FALSE`, with the same prior string under both.
+
+  The lower bound is the lowest value tested under both settings. On a series
+  with a zero control it is 0, as before. On a series without one it is the
+  lowest dose, where the lognormal entry had a lower bound of 0. A predictor
+  supplied already logged takes a normal entry, which had no bound and now takes
+  the tested range under the default and its lower end under the declaration.
+  A predictor with a single distinct value takes no upper bound, because a bound
+  equal to the lower one leaves no support. The growth component of
+  `bnec_hurdle()` is fitted to survivors only, and its `nec` and `ec50` priors
+  are bounded by the whole concentration series rather than by the survivors'
+  range, which is the range its estimates are read over. The series is
+  recorded on the growth component's formula, so `amend(add = )` bounds an
+  added equation in the same way. `get_priors()` uses that recorded range
+  when it builds priors from the growth formula and survivors' data.
+
+  Results change for a fit made under the default. Its `nec` or `ec50`
+  posterior cannot exceed the highest concentration tested, which was also the
+  case in version 2.1.4 and earlier, so a threshold the data place above the
+  series is held at that concentration rather than reported as censored beyond
+  it. Where `extrapolate` on `nec()` or `nsec()` re-evaluates such a fit, its
+  message that the prior bounds the posterior now names
+  `asymptote_observed = FALSE`. The report that a response is still declining
+  at the top of the series describes the threshold priors the call builds, and
+  its advice to declare `asymptote_observed = FALSE` states that the
+  declaration removes the upper bound. Four published datasets of four to
+  seven observations were fitted with and without the bound, with the Beta
+  family, the identity link, the `decline` set and seed 3866: without it,
+  sampler screening discarded more model weight on all four, 86.6 per cent
+  against 58.3 per cent on one of them. That comparison shows that the bound
+  changes sampling, not which setting gives the better estimate. `update()`
+  reuses the priors of the fit it refits, so a fit made without the bound keeps
+  its prior when updated. The precompiled vignettes were rendered without the
+  bound, and their numbers change at the next precompile (#483).
+
+- A `crf()` predictor is read one way on every path, as a model formula reads
+  it. A formula operator at the top of the predictor, as in `crf(x - 1)`,
+  `crf(log(x) - 1)`, `crf(log(x) + 1)` or `crf(x^2)`, is now refused, with a
+  message that names the expression and gives it written inside `I()`, as in
+  `crf(I(x - 1))`. The operators are `+`, `-`, `*`, `/`, `:`, `^` and `%in%`.
+  The model frame and the `brms` formula read such an operator as formula
+  syntax, so `crf(x - 1)` and `crf(x^2)` were fitted on `x`, and
+  `crf(log(x) - 1)` on `log(x)`. `ecx()`, `nsec()` and the scale message read
+  the same predictor as arithmetic, so the ECx of `crf(x - 1)` was reported
+  one unit low and that of `crf(x^2)` on the scale of `x^2`. `crf(log(x) + 1)`
+  was refused by a parse error that named neither the term nor the cause. The
+  refusal is raised once per call, before anything is fitted, by the functions
+  that refuse `crf(-x)`. A fit made with such a predictor by an earlier
+  version is refused by the functions that rebuild its model frame, among
+  them `ecx()`, `nsec()` and `autoplot()`, and `nec()` reads it on the scale
+  it was fitted on. Parentheses around the predictor and a unary plus are
+  dropped on every path, as the formula drops them: `crf((log(x)))` was fitted
+  on `log(x)` while its estimates were reported on the scale of `x`, with no
+  scale message, and it is now read as `crf(log(x))`. An operator inside a
+  function call or under `I()` is accepted, and one inside a nested call, as
+  in `crf(sqrt(log(x) + 1))`, no longer fails with the same parse error.
+  Stan has no `I()`, so a predictor written inside it is now passed to `brms`
+  as the expression inside it, in parentheses: `crf(I(log(x) + 1))` is
+  written into the curve as `(log(x) + 1)`. The model frame and the
+  estimators keep the `I()`. Nested `I()` calls are removed from the Stan
+  expression too, so `crf(log(I(x - 1)))` compiles as `log((x - 1))`.
+  `crf(I(-x))`, the form the refusal of `crf(-x)`
+  offers, and `crf(I(x - 1))` previously gave a Stan program that failed to
+  compile, and both now compile. Any predictor that is neither a column name
+  nor a function call is written in parentheses, so that the curve's own
+  terms cannot regroup it. The formula passed to `brms` for `crf(x)`,
+  `crf(log(x))` and other column names or function calls without `I()` is unchanged
+  (#479).
+
+- **Where `crf()` transforms the predictor inline, the estimates are returned
+  on the recorded scale by default.** `xform` now defaults to `NULL` in `nec()`,
+  `ecx()`, `nsec()`, `ecnsec()`, `curve_params()`, `exceedance()`,
+  `ggbnec_data()`, `autoplot()` and `plot()`, on every class. On a fit to
+  `crf(log(concentration))`, `nec(fit)` returns a concentration where it
+  returned a log concentration, and so do the no-effect row of `summary()`, its
+  ECx rows, `exceedance()`, which now reads `threshold` as a concentration, and
+  `compare_estimates()` and `compare_posterior()`, which take no `xform`. On a
+  fit whose predictor is a column, `NULL` gives what `identity` gave, and
+  nothing changes. **A call that passes `xform` is unaffected**: the function
+  is applied to the estimate on the scale the model was fitted on, as before,
+  so `nec(fit, xform = exp)` returns the numbers it returned, and
+  `xform = identity` returns the fitted scale.
+
+  `ecx()` and `nsec()` search the curve on a grid of recorded concentrations,
+  so under the default they no longer put the estimate through the
+  transformation, and no inverse is involved. `nec()`, `curve_params()` and the
+  no-effect row of `summary()` read a parameter sampled on the fitted scale and
+  invert it: exactly for `log`, `log10`, `log2`, `log1p`, `sqrt` and `exp` of
+  the predictor, alone or shifted by a constant, and otherwise by linear
+  interpolation on the prediction grid, refined where the grid is coarse on the
+  fitted scale. On `manec_example`'s grid of 1000 points, checked at 100,000
+  values along the fitted scale, the interpolation inverts `asinh(x)` to within
+  a relative error of 3.5e-7, and `log(x)` and `sqrt(x)`, forced through it, to
+  within 4.8e-7 and 1.2e-5. A draw that lies beyond that grid and is not
+  censored has no value to read off it: `nec()` stops and names the inverse to
+  pass, and `curve_params()` reports that parameter's row as `NA` with a
+  message. `ecnsec()` reads `nsec` on the recorded scale under `NULL`, so
+  `ecnsec(fit, nsec = nsec(fit)[1])` reads the curve at the NSEC on every fit.
+  `extrapolate`, `x_range` and the censoring bounds were already on the
+  recorded scale, and stay on the scale of the estimate returned.
+
+  The message reporting an estimate on the transformed scale is removed,
+  since the default no longer returns one. `plot()`, `autoplot()` and
+  `ggbnec_data()` drew on the recorded scale already, and now annotate the
+  numbers `nec()` and `ecx()` return by default. They inverted the stored
+  summary on the prediction grid before, which differed from the exact inverse
+  in the fifth significant figure and held an estimate beyond the grid at its
+  end. The precompiled vignettes were rendered under the old default, and the
+  values printed by `summary()` and `nec()` for an inline-transformed fit in
+  `example1`, `example8` and `example9` change at the next precompile (#299).
+
+- **The constant equation `ecxflat` belongs to the `all`, `ecx` and `decline`
+  model groups**, and to no other. `all`, the default set of `crf()`, now holds
+  24 equations, `ecx` 14 and `decline` 15, so every model-averaged result built
+  from one of those groups changes, the default `bnec()` call included. Every
+  equation of such a set used to fit a curve to a response that does not
+  change over the tested range; the model weights are now computed with a
+  constant mean among the candidates. Where `ecxflat` takes weight, its draws
+  enter the model-averaged ECx and N(S)EC in proportion to that weight. Each of
+  its ECx draws is censored above the prediction range, and so is each of its
+  NSEC draws except about a share `sig_val`, which take the control
+  concentration. On a response that declines it takes almost none: in the
+  test suite, `amend(manec_example, add = "ecxflat")` gives it a weight below
+  0.01. Its fit reports that its NSEC is censored above, as it does for
+  any equation whose curve does not reach the reference, so a call fitting one
+  of these groups prints that message once more.
+
+  `bot_free` and `zero_bounded` do not change, because `ecxflat` has no `bot`
+  but its mean does not decline. No family drops it, so `models()` given a
+  numeric range lists it, and `models(max_pars = 1)` returns it where it was an
+  error. Given one of these group names, `pull_out()` and `amend()` include
+  it, `bnec_group()` fits it at each level, and `bnec_hurdle()` fits it in
+  both components unless `model_survival` is supplied. A prior list named by
+  equation and written for one of these groups has no `ecxflat` entry, so
+  `bnec()` fits it with the default prior and says so in a message. The
+  precompiled vignettes were rendered with the earlier groups, and their
+  fitted output changes at the next precompile; the `example8` fit store is
+  refitted then, since its fits follow the model set (#485).
 
 ## Documentation
 

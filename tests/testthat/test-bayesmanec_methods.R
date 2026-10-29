@@ -157,7 +157,7 @@ test_that("summary behaves as expected", {
                                    "rhat_issues", "rhat_cutoff",
                                    "divergences", "divergence_cutoff",
                                    "fit_issues", "fit_ratio_cutoff",
-                                   "failed_models"))
+                                   "failed_models", "bnec_version"))
   expect_equal(summary.p$rhat_cutoff, 1.01)
   # and it is honoured rather than decorative
   expect_equal(suppressWarnings(summary(manec_example,

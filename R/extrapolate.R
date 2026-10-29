@@ -318,9 +318,11 @@ report_bounded_ne_prior <- function(priors, lims) {
     message("The nec prior on ", paste0(names(priors)[above], collapse = ", "),
             " is bounded above at ", signif(max(values), 3),
             ", so its posterior holds no draw above that value and ",
-            "extrapolate cannot report one. The fit itself is bounded: refit ",
-            "with a wider bound on the nec prior for the estimate to reach ",
-            "further.")
+            "extrapolate cannot report one. The fit itself is bounded. The ",
+            "default nec prior is bounded at the highest concentration ",
+            "tested: refit with asymptote_observed = FALSE, which removes ",
+            "that bound, or with a nec prior of your own, for the estimate ",
+            "to reach further.")
   }
   if (any(below)) {
     values <- vapply(priors[below], function(p) p$lb, numeric(1))
@@ -462,7 +464,8 @@ extrapolated_necfit_ne <- function(object, lims, bounds, sig_val, resolution) {
   }
   report_curve_read_lower_limit(object, lims)
   out <- nsec(object, sig_val = sig_val, resolution = resolution,
-              x_range = c(lims$lower, lims$upper), posterior = TRUE)
+              x_range = c(lims$lower, lims$upper), xform = identity,
+              posterior = TRUE)
   # Keep the draws and the censoring record only. The other attributes nsec()
   # attaches describe an NSEC calculation, not the NEC returned here.
   cens <- attr(out, "censored")
@@ -584,7 +587,8 @@ extrapolated_manec_ne <- function(object, lims, bounds, sig_val, resolution) {
     }
     out <- nsec(component_fit(object, success[i]), sig_val = sig_val,
                 resolution = resolution,
-                x_range = c(lims$lower, lims$upper), posterior = TRUE)
+                x_range = c(lims$lower, lims$upper), xform = identity,
+                posterior = TRUE)
     part <- as.numeric(out)[idx]
     attr(part, "censored") <- subset_censoring(attr(out, "censored"), idx)
     part

@@ -58,14 +58,15 @@ test_that("a gaussian response is reported where its top two levels differ", {
     check_response_flattened(bdat, gaussian(link = "identity")),
     "falls from 0.805 to 0.602 as x rises from 2 to 4"
   )
-  # What the report says about the threshold priors, pinned because it went
-  # stale once and nothing failed: it said they "exclude a threshold above the
-  # tested range", which stopped being true when #393 removed the truncation.
-  # This is the only sentence of the message that makes a claim about the
-  # priors rather than about the data, and it is the only one that was not
-  # already asserted here.
+  # Pin what the report says about the threshold priors. It is the one claim
+  # about the priors rather than the data, and it must follow the declaration.
   expect_message(
     check_response_flattened(bdat, gaussian(link = "identity")),
+    "priors are bounded to the tested range, so they exclude a threshold"
+  )
+  expect_message(
+    check_response_flattened(bdat, gaussian(link = "identity"),
+                             asymptote_observed = FALSE),
     "put a threshold above the tested range in their tail"
   )
   flat <- flat_bdat(y ~ crf(x, "nec4param"),
@@ -540,6 +541,30 @@ test_that("a complete prior for every sensitive row silences the report", {
   )
 })
 
+test_that("ecxflat in a set neither raises nor silences the report (#485)", {
+  # It estimates none of bot, nec or ec50, so it adds no sensitive row, and a
+  # prior complete for the other equations still silences the report.
+  fam <- gaussian(link = "identity")
+  expect_identical(uses_response_range_defaults(NULL, "ecxflat", fam),
+                   c(response = FALSE))
+  nec_prior <- brms::prior_string("normal(1, 1)", nlpar = "nec")
+  bot_prior <- brms::prior_string("normal(0, 1)", nlpar = "bot")
+  for (p in list(NULL, nec_prior, nec_prior + bot_prior)) {
+    expect_identical(
+      uses_response_range_defaults(p, c("nec4param", "ecxflat"), fam),
+      uses_response_range_defaults(p, "nec4param", fam)
+    )
+  }
+  for (grp in c("all", "ecx", "decline")) {
+    expect_identical(
+      uses_response_range_defaults(NULL, mod_groups[[grp]], hurdle_family),
+      uses_response_range_defaults(NULL, setdiff(mod_groups[[grp]], "ecxflat"),
+                                   hurdle_family),
+      info = grp
+    )
+  }
+})
+
 test_that("the two blocks of a hurdle fit are silenced separately", {
   response_prior <- brms::prior_string("normal(1, 1)", nlpar = "nec")
   survival_prior <- brms::prior_string("normal(1, 1)", nlpar = "hunec")
@@ -619,8 +644,8 @@ test_that("bnec_group reports every level once and marks the inner calls", {
 declare_advice <- "declare it with asymptote_observed = FALSE"
 
 test_that("a declared call is not advised to declare (#449)", {
-  # Only the advice to set asymptote_observed = FALSE is dropped. The rest of
-  # the report is unchanged.
+  # The advice to set asymptote_observed = FALSE is dropped, and the sentence
+  # on the threshold priors describes the priors the declaration builds.
   bdat <- flat_bdat(y ~ crf(x, "nec4param"),
                     data.frame(x = flat_x, y = declining_y))
   fam <- gaussian(link = "identity")
@@ -632,11 +657,12 @@ test_that("a declared call is not advised to declare (#449)", {
   expect_length(declared, 1)
   expect_match(undeclared, declare_advice, fixed = TRUE)
   expect_match(declared, still_declining, fixed = TRUE)
-  expect_false(grepl("asymptote_observed", declared, fixed = TRUE))
-  # The declared report is the undeclared one minus the advice.
+  expect_false(grepl(declare_advice, declared, fixed = TRUE))
   advice <- bayesnec:::declaration_advice(fam, declining_y)
   expect_true(nzchar(advice))
-  expect_identical(declared, sub(advice, "", undeclared, fixed = TRUE))
+  expect_match(advice, "removes the upper bound of the nec and ec50 priors",
+               fixed = TRUE)
+  expect_false(grepl(advice, declared, fixed = TRUE))
   expect_match(declared, "where information beyond the design is available.\n",
                fixed = TRUE)
   expect_identical(

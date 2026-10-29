@@ -45,7 +45,8 @@
 #' \code{\link{amend}}. \code{NULL} for an object fitted by a version that
 #' did not record it.
 #'
-#' @seealso \code{\link{bnec}}, \code{\link{models}}, \code{\link{check_data}}
+#' @seealso \code{\link{bnec}}, \code{\link{models}},
+#' \code{\link{check_data}}, \code{\link{bnec_version}}
 #'
 #' @examples
 #' \donttest{
