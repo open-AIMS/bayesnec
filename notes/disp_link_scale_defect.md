@@ -7,14 +7,22 @@ passing `family = Beta()` and `family = Gamma()` explicitly, which takes each
 family's *default* link rather than the one `bayesnec` would have chosen. The
 corrected finding is narrower, but the silent-failure mode it exposes is worse.
 
+The defect is fixed. PR #192 made `check_disp_spec()` (`R/disp_model.R`) refuse a
+variance function of the mean under any link other than identity. PR #260 (#256)
+then made `bnec()` assign the identity link to a family named without one, so
+`family = Beta()` and `family = Gamma()` now fit on identity. The measurements
+below were made before both changes.
+
 ## What actually happens
 
-`bnec()` forces `link = "identity"` when it **auto-selects** the family. A
-manually supplied family keeps whatever link the user gave it:
+When this note was written, `bnec()` forced `link = "identity"` only when it
+**auto-selected** the family, and a manually supplied family kept its
+constructor's default link. Since PR #260 it assigns identity unless the caller
+writes a link:
 
 ```r
 bnec(fvfm ~ crf(logc, "ecx4param"), data = d)                      # beta / identity
-bnec(fvfm ~ crf(logc, "ecx4param"), data = d, family = Beta())     # beta / logit
+bnec(fvfm ~ crf(logc, "ecx4param"), data = d, family = Beta())     # beta / identity; logit before PR #260
 bnec(fvfm ~ crf(logc, "ecx4param"), data = d,
      family = Beta(link = "identity"))                             # beta / identity
 ```

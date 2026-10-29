@@ -425,24 +425,27 @@ Times are AWST (+0800).
   decision is posted on #439, option A recommended: apply `xform` to the
   no-effect row, as the hurdle summary does.
 
-Defects found by the reviews outside the four items, recorded here and not
-filed as issues:
+Defects found by the reviews outside the four items, recorded here at the time
+rather than filed as issues. All six are fixed on `predev`, by the pull request
+named after each:
 
 - `check_priors.bayesmanecfit()` (`R/check_priors.R:85-104`) leaves the
   device's new-page prompt at `FALSE`, whatever it was before, and restores
-  nothing on error.
+  nothing on error. Fixed by PR #460 (#459).
 - The inherited `@return` of `autoplot()` says a ggplot object is returned.
-  With `multi_facet = FALSE` a list is returned.
+  With `multi_facet = FALSE` a list is returned. Fixed by PR #460 (#459).
 - `bnec_hurdle()` accepts `binomial` and `beta_binomial` for its growth
   component. The growth fit then asks for a `trials()` term, and
-  `bnec_hurdle()` refuses one.
+  `bnec_hurdle()` refuses one. Fixed by PR #460 (#459), which refuses both.
 - `summary.bayesnechurdlefit()` passes its logical `ecx` argument to
   `dots_xform()` where the generic was meant. The scale message is therefore
-  raised even when `xform` is supplied.
+  raised even when `xform` is supplied. Fixed by PR #457 (#439).
 - `summary(ecx = TRUE, posterior = TRUE)` on a single fit or a set prints
-  columns of `NA` with no censoring note (#457; settled with #439).
+  columns of `NA` with no censoring note (#457; settled with #439). Fixed by
+  PR #457, which refuses `posterior = TRUE` in `summary()`.
 - `exceedance()` discards `no_effect` without a message under
   `estimate = "nsec"` or `"ecx"`, on every class, where `ecx_val` under a
-  non-ECx estimate is refused (`check_exceedance_args()`).
+  non-ECx estimate is refused (`check_exceedance_args()`). Fixed by PR #460
+  (#459), which refuses it.
 
 Items S4 and S6 to S19 of the queue were not started.

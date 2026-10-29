@@ -96,6 +96,7 @@ line. It comes from writing `\%` in a roxygen block under
 roxygen2 emits a literal backslash and then escapes the percent itself. Write a
 bare `%` in the roxygen. The detector is `git grep '\\\\%' -- man/` and not a
 grep over `R/`, because the same source habit is harmless inside `@noRd`, where
-no Rd is generated. After #393, `man/check_fit.Rd` and `man/nassarius.Rd` still
-have it. Render a man page and read it before trusting a documentation change:
+no Rd is generated. `man/check_fit.Rd` and `man/nassarius.Rd` still had it after
+#393; PR #407 removed it, and no file in `man/` has it at `a3368faa`. Render a
+man page and read it before trusting a documentation change:
 `Rscript -e 'tools::Rd2txt("man/<topic>.Rd", out = stdout())'`.

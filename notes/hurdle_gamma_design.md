@@ -575,21 +575,24 @@ issues that will silently produce wrong answers if missed.
 and add `make_hu_block()` from §2.2. Regenerate `R/sysdata.rda`.
 
 **`R/validate_family.R`** — `get(family)(link = "identity")` needs to pass
-`link_hu = "identity"` for hurdle families. Currently hard-codes a single
-`link` argument.
+`link_hu = "identity"` for hurdle families. When this was written it hard-coded
+a single `link` argument; PR #172 added the second.
 
 **`R/set_distribution.R`** — auto-detection. A numeric `y` with `max > 1` and
-exact zeros present currently returns `"Gamma"`; it should return
-`"hurdle_gamma"`. Distinguish "has exact zeros" from `min >= 0`.
+exact zeros present returns `"Gamma"`; it should return
+`"hurdle_gamma"`. Distinguish "has exact zeros" from `min >= 0`. At `a3368faa`
+it still returns `"Gamma"`, as §2.4 recommends, and `hurdle_gamma` is opt-in.
 
-**`R/check_data.R` — critical.** Lines 51–54 nudge zero responses up to
-`min(y[y > 0]) / 10` for the Gamma family. For a hurdle family the zeros *are*
-the signal and must be left alone. This guard has to be skipped, or the hurdle
-component will see no zeros and the model becomes unidentifiable.
+**`R/check_data.R` — critical.** When this was written, lines 51–54 nudged zero
+responses up to `min(y[y > 0]) / 10` for the Gamma family. For a hurdle family
+the zeros *are* the signal and must be left alone. This guard has to be skipped,
+or the hurdle component will see no zeros and the model becomes unidentifiable.
+PR #172 made `check_data()` skip it for a hurdle family; at `a3368faa` the nudge
+applies only to an uncensored zero under `Gamma` or `beta`.
 
-**`R/helpers.R`, `extract_pars()` — critical.** Uses
-`grep(x, rownames(fixef(fit)))` unanchored. Traced through, the failure
-cascades into a wrong NEC rather than an error:
+**`R/helpers.R`, `extract_pars()` — critical.** When this was written it used
+`grep(x, rownames(fixef(fit)))` unanchored; PR #172 anchored it as below.
+Traced through, the failure cascaded into a wrong NEC rather than an error:
 
 1. `grep("top", ...)` matches both `top_Intercept` and `hutop_Intercept`, so
    `fef[grep(x, rownames(fef)), cols]` returns a 2×3 matrix, not a named vector.
@@ -613,18 +616,19 @@ extract_pars <- function(x, model_fit, prefix = "") {
 }
 ```
 
-Note `length(tt) == 0` guards the no-match case, which the current version does
-not handle either. Verified: anchoring resolves `top`/`hutop`, `beta`/`hubeta`
+Note `length(tt) == 0` guards the no-match case, which the version of the time
+did not handle either; `extract_pars()` at `a3368faa` has both. Verified: anchoring resolves `top`/`hutop`, `beta`/`hubeta`
 and `nec`/`hunec` cleanly.
 
 **`R/check_models.R`** — hurdle_gamma must satisfy both sets of existing link
 restrictions simultaneously: the Gamma/identity rules for `mu` (drop `neclin`,
 `neclinhorme`, `ecxlin`, `nechormepwr01`) and the 0-1-bounded/identity rules for
-`hu` (currently `neclin`, `neclinhorme`, `ecxlin`). Take the intersection.
+`hu` (`neclin`, `neclinhorme`, `ecxlin` when this was written; PR #203 added
+`nechormepwr` and `nechorme4pwr`). Take the intersection.
 
-**Pre-existing mismatch to resolve first.** `?models` states that "all models
-with parameter `slope`" are unsuitable for 0-1 bounded families, but
-`check_models()` drops only three of the ten:
+**Pre-existing mismatch to resolve first.** When this was written, `?models`
+stated that "all models with parameter `slope`" are unsuitable for 0-1 bounded
+families, but `check_models()` dropped only three of the ten:
 
 | | |
 |---|---|
@@ -649,6 +653,10 @@ failures rather than silently wrong answers, which is presumably why this has
 gone unnoticed. It should still be settled — either tighten `check_models()` to
 match the documentation (minus `nechormepwr01`) or correct the documentation to
 match the code — before the same rule is relied on for the `hu` component.
+PR #172 corrected the documentation: `?models` confines the restriction to the
+three `lin` equations. PR #203 (#177) then excluded `nechormepwr` and
+`nechorme4pwr` for a 0-1 bounded family and for the `hu` block, and `?models`
+states that exclusion too.
 
 **`R/define_prior.R`** — emit both parameter blocks. mu-block priors are the
 existing Gamma/identity defaults but **computed on `response[response > 0]`**;
@@ -670,8 +678,10 @@ derives parameter names from the prior object, so it will pick the prefixed
 names up automatically once the priors above exist.
 
 **`R/expand_classes.R`, `expand_nec()`** —
-`ne_posterior <- as_draws_df(fit)[["b_nec_Intercept"]]` captures only the growth
-NEC. Store all three: growth NEC, survival NEC, and the combined-endpoint NEC.
+`ne_posterior <- as_draws_df(fit)[["b_nec_Intercept"]]` captured only the growth
+NEC when this was written. Store all three: growth NEC, survival NEC, and the
+combined-endpoint NEC. PR #172 did: a joint fit stores `mu_ne_posterior` and
+`hu_ne_posterior` in `fit$hurdle` and reports the combined value.
 Recommend the combined one as the default returned by `nec()`, with the
 components reachable explicitly. Also store the `dpar = "mu"` and `dpar = "hu"`
 prediction curves alongside the existing `pred_vals`.

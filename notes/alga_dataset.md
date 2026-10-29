@@ -4,8 +4,10 @@ Supersedes `dataset_usage_plan.md` (2026-08-06), which was written around the
 `beta_ub` family and is wrong in its central claim. Written 2026-08-10.
 
 `alga` ships (`data/alga.rda`), is documented (`man/alga.Rd`) and is built by
-`data-raw/alga.R` from files in the git-ignored `ignore/alga_examples/`. Nothing
-in the package currently uses it. It exists for the `example7` rewrite — see the
+`data-raw/alga.R` from files in the git-ignored `ignore/alga_examples/`. At
+`a3368faa`, `vignette("example7")` loads it for its case study, `example1`
+describes a fit to one of its cells, and `tests/testthat/test-inits_functions.R`
+uses one of its series as test data. It was built for the `example7` rewrite — see the
 plan on [#189](https://github.com/open-AIMS/bayesnec/pull/189#issuecomment-5235587110).
 
 ## The design

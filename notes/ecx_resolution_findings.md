@@ -3,17 +3,22 @@
 Measurements for [#39](https://github.com/open-AIMS/bayesnec/issues/39)
 (*Improve speed and precision of ecx and nsec functions using uniroot.all*),
 with a bearing on [#166](https://github.com/open-AIMS/bayesnec/issues/166).
-Nothing here has been implemented; this is evidence for that issue.
+
+The defect is fixed. PR #281 locates every `ecx()`, `nsec()` and `ecnsec()`
+crossing by linear interpolation between the bracketing grid values, in
+`crossing_x()` (`R/helpers.R`), and PR #292 then lowered the default `resolution`
+to 200. #39 closed on 2026-09-08. The measurements below were made before the
+fix, and the functions and line numbers they name no longer exist.
 
 ## The short version
 
-The zero-crossing treatment reached `nsec` but not `ecx`.
+Before PR #281, the zero-crossing treatment reached `nsec` but not `ecx`.
 
 * `nsec_fct()` (`R/nsec.R:258`) locates the crossing with
   `modelbased::zero_crossings()` and linearly interpolates between the
   bracketing grid points. NSEC is therefore insensitive to `resolution`.
 * `ecx_x_absolute()`, `ecx_x_relative()` and `ecx_x_direct()`
-  (`R/ecx.R:321` onward) still take `x_vec[min_abs(y - ecx_y)]` — the nearest
+  (`R/ecx.R:321` onward) took `x_vec[min_abs(y - ecx_y)]` — the nearest
   point on the grid, no interpolation. ECx is therefore resolution-dependent
   and does not converge cleanly.
 
