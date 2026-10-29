@@ -403,3 +403,89 @@ test_that("crf((log(x))) is read as crf(log(x)) on every path (#479)", {
   expect_equal(q(nsec(paren, resolution = 20)),
                q(nsec(bare, resolution = 20)))
 })
+
+
+test_that("plot labels do not require a default inverse", {
+  skip_on_cran()
+  inverse <- function(z) 4 * sinh(z)
+  tf <- logged_x_fit(nec4param, "nec4param", "asinh(x / 4)")
+  tm <- logged_x_set(manec_example, "asinh(x / 4)")
+  g <- fake_scale_group(list(a = tf, b = tf))
+  # The default cannot place these draws, but an explicit inverse can.
+  expect_error(nec(tf), "lie beyond that grid")
+  expect_s3_class(q(autoplot(tf, xform = inverse)), "ggplot")
+  expect_s3_class(q(autoplot(tm, xform = inverse)), "ggplot")
+  expect_s3_class(q(autoplot(g, xform = inverse)), "ggplot")
+  expect_s3_class(q(autoplot(tm, model = "nec4param", average = FALSE,
+                            xform = inverse)), "ggplot")
+  pages <- q(autoplot(tm, model = "nec4param", average = FALSE,
+                      multi_facet = FALSE, plot = FALSE, xform = inverse))
+  expect_s3_class(pages[[1]], "ggplot")
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  expect_no_error(q(plot(tf, xform = inverse)))
+  expect_no_error(q(plot(tm, xform = inverse)))
+})
+
+test_that("disabled plot annotations do not require an inverse", {
+  skip_on_cran()
+  tf <- logged_x_fit(nec4param, "nec4param", "asinh(x / 4)")
+  tm <- logged_x_set(manec_example, "asinh(x / 4)")
+  g <- fake_scale_group(list(a = tf, b = tf))
+  expect_s3_class(q(autoplot(tf, nec = FALSE)), "ggplot")
+  expect_s3_class(q(autoplot(tm, nec = FALSE)), "ggplot")
+  expect_s3_class(q(autoplot(g, nec = FALSE)), "ggplot")
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  expect_no_error(q(plot(tf, add_nec = FALSE)))
+  expect_no_error(q(plot(tm, add_nec = FALSE)))
+})
+
+
+test_that("numeric inversion retains infinite fitted endpoints", {
+  grid <- seq(0, 3.22, length.out = 1000)
+  at <- c(0, 1e-10, 1e-5, 0.1, 1, 3)
+  for (sign in c(1, -1)) {
+    f <- bnf(stats::as.formula(paste0(
+      "y ~ crf(I(", sign, " * (log(x) + 1)), model = \"ecx4param\")"
+    )))
+    tr <- bayesnec:::inline_x_transform(list(bayesnecformula = f))
+    map <- bayesnec:::recorded_x_map(f, grid, tr)
+    fitted <- sign * (log(at) + 1)
+    mapped <- bayesnec:::map_draws(fitted, map)
+    expect_equal(mapped[1], 0)
+    expect_equal(mapped[-1] / at[-1], rep(1, length(at) - 1),
+                 tolerance = 1e-5)
+    expect_true(is.na(map(NA_real_)))
+    expect_true(is.na(map(sign * Inf)))
+    # Finite draws beyond the other end still require an explicit inverse.
+    expect_error(bayesnec:::map_draws(sign * (log(4) + 1), map),
+                 "lie beyond that grid")
+    original <- bayesnec:::censoring_record(max(at), min(at),
+                                           rep(FALSE, length(at)),
+                                           c(TRUE, rep(FALSE, length(at) - 1)))
+    cens <- bayesnec:::xform_censoring(original,
+                                      function(z) sign * (log(z) + 1))
+    recorded <- bayesnec:::xform_censoring(cens, map)
+    expect_equal(recorded$lower, original$lower)
+    expect_equal(recorded$upper, original$upper, tolerance = 1e-5)
+    expect_identical(recorded$above, original$above)
+    expect_identical(recorded$below, original$below)
+  }
+})
+
+test_that("summary and comparisons invert a stored grid beginning at zero", {
+  skip_on_cran()
+  f <- bnf(y ~ crf(I(log(x) + 1), model = "ecx4param"))
+  # Reuse the sampled curve and rebuild only its stored NSEC and grid.
+  tf <- q(expand_nec(list(fit = ecx4param$fit, model = "ecx4param",
+                          bayesnecformula = f),
+                     formula = f, x_range = c(0, 3.22), resolution = 100,
+                     sig_val = 0.1, model = "ecx4param"))
+  tf <- bayesnec:::allot_class(tf, c("bayesnecfit", "bnecfit"))
+  inverse <- function(z) exp(z - 1)
+  expect_equal(q(summary(tf))$nec_vals,
+               q(summary(tf, xform = inverse))$nec_vals, tolerance = 1e-5)
+  expect_equal(as.numeric(bayesnec:::return_nec_post(tf)),
+               inverse(as.numeric(tf$ne_posterior)), tolerance = 1e-5)
+})
