@@ -4,7 +4,7 @@
 \alias{update.bayesnechurdlefit}
 \title{Updates both components of a \code{\link{bayesnechurdlefit}}}
 \usage{
-\method{update}{bayesnechurdlefit}(object, newdata = NULL, ...)
+\method{update}{bayesnechurdlefit}(object, newdata = NULL, recompile = NULL, x_range = NULL, ...)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnechurdlefit}}.}
@@ -20,6 +20,12 @@ with, as \code{\link{update.bnecfit}} describes. Both components are checked
 against their families before either is refitted, so new data that put the
 growth component at a bound in every observation, such as a \code{Beta}
 growth component of 1 throughout, are refused, naming that component.}
+
+\item{recompile}{As for \code{\link{update.bnecfit}}.}
+
+\item{x_range}{As for \code{\link{update.bnecfit}}. A \code{NULL} inherits
+the recorded range, or follows the whole new concentration series where
+\code{bnec_hurdle} was given no range.}
 
 \item{...}{Further arguments passed to \code{\link{update.bnecfit}} for
 each component. A \code{family} is passed to the growth component only.

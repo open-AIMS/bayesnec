@@ -3336,6 +3336,14 @@
   `bnec_hurdle()` does. An object fitted before the record existed uses the
   `bnec()` defaults, as before (#522).
 
+  Supplied prediction settings are also applied when `amend()` adds or drops
+  no equation, or `pull_out()` keeps every equation. `pull_out()` continues
+  to accept positional and abbreviated prediction arguments. Combining fits
+  of the same equation with `c()` or `+` joins their records and recomputes
+  the estimates with the resolved settings. On a hurdle update with new
+  data, `x_range = NULL` follows the new series where no fixed range was
+  recorded, as omission does.
+
 - The LOO and WAIC criteria of a `bayesnecfit` passed to `amend()`, `c()` or
   `+` are computed again with the `loo_controls` of the call. They
   were kept from the call that last computed them, because

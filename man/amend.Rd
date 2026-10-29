@@ -44,7 +44,8 @@ that method.}
 from \code{object} unless supplied, and is the \code{\link{bnec}} default
 where \code{object} records none. The estimates of every model in the
 amended set are computed again with them, including the models already
-fitted.}
+fitted. Supplying these arguments alone recomputes the estimates without
+refitting any model.}
 
 \item{priors}{An object of class \code{\link[brms]{brmsprior}} which
 specifies user-desired prior distributions of model parameters. It can also

@@ -14,7 +14,8 @@ statistics.}
 \item{...}{Additional objects of class \code{\link{bnecfit}}.}
 }
 \value{
-An object of class \code{\link{bayesmanecfit}}.
+A \code{\link{bayesnecfit}} where only one distinct model remains,
+otherwise a \code{\link{bayesmanecfit}}.
 }
 \description{
 Concatenate multiple \code{\link{bnecfit}} objects into one single

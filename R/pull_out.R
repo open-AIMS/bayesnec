@@ -10,9 +10,10 @@
 #' \code{\link{bnec}}.
 #' @param model A \code{\link[base]{character}} string indicating
 #' which model or suite of models to pull out.
+#' @param x_range,resolution,sig_val As for \code{\link{bnec}}. Each is taken
+#' from \code{manec} unless supplied.
 #' @param ... Additional arguments to \code{\link{expand_nec}} or
-#' \code{\link{expand_manec}}: \code{x_range}, \code{resolution} or
-#' \code{sig_val}, as for \code{\link{bnec}}.
+#' \code{\link{expand_manec}}.
 #'
 #' @details Nothing is refitted, so the records of the set are kept. Each
 #' equation keeps its \code{\link{bnec_version}} record, the
@@ -45,12 +46,14 @@
 #' }
 #'
 #' @export
-pull_out <- function(manec, model, loo_controls, ...) {
+pull_out <- function(manec, model, loo_controls, x_range = NULL,
+                      resolution = NULL, sig_val = NULL, ...) {
   # Not an S3 generic, so a hurdle fit has to be handled here; registering a
   # pull_out.bayesnechurdlefit method would be inert. Reduces both components
   # to the requested model so the pair stays in step.
   if (is_bayesnechurdlefit(manec)) {
-    args <- list(model = model, ...)
+    args <- list(model = model, x_range = x_range, resolution = resolution,
+                  sig_val = sig_val, ...)
     if (!missing(loo_controls)) args$loo_controls <- loo_controls
     manec$growth <- do.call(pull_out, c(list(manec$growth), args))
     manec$survival <- do.call(pull_out, c(list(manec$survival), args))
@@ -61,7 +64,8 @@ pull_out <- function(manec, model, loo_controls, ...) {
   }
   old_method <- fit_weights_method(manec)
   supplied_loo <- NULL
-  fam_tag <- recover_prebayesnecfit(manec)[[1]]$fit$family$family
+  fits <- recover_prebayesnecfit(manec)
+  fam_tag <- fits[[1]]$fit$family$family
   if (!missing(loo_controls)) {
     if (length(validate_loo_controls(loo_controls, fam_tag)$weights) > 0) {
       message("You have specified a list of arguments in loo_control$weights; ",
@@ -73,14 +77,13 @@ pull_out <- function(manec, model, loo_controls, ...) {
   }
   dots <- list(...)
   expand_args <- recorded_expand_args(
-    list(manec), x_range = dots[["x_range"]],
-    resolution = dots[["resolution"]], sig_val = dots[["sig_val"]],
+    list(manec), x_range = x_range,
+    resolution = resolution, sig_val = sig_val,
     loo_controls = supplied_loo, method = old_method, fam_tag = fam_tag
   )
-  dots <- dots[setdiff(names(dots), c("x_range", "resolution", "sig_val"))]
   expand_call <- c(expand_args[c("x_range", "resolution", "sig_val",
                                  "loo_controls")], dots)
-  existing <- names(manec$mod_fits)
+  existing <- names(fits)
   msets <- names(mod_groups)
   if (any(model %in% msets)) {
     group_mods <- intersect(model, msets)
@@ -105,7 +108,10 @@ pull_out <- function(manec, model, loo_controls, ...) {
             " modelled response distribution. If needed, add desired model(s)",
             " via function amend (see ?amend).")
   }
-  if (all(existing %in% to_go)) {
+  if (all(existing %in% to_go) && length(dots) == 0 &&
+        identical(expand_args, recorded_expand_args(
+          list(manec), method = old_method, fam_tag = fam_tag
+        ))) {
     message("Current model(s) are 100% contained ",
             "within target model(s) to pull out.\n",
             "Returning original object.")
@@ -116,8 +122,8 @@ pull_out <- function(manec, model, loo_controls, ...) {
             "Returning original object.")
     return(manec)
   }
-  formulas <- lapply(manec$mod_fits[to_go], extract_formula)
-  mod_fits <- do.call(expand_manec, c(list(manec$mod_fits[to_go],
+  formulas <- lapply(fits[to_go], extract_formula)
+  mod_fits <- do.call(expand_manec, c(list(fits[to_go],
                                            formula = formulas),
                                       expand_call)) |>
     suppressMessages() |>

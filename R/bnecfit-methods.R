@@ -30,7 +30,8 @@
 #' @param x An object of class \code{\link{bnecfit}}.
 #' @param ... Additional objects of class \code{\link{bnecfit}}.
 #'
-#' @return An object of class \code{\link{bayesmanecfit}}.
+#' @return A \code{\link{bayesnecfit}} where only one distinct model remains,
+#' otherwise a \code{\link{bayesmanecfit}}.
 #'
 #' @examples
 #' \dontrun{
@@ -93,18 +94,26 @@ c.bnecfit <- function(x, ...) {
                       sig_val = expand_args$sig_val,
                       loo_controls = expand_args$loo_controls)
   if (length(out) == 1) {
-    x
+    model <- names(out)
+    out <- expand_nec(out[[1]], formula = formulas[[model]],
+                       x_range = expand_args$x_range,
+                       resolution = expand_args$resolution,
+                       sig_val = expand_args$sig_val,
+                       loo_controls = expand_args$loo_controls, model = model)
+    out <- allot_class(out, c("bayesnecfit", "bnecfit"))
+    out$retained_data <- NULL
+    out <- retain_shared_data(out, inputs)
   } else {
     out <- allot_class(out, c("bayesmanecfit", "bnecfit"))
-    out <- attach_failed_models(
-      out, joined_failures(inputs, fit_equations(out))
-    )
-    out <- copy_fit_records(out, inputs,
-                            "not in any of the objects c() combined",
-                            expand_args)
-    report_mixed_versions(out)
-    out
   }
+  out <- attach_failed_models(
+    out, joined_failures(inputs, fit_equations(out))
+  )
+  out <- copy_fit_records(out, inputs,
+                          "not in any of the objects c() combined",
+                          expand_args)
+  report_mixed_versions(out)
+  out
 }
 
 #' "Add" multiple \code{\link{bnecfit}} objects into one single

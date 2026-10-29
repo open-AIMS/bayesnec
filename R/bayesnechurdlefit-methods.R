@@ -805,6 +805,10 @@ set_hurdle_growth_truncation <- function(part, truncate) {
 #' against their families before either is refitted, so new data that put the
 #' growth component at a bound in every observation, such as a \code{Beta}
 #' growth component of 1 throughout, are refused, naming that component.
+#' @param recompile As for \code{\link{update.bnecfit}}.
+#' @param x_range As for \code{\link{update.bnecfit}}. A \code{NULL} inherits
+#' the recorded range, or follows the whole new concentration series where
+#' \code{bnec_hurdle} was given no range.
 #' @param ... Further arguments passed to \code{\link{update.bnecfit}} for
 #' each component. A \code{family} is passed to the growth component only.
 #' The survival component is always refitted as \code{bernoulli}. The growth
@@ -829,11 +833,14 @@ set_hurdle_growth_truncation <- function(part, truncate) {
 #' @method update bayesnechurdlefit
 #'
 #' @export
-update.bayesnechurdlefit <- function(object, newdata = NULL, ...) {
+update.bayesnechurdlefit <- function(object, newdata = NULL, recompile = NULL,
+                                     x_range = NULL, ...) {
   # Take `family` out of `...`, so that the growth family never reaches the
   # survival component. Forward `...` unchanged to the growth component:
   # update.bnecfit() reads the link the caller wrote off the unevaluated call.
-  update_survival <- function(..., family) update(object$survival, ...)
+  update_survival <- function(..., family) {
+    update(object$survival, recompile = recompile, x_range = x_range, ...)
+  }
   if (!is.null(newdata)) {
     y <- newdata[[object$y_var]]
     if (is.null(y)) {
@@ -853,7 +860,11 @@ update.bayesnechurdlefit <- function(object, newdata = NULL, ...) {
   }
   growth <- hurdle_refit_growth(object, supplied)
   if (is.null(newdata)) {
-    return(hurdle_rewrap(object, update(growth, ...), update_survival(...)))
+    return(hurdle_rewrap(
+      object, update(growth, newdata = NULL, recompile = recompile,
+                       x_range = x_range, ...),
+      update_survival(newdata = NULL, ...)
+    ))
   }
   growth_data <- newdata[y > 0, , drop = FALSE]
   surv_data <- newdata
@@ -874,12 +885,9 @@ update.bayesnechurdlefit <- function(object, newdata = NULL, ...) {
   )
   # Refit in turn, growth first, rather than inside hurdle_rewrap(), whose
   # argument evaluation would set the order.
-  series <- hurdle_growth_series(object, newdata, ...names())
-  growth <- if (is.null(series)) {
-    update(growth, newdata = growth_data, ...)
-  } else {
-    update(growth, newdata = growth_data, x_range = series, ...)
-  }
+  series <- hurdle_growth_series(object, newdata, x_range)
+  growth <- update(growth, newdata = growth_data, recompile = recompile,
+                    x_range = inherit_arg(series, x_range, NULL), ...)
   survival <- update_survival(newdata = surv_data, ...)
   out <- hurdle_rewrap(object, growth, survival)
   out$data <- newdata
@@ -892,7 +900,7 @@ update.bayesnechurdlefit <- function(object, newdata = NULL, ...) {
 #'
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
 #' @param newdata The new data, whole.
-#' @param dot_names The names of the arguments passed through \code{...}.
+#' @param x_range The range the caller supplied, or \code{NULL}.
 #'
 #' @details \code{\link{bnec_hurdle}} predicts the growth component over the
 #' concentration series unless the caller supplied an \code{x_range}, which it
@@ -906,8 +914,8 @@ update.bayesnechurdlefit <- function(object, newdata = NULL, ...) {
 #' @importFrom stats model.frame
 #'
 #' @noRd
-hurdle_growth_series <- function(object, newdata, dot_names) {
-  if ("x_range" %in% dot_names) {
+hurdle_growth_series <- function(object, newdata, x_range = NULL) {
+  if (!is.null(x_range)) {
     return(NULL)
   }
   supplied <- attr(object$survival, "bnec_expand_args")$x_range

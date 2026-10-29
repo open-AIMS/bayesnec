@@ -4,7 +4,15 @@
 \alias{pull_out}
 \title{pull_out}
 \usage{
-pull_out(manec, model, loo_controls, ...)
+pull_out(
+  manec,
+  model,
+  loo_controls,
+  x_range = NULL,
+  resolution = NULL,
+  sig_val = NULL,
+  ...
+)
 }
 \arguments{
 \item{manec}{An object of class \code{\link{bayesmanecfit}} as returned by
@@ -30,9 +38,11 @@ set's own.
 see \code{\link{c.bnecfit}} for how they decide the method. See
 ?\code{\link[loo]{loo_model_weights}} for further info.}
 
+\item{x_range, resolution, sig_val}{As for \code{\link{bnec}}. Each is taken
+from \code{manec} unless supplied.}
+
 \item{...}{Additional arguments to \code{\link{expand_nec}} or
-\code{\link{expand_manec}}: \code{x_range}, \code{resolution} or
-\code{sig_val}, as for \code{\link{bnec}}.}
+\code{\link{expand_manec}}.}
 }
 \value{
 If \code{model} is a string representing a single model, an object

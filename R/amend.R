@@ -25,7 +25,8 @@
 #' from \code{object} unless supplied, and is the \code{\link{bnec}} default
 #' where \code{object} records none. The estimates of every model in the
 #' amended set are computed again with them, including the models already
-#' fitted.
+#' fitted. Supplying these arguments alone recomputes the estimates without
+#' refitting any model.
 #' @param priors An object of class \code{\link[brms]{brmsprior}} which
 #' specifies user-desired prior distributions of model parameters. It can also
 #' be specified as a named \code{\link[base]{list}} where each name needs to
@@ -137,7 +138,8 @@ amend.bayesmanecfit <- function(object, drop, add, loo_controls,
     stop("Argument `timeout` must be a positive number (or Inf).")
   }
 
-  if (missing(drop) & missing(add) & missing(loo_controls)) {
+  if (missing(drop) && missing(add) && missing(loo_controls) &&
+        is.null(x_range) && is.null(resolution) && is.null(sig_val)) {
     message(amend_general_error())
     return(object)
   }
@@ -205,7 +207,8 @@ amend.bayesnecfit <- function(object, drop, add, loo_controls,
          " \"", object$model, "\". Refit with bnec(..., model = ) to change",
          " which model is fitted.", call. = FALSE)
   }
-  if (missing(add) & missing(loo_controls)) {
+  if (missing(add) && missing(loo_controls) &&
+        is.null(x_range) && is.null(resolution) && is.null(sig_val)) {
     message(amend_general_error())
     return(object)
   }
@@ -298,13 +301,14 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
     sig_val = sig_val, loo_controls = loo_controls, method = old_method,
     fam_tag = fam_tag
   )
+  inherited <- recorded_expand_args(list(object), method = old_method,
+                                    fam_tag = fam_tag)
   if (!is.null(loo_controls)) {
-    inherited <- recorded_expand_args(list(object), method = old_method,
-                                      fam_tag = fam_tag)
     if (identical(expand_args$loo_controls, inherited$loo_controls)) {
       message("No new LOO fitting/weighting arguments have been specified;",
               " ignoring argument loo_controls.")
-      if (is.null(drop) & is.null(add)) {
+      if (is.null(drop) && is.null(add) &&
+            identical(expand_args, inherited)) {
         message(general_error)
         return(object)
       }
@@ -314,12 +318,21 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   bnec_rec <- attr(object, "bnec_record")
   model_set <- names(mod_fits)
   if (!is.null(drop)) {
-    model_set <- handle_set(model_set, drop = drop)
+    candidate <- suppressMessages(handle_set(model_set, drop = drop))
+    if (!identical(candidate, "wrong_model_output")) {
+      model_set <- candidate
+    }
   }
   if (!is.null(add)) {
-    model_set <- handle_set(model_set, add = add)
+    candidate <- suppressMessages(handle_set(model_set, add = add))
+    if (!identical(candidate, "wrong_model_output")) {
+      model_set <- candidate
+    }
   }
-  if (any(model_set == "wrong_model_output")) {
+  if (identical(model_set, names(mod_fits)) &&
+        identical(expand_args, inherited)) {
+    message("Nothing to amend, please specify a model to ",
+            "either add or drop that differs from the original set.")
     message(general_error)
     return(object)
   }

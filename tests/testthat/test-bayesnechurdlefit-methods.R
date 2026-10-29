@@ -137,6 +137,10 @@ hurdle_update_fixture <- function(growth_family = brms::brmsfamily(
   survival <- nec4param
   survival$fit$family <- brms::bernoulli(link = "identity")
   survival$bayesnecformula <- bnf(.alive ~ crf(x, model = "nec4param"))
+  # This fixture represents a current bnec_hurdle() fit. The packaged
+  # nec4param fit predates call_args, and its stored data have no generated
+  # .alive column from which update() could recover them.
+  survival$call_args <- list(model_survival = NULL, control = NULL, seed = NULL)
   d <- data.frame(x = nec4param$fit$data$x,
                   y = stats::plogis(nec4param$fit$data$y))
   d$y[d$x > stats::quantile(d$x, 0.8)] <- 0
@@ -1898,6 +1902,10 @@ test_that("update() on a hurdle fit predicts growth over the new series", {
   suppressMessages(stats::update(h, newdata = nd))
   expect_equal(seen[[1]]$x_range, range(nd$x))
   expect_null(seen[[2]]$x_range)
+  seen <- list()
+  suppressMessages(stats::update(h, newdata = nd, x_range = NULL))
+  expect_equal(seen[[1]]$x_range, range(nd$x))
+  expect_null(seen[[2]]$x_range)
   # An object fitted before the record existed is treated the same way.
   seen <- list()
   attr(h$survival, "bnec_expand_args") <- NULL
@@ -1909,14 +1917,60 @@ test_that("update() on a hurdle fit predicts growth over the new series", {
   attr(h$survival, "bnec_expand_args") <- expand_record(x_range = c(0, 10))
   suppressMessages(stats::update(h, newdata = nd))
   expect_null(seen[[1]]$x_range)
+  seen <- list()
+  suppressMessages(stats::update(h, newdata = nd, x_range = NULL))
+  expect_null(seen[[1]]$x_range)
   # One passed here reaches both components.
   seen <- list()
   suppressMessages(stats::update(h, newdata = nd, x_range = c(0, 5)))
   expect_equal(seen[[1]]$x_range, c(0, 5))
   expect_equal(seen[[2]]$x_range, c(0, 5))
+  seen <- list()
+  suppressMessages(stats::update(h, newdata = nd, x_r = c(0, 5)))
+  expect_equal(seen[[1]]$x_range, c(0, 5))
+  expect_equal(seen[[2]]$x_range, c(0, 5))
+  seen <- list()
+  suppressMessages(stats::update(h, nd, FALSE, c(0, 5)))
+  for (part in seen) {
+    expect_identical(part$recompile, FALSE)
+    expect_equal(part$x_range, c(0, 5))
+  }
   # Without new data the growth component keeps its own record.
   seen <- list()
   attr(h$survival, "bnec_expand_args") <- default_expand_record()
   suppressMessages(stats::update(h))
   expect_null(seen[[1]]$x_range)
+})
+
+test_that("a hurdle update matches positional settings with or without new data", {
+  h <- hurdle_update_fixture()
+  seen <- list()
+  local_mocked_bindings(
+    update = function(object, newdata = NULL, recompile = NULL,
+                       x_range = NULL, resolution = NULL, ...) {
+      seen[[length(seen) + 1]] <<- list(
+        newdata = newdata, recompile = recompile, x_range = x_range,
+        resolution = resolution
+      )
+      object
+    },
+    .package = "bayesnec"
+  )
+  for (nd in list(NULL, h$data)) {
+    seen <- list()
+    suppressMessages(stats::update(h, nd, FALSE, c(0, 5), 250))
+    expect_length(seen, 2)
+    for (part in seen) {
+      expect_identical(part$recompile, FALSE)
+      expect_equal(part$x_range, c(0, 5))
+      expect_equal(part$resolution, 250)
+    }
+    if (is.null(nd)) {
+      expect_null(seen[[1]]$newdata)
+      expect_null(seen[[2]]$newdata)
+    } else {
+      expect_equal(nrow(seen[[1]]$newdata), sum(nd$y > 0))
+      expect_equal(nrow(seen[[2]]$newdata), nrow(nd))
+    }
+  }
 })
