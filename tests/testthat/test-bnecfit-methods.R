@@ -411,6 +411,31 @@ test_that("update(newdata = ) checks a variance function as bnec() does", {
   expect_false(is.null(capture_brms_update(update(power_fit, newdata = nd))))
 })
 
+test_that("update checks every equation before refitting a set", {
+  mixed <- manec_example
+  for (m in names(mixed$mod_fits)) {
+    mixed$mod_fits[[m]]$fit$family <- brms::brmsfamily("Gamma", link = "identity")
+    mixed$mod_fits[[m]]$fit$data$y <-
+      round(stats::plogis(mixed$mod_fits[[m]]$fit$data$y) * 20) + 1
+  }
+  mixed$mod_fits$ecx4param$bayesnecformula <-
+    bnf(y ~ crf(x, "ecx4param") + disp(~x))
+  for (force in c(FALSE, TRUE)) {
+    expect_error(update(mixed, family = "poisson", force_fit = force),
+                 "Family poisson has no free dispersion parameter")
+    expect_null(capture_brms_update(
+      update(mixed, family = "poisson", force_fit = force)
+    ))
+  }
+
+  mixed <- manec_example
+  mixed$mod_fits$ecx4param$bayesnecformula <-
+    bnf(y ~ crf(x, "ecx4param") + disp("power"))
+  nd <- mixed$mod_fits[[1]]$fit$data
+  expect_error(update(mixed, newdata = nd), "takes log(mu)", fixed = TRUE)
+  expect_null(capture_brms_update(update(mixed, newdata = nd)))
+})
+
 test_that("update() refuses a family that adds or removes a second block", {
   # The stored formula holds the fitted family's blocks only. brms fitted a
   # Gamma fit updated to hurdle_gamma with a constant hu, and failed on a

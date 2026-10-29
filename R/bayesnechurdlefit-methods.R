@@ -752,7 +752,9 @@ hurdle_refit_growth <- function(object, family = NULL) {
   check_hurdle_growth_family(family)
   # Before check_hurdle_count_growth(), the order bnec_hurdle() checks in, so
   # that both routes refuse a disp() term on poisson with the same message.
-  check_refit_family(fits[[1]]$bayesnecformula, fits[[1]]$fit$family, family)
+  for (m in fits) {
+    check_refit_family(m$bayesnecformula, m$fit$family, family)
+  }
   check_hurdle_count_growth(object$formula, family)
   set_hurdle_growth_truncation(growth, is_hurdle_count_growth(family))
 }
