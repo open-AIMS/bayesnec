@@ -129,7 +129,9 @@ The survival component is always refitted as <code>bernoulli</code>. The growth
 family is checked as <code><a href="bnec_hurdle.html">bnec_hurdle</a></code> checks
 <code>family_growth</code>, before either component is refitted. A family
 <code>bnec_hurdle</code> refuses for the growth component, such as
-<code>hurdle_gamma</code>, is refused. A <code>poisson</code> or <code>negbinomial</code>
+<code>hurdle_gamma</code>, is refused. So is a family the growth component's
+<code>disp()</code> term cannot be refitted under, as <code><a href="update.bnecfit.html">update.bnecfit</a></code>
+describes, such as <code>poisson</code>. A <code>poisson</code> or <code>negbinomial</code>
 family needs <span class="pkg">brms</span> 2.23.2 or later, and the growth component is then
 refitted with the zero-truncated likelihood <code>bnec_hurdle</code> uses.</p></dd>
 

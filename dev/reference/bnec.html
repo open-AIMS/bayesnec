@@ -325,8 +325,10 @@ design is incomplete, and it cannot supply evidence that a flat one is
 complete.</p>
 <p>A gaussian response spanning negative values, and any response fitted on a
 link other than the identity, has no floor that can be derived from the data,
-and <code>FALSE</code> is refused for it rather than a floor being invented. Supply
-a <code>bot</code> prior through <code>prior</code> in that case.</p>
+and <code>FALSE</code> is refused for it rather than a floor being invented, unless
+<code>prior</code> supplies <code>bot</code>. The supplied entry then takes the place of
+the one built from the floor, and the declaration still removes the upper
+bound of the <code>nec</code> and <code>ec50</code> priors.</p>
 <p>Fifteen of the 24 equations of the "all" group have no <code>bot</code>
 parameter. One is the constant equation "ecxflat". The other fourteen
 change with concentration and have no lower asymptote to estimate. Eleven of

@@ -211,6 +211,16 @@ Without it the call is refused before the data are checked, so nothing is
 reported as shifted.
 Families are compared by name and links, so <code>Gamma(link = "identity")</code>
 supplied for a Gamma fit is not a change of family.</p>
+<p>A family the stored formula cannot describe is refused before any model is
+refitted, whether or not <code>force_fit</code> is set. A <code>disp()</code> term is
+checked against it as <code><a href="bnec.html">bnec</a></code> checks it, so <code>poisson</code> is
+refused for a fit with a <code>disp()</code> term. A family that names its
+dispersion parameter differently from the fitted one is refused as well,
+such as <code>gaussian</code>, whose parameter is <code>sigma</code>, for a <code>Beta</code>
+fit, whose parameter is <code>phi</code>. So is a change that adds or removes the
+second block of a two-block family such as <code>hurdle_gamma</code>. Fit such a
+model with <code><a href="bnec.html">bnec</a></code>. New data are checked against a variance
+function in <code>disp()</code> as <code><a href="bnec.html">bnec</a></code> checks its data.</p>
     </div>
 
     <div id="ref-examples">

@@ -139,9 +139,12 @@ for to fit the model.</p></dd>
 call that <code><a href="amend.html">amend</a></code> reuses for an added model:
 <code>model_survival</code>, and the <code>control</code> and <code>seed</code> passed to
 <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm</a></code>. Each is <code>NULL</code> where the call did not supply
-it. Absent from an object fitted by an earlier version of <span class="pkg">bayesnec</span>
+it. It also holds the <code>prior_type</code>, <code>asymptote_observed</code> and
+<code>predictor_scale</code> the default priors were built with, which
+<code><a href="bnec_joint.html">bnec_joint</a></code> reuses. On older fits this element is absent
 until <code><a href="update.bnecfit.html">update.bnecfit</a></code> or <code><a href="amend.html">amend</a></code> records the
-recoverable settings.</p></dd>
+recoverable settings. The three prior arguments remain absent where they
+were not recorded when fitting.</p></dd>
 
 
 <dt><code>retained_data</code></dt>

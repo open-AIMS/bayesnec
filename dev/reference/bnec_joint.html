@@ -118,10 +118,28 @@ estimated in a single posterior.</p>
 <span><span class="fu">bnec_joint</span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'bayesnechurdlefit'</span></span>
-<span><span class="fu">bnec_joint</span><span class="op">(</span><span class="va">object</span>, model <span class="op">=</span> <span class="cn">NULL</span>, model_survival <span class="op">=</span> <span class="cn">NULL</span>, formula <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span>
+<span><span class="fu">bnec_joint</span><span class="op">(</span></span>
+<span>  <span class="va">object</span>,</span>
+<span>  model <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  model_survival <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  formula <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">...</span>,</span>
+<span>  prior_type <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  asymptote_observed <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  predictor_scale <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'bayesnecgroupfit'</span></span>
-<span><span class="fu">bnec_joint</span><span class="op">(</span><span class="va">object</span>, model <span class="op">=</span> <span class="cn">NULL</span>, formula <span class="op">=</span> <span class="cn">NULL</span>, disp_by_level <span class="op">=</span> <span class="cn">TRUE</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">bnec_joint</span><span class="op">(</span></span>
+<span>  <span class="va">object</span>,</span>
+<span>  model <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  formula <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  disp_by_level <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  <span class="va">...</span>,</span>
+<span>  prior_type <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  asymptote_observed <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  predictor_scale <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -160,6 +178,14 @@ fit cannot carry, for example a group-level term. The <code>crf</code> model
 argument is overwritten by <code>model</code> either way.</p></dd>
 
 
+<dt id="arg-prior-type-asymptote-observed-predictor-scale">prior_type, asymptote_observed, predictor_scale<a class="anchor" aria-label="anchor" href="#arg-prior-type-asymptote-observed-predictor-scale"></a></dt>
+<dd><p>The arguments of
+<code><a href="bnec.html">bnec</a></code> that build the default priors. Each defaults to the value
+<code>object</code> was fitted with, and to the <code><a href="bnec.html">bnec</a></code> default where
+<code>object</code> does not record it, as a fit made by an earlier version of
+<span class="pkg">bayesnec</span> does not. Each must be named in full.</p></dd>
+
+
 <dt id="arg-disp-by-level">disp_by_level<a class="anchor" aria-label="anchor" href="#arg-disp-by-level"></a></dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></code>. Should the family's
 dispersion parameter also take a separate value per level? Defaults to
@@ -193,8 +219,12 @@ joint route can only average over the response block.</p>
 the family follows the growth component: <code>hurdle_gamma</code> where that was
 fitted as a Gamma, <code>zero_inflated_beta</code> where it was a Beta, and the
 corresponding count hurdle where it was Poisson or negative binomial.
-Nothing else transfers – priors, control arguments and the like are
-defaults again unless passed through <code>...</code>.</p>
+For either class, the default priors are built with the
+<code>prior_type</code>, <code>asymptote_observed</code> and <code>predictor_scale</code>
+<code>object</code> was fitted with, unless those arguments are supplied. A grouped
+fit made with <code>asymptote_observed = FALSE</code> is therefore refitted under
+the same declaration. Nothing else transfers: priors, control arguments and
+the like are defaults again unless passed through <code>...</code>.</p>
 <p>A <code>disp()</code> term in the formula held in <code>object</code> is kept, and in
 the joint model it applies to the dispersion parameter of the positive
 block. The variance function is written in the component mean <code>mu</code> of
