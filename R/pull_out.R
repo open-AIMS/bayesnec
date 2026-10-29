@@ -120,5 +120,6 @@ pull_out <- function(manec, model, loo_controls, ...) {
   # failed_models(), so that an object fitted before the record existed is
   # left untouched.
   out <- attach_failed_models(out, manec[["failed_models"]])
+  out <- attach_version(out, stored_version(manec))
   carry_retained_data(out, manec)
 }

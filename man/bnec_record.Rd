@@ -64,5 +64,6 @@ bnec_record(manec_example)
 
 }
 \seealso{
-\code{\link{bnec}}, \code{\link{models}}, \code{\link{check_data}}
+\code{\link{bnec}}, \code{\link{models}},
+\code{\link{check_data}}, \code{\link{bnec_version}}
 }
