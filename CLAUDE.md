@@ -124,6 +124,24 @@ indexes the rules, evidence and qualifications retained from the comment
 cleanup under #484. Historical measurements describe the runs that produced
 them; the current implementation and tests determine what is supported now.
 
+## NEWS.md
+
+Everything above the last released section is one `# bayesnec 2.2.0` entry,
+stating the net change since `master`. Edit that entry; do not append to it.
+
+- Revise the existing bullet for a feature when a pull request changes it.
+  Add a bullet only for a change no bullet yet describes.
+- A fix to something added after `master` is not a bug fix. Rewrite the
+  feature's bullet to describe it as it now works. List a bug fix only where
+  the defect is present on `master`.
+- Write a bullet for a user upgrading from the last release: what changes for
+  their code or results, and what to write instead. Leave mechanism,
+  measurements and history to the help page, vignette or pull request, and
+  point to it. Put issue numbers in parentheses at the end.
+- Do not add a version heading. The heading changes only at release.
+
+A pull request that changes no user-visible behaviour changes no NEWS.
+
 ## The reference library
 
 The papers behind this package and the training material are in
