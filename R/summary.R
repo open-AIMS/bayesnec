@@ -126,8 +126,8 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
     ecs <- summary_ecx_rows(..., .fit = x, .ecx_vals = ecx_vals,
                             .stored_range = range(x$pred_vals$data$x))
   }
-  # Classify by the equation's parameters, not its group, so that ecxflat,
-  # which belongs to no group, is reported as the NSEC it gives.
+  # Classify by the equation's parameters, as nec() does, not by its group or
+  # name.
   is_ecx <- !has_nec_parameter(x$model, x$fit)
   ecx_mod <- NULL
   if (is_ecx) {

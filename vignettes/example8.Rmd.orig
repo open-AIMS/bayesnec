@@ -590,7 +590,7 @@ n_distinct(one_plate$conc_group)
 The fits below use `model = "all"`, which `bnec()` filters to the equations
 valid for the family and predictor. The whole set is kept rather than `decline`
 because the zinc response rises above its control at low concentrations, and
-`decline` holds only the equations whose curves fall from the control. Taking
+`decline` holds no equation whose curve rises above the control. Taking
 the mean of each plate's four wells at each concentration, relative to that
 plate's own control:
 
@@ -931,7 +931,7 @@ fit_plate_batch <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl
 ```
 
 A named-parameter term is not applied across the whole set. The parameter
-placing the curve is `nec` in ten equations and `ec50` in ten, and three have
+placing the curve is `nec` in ten equations and `ec50` in ten, and four have
 neither, so `(nec | plate)` over `model = "all"` would describe a structure most
 of the set does not have. The comparison is made on the two equations that do
 estimate `nec`, against the same two with `ogl(plate)`, so that the two fits
@@ -1295,13 +1295,13 @@ diuron.
 
 The substitution has a second consequence, and it is general rather than
 particular to these data. Any concentration below 1 has a negative logarithm,
-so `log(diuron_adj)` runs from -2.30 to 3.37. Three of the 18 equations that
+so `log(diuron_adj)` runs from -2.30 to 3.37. Three of the 19 equations that
 `model = "all"` offers for this family cannot be fitted on a predictor that
 reaches a negative value. `necsigm` and `ecxsigm` raise the predictor to a
 fractional power, which is undefined there. `ecxhormebc5` cannot be reliably
 initialised where an identity-linked `Beta` mean must stay positive, because
 its hormesis term is negative wherever the predictor is. `bnec()` reports each
-exclusion and fits the remaining 15. Every `lum31` fit in this vignette meets
+exclusion and fits the remaining 16. Every `lum31` fit in this vignette meets
 the same condition, its concentrations being in mg/L and mostly below 1.
 
 ```{r fig-coral-raw, fig.asp = 0.45, out.width = "95%"}

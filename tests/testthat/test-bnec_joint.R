@@ -427,6 +427,39 @@ test_that("three levels with colliding stems compose to a valid model", {
                   paste0("b_", pr$nlpar[nzchar(pr$nlpar)]))
 })
 
+test_that("a level that favours ecxflat composes with a curve (#485)", {
+  # A grouped fit of a group holding ecxflat can favour it at one level. That
+  # level then has top as its only curve parameter. No sampling.
+  cs <- composed_spec(models = list(a = "nec3param", b = "ecxflat"))
+  bdat <- model.frame(cs$formula, data = cs$data)
+  bff <- wrangle_model_formula("nec3param", cs$formula, bdat, cs$family,
+                               level_spec = cs$spec)
+  pars <- names(bff[[2]])
+  expect_setequal(pars[endsWith(pars, "bLv2")], "topbLv2")
+  expect_true(all(c("topaLv1", "betaaLv1", "necaLv1") %in% pars))
+  expect_match(deparse1(bff$formula[[3]]), "bnecindbLv2 * (topbLv2",
+               fixed = TRUE)
+  sc <- brms::stancode(bff, data = cs$data, family = cs$family)
+  expect_match(sc, "b_topbLv2", fixed = TRUE)
+  out <- suppressMessages(
+    add_level_defaults(list(chains = 1, seed = 1), cs$spec, cs$family,
+                       cs$data$y, predictor = cs$data$x)
+  )
+  pr <- as.data.frame(out$prior)
+  expect_setequal(pr$nlpar[nzchar(pr$nlpar)],
+                  c("topaLv1", "betaaLv1", "necaLv1", "topbLv2"))
+  expect_setequal(setdiff(names(out$init[[1]]), "b_phi"),
+                  paste0("b_", c("topaLv1", "betaaLv1", "necaLv1", "topbLv2")))
+  # The refit fits ecxflat at the level whose weights favour it.
+  g <- mock_group_fit(list(a = c(ecxflat = 0.6, nec3param = 0.4),
+                           b = c(nec3param = 0.7, ecxflat = 0.3)))
+  expect_equal(joint_level_equations(g), c(a = "ecxflat", b = "nec3param"))
+  msg <- paste(capture_messages(try(bnec_joint(g), silent = TRUE)),
+               collapse = "")
+  expect_match(msg, "composing ecxflat at \"a\", nec3param at \"b\"",
+               fixed = TRUE)
+})
+
 test_that("an indicator column that would overwrite the data is refused", {
   d <- rbind(transform(nec_data[, c("x", "y")], site = "a"),
              transform(nec_data[, c("x", "y")], site = "b"))
@@ -1238,12 +1271,14 @@ test_that("a dummy-coded refit reads a level whose label brms renamed", {
 
 test_that("the membership test is the nec group, not the equation name", {
   # mod_groups$nec is the group of equations that estimate a nec parameter.
-  # A match on "ecx" in the name agrees across the 23 equations shipped, so
+  # A match on "ecx" in the name agrees across every equation shipped, so
   # only a name outside the convention separates the two rules.
   expect_true(joint_level_is_threshold(
     list(models = list(a = "neclin")), "a"))
   expect_false(joint_level_is_threshold(
     list(models = list(a = "ecxll5")), "a"))
+  expect_false(joint_level_is_threshold(
+    list(models = list(a = "ecxflat")), "a"))
   expect_setequal(c(mod_groups$nec, mod_groups$ecx), mod_groups$all)
   expect_length(intersect(mod_groups$nec, mod_groups$ecx), 0L)
 })

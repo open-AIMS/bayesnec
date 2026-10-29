@@ -171,8 +171,8 @@ test_that("a second grouping is not dropped for being a substring of the first",
 })
 
 test_that("every equation and family builds Stan code with a group-level term", {
-  # The transform is applied by string substitution into 23 different curve
-  # expressions, so the check that matters is that brms still accepts all of
+  # The transform is applied by string substitution into every curve
+  # expression, so the check that matters is that brms still accepts all of
   # them. Gamma exercises the log branch, gaussian the untransformed one.
   skip_on_cran()
   for (fam_name in c("Beta", "Gamma", "gaussian")) {

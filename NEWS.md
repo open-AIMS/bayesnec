@@ -1931,14 +1931,11 @@
   `plot()` draw it as a horizontal line, with the censored estimates labelled
   as bounds.
 
-  `ecxflat` is available by name only, as in `crf(x, "ecxflat")` or
-  `crf(x, c("ecxflat", "nec4param"))`, and belongs to no model group, so
-  `models()`, `model = "all"` and every other group leave it out and no
-  existing fit or default set changes. It is planned to join `all`, `ecx` and
-  `decline` at the 3.0 release. Adding it there changes every model-averaged
-  result: where it takes appreciable model weight, a constant describes the
-  data about as well as the declining curves, and its draws enter the
-  model-averaged ECx and NSEC as censored above the range.
+  Revised by #485, under "Bug fixes": `ecxflat` belongs to the `all`, `ecx`
+  and `decline` model groups, so the default set includes it. Where it takes
+  appreciable model weight, a constant describes the data about as well as the
+  declining curves, and its draws enter the model-averaged ECx and NSEC as
+  censored above the range.
 
   `bnec()` fits `ecxflat` alone to a `bernoulli`, `binomial`, `beta_binomial`
   or `beta` response with every observation at one bound, whatever model set
@@ -3194,6 +3191,34 @@
   end. The precompiled vignettes were rendered under the old default, and the
   values printed by `summary()` and `nec()` for an inline-transformed fit in
   `example1`, `example8` and `example9` change at the next precompile (#299).
+
+- **The constant equation `ecxflat` belongs to the `all`, `ecx` and `decline`
+  model groups**, and to no other. `all`, the default set of `crf()`, now holds
+  24 equations, `ecx` 14 and `decline` 15, so every model-averaged result built
+  from one of those groups changes, the default `bnec()` call included. Every
+  equation of such a set used to fit a curve to a response that does not
+  change over the tested range; the model weights are now computed with a
+  constant mean among the candidates. Where `ecxflat` takes weight, its draws
+  enter the model-averaged ECx and N(S)EC in proportion to that weight. Each of
+  its ECx draws is censored above the prediction range, and so is each of its
+  NSEC draws except about a share `sig_val`, which take the control
+  concentration. On a response that declines it takes almost none: in the
+  test suite, `amend(manec_example, add = "ecxflat")` gives it a weight below
+  0.01. Its fit reports that its NSEC is censored above, as it does for
+  any equation whose curve does not reach the reference, so a call fitting one
+  of these groups prints that message once more.
+
+  `bot_free` and `zero_bounded` do not change, because `ecxflat` has no `bot`
+  but its mean does not decline. No family drops it, so `models()` given a
+  numeric range lists it, and `models(max_pars = 1)` returns it where it was an
+  error. Given one of these group names, `pull_out()` and `amend()` include
+  it, `bnec_group()` fits it at each level, and `bnec_hurdle()` fits it in
+  both components unless `model_survival` is supplied. A prior list named by
+  equation and written for one of these groups has no `ecxflat` entry, so
+  `bnec()` fits it with the default prior and says so in a message. The
+  precompiled vignettes were rendered with the earlier groups, and their
+  fitted output changes at the next precompile; the `example8` fit store is
+  refitted then, since its fits follow the model set (#485).
 
 ## Documentation
 

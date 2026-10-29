@@ -563,6 +563,10 @@ test_that("a set that records no call has its survival block read", {
   # One equation with another equation's block was fitted with it named.
   one <- list(ecx4param = stored_with("ecx4param", "nec3param"))
   expect_identical(stored_model_survival(one, bdat), "nec3param")
+  # ecxflat is read as a survival equation, since it is in "all".
+  flat <- list(ecx4param = stored_with("ecx4param", "ecxflat"),
+               nec4param = stored_with("nec4param", "ecxflat"))
+  expect_identical(stored_model_survival(flat, bdat), "ecxflat")
   # One equation with its own block is read as fitted without it.
   alone <- list(ecx4param = stored_with("ecx4param", NULL))
   expect_null(stored_model_survival(alone, bdat))

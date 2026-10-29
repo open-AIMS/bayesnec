@@ -616,6 +616,33 @@ test_that("ecxflat named for the growth component is let through (#419)", {
   expect_identical(calls, 1L)
 })
 
+test_that("a group name reaches both components, ecxflat included (#485)", {
+  dat <- data.frame(x = rep(1:4, each = 5),
+                    y = c(seq(1, 3, length.out = 15), rep(0, 5)))
+  sets <- list()
+  local_mocked_bindings(
+    bnec = function(formula, data, ...) {
+      sets[[length(sets) + 1L]] <<- get_model_from_formula(formula)
+      structure(list(), class = c("bayesnecfit", "bnecfit"))
+    },
+    .package = "bayesnec"
+  )
+  suppressMessages(bnec_hurdle(y ~ crf(x, "decline"), data = dat))
+  expect_length(sets, 2)
+  for (set in sets) {
+    expect_identical(set, mod_groups$decline)
+  }
+  # A growth component at a bound is still refused for a group: the group
+  # holds curve equations beside ecxflat.
+  at_bound <- data.frame(x = as.numeric(rep(1:4, each = 5)),
+                         y = c(rep(1, 15), rep(0, 5)))
+  sets <- list()
+  expect_error(suppressMessages(
+    bnec_hurdle(y ~ crf(x, "decline"), data = at_bound)
+  ), "The constant equation ecxflat", fixed = TRUE)
+  expect_length(sets, 0)
+})
+
 test_that("a missing predictor is refused before the growth bound (#400)", {
   # model.frame() drops the row, so read after it the survivors were all 1 and
   # the call was refused as a growth component at the bound.
