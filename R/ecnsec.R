@@ -8,7 +8,7 @@
 #' \code{\link{nsec}} returns; pass the one wanted.
 #' @param resolution The number of unique x values over which the curve is
 #' predicted. It affects only \code{type = "range"}, where the denominator is
-#' the lowest response the curve predicts over the grid. The default of 200
+#' the lowest response the curve predicts over the grid. The default of 500
 #' matches \code{\link{ecx}} and \code{\link{nsec}}.
 #' @param type A \code{\link[base]{character}} vector, taking values of
 #' "absolute" (the default), "relative" or "range". See Details.
@@ -84,7 +84,7 @@
 #' }
 #'
 #' @export
-ecnsec <- function(object, nsec, resolution = 200, x_range = NA,
+ecnsec <- function(object, nsec, resolution = 500, x_range = NA,
                    type = "absolute",
                  xform = NULL, prob_vals = c(0.5, 0.025, 0.975), ...) {
   UseMethod("ecnsec")
@@ -107,7 +107,7 @@ ecnsec <- function(object, nsec, resolution = 200, x_range = NA,
 #' @noRd
 #'
 #' @export
-ecnsec.bnecfit <- function(object, nsec, resolution = 200, x_range = NA,
+ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
                                type = "absolute",
                              xform = NULL, prob_vals = c(0.5, 0.025, 0.975), ...,
                              posterior = FALSE) {

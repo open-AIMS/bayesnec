@@ -8,9 +8,8 @@
 #' @param resolution The number of unique x values over which to find NSEC.
 #' The crossing is located by linear interpolation between the two grid values
 #' that bracket it, so precision saturates well below the grid spacing.
-#' Increasing the resolution beyond the default of 200 changed the estimate by
-#' less than 0.01 percent on the fits tested, and increases the run time
-#' roughly in proportion.
+#' The default is 500 grid values, matching \pkg{toxval}. A finer grid can
+#' change an interpolated crossing and increases prediction time.
 #' @param xform \code{NULL}, the default, or a function. \code{NULL} returns
 #' the estimate on the scale the predictor was recorded on. A function is
 #' applied to the estimate on the scale the model was fitted on. The two
@@ -67,15 +66,13 @@
 #' against the fitted range and computed by three different formulas that
 #' agreed only for a monotonic curve.
 #'
-#' Two consequences follow from the reference being a quantile of the control
-#' posterior. A \code{sig_val} share of the draws have a control at or below the
-#' reference, and each of those reaches it at the control itself, so the control
-#' concentration is that draw's NSEC. Fisher and Fox (2023) report the same
-#' behaviour: the lower credible bound of the NSEC is the lowest concentration
-#' whenever \code{sig_val} is above the quantile the bound is read at, 0.025
-#' under the default \code{prob_vals}. And the crossing is sought at or above the
-#' control, so extending \code{x_range} below the data does not place an estimate
-#' at a concentration lower than any tested.
+#' The reference is a quantile of the control posterior, so some draws start
+#' at or below it. A draw with a later decreasing crossing takes that crossing.
+#' Without one, it takes the control concentration unless its response first
+#' changes away from the effect and later rises above the reference. Such a
+#' draw shows no decreasing effect in the searched range and is censored there.
+#' The crossing is sought at or above the control, so extending \code{x_range}
+#' below the data does not place an estimate below any tested concentration.
 #'
 #' Two limits on that. The value is the lowest \emph{observed} concentration,
 #' where Fisher and Fox (2023) report zero concentration, which they reach by
@@ -210,7 +207,7 @@
 # dpar sits after `...` for the same reason as in ecx(): it matches the methods,
 # and naming it here is what puts it in \usage. Methods that have no use for it
 # (nsec.drc, nsec.brmsfit) absorb it through their own `...`.
-nsec <- function(object, sig_val = 0.01, resolution = 200,
+nsec <- function(object, sig_val = 0.01, resolution = 500,
                  x_range = NA,
                  xform = NULL, prob_vals = c(0.5, 0.025, 0.975),
                  extrapolate = FALSE, ...,
@@ -235,7 +232,7 @@ nsec <- function(object, sig_val = 0.01, resolution = 200,
 #' @noRd
 #'
 #' @export
-nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
+nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
                              x_range = NA,
                              xform = NULL, prob_vals = c(0.5, 0.025, 0.975),
                              extrapolate = FALSE, ...,
@@ -369,7 +366,7 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
 #' @noRd
 #'
 #' @export
-nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 200,
+nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 500,
                                x_range = NA,
                                xform = NULL, prob_vals = c(0.5, 0.025, 0.975),
                                extrapolate = FALSE, ...,
@@ -459,7 +456,7 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 200,
 #' @noRd
 #'
 #' @export
-nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,    
+nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 500,
                          x_range = NA,
                          xform = NULL, prob_vals = c(0.5, 0.025, 0.975),
                          extrapolate = FALSE, ..., 
@@ -533,7 +530,9 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,
       ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
       nsec_out <- nsec_from_posterior(p_samples, reference, x_vec, min(x_vec),
                                       control)
-      nsec_out <- unlist(nsec_out)
+      cens <- nsec_brms_censoring(nsec_out, x_vec)
+      nsec_out <- as.numeric(nsec_out)
+      attr(nsec_out, "censored") <- cens
       attr(nsec_out, "ecnsec_relativeP") <- ecnsec
       nsec_out
     })
@@ -551,7 +550,7 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,
   
   if(by_group & !posterior & !is.na(group_var)){   
     names(out_vals) <- groups
-    out_vals <- lapply(out_vals, quantile, probs = prob_vals) |> 
+    out_vals <- lapply(out_vals, summarise_censored, probs = prob_vals) |>
       bind_rows(.id = group_var)
     names(out_vals) <- clean_names(out_vals)
     attr(out_vals, "ecnsec_relativeP") <- ecnsec
@@ -563,24 +562,26 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,
   }
   
   if(!by_group & !posterior & !is.na(group_var)){   
-    out_vals <- quantile(unlist(out_vals), probs = prob_vals)
+    cens <- concat_censoring(lapply(out_vals, attr, "censored"),
+                             vapply(out_vals, length, integer(1)))
+    out_vals <- summarise_censored(unlist(out_vals), prob_vals, cens)
     names(out_vals) <- clean_names(out_vals)
     attr(out_vals, "ecnsec_relativeP") <- ecnsec
   }
   
   if(posterior & is.na(group_var)){ 
-    out_vals <- unlist(nsec_out)
-    # Drop below_range, which feeds a censoring record this method cannot
-    # build without a bayesnecformula. Keep n_below_range and x_searched_from,
-    # which it has always returned. quantile() runs without na.rm, so a draw
-    # beyond the range is an error here rather than a silent deletion.
-    attr(out_vals, "below_range") <- NULL
+    cens <- nsec_brms_censoring(nsec_out, x_vec)
+    out_vals <- as.numeric(nsec_out)
+    attr(out_vals, "censored") <- cens
+    attr(out_vals, "n_below_range") <- attr(nsec_out, "n_below_range")
+    attr(out_vals, "x_searched_from") <- attr(nsec_out, "x_searched_from")
     attr(out_vals, "ecnsec_relativeP") <- ecnsecP
   }
   
   if(!posterior & is.na(group_var)){   
     
-    out_vals <- quantile(unlist(nsec_out), probs = prob_vals)
+    out_vals <- summarise_censored(nsec_out, prob_vals,
+                                    nsec_brms_censoring(nsec_out, x_vec))
     attr(out_vals, "ecnsec_relativeP") <- ecnsec
     names(out_vals) <- clean_names(out_vals)
   }
@@ -590,6 +591,25 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,
   attr(out_vals, "toxicity_estimate") <- "nsec"
 
   return(out_vals)
+}
+
+#' Mark the NSEC draws outside a brmsfit prediction grid
+#'
+#' @param out Per-draw NSEC values from `nsec_from_posterior()`.
+#' @param x_vec The prediction grid.
+#'
+#' @return A censoring record.
+#' @noRd
+nsec_brms_censoring <- function(out, x_vec) {
+  below <- attr(out, "below_range")
+  if (is.null(below)) {
+    below <- rep(FALSE, length(out))
+  }
+  searched_from <- attr(out, "x_searched_from")
+  if (is.null(searched_from)) {
+    searched_from <- min(x_vec)
+  }
+  censoring_record(max(x_vec), searched_from, is.na(out) & !below, below)
 }
 
 #' @inheritParams nsec
@@ -606,7 +626,7 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,
 #' @noRd
 #'
 #' @export
-nsec.drc <- function(object, sig_val = 0.01, resolution = 200,
+nsec.drc <- function(object, sig_val = 0.01, resolution = 500,
                      x_range = NA,
                      xform = NULL, prob_vals = c(0.5, 0.025, 0.975),
                      extrapolate = FALSE, ...,

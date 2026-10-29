@@ -1,5 +1,22 @@
 # bayesnec 2.2.0
 
+## Endpoint extraction
+
+- Post-fit `ecx()`, `nsec()` and `ecnsec()` now use 500 prediction points by
+  default, matching `toxval`. An explicit `resolution` still selects another
+  grid. The grid used when fitting with `bnec()` is unchanged.
+- An NSEC draw that starts past the reference at control now takes a later
+  decreasing crossing when one occurs. If it has no such crossing, its first
+  meaningful response change is an increase, and a later grid value lies on
+  the no-effect side of the reference, it is censored above the prediction
+  range. Other draws in that control tail still take the control
+  concentration. This can change NSEC estimates and intervals, including
+  stored NSEC values calculated during fitting.
+- `nsec.brmsfit()` now retains beyond-grid draws as censored ranks when it
+  summarises them. Previously a call with any such draw stopped while taking
+  a quantile of missing values. Its summaries use the same observed order
+  statistics as the other bayesnec NSEC methods when draws are censored.
+
 ## Package metadata
 
 - The minimum `testthat` recorded in `DESCRIPTION` is raised from 3.1.8 to

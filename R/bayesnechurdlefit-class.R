@@ -297,7 +297,7 @@ hurdle_component_ne <- function(part, extrapolate, ...) {
 #' @method ecx bayesnechurdlefit
 #'
 #' @export
-ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 200,
+ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
                                   posterior = FALSE, type = "absolute",
                                   x_range = NA, xform = NULL,
                                   prob_vals = c(0.5, 0.025, 0.975),

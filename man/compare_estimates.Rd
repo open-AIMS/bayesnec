@@ -38,9 +38,8 @@ significance of the predicted posterior values.}
 \item{resolution}{The number of unique x values over which to find ECx.
 The crossing is located by linear interpolation between the two grid values
 that bracket it, so precision saturates well below the grid spacing.
-Increasing the resolution beyond the default of 200 changed the estimate by
-less than 0.01 percent on the fits tested, and increases the run time
-roughly in proportion.}
+The default is 500 grid values, matching \pkg{toxval}. A finer grid can
+change an interpolated crossing and increases prediction time.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 

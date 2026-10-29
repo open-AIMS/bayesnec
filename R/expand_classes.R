@@ -77,10 +77,8 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   # and for any two-block fit where at least one block is smooth.
   nsec_off_curve <- function(post) {
     reference <- quantile(post[, 1], sig_val)
-    # The reference and the start of the search are the same grid point, so a
-    # draw at or below the reference there takes that point as its NSEC. The
-    # start is the first grid point, not the lowest observed predictor as in
-    # nsec.bayesnecfit(); the two differ only where bnec() was given an x_range.
+    # The start is the first grid point, not the lowest observed predictor as
+    # in nsec.bayesnecfit(); the two differ where bnec() received an x_range.
     out <- nsec_from_posterior(post, reference, pred_data$x, pred_data$x[1],
                                post[, 1])
     below <- attr(out, "below_range")

@@ -277,3 +277,46 @@ test_that("nsec_from_posterior puts the lower sig_val tail at the control", {
   expect_true(all(is.na(nsec_from_posterior(post, 0.01, x, x_control = x[1],
                                             control = post[, 1]))))
 })
+
+test_that("NSEC distinguishes a later effect from no effect after the control", {
+  x <- 0:3
+  post <- rbind(
+    away_no_effect = c(0.8, 0.9, 1, 1),
+    towards = c(0.8, 0.7, 0.6, 0.5),
+    away_then_crosses = c(0.8, 1, 0.7, 0.5),
+    flat = rep(0.8, 4)
+  )
+  out <- nsec_from_posterior(post, 0.9, x, x_control = 0,
+                             control = post[, 1])
+
+  expect_true(is.na(out[1]))
+  expect_false(attr(out, "below_range")[1])
+  expect_equal(unname(out[2]), 0)
+  expect_equal(unname(out[3]), 1 + 1 / 3)
+  expect_equal(unname(out[4]), 0)
+})
+
+test_that("nsec.brmsfit summarises censored draws without dropping them", {
+  fit <- structure(list(data = data.frame(x = 0:3)), class = "brmsfit")
+  post <- rbind(
+    matrix(rep(c(1, 0.9, 0.8, 0.7), 40), nrow = 40, byrow = TRUE),
+    matrix(rep(c(1, 1.1, 1.2, 1.3), 60), nrow = 60, byrow = TRUE)
+  )
+  local_mocked_bindings(posterior_epred = function(...) post)
+
+  draws <- nsec(fit, x_var = "x", resolution = 4, posterior = TRUE)
+  estimate <- nsec(fit, x_var = "x", resolution = 4)
+
+  expect_equal(sum(attr(draws, "censored")$above), 60)
+  expect_equal(unname(as.numeric(estimate)), c(3, 0, 3))
+  expect_identical(attr(estimate, "censored_summary")$bound,
+                   c(">=", "", ">="))
+
+  fit$data <- data.frame(x = rep(0:3, 2), g = rep(c("a", "b"), each = 4))
+  grouped <- nsec(fit, x_var = "x", group_var = "g", by_group = TRUE,
+                  resolution = 4)
+  pooled <- nsec(fit, x_var = "x", group_var = "g", resolution = 4)
+  expect_equal(grouped$Q50, c(3, 3))
+  expect_equal(unname(as.numeric(pooled)), c(3, 0, 3))
+  expect_equal(attr(pooled, "censored_summary")$n_above, 120)
+})
