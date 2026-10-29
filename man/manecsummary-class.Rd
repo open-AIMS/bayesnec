@@ -10,7 +10,7 @@ Multiple models fitted with the
 \code{\link[bayesnec:bayesnec-package]{bayesnec}} package are summarised
 as a \code{manecsummary} object, which contains the name of the
 non-linear models fitted, the family distribution used
-to fit all the models, the total post-warm-up sample size, a table
+to fit all the models, the number of post-warm-up draws per model, a table
 containing the model weights, the method to calculate the weights,
 whether this model is an ECx-type model
 (see details below), and the ECx summary values should the user decide
@@ -29,7 +29,8 @@ the fitted non-linear models.}
 \item{\code{family}}{A \code{\link[base]{list}} indicating the
 family distribution and link function used to fit all the models.}
 
-\item{\code{sample_size}}{The total post-warm-up sample size.}
+\item{\code{sample_size}}{The number of post-warm-up draws each model in the set
+holds. Where the models hold different numbers, it is the smallest.}
 
 \item{\code{mod_weights}}{A table containing the model weights.}
 

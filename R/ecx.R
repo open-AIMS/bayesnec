@@ -326,7 +326,7 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
     message("The estimated upper credible interval is identical or nearly",
             " identical to the upper bound of your x_range value for the ",
             object$model, " model. This suggests the estimated uncertainty",
-            "may be constrained. You could try increasing x_range to ensure",
+            " may be constrained. You could try increasing x_range to ensure",
             " this is not the case.")
   }
   if (!posterior) {
