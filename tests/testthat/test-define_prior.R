@@ -819,7 +819,8 @@ test_that("prior_type narrows the nec and ec50 prior and nothing else (#314)", {
     expect_equal(prior_pars(r)[2], reg_spread(prior_scale(x)))
     expect_lt(prior_pars(r)[2], prior_pars(u)[2])
   }
-  # Check nec and ec50 bounds against distributional support.
+  # and it reaches both nec and ec50 through define_prior(), bounded to the
+  # tested series
   x <- rep(c(0, 25, 50, 75, 100), each = 6)
   d <- data.frame(x = x, y = seq(0.9, 0.1, length.out = length(x)))
   reg <- suppressMessages(get_priors(
@@ -829,7 +830,7 @@ test_that("prior_type narrows the nec and ec50 prior and nothing else (#314)", {
   target <- bayesnec:::predictor_prior(x, prior_type = "regularizing")
   expect_equal(reg$prior[reg$nlpar == "ec50"], target)
   expect_equal(as.numeric(reg$lb[reg$nlpar == "ec50"]), 0)
-  expect_true(is.na(reg$ub[reg$nlpar == "ec50"]))
+  expect_equal(as.numeric(reg$ub[reg$nlpar == "ec50"]), 100)
 })
 
 # Literal uninformative prior strings cover all five audit designs and
@@ -1077,8 +1078,12 @@ test_that("a hurdle mu block reads the whole predictor for nec (#302)", {
   whole <- bayesnec:::predictor_prior(x)
   expect_equal(pr$prior[pr$nlpar == "nec"], whole)
   expect_equal(pr$prior[pr$nlpar == "hunec"], whole)
-  expect_equal(as.numeric(pr$lb[pr$nlpar == "nec"]), 0)
-  expect_true(is.na(pr$ub[pr$nlpar == "nec"]))
+  # Both blocks are bounded to the whole series, not to the survivors' range,
+  # whose highest value is 10.
+  for (p in c("nec", "hunec")) {
+    expect_equal(as.numeric(pr$lb[pr$nlpar == p]), 0)
+    expect_equal(as.numeric(pr$ub[pr$nlpar == p]), 100)
+  }
 })
 
 test_that("a hurdle fit uses the declared scale for both blocks (#317)", {
@@ -1092,9 +1097,9 @@ test_that("a hurdle fit uses the declared scale for both blocks (#317)", {
 
   expect_match(pr$prior[pr$nlpar == "nec"], "^normal\\(")
   expect_match(pr$prior[pr$nlpar == "hunec"], "^normal\\(")
-  # The normal branch has neither bound, including for negative logged doses.
-  expect_true(is.na(pr$lb[pr$nlpar == "nec"]))
-  expect_true(is.na(pr$ub[pr$nlpar == "nec"]))
+  # The normal branch is bounded to the tested series on the scale supplied.
+  expect_equal(as.numeric(pr$lb[pr$nlpar == "nec"]), 0)
+  expect_equal(as.numeric(pr$ub[pr$nlpar == "nec"]), log(100))
 })
 
 test_that("a hurdle mu block with no surviving dose still builds (#302)", {
@@ -1814,84 +1819,120 @@ test_that("the amend path divides without check_data (#389)", {
   }
 })
 
-# Threshold bounds follow distributional support.
+# ---------------------------------------------------------------------------
+# The tested-range bound on the threshold priors
+# ---------------------------------------------------------------------------
 
-test_that("the threshold priors are bounded by their own support (#393)", {
-  # Keep lb = 0 for a lognormal so Stan does not propose negative values.
-  # Leave the upper tail available beyond the highest tested concentration.
-  x <- rep(c(0, 25, 50, 75, 100), each = 6)
+# The nec or ec50 row get_priors() returns for one equation, on a declining
+# Beta response over `x`.
+threshold_row <- function(x, model, ...) {
   d <- data.frame(x = x, y = seq(0.9, 0.1, length.out = length(x)))
-  for (ptype in c("uninformative", "regularizing")) {
-    for (mod in c("nec4param", "ecx4param")) {
-      np <- if (mod == "nec4param") "nec" else "ec50"
-      pr <- as.data.frame(suppressMessages(get_priors(
-        as.formula(sprintf("y ~ crf(x, \"%s\")", mod)), data = d,
-        family = Beta(link = "identity"), prior_type = ptype
-      )))
-      row <- pr[pr$nlpar == np, ]
-      expect_match(row$prior, "^lognormal\\(")
-      expect_equal(as.numeric(row$lb), 0)
-      expect_true(is.na(row$ub))
+  pr <- as.data.frame(suppressMessages(get_priors(
+    stats::as.formula(sprintf("y ~ crf(x, \"%s\")", model)), data = d,
+    family = Beta(link = "identity"), ...
+  )))
+  pr[pr$nlpar == if (grepl("^nec", model)) "nec" else "ec50", ]
+}
+
+test_that("the threshold priors are bounded to the tested range (#483)", {
+  # Under the default the upper bound is the highest value tested, and the
+  # declaration removes it. The lower bound is the lowest value tested under
+  # both. Both branches, both prior sets and both parameters.
+  cases <- list(
+    list(x = rep(c(0, 25, 50, 75, 100), each = 6), scale = "auto",
+         dist = "^lognormal\\("),
+    list(x = rep(log(c(0.05, 0.1, 1, 10, 100)), each = 6), scale = "auto",
+         dist = "^normal\\("),
+    list(x = rep(log(c(1, 3, 10, 30, 100)), each = 6), scale = "log",
+         dist = "^normal\\(")
+  )
+  for (case in cases) {
+    for (ptype in c("uninformative", "regularizing")) {
+      for (mod in c("nec4param", "ecx4param")) {
+        label <- paste(case$scale, min(case$x), ptype, mod)
+        bounded <- threshold_row(case$x, mod, prior_type = ptype,
+                                 predictor_scale = case$scale)
+        lifted <- threshold_row(case$x, mod, prior_type = ptype,
+                                predictor_scale = case$scale,
+                                asymptote_observed = FALSE)
+        expect_match(bounded$prior, case$dist, label = label)
+        expect_identical(lifted$prior, bounded$prior, label = label)
+        expect_equal(as.numeric(bounded$lb), min(case$x), label = label)
+        expect_equal(as.numeric(bounded$ub), max(case$x), label = label)
+        expect_equal(as.numeric(lifted$lb), min(case$x), label = label)
+        expect_true(is.na(lifted$ub), label = label)
+      }
     }
   }
 })
 
-test_that("a logged predictor keeps neither threshold bound (#393)", {
-  # A normal threshold prior has neither bound. Exercise both automatic
-  # and explicit recognition of logged predictors.
-  x_neg <- rep(log(c(0.05, 0.1, 1, 10, 100)), each = 6)
-  x_pos <- rep(log(c(1, 3, 10, 30, 100)), each = 6)
-  cases <- list(
-    list(x = x_neg, scale = "auto"),
-    list(x = x_pos, scale = "log")
-  )
-  for (case in cases) {
-    d <- data.frame(x = case$x, y = seq(0.9, 0.1, length.out = length(case$x)))
-    pr <- as.data.frame(suppressMessages(get_priors(
-      y ~ crf(x, "nec4param"), data = d, family = Beta(link = "identity"),
-      predictor_scale = case$scale
-    )))
-    row <- pr[pr$nlpar == "nec", ]
-    expect_match(row$prior, "^normal\\(")
-    expect_true(is.na(row$lb))
-    expect_true(is.na(row$ub))
+test_that("a series with no zero control is bounded at its lowest dose (#483)", {
+  x <- rep(c(1, 3, 10, 30, 100), each = 6)
+  for (ao in c(TRUE, FALSE)) {
+    row <- threshold_row(x, "nec4param", asymptote_observed = ao)
+    expect_match(row$prior, "^lognormal\\(")
+    expect_equal(as.numeric(row$lb), 1)
   }
 })
 
-test_that("the threshold prior places mass beyond the tested range (#393)", {
-  # Compute the CDF with the actual prior bounds: removing truncation
-  # changes support even when the distribution string stays identical.
+test_that("only the declaration admits a threshold above the range (#483)", {
+  # The true ec50 is 45, above the highest tested concentration of 40.
+  # The CDF is taken over the bounds the entry is given, as the prior audit
+  # takes it, because that is the density the sampler sees.
   x <- rep(c(0, 0.31, 0.63, 1.25, 2.5, 5, 10, 40), each = 5)
   d <- data.frame(x = x, y = seq(0.9, 0.1, length.out = length(x)))
-  pr <- as.data.frame(suppressMessages(get_priors(
-    y ~ crf(x, "ecx4param"), data = d, family = gaussian()
-  )))
-  row <- pr[pr$nlpar == "ec50", ]
-  pars <- as.numeric(strsplit(gsub("^[^(]*\\(|\\)$", "", row$prior),
-                              ",[[:space:]]*")[[1]])
-  # Assert bounds explicitly; the unchanged prior string alone cannot
-  # detect restored tested-range truncation.
-  expect_equal(as.numeric(row$lb), 0)
-  expect_true(is.na(row$ub))
-  # The true threshold exceeds the highest tested concentration.
+  cdf_at <- function(q, row) {
+    pars <- as.numeric(strsplit(gsub("^[^(]*\\(|\\)$", "", row$prior),
+                                ",[[:space:]]*")[[1]])
+    cdf <- function(v) stats::plnorm(v, pars[1], pars[2])
+    lo <- as.numeric(row$lb)
+    hi <- if (is.na(row$ub)) Inf else as.numeric(row$ub)
+    (cdf(min(q, hi)) - cdf(lo)) / (cdf(hi) - cdf(lo))
+  }
+  rows <- lapply(c(TRUE, FALSE), function(ao) {
+    pr <- as.data.frame(suppressMessages(get_priors(
+      y ~ crf(x, "ecx4param"), data = d, family = gaussian(),
+      asymptote_observed = ao
+    )))
+    pr[pr$nlpar == "ec50", ]
+  })
   expect_gt(45, max(x))
-  cdf <- function(q) stats::plnorm(q, pars[1], pars[2])
-  lo <- if (is.na(row$lb)) 0 else as.numeric(row$lb)
-  hi <- if (is.na(row$ub)) Inf else as.numeric(row$ub)
-  mass <- (if (is.finite(hi)) cdf(hi) else 1) - cdf(lo)
-  expect_lt((cdf(45) - cdf(lo)) / mass, 1)
+  expect_equal(as.numeric(rows[[1]]$ub), 40)
+  expect_equal(cdf_at(45, rows[[1]]), 1)
+  expect_true(is.na(rows[[2]]$ub))
   # The value notes/prior_audit.md part 4 reports for this cell.
-  expect_equal(signif((cdf(45) - cdf(lo)) / mass, 4), 0.9795)
-  # Some upper-tail mass remains beyond the highest tested dose.
-  above <- 1 - cdf(max(x))
-  expect_gt(above, 0)
-  expect_lt(above, 0.05)
+  expect_equal(signif(cdf_at(45, rows[[2]]), 4), 0.9795)
+})
+
+test_that("tested_range replaces the range of the prior predictor (#483)", {
+  # The growth component of bnec_hurdle() is fitted to survivors that stop at
+  # 10 and is bounded by the whole series, which runs to 100. The location and
+  # spread still come from the survivors.
+  set.seed(483)
+  x <- rep(c(0, 1, 3, 10), each = 6)
+  y <- stats::rgamma(length(x), 25, 25 / 8)
+  fam <- validate_family("Gamma")
+  own <- as.data.frame(define_prior("nec3param", fam, x, y))
+  wide <- as.data.frame(define_prior("nec3param", fam, x, y,
+                                     tested_range = c(0, 100)))
+  lifted <- as.data.frame(define_prior("nec3param", fam, x, y,
+                                       tested_range = c(0, 100),
+                                       asymptote_observed = FALSE))
+  nec_of <- function(pr) pr[pr$nlpar == "nec", ]
+  expect_identical(nec_of(wide)$prior, nec_of(own)$prior)
+  expect_equal(as.numeric(nec_of(own)$ub), 10)
+  expect_equal(as.numeric(nec_of(wide)$ub), 100)
+  expect_true(is.na(nec_of(lifted)$ub))
+  # A lognormal entry is never bounded below zero.
+  low <- as.data.frame(define_prior("nec3param", fam, x, y,
+                                    tested_range = c(-1, 100)))
+  expect_equal(as.numeric(nec_of(low)$lb), 0)
 })
 
 test_that("a single distinct predictor value builds and draws (#393)", {
-  # Coincident lower and upper bounds make the rejection loop endless.
-  # Use define_prior() directly: check_data() rejects this constant
-  # predictor before formula-based prior construction can reach it.
+  # With lb equal to ub, make_inits() would redraw for ever, so the entry takes
+  # no upper bound. Driven through define_prior(), because check_data() stops
+  # on a constant predictor before any prior is built.
   x <- rep(5, 12)
   y <- seq(0.9, 0.1, length.out = 12)
   pr <- as.data.frame(suppressMessages(
@@ -1899,9 +1940,9 @@ test_that("a single distinct predictor value builds and draws (#393)", {
   ))
   row <- pr[pr$nlpar == "nec", ]
   expect_match(row$prior, "^lognormal\\(")
-  expect_equal(as.numeric(row$lb), 0)
-  # Assert the missing upper bound explicitly. Coincident bounds can make
-  # the subsequent make_inits() rejection loop run forever.
+  expect_equal(as.numeric(row$lb), 5)
+  # Keep this before make_inits(), which hangs rather than fails if the
+  # upper bound returns.
   expect_true(is.na(row$ub))
   set.seed(393)
   inits <- bayesnec:::make_inits(
@@ -1910,7 +1951,21 @@ test_that("a single distinct predictor value builds and draws (#393)", {
   )
   expect_length(inits, 2)
   expect_true(all(vapply(inits, function(z) is.finite(z$b_nec), logical(1))))
-  expect_true(all(vapply(inits, function(z) z$b_nec > 0, logical(1))))
+  expect_true(all(vapply(inits, function(z) z$b_nec > 5, logical(1))))
+})
+
+test_that("make_inits draws the threshold inside the tested range (#483)", {
+  x <- rep(c(0, 0.31, 0.63, 1.25, 2.5, 5, 10, 40), each = 5)
+  y <- seq(0.9, 0.1, length.out = length(x))
+  pr <- as.data.frame(define_prior("nec3param", validate_family("gaussian"),
+                                   x, y))
+  set.seed(483)
+  inits <- bayesnec:::make_inits(
+    "nec3param", c("b_top", "b_beta", "b_nec"),
+    priors = pr[pr$class == "b", ], chains = 200
+  )
+  nec <- vapply(inits, function(z) z$b_nec, numeric(1))
+  expect_true(all(nec > 0 & nec < 40))
 })
 
 # Priors for a lower asymptote declared unobserved. The comments below call
@@ -2291,9 +2346,8 @@ test_that("bnec refuses the declaration before its model loop (#394)", {
 })
 
 test_that("a mixed model set is reported under the declaration (#394)", {
-  # Report a mixed set when the unobserved region prevents distinguishing
-  # equations that estimate bot from those that do not. Whether an endpoint
-  # can reach zero cannot be inferred from this incomplete design.
+  # An incomplete design cannot distinguish equations with and without bot.
+  # Report both branches; the endpoint determines whether zero is possible.
   d <- incomplete_design(0.36, "gaussian")
   bdat <- stats::model.frame(bnf(y ~ crf(x, c("nec3param", "nec4param"))),
                              data = d)
@@ -2323,6 +2377,27 @@ test_that("a mixed model set is reported under the declaration (#394)", {
     bdat, fam, c("nec4param", "ecx4param"), asymptote_observed = FALSE))
   expect_silent(bayesnec:::check_asymptote_declaration(
     bdat, fam, c("nec3param", "nec4param")))
+})
+
+test_that("ecxflat is on neither side of the mixed-set report (#485)", {
+  # It has no bot parameter but is not in bot_free, so it adds to neither the
+  # equations that estimate a lower asymptote nor those that have none.
+  d <- incomplete_design(0.36, "gaussian")
+  bdat <- stats::model.frame(bnf(y ~ crf(x, c("nec3param", "nec4param"))),
+                             data = d)
+  fam <- validate_family("gaussian")
+  for (set in list("ecxflat", c("ecxflat", "nec3param"),
+                   c("ecxflat", "nec4param"))) {
+    expect_silent(bayesnec:::check_asymptote_declaration(
+      bdat, fam, set, asymptote_observed = FALSE))
+  }
+  # A group holding it is reported, because of the other equations.
+  for (grp in c("all", "ecx", "decline")) {
+    expect_message(
+      bayesnec:::check_asymptote_declaration(
+        bdat, fam, mod_groups[[grp]], asymptote_observed = FALSE),
+      "model = \"zero_bounded\"", fixed = TRUE)
+  }
 })
 
 test_that("bnec and get_priors validate the declaration (#394)", {
@@ -2402,6 +2477,60 @@ test_that("amend refuses a response with no derivable floor (#394)", {
     amend(manec_example, add = "nechorme4", asymptote_observed = FALSE)
   )))
   expect_match(conditionMessage(err), "`prior` argument", fixed = TRUE)
+})
+
+test_that("a supplied bot prior stands in for the floor (#516)", {
+  # A gaussian response spanning negative values has no floor. With a bot
+  # prior supplied, bnec() stopped on "user-specific parameter prior names
+  # (bot) do not match expectation", because the other defaults were not built.
+  d <- incomplete_design(0.36, "gaussian")
+  d$y <- d$y - 1.2
+  fam <- validate_family("gaussian")
+  bot_prior <- brms::prior_string("normal(-1, 1)", nlpar = "bot")
+  seen <- new.env(parent = emptyenv())
+  local_mocked_bindings(
+    brm = function(formula, data, ...) {
+      seen$args <- list(...)
+      stop("brm reached")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(suppressWarnings(suppressMessages(
+    bnec(y ~ crf(x, "nec4param"), data = d, family = fam,
+         asymptote_observed = FALSE, prior = bot_prior, chains = 2)
+  )), "brm reached")
+  used <- as.data.frame(seen$args$prior)
+  expect_identical(prior_entry(used, "bot"), "normal(-1, 1)")
+  expect_setequal(used$nlpar, c("bot", "top", "beta", "nec"))
+  # The declaration still lifts the upper bound of nec.
+  expect_true(is.na(used$ub[used$nlpar == "nec"]) ||
+                !nzchar(used$ub[used$nlpar == "nec"]))
+  expect_setequal(names(seen$args$init[[1]]),
+                  c("b_bot", "b_top", "b_beta", "b_nec"))
+  # define_prior() refuses only where no bot prior was supplied.
+  expect_error(define_prior("nec4param", fam, d$x, d$y,
+                            asymptote_observed = FALSE),
+               "`prior` argument", fixed = TRUE)
+  built <- as.data.frame(define_prior("nec4param", fam, d$x, d$y,
+                                      asymptote_observed = FALSE,
+                                      supplied_pars = "bot"))
+  expect_setequal(built$nlpar, c("bot", "top", "beta", "nec"))
+})
+
+test_that("a supplied bot prior is read per block of a hurdle fit (#516)", {
+  # Under a log link the mu block has no floor; the survival block always has
+  # one. "hubot" names the survival block's bot only.
+  d <- incomplete_design(0.36, "Gamma")
+  d$y[d$x == max(d$x)][1:2] <- 0
+  fam <- brms::hurdle_gamma(link = "log", link_hu = "identity")
+  expect_error(define_prior("nec4param", fam, d$x, d$y,
+                            asymptote_observed = FALSE,
+                            supplied_pars = "hubot"),
+               "\"log\" link", fixed = TRUE)
+  built <- as.data.frame(define_prior("nec4param", fam, d$x, d$y,
+                                      asymptote_observed = FALSE,
+                                      supplied_pars = "bot"))
+  expect_true(all(c("bot", "hubot") %in% built$nlpar))
 })
 
 test_that("the declaration reaches both blocks of a hurdle fit (#394)", {

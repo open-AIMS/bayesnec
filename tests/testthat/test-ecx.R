@@ -347,6 +347,20 @@ test_that("a relative ECx of the zero block is measured towards its own bot (#49
   est <- suppressWarnings(ecx(obj, ecx_val = 50, type = "relative",
                               dpar = "hu", posterior = TRUE))
   expect_equal(as.numeric(est), rep(log(2), 3), tolerance = 0.01)
+  for (fam in c("hurdle_gamma", "zero_inflated_beta", "hurdle_poisson",
+                "hurdle_negbinomial")) {
+    block <- bayesnec:::hurdle_dpar(fam)
+    draws[[paste0("b_", block, "bot_Intercept")]] <- floor_draws
+    full <- suppressWarnings(ecx(joint_relative_object(fam), ecx_val = 50,
+                                  type = "relative", dpar = block,
+                                  posterior = TRUE))
+    abbreviated <- suppressWarnings(ecx(joint_relative_object(fam),
+                                         ecx_val = 50, type = "relative",
+                                         dpar = substr(block, 1, 1),
+                                         posterior = TRUE))
+    expect_equal(as.numeric(full), rep(log(2), 3), tolerance = 0.01)
+    expect_equal(abbreviated, full, label = fam)
+  }
   expect_equal(bayesnec:::ecx_asymptote(obj, "relative", "hu"), floor_draws)
   # the response block is still measured towards its own bot
   expect_equal(bayesnec:::ecx_asymptote(obj, "relative", "mu"), c(2, 3, 1.5))

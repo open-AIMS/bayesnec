@@ -109,9 +109,9 @@ searched_or_stored_bounds <- function(object, x_range) {
 #'
 #' \code{extrapolate} is read on the recorded predictor scale, the scale of the
 #' data and of \code{x_range}, not the scale \code{crf()} fits on or the scale
-#' \code{xform} displays. A limit given on the fitted scale by mistake falls
-#' inside the prediction range under any increasing transformation, so the
-#' check below refuses it.
+#' \code{xform} displays. A fitted-scale limit may fall inside the recorded
+#' prediction range and be refused, or be accepted as a different recorded
+#' limit. Convert it to the recorded scale before passing it here.
 #'
 #' @param extrapolate The caller's argument.
 #' @param bounds The current prediction range, from \code{ne_grid_bounds()} or
@@ -318,9 +318,11 @@ report_bounded_ne_prior <- function(priors, lims) {
     message("The nec prior on ", paste0(names(priors)[above], collapse = ", "),
             " is bounded above at ", signif(max(values), 3),
             ", so its posterior holds no draw above that value and ",
-            "extrapolate cannot report one. The fit itself is bounded: refit ",
-            "with a wider bound on the nec prior for the estimate to reach ",
-            "further.")
+            "extrapolate cannot report one. The fit itself is bounded. The ",
+            "default nec prior is bounded at the highest concentration ",
+            "tested: refit with asymptote_observed = FALSE, which removes ",
+            "that bound, or with a nec prior of your own, for the estimate ",
+            "to reach further.")
   }
   if (any(below)) {
     values <- vapply(priors[below], function(p) p$lb, numeric(1))
@@ -462,9 +464,10 @@ extrapolated_necfit_ne <- function(object, lims, bounds, sig_val, resolution) {
   }
   report_curve_read_lower_limit(object, lims)
   out <- nsec(object, sig_val = sig_val, resolution = resolution,
-              x_range = c(lims$lower, lims$upper), posterior = TRUE)
+              x_range = c(lims$lower, lims$upper), xform = identity,
+              posterior = TRUE)
   # Keep the draws and the censoring record only. The other attributes nsec()
-  # attaches describe a grid the caller of nec() did not name.
+  # attaches describe an NSEC calculation, not the NEC returned here.
   cens <- attr(out, "censored")
   out <- as.numeric(out)
   attr(out, "censored") <- cens
@@ -584,7 +587,8 @@ extrapolated_manec_ne <- function(object, lims, bounds, sig_val, resolution) {
     }
     out <- nsec(component_fit(object, success[i]), sig_val = sig_val,
                 resolution = resolution,
-                x_range = c(lims$lower, lims$upper), posterior = TRUE)
+                x_range = c(lims$lower, lims$upper), xform = identity,
+                posterior = TRUE)
     part <- as.numeric(out)[idx]
     attr(part, "censored") <- subset_censoring(attr(out, "censored"), idx)
     part
@@ -617,10 +621,9 @@ manec_ne_types <- function(object) {
 #' The class of no-effect estimate a single fit holds
 #'
 #' \code{expand_nec()} records it in \code{ne_type}, taking both blocks of a
-#' two-block fit into account, and that record decides. The fallback is for an
-#' object saved before the slot existed: a single-block fit samples its
-#' threshold, since \code{\link{nec}} has already refused an \code{ecx}
-#' equation, and a two-block fit is treated as read off a curve.
+#' two-block fit into account, and that record decides. For an object saved
+#' before the slot existed, only a single-block equation with a \code{nec}
+#' parameter is treated as sampling its threshold.
 #'
 #' @param object A \code{\link{bayesnecfit}}.
 #'
@@ -631,7 +634,8 @@ necfit_ne_type <- function(object) {
   if (is.character(label) && length(label) == 1) {
     return(if (identical(label, "NEC")) "NEC" else "NSEC")
   }
-  if (is.null(object$hurdle) && !is_hurdle_family(object$fit$family)) {
+  if (is.null(object$hurdle) && !is_hurdle_family(object$fit$family) &&
+        has_nec_parameter(object$model, object$fit)) {
     "NEC"
   } else {
     "NSEC"

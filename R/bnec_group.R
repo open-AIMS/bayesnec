@@ -165,11 +165,9 @@ bnec_group <- function(formula, data, group_var, family = NULL,
          " concentration-response model in its own right, so it needs enough",
          " data to support one.", call. = FALSE)
   }
-  # The checks from here to the level loop run once, on the whole data. Left
-  # to each level's bnec() call, a refusal would arrive only after the earlier
-  # levels had compiled and sampled, and a report would print once per level.
-  # Missing values are found here so that rows are named as the user recorded
-  # them, not by their position within a level.
+  # Check missing values on the whole data before fitting any level. Left to a
+  # level's bnec() call, a refusal would arrive after earlier levels had
+  # sampled, and the row names would refer to a subset.
   mod_dat <- model.frame(formula, data = data)
   check_complete_cases(mod_dat)
   validate_predictor_scale(
@@ -442,8 +440,8 @@ fit_model_weights <- function(x) {
 #' \code{elpd(m_1, ..., m_G) = sum_g elpd_g(m_g)}. Under pseudo-BMA the crossed
 #' weight of a combination is proportional to the product of its per-level
 #' weights, so the whole table follows from the per-level vectors and never has
-#' to be materialised --- which matters, because with 23 models and \emph{G}
-#' levels it has \code{23^G} cells.
+#' to be materialised --- which matters, because with the 24 equations of the
+#' default set and \emph{G} levels it has \code{24^G} cells.
 #'
 #' \bold{This identity is specific to pseudo-BMA}, the package default, and
 #' \code{crossed_group_weights()} enforces it rather than assuming it: a fit

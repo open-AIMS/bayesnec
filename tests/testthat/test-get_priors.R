@@ -11,9 +11,8 @@ test_that("get_priors returns only what bnec accepts back", {
   expect_false("sigma" %in% out$class)
   # An absent bound is NA, as define_prior() writes it, not "".
   expect_true(all(is.na(out$lb[out$nlpar != "nec"])))
-  # Compare stored bounds after converting absent bounds from empty strings
-  # to NA. This tests the round trip without assuming that the fixture uses
-  # the current default priors.
+  # Compare against the stored bounds, not current defaults. brmsfit writes
+  # an absent bound as ""; usable_prior() converts it to NA.
   stored <- as.data.frame(nec4param$fit$prior)
   stored <- bayesnec:::blank_bounds_to_na(stored)
   stored <- stored[stored$class == "b" & stored$nlpar == "nec" &
@@ -21,7 +20,7 @@ test_that("get_priors returns only what bnec accepts back", {
   expect_equal(nrow(stored), 1L)
   expect_equal(out$lb[out$nlpar == "nec"], stored$lb)
   expect_equal(out$ub[out$nlpar == "nec"], stored$ub)
-  # Require at least one bound so the round-trip assertion is not vacuous.
+  # Not vacuous: at least one of the two bounds is a number rather than NA.
   expect_false(all(is.na(c(stored$lb, stored$ub))))
 })
 
@@ -55,6 +54,59 @@ test_that("get_priors builds priors from a formula and data without fitting", {
   expect_named(many, c("nec4param", "ecx4param"))
   expect_s3_class(get_priors(y ~ crf(x, "nec4param"), data = nec_data),
                   "brmsprior")
+})
+
+test_that("get_priors keeps a hurdle growth formula's whole tested range", {
+  dat <- data.frame(x = rep(c(0.1, 1, 10, 100), each = 5),
+                    y = rep(c(0, 3, 1, 0), each = 5))
+  growth <- NULL
+  fitted_prior <- NULL
+  local_mocked_bindings(
+    bnec = function(formula, data, ...) {
+      if (is.null(growth)) {
+        growth <<- list(formula = formula, data = data)
+      }
+      structure(list(), class = c("bayesnecfit", "bnecfit"))
+    },
+    brm = function(..., prior) {
+      fitted_prior <<- prior
+      stop("prior captured")
+    },
+    .package = "bayesnec"
+  )
+  cases <- list(
+    list(formula = y ~ crf(x, c("nec3param", "ecx4param")), scale = "auto"),
+    list(formula = y ~ crf(log(x), c("nec3param", "ecx4param")), scale = "log")
+  )
+  for (case in cases) {
+    growth <- NULL
+    suppressMessages(bnec_hurdle(
+      case$formula, data = dat, family_growth = "Gamma",
+      predictor_scale = case$scale
+    ))
+    tested <- attr(growth$formula, "bayesnec_tested_range")
+    for (ao in c(TRUE, FALSE)) {
+      inspected <- suppressMessages(get_priors(
+        growth$formula, data = growth$data, family = Gamma(link = "identity"),
+        asymptote_observed = ao, predictor_scale = case$scale
+      ))
+      for (mod in names(inspected)) {
+        expect_error(suppressMessages(bayesnec:::fit_bayesnec(
+          growth$formula, data = growth$data, model = mod,
+          brm_args = list(family = Gamma(link = "identity"), init = 0),
+          asymptote_observed = ao, predictor_scale = case$scale
+        )), "prior captured")
+        expect_equal(inspected[[mod]], fitted_prior)
+        row <- inspected[[mod]][inspected[[mod]]$nlpar %in% c("nec", "ec50"), ]
+        expect_equal(as.numeric(row$lb), tested[1])
+        if (ao) {
+          expect_equal(as.numeric(row$ub), tested[2])
+        } else {
+          expect_true(is.na(row$ub))
+        }
+      }
+    }
+  }
 })
 
 test_that("nec3param under gaussian now returns priors (#206)", {
@@ -210,11 +262,11 @@ test_that("get_priors honours an explicit predictor scale (#317)", {
 
   expect_match(auto_nec, "^lognormal\\(")
   expect_match(log_nec, "^normal\\(")
-  # The logged normal prior is unbounded: logged concentrations can be negative.
-  expect_true(is.na(logged$lb[logged$nlpar == "nec"]))
-  expect_true(is.na(logged$ub[logged$nlpar == "nec"]))
-  expect_equal(as.numeric(automatic$lb[automatic$nlpar == "nec"]), 0)
-  expect_true(is.na(automatic$ub[automatic$nlpar == "nec"]))
+  # Both branches are bounded to the tested series as supplied.
+  for (pr in list(logged, automatic)) {
+    expect_equal(as.numeric(pr$lb[pr$nlpar == "nec"]), 0)
+    expect_equal(as.numeric(pr$ub[pr$nlpar == "nec"]), log(100))
+  }
 })
 
 test_that("a user prior makes the two entry points disagree", {
@@ -324,9 +376,9 @@ test_that("a brms default on sd is still dropped", {
   expect_false("sd" %in% out$class)
 })
 
-test_that("nec is bounded by the support of its prior, not by the series", {
-  # The lognormal support sets lb = 0 regardless of the lowest tested dose.
-  # An upper bound at the highest dose would wrongly exclude higher thresholds.
+test_that("nec is bounded to the tested series (#483)", {
+  # The bound a user sees: the recorded series, with the zero control kept, so
+  # lb is 0 here and not the lowest positive dose.
   d <- data.frame(x = rep(c(0, 1, 10, 100), each = 5),
                   y = rep(c(8, 6, 3, 1), each = 5))
   pr <- suppressMessages(
@@ -335,16 +387,23 @@ test_that("nec is bounded by the support of its prior, not by the series", {
   )
   expect_match(pr$prior[pr$nlpar == "nec"], "^lognormal\\(")
   expect_equal(as.numeric(pr$lb[pr$nlpar == "nec"]), 0)
-  expect_true(is.na(pr$ub[pr$nlpar == "nec"]))
-  # Omit a zero control to distinguish distributional support from min(x).
+  expect_equal(as.numeric(pr$ub[pr$nlpar == "nec"]), 100)
+  # Without a zero control the lower bound is the lowest dose.
   d2 <- data.frame(x = rep(c(1, 10, 100), each = 5),
                    y = rep(c(8, 3, 1), each = 5))
   pr2 <- suppressMessages(
     get_priors(y ~ crf(x, model = "nec3param"), data = d2,
                family = Gamma(link = "identity"))
   )
-  expect_equal(as.numeric(pr2$lb[pr2$nlpar == "nec"]), 0)
-  expect_true(is.na(pr2$ub[pr2$nlpar == "nec"]))
+  expect_equal(as.numeric(pr2$lb[pr2$nlpar == "nec"]), 1)
+  expect_equal(as.numeric(pr2$ub[pr2$nlpar == "nec"]), 100)
+  # The declaration removes the upper bound only.
+  pr3 <- suppressMessages(
+    get_priors(y ~ crf(x, model = "nec3param"), data = d2,
+               family = Gamma(link = "identity"), asymptote_observed = FALSE)
+  )
+  expect_equal(as.numeric(pr3$lb[pr3$nlpar == "nec"]), 1)
+  expect_true(is.na(pr3$ub[pr3$nlpar == "nec"]))
 })
 
 test_that("get_priors reports the substitution its priors are built from", {

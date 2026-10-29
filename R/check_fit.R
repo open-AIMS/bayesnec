@@ -228,8 +228,8 @@ check_fit_stats <- function(y, yrep, mu, grp, is_mixture) {
       stringsAsFactors = FALSE
     )
     if (is_mixture) {
-      # Only the hurdle families can emit a structural zero, so only they are
-      # checked for the zero fraction.
+      # Callers enable this zero-fraction check for hurdle fits and the
+      # combined hurdle check. Zero-inflated count fits do not reach it.
       obs_zero <- mean(obs_y == 0)
       sim_zero <- rowMeans(sim_y == 0)
       row$obs_zero <- obs_zero
@@ -374,15 +374,15 @@ check_fit.bayesnechurdlefit <- function(x, group = NULL, ndraws = 1000,
 #' The per-component tables check growth against the survivors and survival
 #' against everyone, and neither against the observed response with its
 #' zeros. This draws alive or dead from the survival fit, draws growth for
-#' every exposed row, and multiplies. Draws are paired row by row and
+#' every exposed row, and multiplies. Posterior draws are paired by row and
 #' truncated to the smaller count; the hurdle likelihood factorises, so any
 #' pairing is valid.
 #'
 #' \code{newdata} must be the full exposed set, not the growth fit's own data,
 #' which holds survivors only and would give a vector of the wrong length.
-#' Growth is then extrapolated past the last survivor, which is harmless:
-#' survival there is near zero, so the product is near zero whatever growth
-#' predicts.
+#' Growth is then predicted beyond the largest predictor value with a
+#' survivor. Those predictions still affect the combined check wherever the
+#' survival component predicts a nonzero response.
 #'
 #' @inheritParams check_fit
 #'

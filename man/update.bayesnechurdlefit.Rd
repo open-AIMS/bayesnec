@@ -4,7 +4,7 @@
 \alias{update.bayesnechurdlefit}
 \title{Updates both components of a \code{\link{bayesnechurdlefit}}}
 \usage{
-\method{update}{bayesnechurdlefit}(object, newdata = NULL, ...)
+\method{update}{bayesnechurdlefit}(object, newdata = NULL, recompile = NULL, x_range = NULL, ...)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnechurdlefit}}.}
@@ -21,9 +21,28 @@ against their families before either is refitted, so new data that put the
 growth component at a bound in every observation, such as a \code{Beta}
 growth component of 1 throughout, are refused, naming that component.}
 
+\item{recompile}{As for \code{\link{update.bnecfit}}.}
+
+\item{x_range}{As for \code{\link{update.bnecfit}}. A \code{NULL} inherits
+the recorded range, or follows the whole new concentration series where
+\code{bnec_hurdle} was given no range.}
+
 \item{...}{Further arguments passed to \code{\link{update.bnecfit}} for
 each component. A \code{family} is passed to the growth component only.
-The survival component is always refitted as \code{bernoulli}.}
+The survival component is always refitted as \code{bernoulli}. The growth
+family is checked as \code{\link{bnec_hurdle}} checks
+\code{family_growth}, before either component is refitted. A family
+\code{bnec_hurdle} refuses for the growth component, such as
+\code{hurdle_gamma}, is refused. So is a family the growth component's
+\code{disp()} term cannot be refitted under, as \code{\link{update.bnecfit}}
+describes, such as \code{poisson}. A \code{poisson} or \code{negbinomial}
+family needs \pkg{brms} 2.23.2 or later, and the growth component is then
+refitted with the zero-truncated likelihood \code{bnec_hurdle} uses.
+An argument that is not supplied, such as \code{x_range}, is taken by each
+component from its own fit, as \code{\link{update.bnecfit}} describes.
+Where \code{newdata} is supplied and \code{bnec_hurdle} was given no
+\code{x_range}, the growth component is predicted over the whole
+concentration series of \code{newdata}, as \code{bnec_hurdle} predicts it.}
 }
 \value{
 An object of class \code{\link{bayesnechurdlefit}}.

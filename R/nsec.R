@@ -11,8 +11,11 @@
 #' Increasing the resolution beyond the default of 200 changed the estimate by
 #' less than 0.01 percent on the fits tested, and increases the run time
 #' roughly in proportion.
-#' @param xform A function to apply to the returned estimated concentration
-#' values.
+#' @param xform \code{NULL}, the default, or a function. \code{NULL} returns
+#' the estimate on the scale the predictor was recorded on. A function is
+#' applied to the estimate on the scale the model was fitted on. The two
+#' differ only where \code{crf()} transforms the predictor inline; see
+#' Details.
 #' @param x_range A range of x values over which to consider extracting NSEC.
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
@@ -50,11 +53,13 @@
 #' maximum of the predicted curve and has been removed, because a target
 #' below the control is crossed exactly once whatever the curve does above it.
 #'
-#' Where \code{crf()} transforms the predictor inline, as in
-#' \code{crf(log(concentration))}, the NSEC is on the transformed scale unless
-#' \code{xform} is supplied, and a message says so once per call. It names the
-#' transformation and the \code{xform} that returns the estimate on the
-#' recorded scale.
+#' The curve is searched on a grid of recorded concentrations. Where
+#' \code{crf()} transforms the predictor inline, as in
+#' \code{crf(log(concentration))}, the NSEC is therefore returned on the
+#' recorded scale without \code{xform}, and no inverse is involved. A supplied
+#' \code{xform} is applied to the NSEC on the transformed scale, so
+#' \code{xform = identity} returns that scale and \code{xform = exp} on
+#' \code{crf(log(concentration))} returns the recorded scale again.
 #'
 #' The attached \code{ecnsec} attribute is the percent effect at the NSEC,
 #' defined as \code{\link{ecx}} defines it under \code{type = "absolute"}:
@@ -76,9 +81,8 @@
 #' where Fisher and Fox (2023) report zero concentration, which they reach by
 #' extrapolating the fitted curve below the data. The two agree where the control
 #' of the design is a true zero and the predictor is untransformed; otherwise the
-#' bound reported here is the control rather than the 0 of their Table 3, and a
-#' transformed predictor returns it on the transformed scale like any other
-#' estimate. And it applies where the prediction grid begins at the control. Where
+#' bound reported here is the control rather than the 0 of their Table 3. And
+#' it applies where the prediction grid begins at the control. Where
 #' \code{x_range} begins at a higher concentration, a draw already at or below
 #' the reference at the first grid point reached it somewhere below the range
 #' asked for, which is not identified within that range: such a draw returns
@@ -156,8 +160,8 @@
 #'
 #' @section Extrapolation:
 #' \code{extrapolate} chooses the bound the estimate is censored at, on the
-#' same predictor scale as \code{x_range} and the data, not the scale
-#' \code{crf()} fits on and not the scale \code{xform} displays.
+#' same predictor scale as \code{x_range}, the data and the estimate returned
+#' without \code{xform}, not the scale \code{crf()} fits on.
 #'
 #' \code{TRUE} asks for no bound at either end, and is an error here whatever
 #' the fit is. An NSEC is the concentration at which a fitted curve reaches a
@@ -208,7 +212,7 @@
 # (nsec.drc, nsec.brmsfit) absorb it through their own `...`.
 nsec <- function(object, sig_val = 0.01, resolution = 200,
                  x_range = NA,
-                 xform = identity, prob_vals = c(0.5, 0.025, 0.975),
+                 xform = NULL, prob_vals = c(0.5, 0.025, 0.975),
                  extrapolate = FALSE, ...,
                  dpar = NULL) {
   UseMethod("nsec")
@@ -233,7 +237,7 @@ nsec <- function(object, sig_val = 0.01, resolution = 200,
 #' @export
 nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
                              x_range = NA,
-                             xform = identity, prob_vals = c(0.5, 0.025, 0.975),
+                             xform = NULL, prob_vals = c(0.5, 0.025, 0.975),
                              extrapolate = FALSE, ...,
                              posterior = FALSE, dpar = NULL) {
   check_component_arg(list(...), object)
@@ -244,16 +248,12 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
   if (length(sig_val)>1) {
     stop("You may only pass one sig_val")  
   }
-  if(!inherits(xform, "function")) { 
-    stop("xform must be a function.")}  
+  check_xform(xform)
   if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[2] |
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
   }
-  # Once for the call. See report_fitted_scale().
-  quiet <- report_fitted_scale(object, xform, "nsec")
-  on.exit(options(quiet), add = TRUE)
   # extrapolate becomes x_range, since an NSEC is read off the curve on the
   # grid. It adds two refusals a bare x_range lacks: of a limit that narrows
   # the range, and of an infinite limit.
@@ -294,20 +294,24 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
   searched_from <- attr(nsec_out, "x_searched_from")
   above <- is.na(nsec_out) & !below
   n_above <- sum(above)
-  nsec_out <- sub_x_transformation(nsec_out, object$bayesnecformula)
   # Build the censoring record here, since x_range may differ from the fit's
   # grid. Its lower bound is where the search started, not min(x_vec): they
   # differ wherever the grid reaches below the control. It is built on the
   # recorded scale and remapped, which swaps the ends under a decreasing crf().
-  cens <- xform_censoring(
-    censoring_record(max(x_vec), searched_from, above, below),
-    function(value) sub_x_transformation(value, object$bayesnecformula)
-  )
-  # Apply xform to the censoring bounds as well, so that the warnings report
-  # them on the caller's scale.
-  if (inherits(xform, "function")) {
-    nsec_out <- xform(nsec_out)
-    cens <- xform_censoring(cens, xform)
+  cens <- censoring_record(max(x_vec), searched_from, above, below)
+  # The default on an inline-transformed fit leaves both on the recorded scale.
+  if (!returns_recorded(object, xform)) {
+    to_fitted <- function(value) {
+      sub_x_transformation(value, object$bayesnecformula)
+    }
+    nsec_out <- to_fitted(nsec_out)
+    cens <- xform_censoring(cens, to_fitted)
+    # Apply xform to the censoring bounds as well, so that the warnings report
+    # them on the caller's scale.
+    if (!is.null(xform)) {
+      nsec_out <- xform(nsec_out)
+      cens <- xform_censoring(cens, xform)
+    }
   }
   # Take each end from the record's own flag, so that a decreasing crf() or
   # xform names the end each set of draws actually lies beyond.
@@ -367,7 +371,7 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
 #' @export
 nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 200,
                                x_range = NA,
-                               xform = identity, prob_vals = c(0.5, 0.025, 0.975),
+                               xform = NULL, prob_vals = c(0.5, 0.025, 0.975),
                                extrapolate = FALSE, ...,
                                posterior = FALSE, dpar = NULL) {
   check_component_arg(list(...), object)
@@ -375,10 +379,7 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 200,
   if (length(sig_val)>1) {
     stop("You may only pass one sig_val")
   }
-  # Report once for the set; the per-equation calls below validate xform. See
-  # report_fitted_scale().
-  quiet <- report_fitted_scale(object, xform, "nsec")
-  on.exit(options(quiet), add = TRUE)
+  check_xform(xform)
   # Resolve the limits once for the set, so that every component is searched
   # over one grid rather than against its own range.
   lims <- extrapolate_limits(extrapolate,
@@ -460,7 +461,7 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 200,
 #' @export
 nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,    
                          x_range = NA,
-                         xform = identity, prob_vals = c(0.5, 0.025, 0.975),
+                         xform = NULL, prob_vals = c(0.5, 0.025, 0.975),
                          extrapolate = FALSE, ..., 
                          posterior = FALSE,
                          x_var, 
@@ -473,8 +474,7 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,
   if (length(sig_val)>1) {
     stop("You may only pass one sig_val")  
   }
-  if(!inherits(xform, "function")) { 
-    stop("xform must be a function.")}  
+  check_xform(xform)
   if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[2] |
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
@@ -608,7 +608,7 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,
 #' @export
 nsec.drc <- function(object, sig_val = 0.01, resolution = 200,
                      x_range = NA,
-                     xform = identity, prob_vals = c(0.5, 0.025, 0.975),
+                     xform = NULL, prob_vals = c(0.5, 0.025, 0.975),
                      extrapolate = FALSE, ...,
                      x_var,
                      horme = FALSE,
@@ -621,8 +621,7 @@ nsec.drc <- function(object, sig_val = 0.01, resolution = 200,
   if (length(sig_val)>1) {
     stop("You may only pass one sig_val")  
   }
-  if(!inherits(xform, "function")) { 
-    stop("xform must be a function.")}  
+  check_xform(xform)
   if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[2] |
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
@@ -653,10 +652,9 @@ nsec.drc <- function(object, sig_val = 0.01, resolution = 200,
                          level = 1-(sig_val*2))["Lower"])
     control <- p_samples[1, "Prediction"]
     ecnsec <- as.numeric((control - reference) / control * 100)
-    # p_samples holds the fitted curve and its confidence limits, not draws.
-    # For sig_val at or above 0.025 under the default prob_vals, the lower
-    # limit begins at or below the reference, and x_start makes its crossing
-    # the control. No test covers this method, as drc is not a dependency.
+    # p_samples holds fitted means and confidence limits, not draws.
+    # With default prob_vals and sig_val >= 0.025, x_start makes the lower
+    # crossing the control; Fisher and Fox (2023) use the fitted mean alone.
     nsec_out <- apply(p_samples, 2, function(col) {
       crossing_x(col, reference, x_vec, x_start = min(x_vec))
     })

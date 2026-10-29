@@ -26,6 +26,15 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
                          timeout = Inf, model_survival = NULL,
                          predictor_scale = "auto", level_spec = NULL) {
   formula <- single_model_formula(formula, model)
+  # Read control and prior before add_brm_defaults() raises adapt_delta and
+  # fills in the default priors, so that amend() decides both again for each
+  # equation it adds.
+  call_args <- list(model_survival = model_survival,
+                    control = brm_args$control, seed = brm_args$seed,
+                    prior_type = prior_type,
+                    asymptote_observed = asymptote_observed,
+                    predictor_scale = predictor_scale,
+                    prior = brm_args$prior)
   # A backstop: bnec(), bnec_group() and amend() exclude such an equation
   # before their loops, but bnec_joint() fits through here directly.
   group_excluded <- group_term_exclusions(formula, model)
@@ -64,10 +73,9 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   } else {
     response <- y
   }
-  # Divide out a rate() denominator, as trials is above. Under the identity
-  # link the mean is the rate, so top, bot and nec are per unit exposure.
-  # `response` reaches both define_prior() and the initial-value search.
-  # amend() divides in the same way.
+  # Divide counts by rate() exposure before calculating priors and initial
+  # values. The fitted mean, top and bot are rates; nec stays on the predictor
+  # scale. amend() divides the response in the same way.
   if (!is.null(denominator)) {
     response <- response / denominator
   }
@@ -86,7 +94,9 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
                                level_spec = level_spec,
                                rate_response = !is.null(denominator),
                                truncated_response = isTRUE(attr(
-                                 formula, "bayesnec_internal_truncation")))
+                                 formula, "bayesnec_internal_truncation")),
+                               tested_range = attr(formula,
+                                                   "bayesnec_tested_range"))
   # A group-level term needs initial values as well as a prior: Stan's own
   # draw for a lower-bounded standard deviation ignores the prior, so the mean
   # can start outside a bounded response's support. Append them here, where
@@ -153,7 +163,7 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   message(paste0("Response variable modelled as a ", model, " model using a ",
                  msg_tag, " distribution."))
   out <- list(fit = fit, model = model, init = all_args$init,
-              bayesnecformula = formula)
+              bayesnecformula = formula, call_args = call_args)
   allot_class(out, "prebayesnecfit")
 }
 

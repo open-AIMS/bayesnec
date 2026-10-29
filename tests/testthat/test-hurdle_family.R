@@ -207,15 +207,16 @@ test_that("define_prior builds both blocks for a hurdle family", {
   # hu block is a probability: 0-1 bounded
   hutop <- pr[pr$nlpar == "hutop", ]
   expect_equal(hutop$lb, "0"); expect_equal(hutop$ub, "1")
-  # Both threshold priors use the full predictor. Negative logged values select
-  # unbounded normal priors; the tested range supplies no truncation bounds.
+  # Both thresholds are built from the whole predictor, not just the part their
+  # own block was primed from, so the two entries are the same string and are
+  # bounded to the whole series. The survivors stop at 2.
   whole <- bayesnec:::predictor_prior(x)
   for (p in c("nec", "hunec")) {
     row <- pr[pr$nlpar == p, ]
     expect_equal(row$prior, whole)
     expect_match(row$prior, "^normal\\(")
-    expect_true(is.na(row$lb))
-    expect_true(is.na(row$ub))
+    expect_equal(as.numeric(row$lb), -9)
+    expect_equal(as.numeric(row$ub), 3)
   }
 })
 

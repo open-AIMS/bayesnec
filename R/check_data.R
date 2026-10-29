@@ -72,15 +72,17 @@ check_normalisation <- function(data) {
 }
 
 
-#' The generalised linear model whose variance function is a family's own
+#' The generalised linear model used for the flatness contrast
 #'
-#' The flatness contrast is tested under the mean-variance relationship the fit
-#' assumes. quasipoisson stands in for the negative binomial and quasibinomial
-#' for the beta-binomial, because their shape parameters cannot be estimated
-#' from two levels. The beta row is quasibinomial because the beta variance is
-#' \code{mu (1 - mu)} times a constant. The Gamma and count rows need the log
-#' link: the inverse link \code{stats::Gamma()} takes by default reverses the
-#' sign of the contrast.
+#' The contrast uses each family's variance function where possible.
+#' \code{quasipoisson} approximates the negative binomial's quadratic variance
+#' with one proportional to the mean. \code{quasibinomial} absorbs
+#' beta-binomial over-dispersion as a constant only when trials are constant
+#' across the observations compared. Their shape parameters are unreliable
+#' with few replicates at the two levels. The beta variance is
+#' \code{mu (1 - mu)} times a constant.
+#' The Gamma and count rows need the log link: the inverse link that
+#' \code{stats::Gamma()} takes by default reverses the contrast's sign.
 #'
 #' @param family Either a \code{\link[stats]{family}} object or a family tag.
 #'
@@ -302,9 +304,9 @@ flatness_contrast <- function(block, alpha = 0.05, pool_dispersion = TRUE) {
     return(list(status = "failed"))
   }
   # Where no observation differs from another at its own predictor value, the
-  # dispersion is zero and the contrast is undefined. Test the observations,
-  # not the estimate, which is a rounding residue rather than zero. A fixed
-  # dispersion needs no such check.
+  # estimated dispersion is zero and the contrast cannot use it. Test the
+  # observations, not the estimate, which is a rounding residue rather than
+  # zero. A fixed dispersion needs no such check.
   if (estimates_dispersion) {
     working <- if (identical(spec$kind, "matrix")) {
       block$successes[keep] / block$trials[keep]
@@ -462,7 +464,9 @@ capitalise_first <- function(x) {
 #' @param pool_dispersion Whether a gaussian dispersion is estimated over the
 #' whole series. \code{TRUE} where the formula has no \code{disp()} term.
 #' @param asymptote_observed The \code{asymptote_observed} argument of
-#' \code{\link{bnec}}. \code{FALSE} drops the advice to set it.
+#' \code{\link{bnec}}. \code{FALSE} drops the advice to set it, and changes
+#' the sentence on the \code{nec} and \code{ec50} priors to match the priors
+#' it builds.
 #'
 #' @return \code{NULL}, invisibly. Called for its message.
 #'
@@ -523,15 +527,23 @@ check_response_flattened <- function(data, family, group = NULL,
     }
   }
   if (length(declining) > 0) {
+    # The declaration changes what the threshold priors admit, so the sentence
+    # about them follows it.
+    threshold_priors <- if (isTRUE(asymptote_observed)) {
+      paste0(" the default nec and ec50 priors are bounded to the tested",
+             " range, so they exclude a threshold above it.")
+    } else {
+      paste0(" the default nec and ec50 priors put a threshold above the",
+             " tested range in their tail, where how much of the prior lies",
+             " there depends on prior_type and on whether the predictor was",
+             " supplied as a concentration or already logged; ?bnec tabulates",
+             " the four under asymptote_observed.")
+    }
     message(
       paste(declining, collapse = "\n"), "\n",
       "The lower asymptote may not be identified by this design: where an",
       " equation estimates bot its default prior is derived from the observed",
-      " response, and the default nec and ec50 priors put a threshold above the",
-      " tested range in their tail, where how much of the prior lies there",
-      " depends on prior_type and on whether the predictor was supplied as a",
-      " concentration or already logged; ?bnec tabulates the four under",
-      " prior_type.",
+      " response, and", threshold_priors,
       " Inspect the entries with get_priors() and",
       " supply scientifically justified ones through the prior argument where",
       " information beyond the design is available.",
@@ -588,20 +600,15 @@ uses_response_range_defaults <- function(prior, models, family,
     )
     if (hurdle) {
       survival_model <- if (is.null(model_survival)) model else model_survival
+      # recycle0: an equation with none of these rows gives no row, not the
+      # bare prefix.
       required$survival <- paste0(
         hurdle_dpar(family),
-        intersect(equation_par_names(survival_model), affected)
+        intersect(equation_par_names(survival_model), affected),
+        recycle0 = TRUE
       )
     }
-    if (inherits(supplied, "brmsprior")) {
-      prior_df <- as.data.frame(supplied)
-      dpar <- if ("dpar" %in% names(prior_df)) prior_df$dpar else ""
-      present <- prior_df$nlpar[
-        prior_df$class == "b" & (is.na(dpar) | !nzchar(dpar))
-      ]
-    } else {
-      present <- character(0)
-    }
+    present <- supplied_curve_pars(supplied)
     for (block in names(required)) {
       if (length(required[[block]]) > 0L &&
           !all(required[[block]] %in% present)) {
@@ -610,6 +617,24 @@ uses_response_range_defaults <- function(prior, models, family,
     }
   }
   out
+}
+
+#' The curve parameters a supplied prior sets
+#'
+#' @param prior A \code{\link[brms]{brmsprior}}, or anything else for none.
+#'
+#' @return A \code{\link[base]{character}} vector of the \code{nlpar} names of
+#' its class \code{"b"} rows that model no distributional parameter, such as
+#' \code{"bot"} or \code{"hubot"}.
+#'
+#' @noRd
+supplied_curve_pars <- function(prior) {
+  if (!inherits(prior, "brmsprior")) {
+    return(character(0))
+  }
+  prior_df <- as.data.frame(prior)
+  dpar <- if ("dpar" %in% names(prior_df)) prior_df$dpar else ""
+  prior_df$nlpar[prior_df$class == "b" & (is.na(dpar) | !nzchar(dpar))]
 }
 
 #' The sentence naming the declaration, where the declaration is available
@@ -637,8 +662,9 @@ declaration_advice <- function(family, y, asymptote_observed = TRUE) {
   }
   paste0(" Where the design did stop before the asymptote, declare it with",
          " asymptote_observed = FALSE, which spans the bot prior from the",
-         " floor of the response to the mean at the highest predictor level",
-         " and widens the initial-value search to match.")
+         " floor of the response to the mean at the highest predictor level,",
+         " removes the upper bound of the nec and ec50 priors, and widens the",
+         " initial-value search to match.")
 }
 
 #' Act on a declaration that the lower asymptote was not observed

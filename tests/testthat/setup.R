@@ -144,3 +144,50 @@ at_bound_cases <- function() {
 
 # No equation, including ecxflat, can fit these all-zero beta components.
 at_bound_refused <- c("beta_zero", "zib_zero")
+
+# One fit split into two levels at x = 1: "low" observed from 0.0323 to 0.971
+# and "high" from 1.02 to 3.22. Both levels read the same curve, so only the
+# range each level is read over differs.
+joint_split <- function() {
+  d <- nec4param$fit$data
+  d$site <- factor(ifelse(d$x < 1, "low", "high"), levels = c("low", "high"))
+  bayesnec:::allot_class(
+    list(fit = nec4param$fit, data = d, group_var = "site",
+         levels = c("low", "high"), model = "nec4param",
+         bayesnecformula = nec4param$bayesnecformula,
+         level_spec = list(composed = FALSE)),
+    c("bayesnecjointfit", "bnecfit")
+  )
+}
+
+# Give each recorded argument a non-default value. Fix draw_ids so loo()
+# uses the same subset of stored draws on each call.
+expand_record <- function(x_range = c(0.03, 4), resolution = 200,
+                          sig_val = 0.05, fitting = list(draw_ids = 1:50),
+                          method = "pseudobma") {
+  list(x_range = x_range, resolution = resolution, sig_val = sig_val,
+       loo_controls = list(fitting = fitting,
+                           weights = list(method = method)))
+}
+
+# The record of a call that used every bnec() default.
+default_expand_record <- function() {
+  expand_record(x_range = NA, resolution = 1000, sig_val = 0.01,
+                fitting = list())
+}
+
+with_expand_record <- function(x, record = expand_record()) {
+  attr(x, "bnec_expand_args") <- record
+  x
+}
+
+# The estimates of manec_example's ecx4param computed with a record's
+# arguments, as a reference for what the set-building functions return.
+expanded_ecx4param <- function(record) {
+  pre <- manec_example$mod_fits$ecx4param
+  suppressWarnings(suppressMessages(expand_nec(
+    pre, bayesnec:::extract_formula(pre), x_range = record$x_range,
+    resolution = record$resolution, sig_val = record$sig_val,
+    loo_controls = record$loo_controls, model = "ecx4param"
+  )))
+}

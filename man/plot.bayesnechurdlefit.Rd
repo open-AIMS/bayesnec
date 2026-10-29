@@ -12,7 +12,7 @@
   add_nec = TRUE,
   resolution = 1000,
   x_range = NA,
-  xform = identity,
+  xform = NULL,
   ylab = NULL,
   xlab = "Predictor"
 )
@@ -34,9 +34,10 @@
 
 \item{x_range}{A range of predictor values to plot over.}
 
-\item{xform}{A function to apply to the predictor where \code{crf()} does
-not transform it inline. Where it does, the function that returns the
-no-effect estimate to the recorded scale. See Details.}
+\item{xform}{\code{NULL}, the default, or a function to apply to the
+predictor where \code{crf()} does not transform it inline. Where it does,
+a function applied to the no-effect estimate on the transformed scale. See
+Details.}
 
 \item{ylab}{Y axis label. Defaults to a label describing \code{which}.}
 
@@ -60,8 +61,7 @@ Where \code{crf()} transforms the predictor inline, as
 \code{crf(log(concentration))} does, the observed points, the curve and the
 no-effect line are drawn on the recorded scale, the scale the prediction
 grid is built on, as \code{\link{plot}} draws a \code{\link{bayesnecfit}}.
-\code{\link{nec}} returns its estimate on the transformed scale, so the line
-is returned to the recorded scale through \code{xform} where one is
-supplied, and otherwise by inverting the transformation on the prediction
-grid. \code{xform} is not applied to the points or the curve in that case.
+The line is the estimate \code{\link{nec}} returns by default, which is on
+that scale. A supplied \code{xform} is applied to the estimate on the
+transformed scale instead, and not to the points or the curve.
 }

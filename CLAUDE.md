@@ -136,10 +136,13 @@ directory. `notes/references.md` lists what is there and gives the key in
 ## Naming the models in prose
 
 Section 12 rule 6 of the global file applies with these specifics. `bayesnec`
-has 23 model equations and ten of them are NEC models, so "the nec model" never
-identifies one: name `nec3param`, `nec4param` or `nechorme`. Distinguish the
-equations whose names begin `nec`, the `nec` parameter they estimate, and
-`mod_groups$nec`, the group of equations. The same care applies to `ecx`.
+has 24 model equations, all of them in the `all` group, and ten of them are NEC
+models, so "the nec model" never identifies one: name `nec3param`, `nec4param`
+or `nechorme`. `ecxflat`, the constant equation, is an ECx-type equation in the
+`ecx` group with no `nec` parameter, so its no-effect estimate is an NSEC.
+Distinguish the equations whose names begin `nec`, the `nec` parameter they
+estimate, and `mod_groups$nec`, the group of equations. The same care applies
+to `ecx`.
 `bayesnec` and `brms` are packages; `bnec()` and `brm()` are functions.
 
 ## Modelling gotchas
@@ -175,34 +178,25 @@ changes a curve spanning 0.04–0.70 into a response mean spanning about
 0.51–0.67. Good sampler diagnostics do not detect that change of model.
 Check the fitted links before interpreting a large difference in `elpd_diff`.
 
-### Estimates and plot data on different scales
+### The scale of a returned estimate
 
-Where the formula transforms the predictor — `crf(sqrt(concentration), ...)` —
-the two halves of the output are on different scales:
+Where the formula transforms the predictor inline, as in
+`crf(log(concentration), ...)`, every estimator returns the **recorded** scale
+by default (`xform = NULL`). This covers `nec()`, `nsec()`, `ecx()`, `ecnsec()`,
+`curve_params()`, `exceedance()` and the `summary()` rows, and matches
+`autoplot()` and `ggbnec_data()`. A supplied `xform` is applied to the estimate on
+the **fitted** scale. So `xform = identity` returns the transformed scale, and
+`xform = exp` on a `crf(log(x))` fit returns what the default returns.
 
-- `nec()`, `nsec()` and `ecx()` return values on the **transformed** scale.
-  Supply the inverse to get them back: `ecx(fit, xform = function(x) x^2)`.
-- `autoplot()` and `ggbnec_data()` return `x` on the **recorded** scale, having
-  back-transformed it already.
+Applying the inverse to the default output transforms twice: `exp(nec(fit))` on
+a `crf(log(x))` fit exponentiates a concentration, with no warning. Before #299
+that was the correct idiom, so code written against an older `predev` or a
+released version needs checking. Code that compares with `toxval` or with a
+hand-written fit on the fitted scale passes `xform = identity`.
 
-**Consequence:** placing axis breaks at `sqrt(breaks)` crams every label into
-the left sixth of the axis, and reporting `nec()` without `xform` gives the
-square root of a concentration labelled as a concentration. Neither produces a
-warning.
-
-**Rule:** back-transform estimates with `xform`. Apply axis spacing with
-`scale_x_continuous(transform = "sqrt")` to the untransformed plot data, never
-by transforming the breaks.
-
-`autoplot()`'s own *NEC* annotation does **not** need suppressing. An earlier
-version of this rule said to pass `nec = FALSE` because the annotation was drawn
-on the fitted scale and would contradict a back-transformed table. Measured on
-`dev` at `1ef66e15`, on the `example9` simazine fit with `crf(log(concentration))`:
-`ggbnec_data()` returns `nec_vals` of 4.34 against `nec(fit, xform = exp)` of
-4.3425, so the annotation is on the recorded scale and agrees with the table.
-`to_axis_scale()` inverts numerically on the prediction grid where no `xform`
-was supplied. The figure is internally consistent; what disagrees is the figure
-against the estimators, which is #299.
+Take estimates at their default, and pass `xform = identity` only to read the
+fitted scale. Apply axis spacing with `scale_x_continuous(transform = "sqrt")`
+to the untransformed plot data, never by transforming the breaks.
 
 ### `dispersion()` on a model average
 
@@ -228,7 +222,7 @@ models fit successfully, try using bnec with a single model ... or check
 argument is a set, so this is the common path, not an edge case.
 
 Measured on R 4.6.1: a two-model set with one `NA` printed the refusal twice and
-then that message; the default 23-model set would print it 23 times.
+then that message; the default 24-model set would print it 24 times.
 
 **Rule:** a check that is a property of the data and the formula together, fixed
 for the whole call, is raised in `bnec()` before the model loop, and kept in

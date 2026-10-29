@@ -287,6 +287,149 @@ test_that("a family that differs still needs force_fit, and its checks (#435)", 
   expect_equal(max(got$newdata_val$y), 0.999)
 })
 
+# ---- the family a refit's stored formula can follow --------------------------
+
+# Structural fixtures built from the packaged nec4param fit with a disp() term
+# written into its formula. Each refusal below comes before brms is called, and
+# each accepted call halts at the brms entry point.
+
+disp_fixture <- function(family, rescale, disp = "disp(~x)") {
+  f <- nec4param
+  f$bayesnecformula <- bnf(stats::as.formula(
+    paste0("y ~ crf(x, model = \"nec4param\") + ", disp)
+  ))
+  f$fit$family <- family
+  f$fit$data$y <- rescale(f$fit$data$y)
+  f
+}
+
+# bnec()'s refusal of the same formula, family and data, raised before its
+# model loop.
+bnec_refusal <- function(fit, family) {
+  local_mocked_bindings(
+    fit_bayesnec = function(...) stop("fit reached"),
+    .package = "bayesnec"
+  )
+  err <- tryCatch(
+    suppressMessages(bnec(fit$bayesnecformula, data = fit$fit$data,
+                          family = family)),
+    error = function(e) e
+  )
+  conditionMessage(err)
+}
+
+test_that("update() checks a disp() term against the new family (#514)", {
+  gamma_disp <- disp_fixture(brms::brmsfamily("Gamma", link = "identity"),
+                             function(y) round(stats::plogis(y) * 20) + 1)
+  beta_disp <- disp_fixture(brms::brmsfamily("beta", link = "identity"),
+                            stats::plogis)
+  # poisson has no dispersion parameter. The refusal is bnec()'s, and it comes
+  # first whether or not force_fit is set. brms failed on it, naming shape.
+  from_bnec <- bnec_refusal(gamma_disp, "poisson")
+  expect_match(from_bnec, "Family poisson has no free dispersion parameter",
+               fixed = TRUE)
+  for (force in c(FALSE, TRUE)) {
+    err <- expect_error(update(gamma_disp, family = "poisson",
+                               force_fit = force))
+    expect_identical(conditionMessage(err), from_bnec)
+    expect_null(capture_brms_update(
+      update(gamma_disp, family = "poisson", force_fit = force)
+    ))
+  }
+  # gaussian has a dispersion parameter, so bnec() would fit the term, but the
+  # stored sub-model and its priors name beta's phi. brms failed on it,
+  # asking whether nl = TRUE had been set.
+  for (force in c(FALSE, TRUE)) {
+    expect_error(
+      update(beta_disp, family = "gaussian", force_fit = force),
+      "names its dispersion parameter \"sigma\"", fixed = TRUE
+    )
+    expect_null(capture_brms_update(
+      update(beta_disp, family = "gaussian", force_fit = force)
+    ))
+  }
+  # negbinomial names its dispersion parameter shape, as Gamma does, so the
+  # refit passes through unchanged.
+  got <- capture_brms_update(
+    update(gamma_disp, family = "negbinomial", force_fit = TRUE)
+  )
+  expect_equal(got$family$family, "negbinomial")
+  got <- capture_brms_update(
+    update(gamma_disp, family = Gamma(link = "identity"))
+  )
+  expect_equal(got$family$family, "Gamma")
+})
+
+test_that("update(newdata = ) checks a variance function as bnec() does", {
+  # The stored response spans negative values, where "power" takes log(mu).
+  power_fit <- disp_fixture(brms::brmsfamily("gaussian", link = "identity"),
+                            identity, disp = "disp(\"power\")")
+  expect_lt(min(power_fit$fit$data$y), 0)
+  from_bnec <- bnec_refusal(power_fit, "gaussian")
+  expect_match(from_bnec, "takes log(mu)", fixed = TRUE)
+  err <- expect_error(update(power_fit, newdata = power_fit$fit$data))
+  expect_identical(conditionMessage(err), from_bnec)
+  # A positive response passes to the refit.
+  nd <- power_fit$fit$data
+  nd$y <- stats::plogis(nd$y)
+  expect_false(is.null(capture_brms_update(update(power_fit, newdata = nd))))
+})
+
+test_that("update checks every equation before refitting a set", {
+  mixed <- manec_example
+  for (m in names(mixed$mod_fits)) {
+    mixed$mod_fits[[m]]$fit$family <- brms::brmsfamily("Gamma", link = "identity")
+    mixed$mod_fits[[m]]$fit$data$y <-
+      round(stats::plogis(mixed$mod_fits[[m]]$fit$data$y) * 20) + 1
+  }
+  mixed$mod_fits$ecx4param$bayesnecformula <-
+    bnf(y ~ crf(x, "ecx4param") + disp(~x))
+  for (force in c(FALSE, TRUE)) {
+    expect_error(update(mixed, family = "poisson", force_fit = force),
+                 "Family poisson has no free dispersion parameter")
+    expect_null(capture_brms_update(
+      update(mixed, family = "poisson", force_fit = force)
+    ))
+  }
+
+  mixed <- manec_example
+  mixed$mod_fits$ecx4param$bayesnecformula <-
+    bnf(y ~ crf(x, "ecx4param") + disp("power"))
+  nd <- mixed$mod_fits[[1]]$fit$data
+  expect_error(update(mixed, newdata = nd), "takes log(mu)", fixed = TRUE)
+  expect_null(capture_brms_update(update(mixed, newdata = nd)))
+})
+
+test_that("update() refuses a family that adds or removes a second block", {
+  # The stored formula holds the fitted family's blocks only. brms fitted a
+  # Gamma fit updated to hurdle_gamma with a constant hu, and failed on a
+  # hurdle_gamma fit updated to Gamma, asking whether nl = TRUE had been set.
+  g <- gamma_fixture()
+  h <- joint_gamma_fixture()
+  for (force in c(FALSE, TRUE)) {
+    expect_error(
+      update(g, family = "hurdle_gamma", force_fit = force),
+      "the hurdle_gamma family has a second block, \"hu\"", fixed = TRUE
+    )
+    expect_null(capture_brms_update(
+      update(g, family = "hurdle_gamma", force_fit = force)
+    ))
+    expect_error(
+      update(h, family = Gamma(link = "identity"), force_fit = force),
+      "the Gamma family has a single block", fixed = TRUE
+    )
+  }
+  f <- bnf(y ~ crf(x, model = "nec4param"))
+  hu_fit <- brms::hurdle_gamma(link = "identity", link_hu = "identity")
+  expect_error(
+    check_refit_family(f, hu_fit, validate_family("zero_inflated_beta")),
+    "a second block, \"zi\"", fixed = TRUE
+  )
+  expect_null(
+    check_refit_family(f, hu_fit, validate_family("hurdle_negbinomial"))
+  )
+})
+
 # The messages update() prints, stopped where brms would refit.
 messages_before_refit <- function(expr) {
   msgs <- character()
@@ -490,4 +633,75 @@ test_that("update refuses a resolution below 2 before refitting", {
   # This refusal test must reach no sampler.
   skip_on_cran()
   expect_error(update(manec_example, resolution = 1), "must be at least 2")
+})
+
+test_that("c() and + compute the estimates with the arguments recorded", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  q <- function(expr) suppressWarnings(suppressMessages(expr))
+  m <- with_expand_record(manec_example)
+  nec <- q(pull_out(m, "nec4param"))
+  ecx <- q(pull_out(m, "ecx4param"))
+  reference <- q(expand_manec(
+    manec_example$mod_fits, lapply(manec_example$mod_fits, extract_formula),
+    loo_controls = expand_record()$loo_controls
+  ))
+  for (out in list(q(c(nec, ecx)), q(nec + ecx))) {
+    expect_identical(attr(out, "bnec_expand_args"), expand_record())
+    expect_equal(range(out$w_pred_vals$data$x), c(0.03, 4))
+    expect_equal(nrow(out$w_pred_vals$data), 200)
+    expect_equal(out$mod_stats$waic, reference$mod_stats$waic)
+  }
+  # An object that records none does not count against one that does.
+  unrecorded <- ecx
+  attr(unrecorded, "bnec_expand_args") <- NULL
+  out <- q(c(nec, unrecorded))
+  expect_identical(attr(out, "bnec_expand_args"), expand_record())
+  # Two objects that record different values use the default for that
+  # argument, and a message names it.
+  other <- ecx
+  attr(other, "bnec_expand_args")$sig_val <- 0.1
+  msgs <- character()
+  out <- withCallingHandlers(
+    suppressWarnings(c(nec, other)),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_true(any(grepl("record different values of sig_val", msgs)))
+  expect_identical(attr(out, "bnec_expand_args"),
+                   expand_record(sig_val = 0.01))
+  # Objects that record none take the bnec() defaults.
+  attr(nec, "bnec_expand_args") <- NULL
+  out <- q(c(nec, unrecorded))
+  expect_identical(attr(out, "bnec_expand_args"), default_expand_record())
+  expect_equal(out$mod_stats$waic, manec_example$mod_stats$waic)
+})
+
+test_that("update() computes the estimates with the arguments the set records", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # The same stub as above: the stored fits are returned unrefitted.
+  tbl <- get(".__S3MethodsTable__.", envir = asNamespace("stats"))
+  orig_method <- get("update.brmsfit", envir = tbl)
+  on.exit(assign("update.brmsfit", orig_method, envir = tbl), add = TRUE)
+  assign("update.brmsfit", function(object, ...) object, envir = tbl)
+  q <- function(expr) suppressWarnings(suppressMessages(expr))
+  m <- with_expand_record(manec_example)
+  out <- q(update(m, recompile = FALSE))
+  expect_identical(attr(out, "bnec_expand_args"), expand_record())
+  expect_equal(range(out$w_pred_vals$data$x), c(0.03, 4))
+  expect_equal(nrow(out$w_pred_vals$data), 200)
+  # A value supplied replaces the record.
+  out <- q(update(m, recompile = FALSE, x_range = NA, resolution = 1000,
+                  sig_val = 0.01, loo_controls = list(fitting = list())))
+  expect_identical(attr(out, "bnec_expand_args"), default_expand_record())
+  # A set that records none takes the bnec() defaults.
+  out <- q(update(manec_example, recompile = FALSE))
+  expect_identical(attr(out, "bnec_expand_args"), default_expand_record())
+  expect_equal(range(out$w_pred_vals$data$x),
+               range(manec_example$mod_fits[[1]]$fit$data$x))
 })

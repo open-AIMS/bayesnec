@@ -1191,8 +1191,8 @@ test_that("a chain is accepted on its own, so a low per-chain rate still succeed
     check_init_predictions(
       get_init_predictions(init, sort(d$x), pf, fa), limits)
   }
-  # Compare the all-chains-at-once rule under the same band. Use 20,000
-  # rounds so the three fixed seeds complete with the untruncated prior.
+  # Reimplement the earlier rule here to compare the same seeds.
+  # Its low per-chain acceptance needs 20,000 rounds for this design.
   released_drawn <- function(seed, cap = 20000) {
     set.seed(seed)
     n <- 0

@@ -257,27 +257,21 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
   disp_spec <- parse_disp_term(formula)
   if (!is.null(disp_spec)) {
     check_disp_spec(disp_spec, family_growth, response = y[y > 0])
-    # Before check_count_truncation_support(), so that a model refused for
-    # what it is does not first tell the user to upgrade brms.
-    if (identical(family_growth$family, "negbinomial")) {
-      check_disp_count_truncation(formula)
-    }
   }
+  check_hurdle_count_growth(formula, family_growth)
   growth_formula <- formula
-  if (family_growth$family %in% c("poisson", "negbinomial")) {
-    check_count_truncation_support()
-    if ("cens" %in% names(aterms)) {
-      stop("bnec_hurdle cannot combine cens() with a count growth family.",
-           " The positive counts require trunc(lb = 1), and brms does not",
-           " condition its censored count likelihood on that lower bound.",
-           " Use uncensored counts, or fit a validated custom likelihood.",
-           call. = FALSE)
-    }
+  if (is_hurdle_count_growth(family_growth)) {
     # The growth data contain only survivors, so their count distribution is
     # conditional on Y > 0. Adding the bound here makes that sampling decision
     # part of the likelihood without exposing trunc() as a user-facing aterm.
     growth_formula <- add_hurdle_truncation(growth_formula)
   }
+  # Bound the growth nec and ec50 priors to the whole series, on the fitted
+  # scale, not to the survivors' range. The stored formula keeps it for
+  # amend().
+  attr(growth_formula, "bayesnec_tested_range") <- range(
+    retrieve_var(full_frame, "x_var", error = TRUE)
+  )
   # The survivors can all sit at a bound of the growth family, such as a Beta
   # growth component of 1 throughout. Check here so that the message names the
   # growth component, not the whole response column. A growth set of ecxflat
@@ -383,12 +377,9 @@ hurdle_growth_flat_remedy <- function() {
 #'
 #' @param family An object of class \code{\link[stats]{family}}.
 #'
-#' @details \code{bnec_hurdle} is itself the two-part model, so a two-part
-#' growth family is refused. A zero-inflated count family is refused as well:
-#' \code{poisson} and \code{negbinomial} can emit zeros of their own, so the
-#' likelihood is a mixture that does not separate into the two fits. For
-#' structural count zeros, pass \code{poisson} or \code{negbinomial};
-#' \code{bnec_hurdle} adds the zero truncation.
+#' @details A two-part growth family would nest a hurdle within this one.
+#' A zero-inflated count likelihood cannot separate into these two fits. For
+#' structural count zeros, use \code{poisson} or \code{negbinomial}; growth is truncated.
 #'
 #' @return \code{invisible(NULL)}, called for its side effect.
 #'
@@ -451,6 +442,72 @@ check_count_truncation_support <- function(
   invisible(NULL)
 }
 
+#' Whether a growth family is fitted with the count-hurdle truncation
+#'
+#' @param family A validated family.
+#'
+#' @return A \code{\link[base]{logical}}.
+#'
+#' @noRd
+is_hurdle_count_growth <- function(family) {
+  family$family %in% c("poisson", "negbinomial")
+}
+
+#' Refuse a count growth family that the hurdle formula or brms cannot support
+#'
+#' @param formula The hurdle formula, without the truncation.
+#' @param family The validated growth family.
+#'
+#' @details Called by \code{\link{bnec_hurdle}} and by \code{update()} on a
+#' \code{\link{bayesnechurdlefit}}, so that both routes refuse the same count
+#' growth fits with the same message. Any other family passes.
+#'
+#' @return \code{invisible(NULL)}, called for its error.
+#'
+#' @noRd
+check_hurdle_count_growth <- function(formula, family) {
+  if (!is_hurdle_count_growth(family)) {
+    return(invisible(NULL))
+  }
+  # Before check_count_truncation_support(), so that a model refused for
+  # what it is does not first tell the user to upgrade brms.
+  if (identical(family$family, "negbinomial")) {
+    check_disp_count_truncation(formula)
+  }
+  check_count_truncation_support()
+  if ("cens" %in% names(check_hurdle_aterms(formula))) {
+    stop("bnec_hurdle cannot combine cens() with a count growth family.",
+         " The positive counts require trunc(lb = 1), and brms does not",
+         " condition its censored count likelihood on that lower bound.",
+         " Use uncensored counts, or fit a validated custom likelihood.",
+         call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+#' Set the count-hurdle truncation on the response of a formula
+#'
+#' @param lhs_call The left-hand side of a formula: the response and any
+#' aterms.
+#' @param truncate Whether the response should hold \code{trunc(lb = 1)}.
+#'
+#' @return \code{lhs_call} without any \code{trunc()} aterm, and with
+#' \code{trunc(lb = 1)} appended where \code{truncate} is \code{TRUE}.
+#'
+#' @noRd
+hurdle_truncation_lhs <- function(lhs_call, truncate) {
+  parts <- hurdle_lhs_parts(lhs_call)
+  aterms <- parts$aterms[names(parts$aterms) != "trunc"]
+  if (truncate) {
+    aterms <- c(aterms, list(trunc = quote(trunc(lb = 1))))
+  }
+  if (length(aterms) == 0) {
+    return(parts$response)
+  }
+  call("|", parts$response,
+       Reduce(function(left, right) call("+", left, right), aterms))
+}
+
 #' Add the count-hurdle truncation to the growth formula
 #'
 #' @param formula An object of class \code{\link{bayesnecformula}}.
@@ -459,13 +516,7 @@ check_count_truncation_support <- function(
 #'
 #' @noRd
 add_hurdle_truncation <- function(formula) {
-  parts <- hurdle_lhs_parts(lhs(formula))
-  trunc_call <- quote(trunc(lb = 1))
-  aterms <- c(parts$aterms, list(trunc_call))
-  aterm_call <- Reduce(
-    function(left, right) call("+", left, right), aterms
-  )
-  formula[[2]] <- call("|", parts$response, aterm_call)
+  formula[[2]] <- hurdle_truncation_lhs(lhs(formula), TRUE)
   # check_formula() accepts trunc() only on an internally marked formula. A
   # caller cannot otherwise use this unvalidated aterm through bnec().
   attr(formula, "bayesnec_internal_truncation") <- TRUE

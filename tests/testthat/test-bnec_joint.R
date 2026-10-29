@@ -163,6 +163,17 @@ test_that("bnec_joint refuses a crf() predictor with a leading minus (#438)", {
     }
   )
   expect_match(err, "is written with a leading minus")
+  # The same refusal applies to other top-level formula operators.
+  err <- withCallingHandlers(
+    tryCatch(bnec_joint(o, formula = y ~ crf(x^2, "nec3param")),
+             error = conditionMessage),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_match(err, "has the formula operator ^ at its top level",
+               fixed = TRUE)
   expect_false(any(grepl("Refitting jointly", msgs)))
   expect_null(captured$formula)
 })
@@ -313,6 +324,116 @@ test_that("prior and init are refused where the equations differ", {
     silent = TRUE)), collapse = "")))
 })
 
+# The record fit_bayesnec() stores on each equation, as bnec() would leave it
+# for a call that passed the three prior arguments.
+prior_record <- function(prior_type = "regularizing", asymptote_observed = FALSE,
+                         predictor_scale = "concentration") {
+  list(model_survival = NULL, control = NULL, seed = NULL,
+       prior_type = prior_type, asymptote_observed = asymptote_observed,
+       predictor_scale = predictor_scale, prior = NULL)
+}
+
+# Replaces fit_bayesnec() inside bnec_joint() and records what it was given.
+capture_joint_fit <- function(env = parent.frame()) {
+  captured <- new.env()
+  local_mocked_bindings(
+    fit_bayesnec = function(formula, data, model, brm_args, ...) {
+      captured$brm_args <- brm_args
+      captured$dots <- list(...)
+      stop("fit reached")
+    },
+    .package = "bayesnec", .env = env
+  )
+  captured
+}
+
+test_that("a grouped joint refit builds its priors as the grouped fit did (#516)", {
+  # Composed, then one equation at every level.
+  for (g in list(spread_group_fit(),
+                 mock_group_fit(list(a = c(nec3param = 0.6, nec4param = 0.4),
+                                     b = c(nec3param = 0.8, nec4param = 0.2)))
+  )) {
+    g$data$y <- c(0.9, 0.8, 0.5, 0.3)
+    captured <- capture_joint_fit()
+    # A fit that records nothing takes bnec()'s defaults.
+    expect_error(suppressMessages(bnec_joint(g)), "fit reached")
+    expect_identical(captured$dots$prior_type, "uninformative")
+    expect_true(captured$dots$asymptote_observed)
+    expect_identical(captured$dots$predictor_scale, "auto")
+    # The record of the first level supplies them.
+    g$fits[[1]]$mod_fits[[1]] <- list(call_args = prior_record())
+    expect_error(suppressMessages(bnec_joint(g)), "fit reached")
+    expect_identical(captured$dots$prior_type, "regularizing")
+    expect_false(captured$dots$asymptote_observed)
+    expect_identical(captured$dots$predictor_scale, "concentration")
+    # An argument supplied here replaces the record, and none reaches brm().
+    expect_error(suppressMessages(
+      bnec_joint(g, asymptote_observed = TRUE, prior_type = "uninformative")
+    ), "fit reached")
+    expect_true(captured$dots$asymptote_observed)
+    expect_identical(captured$dots$prior_type, "uninformative")
+    expect_identical(captured$dots$predictor_scale, "concentration")
+    expect_identical(names(captured$brm_args), "family")
+  }
+  # A `prior` for brm() is not read as `prior_type`.
+  top_prior <- brms::prior(normal(0, 1), nlpar = "top")
+  expect_error(suppressMessages(
+    bnec_joint(g, model = "nec3param", prior = top_prior)
+  ), "fit reached")
+  expect_identical(captured$brm_args$prior, top_prior)
+  expect_identical(captured$dots$prior_type, "regularizing")
+  # Checked as bnec() checks them, before the refit is announced.
+  g <- spread_group_fit()
+  expect_error(bnec_joint(g, asymptote_observed = NA), "asymptote_observed")
+  expect_error(bnec_joint(g, predictor_scale = "linear"), "should be one of")
+})
+
+test_that("a hurdle joint refit builds its priors as the hurdle fit did (#516)", {
+  o <- mock_disp_crossed(y ~ crf(x, c("nec3param", "ecx4param")), "Gamma",
+                         scale = 10)
+  seen <- new.env()
+  local_mocked_bindings(
+    bnec = function(formula, data, ...) {
+      seen$dots <- list(...)
+      invisible(NULL)
+    },
+    .package = "bayesnec"
+  )
+  suppressMessages(bnec_joint(o))
+  expect_identical(seen$dots$prior_type, "uninformative")
+  expect_true(seen$dots$asymptote_observed)
+  expect_identical(seen$dots$predictor_scale, "auto")
+  o$growth$mod_fits[[1]]$call_args <- prior_record()
+  suppressMessages(bnec_joint(o))
+  expect_identical(seen$dots$prior_type, "regularizing")
+  expect_false(seen$dots$asymptote_observed)
+  expect_identical(seen$dots$predictor_scale, "concentration")
+  suppressMessages(bnec_joint(o, predictor_scale = "log"))
+  expect_identical(seen$dots$predictor_scale, "log")
+  # A `prior` for bnec() is not read as `prior_type`.
+  top_prior <- brms::prior(normal(0, 1), nlpar = "top")
+  suppressMessages(bnec_joint(o, prior = top_prior))
+  expect_identical(seen$dots$prior, top_prior)
+  expect_identical(seen$dots$prior_type, "regularizing")
+})
+
+test_that("fit_bayesnec() records the arguments that build the priors (#516)", {
+  local_mocked_bindings(
+    brm = function(...) structure(list(), class = "brmsfit"),
+    are_chains_correct = function(...) TRUE,
+    .package = "bayesnec"
+  )
+  d <- data.frame(x = nec_data$x, y = nec_data$y)
+  out <- suppressWarnings(suppressMessages(fit_bayesnec(
+    bnf(y ~ crf(x, "nec4param")), data = d, model = "nec4param",
+    brm_args = list(family = validate_family("Beta"), chains = 1,
+                    init = list(list())),
+    prior_type = "regularizing", asymptote_observed = FALSE,
+    predictor_scale = "concentration"
+  )))
+  expect_identical(out$call_args, prior_record())
+})
+
 test_that("a level tag is legal, unique, and independent of the level order", {
   # brms refuses a non-linear parameter name containing a dot or an underscore
   # (validate_par_formula), so the tag can use neither.
@@ -407,6 +528,39 @@ test_that("three levels with colliding stems compose to a valid model", {
                   paste0("b_", pr$nlpar[nzchar(pr$nlpar)]))
 })
 
+test_that("a level that favours ecxflat composes with a curve (#485)", {
+  # A grouped fit of a group holding ecxflat can favour it at one level. That
+  # level then has top as its only curve parameter. No sampling.
+  cs <- composed_spec(models = list(a = "nec3param", b = "ecxflat"))
+  bdat <- model.frame(cs$formula, data = cs$data)
+  bff <- wrangle_model_formula("nec3param", cs$formula, bdat, cs$family,
+                               level_spec = cs$spec)
+  pars <- names(bff[[2]])
+  expect_setequal(pars[endsWith(pars, "bLv2")], "topbLv2")
+  expect_true(all(c("topaLv1", "betaaLv1", "necaLv1") %in% pars))
+  expect_match(deparse1(bff$formula[[3]]), "bnecindbLv2 * (topbLv2",
+               fixed = TRUE)
+  sc <- brms::stancode(bff, data = cs$data, family = cs$family)
+  expect_match(sc, "b_topbLv2", fixed = TRUE)
+  out <- suppressMessages(
+    add_level_defaults(list(chains = 1, seed = 1), cs$spec, cs$family,
+                       cs$data$y, predictor = cs$data$x)
+  )
+  pr <- as.data.frame(out$prior)
+  expect_setequal(pr$nlpar[nzchar(pr$nlpar)],
+                  c("topaLv1", "betaaLv1", "necaLv1", "topbLv2"))
+  expect_setequal(setdiff(names(out$init[[1]]), "b_phi"),
+                  paste0("b_", c("topaLv1", "betaaLv1", "necaLv1", "topbLv2")))
+  # The refit fits ecxflat at the level whose weights favour it.
+  g <- mock_group_fit(list(a = c(ecxflat = 0.6, nec3param = 0.4),
+                           b = c(nec3param = 0.7, ecxflat = 0.3)))
+  expect_equal(joint_level_equations(g), c(a = "ecxflat", b = "nec3param"))
+  msg <- paste(capture_messages(try(bnec_joint(g), silent = TRUE)),
+               collapse = "")
+  expect_match(msg, "composing ecxflat at \"a\", nec3param at \"b\"",
+               fixed = TRUE)
+})
+
 test_that("an indicator column that would overwrite the data is refused", {
   d <- rbind(transform(nec_data[, c("x", "y")], site = "a"),
              transform(nec_data[, c("x", "y")], site = "b"))
@@ -442,6 +596,23 @@ test_that("a composed level takes its own equation's priors and inits", {
                                    "botbLv2", "topbLv2", "betabLv2",
                                    "ec50bLv2", "fbLv2")), "b_phi"))
   expect_equal(length(out$init[[1]]$b_phi), 2L)
+})
+
+test_that("a composed joint refit takes the declaration (#516)", {
+  # The composed branch builds each equation's priors itself, so the
+  # declaration has to reach it as well as add_brm_defaults().
+  cs <- composed_spec()
+  nec_ub <- function(declared) {
+    out <- suppressMessages(
+      add_level_defaults(list(chains = 1, seed = 1), cs$spec, cs$family,
+                         cs$data$y, predictor = cs$data$x,
+                         asymptote_observed = declared)
+    )
+    pr <- as.data.frame(out$prior)
+    pr$ub[pr$nlpar == "necaLv1"]
+  }
+  expect_equal(as.numeric(nec_ub(TRUE)), max(cs$data$x))
+  expect_true(is.na(nec_ub(FALSE)) || !nzchar(nec_ub(FALSE)))
 })
 
 test_that("the composed grid carries an indicator column per level", {
@@ -1059,6 +1230,17 @@ test_that("a supplied formula with a leading minus in crf() is refused (#438)", 
     }
   )
   expect_match(err, "is written with a leading minus")
+  # The same refusal applies to other top-level formula operators.
+  err <- withCallingHandlers(
+    tryCatch(bnec_joint(g, formula = y ~ crf(log(x) + 1, "nec3param")),
+             error = conditionMessage),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_match(err, "has the formula operator + at its top level",
+               fixed = TRUE)
   expect_false(any(grepl("Refitting jointly", msgs)))
 })
 
@@ -1166,12 +1348,14 @@ test_that("a dummy-coded refit reads a level whose label brms renamed", {
 
 test_that("the membership test is the nec group, not the equation name", {
   # mod_groups$nec is the group of equations that estimate a nec parameter.
-  # A match on "ecx" in the name agrees across the 23 equations shipped, so
+  # A match on "ecx" in the name agrees across every equation shipped, so
   # only a name outside the convention separates the two rules.
   expect_true(joint_level_is_threshold(
     list(models = list(a = "neclin")), "a"))
   expect_false(joint_level_is_threshold(
     list(models = list(a = "ecxll5")), "a"))
+  expect_false(joint_level_is_threshold(
+    list(models = list(a = "ecxflat")), "a"))
   expect_setequal(c(mod_groups$nec, mod_groups$ecx), mod_groups$all)
   expect_length(intersect(mod_groups$nec, mod_groups$ecx), 0L)
 })

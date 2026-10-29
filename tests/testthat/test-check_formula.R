@@ -382,9 +382,6 @@ test_that("a minus inside the predictor or under I() is not refused (#438)", {
   }
   mf <- model.frame(bnf(y ~ crf(I(-x), "nec3param")), data = minus_data)
   expect_equal(as.numeric(mf[[2]]), -minus_data$x)
-  # A top-level binary minus is outside this unary-minus check and is accepted.
-  f <- bnf(y ~ crf(log(x) - 1, "nec3param"))
-  expect_identical(check_formula(f, minus_data), f)
 })
 
 test_that("bnec(), make_brmsformula() and get_priors() refuse crf(-x) (#438)", {
@@ -448,10 +445,150 @@ test_that("bnec_group() and bnec_hurdle() refuse crf(-x) before any fit (#438)",
 })
 
 test_that("a fit holding crf(-x) is refused where its frame is rebuilt (#438)", {
-  # Relabel the packaged fit without refitting to check refusal when rebuilding
-  # its frame. Legacy formulas fitted x while estimators evaluated -x.
+  # A fit made before the refusal was fitted on x. ecx() and nsec() stop at
+  # the model frame they rebuild from the stored formula. The packaged fit is
+  # relabelled, so that nothing is fitted.
   f <- nec4param
   f$bayesnecformula <- bayesnecformula(y ~ crf(-x, model = "nec4param"))
   expect_error(suppressMessages(ecx(f)), "is written with a leading minus")
   expect_error(suppressMessages(nsec(f)), "is written with a leading minus")
+})
+
+# ---- a formula operator at the top of a crf() predictor ----------------------
+
+operator_forms <- c("x - 1", "log(x) - 1", "x^2", "log(x) + 1", "x * 2",
+                    "x/2", "x:x", "x %in% x", "(x - 1)", "+(x - 1)")
+
+crf_formula <- function(predictor, model = "\"nec3param\"", rest = "") {
+  bnf(stats::as.formula(paste0("y ~ crf(", predictor, ", ", model, ")", rest)))
+}
+
+test_that("a formula operator at the top of the predictor is refused (#479)", {
+  # A model formula reads the operator as formula syntax, so x - 1 and x^2
+  # would be fitted on x. Each form is refused with the I() remedy.
+  for (p in operator_forms) {
+    err <- expect_error(check_formula(crf_formula(p), minus_data),
+                        "at its top level", info = p)
+    expect_match(conditionMessage(err), "write it inside I()", fixed = TRUE,
+                 info = p)
+    expect_error(model.frame(crf_formula(p), data = minus_data),
+                 "at its top level", info = p)
+  }
+  msg <- conditionMessage(expect_error(
+    check_formula(crf_formula("x - 1"), minus_data)
+  ))
+  expect_match(msg, "The predictor in crf(x - 1, \"nec3param\")", fixed = TRUE)
+  expect_match(msg, "fitted on x, not on x - 1.", fixed = TRUE)
+  expect_match(msg, "as in crf(I(x - 1), \"nec3param\")", fixed = TRUE)
+  # Refused for what it is, not by a parse error from splitting the formula
+  # text on ") + ".
+  msg <- conditionMessage(expect_error(
+    check_formula(crf_formula("log(x) + 1", rest = " + ogl(grp)"), minus_data)
+  ))
+  expect_match(msg, "fitted on log(x), not on log(x) + 1.", fixed = TRUE)
+  expect_match(msg, "as in crf(I(log(x) + 1), \"nec3param\")", fixed = TRUE)
+  expect_no_match(msg, "unexpected")
+  # Enclosing parentheses and a unary plus are dropped first.
+  expect_error(check_formula(crf_formula("+(x - 1)"), minus_data),
+               "as in crf(I(x - 1), \"nec3param\")", fixed = TRUE)
+  expect_error(check_formula(crf_formula("x^2"), minus_data),
+               "fitted on x, not on x^2.", fixed = TRUE)
+  # The argument named, and a form terms() itself refuses, which has no
+  # single expression to name.
+  expect_error(
+    check_formula(bnf(y ~ crf(model = "nec3param", x = x^2)), minus_data),
+    "crf(model = \"nec3param\", x = I(x^2))", fixed = TRUE
+  )
+  msg <- conditionMessage(expect_error(
+    check_formula(crf_formula("x * 2"), minus_data)
+  ))
+  expect_match(msg, "operator * at its top level", fixed = TRUE)
+  expect_no_match(msg, "fitted on")
+  # Two variables are refused for naming two, as before.
+  expect_error(check_formula(crf_formula("log(x) + log(grp)"), minus_data),
+               "can only have one variable")
+})
+
+test_that("an operator inside a call or under I() is accepted (#479)", {
+  for (p in c("I(x - 1)", "log(x + 1)", "(log(x))", "sqrt(log(x) + 1)",
+              "I(log(x) + 1)", "+x")) {
+    f <- crf_formula(p, rest = " + ogl(grp)")
+    expect_identical(check_formula(f, minus_data), f, info = p)
+  }
+  mf <- model.frame(crf_formula("I(x - 1)"), data = minus_data)
+  expect_equal(as.numeric(mf[[2]]), minus_data$x - 1)
+  mf <- model.frame(crf_formula("sqrt(log(x) + 1)"), data = minus_data)
+  expect_equal(mf[[2]], sqrt(log(minus_data$x) + 1))
+})
+
+test_that("redundant parentheses are read as R reads them (#479)", {
+  bare <- crf_formula("log(x)")
+  paren <- crf_formula("(log(x))")
+  expect_identical(bayesnec:::crf_x_call(paren), quote(log(x)))
+  expect_identical(bayesnec:::crf_x_call(crf_formula("+x")), quote(x))
+  expect_identical(bayesnec:::crf_x_call(crf_formula("I(x - 1)")),
+                   quote(I(x - 1)))
+  expect_equal(bayesnec:::sub_x_transformation(2, paren), log(2))
+  expect_identical(names(model.frame(paren, data = minus_data)),
+                   names(model.frame(bare, data = minus_data)))
+  # The brms formula is not wrapped in I() and matches the bare predictor.
+  expect_identical(
+    deparse1(make_brmsformula(paren, data = minus_data)$nec3param$formula),
+    deparse1(make_brmsformula(bare, data = minus_data)$nec3param$formula)
+  )
+})
+
+test_that("bnec() and the other entry points refuse before any fit (#479)", {
+  fits <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      fits <<- fits + 1L
+      stop("a model fit was started")
+    },
+    .package = "bayesnec"
+  )
+  set <- "c(\"nec3param\", \"ecx4param\")"
+  for (p in c("x - 1", "log(x) + 1", "x^2")) {
+    err <- expect_error(bnec(crf_formula(p, set), data = minus_data),
+                        "at its top level", info = p)
+    expect_no_match(conditionMessage(err), "None of the models")
+    expect_error(make_brmsformula(crf_formula(p, set), data = minus_data),
+                 "at its top level", info = p)
+    expect_error(get_priors(crf_formula(p, set), data = minus_data),
+                 "at its top level", info = p)
+  }
+  expect_equal(fits, 0L)
+})
+
+test_that("bnec_group() and bnec_hurdle() refuse before any fit (#479)", {
+  fits <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      fits <<- fits + 1L
+      stop("a component or level fit was started")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(
+    bnec_group(crf_formula("log(x) + 1"), data = minus_data,
+               group_var = "grp"),
+    "at its top level"
+  )
+  hurdle_data <- minus_data
+  hurdle_data$y[c(6, 12)] <- 0
+  expect_error(bnec_hurdle(crf_formula("x - 1"), data = hurdle_data),
+               "at its top level")
+  expect_equal(fits, 0L)
+})
+
+test_that("a fit holding an operator is refused where its frame is rebuilt (#479)", {
+  # Relabel the fit as crf(x - 1) without refitting. ecx() and nsec() refuse
+  # it when rebuilding the frame; nec() still reads x unchanged.
+  f <- nec4param
+  f$bayesnecformula <- bayesnecformula(y ~ crf(x - 1, model = "nec4param"))
+  expect_error(suppressMessages(ecx(f)), "at its top level")
+  expect_error(suppressMessages(nsec(f)), "at its top level")
+  msgs <- testthat::capture_messages(value <- nec(f))
+  expect_false(any(grepl("transforms its predictor inline", msgs)))
+  expect_equal(value, nec(nec4param))
 })

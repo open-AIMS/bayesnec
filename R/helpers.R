@@ -183,8 +183,12 @@ pull_draw_index <- function(object, model_set, sample_size) {
   idx <- object$w_draw_index
   # `==`, not identical(): sample_size is a double on the object and an integer
   # from nrow(), and identical() would always take the fallback.
-  same_n <- isTRUE(object$sample_size == sample_size) ||
-    undercounted_set(object, sample_size)
+  same_n <- isTRUE(object$sample_size == sample_size)
+  if (!same_n && undercounted_set(object, sample_size)) {
+    # Rebuild from the stored count too when an older set has no index.
+    sample_size <- object$sample_size
+    same_n <- TRUE
+  }
   if (!is.null(idx) && same_n && all(model_set %in% names(idx))) {
     idx[model_set]
   } else {
@@ -539,7 +543,8 @@ concat_censoring <- function(parts, n_draws) {
   uppers <- vapply(parts[present], function(p) p$upper, numeric(1))
   lowers <- vapply(parts[present], function(p) p$lower, numeric(1))
   out <- censoring_record(min(uppers), max(lowers), above, below)
-  # The components share a formula, so take the flag from the first.
+  # Components from one bnec() call share a formula, so take the flag from the
+  # first. A set assembled from separate fits must use a common orientation.
   # censored_end() and warn_censored_draws() read it from the combined record.
   attr(out, "swapped") <- isTRUE(attr(parts[present][[1]], "swapped"))
   out
@@ -1103,21 +1108,31 @@ resolve_model_average <- function(x, model, average, all_models = NULL,
   list(model = model, average = average)
 }
 
+#' The stored no-effect posterior of a fit, on the recorded scale
+#'
+#' What \code{\link{compare_estimates}} compares under \code{"n(s)ec"}. Read
+#' from the stored posterior rather than through \code{\link{nec}}, which
+#' refuses a single fit of an ECx equation.
+#'
+#' @param m A \code{\link{bayesnecfit}}, \code{\link{bayesmanecfit}} or
+#' \code{\link{bayesnechurdlefit}}.
+#'
+#' @return A \code{\link[base]{numeric}} vector of draws, with its censoring
+#' record.
 #' @noRd
-return_nec_post <- function(m, xform) {
-  if (is_bayesnecfit(m)) {
-    out <- unname(m$ne_posterior)
-  }
-  if (is_bayesmanecfit(m)) {
-    out <- unname(m$w_ne_posterior)
-  }
+return_nec_post <- function(m) {
   if (is_bayesnechurdlefit(m)) {
     # Defaults to the combined threshold, matching nec() on the same object.
-    out <- unname(nec(m, posterior = TRUE))
+    return(unname(nec(m, posterior = TRUE)))
   }
-  if (inherits(xform, "function")) {
-    out <- xform(out)
+  out <- unname(if (is_bayesnecfit(m)) m$ne_posterior else m$w_ne_posterior)
+  map <- recorded_xform(m, NULL)
+  if (identical(map, identity)) {
+    return(out)
   }
+  cens <- attr(out, "censored")
+  out <- map_draws(out, map, cens, "no-effect estimate")
+  attr(out, "censored") <- xform_censoring(cens, map)
   out
 }
 
@@ -1321,7 +1336,8 @@ add_brm_defaults <- function(
   group_spec = NULL,
   level_spec = NULL,
   rate_response = FALSE,
-  truncated_response = FALSE
+  truncated_response = FALSE,
+  tested_range = NULL
 ) {
   # Recorded before anything below fills them in. A composed joint refit
   # rebuilds both from the per-level equations, and it must not overwrite a set
@@ -1342,8 +1358,8 @@ add_brm_defaults <- function(
   }
   # Raise adapt_delta where a group-level offset can carry mu outside its
   # support: the likelihood then throws and Stan counts a divergent
-  # transition. A smaller step size is the only remedy here, and it is costly,
-  # so it is raised only where needed.
+  # transition. Raising adapt_delta reduces boundary crossings, but remains a
+  # costly mitigation, so apply it only where needed.
   #
   # It is not needed where every deviation is applied on a scale it cannot
   # leave and the equation's mean lies between bot and top. Test that with
@@ -1360,18 +1376,7 @@ add_brm_defaults <- function(
       brm_args$control <- ctrl
     }
   }
-  # The prior scale for the ogl intercept and its group-level standard
-  # deviation depends on which scale the deviation is applied on, so the kind
-  # is decided here, where family and group_spec are both in hand, and carried
-  # into define_prior() on group_spec.
-  if (!is.null(group_spec)) {
-    group_spec$ogl_transform <- if (isTRUE(group_spec$ogl)) {
-      ogl_transform_kind(model, family)
-    } else {
-      "none"
-    }
-  }
-  build_defaults <- function() {
+  build_defaults <- function(supplied_pars = character(0)) {
     define_prior(
       model,
       family,
@@ -1384,7 +1389,9 @@ add_brm_defaults <- function(
       disp_spec = disp_spec,
       group_spec = group_spec,
       rate_response = rate_response,
-      truncated_response = truncated_response
+      truncated_response = truncated_response,
+      tested_range = tested_range,
+      supplied_pars = supplied_pars
     )
   }
   priors <- try(validate_priors(brm_args$prior, model), silent = TRUE)
@@ -1396,7 +1403,8 @@ add_brm_defaults <- function(
     # A failure to build the defaults must not block a user's own prior. Use
     # the user's set as supplied, without a warning: without the defaults
     # there is no way to tell whether it is incomplete.
-    default_priors <- try(build_defaults(), silent = TRUE)
+    default_priors <- try(build_defaults(supplied_curve_pars(priors)),
+                          silent = TRUE)
     brm_args$prior <- if (inherits(default_priors, "try-error")) {
       priors
     } else {
@@ -1510,7 +1518,8 @@ add_brm_defaults <- function(
                                    prior_type = prior_type,
                                    predictor_scale = predictor_scale,
                                    init_supplied = init_supplied,
-                                   prior_supplied = prior_supplied)
+                                   prior_supplied = prior_supplied,
+                                   asymptote_observed = asymptote_observed)
   }
   brm_args
 }
@@ -1631,6 +1640,70 @@ refit_family <- function(fitted, supplied = NULL) {
   }
   fitted$family <- canonical_fam_tag(fitted)
   fitted
+}
+
+#' Refuse a refit family that the stored formula and priors cannot follow
+#'
+#' @param formula The \code{\link{bayesnecformula}} of the fit being refitted.
+#' @param fitted The family stored in its \code{brmsfit}.
+#' @param family The family the refit uses, from \code{refit_family()}.
+#' @param data The data the refit is given, or \code{NULL}. Read only for a
+#' variance-function \code{disp()} term, as \code{\link{bnec}} reads it.
+#'
+#' @details \code{update()} hands \pkg{brms} the stored formula and priors,
+#' which name the distributional parameters of the fitted family. A
+#' \code{disp()} term is checked as \code{\link{bnec}} checks it, and is also
+#' refused where the refit family names its dispersion parameter differently,
+#' because the stored sub-model names a parameter that family does not have. A
+#' change that adds, removes or replaces the second block of a two-block family
+#' is refused, because the stored formula holds the blocks of the fitted
+#' family only.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#'
+#' @noRd
+check_refit_family <- function(formula, fitted, family, data = NULL) {
+  fit_tag <- canonical_fam_tag(fitted)
+  fam_tag <- canonical_fam_tag(family)
+  spec <- parse_disp_term(formula)
+  if (!is.null(spec)) {
+    response <- if (identical(spec$route, "B") && !is.null(data)) {
+      disp_response(model.frame(formula, data = data), family)
+    }
+    check_disp_spec(spec, family, response = response)
+    if (!identical(disp_dpar(fitted), disp_dpar(family))) {
+      stop("The disp() term of this fit models \"", disp_dpar(fitted),
+           "\", the dispersion parameter of the ", fit_tag, " family it was",
+           " fitted with. update() reuses the stored formula and priors of",
+           " that sub-model, and the ", fam_tag, " family names its",
+           " dispersion parameter \"", disp_dpar(family), "\", so the",
+           " sub-model cannot be refitted under it. Fit the model with bnec()",
+           " and the new family, which builds the sub-model and its priors",
+           " for that family.", call. = FALSE)
+    }
+    if (shape_in_reported_mean(formula, family)) {
+      check_disp_count_truncation(formula, family)
+    }
+  }
+  block_of <- function(tag) {
+    if (is_hurdle_family(tag)) hurdle_dpar(tag) else NULL
+  }
+  if (!identical(block_of(fit_tag), block_of(fam_tag))) {
+    describe <- function(tag) {
+      if (is.null(block_of(tag))) {
+        "a single block"
+      } else {
+        paste0("a second block, \"", block_of(tag), "\"")
+      }
+    }
+    stop("The ", fit_tag, " family this model was fitted with has ",
+         describe(fit_tag), ", and the ", fam_tag, " family has ",
+         describe(fam_tag), ". update() reuses the stored formula and",
+         " priors, which describe the blocks of the fitted family only, so",
+         " the refit would not be the model bnec() builds for ", fam_tag,
+         ". Fit the model with bnec() and the new family.", call. = FALSE)
+  }
+  invisible(NULL)
 }
 
 #' The tag and the links, which is what "a different family" means here
@@ -2079,22 +2152,56 @@ fill_missing_priors <- function(priors, defaults, model) {
   out
 }
 
-#' The predictor expression written in a formula's crf() term
+#' The predictor of a formula's crf() term, as the model frame reads it
 #'
 #' Shared by \code{sub_x_transformation()}, which applies it to an estimate,
-#' and \code{inline_x_transform()}, which reports it, so that an estimate is
-#' said to be on a transformed scale exactly where it has been put on one.
+#' and \code{inline_x_transform()}, which decides whether the estimators
+#' invert it, so that an estimate is inverted exactly where it was put on a
+#' transformed scale.
+#'
+#' The predictor is read by \code{formula_x_reading()}, as the model frame
+#' and the \pkg{brms} formula read it, so \code{crf((log(x)))} gives
+#' \code{log(x)}. Do not evaluate the written text instead: the estimates
+#' would then be put on a different scale from the one the model was fitted
+#' on.
 #'
 #' @param formula A \code{\link{bayesnecformula}}.
 #'
 #' @return The expression as a call, such as \code{log(x + 1)}, or a symbol
-#' where the predictor is named untransformed.
+#' where the predictor is named untransformed. Where the reading names no
+#' single variable, the expression as written.
 #'
 #' @importFrom stats terms
 #' @noRd
 crf_x_call <- function(formula) {
   x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
-  str2lang(eval(parse(text = x_str)))
+  x_call <- str2lang(eval(parse(text = x_str)))
+  reading <- formula_x_reading(x_call)
+  if (is.null(reading)) x_call else reading
+}
+
+#' A crf() predictor as a model formula reads it
+#'
+#' The variable \code{stats::terms()} finds in the predictor, which is the
+#' column \code{stats::model.frame()} builds and the expression the
+#' \pkg{brms} formula is written in. Enclosing parentheses and a unary plus
+#' are dropped, so \code{(log(x))} and \code{+x} give \code{log(x)} and
+#' \code{x}. An operator at the top is formula syntax: \code{x - 1},
+#' \code{x^2} and \code{-x} all give \code{x}. Inside a call, or under
+#' \code{I()}, it is arithmetic.
+#'
+#' @param expr The predictor, as a call or a symbol.
+#'
+#' @return A call or a symbol, or \code{NULL} where the reading names no
+#' variable or more than one. An error where \code{stats::terms()} refuses
+#' \code{expr}, as it refuses \code{x^0.5}.
+#'
+#' @importFrom stats terms as.formula
+#' @noRd
+formula_x_reading <- function(expr) {
+  vars <- attr(terms(as.formula(call("~", expr))), "variables")
+  vars <- as.list(vars)[-1]
+  if (length(vars) == 1) vars[[1]] else NULL
 }
 
 #' Put an estimate read off the prediction grid back on the fitted scale
@@ -2219,7 +2326,6 @@ check_resolution <- function(resolution) {
 #'
 #' @return A \code{\link[base]{numeric}} value.
 #'
-#' @importFrom stats model.frame
 #' @noRd
 control_x <- function(object) {
   grid_obj <- object
@@ -2231,13 +2337,32 @@ control_x <- function(object) {
       pull_out(grid_obj, model = names(grid_obj$mod_fits)[1])
     )
   }
-  # One level of a joint refit reads its own lowest concentration, not the
-  # lowest of every level together. See joint_level_x().
+  lowest_observed_x(grid_obj)
+}
+
+#' The lowest observed predictor value of one fit
+#'
+#' The rule \code{control_x()} and \code{control_posterior()} share. One level
+#' of a joint refit reads its own lowest concentration, not the lowest of every
+#' level together. See \code{joint_level_x()}.
+#'
+#' @param grid_obj A \code{\link{bayesnecfit}}, already taken from its model
+#' set or hurdle fit.
+#' @param x_var The predictor's column name, or \code{NULL} to find it from the
+#' formula.
+#'
+#' @return A \code{\link[base]{numeric}} value.
+#'
+#' @importFrom stats model.frame
+#' @noRd
+lowest_observed_x <- function(grid_obj, x_var = NULL) {
   if (inherits(grid_obj, "bayesnecjointlevel") && length(grid_obj$level_x)) {
     return(min(grid_obj$level_x))
   }
-  mod_dat <- model.frame(grid_obj$bayesnecformula, grid_obj$fit$data)
-  x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
+  if (is.null(x_var)) {
+    mod_dat <- model.frame(grid_obj$bayesnecformula, grid_obj$fit$data)
+    x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
+  }
   min(grid_obj$fit$data[[x_var]])
 }
 
@@ -2248,9 +2373,9 @@ control_x <- function(object) {
 #'
 #' A draw whose own control value is at or below the reference reaches it at
 #' the control, and its NSEC is the control concentration, not a failure to
-#' estimate one. These draws are found from the control posterior, not from
-#' the first grid point, so that the result does not depend on
-#' \code{x_range}.
+#' estimate one. These draws are identified from the control posterior, not
+#' from the first grid point, so that changing \code{x_range} below the control
+#' does not change which draws take the control concentration.
 #'
 #' Only the grid above the control is searched, because the reference is
 #' defined there. Where the grid reaches the control, the control posterior
@@ -2346,7 +2471,7 @@ family_has_lower_bound <- function(family) {
 #' posterior expectation matrix, so that a two-block fit's \code{dpar}
 #' handling reaches the control as well as the curve.
 #' @param x_at The predictor value to read the control at. Defaults to
-#' \code{NULL}, meaning this object's own lowest observed value. A
+#' \code{NULL}, meaning the value \code{control_x()} returns. A
 #' \code{\link{bayesnechurdlefit}} supplies it, because its two components are
 #' fitted to different subsets --- growth to survivors only --- and the control
 #' must be the same concentration on both sides or their product is not a
@@ -2368,10 +2493,7 @@ control_posterior <- function(object, newdata, epred_fun, x_at = NULL) {
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
   control_nd <- newdata[1, , drop = FALSE]
   if (is.null(x_at)) {
-    # The same value control_x() returns. Read from grid_obj, which is already
-    # resolved here, rather than by calling control_x() and repeating the
-    # pull_out() and model.frame() this function has just done.
-    x_at <- min(grid_obj$fit$data[[x_var]])
+    x_at <- lowest_observed_x(grid_obj, x_var)
   }
   control_nd[[x_var]] <- x_at
   epred_fun(control_nd)[, 1]
@@ -2379,16 +2501,15 @@ control_posterior <- function(object, newdata, epred_fun, x_at = NULL) {
 
 #' Bring an estimate onto the scale the predictor axis is drawn on
 #'
-#' \code{nec()}, \code{ecx()} and \code{nsec()} return values on the fitted
-#' scale, while \code{plot()} and \code{autoplot()} draw the predictor axis on
-#' the recorded scale. Where the formula transforms the predictor, an
-#' annotation drawn at the estimate's own value would be misplaced.
-#'
 #' Where the predictor is not transformed, \code{xform} is applied as it is to
-#' the axis. Where it is, the estimate is inverted with the caller's
-#' \code{xform}, or otherwise by interpolating on the grid. Either map is
-#' applied through \code{remap_summary()}, so that a decreasing one keeps the
-#' interval in order and the censoring marks correct.
+#' the axis. Where it is, the estimate is mapped with the caller's
+#' \code{xform}, or with \code{recorded_x_map()} where that is
+#' \code{identity}. The plots take a default estimate from the estimators
+#' instead, which return it on the recorded scale already; see
+#' \code{plot_reads_recorded()}.
+#'
+#' The map is applied through \code{remap_summary()}, so that a decreasing one
+#' keeps the interval in order and the censoring marks correct.
 #'
 #' @param values A \code{\link[base]{numeric}} vector on the fitted scale.
 #' @param bdat A model frame carrying the \code{bnec_pop} attribute.
@@ -2405,59 +2526,14 @@ to_axis_scale <- function(values, bdat, formula, x_grid_raw,
   if (!pop_var_is_transformed(bdat, "x_var")) {
     return(remap_summary(values, xform, x_grid_raw))
   }
-  # Both branches below detect a decreasing map on the fitted-scale grid.
-  fitted_grid <- sub_x_transformation(x_grid_raw, formula)
-  if (!identical(xform, identity)) {
-    return(remap_summary(values, xform, fitted_grid))
+  if (identical(xform, identity)) {
+    tr <- inline_x_transform(list(bayesnecformula = formula))
+    if (!is.null(tr)) {
+      xform <- recorded_x_map(formula, x_grid_raw, tr)
+    }
   }
-  inverse <- grid_inverse(formula, x_grid_raw)
-  if (is.null(inverse)) {
-    return(values)
-  }
-  remap_summary(values, inverse, fitted_grid)
-}
-
-#' The inverse of an inline predictor transformation, read off the grid
-#'
-#' The prediction grid holds the same points on both scales, so interpolating
-#' between them inverts any \code{crf()} transformation to within the grid's
-#' resolution. Estimators that return values on the recorded scale call this
-#' too, so that they and the plots agree. The returned function takes a
-#' vector, so it can also be passed to \code{xform_censoring()}.
-#'
-#' @param formula A \code{\link{bayesnecformula}}.
-#' @param x_grid_raw The prediction grid's predictor values, on the recorded
-#' scale.
-#'
-#' @return A \code{\link[base]{function}} taking values on the fitted scale and
-#' returning them on the recorded scale with their attributes kept, or
-#' \code{NULL} where fewer than two grid points are finite on both scales.
-#'
-#' @details \code{approx(rule = 2)} clamps an estimate outside the grid to the
-#' nearer end, so that an annotation is drawn at the axis limit rather than
-#' dropped without a message. Only an already censored summary can lie outside
-#' the grid.
-#'
-#' @importFrom stats approx
-#' @noRd
-grid_inverse <- function(formula, x_grid_raw) {
-  fitted_grid <- sub_x_transformation(x_grid_raw, formula)
-  keep <- is.finite(fitted_grid) & is.finite(x_grid_raw)
-  if (sum(keep) < 2) {
-    return(NULL)
-  }
-  fitted_grid <- fitted_grid[keep]
-  raw_grid <- x_grid_raw[keep]
-  function(values) {
-    # Build from `values`, not rep(NA_real_, ...), to keep the attributes ecx()
-    # sets: bind_ecx() reads attr(ecx_vals, "ecx_val").
-    out <- values
-    out[] <- NA_real_
-    finite_v <- is.finite(values)
-    out[finite_v] <- approx(x = fitted_grid, y = raw_grid,
-                            xout = values[finite_v], rule = 2)$y
-    out
-  }
+  # Detect a decreasing map on the grid of the scale the values are on.
+  remap_summary(values, xform, sub_x_transformation(x_grid_raw, formula))
 }
 
 #' Whether a map reverses the order of a grid
@@ -2785,15 +2861,14 @@ ne_label <- function(object) {
 #' @param family The response family name.
 #' @param dots The calling method's \code{list(...)}, forwarded to
 #' \code{\link{ecx}}.
+#' @param xform \code{NULL} for the recorded scale, or \code{identity} for the
+#' fitted scale, which the caller then puts on the axis.
 #'
 #' @return The \code{\link{ecx}} return value.
 #' @noRd
-plot_ecx <- function(object, family, dots = list()) {
+plot_ecx <- function(object, family, dots = list(), xform = identity) {
   if (!("type" %in% names(dots)) && identical(family, "gaussian")) {
     dots$type <- "range"
   }
-  # Without the scale message: both callers put the estimate on the axis scale
-  # with to_axis_scale(), so the message would describe a number the plot does
-  # not show.
-  without_scale_report(do.call(ecx, c(list(object), dots)))
+  do.call(ecx, c(list(object), dots, list(xform = xform)))
 }

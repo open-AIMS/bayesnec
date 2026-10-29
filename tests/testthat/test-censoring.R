@@ -734,16 +734,22 @@ reversal_manec <- local({
 
 negate <- function(z) -z
 
-# Relabel the stored fit without sampling. Use I(-x): bare -x in a formula
-# removes a term instead of negating the model-frame predictor.
+# Relabel a stored fit as crf(I(-x)) and negate its stored draws. A bare -x
+# removes a formula term; I(-x) makes the model frame negate the predictor.
 negated_fit <- function(fit) {
   fit$ne <- suppressMessages(suppressWarnings(nec(fit, xform = negate)))
+  fit$ne_posterior <- suppressMessages(suppressWarnings(
+    nec(fit, xform = negate, posterior = TRUE)
+  ))
   fit$bayesnecformula <- bayesnecformula(y ~ crf(I(-x), model = "nec4param"))
   fit
 }
 
 negated_manec <- function(m) {
   m$w_ne <- suppressMessages(suppressWarnings(nec(m, xform = negate)))
+  m$w_ne_posterior <- suppressMessages(suppressWarnings(
+    nec(m, xform = negate, posterior = TRUE)
+  ))
   m$mod_fits[[1]]$bayesnecformula <- bayesnecformula(
     stats::as.formula(paste0("y ~ crf(I(-x), model = \"",
                              names(m$mod_fits)[1], "\")"))
@@ -836,8 +842,8 @@ test_that("the inverse of a decreasing crf() term restores the annotation", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # The automatic inverse must restore interval order and marks. Compare the
-  # median's mark only because even-sample type-1 medians can change rank.
+  # With no xform, invert the negated estimate on the recorded grid. Compare
+  # the interval and marks with the original; compare the median's mark only.
   pairs <- list(
     list(plain = annotation_labels(annotation_frame(reversal_fit("nec"))),
          inverted = annotation_labels(

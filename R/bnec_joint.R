@@ -79,6 +79,11 @@ best_crossed <- function(object) {
 #' @param disp_by_level A \code{\link[base]{logical}}. Should the family's
 #' dispersion parameter also take a separate value per level? Defaults to
 #' \code{TRUE}. Grouped fits only.
+#' @param prior_type,asymptote_observed,predictor_scale The arguments of
+#' \code{\link{bnec}} that build the default priors. Each defaults to the value
+#' \code{object} was fitted with, and to the \code{\link{bnec}} default where
+#' \code{object} does not record it, as a fit made by an earlier version of
+#' \pkg{bayesnec} does not. Each must be named in full.
 #' @param ... Further arguments passed to \code{\link[brms]{brm}}.
 #'
 #' @details
@@ -106,8 +111,12 @@ best_crossed <- function(object) {
 #' the family follows the growth component: \code{hurdle_gamma} where that was
 #' fitted as a Gamma, \code{zero_inflated_beta} where it was a Beta, and the
 #' corresponding count hurdle where it was Poisson or negative binomial.
-#' Nothing else transfers -- priors, control arguments and the like are
-#' defaults again unless passed through \code{...}.
+#' For either class, the default priors are built with the
+#' \code{prior_type}, \code{asymptote_observed} and \code{predictor_scale}
+#' \code{object} was fitted with, unless those arguments are supplied. A grouped
+#' fit made with \code{asymptote_observed = FALSE} is therefore refitted under
+#' the same declaration. Nothing else transfers: priors, control arguments and
+#' the like are defaults again unless passed through \code{...}.
 #'
 #' A \code{disp()} term in the formula held in \code{object} is kept, and in
 #' the joint model it applies to the dispersion parameter of the positive
@@ -213,7 +222,14 @@ bnec_joint.default <- function(object, ...) {
 #' @export
 bnec_joint.bayesnechurdlefit <- function(object, model = NULL,
                                          model_survival = NULL,
-                                         formula = NULL, ...) {
+                                         formula = NULL, ...,
+                                         prior_type = NULL,
+                                         asymptote_observed = NULL,
+                                         predictor_scale = NULL) {
+  # The three follow `...` so that `prior` passed for brm() is not matched to
+  # `prior_type` by partial matching.
+  prior_args <- recorded_prior_args(object$growth, prior_type,
+                                    asymptote_observed, predictor_scale)
   # Check the formula's names before swap_crf_model() below, which rebuilds
   # the crf() term from deparsed text and fails on a non-syntactic predictor
   # with a parse error naming neither the column nor the term. A supplied
@@ -223,8 +239,8 @@ bnec_joint.bayesnechurdlefit <- function(object, model = NULL,
   }
   formula <- bayesnecformula(formula, env = parent.frame())
   check_syntactic_names(formula)
-  # Refuse a supplied crf(-x) here too, before the refit is announced.
-  check_crf_leading_minus(formula)
+  # Refuse a supplied crf(x - 1) here too, before the refit is announced.
+  check_crf_formula_operator(formula)
   best <- best_crossed(object)
   if (is.null(model)) {
     model <- best$growth
@@ -271,7 +287,9 @@ bnec_joint.bayesnechurdlefit <- function(object, model = NULL,
           " response block and a ", model_survival, " survival block",
           " (crossed weight ", signif(best$weight, 3), ").")
   bnec(formula, data = object$data, family = joint_fam,
-       model_survival = model_survival, ...)
+       model_survival = model_survival, prior_type = prior_args$prior_type,
+       asymptote_observed = prior_args$asymptote_observed,
+       predictor_scale = prior_args$predictor_scale, ...)
 }
 
 #' @rdname bnec_joint
@@ -280,8 +298,14 @@ bnec_joint.bayesnechurdlefit <- function(object, model = NULL,
 #'
 #' @export
 bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
-                                        disp_by_level = TRUE, ...) {
+                                        disp_by_level = TRUE, ...,
+                                        prior_type = NULL,
+                                        asymptote_observed = NULL,
+                                        predictor_scale = NULL) {
   chk_logical(disp_by_level)
+  # Every level is fitted by the same call, so the first records them all.
+  prior_args <- recorded_prior_args(object$fits[[1]], prior_type,
+                                    asymptote_observed, predictor_scale)
   eq_weights <- joint_equation_weights(object)
   n_lev <- length(object$levels)
   favoured <- joint_level_equations(object)
@@ -316,7 +340,7 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
   # Check the formula before swap_crf_model(), as the bayesnechurdlefit method
   # does: a supplied formula has not passed bnec_group()'s check.
   check_syntactic_names(formula)
-  check_crf_leading_minus(formula)
+  check_crf_formula_operator(formula)
   # Refuse a non-syntactic grouping variable for every refit. The name is
   # written into formula text, where a name needing backticks fails to parse,
   # wherever every level is fitted one equation or the dispersion takes a value
@@ -412,7 +436,10 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
   brm_args <- list(...)
   brm_args$family <- family
   refit <- fit_bayesnec(formula = formula, data = data, model = rep_model,
-                         brm_args = brm_args, level_spec = level_spec)
+                         brm_args = brm_args, level_spec = level_spec,
+                         prior_type = prior_args$prior_type,
+                         asymptote_observed = prior_args$asymptote_observed,
+                         predictor_scale = prior_args$predictor_scale)
   out <- list(fit = refit$fit,
               model = if (composed) NA_character_ else rep_model,
               models = models, level_spec = level_spec,
@@ -422,6 +449,7 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
               family = family, model_weights = eq_weights,
               level_weights = joint_level_weights(object, models),
               model_weight_share = share)
+  attr(out, "bnec_version") <- joint_version_table(out, version_record())
   allot_class(out, c("bayesnecjointfit", "bnecfit"))
 }
 

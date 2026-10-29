@@ -236,9 +236,10 @@ test_that("to_axis_scale brings an estimate onto the axis scale", {
   # xform applies to it exactly as it applies to the axis.
   expect_equal(to_axis_scale(50, b_plain, f_plain, raw), 50)
   expect_equal(to_axis_scale(50, b_plain, f_plain, raw, function(z) z * 2), 100)
-  # With no xform supplied, invert a transformed predictor numerically.
-  expect_equal(to_axis_scale(log(50), b_log, f_log, raw), 50, tolerance = 1e-3)
-  # An explicit xform takes precedence over the numerical inverse.
+  # With no xform, invert the fitted-scale estimate onto the recorded axis.
+  expect_equal(to_axis_scale(log(50), b_log, f_log, raw), 50, tolerance = 1e-8)
+  # Predictor transformed and xform supplied: that is what xform is for, and
+  # it is used rather than the numerical inverse.
   expect_equal(to_axis_scale(log(50), b_log, f_log, raw, exp), 50,
                tolerance = 1e-8)
 })
@@ -268,18 +269,20 @@ test_that("plot_ecx asks for range under gaussian and the default otherwise", {
 
 test_that("to_axis_scale carries the estimate's attributes through", {
   raw <- seq(1, 100, length.out = 100)
-  f_log <- bayesnecformula(y ~ crf(log(x), model = "nec3param"))
-  b_log <- stats::model.frame(f_log, data = data.frame(x = raw, y = runif(100)))
-  v <- structure(log(c(50, 40, 60)), ecx_val = 10, toxicity_estimate = "ecx")
-  # The numerical-inverse branch. bind_ecx() reads attr(., "ecx_val") and
-  # assigns it into a data frame, so a stripped vector is an error there rather
-  # than a missing label.
-  out <- to_axis_scale(v, b_log, f_log, raw)
+  # asinh() has no closed-form inverse in x_inverse_text(), so this is the
+  # branch that interpolates on the grid.
+  f_tr <- bayesnecformula(y ~ crf(asinh(x), model = "nec3param"))
+  b_tr <- stats::model.frame(f_tr, data = data.frame(x = raw, y = runif(100)))
+  v <- structure(asinh(c(50, 40, 60)), ecx_val = 10,
+                 toxicity_estimate = "ecx")
+  # bind_ecx() reads attr(., "ecx_val") and assigns it into a data frame, so a
+  # stripped vector is an error there rather than a missing label.
+  out <- to_axis_scale(v, b_tr, f_tr, raw)
   expect_equal(attr(out, "ecx_val"), 10)
   expect_equal(attr(out, "toxicity_estimate"), "ecx")
   expect_equal(as.numeric(out), c(50, 40, 60), tolerance = 1e-3)
   # An unidentified draw stays NA rather than being interpolated to an endpoint.
-  expect_true(is.na(to_axis_scale(c(log(50), NA), b_log, f_log, raw)[2]))
+  expect_true(is.na(to_axis_scale(c(asinh(50), NA), b_tr, f_tr, raw)[2]))
 })
 
 
@@ -361,11 +364,10 @@ test_that("identity and increasing maps keep the order and the marks", {
     to_axis_scale(on_recorded, b_plain, f_plain, raw, doubled),
     reversal_summary(doubled)
   )
-  # The automatic inverse of an increasing crf() term. The grid inverts log()
-  # only to within its resolution, hence the looser tolerance.
+  # The automatic inverse of an increasing crf() term, here the closed form.
   out <- to_axis_scale(reversal_summary(log), b_log, f_log, raw)
   expect_identical(attr(out, "censored_summary")$bound, c("", "", ">="))
-  expect_equal(as.numeric(out), as.numeric(on_recorded), tolerance = 1e-2)
+  expect_equal(as.numeric(out), as.numeric(on_recorded), tolerance = 1e-8)
 })
 
 test_that("an uncensored interval is put in order and gains no record", {
@@ -392,22 +394,34 @@ test_that("the direction of a map is read off the ends of the grid", {
   expect_false(bayesnec:::map_is_decreasing(negate, c(1, NA, Inf)))
 })
 
-test_that("grid_inverse inverts the crf() term on the grid", {
+test_that("recorded_x_map inverts the crf() term on the grid", {
   raw <- seq(1, 100, length.out = 100)
+  map_for <- function(f, grid = raw) {
+    tr <- bayesnec:::inline_x_transform(list(bayesnecformula = f))
+    bayesnec:::recorded_x_map(f, grid, tr)
+  }
   f_neg <- bayesnecformula(y ~ crf(I(-x), model = "nec3param"))
-  inverse <- bayesnec:::grid_inverse(f_neg, raw)
+  inverse <- map_for(f_neg)
+  expect_false(is.null(attr(inverse, "grid_inverse")))
   expect_equal(inverse(c(-50, -20)), c(50, 20))
-  # The numerical inverse must also transform per-draw censoring records.
+  # Beyond the grid there is nothing to read, so the value is NA, not clamped.
+  expect_true(is.na(inverse(-150)))
+  # The function returned serves xform_censoring() as well, which is how an
+  # estimator moves its censoring record onto the recorded scale.
   moved <- bayesnec:::xform_censoring(
     bayesnec:::censoring_record(-1, -100, c(FALSE, TRUE), c(TRUE, FALSE)),
     inverse
   )
   expect_equal(c(moved$upper, moved$lower), c(100, 1))
   expect_identical(moved$above, c(TRUE, FALSE))
-  # log(0) is not finite, so only one grid point is usable and there is nothing
-  # to interpolate between.
+  # A closed form is returned as the base function, with no grid attached.
   f_log <- bayesnecformula(y ~ crf(log(x), model = "nec3param"))
-  expect_null(bayesnec:::grid_inverse(f_log, c(0, 5)))
+  expect_identical(map_for(f_log), exp)
+  expect_identical(map_for(f_log, c(0, 5)), exp)
+  # -log(x) has no closed form here, and log(0) is not finite, so only one
+  # grid point is usable and there is nothing to interpolate between.
+  f_nlog <- bayesnecformula(y ~ crf(I(-log(x)), model = "nec3param"))
+  expect_error(map_for(f_nlog, c(0, 5)), "fewer than two points")
 })
 
 test_that("the marks agree with the per-draw path where n times p is whole", {
@@ -677,4 +691,92 @@ test_that("retrieve_var names a role the formula does not include (#442)", {
   # Keep NULL for an absent role unless error = TRUE.
   expect_null(retrieve_var(mf, "trials_var"))
   expect_identical(retrieve_var(mf, "y_var", error = TRUE), nec_data$count)
+})
+
+# ---- the control of one level of a joint refit -------------------------------
+
+# Every nec draw of nec4param lies above both levels' lowest concentrations,
+# so the control value is the same at either. Record the concentration instead.
+record_control_x <- function(env = parent.frame()) {
+  seen <- new.env()
+  seen$x <- numeric()
+  real <- control_posterior
+  local_mocked_bindings(
+    control_posterior = function(object, newdata, epred_fun, x_at = NULL) {
+      real(object, newdata, function(nd) {
+        seen$x <- c(seen$x, nd$x)
+        epred_fun(nd)
+      }, x_at)
+    },
+    .env = env
+  )
+  seen
+}
+
+test_that("each level of a joint refit reads its control at its own lowest x", {
+  skip_on_cran()
+  j <- joint_split()
+  lowest <- vapply(j$levels, function(lev) min(j$data$x[j$data$site == lev]),
+                   numeric(1))
+  seen <- record_control_x()
+  # One control prediction per level, in level order.
+  calls <- list(
+    ecx = function() ecx(j, resolution = 50),
+    nsec = function() nsec(j, resolution = 50),
+    ecnsec = function() ecnsec(j, nsec = 1.5, resolution = 50,
+                               x_range = range(j$data$x))
+  )
+  for (what in names(calls)) {
+    seen$x <- numeric()
+    suppressMessages(suppressWarnings(calls[[what]]()))
+    expect_equal(seen$x, unname(lowest), label = what)
+  }
+  expect_gt(lowest[["high"]], min(j$data$x))
+})
+
+test_that("nsec on a joint level searches from the concentration of its reference", {
+  skip_on_cran()
+  lvl <- joint_level_fit(joint_split(), "high")
+  seen <- record_control_x()
+  start <- NULL
+  real <- nsec_from_posterior
+  local_mocked_bindings(
+    nsec_from_posterior = function(post, reference, x_vec, x_control,
+                                   control) {
+      start <<- x_control
+      real(post, reference, x_vec, x_control, control)
+    }
+  )
+  # A grid that reaches below the level's data changes neither concentration.
+  for (x_range in list(NA, range(nec4param$fit$data$x))) {
+    seen$x <- numeric()
+    suppressMessages(suppressWarnings(
+      nsec(lvl, resolution = 50, x_range = x_range)
+    ))
+    expect_equal(start, seen$x)
+    expect_equal(start, min(lvl$level_x))
+  }
+})
+
+test_that("a joint refit whose levels share their lowest x keeps its estimates", {
+  skip_on_cran()
+  j <- joint_split()
+  d <- nec4param$fit$data
+  j$data <- rbind(cbind(d, site = "low"), cbind(d, site = "high"))
+  seen <- record_control_x()
+  quiet <- function(e) suppressMessages(suppressWarnings(e))
+  for (lev in j$levels) {
+    lvl <- joint_level_fit(j, lev)
+    expect_equal(control_x(lvl), min(d$x))
+    for (est in list(ecx, nsec)) {
+      expect_equal(quiet(est(lvl, resolution = 50)),
+                   quiet(est(nec4param, resolution = 50)),
+                   ignore_attr = TRUE)
+    }
+    expect_equal(quiet(ecnsec(lvl, nsec = 1.5, resolution = 50)),
+                 quiet(ecnsec(nec4param, nsec = 1.5, resolution = 50)),
+                 ignore_attr = TRUE)
+  }
+  expect_length(seen$x, 12)
+  expect_equal(unique(seen$x), min(d$x))
 })

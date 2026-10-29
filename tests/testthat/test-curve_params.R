@@ -271,9 +271,8 @@ test_that("the link is reported in a column and named when it is not identity", 
   expect_silent(bayesnec:::report_link(c(mu = "identity"), "x fit"))
 })
 
-# Change predictor-formula metadata only to test scale messages; the stored
-# fit was not fitted with this formula. Do not use the resulting object to
-# validate posterior values or numerical back-transformation.
+# Relabel the stored predictor formula without refitting. Compare calls on
+# one posterior; its numbers do not validate a newly sampled fit.
 transformed_x_fit <- function(fit, model) {
   fit$bayesnecformula <- bnf(stats::as.formula(
     paste0("y ~ crf(sqrt(x), model = \"", model, "\")")
@@ -281,13 +280,23 @@ transformed_x_fit <- function(fit, model) {
   fit
 }
 
-test_that("a predictor transformed inline is reported unless xform was given", {
+test_that("nec and ec50 default to the recorded scale on a transformed fit", {
   tf <- transformed_x_fit(nec4param, "nec4param")
-  expect_message(curve_params(tf), "nec and ec50 are on that transformed scale")
-  expect_message(curve_params(tf), "sqrt\\(x\\)")
-  # A caller who supplied an inverse has already dealt with it.
-  expect_silent(curve_params(tf, xform = function(x) x^2))
-  expect_silent(curve_params(nec4param))
+  # The default inverts sqrt() exactly, so it matches the inverse supplied by
+  # hand, and says nothing.
+  expect_silent(by_default <- curve_params(tf))
+  expect_equal(by_default, curve_params(tf, xform = function(x) x^2))
+  # xform = identity is the fitted scale, which is what the parameters were
+  # sampled on and what an untransformed fit reports.
+  fitted <- curve_params(tf, xform = identity)
+  expect_identical(fitted, curve_params(nec4param))
+  on_x <- fitted$parameter %in% c("nec", "ec50")
+  expect_true(any(on_x))
+  expect_false(isTRUE(all.equal(by_default[on_x, ], fitted[on_x, ])))
+  expect_identical(by_default[!on_x, ], fitted[!on_x, ])
+  # The draws form takes the same map.
+  expect_equal(curve_params(tf, summary = FALSE)$nec4param[, "nec"],
+               curve_params(nec4param, summary = FALSE)$nec4param[, "nec"]^2)
 })
 
 fake_group <- function(fits = list(a = manec_example, b = nec4param)) {
@@ -315,17 +324,10 @@ test_that("a hurdle fit returns one table per component", {
   expect_equal(nrow(out$growth), 4L)
 })
 
-test_that("a hurdle pair reports the transformation once, the link per fit", {
-  # A shared predictor transformation needs one report for a hurdle pair.
-  # The components can use different mean links, which must be reported
-  # separately.
-  tf <- transformed_x_fit(nec4param, "nec4param")
-  msgs <- capture_messages(curve_params(fake_hurdle(tf, tf)))
-  expect_equal(sum(grepl("transformed scale", msgs)), 1L)
-  # The gate is restored, so the next call reports again.
-  expect_message(curve_params(tf), "transformed scale")
-  # Report each component's mean link independently; suppressing repeated
-  # predictor-scale messages must not suppress a distinct link.
+test_that("a hurdle pair reports the link per component", {
+  # The link is not shared: growth takes the family of the non-zero response
+  # and survival is bernoulli, so each component reports its own, and each
+  # paragraph names its component.
   g <- nec4param
   g$fit$family <- brms::brmsfamily("gaussian", link = "log")
   s <- nec4param
@@ -359,13 +361,9 @@ test_that("a group fit returns one table with a level column", {
   expect_named(dr$b, "nec4param")
 })
 
-test_that("the scale is reported once for a group, not once per level", {
-  # Grouped levels share their predictor formula and family. Report that
-  # scale information once per call rather than once per level.
+test_that("each level of a group takes the recorded scale", {
   tf <- transformed_x_fit(nec4param, "nec4param")
   gf <- fake_group(list(a = tf, b = tf, c = tf))
-  msgs <- capture_messages(curve_params(gf))
-  expect_equal(sum(grepl("transformed scale", msgs)), 1L)
-  # And the option it is gated on is restored, so the next call reports again.
-  expect_message(curve_params(tf), "transformed scale")
+  expect_silent(out <- curve_params(gf))
+  expect_equal(out, curve_params(gf, xform = function(x) x^2))
 })

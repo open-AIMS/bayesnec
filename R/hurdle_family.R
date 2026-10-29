@@ -304,8 +304,22 @@ make_hu_block <- function(model, dpar) {
 #' @noRd
 add_hu_block <- function(brms_bf, model, x_var, dpar) {
   hb <- make_hu_block(model, dpar)
+  brms_bf + nlf(hu_block_formula(model, x_var, dpar)) + lf(hb$lf)
+}
+
+#' The zero-probability block's formula, written on the predictor column
+#'
+#' @inheritParams add_hu_block
+#'
+#' @return A \code{\link[stats]{formula}}, \code{dpar} on the left.
+#'
+#' @importFrom stats as.formula
+#'
+#' @noRd
+hu_block_formula <- function(model, x_var, dpar) {
+  hb <- make_hu_block(model, dpar)
   rhs <- substitute_x_in_formula(x_var, deparse1(hb$nlf[[3]]))
-  brms_bf + nlf(as.formula(paste0(dpar, " ~ ", rhs))) + lf(hb$lf)
+  as.formula(paste0(dpar, " ~ ", rhs))
 }
 
 #' Proportion of non-zero responses at each unique predictor value

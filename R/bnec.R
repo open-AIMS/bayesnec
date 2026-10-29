@@ -30,10 +30,12 @@
 #' If no \code{method} is named in "weights", \pkg{bayesnec} sets the
 #' \code{method} argument of \code{\link[loo]{loo_model_weights}} to
 #' "pseudobma", whichever function assembles the model set.
-#' \code{\link{amend}} and \code{update} operate on an existing set and keep
-#' the method that set was built with, unless the caller names another.
-#' \code{\link{pull_out}} takes no weighting method at all: it reports and
-#' ignores one given in "weights" and always keeps the set's own.
+#' \code{\link{amend}}, \code{update} and \code{\link{pull_out}} operate on an
+#' existing set. They keep the "fitting" arguments it was built with unless
+#' the caller names "fitting", and the method it was weighted by unless the
+#' caller names another. \code{\link{pull_out}} takes no weighting method at
+#' all: it reports and ignores one given in "weights" and always keeps the
+#' set's own.
 #' \code{\link[base]{c}} and \code{+} take no \code{loo_controls} argument;
 #' see \code{\link{c.bnecfit}} for how they decide the method. See
 #' ?\code{\link[loo]{loo_model_weights}} for further info.
@@ -86,37 +88,11 @@
 #' at the 5% level under the mean-variance relationship of the fitted family,
 #' \code{\link{bnec}} reports that before fitting: an equation that estimates
 #' \code{bot} then has a prior describing the observed endpoint rather than the
-#' asymptote, and the \code{nec} or \code{ec50} prior places a threshold above
-#' that range in its tail rather than outside its support. How far into the tail
-#' is a property of the branch and of \code{prior_type} together rather than of
-#' either alone. Three of the four combinations set the spread by a coverage
-#' rule that reaches the farthest concentration tested, at the 95% level for
-#' \code{"uninformative"} on a predictor supplied as a recorded concentration
-#' and at the 98% level for \code{"regularizing"} on either, so the mass above
-#' the highest concentration is 0.025 or 0.01 at least and larger where the
-#' series extends further below its median on the log scale than above it. The
-#' fourth, \code{"uninformative"} on a predictor supplied already logged, sets
-#' the spread to 10 times the standard deviation of the distinct predictor
-#' values, which is the constant Fisher et al. (2024) state rather than a
-#' coverage width, and is much the widest of the four. The share of each entry's
-#' mass between the lowest and the highest value tested, and the share above the
-#' highest, on \code{\link{nec_data}} for the recorded-concentration branch and
-#' on \code{log(herbicide$concentration)} for the already-logged one:
-#'
-#' \tabular{llll}{
-#'   \strong{predictor} \tab \strong{prior_type} \tab \strong{inside} \tab
-#'   \strong{above} \cr
-#'   recorded \tab uninformative \tab 0.755 \tab 0.220 \cr
-#'   recorded \tab regularizing  \tab 0.811 \tab 0.179 \cr
-#'   logged   \tab uninformative \tab 0.116 \tab 0.442 \cr
-#'   logged   \tab regularizing  \tab 0.980 \tab 0.010
-#' }
-#'
-#' So the entry does correspondingly little to locate a threshold in the logged,
-#' \code{"uninformative"} case and rather more in the other three. Inspect the
-#' generated
-#' entries with \code{\link{get_priors}} and pass a scientifically justified
-#' prior through \code{prior} where information beyond the design is available.
+#' asymptote, and the \code{nec} and \code{ec50} priors, which are bounded to
+#' the tested range, exclude a threshold above that range. Inspect the
+#' generated entries with \code{\link{get_priors}} and pass a scientifically
+#' justified prior through \code{prior} where information beyond the design is
+#' available.
 #' Neither value of \code{prior_type} corrects a design that stopped before the
 #' asymptote; \code{asymptote_observed} is the argument for that. With a
 #' \code{disp("power")} term on a \code{Gamma}, \code{gaussian} or
@@ -139,22 +115,56 @@
 #' variation between groups.
 #' @param asymptote_observed A \code{\link[base]{logical}} declaring whether the
 #' highest predictor level reached the lower asymptote of the curve. The default
-#' \code{TRUE} is the assumption both default prior sets are built on, and
-#' leaves every generated entry exactly as it was. \code{FALSE} states that the
-#' series stopped short of the asymptote, which changes the \code{bot} prior and
-#' the initial-value search and nothing else. The \code{bot} prior's central 95%
-#' then spans from the floor of the response --- zero for every family but
-#' gaussian, and zero for a gaussian response that is non-negative throughout
-#' --- to the mean response at the end of the predictor series, so that mean is
-#' read as an upper bound on \code{bot} rather than as an estimate of it. That
-#' is the anchor the \code{"regularizing"} set already locates \code{bot} at:
-#' the highest predictor value alone on a replicated design, and as many of the
-#' highest values as it takes to reach three observations, or a twentieth of
-#' them, on a sparsely replicated one, never reaching past the top fifth of the
-#' distinct values. The
+#' \code{TRUE} is the assumption both default prior sets are built on. Under it
+#' the \code{nec} and \code{ec50} priors are bounded to the tested range, from
+#' the lowest predictor value to the highest, because on a design that reached
+#' the asymptote the decline begins, and passes its midpoint, inside that range.
+#' \code{FALSE} states that the series stopped short of the asymptote, which
+#' changes the \code{bot} prior, removes the upper bound of the \code{nec} and
+#' \code{ec50} priors, and widens the initial-value search. The \code{bot}
+#' prior's central 95% then spans from the floor of the response --- zero for
+#' every family but gaussian, and zero for a gaussian response that is
+#' non-negative throughout --- to the mean response at the end of the predictor
+#' series, so that mean is read as an upper bound on \code{bot} rather than as
+#' an estimate of it. That is the anchor the \code{"regularizing"} set already
+#' locates \code{bot} at: the highest predictor value alone on a replicated
+#' design, and as many of the highest values as it takes to reach three
+#' observations, or a twentieth of them, on a sparsely replicated one, never
+#' reaching past the top fifth of the distinct values. The
 #' initial-value band is extended to the same floor, because a band built from
 #' the observed response rejects the very draws the new prior produces and the
 #' fit then falls back to \pkg{Stan}'s own initialisation.
+#'
+#' Without the upper bound, a threshold above the highest concentration lies in
+#' the tail of the \code{nec} or \code{ec50} prior rather than outside its
+#' support. The lower bound stays at the lowest value tested. How far into the
+#' tail is a property of the branch and of \code{prior_type} together rather
+#' than of either alone. Three of the four combinations set the spread by a
+#' coverage rule that reaches the farthest concentration tested, at the 95%
+#' level for \code{"uninformative"} on a predictor supplied as a recorded
+#' concentration and at the 98% level for \code{"regularizing"} on either. The
+#' fourth, \code{"uninformative"} on a predictor supplied already logged, sets
+#' the spread to 10 times the standard deviation of the distinct predictor
+#' values, which is the constant Fisher et al. (2024) state rather than a
+#' coverage width, and is much the widest of the four. The share of each
+#' entry's mass between the lowest and the highest value tested, and the share
+#' above the highest, under \code{FALSE}, on \code{\link{nec_data}} for the
+#' recorded-concentration branch and on \code{log(herbicide$concentration)} for
+#' the already-logged one:
+#'
+#' \tabular{llll}{
+#'   \strong{predictor} \tab \strong{prior_type} \tab \strong{inside} \tab
+#'   \strong{above} \cr
+#'   recorded \tab uninformative \tab 0.775 \tab 0.225 \cr
+#'   recorded \tab regularizing  \tab 0.819 \tab 0.181 \cr
+#'   logged   \tab uninformative \tab 0.208 \tab 0.792 \cr
+#'   logged   \tab regularizing  \tab 0.990 \tab 0.010
+#' }
+#'
+#' So the entry does correspondingly little to locate a threshold in the logged,
+#' \code{"uninformative"} case and rather more in the other three. A
+#' threshold the posterior places above the prediction range is reported as
+#' censored there; see the \code{extrapolate} argument of \code{\link{nec}}.
 #'
 #' The declaration is the user's because the data cannot make it: a flat
 #' response at the top of the series is what a complete design and a truncated
@@ -165,15 +175,19 @@
 #'
 #' A gaussian response spanning negative values, and any response fitted on a
 #' link other than the identity, has no floor that can be derived from the data,
-#' and \code{FALSE} is refused for it rather than a floor being invented. Supply
-#' a \code{bot} prior through \code{prior} in that case.
+#' and \code{FALSE} is refused for it rather than a floor being invented, unless
+#' \code{prior} supplies \code{bot}. The supplied entry then takes the place of
+#' the one built from the floor, and the declaration still removes the upper
+#' bound of the \code{nec} and \code{ec50} priors.
 #'
-#' Fourteen of the 23 equations of the "all" group have no \code{bot}
-#' parameter and so have no lower asymptote to estimate. Eleven of them fall to
+#' Fifteen of the 24 equations of the "all" group have no \code{bot}
+#' parameter. One is the constant equation "ecxflat". The other fourteen
+#' change with concentration and have no lower asymptote to estimate. Eleven of
+#' them fall to
 #' zero, and \code{neclin}, \code{neclinhorme} and \code{ecxlin} decay by
 #' subtraction and are unbounded below. On a design that did not reach the
-#' asymptote the data cannot distinguish them from the equations that estimate
-#' \code{bot},
+#' asymptote the data cannot distinguish those fourteen from the equations that
+#' estimate \code{bot},
 #' so a model set holding both is reported. Whether the response can reach the
 #' floor is a property of the endpoint rather than of the data --- zero is
 #' attainable for a lethality endpoint and usually not for a growth or
@@ -217,7 +231,7 @@
 #'
 #' \bold{Overview}
 #'
-#' \code{\link{bnec}} serves as a wrapper for (currently) 23 (mostly) non-linear
+#' \code{\link{bnec}} serves as a wrapper for (currently) 24 (mostly) non-linear
 #' equations that are classically applied to concentration(dose)-response
 #' problems. The primary goal of these equations is to provide the user with
 #' estimates of No-Effect-Concentration (NEC),
@@ -258,16 +272,17 @@
 #' parameter will be fit; "bot_free" meaning only models without a "bot"
 #' parameter (without a bottom plateau) will be fit; "zero_bounded" are models
 #' that are bounded to be zero; or "decline" excludes all hormesis models, i.e.,
-#' only allows a strict decline in response across the whole predictor range.
+#' only allows a strict decline in response across the whole predictor range,
+#' or no change, for the constant equation "ecxflat".
 #' Each group names a shape rather than a set of equations admissible for a
 #' given response --- "decline" includes the linear-decay models, which are
 #' dropped for a zero-bounded or 0, 1 bounded response --- so a group string is
 #' filtered by the same family check that \code{model = "all"} is. See
 #' \code{\link{models}}.
 #' The constant equation "ecxflat", whose mean does not change with
-#' concentration, belongs to none of these groups. It is fitted where it is
-#' named, alone or with other equations, and where the response does not vary,
-#' as described below. It joins "all", "ecx" and "decline" at the 3.0 release.
+#' concentration, belongs to "all", "ecx" and "decline", so the default set
+#' includes it. It is also fitted alone where the response does not vary, as
+#' described below.
 #' Notice that if one of these group strings is provided together with a
 #' user-specified named list for the \code{\link[brms]{brm}}'s argument
 #' \code{prior}, the list names need to contain
@@ -483,7 +498,8 @@
 #' \code{\link{ecx}}, \code{\link{nsec}} and \code{\link{plot}} describe it by
 #' default; pass \code{dpar = "mu"} or \code{dpar = "hu"} to \code{\link{ecx}}
 #' for a component. \code{\link{nec}} returns the combined threshold, which for
-#' threshold models on both blocks is the smaller of the two.
+#' threshold models on both blocks is the smaller of the two on the scale the
+#' model was fitted on.
 #' For the count hurdles, \pkg{brms} calls the untruncated count mean
 #' \code{mu}; \code{ecx(dpar = "mu")} and \code{nsec(dpar = "mu")} convert it
 #' to \code{E[Y | Y > 0]} so that "response of survivors" has the same meaning
@@ -1015,6 +1031,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     mod_fits <- vector(mode = "list", length = length(model))
     names(mod_fits) <- model
     failed <- list()
+    version_records <- NULL
     set_plan <- plan_model_set(brm_args, length(model))
     brm_args <- set_plan$brm_args
     # Keep try() inside the applied function, not around the call to it.
@@ -1024,9 +1041,10 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     # the failure is also recorded in the returned object.
     # Use narrow_environment(), not a plain closure: future exports a closure
     # with its enclosing environment, which here holds everything bnec() built.
+    description_reader <- bayesnec_description
     fit_one <- narrow_environment(
       function(m) {
-        try(
+        fit <- try(
           fit_bayesnec(formula = formula, data = data, model = model[m],
                        brm_args = brm_args, prior_type = prior_type,
                        asymptote_observed = asymptote_observed,
@@ -1034,12 +1052,19 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
                        timeout = timeout, model_survival = model_survival),
           silent = FALSE
         )
+        # Workers can load an installation that predates the version helpers.
+        attr(fit, "bnec_installation") <- list(
+          description = description_reader(),
+          R = as.character(getRversion())
+        )
+        fit
       },
       list(formula = formula, data = data, model = model,
            brm_args = brm_args, prior_type = prior_type, timeout = timeout,
            asymptote_observed = asymptote_observed,
            predictor_scale = predictor_scale,
-           model_survival = model_survival)
+           model_survival = model_survival,
+           description_reader = description_reader)
     )
     attempts <- bnec_parallel_lapply(seq_along(model), fit_one,
                                   parallel = set_plan$parallel)
@@ -1048,6 +1073,9 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     for (m in seq_along(model)) {
       fit_m <- attempts[[m]]
       if (!inherits(fit_m, "try-error")) {
+        version_records <- rbind(version_records,
+                                  attempt_version(model[m], fit_m))
+        attr(fit_m, "bnec_installation") <- NULL
         mod_fits[[m]] <- fit_m
       } else {
         mod_fits[[m]] <- NA
@@ -1075,6 +1103,11 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     out <- attach_failed_models(out, failed)
     out <- attach_bnec_record(out, requested_models, model,
                               excluded_models, substitutions)
+    out <- attach_version(out, version_records)
+    out <- attach_expand_args(out, list(
+      x_range = x_range, resolution = resolution, sig_val = sig_val,
+      loo_controls = loo_controls
+    ))
     out <- retain_unused_data(out, data)
     message_control_fit(out)
     out
@@ -1091,6 +1124,11 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     out <- allot_class(mod_fit, c("bayesnecfit", "bnecfit"))
     out <- attach_bnec_record(out, requested_models, model,
                               excluded_models, substitutions)
+    out <- attach_version(out)
+    out <- attach_expand_args(out, list(
+      x_range = x_range, resolution = resolution, sig_val = sig_val,
+      loo_controls = loo_controls
+    ))
     out <- retain_unused_data(out, data)
     message_control_fit(out)
     out

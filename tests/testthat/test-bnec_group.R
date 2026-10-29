@@ -600,6 +600,39 @@ test_that("a level at a bound is fitted with ecxflat, the others as asked (#419)
             min(grep("Fitting level", msgs, fixed = TRUE)))
 })
 
+test_that("a group name reaches each level, ecxflat included (#485)", {
+  # The level that does not vary is fitted with ecxflat alone; the other is
+  # given the whole group, ecxflat included. The level fits are mocked.
+  x <- rep(c(0.1, 0.5, 1, 3, 10, 30), each = 5)
+  a <- rep(1L, length(x))
+  a[x == max(x)] <- c(0L, 0L, 1L, 0L, 1L)
+  d <- data.frame(x = rep(x, 2), alive = c(a, rep(1L, length(x))),
+                  site = rep(c("a", "b"), each = length(x)))
+  sets <- list()
+  local_mocked_bindings(
+    bnec = function(formula, data, ...) {
+      sets[[length(sets) + 1L]] <<- get_model_from_formula(formula)
+      manec_example
+    },
+    .package = "bayesnec"
+  )
+  msgs <- character(0)
+  withCallingHandlers(
+    bnec_group(alive ~ crf(x, "decline"), d, group_var = "site",
+               family = "bernoulli"),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_length(sets, 2)
+  expect_identical(sets[[1]], mod_groups$decline)
+  expect_true("ecxflat" %in% sets[[1]])
+  # The group named more than ecxflat, so the level at a bound is reported.
+  expect_length(grep("fitted with the constant equation ecxflat alone", msgs,
+                     fixed = TRUE), 1)
+})
+
 test_that("a beta level at 0 still refuses the whole call before any level (#419)", {
   # A beta response of zero throughout has no positive value to define its
   # boundary shift. Refuse the whole call before fitting any level.

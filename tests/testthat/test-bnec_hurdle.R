@@ -260,6 +260,28 @@ test_that("bnec_hurdle predicts growth over the whole concentration series", {
   expect_equal(calls[[2]]$x_range, c(0.5, 6))
 })
 
+test_that("bnec_hurdle bounds growth's threshold by the whole series (#483)", {
+  # The survivors stop at 3 while the series runs to 4. The growth formula
+  # records the series on the fitted scale, whatever x_range says.
+  dat <- data.frame(x = rep(1:4, each = 5),
+                    y = c(seq(1, 3, length.out = 15), rep(0, 5)))
+  forms <- list()
+  local_mocked_bindings(
+    bnec = function(formula, data, ...) {
+      forms[[length(forms) + 1]] <<- formula
+      structure(list(), class = c("bayesnecfit", "bnecfit"))
+    },
+    .package = "bayesnec"
+  )
+  suppressMessages(bnec_hurdle(y ~ crf(log(x), "nec3param"), data = dat))
+  expect_equal(attr(forms[[1]], "bayesnec_tested_range"), log(c(1, 4)))
+  expect_null(attr(forms[[2]], "bayesnec_tested_range"))
+  forms <- list()
+  suppressMessages(bnec_hurdle(y ~ crf(log(x), "nec3param"), data = dat,
+                               x_range = c(0.5, 6)))
+  expect_equal(attr(forms[[1]], "bayesnec_tested_range"), log(c(1, 4)))
+})
+
 test_that("bnec_hurdle fits a censored response and routes it correctly", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
@@ -582,6 +604,33 @@ test_that("ecxflat named for the growth component is let through (#419)", {
     bnec_hurdle(y ~ crf(x, "ecxflat"), data = dat)
   ), "component fit reached", fixed = TRUE)
   expect_identical(calls, 1L)
+})
+
+test_that("a group name reaches both components, ecxflat included (#485)", {
+  dat <- data.frame(x = rep(1:4, each = 5),
+                    y = c(seq(1, 3, length.out = 15), rep(0, 5)))
+  sets <- list()
+  local_mocked_bindings(
+    bnec = function(formula, data, ...) {
+      sets[[length(sets) + 1L]] <<- get_model_from_formula(formula)
+      structure(list(), class = c("bayesnecfit", "bnecfit"))
+    },
+    .package = "bayesnec"
+  )
+  suppressMessages(bnec_hurdle(y ~ crf(x, "decline"), data = dat))
+  expect_length(sets, 2)
+  for (set in sets) {
+    expect_identical(set, mod_groups$decline)
+  }
+  # A growth component at a bound is still refused for a group: the group
+  # holds curve equations beside ecxflat.
+  at_bound <- data.frame(x = as.numeric(rep(1:4, each = 5)),
+                         y = c(rep(1, 15), rep(0, 5)))
+  sets <- list()
+  expect_error(suppressMessages(
+    bnec_hurdle(y ~ crf(x, "decline"), data = at_bound)
+  ), "The constant equation ecxflat", fixed = TRUE)
+  expect_length(sets, 0)
 })
 
 test_that("a missing predictor is refused before the growth bound (#400)", {

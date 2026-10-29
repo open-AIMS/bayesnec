@@ -689,9 +689,8 @@ test_that("autoplot refuses a model outside the set and an empty selection", {
 
 # ECx annotations on transformed predictors
 
-# An inline-transformed predictor with no xform uses the numerical inverse,
-# which must preserve ecx_val for annotation labels. This fixture changes
-# formula metadata only; its positive stored x values keep log(x) finite.
+# Preserve ecx_val when inverting an inline predictor transform; bind_ecx()
+# fails if the attribute is lost. Relabel the stored fit without refitting.
 transformed_predictor_fit <- function(fit, model) {
   fit$bayesnecformula <- bayesnecformula(
     stats::as.formula(paste0("y ~ crf(log(x), model = \"", model, "\")"))

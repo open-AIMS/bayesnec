@@ -11,7 +11,7 @@ ecx(
   posterior = FALSE,
   type = "absolute",
   x_range = NA,
-  xform = identity,
+  xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
   ...,
   dpar = NULL
@@ -43,8 +43,11 @@ just the median and 95 credible intervals.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
-\item{xform}{A function to apply to the returned estimated concentration
-values.}
+\item{xform}{\code{NULL}, the default, or a function. \code{NULL} returns
+the estimate on the scale the predictor was recorded on. A function is
+applied to the estimate on the scale the model was fitted on. The two
+differ only where \code{crf()} transforms the predictor inline; see
+Details.}
 
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
@@ -123,11 +126,13 @@ Where the curve does not reach the target anywhere in the predictor range
 the ECx is not identified and \code{NA} is returned, with a warning
 reporting how many draws were affected.
 
-Where \code{crf()} transforms the predictor inline, as in
-\code{crf(log(concentration))}, the ECx is on the transformed scale unless
-\code{xform} is supplied, and a message says so once per call. It names the
-transformation and the \code{xform} that returns the estimate on the
-recorded scale.
+The curve is searched on a grid of recorded concentrations. Where
+\code{crf()} transforms the predictor inline, as in
+\code{crf(log(concentration))}, the ECx is therefore returned on the
+recorded scale without \code{xform}, and no inverse is involved. A supplied
+\code{xform} is applied to the ECx on the transformed scale, so
+\code{xform = identity} returns that scale and \code{xform = exp} on
+\code{crf(log(concentration))} returns the recorded scale again.
 
 Calls to functions \code{\link{ecx}} and \code{\link{nsec}} and
 \code{\link{compare_fitted}} do not require the same level of flexibility

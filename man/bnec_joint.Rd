@@ -11,9 +11,27 @@ bnec_joint(object, ...)
 
 \method{bnec_joint}{default}(object, ...)
 
-\method{bnec_joint}{bayesnechurdlefit}(object, model = NULL, model_survival = NULL, formula = NULL, ...)
+\method{bnec_joint}{bayesnechurdlefit}(
+  object,
+  model = NULL,
+  model_survival = NULL,
+  formula = NULL,
+  ...,
+  prior_type = NULL,
+  asymptote_observed = NULL,
+  predictor_scale = NULL
+)
 
-\method{bnec_joint}{bayesnecgroupfit}(object, model = NULL, formula = NULL, disp_by_level = TRUE, ...)
+\method{bnec_joint}{bayesnecgroupfit}(
+  object,
+  model = NULL,
+  formula = NULL,
+  disp_by_level = TRUE,
+  ...,
+  prior_type = NULL,
+  asymptote_observed = NULL,
+  predictor_scale = NULL
+)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnechurdlefit}} returned by
@@ -37,6 +55,12 @@ survival model in \code{object}. Hurdle fits only.}
 the one held in \code{object}. Supply this to add structure the factorised
 fit cannot carry, for example a group-level term. The \code{crf} model
 argument is overwritten by \code{model} either way.}
+
+\item{prior_type, asymptote_observed, predictor_scale}{The arguments of
+\code{\link{bnec}} that build the default priors. Each defaults to the value
+\code{object} was fitted with, and to the \code{\link{bnec}} default where
+\code{object} does not record it, as a fit made by an earlier version of
+\pkg{bayesnec} does not. Each must be named in full.}
 
 \item{disp_by_level}{A \code{\link[base]{logical}}. Should the family's
 dispersion parameter also take a separate value per level? Defaults to
@@ -82,8 +106,12 @@ The response variable, predictor and data are taken from \code{object}, and
 the family follows the growth component: \code{hurdle_gamma} where that was
 fitted as a Gamma, \code{zero_inflated_beta} where it was a Beta, and the
 corresponding count hurdle where it was Poisson or negative binomial.
-Nothing else transfers -- priors, control arguments and the like are
-defaults again unless passed through \code{...}.
+For either class, the default priors are built with the
+\code{prior_type}, \code{asymptote_observed} and \code{predictor_scale}
+\code{object} was fitted with, unless those arguments are supplied. A grouped
+fit made with \code{asymptote_observed = FALSE} is therefore refitted under
+the same declaration. Nothing else transfers: priors, control arguments and
+the like are defaults again unless passed through \code{...}.
 
 A \code{disp()} term in the formula held in \code{object} is kept, and in
 the joint model it applies to the dispersion parameter of the positive

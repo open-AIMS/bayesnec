@@ -6,8 +6,11 @@
 #' @param posterior A \code{\link[base]{logical}} value indicating if the full
 #' posterior sample of calculated NEC values should be returned instead of
 #' just the median and 95% credible intervals.
-#' @param xform A function to apply to the returned estimated concentration
-#' values.
+#' @param xform \code{NULL}, the default, or a function. \code{NULL} returns
+#' the estimate on the scale the predictor was recorded on. A function is
+#' applied to the estimate on the scale the model was fitted on. The two
+#' differ only where \code{crf()} transforms the predictor inline; see
+#' Details.
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated NEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
@@ -75,10 +78,18 @@
 #' type.
 #'
 #' Where \code{crf()} transforms the predictor inline, as in
-#' \code{crf(log(concentration))}, the estimate is on the transformed scale
-#' unless \code{xform} is supplied, and a message says so once per call. It
-#' names the transformation and the \code{xform} that returns the estimate on
-#' the recorded scale.
+#' \code{crf(log(concentration))}, the \code{nec} parameter is sampled on the
+#' transformed scale. Without \code{xform} it is returned on the recorded
+#' scale, a concentration, by the inverse of the transformation. The inverse
+#' is exact for \code{log}, \code{log10}, \code{log2}, \code{log1p},
+#' \code{sqrt} and \code{exp} of the predictor, alone or shifted by a
+#' constant, as in \code{log(concentration + 1)}. For any other
+#' transformation it is read off the prediction grid by linear interpolation,
+#' and a draw beyond that grid that is not censored is an error naming the
+#' remedy. A supplied \code{xform} is applied to the estimate on the
+#' transformed scale instead, so \code{xform = identity} returns that scale
+#' and \code{xform = exp} on \code{crf(log(concentration))} returns the
+#' exact inverse.
 #'
 #' @return A vector containing the estimated no-effect value, including upper
 #' and lower 95% credible interval bounds (or other interval as specified by
@@ -112,11 +123,11 @@
 #'
 #' @section Extrapolation:
 #' \code{extrapolate} chooses the bound the estimate is censored at. It is read
-#' on the recorded predictor scale, the scale the data were supplied on and the
-#' scale \code{\link{bnec}} and \code{\link{nsec}} take \code{x_range} on. That
-#' is neither the scale \code{crf()} fits on nor the scale \code{xform}
-#' displays, so under \code{crf(log(concentration))} the limit is a
-#' concentration and not a log concentration.
+#' on the recorded predictor scale, the scale the data were supplied on, the
+#' scale \code{\link{bnec}} and \code{\link{nsec}} take \code{x_range} on, and
+#' the scale the estimate is returned on without \code{xform}. Under
+#' \code{crf(log(concentration))} the limit is therefore a concentration and
+#' not a log concentration, whatever \code{xform} is given.
 #'
 #' \code{TRUE} removes the bound at both ends. It is accepted only where every
 #' component of the reported estimate samples a NEC. An NSEC is read off a
@@ -158,11 +169,15 @@
 #' Two constraints on the reach of an extrapolation are reported rather than
 #' corrected. Where the \code{nec} prior stored on the fit is itself bounded at
 #' the prediction range, the posterior holds no draw beyond that bound and a
-#' wider limit returns the same truncated posterior; a message states the
-#' bound. The default prior no longer bounds \code{nec} above, so this applies
-#' to a fit made before that change, or to a user prior that supplies a bound.
-#' The lower bound of 0 that a predictor supplied as a concentration still
-#' takes is reported by the other arm of the same message. And a curve-read
+#' wider limit returns the same truncated posterior; where the call
+#' re-evaluates anything, a message states the bound. The default prior bounds
+#' \code{nec} to the tested range, so this applies to every fit made under the
+#' default \code{asymptote_observed = TRUE} of \code{\link{bnec}}:
+#' \code{extrapolate} reaches above that range only for a fit made under
+#' \code{asymptote_observed = FALSE}, which lifts the upper bound, or with a
+#' user prior that sets a wider one. The lower bound at the lowest value tested
+#' applies under both settings and is reported by the other arm of the same
+#' message. And a curve-read
 #' component is measured from the control, so a lower limit below the lowest
 #' observed concentration extends the grid without extending the search, and
 #' those components stay censored at the control.
@@ -188,7 +203,7 @@
 #' @export
 # no_effect follows `...` so that it appears in \usage, although only one class
 # uses it. The other methods take it through `...` and refuse it.
-nec <- function(object, posterior = FALSE, xform = identity,
+nec <- function(object, posterior = FALSE, xform = NULL,
                 prob_vals = c(0.5, 0.025, 0.975), extrapolate = FALSE, ...,
                 no_effect = FALSE) {
   UseMethod("nec")
@@ -208,15 +223,14 @@ nec <- function(object, posterior = FALSE, xform = identity,
 #' @noRd
 #'
 #' @export
-nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
+nec.bayesnecfit <- function(object, posterior = FALSE, xform = NULL,
                             prob_vals = c(0.5, 0.025, 0.975),
                             extrapolate = FALSE, ...) {
   check_component_arg(list(...), object)
   check_nec_no_dpar(list(...))
   check_no_effect_arg(list(...), object)
   chk_logical(posterior)
-  if(!inherits(xform, "function")){ 
-    stop("xform must be a function.")} 
+  check_xform(xform)
   if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[2] |
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
@@ -244,13 +258,9 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
 #'
 #' @return As \code{\link{nec}}.
 #' @noRd
-necfit_ne <- function(object, posterior = FALSE, xform = identity,
+necfit_ne <- function(object, posterior = FALSE, xform = NULL,
                       prob_vals = c(0.5, 0.025, 0.975), extrapolate = FALSE,
                       ...) {
-  # Once for the call, including the nsec() that extrapolate may call below.
-  # See report_fitted_scale().
-  quiet <- report_fitted_scale(object, xform, "nec")
-  on.exit(options(quiet), add = TRUE)
   nec_out <- object$ne_posterior
   # The default returns the stored posterior and record untouched. The bounds
   # are the stored prediction grid, the value the record and ecx() censor at.
@@ -279,11 +289,10 @@ necfit_ne <- function(object, posterior = FALSE, xform = identity,
   # Read the record expand_nec() wrote rather than derive one, so that this
   # reports the same censoring as summary().
   cens <- attr(nec_out, "censored")
-  if (inherits(xform, "function")) {
-    nec_out <- xform(nec_out)
-    cens <- xform_censoring(cens, xform)
-    attr(nec_out, "censored") <- cens
-  }
+  map <- recorded_xform(object, xform, extrapolate)
+  nec_out <- map_draws(nec_out, map, cens, "NEC")
+  cens <- xform_censoring(cens, map)
+  attr(nec_out, "censored") <- cens
   # The stored posterior can hold draws beyond the prediction range: a
   # b_nec_Intercept draw the prior does not confine, or an NA from
   # nsec_off_curve() for a joint fit with a smooth survival block. Such a draw
@@ -314,24 +323,19 @@ necfit_ne <- function(object, posterior = FALSE, xform = identity,
 #' @noRd
 #'
 #' @export
-nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
+nec.bayesmanecfit <- function(object, posterior = FALSE, xform = NULL,
                               prob_vals = c(0.5, 0.025, 0.975),
                               extrapolate = FALSE, ...) {
   check_component_arg(list(...), object)
   check_nec_no_dpar(list(...))
   check_no_effect_arg(list(...), object)
   chk_logical(posterior)
-  if (!inherits(xform, "function")) {
-    stop("xform must be a function.")
-  }
+  check_xform(xform)
   if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[2] |
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
   }
-  # Once for the set, not once per equation. See report_fitted_scale().
-  quiet <- report_fitted_scale(object, xform, "nec")
-  on.exit(options(quiet), add = TRUE)
   # Classify each equation by its parameters, as nec.bayesnecfit() does.
   # ecxflat has no nec parameter, so a set holding it is a mixture.
   if (!all(vapply(names(object$mod_fits), function(m) {
@@ -366,11 +370,10 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
   # As above. expand_manec() built this record under the mixture's draw index,
   # so its fraction is the censored share of the averaged posterior.
   cens <- attr(nec_out, "censored")
-  if (inherits(xform, "function")) {
-    nec_out <- xform(nec_out)
-    cens <- xform_censoring(cens, xform)
-    attr(nec_out, "censored") <- cens
-  }
+  map <- recorded_xform(object, xform, extrapolate)
+  nec_out <- map_draws(nec_out, map, cens, "no-effect estimate")
+  cens <- xform_censoring(cens, map)
+  attr(nec_out, "censored") <- cens
   # Smooth equations add a second route to censoring: their NSEC draws can be
   # censored even where every threshold equation is inside the range.
   warn_censored_draws(nec_out, ne_label(object), cens = cens,
@@ -393,7 +396,7 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
 #' \code{\link[brms]{brmsfit}} and so also answers for an object assembled
 #' without one, as several tests build. Where the name is no equation, the fit
 #' is read as \code{\link{expand_nec}} reads it. Only where neither is
-#' available does the \code{"ecx"} prefix of the name decide; no fit made by
+#' available does the \code{"ecx"} substring in the name decide; no fit made by
 #' \code{\link{bnec}} reaches that branch. For a two-block fit both readings
 #' describe the response block.
 #'

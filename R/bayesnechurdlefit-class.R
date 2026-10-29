@@ -39,17 +39,15 @@ is_bayesnechurdlefit <- function(x) {
 #' @details Draws are paired by row, which is valid because the two posteriors
 #' are independent. Where the fits hold different numbers of draws, both are
 #' truncated to the smaller.
-#' truncated to the smaller.
+#'
+#' The control is the prediction at the lowest observed concentration,
+#' not the first column of the grid, so that \code{x_range} does not change
+#' the reference. It is computed here so that the control and the curve are
+#' truncated to the same draws.
 #'
 #' @return A \code{\link[base]{list}} with elements \code{x}, \code{growth},
 #' \code{survival} and \code{combined}, and \code{control}, a list of the same
 #' three names holding one control value per draw.
-#' @details The control is the prediction at the lowest observed concentration,
-#' not the first column of the grid, so that \code{x_range} changes no
-#' estimate. It is computed here so that the control and the curve are
-#' truncated to the same draws.
-#' class: without it, supplying \code{x_range} changes every reported ECx and
-#' NSEC.
 #'
 #' @importFrom brms posterior_epred
 #'
@@ -112,10 +110,16 @@ hurdle_check_which <- function(which) {
 #' the refusal names which component raised it.
 #'
 #' The combined no-effect concentration is
-#' \code{pmin(ne_growth, ne_survival)} evaluated per posterior draw. Below both
-#' thresholds the growth curve sits at \code{top} and the survival curve at its
-#' own control value, so their product is flat; it departs that plateau at
-#' whichever threshold binds first.
+#' \code{pmin(ne_growth, ne_survival)} evaluated per posterior draw, on the
+#' scale the model was fitted on. Below both thresholds the growth curve sits
+#' at \code{top} and the survival curve at its own control value, so their
+#' product is flat; it departs that plateau at whichever threshold binds first.
+#' The minimum, and the rule for censored draws below, apply on that scale, and
+#' the result is then returned on the scale \code{xform} names. Under a
+#' decreasing transformation in \code{crf()}, such as \code{crf(I(-x))}, each
+#' curve is flat above its threshold on the recorded scale, so the combined
+#' value is the larger of the two recorded thresholds. An \code{xform} changes
+#' the scale the value is reported on, not which threshold it is.
 #'
 #' A component draw beyond the top of its prediction range is known only to
 #' exceed that limit. Both components are predicted over the whole
@@ -127,8 +131,8 @@ hurdle_check_which <- function(which) {
 #' range, at the smaller of the two components' upper limits, which is true
 #' of every such draw.
 #'
-#' \bold{The combined estimate is therefore the smaller of the two, and reduces
-#' to the growth estimate whenever growth is the more sensitive endpoint} --
+#' \bold{The combined estimate therefore reduces to the growth estimate
+#' whenever growth is the more sensitive endpoint} --
 #' which it usually is, since a contaminant that kills has generally slowed
 #' growth at a lower concentration first. This is not a defect of the
 #' combination but a property of thresholds: a threshold marks where an effect
@@ -161,7 +165,7 @@ hurdle_check_which <- function(which) {
 #' @method nec bayesnechurdlefit
 #'
 #' @export
-nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
+nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
                                   prob_vals = c(0.5, 0.025, 0.975),
                                   extrapolate = FALSE,
                                   which = "combined", ...) {
@@ -170,13 +174,7 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
   check_no_effect_arg(list(...), object)
   chk_logical(posterior)
   which <- hurdle_check_which(which)
-  if (!inherits(xform, "function")) {
-    stop("xform must be a function.")
-  }
-  # Report the scale once here. The component calls below get no xform, which
-  # is applied to their result. See report_fitted_scale().
-  quiet <- report_fitted_scale(object, xform, "nec")
-  on.exit(options(quiet), add = TRUE)
+  check_xform(xform)
   # Muffle the component censoring warnings; one is raised below for the
   # vector returned. `extrapolate` goes to each component, which has its own
   # prediction range, and a refusal is re-raised naming that component, since
@@ -211,6 +209,9 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
     g_post <- component_nec(object$growth, "growth")
     s_post <- component_nec(object$survival, "survival")
     n <- min(length(g_post), length(s_post))
+    # Keep the minimum on the fitted scale, where each curve is flat below its
+    # threshold. Under a decreasing crf() it is the larger recorded threshold,
+    # which is where the product leaves its plateau.
     combined <- combine_censored_min(g_post, s_post, n)
     out <- combined$values
     cens <- combined$censored
@@ -223,10 +224,10 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
               " combined value is approximate. See ?nec.bayesnechurdlefit.")
     }
   }
-  if (inherits(xform, "function")) {
-    out <- xform(out)
-    cens <- xform_censoring(cens, xform)
-  }
+  # The components return the fitted scale, and the map is applied once here.
+  map <- recorded_xform(object, xform, extrapolate)
+  out <- map_draws(out, map, cens, "no-effect estimate")
+  cens <- xform_censoring(cens, map)
   attr(out, "censored") <- cens
   # A draw beyond the prediction range keeps its rank in the summary and is
   # given no number, rather than the bound as its value.
@@ -250,14 +251,17 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
 #' @param extrapolate As for \code{\link{nec}}.
 #' @param ... Passed to \code{\link{nec}}.
 #'
-#' @return The posterior, as \code{nec(part, posterior = TRUE)} returns it.
+#' @return The posterior on the fitted scale, as
+#' \code{nec(part, posterior = TRUE, xform = identity)} returns it.
 #' @noRd
 hurdle_component_ne <- function(part, extrapolate, ...) {
   if (inherits(part, "bayesnecfit") &&
         !has_nec_parameter(part$model, part$fit)) {
-    return(necfit_ne(part, posterior = TRUE, extrapolate = extrapolate, ...))
+    return(necfit_ne(part, posterior = TRUE, xform = identity,
+                     extrapolate = extrapolate, ...))
   }
-  nec(part, posterior = TRUE, extrapolate = extrapolate, ...)
+  nec(part, posterior = TRUE, xform = identity, extrapolate = extrapolate,
+      ...)
 }
 
 #' Extracts the predicted ECx value from a \code{\link{bayesnechurdlefit}}
@@ -295,7 +299,7 @@ hurdle_component_ne <- function(part, extrapolate, ...) {
 #' @export
 ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 200,
                                   posterior = FALSE, type = "absolute",
-                                  x_range = NA, xform = identity,
+                                  x_range = NA, xform = NULL,
                                   prob_vals = c(0.5, 0.025, 0.975),
                                   which = "combined", ...) {
   check_component_arg(list(...), object)
@@ -312,12 +316,7 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 200,
          "asymptote is not a single fitted parameter. Use ",
          "type = \"absolute\" or type = \"range\".", call. = FALSE)
   }
-  if (!inherits(xform, "function")) {
-    stop("xform must be a function.")
-  }
-  # Once for the call. See report_fitted_scale().
-  quiet <- report_fitted_scale(object, xform, "ecx")
-  on.exit(options(quiet), add = TRUE)
+  check_xform(xform)
   # Every curve, growth included, over the whole concentration series.
   preds <- hurdle_component_preds(object, resolution = resolution,
                                   x_range = x_range)
@@ -330,18 +329,18 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 200,
   below <- attr(out, "below_range")
   above <- is.na(out) & !below
   attr(out, "below_range") <- NULL
-  # Return the estimate to the fitted scale, as ecx.bayesnecfit() does. Build
-  # the record on the recorded grid, then remap it: a decreasing crf() swaps
-  # its two ends.
-  out <- sub_x_transformation(out, object$formula)
+  # As in ecx.bayesnecfit(). Build the record on the recorded grid, then remap
+  # it: a decreasing crf() swaps its two ends.
   x_kept <- preds$x[is.finite(preds$x)]
-  cens <- xform_censoring(
-    censoring_record(max(x_kept), min(x_kept), above, below),
-    function(value) sub_x_transformation(value, object$formula)
-  )
-  if (inherits(xform, "function")) {
-    out <- xform(out)
-    cens <- xform_censoring(cens, xform)
+  cens <- censoring_record(max(x_kept), min(x_kept), above, below)
+  if (!returns_recorded(object, xform)) {
+    to_fitted <- function(value) sub_x_transformation(value, object$formula)
+    out <- to_fitted(out)
+    cens <- xform_censoring(cens, to_fitted)
+    if (!is.null(xform)) {
+      out <- xform(out)
+      cens <- xform_censoring(cens, xform)
+    }
   }
   attr(out, "censored") <- cens
   # After xform, as in ecx.bayesnecfit: the bound the report names and the
@@ -428,12 +427,10 @@ print.bayesnechurdlefit <- function(x, ...) {
 
 #' Take the smaller of two component no-effect posteriors, keeping censoring
 #'
-#' The combined endpoint leaves its plateau at whichever component binds
-#' first, so each combined draw is the minimum of the two. A draw below the
-#' foot of its range is the minimum whatever the other is. A draw known only
-#' to exceed its upper limit \code{U} gives the other draw where that is
-#' identified at or below \code{U}, and otherwise a draw known only to exceed
-#' \code{U}. Plain \code{pmin()} would return \code{NA} for such draws.
+#' Takes the minimum of the component no-effect draws, which must be on the
+#' fitted scale, not the recorded one. Censoring flags and
+#' upper limits decide whether an outside-range minimum is identified;
+#' plain \code{pmin()} would propagate \code{NA} for a censored component draw.
 #'
 #' @param g,s The two component posteriors, each carrying its \code{"censored"}
 #' record where it has one.

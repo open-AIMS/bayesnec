@@ -67,7 +67,7 @@ test_that("limits are put on the fitted scale before any draw is compared", {
   out <- bayesnec:::fitted_extrapolate_limits(bounds_of(1, 20),
                                               bounds_of(1, 10), rising)
   expect_equal(c(out$lower, out$upper), log(c(1, 20)))
-  falling <- bayesnecformula(y ~ crf(-x, "nec3param"))
+  falling <- bayesnecformula(y ~ crf(I(-x), "nec3param"))
   flipped <- bayesnec:::fitted_extrapolate_limits(bounds_of(1, 20),
                                                   bounds_of(1, 10), falling)
   expect_equal(c(flipped$lower, flipped$upper), c(-20, -1))
