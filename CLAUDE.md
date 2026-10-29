@@ -119,6 +119,11 @@ measurements and the pointers, not a second copy of the argument. Planning
 documents follow section 13 of the global file and live in `notes/tasks/` as a
 `-human.md` and `-claude.md` pair.
 
+[`notes/comment_reasoning/README.md`](notes/comment_reasoning/README.md)
+indexes the rules, evidence and qualifications retained from the comment
+cleanup under #484. Historical measurements describe the runs that produced
+them; the current implementation and tests determine what is supported now.
+
 ## The reference library
 
 The papers behind this package and the training material are in
@@ -145,34 +150,33 @@ to `ecx`.
 Traps found in this package's behaviour. Check them before comparing a
 `bayesnec` fit against anything else, or reimplementing one.
 
-### The identity link forced on every family
+### Default and explicitly chosen links
 
-`bayesnec::validate_family()` sets `link = "identity"` for *every* family it
-accepts, so that `top`, `bot` and `nec` stay on the natural response scale and
-remain directly interpretable. Several `brms` families default to something
-else — `Beta()` and `binomial()` default to **logit**, `Gamma()` to **inverse**,
-`poisson()` to **log**.
+`bnec()` assigns the identity link when the caller names a family without
+choosing a link, for example `family = "Beta"` or `family = Beta()`. An explicit
+supported link is honoured, as in `Beta(link = "logit")`. A supplied variable
+holding a family object retains that object's links. The supported mean links
+are `identity`, `log` and `logit`; see `R/validate_family.R` and
+`tests/testthat/test-validate_family.R`.
 
-**Consequence:** a `bnec()` fit and a hand-rolled `brms::brm()` fit of the
-"same" model are *different models* unless you pass the link explicitly. With
-the default logit link a non-linear concentration-response curve is fitted to
-the *logit* of the mean, not the mean — a curve spanning 0.04–0.70 becomes a
-mean spanning only 0.51–0.67, which is a catastrophic misspecification that
-still samples cleanly and reports healthy R-hat.
+With the identity link, the curve's `top` and `bot` parameters are on the
+response scale. With a log or logit link they are on the linear-predictor
+scale. The `nec` parameter is on the fitted concentration scale, including
+any transformation in `crf()`; it is not a response-scale parameter.
 
-**Rule:** when writing raw `brms` code to compare against, replicate, or
-prototype for `bayesnec`, always pass the link explicitly:
+Several `brms` families have different default links: `Beta()` and
+`binomial()` use logit, `Gamma()` uses inverse, and `poisson()` uses log.
+A comparison or replication with `brms::brm()` must specify the link recorded
+in the fitted object. For a `bnec()` fit using its default identity link:
 
 ```r
 brm(..., family = Beta(link = "identity"))   # not Beta()
 ```
 
-Symptom to watch for: one family beating another by an implausibly large
-`elpd_diff` (tens to hundreds of units on a small dataset). Before believing
-any such result, check that every model in the comparison uses the same link.
-
-This behaviour is documented in the JSS paper, so it does not need repeating in
-the package docs — it is recorded here only so the mistake is not repeated.
+Passing the same curve expression to `brm()` with its default logit link
+changes a curve spanning 0.04–0.70 into a response mean spanning about
+0.51–0.67. Good sampler diagnostics do not detect that change of model.
+Check the fitted links before interpreting a large difference in `elpd_diff`.
 
 ### The scale of a returned estimate
 
@@ -196,12 +200,16 @@ to the untransformed plot data, never by transforming the breaks.
 
 ### `dispersion()` on a model average
 
-`bayesnec::dispersion()` expects a `bayesnecfit`. Called on a `bayesmanecfit`
-it stops with "argument is not a valid model". There is no need to call it per
-equation either: `summary(fit)$mod_weights` already carries
-`dispersion_Estimate`, `dispersion_Q2.5` and `dispersion_Q97.5` for the
-families the test applies to. Recomputing requires a `posterior_predict()` draw
-for every equation in the set.
+`bayesnec::dispersion()` accepts a `bayesmanecfit` and computes the statistic
+separately for each equation. With `summary = FALSE` it returns a named list
+of posterior vectors; with `summary = TRUE` it returns a data frame with one
+row per equation. It does not define one dispersion statistic for the model
+average. See `R/dispersion.R` and `tests/testthat/test-dispersion.R`.
+
+`summary(fit)$mod_weights` already includes `dispersion_Estimate`,
+`dispersion_Q2.5` and `dispersion_Q97.5` for the families the test applies to.
+Use those stored results when sufficient: calling `dispersion()` again
+simulates posterior predictions for each applicable equation.
 
 ### The placement of a new data refusal
 

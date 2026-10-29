@@ -3,11 +3,8 @@ test_that("Check for data when using formula syntax", {
 })
 
 test_that("user-supplied `prior` is not captured by partial matching to `prior_type`", {
-  # Regression test: `prior_type` was added as a formal that `prior` (a common
-  # brms argument) partial-matches, so `prior = <brmsprior>` was silently bound
-  # to `prior_type`, tripping its match.arg() before any data checks. With an
-  # explicit `prior` formal, `prior =` is matched exactly and reaches the normal
-  # missing-data error instead of the spurious match.arg() error.
+  # The brms prior argument must match its explicit formal, not prior_type.
+  # Reaching the missing-data error shows matching succeeded.
   mp <- brms::prior_string("beta(5, 1)", nlpar = "top")
   expect_true("prior" %in% names(formals(bnec)))
   expect_error(bnec(y ~ crf(x, "nec3param"), prior = mp),
@@ -29,13 +26,8 @@ test_that("predictor_scale is an explicit bnec argument (#317)", {
 })
 
 test_that("a model set states the missing-value refusal once, from bnec()", {
-  # check_data() runs once per model inside fit_bayesnec(), and bnec() wraps
-  # that call in try() for a model set, so a refusal raised from there was
-  # printed once per model and the call then ended on the generic
-  # all-models-failed advice, which names neither the missing values nor the
-  # remedy. The default model argument is a set, so that is the common path.
-  # The check is raised in bnec() instead, immediately after the model frame is
-  # built. See #278.
+  # Reject missing data before the model loop: per-model try() would otherwise
+  # repeat the refusal and end with generic all-models-failed advice.
   d <- nec_data
   d$y[3] <- NA
   msg <- tryCatch(bnec(y ~ crf(x, model = c("nec3param", "nec4param")),
@@ -46,11 +38,8 @@ test_that("a model set states the missing-value refusal once, from bnec()", {
 })
 
 test_that("the refusal precedes the family choice, so nothing is read off a subset", {
-  # Placed immediately after the model frame is built rather than beside
-  # check_normalisation(), so that nothing downstream, retrieve_valid_family()
-  # included, is decided from a smaller sample than was supplied. Asserted by
-  # the absence of the family-selection message, which is the only observable
-  # thing that runs between the two positions on this input. See #278.
+  # Validate immediately after building the frame, before family selection
+  # uses a reduced sample. Its absent message checks that ordering.
   d <- nec_data
   d$y[3] <- NA
   msgs <- capture.output(
@@ -63,10 +52,8 @@ test_that("the refusal precedes the family choice, so nothing is read off a subs
 })
 
 test_that("Check models inappropriate for negative x are dropped", {
-  # The family is given explicitly because nec_data's response is 0-1 bounded,
-  # for which nechorme4pwr is now excluded up front (#177) -- the negative-x
-  # rule would never be reached. Gamma leaves it in the set so that this test
-  # still exercises the rule it is about.
+  # Give Gamma explicitly so family screening retains nechorme4pwr and the
+  # negative-predictor rule is reached; the bounded response would exclude it.
   bnec(y ~ crf(log_x, "nechorme4pwr"), data = nec_data,
        family = Gamma(link = "identity")) |>
     expect_message("Dropping the model\\(s\\) nechorme4pwr as they are not valid for data with negative predictor \\(x\\) values\\.") |>
@@ -75,10 +62,8 @@ test_that("Check models inappropriate for negative x are dropped", {
 
 
 test_that("bnec refuses a resolution below 2 before fitting anything", {
-  # A property of the call, fixed before any model is fitted. Left to arrive
-  # from expand_nec(), where the no-effect estimate of a smooth equation is read
-  # off the grid, it arrives only after every model in the set has compiled and
-  # sampled. See #325.
+  # Validate this call-wide setting before fitting; grid-based no-effect
+  # estimation would otherwise report the error only after sampling every model.
   expect_error(
     bnec(y ~ crf(x, model = "nec3param"), data = nec_data, resolution = 1),
     "must be at least 2"
@@ -86,14 +71,9 @@ test_that("bnec refuses a resolution below 2 before fitting anything", {
 })
 
 test_that("a response at one bound is fitted as ecxflat alone (#400, #419)", {
-  # Each case failed inside prior construction on the quantile() error, which
-  # named neither the column nor the cause, except beta at 1, which was shifted
-  # to 0.999 and fitted, and beta at 0, which was shifted to Inf. #400 refused
-  # them; D31 fits the constant equation to them instead, decided once before
-  # the model loop. The two-equation set asked for is replaced, so the call
-  # takes the single-model branch and never reaches the model loop. Beta at 0
-  # cannot be fitted by ecxflat either and is still refused, and neither can
-  # zero_inflated_beta at 0, whose beta block has no data (#441).
+  # A response at one bound throughout is fitted as ecxflat alone, before the
+  # model loop. bnec() refuses beta at 0, which has no positive value to shift
+  # a zero by, and zero_inflated_beta at 0, whose beta block has no data.
   loop_calls <- 0L
   fitted <- character(0)
   local_mocked_bindings(
@@ -126,7 +106,7 @@ test_that("a response at one bound is fitted as ecxflat alone (#400, #419)", {
                                cs$bound, " bound"), fixed = TRUE, info = nm)
       expect_match(err, "the constant equation ecxflat included",
                    fixed = TRUE, info = nm)
-      # Refused before any report on the response, as #400 placed it.
+      # Refuse before reporting on the response.
       expect_length(msgs, 0)
       next
     }
@@ -187,10 +167,8 @@ test_that("one observation off the bound reaches the model loop (#400)", {
 })
 
 test_that("zero_inflated_beta at 1 takes the path beta does (#441)", {
-  # D35: a response of 1 throughout is fitted with ecxflat alone, as D31 does
-  # for beta. Before it the ones were shifted to 0.999 and the set requested
-  # was fitted. The messages and the equation reaching the fit are compared
-  # with those for beta on the same data, the family name aside.
+  # A response of ones dispatches to ecxflat. Compare the equation and messages
+  # with beta on the same data, allowing for the family name.
   fitted <- list()
   local_mocked_bindings(
     fit_bayesnec = function(..., model) {
@@ -261,18 +239,11 @@ test_that("zero_inflated_beta at 0 is refused once, before any fit (#441)", {
   expect_identical(calls, 0L)
 })
 
-# ---- #419, the constant equation, fitted --------------------------------------
+# The constant equation, fitted.
 
-# Four fits, each made once and shared by every test below, because compiling
-# the Stan program is what these tests cost. A bernoulli response of 1
-# throughout, requested with the whole default set, which bnec() fits as
-# ecxflat alone; a gaussian response with no concentration effect, fitted with
-# ecxflat named beside nec3param, so that both take appreciable weight and the
-# mixture holds ecxflat draws; and manec_example, which declines, amended with
-# ecxflat, which is a response with an effect; and the first again on a logged
-# predictor with an x_range reaching 0. Short chains at a fixed seed:
-# what is asserted is where the draws lie, not their precision. amend() takes
-# the sampler settings of the set it amends and has no seed argument.
+# Share four fits to limit Stan compilation: constant Bernoulli, Gaussian
+# with no effect, a declining set amended with ecxflat, and constant Bernoulli
+# on a logged predictor. Short chains check draw locations, not precision.
 flat_fixtures <- local({
   cache <- list()
   keep_messages <- function(expr) {
@@ -305,10 +276,8 @@ flat_fixtures <- local({
                seed = 419, refresh = 0)
         }),
         effect = keep_messages(amend(manec_example, add = "ecxflat")),
-        # An x_range reaching 0 under crf(log(x)) puts -Inf at the foot of the
-        # prediction grid. With the mean written top + 0 * x that point was
-        # NaN, the NSEC search stopped in quantile() after sampling, and under
-        # the substitution the whole call failed with that unnamed error.
+        # A grid reaching zero under log(x) starts at -Inf. top + 0 * x would
+        # produce NaN there and fail the NSEC search after sampling.
         log_range = keep_messages(
           bnec(alive ~ crf(log(x), model = "all"),
                data = data.frame(x = x, alive = 1L), family = "bernoulli",
@@ -337,11 +306,9 @@ expect_ecx_all_above <- function(fit, types) {
   }
 }
 
-# The NSEC of a constant: every draw above the reference never falls to it and
-# is censored above, and a draw at or below it takes the control, the rule
-# nsec() applies to every equation. For a constant the draw's control is its
-# top, so those draws are exactly the ones whose top is at or below the
-# sig_val quantile of top.
+# A constant draw above the reference never crosses it and is censored above.
+# A draw at or below the reference takes its control, equal to its own top.
+# The latter draws have top at or below the sig_val quantile of top.
 expect_nsec_above_but_control <- function(fit, sig_val = 0.01) {
   ns <- suppressWarnings(nsec(fit, posterior = TRUE, sig_val = sig_val))
   cens <- attr(ns, "censored")
@@ -537,10 +504,8 @@ test_that("a misspelt equation at a bound is refused, not set aside (#419)", {
 })
 
 test_that("a model set states a disp() refusal once, from bnec() (#410)", {
-  # wrangle_model_formula() checks the term once per equation, inside the try()
-  # of the model loop, so a refusal from there was printed once per equation
-  # and the call ended on the all-models-failed advice. fit_bayesnec() is
-  # replaced to count calls: the refusal has to arrive before the loop does.
+  # Reject the term before per-equation try() repeats it and ends on generic
+  # all-models-failed advice. Mock fit_bayesnec() to check no fit starts.
   calls <- 0L
   local_mocked_bindings(
     fit_bayesnec = function(...) {
@@ -576,15 +541,12 @@ test_that("a model set states a disp() refusal once, from bnec() (#410)", {
   expect_equal(calls, 0L)
 })
 
-# ---- #442, a binomial formula with no trials() term ---------------------------
+# A binomial formula without trials().
 
 test_that("a binomial formula with no trials() term is refused once (#442)", {
-  # check_data() read the trials inside the try() of the model loop, where
-  # retrieve_var()'s own message stopped on "subscript out of bounds". A model
-  # set printed that once per equation and the call ended on the
-  # all-models-failed advice. fit_bayesnec() is replaced to count calls: the
-  # refusal has to arrive before the loop does. nec_data's count and trials
-  # columns are added in setup.R.
+  # Reject missing trials before per-equation try() repeats an indexing error.
+  # Mock fit_bayesnec() to check no fit starts. setup.R supplies the count and
+  # trials columns in nec_data.
   calls <- 0L
   local_mocked_bindings(
     fit_bayesnec = function(...) {
@@ -632,7 +594,7 @@ test_that("the same call with a trials() term reaches the model loop (#442)", {
 })
 
 
-# ---- #470, equations that keep no group-level term on a variable -------------
+# Equations that keep no group-level term on a variable.
 
 gamma_group_data <- function() {
   set.seed(1)
@@ -643,8 +605,7 @@ gamma_group_data <- function() {
 }
 
 test_that("bnec() refuses a call naming only an excluded equation (#470)", {
-  # The reproduction on #470, which sampled and then failed on the grid. It is
-  # now refused before anything is fitted.
+  # Refuse before sampling a fit whose prediction grid cannot be built.
   calls <- 0L
   local_mocked_bindings(
     fit_bayesnec = function(...) {

@@ -27,10 +27,9 @@ test_that("ecx_val warnings behave as expected", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # 0.9 is now accepted: the lower bound is 0, not 1, and there is no upper
-  # bound. Under "absolute" the reference is the control and OECD TG 201
-  # permits an effect above 100% for a response that can go negative rather
-  # than truncating it. See #195 and D15 ruling 7.
+  # Accept effects between zero and one and above 100 percent. For absolute
+  # ECx with a positive control, effects above 100 target a negative response;
+  # that can be meaningful for an unbounded response.
   expect_length(
     suppressWarnings(
       ecx(manec_example, ecx_val = 0.9, type = "relative", resolution = 10)
@@ -129,7 +128,7 @@ test_that("ecx_val passes correctly", {
 })
 
 
-# ---- D15: the control is the reference, and type is a four-value vocabulary --
+# Control references and ECx types
 
 test_that("the four types are accepted and give different references", {
   if (Sys.getenv("NOT_CRAN") == "") {
@@ -144,13 +143,9 @@ test_that("the four types are accepted and give different references", {
   for (v in list(a, r, rel, d)) {
     expect_length(v, 3)
   }
-  # Each type measures from the same control towards a different floor, so the
-  # ECx values order as the floors do. Measured on this fit: bot is -8.42,
-  # the lowest predicted response is -4.13, and the absolute floor is 0. The
-  # further the floor, the longer the span, the later a fixed percentage of it
-  # is reached, so absolute < range < relative. The predicted minimum is
-  # negative here, which is why range sits above absolute rather than below it
-  # -- on a response bounded at zero the order of those two reverses.
+  # On this fixture, bot is below the predicted minimum and both are below
+  # zero. A fixed percentage requires a later crossing over a wider span,
+  # so absolute < range < relative; this ordering is not universal.
   expect_lt(a[1], r[1])
   expect_lt(r[1], rel[1])
   expect_error(ecx(nec4param, type = "nonsense"), "type must be one of")
@@ -162,22 +157,19 @@ test_that("relative warns that it names a different quantity than in 2.1.3", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # D15 ruling 8. Only when the caller wrote it: the default is "absolute", so
-  # a plain ecx() call must stay silent.
+  # Warn only when relative is explicitly requested; the default absolute
+  # call must stay silent.
   expect_warning(ecx(nec4param, type = "relative", resolution = 100),
                  "now measures from the control")
   expect_silent(ecx(nec4param, resolution = 100))
 })
 
 test_that("relative is refused where the bound is infinite", {
-  # D15 ruling 6. An equation with no bot declines towards 0, which is a bound
-  # under a family bounded below and is not one under gaussian. The refusal
-  # names the equation, the family and the two types that do work.
+  # Without bot, zero is the assumed asymptote. Refuse relative ECx where
+  # the response family is not bounded below, naming valid alternatives.
   skip_on_cran()
-  # Both packaged fits have a bot parameter, so the draws lookup is mocked
-  # rather than a bot-free fit being manufactured: assigning $model alone
-  # leaves b_bot_Intercept in the stored draws and the branch is never
-  # reached. The suite already mocks this way in test-plot.R.
+  # Mock the draws lookup: changing the model name alone leaves the stored
+  # bot column and fails to reach the no-bot branch.
   local_mocked_bindings(as_draws_df = function(...) data.frame(lp__ = 1),
                         .package = "bayesnec")
   fake <- nec4param
@@ -201,21 +193,15 @@ test_that("hormesis_def is refused by name rather than absorbed by dots", {
 })
 
 test_that("a target the curve never reaches returns NA with a warning", {
-  # D15 ruling 3. type = "direct" with a response the curve never attains is
-  # the cheapest reproduction: manec_example's response spans roughly 0 to 2.2,
-  # so no draw reaches 100. Up to 2.1.3 every draw returned the nearest grid
-  # point, and for a target above the whole curve that is x[1] -- the control
-  # concentration, returned as the ECx.
+  # A direct target above every predicted response must yield no crossing,
+  # not the nearest grid point or the control concentration.
   skip_on_cran()
   expect_warning(out <- ecx(nec4param, ecx_val = 100, type = "direct",
                             resolution = 100, posterior = TRUE),
                  "does not reach")
   expect_true(all(is.na(out)))
-  # The summary reports the top of the prediction range as a bound, with the
-  # count beside it, rather than the lowest concentration tested. No draw is
-  # given the value of the bound: what each contributes to the summary is its
-  # rank, and every rank here is beyond the top, so every reported entry is the
-  # bound (#395).
+  # Censored draws contribute ranks, not numerical bound values. When every
+  # rank lies above the range, all summary entries report the upper bound.
   expect_warning(est <- ecx(nec4param, ecx_val = 100, type = "direct",
                             resolution = 100))
   cens <- attr(est, "censored_summary")
@@ -226,10 +212,8 @@ test_that("a target the curve never reaches returns NA with a warning", {
 })
 
 test_that("the ecx reference is the control, not the maximum of the curve", {
-  # The change D15 makes, asserted on the quantity rather than on a fitted
-  # object: for a hormetic curve the two differ, and the control is the one
-  # that gives a single crossing. p_samples is written directly so no fit is
-  # needed and the assertion is about the estimator alone.
+  # Construct the hormetic curve directly to test the control reference
+  # without involving a fitted model.
   x_vec <- seq(0, 10, length.out = 101)
   # Rises from a control of 10 to a peak of 15, then declines to 0.
   curve <- ifelse(x_vec < 2, 10 + 2.5 * x_vec, 15 * (1 - (x_vec - 2) / 8))
@@ -241,25 +225,17 @@ test_that("the ecx reference is the control, not the maximum of the curve", {
   # 13.5, which the curve reaches while still rising and again while falling.
   expect_true(all(out > x_vec[which.max(curve)]))
   expect_equal(out[1], out[2])
-  # The same curve read from its maximum has a target of 13.5, which it is below
-  # where the grid begins: it rises through that level rather than declining to
-  # it. Up to #325 the estimator returned that rising-limb crossing, at an x
-  # below the peak; it now reports no estimate, x_start being NA for an ECx. The
-  # point either way is that the maximum-anchored reference does not give the
-  # descending crossing the estimate is meant to be. This is the internal
-  # estimator called with a control a user cannot supply through ecx(); the
-  # user-reachable routes to the same case are type = "direct" with a target above
-  # the curve, type = "range" where the curve's minimum is at the control, and
-  # type = "relative" for a hormetic draw whose bot exceeds its control.
+  # An artificial maximum-based reference asks for the rising-limb target.
+  # This internal call must return no ECx; public ecx() fixes the reference
+  # at the control instead.
   from_max <- ecx_from_posterior(p, x_vec, 10, "absolute", c(15, 15), NA_real_)
   expect_true(all(is.na(from_max)))
 })
 
 
 test_that("the relative rename warns once for a set, not once per equation", {
-  # sample_ecx() calls ecx() once per equation with type passed explicitly, so
-  # without the option guard a model-averaged call warned once for the set and
-  # once more for every equation in it. See D15 ruling 8.
+  # A model-average call must warn once, even though it forwards an explicit
+  # type to each equation.
   skip_on_cran()
   count_renames <- function(expr) {
     n <- 0
@@ -281,13 +257,9 @@ test_that("the relative rename warns once for a set, not once per equation", {
 
 test_that("the estimate is insensitive to resolution above the default", {
   skip_on_cran()
-  # This pins the basis for the default of 200. The crossing is interpolated
-  # between the two bracketing grid points rather than snapped to the nearer of
-  # them, so precision saturates well below the grid spacing and the default no
-  # longer needs to be large. A five-fold increase must not change either
-  # estimator materially. See #39.
-  # as.numeric() rather than unname(): the estimate has a "resolution"
-  # attribute recording what it was computed at, which differs by construction.
+  # For this stored fit, interpolation makes 200 and 1000 grid points agree
+  # within the tolerances below. Compare numeric values only: the resolution
+  # attribute necessarily differs.
   expect_equal(as.numeric(ecx(nec4param, resolution = 200)),
                as.numeric(ecx(nec4param, resolution = 1000)),
                tolerance = 1e-3)
@@ -298,7 +270,7 @@ test_that("the estimate is insensitive to resolution above the default", {
   expect_equal(n200, n1000, tolerance = 1e-3)
 })
 
-# ---- relative ECx on a joint two-block fit ----------------------------------
+# Relative ECx on joint fits
 
 # A stand-in for a joint fit. Tests mock the grid, the curve and the draws.
 joint_relative_object <- function(family = "hurdle_gamma") {

@@ -18,7 +18,6 @@ test_that("handle_set works", {
 })
 
 test_that("weighted_draw_index is a pure function of its arguments", {
-  # The whole of #216 is that this draw must not depend on when it is called.
   stats <- data.frame(wi = c(0.75, 0.25),
                       row.names = c("nec4param", "ecx4param"))
   models <- rownames(stats)
@@ -28,18 +27,16 @@ test_that("weighted_draw_index is a pure function of its arguments", {
   expect_named(a, models)
   expect_equal(lengths(a), c(nec4param = 75L, ecx4param = 25L))
   expect_true(all(unlist(a) %in% seq_len(100)))
-  # A different seed must actually move it, or the seed is doing nothing.
+  # Different seeds must be capable of selecting different draws.
   expect_false(identical(a, bayesnec:::weighted_draw_index(models, 100, stats,
                                                            seed = 8)))
-  # Objects saved before #216 carry no seed. They must still be self-consistent.
+  # Objects without a stored seed must still give consistent draws.
   n1 <- bayesnec:::weighted_draw_index(models, 100, stats, seed = NULL)
   n2 <- bayesnec:::weighted_draw_index(models, 100, stats, seed = NULL)
   expect_identical(n1, n2)
 })
 
 test_that("weighted_draw_index leaves the caller's RNG stream alone", {
-  # Model averaging silently resetting a user's simulation seed would be a
-  # worse bug than the one being fixed.
   stats <- data.frame(wi = c(0.5, 0.5),
                       row.names = c("nec4param", "ecx4param"))
   set.seed(99)
@@ -51,8 +48,7 @@ test_that("weighted_draw_index leaves the caller's RNG stream alone", {
 })
 
 test_that("weighted_draw_index handles a model carrying no weight", {
-  # loo_model_weights() returns exact zeros often enough that this is a real
-  # path, not a hypothetical one: the model must contribute no rows, not error.
+  # A model with zero weight must contribute no rows.
   stats <- data.frame(wi = c(1, 0),
                       row.names = c("nec4param", "ecx4param"))
   idx <- bayesnec:::weighted_draw_index(rownames(stats), 40, stats, seed = 3)
@@ -62,10 +58,8 @@ test_that("weighted_draw_index handles a model carrying no weight", {
 })
 
 test_that("weighted_draw_index ignores the session's sample.kind", {
-  # A seed alone does not fix a draw. R 3.6.0 changed sample()'s algorithm, so
-  # the same seed gives a different index either side of it; an object reloaded
-  # under a different R would otherwise rebuild a different index and stop
-  # matching its own stored summaries. Pinning is what makes the seed archival.
+  # Pin sample.kind as well as the seed so a saved fit rebuilds the same
+  # draw index under sessions with different sampling algorithms.
   stats <- data.frame(wi = c(0.6, 0.4),
                       row.names = c("nec4param", "ecx4param"))
   models <- rownames(stats)
@@ -74,8 +68,7 @@ test_that("weighted_draw_index ignores the session's sample.kind", {
   on.exit(suppressWarnings(RNGkind(old_kind[1], old_kind[2], old_kind[3])),
           add = TRUE)
   suppressWarnings(RNGkind(sample.kind = "Rounding"))
-  # Same seed under the pre-3.6.0 algorithm: this is what an unpinned draw
-  # would have returned, and it is not the same index.
+  # The same seed under Rounding gives a different index unless pinned.
   set.seed(11)
   expect_false(identical(sample(seq_len(100), 60L), ref$nec4param))
   expect_identical(bayesnec:::weighted_draw_index(models, 100, stats, seed = 11),
@@ -108,11 +101,8 @@ test_that("pull_draw_index prefers the stored index over rebuilding it", {
                    bayesnec:::weighted_draw_index(models, 100, stats, NULL))
 })
 
-# #207 part 2: validate_priors() accepted any brmsprior wholesale, so a set
-# missing rows was used as though it were complete and the unmentioned
-# parameters fell through to brms flat priors. bayesnec generates weakly
-# informative priors on purpose, so the gaps are filled from its own defaults
-# and the user is told which.
+# Fill missing prior rows from bayesnec defaults and report them, so brms
+# does not silently assign flat priors.
 
 fake_prior <- function(nlpar, class = "b", prior = "normal(0, 1)") {
   data.frame(prior = prior, class = class, coef = "", group = "", resp = "",
@@ -129,7 +119,6 @@ test_that("fill_missing_priors fills gaps and names them", {
     "no entry for c0, c1"
   )
   expect_setequal(out$nlpar, defaults$nlpar)
-  # the user's own rows must survive untouched
   expect_identical(out[out$nlpar == "top", "prior"],
                    supplied[supplied$nlpar == "top", "prior"])
 })
@@ -144,8 +133,7 @@ test_that("a complete prior is returned unchanged and without a warning", {
 })
 
 test_that("a user value overrides the default rather than being duplicated", {
-  # The whole point of supplying a prior. Matching is on class + nlpar + dpar,
-  # so a row the user set must replace the default, not sit beside it.
+  # Match class, nlpar and dpar so a user row replaces its default.
   defaults <- do.call(rbind, lapply(c("top", "beta"), fake_prior))
   supplied <- fake_prior("top", prior = "normal(100, 1)")
   expect_warning(out <- bayesnec:::fill_missing_priors(supplied, defaults,
@@ -175,14 +163,10 @@ test_that("empty defaults are a no-op", {
 })
 
 
-# ---- #196, the back-transform ------------------------------------------------
 
 test_that("sub_x_transformation keeps arithmetic inside the crf() call", {
-  # #196. The substitution used to be x_call[[2]] <- ecx_out, which replaces
-  # the call's first argument slot. For log(x) that slot is the symbol x and
-  # replacing it is right; for log(x + 1) it is the expression x + 1 and the
-  # "+ 1" was discarded, so the estimate was inverted as log(x). Nothing
-  # errored and the value returned was plausible.
+  # Substitute the predictor symbol, not the first argument expression:
+  # replacing the latter would discard the + 1 in log(x + 1).
   f <- function(txt) {
     bayesnecformula(stats::as.formula(
       paste0("y ~ crf(", txt, ", model = \"nec3param\")")
@@ -199,7 +183,6 @@ test_that("sub_x_transformation keeps arithmetic inside the crf() call", {
                log(c(1, NA, 3) + 1))
 })
 
-# ---- #39 and D15 ruling 3, the crossing --------------------------------------
 
 test_that("crossing_x interpolates, and returns NA where there is no crossing", {
   x <- seq(0, 10, length.out = 11)
@@ -208,21 +191,13 @@ test_that("crossing_x interpolates, and returns NA where there is no crossing", 
   # Interpolated rather than snapped to the nearer grid point, which would
   # give 4 or 5 on this grid.
   expect_false(crossing_x(y, 5.5, x) %in% x)
-  # A target the curve never reaches. This is the case that used to return the
-  # nearest grid point: for a curve that never declines to the target that is
-  # x[11], the highest concentration, reported with nothing said.
+  # A target never reached must return NA, not the nearest grid endpoint.
   expect_true(is.na(crossing_x(y, -5, x)))
-  # x_start does not reach that case: the curve begins above the target, so the
-  # search is the thing that failed.
+  # x_start must not replace a failed search that begins above the target.
   expect_true(is.na(crossing_x(y, -5, x, x_start = x[1])))
-  # A series already at or below the target where the grid begins. There is no
-  # sign change to find, and the estimate is at or below x[1] rather than above
-  # x[11], so the caller says which value it takes. The default is NA, which is
-  # what an ECx target requires; the NSEC callers pass the control concentration.
-  # Equality counts as reached: it is what type = "range" produces where the
-  # curve's lowest predicted response is at the control, and what nsec.drc
-  # produces at any sig_val for which the lower confidence curve begins on the
-  # reference. See #325.
+  # A curve already at or below its target takes x_start, including equality.
+  # ECx leaves the default NA; NSEC callers can supply the control
+  # concentration.
   expect_true(is.na(crossing_x(y, 10, x)))
   expect_equal(crossing_x(y, 10, x, x_start = x[1]), x[1])
   expect_equal(crossing_x(y, 12, x, x_start = x[1]), x[1])
@@ -249,7 +224,6 @@ test_that("family_has_lower_bound separates gaussian from the rest", {
   expect_true(family_has_lower_bound(stats::poisson()))
 })
 
-# ---- #160, the annotation and the axis ---------------------------------------
 
 test_that("to_axis_scale brings an estimate onto the axis scale", {
   raw <- seq(1, 100, length.out = 100)
@@ -262,10 +236,7 @@ test_that("to_axis_scale brings an estimate onto the axis scale", {
   # xform applies to it exactly as it applies to the axis.
   expect_equal(to_axis_scale(50, b_plain, f_plain, raw), 50)
   expect_equal(to_axis_scale(50, b_plain, f_plain, raw, function(z) z * 2), 100)
-  # Predictor transformed and no xform supplied: the estimate is on the fitted
-  # scale and the axis on the recorded one, so it is inverted, here by the
-  # closed form. This is the default case #160 reports, where the annotation
-  # was drawn at its own fitted value on an axis in concentrations.
+  # With no xform, invert the fitted-scale estimate onto the recorded axis.
   expect_equal(to_axis_scale(log(50), b_log, f_log, raw), 50, tolerance = 1e-8)
   # Predictor transformed and xform supplied: that is what xform is for, and
   # it is used rather than the numerical inverse.
@@ -274,29 +245,23 @@ test_that("to_axis_scale brings an estimate onto the axis scale", {
 })
 
 
-# ---- the crf() term must name one variable -----------------------------------
 
 test_that("sub_x_transformation refuses a crf() term with two variables", {
-  # simplify_formula() takes every variable inside crf() as the predictor
-  # (x_var <- all.vars(x_call), no subsetting), so such a formula has no single
-  # predictor to invert on. Taking the first would substitute into `offset` for
-  # crf(log(offset + x)) -- the same class of silent wrong answer as #196.
+  # Require a single predictor variable: choosing the first in log(offset + x)
+  # would substitute into offset and silently change the transformation.
   f <- bayesnecformula(y ~ crf(log(offset + x), model = "nec3param"))
   expect_error(sub_x_transformation(100, f), "names 2 variables")
 })
 
-# ---- the annotation type a plotting method asks for --------------------------
 
 test_that("plot_ecx asks for range under gaussian and the default otherwise", {
   skip_on_cran()
-  # plot() asked for "relative" under its 2.1.3 meaning, the control-to-minimum
-  # span; ggbnec_data() took the ecx() default. The same gaussian fit was
-  # therefore annotated with two different quantities depending on which method
-  # drew it, and after the rename plot()'s word named a third.
+  # Both plotting methods must use the control-to-minimum range for Gaussian
+  # fits unless the caller explicitly selects another ECx type.
   expect_equal(plot_ecx(nec4param, "gaussian"),
                ecx(nec4param, type = "range"))
   expect_equal(plot_ecx(nec4param, "beta"), ecx(nec4param))
-  # A type the caller named wins.
+  # The caller's explicit type takes precedence.
   expect_equal(plot_ecx(nec4param, "gaussian", list(type = "absolute")),
                ecx(nec4param, type = "absolute"))
 })
@@ -320,17 +285,10 @@ test_that("to_axis_scale carries the estimate's attributes through", {
   expect_true(is.na(to_axis_scale(c(asinh(50), NA), b_tr, f_tr, raw)[2]))
 })
 
-# ---- #417, a decreasing map and the censoring marks --------------------------
 
-# A posterior on the recorded scale whose top 30 of 101 draws lie beyond the
-# upper end of a grid on 1 to 100. Its summary has an ordinary estimate and
-# lower limit and an upper limit that is the bound ">= 100", so the two interval
-# entries can be told apart after a reversal. 101 draws rather than 100 because
-# a censored summary takes type 1 quantiles, which are symmetric under a
-# reflection only where no probability falls exactly on an order statistic: with
-# 101 draws the summary of -x is exactly the reflection of the summary of x, so
-# the summary-level remapping to_axis_scale() applies can be compared with the
-# per-draw one xform_censoring() applies, entry for entry.
+# Use 101 draws so these type-1 quantiles avoid exact rank boundaries and
+# reflect symmetrically. Thirty censored upper draws make reversal detectable;
+# compare summary remapping with the per-draw reference.
 reversal_probs <- c(0.5, 0.025, 0.975)
 reversal_draws <- c(seq(40, 99, length.out = 71), rep(NA_real_, 30))
 reversal_cens <- bayesnec:::censoring_record(100, 1, is.na(reversal_draws),
@@ -364,10 +322,8 @@ test_that("a decreasing xform reverses the marks and the interval", {
   expect_identical(attr(on_recorded, "censored_summary")$bound,
                    c("", "", ">="))
   out <- to_axis_scale(on_recorded, b_plain, f_plain, raw, negate)
-  # The draws beyond the top of the recorded range are below the foot of the
-  # negated one, so the bound is "<= -100", and it is now the lower limit.
-  # Transforming the three numbers alone gave c(-Q50, -Q2.5, -100) marked
-  # c("", "", ">="): the larger number second and the opposite bound.
+  # A decreasing map turns the upper censoring bound into the lower bound.
+  # Reorder the interval and reverse the bound direction together.
   expect_identical(attr(out, "censored_summary")$bound, c("", "<=", ""))
   expect_lt(out[[2]], out[[3]])
   expect_same_summary(out, reversal_summary(negate))
@@ -469,11 +425,9 @@ test_that("recorded_x_map inverts the crf() term on the grid", {
 })
 
 test_that("the marks agree with the per-draw path where n times p is whole", {
-  # 40 draws, so 40 * 0.025, 40 * 0.5 and 40 * 0.975 are all whole numbers and
-  # the type 1 index of each entry sits exactly on a rank. One draw beyond an
-  # end is then an identified 97.5 per cent quantile on one scale and a
-  # censored 2.5 per cent quantile on the reflected one, so reversing the marks
-  # where they stood left that entry unmarked where the estimator marks it.
+  # Forty draws put these probabilities exactly on type-1 rank boundaries.
+  # Reflection can change which endpoint is censored, so compare marks with
+  # the per-draw result instead of reversing their positions.
   raw <- seq(1, 100, length.out = 100)
   f_plain <- bayesnecformula(y ~ crf(x, model = "nec3param"))
   b_plain <- stats::model.frame(f_plain,
@@ -504,7 +458,7 @@ test_that("the marks agree with the per-draw path where n times p is whole", {
     marked <- nzchar(attr(per_draw, "censored_summary")$bound)
     expect_equal(as.numeric(out)[marked], as.numeric(per_draw)[marked])
   }
-  # The case the reversal got wrong: the lower limit is the censored entry.
+  # The reflected lower limit must carry the censoring mark.
   above <- cases$above
   out <- to_axis_scale(
     bayesnec:::summarise_censored(above$draws, reversal_probs, above$cens),
@@ -528,9 +482,8 @@ test_that("summary_probs reads the probabilities from the names", {
 })
 
 test_that("define_loo_controls always names a weighting method", {
-  # The documented default is pseudo-BMA. Every route that assembles a model
-  # set passes through here, so a missing method at this point is what reaches
-  # loo::loo_model_weights(), which resolves it to stacking. See #320.
+  # Always name the package's pseudo-BMA default; omitting it lets loo
+  # choose stacking.
   expect_equal(bayesnec:::define_loo_controls(family_str = "gaussian"),
                list(fitting = list(), weights = list(method = "pseudobma")))
   expect_equal(
@@ -542,9 +495,8 @@ test_that("define_loo_controls always names a weighting method", {
                                    "gaussian")$weights$method,
     "pseudobma"
   )
-  # Named but NULL, which is what a caller preserving an unknown method used to
-  # pass. match.arg() reads that as loo's own first choice, so it is treated as
-  # unspecified rather than passed on.
+  # Treat an explicit NULL as unspecified instead of forwarding it to loo's
+  # match.arg() default.
   expect_equal(
     bayesnec:::define_loo_controls(list(weights = list(method = NULL)),
                                    "gaussian")$weights$method,
@@ -583,14 +535,10 @@ test_that("fit_weights_method reads only what a fit records", {
 })
 
 
-# ---- #319, the back-transform resolves in the formula's environment ----------
 
 test_that("sub_x_transformation resolves a locally defined function", {
-  # This runs from expand_nec(), ecx() and nsec(), all of which are reached
-  # after every model in the set has compiled and sampled, so a predictor
-  # transformation written with a function the user defined used to fail at the
-  # end of a fit rather than at the start. The assertions above use log() and
-  # sqrt(), which resolve from anywhere and so cannot catch it.
+  # A local predictor function must resolve in the formula environment.
+  # Tests using globally available log() or sqrt() cannot detect this failure.
   build <- function() {
     squared <- function(z) z^2
     sub_x_transformation(4, bnf(y ~ crf(squared(x), "nec3param")))
@@ -599,8 +547,7 @@ test_that("sub_x_transformation resolves a locally defined function", {
 })
 
 test_that("an estimate is back-transformed through a local function", {
-  # The same defect end to end: on a stored fit the failure arrives from
-  # expand_nec() or ecx(), not from model.frame().
+  # Exercise the local-function lookup through an estimator on a stored fit.
   build <- function() {
     squared <- function(z) z^2
     fit <- suppressMessages(suppressWarnings(
@@ -612,9 +559,7 @@ test_that("an estimate is back-transformed through a local function", {
   expect_length(build(), 3)
 })
 
-# #337. Everything in the package that seeds a computation outside of fitting
-# restores the caller's stream through this helper, so the helper's own
-# behaviour is asserted here rather than only through its call sites.
+# Check the RNG-state helper directly as well as through its callers.
 
 test_that("with_preserved_rng_state puts the stream back", {
   set.seed(99)
@@ -629,8 +574,7 @@ test_that("with_preserved_rng_state puts the stream back", {
 })
 
 test_that("with_preserved_rng_state restores after an error", {
-  # A diagnostic that fails partway must still leave the stream where it was
-  # found, or an error becomes a second, silent, defect.
+  # Restore the RNG state even when the wrapped computation errors.
   set.seed(99)
   expected <- runif(3)
   set.seed(99)
@@ -653,10 +597,8 @@ test_that("with_preserved_rng_state restores the generator kind", {
 })
 
 test_that("with_preserved_rng_state leaves an unused session without a seed", {
-  # A session that has never drawn has no .Random.seed. Assigning one where
-  # there was none would make the next draw depend on this call having been
-  # made, which is the defect in a different form. Tested by removing the
-  # object rather than in a fresh session, which is what R itself does.
+  # A session with no .Random.seed must still lack it after the call.
+  # Simulate that state by removing the object and restore the original state.
   had_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
   old_seed <- if (had_seed) {
     get(".Random.seed", envir = globalenv(), inherits = FALSE)
@@ -664,12 +606,8 @@ test_that("with_preserved_rng_state leaves an unused session without a seed", {
     NULL
   }
   old_kind <- RNGkind()
-  # One handler, kind first and seed second, for the reason
-  # with_preserved_rng_state() gives: RNGkind() called with arguments rewrites
-  # .Random.seed, and where the kind genuinely changes -- which it does here,
-  # "Rounding" back to "Rejection" -- it re-initialises the generator from the
-  # clock. Two handlers registered in this order with add = TRUE would run the
-  # seed restore first and leave the session time-seeded.
+  # Restore RNG kinds before the seed: RNGkind() can rewrite .Random.seed.
+  # Use one handler to preserve that order.
   on.exit({
     suppressWarnings(RNGkind(old_kind[1], old_kind[2], old_kind[3]))
     if (is.null(old_seed)) {
@@ -685,9 +623,7 @@ test_that("with_preserved_rng_state leaves an unused session without a seed", {
     runif(10)
   })
   expect_false(exists(".Random.seed", envir = globalenv(), inherits = FALSE))
-  # The combination the helper's comment is about: with no seed to restore,
-  # RNGkind() is the only thing that puts sample.kind back, so removing
-  # .Random.seed alone would leave the session on the wrong sampler.
+  # Restore sample.kind even when there is no seed to restore.
   expect_identical(RNGkind()[3], "Rounding")
 })
 
@@ -711,8 +647,7 @@ test_that("with_preserved_rng_state nests", {
 })
 
 test_that("with_preserved_rng_state evaluates in the calling frame", {
-  # The call sites assign inside the braces and read the result afterwards, so
-  # this is load-bearing rather than incidental.
+  # Evaluate in the calling frame so assignments inside the braces survive.
   f <- function() {
     bayesnec:::with_preserved_rng_state({
       z <- 42
@@ -723,9 +658,8 @@ test_that("with_preserved_rng_state evaluates in the calling frame", {
 })
 
 test_that("subset_draws keeps the censoring record of the draws it takes", {
-  # `[` drops the record, after which a censored draw cannot be told from a
-  # missing one (#404). The subset must carry the share of the record that
-  # belongs to the draws taken, in their new order.
+  # Ordinary [ drops the censoring record. Preserve and reorder the selected
+  # entries so censored draws remain distinguishable from missing draws.
   x <- c(1, NA, 3, NA)
   attr(x, "censored") <- bayesnec:::censoring_record(
     upper = 5, lower = 0, above = c(FALSE, TRUE, FALSE, FALSE),
@@ -742,8 +676,7 @@ test_that("subset_draws keeps the censoring record of the draws it takes", {
 })
 
 test_that("retrieve_var names a role the formula does not include (#442)", {
-  # bnec_pop has no entry for a term the formula lacks, and the message indexed
-  # it by the role, so it stopped on "subscript out of bounds" instead.
+  # Check for a missing role before indexing bnec_pop by that role.
   mf <- model.frame(bayesnecformula(count ~ crf(x, "nec3param")),
                     data = nec_data)
   expect_error(retrieve_var(mf, "trials_var", error = TRUE),
@@ -755,8 +688,7 @@ test_that("retrieve_var names a role the formula does not include (#442)", {
   # A name that is no role is quoted as given.
   expect_error(retrieve_var(mf, "other_var", error = TRUE),
                "The formula has no \"other_var\"", fixed = TRUE)
-  # Without error = TRUE an absent role is NULL, as before, and a present one
-  # is read as before.
+  # Keep NULL for an absent role unless error = TRUE.
   expect_null(retrieve_var(mf, "trials_var"))
   expect_identical(retrieve_var(mf, "y_var", error = TRUE), nec_data$count)
 })

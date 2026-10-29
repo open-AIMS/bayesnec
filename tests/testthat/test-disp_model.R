@@ -143,10 +143,8 @@ test_that("centring makes the model frame reachable end to end", {
 })
 
 test_that("route B refuses a non-identity link, route A does not", {
-  # the curve expression substituted into a variance function is the linear
-  # predictor on the link scale, so it is the mean only under identity. Under
-  # Gamma's inverse link the same fit runs, converges and returns the slope with
-  # the wrong sign, so this has to be refused rather than left to the user.
+  # The substituted curve is the link-scale predictor. An inverse Gamma link
+  # would reverse the fitted slope, so refuse it for a mean-based variance form.
   spec_b <- list(route = "B", value = "power")
   expect_error(
     bayesnec:::check_disp_spec(spec_b, Gamma(), response = c(1, 2, 3)),
@@ -183,11 +181,9 @@ test_that("disp_inits starts every slope at the middle of its own prior", {
   y <- c(0.5, 1, 2, 4)
   ii <- bayesnec:::disp_inits(list(route = "B", value = "power"), gaussian(), y)
   expect_named(ii, c("b_c0", "b_c1"))
-  # Every chain starts at one value: the sign of a slope is tied to the
-  # direction of the mean curve, so chains must not each pick their own. A
-  # gaussian c1 is bounded to [0, 1] (#472), so the constant-dispersion null is
-  # the lower bound and Stan would refuse it; the chains start at the mean of
-  # normal(0, 2) truncated to that interval instead.
+  # Give every chain the same slope initial value. A Gaussian c1 lies in
+  # [0, 1], so the zero null is invalid for Stan; start at the mean of
+  # normal(0, 2) truncated to that interval.
   expect_equal(as.numeric(ii$b_c1),
                2 * (dnorm(0) - dnorm(0.5)) / (pnorm(0.5) - pnorm(0)))
   expect_equal(as.numeric(ii$b_c0), log(sd(y)))
@@ -419,10 +415,8 @@ test_that("every model yields a formula brms will accept with disp", {
 test_that("loglinear recovers a slope on a response that crosses zero", {
   skip_on_cran()
   skip_on_ci()
-  # the growth-rate case, scaled on c_proliferum x A: the curve runs from about
-  # 0.12 at the control to -0.5 where the population collapses, and sigma rises
-  # from 0.005 to 0.11 over that range, which is c1 = -5 and about a 20-fold
-  # spread -- the ratio those tests actually show
+  # The growth-rate fixture approximates c_proliferum x A: mean 0.12 to -0.5
+  # and sigma 0.005 to 0.11, giving c1 = -5 and about twentyfold spread.
   set.seed(202)
   x <- rep(c(0.1, 0.3, 1, 2, 5, 10, 20, 40), each = 15)
   mu <- -0.5 + (0.12 - -0.5) / (1 + exp((log(5) - log(x)) * exp(0.4)) ^ -1)
@@ -463,12 +457,8 @@ test_that("a variance function recovers a known exponent", {
 
 
 test_that("route B reads the curve the fit uses, not the template (#294)", {
-  # make_disp_block() rebuilt the curve from bf_<model>, which discarded
-  # everything add_formula_glef() had done to the main expression. With the
-  # multiplicative deviation that meant phi was modelled as a function of the
-  # population-level bot while mu used bnecbot, silently and with no message.
-  # wrangle_model_formula() already adds the dispersion block last for exactly
-  # this reason; the rebuild was what stopped that having any effect.
+  # Read the curve after parameter-level transformations. Rebuilding the
+  # template would make dispersion use population bot while mu uses bnecbot.
   set.seed(294)
   d <- data.frame(resp = runif(60, 0.05, 0.9),
                   pred = rep(log(c(0.1, 1, 10, 100, 1000, 1e4)), 10),
@@ -487,11 +477,9 @@ test_that("route B reads the curve the fit uses, not the template (#294)", {
                     fixed = TRUE))
   expect_true(grepl("bnecbot", phi_of('pgl(grp) + disp("twosided")'),
                     fixed = TRUE))
-  # #257's deviation on the whole curve does not. The variance function reads
-  # the curve before it, bnecmu, rather than the fitted mean of the group, in
-  # whose value depends on ogl (on the odds scale for this Beta family).
-  # Reading the fitted mean produced a second posterior mode in the zinc fit.
-  # See #468.
+  # Under ogl() the dispersion reads bnecmu, the curve before the overall
+  # deviation, and no form of that deviation, such as Beta's exp(ogl).
+  # Reading the deviated curve gave the posterior a second mode.
   under_ogl <- phi_of('ogl(grp) + disp("twosided")')
   expect_true(grepl("bnecmu", under_ogl, fixed = TRUE))
   expect_false(grepl("exp(ogl)", under_ogl, fixed = TRUE))
@@ -507,7 +495,7 @@ test_that("route B reads the curve the fit uses, not the template (#294)", {
 })
 
 
-# ---- #319, the disp() term resolves in the formula's environment -------------
+# Resolve disp() in the formula environment.
 
 test_that("a variance function named by a variable resolves", {
   build <- function() {
@@ -518,10 +506,8 @@ test_that("a variance function named by a variable resolves", {
 })
 
 test_that("a disp sub-model reaches Stan with a locally defined function", {
-  # brms resolves a distributional sub-model against the top-level
-  # brmsformula, whose environment came from the bf_<model> template. Asserted
-  # through make_stancode(), which generates the program without compiling or
-  # sampling it.
+  # brms resolves distributional terms in the top-level formula environment.
+  # Check with make_stancode(), which generates without compiling or sampling.
   d <- nec_data
   d$y <- pmin(pmax(d$y, 0.01), 0.99)
   build <- function() {
@@ -535,7 +521,7 @@ test_that("a disp sub-model reaches Stan with a locally defined function", {
 })
 
 
-# ---- #397, the centring constant on the scale of the mean --------------------
+# Centre on the scale of the mean.
 
 # The constants are spliced into the variance function as "- <literal>)", which
 # no curve expression contains, so this reads them back in order of appearance.
@@ -579,7 +565,7 @@ test_that("twosided centres both terms on the proportion (#397)", {
 })
 
 
-# ---- #410, disp() on the positive block of a joint two-block family ----------
+# disp() on the positive block of a joint family.
 
 # nec_data with every response above x = 1.8 recorded as a zero, which is 16 of
 # the 100 rows. `g` is the same response scaled for a Gamma block, so that its
@@ -706,7 +692,7 @@ test_that("the joint block fits the growth component's variance function", {
 
 test_that("a two-block family gets the positive block's disp() priors", {
   keep <- hurdle_dat$y > 0
-  # The bounds are compared as well as the densities (#472).
+  # Compare prior bounds as well as densities.
   disp_rows <- function(pr) {
     as.data.frame(pr)[pr$nlpar %in% c("c0", "c1", "c2"),
                       c("prior", "nlpar", "lb", "ub")]
@@ -771,7 +757,7 @@ test_that("get_priors refuses what bnec refuses on a two-block family", {
 })
 
 
-# ---- #468, the variance function reads the curve before ogl() ---------------
+# Read the variance curve before ogl().
 
 # The response block's curve and dispersion sub-formula of a built formula. No
 # model is compiled or sampled.
@@ -805,10 +791,9 @@ test_that("a Gamma variance function reads bnecmu under ogl() (#468)", {
 })
 
 test_that("the additive ogl() form leaves the variance curve (#468)", {
-  # Under the additive form the main right-hand side is ogl + <curve>, and the
-  # variance function takes <curve> alone: the sub-formula is the one the same
-  # formula without ogl() builds. gaussian is the family that always takes the
-  # additive form; Beta takes it for nechormepwr, whose mean can exceed 1.
+  # With additive ogl(), dispersion reads the curve alone and must match the
+  # formula without ogl(). This covers Gaussian and Beta nechormepwr, whose
+  # mean can exceed one.
   cases <- list(
     list(model = "ecx4param", fam = gaussian(link = "identity"),
          dpar = "sigma"),
@@ -840,10 +825,8 @@ test_that("a malformed additive ogl() formula is refused", {
 })
 
 test_that("a formula without ogl() builds what it did before (#468)", {
-  # Before #468 add_disp_block() passed the whole right-hand side of the main
-  # formula as the curve. The sub-formula is rebuilt that way here, through
-  # make_disp_block(), and compared with what the formula builder now gives,
-  # for parameter-level terms that rewrite the curve and for none.
+  # Rebuild dispersion from the full main right-hand side to check unchanged
+  # behaviour without ogl(), both with parameter-level rewrites and without.
   fams <- list(gaussian(link = "identity"), Gamma(link = "identity"),
                validate_family("Beta"))
   terms <- c("", " + (bot | tank)", " + pgl(tank)", " + (nec | tank)")
@@ -899,11 +882,9 @@ test_that("the two-block families read the curve before ogl() (#468)", {
 })
 
 test_that("a joint refit across levels reads the curve before ogl() (#468)", {
-  # bnec_joint() on a grouped fit with one equation at every level and
-  # disp_by_level = FALSE, the one level-term route that takes ogl() and
-  # disp() together. The level terms are applied after the dispersion block
-  # and rewrite only the curve parameters, so bnecmu reads the per-level curve
-  # and the variance function reads bnecmu.
+  # For grouped joint fits with one equation per level and shared dispersion,
+  # level terms rewrite curve parameters after the dispersion block. Check
+  # that bnecmu reads the per-level curve and dispersion reads bnecmu.
   d <- disp_dat
   d$site <- factor(rep(c("a", "b"), 15))
   spec <- list(group_var = "site", levels = c("a", "b"),
@@ -931,16 +912,11 @@ test_that("a joint refit across levels reads the curve before ogl() (#468)", {
   expect_identical(pform_rhs(grouped, "sigma"), pform_rhs(ungrouped, "sigma"))
 })
 
-# ---- #472, the range of c1 and its regularizing centre -----------------------
+# The range of c1 and its regularising centre.
 
-# A declining curve over six concentrations with `n` replicates each, and a
-# response whose dispersion parameter is proportional to mu^c1: the Gamma
-# shape, the gaussian sigma, or the negative binomial shape. The replicates at
-# one concentration share one mean, so the slope disp_replicate_slope() reads
-# from them estimates c1. Over 500 draws at n = 30 the estimate had a standard
-# deviation of 0.12 (Gamma, c1 = 0.8), 0.06 (gaussian, c1 = 0.6) and 0.14
-# (negbinomial, c1 = 0.5), which sets the tolerances below at about two of
-# them. No model is compiled or sampled in this section.
+# Simulate six replicated concentrations with dispersion proportional to mu^c1.
+# Tolerances allow about two empirical slope standard deviations.
+# This section estimates slopes from simulated data without fitting Stan.
 slope_sim <- function(family, c1, n = 30, seed = 472) {
   set.seed(seed)
   x <- rep(c(0.1, 0.3, 1, 3, 10, 30), each = n)
@@ -1020,7 +996,7 @@ test_that("twosided and loglinear are unchanged by the range (#472)", {
         "ecx4param", disp_fam(tag), disp_dat$x, y, prior_type = pt,
         disp_spec = list(route = "B", value = "loglinear")
       ))
-      # the string define_disp_prior() wrote before #472
+      # The unbounded normal density used for the slope.
       expect_identical(row$prior,
                        paste0("normal(0, ", signif(2 / sd(y), 4), ")"))
       expect_true(is.na(row$lb) && is.na(row$ub))
@@ -1257,10 +1233,8 @@ test_that("add_brm_defaults starts c1 inside the bounds in force (#472)", {
   expect_equal(starts, rep(centre, 2))
 })
 
-# #443. A disp(~z) term naming a column other than the predictor. None of the
-# blocks below samples: the grid is built from a list holding the data and the
-# family, which is all prediction_grid() reads, and the refusals are reached
-# before anything is fitted.
+# A disp(~z) term names a column other than the predictor. Build grids from
+# data/family stand-ins and reach refusals before fitting; no sampling.
 disp_z_dat <- data.frame(
   x = rep(c(0.1, 1, 3, 10), 3),
   y = c(2.1, 1.9, 1.2, 0.4, 2.0, 1.7, 1.1, 0.5, 2.2, 1.8, 1.0, 0.3),

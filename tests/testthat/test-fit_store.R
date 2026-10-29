@@ -1,17 +1,6 @@
-# vignettes/fit_store.R is not package code. vignettes/precompile.R sources it
-# when BAYESNEC_FIT_STORE is set, so that example8's fits are read from the
-# grouping-structures store instead of sampled. It is sourced here into an
-# environment of its own, so that its definitions and the shims it assigns
-# reach nothing else in the suite.
-#
-# Two places are tried for it. From a source tree it is two levels above
-# tests/testthat. Under R CMD check the tests run in
-# <pkg>.Rcheck/tests/testthat, and the unpacked source is in
-# <pkg>.Rcheck/00_pkg_src/<pkg>. Anywhere else the tests are skipped rather
-# than failed: the file is a precompile tool, and its absence says nothing
-# about the package. The coverage job is one such place. covr runs the tests
-# from the installed package's copy of them, <lib>/<pkg>/<pkg>-tests, and the
-# installed package holds no vignettes/ directory.
+# Source the vignette-only fit-store tool into an isolated environment.
+# Try source-tree and R CMD check paths; skip if absent, as in installed
+# coverage runs that omit vignettes/.
 fit_store_env <- function() {
   candidates <- c(
     test_path("..", "..", "vignettes", "fit_store.R"),
@@ -43,8 +32,8 @@ fit_store_dir <- function(bayesnec = NULL, manifest = TRUE) {
 
 test_that("a store fitted with an older bayesnec is refused", {
   fs <- fit_store_env()
-  # 2.1.3.39 is what the store assembled on 2026-09-18 records. It was fitted
-  # before #409 changed the priors, and #409 left the version at 2.1.3.39.
+  # Version 2.1.3.39 also labels stores fitted before the prior change;
+  # reject it even though the package version initially stayed unchanged.
   store <- fit_store_dir("2.1.3.39")
   shims <- new.env()
   err <- expect_error(

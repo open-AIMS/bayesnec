@@ -1,15 +1,13 @@
-# The censored summary (#395). The estimators are exercised in their own test
-# files; what is pinned here is the machinery they share and the invariants that
-# hold across them.
+# Test the shared censoring machinery; estimator-specific tests live in
+# their own files.
 
 cens_record <- function(above, below, upper = 10, lower = 0) {
   bayesnec:::censoring_record(upper, lower, above, below)
 }
 
 test_that("a posterior with no beyond-range draw is summarised as before", {
-  # The regression guard for every existing analysis. estimates_summary() must
-  # return the release's number to the last bit where nothing is censored,
-  # whether the record is absent or present and empty.
+  # An absent or empty censoring record must preserve the uncensored summary
+  # to the last bit.
   x <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
   plain <- bayesnec:::estimates_summary(x)
   expect_identical(
@@ -24,10 +22,8 @@ test_that("a posterior with no beyond-range draw is summarised as before", {
 })
 
 test_that("a censored draw contributes its rank and no value", {
-  # Nine draws inside the range and ninety-one above it. The median of the
-  # whole sample is therefore above the top of the range and is reported as a
-  # bound, where deleting the censored draws would have reported the median of
-  # the nine.
+  # Keep censored draws in the ranks: deleting ninety-one upper-tail draws
+  # would turn a bounded median into the median of the nine retained draws.
   x <- c(1:9, rep(NA_real_, 91))
   attr(x, "censored") <- cens_record(c(rep(FALSE, 9), rep(TRUE, 91)),
                                      logical(100))
@@ -42,9 +38,8 @@ test_that("a censored draw contributes its rank and no value", {
   # number and not a bound. It is the third of them, because the censored
   # summary reports an order statistic rather than interpolating between two.
   expect_equal(unname(out[["Q2.5"]]), 3)
-  # This is not the treatment #39 removed: no censored draw was given the value
-  # of the bound, so the median of the uncensored draws is unchanged by how
-  # many draws were censored.
+  # Do not impute the bound as a draw value; the identified draws keep
+  # their own median.
   expect_lt(stats::median(1:9), out[["Estimate"]])
 })
 
@@ -90,12 +85,10 @@ test_that("a decreasing xform censors the same draws at the other end", {
   expect_equal(c(rising$lower, rising$upper), c(exp(2), exp(10)))
 })
 
-# ---- #440, a decreasing map that takes one end to infinity -------------------
+# A decreasing map with an infinite endpoint.
 
 test_that("a decreasing xform swaps a record whose end maps to infinity", {
-  # A grid starting at 0 under -log(x) maps its lower end to Inf. The record
-  # kept its old orientation where either image was infinite, so the draws
-  # censored above 100 were marked >= -4.6, the foot of the new scale (#440).
+  # A decreasing map must reverse censoring even when an endpoint maps to Inf.
   cens <- cens_record(above = c(TRUE, FALSE, FALSE),
                       below = c(FALSE, FALSE, TRUE), upper = 100, lower = 0)
   flipped <- bayesnec:::xform_censoring(cens, function(z) -log(z))
@@ -122,10 +115,8 @@ test_that("a decreasing xform swaps a record whose end maps to infinity", {
 })
 
 test_that("the per-draw and summary paths agree under -log on a grid from 0", {
-  # The case #440 measured: 101 points from 0 to 100, 90 draws identified
-  # between 10 and 90 and 11 censored above 100. The per-draw path returned
-  # -3.808, -4.480, -4.605 with >= on Q97.5; remap_summary() returned -4.006,
-  # -4.605, -2.468 with <= on Q2.5.
+  # Use an infinite endpoint and upper-censored draws to compare per-draw
+  # transformation with remapping a summary.
   grid <- seq(0, 100, length.out = 101)
   draws <- c(seq(10, 90, length.out = 90), rep(NA_real_, 11))
   cens <- bayesnec:::censoring_record(100, 0, is.na(draws), logical(101))
@@ -146,9 +137,8 @@ test_that("the per-draw and summary paths agree under -log on a grid from 0", {
 })
 
 test_that("every increasing xform leaves a record as it was before #440", {
-  # The rule xform_censoring() applied before #440, kept here as the
-  # reference: swap only where both images are finite and reversed. No
-  # increasing map meets that test, and none may meet the new one.
+  # Keep the earlier finite-endpoint rule as the reference for increasing
+  # maps; those maps must retain their existing behaviour.
   before_440 <- function(cens, xform) {
     new_upper <- xform(cens$upper)
     new_lower <- xform(cens$lower)
@@ -196,11 +186,9 @@ test_that("every increasing xform leaves a record as it was before #440", {
 
 test_that("the estimators under xform = exp return what they did before #440", {
   skip_on_cran()
-  # exp is the xform vignette("example8") gives ecx(), nsec() and nec() on fits
-  # with crf(log(conc)), so the change to xform_censoring() must leave it as it
-  # was: identified, censored above the range and censored below it. Pinned
-  # from an installed build of origin/predev at ba30b91e, R 4.6.1. The
-  # crf(log(x)) fit is nec4param relabelled, as test-fitted_scale.R builds it.
+  # Relabel the stored nec4param fit as logarithmic without refitting it.
+  # The fixed exp() results guard the increasing inverse for identified and
+  # censored draws alike.
   logged <- nec4param
   logged$bayesnecformula <- bnf(y ~ crf(log(x), model = "nec4param"))
   q <- function(expr) suppressWarnings(suppressMessages(expr))
@@ -330,10 +318,8 @@ test_that("combine_censored_min is pmin where neither block is censored", {
 })
 
 test_that("the censored summary recovers the quantile where it is identified", {
-  # The strongest statement the rank treatment makes: where a quantile does not
-  # fall among the censored draws, it is the quantile of the uncensored truth
-  # and not of the draws that were identified. Checked against a posterior
-  # whose beyond-range values are known, which no fit can supply.
+  # Use simulated truth beyond the bounds to check that an identified
+  # quantile uses the full draw ranks, not just the retained subset.
   set.seed(1)
   truth <- sort(stats::runif(200, 0, 5))
   above <- truth > 4
@@ -391,12 +377,8 @@ test_that("a record of the wrong length is refused rather than recycled", {
 })
 
 test_that("a quantile that only straddles the boundary is not called a bound", {
-  # Ten draws, one censored at 100. The 97.5 per cent quantile sits between the
-  # ninth draw and the tenth, so under an interpolating quantile it came back
-  # infinite and was reported as >= 100, although the smallest value consistent
-  # with the sample is 9. The censored summary reports an order statistic, so
-  # the entry is either a draw that was identified or one known to be beyond an
-  # end, and never a value produced by interpolating across the boundary.
+  # Use an order statistic so a censored quantile reports a known bound.
+  # Interpolating across an unknown draw can produce an unjustified bound.
   x <- c(1:9, NA_real_)
   out <- bayesnec:::summarise_censored(
     x, c(0.5, 0.025, 0.975),
@@ -414,11 +396,8 @@ test_that("a quantile that only straddles the boundary is not called a bound", {
 })
 
 test_that("a decreasing predictor transformation names the right end", {
-  # crf(-x) maps the top of the recorded range to the foot of the fitted one, so
-  # a draw the search left beyond the top of the recorded grid lies below the
-  # foot of the fitted grid and must be reported there. Building the record on
-  # the fitted bounds directly would label it as above the fitted top, which is
-  # the one value it is known not to exceed.
+  # A decreasing predictor map exchanges the ends: an above-range recorded
+  # draw becomes a below-range fitted draw.
   recorded <- censoring_record(above = c(TRUE, FALSE), below = c(FALSE, FALSE),
                                upper = 5, lower = 0.1)
   fitted <- bayesnec:::xform_censoring(recorded, function(v) -v)
@@ -432,12 +411,8 @@ test_that("a decreasing predictor transformation names the right end", {
 })
 
 test_that("the end a class is named at survives one and two remappings", {
-  # The two classes are named by the geometry the search saw: draws the curve
-  # did not reach within the range, and draws it had already passed where the
-  # range began. A decreasing remapping puts those at opposite ends of the
-  # reported scale, so a message naming cens$upper for the first of them would
-  # name the one value those draws are known not to exceed. The record carries
-  # which way round it is.
+  # Warnings must name the endpoint on the reported scale, accounting for
+  # whether a decreasing map has reversed the search geometry.
   rec <- cens_record(above = c(TRUE, FALSE, FALSE),
                      below = c(FALSE, TRUE, FALSE), upper = 10, lower = 1)
   expect_equal(bayesnec:::censored_end(rec, "above"), 10)
@@ -506,11 +481,8 @@ test_that("a stacked table marks the rows whose entries are bounds", {
 })
 
 test_that("the warning and the note name the same end for the same draws", {
-  # A decreasing remapping puts the two classes of beyond-range draw at
-  # opposite ends of the reported scale. Keying the warning on the geometry the
-  # search saw and the note on the record's fields put the two in
-  # contradiction: "censored above -10" printed over "lie below -10" about the
-  # same draws. Both now read the same two fields.
+  # The warning and summary note must use the same remapped endpoint; a
+  # decreasing map must not make them report contradictory bounds.
   rec <- cens_record(above = c(TRUE, TRUE, FALSE), below = rep(FALSE, 3),
                      upper = 10, lower = 1)
   flipped <- bayesnec:::xform_censoring(rec, function(z) -z)
@@ -556,10 +528,8 @@ test_that("a draw the record explains at neither end is reported apart", {
 # Integration. These reuse the packaged fits and change only the prediction
 # grid, so no model is compiled or sampled.
 
-# The foot of the grid is the lowest observed predictor value. expand_nec()
-# reads its control at the first grid point and nsec() reads it at the lowest
-# observed one (D15 ruling 2), so the two paths agree on a number only where
-# those coincide, which is the default grid and is what this uses.
+# Start at the lowest observed predictor so the stored expansion and nsec()
+# use the same control reference.
 censored_x_range <- function() {
   c(min(manec_example$mod_fits[["ecx4param"]]$fit$data$x), 0.9)
 }
@@ -576,9 +546,7 @@ test_that("a fit with no beyond-range draw reports what the release reports", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # manec_example's grid spans its own data, every curve reaches the reference
-  # within it, and its stored summary predates this change. Nothing about it
-  # may move.
+  # Keep the packaged uncensored summary unchanged for this existing fit.
   expect_null(attr(manec_example$w_ne, "censored_summary"))
   expect_equal(unname(manec_example$w_ne),
                c(1.4503481, 0.7487292, 1.5273698), tolerance = 1e-6)
@@ -715,21 +683,11 @@ test_that("the plot annotation marks a censored estimate", {
   expect_false(any(grepl("^>=|^<=", plain$nec_labs[!is.na(plain$nec_labs)])))
 })
 
-# ---- #417, the annotation under a decreasing map -----------------------------
+# Annotations under a decreasing map.
 
-# The packaged nec4param fit and model set, re-expanded over grids that end
-# inside their posteriors, so nothing is compiled or sampled. Each accessor
-# builds once per file.
-#
-# Ending at 1.5 puts 14 of nec4param's 100 NEC draws above the grid, and 12 of
-# the model average's, so only the upper limit is a bound: the case where the
-# two interval entries can be told apart after a reversal. The ECx call's grid
-# ends at 1.7, where 32 of nec4param's relative EC10 draws lie above it. Under
-# an explicit xform the fit's own grid decides only the direction of the map,
-# so the model set is built once, on the NEC grid. The automatic inverse clamps
-# anything beyond the fit's grid to its end, so the single fit that test uses
-# is built on the ECx grid as well. Expanding the model set takes about ten
-# seconds, and its summary(), which plot() calls, about as long again.
+# Reuse stored fits without sampling. Set grid ends so only one interval
+# limit is censored and the two limits can be distinguished after reversal.
+# Use the ECx grid for its automatic inverse, which clamps beyond that grid.
 reversal_x_foot <- function() {
   min(manec_example$mod_fits[["nec4param"]]$fit$data$x)
 }
@@ -776,12 +734,8 @@ reversal_manec <- local({
 
 negate <- function(z) -z
 
-# A stored fit relabelled as fitted on crf(I(-x)), its stored estimate and
-# posterior put on that scale draw by draw. I(-x) rather than -x, because inside
-# a formula a bare minus is the operator that removes a term, so model.frame()
-# keeps x as it is and the predictor is not reported as transformed. ecx()
-# reads the formula when it maps its search onto the fitted scale, so its
-# estimates come out negated with no further change.
+# Relabel a stored fit as crf(I(-x)) and negate its stored draws. A bare -x
+# removes a formula term; I(-x) makes the model frame negate the predictor.
 negated_fit <- function(fit) {
   fit$ne <- suppressMessages(suppressWarnings(nec(fit, xform = negate)))
   fit$ne_posterior <- suppressMessages(suppressWarnings(
@@ -810,12 +764,9 @@ annotation_labels <- function(d, what = "nec") {
          USE.NAMES = FALSE)
 }
 
-# What x -> -x must make of labels on the recorded scale: each number negated,
-# each mark reversed, and the two interval entries exchanged. The annotation
-# remaps the stored summary rather than summarising the draws again, so this is
-# exact, where comparing with nec(fit, xform = negate) is not: with 100 draws a
-# censored median is a type 1 quantile, and the median of -x is then the
-# negated 51st draw rather than the 50th.
+# Reflect stored summary labels, not newly computed quantiles. With an even
+# number of draws, a type-1 median after negation need not equal the negated
+# original median.
 reflected_labels <- function(labs) {
   reflect <- function(l) {
     if (startsWith(l, ">=")) {
@@ -843,9 +794,8 @@ test_that("a bound above the grid is labelled as below it once negated", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # The reproduction in #417: every NEC draw lies above a grid ending at 0.9,
-  # so all three entries are the bound, and the negated axis puts it at the
-  # foot. The release labelled all three ">=-0.90".
+  # Censor every NEC draw above 0.9 so a negated axis must mark all entries
+  # at its lower end.
   f <- manec_example$mod_fits[["nec4param"]]
   fit <- suppressMessages(suppressWarnings(
     bayesnec:::expand_and_assign_nec(
@@ -892,11 +842,8 @@ test_that("the inverse of a decreasing crf() term restores the annotation", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # No xform: the estimate is on the negated scale and is inverted on the grid,
-  # as nec() inverts it, for the axis, which is drawn on the recorded one. The
-  # interval entries and their marks must come back as the untransformed fit
-  # has them. The estimate is compared for its mark only, for the type 1
-  # reason given above.
+  # With no xform, invert the negated estimate on the recorded grid. Compare
+  # the interval and marks with the original; compare the median's mark only.
   pairs <- list(
     list(plain = annotation_labels(annotation_frame(reversal_fit("nec"))),
          inverted = annotation_labels(
@@ -935,11 +882,8 @@ test_that("the annotation marks what nec() marks at a whole n times p", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # A grid ending between the 50th and 51st of nec4param's 100 NEC draws
-  # leaves exactly 50 above it. 100 * 0.5 is whole, so the median is the 50th
-  # draw: identified on the recorded scale, and censored once the draws are
-  # negated, where the 50 beyond the range are the lowest. Reversing the marks
-  # where they stood left the negated estimate unmarked.
+  # Put the grid end between draws 50 and 51. Reversal changes which median
+  # rank is identified, so reversing existing marks alone is insufficient.
   f <- manec_example$mod_fits[["nec4param"]]
   ranked <- sort(nec4param$ne_posterior)
   fit <- suppressMessages(suppressWarnings(
@@ -976,14 +920,10 @@ test_that("the base plot legend takes the same reversal", {
   fit <- reversal_fit("nec")
   plain <- legend_text(fit)
   expect_match(plain, "->= 1.5)", fixed = TRUE)
-  # lxform relabels the axis, and a decreasing one is remapped by the same
-  # rule: negating the axis and then its labels gives the plain legend back.
-  # Applying lxform to the numbers alone left "<=" beside 1.5. Before #417
-  # this pair was right by accident, the marks reversed by neither map, which
-  # is why the negated axis alone is asserted too.
+  # Negating the axis and its labels must restore the plain legend. Check
+  # the negated axis alone too, so two omitted reversals cannot cancel.
   expect_identical(legend_text(fit, xform = negate, lxform = negate), plain)
-  # The model-set method has its own copy of the legend code. Two calls, not
-  # three, because each one spends about ten seconds in summary().
+  # Exercise both legend implementations while limiting repeated summaries.
   for (obj in list(fit, reversal_manec())) {
     negated <- legend_text(obj, xform = negate)
     expect_match(negated, "(<= -1.5--", fixed = TRUE)
@@ -998,12 +938,9 @@ test_that("the base plot legend takes the same reversal", {
 })
 
 test_that("a hurdle fit with one block censored reports the other block", {
-  # Specification 4.11's hurdle case, on a mock rather than a fit: no packaged
-  # two-block fit exists and compiling one for this costs minutes. The growth
-  # block is beyond the top of the range for the first two draws and the
-  # survival block is inside it for all four, so the combined no-effect
-  # estimate is the survival block wherever growth is censored. pmin() on the
-  # raw vectors returned NA for those draws and deleted them.
+  # Mock the two blocks: no packaged two-block fit supplies this case.
+  # With a common upper bound, an identified survival draw below that bound
+  # is smaller than a censored growth draw; raw pmin() would propagate NA.
   cens <- function(above) {
     bayesnec:::censoring_record(10, 0, above, logical(length(above)))
   }
@@ -1067,12 +1004,9 @@ test_that("a hurdle fit censored in both blocks stays censored", {
   expect_true(any(nzchar(cs$bound)))
 })
 
-# The combined hurdle threshold across unequal prediction ranges (#415, D20).
-# Growth is fitted to survivors only, so its grid can stop short of the survival
-# grid, and a component draw known only to exceed its own limit cannot be
-# compared with an identified draw of the other component above that limit.
-# Structural fixtures throughout: the combination reads only the stored
-# posteriors and their records.
+# Test stored posterior combinations with unequal component ranges.
+# An identified draw above the other component's censoring limit cannot
+# resolve which component is smaller.
 hurdle_necfit <- function(post, cens) {
   out <- structure(list(model = "nec3param", ne_type = "NEC",
                         ne_posterior = post,
@@ -1090,8 +1024,7 @@ hurdle_of <- function(growth, survival) {
     class = c("bayesnechurdlefit", "bnecfit")
   )
 }
-# The fixture in #415: growth draws of 12 known only to exceed 10, survival
-# draws identified at `s_value` within its range of 0 to 40.
+# Growth is known only to exceed 10; survival is identified within 0 to 40.
 issue_415_hurdle <- function(s_value) {
   hurdle_of(
     hurdle_necfit(rep(12, 4), cens_record(rep(TRUE, 4), logical(4))),
@@ -1104,8 +1037,7 @@ test_that("a threshold above the other component's limit is not identified", {
   obj <- issue_415_hurdle(20)
   est <- suppressWarnings(nec(obj))
   cs <- attr(est, "censored_summary")
-  # The minimum of a draw above 10 and a draw at 20 lies between the two. The
-  # release reported 20 as the median and both limits, with no mark.
+  # The minimum of a draw above 10 and a draw at 20 is not identified at 20.
   expect_false(any(as.numeric(est) == 20))
   expect_identical(cs$bound, c(">=", ">=", ">="))
   expect_equal(cs$upper, 10)
@@ -1177,11 +1109,9 @@ test_that("the shorter range bounds the combination in either direction", {
 })
 
 test_that("a draw below the foot of its range stays below it", {
-  # The below-range branch is unchanged by #415: a draw below the foot of its
-  # own range puts the minimum below that foot whatever the other draw is, so
-  # it is marked below and the recorded limit is the larger of the two feet.
-  # Per draw only: where the feet differ, the summary of such a posterior can
-  # misrank an identified value below the larger foot, which is #421.
+  # Legacy or structural objects can have unequal lower bounds; new fits
+  # predict both components on the whole concentration series. Keep this
+  # check per draw because unequal-bound summaries can misrank values.
   g <- c(NA_real_, NA_real_, 7)
   attr(g, "censored") <- cens_record(logical(3), c(TRUE, TRUE, FALSE),
                                      lower = 5)
@@ -1228,8 +1158,7 @@ test_that("an unexplained missing draw is not marked by the combination", {
   s <- c(NA_real_, 6)
   attr(s, "censored") <- cens_record(logical(2), logical(2), upper = 40)
   out <- bayesnec:::combine_censored_min(g, s, 2)
-  # The survival draw is NA with no mark, so nothing is known of the minimum
-  # and it is left unexplained, as before #415, rather than called censored.
+  # An unmarked NA supplies no bound on the minimum; leave it unexplained.
   expect_equal(out$values, c(NA, 4))
   expect_false(any(out$censored$above))
 })

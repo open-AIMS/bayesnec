@@ -21,7 +21,7 @@ test_that("bayesnecformula is equivalent to bnf", {
 })
 
 
-# ---- #257, the group-level deviation reaches the brms formula ----------------
+# A group-level deviation reaches the brms formula.
 
 ogl_fixture <- function() {
   set.seed(1)
@@ -53,9 +53,7 @@ test_that("a constrained mean gets the deviation multiplicatively (#257)", {
 })
 
 test_that("an unconstrained mean keeps the additive offset (#257)", {
-  # gaussian is unconstrained, so there is nothing to protect against; #245
-  # measured 0% divergent for exactly this case with the identical curve and
-  # grouping.
+  # Gaussian has an unconstrained mean, so it keeps the additive deviation.
   d <- ogl_fixture()
   f <- bnf(y ~ crf(x, model = "nec3param") + ogl(g))
   bdat <- model.frame(f, data = d, run_par_checks = TRUE)
@@ -94,12 +92,10 @@ test_that("the transformed model is the current model at zero deviation", {
 })
 
 
-# ---- #319, symbols resolve where the user wrote the formula -----------------
+# Resolve symbols where the formula was written.
 
-# Every test below is written inside a function on purpose. At the top level of
-# a test file testthat evaluates in an environment whose parent chain reaches
-# the global environment, which is the one place the defect did not show: a
-# top-level test passed before the fix and would not have caught it.
+# Use function-local bindings: top-level testthat environments can reach
+# the global environment and conceal loss of the formula environment.
 
 test_that("a model set held in a variable resolves from inside a function", {
   fit_set <- function() {
@@ -192,11 +188,8 @@ test_that("get_priors resolves a variable model set from inside a function", {
 })
 
 test_that("the brms formula is built from a locally defined transformation", {
-  # single_model_formula() and wrangle_model_formula() run once per model on
-  # the fitting path, after the model frame is built, so the environment has to
-  # survive both. Asserted here rather than by fitting, which would add a Stan
-  # compilation to the suite for a defect that is fixed before brm() is
-  # reached.
+  # Preserve the environment through both per-model formula builders after
+  # model.frame(). The builders check this before brm(), without sampling.
   build <- function() {
     # square() is defined here for R's model frame and is also a Stan built-in.
     # An arbitrary R helper would still need a Stan definition at fit time.
@@ -221,10 +214,8 @@ test_that("the hurdle component formulas keep the user's environment", {
 })
 
 test_that("the fitting entry points resolve a character formula", {
-  # bnec(), bnec_group(), bnec_hurdle(), bnec_joint(), get_priors.formula() and
-  # get_priors.character() each pass their own caller's frame down, and that is
-  # the only thing those six lines change. get_priors() is the one of them that
-  # reaches a result without sampling, so it is the one asserted here.
+  # The fitting and prior entry points pass their caller frame. Exercise
+  # get_priors(), which returns a result without sampling.
   build <- function() {
     eqs <- "nec3param"
     get_priors("y ~ crf(x, eqs)", data = nec_data, family = gaussian())
@@ -259,12 +250,9 @@ test_that("a model argument that is not character is named as the cause", {
 })
 
 test_that("the model frame resolves trials() off the global chain", {
-  # The reduced formula keeps trials() as a call and bayesnec does not export
-  # it, so taking the user's environment alone broke every binomial fit under
-  # an installed package. baseenv() as the parent puts both the global
-  # environment and the package namespace off the lookup chain, so this holds
-  # whether or not pkgload::load_all() has exported the internals -- which is
-  # what hid the defect from every local run.
+  # trials() must resolve under an installed package as well as load_all().
+  # Use baseenv() as parent to exclude global and package namespace fallback;
+  # load_all() exporting internals would otherwise conceal the failure.
   d <- nec_data
   d$tr <- 100L
   d$count <- as.integer(round(d$y * 20))
@@ -291,15 +279,11 @@ test_that("a formula whose environment was stripped still builds", {
 })
 
 test_that("a knitted chunk resolves a variable model set", {
-  # The reported failure: vignettes/precompile.R calls knitr::knit() from
-  # inside knit_one(), so a variable assigned in a chunk lands in that frame
-  # and not in the global environment. Reproduced here by knitting from inside
-  # a function for the same reason.
+  # Knit inside a function so chunk variables belong to its frame, matching
+  # the precompile workflow rather than falling back to the global environment.
   skip_if_not_installed("knitr")
-  # echo = FALSE so that the assertion is made on what the chunk returned and
-  # not on the echoed source, which names the equations itself. knitr renders a
-  # failed chunk as text and carries on, so the absence of an error is asserted
-  # as well as the presence of the answer.
+  # Suppress echoed code so equation names must come from the chunk result. Also
+  # reject rendered errors: knitr can include failures as text and continue.
   txt <- c("```{r echo = FALSE}", "eqs <- c(\"nec3param\", \"ecxll3\")",
            "bayesnec:::get_model_from_formula(bayesnec::bnf(y ~ crf(x, eqs)))",
            "```")
@@ -381,7 +365,7 @@ test_that("brms reads the expanded ogl() terms as the nested grouping", {
 })
 
 
-# ---- #470, equations that keep no group-level term on a variable -------------
+# Equations that keep no group-level term on a variable.
 
 test_that("an equation with no term on a grouping variable is excluded (#470)", {
   # ecxexp has neither nec nor ec50, so both terms on batch are left out of it

@@ -12,7 +12,7 @@ test_that("correct classes", {
 })
 
 
-# ---- #294, a group-level deviation on a single parameter ---------------------
+# A group-level deviation on a single parameter.
 
 set.seed(294)
 gdat <- data.frame(
@@ -116,14 +116,9 @@ test_that("two groupings on one transformed parameter both reach the deviation",
 })
 
 test_that("the deviation has no population intercept", {
-  # bnecbot depends on bot and botgl only through their combination, so a free
-  # b_botgl would be exactly unidentified against bot: the two would trade off
-  # along a ridge with no change to the likelihood, and b_bot_Intercept would
-  # stop being the asymptote the population-level curve declines towards.
-  # ecx(type = "relative") divides by that asymptote and expand_nec() reports
-  # it, so both would have been wrong. Asserted in the generated Stan code
-  # rather than in the formula, because what matters is that brms declares no
-  # such parameter.
+  # A free botgl intercept would trade off with bot along an unidentified ridge
+  # and remove bot's population-asymptote meaning, affecting relative ECx.
+  # Check generated Stan code to ensure brms declares no such intercept.
   skip_on_cran()
   bform <- build("(bot | grp)")
   priors <- define_prior("nec4param", validate_family("Beta"), gdat$pred,
@@ -162,7 +157,7 @@ test_that("a second grouping is not dropped for being a substring of the first",
                "0 + (1 | grp2) + (1 | grp)")
   expect_equal(bld2("(bot | grp) + (bot | grp2)", "botgl"),
                "0 + (1 | grp) + (1 | grp2)")
-  # The untransformed path had the same defect on every version up to 2.1.4.
+  # Exercise the same name-matching trap on untransformed parameters.
   expect_equal(bld2("(nec | grp2) + (nec | grp)", "nec"),
                "1 + (1 | grp2) + (1 | grp)")
   # A genuine repeat is still added once only.

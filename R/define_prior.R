@@ -1340,9 +1340,7 @@ define_hurdle_prior <- function(model, family, predictor, response,
                             supplied_pars = hu_supplied)
   hu_priors$nlpar <- ifelse(nzchar(hu_priors$nlpar),
                             paste0(dpar, hu_priors$nlpar), hu_priors$nlpar)
-  # Both blocks predict across the full design, so use its predictor for the
-  # nec and ec50 priors and their bounds. Survivors alone change their location
-  # and spread, and a concentration-scale subset containing only zero has no
-  # positive dose.
+  # Both blocks predict across the full design. Use its predictor for nec and
+  # ec50 bounds; survivors alone can contain no positive dose.
   mu_priors + hu_priors
 }

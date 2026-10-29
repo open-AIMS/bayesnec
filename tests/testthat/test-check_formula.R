@@ -26,8 +26,7 @@ test_that("all variables actually exist in the data frame", {
 })
 
 test_that("Parameter checks", {
-  # expect a series of messages for because not all
-  # nec models have the "bot" parameter
+  # Not every NEC equation has bot, so several exclusions can be reported.
   f_2 <- y | trials(tr) ~ crf(x, "nec") + (nec + bot | group_1)
   expect_s3_class(check_formula(bnf(f_2), data, run_par_checks = FALSE),
                   "bayesnecformula")
@@ -99,9 +98,8 @@ test_that("every (par | group) term has its grouping checked against the data", 
   expect_s3_class(check_formula(bnf(f), data), "bayesnecformula")
 })
 
-# Each measured column is held twice, under a syntactic name and under the kind
-# of name a spreadsheet gives it, so that every refusal below can be set beside
-# the same formula written with a name that is accepted. See #398.
+# Duplicate measured columns under syntactic and spreadsheet-style names
+# to compare each refusal with the accepted formula.
 odd_data <- data.frame(x = seq(0.5, 10, length.out = 12),
                        y = rep(c(0, 4, 7, 2), 3),
                        hours = rep(c(1, 2), 6),
@@ -121,7 +119,7 @@ test_that("a non-syntactic name is refused by name in each term (#398)", {
     check_formula(bnf(y ~ crf(log(`conc mg`), "nec3param")), odd_data),
     "\"conc mg\" in crf(log(`conc mg`), \"nec3param\")", fixed = TRUE
   )
-  # The call the issue was filed on, reached through model.frame().
+  # Reach the predictor-name check through model.frame().
   expect_error(
     model.frame(bnf(y | rate(`exposure hours`) ~ crf(x, "nec3param")),
                 data = odd_data),
@@ -305,7 +303,7 @@ test_that("bnec_group() and bnec_hurdle() refuse before any fit (#398)", {
   expect_equal(fits, 0L)
 })
 
-# ---- #438, a crf() predictor written with a leading minus --------------------
+# A crf() predictor written with a leading minus.
 
 # x runs above 1 so that log(x - 1) is finite at every row.
 minus_data <- data.frame(x = seq(1.5, 12, length.out = 12),
@@ -456,7 +454,7 @@ test_that("a fit holding crf(-x) is refused where its frame is rebuilt (#438)", 
   expect_error(suppressMessages(nsec(f)), "is written with a leading minus")
 })
 
-# ---- #479, a formula operator at the top of a crf() predictor ---------------
+# ---- a formula operator at the top of a crf() predictor ----------------------
 
 operator_forms <- c("x - 1", "log(x) - 1", "x^2", "log(x) + 1", "x * 2",
                     "x/2", "x:x", "x %in% x", "(x - 1)", "+(x - 1)")
@@ -584,10 +582,8 @@ test_that("bnec_group() and bnec_hurdle() refuse before any fit (#479)", {
 })
 
 test_that("a fit holding an operator is refused where its frame is rebuilt (#479)", {
-  # The packaged fit was fitted on x and is relabelled crf(x - 1), which a
-  # model formula also reads as x. ecx() and nsec() rebuild the model frame
-  # and stop. nec() reads the predictor as x, so it neither transforms the
-  # estimate nor reports a scale.
+  # Relabel the fit as crf(x - 1) without refitting. ecx() and nsec() refuse
+  # it when rebuilding the frame; nec() still reads x unchanged.
   f <- nec4param
   f$bayesnecformula <- bayesnecformula(y ~ crf(x - 1, model = "nec4param"))
   expect_error(suppressMessages(ecx(f)), "at its top level")

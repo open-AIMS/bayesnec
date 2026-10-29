@@ -1,12 +1,6 @@
-# Where crf() transforms the predictor inline, the estimators return the
-# recorded scale unless xform is supplied, and a supplied xform is applied to
-# the estimate on the fitted scale.
-#
-# The fixtures relabel a stored fit's formula, as transformed_response_fit() in
-# setup.R does. The stored fit was not fitted with this formula, so its numbers
-# mean nothing in themselves: every assertion compares two calls on one stored
-# posterior. manec_example's x runs from 0.032 to 3.22, so log() is finite
-# throughout.
+# Relabel stored formulas without refitting. Compare calls on the same
+# posterior; the relabelled fits do not validate numerical estimates.
+# The stored predictor is positive, so log(x) stays finite.
 logged_x_fit <- function(fit, model, tr = "log(x)") {
   fit$bayesnecformula <- bnf(stats::as.formula(
     paste0("y ~ crf(", tr, ", model = \"", model, "\")")

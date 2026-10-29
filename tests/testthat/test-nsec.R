@@ -106,7 +106,7 @@ test_that("sig_val passes correctly", {
 })
 
 
-# ---- D15: the control anchors nsec too, and hormesis_def is gone -------------
+# Control references and removed arguments
 
 test_that("hormesis_def is refused by name on nsec", {
   skip_on_cran()
@@ -117,27 +117,23 @@ test_that("hormesis_def is refused by name on nsec", {
 })
 
 test_that("ecnsec is the absolute percent effect at the nsec", {
-  # D15 ruling 5, toxval#49 and T8. The attached ecnsec used to be measured
-  # against the fitted range, by three formulas that agreed only for a
-  # monotonic curve. It is now (control - reference) / control * 100, which is
-  # exactly what ecx measures under its default type.
+  # ECNSEC uses the same control-to-zero percentage reference as default ECx:
+  # (control - reference) / control * 100.
   skip_on_cran()
   out <- nsec(nec4param, resolution = 200, sig_val = 0.01) |>
     suppressWarnings()
   ec <- attr(out, "ecnsec_relativeP")
   expect_length(ec, 3)
-  # A percentage, and a small one: the NSEC is by construction the point at
-  # which the curve first leaves the control's own lower tail, so the effect
-  # there is a few per cent rather than tens of per cent.
+  # This fixture gives positive effects below 100 percent. Their magnitude
+  # depends on the fitted control distribution and significance level.
   expect_true(all(ec > 0))
   expect_true(all(ec < 100))
   expect_lt(ec[1], 25)
 })
 
 test_that("nsec returns NA where the curve never reaches the reference", {
-  # D15 ruling 3. Restricting x_range to the flat head of the curve leaves no
-  # crossing to find. Up to 2.1.3 every such draw returned max(x_vec), so the
-  # NSEC was reported as the top of the range with nothing said.
+  # A grid confined to the flat head has no crossing. Report it as censored
+  # rather than returning its nearest endpoint as an identified NSEC.
   skip_on_cran()
   expect_warning(
     out <- nsec(nec4param, resolution = 50, x_range = c(0, 0.05),
@@ -148,16 +144,12 @@ test_that("nsec returns NA where the curve never reaches the reference", {
 })
 
 
-# ---- #325: the draws whose NSEC is the control -------------------------------
+# Draws whose NSEC is the control
 
 test_that("a draw at or below the reference at the control returns the control", {
-  # The reference is the sig_val quantile of the control posterior, so sig_val of
-  # the draws sit at or below it and reach it at the control itself. Fisher and
-  # Fox (2023) report those draws as the estimate: their Table 3 gives a lower
-  # credible bound of zero at every significance level above the 0.025 quantile
-  # the bound is read at, and those draws are what produces it. Up to this fix
-  # they returned NA and were dropped, so the bound could not reach the control
-  # at any sig_val.
+  # For this fixture, sig_val of the draws are already at or below the
+  # control reference. Keep them at the observed control so the lower
+  # credible bound can reach it.
   skip_on_cran()
   x_control <- min(nec_data$x)
   n_draws <- brms::ndraws(ecx4param$fit)
@@ -176,17 +168,14 @@ test_that("a draw at or below the reference at the control returns the control",
 })
 
 test_that("an x_range above the control does not report the control", {
-  # The control is the estimate only where the search begins at the control. With
-  # x_range starting higher, a draw already at or below the reference at the first
-  # grid point reached it below the range asked for, and reporting the control
-  # would name a concentration below the whole grid. It is NA and is reported with
-  # the draws that never reach the reference. See D17 ruling 1.
+  # Draws whose control is at or below the reference keep the control even
+  # when x_range starts higher. Other draws crossing before the requested
+  # grid return NA and are reported as below range.
   skip_on_cran()
   x_control <- min(nec_data$x)
   n_draws <- brms::ndraws(ecx4param$fit)
-  # Reported by a warning of its own: these curves do fall to the reference, and
-  # saying they do not anywhere in the predictor range would state the opposite
-  # of their situation, which is the defect #325 was opened for.
+  # Report crossings below the requested range separately from curves that
+  # never reach the reference within it.
   expect_warning(
     out <- nsec(ecx4param, resolution = 200, x_range = c(1, 3),
                 posterior = TRUE),
@@ -198,12 +187,9 @@ test_that("an x_range above the control does not report the control", {
   expect_equal(sum(out == x_control, na.rm = TRUE), 0.01 * n_draws)
   expect_true(sum(is.na(out)) > 0.01 * n_draws)
   expect_true(all(out >= 1 | out == x_control, na.rm = TRUE))
-  # And the estimate does not depend on x_range where the grid reaches the
-  # control. Extending it below the data moves the grid off the control, and
-  # extending it far above coarsens the grid so that the next point after the
-  # control is well beyond it; the control is made the first point searched, so
-  # neither loses a draw. Measured at sig_val = 0.05, where the class is large
-  # enough to be countable on a 100 draw fixture.
+  # Prepending the control preserves these draws when the grid extends below
+  # the data or becomes coarser. This checks draw retention; interpolated
+  # values can still depend on grid spacing.
   full <- nsec(ecx4param, resolution = 200, sig_val = 0.05, posterior = TRUE)
   for (x_range in list(c(0, max(nec_data$x)), c(0, 100))) {
     wide <- nsec(ecx4param, resolution = 200, sig_val = 0.05,
@@ -214,9 +200,8 @@ test_that("an x_range above the control does not report the control", {
 })
 
 test_that("a range with no concentration above the control is refused", {
-  # Rather than returning a vector of NA under a warning that names the wrong
-  # cause. A single grid point is refused earlier still, by check_args_newdata:
-  # it defines no interval to read anything from.
+  # Refuse a grid with no searchable interval above the control; an all-NA
+  # result would misdescribe the invalid grid as a fitted-curve failure.
   skip_on_cran()
   expect_error(
     nsec(ecx4param, resolution = 5, x_range = c(0, 0.02)),
@@ -247,10 +232,8 @@ test_that("the draws at the control are not reported", {
 })
 
 test_that("the stored no-effect estimate of an ecx equation keeps those draws", {
-  # expand_nec() reads the NSEC off the curve for every ecx-class equation, and it
-  # is that estimate summary(), the model weights and nec() report, so the defect
-  # reached a fit nsec() was never called on. The fixture is built by pull_out(),
-  # which recomputes it, so this exercises that path without fitting anything.
+  # pull_out() recomputes the stored NSEC for smooth equations. Check that
+  # this path retains control draws even without an explicit nsec() call.
   skip_on_cran()
   ne <- ecx4param$ne_posterior
   expect_false(anyNA(ne))
@@ -258,10 +241,8 @@ test_that("the stored no-effect estimate of an ecx equation keeps those draws", 
 })
 
 test_that("nsec_from_posterior puts the lower sig_val tail at the control", {
-  # The helper both nsec() and expand_nec() use, on a matrix built so that the
-  # answer is known: 100 straight declining curves whose controls run from 0.90
-  # to 1.10, so the 0.05 quantile of the first column has exactly five rows at
-  # or below it.
+  # Use 100 known declining curves: exactly five controls fall at or below
+  # the 0.05 quantile, so the expected control count is fixed.
   skip_on_cran()
   x <- seq(1, 10, length.out = 50)
   controls <- seq(0.90, 1.10, length.out = 100)
@@ -274,16 +255,14 @@ test_that("nsec_from_posterior puts the lower sig_val tail at the control", {
   expect_false(anyNA(out))
   expect_equal(sum(out == x[1]), 5)
   expect_true(all(out >= x[1]))
-  # A grid that x_range has extended below the control is not searched, so the
-  # estimate does not change. D15 ruling 2.
+  # Ignore grid points below the observed control when searching for NSEC.
   x_low <- c(x[1] / 2, x)
   post_low <- cbind(controls + 0.05, post)
   expect_equal(nsec_from_posterior(post_low, reference, x_low, x_control = x[1],
                                    control = post[, 1]), out)
-  # Nor does a grid that begins above the control: the five draws whose control
-  # is at or below the reference keep the control, and the rest are searched over
-  # what was asked for. The control is read from the control posterior, not from
-  # the first column of the grid, which is what makes that true.
+  # Read the control posterior independently of the grid. Its five low
+  # draws stay at the control when the grid begins higher; search other
+  # draws only over the requested interval.
   keep_high <- x >= x[10]
   high <- nsec_from_posterior(post[, keep_high, drop = FALSE], reference,
                               x[keep_high], x_control = x[1],

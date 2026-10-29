@@ -124,12 +124,9 @@ test_that("update() re-checks the zero-vs-censored invariant on newdata", {
   expect_false(grepl("zero and also carry", msg))
 })
 
-# ---- #435: update(newdata = ) on a hurdle fit -------------------------------
-# A hurdle fit assembled from the packaged nec4param fit, as bnec_hurdle()
-# builds one: a growth component storing the Gamma family under the tag brms
-# records, "gamma", and a bernoulli survival component on `.alive`. The refit is
-# mocked in every test that uses it, so nothing is sampled and the stored
-# posterior, a gaussian one, is never read.
+# Assemble a hurdle object from the packaged fit, with Gamma growth and
+# Bernoulli survival metadata. Mock every refit: the stored Gaussian
+# posterior is never used as a draw from those declared families.
 hurdle_update_fixture <- function(growth_family = brms::brmsfamily(
                                     "Gamma", link = "identity")) {
   growth <- nec4param
@@ -151,16 +148,9 @@ hurdle_update_fixture <- function(growth_family = brms::brmsfamily(
 }
 
 test_that("update() on a hurdle fit reaches both refits, growth first (#435)", {
-  # The Gamma growth component was refused as a change of family, and the
-  # survival component would have been as well: its 0/1 response, read off
-  # the data, was poisson against a stored bernoulli.
-  #
-  # `update` is mocked where the package finds it, in its imports
-  # environment: a binding mocked in stats is not seen, and the refit then
-  # samples. The mock passes a component through to its own update() method,
-  # so that method's family checks run, and halts at brms, recording what
-  # brms would have received. stats::update() is called explicitly to reach
-  # the methods rather than the mock.
+  # Mock update in the package imports so component checks run but brms never
+  # samples. Call stats::update() explicitly to bypass that mock and dispatch
+  # the real component methods.
   h <- hurdle_update_fixture()
   reached <- list()
   local_mocked_bindings(
@@ -401,7 +391,7 @@ test_that("a growth component at a bound is pointed to bnec_hurdle() (#486)", {
   )
 })
 
-# ---- #503: the growth family a hurdle update() refits -------------------------
+# ---- the growth family a hurdle update() refits -----------------------------
 
 hurdle_counts <- function(y) as.integer(round(y * 20)) + as.integer(y > 0)
 
@@ -761,14 +751,11 @@ test_that("every audited method has a bayesnechurdlefit method or a branch", {
 })
 
 
-# ---- D15 ruling 2 on the two-block class -------------------------------------
+# The control reference on the two-block class.
 
-# The three estimator methods took the control from p_samples[, 1], the first
-# column of the prediction grid, so x_range moved the reference and therefore
-# every estimate. hurdle_component_preds() now returns a control read at the
-# lowest observed concentration and pinned to the same concentration on both
-# sides. Asserted by mocking that function, because reproducing the defect by
-# fitting needs two brms fits and a grid extended below the data.
+# Mock component predictions to distinguish the lowest observed control
+# from the first grid column. Both components must use the same control
+# concentration even when the prediction range changes.
 
 hurdle_preds_stub <- function(control_at, curve_at_grid_start) {
   # A declining curve on a grid whose first column is NOT the control: this is
@@ -818,10 +805,8 @@ test_that("ecnsec honours type and refuses the two it cannot compute", {
     hurdle_component_preds = hurdle_preds_stub(control_at = 8,
                                                curve_at_grid_start = 2)
   )
-  # absolute measures control to 0; range measures control to the curve's
-  # lowest predicted response, a shorter span, so the same decline is a larger
-  # percentage of it. The version this replaces returned the absolute answer
-  # whatever type was given.
+  # The range span ends at the lowest grid response, so a fixed decline is
+  # a larger percentage of it than of the control-to-zero span here.
   abs_out <- ecnsec(obj, nsec = 5, type = "absolute")
   rng_out <- ecnsec(obj, nsec = 5, type = "range")
   expect_gt(rng_out[1], abs_out[1])
@@ -833,14 +818,8 @@ test_that("ecnsec honours type and refuses the two it cannot compute", {
 })
 
 test_that("the summary ECx grid is read from whichever class the survival block is", {
-  # A hurdle component is a bayesnecfit or a bayesmanecfit depending on whether
-  # crf() named one equation or a set, and the two store their prediction grid
-  # under different names. Reading pred_vals alone returned NULL for the
-  # commoner case, range() of nothing is c(Inf, -Inf), and summary(ecx = TRUE)
-  # then errored inside seq() (#395).
-  #
-  # Every row is read over the survival component's grid, the whole
-  # concentration series (D44, #412), whatever the growth component stores.
+  # Read either component class's grid slot. Every summary row uses the
+  # survival grid, which spans the whole concentration series.
   mk <- function(grid, slot) {
     out <- list()
     out[[slot]] <- list(data = data.frame(x = grid))
@@ -945,9 +924,7 @@ test_that("an explicit x_range reaches each summary ECx call once (#416)", {
 })
 
 test_that("without x_range every summary ECx row uses the survival grid", {
-  # The whole concentration series for the growth rows as for the others
-  # (D44, #412). Before #412 all three read the intersection, c(1, 10), and
-  # under D28 the growth rows read growth's own grid.
+  # Use the whole survival concentration series for growth rows too.
   for (g_avg in c(FALSE, TRUE)) {
     for (s_avg in c(FALSE, TRUE)) {
       o <- summary_hurdle(summary_component(c(1, 10), g_avg),
@@ -996,10 +973,8 @@ test_that("a survival component with no stored grid leaves ecx() its default", {
 })
 
 test_that("x_range = NULL leaves ecx() its own default, not the stored grid", {
-  # The survival component stores a grid, so the summary's default would be
-  # c(0, 40). An explicit NULL is not that default: the call reaches ecx()
-  # without an x_range, and ecx() then applies its own default of NA and builds
-  # its grid.
+  # An explicit NULL omits x_range from the ecx() call, allowing ecx() to
+  # build its own default grid instead of using the stored summary range.
   o <- summary_hurdle(summary_component(c(0, 10)),
                       summary_component(c(0, 40), averaged = TRUE))
   calls <- record_summary_calls()
@@ -1023,16 +998,11 @@ test_that("x_range without ecx = TRUE reaches neither estimator", {
   }
 })
 
-# ---- The range each hurdle estimate is read over (#412, D44) -----------------
+# The range used by each hurdle estimator.
 
-# A hurdle fit whose growth data stop short of the survival data, built from
-# the packaged nec4param fit rather than by sampling. The growth component
-# keeps only the rows at or below cut, as a fit to survivors does where nothing
-# lived above cut, and stores a grid over those rows, as bnec() did for growth
-# before D44 and as a fit made before D44 still stores. The survival component
-# keeps every row, so its range runs to 3.22. Both components share the one set
-# of draws, which is enough here: what is asserted is which range each curve is
-# read over.
+# Subset the stored growth data and grid without refitting; survival keeps
+# every row. Both components share draws because these tests check grid
+# selection, not the statistical validity of a two-component fit.
 hurdle_cut_fixture <- function(cut) {
   growth <- nec4param
   growth$fit$data <- growth$fit$data[growth$fit$data$x <= cut, , drop = FALSE]
@@ -1059,9 +1029,7 @@ test_that("summary() and a bare ecx() agree for every curve (#412)", {
                    label = paste(w, "EC", v))
     }
   }
-  # Before #412 the summary read every row over the intersection of the two
-  # grids, which ends at growth's top, so its survival EC50 was censored there
-  # while a bare ecx() identified it above that.
+  # The survival summary must identify an EC50 above the last growth row.
   g_top <- max(obj$growth$fit$data$x)
   expect_gt(s$ecs$survival$ec50[["Q50"]], g_top)
   expect_null(attr(s$ecs$survival$ec50, "censored_summary"))
@@ -1071,9 +1039,8 @@ test_that("a growth ECx above the last survivor is read as a value (D44)", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # The concentrations above the last survivor were tested, so a growth EC50
-  # there lies inside the tested range. Under D28 it was censored at growth's
-  # highest concentration, 1.595 on this fixture.
+  # Concentrations above the last survivor remain part of the tested range
+  # for a growth EC50.
   obj <- hurdle_cut_fixture(1.6)
   g_top <- max(obj$growth$fit$data$x)
   s_range <- range(obj$survival$fit$data$x)
@@ -1108,8 +1075,8 @@ test_that("a growth NSEC is searched over the whole series (D44)", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # Cut below the NSEC of nec4param, about 1.48. Under D28 most draws had not
-  # reached the reference by growth's top and were censored there.
+  # Stop growth data below this fixture's NSEC to distinguish its own range
+  # from the full survival series.
   obj <- hurdle_cut_fixture(1.4)
   g_top <- max(obj$growth$fit$data$x)
   s_range <- range(obj$survival$fit$data$x)
@@ -1166,10 +1133,8 @@ test_that("a fit-time x_range is used for every summary row", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # bnec_hurdle(x_range = ) stores the one range on both components. Both
-  # stored grids are widened to 4 here, above the data of either component.
-  # Under D28 the growth rows were cut to growth's data; under D44 every row
-  # is read over the stored survival grid.
+  # Use the stored survival grid for every row, including growth rows, when
+  # both components were stored with a wider requested range.
   obj <- hurdle_cut_fixture(1.6)
   lower <- min(obj$survival$fit$data$x)
   wide <- data.frame(x = seq(lower, 4, length.out = 100))
@@ -1188,10 +1153,8 @@ test_that("exceedance() reads a growth estimate over the whole series (D44)", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # exceedance() reads the posterior through ecx(). Under D28 a growth EC50
-  # above growth's top reached it censored there, and against a threshold above
-  # that top the probability was an interval. Read over the whole series the
-  # draws are identified, and the probability is a number.
+  # exceedance() must receive draws searched over the whole tested series,
+  # not a growth-only range that would censor these EC50 draws.
   obj <- hurdle_cut_fixture(1.6)
   post <- suppressWarnings(ecx(obj, ecx_val = 50, which = "growth",
                                posterior = TRUE))
@@ -1205,11 +1168,9 @@ test_that("exceedance() reads a growth estimate over the whole series (D44)", {
 
 # ---- A hurdle pair over the whole series --------------------------------------
 
-# Both components are the packaged nec4param fit over every row, so every curve
-# spans the concentrations 0.0323 to 3.22 and no component's range stops short
-# of the other's. Sharing one set of draws is enough for what is asserted
-# here: the range each curve is read over, the point it is read at, and what
-# xform is applied to.
+# Reuse the same stored fit for both components. Shared draws suffice for
+# range, evaluation-point and transformation checks; this is not a newly
+# fitted independent hurdle pair.
 hurdle_pair <- function(growth = nec4param, survival = nec4param) {
   structure(list(growth = growth, survival = survival,
                  data = nec4param$fit$data,
@@ -1218,14 +1179,13 @@ hurdle_pair <- function(growth = nec4param, survival = nec4param) {
             class = c("bayesnechurdlefit", "bnecfit"))
 }
 
-# ---- ecnsec() beyond the range, between grid points, and xform (#437) --------
+# ECNSEC outside the range, between grid points and under transformations.
 
 test_that("ecnsec refuses an nsec beyond the range on every hurdle curve", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # D33. The nearest grid point was read, so 1000 on a series ending at 3.22
-  # returned the effect at 3.22 for every curve, with nothing said.
+  # Refuse a value beyond the range instead of reading the nearest endpoint.
   obj <- hurdle_pair()
   x <- obj$survival$fit$data$x
   for (w in c("combined", "growth", "survival")) {
@@ -1311,9 +1271,8 @@ test_that("ecnsec applies xform to nsec on a hurdle fit, with a warning", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # D33: xform was applied to the percentage returned. It is now applied to
-  # nsec, as on every other class, and a call supplying one is warned for one
-  # release.
+  # Apply xform to nsec before reading the effect, and retain the transition
+  # warning for callers accustomed to transforming the returned percentage.
   obj <- hurdle_pair()
   plain <- ecnsec(obj, nsec = 1.5)
   expect_warning(via <- ecnsec(obj, nsec = log(1.5), xform = exp),
@@ -1338,10 +1297,8 @@ test_that("ecnsec on a crf(log(x)) hurdle pair reads log(v) under exp at v", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # The pair is relabelled, not refitted: the formula says crf(log(x)) and the
-  # stored fits are those of crf(x), so the grid and the draws are the same and
-  # only the value nsec arrives as differs. Before D33 the inverse had to be
-  # applied to nsec by hand.
+  # Relabel the pair without refitting: the stored grid and draws still come
+  # from crf(x), while the declared formula describes logged input.
   logged <- nec4param
   logged$bayesnecformula <- bnf(y ~ crf(log(x), model = "nec4param"))
   h_log <- hurdle_pair(logged, logged)
@@ -1357,12 +1314,10 @@ test_that("ecnsec on a crf(log(x)) hurdle pair reads log(v) under exp at v", {
   }
 })
 
-# ---- The combined no-effect estimate under a transformed predictor (#520) -----
+# ---- The combined no-effect estimate under a transformed predictor ---------
 
-# The packaged nec4param fit relabelled to crf(`term`, ...), holding `recorded`
-# as its no-effect draws on the recorded scale. The draws are stored on the
-# fitted scale and censored against the fitted grid, as expand_nec() stores a
-# sampled nec, so a recorded value beyond the series is censored.
+# Relabel the packaged nec4param fit with `term`. Store `recorded` draws on
+# the fitted scale and censor them against its grid, as expand_nec() does.
 relabelled_component <- function(recorded, term = "I(-x)", fwd = function(v) -v) {
   fit <- nec4param
   fit$bayesnecformula <- bnf(stats::as.formula(
@@ -1452,7 +1407,7 @@ test_that("nec() keeps the censoring direction of a crf(I(-x)) pair", {
   expect_equal(as.numeric(combined)[-(1:20)], pmax(g, s)[-(1:20)])
 })
 
-# ---- The hurdle plot legend (#440) --------------------------------------------
+# ---- The hurdle plot legend -------------------------------------------------
 
 # The legend() and abline() calls a base plot of obj makes, read off the calls
 # rather than the device.
@@ -1488,8 +1443,7 @@ test_that("the hurdle legend reads low to high under a decreasing xform", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # The legend applied xform to the summary nec() returned, so under
-  # function(x) -x the interval was printed from high to low (#440).
+  # Keep interval entries ordered after a decreasing transformation.
   obj <- hurdle_pair()
   negate <- function(z) -z
   ne <- nec(obj, xform = negate)
@@ -1511,8 +1465,7 @@ test_that("the hurdle legend marks a censored no-effect estimate", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # The legend formatted signif() values only, so a bound read as a number
-  # under any xform (#440).
+  # Keep bound markers when formatting transformed legend values.
   obj <- censored_survival_pair()
   top <- signif(max(obj$survival$fit$data$x), 2)
   plain <- hurdle_legend(obj, which = "survival")$legend
@@ -1530,12 +1483,11 @@ test_that("the hurdle legend marks a censored no-effect estimate", {
   ))
 })
 
-# ---- The NSEC message on the combined no-effect estimate (#446) ---------------
+# The NSEC message on the combined no-effect estimate.
 
 test_that("nec() says when the combined value includes NSEC draws", {
-  # The message read the "toxicity_estimate" attribute, which both nec()
-  # methods set to "nec" whatever the equation, so it was never printed.
-  # Decided now from each component's ne_type.
+  # Read each component's ne_type: the toxicity_estimate attribute can say
+  # nec even when the stored values include NSEC draws.
   approx_msgs <- function(expr) {
     msgs <- testthat::capture_messages(suppressWarnings(expr))
     grep("combined value is approximate", msgs, value = TRUE)
@@ -1560,9 +1512,8 @@ test_that("nec() says when the combined value includes NSEC draws", {
   expect_length(approx_msgs(nec(hurdle_pair(unrecorded, unrecorded))), 0)
 })
 
-# ---- amend(add = ) on a hurdle fit with a Gamma growth component -----------
-# Both components are built from ecx4param. brm() is mocked and expand_manec()
-# returns the fits it is given, so each component's amend() completes.
+# Mock brm() and expansion so both component amend() calls complete
+# without sampling.
 test_that("amend(add = ) reaches both components of a Gamma hurdle (#436)", {
   d <- data.frame(x = nec_data$x, y = nec_data$y * 10)
   growth <- ecx4param

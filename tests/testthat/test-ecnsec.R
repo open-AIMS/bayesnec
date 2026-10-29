@@ -32,9 +32,8 @@ test_that("ecnsec argument validation behaves as expected", {
   # prob_vals must supply central, lower and upper quantiles, in that order
   expect_error(ecnsec(manec_example, nsec = 1.5, prob_vals = 0.9))
   expect_error(ecnsec(manec_example, nsec = 1.5, prob_vals = c(0.6, 0.9, 0.1)))
-  # hormesis_def must be one of "max" or "control"
-  # hormesis_def is removed, and a call still passing it is refused by name
-  # rather than absorbed by ... in silence. See D15 ruling 4.
+  # Refuse the removed hormesis_def argument by name instead of silently
+  # absorbing it through dots.
   expect_error(ecnsec(manec_example, nsec = 1.5, hormesis_def = "invalid"),
                "hormesis_def has been removed")
   expect_error(ecnsec(manec_example, nsec = 1.5, hormesis_def = "control"),
@@ -45,9 +44,8 @@ test_that("ecnsec argument validation behaves as expected", {
 
 
 test_that("ecnsec takes the ecx vocabulary and refuses direct", {
-  # T8: ecnsec inverts the ecx reference construction under the same type, so
-  # it takes the same four names minus "direct", which is a response value
-  # rather than a percentage and has no percent effect to report.
+  # Use the percentage-reference types accepted by ecx(). The direct type
+  # supplies a response value and defines no percentage effect to report.
   skip_on_cran()
   expect_length(ecnsec(nec4param, nsec = 1.5, resolution = 50), 3)
   expect_length(
@@ -73,13 +71,10 @@ test_that("the absolute ecnsec agrees with the ecx definition", {
 })
 
 
-# ---- a model set under every type --------------------------------------------
+# Model-set percentage references
 
-# ecx_asymptote() read object$fit, which a bayesmanecfit does not have, so
-# ecnsec(<set>, type = "relative") failed inside posterior with "Don't know how
-# to transform an object of class 'NULL'" -- a message naming neither the
-# argument nor the class. "absolute" and "range" worked on the same object, so
-# the failure was in the asymptote alone.
+# A model set has no single fit field. Its relative effect must use the
+# model-averaged asymptote aligned with the averaged curve.
 
 test_that("ecnsec answers a model set under every percentage type", {
   skip_on_cran()
@@ -93,9 +88,8 @@ test_that("ecnsec answers a model set under every percentage type", {
     expect_false(anyNA(o))
   }
   names(out) <- c("absolute", "relative", "range")
-  # The types order as their denominators do. manec_example's equations both
-  # carry a bot well below the observed response, so the control-to-bot span is
-  # the widest and the same decline is the smallest percentage of it.
+  # For this fixture, control-to-bot is the widest reference span and gives
+  # the smallest percentage for the same decline.
   expect_lt(out$relative[1], out$range[1])
   expect_lt(out$range[1], out$absolute[1])
 })
@@ -113,13 +107,12 @@ test_that("the model-averaged asymptote is one value per averaged draw", {
 })
 
 
-# ---- an nsec beyond the range (#437, D33) ------------------------------------
+# Concentrations outside the prediction range
 
 test_that("ecnsec refuses an nsec beyond the range on a fit and a model set", {
   skip_on_cran()
-  # The curve was evaluated at nsec itself, so 1000 on data reaching 3.22 was
-  # read off the curve extended past the data with nothing said. Every class
-  # now refuses it, naming the range.
+  # Refuse concentrations outside the prediction range rather than silently
+  # extrapolating the curve.
   for (obj in list(nec4param, manec_example)) {
     expect_error(ecnsec(obj, nsec = 1000, resolution = 50),
                  paste0("nsec = 1000 lies outside the observed range of the ",
@@ -186,7 +179,7 @@ test_that("ecnsec values inside the range are pinned", {
 })
 
 
-# ---- each draw against its own curve -----------------------------------------
+# Draw-specific curve comparisons
 
 test_that("ecnsec compares each draw with the same draw's curve at nsec", {
   skip_on_cran()
@@ -231,7 +224,7 @@ test_that("ecnsec takes one non-missing nsec on a fit and a model set", {
 })
 
 
-# ---- a joint refit whose levels span different ranges -------------------------
+# Joint levels with different prediction ranges
 
 test_that("ecnsec on a joint refit names the level whose range refused nsec", {
   skip_on_cran()

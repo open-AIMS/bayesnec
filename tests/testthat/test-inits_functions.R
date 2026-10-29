@@ -1,7 +1,5 @@
-# Regression tests for GitHub issue #162
-# beta_binomial + identity link: initial values must stay within (0, 1)
+# Initial curves for identity-link beta-binomial fits must stay inside (0, 1).
 
-# -- Shared test data (issue #162 reprex) ------------------------------------
 
 dat_real <- structure(
   list(
@@ -51,7 +49,6 @@ bb_family    <- beta_binomial(link = "identity")
 bb_response  <- dat_real$y / dat_real$trials
 bb_predictor <- dat_real$log.x
 
-# -- response_link_scale unit tests ------------------------------------------
 
 test_that("response_link_scale clamps identity-link beta_binomial away from 0 and 1", {
   response <- c(0, 0, 0.05, 0.5, 0.9, 0.95, 0.97, 1.0)
@@ -101,10 +98,8 @@ test_that("response_link_scale only-zeros edge case stays in (0, 1)", {
 })
 
 test_that("response_link_scale shifts a response at one bound inside it (#419)", {
-  # Every observation at 1 left no value below 1 to rescale towards, and the
-  # identity branch returned NaN; every observation at 0 gave Inf. Only
-  # ecxflat is built from such a response, and it is shifted by 1 / (2n), the
-  # correction survival_by_x() applies to a proportion of exactly 0 or 1.
+  # For ecxflat at a response bound, use the 1 / (2n) correction to obtain
+  # a finite value strictly inside the unit interval.
   for (fam in list(bernoulli(link = "identity"), binomial(link = "identity"),
                    beta_binomial(link = "identity"), Beta(link = "identity"))) {
     ones <- bayesnec:::response_link_scale(rep(1, 20), fam)
@@ -112,24 +107,20 @@ test_that("response_link_scale shifts a response at one bound inside it (#419)",
     expect_equal(ones, rep(1 - 1 / 40, 20), info = fam$family)
     expect_equal(zeros, rep(1 / 40, 20), info = fam$family)
   }
-  # A response that varies is rescaled as before, not shifted: its values stay
-  # distinct and its ends are set by its own observations inside the bounds.
+  # Rescale a varying response using its interior observations, preserving
+  # distinct values instead of applying the all-bound correction.
   mixed <- bayesnec:::response_link_scale(c(0, 0.5, 1),
                                           bernoulli(link = "identity"))
   expect_length(unique(mixed), 3)
   expect_equal(mixed[1], 0.005)
-  # A family with no bound is left alone.
   expect_identical(
     bayesnec:::response_link_scale(rep(1, 5), gaussian()), rep(1, 5)
   )
 })
 
 test_that("the init search accepts a constant inside the support (#419)", {
-  # check_init_predictions() asks for a declining curve with more than three
-  # values, which a constant never is, so every draw was rejected and the fit
-  # fell to Stan's own initialisation after n_trials rounds. A constant is held
-  # to the support of the mean instead, and on a response with no variation,
-  # whose band has no width, it is still initialised.
+  # A constant cannot pass a declining-curve check. Check ecxflat against
+  # mean support so it can initialise even when the response band has no width.
   x <- rep(c(0.1, 0.5, 1, 3, 10, 30), each = 5)
   fam <- bernoulli(link = "identity")
   pr <- brms::prior_string("beta(5, 2)", nlpar = "top", lb = 0, ub = 1)
@@ -139,7 +130,6 @@ test_that("the init search accepts a constant inside the support (#419)", {
   expect_length(inits, 3)
   tops <- vapply(inits, function(i) as.numeric(i$b_top), numeric(1))
   expect_true(all(tops > 0 & tops < 1))
-  # And on a response that varies, under a family with no bound.
   g <- make_good_inits("ecxflat", nec_data$x, nec_data$y, family = gaussian(),
                        priors = brms::prior_string("normal(0.5, 1)",
                                                    nlpar = "top"),
@@ -157,7 +147,6 @@ test_that("response_link_scale only-ones edge case stays in (0, 1)", {
   expect_true(all(result < 1))
 })
 
-# -- Helper to run the make_good_inits pipeline for a given model/prior ------
 
 run_init_test <- function(model, prior_type = "uninformative") {
   response_link <- bayesnec:::response_link_scale(bb_response, bb_family)
@@ -165,8 +154,7 @@ run_init_test <- function(model, prior_type = "uninformative") {
                                     response_link,
                                     prior_type = prior_type)
   set.seed(42)
-  # The family is passed because fit_bayesnec() passes it: it is what tells the
-  # search that the mean of this response lives in (0, 1). See #309.
+  # Pass the family so the search enforces the mean's support.
   inits <- bayesnec:::make_good_inits(
     model, bb_predictor, response_link, family = bb_family,
     priors = priors, chains = 4, seed = 42
@@ -181,21 +169,11 @@ get_pred_fct_args <- function(model) {
   setdiff(fct_args, "x")
 }
 
-# -- make_good_inits across models and prior types ---------------------------
-# Models valid for beta_binomial + identity (excludes neclin, neclinhorme,
-# ecxlin which are dropped by check_models for this family/link combo).
-#
-# Some model/prior combos cannot find good inits within the default 10k
-# trials for this particular dataset --- their prediction curves exceed
-# the (0, 1) bounds due to hormesis slopes or sigmoidal shapes. These
-# are pre-existing limitations, not caused by the identity-link fix.
-# We split models into those expected to succeed and those that may
-# fall back to Stan's random initialisation.
+# This fixture tests admissible beta-binomial equations under an identity
+# link. Initial-value success is specific to these data and prior choices.
 
-# Models that reliably find good inits for both prior types. nechorme is
-# rescued by refine_inits() (its hormesis slope term exp(b_slope) * x has no
-# fractional power, so re-drawing b_slope/b_beta can bring predictions into
-# range).
+# refine_inits() can rescue nechorme by redrawing its slope and beta; its
+# hormetic term has no fractional power of the predictor.
 bb_models_expected_pass <- c(
   "nec3param", "nec4param",
   "nechorme", "nechorme4", "necsigm",
@@ -207,15 +185,9 @@ bb_models_expected_pass <- c(
   "ecxhormebc4", "ecxhormebc5"
 )
 
-# Models that are structurally invalid for this dataset: they raise the
-# predictor x to a fractional power (nechormepwr and nechorme4pwr use
-# x^(1/(1+exp(b_slope))); ecxsigm uses x^exp(b_d)). The predictor here is
-# log(mgL + 0.1), which is negative for low concentrations, and a negative
-# base with a non-integer exponent is NaN in R for every parameter draw --- no
-# init could fix this because the same term is evaluated in Stan. bnec() never
-# reaches init-finding for them: check_models() drops them upstream whenever
-# the predictor contains negative values. The test below asserts that
-# behaviour rather than exercising make_good_inits() on a path bnec() prevents.
+# The logged predictor is negative at low doses, making fractional powers
+# undefined. check_models() must exclude these equations before the search;
+# initial-value retries cannot repair an invalid predictor domain.
 bb_models_negative_x <- c(
   "nechormepwr", "nechorme4pwr", "ecxsigm"
 )
@@ -227,7 +199,6 @@ for (mod in bb_models_expected_pass) {
              " with ", pt, " priors (issue #162 data)"), {
       inits <- run_init_test(mod, prior_type = pt)
 
-      # Should NOT fall back to random init
       expect_false(
         identical(inits, list(random = "random")),
         info = paste("make_good_inits should find valid inits for",
@@ -236,7 +207,6 @@ for (mod in bb_models_expected_pass) {
       expect_type(inits, "list")
       expect_length(inits, 4)
 
-      # Each chain's init predictions should be in (0, 1)
       pred_fct <- get(paste0("pred_", mod),
                       envir = asNamespace("bayesnec"))
       fct_args <- get_pred_fct_args(mod)
@@ -254,10 +224,8 @@ for (mod in bb_models_expected_pass) {
   }
 }
 
-# The fractional-power models never reach init-finding for this dataset:
-# check_models() drops them upstream because the predictor contains negative
-# values. Assert that upstream guard directly (this is the behaviour that
-# protects make_good_inits() from ever seeing them via bnec()).
+# Check the upstream exclusion directly: invalid fractional-power equations
+# must not reach initial-value search on these negative predictors.
 test_that("check_models drops fractional-power models for negative predictors", {
   form <- bnf(y | trials(trials) ~ crf(log.x, "nec3param"))
   bdat <- model.frame(form, dat_real)
@@ -267,17 +235,12 @@ test_that("check_models drops fractional-power models for negative predictors", 
     bayesnec:::check_models(requested, bb_family, bdat)
   )
 
-  # The three fractional-power models are dropped ...
   expect_false(any(bb_models_negative_x %in% kept),
                info = "fractional-power models must be dropped for negative x")
-  # ... while models valid for negative predictors are retained.
   expect_true(all(c("nec3param", "ecxexp") %in% kept))
 })
 
-# #207 part 1: a prior on the family's own dispersion parameter -- sigma, shape,
-# phi -- used to kill make_inits() outright, because the name check compared the
-# prior's parameter names against the *curve's* arguments as an exact set. A
-# user therefore could not regularise dispersion at all.
+# Dispersion-prior rows must not enter the curve-parameter name check.
 
 disp_prior_df <- function(class = "sigma") {
   data.frame(prior = c("normal(1,1)", "normal(0,5)", "normal(0.5,1)",
@@ -299,9 +262,8 @@ test_that("make_inits accepts a prior on the dispersion parameter", {
 })
 
 test_that("no initial value is generated for the dispersion parameter", {
-  # Deliberate: Stan random-initialises any parameter absent from an init list,
-  # and bayesnec has never given sigma an init. The prior still reaches brm();
-  # only the init search ignores it.
+  # Stan initialises dispersion parameters absent from the init list. Their
+  # priors still reach brm(); only the curve search ignores them.
   out <- bayesnec:::make_inits("nec4param",
                                c("b_top", "b_beta", "b_bot", "b_nec"),
                                priors = disp_prior_df(), chains = 2)
@@ -321,11 +283,7 @@ test_that("a prior naming a parameter the curve does not have still errors", {
   )
 })
 
-# #244: a constant() prior fixes a parameter, but has no entry in the sampling
-# table make_inits() looks distributions up in, so the whole init search died
-# with "attempt to apply non-function". Fixing a parameter then required the
-# user to hand-write an `init` list for every *other* parameter in order to
-# skip the search, which is what example7 (#193) had to do.
+# A constant prior supplies its fixed value without a distribution draw.
 
 const_prior_df <- function(prior_bot = "constant(0)", lb = "", ub = "") {
   data.frame(prior = c("normal(1,1)", "normal(0,5)", prior_bot,
@@ -345,7 +303,7 @@ test_that("make_inits assigns a constant prior rather than sampling it", {
     expect_setequal(names(chain), fct_args)
     expect_equal(as.numeric(chain$b_bot), 0)
   }
-  # a non-zero constant is carried through as itself, not coerced
+  # Preserve a nonzero constant exactly.
   out2 <- bayesnec:::make_inits("nec4param", fct_args,
                                priors = const_prior_df("constant(0.5)"),
                                chains = 2)
@@ -353,9 +311,8 @@ test_that("make_inits assigns a constant prior rather than sampling it", {
 })
 
 test_that("a constant outside its own bounds does not hang", {
-  # The bound-respecting redraw loops until the value falls inside lb/ub. A
-  # constant cannot be redrawn, so without the branch this spins forever --
-  # a hang rather than an error, which is why it is tested explicitly.
+  # A constant cannot be redrawn into its bounds. Skip rejection sampling
+  # for fixed values to avoid an infinite loop.
   out <- bayesnec:::make_inits(
     "nec4param", c("b_top", "b_beta", "b_bot", "b_nec"),
     priors = const_prior_df("constant(0)", lb = "1", ub = "10"), chains = 2
@@ -364,10 +321,8 @@ test_that("a constant outside its own bounds does not hang", {
 })
 
 test_that("the fixed value is kept for the curve check, not dropped", {
-  # make_good_inits() evaluates the candidate curve, and a parameter fixed at
-  # bot = 0 is genuinely part of that curve. Dropping the constant here -- the
-  # obvious reading of "skip constant priors" -- makes every candidate fail the
-  # range check and sends the search to Stan's defaults after 10,000 trials.
+  # Keep fixed values during curve checks: dropping bot = 0 leaves the
+  # prediction function without a required parameter.
   x <- as.numeric(rep(1:10, each = 5))
   set.seed(42)
   y <- 3 * exp(-exp(-0.5) * pmax(x - 4, 0)) + rnorm(length(x), 0, 0.1)
@@ -384,8 +339,7 @@ test_that("the fixed value is kept for the curve check, not dropped", {
 })
 
 test_that("refine_inits skips a parameter that is fixed", {
-  # refine_inits() re-draws slope/d/beta from its own copy of the sampling
-  # table, so a constant on one of those hit the identical error.
+  # Refinement must also skip a parameter fixed by constant().
   x <- as.numeric(rep(1:10, each = 5))
   priors <- const_prior_df()
   priors$prior[priors$nlpar == "beta"] <- "constant(-0.5)"
@@ -425,12 +379,8 @@ test_that("constant() is read as brms writes it, not as a bare number", {
 })
 
 test_that("a fixed nec still reads as a nec, not silently as an NSEC", {
-  # brms carries a constant parameter into the draws as a zero-variance column
-  # and fixef() reports it, so extract_pars() finds it and expand_nec() keeps
-  # the model in the nec class. If that ever changed, extract_pars() would
-  # return NA, expand_nec() would fall through to mod_class <- "ecx", and the
-  # reported NEC would silently become an NSEC -- a wrong answer with nothing
-  # to signal it. Pinned here because #244 makes fixing `nec` a one-liner.
+  # Keep a fixed nec in the extracted coefficients. Otherwise expand_nec()
+  # can misclassify the equation and report an NSEC instead of its NEC.
   fef <- matrix(c(4, 4, 4, 3.04, 2.9, 3.2), nrow = 2, byrow = TRUE,
                 dimnames = list(c("nec_Intercept", "top_Intercept"),
                                 c("Estimate", "Q2.5", "Q97.5")))
@@ -438,7 +388,7 @@ test_that("a fixed nec still reads as a nec, not silently as an NSEC", {
   out <- bayesnec:::extract_pars("nec", structure(list(), class = "brmsfit"))
   expect_false(identical(out, NA))
   expect_equal(unname(out["Estimate"]), 4)
-  # and the zero-width interval a fixed parameter has is not read as missing
+  # A fixed parameter's zero-width interval is not missing.
   expect_equal(unname(out["Q2.5"]), 4)
 })
 
@@ -451,12 +401,8 @@ test_that("a constant prior value is not evaluated against the caller's data", {
 })
 
 test_that("the fixed parameter is dropped before the inits reach brm", {
-  # Stan moves a constant parameter out of its `parameters` block, so an init
-  # for it has nothing to initialise. Both backends currently accept such an
-  # init and ignore it, so this pins a deliberate choice rather than a
-  # constraint that binds: bayesnec does not send brm() an init for a parameter
-  # Stan does not declare. The value is carried through the search and removed
-  # only here, in add_brm_defaults().
+  # Keep constants through curve checks, then remove their initial values
+  # before brm(): Stan does not declare them in its parameters block.
   x <- as.numeric(rep(1:10, each = 5))
   set.seed(42)
   y <- 3 * exp(-exp(-0.5) * pmax(x - 4, 0)) + rnorm(length(x), 0, 0.1)
@@ -470,17 +416,12 @@ test_that("the fixed parameter is dropped before the inits reach brm", {
   )
   expect_false("b_bot" %in% names(out$init[[1]]))
   expect_setequal(names(out$init[[1]]), c("b_top", "b_beta", "b_nec"))
-  # the prior itself must still reach brm(); only the init is dropped
   expect_true("constant(0)" %in% out$prior$prior)
 })
 
 test_that("a supplied init is honoured whether or not the data check is run", {
-  # add_brm_defaults() used to run the search when `init` was absent OR when
-  # skip_check was TRUE, so a caller who supplied initial values under
-  # skip_check = TRUE paid for a search -- measured at 577 s on a fixture that
-  # cannot be initialised -- and then had what they supplied overwritten by its
-  # result. The two conditions answer different questions: whether anyone needs
-  # initial values, and whether the data has been checked. See #290.
+  # A supplied init must bypass the search even under skip_check = TRUE.
+  # Skipping data checks does not request replacement initial values.
   x <- as.numeric(rep(1:10, each = 5))
   set.seed(42)
   y <- 3 * exp(-exp(-0.5) * pmax(x - 4, 0)) + rnorm(length(x), 0, 0.1)
@@ -502,7 +443,7 @@ test_that("a supplied init is honoured whether or not the data check is run", {
     expect_false(searched)
     expect_identical(out$init, "random")
   }
-  # Absent, the search still runs on both routes.
+  # Search when init is absent on either skip_check route.
   for (sc in c(TRUE, FALSE)) {
     searched <- FALSE
     suppressMessages(
@@ -513,14 +454,9 @@ test_that("a supplied init is honoured whether or not the data check is run", {
     expect_true(searched)
   }
 })
-# --- #244 x #148: the two halves of the constant-prior NA ---------------------
-# brms carries a parameter fixed by constant() into the draws as a zero-variance
-# column, and posterior returns NA for it. Before #148 Part D that NA reached
-# `if (all(failed))` in rhat.bayesmanecfit and errored outright, and reached
-# `failed` in check_sampling as an NA that made screen_models report a drop it
-# had not performed. Part D excludes zero-variance parameters from the screen;
-# this is the end-to-end case, which needs both halves to exist -- the fit needs
-# the constant() support added here, the pass needs Part D's exclusion.
+# Fixed parameters produce zero-variance draws and unavailable diagnostics.
+# Exclude those parameters from screening so they do not cause an NA verdict
+# or an error when summarising a model set.
 
 test_that("a fixed parameter does not break rhat on a multi-model fit", {
   skip_on_cran()
@@ -528,8 +464,7 @@ test_that("a fixed parameter does not break rhat on a multi-model fit", {
   x <- rep(seq(0, 5, length.out = 20), 3)
   y <- 3 * exp(-exp(-0.5) * pmax(x - 2, 0)) + rnorm(length(x), 0, 0.1)
   d <- data.frame(x = x, y = y)
-  # nec4param and ecx4param, not nec3param: nec3param is dropped for a Gaussian
-  # response, and this needs two candidates to reach rhat.bayesmanecfit.
+  # Use two candidate equations so this reaches the model-set rhat method.
   f <- y ~ crf(x, model = c("nec4param", "ecx4param"))
   p <- lapply(get_priors(f, data = d, family = gaussian()), function(z) {
     z$prior[z$nlpar == "top"] <- "constant(3)"
@@ -541,21 +476,19 @@ test_that("a fixed parameter does not break rhat on a multi-model fit", {
   ))
   skip_if_not(is_bayesmanecfit(fit), "both candidates were needed for this test")
 
-  # the error this used to raise was `if (all(failed))` on an NA
   r <- expect_silent(rhat(fit, rhat_cutoff = 99))
   verdicts <- vapply(r, "[[", logical(1), "failed")
   expect_false(anyNA(verdicts))
-  # the fixed parameter is out of the screen rather than in it as an NA
+  # Exclude the fixed parameter rather than retaining an NA diagnostic.
   expect_false(anyNA(r[[1]]$rhat_vals))
   expect_false("top" %in% names(r[[1]]$rhat_vals))
 
-  # and the same on the check_sampling side
   tab <- check_sampling(fit, rhat_cutoff = 99, ess_cutoff = 0,
                         divergence_cutoff = 1e6)
   expect_false(anyNA(tab$failed))
   expect_false(anyNA(tab$max_rhat))
   expect_false(any(tab$failed))
-  # screen_models must be a genuine no-op here, not a silent one
+  # Check that a reported no-op leaves the model set unchanged.
   expect_message(
     out <- screen_models(fit, rhat_cutoff = 99, ess_cutoff = 0,
                          divergence_cutoff = 1e6),
@@ -564,14 +497,9 @@ test_that("a fixed parameter does not break rhat on a multi-model fit", {
   expect_equal(length(out$mod_fits), length(fit$mod_fits))
 })
 
-# --- #245: the ogl offset must not reach the init name check ------------------
-# make_inits() tests exact set equality between the prior's parameter names and
-# the curve's own arguments. The class filter added by #207/#231 already drops
-# an sd row, but the ogl offset carries class "b" and survives it, so the check
-# rejected the whole set -- which is what stopped a user supplying by hand the
-# group-level prior that was never generated. Filtered in add_brm_defaults(),
-# alongside the dispersion parameters, for the same reason: neither plays any
-# part in getting the mean curve inside the response range.
+# The curve search must exclude auxiliary ogl and dispersion priors while
+# retaining them for brm(). The ogl row has class b, so class filtering
+# alone does not remove it.
 
 test_that("a group-level prior does not make the init search reject the set", {
   x <- as.numeric(rep(1:10, each = 5))
@@ -581,7 +509,6 @@ test_that("a group-level prior does not make the init search reject the set", {
     "nec4param", validate_family("Beta"), x, y,
     group_spec = list(nlpars = "ogl", ogl = TRUE)
   )
-  # both rows are present in what reaches brm()
   expect_true(any(priors$class == "sd" & priors$nlpar == "ogl"))
   expect_true(any(priors$class == "b" & priors$nlpar == "ogl"))
   out <- suppressMessages(
@@ -589,9 +516,7 @@ test_that("a group-level prior does not make the init search reject the set", {
                                 "nec4param", validate_family("Beta"), x, y,
                                 skip_check = FALSE, custom_name = NULL)
   )
-  # the init search ran and produced values for the curve parameters only
   expect_setequal(names(out$init[[1]]), c("b_top", "b_bot", "b_beta", "b_nec"))
-  # and the group-level priors still reach brm() untouched
   expect_true(any(out$prior$class == "sd" & out$prior$nlpar == "ogl"))
   expect_true(any(out$prior$class == "b" & out$prior$nlpar == "ogl"))
 })
@@ -617,19 +542,14 @@ test_that("a group-level sd on a curve parameter leaves its own init alone", {
 })
 
 test_that("a grouped fit on a bounded family initialises and samples", {
-  # The end-to-end case for #245, and the one that matters: the prior fix alone
-  # does NOT get this far. Stan initialises a lower-bounded sd as
-  # exp(uniform(-2, 2)) whatever prior is declared, and the ogl offset is
-  # unbounded, so without initial values of their own the mean starts outside a
-  # (0, 1) response's support and brm() returns a fit with no draws. Verified
-  # by running it both ways: priors only failed with "Initialization failed",
-  # priors plus inits sampled.
+  # A group prior alone does not initialise the group terms. Supply their
+  # initial values too, and check that the fit actually contains draws.
   skip_on_cran()
   set.seed(245)
   n_tank <- 12
   x <- rep(seq(0, 4, length.out = 15), each = 4)
   tank <- factor(rep(seq_len(n_tank), length.out = length(x)))
-  # a genuine tank effect, so this exercises an estimated group-level term
+  # Generate an actual tank effect so the group-level term is estimated.
   offset <- rnorm(n_tank, 0, 0.04)[as.integer(tank)]
   mu <- 0.05 + (0.9 - 0.05) * exp(-exp(-0.4) * pmax(x - 2, 0)) + offset
   mu <- pmin(pmax(mu, 0.01), 0.99)
@@ -641,17 +561,14 @@ test_that("a grouped fit on a bounded family initialises and samples", {
          chains = 2, seed = 245, refresh = 0)
   ))
   expect_s3_class(fit, "bayesnecfit")
-  # a fit that failed to initialise carries no draws at all
+  # A fit that fails initialisation has no draws.
   expect_gt(brms::ndraws(fit$fit), 0)
-  # the group-level standard deviation was estimated, not merely declared
   expect_true(any(grepl("^sd_tank", brms::variables(fit$fit))))
 })
 
 test_that("group_inits reads its indices from the model brms will build", {
-  # brms numbers group-level terms by its own internal ordering: one pgl term
-  # over four parameters becomes four separately indexed terms, not one.
-  # Guessing that ordering would silently mismatch the initial values, so the
-  # dimensions come from make_standata().
+  # Read group-term indices and dimensions from make_standata(): a pgl term
+  # over several parameters creates several separately indexed terms.
   set.seed(245)
   d <- data.frame(x = runif(60, 0, 4), y = runif(60, 0.1, 0.9),
                   tank = factor(rep(1:12, 5)))
@@ -661,8 +578,8 @@ test_that("group_inits reads its indices from the model brms will build", {
   )
   pr <- brms::prior_string("student_t(3, 0, 0.08)", class = "sd",
                            nlpar = "ogl")
-  # group_spec rather than the old ogl flag: #294 generalised the zero-started
-  # intercepts from `ogl` alone to every deviation intercept a term introduces.
+  # Pass the group specification so the helper can identify intercepts
+  # that need zero initial values.
   gi <- bayesnec:::group_inits(bf_one, d, Beta(link = "identity"), pr,
                                group_spec = list(nlpars = "ogl", ogl = TRUE))
   expect_setequal(names(gi), c("sd_1", "z_1", "b_ogl"))
@@ -671,7 +588,6 @@ test_that("group_inits reads its indices from the model brms will build", {
   expect_equal(as.numeric(gi$b_ogl), 0)
   expect_equal(as.numeric(gi$sd_1), 0.08)
 
-  # a group-level term on two parameters gets two indices, not one
   bf_two <- brms::bf(
     y ~ bot + (top - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)),
     bot ~ 1 + (1 | tank), top ~ 1 + (1 | tank), beta ~ 1, nec ~ 1, nl = TRUE
@@ -687,14 +603,11 @@ test_that("sd_prior_scales reads the scale out of a generated prior", {
     brms::prior_string("student_t(3, 0, 0.5)", class = "sd", nlpar = "beta") +
     brms::prior_string("normal(0, 5)", nlpar = "beta")
   expect_equal(bayesnec:::sd_prior_scales(pr), c(0.0979, 0.5))
-  # no sd rows, and a set with no class column at all, both give nothing
   expect_length(bayesnec:::sd_prior_scales(
     brms::prior_string("normal(0, 5)", nlpar = "beta")), 0)
   expect_length(bayesnec:::sd_prior_scales(NULL), 0)
-  # Only the distributions whose last argument is a scale are read. gamma() and
-  # exponential() carry a rate there and constant() a value, so taking the last
-  # number from them returns something that is not a scale. A user-supplied
-  # gamma(2, 100) previously produced a starting value of 100.
+  # Read only distributions whose final argument is a scale. Gamma and
+  # exponential priors use rates, and constant() supplies a value.
   mixed <- data.frame(
     prior = c("exponential(25)", "student_t(3, 0, 0.09)", "constant(0)",
               "normal(0, 0.5)", "gamma(2, 100)", "cauchy(0, 2)"),
@@ -706,13 +619,9 @@ test_that("sd_prior_scales reads the scale out of a generated prior", {
 # mu_support() and mu_is_constrained() are tested directly in
 # test-mu_support.R; what is tested here is the gate that consumes them.
 test_that("the adapt_delta raise is gated on the support of mu", {
-  # An unconstrained mean has no boundary for a group-level offset to cross, so
-  # a grouped gaussian fit is left at the brms default; every other family under
-  # an identity link restricts mu and gets the raise. A non-identity link is
-  # decided by whether the range of its inverse lies inside that support, which
-  # is not the same as "any link other than identity is safe": Beta(link =
-  # "log") is not, because exp() is unbounded above. See mu_is_constrained(),
-  # #245 and #256.
+  # For an equation with unprotected group deviations, decide the raise from
+  # the mean support and inverse-link range together. A Beta log link is
+  # unsafe because exp() can exceed one.
   x <- as.numeric(rep(1:10, each = 5))
   set.seed(245)
   y <- plogis(rnorm(50, 1, 1))
@@ -722,12 +631,9 @@ test_that("the adapt_delta raise is gated on the support of mu", {
       skip_check = TRUE, custom_name = NULL, group_spec = group
     ))
   }
-  # neclin, deliberately. #257 and #294 apply the deviation multiplicatively
-  # wherever they can, and on an equation whose mean is confined by its own
-  # parameters that removes the excursion the raise exists to mitigate, and the
-  # raise with it. neclin's mean is unbounded below, so no transform is defined
-  # for it and the mu-support gate this test is about is still the thing
-  # deciding. The equation gate is asserted separately in test-check_priors.R.
+  # Use neclin to isolate the support gate: its unbounded-below mean cannot
+  # use a support-preserving deviation transform. Test equation-specific
+  # transform gates separately in test-check_priors.R.
   grouped <- list(nlpars = c("top", "slope", "nec"), ogl = FALSE)
   defaults_lin <- function(family, group) {
     suppressMessages(bayesnec:::add_brm_defaults(
@@ -736,7 +642,6 @@ test_that("the adapt_delta raise is gated on the support of mu", {
     ))
   }
 
-  # constrained mean, grouped: raised
   expect_equal(defaults_lin(validate_family("Beta"), grouped)$control$adapt_delta,
                0.99)
   expect_equal(defaults_lin(validate_family("Gamma"), grouped)$control$adapt_delta,
@@ -744,29 +649,26 @@ test_that("the adapt_delta raise is gated on the support of mu", {
   expect_equal(
     defaults_lin(validate_family("poisson"), grouped)$control$adapt_delta, 0.99
   )
-  # unconstrained mean, grouped: left alone
   expect_null(defaults_lin(validate_family("gaussian"), grouped)$control)
   expect_null(defaults_lin(gaussian(link = "log"), grouped)$control)
   expect_null(defaults_lin(Beta(link = "logit"), grouped)$control)
-  # and the ogl case, which #257 transforms, is not raised at all
+  # A support-preserving ogl transform needs no excursion-specific raise.
   expect_null(
     defaults(validate_family("Beta"), list(nlpars = "ogl", ogl = TRUE))$control
   )
-  # nor a term on top, bot, nec or beta on an equation whose mean lies between
-  # bot and top, which is what #294 adds
+  # The parameter transforms likewise protect this bounded curve.
   expect_null(defaults(validate_family("Beta"), grouped)$control)
   # constrained mean, ungrouped: left alone, since there is no unconstrained
   # deviation to carry the mean out of range
   expect_null(defaults(validate_family("Beta"), NULL)$control)
 
-  # a control list supplied for another reason keeps its own entries
   both <- suppressMessages(bayesnec:::add_brm_defaults(
     list(chains = 2, control = list(max_treedepth = 12)), "neclin",
     validate_family("Beta"), x, y, skip_check = TRUE, custom_name = NULL,
     group_spec = grouped))
   expect_equal(both$control$max_treedepth, 12)
   expect_equal(both$control$adapt_delta, 0.99)
-  # and an adapt_delta the caller chose is theirs, including a lower one
+  # Preserve an explicit adapt_delta, including a lower value.
   own <- suppressMessages(bayesnec:::add_brm_defaults(
     list(chains = 2, control = list(adapt_delta = 0.8)), "neclin",
     validate_family("Beta"), x, y, skip_check = TRUE, custom_name = NULL,
@@ -775,11 +677,8 @@ test_that("the adapt_delta raise is gated on the support of mu", {
 })
 
 test_that("a constant ogl intercept gets no initial value", {
-  # Fixing the ogl intercept at zero is the clean way to remove its confounding
-  # with top and bot. Stan then does not declare b_ogl, so an init for it has
-  # nothing to initialise. add_brm_defaults() strips inits for constant
-  # parameters before the group inits are appended, so fit_bayesnec() repeats
-  # the strip. Same hygiene as #244.
+  # A constant ogl intercept has no Stan parameter to initialise. Strip its
+  # init after group_inits() appends it, while preserving the prior.
   set.seed(245)
   d <- data.frame(x = rep(seq(0, 4, length.out = 15), 4),
                   y = runif(60, 0.1, 0.9), tank = factor(rep(1:12, 5)))
@@ -803,23 +702,17 @@ test_that("a constant ogl intercept gets no initial value", {
     bayesnec:::is_constant_prior(const$prior) & const$class == "b" &
       nzchar(const$nlpar)])
   expect_false("b_ogl" %in% names(gi[keep]))
-  # and the group-level terms themselves still get theirs
   expect_true(all(c("sd_1", "z_1") %in% names(gi[keep])))
 })
 
 test_that("group_inits works when the response is invalid for the fit's family", {
-  # The regression for the bug that hid inside this function's own error
-  # handling. group_inits() asks make_standata() for the group-level
-  # dimensions, and make_standata() validates the response against the family's
-  # support. A Beta response still carrying exact zeros and ones -- which is
-  # what reaches here before check_data() has nudged them -- made that call
-  # error, the try() turned it into an empty init list, and the fit then failed
-  # to initialise for a reason nothing reported. The dimensions do not depend
-  # on the family at all, so the query uses gaussian() and cannot fail this way.
+  # Group-term dimensions must remain available for exact boundary responses.
+  # The fit-family standata query can reject them; the Gaussian fallback
+  # obtains the dimensions without that response-support refusal.
   set.seed(245)
   d <- data.frame(x = rep(seq(0, 4, length.out = 15), 4),
                   colony = factor(rep(1:5, 12)))
-  # exact 0 and 1 present, as the coral live-tissue response has
+  # Include exact zeros and ones to exercise the support-validation fallback.
   d$y <- c(rep(1, 20), runif(20, 0.1, 0.9), rep(0, 20))
   bb <- brms::bf(
     y ~ bot + (top - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)),
@@ -830,7 +723,6 @@ test_that("group_inits works when the response is invalid for the fit's family",
   gi <- expect_no_warning(
     bayesnec:::group_inits(bb, d, Beta(link = "identity"), pr)
   )
-  # pgl over four parameters gives four separately indexed group-level terms
   expect_setequal(names(gi), c("sd_1", "z_1", "sd_2", "z_2",
                                "sd_3", "z_3", "sd_4", "z_4"))
   expect_true(all(vapply(gi[grep("^z_", names(gi))],
@@ -841,8 +733,7 @@ test_that("group_inits works when the response is invalid for the fit's family",
 })
 
 test_that("pgl on a bounded family initialises and samples", {
-  # The end-to-end counterpart: pgl() is the case the silent-empty-inits bug
-  # actually broke, and it broke on a response carrying exact zeros and ones.
+  # Exercise pgl initialisation end to end with exact boundary responses.
   skip_on_cran()
   set.seed(245)
   n_col <- 5
@@ -866,14 +757,9 @@ test_that("pgl on a bounded family initialises and samples", {
 })
 
 test_that("group_inits works for a family whose formula carries trials()", {
-  # The regression for the binomial half of the make_standata() query. The
-  # dimensions do not depend on the family, so the call was made with
-  # gaussian() to survive a Beta response carrying exact zeros and ones -- but
-  # `trials` is not a valid aterm for gaussian, so every binomial and
-  # beta_binomial fit took the error path instead, got an empty init list, and
-  # kept the whole of #245 for two of the three bounded families the fix is
-  # for. The fit's own family is asked first now, gaussian() only as a
-  # fallback, and neither case can take the other's failure.
+  # Ask make_standata() with the fit's own family before the Gaussian
+  # fallback: Gaussian does not accept trials(), so it cannot query these
+  # binomial group-term dimensions.
   set.seed(245)
   d <- data.frame(y = rbinom(60, 20, 0.5), tr = rep(20, 60),
                   x = rep(seq(0, 4, length.out = 15), 4),
@@ -896,8 +782,7 @@ test_that("group_inits works for a family whose formula carries trials()", {
 })
 
 test_that("a binomial grouped fit initialises and samples", {
-  # The end-to-end counterpart of the test above, and the case NEWS names but
-  # the first version of the fix did not actually reach.
+  # Exercise the trials() route through a complete grouped fit.
   skip_on_cran()
   set.seed(245)
   n_tank <- 12
@@ -920,10 +805,8 @@ test_that("a binomial grouped fit initialises and samples", {
 })
 
 test_that("a hurdle grouped fit initialises and samples", {
-  # define_prior() returns early for a hurdle family, so the group priors are
-  # added on a separate branch. Pinned end to end rather than at prior level
-  # only: the branch has its own response (survivors, link-scaled) and its own
-  # route through group_inits(), and neither is exercised by the unit tests.
+  # The hurdle branch constructs priors and group inits separately from
+  # link-scaled survivors. Exercise it through a fitted model.
   skip_on_cran()
   set.seed(245)
   n_site <- 6
@@ -945,13 +828,8 @@ test_that("a hurdle grouped fit initialises and samples", {
 })
 
 test_that("group_inits works for a formula carrying a rate() aterm", {
-  # The companion to the trials() case, and the reason the fix is a fallback
-  # rather than a special case for trials. rate() arrived on dev under #136,
-  # after the group-level work was written, and is valid for poisson and
-  # negbinomial only -- so a gaussian()-only query to make_standata() fails on
-  # it in exactly the same way. Asking the fit's own family first covers it
-  # without knowing it exists. Confirmed that the gaussian()-only form does
-  # error here, so this is a live case rather than a hypothetical one.
+  # rate() also excludes a Gaussian-only standata query. Trying the fit's
+  # own family first supports family-specific terms without special cases.
   set.seed(245)
   d <- data.frame(y = rpois(60, 40), expo = rep(2, 60),
                   x = rep(seq(0, 4, length.out = 15), 4),
@@ -977,9 +855,8 @@ test_that("group_inits works for a formula carrying a rate() aterm", {
 
 
 test_that("the search is bounded by attempts alone, and the cap is 1e4", {
-  # A wall-clock bound was tried for #266 and removed: it made the number of
-  # attempts, and so the initial values, and so the fit, a function of machine
-  # load. Two of these assertions exist to stop it coming back.
+  # Bound search by attempts, not elapsed time, so machine load cannot
+  # change the initial values for a fixed seed.
   expect_false("max_seconds" %in% names(formals(make_good_inits)))
   expect_equal(formals(make_good_inits)$n_trials, quote(1e4))
   # report_after says the search is still running; it must not end it.
@@ -987,13 +864,8 @@ test_that("the search is bounded by attempts alone, and the cap is 1e4", {
 })
 
 test_that("the search is deterministic given a seed", {
-  # The property the wall-clock bound broke, and the reason it was removed: two
-  # runs with the same seed must agree whatever else the machine is doing. A
-  # time-bounded search does fewer attempts under load, so a busy machine got
-  # different initial values -- and therefore a different fit -- from an idle
-  # one. Asserted on the result rather than on the absence of the argument,
-  # which the sibling test above covers, because it is the behaviour that
-  # matters.
+  # Compare actual results under one seed; checking only the absence of a
+  # time-limit argument would not establish deterministic search behaviour.
   skip_on_cran()
   x <- rep(c(1, 5, 20, 100), each = 5)
   y <- rep(c(0.9, 0.6, 0.3, 0.1), each = 5)
@@ -1009,16 +881,9 @@ test_that("the search is deterministic given a seed", {
   expect_equal(run(), run())
 })
 
-# Save and put back the caller's random number stream. Written on exists()
-# rather than on `.Random.seed` directly: a session that has not yet used the
-# RNG has no such object and reading it errors, which a developer running one
-# of these blocks alone would hit. Removing the object is what restores such a
-# session; assigning one would leave it seeded. The same idiom is at
-# R/helpers.R:129 and R/parallel_models.R:250. Needed since #310, which made
-# the search follow the ambient stream, so a block that advances it decides
-# where the next block in the file starts. Used as
-# `old <- saved_stream(); on.exit(restore_stream(old), add = TRUE)`, in the
-# block's own frame so that on.exit() fires when the block ends.
+# A session may lack .Random.seed. Preserve that absence as well as any
+# existing seed, and register restore_stream() in the test's own frame
+# so its on.exit() handler runs when the test ends.
 saved_stream <- function() {
   if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
     get(".Random.seed", envir = globalenv(), inherits = FALSE)
@@ -1034,21 +899,14 @@ restore_stream <- function(old) {
 }
 
 test_that("with no seed the search follows the caller's stream", {
-  # #310. The search called set.seed(seed) unconditionally, and set.seed(NULL)
-  # re-initialises the stream from the clock and the process id rather than
-  # leaving it alone. A user who ran set.seed() before bnec() therefore had it
-  # discarded, and the fit was a fresh draw every time. Three properties are
-  # asserted together because a fix that satisfies any two of them alone is
-  # wrong: the values must repeat under one seed, must differ under another,
-  # and the stream must be left where a second run would leave it.
+  # With no explicit seed, follow the ambient stream. Check reproducibility,
+  # sensitivity to a changed seed and the resulting stream state together.
   skip_on_cran()
   x <- rep(c(1, 5, 20, 100), each = 5)
   y <- rep(c(0.9, 0.6, 0.3, 0.1), each = 5)
   fam <- validate_family("Beta")
   pr <- suppressMessages(define_prior("nec4param", fam, x, y))
-  # The search now follows the ambient stream, so a test that advances it
-  # leaves the next test in the file starting somewhere else. Restored here so
-  # this block does not couple what follows it to its own draws.
+  # Restore the ambient stream so this test does not affect later tests.
   old_seed <- saved_stream()
   on.exit(restore_stream(old_seed), add = TRUE)
   run <- function(ambient) {
@@ -1064,15 +922,12 @@ test_that("with no seed the search follows the caller's stream", {
   c <- run(334)
   expect_equal(a$inits, b$inits)
   expect_true(identical(a$after, b$after))
-  # Not a hardcoded seed standing in for the caller's: a different session seed
-  # must give different initial values.
+  # A different ambient seed must change the initial values.
   expect_false(isTRUE(all.equal(a$inits, c$inits)))
 })
 
 test_that("seed = NA is read as no seed rather than erroring", {
-  # brms writes "no seed" as seed = NA, and that value reaches the search
-  # through brm_args$seed. set.seed(NA) is an error, so the guard tests for
-  # both forms. See #310.
+  # Treat brms seed = NA as no seed; set.seed(NA) would error.
   skip_on_cran()
   x <- rep(c(1, 5, 20, 100), each = 5)
   y <- rep(c(0.9, 0.6, 0.3, 0.1), each = 5)
@@ -1109,10 +964,8 @@ test_that("seed = NA is read as no seed rather than erroring", {
 })
 
 test_that("the seed reaches the search from brm_args, NA included", {
-  # The two blocks above call make_good_inits() directly. seed = NA can only
-  # arrive through brm_args$seed, which add_brm_defaults() reads, and that
-  # plumbing is what bnec(..., seed = NA) uses. Asserted here rather than
-  # through bnec() so no Stan program is built. See #310.
+  # Check forwarding from brm_args without compiling Stan, including NA and
+  # an absent seed.
   skip_on_cran()
   x <- rep(c(1, 5, 20, 100), each = 5)
   y <- rep(c(0.9, 0.6, 0.3, 0.1), each = 5)
@@ -1126,15 +979,12 @@ test_that("the seed reaches the search from brm_args, NA included", {
                        skip_check = TRUE, custom_name = NULL)
     )$init
   }
-  # brms writes "no seed" as NA, and set.seed(NA) is an error.
   expect_error(go(list(chains = 2, seed = NA)), NA)
-  # and with no seed at all the initial values are a function of the caller's.
   expect_equal(go(list(chains = 2)), go(list(chains = 2)))
 })
 
 test_that("both hurdle blocks follow the caller's stream", {
-  # make_good_hurdle_inits() is the one call site that passes seed on twice,
-  # once per block, so it is checked separately. See #310.
+  # Check both hurdle blocks: this caller forwards the seed twice.
   skip_on_cran()
   conc <- rep(c(0, 1, 5, 20, 100), each = 6)
   set.seed(1)
@@ -1161,10 +1011,8 @@ test_that("both hurdle blocks follow the caller's stream", {
 })
 
 test_that("a long search says it is still running", {
-  # The actual complaint in #266: 561 seconds with no output, which a user
-  # cannot tell from a hang. report_after = 0 makes the notice fire on the
-  # first pass, so the assertion is on the mechanism rather than on a
-  # wall-clock reading, which would be load-sensitive.
+  # Use report_after = 0 to test the progress notice without a timing
+  # assertion that depends on machine load.
   skip_on_cran()
   priors <- brms::prior_string("normal(1e6, 1)", nlpar = "top") +
     brms::prior_string("normal(1e6, 1)", nlpar = "beta") +
@@ -1180,14 +1028,11 @@ test_that("a long search says it is still running", {
   msg <- paste(msg, collapse = " ")
   expect_match(msg, "Still searching")
   expect_match(msg, "nec3param")
-  # and it still falls back when the cap is reached
   expect_match(msg, "failed to find initial values")
 })
 
-# #302: the sampling table was written out at each of the three places that
-# needed it, and lognormal was in none of them. lognormal is now the default
-# prior for nec on a predictor supplied on the dose scale, so every fit draws
-# initial values from one, and it is drawn under truncation to the tested range.
+# Exercise a user-supplied lognormal prior with explicit bounds. The
+# default threshold prior is not truncated to the tested range.
 
 lognormal_prior_df <- function(nec_prior = "lognormal(0, 2.3496)") {
   data.frame(prior = c("normal(1,1)", "normal(0,5)", "normal(0.5,1)",
@@ -1213,8 +1058,7 @@ test_that("make_inits draws a truncated lognormal for nec", {
 })
 
 test_that("make_inits names a distribution it cannot draw from", {
-  # Previously fcts[[dist]] was NULL and the call failed with "attempt to apply
-  # non-function", naming neither the prior nor the distribution.
+  # Name the unrecognised distribution instead of calling a missing sampler.
   expect_error(
     bayesnec:::make_inits("nec4param",
                           c("b_top", "b_beta", "b_bot", "b_nec"),
@@ -1232,8 +1076,8 @@ test_that("make_inits names a distribution it cannot draw from", {
 })
 
 test_that("surrounding whitespace in a prior string is tolerated", {
-  # prior_string() never writes one, but a user assembling a data frame by hand
-  # can, and the parsed name reached the lookup untrimmed.
+  # A user-built prior table can contain whitespace that prior_string()
+  # would not write.
   set.seed(302)
   out <- bayesnec:::make_inits("nec4param",
                                c("b_top", "b_beta", "b_bot", "b_nec"),
@@ -1242,8 +1086,6 @@ test_that("surrounding whitespace in a prior string is tolerated", {
   expect_gt(as.numeric(out[[1]]$b_nec), 0)
 })
 
-# #309: the initial-value search required all chains to pass at the same time,
-# and tested the initial curve against range(y).
 
 alga_a <- function() {
   d <- alga[alga$species == "c_proliferum" & alga$contaminant == "A", ]
@@ -1270,11 +1112,8 @@ test_that("replicated_group_means ignores predictor values seen once", {
 })
 
 test_that("the upper reference is a group mean, not a single observation", {
-  # One aberrant control observation raises max(y) by the whole of it and the
-  # control mean by a sixth of it. The band widens as well, because a variance
-  # estimate is not robust either and the observation is evidence that the
-  # response varies more than the other groups suggested -- but that is the
-  # spread responding, not the reference.
+  # A spiked control affects its mean and spread differently from max(y).
+  # Check the mean reference separately from the widened band.
   x <- rep(c(0, 1, 5, 20), each = 6)
   set.seed(309)
   y <- c(rnorm(6, 1, 0.02), rnorm(6, 0.8, 0.02), rnorm(6, 0.4, 0.02),
@@ -1284,10 +1123,8 @@ test_that("the upper reference is a group mean, not a single observation", {
   ref <- function(z) regularizing_location(x, z, "top")[["location"]]
   expect_lt(ref(y2) - ref(y), (3 - y[1]) / 6 + 1e-8)
   expect_gt(max(y2) - max(y), 1.9)
-  # The band widens, because a variance estimate follows an outlier too. That
-  # is the permissive direction -- the spiked band contains the clean one, so
-  # every starting value the clean band accepted is still accepted -- and it is
-  # the reason the assertion is on containment rather than on width.
+  # The outlier also widens the spread. Check containment so every curve
+  # accepted by the clean band remains accepted.
   clean <- init_limits(x, y)
   spiked <- init_limits(x, y2)
   expect_lte(spiked[1], clean[1])
@@ -1295,9 +1132,8 @@ test_that("the upper reference is a group mean, not a single observation", {
 })
 
 test_that("the band does not get looser as replicates are added", {
-  # range(y) drifts outward with sample size, so the released check was more
-  # permissive on the larger design. The band is a mean plus a spread and is
-  # not a function of n in that way.
+  # Compare bands under replication of the same generating curve and noise.
+  # Raw extrema can expand with sample size even when that noise is unchanged.
   set.seed(310)
   gen <- function(reps) {
     x <- rep(c(0, 1, 5, 20), each = reps)
@@ -1314,10 +1150,8 @@ test_that("the band does not get looser as replicates are added", {
 })
 
 test_that("the band contains every group mean of the packaged alga series", {
-  # A curve whose asymptote sits at a level the design recorded is not a
-  # starting value the search should reject. That series is heteroscedastic and
-  # is not monotone at its lower end, which is why every level mean is a centre
-  # of the band and not only the two anchors read at the ends of the series.
+  # Include all level means in the band: this heteroscedastic series is
+  # not monotone at its lower end, so endpoint anchors alone omit levels.
   d <- alga_a()
   gm <- vapply(split(d$y, factor(d$x)), mean, numeric(1))
   lim <- init_limits(d$x, d$y)
@@ -1342,10 +1176,9 @@ test_that("zero_bounded_family names the families define_prior scales on zero", 
 })
 
 test_that("a chain is accepted on its own, so a low per-chain rate still succeeds", {
-  # The released rule required four chains to pass at the same time and re-drew
-  # the complete set when any one failed, which raises the number of proposals
-  # to the fourth power of the per-chain rate. Both rules are run here under
-  # the same band so the comparison is of the structure alone.
+  # For independent chains with per-chain acceptance p, the all-at-once
+  # rule accepts a round with probability p^4. Compare the search structures
+  # under the same acceptance band.
   skip_on_cran()
   d <- alga_a()
   pr <- suppressMessages(
@@ -1358,12 +1191,8 @@ test_that("a chain is accepted on its own, so a low per-chain rate still succeed
     check_init_predictions(
       get_init_predictions(init, sort(d$x), pf, fa), limits)
   }
-  # The released rule, reimplemented here so the comparison does not depend on
-  # a second working tree.
-  #
-  # The released rule needs about the inverse fourth power of the per-chain
-  # acceptance rate, which is below 0.2 on this design, so keep the cap at
-  # 20,000 rounds: 2,000 can leave a seed capped.
+  # Reimplement the earlier rule here to compare the same seeds.
+  # Its low per-chain acceptance needs 20,000 rounds for this design.
   released_drawn <- function(seed, cap = 20000) {
     set.seed(seed)
     n <- 0
@@ -1372,9 +1201,8 @@ test_that("a chain is accepted on its own, so a low per-chain rate still succeed
       n <- n + 1
       passed <- all(vapply(make_inits("nec3param", fa, pr, 4), ok, logical(1)))
     }
-    # The success flag is returned with the count, so a capped run is not read
-    # as a measured one: at this per-chain rate the released rule usually does
-    # not succeed inside the cap at all.
+    # Return success with the count so a capped run cannot be mistaken
+    # for a measured completion count.
     c(drawn = 4 * n, ok = passed)
   }
   changed_drawn <- function(seed, cap = 2000) {
@@ -1397,16 +1225,14 @@ test_that("a chain is accepted on its own, so a low per-chain rate still succeed
   expect_false(anyNA(b))
   expect_lt(max(b), 200)
   expect_gt(median(a["drawn", ]) / median(b), 20)
-  # Both counts are measurements rather than floors: the released rule does
-  # succeed inside the cap here, so the ratio is a like-for-like comparison of
-  # the two structures. The sibling test below uses ecxlin, where it does not.
+  # Require successful runs so capped counts are not treated as measured
+  # completion counts. The ecxlin test below separately checks exhaustion.
   expect_true(all(a["ok", ] == 1))
 })
 
 test_that("only the empty chain slots are re-drawn", {
-  # The property that makes the change free: an accepted chain is kept, so the
-  # search draws the number of proposals a per-chain rate implies rather than
-  # its fourth power.
+  # Keep accepted chains and redraw only empty slots to avoid requiring
+  # all chains to pass in the same round.
   skip_on_cran()
   d <- alga_a()
   pr <- suppressMessages(
@@ -1430,9 +1256,8 @@ test_that("only the empty chain slots are re-drawn", {
     }
   )
   expect_length(inits, 4)
-  # Four chains at a per-chain rate near a fifth need of the order of tens of
-  # proposals. The released rule drew four per round and needed thousands of
-  # rounds on this series.
+  # Check that retaining accepted chains uses a modest number of proposals
+  # on this fixture.
   expect_lt(drawn, 400)
 })
 
@@ -1460,11 +1285,8 @@ test_that("every chain the search returns satisfies the check", {
 })
 
 test_that("the band is bounded by the support of the mean", {
-  # Under the identity link bnec() assigns, an initial curve outside the
-  # interval the likelihood permits is invalid rather than merely poor: Stan
-  # rejects it and the fit ends on "Initialization failed". range(y) kept the
-  # curve inside the support by accident, because a response is inside its own
-  # support; a band built from a location and a spread has no such guarantee.
+  # Clamp the location-and-spread band to mean support under identity links;
+  # unlike the observed response range, that band can extend outside support.
   x <- rep(c(0, 1, 5, 20), each = 5)
   set.seed(162)
   y <- pmin(pmax(rep(c(0.98, 0.8, 0.4, 0.1), each = 5) + rnorm(20, 0, 0.05),
@@ -1472,15 +1294,12 @@ test_that("the band is bounded by the support of the mean", {
   unconstrained <- init_limits(x, y)
   bounded <- init_limits(x, y, support = mu_support(validate_family("Beta")))
   expect_gt(unconstrained[2], 1)
-  # Inside the support, and inside it strictly: where the band reaches the
-  # boundary it stops at the nearest value the response takes.
+  # Keep the band strictly inside the finite support boundaries.
   expect_lt(bounded[2], 1)
   expect_gt(bounded[1], 0)
-  # a tenth of the way from the boundary towards the nearest observed value, so
-  # outside the observed range and inside the support
+  # The inset remains no stricter than the nearest observed interior value.
   expect_gte(bounded[2], max(y))
   expect_lte(bounded[1], min(y))
-  # and gaussian is not bounded, so the band is left alone
   expect_equal(init_limits(x, y, support = mu_support(validate_family("gaussian"))),
                unconstrained)
 })
@@ -1506,10 +1325,8 @@ test_that("make_good_inits keeps a bounded family's curve inside its support", {
 })
 
 test_that("a case that exhausted the cap now succeeds well inside it", {
-  # ecxlin on the alga c_proliferum contaminant A series is one of the searches
-  # that reached n_trials under the released rule and fell through to Stan's
-  # own initialisation. Both rules are run here, each under its own criterion,
-  # because that is the pair of states the change moves between.
+  # Compare both searches on the alga c_proliferum contaminant A series,
+  # each with its own acceptance criterion.
   skip_on_cran()
   d <- alga_a()
   pr <- suppressMessages(
@@ -1531,8 +1348,7 @@ test_that("a case that exhausted the cap now succeeds well inside it", {
                        range(d$y))
     }
     expect_gte(rounds, cap)
-    # Reached the cap without succeeding, rather than succeeding on the last
-    # round, which expect_gte() alone would also admit.
+    # Distinguish exhausting the cap from success on the final round.
     expect_false(all(passed))
     inits <- suppressMessages(
       make_good_inits("ecxlin", d$x, d$y,
@@ -1545,11 +1361,8 @@ test_that("a case that exhausted the cap now succeeds well inside it", {
 })
 
 test_that("prior_family_tag applies both rewrites define_prior depends on", {
-  # Two rewrites stand between the family name and the tag the response-scaled
-  # priors are keyed on, and both were inline in define_prior() where the init
-  # search could not read them. Reading family$family directly instead broke
-  # the zero-inflated counts outright and reintroduced the #229 failure for a
-  # log link, so each is asserted here rather than left to the caller.
+  # Use the same family-tag rewrites for prior construction and init search,
+  # including zero-inflated counts and non-identity links.
   expect_equal(prior_family_tag(validate_family("zero_inflated_poisson")),
                "poisson")
   expect_equal(prior_family_tag(validate_family("zero_inflated_negbinomial")),
@@ -1562,9 +1375,7 @@ test_that("prior_family_tag applies both rewrites define_prior depends on", {
 })
 
 test_that("a zero-inflated count still gets its response-scaled priors", {
-  # The failure the tag rewrite prevents: with no gamma-scaled entry the NA
-  # reaches brms as "Cannot coerce 'prior' to a single character value", and
-  # neither zero-inflated count family can be fitted at all.
+  # Check the rewritten count-family tags through complete fits.
   skip_on_cran()
   set.seed(309)
   d <- data.frame(x = rep(c(0, 1, 5, 20), each = 5),
@@ -1579,10 +1390,9 @@ test_that("a zero-inflated count still gets its response-scaled priors", {
 })
 
 test_that("the support is mapped onto the scale the curve is on", {
-  # pred_<model>() returns the linear predictor and the band is built from the
-  # response on the link scale, so clamping to the support of the mean is only
-  # correct under the identity link. Under logit it would admit means between
-  # 0.5 and 0.73 alone.
+  # Predictions and the band use the linear-predictor scale. Map support
+  # through the link before clamping; clamping a logit predictor to [0, 1]
+  # would restrict response means to about [0.5, 0.73].
   expect_equal(init_support(validate_family("Beta")), c(0, 1))
   expect_equal(init_support(brms::Beta(link = "logit")), c(-Inf, Inf))
   expect_equal(init_support(stats::Gamma(link = "log")), c(-Inf, Inf))
@@ -1591,23 +1401,21 @@ test_that("the support is mapped onto the scale the curve is on", {
 })
 
 test_that("an unreplicated design uses the successive differences, not sd(y)", {
-  # sd(y) grows with the size of the effect, which is the reason it is not the
-  # spread on a replicated design either. The successive differences of a
-  # smooth curve have twice the noise variance.
+  # Avoid sd(y), which includes the decline. For independent equal-variance
+  # noise, the noise part of a successive difference has twice that variance;
+  # changes in the curve also contribute to the observed differences.
   x <- c(0, 0.5, 1, 2, 4, 8, 16, 32)
   y <- c(0.98, 0.95, 0.88, 0.70, 0.42, 0.20, 0.08, 0.04)
   expect_equal(group_spread(x, y), successive_difference_spread(x, y))
   expect_lt(group_spread(x, y), sd(y) / 3)
-  # and the band it gives is a small multiple of the response range, where
-  # sd(y) gave more than four times it
+  # Check the band width relative to this fixture's response range.
   expect_lt(diff(init_limits(x, y)) / diff(range(y)), 2)
   # fewer than three observations leave too few differences to read
   expect_equal(group_spread(c(1, 2), c(1, 2)), sd(c(1, 2)))
 })
 
 test_that("make_good_inits requires the family", {
-  # A default would silently drop the support clamp, which is the constraint
-  # range(y) supplied for free.
+  # Require a family so the search cannot silently omit its support clamp.
   expect_error(
     suppressMessages(
       make_good_inits("nec3param", c(1, 5, 20), c(0.9, 0.5, 0.1),
@@ -1621,8 +1429,6 @@ test_that("make_good_inits requires the family", {
 })
 
 test_that("ecxsigm succeeds on the alga c_proliferum series", {
-  # Named in #309 as one of the equations that exhausted the cap and fell
-  # through to Stan's initialisation on this series.
   skip_on_cran()
   d <- alga_a()
   fam <- validate_family("gaussian")
@@ -1640,9 +1446,9 @@ test_that("ecxsigm succeeds on the alga c_proliferum series", {
 })
 
 test_that("the band stops short of the support boundary", {
-  # A mean at the boundary is one the likelihood cannot evaluate. Where the
-  # band reaches it the band stops at the nearest value the response takes, so
-  # that a bounded response cannot be started at a mean no design resolves.
+  # Inset a finite support boundary using level means and spread, capped
+  # by the nearest interior observation; do not place the edge at that
+  # observation by default.
   x <- rep(c(0, 1, 5, 20), each = 5)
   set.seed(164)
   y <- pmin(pmax(rep(c(0.98, 0.6, 0.2, 0.02), each = 5) + rnorm(20, 0, 0.05),
@@ -1650,20 +1456,16 @@ test_that("the band stops short of the support boundary", {
   lim <- init_limits(x, y, support = c(0, 1))
   expect_gt(lim[1], 0)
   expect_lt(lim[2], 1)
-  # it never crosses a level mean, so every level the design measured is still
-  # inside the band
+  # Keep every observed level mean inside the band.
   gm <- vapply(split(y, factor(x)), mean, numeric(1))
   expect_true(all(gm >= lim[1] & gm <= lim[2]))
-  # and an unbounded support is left alone
   expect_equal(init_limits(x, y), init_limits(x, y, support = c(-Inf, Inf)))
 })
 
 test_that("the second block of a hurdle fit is not started at zero survival", {
-  # The second block is primed from one survival proportion per concentration,
-  # which is an unreplicated series of a few points, so the spread read from its
-  # successive differences is a third of the response range and the band spans
-  # the whole of (0, 1). A curve accepted at a survival of 1e-66 makes the joint
-  # log likelihood -Inf and the fit ends on "Initialization failed".
+  # The hurdle survival block uses one proportion per concentration. Its
+  # initial-value band must exclude near-zero curves that can give a
+  # non-finite joint log likelihood.
   skip_on_cran()
   set.seed(11)
   nec3 <- function(x, top, beta, nec) {
@@ -1677,8 +1479,8 @@ test_that("the second block of a hurdle fit is not started at zero survival", {
   fam <- validate_family("hurdle_gamma")
   parts <- split_hurdle_response(conc, y)
   hu_band <- init_limits(parts$hu$x, parts$hu$y, support = c(0, 1))
-  # Two orders of magnitude above the 1e-66 that failed, and below the smallest
-  # proportion the design records, so the band still contains every level.
+  # Exclude near-zero survival while keeping the smallest observed
+  # survival proportion inside the band.
   expect_gt(hu_band[1], 1e-5)
   expect_lte(hu_band[1], min(parts$hu$y))
   pr <- suppressMessages(define_prior("nec3param", fam, conc, y))
@@ -1698,11 +1500,8 @@ test_that("the second block of a hurdle fit is not started at zero survival", {
 })
 
 test_that("the boundary inset does not exclude a zero-bounded asymptote", {
-  # Stopping the band at the nearest observed value was measured and is too
-  # strict on a count response with structural zeros: it put the floor above the
-  # generating bot, which is the error the width exists to avoid. A tenth of the
-  # distance from the boundary keeps the floor below anything the design
-  # resolves.
+  # An observation-based floor can exceed a count asymptote. Check that
+  # the inset stays below the generating bot on this zero-inflated design.
   set.seed(2)
   x <- rep(c(0, 1, 2, 4, 8, 16), each = 8)
   mu <- c(20, 18, 12, 5, 1, 0.3)[match(x, c(0, 1, 2, 4, 8, 16))]
@@ -1714,16 +1513,14 @@ test_that("the boundary inset does not exclude a zero-bounded asymptote", {
 })
 
 test_that("the spread is not decided by a single repeated observation", {
-  # One repeated predictor value contributes a variance on one degree of
-  # freedom. Preferring it to the differences the rest of the design offers made
-  # the band a function of that one pair.
+  # One repeated pair contributes only one variance degree of freedom.
+  # Do not let it replace the differences available across the full design.
   set.seed(7)
   x <- 1:24
   y <- 1 - 0.03 * x + rnorm(24, 0, 0.03)
   x2 <- c(x, 12)
   y2 <- c(y, y[12])
   expect_lt(abs(group_spread(x2, y2) / group_spread(x, y) - 1), 0.2)
-  # and with enough replication the pooled estimate is used
   xr <- rep(c(0, 1, 5, 20), each = 5)
   yr <- rnorm(20, rep(c(1, 0.8, 0.4, 0.1), each = 5), 0.05)
   v <- vapply(split(yr, factor(xr)), var, numeric(1))
@@ -1731,9 +1528,8 @@ test_that("the spread is not decided by a single repeated observation", {
 })
 
 test_that("a band with nothing to anchor on rejects every draw", {
-  # check_init_predictions() reads the band through min() and max(), which
-  # reorder it, so an inverted pair is read as the whole line and accepts
-  # everything. range(y) on an all-missing response did exactly that.
+  # Return an unusable band when no observations anchor it. An inverted
+  # range can be reordered by min()/max() and wrongly accept every draw.
   lim <- init_limits(rep(c(0, 1), each = 3), rep(NA_real_, 6))
   expect_true(all(is.na(lim)))
   expect_false(check_init_predictions(c(1, 0.5, 0.2, 0.1), lim))
@@ -1741,11 +1537,9 @@ test_that("a band with nothing to anchor on rejects every draw", {
 })
 
 test_that("the count floor tracks the level means, not the integer scale", {
-  # min(y[y > 0]) is 1 for any integer response, so a floor read from an
-  # observation is the same for eight replicates as for eight hundred. Read from
-  # the level means it is a tenth of the smallest of them, which is a quantity
-  # the design can say something about. Replication concentrates it rather than
-  # lowering it, so the assertion is on the spread and not on the level.
+  # Use level means to obtain a floor below integer granularity. On this
+  # design, replication concentrates the floor, so compare its spread as
+  # well as its level.
   floor_at <- function(reps, seed) {
     set.seed(seed)
     x <- rep(c(0, 1, 2, 4, 8, 16), each = reps)
@@ -1756,12 +1550,11 @@ test_that("the count floor tracks the level means, not the integer scale", {
   seeds <- 1:40
   small <- vapply(seeds, function(s) floor_at(8, s), numeric(1))
   large <- vapply(seeds, function(s) floor_at(80, s), numeric(1))
-  # Well below both the integer granularity and the generating asymptote.
   expect_lt(median(small), 0.1)
   expect_lt(median(large), 0.1)
   expect_lt(median(large), 0.3)
-  # The level is the same; what replication removes is the spread and the
-  # seeds whose top group is entirely zero, which disable the inset.
+  # Compare spread as well as level: replication concentrates the floor
+  # and reduces all-zero groups without systematically lowering it.
   expect_lt(abs(median(large) - median(small)), 0.02)
   expect_lt(IQR(large), IQR(small))
   expect_lt(sum(large == 0), sum(small == 0))
@@ -1784,26 +1577,20 @@ test_that("the spread threshold prefers the differences at two degrees of freedo
   set.seed(23)
   x <- 1:24
   y <- 1 - 0.03 * x + rnorm(24, 0, 0.03)
-  # two tied pairs give two degrees of freedom, which is below the threshold
   x2 <- c(x, 5, 12)
   y2 <- c(y, y[5] + 0.01, y[12] - 0.01)
   expect_equal(group_spread(x2, y2), successive_difference_spread(x2, y2))
-  # a third takes it to three, and the pooled estimate is used
   x3 <- c(x, 5, 12, 18)
   y3 <- c(y, y[5] + 0.01, y[12] - 0.01, y[18] + 0.02)
   expect_false(isTRUE(all.equal(group_spread(x3, y3),
                                 successive_difference_spread(x3, y3))))
 })
 
-# ---------------------------------------------------------------------------
-# The initial-value band under a declared unobserved asymptote, #394
-# ---------------------------------------------------------------------------
+# Initial-value bands for an asymptote declared unobserved by
+# asymptote_observed = FALSE, which the comments below call the declaration.
 
-# A gaussian nec4param response whose series stops at a stated fraction of the
-# span from top to bot. The same device as the prior audit and as
-# test-define_prior.R: the series, the replication and the decay rate are held
-# and the threshold is placed, so the only thing that differs across settings
-# is how much of the curve the design shows.
+# Vary only the fraction of the Gaussian nec4param decline observed: hold
+# the dose series, replication and rate fixed while placing the threshold.
 flat_design <- function(reached, seed = 394, top = 0.9, bot = 0.1,
                         sigma = 0.02) {
   x <- rep(c(0, 0.31, 0.63, 1.25, 2.5, 5, 10, 40), each = 5)
@@ -1831,9 +1618,8 @@ test_that("the band extends to the floor when declared (#394)", {
 })
 
 test_that("a floor never narrows the band (#394)", {
-  # Applied through min(), so a band whose lower limit already sits below the
-  # floor -- which the spread places it below on a gaussian response with a low
-  # asymptote -- is left alone rather than being raised to it.
+  # A declared floor may extend the band downward but must never raise an
+  # existing lower limit.
   d <- flat_design(1 - exp(-5), sigma = 0.15)
   fam <- validate_family("gaussian")
   yl <- response_link_scale(d$y, fam)
@@ -1847,10 +1633,8 @@ test_that("a floor never narrows the band (#394)", {
 })
 
 test_that("the band stops short of a bounded family's floor (#394)", {
-  # On a bounded family the floor is the boundary of the support, which the
-  # likelihood cannot evaluate, so boundary_inset() holds the band strictly
-  # inside it. The band still reaches far below the observed response, which is
-  # what the declaration is for.
+  # Keep bounded-family initial curves inside support while extending the
+  # band below the observed response.
   d <- flat_design(0.02)
   fam <- validate_family("Beta")
   y <- pmin(pmax(d$y, 1e-3), 1 - 1e-3)
@@ -1866,15 +1650,8 @@ test_that("the band stops short of a bounded family's floor (#394)", {
 })
 
 test_that("the band admits the curve the declared prior draws (#394)", {
-  # The item specification section 5.4 calls the one most likely to be missed.
-  # make_good_inits() rejects any initial curve whose predictions fall outside
-  # the band and, after n_trials rounds, hands the whole fit to Stan's own
-  # initialisation, so the failure mode is "Initialization failed" rather than
-  # a wrong number.
-  #
-  # Asserted on one curve rather than on the search, so that the result does
-  # not depend on a draw: a curve whose lower asymptote is at the floor is
-  # exactly what the declared bot prior exists to produce.
+  # Check a fixed curve at the declared floor directly. This isolates whether
+  # the band admits such a curve from stochastic initial-value search.
   d <- flat_design(0.02)
   fam <- validate_family("gaussian")
   yl <- response_link_scale(d$y, fam)
@@ -1893,15 +1670,9 @@ test_that("the band admits the curve the declared prior draws (#394)", {
 })
 
 test_that("the declared band accepts more of the prior's draws (#394)", {
-  # The same thing measured through the draws the search makes, rather than
-  # through the search, which is not a paired comparison: refine_inits() and
-  # the per-round redraw of the empty chains alone both consume random numbers,
-  # so the two arms diverge after the first acceptance differs and the number
-  # of rounds is not monotone in the width of the band. One fixed set of
-  # proposals scored against the two bands is.
-  #
-  # The audit reports the effect on the search itself, as a paired mean of
-  # -4.58 proposals over its 358 flattest cells.
+  # Score one fixed proposal set against both bands. Separate search runs
+  # consume different random draws after the first differing acceptance,
+  # so their iteration counts are not a paired comparison of band width.
   d <- flat_design(0.02)
   fam <- validate_family("gaussian")
   yl <- response_link_scale(d$y, fam)
@@ -1929,10 +1700,8 @@ test_that("the declared band accepts more of the prior's draws (#394)", {
 })
 
 test_that("add_brm_defaults passes the declaration to the search (#394)", {
-  # One argument reaches define_prior() and make_good_inits() alike, so the
-  # band and the prior cannot be built under different declarations. Asserted
-  # by capturing what the search is given rather than by running it, which is
-  # stochastic and slow (#266).
+  # Capture the search argument to check that prior and band construction
+  # receive the same asymptote declaration without running a stochastic search.
   d <- flat_design(0.02)
   fam <- validate_family("gaussian")
   seen <- new.env(parent = emptyenv())

@@ -421,4 +421,3 @@ x_literal_shift <- function(arg) {
   }
   NULL
 }
-

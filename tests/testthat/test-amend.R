@@ -62,11 +62,9 @@ test_that("amend.bayesnecfit adds models and promotes to bayesmanecfit", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # `manec_example` was fitted with iter = 200 and amend() inherits that, so the
-  # added model occasionally fails to initialise -- it did once on ubuntu-devel
-  # while passing on the other three platforms. Retry rather than assert on a
-  # stochastic fit, and skip if this environment cannot fit it at all, so that a
-  # failure to initialise reports as "could not fit" and not "amend is broken".
+  # This fixture inherits iter = 200 and may fail to initialise. Retry up to
+  # three times, then skip if no usable fit is produced; sampler failure alone
+  # does not establish that amend() is broken.
   added <- NULL
   for (attempt in 1:3) {
     set.seed(attempt * 101)
@@ -77,16 +75,14 @@ test_that("amend.bayesnecfit adds models and promotes to bayesmanecfit", {
       break
     }
   }
-  # Whatever the sampler does, the call itself must work: this errored outright
-  # before amend.bayesnecfit existed.
+  # Even an unsuccessful model fit must return the documented object class.
   expect_s3_class(added, "bnecfit")
   skip_if_not(inherits(added, "bayesmanecfit"),
               "ecx4param could not be initialised at manec_example's iter")
   expect_setequal(names(added$mod_fits), c("nec4param", "ecx4param"))
   expect_setequal(added$success_models, c("nec4param", "ecx4param"))
-  # The pre-existing fit must be carried over rather than refitted; identical
-  # draws is the check that matters, since the point of amend() is not paying
-  # for the original fit twice.
+  # Preserve the existing fit: identical stored coefficients detect an
+  # unnecessary refit.
   expect_identical(fixef(added$mod_fits$nec4param$fit),
                    fixef(nec4param$fit))
 })
@@ -95,10 +91,8 @@ test_that("an object that records no weighting method gets the default", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # The shape of a set assembled by c() before #320, and of any set whose
-  # attribute was dropped by row-subsetting of mod_stats. amend() preserves the
-  # method the set was built with, and an unknown method used to be preserved
-  # as NULL, which loo::loo_model_weights() resolves to stacking.
+  # A set without a recorded method must use the package default. Passing
+  # NULL to loo_model_weights() instead would select stacking.
   unrecorded <- manec_example
   attr(unrecorded$mod_stats$wi, "method") <- NULL
   ctrl <- list(fitting = list(reloo = FALSE))
@@ -106,9 +100,7 @@ test_that("an object that records no weighting method gets the default", {
     suppressMessages() |>
     suppressWarnings()
   expect_equal(attr(out$mod_stats$wi, "method"), "pseudobma")
-  # A method named but NULL is not a request for a method. amend_model_set()
-  # read the name alone, so this reweighted the set while
-  # define_loo_controls() two calls later read the same value as unspecified.
+  # A named but NULL method is unspecified and must preserve the stored choice.
   stacked <- amend(manec_example,
                    loo_controls = list(weights = list(method = "stacking"))) |>
     suppressMessages() |>
@@ -123,20 +115,17 @@ test_that("an object that records no weighting method gets the default", {
 
 
 test_that("amend refuses a resolution below 2", {
-  # Both methods forward resolution to expand_nec(), where the no-effect
-  # estimate of a smooth equation is read off the grid. Refused here so the
-  # message names the argument rather than the grid. See #325.
+  # Refuse an unusable estimation grid here so the error names resolution
+  # before expand_nec() tries to estimate from it.
   skip_on_cran()
   expect_error(amend(manec_example, drop = "nec4param", resolution = 1),
                "must be at least 2")
 })
 
 test_that("amend refuses stored data at a bound before fitting a model (#400)", {
-  # The backstop for this route, which builds priors with define_prior() and
-  # fits with skip_check = TRUE, so check_data() never runs on it. bnec()
-  # refuses such a response, so the stored data are altered by hand here: the
-  # packaged example is a gaussian fit, and it is given a beta family and a
-  # response of 1 in every observation.
+  # This route fits with skip_check = TRUE, so it must enforce the boundary
+  # rule itself. Alter the stored data and family only to reach that refusal;
+  # the stored posterior does not represent these data.
   m <- manec_example
   m$mod_fits[[1]]$fit$data$y <- 1
   m$mod_fits[[1]]$fit$family <- brms::Beta(link = "identity")
@@ -179,10 +168,8 @@ test_that("amend lets ecxflat alone through at a bound, and names it (#419)", {
 })
 
 test_that("amend tests a zero_inflated_beta response at both bounds (#441)", {
-  # D35 brings zero_inflated_beta into the rule beta follows. At 1 a curve
-  # equation is refused and ecxflat let through; at 0 ecxflat is refused too,
-  # because the beta block has no data. The stored data are altered by hand,
-  # as in the beta test above.
+  # At one, zero_inflated_beta permits ecxflat only; at zero its beta block
+  # has no data and even ecxflat is refused. This fixture changes stored data.
   m <- manec_example
   m$mod_fits[[1]]$fit$data$y <- 1
   m$mod_fits[[1]]$fit$family <- brms::zero_inflated_beta(
@@ -208,14 +195,11 @@ test_that("amend tests a zero_inflated_beta response at both bounds (#441)", {
 })
 
 
-# ---- #470, an added equation that keeps no group-level term ------------------
+# Added equations without group-level terms
 
-# manec_example's two equations given a term on bot, which both have. The term
-# is written into each stored formula and plate into each stored data, which is
-# what bnec() stores for such a fit. NB: the brmsfit components were not
-# fitted with the term. amend() reads the formula and the data before it fits,
-# which is what these tests assert, and nothing here reads a posterior
-# quantity.
+# These stored formulas and data include bot-by-plate metadata, but their
+# brmsfits were not fitted with it. Use this fixture only to inspect amend()
+# before fitting, never to validate posterior quantities.
 bot_plate_manec <- function() {
   m <- manec_example
   n <- nrow(m$mod_fits[[1]]$fit$data)
@@ -286,7 +270,7 @@ test_that("amend(add = ) refuses a call adding only excluded ones (#470)", {
 })
 
 
-# ---- the priors of an added equation ---------------------------------------
+# Priors for added equations
 
 # ecx4param with the family brms stores, a positive response and a formula
 # holding `term`. The brmsfit was not fitted to these data, so read nothing
@@ -484,7 +468,7 @@ test_that("amend(add = ) drops what bnec() drops for a Gamma fit (#436)", {
 })
 
 
-# ---- the call an added equation is fitted with (#489) -----------------------
+# ---- the call an added equation is fitted with ------------------------------
 
 # A positive response with zeros above the 80th percentile of x, for the
 # two-block family tests.

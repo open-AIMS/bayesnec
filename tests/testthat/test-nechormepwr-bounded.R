@@ -1,9 +1,7 @@
 test_that("the unscaled power hormesis models are dropped for 0-1 bounded families", {
-  # nechormepwr and nechorme4pwr carry the hormesis term x^(1/(1 + exp(slope))),
-  # which has no coefficient. At x = 1 it contributes exactly 1 whatever slope
-  # is, so below the threshold -- where the decay factor is exactly 1 -- the
-  # fitted mean is at least top + 1. No parameter value keeps that inside
-  # (0, 1) for a predictor that reaches 1. See #177.
+  # Below nec, the unscaled power increment is one at x = 1 for every slope.
+  # The mean then exceeds one for positive top, so successful initial values
+  # cannot establish support over all later sampler proposals.
   bounded <- list(
     bernoulli = validate_family(bernoulli(link = "identity")),
     beta = validate_family(Beta(link = "identity")),
@@ -32,9 +30,8 @@ test_that("the unscaled power hormesis models are dropped for 0-1 bounded famili
 })
 
 test_that("the two-block families drop them too", {
-  # The zero-probability block of a joint fit is 0-1 bounded whatever the
-  # response family is, so a model that cannot be held inside (0, 1) cannot be
-  # used for it. This is the "9 of 11 rather than 11" the issue reports.
+  # The zero-probability block is unit bounded regardless of the response
+  # family, so these unscaled equations cannot be used for it.
   for (fam_tag in c("hurdle_gamma", "zero_inflated_beta")) {
     got <- suppressMessages(
       check_models(models()$all, validate_family(fam_tag))
@@ -42,7 +39,7 @@ test_that("the two-block families drop them too", {
     expect_false("nechormepwr" %in% got)
     expect_false("nechorme4pwr" %in% got)
   }
-  # zero_bounded under hurdle_gamma is now an honest count.
+  # Check the filtered zero-bounded group as well as the full equation set.
   zb <- suppressMessages(
     check_models(models()$zero_bounded, validate_family("hurdle_gamma"))
   )
@@ -73,23 +70,9 @@ test_that("initialisation confirms why they are excluded", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # The evidence behind the exclusion, kept as a test so that a future change to
-  # the init search is measured against it rather than assumed to have fixed it.
-  #
-  # The claim is about the region the sampler may reach, not about whether any
-  # draw at all can be found. Where a concentration at or above 1 falls strictly
-  # below nec it sits under the threshold, the decay factor is exactly 1 and the
-  # mean is at least top + 1; no parameter value keeps that inside (0, 1), and
-  # the search fails. A nec below 1 puts every such concentration past the
-  # threshold and the mean can be held inside (0, 1), so the search succeeds --
-  # which it does under the lognormal prior adopted in #302 and did not under
-  # the gamma prior before it, because the draws that succeed sit near nec =
-  # 0.08 to 0.24 and the truncated prior probability of reaching there changed
-  # by a factor of 40 to 900. Succeeding does not make the model usable: nec is
-  # truncated to the predictor range so the sampler is free to leave the region
-  # the draw avoids, and a nec below 1 does not by itself keep the mean inside
-  # (0, 1) either. Both halves are asserted, so that neither reading can
-  # drift.
+  # A successful initial draw does not constrain later sampler proposals.
+  # Below nec the decay factor is 1, so a concentration >= 1 gives a mean of
+  # at least top + 1. The nec prior does not exclude that region.
   fam <- validate_family(bernoulli(link = "identity"))
   search <- function(model, x, y, priors = NULL) {
     if (is.null(priors)) {
@@ -124,11 +107,9 @@ test_that("initialisation confirms why they are excluded", {
     expect_false(is.null(nec_found), info = model)
     expect_true(all(nec_found < 1), info = model)
   }
-  # Not a defect of the search: the same models initialise when the predictor
-  # never reaches 1, which is the only case the equation can represent
-  # throughout. That is a property of the units the predictor happens to be in,
-  # not of the model, which is why the exclusion is by family rather than
-  # conditional on the data.
+  # Rescaling these data below one permits successful initial draws.
+  # That avoids this support obstruction through the predictor units; it
+  # does not establish a valid unit-interval model over all parameter draws.
   expect_true(found("nechormepwr", x_under_one, y))
   expect_true(found("nechorme4pwr", x_under_one, y))
   # The scaled siblings initialise either way.

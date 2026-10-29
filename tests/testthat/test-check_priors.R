@@ -5,9 +5,7 @@ test_that("returns ggplot for bayesnecfit objects", {
   p <- check_priors(nec4param)
   expect_error(print(p), NA)
   expect_silent(check_priors(nec4param))
-  # Check inheritance rather than the exact class vector: ggplot2 >= 4.0 builds
-  # plots as S7 objects, so class(p) gained extra entries ("ggplot2::ggplot",
-  # "S7_object", ...) and an exact-equality test breaks across versions.
+  # Check inheritance: ggplot objects can have additional S7 classes.
   expect_s3_class(p, "ggplot")
 })
 
@@ -20,8 +18,8 @@ test_that("returns pdf for bayesmanecfit objects", {
   on.exit(file.remove(paste(filename, ".pdf", sep = "")))
 })
 
-# A null PDF device stands in for the screen: check_priors() sets its page
-# prompt while it draws a model set and must restore it afterwards (#459).
+# A null PDF device stands in for the screen while the test checks that
+# check_priors() restores the page prompt.
 test_that("check_priors on a model set restores the page prompt it set", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
@@ -58,8 +56,7 @@ test_that("check_priors with filename opens no device besides its PDF", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # It set the prompt on the way out, which opened a screen device after the
-  # PDF had been closed.
+  # Closing the PDF must not open a screen device while restoring the prompt.
   before <- dev.list()
   filename <- tempfile()
   on.exit(unlink(paste0(filename, ".pdf")), add = TRUE)
@@ -70,13 +67,10 @@ test_that("check_priors with filename opens no device besides its PDF", {
 })
 
 
-# ---- #257, what the transform changes downstream of the formula --------------
 
 test_that("adapt_delta is not raised for a transformed ogl term", {
-  # The raise costs roughly fourteen times the gradient evaluations per
-  # iteration and exists to mitigate excursions outside the support. A
-  # multiplicative deviation cannot make those excursions, so there is nothing
-  # left to mitigate. Everything else keeps needing it.
+  # Support-preserving transforms remove the excursion that the adapt_delta
+  # raise addresses. Keep the raise where the equation can still leave support.
   set.seed(1)
   d <- data.frame(x = rep(c(1, 5, 20, 100), each = 8),
                   g = rep(letters[1:4], 8))
@@ -84,12 +78,8 @@ test_that("adapt_delta is not raised for a transformed ogl term", {
   f <- bnf(y ~ crf(x, model = "nec3param") + ogl(g))
   bdat <- model.frame(f, data = d, run_par_checks = TRUE)
   gs <- parse_group_terms(f, "nec3param")
-  # The initial-value search is mocked away. This fixture cannot be initialised
-  # at all, so the search runs to the 1e4 cap -- 577 seconds measured -- and
-  # these assertions are about adapt_delta, not about inits. Since #290 an
-  # init = "random" in the argument list would suppress the search here too;
-  # the mock is kept because it states what these calls need directly, rather
-  # than through a second argument whose effect on the search is incidental.
+  # Mock the initial-value search: this fixture exhausts its search cap, and
+  # these assertions concern adapt_delta.
   local_mocked_bindings(
     make_good_inits = function(...) list(random = "random"),
     .package = "bayesnec"
@@ -99,22 +89,16 @@ test_that("adapt_delta is not raised for a transformed ogl term", {
                      d$x, d$y, skip_check = TRUE, custom_name = NULL,
                      group_spec = spec)$control$adapt_delta
   }
-  # Transformed: no raise.
   expect_null(args_for("Beta"))
-  # Not transformed because the mean is unconstrained: no raise either, which
-  # is #245's existing behaviour and is unchanged.
+  # An unconstrained Gaussian mean also needs no excursion-specific raise.
   expect_null(args_for("gaussian"))
   # Not transformed because the equation's mean is unbounded below: the raise
   # is still needed and is still applied.
   gs_lin <- parse_group_terms(bnf(y ~ crf(x, model = "neclin") + ogl(g)),
                               "neclin")
   expect_equal(args_for("Beta", "neclin", gs_lin), 0.99)
-  # #294 transforms a pgl term's deviation on top and bot as well, and on
-  # nec3param the mean lies between zero and top, so no group-level term can
-  # take it out of the support and the raise goes with it. Measured on
-  # herbicide, Beta(link = "identity"), nec4param: 0 divergent transitions of
-  # 2000 at Stan's default adapt_delta for a (bot | herbicide) term, against 51
-  # at 0.95 before the transform.
+  # On nec3param the mean lies between zero and top, and the top deviation is
+  # transformed, so no pgl deviation takes it outside and no raise applies.
   gs_pgl <- parse_group_terms(bnf(y ~ crf(x, model = "nec3param") + pgl(g)),
                               "nec3param")
   expect_null(args_for("Beta", "nec3param", gs_pgl))
@@ -137,10 +121,8 @@ test_that("the ogl prior is widened onto the scale the deviation is applied on",
   y <- c(rep(0.9, 8), rep(0.6, 8), rep(0.3, 8), rep(0.1, 8))
   x <- rep(c(1, 5, 20, 100), each = 8)
   gs <- list(nlpars = "ogl", ogl = TRUE)
-  # The kind is an argument rather than a field on group_spec: it used to be
-  # set in add_brm_defaults() alone, so get_priors() and amend() fell through
-  # to the response-scale width and disagreed with what bnec() fitted. See the
-  # round-trip assertion in the next test.
+  # Pass the transform kind explicitly so get_priors(), amend() and bnec()
+  # use the same scale.
   scale_of <- function(kind) {
     pr <- define_group_prior(gs, x, y, ogl_transform = kind)
     as.numeric(sub(".*normal\\(0, ([0-9.e+-]+)\\).*", "\\1",
@@ -168,13 +150,8 @@ test_that("the ogl prior is widened onto the scale the deviation is applied on",
 })
 
 test_that("get_priors reports the ogl prior bnec() actually fits (#257)", {
-  # group_spec$ogl_transform was set in add_brm_defaults() and nowhere else, so
-  # get_priors() and amend() -- which build group_spec from parse_group_terms()
-  # -- used the response-scale width while bnec() fitted the transformed one, a
-  # factor of four apart on this fixture. get_priors() misreported the prior in
-  # use, which the initial-value fallback message tells the user to trust, and
-  # amend() fitted a model into an existing set with a prior no other member
-  # had.
+  # Compare the reported prior with the fitted prior: both routes must apply
+  # the transform-scale conversion.
   skip_on_cran()
   set.seed(1)
   d <- data.frame(x = rep(c(1, 5, 20, 100), each = 8),
@@ -182,7 +159,7 @@ test_that("get_priors reports the ogl prior bnec() actually fits (#257)", {
   d$y <- pmin(pmax(stats::rnorm(32, 0.9 - 0.8 * (d$x > 5), 0.05), 0.01), 0.99)
   f <- y ~ crf(x, model = "nec3param") + ogl(g)
   gs <- parse_group_terms(bnf(f), "nec3param")
-  # Same mock, same reason: the prior is what is under test, not the inits.
+  # Mock the search because this assertion concerns the prior, not inits.
   local_mocked_bindings(
     make_good_inits = function(...) list(random = "random"),
     .package = "bayesnec"
@@ -199,18 +176,11 @@ test_that("get_priors reports the ogl prior bnec() actually fits (#257)", {
 })
 
 
-# ---- #294, the bounds the multiplicative form on (0, 1) rests on -------------
 
 test_that("a user prior that unbounds a transformed parameter is refused", {
-  # m * exp(o) / (1 - m + m * exp(o)) is safe because m is inside (0, 1).
-  # define_prior() guarantees that for the priors it generates, giving top and
-  # bot lb = 0 and ub = 1, but fill_missing_priors() preserves a user row and
-  # fills only what is absent -- so a user prior with no bounds merges with lb
-  # and ub NA and brms declares b_bot unbounded. Outside [0, 1] the expression
-  # has a pole at o = log((m - 1) / m) and changes sign across it, which the
-  # additive form it replaces would not have done: that would have produced an
-  # out-of-range mean Stan rejects visibly rather than a large finite number it
-  # accepts.
+  # The collapsed logit transform requires a population parameter in [0, 1].
+  # A user prior can remove those bounds; outside them the expression has a
+  # pole and can change sign, so refuse the unbounded prior before fitting.
   set.seed(294)
   d <- data.frame(y = runif(60, 0.05, 0.9),
                   x = rep(log(c(0.1, 1, 10, 100, 1000, 1e4)), 10),
@@ -226,12 +196,10 @@ test_that("a user prior that unbounds a transformed parameter is refused", {
   unbounded <- brms::prior_string("normal(0.2, 0.5)", nlpar = "bot")
   expect_error(args_with(unbounded), "do not bound the parameter")
   expect_error(args_with(unbounded), "multiplicatively")
-  # The remedy the message names works.
   bounded <- brms::prior_string("normal(0.2, 0.5)", nlpar = "bot",
                                 lb = 0, ub = 1)
   expect_s3_class(args_with(bounded)$prior, "brmsprior")
-  # And so does the other remedy: without a group-level term on bot there is no
-  # transform, so an unbounded prior is the user's business.
+  # Without a group-level transform, this bound requirement does not apply.
   expect_s3_class(
     args_with(unbounded, group_spec = list(nlpars = "nec", ogl = FALSE))$prior,
     "brmsprior"
@@ -255,11 +223,8 @@ test_that("a user prior that unbounds a transformed parameter is refused", {
 })
 
 test_that("the adapt_delta raise is kept for the hormesis equations on every family", {
-  # The first version of #294 delegated this to ogl_transform_kind(), which
-  # tests can_exceed_one on the (0, 1) branch only, so the hormesis equations
-  # lost the raise under Gamma and the counts, where 2.1.4 applied it. Their
-  # mean can leave a (0, Inf) support too, and a deviation on slope is what
-  # makes that more likely.
+  # Hormesis can leave positive as well as unit-interval support. A group
+  # deviation on slope therefore still requires the adapt_delta raise.
   set.seed(294)
   d <- data.frame(y = runif(60, 0.05, 0.9),
                   x = rep(log(c(0.1, 1, 10, 100, 1000, 1e4)), 10))
@@ -276,12 +241,10 @@ test_that("the adapt_delta raise is kept for the hormesis equations on every fam
       expect_equal(ad(m, fam), 0.99, label = paste(m, fam))
     }
   }
-  # And is still dropped where the mean is confined by its own parameters.
   for (fam in c("Beta", "Gamma", "poisson")) {
     expect_null(ad("nec4param", fam))
     expect_null(ad("ecxwb1", fam))
   }
-  # And still kept where the equation is unbounded below.
   for (fam in c("Beta", "Gamma")) {
     expect_equal(ad("neclin", fam), 0.99)
   }

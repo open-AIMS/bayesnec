@@ -1,7 +1,5 @@
-# bnec_record() reports what bnec() did to the request before fitting. The set
-# as requested, the set attempted, the reason for the difference, and what was
-# altered in the response are what a methods section has to state, and all of
-# it used to exist only as console output. See #261 and #93.
+# Check that the record partitions requested equations into attempted and
+# excluded sets and retains response substitutions.
 
 test_that("amend_requested extends the request with what was added", {
   expect_equal(bayesnec:::amend_requested(c("a", "b"), NULL), c("a", "b"))
@@ -41,11 +39,8 @@ test_that("bnec_record refuses an object it cannot describe", {
 })
 
 test_that("bnec() records the request, and leaves $model a plain string", {
-  # Two things at once, because both need a real fit. The exclusion record is
-  # attached to `model` as an attribute; unstripped, the single-model branch
-  # passed that vector to fit_bayesnec(), which stores it as out$model, so
-  # every single-model fit printed the record and compared unequal to the
-  # plain string it used to be. See #261.
+  # The exclusion record is an attribute of model names. It must not remain
+  # on the single-fit model string when that name reaches fit_bayesnec().
   skip_on_cran()
   set.seed(410)
   x <- rep(seq(0, 5, length.out = 20), 3)
@@ -69,10 +64,7 @@ test_that("bnec() records the request, and leaves $model a plain string", {
   # requested is partitioned by attempted and the exclusion table.
   expect_setequal(c(rec$attempted, rec$excluded$model), rec$requested)
 
-  # The record survives an update. expand_nec() builds a new object, so an
-  # attribute not re-attached is lost, and bnec_record() then returned NULL for
-  # a fit this version had recorded -- the one thing the documented NULL is
-  # meant to rule out.
+  # update() rebuilds the object, so it must reattach the existing record.
   upd <- suppressWarnings(suppressMessages(
     update(fit, chains = 2, iter = 400, warmup = 200, refresh = 0)
   ))
@@ -84,12 +76,8 @@ test_that("bnec() records the request, and leaves $model a plain string", {
   expect_named(bnec_record(upd),
                c("requested", "attempted", "excluded", "substitutions"))
 
-  # And an amend rebuilds it for the set it produced, rather than dropping it.
-  # Amended by the weighting method rather than by adding an equation: this
-  # exercises the same rebuild in amend_model_set() without compiling a second
-  # Stan model, and the set arithmetic it would have tested is covered by the
-  # amend_requested() and amend_exclusions() blocks above. The method differs
-  # from the recorded default, or amend() would return the fit unchanged.
+  # Change the weighting method to exercise amend_model_set()'s record rebuild
+  # without compiling a model. The method must differ or amend() returns early.
   amended <- suppressWarnings(suppressMessages(
     amend(fit, loo_controls = list(weights = list(method = "stacking")))
   ))
@@ -104,7 +92,7 @@ test_that("bnec() records the request, and leaves $model a plain string", {
   expect_equal(rec2$substitutions, rec$substitutions)
 })
 
-# ---- The record through pull_out(), c(), + and attach_failed_models() (#522) --
+# ---- The record through pull_out(), c(), + and attach_failed_models() -------
 
 # manec_example with the record bnec() would attach to a request for four
 # equations: nechorme4 declined, ecxsigm attempted and failed, and a response

@@ -70,8 +70,8 @@ test_that("summary reports the models that failed", {
   )
   expect_true(any(grepl("1 model\\(s\\) failed to fit: ecxlin", out)))
   expect_true(any(grepl("\\?failed_models", out)))
-  # The single-model summary carries it too: where all but one model failed,
-  # bnec returns a bayesnecfit and that is when the failures matter most.
+  # Report earlier model failures even when only one fit survives and the
+  # result is a bayesnecfit.
   fake1 <- bayesnec:::attach_failed_models(
     nec4param, list(ecxlin = bayesnec:::failure_record("ecxlin", NULL))
   )
@@ -152,9 +152,8 @@ test_that("a failed fit carries the priors and inits it was given", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # An invalid `algorithm` makes brm() error immediately, after add_brm_defaults
-  # has built the priors and initial values -- exactly the situation the record
-  # exists for, and without paying for a Stan compile to reach it.
+  # An invalid algorithm fails after priors and initial values are built,
+  # letting the record be tested without compiling Stan.
   out <- try(
     fit_bayesnec(
       formula = bnf(y ~ crf(x, "nec3param")), data = nec_data,
@@ -179,8 +178,8 @@ test_that("a model that fails in a set is reported with its priors and inits", {
     skip_on_cran()
   }
   skip_if_not_installed("R.utils")
-  # A tiny timeout is a deterministic, fast way to make one model fail: the two
-  # models already in manec_example are not refitted, so the set still returns.
+  # Use a tiny timeout to force failure while keeping the existing models,
+  # which are not refitted. The interrupted operation and message can vary.
   out <- amend(manec_example, add = "ecxwb1", timeout = 1e-3) |>
     suppressMessages() |>
     suppressWarnings()
@@ -189,15 +188,9 @@ test_that("a model that fails in a set is reported with its priors and inits", {
   failed <- failed_models(out)
   expect_named(failed, "ecxwb1")
   expect_equal(failed$ecxwb1$model, "ecxwb1")
-  # Deliberately NOT asserted on the message text. A 1 ms timeout is a race:
-  # where the interrupt lands is not deterministic, so the recorded message is
-  # sometimes R.utils' "time limit" and sometimes whatever the initial-value
-  # search was in the middle of -- observed in CI as "Expecting a single value
-  # when fixing parameter 'ec50'". Both are the same event as far as this test
-  # is concerned. What has to hold is that the failure was *captured and
-  # reported*, which is the behaviour this test is named for; the wording of the
-  # underlying error is incidental and pinning it made the suite flaky. See the
-  # #139 PR for the CI run that surfaced it.
+  # Do not match timeout text: a 1 ms interrupt can stop different operations.
+  # Require a captured, non-empty message instead of the incidental error
+  # raised where the interrupt lands.
   expect_type(failed$ecxwb1$message, "character")
   expect_gt(nchar(failed$ecxwb1$message), 0)
   # The whole point: the priors and initial values used are recoverable without

@@ -1,6 +1,4 @@
-# extrapolate (#392). The choice of bound sits on top of the censoring record
-# #395 built, so what is pinned here is the choice: which limits are accepted,
-# what each does to the record, and what is refused.
+# Extrapolation validates limits and updates the existing censoring record.
 
 bounds_of <- function(lower, upper) list(lower = lower, upper = upper)
 
@@ -18,9 +16,8 @@ test_that("a number is an upper limit and a pair is both limits", {
 test_that("an infinite limit needs every component to sample a NEC", {
   out <- bayesnec:::extrapolate_limits(TRUE, bounds_of(0, 10), c("NEC", "NEC"))
   expect_equal(c(out$lower, out$upper), c(-Inf, Inf))
-  # The default bnec() set mixes the two classes, so this is the common path
-  # rather than an edge case. The error names the finite form and the equation
-  # that cannot take an infinite one.
+  # The default model set mixes NEC and NSEC equations. Name the equation
+  # that prevents infinite extrapolation and the accepted finite form.
   expect_error(
     bayesnec:::extrapolate_limits(TRUE, bounds_of(0, 10), c("NEC", "NSEC"),
                                   c("nec4param", "ecx4param")),
@@ -63,9 +60,8 @@ test_that("a malformed extrapolate is refused with the forms it takes", {
 })
 
 test_that("limits are put on the fitted scale before any draw is compared", {
-  # A decreasing crf() takes the top of the recorded scale to the foot of the
-  # fitted one, so the pair is transformed and then ordered. Carrying the names
-  # across would compare a draw against the one bound it is known not to reach.
+  # A decreasing crf() reverses the bound order. Transform and reorder
+  # values rather than carrying lower/upper names across.
   data(nec_data)
   rising <- bayesnecformula(y ~ crf(log(x), "nec3param"))
   out <- bayesnec:::fitted_extrapolate_limits(bounds_of(1, 20),
@@ -127,10 +123,8 @@ test_that("extrapolate is refused where no prediction range is stored", {
   expect_true(bayesnec:::check_no_extrapolate(FALSE, "brmsfit"))
 })
 
-# Integration. These reuse the packaged fits and change only the prediction
-# grid, so no model is compiled or sampled. The grid is cut to 0.9, which is
-# below every nec4param draw, so the stored estimate is wholly censored and
-# what a limit releases is visible.
+# Reuse stored fits without sampling. Cutting the grid to 0.9 puts every
+# nec4param draw above it, making released censoring visible.
 
 extrapolate_x_range <- function() {
   c(min(manec_example$mod_fits[["ecx4param"]]$fit$data$x), 0.9)
@@ -323,12 +317,9 @@ test_that("with no x_range the stored grid counts as well", {
   }
   f <- suppressMessages(suppressWarnings(pull_out(manec_example,
                                                   model = "ecx4param")))
-  # With no x_range of its own, nsec() searches the observed range, which ends
-  # at 3.22, while this fit stores a grid reaching 8. A limit between the two
-  # would censor the estimate inside the grid the fit was built on, which is
-  # the silent tightening the argument exists to refuse, so with no x_range the
-  # limit is measured against the wider of the two and nec() and nsec() refuse
-  # the same numbers.
+  # Without x_range, validate against the union of the observed search
+  # range and stored grid. Here the data end at 3.22 but the grid reaches 8;
+  # a limit between them must not silently tighten the stored range.
   wide <- suppressMessages(suppressWarnings(bayesnec:::expand_and_assign_nec(
     manec_example$mod_fits[["ecx4param"]],
     manec_example$mod_fits[["ecx4param"]]$bayesnecformula,
@@ -372,10 +363,8 @@ test_that("a lower limit below the control is accepted and reported", {
   )
 })
 
-# A set of two threshold equations, assembled from one packaged fit so that the
-# pure-NEC branch can be exercised without fitting a second model. The two
-# names are both in mod_groups$nec, which is what the branch reads; the draws
-# behind them are the same fit's, which is all the branch does read.
+# Two NEC names share one stored fit solely to exercise the pure-NEC
+# branch. Its posterior draws are synthetic, not independent fitted models.
 pure_nec_stub <- function(posterior = as.numeric(manec_example$w_ne_posterior),
                           index = TRUE) {
   f <- manec_example$mod_fits[["nec4param"]]
@@ -429,10 +418,9 @@ test_that("a draw with no value is refused rather than dropped in silence", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # The case manec_ne_types() cannot see: a set of joint two-block fits whose
-  # survival blocks hold a smooth equation is named NEC by the equation name,
-  # and its combined estimate is read off a curve. Releasing such a draw by
-  # comparison would quietly restore the deleted-draw summary.
+  # A joint fit named for a threshold equation can hold a smooth survival
+  # block, so an NA draw needs the curve. Refuse it rather than release it to
+  # a wider bound by comparison.
   post <- as.numeric(manec_example$w_ne_posterior)
   post[1:40] <- post[1:40] + 3
   post[c(5, 11)] <- NA_real_
@@ -452,10 +440,9 @@ test_that("a set with no stored draw index is rebuilt under one index", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # An object stored before the weighted draw index was kept. pull_draw_index()
-  # regenerates a different draw, so slicing the stored mixture for the
-  # threshold components would put those draws beside curve-read draws taken
-  # under the new one. The mixture is rebuilt under the one index instead.
+  # Legacy objects lack the stored mixture draw index. Rebuild all
+  # components under one regenerated index so threshold and curve-read
+  # draws remain aligned.
   m <- truncated_manec_fit()
   legacy <- m
   legacy$w_draw_index <- list()
@@ -473,11 +460,8 @@ test_that("extrapolating a fit with nothing censored changes no number", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # Every draw was identified inside the range the fit used, so a wider bound
-  # censors none of them and a wider grid has none left to identify. Measured
-  # before this was short-circuited: the rebuilt mixture read 1.449 (0.808,
-  # 1.528) against the stored 1.450 (0.749, 1.527), a lower bound eight per
-  # cent away on a fit with nothing censored.
+  # A fully identified posterior must remain bit-identical when limits
+  # widen; rebuilding its weighted mixture can alter the summary.
   default <- suppressMessages(suppressWarnings(nec(manec_example)))
   wider <- suppressMessages(suppressWarnings(nec(manec_example,
                                                  extrapolate = 5)))
@@ -512,11 +496,9 @@ test_that("a grid point outside the fitted domain is left out of the bounds", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # expand_nec() drops such a point from its own bounds, because an x_range
-  # reaching zero under crf(log(x)) puts -Inf at the foot of the fitted grid.
-  # Filtering the recorded grid alone kept the zero, and the lower limit of a
-  # single-number extrapolate defaults to this bound, so the fit refused every
-  # upper limit for naming a value the caller had not given.
+  # Exclude zero when crf(log(x)) makes it non-finite. Otherwise the
+  # implicit lower extrapolation bound can reject a valid upper limit
+  # for a lower value the caller never supplied.
   f <- suppressMessages(suppressWarnings(pull_out(manec_example,
                                                   model = "nec4param")))
   logged <- f
@@ -545,12 +527,9 @@ test_that("a component classed for nsec gives what pull_out gives", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # The assumption behind component_fit(): nsec() reads the stored brms fit and
-  # the formula and nothing expand_nec() adds, so re-evaluating a curve through
-  # the classed component rather than through pull_out() is the same
-  # computation without the discarded expansion. Pinned bit for bit, because a
-  # future nsec() that reached for pred_vals or ne_posterior would otherwise
-  # fail silently on a component that has neither.
+  # The lightweight component must give the same NSEC as pull_out().
+  # It lacks pred_vals and ne_posterior, so nsec() must use the stored
+  # brms fit and formula without relying on expanded fields.
   heavy <- suppressMessages(suppressWarnings(pull_out(manec_example,
                                                       model = "ecx4param")))
   light <- bayesnec:::component_fit(manec_example, "ecx4param")
@@ -570,11 +549,8 @@ test_that("a supplied x_range is the range at both ends", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # The caller chose the range, so extrapolate extends from it rather than from
-  # anything wider. Measured before this was so: extrapolate = 9 beside
-  # x_range = c(0.5, 0.9) searched from 0.0324, discarding the narrowing
-  # without saying so, and the pair that states the intent was refused for
-  # naming a lower limit inside a range the caller had already narrowed.
+  # An explicit x_range sets the starting range for extrapolation. Keep
+  # its lower limit when extending the upper end, for scalar and pair forms.
   f <- suppressMessages(suppressWarnings(pull_out(manec_example,
                                                   model = "ecx4param")))
   expect_equal(
@@ -625,9 +601,8 @@ test_that("a threshold posterior is read without expanding the component", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # expand_nec() stores it as as_draws_df(fit)[["b_nec_Intercept"]] and nothing
-  # else, so the rebuild path reads it straight from the fit rather than paying
-  # for an expansion whose every other product it discards.
+  # Read the sampled NEC directly from b_nec_Intercept; expanding the
+  # component would compute quantities this path discards.
   direct <- bayesnec:::component_ne_posterior(manec_example, "nec4param")
   expanded <- as.numeric(
     suppressMessages(suppressWarnings(
@@ -641,9 +616,8 @@ test_that("a call that recomputes nothing gives no advice about the prior", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # manec_example has nothing censored, so extrapolate = 5 returns the stored
-  # estimate bit for bit. Advising a refit with a wider nec prior bound on such
-  # a call names a constraint that had no bearing on the number beside it.
+  # This uncensored fixture returns its stored estimate unchanged. Do not
+  # advise a wider prior when no bound constrained the returned estimate.
   msgs <- character(0)
   out <- withCallingHandlers(
     suppressWarnings(nec(manec_example, extrapolate = 5)),

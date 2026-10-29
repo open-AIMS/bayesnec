@@ -1,4 +1,4 @@
-#' Extracts the percent effect associated with a predicted NSEC value from an 
+#' Extracts the percent effect associated with a predicted NSEC value from an
 #' object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 #'
 #' @param object An object of class \code{\link{bayesnecfit}} or
@@ -22,12 +22,12 @@
 #' 0.975 (95 percent credible intervals).
 #' @param ... Further arguments to pass to class specific methods.
 #'
-#' @details NSEC is no-effect toxicity metric that estimates the concentration 
-#' at which the modeled mean response is statistically indistinguishable from 
+#' @details NSEC is no-effect toxicity metric that estimates the concentration
+#' at which the modeled mean response is statistically indistinguishable from
 #' the mean control response. See the detailed derivation in
-#' Fisher and Fox (2023). Like NOEC, NSEC estimates will have an associated 
+#' Fisher and Fox (2023). Like NOEC, NSEC estimates will have an associated
 #' effect size. This function estimates the effect of a given NSEC estimate.
-#' 
+#'
 #' The effect is measured from the control --- the predicted mean at the
 #' lowest concentration in the supplied predictor, per posterior draw --- and
 #' \code{type} names what it is measured towards, exactly as in
@@ -84,7 +84,7 @@
 #' }
 #'
 #' @export
-ecnsec <- function(object, nsec, resolution = 200, x_range = NA, 
+ecnsec <- function(object, nsec, resolution = 200, x_range = NA,
                    type = "absolute",
                  xform = NULL, prob_vals = c(0.5, 0.025, 0.975), ...) {
   UseMethod("ecnsec")
@@ -99,17 +99,17 @@ ecnsec <- function(object, nsec, resolution = 200, x_range = NA,
 #' just the median and 95 credible intervals.
 #'
 #' @inherit ecnsec details seealso return examples
-#' 
+#'
 #' @importFrom stats quantile
 #' @importFrom brms as_draws_df posterior_epred
 #' @importFrom chk chk_logical chk_number
-#' 
+#'
 #' @noRd
 #'
 #' @export
-ecnsec.bnecfit <- function(object, nsec, resolution = 200, x_range = NA, 
+ecnsec.bnecfit <- function(object, nsec, resolution = 200, x_range = NA,
                                type = "absolute",
-                             xform = NULL, prob_vals = c(0.5, 0.025, 0.975), ..., 
+                             xform = NULL, prob_vals = c(0.5, 0.025, 0.975), ...,
                              posterior = FALSE) {
   # One value: the curve is read at one point.
   chk_number(nsec)
@@ -157,7 +157,7 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 200, x_range = NA,
     object, resolution = 2, x_range = c(nsec_use, nsec_use)
   )
 
-  pred_val_nsec <- posterior_epred(object, 
+  pred_val_nsec <- posterior_epred(object,
                                    newdata = newdat_nsec$newdata,
                                    re_formula = NA)
   at_nsec <- pred_val_nsec[, 2]

@@ -96,7 +96,8 @@ extract_waic_estimate <- function(x) {
 #' Where the session had no seed, \code{.Random.seed} is removed rather than
 #' assigned, and \code{\link[base]{RNGkind}} restores \code{sample.kind}. The
 #' cached normal variate of \code{normal.kind = "Box-Muller"} cannot be
-#' restored.
+#' restored, so subsequent normal draws can change. Use
+#' \code{normal.kind = "Inversion"} when those draws must be preserved.
 #'
 #' \code{expr} is evaluated in the calling frame, so a \code{return()} inside
 #' it returns from the caller.

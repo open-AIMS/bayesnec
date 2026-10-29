@@ -1,11 +1,6 @@
-# Component selection on hurdle fits.
-#
-# The two implementations name the component differently -- `which` for the
-# paired bayesnechurdlefit, `dpar` for a joint two-block fit -- and each used
-# to fall into `...` on the other's methods and be discarded, returning the
-# default endpoint with no error. ecx.bayesmanecfit additionally dropped `dpar`
-# even when it was the right argument, because its inner sampler took every
-# argument positionally.
+# Paired hurdle fits take which; joint two-block fits take dpar. Refuse the
+# other argument rather than dropping it through dots, and check that model
+# averaging forwards dpar to each component.
 
 test_that("check_component_arg rejects dpar on a bayesnechurdlefit", {
   hurdle <- structure(list(), class = c("bayesnechurdlefit", "bnecfit"))
@@ -61,8 +56,7 @@ test_that("the guards fire through the exported generics", {
 })
 
 test_that("ecx and nsec forward dpar to the per-model calls", {
-  # Regression test for the bug proper: a model-averaged joint fit dropped
-  # dpar and returned the combined endpoint. Needs real fits.
+  # Use real joint fits to check component forwarding through model averaging.
   skip_on_cran()
   skip_on_ci()
   set.seed(7)
@@ -85,14 +79,13 @@ test_that("ecx and nsec forward dpar to the per-model calls", {
 
   combined <- suppressMessages(ecx(jm, ecx_val = 50))
   survival <- suppressMessages(ecx(jm, ecx_val = 50, dpar = "hu"))
-  # Before the fix these were identical to every digit, because dpar never
-  # reached the per-model ecx() call.
+  # Distinct combined and survival estimates detect a dropped dpar argument.
   expect_false(isTRUE(all.equal(unname(combined), unname(survival))))
   # Survival is the less sensitive process in this simulation, so its ECx sits
   # above the combined one.
   expect_gt(survival[[1]], combined[[1]])
 
-  # nsec gained dpar at the same time; it previously had none at all.
+  # Check the same component distinction through nsec().
   n_combined <- suppressMessages(nsec(jm))
   n_survival <- suppressMessages(nsec(jm, dpar = "hu"))
   expect_false(isTRUE(all.equal(unname(n_combined), unname(n_survival))))

@@ -1,15 +1,9 @@
-# #297. The curve parameters of a fitted set had no reporting function: for a
-# bayesmanecfit nothing returned them at all. Everything here runs on the
-# packaged manec_example or on a mock, because the quantity is read straight
-# off the stored draws and nothing about it needs sampling to exercise.
-# nec4param and ecx4param are the fits setup.R pulls out of manec_example.
+# Read parameters from the packaged fits or mocks. These reporting tests
+# need stored draws or formula metadata, not new samples.
 
-# A joint two-block fit, built as far as the brms formula and no further. The
-# formula is what identifies the survival block's equation, and
-# wrangle_model_formula() builds it deterministically, so the labelling can be
-# pinned without sampling. The model name is pasted into the formula text
-# rather than referenced, because crf() evaluates its model argument where the
-# formula is used rather than where it is written.
+# Build a joint formula without sampling to check survival-equation labels.
+# Embed equation names in the formula text so the mock does not depend on
+# resolving a model variable from its formula environment.
 joint_mock <- function(model = "nec3param", model_survival = "ecx4param",
                        x_term = "x") {
   d <- data.frame(x = c(1, 2, 3, 4, 1, 2, 3, 4),
@@ -42,9 +36,8 @@ test_that("the table has the documented columns and one row per parameter", {
 })
 
 test_that("the rows are in the documented parameter order", {
-  # Promised by the Rd, and not implied by anything brms returns: fixef() lists
-  # nec4param as bot, top, beta, nec. A table whose row order moved with the
-  # formula would read differently from one fit to the next.
+  # Use the documented parameter order, independently of fixef()'s column
+  # order or the order of terms in a formula.
   out <- curve_params(nec4param)
   expect_equal(out$parameter, c("top", "bot", "beta", "nec"))
   expect_equal(curve_params(ecx4param)$parameter,
@@ -130,10 +123,9 @@ test_that("xform applies to the predictor-scale parameters and to no other", {
 })
 
 test_that("xform is applied to the draws rather than to the summary", {
-  # The distinction the median cannot pin: for a monotone xform the median of
-  # the transformed draws equals the transform of the median exactly. The
-  # interval separates them, because quantile() interpolates between order
-  # statistics, and a non-monotone xform separates them outright.
+  # Transform draws before summarising them. Nonlinear transforms need not
+  # commute with interpolated sample quantiles, including the median of an
+  # even sample; the interval and folded transform exercise that distinction.
   sq <- curve_params(nec4param, xform = function(x) x^2)
   drawn <- curve_params(nec4param, summary = FALSE,
                       xform = function(x) x^2)$nec4param[, "nec"]
@@ -158,19 +150,15 @@ test_that("xform and summary are validated", {
 })
 
 test_that("the reported parameters are every parameter of every equation", {
-  # A guard on curve_par_names(), which is fixed rather than derived. An
-  # equation added with a parameter not in that vector would be reported with
-  # the parameter silently missing from its rows, which is the failure mode
-  # this whole function exists to remove.
+  # Check the fixed parameter-name list against every equation so a new
+  # parameter cannot disappear silently from the report.
   pars <- unique(unlist(lapply(models()$all, function(m) {
     all.vars(show_params(m)[[1]]$formula)
   })))
   pars <- setdiff(pars, c("x", "y"))
   expect_setequal(pars, bayesnec:::curve_par_names())
-  # expand_nec() extracts the same set in a different order, which it keeps
-  # because the extracted elements are appended to the bayesnecfit in it. The
-  # two are asserted to agree here, so a parameter added for a new equation
-  # cannot reach one and not the other.
+  # Keep reporting and fit extraction consistent even though their parameter
+  # orders differ.
   expect_setequal(bayesnec:::extract_par_order(), bayesnec:::curve_par_names())
   expect_setequal(
     bayesnec:::equation_par_names("ecxll5"),
@@ -283,10 +271,8 @@ test_that("the link is reported in a column and named when it is not identity", 
   expect_silent(bayesnec:::report_link(c(mu = "identity"), "x fit"))
 })
 
-# A fit whose formula transforms the PREDICTOR, in the style of setup.R's
-# transformed_response_fit(). The stored fit was not fitted with this formula,
-# so its numbers mean nothing in themselves; the tests compare two calls on the
-# same stored posterior.
+# Relabel the stored predictor formula without refitting. Compare calls on
+# one posterior; its numbers do not validate a newly sampled fit.
 transformed_x_fit <- function(fit, model) {
   fit$bayesnecformula <- bnf(stats::as.formula(
     paste0("y ~ crf(sqrt(x), model = \"", model, "\")")

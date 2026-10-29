@@ -2114,11 +2114,8 @@ make_brmsformula <- function(formula, data, family = NULL) {
   # parent.frame() so that a character formula resolves symbols where
   # make_brmsformula() was called from rather than in its own frame.
   formula <- bnf(formula, env = parent.frame())
-  # Also called in check_formula(), which this function reaches only through
-  # model.frame() inside the loop. single_model_formula() runs first there and
-  # rebuilds the crf() term from deparsed text, so a non-syntactic predictor
-  # would fail as a parse error before the refusal. The formula operator
-  # refusal is placed beside it.
+  # Check names before single_model_formula() rebuilds crf() from text;
+  # a non-syntactic predictor would otherwise fail to parse.
   check_syntactic_names(formula)
   check_crf_formula_operator(formula)
   all_models <- get_model_from_formula(formula)

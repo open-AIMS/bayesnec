@@ -1,6 +1,5 @@
-# Structural tests for best_crossed() and bnec_joint(). Neither requires
-# sampling: they are built from a mock carrying only the pieces each function
-# reads, in the style of test-bayesnechurdlefit-methods.R.
+# Use minimal structural mocks for selection and formula checks. Tests that
+# need posterior draws use the cached fitted fixtures below.
 
 mock_manec <- function(models, weights) {
   mod_stats <- data.frame(model = models, wi = weights,
@@ -139,8 +138,8 @@ test_that("a formula passed to bnec_joint replaces the held disp() term", {
 })
 
 test_that("bnec_joint refuses a non-syntactic name before rebuilding (#398)", {
-  # swap_crf_model() rebuilds crf() from deparsed text, which dropped the
-  # backticks and failed as a parse error naming neither column nor term.
+  # Check names before rebuilding crf() from text, which cannot retain
+  # backticked column names.
   o <- mock_disp_crossed('y ~ crf(x, c("nec3param", "ecx4param"))', "Gamma",
                          10)
   captured <- capture_joint_call()
@@ -150,8 +149,7 @@ test_that("bnec_joint refuses a non-syntactic name before rebuilding (#398)", {
 })
 
 test_that("bnec_joint refuses a crf() predictor with a leading minus (#438)", {
-  # Raised beside the #398 refusal, before swap_crf_model() and before bnec()
-  # is called, so that the refit is never announced for it.
+  # Refuse before rebuilding crf(), calling bnec() or announcing a refit.
   o <- mock_disp_crossed('y ~ crf(x, c("nec3param", "ecx4param"))', "Gamma",
                          10)
   captured <- capture_joint_call()
@@ -165,7 +163,7 @@ test_that("bnec_joint refuses a crf() predictor with a leading minus (#438)", {
     }
   )
   expect_match(err, "is written with a leading minus")
-  # Any other formula operator at the top of the predictor likewise (#479).
+  # The same refusal applies to other top-level formula operators.
   err <- withCallingHandlers(
     tryCatch(bnec_joint(o, formula = y ~ crf(x^2, "nec3param")),
              error = conditionMessage),
@@ -232,11 +230,8 @@ test_that("bnec_joint refuses a disp(~z) column on hurdle_negbinomial up front",
   expect_equal(bayesnec:::parse_disp_term(captured$formula)$route, "A")
 })
 
-# The joint refit of a grouped fit (#382). Everything that can be decided
-# before a model is compiled is decided against a mock carrying only the model
-# weights and a data frame with no response column, which stops fit_bayesnec()
-# at its model frame. The fitted fixture below is shared by the tests that
-# genuinely need a posterior.
+# Use mocks for checks made before compilation. The missing response stops
+# fit_bayesnec() at its model frame; posterior tests share a fitted fixture.
 
 mock_group_fit <- function(weights) {
   fits <- lapply(weights, function(w) mock_manec(names(w), unname(w)))
@@ -270,9 +265,8 @@ test_that("the summed weight adds over levels, a dropped equation as zero", {
 })
 
 test_that("each level is fitted the equation its own weights favour", {
-  # The correction of #388. The summed-weight winner imposed one functional
-  # form on levels that rejected it; best_crossed() already returns the growth
-  # and survival equations separately, and this is that rule over levels.
+  # Choose an equation per level; a summed-weight winner can impose a form
+  # that an individual level rejects.
   g <- spread_group_fit()
   expect_equal(joint_level_equations(g),
                c(a = "nec3param", b = "nec4param"))
@@ -295,9 +289,8 @@ test_that("`model` forces one equation at every level", {
 })
 
 test_that("levels that agree take the dummy-coded form, not a composition", {
-  # The reduction to the special case. Where every level favours the same
-  # equation there is nothing to compose, and the message names the single
-  # equation the phase 1 route already built.
+  # When every level favours one equation, use the ordinary shared-equation
+  # route and name that equation in the message.
   g <- mock_group_fit(list(a = c(nec3param = 0.6, nec4param = 0.4),
                            b = c(nec3param = 0.8, nec4param = 0.2)))
   msg <- paste(capture_messages(try(bnec_joint(g), silent = TRUE)),
@@ -318,10 +311,8 @@ test_that("a group-level term is refused where the equations differ", {
 })
 
 test_that("prior and init are refused where the equations differ", {
-  # The composed parameter names are internal, so a set written against the
-  # equation's own names names nothing in the model. Refused rather than
-  # dropped: add_brm_defaults() validates a supplied prior against the
-  # representative equation and discards it silently when it does not match.
+  # Composed fits use internal per-level parameter names. Priors and initial
+  # values written for ordinary curve parameters do not name those coefficients.
   g <- spread_group_fit()
   expect_error(bnec_joint(g, prior = brms::prior(normal(0, 1), nlpar = "top")),
                "cannot be supplied where the levels favour different")
@@ -733,11 +724,8 @@ test_that("no dispersion prior is added where disp_by_level is FALSE", {
 })
 
 test_that("a two-block family's dispersion prior and init name one family", {
-  # The dispersion of hurdle_gamma and zero_inflated_beta is their positive
-  # block's, so the per-level prior and the initial value are both keyed
-  # through disp_family_tag(), as disp_intercept_centre() is. Keyed on the
-  # two-block tag, the prior lookup found no entry and the initial value fell
-  # through to 0, the centre of neither prior. See #410.
+  # Key the dispersion defaults by the positive block's family, including
+  # both its prior and its initial value.
   y <- c(0, 0, 0.3, 0.5, 0.8, 0.9)
   expected <- list(
     hurdle_gamma = list(dpar = "shape", prior = "normal(2, 2)", init = 2),
@@ -764,9 +752,7 @@ test_that("a two-block family's dispersion prior and init name one family", {
   }
 })
 
-# One fixture for every test that needs a posterior. Compiling Stan programs is
-# what makes this file slow, and this one costs three of them: two levels and
-# the joint refit.
+# Share one posterior fixture: it requires two level fits and one joint refit.
 joint_gate_fixture <- local({
   cached <- NULL
   function() {
@@ -800,9 +786,8 @@ test_that("the joint refit carries a coefficient per level", {
   expect_equal(f$joint$group_var, "site")
   expect_equal(f$joint$levels, c("a", "b"))
   expect_equal(f$joint$model, "nec3param")
-  # The reduction to the special case, on a fitted object: both levels favour
-  # nec3param, so nothing is composed and the dummy-coded form is what was
-  # built. The coefficient names asserted below are that form's.
+  # Both levels use nec3param, so this exercises dummy coding without
+  # composed per-level equation tags.
   expect_false(isTRUE(f$joint$level_spec$composed))
   expect_equal(unname(unlist(f$joint$models)), c("nec3param", "nec3param"))
   expect_null(f$joint$level_spec$tags)
@@ -814,11 +799,9 @@ test_that("the joint refit carries a coefficient per level", {
 })
 
 test_that("per-level estimates agree with bnec_group on the same equation", {
-  # The phase 1 gate of #382. The two fits are the same model written two ways
-  # once the priors match, so their per-level posteriors must agree to Monte
-  # Carlo error. A joint posterior tighter than the grouped one means a prior
-  # has been applied twice; a wider one means a level coefficient is running on
-  # brms's improper default.
+  # Matching priors give the two representations the same target posterior.
+  # Compare their fitted parameters within the tolerance below; this is a
+  # finite-sample check, not a diagnosis of why a comparison might fail.
   skip_on_cran()
   f <- joint_gate_fixture()
   jf <- suppressWarnings(summary(f$joint$fit))$fixed
@@ -836,15 +819,11 @@ test_that("per-level estimates agree with bnec_group on the same equation", {
   }
 })
 
-# Phase 2 of #382. The test that stood here asserted that ecx() on a joint
-# refit errored and that the grid carried no level column; both are now false
-# and the assertions below replace them.
+# Prediction grids and per-level estimates.
 
 test_that("the level column is added only where a level spec asks for it", {
-  # No fit and no sampling: prediction_grid() reads the family and the data off
-  # whatever it is handed, which is what makes the conditional testable without
-  # a posterior. The unconditional case is the one that matters, because every
-  # caller that existed before #382 passes no level spec.
+  # Use a structural mock: prediction_grid() needs the family and data, not a
+  # posterior. A call without level_spec must retain the ordinary grid.
   d <- data.frame(x = c(1, 2, 3, 4), y = c(0.9, 0.6, 0.3, 0.1),
                   site = factor(c("a", "a", "b", "b")))
   fake <- list(data = d, family = gaussian())
@@ -877,8 +856,7 @@ test_that("bnec_newdata on a joint refit gives resolution rows per level", {
   nd <- bnec_newdata(f$joint, resolution = 10)
   expect_equal(nrow(nd), 20L)
   expect_equal(as.character(nd$site), rep(c("a", "b"), each = 10))
-  # The prediction that phase 1 recorded as stopping on the missing column now
-  # runs, which is the whole of what phase 2 needed from the grid.
+  # The level-aware grid must reach posterior_epred() with its required column.
   pe <- brms::posterior_epred(f$joint$fit, newdata = nd, re_formula = NA)
   expect_equal(ncol(pe), 20L)
 })
@@ -889,17 +867,15 @@ test_that("the estimators report one row per level of a joint refit", {
   e <- suppressWarnings(suppressMessages(ecx(f$joint, ecx_val = 10)))
   expect_s3_class(e, "data.frame")
   expect_equal(e$level, c("a", "b"))
-  # The level, three quantiles and a bound_ column for each quantile (#404).
+  # Keep the level, three quantiles and a bound marker for each quantile.
   expect_equal(ncol(e), 7L)
   expect_equal(names(e)[5:7], c("bound_Q50", "bound_Q2.5", "bound_Q97.5"))
   n <- nec(f$joint)
   expect_equal(n$level, c("a", "b"))
   s <- suppressWarnings(suppressMessages(nsec(f$joint)))
   expect_equal(s$level, c("a", "b"))
-  # The same columns the grouped route returns, so the two tables can be read
-  # against each other. nec() adds two of its own, because a composed refit can
-  # fit an equation with no nec parameter at one level and not at another, so
-  # the estimate has to say which equation produced it and of what type.
+  # Match grouped output columns. nec() additionally identifies each level's
+  # equation and estimate type because composed levels can differ.
   expect_equal(names(s),
                names(suppressWarnings(suppressMessages(nsec(f$grouped)))))
   expect_equal(names(n), c("level", "model", "ne_type",
@@ -925,10 +901,8 @@ test_that("the estimators report one row per level of a joint refit", {
 })
 
 test_that("per-level ecx from a joint refit agrees with bnec_group", {
-  # The phase 2 gate of #382. Phase 1 established that the curve parameters
-  # agree; this carries that agreement through the estimators, which is what a
-  # user actually reads. A disagreement here and not in phase 1's test is a
-  # grid or extraction fault in phase 2, because the priors are already pinned.
+  # Compare estimator output after the parameter-level checks. A discrepancy
+  # confined to this comparison warrants checking the grid and extraction.
   skip_on_cran()
   f <- joint_gate_fixture()
   jp <- suppressWarnings(suppressMessages(
@@ -939,9 +913,8 @@ test_that("per-level ecx from a joint refit agrees with bnec_group", {
       ecx(f$grouped$fits[[lev]], ecx_val = 10, posterior = TRUE)
     ))
     j <- jp[[lev]]
-    # Monte Carlo error of each median, from the draws themselves. The two fits
-    # are independent samples of the same posterior, so the difference of the
-    # medians is compared against the two errors added in quadrature.
+    # Combine sd/sqrt(n) from the independent fits as a comparison scale. This
+    # does not estimate median-specific error or adjust for autocorrelation.
     mcse <- sqrt(stats::sd(j, na.rm = TRUE)^2 / sum(!is.na(j)) +
                    stats::sd(gp, na.rm = TRUE)^2 / sum(!is.na(gp)))
     expect_lt(
@@ -972,11 +945,9 @@ test_that("autoplot and ggbnec_data carry the level of a joint refit", {
   expect_equal(levels(p$layers[[1]]$data$model), c("site = a", "site = b"))
 })
 
-# The composed branch of #388: the levels favour different equations, so the
-# refit carries one equation per level in a single posterior. The grouped fit
-# is mocked down to the weights, which is all bnec_joint() reads off it, so the
-# fixture costs one Stan program for the refit and one per level for the
-# comparison rather than a full bnec_group() over two equations.
+# Mock grouped weights to select different equations, then fit the composed
+# posterior and separate level comparisons. This avoids fitting a full
+# two-equation model set at every level.
 composed_gate_fixture <- local({
   cached <- NULL
   function() {
@@ -1033,10 +1004,8 @@ test_that("a composed refit carries one equation per level in one posterior", {
 })
 
 test_that("a composed refit agrees with a fit of each level's own equation", {
-  # The gate of #388. Each level of the composed refit and a fit of that level
-  # alone with that level's equation estimate the same curve, so they must
-  # agree to Monte Carlo error. The comparison is made on the curve parameters
-  # and on ecx(), which is what a user reads.
+  # Compare each composed level with an independent fit of its own equation,
+  # using the parameter and ECx tolerances below.
   skip_on_cran()
   f <- composed_gate_fixture()
   jf <- suppressWarnings(summary(f$joint$fit))$fixed
@@ -1070,13 +1039,9 @@ test_that("a composed refit agrees with a fit of each level's own equation", {
 })
 
 test_that("the composed curve at a level matches a fit of that level alone", {
-  # The curve rather than an estimate read off it. nsec() disagreed by five
-  # Monte Carlo errors of its median on a measured run while the two curves
-  # agreed to 1.3e-3 at every grid point, because nsec() reads the 1 per cent
-  # tail of the control posterior against a curve that is nearly flat there: a
-  # 2e-3 shift in the threshold moves the crossing by 2e-2 in x. The curve is
-  # therefore what the agreement is asserted on, and the estimator test above
-  # uses ecx(), which crosses the curve where it is steep.
+  # Check curves directly: NSEC crossings near a flat control tail can differ
+  # substantially despite close curves. The estimator comparison above uses
+  # ECx, whose crossing is on a steeper part of this fixture.
   skip_on_cran()
   f <- composed_gate_fixture()
   for (lev in c("a", "b")) {
@@ -1100,10 +1065,8 @@ test_that("the estimators and the plot follow each level's own equation", {
                brms::ndraws(f$joint$fit))
   expect_null(joint_level_fit(f$joint, "b")$ne_posterior)
   dat <- suppressWarnings(suppressMessages(ggbnec_data(f$joint)))
-  # One curve and one set of three no-effect rows per panel, and every raw
-  # observation assigned to the panel its row belongs to. The row-to-level map
-  # is read off the indicator columns here, because a composed refit with a
-  # shared dispersion never puts the factor in the formula at all.
+  # Read row-to-level assignments from indicator columns; a composed fit with
+  # shared dispersion need not include the grouping factor in its formula.
   expect_equal(as.integer(table(dat$panel[!is.na(dat$nec_vals)])), c(3L, 3L))
   expect_equal(as.integer(table(joint_row_levels(f$joint))),
                c(nrow(nec_data), nrow(nec_data)))
@@ -1118,9 +1081,7 @@ test_that("the estimators and the plot follow each level's own equation", {
   expect_equal(unique(as.character(tagged$tag[tagged$panel == "b"])), "NSEC")
 })
 
-# nec() on a composed refit, #388. The fit above mixes a threshold equation at
-# one level with a smooth one at the other, which is the case the two forms
-# below exist to separate, so it is the fixture these reuse.
+# Reuse the mixed threshold/smooth fixture to check both forms of nec().
 
 test_that("the strict nec() gives NA where a level's equation has no nec", {
   skip_on_cran()
@@ -1168,10 +1129,8 @@ test_that("no_effect = TRUE labels the no-effect estimate at every level", {
   # The threshold level is the strict NEC unchanged.
   expect_equal(ne[1, c("Q50", "Q2.5", "Q97.5")],
                strict[1, c("Q50", "Q2.5", "Q97.5")])
-  # The smooth level is nsec() on that level -- literally that call, on the
-  # same internal single-level fit, so the two agree exactly rather than to
-  # Monte Carlo error. A second crossing search written for this path would
-  # not, which is why one was not written.
+  # Reuse the same single-level nsec() call so the smooth-level values agree
+  # exactly; a separate crossing search need not do so.
   s <- suppressWarnings(suppressMessages(nsec(f$joint)))
   expect_equal(ne[2, c("Q50", "Q2.5", "Q97.5")],
                s[2, c("Q50", "Q2.5", "Q97.5")])
@@ -1189,11 +1148,8 @@ test_that("no_effect = TRUE labels the no-effect estimate at every level", {
 })
 
 test_that("a refit whose levels are all smooth gives NA, not an error", {
-  # No sampling. Under no_effect = FALSE the strict path reads the equation at
-  # each level and returns the NA row without touching the posterior, which is
-  # what makes the all-smooth case testable without a fit. That case is the
-  # ordinary one for a refit of data whose every level favours a smooth
-  # equation, and before #388 it was an error rather than a table.
+  # The strict path returns NA for smooth equations without reading posterior
+  # draws, so an all-smooth case needs only this structural mock.
   o <- structure(list(group_var = "site", levels = c("a", "b"),
                       models = list(a = "ecx4param", b = "ecxll5"),
                       level_spec = list(composed = TRUE)),
@@ -1218,9 +1174,8 @@ test_that("a refit whose levels are all smooth gives NA, not an error", {
 })
 
 test_that("the joint annotation keeps the marks of a censored NSEC (#404)", {
-  # No sampling. joint_level_ne() is what ggbnec_data() annotates at a smooth
-  # level, and it used to return as.numeric() of nsec(), which dropped the
-  # censoring record, so the plot drew a bound as though it were a quantile.
+  # Use a mock to ensure the smooth-level annotation retains censoring marks;
+  # as.numeric() alone would turn a bound into an unmarked number.
   est <- c(Q50 = 2.5, Q2.5 = 1.5, Q97.5 = 3.2)
   attr(est, "censored_summary") <- list(bound = c("", "", ">="), upper = 3.2,
                                         lower = 0.1, n_above = 150L,
@@ -1275,7 +1230,7 @@ test_that("a supplied formula with a leading minus in crf() is refused (#438)", 
     }
   )
   expect_match(err, "is written with a leading minus")
-  # Any other formula operator at the top of the predictor likewise (#479).
+  # The same refusal applies to other top-level formula operators.
   err <- withCallingHandlers(
     tryCatch(bnec_joint(g, formula = y ~ crf(log(x) + 1, "nec3param")),
              error = conditionMessage),
@@ -1290,8 +1245,8 @@ test_that("a supplied formula with a leading minus in crf() is refused (#438)", 
 })
 
 test_that("a grouping variable with a non-syntactic name is refused (#398)", {
-  # The refit writes the grouping variable into the formula it builds, where
-  # "odd site" was a parse error raised after the refit had been announced.
+  # Check grouping-variable names before constructing the joint formula or
+  # announcing a refit.
   g <- spread_group_fit()
   names(g$data)[names(g$data) == "site"] <- "odd site"
   g$group_var <- "odd site"
@@ -1330,11 +1285,9 @@ test_that("bnec_group() accepts a grouping variable the refit refuses", {
 })
 
 test_that("brms renames a level label and keeps the level order", {
-  # What joint_level_coef() relies on, read off the design matrix brms builds,
-  # which needs no compilation. The labels are renamed -- a space dropped, a
-  # hyphen spelled out -- so the label pasted onto the prefix is not the name,
-  # while the columns stay in the order of the factor's levels, which is not
-  # the sorted order here.
+  # Read coefficient names from brms's design matrix: sanitised labels need
+  # not equal the original labels, and columns follow factor-level order.
+  # lv is deliberately unsorted, so that order is not alphabetical.
   lv <- c("Site A", "site-b", "10", "2")
   d <- data.frame(x = rep(1:5, 4), y = seq(0.1, 0.9, length.out = 20),
                   site = factor(rep(lv, each = 5), levels = lv))
@@ -1350,11 +1303,8 @@ test_that("brms renames a level label and keeps the level order", {
 })
 
 test_that("a dummy-coded refit reads a level whose label brms renamed", {
-  # No sampling. A refit of levels "Site A" and "Site B" names its
-  # coefficients b_<par>_siteSiteA and b_<par>_siteSiteB, as a fit measured
-  # under brms 2.23.0 did. The label pasted onto the prefix found neither, so
-  # nec() stopped and ecx(type = "relative") measured towards 0 rather than
-  # towards bot. The fit is replaced by those draws.
+  # Mock draws with brms's sanitised coefficient names. Pasting the original
+  # label onto a prefix can miss both the NEC and the lower asymptote.
   draws <- list(b_bot_siteSiteA = c(0.10, 0.12, 0.14, 0.16),
                 b_bot_siteSiteB = c(0.20, 0.22, 0.24, 0.26),
                 b_nec_siteSiteA = c(1.1, 1.2, 1.3, 1.4),
@@ -1410,14 +1360,10 @@ test_that("the membership test is the nec group, not the equation name", {
   expect_length(intersect(mod_groups$nec, mod_groups$ecx), 0L)
 })
 
-# ---- #448, D40: each level read over its own concentrations -----------------
+# Each level's concentration range.
 
-# A joint refit holds every level in one brmsfit, whose data span every level's
-# concentrations together. The herbicide refit of example8 read irgarol's EC50
-# on a grid from 0.1 to 1000 ug/L in steps of about 5, and reported 2.68 for a
-# curve whose EC50 is 0.53. These use nec4param's data split into two levels
-# observed over different ranges, which is the case that differs from a
-# crossed design.
+# Split the stored nec4param data into levels with different ranges so a
+# whole-fit grid cannot substitute for either level's own concentrations.
 level_split <- function() {
   d <- nec4param$fit$data
   d$site <- ifelse(d$x < 1, "low", "high")

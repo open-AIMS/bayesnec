@@ -264,11 +264,8 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
   below <- attr(ecx_out, "below_range")
   above <- is.na(ecx_out) & !below
   attr(ecx_out, "below_range") <- NULL
-  # Build the censoring record here, not from the fit, because x_range may
-  # have changed the grid. Build it on the recorded scale, where the curve was
-  # searched, then remap it with sub_x_transformation() as the estimates are.
-  # Comparing against fitted-scale bounds directly would misname the ends
-  # under a decreasing crf() transformation.
+  # x_range may change the search grid. Record censoring on that grid, then
+  # remap it with the estimates; a decreasing crf() reverses the bounds.
   x_kept <- x_vec[is.finite(x_vec)]
   cens <- censoring_record(max(x_kept), min(x_kept), above, below)
   # The default on an inline-transformed fit leaves both on the recorded scale.

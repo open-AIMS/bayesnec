@@ -2,17 +2,14 @@ b_top <- 100
 b_beta <- -0.2
 b_nec <- 4
 fct <- function(...)as.integer(round(bayesnec:::pred_nec3param(...)))
-# group7 is in x9's last bar term. It was absent until #466, and the test
-# passed only because check_formula() looked at the first bar term alone.
+# group7 occurs in x9's last bar term and must exist to exercise parsing.
 dat <- data.frame(x = seq(1, 20, length.out = 10), tr = 100, wght = c(1, 2),
                   group1 = "a", group2 = "b", group3 = "b", group4 = "b",
                   group5 = "b", group6 = "c", group7 = "d", z = 19, k = 20,
                   sei = 30)
 dat$y <- fct(b_beta, b_nec, b_top, dat$x)
 
-# se() was dropped from this chain under #136: unvalidated aterms are now an
-# error, and it was incidental here -- what these tests exercise is parsing a
-# chain of several aterms, which trials + weights + cens still does.
+# Use validated trials, weights and cens terms to exercise chained aterms.
 x0 <- y | trials(tr) + weights(wght) +
   cens(k) ~ crf(sqrt(x), "nec") +
   ogl(group1) + pgl(group2) + (nec | group1)
@@ -44,9 +41,7 @@ test_that("correct classes", {
 })
 
 test_that("an unvalidated aterm in a chain is an error", {
-  # #136. The chain must be rejected as a whole rather than having the
-  # unrecognised term quietly ignored, which is what the old message amounted
-  # to in practice.
+  # Reject the whole chain when it contains an unrecognised term.
   expect_error(
     make_brmsformula(y | trials(tr) + se(sei) ~ crf(x, "nec3param"), dat),
     "aterms bayesnec does not support"
@@ -54,7 +49,7 @@ test_that("an unvalidated aterm in a chain is an error", {
 })
 
 
-# ---- #319, symbols resolve where the formula was written ---------------------
+# Resolve symbols where the formula was written.
 
 test_that("make_brmsformula resolves symbols in its caller's frame", {
   # Written inside a function on purpose: at the top level of a test file the
@@ -115,7 +110,7 @@ test_that("a missing parameter named in two terms is left out of both (#470)", {
                    "ec50 ~ 1 + (1 | group6) + (1 | group8)")
 })
 
-# ---- #479, the predictor as written into the brms formula --------------------
+# ---- the predictor as written into the brms formula --------------------------
 
 crf_data <- data.frame(x = seq(1.5, 12, length.out = 12),
                        y = seq(9, 2, length.out = 12))

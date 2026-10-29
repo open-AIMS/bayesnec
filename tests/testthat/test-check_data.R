@@ -1,26 +1,8 @@
-# check_data() had no test file of its own until this one, in any release. It
-# was exercised only from the side, as a step on the way to testing
-# fit_bayesnec(), get_priors(), inits_functions(), cens and hurdle_family, and
-# five defects have been found in it in two weeks: #258, #265, #269, #271 and
-# #274. Four of the five are the same shape -- a branch that cannot be reached,
-# or a correction that reaches one caller and not another -- which is what a
-# test written from the caller's side cannot see.
-#
-# So this file specifies check_data() as a function rather than as a step: its
-# guards, the arithmetic and the messaging of each correction it makes, the
-# shape of what it returns, and what each of its callers does with the result.
-#
-# What is deliberately NOT duplicated here, and where it lives:
-#   the write-back into brm()'s data frame  tests/testthat/test-fit_bayesnec.R
-#   the integer predictor guard             tests/testthat/test-fit_bayesnec.R
-#   pop_var_is_transformed()                tests/testthat/test-fit_bayesnec.R
-#   the censoring exemptions                tests/testthat/test-cens.R
-#   zeros preserved for a hurdle family     tests/testthat/test-hurdle_family.R
-#   check_normalisation()                   tests/testthat/test-check_normalisation.R
+# Test the guards, corrections, reports and caller write-back directly.
+# Build model frames through the public construction path so unreachable
+# branches cannot pass on unrealistic hand-built inputs.
 
-# Build the model frame the way bnec() does, which is the only route any caller
-# uses. Asserting through it rather than on a hand-built data frame is what
-# makes the two unreachable-branch tests below meaningful.
+# Build the same model frame that callers supply to check_data().
 cd_bdat <- function(formula, data) {
   model.frame(bayesnecformula(formula), data = data, run_par_checks = TRUE)
 }
@@ -33,9 +15,7 @@ cd_run <- function(formula, data, family, model = "nec3param") {
 # asserted around it without repeating the fixed part.
 cd_missing_msg <- "row\\(s\\) with missing values \\(NA or NaN\\), at row\\(s\\)"
 
-# The messages check_data() emits, as a character vector. Several corrections
-# are silent, and asserting the absence of a message is half of what this file
-# is for, so the helper returns them rather than swallowing them.
+# Capture correction messages so both their presence and absence are tested.
 cd_messages <- function(formula, data, family, model = "nec3param") {
   capture.output(invisible(cd_run(formula, data, family, model)),
                  type = "message")
@@ -71,12 +51,8 @@ test_that("a non-finite response is refused, naming the response", {
 })
 
 test_that("an NA or NaN row is refused, and the row is named", {
-  # model.frame() removes incomplete cases before check_data() is given the
-  # data, so until #278 an NA or NaN left the fit running on fewer rows than
-  # were supplied with nothing said, while Inf was refused. Both are now
-  # refused. The rows model.frame() removed are read off the na.action
-  # attribute, which is the only remaining evidence that they existed, so the
-  # message can name them.
+  # model.frame() removes incomplete cases. Read na.action to refuse and
+  # name those rows instead of silently fitting the reduced data.
   d <- cd_data_zero()
   d$y[1] <- NaN
   expect_error(cd_run(y ~ crf(x, model = "nec3param"), d, gaussian()),
@@ -98,10 +74,8 @@ test_that("an NA or NaN row is refused, and the row is named", {
 })
 
 test_that("the rows are reported by name, not by position", {
-  # names(attr(data, "na.action")) holds the row names and its values hold the
-  # positions. The name is what the user sees in their own data frame, and
-  # where bnec() has been handed a subset -- one level of a bnec_group() call
-  # -- a position indexes the subset and names no row of the data supplied.
+  # Report na.action names, which identify original rows. Its values index
+  # the current subset and can misidentify rows of grouped input.
   d <- cd_data_zero()
   rownames(d) <- paste0("s", seq_len(nrow(d)) + 100L)
   d$y[3] <- NA
@@ -110,11 +84,8 @@ test_that("the rows are reported by name, not by position", {
 })
 
 test_that("an NA reaching the guard directly is named by column", {
-  # The na.action attribute is absent when the user has set
-  # options(na.action = "na.pass"), so the finiteness guard is the only thing
-  # that sees the missing value. It reads is.finite() elementwise rather than
-  # is.finite(mean(x)) so that this case is refused too, naming which of the
-  # two columns holds it.
+  # With na.pass there is no na.action record. The elementwise finiteness
+  # check must still identify missing predictor or response values.
   old <- options(na.action = "na.pass")
   on.exit(options(old), add = TRUE)
   d <- cd_data_zero()
@@ -142,13 +113,8 @@ test_that("a hormesis model is exempt from the decline warning", {
 })
 
 
-# ---- the two guards check_data() no longer duplicates -----------------------
-#
-# check_data() used to compose its own message for each of the two inputs
-# below, and neither branch could fire: an earlier call raised first on the same
-# input. Both were removed in #278. The tests remain, asserting the error that
-# does fire, so that a reader who reinstates either branch is told what already
-# refuses the input.
+# Earlier checks already refuse these inputs; retain their messages rather
+# than adding unreachable duplicate guards to check_data().
 
 test_that("a character predictor errors from retrieve_var", {
   d <- cd_data_zero()
@@ -169,14 +135,8 @@ test_that("a numeric group-level column errors from model.frame", {
 
 
 test_that("check_data does not call check_custom_name", {
-  # check_data() used to assign custom_name <- check_custom_name(family) and
-  # read it nowhere. check_custom_name() is pure, so the call had no effect and
-  # was removed in #278, along with the same dead assignment at three further
-  # sites in plot() and prep_raw_data().
-  #
-  # Asserted by making the call raise. A discarded result cannot be observed
-  # from the return value -- which is why the assignment survived -- so the
-  # absence of the call is what is asserted instead.
+  # Make the unnecessary check_custom_name() call fail: ignoring its return
+  # value would otherwise hide the call from output comparisons.
   d <- cd_data_zero()
   local_mocked_bindings(
     check_custom_name = function(...) stop("check_custom_name was called"),
@@ -187,12 +147,7 @@ test_that("check_data does not call check_custom_name", {
 })
 
 
-# ---- the response boundary corrections --------------------------------------
-#
-# The arithmetic and the messaging are asserted separately, because they do not
-# agree: one of the three corrections is announced and two are not. That asymmetry
-# is what #93 was reopened on, so it is pinned here as a value rather than left
-# as a claim in an issue comment.
+# Check response arithmetic separately from the entry-point reports.
 
 test_that("a Gamma zero is shifted by one tenth of the smallest non-zero value", {
   res <- suppressMessages(cd_run(y ~ crf(x, model = "nec3param"),
@@ -202,9 +157,7 @@ test_that("a Gamma zero is shifted by one tenth of the smallest non-zero value",
 })
 
 test_that("the Gamma zero shift is reported, and names the remedy", {
-  # The report moved out of check_data() and into report_substitutions(), which
-  # the user-facing entry points call once per call rather than once per model.
-  # check_data() is silent; the message and its remedy are unchanged. See #93.
+  # Keep check_data() silent; entry points report substitutions once per call.
   expect_length(cd_messages(y ~ crf(x, model = "nec3param"), cd_data_zero(),
                             Gamma(link = "identity")), 0)
   rec <- cd_run(y ~ crf(x, model = "nec3param"), cd_data_zero(),
@@ -231,10 +184,8 @@ test_that("a beta one is reduced by exactly 0.001", {
 })
 
 test_that("all three corrections are reported, none from check_data (#93)", {
-  # INVERTED. This pinned the #93 measurement that the two beta corrections
-  # were silent while the Gamma one messaged. All three are now reported, and
-  # none of them from check_data(), which runs once per model and would repeat
-  # the message for every member of a model set.
+  # Both Beta corrections are reported by entry points, not by check_data(),
+  # which runs once per model.
   expect_length(cd_messages(y ~ crf(x, model = "nec3param"),
                             cd_data_bounded(), Beta(link = "identity")), 0)
   rec <- cd_run(y ~ crf(x, model = "nec3param"), cd_data_bounded(),
@@ -263,8 +214,8 @@ test_that("a family with no excluded boundary leaves the response alone", {
 })
 
 test_that("the predictor reaches the fit exactly as recorded", {
-  # #269 removed all three predictor corrections. A zero control is an ordinary
-  # control: no family constrains the support of a predictor.
+  # A zero control is valid: a response family does not constrain predictor
+  # support.
   d <- cd_data_zero()
   d$x <- rep(c(0, 1, 10, 100), each = 5)
   res <- suppressMessages(cd_run(y ~ crf(x, model = "nec3param"), d,
@@ -273,9 +224,8 @@ test_that("the predictor reaches the fit exactly as recorded", {
 })
 
 test_that("a 0-1 bounded predictor keeps both of its bounds", {
-  # #265: check_data() tested x_type == "beta" while set_distribution() returns
-  # "Beta", so these two branches never fired in any release. #269 removed them
-  # rather than repairing them, and this pins that they stay removed.
+  # Keep bounded predictor values unchanged; response-family boundary
+  # corrections do not apply to the predictor.
   d <- data.frame(x = rep(c(0, 0.25, 0.5, 1), each = 5),
                   y = rep(c(8, 6, 3, 1), each = 5))
   res <- cd_run(y ~ crf(x, model = "nec3param"), d, Gamma(link = "identity"))
@@ -287,9 +237,7 @@ test_that("a 0-1 bounded predictor keeps both of its bounds", {
 
 test_that("check_data returns mod_dat, the family and the substitutions", {
   res <- cd_run(y ~ crf(x, model = "nec3param"), cd_data_zero(), gaussian())
-  # substitutions joined the return with #93: the corrections check_data()
-  # makes have to be recoverable by the caller, which reports them once and
-  # stores them on the fit.
+  # Return substitutions so callers can report them once and store the record.
   expect_named(res, c("mod_dat", "family", "substitutions"))
   expect_named(res$mod_dat, c("x", "y", "trials"))
   expect_s3_class(res$family, "family")
@@ -325,23 +273,11 @@ test_that("is_censored returns a scalar FALSE that recycles", {
 })
 
 
-# ---- what each caller does with the result ----------------------------------
-#
-# check_data() has three call sites in R/ and they do not agree on what to do
-# with the corrected data frame it returns. #258 was one caller getting it
-# wrong; #274 is a second, found four days later. Enumerating them here is what
-# makes the next one visible without another user report.
+# Check that callers use the corrected frame returned by check_data().
 
 test_that("get_priors builds its priors from the corrected response", {
-  # R/get_priors.R:163. The Gamma zero shift must reach the prior, or top and
-  # nec are derived from a response the fit will never see.
-  #
-  # Asserted by equality against the same data with the shift applied by hand,
-  # which is the only form of the assertion that discriminates. A finiteness
-  # check does not: the prior is finite either way. Measured, the top prior is
-  # gamma(2, 0.3077) from the corrected response and gamma(2, 0.25) from the
-  # uncorrected one, so the two frames differ if and only if the correction is
-  # bypassed.
+  # Compare priors with a manually shifted response; finiteness alone cannot
+  # distinguish priors built from corrected and uncorrected data.
   d <- cd_data_zero()
   d_shifted <- d
   # min(y[y > 0]) is 3, so check_data() shifts the zeros to 0.3.
@@ -353,21 +289,14 @@ test_that("get_priors builds its priors from the corrected response", {
   pr_shifted <- get_priors(y ~ crf(x, model = "nec3param"), data = d_shifted,
                            family = Gamma(link = "identity"))
   expect_s3_class(pr, "brmsprior")
-  # The prior column alone. nlpar is decided by the model and the family, not
-  # by the five shifted values, so comparing it passes under the mutation this
-  # block exists to catch and asserts nothing the prior comparison does not.
+  # Compare the prior column. Parameter names are unchanged by the shifted
+  # values, so comparing those names would not detect a bypassed correction.
   expect_identical(pr$prior, pr_shifted$prior)
 })
 
 test_that("the update route writes back the correction it reports (#274)", {
-  # INVERTED. This pinned the #274 defect: update() with newdata ran
-  # check_data() through has_family_changed(), which kept only the family and
-  # dropped the corrected data frame, so the user was told their data had been
-  # repaired and the fit then failed on the condition reported repaired -- the
-  # #258 symptom on a route #258 did not cover.
-  #
-  # The return is no longer a bare logical: it carries the corrected frame,
-  # which is what makes the correction reachable by the caller.
+  # check_update_data() must return the corrected frame as well as its family
+  # check, so update() fits the response described by its correction message.
   skip_on_cran()
   f <- nec4param
   d <- f$fit$data
@@ -392,12 +321,8 @@ test_that("the update route writes back the correction it reports (#274)", {
 })
 
 test_that("the update route reports the substitution for a model set too", {
-  # The write-back corrects `data` inside the loop, so iteration 2 rebuilds the
-  # model frame from a response that no longer sits on the boundary and its own
-  # record is empty. Reading the last iteration's record therefore reported
-  # nothing at all for a model set -- which is what update.bnecfit() passes for
-  # any bayesmanecfit -- while reporting normally for a single model. The
-  # record is now taken from the first iteration. See #93.
+  # Keep the first model's substitution record: later iterations see the
+  # corrected data and return an empty record.
   skip_on_cran()
   f <- nec4param
   d <- f$fit$data
@@ -419,25 +344,19 @@ test_that("the update route reports the substitution for a model set too", {
 })
 
 
-# ---- #271, the dispersion sub-model finiteness check -------------------------
+# Finiteness of a dispersion sub-model.
 
 test_that("a disp() sub-model that is not finite is refused, naming the term", {
-  # check_data() tests the predictor and the response for finiteness, but it
-  # inspects only the population variables crf() declares. A disp(~...) term is
-  # an arbitrary brms formula whose variables are deliberately kept out of the
-  # model frame, so nothing tested it and an infinite value reached Stan: the
-  # fit did not run, reporting a brms warning about the data in general with
-  # nothing naming the term responsible. See #271.
+  # Check disp() expressions separately: their variables are intentionally
+  # absent from the concentration-response model frame.
   d <- data.frame(x = rep(c(0, 1, 10, 100), each = 5),
                   y = rep(c(8, 6, 3, 1), each = 5))
   expect_error(
     check_disp_finite(bnf(y ~ crf(x, model = "nec3param") + disp(~log(x))), d),
     "log\\(x\\)"
   )
-  # A missing value is not an infinite one, and naming it as one pointed at
-  # log() of a zero, which is the wrong cause. check_data()'s complete-cases
-  # check cannot report it either: it is given the model frame, which by design
-  # does not contain a disp() term's columns.
+  # Distinguish missing values from infinities. The ordinary complete-case
+  # check cannot inspect columns excluded from its model frame.
   d_na <- d
   d_na$w <- c(NA, rep(1, nrow(d_na) - 1))
   expect_error(
@@ -448,10 +367,8 @@ test_that("a disp() sub-model that is not finite is refused, naming the term", {
     check_disp_finite(bnf(y ~ crf(x, model = "nec3param") + disp(~w)), d_na),
     "\"w\""
   )
-  # parse_disp_term()'s own refusals are raised from here rather than swallowed
-  # by a try(). Suppressing them deferred the error to add_brm_defaults(), which
-  # runs inside the per-model try() in bnec(), so one malformed formula printed
-  # the refusal once for every member of the model set.
+  # Raise malformed disp() terms here, before the per-model fitting loop
+  # can repeat the same refusal for every equation.
   expect_error(
     check_disp_finite(
       bnf(y ~ crf(x, model = "nec3param") + disp(~x) + disp(~log(x))), d
@@ -493,11 +410,11 @@ test_that("a finite disp() sub-model, a variance function and no disp pass", {
   )
 })
 
-# ---- #93, the response substitutions are reported and recorded ---------------
+# Response substitution reports and records.
 
 test_that("both boundary nudges are reported, with counts", {
-  # Two of the three were silent, so a user comparing bayesnec against another
-  # engine had no way to see that the data had been altered. See #93 and D16.
+  # Report each boundary change so comparisons with other fitting engines
+  # can reproduce the actual response used.
   y <- c(rep(0.9, 6), rep(0.6, 6), rep(0.2, 6), rep(0, 3), rep(0.05, 3))
   rec <- substitution_record(y, NULL, validate_family("Beta"))
   expect_s3_class(rec, "data.frame")
@@ -566,22 +483,17 @@ test_that("a data column named after a generated term is refused (#257)", {
 })
 
 test_that("the parameter-level generated terms are reserved too (#294)", {
-  # A term on top or bot introduces topgl and bnectop, botgl and bnecbot. The
-  # set is refused in full whatever the formula is: which terms a fit generates
-  # depends on the family and on the group-level structure, so a conditional
-  # refusal would accept a column on one call and refuse it on the next with the
-  # same data.
+  # Reserve all generated parameter-term names regardless of the current
+  # family or group structure, which can change between calls.
   d <- data.frame(x = rep(c(1, 10), each = 5), y = rep(c(0.8, 0.2), each = 5))
   for (nm in c("botgl", "topgl", "bnecbot", "bnectop")) {
     dd <- d
     dd[[nm]] <- 1
     expect_error(check_reserved_names(dd), nm)
   }
-  # The parameters themselves are not added to the reserved set. They keep their
-  # names under the transform, so refusing a column named bot would refuse data
-  # that fitted under 2.1.x. A predictor or response column named after a
-  # non-linear parameter collides with that parameter whatever this change does,
-  # which is a separate matter from the generated terms this check exists for.
+  # Do not reserve the parameter names themselves: that would refuse data that
+  # fitted under earlier releases. This check does not cover a predictor or
+  # response named after a parameter.
   for (nm in c("top", "bot", "nec", "beta")) {
     dd <- d
     dd[[nm]] <- 1
@@ -590,13 +502,11 @@ test_that("the parameter-level generated terms are reserved too (#294)", {
 })
 
 
-# ---- #319, the disp() check resolves in the formula's environment ------------
+# Resolve disp() terms in the formula environment.
 
 test_that("a disp term written with a local function is still checked", {
-  # The evaluation used eval()'s default enclosure, a frame inside the
-  # namespace, so a term naming a function the user defined could not be
-  # evaluated and the try() around it skipped the term. The check then passed
-  # silently rather than checking anything.
+  # Resolve local functions from the formula environment; an evaluation
+  # error must not silently skip the finiteness check.
   d <- nec_data
   d$z <- c(0, d$x[-1])
   build <- function() {
@@ -607,7 +517,7 @@ test_that("a disp term written with a local function is still checked", {
 })
 
 
-# ---- #400, a bounded response at one bound in every observation --------------
+# A bounded response at one boundary in every observation.
 
 # Six concentrations of five, so a level of bnec_group() holds 30 rows.
 cd_at_bound_x <- function() rep(c(0.1, 0.5, 1, 3, 10, 30), each = 5)
@@ -628,10 +538,8 @@ test_that("response_bound_reached names the bound every observation is at", {
 })
 
 test_that("the update route tests the family the refit uses (#400)", {
-  # The refit keeps the fit's own family, so that is the family the bound is
-  # tested against. A bernoulli fit given a response of 1 in every row: read
-  # off the data that is a poisson response, which is not bounded, so nothing
-  # was refused and under force_fit = TRUE brms refitted the bernoulli on it.
+  # Check the stored refit family: an all-one response can suggest a different
+  # family from the Bernoulli family actually being refitted.
   bern <- nec4param
   bern$fit$family <- brms::bernoulli(link = "identity")
   d <- bern$fit$data
@@ -640,11 +548,8 @@ test_that("the update route tests the family the refit uses (#400)", {
   expect_match(conditionMessage(err),
                "The response \"y\" is at the upper bound of a bernoulli",
                fixed = TRUE)
-  # A gaussian fit given a response of exactly 1: read off the data that is a
-  # beta response, but the refit is gaussian, so nothing is refused.
-  #
-  # INVERTED. This asserted that the data still suggested a change of family.
-  # No family is read off new data since D32, so there is none. See #435.
+  # A Gaussian refit stays Gaussian even when all new responses equal one;
+  # the data must not select a replacement family.
   d1 <- nec4param$fit$data
   d1$y <- 1
   res <- suppressMessages(check_update_data(list(nec4param), d1))
@@ -655,7 +560,7 @@ test_that("the update route tests the family the refit uses (#400)", {
     check_update_data(list(nec4param), d1, Beta(link = "identity")),
     "at the upper bound of a beta response", fixed = TRUE
   )
-  # zero_inflated_beta is tested at both bounds since D35 (#441).
+  # Check zero_inflated_beta at both bounds.
   expect_error(
     check_update_data(list(nec4param), d1, "zero_inflated_beta"),
     "at the upper bound of a zero_inflated_beta response", fixed = TRUE
@@ -688,10 +593,8 @@ test_that("the update route lets an ecxflat fit through at a bound (#419)", {
 })
 
 test_that("update() refuses before the refit, and refits a gaussian (#400)", {
-  # brms::update() is mocked: the assertion is whether the refit is reached,
-  # not what it returns. stats::update() is called explicitly so that the test
-  # reaches the method rather than the mock, which replaces the binding the
-  # package imports.
+  # Mock the imported update binding to halt brms. Call stats::update()
+  # explicitly so the real method, including its guards, still runs.
   calls <- 0L
   local_mocked_bindings(
     update = function(...) {
@@ -723,10 +626,8 @@ test_that("update() refuses before the refit, and refits a gaussian (#400)", {
 })
 
 test_that("an interval-censored response is judged on its recorded values (#400)", {
-  # cover | cens(cens, upper): every row states that the truth lies between the
-  # recorded bound and an upper end inside the support. The default priors are
-  # built from the recorded values alone, so letting such a response through
-  # ended in the quantile() error the refusal replaces. It is refused by name.
+  # Refuse recorded values all at a family bound even when intervals extend
+  # inside support: default priors use the recorded values alone.
   x <- cd_at_bound_x()
   d <- data.frame(x = x, cover = 0, cens = "interval",
                   upper = seq(0.05, 0.5, length.out = length(x)))
@@ -758,8 +659,7 @@ test_that("check_response_at_bound leaves every other response alone", {
   # for the prior construction of those families, not for this refusal.
   expect_silent(check_response_at_bound(ones, gaussian()))
   expect_silent(check_response_at_bound(zeros, poisson()))
-  # INVERTED. This asserted that zero_inflated_beta was outside the ruling,
-  # which named beta. D35 brings it in at both bounds (#441).
+  # zero_inflated_beta is included in the bound check at both endpoints.
   expect_error(check_response_at_bound(ones, "zero_inflated_beta"),
                "upper bound of a zero_inflated_beta response", fixed = TRUE)
   # Its zeros are inside its support, so a response with any value above zero
@@ -770,9 +670,8 @@ test_that("check_response_at_bound leaves every other response alone", {
   near <- cd_bdat(y ~ crf(x, model = "nec3param"),
                   data.frame(x = x, y = c(rep(1L, 29), 0L)))
   expect_silent(check_response_at_bound(near, bernoulli()))
-  # No trials() term: check_trials_term() refuses that, before this runs on
-  # every route but update(), so this says nothing rather than testing counts
-  # against a bound it cannot see (#442).
+  # Without trials(), this helper cannot locate a binomial bound. Other
+  # routes refuse the missing term before reaching this check.
   expect_silent(check_response_at_bound(zeros, binomial()))
 })
 
@@ -798,13 +697,11 @@ test_that("a grouped response names every level at a bound, and only those", {
   expect_silent(check_response_at_bound(reef, bernoulli()))
 })
 
-# ---- #419, the constant equation in place of the refusal ----------------------
+# The constant equation at a response bound.
 
 test_that("ecxflat alone is let through at a bound, except at 0 of beta (#419)", {
-  # The routes that keep #400's refusal -- get_priors(), amend(), update() and
-  # bnec_hurdle() -- pass the equations they are about to build a prior for. A
-  # set holding any curve equation is refused and the message names ecxflat;
-  # ecxflat alone is let through wherever it can be fitted.
+  # Callers supply the equations they will fit. A set containing a curve
+  # equation is refused at a bound; ecxflat alone passes where it is valid.
   cases <- at_bound_cases()
   for (nm in names(cases)) {
     cs <- cases[[nm]]
@@ -817,8 +714,8 @@ test_that("ecxflat alone is let through at a bound, except at 0 of beta (#419)",
       expect_match(conditionMessage(err),
                    "no equation can be fitted to it, the constant equation",
                    fixed = TRUE, info = nm)
-      # Each beta family is refused for its own reason, and the message gives
-      # that one: a zero_inflated_beta response can hold a zero (#441).
+      # Use each Beta family's own refusal: zero_inflated_beta permits zeros
+      # but still needs observations above zero for its Beta block.
       reason <- if (nm == "zib_zero") {
         "no observation of this response is above zero, so the beta block"
       } else {
@@ -873,7 +770,8 @@ test_that("constant_fallback replaces the set and records why (#419)", {
                       validate_family(bz$family), "nec3param"),
     "A beta distribution cannot represent a zero", fixed = TRUE
   )
-  # Nor can zero_inflated_beta at 0, and at 1 it is replaced as beta is (#441).
+  # zero_inflated_beta also refuses an all-zero response and substitutes
+  # ecxflat at an all-one response.
   cases <- at_bound_cases()
   zz <- cases$zib_zero
   expect_error(
@@ -940,9 +838,8 @@ test_that("a grouped call names the levels fitted with ecxflat (#419)", {
   expect_match(msg, "these levels do not have, so no equation can be fitted",
                fixed = TRUE)
   expect_false(grepl("north", msg))
-  # The same for zero_inflated_beta, with the reason that applies to it: a
-  # level of 0 throughout is refused, and a level of 1 throughout is fitted
-  # with ecxflat (#441).
+  # For zero_inflated_beta, refuse an all-zero level but fit an all-one
+  # level with ecxflat.
   zmsgs <- character(0)
   zerr <- tryCatch(
     withCallingHandlers(
@@ -969,10 +866,9 @@ test_that("a grouped call names the levels fitted with ecxflat (#419)", {
 })
 
 test_that("the asymptote report does not count ecxflat on either side (#419)", {
-  # With the asymptote declared unobserved, a set mixing equations that
-  # estimate bot with ones that have none is reported. ecxflat has no bot, and
-  # a constant is told from a declining curve whatever the asymptote did, so
-  # it is on neither side.
+  # Exclude ecxflat from both sides of the report on asymptote_observed: it
+  # has no bot, and a constant can be distinguished from a declining curve
+  # without observing that curve's lower asymptote.
   bdat <- cd_bdat(y ~ crf(x, model = "nec4param"), nec_data)
   report <- function(models) {
     msgs <- character(0)
@@ -992,7 +888,7 @@ test_that("the asymptote report does not count ecxflat on either side (#419)", {
   expect_true(report(c("nec3param", "nec4param")))
 })
 
-# ---- #442, a binomial formula with no trials() term ---------------------------
+# A binomial formula without trials().
 
 test_that("check_trials_term refuses binomial and beta_binomial alone (#442)", {
   # nec_data's count and trials columns are added in setup.R. The predictor is
@@ -1019,9 +915,8 @@ test_that("check_trials_term refuses binomial and beta_binomial alone (#442)", {
 })
 
 test_that("check_data() keeps the trials() refusal as the backstop (#442)", {
-  # update() with new data or a new family reaches check_data() without a
-  # call-level check, and the trials were read there with error = TRUE, which
-  # stopped on "subscript out of bounds".
+  # The update route still needs check_data() to refuse missing trials by
+  # name before an indexed lookup fails.
   err <- expect_error(cd_run(count ~ crf(x, model = "nec3param"), nec_data,
                              validate_family("beta_binomial")))
   expect_match(conditionMessage(err), "has no trials() term", fixed = TRUE)

@@ -1,6 +1,5 @@
-# Part D of #148 — sampler diagnostics and screening. The spec is
-# notes/tasks/148-model-fit-diagnostics.md; the decisions there are settled and
-# these tests pin the ones that are easy to regress.
+# Sampler diagnostics must report absolute and relative efficiency,
+# exclude unscreenable parameters and distinguish partial from total failure.
 
 test_that("check_sampling returns one row per candidate with all columns", {
   skip_on_cran()
@@ -13,19 +12,17 @@ test_that("check_sampling returns one row per candidate with all columns", {
 })
 
 test_that("min_ess is neff_ratio times ndraws, not a ratio", {
-  # D2, settled: report the absolute so that `ess_cutoff = 400` is directly
-  # Vehtari's "both bulk and tail exceed 100 per chain" at four chains, with no
-  # arithmetic left to the user. The ratio is reported beside it so that
-  # "passed because we drew 8000" can be told from "passed efficiently".
+  # Report absolute ESS beside its draw-count ratio. At four chains, an
+  # ESS cutoff of 400 expresses the 100-per-chain diagnostic guideline;
+  # the ratio distinguishes more draws from more efficient sampling.
   skip_on_cran()
   tab <- check_sampling(manec_example)
   fit <- bayesnec:::pull_brmsfit(
     suppressMessages(pull_out(manec_example, model = "nec4param"))
   )
-  # The screened vector, not the raw one -- prior_* draws are excluded (see the
-  # exclusion tests below). They are iid draws, so their ESS is close to ndraws
-  # and they are never the minimum in practice; asserted here so that a change
-  # to the exclusion set shows up as a failure rather than passing by luck.
+  # Use the screened parameters. Prior draws are excluded; on this fixture
+  # they do not determine the minimum ESS, but that is not guaranteed for
+  # every finite sample.
   ratio <- min(bayesnec:::screenable_pars(brms::neff_ratio(fit)))
   expect_equal(ratio, min(brms::neff_ratio(fit)))
   expect_equal(tab$min_ess[tab$model == "nec4param"],
@@ -37,9 +34,8 @@ test_that("min_ess is neff_ratio times ndraws, not a ratio", {
 })
 
 test_that("divergences come from nuts_params, which is backend-agnostic", {
-  # Deliberately not rstan::get_num_divergent(x$fit): rstan is Suggests-only
-  # and that route reaches past brms into the stanfit slot, so it fails under
-  # cmdstanr. Asserted because it is the obvious thing to reach for.
+  # Read through brms, a required dependency; bayesnec lists rstan only
+  # in Suggests. This checks the interface used by count_divergent().
   skip_on_cran()
   tab <- check_sampling(manec_example)
   fit <- bayesnec:::pull_brmsfit(
@@ -90,10 +86,8 @@ test_that("the cutoffs must be scalars", {
 # --- what the screen reduces over --------------------------------------------
 
 test_that("screenable_pars drops prior_* draws and keeps lp__ and lprior", {
-  # bnec() forces sample_prior = "yes", so every fit carries an independent
-  # draw from the prior for every parameter. Their Rhat is Monte Carlo noise
-  # about a distribution the sampler never explored, and at the 1.01 cutoff
-  # they are enough to fail a model on a variable that is not in the model.
+  # Independent prior_* draws are not sampled posterior parameters. Their
+  # Monte Carlo Rhat variation must not cause a convergence-screen failure.
   x <- c(b_top_Intercept = 1.002, b_nec_Intercept = 1.004,
          prior_b_top = 1.023, prior_sigma = 1.031,
          lprior = 1.006, lp__ = 1.001)
@@ -103,10 +97,8 @@ test_that("screenable_pars drops prior_* draws and keeps lp__ and lprior", {
 })
 
 test_that("screenable_pars drops parameters with no variance", {
-  # posterior::rhat() and ess_bulk() both return NA for a zero-variance column,
-  # which is what a constant() prior produces (#244). A parameter fixed at a
-  # known value has nothing to converge to, so it leaves the screen rather than
-  # entering it as an NA for every caller downstream to guard against.
+  # Constant-prior parameters have zero variance and undefined Rhat/ESS.
+  # Exclude them from the screen rather than propagating NA verdicts.
   x <- c(b_top_Intercept = NA_real_, b_nec_Intercept = 1.004, lp__ = 1.001)
   out <- bayesnec:::screenable_pars(x)
   expect_named(out, c("b_nec_Intercept", "lp__"))
@@ -299,10 +291,8 @@ test_that("grouped screening names a level from which it would drop all fits", {
 })
 
 test_that("the reasons name every failing criterion, not just the first", {
-  # A model that failed on two counts is a different situation from one that
-  # scraped past on one, and the reasons are what a methods section cites.
-  # manec_example fails on every count at the defaults, so this comes through
-  # the all-failed error, which carries the same reason list as the message.
+  # Keep every failure reason in both the all-failed error and partial-drop
+  # message. This fixture reaches the error at the default cutoffs.
   skip_on_cran()
   msg <- tryCatch({
     withCallingHandlers(screen_models(manec_example),
