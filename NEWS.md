@@ -2049,7 +2049,9 @@
   shares it and on one line per equation where they differ, and so does
   `print()` of a `bayesnecfit`, a `bayesmanecfit` and a `bayesnecjointfit`. An
   object fitted before this change, including the example fits shipped with
-  the package, reports the source `"unknown"` (#464).
+  the package, reports the source `"unknown"`. Under a parallel plan, each
+  equation records the installation and R version of the worker that fitted
+  it, which can differ from the calling session (#464).
 
 ## Bug fixes
 

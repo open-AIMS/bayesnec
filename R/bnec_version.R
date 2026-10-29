@@ -49,6 +49,9 @@
 #' \code{\link{bayesnecgroupfit}} hold fits made by \code{\link{bnec}}, and
 #' report the record of each.
 #'
+#' Under a parallel plan, each equation records the installation and R version
+#' of the worker that fitted it, which can differ from the calling session.
+#'
 #' An object fitted by a version of \pkg{bayesnec} that did not record the
 #' installation, including the example fits shipped with the package such as
 #' \code{\link{manec_example}}, reports \code{source} \code{"unknown"} and
@@ -125,6 +128,7 @@ bayesnec_description <- function() {
 #'
 #' @param desc A \code{packageDescription} object, or a named
 #' \code{\link[base]{list}} of \code{DESCRIPTION} fields.
+#' @param r_version The R version of the session that fitted the equation.
 #'
 #' @return A one-row \code{\link[base]{data.frame}} of
 #' \code{\link[base]{character}} columns \code{bayesnec}, \code{source},
@@ -132,7 +136,8 @@ bayesnec_description <- function() {
 #' \code{?bnec_version} for the rule each follows.
 #'
 #' @noRd
-version_record <- function(desc = bayesnec_description()) {
+version_record <- function(desc = bayesnec_description(),
+                            r_version = as.character(getRversion())) {
   if (!is.list(desc)) {
     return(unknown_version())
   }
@@ -170,9 +175,28 @@ version_record <- function(desc = bayesnec_description()) {
     commit = if (has_commit) sha else NA_character_,
     ref = if (has_commit) field("RemoteRef") else NA_character_,
     repo = if (has_commit) repo else NA_character_,
-    R = as.character(getRversion()),
+    R = r_version,
     stringsAsFactors = FALSE
   )
+}
+
+#' The installation reported by one fitting attempt
+#'
+#' @param model The equation fitted.
+#' @param fit A successful fitting attempt with worker installation metadata.
+#'
+#' @return A one-row table from \code{version_table()}. An attempt without
+#' metadata reports the unknown installation.
+#'
+#' @noRd
+attempt_version <- function(model, fit) {
+  installation <- attr(fit, "bnec_installation", exact = TRUE)
+  record <- if (is.null(installation)) {
+    unknown_version()
+  } else {
+    version_record(installation$description, installation$R)
+  }
+  version_table(model, record)
 }
 
 #' The record of an object fitted before the installation was recorded

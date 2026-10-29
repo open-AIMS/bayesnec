@@ -74,6 +74,9 @@ per equation where they differ. A \code{\link{bayesnechurdlefit}} and a
 \code{\link{bayesnecgroupfit}} hold fits made by \code{\link{bnec}}, and
 report the record of each.
 
+Under a parallel plan, each equation records the installation and R version
+of the worker that fitted it, which can differ from the calling session.
+
 An object fitted by a version of \pkg{bayesnec} that did not record the
 installation, including the example fits shipped with the package such as
 \code{\link{manec_example}}, reports \code{source} \code{"unknown"} and
