@@ -111,6 +111,20 @@ test_that("an unreadable DESCRIPTION gives the unknown record", {
   expect_true(is.na(r$bayesnec))
 })
 
+test_that("an attempt reports its worker installation and R version", {
+  fit <- stored_fits$nec4param
+  attr(fit, "bnec_installation") <- list(
+    description = github_at(sha_b), R = "4.4.1"
+  )
+  v <- bayesnec:::attempt_version("nec4param", fit)
+  expect_identical(v$commit, sha_b)
+  expect_identical(v$R, "4.4.1")
+  attr(fit, "bnec_installation") <- NULL
+  v <- bayesnec:::attempt_version("nec4param", fit)
+  expect_identical(v$source, "unknown")
+  expect_true(is.na(v$R))
+})
+
 test_that("the running installation is read from its own DESCRIPTION", {
   r <- bayesnec:::version_record()
   expect_identical(r$bayesnec, as.character(utils::packageVersion("bayesnec")))
@@ -164,6 +178,33 @@ test_that("bnec() records the installation on a set and on a single fit", {
   ))
   expect_equal(bnec_version(single)$commit, sha_a)
   expect_equal(bnec_version(single)$model, "nec4param")
+})
+
+test_that("bnec() keeps worker records when the parent installation differs", {
+  set.seed(521)
+  local_mocked_bindings(
+    fit_bayesnec = fit_from_store,
+    bayesnec_description = function() github_at(sha_a),
+    bnec_parallel_lapply = function(X, FUN, parallel) {
+      environment(FUN)$description_reader <- function() github_at(sha_b)
+      lapply(X, function(i) {
+        fit <- FUN(i)
+        attr(fit, "bnec_installation")$R <- "4.4.1"
+        fit
+      })
+    },
+    .package = "bayesnec"
+  )
+  set <- suppressWarnings(suppressMessages(
+    bnec(y ~ crf(x, model = c("nec4param", "ecx4param")), data = logit_data,
+         family = gaussian(), resolution = 50)
+  ))
+  v <- bnec_version(set)
+  expect_identical(v$commit, rep(sha_b, 2))
+  expect_identical(v$R, rep("4.4.1", 2))
+  expect_true(all(vapply(set$mod_fits, function(fit) {
+    is.null(attr(fit, "bnec_installation", exact = TRUE))
+  }, logical(1))))
 })
 
 test_that("c() and + keep each equation's record and state the mixture", {
@@ -239,6 +280,30 @@ test_that("amend() keeps retained records and records what it adds", {
   expect_equal(v$model, c("nec4param", "ecx4param"))
   expect_equal(v$commit, c(sha_a, sha_b))
   expect_equal(v$bayesnec, c("2.2.0", "2.2.1"))
+})
+
+test_that("amend() retains old records beside an added worker record", {
+  set.seed(522)
+  a <- with_record(nec4param, github_at(sha_a))
+  local_mocked_bindings(
+    fit_bayesnec = fit_from_store,
+    bayesnec_description = function() installed_as("cran"),
+    bnec_parallel_lapply = function(X, FUN, parallel) {
+      environment(FUN)$description_reader <- function() github_at(sha_b)
+      lapply(X, function(i) {
+        fit <- FUN(i)
+        attr(fit, "bnec_installation")$R <- "4.4.1"
+        fit
+      })
+    },
+    .package = "bayesnec"
+  )
+  added <- suppressWarnings(suppressMessages(
+    amend(a, add = "ecx4param", resolution = 50)
+  ))
+  v <- bnec_version(added)
+  expect_identical(v$commit, c(sha_a, sha_b))
+  expect_identical(v$R, c(as.character(getRversion()), "4.4.1"))
 })
 
 test_that("update() gives every refitted equation the current record", {
