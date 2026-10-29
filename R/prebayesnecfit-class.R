@@ -21,6 +21,13 @@
 #' for to fit the model.
 #' @slot bayesnecformula An object of class \code{\link{bayesnecformula}} and
 #' \code{\link[stats]{formula}}.
+#' @slot call_args A \code{\link[base]{list}} of the arguments of the fitting
+#' call that \code{\link{amend}} reuses for an added model:
+#' \code{model_survival}, and the \code{control} and \code{seed} passed to
+#' \code{\link[brms]{brm}}. Each is \code{NULL} where the call did not supply
+#' it. Absent from an object fitted by an earlier version of \pkg{bayesnec}
+#' until \code{\link{update.bnecfit}} or \code{\link{amend}} records the
+#' recoverable settings.
 #' @slot retained_data An optional \code{\link[base]{data.frame}} containing
 #' columns retained by \code{\link{bnec}} for plotting. This element is present
 #' on a recovered object when the fitted object contained retained columns.
@@ -54,6 +61,9 @@ is_prebayesnecfit <- function(x) {
 recover_prebayesnecfit <- function(x) {
   if (is_bayesnecfit(x)) {
     keep <- c("fit", "model", "init", "bayesnecformula")
+    if (!is.null(x[["call_args"]])) {
+      keep <- c(keep, "call_args")
+    }
     if (!is.null(x[["retained_data"]])) {
       keep <- c(keep, "retained_data")
     }

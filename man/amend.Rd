@@ -104,6 +104,34 @@ more than one model remains, otherwise a \code{\link{bayesnecfit}}.
 Amends an existing \code{\link{bayesmanecfit}} or \code{\link{bayesnecfit}}
 object, for example, by adding or removing fitted models.
 }
+\details{
+A model added through \code{add} is sampled with the settings of
+the call that fitted \code{object}: \code{iter}, \code{warmup}, \code{thin},
+\code{chains}, \code{sample_prior}, the backend, and any \code{control} or
+\code{seed} that call passed to \code{\link[brms]{brm}}. They are read from
+the first model of \code{object}. Other \code{\link[brms]{brm}} arguments,
+such as \code{cores}, are not passed to the added model.
+
+Where \code{object} has a two-block family, such as \code{hurdle_gamma}, the
+added model's survival block uses the equation the set was fitted with: the
+one \code{model_survival} named, or the added model's own equation where
+\code{model_survival} was not given.
+
+Where \code{object} does not record its call, as an object fitted by an
+earlier version of \pkg{bayesnec} does not, no \code{control} or
+\code{seed} is passed to the added model, and the survival-block equation
+is read from the stored formulas. A single model whose survival block uses
+its own equation is then read as fitted without \code{model_survival},
+because the two calls store the same formula.
+\code{\link{update.bnecfit}} creates a call record for such an object,
+using the recovered survival-block equation and any \code{control} or
+\code{seed} supplied to the update. Subsequent additions reuse that record.
+\code{amend} also records the recovered equation on retained models, so
+dropping models does not discard it.
+When an update changes the backend or algorithm, \pkg{brms} does not reuse
+the previous \code{control} or \code{seed}. Only settings supplied to that
+update are then recorded for subsequent additions.
+}
 \examples{
 library(bayesnec)
 data(manec_example)

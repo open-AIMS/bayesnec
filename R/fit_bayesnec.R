@@ -26,6 +26,10 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
                          timeout = Inf, model_survival = NULL,
                          predictor_scale = "auto", level_spec = NULL) {
   formula <- single_model_formula(formula, model)
+  # Read control before add_brm_defaults() raises adapt_delta, so that amend()
+  # decides the raise again for each equation it adds.
+  call_args <- list(model_survival = model_survival,
+                    control = brm_args$control, seed = brm_args$seed)
   # A backstop: bnec(), bnec_group() and amend() exclude such an equation
   # before their loops, but bnec_joint() fits through here directly.
   group_excluded <- group_term_exclusions(formula, model)
@@ -152,7 +156,7 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   message(paste0("Response variable modelled as a ", model, " model using a ",
                  msg_tag, " distribution."))
   out <- list(fit = fit, model = model, init = all_args$init,
-              bayesnecformula = formula)
+              bayesnecformula = formula, call_args = call_args)
   allot_class(out, "prebayesnecfit")
 }
 

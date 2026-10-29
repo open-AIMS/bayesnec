@@ -3013,6 +3013,33 @@
   as `bnec_hurdle()` names it when fitting. It printed `gamma`, the name
   `brms` records (#487).
 
+- `amend(add = )` on a fit with a two-block family, such as `hurdle_gamma`,
+  fits the added equation's survival block with the equation the set was
+  fitted with. Where `bnec()` was called with `model_survival = "nec3param"`,
+  as `bnec_joint()` calls it for every joint refit of a hurdle fit, an added
+  equation was given its own survival block. The set then compared pairs of
+  equations whose survival blocks differed, and nothing reported it. A set
+  fitted without `model_survival` still gives each added equation its own
+  survival block (#489).
+
+- `amend(add = )` samples an added equation with the `control` and `seed`
+  passed to `brm()` through `bnec()`, and with the backend of the original
+  fit. It passed only `iter`, `warmup`, `thin`, `chains` and `sample_prior`,
+  so an equation added to a set fitted with
+  `control = list(adapt_delta = 0.99)` was sampled at the `brms` default, and
+  its draws changed from one `amend()` call to the next. Each fit made by
+  `bnec()` now records `model_survival`, `control` and `seed` in a
+  `call_args` element of the fitted model, which `update()` keeps up to date.
+  A fit saved by an earlier version records none of them. `amend()` then
+  passes the backend to the added equation but not `control` or `seed`, and
+  reads the survival-block equation from the stored formulas. Updating an
+  older fit creates the record from those formulas and any `control` or
+  `seed` supplied to `update()`, so later additions reuse them. `amend()`
+  also records the recovered survival equation on retained fits before
+  dropping models, so later additions keep that equation. After an update
+  changes the backend or algorithm, only `control` and `seed` supplied to
+  that update are recorded, matching what `brms` reuses (#489).
+
 ## Documentation
 
 - `?autoplot` states that a `bayesmanecfit` with `multi_facet = FALSE`

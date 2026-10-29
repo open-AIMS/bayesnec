@@ -38,6 +38,33 @@
 #' priors generated for newly added models. See \code{\link{bnec}}. This is not
 #' inherited from the original fit; pass it explicitly to match that fit.
 #'
+#' @details A model added through \code{add} is sampled with the settings of
+#' the call that fitted \code{object}: \code{iter}, \code{warmup}, \code{thin},
+#' \code{chains}, \code{sample_prior}, the backend, and any \code{control} or
+#' \code{seed} that call passed to \code{\link[brms]{brm}}. They are read from
+#' the first model of \code{object}. Other \code{\link[brms]{brm}} arguments,
+#' such as \code{cores}, are not passed to the added model.
+#'
+#' Where \code{object} has a two-block family, such as \code{hurdle_gamma}, the
+#' added model's survival block uses the equation the set was fitted with: the
+#' one \code{model_survival} named, or the added model's own equation where
+#' \code{model_survival} was not given.
+#'
+#' Where \code{object} does not record its call, as an object fitted by an
+#' earlier version of \pkg{bayesnec} does not, no \code{control} or
+#' \code{seed} is passed to the added model, and the survival-block equation
+#' is read from the stored formulas. A single model whose survival block uses
+#' its own equation is then read as fitted without \code{model_survival},
+#' because the two calls store the same formula.
+#' \code{\link{update.bnecfit}} creates a call record for such an object,
+#' using the recovered survival-block equation and any \code{control} or
+#' \code{seed} supplied to the update. Subsequent additions reuse that record.
+#' \code{amend} also records the recovered equation on retained models, so
+#' dropping models does not discard it.
+#' When an update changes the backend or algorithm, \pkg{brms} does not reuse
+#' the previous \code{control} or \code{seed}. Only settings supplied to that
+#' update are then recorded for subsequent additions.
+#'
 #' @return All successfully fitted model fits. A \code{\link{bayesmanecfit}} if
 #' more than one model remains, otherwise a \code{\link{bayesnecfit}}.
 #'
@@ -264,6 +291,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   validate_predictor_scale(
     predictor_scale, retrieve_var(bdat, "x_var", error = TRUE)
   )
+  call_args <- amend_call_args(mod_fits, bdat)
   model_set <- check_models(model_set, family, bdat, record = TRUE)
   # Strip the attribute once read: `model_set` is passed on, and the attribute
   # makes it compare unequal to a plain character vector.
@@ -304,6 +332,11 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   # would be sent out and back under a parallel plan.
   for (m in which(!needs_fit)) {
     mod_fits[[model_set[m]]] <- old_fits[[model_set[m]]]
+    if (is.null(mod_fits[[model_set[m]]]$call_args)) {
+      mod_fits[[model_set[m]]]$call_args <- list(
+        model_survival = call_args$model_survival, control = NULL, seed = NULL
+      )
+    }
   }
   # amend() rebuilds brm_args per model from the stored simdat rather than
   # taking one from the user, so what plan_model_set() decides has to be
@@ -322,6 +355,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
           warmup = simdat$warmup, chains = simdat$chains,
           sample_prior = simdat$sample_prior
         ),
+        call_args$brm_args,
         set_plan$brm_args
       )
       brm_args$prior <- priors
@@ -341,14 +375,15 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
         if (!is.null(denom)) {
           y <- y / denom
         }
-        # Pass define_prior() every argument fit_bayesnec() passes it, except
-        # model_survival, which the fit does not record. Build it here, outside
-        # the try() below, so an error from define_prior() stops amend() once.
+        # Pass define_prior() every argument fit_bayesnec() passes it. Build it
+        # here, outside the try() below, so an error from define_prior() stops
+        # amend() once.
         single_form <- single_model_formula(formula, model)
         brm_args$prior <- define_prior(
           model, family, x, y, prior_type = prior_type,
           asymptote_observed = asymptote_observed,
           predictor_scale = predictor_scale,
+          model_survival = call_args$model_survival,
           disp_spec = parse_disp_term(single_form),
           group_spec = parse_group_terms(single_form, model),
           rate_response = !is.null(denom),
@@ -364,13 +399,14 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
           brm_args = brm_args, skip_check = TRUE, prior_type = prior_type,
           asymptote_observed = asymptote_observed,
           predictor_scale = predictor_scale,
-          timeout = timeout
+          timeout = timeout, model_survival = call_args$model_survival
         ),
         silent = FALSE
       )
     },
     list(model_set = model_set, family = family, simdat = simdat,
-         set_plan = set_plan, priors = priors, bdat = bdat,
+         call_args = call_args, set_plan = set_plan, priors = priors,
+         bdat = bdat,
          formula = formula, data = data, prior_type = prior_type,
          asymptote_observed = asymptote_observed,
          predictor_scale = predictor_scale, timeout = timeout)
@@ -417,6 +453,87 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
     )
   }
   carry_retained_data(out, object)
+}
+
+#' The arguments of the original call that an added equation is fitted with
+#'
+#' Reads the record \code{fit_bayesnec()} stores on the first equation of the
+#' set, as \code{extract_simdat()} reads the iteration settings. Where the
+#' set records nothing, no \code{control} or \code{seed} is passed, and
+#' \code{model_survival} is read from the stored formulas by
+#' \code{stored_model_survival()}.
+#'
+#' @param mod_fits A named \code{\link[base]{list}} of
+#' \code{\link{prebayesnecfit}} objects.
+#' @param bdat The model frame of the set's formula and data.
+#'
+#' @return A \code{\link[base]{list}} with elements \code{model_survival},
+#' \code{NULL} or one equation name, and \code{brm_args}, a named
+#' \code{\link[base]{list}} holding \code{backend} and any \code{control} and
+#' \code{seed} the original call supplied.
+#'
+#' @noRd
+amend_call_args <- function(mod_fits, bdat) {
+  first <- mod_fits[[1]]
+  rec <- first$call_args
+  brm_args <- list(backend = first$fit$backend)
+  if (is.null(rec)) {
+    model_survival <- stored_model_survival(mod_fits, bdat)
+  } else {
+    model_survival <- rec$model_survival
+    brm_args$control <- rec$control
+    brm_args$seed <- rec$seed
+  }
+  if (!is_hurdle_family(first$fit$family)) {
+    model_survival <- NULL
+  }
+  list(model_survival = model_survival, brm_args = brm_args)
+}
+
+#' The survival-block equation of a set that records none
+#'
+#' Matches the second block of each stored \pkg{brms} formula against the block
+#' each equation generates. Every equation of a set fitted with
+#' \code{model_survival} has the same second block, and every equation of a set
+#' fitted without it has its own.
+#'
+#' @param mod_fits A named \code{\link[base]{list}} of
+#' \code{\link{prebayesnecfit}} objects.
+#' @param bdat The model frame of the set's formula and data.
+#'
+#' @return \code{NULL}, or the name of the equation the set's second blocks
+#' share. \code{NULL} for one equation whose second block is its own, because
+#' a fit made with \code{model_survival} naming that equation stores the same
+#' formula as one made without it.
+#'
+#' @noRd
+stored_model_survival <- function(mod_fits, bdat) {
+  family <- mod_fits[[1]]$fit$family
+  if (!is_hurdle_family(family)) {
+    return(NULL)
+  }
+  dpar <- hurdle_dpar(family)
+  # Read the predictor column as wrangle_model_formula() does, or no
+  # generated block matches the stored one.
+  x_var <- names(bdat)[which(names(attr(bdat, "bnec_pop")) == "x_var")]
+  generated <- vapply(mod_groups$all, function(eq) {
+    deparse1(hu_block_formula(eq, x_var, dpar)[[3]])
+  }, character(1))
+  survival <- vapply(mod_fits, function(m) {
+    stored <- m$fit$formula$pforms[[dpar]]
+    hit <- if (is.null(stored)) {
+      character()
+    } else {
+      names(generated)[generated == deparse1(stored[[3]])]
+    }
+    if (length(hit) == 1) hit else NA_character_
+  }, character(1))
+  survival <- unique(survival)
+  if (length(survival) != 1 || is.na(survival) ||
+        identical(names(mod_fits), survival)) {
+    return(NULL)
+  }
+  survival
 }
 
 #' The candidate set an amended object was asked for
