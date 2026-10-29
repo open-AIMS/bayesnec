@@ -445,8 +445,10 @@ against a sample more or less toxic than the one the series was designed for.
 The threshold that reaches a fraction *f* at the highest dose is
 `max(x) + log(1 - f) / rate` for `nec4param` and
 `max(x) + log((1 - f) / f) / rate` for `ecx4param`. The substitution is recorded
-in §6 of `notes/tasks/386-incomplete-designs-claude.md`, which is the
-specification a later phase reads.
+in §6 of the #386 specification, `notes/tasks/386-incomplete-designs-claude.md`,
+which was deleted once the programme finished. Every later reference here to
+"the specification" is to that file, and
+`git show f41bb2d4:notes/tasks/386-incomplete-designs-claude.md` prints it.
 
 For `nec4param` the threshold stays inside the series at every setting, so those
 cells measure what an unidentified lower asymptote does to the `bot` prior. For

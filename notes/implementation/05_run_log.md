@@ -311,7 +311,8 @@ feature work, **`2.2.0` is the factor covariate release**, and the short-lived
 
 Started after 2026-09-26. Records only what GitHub cannot: an item stopped or
 skipped, and why, and where the run finished. The procedure is `00_protocol.md`
-and the order `01_work_queue.md`.
+and the order `01_work_queue.md`, which was deleted once both runs had finished;
+`git show 023e6806:notes/implementation/01_work_queue.md` prints it.
 
 - 2026-09-26 19:45 AEST. Precompile smoke test: `example2b` as job 914152 from
   `predev` at `efce694a`, completed in 40 s, "Precompiled without error", output
@@ -444,4 +445,4 @@ filed as issues:
   `estimate = "nsec"` or `"ecx"`, on every class, where `ecx_val` under a
   non-ECx estimate is refused (`check_exceedance_args()`).
 
-Items S4 and S6 to S19 of `01_work_queue.md` were not started.
+Items S4 and S6 to S19 of the queue were not started.

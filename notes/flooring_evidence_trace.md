@@ -10,10 +10,9 @@ what the vignette implies. This note answers all three and records a fresh check
 of the guideline made on 2026-08-11. All TG 201 quotes below are verbatim from
 the source PDF, so this note can be read without it.
 
-Companion notes, read in this order: `oecd_flooring_scoping.md` (the original
-handoff — states the question), `oecd_tg201_verification.md` (the first
-verification, §0 lists what was adopted into the vignette), then this one (the
-re-check plus two arguments neither of those contains).
+Companion note, read first: `oecd_tg201_verification.md` (the first
+verification, §0 lists what was adopted into the vignette). This one adds the
+re-check and two arguments that note does not contain.
 
 ---
 
@@ -279,8 +278,10 @@ question, not just a documentation one.** Not currently an open issue.
 control mean, and Annex 5 itself warns this introduces the control-mean error and
 needs a covariance correction. Its own alternative — fit the control as a
 parameter — is what `bayesnec` does. So #173 and the zero-anchoring argument
-converge from opposite directions. Per `oecd_flooring_scoping.md` they stay
-*separate arguments* in the prose, but a cross-reference is warranted.
+converge from opposite directions. They stay *separate arguments* in the prose:
+the normalisation caveat (@Ritz2026, #173) concerns dividing by a control mean
+and was settled on its own, so it is not merged with the argument against
+flooring. A cross-reference is warranted.
 
 ---
 
