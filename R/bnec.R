@@ -86,37 +86,11 @@
 #' at the 5% level under the mean-variance relationship of the fitted family,
 #' \code{\link{bnec}} reports that before fitting: an equation that estimates
 #' \code{bot} then has a prior describing the observed endpoint rather than the
-#' asymptote, and the \code{nec} or \code{ec50} prior places a threshold above
-#' that range in its tail rather than outside its support. How far into the tail
-#' is a property of the branch and of \code{prior_type} together rather than of
-#' either alone. Three of the four combinations set the spread by a coverage
-#' rule that reaches the farthest concentration tested, at the 95% level for
-#' \code{"uninformative"} on a predictor supplied as a recorded concentration
-#' and at the 98% level for \code{"regularizing"} on either, so the mass above
-#' the highest concentration is 0.025 or 0.01 at least and larger where the
-#' series extends further below its median on the log scale than above it. The
-#' fourth, \code{"uninformative"} on a predictor supplied already logged, sets
-#' the spread to 10 times the standard deviation of the distinct predictor
-#' values, which is the constant Fisher et al. (2024) state rather than a
-#' coverage width, and is much the widest of the four. The share of each entry's
-#' mass between the lowest and the highest value tested, and the share above the
-#' highest, on \code{\link{nec_data}} for the recorded-concentration branch and
-#' on \code{log(herbicide$concentration)} for the already-logged one:
-#'
-#' \tabular{llll}{
-#'   \strong{predictor} \tab \strong{prior_type} \tab \strong{inside} \tab
-#'   \strong{above} \cr
-#'   recorded \tab uninformative \tab 0.755 \tab 0.220 \cr
-#'   recorded \tab regularizing  \tab 0.811 \tab 0.179 \cr
-#'   logged   \tab uninformative \tab 0.116 \tab 0.442 \cr
-#'   logged   \tab regularizing  \tab 0.980 \tab 0.010
-#' }
-#'
-#' So the entry does correspondingly little to locate a threshold in the logged,
-#' \code{"uninformative"} case and rather more in the other three. Inspect the
-#' generated
-#' entries with \code{\link{get_priors}} and pass a scientifically justified
-#' prior through \code{prior} where information beyond the design is available.
+#' asymptote, and the \code{nec} and \code{ec50} priors, which are bounded to
+#' the tested range, exclude a threshold above that range. Inspect the
+#' generated entries with \code{\link{get_priors}} and pass a scientifically
+#' justified prior through \code{prior} where information beyond the design is
+#' available.
 #' Neither value of \code{prior_type} corrects a design that stopped before the
 #' asymptote; \code{asymptote_observed} is the argument for that. With a
 #' \code{disp("power")} term on a \code{Gamma}, \code{gaussian} or
@@ -139,22 +113,56 @@
 #' variation between groups.
 #' @param asymptote_observed A \code{\link[base]{logical}} declaring whether the
 #' highest predictor level reached the lower asymptote of the curve. The default
-#' \code{TRUE} is the assumption both default prior sets are built on, and
-#' leaves every generated entry exactly as it was. \code{FALSE} states that the
-#' series stopped short of the asymptote, which changes the \code{bot} prior and
-#' the initial-value search and nothing else. The \code{bot} prior's central 95%
-#' then spans from the floor of the response --- zero for every family but
-#' gaussian, and zero for a gaussian response that is non-negative throughout
-#' --- to the mean response at the end of the predictor series, so that mean is
-#' read as an upper bound on \code{bot} rather than as an estimate of it. That
-#' is the anchor the \code{"regularizing"} set already locates \code{bot} at:
-#' the highest predictor value alone on a replicated design, and as many of the
-#' highest values as it takes to reach three observations, or a twentieth of
-#' them, on a sparsely replicated one, never reaching past the top fifth of the
-#' distinct values. The
+#' \code{TRUE} is the assumption both default prior sets are built on. Under it
+#' the \code{nec} and \code{ec50} priors are bounded to the tested range, from
+#' the lowest predictor value to the highest, because on a design that reached
+#' the asymptote the decline begins, and passes its midpoint, inside that range.
+#' \code{FALSE} states that the series stopped short of the asymptote, which
+#' changes the \code{bot} prior, removes the upper bound of the \code{nec} and
+#' \code{ec50} priors, and widens the initial-value search. The \code{bot}
+#' prior's central 95% then spans from the floor of the response --- zero for
+#' every family but gaussian, and zero for a gaussian response that is
+#' non-negative throughout --- to the mean response at the end of the predictor
+#' series, so that mean is read as an upper bound on \code{bot} rather than as
+#' an estimate of it. That is the anchor the \code{"regularizing"} set already
+#' locates \code{bot} at: the highest predictor value alone on a replicated
+#' design, and as many of the highest values as it takes to reach three
+#' observations, or a twentieth of them, on a sparsely replicated one, never
+#' reaching past the top fifth of the distinct values. The
 #' initial-value band is extended to the same floor, because a band built from
 #' the observed response rejects the very draws the new prior produces and the
 #' fit then falls back to \pkg{Stan}'s own initialisation.
+#'
+#' Without the upper bound, a threshold above the highest concentration lies in
+#' the tail of the \code{nec} or \code{ec50} prior rather than outside its
+#' support. The lower bound stays at the lowest value tested. How far into the
+#' tail is a property of the branch and of \code{prior_type} together rather
+#' than of either alone. Three of the four combinations set the spread by a
+#' coverage rule that reaches the farthest concentration tested, at the 95%
+#' level for \code{"uninformative"} on a predictor supplied as a recorded
+#' concentration and at the 98% level for \code{"regularizing"} on either. The
+#' fourth, \code{"uninformative"} on a predictor supplied already logged, sets
+#' the spread to 10 times the standard deviation of the distinct predictor
+#' values, which is the constant Fisher et al. (2024) state rather than a
+#' coverage width, and is much the widest of the four. The share of each
+#' entry's mass between the lowest and the highest value tested, and the share
+#' above the highest, under \code{FALSE}, on \code{\link{nec_data}} for the
+#' recorded-concentration branch and on \code{log(herbicide$concentration)} for
+#' the already-logged one:
+#'
+#' \tabular{llll}{
+#'   \strong{predictor} \tab \strong{prior_type} \tab \strong{inside} \tab
+#'   \strong{above} \cr
+#'   recorded \tab uninformative \tab 0.775 \tab 0.225 \cr
+#'   recorded \tab regularizing  \tab 0.819 \tab 0.181 \cr
+#'   logged   \tab uninformative \tab 0.208 \tab 0.792 \cr
+#'   logged   \tab regularizing  \tab 0.990 \tab 0.010
+#' }
+#'
+#' So the entry does correspondingly little to locate a threshold in the logged,
+#' \code{"uninformative"} case and rather more in the other three. A
+#' threshold the posterior places above the prediction range is reported as
+#' censored there; see the \code{extrapolate} argument of \code{\link{nec}}.
 #'
 #' The declaration is the user's because the data cannot make it: a flat
 #' response at the top of the series is what a complete design and a truncated

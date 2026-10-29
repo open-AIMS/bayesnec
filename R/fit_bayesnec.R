@@ -89,7 +89,9 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
                                level_spec = level_spec,
                                rate_response = !is.null(denominator),
                                truncated_response = isTRUE(attr(
-                                 formula, "bayesnec_internal_truncation")))
+                                 formula, "bayesnec_internal_truncation")),
+                               tested_range = attr(formula,
+                                                   "bayesnec_tested_range"))
   # A group-level term needs initial values as well as a prior: Stan's own
   # draw for a lower-bounded standard deviation ignores the prior, so the mean
   # can start outside a bounded response's support. Append them here, where

@@ -102,8 +102,8 @@
   asymptote of the curve. The default `TRUE` is the assumption both default
   prior sets are built on and leaves every generated entry unchanged, which the
   test suite pins against the strings the release produced. `FALSE` states that
-  the series stopped short, and changes the `bot` prior and the initial-value
-  search and nothing else. Both default sets place `bot` at the observed
+  the series stopped short, and changes the `bot` prior, the initial-value
+  search and the upper bound of the `nec` and `ec50` priors (#483). Both default sets place `bot` at the observed
   response over the highest concentrations, so on such a design the prior is
   located above the true value and is at its narrowest exactly where `bot` is
   least identified: on the flattest of #386's simulated designs the prior CDF at
@@ -786,7 +786,12 @@
 
 ## Default priors
 
-- The default `nec` and `ec50` priors are no longer truncated to the range of
+- Revised by #483, under "Bug fixes": the default `nec` and `ec50` priors keep
+  the tested-range bound under `asymptote_observed = TRUE`, and
+  `asymptote_observed = FALSE` removes its upper end only. This entry describes
+  the removal as #393 made it, for every fit.
+
+  The default `nec` and `ec50` priors are no longer truncated to the range of
   the tested predictor. Both entries were built with `lb = min(x)` and
   `ub = max(x)`, so a threshold above the highest concentration tested was
   outside the prior support rather than in its tail: the posterior could place
@@ -3070,6 +3075,52 @@
   suppresses them for its table. Where a component is a model set holding a
   smooth equation, or the combined value is approximate, each message was
   printed once per panel. Warnings are still printed (#506).
+
+- The default `nec` and `ec50` priors are bounded to the tested range of the
+  predictor again, from its lowest value to its highest, under the default
+  `asymptote_observed = TRUE` and under both values of `prior_type`.
+  `asymptote_observed = FALSE` removes the upper bound and keeps the lower one.
+  The bound had been removed for every fit, so the two values of
+  `asymptote_observed` built the same `nec` and `ec50` priors, and beside a
+  default `bot` prior that assumes the series reached the lower asymptote the
+  `"uninformative"` threshold priors placed 2.5 per cent or more of their mass
+  above the highest concentration. On a simulated Beta response at six
+  concentrations from 0 to 16, `get_priors()` now returns `ub = 16` for `nec`
+  and `ec50` under the default and no upper bound under
+  `asymptote_observed = FALSE`, with the same prior string under both.
+
+  The lower bound is the lowest value tested under both settings. On a series
+  with a zero control it is 0, as before. On a series without one it is the
+  lowest dose, where the lognormal entry had a lower bound of 0. A predictor
+  supplied already logged takes a normal entry, which had no bound and now takes
+  the tested range under the default and its lower end under the declaration.
+  A predictor with a single distinct value takes no upper bound, because a bound
+  equal to the lower one leaves no support. The growth component of
+  `bnec_hurdle()` is fitted to survivors only, and its `nec` and `ec50` priors
+  are bounded by the whole concentration series rather than by the survivors'
+  range, which is the range its estimates are read over. The series is
+  recorded on the growth component's formula, so `amend(add = )` bounds an
+  added equation in the same way. `get_priors()` uses that recorded range
+  when it builds priors from the growth formula and survivors' data.
+
+  Results change for a fit made under the default. Its `nec` or `ec50`
+  posterior cannot exceed the highest concentration tested, which was also the
+  case in version 2.1.4 and earlier, so a threshold the data place above the
+  series is held at that concentration rather than reported as censored beyond
+  it. Where `extrapolate` on `nec()` or `nsec()` re-evaluates such a fit, its
+  message that the prior bounds the posterior now names
+  `asymptote_observed = FALSE`. The report that a response is still declining
+  at the top of the series describes the threshold priors the call builds, and
+  its advice to declare `asymptote_observed = FALSE` states that the
+  declaration removes the upper bound. Four published datasets of four to
+  seven observations were fitted with and without the bound, with the Beta
+  family, the identity link, the `decline` set and seed 3866: without it,
+  sampler screening discarded more model weight on all four, 86.6 per cent
+  against 58.3 per cent on one of them. That comparison shows that the bound
+  changes sampling, not which setting gives the better estimate. `update()`
+  reuses the priors of the fit it refits, so a fit made without the bound keeps
+  its prior when updated. The precompiled vignettes were rendered without the
+  bound, and their numbers change at the next precompile (#483).
 
 ## Documentation
 

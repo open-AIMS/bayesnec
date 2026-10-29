@@ -410,7 +410,10 @@ asymptote_floor_error <- function(reason) {
   paste0("`asymptote_observed = FALSE` places the prior for \"bot\" between",
          " the floor of the response and the mean at the highest predictor",
          " level, and ", reason, " Supply a prior for \"bot\" through the",
-         " `prior` argument and leave `asymptote_observed` at its default.")
+         " `prior` argument and leave `asymptote_observed` at its default.",
+         " The default bounds the \"nec\" and \"ec50\" priors at the highest",
+         " predictor value; supply those through `prior` as well to place",
+         " them otherwise.")
 }
 
 #' The bot prior for a design that did not reach the lower asymptote
@@ -603,9 +606,8 @@ validate_predictor_scale <- function(predictor_scale, predictor = NULL) {
 #' describes the concentration series tested. It is a normal prior on the log
 #' of the predictor: \code{lognormal(mu, sigma)} where the predictor is a
 #' concentration, and \code{normal(mu, sigma)} where it was supplied already
-#' logged. The caller sets the bound from the distribution's support,
-#' \code{lb = 0} for the lognormal and none for the normal, and does not
-#' truncate the prior to the tested range.
+#' logged. The caller bounds it to the tested range, and removes the upper
+#' bound under \code{asymptote_observed = FALSE}.
 #'
 #' @details \code{mu} is the median of the distinct logged values, so that
 #' replication does not change the prior. The concentration-scale median is
@@ -642,9 +644,9 @@ validate_predictor_scale <- function(predictor_scale, predictor = NULL) {
 #' With fewer than two distinct values on the selected log scale,
 #' \code{sigma} falls back to 1. The concentration branch refuses a predictor
 #' with no positive value; the logged branch accepts zero and negative values.
-#' The share of the prior
-#' above the highest dose, by branch and \code{prior_type}, is tabulated under
-#' \code{prior_type} in \code{?\link{bnec}}.
+#' The share of the untruncated prior above the highest dose, by branch and
+#' \code{prior_type}, is tabulated under \code{asymptote_observed} in
+#' \code{?\link{bnec}}.
 #'
 #' @param predictor A \code{\link[base]{numeric}} vector, the predictor as it
 #' was supplied.
@@ -715,12 +717,18 @@ predictor_prior <- function(predictor, prior_type = "uninformative",
 #' @param asymptote_observed A \code{\link[base]{logical}}. \code{FALSE}
 #' declares that the highest predictor level did not reach the lower asymptote,
 #' which replaces the \code{bot} entry of whichever set \code{prior_type}
-#' selected with the construction \code{\link{unobserved_bot_entry}} describes.
+#' selected with the construction \code{\link{unobserved_bot_entry}} describes,
+#' and removes the upper bound of the \code{nec} and \code{ec50} entries.
 #' @param prior_predictor The predictor the \code{nec} and \code{ec50} prior is
 #' built from. Defaults to \code{predictor}, and differs from
 #' it only for the two blocks of a hurdle or zero-inflated fit, each of which is
 #' primed from a subset of the predictor but evaluated over the whole of it.
 #' See \code{define_hurdle_prior()}.
+#' @param tested_range The lowest and highest predictor values tested, on the
+#' fitted scale, which bound the \code{nec} and \code{ec50} entries. Defaults
+#' to the range of \code{prior_predictor}. \code{\link{bnec_hurdle}} supplies
+#' the whole series for its growth component, which is fitted to survivors
+#' only.
 #'
 #' @return An object of class \code{\link[brms]{brmsprior}}.
 #' @importFrom brms prior_string
@@ -734,7 +742,7 @@ define_prior <- function(model, family, predictor, response,
                          model_survival = NULL, disp_spec = NULL,
                          group_spec = NULL, prior_predictor = NULL,
                          predictor_scale = "auto", rate_response = FALSE,
-                         truncated_response = FALSE) {
+                         truncated_response = FALSE, tested_range = NULL) {
   if (is.null(prior_predictor)) {
     prior_predictor <- predictor
   }
@@ -755,7 +763,8 @@ define_prior <- function(model, family, predictor, response,
                                            asymptote_observed,
                                          model_survival = model_survival,
                                          prior_predictor = prior_predictor,
-                                         predictor_scale = predictor_scale)
+                                         predictor_scale = predictor_scale,
+                                         tested_range = tested_range)
     # A group-level term reaches the mu block only, because add_formula_glef()
     # runs before the hu sub-formulas are attached. Build its priors from the
     # survivors, on the link scale of the mu family, which is the quantity the
@@ -961,14 +970,25 @@ define_prior <- function(model, family, predictor, response,
                          lb = lbs[fam_tag], ub = ubs[fam_tag])
   pr_bot <- prior_string(y_b_prs[fam_tag], nlpar = "bot",
                          lb = lbs[fam_tag], ub = ubs[fam_tag])
-  # x-dependent priors. Take the bound from the support of the distribution,
-  # not from the tested range: truncating to the range piles the posterior
-  # against the highest concentration. A lognormal needs lb = 0, or Stan
-  # rejects every negative proposal. The normal branch takes none, because a
-  # predictor supplied already logged can be negative.
-  x_lb <- if (grepl("^lognormal", x_pr)) 0 else NA
-  pr_nec <- prior_string(x_pr, nlpar = "nec", lb = x_lb)
-  pr_ec50 <- prior_string(x_pr, nlpar = "ec50", lb = x_lb)
+  # x-dependent priors, bounded to the tested range. The default assumes the
+  # series reached the lower asymptote, so the threshold lies inside it; the
+  # declaration says it may not, and lifts the upper bound only.
+  if (is.null(tested_range)) {
+    tested_range <- range(prior_predictor)
+  }
+  # A lognormal has no support below zero.
+  x_lb <- tested_range[1]
+  if (grepl("^lognormal", x_pr)) {
+    x_lb <- max(x_lb, 0)
+  }
+  # No upper bound on a single distinct value: lb = ub leaves no support, and
+  # make_inits() would never finish drawing.
+  x_ub <- NA
+  if (asymptote_observed && tested_range[2] > x_lb) {
+    x_ub <- tested_range[2]
+  }
+  pr_nec <- prior_string(x_pr, nlpar = "nec", lb = x_lb, ub = x_ub)
+  pr_ec50 <- prior_string(x_pr, nlpar = "ec50", lb = x_lb, ub = x_ub)
   # x- and y-independent priors
   pr_d <- prior_string("normal(0, 5)", nlpar = "d")
   pr_beta <- prior_string("normal(0, 5)", nlpar = "beta")
@@ -1278,7 +1298,8 @@ define_hurdle_prior <- function(model, family, predictor, response,
                                 asymptote_observed = TRUE,
                                 model_survival = NULL,
                                 prior_predictor = NULL,
-                                predictor_scale = "auto") {
+                                predictor_scale = "auto",
+                                tested_range = NULL) {
   if (is.null(prior_predictor)) {
     prior_predictor <- predictor
   }
@@ -1296,18 +1317,21 @@ define_hurdle_prior <- function(model, family, predictor, response,
                             parts$mu$x, parts$mu$y, prior_type = prior_type,
                             asymptote_observed = asymptote_observed,
                             prior_predictor = prior_predictor,
-                            predictor_scale = predictor_scale)
+                            predictor_scale = predictor_scale,
+                            tested_range = tested_range)
   # second block: reuse the bernoulli/identity defaults on the proportion
   # non-zero, then rename every non-linear parameter into its namespace.
   hu_priors <- define_prior(model_survival, bernoulli(link = "identity"),
                             parts$hu$x, parts$hu$y, prior_type = prior_type,
                             asymptote_observed = asymptote_observed,
                             prior_predictor = prior_predictor,
-                            predictor_scale = predictor_scale)
+                            predictor_scale = predictor_scale,
+                            tested_range = tested_range)
   hu_priors$nlpar <- ifelse(nzchar(hu_priors$nlpar),
                             paste0(dpar, hu_priors$nlpar), hu_priors$nlpar)
-  # Both blocks predict across the full design, so use its predictor for nec
-  # and ec50 priors. Survivors alone change their location and spread, and a
-  # concentration-scale subset containing only zero has no positive dose.
+  # Both blocks predict across the full design, so use its predictor for the
+  # nec and ec50 priors and their bounds. Survivors alone change their location
+  # and spread, and a concentration-scale subset containing only zero has no
+  # positive dose.
   mu_priors + hu_priors
 }
