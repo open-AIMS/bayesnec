@@ -222,6 +222,33 @@ inherited from the original fit; pass it explicitly to match that fit.</p></dd>
     <p>All successfully fitted model fits. A <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> if
 more than one model remains, otherwise a <code><a href="bayesnecfit-class.html">bayesnecfit</a></code>.</p>
     </div>
+    <div id="details">
+    <h2>Details</h2>
+    <p>A model added through <code>add</code> is sampled with the settings of
+the call that fitted <code>object</code>: <code>iter</code>, <code>warmup</code>, <code>thin</code>,
+<code>chains</code>, <code>sample_prior</code>, the backend, and any <code>control</code> or
+<code>seed</code> that call passed to <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm</a></code>. They are read from
+the first model of <code>object</code>. Other <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm</a></code> arguments,
+such as <code>cores</code>, are not passed to the added model.</p>
+<p>Where <code>object</code> has a two-block family, such as <code>hurdle_gamma</code>, the
+added model's survival block uses the equation the set was fitted with: the
+one <code>model_survival</code> named, or the added model's own equation where
+<code>model_survival</code> was not given.</p>
+<p>Where <code>object</code> does not record its call, as an object fitted by an
+earlier version of <span class="pkg">bayesnec</span> does not, no <code>control</code> or
+<code>seed</code> is passed to the added model, and the survival-block equation
+is read from the stored formulas. A single model whose survival block uses
+its own equation is then read as fitted without <code>model_survival</code>,
+because the two calls store the same formula.
+<code><a href="update.bnecfit.html">update.bnecfit</a></code> creates a call record for such an object,
+using the recovered survival-block equation and any <code>control</code> or
+<code>seed</code> supplied to the update. Subsequent additions reuse that record.
+<code>amend</code> also records the recovered equation on retained models, so
+dropping models does not discard it.
+When an update changes the backend or algorithm, <span class="pkg">brms</span> does not reuse
+the previous <code>control</code> or <code>seed</code>. Only settings supplied to that
+update are then recorded for subsequent additions.</p>
+    </div>
 
     <div id="ref-examples">
     <h2>Examples</h2>

@@ -134,6 +134,16 @@ for to fit the model.</p></dd>
 <code><a href="https://rdrr.io/r/stats/formula.html" class="external-link">formula</a></code>.</p></dd>
 
 
+<dt><code>call_args</code></dt>
+<dd><p>A <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> of the arguments of the fitting
+call that <code><a href="amend.html">amend</a></code> reuses for an added model:
+<code>model_survival</code>, and the <code>control</code> and <code>seed</code> passed to
+<code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm</a></code>. Each is <code>NULL</code> where the call did not supply
+it. Absent from an object fitted by an earlier version of <span class="pkg">bayesnec</span>
+until <code><a href="update.bnecfit.html">update.bnecfit</a></code> or <code><a href="amend.html">amend</a></code> records the
+recoverable settings.</p></dd>
+
+
 <dt><code>retained_data</code></dt>
 <dd><p>An optional <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code> containing
 columns retained by <code><a href="bnec.html">bnec</a></code> for plotting. This element is present
