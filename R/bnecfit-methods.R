@@ -338,6 +338,18 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
   if ("family" %in% names(dot_args)) {
     dot_args$family <- unmark_family(dot_args$family)
   }
+  if (any(vapply(object, function(fit) is.null(fit$call_args), logical(1)))) {
+    # Recover the shared block before a refit can leave only one equation.
+    bdat <- model.frame(object[[1]]$bayesnecformula,
+                         data = object[[1]]$fit$data)
+    model_survival <- stored_model_survival(object, bdat)
+    for (i in seq_along(object)) {
+      if (is.null(object[[i]]$call_args)) {
+        object[[i]]$call_args <- list(model_survival = model_survival,
+                                     control = NULL, seed = NULL)
+      }
+    }
+  }
   for (i in seq_along(object)) {
     fit_i <- object[[i]]$fit
     # Build a call rather than forward `...`, which cannot be rewritten to hold
@@ -349,8 +361,25 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
     object[[i]]$fit <- try(eval(upd_call), silent = FALSE)
     if (inherits(object[[i]]$fit, "try-error")) {
       class(object[[i]]) <- "somethingwentwrong"
+    } else {
+      # brms can restore the original backend with recompile = FALSE after
+      # discarding settings because the caller requested a different one.
+      old_backend <- fit_i$backend
+      if (is.null(old_backend)) old_backend <- "rstan"
+      backend <- if ("backend" %in% names(dot_args)) {
+        dot_args$backend
+      } else old_backend
+      algorithm <- if ("algorithm" %in% names(dot_args)) {
+        dot_args$algorithm
+      } else fit_i$algorithm
+      if (is.null(backend)) backend <- "rstan"
+      if (is.null(algorithm)) algorithm <- "sampling"
+      # brms accepts abbreviated backend and algorithm names.
+      inherit <- startsWith(old_backend, backend) &&
+        startsWith(fit_i$algorithm, algorithm)
+      object[[i]]$call_args <- update_call_args(object[[i]]$call_args,
+                                                dot_args, inherit = inherit)
     }
-    object[[i]]$call_args <- update_call_args(object[[i]]$call_args, dot_args)
   }
   formulas <- lapply(object, extract_formula)
   x_range <- expand_args$x_range
@@ -410,16 +439,22 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
 #' \code{\link{prebayesnecfit}}, or \code{NULL} for a fit that records none.
 #' @param dot_args The \code{\link[brms]{brm}} arguments passed to
 #' \code{\link{update.bnecfit}}.
+#' @param inherit Whether the backend and algorithm are unchanged, so that
+#' \pkg{brms} reuses the original sampling settings.
 #'
 #' @return \code{call_args}, with a supplied \code{seed} or \code{prior} in
 #' place of the recorded one and a supplied \code{control} merged into the
-#' recorded one, as \code{brms::update()} merges it. \code{NULL} where
-#' \code{call_args} is.
+#' recorded one, as \code{brms::update()} merges it. When
+#' \code{inherit = FALSE}, only supplied sampling settings are recorded.
+#' \code{NULL} where \code{call_args} is.
 #'
 #' @noRd
-update_call_args <- function(call_args, dot_args) {
+update_call_args <- function(call_args, dot_args, inherit = TRUE) {
   if (is.null(call_args)) {
     return(NULL)
+  }
+  if (!inherit) {
+    call_args[c("control", "seed")] <- list(NULL, NULL)
   }
   for (arg in intersect(c("seed", "prior"), names(dot_args))) {
     call_args[arg] <- list(dot_args[[arg]])

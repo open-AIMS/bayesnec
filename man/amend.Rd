@@ -128,6 +128,14 @@ block uses its own equation is then read as fitted without
 estimates are computed with the \code{\link{bnec}} defaults of
 \code{x_range}, \code{resolution}, \code{sig_val} and \code{loo_controls}
 where \code{object} does not record those.
+\code{\link{update.bnecfit}} creates a call record for such an object,
+using the recovered survival-block equation and any \code{control} or
+\code{seed} supplied to the update. Subsequent additions reuse that record.
+\code{amend} also records the recovered equation on retained models, so
+dropping models does not discard it.
+When an update changes the backend or algorithm, \pkg{brms} does not reuse
+the previous \code{control} or \code{seed}. Only settings supplied to that
+update are then recorded for subsequent additions.
 }
 \examples{
 library(bayesnec)

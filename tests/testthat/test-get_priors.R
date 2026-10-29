@@ -60,6 +60,59 @@ test_that("get_priors builds priors from a formula and data without fitting", {
                   "brmsprior")
 })
 
+test_that("get_priors keeps a hurdle growth formula's whole tested range", {
+  dat <- data.frame(x = rep(c(0.1, 1, 10, 100), each = 5),
+                    y = rep(c(0, 3, 1, 0), each = 5))
+  growth <- NULL
+  fitted_prior <- NULL
+  local_mocked_bindings(
+    bnec = function(formula, data, ...) {
+      if (is.null(growth)) {
+        growth <<- list(formula = formula, data = data)
+      }
+      structure(list(), class = c("bayesnecfit", "bnecfit"))
+    },
+    brm = function(..., prior) {
+      fitted_prior <<- prior
+      stop("prior captured")
+    },
+    .package = "bayesnec"
+  )
+  cases <- list(
+    list(formula = y ~ crf(x, c("nec3param", "ecx4param")), scale = "auto"),
+    list(formula = y ~ crf(log(x), c("nec3param", "ecx4param")), scale = "log")
+  )
+  for (case in cases) {
+    growth <- NULL
+    suppressMessages(bnec_hurdle(
+      case$formula, data = dat, family_growth = "Gamma",
+      predictor_scale = case$scale
+    ))
+    tested <- attr(growth$formula, "bayesnec_tested_range")
+    for (ao in c(TRUE, FALSE)) {
+      inspected <- suppressMessages(get_priors(
+        growth$formula, data = growth$data, family = Gamma(link = "identity"),
+        asymptote_observed = ao, predictor_scale = case$scale
+      ))
+      for (mod in names(inspected)) {
+        expect_error(suppressMessages(bayesnec:::fit_bayesnec(
+          growth$formula, data = growth$data, model = mod,
+          brm_args = list(family = Gamma(link = "identity"), init = 0),
+          asymptote_observed = ao, predictor_scale = case$scale
+        )), "prior captured")
+        expect_equal(inspected[[mod]], fitted_prior)
+        row <- inspected[[mod]][inspected[[mod]]$nlpar %in% c("nec", "ec50"), ]
+        expect_equal(as.numeric(row$lb), tested[1])
+        if (ao) {
+          expect_equal(as.numeric(row$ub), tested[2])
+        } else {
+          expect_true(is.na(row$ub))
+        }
+      }
+    }
+  }
+})
+
 test_that("nec3param under gaussian now returns priors (#206)", {
   # The exclusion this replaces refused every zero-bounded equation for a
   # gaussian response, so the package's namesake equation could not be fitted
