@@ -3054,6 +3054,29 @@
   and ECx annotations of `autoplot()`. A refit whose levels share their lowest
   concentration, as most designs do, is unchanged (#500).
 
+- `update()` on a `bayesnechurdlefit` checks a supplied `family` as
+  `bnec_hurdle()` checks `family_growth`, before either component is refitted.
+  A family `bnec_hurdle()` refuses for the growth component, such as
+  `hurdle_gamma` or `zero_inflated_poisson`, is refused with the same message.
+  It was passed to `brms` as the growth family. A `poisson` or `negbinomial`
+  family needs `brms` 2.23.2 or later, as in `bnec_hurdle()`, and the growth
+  component is refitted with `trunc(lb = 1)`, the zero-truncated likelihood
+  `bnec_hurdle()` fits to the survivors. It was refitted without the
+  truncation on any version of `brms`, as if a zero were possible among
+  responses that hold none, and nothing was reported. A `cens()` term with a
+  count family, and a `disp()` term on a column other than the predictor with
+  `negbinomial`, are refused as `bnec_hurdle()` refuses them. A family that is
+  not a count family, supplied for a count growth component, is refitted
+  without the truncation, which the refit kept. Without `family`, a growth
+  component fitted with the truncation keeps it and needs the same version of
+  `brms` (#503).
+
+- `plot()` on a `bayesnechurdlefit` suppresses the messages of the `nec()`
+  call it makes to place the N(S)EC line on each panel, as `summary()`
+  suppresses them for its table. Where a component is a model set holding a
+  smooth equation, or the combined value is approximate, each message was
+  printed once per panel. Warnings are still printed (#506).
+
 ## Documentation
 
 - `?autoplot` states that a `bayesmanecfit` with `multi_facet = FALSE`
