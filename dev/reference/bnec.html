@@ -168,10 +168,12 @@ containing the desired arguments to be passed on to <code><a href="https://mc-st
 If no <code>method</code> is named in "weights", <span class="pkg">bayesnec</span> sets the
 <code>method</code> argument of <code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> to
 "pseudobma", whichever function assembles the model set.
-<code><a href="amend.html">amend</a></code> and <code>update</code> operate on an existing set and keep
-the method that set was built with, unless the caller names another.
-<code><a href="pull_out.html">pull_out</a></code> takes no weighting method at all: it reports and
-ignores one given in "weights" and always keeps the set's own.
+<code><a href="amend.html">amend</a></code>, <code>update</code> and <code><a href="pull_out.html">pull_out</a></code> operate on an
+existing set. They keep the "fitting" arguments it was built with unless
+the caller names "fitting", and the method it was weighted by unless the
+caller names another. <code><a href="pull_out.html">pull_out</a></code> takes no weighting method at
+all: it reports and ignores one given in "weights" and always keeps the
+set's own.
 <code><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></code> and <code>+</code> take no <code>loo_controls</code> argument;
 see <code><a href="c.bnecfit.html">c.bnecfit</a></code> for how they decide the method. See
 ?<code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> for further info.</p></dd>
@@ -575,7 +577,8 @@ individual <em>exposed</em>.
 <code><a href="ecx.html">ecx</a></code>, <code><a href="nsec.html">nsec</a></code> and <code><a href="plot.html">plot</a></code> describe it by
 default; pass <code>dpar = "mu"</code> or <code>dpar = "hu"</code> to <code><a href="ecx.html">ecx</a></code>
 for a component. <code><a href="nec.html">nec</a></code> returns the combined threshold, which for
-threshold models on both blocks is the smaller of the two.
+threshold models on both blocks is the smaller of the two on the scale the
+model was fitted on.
 For the count hurdles, <span class="pkg">brms</span> calls the untruncated count mean
 <code>mu</code>; <code>ecx(dpar = "mu")</code> and <code>nsec(dpar = "mu")</code> convert it
 to <code>E[Y | Y &gt; 0]</code> so that "response of survivors" has the same meaning

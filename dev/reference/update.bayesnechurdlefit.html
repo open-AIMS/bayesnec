@@ -97,7 +97,7 @@
 
     <div id="ref-usage">
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for class 'bayesnechurdlefit'</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/stats/update.html" class="external-link">update</a></span><span class="op">(</span><span class="va">object</span>, newdata <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/update.html" class="external-link">update</a></span><span class="op">(</span><span class="va">object</span>, newdata <span class="op">=</span> <span class="cn">NULL</span>, recompile <span class="op">=</span> <span class="cn">NULL</span>, x_range <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -122,6 +122,16 @@ growth component at a bound in every observation, such as a <code>Beta</code>
 growth component of 1 throughout, are refused, naming that component.</p></dd>
 
 
+<dt id="arg-recompile">recompile<a class="anchor" aria-label="anchor" href="#arg-recompile"></a></dt>
+<dd><p>As for <code><a href="update.bnecfit.html">update.bnecfit</a></code>.</p></dd>
+
+
+<dt id="arg-x-range">x_range<a class="anchor" aria-label="anchor" href="#arg-x-range"></a></dt>
+<dd><p>As for <code><a href="update.bnecfit.html">update.bnecfit</a></code>. A <code>NULL</code> inherits
+the recorded range, or follows the whole new concentration series where
+<code>bnec_hurdle</code> was given no range.</p></dd>
+
+
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Further arguments passed to <code><a href="update.bnecfit.html">update.bnecfit</a></code> for
 each component. A <code>family</code> is passed to the growth component only.
@@ -133,7 +143,12 @@ family is checked as <code><a href="bnec_hurdle.html">bnec_hurdle</a></code> che
 <code>disp()</code> term cannot be refitted under, as <code><a href="update.bnecfit.html">update.bnecfit</a></code>
 describes, such as <code>poisson</code>. A <code>poisson</code> or <code>negbinomial</code>
 family needs <span class="pkg">brms</span> 2.23.2 or later, and the growth component is then
-refitted with the zero-truncated likelihood <code>bnec_hurdle</code> uses.</p></dd>
+refitted with the zero-truncated likelihood <code>bnec_hurdle</code> uses.
+An argument that is not supplied, such as <code>x_range</code>, is taken by each
+component from its own fit, as <code><a href="update.bnecfit.html">update.bnecfit</a></code> describes.
+Where <code>newdata</code> is supplied and <code>bnec_hurdle</code> was given no
+<code>x_range</code>, the growth component is predicted over the whole
+concentration series of <code>newdata</code>, as <code>bnec_hurdle</code> predicts it.</p></dd>
 
 </dl></div>
     <div id="value">

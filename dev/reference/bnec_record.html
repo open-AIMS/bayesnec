@@ -131,9 +131,21 @@ for <code><a href="bnec.html">bnec</a></code> and <code><a href="amend.html">ame
 that reason. <code><a href="https://rdrr.io/r/stats/update.html" class="external-link">update</a></code> does not record failures, so an
 equation whose refit failed stays in <code>attempted</code> and is not reported
 by <code><a href="failed_models.html">failed_models</a></code>.</p>
-<p>The record is kept through <code><a href="https://rdrr.io/r/stats/update.html" class="external-link">update</a></code> and
-<code><a href="amend.html">amend</a></code>. <code>NULL</code> for an object fitted by a version that
-did not record it.</p>
+<p>The record is kept through <code><a href="https://rdrr.io/r/stats/update.html" class="external-link">update</a></code>,
+<code><a href="amend.html">amend</a></code>, <code><a href="pull_out.html">pull_out</a></code>, <code><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></code> and
+<code>+</code>. <code><a href="pull_out.html">pull_out</a></code> lists each equation it does not keep in
+<code>excluded</code>, with the reason "not kept by pull_out()", as
+<code><a href="amend.html">amend</a></code> does with the reason "dropped by amend()" for an
+equation it drops. An equation whose failure <code><a href="failed_models.html">failed_models</a></code>
+still reports stays in <code>attempted</code>. <code><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></code> and <code>+</code>
+join the records of the objects they combine. <code>requested</code> and
+<code>attempted</code> are the unions of theirs, and an equation attempted in any
+of them is not in <code>excluded</code>. An equation excluded by more than one of
+them keeps the reason the first gives, as <code><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></code> keeps the
+first of two fits of one equation. <code>substitutions</code> holds the distinct
+rows of theirs. Where any of the objects combined has no record, the result
+has none, because what was done to its part of the request is not known.</p>
+<p><code>NULL</code> for an object fitted by a version that did not record it.</p>
     </div>
     <div id="details">
     <h2>Details</h2>

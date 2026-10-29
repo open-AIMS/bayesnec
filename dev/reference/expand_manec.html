@@ -151,10 +151,12 @@ containing the desired arguments to be passed on to <code><a href="https://mc-st
 If no <code>method</code> is named in "weights", <span class="pkg">bayesnec</span> sets the
 <code>method</code> argument of <code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> to
 "pseudobma", whichever function assembles the model set.
-<code><a href="amend.html">amend</a></code> and <code>update</code> operate on an existing set and keep
-the method that set was built with, unless the caller names another.
-<code><a href="pull_out.html">pull_out</a></code> takes no weighting method at all: it reports and
-ignores one given in "weights" and always keeps the set's own.
+<code><a href="amend.html">amend</a></code>, <code>update</code> and <code><a href="pull_out.html">pull_out</a></code> operate on an
+existing set. They keep the "fitting" arguments it was built with unless
+the caller names "fitting", and the method it was weighted by unless the
+caller names another. <code><a href="pull_out.html">pull_out</a></code> takes no weighting method at
+all: it reports and ignores one given in "weights" and always keeps the
+set's own.
 <code><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></code> and <code>+</code> take no <code>loo_controls</code> argument;
 see <code><a href="c.bnecfit.html">c.bnecfit</a></code> for how they decide the method. See
 ?<code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> for further info.</p></dd>

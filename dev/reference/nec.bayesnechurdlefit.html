@@ -170,10 +170,16 @@ below the survival component's, and a limit between the two is an extension
 for one and inside the range for the other. Such a limit is refused, and
 the refusal names which component raised it.</p>
 <p>The combined no-effect concentration is
-<code>pmin(ne_growth, ne_survival)</code> evaluated per posterior draw. Below both
-thresholds the growth curve sits at <code>top</code> and the survival curve at its
-own control value, so their product is flat; it departs that plateau at
-whichever threshold binds first.</p>
+<code>pmin(ne_growth, ne_survival)</code> evaluated per posterior draw, on the
+scale the model was fitted on. Below both thresholds the growth curve sits
+at <code>top</code> and the survival curve at its own control value, so their
+product is flat; it departs that plateau at whichever threshold binds first.
+The minimum, and the rule for censored draws below, apply on that scale, and
+the result is then returned on the scale <code>xform</code> names. Under a
+decreasing transformation in <code>crf()</code>, such as <code>crf(I(-x))</code>, each
+curve is flat above its threshold on the recorded scale, so the combined
+value is the larger of the two recorded thresholds. An <code>xform</code> changes
+the scale the value is reported on, not which threshold it is.</p>
 <p>A component draw beyond the top of its prediction range is known only to
 exceed that limit. Both components are predicted over the whole
 concentration series, so they share their limits, unless a fit made before
@@ -183,8 +189,8 @@ exceed its limit while the other is estimated above that limit, the
 combined draw is not identified. It is reported as beyond the top of the
 range, at the smaller of the two components' upper limits, which is true
 of every such draw.</p>
-<p><b>The combined estimate is therefore the smaller of the two, and reduces
-to the growth estimate whenever growth is the more sensitive endpoint</b> –
+<p><b>The combined estimate therefore reduces to the growth estimate
+whenever growth is the more sensitive endpoint</b> –
 which it usually is, since a contaminant that kills has generally slowed
 growth at a lower concentration first. This is not a defect of the
 combination but a property of thresholds: a threshold marks where an effect

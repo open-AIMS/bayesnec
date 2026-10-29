@@ -103,9 +103,9 @@ bnec."><meta property="og:image" content="https://open-aims.github.io/bayesnec/l
 <span>  <span class="va">object</span>,</span>
 <span>  newdata <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  recompile <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  x_range <span class="op">=</span> <span class="cn">NA</span>,</span>
-<span>  resolution <span class="op">=</span> <span class="fl">1000</span>,</span>
-<span>  sig_val <span class="op">=</span> <span class="fl">0.01</span>,</span>
+<span>  x_range <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  sig_val <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">loo_controls</span>,</span>
 <span>  force_fit <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span></span>
@@ -134,39 +134,17 @@ tries to figure out internally, if recompilation is necessary. Setting it to
 <code>FALSE</code> will cause all Stan code changing arguments to be ignored.</p></dd>
 
 
-<dt id="arg-x-range">x_range<a class="anchor" aria-label="anchor" href="#arg-x-range"></a></dt>
-<dd><p>A range of predictor values over which to consider extracting
-ECx.</p></dd>
-
-
-<dt id="arg-resolution">resolution<a class="anchor" aria-label="anchor" href="#arg-resolution"></a></dt>
-<dd><p>The length of the predictor vector used for posterior
-predictions, and over which to extract ECx values. Large values will be
-slower but more precise.</p></dd>
-
-
-<dt id="arg-sig-val">sig_val<a class="anchor" aria-label="anchor" href="#arg-sig-val"></a></dt>
-<dd><p>Probability value to use as the lower quantile to test
-significance of the predicted posterior values against the lowest observed
-concentration (assumed to be the control), to estimate NEC as an
-interpolated NOEC value from smooth ECx curves.</p></dd>
+<dt id="arg-x-range-resolution-sig-val">x_range, resolution, sig_val<a class="anchor" aria-label="anchor" href="#arg-x-range-resolution-sig-val"></a></dt>
+<dd><p>As for <code><a href="bnec.html">bnec</a></code>. Each is taken
+from <code>object</code> unless supplied, and is the <code><a href="bnec.html">bnec</a></code> default
+where <code>object</code> records none, as an object fitted by an earlier version
+of <span class="pkg">bayesnec</span> does not. An <code>x_range</code> of <code>NA</code>, the default of
+<code><a href="bnec.html">bnec</a></code>, follows the range of <code>newdata</code>.</p></dd>
 
 
 <dt id="arg-loo-controls">loo_controls<a class="anchor" aria-label="anchor" href="#arg-loo-controls"></a></dt>
-<dd><p>A named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> of two elements
-("fitting" and/or "weights"), each being a named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code>
-containing the desired arguments to be passed on to <code><a href="https://mc-stan.org/loo/reference/loo.html" class="external-link">loo</a></code>
-(via "fitting") or to <code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> (via "weights").
-If no <code>method</code> is named in "weights", <span class="pkg">bayesnec</span> sets the
-<code>method</code> argument of <code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> to
-"pseudobma", whichever function assembles the model set.
-<code><a href="amend.html">amend</a></code> and <code>update</code> operate on an existing set and keep
-the method that set was built with, unless the caller names another.
-<code><a href="pull_out.html">pull_out</a></code> takes no weighting method at all: it reports and
-ignores one given in "weights" and always keeps the set's own.
-<code><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></code> and <code>+</code> take no <code>loo_controls</code> argument;
-see <code><a href="c.bnecfit.html">c.bnecfit</a></code> for how they decide the method. See
-?<code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> for further info.</p></dd>
+<dd><p>As for <code><a href="bnec.html">bnec</a></code>. An element not named is
+taken from <code>object</code>, as <code><a href="amend.html">amend</a></code> describes.</p></dd>
 
 
 <dt id="arg-force-fit">force_fit<a class="anchor" aria-label="anchor" href="#arg-force-fit"></a></dt>

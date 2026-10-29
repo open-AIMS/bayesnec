@@ -142,6 +142,9 @@ inside the range of the response and left initialisation to Stan.</p>
 they were built – a formula or data problem rather than a sampling one.</p>
 <p><code><a href="pull_out.html">pull_out</a></code> carries the record across unchanged, since it subsets
 a set that has already been fitted rather than refitting it.
+<code><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></code> and <code>+</code> keep the failures of every object they
+combine, except for an equation that another of those objects fitted and
+the combined set therefore holds.
 <code><a href="amend.html">amend</a></code> instead records only the models that call attempted:
 a model that failed before may have been dropped now, or is being retried
 there with different priors.</p>

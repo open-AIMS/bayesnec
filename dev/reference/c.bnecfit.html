@@ -118,7 +118,8 @@ statistics.</p>
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>An object of class <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code>.</p>
+    <p>A <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> where only one distinct model remains,
+otherwise a <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code>.</p>
     </div>
     <div id="details">
     <h2>Details</h2>
@@ -130,9 +131,19 @@ default of "pseudobma" is used. Where two inputs name different methods the
 default is used and a message reports the disagreement.
 <code><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></code> takes no <code>loo_controls</code> argument; use
 <code><a href="amend.html">amend</a></code> to set the weighting method explicitly.</p>
+<p>The estimates of the combined set are computed with the <code>x_range</code>,
+<code>resolution</code> and <code>sig_val</code> the objects were fitted with, and with
+the arguments of their <code>loo_controls</code> other than the method, where
+every object that records an argument records the same value. Where two objects record
+different values of an argument, the <code><a href="bnec.html">bnec</a></code> default is used and a
+message names the argument. An object fitted by an earlier version of
+<span class="pkg">bayesnec</span> records none of them.</p>
 <p>Each equation keeps the record of the installation of <span class="pkg">bayesnec</span> that
 fitted it, and a message reports a combined set whose equations were fitted
 by different installations. See <code><a href="bnec_version.html">bnec_version</a></code>.</p>
+<p>The records of what <code><a href="bnec.html">bnec</a></code> did to each request, and of the
+equations that failed to fit, are joined; see <code><a href="bnec_record.html">bnec_record</a></code> and
+<code><a href="failed_models.html">failed_models</a></code>.</p>
     </div>
 
     <div id="ref-examples">
