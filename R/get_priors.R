@@ -245,7 +245,8 @@ get_priors.formula <- function(object, data, family = NULL,
                  group_spec = parse_group_terms(single_form, m),
                  rate_response = !is.null(checked$mod_dat$denom),
                  truncated_response = isTRUE(attr(
-                   single_form, "bayesnec_internal_truncation")))
+                   single_form, "bayesnec_internal_truncation")),
+                 tested_range = attr(single_form, "bayesnec_tested_range"))
   })
   names(out) <- model
   if (length(out) == 1) {

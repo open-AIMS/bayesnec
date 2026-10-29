@@ -3100,7 +3100,8 @@
   are bounded by the whole concentration series rather than by the survivors'
   range, which is the range its estimates are read over. The series is
   recorded on the growth component's formula, so `amend(add = )` bounds an
-  added equation in the same way.
+  added equation in the same way. `get_priors()` uses that recorded range
+  when it builds priors from the growth formula and survivors' data.
 
   Results change for a fit made under the default. Its `nec` or `ec50`
   posterior cannot exceed the highest concentration tested, which was also the
