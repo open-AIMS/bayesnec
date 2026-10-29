@@ -2212,7 +2212,6 @@ check_resolution <- function(resolution) {
 #'
 #' @return A \code{\link[base]{numeric}} value.
 #'
-#' @importFrom stats model.frame
 #' @noRd
 control_x <- function(object) {
   grid_obj <- object
@@ -2224,13 +2223,32 @@ control_x <- function(object) {
       pull_out(grid_obj, model = names(grid_obj$mod_fits)[1])
     )
   }
-  # One level of a joint refit reads its own lowest concentration, not the
-  # lowest of every level together. See joint_level_x().
+  lowest_observed_x(grid_obj)
+}
+
+#' The lowest observed predictor value of one fit
+#'
+#' The rule \code{control_x()} and \code{control_posterior()} share. One level
+#' of a joint refit reads its own lowest concentration, not the lowest of every
+#' level together. See \code{joint_level_x()}.
+#'
+#' @param grid_obj A \code{\link{bayesnecfit}}, already taken from its model
+#' set or hurdle fit.
+#' @param x_var The predictor's column name, or \code{NULL} to find it from the
+#' formula.
+#'
+#' @return A \code{\link[base]{numeric}} value.
+#'
+#' @importFrom stats model.frame
+#' @noRd
+lowest_observed_x <- function(grid_obj, x_var = NULL) {
   if (inherits(grid_obj, "bayesnecjointlevel") && length(grid_obj$level_x)) {
     return(min(grid_obj$level_x))
   }
-  mod_dat <- model.frame(grid_obj$bayesnecformula, grid_obj$fit$data)
-  x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
+  if (is.null(x_var)) {
+    mod_dat <- model.frame(grid_obj$bayesnecformula, grid_obj$fit$data)
+    x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
+  }
   min(grid_obj$fit$data[[x_var]])
 }
 
@@ -2339,7 +2357,7 @@ family_has_lower_bound <- function(family) {
 #' posterior expectation matrix, so that a two-block fit's \code{dpar}
 #' handling reaches the control as well as the curve.
 #' @param x_at The predictor value to read the control at. Defaults to
-#' \code{NULL}, meaning this object's own lowest observed value. A
+#' \code{NULL}, meaning the value \code{control_x()} returns. A
 #' \code{\link{bayesnechurdlefit}} supplies it, because its two components are
 #' fitted to different subsets --- growth to survivors only --- and the control
 #' must be the same concentration on both sides or their product is not a
@@ -2361,10 +2379,7 @@ control_posterior <- function(object, newdata, epred_fun, x_at = NULL) {
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
   control_nd <- newdata[1, , drop = FALSE]
   if (is.null(x_at)) {
-    # The same value control_x() returns. Read from grid_obj, which is already
-    # resolved here, rather than by calling control_x() and repeating the
-    # pull_out() and model.frame() this function has just done.
-    x_at <- min(grid_obj$fit$data[[x_var]])
+    x_at <- lowest_observed_x(grid_obj, x_var)
   }
   control_nd[[x_var]] <- x_at
   epred_fun(control_nd)[, 1]
