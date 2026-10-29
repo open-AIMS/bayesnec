@@ -542,6 +542,53 @@ test_that("a count growth refit needs brms 2.23.2, as bnec_hurdle() does (#503)"
   expect_identical(calls, 0L)
 })
 
+test_that("every stored growth equation is checked for count truncation", {
+  h <- count_ready_fixture(brms::brmsfamily("poisson", link = "identity"))
+  nd <- h$data
+  nd$y <- hurdle_counts(nd$y)
+  growth_data <- h$growth$fit$data
+  h$growth <- manec_example
+  for (model in names(h$growth$mod_fits)) {
+    h$growth$mod_fits[[model]]$fit$family <- brms::brmsfamily(
+      "poisson", link = "identity"
+    )
+    h$growth$mod_fits[[model]]$fit$data <- growth_data
+  }
+  # A set can combine legacy untruncated fits with newer truncated fits.
+  h$growth$mod_fits[[2]] <- bayesnec:::set_hurdle_growth_truncation(
+    h$growth$mod_fits[[2]], TRUE
+  )
+  expect_no_error(bayesnec:::check_data_equality(
+    bayesnec:::recover_prebayesnecfit(h$growth)
+  ))
+  calls <- 0L
+  local_mocked_bindings(
+    update = function(...) {
+      calls <<- calls + 1L
+      stop("refit reached")
+    },
+    .package = "bayesnec"
+  )
+  local({
+    local_brms_version("2.23.1")
+    for (reverse in c(FALSE, TRUE)) {
+      pair <- h
+      if (reverse) {
+        pair$growth$mod_fits <- rev(pair$growth$mod_fits)
+      }
+      for (d in list(NULL, nd)) {
+        expect_error(
+          stats::update(pair, newdata = d),
+          "require brms 2.23.2 or later.*Installed brms is 2.23.1"
+        )
+      }
+    }
+  })
+  expect_identical(calls, 0L)
+  local_brms_version("2.23.2")
+  expect_identical(bayesnec:::hurdle_refit_growth(h), h$growth)
+})
+
 test_that("a count growth family is refitted with trunc(lb = 1) (#503)", {
   h <- count_ready_fixture()
   nd <- h$data
