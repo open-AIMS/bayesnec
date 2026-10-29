@@ -1107,21 +1107,31 @@ resolve_model_average <- function(x, model, average, all_models = NULL,
   list(model = model, average = average)
 }
 
+#' The stored no-effect posterior of a fit, on the recorded scale
+#'
+#' What \code{\link{compare_estimates}} compares under \code{"n(s)ec"}. Read
+#' from the stored posterior rather than through \code{\link{nec}}, which
+#' refuses a single fit of an ECx equation.
+#'
+#' @param m A \code{\link{bayesnecfit}}, \code{\link{bayesmanecfit}} or
+#' \code{\link{bayesnechurdlefit}}.
+#'
+#' @return A \code{\link[base]{numeric}} vector of draws, with its censoring
+#' record.
 #' @noRd
-return_nec_post <- function(m, xform) {
-  if (is_bayesnecfit(m)) {
-    out <- unname(m$ne_posterior)
-  }
-  if (is_bayesmanecfit(m)) {
-    out <- unname(m$w_ne_posterior)
-  }
+return_nec_post <- function(m) {
   if (is_bayesnechurdlefit(m)) {
     # Defaults to the combined threshold, matching nec() on the same object.
-    out <- unname(nec(m, posterior = TRUE))
+    return(unname(nec(m, posterior = TRUE)))
   }
-  if (inherits(xform, "function")) {
-    out <- xform(out)
+  out <- unname(if (is_bayesnecfit(m)) m$ne_posterior else m$w_ne_posterior)
+  map <- recorded_xform(m, NULL)
+  if (identical(map, identity)) {
+    return(out)
   }
+  cens <- attr(out, "censored")
+  out <- map_draws(out, map, cens, "no-effect estimate")
+  attr(out, "censored") <- xform_censoring(cens, map)
   out
 }
 
@@ -2077,8 +2087,9 @@ fill_missing_priors <- function(priors, defaults, model) {
 #' The predictor of a formula's crf() term, as the model frame reads it
 #'
 #' Shared by \code{sub_x_transformation()}, which applies it to an estimate,
-#' and \code{inline_x_transform()}, which reports it, so that an estimate is
-#' said to be on a transformed scale exactly where it has been put on one.
+#' and \code{inline_x_transform()}, which decides whether the estimators
+#' invert it, so that an estimate is inverted exactly where it was put on a
+#' transformed scale.
 #'
 #' The predictor is read by \code{formula_x_reading()}, as the model frame
 #' and the \pkg{brms} formula read it, so \code{crf((log(x)))} gives
@@ -2422,16 +2433,15 @@ control_posterior <- function(object, newdata, epred_fun, x_at = NULL) {
 
 #' Bring an estimate onto the scale the predictor axis is drawn on
 #'
-#' \code{nec()}, \code{ecx()} and \code{nsec()} return values on the fitted
-#' scale, while \code{plot()} and \code{autoplot()} draw the predictor axis on
-#' the recorded scale. Where the formula transforms the predictor, an
-#' annotation drawn at the estimate's own value would be misplaced.
-#'
 #' Where the predictor is not transformed, \code{xform} is applied as it is to
-#' the axis. Where it is, the estimate is inverted with the caller's
-#' \code{xform}, or otherwise by interpolating on the grid. Either map is
-#' applied through \code{remap_summary()}, so that a decreasing one keeps the
-#' interval in order and the censoring marks correct.
+#' the axis. Where it is, the estimate is mapped with the caller's
+#' \code{xform}, or with \code{recorded_x_map()} where that is
+#' \code{identity}. The plots take a default estimate from the estimators
+#' instead, which return it on the recorded scale already; see
+#' \code{plot_reads_recorded()}.
+#'
+#' The map is applied through \code{remap_summary()}, so that a decreasing one
+#' keeps the interval in order and the censoring marks correct.
 #'
 #' @param values A \code{\link[base]{numeric}} vector on the fitted scale.
 #' @param bdat A model frame carrying the \code{bnec_pop} attribute.
@@ -2448,59 +2458,14 @@ to_axis_scale <- function(values, bdat, formula, x_grid_raw,
   if (!pop_var_is_transformed(bdat, "x_var")) {
     return(remap_summary(values, xform, x_grid_raw))
   }
-  # Both branches below detect a decreasing map on the fitted-scale grid.
-  fitted_grid <- sub_x_transformation(x_grid_raw, formula)
-  if (!identical(xform, identity)) {
-    return(remap_summary(values, xform, fitted_grid))
+  if (identical(xform, identity)) {
+    tr <- inline_x_transform(list(bayesnecformula = formula))
+    if (!is.null(tr)) {
+      xform <- recorded_x_map(formula, x_grid_raw, tr)
+    }
   }
-  inverse <- grid_inverse(formula, x_grid_raw)
-  if (is.null(inverse)) {
-    return(values)
-  }
-  remap_summary(values, inverse, fitted_grid)
-}
-
-#' The inverse of an inline predictor transformation, read off the grid
-#'
-#' The prediction grid holds the same points on both scales, so interpolating
-#' between them inverts any \code{crf()} transformation to within the grid's
-#' resolution. \code{to_axis_scale()} uses this inverse to place annotations
-#' on the plot's recorded scale. The returned function takes a vector, so it
-#' can also be passed to \code{xform_censoring()}.
-#'
-#' @param formula A \code{\link{bayesnecformula}}.
-#' @param x_grid_raw The prediction grid's predictor values, on the recorded
-#' scale.
-#'
-#' @return A \code{\link[base]{function}} taking values on the fitted scale and
-#' returning them on the recorded scale with their attributes kept, or
-#' \code{NULL} where fewer than two grid points are finite on both scales.
-#'
-#' @details \code{approx(rule = 2)} clamps an estimate outside the grid to the
-#' nearer end, so that an annotation is drawn at the axis limit rather than
-#' dropped without a message. Only an already censored summary can lie outside
-#' the grid.
-#'
-#' @importFrom stats approx
-#' @noRd
-grid_inverse <- function(formula, x_grid_raw) {
-  fitted_grid <- sub_x_transformation(x_grid_raw, formula)
-  keep <- is.finite(fitted_grid) & is.finite(x_grid_raw)
-  if (sum(keep) < 2) {
-    return(NULL)
-  }
-  fitted_grid <- fitted_grid[keep]
-  raw_grid <- x_grid_raw[keep]
-  function(values) {
-    # Build from `values`, not rep(NA_real_, ...), to keep the attributes ecx()
-    # sets: bind_ecx() reads attr(ecx_vals, "ecx_val").
-    out <- values
-    out[] <- NA_real_
-    finite_v <- is.finite(values)
-    out[finite_v] <- approx(x = fitted_grid, y = raw_grid,
-                            xout = values[finite_v], rule = 2)$y
-    out
-  }
+  # Detect a decreasing map on the grid of the scale the values are on.
+  remap_summary(values, xform, sub_x_transformation(x_grid_raw, formula))
 }
 
 #' Whether a map reverses the order of a grid
@@ -2828,15 +2793,14 @@ ne_label <- function(object) {
 #' @param family The response family name.
 #' @param dots The calling method's \code{list(...)}, forwarded to
 #' \code{\link{ecx}}.
+#' @param xform \code{NULL} for the recorded scale, or \code{identity} for the
+#' fitted scale, which the caller then puts on the axis.
 #'
 #' @return The \code{\link{ecx}} return value.
 #' @noRd
-plot_ecx <- function(object, family, dots = list()) {
+plot_ecx <- function(object, family, dots = list(), xform = identity) {
   if (!("type" %in% names(dots)) && identical(family, "gaussian")) {
     dots$type <- "range"
   }
-  # Without the scale message: both callers put the estimate on the axis scale
-  # with to_axis_scale(), so the message would describe a number the plot does
-  # not show.
-  without_scale_report(do.call(ecx, c(list(object), dots)))
+  do.call(ecx, c(list(object), dots, list(xform = xform)))
 }

@@ -8,7 +8,7 @@
 nec(
   object,
   posterior = FALSE,
-  xform = identity,
+  xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
   extrapolate = FALSE,
   ...,
@@ -23,8 +23,11 @@ nec(
 posterior sample of calculated NEC values should be returned instead of
 just the median and 95\% credible intervals.}
 
-\item{xform}{A function to apply to the returned estimated concentration
-values.}
+\item{xform}{\code{NULL}, the default, or a function. \code{NULL} returns
+the estimate on the scale the predictor was recorded on. A function is
+applied to the estimate on the scale the model was fitted on. The two
+differ only where \code{crf()} transforms the predictor inline; see
+Details.}
 
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated NEC value. Defaults to 0.5 (median) and 0.025 and
@@ -108,10 +111,18 @@ the joint refit \code{nec} returns an unlabelled vector. Use
 type.
 
 Where \code{crf()} transforms the predictor inline, as in
-\code{crf(log(concentration))}, the estimate is on the transformed scale
-unless \code{xform} is supplied, and a message says so once per call. It
-names the transformation and the \code{xform} that returns the estimate on
-the recorded scale.
+\code{crf(log(concentration))}, the \code{nec} parameter is sampled on the
+transformed scale. Without \code{xform} it is returned on the recorded
+scale, a concentration, by the inverse of the transformation. The inverse
+is exact for \code{log}, \code{log10}, \code{log2}, \code{log1p},
+\code{sqrt} and \code{exp} of the predictor, alone or shifted by a
+constant, as in \code{log(concentration + 1)}. For any other
+transformation it is read off the prediction grid by linear interpolation,
+and a draw beyond that grid that is not censored is an error naming the
+remedy. A supplied \code{xform} is applied to the estimate on the
+transformed scale instead, so \code{xform = identity} returns that scale
+and \code{xform = exp} on \code{crf(log(concentration))} returns the
+exact inverse.
 }
 \section{Capping and dropping}{
 
@@ -140,11 +151,11 @@ at the boundary, because every archived analysis is compared against it.
 \section{Extrapolation}{
 
 \code{extrapolate} chooses the bound the estimate is censored at. It is read
-on the recorded predictor scale, the scale the data were supplied on and the
-scale \code{\link{bnec}} and \code{\link{nsec}} take \code{x_range} on. That
-is neither the scale \code{crf()} fits on nor the scale \code{xform}
-displays, so under \code{crf(log(concentration))} the limit is a
-concentration and not a log concentration.
+on the recorded predictor scale, the scale the data were supplied on, the
+scale \code{\link{bnec}} and \code{\link{nsec}} take \code{x_range} on, and
+the scale the estimate is returned on without \code{xform}. Under
+\code{crf(log(concentration))} the limit is therefore a concentration and
+not a log concentration, whatever \code{xform} is given.
 
 \code{TRUE} removes the bound at both ends. It is accepted only where every
 component of the reported estimate samples a NEC. An NSEC is read off a

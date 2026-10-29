@@ -467,21 +467,17 @@ test_that("ecxflat plots as a horizontal line with bound labels (#419)", {
   expect_no_error(plot(fit))
 })
 
-test_that("ecxflat estimates take the scale message once and exceedance() (#419)", {
+test_that("ecxflat estimates take the recorded scale and exceedance() (#419)", {
   skip_on_cran()
   fit <- flat_fixtures("at_bound")$fit
-  # The scale message of #299 reads the formula only, so the fit is relabelled
-  # with an inline log, as test-fitted_scale.R relabels its fixtures. The stored
-  # fit was not fitted with it; only the message is counted.
+  # Relabelled with an inline log, as test-fitted_scale.R relabels its
+  # fixtures. The stored fit was not fitted with it, so only the scale of the
+  # result is compared.
   logged <- fit
   logged$bayesnecformula <- bnf(alive ~ crf(log(x), model = "ecxflat"))
-  scale_msgs <- function(expr) {
-    msgs <- testthat::capture_messages(suppressWarnings(expr))
-    sum(grepl("transforms its predictor inline", msgs, fixed = TRUE))
-  }
-  expect_identical(scale_msgs(ecx(logged)), 1L)
-  expect_identical(scale_msgs(nsec(logged)), 1L)
-  expect_identical(scale_msgs(ecx(logged, xform = exp)), 0L)
+  q <- function(expr) suppressWarnings(suppressMessages(expr))
+  expect_equal(q(ecx(logged)), q(ecx(logged, xform = exp)))
+  expect_equal(q(nsec(logged)), q(nsec(logged, xform = exp)))
   # Inside the range every ECx draw is censored above, so it exceeds the
   # threshold and the probability is exact. At or above the top of the range
   # the record does not decide those draws, and the interval is reported.

@@ -13,8 +13,10 @@
 #' \code{\link{bayesnecgroupfit}}.
 #' @param summary A \code{\link[base]{logical}} vector of length 1. Whether to
 #' return the summary table (the default) or the underlying posterior draws.
-#' @param xform A function applied to \code{nec} and \code{ec50}, and to no
-#' other parameter. See Details.
+#' @param xform \code{NULL}, the default, or a function, applied to
+#' \code{nec} and \code{ec50} and to no other parameter. \code{NULL} returns
+#' those two on the scale the predictor was recorded on. A function is applied
+#' to them on the scale the model was fitted on. See Details.
 #' @param ... Passed to the per-component and per-level calls by the
 #' \code{\link{bayesnechurdlefit}} and \code{\link{bayesnecgroupfit}} methods,
 #' and unused by the other two.
@@ -61,14 +63,17 @@
 #'
 #' \bold{\code{xform} applies to \code{nec} and \code{ec50} only.} Those two
 #' are measured on the predictor axis, so where \code{crf()} transforms the
-#' predictor inline --- \code{crf(sqrt(x), ...)} --- they are on the
-#' transformed scale, exactly as \code{\link{nec}} and \code{\link{ecx}} are,
-#' and \code{xform} is the inverse that brings them back. Every other
-#' parameter is a response level or a shape parameter and is not on the
-#' predictor axis at all, so \code{xform} is not applied to it. Where the
-#' predictor is transformed inline and \code{xform} was left at
-#' \code{identity}, a message says which parameters are on the transformed
-#' scale.
+#' predictor inline --- \code{crf(sqrt(x), ...)} --- they are sampled on the
+#' transformed scale. Without \code{xform} they are returned on the recorded
+#' scale by the inverse of the transformation, as \code{\link{nec}} returns
+#' the \code{nec} parameter: exactly where the inverse has a closed form, and
+#' otherwise by interpolating on the prediction grid. A draw beyond that grid
+#' then has no value, so it is \code{NA}, the row summarising it is
+#' \code{NA}, and a message names the remedy. A supplied \code{xform} is
+#' applied to them on the transformed scale, so \code{xform = identity}
+#' returns that scale. Every other parameter is a response level or a shape
+#' parameter and is not on the predictor axis at all, so it is returned as
+#' sampled.
 #'
 #' @return With \code{summary = TRUE}, a \code{\link[base]{data.frame}} with
 #' columns \code{model}, \code{wi}, \code{dpar}, \code{link}, \code{parameter},
@@ -128,7 +133,7 @@
 #' curve_params(nec4param)
 #'
 #' @export
-curve_params <- function(object, summary = TRUE, xform = identity, ...) {
+curve_params <- function(object, summary = TRUE, xform = NULL, ...) {
   UseMethod("curve_params")
 }
 
@@ -142,15 +147,15 @@ curve_params <- function(object, summary = TRUE, xform = identity, ...) {
 #' @importFrom chk chk_lgl
 #'
 #' @export
-curve_params.bayesnecfit <- function(object, summary = TRUE, xform = identity,
+curve_params.bayesnecfit <- function(object, summary = TRUE, xform = NULL,
                                    ...) {
   chk_lgl(summary)
   check_xform(xform)
-  report_scales(object, xform, paste(object$model, "fit"))
+  report_scales(object, paste(object$model, "fit"))
   # wi is 1, not NA: a fit holds one equation and is the whole of its set. A
   # fit from pull_out() does not keep the weight it had in its set.
   one_fit_params(object$fit, models = dpar_models(object), wi = 1,
-                     summary = summary, xform = xform)
+                     summary = summary, xform = recorded_xform(object, xform))
 }
 
 #' @rdname curve_params
@@ -164,14 +169,16 @@ curve_params.bayesnecfit <- function(object, summary = TRUE, xform = identity,
 #'
 #' @export
 curve_params.bayesmanecfit <- function(object, summary = TRUE,
-                                     xform = identity, ...) {
+                                     xform = NULL, ...) {
   chk_lgl(summary)
   check_xform(xform)
   mods <- object$success_models
   # Report once for the set, whose equations share a family and a formula. The
   # loop below calls one_fit_params(), not curve_params(), so it does not
   # report again.
-  report_scales(object$mod_fits[[mods[1]]], xform, "fitted model set")
+  report_scales(object$mod_fits[[mods[1]]], "fitted model set")
+  # One map for the set, read off the set's prediction grid.
+  xform <- recorded_xform(object, xform)
   # Order by weight. Read $fit directly: pull_out() would rebuild predictions
   # and posteriors to reach the same brmsfit.
   wi <- model_weights_for(object, mods)
@@ -200,7 +207,7 @@ curve_params.bayesmanecfit <- function(object, summary = TRUE,
 #'
 #' @export
 curve_params.bayesnechurdlefit <- function(object, summary = TRUE,
-                                         xform = identity, ...) {
+                                         xform = NULL, ...) {
   # Check the arguments here as well, so that a bad one fails before the
   # message below is printed.
   chk_lgl(summary)
@@ -212,12 +219,7 @@ curve_params.bayesnechurdlefit <- function(object, summary = TRUE,
     report_link(fit_links(representative_fit(object[[cmp]])$fit),
                 paste(cmp, "component"))
   }
-  # One formula on one predictor, so the transformation is reported once for
-  # the pair.
-  report_x_transform(representative_fit(object$growth), xform,
-                     "fitted hurdle pair")
-  quiet <- options(bayesnec.link_reported = TRUE,
-                   bayesnec.xform_reported = TRUE)
+  quiet <- options(bayesnec.link_reported = TRUE)
   on.exit(options(quiet), add = TRUE)
   hurdle_delegate(object, curve_params, summary = summary, xform = xform, ...)
 }
@@ -229,14 +231,12 @@ curve_params.bayesnechurdlefit <- function(object, summary = TRUE,
 #'
 #' @export
 curve_params.bayesnecgroupfit <- function(object, summary = TRUE,
-                                        xform = identity, ...) {
+                                        xform = NULL, ...) {
   chk_lgl(summary)
   check_xform(xform)
-  # Every level shares one family and one formula, so report once for the
-  # group.
-  report_scales(representative_fit(object$fits[[1]]), xform, "fitted group")
-  quiet <- options(bayesnec.link_reported = TRUE,
-                   bayesnec.xform_reported = TRUE)
+  # Every level shares one family, so report once for the group.
+  report_scales(representative_fit(object$fits[[1]]), "fitted group")
+  quiet <- options(bayesnec.link_reported = TRUE)
   on.exit(options(quiet), add = TRUE)
   out <- group_lapply(object, curve_params, summary = summary, xform = xform,
                       ...)
@@ -303,14 +303,6 @@ equation_par_names <- function(model) {
 #' @noRd
 x_scale_par_names <- function() {
   c("nec", "ec50")
-}
-
-#' @noRd
-check_xform <- function(xform) {
-  if (!inherits(xform, "function")) {
-    stop("xform must be a function.", call. = FALSE)
-  }
-  invisible(NULL)
 }
 
 #' The model weight of each named equation
@@ -507,7 +499,7 @@ select_curve_cols <- function(draws, prefix = "") {
 #' names, one per distributional parameter.
 #' @param wi A \code{\link[base]{numeric}} model weight.
 #' @param summary A \code{\link[base]{logical}} value.
-#' @param xform A function.
+#' @param xform A function, from \code{recorded_xform()}.
 #'
 #' @return A \code{\link[base]{data.frame}}, or a
 #' \code{\link[base]{list}} of one draws matrix.
@@ -519,8 +511,12 @@ one_fit_params <- function(fit, models, wi, summary, xform) {
   blocks <- lapply(names(dpars), function(d) {
     draws <- curve_param_draws(fit, dpars[[d]])
     report_absent_params(colnames(draws), models[[d]], d)
+    # A draw a grid-read inverse cannot place is NA, with a message, so that
+    # one equation's ec50 beyond the grid does not stop the whole table.
     for (p in intersect(colnames(draws), x_scale_par_names())) {
-      draws[, p] <- xform(draws[, p])
+      draws[, p] <- map_draws(draws[, p], xform,
+                              what = paste(p, "of", models[[d]]),
+                              refuse = FALSE)
     }
     draws
   })
@@ -545,8 +541,15 @@ one_fit_params <- function(fit, models, wi, summary, xform) {
     if (ncol(b) == 0) {
       return(NULL)
     }
-    ests <- t(vapply(colnames(b), function(p) estimates_summary(b[, p]),
-                     numeric(3)))
+    # A sampled parameter has no NA draw except one map_draws() could not
+    # place, and a summary that dropped it would be biased.
+    ests <- t(vapply(colnames(b), function(p) {
+      if (anyNA(b[, p])) {
+        c(Estimate = NA_real_, Q2.5 = NA_real_, Q97.5 = NA_real_)
+      } else {
+        estimates_summary(b[, p])
+      }
+    }, numeric(3)))
     data.frame(model = unname(models[[d]]), wi = wi, dpar = d,
                link = unname(links[[d]]), parameter = colnames(b), ests,
                row.names = NULL, stringsAsFactors = FALSE,
@@ -598,60 +601,24 @@ report_absent_params <- function(found, model, dpar) {
   invisible(NULL)
 }
 
-#' Report the scales the parameters are on
+#' Report the scale the parameters are on
 #'
-#' The link and the inline predictor transformation are reported under
-#' separate options, \code{bayesnec.link_reported} and
-#' \code{bayesnec.xform_reported}, because a model set and a group share one
-#' family while the two components of a \code{\link{bayesnechurdlefit}} do
-#' not; all three share one formula. A method that dispatches
+#' The link is reported under the option \code{bayesnec.link_reported},
+#' because a model set and a group share one family while the two components
+#' of a \code{\link{bayesnechurdlefit}} do not. A method that dispatches
 #' \code{\link{curve_params}} more than once reports for itself and then sets
-#' both options, so that each message prints once.
+#' the option, so that the message prints once.
 #'
 #' @param object A \code{\link{bayesnecfit}} or \code{prebayesnecfit}.
-#' @param xform The function the caller supplied.
-#' @param what A \code{\link[base]{character}} noun phrase naming what was
-#' fitted, used as the subject of the message.
-#'
-#' @return \code{NULL}, invisibly. Called for the messages.
-#' @noRd
-report_scales <- function(object, xform, what) {
-  if (!isTRUE(getOption("bayesnec.link_reported", FALSE))) {
-    report_link(fit_links(object$fit), what)
-  }
-  report_x_transform(object, xform, what)
-  invisible(NULL)
-}
-
-#' Say so where the predictor is transformed inside the formula
-#'
-#' The message is raised whenever \code{xform} was left at \code{identity}; a
-#' caller who supplied one has already inverted the transformation. It uses
-#' the helpers \code{report_fitted_scale()} uses, so that \code{curve_params()}
-#' and \code{nec()} give the same advice. Unlike that function it does not set
-#' \code{bayesnec.xform_reported}: the methods that dispatch
-#' \code{curve_params()} more than once set it.
-#'
-#' @param object A \code{\link{bayesnecfit}} or \code{prebayesnecfit}.
-#' @param xform The function the caller supplied.
 #' @param what A \code{\link[base]{character}} noun phrase naming what was
 #' fitted, used as the subject of the message.
 #'
 #' @return \code{NULL}, invisibly. Called for the message.
-#'
 #' @noRd
-report_x_transform <- function(object, xform, what) {
-  if (isTRUE(getOption("bayesnec.xform_reported", FALSE))) {
-    return(invisible(NULL))
+report_scales <- function(object, what) {
+  if (!isTRUE(getOption("bayesnec.link_reported", FALSE))) {
+    report_link(fit_links(object$fit), what)
   }
-  if (!identical(xform, identity)) {
-    return(invisible(NULL))
-  }
-  tr <- inline_x_transform(object)
-  if (is.null(tr)) {
-    return(invisible(NULL))
-  }
-  message(fitted_scale_text(what, tr, "curve_params"))
   invisible(NULL)
 }
 

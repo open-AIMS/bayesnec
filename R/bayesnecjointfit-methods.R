@@ -365,10 +365,6 @@ joint_ne_table <- function(object, no_effect, ...) {
 #' @export
 nec.bayesnecjointfit <- function(object, ..., no_effect = FALSE) {
   chk_lgl(no_effect)
-  # Report the scale once for the refit, not once per level. See
-  # report_fitted_scale().
-  quiet <- report_fitted_scale(object, dots_xform(nec, list(...)), "nec")
-  on.exit(options(quiet), add = TRUE)
   joint_ne_table(object, no_effect = no_effect, ...)
 }
 
@@ -376,9 +372,6 @@ nec.bayesnecjointfit <- function(object, ..., no_effect = FALSE) {
 #' @method ecx bayesnecjointfit
 #' @export
 ecx.bayesnecjointfit <- function(object, ...) {
-  # Once for the refit, as in nec.bayesnecjointfit().
-  quiet <- report_fitted_scale(object, dots_xform(ecx, list(...)), "ecx")
-  on.exit(options(quiet), add = TRUE)
   joint_estimate_table(object, "ecx", function(f, ...) ecx(f, ...), ...)
 }
 
@@ -386,9 +379,6 @@ ecx.bayesnecjointfit <- function(object, ...) {
 #' @method nsec bayesnecjointfit
 #' @export
 nsec.bayesnecjointfit <- function(object, ...) {
-  # Once for the refit, as in nec.bayesnecjointfit().
-  quiet <- report_fitted_scale(object, dots_xform(nsec, list(...)), "nsec")
-  on.exit(options(quiet), add = TRUE)
   joint_estimate_table(object, "nsec", function(f, ...) nsec(f, ...), ...)
 }
 
@@ -398,12 +388,7 @@ nsec.bayesnecjointfit <- function(object, ...) {
 ecnsec.bayesnecjointfit <- function(object, nsec, ...) {
   # Without this method, the inherited ecnsec.bnecfit() would run on the grid
   # of every level together. clean_names() below renames quantile()'s "50%" to
-  # Q50, as the other estimators name it. `nsec` goes back in front of the dots
-  # so that a positional xform is matched as it is on a single fit.
-  quiet <- report_fitted_scale(
-    object, dots_xform(ecnsec, c(list(nsec = nsec), list(...))), "ecnsec"
-  )
-  on.exit(options(quiet), add = TRUE)
+  # Q50, as the other estimators name it.
   tabulate <- !isTRUE(list(...)$posterior)
   joint_estimate_table(object, "ecnsec", function(f, ...) {
     out <- ecnsec(f, nsec = nsec, ...)
@@ -449,18 +434,22 @@ joint_level_curve <- function(object, level, resolution = 1000,
 #'
 #' @param object An object of class \code{\link{bayesnecjointfit}}.
 #' @param level One level of \code{object$group_var}.
+#' @param xform \code{NULL} for the recorded scale, or \code{identity} for the
+#' fitted scale.
 #'
-#' @return A named \code{\link[base]{numeric}} vector of three, on the fitted
-#' scale, with attribute \code{"censored_summary"} where any entry is the end
-#' of the prediction range rather than a quantile.
+#' @return A named \code{\link[base]{numeric}} vector of three, with attribute
+#' \code{"censored_summary"} where any entry is the end of the prediction
+#' range rather than a quantile.
 #'
 #' @noRd
-joint_level_ne <- function(object, level) {
+joint_level_ne <- function(object, level, xform = identity) {
   lvl_fit <- joint_level_fit(object, level)
   if (!is.null(lvl_fit$ne_posterior)) {
-    return(estimates_summary(lvl_fit$ne_posterior))
+    map <- recorded_xform(lvl_fit, xform)
+    return(estimates_summary(map_draws(lvl_fit$ne_posterior, map,
+                                       what = "NEC")))
   }
-  out <- suppressWarnings(suppressMessages(nsec(lvl_fit)))
+  out <- suppressWarnings(suppressMessages(nsec(lvl_fit, xform = xform)))
   # Keep the censoring record, which as.numeric() drops; without it a censored
   # NSEC's bound is drawn as a quantile.
   vals <- as.numeric(out)
@@ -487,18 +476,20 @@ joint_level_ne <- function(object, level) {
 #'
 #' @export
 ggbnec_data.bayesnecjointfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
-                                         xform = identity, ..., group = NULL) {
+                                         xform = NULL, ..., group = NULL) {
   chk_lgl(add_nec)
   chk_lgl(add_ecx)
-  if (!inherits(xform, "function")) {
-    stop("xform must be a function.")
-  }
+  check_xform(xform)
   panel_group <- is.null(group) || identical(group, x$group_var)
   raw_group <- if (panel_group) NULL else group
   r_all <- prep_raw_data(x$fit, x$bayesnecformula, group = raw_group)
   row_level <- joint_row_levels(x)
   bdat <- model.frame(x$bayesnecformula, data = x$fit$data,
                       run_par_checks = TRUE)
+  # On the recorded axis with no xform, draw what the estimators return.
+  recorded <- plot_reads_recorded(bdat, xform)
+  est_xform <- if (recorded) NULL else identity
+  axis_xform <- if (is.null(xform)) identity else xform
   pieces <- lapply(x$levels, function(lev) {
     curve <- joint_level_curve(x, lev)
     e_df <- data.frame(x_e = c(curve$x, rev(curve$x)),
@@ -512,17 +503,23 @@ ggbnec_data.bayesnecjointfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
     out <- rbind(e_df, r_df)
     if (!pop_var_is_transformed(bdat, "x_var")) {
       out <- out |>
-        mutate(x_e = xform(.data$x_e), x_r = xform(.data$x_r))
+        mutate(x_e = axis_xform(.data$x_e), x_r = axis_xform(.data$x_r))
     }
     if (add_nec) {
-      out <- bind_nec(out, to_axis_scale(joint_level_ne(x, lev), bdat,
-                                         x$bayesnecformula, curve$x, xform))
+      ne_vals <- joint_level_ne(x, lev, est_xform)
+      if (!recorded) {
+        ne_vals <- to_axis_scale(ne_vals, bdat, x$bayesnecformula, curve$x,
+                                 axis_xform)
+      }
+      out <- bind_nec(out, ne_vals)
     }
     if (add_ecx) {
-      ecx_vals <- to_axis_scale(
-        plot_ecx(joint_level_fit(x, lev), x$fit$family$family, list(...)),
-        bdat, x$bayesnecformula, curve$x, xform
-      )
+      ecx_vals <- plot_ecx(joint_level_fit(x, lev), x$fit$family$family,
+                           list(...), est_xform)
+      if (!recorded) {
+        ecx_vals <- to_axis_scale(ecx_vals, bdat, x$bayesnecformula, curve$x,
+                                  axis_xform)
+      }
       out <- bind_ecx(out, ecx_vals)
     }
     out$panel <- factor(rep(lev, nrow(out)), levels = x$levels)
@@ -557,14 +554,12 @@ ggbnec_data.bayesnecjointfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #'
 #' @export
 autoplot.bayesnecjointfit <- function(object, ..., nec = TRUE, ecx = FALSE,
-                                      xform = identity, group = NULL,
+                                      xform = NULL, group = NULL,
                                       group_aes = c("line", "colour")) {
   chk_lgl(nec)
   chk_lgl(ecx)
   group_aes <- match.arg(group_aes)
-  if (!inherits(xform, "function")) {
-    stop("xform must be a function.")
-  }
+  check_xform(xform)
   dat <- ggbnec_data(object, add_nec = nec, add_ecx = ecx,
                      xform = xform, group = group, ...)
   panel_labs <- paste0(object$group_var, " = ", object$levels)

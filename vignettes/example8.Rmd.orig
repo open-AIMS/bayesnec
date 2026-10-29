@@ -686,10 +686,10 @@ whose curve fits the concentration means poorly attributes more of the
 difference to the group term, so a standard deviation read from a poorly
 weighted equation is not comparable with this one.
 
-The N(S)EC in the summary above is on the scale `fit_ogl` was fitted on,
-`log(conc)`, which is why its lower bound can be negative. `ecx()` takes
-`xform = exp` and reports concentrations in mg/L, so the two are not in
-disagreement:
+The N(S)EC in the summary above is in mg/L, although `fit_ogl` was fitted on
+`log(conc)`: the estimators return the measured scale unless `xform` says
+otherwise. The EC10 below is in mg/L as well. The `xform = exp` it is given is
+the inverse of the logarithm, so it returns the same concentrations:
 
 ```{r ecx-conc-group}
 rbind(
@@ -1154,7 +1154,7 @@ fits_tox <- screen_models(fits_tox, group_action = "per_level")
 summary(fits_tox)
 ```
 
-Back-transformed, the threshold is 0.075 mg/L for copper (0.043--0.091) and
+The threshold is 0.075 mg/L for copper (0.043--0.091) and
 0.698 for zinc (0.144--1.162): copper is the more potent by roughly an order of
 magnitude, which is the ordering @luter2025 report from the per-plate analysis
 and at much the same separation.
@@ -1192,7 +1192,6 @@ difference in location from a difference in width:
 
 ```{r fig-cmp-metals, fig.asp = 0.5, out.width = "78%"}
 tox_post <- cmp_tox$posterior_data
-tox_post$value <- exp(tox_post$value)
 
 ggplot(data = tox_post, mapping = aes(x = value)) +
   geom_density(mapping = aes(group = model, colour = model, fill = model),
@@ -1371,9 +1370,10 @@ fit_pam <- screen_models(fit_pam)
 summary(fit_pam)
 ```
 
-As in the sections above, the N(S)EC in that summary is on the scale the model
-was fitted on, `log(diuron_adj)`. `xform = exp` returns it and the effect
-concentrations to µg/L:
+As in the sections above, the N(S)EC in that summary is in µg/L, although the
+model was fitted on `log(diuron_adj)`. The estimates below are in µg/L as well;
+the `xform = exp` they are given is the inverse of the logarithm and returns
+the same concentrations:
 
 ```{r ecx-pam}
 # Bound rather than called twice: the model-averaged N(S)EC is also the
@@ -1650,7 +1650,7 @@ a common curve: the curve they would be shrunk towards is not one the data agree
 on.
 
 Toxicity estimates for the seven herbicides span two orders of magnitude.
-Back-transformed from the fitted scale, the N(S)EC runs from irgarol at 0.135 µg/L (0.108--0.174) and
+The N(S)EC runs from irgarol at 0.135 µg/L (0.108--0.174) and
 diuron at 0.151 (0.110--0.194), through ametryn at 0.196, hexazinone at 0.631
 and atrazine at 1.197, to simazine at 4.349 and tebuthiuron at 10.591
 (4.349--14.013).
@@ -1722,11 +1722,9 @@ those posteriors are in `posterior_data`:
 
 ```{r fig-cmp-herbicides, fig.asp = 0.5, out.width = "95%"}
 # Figure 11 of Fisher et al. (2024) is this display for these seven herbicides,
-# and this reproduces it. The posteriors are on the fitted scale, log(ug/L), and
-# exp() returns them to concentration so that the axis reads in the units the
-# estimates are reported in, as every other figure here does.
+# and this reproduces it. The posteriors are in ug/L, the units the estimates
+# are reported in, as every other figure here is.
 herb_post <- cmp_herb$posterior_data
-herb_post$value <- exp(herb_post$value)
 
 ggplot(data = herb_post, mapping = aes(x = value)) +
   geom_density(mapping = aes(group = model, colour = model, fill = model),

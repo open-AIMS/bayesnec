@@ -464,7 +464,8 @@ extrapolated_necfit_ne <- function(object, lims, bounds, sig_val, resolution) {
   }
   report_curve_read_lower_limit(object, lims)
   out <- nsec(object, sig_val = sig_val, resolution = resolution,
-              x_range = c(lims$lower, lims$upper), posterior = TRUE)
+              x_range = c(lims$lower, lims$upper), xform = identity,
+              posterior = TRUE)
   # Keep the draws and the censoring record only. The other attributes nsec()
   # attaches describe an NSEC calculation, not the NEC returned here.
   cens <- attr(out, "censored")
@@ -586,7 +587,8 @@ extrapolated_manec_ne <- function(object, lims, bounds, sig_val, resolution) {
     }
     out <- nsec(component_fit(object, success[i]), sig_val = sig_val,
                 resolution = resolution,
-                x_range = c(lims$lower, lims$upper), posterior = TRUE)
+                x_range = c(lims$lower, lims$upper), xform = identity,
+                posterior = TRUE)
     part <- as.numeric(out)[idx]
     attr(part, "censored") <- subset_censoring(attr(out, "censored"), idx)
     part

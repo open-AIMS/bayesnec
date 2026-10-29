@@ -1575,14 +1575,15 @@ test_that("the hurdle plot draws its no-effect line on the recorded scale (#487)
   drawn <- hurdle_legend(logged, xform = exp, resolution = 50)
   expect_equal(as.numeric(drawn$v[[1]]),
                as.numeric(nec(logged, xform = exp)))
-  # Without one, the transformation is inverted on the prediction grid. Read
-  # as square roots, the stored draws square to values inside the series.
+  # Without one, the line is the estimate nec() returns by default, on the
+  # recorded scale. Read as square roots, the stored draws square to values
+  # inside the series.
   rooted <- relabelled_pair(bnf(y ~ crf(sqrt(x), model = "nec4param")))
-  on_fitted <- as.numeric(suppressMessages(nec(rooted)))
+  on_fitted <- as.numeric(nec(rooted, xform = identity))
   drawn <- hurdle_legend(rooted)
   line <- as.numeric(drawn$v[[1]])
-  expect_equal(line, as.numeric(nec(rooted, xform = function(z) z^2)),
-               tolerance = 1e-5)
+  expect_equal(line, as.numeric(nec(rooted)))
+  expect_equal(line, as.numeric(nec(rooted, xform = function(z) z^2)))
   expect_true(all(line > min(x) & line < max(x)))
   expect_false(isTRUE(all.equal(line, on_fitted)))
   expect_identical(drawn$legend,
@@ -1609,6 +1610,34 @@ test_that("the hurdle plot maps estimates over the stored prediction range", {
                               signif(expected[2], 2), "-",
                               signif(expected[3], 2), ")"))
     }
+  }
+})
+
+test_that("a grid-read inverse covers the growth component's stored range", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # I(x^0.5) has no closed-form inverse, so nec() reads it off the grid. Only
+  # the growth component stores a grid reaching 5, above the observations, and
+  # its draws lie there; the survival component's grid ends at the data.
+  g <- nec4param
+  g$bayesnecformula <- bnf(y ~ crf(I(x^0.5), model = "nec4param"))
+  g$pred_vals$data <- data.frame(x = seq(min(g$fit$data$x), 5,
+                                         length.out = 1000))
+  g$ne_posterior <- seq(3.6, 4.4, length.out = 100)^0.5
+  s <- nec4param
+  s$bayesnecformula <- g$bayesnecformula
+  h <- hurdle_pair(g, s)
+  back <- function(z) z^2
+  expected <- as.numeric(nec(h, which = "growth", xform = back))
+  expect_true(all(expected > max(g$fit$data$x)))
+  expect_equal(as.numeric(nec(h, which = "growth")), expected,
+               tolerance = 1e-6)
+  expect_equal(as.numeric(nec(g)), as.numeric(nec(g, xform = back)),
+               tolerance = 1e-6)
+  for (xr in list(c(0.1, 5), c(0.2, 1))) {
+    drawn <- hurdle_legend(h, which = "growth", x_range = xr, resolution = 50)
+    expect_equal(as.numeric(drawn$v[[1]]), expected, tolerance = 1e-6)
   }
 })
 

@@ -171,34 +171,25 @@ any such result, check that every model in the comparison uses the same link.
 This behaviour is documented in the JSS paper, so it does not need repeating in
 the package docs — it is recorded here only so the mistake is not repeated.
 
-### Estimates and plot data on different scales
+### The scale of a returned estimate
 
-Where the formula transforms the predictor — `crf(sqrt(concentration), ...)` —
-the two halves of the output are on different scales:
+Where the formula transforms the predictor inline, as in
+`crf(log(concentration), ...)`, every estimator returns the **recorded** scale
+by default (`xform = NULL`). This covers `nec()`, `nsec()`, `ecx()`, `ecnsec()`,
+`curve_params()`, `exceedance()` and the `summary()` rows, and matches
+`autoplot()` and `ggbnec_data()`. A supplied `xform` is applied to the estimate on
+the **fitted** scale. So `xform = identity` returns the transformed scale, and
+`xform = exp` on a `crf(log(x))` fit returns what the default returns.
 
-- `nec()`, `nsec()` and `ecx()` return values on the **transformed** scale.
-  Supply the inverse to get them back: `ecx(fit, xform = function(x) x^2)`.
-- `autoplot()` and `ggbnec_data()` return `x` on the **recorded** scale, having
-  back-transformed it already.
+Applying the inverse to the default output transforms twice: `exp(nec(fit))` on
+a `crf(log(x))` fit exponentiates a concentration, with no warning. Before #299
+that was the correct idiom, so code written against an older `predev` or a
+released version needs checking. Code that compares with `toxval` or with a
+hand-written fit on the fitted scale passes `xform = identity`.
 
-**Consequence:** placing axis breaks at `sqrt(breaks)` crams every label into
-the left sixth of the axis, and reporting `nec()` without `xform` gives the
-square root of a concentration labelled as a concentration. Neither produces a
-warning.
-
-**Rule:** back-transform estimates with `xform`. Apply axis spacing with
-`scale_x_continuous(transform = "sqrt")` to the untransformed plot data, never
-by transforming the breaks.
-
-`autoplot()`'s own *NEC* annotation does **not** need suppressing. An earlier
-version of this rule said to pass `nec = FALSE` because the annotation was drawn
-on the fitted scale and would contradict a back-transformed table. Measured on
-`dev` at `1ef66e15`, on the `example9` simazine fit with `crf(log(concentration))`:
-`ggbnec_data()` returns `nec_vals` of 4.34 against `nec(fit, xform = exp)` of
-4.3425, so the annotation is on the recorded scale and agrees with the table.
-`to_axis_scale()` inverts numerically on the prediction grid where no `xform`
-was supplied. The figure is internally consistent; what disagrees is the figure
-against the estimators, which is #299.
+Take estimates at their default, and pass `xform = identity` only to read the
+fitted scale. Apply axis spacing with `scale_x_continuous(transform = "sqrt")`
+to the untransformed plot data, never by transforming the breaks.
 
 ### `dispersion()` on a model average
 

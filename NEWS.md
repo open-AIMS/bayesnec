@@ -1534,13 +1534,11 @@
   `ecnsec(h, nsec = 2, xform = log)` returned the logarithm of the percentage,
   and an NSEC from a pair fitted with an inline-transformed predictor had to be
   put on the recorded scale by hand before it was passed. On a pair fitted with
-  `crf(log(x))`, `ecnsec(h, nsec = nsec(h)[[1]], xform = exp)` now reads the
-  curve at the concentration that NSEC names, as it does on a `bayesnecfit`.
-  A call that supplies an `xform` other than `identity` is warned of the
-  change in this release. To transform the percentage, apply the function to
-  the value `ecnsec()` returns. Where `crf()` transforms the predictor inline,
-  the message is the one the other classes raise, naming the `xform` to give
-  `ecnsec()` (#437).
+  `crf(log(x))`, `ecnsec(h, nsec = nsec(h)[[1]])` now reads the curve at the
+  concentration that NSEC names, as it does on a `bayesnecfit`. A call that
+  supplies an `xform` other than `identity` is warned of the change in this
+  release. To transform the percentage, apply the function to the value
+  `ecnsec()` returns (#437).
 
 - `ecnsec()` on a `bayesnecfit` or a `bayesmanecfit` compares each posterior
   draw of the control with the same draw's value of the curve at `nsec`, as
@@ -1822,9 +1820,9 @@
 
   **`xform` applies to `nec` and `ec50` and to no other parameter.** Those two
   are measured on the predictor axis, so where `crf()` transforms the predictor
-  inline they are on the transformed scale, as the values `nec()` and `ecx()`
-  return are, and a message says so where `xform` was left at its default. The
-  others are response levels or shape parameters, on which a transformation of
+  inline they are sampled on the transformed scale, and are returned on the
+  recorded scale unless `xform` is supplied, as `nec()` returns its estimate.
+  The others are response levels or shape parameters, on which a transformation of
   the predictor has no meaning. The link of each block is reported in a `link`
   column: `bnec()` assigns `link = "identity"`, and where a caller named one
   instead, `top` and `bot` are on the link scale.
@@ -2552,36 +2550,6 @@
   zero". Supplying an `xform` took a different branch and was unaffected, which
   is why the failure was specific to the default (#160, #161).
 
-- Where `crf()` transforms the predictor inline, as in
-  `crf(log(concentration))`, `nec()`, `ecx()`, `nsec()`, `ecnsec()` and
-  `compare_estimates()` now say so in a message once
-  per call. These functions return values on the transformed scale unless
-  `xform` is supplied, while `autoplot()` draws the recorded scale, and nothing
-  in the returned number said which scale it was on. A log-scale estimate that
-  falls inside the tested range reads as a concentration. The message names the
-  transformation and the `xform` that inverts it: `xform = exp` for `log()`,
-  `function(x) x^2` for `sqrt()` and `function(x) exp(x) - 1` for `log(x + 1)`.
-  Where no closed form is known it asks for the inverse of the transformation
-  it names. `crf(I(x))` is not a transformation and raises nothing.
-
-  It is raised once for a model set, a group, a hurdle pair or a comparison,
-  not once for each equation, level, component or fit. It is not raised where
-  an `xform` is supplied, by name or by position; an explicit
-  `xform = identity` is treated as no `xform`, and raises it.
-  `compare_estimates()` takes no `xform`, so its message names the estimators
-  that do. `summary(ecx = TRUE)` raises it once for its ECx rows. `plot()` and
-  `autoplot()` do not raise it, because they put every estimate on the axis
-  scale themselves. `ecnsec()` returns a percentage, so its message is about
-  the `nsec` it is given and names the `xform` that puts that value on the
-  recorded scale, on a `bayesnechurdlefit` as on every other class (#437).
-
-  `curve_params()` already said where `nec` and `ec50` were on a transformed
-  scale. Its message now names the inverse to pass, where it said only "pass
-  the inverse as xform". It now recognises `crf(-x)`, which it missed, and no
-  longer reports `crf(I(x))`. No returned value changes: making the recorded
-  scale the default changes every reported value from such a fit and is left to
-  the 3.0 release (#299).
-
 - `compare_estimates()` and `compare_posterior()` no longer void a comparison
   in which any draw is censored. A single unreached draw in either posterior
   previously made `prob` `NA` for the whole comparison, and silently, the
@@ -3005,14 +2973,13 @@
   observed points on the recorded scale, the scale of the prediction grid and
   of the fitted curve. The points were drawn on the transformed scale, so they
   and the curve did not overlay. `plot()` also draws the N(S)EC line on the
-  recorded scale. `nec()` returns the estimate on the transformed scale, so the
-  line is returned through `xform` where one is supplied, and otherwise by
-  inverting the transformation on the prediction grid, as `plot()` does for a
-  `bayesnecfit`. `xform` is then not applied to the points or the curve, also
-  as for a `bayesnecfit`. A predictor that `crf()` does not transform is drawn
-  as before. The automatic inverse also preserves estimates identified over
-  a stored prediction range beyond the observations, including where the
-  plotted range is narrower (#487).
+  recorded scale, at the estimate `nec()` returns by default, or at the
+  estimate on the transformed scale put through `xform` where one is supplied.
+  `xform` is then not applied to the points or the curve, as for a
+  `bayesnecfit`. A predictor that `crf()` does not transform is drawn
+  as before. An estimate identified over a stored prediction range beyond the
+  observations is drawn where it lies, including where the plotted range is
+  narrower (#487).
 
 - `summary()` on a `bayesnechurdlefit` names a Gamma growth family `Gamma`,
   as `bnec_hurdle()` names it when fitting. It printed `gamma`, the name
@@ -3161,6 +3128,48 @@
   terms cannot regroup it. The formula passed to `brms` for `crf(x)`,
   `crf(log(x))` and other column names or function calls without `I()` is unchanged
   (#479).
+
+- **Where `crf()` transforms the predictor inline, the estimates are returned
+  on the recorded scale by default.** `xform` now defaults to `NULL` in `nec()`,
+  `ecx()`, `nsec()`, `ecnsec()`, `curve_params()`, `exceedance()`,
+  `ggbnec_data()`, `autoplot()` and `plot()`, on every class. On a fit to
+  `crf(log(concentration))`, `nec(fit)` returns a concentration where it
+  returned a log concentration, and so do the no-effect row of `summary()`, its
+  ECx rows, `exceedance()`, which now reads `threshold` as a concentration, and
+  `compare_estimates()` and `compare_posterior()`, which take no `xform`. On a
+  fit whose predictor is a column, `NULL` gives what `identity` gave, and
+  nothing changes. **A call that passes `xform` is unaffected**: the function
+  is applied to the estimate on the scale the model was fitted on, as before,
+  so `nec(fit, xform = exp)` returns the numbers it returned, and
+  `xform = identity` returns the fitted scale.
+
+  `ecx()` and `nsec()` search the curve on a grid of recorded concentrations,
+  so under the default they no longer put the estimate through the
+  transformation, and no inverse is involved. `nec()`, `curve_params()` and the
+  no-effect row of `summary()` read a parameter sampled on the fitted scale and
+  invert it: exactly for `log`, `log10`, `log2`, `log1p`, `sqrt` and `exp` of
+  the predictor, alone or shifted by a constant, and otherwise by linear
+  interpolation on the prediction grid, refined where the grid is coarse on the
+  fitted scale. On `manec_example`'s grid of 1000 points, checked at 100,000
+  values along the fitted scale, the interpolation inverts `asinh(x)` to within
+  a relative error of 3.5e-7, and `log(x)` and `sqrt(x)`, forced through it, to
+  within 4.8e-7 and 1.2e-5. A draw that lies beyond that grid and is not
+  censored has no value to read off it: `nec()` stops and names the inverse to
+  pass, and `curve_params()` reports that parameter's row as `NA` with a
+  message. `ecnsec()` reads `nsec` on the recorded scale under `NULL`, so
+  `ecnsec(fit, nsec = nsec(fit)[1])` reads the curve at the NSEC on every fit.
+  `extrapolate`, `x_range` and the censoring bounds were already on the
+  recorded scale, and stay on the scale of the estimate returned.
+
+  The message reporting an estimate on the transformed scale is removed,
+  since the default no longer returns one. `plot()`, `autoplot()` and
+  `ggbnec_data()` drew on the recorded scale already, and now annotate the
+  numbers `nec()` and `ecx()` return by default. They inverted the stored
+  summary on the prediction grid before, which differed from the exact inverse
+  in the fifth significant figure and held an estimate beyond the grid at its
+  end. The precompiled vignettes were rendered under the old default, and the
+  values printed by `summary()` and `nec()` for an inline-transformed fit in
+  `example1`, `example8` and `example9` change at the next precompile (#299).
 
 ## Documentation
 
