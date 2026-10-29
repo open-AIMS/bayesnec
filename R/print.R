@@ -93,6 +93,7 @@ print.necsummary <- function(x, ...) {
   print_mat(x$bayesr2)
   cat("\n\n")
   print_failed_models(x$failed_models)
+  print_version(x$bnec_version)
   div_bad <- divergent_models(x)
   if (length(div_bad) > 0) {
     warning(divergence_message(div_bad, x$divergence_cutoff),
@@ -150,6 +151,7 @@ print.manecsummary <- function(x, ...) {
     cat("\n\n")
   }
   print_failed_models(x$failed_models)
+  print_version(x$bnec_version)
   # Report both axes in one block: convergence and the control fit inform one
   # decision about which candidates belong in the averaged set.
   # Use which() rather than logical indexing. A manecsummary stored by an older

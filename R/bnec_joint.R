@@ -422,6 +422,7 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
               family = family, model_weights = eq_weights,
               level_weights = joint_level_weights(object, models),
               model_weight_share = share)
+  attr(out, "bnec_version") <- joint_version_table(out, version_record())
   allot_class(out, c("bayesnecjointfit", "bnecfit"))
 }
 

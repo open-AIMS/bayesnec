@@ -2031,6 +2031,30 @@
   nor divergences, and is unchanged. `vignette("example2")` stated that the
   summary would warn of divergent transitions, which it did not (#447).
 
+- **`bnec_version()`** reports the installation of `bayesnec` that fitted each
+  equation of a fitted object: the version, where the installation came from,
+  and the commit it was built from where the installation records one, with
+  the versions of R, `brms` and the Stan interface. The version alone does not
+  identify the code, because it is raised by hand at intervals and builds from
+  many commits report the same number. The record is read from the installed
+  `DESCRIPTION` when an equation is fitted, and stored as an attribute of the
+  fitted object. An installation from GitHub by `remotes` or `pak` records its
+  commit. A CRAN installation records the source `"CRAN"` and no commit, and a
+  local one, by `R CMD INSTALL`, `devtools::install()` or
+  `devtools::load_all()`, records the source `"local"` and no commit.
+  `bnec()`, `bnec_hurdle()`, `bnec_group()`, `bnec_joint()` and `update()`
+  record the running installation for every equation they fit, and `amend()`
+  for the equations it adds. `amend()`, `c()`, `+` and `pull_out()` keep the
+  record of each equation they retain, so a combined set can hold equations
+  fitted by different installations; `c()`, `+` and `amend()` then say so in a
+  message. `summary()` prints the record, on one line where every equation
+  shares it and on one line per equation where they differ, and so does
+  `print()` of a `bayesnecfit`, a `bayesmanecfit` and a `bayesnecjointfit`. An
+  object fitted before this change, including the example fits shipped with
+  the package, reports the source `"unknown"`. Under a parallel plan, each
+  equation records the installation and R version of the worker that fitted
+  it, which can differ from the calling session (#464).
+
 ## Bug fixes
 
 - A `zero_inflated_beta` response with every observation at one bound is now

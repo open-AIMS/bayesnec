@@ -20,7 +20,9 @@
 #' an R2. In the case of a \code{\link{bayesmanecfit}} object, summary
 #' displays the family distribution information, model weights and averaging
 #' method, and Bayesian R2 estimates for each individual model.
-#' Both report the number of divergent transitions after warmup for each model.
+#' Both report the number of divergent transitions after warmup for each model,
+#' and the installation of \pkg{bayesnec} that fitted it (see
+#' \code{\link{bnec_version}}).
 #' Warning messages are also printed to screen in case
 #' model fits are not satisfactory with regards to their Rhats or their
 #' divergent transitions.
@@ -142,7 +144,8 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
     bayesr2 = bayes_R2(x$fit),
     divergences = summary_divergences(x),
     divergence_cutoff = divergence_cutoff,
-    failed_models = failed_models(x)
+    failed_models = failed_models(x),
+    bnec_version = bnec_version(x)
   )
   allot_class(out, "necsummary")
 }
@@ -236,7 +239,8 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
       NULL
     },
     fit_ratio_cutoff = fit_ratio_cutoff,
-    failed_models = failed_models(x)
+    failed_models = failed_models(x),
+    bnec_version = bnec_version(x)
   )
   allot_class(out, "manecsummary")
 }

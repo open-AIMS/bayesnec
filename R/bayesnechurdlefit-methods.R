@@ -470,7 +470,8 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
     ne = nes, ne_types = ne_types, ecs = ecs,
     growth_averaged = inherits(object$growth, "bayesmanecfit"),
     survival_averaged = inherits(object$survival, "bayesmanecfit"),
-    failed_models = failed_models(object)
+    failed_models = failed_models(object),
+    bnec_version = bnec_version(object)
   )
   allot_class(out, "hurdlesummary")
 }
@@ -520,7 +521,8 @@ print.hurdlesummary <- function(x, ...) {
                               rownames(ec_mat))
   }
   cat("\nThe combined endpoint is the expected response per individual",
-      "exposed,\ni.e. growth * survival. Use which = to select a component.\n")
+      "exposed,\ni.e. growth * survival. Use which = to select a component.\n\n")
+  print_version(x$bnec_version)
   invisible(x)
 }
 

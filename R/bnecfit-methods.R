@@ -11,6 +11,10 @@
 #' \code{\link[base]{c}} takes no \code{loo_controls} argument; use
 #' \code{\link{amend}} to set the weighting method explicitly.
 #'
+#' Each equation keeps the record of the installation of \pkg{bayesnec} that
+#' fitted it, and a message reports a combined set whose equations were fitted
+#' by different installations. See \code{\link{bnec_version}}.
+#'
 #' @param x An object of class \code{\link{bnecfit}}.
 #' @param ... Additional objects of class \code{\link{bnecfit}}.
 #'
@@ -70,6 +74,8 @@ c.bnecfit <- function(x, ...) {
     x
   } else {
     out <- allot_class(out, c("bayesmanecfit", "bnecfit"))
+    out <- attach_version(out, do.call(rbind, lapply(inputs, stored_version)))
+    report_mixed_versions(out)
     out
   }
 }
@@ -363,6 +369,8 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
   if (!is.null(bnec_rec)) {
     attr(out, "bnec_record") <- bnec_rec
   }
+  # update() refits every equation, so none keeps its earlier record.
+  out <- attach_version(out)
   if (supplied_newdata) {
     out <- retain_unused_data(out, newdata)
   } else if (!is.null(retained_data)) {
