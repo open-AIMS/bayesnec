@@ -133,22 +133,18 @@ compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
   chk_numeric(sig_val)
   chk_numeric(resolution)
   chk_number(seed)
-  # Report the scale once for the call. The per-fit calls below pass
-  # xform = identity whatever the caller wants, and the "n(s)ec" comparison
-  # calls no estimator. See report_fitted_scale().
-  quiet <- report_fitted_scale(first_transformed_fit(x), identity,
-                               "compare_estimates")
-  on.exit(options(quiet), add = TRUE)
   if (is.na(x_range[1])) {
     x_range <- return_x_range(x)
   } else {
     chk_numeric(x_range)    
   }
+  # Every comparison type takes the estimators' default, the recorded scale,
+  # so that fits with different crf() transformations are compared on one.
   if (comparison == "nec") {
-    posterior_list <- lapply(x, nec, posterior = TRUE, xform = identity)
+    posterior_list <- lapply(x, nec, posterior = TRUE)
   }
   if (comparison == "n(s)ec") {
-    posterior_list <- lapply(x, return_nec_post, xform = identity)
+    posterior_list <- lapply(x, return_nec_post)
   }
   if (comparison == "ecx") {
     posterior_list <- lapply(x, ecx, ecx_val = ecx_val, resolution = resolution,

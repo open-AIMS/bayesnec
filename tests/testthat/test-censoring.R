@@ -776,20 +776,26 @@ reversal_manec <- local({
 
 negate <- function(z) -z
 
-# A stored fit relabelled as fitted on crf(I(-x)), its stored estimate put on
-# that scale draw by draw. I(-x) rather than -x, because inside a formula a bare
-# minus is the operator that removes a term, so model.frame() keeps x as it is
-# and the predictor is not reported as transformed. ecx() reads the formula
-# when it maps its search onto the fitted scale, so its estimates come out
-# negated with no further change.
+# A stored fit relabelled as fitted on crf(I(-x)), its stored estimate and
+# posterior put on that scale draw by draw. I(-x) rather than -x, because inside
+# a formula a bare minus is the operator that removes a term, so model.frame()
+# keeps x as it is and the predictor is not reported as transformed. ecx()
+# reads the formula when it maps its search onto the fitted scale, so its
+# estimates come out negated with no further change.
 negated_fit <- function(fit) {
   fit$ne <- suppressMessages(suppressWarnings(nec(fit, xform = negate)))
+  fit$ne_posterior <- suppressMessages(suppressWarnings(
+    nec(fit, xform = negate, posterior = TRUE)
+  ))
   fit$bayesnecformula <- bayesnecformula(y ~ crf(I(-x), model = "nec4param"))
   fit
 }
 
 negated_manec <- function(m) {
   m$w_ne <- suppressMessages(suppressWarnings(nec(m, xform = negate)))
+  m$w_ne_posterior <- suppressMessages(suppressWarnings(
+    nec(m, xform = negate, posterior = TRUE)
+  ))
   m$mod_fits[[1]]$bayesnecformula <- bayesnecformula(
     stats::as.formula(paste0("y ~ crf(I(-x), model = \"",
                              names(m$mod_fits)[1], "\")"))
@@ -886,10 +892,11 @@ test_that("the inverse of a decreasing crf() term restores the annotation", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # No xform: the estimate is on the negated scale and is inverted on the grid
-  # for the axis, which is drawn on the recorded one. The interval entries and
-  # their marks must come back as the untransformed fit has them. The estimate
-  # is compared for its mark only, for the type 1 reason given above.
+  # No xform: the estimate is on the negated scale and is inverted on the grid,
+  # as nec() inverts it, for the axis, which is drawn on the recorded one. The
+  # interval entries and their marks must come back as the untransformed fit
+  # has them. The estimate is compared for its mark only, for the type 1
+  # reason given above.
   pairs <- list(
     list(plain = annotation_labels(annotation_frame(reversal_fit("nec"))),
          inverted = annotation_labels(

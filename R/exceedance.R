@@ -16,8 +16,9 @@
 #' or \code{\link{ecx}} respectively.
 #' @param ecx_val The effect level of the ECx, as in \code{\link{ecx}}. Used
 #' only where \code{estimate = "ecx"}, and refused for the other two.
-#' @param xform A function applied to the estimate before it is compared with
-#' \code{threshold}, as in \code{\link{nec}}.
+#' @param xform \code{NULL}, the default, or a function, passed to the
+#' estimator as in \code{\link{nec}}. It sets the scale \code{threshold} is
+#' read on; see Details.
 #' @param ... Further arguments passed to \code{\link{nec}}, \code{\link{nsec}}
 #' or \code{\link{ecx}}, such as \code{x_range}, \code{resolution},
 #' \code{type}, \code{sig_val} or \code{extrapolate}, \code{which} for a
@@ -45,10 +46,10 @@
 #' instead, as \code{nec(x, no_effect = TRUE)} reports it.
 #'
 #' \code{threshold} and the estimate are compared on one scale, the scale the
-#' estimator returns the estimate on. Without \code{xform} that is the
-#' predictor scale the model was fitted on, so under
-#' \code{crf(log(concentration))} the threshold is a log concentration; with
-#' \code{xform = exp} it is a concentration. A decreasing \code{xform}
+#' estimator returns the estimate on. Without \code{xform} that is the scale
+#' the predictor was recorded on, so under \code{crf(log(concentration))} the
+#' threshold is a concentration. With \code{xform = identity} it is a log
+#' concentration, the scale the model was fitted on. A decreasing \code{xform}
 #' reverses the order of the scale. A draw then exceeds the threshold on the
 #' transformed scale where it lies below the corresponding value on the fitted
 #' scale, and the censoring record is remapped with the draws, so that a draw
@@ -86,8 +87,9 @@
 #' bound, so a censored draw may lie on the bound itself, and a draw equal to
 #' the threshold does not exceed it. A threshold equal to the lower bound is
 #' decided, because a draw at or below it does not exceed it. Where the bound
-#' is itself back-transformed, as with \code{xform = exp} on a fit to
-#' \code{crf(log(concentration))}, it can differ in the last digits from the
+#' is itself back-transformed, as for \code{"nec"} on a fit to
+#' \code{crf(log(concentration))} without \code{xform} or with
+#' \code{xform = exp}, it can differ in the last digits from the
 #' concentration it was computed from: \code{exp(log(100))} is slightly above
 #' 100. A threshold given as that concentration then falls just inside or just
 #' outside the range, and the rounding decides whether its probability is
@@ -134,7 +136,7 @@
 #'
 #' @export
 exceedance <- function(object, threshold, estimate = c("nec", "nsec", "ecx"),
-                       ecx_val = 10, xform = identity, ...) {
+                       ecx_val = 10, xform = NULL, ...) {
   UseMethod("exceedance")
 }
 
@@ -145,14 +147,13 @@ exceedance <- function(object, threshold, estimate = c("nec", "nsec", "ecx"),
 #' @export
 exceedance.bnecfit <- function(object, threshold,
                                estimate = c("nec", "nsec", "ecx"),
-                               ecx_val = 10, xform = identity, ...) {
+                               ecx_val = 10, xform = NULL, ...) {
   # Read each fitted class through the estimator generics, so exceedance()
   # compares the same draws that nec(), nsec() and ecx() report.
   estimate <- match.arg(estimate)
   check_exceedance_args(threshold, estimate, ecx_val, !missing(ecx_val),
                         list(...))
-  exceedance_fit(object, threshold, estimate, ecx_val,
-                 if (missing(xform)) NULL else xform, ...)
+  exceedance_fit(object, threshold, estimate, ecx_val, xform, ...)
 }
 
 #' @inheritParams exceedance
@@ -162,13 +163,12 @@ exceedance.bnecfit <- function(object, threshold,
 #' @export
 exceedance.bayesnecgroupfit <- function(object, threshold,
                                         estimate = c("nec", "nsec", "ecx"),
-                                        ecx_val = 10, xform = identity, ...) {
+                                        ecx_val = 10, xform = NULL, ...) {
   estimate <- match.arg(estimate)
   # Validated once, before the first level, so that an argument error is
   # raised before any level's curve is evaluated.
   check_exceedance_args(threshold, estimate, ecx_val, !missing(ecx_val),
                         list(...))
-  xform <- if (missing(xform)) NULL else xform
   # Each level is an ordinary fit, so the per-level comparison is a map over
   # them, as group_lapply() makes it for the estimators themselves.
   rows <- group_lapply(object, exceedance_fit, threshold = threshold,
@@ -189,12 +189,11 @@ exceedance.bayesnecgroupfit <- function(object, threshold,
 #' @export
 exceedance.bayesnecjointfit <- function(object, threshold,
                                         estimate = c("nec", "nsec", "ecx"),
-                                        ecx_val = 10, xform = identity, ...) {
+                                        ecx_val = 10, xform = NULL, ...) {
   estimate <- match.arg(estimate)
   # Validated once, before any level is read, as for a bayesnecgroupfit.
   check_exceedance_args(threshold, estimate, ecx_val, !missing(ecx_val),
                         list(...))
-  xform <- if (missing(xform)) NULL else xform
   # A joint refit has no per-level fits to map over, but its estimators return
   # one element of draws per level, so read them once. Under estimate = "nec",
   # a level whose equation has no nec parameter returns NA draws, which
@@ -253,7 +252,7 @@ check_exceedance_args <- function(threshold, estimate, ecx_val, ecx_val_given,
 #' @param object A \code{\link{bayesnecfit}}, \code{\link{bayesmanecfit}} or
 #' \code{\link{bayesnechurdlefit}}.
 #' @param threshold,estimate,ecx_val As in \code{exceedance()}.
-#' @param xform A function, or \code{NULL} where the caller supplied none.
+#' @param xform A function, or \code{NULL}.
 #' @param ... Passed to the estimator.
 #'
 #' @return A one-row \code{\link[base]{data.frame}}; see \code{exceedance()}.
@@ -274,7 +273,7 @@ exceedance_fit <- function(object, threshold, estimate, ecx_val, xform, ...) {
 #' @param object A \code{\link{bayesnecfit}}, \code{\link{bayesmanecfit}},
 #' \code{\link{bayesnechurdlefit}} or \code{\link{bayesnecjointfit}}.
 #' @param estimate,ecx_val As in \code{exceedance()}.
-#' @param xform A function, or \code{NULL} where the caller supplied none.
+#' @param xform A function, or \code{NULL}.
 #' @param ... Passed to the estimator.
 #'
 #' @return What the estimator returns under \code{posterior = TRUE}: a vector
@@ -289,13 +288,7 @@ exceedance_posterior <- function(object, estimate, ecx_val, xform, ...) {
     nsec = function(...) nsec(object, posterior = TRUE, ...),
     ecx = function(...) ecx(object, ecx_val = ecx_val, posterior = TRUE, ...)
   )
-  # Forward xform only where the caller supplied one, so that the estimator
-  # receives the call a user would have made to it directly.
-  if (is.null(xform)) {
-    read_posterior(...)
-  } else {
-    read_posterior(xform = xform, ...)
-  }
+  read_posterior(xform = xform, ...)
 }
 
 #' The probability that posterior draws exceed a threshold, with the bounds the

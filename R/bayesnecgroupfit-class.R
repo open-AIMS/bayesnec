@@ -209,10 +209,6 @@ print.bayesnecgroupfit <- function(x, ...) {
 #' @method nec bayesnecgroupfit
 #' @export
 nec.bayesnecgroupfit <- function(object, ...) {
-  # Once for the group rather than once per level: every level is fitted with
-  # the one formula. See report_fitted_scale().
-  quiet <- report_fitted_scale(object, dots_xform(nec, list(...)), "nec")
-  on.exit(options(quiet), add = TRUE)
   # Check here, so that the error names this class rather than a level's.
   check_no_effect_arg(list(...), object)
   group_estimate_table(object, "nec", function(f, ...) nec(f, ...), ...)
@@ -222,9 +218,6 @@ nec.bayesnecgroupfit <- function(object, ...) {
 #' @method ecx bayesnecgroupfit
 #' @export
 ecx.bayesnecgroupfit <- function(object, ...) {
-  # Once for the group, as in nec.bayesnecgroupfit().
-  quiet <- report_fitted_scale(object, dots_xform(ecx, list(...)), "ecx")
-  on.exit(options(quiet), add = TRUE)
   group_estimate_table(object, "ecx", function(f, ...) ecx(f, ...), ...)
 }
 
@@ -232,9 +225,6 @@ ecx.bayesnecgroupfit <- function(object, ...) {
 #' @method nsec bayesnecgroupfit
 #' @export
 nsec.bayesnecgroupfit <- function(object, ...) {
-  # Once for the group, as in nec.bayesnecgroupfit().
-  quiet <- report_fitted_scale(object, dots_xform(nsec, list(...)), "nsec")
-  on.exit(options(quiet), add = TRUE)
   group_estimate_table(object, "nsec", function(f, ...) nsec(f, ...), ...)
 }
 
@@ -242,15 +232,6 @@ nsec.bayesnecgroupfit <- function(object, ...) {
 #' @method summary bayesnecgroupfit
 #' @export
 summary.bayesnecgroupfit <- function(object, ...) {
-  # Report the scale of the ECx rows once for the group. Read `xform` from the
-  # dots that the level summaries pass on to ecx(), or the message would name
-  # the wrong scale. See summary_ecx_xform().
-  dots <- list(...)
-  if (isTRUE(dots[["ecx"]])) {
-    rest <- dots[!names(dots) %in% c("ecx", "ecx_vals")]
-    quiet <- report_fitted_scale(object, summary_ecx_xform(rest), "ecx")
-    on.exit(options(quiet), add = TRUE)
-  }
   group_lapply(object, summary, ...)
 }
 

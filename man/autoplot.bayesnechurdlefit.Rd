@@ -11,7 +11,7 @@
   CI = TRUE,
   resolution = 1000,
   x_range = NA,
-  xform = identity,
+  xform = NULL,
   xlab = "Predictor",
   ylab = NULL
 )
@@ -29,10 +29,10 @@
 
 \item{x_range}{A range of predictor values.}
 
-\item{xform}{A function to apply to the predictor where \code{crf()} does
-not transform it inline. Where it does, the predictor is returned on the
-recorded scale, the scale the prediction grid is built on, and \code{xform}
-is not applied.}
+\item{xform}{\code{NULL}, the default, or a function to apply to the
+predictor where \code{crf()} does not transform it inline. Where it does,
+the predictor is returned on the recorded scale, the scale the prediction
+grid is built on, and \code{xform} is not applied.}
 
 \item{xlab}{X axis label.}
 

@@ -780,14 +780,10 @@ test_that("autoplot refuses a model outside the set and an empty selection", {
 
 # ---- the ECx annotation on an inline-transformed predictor -------------------
 
-# to_axis_scale()'s numerical-inverse branch built a fresh vector, dropping the
-# ecx_val attribute that bind_ecx() reads and assigns into the data frame, so
-# the assignment received NULL and the call failed with "replacement has length
-# zero". The branch runs only when the predictor is transformed inline AND
-# xform is left at its default, which is why no existing test reached it: every
-# transformed-predictor test here supplies an xform, and every default-xform
-# test uses an untransformed predictor. That combination is the one
-# vignette("example1") uses.
+# bind_ecx() reads the ecx_val attribute and assigns it into the data frame, so
+# an annotation that loses it fails with "replacement has length zero". The
+# path tested here is a predictor transformed inline with xform left at its
+# default, the combination vignette("example1") uses.
 #
 # The formula is rewritten on a stored fit rather than fitted, the same trick
 # transformed_response_fit() uses in setup.R, applied to the predictor instead

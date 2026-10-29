@@ -7,7 +7,7 @@
 \method{nec}{bayesnechurdlefit}(
   object,
   posterior = FALSE,
-  xform = identity,
+  xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
   extrapolate = FALSE,
   which = "combined",
@@ -21,8 +21,11 @@
 posterior sample of calculated NEC values should be returned instead of
 just the median and 95\% credible intervals.}
 
-\item{xform}{A function to apply to the returned estimated concentration
-values.}
+\item{xform}{\code{NULL}, the default, or a function. \code{NULL} returns
+the estimate on the scale the predictor was recorded on. A function is
+applied to the estimate on the scale the model was fitted on. The two
+differ only where \code{crf()} transforms the predictor inline; see
+Details.}
 
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated NEC value. Defaults to 0.5 (median) and 0.025 and
