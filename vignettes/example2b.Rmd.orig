@@ -241,6 +241,18 @@ show_params("ecxll3")[[1]]
 
 The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function.
 
+#### ecxflat
+
+The **ecxflat** model is the constant equation, given by the equation:
+$$y_i = \tau$$
+with the respective `brmsformula` being
+
+```{r, echo = FALSE}
+show_params("ecxflat")[[1]]
+```
+
+The term `0 * atan(x)` is zero at every concentration and keeps the predictor in the fitted object. A fit of **ecxflat** states that the response did not change over the range tested. It has no step and no $\eta = \text{NEC}$ parameter, so its no-effect estimate is an NSEC, and its curve reaches no *EC~x~* target, so every *EC~x~* it gives is reported as censored above the upper end of the prediction range. It is suitable for every family.
+
 #### ecxhormebc5
 
 The **ecxhormebc5** model is a 5 parameter log-logistic model modified to accommodate a non-linear hormesis at low concentrations. It has been modified from to the "Brain-Cousens" (BC.5) model of @Ritz2016, given by the equation:

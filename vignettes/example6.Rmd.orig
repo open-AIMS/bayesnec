@@ -805,9 +805,8 @@ are on the original dose scale.
 
 ```{r nassarius-summary}
 # resolution is the number of predictor values ECx is read off, and every call
-# rebuilds the component predictions for both six-model sets. The default of
-# 1000 is finer than two significant figures can show over this dose range, and
-# 500 keeps the memory these repeated rebuilds need well under control.
+# rebuilds the component predictions for both six-model sets. 500 is finer than
+# the ecx() default of 200.
 summary(fit_a, ecx = TRUE, ecx_vals = c(10, 50), resolution = 500,
         xform = back_transform(tests[["A"]]))
 ```

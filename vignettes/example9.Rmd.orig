@@ -1334,8 +1334,9 @@ share them, and under the sub-model
 brms::fixef(pull_brmsfit(best_power))[c("c0_Intercept", "c1_Intercept"), ]
 ```
 
-`c1` is the exponent, and zero is the constant-dispersion model, so an interval
-excluding zero reflects the data rather than the prior. The coefficients of
+`c1` is the exponent, and zero is the constant-dispersion model. The default
+prior bounds `c1` to the range 0 to 2 for a `Gamma` response, so an interval
+well inside that range reflects the data rather than the bound. The coefficients of
 variation computed above give an estimate of the same quantity that uses no fit:
 a power law makes `log(cv)` linear in `log(mu)` with slope `-c1/2`.
 
