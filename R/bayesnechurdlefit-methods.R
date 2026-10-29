@@ -734,8 +734,10 @@ hurdle_refit_growth <- function(object, family = NULL) {
   growth <- object$growth
   if (is.null(family)) {
     fits <- recover_prebayesnecfit(growth)
-    if (is_factorised_count_formula(fits[[1]]$bayesnecformula,
-                                    fits[[1]]$fit$family)) {
+    truncated <- vapply(fits, function(m) {
+      is_factorised_count_formula(m$bayesnecformula, m$fit$family)
+    }, logical(1))
+    if (any(truncated)) {
       check_count_truncation_support()
     }
     return(growth)
