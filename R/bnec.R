@@ -1026,6 +1026,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     mod_fits <- vector(mode = "list", length = length(model))
     names(mod_fits) <- model
     failed <- list()
+    version_records <- NULL
     set_plan <- plan_model_set(brm_args, length(model))
     brm_args <- set_plan$brm_args
     # Keep try() inside the applied function, not around the call to it.
@@ -1035,9 +1036,10 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     # the failure is also recorded in the returned object.
     # Use narrow_environment(), not a plain closure: future exports a closure
     # with its enclosing environment, which here holds everything bnec() built.
+    description_reader <- bayesnec_description
     fit_one <- narrow_environment(
       function(m) {
-        try(
+        fit <- try(
           fit_bayesnec(formula = formula, data = data, model = model[m],
                        brm_args = brm_args, prior_type = prior_type,
                        asymptote_observed = asymptote_observed,
@@ -1045,12 +1047,19 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
                        timeout = timeout, model_survival = model_survival),
           silent = FALSE
         )
+        # Workers can load an installation that predates the version helpers.
+        attr(fit, "bnec_installation") <- list(
+          description = description_reader(),
+          R = as.character(getRversion())
+        )
+        fit
       },
       list(formula = formula, data = data, model = model,
            brm_args = brm_args, prior_type = prior_type, timeout = timeout,
            asymptote_observed = asymptote_observed,
            predictor_scale = predictor_scale,
-           model_survival = model_survival)
+           model_survival = model_survival,
+           description_reader = description_reader)
     )
     attempts <- bnec_parallel_lapply(seq_along(model), fit_one,
                                   parallel = set_plan$parallel)
@@ -1059,6 +1068,9 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     for (m in seq_along(model)) {
       fit_m <- attempts[[m]]
       if (!inherits(fit_m, "try-error")) {
+        version_records <- rbind(version_records,
+                                  attempt_version(model[m], fit_m))
+        attr(fit_m, "bnec_installation") <- NULL
         mod_fits[[m]] <- fit_m
       } else {
         mod_fits[[m]] <- NA
@@ -1086,7 +1098,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     out <- attach_failed_models(out, failed)
     out <- attach_bnec_record(out, requested_models, model,
                               excluded_models, substitutions)
-    out <- attach_version(out)
+    out <- attach_version(out, version_records)
     out <- retain_unused_data(out, data)
     message_control_fit(out)
     out
