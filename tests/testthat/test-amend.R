@@ -494,8 +494,12 @@ hurdle_data <- function() {
 }
 
 # The record fit_bayesnec() stores, with nothing supplied by default.
-call_record <- function(model_survival = NULL, control = NULL, seed = NULL) {
-  list(model_survival = model_survival, control = control, seed = seed)
+call_record <- function(model_survival = NULL, control = NULL, seed = NULL,
+                        prior_type = "uninformative",
+                        asymptote_observed = TRUE, predictor_scale = "auto") {
+  list(model_survival = model_survival, control = control, seed = seed,
+       prior_type = prior_type, asymptote_observed = asymptote_observed,
+       predictor_scale = predictor_scale)
 }
 
 hu_rhs <- function(model) {
@@ -691,14 +695,16 @@ test_that("update records supplied settings on a fit saved without a call", {
   obj <- amend_fixture(validate_family("gaussian"))
   ctrl <- list(adapt_delta = 0.97, max_treedepth = 12)
   updated <- update.bnecfit(obj, control = ctrl, seed = 19)
-  expect_identical(updated$call_args, call_record(control = ctrl, seed = 19))
+  expect_identical(updated$call_args,
+                   list(model_survival = NULL, control = ctrl, seed = 19))
   amended <- fit_inputs(amend(updated, add = "nec4param"))
   expect_length(amended$calls, 1)
   expect_identical(amended$calls[[1]]$control, ctrl)
   expect_identical(amended$calls[[1]]$seed, 19)
 
   unchanged <- update.bnecfit(obj)
-  expect_identical(unchanged$call_args, call_record())
+  expect_identical(unchanged$call_args,
+                   list(model_survival = NULL, control = NULL, seed = NULL))
   reset <- update.bnecfit(updated, seed = NULL)
   expect_null(reset$call_args$seed)
   expect_identical(reset$call_args$control, ctrl)
@@ -728,7 +734,8 @@ test_that("update recovers a legacy set's shared survival equation", {
   updated <- update.bnecfit(obj, seed = 19)
   for (fit in updated$mod_fits) {
     expect_identical(fit$call_args,
-                     call_record(model_survival = "nec4param", seed = 19))
+                     list(model_survival = "nec4param", control = NULL,
+                          seed = 19))
   }
   # The matching response equation alone cannot identify a fixed block.
   survivor <- updated$mod_fits$nec4param
@@ -762,7 +769,8 @@ test_that("amend preserves a legacy survival equation after dropping models", {
   reduced <- amend(obj, drop = "ecx4param")
   expect_s3_class(reduced, "bayesnecfit")
   expect_identical(reduced$call_args,
-                   call_record(model_survival = "nec4param"))
+                   list(model_survival = "nec4param", control = NULL,
+                        seed = NULL))
   amended <- fit_inputs(amend(reduced, add = "nec3param"))
   expect_length(amended$calls, 1)
   expect_identical(deparse1(amended$calls[[1]]$formula$pforms$hu[[3]]),

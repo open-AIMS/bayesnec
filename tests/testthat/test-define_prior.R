@@ -2804,6 +2804,60 @@ test_that("amend refuses a response with no derivable floor (#394)", {
   expect_match(conditionMessage(err), "`prior` argument", fixed = TRUE)
 })
 
+test_that("a supplied bot prior stands in for the floor (#516)", {
+  # A gaussian response spanning negative values has no floor. With a bot
+  # prior supplied, bnec() stopped on "user-specific parameter prior names
+  # (bot) do not match expectation", because the other defaults were not built.
+  d <- incomplete_design(0.36, "gaussian")
+  d$y <- d$y - 1.2
+  fam <- validate_family("gaussian")
+  bot_prior <- brms::prior_string("normal(-1, 1)", nlpar = "bot")
+  seen <- new.env(parent = emptyenv())
+  local_mocked_bindings(
+    brm = function(formula, data, ...) {
+      seen$args <- list(...)
+      stop("brm reached")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(suppressWarnings(suppressMessages(
+    bnec(y ~ crf(x, "nec4param"), data = d, family = fam,
+         asymptote_observed = FALSE, prior = bot_prior, chains = 2)
+  )), "brm reached")
+  used <- as.data.frame(seen$args$prior)
+  expect_identical(prior_entry(used, "bot"), "normal(-1, 1)")
+  expect_setequal(used$nlpar, c("bot", "top", "beta", "nec"))
+  # The declaration still lifts the upper bound of nec.
+  expect_true(is.na(used$ub[used$nlpar == "nec"]) ||
+                !nzchar(used$ub[used$nlpar == "nec"]))
+  expect_setequal(names(seen$args$init[[1]]),
+                  c("b_bot", "b_top", "b_beta", "b_nec"))
+  # define_prior() refuses only where no bot prior was supplied.
+  expect_error(define_prior("nec4param", fam, d$x, d$y,
+                            asymptote_observed = FALSE),
+               "`prior` argument", fixed = TRUE)
+  built <- as.data.frame(define_prior("nec4param", fam, d$x, d$y,
+                                      asymptote_observed = FALSE,
+                                      supplied_pars = "bot"))
+  expect_setequal(built$nlpar, c("bot", "top", "beta", "nec"))
+})
+
+test_that("a supplied bot prior is read per block of a hurdle fit (#516)", {
+  # Under a log link the mu block has no floor; the survival block always has
+  # one. "hubot" names the survival block's bot only.
+  d <- incomplete_design(0.36, "Gamma")
+  d$y[d$x == max(d$x)][1:2] <- 0
+  fam <- brms::hurdle_gamma(link = "log", link_hu = "identity")
+  expect_error(define_prior("nec4param", fam, d$x, d$y,
+                            asymptote_observed = FALSE,
+                            supplied_pars = "hubot"),
+               "\"log\" link", fixed = TRUE)
+  built <- as.data.frame(define_prior("nec4param", fam, d$x, d$y,
+                                      asymptote_observed = FALSE,
+                                      supplied_pars = "bot"))
+  expect_true(all(c("bot", "hubot") %in% built$nlpar))
+})
+
 test_that("the declaration reaches both blocks of a hurdle fit (#394)", {
   # define_hurdle_prior() builds the mu block from the survivors and the second
   # block from the proportion surviving at each predictor value, and the design

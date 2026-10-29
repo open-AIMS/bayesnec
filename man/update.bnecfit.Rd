@@ -98,6 +98,17 @@ Without it the call is refused before the data are checked, so nothing is
 reported as shifted.
 Families are compared by name and links, so \code{Gamma(link = "identity")}
 supplied for a Gamma fit is not a change of family.
+
+A family the stored formula cannot describe is refused before any model is
+refitted, whether or not \code{force_fit} is set. A \code{disp()} term is
+checked against it as \code{\link{bnec}} checks it, so \code{poisson} is
+refused for a fit with a \code{disp()} term. A family that names its
+dispersion parameter differently from the fitted one is refused as well,
+such as \code{gaussian}, whose parameter is \code{sigma}, for a \code{Beta}
+fit, whose parameter is \code{phi}. So is a change that adds or removes the
+second block of a two-block family such as \code{hurdle_gamma}. Fit such a
+model with \code{\link{bnec}}. New data are checked against a variance
+function in \code{disp()} as \code{\link{bnec}} checks its data.
 }
 \examples{
 \dontrun{

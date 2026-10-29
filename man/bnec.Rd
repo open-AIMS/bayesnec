@@ -211,8 +211,10 @@ complete.
 
 A gaussian response spanning negative values, and any response fitted on a
 link other than the identity, has no floor that can be derived from the data,
-and \code{FALSE} is refused for it rather than a floor being invented. Supply
-a \code{bot} prior through \code{prior} in that case.
+and \code{FALSE} is refused for it rather than a floor being invented, unless
+\code{prior} supplies \code{bot}. The supplied entry then takes the place of
+the one built from the floor, and the declaration still removes the upper
+bound of the \code{nec} and \code{ec50} priors.
 
 Fifteen of the 24 equations of the "all" group have no \code{bot}
 parameter. One is the constant equation "ecxflat". The other fourteen

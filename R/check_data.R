@@ -600,20 +600,15 @@ uses_response_range_defaults <- function(prior, models, family,
     )
     if (hurdle) {
       survival_model <- if (is.null(model_survival)) model else model_survival
+      # recycle0: an equation with none of these rows gives no row, not the
+      # bare prefix.
       required$survival <- paste0(
         hurdle_dpar(family),
-        intersect(equation_par_names(survival_model), affected)
+        intersect(equation_par_names(survival_model), affected),
+        recycle0 = TRUE
       )
     }
-    if (inherits(supplied, "brmsprior")) {
-      prior_df <- as.data.frame(supplied)
-      dpar <- if ("dpar" %in% names(prior_df)) prior_df$dpar else ""
-      present <- prior_df$nlpar[
-        prior_df$class == "b" & (is.na(dpar) | !nzchar(dpar))
-      ]
-    } else {
-      present <- character(0)
-    }
+    present <- supplied_curve_pars(supplied)
     for (block in names(required)) {
       if (length(required[[block]]) > 0L &&
           !all(required[[block]] %in% present)) {
@@ -622,6 +617,24 @@ uses_response_range_defaults <- function(prior, models, family,
     }
   }
   out
+}
+
+#' The curve parameters a supplied prior sets
+#'
+#' @param prior A \code{\link[brms]{brmsprior}}, or anything else for none.
+#'
+#' @return A \code{\link[base]{character}} vector of the \code{nlpar} names of
+#' its class \code{"b"} rows that model no distributional parameter, such as
+#' \code{"bot"} or \code{"hubot"}.
+#'
+#' @noRd
+supplied_curve_pars <- function(prior) {
+  if (!inherits(prior, "brmsprior")) {
+    return(character(0))
+  }
+  prior_df <- as.data.frame(prior)
+  dpar <- if ("dpar" %in% names(prior_df)) prior_df$dpar else ""
+  prior_df$nlpar[prior_df$class == "b" & (is.na(dpar) | !nzchar(dpar))]
 }
 
 #' The sentence naming the declaration, where the declaration is available

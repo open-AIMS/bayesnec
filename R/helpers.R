@@ -1375,7 +1375,7 @@ add_brm_defaults <- function(
       brm_args$control <- ctrl
     }
   }
-  build_defaults <- function() {
+  build_defaults <- function(supplied_pars = character(0)) {
     define_prior(
       model,
       family,
@@ -1389,7 +1389,8 @@ add_brm_defaults <- function(
       group_spec = group_spec,
       rate_response = rate_response,
       truncated_response = truncated_response,
-      tested_range = tested_range
+      tested_range = tested_range,
+      supplied_pars = supplied_pars
     )
   }
   priors <- try(validate_priors(brm_args$prior, model), silent = TRUE)
@@ -1401,7 +1402,8 @@ add_brm_defaults <- function(
     # A failure to build the defaults must not block a user's own prior. Use
     # the user's set as supplied, without a warning: without the defaults
     # there is no way to tell whether it is incomplete.
-    default_priors <- try(build_defaults(), silent = TRUE)
+    default_priors <- try(build_defaults(supplied_curve_pars(priors)),
+                          silent = TRUE)
     brm_args$prior <- if (inherits(default_priors, "try-error")) {
       priors
     } else {
@@ -1515,7 +1517,8 @@ add_brm_defaults <- function(
                                    prior_type = prior_type,
                                    predictor_scale = predictor_scale,
                                    init_supplied = init_supplied,
-                                   prior_supplied = prior_supplied)
+                                   prior_supplied = prior_supplied,
+                                   asymptote_observed = asymptote_observed)
   }
   brm_args
 }
@@ -1636,6 +1639,70 @@ refit_family <- function(fitted, supplied = NULL) {
   }
   fitted$family <- canonical_fam_tag(fitted)
   fitted
+}
+
+#' Refuse a refit family that the stored formula and priors cannot follow
+#'
+#' @param formula The \code{\link{bayesnecformula}} of the fit being refitted.
+#' @param fitted The family stored in its \code{brmsfit}.
+#' @param family The family the refit uses, from \code{refit_family()}.
+#' @param data The data the refit is given, or \code{NULL}. Read only for a
+#' variance-function \code{disp()} term, as \code{\link{bnec}} reads it.
+#'
+#' @details \code{update()} hands \pkg{brms} the stored formula and priors,
+#' which name the distributional parameters of the fitted family. A
+#' \code{disp()} term is checked as \code{\link{bnec}} checks it, and is also
+#' refused where the refit family names its dispersion parameter differently,
+#' because the stored sub-model names a parameter that family does not have. A
+#' change that adds, removes or replaces the second block of a two-block family
+#' is refused, because the stored formula holds the blocks of the fitted
+#' family only.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#'
+#' @noRd
+check_refit_family <- function(formula, fitted, family, data = NULL) {
+  fit_tag <- canonical_fam_tag(fitted)
+  fam_tag <- canonical_fam_tag(family)
+  spec <- parse_disp_term(formula)
+  if (!is.null(spec)) {
+    response <- if (identical(spec$route, "B") && !is.null(data)) {
+      disp_response(model.frame(formula, data = data), family)
+    }
+    check_disp_spec(spec, family, response = response)
+    if (!identical(disp_dpar(fitted), disp_dpar(family))) {
+      stop("The disp() term of this fit models \"", disp_dpar(fitted),
+           "\", the dispersion parameter of the ", fit_tag, " family it was",
+           " fitted with. update() reuses the stored formula and priors of",
+           " that sub-model, and the ", fam_tag, " family names its",
+           " dispersion parameter \"", disp_dpar(family), "\", so the",
+           " sub-model cannot be refitted under it. Fit the model with bnec()",
+           " and the new family, which builds the sub-model and its priors",
+           " for that family.", call. = FALSE)
+    }
+    if (shape_in_reported_mean(formula, family)) {
+      check_disp_count_truncation(formula, family)
+    }
+  }
+  block_of <- function(tag) {
+    if (is_hurdle_family(tag)) hurdle_dpar(tag) else NULL
+  }
+  if (!identical(block_of(fit_tag), block_of(fam_tag))) {
+    describe <- function(tag) {
+      if (is.null(block_of(tag))) {
+        "a single block"
+      } else {
+        paste0("a second block, \"", block_of(tag), "\"")
+      }
+    }
+    stop("The ", fit_tag, " family this model was fitted with has ",
+         describe(fit_tag), ", and the ", fam_tag, " family has ",
+         describe(fam_tag), ". update() reuses the stored formula and",
+         " priors, which describe the blocks of the fitted family only, so",
+         " the refit would not be the model bnec() builds for ", fam_tag,
+         ". Fit the model with bnec() and the new family.", call. = FALSE)
+  }
+  invisible(NULL)
 }
 
 #' The tag and the links, which is what "a different family" means here

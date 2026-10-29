@@ -410,10 +410,9 @@ asymptote_floor_error <- function(reason) {
   paste0("`asymptote_observed = FALSE` places the prior for \"bot\" between",
          " the floor of the response and the mean at the highest predictor",
          " level, and ", reason, " Supply a prior for \"bot\" through the",
-         " `prior` argument and leave `asymptote_observed` at its default.",
-         " The default bounds the \"nec\" and \"ec50\" priors at the highest",
-         " predictor value; supply those through `prior` as well to place",
-         " them otherwise.")
+         " `prior` argument. It replaces that entry, and the",
+         " declaration still removes the upper bound of the \"nec\" and",
+         " \"ec50\" priors.")
 }
 
 #' The bot prior for a design that did not reach the lower asymptote
@@ -729,6 +728,9 @@ predictor_prior <- function(predictor, prior_type = "uninformative",
 #' to the range of \code{prior_predictor}. \code{\link{bnec_hurdle}} supplies
 #' the whole series for its growth component, which is fitted to survivors
 #' only.
+#' @param supplied_pars The curve parameters the caller's own prior sets, from
+#' \code{supplied_curve_pars()}. Where it holds \code{"bot"}, the declaration
+#' needs no floor, because the caller's entry replaces the one it would build.
 #'
 #' @return An object of class \code{\link[brms]{brmsprior}}.
 #' @importFrom brms prior_string
@@ -742,7 +744,8 @@ define_prior <- function(model, family, predictor, response,
                          model_survival = NULL, disp_spec = NULL,
                          group_spec = NULL, prior_predictor = NULL,
                          predictor_scale = "auto", rate_response = FALSE,
-                         truncated_response = FALSE, tested_range = NULL) {
+                         truncated_response = FALSE, tested_range = NULL,
+                         supplied_pars = character(0)) {
   if (is.null(prior_predictor)) {
     prior_predictor <- predictor
   }
@@ -764,7 +767,8 @@ define_prior <- function(model, family, predictor, response,
                                          model_survival = model_survival,
                                          prior_predictor = prior_predictor,
                                          predictor_scale = predictor_scale,
-                                         tested_range = tested_range)
+                                         tested_range = tested_range,
+                                         supplied_pars = supplied_pars)
     # A group-level term reaches the mu block only, because add_formula_glef()
     # runs before the hu sub-formulas are attached. Build its priors from the
     # survivors, on the link scale of the mu family, which is the quantity the
@@ -937,15 +941,17 @@ define_prior <- function(model, family, predictor, response,
   }
   # The declaration replaces the bot entry of whichever set was built, so a
   # user with an incomplete design keeps the rest of the regularizing set.
-  # bnec() and bnec_group() refuse a response with no floor before their
-  # loops; this refusal serves get_priors() and amend(). Skip an equation with
-  # no bot, such as nec3param, so that it is not refused.
-  if (!asymptote_observed && "bot" %in% equation_par_names(model)) {
-    floor_val <- asymptote_floor(family, response)
-    if (!is.finite(floor_val)) {
+  bot_declared <- !asymptote_observed && "bot" %in% equation_par_names(model)
+  if (bot_declared && !is.finite(asymptote_floor(family, response))) {
+    # The caller's own bot needs no floor: it replaces the ordinary entry.
+    # bnec() refuses earlier; this refusal serves get_priors() and amend().
+    if (!"bot" %in% supplied_pars) {
       stop(asymptote_floor_error(no_floor_reason(family, response)),
            call. = FALSE)
     }
+    bot_declared <- FALSE
+  }
+  if (bot_declared) {
     branch <- if (gamma_scaled) {
       "gamma"
     } else if (identical(fam_tag, "gaussian")) {
@@ -1299,11 +1305,14 @@ define_hurdle_prior <- function(model, family, predictor, response,
                                 model_survival = NULL,
                                 prior_predictor = NULL,
                                 predictor_scale = "auto",
-                                tested_range = NULL) {
+                                tested_range = NULL,
+                                supplied_pars = character(0)) {
   if (is.null(prior_predictor)) {
     prior_predictor <- predictor
   }
   dpar <- hurdle_dpar(family)
+  hu_supplied <- sub(paste0("^", dpar), "",
+                     supplied_pars[startsWith(supplied_pars, dpar)])
   # The second block may carry a different equation from the response block,
   # in which case its priors must be built for that equation's parameters.
   if (is.null(model_survival)) {
@@ -1318,7 +1327,8 @@ define_hurdle_prior <- function(model, family, predictor, response,
                             asymptote_observed = asymptote_observed,
                             prior_predictor = prior_predictor,
                             predictor_scale = predictor_scale,
-                            tested_range = tested_range)
+                            tested_range = tested_range,
+                            supplied_pars = supplied_pars)
   # second block: reuse the bernoulli/identity defaults on the proportion
   # non-zero, then rename every non-linear parameter into its namespace.
   hu_priors <- define_prior(model_survival, bernoulli(link = "identity"),
@@ -1326,7 +1336,8 @@ define_hurdle_prior <- function(model, family, predictor, response,
                             asymptote_observed = asymptote_observed,
                             prior_predictor = prior_predictor,
                             predictor_scale = predictor_scale,
-                            tested_range = tested_range)
+                            tested_range = tested_range,
+                            supplied_pars = hu_supplied)
   hu_priors$nlpar <- ifelse(nzchar(hu_priors$nlpar),
                             paste0(dpar, hu_priors$nlpar), hu_priors$nlpar)
   # Both blocks predict across the full design, so use its predictor for the
