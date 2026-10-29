@@ -107,7 +107,7 @@ counted from the censoring record rather than deleted.</p>
 <span>  <span class="va">threshold</span>,</span>
 <span>  estimate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nec"</span>, <span class="st">"nsec"</span>, <span class="st">"ecx"</span><span class="op">)</span>,</span>
 <span>  ecx_val <span class="op">=</span> <span class="fl">10</span>,</span>
-<span>  xform <span class="op">=</span> <span class="va">identity</span>,</span>
+<span>  xform <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -140,8 +140,9 @@ only where <code>estimate = "ecx"</code>, and refused for the other two.</p></dd
 
 
 <dt id="arg-xform">xform<a class="anchor" aria-label="anchor" href="#arg-xform"></a></dt>
-<dd><p>A function applied to the estimate before it is compared with
-<code>threshold</code>, as in <code><a href="nec.html">nec</a></code>.</p></dd>
+<dd><p><code>NULL</code>, the default, or a function, passed to the
+estimator as in <code><a href="nec.html">nec</a></code>. It sets the scale <code>threshold</code> is
+read on; see Details.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
@@ -202,10 +203,10 @@ probabilities are <code>NA</code> and its <code>n_draws</code> is 0. Passing
 <code>no_effect = TRUE</code> compares the NSEC of that level's fitted curve
 instead, as <code>nec(x, no_effect = TRUE)</code> reports it.</p>
 <p><code>threshold</code> and the estimate are compared on one scale, the scale the
-estimator returns the estimate on. Without <code>xform</code> that is the
-predictor scale the model was fitted on, so under
-<code>crf(log(concentration))</code> the threshold is a log concentration; with
-<code>xform = exp</code> it is a concentration. A decreasing <code>xform</code>
+estimator returns the estimate on. Without <code>xform</code> that is the scale
+the predictor was recorded on, so under <code>crf(log(concentration))</code> the
+threshold is a concentration. With <code>xform = identity</code> it is a log
+concentration, the scale the model was fitted on. A decreasing <code>xform</code>
 reverses the order of the scale. A draw then exceeds the threshold on the
 transformed scale where it lies below the corresponding value on the fitted
 scale, and the censoring record is remapped with the draws, so that a draw
@@ -243,8 +244,9 @@ sampled <code>nec</code> draw is marked censored where it is at or above the
 bound, so a censored draw may lie on the bound itself, and a draw equal to
 the threshold does not exceed it. A threshold equal to the lower bound is
 decided, because a draw at or below it does not exceed it. Where the bound
-is itself back-transformed, as with <code>xform = exp</code> on a fit to
-<code>crf(log(concentration))</code>, it can differ in the last digits from the
+is itself back-transformed, as for <code>"nec"</code> on a fit to
+<code>crf(log(concentration))</code> without <code>xform</code> or with
+<code>xform = exp</code>, it can differ in the last digits from the
 concentration it was computed from: <code>exp(log(100))</code> is slightly above
 100. A threshold given as that concentration then falls just inside or just
 outside the range, and the rounding decides whether its probability is

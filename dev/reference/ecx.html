@@ -105,7 +105,7 @@ bayesnecfit or bayesnecfit."><meta property="og:image" content="https://open-aim
 <span>  posterior <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  type <span class="op">=</span> <span class="st">"absolute"</span>,</span>
 <span>  x_range <span class="op">=</span> <span class="cn">NA</span>,</span>
-<span>  xform <span class="op">=</span> <span class="va">identity</span>,</span>
+<span>  xform <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  prob_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span>,</span>
 <span>  dpar <span class="op">=</span> <span class="cn">NULL</span></span>
@@ -154,8 +154,11 @@ just the median and 95 credible intervals.</p></dd>
 
 
 <dt id="arg-xform">xform<a class="anchor" aria-label="anchor" href="#arg-xform"></a></dt>
-<dd><p>A function to apply to the returned estimated concentration
-values.</p></dd>
+<dd><p><code>NULL</code>, the default, or a function. <code>NULL</code> returns
+the estimate on the scale the predictor was recorded on. A function is
+applied to the estimate on the scale the model was fitted on. The two
+differ only where <code>crf()</code> transforms the predictor inline; see
+Details.</p></dd>
 
 
 <dt id="arg-prob-vals">prob_vals<a class="anchor" aria-label="anchor" href="#arg-prob-vals"></a></dt>
@@ -231,11 +234,13 @@ cent rather than truncating it, so <code>ecx_val</code> is not capped at 100.</p
 <p>Where the curve does not reach the target anywhere in the predictor range
 the ECx is not identified and <code>NA</code> is returned, with a warning
 reporting how many draws were affected.</p>
-<p>Where <code>crf()</code> transforms the predictor inline, as in
-<code>crf(log(concentration))</code>, the ECx is on the transformed scale unless
-<code>xform</code> is supplied, and a message says so once per call. It names the
-transformation and the <code>xform</code> that returns the estimate on the
-recorded scale.</p>
+<p>The curve is searched on a grid of recorded concentrations. Where
+<code>crf()</code> transforms the predictor inline, as in
+<code>crf(log(concentration))</code>, the ECx is therefore returned on the
+recorded scale without <code>xform</code>, and no inverse is involved. A supplied
+<code>xform</code> is applied to the ECx on the transformed scale, so
+<code>xform = identity</code> returns that scale and <code>xform = exp</code> on
+<code>crf(log(concentration))</code> returns the recorded scale again.</p>
 <p>Calls to functions <code>ecx</code> and <code><a href="nsec.html">nsec</a></code> and
 <code><a href="compare_fitted.html">compare_fitted</a></code> do not require the same level of flexibility
 in the context of allowing argument <code>newdata</code>

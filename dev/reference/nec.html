@@ -101,7 +101,7 @@ bayesnecfit or bayesmanecfit."><meta property="og:image" content="https://open-a
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nec</span><span class="op">(</span></span>
 <span>  <span class="va">object</span>,</span>
 <span>  posterior <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  xform <span class="op">=</span> <span class="va">identity</span>,</span>
+<span>  xform <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  prob_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span>,</span>
 <span>  extrapolate <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span>,</span>
@@ -125,8 +125,11 @@ just the median and 95% credible intervals.</p></dd>
 
 
 <dt id="arg-xform">xform<a class="anchor" aria-label="anchor" href="#arg-xform"></a></dt>
-<dd><p>A function to apply to the returned estimated concentration
-values.</p></dd>
+<dd><p><code>NULL</code>, the default, or a function. <code>NULL</code> returns
+the estimate on the scale the predictor was recorded on. A function is
+applied to the estimate on the scale the model was fitted on. The two
+differ only where <code>crf()</code> transforms the predictor inline; see
+Details.</p></dd>
 
 
 <dt id="arg-prob-vals">prob_vals<a class="anchor" aria-label="anchor" href="#arg-prob-vals"></a></dt>
@@ -211,10 +214,18 @@ the joint refit <code>nec</code> returns an unlabelled vector. Use
 <code><a href="nsec.html">nsec</a></code> where a NSEC is wanted from every model regardless of
 type.</p>
 <p>Where <code>crf()</code> transforms the predictor inline, as in
-<code>crf(log(concentration))</code>, the estimate is on the transformed scale
-unless <code>xform</code> is supplied, and a message says so once per call. It
-names the transformation and the <code>xform</code> that returns the estimate on
-the recorded scale.</p>
+<code>crf(log(concentration))</code>, the <code>nec</code> parameter is sampled on the
+transformed scale. Without <code>xform</code> it is returned on the recorded
+scale, a concentration, by the inverse of the transformation. The inverse
+is exact for <code>log</code>, <code>log10</code>, <code>log2</code>, <code>log1p</code>,
+<code>sqrt</code> and <code>exp</code> of the predictor, alone or shifted by a
+constant, as in <code>log(concentration + 1)</code>. For any other
+transformation it is read off the prediction grid by linear interpolation,
+and a draw beyond that grid that is not censored is an error naming the
+remedy. A supplied <code>xform</code> is applied to the estimate on the
+transformed scale instead, so <code>xform = identity</code> returns that scale
+and <code>xform = exp</code> on <code>crf(log(concentration))</code> returns the
+exact inverse.</p>
     </div>
     <div id="capping-and-dropping">
     <h2>Capping and dropping</h2>
@@ -245,11 +256,11 @@ at the boundary, because every archived analysis is compared against it.</p>
 
 
 <p><code>extrapolate</code> chooses the bound the estimate is censored at. It is read
-on the recorded predictor scale, the scale the data were supplied on and the
-scale <code><a href="bnec.html">bnec</a></code> and <code><a href="nsec.html">nsec</a></code> take <code>x_range</code> on. That
-is neither the scale <code>crf()</code> fits on nor the scale <code>xform</code>
-displays, so under <code>crf(log(concentration))</code> the limit is a
-concentration and not a log concentration.</p>
+on the recorded predictor scale, the scale the data were supplied on, the
+scale <code><a href="bnec.html">bnec</a></code> and <code><a href="nsec.html">nsec</a></code> take <code>x_range</code> on, and
+the scale the estimate is returned on without <code>xform</code>. Under
+<code>crf(log(concentration))</code> the limit is therefore a concentration and
+not a log concentration, whatever <code>xform</code> is given.</p>
 <p><code>TRUE</code> removes the bound at both ends. It is accepted only where every
 component of the reported estimate samples a NEC. An NSEC is read off a
 fitted curve and a curve cannot be evaluated on an infinite grid, so where
@@ -286,11 +297,15 @@ the fit or the estimate is built instead.</p>
 <p>Two constraints on the reach of an extrapolation are reported rather than
 corrected. Where the <code>nec</code> prior stored on the fit is itself bounded at
 the prediction range, the posterior holds no draw beyond that bound and a
-wider limit returns the same truncated posterior; a message states the
-bound. The default prior no longer bounds <code>nec</code> above, so this applies
-to a fit made before that change, or to a user prior that supplies a bound.
-The lower bound of 0 that a predictor supplied as a concentration still
-takes is reported by the other arm of the same message. And a curve-read
+wider limit returns the same truncated posterior; where the call
+re-evaluates anything, a message states the bound. The default prior bounds
+<code>nec</code> to the tested range, so this applies to every fit made under the
+default <code>asymptote_observed = TRUE</code> of <code><a href="bnec.html">bnec</a></code>:
+<code>extrapolate</code> reaches above that range only for a fit made under
+<code>asymptote_observed = FALSE</code>, which lifts the upper bound, or with a
+user prior that sets a wider one. The lower bound at the lowest value tested
+applies under both settings and is reported by the other arm of the same
+message. And a curve-read
 component is measured from the control, so a lower limit below the lowest
 observed concentration extends the grid without extending the search, and
 those components stay censored at the control.</p>

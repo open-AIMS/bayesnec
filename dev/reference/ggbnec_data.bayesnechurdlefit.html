@@ -101,7 +101,7 @@
 <span>  <span class="va">x</span>,</span>
 <span>  add_nec <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  add_ecx <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  xform <span class="op">=</span> <span class="va">identity</span>,</span>
+<span>  xform <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span>,</span>
 <span>  which <span class="op">=</span> <span class="st">"combined"</span>,</span>
 <span>  resolution <span class="op">=</span> <span class="fl">1000</span>,</span>
@@ -126,10 +126,10 @@
 
 
 <dt id="arg-xform">xform<a class="anchor" aria-label="anchor" href="#arg-xform"></a></dt>
-<dd><p>A function to apply to the predictor where <code>crf()</code> does
-not transform it inline. Where it does, the predictor is returned on the
-recorded scale, the scale the prediction grid is built on, and <code>xform</code>
-is not applied.</p></dd>
+<dd><p><code>NULL</code>, the default, or a function to apply to the
+predictor where <code>crf()</code> does not transform it inline. Where it does,
+the predictor is returned on the recorded scale, the scale the prediction
+grid is built on, and <code>xform</code> is not applied.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

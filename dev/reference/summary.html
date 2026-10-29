@@ -186,7 +186,9 @@ contents of a <code><a href="https://paulbuerkner.com/brms/reference/brmsfit-cla
 an R2. In the case of a <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> object, summary
 displays the family distribution information, model weights and averaging
 method, and Bayesian R2 estimates for each individual model.
-Both report the number of divergent transitions after warmup for each model.
+Both report the number of divergent transitions after warmup for each model,
+and the installation of <span class="pkg">bayesnec</span> that fitted it (see
+<code><a href="bnec_version.html">bnec_version</a></code>).
 Warning messages are also printed to screen in case
 model fits are not satisfactory with regards to their Rhats or their
 divergent transitions.</p>
@@ -215,10 +217,12 @@ an ECx row equals a bare <code><a href="ecx.html">ecx</a></code> call given the 
 abbreviation such as <code>x_ran</code> is ignored without a message.</p>
 <p>The no-effect estimate is read from the posterior stored when the model was
 fitted, and is censored at the bound of the prediction grid stored then, so
-a range supplied now cannot change it. An <code>xform</code> supplied in
-<code>...</code> is applied to those stored draws and to the bound they are
-censored at, as <code><a href="nec.html">nec</a></code> applies it, so the no-effect row and the
-ECx rows are reported on one scale.</p>
+a range supplied now cannot change it. Where <code>crf()</code> transforms the
+predictor inline, that posterior is on the transformed scale, and the row is
+returned on the recorded scale as <code><a href="nec.html">nec</a></code> returns it. An
+<code>xform</code> supplied in <code>...</code> is applied to the stored draws and to
+the bound they are censored at instead, as <code><a href="nec.html">nec</a></code> applies it,
+so the no-effect row and the ECx rows are reported on one scale.</p>
 <p><code>posterior = TRUE</code> is refused. A summary reports each estimate as
 quantiles; the draws themselves are returned by <code><a href="nec.html">nec</a></code>,
 <code><a href="nsec.html">nsec</a></code> and <code><a href="ecx.html">ecx</a></code> with <code>posterior = TRUE</code>.</p>
@@ -276,6 +280,8 @@ and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.</
 <span class="r-out co"><span class="r-pr">#&gt;</span> ecx4param           0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Fitted by a version of bayesnec that did not record its installation.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Rhat &gt; 1.01 (no convergence):</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span>   -  nec4param</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span>   -  ecx4param</span>
@@ -328,6 +334,8 @@ and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.</
 <span class="r-out co"><span class="r-pr">#&gt;</span>    Estimate Est.Error Q2.5 Q97.5</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> R2     0.86      0.01 0.84  0.88</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Fitted by a version of bayesnec that did not record its installation.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>

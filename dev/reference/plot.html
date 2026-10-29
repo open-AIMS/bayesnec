@@ -108,7 +108,7 @@ bayesmanecfit."><meta property="og:image" content="https://open-aims.github.io/b
 <span>  add_nec <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  position_legend <span class="op">=</span> <span class="st">"topright"</span>,</span>
 <span>  add_ec10 <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  xform <span class="op">=</span> <span class="va">identity</span>,</span>
+<span>  xform <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  lxform <span class="op">=</span> <span class="va">identity</span>,</span>
 <span>  jitter_x <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  jitter_y <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -125,7 +125,7 @@ bayesmanecfit."><meta property="og:image" content="https://open-aims.github.io/b
 <span>  add_nec <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  position_legend <span class="op">=</span> <span class="st">"topright"</span>,</span>
 <span>  add_ec10 <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  xform <span class="op">=</span> <span class="va">identity</span>,</span>
+<span>  xform <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  lxform <span class="op">=</span> <span class="va">identity</span>,</span>
 <span>  jitter_x <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  jitter_y <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -179,7 +179,13 @@ estimated EC10 value and 95% credible intervals should be added to the plot.</p>
 
 
 <dt id="arg-xform">xform<a class="anchor" aria-label="anchor" href="#arg-xform"></a></dt>
-<dd><p>A function to be applied as a transformation of the x data.</p></dd>
+<dd><p><code>NULL</code>, the default, or a function. Where <code>crf()</code>
+does not transform the predictor inline, a function is applied to the x data
+and to the annotated estimates. Where it does, the x data are drawn on the
+recorded scale, and the annotation is the estimate <code><a href="nec.html">nec</a></code> or
+<code><a href="ecx.html">ecx</a></code> returns by default, which is on that scale. A function
+other than <code>identity</code> is then applied to the estimates on the
+transformed scale instead, as the estimators apply it.</p></dd>
 
 
 <dt id="arg-lxform">lxform<a class="anchor" aria-label="anchor" href="#arg-lxform"></a></dt>

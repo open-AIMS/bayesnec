@@ -248,27 +248,11 @@ highest by more than the contrast's standard error admits, tested one-sided
 at the 5% level under the mean-variance relationship of the fitted family,
 <code>bnec</code> reports that before fitting: an equation that estimates
 <code>bot</code> then has a prior describing the observed endpoint rather than the
-asymptote, and the <code>nec</code> or <code>ec50</code> prior places a threshold above
-that range in its tail rather than outside its support. How far into the tail
-is a property of the branch and of <code>prior_type</code> together rather than of
-either alone. Three of the four combinations set the spread by a coverage
-rule that reaches the farthest concentration tested, at the 95% level for
-<code>"uninformative"</code> on a predictor supplied as a recorded concentration
-and at the 98% level for <code>"regularizing"</code> on either, so the mass above
-the highest concentration is 0.025 or 0.01 at least and larger where the
-series extends further below its median on the log scale than above it. The
-fourth, <code>"uninformative"</code> on a predictor supplied already logged, sets
-the spread to 10 times the standard deviation of the distinct predictor
-values, which is the constant Fisher et al. (2024) state rather than a
-coverage width, and is much the widest of the four. The share of each entry's
-mass between the lowest and the highest value tested, and the share above the
-highest, on <code><a href="nec_data.html">nec_data</a></code> for the recorded-concentration branch and
-on <code>log(herbicide$concentration)</code> for the already-logged one:</p>
-<table class="table table"><tr><td><strong>predictor</strong></td><td><strong>prior_type</strong></td><td><strong>inside</strong></td><td><strong>above</strong></td></tr><tr><td>recorded</td><td>uninformative</td><td>0.755</td><td>0.220</td></tr><tr><td>recorded</td><td>regularizing</td><td>0.811</td><td>0.179</td></tr><tr><td>logged</td><td>uninformative</td><td>0.116</td><td>0.442</td></tr><tr><td>logged</td><td>regularizing</td><td>0.980</td><td>0.010</td></tr></table><p>So the entry does correspondingly little to locate a threshold in the logged,
-<code>"uninformative"</code> case and rather more in the other three. Inspect the
-generated
-entries with <code><a href="get_priors.html">get_priors</a></code> and pass a scientifically justified
-prior through <code>prior</code> where information beyond the design is available.
+asymptote, and the <code>nec</code> and <code>ec50</code> priors, which are bounded to
+the tested range, exclude a threshold above that range. Inspect the
+generated entries with <code><a href="get_priors.html">get_priors</a></code> and pass a scientifically
+justified prior through <code>prior</code> where information beyond the design is
+available.
 Neither value of <code>prior_type</code> corrects a design that stopped before the
 asymptote; <code>asymptote_observed</code> is the argument for that. With a
 <code>disp("power")</code> term on a <code>Gamma</code>, <code>gaussian</code> or
@@ -294,22 +278,45 @@ variation between groups.</p></dd>
 <dt id="arg-asymptote-observed">asymptote_observed<a class="anchor" aria-label="anchor" href="#arg-asymptote-observed"></a></dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></code> declaring whether the
 highest predictor level reached the lower asymptote of the curve. The default
-<code>TRUE</code> is the assumption both default prior sets are built on, and
-leaves every generated entry exactly as it was. <code>FALSE</code> states that the
-series stopped short of the asymptote, which changes the <code>bot</code> prior and
-the initial-value search and nothing else. The <code>bot</code> prior's central 95%
-then spans from the floor of the response — zero for every family but
-gaussian, and zero for a gaussian response that is non-negative throughout
-— to the mean response at the end of the predictor series, so that mean is
-read as an upper bound on <code>bot</code> rather than as an estimate of it. That
-is the anchor the <code>"regularizing"</code> set already locates <code>bot</code> at:
-the highest predictor value alone on a replicated design, and as many of the
-highest values as it takes to reach three observations, or a twentieth of
-them, on a sparsely replicated one, never reaching past the top fifth of the
-distinct values. The
+<code>TRUE</code> is the assumption both default prior sets are built on. Under it
+the <code>nec</code> and <code>ec50</code> priors are bounded to the tested range, from
+the lowest predictor value to the highest, because on a design that reached
+the asymptote the decline begins, and passes its midpoint, inside that range.
+<code>FALSE</code> states that the series stopped short of the asymptote, which
+changes the <code>bot</code> prior, removes the upper bound of the <code>nec</code> and
+<code>ec50</code> priors, and widens the initial-value search. The <code>bot</code>
+prior's central 95% then spans from the floor of the response — zero for
+every family but gaussian, and zero for a gaussian response that is
+non-negative throughout — to the mean response at the end of the predictor
+series, so that mean is read as an upper bound on <code>bot</code> rather than as
+an estimate of it. That is the anchor the <code>"regularizing"</code> set already
+locates <code>bot</code> at: the highest predictor value alone on a replicated
+design, and as many of the highest values as it takes to reach three
+observations, or a twentieth of them, on a sparsely replicated one, never
+reaching past the top fifth of the distinct values. The
 initial-value band is extended to the same floor, because a band built from
 the observed response rejects the very draws the new prior produces and the
 fit then falls back to <span class="pkg">Stan</span>'s own initialisation.</p>
+<p>Without the upper bound, a threshold above the highest concentration lies in
+the tail of the <code>nec</code> or <code>ec50</code> prior rather than outside its
+support. The lower bound stays at the lowest value tested. How far into the
+tail is a property of the branch and of <code>prior_type</code> together rather
+than of either alone. Three of the four combinations set the spread by a
+coverage rule that reaches the farthest concentration tested, at the 95%
+level for <code>"uninformative"</code> on a predictor supplied as a recorded
+concentration and at the 98% level for <code>"regularizing"</code> on either. The
+fourth, <code>"uninformative"</code> on a predictor supplied already logged, sets
+the spread to 10 times the standard deviation of the distinct predictor
+values, which is the constant Fisher et al. (2024) state rather than a
+coverage width, and is much the widest of the four. The share of each
+entry's mass between the lowest and the highest value tested, and the share
+above the highest, under <code>FALSE</code>, on <code><a href="nec_data.html">nec_data</a></code> for the
+recorded-concentration branch and on <code>log(herbicide$concentration)</code> for
+the already-logged one:</p>
+<table class="table table"><tr><td><strong>predictor</strong></td><td><strong>prior_type</strong></td><td><strong>inside</strong></td><td><strong>above</strong></td></tr><tr><td>recorded</td><td>uninformative</td><td>0.775</td><td>0.225</td></tr><tr><td>recorded</td><td>regularizing</td><td>0.819</td><td>0.181</td></tr><tr><td>logged</td><td>uninformative</td><td>0.208</td><td>0.792</td></tr><tr><td>logged</td><td>regularizing</td><td>0.990</td><td>0.010</td></tr></table><p>So the entry does correspondingly little to locate a threshold in the logged,
+<code>"uninformative"</code> case and rather more in the other three. A
+threshold the posterior places above the prediction range is reported as
+censored there; see the <code>extrapolate</code> argument of <code><a href="nec.html">nec</a></code>.</p>
 <p>The declaration is the user's because the data cannot make it: a flat
 response at the top of the series is what a complete design and a truncated
 one both look like. <code>bnec</code> reports a response still declining at
@@ -320,12 +327,14 @@ complete.</p>
 link other than the identity, has no floor that can be derived from the data,
 and <code>FALSE</code> is refused for it rather than a floor being invented. Supply
 a <code>bot</code> prior through <code>prior</code> in that case.</p>
-<p>Fourteen of the 23 equations of the "all" group have no <code>bot</code>
-parameter and so have no lower asymptote to estimate. Eleven of them fall to
+<p>Fifteen of the 24 equations of the "all" group have no <code>bot</code>
+parameter. One is the constant equation "ecxflat". The other fourteen
+change with concentration and have no lower asymptote to estimate. Eleven of
+them fall to
 zero, and <code>neclin</code>, <code>neclinhorme</code> and <code>ecxlin</code> decay by
 subtraction and are unbounded below. On a design that did not reach the
-asymptote the data cannot distinguish them from the equations that estimate
-<code>bot</code>,
+asymptote the data cannot distinguish those fourteen from the equations that
+estimate <code>bot</code>,
 so a model set holding both is reported. Whether the response can reach the
 floor is a property of the endpoint rather than of the data — zero is
 attainable for a lethality endpoint and usually not for a growth or
@@ -387,7 +396,7 @@ an object of class <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></c
     <div id="details">
     <h2>Details</h2>
     <p><b>Overview</b></p>
-<p><code>bnec</code> serves as a wrapper for (currently) 23 (mostly) non-linear
+<p><code>bnec</code> serves as a wrapper for (currently) 24 (mostly) non-linear
 equations that are classically applied to concentration(dose)-response
 problems. The primary goal of these equations is to provide the user with
 estimates of No-Effect-Concentration (NEC),
@@ -425,16 +434,17 @@ parameter will be fit; "nec" meaning only models with a specific NEC step
 parameter will be fit; "bot_free" meaning only models without a "bot"
 parameter (without a bottom plateau) will be fit; "zero_bounded" are models
 that are bounded to be zero; or "decline" excludes all hormesis models, i.e.,
-only allows a strict decline in response across the whole predictor range.
+only allows a strict decline in response across the whole predictor range,
+or no change, for the constant equation "ecxflat".
 Each group names a shape rather than a set of equations admissible for a
 given response — "decline" includes the linear-decay models, which are
 dropped for a zero-bounded or 0, 1 bounded response — so a group string is
 filtered by the same family check that <code>model = "all"</code> is. See
 <code><a href="models.html">models</a></code>.
 The constant equation "ecxflat", whose mean does not change with
-concentration, belongs to none of these groups. It is fitted where it is
-named, alone or with other equations, and where the response does not vary,
-as described below. It joins "all", "ecx" and "decline" at the 3.0 release.
+concentration, belongs to "all", "ecx" and "decline", so the default set
+includes it. It is also fitted alone where the response does not vary, as
+described below.
 Notice that if one of these group strings is provided together with a
 user-specified named list for the <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm</a></code>'s argument
 <code>prior</code>, the list names need to contain

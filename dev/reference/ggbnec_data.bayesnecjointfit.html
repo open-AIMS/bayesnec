@@ -101,7 +101,7 @@
 <span>  <span class="va">x</span>,</span>
 <span>  add_nec <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  add_ecx <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  xform <span class="op">=</span> <span class="va">identity</span>,</span>
+<span>  xform <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span>,</span>
 <span>  group <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -125,8 +125,13 @@
 
 
 <dt id="arg-xform">xform<a class="anchor" aria-label="anchor" href="#arg-xform"></a></dt>
-<dd><p>A function to apply to the returned estimated concentration
-values.</p></dd>
+<dd><p><code>NULL</code>, the default, or a function. Where <code>crf()</code>
+does not transform the predictor inline, a function is applied to the
+predictor and to the estimates. Where it does, the predictor is on the
+recorded scale, and the estimates are those <code><a href="nec.html">nec</a></code> and
+<code><a href="ecx.html">ecx</a></code> return by default, which are on that scale. A function
+other than <code>identity</code> is then applied to the estimates on the
+transformed scale instead, as the estimators apply it.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

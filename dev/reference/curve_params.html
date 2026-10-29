@@ -102,19 +102,19 @@ parameter per equation.</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">curve_params</span><span class="op">(</span><span class="va">object</span>, summary <span class="op">=</span> <span class="cn">TRUE</span>, xform <span class="op">=</span> <span class="va">identity</span>, <span class="va">...</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">curve_params</span><span class="op">(</span><span class="va">object</span>, summary <span class="op">=</span> <span class="cn">TRUE</span>, xform <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'bayesnecfit'</span></span>
-<span><span class="fu">curve_params</span><span class="op">(</span><span class="va">object</span>, summary <span class="op">=</span> <span class="cn">TRUE</span>, xform <span class="op">=</span> <span class="va">identity</span>, <span class="va">...</span><span class="op">)</span></span>
+<span><span class="fu">curve_params</span><span class="op">(</span><span class="va">object</span>, summary <span class="op">=</span> <span class="cn">TRUE</span>, xform <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'bayesmanecfit'</span></span>
-<span><span class="fu">curve_params</span><span class="op">(</span><span class="va">object</span>, summary <span class="op">=</span> <span class="cn">TRUE</span>, xform <span class="op">=</span> <span class="va">identity</span>, <span class="va">...</span><span class="op">)</span></span>
+<span><span class="fu">curve_params</span><span class="op">(</span><span class="va">object</span>, summary <span class="op">=</span> <span class="cn">TRUE</span>, xform <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'bayesnechurdlefit'</span></span>
-<span><span class="fu">curve_params</span><span class="op">(</span><span class="va">object</span>, summary <span class="op">=</span> <span class="cn">TRUE</span>, xform <span class="op">=</span> <span class="va">identity</span>, <span class="va">...</span><span class="op">)</span></span>
+<span><span class="fu">curve_params</span><span class="op">(</span><span class="va">object</span>, summary <span class="op">=</span> <span class="cn">TRUE</span>, xform <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'bayesnecgroupfit'</span></span>
-<span><span class="fu">curve_params</span><span class="op">(</span><span class="va">object</span>, summary <span class="op">=</span> <span class="cn">TRUE</span>, xform <span class="op">=</span> <span class="va">identity</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">curve_params</span><span class="op">(</span><span class="va">object</span>, summary <span class="op">=</span> <span class="cn">TRUE</span>, xform <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -133,8 +133,10 @@ return the summary table (the default) or the underlying posterior draws.</p></d
 
 
 <dt id="arg-xform">xform<a class="anchor" aria-label="anchor" href="#arg-xform"></a></dt>
-<dd><p>A function applied to <code>nec</code> and <code>ec50</code>, and to no
-other parameter. See Details.</p></dd>
+<dd><p><code>NULL</code>, the default, or a function, applied to
+<code>nec</code> and <code>ec50</code> and to no other parameter. <code>NULL</code> returns
+those two on the scale the predictor was recorded on. A function is applied
+to them on the scale the model was fitted on. See Details.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
@@ -226,14 +228,17 @@ scale. The link of each block is reported in the <code>link</code> column, and a
 message names any that is not the identity.</p>
 <p><b><code>xform</code> applies to <code>nec</code> and <code>ec50</code> only.</b> Those two
 are measured on the predictor axis, so where <code>crf()</code> transforms the
-predictor inline — <code>crf(sqrt(x), ...)</code> — they are on the
-transformed scale, exactly as <code><a href="nec.html">nec</a></code> and <code><a href="ecx.html">ecx</a></code> are,
-and <code>xform</code> is the inverse that brings them back. Every other
-parameter is a response level or a shape parameter and is not on the
-predictor axis at all, so <code>xform</code> is not applied to it. Where the
-predictor is transformed inline and <code>xform</code> was left at
-<code>identity</code>, a message says which parameters are on the transformed
-scale.</p>
+predictor inline — <code>crf(sqrt(x), ...)</code> — they are sampled on the
+transformed scale. Without <code>xform</code> they are returned on the recorded
+scale by the inverse of the transformation, as <code><a href="nec.html">nec</a></code> returns
+the <code>nec</code> parameter: exactly where the inverse has a closed form, and
+otherwise by interpolating on the prediction grid. A draw beyond that grid
+then has no value, so it is <code>NA</code>, the row summarising it is
+<code>NA</code>, and a message names the remedy. A supplied <code>xform</code> is
+applied to them on the transformed scale, so <code>xform = identity</code>
+returns that scale. Every other parameter is a response level or a shape
+parameter and is not on the predictor axis at all, so it is returned as
+sampled.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>

@@ -140,11 +140,12 @@ included. It has no step and no "nec" parameter, so its no-effect estimate
 is an NSEC. The curve of no draw reaches an ECx target, so every ECx it
 gives is reported as censored above the upper end of the prediction range,
 and so is its NSEC in every draw whose level is above the reference. It
-belongs to no model group in this release, so none of <code>models()</code>, a
-group name, a numeric range or <code>max_pars</code> lists it; name it to fit it,
-as in <code>crf(x, "ecxflat")</code> or <code>crf(x, c("ecxflat", "nec4param"))</code>.
-It joins "all", "ecx" and "decline" at the 3.0 release, which changes every
-model-averaged result and is left to a release for that reason.
+belongs to the "all", "ecx" and "decline" groups and to no other, so the
+default set includes it, and the model weights of a set built from one of
+those groups are computed with a mean that does not change with
+concentration among the candidates. Where its weight is appreciable, its
+censored draws enter the model-averaged ECx and NSEC in proportion to that
+weight.
 <code><a href="bnec.html">bnec</a></code> fits it alone, whatever set was requested, to a bounded
 response with every observation at one bound; see the section of
 <code><a href="bnec.html">?bnec</a></code> on a response that does not vary.</p>
@@ -217,14 +218,15 @@ check described above drops them where the family requires it; what the
 group name does not do is state which equations that check will keep. Code
 that needs the admissible set should ask for it directly, by passing the
 numeric range — <code>models(c(0, 1))</code> — rather than reading a group.</p>
-<p>The <code>"bot_free"</code> group contains the fourteen equations of the
-<code>"all"</code> group with no <code>bot</code> parameter. It includes the eleven
+<p>The <code>"bot_free"</code> group contains fourteen of the fifteen equations of
+the <code>"all"</code> group with no <code>bot</code> parameter. It includes the eleven
 equations in <code>"zero_bounded"</code>, whose fitted mean falls to zero, and the
 three
 linear-decay equations <code>"neclin"</code>, <code>"neclinhorme"</code> and
 <code>"ecxlin"</code>, whose fitted mean is unbounded below. The name therefore
 does not mean that <code>bot</code> is estimated freely or that every equation in
-the group approaches zero.</p>
+the group approaches zero. The fifteenth, <code>"ecxflat"</code>, is left out
+because its mean does not change with concentration.</p>
 <p>Set <code>max_pars</code> to restrict the resolved set to equations with no more
 than that number of curve parameters. The limit can be used by itself or
 combined with a model group, response range, or fitted object. The returned
@@ -287,7 +289,7 @@ machinery unchanged.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $ecx</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [1] "ecx4param"   "ecxlin"      "ecxexp"      "ecxsigm"     "ecxwb1"     </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [6] "ecxwb2"      "ecxwb1p3"    "ecxwb2p3"    "ecxll5"      "ecxll4"     </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [11] "ecxll3"      "ecxhormebc4" "ecxhormebc5"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [11] "ecxll3"      "ecxhormebc4" "ecxhormebc5" "ecxflat"    </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $all</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"    </span>
@@ -295,7 +297,7 @@ machinery unchanged.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [9] "nechorme4pwr"  "nechormepwr01" "ecxlin"        "ecxexp"       </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [13] "ecxsigm"       "ecx4param"     "ecxwb1"        "ecxwb2"       </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [17] "ecxwb1p3"      "ecxwb2p3"      "ecxll5"        "ecxll4"       </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [21] "ecxll3"        "ecxhormebc4"   "ecxhormebc5"  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [21] "ecxll3"        "ecxhormebc4"   "ecxhormebc5"   "ecxflat"      </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $bot_free</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [1] "nec3param"     "nechorme"      "necsigm"       "neclin"       </span>
@@ -311,7 +313,7 @@ machinery unchanged.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $decline</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [1] "nec3param" "nec4param" "neclin"    "ecxlin"    "ecxexp"    "ecxsigm"  </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [7] "ecx4param" "ecxwb1"    "ecxwb2"    "ecxwb1p3"  "ecxwb2p3"  "ecxll5"   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [13] "ecxll4"    "ecxll3"   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [13] "ecxll4"    "ecxll3"    "ecxflat"  </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $hormesis</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "nechorme"      "nechorme4"     "neclinhorme"   "nechormepwr"  </span>
@@ -482,6 +484,10 @@ machinery unchanged.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ec50 ~ 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> slope ~ 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $ecxflat</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> y ~ top + 0 * atan(x) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> top ~ 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="co"># models that are suitable for 0,1 bounded data</span></span></span>
 <span class="r-in"><span><span class="fu">models</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $nec3param</span>
@@ -606,6 +612,10 @@ machinery unchanged.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ec50 ~ 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> slope ~ 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $ecxflat</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> y ~ top + 0 * atan(x) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> top ~ 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="co"># models with no more than three curve parameters</span></span></span>
 <span class="r-in"><span><span class="fu">models</span><span class="op">(</span>max_pars <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $nec3param</span>
@@ -653,6 +663,10 @@ machinery unchanged.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> top ~ 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> beta ~ 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ec50 ~ 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $ecxflat</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> y ~ top + 0 * atan(x) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> top ~ 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
