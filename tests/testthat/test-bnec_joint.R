@@ -165,6 +165,17 @@ test_that("bnec_joint refuses a crf() predictor with a leading minus (#438)", {
     }
   )
   expect_match(err, "is written with a leading minus")
+  # Any other formula operator at the top of the predictor likewise (#479).
+  err <- withCallingHandlers(
+    tryCatch(bnec_joint(o, formula = y ~ crf(x^2, "nec3param")),
+             error = conditionMessage),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_match(err, "has the formula operator ^ at its top level",
+               fixed = TRUE)
   expect_false(any(grepl("Refitting jointly", msgs)))
   expect_null(captured$formula)
 })
@@ -1104,6 +1115,17 @@ test_that("a supplied formula with a leading minus in crf() is refused (#438)", 
     }
   )
   expect_match(err, "is written with a leading minus")
+  # Any other formula operator at the top of the predictor likewise (#479).
+  err <- withCallingHandlers(
+    tryCatch(bnec_joint(g, formula = y ~ crf(log(x) + 1, "nec3param")),
+             error = conditionMessage),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_match(err, "has the formula operator + at its top level",
+               fixed = TRUE)
   expect_false(any(grepl("Refitting jointly", msgs)))
 })
 

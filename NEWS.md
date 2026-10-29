@@ -3128,6 +3128,40 @@
   its prior when updated. The precompiled vignettes were rendered without the
   bound, and their numbers change at the next precompile (#483).
 
+- A `crf()` predictor is read one way on every path, as a model formula reads
+  it. A formula operator at the top of the predictor, as in `crf(x - 1)`,
+  `crf(log(x) - 1)`, `crf(log(x) + 1)` or `crf(x^2)`, is now refused, with a
+  message that names the expression and gives it written inside `I()`, as in
+  `crf(I(x - 1))`. The operators are `+`, `-`, `*`, `/`, `:`, `^` and `%in%`.
+  The model frame and the `brms` formula read such an operator as formula
+  syntax, so `crf(x - 1)` and `crf(x^2)` were fitted on `x`, and
+  `crf(log(x) - 1)` on `log(x)`. `ecx()`, `nsec()` and the scale message read
+  the same predictor as arithmetic, so the ECx of `crf(x - 1)` was reported
+  one unit low and that of `crf(x^2)` on the scale of `x^2`. `crf(log(x) + 1)`
+  was refused by a parse error that named neither the term nor the cause. The
+  refusal is raised once per call, before anything is fitted, by the functions
+  that refuse `crf(-x)`. A fit made with such a predictor by an earlier
+  version is refused by the functions that rebuild its model frame, among
+  them `ecx()`, `nsec()` and `autoplot()`, and `nec()` reads it on the scale
+  it was fitted on. Parentheses around the predictor and a unary plus are
+  dropped on every path, as the formula drops them: `crf((log(x)))` was fitted
+  on `log(x)` while its estimates were reported on the scale of `x`, with no
+  scale message, and it is now read as `crf(log(x))`. An operator inside a
+  function call or under `I()` is accepted, and one inside a nested call, as
+  in `crf(sqrt(log(x) + 1))`, no longer fails with the same parse error.
+  Stan has no `I()`, so a predictor written inside it is now passed to `brms`
+  as the expression inside it, in parentheses: `crf(I(log(x) + 1))` is
+  written into the curve as `(log(x) + 1)`. The model frame and the
+  estimators keep the `I()`. Nested `I()` calls are removed from the Stan
+  expression too, so `crf(log(I(x - 1)))` compiles as `log((x - 1))`.
+  `crf(I(-x))`, the form the refusal of `crf(-x)`
+  offers, and `crf(I(x - 1))` previously gave a Stan program that failed to
+  compile, and both now compile. Any predictor that is neither a column name
+  nor a function call is written in parentheses, so that the curve's own
+  terms cannot regroup it. The formula passed to `brms` for `crf(x)`,
+  `crf(log(x))` and other column names or function calls without `I()` is unchanged
+  (#479).
+
 ## Documentation
 
 - `?autoplot` states that a `bayesmanecfit` with `multi_facet = FALSE`

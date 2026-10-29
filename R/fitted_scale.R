@@ -98,12 +98,6 @@ first_transformed_fit <- function(x) {
 #' \code{sub_x_transformation()} applies to every estimate, so the message is
 #' raised exactly where an estimate is on a transformed scale.
 #'
-#' Do not use \code{pop_var_is_transformed()} here, as the plotting paths do.
-#' It reads the model frame, and \code{stats::model.frame()} takes the leading
-#' minus of \code{crf(-x)} as the removal of a term, so it reports that
-#' predictor as untransformed while \code{sub_x_transformation()} negates the
-#' estimate.
-#'
 #' @param object A fitted object or a \code{prebayesnecfit}. A model set, a
 #' group and a hurdle pair are read from their first equation, their first
 #' level and their growth component, all of which share the one formula.
@@ -125,8 +119,8 @@ inline_x_transform <- function(object) {
   # that cannot be parsed fails in whatever the estimator computes next, and is
   # reported there.
   x_call <- tryCatch(crf_x_call(formula), error = function(e) NULL)
-  # inherits() rather than is.call(), as in sub_x_transformation(), which
-  # returns a parenthesised predictor such as crf((x)) unchanged.
+  # inherits() rather than is.call(), as sub_x_transformation() tests it, so
+  # that the two agree on which predictors are transformed.
   if (!inherits(x_call, "call")) {
     return(NULL)
   }
