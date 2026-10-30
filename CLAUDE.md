@@ -60,7 +60,9 @@ number and does not say what changed. Changes since the last CRAN release go in
 `NEWS.md`, and development history stays on the pull request or issue. A figure
 computed outside the build names the commit it ran on. Only a CRAN release
 number means anything to a user: the development numbers in `DESCRIPTION` were
-never released.
+never released. Where a vignette follows a published paper that the package has
+since departed from, it says so once, citing the paper, without a version
+number.
 
 ### Reading a rendered vignette
 
