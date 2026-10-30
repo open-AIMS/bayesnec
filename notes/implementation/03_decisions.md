@@ -81,8 +81,8 @@ in a single worktree.
 
 ## D10 — Sequencing against the toxval migration
 
-**Step 3 is superseded by D11 (2026-09-06):** the estimator bug fixes are made in
-`bayesnec` and the migration is deferred. The rest of this entry stands.
+Superseded by D46 (2026-10-30), which abandons the migration. D11 had already
+replaced step 3.
 
 The queue is split so that **no Tier 1 item edits a file the migration moves.**
 That was checked, not assumed: the migration deletes `R/ecx.R` and `R/nsec.R`
@@ -119,6 +119,9 @@ exist yet. toxval's Phase 1 must land and be installable first; in the interim
 bayesnec would need a `Remotes:` entry. That ordering is a hard constraint, not
 a preference.
 
+D46 (2026-10-30) makes the paragraph above moot: `bayesnec` does not import
+`toxval`.
+
 ## D9 — #141, `get_priors()`
 
 **Both entry points, one function.**
@@ -135,6 +138,9 @@ Document that the two entry points answer different questions and can disagree
 once a user has overridden a prior.
 
 ## D11 — The estimator fixes are made in `bayesnec`, and the migration is deferred
+
+D46 (2026-10-30) replaces this entry's statement that the estimators still
+migrate to `toxval`: they stay in `bayesnec`.
 
 RF, 2026-09-06. **This supersedes D10's step 3.** `ecx()`, `nsec()` and
 `ecnsec()` still migrate to `toxval`, and #255 remains the tracker, but the
@@ -642,3 +648,21 @@ enters the average as a censored value; implementing that needs a bound for
 each averaged draw, which no summary in the package represents, and D44 left
 this function as the only place that would need it. Removal is a breaking change
 for the 3.0 release. `gm_mean()`, used only by it, is removed with it.
+
+## D46 — Retention of the estimators in `bayesnec` (#255)
+
+RF, 2026-10-30: `ecx()`, `nsec()` and `ecnsec()` stay in `bayesnec`, and
+`bayesnec` does not import `toxval`. #255 is closed as superseded. Under toxval
+decision T35 (toxval#68), `toxval` contains the `toxval_predict()` methods for
+`bayesnec` fits and lists `bayesnec` under `Suggests`, so the dependency
+reversal #255 tracked is no longer needed. This replaces D10, the
+`Imports: toxval` constraint in D8, and D11's statement that the estimators
+still migrate.
+
+`predev` was compared with toxval's open branches on 2026-10-29. Under equivalent
+calls the two packages return the same estimates: after #527 adopted toxval's
+amended NSEC rule and its 500-point grid, paired NSEC draws agreed on a
+model-averaged fixture and on a heavily censored `brmsfit`. The comparison
+covers `bayesnecfit` and `bayesmanecfit`, the classes `toxval` supports. Both
+packages export `ecx()` and `nsec()`, and the one attached last masks the other
+without a warning. The detail is on #255.
