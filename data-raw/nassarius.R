@@ -3,9 +3,13 @@
 # snail exposed.
 #
 # The source file is not distributed with the package. It holds one row per
-# tank and one column per snail within that tank, with mortality recorded in
+# row of six or seven snails and one column per snail, with mortality recorded in
 # four different ways rather than as zeros -- which is the whole reason this
 # reconstruction is worth documenting. See vignette("example6").
+#
+# The file labels each row as a tank, and the code keeps that name. The snails
+# were mixed before they were recorded, so a row is not the tank a snail was
+# held in (see ?nassarius).
 #
 # The contaminants are anonymised as A-D and the dose units are deliberately
 # not stated; the dose values are the tested nominal concentrations on an
@@ -44,12 +48,12 @@ long <- long |>
     dead_coded = !is.na(y) & y <= SENTINEL_CUT
   )
 
-# --- 2. Blank reps in a present tank ----------------------------------------
-# An empty cell means either that the tank held fewer snail positions than the
-# widest tank in the file (no snail: drop) or that a snail present at the start
+# --- 2. Blank reps in a present row -----------------------------------------
+# An empty cell means either that the row held fewer snail positions than the
+# widest row in the file (no snail: drop) or that a snail present at the start
 # gave no measurement (death: keep as a zero). The two are separated by the
 # number of positions the round actually used, which is the modal filled count
-# per tank within that round.
+# per row within that round.
 # A sentinel death code is itself a filled cell, so counting non-NA is enough;
 # adding dead_coded on top would count those cells twice and inflate n_pos.
 positions <- long |>
@@ -68,10 +72,10 @@ long <- long |>
   dplyr::ungroup() |>
   dplyr::filter(!is.na(y) | dead_blank)
 
-# --- 3 & 4. Absent tanks, and doses absent altogether -----------------------
-# A treatment that ran with fewer tanks than the round's standard lost the
-# missing tanks entirely; a treatment that does not appear at all was run and
-# killed everything. Both are reinstated as fully dead tanks. Rounds are
+# --- 3 & 4. Absent rows, and doses absent altogether ------------------------
+# A treatment that ran with fewer rows than the round's standard lost the
+# snails of the missing rows; a treatment that does not appear at all was run
+# and killed everything. Both are reinstated as rows of dead snails. Rounds are
 # assumed to have been taken to a common top dose of 20, and round 2 is known
 # to have had no survivors from 0.30 upward.
 TOP_DOSE <- 20
@@ -80,7 +84,7 @@ tanks_per_dose <- long |>
   dplyr::group_by(round, dose) |>
   dplyr::summarise(n_tanks = dplyr::n_distinct(tank), .groups = "drop")
 
-# The standard tank count is the modal count across the round's non-control
+# The standard row count is the modal count across the round's non-control
 # doses; controls are replicated more heavily and would bias a mean.
 standard_tanks <- tanks_per_dose |>
   dplyr::filter(dose > 0) |>
@@ -100,7 +104,7 @@ missing_doses <- dplyr::bind_rows(
 )
 
 dead_rows <- dplyr::bind_rows(
-  # tanks missing from a dose that is present
+  # rows missing from a dose that is present
   tanks_per_dose |>
     dplyr::left_join(standard_tanks, by = "round") |>
     dplyr::filter(n_tanks < n_std) |>

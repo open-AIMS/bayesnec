@@ -875,9 +875,8 @@ the sampler screen can return an outcome that more sampling does not fix. The
 `nassarius` data demonstrate both.
 
 The data are survival counts for the tropical marine snail *Nassarius dorsatus*
-exposed to each of four contaminants, recorded per individual within replicate
-tanks [@trenfield2016]. `?nassarius` documents the columns and the provenance of
-the response.
+exposed to each of four contaminants, recorded per individual [@trenfield2016].
+`?nassarius` documents the columns and the provenance of the response.
 
 ```{r nass-data}
 data(nassarius)
@@ -897,9 +896,12 @@ entirely from reinstated records. That is a fact about the data rather than abou
 [*Hurdle and zero-inflated concentration-response models*](https://open-aims.github.io/bayesnec/articles/example6.html) runs the corresponding
 sensitivity analysis on contaminant B.
 
-Survival is binary per individual, so the natural unit for a
-concentration-response model is the tank: the number alive out of the number
-exposed.
+Survival is binary per individual, and a binomial fit takes the number alive
+out of the number exposed. The source file lists the snails of each treatment in
+rows of six or seven, labelled as tanks, and the snails in each row are summed
+below. However, the snails were mixed before they were recorded, so a row is not
+the tank a snail was held in, and these counts contain no information about
+variation between tanks.
 
 ```{r nass-aggregate}
 surv <- aggregate(alive ~ dose + tank + contaminant,
@@ -928,8 +930,8 @@ value is; the point is set out in step 4.
 ctrl_pos <- min(surv$dose[surv$dose > 0]) / 2
 surv$dose_plot <- ifelse(surv$dose == 0, ctrl_pos, surv$dose)
 dose_breaks <- c(ctrl_pos, 0.01, 0.04, 0.16, 0.63, 2.5, 20)
-# Most tanks sit at exactly 1 or exactly 0, so the points overplot and the
-# number of tanks at each dose cannot be read. The vertical jitter is a display
+# Most rows are at exactly 1 or exactly 0, so the points overplot and the
+# number of rows at each dose cannot be read. The vertical jitter is a display
 # device and the seed is set so the figure is reproducible; no value shown is
 # the value recorded, and the fit uses the recorded proportions.
 set.seed(17)
@@ -992,7 +994,7 @@ well determined the ratio is.
 Each draw of the statistic compares one observed residual sum against a single
 simulated replicate, so the spread of the posterior is dominated by
 replicate-to-replicate simulation noise rather than by uncertainty about a
-dispersion parameter. At a design of this size --- `r nrow(surv)` tanks across
+dispersion parameter. At a design of this size --- `r nrow(surv)` rows across
 `r length(unique(surv$dose))` doses --- its power to separate a genuine departure
 from noise is low, and a rule that asks only whether the interval excludes 1 will
 detect gross over-dispersion and nothing else. `P(>1)` is what the interval

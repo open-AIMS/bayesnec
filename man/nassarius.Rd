@@ -23,8 +23,8 @@ analysis of the survivors alone silently conditions on survival.
 \bold{Mortality is recorded as a zero growth value}, with \code{alive}
 giving the same information as an explicit indicator. In the source records
 deaths were not coded that way: they appeared as one of four traces --- a
-sentinel value far below the real data, a blank replicate within a tank that
-ran, a tank missing from a treatment that ran, or a treatment missing from
+sentinel value far below the real data, a blank position in a row of the
+file, a row missing from a treatment that ran, or a treatment missing from
 the file entirely because nothing in it survived. Reconstructing them is
 part of the worked example.
 
@@ -46,6 +46,13 @@ of its fourteen doses and would not register that the contaminant is lethal
 beyond them. It is the clearest case in these data for modelling the exposed
 cohort rather than the survivors.
 
+The source file lists the snails of each treatment in rows of six or seven,
+labelled as tanks. The snails were mixed before they were recorded, so a row
+is not the tank a snail was held in. Summing the snails in each row gives
+valid binomial counts, but the data contain no information about variation
+between tanks, and a group-level term on \code{tank} does not describe the
+design.
+
 The contaminants are anonymised and the dose units are not stated. Dose
 values are the tested nominal concentrations on an undisclosed scale, so
 their relative spacing --- and therefore every toxicity estimate derived
@@ -56,14 +63,15 @@ The columns are as follows:
 \describe{
 \item{contaminant}{The test, anonymised as A--D (fct).}
 \item{dose}{Nominal exposure concentration, undisclosed units (dbl).}
-\item{tank}{Replicate tank identifier, unique within contaminant (chr).}
+\item{tank}{Row of the source file within a treatment, unique within
+contaminant (chr). It does not identify the tank a snail was held in.}
 \item{alive}{1 if the snail survived and was measured, 0 if it died (int).}
 \item{growth}{Growth over the exposure, 0 for snails that died (dbl).}
 \item{record}{How this snail's fate was established (fct), one of
 \code{"measured"}, \code{"sentinel_code"}, \code{"blank_rep"},
 \code{"absent_tank"} or \code{"absent_dose"}. The last two are snails that
-do not appear in the source records at all and were reinstated from the
-test design.}
+do not appear in the source records at all (a missing row, or a missing
+treatment) and were reinstated from the test design.}
 }
 
 Between 79\% and 95\% of the deaths in each test fall into the two

@@ -554,10 +554,14 @@ something read directly off the source records. In those records a death
 appeared as one of four traces, and only the first is obvious:
 
 1. a **sentinel value** far below the real data, one constant per test;
-2. a **blank replicate** within a tank that ran;
-3. a **tank missing** from a treatment that ran;
+2. a **blank position** in a row of the file;
+3. a **row missing** from a treatment that ran;
 4. a **treatment missing from the file entirely**, because nothing in it
    survived.
+
+The file lists the snails of each treatment in rows of six or seven, labelled as
+tanks. The snails were mixed before they were recorded, so a row is not the tank
+a snail was held in, and the `tank` column identifies the row.
 
 The `record` column preserves that provenance, and the result is worth
 examining before any model is fitted.
@@ -571,7 +575,7 @@ nassarius |>
 ```
 
 Only the first two categories appear in the source file. The last two are
-snails that are absent from it altogether — a tank missing from a treatment
+snails that are absent from it altogether — a row missing from a treatment
 that ran, or a treatment missing entirely because nothing in it survived — and
 they account for 79% to 95% of the deaths in every test.
 
