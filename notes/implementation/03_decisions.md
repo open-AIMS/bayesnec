@@ -140,7 +140,8 @@ once a user has overridden a prior.
 ## D11 — The estimator fixes are made in `bayesnec`, and the migration is deferred
 
 D46 (2026-10-30) replaces this entry's statement that the estimators still
-migrate to `toxval`: they stay in `bayesnec`.
+migrate to `toxval`: they stay in `bayesnec`. It also narrows the obligation at
+the end of this entry to changes that alter a returned value.
 
 RF, 2026-09-06. **This supersedes D10's step 3.** `ecx()`, `nsec()` and
 `ecnsec()` still migrate to `toxval`, and #255 remains the tracker, but the
@@ -666,3 +667,10 @@ model-averaged fixture and on a heavily censored `brmsfit`. The comparison
 covers `bayesnecfit` and `bayesmanecfit`, the classes `toxval` supports. Both
 packages export `ecx()` and `nsec()`, and the one attached last masks the other
 without a warning. The detail is on #255.
+
+RF, 2026-10-30, so that the two packages do not drift: a change to `ecx()`,
+`nsec()` or `ecnsec()` that alters the value returned for a class `toxval`
+supports is compared with `toxval` under matching options before it merges. The
+result, and whether `toxval` is to follow, is recorded on a `toxval` issue. A
+change that leaves every returned value unchanged, such as a message or a new
+refusal, needs neither. This replaces D11's rule that every fix is recorded.
