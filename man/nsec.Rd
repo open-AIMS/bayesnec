@@ -8,7 +8,7 @@ object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.}
 nsec(
   object,
   sig_val = 0.01,
-  resolution = 200,
+  resolution = 500,
   x_range = NA,
   xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
@@ -27,9 +27,8 @@ significance of the predicted posterior values.}
 \item{resolution}{The number of unique x values over which to find NSEC.
 The crossing is located by linear interpolation between the two grid values
 that bracket it, so precision saturates well below the grid spacing.
-Increasing the resolution beyond the default of 200 changed the estimate by
-less than 0.01 percent on the fits tested, and increases the run time
-roughly in proportion.}
+The default is 500 grid values, matching \pkg{toxval}. A finer grid can
+change an interpolated crossing and increases prediction time.}
 
 \item{x_range}{A range of x values over which to consider extracting NSEC.}
 
@@ -68,7 +67,8 @@ For the count hurdles, \code{"mu"} is converted to the positive-count mean
 }
 \value{
 A vector containing the estimated NSEC value, including upper and
-lower 95\% credible interval bounds.
+lower 95\% credible interval bounds. A grouped \code{brmsfit} with
+\code{by_group = TRUE} returns a table; see Direct brmsfit output.
 }
 \description{
 Extracts the predicted NSEC value as desired from an
@@ -101,15 +101,13 @@ the decline from the control towards zero. Up to 2.1.3 it was measured
 against the fitted range and computed by three different formulas that
 agreed only for a monotonic curve.
 
-Two consequences follow from the reference being a quantile of the control
-posterior. A \code{sig_val} share of the draws have a control at or below the
-reference, and each of those reaches it at the control itself, so the control
-concentration is that draw's NSEC. Fisher and Fox (2023) report the same
-behaviour: the lower credible bound of the NSEC is the lowest concentration
-whenever \code{sig_val} is above the quantile the bound is read at, 0.025
-under the default \code{prob_vals}. And the crossing is sought at or above the
-control, so extending \code{x_range} below the data does not place an estimate
-at a concentration lower than any tested.
+The reference is a quantile of the control posterior, so some draws start
+at or below it. A draw with a later decreasing crossing takes that crossing.
+Without one, it takes the control concentration unless its response first
+changes away from the effect and later rises above the reference. Such a
+draw shows no decreasing effect in the searched range and is censored there.
+The crossing is sought at or above the control, so extending \code{x_range}
+below the data does not place an estimate below any tested concentration.
 
 Two limits on that. The value is the lowest \emph{observed} concentration,
 where Fisher and Fox (2023) report zero concentration, which they reach by
@@ -155,6 +153,17 @@ holds two parameter blocks inside one model, so it takes \code{dpar} naming
 the \pkg{brms} distributional parameter. Supplying one where the other is
 expected is an error rather than silently ignored.
 }
+\section{Direct brmsfit output}{
+
+With \code{group_var} and \code{by_group = TRUE}, an NSEC summary has one
+row per group. Its \code{bound_} columns mark a quantile as \code{>=} or
+\code{<=} when it lies beyond the prediction range. An empty mark means the
+quantile was estimated within the range. With \code{posterior = TRUE}, the
+long table instead has \code{censored_above} and \code{censored_below}
+logical columns, one flag per draw. With \code{by_group = FALSE}, the pooled
+posterior vector has a \code{censored} attribute with those flags.
+}
+
 \section{Capping and dropping}{
 
 A draw whose curve does not reach the target anywhere in the prediction

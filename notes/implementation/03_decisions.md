@@ -311,6 +311,18 @@ comparing `bayesnec` against another engine can recover what was altered. The
 RF via Claude, 2026-09-12, on #325. Corrects D15 ruling 3 where it reaches the
 NSEC, and leaves it standing for the ECx.
 
+RF amended ruling 1 on 2026-10-29. It now takes a later decreasing crossing
+when one exists. With no such crossing, a draw past the reference at control
+is censored above the prediction range if its first meaningful response change
+goes away from the effect and a later grid value lies on the no-effect side.
+Otherwise it takes the control concentration. A meaningful change exceeds
+`1e-8` times the largest absolute response in the draw. This adopts toxval T21
+as amended on #74; the original reasoning and measurements below remain the
+record of the earlier rule. The amendment also applies when `expand_nec()`
+computes a fitted object's stored NSEC. The `brmsfit` method now summarises
+the censored draws through the same order-statistic rule as `bayesnecfit`;
+previously it stopped when any such draw was missing.
+
 **The ruling as taken.** "A target the curve never reaches within the predictor
 range returns `NA` with a warning. Today the nearest grid point is returned,
 which for a curve that never declines to the target can report the control
