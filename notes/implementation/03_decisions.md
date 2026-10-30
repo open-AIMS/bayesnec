@@ -664,7 +664,8 @@ still migrate.
 calls the two packages return the same estimates: after #527 adopted toxval's
 amended NSEC rule and its 500-point grid, paired NSEC draws agreed on a
 model-averaged fixture and on a heavily censored `brmsfit`. The comparison
-covers `bayesnecfit` and `bayesmanecfit`, the classes `toxval` supports. Both
+covers `bayesnecfit`, `bayesmanecfit` and the `brmsfit` method of `nsec()`, and
+not the `drc` method. Both
 packages export `ecx()` and `nsec()`, and the one attached last masks the other
 without a warning. The detail is on #255.
 

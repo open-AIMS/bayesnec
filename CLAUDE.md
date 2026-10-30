@@ -143,6 +143,20 @@ or `nechorme`. `ecxflat`, the constant equation, is an ECx-type equation in the
 Distinguish the equations whose names begin `nec`, the `nec` parameter they
 estimate, and `mod_groups$nec`, the group of equations. The same care applies
 to `ecx`.
+
+## Agreement with `toxval`
+
+`toxval` has its own `ecx()` and `nsec()`, with methods for `bayesnec` fits, and
+`bayesnec` keeps its own (D46 in `notes/implementation/03_decisions.md`). RF
+develops both and keeps their results in agreement. A change here that alters a
+value returned for a `bayesnecfit` or `bayesmanecfit`, or by the `brmsfit` or
+`drc` method of `nsec()`, is compared with `toxval` under matching options
+before it merges. Record the result, and whether `toxval` is to follow, on a
+`toxval` issue. A change that leaves every returned value unchanged needs
+neither.
+
+Both packages export `ecx()` and `nsec()`, and the one attached last masks the
+other without a warning. With both attached, call each with its package prefix.
 `bayesnec` and `brms` are packages; `bnec()` and `brm()` are functions.
 
 ## Modelling gotchas
