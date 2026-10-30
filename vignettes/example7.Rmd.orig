@@ -264,7 +264,7 @@ for algal growth-rate data — a lower asymptote fixed at zero, representing
 complete inhibition — can be fitted directly, on the measurements as recorded,
 and can be weighed against the free-asymptote shapes by the same model
 averaging that `bayesnec` applies to everything else. Choosing that shape is
-now a matter of evidence rather than of specification. Whether to replace the
+then a matter of evidence rather than of specification. Whether to replace the
 measurements is a separate decision, taken before any equation is fitted, and it
 is the one the sections that follow are about.
 

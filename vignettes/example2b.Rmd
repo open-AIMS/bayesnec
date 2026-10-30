@@ -16,6 +16,7 @@ bibliography: bayesnec.bib
 [e2b]: https://open-aims.github.io/bayesnec/articles/example2b.html
 [e3]: https://open-aims.github.io/bayesnec/articles/example3.html
 [e4]: https://open-aims.github.io/bayesnec/articles/example4.html
+[e7]: https://open-aims.github.io/bayesnec/articles/example7.html
 
 # Models in `bayesnec`
 
@@ -120,7 +121,9 @@ Measuring from the control is what makes an *EC~x~* well defined for a hormesis 
 
 # Model suitability for response types
 
-Models that have an exponential decay (most models with parameter $\beta = \text{beta}$) with no $\delta = \text{bottom}$ parameter are 0-bounded and are not suitable for the Gaussian family, or any family modelled using a `"logit"` or `"log"` link because they cannot generate predictions of negative response values. Conversely, models with a linear decay (containing the string **lin** in their name) are not suitable for modelling families that are 0-bounded (Gamma, Poisson, Negative Binomial, Beta, Binomial, Beta-Binomial) using an `"identity"` link. These restrictions do not need to be controlled by the user, as a call to `bnec` with `models = "all"` in the formula will simply exclude inappropriate models, albeit with a message.
+Models that have an exponential decay (most models with parameter $\beta = \text{beta}$) with no $\delta = \text{bottom}$ parameter are 0-bounded, because they cannot generate predictions of negative response values, and are therefore not suitable for any family modelled using a `"logit"` or `"log"` link. Conversely, models with a linear decay (containing the string **lin** in their name) are not suitable for modelling families that are 0-bounded (Gamma, Poisson, Negative Binomial, Beta, Binomial, Beta-Binomial) using an `"identity"` link. These restrictions do not need to be controlled by the user, as a call to `bnec` with `models = "all"` in the formula will simply exclude inappropriate models, albeit with a message.
+
+@fisher2024 also describe the 0-bounded models as not suitable for the Gaussian family. That restriction has been relaxed since publication, and `bnec` fits these models to a Gaussian response. A Gaussian mean is unconstrained, because the data enter the likelihood only through the residual, so a curve that cannot fall below zero is still a valid description of a response that can. This allows a lower asymptote fixed at zero (representing, for example, complete inhibition of algal growth rate) to be fitted to measurements that include negative values without first replacing them. The [Modelling growth data and other potentially negative response values][e7] vignette sets out the reasoning, and compares fitting the measurements as recorded with altering them first, for example by replacing negative values with zero.
 
 An exclusion also applies to the 0, 1-bounded families (Binomial, Beta and Beta-Binomial) on an `"identity"` link, and it reaches two of the hormesis equations. **nechormepwr** and **nechorme4pwr** include the hormesis term $x_i^{1/(1+e^{\alpha})}$, which has no coefficient to shrink it. The term approaches 1 as $\alpha$ grows, at every concentration above zero, so for any $\tau$ above zero there is an $\alpha$ at which the mean exceeds 1. That holds whatever the predictor range, which is why the exclusion does not depend on the data supplied. The other hormesis equations --- **nechorme**, **nechorme4**, **nechormepwr01**, **ecxhormebc4** and **ecxhormebc5** --- are fitted on these families, because their increase prior to $\eta$ is scaled by a parameter. The initial-value search starts them inside the support: it draws from the priors, and accepts a draw only where the whole initial curve falls within a band built from the replicated level means and their spread, intersected with the support of the mean.
 
@@ -158,7 +161,7 @@ with the respective `brmsformula` being
 #> beta ~ 1
 ```
 
-The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function.
+The model is 0-bounded, thus not suitable for the use of a `"logit"` or `"log"` link function.
 
 #### ecxsigm
 
@@ -174,7 +177,7 @@ with the respective `brmsformula` being
 #> beta ~ 1
 ```
 
-The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function.
+The model is 0-bounded, thus not suitable for the use of a `"logit"` or `"log"` link function.
 
 #### ecx4param
 
@@ -220,7 +223,7 @@ with the respective `brmsformula` being
 #> beta ~ 1
 ```
 
-The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function.
+The model is 0-bounded, thus not suitable for the use of a `"logit"` or `"log"` link function.
 
 #### ecxwb2
 
@@ -253,7 +256,7 @@ with the respective `brmsformula` being
 #> beta ~ 1
 ```
 
-While very similar to the **ecxwb1p3** [according to @Ritz2016], fitted **ecxwb1p3** and **ecxwb2p3** models can differ slightly. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.
+While very similar to the **ecxwb1p3** [according to @Ritz2016], fitted **ecxwb1p3** and **ecxwb2p3** models can differ slightly. The model is 0-bounded, thus not suitable for the use of a `"logit"` or `"log"` link function.
 
 #### ecxll5
 
@@ -300,7 +303,7 @@ with the respective `brmsformula` being
 #> ec50 ~ 1
 ```
 
-The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function.
+The model is 0-bounded, thus not suitable for the use of a `"logit"` or `"log"` link function.
 
 #### ecxflat
 
@@ -347,7 +350,7 @@ with the respective `brmsformula` being
 #> slope ~ 1
 ```
 
-The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function.
+The model is 0-bounded, thus not suitable for the use of a `"logit"` or `"log"` link function.
 
 ## *NEC* models
 
@@ -383,7 +386,7 @@ with the respective `brmsformula` being
 #> nec ~ 1
 ```
 
-For Binomial-distributed response data in the case of `"identity"` link this model is equivalent to that in @Fox2010. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function.
+For Binomial-distributed response data in the case of `"identity"` link this model is equivalent to that in @Fox2010. The model is 0-bounded, thus not suitable for the use of a `"logit"` or `"log"` link function.
 
 #### nec4param
 
@@ -415,7 +418,7 @@ with the respective `brmsformula` being
 #> slope ~ 1
 ```
 
-The **nechorme** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function. In this case the linear version (**neclinhorme**) should be used.
+The **nechorme** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$. The model is 0-bounded, thus not suitable for the use of a `"logit"` or `"log"` link function. In this case the linear version (**neclinhorme**) should be used.
 
 #### nechormepwr
 The **nechormepwr** model is a basic exponential decay model with an *NEC* step function equivalent to **nec3param**, with the addition of a power increase prior to $\eta$, given by the equation:
@@ -431,7 +434,7 @@ with the respective `brmsformula` being
 #> slope ~ 1
 ```
 
-The **nechormepwr** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function. Because the model can generate predictions above 1 it is excluded from the Binomial, Beta and Beta-Binomial distributions with an `"identity"` link. **nechormepwr01** is the power-increase hormesis equation that is bounded on those families.
+The **nechormepwr** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$. The model is 0-bounded, thus not suitable for the use of a `"logit"` or `"log"` link function. Because the model can generate predictions above 1 it is excluded from the Binomial, Beta and Beta-Binomial distributions with an `"identity"` link. **nechormepwr01** is the power-increase hormesis equation that is bounded on those families.
 
 #### neclinhorme
 
@@ -501,7 +504,7 @@ with the respective `brmsformula` being
 #> slope ~ 1
 ```
 
-The **nechormepwr01** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function. In this case the linear version (**neclinhorme**) should be used. The increase of **nechormepwr01** is bounded above at 1 by construction, which is what keeps it available on the 0, 1-bounded families. The same bound excludes it from the 0, `Inf` bounded families (Gamma, Poisson, Negative Binomial with an `"identity"` link), whose response may exceed 1.
+The **nechormepwr01** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$. The model is 0-bounded, thus not suitable for the use of a `"logit"` or `"log"` link function. In this case the linear version (**neclinhorme**) should be used. The increase of **nechormepwr01** is bounded above at 1 by construction, which is what keeps it available on the 0, 1-bounded families. The same bound excludes it from the 0, `Inf` bounded families (Gamma, Poisson, Negative Binomial with an `"identity"` link), whose response may exceed 1.
 
 #### necsigm
 
@@ -518,7 +521,7 @@ with the respective `brmsformula` being
 #> d ~ 1
 ```
 
-The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function. In addition, there may be theoretical issues with combining a sigmoidal decay model with an *NEC* step function because where there is an upper plateau in the data the location of $\eta$ may become ambiguous. Estimation of No-Effect-Concentrations using this model are not currently recommended without further testing.
+The model is 0-bounded, thus not suitable for the use of a `"logit"` or `"log"` link function. In addition, there may be theoretical issues with combining a sigmoidal decay model with an *NEC* step function because where there is an upper plateau in the data the location of $\eta$ may become ambiguous. Estimation of No-Effect-Concentrations using this model are not currently recommended without further testing.
 
 # Relationship to the `drc` NEC models
 
