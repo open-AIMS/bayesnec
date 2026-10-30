@@ -1060,9 +1060,9 @@ are on the original dose scale.
 
 
 ``` r
-# resolution is the number of predictor values ECx is read off, and every call
-# rebuilds the component predictions for both six-model sets. 500 is finer than
-# the ecx() default of 200.
+# resolution is the number of predictor values ECx is read off. Every call
+# rebuilds the component predictions for both six-model sets, so a finer grid
+# adds time to each call.
 summary(fit_a, ecx = TRUE, ecx_vals = c(10, 50), resolution = 500,
         xform = back_transform(tests[["A"]]))
 #> Object of class bayesnechurdlefit
