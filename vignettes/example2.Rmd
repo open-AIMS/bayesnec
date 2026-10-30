@@ -56,7 +56,7 @@ exp_5 <- bnec(y ~ crf(x, model = "decline"), data = df_, iter = 2e3,
               cores = getOption("mc.cores", 1))
 ```
 
-Here we run `bnec` using `model =  "decline"` using a simulated data example for a Beta-distributed response variable. We are using the `"decline"` set here because we are not going to consider hormesis (these allow an initial increase in the response), largely to save time in fitting this example. Moreover, you might want to consider saving the output as an `.RData` file---doing so can be a useful way of fitting large model sets (ie `model = "all"`, or `model = "decline"`) at a convenient time (this can be very slow, and may be run overnight for example) so you can reload them later to explore, plot, extract values, and amend the model set as required.
+Here we run `bnec` using `model =  "decline"` using a simulated data example for a Gaussian-distributed response variable. We are using the `"decline"` set here because we are not going to consider hormesis (these allow an initial increase in the response), largely to save time in fitting this example. Moreover, you might want to consider saving the output as an `.RData` file---doing so can be a useful way of fitting large model sets (ie `model = "all"`, or `model = "decline"`) at a convenient time (this can be very slow, and may be run overnight for example) so you can reload them later to explore, plot, extract values, and amend the model set as required.
 
 Whenever the `model` argument of `crf` is a model set, or a concatenation of specific models, `bnec` will return an object of class `bayesmanecfit`.
 
@@ -82,18 +82,20 @@ The fitted `bayesmanecfit` object contains different elements to the `bayesnecfi
 ``` r
 exp_5$mod_stats
 #>               model      waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5
-#> nec3param nec3param -71.76806 2.073396e-02                  NA              NA               NA
-#> nec4param nec4param -83.95316 3.248930e-01                  NA              NA               NA
-#> neclin       neclin -52.76156 1.088830e-03                  NA              NA               NA
-#> ecxlin       ecxlin -26.16132 1.626269e-06                  NA              NA               NA
-#> ecxexp       ecxexp  65.83363 2.305765e-24                  NA              NA               NA
-#> ecxsigm     ecxsigm -78.03461 4.760362e-02                  NA              NA               NA
-#> ecx4param ecx4param -81.66479 9.432600e-02                  NA              NA               NA
-#> ecxwb1       ecxwb1 -75.24824 1.262473e-02                  NA              NA               NA
-#> ecxwb2       ecxwb2 -85.13580 3.529190e-01                  NA              NA               NA
-#> ecxwb1p3   ecxwb1p3 -74.79770 1.820788e-02                  NA              NA               NA
-#> ecxwb2p3   ecxwb2p3 -77.07837 5.315629e-02                  NA              NA               NA
-#> ecxll4       ecxll4 -81.18123 7.444504e-02                  NA              NA               NA
+#> nec3param nec3param -72.14396 2.056834e-02                  NA              NA               NA
+#> nec4param nec4param -84.95172 3.798331e-01                  NA              NA               NA
+#> neclin       neclin -52.29203 1.870590e-04                  NA              NA               NA
+#> ecxlin       ecxlin -26.28965 1.403286e-07                  NA              NA               NA
+#> ecxexp       ecxexp  65.94475 5.931159e-24                  NA              NA               NA
+#> ecxsigm     ecxsigm -77.63117 3.581168e-02                  NA              NA               NA
+#> ecx4param ecx4param -81.86810 9.517308e-02                  NA              NA               NA
+#> ecxwb1       ecxwb1 -75.21155 1.149892e-02                  NA              NA               NA
+#> ecxwb2       ecxwb2 -85.06792 2.900955e-01                  NA              NA               NA
+#> ecxwb1p3   ecxwb1p3 -74.45185 1.247815e-02                  NA              NA               NA
+#> ecxwb2p3   ecxwb2p3 -77.25285 5.177007e-02                  NA              NA               NA
+#> ecxll4       ecxll4 -81.18987 6.842721e-02                  NA              NA               NA
+#> ecxll3       ecxll3 -77.20556 3.415673e-02                  NA              NA               NA
+#> ecxflat     ecxflat 260.66017 1.370639e-65                  NA              NA               NA
 #>           dispersion_P_over_1
 #> nec3param                  NA
 #> nec4param                  NA
@@ -107,11 +109,13 @@ exp_5$mod_stats
 #> ecxwb1p3                   NA
 #> ecxwb2p3                   NA
 #> ecxll4                     NA
+#> ecxll3                     NA
+#> ecxflat                    NA
 ```
 
 We can obtain a neater summary of the model fit by using the `summary` method for a `bayesmanecfit` object. A list of fitted models, and model weights are provided. In addition, the model averaged no-effect estimate is reported, in this case as an N(S)EC. For this example the **nec4param** and **ecxwb2** models have the highest weights.
 
-All these model fits are satisfactory despite the relatively low number of iterations set in our example, but the summary would also include a warning if there were fits with divergent transitions.
+All these model fits are satisfactory despite the relatively low number of iterations set in our example. The summary also reports the number of divergent transitions after warmup for each model, and would include a warning for any model with more than 10, the cutoff `check_sampling()` uses.
 
 
 ``` r
@@ -125,18 +129,20 @@ summary(exp_5)
 #> 
 #> Model weights (Method: pseudobma_bb_weights):
 #>             waic   wi
-#> nec3param -71.77 0.02
-#> nec4param -83.95 0.32
-#> neclin    -52.76 0.00
-#> ecxlin    -26.16 0.00
-#> ecxexp     65.83 0.00
-#> ecxsigm   -78.03 0.05
-#> ecx4param -81.66 0.09
-#> ecxwb1    -75.25 0.01
-#> ecxwb2    -85.14 0.35
-#> ecxwb1p3  -74.80 0.02
-#> ecxwb2p3  -77.08 0.05
-#> ecxll4    -81.18 0.07
+#> nec3param -72.14 0.02
+#> nec4param -84.95 0.38
+#> neclin    -52.29 0.00
+#> ecxlin    -26.29 0.00
+#> ecxexp     65.94 0.00
+#> ecxsigm   -77.63 0.04
+#> ecx4param -81.87 0.10
+#> ecxwb1    -75.21 0.01
+#> ecxwb2    -85.07 0.29
+#> ecxwb1p3  -74.45 0.01
+#> ecxwb2p3  -77.25 0.05
+#> ecxll4    -81.19 0.07
+#> ecxll3    -77.21 0.03
+#> ecxflat   260.66 0.00
 #> 
 #> 
 #> Summary of weighted N(S)EC posterior estimates:
@@ -144,7 +150,7 @@ summary(exp_5)
 #>     models, and is therefore a model averaged
 #>     combination of NEC and NSEC estimates.
 #>        Estimate Q2.5 Q97.5
-#> N(S)EC     3.30 1.92  3.99
+#> N(S)EC     3.31 1.98  3.99
 #> 
 #> 
 #> Bayesian R2 estimates:
@@ -155,16 +161,38 @@ summary(exp_5)
 #> ecxlin        0.80      0.01 0.77  0.82
 #> ecxexp        0.61      0.03 0.55  0.65
 #> ecxsigm       0.84      0.01 0.82  0.85
-#> ecx4param     0.85      0.01 0.83  0.87
+#> ecx4param     0.85      0.01 0.84  0.87
 #> ecxwb1        0.85      0.01 0.83  0.86
 #> ecxwb2        0.86      0.01 0.84  0.87
 #> ecxwb1p3      0.84      0.01 0.82  0.85
 #> ecxwb2p3      0.84      0.01 0.82  0.85
-#> ecxll4        0.85      0.01 0.83  0.87
+#> ecxll4        0.85      0.01 0.84  0.87
+#> ecxll3        0.84      0.01 0.82  0.85
+#> ecxflat       0.00      0.00 0.00  0.00
 #> 
 #> 
-#> 2 model(s) failed to fit: ecxll5, ecxll3
+#> Divergent transitions after warmup:
+#>           n_divergent
+#> nec3param           0
+#> nec4param           0
+#> neclin              0
+#> ecxlin              0
+#> ecxexp              0
+#> ecxsigm             0
+#> ecx4param           0
+#> ecxwb1              0
+#> ecxwb2              0
+#> ecxwb1p3            0
+#> ecxwb2p3            0
+#> ecxll4              0
+#> ecxll3              0
+#> ecxflat             0
+#> 
+#> 
+#> 1 model(s) failed to fit: ecxll5
 #> See ?failed_models for the priors and initial values used.
+#> 
+#> Fitted by bayesnec 2.1.3.44, installed from a local source, which records no commit, under R 4.6.1.
 ```
 
 The `bayesmanecfit` object also contains all of the individual `brms` model fits, which can be extracted using the `pull_out` function. For example, we can pull out and plot the model **ecx4param**.
@@ -237,9 +265,9 @@ Where  a large number of models are failing to converge, obviously it would be b
 rhat(exp_5) |>
   sapply("[[", "failed")
 #> nec3param nec4param    neclin    ecxlin    ecxexp   ecxsigm ecx4param    ecxwb1    ecxwb2  ecxwb1p3  ecxwb2p3 
-#>      TRUE     FALSE      TRUE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE 
-#>    ecxll4 
-#>     FALSE
+#>     FALSE      TRUE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE 
+#>    ecxll4    ecxll3   ecxflat 
+#>      TRUE     FALSE     FALSE
 ```
 
 The default cut off is 1.01, following @Vehtari2021, whose recommendation is that
@@ -258,8 +286,8 @@ rhat(exp_5, rhat_cutoff = 1.05) |>
   sapply("[[", "failed")
 #> nec3param nec4param    neclin    ecxlin    ecxexp   ecxsigm ecx4param    ecxwb1    ecxwb2  ecxwb1p3  ecxwb2p3 
 #>     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE 
-#>    ecxll4 
-#>     FALSE
+#>    ecxll4    ecxll3   ecxflat 
+#>     FALSE     FALSE     FALSE
 ```
 
 `rhat()` reports Rhat alone. `check_sampling()` reports all three sampler
@@ -270,18 +298,20 @@ divergent transitions:
 ``` r
 check_sampling(exp_5)
 #>        model max_rhat  min_ess min_ess_ratio n_divergent failed
-#> 1  nec3param 1.010708 399.0785     0.2494240           0   TRUE
-#> 2  nec4param 1.005172 401.2819     0.2508012           0  FALSE
-#> 3     neclin 1.016389 548.2886     0.3426804           0   TRUE
-#> 4     ecxlin 1.007485 663.1816     0.4144885           0  FALSE
-#> 5     ecxexp 1.009911 795.2739     0.4970462           0  FALSE
-#> 6    ecxsigm 1.008363 566.1037     0.3538148           0  FALSE
-#> 7  ecx4param 1.005429 518.3097     0.3239436           0  FALSE
-#> 8     ecxwb1 1.005447 732.5172     0.4578232           0  FALSE
-#> 9     ecxwb2 1.006158 597.6551     0.3735344           0  FALSE
-#> 10  ecxwb1p3 1.003042 715.7980     0.4473738           0  FALSE
-#> 11  ecxwb2p3 1.005991 853.1119     0.5331949           0  FALSE
-#> 12    ecxll4 1.006715 354.8392     0.2217745           0   TRUE
+#> 1  nec3param 1.009273 332.1574     0.2075984           0   TRUE
+#> 2  nec4param 1.010144 480.7366     0.3004604           0   TRUE
+#> 3     neclin 1.005700 624.0328     0.3900205           0  FALSE
+#> 4     ecxlin 1.007916 626.0950     0.3913094           0  FALSE
+#> 5     ecxexp 1.008185 697.0696     0.4356685           0  FALSE
+#> 6    ecxsigm 1.004028 556.1325     0.3475828           0  FALSE
+#> 7  ecx4param 1.004052 754.9726     0.4718579           0  FALSE
+#> 8     ecxwb1 1.006168 681.2412     0.4257757           0  FALSE
+#> 9     ecxwb2 1.009685 598.0465     0.3737791           0  FALSE
+#> 10  ecxwb1p3 1.006678 705.5896     0.4409935           0  FALSE
+#> 11  ecxwb2p3 1.009592 842.8158     0.5267599           0  FALSE
+#> 12    ecxll4 1.010013 517.1654     0.3232284           0   TRUE
+#> 13    ecxll3 1.002405 758.4739     0.4740462           0  FALSE
+#> 14   ecxflat 1.002579 857.3529     0.5358456           0  FALSE
 ```
 
 `screen_models()` screens on those three together and drops every candidate that
@@ -291,14 +321,15 @@ exclusion: a step that removes models without naming them cannot be written up.
 
 ``` r
 exp_5_screened <- screen_models(exp_5)
-#> Dropping 3 of 12 candidate models that failed the sampler screen:
-#>   -  nec3param: Rhat 1.011, ESS 399.1
-#>   -  neclin: Rhat 1.016
-#>   -  ecxll4: ESS 354.8
-#> Fitted models are: nec4param ecxlin ecxexp ecxsigm ecx4param ecxwb1 ecxwb2 ecxwb1p3 ecxwb2p3
+#> Dropping 3 of 14 candidate models that failed the sampler screen:
+#>   -  nec3param: ESS 332.2
+#>   -  nec4param: Rhat 1.01
+#>   -  ecxll4: Rhat 1.01
+#> Fitted models are: neclin ecxlin ecxexp ecxsigm ecx4param ecxwb1 ecxwb2 ecxwb1p3 ecxwb2p3 ecxll3 ecxflat
+#> The fitted ecxflat curve does not fall to the control's 0.01 quantile within the predictor range for 1584 of 1600 draws. The NSEC summary is censored at 10: those draws keep their rank in it and are given no value.
 ```
 
-Here it removed 3 of the 12 candidates, naming each one and the diagnostic it failed. `exp_5_screened` holds the candidates that passed; `exp_5` still holds all of them.
+Here it removed 3 of the 14 candidates, naming each one and the diagnostic it failed. `exp_5_screened` holds the candidates that passed; `exp_5` still holds all of them.
 
 ### Extracting toxicity values
 
@@ -323,7 +354,7 @@ ECx10 <- ecx(exp_5, ecx_val = 10)
 ECx50 <- ecx(exp_5, ecx_val = 50)
 ECx10
 #>      Q50     Q2.5    Q97.5 
-#> 3.614370 2.687910 4.162698 
+#> 3.624921 2.760940 4.167620 
 #> attr(,"resolution")
 #> [1] 200
 #> attr(,"ecx_val")
@@ -332,7 +363,7 @@ ECx10
 #> [1] "ecx"
 ECx50
 #>      Q50     Q2.5    Q97.5 
-#> 5.094764 4.831337 5.370868 
+#> 5.082461 4.816809 5.348705 
 #> attr(,"resolution")
 #> [1] 200
 #> attr(,"ecx_val")
@@ -348,7 +379,7 @@ The weighted *NEC* estimates can be extracted directly from the *NEC* model set 
 NECvals <- exp_5_nec$w_ne
 NECvals
 #> Estimate     Q2.5    Q97.5 
-#> 3.547172 3.094213 4.100937
+#> 3.527155 3.130124 4.108291
 ```
 
 Note that the new *NEC* estimates from the **nec**-containing model fits are slightly higher than those reported in the summary output of all the fitted models. This can happen for smooth curves, which is what was used as the underlying data generation model in the simulations here, and is explored in more detail in the [Comparing posterior predictions][e4] vignette.
@@ -422,7 +453,7 @@ Two models in two forked workers did not collide and thirteen in eight did, so a
 
 ### Run times
 
-The whole `"decline"` set was fitted five ways, from a fresh session each time with nothing compiled in advance, to see what a plan changes.
+The `"decline"` set without `ecxflat`, fourteen equations, was fitted five ways, from a fresh session each time with nothing compiled in advance, to see what a plan changes.
 
 | plan | cores in use | runs | seconds | range | change vs no plan |
 |---|---|---|---|---|---|
@@ -432,7 +463,7 @@ The whole `"decline"` set was fitted five ways, from a fresh session each time w
 | `workers = 8` | 8, one per model | 2 | 149.9 | 146.7-153.2 | -50% |
 | `workers = 5`, `cores = 4` | 20, four per model | 2 | 153.5 | 149.7-157.3 | -49% |
 
-Measured 2026-09-12 on an otherwise idle 22-core workstation under WSL2, R 4.6.1, `cmdstanr`, `plan(multicore)`: the `"decline"` models that fit this data, `iter = 2e3`, `chains = 4`, each run in a fresh R session with the compiled-program cache emptied first, so every run builds all 13 programs. The cores named are those sampling: compilation is single-threaded per program, so a run with no plan compiles the thirteen one after another on one core while a plan of *n* workers compiles *n* at a time, which is why two workers complete in 24 per cent less time than a nominally four-core baseline here. Where a row has two runs the figure is their midpoint. Runs during which any other R process appeared were discarded and repeated; three were. These runs used the development version of the package, in which 13 of the 14 `"decline"` models fit this data and `ecxll5` does not initialise; the output shown earlier in this vignette was rendered from an older version, has eight models, and gives `ecxll5` the second-largest weight. The two do not correspond, and the timings are a separate measurement rather than a description of the fit above.
+Measured 2026-09-12 on an otherwise idle 22-core workstation under WSL2, R 4.6.1, `cmdstanr`, `plan(multicore)`: the `"decline"` models that fit this data, `iter = 2e3`, `chains = 4`, each run in a fresh R session with the compiled-program cache emptied first, so every run builds all 13 programs. The cores named are those sampling: compilation is single-threaded per program, so a run with no plan compiles the thirteen one after another on one core while a plan of *n* workers compiles *n* at a time, which is why two workers complete in 24 per cent less time than a nominally four-core baseline here. Where a row has two runs the figure is their midpoint. Runs during which any other R process appeared were discarded and repeated; three were. Of those 14 equations, 13 fit this data and `ecxll5` does not initialise. The fit shown earlier in this vignette also includes `ecxflat`, so the timings are a separate measurement rather than a description of that fit.
 
 Against that, the same five configurations run again with the programs already built take 99, 114, 108, 101 and 94 seconds in the same order, one run each. Two workers then take 15 per cent longer than no plan, which is outside the spread these configurations show; the other three land within a few per cent of the sequential fit, which one run each cannot separate from it. Compilation is what the plan was overlapping, and the core arithmetic shows through once it is gone: the sequential fit samples four chains on four cores, so two workers of one chain each is less of the machine than it replaces and four workers is the same amount rearranged. Only above four does a plan ask for more than the fit was already using. Once it is done, what remains is sampling that takes seconds per model, and the work the calling process does whatever plan is set: the model weights, the leave-one-out comparisons and the prediction grid are all computed there, after the fits come back. How the remainder divides between those was not measured and is not claimed here.
 
@@ -462,7 +493,7 @@ The model-averaged quantities are the exception, and the reason is mechanical. O
 
 Each worker holds a complete fit while it is working, and fits are large. Eight workers on a large data set can exhaust memory where eight cores would have been fine, and a worker killed by the operating system ends the whole call rather than the one model it was fitting. If a run dies without an R error, reduce the worker count before looking anywhere else.
 
-Two smaller effects go with it. A `multisession` or `cluster` worker is a fresh R process that loads `bayesnec`, and with it `brms` and the Stan backend, before it can fit anything: about three seconds each, paid once per worker, which matters for a set of three models and not for a set of twenty-three. A forked `multicore` worker inherits what the parent has already loaded and does not pay this. And everything the fit needs -- the data, the formula, the priors -- is sent to each worker, so a very large data set may reach `future`'s export limit. Raise it with `options(future.globals.maxSize = )`. If that limit is reached and the data are not large, look at where the formula was written: a formula keeps the environment it was created in, so one built inside a function sends that function's variables to every worker too.
+Two smaller effects go with it. A `multisession` or `cluster` worker is a fresh R process that loads `bayesnec`, and with it `brms` and the Stan backend, before it can fit anything: about three seconds each, paid once per worker, which matters for a set of three models and not for a set of twenty-four. A forked `multicore` worker inherits what the parent has already loaded and does not pay this. And everything the fit needs -- the data, the formula, the priors -- is sent to each worker, so a very large data set may reach `future`'s export limit. Raise it with `options(future.globals.maxSize = )`. If that limit is reached and the data are not large, look at where the formula was written: a formula keeps the environment it was created in, so one built inside a function sends that function's variables to every worker too.
 
 Progress reporting changes too. The per-model messages `bnec()` prints come from worker processes, and arrive out of order or not at all depending on the platform. Nothing is lost: a model that fails is still recorded, the remaining models still fit, and `failed_models()` reports what happened.
 
@@ -470,7 +501,7 @@ Progress reporting changes too. The per-model messages `bnec()` prints come from
 
 `bnec_group()` fits the model set separately within each level of a factor, so it has two loops a plan could drive: the levels, and the models within a level. Everything above applies within a level. What follows is the part that is specific to having two.
 
-One plan drives one of them. `future` evaluates a nested future sequentially unless the plan is itself a list, so dispatching the levels takes the workers away from the model loop rather than adding to them: measured on R 4.6.1 with `future` 1.70.0, inside a worker of `plan(multisession, workers = 2)` the strategy reported is `sequential` and `nbrOfWorkers()` is 1. `bnec_group()` therefore counts the two arrangements in rounds of one fit and takes the smaller, and reports which it took. Writing *L* for the levels, *M* for the equations and *W* for the workers, the levels take `ceiling(L / W) * M` rounds and the models `L * ceiling(M / W)`; a tie goes to the models, which is what earlier versions did.
+One plan drives one of them. `future` evaluates a nested future sequentially unless the plan is itself a list, so dispatching the levels takes the workers away from the model loop rather than adding to them: measured on R 4.6.1 with `future` 1.70.0, inside a worker of `plan(multisession, workers = 2)` the strategy reported is `sequential` and `nbrOfWorkers()` is 1. `bnec_group()` therefore counts the two arrangements in rounds of one fit and takes the smaller, and reports which it took. Writing *L* for the levels, *M* for the equations and *W* for the workers, the levels take `ceiling(L / W) * M` rounds and the models `L * ceiling(M / W)`; a tie goes to the models.
 
 A level arrangement cannot go below *M* rounds however many workers there are, and a model arrangement reaches *L*, so with fewer levels than equations the levels are the smaller count only in a band. Seven levels of eleven equations is 22 rounds against 21 at four workers, and 11 against 14 at eight.
 
@@ -490,7 +521,7 @@ The outer element is the level loop and the inner one the model loop, and a nest
 
 The `I()` around the inner count is needed rather than decorative. `future` sets `mc.cores` to 1 inside a worker and `parallelly` reads that as the core budget, so a bare `workers = 4` inner count is refused: measured on the same versions, that plan returned *Attempting to set up 4 localhost parallel workers with only 1 CPU cores available ... The hard limit is set to 300%*, where `workers = I(4)` returned 4. `I()` is how `parallelly` is told the number is meant.
 
-`plan(list(sequential, tweak(multisession, workers = I(8))))` asks for the other arrangement explicitly: the levels one at a time, each level's model set over eight workers. Use it where the count picks the levels and you want what earlier versions did.
+`plan(list(sequential, tweak(multisession, workers = I(8))))` asks for the other arrangement explicitly: the levels one at a time, each level's model set over eight workers. Use it where the count picks the levels and you want the models of each level fitted in parallel instead.
 
 A nested plan of `multisession` strategies emits a warning from `future` once per level, beginning *added, removed, or modified connections*. Starting the inner cluster opens connections inside a future and leaves them open, which is what makes that cluster reusable, and `future` reports any such change. Nothing is wrong and no fit is affected. It is not suppressed, because the same check would catch a connection genuinely leaked by something a fit called; `options(future.connections.onMisuse = "ignore")` turns it off for a session, and an inner `multicore` strategy opens no connections and so reports none.
 

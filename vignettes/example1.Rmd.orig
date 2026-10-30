@@ -511,7 +511,7 @@ The third is **lack of fit in the mean**. Residuals from a curve that is systema
 
 ## A worked example
 
-We simulate a response whose standard deviation rises with the mean, so that the relationship is known rather than assumed, and confirm that it is recovered. The response here is strictly positive, so `bnec` will select a `Gamma` family, which already implies a standard deviation proportional to the mean. We therefore simulate a standard deviation proportional to $\mu^{1.6}$ — steeper than the family alone provides, so that there is something for a variance function to do. This is the second of the three checks above, applied when designing the example rather than after the fact.
+We simulate a response whose standard deviation rises with the mean, so that the relationship is known rather than assumed, and confirm that it is recovered. The response here is strictly positive, so `bnec` will select a `Gamma` family, which already implies a standard deviation proportional to the mean. We therefore simulate a standard deviation proportional to $\mu^{0.4}$ — shallower than the family alone provides, so that the coefficient of variation rises as the response falls and there is something for a variance function to do. A relationship steeper than the family's would lie outside the range the default prior on the exponent admits (see `?bayesnecformula`). This is the second of the three checks above, applied when designing the example rather than after the fact.
 
 ```{r disp-sim}
 set.seed(333)
@@ -519,7 +519,7 @@ disp_x <- rep(c(0.1, 0.3, 1, 3, 10, 30, 100), each = 12)
 disp_mu <- 2 + (18 - 2) / (1 + exp((log(disp_x) - log(6)) * exp(0.5)))
 disp_dat <- data.frame(
   x = disp_x,
-  y = rnorm(length(disp_mu), disp_mu, 0.02 * disp_mu ^ 1.6)
+  y = rnorm(length(disp_mu), disp_mu, 0.2 * disp_mu ^ 0.4)
 )
 ```
 
@@ -552,13 +552,13 @@ brms::loo_compare(brms::loo(pull_brmsfit(disp_const)),
                   brms::loo(pull_brmsfit(disp_power)))
 ```
 
-The estimated exponent should be read through the family. `disp("power")` models the dispersion parameter, which for a `Gamma` is `shape`, and the implied standard deviation is proportional to $\mu^{1 - c_1/2}$ (see the table in `?bayesnecformula`). The value used to simulate the data, $\mu^{1.6}$, therefore corresponds to $c_1 = -1.2$:
+The estimated exponent should be read through the family. `disp("power")` models the dispersion parameter, which for a `Gamma` is `shape`, and the implied standard deviation is proportional to $\mu^{1 - c_1/2}$ (see the table in `?bayesnecformula`). The value used to simulate the data, $\mu^{0.4}$, therefore corresponds to $c_1 = 1.2$:
 
 ```{r disp-slope}
 brms::fixef(pull_brmsfit(disp_power))[c("c0_Intercept", "c1_Intercept"), ]
 ```
 
-A value of zero would correspond to the constant-dispersion model, and is where the prior on this parameter is centred, so an interval excluding zero reflects the data rather than the prior.
+A value of zero would correspond to the constant-dispersion model, the constant coefficient of variation a `Gamma` already implies. The default prior bounds `c1` to the range 0 to 2 for a `Gamma` response, from a constant coefficient of variation to a constant variance, so a posterior concentrated at 0 would show that the data do not support the variance function, while one well inside the range reflects the data rather than the bound.
 
 Finally, the third check: the departure of the fitted curve from the observed mean at each concentration, in units of the within-concentration replicate standard deviation. Values of a few standard deviations or more would indicate a problem with the mean model that a variance function would conceal rather than resolve.
 
@@ -614,7 +614,7 @@ ggplot(bands, aes(x = x)) +
   theme(legend.position = "top")
 ```
 
-The median curves are indistinguishable. At the low concentrations, where replicate variability is largest, the two prediction intervals are similar. At the high concentrations, where the replicate standard deviation has fallen to 0.065, the constant-dispersion interval remains far wider than the data warrant. Plotting the width of each interval directly makes the pattern easier to read than the bands do.
+The median curves are indistinguishable. At the low concentrations, where the replicates agree to within about 4 per cent of their mean, the constant-dispersion prediction interval is about twice as wide as the one from the variance function. At the high concentrations, where the coefficient of variation has risen to about 0.12, it is narrower than the data warrant. Plotting the width of each interval directly makes the pattern easier to read than the bands do.
 
 ```{r exmp1-disp-width, fig.width = 7, fig.asp = 0.48, out.width = "100%"}
 bands$width <- bands$hi - bands$lo
@@ -629,9 +629,9 @@ ggplot(bands, aes(x = x, y = width, colour = model)) +
   theme(legend.position = "top")
 ```
 
-The two lines cross. Relative to the variance function, the constant-dispersion model is too narrow at low concentrations and too wide at high ones — the uneven error described at the start of this section, and the reason the consequences fall on the toxicity estimates rather than on the fitted curve.
+The two lines cross. Relative to the variance function, the constant-dispersion model is too wide at low concentrations and too narrow at high ones — the uneven error described at the start of this section, and the reason the consequences fall on the toxicity estimates rather than on the fitted curve.
 
-Those consequences are not in a single direction, and it is worth seeing why.
+Those consequences fall unevenly across the estimates.
 
 ```{r disp-tox}
 tox <- function(fit, label) {
@@ -646,7 +646,7 @@ tox <- function(fit, label) {
 rbind(tox(disp_const, "constant dispersion"), tox(disp_power, "disp(\"power\")"))
 ```
 
-The `ecx` intervals narrow, while the `nsec` interval widens. The explanation is what each estimate is referenced against, and it follows from the reweighting the variance function performs. Under constant dispersion every observation carries equal weight. Under `disp("power")` the tightly grouped high-concentration replicates carry more and the variable control replicates carry less, which is visible in the parameters themselves.
+All three intervals narrow, but only the `nsec` median changes appreciably: it falls by about two fifths, while the `ecx` medians change by a few per cent. The explanation is what each estimate is referenced against, and it follows from the reweighting the variance function performs. Under constant dispersion every observation is given the same coefficient of variation. Under `disp("power")` the tightly grouped control replicates are weighted more heavily and the variable high-concentration replicates less, which is visible in the parameters themselves.
 
 ```{r disp-params}
 # Only the curve parameters are shared: the disp fit carries c0 and c1 as well.
@@ -657,8 +657,8 @@ round(cbind(
 ), 4)
 ```
 
-The parameters set by the high-concentration end, `bot` and `beta`, are estimated more precisely, and `top`, which is set by the control end, less so. `ecx` depends on the curve as a whole — with `type = "absolute"`, the default, on where the curve falls to a given percentage of its own fitted maximum — so it inherits the better-determined shape. `nsec` is referenced against the control instead: it is the concentration at which the curve drops below a lower quantile of the *control* posterior, so it inherits the one thing the variance function made less certain, and widens.
+`top`, which is set by the control end, is estimated about twice as precisely, `beta` and `ec50` somewhat more precisely, and `bot`, which is set by the high-concentration end, less precisely. `ecx` depends on the curve as a whole — with `type = "absolute"`, the default, on where the curve falls to a given percentage of its own fitted maximum — so it inherits the better-determined shape. `nsec` is referenced against the control instead: it is the concentration at which the curve drops below a lower quantile of the *control* posterior. The constant-dispersion fit overstates the spread of the control replicates, which places that quantile lower and the `nsec` at a higher concentration.
 
-This matters when choosing an endpoint. An `nsec` reported from a constant-dispersion fit rests on an assumption about control variability that the fit has not checked, and it is the estimate most exposed if that assumption is wrong.
+This matters when choosing an endpoint. An `nsec` reported from a constant-dispersion fit rests on an assumption about control variability that the fit has not checked. Here that assumption overstates the spread of the controls and places the `nsec` higher, which is the less protective direction.
 
 # References

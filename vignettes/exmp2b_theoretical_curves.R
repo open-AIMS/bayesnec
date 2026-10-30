@@ -41,9 +41,9 @@ model_names <- names(all_args)
 names(model_names) <- model_names
 
 ecx_levels <- c(
-  "ecxlin", "excexp", "ecxexp", "ecxsigm", "ecx4param", "ecxwb1", "ecxwb1p3",
+  "ecxlin", "ecxexp", "ecxsigm", "ecx4param", "ecxwb1", "ecxwb1p3",
   "ecxwb2", "ecxwb2p3", "ecxll5", "ecxll4", "ecxll3", "ecxhormebc5",
-  "ecxhormebc4"
+  "ecxhormebc4", "ecxflat"
 )
 ecx_data <- purrr::map_dfr(
   grep("^pred_ecx", model_names, value = TRUE), make_plot_data,

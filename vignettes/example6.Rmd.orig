@@ -804,10 +804,9 @@ applies the back-transformation to every estimate in the table, so the values
 are on the original dose scale.
 
 ```{r nassarius-summary}
-# resolution is the number of predictor values ECx is read off, and every call
-# rebuilds the component predictions for both six-model sets. The default of
-# 1000 is finer than two significant figures can show over this dose range, and
-# 500 keeps the memory these repeated rebuilds need well under control.
+# resolution is the number of predictor values ECx is read off. Every call
+# rebuilds the component predictions for both six-model sets, so a finer grid
+# adds time to each call.
 summary(fit_a, ecx = TRUE, ecx_vals = c(10, 50), resolution = 500,
         xform = back_transform(tests[["A"]]))
 ```

@@ -102,7 +102,8 @@ that is subsequently reported.
   matters when the response can cross zero.
 - Section 3 sets out what replacing a negative value commits the analyst to,
   which is more than an edit to the data.
-- Section 4 records what `bayesnec` permits, which changed in version 2.2.0.
+- Section 4 records which equations `bayesnec` fits under a Gaussian family,
+  and the ECx that `ecx()` returns for them.
 - Section 5 reports a simulation study in which the true values are known, so
   that each convention can be scored rather than merely compared.
 - Section 6 applies the same comparison to four real algal growth tests.
@@ -218,8 +219,7 @@ point mass at zero — a Tweedie, for instance — is not available natively in
 
 `bayesnec` accommodates this by moving the values inside the support.
 `check_data()` shifts an exact zero to one tenth of the smallest positive
-value, and an exact one to `1 - 0.001`. This has always been the behaviour and
-it is unchanged. Since version 2.2.0 `bnec()` reports each substitution once,
+value, and an exact one to `1 - 0.001`. `bnec()` gives one message for each substitution,
 naming the number of rows, the value substituted, the reason, and the family
 that would represent a genuine zero rather than move it. The accommodation is a
 device for making an inconsistent specification runnable, not a model of the
@@ -246,16 +246,14 @@ the distribution and not of the link. A Gaussian mean is unconstrained: the
 data enter the likelihood only through the residual, so a negative fitted mean
 is an ordinary prediction rather than an invalid one.
 
-From version 2.2.0 the six declining equations whose lower asymptote is fixed
-at zero — `nec3param`, `ecxexp`, `ecxsigm`, `ecxwb1p3`, `ecxwb2p3` and `ecxll3`
-— are retained under a Gaussian family, and an absolute ECx is reported for
-them. Earlier versions dropped them, on the grounds that they cannot generate a
-negative prediction, and refused an absolute ECx for a Gaussian fit without a
-`bot` parameter. Both restrictions have been removed (#206). The declining
-candidate set that `bnec()` fits by default under a Gaussian family therefore
-holds these six as well as the eight that earlier versions fitted. With the
-constant equation `ecxflat`, which is also in the `"decline"` group, it is
-fifteen equations.
+The six declining equations whose lower asymptote is fixed at zero —
+`nec3param`, `ecxexp`, `ecxsigm`, `ecxwb1p3`, `ecxwb2p3` and `ecxll3` — are
+therefore retained under a Gaussian family, although none of them can predict a
+negative mean while `top` is positive. An absolute ECx is reported for them,
+although none has a `bot` parameter. The declining candidate set that `bnec()`
+fits by default under a Gaussian family includes these six and the other eight
+declining equations, and, with the constant equation `ecxflat`, which is also in the
+`"decline"` group, it is fifteen equations.
 
 ```{r}
 models()$decline
@@ -266,7 +264,7 @@ for algal growth-rate data — a lower asymptote fixed at zero, representing
 complete inhibition — can be fitted directly, on the measurements as recorded,
 and can be weighed against the free-asymptote shapes by the same model
 averaging that `bayesnec` applies to everything else. Choosing that shape is
-now a matter of evidence rather than of specification. Whether to replace the
+then a matter of evidence rather than of specification. Whether to replace the
 measurements is a separate decision, taken before any equation is fitted, and it
 is the one the sections that follow are about.
 
@@ -299,13 +297,12 @@ convention is handed a prior or an equation chosen by another. The contrast betw
 contrast a practitioner would obtain by following the convention through, not a
 likelihood-only contrast with everything else held artificially fixed.
 
-That is a change of question from an earlier version of this study, which held
-the equation fixed at `nec4param` so that any difference could be attributed to
-the treatment of the data alone. Holding the equation fixed answers a question
-about the likelihood; it does not answer the question a reader has, which is
-what happens to the number they will report. Fitting the candidate set also
-removes an artefact of the fixed design: on altered data a fixed `nec4param` is
-no longer the equation that generated them, so part of what it measured was
+Holding the equation fixed, for example at `nec4param`, would allow any
+difference to be attributed to the treatment of the data alone. However, that
+answers a question about the likelihood, and not the question a reader has,
+which is what happens to the number they will report. A fixed equation would
+also introduce an artefact: on altered data a fixed `nec4param` is no longer the
+equation that generated them, so part of what it measured would be
 misspecification the convention did not cause.
 
 The `measured` convention uses the growth rates exactly as recorded, with the lower
@@ -464,15 +461,13 @@ sim_design <- function(truth, top_factor = 1, n_conc = 12, n_rep = 5,
 
 The residual scale is constant along the curve, and the fits are homoscedastic
 to match, so that no convention is misspecified in its variance and the mean structure
-is the only thing under test. An earlier version of this study generated the
-residual scale rising 8.1-fold from the control to the lower asymptote, a
-figure described as calibrated from the real data. Re-measured on `alga` as the
-within-dose standard deviation against position on the curve, with substituted
-rows excluded, only one of the four datasets shows a gradient at all
-(`c_proliferum`, fitted ratio 14.1, slope p < 0.001; the other three 1.2 to
-1.5, p > 0.35). Generating every cell heteroscedastic asserted as general
-something seen in one dataset, and made every convention misspecified in the same way,
-which is a confound shared by the whole comparison rather than a feature of it.
+is the only thing under test. Measured on `alga` as the within-dose standard
+deviation against position on the curve, with substituted rows excluded, only
+one of the four datasets shows a gradient at all (`c_proliferum`, fitted ratio
+14.1, slope p < 0.001; the other three 1.2 to 1.5, p > 0.35). Generating every
+cell heteroscedastic would assert as general something seen in one dataset, and
+would make every convention misspecified in the same way, which is a confound
+shared by the whole comparison rather than a feature of it.
 
 ```{r}
 sim_sigma <- function(x, truth, sigma_0_abs) rep(sigma_0_abs, length(x))
@@ -2121,8 +2116,8 @@ correctly specified candidate be recovered. It does not establish what happens
 when no candidate is correct, which is the ordinary situation with real data.
 
 The residual scale is constant along the curve and every fit is homoscedastic
-to match. That is a deliberate simplification, and it removes a confound that
-was present in the earlier version of this study, but it means no convention
+to match. That is a deliberate simplification, made so that no convention is
+misspecified in its variance, but it means no convention
 reported here estimates a dispersion that varies along the curve. One of the
 four `alga` datasets does show a residual gradient, so the homoscedastic case is
 not the only one that arises.
@@ -2196,17 +2191,15 @@ the commit recorded in the compendium's `hpc/bayesnec.lock`, inside the
 container that repository's `hpc/image.lock` identifies, which holds the
 toolchain and installs the package from that pinned source.
 
-That commit is on the development branch rather than a CRAN release, and here
-the difference matters more than it usually would, because what this vignette
-measures is what package defaults do. Three of the changes between that commit
-and the 2.1.3.1 release are the subject of results reported above. The `nec` and
-`ec50` priors are now built on the log of the predictor, and the initial-value
-search accepts chains individually. The NSEC crossing is now sought from the
-control upward, with the control made the first point of the searched grid, so a
-draw that crosses between the control and the next grid point is no longer lost;
-this lowers the reported lower bound of an NSEC interval by about three times as
-much as it changes the point estimate, and leaves every ECx unchanged. An
-analysis run under the CRAN release will not reproduce these numbers exactly.
+That commit is a development version of `bayesnec`, not a release. The version
+is more important here than usual, because what this vignette measures is what
+package defaults do. Results reported above depend on three
+defaults at that commit: the `nec` and `ec50` priors are built on the log of the predictor,
+the initial-value search accepts chains individually, and the NSEC crossing is
+sought from the control upward, with the control as the first point of the
+searched grid. The NSEC search was revised after that commit in ways that can
+change NSEC estimates and their intervals (see `NEWS.md`), so an analysis run
+under a later version of `bayesnec` may not reproduce these numbers exactly.
 
 The posterior predictive figures quoted in Section 5.4 are transcribed from
 `results/ppc_spread.csv`, which summarises 100 realisations of each cell and
@@ -2216,15 +2209,13 @@ fixed on the cell and convention names before any result was seen; those are not
 in the compendium's repository — 66 model-averaged fits is too much to track —
 and are fetched from the cluster with `hpc/fetch-fits.sh`.
 
-The case studies were computed when this vignette was built until the
-conventions became model-averaged over the whole declining set. Four datasets by
-six conventions, each an average over thirteen or fourteen equations, is about
-fifteen hours, which is not something to run on a workstation whenever a
-sentence changes. Moving them into the compendium gives something up, and it is
-stated here rather than left to be discovered: the case-study estimates no longer track
-whatever version of `bayesnec` they are published beside. They describe the
-pinned commit, exactly as the simulation does. What Table 3 reports — the four
-datasets themselves — is still computed at build time from the `alga` data that
-ship with the package, so that much does track your installation.
+The case studies are fitted in the compendium as well. Four datasets by six
+conventions, each an average over thirteen or fourteen equations, take about
+fifteen hours, which is too long to run on a workstation whenever the vignette
+is built. The case-study estimates therefore describe the pinned commit, as the
+simulation does, and not the version of `bayesnec` installed beside this
+vignette. Table 3, which describes the four datasets themselves, is computed at
+build time from the `alga` data that ship with the package, so it does reflect
+your installation.
 
 # 10 References

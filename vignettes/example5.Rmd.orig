@@ -12,11 +12,8 @@ bibliography: bayesnec.bib
 ```{r setup, include = FALSE}
 stopifnot(require(knitr))
 # Nothing here is evaluated. Every chunk is code the reader runs on their own
-# machine, and evaluating any of it records the machine that built the vignette:
-# before #342 seven chunks were evaluated, and the rendered file named one
-# contributor's home directory 21 times and ended with 77 lines of compiler
-# diagnostics from it. Setting eval once for the document rather than chunk by
-# chunk means a chunk added later inherits it.
+# machine, and evaluating any of it records the build machine's paths and
+# compiler output. Set eval here so that a chunk added later inherits it.
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",

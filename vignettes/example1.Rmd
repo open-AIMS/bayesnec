@@ -95,7 +95,7 @@ round(c(linear = spacing_cv(conc), log = spacing_cv(log(conc))), 2)
 #>   1.72   0.58
 ```
 
-Any simple transformation may be written directly inside `crf`, as `crf(log(x), model = "nec4param")`. Two consequences follow. The transformation is evaluated before `bayesnec` inspects the predictor, so a control concentration recorded as `0` arrives at the data check as `log(0)` and the fit stops, reporting a predictor that is not finite. `bayesnec` does not correct a zero on the predictor axis, on either the recorded or the transformed scale: a concentration of zero is an ordinary control, and no response distribution constrains the values a predictor may take. An offset for a logarithm is therefore the user's to choose and to add to the data first. And the toxicity estimates are then returned on the transformed scale, so `nec`, `ecx` and `nsec` need back-transforming, with `xform` doing the same job for plots:
+Any simple transformation may be written directly inside `crf`, as `crf(log(x), model = "nec4param")`. Two consequences follow. The transformation is evaluated before `bayesnec` inspects the predictor, so a control concentration recorded as `0` arrives at the data check as `log(0)` and the fit stops, reporting a predictor that is not finite. `bayesnec` does not correct a zero on the predictor axis, on either the recorded or the transformed scale: a concentration of zero is an ordinary control, and no response distribution constrains the values a predictor may take. An offset for a logarithm is therefore the user's to choose and to add to the data first. And the model is then fitted on the transformed scale, while `nec`, `ecx`, `nsec` and the plots return the toxicity estimates on the recorded scale. A function passed as `xform` is applied to an estimate on the transformed scale instead, so `xform = identity` returns that scale, and the inverse returns the recorded one, as below:
 
 
 ``` r
@@ -105,7 +105,7 @@ autoplot(exp_2, xform = function(x) exp(x) - 1)
 
 A transformation written inside `disp` rather than `crf` fails differently, and less clearly. A `disp` formula is evaluated by `brms` rather than by `bayesnec`, so nothing checks it: with `disp(~log(x))` a zero concentration reaches Stan as `-Inf`, with a warning about infinite values in the data and no mention of the term responsible. The remedy is the same --- add the offset to the data and name that column.
 
-The inline form and a pre-computed column give the same estimate, whether the transformation's argument is a bare variable such as `log(x)` or contains arithmetic of its own such as `log(x + 1)`. Up to `bayesnec` 2.1.3 the two disagreed: an estimate read off the prediction grid was put back on the fitted scale by a substitution that replaced the parsed call's first argument slot rather than the predictor variable inside it, so the `+ 1` was discarded and `log(x + 1)` was inverted as `log(x)`. Nothing errored and the value returned was plausible. That is fixed, and the pre-computed column below is now an equivalent way of writing the same model rather than a workaround:
+The inline form and a pre-computed column give the same estimate on the transformed scale, whether the transformation's argument is a bare variable such as `log(x)` or contains arithmetic of its own such as `log(x + 1)`. Up to `bayesnec` 2.1.3 the two disagreed: an estimate read off the prediction grid was put back on the fitted scale by a substitution that replaced the parsed call's first argument slot rather than the predictor variable inside it, so the `+ 1` was discarded and `log(x + 1)` was inverted as `log(x)`. Nothing errored and the value returned was plausible. That is fixed, and the pre-computed column below is now an equivalent way of writing the same model rather than a workaround. The two differ only in the scale an estimate is returned on by default. `bayesnec` cannot see the transformation that made a column, so the estimates from the column form are on the scale of `log_x` and need `xform = function(x) exp(x) - 1`, which the inline form applies without being asked:
 
 
 ``` r
@@ -192,28 +192,33 @@ summary(exp_1)
 #> 
 #> Regression Coefficients:
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.05      0.02     0.02     0.08 1.00     2982     3265
-#> top      0.83      0.01     0.81     0.84 1.00     4702     4222
-#> beta     0.80      0.14     0.55     1.08 1.00     2551     3607
-#> nec      4.42      0.03     4.36     4.48 1.00     3040     4437
+#> bot      0.05      0.02     0.02     0.08 1.00     3037     2949
+#> top      0.83      0.01     0.81     0.84 1.00     4454     4379
+#> beta     0.80      0.13     0.56     1.08 1.00     2663     3153
+#> nec      4.42      0.03     4.36     4.48 1.00     3270     3747
 #> 
 #> Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
 #> scale reduction factor on split chains (at convergence, Rhat = 1).
 #> 
+#> Divergent transitions after warmup: 0
 #> 
-#>     Estimate Q2.5 Q97.5
-#> NEC     4.42 4.36  4.48
+#> 
+#>     Estimate  Q2.5 Q97.5
+#> NEC    83.45 78.29 87.81
 #> 
 #> 
 #> Bayesian R2 estimates:
 #>    Estimate Est.Error Q2.5 Q97.5
 #> R2     0.81      0.00 0.80  0.82
+#> 
+#> 
+#> Fitted by bayesnec 2.1.3.44, installed from a local source, which records no commit, under R 4.6.1.
 ```
 
 Note the Rhat values in this example are one, indicating convergence.
 
-The functions `plot` (extending `base` plot method) and `autoplot` (extending `ggplot2` plot method) can be used to plot the fitted model. You can also make your own plot from the data included in the returned object (class `bayesnecfit`) from the call to `bnec`. **Notice, however, that in this case we log-transformed the predictor `raw_x` in the input formula.** This causes `brms` to pass these transformations onto Stan's native code, and therefore derived toxicity estimates will be on that same scale. So we need to transform them back to the data scale using the additional argument `xform`.
+The functions `plot` (extending `base` plot method) and `autoplot` (extending `ggplot2` plot method) can be used to plot the fitted model. You can also make your own plot from the data included in the returned object (class `bayesnecfit`) from the call to `bnec`. **Notice, however, that in this case we log-transformed the predictor `raw_x` in the input formula.** This causes `brms` to pass these transformations onto Stan's native code, so the parameters of the model, `nec` among them, are on that same scale. The derived toxicity estimates and the plots are returned on the data scale nonetheless. The additional argument `xform` is applied to an estimate on the fitted scale, and given the inverse of the transformation, as below, it returns the data scale as well.
 
 
 ``` r
@@ -233,7 +238,7 @@ This model fit does not look great. You can see that the error bounds around the
 ``` r
 exp_1$dispersion
 #> Estimate     Q2.5    Q97.5    P(>1) 
-#> 17.59751 11.98486 26.93841  1.00000
+#> 17.59272 11.96617 27.20065  1.00000
 ```
 
 ### Beta-Binomial
@@ -267,13 +272,13 @@ exp_1b$dispersion
 #>       NA       NA       NA       NA
 ```
 
-Now that we have a better fit to these data, we can interpret the results. The estimated *NEC* value can be obtained directly from the fitted model object. As explained above, we need to transform *NEC* back to the data scale.
+Now that we have a better fit to these data, we can interpret the results. The estimated *NEC* value can be obtained directly from the fitted model object. The posterior stored there is on the fitted scale, so it is transformed back to the data scale here; `nec(exp_1b)` returns the same estimate on that scale.
  
 
 ``` r
 summary(exp(exp_1b$ne_posterior))
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#>   17.73   65.40   78.74   76.59   88.44  198.23
+#>   18.06   65.26   78.59   76.11   87.95  191.89
 ```
 
 EC*x* estimates can also be obtained from the *NEC* model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the *NEC* model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See both the [Model details][e2b] and [Comparing posterior predictions][e4] vignettes for more information.
@@ -282,7 +287,7 @@ EC*x* estimates can also be obtained from the *NEC* model fit, using the functio
 ``` r
 ecx(exp_1b, xform = exp)
 #>       Q50      Q2.5     Q97.5 
-#>  83.16503  44.57296 110.90310 
+#>  82.91855  44.27608 106.87492 
 #> attr(,"resolution")
 #> [1] 200
 #> attr(,"ecx_val")
@@ -291,7 +296,7 @@ ecx(exp_1b, xform = exp)
 #> [1] "ecx"
 ```
 
-A summary method has also been developed for `bayesnecfit` objects that gives an overall summary of the model statistics, which also include the estimate for *NEC*, as the `nec_intercept` population-level effect in the model---again, its value will depend on the scale of the predictor variable.
+A summary method has also been developed for `bayesnecfit` objects that gives an overall summary of the model statistics. It includes the estimate for *NEC* twice: as the `nec` population-level effect, which is on the scale the predictor was fitted on, here `log(raw_x)`, and in the *NEC* row, which is on the data scale.
 
 
 ``` r
@@ -311,27 +316,32 @@ summary(exp_1b)
 #> 
 #> Regression Coefficients:
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.13      0.05     0.03     0.23 1.00     1896     2563
-#> top      0.84      0.03     0.77     0.88 1.00     1498     1166
-#> beta     0.84      0.71    -0.18     4.37 1.00      518      186
-#> nec      4.37      0.21     3.67     4.70 1.00      539      180
+#> bot      0.13      0.05     0.03     0.24 1.00     2134     3083
+#> top      0.84      0.03     0.77     0.88 1.00     1277     1570
+#> beta     0.84      0.68    -0.17     3.41 1.01      477      170
+#> nec      4.36      0.20     3.66     4.66 1.01      486      182
 #> 
 #> Further Distributional Parameters:
 #>     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> phi     5.28      1.24     3.26     8.11 1.00     1859     2777
+#> phi     5.29      1.21     3.26     8.28 1.00     1832     3452
 #> 
 #> Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
 #> scale reduction factor on split chains (at convergence, Rhat = 1).
 #> 
+#> Divergent transitions after warmup: 14
 #> 
-#>     Estimate Q2.5 Q97.5
-#> NEC     4.37 3.67  4.70
+#> 
+#>     Estimate  Q2.5  Q97.5
+#> NEC    78.59 38.98 106.03
 #> 
 #> 
 #> Bayesian R2 estimates:
 #>    Estimate Est.Error Q2.5 Q97.5
-#> R2     0.76      0.04 0.68  0.81
+#> R2     0.76      0.04 0.66  0.81
+#> 
+#> 
+#> Fitted by bayesnec 2.1.3.44, installed from a local source, which records no commit, under R 4.6.1.
 ```
 
 ### Beta data
@@ -349,7 +359,7 @@ round(c(linear = spacing_cv(conc),
 #>       1.72       0.58       0.44
 ```
 
-An offset of one is convenient rather than principled; it is reasonable here because the concentrations span several orders of magnitude and one lies within their range. Whatever offset is used has to be carried through to anything read off the fitted model, which is what the `xform` argument does below.
+An offset of one is convenient rather than principled; it is reasonable here because the concentrations span several orders of magnitude and one lies within their range. Written inside `crf()`, the offset is part of the transformation the estimators and the plots invert, so they return concentrations. The `xform` passed below is the same inverse written out, and gives the same figure.
 
 
 ``` r
@@ -428,7 +438,7 @@ autoplot(exp_3)
 ``` r
 exp_3$dispersion
 #>  Estimate      Q2.5     Q97.5     P(>1) 
-#> 0.9635490 0.7336119 1.2851574 0.3975000
+#> 0.9614115 0.7338588 1.2965095 0.3903750
 ```
 
 The dispersion estimate, described in the Binomial example above, is near one here, as it should be for data simulated from a Poisson, and the credible bands are commensurate with the spread of the points. We would also plot the model chains (with `plot(exp_3$fit)`) and the parameter estimates to check the fit.
@@ -467,7 +477,7 @@ autoplot(exp_3b)
 ``` r
 exp_3b$dispersion
 #> Estimate     Q2.5    Q97.5    P(>1) 
-#> 4.889823 3.754817 6.578114 1.000000
+#> 4.890548 3.733693 6.565285 1.000000
 ```
 
 We can refit these data by deliberately specifying the Negative binomial distribution via the `family` argument.
@@ -535,10 +545,10 @@ autoplot(exp_3d)
 ``` r
 exp_3d$ne
 #> Estimate     Q2.5    Q97.5 
-#> 1.526470 1.453376 1.607691
+#> 1.525412 1.451266 1.610143
 ecx(exp_3d, ecx_val = 10)
 #>      Q50     Q2.5    Q97.5 
-#> 1.611954 1.552050 1.679677 
+#> 1.611188 1.549553 1.680954 
 #> attr(,"resolution")
 #> [1] 200
 #> attr(,"ecx_val")
@@ -547,7 +557,7 @@ ecx(exp_3d, ecx_val = 10)
 #> [1] "ecx"
 exp_3d$dispersion
 #>  Estimate      Q2.5     Q97.5     P(>1) 
-#> 0.8812035 0.6682100 1.1809228 0.1966250
+#> 0.8804628 0.6716389 1.1833453 0.1998750
 ```
 
 One caveat is worth stating explicitly. If the exposure varies for reasons unrelated to the treatment — a replicate simply received fewer animals — then `rate` is doing exactly what is wanted. If instead the exposure is itself an effect of the treatment, as it would be were `n_females` the number of females *surviving* to the point of counting, then the endpoint has quietly changed from reproductive output to fecundity conditional on survival. Both are legitimate, but they are different endpoints and will not return the same *NEC*.
@@ -596,18 +606,20 @@ summary(exp_4)
 #> 
 #> Regression Coefficients:
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.98      0.05     0.88     1.07 1.00     3564     4249
-#> top      2.44      0.01     2.41     2.46 1.00     5744     5055
-#> beta     0.65      0.10     0.46     0.84 1.00     3007     4119
-#> nec      1.50      0.02     1.46     1.54 1.00     3614     4942
+#> bot      0.98      0.05     0.88     1.07 1.00     4057     4441
+#> top      2.44      0.01     2.41     2.46 1.00     6760     5215
+#> beta     0.65      0.10     0.45     0.84 1.00     3674     4223
+#> nec      1.50      0.02     1.46     1.54 1.00     4335     4845
 #> 
 #> Further Distributional Parameters:
 #>       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> shape   515.84     73.80   382.69   673.16 1.00     6209     4973
+#> shape   515.06     74.50   379.72   680.88 1.00     6939     5087
 #> 
 #> Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
 #> scale reduction factor on split chains (at convergence, Rhat = 1).
+#> 
+#> Divergent transitions after warmup: 0
 #> 
 #> 
 #>     Estimate Q2.5 Q97.5
@@ -617,6 +629,9 @@ summary(exp_4)
 #> Bayesian R2 estimates:
 #>    Estimate Est.Error Q2.5 Q97.5
 #> R2     0.95      0.00 0.94  0.95
+#> 
+#> 
+#> Fitted by bayesnec 2.1.3.44, installed from a local source, which records no commit, under R 4.6.1.
 ```
 
 In this case our model has converged really well.
@@ -728,7 +743,7 @@ The third is **lack of fit in the mean**. Residuals from a curve that is systema
 
 ## A worked example
 
-We simulate a response whose standard deviation rises with the mean, so that the relationship is known rather than assumed, and confirm that it is recovered. The response here is strictly positive, so `bnec` will select a `Gamma` family, which already implies a standard deviation proportional to the mean. We therefore simulate a standard deviation proportional to $\mu^{1.6}$ — steeper than the family alone provides, so that there is something for a variance function to do. This is the second of the three checks above, applied when designing the example rather than after the fact.
+We simulate a response whose standard deviation rises with the mean, so that the relationship is known rather than assumed, and confirm that it is recovered. The response here is strictly positive, so `bnec` will select a `Gamma` family, which already implies a standard deviation proportional to the mean. We therefore simulate a standard deviation proportional to $\mu^{0.4}$ — shallower than the family alone provides, so that the coefficient of variation rises as the response falls and there is something for a variance function to do. A relationship steeper than the family's would lie outside the range the default prior on the exponent admits (see `?bayesnecformula`). This is the second of the three checks above, applied when designing the example rather than after the fact.
 
 
 ``` r
@@ -737,7 +752,7 @@ disp_x <- rep(c(0.1, 0.3, 1, 3, 10, 30, 100), each = 12)
 disp_mu <- 2 + (18 - 2) / (1 + exp((log(disp_x) - log(6)) * exp(0.5)))
 disp_dat <- data.frame(
   x = disp_x,
-  y = rnorm(length(disp_mu), disp_mu, 0.02 * disp_mu ^ 1.6)
+  y = rnorm(length(disp_mu), disp_mu, 0.2 * disp_mu ^ 0.4)
 )
 ```
 
@@ -753,13 +768,13 @@ data.frame(
   cv = round(within_conc$y[, "sd"] / within_conc$y[, "mean"], 3)
 )
 #>       x  mean    sd    cv
-#> 1   0.1 17.63 2.335 0.132
-#> 2   0.3 17.83 1.377 0.077
-#> 3   1.0 17.42 2.049 0.118
-#> 4   3.0 13.91 1.279 0.092
+#> 1   0.1 17.87 0.729 0.041
+#> 2   0.3 17.87 0.432 0.024
+#> 3   1.0 17.28 0.674 0.039
+#> 4   3.0 14.04 0.533 0.038
 #> 5  10.0  6.95 0.396 0.057
-#> 6  30.0  3.02 0.147 0.049
-#> 7 100.0  2.15 0.065 0.030
+#> 6  30.0  2.96 0.385 0.130
+#> 7 100.0  2.14 0.258 0.121
 ```
 
 The coefficient of variation is not constant, which is what tells us a `Gamma` on its own will not describe these data. We fit with and without a variance function and compare.
@@ -781,20 +796,20 @@ brms::loo_compare(brms::loo(pull_brmsfit(disp_const)),
                   brms::loo(pull_brmsfit(disp_power)))
 #>                     model elpd_diff se_diff p_worse diag_diff diag_elpd
 #>  pull_brmsfit(disp_power)       0.0     0.0      NA                    
-#>  pull_brmsfit(disp_const)     -13.1     3.6    1.00   N < 100
+#>  pull_brmsfit(disp_const)     -25.7     5.4    1.00   N < 100
 ```
 
-The estimated exponent should be read through the family. `disp("power")` models the dispersion parameter, which for a `Gamma` is `shape`, and the implied standard deviation is proportional to $\mu^{1 - c_1/2}$ (see the table in `?bayesnecformula`). The value used to simulate the data, $\mu^{1.6}$, therefore corresponds to $c_1 = -1.2$:
+The estimated exponent should be read through the family. `disp("power")` models the dispersion parameter, which for a `Gamma` is `shape`, and the implied standard deviation is proportional to $\mu^{1 - c_1/2}$ (see the table in `?bayesnecformula`). The value used to simulate the data, $\mu^{0.4}$, therefore corresponds to $c_1 = 1.2$:
 
 
 ``` r
 brms::fixef(pull_brmsfit(disp_power))[c("c0_Intercept", "c1_Intercept"), ]
-#>               Estimate Est.Error      Q2.5      Q97.5
-#> c0_Intercept  4.677736 0.1813607  4.303550  5.0193925
-#> c1_Intercept -1.085440 0.1930693 -1.452408 -0.7029879
+#>              Estimate Est.Error      Q2.5    Q97.5
+#> c0_Intercept 6.388394 0.1880252 6.0057172 6.748074
+#> c1_Intercept 1.297472 0.1896581 0.9396347 1.681931
 ```
 
-A value of zero would correspond to the constant-dispersion model, and is where the prior on this parameter is centred, so an interval excluding zero reflects the data rather than the prior.
+A value of zero would correspond to the constant-dispersion model, the constant coefficient of variation a `Gamma` already implies. The default prior bounds `c1` to the range 0 to 2 for a `Gamma` response, from a constant coefficient of variation to a constant variance, so a posterior concentrated at 0 would show that the data do not support the variance function, while one well inside the range reflects the data rather than the bound.
 
 Finally, the third check: the departure of the fitted curve from the observed mean at each concentration, in units of the within-concentration replicate standard deviation. Values of a few standard deviations or more would indicate a problem with the mean model that a variance function would conceal rather than resolve.
 
@@ -807,13 +822,13 @@ lof$replicate_sd <- tapply(disp_dat$y, disp_dat$x, sd)
 lof$misfit_in_sds <- round(abs(lof$obs - lof$fit) / lof$replicate_sd, 2)
 lof[, c("x", "replicate_sd", "misfit_in_sds")]
 #>       x replicate_sd misfit_in_sds
-#> 1   0.1   2.33524353          0.06
-#> 2   0.3   1.37693794          0.10
-#> 3   1.0   2.04860393          0.15
-#> 4   3.0   1.27943964          0.27
-#> 5  10.0   0.39614047          0.15
-#> 6  30.0   0.14681633          0.08
-#> 7 100.0   0.06481783          0.03
+#> 1   0.1    0.7286970          0.09
+#> 2   0.3    0.4324058          0.06
+#> 3   1.0    0.6739104          0.16
+#> 4   3.0    0.5330994          0.21
+#> 5  10.0    0.3958480          0.20
+#> 6  30.0    0.3847785          0.21
+#> 7 100.0    0.2582122          0.12
 ```
 
 ## What it changes
@@ -866,7 +881,7 @@ ggplot(bands, aes(x = x)) +
 <p class="caption">plot of chunk exmp1-disp-bands</p>
 </div>
 
-The median curves are indistinguishable. At the low concentrations, where replicate variability is largest, the two prediction intervals are similar. At the high concentrations, where the replicate standard deviation has fallen to 0.065, the constant-dispersion interval remains far wider than the data warrant. Plotting the width of each interval directly makes the pattern easier to read than the bands do.
+The median curves are indistinguishable. At the low concentrations, where the replicates agree to within about 4 per cent of their mean, the constant-dispersion prediction interval is about twice as wide as the one from the variance function. At the high concentrations, where the coefficient of variation has risen to about 0.12, it is narrower than the data warrant. Plotting the width of each interval directly makes the pattern easier to read than the bands do.
 
 
 ``` r
@@ -887,9 +902,9 @@ ggplot(bands, aes(x = x, y = width, colour = model)) +
 <p class="caption">plot of chunk exmp1-disp-width</p>
 </div>
 
-The two lines cross. Relative to the variance function, the constant-dispersion model is too narrow at low concentrations and too wide at high ones — the uneven error described at the start of this section, and the reason the consequences fall on the toxicity estimates rather than on the fitted curve.
+The two lines cross. Relative to the variance function, the constant-dispersion model is too wide at low concentrations and too narrow at high ones — the uneven error described at the start of this section, and the reason the consequences fall on the toxicity estimates rather than on the fitted curve.
 
-Those consequences are not in a single direction, and it is worth seeing why.
+Those consequences fall unevenly across the estimates.
 
 
 ``` r
@@ -904,15 +919,15 @@ tox <- function(fit, label) {
 }
 rbind(tox(disp_const, "constant dispersion"), tox(disp_power, "disp(\"power\")"))
 #>                 model estimate median lower upper width
-#> 1 constant dispersion     ec10   1.78  1.45  2.15  0.70
-#> 2 constant dispersion     ec50   7.17  6.56  7.77  1.21
-#> 3 constant dispersion     nsec   0.90  0.29  1.27  0.98
-#> 4       disp("power")     ec10   1.86  1.59  2.17  0.58
-#> 5       disp("power")     ec50   7.27  6.71  7.85  1.14
-#> 6       disp("power")     nsec   1.09  0.36  1.49  1.13
+#> 1 constant dispersion     ec10   1.84  1.55  2.19  0.64
+#> 2 constant dispersion     ec50   7.18  6.66  7.71  1.05
+#> 3 constant dispersion     nsec   0.89  0.33  1.24  0.91
+#> 4       disp("power")     ec10   1.74  1.55  1.94  0.38
+#> 5       disp("power")     ec50   7.10  6.77  7.44  0.67
+#> 6       disp("power")     nsec   0.53  0.18  0.73  0.56
 ```
 
-The `ecx` intervals narrow, while the `nsec` interval widens. The explanation is what each estimate is referenced against, and it follows from the reweighting the variance function performs. Under constant dispersion every observation carries equal weight. Under `disp("power")` the tightly grouped high-concentration replicates carry more and the variable control replicates carry less, which is visible in the parameters themselves.
+All three intervals narrow, but only the `nsec` median changes appreciably: it falls by about two fifths, while the `ecx` medians change by a few per cent. The explanation is what each estimate is referenced against, and it follows from the reweighting the variance function performs. Under constant dispersion every observation is given the same coefficient of variation. Under `disp("power")` the tightly grouped control replicates are weighted more heavily and the variable high-concentration replicates less, which is visible in the parameters themselves.
 
 
 ``` r
@@ -923,14 +938,14 @@ round(cbind(
   power = brms::fixef(pull_brmsfit(disp_power))[curve_pars, "Est.Error"]
 ), 4)
 #>                constant  power
-#> top_Intercept    0.2903 0.3438
-#> bot_Intercept    0.0739 0.0334
-#> beta_Intercept   0.0523 0.0356
-#> ec50_Intercept   0.0453 0.0417
+#> top_Intercept    0.2540 0.1265
+#> bot_Intercept    0.0618 0.0964
+#> beta_Intercept   0.0455 0.0349
+#> ec50_Intercept   0.0396 0.0262
 ```
 
-The parameters set by the high-concentration end, `bot` and `beta`, are estimated more precisely, and `top`, which is set by the control end, less so. `ecx` depends on the curve as a whole — with `type = "absolute"`, the default, on where the curve falls to a given percentage of its own fitted maximum — so it inherits the better-determined shape. `nsec` is referenced against the control instead: it is the concentration at which the curve drops below a lower quantile of the *control* posterior, so it inherits the one thing the variance function made less certain, and widens.
+`top`, which is set by the control end, is estimated about twice as precisely, `beta` and `ec50` somewhat more precisely, and `bot`, which is set by the high-concentration end, less precisely. `ecx` depends on the curve as a whole — with `type = "absolute"`, the default, on where the curve falls to a given percentage of its own fitted maximum — so it inherits the better-determined shape. `nsec` is referenced against the control instead: it is the concentration at which the curve drops below a lower quantile of the *control* posterior. The constant-dispersion fit overstates the spread of the control replicates, which places that quantile lower and the `nsec` at a higher concentration.
 
-This matters when choosing an endpoint. An `nsec` reported from a constant-dispersion fit rests on an assumption about control variability that the fit has not checked, and it is the estimate most exposed if that assumption is wrong.
+This matters when choosing an endpoint. An `nsec` reported from a constant-dispersion fit rests on an assumption about control variability that the fit has not checked. Here that assumption overstates the spread of the controls and places the `nsec` higher, which is the less protective direction.
 
 # References
