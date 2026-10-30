@@ -2428,7 +2428,7 @@ nsec_from_posterior <- function(post, reference, x_vec, x_control, control) {
       return(val)
     }
     if (!is.na(control[i]) && control[i] <= reference) {
-      if (nsec_first_change_away(y) &&
+      if (nsec_first_change_away(c(control[i], y)) &&
           any(is.finite(y) & y > reference)) {
         return(NA_real_)
       }
@@ -2480,7 +2480,7 @@ nsec_first_change_away <- function(y) {
   tolerance <- 1e-8 * max(0, abs(y))
   step <- diff(y)
   step <- step[abs(step) > tolerance]
-  !length(step) || step[1L] > 0
+  length(step) > 0L && step[1L] > 0
 }
 
 #' Does the family have a lower bound on the response?

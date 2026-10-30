@@ -67,7 +67,8 @@ For the count hurdles, \code{"mu"} is converted to the positive-count mean
 }
 \value{
 A vector containing the estimated NSEC value, including upper and
-lower 95\% credible interval bounds.
+lower 95\% credible interval bounds. A grouped \code{brmsfit} with
+\code{by_group = TRUE} returns a table; see Direct brmsfit output.
 }
 \description{
 Extracts the predicted NSEC value as desired from an
@@ -152,6 +153,17 @@ holds two parameter blocks inside one model, so it takes \code{dpar} naming
 the \pkg{brms} distributional parameter. Supplying one where the other is
 expected is an error rather than silently ignored.
 }
+\section{Direct brmsfit output}{
+
+With \code{group_var} and \code{by_group = TRUE}, an NSEC summary has one
+row per group. Its \code{bound_} columns mark a quantile as \code{>=} or
+\code{<=} when it lies beyond the prediction range. An empty mark means the
+quantile was estimated within the range. With \code{posterior = TRUE}, the
+long table instead has \code{censored_above} and \code{censored_below}
+logical columns, one flag per draw. With \code{by_group = FALSE}, the pooled
+posterior vector has a \code{censored} attribute with those flags.
+}
+
 \section{Capping and dropping}{
 
 A draw whose curve does not reach the target anywhere in the prediction

@@ -121,7 +121,17 @@
 #' @seealso \code{\link{bnec}}, \code{\link{bnec_hurdle}}, \code{\link{ecx}}
 #'
 #' @return A vector containing the estimated NSEC value, including upper and
-#' lower 95% credible interval bounds.
+#' lower 95% credible interval bounds. A grouped \code{brmsfit} with
+#' \code{by_group = TRUE} returns a table; see Direct brmsfit output.
+#'
+#' @section Direct brmsfit output:
+#' With \code{group_var} and \code{by_group = TRUE}, an NSEC summary has one
+#' row per group. Its \code{bound_} columns mark a quantile as \code{>=} or
+#' \code{<=} when it lies beyond the prediction range. An empty mark means the
+#' quantile was estimated within the range. With \code{posterior = TRUE}, the
+#' long table instead has \code{censored_above} and \code{censored_below}
+#' logical columns, one flag per draw. With \code{by_group = FALSE}, the pooled
+#' posterior vector has a \code{censored} attribute with those flags.
 #'
 #' @section Capping and dropping:
 #' A draw whose curve does not reach the target anywhere in the prediction
@@ -543,21 +553,33 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 500,
   
   if(by_group & posterior & !is.na(group_var)){
     names(out_vals) <- groups
+    above <- vapply(out_vals, function(x) attr(x, "censored")$above,
+                    logical(length(out_vals[[1]])))
+    below <- vapply(out_vals, function(x) attr(x, "censored")$below,
+                    logical(length(out_vals[[1]])))
     out_vals <- out_vals |> bind_cols() |> 
       pivot_longer(everything(), names_to = group_var, values_to = "NSEC")
+    out_vals$censored_above <- as.vector(t(above))
+    out_vals$censored_below <- as.vector(t(below))
     attr(out_vals, "ecnsec_relativeP") <- ecnsec
   }
   
   if(by_group & !posterior & !is.na(group_var)){   
     names(out_vals) <- groups
-    out_vals <- lapply(out_vals, summarise_censored, probs = prob_vals) |>
-      bind_rows(.id = group_var)
-    names(out_vals) <- clean_names(out_vals)
+    summaries <- lapply(out_vals, summarise_censored, probs = prob_vals)
+    quantile_names <- clean_names(summaries[[1]])
+    out_vals <- bind_rows(summaries, .id = group_var)
+    names(out_vals)[-1L] <- quantile_names
+    out_vals <- bind_cols(out_vals, estimate_marks(summaries, quantile_names,
+                                                    groups, "nsec"))
     attr(out_vals, "ecnsec_relativeP") <- ecnsec
   }
   
   if(!by_group & posterior & !is.na(group_var)){
-    out_vals <- as.numeric((unlist(out_vals)))
+    cens <- concat_censoring(lapply(out_vals, attr, "censored"),
+                             vapply(out_vals, length, integer(1)))
+    out_vals <- as.numeric(unlist(out_vals))
+    attr(out_vals, "censored") <- cens
     attr(out_vals, "ecnsec_relativeP") <- ecnsec
   }
   

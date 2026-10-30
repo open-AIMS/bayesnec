@@ -16,6 +16,8 @@
   summarises them. Previously a call with any such draw stopped while taking
   a quantile of missing values. Its summaries use the same observed order
   statistics as the other bayesnec NSEC methods when draws are censored.
+  Grouped summaries mark censored quantiles in `bound_` columns; grouped
+  posterior output includes per-draw censoring flags.
 
 ## Package metadata
 
