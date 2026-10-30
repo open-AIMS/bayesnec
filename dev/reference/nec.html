@@ -18,7 +18,7 @@ bayesnecfit or bayesmanecfit."><meta property="og:image" content="https://open-a
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
       </span>
     </div>
 
@@ -88,7 +88,7 @@ bayesnecfit or bayesmanecfit."><meta property="og:image" content="https://open-a
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Extracts the predicted NEC value as desired from an object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code>.</h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/nec.R" class="external-link"><code>R/nec.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/nec.R" class="external-link"><code>R/nec.R</code></a></small>
     <div class="hidden name"><code>nec.Rd</code></div>
     </div>
 
@@ -101,11 +101,10 @@ bayesnecfit or bayesmanecfit."><meta property="og:image" content="https://open-a
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nec</span><span class="op">(</span></span>
 <span>  <span class="va">object</span>,</span>
 <span>  posterior <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  xform <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  xform <span class="op">=</span> <span class="va">identity</span>,</span>
 <span>  prob_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span>,</span>
 <span>  extrapolate <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  <span class="va">...</span>,</span>
-<span>  no_effect <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -125,11 +124,8 @@ just the median and 95% credible intervals.</p></dd>
 
 
 <dt id="arg-xform">xform<a class="anchor" aria-label="anchor" href="#arg-xform"></a></dt>
-<dd><p><code>NULL</code>, the default, or a function. <code>NULL</code> returns
-the estimate on the scale the predictor was recorded on. A function is
-applied to the estimate on the scale the model was fitted on. The two
-differ only where <code>crf()</code> transforms the predictor inline; see
-Details.</p></dd>
+<dd><p>A function to apply to the returned estimated concentration
+values.</p></dd>
 
 
 <dt id="arg-prob-vals">prob_vals<a class="anchor" aria-label="anchor" href="#arg-prob-vals"></a></dt>
@@ -151,17 +147,6 @@ order. See the <em>Extrapolation</em> section of <code>nec</code>.</p></dd>
 <code>resolution</code> are forwarded to <code><a href="nsec.html">nsec</a></code> where a finite
 <code>extrapolate</code> limit requires a curve to be re-evaluated, and are
 otherwise unused.</p></dd>
-
-
-<dt id="arg-no-effect">no_effect<a class="anchor" aria-label="anchor" href="#arg-no-effect"></a></dt>
-<dd><p>For a <code><a href="bayesnecjointfit-class.html">bayesnecjointfit</a></code> only, a
-<code><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></code> value. <code>FALSE</code>, the default, reports the
-<code>nec</code> parameter alone, so a level whose equation has none returns
-<code>NA</code>. <code>TRUE</code> reports instead the no-effect estimate each level's
-own equation supports — the <code>nec</code> parameter for a threshold equation,
-the NSEC of the fitted curve for a smooth one — labelled by type in an
-<code>ne_type</code> column. The other classes have no such argument and reject it
-rather than discarding it.</p></dd>
 
 </dl></div>
     <div id="value">
@@ -198,34 +183,10 @@ with NSEC draws from the smooth ones, in proportion to the model
 weights. The result is the model-averaged <b>N(S)EC</b>, and a message is
 emitted to say so. It is not a pure NEC and should not be reported as
 one.</p></li>
-<li><p>For a <code><a href="bayesnecjointfit-class.html">bayesnecjointfit</a></code>, a
-<code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code> with one row per level of the grouping
-factor, the equation fitted at that level in a <code>model</code> column and
-the type of the estimate in an <code>ne_type</code> column. A composed joint
-refit fits one equation per level, so each level's estimate is a NEC or
-an NSEC and never a mixture of the two. <code>no_effect = FALSE</code>, the
-default, therefore reports the <code>nec</code> parameter and <code>NA</code> where
-the level's equation has none, and <code>no_effect = TRUE</code> reports a NEC
-at a threshold level and the NSEC of the fitted curve at a smooth one.
-The <code>ne_type</code> column is what a model-averaged N(S)EC cannot report.</p></li>
 </ul><p><code><a href="summary.html">summary</a></code> labels the estimate NEC, NSEC or N(S)EC accordingly,
-and is the better choice where the type matters, because for every class but
-the joint refit <code>nec</code> returns an unlabelled vector. Use
-<code><a href="nsec.html">nsec</a></code> where a NSEC is wanted from every model regardless of
-type.</p>
-<p>Where <code>crf()</code> transforms the predictor inline, as in
-<code>crf(log(concentration))</code>, the <code>nec</code> parameter is sampled on the
-transformed scale. Without <code>xform</code> it is returned on the recorded
-scale, a concentration, by the inverse of the transformation. The inverse
-is exact for <code>log</code>, <code>log10</code>, <code>log2</code>, <code>log1p</code>,
-<code>sqrt</code> and <code>exp</code> of the predictor, alone or shifted by a
-constant, as in <code>log(concentration + 1)</code>. For any other
-transformation it is read off the prediction grid by linear interpolation,
-and a draw beyond that grid that is not censored is an error naming the
-remedy. A supplied <code>xform</code> is applied to the estimate on the
-transformed scale instead, so <code>xform = identity</code> returns that scale
-and <code>xform = exp</code> on <code>crf(log(concentration))</code> returns the
-exact inverse.</p>
+and is the better choice where the type matters, because <code>nec</code> always
+returns an unlabelled vector. Use <code><a href="nsec.html">nsec</a></code> where a NSEC is wanted
+from every model regardless of type.</p>
     </div>
     <div id="capping-and-dropping">
     <h2>Capping and dropping</h2>
@@ -256,11 +217,11 @@ at the boundary, because every archived analysis is compared against it.</p>
 
 
 <p><code>extrapolate</code> chooses the bound the estimate is censored at. It is read
-on the recorded predictor scale, the scale the data were supplied on, the
-scale <code><a href="bnec.html">bnec</a></code> and <code><a href="nsec.html">nsec</a></code> take <code>x_range</code> on, and
-the scale the estimate is returned on without <code>xform</code>. Under
-<code>crf(log(concentration))</code> the limit is therefore a concentration and
-not a log concentration, whatever <code>xform</code> is given.</p>
+on the recorded predictor scale, the scale the data were supplied on and the
+scale <code><a href="bnec.html">bnec</a></code> and <code><a href="nsec.html">nsec</a></code> take <code>x_range</code> on. That
+is neither the scale <code>crf()</code> fits on nor the scale <code>xform</code>
+displays, so under <code>crf(log(concentration))</code> the limit is a
+concentration and not a log concentration.</p>
 <p><code>TRUE</code> removes the bound at both ends. It is accepted only where every
 component of the reported estimate samples a NEC. An NSEC is read off a
 fitted curve and a curve cannot be evaluated on an infinite grid, so where
@@ -297,15 +258,11 @@ the fit or the estimate is built instead.</p>
 <p>Two constraints on the reach of an extrapolation are reported rather than
 corrected. Where the <code>nec</code> prior stored on the fit is itself bounded at
 the prediction range, the posterior holds no draw beyond that bound and a
-wider limit returns the same truncated posterior; where the call
-re-evaluates anything, a message states the bound. The default prior bounds
-<code>nec</code> to the tested range, so this applies to every fit made under the
-default <code>asymptote_observed = TRUE</code> of <code><a href="bnec.html">bnec</a></code>:
-<code>extrapolate</code> reaches above that range only for a fit made under
-<code>asymptote_observed = FALSE</code>, which lifts the upper bound, or with a
-user prior that sets a wider one. The lower bound at the lowest value tested
-applies under both settings and is reported by the other arm of the same
-message. And a curve-read
+wider limit returns the same truncated posterior; a message states the
+bound. The default prior no longer bounds <code>nec</code> above, so this applies
+to a fit made before that change, or to a user prior that supplies a bound.
+The lower bound of 0 that a predictor supplied as a concentration still
+takes is reported by the other arm of the same message. And a curve-read
 component is measured from the control, so a lower limit below the lowest
 observed concentration extends the grid without extending the search, and
 those components stay censored at the control.</p>

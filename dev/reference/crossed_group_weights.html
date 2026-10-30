@@ -18,7 +18,7 @@ that table which answer different questions."><meta property="og:image" content=
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
       </span>
     </div>
 
@@ -88,7 +88,7 @@ that table which answer different questions."><meta property="og:image" content=
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Crossed model weights across the levels of a factor</h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/bnec_group.R" class="external-link"><code>R/bnec_group.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/bnec_group.R" class="external-link"><code>R/bnec_group.R</code></a></small>
     <div class="hidden name"><code>crossed_group_weights.Rd</code></div>
     </div>
 
@@ -129,8 +129,8 @@ grouped-versus-pooled WAIC comparison.</p>
 <code>elpd(m_1, ..., m_G) = sum_g elpd_g(m_g)</code>. Under pseudo-BMA the crossed
 weight of a combination is proportional to the product of its per-level
 weights, so the whole table follows from the per-level vectors and never has
-to be materialised — which matters, because with the 24 equations of the
-default set and <em>G</em> levels it has <code>24^G</code> cells.</p>
+to be materialised — which matters, because with 23 models and <em>G</em>
+levels it has <code>23^G</code> cells.</p>
 <p><b>This identity is specific to pseudo-BMA</b>, the package default, and
 <code>crossed_group_weights()</code> enforces it rather than assuming it: a fit
 built with any other weighting method is refused, because there is no

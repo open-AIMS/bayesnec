@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
       </span>
     </div>
 
@@ -87,7 +87,7 @@
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Creates a <span class="pkg">ggplot2</span> plot of a <code><a href="bayesnechurdlefit.html">bayesnechurdlefit</a></code></h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/bayesnechurdlefit-methods.R" class="external-link"><code>R/bayesnechurdlefit-methods.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/bayesnechurdlefit-methods.R" class="external-link"><code>R/bayesnechurdlefit-methods.R</code></a></small>
     <div class="hidden name"><code>autoplot.bayesnechurdlefit.Rd</code></div>
     </div>
 
@@ -104,7 +104,7 @@
 <span>  CI <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  resolution <span class="op">=</span> <span class="fl">1000</span>,</span>
 <span>  x_range <span class="op">=</span> <span class="cn">NA</span>,</span>
-<span>  xform <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  xform <span class="op">=</span> <span class="va">identity</span>,</span>
 <span>  xlab <span class="op">=</span> <span class="st">"Predictor"</span>,</span>
 <span>  ylab <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -139,10 +139,7 @@
 
 
 <dt id="arg-xform">xform<a class="anchor" aria-label="anchor" href="#arg-xform"></a></dt>
-<dd><p><code>NULL</code>, the default, or a function to apply to the
-predictor where <code>crf()</code> does not transform it inline. Where it does,
-the predictor is returned on the recorded scale, the scale the prediction
-grid is built on, and <code>xform</code> is not applied.</p></dd>
+<dd><p>A function to apply to the predictor.</p></dd>
 
 
 <dt id="arg-xlab">xlab<a class="anchor" aria-label="anchor" href="#arg-xlab"></a></dt>

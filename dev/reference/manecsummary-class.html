@@ -3,7 +3,7 @@
 bayesnec package are summarised
 as a manecsummary object, which contains the name of the
 non-linear models fitted, the family distribution used
-to fit all the models, the number of post-warm-up draws per model, a table
+to fit all the models, the total post-warm-up sample size, a table
 containing the model weights, the method to calculate the weights,
 whether this model is an ECx-type model
 (see details below), and the ECx summary values should the user decide
@@ -25,7 +25,7 @@ to calculate them."><meta property="og:image" content="https://open-aims.github.
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
       </span>
     </div>
 
@@ -95,7 +95,7 @@ to calculate them."><meta property="og:image" content="https://open-aims.github.
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Class <code>manecsummary</code> of models fitted with the <span class="pkg">brms</span> package</h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/manecsummary-class.R" class="external-link"><code>R/manecsummary-class.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/manecsummary-class.R" class="external-link"><code>R/manecsummary-class.R</code></a></small>
     <div class="hidden name"><code>manecsummary-class.Rd</code></div>
     </div>
 
@@ -104,7 +104,7 @@ to calculate them."><meta property="og:image" content="https://open-aims.github.
 <code><a href="bayesnec-package.html">bayesnec</a></code> package are summarised
 as a <code>manecsummary</code> object, which contains the name of the
 non-linear models fitted, the family distribution used
-to fit all the models, the number of post-warm-up draws per model, a table
+to fit all the models, the total post-warm-up sample size, a table
 containing the model weights, the method to calculate the weights,
 whether this model is an ECx-type model
 (see details below), and the ECx summary values should the user decide
@@ -132,8 +132,7 @@ family distribution and link function used to fit all the models.</p></dd>
 
 
 <dt><code>sample_size</code></dt>
-<dd><p>The number of post-warm-up draws each model in the set
-holds. Where the models hold different numbers, it is the smallest.</p></dd>
+<dd><p>The total post-warm-up sample size.</p></dd>
 
 
 <dt><code>mod_weights</code></dt>
@@ -177,26 +176,10 @@ calculated by <code><a href="https://mc-stan.org/rstantools/reference/bayes_R2.h
 model exhibited convergence issues based on the Rhat evaluation.</p></dd>
 
 
-<dt><code>divergences</code></dt>
-<dd><p>A named <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></code> vector giving the
-number of divergent transitions after warmup for each model, <code>NA</code> for
-a model not sampled by NUTS.</p></dd>
-
-
-<dt><code>divergence_cutoff</code></dt>
-<dd><p>The number of divergent transitions above which the
-printed summary warns of a model.</p></dd>
-
-
 <dt><code>failed_models</code></dt>
 <dd><p>Any models from the requested set that could not be
 fitted, with the priors and initial values used. See
 <code><a href="failed_models.html">failed_models</a></code>.</p></dd>
-
-
-<dt><code>bnec_version</code></dt>
-<dd><p>The installation of <span class="pkg">bayesnec</span> that fitted each
-model, as <code><a href="bnec_version.html">bnec_version</a></code> reports it.</p></dd>
 
 
 </dl></div>

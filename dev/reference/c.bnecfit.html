@@ -19,7 +19,7 @@ statistics."><meta property="og:image" content="https://open-aims.github.io/baye
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
       </span>
     </div>
 
@@ -89,7 +89,7 @@ statistics."><meta property="og:image" content="https://open-aims.github.io/baye
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Concatenate multiple <code><a href="bnecfit-class.html">bnecfit</a></code> objects into one single <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> object containing Bayesian model averaging statistics.</h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/bnecfit-methods.R" class="external-link"><code>R/bnecfit-methods.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/bnecfit-methods.R" class="external-link"><code>R/bnecfit-methods.R</code></a></small>
     <div class="hidden name"><code>c.bnecfit.Rd</code></div>
     </div>
 
@@ -118,8 +118,7 @@ statistics.</p>
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>A <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> where only one distinct model remains,
-otherwise a <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code>.</p>
+    <p>An object of class <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code>.</p>
     </div>
     <div id="details">
     <h2>Details</h2>
@@ -131,19 +130,6 @@ default of "pseudobma" is used. Where two inputs name different methods the
 default is used and a message reports the disagreement.
 <code><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></code> takes no <code>loo_controls</code> argument; use
 <code><a href="amend.html">amend</a></code> to set the weighting method explicitly.</p>
-<p>The estimates of the combined set are computed with the <code>x_range</code>,
-<code>resolution</code> and <code>sig_val</code> the objects were fitted with, and with
-the arguments of their <code>loo_controls</code> other than the method, where
-every object that records an argument records the same value. Where two objects record
-different values of an argument, the <code><a href="bnec.html">bnec</a></code> default is used and a
-message names the argument. An object fitted by an earlier version of
-<span class="pkg">bayesnec</span> records none of them.</p>
-<p>Each equation keeps the record of the installation of <span class="pkg">bayesnec</span> that
-fitted it, and a message reports a combined set whose equations were fitted
-by different installations. See <code><a href="bnec_version.html">bnec_version</a></code>.</p>
-<p>The records of what <code><a href="bnec.html">bnec</a></code> did to each request, and of the
-equations that failed to fit, are joined; see <code><a href="bnec_record.html">bnec_record</a></code> and
-<code><a href="failed_models.html">failed_models</a></code>.</p>
     </div>
 
     <div id="ref-examples">

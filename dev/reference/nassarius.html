@@ -21,7 +21,7 @@ these data are used to illustrate."><meta property="og:image" content="https://o
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
       </span>
     </div>
 
@@ -91,7 +91,7 @@ these data are used to illustrate."><meta property="og:image" content="https://o
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Chronic snail toxicity data with mortality</h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/data.R" class="external-link"><code>R/data.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/data.R" class="external-link"><code>R/data.R</code></a></small>
     <div class="hidden name"><code>nassarius.Rd</code></div>
     </div>
 
@@ -117,8 +117,8 @@ analysis of the survivors alone silently conditions on survival.</p>
 <p><b>Mortality is recorded as a zero growth value</b>, with <code>alive</code>
 giving the same information as an explicit indicator. In the source records
 deaths were not coded that way: they appeared as one of four traces — a
-sentinel value far below the real data, a blank replicate within a tank that
-ran, a tank missing from a treatment that ran, or a treatment missing from
+sentinel value far below the real data, a blank position in a row of the
+file, a row missing from a treatment that ran, or a treatment missing from
 the file entirely because nothing in it survived. Reconstructing them is
 part of the worked example.</p>
 <p><b>Growth is reported exactly as measured</b>, including four slightly
@@ -137,6 +137,12 @@ contributes no rows, a survivors-only analysis of B would contain just four
 of its fourteen doses and would not register that the contaminant is lethal
 beyond them. It is the clearest case in these data for modelling the exposed
 cohort rather than the survivors.</p>
+<p>The source file lists the snails of each treatment in rows of six or seven,
+labelled as tanks. The snails were mixed before they were recorded, so a row
+is not the tank a snail was held in. Summing the snails in each row gives
+valid binomial counts, but the data contain no information about variation
+between tanks, and a group-level term on <code>tank</code> does not describe the
+design.</p>
 <p>The contaminants are anonymised and the dose units are not stated. Dose
 values are the tested nominal concentrations on an undisclosed scale, so
 their relative spacing — and therefore every toxicity estimate derived
@@ -149,7 +155,8 @@ from them — is preserved.</p>
 <dd><p>Nominal exposure concentration, undisclosed units (dbl).</p></dd>
 
 <dt>tank</dt>
-<dd><p>Replicate tank identifier, unique within contaminant (chr).</p></dd>
+<dd><p>Row of the source file within a treatment, unique within
+contaminant (chr). It does not identify the tank a snail was held in.</p></dd>
 
 <dt>alive</dt>
 <dd><p>1 if the snail survived and was measured, 0 if it died (int).</p></dd>
@@ -161,8 +168,8 @@ from them — is preserved.</p>
 <dd><p>How this snail's fate was established (fct), one of
 <code>"measured"</code>, <code>"sentinel_code"</code>, <code>"blank_rep"</code>,
 <code>"absent_tank"</code> or <code>"absent_dose"</code>. The last two are snails that
-do not appear in the source records at all and were reinstated from the
-test design.</p></dd>
+do not appear in the source records at all (a missing row, or a missing
+treatment) and were reinstated from the test design.</p></dd>
 
 
 </dl><p>Between 79% and 95% of the deaths in each test fall into the two

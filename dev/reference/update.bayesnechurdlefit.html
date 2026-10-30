@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
       </span>
     </div>
 
@@ -87,7 +87,7 @@
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Updates both components of a <code><a href="bayesnechurdlefit.html">bayesnechurdlefit</a></code></h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/bayesnechurdlefit-methods.R" class="external-link"><code>R/bayesnechurdlefit-methods.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/bayesnechurdlefit-methods.R" class="external-link"><code>R/bayesnechurdlefit-methods.R</code></a></small>
     <div class="hidden name"><code>update.bayesnechurdlefit.Rd</code></div>
     </div>
 
@@ -97,7 +97,7 @@
 
     <div id="ref-usage">
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for class 'bayesnechurdlefit'</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/stats/update.html" class="external-link">update</a></span><span class="op">(</span><span class="va">object</span>, newdata <span class="op">=</span> <span class="cn">NULL</span>, recompile <span class="op">=</span> <span class="cn">NULL</span>, x_range <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/update.html" class="external-link">update</a></span><span class="op">(</span><span class="va">object</span>, newdata <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -112,43 +112,12 @@
 <dd><p>Optional new data. Split into the two component datasets the
 same way <code><a href="bnec_hurdle.html">bnec_hurdle</a></code> does, so zeros continue to denote the
 hurdle rather than being modelled as small responses, and checked the same
-way. A response that is not numeric, holds a missing or negative value, or
-has no zero or no value above zero is refused with the message
-<code>bnec_hurdle</code> gives, as is a row that is both zero and censored.
-Each component is refitted with the family it was fitted
-with, as <code><a href="update.bnecfit.html">update.bnecfit</a></code> describes. Both components are checked
-against their families before either is refitted, so new data that put the
-growth component at a bound in every observation, such as a <code>Beta</code>
-growth component of 1 throughout, are refused, naming that component.</p></dd>
-
-
-<dt id="arg-recompile">recompile<a class="anchor" aria-label="anchor" href="#arg-recompile"></a></dt>
-<dd><p>As for <code><a href="update.bnecfit.html">update.bnecfit</a></code>.</p></dd>
-
-
-<dt id="arg-x-range">x_range<a class="anchor" aria-label="anchor" href="#arg-x-range"></a></dt>
-<dd><p>As for <code><a href="update.bnecfit.html">update.bnecfit</a></code>. A <code>NULL</code> inherits
-the recorded range, or follows the whole new concentration series where
-<code>bnec_hurdle</code> was given no range.</p></dd>
+way: a row that is both zero and censored is refused here as it is at
+construction.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Further arguments passed to <code><a href="update.bnecfit.html">update.bnecfit</a></code> for
-each component. A <code>family</code> is passed to the growth component only.
-The survival component is always refitted as <code>bernoulli</code>. The growth
-family is checked as <code><a href="bnec_hurdle.html">bnec_hurdle</a></code> checks
-<code>family_growth</code>, before either component is refitted. A family
-<code>bnec_hurdle</code> refuses for the growth component, such as
-<code>hurdle_gamma</code>, is refused. So is a family the growth component's
-<code>disp()</code> term cannot be refitted under, as <code><a href="update.bnecfit.html">update.bnecfit</a></code>
-describes, such as <code>poisson</code>. A <code>poisson</code> or <code>negbinomial</code>
-family needs <span class="pkg">brms</span> 2.23.2 or later, and the growth component is then
-refitted with the zero-truncated likelihood <code>bnec_hurdle</code> uses.
-An argument that is not supplied, such as <code>x_range</code>, is taken by each
-component from its own fit, as <code><a href="update.bnecfit.html">update.bnecfit</a></code> describes.
-Where <code>newdata</code> is supplied and <code>bnec_hurdle</code> was given no
-<code>x_range</code>, the growth component is predicted over the whole
-concentration series of <code>newdata</code>, as <code>bnec_hurdle</code> predicts it.</p></dd>
+<dd><p>Further arguments to <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm</a></code>.</p></dd>
 
 </dl></div>
     <div id="value">
