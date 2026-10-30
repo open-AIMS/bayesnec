@@ -55,6 +55,13 @@ A precompiled vignette embeds whatever the render printed. A home directory, a
 library path or compiler output reaches CRAN in the built vignette, so check the
 rendered `.Rmd` for them before committing it.
 
+A vignette describes the version it ships with. It names no version or issue
+number and does not say what changed. Changes since the last CRAN release go in
+`NEWS.md`, and development history stays on the pull request or issue. A figure
+computed outside the build names the commit it ran on. Only a CRAN release
+number means anything to a user: the development numbers in `DESCRIPTION` were
+never released.
+
 ### Reading a rendered vignette
 
 The committed `.Rmd` already holds every chunk's output as text, so rendering it
