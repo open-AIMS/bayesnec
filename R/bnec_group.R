@@ -708,15 +708,17 @@ compare_pooled_logo <- function(object, pooled, best, pooled_model) {
   }
   grouped <- unlist(lapply(unname(logo[-length(logo)]), looic))
   pooled_pw <- looic(logo[[length(logo)]])
-  se_diff <- NA_real_
-  n_groups <- NA_integer_
-  if (!anyDuplicated(names(grouped)) &&
-        setequal(names(grouped), names(pooled_pw)) &&
-        length(grouped) == length(pooled_pw)) {
-    d <- pooled_pw[names(grouped)] - grouped
-    n_groups <- length(d)
-    se_diff <- sqrt(n_groups) * stats::sd(d)
+  if (anyDuplicated(names(grouped)) || anyDuplicated(names(pooled_pw)) ||
+        !setequal(names(grouped), names(pooled_pw)) ||
+        length(grouped) != length(pooled_pw)) {
+    warning("The grouped and pooled leave-one-group-out scores do not",
+            " cover the same levels, so they are compared on WAIC.",
+            " See ?crossed_group_weights.", call. = FALSE)
+    return(NULL)
   }
+  d <- pooled_pw[names(grouped)] - grouped
+  n_groups <- length(d)
+  se_diff <- sqrt(n_groups) * stats::sd(d)
   list(criterion = "looic", group = groups,
        looic_grouped = sum(grouped), looic_pooled = sum(pooled_pw),
        diff = sum(pooled_pw) - sum(grouped), se_diff = se_diff,

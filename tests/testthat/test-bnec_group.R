@@ -880,3 +880,24 @@ test_that("the pooled comparison uses the left-out score where all fits hold it"
                  "compared on WAIC")
   expect_identical(res$criterion, "waic")
 })
+
+test_that("the pooled comparison requires the same held-out levels", {
+  d <- data.frame(site = rep(c("a", "b"), each = 4))
+  gf <- structure(
+    list(fits = list(a = fake_logo_set(c("a1", "a2"), c(-1, -2)),
+                     b = fake_logo_set(c("b1", "b2"), c(-3, -4))),
+         group_var = "site", levels = c("a", "b"), data = d,
+         n = c(4L, 4L), weights_method = "pseudobma"),
+    class = c("bayesnecgroupfit", "bnecfit")
+  )
+  pooled <- fake_logo_set(c("a1", "a2", "b1", "other"),
+                          c(-1, -2, -3, -4))
+  expect_warning(res <- crossed_group_weights(gf, pooled = pooled)$pooled,
+                 "do not cover the same levels")
+  expect_identical(res$criterion, "waic")
+  gf$fits$b <- fake_logo_set(c("a1", "b2"), c(-3, -4))
+  pooled <- fake_logo_set(c("a1", "a2", "b2"), c(-1, -2, -4))
+  expect_warning(res <- crossed_group_weights(gf, pooled = pooled)$pooled,
+                 "do not cover the same levels")
+  expect_identical(res$criterion, "waic")
+})

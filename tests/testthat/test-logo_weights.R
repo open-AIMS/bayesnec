@@ -308,6 +308,22 @@ test_that("logo_reloo warns where a refit did not converge", {
   )
 })
 
+test_that("logo_reloo keeps the approximate score when scoring a refit fails", {
+  level <- factor(rep(c("a", "b", "c", "d"), each = 3))
+  logo <- fake_logo(c(0.2, 0.9, 0.3, 0.1))
+  local_mocked_bindings(logo_refit_level = function(...) {
+    stop("failed to prepare held-out data")
+  })
+  expect_warning(
+    out <- suppressMessages(bayesnec:::logo_reloo(
+      list(fit = NULL), logo, level, "ecxlin"
+    )),
+    "failed without 1 level of cell \\(b\\)"
+  )
+  expect_identical(out$pointwise, logo$pointwise)
+  expect_identical(attr(out, "refit_failed"), "b")
+})
+
 test_that("weight_criteria refits only where asked", {
   d <- lum_like()
   held <- structure(list(pointwise = matrix(0, 6, 1)), group = "cell")

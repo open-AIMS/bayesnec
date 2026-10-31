@@ -339,7 +339,8 @@ logo_reloo <- function(o, logo, level, model) {
   rhat_max <- elpd
   base <- o$fit
   for (g in todo) {
-    out <- logo_refit_level(base, o, group, level, g)
+    out <- tryCatch(logo_refit_level(base, o, group, level, g),
+                    error = function(e) NULL)
     if (is.null(out)) {
       next
     }
