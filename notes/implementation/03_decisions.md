@@ -670,9 +670,9 @@ packages export `ecx()` and `nsec()`, and the one attached last masks the other
 without a warning. The detail is on #255.
 
 RF, 2026-10-30, with the scope narrowed by RF on 2026-10-31, so that the two
-packages do not drift: a change that edits `ecx()`, `nsec()` or `nec()`, or an
-internal function they call, and that changes a value they return for the same
-fitted object, is compared with `toxval` under matching options before it
+packages do not drift: a change that edits `ecx()`, `nsec()`, `nec()` or
+`ecnsec()`, or an internal function they call, and that changes a value they
+return for the same fitted object, is compared with `toxval` under matching options before it
 merges. The result, and whether `toxval` is to follow, is recorded on a
 `toxval` issue. No other change is compared. A change to fitting, priors or
 model weights alters the fitted object, from which `toxval` also computes its

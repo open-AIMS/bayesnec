@@ -160,8 +160,8 @@ to `ecx`.
 develops both and keeps their results in agreement.
 
 The comparison with `toxval` applies only to a change that edits `ecx()`,
-`nsec()` or `nec()`, or an internal function they call, and that changes a
-value they return for the same fitted object. Compare such a change with
+`nsec()`, `nec()` or `ecnsec()`, or an internal function they call, and that
+changes a value they return for the same fitted object. Compare such a change with
 `toxval` under matching options before it merges. Record the result, and
 whether `toxval` is to follow, on a `toxval` issue.
 
