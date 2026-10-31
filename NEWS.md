@@ -6,8 +6,9 @@
   concentration, such as `ogl(conc_group)` on `lum31` or `ogl(chamber)` on
   `coral_pam`, the model weights are now computed by leaving out each level
   whole rather than each observation (#529). Under the earlier score a curve
-  of the wrong shape was barely penalised, because the left-out observation's
-  group deviation absorbed the curve's misfit at that concentration. Other
+  of the wrong shape was barely penalised, because the deviation of the
+  left-out observation's group, estimated from the group's other observations,
+  included the curve's misfit at that concentration. Other
   structures, such as `pgl()` on the grouping or two nested groupings, keep
   the earlier score, with a warning that gives the reason.
 - `loo_controls` takes two new elements. `leave_out` is `"group"` (the
