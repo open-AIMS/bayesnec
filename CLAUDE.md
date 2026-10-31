@@ -157,12 +157,20 @@ to `ecx`.
 
 `toxval` has its own `ecx()` and `nsec()`, with methods for `bayesnec` fits, and
 `bayesnec` keeps its own (D46 in `notes/implementation/03_decisions.md`). RF
-develops both and keeps their results in agreement. A change here that alters a
-value returned for a `bayesnecfit` or `bayesmanecfit`, or by the `brmsfit` or
-`drc` method of `nsec()`, is compared with `toxval` under matching options
-before it merges. Record the result, and whether `toxval` is to follow, on a
-`toxval` issue. A change that leaves every returned value unchanged needs
-neither.
+develops both and keeps their results in agreement.
+
+The comparison with `toxval` applies only to a change that edits `ecx()`,
+`nsec()` or `nec()`, or an internal function they call, and that changes a
+value they return for the same fitted object. Compare such a change with
+`toxval` under matching options before it merges. Record the result, and
+whether `toxval` is to follow, on a `toxval` issue.
+
+No other change needs the comparison, and a session that has not edited those
+functions does not consider it. This includes changes to fitting, priors, model
+weights, `summary()`, `autoplot()` and documentation, even where they change
+the estimates. Such a change alters the fitted object, and `toxval` computes
+its estimates from that same object. A new message or refusal changes no
+returned value, so it needs no comparison either.
 
 Both packages export `ecx()` and `nsec()`, and the one attached last masks the
 other without a warning. With both attached, call each with its package prefix.

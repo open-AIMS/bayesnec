@@ -669,9 +669,12 @@ not the `drc` method. Both
 packages export `ecx()` and `nsec()`, and the one attached last masks the other
 without a warning. The detail is on #255.
 
-RF, 2026-10-30, so that the two packages do not drift: a change to `ecx()`,
-`nsec()` or `ecnsec()` that alters the value returned for a class `toxval`
-supports is compared with `toxval` under matching options before it merges. The
-result, and whether `toxval` is to follow, is recorded on a `toxval` issue. A
-change that leaves every returned value unchanged, such as a message or a new
-refusal, needs neither. This replaces D11's rule that every fix is recorded.
+RF, 2026-10-30, with the scope narrowed by RF on 2026-10-31, so that the two
+packages do not drift: a change that edits `ecx()`, `nsec()` or `nec()`, or an
+internal function they call, and that changes a value they return for the same
+fitted object, is compared with `toxval` under matching options before it
+merges. The result, and whether `toxval` is to follow, is recorded on a
+`toxval` issue. No other change is compared. A change to fitting, priors or
+model weights alters the fitted object, from which `toxval` also computes its
+estimates, and a new message or refusal changes no returned value. This
+replaces D11's rule that every fix is recorded.
