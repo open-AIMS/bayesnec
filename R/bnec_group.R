@@ -488,6 +488,16 @@ fit_model_weights <- function(x) {
 #' small one. Where the values are present the observations are additionally
 #' checked to line up before anything is computed.
 #'
+#' WAIC is computed for each observation, and under a group-level term whose
+#' levels are each observed at a single concentration it barely depends on the
+#' shape of the curve
+#' (see the \code{loo_controls} argument of \code{\link{bnec}}). Where every
+#' level, and the pooled fit, is a model set weighted by leaving out each level
+#' of the same grouping, the comparison is made on that score instead, as
+#' LOOIC (\code{-2} times the elpd), with the groups paired by name for
+#' \code{se_diff}. Where only some of them are, the comparison stays on WAIC,
+#' with a warning.
+#'
 #' Note this compares the \emph{best} model per level against the \emph{best}
 #' pooled model, not the model-averaged predictions of either. Model averaging
 #' is within level by construction, and the averaged predictive density is not
@@ -496,7 +506,10 @@ fit_model_weights <- function(x) {
 #' @return A \code{\link[base]{list}} with the per-level weight vectors, the
 #' unrestricted best combination and its weight, the diagonal weights over the
 #' models common to every level, and --- if \code{pooled} was given --- the
-#' grouped-versus-pooled WAIC comparison.
+#' grouped-versus-pooled comparison. Its \code{criterion} is \code{"waic"},
+#' with \code{waic_grouped}, \code{waic_pooled} and \code{n_obs}, or
+#' \code{"looic"}, with \code{looic_grouped}, \code{looic_pooled},
+#' \code{n_groups} and \code{group}, the grouping left out.
 #'
 #' @seealso \code{\link{bnec_group}}, \code{\link{crossed_weights}}
 #'
@@ -622,6 +635,11 @@ compare_pooled <- function(object, pooled, best) {
   })
   names(per_level) <- object$levels
   pooled_w <- fit_best_waic(pooled)
+  by_group <- compare_pooled_logo(object, pooled, best, pooled_w$model)
+  if (!is.null(by_group)) {
+    return(c(list(grouped_models = best, pooled_model = pooled_w$model),
+             by_group))
+  }
   waic_grouped <- sum(vapply(per_level, function(z) z$waic, numeric(1)))
   diff <- pooled_w$waic - waic_grouped
   se_diff <- NA_real_
@@ -644,11 +662,65 @@ compare_pooled <- function(object, pooled, best) {
   }
   list(grouped_models = best,
        pooled_model = pooled_w$model,
+       criterion = "waic",
        waic_grouped = waic_grouped,
        waic_pooled = pooled_w$waic,
        diff = diff,
        se_diff = se_diff,
        n_obs = n_obs)
+}
+
+#' Grouped versus pooled, on the leave-one-group-out score
+#'
+#' @param object An object of class \code{\link{bayesnecgroupfit}}.
+#' @param pooled A fit of the same model set to the whole data.
+#' @param best The best model per level.
+#' @param pooled_model The best model of \code{pooled}.
+#'
+#' @return \code{NULL} where not every fit is a model set weighted by leaving
+#' out each level of one grouping, after a warning if any of them is.
+#' Otherwise the \code{\link[base]{list}} of comparison elements.
+#'
+#' @noRd
+compare_pooled_logo <- function(object, pooled, best, pooled_model) {
+  fits <- c(object$fits, list(pooled))
+  models <- c(unname(best[object$levels]), pooled_model)
+  logo <- Map(function(x, m) {
+    if (!inherits(x, "bayesmanecfit") ||
+          identical(weights_leave_out(x), "observation")) {
+      return(NULL)
+    }
+    x$mod_fits[[m]]$fit$criteria$logo
+  }, fits, models)
+  held <- !vapply(logo, is.null, logical(1))
+  groups <- unique(unlist(lapply(logo[held], attr, "group")))
+  if (!all(held) || length(groups) != 1) {
+    if (any(held)) {
+      warning("The grouped and pooled fits do not all hold a",
+              " leave-one-group-out score for one grouping, so they are",
+              " compared on WAIC, which is computed for each observation. See",
+              " ?crossed_group_weights.", call. = FALSE)
+    }
+    return(NULL)
+  }
+  looic <- function(l) {
+    stats::setNames(-2 * l$pointwise[, "elpd_loo"], attr(l, "levels"))
+  }
+  grouped <- unlist(lapply(unname(logo[-length(logo)]), looic))
+  pooled_pw <- looic(logo[[length(logo)]])
+  se_diff <- NA_real_
+  n_groups <- NA_integer_
+  if (!anyDuplicated(names(grouped)) &&
+        setequal(names(grouped), names(pooled_pw)) &&
+        length(grouped) == length(pooled_pw)) {
+    d <- pooled_pw[names(grouped)] - grouped
+    n_groups <- length(d)
+    se_diff <- sqrt(n_groups) * stats::sd(d)
+  }
+  list(criterion = "looic", group = groups,
+       looic_grouped = sum(grouped), looic_pooled = sum(pooled_pw),
+       diff = sum(pooled_pw) - sum(grouped), se_diff = se_diff,
+       n_groups = n_groups)
 }
 
 #' One argument of \code{bnec()}, read from a \code{bnec_group()} dot list

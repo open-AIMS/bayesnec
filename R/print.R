@@ -121,7 +121,8 @@ print.manecsummary <- function(x, ...) {
   cat("\n")
   cat("Number of posterior draws per model: ", x$sample_size)
   cat("\n\n")
-  cat("Model weights (Method: ", x$mod_weights_method, "):\n", sep = "")
+  cat("Model weights (Method: ", x$mod_weights_method,
+      leave_out_label(x$mod_weights_leave_out), "):\n", sep = "")
   print_mat(x$mod_weights)
   cat("\n\n")
   neclab <- rownames(x$nec_vals)

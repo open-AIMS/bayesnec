@@ -80,7 +80,8 @@ workbooks, so the level combines toxicant, batch and plate label.}
 numbered in ascending concentration within the plate. This is the
 within-concentration grouping factor: every level sits at a single
 concentration, so it cannot have a concentration-response curve of its
-own.}
+own. The model weights of a set fitted with a term on it leave out each
+level whole; see the \code{loo_controls} argument of \code{\link{bnec}}.}
 \item{well}{Replicate well identifier, unique within plate (fct). Each level
 appears twice, once per exposure time. Within one toxicant-by-exposure-time
 subset a level has a single observation, so a group-level term on

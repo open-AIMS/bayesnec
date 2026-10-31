@@ -840,3 +840,43 @@ test_that("bnec_group() refuses a set excluded at every level (#470)", {
   expect_match(err, "No equation requested can be fitted", fixed = TRUE)
   expect_identical(calls, 0L)
 })
+
+# A model set weighted by leaving out each level of `group`, holding one
+# equation whose score per level is `elpd`.
+fake_logo_set <- function(levels, elpd, group = "cell") {
+  ms <- data.frame(waic = 10, wi = 1, row.names = "m")
+  attr(ms$wi, "leave_out") <- group
+  logo <- structure(list(pointwise = cbind(elpd_loo = elpd)), group = group,
+                    levels = levels)
+  structure(list(mod_stats = ms,
+                 mod_fits = list(m = list(fit = list(criteria = list(
+                   logo = logo
+                 ))))),
+            class = c("bayesmanecfit", "bnecfit"))
+}
+
+test_that("the pooled comparison uses the left-out score where all fits hold it", {
+  d <- data.frame(site = rep(c("a", "b"), each = 4))
+  gf <- structure(
+    list(fits = list(a = fake_logo_set(c("a1", "a2"), c(-1, -2)),
+                     b = fake_logo_set(c("b1", "b2"), c(-3, -4))),
+         group_var = "site", levels = c("a", "b"), data = d,
+         n = c(4L, 4L), weights_method = "pseudobma"),
+    class = c("bayesnecgroupfit", "bnecfit")
+  )
+  # The pooled levels are in another order, so pairing must be by name.
+  pooled <- fake_logo_set(c("b1", "a1", "b2", "a2"),
+                          c(-3.5, -1.25, -4.5, -2.25))
+  res <- crossed_group_weights(gf, pooled = pooled)$pooled
+  expect_identical(res$criterion, "looic")
+  expect_identical(res$group, "cell")
+  expect_equal(res$looic_grouped, 20)
+  expect_equal(res$looic_pooled, 23)
+  expect_equal(res$diff, 3)
+  expect_equal(res$n_groups, 4L)
+  expect_equal(res$se_diff, sqrt(4) * sd(c(0.5, 0.5, 1, 1)))
+  # A pooled fit scored by observation leaves the comparison on WAIC.
+  expect_warning(res <- crossed_group_weights(gf, pooled = manec_example)$pooled,
+                 "compared on WAIC")
+  expect_identical(res$criterion, "waic")
+})

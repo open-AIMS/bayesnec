@@ -112,6 +112,12 @@
 #' \code{(1 | a) + (1 | b)}, the same as \code{ogl(a) + ogl(b)}.
 #' \code{ogl(a*b)} also includes \code{(1 | a:b)}.
 #'
+#' A grouping whose levels are each observed at a single concentration, such
+#' as the replicate vessels at each concentration, changes how the model
+#' weights are computed: each level is left out whole, rather than each
+#' observation. See the \code{loo_controls} argument and Details of
+#' \code{\link{bnec}}.
+#'
 #' \bold{The scale a group-level deviation is applied on}
 #'
 #' \pkg{brms} declares a group-level deviation unconstrained, and under the

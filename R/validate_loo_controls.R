@@ -7,14 +7,25 @@
 #' @param fam_tag A \code{\link[base]{character}} string defining the family
 #' distribution.
 #'
-#' @return A named \code{\link[base]{list}}.
+#' @return A named \code{\link[base]{list}}, with \code{fitting} and
+#' \code{weights} always present and \code{leave_out} only where the caller
+#' named it.
 #'
 #' @noRd
 validate_loo_controls <- function(loo_controls, fam_tag) {
   if (!is.list(loo_controls)) {
-    stop("loo_controls should be a named list of two elements. See ?bnec")
-  } else if (!all(names(loo_controls) %in% c("fitting", "weights"))) {
+    stop("loo_controls should be a named list of up to three elements.",
+         " See ?bnec")
+  } else if (!all(names(loo_controls) %in%
+                    c("fitting", "weights", "leave_out"))) {
     stop("loo_controls list names are incorrect. See ?bnec")
+  }
+  if (!is.null(loo_controls$leave_out) &&
+        !(is.character(loo_controls$leave_out) &&
+            length(loo_controls$leave_out) == 1 &&
+            loo_controls$leave_out %in% c("group", "observation"))) {
+    stop("Element \"leave_out\" of loo_controls should be \"group\" or",
+         " \"observation\". See ?bnec")
   }
   if ("fitting" %in% names(loo_controls)) {
     if (!is.list(loo_controls$fitting)) {

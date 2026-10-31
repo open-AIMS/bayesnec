@@ -260,7 +260,8 @@ attach_expand_args <- function(out, expand_args) {
 #' inherited in the same way, each where the caller does not name it. A
 #' recorded \code{weights} list is used only where it names \code{method}.
 #' A \code{weights} list that names no method is given \code{method}, and the
-#' default where \code{method} is \code{NULL}.
+#' default where \code{method} is \code{NULL}. \code{leave_out} is read from
+#' model sets only, and a set that records none was scored by observation.
 #'
 #' @return A named \code{\link[base]{list}} of the four, with attribute
 #' \code{"disagree"} naming each argument the objects record differently.
@@ -269,6 +270,7 @@ recorded_expand_args <- function(objects, x_range = NULL, resolution = NULL,
                                  sig_val = NULL, loo_controls = NULL,
                                  method = NULL, fam_tag = NULL) {
   records <- lapply(objects, attr, "bnec_expand_args")
+  set_records <- records[vapply(objects, is_bayesmanecfit, logical(1))]
   records <- records[!vapply(records, is.null, logical(1))]
   disagree <- character()
   agreed <- function(name, values) {
@@ -313,11 +315,21 @@ recorded_expand_args <- function(objects, x_range = NULL, resolution = NULL,
   } else if (is.null(loo$weights$method)) {
     loo$weights$method <- method
   }
+  if (!"leave_out" %in% named) {
+    loo$leave_out <- agreed("loo_controls$leave_out", lapply(
+      set_records, function(r) {
+        if (is.null(r$loo_controls$leave_out)) {
+          "observation"
+        } else {
+          r$loo_controls$leave_out
+        }
+      }
+    ))
+  }
   # Fill in the default method here rather than in expand_manec(), so that
-  # the record holds the method used. Fix the order of the two elements, which
-  # follows the caller's list, so that two records can be compared.
-  out$loo_controls <- define_loo_controls(loo[c("fitting", "weights")],
-                                          fam_tag)
+  # the record holds the method used. define_loo_controls() also fixes the
+  # order of the elements, so that two records can be compared.
+  out$loo_controls <- define_loo_controls(loo, fam_tag)
   attr(out, "disagree") <- disagree
   out
 }

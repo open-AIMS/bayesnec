@@ -23,13 +23,20 @@
 #' significance of the predicted posterior values against the lowest observed
 #' concentration (assumed to be the control), to estimate NEC as an
 #' interpolated NOEC value from smooth ECx curves.
-#' @param loo_controls A named \code{\link[base]{list}} of two elements
-#' ("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
+#' @param loo_controls A named \code{\link[base]{list}} of up to three
+#' elements. "fitting" and "weights" are each a named \code{\link[base]{list}}
 #' containing the desired arguments to be passed on to \code{\link[brms]{loo}}
 #' (via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
 #' If no \code{method} is named in "weights", \pkg{bayesnec} sets the
 #' \code{method} argument of \code{\link[loo]{loo_model_weights}} to
-#' "pseudobma", whichever function assembles the model set.
+#' "pseudobma", whichever function assembles the model set. "leave_out" is
+#' "group" (the default) or "observation", and sets what is left out when the
+#' score behind the weights is computed. Under "group", where each level of a
+#' group-level term is observed at a single concentration, each level is left
+#' out whole; otherwise, and always under "observation", each observation is
+#' left out. The "fitting" arguments apply to the score computed by leaving
+#' out each observation.
+#' See Details, under model averaging.
 #' \code{\link{amend}}, \code{update} and \code{\link{pull_out}} operate on an
 #' existing set. They keep the "fitting" arguments it was built with unless
 #' the caller names "fitting", and the method it was weighted by unless the
@@ -668,12 +675,40 @@
 #' used to calculate Bayes factors for point hypotheses via
 #' \code{\link[brms]{hypothesis}}.
 #'
-#' Model averaging is achieved through a weighted sample of each fitted models
-#' posterior predictions, with weights derived using functions
-#' \code{\link[brms]{loo}} and \code{\link[brms]{loo_model_weights}} from
-#' \pkg{brms}. Argument to both these functions can be passed via the
-#' \code{loo_controls} argument. Individual model fits can be pulled out
-#' for examination using function \code{\link{pull_out}}.
+#' Model averaging is achieved through a weighted sample of each fitted
+#' model's posterior predictions. The weights are computed by
+#' \code{\link[loo]{loo_model_weights}} from each model's expected log
+#' predictive density (elpd), estimated by Pareto-smoothed importance sampling
+#' and stored in column \code{elpd} of \code{mod_stats}. Arguments to
+#' \code{\link[brms]{loo}} and \code{\link[loo]{loo_model_weights}} can be
+#' passed via the \code{loo_controls} argument. Individual model fits can be
+#' pulled out for examination using function \code{\link{pull_out}}.
+#'
+#' The elpd is estimated by leaving out one observation at a time, except
+#' where each level of a group-level term is observed at a single
+#' concentration, such as \code{ogl(chamber)} with several fragments in each
+#' chamber. Leaving
+#' out one observation of such a group leaves the group's deviation to be
+#' estimated from its other observations. The estimated deviation then
+#' includes any misfit of the curve at that concentration, and the score of a
+#' curve of the wrong shape is reduced only slightly. For such a term each level
+#' is instead left out whole. For each posterior draw, the level's deviation is integrated
+#' out of the joint likelihood of its observations by Gauss--Legendre
+#' quadrature on each side of its mode, with the other group-level deviations
+#' held at their drawn values, so that the curve has to predict the level. This
+#' is supported for one such grouping, whose deviation appears in each equation
+#' as a single normal intercept per level, as in an \code{ogl()} term or one
+#' \code{(par | group)} term. For any other structure, such as \code{pgl()} on
+#' the grouping, each observation is left out, with a warning. The score of a
+#' level whose Pareto k exceeds 0.7 is approximate, and a message lists the
+#' equations given at least 0.01 of the weight that have such levels. The score
+#' is computed once for each equation and stored with it, so
+#' \code{\link{amend}}, \code{\link{pull_out}} and \code{\link[base]{c}}
+#' reuse it. A model set built before this score was introduced has no record
+#' of \code{leave_out}, so it is taken to have been scored by leaving out each
+#' observation, and is scored that way again when rebuilt;
+#' \code{amend(x, loo_controls = list(leave_out = "group"))} recomputes its
+#' weights.
 #'
 #' \bold{Reproducing a fit}
 #'
