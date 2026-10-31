@@ -21,13 +21,22 @@ pull_out(
 \item{model}{A \code{\link[base]{character}} string indicating
 which model or suite of models to pull out.}
 
-\item{loo_controls}{A named \code{\link[base]{list}} of two elements
-("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
+\item{loo_controls}{A named \code{\link[base]{list}} of up to four
+elements. "fitting" and "weights" are each a named \code{\link[base]{list}}
 containing the desired arguments to be passed on to \code{\link[brms]{loo}}
 (via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
 If no \code{method} is named in "weights", \pkg{bayesnec} sets the
 \code{method} argument of \code{\link[loo]{loo_model_weights}} to
-"pseudobma", whichever function assembles the model set.
+"pseudobma", whichever function assembles the model set. "leave_out" is
+"group" (the default) or "observation", and sets what is left out when the
+score behind the weights is computed. Under "group", where each level of a
+group-level term is observed at a single concentration, each level is left
+out whole; otherwise, and always under "observation", each observation is
+left out. "refit" is \code{FALSE} (the default) or \code{TRUE}, and applies
+under "group" only: where \code{TRUE}, each equation is refitted without
+each level whose left-out score is approximate. The "fitting" arguments
+apply to the score computed by leaving out each observation.
+See Details, under model averaging.
 \code{\link{amend}}, \code{update} and \code{\link{pull_out}} operate on an
 existing set. They keep the "fitting" arguments it was built with unless
 the caller names "fitting", and the method it was weighted by unless the

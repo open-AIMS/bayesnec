@@ -15,6 +15,10 @@ test_that("amend honours prediction settings without a model or LOO change", {
       out <- q(do.call(amend, args))
       expected <- record
       expected$loo_controls$fitting <- list()
+      # manec_example records no leave_out, so it was scored by observation.
+      if (inherits(fit, "bayesmanecfit")) {
+        expected$loo_controls$leave_out <- "observation"
+      }
       expect_identical(attr(out, "bnec_expand_args"), expected)
       grid <- if (inherits(out, "bayesnecfit")) {
         out$pred_vals$data
@@ -116,7 +120,8 @@ test_that("pull_out keeps positional and abbreviated prediction arguments", {
   for (out in list(positional, abbreviated)) {
     expect_equal(out$pred_vals, reference$pred_vals)
     expect_equal(out$ne_posterior, reference$ne_posterior)
+    # manec_example records no leave_out, so it was scored by observation.
     expect_identical(attr(out, "bnec_expand_args"),
-                     expand_record(fitting = list()))
+                     expand_record(fitting = list(), leave_out = "observation"))
   }
 })

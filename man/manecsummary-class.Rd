@@ -36,6 +36,10 @@ holds. Where the models hold different numbers, it is the smallest.}
 
 \item{\code{mod_weights_method}}{The method to calculate the weights.}
 
+\item{\code{mod_weights_leave_out}}{What the criterion behind the weights left out:
+the name of a grouping, each of whose levels was left out whole, or
+\code{"observation"}.}
+
 \item{\code{ecx_mods}}{A \code{\link[base]{logical}} indicating which \code{models}
 are ECx-type models.}
 

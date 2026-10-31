@@ -26,7 +26,12 @@
 #' by the fit.
 #' @slot success_models A \code{\link[base]{character}} vector indicating the
 #' name of the successfully fitted models.
-#' @slot mod_stats A \code{\link[base]{data.frame}} of model fit statistics.
+#' @slot mod_stats A \code{\link[base]{data.frame}} of model fit statistics,
+#' including \code{elpd}, the expected log predictive density the weights
+#' \code{wi} were computed from. Attribute \code{"leave_out"} of \code{wi}
+#' names the grouping each of whose levels that score left out, or is
+#' \code{"observation"}. See the \code{loo_controls} argument of
+#' \code{\link{bnec}}.
 #' @slot sample_size The number of posterior draws each component model holds,
 #' from which model averaging draws. Where the models hold different numbers,
 #' it is the smallest.

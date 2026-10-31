@@ -809,9 +809,11 @@ test_that("amend() computes the estimates with the arguments the set records", {
   expect_identical(attr(out, "bnec_expand_args"),
                    expand_record(sig_val = 0.01))
   # An object that records none takes the bnec() defaults, and records them.
+  # A model set that records no leave_out was scored by observation.
   out <- q(amend(manec_example, drop = "nec4param"))
   expect_equal(out$ne_posterior, defaults$ne_posterior)
-  expect_identical(attr(out, "bnec_expand_args"), default_expand_record())
+  expect_identical(attr(out, "bnec_expand_args"),
+                   default_expand_record(leave_out = "observation"))
 })
 
 test_that("amend() keeps the LOO fitting arguments the set records", {
@@ -821,7 +823,8 @@ test_that("amend() keeps the LOO fitting arguments the set records", {
   q <- function(expr) suppressWarnings(suppressMessages(expr))
   m <- with_expand_record(manec_example)
   stacked <- list(fitting = list(draw_ids = 1:50),
-                  weights = list(method = "stacking"))
+                  weights = list(method = "stacking"), leave_out = "group",
+                  refit = FALSE)
   reference <- q(expand_manec(
     manec_example$mod_fits,
     lapply(manec_example$mod_fits, extract_formula),

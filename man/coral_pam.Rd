@@ -20,7 +20,8 @@ chamber, so the chambers hold five to eight readings each and the rows are
 not balanced. As with \code{\link{coral_colour}} a chamber sits at one
 concentration and admits only a displacement, and 54 chambers of several
 readings is the better conditioned of the two for a
-\code{ogl(chamber)} term.
+\code{ogl(chamber)} term. The model weights leave out each chamber whole,
+as for \code{\link{coral_colour}}.
 
 Chamber was numbered 1 to 3 within each climate-by-concentration cell in the
 source records rather than across the experiment, so \code{chamber} here
