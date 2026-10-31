@@ -5,61 +5,24 @@
 - Where each level of a group-level term is observed at a single
   concentration, such as `ogl(conc_group)` on `lum31` or `ogl(chamber)` on
   `coral_pam`, the model weights are now computed by leaving out each level
-  whole rather than each observation (#529). Leaving out one observation left
-  the group's deviation to be estimated from the group's other observations,
-  and the estimated deviation then included a curve's misfit at that
-  concentration, so the weights barely penalised a curve of the wrong shape.
-  For each posterior draw, the level's deviation is integrated out of the
-  joint likelihood of its observations by quadrature, with the other
-  group-level deviations held at their drawn values, and the result is passed
-  to `loo::loo()`. The
-  likelihood is evaluated by `brms::log_lik()`, so censoring, the transform
-  an `ogl()` term applies and a `disp()` model are included.
-- We fitted the `lum31` copper readings at 15 minutes (16 plates, 704
-  readings) with `pgl(plate) + ogl(conc_group)` over the default set, and
-  screened it with `screen_models()`. Under the earlier score `nec3param` was
-  given 0.29 of the weight, although above its threshold it declines as a
-  power of the concentration and has no lower asymptote. Leaving out each
-  cell, its elpd is 206 units below that of `ecxll5`, and it is given none;
-  `ecxll5` is given 0.88, and `ecxll4` and `ecx4param` 0.06 each. These
-  weights use the Bayesian bootstrap and change in the third decimal between
-  sessions.
-- `loo_controls` takes two new elements. `leave_out` is `"group"`, the
-  default, or `"observation"`, the earlier score. A model set built before
-  this change has no record of `leave_out`, so it is taken to have been scored
-  by observation, and keeps that score when `amend()`, `pull_out()`, `c()` or
-  `update()` rebuilds it.
+  whole rather than each observation (#529). Under the earlier score a curve
+  of the wrong shape was barely penalised, because the left-out observation's
+  group deviation absorbed the curve's misfit at that concentration. Other
+  structures, such as `pgl()` on the grouping or two nested groupings, keep
+  the earlier score, with a warning that gives the reason.
+- `loo_controls` takes two new elements. `leave_out` is `"group"` (the
+  default) or `"observation"` (the earlier score). `refit = TRUE` refits each
+  equation without each level whose Pareto *k* exceeds 0.7 and scores that
+  level from the refit; it is off by default, because each such level needs
+  its own refit.
+- A model set built before this change keeps its earlier score when `amend()`,
+  `pull_out()`, `c()` or `update()` rebuilds it;
   `amend(x, loo_controls = list(leave_out = "group"))` recomputes its weights.
-- The score is supported for one such grouping, whose deviation appears in
-  each equation as a single normal intercept per level, as in an `ogl()` term
-  or one `(par | group)` term. For any other structure, such as `pgl()` on the
-  grouping or two nested groupings, the weights leave out each observation,
-  with a warning that gives the reason.
-- The score is computed once for each equation and stored on its fit, so a
-  function that rebuilds the set reuses it. Each equation needs about 40
-  evaluations of the likelihood over every draw. On the `lum31` copper
-  readings this took 2.6 to 3.6 minutes per equation, with five equations
-  computed at once.
-- The score of a level whose Pareto *k* exceeds 0.7 is approximate, and a
-  message names the equations given at least 0.01 of the weight that have
-  such levels. On the copper readings 4 to 28 of the 176 cells exceeded 0.7,
-  depending on the equation, and `nec3param` remained 197 units below
-  `ecxll5` on the cells where both were below 0.7.
-- With `loo_controls = list(refit = TRUE)`, each equation is refitted without
-  each level whose Pareto *k* exceeds 0.7, under the fit's priors and sampler
-  settings, and that level is scored from the refit. It is off by default,
-  because every such level of every equation needs its own refit, and
-  `amend(x, loo_controls = list(refit = TRUE))` applies it to an existing
-  set. In a separate check on the copper readings, each equation was refitted
-  without each of ten folds of cells. The refits gave `nec3param` and the
-  other equations of the wrong shape no weight, as the approximate score had,
-  but ordered `ecxll4`, `ecx4param` and `ecxll5`, whose scores were within 5
-  units of each other, differently from it.
 - `mod_stats` gains a column `elpd`, the score the weights were computed
   from, and `summary()` prints what the score left out.
-- `crossed_group_weights()` compares the grouped and pooled fits on this
-  score, as LOOIC, where it was computed for every fit with the same
-  grouping, and on WAIC, with a warning, where it was computed for only some.
+- `crossed_group_weights()` compares the grouped and pooled fits on the
+  leave-one-group-out score, as LOOIC, where that score was computed for every
+  fit over the same levels, and on WAIC otherwise.
 
 ## Endpoint extraction
 
