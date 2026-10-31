@@ -161,9 +161,11 @@ develops both and keeps their results in agreement.
 
 The comparison with `toxval` applies only to a change that edits `ecx()`,
 `nsec()`, `nec()` or `ecnsec()`, or an internal function they call, and that
-changes a value they return for the same fitted object. Compare such a change with
-`toxval` under matching options before it merges. Record the result, and
-whether `toxval` is to follow, on a `toxval` issue.
+changes a value they return for the same fitted object. Compare such a change
+with `toxval` under matching options before it merges. Record the result, and
+whether `toxval` is to follow, on a `toxval` issue. `toxval` has no `nec()`
+yet, so a change confined to `nec()` needs the comparison only once `toxval`
+has one.
 
 No other change needs the comparison, and a session that has not edited those
 functions does not consider it. This includes changes to fitting, priors, model
