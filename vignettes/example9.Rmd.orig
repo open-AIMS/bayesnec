@@ -1161,9 +1161,17 @@ the fewest readings at the instrument's floor, which is one of `r nrow(cu)`. A r
 the well would have shown, so a plate with many of them would understate exactly
 the quantity this section is about.
 
+The four wells at a concentration share one cell of the plate, and readings
+from one cell can vary together. Each fit below therefore includes
+`ogl(conc_group)`, a deviation for each cell, so that the cell rather than the
+well is the observation at each concentration;
+[*Grouping and factor covariates*](https://open-aims.github.io/bayesnec/articles/example8.html)
+describes the term and how the model weights are computed under it. The
+dispersion parameter then describes the spread of the wells within a cell.
+
 Each concentration on one plate holds four wells, so a coefficient of variation
 computed within a concentration involves no curve, and no lack of fit in the
-mean can inflate it.
+mean can inflate it. It measures the same within-cell spread.
 
 ```{r lum31-cv}
 cv_obs <- tapply(cu$rlu_cens, cu$conc, function(z) sd(z) / mean(z))
@@ -1187,7 +1195,8 @@ vignette fits `all` there.
 
 ```{r disp-const, results = "hide"}
 gfam <- Gamma(link = "identity")
-set_const <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), model = "decline"),
+set_const <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), model = "decline") +
+                    ogl(conc_group),
                   data = cu, family = gfam, seed = 17)
 ```
 
@@ -1312,7 +1321,7 @@ the estimated exponent implies for a given family.
 
 ```{r disp-power, results = "hide"}
 set_power <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), model = "decline") +
-                    disp("power"),
+                    ogl(conc_group) + disp("power"),
                   data = cu, family = gfam, seed = 17)
 ```
 
