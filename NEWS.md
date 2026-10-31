@@ -24,7 +24,7 @@
   `ecxll5` is given 0.88, and `ecxll4` and `ecx4param` 0.06 each. These
   weights use the Bayesian bootstrap and change in the third decimal between
   sessions.
-- `loo_controls` takes a third element, `leave_out`, which is `"group"`, the
+- `loo_controls` takes two new elements. `leave_out` is `"group"`, the
   default, or `"observation"`, the earlier score. A model set built before
   this change has no record of `leave_out`, so it is taken to have been scored
   by observation, and keeps that score when `amend()`, `pull_out()`, `c()` or
@@ -45,6 +45,16 @@
   such levels. On the copper readings 4 to 28 of the 176 cells exceeded 0.7,
   depending on the equation, and `nec3param` remained 197 units below
   `ecxll5` on the cells where both were below 0.7.
+- With `loo_controls = list(refit = TRUE)`, each equation is refitted without
+  each level whose Pareto *k* exceeds 0.7, under the fit's priors and sampler
+  settings, and that level is scored from the refit. It is off by default,
+  because every such level of every equation needs its own refit, and
+  `amend(x, loo_controls = list(refit = TRUE))` applies it to an existing
+  set. In a separate check on the copper readings, each equation was refitted
+  without each of ten folds of cells. The refits gave `nec3param` and the
+  other equations of the wrong shape no weight, as the approximate score had,
+  but ordered `ecxll4`, `ecx4param` and `ecxll5`, whose scores were within 5
+  units of each other, differently from it.
 - `mod_stats` gains a column `elpd`, the score the weights were computed
   from, and `summary()` prints what the score left out.
 - `crossed_group_weights()` compares the grouped and pooled fits on this

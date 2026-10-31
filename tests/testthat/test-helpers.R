@@ -486,7 +486,7 @@ test_that("define_loo_controls always names a weighting method", {
   # choose stacking.
   expect_equal(bayesnec:::define_loo_controls(family_str = "gaussian"),
                list(fitting = list(), weights = list(method = "pseudobma"),
-                    leave_out = "group"))
+                    leave_out = "group", refit = FALSE))
   expect_equal(
     bayesnec:::define_loo_controls(list(), "gaussian")$weights$method,
     "pseudobma"

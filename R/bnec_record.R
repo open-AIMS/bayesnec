@@ -260,8 +260,9 @@ attach_expand_args <- function(out, expand_args) {
 #' inherited in the same way, each where the caller does not name it. A
 #' recorded \code{weights} list is used only where it names \code{method}.
 #' A \code{weights} list that names no method is given \code{method}, and the
-#' default where \code{method} is \code{NULL}. \code{leave_out} is read from
-#' model sets only, and a set that records none was scored by observation.
+#' default where \code{method} is \code{NULL}. \code{leave_out} and
+#' \code{refit} are read from model sets only, and a set that records neither
+#' was scored by observation without refits.
 #'
 #' @return A named \code{\link[base]{list}} of the four, with attribute
 #' \code{"disagree"} naming each argument the objects record differently.
@@ -325,6 +326,15 @@ recorded_expand_args <- function(objects, x_range = NULL, resolution = NULL,
         }
       }
     ))
+  }
+  if (!"refit" %in% named) {
+    loo$refit <- agreed("loo_controls$refit", lapply(
+      set_records, function(r) isTRUE(r$loo_controls$refit)
+    ))
+    # A set scored by observation records no refit to pass on.
+    if (!identical(loo$leave_out, "group")) {
+      loo$refit <- NULL
+    }
   }
   # Fill in the default method here rather than in expand_manec(), so that
   # the record holds the method used. define_loo_controls() also fixes the

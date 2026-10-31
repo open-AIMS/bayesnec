@@ -87,12 +87,11 @@ logo_slot <- function(fit, group, prep = NULL) {
   out <- list(path = path, reason = NULL)
   if (!is.null(prep)) {
     out$r <- prep[[path[1]]][[path[2]]]$re$r[[group]]
-    stem <- sub("^r_(.*)\\[.*$", "\\1", colnames(out$r)[1])
-    out$sd_name <- if (grepl("__", stem, fixed = TRUE)) {
-      paste0("sd_", stem, "_Intercept")
-    } else {
-      paste0("sd_", stem, "__Intercept")
-    }
+    # brms names the parameter, not the deviation, in the standard deviation.
+    par <- if (nzchar(re$nlpar)) re$nlpar else re$dpar
+    out$sd_name <- paste0("sd_", group, "__",
+                          if (par == "mu") "" else paste0(par, "_"),
+                          "Intercept")
     z <- which(as.matrix(prep[[path[1]]][[path[2]]]$re$Z[[group]]) != 0,
                arr.ind = TRUE)
     out$col_of_obs <- z[order(z[, "row"]), "col"]
@@ -219,6 +218,7 @@ log_add_exp <- function(a, b) {
 #' pointwise row per level and attributes \code{"group"} and \code{"levels"}.
 #'
 #' @importFrom brms prepare_predictions log_lik as_draws_matrix nchains ndraws
+#' rhat
 #' @importFrom loo loo relative_eff
 #'
 #' @noRd
@@ -260,16 +260,19 @@ logo_criterion <- function(fit, group, level, chunk = 1000) {
 #' @param x The predictor values of the data.
 #' @param leave_out \code{"group"} or \code{"observation"}, from
 #' \code{loo_controls}.
+#' @param refit Whether to refit each equation without each level whose
+#' Pareto k exceeds 0.7, from \code{loo_controls}.
 #'
 #' @details A criterion a fit already holds for the same grouping is reused,
-#' because the set is weighted again by every function that rebuilds it.
+#' because the set is weighted again by every function that rebuilds it. Its
+#' refitted levels are reused with it.
 #'
 #' @return A \code{\link[base]{list}} of \code{criteria}, one per equation,
 #' \code{logo}, the leave-one-group-out criteria or \code{NULL}, and
 #' \code{leave_out}, the grouping left out or \code{"observation"}.
 #'
 #' @noRd
-weight_criteria <- function(object, x, leave_out = "group") {
+weight_criteria <- function(object, x, leave_out = "group", refit = FALSE) {
   pointwise <- list(criteria = lapply(object, extract_loo), logo = NULL,
                     leave_out = "observation")
   if (!identical(leave_out, "group")) {
@@ -299,13 +302,182 @@ weight_criteria <- function(object, x, leave_out = "group") {
     }
     logo_criterion(o$fit, group, level)
   })
+  if (isTRUE(refit)) {
+    logo <- Map(logo_reloo, object, logo, list(level), names(object))
+  }
   list(criteria = logo, logo = logo, leave_out = group)
+}
+
+#' Replace the approximate scores of a criterion by refits
+#'
+#' @param o A \code{\link{prebayesnecfit}}, which supplies the fit and its
+#' initial values.
+#' @param logo Its leave-one-group-out criterion.
+#' @param level The level of every observation, from \code{logo_levels()}.
+#' @param model The name of the equation, for messages.
+#'
+#' @details Each level whose Pareto k exceeds 0.7 is left out of the data, the
+#' equation is refitted under the same priors, and the level is scored from the
+#' refit with its deviation integrated out. Its k is then set to 0. Attributes
+#' \code{"refitted"} and \code{"refit_failed"} name the levels done, so that a
+#' rebuilt set does not refit them again.
+#'
+#' @return The criterion, with the refitted levels' scores replaced.
+#'
+#' @noRd
+logo_reloo <- function(o, logo, level, model) {
+  done <- c(attr(logo, "refitted"), attr(logo, "refit_failed"))
+  todo <- setdiff(levels(level)[logo$diagnostics$pareto_k > 0.7], done)
+  if (length(todo) == 0) {
+    return(logo)
+  }
+  group <- attr(logo, "group")
+  message("Refitting ", model, " ", length(todo), " time",
+          if (length(todo) > 1) "s", ", leaving out each level of ", group,
+          " whose Pareto k exceeds 0.7.")
+  elpd <- stats::setNames(rep(NA_real_, length(todo)), todo)
+  rhat_max <- elpd
+  base <- o$fit
+  for (g in todo) {
+    out <- logo_refit_level(base, o, group, level, g)
+    if (is.null(out)) {
+      next
+    }
+    elpd[g] <- out$elpd
+    rhat_max[g] <- out$rhat
+    # Refit from the last refit: under cmdstanr it holds a compiled program
+    # even where the stored fit's has been deleted.
+    base <- out$fit
+  }
+  ok <- is.finite(elpd)
+  i <- match(todo[ok], levels(level))
+  lpd <- logo$pointwise[i, "elpd_loo"] + logo$pointwise[i, "p_loo"]
+  logo$pointwise[i, "elpd_loo"] <- elpd[ok]
+  logo$pointwise[i, "p_loo"] <- lpd - elpd[ok]
+  logo$pointwise[i, "looic"] <- -2 * elpd[ok]
+  logo$pointwise[i, "mcse_elpd_loo"] <- 0
+  logo$pointwise[i, "influence_pareto_k"] <- 0
+  logo$diagnostics$pareto_k[i] <- 0
+  sel <- c("elpd_loo", "p_loo", "looic")
+  logo$estimates[sel, "Estimate"] <- colSums(logo$pointwise[, sel])
+  logo$estimates[sel, "SE"] <- sqrt(nrow(logo$pointwise) *
+                                      apply(logo$pointwise[, sel], 2, stats::var))
+  attr(logo, "refitted") <- c(attr(logo, "refitted"), todo[ok])
+  attr(logo, "refit_failed") <- c(attr(logo, "refit_failed"), todo[!ok])
+  if (any(!ok)) {
+    warning("Refitting ", model, " failed without ", sum(!ok), " level",
+            if (sum(!ok) > 1) "s", " of ", group, " (",
+            paste0(todo[!ok], collapse = ", "), "), so ",
+            if (sum(!ok) > 1) "their scores remain" else "its score remains",
+            " approximate.", call. = FALSE)
+  }
+  slow <- todo[ok][rhat_max[ok] > 1.01]
+  if (length(slow) > 0) {
+    warning("Refits of ", model, " without ", length(slow), " level",
+            if (length(slow) > 1) "s", " of ", group,
+            " have an Rhat above 1.01 (", paste0(slow, collapse = ", "),
+            "), so the chains of those refits may not have converged.",
+            call. = FALSE)
+  }
+  logo
+}
+
+#' Refit an equation without one level and score that level
+#'
+#' @param base The \code{\link[brms]{brmsfit}} to update, either the
+#' equation's fit or an earlier refit of it.
+#' @param o The equation's \code{\link{prebayesnecfit}}.
+#' @param group The grouping left out.
+#' @param level The level of every observation, from \code{logo_levels()}.
+#' @param g The level to leave out.
+#'
+#' @details The refit takes the priors, sampler settings and initial values of
+#' the fit. The initial deviations are reset to zero at the refit's number of
+#' levels, because brms would otherwise reuse the fit's, one of which no longer
+#' exists. The left-out level is a new level of the refit, and its deviation is
+#' integrated out as in \code{logo_criterion()}, starting from the fit's draws
+#' of it.
+#'
+#' @return \code{NULL} where the refit failed, and otherwise a
+#' \code{\link[base]{list}} of \code{elpd}, the level's log predictive
+#' density, \code{rhat}, the refit's largest Rhat, and \code{fit}, the
+#' refit.
+#'
+#' @importFrom stats update
+#'
+#' @noRd
+logo_refit_level <- function(base, o, group, level, g) {
+  f <- o$fit
+  held <- level == g
+  train <- droplevels(f$data[!held, , drop = FALSE])
+  test <- f$data[held, , drop = FALSE]
+  args <- list(base, newdata = train, init = refit_inits(o$init, f, train),
+               refresh = 0, silent = 2)
+  if (!is.null(o$call_args$seed)) {
+    args$seed <- o$call_args$seed
+  }
+  refit <- try(suppressWarnings(suppressMessages(do.call(update, args))),
+               silent = TRUE)
+  if (inherits(refit, "try-error") || ndraws(refit) == 0) {
+    return(NULL)
+  }
+  prep <- prepare_predictions(refit, newdata = test, allow_new_levels = TRUE,
+                              sample_new_levels = "gaussian")
+  slot <- logo_slot(refit, group, prep)
+  if (is.null(slot$path)) {
+    ll <- rowSums(log_lik(prep))
+  } else {
+    sd <- as.vector(as_draws_matrix(refit, variable = slot$sd_name))
+    r_full <- logo_slot(f, group, prepare_predictions(f, newdata = test))$r
+    r0 <- matrix(rep_len(as.vector(r_full), nrow(slot$r)), ncol = 1)
+    h <- function(z) {
+      prep[[slot$path[1]]][[slot$path[2]]]$re$r[[group]] <- z
+      matrix(rowSums(log_lik(prep)), ncol = 1)
+    }
+    ll <- logo_integrate(h, r0, sd)[, 1]
+  }
+  m <- max(ll)
+  list(elpd = m + log(mean(exp(ll - m))),
+       rhat = max(rhat(refit), na.rm = TRUE), fit = refit)
+}
+
+#' Initial values for a refit with fewer levels
+#'
+#' @param init The fit's initial values: a list with one list per chain, or a
+#' keyword.
+#' @param fit The \code{\link[brms]{brmsfit}}.
+#' @param train The data of the refit.
+#'
+#' @return \code{init} with each \code{z_k} replaced by zeros at the number of
+#' levels in \code{train}, or \code{"random"} where \code{init} is not a list.
+#'
+#' @noRd
+refit_inits <- function(init, fit, train) {
+  if (!is.list(init)) {
+    return("random")
+  }
+  re <- fit$ranef
+  dims <- lapply(split(re, re$id), function(r) {
+    vars <- strsplit(r$group[1], ":", fixed = TRUE)[[1]]
+    c(nrow(r), nlevels(interaction(train[vars], drop = TRUE)))
+  })
+  lapply(init, function(chain) {
+    for (k in names(dims)) {
+      z <- paste0("z_", k)
+      if (z %in% names(chain)) {
+        chain[[z]] <- matrix(0, dims[[k]][1], dims[[k]][2])
+      }
+    }
+    chain
+  })
 }
 
 #' Report the levels whose left-out score is unreliable
 #'
 #' @param logo The leave-one-group-out criteria of a set, or \code{NULL}.
 #' @param wi The set's model weights.
+#' @param refit Whether the set was refitted where k exceeds 0.7, in which
+#' case the levels still above it are those whose refits failed.
 #'
 #' @details Only equations given at least 0.01 of the weight are named: an
 #' unreliable score for an equation given no weight does not change the
@@ -313,7 +485,7 @@ weight_criteria <- function(object, x, leave_out = "group") {
 #'
 #' @return \code{NULL}, invisibly. Called for the message.
 #' @noRd
-report_logo_k <- function(logo, wi) {
+report_logo_k <- function(logo, wi, refit = FALSE) {
   if (is.null(logo)) {
     return(invisible(NULL))
   }
@@ -330,7 +502,13 @@ report_logo_k <- function(logo, wi) {
                  attr(logo[[1]], "group"), " in ", named, " (weight ",
                  signif(wi[match(named, names(logo))], 2), ")",
                  collapse = "; "),
-          ". The scores of those levels are approximate.")
+          ". The scores of those levels are approximate",
+          if (refit) {
+            "."
+          } else {
+            paste0("; loo_controls = list(refit = TRUE) replaces them by",
+                   " refitting the equation without each level.")
+          })
   invisible(NULL)
 }
 

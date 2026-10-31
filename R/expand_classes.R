@@ -459,7 +459,7 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   mod_stats <- data.frame(model = success_models)
   mod_stats$waic <- sapply(object, extract_waic_estimate)
   scores <- weight_criteria(object, retrieve_var(mod_dat, "x_var"),
-                            loo_controls$leave_out)
+                            loo_controls$leave_out, loo_controls$refit)
   for (m in names(scores$logo)) {
     mod_fits[[m]]$fit$criteria$logo <- scores$logo[[m]]
   }
@@ -470,7 +470,7 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   mod_stats$wi <- do.call(loo_model_weights, loo_mw_args)
   attr(mod_stats$wi, "method") <- loo_w_controls$method
   attr(mod_stats$wi, "leave_out") <- scores$leave_out
-  report_logo_k(scores$logo, mod_stats$wi)
+  report_logo_k(scores$logo, mod_stats$wi, loo_controls$refit)
   mod_stats <- cbind(mod_stats, disp)
   sample_size <- set_draw_count(object)
   # Realise the weighted draw once and store both the index and its seed.

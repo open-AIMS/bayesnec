@@ -36,7 +36,7 @@ significance of the predicted posterior values against the lowest observed
 concentration (assumed to be the control), to estimate NEC as an
 interpolated NOEC value from smooth ECx curves.}
 
-\item{loo_controls}{A named \code{\link[base]{list}} of up to three
+\item{loo_controls}{A named \code{\link[base]{list}} of up to four
 elements. "fitting" and "weights" are each a named \code{\link[base]{list}}
 containing the desired arguments to be passed on to \code{\link[brms]{loo}}
 (via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
@@ -47,8 +47,10 @@ If no \code{method} is named in "weights", \pkg{bayesnec} sets the
 score behind the weights is computed. Under "group", where each level of a
 group-level term is observed at a single concentration, each level is left
 out whole; otherwise, and always under "observation", each observation is
-left out. The "fitting" arguments apply to the score computed by leaving
-out each observation.
+left out. "refit" is \code{FALSE} (the default) or \code{TRUE}, and applies
+under "group" only: where \code{TRUE}, each equation is refitted without
+each level whose left-out score is approximate. The "fitting" arguments
+apply to the score computed by leaving out each observation.
 See Details, under model averaging.
 \code{\link{amend}}, \code{update} and \code{\link{pull_out}} operate on an
 existing set. They keep the "fitting" arguments it was built with unless

@@ -164,11 +164,12 @@ joint_split <- function() {
 # uses the same subset of stored draws on each call.
 expand_record <- function(x_range = c(0.03, 4), resolution = 200,
                           sig_val = 0.05, fitting = list(draw_ids = 1:50),
-                          method = "pseudobma", leave_out = "group") {
+                          method = "pseudobma", leave_out = "group",
+                          refit = FALSE) {
   list(x_range = x_range, resolution = resolution, sig_val = sig_val,
        loo_controls = list(fitting = fitting,
                            weights = list(method = method),
-                           leave_out = leave_out))
+                           leave_out = leave_out, refit = refit))
 }
 
 # The record of a call that used every bnec() default.

@@ -176,7 +176,7 @@ test_that("loo_controls takes leave_out", {
   out <- bayesnec:::define_loo_controls(
     list(leave_out = "observation", weights = list(BB = FALSE)), "gaussian"
   )
-  expect_identical(names(out), c("fitting", "weights", "leave_out"))
+  expect_identical(names(out), c("fitting", "weights", "leave_out", "refit"))
   expect_identical(out$leave_out, "observation")
   expect_error(bayesnec:::validate_loo_controls(list(leave_out = "plate"),
                                                 "gaussian"),
@@ -210,6 +210,138 @@ test_that("a model set that records no leave_out was scored by observation", {
     fam_tag = "gaussian"
   )
   expect_identical(args$loo_controls$leave_out, "group")
+})
+
+test_that("loo_controls takes refit under leave_out = \"group\" only", {
+  expect_false(bayesnec:::define_loo_controls(family_str = "gaussian")$refit)
+  expect_true(
+    bayesnec:::define_loo_controls(list(refit = TRUE), "gaussian")$refit
+  )
+  expect_error(bayesnec:::validate_loo_controls(list(refit = NA), "gaussian"),
+               "should be TRUE or FALSE")
+  expect_error(bayesnec:::validate_loo_controls(list(refit = "yes"),
+                                                "gaussian"),
+               "should be TRUE or FALSE")
+  expect_error(
+    bayesnec:::define_loo_controls(
+      list(refit = TRUE, leave_out = "observation"), "gaussian"
+    ),
+    "applies only where \"leave_out\" is \"group\""
+  )
+})
+
+test_that("a model set passes on the refit it records", {
+  record <- function(leave_out, refit) {
+    list(loo_controls = list(fitting = list(),
+                             weights = list(method = "pseudobma"),
+                             leave_out = leave_out, refit = refit))
+  }
+  set <- structure(list(), class = c("bayesmanecfit", "bnecfit"),
+                   bnec_expand_args = record("group", TRUE))
+  args <- function(...) {
+    bayesnec:::recorded_expand_args(list(set), method = "pseudobma",
+                                    fam_tag = "gaussian", ...)$loo_controls
+  }
+  expect_true(args()$refit)
+  expect_false(args(loo_controls = list(refit = FALSE))$refit)
+  # Leaving out each observation drops the inherited refit.
+  expect_false(args(loo_controls = list(leave_out = "observation"))$refit)
+  # A set that records none was not refitted.
+  attr(set, "bnec_expand_args") <- NULL
+  expect_false(args(loo_controls = list(leave_out = "group"))$refit)
+})
+
+# A criterion over four levels whose Pareto k is set by the caller.
+fake_logo <- function(k) {
+  set.seed(1)
+  ll <- matrix(stats::rnorm(4000, -2, 0.1), 1000, 4)
+  out <- suppressWarnings(loo::loo(ll, r_eff = rep(1, 4)))
+  out$diagnostics$pareto_k <- k
+  out$pointwise[, "influence_pareto_k"] <- k
+  attr(out, "group") <- "cell"
+  attr(out, "levels") <- c("a", "b", "c", "d")
+  out
+}
+
+test_that("logo_reloo replaces the scores of the levels it refits", {
+  level <- factor(rep(c("a", "b", "c", "d"), each = 3))
+  logo <- fake_logo(c(0.2, 0.9, 0.8, 0.1))
+  local_mocked_bindings(logo_refit_level = function(base, o, group, level, g) {
+    if (g == "c") NULL else list(elpd = -5, rhat = 1, fit = base)
+  })
+  o <- list(fit = "a brmsfit")
+  expect_message(
+    expect_warning(
+      out <- bayesnec:::logo_reloo(o, logo, level, "ecxlin"),
+      "failed without 1 level of cell \\(c\\), so its score remains"
+    ),
+    "Refitting ecxlin 2 times, leaving out each level of cell"
+  )
+  expect_identical(attr(out, "refitted"), "b")
+  expect_identical(attr(out, "refit_failed"), "c")
+  expect_identical(unname(out$pointwise[2, "elpd_loo"]), -5)
+  expect_equal(out$pointwise[2, "p_loo"],
+               sum(logo$pointwise[2, c("elpd_loo", "p_loo")]) + 5,
+               ignore_attr = TRUE)
+  expect_identical(out$pointwise[-2, "elpd_loo"], logo$pointwise[-2, "elpd_loo"])
+  expect_identical(out$diagnostics$pareto_k, c(0.2, 0, 0.8, 0.1))
+  expect_equal(out$estimates["elpd_loo", "Estimate"],
+               sum(out$pointwise[, "elpd_loo"]))
+  expect_equal(out$estimates["looic", "Estimate"],
+               -2 * sum(out$pointwise[, "elpd_loo"]))
+  expect_identical(attr(out, "group"), "cell")
+  # A rebuilt set refits neither level again.
+  expect_no_message(again <- bayesnec:::logo_reloo(o, out, level, "ecxlin"))
+  expect_identical(again, out)
+})
+
+test_that("logo_reloo warns where a refit did not converge", {
+  level <- factor(rep(c("a", "b", "c", "d"), each = 3))
+  local_mocked_bindings(logo_refit_level = function(base, o, group, level, g) {
+    list(elpd = -5, rhat = 1.2, fit = base)
+  })
+  expect_warning(
+    suppressMessages(bayesnec:::logo_reloo(list(fit = NULL),
+                                           fake_logo(c(0.2, 0.9, 0.3, 0.1)),
+                                           level, "ecxlin")),
+    "Rhat above 1.01 \\(b\\)"
+  )
+})
+
+test_that("weight_criteria refits only where asked", {
+  d <- lum_like()
+  held <- structure(list(pointwise = matrix(0, 6, 1)), group = "cell")
+  set <- fake_set(ranef_row("cell"), d, logo = held)
+  local_mocked_bindings(logo_reloo = function(o, logo, level, model) {
+    attr(logo, "refitted") <- model
+    logo
+  })
+  out <- bayesnec:::weight_criteria(set, d$conc)
+  expect_null(attr(out$criteria$ecxlin, "refitted"))
+  out <- bayesnec:::weight_criteria(set, d$conc, refit = TRUE)
+  expect_identical(attr(out$criteria$ecxlin, "refitted"), "ecxlin")
+})
+
+test_that("report_logo_k suggests a refit only where none was asked for", {
+  logo <- list(ecxlin = fake_logo(c(0.2, 0.9, 0.3, 0.1)))
+  expect_message(bayesnec:::report_logo_k(logo, 1),
+                 "list\\(refit = TRUE\\) replaces them")
+  msg <- tryCatch(bayesnec:::report_logo_k(logo, 1, refit = TRUE),
+                  message = conditionMessage)
+  expect_match(msg, "1 of 4 levels of cell in ecxlin")
+  expect_no_match(msg, "refit = TRUE")
+})
+
+test_that("refit_inits sizes the deviations to the refit's levels", {
+  fit <- list(ranef = data.frame(id = c(1, 2), group = c("plate", "plate:cell"),
+                                 stringsAsFactors = FALSE))
+  train <- data.frame(plate = rep(1:2, each = 3), cell = rep(1:3, 2))
+  init <- list(list(b_top = 1, z_1 = matrix(0, 1, 2), z_2 = matrix(0, 1, 7)))
+  out <- bayesnec:::refit_inits(init, fit, train)
+  expect_identical(dim(out[[1]]$z_1), c(1L, 2L))
+  expect_identical(dim(out[[1]]$z_2), c(1L, 6L))
+  expect_identical(out[[1]]$b_top, 1)
+  expect_identical(bayesnec:::refit_inits("random", fit, train), "random")
 })
 
 # Five groups at each of six concentrations, three observations each. The
@@ -281,4 +413,47 @@ test_that("the left-out score equals the exact normal density", {
   expect_equal(f$criteria$logo$pointwise[, "elpd_loo"],
                reference$pointwise[, "elpd_loo"], tolerance = 1e-4,
                ignore_attr = TRUE)
+})
+
+test_that("a refitted level is scored by the exact normal density", {
+  skip_on_cran()
+  fit <- logo_fixture()
+  o <- fit$mod_fits$ecx4param
+  level <- bayesnec:::logo_levels(o$fit, "g")
+  g <- levels(level)[4]
+  out <- suppressWarnings(
+    bayesnec:::logo_refit_level(o$fit, o, "g", level, g)
+  )
+  refit <- out$fit
+  expect_identical(nlevels(refit$data$g), nlevels(level) - 1L)
+  expect_equal(refit$prior, o$fit$prior, ignore_attr = TRUE)
+  # The left-out group is a new level of the refit, so its observations are
+  # jointly normal given the refit's population parameters.
+  i <- which(level == g)
+  mu <- brms::posterior_epred(refit, newdata = o$fit$data[i, ], re_formula = NA)
+  sigma <- as.vector(brms::as_draws_matrix(refit, variable = "sigma"))
+  sd_g <- as.vector(brms::as_draws_matrix(refit,
+                                          variable = "sd_g__ogl_Intercept"))
+  exact <- vapply(seq_along(sigma), function(s) {
+    cov <- diag(sigma[s]^2, length(i)) + sd_g[s]^2
+    r <- o$fit$data$y[i] - mu[s, ]
+    -0.5 * (length(i) * log(2 * pi) + as.numeric(determinant(cov)$modulus) +
+              sum(r * solve(cov, r)))
+  }, numeric(1))
+  m <- max(exact)
+  expect_equal(out$elpd, m + log(mean(exp(exact - m))), tolerance = 1e-5)
+})
+
+test_that("amend() records a refit and reuses the stored scores", {
+  skip_on_cran()
+  fit <- logo_fixture()
+  # No level of this fixture has k above 0.7, so nothing is refitted.
+  expect_true(all(fit$mod_fits$ecx4param$fit$criteria$logo$diagnostics$pareto_k
+                  <= 0.7))
+  local_mocked_bindings(logo_refit_level = function(...) stop("refitted"))
+  out <- suppressWarnings(suppressMessages(
+    amend(fit, loo_controls = list(refit = TRUE))
+  ))
+  expect_true(attr(out, "bnec_expand_args")$loo_controls$refit)
+  expect_equal(out$mod_stats$elpd, fit$mod_stats$elpd)
 })

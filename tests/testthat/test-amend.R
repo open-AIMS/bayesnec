@@ -823,7 +823,8 @@ test_that("amend() keeps the LOO fitting arguments the set records", {
   q <- function(expr) suppressWarnings(suppressMessages(expr))
   m <- with_expand_record(manec_example)
   stacked <- list(fitting = list(draw_ids = 1:50),
-                  weights = list(method = "stacking"), leave_out = "group")
+                  weights = list(method = "stacking"), leave_out = "group",
+                  refit = FALSE)
   reference <- q(expand_manec(
     manec_example$mod_fits,
     lapply(manec_example$mod_fits, extract_formula),

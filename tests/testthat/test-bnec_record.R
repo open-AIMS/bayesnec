@@ -285,13 +285,13 @@ test_that("recorded_expand_args() takes each argument supplied, then recorded", 
     args(list(x), loo_controls = list(fitting = list()),
          method = "pseudobma")$loo_controls,
     list(fitting = list(), weights = list(method = "pseudobma"),
-         leave_out = "group")
+         leave_out = "group", refit = FALSE)
   )
   expect_identical(
     args(list(x), loo_controls = list(weights = list(method = "stacking")),
          method = "pseudobma")$loo_controls,
     list(fitting = list(draw_ids = 1:50), weights = list(method = "stacking"),
-         leave_out = "group")
+         leave_out = "group", refit = FALSE)
   )
   # A weights list that names no method keeps the set's.
   expect_identical(

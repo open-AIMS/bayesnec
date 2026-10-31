@@ -52,7 +52,7 @@ significance of the predicted posterior values against the lowest observed
 concentration (assumed to be the control), to estimate NEC as an
 interpolated NOEC value from smooth ECx curves.}
 
-\item{loo_controls}{A named \code{\link[base]{list}} of up to three
+\item{loo_controls}{A named \code{\link[base]{list}} of up to four
 elements. "fitting" and "weights" are each a named \code{\link[base]{list}}
 containing the desired arguments to be passed on to \code{\link[brms]{loo}}
 (via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
@@ -63,8 +63,10 @@ If no \code{method} is named in "weights", \pkg{bayesnec} sets the
 score behind the weights is computed. Under "group", where each level of a
 group-level term is observed at a single concentration, each level is left
 out whole; otherwise, and always under "observation", each observation is
-left out. The "fitting" arguments apply to the score computed by leaving
-out each observation.
+left out. "refit" is \code{FALSE} (the default) or \code{TRUE}, and applies
+under "group" only: where \code{TRUE}, each equation is refitted without
+each level whose left-out score is approximate. The "fitting" arguments
+apply to the score computed by leaving out each observation.
 See Details, under model averaging.
 \code{\link{amend}}, \code{update} and \code{\link{pull_out}} operate on an
 existing set. They keep the "fitting" arguments it was built with unless
@@ -682,8 +684,20 @@ as a single normal intercept per level, as in an \code{ogl()} term or one
 \code{(par | group)} term. For any other structure, such as \code{pgl()} on
 the grouping, each observation is left out, with a warning. The score of a
 level whose Pareto k exceeds 0.7 is approximate, and a message lists the
-equations given at least 0.01 of the weight that have such levels. The score
-is computed once for each equation and stored with it, so
+equations given at least 0.01 of the weight that have such levels. Where many
+levels have such a k, the approximate scores of equations that fit about
+equally well may be ordered wrongly. With
+\code{loo_controls = list(refit = TRUE)}, each equation is refitted without
+each such level, under the same priors, sampler settings and seed, and the
+level is scored from the refit with its deviation integrated out in the same
+way. Its k is then set to 0. Every such level of every equation needs its own
+refit, so the refits can take many times as long as the set did to fit.
+Equations whose \code{elpd} in \code{mod_stats} is far below the best can be
+removed first with \code{\link{amend}}. Their weight is a poorer guide,
+because it is close to zero at a difference in elpd of a few units.
+\code{amend(x, loo_controls = list(refit = TRUE))} refits an existing set.
+The refits themselves are not kept. The score is computed once for each
+equation and stored with it, with the scores of any refitted levels, so
 \code{\link{amend}}, \code{\link{pull_out}} and \code{\link[base]{c}}
 reuse it. A model set built before this score was introduced has no record
 of \code{leave_out}, so it is taken to have been scored by leaving out each
