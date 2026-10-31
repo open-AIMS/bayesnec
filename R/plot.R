@@ -50,7 +50,13 @@ NULL
 #' vector of length two giving the x and y coordinates of the legend in user
 #' units. \code{legend}'s ninth keyword, \code{"center"}, is not accepted;
 #' give the coordinates instead.
-#' @param xform A function to be applied as a transformation of the x data.
+#' @param xform \code{NULL}, the default, or a function. Where \code{crf()}
+#' does not transform the predictor inline, a function is applied to the x data
+#' and to the annotated estimates. Where it does, the x data are drawn on the
+#' recorded scale, and the annotation is the estimate \code{\link{nec}} or
+#' \code{\link{ecx}} returns by default, which is on that scale. A function
+#' other than \code{identity} is then applied to the estimates on the
+#' transformed scale instead, as the estimators apply it.
 #' @param lxform A function to be applied as a transformation only to axis
 #' labels and the annotated NEC / EC10 values.
 #' @param jitter_x A \code{\link[base]{logical}} value indicating if the x
@@ -76,16 +82,14 @@ NULL
 #' @export
 plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                              position_legend = "topright", add_ec10 = FALSE,
-                             xform = identity, lxform = identity,
+                             xform = NULL, lxform = identity,
                              jitter_x = FALSE, jitter_y = FALSE,
                              ylab = "Response", xlab = "Predictor",
                              xticks = NA) {
   chk_lgl(CI)
   chk_lgl(add_nec)
   chk_lgl(add_ec10)
-  if (!inherits(xform, "function")) {
-    stop("xform must be a function.")
-  }
+  check_xform(xform)
   if (!inherits(lxform, "function")) { 
     stop("lxform must be a function.")
   }
@@ -103,51 +107,51 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     trials_var <- attr(mod_dat, "bnec_pop")[["trials_var"]]
     y_dat <- x$fit$data[[y_var]] / x$fit$data[[trials_var]]
   } else if (!is.na(rate_var)) {
-    # The fitted curve is drawn on the rate scale, because the grid pins the
-    # denominator at 1. Plotting raw counts against it would put the
-    # observations and the curve on different axes -- with a varying exposure,
-    # visibly so. See #136.
+    # Draw the observations on the rate scale, the scale of the fitted curve,
+    # since the grid pins the denominator at 1.
     y_dat <- x$fit$data[[y_var]] / x$fit$data[[rate_var]]
   } else {
     y_dat <- x$fit$data[[y_var]]
   }
+  bdat <- model.frame(x$bayesnecformula, data = x$fit$data, run_par_checks = TRUE)
+  # On the recorded axis with no xform, draw what the estimators return.
+  recorded <- plot_reads_recorded(bdat, xform)
+  est_xform <- if (recorded) NULL else identity
+  axis_xform <- if (is.null(xform)) identity else xform
   ec10 <- c(NA, NA, NA)
-  # Without the scale message: the EC10 is put on the axis scale below by
-  # to_axis_scale(), so the message would describe a number the plot does not
-  # show.
   if (add_ec10 & family != "gaussian") {
-    ec10 <- without_scale_report(ecx(x))
+    ec10 <- ecx(x, xform = est_xform)
   }
   if (add_ec10 & family == "gaussian") {
-    # "range", not "relative". This line asked for "relative" because up to
-    # 2.1.3 that named the control-to-minimum span, which is the annotation a
-    # gaussian response wants: 0 is not a meaningful floor for a response that
-    # can go negative. "relative" now names the control-to-bot span, so keeping
-    # the old word would have silently changed the annotated value -- measured
-    # on manec_example's nec4param, EC10 1.673 against 1.581 -- warned the
-    # caller about a rename they had not asked for, and errored outright for a
-    # bot-free equation under gaussian, which #206 has just made fittable.
-    ec10 <- without_scale_report(ecx(x, type = "range"))
+    # "range", not "relative": a gaussian response can go negative, so the
+    # annotation measures the span from the control to the minimum, not to
+    # bot. "relative" would also fail for a bot-free equation.
+    ec10 <- ecx(x, type = "range", xform = est_xform)
   }
 
-  bdat <- model.frame(x$bayesnecformula, data = x$fit$data, run_par_checks = TRUE)
   x_dat <- x$fit$data[[x_var]]
   x_vec <- x$pred_vals$data$x  
   
-  # Asked of the predictor alone. The guard was the length of
-  # find_transformations(), which answers for the formula as a whole, so a
-  # transformation on the response suppressed xform on the predictor axis and
-  # the axis was drawn on the fitted scale while the caller had asked for the
-  # recorded one. This is the same per-variable correction #258 made to
-  # fit_bayesnec(). See #268.
+  # Ask about the predictor alone: a transformation on the response must not
+  # stop xform being applied to the predictor axis.
   if (!pop_var_is_transformed(bdat, "x_var")) {
-      x_dat <- xform(x_dat)
-      x_vec <- xform(x_vec)
+      x_dat <- axis_xform(x_dat)
+      x_vec <- axis_xform(x_vec)
   }
       
   x_grid_raw <- x$pred_vals$data$x
-  ec10 <- to_axis_scale(ec10, bdat, x$bayesnecformula, x_grid_raw, xform)
-  nec <- to_axis_scale(x$ne, bdat, x$bayesnecformula, x_grid_raw, xform)
+  nec <- c(NA, NA, NA)
+  if (add_nec) {
+    nec <- if (recorded) {
+      summary_ne_vals(x, NULL)
+    } else {
+      to_axis_scale(x$ne, bdat, x$bayesnecformula, x_grid_raw, axis_xform)
+    }
+  }
+  if (add_ec10 && !recorded) {
+    ec10 <- to_axis_scale(ec10, bdat, x$bayesnecformula, x_grid_raw,
+                          axis_xform)
+  }
 
   if (jitter_x) {
     x_dat <- jitter(x_dat)
@@ -163,24 +167,19 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   plot(x_dat, y_dat, ylab = ylab, xlab = xlab,
        pch = 16, xaxt = "n", cex = 1.5,
        col = adjustcolor(1, alpha.f = 0.25), ...)
-  nec_tag <- summary(x, ecx = FALSE) |>
+  nec_tag <- summary(x, ecx = FALSE, xform = identity) |>
     (`[[`)("nec_vals") |>
     rownames() |>
     suppressWarnings() |>
     suppressMessages()
-  # lxform is guaranteed to be a function here, refused at the head of the
-  # method if it is not, so there is no branch for the case where it is not. One
-  # stood here until #278 and could never run. With the default
-  # lxform = identity these are the recorded values.
+  # lxform was checked to be a function at the head of the method. With the
+  # default lxform = identity these are the recorded values.
   x_labs <- signif(lxform(x_ticks), 2)
   axis(side = 1, at = x_ticks, labels = x_labs)
-  # The bound markers keep this legend saying what summary() says about the
-  # same object. Without them a censored estimate reads here as a number.
-  # lxform relabels values already on the axis scale, and a decreasing one
-  # reverses the interval and its marks just as a decreasing xform does, so the
-  # labels take the remapping to_axis_scale() applies rather than lxform on the
-  # numbers beside marks read for the axis scale (#417). Indexed by position
-  # because an lxform that is not arithmetic may drop the names.
+  # The bound markers keep the legend in agreement with summary(). A
+  # decreasing lxform reverses the interval and its marks, so the labels take
+  # the remapping to_axis_scale() applies. Index by position, because an
+  # lxform that is not arithmetic may drop the names.
   nec_lab <- remap_summary(nec, lxform, x_vec)
   ec10_lab <- remap_summary(ec10, lxform, x_vec)
   legend_nec <- paste(nec_tag, ": ", bound_prefix(nec_lab, 1),
@@ -246,7 +245,7 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 #' @export
 plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                                position_legend = "topright", add_ec10 = FALSE,
-                               xform = identity, lxform = identity,
+                               xform = NULL, lxform = identity,
                                jitter_x = FALSE, jitter_y = FALSE,
                                ylab = "Response", xlab = "Predictor",
                                xticks = NA, model = NULL, average = TRUE,
@@ -254,9 +253,7 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   chk_lgl(CI)
   chk_lgl(add_nec)
   chk_lgl(add_ec10)
-  if (!inherits(xform, "function")) {
-    stop("xform must be a function.")
-  }
+  check_xform(xform)
   if (!inherits(lxform, "function")) { 
     stop("lxform must be a function.")
   }
@@ -279,10 +276,7 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     n_panels <- length(shown$model) + shown$average
     oldpar <- par(no.readonly = TRUE)
     on.exit(par(oldpar))
-    # Two columns, as all_models = TRUE drew, except that a single panel takes
-    # the whole device rather than half of it. A model set holds at least two
-    # equations, so all_models = TRUE never drew a single panel and its
-    # layout is unchanged.
+    # Two columns, except that a single panel takes the whole device.
     par(mfrow = c(ceiling(n_panels / 2), min(n_panels, 2)),
         mar = c(1.5, 1.5, 1.5, 1.5), oma = c(3, 3, 0, 0))
     if (shown$average) {
@@ -341,25 +335,38 @@ plot_manec_average <- function(x, ..., CI, add_nec, legend_pos, add_ec10,
   } else {
     y_dat <- mod_dat[[y_var]]
   }
+  # As in plot.bayesnecfit().
+  recorded <- plot_reads_recorded(bdat, xform)
+  est_xform <- if (recorded) NULL else identity
+  axis_xform <- if (is.null(xform)) identity else xform
   ec10 <- c(NA, NA, NA)
   if (add_ec10 & family != "gaussian") {
-    ec10 <- without_scale_report(ecx(x))
+    ec10 <- ecx(x, xform = est_xform)
   }
   if (add_ec10 & family == "gaussian") {
     # "range" rather than "relative", for the reasons given in
     # plot.bayesnecfit above.
-    ec10 <- without_scale_report(ecx(x, type = "range"))
+    ec10 <- ecx(x, type = "range", xform = est_xform)
   }
   x_dat <- mod_dat[[x_var]]
   x_vec <- x$w_pred_vals$data$x
   if (!pop_var_is_transformed(bdat, "x_var")) {
-    x_dat <- xform(x_dat)
-    x_vec <- xform(x_vec)
+    x_dat <- axis_xform(x_dat)
+    x_vec <- axis_xform(x_vec)
   }
   x_grid_raw <- x$w_pred_vals$data$x
   manec_formula <- x$mod_fits[[1]]$bayesnecformula
-  nec <- to_axis_scale(x$w_ne, bdat, manec_formula, x_grid_raw, xform)
-  ec10 <- to_axis_scale(ec10, bdat, manec_formula, x_grid_raw, xform)
+  nec <- c(NA, NA, NA)
+  if (add_nec) {
+    nec <- if (recorded) {
+      summary_ne_vals(x, NULL)
+    } else {
+      to_axis_scale(x$w_ne, bdat, manec_formula, x_grid_raw, axis_xform)
+    }
+  }
+  if (add_ec10 && !recorded) {
+    ec10 <- to_axis_scale(ec10, bdat, manec_formula, x_grid_raw, axis_xform)
+  }
   if (jitter_x) {
     x_dat <- jitter(x_dat)
   }
@@ -374,7 +381,7 @@ plot_manec_average <- function(x, ..., CI, add_nec, legend_pos, add_ec10,
   plot(x_dat, y_dat, ylab = ylab, xlab = xlab,
        pch = 16, xaxt = "n", cex = 1.5,
        col = adjustcolor(1, alpha.f = 0.25), ...)
-  nec_tag <- summary(x, ecx = FALSE) |>
+  nec_tag <- summary(x, ecx = FALSE, xform = identity) |>
     (`[[`)("nec_vals") |>
     rownames() |>
     suppressWarnings() |>
@@ -427,21 +434,12 @@ plot_manec_average <- function(x, ..., CI, add_nec, legend_pos, add_ec10,
 #' \code{?plot}, or a \code{\link[base]{numeric}} vector of length two giving
 #' the x and y coordinates of the legend.
 #'
-#' @details Both forms are accepted because \code{legend} accepts both, and the
-#' documentation of \code{position_legend} named the numeric one while the guard
-#' this replaces refused it. The keyword set is the eight that guard listed,
-#' which is \code{legend}'s nine less \code{"center"}; widening it is a
-#' separate decision from resolving the conflict. That guard read
-#' \code{match(legend_positions, position_legend)}, which matches the valid
-#' keywords into the user's value rather than the reverse, so any value holding
-#' one valid keyword passed however much else was in it and failed later inside
-#' \code{legend()} with a message naming neither the argument nor the valid
-#' values. See #278.
+#' @details Both forms are accepted because \code{legend} accepts both. The
+#' keywords are \code{legend}'s nine less \code{"center"}.
 #'
-#' Returned as a list rather than passed through unchanged because
-#' \code{legend()} reads a length-two numeric \code{x} with \code{y = NULL} as
-#' the two corners of a rectangle, not as a point, so the pair has to be split
-#' across \code{x} and \code{y} at the call site.
+#' A numeric pair is returned as \code{x} and \code{y}: \code{legend()} reads
+#' a length-two numeric \code{x} with \code{y = NULL} as the corners of a
+#' rectangle, not as a point.
 #'
 #' @return A \code{\link[base]{list}} with elements \code{x} and \code{y},
 #' suitable as the first two arguments of \code{\link[graphics]{legend}}.

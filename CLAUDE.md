@@ -55,6 +55,15 @@ A precompiled vignette embeds whatever the render printed. A home directory, a
 library path or compiler output reaches CRAN in the built vignette, so check the
 rendered `.Rmd` for them before committing it.
 
+A vignette describes the version it ships with. It names no version or issue
+number and does not say what changed. Changes since the last CRAN release go in
+`NEWS.md`, and development history stays on the pull request or issue. A figure
+computed outside the build names the commit it ran on. Only a CRAN release
+number means anything to a user: the development numbers in `DESCRIPTION` were
+never released. Where a vignette follows a published paper that the package has
+since departed from, it says so once, citing the paper, without a version
+number.
+
 ### Reading a rendered vignette
 
 The committed `.Rmd` already holds every chunk's output as text, so rendering it
@@ -119,6 +128,11 @@ measurements and the pointers, not a second copy of the argument. Planning
 documents follow section 13 of the global file and live in `notes/tasks/` as a
 `-human.md` and `-claude.md` pair.
 
+[`notes/comment_reasoning/README.md`](notes/comment_reasoning/README.md)
+indexes the rules, evidence and qualifications retained from the comment
+cleanup under #484. Historical measurements describe the runs that produced
+them; the current implementation and tests determine what is supported now.
+
 ## The reference library
 
 The papers behind this package and the training material are in
@@ -131,10 +145,37 @@ directory. `notes/references.md` lists what is there and gives the key in
 ## Naming the models in prose
 
 Section 12 rule 6 of the global file applies with these specifics. `bayesnec`
-has 23 model equations and ten of them are NEC models, so "the nec model" never
-identifies one: name `nec3param`, `nec4param` or `nechorme`. Distinguish the
-equations whose names begin `nec`, the `nec` parameter they estimate, and
-`mod_groups$nec`, the group of equations. The same care applies to `ecx`.
+has 24 model equations, all of them in the `all` group, and ten of them are NEC
+models, so "the nec model" never identifies one: name `nec3param`, `nec4param`
+or `nechorme`. `ecxflat`, the constant equation, is an ECx-type equation in the
+`ecx` group with no `nec` parameter, so its no-effect estimate is an NSEC.
+Distinguish the equations whose names begin `nec`, the `nec` parameter they
+estimate, and `mod_groups$nec`, the group of equations. The same care applies
+to `ecx`.
+
+## Agreement with `toxval`
+
+`toxval` has its own `ecx()` and `nsec()`, with methods for `bayesnec` fits, and
+`bayesnec` keeps its own (D46 in `notes/implementation/03_decisions.md`). RF
+develops both and keeps their results in agreement.
+
+The comparison with `toxval` applies only to a change that edits `ecx()`,
+`nsec()`, `nec()` or `ecnsec()`, or an internal function they call, and that
+changes a value they return for the same fitted object. Compare such a change
+with `toxval` under matching options before it merges. Record the result, and
+whether `toxval` is to follow, on a `toxval` issue. `toxval` has no `nec()`
+yet, so a change confined to `nec()` needs the comparison only once `toxval`
+has one.
+
+No other change needs the comparison, and a session that has not edited those
+functions does not consider it. This includes changes to fitting, priors, model
+weights, `summary()`, `autoplot()` and documentation, even where they change
+the estimates. Such a change alters the fitted object, and `toxval` computes
+its estimates from that same object. A new message or refusal changes no
+returned value, so it needs no comparison either.
+
+Both packages export `ecx()` and `nsec()`, and the one attached last masks the
+other without a warning. With both attached, call each with its package prefix.
 `bayesnec` and `brms` are packages; `bnec()` and `brm()` are functions.
 
 ## Modelling gotchas
@@ -142,72 +183,66 @@ equations whose names begin `nec`, the `nec` parameter they estimate, and
 Traps found in this package's behaviour. Check them before comparing a
 `bayesnec` fit against anything else, or reimplementing one.
 
-### The identity link forced on every family
+### Default and explicitly chosen links
 
-`bayesnec::validate_family()` sets `link = "identity"` for *every* family it
-accepts, so that `top`, `bot` and `nec` stay on the natural response scale and
-remain directly interpretable. Several `brms` families default to something
-else — `Beta()` and `binomial()` default to **logit**, `Gamma()` to **inverse**,
-`poisson()` to **log**.
+`bnec()` assigns the identity link when the caller names a family without
+choosing a link, for example `family = "Beta"` or `family = Beta()`. An explicit
+supported link is honoured, as in `Beta(link = "logit")`. A supplied variable
+holding a family object retains that object's links. The supported mean links
+are `identity`, `log` and `logit`; see `R/validate_family.R` and
+`tests/testthat/test-validate_family.R`.
 
-**Consequence:** a `bnec()` fit and a hand-rolled `brms::brm()` fit of the
-"same" model are *different models* unless you pass the link explicitly. With
-the default logit link a non-linear concentration-response curve is fitted to
-the *logit* of the mean, not the mean — a curve spanning 0.04–0.70 becomes a
-mean spanning only 0.51–0.67, which is a catastrophic misspecification that
-still samples cleanly and reports healthy R-hat.
+With the identity link, the curve's `top` and `bot` parameters are on the
+response scale. With a log or logit link they are on the linear-predictor
+scale. The `nec` parameter is on the fitted concentration scale, including
+any transformation in `crf()`; it is not a response-scale parameter.
 
-**Rule:** when writing raw `brms` code to compare against, replicate, or
-prototype for `bayesnec`, always pass the link explicitly:
+Several `brms` families have different default links: `Beta()` and
+`binomial()` use logit, `Gamma()` uses inverse, and `poisson()` uses log.
+A comparison or replication with `brms::brm()` must specify the link recorded
+in the fitted object. For a `bnec()` fit using its default identity link:
 
 ```r
 brm(..., family = Beta(link = "identity"))   # not Beta()
 ```
 
-Symptom to watch for: one family beating another by an implausibly large
-`elpd_diff` (tens to hundreds of units on a small dataset). Before believing
-any such result, check that every model in the comparison uses the same link.
+Passing the same curve expression to `brm()` with its default logit link
+changes a curve spanning 0.04–0.70 into a response mean spanning about
+0.51–0.67. Good sampler diagnostics do not detect that change of model.
+Check the fitted links before interpreting a large difference in `elpd_diff`.
 
-This behaviour is documented in the JSS paper, so it does not need repeating in
-the package docs — it is recorded here only so the mistake is not repeated.
+### The scale of a returned estimate
 
-### Estimates and plot data on different scales
+Where the formula transforms the predictor inline, as in
+`crf(log(concentration), ...)`, every estimator returns the **recorded** scale
+by default (`xform = NULL`). This covers `nec()`, `nsec()`, `ecx()`, `ecnsec()`,
+`curve_params()`, `exceedance()` and the `summary()` rows, and matches
+`autoplot()` and `ggbnec_data()`. A supplied `xform` is applied to the estimate on
+the **fitted** scale. So `xform = identity` returns the transformed scale, and
+`xform = exp` on a `crf(log(x))` fit returns what the default returns.
 
-Where the formula transforms the predictor — `crf(sqrt(concentration), ...)` —
-the two halves of the output are on different scales:
+Applying the inverse to the default output transforms twice: `exp(nec(fit))` on
+a `crf(log(x))` fit exponentiates a concentration, with no warning. Before #299
+that was the correct idiom, so code written against an older `predev` or a
+released version needs checking. Code that compares with `toxval` or with a
+hand-written fit on the fitted scale passes `xform = identity`.
 
-- `nec()`, `nsec()` and `ecx()` return values on the **transformed** scale.
-  Supply the inverse to get them back: `ecx(fit, xform = function(x) x^2)`.
-- `autoplot()` and `ggbnec_data()` return `x` on the **recorded** scale, having
-  back-transformed it already.
-
-**Consequence:** placing axis breaks at `sqrt(breaks)` crams every label into
-the left sixth of the axis, and reporting `nec()` without `xform` gives the
-square root of a concentration labelled as a concentration. Neither produces a
-warning.
-
-**Rule:** back-transform estimates with `xform`. Apply axis spacing with
-`scale_x_continuous(transform = "sqrt")` to the untransformed plot data, never
-by transforming the breaks.
-
-`autoplot()`'s own *NEC* annotation does **not** need suppressing. An earlier
-version of this rule said to pass `nec = FALSE` because the annotation was drawn
-on the fitted scale and would contradict a back-transformed table. Measured on
-`dev` at `1ef66e15`, on the `example9` simazine fit with `crf(log(concentration))`:
-`ggbnec_data()` returns `nec_vals` of 4.34 against `nec(fit, xform = exp)` of
-4.3425, so the annotation is on the recorded scale and agrees with the table.
-`to_axis_scale()` inverts numerically on the prediction grid where no `xform`
-was supplied. The figure is internally consistent; what disagrees is the figure
-against the estimators, which is #299.
+Take estimates at their default, and pass `xform = identity` only to read the
+fitted scale. Apply axis spacing with `scale_x_continuous(transform = "sqrt")`
+to the untransformed plot data, never by transforming the breaks.
 
 ### `dispersion()` on a model average
 
-`bayesnec::dispersion()` expects a `bayesnecfit`. Called on a `bayesmanecfit`
-it stops with "argument is not a valid model". There is no need to call it per
-equation either: `summary(fit)$mod_weights` already carries
-`dispersion_Estimate`, `dispersion_Q2.5` and `dispersion_Q97.5` for the
-families the test applies to. Recomputing requires a `posterior_predict()` draw
-for every equation in the set.
+`bayesnec::dispersion()` accepts a `bayesmanecfit` and computes the statistic
+separately for each equation. With `summary = FALSE` it returns a named list
+of posterior vectors; with `summary = TRUE` it returns a data frame with one
+row per equation. It does not define one dispersion statistic for the model
+average. See `R/dispersion.R` and `tests/testthat/test-dispersion.R`.
+
+`summary(fit)$mod_weights` already includes `dispersion_Estimate`,
+`dispersion_Q2.5` and `dispersion_Q97.5` for the families the test applies to.
+Use those stored results when sufficient: calling `dispersion()` again
+simulates posterior predictions for each applicable equation.
 
 ### The placement of a new data refusal
 
@@ -220,7 +255,7 @@ models fit successfully, try using bnec with a single model ... or check
 argument is a set, so this is the common path, not an edge case.
 
 Measured on R 4.6.1: a two-model set with one `NA` printed the refusal twice and
-then that message; the default 23-model set would print it 23 times.
+then that message; the default 24-model set would print it 24 times.
 
 **Rule:** a check that is a property of the data and the formula together, fixed
 for the whole call, is raised in `bnec()` before the model loop, and kept in

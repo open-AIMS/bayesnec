@@ -8,7 +8,7 @@
 #' A full description of bayesnec can be found in Fisher et al. (2024).
 #' Please see ?bnec for more details. This package expands and supersedes an
 #' original version implemented in R2jags (Su and Yajima 2024), see Fisher et
-#  al. (2020).
+#' al. (2020).
 #' @name bayesnec-package
 #' @aliases bayesnec
 #' @importFrom ggplot2 autoplot

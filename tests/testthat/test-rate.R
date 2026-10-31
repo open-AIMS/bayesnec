@@ -1,10 +1,6 @@
-# #136: rate() support for the poisson and negbinomial families. Modelled on
-# test-cens.R, which is the other aterm carried as a plain column.
-#
-# Because bnec() forces link = "identity", brms writes the denominator
-# multiplicatively on the response scale -- `poisson_lpmf(Y | mu .* denom)` --
-# so mu IS the rate and top/bot/nec stay interpretable as counts per unit
-# exposure. That is the property every assertion below is protecting.
+# Under the default identity link, the Poisson mean is the rate times
+# exposure. Response asymptotes are rates; nec remains on the predictor
+# scale. Rate terms must survive parsing, priors and prediction.
 
 rate_data <- function(seed = 1) {
   set.seed(seed)
@@ -26,10 +22,8 @@ test_that("a rate term is parsed and carried into the model frame", {
 })
 
 test_that("retrieve_var finds the rate variable by position", {
-  # The trap named in the issue: retrieve_var() indexes the model frame by
-  # POSITION in bnec_pop, so the term order in short_form and the name order in
-  # pop_vars have to stay in lockstep. Asserted with censoring present too,
-  # since that is the slot immediately before rate.
+  # retrieve_var() indexes by position: short_form term order and pop_vars
+  # name order must agree. Include censoring, the slot immediately before rate.
   d <- rate_data()
   d$cens <- rep(c("none", "left"), 20)
   mf <- model.frame(bnf(y | rate(ex) + cens(cens) ~ crf(x, "nec3param")),
@@ -40,25 +34,22 @@ test_that("retrieve_var finds the rate variable by position", {
 })
 
 test_that("priors are built on the rate scale, not the count scale", {
-  # The silent half of the bug. Deriving top from raw counts gave a prior mean
-  # of ~61 against a true top of 20, because the counts carry the exposure.
+  # Derive top from rates; using raw counts folds exposure into its prior.
   d <- rate_data()
   pr <- get_priors(y | rate(ex) ~ crf(x, "nec3param"), data = d,
                    family = "poisson")
   rate <- as.numeric(sub("^gamma\\([^,]+,\\s*([^)]+)\\)$", "\\1",
                          pr$prior[pr$nlpar == "top"]))
-  # gamma(2, rate) has mean 2 / rate; the true top is 20, so anything up in the
-  # 60s means the exposure has leaked in. Bounded generously -- this is an
-  # order-of-magnitude assertion, not a pinned constant.
+  # The true top is 20. These broad bounds on gamma mean 2 / rate
+  # detect exposure contamination without pinning a noisy prior constant.
   expect_lt(2 / rate, 40)
   expect_gt(2 / rate, 2)
 })
 
 test_that("the prediction grid pins the denominator at 1", {
-  # Without this the "fitted curve" is the curve times whatever denominator each
-  # grid row inherited, and ecx()/nsec() read off it are meaningless. It is also
-  # what makes the grid resolvable at all: it previously had no denominator
-  # column, so posterior_epred() errored on a missing variable.
+  # Prediction grids need denominator 1 to describe the rate curve.
+  # A missing denominator breaks posterior_epred(); varying exposure
+  # would change the curve used by ecx() and nsec().
   d <- rate_data()
   mf <- model.frame(bnf(y | rate(ex) ~ crf(x, "nec3param")), data = d)
   fake <- list(data = d, family = list(family = "poisson"))
@@ -121,8 +112,8 @@ test_that("bnec_hurdle refuses a rate term with a reason", {
 })
 
 test_that("an unrecognised aterm is an error, not a message", {
-  # Changed from a message under #136. The silent pass-through is what let
-  # rate() fit and then fail in post-processing tens of seconds later.
+  # Unsupported additional terms must error before fitting; passing them
+  # through can defer failure until expensive post-processing.
   d <- rate_data()
   expect_error(
     model.frame(bnf(y | se(ex) ~ crf(x, "nec3param")), data = d),
@@ -137,13 +128,9 @@ test_that("an unrecognised aterm is an error, not a message", {
 })
 
 test_that("a rate denominator written as an expression is refused (#389)", {
-  # The denominator is carried as a plain column, so an expression is reduced
-  # to the first variable in it while brms keeps the expression: under
-  # rate(exh / 24) brms divides by the quotient and every bayesnec path that
-  # reads the column divides by exh. Since #389 that reaches the default priors
-  # and the initial-value band, and it already reached the prediction grid and
-  # the plotting paths, so the form is refused rather than corrected four
-  # times.
+  # Require a bare rate column. bayesnec keeps only exh from rate(exh / 24)
+  # while brms keeps the expression, so priors, initial values, prediction
+  # grids and plots would divide by a different denominator from the fit.
   d <- rate_data()
   d$exh <- d$ex * 24
   expect_error(model.frame(bnf(y | rate(exh / 24) ~ crf(x, "nec3param")),
@@ -158,7 +145,7 @@ test_that("a rate denominator written as an expression is refused (#389)", {
   )
 })
 
-# ---- #397, the disp() centring constant on the scale of the mean -------------
+# Dispersion centring on the scale of the mean
 
 # The constants are spliced into the variance function as "- <literal>)", which
 # no curve expression contains, so this reads them back in order of appearance.
@@ -173,10 +160,8 @@ rate_shape_rhs <- function(formula, d) {
 }
 
 test_that("a rate fit centres its variance function on the rate (#397)", {
-  # Under the identity link the negbinomial mean is the rate, so a centre
-  # computed from the counts was displaced by the median log exposure: 3.02013
-  # against 2.19722 under power, and 20.5 against 9 under loglinear, on this
-  # series.
+  # With an identity link, centre rate-model dispersion on the rates.
+  # Varying exposure separates these references from count-based centres.
   d <- rate_data()
   rate <- d$y / d$ex
   # The exposures differ, so the two scales give different references and the
@@ -207,8 +192,7 @@ test_that("the rate-scale literal reaches the Stan program (#397)", {
 })
 
 test_that("without a rate term the centre is still taken from the counts", {
-  # The same counts fitted as counts: the mean is a count, so the literal is
-  # the one the formula builder produced before #397.
+  # Without rate(), centre on counts as the mean scale requires.
   d <- rate_data()
   pw <- rate_shape_rhs(y ~ crf(x, "nec3param") + disp("power"), d)
   expect_equal(centring_literals(pw), signif(median(log(d$y[d$y > 0])), 6))

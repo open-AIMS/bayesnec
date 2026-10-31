@@ -86,12 +86,8 @@ check_priors.bayesmanecfit <- function(object, filename = NA, ask = TRUE) {
   if (!is.na(filename)) {
     chk_character(filename)
   }
-  # The devices are left as they were found, including when a plot stops the
-  # call: the PDF is closed on exit, and the screen device's page prompt is
-  # restored, as autoplot() restores it. Setting the prompt to FALSE on the
-  # way out, as this did, switched off a prompt the user had asked for, and
-  # with filename it opened a new screen device after the PDF was closed
-  # (#459).
+  # Leave the devices as they were found, even when a plot stops the call:
+  # close the PDF on exit, and restore the page prompt, as autoplot() does.
   if (!is.na(filename)) {
     pdf(file = paste(filename, ".pdf", sep = ""), onefile = TRUE,
         width = 12, height = 4)

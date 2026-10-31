@@ -8,10 +8,10 @@
 \method{ecnsec}{bayesnechurdlefit}(
   object,
   nsec,
-  resolution = 200,
+  resolution = 500,
   x_range = NA,
   type = "absolute",
-  xform = identity,
+  xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
   ...,
   posterior = FALSE,
@@ -21,12 +21,13 @@
 \arguments{
 \item{object}{An object of class \code{\link{bayesnechurdlefit}}.}
 
-\item{nsec}{A numeric value indicating the NSEC value for which to extract
-the percentage effect.}
+\item{nsec}{A single number, the concentration at which to read the
+percentage effect. A vector is refused, including the three values
+\code{\link{nsec}} returns; pass the one wanted.}
 
 \item{resolution}{The number of unique x values over which the curve is
 predicted. It affects only \code{type = "range"}, where the denominator is
-the lowest response the curve predicts over the grid. The default of 200
+the lowest response the curve predicts over the grid. The default of 500
 matches \code{\link{ecx}} and \code{\link{nsec}}.}
 
 \item{x_range}{A range of x values over which to predict the curve. An
@@ -35,8 +36,9 @@ matches \code{\link{ecx}} and \code{\link{nsec}}.}
 \item{type}{A \code{\link[base]{character}} vector, taking values of
 "absolute" (the default), "relative" or "range". See Details.}
 
-\item{xform}{A function to apply to the returned estimated NSEC concentration
-values prior to estimating the percentage effect.}
+\item{xform}{\code{NULL}, the default, or a function applied to
+\code{nsec} before the curve is read there. \code{NULL} reads \code{nsec}
+as given, on the recorded scale. See Details.}
 
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
@@ -66,15 +68,12 @@ response value rather than a percentage.
 
 \code{xform} is applied to \code{nsec}, and the curve is read at the
 result on the recorded predictor scale, as in \code{\link{ecnsec}} on a
-\code{\link{bayesnecfit}}. Where \code{crf()} transforms the predictor
-inline, \code{\link{nsec}} returns its estimate on the transformed scale
-unless given an \code{xform}, so a message says so once per call where
-\code{xform} is left at its default, and names the \code{xform} that puts
-such a value on the recorded scale. In earlier versions this method applied
-\code{xform} to the percentage it returned. A call that supplies an
-\code{xform} other than \code{identity} is warned of the change in this
-release. To transform the percentage, apply the function to the value
-returned.
+\code{\link{bayesnecfit}}. \code{NULL}, the default, reads \code{nsec} as
+given, the scale \code{\link{nsec}} returns by default. In earlier
+versions this method applied \code{xform} to the percentage it returned. A
+call that supplies an \code{xform} other than \code{identity} is warned of
+the change in this release. To transform the percentage, apply the function
+to the value returned.
 
 Without \code{x_range}, every curve is read over the whole concentration
 series, as in \code{\link{ecx.bayesnechurdlefit}}. The range sets the

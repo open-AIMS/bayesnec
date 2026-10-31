@@ -104,10 +104,8 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
       survival = dispersion(model$survival, summary = summary, seed = seed)
     ))
   }
-  # A model average has no single dispersion statistic: its summary already
-  # reports one for each candidate equation. Apply the same calculation to the
-  # stored fits so callers can inspect the draws behind those columns. Empty
-  # summaries become NA rows, matching expand_nec() and the model summary.
+  # A model set has no single dispersion statistic, so return one per stored
+  # fit. An empty result becomes an NA row, as in expand_nec() and summary().
   if (is_bayesmanecfit(model)) {
     out <- lapply(model$mod_fits, dispersion, summary = summary, seed = seed)
     if (!summary) {
@@ -123,9 +121,8 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
     })
     return(as.data.frame(do.call(rbind, out), check.names = FALSE))
   }
-  # Captured before `model` is replaced by the brmsfit. expand_nec() calls this
-  # once per equation, so an unnamed message on a model set says only that
-  # something somewhere was excluded, which is not enough to act on.
+  # Keep the equation's name for the messages, since expand_nec() calls this
+  # once per equation.
   mod_name <- model$model
   mod_label <- if (is.null(mod_name)) "fitted" else mod_name
   formula <- model$bayesnecformula
@@ -135,33 +132,23 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
   allowed_fams <- c("poisson", "binomial")
   fam <- model$family$family
   if (fam %in% allowed_fams) {
-    # The link is taken from the fit rather than left at the family default.
-    # get("poisson")() is a log link and get("binomial")() a logit one, but
-    # The fit is on link = "identity" -- assigned by bnec() unless the caller
-  # wrote a link -- so posterior_linpred() below is already
-    # on the response scale and linkinv() would transform it a second time. For
-    # a Poisson that means exp() of a mean of ~90, giving variance weights of
-    # ~1e39; they do not cancel out of the ratio, because rowSums() weights the
-    # two sums over observations separately, so the statistic ends up dominated
-    # by the lowest-mean observations and understates dispersion. Reading the
-    # link off the fit rather than hard-coding "identity" keeps this correct if
-    # a future path stops forcing it. See #247.
+    # Take the link from the fit, not the family default (log for poisson,
+    # logit for binomial). bnec() fits on the identity link, so
+    # posterior_linpred() is already on the response scale and the default
+    # linkinv() would transform it a second time.
     fam_fcts <- get(fam)(link = model$family$link)
     obs_y <- standata(model)$Y
     lpd_out <- posterior_linpred(model)
     prd_out <- factorised_count_epred(model, formula)
-    # Wrapped so the caller's stream is where they left it once the statistic
-    # returns. summary() reaches this for every equation of a model set, so a
-    # summary printed partway through a simulation would otherwise move it.
-    # See #337.
+    # Leave the caller's random number stream where it was. summary() reaches
+    # this for every equation of a model set.
     with_preserved_rng_state({
       set.seed(seed)
       ppd_out <- posterior_predict(model)
     })
-    # The per-observation fitted variance is collected first and the residual
-    # arithmetic done in one place, because an observation with zero variance
-    # has to be handled differently depending on whether the response agrees
-    # with the fitted value. See pearson_dispersion() and #298.
+    # Collect the fitted variances first: pearson_dispersion() treats an
+    # observation with zero variance differently depending on whether the
+    # response equals the fitted value.
     var_out <- matrix(0, nrow(prd_out), ncol(prd_out))
     for (i in seq_len(nrow(prd_out))) {
       prd_mu <- fam_fcts$linkinv(lpd_out[i, ])
@@ -176,15 +163,10 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
       }
       rate_var <- unname(attr(mod_dat, "bnec_pop")["rate_var"])
       if (fam == "poisson" && !is.na(rate_var)) {
-        # Exactly parallel to the binomial branch, and exact for Poisson:
-        # prd_mu is the rate, the observations are counts over an exposure, and
-        # Var(count) = mu * denom. Note this does NOT generalise to
-        # negbinomial, where brms scales the shape by the denominator too, so
-        # the count-scale variance is mu_c + mu_c^2 / (shape * denom) rather
-        # than a plain multiple. dispersion() does not accept negbinomial at
-        # all -- see allowed_fams above -- so there is nothing to get wrong
-        # today, but whoever widens that list must derive the negbinomial case
-        # rather than copying this line. See #136.
+        # Exact for Poisson: prd_mu is the rate and Var(count) = mu * denom.
+        # It does not carry over to negbinomial, whose shape brms also scales
+        # by the denominator; derive that case before adding negbinomial to
+        # allowed_fams.
         prd_var_y <- prd_var_y * model$data[[rate_var]]
       }
       var_out[i, ] <- prd_var_y
@@ -203,16 +185,8 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
       numeric()
     } else {
       if (summary) {
-        # P(dispersion > 1) is added to the median and the equal-tailed
-        # interval. The two rules the interval supports are both poor: a
-        # threshold on the point estimate discards the uncertainty the
-        # statistic was computed to express, and requiring Q2.5 > 1 is blunt,
-        # because each draw compares one observed residual sum against a single
-        # simulated replicate and the interval's width at a typical design is
-        # dominated by replicate-to-replicate simulation noise. The posterior
-        # probability uses the whole posterior, is directly interpretable, and
-        # is symmetric: 1 - p answers the under-dispersion question, which
-        # nothing else here addresses. See #262.
+        # Add P(dispersion > 1) to the median and interval. It uses the whole
+        # posterior, and 1 - p answers the under-dispersion question.
         c(estimates_summary(disp), "P(>1)" = mean(disp > 1, na.rm = TRUE))
       } else {
         disp
@@ -241,29 +215,14 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
 #' @param model_name A \code{\link[base]{character}} naming the equation, used
 #' in the message and the warning.
 #'
-#' @details The Pearson denominator is \code{sqrt(var_out)}, which is exactly
-#' zero wherever the fitted mean underflows --- \code{mu (1 - mu) n} for a
-#' binomial and \code{mu} for a Poisson both do so for a curve that decays fast
-#' enough. Two cases reach that zero and they need opposite treatment.
-#'
-#' Where the response equals the fitted value, the model is degenerate at that
-#' observation and the data agree with it exactly. Both the observed and the
-#' simulated term are \code{0/0}: the observation says nothing about dispersion
-#' in either direction, so it is excluded from both sums and every draw is
-#' retained. Discarding the whole statistic instead, as this function did
-#' before #298, lost it precisely for the equations describing the data best,
-#' since underflow requires a fast decay.
-#'
-#' Where the response differs from the fitted value, the model has assigned zero
-#' variance to a value it did not predict. The infinity is produced by the
-#' underflow, since in exact arithmetic the residual there is large and finite,
-#' but the misfit it reports is real, so the observed term is kept and the
-#' statistic is reported as \code{Inf}. Only the simulated term is excluded, because a
-#' degenerate predictive distribution cannot deviate from its mean and is
-#' \code{0/0} whichever case holds. A warning names the observations. It is a
-#' warning rather than an error because \code{dispersion()} is called once per
-#' equation from \code{expand_nec()}, so stopping would abandon construction of
-#' a whole \code{\link{bayesmanecfit}} for one candidate whose shape is wrong.
+#' @details \code{sqrt(var_out)} is exactly zero wherever the fitted mean
+#' underflows, as for a fast-decaying binomial or Poisson curve. Where the
+#' response equals the fitted value, both terms are \code{0/0} and the
+#' observation is excluded from both sums. Where it differs, the misfit is
+#' real: the observed term is kept and the statistic is \code{Inf}, with a
+#' warning rather than an error, since \code{expand_nec()} calls
+#' \code{dispersion()} for every equation of a set. The simulated term is
+#' \code{0/0} in both cases and always excluded.
 #'
 #' @return A \code{\link[base]{numeric}} vector with one element per draw.
 #' \code{NA} for a draw in which no observation contributes a residual.
@@ -281,13 +240,9 @@ pearson_dispersion <- function(obs_y, prd_out, ppd_out, var_out,
     labels <- as.character(seq_len(ncol(prd_out)))
   }
   obs_mat <- matrix(obs_y, nrow(prd_out), ncol(prd_out), byrow = TRUE)
-  # A variance that is negative or not finite is neither of the two cases below
-  # and no accepted family should produce one. It is excluded from both sums and
-  # reported, rather than left to disappear into the na.rm below. The negative
-  # test is needed as well as is.finite(): a negative variance is finite, and
-  # sqrt() would otherwise turn it into a NaN term that na.rm drops in silence,
-  # under base R's unattributed "NaNs produced" warning. Setting it missing
-  # before the square root keeps that warning from being raised at all.
+  # A negative or non-finite variance should not arise. Exclude it from both
+  # sums and report it. Set it NA before sqrt(), which would otherwise turn a
+  # negative value into a NaN that na.rm drops in silence.
   unusable <- !is.finite(var_out) | var_out < 0
   var_out[unusable] <- NA_real_
   degenerate <- var_out == 0
@@ -301,14 +256,9 @@ pearson_dispersion <- function(obs_y, prd_out, ppd_out, var_out,
   # variance is a point mass at its mean, so ppd_out equals prd_out and the
   # term is already 0/0 whichever of the two cases holds.
   sim_sr[degenerate] <- NA
-  # na.rm drops the excluded terms rather than the draw. A draw in which every
-  # term is excluded sums to 0/0, and the NaN that produces is replaced with NA
-  # so that the returned vector reads as missing rather than as an arithmetic
-  # accident; is.na() treats the two alike, so nothing downstream depends on
-  # the substitution. estimates_summary() then excludes such a draw as it does
-  # a censored ECx draw. A draw with a disagreeing observation divides Inf by
-  # the sum of what is left and stays Inf, which is the verdict that case
-  # earns.
+  # na.rm drops the excluded terms, not the draw. A draw with every term
+  # excluded gives 0/0, returned as NA. A draw with a disagreeing observation
+  # stays Inf.
   disp <- rowSums(prd_sr, na.rm = TRUE) / rowSums(sim_sr, na.rm = TRUE)
   disp[is.nan(disp)] <- NA_real_
   if (any(unusable)) {
@@ -321,12 +271,9 @@ pearson_dispersion <- function(obs_y, prd_out, ppd_out, var_out,
   reproduced <- degenerate & !disagreeing
   excluded <- which(colSums(reproduced) > 0)
   if (length(excluded) > 0) {
-    # The count of draws is reported alongside the count of observations
-    # because the exclusion is elementwise and not a fixed set: an observation
-    # whose fitted mean underflows in a steep draw gives an ordinary residual
-    # in a shallower one. Naming only the observations would describe a set
-    # that is dropped from the whole posterior, which is a different and more
-    # damaging operation than the one performed. See #300.
+    # Report the number of draws as well as observations: an observation is
+    # excluded only in the draws where its fitted mean underflows, not from
+    # the whole posterior.
     message(who, " has zero variance at ", length(excluded), " of ",
             ncol(prd_out), " observations (", paste(labels[excluded],
             collapse = ", "), ") which the model reproduces exactly, in ",
@@ -337,9 +284,8 @@ pearson_dispersion <- function(obs_y, prd_out, ppd_out, var_out,
   }
   n_missing <- sum(is.na(disp))
   if (n_missing > 0 && n_missing < length(disp)) {
-    # The same account nsec_off_curve() gives of a censored draw: the draws
-    # that return NA are named rather than left to be dropped by the na.rm in
-    # estimates_summary() and in P(>1). See #39.
+    # Name the NA draws rather than leave estimates_summary() and P(>1) to
+    # drop them silently, as nsec_off_curve() does for a censored draw.
     message("No observation contributes a residual in ", n_missing, " of ",
             length(disp), " draws of the ", who_short, ". Those draws return ",
             "NA and are excluded from the summary, which is computed from the ",

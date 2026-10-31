@@ -67,12 +67,20 @@ function call must also be valid Stan syntax, either because Stan provides
 it or because the corresponding Stan function is supplied through
 \code{stanvars}. Otherwise, transform the predictor in the data first.
 
-A predictor written with a leading minus, as in \code{crf(-x)} or
-\code{crf(-log(x))}, is refused. A model formula reads that minus as the
-operator that removes a term, so the model would be fitted on \code{x} or
-\code{log(x)}. This also applies to \code{crf(+(-x))}, where a unary plus
-encloses the negation. Write the negation inside \code{I()}, as in
-\code{crf(I(-x))}, or compute it into a column of the data.
+The predictor is read as a model formula reads it. Parentheses around it
+and a unary plus are dropped, so \code{crf((log(x)))} is
+\code{crf(log(x))}. A formula operator at its top level, as in
+\code{crf(-x)}, \code{crf(x - 1)}, \code{crf(log(x) + 1)} or
+\code{crf(x^2)}, is refused, because a model formula reads it as formula
+syntax, not as arithmetic: the model would be fitted on \code{x}, or on
+\code{log(x)}. The operators are \code{+}, \code{-}, \code{*}, \code{/},
+\code{:}, \code{^} and \code{\%in\%}. Where arithmetic is meant, write it
+inside \code{I()}, as in \code{crf(I(x - 1))} or \code{crf(I(-x))}, or
+compute it into a column of the data. Stan has no \code{I()}, so the
+formula passed to \pkg{brms} holds the expression inside it, in
+parentheses, including where \code{I()} is nested inside another call.
+An operator inside a function call is arithmetic and is
+accepted, as in \code{crf(log(x + 1))}.
 
 \bold{Group-level terms: \code{glterms}}
 
@@ -197,8 +205,9 @@ the data the fit was made from, so a predicted reading is one from the
 design's mix of \code{z} rather than from its first level. A
 \code{newdata} without \code{z} is refused with a message naming it. The
 term is refused for a \code{negbinomial} growth component of
-\code{\link{bnec_hurdle}}, whose curve is the mean of the zero-truncated
-counts and depends on the shape parameter.
+\code{\link{bnec_hurdle}} and for the \code{hurdle_negbinomial} family,
+whose curves are the mean of the zero-truncated counts, or that mean
+multiplied by \code{1 - hu}, and so depend on the shape parameter.
 
 Where the formula also has an \code{ogl()} term, \code{mu} in form 2) is the
 curve before the group-level deviation is applied, not the fitted mean of
@@ -221,12 +230,12 @@ observation-level group-level effect. Those are exactly the families the
 \code{\link{dispersion}} diagnostic applies to, so the two are complements
 rather than alternatives.
 
-Of the two-block families, \code{hurdle_gamma} and \code{zero_inflated_beta}
-take a dispersion sub-model on their positive block, which is modelled as
-the \code{Gamma} or \code{Beta} family it is, and \code{m} is computed from
-the positive responses; see \code{\link{bnec}}. \code{hurdle_poisson} has no
-dispersion parameter to model, and \code{hurdle_negbinomial} does not yet
-take a dispersion sub-model.
+Of the two-block families, \code{hurdle_gamma}, \code{zero_inflated_beta}
+and \code{hurdle_negbinomial} take a dispersion sub-model on their positive
+block, a \code{Gamma}, \code{Beta} or zero-truncated \code{negbinomial}
+distribution, and \code{m} is computed from the positive responses; see
+\code{\link{bnec}}. \code{hurdle_poisson} has no dispersion parameter to
+model.
 
 \bold{What the exponent means depends on the family}, because each family
 already imposes its own mean-variance link. The form above is written for

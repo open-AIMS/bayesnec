@@ -11,6 +11,13 @@ through PR #409 (`c3824643`), and #386 and its issues are closed. PR #387, whose
 rule phase 2 replaced, closed unmerged on 2026-09-25. The follow-up work is in the
 backlog run, `backlog-run-human.md`.
 
+Amended 2026-10-28 by RF's decision on #483. Phase 6 removed the tested-range
+truncation for every fit, which was not RF's intent. The truncation is now kept
+under the default `asymptote_observed = TRUE`, and the declaration
+`asymptote_observed = FALSE` removes its upper end. The sections on the
+truncation, the name of the argument and phase 6 state the decision as it now
+stands.
+
 ---
 
 ## Summary
@@ -20,12 +27,13 @@ the lower asymptote of the curve is called an **incomplete design** in this
 document. Three `bayesnec` defaults describe the design rather than the curve on
 such data, and the fit reports none of it.
 
-The plan makes three changes. The first removes the truncation that places a
-threshold above the tested range outside the prior support. The second reports a
+The plan makes three changes. The first removes, on a design declared
+incomplete, the truncation that places a threshold above the tested range outside
+the prior support. The second reports a
 no-effect estimate that lies above the tested range as censored, and adds an
 argument that returns it uncensored where the user asks for that. The third adds
 a declaration that the lower asymptote was not observed, which changes the `bot`
-prior and the initial-value band to match.
+prior and the initial-value band to match and removes that truncation.
 
 Two smaller items go first. One is a defect found while reviewing PR #387: the
 default priors for a `rate()` fit are built from counts rather than from rates.
@@ -60,10 +68,13 @@ observed endpoint.
 
 Each decision is stated once here and in full in the specification.
 
-### No truncation of the prior to the tested range
+### Truncation of the prior to the tested range under the default only
 
-Truncation is what turns a threshold above the series into a spike at the
-highest concentration with a narrow interval. Specification §3.
+The default assumes the series reached the lower asymptote, so the threshold lies
+inside the tested range and a bound there states that assumption. On a design
+declared incomplete, truncation is what turns a threshold above the series into a
+spike at the highest concentration with a narrow interval, so the declaration
+removes the upper bound and keeps the lower one. Specification §3.
 
 ### Censoring of the reported estimate at the prediction range
 
@@ -103,6 +114,10 @@ Removing the upper truncation removes the lower one in the same two lines, so
 admitting a threshold below the lowest concentration without reporting it would
 recreate this problem at the other end. Specification §4.3.
 
+Amended 2026-10-28 (#483): the lower bound is kept under both settings, so a
+sampled `nec` no longer lies below the lowest concentration. An NSEC read off the
+curve still can, and the reporting of that end stands.
+
 ### An infinite extrapolation limit only where every component samples a NEC
 
 A curve cannot be read off an infinite grid, so a set containing an `ecx`-type
@@ -127,9 +142,9 @@ prevent a user from having both. Specification §5.2.
 
 ### The name `asymptote_observed`
 
-After the truncation is removed for everyone, this argument governs the `bot`
-prior and the initial-value band and nothing else, both of which are the lower
-asymptote, so the name states its whole scope. Specification §5.2.
+The argument governs the `bot` prior, the initial-value band and the upper bound
+of the `nec` and `ec50` priors. All three follow from whether the series reached
+the lower asymptote, so the name states its whole scope. Specification §5.2.
 
 ### The `bot` prior from the support floor to the observed endpoint
 
@@ -262,6 +277,9 @@ NEC set and errors on a mixed one, a finite limit extends both halves, and no
 output changes for a fit with no censored draws.
 
 ### Phase 6. Removal of the tested-range truncation (#393)
+
+Amended 2026-10-28 (#483): the removal now applies only under
+`asymptote_observed = FALSE`, which phase 7 adds.
 
 The default `nec` and `ec50` priors are no longer truncated at the highest
 concentration tested. The posterior may then place mass above the series, and

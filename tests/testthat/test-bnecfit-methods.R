@@ -1,23 +1,10 @@
-# update.bnecfit() applies the same link policy as bnec(). None of these tests
-# need sampling: the family is validated, and the change guard runs, before any
-# model is refitted, and the two tests that inspect what brms receives halt the
-# refit at the brms entry point.
+# Inspect family validation and refit arguments without sampling. Stubs
+# halt update() at the brms entry point.
 
 capture_brms_update <- function(expr) {
-  # Substituted rather than mocked or traced, because the point is what brms
-  # itself is handed. The stub writes to an option: it is dispatched to in
-  # place of update.brmsfit(), so it cannot see anything in the test's own
-  # environment.
-  #
-  # An S3 method is registered in the S3 methods table of the *generic's*
-  # namespace, so brms's update.brmsfit is reached through stats, not through
-  # brms. This used trace(..., where = asNamespace("brms")), which replaces
-  # both that entry and the brms binding, while untrace() restores only the
-  # binding: measured, after this file ran the brms binding was untraced and
-  # getS3method("update", "brmsfit") was still the tracer, so the next real
-  # update() in the session stopped with "halted by test". Writing the stub
-  # into the table directly is what registerS3method() does, and it restores
-  # exactly, so nothing survives the call.
+  # Replace and restore update.brmsfit in stats' S3 method table, where
+  # dispatch finds it. Restoring only the brms binding can leave a traced
+  # method active; use an option to capture values across environments.
   old <- getOption("bayesnec_test_capture")
   on.exit(options(bayesnec_test_capture = old), add = TRUE)
   options(bayesnec_test_capture = NULL)
@@ -44,12 +31,8 @@ capture_brms_update <- function(expr) {
 }
 
 test_that("family_signature compares the tag and the links, not the object", {
-  # brms stores a brmsfamily in the fit while mod_fams builds gaussian and
-  # Gamma from stats, so the two objects never matched even for the same
-  # family. See #256.
-  # A link the object does not record is the one brms assigns: stats builds
-  # gaussian() with `link` alone, and brms fits sigma on the log link. See
-  # #435.
+  # Compare canonical family/link signatures across stats and brms objects.
+  # Missing auxiliary links take the brms defaults, including log for sigma.
   expect_equal(bayesnec:::family_signature(gaussian()),
                c(family = "gaussian", link = "identity", link_sigma = "log"))
   expect_identical(
@@ -68,18 +51,15 @@ test_that("family_signature compares the tag and the links, not the object", {
 test_that("check_update_data reads the family it is given", {
   o <- recover_prebayesnecfit(manec_example)
   dat <- o[[1]]$fit$data
-  # Collected by `...` and passed positionally, the family never reached
-  # retrieve_valid_family(), so the guard could not detect a family change at
-  # all -- it only ever compared the data-derived family. See #256.
+  # A supplied family must reach the family-change check when passed
+  # positionally; inferring a family from data would test the wrong choice.
   expect_false(bayesnec:::check_update_data(o, dat, validate_family("gaussian"))$changed_family)
   expect_true(bayesnec:::check_update_data(o, dat, validate_family("Beta"))$changed_family)
 })
 
 test_that("family_signature names a stored Gamma family as bayesnec does", {
-  # brms records Gamma as "gamma", and the stored brmsfamily records
-  # link_shape where stats::Gamma() does not, so a supplied
-  # Gamma(link = "identity") differed from every Gamma fit on both counts.
-  # See #435.
+  # Canonicalise the stored lowercase Gamma tag and its auxiliary-link
+  # defaults before comparison with a newly supplied family.
   stored <- brms::brmsfamily("Gamma", link = "identity")
   expect_identical(
     bayesnec:::family_signature(validate_family(Gamma(link = "identity"))),
@@ -104,10 +84,8 @@ test_that("family_signature names a stored Gamma family as bayesnec does", {
 })
 
 test_that("check_update_data reads no family off new data (D32)", {
-  # INVERTED. This pinned the family read off the new data: nec_data's
-  # response lies in (0, 1), so it was read as beta and compared against the
-  # gaussian fit. update(newdata = ) keeps the fitted family, so new data are
-  # never a change of family. See #435.
+  # New data alone keep the fitted family, even when their range would lead
+  # to a different automatically selected family.
   o <- recover_prebayesnecfit(manec_example)
   expect_false(bayesnec:::check_update_data(o, o[[1]]$fit$data)$changed_family)
   expect_false(bayesnec:::check_update_data(o, nec_data)$changed_family)
@@ -124,8 +102,7 @@ test_that("update refuses an unsupported link before refitting", {
 
 test_that("update stops on a family change unless force_fit is set", {
   expect_error(update(manec_example, family = Beta()), "force_fit = TRUE")
-  # New data alone are no longer a change of family (D32); with a family that
-  # differs they still require force_fit. See #435.
+  # A supplied change of family still requires force_fit with new data.
   expect_error(update(manec_example, newdata = nec_data, family = Beta()),
                "force_fit = TRUE")
 })
@@ -134,10 +111,8 @@ test_that("brms receives the validated family, not the one written", {
   got <- capture_brms_update(
     update(manec_example, family = Beta(), force_fit = TRUE)
   )
-  # The caller wrote no link, so bayesnec assigns identity. Forwarded through
-  # `...` untouched this was beta's own logit, and the curve was fitted to the
-  # logit of the mean while top, bot and nec were reported on the response
-  # scale.
+  # An unspecified mean link defaults to identity. top and bot then describe
+  # the response scale; nec remains on the predictor scale.
   expect_equal(got$family$family, "beta")
   expect_equal(got$family$link, "identity")
   # The idempotence marker is bayesnec's own and must not be serialised into
@@ -149,12 +124,8 @@ test_that("brms receives the validated family, not the one written", {
 })
 
 test_that("update(family =) hands brms the corrected frame (#274)", {
-  # The second of #274's two routes. check_update_data() runs on
-  # object[[1]]$fit$data whenever a family is supplied, reports the boundary
-  # shift, and the corrected frame was then thrown away because it was
-  # substituted only when the caller had passed newdata. brms received NULL,
-  # refitted the unshifted stored data, and Stan failed on the boundary just
-  # reported repaired.
+  # When a supplied family requires boundary shifts, pass the corrected
+  # stored data to brms even if the caller supplied no newdata.
   fit <- manec_example
   for (i in seq_along(fit$mod_fits)) {
     d <- fit$mod_fits[[i]]$fit$data
@@ -196,11 +167,9 @@ test_that("a link the caller writes is honoured on update", {
   expect_equal(got$family$link, "logit")
 })
 
-# ---- #435, D32: update(newdata = ) keeps the fitted family -------------------
-# Structural fixtures built from the packaged nec4param fit: the family brms
-# stored is relabelled and the stored response replaced by one that family
-# admits. Nothing is sampled. Every update() below halts the refit at the brms
-# entry point, so the stored posterior, which is a gaussian one, is never read.
+# These structural fixtures relabel a stored Gaussian fit and replace its
+# response. Stop update() at the brms entry point: the stored posterior
+# does not describe the new family or data.
 
 gamma_fixture <- function() {
   f <- nec4param
@@ -220,9 +189,7 @@ joint_gamma_fixture <- function() {
 }
 
 test_that("a Gamma fit given new data is not a change of family (#435)", {
-  # The stored tag is "gamma" and the one bayesnec builds "Gamma", so every
-  # Gamma fit was refused as a change of family, with or without a family
-  # supplied.
+  # Treat stored gamma and supplied Gamma as the same family.
   g <- gamma_fixture()
   o <- recover_prebayesnecfit(g)
   expect_false(check_update_data(o, g$fit$data)$changed_family)
@@ -244,10 +211,8 @@ test_that("a Gamma fit given new data is not a change of family (#435)", {
 })
 
 test_that("a Gamma fit's zeros are shifted under the stored family (#435)", {
-  # With no family supplied the checks follow the stored one, whose tag brms
-  # records as "gamma". check_data() keys its shift on "Gamma", so read under
-  # the stored tag the zeros would reach brms unshifted and Stan would fail on
-  # them.
+  # Canonicalise the stored Gamma family before checking new data so boundary
+  # zeros are shifted before brms receives them.
   g <- gamma_fixture()
   d <- g$fit$data
   d$y[1:3] <- 0
@@ -262,9 +227,8 @@ test_that("a Gamma fit's zeros are shifted under the stored family (#435)", {
 })
 
 test_that("a joint hurdle_gamma fit keeps its zeros on update (#435)", {
-  # Read off the data, the response was Gamma: the zeros were reported as
-  # shifted, and under force_fit = TRUE the hurdle_gamma refit received a
-  # response with no zeros for its hurdle block to model.
+  # Keep hurdle zeros when updating: selecting a family from the new data
+  # instead would shift away observations the hurdle block must model.
   h <- joint_gamma_fixture()
   d <- h$fit$data
   d$y[d$y > 0] <- d$y[d$y > 0] * 1.01
@@ -285,8 +249,8 @@ test_that("a joint hurdle_gamma fit keeps its zeros on update (#435)", {
 })
 
 test_that("a gaussian fit keeps an exact 1 on update (#435)", {
-  # Read off the data, a response in [0, 1] was beta: the 1 was shifted to
-  # 0.999, and under force_fit = TRUE the gaussian refit was made on 0.999.
+  # A stored Gaussian fit keeps a response of one unchanged; inferring beta
+  # from the new data would shift it.
   nd <- nec_data
   nd$y[which.max(nd$y)] <- 1
   res <- NULL
@@ -305,16 +269,15 @@ test_that("a gaussian fit keeps an exact 1 on update (#435)", {
 })
 
 test_that("a family that differs still needs force_fit, and its checks (#435)", {
-  # D32 does not say whether a supplied family that differs from the fitted
-  # one still needs force_fit = TRUE. It keeps the requirement, because the
-  # priors reused from the original fit were built for the fitted family.
+  # Require force_fit for a family change because the reused priors were
+  # built for the original family.
   nd <- nec_data
   nd$y[which.max(nd$y)] <- 1
-  # The shift of the 1 is reported before the refusal, so it is suppressed.
-  expect_error(
-    suppressMessages(update(manec_example, newdata = nd, family = Beta())),
+  # Refused before the data are checked, so the 1 is not reported as shifted.
+  expect_no_message(expect_error(
+    update(manec_example, newdata = nd, family = Beta()),
     "force_fit = TRUE"
-  )
+  ))
   # With it, the data are adjusted for the family supplied, which is the one
   # the refit uses.
   got <- capture_brms_update(
@@ -324,16 +287,201 @@ test_that("a family that differs still needs force_fit, and its checks (#435)", 
   expect_equal(max(got$newdata_val$y), 0.999)
 })
 
+# ---- the family a refit's stored formula can follow --------------------------
+
+# Structural fixtures built from the packaged nec4param fit with a disp() term
+# written into its formula. Each refusal below comes before brms is called, and
+# each accepted call halts at the brms entry point.
+
+disp_fixture <- function(family, rescale, disp = "disp(~x)") {
+  f <- nec4param
+  f$bayesnecformula <- bnf(stats::as.formula(
+    paste0("y ~ crf(x, model = \"nec4param\") + ", disp)
+  ))
+  f$fit$family <- family
+  f$fit$data$y <- rescale(f$fit$data$y)
+  f
+}
+
+# bnec()'s refusal of the same formula, family and data, raised before its
+# model loop.
+bnec_refusal <- function(fit, family) {
+  local_mocked_bindings(
+    fit_bayesnec = function(...) stop("fit reached"),
+    .package = "bayesnec"
+  )
+  err <- tryCatch(
+    suppressMessages(bnec(fit$bayesnecformula, data = fit$fit$data,
+                          family = family)),
+    error = function(e) e
+  )
+  conditionMessage(err)
+}
+
+test_that("update() checks a disp() term against the new family (#514)", {
+  gamma_disp <- disp_fixture(brms::brmsfamily("Gamma", link = "identity"),
+                             function(y) round(stats::plogis(y) * 20) + 1)
+  beta_disp <- disp_fixture(brms::brmsfamily("beta", link = "identity"),
+                            stats::plogis)
+  # poisson has no dispersion parameter. The refusal is bnec()'s, and it comes
+  # first whether or not force_fit is set. brms failed on it, naming shape.
+  from_bnec <- bnec_refusal(gamma_disp, "poisson")
+  expect_match(from_bnec, "Family poisson has no free dispersion parameter",
+               fixed = TRUE)
+  for (force in c(FALSE, TRUE)) {
+    err <- expect_error(update(gamma_disp, family = "poisson",
+                               force_fit = force))
+    expect_identical(conditionMessage(err), from_bnec)
+    expect_null(capture_brms_update(
+      update(gamma_disp, family = "poisson", force_fit = force)
+    ))
+  }
+  # gaussian has a dispersion parameter, so bnec() would fit the term, but the
+  # stored sub-model and its priors name beta's phi. brms failed on it,
+  # asking whether nl = TRUE had been set.
+  for (force in c(FALSE, TRUE)) {
+    expect_error(
+      update(beta_disp, family = "gaussian", force_fit = force),
+      "names its dispersion parameter \"sigma\"", fixed = TRUE
+    )
+    expect_null(capture_brms_update(
+      update(beta_disp, family = "gaussian", force_fit = force)
+    ))
+  }
+  # negbinomial names its dispersion parameter shape, as Gamma does, so the
+  # refit passes through unchanged.
+  got <- capture_brms_update(
+    update(gamma_disp, family = "negbinomial", force_fit = TRUE)
+  )
+  expect_equal(got$family$family, "negbinomial")
+  got <- capture_brms_update(
+    update(gamma_disp, family = Gamma(link = "identity"))
+  )
+  expect_equal(got$family$family, "Gamma")
+})
+
+test_that("update(newdata = ) checks a variance function as bnec() does", {
+  # The stored response spans negative values, where "power" takes log(mu).
+  power_fit <- disp_fixture(brms::brmsfamily("gaussian", link = "identity"),
+                            identity, disp = "disp(\"power\")")
+  expect_lt(min(power_fit$fit$data$y), 0)
+  from_bnec <- bnec_refusal(power_fit, "gaussian")
+  expect_match(from_bnec, "takes log(mu)", fixed = TRUE)
+  err <- expect_error(update(power_fit, newdata = power_fit$fit$data))
+  expect_identical(conditionMessage(err), from_bnec)
+  # A positive response passes to the refit.
+  nd <- power_fit$fit$data
+  nd$y <- stats::plogis(nd$y)
+  expect_false(is.null(capture_brms_update(update(power_fit, newdata = nd))))
+})
+
+test_that("update checks every equation before refitting a set", {
+  mixed <- manec_example
+  for (m in names(mixed$mod_fits)) {
+    mixed$mod_fits[[m]]$fit$family <- brms::brmsfamily("Gamma", link = "identity")
+    mixed$mod_fits[[m]]$fit$data$y <-
+      round(stats::plogis(mixed$mod_fits[[m]]$fit$data$y) * 20) + 1
+  }
+  mixed$mod_fits$ecx4param$bayesnecformula <-
+    bnf(y ~ crf(x, "ecx4param") + disp(~x))
+  for (force in c(FALSE, TRUE)) {
+    expect_error(update(mixed, family = "poisson", force_fit = force),
+                 "Family poisson has no free dispersion parameter")
+    expect_null(capture_brms_update(
+      update(mixed, family = "poisson", force_fit = force)
+    ))
+  }
+
+  mixed <- manec_example
+  mixed$mod_fits$ecx4param$bayesnecformula <-
+    bnf(y ~ crf(x, "ecx4param") + disp("power"))
+  nd <- mixed$mod_fits[[1]]$fit$data
+  expect_error(update(mixed, newdata = nd), "takes log(mu)", fixed = TRUE)
+  expect_null(capture_brms_update(update(mixed, newdata = nd)))
+})
+
+test_that("update() refuses a family that adds or removes a second block", {
+  # The stored formula holds the fitted family's blocks only. brms fitted a
+  # Gamma fit updated to hurdle_gamma with a constant hu, and failed on a
+  # hurdle_gamma fit updated to Gamma, asking whether nl = TRUE had been set.
+  g <- gamma_fixture()
+  h <- joint_gamma_fixture()
+  for (force in c(FALSE, TRUE)) {
+    expect_error(
+      update(g, family = "hurdle_gamma", force_fit = force),
+      "the hurdle_gamma family has a second block, \"hu\"", fixed = TRUE
+    )
+    expect_null(capture_brms_update(
+      update(g, family = "hurdle_gamma", force_fit = force)
+    ))
+    expect_error(
+      update(h, family = Gamma(link = "identity"), force_fit = force),
+      "the Gamma family has a single block", fixed = TRUE
+    )
+  }
+  f <- bnf(y ~ crf(x, model = "nec4param"))
+  hu_fit <- brms::hurdle_gamma(link = "identity", link_hu = "identity")
+  expect_error(
+    check_refit_family(f, hu_fit, validate_family("zero_inflated_beta")),
+    "a second block, \"zi\"", fixed = TRUE
+  )
+  expect_null(
+    check_refit_family(f, hu_fit, validate_family("hurdle_negbinomial"))
+  )
+})
+
+# The messages update() prints, stopped where brms would refit.
+messages_before_refit <- function(expr) {
+  msgs <- character()
+  local_mocked_bindings(
+    update = function(...) stop("halted by test"),
+    .package = "bayesnec"
+  )
+  # try(silent = FALSE) in the refit loop prints the halt to stderr.
+  invisible(capture.output(
+    tryCatch(
+      withCallingHandlers(expr, message = function(m) {
+        msgs <<- c(msgs, conditionMessage(m))
+        invokeRestart("muffleMessage")
+      }),
+      error = function(e) NULL
+    ),
+    type = "message"
+  ))
+  msgs
+}
+
+test_that("update() reports a shift without naming priors (#486)", {
+  # update() reuses the fitted priors, so a message about priors derived from
+  # the shifted response describes get_priors(), not this call.
+  nd <- nec_data
+  nd$y[which.max(nd$y)] <- 1
+  msgs <- messages_before_refit(
+    stats::update(manec_example, newdata = nd,
+                  family = Beta(link = "identity"), force_fit = TRUE)
+  )
+  shift <- grep("shifted to", msgs, value = TRUE)
+  expect_length(shift, 1)
+  expect_match(shift, "1 value(s) at 1", fixed = TRUE)
+  # manec_example holds no bnec_record(), so the message cannot point to it.
+  expect_no_match(shift, "prior|bnec_record")
+  # A fit that holds a record is pointed to it.
+  with_record <- manec_example
+  attr(with_record, "bnec_record") <- list(substitutions = NULL)
+  msgs <- messages_before_refit(
+    stats::update(with_record, newdata = nd,
+                  family = Beta(link = "identity"), force_fit = TRUE)
+  )
+  shift <- grep("shifted to", msgs, value = TRUE)
+  expect_match(shift, "see ?bnec_record.", fixed = TRUE)
+  expect_no_match(shift, "prior")
+})
+
 test_that("update returns a bayesnecfit when only one model survives", {
   skip_on_cran()
-  # A refit that fails for one model of a set is the ordinary case
-  # expand_manec()'s single-survivor branch exists to handle, so update() must
-  # return what bnec() and amend() return for the same surviving set. It
-  # classed the bare one-element list as a bayesmanecfit, and every method on
-  # the result then failed on a missing `mod_fits`. See #288.
-  #
-  # The stub returns the stored fit unchanged for the first model and fails for
-  # the second, which reaches the branch without sampling.
+  # Return the single surviving fit in the same class as bnec() and amend().
+  # The stub preserves the first stored fit and fails on the second, reaching
+  # that assembly path without sampling.
   tbl <- get(".__S3MethodsTable__.", envir = asNamespace("stats"))
   orig_method <- get("update.brmsfit", envir = tbl)
   on.exit(assign("update.brmsfit", orig_method, envir = tbl), add = TRUE)
@@ -360,9 +508,8 @@ test_that("update returns a bayesnecfit when only one model survives", {
   expect_error(suppressWarnings(summary(upd)), NA)
 })
 
-# The weighting method a set is built with must not depend on which function
-# assembled it. None of these tests sample: the fits are the packaged ones and
-# only the weighting is recomputed. See #320.
+# Compare weighting methods across constructors using stored fits. Only
+# the weights are recomputed; no models are sampled.
 
 test_that("c() and + weight by the documented default", {
   if (Sys.getenv("NOT_CRAN") == "") {
@@ -375,8 +522,7 @@ test_that("c() and + weight by the documented default", {
   # bootstrap under pseudo-BMA and so differ between calls.
   expect_equal(attr(combined$mod_stats$wi, "method"), "pseudobma")
   expect_equal(class(combined$mod_stats$wi), "pseudobma_bb_weights")
-  # The comparison the issue is about: the same two models fitted in one bnec()
-  # call, which is what manec_example is.
+  # Compare against the same equations fitted together in manec_example.
   expect_equal(attr(combined$mod_stats$wi, "method"),
                attr(manec_example$mod_stats$wi, "method"))
   added <- (nec4param + ecx4param) |>
@@ -436,10 +582,8 @@ test_that("update() keeps the weighting method the set was built with", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # The stub returns the stored fit unchanged, so update.bnecfit() runs to
-  # completion without Stan. Everything asserted here happens after the refit
-  # loop. Registered into the S3 methods table directly, and restored from it,
-  # for the reason capture_brms_update() records above.
+  # Return stored fits from the stub to exercise post-refit assembly without
+  # Stan. Restore the S3 table entry, as in capture_brms_update().
   tbl <- get(".__S3MethodsTable__.", envir = asNamespace("stats"))
   orig_method <- get("update.brmsfit", envir = tbl)
   on.exit(assign("update.brmsfit", orig_method, envir = tbl), add = TRUE)
@@ -457,18 +601,15 @@ test_that("update() keeps the weighting method the set was built with", {
     suppressMessages() |>
     suppressWarnings()
   expect_equal(attr(defaulted$mod_stats$wi, "method"), "pseudobma")
-  # An explicit request still wins over what the object records.
+  # An explicit weighting request overrides the stored method.
   changed <- update(stacked, recompile = FALSE,
                     loo_controls = list(weights =
                                           list(method = "pseudobma"))) |>
     suppressMessages() |>
     suppressWarnings()
   expect_equal(attr(changed$mod_stats$wi, "method"), "pseudobma")
-  # loo_controls names `fitting` and `weights` separately, so a call changing a
-  # LOO fitting argument names no method. Reading the argument's presence as a
-  # request to reweight replaced the recorded method with the default, so this
-  # call returned a pseudo-BMA-weighted set as a side effect of asking for
-  # something else.
+  # Changing a LOO fitting argument alone must preserve the recorded weights
+  # method; loo_controls has separate fitting and weights entries.
   fitting_only <- update(stacked, recompile = FALSE,
                          loo_controls = list(fitting = list(reloo = FALSE))) |>
     suppressMessages() |>
@@ -488,10 +629,79 @@ test_that("update() keeps the weighting method the set was built with", {
 
 
 test_that("update refuses a resolution below 2 before refitting", {
-  # This method samples every model in the set again, so a resolution the
-  # no-effect estimate cannot be read off must be refused before that work
-  # rather than when expand_nec() reaches it. The test costs no fit for the
-  # same reason. See #325.
+  # Reject an unusable estimation grid before update() refits the model set.
+  # This refusal test must reach no sampler.
   skip_on_cran()
   expect_error(update(manec_example, resolution = 1), "must be at least 2")
+})
+
+test_that("c() and + compute the estimates with the arguments recorded", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  q <- function(expr) suppressWarnings(suppressMessages(expr))
+  m <- with_expand_record(manec_example)
+  nec <- q(pull_out(m, "nec4param"))
+  ecx <- q(pull_out(m, "ecx4param"))
+  reference <- q(expand_manec(
+    manec_example$mod_fits, lapply(manec_example$mod_fits, extract_formula),
+    loo_controls = expand_record()$loo_controls
+  ))
+  for (out in list(q(c(nec, ecx)), q(nec + ecx))) {
+    expect_identical(attr(out, "bnec_expand_args"), expand_record())
+    expect_equal(range(out$w_pred_vals$data$x), c(0.03, 4))
+    expect_equal(nrow(out$w_pred_vals$data), 200)
+    expect_equal(out$mod_stats$waic, reference$mod_stats$waic)
+  }
+  # An object that records none does not count against one that does.
+  unrecorded <- ecx
+  attr(unrecorded, "bnec_expand_args") <- NULL
+  out <- q(c(nec, unrecorded))
+  expect_identical(attr(out, "bnec_expand_args"), expand_record())
+  # Two objects that record different values use the default for that
+  # argument, and a message names it.
+  other <- ecx
+  attr(other, "bnec_expand_args")$sig_val <- 0.1
+  msgs <- character()
+  out <- withCallingHandlers(
+    suppressWarnings(c(nec, other)),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_true(any(grepl("record different values of sig_val", msgs)))
+  expect_identical(attr(out, "bnec_expand_args"),
+                   expand_record(sig_val = 0.01))
+  # Objects that record none take the bnec() defaults.
+  attr(nec, "bnec_expand_args") <- NULL
+  out <- q(c(nec, unrecorded))
+  expect_identical(attr(out, "bnec_expand_args"), default_expand_record())
+  expect_equal(out$mod_stats$waic, manec_example$mod_stats$waic)
+})
+
+test_that("update() computes the estimates with the arguments the set records", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # The same stub as above: the stored fits are returned unrefitted.
+  tbl <- get(".__S3MethodsTable__.", envir = asNamespace("stats"))
+  orig_method <- get("update.brmsfit", envir = tbl)
+  on.exit(assign("update.brmsfit", orig_method, envir = tbl), add = TRUE)
+  assign("update.brmsfit", function(object, ...) object, envir = tbl)
+  q <- function(expr) suppressWarnings(suppressMessages(expr))
+  m <- with_expand_record(manec_example)
+  out <- q(update(m, recompile = FALSE))
+  expect_identical(attr(out, "bnec_expand_args"), expand_record())
+  expect_equal(range(out$w_pred_vals$data$x), c(0.03, 4))
+  expect_equal(nrow(out$w_pred_vals$data), 200)
+  # A value supplied replaces the record.
+  out <- q(update(m, recompile = FALSE, x_range = NA, resolution = 1000,
+                  sig_val = 0.01, loo_controls = list(fitting = list())))
+  expect_identical(attr(out, "bnec_expand_args"), default_expand_record())
+  # A set that records none takes the bnec() defaults.
+  out <- q(update(manec_example, recompile = FALSE))
+  expect_identical(attr(out, "bnec_expand_args"), default_expand_record())
+  expect_equal(range(out$w_pred_vals$data$x),
+               range(manec_example$mod_fits[[1]]$fit$data$x))
 })

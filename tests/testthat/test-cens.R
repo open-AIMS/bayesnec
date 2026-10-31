@@ -62,10 +62,8 @@ test_that("the brmsformula keeps the cens term", {
 test_that("cens() passes the aterm check and an unvalidated aterm errors", {
   expect_no_message(check_formula(bnf(resp | cens(cen) ~
                                         crf(pred, "nec4param")), data))
-  # Changed from a message to an error under #136: an aterm bayesnec has not
-  # validated cannot be assumed to behave sensibly through prior generation,
-  # the initial-value search and post-processing, and the message was easy to
-  # miss -- rate() fitted and then failed tens of seconds later.
+  # Refuse unvalidated aterms before fitting: successful formula parsing
+  # does not establish support in priors, initial values or post-processing.
   expect_error(
     check_formula(bnf(resp | se(wgt) ~ crf(pred, "nec4param")), data),
     "aterms bayesnec does not support"
@@ -106,10 +104,8 @@ test_that("check_data exempts censored rows from the boundary shifts", {
     model.frame(bnf(resp | cens(cen) ~ crf(pred, "nec4param")), d)
   }
   y <- c(0.9, 0.5, 0.2, 0)
-  # unchanged when no censoring is declared
-  # check_data() performs the shift and is now silent about it: the message is
-  # emitted once per bnec() call by report_substitutions(), reading the record
-  # check_data() returns, rather than once per model from here. See #93.
+  # check_data() records shifts silently. bnec() reports those substitutions
+  # once for the whole call rather than once per model.
   expect_silent(out <- bayesnec:::check_data(build(y), Gamma(), "nec4param"))
   expect_equal(out$mod_dat$y, c(0.9, 0.5, 0.2, 0.02))
   expect_message(bayesnec:::report_substitutions(out$substitutions),

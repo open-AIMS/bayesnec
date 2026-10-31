@@ -1,13 +1,8 @@
-# Run `code` under a multisession plan, restoring the caller's plan after.
-#
-# multisession rather than multicore: it is the only backend available on every
-# platform bayesnec is checked on, and it is the one that serialises globals
-# and results, so it exercises the round trip that a forking backend skips.
+# Use multisession to exercise serialisation on every supported platform.
+# Restore the caller's plan after the test.
 with_parallel_plan <- function(code, workers = 2) {
-  # setup.R sets mc.cores = 1 so that the suite does not oversubscribe, and
-  # parallelly reads that as the core budget and warns about every worker past
-  # the first. Raised for the duration of the call rather than suppressed at
-  # each site, so the warning is still available where it means something.
+  # Temporarily lift the worker limit: setup.R sets mc.cores to one, which
+  # parallelly otherwise treats as the budget for these explicit worker tests.
   old_limit <- options(parallelly.maxWorkers.localhost = Inf)
   on.exit(options(old_limit), add = TRUE)
   old <- future::plan(future::multisession, workers = workers)
@@ -15,26 +10,16 @@ with_parallel_plan <- function(code, workers = 2) {
   code
 }
 
-# Run `code` under a forking plan. Skips where forking is unavailable, which
-# is Windows, and RStudio or Positron everywhere.
-#
-# multisession is the backend the rest of the file uses because it is available
-# on every platform and serialises the round trip. Forking takes a different
-# path through all three of the things this file is about: the worker inherits
-# the parent's memory rather than being sent globals, it inherits the RNG state
-# at the fork rather than being given a stream, and it shares the parent's
-# stderr. None of that is exercised by multisession, so on the platforms where
-# forking works it is worth checking that the same guarantees hold.
+# Exercise forked workers separately: they inherit memory and RNG state and
+# share stderr, so multisession alone does not cover this backend.
+# Skip when future cannot provide the requested forked workers.
 with_fork_plan <- function(code, workers = 2) {
   old_limit <- options(parallelly.maxWorkers.localhost = Inf)
   on.exit(options(old_limit), add = TRUE)
   old <- suppressWarnings(future::plan(future::multicore, workers = workers))
   on.exit(future::plan(old), add = TRUE)
-  # future falls back to evaluating in the parent where forking is
-  # unavailable, and reports one worker when it does, so the worker count is
-  # the test for whether this platform actually forks. Asked of future rather
-  # than of supportsMulticore() in parallelly, a namespaced call to which is an
-  # undeclared import and fails R CMD check under error_on = "warning".
+  # Ask future whether this plan actually forks; unavailable backends use one
+  # worker. Avoid a direct call to the undeclared parallelly dependency.
   skip_if(future::nbrOfWorkers() < workers,
           "forking is not available on this platform")
   code
@@ -46,14 +31,9 @@ skip_unless_future <- function() {
   skip_if_not_installed("future.apply")
 }
 
-# A multisession worker loads the INSTALLED bayesnec, not one loaded with
-# pkgload::load_all(), so under devtools::test() against an older installation
-# the internals these tests exercise are simply absent and every parallel
-# assertion fails for a reason that has nothing to do with the code under test.
-# R CMD check installs the package first, so this skip does not fire there.
-# Measured 2026-09-11, R 4.6.1, future 1.70.0: a load_all() session reports
-# "object 'bnec_parallel_lapply' not found" from a multisession worker and works
-# under multicore, which forks and so inherits the loaded namespace.
+# Multisession workers load the installed package, not load_all() internals.
+# Skip when that installation lacks the required helpers; R CMD check
+# installs the package before running these tests.
 skip_unless_worker_sees_internals <- function() {
   ok <- tryCatch(
     future.apply::future_lapply(1, function(i) {
@@ -76,9 +56,7 @@ test_that("a sequential plan is not a parallel one, and a multisession is", {
 
 test_that("fewer than two models to fit is never parallel", {
   skip_unless_future()
-  # A parallel plan provides no benefit over one brm() call, and treating it as
-  # parallel would set cores = 1 and so make a lone fit slower than it is
-  # today. amend() reaches this whenever the amended set needs no new fit.
+  # A lone fit keeps its chain-level parallelism; clamping cores would slow it.
   out <- with_parallel_plan(plan_model_set(list(chains = 4), 1))
   expect_false(out$parallel)
   expect_identical(out$brm_args, list(chains = 4))
@@ -111,20 +89,16 @@ test_that("a parallel set samples its chains in sequence unless told not to", {
 })
 
 test_that("RNGkind derives the state, it does not reseed from the clock", {
-  # The reason bnec_parallel_lapply() recorded for restoring the kind was that
-  # RNGkind() re-initialises .Random.seed from the clock. It does that only
-  # where no seed exists yet. Pinned because the whole argument about what a
-  # parallel run reproduces rests on which of the two it is. See #310.
+  # With an existing seed, RNGkind() deterministically converts the state.
+  # This dependency check distinguishes that from clock-seeding a new state.
   old_kind <- RNGkind()
   old_seed <- if (exists(".Random.seed", envir = globalenv(),
                          inherits = FALSE)) {
     get(".Random.seed", envir = globalenv(), inherits = FALSE)
   }
   on.exit({
-    # The kind first, then the seed, and the kind restored even where there
-    # was no seed: removing .Random.seed does not put the kind back, and this
-    # block changes it. R/helpers.R:136 records the same order for the same
-    # reason.
+    # Restore the kind before the seed, including when no seed existed.
+    # Removing .Random.seed alone does not restore the generator kind.
     suppressWarnings(do.call(RNGkind, as.list(old_kind)))
     if (is.null(old_seed)) {
       suppressWarnings(rm(".Random.seed", envir = globalenv()))
@@ -138,10 +112,8 @@ test_that("RNGkind derives the state, it does not reseed from the clock", {
     stats::runif(1)
   }
   mt <- c("Mersenne-Twister", "Inversion", "Rejection")
-  # The same-kind call, which is what bnec_parallel_lapply() makes in the parent's
-  # own kind, and the L'Ecuyer-CMRG to Mersenne-Twister change, which is what
-  # it makes inside a worker. Two independent pairs per arm rather than one:
-  # a single pair of clock-seeded draws could in principle collide.
+  # Check both the parent's generator and a worker's L'Ecuyer conversion.
+  # Repeat each pair to reduce the chance of a clock-seeded collision.
   expect_identical(once(mt[1], mt), once(mt[1], mt))
   expect_identical(once(mt[1], mt), once(mt[1], mt))
   expect_identical(once("L'Ecuyer-CMRG", mt), once("L'Ecuyer-CMRG", mt))
@@ -176,9 +148,7 @@ test_that("the sequential path is lapply() and leaves the RNG alone", {
 
 test_that("a parallel run draws the same initial values as a sequential one", {
   skip_unless_future()
-  # The acceptance criterion of #184, reduced to the mechanism it depends on.
-  # make_good_inits() opens with set.seed(brm_args$seed), so what has to hold
-  # is that the same seed produces the same draws in a worker as in the parent.
+  # An explicit seed must produce the same draws in a worker and the parent.
   draw <- function(i) {
     set.seed(100 + i)
     stats::runif(3)
@@ -193,10 +163,8 @@ test_that("a parallel run draws the same initial values as a sequential one", {
 
 test_that("the initial-value search draws the same values in a worker", {
   skip_unless_future()
-  # The same assertion as above at the call site that matters, and without
-  # sampling anything. make_good_inits() is where bayesnec's reproducibility
-  # comes from: it opens with set.seed(seed), and the L'Ecuyer generator a
-  # worker is given would have changed every value it returns.
+  # Compare the actual initial-value search without Stan sampling.
+  # A worker's L'Ecuyer generator must not change the seeded result.
   draw_inits <- function(model) {
     fam <- brms::Beta(link = "identity")
     pr <- define_prior(model, fam, nec_data$x, nec_data$y)
@@ -216,12 +184,8 @@ test_that("the initial-value search draws the same values in a worker", {
 
 test_that("a forking plan gives the same guarantees as a socket one", {
   skip_unless_future()
-  # The three assertions this file turns on, run through the fork path. A
-  # forked worker inherits the parent's RNG state at the fork instead of being
-  # given a stream, so the kind restore has to hold there for a different
-  # reason than it does under multisession, and it is the backend on which
-  # sharing the parent's memory could hide a missing binding in
-  # narrow_environment().
+  # Forked workers inherit memory and RNG state rather than receive them.
+  # Check the seeded draws, the caller's stream and the failure record here.
   draw <- function(i) {
     set.seed(100 + i)
     stats::runif(3)
@@ -255,19 +219,9 @@ test_that("a forking plan gives the same guarantees as a socket one", {
 
 test_that("a parallel run leaves the caller's RNG stream where it was", {
   skip_unless_future()
-  # expand_manec() draws w_draw_seed from the ambient stream immediately after
-  # the model loop, and through it the index deciding which draws each equation
-  # contributes to the model-averaged estimate. A parallel loop advances that
-  # stream by generating its per-element seeds, so without this restore two
-  # parallel runs of one call would not agree with each other. It does not make
-  # the draw match the sequential run's, which advances the stream by running
-  # every init search in the parent; see ?bnec.
-  #
-  # The baseline is taken inside the plan and after the skip check, not before
-  # it. skip_unless_worker_sees_internals() calls future_lapply() itself, which
-  # advances the parent's stream; a baseline taken ahead of it is a state the
-  # loop was never given, and the comparison then fails for that reason alone.
-  # It did, on macOS, at 2026-09-11.
+  # The parallel loop must preserve the caller's stream for model averaging.
+  # Take the baseline after the skip helper, which itself advances that stream.
+  # This does not require equality with the sequential loop's final stream.
   res <- with_parallel_plan({
     skip_unless_worker_sees_internals()
     set.seed(9)
@@ -278,8 +232,7 @@ test_that("a parallel run leaves the caller's RNG stream where it was", {
   })
   expect_length(res$out, 4)
   expect_identical(res$after, res$before)
-  # And with no stream to begin with, none is left behind. The removal comes
-  # after the skip check for the same reason.
+  # Remove the seed after the skip helper, which can create one itself.
   left_behind <- with_parallel_plan({
     skip_unless_worker_sees_internals()
     suppressWarnings(rm(".Random.seed", envir = globalenv()))
@@ -291,11 +244,8 @@ test_that("a parallel run leaves the caller's RNG stream where it was", {
 
 test_that("a one-worker parallel plan does not take chains away from brms", {
   skip_unless_future()
-  # plan(multicore) resolves to a single worker wherever forking is
-  # unavailable -- Windows, and RStudio or Positron on Linux and macOS. Setting
-  # cores = 1 there would fit one model at a time with its chains in sequence,
-  # which for a user who has set mc.cores is slower than fitting sequentially,
-  # while the message claimed models were being fitted in parallel.
+  # A one-worker fallback must preserve chain parallelism and avoid claiming
+  # that models will run concurrently.
   old_limit <- options(parallelly.maxWorkers.localhost = Inf)
   on.exit(options(old_limit), add = TRUE)
   old <- future::plan(future::multisession, workers = 1)
@@ -310,12 +260,8 @@ test_that("a one-worker parallel plan does not take chains away from brms", {
 })
 
 test_that("only what the applied function names travels to a worker", {
-  # future exports the applied function with its enclosing environment, so an
-  # ordinary closure written inside bnec() or amend_model_set() would ship
-  # every object those functions have built -- for amend(), every fit already
-  # in the set. narrow_environment() is what stops that, and it is applied on
-  # the sequential path too so that a name left out of its list fails on the
-  # first ordinary call rather than only for whoever sets a plan.
+  # Narrow the closure on both paths so missing bindings fail even without
+  # a parallel plan; otherwise it exports unrelated fits and data to workers.
   bulky <- matrix(0, 500, 500)
   build <- function() {
     hidden <- bulky
@@ -332,9 +278,8 @@ test_that("only what the applied function names travels to a worker", {
 
 test_that("brm_args does not export a family object's calling environment", {
   skip_unless_future()
-  # This is the second route reported in #329. The formula was already narrowed,
-  # but a family constructed beside an unrelated object retained that object
-  # through its closures and reached the model worker as brm_args$family.
+  # A family constructed beside a large object can retain it through closures,
+  # even when the formula and applied function have narrow environments.
   make_family <- function() {
     big <- numeric(1e6)
     Gamma(link = "identity")
@@ -342,9 +287,8 @@ test_that("brm_args does not export a family object's calling environment", {
   supplied <- make_family()
   family <- bayesnec:::validate_family(supplied, link_source = "symbol")
   brm_args <- list(family = bayesnec:::unmark_family(family))
-  # A finite maxSize asks future to calculate total_size even where the calling
-  # session has disabled its export limit with future.globals.maxSize = Inf.
-  # Without it the macOS check returned NA for both totals and tested nothing.
+  # Set a finite maxSize so future computes total_size even when the session
+  # has disabled its export limit; NA totals would test nothing.
   max_size <- 100 * 1024^2
   globals <- future::getGlobalsAndPackages(
     quote(brm_args$family$family),
@@ -368,17 +312,9 @@ test_that("brm_args does not export a family object's calling environment", {
 
 test_that("future's own seeding would have changed those draws", {
   skip_unless_future()
-  # The evidence for restoring RNGkind inside the worker, kept as a test
-  # because the failure it prevents is silent. future.seed = TRUE installs an
-  # L'Ecuyer-CMRG stream, set.seed() with the default kind = NULL does not put
-  # the generator back, and the same seed then draws from a different
-  # generator. Measured 2026-09-11 under future 1.70.0 on R 4.6.1: set.seed(43)
-  # then runif(1) gives 0.48503768 in the parent and 0.47899959 in a worker,
-  # under plan(sequential) as much as under plan(multisession).
-  #
-  # A failure here means future has changed how future.seed = TRUE seeds a
-  # worker, not that bayesnec is broken; the restore would then be redundant
-  # rather than wrong.
+  # future.seed = TRUE installs L'Ecuyer; set.seed() alone keeps that kind.
+  # This characterises future: failure can mean its seeding changed, making
+  # the restore redundant rather than showing a bayesnec regression.
   draw <- function(i) {
     set.seed(100 + i)
     stats::runif(3)
@@ -426,16 +362,9 @@ test_that("a failing element yields its condition and the rest still run", {
 
 test_that("a model set fitted in parallel reproduces the sequential fit", {
   skip_unless_future()
-  # The acceptance criterion end to end, on the smallest set that exercises it:
-  # two models, two chains, 200 iterations, one seed. Asserted on the posterior
-  # draws rather than on the whole object, which also stores the call.
-  #
-  # Both equations have to be valid for the family bnec() guesses, or the set
-  # collapses to one model, plan_model_set() declines to parallelise it, and
-  # the test passes while exercising nothing. nec_data is fitted as Beta with
-  # an identity link, for which ecxlin is dropped; nec3param and nec4param are
-  # both retained.
-  # Arguments for brm() are passed through bnec()'s `...`, not a list.
+  # Both equations must survive family screening or the set becomes one fit
+  # and never runs in parallel. Compare posterior draws, excluding stored calls.
+  # Pass brm() arguments through bnec()'s dots, not as a list.
   set_call <- function() {
     suppressMessages(suppressWarnings(
       bnec(y ~ crf(x, model = c("nec3param", "nec4param")), data = nec_data,
@@ -443,10 +372,8 @@ test_that("a model set fitted in parallel reproduces the sequential fit", {
     ))
   }
   sequential <- set_call()
-  # The skip reason names what came back. A set that collapsed to one model
-  # reports as a bayesnecfit here, which is a defect in this test rather than
-  # an environment that cannot sample, and the two are not otherwise
-  # distinguishable from a skipped run.
+  # Name the returned class: a collapsed one-model set means this fixture
+  # failed to exercise parallel fitting.
   skip_if(!inherits(sequential, "bayesmanecfit"),
           paste("expected a bayesmanecfit from the two-model set, got",
                 paste(class(sequential), collapse = "/")))
@@ -456,11 +383,8 @@ test_that("a model set fitted in parallel reproduces the sequential fit", {
   })
   expect_s3_class(parallel, "bayesmanecfit")
   expect_identical(names(parallel$mod_fits), names(sequential$mod_fits))
-  # The fitted models are what reproduces. w_draw_seed and w_draw_index do not,
-  # and are deliberately not asserted here: expand_manec() draws them from the
-  # ambient RNG stream, which the parallel loop cannot leave in the state the
-  # sequential loop leaves it in. The test above pins what is true instead --
-  # that the loop does not disturb the caller's stream at all.
+  # Compare fitted-model draws only. The model-averaging seed and indices
+  # come from ambient streams that differ between the two arrangements.
   for (m in names(sequential$mod_fits)) {
     expect_equal(
       brms::as_draws_matrix(parallel$mod_fits[[m]]$fit),
@@ -473,12 +397,8 @@ test_that("a model set fitted in parallel reproduces the sequential fit", {
 test_that("a timeout ends a parallel run exactly as it ends a sequential one", {
   skip_unless_future()
   skip_if_not_installed("R.utils")
-  # timeout is the only way to make a model fail on demand without inventing
-  # data that fails for some other reason. What is asserted is agreement
-  # between the two plans rather than any particular outcome: whatever
-  # R.utils::withTimeout does to a fit, moving the fit into a worker must not
-  # change it. A timeout this short fires before brm() reaches the sampler, so
-  # nothing is compiled and the test spends no sampling time.
+  # Use a short timeout to compare failure handling without Stan sampling.
+  # Assert agreement between plans, not a particular timeout result.
   run <- function() {
     suppressMessages(suppressWarnings(tryCatch(
       bnec(y ~ crf(x, model = c("nec3param", "nec4param")), data = nec_data,
@@ -494,32 +414,28 @@ test_that("a timeout ends a parallel run exactly as it ends a sequential one", {
   expect_identical(parallel, sequential)
 })
 
-# --- The level loop of a grouped call (#338) -------------------------------
+# The level loop of a grouped call.
 
 test_that("the two arrangements of one plan are counted in rounds of one fit", {
   # The unit is one fit sampling its chains in sequence, which is what happens
   # inside a worker on either arrangement. ceiling() on both sides: a round is
   # set by its slowest member, so a part-filled round still takes a whole one.
   rounds <- bayesnec:::group_loop_rounds
-  # The shape #338 was measured on. Four cores, eleven equations, seven levels:
-  # the models are the smaller count, so the release arrangement stands.
+  # Seven levels of eleven equations at four workers: the models take fewer.
   expect_equal(rounds(7, 11, 4)$models, 21)
   expect_equal(rounds(7, 11, 4)$levels, 22)
-  # The same shape at eight workers, where the levels become the smaller.
+  # The same seven by eleven shape at eight workers: the levels take fewer.
   expect_equal(rounds(7, 11, 8)$models, 14)
   expect_equal(rounds(7, 11, 8)$levels, 11)
-  # Two levels of fifteen equations, the other call in that vignette. The
-  # The levels are never the smaller count here, because a level arrangement
-  # cannot go below M rounds and the model arrangement reaches L.
+  # At four workers, two levels of fifteen equations favour the models: the
+  # level arrangement cannot take fewer than fifteen rounds.
   expect_equal(rounds(2, 15, 4)$models, 8)
   expect_equal(rounds(2, 15, 4)$levels, 15)
   # One worker is parallel in name only and gives a tie, which the caller
   # resolves in favour of the models.
   expect_equal(rounds(7, 11, 1)$models, rounds(7, 11, 1)$levels)
-  # An unbounded worker count is a scheduler backend -- nbrOfWorkers() reports
-  # Inf for future.batchtools -- and is counted rather than refused: one round
-  # of whichever loop is dispatched. ceiling(L / Inf) is 0, so dividing would
-  # have reported an arrangement that takes no time at all.
+  # An unbounded scheduler can dispatch one whole loop at once. Dividing by
+  # Inf would incorrectly count zero rounds.
   expect_equal(rounds(7, 11, Inf)$levels, 11)
   expect_equal(rounds(7, 11, Inf)$models, 7)
   # A count that genuinely could not be read is the NA case, and the caller
@@ -575,9 +491,8 @@ test_that("a nested plan is honoured without being counted", {
   old <- future::plan(list(future::tweak(future::multisession, workers = 2),
                            future::tweak(future::multisession, workers = 2)))
   on.exit(future::plan(old), add = TRUE)
-  # Three levels of two equations over two outer workers is the shape the
-  # count refuses -- 4 rounds against 3 -- and the nested plan takes it
-  # anyway, because there the user has divided the workers deliberately.
+  # An explicit nested plan overrides the rounds comparison because the caller
+  # has chosen how to divide workers between levels and models.
   expect_message(out <- bayesnec:::plan_group_levels(3, 2),
                  "plan is a list")
   expect_true(out$dispatch)
@@ -601,15 +516,9 @@ test_that("only the next strategy can drive the nested model loop", {
 })
 
 test_that("each active host-process pair has its own compile directory", {
-  # Every level fits the same equations, so parallel levels compile the same
-  # Stan programs at once. cmdstanr does not lock its cache, and a forked
-  # worker shares the parent's tempdir, so the directory has to differ by
-  # process. The host is also needed because two cluster nodes can assign the
-  # same process identifier while writing under a shared root.
-  # Paths are compared after normalisation. dirname() returns forward slashes
-  # and tempdir() returns the platform separator, so on Windows the two differ
-  # by separator alone: measured on the CI runner,
-  # "C:/Users/.../RtmpYnmHNK" against "C:\\Users\\...\\RtmpYnmHNK".
+  # Separate caches by host and process to avoid concurrent Stan compilation
+  # writing to one directory. Normalise paths before comparing Windows
+  # separators with dirname() output.
   same_path <- function(a, b) {
     norm <- function(p) normalizePath(p, winslash = "/", mustWork = FALSE)
     expect_identical(norm(a), norm(b))
@@ -647,12 +556,8 @@ test_that("each active host-process pair has its own compile directory", {
 })
 
 test_that("a value passed by do.call keeps the environment of its formula", {
-  # bnec_group() reaches bnec() through do.call() rather than by forwarding
-  # `...`, because `...` cannot be put in the environment narrow_environment()
-  # builds. A formula records the environment it was created in, and #319 needs
-  # that environment intact for crf() to resolve a symbol from it, so what is
-  # pinned here is that do.call() transports rather than rebuilds it. Measured
-  # on R 4.6.1.
+  # do.call() must retain the formula's environment so crf() can resolve local
+  # symbols; narrowing the applied function must not erase those bindings.
   e <- new.env()
   f <- y ~ x
   environment(f) <- e
@@ -662,32 +567,9 @@ test_that("a value passed by do.call keeps the environment of its formula", {
 
 test_that("a grouped call fits each level on its own rows", {
   skip_on_cran()
-  # The level loop end to end on the real function: the subsets are built in
-  # the parent and dispatched as the elements, so what is asserted is that each
-  # level was fitted on its own rows, that the fits come back named and ordered
-  # by level, and that the seeds the levels were fitted under are recorded.
-  #
-  # No plan is used for this real fit. Since #338 every level is seeded from the
-  # calling session, so the two arrangements give the same estimates by
-  # construction, and that is pinned directly and without fitting by "a seeded
-  # body gives one answer on both arrangements" below. The following test calls
-  # bnec_group() under a forking plan with bnec() mocked, which covers the outer
-  # orchestration without another Stan compilation. What a second real call
-  # under a plan would add is a Stan compilation per worker.
-  #
-  # It would also be unreliable here. Measured on R 4.6.1 with future 1.70.0,
-  # on a WSL2 host: this call takes 173 s with no plan, while the same call
-  # under plan(multisession, workers = 2) did not return in 300 s from inside
-  # testthat, on three runs and with the fitting removed -- although it returns
-  # in 3 s outside testthat, and bnec_parallel_lapply() over a body that loads
-  # brms, raises, or calls bnec() returns in under 3 s inside testthat and out.
-  # The interaction was not identified. It is recorded here so that the next
-  # person to consider adding such a test knows what happened, and in the
-  # pull request for #338.
-  #
-  # Bound in the frame the formula is written in, so that the stored fits also
-  # answer #329: without narrow_formula_environment() this 7.6 MiB vector
-  # reaches every stored fit.
+  # Run the real grouped fit sequentially and test parallel orchestration
+  # separately with a mock. The large local vector checks formula narrowing.
+  # Repeated real socket-plan calls stalled in the recorded development runs.
   big <- rnorm(1e6)
   d <- nec_data
   d$site <- rep(c("a", "b"), length.out = nrow(d))
@@ -705,10 +587,8 @@ test_that("a grouped call fits each level on its own rows", {
   # What each level was fitted under, recorded rather than regenerated.
   expect_length(fit$level_seeds, 2L)
   expect_true(is.numeric(fit$level_seeds))
-  # The stored formula holds the narrowed environment, not the 7.6 MiB vector
-  # bound beside it above (#329). Measured against the same formula written
-  # here and left alone, so the comparison does not depend on what else the
-  # session holds.
+  # Compare with the same unnarrowed formula so unrelated session bindings
+  # cannot determine the size reduction.
   unnarrowed <- local({
     keep <- big
     bayesnecformula(y ~ crf(x, model = "nec3param"))
@@ -723,13 +603,9 @@ test_that("a grouped call fits each level on its own rows", {
 
 test_that("a grouped call dispatches its levels under a plan", {
   skip_unless_future()
-  # The preceding test runs the real bnec() fitting contract. Repeating those
-  # Stan fits under a socket plan did not return in 300 s on three runs on the
-  # development host, and it adds one Stan compilation per worker. The mock here
-  # leaves the rest of bnec_group() intact and is inherited by forked workers,
-  # so this test runs the level split, plan decision, concurrent dispatch,
-  # worker cache and result assembly without another Stan compile. The socket
-  # dispatch and serialisation contract is tested separately above.
+  # Mock bnec() under a forked plan to test splitting, dispatch, worker caches
+  # and assembly without extra Stan compilation. This does not test a real
+  # grouped fit under multisession; socket serialisation is checked separately.
   d <- nec_data
   d$site <- rep(c("a", "b"), length.out = nrow(d))
   big <- numeric(1e6)
@@ -787,11 +663,8 @@ test_that("a grouped call dispatches its levels under a plan", {
 })
 
 test_that("a formula stops holding the environment it was written in", {
-  # A formula records where it was created, and serialize() writes that
-  # environment out in full. narrow_environment() does not reach it: it
-  # replaces the environment of the applied function, and the formula inside
-  # travels with its own. Measured rather than asserted loosely, because the
-  # size is the whole point.
+  # A formula serialises its own environment even when its enclosing applied
+  # function has been narrowed.
   mib <- function(x) length(serialize(x, NULL)) / 1024^2
   make <- function() {
     big <- rnorm(1e6)
@@ -802,11 +675,8 @@ test_that("a formula stops holding the environment it was written in", {
   # The class survives, and so does the formula itself.
   expect_s3_class(narrowed, "bayesnecformula")
   expect_true(identical(narrowed[[2]], f[[2]]))
-  # The 7.6 MiB vector is no longer reachable from the formula, which is the
-  # property; the sizes below are its consequence. Asserted on the binding
-  # rather than on bytes alone, because what a serialised environment weighs
-  # depends on everything else in the chain and so differs between a console
-  # session and a check runner.
+  # Test reachability directly: serialised size also depends on unrelated
+  # objects in the parent chain and differs between console and check runners.
   reachable <- function(e, what) {
     while (is.environment(e) && !bayesnec:::env_by_reference(e)) {
       if (exists(what, envir = e, inherits = FALSE)) return(TRUE)
@@ -827,17 +697,14 @@ test_that("a formula stops holding the environment it was written in", {
   expect_lt(after, before / 50)
   expect_true(reachable(terms_env(frame_before), "big"))
   expect_false(reachable(terms_env(frame_after), "big"))
-  # Do not assert the frame's byte size. model.frame.bayesnecformula() binds
-  # trials() in this terms environment; with R_KEEP_PKG_SOURCE=yes, serialising
-  # that function includes source references which grew to 1.20 MiB after the
-  # CI suite had forced the namespace. That size is unrelated to the caller's
-  # environment, whose absence is asserted directly above.
+  # Do not assert the model-frame byte size: serialised trials() source
+  # references can inflate it under R_KEEP_PKG_SOURCE=yes. Check that the
+  # caller's environment is absent instead.
 })
 
 test_that("a name the formula uses and the data does not supply is kept", {
-  # model.frame() resolves a term against data first and the formula's
-  # environment second, so blanking the environment would be wrong. The model
-  # argument of crf() is the case that matters: #319 resolves it there.
+  # Keep local symbols used by the formula: model.frame() resolves data first
+  # and then the formula environment, including crf()'s model set.
   make <- function() {
     big <- rnorm(1e6)
     mods <- c("nec3param", "ecx4param")
@@ -858,23 +725,16 @@ test_that("a name the formula uses and the data does not supply is kept", {
 })
 
 test_that("an environment R sends by reference is left alone", {
-  # The global environment, a namespace and an attached package are written as
-  # a reference, so a formula holding one adds nothing and rebuilding it would
-  # only drop names. The walk up the parent chain stops at the first of them
-  # for the same reason.
-  # Set rather than inherited: a formula written inside a test_that() block
-  # records the test's own frame, which is an ordinary environment.
+  # Reference environments need no narrowing. Set them explicitly because a
+  # formula created inside test_that() otherwise uses the test's ordinary frame.
   f <- bayesnecformula(y ~ crf(x, model = "nec3param"))
   environment(f) <- globalenv()
   expect_identical(
     environment(bayesnec:::narrow_formula_environment(f, nec_data)),
     globalenv()
   )
-  # And where it is narrowed, the replacement is parented at the point the walk
-  # stopped, so the rest of the lookup chain is the one the formula had. A
-  # frame whose parent is baseenv() therefore still resolves through baseenv()
-  # and not through the bayesnec namespace, which is what the trials() test in
-  # test-bayesnecformula.R rests on.
+  # Parent the narrowed environment at the original stopping point so name
+  # lookup still reaches baseenv() rather than the package namespace.
   outer <- new.env(parent = baseenv())
   inner <- new.env(parent = outer)
   g <- bayesnecformula(y ~ crf(x, model = "nec3param"))
@@ -902,12 +762,8 @@ test_that("an arbitrary attached environment is narrowed by value", {
 })
 
 test_that("a function the formula names comes with its own environment", {
-  # The limit of what this can do, recorded rather than hidden. A user
-  # transformation defined beside the formula is a closure over the same
-  # environment, so the name is copied with everything it closed over. The
-  # closure is needed; the vector beside it is not, and there is no way to tell
-  # them apart from the formula. A helper defined in a knitr chunk therefore
-  # still gives a large fit.
+  # A required local transformation can retain unrelated objects through its
+  # closure. Formula narrowing cannot safely discard that closure environment.
   make <- function() {
     big <- rnorm(1e6)
     halve <- function(z) z / 2
@@ -922,13 +778,8 @@ test_that("a list plan whose first strategy is sequential asks for the models", 
   skip_unless_future()
   old_limit <- options(parallelly.maxWorkers.localhost = Inf)
   on.exit(options(old_limit), add = TRUE)
-  # Entering a future is what moves the plan on to the next strategy, so the
-  # levels are still dispatched; a sequential strategy runs them one at a time
-  # in the parent, and each level's model loop then sees the inner plan.
-  # Measured on R 4.6.1 with future 1.70.0: nbrOfWorkers() is 1 in the parent
-  # and 2 inside the level future. Without this branch the same plan fitted
-  # both loops in sequence and said nothing, because bnec_plan_is_parallel()
-  # reads only the first strategy.
+  # Dispatch levels through the outer sequential future to expose the inner
+  # parallel strategy to each model loop.
   old <- future::plan(list(future::sequential,
                            future::tweak(future::multisession,
                                          workers = I(2))))
@@ -938,10 +789,8 @@ test_that("a list plan whose first strategy is sequential asks for the models", 
   expect_true(out$dispatch)
   expect_false(out$concurrent)
   skip_unless_worker_sees_internals()
-  # suppressWarnings for future's own check on connections opened inside a
-  # future: starting the inner multisession cluster opens two of them and they
-  # stay open, which is what makes the cluster reusable. Every nested plan of
-  # multisession strategies emits it, once per level, and ?bnec_group says so.
+  # Suppress future's connection warning when an inner multisession cluster
+  # stays open for reuse.
   seen <- suppressWarnings(bayesnec:::bnec_parallel_lapply(1:2, function(i) {
     future::nbrOfWorkers()
   }, parallel = TRUE))
@@ -950,23 +799,9 @@ test_that("a list plan whose first strategy is sequential asks for the models", 
 
 test_that("the nested plan the message recommends asserts its worker count", {
   skip_unless_future()
-  # future sets mc.cores to 1 inside a worker, parallelly reads that as the
-  # core budget, and its hard limit is 300 per cent, so a bare inner worker
-  # count is refused where I() is not. Measured on R 4.6.1 with future 1.70.0
-  # and parallelly 1.48.0, one run each: under
-  # plan(list(tweak(multisession, workers = 2), tweak(multisession,
-  # workers = 4))) an inner future returned "Attempting to set up 4 localhost
-  # parallel workers with only 1 CPU cores available ... The hard limit is set
-  # to 300%", and the same plan with workers = I(4) returned 4. The refusal
-  # depends on the outer count as well: one outer worker accepted the bare 4.
-  #
-  # Building that cluster is not asserted here. Two measurements of it
-  # disagree -- 1.7 s on one run of a bare future_lapply, and no completion in
-  # 280 s on two runs of the same plan inside this file -- and repeated
-  # multisession cluster creation in one session stalls on the development
-  # host often enough that a test which builds one is a flake rather than a
-  # check. What is asserted is that the advice bayesnec prints carries the
-  # I(), without which the call it recommends is the one refused above.
+  # Check the printed I(workers) advice only. Nested socket-cluster creation
+  # stalled in repeated development runs, so this test does not verify the
+  # cluster itself or its performance.
   expect_match(
     suppressMessages(
       capture_messages(with_parallel_plan(bayesnec:::plan_group_levels(3, 2)))
@@ -976,11 +811,8 @@ test_that("the nested plan the message recommends asserts its worker count", {
 })
 
 test_that("a NULL binding is kept rather than deleted", {
-  # vals[[nm]] <- x deletes the element when x is NULL, which left the name out
-  # of the replacement environment and let it resolve against the parent chain
-  # instead. A decoy of the same name there then answered for it, so a model
-  # set that get_model_from_formula() would have refused became a fit of
-  # something else.
+  # Retain NULL bindings explicitly: deleting one lets a parent's same-named
+  # value answer in its place and can change the requested model set.
   make <- function() {
     mods <- NULL
     bayesnecformula(y ~ crf(x, model = mods))
@@ -991,21 +823,17 @@ test_that("a NULL binding is kept rather than deleted", {
 })
 
 test_that("the levels of a grouped call are seeded from the caller", {
-  # Without this the arrangement decides the answer: expand_manec() realises
-  # the weighted-draw seed from whatever stream bnec() is running in, so the
-  # levels in a worker draw from the worker's and the levels in the parent from
-  # the session's -- and plan_group_levels() reads the arrangement off the
-  # worker count, so the machine would change the estimates.
+  # Draw each level's seed in the caller before choosing an arrangement, so
+  # model averaging does not depend on the worker count or on which process
+  # fits a level.
   seeds <- bayesnec:::group_level_seeds
   # A supplied seed fixes them outright, so a grouped call repeats with no
   # set.seed() in the session.
   expect_identical(seeds(4, 17), seeds(4, 17))
   expect_false(identical(seeds(4, 17), seeds(4, 18)))
   expect_length(seeds(4, 17), 4L)
-  # Match make_good_inits(): malformed values still fail rather than being
-  # replaced with unrelated generated seeds, and scalar NA means no seed. Base
-  # set.seed() accepts a vector by using its first element, so that established
-  # behaviour is retained as well.
+  # Reject malformed seeds; scalar NA requests an unseeded call. Retain
+  # set.seed()'s convention of using the first element of a vector.
   expect_error(seeds(2, "bad"), "supplied seed")
   expect_error(seeds(2, Inf), "supplied seed")
   expect_identical(seeds(2, 1:2), seeds(2, 1))
@@ -1043,11 +871,8 @@ test_that("the levels of a grouped call are seeded from the caller", {
 test_that("a seeded level gives one answer with either model arrangement", {
   skip_unless_future()
   skip_unless_worker_sees_internals()
-  # This is the two nested loops without Stan. Each mock equation resets to the
-  # realised level seed as brms does when bnec_group() passes seed. The weighted
-  # draw happens after that loop, where the sequential and future paths leave
-  # different ambient streams; with_group_seed() makes it independent of that
-  # difference.
+  # Mock both nested loops without Stan. with_group_seed() must make the
+  # weighted draw independent of the ambient stream left by the model loop.
   level_seed <- bayesnec:::group_level_seeds(1, 17)
   run_level <- function(parallel) {
     set.seed(level_seed)
@@ -1073,11 +898,8 @@ test_that("a seeded level gives one answer with either model arrangement", {
 })
 
 test_that("a level seed means one thing whatever sampler the session is in", {
-  # sample.int()'s algorithm changed in R 3.6.0 and set.seed() with
-  # kind = NULL leaves whichever is in force, so without pinning the sampler
-  # the same `seed` realised different level seeds in a session set to the
-  # pre-3.6.0 one -- and a grouped call would not repeat across two sessions
-  # configured differently.
+  # group_level_seeds() pins the sampler: set.seed(sample.kind = NULL) would
+  # keep the session's sample.int() choice and realise different level seeds.
   kind <- RNGkind()
   on.exit(suppressWarnings(do.call(RNGkind, as.list(kind))), add = TRUE)
   suppressWarnings(RNGkind(sample.kind = "Rejection"))
@@ -1085,10 +907,7 @@ test_that("a level seed means one thing whatever sampler the session is in", {
   suppressWarnings(RNGkind(sample.kind = "Rounding"))
   b <- bayesnec:::group_level_seeds(4, 17)
   expect_identical(a, b)
-  # And the generator as well as the sampler: "L'Ecuyer-CMRG" is what a user
-  # doing their own parallel work sets, and it is a generator rather than a
-  # sampler, so pinning only the sampler left the same seed realising different
-  # level seeds there.
+  # Pin the generator too; fixing only the sampling algorithm is insufficient.
   suppressWarnings(RNGkind(kind = "L'Ecuyer-CMRG", sample.kind = "Rejection"))
   expect_identical(bayesnec:::group_level_seeds(4, 17), a)
   # The session is left in whatever it was in, both times.
@@ -1101,17 +920,9 @@ test_that("a level seed means one thing whatever sampler the session is in", {
 test_that("a grouped call leaves the caller's stream where it found it", {
   skip_on_cran()
   skip_if_not_installed("R.utils")
-  # fit_level() calls set.seed() on every path, so without a restore around the
-  # whole loop a grouped call fitted with the levels in sequence left the
-  # session at the last level's seed -- and, where `seed` was supplied, at a
-  # constant, so set.seed(i); bnec_group(..., seed = 1); rnorm(1) returned one
-  # number for every i. Asserted on the real call, because the restore is in
-  # bnec_group() and not in the dispatcher.
-  #
-  # timeout is how the loop is entered without fitting anything: it fires
-  # before brm() reaches the sampler, so nothing is compiled, the call ends in
-  # an error, and what is under test is the on.exit restore -- which an error
-  # exit has to honour as much as a return does.
+  # Test restoration around the real grouped loop, including its error exit.
+  # A short timeout enters the loop without Stan sampling; level seeds must
+  # not replace the caller's ambient stream.
   d <- nec_data
   d$site <- rep(c("a", "b"), length.out = nrow(d))
   after <- function(i) {

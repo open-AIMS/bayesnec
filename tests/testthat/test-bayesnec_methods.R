@@ -24,7 +24,8 @@ test_that("summary behaves as expected", {
   expect_equal(class(summary_p), "necsummary")
   expect_equal(names(summary_p), c("brmssummary", "model", "is_ecx", "ne_type",
                                    "nec_vals", "ecs", "bayesr2",
-                                   "failed_models"))
+                                   "divergences", "divergence_cutoff",
+                                   "failed_models", "bnec_version"))
   expect_equal(summary_p$ne_type, "NEC")
 })
 

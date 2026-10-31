@@ -8,10 +8,8 @@ test_that("doesn't work for ecx models", {
 })
   
 test_that("the class is read off the parameters, not the name (#419)", {
-  # nec() refused on the substring "ecx" in the equation's name. A smooth
-  # equation spelled without the prefix would then have had its NSEC returned
-  # as a NEC; and a threshold equation spelled with it would have been refused.
-  # The test is now whether the fit samples a nec parameter.
+  # Decide NEC support from the sampled parameter, not an equation-name
+  # substring, which can misclassify renamed smooth or threshold equations.
   renamed_smooth <- ecx4param
   renamed_smooth$model <- "flat"
   expect_error(nec(renamed_smooth),
@@ -73,15 +71,11 @@ test_that("prob_vals passes correctly", {
 })
 
 
-# ---- #39, the censored no-effect posterior -----------------------------------
+# Censored no-effect posteriors
 
-# estimates_summary() gained na.rm when nsec_off_curve() started returning NA
-# for a draw whose curve never reaches the reference; nec() did not, so it
-# raised "missing values and NaN's not allowed" on a posterior the package had
-# itself written. The NA reach nec() by two routes: a joint two-block fit whose
-# survival block is smooth, and a model set containing any smooth equation.
-# Injected here rather than fitted, because producing a draw that never crosses
-# needs a fit that does not converge to a decline.
+# Inject unidentified draws to test summary handling without fitting a
+# non-declining curve. Both a joint smooth-survival component and a mixed
+# model set can produce these draws.
 
 test_that("nec summarises a censored posterior rather than erroring", {
   censored <- nec4param
@@ -100,9 +94,8 @@ test_that("nec summarises a censored posterior rather than erroring", {
 test_that("nec says how many draws are censored, on either class", {
   censored <- nec4param
   censored$ne_posterior[c(3, 17)] <- NA_real_
-  # An NA the fit's own record explains at neither end: it could not be
-  # computed rather than being known to lie beyond a bound, and it is reported
-  # as such and left out of the fraction the other reports are over (#395).
+  # An unexplained NA is a computation failure, not evidence beyond a
+  # bound. Report it separately and exclude it from censoring fractions.
   expect_warning(nec(censored), "could not be computed for 2 of 100 draws")
   censored_manec <- manec_example
   censored_manec$w_ne_posterior[1] <- NA_real_
@@ -114,14 +107,12 @@ test_that("an uncensored posterior is silent", {
   expect_silent(nec(nec4param))
 })
 
-# ---- no_effect, #388 ---------------------------------------------------------
+# No-effect argument validation
 
 test_that("no_effect is refused rather than discarded off a joint refit", {
-  # The argument selects between the nec parameter and the no-effect estimate
-  # each level's own equation supports, which needs exactly one equation per
-  # level. Every other class has one type of no-effect estimate already, so a
-  # supplied no_effect would otherwise be absorbed by ... and ignored, which is
-  # the failure check_component_arg() exists to prevent.
+  # Only joint refits choose between a sampled NEC and each level
+  # equation's no-effect estimate. Other classes must reject supplied
+  # no_effect rather than silently absorb it in dots.
   expect_error(nec(nec4param, no_effect = TRUE), "`no_effect` selects")
   expect_error(suppressMessages(nec(manec_example, no_effect = TRUE)),
                "bayesmanecfit")

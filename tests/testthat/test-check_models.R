@@ -48,17 +48,14 @@ test_that(paste0("properly drops lin models for identity link for",
 })
 
 test_that("keeps zero bounded models for the gaussian family (#206)", {
-  # The inverse of the assertion that stood here. Up to 2.1.3 every
-  # zero-bounded equation was dropped under gaussian on the grounds that it
-  # "cannot generate predictions of negative response values", which confuses
-  # the range of the mean function with the support of the likelihood. The
-  # exclusion is removed; the candidate set now decides by weight.
+  # A zero-bounded mean is compatible with a Gaussian likelihood, whose
+  # observations can be negative. Do not conflate mean range and response
+  # support when filtering equations.
   gaussian_family_default <- validate_family("gaussian")
   expect_equal(check_models(c("nec3param", "nec4param", "ecxexp"),
                             gaussian_family_default),
                c("nec3param", "nec4param", "ecxexp"))
-  # A single zero-bounded equation named explicitly used to be an error,
-  # because the set emptied.
+  # The same rule applies to an explicitly requested single equation.
   expect_equal(check_models("nec3param", gaussian_family_default), "nec3param",
                ignore_attr = TRUE)
   expect_silent(check_models(mod_groups$zero_bounded, gaussian_family_default))
@@ -72,10 +69,8 @@ test_that("keeps zero bounded models for the gaussian family (#206)", {
 })
 
 test_that("models() and check_models() agree for every response range", {
-  # The drift-proof assertion for #170: whatever ?models advertises as available
-  # for a response range must be exactly what bnec() will fit for a family with
-  # that range. Every family sharing a range is listed, because the equivalence
-  # is the reason one representative per range is enough in range_to_family().
+  # Keep models() and family-based filtering consistent. Check every family
+  # sharing a response range, not only the representative used to list it.
   all_mod <- models()$all
   ranges <- list(
     "c(-Inf, Inf)" = list(range = c(-Inf, Inf),
@@ -104,7 +99,7 @@ test_that("models() and check_models() agree for every response range", {
 })
 
 test_that("models() rejects ranges and names it cannot map", {
-  # These used to fail with "object 'use_mods' not found".
+  # Invalid requests must fail with the argument-specific message.
   expect_error(models(c(0, 100)), "one of the response ranges")
   expect_error(models("nonsense"), "must be a bayesnecfit")
   # Every model group bnec(model = ) accepts is listable.
@@ -121,7 +116,7 @@ test_that("models() filters equations by curve-parameter count (#301)", {
     nechormepwr = 4L, nechormepwr01 = 4L, ecx4param = 4L,
     ecxwb1 = 4L, ecxwb2 = 4L, ecxll4 = 4L, ecxhormebc4 = 4L,
     nechorme4 = 5L, nechorme4pwr = 5L, ecxll5 = 5L,
-    ecxhormebc5 = 5L
+    ecxhormebc5 = 5L, ecxflat = 1L
   )
   all_models <- models("all")
   observed <- vapply(
@@ -142,8 +137,10 @@ test_that("models() filters equations by curve-parameter count (#301)", {
 })
 
 test_that("models() validates parameter-count limits (#301)", {
-  expect_error(models(max_pars = 1),
-               "No selected model equations have 1 or fewer curve parameters")
+  # ecxflat is the one equation of "all" with a single curve parameter.
+  expect_named(models(max_pars = 1), "ecxflat")
+  expect_error(models("nec", max_pars = 2),
+               "No selected model equations have 2 or fewer curve parameters")
   expect_error(models("hormesis", max_pars = 3),
                "No selected model equations have 3 or fewer curve parameters")
   for (bad in list(0, -1, 2.5, Inf, NA_real_, c(2, 3), "3")) {
@@ -154,10 +151,8 @@ test_that("models() validates parameter-count limits (#301)", {
 
 
 test_that("check_models records which equations it excluded, and why (#261)", {
-  # bnec() decided which equations it would not attempt, told the user once by
-  # message(), and discarded the decision, so the composition of the candidate
-  # set could not be recovered from the fit -- only from console output, which
-  # a knitted document or a suppressMessages() call does not keep.
+  # Preserve exclusion reasons on the returned set; console output alone
+  # cannot reconstruct which candidates were attempted.
   beta_identity <- validate_family(Beta(link = "identity"),
                                    link_source = "chosen")
   kept <- suppressMessages(check_models(mod_groups$all, beta_identity,
@@ -168,7 +163,7 @@ test_that("check_models records which equations it excluded, and why (#261)", {
   # The record and the returned set partition the requested set exactly.
   expect_setequal(c(as.character(kept), rec$model), mod_groups$all)
   expect_length(intersect(as.character(kept), rec$model), 0)
-  # Every excluded equation carries a non-empty reason.
+  # Every excluded equation must have a non-empty reason.
   expect_true(all(nzchar(rec$reason)))
   expect_true("neclin" %in% rec$model)
   expect_match(rec$reason[rec$model == "neclin"], "unbounded below")
@@ -229,10 +224,7 @@ test_that("ecxhormebc5 is declined only where negative x can invalidate mu", {
   expect_silent(check_models("ecxhormebc5", gamma_log, negative))
 })
 
-test_that("ecxflat is valid by name for every family and in no group (#419)", {
-  # It belongs to no model group in this release, so the validity check reads
-  # every equation rather than the default set, and nothing that lists a group
-  # or the default set returns it.
+test_that("ecxflat is valid by name for every family (#419)", {
   fams <- c("gaussian", "Gamma", "poisson", "negbinomial", "bernoulli",
             "binomial", "beta_binomial", "Beta", "hurdle_gamma",
             "zero_inflated_beta", "zero_inflated_poisson")
@@ -245,15 +237,45 @@ test_that("ecxflat is valid by name for every family and in no group (#419)", {
                           data.frame(y = c(3, 2, 1), x = c(-1, 0, 1)))
   expect_identical(check_models("ecxflat", validate_family("gaussian"),
                                 negative), "ecxflat")
-  expect_false("ecxflat" %in% unlist(models(), use.names = FALSE))
-  expect_false("ecxflat" %in% names(models(max_pars = 1e3)))
-  expect_false("ecxflat" %in% names(models(c(0, 1))))
-  expect_true("ecxflat" %in% bayesnec:::equation_names())
-  expect_setequal(setdiff(bayesnec:::equation_names(), mod_groups$all),
-                  "ecxflat")
   expect_identical(bayesnec:::equation_par_names("ecxflat"), "top")
   expect_named(show_params("ecxflat")[[1]]$pforms, "top")
   # A name that is no equation is still refused.
   expect_error(check_models("ecxflatter", validate_family("gaussian")),
                "is not a valid model entry")
+})
+
+test_that("ecxflat is in all, ecx and decline, and in no other group (#485)", {
+  holding <- names(Filter(function(g) "ecxflat" %in% g, models()))
+  expect_setequal(holding, c("all", "ecx", "decline"))
+  # It was added at the end of each, so no other equation changes position.
+  for (grp in holding) {
+    expect_identical(utils::tail(models()[[grp]], 1), "ecxflat", info = grp)
+  }
+  expect_setequal(bayesnec:::equation_names(), mod_groups$all)
+  # It has no bot but does not decline, which is why bot_free leaves it out.
+  expect_false("bot" %in% bayesnec:::equation_par_names("ecxflat"))
+})
+
+test_that("no family drops ecxflat from a group (#485)", {
+  # Every family bnec() accepts, with its default link and with a log or logit
+  # link where a caller names one.
+  fams <- lapply(names(mod_fams), validate_family)
+  chosen <- list(Beta(link = "logit"), binomial(link = "logit"),
+                 poisson(link = "log"), Gamma(link = "log"),
+                 negbinomial(link = "log"), gaussian(link = "log"))
+  fams <- c(fams, lapply(chosen, validate_family, link_source = "chosen"))
+  for (fam in fams) {
+    label <- paste(fam$family, fam$link)
+    kept <- suppressMessages(check_models(mod_groups$all, fam, record = TRUE))
+    expect_true("ecxflat" %in% kept, info = label)
+    expect_false("ecxflat" %in% attr(kept, "excluded")$model, info = label)
+  }
+  negative <- model.frame(bnf(y ~ crf(x, "all")),
+                          data.frame(y = c(3, 2, 1), x = c(-1, 0, 1)))
+  kept <- suppressMessages(check_models(mod_groups$all,
+                                        validate_family("Gamma"), negative))
+  expect_true("ecxflat" %in% kept)
+  for (range in list(c(-Inf, Inf), c(0, 1), c(0, Inf))) {
+    expect_true("ecxflat" %in% names(models(range)), info = toString(range))
+  }
 })

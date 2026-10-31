@@ -29,11 +29,12 @@
 #' is an NSEC. The curve of no draw reaches an ECx target, so every ECx it
 #' gives is reported as censored above the upper end of the prediction range,
 #' and so is its NSEC in every draw whose level is above the reference. It
-#' belongs to no model group in this release, so none of \code{models()}, a
-#' group name, a numeric range or \code{max_pars} lists it; name it to fit it,
-#' as in \code{crf(x, "ecxflat")} or \code{crf(x, c("ecxflat", "nec4param"))}.
-#' It joins "all", "ecx" and "decline" at the 3.0 release, which changes every
-#' model-averaged result and is left to a release for that reason.
+#' belongs to the "all", "ecx" and "decline" groups and to no other, so the
+#' default set includes it, and the model weights of a set built from one of
+#' those groups are computed with a mean that does not change with
+#' concentration among the candidates. Where its weight is appreciable, its
+#' censored draws enter the model-averaged ECx and NSEC in proportion to that
+#' weight.
 #' \code{\link{bnec}} fits it alone, whatever set was requested, to a bounded
 #' response with every observation at one bound; see the section of
 #' \code{?bnec} on a response that does not vary.
@@ -113,14 +114,15 @@
 #' that needs the admissible set should ask for it directly, by passing the
 #' numeric range --- \code{models(c(0, 1))} --- rather than reading a group.
 #'
-#' The \code{"bot_free"} group contains the fourteen equations of the
-#' \code{"all"} group with no \code{bot} parameter. It includes the eleven
+#' The \code{"bot_free"} group contains fourteen of the fifteen equations of
+#' the \code{"all"} group with no \code{bot} parameter. It includes the eleven
 #' equations in \code{"zero_bounded"}, whose fitted mean falls to zero, and the
 #' three
 #' linear-decay equations \code{"neclin"}, \code{"neclinhorme"} and
 #' \code{"ecxlin"}, whose fitted mean is unbounded below. The name therefore
 #' does not mean that \code{bot} is estimated freely or that every equation in
-#' the group approaches zero.
+#' the group approaches zero. The fifteenth, \code{"ecxflat"}, is left out
+#' because its mean does not change with concentration.
 #'
 #' Set \code{max_pars} to restrict the resolved set to equations with no more
 #' than that number of curve parameters. The limit can be used by itself or
@@ -215,16 +217,12 @@ models <- function(object, max_pars = NULL) {
   } else if (is_bayesmanecfit(object)) {
     use_mods <- names(object$mod_fits)
   } else if (object[1] %in% names(mod_groups)) {
-    # names(mod_groups) rather than a hard-coded subset: "decline" and
-    # "hormesis" are accepted by bnec(model = ) via handle_set() but were not
-    # listed here, the same kind of drift as #170 itself.
+    # Read names(mod_groups), not a fixed subset, so that every set bnec()
+    # accepts is listed.
     use_mods <- mod_groups[[object[1]]]
   } else if (is.numeric(object)) {
-    # Derived from check_models() rather than restated here. The two lists had
-    # drifted apart -- this branch dropped nechorme and nechorme4 for a 0-1
-    # bounded response, which bnec() fits happily, and kept nechormepwr01 for a
-    # zero-bounded one, which bnec() drops. Asking the same function the fitting
-    # path asks is what stops that happening again. See #170.
+    # Ask check_models(), as bnec() does, rather than restate its lists, which
+    # drift apart.
     use_mods <- suppressMessages(
       check_models(mod_groups$all, range_to_family(object))
     )
@@ -278,8 +276,6 @@ range_to_family <- function(object) {
   } else if (is.infinite(hi)) {
     Gamma(link = "identity")
   } else {
-    # Previously fell through leaving `use_mods` undefined, so models(c(0, 100))
-    # failed with "object 'use_mods' not found".
     stop("A numeric `object` must be one of the response ranges bayesnec",
          " distinguishes: c(-Inf, Inf) for an unbounded response, c(0, 1) for a",
          " 0-1 bounded one, or c(0, Inf) for a zero-bounded one. You supplied a",

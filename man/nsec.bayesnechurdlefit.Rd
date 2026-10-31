@@ -7,9 +7,9 @@
 \method{nsec}{bayesnechurdlefit}(
   object,
   sig_val = 0.01,
-  resolution = 200,
+  resolution = 500,
   x_range = NA,
-  xform = identity,
+  xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
   extrapolate = FALSE,
   ...,
@@ -26,14 +26,16 @@ significance of the predicted posterior values.}
 \item{resolution}{The number of unique x values over which to find NSEC.
 The crossing is located by linear interpolation between the two grid values
 that bracket it, so precision saturates well below the grid spacing.
-Increasing the resolution beyond the default of 200 changed the estimate by
-less than 0.01 percent on the fits tested, and increases the run time
-roughly in proportion.}
+The default is 500 grid values, matching \pkg{toxval}. A finer grid can
+change an interpolated crossing and increases prediction time.}
 
 \item{x_range}{A range of x values over which to consider extracting NSEC.}
 
-\item{xform}{A function to apply to the returned estimated concentration
-values.}
+\item{xform}{\code{NULL}, the default, or a function. \code{NULL} returns
+the estimate on the scale the predictor was recorded on. A function is
+applied to the estimate on the scale the model was fitted on. The two
+differ only where \code{crf()} transforms the predictor inline; see
+Details.}
 
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and

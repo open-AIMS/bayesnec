@@ -28,6 +28,9 @@
 #'
 #' \code{\link{pull_out}} carries the record across unchanged, since it subsets
 #' a set that has already been fitted rather than refitting it.
+#' \code{\link[base]{c}} and \code{+} keep the failures of every object they
+#' combine, except for an equation that another of those objects fitted and
+#' the combined set therefore holds.
 #' \code{\link{amend}} instead records only the models that call attempted:
 #' a model that failed before may have been dropped now, or is being retried
 #' there with different priors.
@@ -112,10 +115,9 @@ print.bnecfailures <- function(x, ...) {
 
 #' A condition carrying the priors and initial values of a failed fit
 #'
-#' Raised by \code{fit_bayesnec} in place of a bare \code{stop()} so that the
-#' caller, which catches the error and carries on with the remaining models, can
-#' recover what the attempt was given. There is nowhere else to get it from: the
-#' prior and the initial values are constructed inside the failed call.
+#' Raised by \code{fit_bayesnec} in place of \code{stop()}, so that a caller
+#' that catches the error and moves on can recover the prior and initial
+#' values, which were built inside the failed call.
 #'
 #' @param model A \code{\link[base]{character}} string naming the model.
 #' @param message The error message.
@@ -148,9 +150,8 @@ failure_record <- function(model, cond) {
     list(model = model, message = conditionMessage(cond),
          prior = cond$prior, init = cond$init)
   } else {
-    # A failure raised before the priors and inits were built -- a formula or
-    # data problem rather than a sampling one. Recorded anyway, because "which
-    # models are missing and why" is the first question either way.
+    # A failure before the priors and inits were built, from a formula or data
+    # problem. It is still recorded.
     list(model = model,
          message = if (is.null(cond)) {
            "Model failed for an unrecorded reason."
@@ -168,18 +169,30 @@ failure_record <- function(model, cond) {
 #' @param failed A named \code{\link[base]{list}} of failure records.
 #'
 #' @return \code{object}, with a \code{failed_models} element where there were
-#' failures.
+#' failures, and with every attribute it had.
 #'
 #' @noRd
 attach_failed_models <- function(object, failed) {
-  # Added only when non-empty. Appending unconditionally would change names() on
-  # every fitted object, which is a gratuitous break for anything indexing one
-  # positionally or checking its structure -- the same reasoning as the hurdle
-  # element in expand_nec().
+  # Add the element only when non-empty, so that names() of a fit with no
+  # failures is unchanged.
   if (length(failed) == 0) {
     return(object)
   }
-  cls <- class(object)
-  object <- c(unclass(object), list(failed_models = failed))
-  allot_class(object, cls)
+  # Assign the element in place: c(unclass(object), ...) drops every attribute.
+  object[["failed_models"]] <- failed
+  object
+}
+
+#' The failures of the objects \code{c()} combines
+#'
+#' @param inputs A \code{\link[base]{list}} of fitted objects.
+#' @param held The equations the combined set holds.
+#'
+#' @return A named \code{\link[base]{list}} of failure records, the first for
+#' each equation, leaving out any equation the combined set holds.
+#'
+#' @noRd
+joined_failures <- function(inputs, held) {
+  failed <- do.call(c, lapply(inputs, function(x) x[["failed_models"]]))
+  failed[!duplicated(names(failed)) & !names(failed) %in% held]
 }

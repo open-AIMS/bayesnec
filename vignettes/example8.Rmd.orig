@@ -587,7 +587,7 @@ n_distinct(one_plate$conc_group)
 The fits below use `model = "all"`, which `bnec()` filters to the equations
 valid for the family and predictor. The whole set is kept rather than `decline`
 because the zinc response rises above its control at low concentrations, and
-`decline` holds only the equations whose curves fall from the control. Taking
+`decline` holds no equation whose curve rises above the control. Taking
 the mean of each plate's four wells at each concentration, relative to that
 plate's own control:
 
@@ -691,10 +691,10 @@ weighted equation is not comparable with this one. Here the weights are spread
 thinly, with `ecxll5` at 0.15 against 0.14 for `ecxwb1` and `ecxhormebc4` and
 0.13 for `ecxll3`, so the equation read is the most weighted by a narrow margin.
 
-The N(S)EC in the summary above is on the scale `fit_ogl` was fitted on,
-`log(conc)`, which is why its lower bound can be negative. `ecx()` takes
-`xform = exp` and reports concentrations in mg/L, so the two are not in
-disagreement:
+The N(S)EC in the summary above is in mg/L, although `fit_ogl` was fitted on
+`log(conc)`: the estimators return the measured scale unless `xform` says
+otherwise. The EC10 below is in mg/L as well. The `xform = exp` it is given is
+the inverse of the logarithm, so it returns the same concentrations:
 
 ```{r ecx-conc-group}
 rbind(
@@ -996,7 +996,7 @@ fit_plate_batch <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl
 ```
 
 A named-parameter term is not applied across the whole set. The parameter
-placing the curve is `nec` in ten equations and `ec50` in ten, and three have
+placing the curve is `nec` in ten equations and `ec50` in ten, and four have
 neither, so `(nec | plate)` over `model = "all"` would describe a structure most
 of the set does not have. The comparison is made on two of the equations that
 estimate `nec`, against the same two with `ogl(plate)`, so that the two fits
@@ -1810,7 +1810,7 @@ also record 18 and 37 divergent transitions.
 summary(fits_tox)
 ```
 
-Back-transformed, the threshold is 0.086 mg/L (0.034--0.13) for copper and 0.24
+The threshold is 0.086 mg/L (0.034--0.13) for copper and 0.24
 (0.026--1.5) for zinc. Copper is the more potent, which is the ordering
 @luter2025 report from the per-plate analysis, but the medians differ by a
 factor of 2.8 and the zinc interval reaches below the copper median.
@@ -1864,7 +1864,6 @@ difference in location from a difference in width:
 
 ```{r fig-cmp-metals, fig.asp = 0.5, out.width = "78%"}
 tox_post <- cmp_tox$posterior_data
-tox_post$value <- exp(tox_post$value)
 
 ggplot(data = tox_post, mapping = aes(x = value)) +
   geom_density(mapping = aes(group = model, colour = model, fill = model),
@@ -1966,14 +1965,14 @@ diuron.
 
 The substitution has a second consequence, and it is general rather than
 particular to these data. Any concentration below 1 has a negative logarithm,
-so `log(diuron_adj)` runs from -2.30 to 3.37. Three of the 18 equations that
+so `log(diuron_adj)` runs from -2.30 to 3.37. Three of the 19 equations that
 `model = "all"` offers for this family cannot be fitted on a predictor that
 reaches a negative value. `necsigm` and `ecxsigm` raise the predictor to a
 fractional power, which is undefined there. `ecxhormebc5` cannot be reliably
 initialised where an identity-linked `Beta` mean must stay positive: its
 hormesis term `exp(slope) * x` is negative wherever the predictor is, so a
 starting value drawn from the prior puts the mean below zero. `bnec()` reports
-each exclusion and fits the remaining 15. Every `lum31` fit in this vignette
+each exclusion and fits the remaining 16. Every `lum31` fit in this vignette
 meets the same condition under a `Gamma` family. Its concentrations are in mg/L,
 and their logarithm is negative for 60 per cent of the zinc readings and 74 per
 cent of the copper ones.
@@ -2047,11 +2046,12 @@ not converge (R-hat 1.21, effective sample size 14), and `nechorme4` and
 summary(fit_pam)
 ```
 
-As in the sections above, the N(S)EC in that summary is on the scale the model
-was fitted on, `log(diuron_adj)`. `nsec()` and `ecx()` with `xform = exp` return
-the NSEC and the effect concentrations in µg/L. The summary reads the NEC
-equations by their `nec` parameter, and `nsec()` reads every equation by its
-NSEC, so the two averages differ slightly.
+As in the sections above, the N(S)EC in that summary is in µg/L, although the
+model was fitted on `log(diuron_adj)`. The summary reads the NEC equations by
+their `nec` parameter, and `nsec()` reads every equation by its NSEC, so the two
+averages differ slightly. The estimates below are in µg/L as well; the
+`xform = exp` they are given is the inverse of the logarithm and returns the
+same concentrations:
 
 ```{r ecx-pam}
 # Bound once: the figure below draws its reference lines from the same NSEC.
@@ -2322,7 +2322,7 @@ is the case for fitting the levels separately rather than shrinking them towards
 a common curve: the curve they would be shrunk towards is not one the data agree
 on.
 
-`nec()` returns each herbicide's N(S)EC, back-transformed from the fitted scale:
+`nec()` returns each herbicide's N(S)EC in µg/L:
 
 ```{r herb-nec}
 nec(fits_herb, xform = exp)
@@ -2401,11 +2401,9 @@ those posteriors are in `posterior_data`:
 
 ```{r fig-cmp-herbicides, fig.asp = 0.5, out.width = "95%"}
 # Figure 11 of Fisher et al. (2024) is this display for these seven herbicides,
-# and this reproduces it. The posteriors are on the fitted scale, log(ug/L), and
-# exp() returns them to concentration so that the axis reads in the units the
-# estimates are reported in, as every other figure here does.
+# and this reproduces it. The posteriors are in ug/L, the units the estimates
+# are reported in, as every other figure here is.
 herb_post <- cmp_herb$posterior_data
-herb_post$value <- exp(herb_post$value)
 
 ggplot(data = herb_post, mapping = aes(x = value)) +
   geom_density(mapping = aes(group = model, colour = model, fill = model),

@@ -132,6 +132,8 @@ print.bayesnecjointfit <- function(x, ...) {
   cat("  weight at level   :",
       paste0(x$levels, " ", signif(unname(x$level_weights), 3),
              collapse = ", "), "\n")
+  cat("  fitted by         :",
+      describe_version(bnec_version(x)[1, , drop = FALSE]), "\n")
   if (length(unique(x$models)) == 1) {
     cat("\nEvery curve parameter takes a value per level in one posterior;\n",
         "read them from the draws as b_<parameter>_", x$group_var,

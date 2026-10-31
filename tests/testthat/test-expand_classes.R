@@ -14,8 +14,7 @@ test_that("expand_nec defaults work for nec model", {
                                  "residuals", "ne_posterior", "ne_type"))
   expect_equal(class(nec_fit$fit), "brmsfit")
   expect_equal(nec_fit$model, "nec4param")
-  # The n_draws x resolution matrix is no longer stored (#180); only the
-  # summary it was used to build.
+  # Keep the prediction summary only; do not store the full draw-by-grid matrix.
   expect_named(nec_fit$pred_vals, "data")
   expect_null(nec_fit$pred_vals$posterior)
   expect_equal(dim(nec_fit$pred_vals$data), c(1000, 4))
@@ -114,8 +113,7 @@ test_that("expand_manec defaults work correctly", {
   tt3 <- expand_manec(tt1, formulas) |>
     suppressMessages() |>
     suppressWarnings()
-  # The weighted n_draws x resolution matrix is no longer stored either (#213);
-  # only the summary built from it.
+  # Keep the weighted prediction summary without its full draw-by-grid matrix.
   expect_named(tt3$w_pred_vals, "data")
   expect_null(tt3$w_pred_vals$posterior)
   expect_equal(dim(tt3$w_pred_vals$data), c(1000, 4))
@@ -141,19 +139,15 @@ test_that("new loo_controls are incorporated", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # The default is supplied here, not only by bnec(). Absent it, `method` went
-  # to loo::loo_model_weights() as NULL, loo applied its own default of
-  # stacking, and the attribute recorded nothing -- so the weighting method
-  # depended on which function assembled the set. See #320.
+  # Apply the package weighting default here too. Passing NULL into loo
+  # would select its own stacking default instead.
   expand_manec(tt1, formulas) |>
     get_new_method() |>
     expect_equal("pseudobma") |>
     expect_message() |>
     suppressWarnings()
-  # Named but NULL is the shape pull_out() and update.bnecfit() pass when the
-  # object they are operating on records no method. match.arg() resolves that
-  # to stacking inside loo, so it has to be caught here rather than only in the
-  # missing-argument branch.
+  # Treat an explicitly named NULL method as unspecified. Older objects can
+  # reach this branch through pull_out() or update().
   expand_manec(tt1, formulas,
                loo_controls = list(weights = list(method = NULL))) |>
     get_new_method() |>
@@ -178,14 +172,9 @@ test_that("each model is thinned to exactly its share of the weighted draws", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # expand_manec() used to read each model's posterior back off the object and
-  # thin it there; it now computes and thins one model at a time in
-  # w_grid_pred_calc(). "The weighted draws are the same" means two specific
-  # things, both asserted here rather than inferred from a range: each model
-  # contributes exactly round(sample_size * wi) rows, and every row it
-  # contributes is a row of that model's own posterior. Checked against the
-  # arithmetic of the weights rather than a stored constant, so this stays
-  # meaningful if the example objects are ever refitted.
+  # Check each model's contribution count against round(sample_size * wi)
+  # and check membership in its posterior. Derive counts from the fixture
+  # weights so regenerated example objects remain testable.
   set.seed(180)
   tt5 <- expand_manec(tt1, formulas) |>
     suppressMessages() |>
@@ -204,8 +193,8 @@ test_that("each model is thinned to exactly its share of the weighted draws", {
                                          NA, 1000, idx)
     expect_equal(nrow(drawn), round(n * tt5$mod_stats[mod, "wi"]))
     expect_equal(ncol(drawn), 1000)
-    # Row sums identify a row uniquely here because the values are copied, not
-    # recomputed, so they compare exactly.
+    # Copied values permit exact row-sum comparison on this fixture. Equal
+    # row sums alone do not establish row identity for arbitrary matrices.
     expect_true(all(rowSums(drawn) %in% rowSums(full)))
   }
   # The rows contributed across all models account for the whole weighted set.
@@ -245,11 +234,8 @@ test_that("posterior_epred() on the build grid reproduces w_pred_vals", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # Since #216 the weighted draw is realised once and the seed kept on the
-  # object, so the summaries stored at build time and a later posterior_epred()
-  # over the same grid are the same set of draws, not two independent ones.
-  # This is the property the migration note in the class docs promises; before
-  # #216 it held only in distribution.
+  # Stored summaries and later posterior_epred() calls on the same grid
+  # must reuse the same model-index draw, not merely agree in distribution.
   tt6 <- expand_manec(tt1, formulas) |>
     suppressMessages() |>
     suppressWarnings() |>
@@ -264,9 +250,7 @@ test_that("posterior_epred() on the build grid reproduces w_pred_vals", {
 })
 
 test_that("a partially specified x_range is rejected rather than guessed at", {
-  # bnec_newdata() used to ignore it silently while expand_nec() turned it into
-  # seq(NA, NA). Now one grid builder, one behaviour. See #211.
-  # Rejected whichever end is missing -- the two used to behave differently.
+  # Reject a partially missing x_range whichever endpoint is absent.
   expect_error(bayesnec:::check_args_newdata(10, c(1, NA)), "fully specified")
   expect_error(bayesnec:::check_args_newdata(10, c(NA_real_, 4)),
                "fully specified")
@@ -311,10 +295,9 @@ test_that("a bayesmanecfit saved with the old weighted cache still works", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # Same again for w_pred_vals$posterior, dropped in #213. The shipped
-  # manec_example was built before that change, so it is a genuinely old
-  # serialised object rather than a synthesised one -- which is the case worth
-  # testing. Nothing needs the matrix and nothing should trip over it.
+  # Check compatibility with an old object containing w_pred_vals$posterior.
+  # If the fixture is regenerated without it, add a synthetic cache so the
+  # compatibility assertion remains exercised.
   old_style <- manec_example
   if (is.null(old_style$w_pred_vals$posterior)) {
     # Only reached if the example data is ever regenerated under the new code;
@@ -335,5 +318,191 @@ test_that("a bayesmanecfit saved with the old weighted cache still works", {
     expect_error(suppressMessages(ecx(obj, ecx_val = 10)), NA)
     expect_invisible(plot(obj))
     expect_s3_class(autoplot(obj), "ggplot")
+  }
+})
+
+# Keep every `by`-th saved iteration of each chain, warmup and sampling
+# separately, as Stan does when it thins. The draws are read, never refitted.
+thin_prebayesnecfit <- function(x, by) {
+  sim <- x$fit$fit@sim
+  n_warm <- sim$warmup2[1]
+  n_post <- sim$n_save[1] - n_warm
+  keep <- c(seq(1, n_warm, by = by), n_warm + seq(1, n_post, by = by))
+  sim$samples <- lapply(sim$samples, function(chain) {
+    att <- attributes(chain)
+    out <- lapply(chain, `[`, keep)
+    att$sampler_params <- lapply(att$sampler_params, `[`, keep)
+    attributes(out) <- att
+    out
+  })
+  sim$thin <- by
+  sim$warmup2 <- rep(length(seq(1, n_warm, by = by)), sim$chains)
+  sim$n_save <- rep(length(keep), sim$chains)
+  kept <- sim$n_save[1] - sim$warmup2[1]
+  sim$permutation <- lapply(seq_len(sim$chains), function(i) sample(kept))
+  x$fit$fit@sim <- sim
+  x$fit$fit@stan_args <- lapply(x$fit$fit@stan_args, function(a) {
+    a$thin <- by
+    a
+  })
+  x
+}
+
+# manec_example holds 50 post-warmup draws in each of 2 chains. `by = 4` keeps
+# 13 of each, 26 in all, where ceiling(50 / 4 * 2) is 25. A `by` that divides
+# 50, or 3, gives the same count both ways and tests nothing.
+thinned_set <- local({
+  cached <- NULL
+  function() {
+    if (is.null(cached)) {
+      set.seed(477)
+      fits <- lapply(manec_example$mod_fits, thin_prebayesnecfit, by = 4)
+      out <- expand_manec(fits, lapply(fits, `[[`, "bayesnecformula")) |>
+        suppressMessages() |>
+        suppressWarnings()
+      cached <<- allot_class(out, c("bayesmanecfit", "bnecfit"))
+    }
+    cached
+  }
+})
+
+# The draw index each pull_draw_index() call returned while `expr` ran.
+indices_used <- function(expr) {
+  pull <- pull_draw_index
+  seen <- list()
+  with_mocked_bindings(
+    expr,
+    pull_draw_index = function(object, model_set, sample_size) {
+      out <- pull(object, model_set, sample_size)
+      seen[[length(seen) + 1]] <<- out
+      out
+    },
+    .package = "bayesnec"
+  ) |>
+    suppressMessages() |>
+    suppressWarnings()
+  seen
+}
+
+expect_stored_index_only <- function(fit) {
+  calls <- list(
+    ecx = function() ecx(fit),
+    nsec = function() nsec(fit),
+    ecnsec = function() ecnsec(fit, nsec = 1.5),
+    posterior_epred = function() posterior_epred(fit),
+    posterior_predict = function() posterior_predict(fit)
+  )
+  for (method in names(calls)) {
+    seen <- indices_used(calls[[method]]())
+    expect_gt(length(seen), 0, label = method)
+    for (idx in seen) {
+      expect_identical(idx, fit$w_draw_index[names(idx)], label = method)
+    }
+  }
+}
+
+test_that("a thinned set records the number of draws its fits hold", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  fit <- thinned_set()
+  sim <- extract_simdat(fit$mod_fits[[1]])
+  formula_n <- ceiling((sim$iter - sim$warmup) / sim$thin * sim$chains)
+  expect_lt(formula_n, fit$sample_size)
+  for (m in fit$success_models) {
+    expect_equal(fit$sample_size, brms::ndraws(fit$mod_fits[[m]]$fit))
+    expect_equal(fit$sample_size,
+                 nrow(brms::as_draws_df(fit$mod_fits[[m]]$fit)))
+  }
+  expect_true(all(unlist(fit$w_draw_index) <= fit$sample_size))
+})
+
+test_that("posterior_epred() on a thinned set returns the stored draws", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  fit <- thinned_set()
+  nd <- bnec_newdata(fit, resolution = nrow(fit$w_pred_vals$data))
+  expect_equal(nd$x, fit$w_pred_vals$data$x)
+  pe <- posterior_epred(fit, newdata = nd, re_formula = NA)
+  rows <- do.call(rbind, lapply(fit$success_models, function(m) {
+    brms::posterior_epred(fit$mod_fits[[m]]$fit, newdata = nd,
+                          re_formula = NA)[fit$w_draw_index[[m]], ,
+                                           drop = FALSE]
+  }))
+  expect_equal(unname(pe), unname(rows))
+  # The plot methods draw w_pred_vals, so a band computed from
+  # posterior_epred() must reproduce it.
+  summ <- data.frame(t(apply(pe, 2, estimates_summary)))
+  expect_equal(unname(as.matrix(summ)),
+               unname(as.matrix(fit$w_pred_vals$data[, -1])))
+})
+
+test_that("every method on a thinned set uses the stored index", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  fit <- thinned_set()
+  expect_stored_index_only(fit)
+  ecx_draws <- ecx(fit, posterior = TRUE) |>
+    suppressMessages() |>
+    suppressWarnings()
+  expect_length(ecx_draws, length(unlist(fit$w_draw_index)))
+})
+
+test_that("a set saved with the formula count keeps its stored index", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # Rebuild the set as earlier versions stored it: the formula count, and an
+  # index drawn from that many rows.
+  fit <- thinned_set()
+  sim <- extract_simdat(fit$mod_fits[[1]])
+  formula_n <- ceiling((sim$iter - sim$warmup) / sim$thin * sim$chains)
+  saved <- fit
+  saved$sample_size <- formula_n
+  saved$w_draw_index <- weighted_draw_index(fit$success_models, formula_n,
+                                            fit$mod_stats, fit$w_draw_seed)
+  expect_false(identical(saved$w_draw_index, fit$w_draw_index))
+  expect_stored_index_only(saved)
+  expect_equal(nrow(posterior_epred(saved)),
+               length(unlist(saved$w_draw_index)))
+  # Edge case: a caller thinning to fewer draws still rebuilds the index, in
+  # range of the draws it has.
+  small <- pull_draw_index(saved, saved$success_models, 10)
+  expect_false(identical(small, saved$w_draw_index))
+  expect_true(all(unlist(small) <= 10))
+})
+
+test_that("an undercounted set without an index rebuilds consistently", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  fit <- thinned_set()
+  sim <- extract_simdat(fit$mod_fits[[1]])
+  saved <- fit
+  saved$sample_size <- ceiling((sim$iter - sim$warmup) / sim$thin * sim$chains)
+  saved$w_draw_index <- NULL
+  per_model <- lapply(saved$mod_fits, function(m) brms::posterior_epred(m$fit))
+  for (seed in list(fit$w_draw_seed, NULL)) {
+    saved$w_draw_seed <- seed
+    expected <- weighted_draw_index(saved$success_models, saved$sample_size,
+                                     saved$mod_stats, seed)
+    expect_identical(pull_draw_index(saved, saved$success_models,
+                                      saved$sample_size), expected)
+    expect_identical(pull_draw_index(saved, saved$success_models,
+                                      set_draw_count(saved$mod_fits)), expected)
+    rows <- do.call(rbind, lapply(saved$success_models, function(m) {
+      per_model[[m]][expected[[m]], , drop = FALSE]
+    }))
+    expect_equal(unname(posterior_epred(saved)), unname(rows))
+    ecx_draws <- ecx(saved, posterior = TRUE) |>
+      suppressMessages() |>
+      suppressWarnings()
+    expect_length(ecx_draws, nrow(rows))
+    small <- pull_draw_index(saved, saved$success_models, 10)
+    expect_identical(small, weighted_draw_index(saved$success_models, 10,
+                                                saved$mod_stats, seed))
+    expect_true(all(unlist(small) <= 10))
   }
 })

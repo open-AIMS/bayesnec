@@ -9,7 +9,7 @@ exceedance(
   threshold,
   estimate = c("nec", "nsec", "ecx"),
   ecx_val = 10,
-  xform = identity,
+  xform = NULL,
   ...
 )
 }
@@ -29,8 +29,9 @@ or \code{\link{ecx}} respectively.}
 \item{ecx_val}{The effect level of the ECx, as in \code{\link{ecx}}. Used
 only where \code{estimate = "ecx"}, and refused for the other two.}
 
-\item{xform}{A function applied to the estimate before it is compared with
-\code{threshold}, as in \code{\link{nec}}.}
+\item{xform}{\code{NULL}, the default, or a function, passed to the
+estimator as in \code{\link{nec}}. It sets the scale \code{threshold} is
+read on; see Details.}
 
 \item{...}{Further arguments passed to \code{\link{nec}}, \code{\link{nsec}}
 or \code{\link{ecx}}, such as \code{x_range}, \code{resolution},
@@ -85,10 +86,10 @@ probabilities are \code{NA} and its \code{n_draws} is 0. Passing
 instead, as \code{nec(x, no_effect = TRUE)} reports it.
 
 \code{threshold} and the estimate are compared on one scale, the scale the
-estimator returns the estimate on. Without \code{xform} that is the
-predictor scale the model was fitted on, so under
-\code{crf(log(concentration))} the threshold is a log concentration; with
-\code{xform = exp} it is a concentration. A decreasing \code{xform}
+estimator returns the estimate on. Without \code{xform} that is the scale
+the predictor was recorded on, so under \code{crf(log(concentration))} the
+threshold is a concentration. With \code{xform = identity} it is a log
+concentration, the scale the model was fitted on. A decreasing \code{xform}
 reverses the order of the scale. A draw then exceeds the threshold on the
 transformed scale where it lies below the corresponding value on the fitted
 scale, and the censoring record is remapped with the draws, so that a draw
@@ -127,8 +128,9 @@ sampled \code{nec} draw is marked censored where it is at or above the
 bound, so a censored draw may lie on the bound itself, and a draw equal to
 the threshold does not exceed it. A threshold equal to the lower bound is
 decided, because a draw at or below it does not exceed it. Where the bound
-is itself back-transformed, as with \code{xform = exp} on a fit to
-\code{crf(log(concentration))}, it can differ in the last digits from the
+is itself back-transformed, as for \code{"nec"} on a fit to
+\code{crf(log(concentration))} without \code{xform} or with
+\code{xform = exp}, it can differ in the last digits from the
 concentration it was computed from: \code{exp(log(100))} is slightly above
 100. A threshold given as that concentration then falls just inside or just
 outside the range, and the rounding decides whether its probability is

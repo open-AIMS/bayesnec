@@ -79,6 +79,11 @@ best_crossed <- function(object) {
 #' @param disp_by_level A \code{\link[base]{logical}}. Should the family's
 #' dispersion parameter also take a separate value per level? Defaults to
 #' \code{TRUE}. Grouped fits only.
+#' @param prior_type,asymptote_observed,predictor_scale The arguments of
+#' \code{\link{bnec}} that build the default priors. Each defaults to the value
+#' \code{object} was fitted with, and to the \code{\link{bnec}} default where
+#' \code{object} does not record it, as a fit made by an earlier version of
+#' \pkg{bayesnec} does not. Each must be named in full.
 #' @param ... Further arguments passed to \code{\link[brms]{brm}}.
 #'
 #' @details
@@ -106,20 +111,23 @@ best_crossed <- function(object) {
 #' the family follows the growth component: \code{hurdle_gamma} where that was
 #' fitted as a Gamma, \code{zero_inflated_beta} where it was a Beta, and the
 #' corresponding count hurdle where it was Poisson or negative binomial.
-#' Nothing else transfers -- priors, control arguments and the like are
-#' defaults again unless passed through \code{...}.
+#' For either class, the default priors are built with the
+#' \code{prior_type}, \code{asymptote_observed} and \code{predictor_scale}
+#' \code{object} was fitted with, unless those arguments are supplied. A grouped
+#' fit made with \code{asymptote_observed = FALSE} is therefore refitted under
+#' the same declaration. Nothing else transfers: priors, control arguments and
+#' the like are defaults again unless passed through \code{...}.
 #'
 #' A \code{disp()} term in the formula held in \code{object} is kept, and in
 #' the joint model it applies to the dispersion parameter of the positive
-#' block. The variance function is written in that block's mean and centred on
-#' the positive responses, as it is for the growth component, so the joint
-#' model fits the same variance function (see \code{\link{bnec}}). A
-#' \code{formula} supplied here replaces the held one, so a \code{disp()} term
-#' is fitted only where it is written in that formula. \code{hurdle_negbinomial}
-#' does not yet take a \code{disp()} term, so a negative binomial growth
-#' component fitted with one is refused before anything is fitted; supply a
-#' \code{formula} without the term to refit it jointly with one shape for the
-#' whole curve.
+#' block. The variance function is written in the component mean \code{mu} of
+#' that block and centred on the positive responses, as it is for the growth
+#' component, so the joint model fits the same variance function (see
+#' \code{\link{bnec}}). A \code{formula} supplied here replaces the held one,
+#' so a \code{disp()} term is fitted only where it is written in that formula.
+#' A negative binomial growth component fitted with a \code{disp()} term is
+#' refitted as a \code{hurdle_negbinomial} whose shape follows the same
+#' sub-model.
 #'
 #' \bold{The joint refit of a grouped fit}
 #'
@@ -214,22 +222,25 @@ bnec_joint.default <- function(object, ...) {
 #' @export
 bnec_joint.bayesnechurdlefit <- function(object, model = NULL,
                                          model_survival = NULL,
-                                         formula = NULL, ...) {
-  # The formula is resolved and its names checked here, before anything else
-  # reads it. swap_crf_model() below rebuilds the crf() term from deparsed
-  # text, in which a non-syntactic predictor is written without backticks, so
-  # a supplied formula naming one failed as a parse error naming neither the
-  # column nor the term, before bnec() could reach its own refusal. The held
-  # formula has already passed the check in bnec_hurdle(); a supplied one has
-  # not. See #398.
+                                         formula = NULL, ...,
+                                         prior_type = NULL,
+                                         asymptote_observed = NULL,
+                                         predictor_scale = NULL) {
+  # The three follow `...` so that `prior` passed for brm() is not matched to
+  # `prior_type` by partial matching.
+  prior_args <- recorded_prior_args(object$growth, prior_type,
+                                    asymptote_observed, predictor_scale)
+  # Check the formula's names before swap_crf_model() below, which rebuilds
+  # the crf() term from deparsed text and fails on a non-syntactic predictor
+  # with a parse error naming neither the column nor the term. A supplied
+  # formula has not passed bnec_hurdle()'s check.
   if (is.null(formula)) {
     formula <- object$formula
   }
   formula <- bayesnecformula(formula, env = parent.frame())
   check_syntactic_names(formula)
-  # Beside it, so that a supplied crf(-x) is refused before the refit is
-  # announced rather than by the bnec() call that follows it. See #438.
-  check_crf_leading_minus(formula)
+  # Refuse a supplied crf(x - 1) here too, before the refit is announced.
+  check_crf_formula_operator(formula)
   best <- best_crossed(object)
   if (is.null(model)) {
     model <- best$growth
@@ -253,19 +264,17 @@ bnec_joint.bayesnechurdlefit <- function(object, model = NULL,
          "\" growth component, so this fit cannot be refitted jointly.",
          call. = FALSE)
   }
-  # The disp() term is checked against the two-block family here, before the
-  # refit is announced. bnec() checks it as well, once before its model loop,
-  # but only after the message below has said the refit is under way, and its
-  # remedy cannot name the `formula` argument, which is how a caller of
-  # bnec_joint() leaves out a term held in the hurdle fit's formula. The case
-  # this is for is a negative binomial growth component fitted with disp(),
-  # which maps to hurdle_negbinomial. tryCatch() rather than a message of its
-  # own, so that the reason stays the one check_disp_spec() gives and is
-  # stated in one place. See #410.
+  # Check the disp() term before message() announces the refit, so that a
+  # refusal can add the `formula` remedy, which bnec()'s own cannot name.
   disp_spec <- parse_disp_term(formula)
   if (!is.null(disp_spec)) {
     tryCatch(
-      check_disp_spec(disp_spec, joint_fam),
+      {
+        check_disp_spec(disp_spec, joint_fam)
+        if (shape_in_reported_mean(formula, joint_fam)) {
+          check_disp_count_truncation(formula, joint_fam)
+        }
+      },
       error = function(e) {
         stop(conditionMessage(e), " To refit this fit jointly without the",
              " term, pass bnec_joint() a `formula` that leaves out disp().",
@@ -278,7 +287,9 @@ bnec_joint.bayesnechurdlefit <- function(object, model = NULL,
           " response block and a ", model_survival, " survival block",
           " (crossed weight ", signif(best$weight, 3), ").")
   bnec(formula, data = object$data, family = joint_fam,
-       model_survival = model_survival, ...)
+       model_survival = model_survival, prior_type = prior_args$prior_type,
+       asymptote_observed = prior_args$asymptote_observed,
+       predictor_scale = prior_args$predictor_scale, ...)
 }
 
 #' @rdname bnec_joint
@@ -287,21 +298,24 @@ bnec_joint.bayesnechurdlefit <- function(object, model = NULL,
 #'
 #' @export
 bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
-                                        disp_by_level = TRUE, ...) {
+                                        disp_by_level = TRUE, ...,
+                                        prior_type = NULL,
+                                        asymptote_observed = NULL,
+                                        predictor_scale = NULL) {
   chk_logical(disp_by_level)
+  # Every level is fitted by the same call, so the first records them all.
+  prior_args <- recorded_prior_args(object$fits[[1]], prior_type,
+                                    asymptote_observed, predictor_scale)
   eq_weights <- joint_equation_weights(object)
   n_lev <- length(object$levels)
   favoured <- joint_level_equations(object)
   if (is.null(model)) {
-    # One equation per level, which is the bayesnecgroupfit analogue of
-    # best_crossed(): that function returns the best growth equation and the
-    # best survival equation separately, and bnec_joint() already composes two
-    # different equations into one hurdle model from them. Taking the highest
-    # summed weight instead would impose one form on levels that rejected it.
+    # Fit each level the equation it favours, as best_crossed() pairs the best
+    # equation of each block. The equation with the highest summed weight would
+    # impose one form on levels that rejected it.
     models <- favoured
-    # NA rather than a number. The summed-weight share describes an equation
-    # imposed on every level, and no equation is imposed here, so reporting it
-    # would put a figure on the object that says nothing about what was fitted.
+    # No equation is imposed on every level, so there is no summed-weight share
+    # to report.
     share <- NA_real_
   } else {
     if (!is.character(model) || length(model) != 1) {
@@ -323,27 +337,16 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
     formula <- object$formula
   }
   formula <- bayesnecformula(formula, env = parent.frame())
-  # Checked before swap_crf_model() below rebuilds the crf() term from
-  # deparsed text, for the reason given in the bayesnechurdlefit method: a
-  # supplied formula has not been through bnec_group()'s own check. See #398.
-  # The leading-minus refusal is raised beside it for the reason given in the
-  # bayesnechurdlefit method. See #438.
+  # Check the formula before swap_crf_model(), as the bayesnechurdlefit method
+  # does: a supplied formula has not passed bnec_group()'s check.
   check_syntactic_names(formula)
-  check_crf_leading_minus(formula)
-  # The grouping variable reaches formula text on two routes: as
-  # `0 + <group_var>` on each curve parameter where every level is fitted one
-  # equation (add_formula_level_terms()), and as `<dpar> ~ 0 + <group_var>`
-  # where the family has a dispersion parameter and disp_by_level is TRUE, on
-  # either branch. On those routes a name that has to be written in backticks
-  # failed as a parse error naming neither the column nor the term, after the
-  # refit had been announced. A composed refit of a family with no dispersion
-  # parameter, or with disp_by_level = FALSE, never writes the name, and brms
-  # 2.23.0 builds its Stan code with one. The refusal is nonetheless one rule
-  # for every refit: whether the levels are composed follows from their
-  # weights rather than from anything in the call, so a rule by route would
-  # accept a column for one grouped fit and refuse it for the next. Not refused
-  # in bnec_group(), whose per-level fits never write the name into a formula.
-  # See #398, whose wording this follows.
+  check_crf_formula_operator(formula)
+  # Refuse a non-syntactic grouping variable for every refit. The name is
+  # written into formula text, where a name needing backticks fails to parse,
+  # wherever every level is fitted one equation or the dispersion takes a value
+  # per level. Other refits never write it, but the branch taken follows from
+  # the weights, not the call, so the rule does not depend on the branch.
+  # bnec_group() accepts the name, because its fits never write it.
   if (!identical(object$group_var, make.names(object$group_var))) {
     stop("The grouping variable \"", object$group_var, "\" is not a",
          " syntactic R name. bnec_joint() writes it into the formula it",
@@ -365,28 +368,23 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
   }
   group_var <- object$group_var
   data <- object$data
-  # Re-levelled rather than taken as found. The coefficient order brms builds
-  # is the order of levels(), and a character column would be levelled
-  # alphabetically by the design matrix, so pinning it here is what makes
-  # `levels` on the returned object name the coefficients it has.
+  # Set the levels explicitly. brms orders the coefficients by levels(), and a
+  # character column would be levelled alphabetically, so this keeps `levels`
+  # on the returned object in coefficient order.
   data[[group_var]] <- factor(data[[group_var]], levels = object$levels)
-  # The representative equation. The composed branch builds its own formula and
-  # its own priors from `models`, but fit_bayesnec() still swaps one equation
-  # into the crf() term for the model frame and the data check, and takes one
-  # name for the failure record. The first level's is used because it is one of
-  # the equations actually fitted rather than a stand-in for none of them.
+  # The composed branch builds its formula and priors from `models`, but
+  # fit_bayesnec() still needs one equation, rep_model, for the model frame,
+  # the data check and the failure record. Use the first level's, which is
+  # one of the equations fitted.
   rep_model <- unname(models[[1]])
   formula <- swap_crf_model(formula, rep_model)
   level_spec <- list(group_var = group_var, levels = object$levels,
                      models = as.list(models), composed = composed,
                      nlpars = names(get(paste0("bf_", rep_model))[[2]]),
                      disp = isTRUE(disp_by_level))
-  # `prior` and `init` name parameters, and on the composed branch the names
-  # are the internal per-level ones (topaLv1 and the rest) that a caller has no
-  # way to know before the call is made. Refused rather than silently
-  # discarded: add_brm_defaults() validates a supplied prior against the
-  # representative equation's parameter list, so a set written for the curve
-  # parameters fails that check and is dropped without a word.
+  # Refuse `prior` and `init` on the composed branch, whose parameters use
+  # internal per-level names such as topaLv1. Values written for the ordinary
+  # curve parameters do not name the coefficients fitted here.
   dot_names <- names(list(...))
   if (composed && any(c("prior", "init") %in% dot_names)) {
     stop("`", paste0(intersect(c("prior", "init"), dot_names),
@@ -410,8 +408,8 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
   } else {
     ""
   }
-  # Announced before the data are built rather than after, so that a failure in
-  # building them is read against a call whose equation choice has been stated.
+  # Announce the refit before building the data, so that a failure there
+  # follows a message naming the equations chosen.
   if (composed) {
     message("Refitting jointly as one model composing ",
             paste0(unname(models), " at \"", object$levels, "\"",
@@ -438,7 +436,10 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
   brm_args <- list(...)
   brm_args$family <- family
   refit <- fit_bayesnec(formula = formula, data = data, model = rep_model,
-                         brm_args = brm_args, level_spec = level_spec)
+                         brm_args = brm_args, level_spec = level_spec,
+                         prior_type = prior_args$prior_type,
+                         asymptote_observed = prior_args$asymptote_observed,
+                         predictor_scale = prior_args$predictor_scale)
   out <- list(fit = refit$fit,
               model = if (composed) NA_character_ else rep_model,
               models = models, level_spec = level_spec,
@@ -448,6 +449,7 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
               family = family, model_weights = eq_weights,
               level_weights = joint_level_weights(object, models),
               model_weight_share = share)
+  attr(out, "bnec_version") <- joint_version_table(out, version_record())
   allot_class(out, c("bayesnecjointfit", "bnecfit"))
 }
 
@@ -464,10 +466,8 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
 #'
 #' @noRd
 joint_level_equations <- function(object) {
-  # Indexed by level rather than iterated over `fits` in whatever order they
-  # are stored: the names attached afterwards would otherwise be a second,
-  # independent ordering, and a mismatch would give a level the wrong
-  # equation silently.
+  # Index by level, so that each name attached below matches its value and no
+  # level is given another level's equation.
   out <- vapply(object$levels, function(l) {
     w <- fit_model_weights(object$fits[[l]])
     names(w)[which.max(w)]
@@ -481,11 +481,9 @@ joint_level_equations <- function(object) {
 #' @param models A named \code{\link[base]{character}} vector, the equation to
 #' report for each level.
 #'
-#' @details What the joint refit reports in place of the summed-weight share.
-#' A level's own weights sum to one, so this is the share of that level's
-#' evidence the equation fitted there holds, and it is a statement about the
-#' fit rather than about an equation the fit does not use. An equation
-#' \code{check_models()} dropped from a level holds zero there.
+#' @details The share of each level's model weight held by the equation fitted
+#' at that level, so it describes the fit, unlike the summed-weight share. An
+#' equation \code{check_models()} dropped from a level holds zero there.
 #'
 #' @return A named \code{\link[base]{numeric}} vector, one per level.
 #'
@@ -506,21 +504,16 @@ joint_level_weights <- function(object, models) {
 #' @param levels The factor levels, in coefficient order.
 #' @param group_var The name of the factor column.
 #'
-#' @details Builds the three things \code{compose_level_formula()} reads that
-#' are properties of the data rather than of the equations: a tag per level, an
-#' indicator column per level written into the data, and the predictor value
-#' each level's equation is evaluated at on the rows it does not own.
+#' @details Builds what \code{compose_level_formula()} reads from the data: a
+#' tag per level, an indicator column per level written into the data, and a
+#' mask value per level, the predictor value at which that level's equation is
+#' evaluated on the rows it does not own.
 #'
-#' The mask value is an \emph{observed} predictor value of that level, the
-#' observation nearest its median, and it is that rather than the median itself
-#' because the guard rests on it being a value the level already evaluates its
-#' equation at. The median of an even number of observations is not one of
-#' them.
-#'
-#' The predictor is taken from the model frame rather than from the data, so a
-#' \code{crf(log(x), ...)} formula masks on the transformed scale the equation
-#' is written on. Rows the model frame dropped are dropped from the level
-#' vector with it, so the mask value is an observation the fit actually sees.
+#' The mask value must be a value at which the level already evaluates its
+#' equation, so it is the observation nearest the level's median, not the
+#' median itself. It is read from the model frame, so a
+#' \code{crf(log(x), ...)} formula masks on the transformed scale, and rows the
+#' model frame dropped are dropped from the level vector too.
 #'
 #' @return A \code{\link[base]{list}} of \code{tags}, \code{inds},
 #' \code{x_ref} and \code{data}.
@@ -569,17 +562,15 @@ compose_level_data <- function(formula, data, levels, group_var) {
 #' @param object An object of class \code{\link{bayesnecgroupfit}}.
 #'
 #' @details The \code{\link{bayesnecgroupfit}} analogue of
-#' \code{\link{best_crossed}}. Each level's weights sum to one, so the summed
-#' weight of an equation runs from zero to the number of levels and dividing by
-#' that number gives the share of the available weight it holds. An equation
-#' \code{check_models()} dropped from one level contributes zero there rather
-#' than being excluded from the comparison, because a level that could not fit
-#' it is evidence against fitting it everywhere.
+#' \code{\link{best_crossed}}. Each level's weights sum to one, so an
+#' equation's summed weight runs from zero to the number of levels, and
+#' dividing by that number gives its share. An equation \code{check_models()}
+#' dropped from a level contributes zero there rather than being left out,
+#' because a level that could not fit it is evidence against fitting it
+#' everywhere.
 #'
-#' It does not go through \code{\link{crossed_group_weights}}, which refuses any
-#' fit not weighted by pseudo-BMA. That refusal is about the crossed table,
-#' whose factorisation holds for pseudo-BMA alone; a sum over levels needs no
-#' such identity and is defined for stacking weights as well.
+#' It does not call \code{\link{crossed_group_weights}}, which refuses a fit
+#' not weighted by pseudo-BMA. A sum over levels is defined under stacking too.
 #'
 #' @return A named \code{\link[base]{numeric}} vector, in decreasing order.
 #'

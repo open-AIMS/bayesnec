@@ -143,10 +143,8 @@ test_that("centring makes the model frame reachable end to end", {
 })
 
 test_that("route B refuses a non-identity link, route A does not", {
-  # the curve expression substituted into a variance function is the linear
-  # predictor on the link scale, so it is the mean only under identity. Under
-  # Gamma's inverse link the same fit runs, converges and returns the slope with
-  # the wrong sign, so this has to be refused rather than left to the user.
+  # The substituted curve is the link-scale predictor. An inverse Gamma link
+  # would reverse the fitted slope, so refuse it for a mean-based variance form.
   spec_b <- list(route = "B", value = "power")
   expect_error(
     bayesnec:::check_disp_spec(spec_b, Gamma(), response = c(1, 2, 3)),
@@ -183,11 +181,9 @@ test_that("disp_inits starts every slope at the middle of its own prior", {
   y <- c(0.5, 1, 2, 4)
   ii <- bayesnec:::disp_inits(list(route = "B", value = "power"), gaussian(), y)
   expect_named(ii, c("b_c0", "b_c1"))
-  # Every chain starts at one value: the sign of a slope is tied to the
-  # direction of the mean curve, so chains must not each pick their own. A
-  # gaussian c1 is bounded to [0, 1] (#472), so the constant-dispersion null is
-  # the lower bound and Stan would refuse it; the chains start at the mean of
-  # normal(0, 2) truncated to that interval instead.
+  # Give every chain the same slope initial value. A Gaussian c1 lies in
+  # [0, 1], so the zero null is invalid for Stan; start at the mean of
+  # normal(0, 2) truncated to that interval.
   expect_equal(as.numeric(ii$b_c1),
                2 * (dnorm(0) - dnorm(0.5)) / (pnorm(0.5) - pnorm(0)))
   expect_equal(as.numeric(ii$b_c0), log(sd(y)))
@@ -263,28 +259,28 @@ test_that("disp is rejected for families with no dispersion parameter", {
   }
 })
 
-test_that("disp is still rejected for the two count hurdles (#410)", {
-  # hurdle_gamma and zero_inflated_beta now take the term; see the #410 section
-  # at the end of this file. hurdle_poisson has no dispersion parameter, and
-  # hurdle_negbinomial waits on how the shape is read at the asymptote.
+test_that("hurdle_poisson refuses disp() and hurdle_negbinomial takes it (#410)", {
   f <- bnf(count ~ crf(x, "ecx4param") + disp("power"))
   expect_error(
     make_brmsformula(f, disp_dat, validate_family("hurdle_poisson")),
-    "hurdle_poisson has no free dispersion parameter"
+    "hurdle_poisson has no free dispersion parameter.*disp\\(\\) can model"
   )
-  expect_error(
-    make_brmsformula(f, disp_dat, validate_family("hurdle_negbinomial")),
-    "not yet supported .* hurdle_negbinomial.*pending a decision"
-  )
-  # route A as well: the refusal is of the term, not of a variance function
   f_a <- bnf(count ~ crf(x, "ecx4param") + disp(~x))
-  expect_error(
-    make_brmsformula(f_a, disp_dat, validate_family("hurdle_negbinomial")),
-    "pending a decision"
-  )
   expect_error(
     make_brmsformula(f_a, disp_dat, validate_family("hurdle_poisson")),
     "no free dispersion parameter"
+  )
+  fam <- validate_family("hurdle_negbinomial")
+  for (txt in c(' + disp("power")', ' + disp("loglinear")', " + disp(~x)")) {
+    bf <- make_brmsformula(bnf(paste0('count ~ crf(x, "ecx4param")', txt)),
+                           disp_dat, fam)[[1]]
+    expect_true("shape" %in% names(bf$pforms))
+  }
+  # "twosided" suits the beta families only
+  expect_error(
+    make_brmsformula(bnf(count ~ crf(x, "ecx4param") + disp("twosided")),
+                     disp_dat, fam),
+    "not valid for the hurdle_negbinomial family.*zero_inflated_beta\\.$"
   )
 })
 
@@ -419,10 +415,8 @@ test_that("every model yields a formula brms will accept with disp", {
 test_that("loglinear recovers a slope on a response that crosses zero", {
   skip_on_cran()
   skip_on_ci()
-  # the growth-rate case, scaled on c_proliferum x A: the curve runs from about
-  # 0.12 at the control to -0.5 where the population collapses, and sigma rises
-  # from 0.005 to 0.11 over that range, which is c1 = -5 and about a 20-fold
-  # spread -- the ratio those tests actually show
+  # The growth-rate fixture approximates c_proliferum x A: mean 0.12 to -0.5
+  # and sigma 0.005 to 0.11, giving c1 = -5 and about twentyfold spread.
   set.seed(202)
   x <- rep(c(0.1, 0.3, 1, 2, 5, 10, 20, 40), each = 15)
   mu <- -0.5 + (0.12 - -0.5) / (1 + exp((log(5) - log(x)) * exp(0.4)) ^ -1)
@@ -463,12 +457,8 @@ test_that("a variance function recovers a known exponent", {
 
 
 test_that("route B reads the curve the fit uses, not the template (#294)", {
-  # make_disp_block() rebuilt the curve from bf_<model>, which discarded
-  # everything add_formula_glef() had done to the main expression. With the
-  # multiplicative deviation that meant phi was modelled as a function of the
-  # population-level bot while mu used bnecbot, silently and with no message.
-  # wrangle_model_formula() already adds the dispersion block last for exactly
-  # this reason; the rebuild was what stopped that having any effect.
+  # Read the curve after parameter-level transformations. Rebuilding the
+  # template would make dispersion use population bot while mu uses bnecbot.
   set.seed(294)
   d <- data.frame(resp = runif(60, 0.05, 0.9),
                   pred = rep(log(c(0.1, 1, 10, 100, 1000, 1e4)), 10),
@@ -487,11 +477,9 @@ test_that("route B reads the curve the fit uses, not the template (#294)", {
                     fixed = TRUE))
   expect_true(grepl("bnecbot", phi_of('pgl(grp) + disp("twosided")'),
                     fixed = TRUE))
-  # #257's deviation on the whole curve does not. The variance function reads
-  # the curve before it, bnecmu, rather than the fitted mean of the group, in
-  # whose value depends on ogl (on the odds scale for this Beta family).
-  # Reading the fitted mean produced a second posterior mode in the zinc fit.
-  # See #468.
+  # Under ogl() the dispersion reads bnecmu, the curve before the overall
+  # deviation, and no form of that deviation, such as Beta's exp(ogl).
+  # Reading the deviated curve gave the posterior a second mode.
   under_ogl <- phi_of('ogl(grp) + disp("twosided")')
   expect_true(grepl("bnecmu", under_ogl, fixed = TRUE))
   expect_false(grepl("exp(ogl)", under_ogl, fixed = TRUE))
@@ -507,7 +495,7 @@ test_that("route B reads the curve the fit uses, not the template (#294)", {
 })
 
 
-# ---- #319, the disp() term resolves in the formula's environment -------------
+# Resolve disp() in the formula environment.
 
 test_that("a variance function named by a variable resolves", {
   build <- function() {
@@ -518,10 +506,8 @@ test_that("a variance function named by a variable resolves", {
 })
 
 test_that("a disp sub-model reaches Stan with a locally defined function", {
-  # brms resolves a distributional sub-model against the top-level
-  # brmsformula, whose environment came from the bf_<model> template. Asserted
-  # through make_stancode(), which generates the program without compiling or
-  # sampling it.
+  # brms resolves distributional terms in the top-level formula environment.
+  # Check with make_stancode(), which generates without compiling or sampling.
   d <- nec_data
   d$y <- pmin(pmax(d$y, 0.01), 0.99)
   build <- function() {
@@ -535,7 +521,7 @@ test_that("a disp sub-model reaches Stan with a locally defined function", {
 })
 
 
-# ---- #397, the centring constant on the scale of the mean --------------------
+# Centre on the scale of the mean.
 
 # The constants are spliced into the variance function as "- <literal>)", which
 # no curve expression contains, so this reads them back in order of appearance.
@@ -579,7 +565,7 @@ test_that("twosided centres both terms on the proportion (#397)", {
 })
 
 
-# ---- #410, disp() on the positive block of a joint two-block family ----------
+# disp() on the positive block of a joint family.
 
 # nec_data with every response above x = 1.8 recorded as a zero, which is 16 of
 # the 100 rows. `g` is the same response scaled for a Gamma block, so that its
@@ -706,7 +692,7 @@ test_that("the joint block fits the growth component's variance function", {
 
 test_that("a two-block family gets the positive block's disp() priors", {
   keep <- hurdle_dat$y > 0
-  # The bounds are compared as well as the densities (#472).
+  # Compare prior bounds as well as densities.
   disp_rows <- function(pr) {
     as.data.frame(pr)[pr$nlpar %in% c("c0", "c1", "c2"),
                       c("prior", "nlpar", "lb", "ub")]
@@ -750,11 +736,20 @@ test_that("get_priors refuses what bnec refuses on a two-block family", {
   d$n <- as.integer(round(d$y * 20))
   f <- n ~ crf(x, "nec3param") + disp("power")
   expect_error(suppressMessages(get_priors(f, data = d,
-                                           family = "hurdle_negbinomial")),
-               "pending a decision")
-  expect_error(suppressMessages(get_priors(f, data = d,
                                            family = "hurdle_poisson")),
                "hurdle_poisson has no free dispersion parameter")
+  # hurdle_negbinomial takes the term but refuses a column other than the
+  # predictor
+  pr_nb <- suppressMessages(get_priors(f, data = d,
+                                       family = "hurdle_negbinomial"))
+  expect_true(all(c("c0", "c1") %in% pr_nb$nlpar))
+  d$z <- factor(rep(c("a", "b"), length.out = nrow(d)))
+  expect_error(
+    suppressMessages(get_priors(n ~ crf(x, c("nec3param", "ecx4param")) +
+                                  disp(~z), data = d,
+                                family = "hurdle_negbinomial")),
+    "\"z\" cannot be fitted on the two-block family hurdle_negbinomial"
+  )
   pr <- suppressMessages(get_priors(g ~ crf(x, "nec3param") + disp("power"),
                                     data = hurdle_dat,
                                     family = "hurdle_gamma"))
@@ -762,7 +757,7 @@ test_that("get_priors refuses what bnec refuses on a two-block family", {
 })
 
 
-# ---- #468, the variance function reads the curve before ogl() ---------------
+# Read the variance curve before ogl().
 
 # The response block's curve and dispersion sub-formula of a built formula. No
 # model is compiled or sampled.
@@ -796,10 +791,9 @@ test_that("a Gamma variance function reads bnecmu under ogl() (#468)", {
 })
 
 test_that("the additive ogl() form leaves the variance curve (#468)", {
-  # Under the additive form the main right-hand side is ogl + <curve>, and the
-  # variance function takes <curve> alone: the sub-formula is the one the same
-  # formula without ogl() builds. gaussian is the family that always takes the
-  # additive form; Beta takes it for nechormepwr, whose mean can exceed 1.
+  # With additive ogl(), dispersion reads the curve alone and must match the
+  # formula without ogl(). This covers Gaussian and Beta nechormepwr, whose
+  # mean can exceed one.
   cases <- list(
     list(model = "ecx4param", fam = gaussian(link = "identity"),
          dpar = "sigma"),
@@ -831,10 +825,8 @@ test_that("a malformed additive ogl() formula is refused", {
 })
 
 test_that("a formula without ogl() builds what it did before (#468)", {
-  # Before #468 add_disp_block() passed the whole right-hand side of the main
-  # formula as the curve. The sub-formula is rebuilt that way here, through
-  # make_disp_block(), and compared with what the formula builder now gives,
-  # for parameter-level terms that rewrite the curve and for none.
+  # Rebuild dispersion from the full main right-hand side to check unchanged
+  # behaviour without ogl(), both with parameter-level rewrites and without.
   fams <- list(gaussian(link = "identity"), Gamma(link = "identity"),
                validate_family("Beta"))
   terms <- c("", " + (bot | tank)", " + pgl(tank)", " + (nec | tank)")
@@ -890,11 +882,9 @@ test_that("the two-block families read the curve before ogl() (#468)", {
 })
 
 test_that("a joint refit across levels reads the curve before ogl() (#468)", {
-  # bnec_joint() on a grouped fit with one equation at every level and
-  # disp_by_level = FALSE, the one level-term route that takes ogl() and
-  # disp() together. The level terms are applied after the dispersion block
-  # and rewrite only the curve parameters, so bnecmu reads the per-level curve
-  # and the variance function reads bnecmu.
+  # For grouped joint fits with one equation per level and shared dispersion,
+  # level terms rewrite curve parameters after the dispersion block. Check
+  # that bnecmu reads the per-level curve and dispersion reads bnecmu.
   d <- disp_dat
   d$site <- factor(rep(c("a", "b"), 15))
   spec <- list(group_var = "site", levels = c("a", "b"),
@@ -922,16 +912,11 @@ test_that("a joint refit across levels reads the curve before ogl() (#468)", {
   expect_identical(pform_rhs(grouped, "sigma"), pform_rhs(ungrouped, "sigma"))
 })
 
-# ---- #472, the range of c1 and its regularizing centre -----------------------
+# The range of c1 and its regularising centre.
 
-# A declining curve over six concentrations with `n` replicates each, and a
-# response whose dispersion parameter is proportional to mu^c1: the Gamma
-# shape, the gaussian sigma, or the negative binomial shape. The replicates at
-# one concentration share one mean, so the slope disp_replicate_slope() reads
-# from them estimates c1. Over 500 draws at n = 30 the estimate had a standard
-# deviation of 0.12 (Gamma, c1 = 0.8), 0.06 (gaussian, c1 = 0.6) and 0.14
-# (negbinomial, c1 = 0.5), which sets the tolerances below at about two of
-# them. No model is compiled or sampled in this section.
+# Simulate six replicated concentrations with dispersion proportional to mu^c1.
+# Tolerances allow about two empirical slope standard deviations.
+# This section estimates slopes from simulated data without fitting Stan.
 slope_sim <- function(family, c1, n = 30, seed = 472) {
   set.seed(seed)
   x <- rep(c(0.1, 0.3, 1, 3, 10, 30), each = n)
@@ -1011,7 +996,7 @@ test_that("twosided and loglinear are unchanged by the range (#472)", {
         "ecx4param", disp_fam(tag), disp_dat$x, y, prior_type = pt,
         disp_spec = list(route = "B", value = "loglinear")
       ))
-      # the string define_disp_prior() wrote before #472
+      # The unbounded normal density used for the slope.
       expect_identical(row$prior,
                        paste0("normal(0, ", signif(2 / sd(y), 4), ")"))
       expect_true(is.na(row$lb) && is.na(row$ub))
@@ -1248,10 +1233,8 @@ test_that("add_brm_defaults starts c1 inside the bounds in force (#472)", {
   expect_equal(starts, rep(centre, 2))
 })
 
-# #443. A disp(~z) term naming a column other than the predictor. None of the
-# blocks below samples: the grid is built from a list holding the data and the
-# family, which is all prediction_grid() reads, and the refusals are reached
-# before anything is fitted.
+# A disp(~z) term names a column other than the predictor. Build grids from
+# data/family stand-ins and reach refusals before fitting; no sampling.
 disp_z_dat <- data.frame(
   x = rep(c(0.1, 1, 3, 10), 3),
   y = c(2.1, 1.9, 1.2, 0.4, 2.0, 1.7, 1.1, 0.5, 2.2, 1.8, 1.0, 0.3),
@@ -1494,4 +1477,368 @@ test_that("every family bayesnec fits reads as before through the tag (#436)", {
                        label = tag)
     }
   }
+})
+
+# ---- disp() on the joint hurdle_negbinomial ----------------------------------
+# Only the last test compiles a model.
+
+nb_hurdle_dat <- function() {
+  d <- slope_sim("negbinomial", 0.5)
+  d$y[d$x == max(d$x)][1:5] <- 0L
+  d$z <- factor(rep(c("a", "b"), length.out = nrow(d)))
+  d
+}
+
+# A stand-in for a joint hurdle_negbinomial fit. Tests mock as_draws_df() and
+# ndraws() to supply its draws.
+nb_disp_object <- function(disp_txt, family = "hurdle_negbinomial",
+                           d = nb_hurdle_dat()) {
+  f <- bnf(paste0('y ~ crf(x, "nec4param")', disp_txt))
+  fam <- if (is.character(family)) validate_family(family) else family
+  bf <- make_brmsformula(f, d, family = fam)[[1]]
+  structure(list(model = "nec4param",
+                 fit = list(family = fam, formula = bf),
+                 bayesnecformula = f),
+            class = c("bayesnecfit", "bnecfit"))
+}
+nb_draws <- data.frame(b_c0_Intercept = c(1.2, 2.5, 0.4),
+                       b_c1_Intercept = c(0.3, 0.75, 0.05))
+
+test_that("shape_in_reported_mean names the two truncated routes (#410)", {
+  expect_true(bayesnec:::shape_in_reported_mean(NULL, "hurdle_negbinomial"))
+  expect_true(bayesnec:::shape_in_reported_mean(
+    NULL, validate_family("hurdle_negbinomial")
+  ))
+  tf <- bayesnec:::add_hurdle_truncation(bnf(y ~ crf(x, "nec3param")))
+  expect_true(bayesnec:::shape_in_reported_mean(
+    tf, validate_family("negbinomial")
+  ))
+  # an untruncated negbinomial reports a mean free of the shape
+  expect_false(bayesnec:::shape_in_reported_mean(
+    bnf(y ~ crf(x, "nec3param")), validate_family("negbinomial")
+  ))
+  # a truncated poisson growth component has no shape
+  expect_false(bayesnec:::shape_in_reported_mean(
+    tf, validate_family("poisson")
+  ))
+  # hurdle_gamma reports mu * (1 - hu) and zero_inflated_beta mu * (1 - zi),
+  # and hurdle_poisson has no shape
+  for (tag in c("hurdle_gamma", "zero_inflated_beta", "hurdle_poisson")) {
+    expect_false(bayesnec:::shape_in_reported_mean(NULL, tag), label = tag)
+  }
+})
+
+test_that("disp(~z) is refused on the joint hurdle_negbinomial (#410)", {
+  f <- bnf(y ~ crf(x, "nec3param") + disp(~z))
+  expect_error(
+    bayesnec:::check_disp_count_truncation(f, "hurdle_negbinomial"),
+    paste0("\"z\" cannot be fitted on the two-block family hurdle_negbinomial",
+           ".*1 - hu, so both depend on the shape parameter.*disp\\(~x\\)")
+  )
+  # the growth component keeps its own message
+  expect_error(bayesnec:::check_disp_count_truncation(f),
+               "\"z\" cannot be fitted on a negbinomial growth component")
+  d <- nb_hurdle_dat()
+  fam <- validate_family("hurdle_negbinomial")
+  # the formula builder is the backstop
+  expect_error(make_brmsformula(f, d, family = fam),
+               "cannot be fitted on the two-block family hurdle_negbinomial")
+  # bnec() refuses once, before its model loop
+  fitted <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      fitted <<- fitted + 1L
+      stop("nothing should be fitted")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(
+    suppressMessages(bnec(y ~ crf(x, c("nec3param", "ecx4param")) + disp(~z),
+                          data = d, family = fam)),
+    "cannot be fitted on the two-block family hurdle_negbinomial"
+  )
+  expect_equal(fitted, 0L)
+  # a term on the predictor alone, and a variance function, are fitted
+  for (txt in c(" + disp(~x)", " + disp(~log(x + 1))", ' + disp("power")')) {
+    expect_error(
+      suppressMessages(bnec(bnf(paste0('y ~ crf(x, "nec3param")', txt)),
+                            data = d, family = fam)),
+      "nothing should be fitted", label = txt
+    )
+  }
+  # hurdle_gamma's curve does not involve its shape, so z is accepted there
+  d$g <- ifelse(d$y > 0, d$y + 0.5, 0)
+  expect_silent(make_brmsformula(bnf(g ~ crf(x, "nec3param") + disp(~z)), d,
+                                 family = validate_family("hurdle_gamma")))
+})
+
+test_that("disp_at_mean evaluates the sub-model at a stated mean (#410)", {
+  local_mocked_bindings(
+    as_draws_df = function(x, variable = NULL, ...) nb_draws[, variable],
+    .package = "bayesnec"
+  )
+  mu <- c(3, 8.5, 0.7)
+  for (vf in c("power", "loglinear")) {
+    obj <- nb_disp_object(paste0(' + disp("', vf, '")'))
+    ref <- centring_literals(pform_rhs(obj$fit$formula, "shape"))
+    eta <- switch(vf,
+      power = nb_draws$b_c0_Intercept +
+        nb_draws$b_c1_Intercept * (log(mu) - ref),
+      loglinear = nb_draws$b_c0_Intercept +
+        nb_draws$b_c1_Intercept * (mu - ref)
+    )
+    got <- bayesnec:::disp_at_mean(obj$fit, list(route = "B", value = vf), mu)
+    expect_equal(got$value, exp(eta), label = vf)
+    expect_equal(unname(got$centre), ref, label = vf)
+    expect_identical(got$link, "log")
+  }
+  # a negative centring literal, written "- -0.5", is read as -0.5
+  d <- nb_hurdle_dat()
+  d$y <- d$y / 100
+  obj <- nb_disp_object(' + disp("power")', d = d)
+  ref <- centring_literals(pform_rhs(obj$fit$formula, "shape"))
+  expect_lt(ref, 0)
+  got <- bayesnec:::disp_at_mean(obj$fit, list(route = "B", value = "power"),
+                                 mu)
+  expect_equal(unname(got$centre), ref)
+  # the dispersion link is the family's own
+  fam <- validate_family(brms::hurdle_negbinomial(link = "identity",
+                                                  link_shape = "softplus",
+                                                  link_hu = "identity"))
+  obj <- nb_disp_object(' + disp("power")', family = fam)
+  ref <- centring_literals(pform_rhs(obj$fit$formula, "shape"))
+  got <- bayesnec:::disp_at_mean(obj$fit, list(route = "B", value = "power"),
+                                 mu)
+  eta <- nb_draws$b_c0_Intercept + nb_draws$b_c1_Intercept * (log(mu) - ref)
+  expect_equal(got$value, log1p(exp(eta)))
+  # a formula of another form is refused rather than misread
+  obj <- nb_disp_object(' + disp("loglinear")')
+  expect_error(
+    bayesnec:::disp_at_mean(obj$fit, list(route = "B", value = "power"), mu),
+    "does not have the form of disp\\(\"power\"\\)"
+  )
+})
+
+test_that("disp_at_mean reads the formula a brmsfit stores (#410)", {
+  # brm(empty = TRUE) validates the formula as a fit does, without compiling.
+  local_mocked_bindings(
+    as_draws_df = function(x, variable = NULL, ...) nb_draws[, variable],
+    .package = "bayesnec"
+  )
+  obj <- nb_disp_object(' + disp("power")')
+  d <- nb_hurdle_dat()
+  empty <- suppressMessages(brms::brm(obj$fit$formula, data = d,
+                                      family = obj$fit$family, empty = TRUE))
+  mu <- c(3, 8.5, 0.7)
+  spec <- list(route = "B", value = "power")
+  expect_equal(bayesnec:::disp_at_mean(empty, spec, mu),
+               bayesnec:::disp_at_mean(obj$fit, spec, mu))
+})
+
+test_that("the asymptote shape under disp() is the sub-model at bot (#410)", {
+  bot <- c(4, 2.5, 6)
+  local_mocked_bindings(
+    as_draws_df = function(x, variable = NULL, ...) nb_draws[, variable],
+    ndraws = function(x) nrow(nb_draws),
+    posterior_epred = function(...) stop("the control is not read"),
+    .package = "bayesnec"
+  )
+  obj <- nb_disp_object(' + disp("power")')
+  ref <- centring_literals(pform_rhs(obj$fit$formula, "shape"))
+  shape_bot <- exp(nb_draws$b_c0_Intercept +
+                     nb_draws$b_c1_Intercept * (log(bot) - ref))
+  expected <- as.numeric(bayesnec:::hurdle_positive_mean(
+    bot, "hurdle_negbinomial", shape_bot
+  ))
+  got <- bayesnec:::count_positive_asymptote(obj, "mu", bot,
+                                             data.frame(x = 0))
+  expect_equal(got, expected)
+  # reading the shape at the control, a larger mean, gives a lower asymptote
+  shape_ctrl <- exp(nb_draws$b_c0_Intercept +
+                      nb_draws$b_c1_Intercept * (log(10 * bot) - ref))
+  expect_true(all(got > as.numeric(bayesnec:::hurdle_positive_mean(
+    bot, "hurdle_negbinomial", shape_ctrl
+  ))))
+  # the factorised growth component reads it the same way
+  tf_obj <- obj
+  tf_obj$fit$family <- validate_family("negbinomial")
+  tf_obj$bayesnecformula <- bayesnec:::add_hurdle_truncation(
+    obj$bayesnecformula
+  )
+  tf_obj$fit$formula <- make_brmsformula(
+    tf_obj$bayesnecformula, nb_hurdle_dat()[nb_hurdle_dat()$y > 0, ],
+    family = tf_obj$fit$family
+  )[[1]]
+  ref_g <- centring_literals(pform_rhs(tf_obj$fit$formula, "shape"))
+  expect_equal(ref_g, ref)
+  expect_equal(
+    bayesnec:::count_positive_asymptote(tf_obj, NULL, bot, data.frame(x = 0)),
+    expected
+  )
+  # the combined endpoint and the hu block read no shape, and are unchanged
+  expect_identical(
+    bayesnec:::count_positive_asymptote(obj, NULL, bot, data.frame(x = 0)),
+    bot
+  )
+  expect_identical(
+    bayesnec:::count_positive_asymptote(obj, "hu", bot, data.frame(x = 0)),
+    bot
+  )
+})
+
+test_that("an equation without bot takes the limit at a mean of zero (#410)", {
+  draws <- data.frame(b_c0_Intercept = c(1.2, 2.5, 0.4, 1),
+                      b_c1_Intercept = c(0.3, 0.999, 1, 1.4))
+  local_mocked_bindings(
+    as_draws_df = function(x, variable = NULL, ...) draws[, variable],
+    ndraws = function(x) nrow(draws),
+    .package = "bayesnec"
+  )
+  obj <- nb_disp_object(' + disp("power")')
+  ref <- centring_literals(pform_rhs(obj$fit$formula, "shape"))
+  got <- bayesnec:::count_positive_asymptote(obj, "mu", 0, data.frame(x = 0))
+  # mu / shape tends to 0 for c1 < 1, to exp(ref - c0) at c1 = 1, and
+  # without bound above it
+  r <- exp(ref - draws$b_c0_Intercept[3])
+  expect_equal(got, c(1, 1, r / log1p(r), Inf))
+  # the shape of "loglinear" is finite at a mean of zero
+  obj <- nb_disp_object(' + disp("loglinear")')
+  expect_equal(
+    bayesnec:::count_positive_asymptote(obj, "mu", 0, data.frame(x = 0)),
+    rep(1, 4)
+  )
+})
+
+test_that("a relative estimate under disp(~x) is refused (#410)", {
+  local_mocked_bindings(
+    posterior_epred = function(...) stop("the shape is not read"),
+    .package = "bayesnec"
+  )
+  obj <- nb_disp_object(" + disp(~x)")
+  expect_error(
+    bayesnec:::count_positive_asymptote(obj, "mu", c(4, 2.5),
+                                        data.frame(x = 0)),
+    paste0("type = \"relative\" measures towards the asymptote.*disp\\(~x\\)",
+           ".*has no single shape.*type = \"absolute\".*disp\\(\"power\"\\)")
+  )
+  # the estimators that read no asymptote reach no refusal
+  expect_identical(
+    bayesnec:::count_positive_asymptote(obj, "mu", NA_real_,
+                                        data.frame(x = 0)),
+    NA_real_
+  )
+  expect_identical(
+    bayesnec:::count_positive_asymptote(obj, NULL, c(4, 2.5),
+                                        data.frame(x = 0)),
+    c(4, 2.5)
+  )
+})
+
+test_that("disp(~1) reads its one shape at the control (#410)", {
+  shape <- matrix(c(2, 5), ncol = 1)
+  local_mocked_bindings(
+    posterior_epred = function(...) shape,
+    .package = "bayesnec"
+  )
+  obj <- nb_disp_object(" + disp(~1)")
+  expect_equal(
+    bayesnec:::count_positive_asymptote(obj, "mu", c(4, 2.5),
+                                        data.frame(x = 0)),
+    as.numeric(bayesnec:::hurdle_positive_mean(c(4, 2.5),
+                                               "hurdle_negbinomial", shape))
+  )
+})
+
+test_that("a model set reads each equation's shape at its own bot (#410)", {
+  parts <- list(a = nb_disp_object(' + disp("power")'),
+                b = nb_disp_object(' + disp("power")'))
+  parts$a$model <- "a"
+  parts$b$model <- "b"
+  parts$b$fit$draws <- "b"
+  draws <- list(a = nb_draws,
+                b = data.frame(b_c0_Intercept = c(0.8, 1.9, 3),
+                               b_c1_Intercept = c(0.6, 0.2, 0.9)))
+  object <- structure(list(
+    mod_fits = list(a = list(fit = 1), b = list(fit = 2))
+  ), class = c("bayesmanecfit", "bnecfit"))
+  bot <- list(a = c(4, 2.5, 6), b = c(8, 5, 12))
+  draw_index <- list(a = c(1L, 3L), b = 2L)
+  local_mocked_bindings(
+    as_draws_df = function(x, variable = NULL, ...) {
+      d <- if (is.list(x) && identical(x$draws, "b")) draws$b else draws$a
+      if (is.null(variable)) d else d[, variable]
+    },
+    ndraws = function(x) nrow(nb_draws),
+    pull_draw_index = function(...) draw_index,
+    pull_out = function(object, model) parts[[model]],
+    ecx_asymptote = function(object, type) bot[[object$model]],
+    .package = "bayesnec"
+  )
+  ref <- centring_literals(pform_rhs(parts$a$fit$formula, "shape"))
+  each <- lapply(c("a", "b"), function(m) {
+    d <- draws[[m]]
+    as.numeric(bayesnec:::hurdle_positive_mean(
+      bot[[m]], "hurdle_negbinomial",
+      exp(d$b_c0_Intercept + d$b_c1_Intercept * (log(bot[[m]]) - ref))
+    ))
+  })
+  names(each) <- c("a", "b")
+  expect_equal(
+    bayesnec:::count_positive_asymptote(object, "mu", rep(0, 3),
+                                        data.frame(x = 0)),
+    c(each$a[draw_index$a], each$b[draw_index$b])
+  )
+})
+
+test_that("a joint count hurdle centres c1 as a truncated count (#410)", {
+  # Under "regularizing" the c1 prior centres on 0 rather than on the
+  # replicate slope, as for a growth component.
+  spec <- list(route = "B", value = "power")
+  d <- nb_hurdle_dat()
+  pos <- d$y > 0
+  # the replicates do show a slope, so the test can fail
+  expect_gt(bayesnec:::disp_replicate_slope("negbinomial", d$x[pos], d$y[pos]),
+            0.1)
+  for (pt in c("uninformative", "regularizing")) {
+    row <- c1_row(bayesnec:::define_prior(
+      "nec4param", validate_family("hurdle_negbinomial"), d$x, d$y,
+      prior_type = pt, disp_spec = spec
+    ))
+    expect_identical(row$prior, "normal(0, 2)", label = pt)
+    expect_equal(as.numeric(c(row$lb, row$ub)), c(0, 1), label = pt)
+  }
+  pr <- suppressMessages(get_priors(y ~ crf(x, "nec4param") + disp("power"),
+                                    data = d, family = "hurdle_negbinomial",
+                                    prior_type = "regularizing"))
+  expect_identical(c1_row(pr)$prior, "normal(0, 2)")
+  expect_equal(as.numeric(c(c1_row(pr)$lb, c1_row(pr)$ub)), c(0, 1))
+  ii <- bayesnec:::disp_inits(spec, validate_family("hurdle_negbinomial"),
+                              d$y, d$x, prior_type = "regularizing")
+  expect_equal(as.numeric(ii$b_c1),
+               bayesnec:::truncated_normal_mean(0, 2, 0, 1))
+  expect_equal(as.numeric(ii$b_c0), 2)
+})
+
+test_that("a joint hurdle_negbinomial fit reads its shape at bot (#410)", {
+  skip_on_cran()
+  skip_on_ci()
+  d <- nb_hurdle_dat()
+  fit <- suppressWarnings(suppressMessages(
+    bnec(y ~ crf(x, "nec4param") + disp("power"), data = d,
+         family = "hurdle_negbinomial", chains = 1, iter = 600, warmup = 300,
+         seed = 410, refresh = 0)
+  ))
+  drws <- brms::as_draws_df(fit$fit)
+  ref <- centring_literals(pform_rhs(fit$fit$formula, "shape"))
+  bot <- drws$b_bot_Intercept
+  shape_bot <- exp(drws$b_c0_Intercept +
+                     drws$b_c1_Intercept * (log(bot) - ref))
+  expect_equal(
+    bayesnec:::count_positive_asymptote(fit, "mu", bot, data.frame(x = 0)),
+    as.numeric(bayesnec:::hurdle_positive_mean(bot, "hurdle_negbinomial",
+                                               shape_bot))
+  )
+  est <- suppressWarnings(ecx(fit, type = "relative", dpar = "mu",
+                              ecx_val = 50))
+  expect_true(all(is.finite(est)))
 })

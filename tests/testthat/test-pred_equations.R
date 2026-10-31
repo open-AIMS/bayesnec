@@ -1,13 +1,6 @@
-# The `?models` and vignette("example2b") documentation added under #139 claims
-# that drc's NEC.4 and NEC.3 are *exactly* nec4param and nec3param, not
-# approximations of them. That is a numerical claim in prose, so it is asserted
-# here rather than left to be re-derived by whoever next doubts it.
-#
-# drc is not a dependency, and adding one to test a documentation claim would be
-# a poor trade. Its generator is three lines, so it is reproduced here verbatim
-# from drc:::NEC()$fct -- the point of the test is that OUR equations match THAT
-# formula, and an inlined copy makes the comparison explicit rather than hiding
-# it behind a package version.
+# Check documented equivalence to drc NEC.3/NEC.4 using its transcribed
+# formula below, avoiding a new test dependency. The comparison fixes
+# the reference formula independently of installed drc versions.
 
 # drc:::NEC()$fct, transcribed. parmMat columns are b, c, d, e.
 drc_nec <- function(b, c, d, e, dose) {
@@ -38,16 +31,9 @@ test_that("nec3param is exactly drc's NEC.3, which fixes c = 0", {
 })
 
 test_that("the equivalence holds away from the tested parameter values", {
-  # A single parameter set could match by coincidence of the step location. Vary
-  # every parameter, including a nec outside the predictor range (so the step
-  # never fires) and one at the lower boundary (so it fires everywhere).
-  #
-  # The grid is over `beta` with drc's b = exp(beta), not over b with our
-  # beta = log(b). That is the direction the equivalence actually runs, and it
-  # matters numerically: round-tripping b through exp(log(b)) is not the
-  # identity in floating point, and doing it that way round produces
-  # discrepancies of ~7e-15 that belong to the round trip rather than to any
-  # difference between the two models.
+  # Vary every parameter and include thresholds outside and at the grid
+  # boundary. Start from beta with b = exp(beta): exp(log(b)) introduces
+  # round-off unrelated to equation equivalence.
   x <- seq(0, 10, length.out = 25)
   grid <- expand.grid(beta = c(-3, -0.92, 1.1), c = c(0, 0.1, 0.6),
                       d = c(0.5, 1, 40), e = c(-1, 0, 3.2, 25))
@@ -63,10 +49,8 @@ test_that("the equivalence holds away from the tested parameter values", {
 })
 
 test_that("the reparameterisation round trip is where the only error lives", {
-  # Documented so nobody re-derives it: given b = exp(beta) the two forms are
-  # bit-identical, but a user starting from a drc `b` and setting
-  # beta = log(b) will not recover it exactly. The size of that is worth
-  # knowing -- it is round-off, not a modelling difference.
+  # Starting from drc b and round-tripping through beta = log(b) can
+  # introduce floating-point error even when the equations agree.
   x <- seq(0, 10, length.out = 25)
   b <- 0.05
   round_trip <- max(abs(
@@ -78,11 +62,9 @@ test_that("the reparameterisation round trip is where the only error lives", {
 })
 
 test_that("bayesnec's decay rate is positive by construction", {
-  # The one substantive difference documented in ?models: drc estimates b
-  # directly and can return b < 0, a threshold followed by unbounded growth.
-  # exp(beta) cannot be negative for any real beta, so that region is
-  # unreachable here -- which is the reason NEC.2's fixed-top case and drc's
-  # negative-b case are both documented as deliberate omissions.
+  # drc can estimate negative b and therefore unbounded post-threshold
+  # growth. exp(beta) excludes that region for finite real beta; the
+  # fixed-top NEC.2 case is also outside the documented mapping.
   x <- seq(0, 10, length.out = 25)
   betas <- c(-50, -5, 0, 5)
   for (beta in betas) {

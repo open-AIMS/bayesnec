@@ -182,8 +182,8 @@ not condition a censored count contribution on the truncation bound, and
 ## The second block describes survival, not mortality
 
 Both routes model the probability of **surviving**, which declines with
-concentration and so matches the sign convention of all 23 `bayesnec`
-equations. They arrive at this differently.
+concentration and so matches the sign convention of the 23 `bayesnec`
+equations that change with concentration. They arrive at this differently.
 
 **In the factorised route the response is coded as survival.** There is a real
 response variable for the second fit, so `bnec_hurdle()` constructs an
@@ -209,10 +209,11 @@ agree with the factorised one, not a modelling decision.
 Placing the declining curve on survival, in both routes, has three
 consequences.
 
-* **The equation set is reused unchanged.** All 23 equations are available for
+* **The equation set is reused unchanged.** All 24 equations are available for
   the second block, with no mirrored versions to write or maintain. `beta` is
-  exponentiated in every one, so they can only decline; an increasing mortality
-  curve is not something they can express.
+  exponentiated in every one that has it, so they can only decline, or for
+  `ecxflat` stay constant; an increasing mortality curve is not something they
+  can express.
 * **The priors remain well behaved.** `hutop` is control survival, so it sits
   near 1 and takes the same prior a `bernoulli` fit would use. Under a
   mortality parameterisation the equivalent parameter would sit near 0, against

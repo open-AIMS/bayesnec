@@ -1,10 +1,6 @@
-# check_response_flattened() reports, before anything is fitted, that the
-# response is still declining between the two highest concentrations tested.
-# The rule replaces the decline-from-the-control ratio of PR #387, which
-# measured the size of the effect rather than whether the series had flattened.
-# See #390 and notes/tasks/386-incomplete-designs-claude.md section 2.2.
-#
-# Nothing here fits a model, so no Stan program is compiled.
+# Check the contrast between the two highest tested concentrations before
+# fitting. Decline from the control measures effect size, not flattening.
+# These tests compile no Stan programs.
 
 set.seed(390)
 
@@ -58,14 +54,15 @@ test_that("a gaussian response is reported where its top two levels differ", {
     check_response_flattened(bdat, gaussian(link = "identity")),
     "falls from 0.805 to 0.602 as x rises from 2 to 4"
   )
-  # What the report says about the threshold priors, pinned because it went
-  # stale once and nothing failed: it said they "exclude a threshold above the
-  # tested range", which stopped being true when #393 removed the truncation.
-  # This is the only sentence of the message that makes a claim about the
-  # priors rather than about the data, and it is the only one that was not
-  # already asserted here.
+  # Pin what the report says about the threshold priors. It is the one claim
+  # about the priors rather than the data, and it must follow the declaration.
   expect_message(
     check_response_flattened(bdat, gaussian(link = "identity")),
+    "priors are bounded to the tested range, so they exclude a threshold"
+  )
+  expect_message(
+    check_response_flattened(bdat, gaussian(link = "identity"),
+                             asymptote_observed = FALSE),
     "put a threshold above the tested range in their tail"
   )
   flat <- flat_bdat(y ~ crf(x, "nec4param"),
@@ -74,9 +71,8 @@ test_that("a gaussian response is reported where its top two levels differ", {
 })
 
 test_that("a high lower asymptote is not reported", {
-  # The case PR #387's decline ratio warned on and this rule does not: a
-  # sublethal endpoint whose response has fallen by a fifth and then flattened
-  # is a complete design.
+  # A sublethal response that falls by a fifth and then flattens is complete;
+  # effect size alone must not trigger the report.
   y <- c(1.02, 0.98, 1.01, 0.99,
          0.90, 0.92, 0.88, 0.91,
          0.81, 0.83, 0.80, 0.82,
@@ -235,8 +231,8 @@ test_that("a hormesis design is assessed against the top of its own series", {
 })
 
 test_that("a response with a non-positive control mean is still assessed", {
-  # A log-ratio or centred response, for which the PR #387 decline ratio was
-  # undefined and the check was skipped silently (#229).
+  # A log-ratio or centred response must not be skipped because a ratio to
+  # the control would be undefined.
   y <- declining_y - 1
   bdat <- flat_bdat(y ~ crf(x, "nec4param"), data.frame(x = flat_x, y = y))
   expect_message(
@@ -324,11 +320,9 @@ test_that("fewer than two predictor levels is passed over in silence", {
 })
 
 test_that("a design with no replication is passed over in silence", {
-  # A factor fit on one observation per predictor value is saturated, so no
-  # contrast is defined. Section 2.2 of the plan asks for a report here, and it
-  # is not given: that shape is an ordinary continuous predictor rather than a
-  # degenerate design, and reporting on it would put an advisory on every fit
-  # of the package's own example data.
+  # One observation per predictor value gives a saturated factor fit with no
+  # contrast. Skip this ordinary continuous-predictor layout, otherwise every
+  # fit of the package example data would receive an advisory.
   bdat <- flat_bdat(y ~ crf(x, "nec4param"),
                     data.frame(x = c(0, 1, 2, 4),
                                y = c(1, 0.9, 0.8, 0.6)))
@@ -348,11 +342,9 @@ test_that("nec_data, which every vignette fits, is passed over", {
 })
 
 test_that("an unreplicated binomial design falls back to a fixed dispersion", {
-  # One composite sample per dilution with twenty individuals scored in it is
-  # the ordinary whole effluent binomial layout. quasibinomial would need
-  # replication it does not have, so the contrast is taken on the individuals
-  # instead, which is what the survival block of a hurdle fit does with the
-  # same counts.
+  # One composite sample of twenty individuals per dilution has no replicate
+  # vessels to estimate quasibinomial dispersion. Test individuals, as the
+  # hurdle survival block does for the same counts.
   d <- data.frame(x = c(0, 1, 2, 4), succ = c(20, 16, 11, 2), tr = 20)
   bdat <- flat_bdat(succ | trials(tr) ~ crf(x, "nec3param"), d)
   for (family in list(binomial(link = "identity"),
@@ -370,11 +362,8 @@ test_that("an unreplicated binomial design falls back to a fixed dispersion", {
   )
   expect_identical(as_binomial$status, "tested")
   expect_equal(as_binomial$p_value, flatness_contrast(survival)$p_value)
-  # A replicated design keeps quasibinomial, because over-dispersion between
-  # replicate vessels is real and is worth accounting for. Asserted on the
-  # p-value, not on the status: both routes return "tested", so a status
-  # assertion would pass whether or not the fallback had fired on a design
-  # that supplies its own dispersion, which is the regression this guards.
+  # Replicate vessels support quasibinomial dispersion. Assert the p-value: both
+  # routes report "tested", which alone cannot detect an incorrect fallback.
   replicated <- list(x = rep(c(2, 4), each = 3),
                      successes = c(11, 10, 12, 4, 5, 3),
                      trials = rep(20, 6), spec = flatness_spec("binomial"))
@@ -386,11 +375,9 @@ test_that("an unreplicated binomial design falls back to a fixed dispersion", {
 })
 
 test_that("a binomial block with one individual per level is passed over", {
-  # The dispersion is fixed for these two, so replication is not what carries
-  # the information: the number of individuals is. One individual at each of
-  # the two levels leaves a two-by-two table of single trials, on which the
-  # deviance test reads p = 0.048 for any pair (1, 0) and the exact conditional
-  # p is a half.
+  # With fixed dispersion, information comes from individuals. One trial at each
+  # level gives deviance p = 0.048 for (1, 0), but exact conditional p = 0.5; do
+  # not treat that pair as sufficient information.
   x <- seq_len(30)
   y <- rep(c(1, 0), length.out = 30)
   bdat <- flat_bdat(y ~ crf(x, "nec3param"), data.frame(x = x, y = y))
@@ -449,9 +436,8 @@ test_that("a family with no row is passed over", {
 })
 
 test_that("a binomial family with no trials term is passed over", {
-  # check_trials_term() refuses it before this report runs from bnec() or
-  # bnec_group(), so a direct call says nothing here rather than report a
-  # contrast with no trials to count against (#442).
+  # Entry points reject missing trials before this report. A direct call must
+  # remain silent rather than assess a contrast without its denominators.
   expect_identical(
     flatness_blocks(flat_x, declining_successes, NULL, NULL,
                     binomial(link = "identity")),
@@ -540,6 +526,30 @@ test_that("a complete prior for every sensitive row silences the report", {
   )
 })
 
+test_that("ecxflat in a set neither raises nor silences the report (#485)", {
+  # It estimates none of bot, nec or ec50, so it adds no sensitive row, and a
+  # prior complete for the other equations still silences the report.
+  fam <- gaussian(link = "identity")
+  expect_identical(uses_response_range_defaults(NULL, "ecxflat", fam),
+                   c(response = FALSE))
+  nec_prior <- brms::prior_string("normal(1, 1)", nlpar = "nec")
+  bot_prior <- brms::prior_string("normal(0, 1)", nlpar = "bot")
+  for (p in list(NULL, nec_prior, nec_prior + bot_prior)) {
+    expect_identical(
+      uses_response_range_defaults(p, c("nec4param", "ecxflat"), fam),
+      uses_response_range_defaults(p, "nec4param", fam)
+    )
+  }
+  for (grp in c("all", "ecx", "decline")) {
+    expect_identical(
+      uses_response_range_defaults(NULL, mod_groups[[grp]], hurdle_family),
+      uses_response_range_defaults(NULL, setdiff(mod_groups[[grp]], "ecxflat"),
+                                   hurdle_family),
+      info = grp
+    )
+  }
+})
+
 test_that("the two blocks of a hurdle fit are silenced separately", {
   response_prior <- brms::prior_string("normal(1, 1)", nlpar = "nec")
   survival_prior <- brms::prior_string("normal(1, 1)", nlpar = "hunec")
@@ -550,6 +560,97 @@ test_that("the two blocks of a hurdle fit are silenced separately", {
   expect_identical(
     uses_response_range_defaults(survival_prior, "nec3param", hurdle_family),
     c(response = TRUE, survival = FALSE)
+  )
+})
+
+test_that("a survival block with none of bot, nec or ec50 is not sensitive", {
+  # paste0() returns the bare prefix "hu" for an empty set of rows, which no
+  # supplied prior can name, so the block was always reported as sensitive.
+  for (m in c("ecxlin", "ecxexp", "ecxsigm", "ecxflat")) {
+    expect_identical(uses_response_range_defaults(NULL, m, hurdle_family),
+                     c(response = FALSE, survival = FALSE), info = m)
+    expect_identical(
+      uses_response_range_defaults(NULL, m, hurdle_family, affected = "bot"),
+      c(response = FALSE, survival = FALSE), info = m
+    )
+  }
+  expect_identical(
+    uses_response_range_defaults(NULL, "nec4param", hurdle_family,
+                                 model_survival = "ecxexp"),
+    c(response = TRUE, survival = FALSE)
+  )
+  expect_identical(
+    uses_response_range_defaults(NULL, "ecxexp", hurdle_family,
+                                 model_survival = "nec4param"),
+    c(response = FALSE, survival = TRUE)
+  )
+})
+
+# A hurdle response whose survival falls between the two highest
+# concentrations while the survivors' response stays flat.
+declining_survival <- function() {
+  x <- rep(c(0, 1, 2, 4), each = 12)
+  alive <- c(rep(1, 12), c(rep(1, 11), 0), c(rep(1, 8), rep(0, 4)),
+             c(rep(1, 2), rep(0, 10)))
+  data.frame(x = x,
+             y = ifelse(alive == 1, rep(c(5.0, 5.2, 4.9, 5.1), 12), 0))
+}
+
+test_that("bnec() reports no survival block whose equation has no bot", {
+  d <- declining_survival()
+  local_mocked_bindings(
+    fit_bayesnec = function(...) stop("mock fit"),
+    .package = "bayesnec"
+  )
+  survival_report <- "The survival block is still declining"
+  report_of <- function(...) {
+    msg <- capture_messages(try(bnec(..., data = d, family = hurdle_family),
+                                silent = TRUE))
+    length(grep(survival_report, msg))
+  }
+  # The survival block of a curve with bot and nec is reported, so the data
+  # do raise the report.
+  expect_identical(report_of(y ~ crf(x, "nec4param")), 1L)
+  for (m in c("ecxexp", "ecxsigm", "ecxflat")) {
+    expect_identical(report_of(stats::as.formula(
+      paste0("y ~ crf(x, \"", m, "\")")
+    )), 0L, info = m)
+  }
+  expect_identical(
+    report_of(y ~ crf(x, "nec4param"), model_survival = "ecxexp"), 0L
+  )
+  # bnec_group() reads the same function for each level.
+  d2 <- rbind(transform(d, site = "a"), transform(d, site = "b"))
+  msg <- capture_messages(try(
+    bnec_group(y ~ crf(x, "ecxexp"), data = d2, group_var = "site",
+               family = hurdle_family),
+    silent = TRUE
+  ))
+  expect_length(grep("still declining", msg), 0)
+})
+
+test_that("the declaration needs no floor where no equation estimates bot", {
+  # Under a log link the mu block has no floor. An ecxexp survival block has no
+  # bot, so a bot prior for the response block is all the declaration needs.
+  d <- declining_survival()
+  # Unvalidated: validate_family() without a link source assigns identity.
+  log_family <- brms::hurdle_gamma(link = "log", link_hu = "identity")
+  bdat <- flat_bdat(y ~ crf(x, "ecxexp"), d)
+  expect_silent(bayesnec:::check_asymptote_declaration(
+    bdat, log_family, "ecxexp", asymptote_observed = FALSE
+  ))
+  bot_prior <- brms::prior_string("gamma(2, 1)", nlpar = "bot")
+  expect_silent(bayesnec:::check_asymptote_declaration(
+    bdat, log_family, "nec4param", asymptote_observed = FALSE,
+    prior = bot_prior, model_survival = "ecxexp"
+  ))
+  # Without the bot prior the response block still has no floor.
+  expect_error(
+    bayesnec:::check_asymptote_declaration(
+      bdat, log_family, "nec4param", asymptote_observed = FALSE,
+      model_survival = "ecxexp"
+    ),
+    "\"log\" link", fixed = TRUE
   )
 })
 
@@ -619,8 +720,8 @@ test_that("bnec_group reports every level once and marks the inner calls", {
 declare_advice <- "declare it with asymptote_observed = FALSE"
 
 test_that("a declared call is not advised to declare (#449)", {
-  # Only the advice to set asymptote_observed = FALSE is dropped. The rest of
-  # the report is unchanged.
+  # The advice to set asymptote_observed = FALSE is dropped, and the sentence
+  # on the threshold priors describes the priors the declaration builds.
   bdat <- flat_bdat(y ~ crf(x, "nec4param"),
                     data.frame(x = flat_x, y = declining_y))
   fam <- gaussian(link = "identity")
@@ -632,11 +733,12 @@ test_that("a declared call is not advised to declare (#449)", {
   expect_length(declared, 1)
   expect_match(undeclared, declare_advice, fixed = TRUE)
   expect_match(declared, still_declining, fixed = TRUE)
-  expect_false(grepl("asymptote_observed", declared, fixed = TRUE))
-  # The declared report is the undeclared one minus the advice.
+  expect_false(grepl(declare_advice, declared, fixed = TRUE))
   advice <- bayesnec:::declaration_advice(fam, declining_y)
   expect_true(nzchar(advice))
-  expect_identical(declared, sub(advice, "", undeclared, fixed = TRUE))
+  expect_match(advice, "removes the upper bound of the nec and ec50 priors",
+               fixed = TRUE)
+  expect_false(grepl(advice, declared, fixed = TRUE))
   expect_match(declared, "where information beyond the design is available.\n",
                fixed = TRUE)
   expect_identical(
@@ -723,10 +825,8 @@ test_that("bnec_group refuses an invalid declaration before any report (#449)", 
 # ---- calibration ------------------------------------------------------------
 
 test_that("the report rate on a flat top is near the stated alpha", {
-  # On a design whose top is flat the true contrast is zero, so the rule
-  # reports at alpha by construction. This is a small self-contained check that
-  # the realised rate is of that order; the audit over the incomplete-design
-  # cells is #391.
+  # On a flat top, the null contrast is zero. Check that the realised reporting
+  # rate is near alpha across these simulated replicates.
   skip_on_cran()
   set.seed(3901)
   reps <- 500

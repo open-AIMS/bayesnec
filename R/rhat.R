@@ -84,10 +84,8 @@ rhat.bayesnecfit <- function(x, rhat_cutoff = 1.01, ...) {
 #' @export
 rhat.bayesmanecfit <- function(x, rhat_cutoff = 1.01, ...) {
   chk_number(rhat_cutoff)
-  # Straight to $fit rather than through pull_out(). pull_out() rebuilds a whole
-  # bayesnecfit -- predictions, posteriors -- to reach a brmsfit that is already
-  # sitting in mod_fits, and summary() now calls this on every candidate, so the
-  # cost lands on an operation users run constantly. See #148 Part D.
+  # Read $fit directly: pull_out() would rebuild a whole bayesnecfit to reach
+  # it, and summary() calls this for every equation.
   out <- lapply(x$success_models, function(m) {
     rhat_one(x$mod_fits[[m]]$fit, rhat_cutoff)
   })
@@ -111,10 +109,9 @@ rhat_one <- function(fit, rhat_cutoff) {
   rhat_vals <- rhat(fit) |>
     screenable_pars() |>
     clean_rhat_names()
-  # na.rm is redundant given screenable_pars(), and kept anyway: `failed` is
-  # read as a logical by summary(), print.manecsummary() and screen_models(),
-  # and an NA there turns a convergence check into a silent no-op rather than
-  # an error. It must be non-NA by construction, not by upstream good manners.
+  # Keep na.rm although screenable_pars() removes NA: an NA `failed` would
+  # make the convergence check in summary() and screen_models() a silent
+  # no-op.
   list(rhat_vals = rhat_vals,
        failed = any(rhat_vals > rhat_cutoff, na.rm = TRUE))
 }
@@ -122,26 +119,14 @@ rhat_one <- function(fit, rhat_cutoff) {
 #' The parameters a convergence screen should reduce over
 #'
 #' Drops two kinds of entry from a named vector of per-parameter diagnostics.
+#' \code{prior_*} entries are draws from the prior, which \code{\link{bnec}}
+#' adds to every fit with \code{sample_prior = "yes"}; their Rhat is noise and
+#' can fail a model on a variable that is not part of it. \code{NA} entries
+#' come from zero-variance columns, such as a parameter fixed by a
+#' \code{constant()} prior, which has nothing to converge to.
 #'
-#' \code{prior_*}: \code{\link{bnec}} forces \code{sample_prior = "yes"} on every
-#' fit, so every \code{brmsfit} carries a \code{prior_b_top}, \code{prior_sigma}
-#' and so on. Those are independent draws from the prior, not from the
-#' posterior; their Rhat and ESS are Monte Carlo noise about a distribution the
-#' sampler never had to explore. Reducing over them fails a model on a variable
-#' that is not part of the model -- on \code{manec_example}, \code{ecx4param}
-#' has \code{prior_b_bot} at Rhat 1.023, over the 1.01 cutoff, while nothing in
-#' the model itself is.
-#'
-#' \code{NA}: \code{posterior::rhat()} and \code{posterior::ess_bulk()} both
-#' return \code{NA} for a zero-variance column, which is exactly what a
-#' \code{constant()} prior produces (#244). A parameter fixed at a known value
-#' has nothing to converge to, so it belongs out of the screen rather than in it
-#' as an \code{NA} for every caller downstream to guard against.
-#'
-#' \code{lp__} and \code{lprior} are kept, deliberately rather than by omission.
-#' Unlike \code{prior_*} they are deterministic functions of the posterior
-#' draws, so they do carry information about whether the sampler explored the
-#' posterior, and \code{lp__} is the conventional global convergence check.
+#' \code{lp__} and \code{lprior} are kept on purpose: they are functions of the
+#' posterior draws and carry a convergence signal.
 #'
 #' @param x A named \code{\link[base]{numeric}} vector.
 #'

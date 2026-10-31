@@ -13,7 +13,7 @@
   add_nec = TRUE,
   position_legend = "topright",
   add_ec10 = FALSE,
-  xform = identity,
+  xform = NULL,
   lxform = identity,
   jitter_x = FALSE,
   jitter_y = FALSE,
@@ -29,7 +29,7 @@
   add_nec = TRUE,
   position_legend = "topright",
   add_ec10 = FALSE,
-  xform = identity,
+  xform = NULL,
   lxform = identity,
   jitter_x = FALSE,
   jitter_y = FALSE,
@@ -66,7 +66,13 @@ give the coordinates instead.}
 \item{add_ec10}{A \code{\link[base]{logical}} value indicating if an
 estimated EC10 value and 95\% credible intervals should be added to the plot.}
 
-\item{xform}{A function to be applied as a transformation of the x data.}
+\item{xform}{\code{NULL}, the default, or a function. Where \code{crf()}
+does not transform the predictor inline, a function is applied to the x data
+and to the annotated estimates. Where it does, the x data are drawn on the
+recorded scale, and the annotation is the estimate \code{\link{nec}} or
+\code{\link{ecx}} returns by default, which is on that scale. A function
+other than \code{identity} is then applied to the estimates on the
+transformed scale instead, as the estimators apply it.}
 
 \item{lxform}{A function to be applied as a transformation only to axis
 labels and the annotated NEC / EC10 values.}

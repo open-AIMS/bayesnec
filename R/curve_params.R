@@ -13,8 +13,10 @@
 #' \code{\link{bayesnecgroupfit}}.
 #' @param summary A \code{\link[base]{logical}} vector of length 1. Whether to
 #' return the summary table (the default) or the underlying posterior draws.
-#' @param xform A function applied to \code{nec} and \code{ec50}, and to no
-#' other parameter. See Details.
+#' @param xform \code{NULL}, the default, or a function, applied to
+#' \code{nec} and \code{ec50} and to no other parameter. \code{NULL} returns
+#' those two on the scale the predictor was recorded on. A function is applied
+#' to them on the scale the model was fitted on. See Details.
 #' @param ... Passed to the per-component and per-level calls by the
 #' \code{\link{bayesnechurdlefit}} and \code{\link{bayesnecgroupfit}} methods,
 #' and unused by the other two.
@@ -61,14 +63,17 @@
 #'
 #' \bold{\code{xform} applies to \code{nec} and \code{ec50} only.} Those two
 #' are measured on the predictor axis, so where \code{crf()} transforms the
-#' predictor inline --- \code{crf(sqrt(x), ...)} --- they are on the
-#' transformed scale, exactly as \code{\link{nec}} and \code{\link{ecx}} are,
-#' and \code{xform} is the inverse that brings them back. Every other
-#' parameter is a response level or a shape parameter and is not on the
-#' predictor axis at all, so \code{xform} is not applied to it. Where the
-#' predictor is transformed inline and \code{xform} was left at
-#' \code{identity}, a message says which parameters are on the transformed
-#' scale.
+#' predictor inline --- \code{crf(sqrt(x), ...)} --- they are sampled on the
+#' transformed scale. Without \code{xform} they are returned on the recorded
+#' scale by the inverse of the transformation, as \code{\link{nec}} returns
+#' the \code{nec} parameter: exactly where the inverse has a closed form, and
+#' otherwise by interpolating on the prediction grid. A draw beyond that grid
+#' then has no value, so it is \code{NA}, the row summarising it is
+#' \code{NA}, and a message names the remedy. A supplied \code{xform} is
+#' applied to them on the transformed scale, so \code{xform = identity}
+#' returns that scale. Every other parameter is a response level or a shape
+#' parameter and is not on the predictor axis at all, so it is returned as
+#' sampled.
 #'
 #' @return With \code{summary = TRUE}, a \code{\link[base]{data.frame}} with
 #' columns \code{model}, \code{wi}, \code{dpar}, \code{link}, \code{parameter},
@@ -128,7 +133,7 @@
 #' curve_params(nec4param)
 #'
 #' @export
-curve_params <- function(object, summary = TRUE, xform = identity, ...) {
+curve_params <- function(object, summary = TRUE, xform = NULL, ...) {
   UseMethod("curve_params")
 }
 
@@ -142,18 +147,15 @@ curve_params <- function(object, summary = TRUE, xform = identity, ...) {
 #' @importFrom chk chk_lgl
 #'
 #' @export
-curve_params.bayesnecfit <- function(object, summary = TRUE, xform = identity,
+curve_params.bayesnecfit <- function(object, summary = TRUE, xform = NULL,
                                    ...) {
   chk_lgl(summary)
   check_xform(xform)
-  report_scales(object, xform, paste(object$model, "fit"))
-  # wi is 1 rather than NA: the object holds one equation and is the whole of
-  # the set it describes. An object pulled out of a bayesmanecfit no longer
-  # holds the weight it had there -- pull_out() returns a fit in its own
-  # right -- so reading a weight off it would be reporting a number the object
-  # does not hold.
+  report_scales(object, paste(object$model, "fit"))
+  # wi is 1, not NA: a fit holds one equation and is the whole of its set. A
+  # fit from pull_out() does not keep the weight it had in its set.
   one_fit_params(object$fit, models = dpar_models(object), wi = 1,
-                     summary = summary, xform = xform)
+                     summary = summary, xform = recorded_xform(object, xform))
 }
 
 #' @rdname curve_params
@@ -167,25 +169,18 @@ curve_params.bayesnecfit <- function(object, summary = TRUE, xform = identity,
 #'
 #' @export
 curve_params.bayesmanecfit <- function(object, summary = TRUE,
-                                     xform = identity, ...) {
+                                     xform = NULL, ...) {
   chk_lgl(summary)
   check_xform(xform)
   mods <- object$success_models
-  # Once for the set, not once per equation. Every model in a bayesmanecfit is
-  # fitted with the same family and the same formula, so the link and the
-  # predictor transformation are properties of the set; reporting them per
-  # equation would print the same paragraph 23 times on the default model set.
-  # No gate is needed to achieve that: the loop below calls
-  # one_fit_params() directly rather than curve_params(), so nothing inside
-  # it reaches report_scales() a second time. The group and hurdle methods do
-  # dispatch curve_params() per level and per component, and those set the gates.
-  report_scales(object$mod_fits[[mods[1]]], xform, "fitted model set")
-  # Ordered by weight, so the equation holding most of the model average is
-  # read first. Which equation a reported parameter belongs to is the whole
-  # content of this table, and the weight is what says how much of the model
-  # average that equation accounts for. Straight to $fit rather than through
-  # pull_out(), which rebuilds predictions and posteriors to reach a brmsfit
-  # already sitting in mod_fits.
+  # Report once for the set, whose equations share a family and a formula. The
+  # loop below calls one_fit_params(), not curve_params(), so it does not
+  # report again.
+  report_scales(object$mod_fits[[mods[1]]], "fitted model set")
+  # One map for the set, read off the set's prediction grid.
+  xform <- recorded_xform(object, xform)
+  # Order by weight. Read $fit directly: pull_out() would rebuild predictions
+  # and posteriors to reach the same brmsfit.
   wi <- model_weights_for(object, mods)
   ord <- order(wi, decreasing = TRUE)
   out <- lapply(ord, function(i) {
@@ -212,29 +207,19 @@ curve_params.bayesmanecfit <- function(object, summary = TRUE,
 #'
 #' @export
 curve_params.bayesnechurdlefit <- function(object, summary = TRUE,
-                                         xform = identity, ...) {
-  # Validated here as well as in the component methods, so that a bad argument
-  # is an error before anything is printed rather than after the delegation
-  # notice.
+                                         xform = NULL, ...) {
+  # Check the arguments here as well, so that a bad one fails before the
+  # message below is printed.
   chk_lgl(summary)
   check_xform(xform)
   message(hurdle_no_combined("curve_params"))
-  # The two components are separate fits with separate families --- growth
-  # takes the family of the non-zero response and survival is bernoulli --- so
-  # each link is reported. Reported here, named by component, rather than left
-  # to the component methods: those name the equation, and the two components
-  # often fit the same one, so two paragraphs would both open "The nec3param
-  # fit was made with" and neither would say which component it described.
+  # Report each component's link here, named by component. The component
+  # methods name the equation, which the two components often share.
   for (cmp in c("growth", "survival")) {
     report_link(fit_links(representative_fit(object[[cmp]])$fit),
                 paste(cmp, "component"))
   }
-  # One formula on one predictor, so the transformation is reported once for
-  # the pair.
-  report_x_transform(representative_fit(object$growth), xform,
-                     "fitted hurdle pair")
-  quiet <- options(bayesnec.link_reported = TRUE,
-                   bayesnec.xform_reported = TRUE)
+  quiet <- options(bayesnec.link_reported = TRUE)
   on.exit(options(quiet), add = TRUE)
   hurdle_delegate(object, curve_params, summary = summary, xform = xform, ...)
 }
@@ -246,26 +231,21 @@ curve_params.bayesnechurdlefit <- function(object, summary = TRUE,
 #'
 #' @export
 curve_params.bayesnecgroupfit <- function(object, summary = TRUE,
-                                        xform = identity, ...) {
+                                        xform = NULL, ...) {
   chk_lgl(summary)
   check_xform(xform)
-  # Every level is fitted with the same family and the same formula --- see
-  # bnec_group(), which chooses the family once and fits one formula at every
-  # level --- so both the link and the predictor transformation are reported
-  # once for the group rather than once per level.
-  report_scales(representative_fit(object$fits[[1]]), xform, "fitted group")
-  quiet <- options(bayesnec.link_reported = TRUE,
-                   bayesnec.xform_reported = TRUE)
+  # Every level shares one family, so report once for the group.
+  report_scales(representative_fit(object$fits[[1]]), "fitted group")
+  quiet <- options(bayesnec.link_reported = TRUE)
   on.exit(options(quiet), add = TRUE)
   out <- group_lapply(object, curve_params, summary = summary, xform = xform,
                       ...)
   if (!summary) {
     return(out)
   }
-  # One table with a level column, matching nec() and ecx() on this class
-  # rather than returning a list the caller has to bind themselves. Safe here
-  # in a way group_estimate_table() is not: the per-level results are already
-  # data frames with named columns, so there are no positions to mislabel.
+  # Bind into one table with a level column, as nec() and ecx() do on this
+  # class. The per-level results already have named columns, so rbind() cannot
+  # mislabel them.
   out <- do.call(rbind, lapply(seq_along(out), function(i) {
     cbind(data.frame(level = object$levels[i], stringsAsFactors = FALSE),
           out[[i]])
@@ -277,17 +257,10 @@ curve_params.bayesnecgroupfit <- function(object, summary = TRUE,
 #' The parameters of the concentration-response equations, in reporting order
 #'
 #' \code{expand_nec()} holds the same eight names in another order, as
-#' \code{extract_par_order()}, because the elements it extracts are appended to
-#' the \code{\link{bayesnecfit}} in that order. The two are separate
-#' definitions and are held in step by an \code{expect_setequal()} in
-#' \code{test-curve_params.R}, not by one reading the other: a parameter added
-#' for a new equation has to be added to both, and the test is what says so.
-#'
-#' Fixed rather than derived from \code{\link{show_params}} so that the row
-#' order of the table is a property of this function and not of the order in
-#' which a \code{\link[brms]{brmsformula}} happens to list its terms. Every
-#' parameter of every one of the 23 equations appears in this vector; an
-#' equation contributes the subset it estimates.
+#' \code{extract_par_order()}. A parameter added for a new equation must be
+#' added to both; \code{test-curve_params.R} checks that they agree. The order
+#' here is the row order of the table, whatever order a
+#' \code{\link[brms]{brmsformula}} lists its terms in.
 #'
 #' @return A \code{\link[base]{character}} vector.
 #' @noRd
@@ -332,21 +305,11 @@ x_scale_par_names <- function() {
   c("nec", "ec50")
 }
 
-#' @noRd
-check_xform <- function(xform) {
-  if (!inherits(xform, "function")) {
-    stop("xform must be a function.", call. = FALSE)
-  }
-  invisible(NULL)
-}
-
 #' The model weight of each named equation
 #'
-#' Matched on the \code{model} column rather than on the row names of
-#' \code{mod_stats}. The row names arrive incidentally --- \code{expand_manec()}
-#' picks them up from the dispersion matrix it binds --- so a set whose frame
-#' reached this function without them would report every weight as \code{NA}
-#' with nothing said.
+#' Matched on the \code{model} column, not the row names of \code{mod_stats},
+#' which \code{expand_manec()} sets only incidentally. Without them every
+#' weight would be \code{NA}.
 #'
 #' @param object A \code{\link{bayesmanecfit}}.
 #' @param mods A \code{\link[base]{character}} vector of equation names.
@@ -393,17 +356,11 @@ fit_dpars <- function(family) {
 #' The equation fitted in each block of a fit
 #'
 #' The response block's equation is recorded on the object. The second block's
-#' is not: \code{model_survival} is passed to \code{fit_bayesnec()} and never
-#' stored, and \code{recover_prebayesnecfit()} rebuilds a fit from named
-#' elements that do not include the survival equation. It is recovered from
-#' the fitted formula instead, which cannot go stale through \code{c()},
-#' \code{+}, \code{\link{amend}} or \code{update()}.
-#'
-#' Returns \code{NA} for a block whose expression matches no equation, so an
-#' equation is named only where it has been identified. Reporting the response
-#' block's name for both --- what this did before the second block was
-#' separated out --- labelled the survival rows with an equation that need not
-#' have the parameters they hold, which a reader has no way to detect.
+#' is stored nowhere, so it is recovered from the fitted formula, which stays
+#' correct through \code{c()}, \code{+}, \code{\link{amend}} and
+#' \code{update()}. A block whose expression matches no equation gives
+#' \code{NA} rather than the response block's equation, which need not have
+#' the parameters the second block holds.
 #'
 #' @param object A \code{\link{bayesnecfit}} or \code{prebayesnecfit}.
 #'
@@ -422,12 +379,10 @@ dpar_models <- function(object) {
 
 #' Which equation a second block was built from
 #'
-#' \code{add_hu_block()} writes the block as \code{<dpar> ~ 1 - (<equation with
-#' its parameters prefixed and the predictor substituted>)}, deterministically
-#' from the equation name, so regenerating each candidate and comparing the
-#' deparsed expression identifies it exactly. Comparing the set of parameters
-#' instead would not: \code{ecx4param}, \code{ecxwb1} and \code{ecxwb2} all
-#' estimate \code{top}, \code{bot}, \code{beta} and \code{ec50}.
+#' \code{add_hu_block()} builds the block deterministically from the equation
+#' name, so regenerating each candidate and comparing the deparsed expression
+#' identifies it exactly. Comparing parameter sets would not: \code{ecx4param},
+#' \code{ecxwb1} and \code{ecxwb2} estimate the same four.
 #'
 #' @param object A \code{\link{bayesnecfit}} or \code{prebayesnecfit}.
 #' @param dpar A \code{\link[base]{character}} naming the block.
@@ -498,20 +453,15 @@ fit_links <- function(fit) {
 #' @param prefix The \pkg{brms} distributional parameter prefix, \code{""} for
 #' the mean block.
 #'
-#' @details Read from the draws rather than from \code{\link[brms]{fixef}}
-#' because \code{summary = FALSE} has to return the draws \code{xform} was
-#' applied to, and because \code{xform} need not be monotone --- for one that
-#' is not, a quantile of the transformed draws is not the transform of the
-#' quantile, and summarising first would give a different number with nothing
-#' said. For a monotone \code{xform} the two agree to the interpolation
-#' \code{\link[stats]{quantile}} does between order statistics.
+#' @details Read from the draws, not from \code{\link[brms]{fixef}}, because
+#' \code{xform} need not be monotone: a quantile of transformed draws is then
+#' not the transform of the quantile. \code{summary = FALSE} also returns the
+#' draws \code{xform} was applied to.
 #'
-#' The column name is matched in full rather than by prefix. Prefix matching
-#' would make \code{b_top_Intercept} of a hurdle fit also match
-#' \code{b_hutop_Intercept}, which is the defect \code{extract_pars()} records.
-#' A group-level term on a parameter leaves the population-level
-#' \code{b_<par>_Intercept} in place and adds \code{sd_} and \code{r_} entries,
-#' which are not curve parameters and are not matched here.
+#' Column names are matched in full. A prefix match would make
+#' \code{b_top_Intercept} also match \code{b_hutop_Intercept} in a hurdle fit.
+#' The \code{sd_} and \code{r_} entries of a group-level term are not curve
+#' parameters and are not matched.
 #'
 #' @return A draws-by-parameter \code{\link[base]{matrix}}, with zero columns
 #' where the block estimates none of them.
@@ -549,7 +499,7 @@ select_curve_cols <- function(draws, prefix = "") {
 #' names, one per distributional parameter.
 #' @param wi A \code{\link[base]{numeric}} model weight.
 #' @param summary A \code{\link[base]{logical}} value.
-#' @param xform A function.
+#' @param xform A function, from \code{recorded_xform()}.
 #'
 #' @return A \code{\link[base]{data.frame}}, or a
 #' \code{\link[base]{list}} of one draws matrix.
@@ -561,8 +511,12 @@ one_fit_params <- function(fit, models, wi, summary, xform) {
   blocks <- lapply(names(dpars), function(d) {
     draws <- curve_param_draws(fit, dpars[[d]])
     report_absent_params(colnames(draws), models[[d]], d)
+    # A draw a grid-read inverse cannot place is NA, with a message, so that
+    # one equation's ec50 beyond the grid does not stop the whole table.
     for (p in intersect(colnames(draws), x_scale_par_names())) {
-      draws[, p] <- xform(draws[, p])
+      draws[, p] <- map_draws(draws[, p], xform,
+                              what = paste(p, "of", models[[d]]),
+                              refuse = FALSE)
     }
     draws
   })
@@ -587,8 +541,15 @@ one_fit_params <- function(fit, models, wi, summary, xform) {
     if (ncol(b) == 0) {
       return(NULL)
     }
-    ests <- t(vapply(colnames(b), function(p) estimates_summary(b[, p]),
-                     numeric(3)))
+    # A sampled parameter has no NA draw except one map_draws() could not
+    # place, and a summary that dropped it would be biased.
+    ests <- t(vapply(colnames(b), function(p) {
+      if (anyNA(b[, p])) {
+        c(Estimate = NA_real_, Q2.5 = NA_real_, Q97.5 = NA_real_)
+      } else {
+        estimates_summary(b[, p])
+      }
+    }, numeric(3)))
     data.frame(model = unname(models[[d]]), wi = wi, dpar = d,
                link = unname(links[[d]]), parameter = colnames(b), ests,
                row.names = NULL, stringsAsFactors = FALSE,
@@ -613,13 +574,10 @@ empty_params_table <- function() {
 
 #' Say so where an equation's parameter is not in the draws
 #'
-#' A parameter absent from the posterior is absent from the table, and a table
-#' of parameter estimates that quietly omits one is the failure this function
-#' exists to remove. No route through \code{\link{bnec}} is known to produce a
-#' fit missing one --- a \code{constant()} prior leaves a zero-variance column
-#' rather than no column, which is what makes \code{\link{rhat}} exclude it
-#' (#244) --- so this is a guard rather than a repair, and it names what is
-#' missing rather than guessing why.
+#' A parameter absent from the posterior would otherwise be left out of the
+#' table with no message. No route through \code{\link{bnec}} is known to
+#' produce such a fit, so this is a guard: it names what is missing without
+#' guessing why.
 #'
 #' @param found A \code{\link[base]{character}} vector of parameters in the
 #' draws.
@@ -643,67 +601,24 @@ report_absent_params <- function(found, model, dpar) {
   invisible(NULL)
 }
 
-#' Report the scales the parameters are on
+#' Report the scale the parameters are on
 #'
-#' Two scales are easy to read a number off without noticing, and they are
-#' gated separately because they are properties of different things. The link
-#' belongs to the family, and a model set and a group share one family while
-#' the two components of a \code{\link{bayesnechurdlefit}} do not. The inline
-#' transformation belongs to the formula, which all three share. Each gate is
-#' set by the method that dispatches \code{\link{curve_params}} more than once,
-#' after it has reported for itself, so the paragraph is printed once rather
-#' than once per equation, level or component. The same device
-#' \code{ecx.bayesmanecfit()} uses for the \code{"relative"} rename warning.
+#' The link is reported under the option \code{bayesnec.link_reported},
+#' because a model set and a group share one family while the two components
+#' of a \code{\link{bayesnechurdlefit}} do not. A method that dispatches
+#' \code{\link{curve_params}} more than once reports for itself and then sets
+#' the option, so that the message prints once.
 #'
 #' @param object A \code{\link{bayesnecfit}} or \code{prebayesnecfit}.
-#' @param xform The function the caller supplied.
-#' @param what A \code{\link[base]{character}} noun phrase naming what was
-#' fitted, used as the subject of the message.
-#'
-#' @return \code{NULL}, invisibly. Called for the messages.
-#' @noRd
-report_scales <- function(object, xform, what) {
-  if (!isTRUE(getOption("bayesnec.link_reported", FALSE))) {
-    report_link(fit_links(object$fit), what)
-  }
-  report_x_transform(object, xform, what)
-  invisible(NULL)
-}
-
-#' Say so where the predictor is transformed inside the formula
-#'
-#' \code{\link{bnec}} assigns \code{link = "identity"}, so the link is rare
-#' and is reported in a column as well. A predictor transformed inline by
-#' \code{crf()} is common and is reported only here, so the message is raised
-#' whenever \code{xform} was left at \code{identity} --- a caller who supplied
-#' one has already inverted the transformation and does not need telling.
-#'
-#' The transformation is found, and the inverse to pass is named, by the same
-#' helpers the estimators use (\code{report_fitted_scale()}), so that
-#' \code{curve_params()} and \code{nec()} on one fit give the same advice.
-#' Unlike that function this one does not set the gate: the methods that
-#' dispatch \code{curve_params()} more than once set it themselves.
-#'
-#' @param object A \code{\link{bayesnecfit}} or \code{prebayesnecfit}.
-#' @param xform The function the caller supplied.
 #' @param what A \code{\link[base]{character}} noun phrase naming what was
 #' fitted, used as the subject of the message.
 #'
 #' @return \code{NULL}, invisibly. Called for the message.
-#'
 #' @noRd
-report_x_transform <- function(object, xform, what) {
-  if (isTRUE(getOption("bayesnec.xform_reported", FALSE))) {
-    return(invisible(NULL))
+report_scales <- function(object, what) {
+  if (!isTRUE(getOption("bayesnec.link_reported", FALSE))) {
+    report_link(fit_links(object$fit), what)
   }
-  if (!identical(xform, identity)) {
-    return(invisible(NULL))
-  }
-  tr <- inline_x_transform(object)
-  if (is.null(tr)) {
-    return(invisible(NULL))
-  }
-  message(fitted_scale_text(what, tr, "curve_params"))
   invisible(NULL)
 }
 

@@ -8,9 +8,9 @@ object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.}
 nsec(
   object,
   sig_val = 0.01,
-  resolution = 200,
+  resolution = 500,
   x_range = NA,
-  xform = identity,
+  xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
   extrapolate = FALSE,
   ...,
@@ -27,14 +27,16 @@ significance of the predicted posterior values.}
 \item{resolution}{The number of unique x values over which to find NSEC.
 The crossing is located by linear interpolation between the two grid values
 that bracket it, so precision saturates well below the grid spacing.
-Increasing the resolution beyond the default of 200 changed the estimate by
-less than 0.01 percent on the fits tested, and increases the run time
-roughly in proportion.}
+The default is 500 grid values, matching \pkg{toxval}. A finer grid can
+change an interpolated crossing and increases prediction time.}
 
 \item{x_range}{A range of x values over which to consider extracting NSEC.}
 
-\item{xform}{A function to apply to the returned estimated concentration
-values.}
+\item{xform}{\code{NULL}, the default, or a function. \code{NULL} returns
+the estimate on the scale the predictor was recorded on. A function is
+applied to the estimate on the scale the model was fitted on. The two
+differ only where \code{crf()} transforms the predictor inline; see
+Details.}
 
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
@@ -65,7 +67,8 @@ For the count hurdles, \code{"mu"} is converted to the positive-count mean
 }
 \value{
 A vector containing the estimated NSEC value, including upper and
-lower 95\% credible interval bounds.
+lower 95\% credible interval bounds. A grouped \code{brmsfit} with
+\code{by_group = TRUE} returns a table; see Direct brmsfit output.
 }
 \description{
 Extracts the predicted NSEC value as desired from an
@@ -84,11 +87,13 @@ the \code{hormesis_def} argument selected between the control and the
 maximum of the predicted curve and has been removed, because a target
 below the control is crossed exactly once whatever the curve does above it.
 
-Where \code{crf()} transforms the predictor inline, as in
-\code{crf(log(concentration))}, the NSEC is on the transformed scale unless
-\code{xform} is supplied, and a message says so once per call. It names the
-transformation and the \code{xform} that returns the estimate on the
-recorded scale.
+The curve is searched on a grid of recorded concentrations. Where
+\code{crf()} transforms the predictor inline, as in
+\code{crf(log(concentration))}, the NSEC is therefore returned on the
+recorded scale without \code{xform}, and no inverse is involved. A supplied
+\code{xform} is applied to the NSEC on the transformed scale, so
+\code{xform = identity} returns that scale and \code{xform = exp} on
+\code{crf(log(concentration))} returns the recorded scale again.
 
 The attached \code{ecnsec} attribute is the percent effect at the NSEC,
 defined as \code{\link{ecx}} defines it under \code{type = "absolute"}:
@@ -96,23 +101,20 @@ the decline from the control towards zero. Up to 2.1.3 it was measured
 against the fitted range and computed by three different formulas that
 agreed only for a monotonic curve.
 
-Two consequences follow from the reference being a quantile of the control
-posterior. A \code{sig_val} share of the draws have a control at or below the
-reference, and each of those reaches it at the control itself, so the control
-concentration is that draw's NSEC. Fisher and Fox (2023) report the same
-behaviour: the lower credible bound of the NSEC is the lowest concentration
-whenever \code{sig_val} is above the quantile the bound is read at, 0.025
-under the default \code{prob_vals}. And the crossing is sought at or above the
-control, so extending \code{x_range} below the data does not place an estimate
-at a concentration lower than any tested.
+The reference is a quantile of the control posterior, so some draws start
+at or below it. A draw with a later decreasing crossing takes that crossing.
+Without one, it takes the control concentration unless its response first
+changes away from the effect and later rises above the reference. Such a
+draw shows no decreasing effect in the searched range and is censored there.
+The crossing is sought at or above the control, so extending \code{x_range}
+below the data does not place an estimate below any tested concentration.
 
 Two limits on that. The value is the lowest \emph{observed} concentration,
 where Fisher and Fox (2023) report zero concentration, which they reach by
 extrapolating the fitted curve below the data. The two agree where the control
 of the design is a true zero and the predictor is untransformed; otherwise the
-bound reported here is the control rather than the 0 of their Table 3, and a
-transformed predictor returns it on the transformed scale like any other
-estimate. And it applies where the prediction grid begins at the control. Where
+bound reported here is the control rather than the 0 of their Table 3. And
+it applies where the prediction grid begins at the control. Where
 \code{x_range} begins at a higher concentration, a draw already at or below
 the reference at the first grid point reached it somewhere below the range
 asked for, which is not identified within that range: such a draw returns
@@ -151,6 +153,17 @@ holds two parameter blocks inside one model, so it takes \code{dpar} naming
 the \pkg{brms} distributional parameter. Supplying one where the other is
 expected is an error rather than silently ignored.
 }
+\section{Direct brmsfit output}{
+
+With \code{group_var} and \code{by_group = TRUE}, an NSEC summary has one
+row per group. Its \code{bound_} columns mark a quantile as \code{>=} or
+\code{<=} when it lies beyond the prediction range. An empty mark means the
+quantile was estimated within the range. With \code{posterior = TRUE}, the
+long table instead has \code{censored_above} and \code{censored_below}
+logical columns, one flag per draw. With \code{by_group = FALSE}, the pooled
+posterior vector has a \code{censored} attribute with those flags.
+}
+
 \section{Capping and dropping}{
 
 A draw whose curve does not reach the target anywhere in the prediction
@@ -188,8 +201,8 @@ right-censoring in the ordinary sense.
 \section{Extrapolation}{
 
 \code{extrapolate} chooses the bound the estimate is censored at, on the
-same predictor scale as \code{x_range} and the data, not the scale
-\code{crf()} fits on and not the scale \code{xform} displays.
+same predictor scale as \code{x_range}, the data and the estimate returned
+without \code{xform}, not the scale \code{crf()} fits on.
 
 \code{TRUE} asks for no bound at either end, and is an error here whatever
 the fit is. An NSEC is the concentration at which a fitted curve reaches a

@@ -8,10 +8,10 @@ object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.}
 ecnsec(
   object,
   nsec,
-  resolution = 200,
+  resolution = 500,
   x_range = NA,
   type = "absolute",
-  xform = identity,
+  xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
   ...
 )
@@ -20,12 +20,13 @@ ecnsec(
 \item{object}{An object of class \code{\link{bayesnecfit}} or
 \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.}
 
-\item{nsec}{A numeric value indicating the NSEC value for which to extract
-the percentage effect.}
+\item{nsec}{A single number, the concentration at which to read the
+percentage effect. A vector is refused, including the three values
+\code{\link{nsec}} returns; pass the one wanted.}
 
 \item{resolution}{The number of unique x values over which the curve is
 predicted. It affects only \code{type = "range"}, where the denominator is
-the lowest response the curve predicts over the grid. The default of 200
+the lowest response the curve predicts over the grid. The default of 500
 matches \code{\link{ecx}} and \code{\link{nsec}}.}
 
 \item{x_range}{A range of x values over which to predict the curve. An
@@ -34,8 +35,9 @@ matches \code{\link{ecx}} and \code{\link{nsec}}.}
 \item{type}{A \code{\link[base]{character}} vector, taking values of
 "absolute" (the default), "relative" or "range". See Details.}
 
-\item{xform}{A function to apply to the returned estimated NSEC concentration
-values prior to estimating the percentage effect.}
+\item{xform}{\code{NULL}, the default, or a function applied to
+\code{nsec} before the curve is read there. \code{NULL} reads \code{nsec}
+as given, on the recorded scale. See Details.}
 
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
@@ -66,24 +68,39 @@ the equation's theoretical asymptote, "range" towards the lowest response
 the curve predicts. \code{ecnsec} is the inverse of the \code{ecx}
 reference construction under the same \code{type}, so the two answer the
 same question of the same curve. "direct" names a response value rather
-than a percentage and is refused here.
+than a percentage and is refused here. On a joint two-block fit
+(\code{family = "hurdle_gamma"}, \code{"zero_inflated_beta"},
+\code{"hurdle_poisson"} or \code{"hurdle_negbinomial"}) the curve read is
+the combined one, \code{(1 - hu) * E[Y | Y > 0]}, and "relative" is refused,
+because that curve's asymptote is the product of the two blocks' asymptotes
+rather than a fitted parameter.
+
+Each posterior draw of the control is compared with the same draw's value
+of the curve at \code{nsec}, as \code{\link{ecx}} reads each draw's own
+curve. The interval therefore includes the uncertainty of the curve at
+\code{nsec} as well as that of the control. On \code{nec4param}, for
+example, every draw returns 0 at an \code{nsec} below the \code{nec} of
+every draw, where every draw of the curve still equals its control.
 
 The \code{hormesis_def} argument has been removed; the control is now
 always the reference. See \code{\link{ecx}}.
 
 \code{nsec} is read on the recorded predictor scale once \code{xform} has
-been applied to it. Where \code{crf()} transforms the predictor inline, as
-in \code{crf(log(concentration))}, \code{\link{nsec}} returns its estimate
-on the transformed scale unless given an \code{xform}, so a message says so
-once per call where \code{xform} is left at its default, and names the
-\code{xform} that puts such a value on the recorded scale.
+been applied to it. \code{\link{nsec}} returns its estimate on that scale
+by default, so \code{ecnsec(fit, nsec = nsec(fit)[1])} reads the curve at
+the NSEC whether or not \code{crf()} transforms the predictor inline. Where
+it does, as in \code{crf(log(concentration))}, an NSEC taken with
+\code{xform = identity} is on the transformed scale, and needs the inverse,
+here \code{xform = exp}.
 
 The curve is read at \code{nsec} only inside the range it is predicted
 over: the observed range of the predictor, or \code{x_range} where one is
 supplied. An \code{nsec} outside that range once \code{xform} has been
 applied is refused with a message naming the range, rather than read off
 the curve extended past the data without a message. Supply an
-\code{x_range} that includes \code{nsec} to read the curve there.
+\code{x_range} that includes \code{nsec} to read the curve there. On a
+\code{\link{bayesnecjointfit}} each level is read over its own observed
+range, and the message names the level that refused \code{nsec}.
 }
 \examples{
 \donttest{

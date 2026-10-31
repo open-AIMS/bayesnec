@@ -81,8 +81,8 @@ in a single worktree.
 
 ## D10 — Sequencing against the toxval migration
 
-**Step 3 is superseded by D11 (2026-09-06):** the estimator bug fixes are made in
-`bayesnec` and the migration is deferred. The rest of this entry stands.
+Superseded by D46 (2026-10-30), which abandons the migration. D11 had already
+replaced step 3.
 
 The queue is split so that **no Tier 1 item edits a file the migration moves.**
 That was checked, not assumed: the migration deletes `R/ecx.R` and `R/nsec.R`
@@ -119,6 +119,9 @@ exist yet. toxval's Phase 1 must land and be installable first; in the interim
 bayesnec would need a `Remotes:` entry. That ordering is a hard constraint, not
 a preference.
 
+D46 (2026-10-30) makes the paragraph above moot: `bayesnec` does not import
+`toxval`.
+
 ## D9 — #141, `get_priors()`
 
 **Both entry points, one function.**
@@ -135,6 +138,10 @@ Document that the two entry points answer different questions and can disagree
 once a user has overridden a prior.
 
 ## D11 — The estimator fixes are made in `bayesnec`, and the migration is deferred
+
+D46 (2026-10-30) replaces this entry's statement that the estimators still
+migrate to `toxval`: they stay in `bayesnec`. It also narrows the obligation at
+the end of this entry to changes that alter a returned value.
 
 RF, 2026-09-06. **This supersedes D10's step 3.** `ecx()`, `nsec()` and
 `ecnsec()` still migrate to `toxval`, and #255 remains the tracker, but the
@@ -310,6 +317,18 @@ comparing `bayesnec` against another engine can recover what was altered. The
 
 RF via Claude, 2026-09-12, on #325. Corrects D15 ruling 3 where it reaches the
 NSEC, and leaves it standing for the ECx.
+
+RF amended ruling 1 on 2026-10-29. It now takes a later decreasing crossing
+when one exists. With no such crossing, a draw past the reference at control
+is censored above the prediction range if its first meaningful response change
+goes away from the effect and a later grid value lies on the no-effect side.
+Otherwise it takes the control concentration. A meaningful change exceeds
+`1e-8` times the largest absolute response in the draw. This adopts toxval T21
+as amended on #74; the original reasoning and measurements below remain the
+record of the earlier rule. The amendment also applies when `expand_nec()`
+computes a fitted object's stored NSEC. The `brmsfit` method now summarises
+the censored draws through the same order-statistic rule as `bayesnecfit`;
+previously it stopped when any such draw was missing.
 
 **The ruling as taken.** "A target the curve never reaches within the predictor
 range returns `NA` with a warning. Today the nearest grid point is returned,
@@ -540,7 +559,27 @@ other bounded families; a response of 0 throughout is refused.
 
 ## D36 — `disp(~z)` on a column other than the predictor (#443)
 
-Refused before fitting, and the restriction stated in `?bayesnecformula`.
+The original ruling refused the term before fitting. RF superseded that
+ruling on 2026-10-20 in [issue #443](https://github.com/open-AIMS/bayesnec/issues/443#issuecomment-6285103724),
+with a [family-specific qualification](https://github.com/open-AIMS/bayesnec/issues/443#issuecomment-6285491821).
+
+The term is allowed where the reported mean is independent of dispersion.
+Generated grids hold each non-predictor column at its first factor level or
+numeric median when reading the mean curve and its estimates. For predicted
+readings, `posterior_predict()` and `predict()` replace marked placeholders
+with values sampled from the fitted rows, once per draw with equal row
+probabilities. Supplied `newdata` is used as given and is refused if it lacks
+a required column. Predictions over the observed rows, including
+`check_fit_combined()`, use each row's recorded covariates.
+
+A term naming a non-predictor column is refused for a `negbinomial` growth
+component of `bnec_hurdle()` and for the joint `hurdle_negbinomial` family:
+their reported means depend on the shape of the zero-truncated counts.
+This restriction does not refuse every `disp()` term on those routes; D39
+and [PR #482](https://github.com/open-AIMS/bayesnec/pull/482) cover the permitted
+forms. [PR #474](https://github.com/open-AIMS/bayesnec/pull/474) implemented
+the grid and prediction rules. The public description is in
+[`?bayesnecformula`](../../man/bayesnecformula.Rd).
 
 ## D37 — Divergent transitions in `summary()` (#447)
 
@@ -610,3 +649,32 @@ enters the average as a censored value; implementing that needs a bound for
 each averaged draw, which no summary in the package represents, and D44 left
 this function as the only place that would need it. Removal is a breaking change
 for the 3.0 release. `gm_mean()`, used only by it, is removed with it.
+
+## D46 — Retention of the estimators in `bayesnec` (#255)
+
+RF, 2026-10-30: `ecx()`, `nsec()` and `ecnsec()` stay in `bayesnec`, and
+`bayesnec` does not import `toxval`. #255 is closed as superseded. Under toxval
+decision T35 (toxval#68), `toxval` contains the `toxval_predict()` methods for
+`bayesnec` fits and lists `bayesnec` under `Suggests`, so the dependency
+reversal #255 tracked is no longer needed. This replaces D10, the
+`Imports: toxval` constraint in D8, and D11's statement that the estimators
+still migrate.
+
+`predev` was compared with toxval's open branches on 2026-10-29. Under equivalent
+calls the two packages return the same estimates: after #527 adopted toxval's
+amended NSEC rule and its 500-point grid, paired NSEC draws agreed on a
+model-averaged fixture and on a heavily censored `brmsfit`. The comparison
+covers `bayesnecfit`, `bayesmanecfit` and the `brmsfit` method of `nsec()`, and
+not the `drc` method. Both
+packages export `ecx()` and `nsec()`, and the one attached last masks the other
+without a warning. The detail is on #255.
+
+RF, 2026-10-30, with the scope narrowed by RF on 2026-10-31, so that the two
+packages do not drift: a change that edits `ecx()`, `nsec()`, `nec()` or
+`ecnsec()`, or an internal function they call, and that changes a value they
+return for the same fitted object, is compared with `toxval` under matching options before it
+merges. The result, and whether `toxval` is to follow, is recorded on a
+`toxval` issue. No other change is compared. A change to fitting, priors or
+model weights alters the fitted object, from which `toxval` also computes its
+estimates, and a new message or refusal changes no returned value. This
+replaces D11's rule that every fix is recorded.

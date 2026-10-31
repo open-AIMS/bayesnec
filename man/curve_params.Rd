@@ -8,15 +8,15 @@
 \alias{curve_params.bayesnecgroupfit}
 \title{Curve parameter estimates from a fitted model}
 \usage{
-curve_params(object, summary = TRUE, xform = identity, ...)
+curve_params(object, summary = TRUE, xform = NULL, ...)
 
-\method{curve_params}{bayesnecfit}(object, summary = TRUE, xform = identity, ...)
+\method{curve_params}{bayesnecfit}(object, summary = TRUE, xform = NULL, ...)
 
-\method{curve_params}{bayesmanecfit}(object, summary = TRUE, xform = identity, ...)
+\method{curve_params}{bayesmanecfit}(object, summary = TRUE, xform = NULL, ...)
 
-\method{curve_params}{bayesnechurdlefit}(object, summary = TRUE, xform = identity, ...)
+\method{curve_params}{bayesnechurdlefit}(object, summary = TRUE, xform = NULL, ...)
 
-\method{curve_params}{bayesnecgroupfit}(object, summary = TRUE, xform = identity, ...)
+\method{curve_params}{bayesnecgroupfit}(object, summary = TRUE, xform = NULL, ...)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecfit}},
@@ -26,8 +26,10 @@ curve_params(object, summary = TRUE, xform = identity, ...)
 \item{summary}{A \code{\link[base]{logical}} vector of length 1. Whether to
 return the summary table (the default) or the underlying posterior draws.}
 
-\item{xform}{A function applied to \code{nec} and \code{ec50}, and to no
-other parameter. See Details.}
+\item{xform}{\code{NULL}, the default, or a function, applied to
+\code{nec} and \code{ec50} and to no other parameter. \code{NULL} returns
+those two on the scale the predictor was recorded on. A function is applied
+to them on the scale the model was fitted on. See Details.}
 
 \item{...}{Passed to the per-component and per-level calls by the
 \code{\link{bayesnechurdlefit}} and \code{\link{bayesnecgroupfit}} methods,
@@ -130,14 +132,17 @@ message names any that is not the identity.
 
 \bold{\code{xform} applies to \code{nec} and \code{ec50} only.} Those two
 are measured on the predictor axis, so where \code{crf()} transforms the
-predictor inline --- \code{crf(sqrt(x), ...)} --- they are on the
-transformed scale, exactly as \code{\link{nec}} and \code{\link{ecx}} are,
-and \code{xform} is the inverse that brings them back. Every other
-parameter is a response level or a shape parameter and is not on the
-predictor axis at all, so \code{xform} is not applied to it. Where the
-predictor is transformed inline and \code{xform} was left at
-\code{identity}, a message says which parameters are on the transformed
-scale.
+predictor inline --- \code{crf(sqrt(x), ...)} --- they are sampled on the
+transformed scale. Without \code{xform} they are returned on the recorded
+scale by the inverse of the transformation, as \code{\link{nec}} returns
+the \code{nec} parameter: exactly where the inverse has a closed form, and
+otherwise by interpolating on the prediction grid. A draw beyond that grid
+then has no value, so it is \code{NA}, the row summarising it is
+\code{NA}, and a message names the remedy. A supplied \code{xform} is
+applied to them on the transformed scale, so \code{xform = identity}
+returns that scale. Every other parameter is a response level or a shape
+parameter and is not on the predictor axis at all, so it is returned as
+sampled.
 }
 \examples{
 library(bayesnec)

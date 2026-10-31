@@ -174,6 +174,47 @@ test_that("the internal count truncation preserves existing aterms", {
   expect_no_error(check_formula(one_model, dat))
 })
 
+test_that("the count truncation is set and removed on a response (#503)", {
+  with_both <- quote(y | cens(cens) + trunc(lb = 1))
+  expect_identical(bayesnec:::hurdle_truncation_lhs(with_both, FALSE),
+                   quote(y | cens(cens)))
+  expect_identical(bayesnec:::hurdle_truncation_lhs(quote(y | cens(cens)),
+                                                    TRUE), with_both)
+  # Setting it twice gives one trunc().
+  expect_identical(bayesnec:::hurdle_truncation_lhs(with_both, TRUE),
+                   with_both)
+  expect_identical(
+    bayesnec:::hurdle_truncation_lhs(quote(y | trunc(lb = 1)), FALSE),
+    quote(y)
+  )
+  expect_identical(bayesnec:::hurdle_truncation_lhs(quote(y), FALSE),
+                   quote(y))
+})
+
+test_that("the count truncation is set on every equation of a set (#503)", {
+  on <- bayesnec:::set_hurdle_growth_truncation(manec_example, TRUE)
+  expect_identical(names(on$mod_fits), names(manec_example$mod_fits))
+  for (m in on$mod_fits) {
+    expect_true(isTRUE(attr(m$bayesnecformula,
+                            "bayesnec_internal_truncation")))
+    expect_identical(deparse1(formula.tools::lhs(m$bayesnecformula)),
+                     "y | trunc(lb = 1)")
+    expect_identical(deparse1(m$fit$formula$formula[[2]]),
+                     "y | trunc(lb = 1)")
+    # brms marks the formula as non-linear in its attributes.
+    expect_true(isTRUE(attr(m$fit$formula$formula, "nl")))
+  }
+  expect_identical(bayesnec:::set_hurdle_growth_truncation(on, TRUE), on)
+  # Removing it restores the set as fitted.
+  expect_identical(bayesnec:::set_hurdle_growth_truncation(on, FALSE),
+                   manec_example)
+  one <- bayesnec:::set_hurdle_growth_truncation(nec4param, TRUE)
+  expect_identical(deparse1(one$fit$formula$formula[[2]]),
+                   "y | trunc(lb = 1)")
+  expect_identical(bayesnec:::set_hurdle_growth_truncation(one, FALSE),
+                   nec4param)
+})
+
 test_that("factorised count hurdles refuse censoring before fitting", {
   dat <- data.frame(
     x = as.numeric(rep(0:3, each = 3)),

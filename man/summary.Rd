@@ -6,7 +6,13 @@
 \alias{summary.bayesmanecfit}
 \title{Generates a summary for objects fitted by \code{\link{bnec}}}
 \usage{
-\method{summary}{bayesnecfit}(object, ..., ecx = FALSE, ecx_vals = c(10, 50, 90))
+\method{summary}{bayesnecfit}(
+  object,
+  ...,
+  ecx = FALSE,
+  ecx_vals = c(10, 50, 90),
+  divergence_cutoff = 10
+)
 
 \method{summary}{bayesmanecfit}(
   object,
@@ -14,6 +20,7 @@
   ecx = FALSE,
   ecx_vals = c(10, 50, 90),
   rhat_cutoff = 1.01,
+  divergence_cutoff = 10,
   fit_ratio_cutoff = 1.15,
   check_fit = TRUE
 )
@@ -32,6 +39,12 @@ with or without \code{ecx = TRUE}. See Details.}
 \item{ecx_vals}{ECx targets (between 1 and 99). Only relevant if ecx = TRUE.
 If no value is specified by the user, returns calculations for EC10, EC50,
 and EC90.}
+
+\item{divergence_cutoff}{A \code{\link[base]{numeric}} vector of length 1.
+The summary warns of a model with more divergent transitions after warmup
+than this. Defaults to 10, the cutoff \code{\link{check_sampling}} and
+\code{\link{screen_models}} use. On a model set the warning gives each
+flagged equation's model weight beside its count.}
 
 \item{rhat_cutoff}{A \code{\link[base]{numeric}} vector of length 1. The
 convergence threshold the summary reports against. Defaults to 1.01,
@@ -56,8 +69,12 @@ contents of a \code{\link[brms]{brmsfit}} object with the addition of
 an R2. In the case of a \code{\link{bayesmanecfit}} object, summary
 displays the family distribution information, model weights and averaging
 method, and Bayesian R2 estimates for each individual model.
+Both report the number of divergent transitions after warmup for each model,
+and the installation of \pkg{bayesnec} that fitted it (see
+\code{\link{bnec_version}}).
 Warning messages are also printed to screen in case
-model fits are not satisfactory with regards to their Rhats.
+model fits are not satisfactory with regards to their Rhats or their
+divergent transitions.
 }
 \description{
 Generates a summary for objects fitted by \code{\link{bnec}}.
@@ -89,10 +106,12 @@ abbreviation such as \code{x_ran} is ignored without a message.
 
 The no-effect estimate is read from the posterior stored when the model was
 fitted, and is censored at the bound of the prediction grid stored then, so
-a range supplied now cannot change it. An \code{xform} supplied in
-\code{...} is applied to those stored draws and to the bound they are
-censored at, as \code{\link{nec}} applies it, so the no-effect row and the
-ECx rows are reported on one scale.
+a range supplied now cannot change it. Where \code{crf()} transforms the
+predictor inline, that posterior is on the transformed scale, and the row is
+returned on the recorded scale as \code{\link{nec}} returns it. An
+\code{xform} supplied in \code{...} is applied to the stored draws and to
+the bound they are censored at instead, as \code{\link{nec}} applies it,
+so the no-effect row and the ECx rows are reported on one scale.
 
 \code{posterior = TRUE} is refused. A summary reports each estimate as
 quantiles; the draws themselves are returned by \code{\link{nec}},

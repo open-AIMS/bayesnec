@@ -240,7 +240,8 @@ A logged predictor spanning
 `r round(log(min(simazine$concentration)), 2)` to
 `r round(log(max(simazine$concentration)), 2)` takes negative values, which
 excludes the equations that raise the predictor to a fractional power.
-And every estimate is returned on the logged scale unless `xform` is supplied.
+The model is fitted on the logged scale, and every estimate is returned on the
+measured scale unless `xform` is supplied.
 
 # 2. Fitting the candidate set
 
@@ -289,8 +290,9 @@ arguments are the ones to reach for:
 
 ## The set as fitted
 
-`model = "decline"` requests the equations that describe a declining response,
-of which there are `r length(models()$decline)` currently in `bayesnec`. The
+`model = "decline"` requests the equations that describe a declining response
+and the constant equation `ecxflat`, `r length(models()$decline)` in all in the
+current version of `bayesnec`. The
 remaining equations in the package describe hormesis, a response that rises
 above the control before it falls. There is no evidence of hormesis in these
 data, so they are not considered here. Two mechanisms then reduce it from this
@@ -599,7 +601,7 @@ The averaged curve with its credible band, over the retained set, with the
 model-averaged *N(S)EC* marked. `autoplot()` back-transforms both the predictor
 and the annotation, so the axis is in the units the experiment was run in even
 though the fit used `log(concentration)`, and the marked value is the one step 5
-reports with `xform = exp`. The band should contain the bulk of the observations
+reports. The band should contain the bulk of the observations
 and widen where the data are sparse; a band that excludes whole groups is a fit
 problem rather than a sampler one, and belongs to step 4.
 
@@ -778,8 +780,8 @@ What to state in a methods section:
   posterior and defaults to 0.01; `type` for `ecx()` and `nsec()`, which takes
   `"absolute"`, `"range"`, `"relative"` or `"direct"` and defaults to
   `"absolute"`; `resolution`, the number of grid points the crossing is
-  interpolated on, which defaults to 200; and any `xform` used to return an
-  estimate to the measured scale;
+  interpolated on, which defaults to 200; and the scale each estimate is
+  reported on, which is the measured scale unless an `xform` was given;
 - **the estimates with their credible intervals**, and the weights of the
   retained models;
 - **the parameters of the fitted curve**, which is what the threshold estimates
@@ -795,13 +797,14 @@ not be reported as a *NEC*.
 summary(fit_screened)
 ```
 
-The predictor was logged in the formula, so the threshold is returned on that
-scale, and `nec()`, `nsec()` and `ecx()` all take an `xform` argument to put it
-back on the measured one.
+The predictor was logged in the formula, so the model is fitted on that scale.
+`nec()`, `nsec()` and `ecx()` return the threshold on the measured scale, and
+take an `xform` argument that is applied to it on the logged scale instead:
+`xform = identity` returns the logged value.
 
 ```{r report-scale}
-rbind(log_scale = nec(fit_screened),
-      measured  = nec(fit_screened, xform = exp))
+rbind(log_scale = nec(fit_screened, xform = identity),
+      measured  = nec(fit_screened))
 ```
 
 Only the second row is on the measured scale. The first is its natural logarithm,
@@ -837,9 +840,10 @@ which is dominated by the smooth equations and is a mixture of *NEC* and *NSEC*
 draws rather than a threshold any one equation estimated.
 
 `xform` reaches `nec` and `ec50` and no other parameter, because those two are on
-the scale of the predictor while `top`, `bot` and `beta` are not. Supplying it
-here puts the two that are on the measured concentration scale, and leaves the
-rest alone.
+the scale of the predictor while `top`, `bot` and `beta` are not. Here it is the
+inverse of the logarithm, which `curve_params()` applies to those two without
+it, so they are on the measured concentration scale either way and the rest are
+as sampled.
 
 ECx values are the other commonly required endpoint, read from the same screened
 set:
@@ -1597,8 +1601,7 @@ concentration both estimators are referenced from.
 The same holds one level up. The dispersion screen returned `binomial` because it
 detected nothing, not because nothing was there; the family for a continuous
 bounded response was settled by the support of the data and not by a test; and
-estimates are reported on the scale they were fitted on unless `xform` says
-otherwise. None of those is a result the workflow produces automatically. Each is
+the scale each estimate is reported on depends on `xform`. None of those is a result the workflow produces automatically. Each is
 a decision the analysis has to record.
 
 # References

@@ -8,7 +8,7 @@ ggbnec_data(
   x,
   add_nec = TRUE,
   add_ecx = FALSE,
-  xform = identity,
+  xform = NULL,
   ...,
   group = NULL
 )
@@ -23,8 +23,13 @@ a \code{\link{bayesnecjointfit}} returned by \code{\link{bnec_joint}}.}
 
 \item{add_ecx}{Should ECx values be added to the plot? Defaults to FALSE.}
 
-\item{xform}{A function to apply to the returned estimated concentration
-values.}
+\item{xform}{\code{NULL}, the default, or a function. Where \code{crf()}
+does not transform the predictor inline, a function is applied to the
+predictor and to the estimates. Where it does, the predictor is on the
+recorded scale, and the estimates are those \code{\link{nec}} and
+\code{\link{ecx}} return by default, which are on that scale. A function
+other than \code{identity} is then applied to the estimates on the
+transformed scale instead, as the estimators apply it.}
 
 \item{...}{Additional arguments to be passed to \code{\link{ecx}}. By
 default, function \code{\link{ecx}} returns EC10.}

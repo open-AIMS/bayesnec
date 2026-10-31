@@ -37,8 +37,9 @@ name of the successfully fitted models.}
 
 \item{\code{mod_stats}}{A \code{\link[base]{data.frame}} of model fit statistics.}
 
-\item{\code{sample_size}}{The size of the posterior sample.
-Information on the priors used in the model.}
+\item{\code{sample_size}}{The number of posterior draws each component model holds,
+from which model averaging draws. Where the models hold different numbers,
+it is the smallest.}
 
 \item{\code{w_draw_index}}{The realised model-averaging draw: a
 \code{\link[base]{list}} of the row indices kept for each component model.

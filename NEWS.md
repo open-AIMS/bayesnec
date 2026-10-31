@@ -1,5 +1,24 @@
 # bayesnec 2.2.0
 
+## Endpoint extraction
+
+- Post-fit `ecx()`, `nsec()` and `ecnsec()` now use 500 prediction points by
+  default, matching `toxval`. An explicit `resolution` still selects another
+  grid. The grid used when fitting with `bnec()` is unchanged.
+- An NSEC draw that starts past the reference at control now takes a later
+  decreasing crossing when one occurs. If it has no such crossing, its first
+  meaningful response change is an increase, and a later grid value lies on
+  the no-effect side of the reference, it is censored above the prediction
+  range. Other draws in that control tail still take the control
+  concentration. This can change NSEC estimates and intervals, including
+  stored NSEC values calculated during fitting.
+- `nsec.brmsfit()` now retains beyond-grid draws as censored ranks when it
+  summarises them. Previously a call with any such draw stopped while taking
+  a quantile of missing values. Its summaries use the same observed order
+  statistics as the other bayesnec NSEC methods when draws are censored.
+  Grouped summaries mark censored quantiles in `bound_` columns; grouped
+  posterior output includes per-draw censoring flags.
+
 ## Package metadata
 
 - The minimum `testthat` recorded in `DESCRIPTION` is raised from 3.1.8 to
@@ -102,8 +121,8 @@
   asymptote of the curve. The default `TRUE` is the assumption both default
   prior sets are built on and leaves every generated entry unchanged, which the
   test suite pins against the strings the release produced. `FALSE` states that
-  the series stopped short, and changes the `bot` prior and the initial-value
-  search and nothing else. Both default sets place `bot` at the observed
+  the series stopped short, and changes the `bot` prior, the initial-value
+  search and the upper bound of the `nec` and `ec50` priors (#483). Both default sets place `bot` at the observed
   response over the highest concentrations, so on such a design the prior is
   located above the true value and is at its narrowest exactly where `bot` is
   least identified: on the flattest of #386's simulated designs the prior CDF at
@@ -135,9 +154,10 @@
   from the data, and neither does any response fitted on a link other than the
   identity, where the floor of the mean maps to minus infinity. `FALSE` is
   refused for both, naming `bot` and the `prior` argument, rather than a floor
-  being invented. The refusal is raised by `bnec()` before its model loop and by
-  `bnec_group()` before its level loop, so it is stated once rather than once
-  per equation or after the earlier levels have been fitted.
+  being invented, unless `prior` supplies `bot` (#516). The refusal is raised
+  by `bnec()` before its model loop and by `bnec_group()` before its level
+  loop, so it is stated once rather than once per equation or after the
+  earlier levels have been fitted.
 
   Fourteen of the 23 equations have no `bot` parameter and so have no lower
   asymptote to estimate; eleven of them fall to zero, and `neclin`,
@@ -221,9 +241,8 @@
   same on every class and on every curve of a hurdle fit, a supplied `x_range`
   included, and it is applied to `nsec` after `xform`. An `nsec` at either end
   of the range is accepted, to within a rounding error. Supply an `x_range`
-  that includes `nsec` to read the curve beyond the data. Inside the range,
-  `ecnsec()` on a `bayesnecfit` or a `bayesmanecfit` returns what it returned
-  before (#437).
+  that includes `nsec` to read the curve beyond the data. The refusal itself
+  changes no value inside the range (#437).
 
 - `ecnsec()` on a `bayesnechurdlefit` reads each curve at `nsec` by linear
   interpolation between the two grid points either side of it, rather than at
@@ -231,6 +250,21 @@
   fall. It takes a single `nsec`, and refuses a vector, which the
   nearest-point reading accepted and read at one grid point chosen by
   recycling the vector against the grid (#437).
+
+- `ecnsec()` on a `bayesnecfit` or a `bayesmanecfit` also takes a single
+  `nsec`, and refuses a vector, `NA` or `NA_real_` with a message naming
+  `nsec`. A vector was read at the largest of its values, so
+  `ecnsec(fit, nsec = nsec(fit))` returned the effect at the upper bound of
+  the NSEC with nothing said, and `NA_real_` was refused by a message about
+  `x_range`, which the caller had not supplied. An `xform` that takes `nsec`
+  to a value that is not finite, such as `log()` of a negative number, is
+  refused by the range message on every class. It was refused as an `x_range`,
+  and on a `bayesnechurdlefit` it stopped with "missing value where TRUE/FALSE
+  needed". On a `bayesnecjointfit` each
+  level reads its curve over its own observed range, and an `nsec` outside one
+  level's range is refused with a message that names the level and states
+  that the range is that level's. The message gave the range alone, which can
+  be narrower than the range of the data (#488).
 
 - The two ends are recorded separately. A draw whose curve had already passed
   the target where the prediction range begins is reported as `<=` the foot of
@@ -772,7 +806,12 @@
 
 ## Default priors
 
-- The default `nec` and `ec50` priors are no longer truncated to the range of
+- Revised by #483, under "Bug fixes": the default `nec` and `ec50` priors keep
+  the tested-range bound under `asymptote_observed = TRUE`, and
+  `asymptote_observed = FALSE` removes its upper end only. This entry describes
+  the removal as #393 made it, for every fit.
+
+  The default `nec` and `ec50` priors are no longer truncated to the range of
   the tested predictor. Both entries were built with `lb = min(x)` and
   `ub = max(x)`, so a threshold above the highest concentration tested was
   outside the prior support rather than in its tail: the posterior could place
@@ -1515,13 +1554,34 @@
   `ecnsec(h, nsec = 2, xform = log)` returned the logarithm of the percentage,
   and an NSEC from a pair fitted with an inline-transformed predictor had to be
   put on the recorded scale by hand before it was passed. On a pair fitted with
-  `crf(log(x))`, `ecnsec(h, nsec = nsec(h)[[1]], xform = exp)` now reads the
-  curve at the concentration that NSEC names, as it does on a `bayesnecfit`.
-  A call that supplies an `xform` other than `identity` is warned of the
-  change in this release. To transform the percentage, apply the function to
-  the value `ecnsec()` returns. Where `crf()` transforms the predictor inline,
-  the message is the one the other classes raise, naming the `xform` to give
-  `ecnsec()` (#437).
+  `crf(log(x))`, `ecnsec(h, nsec = nsec(h)[[1]])` now reads the curve at the
+  concentration that NSEC names, as it does on a `bayesnecfit`. A call that
+  supplies an `xform` other than `identity` is warned of the change in this
+  release. To transform the percentage, apply the function to the value
+  `ecnsec()` returns (#437).
+
+- `ecnsec()` on a `bayesnecfit` or a `bayesmanecfit` compares each posterior
+  draw of the control with the same draw's value of the curve at `nsec`, as
+  `ecnsec()` on a `bayesnechurdlefit` already did and as `ecx()` reads each
+  draw's own curve. Every draw was compared with the posterior median of the
+  curve at `nsec`, so the interval reflected the uncertainty of the control
+  alone. The reported median and interval both change. On the
+  `nec4param` fit in `manec_example`, `ecnsec(fit, nsec = 1.5)` returned 9.67
+  per cent (4.53 to 13.41) and now returns 9.55 (0 to 27.68). At
+  `nsec = 0.5`, below every draw of `nec`, no draw of the curve has declined
+  from its control. That call returned -0.0000047 (-5.69 to 4.14), an interval
+  set by the spread of the control, and now returns 0 in every draw (#488).
+- On a joint two-block fit from `bnec()`, with `hurdle_gamma`,
+  `zero_inflated_beta`, `hurdle_poisson` or `hurdle_negbinomial`,
+  `ecx(type = "relative")` with the default `dpar = NULL` and
+  `ecnsec(type = "relative")` are now refused. Both read the combined curve,
+  `(1 - hu) * E[Y | Y > 0]`, and measured it towards `bot` of the response
+  block, which is not that curve's asymptote. Its asymptote is the product of
+  the two blocks' asymptotes. The refusal matches `bnec_hurdle()` fits, on
+  which both were already refused. `ecx(type = "relative", dpar = "hu")`, or
+  `dpar = "zi"`, is now measured towards the zero block's own `bot`, or 0
+  where its equation has none, rather than towards the response block's `bot`,
+  which is on the response scale rather than a probability (#491).
 
 ## New
 
@@ -1780,9 +1840,9 @@
 
   **`xform` applies to `nec` and `ec50` and to no other parameter.** Those two
   are measured on the predictor axis, so where `crf()` transforms the predictor
-  inline they are on the transformed scale, as the values `nec()` and `ecx()`
-  return are, and a message says so where `xform` was left at its default. The
-  others are response levels or shape parameters, on which a transformation of
+  inline they are sampled on the transformed scale, and are returned on the
+  recorded scale unless `xform` is supplied, as `nec()` returns its estimate.
+  The others are response levels or shape parameters, on which a transformation of
   the predictor has no meaning. The link of each block is reported in a `link`
   column: `bnec()` assigns `link = "identity"`, and where a caller named one
   instead, `top` and `bot` are on the link scale.
@@ -1891,14 +1951,11 @@
   `plot()` draw it as a horizontal line, with the censored estimates labelled
   as bounds.
 
-  `ecxflat` is available by name only, as in `crf(x, "ecxflat")` or
-  `crf(x, c("ecxflat", "nec4param"))`, and belongs to no model group, so
-  `models()`, `model = "all"` and every other group leave it out and no
-  existing fit or default set changes. It is planned to join `all`, `ecx` and
-  `decline` at the 3.0 release. Adding it there changes every model-averaged
-  result: where it takes appreciable model weight, a constant describes the
-  data about as well as the declining curves, and its draws enter the
-  model-averaged ECx and NSEC as censored above the range.
+  Revised by #485, under "Bug fixes": `ecxflat` belongs to the `all`, `ecx`
+  and `decline` model groups, so the default set includes it. Where it takes
+  appreciable model weight, a constant describes the data about as well as the
+  declining curves, and its draws enter the model-averaged ECx and NSEC as
+  censored above the range.
 
   `bnec()` fits `ecxflat` alone to a `bernoulli`, `binomial`, `beta_binomial`
   or `beta` response with every observation at one bound, whatever model set
@@ -1929,15 +1986,40 @@
   `bnec_hurdle()` fits on its growth component, so the joint and factorised
   routes model the same dispersion, and `bnec_joint()` includes a growth
   component's `disp()` term in the joint model it fits. `hurdle_poisson` still
-  refuses the term, because its positive counts have no dispersion parameter.
-  `hurdle_negbinomial` refuses it until a decision is made on how a relative
-  `ecx()` or `ecnsec()` estimate reads the shape: it reads the shape at the
-  control, which under a `disp()` term can differ from the shape at the lower
-  asymptote. `get_priors()` refuses the term on both families with the same
-  messages, and `bnec_joint()` refuses a negative binomial growth component
-  fitted with `disp()` before it announces the refit, naming its `formula`
-  argument as the way to refit without the term. No fit that previously
+  refuses the term, because its positive counts have no dispersion parameter,
+  and `get_priors()` refuses it with the same message. No fit that previously
   succeeded changes (#410).
+
+- `bnec()` now fits a `disp()` term on `hurdle_negbinomial`, which refused it.
+  The term models the shape of the positive block, as on `hurdle_gamma`: a
+  variance function is written in `mu`, the negative binomial mean before
+  zero-truncation; its centring constant is computed from the positive
+  counts; and its parameters take the priors and initial values of
+  `negbinomial`, including the range of 0 to 1 on the exponent of
+  `disp("power")`. Under
+  `prior_type = "regularizing"` that exponent's prior stays centred on 0, as
+  it is for a `negbinomial` growth component of `bnec_hurdle()`, because the
+  positive counts come from a zero-truncated likelihood. `bnec_joint()` refits
+  a negative binomial growth component fitted with `disp()` as a
+  `hurdle_negbinomial` with the same sub-model. `ecx(type = "relative",
+  dpar = "mu")` measures towards the zero-truncated mean at `mu = bot`, which
+  depends on the shape there. Under a variance function of the mean that
+  shape is the sub-model evaluated at `mu = bot`, draw by draw, rather than
+  the shape at the control, which a fit without `disp()` reads and which
+  differs from it once the shape changes with the mean. Under `disp(~x)` the
+  asymptote has no single shape, and a relative ECx of the positive counts is
+  refused. A relative `ecx()` or `ecnsec()` of a `negbinomial` growth
+  component of `bnec_hurdle()` fitted with `disp()` reads the shape at `bot`
+  in the same way, and is refused in the same way under `disp(~x)`.
+  `type = "absolute"`, `"range"` and `"direct"`, `nec()` and `nsec()` do not
+  read the shape at the asymptote.
+  A `disp(~z)` term naming a column other than the predictor is refused before
+  anything is fitted, for the reason it is refused on the growth component:
+  the positive-count curve and the combined curve both depend on the shape,
+  and so would depend on the value given to `z`. `get_priors()` and
+  `bnec_joint()` refuse it as `bnec()` does, and on a `bnec_hurdle()` fit
+  `bnec_joint()` refuses it before it announces the refit. Fits without
+  `disp()` are unchanged (#410).
 
 - `bnec()` now checks a `disp()` term against the family once per call, before
   it fits any equation. The check was made once per equation inside the model
@@ -1950,6 +2032,45 @@
   cannot take now also names the two-block families that take it, so
   `disp("twosided")` on `Gamma` lists `zero_inflated_beta` beside `beta` and
   `beta_binomial` (#410).
+
+- `summary()` reports the number of divergent transitions after warmup for
+  each model, on a single fit and on every equation of a model set, and warns
+  of a model with more than `divergence_cutoff` of them. The new argument
+  defaults to 10, the default of `check_sampling()`, and a model is flagged
+  exactly where `check_sampling()` would fail it on divergences alone. On a
+  model set the warning names each such equation with its count and its model
+  weight, in the block that lists the Rhat and control lack-of-fit failures,
+  and gives the advice given for an Rhat failure. Where a set fails on the
+  sampler and on the control fit, the advice now begins "Sampler failures"
+  rather than "Convergence failures". The count is `NA` for a model not
+  sampled by NUTS, such as a variational fit. A grouped fit reports the count
+  for each level; the summary of a `bnec_hurdle()` fit reports neither Rhat
+  nor divergences, and is unchanged. `vignette("example2")` stated that the
+  summary would warn of divergent transitions, which it did not (#447).
+
+- **`bnec_version()`** reports the installation of `bayesnec` that fitted each
+  equation of a fitted object: the version, where the installation came from,
+  and the commit it was built from where the installation records one, with
+  the versions of R, `brms` and the Stan interface. The version alone does not
+  identify the code, because it is raised by hand at intervals and builds from
+  many commits report the same number. The record is read from the installed
+  `DESCRIPTION` when an equation is fitted, and stored as an attribute of the
+  fitted object. An installation from GitHub by `remotes` or `pak` records its
+  commit. A CRAN installation records the source `"CRAN"` and no commit, and a
+  local one, by `R CMD INSTALL`, `devtools::install()` or
+  `devtools::load_all()`, records the source `"local"` and no commit.
+  `bnec()`, `bnec_hurdle()`, `bnec_group()`, `bnec_joint()` and `update()`
+  record the running installation for every equation they fit, and `amend()`
+  for the equations it adds. `amend()`, `c()`, `+` and `pull_out()` keep the
+  record of each equation they retain, so a combined set can hold equations
+  fitted by different installations; `c()`, `+` and `amend()` then say so in a
+  message. `summary()` prints the record, on one line where every equation
+  shares it and on one line per equation where they differ, and so does
+  `print()` of a `bayesnecfit`, a `bayesmanecfit` and a `bayesnecjointfit`. An
+  object fitted before this change, including the example fits shipped with
+  the package, reports the source `"unknown"`. Under a parallel plan, each
+  equation records the installation and R version of the worker that fitted
+  it, which can differ from the calling session (#464).
 
 ## Bug fixes
 
@@ -2470,36 +2591,6 @@
   zero". Supplying an `xform` took a different branch and was unaffected, which
   is why the failure was specific to the default (#160, #161).
 
-- Where `crf()` transforms the predictor inline, as in
-  `crf(log(concentration))`, `nec()`, `ecx()`, `nsec()`, `ecnsec()` and
-  `compare_estimates()` now say so in a message once
-  per call. These functions return values on the transformed scale unless
-  `xform` is supplied, while `autoplot()` draws the recorded scale, and nothing
-  in the returned number said which scale it was on. A log-scale estimate that
-  falls inside the tested range reads as a concentration. The message names the
-  transformation and the `xform` that inverts it: `xform = exp` for `log()`,
-  `function(x) x^2` for `sqrt()` and `function(x) exp(x) - 1` for `log(x + 1)`.
-  Where no closed form is known it asks for the inverse of the transformation
-  it names. `crf(I(x))` is not a transformation and raises nothing.
-
-  It is raised once for a model set, a group, a hurdle pair or a comparison,
-  not once for each equation, level, component or fit. It is not raised where
-  an `xform` is supplied, by name or by position; an explicit
-  `xform = identity` is treated as no `xform`, and raises it.
-  `compare_estimates()` takes no `xform`, so its message names the estimators
-  that do. `summary(ecx = TRUE)` raises it once for its ECx rows. `plot()` and
-  `autoplot()` do not raise it, because they put every estimate on the axis
-  scale themselves. `ecnsec()` returns a percentage, so its message is about
-  the `nsec` it is given and names the `xform` that puts that value on the
-  recorded scale, on a `bayesnechurdlefit` as on every other class (#437).
-
-  `curve_params()` already said where `nec` and `ec50` were on a transformed
-  scale. Its message now names the inverse to pass, where it said only "pass
-  the inverse as xform". It now recognises `crf(-x)`, which it missed, and no
-  longer reports `crf(I(x))`. No returned value changes: making the recorded
-  scale the default changes every reported value from such a fit and is left to
-  the 3.0 release (#299).
-
 - `compare_estimates()` and `compare_posterior()` no longer void a comparison
   in which any draw is censored. A single unreached draw in either posterior
   previously made `prob` `NA` for the whole comparison, and silently, the
@@ -2847,7 +2938,448 @@
   anything is sampled. `?bnec_hurdle` states that the term applies to the
   growth component only. No fit that previously succeeded changes (#410).
 
+- The `sample_size` stored on a `bayesmanecfit` is now the number of draws
+  each model holds, counted from the fits. It was computed as
+  `ceiling((iter - warmup) / thin * chains)`, while Stan keeps
+  `ceiling((iter - warmup) / thin)` draws in each chain, so the count could fall
+  short when `thin` does not divide `iter - warmup`. Four chains of 500
+  post-warmup iterations thinned by 3 keep 668 draws, and `sample_size`
+  recorded 667. The stored summaries, `ecx()` and `nsec()` used the stored
+  draw index, while `posterior_epred()` and `posterior_predict()`, and
+  `fitted()`, `predict()` and `ecnsec()` through them, found 668 draws and
+  rebuilt a different index from the seed. A credible band computed from
+  `posterior_epred()` therefore differed from the one the plot methods draw,
+  and an `nsec()` and its `ecnsec()` were not the same draws. All of them now
+  use the stored index. A thinned set fitted again draws its index from all
+  the draws, so its model-averaged estimates differ from those of the earlier
+  fit. A set saved by an earlier version keeps the `sample_size` it recorded,
+  and every method now uses its stored index whenever the caller takes all
+  the draws, so such a set agrees with its own stored summaries without being
+  refitted. Without a stored index, methods rebuild one from the same saved
+  count and seed. Sets predating the stored seed use a fixed seed, so their
+  recalculated estimates agree across methods but cannot reproduce the
+  historical summaries. The default `thin = 1` and a single fit, a
+  `bayesnecfit`, are unaffected (#477).
+
+- `update()` on a `bayesnechurdlefit` passes a supplied `family` to the growth
+  component only. It reached the survival component as well, which is always
+  `bernoulli`. `update(fit, family = Gamma(link = "identity"))` on a hurdle fit
+  with a Gamma growth component therefore refitted the growth component, then
+  reported the deaths as zeros shifted to 0.1 and refused the survival refit as
+  a change of family. Under `force_fit = TRUE` the survival component would
+  have been refitted to its shifted 0/1 response under the Gamma family. The
+  survival component's bound check, which runs before either refit, also read
+  the growth family (#486).
+
+- `update(newdata = )` on a `bayesnechurdlefit` checks the response in the new
+  data as `bnec_hurdle()` checks its data, before either component is refitted,
+  and refuses it with the same message. New data with no zero were refused as
+  a survival component at its upper bound, with advice to name `ecxflat` or to
+  call `bnec()`, neither of which `update()` can apply to one component. A
+  negative value was read as a death, a missing value was reported as a
+  missing value "at row(s) NA", and a character response was passed to the
+  refit. A growth component at a bound of its family in every observation,
+  such as a `Beta` growth component of 1 throughout, is now pointed by both
+  `update()` and `bnec_hurdle()` to a `bnec_hurdle()` call that names
+  `ecxflat` in `crf()` and gives the survival component its equations through
+  `model_survival` (#486).
+
+- `update()` refuses a change of family without `force_fit = TRUE` before it
+  checks the data, so a refused call no longer reports that values were
+  shifted off a boundary of the new family. On a fit with no `bnec_record()`,
+  such as `manec_example`, the shift message no longer ends "The priors below
+  are derived from the substituted response". That sentence describes
+  `get_priors()`; `update()` prints no priors and reuses those of the original
+  fit (#486).
+
+- `nec()`, `summary()` and `plot()` on a `bayesnechurdlefit` whose growth or
+  survival component was fitted to a single smooth equation, such as
+  `ecx4param`, now return. Each stopped with "nec is not a parameter in ecx
+  model types.", so such a fit could be read only through `nsec()`, `ecx()`,
+  `autoplot()` or `plot(add_nec = FALSE)`. The component contributes the NSEC
+  draws stored when it was fitted, as a component fitted to a model set
+  contributes its N(S)EC draws, and `summary()` labels its row NSEC.
+  `nec()` on a `bayesnecfit` holding a smooth equation still refuses. A smooth
+  hurdle component saved before the estimate type was recorded also retains
+  NSEC extrapolation rules (#487).
+
+- `nec(which = "growth")` and `nec(which = "survival")` on a
+  `bayesnechurdlefit` compute only the component named. Both components were
+  computed, so a call for the growth estimate printed the N(S)EC message of a
+  survival model set holding a smooth equation, and stopped where the survival
+  component was a single smooth equation (#487).
+
+- Where `crf()` transforms the predictor inline, as `crf(log(x))` does,
+  `plot()`, `autoplot()` and `ggbnec_data()` on a `bayesnechurdlefit` draw the
+  observed points on the recorded scale, the scale of the prediction grid and
+  of the fitted curve. The points were drawn on the transformed scale, so they
+  and the curve did not overlay. `plot()` also draws the N(S)EC line on the
+  recorded scale, at the estimate `nec()` returns by default, or at the
+  estimate on the transformed scale put through `xform` where one is supplied.
+  `xform` is then not applied to the points or the curve, as for a
+  `bayesnecfit`. A predictor that `crf()` does not transform is drawn
+  as before. An estimate identified over a stored prediction range beyond the
+  observations is drawn where it lies, including where the plotted range is
+  narrower (#487).
+
+- `summary()` on a `bayesnechurdlefit` names a Gamma growth family `Gamma`,
+  as `bnec_hurdle()` names it when fitting. It printed `gamma`, the name
+  `brms` records (#487).
+
+- `amend(add = )` on a fit with a two-block family, such as `hurdle_gamma`,
+  fits the added equation's survival block with the equation the set was
+  fitted with. Where `bnec()` was called with `model_survival = "nec3param"`,
+  as `bnec_joint()` calls it for every joint refit of a hurdle fit, an added
+  equation was given its own survival block. The set then compared pairs of
+  equations whose survival blocks differed, and nothing reported it. A set
+  fitted without `model_survival` still gives each added equation its own
+  survival block (#489).
+
+- `amend(add = )` samples an added equation with the `control` and `seed`
+  passed to `brm()` through `bnec()`, and with the backend of the original
+  fit. It passed only `iter`, `warmup`, `thin`, `chains` and `sample_prior`,
+  so an equation added to a set fitted with
+  `control = list(adapt_delta = 0.99)` was sampled at the `brms` default, and
+  its draws changed from one `amend()` call to the next. Each fit made by
+  `bnec()` now records `model_survival`, `control` and `seed` in a
+  `call_args` element of the fitted model, which `update()` keeps up to date.
+  A fit saved by an earlier version records none of them. `amend()` then
+  passes the backend to the added equation but not `control` or `seed`, and
+  reads the survival-block equation from the stored formulas. Updating an
+  older fit creates the record from those formulas and any `control` or
+  `seed` supplied to `update()`, so later additions reuse them. `amend()`
+  also records the recovered survival equation on retained fits before
+  dropping models, so later additions keep that equation. After an update
+  changes the backend or algorithm, only `control` and `seed` supplied to
+  that update are recorded, matching what `brms` reuses (#489).
+
+- On a `bayesnecjointfit` whose levels start at different concentrations,
+  `ecx()`, `nsec()` and `ecnsec()` now predict each level's control at that
+  level's own lowest concentration. They predicted it at the lowest
+  concentration of all levels together, which for a level observed from a
+  higher concentration lies below its data. Every estimate for such a level
+  that is defined relative to the control, which excludes only
+  `ecx(type = "direct")`, was measured from that prediction. Inside `nsec()`
+  the reference was read there, while the search for the NSEC started at the
+  level's own lowest concentration. What is read through these functions
+  changes with them: `nec(no_effect = TRUE)` on a level fitted with a smooth
+  equation, `exceedance()` under `estimate = "nsec"` or `"ecx"`, and the NSEC
+  and ECx annotations of `autoplot()`. A refit whose levels share their lowest
+  concentration, as most designs do, is unchanged (#500).
+
+- `update()` on a `bayesnechurdlefit` checks a supplied `family` as
+  `bnec_hurdle()` checks `family_growth`, before either component is refitted.
+  A family `bnec_hurdle()` refuses for the growth component, such as
+  `hurdle_gamma` or `zero_inflated_poisson`, is refused with the same message.
+  It was passed to `brms` as the growth family. A `poisson` or `negbinomial`
+  family needs `brms` 2.23.2 or later, as in `bnec_hurdle()`, and the growth
+  component is refitted with `trunc(lb = 1)`, the zero-truncated likelihood
+  `bnec_hurdle()` fits to the survivors. It was refitted without the
+  truncation on any version of `brms`, as if a zero were possible among
+  responses that hold none, and nothing was reported. A `cens()` term with a
+  count family, and a `disp()` term on a column other than the predictor with
+  `negbinomial`, are refused as `bnec_hurdle()` refuses them. A family that is
+  not a count family, supplied for a count growth component, is refitted
+  without the truncation, which the refit kept. Without `family`, a growth
+  component fitted with the truncation keeps it and needs the same version of
+  `brms` (#503).
+
+- `plot()` on a `bayesnechurdlefit` suppresses the messages of the `nec()`
+  call it makes to place the N(S)EC line on each panel, as `summary()`
+  suppresses them for its table. Where a component is a model set holding a
+  smooth equation, or the combined value is approximate, each message was
+  printed once per panel. Warnings are still printed (#506).
+
+- The default `nec` and `ec50` priors are bounded to the tested range of the
+  predictor again, from its lowest value to its highest, under the default
+  `asymptote_observed = TRUE` and under both values of `prior_type`.
+  `asymptote_observed = FALSE` removes the upper bound and keeps the lower one.
+  The bound had been removed for every fit, so the two values of
+  `asymptote_observed` built the same `nec` and `ec50` priors, and beside a
+  default `bot` prior that assumes the series reached the lower asymptote the
+  `"uninformative"` threshold priors placed 2.5 per cent or more of their mass
+  above the highest concentration. On a simulated Beta response at six
+  concentrations from 0 to 16, `get_priors()` now returns `ub = 16` for `nec`
+  and `ec50` under the default and no upper bound under
+  `asymptote_observed = FALSE`, with the same prior string under both.
+
+  The lower bound is the lowest value tested under both settings. On a series
+  with a zero control it is 0, as before. On a series without one it is the
+  lowest dose, where the lognormal entry had a lower bound of 0. A predictor
+  supplied already logged takes a normal entry, which had no bound and now takes
+  the tested range under the default and its lower end under the declaration.
+  A predictor with a single distinct value takes no upper bound, because a bound
+  equal to the lower one leaves no support. The growth component of
+  `bnec_hurdle()` is fitted to survivors only, and its `nec` and `ec50` priors
+  are bounded by the whole concentration series rather than by the survivors'
+  range, which is the range its estimates are read over. The series is
+  recorded on the growth component's formula, so `amend(add = )` bounds an
+  added equation in the same way. `get_priors()` uses that recorded range
+  when it builds priors from the growth formula and survivors' data.
+
+  Results change for a fit made under the default. Its `nec` or `ec50`
+  posterior cannot exceed the highest concentration tested, which was also the
+  case in version 2.1.4 and earlier, so a threshold the data place above the
+  series is held at that concentration rather than reported as censored beyond
+  it. Where `extrapolate` on `nec()` or `nsec()` re-evaluates such a fit, its
+  message that the prior bounds the posterior now names
+  `asymptote_observed = FALSE`. The report that a response is still declining
+  at the top of the series describes the threshold priors the call builds, and
+  its advice to declare `asymptote_observed = FALSE` states that the
+  declaration removes the upper bound. Four published datasets of four to
+  seven observations were fitted with and without the bound, with the Beta
+  family, the identity link, the `decline` set and seed 3866: without it,
+  sampler screening discarded more model weight on all four, 86.6 per cent
+  against 58.3 per cent on one of them. That comparison shows that the bound
+  changes sampling, not which setting gives the better estimate. `update()`
+  reuses the priors of the fit it refits, so a fit made without the bound keeps
+  its prior when updated. The precompiled vignettes were rendered without the
+  bound, and their numbers change at the next precompile (#483).
+
+- A `crf()` predictor is read one way on every path, as a model formula reads
+  it. A formula operator at the top of the predictor, as in `crf(x - 1)`,
+  `crf(log(x) - 1)`, `crf(log(x) + 1)` or `crf(x^2)`, is now refused, with a
+  message that names the expression and gives it written inside `I()`, as in
+  `crf(I(x - 1))`. The operators are `+`, `-`, `*`, `/`, `:`, `^` and `%in%`.
+  The model frame and the `brms` formula read such an operator as formula
+  syntax, so `crf(x - 1)` and `crf(x^2)` were fitted on `x`, and
+  `crf(log(x) - 1)` on `log(x)`. `ecx()`, `nsec()` and the scale message read
+  the same predictor as arithmetic, so the ECx of `crf(x - 1)` was reported
+  one unit low and that of `crf(x^2)` on the scale of `x^2`. `crf(log(x) + 1)`
+  was refused by a parse error that named neither the term nor the cause. The
+  refusal is raised once per call, before anything is fitted, by the functions
+  that refuse `crf(-x)`. A fit made with such a predictor by an earlier
+  version is refused by the functions that rebuild its model frame, among
+  them `ecx()`, `nsec()` and `autoplot()`, and `nec()` reads it on the scale
+  it was fitted on. Parentheses around the predictor and a unary plus are
+  dropped on every path, as the formula drops them: `crf((log(x)))` was fitted
+  on `log(x)` while its estimates were reported on the scale of `x`, with no
+  scale message, and it is now read as `crf(log(x))`. An operator inside a
+  function call or under `I()` is accepted, and one inside a nested call, as
+  in `crf(sqrt(log(x) + 1))`, no longer fails with the same parse error.
+  Stan has no `I()`, so a predictor written inside it is now passed to `brms`
+  as the expression inside it, in parentheses: `crf(I(log(x) + 1))` is
+  written into the curve as `(log(x) + 1)`. The model frame and the
+  estimators keep the `I()`. Nested `I()` calls are removed from the Stan
+  expression too, so `crf(log(I(x - 1)))` compiles as `log((x - 1))`.
+  `crf(I(-x))`, the form the refusal of `crf(-x)`
+  offers, and `crf(I(x - 1))` previously gave a Stan program that failed to
+  compile, and both now compile. Any predictor that is neither a column name
+  nor a function call is written in parentheses, so that the curve's own
+  terms cannot regroup it. The formula passed to `brms` for `crf(x)`,
+  `crf(log(x))` and other column names or function calls without `I()` is unchanged
+  (#479).
+
+- **Where `crf()` transforms the predictor inline, the estimates are returned
+  on the recorded scale by default.** `xform` now defaults to `NULL` in `nec()`,
+  `ecx()`, `nsec()`, `ecnsec()`, `curve_params()`, `exceedance()`,
+  `ggbnec_data()`, `autoplot()` and `plot()`, on every class. On a fit to
+  `crf(log(concentration))`, `nec(fit)` returns a concentration where it
+  returned a log concentration, and so do the no-effect row of `summary()`, its
+  ECx rows, `exceedance()`, which now reads `threshold` as a concentration, and
+  `compare_estimates()` and `compare_posterior()`, which take no `xform`. On a
+  fit whose predictor is a column, `NULL` gives what `identity` gave, and
+  nothing changes. **A call that passes `xform` is unaffected**: the function
+  is applied to the estimate on the scale the model was fitted on, as before,
+  so `nec(fit, xform = exp)` returns the numbers it returned, and
+  `xform = identity` returns the fitted scale.
+
+  `ecx()` and `nsec()` search the curve on a grid of recorded concentrations,
+  so under the default they no longer put the estimate through the
+  transformation, and no inverse is involved. `nec()`, `curve_params()` and the
+  no-effect row of `summary()` read a parameter sampled on the fitted scale and
+  invert it: exactly for `log`, `log10`, `log2`, `log1p`, `sqrt` and `exp` of
+  the predictor, alone or shifted by a constant, and otherwise by linear
+  interpolation on the prediction grid, refined where the grid is coarse on the
+  fitted scale. On `manec_example`'s grid of 1000 points, checked at 100,000
+  values along the fitted scale, the interpolation inverts `asinh(x)` to within
+  a relative error of 3.5e-7, and `log(x)` and `sqrt(x)`, forced through it, to
+  within 4.8e-7 and 1.2e-5. A draw that lies beyond that grid and is not
+  censored has no value to read off it: `nec()` stops and names the inverse to
+  pass, and `curve_params()` reports that parameter's row as `NA` with a
+  message. `ecnsec()` reads `nsec` on the recorded scale under `NULL`, so
+  `ecnsec(fit, nsec = nsec(fit)[1])` reads the curve at the NSEC on every fit.
+  `extrapolate`, `x_range` and the censoring bounds were already on the
+  recorded scale, and stay on the scale of the estimate returned.
+
+  The message reporting an estimate on the transformed scale is removed,
+  since the default no longer returns one. `plot()`, `autoplot()` and
+  `ggbnec_data()` drew on the recorded scale already, and now annotate the
+  numbers `nec()` and `ecx()` return by default. They inverted the stored
+  summary on the prediction grid before, which differed from the exact inverse
+  in the fifth significant figure and held an estimate beyond the grid at its
+  end. The precompiled vignettes were rendered under the old default, and the
+  values printed by `summary()` and `nec()` for an inline-transformed fit in
+  `example1`, `example8` and `example9` change at the next precompile (#299).
+
+- **The constant equation `ecxflat` belongs to the `all`, `ecx` and `decline`
+  model groups**, and to no other. `all`, the default set of `crf()`, now holds
+  24 equations, `ecx` 14 and `decline` 15, so every model-averaged result built
+  from one of those groups changes, the default `bnec()` call included. Every
+  equation of such a set used to fit a curve to a response that does not
+  change over the tested range; the model weights are now computed with a
+  constant mean among the candidates. Where `ecxflat` takes weight, its draws
+  enter the model-averaged ECx and N(S)EC in proportion to that weight. Each of
+  its ECx draws is censored above the prediction range, and so is each of its
+  NSEC draws except about a share `sig_val`, which take the control
+  concentration. On a response that declines it takes almost none: in the
+  test suite, `amend(manec_example, add = "ecxflat")` gives it a weight below
+  0.01. Its fit reports that its NSEC is censored above, as it does for
+  any equation whose curve does not reach the reference, so a call fitting one
+  of these groups prints that message once more.
+
+  `bot_free` and `zero_bounded` do not change, because `ecxflat` has no `bot`
+  but its mean does not decline. No family drops it, so `models()` given a
+  numeric range lists it, and `models(max_pars = 1)` returns it where it was an
+  error. Given one of these group names, `pull_out()` and `amend()` include
+  it, `bnec_group()` fits it at each level, and `bnec_hurdle()` fits it in
+  both components unless `model_survival` is supplied. A prior list named by
+  equation and written for one of these groups has no `ecxflat` entry, so
+  `bnec()` fits it with the default prior and says so in a message. The
+  precompiled vignettes were rendered with the earlier groups, and their
+  fitted output changes at the next precompile; the `example8` fit store is
+  refitted then, since its fits follow the model set (#485).
+
+- `update()` checks the `disp()` term of a fit against the family the refit
+  uses, before any model is refitted and whether or not `force_fit` is set. A
+  set assembled with `c()` is checked equation by equation, including the
+  growth set of a factorised hurdle fit. A
+  family `bnec()` refuses for the term is refused with `bnec()`'s message, so
+  a `Gamma` fit with `disp(~x)` updated to `poisson` is refused because
+  `poisson` has no dispersion parameter. A family that names its dispersion
+  parameter differently from the fitted one is refused as well, because
+  `update()` reuses the stored sub-model and its priors. A `Beta` fit with
+  `disp(~x)`, whose sub-model is on `phi`, updated to `gaussian`, whose
+  parameter is `sigma`, is one such case. `brms` stopped on both after the
+  message about the change of family, saying that `shape` or `phi` was not a
+  valid parameter and asking whether `nl = TRUE` had been set. A family with
+  the same dispersion parameter, such as `negbinomial` for a `Gamma` fit, is
+  refitted as before. New data are checked against a variance function in
+  `disp()` as `bnec()` checks its data, so a gaussian fit with
+  `disp("power")` given a response below zero is refused with `bnec()`'s
+  message. On a `bayesnechurdlefit`, the growth family is checked in the order
+  `bnec_hurdle()` checks `family_growth`, so `poisson` for a growth component
+  with a `disp()` term is refused for the term, as `bnec_hurdle()` refuses it,
+  and not for the installed version of `brms` (#514).
+
+- `update()` refuses a family that adds, removes or replaces the second block
+  of a two-block family such as `hurdle_gamma`, before any model is refitted.
+  The stored formula holds the blocks of the fitted family only. A `Gamma` fit
+  updated to `hurdle_gamma` reached `brms` with no `hu` block, which `brms`
+  then fits as a single constant rather than as the survival curve `bnec()`
+  builds. A `hurdle_gamma` fit updated to `Gamma` stopped in `brms` on the
+  `hu` block. Fit such a model with `bnec()`.
+
+- `bnec_joint()` takes `prior_type`, `asymptote_observed` and
+  `predictor_scale`, and by default builds the priors of the joint refit with
+  the values the `bnec_group()` or `bnec_hurdle()` fit was made with. On a
+  grouped fit the three were passed through `...` to `brm()`, so the default
+  priors of the refit were built with the defaults of `bnec()`. A grouped fit
+  made with `asymptote_observed = FALSE` was refitted under `TRUE`, which
+  bounds the `nec` and `ec50` priors to the tested range and builds the `bot`
+  prior from the observed response, and nothing reported it. Where the levels
+  favour different equations, the declaration also reaches the priors and
+  initial values built for each equation. On a hurdle fit the three reached
+  `bnec()` when passed, and otherwise took its defaults. Each fit made by
+  `bnec()` now records the three in its `call_args` element. A fit that
+  records none is refitted with the defaults of `bnec()`, as before (#516).
+
+- `bnec(asymptote_observed = FALSE)` with a `bot` prior supplied through
+  `prior` is fitted on a response for which no floor can be derived: a
+  gaussian response spanning negative values, or a fit on a link other than
+  the identity. The supplied entry takes the place of the one the declaration
+  builds from the floor, the other default priors are built, and the
+  declaration still removes the upper bound of the `nec` and `ec50` priors.
+  The check before the model loop accepted the call, which then stopped with
+  "user-specific parameter prior names (bot) do not match expectation",
+  because none of the other default priors had been built. `amend()` given a
+  `bot` prior through `priors` adds an equation in the same way, where it
+  printed that message and kept the set unchanged. Without a `bot` prior the
+  call is refused as before, and the message now says that a supplied `bot`
+  prior keeps the declaration (#516).
+
+- `bnec()` and `bnec_group()` no longer report the survival block of a
+  two-block family, such as `hurdle_gamma`, as still declining at the top of
+  the series where the equation of that block estimates none of `bot`, `nec`
+  and `ec50`. Those equations are `ecxexp`, `ecxsigm` and `ecxflat`, and
+  `ecxlin` where the family admits it, whether named in `crf()` or in
+  `model_survival`. The report concerns the default priors of those three
+  parameters, and it was raised for every such survival block. Under
+  `asymptote_observed = FALSE` on a link other than the identity, such a
+  survival block also led `bnec()` and `bnec_group()` to refuse the call for
+  want of a floor, although no `bot` prior was to be built from one.
+
+- `pull_out()`, `c()` and `+` keep the `bnec_record()` of the objects they are
+  given. `bnec_record()` of the result returned `NULL`, which `?bnec_record`
+  documents as meaning that no record was made, so the equations `bnec()`
+  excluded and the substitutions it made in the response could no longer be
+  read from the object. `pull_out()` lists each equation it does not keep as
+  excluded, with the reason "not kept by pull_out()", as `amend()` does for an
+  equation it drops. `c()` and `+` join the records of the objects combined,
+  and return no record where any of them has none. They also keep the
+  `failed_models()` record of each object combined, which they dropped, so
+  that an equation recorded as attempted and not held by the combined set is
+  reported as failed. An object fitted before the record existed still
+  returns `NULL` (#522).
+
+- `amend()` builds the default priors of an added equation with the
+  `prior_type`, `asymptote_observed` and `predictor_scale` the set was fitted
+  with, unless they are supplied. Each took the `bnec()` default, and `?amend`
+  said that none was inherited. A set fitted with
+  `prior_type = "regularizing"` or `asymptote_observed = FALSE` and then
+  amended with `add` had the added equation fitted under different default
+  priors from the rest of the set, and its model weights then compared
+  equations fitted under different priors, with no message. An added equation
+  is also given the element of a named list of priors that names it, as
+  `bnec()` would have given it, and is sampled with the `algorithm` and
+  `save_pars` the stored fit holds. A `prior` given to `bnec()` as a single
+  `brmsprior` is not applied to an added equation, because a parameter of the
+  same name can have a different role in another equation; a message says
+  that the default priors were built instead. Each equation now records the
+  `prior` argument of its call in `call_args`. An object fitted before the
+  record existed is amended with the `bnec()` defaults, as before (#522).
+
+- `amend()`, `update()`, `pull_out()`, `c()` and `+` compute the estimates of
+  the set they return with the `x_range`, `resolution`, `sig_val` and
+  `loo_controls` it was fitted with, unless they are supplied. Each computed
+  every equation's estimates again with the `bnec()` defaults. A set fitted
+  with `sig_val = 0.05` had its NSEC draws computed against the 0.01 quantile
+  of the control after `amend(drop = )` or `pull_out()`, a set fitted with an
+  `x_range` was predicted over the range of the data instead, and a set
+  fitted with LOO fitting arguments, such as `moment_match = TRUE`, had its
+  criteria computed without them. `bnec()` records the four on the fitted
+  object. `c()` uses a value where every object combined that records it
+  agrees, and otherwise the `bnec()` default, with a message naming the
+  argument. `update()` on a `bnec_hurdle()` fit given `newdata` predicts the
+  growth component over the concentration series of the new data, as
+  `bnec_hurdle()` does. An object fitted before the record existed uses the
+  `bnec()` defaults, as before (#522).
+
+  Supplied prediction settings are also applied when `amend()` adds or drops
+  no equation, or `pull_out()` keeps every equation. `pull_out()` continues
+  to accept positional and abbreviated prediction arguments. Combining fits
+  of the same equation with `c()` or `+` joins their records and recomputes
+  the estimates with the resolved settings. On a hurdle update with new
+  data, `x_range = NULL` follows the new series where no fixed range was
+  recorded, as omission does.
+
+- The LOO and WAIC criteria of a `bayesnecfit` passed to `amend()`, `c()` or
+  `+` are computed again with the `loo_controls` of the call. They
+  were kept from the call that last computed them, because
+  `brms::add_criterion()` does not replace a criterion the fit already holds.
+  `amend(fit, loo_controls = list(fitting = ...))` therefore left the criteria
+  of the equation already fitted unchanged, and `c()` of two objects whose
+  criteria were computed from different numbers of draws stopped in
+  `loo_model_weights()` (#522).
+
 ## Documentation
+
+- `?nec.bayesnechurdlefit` states that the combined no-effect estimate of a
+  `bnec_hurdle()` fit is the smaller of the two component thresholds on the
+  scale the model was fitted on. Under a decreasing transformation in `crf()`,
+  such as `crf(I(-x))`, that is the larger of the two on the recorded scale,
+  because each curve is then flat above its threshold. The value returned is
+  unchanged (#520).
 
 - `?autoplot` states that a `bayesmanecfit` with `multi_facet = FALSE`
   returns a list of ggplot objects, invisibly. It said a ggplot object was

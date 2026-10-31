@@ -9,7 +9,8 @@ Written 2026-09-19. Line references are against `dev` at `76d07a13`.
 Status, 2026-09-26: complete. #389, #390 and #391 reached `dev` directly, and
 #392 to #395 through PR #409 (`c3824643`); #386 and its seven issues are closed.
 Where the implementation departed from this document, the departure is recorded
-as a dated amendment beside the section it changes: §2.2, §3.4, §5.3 and §6.
+as a dated amendment beside the section it changes: §2.2, §3, §3.3, §3.4, §5.2,
+§5.3 and §6.
 Follow-up work is in the backlog run, `backlog-run-human.md`.
 
 ---
@@ -305,6 +306,37 @@ wanted. §4.3 reports per component and combines, which is what
 
 ## 3. Removal of the tested-range truncation (phase 6, #393)
 
+Amended 2026-10-28, by RF's decision on #483. This section removed the
+truncation for every fit, and #393 implemented it so. That was not RF's intent.
+The default `asymptote_observed = TRUE` asserts that the series reached the
+lower asymptote, and on such a design the decline begins, and passes its
+midpoint, inside the tested range, so a bound at the range states what the
+default already assumes. Leaving it off placed 2.5% or more of the
+`"uninformative"` threshold mass above the highest concentration beside a `bot`
+prior that assumed a complete design. The rule is now:
+
+```r
+if (is.null(tested_range)) tested_range <- range(prior_predictor)
+x_lb <- tested_range[1]
+if (grepl("^lognormal", x_pr)) x_lb <- max(x_lb, 0)
+x_ub <- NA
+if (asymptote_observed && tested_range[2] > x_lb) x_ub <- tested_range[2]
+pr_nec <- prior_string(x_pr, nlpar = "nec", lb = x_lb, ub = x_ub)
+pr_ec50 <- prior_string(x_pr, nlpar = "ec50", lb = x_lb, ub = x_ub)
+```
+
+The declaration lifts the upper bound only; the lower bound is the lowest value
+tested under both settings, on both branches. A single distinct value takes no
+upper bound, because `lb = ub` leaves no support and the rejection loop in
+`make_inits()` would never end. `tested_range` is the whole concentration series
+for the growth component of `bnec_hurdle()`, which is fitted to survivors only;
+`bnec_hurdle()` records it on the growth formula, so `amend()` reads it too. The
+bound follows the tested range and not a user-supplied `x_range`, because
+`x_range` is applied after fitting, `amend()` and `update()` take it without
+refitting, and it is on the recorded scale while the prior is on the fitted one.
+§3.1 to §3.5 below are the record of #393, and hold for a fit under
+`asymptote_observed = FALSE`.
+
 ### 3.1 What changes
 
 `R/define_prior.R:1277-1281`:
@@ -362,6 +394,11 @@ on a wholly flat design, where the answer is prior-dominated by construction.
 Widening it is part of phase 7 and not of this phase.
 
 ### 3.3 The lower bound
+
+Amended 2026-10-28 (#483): `lb = min(prior_predictor)` is kept under both
+settings of `asymptote_observed`, so the paragraph below no longer describes the
+package. A curve-read NSEC can still lie below the lowest concentration, and
+§4.4 reports it.
 
 `lb = min(prior_predictor)` is removed by the same change, so a threshold below
 the lowest concentration tested is admissible. That is the mirror case and it is
@@ -693,12 +730,17 @@ One mechanical trap either way. `R/define_prior.R:1537` reads
 package currently means `"uninformative"`. A third value would be absorbed by
 them silently. Grep for `prior_type ==` before touching any of this.
 
-The name states exactly what the argument changes. After §3 the threshold priors
-are no longer truncated for anyone, so this argument governs the `bot` prior and
-the initial-value band and nothing else, both of which are the lower asymptote. A
-name such as `response_complete` would promise control over the `nec` and `ec50`
-priors that it does not have. `prior_type` does not exist on CRAN, so nothing
-constrains the choice.
+The name states exactly what the argument changes. It governs the `bot` prior,
+the initial-value band and the upper bound of the `nec` and `ec50` priors, all of
+which follow from whether the series reached the lower asymptote. `prior_type`
+does not exist on CRAN, so nothing constrains the choice.
+
+Amended 2026-10-28 (#483). This paragraph read that after §3 the threshold priors
+were no longer truncated for anyone, so the argument governed `bot` and the
+initial-value band alone, and that a name such as `response_complete` would
+promise control over the `nec` and `ec50` priors it did not have. RF's decision
+on #483 gives it that control: the default keeps the tested-range bound, and the
+declaration lifts its upper end.
 
 ### 5.3 The `bot` entry
 

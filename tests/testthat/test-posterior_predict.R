@@ -1,9 +1,6 @@
-# #443. Predictions from a fit whose disp(~z) term names a column other than
-# the predictor. One fit is sampled, once, and shared by every block that needs
-# one: a Gamma nec3param curve whose shape differs by a factor z, 60 at
-# "tight" and 4 at "loose", with seven rows in ten at "tight". The spread of a
-# reading at "loose" is then about four times that at "tight", which is what
-# makes the marginalised spread distinguishable from either level's.
+# Share one Gamma nec3param fit with shape 60 at tight and 4 at loose;
+# 70% of rows are tight. The roughly fourfold spread contrast makes
+# dispersion marginalisation distinguishable from either level alone.
 disp_z_fixture <- local({
   cached <- NULL
   function() {
@@ -202,10 +199,9 @@ test_that("prediction without newdata is over the fitted rows (#443)", {
 })
 
 test_that("a numeric z is marginalised exactly, one call per value (#443)", {
-  # No sampling: brms's posterior_predict() is replaced by one that returns
-  # the draw id in the first column and the value of w on the grid in the
-  # second, so the reassembly can be read off the result. The fitted data
-  # include 0.1 + 0.2 and 0.3, which print alike and differ in binary.
+  # Mock posterior_predict() to return draw IDs and grid w values.
+  # This checks reassembly without sampling; 0.1 + 0.2 and 0.3 print
+  # alike but must remain distinct binary values.
   obs <- data.frame(x = seq_len(60), w = c(rep(0.1 + 0.2, 3), 0.3, 1:56))
   fake <- list(data = obs)
   nd <- data.frame(x = c(1, 2), w = stats::median(obs$w))

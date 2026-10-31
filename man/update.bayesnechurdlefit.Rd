@@ -4,7 +4,7 @@
 \alias{update.bayesnechurdlefit}
 \title{Updates both components of a \code{\link{bayesnechurdlefit}}}
 \usage{
-\method{update}{bayesnechurdlefit}(object, newdata = NULL, ...)
+\method{update}{bayesnechurdlefit}(object, newdata = NULL, recompile = NULL, x_range = NULL, ...)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnechurdlefit}}.}
@@ -12,15 +12,37 @@
 \item{newdata}{Optional new data. Split into the two component datasets the
 same way \code{\link{bnec_hurdle}} does, so zeros continue to denote the
 hurdle rather than being modelled as small responses, and checked the same
-way: a row that is both zero and censored is refused here as it is at
-construction. Each component is refitted with the family it was fitted
+way. A response that is not numeric, holds a missing or negative value, or
+has no zero or no value above zero is refused with the message
+\code{bnec_hurdle} gives, as is a row that is both zero and censored.
+Each component is refitted with the family it was fitted
 with, as \code{\link{update.bnecfit}} describes. Both components are checked
-against their families before either is refitted, so new data that put one
-component at a bound in every observation are refused, naming that
-component. New data with no zero are such a case: every individual
-survived, so the survival response is 1 in every observation.}
+against their families before either is refitted, so new data that put the
+growth component at a bound in every observation, such as a \code{Beta}
+growth component of 1 throughout, are refused, naming that component.}
 
-\item{...}{Further arguments to \code{\link[brms]{brm}}.}
+\item{recompile}{As for \code{\link{update.bnecfit}}.}
+
+\item{x_range}{As for \code{\link{update.bnecfit}}. A \code{NULL} inherits
+the recorded range, or follows the whole new concentration series where
+\code{bnec_hurdle} was given no range.}
+
+\item{...}{Further arguments passed to \code{\link{update.bnecfit}} for
+each component. A \code{family} is passed to the growth component only.
+The survival component is always refitted as \code{bernoulli}. The growth
+family is checked as \code{\link{bnec_hurdle}} checks
+\code{family_growth}, before either component is refitted. A family
+\code{bnec_hurdle} refuses for the growth component, such as
+\code{hurdle_gamma}, is refused. So is a family the growth component's
+\code{disp()} term cannot be refitted under, as \code{\link{update.bnecfit}}
+describes, such as \code{poisson}. A \code{poisson} or \code{negbinomial}
+family needs \pkg{brms} 2.23.2 or later, and the growth component is then
+refitted with the zero-truncated likelihood \code{bnec_hurdle} uses.
+An argument that is not supplied, such as \code{x_range}, is taken by each
+component from its own fit, as \code{\link{update.bnecfit}} describes.
+Where \code{newdata} is supplied and \code{bnec_hurdle} was given no
+\code{x_range}, the growth component is predicted over the whole
+concentration series of \code{newdata}, as \code{bnec_hurdle} predicts it.}
 }
 \value{
 An object of class \code{\link{bayesnechurdlefit}}.

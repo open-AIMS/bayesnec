@@ -55,10 +55,8 @@ bnec_newdata <- function(x, resolution = 100, x_range = NA) {
 #' @export
 bnec_newdata.bayesnecfit <- function(x, resolution = 100, x_range = NA) {
   check_args_newdata(resolution, x_range)
-  # Delegates so this, expand_nec() and posterior_on_grid() cannot build
-  # different grids. This function used to test any(is.na(x_range)) while the
-  # other two tested is.na(x_range[1]); those disagreed for a partially
-  # specified range, which check_args_newdata() now rejects outright. See #211.
+  # Delegate, so that this, expand_nec() and posterior_on_grid() build the
+  # same grid.
   prediction_grid(x$fit, x$bayesnecformula, x_range = x_range,
                   resolution = resolution)$newdata
 }

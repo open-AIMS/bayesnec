@@ -4,7 +4,7 @@
 #' \code{\link[bayesnec:bayesnec-package]{bayesnec}} package are summarised
 #' as a \code{manecsummary} object, which contains the name of the
 #' non-linear models fitted, the family distribution used
-#' to fit all the models, the total post-warm-up sample size, a table
+#' to fit all the models, the number of post-warm-up draws per model, a table
 #' containing the model weights, the method to calculate the weights,
 #' whether this model is an ECx-type model
 #' (see details below), and the ECx summary values should the user decide
@@ -21,7 +21,8 @@
 #' the fitted non-linear models.
 #' @slot family A \code{\link[base]{list}} indicating the
 #' family distribution and link function used to fit all the models.
-#' @slot sample_size The total post-warm-up sample size.
+#' @slot sample_size The number of post-warm-up draws each model in the set
+#' holds. Where the models hold different numbers, it is the smallest.
 #' @slot mod_weights A table containing the model weights.
 #' @slot mod_weights_method The method to calculate the weights.
 #' @slot ecx_mods A \code{\link[base]{logical}} indicating which \code{models}
@@ -42,9 +43,16 @@
 #' calculated by \code{\link[brms]{bayes_R2}}.
 #' @slot rhat_issues A \code{\link[base]{list}} detailing whether each fitted
 #' model exhibited convergence issues based on the Rhat evaluation.
+#' @slot divergences A named \code{\link[base]{numeric}} vector giving the
+#' number of divergent transitions after warmup for each model, \code{NA} for
+#' a model not sampled by NUTS.
+#' @slot divergence_cutoff The number of divergent transitions above which the
+#' printed summary warns of a model.
 #' @slot failed_models Any models from the requested set that could not be
 #' fitted, with the priors and initial values used. See
 #' \code{\link{failed_models}}.
+#' @slot bnec_version The installation of \pkg{bayesnec} that fitted each
+#' model, as \code{\link{bnec_version}} reports it.
 #'
 #' @seealso
 #'   \code{\link{bayesnec}},

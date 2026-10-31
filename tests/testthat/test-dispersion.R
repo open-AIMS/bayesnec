@@ -3,15 +3,12 @@ test_that("dispersion fails because family is gaussian", {
   expect_length(dispersion(ecx4param, summary = TRUE), 0)
 })
 
-# The regression tests below all concern #247: dispersion() rebuilt the family
-# with get(fam)(), which carries that family's DEFAULT link -- log for Poisson,
-# logit for Binomial -- and applied its linkinv() to posterior_linpred(). Since
-# bnec() forces link = "identity", the linear predictor is already on the
-# response scale, so the value was transformed a second time.
+# Use the fitted family link, not a reconstructed family's default. This
+# Poisson fixture uses identity, so posterior_linpred() is already on the
+# response scale and must not be exponentiated again.
 
-# Fitted once and reused, as degenerate_fit() below already is: the two tests
-# that follow need the same fit, and a call in each compiled the same Stan
-# program twice. The fit is seeded and neither test modifies it. See #328.
+# Cache this seeded fit for read-only tests to avoid recompiling the same
+# Stan program for each assertion.
 poisson_fit <- local({
   cached <- NULL
   function() {
@@ -48,9 +45,7 @@ test_that("dispersion uses the link the model was fitted with", {
 })
 
 test_that("dispersion recovers a value near one for Poisson-simulated data", {
-  # The whole point of the statistic. Before #247 the exponentiated weights
-  # spanned tens of orders of magnitude and the estimate wandered far from one
-  # with a credible interval two orders of magnitude wide.
+  # Check broad recovery of unit dispersion for the Poisson simulation.
   fit <- poisson_fit()
   disp <- dispersion(fit, summary = TRUE)
   expect_gt(disp[["Q2.5"]], 0.4)
@@ -88,11 +83,9 @@ test_that("unsupported model-set families return named empty results", {
   expect_true(all(is.na(stats)))
 })
 
-# This block compiles the same Stan program poisson_fit() does -- nec4param with
-# a poisson family -- on different data, so it cannot share that fit and keeps a
-# compilation of its own. Refitting through update() would reuse the program but
-# puts the family and its link back through a path that has been a source of
-# defects here (#247), which is not a trade worth making to save 80 seconds.
+# These overdispersed data require a separate fit. Build it directly so the
+# diagnostic check does not also depend on update() preserving the family
+# and link.
 test_that("dispersion detects genuine overdispersion", {
   set.seed(247)
   x <- runif(60, 0, 3.2)
@@ -106,12 +99,9 @@ test_that("dispersion detects genuine overdispersion", {
   expect_gt(disp[["Q2.5"]], 2)
 })
 
-# The tests below concern #298: an observation whose fitted variance is exactly
-# zero made the ratio NaN for every draw, and the whole statistic was discarded
-# with a message diagnosing a bad model fit. They exercise pearson_dispersion()
-# directly rather than through a fitted model, because an underflowed fitted
-# mean needs a contrived dataset and a long fit to produce, while the
-# arithmetic it triggers is deterministic.
+# Exercise zero fitted variances directly with deterministic arrays.
+# Producing underflow by fitting would make these arithmetic edge cases
+# slow and dependent on a contrived sampled fit.
 
 degenerate_input <- function(obs_y = c(5, 3, 0)) {
   list(obs_y = obs_y,
@@ -201,9 +191,8 @@ test_that("a negative variance is excluded rather than dropped by na.rm", {
 })
 
 test_that("the exclusion is reported per draw, not as a fixed set", {
-  # The exclusion is elementwise. Reporting only the observations would
-  # describe a set dropped from the whole posterior, which is a different
-  # operation: measured on the fixture below, 229 of 400 draws exclude nothing.
+  # Exclude residuals elementwise by draw and observation. Dropping an entire
+  # observation would remove valid residuals in other draws.
   d <- degenerate_input()
   d$var_out[2, 3] <- 5
   expect_message(
@@ -213,9 +202,8 @@ test_that("the exclusion is reported per draw, not as a fixed set", {
 })
 
 test_that("draws that return NA are named rather than silently dropped", {
-  # #39's account of a censored draw, applied here: a draw in which no
-  # observation contributes a residual is excluded from the summary by the
-  # na.rm in estimates_summary(), so the count is reported.
+  # Report draws with no contributing residuals; they cannot enter the
+  # summary as ordinary numerical values.
   d <- degenerate_input()
   d$var_out[1, ] <- 0
   d$prd_out[1, ] <- d$obs_y
@@ -274,10 +262,9 @@ degenerate_fit <- local({
 })
 
 test_that("a fit that reproduces a group exactly still reports a statistic", {
-  # The same failure end to end. Six of the fifteen observations have a fitted
-  # variance of exactly zero in at least one draw. Before #298 every draw was
-  # NaN, the returned vector was empty, and expand_nec() wrote NA into the
-  # dispersion columns of the weights table.
+  # Exercise zero-variance handling end to end with a fit whose high-dose
+  # means underflow. The diagnostic must retain usable residuals and report
+  # the omitted ones.
   fit <- degenerate_fit()
   expect_true(any(brms::posterior_linpred(pull_brmsfit(fit)) == 0))
   expect_message(disp <- dispersion(fit, summary = TRUE),
@@ -288,10 +275,8 @@ test_that("a fit that reproduces a group exactly still reports a statistic", {
 })
 
 test_that("a fit with nothing left to compare returns an empty vector", {
-  # The remaining branch: every draw is NA, so there is no statistic. Reaching
-  # it from a real fit needs a model degenerate at every observation, which is
-  # not a fit anyone would produce, so the return of pearson_dispersion() is
-  # substituted instead.
+  # Mock an all-NA statistic to test the no-statistic branch. A fitted model
+  # with no usable observation in any draw is unnecessary for this branch.
   fit <- degenerate_fit()
   local_mocked_bindings(
     pearson_dispersion = function(obs_y, prd_out, ...) {
@@ -304,9 +289,8 @@ test_that("a fit with nothing left to compare returns an empty vector", {
 })
 
 test_that("dispersion leaves the caller's RNG stream alone", {
-  # #337. dispersion() seeded its posterior_predict() draw and left the stream
-  # where that reached, so a summary() printed partway through a simulation
-  # silently moved it.
+  # Check that the seeded prediction inside dispersion() restores the
+  # caller's random stream.
   skip_on_cran()
   fit <- poisson_fit()
   set.seed(99)

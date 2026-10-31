@@ -100,9 +100,8 @@
 #' @export
 check_sampling <- function(x, rhat_cutoff = 1.01, ess_cutoff = 400,
                            divergence_cutoff = 10) {
-  # chk_number rather than chk_numeric: chk_numeric admits a vector of any
-  # length, and every use here is scalar. amend() already uses chk_number for
-  # its scalars.
+  # chk_number, not chk_numeric: chk_numeric admits a vector of any length, and
+  # each cutoff is a single number.
   chk_number(rhat_cutoff)
   chk_number(ess_cutoff)
   chk_number(divergence_cutoff)
@@ -140,9 +139,8 @@ check_sampling <- function(x, rhat_cutoff = 1.01, ess_cutoff = 400,
 #' @noRd
 sampling_fits <- function(x) {
   if (is_bayesmanecfit(x)) {
-    # x$mod_fits[[m]]$fit is the same brmsfit pull_out() would hand back, at a
-    # fraction of the cost -- pull_out() rebuilds predictions and posteriors to
-    # reach it. names(mod_fits) == success_models (expand_classes.R:253).
+    # Read each brmsfit directly. pull_out() returns the same one, but rebuilds
+    # predictions and posteriors to reach it.
     out <- lapply(x$success_models, function(m) x$mod_fits[[m]]$fit)
     names(out) <- x$success_models
     out
@@ -167,21 +165,13 @@ sampling_fits <- function(x) {
 #' @noRd
 sampling_row <- function(fit, model, rhat_cutoff, ess_cutoff,
                          divergence_cutoff) {
-  # nuts_params() and neff_ratio() are brmsfit generics and work under either
-  # backend. rstan::get_num_divergent(x$fit) is the obvious thing to reach for
-  # and works often enough to look correct, but it reaches past brms into the
-  # stanfit slot and rstan is Suggests-only here -- so it would fail under
-  # cmdstanr and on any install without rstan. See #148.
-  np <- nuts_params(fit, pars = "divergent__")
-  n_div <- sum(np$Value)
-  # Both reductions go through screenable_pars() (see R/rhat.R), so the screen
-  # and rhat() agree on what counts as a parameter: no prior_* draws, and no
-  # zero-variance parameter for which the diagnostic is undefined. Reducing
-  # over the raw vectors fails a model on a prior draw, and returns NA for a
-  # constant() parameter -- which then propagates into `failed` and makes
-  # screen_models() report a drop it did not perform.
+  n_div <- count_divergent(fit)
+  # Reduce both diagnostics through screenable_pars(), as rhat() does, so that
+  # the screen and rhat() agree on what counts as a parameter. Over the raw
+  # vectors a prior_* draw could fail a model, and a constant() parameter gives
+  # NA, which screen_models() would report as a drop it did not make.
   # neff_ratio() is min(ess_bulk, ess_tail) / ndraws, so multiplying back gives
-  # the absolute minimum over parameters with no dependency on `posterior`.
+  # the absolute minimum without a dependency on `posterior`.
   ratio <- min_or_na(screenable_pars(neff_ratio(fit)))
   n_draws <- ndraws(fit)
   min_ess <- ratio * n_draws
@@ -199,6 +189,24 @@ sampling_row <- function(fit, model, rhat_cutoff, ess_cutoff,
       isTRUE(n_div > divergence_cutoff),
     stringsAsFactors = FALSE
   )
+}
+
+#' The number of divergent transitions after warmup in one brmsfit
+#'
+#' Used by \code{check_sampling()} and \code{summary()}, so that the two report
+#' the same count. It reads the count through brms's \code{nuts_params()}, so
+#' that bayesnec's own code calls nothing from rstan, which it lists only in
+#' Suggests.
+#'
+#' @param fit A \code{\link[brms]{brmsfit}} sampled by NUTS.
+#'
+#' @return A \code{\link[base]{numeric}} vector of length 1.
+#'
+#' @noRd
+count_divergent <- function(fit) {
+  # Read through brms, a required dependency; bayesnec lists rstan only
+  # in Suggests.
+  sum(nuts_params(fit, pars = "divergent__")$Value)
 }
 
 #' max() and min() that return NA rather than -Inf/Inf on an empty vector

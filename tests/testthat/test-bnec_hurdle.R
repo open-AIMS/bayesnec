@@ -237,10 +237,8 @@ test_that("hurdle preflight checks the survival set after family exclusions (#47
 })
 
 test_that("bnec_hurdle predicts growth over the whole concentration series", {
-  # Growth is fitted to the survivors, whose concentrations stop at 3 here,
-  # while the series tested runs to 4. The growth fit is given the series as
-  # its x_range, so both components share their limits (D44, #412). A caller's
-  # own x_range reaches both fits unchanged.
+  # Growth uses survivors, ending at concentration 3 here, but its default
+  # x_range must span the full series to 4. A supplied range reaches both fits.
   dat <- data.frame(x = rep(1:4, each = 5),
                     y = c(seq(1, 3, length.out = 15), rep(0, 5)))
   calls <- list()
@@ -260,6 +258,28 @@ test_that("bnec_hurdle predicts growth over the whole concentration series", {
                                x_range = c(0.5, 6)))
   expect_equal(calls[[1]]$x_range, c(0.5, 6))
   expect_equal(calls[[2]]$x_range, c(0.5, 6))
+})
+
+test_that("bnec_hurdle bounds growth's threshold by the whole series (#483)", {
+  # The survivors stop at 3 while the series runs to 4. The growth formula
+  # records the series on the fitted scale, whatever x_range says.
+  dat <- data.frame(x = rep(1:4, each = 5),
+                    y = c(seq(1, 3, length.out = 15), rep(0, 5)))
+  forms <- list()
+  local_mocked_bindings(
+    bnec = function(formula, data, ...) {
+      forms[[length(forms) + 1]] <<- formula
+      structure(list(), class = c("bayesnecfit", "bnecfit"))
+    },
+    .package = "bayesnec"
+  )
+  suppressMessages(bnec_hurdle(y ~ crf(log(x), "nec3param"), data = dat))
+  expect_equal(attr(forms[[1]], "bayesnec_tested_range"), log(c(1, 4)))
+  expect_null(attr(forms[[2]], "bayesnec_tested_range"))
+  forms <- list()
+  suppressMessages(bnec_hurdle(y ~ crf(log(x), "nec3param"), data = dat,
+                               x_range = c(0.5, 6)))
+  expect_equal(attr(forms[[1]], "bayesnec_tested_range"), log(c(1, 4)))
 })
 
 test_that("bnec_hurdle fits a censored response and routes it correctly", {
@@ -287,7 +307,7 @@ test_that("bnec_hurdle fits a censored response and routes it correctly", {
   # Every survivor, censored or not, is in the growth component.
   expect_equal(nrow(fit$growth$fit$data), sum(dat$y > 0))
   expect_equal(sum(fit$survival$fit$data$.alive), sum(dat$y > 0))
-  # The declaration reached the growth block and only the growth block.
+  # The censoring term reached the growth block and only the growth block.
   expect_true("cens" %in% names(fit$growth$fit$data))
   expect_false(is.null(standata(fit$growth$fit)$cens))
   expect_true(is.null(standata(fit$survival$fit)$cens))
@@ -318,10 +338,8 @@ test_that("swap_response preserves group-level terms", {
   expect_true(grepl("pgl(tank)", deparse1(out), fixed = TRUE))
 })
 
-# #410. A disp() term models the growth component's dispersion and is removed
-# from the survival component, which is bernoulli and has no dispersion
-# parameter. Passed to both, the survival fit refused it after the growth
-# component had been sampled.
+# disp() models growth dispersion; remove it from Bernoulli survival, which
+# has no dispersion parameter, before the growth fit starts.
 
 test_that("drop_disp_term removes the disp() term and keeps the rest (#410)", {
   f <- bnf(y ~ crf(x, "nec3param") + (nec | tank) + disp(~x) + pgl(tank))
@@ -393,10 +411,8 @@ test_that("a disp() term the growth family cannot take is refused first (#410)",
   expect_equal(calls, 0L)
 })
 
-# Fitted once and reused across the blocks below: bnec_hurdle() compiles two
-# Stan programs per call. The growth response is simulated with a shape that
-# rises with the mean, which is what disp("power") describes, so the fit has a
-# dispersion trend to estimate.
+# Share this fit because each call compiles two Stan programs. Simulate
+# shape increasing with the mean so disp("power") has a trend to estimate.
 disp_hurdle_fixture <- local({
   cached <- NULL
   function() {
@@ -462,10 +478,8 @@ test_that("the hurdle methods run on a growth disp() term (#410)", {
 
 test_that("bnec_joint builds the growth disp() term into the joint model (#410)", {
   skip_on_cran()
-  # The joint refit of the fitted fixture, with bnec() replaced so that the
-  # joint model is built but not sampled. Its shape sub-model has to be the one
-  # the growth component was fitted with: the same curve and the same
-  # centring literal, computed from the survivors in both routes.
+  # Mock bnec() so the joint refit builds without sampling. Its shape formula
+  # must match growth, including the centring literal computed from survivors.
   f <- disp_hurdle_fixture()
   captured <- NULL
   local_mocked_bindings(
@@ -545,10 +559,8 @@ test_that("bnec_hurdle rejects inputs that break the zero-as-death convention", 
 })
 
 test_that("a growth component at a bound is named as that component (#400)", {
-  # Every survivor is 1, so the growth component, a Beta response here, does
-  # not vary although the response as a whole does. Left to the growth bnec()
-  # call, the refusal named the response and said that every value of it is 1,
-  # of a column that also holds the zeros.
+  # Survivors are all one, although the full response also contains deaths.
+  # A refusal must identify the constant growth component.
   dat <- data.frame(x = as.numeric(rep(1:4, each = 5)),
                     y = c(rep(1, 15), rep(0, 5)))
   calls <- 0L
@@ -592,6 +604,33 @@ test_that("ecxflat named for the growth component is let through (#419)", {
     bnec_hurdle(y ~ crf(x, "ecxflat"), data = dat)
   ), "component fit reached", fixed = TRUE)
   expect_identical(calls, 1L)
+})
+
+test_that("a group name reaches both components, ecxflat included (#485)", {
+  dat <- data.frame(x = rep(1:4, each = 5),
+                    y = c(seq(1, 3, length.out = 15), rep(0, 5)))
+  sets <- list()
+  local_mocked_bindings(
+    bnec = function(formula, data, ...) {
+      sets[[length(sets) + 1L]] <<- get_model_from_formula(formula)
+      structure(list(), class = c("bayesnecfit", "bnecfit"))
+    },
+    .package = "bayesnec"
+  )
+  suppressMessages(bnec_hurdle(y ~ crf(x, "decline"), data = dat))
+  expect_length(sets, 2)
+  for (set in sets) {
+    expect_identical(set, mod_groups$decline)
+  }
+  # A growth component at a bound is still refused for a group: the group
+  # holds curve equations beside ecxflat.
+  at_bound <- data.frame(x = as.numeric(rep(1:4, each = 5)),
+                         y = c(rep(1, 15), rep(0, 5)))
+  sets <- list()
+  expect_error(suppressMessages(
+    bnec_hurdle(y ~ crf(x, "decline"), data = at_bound)
+  ), "The constant equation ecxflat", fixed = TRUE)
+  expect_length(sets, 0)
 })
 
 test_that("a missing predictor is refused before the growth bound (#400)", {

@@ -7,11 +7,11 @@
 ecx(
   object,
   ecx_val = 10,
-  resolution = 200,
+  resolution = 500,
   posterior = FALSE,
   type = "absolute",
   x_range = NA,
-  xform = identity,
+  xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
   ...,
   dpar = NULL
@@ -30,9 +30,8 @@ Details.}
 \item{resolution}{The number of unique x values over which to find ECx.
 The crossing is located by linear interpolation between the two grid values
 that bracket it, so precision saturates well below the grid spacing.
-Increasing the resolution beyond the default of 200 changed the estimate by
-less than 0.01 percent on the fits tested, and increases the run time
-roughly in proportion.}
+The default is 500 grid values, matching \pkg{toxval}. A finer grid can
+change an interpolated crossing and increases prediction time.}
 
 \item{posterior}{A \code{\link[base]{logical}} value indicating if the full
 posterior sample of calculated ECx values should be returned instead of
@@ -43,8 +42,11 @@ just the median and 95 credible intervals.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
-\item{xform}{A function to apply to the returned estimated concentration
-values.}
+\item{xform}{\code{NULL}, the default, or a function. \code{NULL} returns
+the estimate on the scale the predictor was recorded on. A function is
+applied to the estimate on the scale the model was fitted on. The two
+differ only where \code{crf()} transforms the predictor inline; see
+Details.}
 
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
@@ -64,7 +66,12 @@ inverted to survival before computing, so ECx keeps its usual meaning of a
 percentage decline from the fitted control value. See Details.
 For the count hurdles, \code{"mu"} is converted to the positive-count mean
 \code{E[Y | Y > 0]} so it matches the growth component returned by
-\code{\link{bnec_hurdle}}.}
+\code{\link{bnec_hurdle}}. With \code{type = "relative"}, \code{"mu"} is
+measured towards the response block's asymptote and \code{"hu"} or
+\code{"zi"} towards the zero block's own \code{bot}, or 0 where its
+equation has none. The combined curve, \code{dpar = NULL}, is refused under
+\code{type = "relative"}, because its asymptote is the product of the two
+blocks' asymptotes rather than a fitted parameter.}
 }
 \value{
 A vector containing the estimated ECx value, including upper and
@@ -85,7 +92,11 @@ per posterior draw. \code{type} names what the percentage is measured
 \item \code{"relative"} --- control to the equation's theoretical
 asymptote, the \code{bot} parameter where the equation has one and 0
 otherwise. Refused where the equation has no \code{bot} and the family
-is unbounded below, because there is then no finite denominator.
+is unbounded below, because there is then no finite denominator. On the
+positive counts of a negative binomial count hurdle the asymptote is
+their zero-truncated mean at \code{mu = bot}, which needs the shape
+there, and the estimate is refused where the shape is modelled by
+\code{disp(~x)}; see \code{\link{bnec}}.
 \item \code{"range"} --- control to the lowest response the curve
 predicts over the predictor range.
 \item \code{"direct"} --- \code{ecx_val} is a response value rather than
@@ -114,11 +125,13 @@ Where the curve does not reach the target anywhere in the predictor range
 the ECx is not identified and \code{NA} is returned, with a warning
 reporting how many draws were affected.
 
-Where \code{crf()} transforms the predictor inline, as in
-\code{crf(log(concentration))}, the ECx is on the transformed scale unless
-\code{xform} is supplied, and a message says so once per call. It names the
-transformation and the \code{xform} that returns the estimate on the
-recorded scale.
+The curve is searched on a grid of recorded concentrations. Where
+\code{crf()} transforms the predictor inline, as in
+\code{crf(log(concentration))}, the ECx is therefore returned on the
+recorded scale without \code{xform}, and no inverse is involved. A supplied
+\code{xform} is applied to the ECx on the transformed scale, so
+\code{xform = identity} returns that scale and \code{xform = exp} on
+\code{crf(log(concentration))} returns the recorded scale again.
 
 Calls to functions \code{\link{ecx}} and \code{\link{nsec}} and
 \code{\link{compare_fitted}} do not require the same level of flexibility

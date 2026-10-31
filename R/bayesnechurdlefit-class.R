@@ -36,38 +36,26 @@ is_bayesnechurdlefit <- function(x) {
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
 #' @param resolution The number of unique predictor values to predict over.
 #' @param x_range A range of predictor values to predict over.
-#'
-#' @details Draws are paired by row. That is valid precisely because the two
-#' posteriors are independent -- the hurdle likelihood factorises and the
-#' components share no parameters -- so any pairing represents a draw from the
-#' joint posterior. Where the two fits carry different numbers of draws (model
-#' averaging harmonises sample sizes within, but not between, fits) both are
+#' @details Draws are paired by row, which is valid because the two posteriors
+#' are independent. Where the fits hold different numbers of draws, both are
 #' truncated to the smaller.
+#'
+#' The control is the prediction at the lowest observed concentration,
+#' not the first column of the grid, so that \code{x_range} does not change
+#' the reference. It is computed here so that the control and the curve are
+#' truncated to the same draws.
 #'
 #' @return A \code{\link[base]{list}} with elements \code{x}, \code{growth},
 #' \code{survival} and \code{combined}, and \code{control}, a list of the same
 #' three names holding one control value per draw.
 #'
-#' @details The control is the prediction at the lowest observed concentration,
-#' pinned to the same concentration on both sides, rather than the first column
-#' of the grid. Computed here rather than in each caller so that the control and
-#' the curve are truncated to the same draws by the same operation; reading the
-#' control off a differently truncated matrix would pair a draw's curve with
-#' another draw's reference. This is D15 ruling 2 applied to the two-block
-#' class: without it, supplying \code{x_range} changes every reported ECx and
-#' NSEC.
-#'
 #' @importFrom brms posterior_epred
 #'
 #' @noRd
 hurdle_component_preds <- function(object, resolution = 1000, x_range = NA) {
-  # Default to the survival fit's predictor range, the whole concentration
-  # series, for every curve and every estimate read from one (D44, #412). The
-  # growth fit's data stop at the last concentration at which anything
-  # survived, but the concentrations above it were tested, and the combined
-  # endpoint needs them. A fit made before D44 stores a growth grid that stops
-  # at the last survivor; reading from the survival side gives it the same
-  # range as a fit made after.
+  # Default every curve to the survival fit's range, the whole concentration
+  # series. The growth data stop at the last survivor, and an older fit stores
+  # a growth grid that stops there too.
   if (any(is.na(x_range))) {
     nd_s <- newdata_eval(object$survival, resolution = resolution,
                          x_range = NA)
@@ -122,10 +110,16 @@ hurdle_check_which <- function(which) {
 #' the refusal names which component raised it.
 #'
 #' The combined no-effect concentration is
-#' \code{pmin(ne_growth, ne_survival)} evaluated per posterior draw. Below both
-#' thresholds the growth curve sits at \code{top} and the survival curve at its
-#' own control value, so their product is flat; it departs that plateau at
-#' whichever threshold binds first.
+#' \code{pmin(ne_growth, ne_survival)} evaluated per posterior draw, on the
+#' scale the model was fitted on. Below both thresholds the growth curve sits
+#' at \code{top} and the survival curve at its own control value, so their
+#' product is flat; it departs that plateau at whichever threshold binds first.
+#' The minimum, and the rule for censored draws below, apply on that scale, and
+#' the result is then returned on the scale \code{xform} names. Under a
+#' decreasing transformation in \code{crf()}, such as \code{crf(I(-x))}, each
+#' curve is flat above its threshold on the recorded scale, so the combined
+#' value is the larger of the two recorded thresholds. An \code{xform} changes
+#' the scale the value is reported on, not which threshold it is.
 #'
 #' A component draw beyond the top of its prediction range is known only to
 #' exceed that limit. Both components are predicted over the whole
@@ -137,8 +131,8 @@ hurdle_check_which <- function(which) {
 #' range, at the smaller of the two components' upper limits, which is true
 #' of every such draw.
 #'
-#' \bold{The combined estimate is therefore the smaller of the two, and reduces
-#' to the growth estimate whenever growth is the more sensitive endpoint} --
+#' \bold{The combined estimate therefore reduces to the growth estimate
+#' whenever growth is the more sensitive endpoint} --
 #' which it usually is, since a contaminant that kills has generally slowed
 #' growth at a lower concentration first. This is not a defect of the
 #' combination but a property of thresholds: a threshold marks where an effect
@@ -152,7 +146,12 @@ hurdle_check_which <- function(which) {
 #' the underlying model(s) are threshold models. A component whose model set
 #' contains smooth (\code{ecx}-type) models contributes NSEC draws instead, and
 #' the combination is then an N(S)EC; a message is emitted in that case and
-#' \code{summary} labels each component. \code{\link{nsec}} with
+#' \code{summary} labels each component. A component fitted to a single smooth
+#' equation, such as \code{ecx4param}, contributes the NSEC draws stored when it
+#' was fitted, although \code{nec()} refuses that equation fitted on its own
+#' with \code{\link{bnec}}. Only the component or components that \code{which}
+#' names are computed, so \code{which = "growth"} reads nothing from the
+#' survival component. \code{\link{nsec}} with
 #' \code{which = "combined"} is the alternative that reads a single value off
 #' the combined curve itself rather than taking the minimum of two component
 #' estimates, and it does not reduce to the growth value.
@@ -166,7 +165,7 @@ hurdle_check_which <- function(which) {
 #' @method nec bayesnechurdlefit
 #'
 #' @export
-nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
+nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
                                   prob_vals = c(0.5, 0.025, 0.975),
                                   extrapolate = FALSE,
                                   which = "combined", ...) {
@@ -175,38 +174,19 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
   check_no_effect_arg(list(...), object)
   chk_logical(posterior)
   which <- hurdle_check_which(which)
-  if (!inherits(xform, "function")) {
-    stop("xform must be a function.")
-  }
-  # Decided here for the pair. The component calls below pass no xform, since
-  # it is applied to their result afterwards, so they are not in a position to
-  # decide it. See report_fitted_scale().
-  quiet <- report_fitted_scale(object, xform, "nec")
-  on.exit(options(quiet), add = TRUE)
-  # The component reports are muffled and one is raised below for the vector
-  # this method actually returns. Left on, a censored component was reported by
-  # each of the calls here and again by the report below, three times over for
-  # the combined value.
-  # Passed to each component rather than resolved here: the two components are
-  # separate fits with prediction ranges of their own, and combine_censored_min
-  # below already reduces the two records to the bound true of both. Each
-  # refusal is re-raised under the name of the component that raised it,
-  # because in a fit made before D44 (#412) the growth fit's grid stops short
-  # of the survival fit's wherever nothing survived at the top concentrations,
-  # so a limit between the two ranges is an extension for one component and
-  # inside the range for the other, and the error otherwise names a range
-  # without saying whose.
+  check_xform(xform)
+  # Muffle the component censoring warnings; one is raised below for the
+  # vector returned. `extrapolate` goes to each component, which has its own
+  # prediction range, and a refusal is re-raised naming that component, since
+  # an older fit's growth range can stop short of the survival range.
   component_nec <- function(part, what) {
     call_it <- function() {
       without_censored_warning(
-        nec(part, posterior = TRUE, extrapolate = extrapolate, ...)
+        hurdle_component_ne(part, extrapolate = extrapolate, ...)
       )
     }
-    # Only where there is something to attribute. Relabelling every error on
-    # this path reported "the growth component refused extrapolate: nec is not
-    # a parameter in ecx model types" for a call that had named no extrapolate
-    # at all. tryCatch() rather than withCallingHandlers(), because this
-    # replaces the condition rather than running beside it.
+    # Relabel an error only where extrapolate was given; otherwise an unrelated
+    # error would be blamed on it.
     if (identical(extrapolate, FALSE)) {
       return(call_it())
     }
@@ -215,43 +195,42 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
            conditionMessage(e), call. = FALSE)
     })
   }
-  g_post <- component_nec(object$growth, "growth")
-  s_post <- component_nec(object$survival, "survival")
+  # Compute only what `which` names, so that the other component can neither
+  # print a message nor stop the call.
   if (which == "growth") {
+    g_post <- component_nec(object$growth, "growth")
     out <- unlist(g_post)
     cens <- attr(g_post, "censored")
   } else if (which == "survival") {
+    s_post <- component_nec(object$survival, "survival")
     out <- unlist(s_post)
     cens <- attr(s_post, "censored")
   } else {
+    g_post <- component_nec(object$growth, "growth")
+    s_post <- component_nec(object$survival, "survival")
     n <- min(length(g_post), length(s_post))
+    # Keep the minimum on the fitted scale, where each curve is flat below its
+    # threshold. Under a decreasing crf() it is the larger recorded threshold,
+    # which is where the product leaves its plateau.
     combined <- combine_censored_min(g_post, s_post, n)
     out <- combined$values
     cens <- combined$censored
-    # The kind of each component's estimate is read from ne_label(), the
-    # ne_type recorded when the component was expanded. The
-    # "toxicity_estimate" attribute read here before names the estimator, and
-    # both nec() methods set it to "nec" whatever the equation, so the message
-    # was never raised (#446). It is raised for a label that names NSEC draws
-    # rather than for any label other than "NEC": a component built by a
-    # version that recorded no ne_type has the label "no-effect estimate", and
-    # the message would then state a kind of estimate that nothing records.
+    # Read each component's kind from ne_label(), not the "toxicity_estimate"
+    # attribute, which is "nec" whatever the equation. Match the NSEC labels
+    # only: a fit that recorded no ne_type has the label "no-effect estimate".
     kinds <- c(ne_label(object$growth), ne_label(object$survival))
     if (any(kinds %in% c("NSEC", "N(S)EC"))) {
       message("At least one component is an ecx-type (NSEC) estimate, so the",
               " combined value is approximate. See ?nec.bayesnechurdlefit.")
     }
   }
-  if (inherits(xform, "function")) {
-    out <- xform(out)
-    cens <- xform_censoring(cens, xform)
-  }
+  # The components return the fitted scale, and the map is applied once here.
+  map <- recorded_xform(object, xform, extrapolate)
+  out <- map_draws(out, map, cens, "no-effect estimate")
+  cens <- xform_censoring(cens, map)
   attr(out, "censored") <- cens
-  # The report and the summary below: either component may be an ecx-type fit
-  # whose no-effect estimate is read off the curve, and such a draw lies beyond
-  # the prediction range rather than having no value. It keeps its rank in the
-  # summary and is given no number. See #39 and D15 ruling 3 for why it is not
-  # given the bound as a value instead.
+  # A draw beyond the prediction range keeps its rank in the summary and is
+  # given no number, rather than the bound as its value.
   warn_censored_draws(out, "no-effect estimate", cens = cens)
   estimate <- summarise_censored(out, prob_vals, cens)
   names(estimate) <- clean_names(estimate)
@@ -259,6 +238,30 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
   attr(out, "toxicity_estimate") <- "nec"
   attr(estimate, "component") <- which
   if (!posterior) estimate else out
+}
+
+#' The no-effect draws one hurdle component contributes
+#'
+#' A component fitted to one smooth equation has no \code{nec} parameter, so
+#' \code{nec()} refuses it. It contributes its stored NSEC draws instead, as an
+#' equation of a model set does.
+#'
+#' @param part The \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}
+#' of one component.
+#' @param extrapolate As for \code{\link{nec}}.
+#' @param ... Passed to \code{\link{nec}}.
+#'
+#' @return The posterior on the fitted scale, as
+#' \code{nec(part, posterior = TRUE, xform = identity)} returns it.
+#' @noRd
+hurdle_component_ne <- function(part, extrapolate, ...) {
+  if (inherits(part, "bayesnecfit") &&
+        !has_nec_parameter(part$model, part$fit)) {
+    return(necfit_ne(part, posterior = TRUE, xform = identity,
+                     extrapolate = extrapolate, ...))
+  }
+  nec(part, posterior = TRUE, xform = identity, extrapolate = extrapolate,
+      ...)
 }
 
 #' Extracts the predicted ECx value from a \code{\link{bayesnechurdlefit}}
@@ -294,9 +297,9 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
 #' @method ecx bayesnechurdlefit
 #'
 #' @export
-ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 200,
+ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
                                   posterior = FALSE, type = "absolute",
-                                  x_range = NA, xform = identity,
+                                  x_range = NA, xform = NULL,
                                   prob_vals = c(0.5, 0.025, 0.975),
                                   which = "combined", ...) {
   check_component_arg(list(...), object)
@@ -307,49 +310,37 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 200,
   which <- hurdle_check_which(which)
   type <- validate_ecx_type(type, match.call())
   if (identical(type, "relative")) {
-    # A two-block fit has no single bot parameter to measure towards: the
-    # combined endpoint is mu * (1 - hu) and its asymptote is a product of two
-    # equations rather than a fitted quantity. "range" measures towards the
-    # lowest predicted response and is defined here; "absolute" measures
-    # towards 0. See D15 ruling 6.
+    # The combined endpoint, mu * (1 - hu), has no single bot parameter for
+    # "relative" to measure towards.
     stop("type = \"relative\" is not defined for a hurdle fit, whose ",
          "asymptote is not a single fitted parameter. Use ",
          "type = \"absolute\" or type = \"range\".", call. = FALSE)
   }
-  if (!inherits(xform, "function")) {
-    stop("xform must be a function.")
-  }
-  # Once for the call. See report_fitted_scale().
-  quiet <- report_fitted_scale(object, xform, "ecx")
-  on.exit(options(quiet), add = TRUE)
-  # The whole concentration series for every curve, growth included (D44,
-  # #412). See hurdle_component_preds().
+  check_xform(xform)
+  # Every curve, growth included, over the whole concentration series.
   preds <- hurdle_component_preds(object, resolution = resolution,
                                   x_range = x_range)
   p_samples <- preds[[which]]
-  # The control comes from hurdle_component_preds(), which reads it at the
-  # lowest observed concentration. Taking p_samples[, 1] instead made every
-  # estimate a function of x_range, which is what D15 ruling 2 removes for the
-  # single-fit class.
+  # Take the control from hurdle_component_preds(), at the lowest observed
+  # concentration. p_samples[, 1] would make every estimate depend on x_range.
   control <- preds$control[[which]]
   out <- ecx_from_posterior(p_samples, preds$x, ecx_val, type, control,
                             NA_real_)
   below <- attr(out, "below_range")
   above <- is.na(out) & !below
   attr(out, "below_range") <- NULL
-  # Put the estimate back on the fitted scale, matching ecx.bayesnecfit. The
-  # record is built on the recorded grid, the scale the curve was searched on,
-  # and remapped onto the fitted scale, which swaps the two ends under a
-  # decreasing crf(). See the same construction in ecx.bayesnecfit.
-  out <- sub_x_transformation(out, object$formula)
+  # As in ecx.bayesnecfit(). Build the record on the recorded grid, then remap
+  # it: a decreasing crf() swaps its two ends.
   x_kept <- preds$x[is.finite(preds$x)]
-  cens <- xform_censoring(
-    censoring_record(max(x_kept), min(x_kept), above, below),
-    function(value) sub_x_transformation(value, object$formula)
-  )
-  if (inherits(xform, "function")) {
-    out <- xform(out)
-    cens <- xform_censoring(cens, xform)
+  cens <- censoring_record(max(x_kept), min(x_kept), above, below)
+  if (!returns_recorded(object, xform)) {
+    to_fitted <- function(value) sub_x_transformation(value, object$formula)
+    out <- to_fitted(out)
+    cens <- xform_censoring(cens, to_fitted)
+    if (!is.null(xform)) {
+      out <- xform(out)
+      cens <- xform_censoring(cens, xform)
+    }
   }
   attr(out, "censored") <- cens
   # After xform, as in ecx.bayesnecfit: the bound the report names and the
@@ -436,27 +427,10 @@ print.bayesnechurdlefit <- function(x, ...) {
 
 #' Take the smaller of two component no-effect posteriors, keeping censoring
 #'
-#' Below both thresholds the combined endpoint is flat, so it leaves that
-#' plateau at whichever component binds first and the combined estimate is the
-#' minimum of the two. A component draw that lies beyond an end of its
-#' prediction range has no value to take a minimum with, so it enters the
-#' comparison at the end it is known to be beyond and nothing else. Below the
-#' foot of its range it is the smaller whatever the other draw is. Above the
-#' top of its range, at \code{U}, it is known only to exceed \code{U}: the
-#' minimum is the other draw where that draw is identified at or below
-#' \code{U}, and is otherwise known only to exceed \code{U} as well.
-#'
-#' The two components need not share a range. \code{bnec_hurdle()} predicts
-#' both over the whole concentration series (D44, #412), but a fit made before
-#' that rule stores a growth range ending at the last concentration with
-#' survivors, and there a survival draw identified at 20 is not the minimum
-#' when growth is known only to exceed 10 (#415).
-#'
-#' \code{pmin()} on the raw vectors cannot do this. It propagates the
-#' \code{NA} that an ecx-type component returns for a beyond-range draw, so a
-#' draw whose growth NSEC was above the range and whose survival NEC was well
-#' inside it came back as no estimate at all, and was then deleted from the
-#' summary.
+#' Takes the minimum of the component no-effect draws, which must be on the
+#' fitted scale, not the recorded one. Censoring flags and
+#' upper limits decide whether an outside-range minimum is identified;
+#' plain \code{pmin()} would propagate \code{NA} for a censored component draw.
 #'
 #' @param g,s The two component posteriors, each carrying its \code{"censored"}
 #' record where it has one.
@@ -478,16 +452,11 @@ combine_censored_min <- function(g, s, n) {
                 upper = Inf, lower = -Inf)
   g_cens <- if (is.null(g_cens)) blank else g_cens
   s_cens <- if (is.null(s_cens)) blank else s_cens
-  # A draw censored above its component's limit U, compared with a draw of the
-  # other component identified above U. The minimum then lies between U and
-  # that value and is not identified. Placing the censored draw at Inf alone,
-  # as below, returned the identified value as the minimum: growth known only
-  # to exceed 10 against survival at 20 gave 20 as an exact combined
-  # threshold (#415). The comparison is strict, because an identified value at
-  # U itself is the minimum whatever the censored draw is. Both directions are
-  # tested, so that the result does not depend on which component is growth.
-  # %in% TRUE drops an identified draw whose value is NA, which pmin() below
-  # leaves unexplained, as it did before.
+  # A draw censored above U against an identified draw above U: the minimum
+  # lies between U and that value, so it is not identified. Setting the
+  # censored draw to Inf alone would return the identified value. The test is
+  # strict, because an identified value at U is the minimum. %in% TRUE leaves
+  # an identified NA to pmin() below.
   g_known <- !g_cens$above & !g_cens$below
   s_known <- !s_cens$above & !s_cens$below
   unresolved <- ((g_cens$above & s_known & s_v > g_cens$upper) |
@@ -501,28 +470,12 @@ combine_censored_min <- function(g, s, n) {
   above <- is.infinite(out) & out > 0
   below <- is.infinite(out) & out < 0
   out[above | below] <- NA_real_
-  # One bound per posterior, because the record holds one (D20): the smallest
-  # upper limit and the largest lower one, as in concat_censoring(). A draw
-  # marked above exceeds its own component's upper limit, so it exceeds the
-  # smaller of the two as well; that is weaker than the per-draw truth where
-  # the limits differ, and never false. An interval record holding both
-  # limits was not adopted, because it would change the record and every
-  # reader of it. The test above also keeps every identified value at or
-  # below the recorded upper limit, which summarise_censored() assumes when
-  # it ranks every draw censored above higher than all of them.
-  #
-  # The below-range branch is unchanged. A draw below the foot of its own
-  # range puts the minimum below that foot whatever the other draw is, and
-  # the largest lower limit is true of it. It does not keep the property
-  # above where the two feet differ, which needs nothing to have survived at
-  # the foot of the fitted range: an identified value can lie below the
-  # larger foot, and summarise_censored() still ranks a draw censored below
-  # lower than it. Marking such a value as below the larger foot was tried,
-  # with and without requiring a draw below, and reverted. With 3999 draws
-  # identified at 3 and one below a foot of 5, it reported every entry as a
-  # bound at 5 and every draw as not identified, where the exact summary is
-  # 3. The correction belongs in the summary rather than in this record
-  # (#421).
+  # The record holds one bound per posterior: the smallest upper limit and the
+  # largest lower one, as in concat_censoring(). Both are true of every
+  # censored draw. The test above keeps every identified value at or below the
+  # upper limit, which summarise_censored() assumes. Where the two feet
+  # differ, an identified value can lie below the lower limit; correcting that
+  # belongs in the summary, not in this record.
   combined <- censoring_record(min(g_cens$upper, s_cens$upper),
                                max(g_cens$lower, s_cens$lower),
                                above, below)

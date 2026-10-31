@@ -50,7 +50,7 @@ fitted.
 
 Model averaging is achieved through a weighted sample of each fitted models' posterior predictions, with weights derived using the `loo_model_weights` function from `loo` [@vehtari2020; @vehtari2017]. Individual `brms` model fits can be extracted from the `mod_fits` element and can be examined individually.
 
-The `model` may also be one of `"all"`, meaning all of the available models will be fit; `"ecx"` meaning only models excluding the $\eta = \text{NEC}$ step parameter will be fit; `"nec"` meaning only models with a specific $\eta = \text{NEC}$ step parameter will be fit; `"bot_free"` meaning only models without a `"bot"` parameter (without a bottom plateau) will be fit; `"zero_bounded"` are models that are bounded to be zero; or `"decline"` excludes all hormesis models, i.e., only allows a strict decline in response across the whole predictor range (see below **Parameter definitions**). There are a range of other pre-defined model groups available. The full list of currently implemented model groups can be seen using:
+The `model` may also be one of `"all"`, meaning all of the available models will be fit; `"ecx"` meaning only models excluding the $\eta = \text{NEC}$ step parameter will be fit; `"nec"` meaning only models with a specific $\eta = \text{NEC}$ step parameter will be fit; `"bot_free"` meaning only models without a `"bot"` parameter (without a bottom plateau) will be fit; `"zero_bounded"` are models that are bounded to be zero; or `"decline"` excludes all hormesis models, i.e., only allows a strict decline in response across the whole predictor range, or no change, for the constant equation **ecxflat** (see below **Parameter definitions**). There are a range of other pre-defined model groups available. The full list of currently implemented model groups can be seen using:
 
 ```{r}
 library(bayesnec)
@@ -66,7 +66,7 @@ be passed directly to the `model` argument of `crf()`, as in
 
 # Parameter definitions
 
-Where possible we have aimed for consistency in the interpretable meaning of the individual parameters across models. Across the currently implemented model set, models contain from two (basic linear or exponential decay, see **ecxlin** or **ecxexp**) to five possible parameters (**nechorme4**), including:
+Where possible we have aimed for consistency in the interpretable meaning of the individual parameters across models. Across the currently implemented model set, models contain from one (the constant equation **ecxflat**) or two (basic linear or exponential decay, see **ecxlin** or **ecxexp**) to five possible parameters (**nechorme4**), including:
 
 $\tau = \text{top}$, usually interpretable as either the y-intercept or the upper plateau representing the mean concentration of the response at zero concentration;
 

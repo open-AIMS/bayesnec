@@ -10,14 +10,14 @@ amend(
   drop,
   add,
   loo_controls,
-  x_range = NA,
-  resolution = 1000,
-  sig_val = 0.01,
+  x_range = NULL,
+  resolution = NULL,
+  sig_val = NULL,
   priors,
-  prior_type = "uninformative",
-  asymptote_observed = TRUE,
+  prior_type = NULL,
+  asymptote_observed = NULL,
   timeout = Inf,
-  predictor_scale = "auto"
+  predictor_scale = NULL
 )
 }
 \arguments{
@@ -33,52 +33,39 @@ can be dropped from it and \code{drop} is an error in that case.}
 model types you which to include to the modified fit. Adding models to a
 \code{\link{bayesnecfit}} promotes it to a \code{\link{bayesmanecfit}}.}
 
-\item{loo_controls}{A named \code{\link[base]{list}} of two elements
-("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
-containing the desired arguments to be passed on to \code{\link[brms]{loo}}
-(via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
-If no \code{method} is named in "weights", \pkg{bayesnec} sets the
-\code{method} argument of \code{\link[loo]{loo_model_weights}} to
-"pseudobma", whichever function assembles the model set.
-\code{\link{amend}} and \code{update} operate on an existing set and keep
-the method that set was built with, unless the caller names another.
-\code{\link{pull_out}} takes no weighting method at all: it reports and
-ignores one given in "weights" and always keeps the set's own.
-\code{\link[base]{c}} and \code{+} take no \code{loo_controls} argument;
-see \code{\link{c.bnecfit}} for how they decide the method. See
-?\code{\link[loo]{loo_model_weights}} for further info.}
+\item{loo_controls}{A named \code{\link[base]{list}} of two elements,
+"fitting" and "weights", as for \code{\link{bnec}}. An element not named
+is taken from \code{object}: "fitting" holds the arguments \code{object}
+was built with, and "weights" holds them where they name the method its
+model weights were computed by. A "weights" list that names no method keeps
+that method.}
 
-\item{x_range}{A range of predictor values over which to consider extracting
-ECx.}
-
-\item{resolution}{The length of the predictor vector used for posterior
-predictions, and over which to extract ECx values. Large values will be
-slower but more precise.}
-
-\item{sig_val}{Probability value to use as the lower quantile to test
-significance of the predicted posterior values against the lowest observed
-concentration (assumed to be the control), to estimate NEC as an
-interpolated NOEC value from smooth ECx curves.}
+\item{x_range, resolution, sig_val}{As for \code{\link{bnec}}. Each is taken
+from \code{object} unless supplied, and is the \code{\link{bnec}} default
+where \code{object} records none. The estimates of every model in the
+amended set are computed again with them, including the models already
+fitted. Supplying these arguments alone recomputes the estimates without
+refitting any model.}
 
 \item{priors}{An object of class \code{\link[brms]{brmsprior}} which
-specifies user-desired prior distributions of model parameters.
-If missing, \code{\link{amend}} will figure out a baseline prior for each
-parameter. It can also be specified as a named \code{\link[base]{list}}
-where each name needs to correspond to the same string as \code{model}. See
-Details.}
+specifies user-desired prior distributions of model parameters. It can also
+be specified as a named \code{\link[base]{list}} where each name needs to
+correspond to the same string as \code{model}. Where it is not supplied, the
+\code{prior} of the call that fitted \code{object} is used as described in
+Details, and the default priors are built for each parameter it does not
+cover.}
 
 \item{prior_type}{A \code{\link[base]{character}} string selecting the set of
-default priors to build for any newly added models when \code{priors} is not
-supplied. Either \code{"uninformative"} (the default) or
-\code{"regularizing"}. See \code{\link{bnec}}. Note this is not automatically
-inherited from the original fit; pass it explicitly to match the priors used
-when the object was first fitted.}
+default priors to build for any newly added models, either
+\code{"uninformative"} or \code{"regularizing"}. See \code{\link{bnec}}.
+Taken from \code{object} unless supplied, and \code{"uninformative"} where
+\code{object} records none.}
 
 \item{asymptote_observed}{A \code{\link[base]{logical}} declaring whether
 the highest predictor level reached the lower asymptote, applied to the
 default priors and the initial-value search of any newly added models. See
-\code{\link{bnec}}. Not inherited from the original fit; pass it explicitly
-to match the declaration that fit was built under.}
+\code{\link{bnec}}. Taken from \code{object} unless supplied, and
+\code{TRUE} where \code{object} records none.}
 
 \item{timeout}{A positive \code{\link[base]{numeric}} giving the maximum
 number of seconds allowed for fitting any single model, passed to
@@ -92,9 +79,10 @@ finite value is supplied.}
 
 \item{predictor_scale}{A \code{\link[base]{character}} string declaring
 whether the predictor is supplied as \code{"concentration"}, already
-\code{"log"} transformed, or should use the existing \code{"auto"} rule for
-priors generated for newly added models. See \code{\link{bnec}}. This is not
-inherited from the original fit; pass it explicitly to match that fit.}
+\code{"log"} transformed, or should use the \code{"auto"} rule, for the
+priors of any newly added models. See \code{\link{bnec}}. Taken from
+\code{object} unless supplied, and \code{"auto"} where \code{object}
+records none.}
 }
 \value{
 All successfully fitted model fits. A \code{\link{bayesmanecfit}} if
@@ -103,6 +91,52 @@ more than one model remains, otherwise a \code{\link{bayesnecfit}}.
 \description{
 Amends an existing \code{\link{bayesmanecfit}} or \code{\link{bayesnecfit}}
 object, for example, by adding or removing fitted models.
+}
+\details{
+A model added through \code{add} is fitted with the arguments of
+the call that fitted \code{object}, read from its first model. It is sampled
+with that call's \code{iter}, \code{warmup}, \code{thin}, \code{chains},
+\code{sample_prior}, backend, \code{algorithm} and \code{save_pars}, and
+any \code{control} or \code{seed} the call passed to \code{\link[brms]{brm}}.
+Its default priors are built with the call's \code{prior_type},
+\code{asymptote_observed} and \code{predictor_scale}, unless those are
+supplied here. Other \code{\link[brms]{brm}} arguments, such as
+\code{cores}, are not passed to the added model, and neither is
+\code{timeout}.
+
+Where \code{priors} is not supplied, an added model named in a list of
+priors given to \code{\link{bnec}} is given that model's element, as
+\code{\link{bnec}} would have given it. A single
+\code{\link[brms]{brmsprior}} given to \code{\link{bnec}} is not applied to
+an added model, because it names the parameters of the models it was written
+for, and a parameter of the same name can have a different role in another
+equation, as \code{beta} does. The added model is then given its default
+priors, and a message says so.
+
+Where \code{object} has a two-block family, such as \code{hurdle_gamma}, the
+added model's survival block uses the equation the set was fitted with: the
+one \code{model_survival} named, or the added model's own equation where
+\code{model_survival} was not given.
+
+Where \code{object} does not record its call, as an object fitted by an
+earlier version of \pkg{bayesnec} does not, no \code{control}, \code{seed}
+or \code{prior} is passed to the added model, its default priors are built
+with the \code{\link{bnec}} defaults of \code{prior_type},
+\code{asymptote_observed} and \code{predictor_scale}, and the survival-block
+equation is read from the stored formulas. A single model whose survival
+block uses its own equation is then read as fitted without
+\code{model_survival}, because the two calls store the same formula. The
+estimates are computed with the \code{\link{bnec}} defaults of
+\code{x_range}, \code{resolution}, \code{sig_val} and \code{loo_controls}
+where \code{object} does not record those.
+\code{\link{update.bnecfit}} creates a call record for such an object,
+using the recovered survival-block equation and any \code{control} or
+\code{seed} supplied to the update. Subsequent additions reuse that record.
+\code{amend} also records the recovered equation on retained models, so
+dropping models does not discard it.
+When an update changes the backend or algorithm, \pkg{brms} does not reuse
+the previous \code{control} or \code{seed}. Only settings supplied to that
+update are then recorded for subsequent additions.
 }
 \examples{
 library(bayesnec)
