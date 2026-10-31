@@ -1184,8 +1184,9 @@ retrieve_valid_family <- function(named_list, data, link_source = "none") {
 #' @param family_str A \code{\link[base]{character}} string naming the family,
 #' used only by \code{validate_loo_controls()}.
 #'
-#' @return A named \code{\link[base]{list}} of two elements, whose
-#' \code{weights$method} is always set.
+#' @return A named \code{\link[base]{list}} of \code{fitting},
+#' \code{weights}, \code{leave_out} and \code{refit}, in that order, whose
+#' \code{weights$method}, \code{leave_out} and \code{refit} are always set.
 #'
 #' @noRd
 define_loo_controls <- function(loo_controls, family_str) {
@@ -1199,7 +1200,17 @@ define_loo_controls <- function(loo_controls, family_str) {
       loo_controls$weights$method <- "pseudobma"
     }
   }
-  loo_controls
+  if (is.null(loo_controls$leave_out)) {
+    loo_controls$leave_out <- "group"
+  }
+  if (is.null(loo_controls$refit)) {
+    loo_controls$refit <- FALSE
+  }
+  if (loo_controls$refit && loo_controls$leave_out != "group") {
+    stop("Element \"refit\" of loo_controls applies only where \"leave_out\"",
+         " is \"group\". See ?bnec")
+  }
+  loo_controls[c("fitting", "weights", "leave_out", "refit")]
 }
 
 #' \code{loo_controls$weights} for a method that may be unknown
