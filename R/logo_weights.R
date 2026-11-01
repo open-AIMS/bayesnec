@@ -119,13 +119,22 @@ logo_slot <- function(fit, group, prep = NULL) {
 #' observation of a group is censored, the integrand has a plateau on one side
 #' of its mode and a cliff on the other.
 #'
+#' A deviation for which \code{h} returns \code{NaN} is given zero density.
+#'
 #' @return The \code{S x L} matrix of \code{log p(y_g | theta_s)}.
 #'
 #' @noRd
 logo_integrate <- function(h, r0, sd, nodes = 10, newton_steps = 2,
                            cutoff = 14) {
   sd <- matrix(sd, nrow(r0), ncol(r0))
-  hp <- function(z) h(z) + stats::dnorm(z, 0, sd, log = TRUE)
+  hp <- function(z) {
+    out <- suppressWarnings(h(z)) + stats::dnorm(z, 0, sd, log = TRUE)
+    # log_lik() returns NaN where a deviation takes the mean outside the
+    # family's support, such as above 1 for an identity-linked Beta. The model
+    # gives that deviation zero density.
+    out[is.nan(out)] <- -Inf
+    out
+  }
   spread <- matrix(apply(r0, 2, stats::sd), nrow(r0), ncol(r0), byrow = TRUE)
   mu <- r0
   tau <- pmin(sd, spread)
