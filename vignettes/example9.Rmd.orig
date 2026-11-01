@@ -265,13 +265,14 @@ above sets `iter` to `r 4000` with two chains, and the same warmup rule leaves
 `r 1e4 / 4000` and the draws they retain by a factor of
 `r 8000 / ((4000 - floor(4000 / 5) * 4) * 2)`. For comparison, `brms` discards
 half rather than four fifths, so its own defaults of `iter = 2000` over four
-chains retain 4000 --- more than this call, from a quarter of the iterations.
+chains retain 4000 --- more than this call, from the same total number of
+iterations.
 A number of iterations means nothing until the warmup rule and the chain count
 are stated beside it.
 
-These data are well behaved at the defaults, and every equation the design
-supports passes the screen there, so a fit made at the defaults produces no
-screen failure to examine. Running short guarantees that some
+These data are better behaved at the defaults, where the screen removes one
+equation, so a fit made at the defaults shows few of the failures that more
+draws correct. Running short guarantees that some
 equations fail, which is what makes steps 3 and 5 a demonstration rather than an
 assertion. The settings are raised to the defaults in step 3, and every estimate
 reported in step 5 comes from the fit made there.
@@ -519,7 +520,7 @@ names(failed_models(fit))
 
 Of the `r sum(check_sampling(fit_reduced)$failed)` equations the screen removed at the reduced settings, `r length(setdiff(check_sampling(fit_reduced)$model[check_sampling(fit_reduced)$failed], c(names(failed_models(fit)), check_sampling(fit)$model[check_sampling(fit)$failed])))` now pass, on the same data and the same priors, because they were given more draws. Their failures were failures of the run, and more draws corrected them.
 
-The screen still removes `r paste(intersect(check_sampling(fit_reduced)$model[check_sampling(fit_reduced)$failed], check_sampling(fit)$model[check_sampling(fit)$failed]), collapse = ", ")`, and on divergent transitions rather than on Rhat or effective sample size, which are estimated more precisely from more draws. This is the second kind of failure, the one that describes the posterior rather than the run: more sampling does not change the curvature the sampler could not traverse. The divergence cutoff is an absolute count, so a longer run
+The screen still removes `r paste(intersect(check_sampling(fit_reduced)$model[check_sampling(fit_reduced)$failed], check_sampling(fit)$model[check_sampling(fit)$failed]), collapse = ", ")`, now on divergent transitions as well as on Rhat and effective sample size, although the latter two are estimated more precisely from more draws. This is the second kind of failure, the one that describes the posterior rather than the run: more sampling does not change the curvature the sampler could not traverse. The divergence cutoff is an absolute count, so a longer run
 reports proportionally more divergences at an unchanged rate --- raising the
 settings makes this failure easier to see, not harder.
 
@@ -601,9 +602,9 @@ The averaged curve with its credible band, over the retained set, with the
 model-averaged *N(S)EC* marked. `autoplot()` back-transforms both the predictor
 and the annotation, so the axis is in the units the experiment was run in even
 though the fit used `log(concentration)`, and the marked value is the one step 5
-reports. The band should contain the bulk of the observations
-and widen where the data are sparse; a band that excludes whole groups is a fit
-problem rather than a sampler one, and belongs to step 4.
+reports. The band, a credible interval on the mean, should pass through each
+group and widen where the data are sparse; a band that misses whole groups is a
+fit problem rather than a sampler one, and belongs to step 4.
 
 # 4. Fit diagnostics
 
@@ -780,7 +781,7 @@ What to state in a methods section:
   posterior and defaults to 0.01; `type` for `ecx()` and `nsec()`, which takes
   `"absolute"`, `"range"`, `"relative"` or `"direct"` and defaults to
   `"absolute"`; `resolution`, the number of grid points the crossing is
-  interpolated on, which defaults to 200; and the scale each estimate is
+  interpolated on, which defaults to 500; and the scale each estimate is
   reported on, which is the measured scale unless an `xform` was given;
 - **the estimates with their credible intervals**, and the weights of the
   retained models;
@@ -1030,6 +1031,9 @@ dispersion it reports is used.
 check_sampling(screen)$failed
 ```
 
+Here it does not: `check_sampling()` reports the screening fit as failed, so the
+dispersion read above comes from a fit that did not sample adequately.
+
 ## Divergent transitions and the design
 
 The whole `decline` set is fitted at `bnec()`'s defaults --- there is no reason
@@ -1049,10 +1053,11 @@ nass_screened <- screen_models(fit_nass)
 ```
 
 The contrast with `simazine` is the point of including this dataset. There, five
-equations failed at reduced settings and all but one passed once the settings
-were raised, because the failures were failures of the run. Here the set is
-fitted at the defaults from the start and most of it still fails, on divergent
-transitions in the hundreds and thousands rather than on effective sample size.
+equations failed at reduced settings and three of them passed once the
+settings were raised, because those failures were failures of the run. Here the
+set is fitted at the defaults from the start and most of it still fails, on
+divergent transitions in the hundreds and thousands and not on effective sample
+size alone.
 
 More sampling makes this worse rather than better. The divergence cutoff is
 an absolute count over post-warmup draws, so at an unchanged divergence rate a
@@ -1074,7 +1079,9 @@ and the first with near-total mortality.
 nec(nass_screened)
 ```
 
-The interval is that gap. An analysis of these data reports it as such, together
+The upper bound lies in that gap, and the lower bound extends below it, to
+doses at which every snail survived. An analysis of these data reports the
+interval as such, together
 with the equations excluded and the reason, rather than presenting a narrower
 number obtained by loosening a threshold until enough equations survive. The
 fitted set shows what that means.
@@ -1106,14 +1113,15 @@ ggplot() +
 ```
 
 The dashed line is the model-averaged prediction over the retained equations and
-the grey band its 95% credible interval. The band is narrow wherever a dose was
-tested and opens across the interval from
-`r max(surv$dose[surv$dose < 2])` to
-`r min(surv$dose[surv$dose > 2])`, where none was: the curve has to fall
-somewhere in there and the data do not say where. The solid line is the
+the grey band its 95% credible interval. The band is narrow at every dose up to
+`r max(surv$dose[surv$dose < 2])` and opens across the interval from there to
+`r min(surv$dose[surv$dose > 2])`, where none was tested, and it is still about
+half the response scale wide at `r min(surv$dose[surv$dose > 2])`: the curve has
+to fall somewhere in there and the data do not say where. The solid line is the
 model-averaged *N(S)EC* and the dotted lines its bounds, at
 `r sprintf("%.2f", nass_nsec[2])` and `r sprintf("%.2f", nass_nsec[3])`, which
-between them span that untested interval. The axis is the one the raw-data
+run from well below the last dose with no effect to partway into that untested
+interval. The axis is the one the raw-data
 figure used, so the control keeps its marked position and the nine doses at or
 below `r max(surv$dose[surv$dose < 2])` are legible rather than stacked.
 
@@ -1275,13 +1283,13 @@ round(c(middle_half = mean(pit_const > 0.25 & pit_const < 0.75),
         above_0.95 = mean(pit_const > 0.95)), 3)
 ```
 
-The curve runs along the lower dashed line from about 0.25 to 0.5, leaves it,
-and crosses above the upper one beyond 0.6. That is the crowding towards the
+The curve runs along the lower dashed line from about 0.4 to 0.5, and then
+rises steeply to near the upper one by 0.6. That is the crowding towards the
 middle described above:
 `r sprintf("%.3f", mean(pit_const > 0.25 & pit_const < 0.75))` of the values lie
 in the middle half of the interval where 0.5 is expected. The fit simulates more
 variability than the observations contain. The band is wide because it is drawn
-for `r sum(cu$censoring == "none")` observations, and the curve leaves it even so.
+for `r sum(cu$censoring == "none")` observations, and the curve reaches its lower edge even so.
 
 ## The concentrations the variance is wrong at
 
@@ -1330,9 +1338,9 @@ screened_power <- screen_models(set_power)
 best_power <- pull_best(screened_power)
 ```
 
-The screen is run again rather than assumed. It removes
-`r sum(check_sampling(set_power)$failed)` equation here, and not the same one it
-removed before: a dispersion sub-model changes the posterior every equation is
+The screen is run again rather than assumed. Here it removes none of the
+equations, where it removed `r sum(check_sampling(set_const)$failed)` before: a
+dispersion sub-model changes the posterior every equation is
 sampled from. The same equation holds the most weight in both sets, and holds
 more of it in this one. The weights themselves concentrate: under constant
 dispersion `r sum(summary(screened_const)$mod_weights[, "wi"] > 0.01)` equations
@@ -1421,7 +1429,7 @@ response falls from about
 `r format(signif(max(cf_const$obs_mean), 3), big.mark = ",", scientific = FALSE)`
 relative light units at the control to about
 `r format(signif(min(cf_const$obs_mean), 3), big.mark = ",", scientific = FALSE)`
-at the bottom, so the display is put on a logarithmic scale; on a linear one the
+at its lowest, so the display is put on a logarithmic scale; on a linear one the
 lower half of the series is a row of points on the axis.
 
 ```{r exmp9-disp-checkfit, fig.asp = 0.82, out.width = "92%"}
@@ -1435,8 +1443,9 @@ plot(both) +
 ```
 
 Each bar is the 95% span of the statistic simulated from the fit and each point
-is the value observed. The location panels are the same under both, and every
-observed mean lies inside its bar in each: the curve reproduces the response at
+is the value observed. The observed means are the same under both, and none
+lies outside its bar in either, although the bars are far wider under constant
+dispersion: the curve reproduces the response at
 every concentration whichever dispersion structure is used, so the mean was
 never what was wrong. The scale panels differ. Under constant dispersion the
 observed standard deviation lies below its bar at the
@@ -1476,14 +1485,15 @@ ggplot(sd_ratios, aes(x = conc, y = sd_ratio, colour = dispersion,
   theme(legend.position = "top")
 ```
 
-The constant-dispersion series climbs across three orders of magnitude of the
-predictor, passing through agreement near
+The constant-dispersion series is flat over the five lowest concentrations and
+then climbs across one and a half orders of magnitude of the predictor, passing
+through agreement near
 `r sprintf("%.2g", as.numeric(cf_const$group)[which.min(abs(cf_const$sd_ratio - 1))])`
 mg/L. The `disp("power")` series stays near the dashed line, and does not sit on
 it: its ratios run from
 `r sprintf("%.2f", min(cf_power$sd_ratio))` to
 `r sprintf("%.2f", max(cf_power$sd_ratio))`, and on a logarithmic axis the low
-end is as far from agreement as the high end. None of those groups is flagged,
+end is nearly as far from agreement as the high end. None of those groups is flagged,
 and the reason is the design rather than the fit. A standard deviation computed
 from four values has a sampling standard deviation of about
 `r sprintf("%.0f", 100 / sqrt(2 * (unique(cf_power$n)[1] - 1)))` per cent of
@@ -1581,12 +1591,12 @@ under, because the two structures return different estimates from the same data.
 
 # Summary
 
-The sampler screen returned a different outcome at each of the three fits, and
+The sampler screen returned a different outcome at each fit it was applied to, and
 none of them was predictable before it was run. On `simazine` at deliberately reduced settings it removed `r sum(check_sampling(fit_reduced)$failed)` of `r nrow(check_sampling(fit_reduced))` equations; at `bnec()`'s defaults on the same data it removed `r sum(check_sampling(fit)$failed)` of `r nrow(check_sampling(fit))`, with a further equation failing to fit at all; and on `nassarius` at those same defaults it removed `r sum(check_sampling(fit_nass)$failed)` of `r nrow(check_sampling(fit_nass))`. That is the argument for running and reporting the screen in every case.
 
 The three outcomes have three different causes, and separating them is what the
-step is for. An equation that fails on effective sample size alone has not been
-given enough draws, and the remedy is to give it more. An equation that fails on
+step is for. An equation that fails on effective sample size alone may not have been
+given enough draws, and the first remedy is to give it more. An equation that fails on
 divergent transitions, or that fails to fit at all, is reporting something about
 the posterior. Where it is also the most heavily parameterised equation in the
 set and the design has few distinct concentrations, the explanation is that the
@@ -1600,7 +1610,7 @@ The variance assumption is the one no sampler diagnostic reports. On the
 `r sprintf("%.3f", cv_obs[length(cv_obs)])` at the bottom of the series, and the
 constant-dispersion fit passed the sampler screen while simulating about
 `r round(1 / cf_const$sd_ratio[cf_const$control])` times the spread the control
-shows. Adding `disp("power")` brought every group inside the flag and halved
+shows. Adding `disp("power")` brought every group inside the flag and lowered
 the model-averaged *NSEC*, from
 `r sprintf("%.3f", nsec(screened_const, xform = exp)[1])` to
 `r sprintf("%.3f", nsec(screened_power, xform = exp)[1])` mg/L. A fit can pass every
