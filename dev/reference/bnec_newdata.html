@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
       </span>
     </div>
 
@@ -87,7 +87,7 @@
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>bnec_newdata</h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/bnec_newdata.R" class="external-link"><code>R/bnec_newdata.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/bnec_newdata.R" class="external-link"><code>R/bnec_newdata.R</code></a></small>
     <div class="hidden name"><code>bnec_newdata.Rd</code></div>
     </div>
 
@@ -105,7 +105,8 @@
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>An object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or
-<code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> as returned by <code><a href="bnec.html">bnec</a></code>.</p></dd>
+<code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> as returned by <code><a href="bnec.html">bnec</a></code>, or of class
+<code><a href="bayesnecjointfit-class.html">bayesnecjointfit</a></code> as returned by <code><a href="bnec_joint.html">bnec_joint</a></code>.</p></dd>
 
 
 <dt id="arg-resolution">resolution<a class="anchor" aria-label="anchor" href="#arg-resolution"></a></dt>
@@ -120,7 +121,20 @@ the range of x values over which to make predictions.</p></dd>
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>A <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code> to be used in predictions.</p>
+    <p>A <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code> to be used in predictions. For a
+<code><a href="bayesnecjointfit-class.html">bayesnecjointfit</a></code> it holds <code>resolution</code> rows for each
+level of the grouping factor, in a column of that name, with the level
+varying slowest; every other class gives <code>resolution</code> rows.</p>
+<p>Where the formula has a <code>disp(~...)</code> term naming a column other than
+the predictor, the data frame holds that column at one fixed value, the
+first level of a factor or the median of a numeric column, and names it in
+the attribute <code>"bnec_disp_placeholders"</code>. The value is the one the
+fitted curve and the estimates are read at, and the mean does not depend on
+it. <code><a href="posterior_predict.html">posterior_predict</a></code> and <code><a href="predict.html">predict</a></code> treat a
+column named there as a placeholder, and draw its value for each posterior
+draw from the data the fit was made from; see
+<code><a href="posterior_predict.html">posterior_predict</a></code>. A column whose values have been changed
+from the placeholder is used as given.</p>
     </div>
 
     <div id="ref-examples">

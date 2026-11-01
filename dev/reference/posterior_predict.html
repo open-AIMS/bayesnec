@@ -19,7 +19,7 @@ bayesmanecfit."><meta property="og:image" content="https://open-aims.github.io/b
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
       </span>
     </div>
 
@@ -89,7 +89,7 @@ bayesmanecfit."><meta property="og:image" content="https://open-aims.github.io/b
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Generates posterior predictions for objects fitted by <code><a href="bnec.html">bnec</a></code></h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/posterior_predict.R" class="external-link"><code>R/posterior_predict.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/posterior_predict.R" class="external-link"><code>R/posterior_predict.R</code></a></small>
     <div class="hidden name"><code>posterior_predict.Rd</code></div>
     </div>
 
@@ -101,10 +101,10 @@ bayesmanecfit."><meta property="og:image" content="https://open-aims.github.io/b
 
     <div id="ref-usage">
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for class 'bayesnecfit'</span></span>
-<span><span class="fu">posterior_predict</span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span></span>
+<span><span class="fu">posterior_predict</span><span class="op">(</span><span class="va">object</span>, newdata <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'bayesmanecfit'</span></span>
-<span><span class="fu">posterior_predict</span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">posterior_predict</span><span class="op">(</span><span class="va">object</span>, newdata <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -116,6 +116,14 @@ bayesmanecfit."><meta property="og:image" content="https://open-aims.github.io/b
 <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code>.</p></dd>
 
 
+<dt id="arg-newdata">newdata<a class="anchor" aria-label="anchor" href="#arg-newdata"></a></dt>
+<dd><p>An optional <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code> to predict over.
+Where it is <code>NULL</code>, the default, predictions are made for the data the
+fit was made from, each row with its own values. See Details for a fit whose
+formula has a <code>disp(~...)</code> term naming a column other than the
+predictor.</p></dd>
+
+
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Additional arguments to
 <code><a href="https://mc-stan.org/rstantools/reference/posterior_predict.html" class="external-link">posterior_predict</a></code>.</p></dd>
@@ -124,6 +132,27 @@ bayesmanecfit."><meta property="og:image" content="https://open-aims.github.io/b
     <div id="value">
     <h2>Value</h2>
     <p>See <code><a href="https://mc-stan.org/rstantools/reference/posterior_predict.html" class="external-link">?brms::posterior_predict</a></code>.</p>
+    </div>
+    <div id="details">
+    <h2>Details</h2>
+    <p>A <code>disp(~z)</code> term, with <code>z</code> a column other than the
+predictor, models the dispersion parameter on <code>z</code>. The spread of a
+predicted reading then depends on <code>z</code>, so a <code>newdata</code> has to say
+which value of <code>z</code> each prediction is for, and one without the column
+is refused with a message naming it. <code><a href="bnec_newdata.html">bnec_newdata</a></code> writes
+such a column at one fixed value, the first level of a factor or the median
+of a numeric column, and marks it as a placeholder. Given that
+<code>newdata</code>, <code>posterior_predict()</code> replaces the placeholder draw by
+draw: each posterior draw takes the value, or the joint values where the
+term names several columns, of a row sampled at random from the data the
+fit was made from. The predicted readings are then those of a new
+observation from the mix of <code>z</code> in the design, rather than of one
+level of it. The sampling uses the session's random number stream, as the
+simulation of the readings themselves does, so <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></code>
+before the call reproduces both. A <code>newdata</code> that holds the column
+without the mark is used as given, and so is a marked column whose values
+have been changed from the placeholder, as in a grid from
+<code><a href="bnec_newdata.html">bnec_newdata()</a></code> with <code>z</code> set to the level to predict for.</p>
     </div>
 
     <div id="ref-examples">
