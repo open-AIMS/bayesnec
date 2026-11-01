@@ -224,6 +224,15 @@ test_that("a model set that records no leave_out was scored by observation", {
   args <- bayesnec:::recorded_expand_args(list(set), method = "pseudobma",
                                           fam_tag = "gaussian")
   expect_identical(args$loo_controls$leave_out, "group")
+  # Without a record, the weights' own attribute says what was left out.
+  unrecorded <- structure(
+    list(mod_stats = list(wi = structure(c(a = 1), leave_out = "conc_group"))),
+    class = c("bayesmanecfit", "bnecfit")
+  )
+  args <- bayesnec:::recorded_expand_args(list(unrecorded),
+                                          method = "pseudobma",
+                                          fam_tag = "gaussian")
+  expect_identical(args$loo_controls$leave_out, "group")
   # A single fit holds no weights, so its record is not read.
   single <- structure(list(), class = c("bayesnecfit", "bnecfit"))
   args <- bayesnec:::recorded_expand_args(list(single), method = "pseudobma",
