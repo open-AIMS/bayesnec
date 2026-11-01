@@ -25,6 +25,9 @@
 #' holds. Where the models hold different numbers, it is the smallest.
 #' @slot mod_weights A table containing the model weights.
 #' @slot mod_weights_method The method to calculate the weights.
+#' @slot mod_weights_leave_out What the criterion behind the weights left out:
+#' the name of a grouping, each of whose levels was left out whole, or
+#' \code{"observation"}.
 #' @slot ecx_mods A \code{\link[base]{logical}} indicating which \code{models}
 #' are ECx-type models.
 #' @slot nec_vals The model-averaged NEC values. Note that if model stack

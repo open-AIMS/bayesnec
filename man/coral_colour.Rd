@@ -20,7 +20,9 @@ chambers, with four coral fragments in each chamber: 45 chambers and 180
 fragments. A chamber sits at one concentration, so it spans no part of the
 concentration-response curve and admits only a displacement --- the
 within-concentration structure \code{vignette("example8")} demonstrates with
-\code{ogl(chamber)}.
+\code{ogl(chamber)}. The model weights of a set fitted with that term leave
+out each chamber whole; see the \code{loo_controls} argument of
+\code{\link{bnec}}.
 
 Five concentrations is at the conventional minimum for a
 concentration-response design, and this dataset exists partly to show what

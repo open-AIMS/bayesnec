@@ -327,7 +327,8 @@ NULL
 #'   numbered in ascending concentration within the plate. This is the
 #'   within-concentration grouping factor: every level sits at a single
 #'   concentration, so it cannot have a concentration-response curve of its
-#'   own.}
+#'   own. The model weights of a set fitted with a term on it leave out each
+#'   level whole; see the \code{loo_controls} argument of \code{\link{bnec}}.}
 #' \item{well}{Replicate well identifier, unique within plate (fct). Each level
 #'   appears twice, once per exposure time. Within one toxicant-by-exposure-time
 #'   subset a level has a single observation, so a group-level term on
@@ -374,7 +375,9 @@ NULL
 #' fragments. A chamber sits at one concentration, so it spans no part of the
 #' concentration-response curve and admits only a displacement --- the
 #' within-concentration structure \code{vignette("example8")} demonstrates with
-#' \code{ogl(chamber)}.
+#' \code{ogl(chamber)}. The model weights of a set fitted with that term leave
+#' out each chamber whole; see the \code{loo_controls} argument of
+#' \code{\link{bnec}}.
 #'
 #' Five concentrations is at the conventional minimum for a
 #' concentration-response design, and this dataset exists partly to show what
@@ -447,7 +450,8 @@ NULL
 #' not balanced. As with \code{\link{coral_colour}} a chamber sits at one
 #' concentration and admits only a displacement, and 54 chambers of several
 #' readings is the better conditioned of the two for a
-#' \code{ogl(chamber)} term.
+#' \code{ogl(chamber)} term. The model weights leave out each chamber whole,
+#' as for \code{\link{coral_colour}}.
 #'
 #' Chamber was numbered 1 to 3 within each climate-by-concentration cell in the
 #' source records rather than across the experiment, so \code{chamber} here

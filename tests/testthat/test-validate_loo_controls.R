@@ -1,5 +1,5 @@
 test_that("rejects non-lists", {
-  err <- "loo_controls should be a named list of two elements\\. See \\?bnec"
+  err <- "loo_controls should be a named list of up to four elements"
   fam_tag <- ""
   expect_error(validate_loo_controls(10, fam_tag), err)
   expect_error(validate_loo_controls(NA, fam_tag), err)

@@ -1,5 +1,30 @@
 # bayesnec 2.2.0
 
+## Model weights under a within-concentration group term
+
+- Where each level of a group-level term is observed at a single
+  concentration, such as `ogl(conc_group)` on `lum31` or `ogl(chamber)` on
+  `coral_pam`, the model weights are now computed by leaving out each level
+  whole rather than each observation (#529). Under the earlier score a curve
+  of the wrong shape was barely penalised, because the deviation of the
+  left-out observation's group, estimated from the group's other observations,
+  included the curve's misfit at that concentration. Other
+  structures, such as `pgl()` on the grouping or two nested groupings, keep
+  the earlier score, with a warning that gives the reason.
+- `loo_controls` takes two new elements. `leave_out` is `"group"` (the
+  default) or `"observation"` (the earlier score). `refit = TRUE` refits each
+  equation without each level whose Pareto *k* exceeds 0.7 and scores that
+  level from the refit; it is off by default, because each such level needs
+  its own refit.
+- A model set built before this change keeps its earlier score when `amend()`,
+  `pull_out()`, `c()` or `update()` rebuilds it;
+  `amend(x, loo_controls = list(leave_out = "group"))` recomputes its weights.
+- `mod_stats` gains a column `elpd`, the score the weights were computed
+  from, and `summary()` prints what the score left out.
+- `crossed_group_weights()` compares the grouped and pooled fits on the
+  leave-one-group-out score, as LOOIC, where that score was computed for every
+  fit over the same levels, and on WAIC otherwise.
+
 ## Endpoint extraction
 
 - Post-fit `ecx()`, `nsec()` and `ecnsec()` now use 500 prediction points by
