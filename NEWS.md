@@ -1610,6 +1610,12 @@
 
 ## New
 
+- `group_level_sd()` tabulates the group-level standard deviations of each
+  equation of a fit, such as those of an `ogl()` or `pgl()` term, with the
+  equation's model weight beside them. It accepts a `bayesnecfit`, a
+  `bayesmanecfit`, a `bayesnecgroupfit`, which adds a `level` column, and a
+  `bayesnechurdlefit`, which gives one table per component.
+
 - `predict()`, `plot()` and `autoplot()` for a `bayesmanecfit` take two new
   arguments. `model` names one or more equations of the set, and `average`
   chooses whether the model averaged predictions are included; it defaults to
