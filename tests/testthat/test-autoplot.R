@@ -12,6 +12,16 @@ test_that("ggbnec_data returns the columns autoplot draws from", {
   expect_gt(nrow(d), 0)
 })
 
+test_that("ggbnec_data draws the stored prediction curve", {
+  skip_on_cran()
+  # The stored grid sets a rate() denominator to 1, so drawing it keeps a rate
+  # fit's curve on the scale of its plotted observations.
+  d <- suppressMessages(ggbnec_data(nec4param, add_nec = FALSE))
+  curve <- d$y_e[!is.na(d$y_e)]
+  expect_equal(curve, nec4param$pred_vals$data$Estimate)
+  expect_equal(d$x_e[seq_along(curve)], nec4param$pred_vals$data$x)
+})
+
 test_that("ggbnec_data returns the same frame shape for a model set", {
   skip_on_cran()
   d <- suppressMessages(ggbnec_data(manec_example))

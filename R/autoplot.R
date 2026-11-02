@@ -517,7 +517,6 @@ ggbnec_data <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #' @inherit ggbnec_data return examples
 #' 
 #' @importFrom dplyr mutate
-#' @importFrom brms conditional_effects
 #' @importFrom rlang .data
 #'
 #' @noRd
@@ -529,13 +528,12 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   chk_lgl(add_ecx)
   check_xform(xform)
   brms_fit <- x$fit
-  plot_obj <- brms_fit |>
-    conditional_effects(method = "posterior_epred") |>
-    plot(plot = FALSE)
-  e_df <- plot_obj[[1]]$data
-  e_df <- data.frame(x_e = c(e_df$effect1__, rev(e_df$effect1__)),
-                     y_e = c(e_df$estimate__, rep(NA, nrow(e_df))),
-                     y_ci = c(e_df$lower__, rev(e_df$upper__)),
+  # Draw the stored grid curve, not conditional_effects(): that holds a rate()
+  # denominator at its mean, which puts the curve on the count scale.
+  e_df <- x$pred_vals$data
+  e_df <- data.frame(x_e = c(e_df$x, rev(e_df$x)),
+                     y_e = c(e_df$Estimate, rep(NA, nrow(e_df))),
+                     y_ci = c(e_df$Q2.5, rev(e_df$Q97.5)),
                      x_r = NA, y_r = NA)
   r_df <- prep_raw_data(brms_fit, x$bayesnecformula, group = group,
                         retained_data = x$retained_data)
