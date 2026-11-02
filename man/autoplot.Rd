@@ -15,7 +15,8 @@
   ecx = FALSE,
   xform = NULL,
   group = NULL,
-  group_aes = c("line", "colour")
+  group_aes = c("line", "colour"),
+  point_alpha = 1
 )
 
 \method{autoplot}{bayesmanecfit}(
@@ -32,6 +33,7 @@
   multi_facet = TRUE,
   group = NULL,
   group_aes = c("line", "colour"),
+  point_alpha = 1,
   all_models = NULL
 )
 
@@ -42,7 +44,8 @@
   ecx = FALSE,
   xform = NULL,
   group = NULL,
-  group_aes = c("line", "colour")
+  group_aes = c("line", "colour"),
+  point_alpha = 1
 )
 
 \method{autoplot}{bayesnecjointfit}(
@@ -52,7 +55,8 @@
   ecx = FALSE,
   xform = NULL,
   group = NULL,
-  group_aes = c("line", "colour")
+  group_aes = c("line", "colour"),
+  point_alpha = 1
 )
 }
 \arguments{
@@ -86,6 +90,10 @@ also maps the grouping to the observation fill and the per-level mean marks.
 The argument is ignored when \code{group} is \code{NULL}. Only
 \code{"colour"} is available when \code{group} is not a group-level term
 in the fitted formula.}
+
+\item{point_alpha}{The opacity of the observation points, a single number
+from 0 (transparent) to 1 (opaque, the default). It does not change the
+credible band or the per-level means drawn for \code{group}.}
 
 \item{model}{\code{NULL} (the default), or a \code{\link[base]{character}}
 vector naming equations of the model set. Each named equation is drawn in a
