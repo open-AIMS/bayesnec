@@ -37,15 +37,16 @@ knitr::opts_chunk$set(
 In some toxicity tests, exposure can both reduce the response and remove the
 individual that provides it. For example, a snail exposed to a contaminated
 sediment may grow more slowly or it may die, and an algal culture may be
-suppressed or it may fail entirely. The conventional analysis discards the individuals that did not
-survive and fits a zero-bounded model (e.g. a Gamma) to the remainder.
+suppressed or it may fail entirely. The conventional analysis discards the
+individuals that did not survive and fits a zero-bounded model (e.g. a Gamma) to
+the remainder.
 
 That analysis is not incorrect, but it answers a narrower question than it
 appears to. Dropping the individuals that died conditions the estimate on
 survival, so that it describes growth *given that the individual lived*, and not
 growth itself. Because mortality also depends on concentration, the snails that
 survive a high concentration are a more strongly selected group than those that
-survive a low one, and the two groups are not directly comparable in the way a
+survive a low one, and these groups are not directly comparable in the way a
 single fitted curve implies.
 
 A hurdle model retains both processes by splitting the likelihood into a
@@ -182,10 +183,40 @@ We begin with one equation, `nec3param`, for both components.
 
 ```{r fit-factorised, results = "hide"}
 # bayesnec does not set cores; unless mc.cores is set, brms then runs the
-# chains one after another.
+# chains one after another. adapt_delta is raised for the reason given below.
 fit_f <- bnec_hurdle(growth ~ crf(log(dose + 0.001), model = "nec3param"),
-                     data = snails, seed = 10, refresh = 0, cores = 4)
+                     data = snails, seed = 10, refresh = 0, cores = 4,
+                     control = list(adapt_delta = 0.999))
 ```
+
+As for any `bayesnec` fit, the sampler diagnostics should be checked before the
+estimates are used (see the [Multi model usage][e2] vignette).
+`check_sampling()` returns them for each component.
+
+```{r sampling-factorised}
+sampling_f <- check_sampling(fit_f)
+sampling_f
+```
+
+The growth component produced `r sampling_f$growth$n_divergent` divergent
+transitions and the survival component `r sampling_f$survival$n_divergent`
+(table above). The survival component also fails the R-hat and effective sample
+size checks (`r sprintf("%.2f", sampling_f$survival$max_rhat)` and
+`r round(sampling_f$survival$min_ess)`), so its chains have not mixed. Survival
+falls from
+`r round(mean(snails$alive[snails$dose == 1.25]), 2)` at a dose of 1.25 to
+`r round(mean(snails$alive[snails$dose == 2.5]), 2)` at 2.5, with no dose in
+between, so these data cannot distinguish a steep decline in survival from a
+still steeper one, and the sampler is likely to fail where it explores those
+steep declines. `adapt_delta` is raised to 0.999 here and in the fits below, but
+this is unlikely to resolve the problem, because it follows from the design and
+not from the sampler settings. The quantity left unresolved is likely to be the
+steepness of the decline, not where it occurs: the survival NSEC, EC10 and EC50
+below lie between the doses either side of the decline, and they are similar in
+the factorised and joint fits (see *The joint route*). They should nonetheless
+be read with this caveat. A dose between 1.25 and 2.5, or an informative prior
+on the rate of decline of the survival curve (`beta`), would identify the
+steepness.
 
 ## Endpoints of the factorised fit
 
@@ -384,13 +415,12 @@ set.seed(10)
 mod_set <- c("nec3param", "nec4param", "ecx4param", "ecxexp", "ecxwb1",
              "ecxll3")
 
-# adapt_delta is raised because most deaths are at the two highest doses, so
-# the survival curve is weakly identified. iter is reduced from the
-# bayesnec default of 1e4 to keep twelve fits tractable.
+# iter is reduced from the bayesnec default of 1e4 to keep twelve fits
+# tractable.
 fit_m <- bnec_hurdle(growth ~ crf(log(dose + 0.001), model = mod_set),
                      data = snails, seed = 10, refresh = 0, cores = 4,
                      iter = 4e3,
-                     control = list(adapt_delta = 0.99, max_treedepth = 12))
+                     control = list(adapt_delta = 0.999, max_treedepth = 12))
 ```
 
 `crossed_weights()` gives the weight of each combination (figure below). Because
@@ -432,6 +462,39 @@ is given to `` `r crossed_top$growth[1]` `` growth with
 with `` `r crossed_top$survival[2]` `` survival. This is the situation model
 averaging is designed to handle, and reporting a single combination would
 discard that uncertainty.
+
+`check_sampling()` gives these diagnostics for each equation of the growth and
+survival sets (table below). A diagnostic is read against the weight of the
+equation it was computed on, because an equation that fits the data poorly is
+both the one most likely to sample badly and the one given least weight.
+
+```{r sampling-manec}
+sampling_m <- check_sampling(fit_m)
+sampling_m
+```
+
+```{r sampling-weights, include = FALSE}
+growth_weights <- rowSums(crossed_weights(fit_m))
+survival_weights <- colSums(crossed_weights(fit_m))
+failed_weight <- function(tab, w) sum(w[tab$model[tab$failed]])
+```
+
+Of the six growth equations, `r sum(sampling_m$growth$failed)` fail at least one
+check, with a combined growth weight of
+`r sprintf("%.2f", failed_weight(sampling_m$growth, growth_weights))`, and of the
+six survival equations, `r sum(sampling_m$survival$failed)` fail, with a combined
+survival weight of
+`r sprintf("%.2f", failed_weight(sampling_m$survival, survival_weights))`.
+The failures are not confined to equations with little weight. In the growth
+set, `nec4param`, which receives about 0.35 of the growth weight, has an R-hat of
+1.67 and an effective sample size of 7, and `ecx4param` and `ecxwb1` produced 403
+and 275 divergent transitions. In the survival set, all equations except
+`nec3param` fail, most often on divergent transitions (from 22 for `nec4param`
+and `ecxexp` to 1,135 for `ecx4param`), and `ecxll3`, with 37, receives about
+0.35 of the survival weight. The crossed weights, and the model-averaged
+estimates compared in the next section, therefore rest partly on fits that did
+not sample properly, and they illustrate the method without being reliable
+estimates for this test.
 
 Each model set includes smooth (ECx) equations as well as threshold equations.
 The NSEC, EC10 and EC50 reported below are read off the model-averaged curves,
@@ -512,28 +575,30 @@ near-complete survival in the controls).
 Model averaging is done on the factorised fit, because the joint route can
 average over the response block only. Where a single fit is required,
 `best_crossed()` identifies the combination with the largest crossed weight, and
-`bnec_joint()` refits that combination as one two-block model.
+`bnec_joint()` refits a combination as one two-block model, by default the one
+`best_crossed()` selects.
 
 ```{r best-crossed}
-best_crossed(fit_m)
+best <- best_crossed(fit_m)
+best
 ```
 
-```{r best-crossed-check, include = FALSE}
-# The text, figure and table below name nec3param for both components. Stop the
-# render if a refit selects another combination.
-stopifnot(identical(unname(unlist(best_crossed(fit_m)[c("growth", "survival")])),
-                    c("nec3param", "nec3param")))
-```
+Here the combination with the largest weight is `` `r best$growth` `` growth
+with `` `r best$survival` `` survival (`r sprintf("%.2f", best$weight)`). The
+equations can also be named, through the `model` and `model_survival` arguments
+of `bnec_joint()`. To compare the factorised and joint routes on one pair of
+equations, we refit the combination used for `fit_f`, which is `nec3param` for
+both components.
 
 ```{r fit-joint, results = "hide"}
-fit_j <- bnec_joint(fit_m, seed = 10, refresh = 0, cores = 4, iter = 4e3,
-                    control = list(adapt_delta = 0.99))
+fit_j <- bnec_joint(fit_m, model = "nec3param", model_survival = "nec3param",
+                    seed = 10, refresh = 0, cores = 4, iter = 4e3,
+                    control = list(adapt_delta = 0.999))
 ```
 
-Here `best_crossed()` selects `nec3param` for both components, the combination
-fitted as `fit_f` above. The joint fit can therefore be compared directly with
-the factorised fit of these equations, and both can be compared with the
-model average of the factorised fit (figure and table below).
+The joint fit can therefore be compared directly with the factorised fit of the
+same equations, and both can be compared with the model average of the
+factorised fit (figure and table below).
 
 ```{r plot-routes, fig.width = 10, fig.asp = 0.45, out.width = "100%", fig.cap = "The three endpoints of the factorised `nec3param` fit, the joint fit of that combination, and the model average of the factorised six-equation sets, each with its median and 95% credible band."}
 fit_colours <- c(`factorised, nec3param` = "#2a78d6",
@@ -576,8 +641,14 @@ bind_rows(
   knitr::kable()
 ```
 
+```{r sampling-joint, include = FALSE}
+sampling_j <- check_sampling(fit_j)
+```
+
 The curves of the factorised and joint fits of `nec3param` overlap, and their
 estimates differ by no more than Monte Carlo error (figure and table above). The
+joint fit produced `r sampling_j$n_divergent` divergent transitions, for the
+reason given for the survival component of `fit_f`. The
 factorised and joint routes therefore differ in the models they can fit, and not
 in the estimates they give for a model both can fit. The model average, in
 contrast, has wider credible intervals than either single-equation fit for
@@ -597,7 +668,7 @@ The equation for each block is set independently, so a joint fit with any
 combination can also be requested directly, with `crf()` naming the equation for
 the response block and `model_survival` the equation for the survival block.
 `bnec_joint()` is a convenience wrapper that fills in these names from
-`best_crossed()`.
+`best_crossed()` where they are not given.
 
 ```{r joint-explicit, eval = FALSE}
 bnec(growth ~ crf(log(dose + 0.001), model = "nec3param"), data = snails,
