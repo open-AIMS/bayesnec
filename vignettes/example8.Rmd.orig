@@ -27,10 +27,20 @@ knitr::opts_chunk$set(
 ```
 
 ```{r helpers, include = FALSE}
+# Formats a number to two significant figures, keeping trailing zeros.
+fmt <- function(x, digits = 2) {
+  sub("\\.$", "", formatC(signif(x, digits), digits = digits, format = "fg",
+                           flag = "#"))
+}
 # Formats an estimate and its interval for the text and the tables.
-ci <- function(v, digits = 2) {
-  v <- signif(unname(unlist(v))[1:3], digits)
+ci <- function(v) {
+  v <- fmt(unname(unlist(v))[1:3])
   paste0(v[1], " (", v[2], "--", v[3], ")")
+}
+# Formats the range of a set of values, or one value where they agree.
+range_text <- function(x) {
+  r <- unique(fmt(range(x)))
+  paste(r, collapse = " to ")
 }
 # Formats names as code, singly or as a list for the text.
 eq <- function(x) paste0("`", x, "`")
@@ -499,8 +509,8 @@ knitr::kable(
   row.names = FALSE
 )
 low_ogl <- setdiff(names(ec10_eq_ogl), top_ogl)
-low_ec10 <- signif(median(vapply(ec10_eq_ogl[low_ogl], function(v) v[[1]],
-                                 numeric(1))), 2)
+low_ec10 <- fmt(median(vapply(ec10_eq_ogl[low_ogl], function(v) v[[1]],
+                              numeric(1))))
 ```
 
 `autoplot()` with `group = "conc_group"` marks the mean of each cell, the
@@ -519,8 +529,8 @@ autoplot(fit_ogl, group = "conc_group", group_aes = "colour",
   ggtitle("ogl(conc_group)")
 ```
 
-The median EC10 is `r signif(ec10_plain[[1]], 2)` mg/L without the term and
-`r signif(ec10_ogl[[1]], 2)` with it, whereas the upper bound of its interval is
+The median EC10 is `r fmt(ec10_plain[[1]])` mg/L without the term and
+`r fmt(ec10_ogl[[1]])` with it, whereas the upper bound of its interval is
 `r round(ec10_ogl[[3]] / ec10_plain[[3]], 1)` times as large with the term. Two
 changes contribute (table above). First, the interval of `r eq(top_ogl)`, given
 most of the weight in both fits, widens from `r ci(ec10_eq_plain[[top_ogl]])` to
@@ -669,14 +679,13 @@ plate spans the series, and with a plate term the differences between plates are
 no longer counted as residual.
 
 The structures also differ in where they place the curve. Across the four, the
-median EC10 ranges from `r signif(ec10_range[1], 2)` to
-`r signif(ec10_range[2], 2)` mg/L and the median NSEC from
-`r signif(nsec_range[1], 2)` to `r signif(nsec_range[2], 2)`, so the NSEC
-changed more with the structure than the EC10. An ECx is read at a fixed
-fraction of the fitted control, whereas the NSEC is read where the curve first
-falls below the control's band, and a group-level term may change the width of
-that band by attributing part of the residual variation to the groups. The
-weights changed as well, and no equation was given most of the weight under
+median EC10 ranges from `r fmt(ec10_range[1])` to `r fmt(ec10_range[2])` mg/L
+and the median NSEC from `r fmt(nsec_range[1])` to `r fmt(nsec_range[2])`, so
+the NSEC changed more with the structure than the EC10. An ECx is read at a
+fixed fraction of the fitted control, whereas the NSEC is read where the curve
+first falls below the control's band, and a group-level term may change the
+width of that band by attributing part of the residual variation to the groups.
+The weights changed as well, and no equation was given most of the weight under
 every structure. Under `pgl(plate)` the weight was spread over
 `r sum(w_pgl >= 0.05)` equations, and the EC10 was `r ci(plate_ec10[[3]])` mg/L.
 Adding the cell term gave `r eq(top_arm)` `r sprintf("%.2f", w_arm[[top_arm]])`
@@ -712,8 +721,7 @@ model average. Its SD on `topgl`, `r sd_of(sd_arm, top_arm, "topgl")`, is the
 difference in gain between plates (on the log scale of a multiplicative factor).
 The plates also differ in where their curves fall: under `pgl(plate)` alone,
 each equation given at least 0.05 of the weight estimates an SD on `ec50` of
-`r signif(min(sd_pgl_ec50$Estimate), 2)` to
-`r signif(max(sd_pgl_ec50$Estimate), 2)` on the scale of log concentration. The
+`r range_text(sd_pgl_ec50$Estimate)` on the scale of log concentration. The
 position of an `ecxll5` curve, however, depends on its exponent `f` as well as
 on `ec50`. Under the arm structure `ecxll5` estimates an SD on `f` of
 `r sd_of(sd_arm, "ecxll5", "f")`, whereas its SD on `ec50` is poorly determined
@@ -925,9 +933,8 @@ Five batches, however, leave the batch SD poorly determined: its interval,
 from end to end.
 
 The table below sets the EC50 of each metal from the joint refit beside the
-model-averaged EC50 of the separate fits and the mean of the per-plate EC50s
-that @luter2025 report for 15 minutes from a separate fit to each plate of the
-normalised response.
+model-averaged EC50 of the separate fits and the per-plate EC50s that @luter2025
+report for 15 minutes.
 
 ```{r ec50-joint, echo = FALSE}
 ec50_joint <- ecx(fits_tox_joint, ecx_val = 50)
@@ -973,12 +980,12 @@ ggplot(data.frame(ratio = zn_cu_ratio), aes(x = ratio)) +
   labs(x = "Ratio of zinc's EC10 to copper's (joint refit)", y = "Density")
 ```
 
-Zinc's EC10 is `r signif(median(zn_cu_ratio), 2)` times copper's
-(`r ci(quantile(zn_cu_ratio, c(0.5, 0.025, 0.975)))`), and the ratio exceeds 1
-in `r round(100 * mean(zn_cu_ratio > 1), 1)` per cent of the draws. Each draw of
-the ratio is taken from one draw of the joint posterior, so it keeps any
-dependence between the two metals' estimates that the shared terms introduce,
-which a permutation of separate posteriors discards.
+Zinc's EC10 is `r ci(quantile(zn_cu_ratio, c(0.5, 0.025, 0.975)))` times
+copper's, and the ratio exceeds 1 in `r round(100 * mean(zn_cu_ratio > 1), 1)`
+per cent of the draws. Each draw of the ratio is taken from one draw of the
+joint posterior, so it keeps any dependence between the two metals' estimates
+that the shared terms introduce, which a permutation of separate posteriors
+discards.
 
 ```{r diagnostics-joint, include = FALSE}
 np_joint <- brms::nuts_params(fits_tox_joint$fit)
@@ -987,16 +994,16 @@ pars_joint <- rbind(s_joint$fixed, s_joint$spec_pars,
                     do.call(rbind, s_joint$random))
 joint_divergent <- sum(np_joint$Value[np_joint$Parameter == "divergent__"])
 joint_draws <- sum(np_joint$Parameter == "divergent__")
+w_ll5 <- vapply(level_weights, function(w) w[["ecxll5"]], numeric(1))
+less_weight <- if (w_ll5[["Cu"]] < w_ll5[["Zn"]]) "copper than for zinc" else
+  "zinc than for copper"
 ```
 
 A joint refit conditions on one equation per level, so the model uncertainty
-that the per-level averages represent is absent from it. Here `ecxll5` was given
-`r sprintf("%.2f", level_weights[["Cu"]][["ecxll5"]])` of the weight for copper
-and `r sprintf("%.2f", level_weights[["Zn"]][["ecxll5"]])` for zinc, so the
-intervals of the joint refit omit the uncertainty that the other equations
-represent, more for
-`r if (level_weights[["Cu"]][["ecxll5"]] < level_weights[["Zn"]][["ecxll5"]]) "copper than for zinc" else "zinc than for copper"`.
-The refit recorded `r joint_divergent` divergent transitions in `r joint_draws`
+that the per-level averages represent is absent from it. `ecxll5` was given only
+part of the weight at each level, so the intervals of the joint refit omit the
+uncertainty that the other equations represent, more for `r less_weight`. The
+refit recorded `r joint_divergent` divergent transitions in `r joint_draws`
 post-warmup draws, with a largest R-hat of
 `r sprintf("%.3f", max(pars_joint$Rhat))` and a smallest bulk effective sample
 size of `r round(min(pars_joint$Bulk_ESS))` over the population-level, family
