@@ -107,7 +107,7 @@ by the investigator (e.g. copper and zinc).
 
 | Grouping | Spans the series | Levels | Route | In this vignette |
 |---|---|---|---|---|
-| Replicate vessels at one concentration (e.g. the wells of a cell, tanks, chambers) | No | A sample of possible vessels | `ogl()` on the vessel | `ogl(conc_group)` |
+| Replicate vessels at one concentration (e.g. tanks, chambers, or the wells at one concentration on a plate) | No | A sample of possible vessels | `ogl()` on the vessel | `ogl(conc_group)` |
 | Repeated runs of the whole test (e.g. plates, batches, genotypes drawn from a population) | Yes | A sample of possible runs | `ogl()`, `(par \| group)` or `pgl()` on the run | `pgl(plate)` |
 | Treatments of interest (e.g. chemicals, species, exposure times) | Yes | Fixed, chosen by the investigator | `bnec_group()`, a model set per level | `toxicant` |
 | Treatments to be contrasted in one posterior, or sharing a group-level term | Yes | Fixed | `bnec_joint()` on a `bnec_group()` fit | copper and zinc with a shared `(ec50 \| batch)` |
@@ -434,8 +434,7 @@ n_candidates <- length(fit_ogl$success_models)
 `screen_models()` tests each equation of a set against R-hat, the effective
 sample size and the number of divergent transitions, drops those that fail, and
 recomputes the model weights over the rest (section 3 of [A complete analysis
-workflow][e9] gives the cut-offs). Everything below is read from the screened
-sets.
+workflow][e9] gives the cut-offs). We read all estimates from the screened sets.
 
 ```{r screen-conc-group, message = TRUE}
 fit_plain <- screen_models(fit_plain)
@@ -553,9 +552,9 @@ means) the plates still appear to differ in where and how steeply the curve
 falls. We fitted the zinc readings at 15 minutes four ways: with no plate term;
 with `ogl(plate)`, which multiplies each plate's curve by one factor, the form
 the plate reader's gain takes; with `pgl(plate)`, which also lets each plate's
-curve differ in position and slope; and with the structure used for both metals
-below, `pgl(plate) + ogl(conc_group)`, which adds the cell term of the
-single-plate fit.
+curve differ in position and slope; and with `pgl(plate) + ogl(conc_group)`,
+which adds the cell term of the single-plate fit. We call the last the arm
+structure, because it is the structure fitted to each metal below.
 
 ```{r fit-plate, results = "hide"}
 fit_pooled <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + disp("power"),
@@ -681,15 +680,16 @@ no longer counted as residual.
 The structures also differ in where they place the curve. Across the four, the
 median EC10 ranges from `r fmt(ec10_range[1])` to `r fmt(ec10_range[2])` mg/L
 and the median NSEC from `r fmt(nsec_range[1])` to `r fmt(nsec_range[2])`, so
-the NSEC changed more with the structure than the EC10. An ECx is read at a
-fixed fraction of the fitted control, whereas the NSEC is read where the curve
-first falls below the control's band, and a group-level term may change the
-width of that band by attributing part of the residual variation to the groups.
-The weights changed as well, and no equation was given most of the weight under
-every structure. Under `pgl(plate)` the weight was spread over
-`r sum(w_pgl >= 0.05)` equations, and the EC10 was `r ci(plate_ec10[[3]])` mg/L.
-Adding the cell term gave `r eq(top_arm)` `r sprintf("%.2f", w_arm[[top_arm]])`
-of the weight, and an EC10 of `r ci(plate_ec10[[4]])` mg/L.
+the NSEC changed more with the structure than the EC10, and a report should
+state the structure as well as the estimate. An ECx is read at a fixed fraction
+of the fitted control, whereas the NSEC is read where the curve first falls
+below the control's band, and a group-level term may change the width of that
+band by attributing part of the residual variation to the groups. The weights
+changed as well, and no equation was given most of the weight under every
+structure. Under `pgl(plate)` the weight was spread over `r sum(w_pgl >= 0.05)`
+equations, and the EC10 was `r ci(plate_ec10[[3]])` mg/L. Adding the cell term
+gave `r eq(top_arm)` `r sprintf("%.2f", w_arm[[top_arm]])` of the weight, and an
+EC10 of `r ci(plate_ec10[[4]])` mg/L.
 
 The table below gives the group-level SDs of `fit_pgl_cell` from
 `group_level_sd()`, for each equation given at least 0.01 of the weight.
@@ -732,30 +732,25 @@ cell SD of `r sd_of(sd_arm, top_arm, "ogl")` corresponds to departures of about
 curve accounts for.
 
 The cell term is part of the arm structure for the reason given on the single
-plate: the four wells of a cell share a plate and a concentration, so they are
-not four independent observations of the curve. It is placed under `pgl(plate)`
-so that each cell deviates from its own plate's curve and not from the
-population curve. Without a deviation on the position of each plate's curve
-(e.g. under `ogl(plate)`), the cell deviations would also have to describe each
-plate's shift along the concentration axis.
+plate, and it is placed under `pgl(plate)` so that each cell deviates from its
+own plate's curve and not from the population curve. Without a deviation on the
+position of each plate's curve (e.g. under `ogl(plate)`), the cell deviations
+would also have to describe each plate's shift along the concentration axis.
 
-Three cautions apply to plate terms. First, the SD of a plate term combines the
+Two cautions apply to plate terms. First, the SD of a plate term combines the
 plate reader's gain with any biological difference between plates, and nothing
 in these data separates gain from biology, so it is not a biological quantity
 and should not be reported as one. Second, a plate term belongs within one arm:
 copper against zinc, or 15 against 30 minutes, are fixed levels, for
-`bnec_group()` or `bnec_joint()` (see below). Third, the NSEC changed more with
-the plate structure than the EC10 did, so a report should state the structure as
-well as the estimate.
+`bnec_group()` or `bnec_joint()` (see below).
 
 # Copper against zinc
 
-Copper and zinc were chosen by the investigators and are not a sample from a
-population of metals, so they are fixed levels. `bnec_group()` fits a complete
-model set to each level separately and returns the fits as one object. Each
-level is fitted with the zinc-arm structure, `pgl(plate) + ogl(conc_group)`, and
-with `model = "all"`, because zinc rises above its control at low
-concentrations.
+Copper and zinc are fixed levels (see *Types of grouping*), so `bnec_group()`
+fits a complete model set to each level separately and returns the fits as one
+object. Each level is fitted with the arm structure,
+`pgl(plate) + ogl(conc_group)`, and with `model = "all"`, because zinc rises
+above its control at low concentrations.
 
 ```{r fit-metals, results = "hide"}
 fits_tox <- bnec_group(
