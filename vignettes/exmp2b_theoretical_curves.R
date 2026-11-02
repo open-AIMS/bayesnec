@@ -16,6 +16,12 @@ make_plot_data <- function(model_name, args_, x) {
   if (model_name == "pred_ecxhormebc5") {
     my_args$b_slope <- 1
   }
+  # A top of 1 is the upper bound of nechormepwr01, and leaves no increase to
+  # draw. The steeper slope shows the increase levelling off below 1.
+  if (model_name == "pred_nechormepwr01") {
+    my_args$b_top <- 0.5
+    my_args$b_slope <- 2
+  }
   data.frame(x = x, y = do.call(fct, my_args))
 }
 
