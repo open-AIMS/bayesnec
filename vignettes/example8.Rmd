@@ -294,9 +294,9 @@ For zinc, 12 or 13 of the 17 plates have a relative mean above 1 at each of the
 second to fifth concentrations (medians of 1.01 to 1.03), so luminescence
 appears to rise above the control before it falls (hormesis), whereas no copper
 plate does. Once the gain is divided out, the plates of one metal still appear
-to differ in where their curves fall. For example, the two 1Oct24 plates of each
-metal fall at higher concentrations than the plates of the other batches, most
-clearly for copper.
+to differ in where their curves fall. For example, the two 1Oct24 copper plates fall at
+higher concentrations than every plate of the other batches, and the two 1Oct24
+zinc plates fall above most of them.
 
 We fit the raw luminescence and do not divide it by a control. Dividing by an
 estimated control mean induces correlation between the observations that share
@@ -397,7 +397,6 @@ workflow][e9] gives the cut-offs). We read all estimates from the screened sets.
 
 ``` r
 fit_plain <- screen_models(fit_plain)
-#> Loading required namespace: rstan
 #> Dropping 6 of 15 candidate models that failed the sampler screen:
 #>   -  nec3param: Rhat 1.014, ESS 282.6
 #>   -  nec4param: Rhat 1.013, ESS 271.2
@@ -464,9 +463,10 @@ equation given at least 0.01 of the weight.
 
 
 
-`autoplot()` with `group = "conc_group"` marks the mean of each cell, the
-quantity `ogl(conc_group)` gives a deviation to, and `ecx = TRUE` marks the EC10
-and its interval. The legend is removed, because the position of each cell on
+`autoplot()` with `group = "conc_group"` colours each well by its cell and, for
+the fit with the term, marks the mean of each cell (diamonds), the quantity
+`ogl(conc_group)` gives a deviation to; `ecx = TRUE` marks the EC10 and its
+interval. The legend is removed, because the position of each cell on
 the axis already identifies it.
 
 
@@ -554,8 +554,8 @@ The screen dropped 5 equations from
 one
 of the four chains sampled a mode of its own, at a
 lower log density than the others, which
-gives an R-hat of 1.53 and an effective sample
-size of 7. The screen also dropped
+gives R-hat values of up to 1.53 and effective sample
+sizes as low as 7. The screen also dropped
 `ecxll5` on
 16 divergent transitions. The
 table below gives the number of equations each structure retained, the weights,
@@ -597,6 +597,7 @@ autoplot(fit_pgl_cell, group = "plate", group_aes = "colour",
 <p class="caption">plot of chunk fig-plate-terms</p>
 </div>
 
+In the second to fourth panels, each thin line joins one plate's observed means.
 Without a plate term, the differences in gain between plates are residual
 variation. The population curve then has a narrow band on the response scale
 (first panel), although its EC10 interval is the widest of the four, with an
@@ -723,8 +724,8 @@ autoplot(fits_tox, ecx = TRUE, ecx_val = 10, nec = FALSE, point_alpha = 0.5) +
 
 The screen retained 10 equations for copper and
 12 for zinc, and the equation given the most
-weight was `ecxll5` for copper and `ecxll5`
-for zinc (table above). The EC10 is 0.065 (0.048--0.082) mg/L for copper
+weight was `ecxll5` at both levels
+(table above). The EC10 is 0.065 (0.048--0.082) mg/L for copper
 and 0.38 (0.28--0.46) mg/L for zinc, so copper is the more potent metal,
 as @luter2025 report. Each panel has its own response axis, because the plates
 of each metal were read at different gains, and their relative light units are
@@ -758,7 +759,8 @@ paired draws.
 
 Each of the five batches includes plates of both metals (two to five of each),
 which were dosed and read on one date, and the figure of plate-relative means
-shows the two 1Oct24 plates of each metal displaced to higher concentrations. A
+shows the 1Oct24 plates of each metal displaced to higher concentrations, the
+copper plates clearly and the zinc plates less so. A
 deviation on `ec50` for each batch, shared by the metals, is the term for such a
 displacement. The separate fits of `fits_tox` cannot include it, because each
 level sees only its own metal's plates, so a batch deviation would be estimated
@@ -801,7 +803,7 @@ fits_tox_joint
 #> draws one panel per level.
 ```
 
-The print gives the equation fitted at each level and the weight it had there.
+The print gives the equation fitted at each level.
 The `brms` formula of the refit shows which terms the metals share:
 
 
@@ -861,7 +863,8 @@ A batch term shared by the metals is consistent with the caution above that a
 plate term belongs within one arm. The metals keep separate curve parameters,
 and the batch deviation describes a condition of the date on which both were
 tested: the plates of both metals in a batch were dosed and read on one date,
-with cells reactivated from one batch of lyophilised cells [@luter2025]. A
+with cells reactivated that day from the single batch of lyophilised cells used
+for every test [@luter2025]. A
 condition of that date (e.g. the state of the reactivated cells, or that day's
 dilution series) would be expected to displace both metals' curves together. The
 batch SD on `ec50` is 0.43 (0.22--1.1), and five batches leave it poorly
@@ -932,8 +935,7 @@ Zinc's EC10 is 6.2 (4.8--7.9) times copper's, and the ratio
 exceeds 1 in 100 per cent of
 the draws. The interval of the ratio spans a factor of
 1.7 between its bounds, whereas the EC10
-interval of each metal spans a factor of 2.8 for copper
-and 2.8 for zinc. The metals' EC10s are correlated
+interval of each metal spans a factor of 2.8. The metals' EC10s are correlated
 across draws (0.87 on the log scale), most likely because the shared
 batch deviations shift both curves together, so much of their uncertainty
 cancels in the ratio. Each draw of the ratio is taken from one draw of the joint

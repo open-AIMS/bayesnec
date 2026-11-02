@@ -343,9 +343,9 @@ For zinc, 12 or 13 of the 17 plates have a relative mean above 1 at each of the
 second to fifth concentrations (medians of 1.01 to 1.03), so luminescence
 appears to rise above the control before it falls (hormesis), whereas no copper
 plate does. Once the gain is divided out, the plates of one metal still appear
-to differ in where their curves fall. For example, the two 1Oct24 plates of each
-metal fall at higher concentrations than the plates of the other batches, most
-clearly for copper.
+to differ in where their curves fall. For example, the two 1Oct24 copper plates fall at
+higher concentrations than every plate of the other batches, and the two 1Oct24
+zinc plates fall above most of them.
 
 We fit the raw luminescence and do not divide it by a control. Dividing by an
 estimated control mean induces correlation between the observations that share
@@ -436,6 +436,10 @@ sample size and the number of divergent transitions, drops those that fail, and
 recomputes the model weights over the rest (section 3 of [A complete analysis
 workflow][e9] gives the cut-offs). We read all estimates from the screened sets.
 
+```{r quiet-rstan, include = FALSE}
+invisible(requireNamespace("rstan", quietly = TRUE))
+```
+
 ```{r screen-conc-group, message = TRUE}
 fit_plain <- screen_models(fit_plain)
 fit_ogl <- screen_models(fit_ogl)
@@ -512,9 +516,10 @@ low_ec10 <- fmt(median(vapply(ec10_eq_ogl[low_ogl], function(v) v[[1]],
                               numeric(1))))
 ```
 
-`autoplot()` with `group = "conc_group"` marks the mean of each cell, the
-quantity `ogl(conc_group)` gives a deviation to, and `ecx = TRUE` marks the EC10
-and its interval. The legend is removed, because the position of each cell on
+`autoplot()` with `group = "conc_group"` colours each well by its cell and, for
+the fit with the term, marks the mean of each cell (diamonds), the quantity
+`ogl(conc_group)` gives a deviation to; `ecx = TRUE` marks the EC10 and its
+interval. The legend is removed, because the position of each cell on
 the axis already identifies it.
 
 ```{r fig-conc-group, fig.show = "hold", out.width = "48%", fig.asp = 0.9}
@@ -606,8 +611,8 @@ The screen dropped `r nrow(pgl_stuck) + nrow(pgl_divergent)` equations from
 `r if (all(n_apart == 1)) "one" else paste(range(n_apart), collapse = " to ")`
 of the four chains sampled a mode of its own, at a
 `r if (apart_lower) "lower" else "different"` log density than the others, which
-gives an R-hat of `r round(max(pgl_stuck$max_rhat), 2)` and an effective sample
-size of `r round(min(pgl_stuck$min_ess))`. The screen also dropped
+gives R-hat values of up to `r round(max(pgl_stuck$max_rhat), 2)` and effective sample
+sizes as low as `r round(min(pgl_stuck$min_ess))`. The screen also dropped
 `r eqs(pgl_divergent$model)` on
 `r paste(pgl_divergent$n_divergent, collapse = ", ")` divergent transitions. The
 table below gives the number of equations each structure retained, the weights,
@@ -662,6 +667,7 @@ autoplot(fit_pgl_cell, group = "plate", group_aes = "colour",
   ggtitle("pgl(plate) + ogl(conc_group)")
 ```
 
+In the second to fourth panels, each thin line joins one plate's observed means.
 Without a plate term, the differences in gain between plates are residual
 variation. The population curve then has a narrow band on the response scale
 (first panel), although its EC10 interval is the widest of the four, with an
@@ -802,8 +808,8 @@ autoplot(fits_tox, ecx = TRUE, ecx_val = 10, nec = FALSE, point_alpha = 0.5) +
 
 The screen retained `r length(level_weights[["Cu"]])` equations for copper and
 `r length(level_weights[["Zn"]])` for zinc, and the equation given the most
-weight was `r eq(level_top[["Cu"]])` for copper and `r eq(level_top[["Zn"]])`
-for zinc (table above). The EC10 is `r level_ec10_text("Cu")` mg/L for copper
+weight was `r if (identical(level_top[["Cu"]], level_top[["Zn"]])) paste(eq(level_top[["Cu"]]), "at both levels") else paste(eq(level_top[["Cu"]]), "for copper and", eq(level_top[["Zn"]]), "for zinc")`
+(table above). The EC10 is `r level_ec10_text("Cu")` mg/L for copper
 and `r level_ec10_text("Zn")` mg/L for zinc, so copper is the more potent metal,
 as @luter2025 report. Each panel has its own response axis, because the plates
 of each metal were read at different gains, and their relative light units are
@@ -834,7 +840,8 @@ paired draws.
 
 Each of the five batches includes plates of both metals (two to five of each),
 which were dosed and read on one date, and the figure of plate-relative means
-shows the two 1Oct24 plates of each metal displaced to higher concentrations. A
+shows the 1Oct24 plates of each metal displaced to higher concentrations, the
+copper plates clearly and the zinc plates less so. A
 deviation on `ec50` for each batch, shared by the metals, is the term for such a
 displacement. The separate fits of `fits_tox` cannot include it, because each
 level sees only its own metal's plates, so a batch deviation would be estimated
@@ -860,7 +867,7 @@ fits_tox_joint <- bnec_joint(fits_tox, model = "ecxll5",
 fits_tox_joint
 ```
 
-The print gives the equation fitted at each level and the weight it had there.
+The print gives the equation fitted at each level.
 The `brms` formula of the refit shows which terms the metals share:
 
 ```{r formula-metals-joint}
@@ -925,7 +932,8 @@ A batch term shared by the metals is consistent with the caution above that a
 plate term belongs within one arm. The metals keep separate curve parameters,
 and the batch deviation describes a condition of the date on which both were
 tested: the plates of both metals in a batch were dosed and read on one date,
-with cells reactivated from one batch of lyophilised cells [@luter2025]. A
+with cells reactivated that day from the single batch of lyophilised cells used
+for every test [@luter2025]. A
 condition of that date (e.g. the state of the reactivated cells, or that day's
 dilution series) would be expected to displace both metals' curves together. The
 batch SD on `ec50` is `r ci(batch_sd)`, and five batches leave it poorly
@@ -1017,8 +1025,7 @@ Zinc's EC10 is `r ci(ratio_q)` times copper's`r ratio_censored`, and the ratio
 exceeds 1 in `r round(100 * mean(zn_cu_ratio > 1, na.rm = TRUE), 1)` per cent of
 the draws. The interval of the ratio spans a factor of
 `r fmt(ratio_q[[3]] / ratio_q[[2]])` between its bounds, whereas the EC10
-interval of each metal spans a factor of `r fmt(level_span[["Cu"]])` for copper
-and `r fmt(level_span[["Zn"]])` for zinc. The metals' EC10s are correlated
+interval of each metal spans a factor of `r if (identical(fmt(level_span[["Cu"]]), fmt(level_span[["Zn"]]))) fmt(level_span[["Cu"]]) else paste(fmt(level_span[["Cu"]]), "for copper and", fmt(level_span[["Zn"]]), "for zinc")`. The metals' EC10s are correlated
 across draws (`r fmt(log_cor)` on the log scale), most likely because the shared
 batch deviations shift both curves together, so much of their uncertainty
 cancels in the ratio. Each draw of the ratio is taken from one draw of the joint
