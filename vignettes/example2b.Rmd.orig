@@ -114,6 +114,8 @@ Models that have an exponential decay (most models with parameter $\beta = \text
 
 An exclusion also applies to the 0, 1-bounded families (Binomial, Beta and Beta-Binomial) on an `"identity"` link, and it reaches two of the hormesis equations. **nechormepwr** and **nechorme4pwr** include the hormesis term $x_i^{1/(1+e^{\alpha})}$, which has no coefficient to shrink it. The term approaches 1 as $\alpha$ grows, at every concentration above zero, so for any $\tau$ above zero there is an $\alpha$ at which the mean exceeds 1. That holds whatever the predictor range, which is why the exclusion does not depend on the data supplied. The other hormesis equations --- **nechorme**, **nechorme4**, **nechormepwr01**, **ecxhormebc4** and **ecxhormebc5** --- are fitted on these families, because their increase prior to $\eta$ is scaled by a parameter. The initial-value search starts them inside the support: it draws from the priors, and accepts a draw only where the whole initial curve falls within a band built from the replicated level means and their spread, intersected with the support of the mean.
 
+Where the predictor includes negative values, **ecxsigm**, **necsigm**, **nechormepwr** and **nechorme4pwr**, each of which includes a fractional power, are also dropped. The predictor is checked on the scale the model is fitted on, so a formula using `crf(log(x), ...)` drops them whenever a concentration is below 1.
+
 # Model definitions
 
 ## *EC~x~* models
