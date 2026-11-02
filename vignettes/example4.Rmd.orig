@@ -38,145 +38,606 @@ knitr::opts_chunk$set(
 
 # Overview
 
-With `bayesnec` we have included a function that allows bootstrapped comparisons of posterior predictions. The main focus here is to showcase how the user can fit several different `bnec` model fits and can compare differences in the posterior predictions across these fits for individual toxicity estimates (e.g. *NEC*, *N(S)EC*, *NSEC* or *ECx*) or across a range of predictor values. Below we demonstrate usage of `compare_posterior` for objects of class `bayesnecfit` and `bayesmanecfit`. In this example we compare different types of models and model sets using a single dataset. However, the intent of this function is to allow comparison across different datasets that might represent, for example, different levels of a fixed factor covariate.
+With `bayesnec` we have included a function that allows bootstrapped
+comparisons of posterior predictions. The main focus here is to showcase how the
+user can fit several different `bnec` model fits and can compare differences in
+the posterior predictions across these fits for individual toxicity estimates
+(e.g. *NEC*, *N(S)EC*, *NSEC* or *ECx*) or across a range of predictor values.
+The `compare_posterior` function was developed with the intention of comparing
+model sets based on different data to assess statistically the difference in
+either the toxicity estimates, or across the entire fitted curve, amongst
+factors of interest. Examples would include assessing for changes in toxicity
+across different WET tests through time, or comparing different levels of a
+factor treatment variable (such as climate change scenarios), to look at how
+these interact with concentration to impact toxicity.
 
-A factor covariate can be fitted in `bayesnec` in three ways, and these answer different questions. A group-level term written into the formula (`ogl()`, `(par | group)` or `pgl()`) fits one model to all of the data, treating the levels as a sample from a population and estimating how far each level departs from a curve the levels share. Alternatively, `bnec_group()` fits each level separately, so that each level has its own model set and its own functional form and shares nothing with the other levels. This is the approach required where the levels are fixed and of interest in themselves. A `bnec_group()` fit can also be refitted as a single model using `bnec_joint()`, in which each level is fitted with the equation its own model weights favour (by default) and has its own parameter values, but all levels are estimated in one posterior. Which designs admit which of these approaches is set out in the [Grouping and factor covariates][e8] vignette.
+A factor covariate can be fitted in `bayesnec` in three ways, and these answer
+different questions. A group-level term written into the formula (`ogl()`,
+`(par | group)` or `pgl()`) fits one model to all of the data, treating the
+levels as a sample from a population and estimating how far each level departs
+from a curve the levels share. Alternatively, `bnec_group()` fits each level
+separately, so that each level has its own model set and its own functional
+form and shares nothing with the other levels. This is the approach required
+where the levels are fixed and of interest in themselves. A `bnec_group()` fit
+can also be refitted as a single model using `bnec_joint()`, in which each level
+is fitted with the equation its own model weights favour (by default) and has
+its own parameter values, but all levels are estimated in one posterior. Which
+designs admit which of these approaches is set out in the
+[Grouping and factor covariates][e8] vignette.
 
-`compare_posterior` is the function used to compare separate fits, whether these come from `bnec_group()` or from calls made independently for each level. It pairs the draws of two posteriors using a random permutation, which approximates the difference between two independent posteriors and is valid only where the fits are separate. Two levels of a single fit (e.g. a fit with a group-level term, or a `bnec_joint()` refit) share draws, and permuting them discards the correlation between them. A contrast between levels of a single fit is therefore obtained by differencing the draws of that fit, and not by using `compare_posterior`.
+`compare_posterior` is the function used to compare separate fits, whether these
+come from `bnec_group()` or from calls made independently for each level. It
+pairs the draws of two posteriors using a random permutation, which approximates
+the difference between two independent posteriors and is valid only where the
+fits are separate. Two levels of a single fit (e.g. a fit with a group-level
+term, or a `bnec_joint()` refit) share draws, and permuting them discards the
+correlation between them. A contrast between levels of a single fit is therefore
+obtained by differencing the draws of that fit, and not by using
+`compare_posterior`.
+
+Below we demonstrate `compare_posterior` on two published datasets that are
+included in `bayesnec`, each fitted separately by level using `bnec_group()`. In
+the first, the levels are seven photosystem II herbicides tested on the coral
+*Seriatopora hystrix* [@jones2003]. In the second, the levels are three climate
+scenarios under which the coral *Acropora millepora* was exposed to one of those
+herbicides, diuron [@flores2021], and the comparison is the one that study was
+designed to make. A final section uses the herbicide fits to show how two levels
+are compared within a single joint refit.
 
 To run this vignette, we will also need some additional packages
 
-```{r, warning = FALSE, message = FALSE}
-library(ggplot2)
-```
-
-## Comparing posterior toxicity values
-
-```{r, results = "hide"}
-set.seed(333)
-library(brms)
+```{r libraries, warning = FALSE, message = FALSE}
 library(bayesnec)
-data(nec_data)
+library(ggplot2)
+library(dplyr)
+```
 
-make_ecx_data <- function(top, bot, ec50, beta, x) {
-  top + (bot - top) / (1 + exp((ec50 - x) * exp(beta)))
+Both concentration series span two or more orders of magnitude, so each figure
+is drawn on a log axis. `ggbnec_data()` and `compare_posterior()` return the
+predictor on the scale it was recorded on, having already inverted any
+transformation written inside `crf()`, so the axis is set by transforming the
+scale and not the values. The helper `group_curves()` collects the fitted curve
+of each level of a `bnec_group()` fit into one data frame, so that a single
+`ggplot()` call can draw them together.
+
+```{r helpers}
+log_x <- scale_x_continuous(transform = "log10",
+                            labels = function(x) signif(x, 2))
+group_curves <- function(x) {
+  do.call(rbind, Map(function(f, lev) data.frame(level = lev, ggbnec_data(f)),
+                     x$fits, x$levels))
 }
-x <- seq(0, 10, length = 12)
-y <- make_ecx_data(x = x, bot = 0, top = 1, beta = 0.5, ec50 = 5)
-set.seed(333)
-dat <- data.frame(x = rep(x, 15), y = rnorm(15 * length(x), y, 0.2))
-# Fit a set of models
-exmp <- bnec(y ~ crf(x, model = "decline"), data = dat, refresh = 0)
 ```
 
-```{r}
-class(exmp)
+# Herbicide phytotoxicity to coral
+
+`herbicide` [@jones2003] contains the effective quantum yield of photosystem II
+in the symbiotic dinoflagellates of the coral *Seriatopora hystrix*, measured
+after a ten-hour exposure to each of seven photosystem II inhibiting herbicides
+(<https://doi.org/10.3354/meps261149>). Three replicate containers of four
+corals were held at each concentration. However, the container is not recorded
+in `herbicide`, so no group-level term can be included for it and the fits below
+include none.
+
+```{r exmp4-herbicide-raw, fig.asp = 1.15, out.width = "72%"}
+data(herbicide)
+ggplot(herbicide, aes(x = concentration, y = fvfm, colour = herbicide)) +
+  geom_point(alpha = 0.6) +
+  facet_wrap(~herbicide, ncol = 2, scales = "free_x") +
+  log_x +
+  scale_colour_hue(guide = "none") +
+  theme_classic() +
+  theme(panel.spacing.x = unit(1.2, "lines")) +
+  labs(x = "Concentration (ug/L)", y = "Effective quantum yield")
 ```
 
-This call fits all models that are suitable for modelling Gaussian-distributed response data, excluding all of the hormesis models, which we are not considering here. Now that we have our example fit, we can use this to make different model sets, purely for the purposes of illustrating `compare_posterior` in `bayesnec` and highlighting the rich information that is contained in the Bayesian posterior draws.
+Effective quantum yield declines with concentration for all seven herbicides,
+although the concentration at which it does so differs by about two orders of
+magnitude among them. For example, yield is at half its lowest-dose mean by
+1 µg/L of irgarol and 3 µg/L of diuron or ametryn, against 100 µg/L of
+tebuthiuron and 300 µg/L of simazine (the highest concentration simazine was
+tested at).
 
-We can pull out the **nec** models and the **ecx** models separately, to create two alternative model fits of this data that we can compare to each other, as well as the original **all** model fit.
+## Separate fits for each herbicide
 
-```{r}
-exmp_nec <- pull_out(exmp, model = "nec")
-exmp_ecx <- pull_out(exmp, model = "ecx")
+The seven herbicides are a fixed set chosen for their interest, and not a sample
+from a larger population of herbicides. Their functional forms may differ, and
+there is no common curve towards which they should be shrunk, so we fit each
+herbicide separately using `bnec_group()`. We use the `"decline"` model set,
+which is the set used for Figure 11 of @fisher2024.
+
+```{r fit-herbicides, results = "hide"}
+fits_herb <- bnec_group(fvfm ~ crf(log(concentration), "decline"),
+                        data = herbicide, group_var = "herbicide",
+                        family = Beta(link = "identity"),
+                        seed = 228, refresh = 0)
 ```
 
-Now we have three different averaged model fits, all of class `bayesmanecfit` in this case (because they all contain multiple fits). We can compare their posterior estimates of the ecx10 values using `compare_posterior`.
+Each herbicide is screened separately because each was fitted separately, so an
+equation that fails for one herbicide is removed from that herbicide without
+discarding its fits for the other six.
 
-```{r}
-post_comp <- compare_posterior(list("all" = exmp, "ecx" = exmp_ecx,
-                                    "nec" = exmp_nec),
-                               comparison = "ecx", ecx_val = 10)
-names(post_comp)
+```{r screen-herbicides, message = TRUE}
+fits_herb <- screen_models(fits_herb, group_action = "per_level")
 ```
 
-The `compare_posterior` function outputs several elements in a named list. This includes the **posterior_data** for each model in the comparison as a `data.frame` which we can use to plot a `geom_density` plot of the posterior estimates, so they can be compared visually.
+No equation was removed for any herbicide, so each model average is over the
+eleven equations of `"decline"`.
 
-```{r exmp4-posterior, fig.width = 5}
-ggplot(data = post_comp$posterior_data, mapping = aes(x = value)) + 
+`summary()` on a `bayesnecgroupfit` prints a full summary for each level, which
+for seven herbicides is several hundred lines. Here we collate only the model
+weights, to show which equations each herbicide supports.
+
+```{r exmp4-herb-weights, fig.asp = 0.55, out.width = "85%"}
+herb_wi <- do.call(rbind, Map(function(f, lev) {
+  w <- summary(f)$mod_weights[, "wi"]
+  data.frame(herbicide = lev, equation = names(w), wi = as.numeric(w))
+}, fits_herb$fits, fits_herb$levels))
+# Order the equations by their total weight, so those in use are at the top.
+herb_wi$equation <- reorder(factor(herb_wi$equation), herb_wi$wi, sum)
+
+ggplot(herb_wi, aes(x = herbicide, y = equation, fill = wi)) +
+  geom_tile(colour = "white", linewidth = 0.4) +
+  geom_text(aes(label = ifelse(wi >= 0.05, sprintf("%.2f", wi), "")),
+            size = 2.7, colour = "grey15") +
+  scale_fill_gradient(low = "white", high = "#2c6a5a", name = "weight",
+                      limits = c(0, 1)) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1),
+        axis.line = element_blank(), axis.ticks = element_blank()) +
+  labs(x = NULL, y = NULL)
+```
+
+The herbicides differ in which equations describe them. For example, tebuthiuron
+puts half its weight on `ecxwb2p3`, which receives no more than 0.08 for any
+other herbicide, and hexazinone puts 0.62 on `ecxll3`, which four of the others
+weight below 0.05. Ametryn and irgarol spread their weight over four equations,
+diuron over five and simazine over six (counting the labelled cells, those of
+0.05 or more). This suggests that fitting the levels separately is appropriate
+here, because the curve they would be shrunk towards is not one the data agree
+on.
+
+```{r exmp4-herbicides, fig.asp = 1.15, out.width = "72%"}
+ggplot(group_curves(fits_herb), aes(x = x_e, colour = level, fill = level)) +
+  geom_polygon(aes(y = y_ci), colour = NA, alpha = 0.3) +
+  # Give the line only the rows of the curve; the band's return half has no y_e.
+  geom_line(data = ~ subset(.x, !is.na(y_e)), aes(y = y_e), linetype = 2) +
+  geom_point(aes(x = x_r, y = y_r), alpha = 0.6, size = 1.2) +
+  geom_vline(aes(xintercept = nec_vals), colour = "grey50") +
+  facet_wrap(~level, ncol = 2, scales = "free_x") +
+  log_x +
+  scale_colour_hue(guide = "none") +
+  scale_fill_hue(guide = "none") +
+  theme_classic() +
+  theme(panel.spacing.x = unit(1.2, "lines")) +
+  labs(x = "Concentration (ug/L)", y = "Effective quantum yield")
+```
+
+The fitted band follows the observations down for each herbicide, with the
+N(S)EC (grey line) at or a little before the concentration where the points
+leave the control level. The response axis is shared and the concentration axis
+is not, so the panels are comparable in level but not in position. The seven curves have a similar shape and are located at different
+concentrations,
+which suggests that what separates the herbicides is where the curve falls, more
+than how it falls.
+
+## Comparing toxicity estimates across herbicides
+
+`compare_posterior` takes a `bnec_group()` fit directly and compares its levels.
+Here we compare the N(S)EC, which is the model-averaged no-effect estimate (based
+mainly on the NEC where threshold equations receive most of the weight, and on
+the NSEC where smooth equations do). The posterior draws for each herbicide are
+returned in `posterior_data`, which we summarise first.
+
+```{r cmp-herbicides}
+cmp_herb <- compare_posterior(fits_herb, comparison = "n(s)ec")
+herb_post <- cmp_herb$posterior_data
+herb_post |>
+  group_by(model) |>
+  summarise(median = median(value), lower = quantile(value, 0.025),
+            upper = quantile(value, 0.975)) |>
+  arrange(median)
+```
+
+The N(S)EC estimates span about two orders of magnitude, from irgarol at
+0.135 µg/L (0.107–0.174) and diuron at 0.152 (0.110–0.195), through ametryn at
+0.198, hexazinone at 0.631 and atrazine at 1.120, to simazine at 4.391 and
+tebuthiuron at 10.522 (4.281–14.029). These draws can also be plotted as densities.
+
+```{r exmp4-cmp-herbicides, fig.asp = 0.5, out.width = "95%"}
+ggplot(data = herb_post, mapping = aes(x = value)) +
   geom_density(mapping = aes(group = model, colour = model, fill = model),
                alpha = 0.3) +
-  theme_classic()
+  log_x +
+  theme_classic() +
+  labs(x = "N(S)EC (ug/L)", y = "Density", fill = "Herbicide",
+       colour = "Herbicide")
 ```
 
-From this you can see that the *EC~10~* estimates are very similar for the **ecx** and **all** model sets. This is because the **ecx** model types dominate the model weights in this **all** fit, see `wi` in `exmp$mod_stats`. The *EC~10~* estimate is slightly lower (more conservative) for the **ecx** based models.
+This is the display shown in Figure 11 of @fisher2024. Irgarol and diuron, the
+most potent of the herbicides, overlap almost entirely: their intervals run from
+0.107 to 0.174 and from 0.110 to 0.195 µg/L, so that one is almost inside the
+other. The posteriors also differ in width as much as in position. For example,
+the interval for irgarol spans a factor of 1.6 from end to end and that for
+diuron a factor of 1.8, against 9.7 for simazine and 7.3 for atrazine. Several
+of the posteriors are bimodal, such as tebuthiuron with a second mode near
+7 µg/L and simazine with one near 10. A model-averaged posterior is a mixture,
+and an equation with little weight that places its threshold elsewhere can
+appear as a second mode or a long tail, without changing the median.
 
-The `data.frame` `diff_data` can be used to make a similar plot, but specifically for the differences among models.
+The probability that the first herbicide of each pair has the higher N(S)EC is
+returned in `prob_diff`, so a value near 0 or 1 separates two herbicides and one
+near 0.5 does not.
 
-```{r exmp4-differences, fig.width = 5}
-ggplot(data = post_comp$diff_data, mapping = aes(x = diff)) +
-  geom_density(mapping = aes(group = comparison, colour = comparison,
-                             fill = comparison), alpha = 0.3) +
-  theme_classic()
+```{r prob-herbicides}
+cmp_herb$prob_diff
 ```
 
-```{r, echo = FALSE}
-probs <- post_comp$prob_diff |>
-  tibble::column_to_rownames(var = "comparison") |>
-  dplyr::select(prob) |>
-  dplyr::mutate(prob = round(prob, 2))
+Of the 21 pairs, the clearest are tebuthiuron against the five most potent
+herbicides, from 0.0083 for ametryn and diuron to 0.0089 for atrazine. The least
+separated pair is diuron and irgarol at 0.727, the most potent of the set,
+followed by atrazine and hexazinone at 0.837 and ametryn and diuron at 0.849.
+`bnec_group()` fits each herbicide separately, so the independence that the
+random pairing of `compare_posterior` assumes is satisfied here.
+
+The N(S)EC is a no-effect estimate, and it is not what @jones2003 report. They
+report EC50 values (the concentration at which yield is halved), so the
+comparison with the source study uses `ecx()`.
+
+```{r ecx50-herbicides}
+ecx(fits_herb, ecx_val = 50)
 ```
 
-This shows the differences among the three estimates. There is no difference in the **ecx** and **all** estimates (the probability density overlaps zero - red shaded curve). This is because for this example the simulated data are from a smooth **ecx** type curve and thus those models have high weight. The **nec** based *EC~10~* estimates are greater than the **ecx** based estimates in this case.
+@jones2003 give EC50 values of 0.7 µg/L for irgarol, 1.7 for ametryn, 2.3 for
+diuron, 8.8 for hexazinone, 45 for atrazine, 150 for simazine and 175 for
+tebuthiuron. Six of the seven agree closely, with the published value between 13
+and 30 per cent above the one here, and both studies rank
+those six in one order.
+Tebuthiuron is the exception at roughly half the published value, and it is also
+the herbicide whose order differs: here it is more toxic than simazine, whereas
+in the source study it is less so. The published and fitted estimates
+were derived differently. @jones2003 interpolated linearly between the tested concentrations (in ToxCalc 5.0), while the values above are a model
+average over eleven fitted curves. Linear interpolation across a log-spaced series follows
+the chord of a curve that is concave over that interval, which places the
+half-effect concentration higher than a fitted curve would, and this may
+explain why the published value is higher for all seven herbicides. Nothing in these data indicates which
+estimate is closer to the truth for tebuthiuron.
 
-We can formally test the probability that the toxicity estimate for one model set is greater than the other using posterior differencing. This is contained in the compare posterior output as `prob_diff`. Here you can see there is `r probs["all-ecx", "prob"] * 100`% chance that **all** is greater than **ecx**. There is only a `r probs["ecx-nec", "prob"] * 100`% chance that **ecx** is greater than **nec**, and a `r (1 - probs["ecx-nec", "prob"]) * 100`% chance that the **nec** is greater than **ecx**.
+# Diuron under climate scenarios
 
-```{r}
-post_comp$prob_diff
+`coral_colour` and `coral_pam` contain two endpoints from one experiment, in
+which fragments of the coral *Acropora millepora* were exposed to diuron for 14
+days under three climate scenarios [@flores2021,
+<https://doi.org/10.1016/j.marpolbul.2021.112582>]. The scenarios are
+combinations of temperature and dissolved carbon dioxide, labelled by the year
+they represent: 28.1 °C at 397 ppm for present-day conditions (2018), and RCP8.5
+projections of 29.1 °C at 680 ppm (2050) and 30.2 °C at 858 ppm (2100). Three
+replicate chambers were run at each combination of scenario and concentration,
+with four coral fragments in each. @jones2003 found the effect of diuron on
+*S. hystrix* to be inversely related to temperature, which is the observation
+@flores2021 tested by crossing diuron with warming.
+
+Both endpoints were measured on each fragment. `yield` in `coral_pam` is the
+effective quantum yield of photosystem II, the quantity also recorded in
+`herbicide`, read by pulse-amplitude modulated fluorometry. `proportion` in
+`coral_colour` is a colour index used as a measure of bleaching, derived from
+photographs of the fragments and rescaled between the smallest and largest
+values observed (see `?coral_colour`). @flores2021 report that all corals at 9.6
+and 29 µg/L had died after 10 to 11 days of exposure, so the colour readings at
+29 µg/L are of fragments that had bleached completely.
+
+@flores2021 compared EC50 values between the scenarios using `bayesnec`, and
+found that the colour index EC50 was lower under both future scenarios than
+under present-day conditions, with probabilities of 0.956 (2050) and 0.970
+(2100). For yield the corresponding probabilities were 0.615 and 0.539, so the
+scenarios were not separated.
+
+## The control on a log axis
+
+Both endpoints include an untreated control recorded as a concentration of 0,
+which has no position on a log axis, and `bnec()` refuses `crf(log(diuron))`
+because the logarithm of 0 is not finite. We therefore substitute 0.1 µg/L for the control. The
+treatments form a half-log dilution series (0.29, 0.96, 2.9, 9.6 and 29 µg/L,
+each step about 3.16 times the last), and 0.1 is one further step below the
+lowest treatment, rounded. The substitution is made here and not in the shipped
+data, and an estimate returned near 0.1 µg/L would describe the substitution
+and not diuron.
+
+```{r coral-nudge}
+data(coral_colour)
+data(coral_pam)
+nudge <- function(x) ifelse(x == 0, 0.1, x)
+coral_colour$diuron_adj <- nudge(coral_colour$diuron)
+coral_pam$diuron_adj <- nudge(coral_pam$diuron)
 ```
 
-## Comparing posterior fitted values
+## Separate fits for each scenario
 
-The user can also compare posterior fitted values across the full range of x values, using `comparison = "fitted"`. 
+The three scenarios are fixed levels of interest, so each is fitted separately
+using `bnec_group()`. Each chamber was held at one concentration and contained
+several fragments, so the fragments within a chamber are not independent
+observations, and we include a group-level term on chamber (`ogl(chamber)`) to
+allow for this. The [Grouping and factor covariates][e8] vignette describes what
+a term of this kind estimates where each of its levels is observed at a single
+concentration, and the model weights of a set fitted with it leave out each
+chamber whole (see the `loo_controls` argument of `bnec()`).
 
-```{r}
-post_comp_fitted <- compare_posterior(list("all" = exmp, "ecx" = exmp_ecx,
-                                           "nec" = exmp_nec),
-                                      comparison = "fitted")
+The colour design has five concentrations and none between 2.9 and 29 µg/L,
+which appears to be too few to estimate both asymptotes of an equation with four
+curve parameters reliably. We therefore restrict the model set to four
+equations with three curve parameters (`nec3param`, `ecxll3`, `ecxwb1p3` and
+`ecxwb2p3`), and use this set for yield as well, so that the endpoints are compared on one
+set of equations.
+
+```{r fit-coral, results = "hide"}
+fits_colour <- bnec_group(
+  proportion ~ crf(log(diuron_adj),
+                   c("nec3param", "ecxll3", "ecxwb1p3", "ecxwb2p3")) +
+    ogl(chamber),
+  data = coral_colour, group_var = "climate",
+  family = Beta(link = "identity"), seed = 228, refresh = 0)
+
+fits_yield <- bnec_group(
+  yield ~ crf(log(diuron_adj),
+              c("nec3param", "ecxll3", "ecxwb1p3", "ecxwb2p3")) +
+    ogl(chamber),
+  data = coral_pam, group_var = "climate",
+  family = Beta(link = "identity"), seed = 228, refresh = 0)
 ```
 
-In the case of `comparison = "fitted"` most of the elements returned by `compare_posterior` are class `data.frame`, with summary values for the posteriors, difference values and probabilities returned for each value of the predictor, for each model or model comparison.
-
-```{r}
-head(post_comp_fitted$posterior_data)
-head(post_comp_fitted$diff_data)
+```{r screen-coral, message = TRUE}
+fits_colour <- screen_models(fits_colour, group_action = "per_level")
+fits_yield <- screen_models(fits_yield, group_action = "per_level")
 ```
 
-Using the collated posterior_data we can plot the predicted curves with confidence bounds for each of the input models. This shows clearly that the **ecx** model set begins to decline earlier than the **nec** set, which is flat prior to the **nec** step point, and then declines more rapidly.
+```{r exmp4-coral-fits, fig.asp = 0.45, out.width = "95%"}
+rbind(data.frame(endpoint = "colour (proportion)", group_curves(fits_colour)),
+      data.frame(endpoint = "yield", group_curves(fits_yield))) |>
+  ggplot(aes(x = x_e, colour = level, fill = level)) +
+  geom_polygon(aes(y = y_ci), colour = NA, alpha = 0.2) +
+  # Give the line only the rows of the curve; the band's return half has no y_e.
+  geom_line(data = ~ subset(.x, !is.na(y_e)), aes(y = y_e)) +
+  geom_point(aes(x = x_r, y = y_r), alpha = 0.4, size = 1) +
+  facet_wrap(~endpoint, scales = "free_y") +
+  log_x +
+  theme_classic() +
+  theme(legend.position = "bottom") +
+  labs(x = "Diuron (ug/L), control at 0.1", y = "Response",
+       colour = "Scenario", fill = "Scenario")
+```
 
-```{r exmp4-fitted, fig.width = 5}
-ggplot(data = post_comp_fitted$posterior_data) +
-  geom_line(mapping = aes(x = x, y = Estimate, color = model),
-            linewidth = 0.5) +
+The scenarios separate in colour and barely at all in yield. For example, mean
+colour at 2.9 µg/L is 0.728, 0.611 and 0.456 from 2018 to 2100, whereas mean
+yield differs by less than 0.015 between scenarios at each concentration below
+9.6 µg/L.
+
+## Comparing toxicity estimates across scenarios
+
+We first compare the colour EC50 across the scenarios, because this is the
+estimate @flores2021 compared.
+
+```{r cmp-colour}
+cmp_colour <- compare_posterior(fits_colour, comparison = "ecx", ecx_val = 50)
+cmp_colour$prob_diff
+```
+
+```{r exmp4-cmp-colour, fig.asp = 0.5, out.width = "85%"}
+ggplot(data = cmp_colour$posterior_data, mapping = aes(x = value)) +
+  geom_density(mapping = aes(group = model, colour = model, fill = model),
+               alpha = 0.3) +
+  log_x +
+  theme_classic() +
+  labs(x = "Colour EC50 (ug/L)", y = "Density", fill = "Scenario",
+       colour = "Scenario")
+```
+
+The colour EC50 falls from 18.9 µg/L under present-day conditions to 7.21 under
+the 2050 scenario and 4.02 under the 2100 scenario, and the probability that
+the 2018 EC50 is the higher is 0.958 against 2050 and 0.997 against 2100. These
+probabilities are similar to those of @flores2021, although the EC50 values are
+not. @flores2021 measured each scenario against one reference response (halfway
+between the mean 2018 control and the mean 2100 response at 29 µg/L), whereas
+`ecx()` measures each scenario against its own control. The posterior for 2018
+is also wide (8.87 to 28.2 µg/L), probably because the colour design has no
+concentration between 2.9 and 29 µg/L at which to locate the 2018 decline.
+
+This comparison can be made for any estimate that `compare_posterior` accepts.
+Here we tabulate the probabilities for the EC50, the EC10 and the N(S)EC, for
+both endpoints.
+
+```{r cmp-coral-estimates}
+scenario_probs <- function(fit) {
+  prob <- function(...) compare_posterior(fit, ...)$prob_diff
+  ec50 <- prob(comparison = "ecx", ecx_val = 50)
+  data.frame(comparison = ec50$comparison,
+             EC50 = ec50$prob,
+             EC10 = prob(comparison = "ecx", ecx_val = 10)$prob,
+             "N(S)EC" = prob(comparison = "n(s)ec")$prob,
+             check.names = FALSE)
+}
+rbind(data.frame(endpoint = "colour", scenario_probs(fits_colour),
+                 check.names = FALSE),
+      data.frame(endpoint = "yield", scenario_probs(fits_yield),
+                 check.names = FALSE))
+```
+
+For colour, the 2018 scenario has the higher estimate against both future
+scenarios with a probability above 0.94, whichever of the three estimates is
+used. For yield, no estimate separates the scenarios, which is consistent with
+the probabilities of 0.615 and 0.539 that @flores2021 report for the yield EC50.
+The yield N(S)EC under the 2100 scenario is higher than under present-day
+conditions with a probability of about 0.89, which is in the opposite direction
+to any effect of warming. This may reflect a less precisely estimated control
+under the 2100 scenario, because the NSEC is measured from a lower quantile of
+the control response, and should not be read as an effect of climate from these data.
+
+## Comparing the fitted curves
+
+The user can also compare the posterior fitted values across the full range of
+concentrations, using `comparison = "fitted"`. We increase `resolution` from its
+default of 50, because the concentrations at which predictions are made are
+evenly spaced on the recorded scale, and the lower half of a log axis would
+otherwise contain only a few of them.
+
+```{r cmp-colour-fitted}
+cmp_colour_fit <- compare_posterior(fits_colour, comparison = "fitted",
+                                    resolution = 200)
+head(cmp_colour_fit$posterior_data)
+```
+
+In the case of `comparison = "fitted"` the elements returned by
+`compare_posterior` are data frames, with summary values of the posterior, of
+the differences and of the probabilities for each value of the predictor, for
+each scenario or pair of scenarios.
+
+```{r exmp4-colour-fitted}
+ggplot(data = cmp_colour_fit$posterior_data) +
   geom_ribbon(mapping = aes(x = x, ymin = Q2.5, ymax = Q97.5, fill = model),
-              alpha = 0.3)+
-  labs(x = "Concentration", y = "Posterior estimate") +
-  theme_classic()
-```
-
-We can plot the differences between pairs of models in the list by plotting `diff.Estimate` from `diff_data` and using colours for the different comparisons. This plot highlights where the differences among these model sets are the greatest and explains the differences we see above in the *EC~10~* toxicity estimates. The **ecx** and **all** model sets are relatively similar across the entire range of concentrations (red band overlaps zero). The green band is the difference between **nec** and **all** (specifically **all**-**nec**) and the blue band is the difference between **nec** and **ecx** (specifically **ecx**-**nec**). You can see from the green and blue bands that the **nec** set has slightly lower estimates than **all** and **ecx** at low to moderate predictor values; the **nec** based curve then crosses the other two, predicting higher values of the response at around a concentration of 3-4;  then drops rapidly, producing lower predictions than the other curves at around 5.
-
-```{r exmp4-fitteddiff, fig.width = 5}
-ggplot(data = post_comp_fitted$diff_data) +
-  geom_line(mapping = aes(x = x, y = diff.Estimate, color = comparison),
+              alpha = 0.3) +
+  geom_line(mapping = aes(x = x, y = Estimate, colour = model),
             linewidth = 0.5) +
-  geom_ribbon(mapping = aes(x = x, ymin  = diff.Q2.5, ymax = diff.Q97.5,
-              fill = comparison), alpha = 0.3) +
-  labs(x = "Concentration", y = "Posterior difference") +
-  theme_classic()
+  log_x +
+  theme_classic() +
+  labs(x = "Diuron (ug/L), control at 0.1", y = "Colour (proportion)",
+       colour = "Scenario", fill = "Scenario")
 ```
 
-And finally we can plot the probability that one model is greater than the other by plotting `prob` from `diff_data`. The pattern of this plot is identical to the plot of differences, but the y axis now shows the probability of these differences. The red line hovers around 0.5 clearly indicating the lack of significant difference in the **ecx** and **all** model sets at any point of the predictor axis. The green and blue curves pass through 0.5 at several points, meaning there are parts of the curve where there is no significant difference between the **nec** and the **ecx** or **all** model set predictions. The greatest probability of difference among these curves is between values of ~3 and ~4 of the predictor, where the probability of difference trends towards low values (**nec** is higher than **ecx**), and at around 5, where the probability difference is very high (**ecx** is higher than **nec**). These are the two points where the **ecx** set deviates most from the **nec** set.
-
-```{r exmp4-probplot, fig.width = 5}
-ggplot(data = post_comp_fitted$prob_diff) +
-  geom_line(mapping = aes(x = x, y = prob, color = comparison),
+```{r exmp4-colour-prob}
+ggplot(data = cmp_colour_fit$prob_diff) +
+  geom_hline(yintercept = 0.5, colour = "grey70", linetype = 2) +
+  geom_line(mapping = aes(x = x, y = prob, colour = comparison),
             linewidth = 0.5) +
-  labs(x = "Concentration", y = "Probability of difference") +
-  theme_classic()
+  log_x +
+  theme_classic() +
+  labs(x = "Diuron (ug/L), control at 0.1",
+       y = "Probability first is higher", colour = "Comparison")
 ```
 
-Here we use the difference in the **ecx** and **nec** models sets purely to showcase the functionality of `compare_posterior` and highlight some of the strengths of using a Bayesian approach. These differences are expected in this case, because the simulated data we used are from a smooth **ecx** function. The **nec** models are fitting a break-point model that has a single mean value up to the **nec**, followed by a relatively sharp decline. When fitted to these smooth curves the **nec** models do not really fit the data well and produce inflated (less conservative) estimates of the *EC~10~* value. Fortunately, the model averaging approach solves this issue by yielding a very low weight to the **nec** based models, and the **all** model set is indistinguishable from the **ecx** set, which contains the underlying true generating model in this case. As such, this is not really an interesting example---other than illustrating the behaviour of **nec** model types in this setting.
+The fitted curves for the three scenarios start at a similar colour and
+separate above about 1 µg/L, where the 2100 curve declines first. The
+probability that the 2018 curve is the higher rises above 0.9 against the 2100
+curve between about 1 and 10 µg/L, and stays closer to 0.5 against the 2050
+curve, suggesting that the scenarios differ most in the middle of the
+concentration series, where the colour response is declining.
 
-The `compare_posterior` function was actually developed with the intention of comparing model sets based on different data to assess statistically the difference in either the toxicity estimates, or across the entire fitted curve, amongst factors of interest. Examples would include assessing for changes in toxicity across different WET tests through time, or comparing different levels of a factor treatment variable (such as climate change scenarios), to look at how these interact with concentration to impact toxicity.
+# Contrasts from a joint refit
+
+The comparisons above treat the levels as separate fits. `bnec_joint()` instead
+takes the per-level fits of a `bnec_group()` call and builds one model that includes all levels, each level keeping the equation its own weights
+favour and its own copy of that equation's parameters. A difference between two
+levels is then a difference between coefficients of one fit, taken draw by draw,
+and it needs no permutation.
+
+No equation is named in the call. The equation for each level is read from the
+weights the `bnec_group()` fit already computed, so the refit is of what each
+herbicide separately favoured, and not of one form imposed on all seven. The
+call comes after `screen_models()`, so it refits the equations each herbicide
+retained after screening.
+
+```{r fit-herb-joint, results = "hide"}
+herb_joint <- bnec_joint(fits_herb, seed = 228, refresh = 0)
+```
+
+```{r summary-herb-joint}
+herb_joint
+```
+
+Five different equations are used across the seven herbicides: `ecxll4` for
+ametryn, `ecxwb1` for atrazine, `ecx4param` for diuron and irgarol, `ecxll3` for
+hexazinone and simazine, and `ecxwb2p3` for tebuthiuron. The weight each chosen
+equation received for its own herbicide ranges from 0.279 for diuron to 0.623
+for hexazinone, and is below 0.4 for five of the seven, so no herbicide is well
+described by a single form.
+
+Each estimate from a joint refit is returned per level, one row each, as for a
+`bnec_group()` fit.
+
+```{r ecx-herb-joint}
+ecx(herb_joint, ecx_val = 50)
+```
+
+The contrast is then taken on the draws. `posterior = TRUE` returns the
+per-level draws as a named list, and because they come from one fit they are
+already aligned: draw *i* of one level and draw *i* of another were taken
+together, at one step of one chain.
+
+```{r cmp-herb-joint}
+herb_draws <- ecx(herb_joint, ecx_val = 50, posterior = TRUE)
+diuron_irgarol <- herb_draws[["diuron"]] - herb_draws[["irgarol"]]
+c(prob_diuron_higher = mean(diuron_irgarol > 0),
+  median_difference = median(diuron_irgarol),
+  quantile(diuron_irgarol, c(0.025, 0.975)))
+```
+
+The diuron EC50 exceeds that of irgarol in every draw, by 1.48 µg/L (1.35 to
+1.61). A contrast can also be made on the N(S)EC, the estimate compared with
+`compare_posterior` above.
+
+```{r joint-contrast-ne}
+herb_ne_draws <- nsec(herb_joint, posterior = TRUE)
+diuron_irgarol_ne <- herb_ne_draws[["diuron"]] - herb_ne_draws[["irgarol"]]
+c(prob_diuron_higher = mean(diuron_irgarol_ne > 0),
+  median_difference = median(diuron_irgarol_ne),
+  quantile(diuron_irgarol_ne, c(0.025, 0.975)))
+```
+
+On the N(S)EC the probability that diuron has the higher estimate is 0.79, with
+a median difference of 0.020 µg/L (-0.031 to 0.067), against 0.727 from
+`compare_posterior`. The joint refit and `compare_posterior` agree in direction, and do not separate
+this pair on the N(S)EC. An ECx is a fixed decline from the control of each
+level and is located where the curve is steep, whereas the N(S)EC is a departure
+from a band around the control, and where the curve is nearly flat, a small change in where that band ends
+produces a large change in the concentration at which the curve crosses it.
+
+The joint refit estimates five functional forms and a separate dispersion for
+each of seven herbicides, so we check its sampling.
+
+```{r joint-diagnostics}
+np <- brms::nuts_params(herb_joint$fit)
+s_joint <- summary(herb_joint$fit)
+pars <- rbind(s_joint$fixed, s_joint$spec_pars)
+c(divergent = sum(np$Value[np$Parameter == "divergent__"]),
+  post_warmup_draws = sum(np$Parameter == "divergent__"),
+  max_rhat = max(pars$Rhat), min_bulk_ess = min(pars$Bulk_ESS))
+```
+
+There were no divergent transitions in 8000 post-warmup draws, with a maximum
+R-hat of 1.002 and a minimum bulk effective sample size of 5373.
+
+A joint refit conditions on one equation per level, so the model uncertainty
+that the per-level averages represent is absent from it. Where the chosen
+equation receives most of the weight of its level, the narrower interval of the
+joint refit is a real gain in precision. Where it receives less than half, as
+it does here for five of the seven herbicides, part of the narrowing is likely
+to be model uncertainty that has been set aside, not resolved.
+
+`compare_posterior` and a joint refit therefore answer different questions. `compare_posterior` asks
+how two independently estimated levels compare, each with its own model
+uncertainty, which is appropriate where the levels were tested separately and
+are being ranked. The joint refit asks how two levels of one model compare,
+holding the dispersion structure and the sampling in common, which is
+appropriate for a controlled contrast (e.g. a treatment against its control, or
+two sites of one experiment).
+
+# Provenance
+
+The fits shown were made when this vignette was precompiled, so the estimates
+are those of the package version it ships with. No call names `iter`, `warmup`
+or `control`, so the defaults of `bnec()` apply (4 chains of 10000 iterations
+with 8000 warmup), under `seed = 228`. `compare_posterior` pairs the draws under
+its own `seed` argument, so its results do not depend on the session's random
+number stream.
+
+```{r session}
+packageVersion("bayesnec")
+packageVersion("brms")
+R.version.string
+```
+
+`herbicide` was built from the data of @jones2003 by `data-raw/herbicide_data.R`,
+and `coral_colour` and `coral_pam` from the records behind @flores2021 by
+`data-raw/coral_diuron.R`. The source records for the coral data are not
+distributed with the package, although the scripts are, and the manual pages
+state what was derived and how.
+
+# References
