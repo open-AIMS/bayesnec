@@ -1681,6 +1681,39 @@ test_that("the hurdle plot data put points and curve on one scale (#487)", {
   expect_equal(d_plain_log$curve$x, log(d_plain$curve$x))
 })
 
+test_that("autoplot draws hurdle observations at the opacity point_alpha sets", {
+  skip_on_cran()
+  obj <- hurdle_pair()
+  point_data <- function(p) {
+    i <- which(vapply(p$layers, function(layer) {
+      inherits(layer$geom, "GeomPoint")
+    }, logical(1)))
+    expect_length(i, 1)
+    out <- ggplot2::layer_data(p, i)
+    expect_gt(nrow(out), 0)
+    out
+  }
+  # The default draws the colour that adjustcolor(1, alpha.f = 0.25) gave
+  # before the argument existed.
+  def <- point_data(autoplot(obj, resolution = 20))
+  expect_true(all(def$alpha == 0.25))
+  expect_identical(grDevices::adjustcolor(unique(def$colour),
+                                          alpha.f = unique(def$alpha)),
+                   grDevices::adjustcolor(1, alpha.f = 0.25))
+  set <- point_data(autoplot(obj, resolution = 20, point_alpha = 0.6))
+  expect_true(all(set$alpha == 0.6))
+  all_panels <- point_data(autoplot(obj, which = "all", resolution = 20,
+                                    point_alpha = 1))
+  expect_length(unique(all_panels$PANEL), 3)
+  expect_true(all(all_panels$alpha == 1))
+  expect_error(autoplot(obj, point_alpha = 1.5),
+               "`point_alpha` must be between 0 and 1, not 1.5.",
+               fixed = TRUE)
+  expect_error(autoplot(obj, point_alpha = NA_real_),
+               "`point_alpha` must be a number (non-missing numeric scalar).",
+               fixed = TRUE)
+})
+
 test_that("the hurdle plot draws its no-effect line on the recorded scale (#487)", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()

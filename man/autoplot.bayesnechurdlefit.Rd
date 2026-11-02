@@ -13,7 +13,8 @@
   x_range = NA,
   xform = NULL,
   xlab = "Predictor",
-  ylab = NULL
+  ylab = NULL,
+  point_alpha = 0.25
 )
 }
 \arguments{
@@ -38,6 +39,9 @@ grid is built on, and \code{xform} is not applied.}
 
 \item{ylab}{Y axis label. Defaults to \code{NULL}, which labels each panel
 by what it shows.}
+
+\item{point_alpha}{The opacity of the observation points, a single number
+from 0 (transparent) to 1 (opaque). Defaults to 0.25.}
 }
 \value{
 A \code{\link[ggplot2]{ggplot}} object.
