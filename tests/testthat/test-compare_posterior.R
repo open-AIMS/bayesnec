@@ -15,3 +15,9 @@ test_that("output is a list of appropriately name elements", {
   expect_equal(names(cp), c("posterior_list", "posterior_data", "diff_list",
                             "diff_data", "prob_diff"))
 })
+
+test_that("posterior_data keeps the names the fits were given", {
+  cp <- compare_posterior(list("2018" = ecx4param, "level b" = nec4param))
+  expect_setequal(unique(cp$posterior_data$model), c("2018", "level b"))
+  expect_equal(cp$prob_diff$comparison, "2018-level b")
+})

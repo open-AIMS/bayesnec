@@ -2099,6 +2099,11 @@
 
 ## Bug fixes
 
+- `compare_posterior()` returns the names of the fits it is given unchanged in
+  `posterior_data`. A name that is not a syntactic R name, such as the level
+  `"2018"` of a `bnec_group()` fit, was returned as `"X2018"`, and so no longer
+  matched the labels in `prob_diff` and `diff_data`.
+
 - A `zero_inflated_beta` response with every observation at one bound is now
   handled as a `beta` response is. A response of 1 in every observation is
   fitted by `bnec()` and `bnec_group()` with the constant equation `ecxflat`
