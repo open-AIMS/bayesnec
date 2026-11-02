@@ -90,7 +90,7 @@ $\beta = \text{beta}$, generally the exponential decay rate of response, either 
 
 $\delta = \text{bot}$, representing the lower plateau for the response at infinite concentration;
 
-$\alpha = \text{slope}$, the linear decay rate in the models **neclin** and **ecxlin**, or the rate of the initial increase in the hormesis models (linear in **nechorme**, **nechorme4**, **neclinhorme**, **ecxhormebc4** and **ecxhormebc5**, a power of concentration whose exponent $\alpha$ sets in **nechormepwr** and **nechorme4pwr**, and logistic in **nechormepwr01**);
+$\alpha = \text{slope}$, the linear decay rate in the models **neclin** and **ecxlin**, or the rate of the initial increase in the hormesis models (linear in **nechorme**, **nechorme4**, **neclinhorme**, **ecxhormebc4** and **ecxhormebc5**, a power of concentration in **nechormepwr** and **nechorme4pwr**, where $\alpha$ sets the exponent, and logistic in **nechormepwr01**);
 
 $\omega = \text{EC}_{50}$, notionally the 50% effect concentration but may be influenced by scaling and should therefore not be strictly interpreted, and
 
@@ -125,9 +125,9 @@ Models that have an exponential decay (most models with parameter $\beta = \text
 
 @fisher2024 also describe the 0-bounded models as not suitable for the Gaussian family. That restriction has been relaxed since publication, and `bnec` fits these models to a Gaussian response. A Gaussian mean is unconstrained, because the data enter the likelihood only through the residual, so a curve that cannot fall below zero is still a valid description of a response that can. This allows a lower asymptote fixed at zero (representing, for example, complete inhibition of algal growth rate) to be fitted to measurements that include negative values without first replacing them. The [Modelling growth data and other potentially negative response values][e7] vignette sets out the reasoning, and compares fitting the measurements as recorded with altering them first, for example by replacing negative values with zero.
 
-An exclusion also applies to the 0, 1-bounded families (Binomial, Beta and Beta-Binomial) on an `"identity"` link, and it reaches two of the hormesis equations. **nechormepwr** and **nechorme4pwr** include the hormesis term $x_i^{1/(1+e^{\alpha})}$, which has no coefficient to shrink it. The term approaches 1 as $\alpha$ grows, at every concentration above zero, so for any $\tau$ above zero there is an $\alpha$ at which the mean exceeds 1. That holds whatever the predictor range, which is why the exclusion does not depend on the data supplied. The other hormesis equations --- **nechorme**, **nechorme4**, **nechormepwr01**, **ecxhormebc4** and **ecxhormebc5** --- are fitted on these families, because their increase prior to $\eta$ is scaled by a parameter. The initial-value search starts them inside the support: it draws from the priors, and accepts a draw only where the whole initial curve falls within a band built from the replicated level means and their spread, intersected with the support of the mean.
+An exclusion also applies to the 0, 1-bounded families (Binomial, Beta and Beta-Binomial) on an `"identity"` link, and two of the hormesis equations are excluded by it. **nechormepwr** and **nechorme4pwr** include the hormesis term $x_i^{1/(1+e^{\alpha})}$, which has no coefficient to shrink it. The term approaches 1 as $\alpha$ grows, at every concentration above zero, so for any $\tau$ above zero there is an $\alpha$ at which the mean exceeds 1. That holds whatever the predictor range, which is why the exclusion does not depend on the data supplied. The other hormesis equations --- **nechorme**, **nechorme4**, **nechormepwr01**, **ecxhormebc4** and **ecxhormebc5** --- are fitted on these families, because their increase prior to $\eta$ is scaled by a parameter. The initial-value search starts them inside the support: it draws from the priors, and accepts a draw only where the whole initial curve falls within a band built from the replicated level means and their spread, intersected with the support of the mean.
 
-Where the predictor includes negative values, **ecxsigm**, **necsigm**, **nechormepwr** and **nechorme4pwr**, each of which includes a fractional power, are also dropped. The predictor is checked on the scale the model is fitted on, so a formula using `crf(log(x), ...)` drops them whenever a concentration is below 1.
+Where the predictor includes negative values, **ecxsigm**, **necsigm**, **nechormepwr** and **nechorme4pwr**, each of which includes a fractional power, are also dropped. The predictor is checked on the scale the model is fitted on, so they are dropped from a fit using `crf(log(x), ...)` whenever a concentration is below 1.
 
 # Model definitions
 
@@ -530,9 +530,10 @@ The model is 0-bounded, thus not suitable for the use of a `"logit"` or `"log"` 
 The `drc` package [@Ritz2016] fits NEC models with the functions `NEC.2()`,
 `NEC.3()` and `NEC.4()`, and two of the three have an exact equivalent in
 `bayesnec`. Given $b = e^{\beta}$, the two packages evaluate the same
-expression. When `drc` 3.0.1 and `bayesnec` were evaluated at 201 concentrations
-between 0 and 10, for 135 combinations of parameter values that included
-thresholds below and above that range, they returned identical values.
+expression. The **nec4param** curve and the `NEC.4()` curve of `drc` 3.0.1 were
+computed at 201 concentrations between 0 and 10, for 135 combinations of
+parameter values that included thresholds below and above that range, and the
+two were identical in every case.
 
 `drc`'s three functions are wrappers around a single generator that differ only
 in which parameters they hold fixed:
@@ -583,7 +584,8 @@ have been normalised in this way. Where the upper bound is structural, not
 estimated (for example, a proportion that cannot exceed one by construction),
 the same constraint is available without a new model, either as a `brms`
 `constant()` prior on `"top"` or as a tight informative prior (see *Fixing a
-parameter* in the [Priors][e3] vignette). Both state the assumption in the
-prior, where it can be inspected, instead of fixing it within the equation.
+parameter* in the [Priors][e3] vignette). Either way the assumption is written
+in the prior, where it can be inspected, instead of being fixed within the
+equation.
 
 # References
