@@ -161,8 +161,10 @@ discarding its fits for the other six.
 fits_herb <- screen_models(fits_herb, group_action = "per_level")
 ```
 
-No equation was removed for any herbicide, so each model average is over the
-eleven equations of `"decline"`.
+The screen removes `ecxll5` for atrazine (30 divergent transitions) and for
+simazine (113 divergent transitions and an effective sample size, or ESS, of
+163), so each herbicide keeps
+eleven or twelve equations of `"decline"`.
 
 `summary()` on a `bayesnecgroupfit` prints a full summary for each level, which
 for seven herbicides is several hundred lines. Here we collate only the model
@@ -189,11 +191,12 @@ ggplot(herb_wi, aes(x = herbicide, y = equation, fill = wi)) +
 ```
 
 The herbicides differ in which equations describe them. For example, tebuthiuron
-puts half its weight on `ecxwb2p3`, which receives no more than 0.08 for any
-other herbicide, and hexazinone puts 0.62 on `ecxll3`, which four of the others
-weight below 0.05. Ametryn and irgarol spread their weight over four equations,
-diuron over five and simazine over six (counting the labelled cells, those of
-0.05 or more). This suggests that fitting the levels separately is appropriate
+puts 0.52 of its weight on `ecxwb2p3`, which receives no more than 0.08 for any
+other herbicide, and hexazinone puts 0.65 on `ecxll3`, which four of the others
+weight below 0.05. Ametryn, hexazinone and irgarol spread their weight over four
+equations, and diuron and simazine over five (counting the labelled cells, those
+of 0.05 or more). No herbicide gives `nec3param` or `nec4param` a weight of 0.05
+or more. This suggests that fitting the levels separately is appropriate
 here, because the curve they would be shrunk towards is not one the data agree
 on.
 
@@ -214,8 +217,12 @@ ggplot(group_curves(fits_herb), aes(x = x_e, colour = level, fill = level)) +
 ```
 
 The fitted band follows the observations down for each herbicide, with the
-N(S)EC (grey line) at or a little before the concentration where the points
-leave the control level. The response axis is shared and the concentration axis
+N(S)EC (grey lines, the median and 95% credible interval) at or a little before
+the concentration where the points leave the control level. The N(S)EC is the
+model-averaged no-effect estimate, based mainly on the NEC where threshold
+equations receive most of the weight and on the NSEC where smooth equations do.
+The threshold equations receive almost no weight for any herbicide here, so the
+N(S)EC of each is in effect an NSEC. The response axis is shared and the concentration axis
 is not, so the panels are comparable in level but not in position. The seven curves have a similar shape and are located at different
 concentrations,
 which suggests that what separates the herbicides is where the curve falls, more
@@ -224,10 +231,8 @@ than how it falls.
 ## Comparing toxicity estimates across herbicides
 
 `compare_posterior` takes a `bnec_group()` fit directly and compares its levels.
-Here we compare the N(S)EC, which is the model-averaged no-effect estimate (based
-mainly on the NEC where threshold equations receive most of the weight, and on
-the NSEC where smooth equations do). The posterior draws for each herbicide are
-returned in `posterior_data`, which we summarise first.
+Here we compare the N(S)EC across the herbicides. The posterior draws for each herbicide are returned in `posterior_data`, which we
+summarise first.
 
 ```{r cmp-herbicides}
 cmp_herb <- compare_posterior(fits_herb, comparison = "n(s)ec")
@@ -240,9 +245,9 @@ herb_post |>
 ```
 
 The N(S)EC estimates span about two orders of magnitude, from irgarol at
-0.135 µg/L (0.107–0.174) and diuron at 0.152 (0.110–0.195), through ametryn at
-0.198, hexazinone at 0.631 and atrazine at 1.120, to simazine at 4.391 and
-tebuthiuron at 10.522 (4.281–14.029). These draws can also be plotted as densities.
+0.134 µg/L (0.106–0.170) and diuron at 0.151 (0.109–0.194), through ametryn at
+0.194, hexazinone at 0.624 and atrazine at 1.13, to simazine at 4.24 and
+tebuthiuron at 10.6 (4.42–13.6). These draws can also be plotted as densities.
 
 ```{r exmp4-cmp-herbicides, fig.asp = 0.5, out.width = "95%"}
 ggplot(data = herb_post, mapping = aes(x = value)) +
@@ -254,14 +259,13 @@ ggplot(data = herb_post, mapping = aes(x = value)) +
        colour = "Herbicide")
 ```
 
-This is the display shown in Figure 11 of @fisher2024. Irgarol and diuron, the
-most potent of the herbicides, overlap almost entirely: their intervals run from
-0.107 to 0.174 and from 0.110 to 0.195 µg/L, so that one is almost inside the
+This is the display shown in Figure 11 of @fisher2024. Irgarol and diuron, the most potent of the herbicides, overlap substantially: their intervals run from 0.106 to 0.170 and from 0.109
+to 0.194 µg/L, so that one is almost inside the
 other. The posteriors also differ in width as much as in position. For example,
 the interval for irgarol spans a factor of 1.6 from end to end and that for
-diuron a factor of 1.8, against 9.7 for simazine and 7.3 for atrazine. Several
-of the posteriors are bimodal, such as tebuthiuron with a second mode near
-7 µg/L and simazine with one near 10. A model-averaged posterior is a mixture,
+diuron a factor of 1.8, against 11.6 for simazine and 7.5 for atrazine. Several
+of the posteriors are bimodal, such as hexazinone, with a second mode near
+1.6 µg/L, and simazine, with one near 11. A model-averaged posterior is a mixture,
 and an equation with little weight that places its threshold elsewhere can
 appear as a second mode or a long tail, without changing the median.
 
@@ -273,10 +277,12 @@ near 0.5 does not.
 cmp_herb$prob_diff
 ```
 
-Of the 21 pairs, the clearest are tebuthiuron against the five most potent
-herbicides, from 0.0083 for ametryn and diuron to 0.0089 for atrazine. The least
-separated pair is diuron and irgarol at 0.727, the most potent of the set,
-followed by atrazine and hexazinone at 0.837 and ametryn and diuron at 0.849.
+Of the 21 pairs, 16 have a probability below 0.05 or above 0.95. For example,
+the probability that irgarol has the higher N(S)EC is 0.009 against simazine and
+0.011 against tebuthiuron. The least separated pair is diuron and irgarol at
+0.732, the most potent of the set, followed by ametryn and diuron at 0.837,
+atrazine and hexazinone at 0.839, ametryn and irgarol at 0.923, and simazine and
+tebuthiuron at 0.077.
 `bnec_group()` fits each herbicide separately, so the independence that the
 random pairing of `compare_posterior` assumes is satisfied here.
 
@@ -297,7 +303,7 @@ Tebuthiuron is the exception at roughly half the published value, and it is also
 the herbicide whose order differs: here it is more toxic than simazine, whereas
 in the source study it is less so. The published and fitted estimates
 were derived differently. @jones2003 interpolated linearly between the tested concentrations (in ToxCalc 5.0), while the values above are a model
-average over eleven fitted curves. Linear interpolation across a log-spaced series follows
+average over eleven or twelve fitted curves. Linear interpolation across a log-spaced series follows
 the chord of a curve that is concave over that interval, which places the
 half-effect concentration higher than a fitted curve would, and this may
 explain why the published value is higher for all seven herbicides. Nothing in these data indicates which
@@ -310,8 +316,7 @@ which fragments of the coral *Acropora millepora* were exposed to diuron for 14
 days under three climate scenarios [@flores2021,
 <https://doi.org/10.1016/j.marpolbul.2021.112582>]. The scenarios are
 combinations of temperature and dissolved carbon dioxide, labelled by the year
-they represent: 28.1 °C at 397 ppm for present-day conditions (2018), and RCP8.5
-projections of 29.1 °C at 680 ppm (2050) and 30.2 °C at 858 ppm (2100). Three
+they represent: 28.1 °C at 397 ppm for present-day conditions (2018), and projections under the high-emissions pathway RCP8.5 of 29.1 °C at 680 ppm (2050) and 30.2 °C at 858 ppm (2100). Three
 replicate chambers were run at each combination of scenario and concentration,
 with four coral fragments in each. @jones2003 found the effect of diuron on
 *S. hystrix* to be inversely related to temperature, which is the observation
@@ -390,6 +395,16 @@ fits_colour <- screen_models(fits_colour, group_action = "per_level")
 fits_yield <- screen_models(fits_yield, group_action = "per_level")
 ```
 
+The screen removes one equation from three of the six level fits: `ecxwb2p3`
+from the 2018 colour fit (52 divergent transitions), `ecxll3` from the 2050
+colour fit (an ESS of 388) and `nec3param` from the 2050 yield fit (an ESS of
+185). For the 2050 fits of both endpoints, the leave-one-group-out score also has a
+Pareto *k* above 0.7 for one chamber in some equations (`ecxwb2p3` for colour,
+and `ecxll3` and `ecxwb2p3` for yield), so the contribution of that chamber to
+the model weights is approximate. `loo_controls = list(refit = TRUE)` would
+replace it by refitting each equation without the chamber, which we have not
+done here.
+
 ```{r exmp4-coral-fits, fig.asp = 0.45, out.width = "95%"}
 rbind(data.frame(endpoint = "colour (proportion)", group_curves(fits_colour)),
       data.frame(endpoint = "yield", group_curves(fits_yield))) |>
@@ -406,10 +421,11 @@ rbind(data.frame(endpoint = "colour (proportion)", group_curves(fits_colour)),
        colour = "Scenario", fill = "Scenario")
 ```
 
-The scenarios separate in colour and barely at all in yield. For example, mean
+The scenarios appear to separate in colour and barely at all in yield. For example, mean
 colour at 2.9 µg/L is 0.728, 0.611 and 0.456 from 2018 to 2100, whereas mean
 yield differs by less than 0.015 between scenarios at each concentration below
-9.6 µg/L.
+9.6 µg/L. The fitted band for yield under the 2100 scenario is also wider than
+the others, from the control to about 2 µg/L.
 
 ## Comparing toxicity estimates across scenarios
 
@@ -431,15 +447,17 @@ ggplot(data = cmp_colour$posterior_data, mapping = aes(x = value)) +
        colour = "Scenario")
 ```
 
-The colour EC50 falls from 18.9 µg/L under present-day conditions to 7.21 under
-the 2050 scenario and 4.02 under the 2100 scenario, and the probability that
-the 2018 EC50 is the higher is 0.958 against 2050 and 0.997 against 2100. These
-probabilities are similar to those of @flores2021, although the EC50 values are
-not. @flores2021 measured each scenario against one reference response (halfway
-between the mean 2018 control and the mean 2100 response at 29 µg/L), whereas
-`ecx()` measures each scenario against its own control. The posterior for 2018
-is also wide (8.87 to 28.2 µg/L), probably because the colour design has no
-concentration between 2.9 and 29 µg/L at which to locate the 2018 decline.
+The probability that the 2018 EC50 is the higher is 0.962 against the 2050
+scenario and 0.997 against the 2100 scenario, which is similar to the
+probabilities of 0.956 and 0.970 that @flores2021 report. However, the EC50 values themselves differ from theirs. The posterior for 2100 is centred near 4 µg/L and
+that for 2050 near 6 µg/L (with a second mode near 10), whereas the posterior for
+2018 is spread from about 8 µg/L to 29 µg/L, the highest concentration tested.
+@flores2021 report EC50 values of 6.05, 4.99 and 4.86 µg/L, measured for each
+scenario against one reference response (halfway between the mean 2018 control
+and the mean 2100 response at 29 µg/L), whereas `ecx()` measures each scenario
+against its own control. The width of the 2018 posterior probably reflects the
+colour design, which has no concentration between 2.9 and 29 µg/L at which to
+locate the 2018 decline.
 
 This comparison can be made for any estimate that `compare_posterior` accepts.
 Here we tabulate the probabilities for the EC50, the EC10 and the N(S)EC, for
@@ -462,14 +480,16 @@ rbind(data.frame(endpoint = "colour", scenario_probs(fits_colour),
 ```
 
 For colour, the 2018 scenario has the higher estimate against both future
-scenarios with a probability above 0.94, whichever of the three estimates is
-used. For yield, no estimate separates the scenarios, which is consistent with
-the probabilities of 0.615 and 0.539 that @flores2021 report for the yield EC50.
-The yield N(S)EC under the 2100 scenario is higher than under present-day
-conditions with a probability of about 0.89, which is in the opposite direction
-to any effect of warming. This may reflect a less precisely estimated control
-under the 2100 scenario, because the NSEC is measured from a lower quantile of
-the control response, and should not be read as an effect of climate from these data.
+scenarios with a probability above 0.95, whichever of the three estimates is
+used. For yield, no estimate gives a probability below 0.05 or above 0.95, and the
+probabilities for the EC50 and the EC10 range from 0.22 to 0.69, which is
+consistent with the probabilities of 0.615 and 0.539 that @flores2021 report
+for the yield EC50.
+The yield N(S)EC under the 2100 scenario is higher than under the other two
+scenarios, with a probability of 0.92 against each, which is in the opposite
+direction to an effect of warming. This may reflect the less precisely estimated
+control under the 2100 scenario (the wider band in the figure above), because
+the NSEC is measured from a lower quantile of the control response, and should not be read as an effect of climate from these data.
 
 ## Comparing the fitted curves
 
@@ -513,12 +533,17 @@ ggplot(data = cmp_colour_fit$prob_diff) +
        y = "Probability first is higher", colour = "Comparison")
 ```
 
-The fitted curves for the three scenarios start at a similar colour and
-separate above about 1 µg/L, where the 2100 curve declines first. The
-probability that the 2018 curve is the higher rises above 0.9 against the 2100
-curve between about 1 and 10 µg/L, and stays closer to 0.5 against the 2050
-curve, suggesting that the scenarios differ most in the middle of the
-concentration series, where the colour response is declining.
+The fitted curves for the three scenarios start at a similar colour (about 0.72
+to 0.73 at the control), and the 2100 curve declines first, below 1 µg/L,
+followed by the 2050 curve near 2 µg/L and the 2018 curve near 10 µg/L. The band
+for 2018 is wide above 3 µg/L, again reflecting the absence of observations
+between 2.9 and 29 µg/L. The probability that the 2018 curve is the higher
+exceeds 0.9 against the 2100 curve from about 0.7 µg/L and against the 2050
+curve from about 2 µg/L, and remains above 0.95 against both up to 29 µg/L. The
+2050 and 2100 curves are most clearly separated near 3 µg/L (a probability of
+about 0.99), and less so near 10 µg/L (about 0.86). This suggests that the
+scenarios differ over most of the range above about 1 µg/L, which is where the
+colour response declines under at least one scenario.
 
 # Contrasts from a joint refit
 
@@ -542,12 +567,12 @@ herb_joint <- bnec_joint(fits_herb, seed = 228, refresh = 0)
 herb_joint
 ```
 
-Five different equations are used across the seven herbicides: `ecxll4` for
-ametryn, `ecxwb1` for atrazine, `ecx4param` for diuron and irgarol, `ecxll3` for
+Five different equations are used across the seven herbicides: `ecx4param` for
+ametryn and irgarol, `ecxwb1` for atrazine, `ecxll5` for diuron, `ecxll3` for
 hexazinone and simazine, and `ecxwb2p3` for tebuthiuron. The weight each chosen
-equation received for its own herbicide ranges from 0.279 for diuron to 0.623
-for hexazinone, and is below 0.4 for five of the seven, so no herbicide is well
-described by a single form.
+equation received for its own herbicide ranges from 0.266 for irgarol to 0.653
+for hexazinone, and is below 0.4 for four of the seven, which suggests that most of the
+herbicides are not well described by a single form.
 
 Each estimate from a joint refit is returned per level, one row each, as for a
 `bnec_group()` fit.
@@ -569,8 +594,8 @@ c(prob_diuron_higher = mean(diuron_irgarol > 0),
   quantile(diuron_irgarol, c(0.025, 0.975)))
 ```
 
-The diuron EC50 exceeds that of irgarol in every draw, by 1.48 µg/L (1.35 to
-1.61). A contrast can also be made on the N(S)EC, the estimate compared with
+The diuron EC50 exceeds that of irgarol in every draw, by 1.53 µg/L (1.39 to
+1.67). A contrast can also be made on the N(S)EC, the estimate compared with
 `compare_posterior` above.
 
 ```{r joint-contrast-ne}
@@ -581,8 +606,8 @@ c(prob_diuron_higher = mean(diuron_irgarol_ne > 0),
   quantile(diuron_irgarol_ne, c(0.025, 0.975)))
 ```
 
-On the N(S)EC the probability that diuron has the higher estimate is 0.79, with
-a median difference of 0.020 µg/L (-0.031 to 0.067), against 0.727 from
+On the N(S)EC the probability that diuron has the higher estimate is 0.617, with a
+median difference of 0.006 µg/L (-0.038 to 0.049), against 0.732 from
 `compare_posterior`. The joint refit and `compare_posterior` agree in direction, and do not separate
 this pair on the N(S)EC. An ECx is a fixed decline from the control of each
 level and is located where the curve is steep, whereas the N(S)EC is a departure
@@ -602,14 +627,17 @@ c(divergent = sum(np$Value[np$Parameter == "divergent__"]),
 ```
 
 There were no divergent transitions in 8000 post-warmup draws, with a maximum
-R-hat of 1.002 and a minimum bulk effective sample size of 5373.
+R-hat of 1.002 and a minimum bulk effective sample size of 2148.
 
 A joint refit conditions on one equation per level, so the model uncertainty
 that the per-level averages represent is absent from it. Where the chosen
 equation receives most of the weight of its level, the narrower interval of the
-joint refit is a real gain in precision. Where it receives less than half, as
-it does here for five of the seven herbicides, part of the narrowing is likely
-to be model uncertainty that has been set aside, not resolved.
+joint refit is a real gain in precision. Where it receives less than half, as it does here for four of the seven
+herbicides, part of the narrowing is likely to be model uncertainty that has
+been set aside, not resolved. For irgarol, whose equation received 0.266 of the
+weight, the EC50 interval is 0.489 to 0.592 µg/L in the joint refit against
+0.487 to 0.596 from the per-level model average, so on these data the narrowing
+is small.
 
 `compare_posterior` and a joint refit therefore answer different questions. `compare_posterior` asks
 how two independently estimated levels compare, each with its own model
