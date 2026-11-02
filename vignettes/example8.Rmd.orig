@@ -861,12 +861,17 @@ fits_tox_joint
 ```
 
 The print gives the equation fitted at each level and the weight it had there.
-In this model each metal has its own value of each curve parameter of `ecxll5`
-(`top`, `bot`, `beta`, `ec50` and `f`), and the metals share three things: the
-five batch deviations of `(ec50 | batch)` (each applied to the `ec50` of both
-metals); the coefficients `c0` and `c1` of `disp("power")`; and the SD of each
-group-level term of the arm structure (one per parameter for `pgl(plate)` and
-one for `ogl(conc_group)`), each estimated from the plates or cells of both
+The `brms` formula of the refit shows which terms the metals share:
+
+```{r formula-metals-joint}
+fits_tox_joint$fit$formula
+```
+
+Each curve parameter of `ecxll5` takes a separate value for each metal
+(`0 + toxicant`). The metals share the five batch deviations of `(1 | batch)` on
+`ec50`, the coefficients `c0` and `c1` of `disp("power")`, and the SD of each
+group-level term of the arm structure: one per parameter for `(1 | plate)` and
+one for `(1 | conc_group)`, each estimated from the plates or cells of both
 metals. Each plate and cell belongs to one metal, so the deviations themselves
 are not shared, only the SD from which they are drawn. The table below gives the
 SDs of the joint refit beside those of `ecxll5` in each level of `fits_tox`.
@@ -884,7 +889,7 @@ sd_tox <- group_level_sd(fits_tox)
 sd_tox <- sd_tox[sd_tox$model == "ecxll5", ]
 level_sd <- function(level, g, p) {
   r <- sd_tox[sd_tox$level == level & sd_tox$group == g & sd_tox$parameter == p, ]
-  if (nrow(r) == 0) "" else ci(r[1, c("Estimate", "Q2.5", "Q97.5")])
+  if (nrow(r) == 0) "not fitted" else ci(r[1, c("Estimate", "Q2.5", "Q97.5")])
 }
 knitr::kable(
   data.frame(
@@ -964,7 +969,17 @@ take the ratio of zinc's EC10 to copper's:
 ```{r ratio-joint}
 ec10_joint <- ecx(fits_tox_joint, ecx_val = 10, posterior = TRUE)
 zn_cu_ratio <- ec10_joint[["Zn"]] / ec10_joint[["Cu"]]
-quantile(zn_cu_ratio, c(0.5, 0.025, 0.975))
+quantile(zn_cu_ratio, c(0.5, 0.025, 0.975), na.rm = TRUE)
+```
+
+```{r ratio-censored, include = FALSE}
+# ecx() gives no value to a draw whose EC10 lies beyond the tested range.
+ratio_censored <- if (any(is.na(zn_cu_ratio))) {
+  paste0(" (leaving out ", sum(is.na(zn_cu_ratio)), " draws whose EC10 lies",
+         " beyond the tested range)")
+} else {
+  ""
+}
 ```
 
 ```{r fig-ratio-joint, fig.asp = 0.5, out.width = "70%"}
@@ -975,12 +990,12 @@ ggplot(data.frame(ratio = zn_cu_ratio), aes(x = ratio)) +
   labs(x = "Ratio of zinc's EC10 to copper's (joint refit)", y = "Density")
 ```
 
-Zinc's EC10 is `r ci(quantile(zn_cu_ratio, c(0.5, 0.025, 0.975)))` times
-copper's, and the ratio exceeds 1 in `r round(100 * mean(zn_cu_ratio > 1), 1)`
-per cent of the draws. Each draw of the ratio is taken from one draw of the
-joint posterior, so it keeps any dependence between the two metals' estimates
-that the shared terms introduce, which a permutation of separate posteriors
-discards.
+Zinc's EC10 is `r ci(quantile(zn_cu_ratio, c(0.5, 0.025, 0.975), na.rm = TRUE))`
+times copper's`r ratio_censored`, and the ratio exceeds 1 in
+`r round(100 * mean(zn_cu_ratio > 1, na.rm = TRUE), 1)` per cent of the draws.
+Each draw of the ratio is taken from one draw of the joint posterior, so it
+keeps any dependence between the two metals' estimates that the shared terms
+introduce, which a permutation of separate posteriors discards.
 
 ```{r diagnostics-joint, include = FALSE}
 np_joint <- brms::nuts_params(fits_tox_joint$fit)
