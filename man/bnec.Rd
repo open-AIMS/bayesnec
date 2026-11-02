@@ -749,10 +749,11 @@ earlier versions.
 
 A zero concentration does still restrict what may be written inside
 \code{crf()} and \code{disp()}, because both are evaluated from the recorded
-column. \code{crf(log(x))} reaches \pkg{bayesnec}'s own data check as
-\code{-Inf} and stops there, naming the predictor. \code{disp(~log(x))} is
-evaluated by \code{brm()} instead, which \pkg{bayesnec} does not check, so
-the \code{-Inf} reaches Stan. Add the offset of your choice to the data and
+column. With \code{crf(log(x))}, the data check is given \code{-Inf} and
+stops with an error naming the predictor. A \code{disp(~log(x))} formula is
+passed to \code{brm()} unchanged, although \code{bnec()} first evaluates each
+of its terms on the data and stops with an error naming the term
+\code{log(x)}. In both cases, add the offset of your choice to the data and
 name that column in the formula.
 
 \bold{Missing values}
