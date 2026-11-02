@@ -927,10 +927,13 @@ and the batch deviation describes a condition of the date on which both were
 tested: the plates of both metals in a batch were dosed and read on one date,
 with cells reactivated from one batch of lyophilised cells [@luter2025]. A
 condition of that date (e.g. the state of the reactivated cells, or that day's
-dilution series) would be expected to displace both metals' curves together.
-Five batches, however, leave the batch SD poorly determined: its interval,
-`r ci(batch_sd)`, spans a factor of `r round(batch_sd[[3]] / batch_sd[[2]])`
-from end to end.
+dilution series) would be expected to displace both metals' curves together. The
+batch SD on `ec50` is `r ci(batch_sd)`, and five batches leave it poorly
+determined (its interval spans a factor of
+`r round(batch_sd[[3]] / batch_sd[[2]])` from end to end). The plate SD on
+`ec50` in the joint refit, `r joint_sd_text("plate", "ec50")`, is below copper's
+value in the separate fit, so part of the difference in position that the copper
+fit attributed to plates appears to be attributed to batches here.
 
 The table below sets the EC50 of each metal from the joint refit beside the
 model-averaged EC50 of the separate fits and the per-plate EC50s that @luter2025
@@ -952,15 +955,27 @@ knitr::kable(
                 "Luter et al. (2025), mean of per-plate EC50s (range)"),
   row.names = FALSE
 )
+pub_range <- list(Cu = c(0.069, 0.201), Zn = c(1.207, 2.076))
+within_pub <- all(mapply(function(m, l) {
+  m >= pub_range[[l]][1] && m <= pub_range[[l]][2]
+}, c(ec50_joint$Q50, ec50_sep$Q50),
+   as.character(c(ec50_joint$level, ec50_sep$level))))
 ```
 
 The EC50 is `r ec50_text(ec50_joint, "Cu")` mg/L for copper and
 `r ec50_text(ec50_joint, "Zn")` mg/L for zinc in the joint refit, against
 `r ec50_text(ec50_sep, "Cu")` and `r ec50_text(ec50_sep, "Zn")` from the
-separate fits. The estimates differ in what they describe: the published values
-average a separate fit to each plate of the normalised response, whereas `ecx()`
-reads the population curve of a model that estimates the variation between
-plates.
+separate fits, and
+`r if (within_pub) "all four medians lie" else "not all four medians lie"`
+within the range of the per-plate EC50s that @luter2025 report. The intervals of
+the joint refit are wider than those of the separate fits, although the joint
+refit conditions on one equation. The likely reason is the batch term: each
+metal's population `ec50` is now estimated across five batches, and the
+uncertainty in their poorly determined SD widens its interval. The estimates
+also differ in what they describe: the published values average a separate fit
+to each plate of the normalised response, whereas `ecx()` reads the population
+curve of a model that estimates the variation between plates and between
+batches.
 
 Because the levels are estimated in one posterior, a contrast between them is
 taken draw by draw, without the permutation `compare_posterior()` uses. Here we
@@ -972,7 +987,7 @@ zn_cu_ratio <- ec10_joint[["Zn"]] / ec10_joint[["Cu"]]
 quantile(zn_cu_ratio, c(0.5, 0.025, 0.975), na.rm = TRUE)
 ```
 
-```{r ratio-censored, include = FALSE}
+```{r ratio-summary, include = FALSE}
 # ecx() gives no value to a draw whose EC10 lies beyond the tested range.
 ratio_censored <- if (any(is.na(zn_cu_ratio))) {
   paste0(" (leaving out ", sum(is.na(zn_cu_ratio)), " draws whose EC10 lies",
@@ -980,6 +995,14 @@ ratio_censored <- if (any(is.na(zn_cu_ratio))) {
 } else {
   ""
 }
+ratio_q <- quantile(zn_cu_ratio, c(0.5, 0.025, 0.975), na.rm = TRUE)
+# The ratio of the upper to the lower bound of each 95 per cent interval.
+level_span <- vapply(ec10_joint, function(d) {
+  q <- quantile(d, c(0.025, 0.975), na.rm = TRUE)
+  q[[2]] / q[[1]]
+}, numeric(1))
+log_cor <- cor(log(ec10_joint[["Zn"]]), log(ec10_joint[["Cu"]]),
+               use = "complete.obs")
 ```
 
 ```{r fig-ratio-joint, fig.asp = 0.5, out.width = "70%"}
@@ -990,12 +1013,17 @@ ggplot(data.frame(ratio = zn_cu_ratio), aes(x = ratio)) +
   labs(x = "Ratio of zinc's EC10 to copper's (joint refit)", y = "Density")
 ```
 
-Zinc's EC10 is `r ci(quantile(zn_cu_ratio, c(0.5, 0.025, 0.975), na.rm = TRUE))`
-times copper's`r ratio_censored`, and the ratio exceeds 1 in
-`r round(100 * mean(zn_cu_ratio > 1, na.rm = TRUE), 1)` per cent of the draws.
-Each draw of the ratio is taken from one draw of the joint posterior, so it
-keeps any dependence between the two metals' estimates that the shared terms
-introduce, which a permutation of separate posteriors discards.
+Zinc's EC10 is `r ci(ratio_q)` times copper's`r ratio_censored`, and the ratio
+exceeds 1 in `r round(100 * mean(zn_cu_ratio > 1, na.rm = TRUE), 1)` per cent of
+the draws. The interval of the ratio spans a factor of
+`r fmt(ratio_q[[3]] / ratio_q[[2]])` between its bounds, whereas the EC10
+interval of each metal spans a factor of `r fmt(level_span[["Cu"]])` for copper
+and `r fmt(level_span[["Zn"]])` for zinc. The metals' EC10s are correlated
+across draws (`r fmt(log_cor)` on the log scale), most likely because the shared
+batch deviations shift both curves together, so much of their uncertainty
+cancels in the ratio. Each draw of the ratio is taken from one draw of the joint
+posterior, which keeps that correlation; a permutation of separate posteriors
+discards it.
 
 ```{r diagnostics-joint, include = FALSE}
 np_joint <- brms::nuts_params(fits_tox_joint$fit)
@@ -1004,6 +1032,10 @@ pars_joint <- rbind(s_joint$fixed, s_joint$spec_pars,
                     do.call(rbind, s_joint$random))
 joint_divergent <- sum(np_joint$Value[np_joint$Parameter == "divergent__"])
 joint_draws <- sum(np_joint$Parameter == "divergent__")
+joint_max_depth <- fits_tox_joint$fit$fit@stan_args[[1]]$max_depth
+if (is.null(joint_max_depth)) joint_max_depth <- 10
+joint_at_depth <- mean(np_joint$Value[np_joint$Parameter == "treedepth__"] >=
+                         joint_max_depth)
 w_ll5 <- vapply(level_weights, function(w) w[["ecxll5"]], numeric(1))
 less_weight <- if (w_ll5[["Cu"]] < w_ll5[["Zn"]]) "copper than for zinc" else
   "zinc than for copper"
@@ -1012,12 +1044,15 @@ less_weight <- if (w_ll5[["Cu"]] < w_ll5[["Zn"]]) "copper than for zinc" else
 A joint refit conditions on one equation per level, so the model uncertainty
 that the per-level averages represent is absent from it. `ecxll5` was given only
 part of the weight at each level, so the intervals of the joint refit omit the
-uncertainty that the other equations represent, more for `r less_weight`. The
-refit recorded `r joint_divergent` divergent transitions in `r joint_draws`
-post-warmup draws, with a largest R-hat of
-`r sprintf("%.3f", max(pars_joint$Rhat))` and a smallest bulk effective sample
-size of `r round(min(pars_joint$Bulk_ESS))` over the population-level, family
-and group-level SD parameters.
+uncertainty that the other equations represent (more for `r less_weight`), even
+where, as here, the batch term makes them wider overall. The refit recorded
+`r joint_divergent` divergent transitions in `r joint_draws` post-warmup draws,
+with a largest R-hat of `r sprintf("%.3f", max(pars_joint$Rhat))` and a smallest
+bulk effective sample size of `r round(min(pars_joint$Bulk_ESS))` over the
+population-level, family and group-level SD parameters. Of its transitions,
+`r round(100 * joint_at_depth)` per cent reached the maximum tree depth of
+`r joint_max_depth`, which Stan treats as a limit on the efficiency of the
+sampler, not on the validity of the draws.
 
 # Fitting the levels in parallel
 
