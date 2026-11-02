@@ -845,7 +845,7 @@ displacement. The separate fits of `fits_tox` cannot include it, because each
 level sees only its own metal's plates, so a batch deviation would be estimated
 twice and independently. `bnec_joint()` refits the levels of a `bnec_group()`
 fit as one model, in which each level keeps its own curve parameters and a
-group-level term can span the levels.
+group-level term can span the levels (see `?bnec_joint`).
 
 A group-level term can be written only on a parameter the levels share, so each
 level must be fitted with one equation, which `model` names. We use `ecxll5`,
