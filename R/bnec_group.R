@@ -72,10 +72,8 @@
 #' No argument turns this on or off: the plan already holds that state, as it
 #' does for \code{\link{bnec}}.
 #'
-#' The worked treatment --- why the inner worker count needs \code{I()}, what a
-#' parallel grouped call does to compilation and to memory, and the warning a
-#' nested plan emits --- is in \code{vignette("example2")} under \emph{The
-#' levels of a grouped call}.
+#' A worked example, including the nested plan that drives both loops, is in
+#' \code{vignette("example8")} under \emph{Fitting the levels in parallel}.
 #'
 #' \bold{What a plan does and does not reproduce}
 #'
