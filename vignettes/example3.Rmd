@@ -26,6 +26,7 @@ Below we first show how to inspect the priors of a fit, and then summarise the d
 
 Before deciding whether the default priors suit a dataset, it is useful to see what they are and how much they influence the posterior. Here we fit **nec3param** to the `nec_data` example (a Beta-distributed response on the `"identity"` link) without specifying the `brm` argument `prior`, so that `bnec()` builds all of the priors itself.
 
+
 ``` r
 library(brms)
 library(bayesnec)
@@ -40,12 +41,14 @@ exmp_a <- bnec(y ~ crf(x, model = "nec3param"), data = nec_data,
 
 A fit of a single equation returns an object of class `bayesnecfit`, whereas a fit of more than one equation returns an object of class `bayesmanecfit` (both are used in [User-specified priors](#user-specified-priors) below).
 
+
 ``` r
 class(exmp_a)
 #> [1] "bayesnecfit" "bnecfit"
 ```
 
 The function `pull_prior()` returns the priors used in a fit.
+
 
 ``` r
 pull_prior(exmp_a)
@@ -71,6 +74,7 @@ pull_prior(exmp_a)
 The **nec** prior is a `lognormal` bounded to the tested range of `nec_data$x` (`0.032` to `3.22`), the **top** prior is `beta(5, 2)` bounded to `0` to `1`, and **beta** has a `normal(0, 5)` prior. The prior on `phi` (the precision of the Beta distribution) has the source `default` because it is the `brms` default, and is not set by `bayesnec`.
 
 We can also use the function `check_priors()` (based on the `hypothesis()` function of `brms`) to assess how the posterior probability density for each parameter differs from that of the prior. This can be useful to assess whether the priors are suitably vague, and whether they might be having an undesirable influence on the posterior.
+
 
 ``` r
 check_priors(exmp_a)
@@ -123,6 +127,7 @@ The `"regularizing"` entries for **top** and **bot** are centred on the mean res
 
 Below we fit **nec4param** to the `nec_data` example under each prior set, to show the difference between them. We use **nec4param** instead of **nec3param** so that both response-scaled parameters are present, because **nec3param** has no **bot**, and **bot** is where the `"uninformative"` and `"regularizing"` sets differ most.
 
+
 ``` r
 set.seed(333)
 exmp_uninformative <- bnec(y ~ crf(x, model = "nec4param"), data = nec_data,
@@ -138,6 +143,7 @@ exmp_regularizing <- bnec(y ~ crf(x, model = "nec4param"), data = nec_data,
 ```
 
 The priors that `bnec` built for each fit can be compared with `pull_prior`. Under `"regularizing"`, the **top** and **bot** priors change from the fixed `beta(5, 2)` and `beta(2, 5)` to beta priors with their maximum density at the mean response over the lowest concentrations (`0.919` for **top**) and over the highest concentrations (`0.163` for **bot**). Because `nec_data` has 100 distinct concentrations and no unexposed control, each of these means is taken over the five most extreme observations (one twentieth of the data; see [The `"regularizing"` set](#the-regularizing-set)). The **nec** prior keeps its location and takes `0.84` (`qnorm(0.975) / qnorm(0.99)`) of its standard deviation on the log scale, which is what the change from 95% to 98% coverage amounts to on this predictor. The fixed **beta** prior is unchanged.
+
 
 ``` r
 pull_prior(exmp_uninformative)
@@ -163,6 +169,7 @@ pull_prior(exmp_uninformative)
 #>                 1     (vectorized)
 #>                            default
 ```
+
 
 ``` r
 pull_prior(exmp_regularizing)
@@ -191,6 +198,7 @@ pull_prior(exmp_regularizing)
 
 Plotting the prior and posterior densities with `check_priors` shows the difference between the sets (plots below). Under `"regularizing"`, the **top** prior places its density close to the posterior, instead of across the whole `0` to `1` range. The **bot** prior is also much narrower than `beta(2, 5)`, but its maximum density (`0.163`) is above the **bot** posterior. This is because three of the five highest concentrations (`2.23` to `2.52`) have responses of `0.21` to `0.30`, well above the lower asymptote. The **bot** posterior is higher under the narrower prior, with its peak near `0.03` under `"regularizing"` against near `0.01` under `"uninformative"`, whereas the **nec** and **top** posteriors are similar under both sets. This suggests that the `"regularizing"` prior on **bot** is sensitive to the few observations at the highest concentrations from which it is located.
 
+
 ``` r
 check_priors(exmp_uninformative)
 ```
@@ -199,6 +207,7 @@ check_priors(exmp_uninformative)
 <img src="vignette-fig-exmp3-checkpriors-uninformative-1.png" alt="Prior and posterior densities of the four parameters of nec4param fitted to nec_data under the uninformative set." width="100%" />
 <p class="caption">Prior and posterior densities of the four parameters of nec4param fitted to nec_data under the uninformative set.</p>
 </div>
+
 
 ``` r
 check_priors(exmp_regularizing)
@@ -219,6 +228,7 @@ It is usually simplest to start from the priors `bnec()` builds, inspected with 
 
 Here we replace the default priors of **nec3param** on `nec_data` (see [Inspecting priors](#inspecting-priors)) with three of our own: `beta(5, 1)` on **top**, `normal(1.3, 2.7)` on **nec** (a `normal` on the concentration scale, without the bounds of the default entry) and `gamma(0.5, 2)` on **beta**. These values illustrate the syntax, and are not a recommendation for these data. In particular, a `gamma` prior gives no density to negative values of **beta**, and so restricts the decay rate `exp(beta)` to values above 1.
 
+
 ``` r
 set.seed(333)
 my_prior <- c(prior_string("beta(5, 1)", nlpar = "top"),
@@ -230,6 +240,7 @@ exmp_b <- bnec(y ~ crf(x, model = "nec3param"), data = nec_data,
 ```
 
 A user-specified prior does not need to include every parameter of the equation. Where a parameter is omitted, `bnec()` uses the default prior for it, from the set selected by `prior_type`, and gives a warning naming the parameter. The `pull_prior` function shows the priors *after* the model was fitted, so to see which parameters an equation has before fitting it, the user can call the function `show_params()`, either for a single equation, as below, where it lists the formula of **nec3param** and its three parameters (**top**, **beta** and **nec**), or with `model = "all"`.
+
 
 ``` r
 show_params(model = "nec3param")
@@ -243,6 +254,7 @@ show_params(model = "nec3param")
 ### A model set
 
 The user can also specify a named list of priors when more than one equation is fitted to the same dataset, with each element named after the equation it applies to.
+
 
 ``` r
 set.seed(333)
@@ -260,10 +272,12 @@ exmp_c <- bnec(y ~ crf(x, model = c("nec3param", "nec4param")), data = nec_data,
 
 `pull_prior` also works for an object of class `bayesmanecfit`, as does `check_priors` which allows an option of passing a filename to save the prior and posterior probability density plots to a pdf. The output below lists the priors supplied for each equation, with the `brms` default for `phi`.
 
+
 ``` r
 pull_prior(exmp_c)
 check_priors(exmp_c, filename = "Check_priors")
 ```
+
 
 ```
 #> $nec3param
@@ -291,6 +305,7 @@ check_priors(exmp_c, filename = "Check_priors")
 
 Priors can also be given for only some of the equations in a set. Where the named list has no element for an equation, `bnec()` gives a message and uses the default priors for that equation. Here only **nec3param** is given priors of its own, and **nec4param** takes the defaults.
 
+
 ``` r
 set.seed(333)
 my_priors <- list(nec3param = c(prior_string("beta(5, 1)", nlpar = "top"),
@@ -309,6 +324,7 @@ The `prior` argument can take either a named list of `brmsprior` objects, as her
 
 Finally the user can also extend an existing `bayesmanecfit` object with the function `amend`, also by specifying custom-built `priors`.
 
+
 ``` r
 set.seed(333)
 necsigm_priors <- c(prior_string("beta(5, 1)", nlpar = "top"),
@@ -324,6 +340,7 @@ A parameter can be held at a known value, instead of being estimated, by giving 
 
 The case in which fixing a parameter is defensible is an asymptote that is structural, not measured. For example, in a two-choice avoidance assay the animals are offered a treated and an untreated container, and the expected proportion in the treated container at zero dose is 0.5 *by design*, because at zero dose the containers are identical.
 
+
 ``` r
 set.seed(333)
 avoid_x <- rep(c(0, 0.4, 0.8, 1.2, 1.6, 2.0, 2.4, 3.0), each = 6)
@@ -337,6 +354,7 @@ These data were simulated from **nec3param** with a **top** of 0.5, an *NEC* of 
 
 `get_priors` returns the priors `bnec` would generate for a formula and data without fitting anything, so the set can be edited before the first run (fixing `top` is a change to one row).
 
+
 ``` r
 fixed_prior <- get_priors(y ~ crf(x, model = "nec3param"), data = avoid_data,
                           family = Beta(link = "identity"))
@@ -348,6 +366,7 @@ fixed_prior
 #>  lognormal(0.470003629245736, 0.707306038302134)     b                        nec    0    3       user
 ```
 
+
 ``` r
 set.seed(333)
 exmp_f <- bnec(y ~ crf(x, model = "nec3param"), data = avoid_data,
@@ -356,6 +375,7 @@ exmp_f <- bnec(y ~ crf(x, model = "nec3param"), data = avoid_data,
 ```
 
 In the output below, `top` has an estimate of 0.5 and an error of zero, because it was never sampled. Stan does not declare a parameter whose prior is constant, so it contributes nothing to the posterior.
+
 
 ``` r
 fixef(pull_brmsfit(exmp_f))
@@ -371,12 +391,14 @@ Two things are lost when an asymptote is fixed, and both are easy to miss, becau
 
 The first is a diagnostic. In the assay above, 0.5 is a *null expectation*, not a design constant, because it is true only if there is no baseline preference between the containers (arising from position, lighting, handling order or substrate). When these data are fitted with `top` free, a credible interval for `top` that includes 0.5 is positive evidence that the assay was unbiased before the contaminant was involved, and no other output of the model provides this evidence.
 
+
 ``` r
 set.seed(333)
 exmp_g <- bnec(y ~ crf(x, model = "nec3param"), data = avoid_data,
                family = Beta(link = "identity"), iter = 1e4,
                control = list(adapt_delta = 0.99))
 ```
+
 
 ``` r
 fixef(pull_brmsfit(exmp_g))
@@ -388,6 +410,7 @@ fixef(pull_brmsfit(exmp_g))
 
 This check is only possible while `top` is free. Here the credible interval for `top` (`0.458` to `0.521`) comfortably includes 0.5, so this assay appears to have been unbiased at dose zero. However, had the assay been subject to a real baseline preference (e.g. a true `top` near 0.62), fixing `top` at 0.5 would have produced a fit that appeared to be as sound as this one, and the preference could not have been detected. The discrepancy between the data and the fixed value does not disappear when it cannot appear in `top`. Instead, it is absorbed into `beta` and `nec`, and so into the toxicity estimate, with intervals that no longer reflect it. Any value asserted for `top` propagates directly into the *NEC*, which is visible even here, where 0.5 is the value from which the data were generated.
 
+
 ``` r
 rbind(fixed = nec(exmp_f), free = nec(exmp_g))
 #>            Q50     Q2.5    Q97.5
@@ -398,6 +421,7 @@ rbind(fixed = nec(exmp_f), free = nec(exmp_g))
 The median *NEC* is `1.13` with `top` fixed, against `1.17` with `top` free (the true value is `1.1`). The second thing lost is uncertainty. A constant asserts that the value is known without error, so none of the uncertainty in `top` propagates into ECx or the *NEC*, and the credible intervals narrow (the 95% interval on the *NEC* is `1.03` to `1.33` with `top` fixed, against `1.03` to `1.39` with it free). On these simulated data the narrower interval, and the median closer to the true value, are justified, because 0.5 is the value from which the data were generated. In a real assay, however, 0.5 is a null expectation, and the same narrowing would leave the uncertainty in `top` out of the interval on the *NEC*.
 
 We therefore recommend a tight informative prior over a constant in most cases, because it expresses what is known while still allowing the data to update the parameter, and the uncertainty in the parameter is still propagated to the toxicity estimates. For example, `beta(50, 50)` has a mean of 0.5 and a standard deviation of 0.05, which concentrates `top` around the design expectation without asserting it, and is still about three times as wide as the posterior for `top` from the free fit (standard deviation `0.016`).
+
 
 ``` r
 fixed_prior$prior[fixed_prior$nlpar == "top"] <- "beta(50, 50)"
@@ -438,6 +462,7 @@ The standard deviation is set so that the central 95% interval of the untruncate
 The width is therefore given by the rule, not chosen, and it adapts to the design. Expressed as a multiple of `sd(log(x))`, it was between `0.73` and `1.18` across the five designs, `0.92` to `1.03` on the four `nassarius` series, and `1.75` on `nec_data` (whose predictor is continuous and densely sampled). Because it is set by the extreme concentrations, it also depends on how a control is recorded (see [The default priors](#the-default-priors)).
 
 The two `nec` entries `bnec()` builds for **nec4param** on `nec_data` are plotted below on the log scale, together with the tested concentrations, to show the location, the coverage rule and the truncation.
+
 
 ``` r
 library(ggplot2)
@@ -512,6 +537,7 @@ An anchor on the extreme of the response, in place of the mean at one end of the
 
 Because such an anchor would be most biased for a discrete, over-dispersed response, the next example uses a count response. We simulated it from a **nec4param** curve with a known **top** of `40` and **bot** of `5`, with the over-dispersion that is typically found in a reproduction or abundance endpoint. `get_priors` builds the default priors for a formula and dataset without fitting anything, so the `"regularizing"` entries can be inspected directly from its output.
 
+
 ``` r
 set.seed(305)
 x_count <- as.numeric(rep(seq(0, 10, length.out = 11), each = 6))
@@ -525,6 +551,7 @@ c(top = 40, bot = 5, smallest_observed = min(count_data$y),
 ```
 
 The smallest observation is `1`, against a true **bot** of `5`, and the 95th percentile is `52`, against a true **top** of `40`. Both are unsuitable as an anchor for a narrow prior, and their errors are in opposite directions, which is why no single quantile of the pooled response can serve both parameters.
+
 
 ``` r
 get_priors(y ~ crf(x, model = "nec4param"), data = count_data,
@@ -540,6 +567,7 @@ get_priors(y ~ crf(x, model = "nec4param"), data = count_data,
 The `"regularizing"` entries are `Gamma` priors with their maximum density, $(s - 1) / r$, at `36.3` for **top** and `5.5` for **bot**, which are the mean responses over the six observations at the lowest and the highest concentration respectively.
 
 The plot below shows these data, with the true values of **top** and **bot**, the two extremes of the pooled response, and the mean at each end of the series that the `"regularizing"` set uses as its location.
+
 
 ``` r
 end_means <- data.frame(x = range(count_data$x),
@@ -633,6 +661,7 @@ There is one property of the default priors that a grouped fit does not inherit.
 `bayesnec` avoids this problem, instead of mitigating it. Where the deviation applies to the whole curve (through `ogl()`), it is applied *multiplicatively*, and not as an offset added to the mean. On a `0` to `1` response the deviation scales the odds of the mean, and on a positive response it scales the mean itself. Because the deviation is centred on zero, and a deviation of zero does not change the curve, **top**, **bot**, **nec** and **beta** keep their meanings, while the mean can no longer fall outside its support whatever value of the deviation is proposed. The prior on the deviation is widened to match the scale on which it acts. On a simulated `beta_binomial` design run with three seeds, this gave no divergent transitions at all, against 70 to 95 per cent for the additive form on those data, and it sampled about twice as fast.
 
 The plot below compares the two forms for **nec4param** on a `0` to `1` response, with a **top** of `0.9`, a **bot** of `0.05` and an *NEC* of `1`. Five groups are given deviations of `-1.2` to `1.2` on the log-odds scale, and the additive offsets are the same deviations converted to the response scale at a mean of `0.5`.
+
 
 ``` r
 x <- seq(0, 4, length.out = 200)
