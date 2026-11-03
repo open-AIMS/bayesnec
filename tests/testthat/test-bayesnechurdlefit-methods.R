@@ -1681,6 +1681,48 @@ test_that("the hurdle plot data put points and curve on one scale (#487)", {
   expect_equal(d_plain_log$curve$x, log(d_plain$curve$x))
 })
 
+test_that("autoplot draws hurdle observations at the opacity point_alpha sets", {
+  skip_on_cran()
+  obj <- hurdle_pair()
+  point_data <- function(p) {
+    i <- which(vapply(p$layers, function(layer) {
+      inherits(layer$geom, "GeomPoint")
+    }, logical(1)))
+    expect_length(i, 1)
+    out <- ggplot2::layer_data(p, i)
+    expect_gt(nrow(out), 0)
+    out
+  }
+  # The palette colour may already have transparency. adjustcolor multiplies
+  # its opacity, while a separate ggplot alpha would replace it.
+  def <- point_data(autoplot(obj, resolution = 20))
+  expect_identical(unique(def$colour),
+                   grDevices::adjustcolor(1, alpha.f = 0.25))
+  old_palette <- grDevices::palette()
+  on.exit(grDevices::palette(old_palette), add = TRUE)
+  for (first in c("red", "#FF000080", "transparent")) {
+    grDevices::palette(c(first, old_palette[-1]))
+    custom <- point_data(autoplot(obj, resolution = 20))
+    expect_identical(unique(custom$colour),
+                     grDevices::adjustcolor(1, alpha.f = 0.25))
+  }
+  grDevices::palette(old_palette)
+  set <- point_data(autoplot(obj, resolution = 20, point_alpha = 0.6))
+  expect_identical(unique(set$colour),
+                   grDevices::adjustcolor(1, alpha.f = 0.6))
+  all_panels <- point_data(autoplot(obj, which = "all", resolution = 20,
+                                    point_alpha = 1))
+  expect_length(unique(all_panels$PANEL), 3)
+  expect_identical(unique(all_panels$colour),
+                   grDevices::adjustcolor(1, alpha.f = 1))
+  expect_error(autoplot(obj, point_alpha = 1.5),
+               "`point_alpha` must be between 0 and 1, not 1.5.",
+               fixed = TRUE)
+  expect_error(autoplot(obj, point_alpha = NA_real_),
+               "`point_alpha` must be a number (non-missing numeric scalar).",
+               fixed = TRUE)
+})
+
 test_that("the hurdle plot draws its no-effect line on the recorded scale (#487)", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()

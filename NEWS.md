@@ -1616,6 +1616,13 @@
   `bayesmanecfit`, a `bayesnecgroupfit`, which adds a `level` column, and a
   `bayesnechurdlefit`, which gives one table per component.
 
+- `autoplot()` takes a new argument, `point_alpha`, which sets the opacity factor
+  of the observation points from 0 to 1, including points
+  coloured by `group`. By default the points are drawn as before: opaque,
+  except on a `bayesnechurdlefit`, whose default is 0.25. The credible band
+  and the per-level means drawn for `group` are unchanged. For hurdle plots,
+  the factor multiplies the existing opacity of the first colour of the R palette.
+
 - `predict()`, `plot()` and `autoplot()` for a `bayesmanecfit` take two new
   arguments. `model` names one or more equations of the set, and `average`
   chooses whether the model averaged predictions are included; it defaults to
