@@ -73,7 +73,21 @@
 #' observations, the observed and simulated mean and standard deviation, their
 #' ratios, a posterior predictive p-value for each, and a logical flag marking
 #' the control group. For the mixture families it also carries the observed and
-#' simulated proportion of zeros.
+#' simulated proportion of zeros. The separate \code{"pareto"} attribute is a
+#' data frame with one row per equation. It names the stored criterion used for
+#' model weights, its Pareto cutoff, the count and IDs of held-out units above
+#' that cutoff, the largest k, and any successful or failed group refits.
+#' \code{flagged_ids}, \code{refitted_ids}, and \code{refit_failed_ids} are list
+#' columns of character vectors. A missing criterion has \code{status =
+#' "unavailable"} and missing counts, not a clean result. Single-equation fits
+#' have no model-weight comparison. For hurdle fits the growth and survival
+#' tables have their own attributes; the combined predictive table has no
+#' leave-one-out criterion.
+#'
+#' Pareto k assesses the approximation to a leave-one-out score. It does not
+#' assess sampler convergence or the posterior predictive discrepancies in the
+#' concentration-level table. Grouped scores use the package's 0.7 cutoff;
+#' observation-wise scores use the applicable \pkg{loo} cutoff.
 #'
 #' @seealso \code{\link{pp_check}}, \code{\link{pull_best}},
 #' \code{\link{dispersion}},
@@ -89,6 +103,52 @@
 #' @export
 check_fit <- function(x, group = NULL, ndraws = 1000, seed = 10, ...) {
   UseMethod("check_fit")
+}
+
+#' Read Pareto diagnostics from the criterion used for weights
+#' @param fit A \code{bayesnecfit}.
+#' @param criterion \code{"logo"} or \code{"loo"}.
+#' @param weight The model weight, or \code{NA} for a single equation.
+#' @return A one-row data frame.
+#' @noRd
+check_fit_pareto_row <- function(fit, criterion, weight = NA_real_) {
+  z <- fit$fit$criteria[[criterion]]
+  k <- if (is.null(z)) NULL else z$diagnostics$pareto_k
+  available <- !is.null(k) && length(k) > 0 && all(is.finite(k))
+  cutoff <- if (!available) NA_real_ else if (criterion == "logo") 0.7 else
+    attr(loo::pareto_k_table(z), "k_threshold")
+  ids <- if (is.null(z)) NULL else if (criterion == "logo")
+    attr(z, "levels") else rownames(z$pointwise)
+  if (available && (is.null(ids) || length(ids) != length(k))) {
+    ids <- as.character(seq_along(k))
+  }
+  flagged <- if (available) ids[k > cutoff] else character()
+  row <- data.frame(model = fit$model, criterion = criterion,
+                    weight = weight, cutoff = cutoff,
+                    n_high_k = if (available) sum(k > cutoff) else NA_integer_,
+                    max_k = if (available) max(k) else NA_real_,
+                    status = if (available) "available" else "unavailable")
+  row$flagged_ids <- I(list(flagged))
+  row$refitted_ids <- I(list(if (is.null(z)) character() else
+                               as.character(attr(z, "refitted"))))
+  row$refit_failed_ids <- I(list(if (is.null(z)) character() else
+                                   as.character(attr(z, "refit_failed"))))
+  row
+}
+
+#' The stored criterion selected when a model set was weighted
+#' @param x A \code{bayesmanecfit}.
+#' @return \code{"logo"} or \code{"loo"}.
+#' @noRd
+check_fit_weight_criterion <- function(x) {
+  leave_out <- attr(x$mod_stats$wi, "leave_out")
+  if (!is.null(leave_out)) {
+    return(if (identical(leave_out, "observation")) "loo" else "logo")
+  }
+  # Older sets did not record leave_out. Only choose logo if every equation
+  # holds one; otherwise the stored observation-wise criterion is unambiguous.
+  if (all(vapply(x$mod_fits, function(f) !is.null(f$fit$criteria$logo),
+                 logical(1)))) "logo" else "loo"
 }
 
 #' Assign each observation to a group of the predictor
@@ -273,6 +333,9 @@ check_fit.bayesnecfit <- function(x, group = NULL, ndraws = 1000, seed = 10,
   ctrl <- levels(grp)[which.min(tapply(predictor, grp, min))]
   out$control <- out$group == ctrl
   attr(out, "model") <- x$model
+  attr(out, "pareto") <- check_fit_pareto_row(
+    x, if (!is.null(x$fit$criteria$logo)) "logo" else "loo"
+  )
   allot_class(out, c("checkfit", "data.frame"))
 }
 
@@ -290,7 +353,9 @@ check_fit.bayesmanecfit <- function(x, group = NULL, ndraws = 1000, seed = 10,
   # that a bad seed is refused before the first pull_out() rather than after.
   chk_number(seed)
   out <- lapply(names(x$mod_fits), function(m) {
-    fit_m <- suppressMessages(pull_out(x, model = m))
+    # pull_out() expands a fit and recalculates its criteria. This check only
+    # needs the stored brms fit, formula, and equation name.
+    fit_m <- allot_class(x$mod_fits[[m]], c("bayesnecfit", "bnecfit"))
     res <- check_fit(fit_m, group = group, ndraws = ndraws, seed = seed)
     res$model <- m
     res$wi <- x$mod_stats[m, "wi"]
@@ -300,6 +365,11 @@ check_fit.bayesmanecfit <- function(x, group = NULL, ndraws = 1000, seed = 10,
   rownames(out) <- NULL
   out <- out[, c("model", "wi",
                  setdiff(names(out), c("model", "wi"))), drop = FALSE]
+  criterion <- check_fit_weight_criterion(x)
+  attr(out, "pareto") <- do.call(rbind, lapply(names(x$mod_fits), function(m) {
+    check_fit_pareto_row(x$mod_fits[[m]], criterion,
+                         unname(x$mod_stats[m, "wi"]))
+  }))
   allot_class(out, c("checkfit", "data.frame"))
 }
 
@@ -330,6 +400,44 @@ print.checkfit <- function(x, ...) {
   } else if (any(flagged)) {
     cat("\nOne or more groups show a posterior predictive p-value beyond",
         "\n[0.05, 0.95]. See ?check_fit.\n")
+  }
+  p <- attr(x, "pareto")
+  if (!is.null(p)) {
+    cat("\nPareto k for stored leave-one-out scores:", p$criterion[1], "\n")
+    if (all(p$status == "unavailable")) {
+      cat("No stored criterion with Pareto diagnostics is available.\n")
+    } else {
+      shown <- seq_len(nrow(p))
+      if (nrow(p) > 10 && all(!is.na(p$weight))) {
+        shown <- which(p$weight >= 0.01)
+        if (length(shown) == 0) shown <- order(p$weight, decreasing = TRUE)[1]
+      }
+      compact <- p[shown, c("model", "weight", "n_high_k", "max_k", "cutoff",
+                             "status"), drop = FALSE]
+      if (all(is.na(compact$weight))) compact$weight <- NULL
+      num <- vapply(compact, is.numeric, logical(1))
+      compact[num] <- lapply(compact[num], function(z) round(z, 3))
+      print(compact, row.names = FALSE)
+      for (i in shown) {
+        if (length(p$flagged_ids[[i]])) {
+          cat(p$model[i], "above cutoff:",
+              paste(p$flagged_ids[[i]], collapse = ", "), "\n")
+        }
+        if (length(p$refit_failed_ids[[i]])) {
+          cat(p$model[i], "refit failed:",
+              paste(p$refit_failed_ids[[i]], collapse = ", "), "\n")
+        }
+      }
+      if (length(shown) < nrow(p)) {
+        cat(nrow(p) - length(shown), "lower-weight equations omitted from",
+            " print; see attr(x, \"pareto\") for all equations.\n")
+      }
+      if (all(p$status == "available" & p$n_high_k == 0)) {
+        cat("No held-out units exceed the Pareto cutoff.\n")
+      }
+      cat("High k concerns the leave-one-out approximation, not sampler",
+          " convergence or the posterior predictive check.\n")
+    }
   }
   invisible(x)
 }
