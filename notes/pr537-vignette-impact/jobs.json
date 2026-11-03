@@ -1,0 +1,21 @@
+{
+  "remote_directory": "/export/scratch/rfisher/bayesnec-pr537-impact-20261103",
+  "main_vignettes": {
+    "order": ["example1", "example2", "example3", "example6", "example9", "example4", "example8"],
+    "default": 944641,
+    "original_regularizing": 944642,
+    "new_regularizing": 944643
+  },
+  "example7_cases": {
+    "default": 944649,
+    "original_regularizing": 944650,
+    "new_regularizing": 944651
+  },
+  "example7_exemplars": {
+    "default": 944667,
+    "original_regularizing": 944668,
+    "new_regularizing": 944669
+  },
+  "example5": "fitted locally; objects and estimates are in this directory",
+  "example2b": "no fitted examples"
+}

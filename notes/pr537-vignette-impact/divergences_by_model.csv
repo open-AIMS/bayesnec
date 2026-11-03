@@ -1,0 +1,341 @@
+"vignette","model","arm","max_divergences","candidate_entries","class","label"
+"Example 1","ecx4param","Default",0,2,"0","0"
+"Example 1","ecx4param","Original
+regularising",0,2,"0","0"
+"Example 1","ecx4param","New
+regularising",0,2,"0","0"
+"Example 1","nec4param","Default",14,8,"11-100","14"
+"Example 1","nec4param","Original
+regularising",11,8,"11-100","11"
+"Example 1","nec4param","New
+regularising",11,8,"11-100","11"
+"Example 2","ecx4param","Default",0,1,"0","0"
+"Example 2","ecx4param","Original
+regularising",0,1,"0","0"
+"Example 2","ecx4param","New
+regularising",0,1,"0","0"
+"Example 2","ecxexp","Default",0,1,"0","0"
+"Example 2","ecxexp","Original
+regularising",0,1,"0","0"
+"Example 2","ecxexp","New
+regularising",0,1,"0","0"
+"Example 2","ecxflat","Default",0,1,"0","0"
+"Example 2","ecxflat","Original
+regularising",0,1,"0","0"
+"Example 2","ecxflat","New
+regularising",0,1,"0","0"
+"Example 2","ecxlin","Default",0,1,"0","0"
+"Example 2","ecxlin","Original
+regularising",0,1,"0","0"
+"Example 2","ecxlin","New
+regularising",0,1,"0","0"
+"Example 2","ecxll3","Default",0,1,"0","0"
+"Example 2","ecxll3","Original
+regularising",0,1,"0","0"
+"Example 2","ecxll3","New
+regularising",0,1,"0","0"
+"Example 2","ecxll4","Default",0,1,"0","0"
+"Example 2","ecxll4","Original
+regularising",0,1,"0","0"
+"Example 2","ecxll4","New
+regularising",0,1,"0","0"
+"Example 2","ecxll5","Default",NA,NA,"Not fitted","-"
+"Example 2","ecxll5","Original
+regularising",NA,NA,"Not fitted","-"
+"Example 2","ecxll5","New
+regularising",0,1,"0","0"
+"Example 2","ecxsigm","Default",0,1,"0","0"
+"Example 2","ecxsigm","Original
+regularising",0,1,"0","0"
+"Example 2","ecxsigm","New
+regularising",0,1,"0","0"
+"Example 2","ecxwb1","Default",0,1,"0","0"
+"Example 2","ecxwb1","Original
+regularising",0,1,"0","0"
+"Example 2","ecxwb1","New
+regularising",0,1,"0","0"
+"Example 2","ecxwb1p3","Default",0,1,"0","0"
+"Example 2","ecxwb1p3","Original
+regularising",0,1,"0","0"
+"Example 2","ecxwb1p3","New
+regularising",0,1,"0","0"
+"Example 2","ecxwb2","Default",0,1,"0","0"
+"Example 2","ecxwb2","Original
+regularising",0,1,"0","0"
+"Example 2","ecxwb2","New
+regularising",0,1,"0","0"
+"Example 2","ecxwb2p3","Default",0,1,"0","0"
+"Example 2","ecxwb2p3","Original
+regularising",0,1,"0","0"
+"Example 2","ecxwb2p3","New
+regularising",0,1,"0","0"
+"Example 2","nec3param","Default",0,1,"0","0"
+"Example 2","nec3param","Original
+regularising",0,1,"0","0"
+"Example 2","nec3param","New
+regularising",0,1,"0","0"
+"Example 2","nec4param","Default",0,1,"0","0"
+"Example 2","nec4param","Original
+regularising",0,1,"0","0"
+"Example 2","nec4param","New
+regularising",0,1,"0","0"
+"Example 2","neclin","Default",0,1,"0","0"
+"Example 2","neclin","Original
+regularising",0,1,"0","0"
+"Example 2","neclin","New
+regularising",0,1,"0","0"
+"Example 3","nec3param","Default",193,7,"101-1,000","193"
+"Example 3","nec3param","Original
+regularising",193,7,"101-1,000","193"
+"Example 3","nec3param","New
+regularising",193,7,"101-1,000","193"
+"Example 3","nec4param","Default",6589,5,">1,000","6,589"
+"Example 3","nec4param","Original
+regularising",6589,5,">1,000","6,589"
+"Example 3","nec4param","New
+regularising",6589,5,">1,000","6,589"
+"Example 3","necsigm","Default",104,1,"101-1,000","104"
+"Example 3","necsigm","Original
+regularising",104,1,"101-1,000","104"
+"Example 3","necsigm","New
+regularising",104,1,"101-1,000","104"
+"Example 4","ecx4param","Default",0,7,"0","0"
+"Example 4","ecx4param","Original
+regularising",0,7,"0","0"
+"Example 4","ecx4param","New
+regularising",0,7,"0","0"
+"Example 4","ecxexp","Default",0,7,"0","0"
+"Example 4","ecxexp","Original
+regularising",0,7,"0","0"
+"Example 4","ecxexp","New
+regularising",0,7,"0","0"
+"Example 4","ecxflat","Default",0,7,"0","0"
+"Example 4","ecxflat","Original
+regularising",0,7,"0","0"
+"Example 4","ecxflat","New
+regularising",0,7,"0","0"
+"Example 4","ecxll3","Default",0,13,"0","0"
+"Example 4","ecxll3","Original
+regularising",0,13,"0","0"
+"Example 4","ecxll3","New
+regularising",0,13,"0","0"
+"Example 4","ecxll4","Default",2,7,"1-10","2"
+"Example 4","ecxll4","Original
+regularising",0,7,"0","0"
+"Example 4","ecxll4","New
+regularising",0,7,"0","0"
+"Example 4","ecxll5","Default",113,6,"101-1,000","113"
+"Example 4","ecxll5","Original
+regularising",18,5,"11-100","18"
+"Example 4","ecxll5","New
+regularising",42,7,"11-100","42"
+"Example 4","ecxwb1","Default",0,7,"0","0"
+"Example 4","ecxwb1","Original
+regularising",0,7,"0","0"
+"Example 4","ecxwb1","New
+regularising",0,7,"0","0"
+"Example 4","ecxwb1p3","Default",0,13,"0","0"
+"Example 4","ecxwb1p3","Original
+regularising",0,13,"0","0"
+"Example 4","ecxwb1p3","New
+regularising",0,13,"0","0"
+"Example 4","ecxwb2","Default",4,7,"1-10","4"
+"Example 4","ecxwb2","Original
+regularising",1,7,"1-10","1"
+"Example 4","ecxwb2","New
+regularising",1,7,"1-10","1"
+"Example 4","ecxwb2p3","Default",52,13,"11-100","52"
+"Example 4","ecxwb2p3","Original
+regularising",12,13,"11-100","12"
+"Example 4","ecxwb2p3","New
+regularising",12,13,"11-100","12"
+"Example 4","joint refit","Default",0,1,"0","0"
+"Example 4","joint refit","Original
+regularising",0,1,"0","0"
+"Example 4","joint refit","New
+regularising",0,1,"0","0"
+"Example 4","nec3param","Default",0,13,"0","0"
+"Example 4","nec3param","Original
+regularising",0,13,"0","0"
+"Example 4","nec3param","New
+regularising",0,13,"0","0"
+"Example 4","nec4param","Default",1,7,"1-10","1"
+"Example 4","nec4param","Original
+regularising",0,7,"0","0"
+"Example 4","nec4param","New
+regularising",0,7,"0","0"
+"Example 5","nec4param","Default",0,1,"0","0"
+"Example 5","nec4param","Original
+regularising",0,1,"0","0"
+"Example 5","nec4param","New
+regularising",0,1,"0","0"
+"Example 6","ecx4param","Default",383,2,"101-1,000","383"
+"Example 6","ecx4param","Original
+regularising",333,2,"101-1,000","333"
+"Example 6","ecx4param","New
+regularising",333,2,"101-1,000","333"
+"Example 6","ecxexp","Default",2826,2,">1,000","2,826"
+"Example 6","ecxexp","Original
+regularising",2794,2,">1,000","2,794"
+"Example 6","ecxexp","New
+regularising",2794,2,">1,000","2,794"
+"Example 6","ecxll3","Default",0,5,"0","0"
+"Example 6","ecxll3","Original
+regularising",1,5,"1-10","1"
+"Example 6","ecxll3","New
+regularising",1,5,"1-10","1"
+"Example 6","ecxwb1","Default",3,2,"1-10","3"
+"Example 6","ecxwb1","Original
+regularising",0,2,"0","0"
+"Example 6","ecxwb1","New
+regularising",0,2,"0","0"
+"Example 6","nec3param","Default",12,4,"11-100","12"
+"Example 6","nec3param","Original
+regularising",5,4,"1-10","5"
+"Example 6","nec3param","New
+regularising",5,4,"1-10","5"
+"Example 6","nec4param","Default",5,2,"1-10","5"
+"Example 6","nec4param","Original
+regularising",15,2,"11-100","15"
+"Example 6","nec4param","New
+regularising",15,2,"11-100","15"
+"Example 8","ecx4param","Default",0,3,"0","0"
+"Example 8","ecx4param","Original
+regularising",0,3,"0","0"
+"Example 8","ecx4param","New
+regularising",0,3,"0","0"
+"Example 8","ecxexp","Default",133,3,"101-1,000","133"
+"Example 8","ecxexp","Original
+regularising",211,3,"101-1,000","211"
+"Example 8","ecxexp","New
+regularising",211,3,"101-1,000","211"
+"Example 8","ecxflat","Default",0,3,"0","0"
+"Example 8","ecxflat","Original
+regularising",0,3,"0","0"
+"Example 8","ecxflat","New
+regularising",0,3,"0","0"
+"Example 8","ecxhormebc4","Default",64,3,"11-100","64"
+"Example 8","ecxhormebc4","Original
+regularising",106,3,"101-1,000","106"
+"Example 8","ecxhormebc4","New
+regularising",106,3,"101-1,000","106"
+"Example 8","ecxll3","Default",0,3,"0","0"
+"Example 8","ecxll3","Original
+regularising",0,3,"0","0"
+"Example 8","ecxll3","New
+regularising",0,3,"0","0"
+"Example 8","ecxll4","Default",0,3,"0","0"
+"Example 8","ecxll4","Original
+regularising",0,3,"0","0"
+"Example 8","ecxll4","New
+regularising",0,3,"0","0"
+"Example 8","ecxll5","Default",469,3,"101-1,000","469"
+"Example 8","ecxll5","Original
+regularising",NA,NA,"Not fitted","-"
+"Example 8","ecxll5","New
+regularising",16,3,"11-100","16"
+"Example 8","ecxwb1","Default",0,3,"0","0"
+"Example 8","ecxwb1","Original
+regularising",0,3,"0","0"
+"Example 8","ecxwb1","New
+regularising",0,3,"0","0"
+"Example 8","ecxwb1p3","Default",0,3,"0","0"
+"Example 8","ecxwb1p3","Original
+regularising",0,3,"0","0"
+"Example 8","ecxwb1p3","New
+regularising",0,3,"0","0"
+"Example 8","ecxwb2","Default",0,3,"0","0"
+"Example 8","ecxwb2","Original
+regularising",0,3,"0","0"
+"Example 8","ecxwb2","New
+regularising",0,3,"0","0"
+"Example 8","ecxwb2p3","Default",0,3,"0","0"
+"Example 8","ecxwb2p3","Original
+regularising",0,3,"0","0"
+"Example 8","ecxwb2p3","New
+regularising",0,3,"0","0"
+"Example 8","nec3param","Default",0,3,"0","0"
+"Example 8","nec3param","Original
+regularising",0,3,"0","0"
+"Example 8","nec3param","New
+regularising",0,3,"0","0"
+"Example 8","nec4param","Default",2,3,"1-10","2"
+"Example 8","nec4param","Original
+regularising",2,3,"1-10","2"
+"Example 8","nec4param","New
+regularising",2,3,"1-10","2"
+"Example 8","nechorme","Default",109,3,"101-1,000","109"
+"Example 8","nechorme","Original
+regularising",47,3,"11-100","47"
+"Example 8","nechorme","New
+regularising",47,3,"11-100","47"
+"Example 8","nechorme4","Default",51,3,"11-100","51"
+"Example 8","nechorme4","Original
+regularising",65,3,"11-100","65"
+"Example 8","nechorme4","New
+regularising",65,3,"11-100","65"
+"Example 9","ecx4param","Default",2416,5,">1,000","2,416"
+"Example 9","ecx4param","Original
+regularising",1811,5,">1,000","1,811"
+"Example 9","ecx4param","New
+regularising",1811,5,">1,000","1,811"
+"Example 9","ecxexp","Default",0,5,"0","0"
+"Example 9","ecxexp","Original
+regularising",32,5,"11-100","32"
+"Example 9","ecxexp","New
+regularising",32,5,"11-100","32"
+"Example 9","ecxflat","Default",0,5,"0","0"
+"Example 9","ecxflat","Original
+regularising",0,5,"0","0"
+"Example 9","ecxflat","New
+regularising",0,5,"0","0"
+"Example 9","ecxll3","Default",228,5,"101-1,000","228"
+"Example 9","ecxll3","Original
+regularising",235,5,"101-1,000","235"
+"Example 9","ecxll3","New
+regularising",235,5,"101-1,000","235"
+"Example 9","ecxll4","Default",0,4,"0","0"
+"Example 9","ecxll4","Original
+regularising",0,4,"0","0"
+"Example 9","ecxll4","New
+regularising",0,4,"0","0"
+"Example 9","ecxll5","Default",5589,2,">1,000","5,589"
+"Example 9","ecxll5","Original
+regularising",5076,3,">1,000","5,076"
+"Example 9","ecxll5","New
+regularising",3493,5,">1,000","3,493"
+"Example 9","ecxsigm","Default",2,1,"1-10","2"
+"Example 9","ecxsigm","Original
+regularising",2,1,"1-10","2"
+"Example 9","ecxsigm","New
+regularising",0,1,"0","0"
+"Example 9","ecxwb1","Default",0,4,"0","0"
+"Example 9","ecxwb1","Original
+regularising",0,4,"0","0"
+"Example 9","ecxwb1","New
+regularising",0,4,"0","0"
+"Example 9","ecxwb1p3","Default",193,5,"101-1,000","193"
+"Example 9","ecxwb1p3","Original
+regularising",225,5,"101-1,000","225"
+"Example 9","ecxwb1p3","New
+regularising",225,5,"101-1,000","225"
+"Example 9","ecxwb2","Default",2015,5,">1,000","2,015"
+"Example 9","ecxwb2","Original
+regularising",1433,5,">1,000","1,433"
+"Example 9","ecxwb2","New
+regularising",1433,5,">1,000","1,433"
+"Example 9","ecxwb2p3","Default",427,5,"101-1,000","427"
+"Example 9","ecxwb2p3","Original
+regularising",268,5,"101-1,000","268"
+"Example 9","ecxwb2p3","New
+regularising",268,5,"101-1,000","268"
+"Example 9","nec3param","Default",120,6,"101-1,000","120"
+"Example 9","nec3param","Original
+regularising",85,6,"11-100","85"
+"Example 9","nec3param","New
+regularising",85,6,"11-100","85"
+"Example 9","nec4param","Default",200,5,"101-1,000","200"
+"Example 9","nec4param","Original
+regularising",219,5,"101-1,000","219"
+"Example 9","nec4param","New
+regularising",219,5,"101-1,000","219"

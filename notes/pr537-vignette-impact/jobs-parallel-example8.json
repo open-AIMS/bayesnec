@@ -1,0 +1,11 @@
+{
+  "remote_base": "/export/scratch/rfisher/bayesnec-pr537-impact-20261103",
+  "vignette": "example8",
+  "method": "grouping-structures equation-unit workflow, with exact call/data key checks and the first three model sets reused from the monolithic fits",
+  "task_range": "46-120",
+  "arms": {
+    "default": {"array": 945395, "assemble": 945412, "joint": 945413},
+    "original_regularizing": {"array": 945396, "assemble": 945414, "joint": 945415},
+    "new_regularizing": {"array": 945397, "assemble": 945416, "joint": 945417}
+  }
+}

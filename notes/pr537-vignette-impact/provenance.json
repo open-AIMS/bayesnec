@@ -1,0 +1,67 @@
+{
+  "date": "2026-11-03",
+  "package_base_commit": "2ac46e1ae35cde7d64cf20b7dceb7cc0848d9d8d",
+  "new_prior_source_commit": "7c6cc939886185655139737c491e240e7a56bc28",
+  "sources": [
+    {
+      "vignette": "example1",
+      "worktree": "bayesnec-example1-voice",
+      "commit": "79bd4549e09dab02ca11af762cfa48015773bbfd",
+      "source_sha256": "e08ebff2529ee27a2505bea5b6d131bc2b71d562678395ef41069145fb9fbf0c"
+    },
+    {
+      "vignette": "example2",
+      "worktree": "bayesnec-example2-voice",
+      "commit": "dc4f9460e424954d1b01e658dde1da676b92480e",
+      "source_sha256": "fa626ba23ae6ebe52b201c6359bd88411ab1541078b8d71821fd3f11ac8e52f1"
+    },
+    {
+      "vignette": "example2b",
+      "worktree": "bayesnec-example2b-fixes",
+      "commit": "3054a8c1b2f954b480d938471c69d0b8177489cf",
+      "source_sha256": "1645733c81fdca989f90ea496e46ca03ea0ba0193718271ca89c1e7fc21e3dea"
+    },
+    {
+      "vignette": "example3",
+      "worktree": "bayesnec-example3-voice",
+      "commit": "05546413acb2053afe3bc7774395ace23186fba4",
+      "source_sha256": "85657543321ccb592d441b77b2bcd86db274e96f75edc2fe2b151c805fa19db2"
+    },
+    {
+      "vignette": "example4",
+      "worktree": "bayesnec-example4-voice",
+      "commit": "d884684f517af36cbe67776a54696da0f5b5919d",
+      "source_sha256": "a97466369fc29a3eb94be350df81914d5370e05d00e7c41d995d6cc35d287f56"
+    },
+    {
+      "vignette": "example5",
+      "worktree": "bayesnec-example5-voice",
+      "commit": "f9a8164dc10f71925015e566ead5b2e35d455d91",
+      "source_sha256": "17de6da164e466d1da00bbf19a6f8744edd52dec5f42ff4ffaded48125f26b94"
+    },
+    {
+      "vignette": "example6",
+      "worktree": "bayesnec-example6-trial-d",
+      "commit": "4689825af6b99572ab575da01b92d479d94bc0c2",
+      "source_sha256": "c4461ea99644e092b69be0f45edd3702d0cabd3e24b9edf225d768f4801e98a3"
+    },
+    {
+      "vignette": "example7",
+      "worktree": "bayesnec-example7-voice",
+      "commit": "8dfe837b6aa858f2f6a33dfad1b588a2d2b9aa4f",
+      "source_sha256": "b905c8f9432e7ffcae4f0ccb6e8c79f1261c43f7502e60f5a661b59fb993b9c7"
+    },
+    {
+      "vignette": "example8",
+      "worktree": "bayesnec-predev-run",
+      "commit": "ab0cab26ce6700b3f4a2f59a92a1bf5d67ca258a",
+      "source_sha256": "dd60e80bc64441c137209f76f2bca5688ce969032c5c991f252aad1bde788909"
+    },
+    {
+      "vignette": "example9",
+      "worktree": "bayesnec-example9-voice",
+      "commit": "8c9cfb4971a464c58d6fbcaa81c6265021509a32",
+      "source_sha256": "e4319a7fb8018360852771dc4ab024b57793f7e37d20b890bb4a738b4459159f"
+    }
+  ]
+}
