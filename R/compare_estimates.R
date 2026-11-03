@@ -168,8 +168,9 @@ compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
       subset_draws(m, sample(seq_along(m), n_samples, replace = FALSE))
     }, n_samples = n_samples)
   })
+  # Keep names such as "2018" as given; data.frame() would return "X2018".
   posterior_data <- do.call("cbind", r_posterior_list) |>
-    data.frame() |>
+    data.frame(check.names = FALSE) |>
     pivot_longer(cols = everything(), names_to = "model") |>
     arrange(.data$model) |>
     data.frame()

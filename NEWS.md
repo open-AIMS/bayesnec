@@ -467,14 +467,10 @@
   table stating how many draws lie beyond the range, which the release did not
   report at all.
 
-  Three vignettes report no estimate and were ruled out by inspection rather
+  Two vignettes report no estimate and were ruled out by inspection rather
   than measured. `example2b` fits nothing: every chunk draws a theoretical curve
   from a closed-form function. `example7`'s twelve `bnec()` calls are all in
-  chunks that set `eval = FALSE`, so none of them runs. `example4` fits one
-  model set and reports only `compare_posterior()`, which reads the
-  `posterior = TRUE` draws and never reaches the summary this release changes;
-  run on the packaged model-averaged fit it returns an unnamed posterior of
-  length 100 with no missing value and no censoring record.
+  chunks that set `eval = FALSE`, so none of them runs.
 
   `example8` could not be measured. It fits 189 models and loads them from a
   store keyed by the fit call, which `vignettes/fit_store.R` reaches only where
@@ -1908,8 +1904,16 @@
   because the plate reader applies auto-scale gain adjustment and the value at
   which it stops resolving is therefore a plate property (#6, #33).
 
+- `vignette("example4")` compares posteriors on two published datasets in
+  place of its simulated comparison, which compared the **nec** and **ecx**
+  model sets of one fit to one dataset. The seven herbicides of `herbicide` are
+  compared on the N(S)EC and then contrasted draw by draw in a `bnec_joint()`
+  refit, and the three climate scenarios of `coral_colour` and `coral_pam` are
+  compared on the EC50, the EC10 and the N(S)EC; the colour fits are also
+  compared across the fitted curve.
+
 - `vignette("example8")` is structured as an introduction to the three
-  group-level syntaxes followed by three case studies, one per dataset. The
+  group-level syntaxes followed by a case study on `lum31`. The
   syntax section previously introduced `herbicide` in order to have a data frame
   for `make_brmsformula()` to resolve names against, which put a factor-covariate
   dataset in the section about random groupings; it now uses a 24-row synthetic
@@ -1922,24 +1926,25 @@
   diagnostics described a configuration a reader would not get by default. The
   defaults are 10000 iterations at 8000 warmup, and `adapt_delta` is raised to
   0.99 by `bnec()` itself wherever a constrained mean is given an unbounded
-  group-level term, which covers every fit in the vignette but the herbicide
-  one.
+  group-level term.
 
-- `vignette("example8")` draws the posteriors behind each `compare_posterior()`
-  call, for the metals and for the seven herbicides. `prob_diff` reduces a pair
+- `vignette("example8")` draws the posteriors behind its `compare_posterior()`
+  call for the metals, and `vignette("example4")` those for the seven
+  herbicides and the three climate scenarios. `prob_diff` reduces a pair
   to one number and the densities show whether a pair is separated in location
   or in width.
 
-- `vignette("example8")` is drawn on a log concentration axis throughout. Every
-  series in it spans one to three orders of magnitude, and `autoplot()` returns
+- `vignette("example8")` and `vignette("example4")` are drawn on a log
+  concentration axis throughout. Every series in them spans one to three orders
+  of magnitude, and `autoplot()` returns
   the predictor on the scale it was recorded on, so a bare figure put the whole
   curve into the left of the axis. The axis is set by transforming the scale
-  rather than the values or the breaks. The two `bnec_group()` figures are built
+  rather than the values or the breaks. The `bnec_group()` figures are built
   from `ggbnec_data()` instead of `plot()`, because `plot.bayesnecfit()` applies
   its `xform` argument only where the predictor was not transformed inside
   `crf()`, so no argument to it reaches the axis of a fit on `log(conc)`.
 
-- The `coral_colour` and `coral_pam` fits in `vignette("example8")` are on
+- The `coral_colour` and `coral_pam` fits in `vignette("example4")` are on
   `crf(log(diuron_adj), ...)` rather than the recorded concentration. Both
   datasets record an untreated control as an exact zero, which `bnec()` refuses
   inside `log()`, so the vignette substitutes 0.1 µg/L for it in a visible chunk
@@ -1961,9 +1966,9 @@
   designs --- a chamber sits at one concentration and so admits only a
   displacement --- with 45 chambers of four fragments for colour and 54 chambers
   of five to eight readings for yield. `coral_colour` has five concentrations,
-  which is the conventional minimum, and `vignette("example8")` uses it to
-  contrast equations of three and of four curve parameters against a design
-  that small (#301). Exactly one colour observation
+  which is the conventional minimum, and `vignette("example4")` fits it with
+  equations of three curve parameters for that reason (#301). Exactly one
+  colour observation
   sits on the `Beta` boundary, the signature of a score normalised to the largest
   value in the dataset, and 63 of the 414 yield readings are exactly 0 (#6, #33).
 
@@ -2111,6 +2116,11 @@
   it, which can differ from the calling session (#464).
 
 ## Bug fixes
+
+- `compare_posterior()` returns the names of the fits it is given unchanged in
+  `posterior_data`. A name that is not a syntactic R name, such as the level
+  `"2018"` of a `bnec_group()` fit, was returned as `"X2018"`, and so no longer
+  matched the labels in `prob_diff` and `diff_data`.
 
 - A `zero_inflated_beta` response with every observation at one bound is now
   handled as a `beta` response is. A response of 1 in every observation is
