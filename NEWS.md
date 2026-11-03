@@ -1896,7 +1896,8 @@
   model sets of one fit to one dataset. The seven herbicides of `herbicide` are
   compared on the N(S)EC and then contrasted draw by draw in a `bnec_joint()`
   refit, and the three climate scenarios of `coral_colour` and `coral_pam` are
-  compared on the EC50, the EC10, the N(S)EC and the fitted curve.
+  compared on the EC50, the EC10 and the N(S)EC; the colour fits are also
+  compared across the fitted curve.
 
 - `vignette("example8")` is structured as an introduction to the three
   group-level syntaxes followed by a case study on `lum31`. The

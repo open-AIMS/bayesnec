@@ -1386,6 +1386,53 @@ Copper is both the more potent metal and the better determined one on these
 data, and the single pairwise comparison of 0.0153 is what that separation
 reduces to.
 
+# Choosing a route for a factor
+
+Three routes fit a factor, and they answer different questions. The choice is
+made from the question rather than from the data, because all three will return
+an answer on any dataset with enough levels.
+
+| the question | the route | the call |
+|---|---|---|
+| Does the shape of the curve differ between levels? | separate fits | `bnec_group(y ~ crf(x, "all"), group_var = "site")` |
+| What is the population curve, with the differences between levels treated as nuisance? | a group-level term | `y ~ crf(x, "all") + ogl(site)` |
+| What is the difference between two named levels, within one posterior? | a joint refit | `bnec_joint(fits)` on a `bnec_group()` fit |
+
+Separate fits give each level its own model set and model weights, so their
+estimates retain uncertainty over the functional form. The herbicide example
+in the [Comparing posterior predictions][e4] vignette uses this route. Each
+level is estimated from its own data alone, and its estimate is imprecise when
+it has few observations. A joint refit can also use different equations across
+levels, but selects one equation for each and leaves out the uncertainty over
+the other equations.
+
+A group-level term shares everything except the deviations it names. It is the
+route for a grouping that is a nuisance rather than a subject --- plates,
+chambers, tanks --- where the levels are exchangeable and the question is about
+the population curve rather than about any level. `ogl()` displaces the whole
+curve, `pgl()` gives every parameter its own deviation, and `(par | group)`
+names one parameter. The zinc case study above compares a pooled fit with one
+using `ogl(plate)`. The term is a claim about which differences exist; its
+group-level standard deviation indicates how much the plates differ.
+
+A joint refit estimates every level's curve parameters in one posterior, with
+no pooling between them by default. It selects one equation per level using
+the weights from `bnec_group()` before refitting. The aligned draws permit a
+within-fit contrast that retains any dependence introduced by shared terms.
+The dispersion can also be shared across levels with `disp_by_level = FALSE`
+where measurement error is a property of the assay. The
+[Comparing posterior predictions][e4] vignette refits the herbicide fits jointly
+with separate dispersion parameters and compares a pair on the draws. See
+`?bnec_joint`.
+
+The comparison in *Within-concentration grouping* and *Across-concentration
+grouping* above is between the first two routes on one dataset, and its result
+does not transfer: `ogl(conc_group)` widened the intervals and `ogl(plate)`
+narrowed them, on the same response, because a grouping whose levels sit at one
+concentration and a grouping whose levels span the series have different work to
+do. What transfers is the method, which is to fit the alternatives and read the
+standard deviations rather than to argue from the design.
+
 # Provenance
 
 Every fit shown was made when this vignette was precompiled, so the estimates

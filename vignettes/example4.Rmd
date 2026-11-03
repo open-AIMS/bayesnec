@@ -50,12 +50,12 @@ designs admit which of these approaches is set out in the
 `compare_posterior` is the function used to compare separate fits, whether these
 come from `bnec_group()` or from calls made independently for each level. It
 pairs the draws of two posteriors using a random permutation, which approximates
-the difference between two independent posteriors and is valid only where the
-fits are separate. Two levels of a single fit (e.g. a fit with a group-level
-term, or a `bnec_joint()` refit) share draws, and permuting them discards the
-correlation between them. A contrast between levels of a single fit is therefore
-obtained by differencing the draws of that fit, and not by using
-`compare_posterior`.
+their difference when the posteriors are independent. Separate fits of the
+levels by `bnec_group()` meet that condition. Levels of a fit with a shared
+term may be dependent, and permuting their draws would discard that dependence.
+For a joint fit, we therefore take a contrast by differencing its aligned
+draws. This also applies to the herbicide refit below, in which the levels have
+no shared parameters.
 
 Below we demonstrate `compare_posterior` on two published datasets that are
 included in `bayesnec`, each fitted separately by level using `bnec_group()`. In
@@ -680,7 +680,9 @@ followed by the 2050 curve near 2 µg/L and the 2018 curve near 10 µg/L. The ba
 for 2018 is wide above 3 µg/L, again reflecting the absence of observations
 between 2.9 and 29 µg/L. The probability that the 2018 curve is the higher
 exceeds 0.9 against the 2100 curve from about 0.7 µg/L and against the 2050
-curve from about 2 µg/L, and remains above 0.95 against both up to 29 µg/L. The
+curve from about 2 µg/L. Above about 1.5 µg/L, the comparison with 2100
+remains above 0.95, while the comparison with 2050 dips to about 0.94 near
+10 µg/L. The
 2050 and 2100 curves are most clearly separated near 3 µg/L (a probability of
 about 0.99), and less so near 10 µg/L (about 0.86). This suggests that the
 scenarios differ over most of the range above about 1 µg/L, which is where the
@@ -806,22 +808,23 @@ There were no divergent transitions in 8000 post-warmup draws, with a maximum
 R-hat of 1.002 and a minimum bulk effective sample size of 2148.
 
 A joint refit conditions on one equation per level, so the model uncertainty
-that the per-level averages represent is absent from it. Where the chosen
-equation receives most of the weight of its level, the narrower interval of the
-joint refit is a real gain in precision. Where it receives less than half, as it does here for four of the seven
-herbicides, part of the narrowing is likely to be model uncertainty that has
-been set aside, not resolved. For irgarol, whose equation received 0.266 of the
-weight, the EC50 interval is 0.489 to 0.592 µg/L in the joint refit against
-0.487 to 0.596 from the per-level model average, so on these data the narrowing
-is small.
+that the per-level averages represent is absent from it. A narrower interval
+after selecting one equation does not by itself show a gain in precision: it
+omits uncertainty over the other equations. The chosen equation receives less
+than 0.4 of the weight for four of the seven herbicides. For irgarol, whose
+equation received 0.266 of the weight, the EC50 interval is 0.489 to 0.592 µg/L
+in the joint refit, against 0.487 to 0.596 from the per-level model average.
+The narrowing is small on these data.
 
 `compare_posterior` and a joint refit therefore answer different questions. `compare_posterior` asks
 how two independently estimated levels compare, each with its own model
 uncertainty, which is appropriate where the levels were tested separately and
-are being ranked. The joint refit asks how two levels of one model compare,
-holding the dispersion structure and the sampling in common, which is
-appropriate for a controlled contrast (e.g. a treatment against its control, or
-two sites of one experiment).
+are being ranked. The joint refit asks how two levels compare conditional on
+the selected equation for each. In this example each herbicide has its own curve
+and dispersion parameters; the fitted model shares no parameter between them.
+The aligned draws give a contrast under that model. A joint refit can also
+include a shared term where the levels use one equation, for example in a
+controlled comparison of treatments or sites.
 
 # Provenance
 
