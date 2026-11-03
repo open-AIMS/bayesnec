@@ -126,8 +126,10 @@ which is a coverage width at the 95\% level where concentrations are supplied
 as recorded and the constant \code{10 sd(x)} where the predictor is supplied
 already logged, so how much narrower the regularizing entry is depends on
 which of the two the data are on. See \code{vignette("example3")} for why the
-two rules differ. Ignored when priors are supplied directly via the
-\code{prior} argument. Both default sets assume that the tested
+two rules differ. Applies only to the entries \code{bnec} builds: a prior
+supplied through \code{prior} is used as written, and any parameter or
+equation it omits takes its default from the selected set. Both default
+sets assume that the tested
 concentrations reach the lower asymptote of the curve. Where the mean
 response at the highest concentration is below the mean at the second
 highest by more than the contrast's standard error admits, tested one-sided
