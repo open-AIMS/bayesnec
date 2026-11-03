@@ -114,7 +114,7 @@ check_fit <- function(x, group = NULL, ndraws = 1000, seed = 10, ...) {
 check_fit_pareto_row <- function(fit, criterion, weight = NA_real_) {
   z <- fit$fit$criteria[[criterion]]
   k <- if (is.null(z)) NULL else z$diagnostics$pareto_k
-  available <- !is.null(k) && length(k) > 0 && all(is.finite(k))
+  available <- !is.null(k) && length(k) > 0 && !anyNA(k)
   cutoff <- if (!available) NA_real_ else if (criterion == "logo") 0.7 else
     attr(loo::pareto_k_table(z), "k_threshold")
   ids <- if (is.null(z)) NULL else if (criterion == "logo")

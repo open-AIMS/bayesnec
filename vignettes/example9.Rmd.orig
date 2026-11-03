@@ -439,6 +439,7 @@ predictive fit. The full Pareto table is available through
 cf_default <- check_fit(screened_default, ndraws = 100)
 print(cf_default)
 k_default <- attr(cf_default, "pareto")
+if (anyNA(k_default$n_high_k)) stop("Pareto diagnostics are unavailable")
 high_k_default <- k_default[k_default$n_high_k > 0, , drop = FALSE]
 ```
 
@@ -617,6 +618,7 @@ screened_regular <- screen_models(fit_regular)
 cf_regular <- check_fit(screened_regular, ndraws = 100)
 print(cf_regular)
 k_regular <- attr(cf_regular, "pareto")
+if (anyNA(k_regular$n_high_k)) stop("Pareto diagnostics are unavailable")
 high_k_regular <- k_regular[k_regular$n_high_k > 0, , drop = FALSE]
 ```
 
@@ -661,7 +663,9 @@ common_regular <- make_common(screened_regular, shared_models)
 attr(check_fit(common_default, ndraws = 100), "pareto")
 attr(check_fit(common_regular, ndraws = 100), "pareto")
 correct_k <- function(x) {
-  if (any(attr(check_fit(x, ndraws = 100), "pareto")$n_high_k > 0)) {
+  p <- attr(check_fit(x, ndraws = 100), "pareto")
+  if (anyNA(p$n_high_k)) stop("Pareto diagnostics are unavailable")
+  if (any(p$n_high_k > 0)) {
     amend(x, loo_controls = list(refit = TRUE))
   } else {
     x

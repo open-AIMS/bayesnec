@@ -241,6 +241,21 @@ test_that("missing criteria are marked unavailable", {
                "No stored criterion with Pareto diagnostics is available")
 })
 
+test_that("infinite Pareto k remains a flagged diagnostic", {
+  z <- list(diagnostics = list(pareto_k = c(0.2, Inf)))
+  attr(z, "levels") <- c("a", "b")
+  fit <- list(model = "ecxlin", fit = list(criteria = list(logo = z)))
+  p <- bayesnec:::check_fit_pareto_row(fit, "logo")
+  expect_identical(p$status, "available")
+  expect_equal(p$n_high_k, 1)
+  expect_identical(p$flagged_ids[[1]], "b")
+  expect_identical(p$max_k, Inf)
+  z$diagnostics$pareto_k[2] <- NA_real_
+  fit$fit$criteria$logo <- z
+  expect_identical(bayesnec:::check_fit_pareto_row(fit, "logo")$status,
+                   "unavailable")
+})
+
 test_that("the model set selects the criterion recorded for its weights", {
   x <- list(mod_stats = data.frame(wi = 1), mod_fits = list())
   attr(x$mod_stats$wi, "leave_out") <- "observation"
