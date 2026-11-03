@@ -106,7 +106,8 @@
 <span>  x_range <span class="op">=</span> <span class="cn">NA</span>,</span>
 <span>  xform <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  xlab <span class="op">=</span> <span class="st">"Predictor"</span>,</span>
-<span>  ylab <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  ylab <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  point_alpha <span class="op">=</span> <span class="fl">0.25</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -152,6 +153,12 @@ grid is built on, and <code>xform</code> is not applied.</p></dd>
 <dt id="arg-ylab">ylab<a class="anchor" aria-label="anchor" href="#arg-ylab"></a></dt>
 <dd><p>Y axis label. Defaults to <code>NULL</code>, which labels each panel
 by what it shows.</p></dd>
+
+
+<dt id="arg-point-alpha">point_alpha<a class="anchor" aria-label="anchor" href="#arg-point-alpha"></a></dt>
+<dd><p>The opacity factor for the observation points, a single
+number from 0 to 1. It multiplies the existing opacity of the first colour of
+the current R palette. Defaults to 0.25.</p></dd>
 
 </dl></div>
     <div id="value">
