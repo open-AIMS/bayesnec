@@ -429,35 +429,18 @@ The `wi` column of `summary()` is the share of the model-averaged prediction
 assigned to each equation (the weights sum to one). They are computed from
 leave-one-chamber-out scores by the default pseudo-BMA method. A small weight
 does not validate a poorly sampled equation, which is why we screen before
-interpreting this table. We report each equation's weight, number of chambers
-with *k* above 0.7 and largest *k*, then list any affected chambers.
+interpreting this table. The separate Pareto section of `check_fit()` names
+each equation's weight, number of chambers with *k* above 0.7 and largest *k*.
+It then lists affected chambers. The concentration rows test posterior
+predictive fit. The full Pareto table is available through
+`attr(cf_default, "pareto")`.
 
-```{r coral-pareto-function}
-pareto_by_chamber <- function(x) {
-  w <- if (inherits(x, "bayesnecfit")) {
-    setNames(1, names(models(x)))
-  } else {
-    summary(x)$mod_weights[, "wi"]
-  }
-  out <- lapply(names(models(x)), function(m) {
-    z <- pull_brmsfit(x, model = m)$criteria$logo
-    data.frame(model = m, weight = unname(w[m]),
-               chamber = rownames(z$pointwise),
-               pareto_k = z$diagnostics$pareto_k)
-  })
-  do.call(rbind, out)
-}
-pareto_summary <- function(z) {
-  do.call(rbind, lapply(split(z, z$model), function(d) {
-    data.frame(model = d$model[1], weight = d$weight[1],
-               n_high_k = sum(d$pareto_k > 0.7),
-               max_k = max(d$pareto_k), row.names = NULL)
-  }))
-}
-k_default <- pareto_by_chamber(screened_default)
-pareto_summary(k_default)
-high_k_default <- k_default[k_default$pareto_k > 0.7, ]
-high_k_default
+```{r coral-pareto-check}
+cf_default <- check_fit(screened_default, ndraws = 100)
+print(cf_default)
+k_default <- attr(cf_default, "pareto")
+if (anyNA(k_default$n_high_k)) stop("Pareto diagnostics are unavailable")
+high_k_default <- k_default[k_default$n_high_k > 0, , drop = FALSE]
 ```
 
 If a contributing equation has a high *k*, `amend(x, loo_controls =
@@ -632,10 +615,11 @@ again and check the groupwise Pareto *k* values before interpreting weights.
 
 ```{r coral-screen-regular, message = TRUE}
 screened_regular <- screen_models(fit_regular)
-k_regular <- pareto_by_chamber(screened_regular)
-pareto_summary(k_regular)
-high_k_regular <- k_regular[k_regular$pareto_k > 0.7, ]
-high_k_regular
+cf_regular <- check_fit(screened_regular, ndraws = 100)
+print(cf_regular)
+k_regular <- attr(cf_regular, "pareto")
+if (anyNA(k_regular$n_high_k)) stop("Pareto diagnostics are unavailable")
+high_k_regular <- k_regular[k_regular$n_high_k > 0, , drop = FALSE]
 ```
 
 Where a high *k* occurs, the refit below replaces the approximate
@@ -676,10 +660,12 @@ set.seed(228)
 common_default <- make_common(screened_default, shared_models)
 set.seed(228)
 common_regular <- make_common(screened_regular, shared_models)
-pareto_summary(pareto_by_chamber(common_default))
-pareto_summary(pareto_by_chamber(common_regular))
+attr(check_fit(common_default, ndraws = 100), "pareto")
+attr(check_fit(common_regular, ndraws = 100), "pareto")
 correct_k <- function(x) {
-  if (any(pareto_by_chamber(x)$pareto_k > 0.7)) {
+  p <- attr(check_fit(x, ndraws = 100), "pareto")
+  if (anyNA(p$n_high_k)) stop("Pareto diagnostics are unavailable")
+  if (any(p$n_high_k > 0)) {
     amend(x, loo_controls = list(refit = TRUE))
   } else {
     x

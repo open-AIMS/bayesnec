@@ -21,6 +21,9 @@
   `amend(x, loo_controls = list(leave_out = "group"))` recomputes its weights.
 - `mod_stats` gains a column `elpd`, the score the weights were computed
   from, and `summary()` prints what the score left out.
+- `check_fit()` prints the stored criterion's Pareto *k* summary separately
+  from its concentration-level posterior predictive table. The complete
+  per-equation summary is in the returned table's `"pareto"` attribute.
 - `crossed_group_weights()` compares the grouped and pooled fits on the
   leave-one-group-out score, as LOOIC, where that score was computed for every
   fit over the same levels, and on WAIC otherwise.

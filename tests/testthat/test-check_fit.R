@@ -163,6 +163,107 @@ test_that("the simulated intervals are on the object but not printed", {
   expect_false(any(grepl("sim_mean_lo|sim_sd_hi", printed)))
 })
 
+test_that("the Pareto section is separate from concentration rows", {
+  skip_on_cran()
+  cf <- manec_checkfit()
+  p <- attr(cf, "pareto")
+  expect_s3_class(p, "data.frame")
+  expect_setequal(p$model, names(manec_example$mod_fits))
+  expect_false(any(c("max_k", "n_high_k", "flagged_ids") %in% names(cf)))
+  expect_equal(nrow(as.data.frame(cf)), nrow(cf))
+  expect_s3_class(plot(cf), "ggplot")
+  expect_match(paste(capture.output(print(cf)), collapse = "\n"),
+               "Pareto k for stored leave-one-out scores")
+})
+
+test_that("model-set checks read stored fits without recalculating criteria", {
+  skip_on_cran()
+  local_mocked_bindings(pull_out = function(...) stop("recalculated"))
+  expect_no_error(check_fit(manec_example, group = 3, ndraws = 20))
+})
+
+test_that("stored grouped scores retain corrected and failed refit IDs", {
+  set.seed(541)
+  z <- suppressWarnings(loo::loo(matrix(rnorm(4000), 1000, 4)))
+  z$diagnostics$pareto_k <- c(0.2, 0, 0.9, 0.8)
+  attr(z, "levels") <- c("a", "b", "c", "d")
+  attr(z, "refitted") <- "b"
+  attr(z, "refit_failed") <- "d"
+  fit <- list(model = "ecxlin", fit = list(criteria = list(logo = z)))
+  p <- bayesnec:::check_fit_pareto_row(fit, "logo", 0.8)
+  expect_equal(p$cutoff, 0.7)
+  expect_equal(p$n_high_k, 2)
+  expect_equal(p$max_k, 0.9)
+  expect_identical(p$flagged_ids[[1]], c("c", "d"))
+  expect_identical(p$refitted_ids[[1]], "b")
+  expect_identical(p$refit_failed_ids[[1]], "d")
+  expect_equal(p$weight, 0.8)
+  cf <- data.frame(ppp_mean = 0.5, ppp_sd = 0.5, control = TRUE)
+  attr(cf, "pareto") <- p
+  class(cf) <- c("checkfit", "data.frame")
+  printed <- paste(capture.output(print(cf)), collapse = "\n")
+  expect_match(printed, "ecxlin above cutoff: c, d")
+  expect_match(printed, "ecxlin refit failed: d")
+})
+
+test_that("observation-wise scores use the loo cutoff and row IDs", {
+  set.seed(542)
+  z <- suppressWarnings(loo::loo(matrix(rnorm(4000), 1000, 4)))
+  rownames(z$pointwise) <- c("one", "two", "three", "four")
+  z$diagnostics$pareto_k <- c(0.1, 0.8, 0.2, 0.3)
+  fit <- list(model = "ecxlin", fit = list(criteria = list(loo = z)))
+  p <- bayesnec:::check_fit_pareto_row(fit, "loo")
+  expect_equal(p$cutoff, attr(loo::pareto_k_table(z), "k_threshold"))
+  expect_identical(p$flagged_ids[[1]], "two")
+  expect_true(is.na(p$weight))
+  z$diagnostics$pareto_k[2] <- 0.2
+  fit$fit$criteria$loo <- z
+  clean <- bayesnec:::check_fit_pareto_row(fit, "loo")
+  expect_equal(clean$n_high_k, 0)
+  expect_length(clean$flagged_ids[[1]], 0)
+  cf <- data.frame(ppp_mean = 0.5, ppp_sd = 0.5, control = TRUE)
+  attr(cf, "pareto") <- clean
+  class(cf) <- c("checkfit", "data.frame")
+  expect_match(paste(capture.output(print(cf)), collapse = "\n"),
+               "No held-out units exceed the Pareto cutoff")
+})
+
+test_that("missing criteria are marked unavailable", {
+  fit <- list(model = "ecxlin", fit = list(criteria = list()))
+  p <- bayesnec:::check_fit_pareto_row(fit, "loo")
+  expect_identical(p$status, "unavailable")
+  expect_true(is.na(p$n_high_k))
+  expect_true(is.na(p$max_k))
+  cf <- data.frame(ppp_mean = 0.5, ppp_sd = 0.5, control = TRUE)
+  attr(cf, "pareto") <- p
+  class(cf) <- c("checkfit", "data.frame")
+  expect_match(paste(capture.output(print(cf)), collapse = "\n"),
+               "No stored criterion with Pareto diagnostics is available")
+})
+
+test_that("infinite Pareto k remains a flagged diagnostic", {
+  z <- list(diagnostics = list(pareto_k = c(0.2, Inf)))
+  attr(z, "levels") <- c("a", "b")
+  fit <- list(model = "ecxlin", fit = list(criteria = list(logo = z)))
+  p <- bayesnec:::check_fit_pareto_row(fit, "logo")
+  expect_identical(p$status, "available")
+  expect_equal(p$n_high_k, 1)
+  expect_identical(p$flagged_ids[[1]], "b")
+  expect_identical(p$max_k, Inf)
+  z$diagnostics$pareto_k[2] <- NA_real_
+  fit$fit$criteria$logo <- z
+  expect_identical(bayesnec:::check_fit_pareto_row(fit, "logo")$status,
+                   "unavailable")
+})
+
+test_that("the model set selects the criterion recorded for its weights", {
+  x <- list(mod_stats = data.frame(wi = 1), mod_fits = list())
+  attr(x$mod_stats$wi, "leave_out") <- "observation"
+  expect_identical(bayesnec:::check_fit_weight_criterion(x), "loo")
+  attr(x$mod_stats$wi, "leave_out") <- "chamber"
+  expect_identical(bayesnec:::check_fit_weight_criterion(x), "logo")
+})
+
 test_that("the interval brackets the simulated median", {
   skip_on_cran()
   d <- as.data.frame(manec_checkfit())
@@ -214,6 +315,9 @@ test_that("check_fit on a hurdle fit returns all three components", {
   res <- suppressWarnings(check_fit(hurdle_fixture()$fit))
   expect_named(res, c("growth", "survival", "combined"))
   expect_s3_class(res$combined, "checkfit")
+  expect_s3_class(attr(res$growth, "pareto"), "data.frame")
+  expect_s3_class(attr(res$survival, "pareto"), "data.frame")
+  expect_null(attr(res$combined, "pareto"))
 })
 
 test_that("the combined table reports the zero fraction", {
