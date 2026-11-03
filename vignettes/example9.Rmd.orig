@@ -167,11 +167,12 @@ For example, the mean proportion is `r sprintf("%.3f", mean(colour_2050$proporti
 in the control and `r sprintf("%.3f", mean(colour_2050$proportion[colour_2050$diuron == 29]))`
 at 29 µg/L. Most of the observed decline is between 2.9 and 29 µg/L (a
 ten-fold step), where the experiment has no intermediate treatment. Although
-the highest treatment has a low mean colour proportion and may be close to the
-floor, the design does not show a flat lower limb.
-We therefore use `asymptote_observed = FALSE` when constructing the default
-priors. This declaration permits threshold and midpoint parameters above the
-tested range; it does not assert that those values are supported by the data.
+the highest treatment has a low mean colour proportion, the design has no
+higher treatment to show whether the response remains there. We retain the
+default `asymptote_observed = TRUE`: reaching the lower asymptote by 29 µg/L is
+plausible given the response near zero, but is not verified by this design.
+`bnec()` checks the change between the two highest treatments before fitting,
+and we examine its message below.
 
 The response is continuous and bounded by zero and one. An identity-linked
 `Beta` family is appropriate for values in the open interval (0, 1); it also
@@ -249,11 +250,9 @@ their equations and `?models` for the model groups).
 coral_formula <- proportion ~ crf(log(diuron_adj), model = "decline") +
   ogl(chamber)
 prior_default <- get_priors(coral_formula, data = colour_2050, family = fam,
-                            prior_type = "uninformative",
-                            asymptote_observed = FALSE)
+                            prior_type = "uninformative")
 prior_regular <- get_priors(coral_formula, data = colour_2050, family = fam,
-                            prior_type = "regularizing",
-                            asymptote_observed = FALSE)
+                            prior_type = "regularizing")
 names(prior_default)
 ```
 
@@ -294,12 +293,20 @@ generated in R. The vignette precompile selects the `cmdstanr` backend through
 chunks in a separate R session to use the same backend; otherwise `brms`
 defaults to `rstan`, and the diagnostic counts may differ.
 
-```{r coral-fit-default, results = "hide"}
+```{r coral-fit-default, results = "hide", message = TRUE}
 set.seed(228)
 fit_default <- bnec(coral_formula, data = colour_2050, family = fam,
-                    prior_type = "uninformative",
-                    asymptote_observed = FALSE, seed = 228, refresh = 0)
+                    prior_type = "uninformative", seed = 228, refresh = 0)
 ```
+
+The message compares mean colour at 2.9 and 29 µg/L. A decline between those
+levels is clear, but this check cannot tell whether the curve flattens at
+29 µg/L or continues to fall beyond it. We keep the default declaration because
+the final response is near the lower bound, while recognising that one
+high-dose group cannot establish a plateau. Setting
+`asymptote_observed = FALSE` would be a different prior assumption: it changes
+the `bot` prior and removes the upper bound of the `nec` and `ec50` priors. The
+warning calls for examining that assumption, not changing it automatically.
 
 The record separates equations excluded before fitting from those attempted
 and those that failed during fitting. It also records any values changed to
@@ -582,8 +589,7 @@ not a substitute for checking each fit.
 ```{r coral-fit-regular, results = "hide"}
 set.seed(228)
 fit_regular <- bnec(coral_formula, data = colour_2050, family = fam,
-                    prior_type = "regularizing",
-                    asymptote_observed = FALSE, seed = 228, refresh = 0)
+                    prior_type = "regularizing", seed = 228, refresh = 0)
 ```
 
 ```{r coral-sampling-regular}
@@ -758,7 +764,8 @@ weight, but its censored result should still be reported.
 
 A report should also state the 0.1 µg/L control substitution, the five
 concentrations and 15 chambers, the Beta family and chamber term, the
-unobserved-asymptote declaration, the requested and excluded equations, the sampler settings and
+lower-asymptote assumption and the package's warning, the requested and
+excluded equations, the sampler settings and
 screening cutoffs, any equation that failed to fit and whether a retry was
 attempted, the retained model weights, any high Pareto *k* correction,
 the local fit discrepancy, and the estimate settings (`sig_val = 0.01` for
@@ -767,9 +774,10 @@ which defaults to 500). These details determine how much of the
 reported interval can be attributed to the experiment, the model set and the
 prior.
 
-Given the unobserved lower limb, the estimate remains conditional on the
-candidate equations and prior assumptions; it should not be presented as a
-threshold determined by these five concentrations without those qualifications.
+Given that only one high-dose group has a mean near the lower bound, the estimate
+remains conditional on the lower-asymptote assumption, candidate equations and
+priors; it should not be presented as a threshold determined by these five
+concentrations without those qualifications.
 
 # A count response {#a-count-response}
 
