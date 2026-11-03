@@ -1693,19 +1693,28 @@ test_that("autoplot draws hurdle observations at the opacity point_alpha sets", 
     expect_gt(nrow(out), 0)
     out
   }
-  # The default draws the colour that adjustcolor(1, alpha.f = 0.25) gave
-  # before the argument existed.
+  # The palette colour may already have transparency. adjustcolor multiplies
+  # its opacity, while a separate ggplot alpha would replace it.
   def <- point_data(autoplot(obj, resolution = 20))
-  expect_true(all(def$alpha == 0.25))
-  expect_identical(grDevices::adjustcolor(unique(def$colour),
-                                          alpha.f = unique(def$alpha)),
+  expect_identical(unique(def$colour),
                    grDevices::adjustcolor(1, alpha.f = 0.25))
+  old_palette <- grDevices::palette()
+  on.exit(grDevices::palette(old_palette), add = TRUE)
+  for (first in c("red", "#FF000080", "transparent")) {
+    grDevices::palette(c(first, old_palette[-1]))
+    custom <- point_data(autoplot(obj, resolution = 20))
+    expect_identical(unique(custom$colour),
+                     grDevices::adjustcolor(1, alpha.f = 0.25))
+  }
+  grDevices::palette(old_palette)
   set <- point_data(autoplot(obj, resolution = 20, point_alpha = 0.6))
-  expect_true(all(set$alpha == 0.6))
+  expect_identical(unique(set$colour),
+                   grDevices::adjustcolor(1, alpha.f = 0.6))
   all_panels <- point_data(autoplot(obj, which = "all", resolution = 20,
                                     point_alpha = 1))
   expect_length(unique(all_panels$PANEL), 3)
-  expect_true(all(all_panels$alpha == 1))
+  expect_identical(unique(all_panels$colour),
+                   grDevices::adjustcolor(1, alpha.f = 1))
   expect_error(autoplot(obj, point_alpha = 1.5),
                "`point_alpha` must be between 0 and 1, not 1.5.",
                fixed = TRUE)

@@ -1228,8 +1228,9 @@ ggbnec_data.bayesnechurdlefit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #' @param xlab X axis label.
 #' @param ylab Y axis label. Defaults to \code{NULL}, which labels each panel
 #' by what it shows.
-#' @param point_alpha The opacity of the observation points, a single number
-#' from 0 (transparent) to 1 (opaque). Defaults to 0.25.
+#' @param point_alpha The opacity factor for the observation points, a single
+#' number from 0 to 1. It multiplies the existing opacity of the first colour of
+#' the current R palette. Defaults to 0.25.
 #'
 #' @details As for \code{\link{plot}}, the default is the combined endpoint
 #' alone and \code{which = "all"} facets rather than overlays, because the
@@ -1261,7 +1262,7 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
   }
   p <- p +
     geom_point(data = dat$raw, aes(x = .data$x, y = .data$y),
-               colour = "black", alpha = point_alpha, size = 1.6) +
+               colour = adjustcolor(1, alpha.f = point_alpha), size = 1.6) +
     geom_line(linewidth = 0.7) +
     labs(x = xlab, y = if (is.null(ylab)) NULL else ylab) +
     theme_classic()

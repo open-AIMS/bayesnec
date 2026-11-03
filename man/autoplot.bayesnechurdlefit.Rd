@@ -40,8 +40,9 @@ grid is built on, and \code{xform} is not applied.}
 \item{ylab}{Y axis label. Defaults to \code{NULL}, which labels each panel
 by what it shows.}
 
-\item{point_alpha}{The opacity of the observation points, a single number
-from 0 (transparent) to 1 (opaque). Defaults to 0.25.}
+\item{point_alpha}{The opacity factor for the observation points, a single
+number from 0 to 1. It multiplies the existing opacity of the first colour of
+the current R palette. Defaults to 0.25.}
 }
 \value{
 A \code{\link[ggplot2]{ggplot}} object.
