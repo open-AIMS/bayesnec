@@ -341,6 +341,47 @@ The standard deviation is set so that the central 95% interval of the untruncate
 
 The width is therefore given by the rule, not chosen, and it adapts to the design. Expressed as a multiple of `sd(log(x))`, it was between `0.73` and `1.18` across the five designs, `0.92` to `1.03` on the four `nassarius` series, and `1.75` on `nec_data` (whose predictor is continuous and densely sampled). Because it is set by the extreme concentrations, it also depends on how a control is recorded (see [The default priors](#the-default-priors)).
 
+The two `nec` entries `bnec()` builds for **nec4param** on `nec_data` are plotted below on the log scale, together with the tested concentrations, to show the location, the coverage rule and the truncation.
+
+```{r exmp3-nec-prior, fig.width = 7, fig.asp = 0.55, out.width = "80%", fig.cap = "Untruncated nec priors for nec4param on nec_data under each prior set, as densities on the log scale. Ticks mark the tested concentrations, and the shaded regions are outside the tested range."}
+library(ggplot2)
+# Read the meanlog and sdlog of the nec entry from the lognormal() string.
+nec_entry <- function(prior_type) {
+  p <- get_priors(y ~ crf(x, model = "nec4param"), data = nec_data,
+                  family = Beta(link = "identity"), prior_type = prior_type)
+  pars <- as.numeric(regmatches(p$prior[p$nlpar == "nec"],
+                                gregexpr("-?[0-9.]+", p$prior[p$nlpar == "nec"]))[[1]])
+  data.frame(prior_type = prior_type, meanlog = pars[1], sdlog = pars[2])
+}
+nec_entries <- rbind(nec_entry("uninformative"), nec_entry("regularizing"))
+nec_entries$prior_type <- factor(nec_entries$prior_type,
+                                 levels = c("uninformative", "regularizing"))
+nec_entries
+tested <- range(nec_data$x)
+grid <- exp(seq(log(tested[1]) - 2, log(tested[2]) + 2, length.out = 400))
+nec_density <- do.call(rbind, lapply(seq_len(nrow(nec_entries)), function(i) {
+  data.frame(prior_type = nec_entries$prior_type[i], x = grid,
+             density = dnorm(log(grid), nec_entries$meanlog[i],
+                             nec_entries$sdlog[i]))
+}))
+ggplot(nec_density, aes(x = x, y = density, colour = prior_type,
+                        linetype = prior_type)) +
+  annotate("rect", xmin = c(min(grid), tested[2]), xmax = c(tested[1], max(grid)),
+           ymin = -Inf, ymax = Inf, fill = "grey90") +
+  geom_rug(data = data.frame(x = unique(nec_data$x)), aes(x = x),
+           inherit.aes = FALSE, sides = "b", colour = "grey40") +
+  geom_line(linewidth = 0.8) +
+  scale_x_log10(expand = c(0, 0)) +
+  scale_colour_manual(values = c(uninformative = "#2a78d6",
+                                 regularizing = "#eb6834")) +
+  labs(x = "Concentration (log scale)", y = "Prior density of log(nec)",
+       colour = "prior_type", linetype = "prior_type") +
+  theme_bw() +
+  theme(legend.position = "top")
+```
+
+Both entries have their maximum density at the median concentration of `0.876`, and the `"regularizing"` entry is the narrower of the two. The tested series extends much further below that location than above it, so the coverage rule is set by the lowest concentration, and part of each curve (`0.220` of the `"uninformative"` entry and `0.179` of the `"regularizing"` one) is above the highest concentration. Under the default both shaded regions are outside the support of the prior, whereas under `asymptote_observed = FALSE` only the region below the lowest concentration is.
+
 #### A predictor supplied already logged
 
 For a predictor supplied already logged, the prior is `normal` with a mean at the median of the distinct predictor values and a standard deviation of `10` times their standard deviation, which is the multiplier described by Fisher et al. (2024). This multiplier is a fixed constant (not a coverage width), and it gives the only combination of route and prior set that is wide once the upper bound is removed. On `log(herbicide$concentration)`, for example, the entry is `normal(2.30, 31.5)`, which places `0.116` of its mass inside the tested range and `0.442` above the highest concentration. Under the default the bound confines this prior to the tested range, across which its density is close to flat. However, under `asymptote_observed = FALSE` only the lower bound remains, and `0.792` of the mass above it is above the highest concentration. A threshold above the series is then barely in the tail, and the prior does correspondingly little to locate one.
@@ -386,6 +427,36 @@ get_priors(y ~ crf(x, model = "nec4param"), data = count_data,
 ```
 
 The `"regularizing"` entries are `Gamma` priors with their maximum density, $(s - 1) / r$, at `36.3` for **top** and `5.5` for **bot**, which are the mean responses over the six observations at the lowest and the highest concentration respectively.
+
+The plot below shows these data, with the true values of **top** and **bot**, the two extremes of the pooled response, and the mean at each end of the series that the `"regularizing"` set uses as its location.
+
+```{r exmp3-count-anchors, fig.width = 7, fig.asp = 0.65, out.width = "80%", fig.cap = "Simulated counts from nec4param with a true top of 40 and bot of 5, with the mean response at the lowest and highest concentrations and the two extremes of the pooled response (the smallest observation and the 95th percentile)."}
+end_means <- data.frame(x = range(count_data$x),
+                        y = c(mean(count_data$y[count_data$x == min(count_data$x)]),
+                              mean(count_data$y[count_data$x == max(count_data$x)])))
+end_means
+reference <- data.frame(role = rep(c("true value", "pooled extreme"), each = 2),
+                        y = c(40, 5, min(count_data$y),
+                              quantile(count_data$y, 0.95)))
+roles <- c("true value", "pooled extreme", "end-of-series mean")
+ggplot(count_data, aes(x = x, y = y)) +
+  geom_hline(data = reference, aes(yintercept = y, colour = role,
+                                   linetype = role), linewidth = 0.7) +
+  geom_jitter(width = 0.12, height = 0, colour = "grey50", alpha = 0.7) +
+  geom_segment(data = end_means,
+               aes(x = x - 0.5, xend = x + 0.5, yend = y,
+                   colour = "end-of-series mean",
+                   linetype = "end-of-series mean"), linewidth = 1.4) +
+  scale_colour_manual(values = c("grey30", "#eb6834", "#2a78d6"),
+                      breaks = roles, limits = roles) +
+  scale_linetype_manual(values = c("solid", "dotted", "solid"),
+                        breaks = roles, limits = roles) +
+  labs(x = "Concentration", y = "Count", colour = NULL, linetype = NULL) +
+  theme_bw() +
+  theme(legend.position = "top")
+```
+
+The six observations at the lowest concentration have a mean of `36.3`, and those at the highest a mean of `5.5`, each close to the value it locates. The two extremes of the pooled response, by contrast, are set by a few counts away from the ends of the series. The 95th percentile (`52`) is set by the five counts of `52` or more, all at concentrations of 1 to 4, and the smallest observation (`1`) is a single count at a concentration of 9. They are on opposite sides of the true values, the 95th percentile above **top** and the smallest observation below **bot**.
 
 #### Assumptions of the location
 
@@ -441,6 +512,36 @@ Note that, for the response-scaled and predictor-scaled parameters, *s* is deriv
 There is one property of the default priors that a grouped fit does not inherit. Each prior described above constrains its parameter to the region in which the model is defined (e.g. `beta(5, 2)` on `0` to `1`, a lower bound of `0` for the count and Gamma families, and **nec** and **ec50** truncated to the predictor range). This is what allows `bayesnec` to fit on the `"identity"` link and keep **top**, **bot** and **nec** directly interpretable. A group-level deviation cannot be constrained in this way, because `brms` declares it unconstrained. Where the response distribution restricts the range of the mean (all families except Gaussian, under an identity link), Stan rejects a proposal that takes the mean outside that range, and counts it as a divergent transition.
 
 `bayesnec` avoids this problem, instead of mitigating it. Where the deviation applies to the whole curve (through `ogl()`), it is applied *multiplicatively*, and not as an offset added to the mean. On a `0` to `1` response the deviation scales the odds of the mean, and on a positive response it scales the mean itself. Because the deviation is centred on zero, and a deviation of zero does not change the curve, **top**, **bot**, **nec** and **beta** keep their meanings, while the mean can no longer fall outside its support whatever value of the deviation is proposed. The prior on the deviation is widened to match the scale on which it acts. On a simulated `beta_binomial` design run with three seeds, this gave no divergent transitions at all, against 70 to 95 per cent for the additive form on those data, and it sampled about twice as fast.
+
+The plot below compares the two forms for **nec4param** on a `0` to `1` response, with a **top** of `0.9`, a **bot** of `0.05` and an *NEC* of `1`. Five groups are given deviations of `-1.2` to `1.2` on the log-odds scale, and the additive offsets are the same deviations converted to the response scale at a mean of `0.5`.
+
+```{r exmp3-group-deviations, fig.width = 9, fig.asp = 0.4, out.width = "100%", fig.cap = "Group-level deviations on nec4param for a 0 to 1 response, added to the mean (left) or applied to its odds (right). The black curve has a deviation of zero, and the shaded regions are outside the support of the mean."}
+x <- seq(0, 4, length.out = 200)
+mu <- 0.05 + (0.9 - 0.05) * exp(-exp(0.5) * pmax(x - 1, 0))
+deviation <- c(-1.2, -0.6, 0, 0.6, 1.2)
+group_curves <- do.call(rbind, lapply(deviation, function(d) {
+  rbind(data.frame(form = "Offset added to the mean", deviation = d, x = x,
+                   mean = mu + d * 0.5 * (1 - 0.5)),
+        data.frame(form = "Odds of the mean scaled", deviation = d, x = x,
+                   mean = mu * exp(d) / (1 - mu + mu * exp(d))))
+}))
+group_curves$form <- factor(group_curves$form,
+                            levels = c("Offset added to the mean",
+                                       "Odds of the mean scaled"))
+ggplot(group_curves, aes(x = x, y = mean, group = deviation)) +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = c(-Inf, 1), ymax = c(0, Inf),
+           fill = "grey90") +
+  geom_line(aes(colour = deviation == 0, linewidth = deviation == 0)) +
+  scale_colour_manual(values = c(`FALSE` = "#2a78d6", `TRUE` = "black"),
+                      guide = "none") +
+  scale_linewidth_manual(values = c(`FALSE` = 0.6, `TRUE` = 1), guide = "none") +
+  facet_wrap(~ form) +
+  coord_cartesian(ylim = c(-0.35, 1.3)) +
+  labs(x = "Concentration", y = "Mean response") +
+  theme_bw()
+```
+
+Under the additive form, four of the five groups have a curve that leaves the `0` to `1` range: the positive deviations take **top** above `1`, and the negative ones take **bot** below `0`. Under the multiplicative form, the same deviations change the curve most where the mean is near `0.5` and least near the bounds, so no curve leaves the range. In both forms each group's curve declines from the same *NEC*.
 
 This construction is also applied to a deviation placed on **top** or **bot**, through `pgl()` or an explicit `(par | group)` term. These parameters are on the response scale, and their own priors bound them to the support of the mean, so an unconstrained deviation added to either of them can put the parameter outside the region in which the likelihood is defined. In practice this occurs for **bot**, because it is the lower asymptote and is typically estimated close to zero. The parameter itself keeps its name, its prior and its meaning, and the term adds a deviation applied multiplicatively to it, with no population-level term of its own. The fit therefore has the parameters of the additive form and no others, and **bot** remains the asymptote towards which the population-level curve declines.
 
