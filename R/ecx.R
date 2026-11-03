@@ -15,9 +15,8 @@
 #' @param resolution The number of unique x values over which to find ECx.
 #' The crossing is located by linear interpolation between the two grid values
 #' that bracket it, so precision saturates well below the grid spacing.
-#' Increasing the resolution beyond the default of 200 changed the estimate by
-#' less than 0.01 percent on the fits tested, and increases the run time
-#' roughly in proportion.
+#' The default is 500 grid values, matching \pkg{toxval}. A finer grid can
+#' change an interpolated crossing and increases prediction time.
 #' @param posterior A \code{\link[base]{logical}} value indicating if the full
 #' posterior sample of calculated ECx values should be returned instead of
 #' just the median and 95 credible intervals.
@@ -188,7 +187,7 @@
 # Keep dpar on the generic, after `...` as in the methods. The methods are
 # @noRd, so the generic's usage is the only place it can appear, and R CMD
 # check warns about a documented argument missing from the usage.
-ecx <- function(object, ecx_val = 10, resolution = 200,
+ecx <- function(object, ecx_val = 10, resolution = 500,
                 posterior = FALSE, type = "absolute", x_range = NA,
                 xform = NULL, prob_vals = c(0.5, 0.025, 0.975), ...,
                 dpar = NULL) {
@@ -209,7 +208,7 @@ ecx <- function(object, ecx_val = 10, resolution = 200,
 #' @noRd
 #'
 #' @export
-ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
+ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
                             posterior = FALSE, type = "absolute",
                             x_range = NA, xform = NULL,
                             prob_vals = c(0.5, 0.025, 0.975), ...,
@@ -350,7 +349,7 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
 #' @noRd
 #'
 #' @export
-ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 200,
+ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
                               posterior = FALSE, type = "absolute",
                               x_range = NA, xform = NULL,
                               prob_vals = c(0.5, 0.025, 0.975), ...,

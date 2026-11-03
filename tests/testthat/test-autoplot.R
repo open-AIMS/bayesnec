@@ -731,3 +731,170 @@ test_that("autoplot draws that annotation without error", {
       autoplot(tf, ecx = TRUE, xform = exp))),
     "ggplot")
 })
+
+# The layers that draw observations. stat_summary() also draws points, the
+# per-level means, which point_alpha must leave opaque.
+is_observation_layer <- function(layer) {
+  inherits(layer$geom, "GeomPoint") && !inherits(layer$stat, "StatSummary")
+}
+
+# The alpha of every observation drawn, read from the built plot. Fail on a
+# plot that draws none, so that all() over an empty vector cannot pass.
+observation_alpha <- function(p) {
+  i <- which(vapply(p$layers, is_observation_layer, logical(1)))
+  out <- unlist(lapply(i, function(k) ggplot2::layer_data(p, k)$alpha),
+                use.names = FALSE)
+  expect_gt(length(out), 0)
+  out
+}
+
+grouped_object <- function(fit = grouped_plot_fit()) {
+  structure(
+    list(fits = list(a = fit, b = fit), group_var = "site",
+         levels = c("a", "b")),
+    class = c("bayesnecgroupfit", "bnecfit")
+  )
+}
+
+# joint_split() records its levels in `data` only. The plot assigns each
+# observation to a panel from the fitted data, so copy the levels there.
+joint_with_rows <- function() {
+  j <- joint_split()
+  j$fit$data$site <- j$data$site
+  j
+}
+
+test_that("observation points are drawn opaque by default", {
+  skip_on_cran()
+  p <- suppressMessages(autoplot(nec4param, nec = FALSE))
+  obs <- Filter(is_observation_layer, p$layers)
+  expect_length(obs, 1)
+  expect_identical(obs[[1]]$aes_params$alpha, 1)
+  expect_identical(obs[[1]]$aes_params$fill, "grey30")
+  expect_identical(obs[[1]]$aes_params$shape, 21)
+  expect_equal(observation_alpha(p), rep(1, nrow(nec4param$fit$data)))
+  p_set <- suppressMessages(autoplot(manec_example, nec = FALSE))
+  expect_true(all(observation_alpha(p_set) == 1))
+  p_group <- suppressMessages(autoplot(grouped_object(), nec = FALSE))
+  expect_true(all(observation_alpha(p_group) == 1))
+  p_joint <- suppressMessages(autoplot(joint_with_rows(), nec = FALSE))
+  expect_true(all(observation_alpha(p_joint) == 1))
+})
+
+test_that("point_alpha sets the opacity of the observations alone", {
+  skip_on_cran()
+  p <- suppressMessages(autoplot(nec4param, point_alpha = 0.3))
+  expect_equal(observation_alpha(p), rep(0.3, nrow(nec4param$fit$data)))
+  band <- Filter(function(layer) inherits(layer$geom, "GeomPolygon"),
+                 p$layers)[[1]]
+  expect_identical(band$aes_params$alpha, 0.5)
+  # The bounds of the range are accepted.
+  for (a in c(0, 1)) {
+    p_a <- suppressMessages(autoplot(nec4param, nec = FALSE, point_alpha = a))
+    expect_true(all(observation_alpha(p_a) == a))
+  }
+})
+
+test_that("point_alpha reaches every panel of a model set", {
+  skip_on_cran()
+  avg <- suppressMessages(autoplot(manec_example, nec = FALSE,
+                                   point_alpha = 0.3))
+  expect_true(all(observation_alpha(avg) == 0.3))
+  faceted <- suppressMessages(autoplot(
+    manec_example, nec = FALSE, model = c("nec4param", "ecx4param"),
+    point_alpha = 0.3
+  ))
+  n_obs <- nrow(manec_example$mod_fits[[1]]$fit$data)
+  expect_equal(observation_alpha(faceted), rep(0.3, 3 * n_obs))
+  pages <- suppressMessages(autoplot(
+    manec_example, nec = FALSE, model = "nec4param", multi_facet = FALSE,
+    plot = FALSE, point_alpha = 0.3
+  ))
+  expect_length(pages, 2)
+  for (page in pages) {
+    expect_equal(observation_alpha(page), rep(0.3, n_obs))
+  }
+})
+
+test_that("point_alpha applies to grouped observations but not their means", {
+  skip_on_cran()
+  fit <- grouped_plot_fit()
+  for (aes_type in c("colour", "line")) {
+    p <- suppressMessages(autoplot(fit, group = "plate", group_aes = aes_type,
+                                   nec = FALSE, point_alpha = 0.3))
+    obs <- Filter(is_observation_layer, p$layers)
+    expect_length(obs, 1)
+    expect_identical(obs[[1]]$aes_params$alpha, 0.3)
+    expect_true(all(observation_alpha(p) == 0.3))
+    means <- Filter(function(layer) inherits(layer$stat, "StatSummary"),
+                    p$layers)
+    expect_gt(length(means), 0)
+    for (layer in means) {
+      expect_null(layer$aes_params$alpha)
+    }
+  }
+  coloured <- suppressMessages(autoplot(fit, group = "plate",
+                                        group_aes = "colour", nec = FALSE,
+                                        point_alpha = 0.3))
+  obs <- Filter(is_observation_layer, coloured$layers)[[1]]
+  expect_identical(rlang::as_label(obs$mapping$fill), "group")
+  coloured_data <- ggplot2::layer_data(
+    coloured, which(vapply(coloured$layers, is_observation_layer, logical(1)))
+  )
+  expect_length(unique(coloured_data$fill), 4)
+  # A level observed at one concentration is marked by a point at its mean,
+  # which is not an observation.
+  single <- nec4param
+  single$fit$data$dose_group <- factor(single$fit$data$x)
+  single$bayesnecformula <- bayesnecformula(
+    y ~ crf(x, model = "nec4param") + ogl(dose_group)
+  )
+  p_single <- suppressMessages(autoplot(single, group = "dose_group",
+                                        group_aes = "colour", nec = FALSE,
+                                        point_alpha = 0.3))
+  mean_marks <- Filter(function(layer) inherits(layer$stat, "StatSummary"),
+                       p_single$layers)
+  expect_length(mean_marks, 1)
+  expect_s3_class(mean_marks[[1]]$geom, "GeomPoint")
+  expect_null(mean_marks[[1]]$aes_params$alpha)
+  expect_true(all(observation_alpha(p_single) == 0.3))
+})
+
+test_that("point_alpha reaches the panels of grouped and joint fits", {
+  skip_on_cran()
+  object <- grouped_object()
+  p <- suppressMessages(autoplot(object, nec = FALSE, point_alpha = 0.3))
+  expect_true(all(observation_alpha(p) == 0.3))
+  coloured <- suppressMessages(autoplot(object, group = "plate",
+                                        group_aes = "colour", nec = FALSE,
+                                        point_alpha = 0.3))
+  obs <- Filter(is_observation_layer, coloured$layers)
+  expect_length(obs, 1)
+  expect_identical(rlang::as_label(obs[[1]]$mapping$fill), "group")
+  expect_true(all(observation_alpha(coloured) == 0.3))
+  joint <- joint_with_rows()
+  p_joint <- suppressMessages(autoplot(joint, nec = FALSE, point_alpha = 0.3))
+  expect_equal(observation_alpha(p_joint),
+               rep(0.3, nrow(joint$fit$data)))
+})
+
+test_that("autoplot refuses a point_alpha that is not one number in [0, 1]", {
+  skip_on_cran()
+  expect_error(autoplot(nec4param, point_alpha = 1.5),
+               "`point_alpha` must be between 0 and 1, not 1.5.",
+               fixed = TRUE)
+  expect_error(autoplot(nec4param, point_alpha = -0.1),
+               "`point_alpha` must be between 0 and 1, not -0.1.",
+               fixed = TRUE)
+  for (bad in list(NA_real_, c(0.2, 0.5), "0.5", TRUE, NULL)) {
+    expect_error(autoplot(nec4param, point_alpha = bad),
+                 "`point_alpha` must be a number (non-missing numeric scalar).",
+                 fixed = TRUE)
+  }
+  expect_error(autoplot(manec_example, point_alpha = 2),
+               "`point_alpha` must be between 0 and 1", fixed = TRUE)
+  expect_error(autoplot(grouped_object(), point_alpha = 2),
+               "`point_alpha` must be between 0 and 1", fixed = TRUE)
+  expect_error(autoplot(joint_split(), point_alpha = 2),
+               "`point_alpha` must be between 0 and 1", fixed = TRUE)
+})

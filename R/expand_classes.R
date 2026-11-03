@@ -77,10 +77,8 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   # and for any two-block fit where at least one block is smooth.
   nsec_off_curve <- function(post) {
     reference <- quantile(post[, 1], sig_val)
-    # The reference and the start of the search are the same grid point, so a
-    # draw at or below the reference there takes that point as its NSEC. The
-    # start is the first grid point, not the lowest observed predictor as in
-    # nsec.bayesnecfit(); the two differ only where bnec() was given an x_range.
+    # The start is the first grid point, not the lowest observed predictor as
+    # in nsec.bayesnecfit(); the two differ where bnec() received an x_range.
     out <- nsec_from_posterior(post, reference, pred_data$x, pred_data$x[1],
                                post[, 1])
     below <- attr(out, "below_range")
@@ -460,9 +458,19 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
                       "dispersion_Q97.5", "dispersion_P_over_1")
   mod_stats <- data.frame(model = success_models)
   mod_stats$waic <- sapply(object, extract_waic_estimate)
-  loo_mw_args <- c(list(x = lapply(object, extract_loo)), loo_w_controls)
+  scores <- weight_criteria(object, retrieve_var(mod_dat, "x_var"),
+                            loo_controls$leave_out, loo_controls$refit)
+  for (m in names(scores$logo)) {
+    mod_fits[[m]]$fit$criteria$logo <- scores$logo[[m]]
+  }
+  mod_stats$elpd <- vapply(scores$criteria, function(l) {
+    l$estimates["elpd_loo", "Estimate"]
+  }, numeric(1))
+  loo_mw_args <- c(list(x = scores$criteria), loo_w_controls)
   mod_stats$wi <- do.call(loo_model_weights, loo_mw_args)
   attr(mod_stats$wi, "method") <- loo_w_controls$method
+  attr(mod_stats$wi, "leave_out") <- scores$leave_out
+  report_logo_k(scores$logo, mod_stats$wi, loo_controls$refit)
   mod_stats <- cbind(mod_stats, disp)
   sample_size <- set_draw_count(object)
   # Realise the weighted draw once and store both the index and its seed.

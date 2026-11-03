@@ -84,6 +84,14 @@ test_that("works for bayesnecfit", {
   expect_equal(names(ecx1), c("Q50", "Q2.5", "Q97.5"))
 })
 
+test_that("endpoint extraction defaults to a 500-point grid", {
+  expect_identical(formals(ecx)$resolution, 500)
+  expect_identical(formals(nsec)$resolution, 500)
+  expect_identical(formals(ecnsec)$resolution, 500)
+  expect_identical(formals(ecx.bayesnecfit)$resolution, 500)
+  expect_identical(formals(nsec.bayesnecfit)$resolution, 500)
+})
+
 test_that("works for bayesmanecfit", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()

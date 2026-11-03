@@ -30,6 +30,9 @@
 #' The argument is ignored when \code{group} is \code{NULL}. Only
 #' \code{"colour"} is available when \code{group} is not a group-level term
 #' in the fitted formula.
+#' @param point_alpha The opacity of the observation points, a single number
+#' from 0 (transparent) to 1 (opaque, the default). It does not change the
+#' credible band or the per-level means drawn for \code{group}.
 #'
 #' @return A \code{\link[ggplot2]{ggplot}} object, or, for a
 #' \code{\link{bayesmanecfit}} with \code{multi_facet = FALSE}, a
@@ -75,12 +78,14 @@ NULL
 #' @export
 autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                                  xform = NULL, group = NULL,
-                                 group_aes = c("line", "colour")) {
+                                 group_aes = c("line", "colour"),
+                                 point_alpha = 1) {
   x <- object
   chk_lgl(nec)
   chk_lgl(ecx)
   group_aes <- match.arg(group_aes)
   check_xform(xform)
+  check_point_alpha(point_alpha)
   summ <- summary(x, ecx = FALSE, xform = identity) |>
     suppressWarnings() |>
     suppressMessages()
@@ -91,7 +96,8 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
     mutate(model = x$model, tag = rownames(.env$summ$nec_vals)) |>
     ggbnec(nec = nec, ecx = ecx, group = !is.null(group),
            group_aes = group_aes, group_label = group_label,
-           group_fitted = !identical(attr(dat, "group_fitted"), FALSE))
+           group_fitted = !identical(attr(dat, "group_fitted"), FALSE),
+           point_alpha = point_alpha)
 }
 
 #' @rdname autoplot
@@ -145,12 +151,13 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                                    newpage = TRUE, multi_facet = TRUE,
                                    group = NULL,
                                    group_aes = c("line", "colour"),
-                                   all_models = NULL) {
+                                   point_alpha = 1, all_models = NULL) {
   x <- object
   chk_lgl(nec)
   chk_lgl(ecx)
   group_aes <- match.arg(group_aes)
   check_xform(xform)
+  check_point_alpha(point_alpha)
   shown <- resolve_model_average(
     x, model, average, all_models,
     new_supplied = !missing(model) || !missing(average)
@@ -164,7 +171,8 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                                    group = group, group_aes = group_aes, ...)
     return(ggbnec(avg$data, nec = nec, ecx = ecx, group = !is.null(group),
                   group_aes = group_aes, group_label = avg$group_label,
-                  group_fitted = avg$group_fitted))
+                  group_fitted = avg$group_fitted,
+                  point_alpha = point_alpha))
   }
   all_fits <- lapply(shown$model, pull_out, manec = x) |>
     suppressMessages() |>
@@ -202,7 +210,7 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
     }
     ggbnec(dat, nec = nec, ecx = ecx, group = !is.null(group),
            group_aes = group_aes, group_label = group_label,
-           group_fitted = group_fitted)
+           group_fitted = group_fitted, point_alpha = point_alpha)
   } else {
     if (plot) {
       default_ask <- devAskNewPage()
@@ -219,7 +227,8 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
         plots[[i]] <- ggbnec(avg$data, nec = nec, ecx = ecx,
                              group = !is.null(group), group_aes = group_aes,
                              group_label = avg$group_label,
-                             group_fitted = avg$group_fitted)
+                             group_fitted = avg$group_fitted,
+                             point_alpha = point_alpha)
       } else {
         j <- i - n_average
         summ_j <- summary(all_fits[[j]], ecx = FALSE, xform = identity) |>
@@ -235,7 +244,7 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                  group_aes = group_aes, group_label = group_label,
                  group_fitted = !identical(
                    attr(dat_j, "group_fitted"), FALSE
-                 ))
+                 ), point_alpha = point_alpha)
       }
       # Draw each page as soon as it is built, and only where `plot` is TRUE,
       # the flag that also guards the device's prompt setting above.
@@ -692,11 +701,13 @@ ggbnec_data.bayesnecgroupfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #' @export
 autoplot.bayesnecgroupfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                                       xform = NULL, group = NULL,
-                                      group_aes = c("line", "colour")) {
+                                      group_aes = c("line", "colour"),
+                                      point_alpha = 1) {
   chk_lgl(nec)
   chk_lgl(ecx)
   group_aes <- match.arg(group_aes)
   check_xform(xform)
+  check_point_alpha(point_alpha)
   dat <- ggbnec_data(object, add_nec = nec, add_ecx = ecx,
                      xform = xform, group = group, ...)
   tags <- vapply(object$fits, function(fit) {
@@ -719,7 +730,23 @@ autoplot.bayesnecgroupfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   }
   ggbnec(dat, nec = nec, ecx = ecx, group = show_group,
          group_aes = group_aes, group_label = group_label,
-         group_fitted = !identical(attr(dat, "group_fitted"), FALSE))
+         group_fitted = !identical(attr(dat, "group_fitted"), FALSE),
+         point_alpha = point_alpha)
+}
+
+#' Refuse a point_alpha that is not a single number from 0 to 1
+#'
+#' @param point_alpha The value supplied to \code{autoplot()}.
+#'
+#' @return \code{NULL}, invisibly.
+#'
+#' @importFrom chk chk_number chk_range
+#'
+#' @noRd
+check_point_alpha <- function(point_alpha) {
+  chk_number(point_alpha)
+  chk_range(point_alpha, c(0, 1))
+  invisible(NULL)
 }
 
 #' ggbnec
@@ -745,7 +772,7 @@ autoplot.bayesnecgroupfit <- function(object, ..., nec = TRUE, ecx = FALSE,
 #' @noRd
 ggbnec <- function(x, nec = TRUE, ecx = FALSE, group = FALSE,
                    group_aes = c("line", "colour"), group_label = NULL,
-                   group_fitted = TRUE) {
+                   group_fitted = TRUE, point_alpha = 1) {
   group_aes <- match.arg(group_aes)
   out <- ggplot() +
     geom_polygon(data = x |> filter(!is.na(.data$y_ci)),
@@ -814,7 +841,8 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE, group = FALSE,
     out <- out +
       geom_point(data = raw,
                  mapping = aes(x = .data$x_r, y = .data$y_r,
-                               fill = .data$group), shape = 21) +
+                               fill = .data$group), shape = 21,
+                 alpha = point_alpha) +
       scale_colour_discrete(limits = group_levels) +
       scale_fill_discrete(limits = group_levels) +
       labs(colour = group_label, fill = group_label)
@@ -822,7 +850,7 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE, group = FALSE,
     out <- out +
       geom_point(data = raw,
                  mapping = aes(x = .data$x_r, y = .data$y_r),
-                 fill = "grey30", shape = 21)
+                 fill = "grey30", shape = 21, alpha = point_alpha)
   }
   if (nec) {
     ltys <- rep(c(1, 2, 2), length(unique(x$model)))

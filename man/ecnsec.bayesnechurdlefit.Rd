@@ -8,7 +8,7 @@
 \method{ecnsec}{bayesnechurdlefit}(
   object,
   nsec,
-  resolution = 200,
+  resolution = 500,
   x_range = NA,
   type = "absolute",
   xform = NULL,
@@ -27,7 +27,7 @@ percentage effect. A vector is refused, including the three values
 
 \item{resolution}{The number of unique x values over which the curve is
 predicted. It affects only \code{type = "range"}, where the denominator is
-the lowest response the curve predicts over the grid. The default of 200
+the lowest response the curve predicts over the grid. The default of 500
 matches \code{\link{ecx}} and \code{\link{nsec}}.}
 
 \item{x_range}{A range of x values over which to predict the curve. An

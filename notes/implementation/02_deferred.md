@@ -7,23 +7,6 @@ Refreshed 2026-09-26 for the backlog run. The version of 2026-09-14 listed #209,
 #249, #283 and #296 as deferred; all four have closed. It is in the history of
 this file.
 
-## The toxval migration
-
-`ecx()`, `nsec()`, `ecnsec()` and `zero_crossings()` are still to relocate to
-[open-AIMS/toxval](https://github.com/open-AIMS/toxval), which will become a
-dependency of `bayesnec`. The migration is excluded from the backlog run by RF
-(2026-09-26). #255 is the tracker for the `bayesnec` side and holds the method
-inventory and the dependency reversal; neither is restated here.
-
-D11 stands: a fix to an estimator is made in `bayesnec`, and recorded on the
-matching toxval issue as it lands, so that the migration relocates the corrected
-file. The backlog run changes `ecx()`, `nsec()` and their callers in several
-items, and each records itself on toxval the same way.
-
-#120 and #44 were deferred to the migration by the version of this file dated
-2026-09-14. D19 (2026-09-26) takes both into the backlog run on D11's reasoning,
-so they are no longer deferred.
-
 ## Implemented elsewhere
 
 | | |

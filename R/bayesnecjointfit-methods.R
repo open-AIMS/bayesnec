@@ -555,11 +555,13 @@ ggbnec_data.bayesnecjointfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #' @export
 autoplot.bayesnecjointfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                                       xform = NULL, group = NULL,
-                                      group_aes = c("line", "colour")) {
+                                      group_aes = c("line", "colour"),
+                                      point_alpha = 1) {
   chk_lgl(nec)
   chk_lgl(ecx)
   group_aes <- match.arg(group_aes)
   check_xform(xform)
+  check_point_alpha(point_alpha)
   dat <- ggbnec_data(object, add_nec = nec, add_ecx = ecx,
                      xform = xform, group = group, ...)
   panel_labs <- paste0(object$group_var, " = ", object$levels)
@@ -581,5 +583,6 @@ autoplot.bayesnecjointfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   }
   ggbnec(dat, nec = nec, ecx = ecx, group = show_group,
          group_aes = group_aes, group_label = group_label,
-         group_fitted = !identical(attr(dat, "group_fitted"), FALSE))
+         group_fitted = !identical(attr(dat, "group_fitted"), FALSE),
+         point_alpha = point_alpha)
 }
