@@ -1,5 +1,14 @@
 # bayesnec 2.2.0
 
+## Default priors
+
+- Under `prior_type = "regularizing"`, `d` and `f` now use `normal(0, 1)`
+  across the equations that estimate them. Their `"uninformative"` entries
+  remain `normal(0, 5)`. `beta` and `slope` retain `normal(0, 5)` in both
+  sets: a narrower zero-centred rate prior would change its meaning with
+  concentration units, and `slope` also controls a power exponent in some
+  equations. The fitted checks and their limits are recorded under #535.
+
 ## Model weights under a within-concentration group term
 
 - Where each level of a group-level term is observed at a single
