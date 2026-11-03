@@ -1,4 +1,4 @@
-gl_sd_columns <- c("model", "wi", "group", "parameter", "Estimate", "Q2.5",
+gl_sd_columns <- c("model", "wi", "group", "by", "parameter", "Estimate", "Q2.5",
                    "Q97.5")
 
 # Two equations with a pgl() term, so each equation has a deviation on each of
@@ -38,6 +38,30 @@ test_that("a fit with no group-level term gives an empty table and a message", {
 test_that("group_level_sd refuses an unsupported class and names VarCorr", {
   expect_error(group_level_sd(joint_split()), "brms::VarCorr\\(x\\$fit\\)")
   expect_error(group_level_sd(list()), "requires a bayesnecfit")
+})
+
+test_that("deviations retain their grouping, by level and parameter names", {
+  draws <- list(
+    plate = list(sd = cbind(topgl_Intercept = c(1, 2, 3),
+                            ec50_Intercept = c(4, 5, 6))),
+    tank = list(sd = cbind("ogl_Intercept:hA" = c(7, 8, 9),
+                           "botgl_Intercept:hA" = c(10, 11, 12),
+                           "ogl_Intercept:hB" = c(13, 14, 15),
+                           "botgl_Intercept:hB" = c(16, 17, 18)))
+  )
+  local_mocked_bindings(VarCorr = function(fit, summary = FALSE) draws)
+  fit <- list(ranef = data.frame(group = c("plate", "plate", "tank", "tank"),
+                                 nlpar = c("topgl", "ec50", "ogl", "botgl"),
+                                 dpar = c("", "", "", ""),
+                                 by = c("", "", "h", "h")))
+  fit$ranef$bylevels <- list(character(), character(), c("A", "B"), c("A", "B"))
+  out <- bayesnec:::gl_sd_rows(fit, "ecx4param", 0.25)
+  expect_equal(out$group, c("plate", "plate", rep("tank", 4)))
+  expect_equal(out$by, c("", "", "h=A", "h=A", "h=B", "h=B"))
+  expect_equal(out$parameter,
+               c("topgl", "ec50", "ogl", "botgl", "ogl", "botgl"))
+  expect_equal(out$Estimate, c(2, 5, 8, 11, 14, 17))
+  expect_equal(out$wi, rep(0.25, 6))
 })
 
 test_that("group_level_sd gives one row per equation, grouping and parameter", {

@@ -12,10 +12,13 @@ group_level_sd(x)
 \code{\link{bayesnechurdlefit}}.}
 }
 \value{
-A \code{\link[base]{data.frame}} with one row per equation, grouping
-and parameter, and columns \code{model}, \code{wi}, \code{group},
-\code{parameter}, \code{Estimate}, \code{Q2.5} and \code{Q97.5}. \code{wi}
-is 1 for a \code{\link{bayesnecfit}}. A fit with no group-level term gives
+A \code{\link[base]{data.frame}} with one row per equation, grouping,
+parameter and \code{by} level, and columns \code{model}, \code{wi},
+\code{group}, \code{by}, \code{parameter}, \code{Estimate}, \code{Q2.5}
+and \code{Q97.5}. The \code{by} column is empty for ordinary grouping
+terms and names the variable and level (for example, \code{h=A}) for a
+\code{gr(g, by = h)} term. \code{wi} is 1 for a
+\code{\link{bayesnecfit}}. A fit with no group-level term gives
 a table with no rows, and a message. For a \code{\link{bayesnecgroupfit}},
 the same table with a leading \code{level} column; each weight is from that
 level's own model set. For a \code{\link{bayesnechurdlefit}}, a
@@ -37,11 +40,14 @@ estimates.
 
 \code{parameter} names the non-linear parameter the deviation applies to,
 as \pkg{brms} names it in \code{\link[brms]{VarCorr}}. \code{ogl} is the
-deviation on the whole curve. Under a family other than \code{gaussian}, a
-deviation on \code{top} or \code{bot} is named \code{topgl} or
-\code{botgl}, and these two and \code{ogl} are applied multiplicatively, so
-they are on the log or log-odds scale. Every other deviation is added on the
-scale of the quantity it applies to. See \code{\link{bayesnecformula}}.
+deviation on the whole curve. Where the link permits the fitted mean to
+leave the family's support and the equation permits a log or logit
+transform, \code{ogl} is applied on that scale. Otherwise it is added on
+the linear predictor scale. A deviation on \code{top} or \code{bot} is named
+\code{topgl} or \code{botgl} when the link permits the mean to leave its
+support; it is then applied on the log or log-odds scale. Other
+deviations are added on the scale of the quantity they apply to. See
+\code{\link{bayesnecformula}}.
 
 \code{Estimate} is the posterior median, as in \code{\link{ecx}} and
 \code{\link{dispersion}}, and \code{Q2.5} and \code{Q97.5} bound the 95\\%

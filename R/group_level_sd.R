@@ -17,21 +17,27 @@
 #'
 #' \code{parameter} names the non-linear parameter the deviation applies to,
 #' as \pkg{brms} names it in \code{\link[brms]{VarCorr}}. \code{ogl} is the
-#' deviation on the whole curve. Under a family other than \code{gaussian}, a
-#' deviation on \code{top} or \code{bot} is named \code{topgl} or
-#' \code{botgl}, and these two and \code{ogl} are applied multiplicatively, so
-#' they are on the log or log-odds scale. Every other deviation is added on the
-#' scale of the quantity it applies to. See \code{\link{bayesnecformula}}.
+#' deviation on the whole curve. Where the link permits the fitted mean to
+#' leave the family's support and the equation permits a log or logit
+#' transform, \code{ogl} is applied on that scale. Otherwise it is added on
+#' the linear predictor scale. A deviation on \code{top} or \code{bot} is named
+#' \code{topgl} or \code{botgl} when the link permits the mean to leave its
+#' support; it is then applied on the log or log-odds scale. Other
+#' deviations are added on the scale of the quantity they apply to. See
+#' \code{\link{bayesnecformula}}.
 #'
 #' \code{Estimate} is the posterior median, as in \code{\link{ecx}} and
 #' \code{\link{dispersion}}, and \code{Q2.5} and \code{Q97.5} bound the 95\%
 #' credible interval. \code{\link[brms]{VarCorr}} reports the posterior mean
 #' instead.
 #'
-#' @return A \code{\link[base]{data.frame}} with one row per equation, grouping
-#' and parameter, and columns \code{model}, \code{wi}, \code{group},
-#' \code{parameter}, \code{Estimate}, \code{Q2.5} and \code{Q97.5}. \code{wi}
-#' is 1 for a \code{\link{bayesnecfit}}. A fit with no group-level term gives
+#' @return A \code{\link[base]{data.frame}} with one row per equation, grouping,
+#' parameter and \code{by} level, and columns \code{model}, \code{wi},
+#' \code{group}, \code{by}, \code{parameter}, \code{Estimate}, \code{Q2.5}
+#' and \code{Q97.5}. The \code{by} column is empty for ordinary grouping
+#' terms and names the variable and level (for example, \code{h=A}) for a
+#' \code{gr(g, by = h)} term. \code{wi} is 1 for a
+#' \code{\link{bayesnecfit}}. A fit with no group-level term gives
 #' a table with no rows, and a message. For a \code{\link{bayesnecgroupfit}},
 #' the same table with a leading \code{level} column; each weight is from that
 #' level's own model set. For a \code{\link{bayesnechurdlefit}}, a
@@ -131,15 +137,24 @@ gl_sd_rows <- function(fit, model, wi) {
   out <- lapply(unique(re$group), function(g) {
     r <- re[re$group == g, , drop = FALSE]
     draws <- vc[[g]]$sd
-    # VarCorr() names a grouping's deviations in the order of its ranef rows.
-    if (ncol(draws) != nrow(r)) {
+    # brms repeats a grouping's ranef rows once for each by-factor level.
+    by <- if (isTRUE(nzchar(r$by[1]))) r$by[1] else ""
+    by_levels <- if (nzchar(by)) r$bylevels[[1]] else character()
+    parameter <- ifelse(nzchar(r$nlpar), r$nlpar, r$dpar)
+    if (nzchar(by)) {
+      parameter <- rep(parameter, times = length(by_levels))
+      by_label <- rep(paste0(by, "=", by_levels), each = nrow(r))
+    } else {
+      by_label <- rep("", nrow(r))
+    }
+    if (ncol(draws) != length(parameter)) {
       stop("The group-level standard deviations of ", model, " on ", g,
            " do not match its group-level terms. This should not happen;",
            " please report it.", call. = FALSE)
     }
     est <- t(apply(draws, 2, estimates_summary))
-    data.frame(model = model, wi = wi, group = g,
-               parameter = ifelse(nzchar(r$nlpar), r$nlpar, r$dpar),
+    data.frame(model = model, wi = wi, group = g, by = by_label,
+               parameter = parameter,
                Estimate = est[, "Estimate"], Q2.5 = est[, "Q2.5"],
                Q97.5 = est[, "Q97.5"], row.names = NULL,
                stringsAsFactors = FALSE)
@@ -150,6 +165,6 @@ gl_sd_rows <- function(fit, model, wi) {
 #' @noRd
 gl_sd_empty <- function() {
   data.frame(model = character(), wi = numeric(), group = character(),
-             parameter = character(), Estimate = numeric(),
+             by = character(), parameter = character(), Estimate = numeric(),
              Q2.5 = numeric(), Q97.5 = numeric(), stringsAsFactors = FALSE)
 }
