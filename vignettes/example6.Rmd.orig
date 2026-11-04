@@ -538,18 +538,15 @@ best
 Here the combination with the largest weight is `` `r best$growth` `` growth
 with `` `r best$survival` `` survival (`r sprintf("%.2f", best$weight)`).
 
-The joint fit cannot reproduce the censoring of the factorised fits. For a
-hurdle family, `brms` computes the probability of a left-censored value as the
-probability of a zero plus that of a positive value below the bound, so a joint
-fit would count each censored survivor partly as a death. We therefore pass
-`bnec_joint()` the formula without the `cens()` term, and the growth of each
-survivor that was censored is then fitted as an exact observation at the bound.
+For a hurdle family, `brms` computes the probability of a left-censored value
+as the probability of a zero plus that of a positive value below the bound, so
+a joint fit given the `cens()` term as written would count each censored
+survivor partly as a death. `bnec_joint()` therefore refits each censored
+survivor of a Gamma growth component as an interval from zero to its bound,
+which conditions its growth on survival, as the factorised fit does.
 
 ```{r fit-joint, results = "hide"}
-fit_j <- bnec_joint(fit_ms,
-                    formula = growth ~ crf(log(dose + 0.001),
-                                           model = best$growth),
-                    seed = 10, refresh = 0, cores = 4,
+fit_j <- bnec_joint(fit_ms, seed = 10, refresh = 0, cores = 4,
                     control = list(adapt_delta = 0.999, max_treedepth = 15))
 ```
 
@@ -589,9 +586,10 @@ route_diff <- 100 * max(abs(ec10[c(1, 4, 7), 1] - ec10[c(2, 5, 8), 1]) /
 
 The EC10 medians of the factorised and joint fits of the selected combination
 differ by at most `r sprintf("%.1f", route_diff)`% across the three endpoints,
-and their intervals are similar (table above). This small difference may reflect
-Monte Carlo error as well as the treatment of the censored growth values,
-which are fitted as exact values at their bound in the joint fit. The joint fit,
+and their intervals are similar (table above). Both routes give the censored
+survivors the same likelihood and the equations the same priors, so they
+estimate one posterior, and the difference is likely to reflect Monte Carlo
+error and the sampling of the joint fit. The joint fit,
 however, produced `r sampling_j$n_divergent` divergent transitions and
 `r if (sampling_j$failed) "fails" else "passes"` the checks of
 `check_sampling()`, whereas both of its equations passed them in the factorised
