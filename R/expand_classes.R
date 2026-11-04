@@ -423,6 +423,14 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   })
   object <- mod_fits
   formula <- formula[success_models]
+  draw_counts <- vapply(object, function(x) brms::ndraws(x$fit), numeric(1))
+  if (length(unique(draw_counts)) > 1L) {
+    stop("Cannot combine models with different numbers of posterior draws: ",
+         paste(paste0(names(draw_counts), " = ", draw_counts),
+               collapse = ", "),
+         ". Refit with matching retained draw counts; set thin during fitting ",
+         "if the iteration counts differ.", call. = FALSE)
+  }
   # Classify by each equation's parameters, as nec() does, not by group
   # membership or name.
   has_nec <- vapply(names(object), function(m) {

@@ -348,6 +348,31 @@ thin_prebayesnecfit <- function(x, by) {
   x
 }
 
+test_that("unequal draw counts are refused before model weighting", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  set.seed(548)
+  short <- thin_prebayesnecfit(manec_example$mod_fits$nec4param, by = 4)
+  long <- manec_example$mod_fits$ecx4param
+  expect_equal(brms::ndraws(short$fit), 26)
+  expect_equal(brms::ndraws(long$fit), 100)
+  fits <- list(nec4param = short, ecx4param = long)
+  formulas <- lapply(fits, `[[`, "bayesnecformula")
+  expected <- paste0(
+    "Cannot combine models with different numbers of posterior draws: ",
+    "nec4param = 26, ecx4param = 100. Refit with matching retained draw ",
+    "counts; set thin during fitting if the iteration counts differ."
+  )
+  expect_error(expand_manec(fits, formulas), expected, fixed = TRUE)
+
+  short_single <- thin_prebayesnecfit(
+    pull_out(manec_example, "nec4param"), by = 4
+  )
+  long_single <- pull_out(manec_example, "ecx4param")
+  expect_error(c(short_single, long_single), expected, fixed = TRUE)
+})
+
 # manec_example holds 50 post-warmup draws in each of 2 chains. `by = 4` keeps
 # 13 of each, 26 in all, where ceiling(50 / 4 * 2) is 25. A `by` that divides
 # 50, or 3, gives the same count both ways and tests nothing.
