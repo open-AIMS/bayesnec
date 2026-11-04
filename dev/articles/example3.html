@@ -517,10 +517,14 @@ through the <code>prior_type</code> argument of <code>bnec</code> (and
 <code>amend</code>). The two sets differ in the response-scaled
 <strong>top</strong> and <strong>bot</strong> parameters, in the
 predictor-scaled <strong>nec</strong> and <strong>ec50</strong>
-parameters, and in the group-level parameters described above. The fixed
-<code>normal(0, 5)</code> priors on <strong>beta</strong>,
-<strong>slope</strong>, <strong>d</strong> and <strong>f</strong> are
-identical for both.</p>
+parameters, and in the group-level parameters described above. The
+narrower set also gives <strong>d</strong> and <strong>f</strong>
+<code>normal(0, 1)</code> priors, while their uninformative entries
+remain <code>normal(0, 5)</code>. Both sets retain
+<code>normal(0, 5)</code> for <strong>beta</strong> and
+<strong>slope</strong>, whose rate interpretation depends on the
+concentration units. Each parameter has the same entry across
+equations.</p>
 <p>The <code>"uninformative"</code> set is stated separately for each of
 the three branches, as Fisher et al. (2024) state it. The
 <code>"regularizing"</code> set is stated once, as a location and a

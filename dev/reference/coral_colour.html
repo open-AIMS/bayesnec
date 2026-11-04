@@ -112,7 +112,9 @@ and 2100.</p>
     <h2>Details</h2>
     <p>The design is three climate scenarios by five diuron concentrations by three
 chambers, with four coral fragments in each chamber: 45 chambers and 180
-fragments. A chamber sits at one concentration, so it spans no part of the
+fragments. <code><a href="coral_pam.html">coral_pam</a></code> has a sixth concentration, 29
+\(\mu\)g/L, at which the corals died before they could be photographed.
+A chamber sits at one concentration, so it spans no part of the
 concentration-response curve and admits only a displacement — the
 within-concentration structure <code><a href="../articles/example8.html">vignette("example8")</a></code> demonstrates.
 <code><a href="../articles/example4.html">vignette("example4")</a></code> fits it with <code>ogl(chamber)</code>. The model weights of a set fitted with that term leave
@@ -124,14 +126,12 @@ that limit does. Equations of four curve parameters do not sample reliably
 against five concentrations while equations of three do, and the failure
 appears as divergent transitions rather than as an error.</p>
 <p>Colour was scored from image pixel intensity before and after the exposure,
-reported here as <code>t0_pixel</code> and <code>t14_pixel</code>. <code>intensity</code> is a
-derived score on the unit interval and <code>proportion</code> is exactly its
-complement. How <code>intensity</code> was derived is not recorded, and it is not
-any of the obvious normalisations of the two pixel columns, so it is shipped
-as supplied rather than reconstructed. Exactly one fragment has an
-<code>intensity</code> of 1 and therefore a <code>proportion</code> of 0, which is the
-signature of a score normalised to the largest value in the dataset and is a
-boundary a <code>Beta</code> likelihood cannot represent. See
+reported here as <code>t0_pixel</code> and <code>t14_pixel</code>. <code>intensity</code> is
+<code>t14_pixel</code> rescaled to the unit interval by the smallest and largest
+values in the two pixel columns together, and <code>proportion</code> is exactly
+its complement. The fragment that sets the largest value therefore has an
+<code>intensity</code> of 1 and a <code>proportion</code> of 0, a boundary a
+<code>Beta</code> likelihood cannot represent. See
 <code><a href="../articles/example6.html">vignette("example6")</a></code> for what to do with a value on a boundary.</p>
 <p>The control concentration is reported as <code>0</code>. The source file also
 holds a column substituting <code>0.1</code> for it so that a log predictor can be
@@ -145,7 +145,7 @@ wants it can make it and say so.</p>
 
 <dt>diuron</dt>
 <dd><p>Diuron concentration in \(\mu\)g/L (dbl), one of 0, 0.29,
-0.96, 2.9 and 29.</p></dd>
+0.96, 2.9 and 9.6.</p></dd>
 
 <dt>chamber</dt>
 <dd><p>Exposure chamber (fct), 45 levels, each at one climate
@@ -191,10 +191,10 @@ doi: 10.1016/j.marpolbul.2021.112582.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 6    2018      0     c02        2    77.41    100.55 0.2379233  0.7620767</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/with.html" class="external-link">with</a></span><span class="op">(</span><span class="va">coral_colour</span>, <span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">climate</span>, <span class="va">diuron</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>        diuron</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> climate  0 0.29 0.96 2.9 29</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    2018 12   12   12  12 12</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    2050 12   12   12  12 12</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    2100 12   12   12  12 12</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> climate  0 0.29 0.96 2.9 9.6</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    2018 12   12   12  12  12</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    2050 12   12   12  12  12</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    2100 12   12   12  12  12</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

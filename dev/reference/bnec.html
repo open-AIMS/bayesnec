@@ -251,9 +251,13 @@ which is a coverage width at the 95% level where concentrations are supplied
 as recorded and the constant <code>10 sd(x)</code> where the predictor is supplied
 already logged, so how much narrower the regularizing entry is depends on
 which of the two the data are on. See <code><a href="../articles/example3.html">vignette("example3")</a></code> for why the
-two rules differ. Ignored when priors are supplied directly via the
-<code>prior</code> argument. Both default sets assume that the tested
-concentrations reach the lower asymptote of the curve. Where the mean
+two rules differ. The curve-shape parameters <code>d</code> and <code>f</code> use
+<code>normal(0, 1)</code> under <code>"regularizing"</code> and <code>normal(0, 5)</code> under
+<code>"uninformative"</code>. The <code>beta</code> and <code>slope</code> parameters keep
+<code>normal(0, 5)</code> in both sets. Each named parameter receives the same
+entry across equations. The choice is ignored when priors are supplied
+directly via the <code>prior</code> argument. Both default sets assume that the
+tested concentrations reach the lower asymptote of the curve. Where the mean
 response at the highest concentration is below the mean at the second
 highest by more than the contrast's standard error admits, tested one-sided
 at the 5% level under the mean-variance relationship of the fitted family,
