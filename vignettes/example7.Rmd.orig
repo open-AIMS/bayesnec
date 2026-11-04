@@ -75,40 +75,39 @@ data quality improves.
 # 1 Negative growth rates
 
 Some ecotoxicological responses can legitimately take negative values. Specific
-growth rate is the most common example: it is a rate of change, and a
-population that declines over the course of a test has a negative one. Other
-examples include increments, differences between paired measurements, and any
-response expressed as a change from a baseline.
+growth rate is the most common example: as a rate of change, it is negative for
+a population that declines over the course of a test. Other examples include
+increments, differences between paired measurements, and any response expressed
+as a change from a baseline.
 
-Removing those negative values before fitting is standard practice, in this
-package and in others. The reasons are long-standing and none of them is
-specific to any one piece of software. A negative value cannot be expressed as
-a percentage of the control without the percentage exceeding 100. Several
-commonly used concentration-response equations cannot generate a negative mean
-at all. And a negative growth rate looks anomalous on a plot, which invites the
-reader to treat it as an error rather than as a measurement.
+However, these negative values are typically removed before fitting, both in
+this package and in others. The reasons are long-standing, and none of
+them is specific to any one piece of software. A negative value cannot be
+expressed as a percentage of the control without the percentage exceeding 100,
+and several commonly used concentration-response equations cannot generate a
+negative mean at all. In addition, a negative growth rate looks anomalous on a
+plot, which may cause the reader to treat it as an error and not as a
+measurement.
 
-The removal is done in one of several ways: by deleting the rows that hold
-them, by replacing the negative values with zero before fitting, by declaring
-them censored at zero, or by fitting a response distribution such as a Beta or
-a Gamma that has no support below zero. In a minority of cases the negative
+The negative values are removed in one of several ways: by deleting the rows
+that hold them, by replacing them with zero before fitting, by declaring them
+censored at zero, or by fitting a response distribution that has no support
+below zero (e.g. a Beta or a Gamma). In a minority of cases the negative
 values are kept and the model is fitted to the data as recorded, which is the
 `measured` convention of Section 5.
 
-Here we examine how each of those conventions affects the toxicity estimate
-that is subsequently reported.
-
-- Section 2 sets out how the estimates are defined, and why the definition
-  matters when the response can cross zero.
-- Section 3 sets out what replacing a negative value commits the analyst to,
-  which is more than an edit to the data.
-- Section 4 records which equations `bayesnec` fits under a Gaussian family,
-  and the ECx that `ecx()` returns for them.
-- Section 5 reports a simulation study in which the true values are known, so
-  that each convention can be scored rather than merely compared.
-- Section 6 applies the same comparison to four real algal growth tests.
-- Sections 7 and 8 give the recommendations and the limitations.
-- Section 9 records the provenance of every figure quoted.
+Here we examine how each of these conventions affects the toxicity estimate that
+is subsequently reported. We first define the estimates and explain why their
+definition is important when the response can cross zero (Section 2), and then
+set out what replacing a negative value commits the analyst to, which is more
+than an edit to the data (Section 3). We also list the equations `bayesnec` fits
+under a Gaussian family, and the ECx that `ecx()` returns for them (Section 4).
+The conventions are then evaluated in a simulation study in which the true
+values are known, so that each convention can be scored against the truth and
+not merely compared with the others (Section 5), and the comparison is repeated
+on four real algal growth tests (Section 6). The recommendations and the
+limitations are given in Sections 7 and 8, and the provenance of each figure
+quoted is recorded in Section 9.
 
 To run this vignette we will need the following packages.
 
@@ -124,161 +123,169 @@ library(tidyr)
 
 ## 2.1 Growth rate and the ErCx notation
 
-The `r` in ErC50 names the endpoint the estimate was derived from. It comes
-from OECD Test Guideline 201 [@oecd2026tg201], which writes it as a subscript;
-this vignette writes it inline. In OECD terminology the *endpoint* is the
-measured biological response, and TG 201 defines two of them from the same cell
-counts and requires both to be reported. ErC50 is the EC50 for the average
-specific *growth rate*, the rate constant of population increase, and EyC50 is
-the EC50 for the *yield*, the biomass increase over the test. For the same data
-EyC50 is systematically lower than ErC50, and the guideline requires the growth
-rate to be reported because it does not depend on test duration.
+In OECD terminology the *endpoint* is the measured biological response, and OECD
+Test Guideline 201 [@oecd2026tg201] defines two endpoints from one set of cell
+counts and requires both to be reported: the average specific *growth rate*
+(i.e. the rate constant of population increase) and the *yield* (i.e. the
+biomass increase over the test). The `r` in ErC50 comes from TG 201 and names
+the endpoint from which the estimate was derived, so that ErC50 is the EC50 for
+the growth rate and EyC50 is the EC50 for the yield (TG 201 writes this letter
+as a subscript, whereas we write it inline). For a given dataset EyC50 is
+systematically lower than ErC50, and the guideline requires the growth rate to
+be reported because it does not depend on test duration.
 
-An ECx or an NSEC, both defined below, is therefore a *toxicity estimate*,
-not an endpoint. That
-distinction matters here because it is the growth rate endpoint, not the
-toxicity estimate, that can take negative values. Everything below concerns
-ErCx.
+An ECx or an NSEC (both defined below) is therefore a *toxicity estimate*, not
+an endpoint. This distinction is important here because it is the growth-rate
+endpoint, and not the toxicity estimate, that can take negative values.
+Everything below concerns ErCx.
 
 ## 2.2 The ECx reference
 
-`bayesnec` measures every ECx from the control, which is the predicted mean at
+`bayesnec` measures each ECx from the control, which is the predicted mean at
 the lowest concentration in the supplied predictor, taken per posterior draw.
 The `type` argument names what the percentage is measured *towards*:
-`"absolute"`, the default, measures from the control to zero; `"relative"`
-measures from the control to the equation's lower asymptote; `"range"` measures
-from the control to the lowest response the curve predicts; and `"direct"`
-reads the concentration off a nominated response value. See `?ecx` for the full
-definitions.
+`"absolute"` (the default) measures from the control to zero, `"relative"` from
+the control to the equation's lower asymptote, and `"range"` from the control
+to the lowest response the curve predicts, whereas `"direct"` reads the
+concentration off a nominated response value (see `?ecx` for the full
+definitions).
 
-`type = "absolute"` is the definition TG 201 uses. A 50% effect means the
-growth rate has been halved relative to the control, and a 100% effect means
-growth has stopped altogether. Two consequences follow for a response that can
-go negative. Zero growth is 100% effect for every dataset, whatever the control
-growth rate, so a curve whose lower asymptote is negative descends past 100%
-effect and keeps going. And effects above 100% are meaningful and are not
-truncated: `ecx_val` is not capped, because 120% inhibition of a growth rate is
-a rate of -0.2 times the control, which is a real measurement on an unbounded
-response and is what TG 201 reports.
+TG 201 uses the definition given by `type = "absolute"`, under which a 50%
+effect means the growth rate has been halved relative to the control, and a
+100% effect means growth has stopped altogether. This definition has two
+consequences for a response that can go negative. First, zero growth is 100%
+effect for any dataset, whatever the control growth rate, so a curve whose
+lower asymptote is negative descends past 100% effect and continues to decline.
+Second, effects above 100% are meaningful and are not truncated (`ecx_val` is
+not capped), because 120% inhibition of a growth rate is a rate of -0.2 times
+the control, which is a real measurement on an unbounded response and is the
+value reported under TG 201.
 
-ErC10 and ErC50 themselves never lie below zero. They require the response to
-be 90% and 50% of the control respectively, both strictly positive, so the
-negative part of the curve can only affect them indirectly, by changing the
-shape of the fitted curve through the high-concentration observations. That
-indirect route is what the rest of this vignette quantifies.
+ErC10 and ErC50 are always located where the curve is above zero, because they
+require the response to be 90% and 50% of the control respectively, and both of
+these values are strictly positive. The negative part of the curve can
+therefore affect these estimates only indirectly, by changing the shape of the
+fitted curve through the observations at high concentrations, and it is this
+indirect effect that we quantify in the rest of this vignette.
 
-We do not normalise to the control anywhere here. The absolute ECx already
-expresses the effect relative to the fitted control response, so dividing the
-data by the control mean beforehand would apply the same correction twice and
-would additionally distort the error structure [@Ritz2026].
+We do not normalise the response to the control anywhere in this vignette. The
+absolute ECx already expresses the effect relative to the fitted control
+response, so dividing the data by the control mean beforehand would apply the
+same correction twice, and would also distort the error structure [@Ritz2026].
 
 ## 2.3 The NSEC
 
-The NSEC is the no-significant-effect-concentration of @fisherfox2023: the
-highest concentration at which the modelled mean response is still statistically
-indistinguishable from the modelled control response. Read up the concentration
-series, it is the point at which the response first becomes distinguishable from
-the control. `bayesnec` takes a lower quantile of the control posterior — by
-default the 1st percentile, controlled by `sig_val` — and finds where each
-posterior draw of the curve crosses it. It
-is one of the estimates recommended for guideline derivation under the current
-Australian and New Zealand technical guidance [@warne2025]; see @fisher2023ieam
-for its relationship to the NEC.
+The NSEC is the no-significant-effect-concentration of @fisherfox2023, i.e. the
+highest concentration at which the modelled mean response is still
+statistically indistinguishable from the modelled control response (read up the
+concentration series, this is the point at which the response first becomes
+distinguishable from the control). To estimate it, `bayesnec` takes a lower
+quantile of the control posterior (by default the 1st percentile, controlled by
+`sig_val`) and finds where each posterior draw of the curve crosses it. The
+NSEC is one of the estimates recommended for guideline derivation under the
+current Australian and New Zealand technical guidance [@warne2025], and its
+relationship to the NEC is described by @fisher2023ieam.
 
-The NSEC depends on the width of the control posterior, and this determines how
-the results below have to be read. It follows from how the metric is defined,
-not from how any approach fits the data. A noisier experiment produces a wider
-control posterior, hence a lower reference value, hence a crossing further to
-the right, at a higher concentration. As the residual error among the control
-replicates tends to zero the reference converges on the control mean, and the
-crossing is found at a lower concentration.
+The NSEC depends on the width of the control posterior, which determines how
+the results below need to be read. This dependence follows from how the metric
+is defined, and not from how any approach fits the data. A noisier experiment
+tends to produce a wider control posterior, and hence a lower reference value
+and a crossing further to the right, at a higher concentration. Conversely, as
+the residual error among the control replicates tends to zero, the reference
+converges on the control mean and the crossing is found at a lower
+concentration.
 
-Several equations in `bayesnec` include a `nec` parameter: a threshold
+Several equations in `bayesnec` include a `nec` parameter (a threshold
 concentration below which the modelled mean response is flat at the control
-level and above which it declines, so the curve is two straight or curved
-segments meeting at a corner rather than a single smooth decline. For such an
-equation the NSEC converges on `nec` itself as the residual error falls. The
-true `nec` is therefore the NSEC's limiting value, not its expected value at any
-finite level of noise.
+level and above which it declines), so that the curve consists of two straight
+or curved segments meeting at a corner instead of a single smooth decline. For
+such an equation the NSEC converges on `nec` itself as the residual error
+falls. The true `nec` is therefore the limiting value of the NSEC, and not its
+expected value at any finite level of noise.
 
 # 3 Flooring and the response distribution
 
-Replacing a negative growth rate with zero is not only an edit to the data. It
-asserts that the response cannot be negative, which is a statement about the
-response distribution, and the rest of the analysis has to be made consistent
-with it.
+Replacing a negative growth rate with zero is more than an edit to the data,
+because it asserts that the response cannot be negative. This is a statement
+about the response distribution, and the rest of the analysis then has to be
+made consistent with it.
 
-No available distribution family represents that assertion exactly. A floored response has a
-point mass at zero, and the distributions available for a non-negative
-continuous response exclude zero itself: a Beta is defined on the open interval
-(0, 1) and a Gamma on the open interval (0, infinity). The floored values
-therefore sit outside the support of the family the flooring implies. A
-distribution that does represent a continuous non-negative response with a
-point mass at zero — a Tweedie, for instance — is not available natively in
-`brms`.
+However, no available distribution family represents that assertion exactly. A
+floored response has a point mass at zero, whereas the distributions available
+for a non-negative continuous response exclude zero itself (a Beta is defined on
+the open interval (0, 1) and a Gamma on the open interval (0, infinity)). The
+floored values are therefore outside the support of the family that the
+flooring implies. A distribution that does represent a continuous non-negative
+response with a point mass at zero (e.g. a Tweedie) is not available natively
+in `brms`.
 
-`bayesnec` accommodates this by moving the values inside the support.
-`check_data()` shifts an exact zero to one tenth of the smallest positive
-value, and an exact one to `1 - 0.001`. `bnec()` gives one message for each substitution,
-naming the number of rows, the value substituted, the reason, and the family
-that would represent a genuine zero rather than move it. The accommodation is a
-device for making an inconsistent specification runnable, not a model of the
-response.
+`bayesnec` accommodates this by shifting the values inside the support of the
+Beta or Gamma family. `check_data()` shifts an exact zero to one tenth of the
+smallest positive value and, under a Beta, an exact one to `1 - 0.001`.
+`bnec()` gives one message for each substitution, naming the number of rows,
+the value substituted and the reason, and, for a substituted zero, the family
+that would represent a genuine zero instead of shifting it. This accommodation is
+a device for making an inconsistent specification runnable, and not a model of
+the response.
 
-Substituting zeros and choosing a bounded family are therefore the same
-practice at different stages, which is why this vignette does not treat them as
-alternatives. The `floored` convention below replaces the negative values and
-leaves the family unbounded; the `beta` and `gamma` conventions make the same
-assertion through the family as well.
+Substituting zeros and choosing a bounded family are therefore one practice
+applied at different stages of the analysis, which is why we do not
+treat them as alternatives. The `floored` convention below replaces the
+negative values and keeps the family unbounded, whereas the `beta` and `gamma`
+conventions make this assertion through the family as well as through the
+data.
 
 Two cases are outside this argument. A row whose value was never recorded,
 because the population fell below a counting limit, is a censored observation
-rather than a floored one, and is exempt from the substitution. And a response
-that is genuinely zero because the population died is a different process
-again, which the hurdle and zero-inflated families are designed for; see the
-[Hurdle and zero-inflated concentration-response models][e6] vignette. Those
+and not a floored one, and is exempt from the substitution. A response that is
+genuinely zero because the population died is a different process again, for
+which the hurdle and zero-inflated families are designed (see the [Hurdle and
+zero-inflated concentration-response models][e6] vignette). However, these
 families are not a remedy for a substituted negative.
 
 # 4 Zero-asymptote equations under a Gaussian family
 
-The interval a response distribution allows the mean to occupy is a property of
-the distribution and not of the link. A Gaussian mean is unconstrained: the
-data enter the likelihood only through the residual, so a negative fitted mean
-is an ordinary prediction rather than an invalid one.
+The interval within which a response distribution allows the mean to fall is a
+property of the distribution, and not of the link function. The mean of a
+Gaussian distribution is unconstrained, because the data enter the likelihood
+only through the residual, and a negative fitted mean is therefore an ordinary
+prediction and not an invalid one.
 
-The six declining equations whose lower asymptote is fixed at zero —
-`nec3param`, `ecxexp`, `ecxsigm`, `ecxwb1p3`, `ecxwb2p3` and `ecxll3` — are
-therefore retained under a Gaussian family, although none of them can predict a
-negative mean while `top` is positive. An absolute ECx is reported for them,
-although none has a `bot` parameter. The declining candidate set that `bnec()`
-fits by default under a Gaussian family includes these six and the other eight
-declining equations, and, with the constant equation `ecxflat`, which is also in the
-`"decline"` group, it is fifteen equations.
+For this reason the six declining equations whose lower asymptote is fixed at
+zero (`nec3param`, `ecxexp`, `ecxsigm`, `ecxwb1p3`, `ecxwb2p3` and `ecxll3`) are
+retained under a Gaussian family, although none of them can predict a negative
+mean while `top` is positive. An absolute ECx is reported for each of them,
+even though none has a `bot` parameter. Under a Gaussian family the declining
+candidate set that `bnec()` fits by default includes these six and the eight
+other declining equations and, together with the constant equation
+`ecxflat` (which is also in the `"decline"` group), consists of fifteen
+equations.
 
 ```{r}
 models()$decline
 ```
 
-The practical effect is that the curve shape TG 201 and @Ritz2026 both describe
-for algal growth-rate data — a lower asymptote fixed at zero, representing
-complete inhibition — can be fitted directly, on the measurements as recorded,
-and can be weighed against the free-asymptote shapes by the same model
-averaging that `bayesnec` applies to everything else. Choosing that shape is
-then a matter of evidence rather than of specification. Whether to replace the
-measurements is a separate decision, taken before any equation is fitted, and it
-is the one the sections that follow are about.
+In practice, this means that the curve shape described for algal growth-rate
+data by both TG 201 and @Ritz2026 (a lower asymptote fixed at zero, representing
+complete inhibition) can be fitted directly to the measurements as recorded, and
+can be weighed against the shapes with a free lower asymptote by the same model
+averaging that `bayesnec` applies to everything else. Whether that shape is used
+then depends on the weight the data give it, and not on a choice made in the
+model specification. The decision to replace the measurements is a separate one,
+made before any equation is fitted, and it is this decision that we examine in
+the remaining sections.
 
 # 5 Simulation study
 
 Real datasets can show that the conventions disagree, but not which of them is
-right, because the true toxicity of a real substance is unknown. We therefore
-make the comparison on simulated data, where the true ErC10, ErC50 and `nec`
-are known by construction and each convention can be scored against them.
+correct, because the true toxicity of a real substance is unknown. We therefore
+make the comparison on simulated data, for which the true ErC10, ErC50 and `nec`
+are known by construction, so that each convention can be scored against them.
 
 ## 5.1 The conventions compared
 
-We compare six conventions, distinguished only by what is done to the data
-before fitting and which response distribution is then used.
+We compare six conventions, which differ only in what is done to the data before
+fitting and in the response distribution that is then used.
 
 | name | what the analyst does |
 |---|---|
@@ -289,37 +296,38 @@ before fitting and which response distribution is then used.
 | `beta` | floor, scale the response to (0, 1], fit a Beta |
 | `gamma` | floor, fit a Gamma |
 
-Every convention then calls `bnec()` with package defaults: the default priors derived
-from its own prepared data, the default declining candidate set for its family,
-and the default model averaging over that set — pseudo-BMA with a Bayesian
-bootstrap, which is what `bnec()` uses when `loo_controls` is not supplied. No
-convention is handed a prior or an equation chosen by another. The contrast between two conventions is therefore the
-contrast a practitioner would obtain by following the convention through, not a
-likelihood-only contrast with everything else held artificially fixed.
+Each convention then calls `bnec()` with the package defaults, i.e. the default
+priors derived from its own prepared data, the default declining candidate set
+for its family, and the default model averaging over that set (pseudo-BMA with a
+Bayesian bootstrap, which `bnec()` uses when `loo_controls` is not supplied). No
+convention is given a prior or an equation chosen by another convention. The
+difference between two conventions is therefore the difference a practitioner
+would obtain by following each convention through, and not a contrast in the
+likelihood only, with everything else held artificially fixed.
 
-Holding the equation fixed, for example at `nec4param`, would allow any
-difference to be attributed to the treatment of the data alone. However, that
-answers a question about the likelihood, and not the question a reader has,
-which is what happens to the number they will report. A fixed equation would
-also introduce an artefact: on altered data a fixed `nec4param` is no longer the
-equation that generated them, so part of what it measured would be
-misspecification the convention did not cause.
+If the equation were held fixed (e.g. at `nec4param`), any difference could be
+attributed only to the treatment of the data. However, this answers a
+question about the likelihood, and not the question a reader has, which is what
+happens to the number they will report. A fixed equation would also introduce an
+artefact, because on altered data a fixed `nec4param` is no longer the equation
+that generated them, and part of what it measured would then be
+misspecification that the convention did not cause.
 
-The `measured` convention uses the growth rates exactly as recorded, with the lower
-asymptote left free wherever the equation has one. It is the reference for
-everything below.
+The `measured` convention uses the growth rates as recorded, with the lower
+asymptote left free wherever the equation has one, and provides the reference
+for all of the results below.
 
 ```{r, eval = FALSE}
 bnec(y ~ crf(x, "decline"), data = dat, family = gaussian(link = "identity"))
 ```
 
-The `censored` convention declares each negative value as censored at zero: the model
-is told the observation lies at or below zero, without being told what it was.
-This is the option available when the negative values were never recorded. It
-also changes which observations constrain the mean the most, because a censored
-row contributes the probability that the response lies at or below the bound
-rather than a density. See the *Censoring* section of the
-[Single model usage][e1] vignette.
+The `censored` convention declares each negative value censored at zero, so
+that the model is told the observation is at or below zero without being told
+its value. This is the option available when the negative values were never
+recorded. Censoring also changes which observations constrain the mean most
+strongly, because a censored row contributes the probability that the response
+is at or below the bound, and not a density (see the *Censoring* section of the
+[Single model usage][e1] vignette).
 
 ```{r, eval = FALSE}
 dat_censored <- dat |>
@@ -329,18 +337,19 @@ bnec(y | cens(cens) ~ crf(x, "decline"), data = dat_censored,
      family = gaussian(link = "identity"))
 ```
 
-The `deleted` convention drops the rows holding a negative value and analyses what is
-left unchanged. Nothing false is asserted about any observation that is kept,
-but the replication per concentration can change, and at the top of the series,
-at the highest concentrations, a whole treatment group can disappear.
+The `deleted` convention drops the rows holding a negative value and analyses
+the remaining data unchanged. Nothing false is asserted about any observation
+that is kept. However, the replication per concentration can change, and a
+whole treatment group may disappear at the top of the series (i.e. at the
+highest concentrations).
 
 ```{r, eval = FALSE}
 bnec(y ~ crf(x, "decline"), data = filter(dat, y >= 0),
      family = gaussian(link = "identity"))
 ```
 
-The `floored` convention replaces every negative growth rate with zero and leaves the
-model unchanged.
+The `floored` convention replaces each negative growth rate with zero and does
+not change the model.
 
 ```{r, eval = FALSE}
 dat_floored <- mutate(dat, y = pmax(y, 0))
@@ -348,11 +357,11 @@ bnec(y ~ crf(x, "decline"), data = dat_floored,
      family = gaussian(link = "identity"))
 ```
 
-The `beta` convention divides the floored response by its maximum so that it lies in
-(0, 1] and fits a Beta. Dividing by the maximum is how these data have been
-prepared in the work this vignette draws on; dividing by the control mean is at
-least as common elsewhere, and @Ritz2026 set out why neither should be done
-before fitting.
+The `beta` convention divides the floored response by its maximum, so that it
+is in the interval (0, 1], and fits a Beta. Dividing by the maximum is how these
+data have been prepared in the work this vignette draws on, whereas dividing by
+the control mean is at least as common elsewhere, and @Ritz2026 set out why the
+response should not be divided by either before fitting.
 
 ```{r, eval = FALSE}
 dat_beta <- dat |>
@@ -361,27 +370,28 @@ dat_beta <- dat |>
 bnec(y ~ crf(x, "decline"), data = dat_beta, family = Beta(link = "identity"))
 ```
 
-The `gamma` convention applies no scaling and fits a Gamma to the floored response.
+The `gamma` convention applies no scaling, and fits a Gamma to the floored
+response.
 
 ```{r, eval = FALSE}
 bnec(y ~ crf(x, "decline"), data = dat_floored,
      family = Gamma(link = "identity"))
 ```
 
-The zeros that flooring creates are shifted off the boundary by `check_data()`,
-as described in Section 3, and that shift is part of the convention under test
-rather than something the study pre-empts. Dividing by the maximum does not
-affect the reported toxicity estimates: `ecx(type = "absolute")` solves
-`f(x) = control * (1 - x/100)`, so a positive scaling of the response applies
-to both sides and the concentration at which the curve meets the target is
-unchanged. What the family changes is the fitted curve, not the definition of
-the estimate.
+Under the `beta` and `gamma` conventions the zeros created by flooring are
+shifted off the boundary by `check_data()` (Section 3), and this shift is part
+of the convention under test, not something the study pre-empts. Dividing by
+the maximum does not affect the reported toxicity estimates, because
+`ecx(type = "absolute")` solves `f(x) = control * (1 - x/100)`. A positive
+scaling of the response therefore applies to both sides of this equation, and
+the concentration at which the curve meets the target is unchanged. The choice
+of family changes the fitted curve, but not the definition of the estimate.
 
 The candidate set differs between families, because the declining set is
-filtered by what each family's support allows. Under a Gaussian family it was
-the fourteen equations listed in Section 4 other than `ecxflat`, which joined
-the set after the study was run; under a Beta and under a Gamma it was twelve.
-
+filtered according to what the support of each family allows. Under a Gaussian
+family the study used the fourteen equations listed in Section 4 other than
+`ecxflat` (which was added to the set after the study was run), whereas under a
+Beta and under a Gamma it used twelve.
 
 ```{r, echo = FALSE}
 # One colour per convention, used consistently in every figure below. These were
@@ -412,8 +422,8 @@ handling_levels <- c("Measurement retained", "Zero boundary imposed",
 
 ## 5.2 Design
 
-The data are generated from `nec4param`, an equation that is in every Gaussian
-convention's candidate set, so that the generating shape is available to be recovered
+The data are generated from `nec4param`, which is in the candidate set of each
+Gaussian convention, so that the generating shape is available to be recovered
 and the weight it receives is itself informative.
 
 ```{r}
@@ -423,12 +433,12 @@ nec4param_curve <- function(x, top, bot, beta, nec) {
 ```
 
 The truth is parameterised so that the two experimental factors are explicit.
-The control growth rate is set by the control fold-change `R`, the factor by
-which the control population multiplies over a test of length `t`. The depth of
-the lower asymptote is set as a multiple `delta` of that control rate, so at
-`delta = 2` the population declines twice as fast at the highest concentrations
-as it grows in the control. The three levels used, `delta` = 2, 4 and 8, span
-the range measured on the real datasets.
+The control growth rate is set by the control fold-change `R` (the factor by
+which the control population multiplies over a test of length `t`), and the
+depth of the lower asymptote is set as a multiple `delta` of that control rate.
+For example, at `delta = 2` the population declines twice as fast at the
+highest concentrations as it grows in the control. The three levels used
+(`delta` = 2, 4 and 8) span the range measured on the real datasets.
 
 ```{r}
 sim_truth <- function(R = 2.3, delta = 4, t = 7, nec = 1.3, beta = -3.573) {
@@ -444,11 +454,13 @@ sim_truth <- function(R = 2.3, delta = 4, t = 7, nec = 1.3, beta = -3.573) {
 The design is a geometric concentration series spanning a factor of one
 hundred, with ten controls and five replicates at each of twelve concentrations
 (n = 70), matching the real designs. The position of the highest concentration
-is the second factor, expressed as a multiple `top_factor` of the concentration
-at which the true curve crosses zero. At `top_factor = 1.0` the series stops
-exactly at the crossing and about one design point in fourteen has a
-non-positive true mean; at `2.0` it runs well past, and one in seven does. This
-factor determines how much negative data there is for a convention to act on.
+is the second factor, and is expressed as a multiple `top_factor` of the
+concentration at which the true curve crosses zero. At `top_factor = 1.0` the
+series stops exactly at the crossing and about one design point in fourteen has
+a non-positive true mean, whereas at `2.0` the series extends well past the
+crossing and one design point in seven has a non-positive true mean. This
+factor therefore determines how much negative data there is for a convention to
+act on.
 
 ```{r}
 sim_design <- function(truth, top_factor = 1, n_conc = 12, n_rep = 5,
@@ -460,14 +472,15 @@ sim_design <- function(truth, top_factor = 1, n_conc = 12, n_rep = 5,
 ```
 
 The residual scale is constant along the curve, and the fits are homoscedastic
-to match, so that no convention is misspecified in its variance and the mean structure
-is the only thing under test. Measured on `alga` as the within-dose standard
-deviation against position on the curve, with substituted rows excluded, only
-one of the four datasets shows a gradient at all (`c_proliferum`, fitted ratio
-14.1, slope p < 0.001; the other three 1.2 to 1.5, p > 0.35). Generating every
-cell heteroscedastic would assert as general something seen in one dataset, and
-would make every convention misspecified in the same way, which is a confound
-shared by the whole comparison rather than a feature of it.
+to match, so that no convention is misspecified in its variance and only the
+mean structure is under test. When the within-dose standard deviation of the
+`alga` data is measured against position on the curve (with substituted rows
+excluded), only one of the four datasets shows a gradient at all
+(`c_proliferum`, fitted ratio 14.1, slope p < 0.001), whereas the ratios for
+the other three are 1.2 to 1.5 (p > 0.35). Generating all cells as
+heteroscedastic would therefore assert as general a pattern seen in one
+dataset. It would also misspecify each convention identically, which
+is a confound shared by the whole comparison and not a feature of it.
 
 ```{r}
 sim_sigma <- function(x, truth, sigma_0_abs) rep(sigma_0_abs, length(x))
@@ -481,28 +494,28 @@ simulate_dataset <- function(truth, design, sigma_0_abs, seed = NULL) {
 ```
 
 The control residual standard deviation is held at a fixed absolute value,
-anchored so that it corresponds to a 9.6% coefficient of variation at
-`R` = 2.3, rather than at a fixed coefficient of variation. Under a fixed
-coefficient of variation the generating model is exactly scale-equivariant in
-the growth rate, so changing `R` would change nothing that is reported. Holding
-the absolute error fixed instead means that raising `R` raises the signal and
-leaves the noise alone, which makes `R` a measurement-precision axis.
+anchored so that it corresponds to a coefficient of variation of 9.6% at `R` =
+2.3, rather than at a fixed coefficient of variation. Under a fixed coefficient
+of variation the generating model is exactly scale-equivariant in the growth
+rate, so changing `R` would change nothing that is reported. Holding the
+absolute error fixed instead means that increasing `R` increases the signal but
+does not change the noise, which makes `R` an axis of measurement precision.
 
 ```{r}
 sigma_0_abs <- 0.096 * log(2.3) / 7   # absolute control SD, anchored at R = 2.3
 ```
 
-The design is seven cells. Four of them, `p1` to `p4`, hold `delta` = 4 and
-`top_factor` = 2.0 and raise `R`, giving four levels of measurement precision
-at an otherwise identical design and truth. Two more, `d2` and `d8`, change how
-far the true curve descends below zero. The seventh, `ctl`, stops the
-concentration series at the zero crossing, so that the conventions have almost
-nothing to act on. Each cell was simulated 100 times and every simulated
-dataset was analysed by all six conventions, giving 7 x 100 x 6 = 4,200
-model-averaged fits and 52,533 individual equation fits. Sampling used four
-chains of 4,000 iterations with 2,000 warmup, `adapt_delta = 0.99` and
-`max_treedepth = 12`. Every fit is retained in the summaries: no unit failed and
-no estimate was unidentified.
+The design consists of seven cells. Four of them (`p1` to `p4`) have `delta` =
+4 and `top_factor` = 2.0 and increasing values of `R`, giving four levels of
+measurement precision with an otherwise identical design and truth. Two more
+(`d2` and `d8`) change how far the true curve descends below zero, and the
+seventh (`ctl`) stops the concentration series at the zero crossing, so that
+the conventions have almost nothing to act on. Each cell was simulated 100
+times and each simulated dataset was analysed under all six conventions, giving
+7 x 100 x 6 = 4,200 model-averaged fits and 52,533 individual equation fits.
+Sampling used four chains of 4,000 iterations with 2,000 warmup,
+`adapt_delta = 0.99` and `max_treedepth = 12`. All fits are retained in the
+summaries, as no unit failed and no estimate was unidentified.
 
 ```{r}
 cells <- data.frame(
@@ -543,14 +556,20 @@ knitr::kable(
 )
 ```
 
-Three features of Table 1 matter for the results below. The true ErC10 and
-ErC50 depend only on `delta`, so `p1` to `p4` share one estimand and differ
-only in how precisely it can be measured. The proportion of negative true means
-is one in seven in every cell except `ctl`, where it is one in fourteen; in the
-realised datasets that is about 10 negative observations out of 70, against
-about 2 in `ctl`. And the control coefficient of variation falls from 9.6% to
-1.9% across `p1` to `p4`, which is the sweep the rest of the section is built
-on.
+Three features of Table 1 are important for interpreting the results below.
+First, the true ErC10 and ErC50 depend only on `delta`, so `p1` to `p4` share
+one estimand and differ only in how precisely it can be measured. Second, the
+proportion of negative true means is one in seven in all cells except `ctl`,
+where it is one in fourteen, which in the realised datasets corresponds to
+about 10 negative observations out of 70 (against about 2 in `ctl`). Third, the
+control coefficient of variation falls from 9.6% to 1.9% across `p1` to `p4`,
+and this is the precision sweep on which the rest of this section is built.
+
+Figure 1 shows one simulated dataset from each cell. The scatter of the
+observations relative to the range of the true curve narrows from `p1` to `p4`,
+and in each cell except `ctl` the true curve is below zero growth at the
+highest two concentrations, whereas in `ctl` the series ends where the true
+curve crosses zero.
 
 ```{r cell-curves, fig.width = 9, fig.height = 5.5, out.width = "100%", fig.cap = "**Figure 1.** The seven simulated cells. Points are one simulated dataset per cell; the solid line is the true curve; the dashed horizontal line is zero growth. Vertical lines mark the true ErC10 (dotted) and ErC50 (dashed). Panels are labelled with the cell name, its design factors and the control coefficient of variation it realises."}
 curve_data <- do.call(rbind, lapply(seq_len(nrow(cells)), function(i) {
@@ -1138,16 +1157,16 @@ panel_true$y <- nec4param_curve(panel_true$x, panel_truth$top, panel_truth$bot,
 ```
 
 
-A summary over 100 realisations of a cell, which is what the tables and figures
-below report, does not show what a convention does to a dataset. All six
-conventions were therefore also fitted to a single simulated dataset from `p1`,
-the noisiest cell tested, in which
+The tables and figures below summarise each cell over its 100 realisations, and
+such a summary does not show what a convention does to an individual dataset.
+We therefore also fitted all six conventions to a single simulated dataset from
+`p1`, the noisiest cell tested, in which
 `r sprintf("%.0f", 70 * cells$prop_negative[cells$cell == "p1"])` of the seventy
 design points have a true mean growth rate at or below zero and
-`r sum(panel_dat$sgr < 0)` of the seventy simulated observations came out
-negative. The realisation is the one drawn for the `p1` exemplar by
-a seed fixed on the cell and convention names, so it was chosen before any
-result was seen rather than selected afterwards for the picture it makes.
+`r sum(panel_dat$sgr < 0)` of the seventy simulated observations were negative
+(Figure 2). This realisation is the one drawn for the `p1` exemplar by a seed
+fixed on the cell and convention names, so it was chosen before any result was
+seen and not selected afterwards for the picture it makes.
 
 
 ```{r one-dataset, fig.width = 9, fig.height = 5.4, out.width = "100%", fig.cap = sprintf("**Figure 2.** One simulated dataset from cell `p1`, fitted under each of the six conventions. Points are the data each convention was given; open symbols mark the %d observations it altered or dropped, drawn at zero by the four conventions that substitute and at their measured values under `deleted`, which discards those rows. `measured` alters none, so nothing in its panel is marked. The coloured line is the model-averaged posterior median and the band its 95%% credible interval; the black line is the true curve. The dashed horizontal line is zero growth and the dashed vertical line the true ErC50. The controls sit at a concentration of zero and have no position on a log axis, so they are not drawn; every fit uses them.", n_neg)}
@@ -1173,42 +1192,43 @@ ggplot(panel_fit, aes(x = x)) +
 ```
 
 
-Under `measured` the model average follows the true curve the whole way down,
-including the part below zero, and its credible band is narrow throughout. Under
-`censored` the median does the same; the band flares once the curve passes zero,
-because a row declared to lie below a bound says less about where the curve goes
-than a measurement does.
+Under `measured` the model-averaged curve follows the true curve along its
+whole length, including the part below zero, and its credible band is narrow
+throughout (Figure 2). Under `censored` the median also follows the true curve,
+although the band widens once the curve passes zero, because a row declared to
+be below a bound provides less information about where the curve goes than a
+measurement does.
 
-The three conventions that put a zero in place of the measurement — `floored`,
-`beta` and `gamma` — produce a curve that flattens onto zero instead of
-continuing down. The flattening is visible from a little below the true ErC50,
-which is marked by the dashed vertical line, so it begins at lower
-concentrations than the substituted rows themselves. That is the mechanism
-behind the biases reported below: the substitution is made at the top of the
-series, and the curve that results is displaced over a range that includes the
-concentrations the estimates are read from. The displacement is small at the
-ErC50 and large at the bottom of the curve, which is where the NSEC is read, and
-that ordering is what Sections 5.4 and 5.6 measure.
+In contrast, the three conventions that put a zero in place of the measurement
+(`floored`, `beta` and `gamma`) produce a curve that flattens onto zero instead
+of continuing to decline. This flattening appears from a little below the true
+ErC50 (the dashed vertical line), and therefore begins at lower concentrations
+than the substituted rows themselves. This is likely to be the mechanism behind
+the biases reported below: the substitution is made at the top of the
+concentration series, but the resulting curve is displaced over a range that
+includes the concentrations from which the estimates are read. The displacement
+is small at the ErC50 and large at the low-concentration end of the curve, where
+the NSEC is read, and this ordering is measured in Sections 5.4 and 5.6.
 
-The `deleted` panel shows a different consequence. Removing every row with a
-negative value removed the highest concentrations entirely, so the fitted curve
-stops where the surviving data stop and the design is no longer the one that was
-run.
+The `deleted` panel shows a different consequence. In this dataset, removing
+all rows with a negative value removed the highest concentrations entirely, so
+the fitted curve stops where the surviving data stop, and the design is no
+longer the one that was run.
 
-The `gamma` panel shows a failure of the variance rather than of the mean. Its
-credible band is widest at the control, on the left, where the generated
-residual spread is no wider than anywhere else, because an identity-link Gamma
-ties the spread to the fitted mean. Section 5.4 quantifies that with a posterior
-predictive check.
+The `gamma` panel shows a failure of the variance and not of the mean. Its
+credible band is widest at the control (on the left of the panel), where the
+generated residual spread is no wider than at any other concentration, because
+an identity-link Gamma ties the spread to the fitted mean. We quantify this
+with a posterior predictive check in Section 5.4.
 
 ## 5.4 ErC10 and ErC50
 
-Relative bias is the mean of the estimated value minus the true value, over the
+Relative bias is the mean of the estimated value minus the true value over the
 100 realisations of a cell, expressed as a percentage of the true value. The
 precision sweep is the most informative comparison in the study, because it
-distinguishes the two things that can make an estimate wrong: estimation error
-shrinks as an experiment becomes more precise, and model misspecification does
-not.
+distinguishes the two sources of error in an estimate: estimation error shrinks
+as an experiment becomes more precise, whereas the error due to model
+misspecification does not.
 
 ```{r precision-bias, fig.width = 9, fig.height = 4.6, out.width = "100%", fig.cap = "**Figure 3.** Relative bias in the estimated ErC10 and ErC50 against the control coefficient of variation, which decreases to the right as the experiment becomes more precise. Each point summarises 100 simulated datasets. The dashed line is zero bias."}
 bias_plot <- function(d, ests) {
@@ -1233,43 +1253,46 @@ bias_plot <- function(d, ests) {
 bias_plot(precision, c("ErC10", "ErC50"))
 ```
 
-The three conventions that retain the measurement converge on the true ErC50.
-Across `p1` to `p4` the bias of `measured` runs from
+The three conventions that retain the measurement converge on the true ErC50
+(Figure 3). Across `p1` to `p4` the bias of `measured` ranges from
 `r f1(val("measured", "ErC50", "p1"))`% to
-`r f1(val("measured", "ErC50", "p4"))`%, `censored` from
+`r f1(val("measured", "ErC50", "p4"))`%, that of `censored` from
 `r f1(val("censored", "ErC50", "p1"))`% to
-`r f1(val("censored", "ErC50", "p4"))`%, and `deleted` from
+`r f1(val("censored", "ErC50", "p4"))`%, and that of `deleted` from
 `r f1(val("deleted", "ErC50", "p1"))`% to
-`r f1(val("deleted", "ErC50", "p4"))`%. All three are within half a per cent of
-the truth at the highest precision tested.
+`r f1(val("deleted", "ErC50", "p4"))`%, so that all three are within half a per
+cent of the truth at the highest precision tested.
 
-Flooring does not converge. Its ErC50 bias falls from
-`r f1(val("floored", "ErC50", "p1"))`% to
-`r f1(val("floored", "ErC50", "p4"))`% and then stops, and the Beta holds
-between `r f1(val("beta", "ErC50", "p1"))`% and
-`r f1(val("beta", "ErC50", "p4"))`% throughout. Both make the substance
-appear more toxic than it is. The residual bias is smaller than the 8 to 15%
-reported for the same conventions under a fixed `nec4param`, and the reason is
-Section 4: the enlarged candidate set now contains the zero-asymptote shapes
-that floored data resemble, and averaging over them absorbs part of the
-distortion. It does not absorb all of it.
+In contrast, flooring does not converge. The magnitude of the ErC50 bias of
+`floored` falls from `r f1(val("floored", "ErC50", "p1"))`% to
+`r f1(val("floored", "ErC50", "p4"))`% and then stops falling, and that of
+`beta` remains between `r f1(val("beta", "ErC50", "p1"))`% and
+`r f1(val("beta", "ErC50", "p4"))`% throughout, so both conventions make the
+substance appear more toxic than it is. This residual bias is smaller than the 8
+to 15% reported for these conventions under a fixed `nec4param`, because the
+candidate set contains the zero-asymptote shapes that floored data resemble
+(Section 4), and averaging over these shapes absorbs part of the distortion.
+However, it does not absorb all of it.
 
-The Gamma converges on ErC50 and is the worst of the six on ErC10. Its ErC50
-bias falls from `r f1(val("gamma", "ErC50", "p1"))`% to
-`r f1(val("gamma", "ErC50", "p4"))`% across the sweep, while its ErC10 is
+The Gamma converges on the true ErC50, but is the least accurate of the six
+conventions on ErC10. Its ErC50 bias falls from
+`r f1(val("gamma", "ErC50", "p1"))`% to
+`r f1(val("gamma", "ErC50", "p4"))`% across the sweep, whereas its ErC10 is
 displaced by `r f1(val("gamma", "ErC10", "p1"))`% at the noisiest and
-`r f1(val("gamma", "ErC10", "p4"))`% at the most precise — it gets worse as the
-experiment improves, which is the signature of misspecification rather than of
-estimation error.
+`r f1(val("gamma", "ErC10", "p4"))`% at the most precise. This bias increases
+as the experiment becomes more precise, which indicates misspecification and
+not estimation error.
 
-The reason is in the variance rather than in the mean, and a posterior
-predictive check locates it. These data are generated with a residual standard
-deviation that is constant along the curve, so what a correctly specified family
-should predict is known exactly: the generated value at every concentration, and
-therefore a ratio of one between the predicted spread at the control and at the
-highest concentration. Each fit of the four precision cells was refitted and its
-model-averaged predicted spread compared with the generated one, 100
-realisations per cell and convention.
+The cause is in the variance and not in the mean, as a posterior predictive
+check shows. These data are generated with a residual standard deviation that is
+constant along the curve, so what a correctly specified family should predict is
+known exactly (i.e. the generated value at each concentration). Each fit of the
+four precision cells was refitted, and its model-averaged predicted spread was
+compared with the generated one, for 100 realisations per cell and convention.
+We summarise the comparison by the control ratio (the predicted spread at the
+lowest concentration divided by the generated value) and the gradient (the ratio
+of the predicted spread at the control to that at the highest concentration),
+both of which should therefore be one for a correctly specified family.
 
 ```{r, echo = FALSE}
 # Predicted residual spread against the generated one, transcribed from
@@ -1303,48 +1326,48 @@ sv <- function(a, cl, what = "control_ratio") {
 }
 ```
 
-`measured` is correctly specified by construction, so what it returns is the
-closest this statistic comes to one on these data and the reference every other
-convention is read against: a control ratio of
+Because `measured` is correctly specified by construction, its values are the
+closest this statistic comes to one on these data, and provide the reference
+against which the other conventions are read: a control ratio of
 `r f2(sv("measured", "p1"))` to `r f2(sv("measured", "p4"))`, with 95% of
 realisations between `r f2(min(ppc$control_ratio_lo[ppc$arm == "measured"]))`
 and `r f2(max(ppc$control_ratio_hi[ppc$arm == "measured"]))`, and a
 gradient of `r f2(sv("measured", "p1", "gradient_median"))`.
 
 An identity-link Gamma cannot reproduce a constant spread, because it ties the
-residual standard deviation to the mean. It over-states the spread at the
+residual standard deviation to the mean. It overstates the spread at the
 control by a factor of `r f2(sv("gamma", "p1"))` to `r f2(sv("gamma", "p4"))`,
-and its gradient runs from `r sprintf("%.0f", sv("gamma", "p1", "gradient_median"))`
+and its gradient ranges from `r sprintf("%.0f", sv("gamma", "p1", "gradient_median"))`
 at the noisiest cell to `r sprintf("%.0f", sv("gamma", "p4", "gradient_median"))`
-at the most precise, against a true value of one. The floored block is therefore
-given almost all of the weight in the likelihood and the control scatter almost
-none, and the shoulder — which is where a 10% decline is read — is what gives
-way.
+at the most precise, against a true value of one. The floored block of
+observations is therefore given almost all of the weight in the likelihood and
+the control scatter almost none, so that it is the fit at the shoulder of the
+curve (where a 10% decline is read, i.e. the ErC10) that is distorted.
 
-That also locates what flooring does and does not damage. Under a Gaussian
-family the floored data are described by a correctly specified variance model:
-`floored` returns a control ratio of `r f2(sv("floored", "p1"))` to
-`r f2(sv("floored", "p4"))` and a gradient of
-`r f2(sv("floored", "p1", "gradient_median"))`, both inside the reference. What
-the substitution changes is the mean structure, which is what Section 5.7
-reports. Under a Gamma the two failures compound.
+This check also shows what flooring does and does not damage. Under a
+Gaussian family the floored data are described by a correctly specified
+variance model, with a control ratio for `floored` of
+`r f2(sv("floored", "p1"))` to `r f2(sv("floored", "p4"))` and a gradient of
+`r f2(sv("floored", "p1", "gradient_median"))`, both within the reference. What the
+substitution changes is the mean structure (examined in Section 5.7), whereas
+under a Gamma the failures of the mean and of the variance compound.
 
-The Beta is a third case. Its control ratio is `r f2(sv("beta", "p1"))` to
-`r f2(sv("beta", "p4"))`, inside the reference, and its gradient
+The Beta is a third case. Its control ratio of `r f2(sv("beta", "p1"))` to
+`r f2(sv("beta", "p4"))` is within the reference, and its gradient of
 `r f2(sv("beta", "p4", "gradient_median"))` to `r f2(sv("beta", "p1", "gradient_median"))`
-— a mild departure rather than the Gamma's. Whatever displaces its ErC10 is
-therefore not the variance model.
+is a mild departure compared with that of the Gamma. Whatever displaces the
+ErC10 of the Beta is therefore not the variance model.
 
-The Gamma's intervals are
+At the highest precision tested, the intervals of `gamma` are
 `r f2(val("gamma", "ErC50", "p4", "width") / val("measured", "ErC50", "p4", "width"))`
-times as wide as those of `measured` on ErC50, which is what keeps its ErC50
-coverage nominal while its point estimate for ErC10 is a fifth low.
+times as wide as those of `measured` on ErC50, which keeps its ErC50 coverage
+nominal while its point estimate for ErC10 is a quarter low.
 
 The Beta is displaced in the other direction on ErC10, from
 `r f1(val("beta", "ErC10", "p1"))`% at the noisiest to
-`r f1(val("beta", "ErC10", "p4"))`% at the most precise. Its bias grows as the
-experiment improves, which is the signature of misspecification rather than of
-estimation error.
+`r f1(val("beta", "ErC10", "p4"))`% at the most precise. This bias also
+increases as the experiment becomes more precise, which again indicates
+misspecification and not estimation error.
 
 ```{r design-bias, fig.width = 9, fig.height = 5, out.width = "100%", fig.cap = "**Figure 4.** Relative bias in the three cells that change the truth or the design rather than the measurement precision, all at a control coefficient of variation of 9.6%. `d2` and `d8` change how far the true curve descends below zero; `ctl` stops the concentration series at the zero crossing, leaving about two negative observations in seventy for a convention to act on."}
 ggplot(design_cells, aes(x = rel_bias, y = arm, colour = arm)) +
@@ -1361,30 +1384,32 @@ ggplot(design_cells, aes(x = rel_bias, y = arm, colour = arm)) +
   theme(strip.background = element_blank(), legend.position = "none")
 ```
 
-How far the curve descends below zero changes the size of the effect but not
-its direction. Between `d2` and `d8` the ErC50 bias of `floored` is
-`r f1(val("floored", "ErC50", "d2"))`% and
-`r f1(val("floored", "ErC50", "d8"))`%, and of `beta`
+The depth to which the curve descends below zero changes the size of the
+effect, but not its direction (Figure 4). Between `d2` and `d8` the ErC50 bias
+of `floored` is `r f1(val("floored", "ErC50", "d2"))`% and
+`r f1(val("floored", "ErC50", "d8"))`%, and that of `beta`
 `r f1(val("beta", "ErC50", "d2"))`% and
 `r f1(val("beta", "ErC50", "d8"))`%, against
 `r f1(val("measured", "ErC50", "d2"))`% and
 `r f1(val("measured", "ErC50", "d8"))`% for `measured`.
 
-The `ctl` cell is the one that tells a reader whether any of this applies to
-their data. Its concentration series stops at the zero crossing, so a realised
-dataset holds about two negative observations rather than ten, and the four
-Gaussian conventions then span `r f1(spread("ErC50", "ctl"))` percentage points
-of ErC50 bias between them, against `r f1(spread("ErC50", "p1"))` in `p1`, which
-has the same control variability and four times as many negative observations.
-Where essentially none of the observations are at or below zero growth, the
-choice of convention does not change the reported value.
+The `ctl` cell is the one that indicates whether any of this applies to a
+reader's own data.
+Its concentration series stops at the zero crossing, so a realised dataset
+contains about two negative observations instead of ten, and the four Gaussian
+conventions then span `r f1(spread("ErC50", "ctl"))` percentage points of ErC50
+bias between them. This compares with `r f1(spread("ErC50", "p1"))` in `p1`,
+which has equal control variability and four times as many negative
+observations. Where essentially none of the observations are at or below zero
+growth, the choice of convention is therefore unlikely to change the reported
+value.
 
 ## 5.5 Credible interval coverage
 
 Coverage is the proportion of the 100 realisations whose 95% credible interval
-contains the true value. It is reported here alongside the mean interval width,
-because a wide interval and an accurate one both achieve nominal coverage and
-they are not the same result.
+contains the true value. We report it together with the mean interval width,
+because a wide interval and an accurate one both achieve nominal coverage,
+although they are different results.
 
 ```{r precision-coverage, fig.width = 9, fig.height = 4.6, out.width = "100%", fig.cap = "**Figure 5.** Proportion of 95% credible intervals containing the true ErC10 or ErC50, against the control coefficient of variation. The dashed line is nominal coverage."}
 cov_plot <- function(d, ests) {
@@ -1407,43 +1432,46 @@ cov_plot <- function(d, ests) {
 cov_plot(precision, c("ErC10", "ErC50"))
 ```
 
-The three retaining conventions hold nominal coverage across the sweep. At the
-highest precision `measured` contains the true ErC50 in
+The three conventions that retain the measurement maintain nominal coverage
+across the sweep (Figure 5). At the highest precision the interval of
+`measured` contains the true ErC50 in
 `r f2(val("measured", "ErC50", "p4", "coverage"))` of the 100 realisations,
-`censored` in `r f2(val("censored", "ErC50", "p4", "coverage"))` and `deleted`
-in `r f2(val("deleted", "ErC50", "p4", "coverage"))`.
+compared with `r f2(val("censored", "ErC50", "p4", "coverage"))` for `censored`
+and `r f2(val("deleted", "ErC50", "p4", "coverage"))` for `deleted`.
 
-Flooring loses coverage as the experiment improves, from
-`r f2(val("floored", "ErC50", "p1", "coverage"))` to
-`r f2(val("floored", "ErC50", "p4", "coverage"))` on ErC50, and the Beta from
-`r f2(val("beta", "ErC50", "p1", "coverage"))` to
+In contrast, the coverage of `floored` falls as the experiment becomes more
+precise, from `r f2(val("floored", "ErC50", "p1", "coverage"))` to
+`r f2(val("floored", "ErC50", "p4", "coverage"))` on ErC50, and that of `beta`
+from `r f2(val("beta", "ErC50", "p1", "coverage"))` to
 `r f2(val("beta", "ErC50", "p4", "coverage"))`. This is the practical
-consequence of a bias that does not converge. The interval narrows around a
-centre that stays displaced, so a laboratory that improves its technique, adds
-replicates and reduces its control variability will, if it floors its negative
-values, produce an analysis that is more confident and no less wrong. The
-Gamma's ErC10 shows the same failure more sharply, falling from
-`r f2(val("gamma", "ErC10", "p1", "coverage"))` to
+consequence of a bias that does not converge, because the interval narrows
+around a centre that remains displaced. A laboratory that improves its
+technique, adds replicates and reduces its control variability is therefore
+likely, if it floors its negative values, to produce an analysis that is more
+confident and no less wrong. The ErC10 of `gamma` shows this failure more
+severely,
+with coverage falling from `r f2(val("gamma", "ErC10", "p1", "coverage"))` to
 `r f2(val("gamma", "ErC10", "p4", "coverage"))`.
 
-Interval width is what keeps this from being read the other way round. At the
-highest precision `floored` has an ErC50 interval
+Without the interval width, these coverage results could be read the wrong way
+round. At the highest precision `floored` has an ErC50 interval
 `r f2(val("floored", "ErC50", "p4", "width") / val("measured", "ErC50", "p4", "width"))`
-times as wide as that of `measured` and covers the truth a quarter of the time,
-while `gamma` has one
+times as wide as that of `measured` and contains the truth in a quarter of the
+realisations, whereas `gamma` has an interval
 `r f2(val("gamma", "ErC50", "p4", "width") / val("measured", "ErC50", "p4", "width"))`
-times as wide and covers it at the nominal rate. Neither coverage nor width
-should be reported without the other.
+times as wide and contains the truth at the nominal rate. Neither coverage nor
+width should therefore be reported without the other.
 
 ## 5.6 The NSEC
 
-ErC10 and the NSEC are the two estimates commonly used as a no-effect value,
-and the conventions do not affect them in the same way. As Section 2.3 sets
-out, the true `nec` is the NSEC's limiting value as the residual error goes to
-zero rather than its expected value at any finite noise, so the sweep rather
-than any single cell is what identifies an approach: a correctly specified one
-sits on the truth and stays there as the experiment improves, and a
-misspecified one departs further the more precise the experiment becomes.
+ErC10 and the NSEC are both commonly used as a no-effect value, but the
+conventions affect them differently. Because the true `nec`
+is the limiting value of the NSEC as the residual error goes to zero, and not
+its expected value at any finite level of noise (Section 2.3), an approach is
+identified by the precision sweep and not by any single cell. A correctly
+specified approach remains on the truth as the experiment becomes more precise,
+whereas a misspecified one departs further from it the more precise the
+experiment becomes.
 
 ```{r nsec-precision, fig.width = 9, fig.height = 5.4, out.width = "100%", fig.cap = "**Figure 6.** Relative bias in the estimated NSEC against the true `nec` of 1.3 (upper row) and the proportion of 95% credible intervals containing it (lower row), against the control coefficient of variation. The dashed lines are zero bias and nominal coverage. A correctly specified approach stays on zero bias as the residual error falls; a misspecified one departs further the more precise the experiment becomes."}
 # Bias and coverage in one figure, as two rows of a facet rather than two plots
@@ -1477,57 +1505,58 @@ ggplot(nsec_long, aes(x = cv_f, y = value, colour = arm, group = arm)) +
         legend.position = "bottom", legend.title = element_blank(),
         legend.key.width = unit(1.4, "lines"))
 ```
-The retaining conventions stay near the true `nec` across the sweep, and show no
-trend in either direction. At the highest precision the NSEC bias of `measured`
-is `r f1(val("measured", "NSEC", "p4"))`%, of `censored`
-`r f1(val("censored", "NSEC", "p4"))`% and of `deleted`
-`r f1(val("deleted", "NSEC", "p4"))`%. They are not flat along the way — the
-largest single departure any of the three shows is
+
+The retaining conventions remain near the true `nec` across the sweep, with no
+trend in either direction (Figure 6). At the highest precision the NSEC bias of
+`measured` is `r f1(val("measured", "NSEC", "p4"))`%, that of `censored`
+`r f1(val("censored", "NSEC", "p4"))`% and that of `deleted`
+`r f1(val("deleted", "NSEC", "p4"))`%. These biases are not constant across
+the sweep (the largest single departure of the three is
 `r f1(max(abs(sapply(c("p1","p2","p3","p4"), function(cl) sapply(c("measured","censored","deleted"), val, "NSEC", cl)))))`%,
-by `measured` at a 6.7% control coefficient of variation — but the departures do
-not grow as the experiment improves, which is what distinguishes estimation
-error from misspecification.
+for `measured` at a control coefficient of variation of 6.7%), but the
+departures do not grow as the experiment becomes more precise, and this is what
+distinguishes estimation error from misspecification.
 
-Section 2.3 gives the reason to expect an overestimate at finite noise, and
-under the priors used here that overshoot is small enough to be lost in the
-Monte Carlo error of 100 realisations rather than being visible as a trend. It
-was visible under the superseded prior, where the same three conventions ran
-from about +14% down to +4%. What identifies a correctly specified approach here
-is therefore that it stays on the truth as the residual error falls, not the
-direction it approaches from.
+Section 2.3 gives the reason to expect an overestimate at finite noise. Under
+the priors used here, however, this overshoot is small enough to be lost in the
+Monte Carlo error of 100 realisations, and does not appear as a trend. It was
+visible under the superseded prior, where these three conventions ranged from
+about +14% down to +4%. A correctly specified approach is therefore identified
+here by remaining on the truth as the residual error falls, and not by the
+direction from which it approaches.
 
-The conventions that replace the measurement diverge downward instead. The NSEC
-of `floored` runs from `r f1(val("floored", "NSEC", "p1"))`% to
-`r f1(val("floored", "NSEC", "p4"))`%, of `beta` from
+In contrast, the conventions that replace the measurement diverge downward. The
+NSEC bias of `floored` ranges from `r f1(val("floored", "NSEC", "p1"))`% to
+`r f1(val("floored", "NSEC", "p4"))`%, that of `beta` from
 `r f1(val("beta", "NSEC", "p1"))`% to `r f1(val("beta", "NSEC", "p4"))`%, and
-of `gamma` from `r f1(val("gamma", "NSEC", "p1"))`% to
-`r f1(val("gamma", "NSEC", "p4"))`%. Coverage follows: at the highest precision
-`floored` contains the true `nec` in
+that of `gamma` from `r f1(val("gamma", "NSEC", "p1"))`% to
+`r f1(val("gamma", "NSEC", "p4"))`%. Coverage follows this pattern: at the
+highest precision the interval of `floored` contains the true `nec` in
 `r f2(val("floored", "NSEC", "p4", "coverage"))` of the 100 realisations and
-`gamma` in `r f2(val("gamma", "NSEC", "p4", "coverage"))`, against
+that of `gamma` in `r f2(val("gamma", "NSEC", "p4", "coverage"))`, against
 `r f2(val("censored", "NSEC", "p4", "coverage"))` for `censored` and
 `r f2(val("deleted", "NSEC", "p4", "coverage"))` for `deleted`.
 
-Both errors run in the same direction. A convention that floors reports an
-ErC50 that is too low and an NSEC that is too low, so the substance appears
-more toxic than it is on both estimates, which for a guideline value is the
-cautious side to be wrong on. Being cautious is not the same as being right:
-at the highest precision tested the NSEC is displaced by more than half the
-true value, which is an error of the same order as the estimate, and the
-interval contains the truth in none of the 100 realisations. An estimate that
-says nothing about the quantity it names cannot be relied on to be cautious on
-the next dataset either.
+For a convention that floors, the errors in ErC50 and in the NSEC are in the
+same direction. Such a convention returns an ErC50 and an NSEC that are both too
+low, so the substance appears more toxic than it is on both estimates, which for
+a guideline value is the cautious direction in which to be wrong. However, being
+cautious is different from being correct. At the highest precision tested the
+NSEC of `floored` is displaced by more than half the true value, which is an
+error comparable in size to the estimate, and its interval contains the truth in
+none of the 100 realisations. An estimate that provides no information about
+the quantity it names cannot be relied on to be cautious on the next dataset
+either.
 
-The one convention whose NSEC coverage falls without its bias diverging is `measured`,
-from `r f2(val("measured", "NSEC", "p1", "coverage"))` to
-`r f2(val("measured", "NSEC", "p4", "coverage"))`. That is the property of the
-metric described in Section 2.3 rather than a failure of the convention. The
-NSEC overshoots the true `nec` slightly at finite noise, and by `p4` the
-interval has narrowed faster than the remaining
-`r f1(val("measured", "NSEC", "p4"))`% has closed, so an interval that is
-correctly placed to within a few per cent stops containing the truth.
-`censored` and `deleted` hold nominal coverage over the same range with
-intervals
+`measured` is the only convention whose NSEC coverage falls without its bias
+diverging, from `r f2(val("measured", "NSEC", "p1", "coverage"))` to
+`r f2(val("measured", "NSEC", "p4", "coverage"))`. This is the property of the
+metric described in Section 2.3, and not a failure of the convention. The NSEC
+overshoots the true `nec` slightly at finite noise, and by `p4` the interval has
+narrowed faster than the remaining bias of
+`r f1(val("measured", "NSEC", "p4"))`% has closed, so that an interval
+correctly placed to within a few per cent no longer contains the truth. Over
+this range `censored` and `deleted` maintain nominal coverage, with intervals
 `r f2(val("censored", "NSEC", "p4", "width") / val("measured", "NSEC", "p4", "width"))`
 and
 `r f2(val("deleted", "NSEC", "p4", "width") / val("measured", "NSEC", "p4", "width"))`
@@ -1535,11 +1564,12 @@ times as wide.
 
 ## 5.7 The equations the data are made to resemble
 
-Because every convention is model-averaged over its family's declining set, and the
-data were generated from `nec4param`, the weight each convention gives `nec4param`
-measures how far the convention leaves the data resembling the process that
-produced them. This is a description of the data supplied to the fit, not of
-the substance, and it is reported because it explains the biases above.
+Each convention is model-averaged over the declining set for its family, and
+the data were generated from `nec4param`, so the weight each convention gives
+to `nec4param` measures how closely the data, once the convention has been
+applied, still resemble the process that produced them. This weight describes
+the data supplied to the fit and not the substance, and we report it because it
+explains the biases above.
 
 ```{r, echo = FALSE}
 # Mean model weight per cell and arm, transcribed from the compendium at the
@@ -1607,63 +1637,66 @@ knitr::kable(
   caption = "**Table 2.** Mean model weight on the generating equation `nec4param` across the precision sweep, averaged over 100 realisations per cell. The remaining weight is spread over the other eleven to thirteen equations in the candidate set."
 )
 ```
+
 Given the measurements as recorded, model averaging identifies the generating
-equation, and identifies it more sharply as the experiment improves:
-`nec4param` takes `r f2(weights$w_nec4param[weights$cell == "p1" & weights$arm == "measured"])`
-of the weight at a 9.6% control coefficient of variation and
+equation, and does so more clearly as the experiment becomes more precise
+(Table 2): `nec4param` receives
+`r f2(weights$w_nec4param[weights$cell == "p1" & weights$arm == "measured"])`
+of the weight at a control coefficient of variation of 9.6% and
 `r f2(weights$w_nec4param[weights$cell == "p4" & weights$arm == "measured"])`
-at 1.9%. Under `censored` and `deleted` it still takes
+at 1.9%. Under `censored` and `deleted` it still receives
 `r f2(weights$w_nec4param[weights$cell == "p4" & weights$arm == "censored"])`
 and `r f2(weights$w_nec4param[weights$cell == "p4" & weights$arm == "deleted"])`
-of the weight at the highest precision, with most of the remainder on `neclin`,
-which shares the same breakpoint and differs only in the shape below it.
+of the weight at the highest precision, with most of the remainder given to
+`neclin`, which shares its breakpoint and differs only in the shape below it.
 
-Under the conventions that replace the measurement the generating equation
-receives essentially none of the weight, and what replaces it is a
+In contrast, under the conventions that replace the measurement the generating
+equation receives essentially none of the weight, which goes instead to a
 zero-asymptote shape. At the highest precision `floored` gives `nec4param`
 `r f2(weights$w_nec4param[weights$cell == "p4" & weights$arm == "floored"])`
-and gives `ecxsigm`
-`r f2(weights$top_weight[weights$cell == "p4" & weights$arm == "floored"])`;
-`gamma` gives `ecxwb1`
+of the weight and `ecxsigm`
+`r f2(weights$top_weight[weights$cell == "p4" & weights$arm == "floored"])`,
+whereas `gamma` gives `ecxwb1`
 `r f2(weights$top_weight[weights$cell == "p4" & weights$arm == "gamma"])`.
-Both of those equations decay smoothly to zero, which is what floored data look
-like, and the more precise the experiment the more confidently the weights say
-so. A model weight is evidence about which shape fits the data supplied, not
-about which process produced the measurements, and on floored data those are
-different questions.
+Both of these equations decay smoothly to zero, which is what floored data look
+like, and the weights favour them more strongly the more precise the
+experiment. A model weight is evidence about which shape fits the data
+supplied, and not about which process produced the measurements, and on floored
+data these are different questions.
 
-The six equations whose lower asymptote is fixed at zero are the clearest
-signature of the substitution, and they identify it only where the substitution
-is the thing imposing the boundary. At the highest precision they take
+The six equations whose lower asymptote is fixed at zero provide the clearest
+signature of the substitution, although they identify it only where the
+substitution itself imposes the boundary. At the highest precision these
+equations receive
 `r f2(weights$w_zero_asymptote[weights$cell == "p4" & weights$arm == "floored"])`
 of the weight under `floored`, against
 `r f2(weights$w_zero_asymptote[weights$cell == "p4" & weights$arm == "measured"])`
 under `measured` and
 `r f2(weights$w_zero_asymptote[weights$cell == "p4" & weights$arm == "censored"])`
-under `censored`. Under `beta` and `gamma` they take only
+under `censored`. Under `beta` and `gamma` they receive only
 `r f2(weights$w_zero_asymptote[weights$cell == "p4" & weights$arm == "beta"])`
 and
 `r f2(weights$w_zero_asymptote[weights$cell == "p4" & weights$arm == "gamma"])`,
-because there the family already forbids a negative mean and an equation with a
-free lower asymptote is bounded below in any case. The weight on these
-equations is therefore a diagnostic for flooring under an unbounded family, not
-for the zero boundary in general.
+because these families already exclude a negative mean, and an equation with a
+free lower asymptote is bounded below in any case. The weight on these six
+equations is therefore a diagnostic for flooring under an unbounded family, and
+not for the zero boundary in general.
 
 # 6 Worked case studies
 
-The simulation establishes which conventions recover the truth. It cannot show
-how large the difference is on a real dataset, where the truth is unknown and
-the design, the noise and the shape of the response are not under the analyst's
-control. Four marine microalgal growth tests were therefore analysed by all six
-conventions, and each estimate compared with the `measured` estimate on the same
-dataset.
+The simulation establishes which conventions recover the truth, but it cannot
+show how large the difference is on a real dataset, where the truth is unknown
+and the design, the noise and the shape of the response are not under the
+analyst's control. We therefore analysed four marine microalgal growth tests
+under all six conventions, and compared each estimate with the `measured`
+estimate on that dataset.
 
-The four tests ship with `bayesnec` as `alga`: two tests on *Cladocopium
-proliferum*, a coral endosymbiont, over seven days, and two on *Rhodomonas
-salina* over three days, each species exposed to two contaminants on undisclosed
-and mutually incomparable concentration scales. The datasets themselves are
-summarised from the data that ship with the package, so Table 3 describes
-whatever version you have installed.
+The four tests are included in `bayesnec` as the `alga` data. Two are tests on
+*Cladocopium proliferum* (a coral endosymbiont) over seven days, and two are on
+*Rhodomonas salina* over three days, with each species exposed to two
+contaminants on undisclosed and mutually incomparable concentration scales. The
+summary of the datasets in Table 3 is computed from the data that ship with the
+package, so it describes whichever version you have installed.
 
 ```{r}
 data(alga)
@@ -1720,31 +1753,31 @@ knitr::kable(datasets_t,
 
 At the highest concentrations in both *Rhodomonas* tests the population fell
 below the counting limit of 10 cells per mL, so the density is recorded as zero
-and the specific growth rate is *undefined* rather than negative. Those rows are
-flagged `sgr_source == "substituted"` in `alga`, 16 on `r_salina` and 4 on
-`r_salina2`. The two *Cladocopium* tests have none, and their negative values
-are measurements.
+and the specific growth rate is *undefined*, not negative. These rows are
+flagged `sgr_source == "substituted"` in `alga` (16 on `r_salina` and 4 on
+`r_salina2`, Table 3). The *Cladocopium* tests have no such rows, and their
+negative values are measurements.
 
-There is no measured value to retain in those rows, so every convention must
-substitute something. The `measured` convention uses the growth rate implied by
-the counting limit, which is itself a substitution, and on those two datasets it
-is therefore not a true analysis of the measurements. The comparison is
-correspondingly weaker there. This is a common situation with real algal data
-and one of the reasons left-censoring is useful: it can express "at or below the
+Because there is no measured value to retain in these rows, each convention
+must substitute something. The `measured` convention uses the growth rate
+implied by the counting limit, which is itself a substitution, so on these two
+datasets it is not a true analysis of the measurements, and the comparison is
+correspondingly weaker. This situation is likely to be common with real algal
+data, and is one of the reasons left-censoring is useful, as it can express "at or below the
 limit" without inventing a value.
 
-It also determines what `censored` means on those two datasets. Left-censoring
-declares that the truth lies at or below a bound, so the bound should be the
-tightest one the measurement supports: zero for a growth rate that was measured
-and came out negative, but the counting limit itself for a row that fell below
-it, which is a stronger statement than "below zero" and is the one thing the
-test does establish about that row.
+The undefined rows also determine what `censored` means on these two datasets.
+Left-censoring declares that the true value is at or below a bound, so the bound
+should be the tightest one the measurement supports. This is zero for a growth
+rate that was measured and was negative, but the counting limit itself for a row
+that fell below it. The latter is a stronger statement than "below zero", and is
+the one thing the test does establish about that row.
 
 ## 6.2 Estimates from each convention
 
-Each dataset is prepared by each convention exactly as in Section 5.1 and passed
-to `bnec()` with package defaults, so the case studies and the simulation run
-the same six conventions over the same candidate set.
+Each dataset is prepared by each convention exactly as in Section 5.1, and
+passed to `bnec()` with package defaults, so the conventions and candidate sets
+in the case studies match those in the simulation.
 
 ```{r, eval = FALSE}
 # Every convention takes bnec()'s own default priors here, unlike the
@@ -1776,12 +1809,10 @@ fit_case <- function(d, convention) {
 }
 ```
 
-Those 24 fits are not run when this vignette is built. Each is an average over
-thirteen or fourteen equations, and together they take about fifteen hours,
-which is more machine time than a package build can use. They are run in the
-same compendium as the simulation, against the same pinned version of
-`bayesnec`, and their results are transcribed here. Section 9 records what that
-means for reading them.
+These 24 fits are not run when this vignette is built. Instead, they are run
+in the compendium used for the simulation, against the pinned version of
+`bayesnec` used there, and their results are transcribed here (Section 9 gives
+the time they take and what this means for reading them).
 
 ```{r, echo = FALSE}
 # ErC10, ErC50 and NSEC from each convention on each dataset, transcribed from
@@ -1925,10 +1956,10 @@ pc <- function(x) sprintf("%.0f%%", 100 * x)
 f2c <- function(x) if (!length(x) || any(is.na(x))) "—" else sprintf("%.2f", x)
 ```
 
-Because the four datasets have toxicity values on completely different
-concentration scales, each estimate is shown as a ratio: the convention's
-estimate divided by the `measured` estimate on the same dataset. A ratio of 1
-is exact agreement.
+Because the toxicity values of the four datasets are on completely different
+concentration scales, each estimate is shown as a ratio, i.e. the estimate from
+a convention divided by the `measured` estimate on that dataset, so that a
+ratio of 1 is exact agreement (Figure 7).
 
 ```{r real-ratios, fig.width = 9, fig.height = 5.5, out.width = "100%", fig.cap = "**Figure 7.** Estimated ErC10, ErC50 and NSEC from each convention on the four real datasets, expressed as a ratio to the `measured` analysis of the same dataset, with 95% credible intervals. The vertical line at 1 is exact agreement. Open symbols mark estimates flagged as unusable, meaning the interval reached an edge of the tested concentration range, where the bound is the design rather than the data, or collapsed to a point. Intervals extending past the plotted range are clipped at the panel edge."}
 # Clipping by pmax/pmin on the data rather than a scale limit, to avoid
@@ -1958,23 +1989,26 @@ ggplot(case_ratios, aes(x = r, y = arm, colour = arm, shape = usable)) +
 
 Three features of Figure 7 require care in what they do and do not establish.
 
-The choice of convention changes the reported value substantially on one of the
-four datasets and hardly at all on the other three. On `c_proliferum` the five
-conventions other than `measured` return an ErC50 between
+First, the choice of convention changes the reported value substantially on one
+of the four datasets, and hardly at all on the other three. On `c_proliferum`
+the five conventions other than `measured` return an ErC50 between
 `r f2c(rng_ratio("c_proliferum")[1])` and `r f2c(rng_ratio("c_proliferum")[2])`
-times the `measured` estimate — the difference between one regulatory value and
-another. On `c_proliferum2`, `r_salina` and `r_salina2` the convention lying
-furthest from `measured` is at `r f2c(furthest("c_proliferum2"))`,
-`r f2c(furthest("r_salina"))` and `r f2c(furthest("r_salina2"))` times it.
+times the `measured` estimate, which is the difference between one regulatory
+value and another. On `c_proliferum2`, `r_salina` and `r_salina2` the estimate
+from the convention furthest from `measured` is
+`r f2c(furthest("c_proliferum2"))`, `r f2c(furthest("r_salina"))` and
+`r f2c(furthest("r_salina2"))` times the `measured` estimate, respectively.
 
-So the size of the effect cannot be predicted from the data alone, and on three
-of these four datasets a reader choosing between conventions would have seen
-almost no difference. That is not evidence that the choice is safe. The
-simulation is unambiguous about the direction and about the fact that the error
-does not shrink as an experiment improves; what a single real dataset cannot do
-is separate the effect of a convention from the error of the analysis it is
-compared against, because the `measured` analysis has its own error and there is
-no truth to score either of them by.
+The size of the effect therefore does not appear to be predictable from the
+data alone, and
+on three of these four datasets a reader choosing between conventions would have
+seen almost no difference. However, this is not evidence that the choice is
+safe. The simulation is unambiguous about the direction of the error, and about
+the fact that the error does not shrink as an experiment becomes more precise.
+A single real dataset, by contrast, cannot separate the effect of a convention
+from the error of the analysis it is compared against, because the `measured`
+analysis has its own error and there is no truth against which to score either
+of them.
 
 ```{r, echo = FALSE}
 knitr::kable(
@@ -1989,12 +2023,12 @@ knitr::kable(
 )
 ```
 
-One feature of these fits has to be read alongside the ratios. Each is an
-average over thirteen or fourteen equations, and on two datasets a substantial
-share of the weight sits on equations that mixed poorly. The transcribed table
-records, for each fit, the weight held by equations whose tail effective sample
-size fell below 400, the level at which a 95% interval's bounds stop being
-reliably estimated.
+Second, the mixing of some of these fits needs to be read alongside the ratios.
+Each fit is an average over thirteen or fourteen equations, and on two datasets
+a substantial share of the weight is on equations that mixed poorly. For each
+fit, the transcribed table records the weight held by equations whose tail
+effective sample size fell below 400, which is the level at which the bounds of
+a 95% interval are no longer reliably estimated (Table 4).
 
 ```{r, echo = FALSE}
 knitr::kable(
@@ -2008,214 +2042,229 @@ knitr::kable(
 )
 ```
 
-That is a limitation of these four fits rather than of the conventions. It falls
-on `measured` and `deleted` on `r_salina`, which are reference analyses rather
-than the conventions under test, so the ratios on that dataset should be read as
-the weaker evidence. The simulation does not have this problem. Averaged over its
-4,200 fits, equations failing either diagnostic hold 0.4% of the model weight,
-and the largest figure for any one cell and convention is 5.2%, under `gamma` in
-the `ctl` cell, so no figure reported from the simulation depends on an equation
-that did not converge.
+This is a limitation of these four fits, and not of the conventions. It affects
+`measured` and `deleted` on `r_salina`, which are reference analyses and not the
+conventions under test, so the ratios on that dataset should be read as the
+weaker evidence. The simulation does not have this problem. Averaged over its
+4,200 fits, equations failing either diagnostic account for 0.4% of the model
+weight, and the largest figure for any one cell and convention is 5.2% (under
+`gamma` in the `ctl` cell), so no figure reported from the simulation depends on
+an equation that did not converge.
 
-The weight on the zero-asymptote equations is the diagnostic Section 5.7
-identifies for flooring under an unbounded family, and it is computable here because it needs
-no truth. Averaged over the four datasets `floored` puts
-`r pc(mean(sapply(levels(cases$dataset), zw, "floored")))` of its weight on
-them, against `r pc(mean(sapply(levels(cases$dataset), zw, "measured")))` under
-`measured` and `r pc(mean(sapply(levels(cases$dataset), zw, "censored")))` under
-`censored`. In the simulation the same comparison runs from near zero to near
-one. Two things differ. There the generating equation is in the candidate set
-and is known to be correct, so a retaining convention recovers it and a floored
-one visibly cannot; on real data no candidate is known to be correct. And these
-growth-rate curves decline toward zero whatever is done to the data, so a
-zero-asymptote shape is a defensible description of all four datasets rather
-than an artefact of one convention. The case studies establish that the choice
-of convention changes the reported value. They do not confirm the mechanism, and
-without a known truth they cannot.
+Third, the weight on the zero-asymptote equations, which Section 5.7 identifies
+as a diagnostic for flooring under an unbounded family, can be computed here
+because it needs no truth (Table 5). Averaged over the four datasets `floored`
+places `r pc(mean(sapply(levels(cases$dataset), zw, "floored")))` of its weight
+on these equations, against
+`r pc(mean(sapply(levels(cases$dataset), zw, "measured")))` under `measured` and
+`r pc(mean(sapply(levels(cases$dataset), zw, "censored")))` under `censored`,
+whereas in the simulation the corresponding weights range from near zero to near
+one. Two things differ between the simulation and the case studies. In the
+simulation the generating equation is in the candidate set and is known to be
+correct, so a retaining convention recovers it and a floored one visibly cannot,
+whereas on real data no candidate is known to be correct. In addition, these
+growth-rate curves appear to decline toward zero whatever is done to the data,
+so a
+zero-asymptote shape is a defensible description of all four datasets, and not
+an artefact of one convention. The case studies therefore establish that the
+choice of convention changes the reported value, but they do not confirm the
+mechanism, and without a known truth they cannot.
 
 # 7 Recommendations
 
-Analyse the growth rates as measured and let the model set decide the shape.
-Nothing in a Gaussian concentration-response fit requires the response to be
-positive. In the simulation this recovers the true ErC50 to within
+We recommend analysing the growth rates as measured, and letting the model set
+determine the shape of the curve, because nothing in a Gaussian
+concentration-response fit requires the response to be positive. In the
+simulation this approach recovers the true ErC50 to within
 `r f1(max(abs(sapply(c("p1","p2","p3","p4"), function(cl) val("measured","ErC50",cl)))))`%
-at every level of measurement precision tested, holds nominal interval coverage,
-and gives the generating equation
+at each level of measurement precision tested, maintains nominal interval
+coverage, and gives the generating equation
 `r f2(weights$w_nec4param[weights$cell == "p4" & weights$arm == "measured"])`
 of the model weight at the highest precision tested.
 
-If the negative values were never recorded, declare them censored rather than
-substituting a value. At the highest precision tested it matches the
-measurements themselves on ErC50, `r f1(val("censored", "ErC50", "p4"))`%
-against `r f1(val("measured", "ErC50", "p4"))`%, and it is the only option when
-the underlying values are gone. It is also, with `deleted`, one of only two
-conventions that hold nominal coverage for all three toxicity estimates across
-the whole precision sweep.
+Where the negative values were never recorded, we recommend declaring them
+censored instead of substituting a value. At the highest precision tested,
+`censored` matches the measurements themselves on ErC50
+(`r f1(val("censored", "ErC50", "p4"))`% against
+`r f1(val("measured", "ErC50", "p4"))`%), and it is the only option when the
+underlying values are gone. Together with `deleted`, it is also one of only two
+conventions that maintain nominal coverage for all three toxicity estimates
+across the whole precision sweep.
 
-Deleting the negative rows is better than replacing them and worse than keeping
-them. Its ErC50 bias converges on zero as the experiment improves and its
-coverage stays nominal, but it changes the replication per concentration and at
-the top of a series it can remove a treatment group altogether, which is a
-change to the design rather than to the data.
+Deleting the negative rows is better than replacing them, but worse than keeping
+them. The ErC50 bias of `deleted` converges on zero as the experiment becomes
+more precise, and its coverage remains nominal. However, deletion changes the
+replication per concentration, and at the top of a series it may remove a
+treatment group altogether, which is a change to the design and not to the
+data.
 
-Do not replace negative values with zero. Flooring leaves an ErC50 bias of
-`r f1(val("floored", "ErC50", "p4"))`% that does not shrink as the experiment
-improves, so its interval coverage falls to
+We do not recommend replacing negative values with zero. Flooring results in an
+ErC50 bias of `r f1(val("floored", "ErC50", "p4"))`% that does not shrink as
+the experiment becomes more precise, so its interval coverage falls to
 `r f2(val("floored", "ErC50", "p4", "coverage"))` at the highest precision
-tested, and it displaces the NSEC by
-`r f1(val("floored", "NSEC", "p4"))`%. Averaging over the enlarged candidate
-set absorbs part of the distortion — the ErC10 result is close to unbiased —
-but it does not remove it, and it cannot, because the floored data are no
-longer draws from the process that produced the measurements.
+tested, and it displaces the NSEC by `r f1(val("floored", "NSEC", "p4"))`%.
+Averaging over the candidate set absorbs part of this distortion (the ErC10 of
+`floored` is close to unbiased), but it does not remove it, and it cannot do
+so, because the floored data are no longer draws from the process that produced
+the measurements.
 
-Do not choose a zero-bounded response distribution to solve the problem. This
-is the most common response to negative growth rates and it does not work. The
-Beta holds an ErC50 bias near
-`r f1(val("beta", "ErC50", "p4"))`% at every precision and an ErC10 bias that
-grows to `r f1(val("beta", "ErC10", "p4"))`% as the experiment improves. The
-Gamma converges on ErC50 and displaces ErC10 by
+We also do not recommend choosing a zero-bounded response distribution (e.g. a
+Beta or a Gamma) as a way of dealing with negative values. Although this appears
+to be the most common response to negative growth rates, it does not work. The
+Beta maintains an ErC50 bias near
+`r f1(val("beta", "ErC50", "p4"))`% at each precision, and an ErC10 bias that
+increases to `r f1(val("beta", "ErC10", "p4"))`% as the experiment becomes more
+precise, while the Gamma converges on ErC50 but displaces ErC10 by
 `r f1(val("gamma", "ErC10", "p4"))`%, with coverage of
-`r f2(val("gamma", "ErC10", "p4", "coverage"))`. Neither gives any outward sign
-of trouble: every one of the 1,400 fits in those two conventions converged and
-returned all three toxicity estimates.
+`r f2(val("gamma", "ErC10", "p4", "coverage"))`. Both conventions give no
+outward sign of a problem, as all 1,400 fits under these two conventions
+converged and returned all three toxicity estimates.
 
-Do not convert to percent inhibition before fitting. Expressing the response as
-a percentage of the control caps it at 100%, which makes negative growth look
-like an error and pushes the analyst toward a bounded family.
-`ecx(type = "absolute")` already expresses the effect relative to the fitted
-control, so the transformation is unnecessary as well as harmful; @Ritz2026
-reach the same conclusion by a different route. `bayesnec` will warn if it
-detects data that appear to have been normalised.
+Converting the response to percent inhibition before fitting is also not
+recommended. Expressing the response as a percentage of the control caps it at
+100%, which makes negative growth look like an error and may encourage the
+analyst to choose a bounded family. In addition, `ecx(type = "absolute")` already
+expresses the effect relative to the fitted control, so the transformation is
+unnecessary as well as harmful, and @Ritz2026 reach this conclusion by a
+different route. `bayesnec` will warn if it detects data that appear to have
+been normalised.
 
-Report the proportion of observations at or below zero. This is the single
-number that tells a reader whether the question arises for the dataset at all.
+We recommend reporting the proportion of observations at or below zero, because
+it is the single number that indicates whether the question arises for a
+dataset at all.
 In the `ctl` cell, where about two observations in seventy are negative, the
 four Gaussian conventions span `r f1(spread("ErC50", "ctl"))` percentage points
-of ErC50 bias between them; at one in seven and the same control variability
-they span `r f1(spread("ErC50", "p1"))`.
+of ErC50 bias between them, whereas at one in seven, with equal control
+variability, they span `r f1(spread("ErC50", "p1"))`.
 
-Do not report interval coverage, or interval width, alone. At the highest
-precision tested `gamma` reaches nominal coverage on ErC50 with intervals
+Interval coverage and interval width should not be reported on their own. At the
+highest precision tested, `gamma` achieves nominal coverage on ErC50 with
+intervals
 `r f2(val("gamma", "ErC50", "p4", "width") / val("measured", "ErC50", "p4", "width"))`
-times as wide as those of `measured`, while `floored` reports narrower
-intervals than `gamma` and covers the truth a quarter of the time. Either
-figure on its own reverses the ranking.
+times as wide as those of `measured`, while `floored` has narrower intervals
+than `gamma` and contains the truth in a quarter of the realisations. Either
+figure on its own would therefore reverse the ranking of these two conventions.
 
-Read the model weights as a description of the data supplied. On floored data
-the generating equation receives essentially none of the weight and a
-zero-asymptote shape receives almost all of it, with a confidence that
-increases as the experiment improves. A weight is evidence about which shape
-fits the data in front of the model, not about which process produced the
-measurements.
+Finally, the model weights should be read as a description of the data
+supplied. On floored data the generating equation receives essentially none of
+the weight, and a zero-asymptote shape receives almost all of it, with a
+confidence that increases as the experiment becomes more precise. A weight is
+evidence about which shape fits the data supplied to the model, and not about
+which process produced the measurements.
 
 # 8 Limitations
 
-The data are generated from one equation. `nec4param` is in every Gaussian
-convention's candidate set, so the study measures how well each convention lets a
-correctly specified candidate be recovered. It does not establish what happens
-when no candidate is correct, which is the ordinary situation with real data.
+The data are generated from a single equation (`nec4param`), which is in the
+candidate set of each Gaussian convention, so the study measures how well each
+convention allows a correctly specified candidate to be recovered. It does not
+establish what happens when no candidate is correct, which is typically
+the situation with real data.
 
-The residual scale is constant along the curve and every fit is homoscedastic
-to match. That is a deliberate simplification, made so that no convention is
-misspecified in its variance, but it means no convention
+The residual scale is constant along the curve, and each fit is homoscedastic
+to match. This is a deliberate simplification, made so that no convention is
+misspecified in its variance, but it means that none of the conventions
 reported here estimates a dispersion that varies along the curve. One of the
-four `alga` datasets does show a residual gradient, so the homoscedastic case is
-not the only one that arises.
+four `alga` datasets does show a residual gradient (Section 5.2), so the
+homoscedastic case is not the only one that arises.
 
-The precision sweep was also run with a dispersion sub-model, on the same cells
-and realisations, and those results are not reported. A sub-model does not
+We also ran the precision sweep with a dispersion sub-model, on the cells and
+realisations used above, but do not report those results. A sub-model does not
 repair the conventions that impose the zero boundary through the response
-distribution, and adding one to a Gaussian, whose variance model is already
-correct, gives it a gradient the data do not have. The compendium holds the code
-and the tables, and its `CLAUDE.md` records why they are uncited.
+distribution, and adding one to a Gaussian family, whose variance model is
+already correct, gives its variance a gradient the data do not have. The code
+and the tables are in the compendium, and its `CLAUDE.md` records why they are
+not cited.
 
-The priors are `bnec()`'s own defaults, derived once per cell and convention
+The priors are the defaults of `bnec()`, derived once per cell and convention
 from a reference realisation and then held fixed across the 100 realisations of
 that cell, so that the Stan programs are identical between realisations and
-compile once. Holding them fixed removes realisation-to-realisation prior
-jitter, which is nuisance variation; each convention still keeps its own prior
-derived from its own prepared data, so the contrast between conventions is
-unaffected. Under the pinned version the default `nec` prior is a lognormal on
-the log of the predictor whose central 95% interval covers the concentrations
-tested, and it places the true `nec` of 1.3 between the 23rd and the 63rd
-percentile depending on the cell, and the true ErC50 between the 80th and the
-95th. Both are comfortably inside.
+compile only once. Holding the priors fixed eliminates the variation in the prior
+from one realisation to the next, which is nuisance variation. Each convention
+still has its own prior derived from its own prepared data, so the contrast
+between conventions is unaffected. Under the pinned version of `bayesnec` the
+default `nec` prior is a lognormal on the log of the predictor, with a central
+95% interval that spans the concentrations tested. This prior
+places the true `nec` of 1.3 between the 23rd and the 63rd percentile, depending
+on the cell, and the true ErC50 between the 80th and the 95th, so both are
+comfortably inside it.
 
-That was not true of the version of this study published before. Its default
-`nec` and `ec50` prior was a gamma whose spread is tied to its shape, so its
-central 95% interval covered a fraction of a logarithmically spaced series
-however the series was designed, and it placed the true ErC50 above the 99th
-percentile in every cell. Anyone comparing the two versions should expect the
-equations parameterised by `ec50` to behave differently between them for that
-reason alone.
+This was not the case in the version of this study published before, in which
+the default `nec` and `ec50` prior was a gamma whose spread is tied to its
+shape. Its central 95% interval therefore covered a fraction of a
+logarithmically spaced series, however the series was designed, and it placed
+the true ErC50 above the 99th percentile in each cell. Anyone comparing both
+versions should therefore be aware that the equations parameterised by `ec50`
+are likely to behave differently between them for that reason alone.
 
-Each cell was simulated 100 times. The Monte Carlo standard error of the
-reported bias is a median of
+Each cell was simulated 100 times, and the Monte Carlo standard error of the
+reported bias has a median of
 `r f1(median(sim$mcse_pct[sim$estimate == "ErC50"]))`% of the true value for
 ErC50, `r f1(median(sim$mcse_pct[sim$estimate == "ErC10"]))`% for ErC10 and
-`r f1(median(sim$mcse_pct[sim$estimate == "NSEC"]))`% for the NSEC, reaching
-`r f1(max(sim$mcse_pct))`% for the
+`r f1(median(sim$mcse_pct[sim$estimate == "NSEC"]))`% for the NSEC, with a
+maximum of `r f1(max(sim$mcse_pct))`% for the
 `r sim$arm[which.max(sim$mcse_pct)]` NSEC in the
-`r sim$cell[which.max(sim$mcse_pct)]` cell. Differences smaller than those are
+`r sim$cell[which.max(sim$mcse_pct)]` cell. Differences smaller than these are
 not resolved by this study. The Monte Carlo standard error on a coverage of 0.95
 is `r f2(sqrt(0.95 * 0.05 / 100))`.
 
 The design is fixed at seventy observations across twelve concentrations
-spanning a factor of one hundred, with ten controls. Nothing here establishes
-how the conventions behave on a smaller design, an arithmetic series, or one
-that does not reach the zero crossing at all beyond the single `ctl` cell.
+spanning a factor of one hundred, with ten controls. The study therefore does
+not establish how the conventions behave on a smaller design, on an arithmetic
+series, or, beyond the single `ctl` cell, on a series that does not reach the
+zero crossing at all.
 
-The case studies compare conventions on four datasets whose truth is unknown.
-They show that the choice changes the reported value, and Section 6.2 records
-where they do not reproduce what the simulation shows. They are not
-recommendations for how those
-particular tests should be analysed, and the *Rhodomonas* comparison is weaker
-than the *Cladocopium* one because no convention there is a true analysis of
-the measurements, as Section 6.1 records.
+The case studies compare the conventions on four datasets whose truth is
+unknown. They show that the choice of convention changes the reported value,
+and the results that they do not reproduce from the simulation are described in
+Section 6.2. However, they are not recommendations for how those particular
+tests should be analysed, and the *Rhodomonas* comparison is weaker than the
+*Cladocopium* comparison, because no convention there is a true analysis of the
+measurements (Section 6.1).
 
 # 9 Provenance of the reported results
 
 Neither the simulation nor the case studies are run when this vignette is built.
-Together they are 4,224 model-averaged fits, which is far more machine time than
-a package build can use, and they run instead in a separate research compendium,
+Together they comprise 4,224 model-averaged fits, which is far more machine time
+than a package build can use, and they are run instead in a separate research
+compendium,
 [open-AIMS/negative-response-conventions](https://github.com/open-AIMS/negative-response-conventions)
-[@negresponse2026]. It holds the generating code, the runners, the fixed priors
-as tracked files, the container the fits ran in, and the result tables every
-figure here is transcribed from.
+[@negresponse2026]. The compendium contains the generating code, the runners,
+the fixed priors (as tracked files), the container in which the fits ran, and
+the result tables from which all figures here are transcribed.
 
-Every figure quoted is transcribed from that compendium's output at the commit
-named in the bibliography entry: `results/metrics.csv` for the simulation,
-`results/weights.csv` for the model weights of Table 2, and
-`results/case_estimates.csv` for Section 6. The fits ran against `bayesnec` at
-the commit recorded in the compendium's `hpc/bayesnec.lock`, inside the
-container that repository's `hpc/image.lock` identifies, which holds the
-toolchain and installs the package from that pinned source.
+All figures quoted are transcribed from the output of the compendium at the
+commit named in its bibliography entry, i.e. `results/metrics.csv` for the
+simulation, `results/weights.csv` for the model weights of Table 2, and
+`results/case_estimates.csv` for Section 6. The fits were run against `bayesnec`
+at commit `9269bf6d`, as recorded in the compendium's `hpc/bayesnec.lock`,
+inside the container identified by the compendium's `hpc/image.lock`, which
+provides the toolchain and installs the package from that pinned source.
 
-That commit is a development version of `bayesnec`, not a release. The version
-is more important here than usual, because what this vignette measures is what
-package defaults do. Results reported above depend on three
-defaults at that commit: the `nec` and `ec50` priors are built on the log of the predictor,
-the initial-value search accepts chains individually, and the NSEC crossing is
-sought from the control upward, with the control as the first point of the
-searched grid. The NSEC search was revised after that commit in ways that can
-change NSEC estimates and their intervals (see `NEWS.md`), so an analysis run
-under a later version of `bayesnec` may not reproduce these numbers exactly.
+This commit is a development version of `bayesnec`, and not a release. The
+version is more important here than usual, because this vignette measures the
+behaviour of the package defaults. The results reported above depend on three
+defaults at that commit: the `nec` and `ec50` priors are built on the log of the
+predictor, the initial-value search accepts chains individually, and the NSEC
+crossing is sought from the control upward, with the control as the first point
+of the searched grid. The NSEC search was revised after that commit in ways that
+may change NSEC estimates and their intervals (see `NEWS.md`), so an analysis
+run under a later version of `bayesnec` may not reproduce these numbers exactly.
 
 The posterior predictive figures quoted in Section 5.4 are transcribed from
 `results/ppc_spread.csv`, which summarises 100 realisations of each cell and
-convention. They cover the four precision cells only. The study also keeps one
+convention, and cover only the four precision cells. The study also keeps one
 fitted object per cell and convention, and all 24 case fits, chosen by a seed
-fixed on the cell and convention names before any result was seen; those are not
-in the compendium's repository — 66 model-averaged fits is too much to track —
-and are fetched from the cluster with `hpc/fetch-fits.sh`.
+fixed on the cell and convention names before any result was seen. These fits
+are not in the compendium's repository (66 model-averaged fits is too much to
+track), and are instead fetched from the cluster with `hpc/fetch-fits.sh`.
 
-The case studies are fitted in the compendium as well. Four datasets by six
+The case studies are also fitted in the compendium. Four datasets by six
 conventions, each an average over thirteen or fourteen equations, take about
 fifteen hours, which is too long to run on a workstation whenever the vignette
 is built. The case-study estimates therefore describe the pinned commit, as the
-simulation does, and not the version of `bayesnec` installed beside this
-vignette. Table 3, which describes the four datasets themselves, is computed at
-build time from the `alga` data that ship with the package, so it does reflect
-your installation.
+simulation does, and not the version of `bayesnec` installed with this vignette.
+However, Table 3, which describes the four datasets themselves, is computed at
+build time from the `alga` data that ship with the package, and therefore does
+reflect your installation.
 
 # 10 References
