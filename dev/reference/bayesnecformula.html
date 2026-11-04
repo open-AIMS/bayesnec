@@ -422,7 +422,12 @@ this, a censored row is exempt from the boundary shifts that
 the bound has already been declared and moving it would restate it. A row
 declared censored at a value the family excludes — left-censored at 0 under
 Gamma or Beta, right-censored at 1 under Beta — is an error rather than a
-shift, because the censored likelihood is degenerate there.</p>
+shift, because the censored likelihood is degenerate there.
+In a direct two-block <code><a href="bnec.html">bnec</a></code> fit, left censoring of the total
+response includes the zero outcome. For a survivor known to have a positive
+response below the bound, <code><a href="bnec_hurdle.html">bnec_hurdle</a></code> records survival
+separately. <code><a href="bnec_joint.html">bnec_joint</a></code> keeps that distinction for a Gamma
+refit and refuses a zero-inflated Beta refit with left-censored survivors.</p>
 <p><strong>NB:</strong> <code>aterms</code> other than <code>trials()</code>, <code><a href="https://rdrr.io/r/stats/weights.html" class="external-link">weights()</a></code> and
 <code>cens()</code> are currently omitted from <code><a href="model.frame.html">model.frame</a></code> output. If
 you need other <code>aterms</code> as part of that output please raise an issue on
@@ -450,34 +455,34 @@ formula.</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">bayesnecformula</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y ~ crf(x, "nec3param")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x60a48ec87608&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x58d14e4ba8a8&gt;</span>
 <span class="r-in"><span><span class="co"># or use shot alias bnf</span></span></span>
 <span class="r-in"><span><span class="fu">bayesnecformula</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span> <span class="op">==</span> <span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(sqrt(x), "nec3param")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x60a48ec87608&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x58d14e4ba8a8&gt;</span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">ogl</span><span class="op">(</span><span class="va">group_1</span><span class="op">)</span> <span class="op">+</span> <span class="fu">pgl</span><span class="op">(</span><span class="va">group_2</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(x, "nec3param") + ogl(group_1) + pgl(group_2)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x60a48ec87608&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x58d14e4ba8a8&gt;</span>
 <span class="r-in"><span><span class="co"># dispersion as a function of the predictor</span></span></span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">disp</span><span class="op">(</span><span class="op">~</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y ~ crf(x, "nec3param") + disp(~x)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x60a48ec87608&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x58d14e4ba8a8&gt;</span>
 <span class="r-in"><span><span class="co"># dispersion as a function of the fitted mean</span></span></span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">disp</span><span class="op">(</span><span class="st">"power"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y ~ crf(x, "nec3param") + disp("power")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x60a48ec87608&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x58d14e4ba8a8&gt;</span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="va">nec</span> <span class="op">+</span> <span class="va">top</span> <span class="op">|</span> <span class="va">group_1</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x60a48ec87608&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x58d14e4ba8a8&gt;</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span><span class="co"># The predictor expression is passed to Stan by brms. Precompute a</span></span></span>
 <span class="r-in"><span><span class="co"># transformation unless its function is also defined for Stan.</span></span></span>
 <span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/try.html" class="external-link">try</a></span><span class="op">(</span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/scale.html" class="external-link">scale</a></span><span class="op">(</span><span class="va">x</span>, scale <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(scale(x, scale = TRUE), "nec3param")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x60a48ec87608&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x58d14e4ba8a8&gt;</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>

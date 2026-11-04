@@ -570,7 +570,12 @@ above (growth increments, biomass) and "zero_inflated_beta" where it is a
 proportion on (0, 1). The distinction between "hurdle" and "zero-inflated"
 is nominal here: zero-inflation differs from a hurdle only when the base
 distribution can itself produce zeros, which neither the Gamma nor the Beta
-can, so the two are the same model and <span class="pkg">bayesnec</span> treats them alike.</p>
+can, so the two are the same model and <span class="pkg">bayesnec</span> treats them alike.
+Under either family, a left-censored row on the total response includes the
+possibility that an observation is a structural zero. Where the
+individual is known to have survived, use <code><a href="bnec_hurdle.html">bnec_hurdle</a></code>;
+<code><a href="bnec_joint.html">bnec_joint</a></code> preserves that known survival on a Gamma joint
+refit and refuses the zero-inflated Beta joint refit.</p>
 <p>Use "hurdle_poisson" or "hurdle_negbinomial" where the non-zero response is
 a count and the zeros are observed to be structural. The joint families and
 <code><a href="bnec_hurdle.html">bnec_hurdle</a></code> both use a zero-truncated likelihood for the
