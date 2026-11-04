@@ -1749,6 +1749,44 @@ test_that("the hurdle plot draws its no-effect line on the recorded scale (#487)
                           signif(line[2], 2), "-", signif(line[3], 2), ")"))
 })
 
+test_that("a fitted hurdle axis draws both estimates in every panel", {
+  skip_on_cran()
+  object <- relabelled_pair(
+    bnf(y ~ crf(log(x + 0.001), model = "nec4param"))
+  )
+  dat <- ggbnec_data(object, which = "all", resolution = 30,
+                     x_scale = "fitted")
+  expect_equal(dat$raw$x[seq_len(nrow(object$data))],
+               log(object$data$x + 0.001))
+  for (panel in levels(dat$curve$panel)) {
+    curve_x <- dat$curve$x[dat$curve$panel == panel]
+    expect_equal(diff(curve_x), rep(diff(curve_x)[1], length(curve_x) - 1))
+  }
+  expect_true(length(attr(dat, "x_axis")$breaks) > 0)
+
+  local_mocked_bindings(
+    nec = function(object, which, xform, ...) {
+      expect_identical(xform, identity)
+      centre <- match(which, c("combined", "growth", "survival"))
+      c(centre, centre - 0.1, centre + 0.1)
+    },
+    ecx = function(object, which, ecx_val, xform, ...) {
+      expect_identical(xform, identity)
+      expect_equal(ecx_val, 10)
+      centre <- match(which, c("combined", "growth", "survival")) + 0.5
+      c(centre, centre - 0.1, centre + 0.1)
+    },
+    .package = "bayesnec"
+  )
+  p <- autoplot(object, which = "all", resolution = 30,
+                x_scale = "fitted", ecx = TRUE)
+  lines <- Filter(function(layer) inherits(layer$geom, "GeomVline"), p$layers)
+  expect_length(lines, 2)
+  expect_equal(nrow(lines[[1]]$data), 9)
+  expect_equal(nrow(lines[[2]]$data), 9)
+  expect_equal(as.numeric(table(lines[[1]]$data$panel)), c(3, 3, 3))
+})
+
 test_that("the hurdle plot maps estimates over the stored prediction range", {
   f <- nec4param
   f$bayesnecformula <- bnf(y ~ crf(sqrt(x), model = "nec4param"))

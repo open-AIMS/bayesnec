@@ -416,11 +416,26 @@ ecnsec.bayesnecjointfit <- function(object, nsec, ...) {
 #' @importFrom stats fitted
 #' @noRd
 joint_level_curve <- function(object, level, resolution = 1000,
-                              x_range = NA) {
+                              x_range = NA,
+                              x_scale = c("recorded", "fitted")) {
   lvl_fit <- joint_level_fit(object, level)
   grid <- prediction_grid(object$fit, object$bayesnecformula,
                           x_range = x_range, resolution = resolution,
                           level_spec = joint_level_spec(object, level))
+  if (match.arg(x_scale) == "fitted") {
+    fitted_x <- as.numeric(sub_x_transformation(grid$x_seq,
+                                                object$bayesnecformula))
+    if (any(!is.finite(fitted_x)) ||
+        !(all(diff(fitted_x) > 0) || all(diff(fitted_x) < 0))) {
+      stop("The fitted predictor axis must be finite and strictly monotone.",
+           call. = FALSE)
+    }
+    x_seq <- seq(min(fitted_x), max(fitted_x), length.out = resolution)
+    inverse <- recorded_x_map(object$bayesnecformula, grid$x_seq,
+                              inline_x_transform(object))
+    grid$newdata[[grid$x_var]] <- as.numeric(inverse(x_seq))
+    grid$x_seq <- x_seq
+  }
   y <- fitted(lvl_fit, newdata = grid$newdata, robust = TRUE,
               re_formula = NA, scale = "response")
   data.frame(x = grid$x_seq, Estimate = y[, "Estimate"],
@@ -476,10 +491,12 @@ joint_level_ne <- function(object, level, xform = identity) {
 #'
 #' @export
 ggbnec_data.bayesnecjointfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
-                                         xform = NULL, ..., group = NULL) {
+                                         xform = NULL, ..., group = NULL,
+                                         x_scale = c("recorded", "fitted")) {
   chk_lgl(add_nec)
   chk_lgl(add_ecx)
   check_xform(xform)
+  x_scale <- plot_x_scale(x, x_scale, xform)
   panel_group <- is.null(group) || identical(group, x$group_var)
   raw_group <- if (panel_group) NULL else group
   r_all <- prep_raw_data(x$fit, x$bayesnecformula, group = raw_group)
@@ -487,11 +504,11 @@ ggbnec_data.bayesnecjointfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   bdat <- model.frame(x$bayesnecformula, data = x$fit$data,
                       run_par_checks = TRUE)
   # On the recorded axis with no xform, draw what the estimators return.
-  recorded <- plot_reads_recorded(bdat, xform)
+  recorded <- x_scale == "recorded" && plot_reads_recorded(bdat, xform)
   est_xform <- if (recorded) NULL else identity
   axis_xform <- if (is.null(xform)) identity else xform
   pieces <- lapply(x$levels, function(lev) {
-    curve <- joint_level_curve(x, lev)
+    curve <- joint_level_curve(x, lev, x_scale = x_scale)
     e_df <- data.frame(x_e = c(curve$x, rev(curve$x)),
                        y_e = c(curve$Estimate, rep(NA, nrow(curve))),
                        y_ci = c(curve$Q2.5, rev(curve$Q97.5)),
@@ -501,13 +518,17 @@ ggbnec_data.bayesnecjointfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
       e_df$group <- r_df$group[rep(NA_integer_, nrow(e_df))]
     }
     out <- rbind(e_df, r_df)
+    if (x_scale == "fitted") {
+      out$x_r <- as.numeric(sub_x_transformation(out$x_r,
+                                                 x$bayesnecformula))
+    }
     if (!pop_var_is_transformed(bdat, "x_var")) {
       out <- out |>
         mutate(x_e = axis_xform(.data$x_e), x_r = axis_xform(.data$x_r))
     }
     if (add_nec) {
       ne_vals <- joint_level_ne(x, lev, est_xform)
-      if (!recorded) {
+      if (!recorded && x_scale != "fitted") {
         ne_vals <- to_axis_scale(ne_vals, bdat, x$bayesnecformula, curve$x,
                                  axis_xform)
       }
@@ -516,7 +537,7 @@ ggbnec_data.bayesnecjointfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
     if (add_ecx) {
       ecx_vals <- plot_ecx(joint_level_fit(x, lev), x$fit$family$family,
                            list(...), est_xform)
-      if (!recorded) {
+      if (!recorded && x_scale != "fitted") {
         ecx_vals <- to_axis_scale(ecx_vals, bdat, x$bayesnecformula, curve$x,
                                   axis_xform)
       }
@@ -540,6 +561,9 @@ ggbnec_data.bayesnecjointfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
     attr(r_all, "group_fitted")
   }
   attr(out, "panel_var") <- x$group_var
+  if (x_scale == "fitted") {
+    attr(out, "x_axis") <- plot_x_axis(r_all$x_r, x$bayesnecformula)
+  }
   out
 }
 
@@ -556,14 +580,17 @@ ggbnec_data.bayesnecjointfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 autoplot.bayesnecjointfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                                       xform = NULL, group = NULL,
                                       group_aes = c("line", "colour"),
-                                      point_alpha = 1) {
+                                      point_alpha = 1,
+                                      x_scale = c("recorded", "fitted")) {
   chk_lgl(nec)
   chk_lgl(ecx)
   group_aes <- match.arg(group_aes)
   check_xform(xform)
   check_point_alpha(point_alpha)
+  x_scale <- plot_x_scale(object, x_scale, xform)
   dat <- ggbnec_data(object, add_nec = nec, add_ecx = ecx,
-                     xform = xform, group = group, ...)
+                     xform = xform, x_scale = x_scale, group = group, ...)
+  x_axis <- attr(dat, "x_axis")
   panel_labs <- paste0(object$group_var, " = ", object$levels)
   names(panel_labs) <- object$levels
   level <- as.character(dat$panel)
@@ -584,5 +611,5 @@ autoplot.bayesnecjointfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   ggbnec(dat, nec = nec, ecx = ecx, group = show_group,
          group_aes = group_aes, group_label = group_label,
          group_fitted = !identical(attr(dat, "group_fitted"), FALSE),
-         point_alpha = point_alpha)
+         point_alpha = point_alpha, x_axis = x_axis)
 }
