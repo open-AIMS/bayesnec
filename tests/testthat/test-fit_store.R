@@ -68,7 +68,7 @@ test_that("a version line with leading space is still checked", {
 
 test_that("a store at or above the minimum is installed", {
   fs <- fit_store_env()
-  for (v in c(fs$FIT_STORE_MIN_BAYESNEC, "2.1.3.41", "2.2.0")) {
+  for (v in c(fs$FIT_STORE_MIN_BAYESNEC, "2.1.3.45", "2.2.0")) {
     store <- fit_store_dir(v)
     shims <- new.env()
     expect_true(suppressMessages(fs$fit_store_install(store, envir = shims)))
