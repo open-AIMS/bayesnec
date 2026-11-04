@@ -557,6 +557,15 @@ plot_x_scale <- function(object, x_scale, xform) {
 plot_fitted_grid <- function(object, resolution = 1000, x_range = NA) {
   fit <- scale_source_fit(object)
   formula <- fit$bayesnecformula
+  if (length(x_range) == 1 && is.na(x_range) &&
+      !inherits(object, "bayesnechurdlefit")) {
+    stored <- if (inherits(object, "bayesmanecfit")) {
+      object$w_pred_vals$data$x
+    } else {
+      fit$pred_vals$data$x
+    }
+    x_range <- range(stored, na.rm = TRUE)
+  }
   grid <- newdata_eval(object, resolution = resolution, x_range = x_range)
   recorded <- grid$x_vec
   fitted <- as.numeric(sub_x_transformation(recorded, formula))

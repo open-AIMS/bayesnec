@@ -929,6 +929,31 @@ test_that("an untransformed predictor has identical recorded and fitted plots", 
   expect_null(attr(fitted, "x_axis"))
 })
 
+test_that("a fitted axis retains the stored prediction range", {
+  skip_on_cran()
+  formula <- bayesnecformula(
+    y ~ crf(log(x + 0.001), model = "nec4param")
+  )
+  fit <- nec4param
+  fit$bayesnecformula <- formula
+  fit$pred_vals$data$x <- seq(min(fit$pred_vals$data$x), 5,
+                              length.out = nrow(fit$pred_vals$data))
+  single <- suppressMessages(ggbnec_data(fit, add_nec = FALSE,
+                                          x_scale = "fitted"))
+  expect_equal(max(single$x_e, na.rm = TRUE), log(5.001))
+
+  average <- manec_example
+  average$mod_fits <- lapply(average$mod_fits, function(part) {
+    part$bayesnecformula <- formula
+    part
+  })
+  average$w_pred_vals$data$x <- seq(min(average$w_pred_vals$data$x), 5,
+                                     length.out = nrow(average$w_pred_vals$data))
+  averaged <- suppressMessages(ggbnec_data(average, add_nec = FALSE,
+                                            x_scale = "fitted"))
+  expect_equal(max(averaged$x_e, na.rm = TRUE), log(5.001))
+})
+
 test_that("fitted axes reach model sets, grouped fits and joint refits", {
   skip_on_cran()
   formula <- bayesnecformula(

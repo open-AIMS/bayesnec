@@ -1061,10 +1061,9 @@ hurdle_axis_xform <- function(object, xform) {
 
 #' The xform a hurdle plot gives nec() for its no-effect line
 #'
-#' Where the predictor is transformed inline and the caller supplied no
-#' \code{xform}, or \code{identity}, \code{NULL}: \code{\link{nec}} then
-#' returns the recorded scale the axis is drawn on, as it does when called
-#' directly. Otherwise the caller's \code{xform}.
+#' Where the predictor is transformed inline, the plot ignores \code{xform}
+#' and draws the recorded scale. Give \code{nec()} \code{NULL} so its line
+#' uses that scale too. Otherwise use the caller's \code{xform}.
 #'
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
 #' @param xform The function the caller supplied, or \code{NULL}.
@@ -1072,8 +1071,7 @@ hurdle_axis_xform <- function(object, xform) {
 #' @return A \code{\link[base]{function}}, or \code{NULL}.
 #' @noRd
 hurdle_ne_axis_map <- function(object, xform) {
-  if (!is.null(inline_x_transform(object)) &&
-        (is.null(xform) || identical(xform, identity))) {
+  if (!is.null(inline_x_transform(object))) {
     return(NULL)
   }
   xform
@@ -1092,8 +1090,7 @@ hurdle_ne_axis_map <- function(object, xform) {
 #' @param x_range A range of predictor values to plot over.
 #' @param xform \code{NULL}, the default, or a function to apply to the
 #' predictor where \code{crf()} does not transform it inline. Where it does,
-#' a function applied to the no-effect estimate on the transformed scale. See
-#' Details.
+#' the plot ignores \code{xform}. See Details.
 #' @param ylab Y axis label. Defaults to a label describing \code{which}.
 #' @param xlab X axis label.
 #'
@@ -1109,8 +1106,8 @@ hurdle_ne_axis_map <- function(object, xform) {
 #' no-effect line are drawn on the recorded scale, the scale the prediction
 #' grid is built on, as \code{\link{plot}} draws a \code{\link{bayesnecfit}}.
 #' The line is the estimate \code{\link{nec}} returns by default, which is on
-#' that scale. A supplied \code{xform} is applied to the estimate on the
-#' transformed scale instead, and not to the points or the curve.
+#' that scale. A supplied \code{xform} changes neither the line nor the points
+#' and curve on an inline-transformed fit.
 #'
 #' @return A plot.
 #'
@@ -1267,11 +1264,28 @@ ggbnec_data.bayesnechurdlefit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 
 hurdle_plot_estimate <- function(object, which, kind, xform, ecx_val) {
   if (kind == "nec") {
-    return(as.numeric(suppressMessages(nec(object, which = which,
-                                           xform = xform))))
+    return(suppressMessages(nec(object, which = which, xform = xform)))
   }
-  as.numeric(suppressMessages(ecx(object, which = which,
-                                   ecx_val = ecx_val, xform = xform)))
+  suppressMessages(ecx(object, which = which, ecx_val = ecx_val,
+                       xform = xform))
+}
+
+hurdle_estimate_data <- function(object, panels, kind, xform, ecx_val,
+                                 panel_names, panel_levels) {
+  values <- lapply(panels, function(w) {
+    hurdle_plot_estimate(object, w, kind, xform, ecx_val)
+  })
+  bounds <- lapply(values, function(value) {
+    cens <- attr(value, "censored_summary")
+    if (is.null(cens)) rep("", length(value)) else cens$bound
+  })
+  bound <- unlist(bounds, use.names = FALSE)
+  line <- rep(c(1, 2, 2), length(panels))
+  line[bound != ""] <- 3
+  data.frame(panel = factor(rep(panel_names[panels], each = 3),
+                            levels = panel_levels),
+             estimate = as.numeric(unlist(values)), line = line,
+             bound = bound)
 }
 
 #' Creates a \pkg{ggplot2} plot of a \code{\link{bayesnechurdlefit}}
@@ -1281,9 +1295,10 @@ hurdle_plot_estimate <- function(object, which, kind, xform, ecx_val) {
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
 #' @param CI Should credible intervals be drawn? Defaults to \code{TRUE}.
 #' @param nec Should the no-effect estimate and its credible limits be drawn
-#' on each panel? Defaults to \code{TRUE}.
+#' on each panel? A bound is marked at the plotted range. Defaults to
+#' \code{TRUE}.
 #' @param ecx Should an ECx estimate and its credible limits be drawn on each
-#' panel? Defaults to \code{FALSE}.
+#' panel? A bound is marked at the plotted range. Defaults to \code{FALSE}.
 #' @param ecx_val The percentage effect for \code{ecx}; defaults to 10.
 #' @param xlab X axis label.
 #' @param ylab Y axis label. Defaults to \code{NULL}, which labels each panel
@@ -1313,6 +1328,7 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
                                        point_alpha = 0.25,
                                        x_scale = c("recorded", "fitted"),
                                        nec = TRUE, ecx = FALSE, ecx_val = 10) {
+  which <- hurdle_check_plot_which(which)
   chk_lgl(CI)
   check_point_alpha(point_alpha)
   chk_lgl(nec)
@@ -1349,32 +1365,42 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
   est_xform <- if (x_scale == "fitted") identity else
     hurdle_ne_axis_map(object, xform)
   if (nec) {
-    ne <- lapply(panels, function(w) {
-      hurdle_plot_estimate(object, w, "nec", est_xform, ecx_val)
-    })
-    ne_data <- data.frame(panel = factor(rep(panel_names[panels], each = 3),
-                                          levels = levels(dat$curve$panel)),
-                          estimate = unlist(ne),
-                          line = rep(c(1, 2, 2), length(panels)))
+    ne_data <- hurdle_estimate_data(object, panels, "nec", est_xform,
+                                    ecx_val, panel_names,
+                                    levels(dat$curve$panel))
     p <- p + geom_vline(data = ne_data,
                         aes(xintercept = .data$estimate,
                             linetype = factor(.data$line)),
                         colour = "grey50", linewidth = 0.5,
                         show.legend = FALSE)
+    ne_bounds <- unique(ne_data[ne_data$bound != "",
+                                c("panel", "estimate", "bound")])
+    if (nrow(ne_bounds) > 0) {
+      p <- p + geom_text(data = ne_bounds,
+                         aes(x = .data$estimate, y = Inf,
+                             label = .data$bound),
+                         colour = "grey50", vjust = 1.2, size = 3,
+                         show.legend = FALSE)
+    }
   }
   if (ecx) {
-    ec <- lapply(panels, function(w) {
-      hurdle_plot_estimate(object, w, "ecx", est_xform, ecx_val)
-    })
-    ec_data <- data.frame(panel = factor(rep(panel_names[panels], each = 3),
-                                          levels = levels(dat$curve$panel)),
-                          estimate = unlist(ec),
-                          line = rep(c(1, 2, 2), length(panels)))
+    ec_data <- hurdle_estimate_data(object, panels, "ecx", est_xform,
+                                    ecx_val, panel_names,
+                                    levels(dat$curve$panel))
     p <- p + geom_vline(data = ec_data,
                         aes(xintercept = .data$estimate,
                             linetype = factor(.data$line)),
                         colour = "dodgerblue4", linewidth = 0.5,
                         show.legend = FALSE)
+    ec_bounds <- unique(ec_data[ec_data$bound != "",
+                                c("panel", "estimate", "bound")])
+    if (nrow(ec_bounds) > 0) {
+      p <- p + geom_text(data = ec_bounds,
+                         aes(x = .data$estimate, y = Inf,
+                             label = .data$bound),
+                         colour = "dodgerblue4", vjust = 2.5, size = 3,
+                         show.legend = FALSE)
+    }
   }
   p
 }

@@ -54,10 +54,11 @@ The fitted option returns the predictor on the scale transformed inside
 recorded units.}
 
 \item{nec}{Should the no-effect estimate and its credible limits be drawn
-on each panel? Defaults to \code{TRUE}.}
+on each panel? A bound is marked at the plotted range. Defaults to
+\code{TRUE}.}
 
 \item{ecx}{Should an ECx estimate and its credible limits be drawn on each
-panel? Defaults to \code{FALSE}.}
+panel? A bound is marked at the plotted range. Defaults to \code{FALSE}.}
 
 \item{ecx_val}{The percentage effect for \code{ecx}; defaults to 10.}
 }
