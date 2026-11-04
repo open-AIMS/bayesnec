@@ -2,7 +2,7 @@
 #'
 #' Extracts posterior predicted values from a list of class
 #' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits and
-#' compares these via bootstrap re sampling.
+#' compares these by randomly pairing their posterior draws.
 #'
 #' @param x A named \code{\link[base]{list}} of objects of class
 #' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by
@@ -62,11 +62,13 @@
 #' censored fraction of each posterior, and \code{prob} is \code{NA}. See the
 #' \emph{Censored estimates} section of \code{\link{compare_estimates}}.
 #'
+#' @inheritSection compare_estimates What the comparison estimates
+#'
 #' @seealso \code{\link{bnec}} \code{\link{ecx}} \code{\link{nsec}}
 #' \code{\link{nec}} \code{\link{bnec_newdata}}
 #' \code{\link{compare_estimates}}
 #'
-#' @return A named \code{\link[base]{list}} containing bootstrapped differences
+#' @return A named \code{\link[base]{list}} containing paired differences
 #' in posterior predictions of the \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} model fits contained in \code{x}. See Details.
 #'
@@ -76,7 +78,8 @@
 #' data(manec_example)
 #' nec4param <- pull_out(manec_example, model = "nec4param")
 #' ecx4param <- pull_out(manec_example, model = "ecx4param")
-#' compare_posterior(list("n(s)ec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
+#' compare_posterior(list("nec4param" = nec4param, "ecx4param" = ecx4param),
+#'                   ecx_val = 50)
 #' }
 #'
 #' @export
@@ -140,9 +143,9 @@ compare_posterior.default <- function(x, comparison = "n(s)ec", ecx_val = 10,
 #' and they can disagree: two levels can favour the same model form while
 #' differing in where the threshold falls, and vice versa.
 #'
-#' The levels share no parameters, so the posteriors are independent and the
-#' pairwise probabilities are read directly, with no multiple-comparison
-#' adjustment implied.
+#' The levels are fitted to separate data and share no parameters, so the
+#' posteriors are independent and the pairwise probabilities are read directly,
+#' with no multiple-comparison adjustment implied.
 #'
 #' @export
 compare_posterior.bayesnecgroupfit <- function(x, ...) {

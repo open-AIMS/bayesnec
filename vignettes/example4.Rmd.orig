@@ -39,8 +39,8 @@ knitr::opts_chunk$set(
 
 # Overview
 
-With `bayesnec` we have included a function that allows bootstrapped
-comparisons of posterior predictions. The main focus here is to showcase how the
+With `bayesnec` we have included a function that allows comparisons of
+posterior predictions. The main focus here is to showcase how the
 user can fit several different `bnec` model fits and can compare differences in
 the posterior predictions across these fits for individual toxicity estimates
 (e.g. *NEC*, *N(S)EC*, *NSEC* or *ECx*) or across a range of predictor values.
@@ -66,15 +66,27 @@ its own parameter values, but all levels are estimated in one posterior. Which
 designs admit which of these approaches is set out in the
 [Grouping and factor covariates][e8] vignette.
 
-`compare_posterior` is the function used to compare separate fits, whether these
-come from `bnec_group()` or from calls made independently for each level. It
-pairs the draws of two posteriors using a random permutation, which approximates
-their difference when the posteriors are independent. Separate fits of the
-levels by `bnec_group()` meet that condition. Levels of a fit with a shared
-term may be dependent, and permuting their draws would discard that dependence.
-For a joint fit, we therefore take a contrast by differencing its aligned
-draws. This also applies to the herbicide refit below, in which the levels have
-no shared parameters.
+`compare_posterior` pairs the posterior draws of two fits and takes the
+difference within each pair. Where the posteriors are independent, as they
+are for fits to separate data that share no parameter (e.g. the levels of a
+`bnec_group()` fit), these differences approximate the posterior of the
+difference between the two estimates. Pairing the draws by their index would
+also approximate this distribution, and the random permutation that
+`compare_posterior` uses is one Monte Carlo realisation of the pairing, not a
+requirement of it.
+
+Whether two estimates are independent depends on their joint posterior, and not
+on whether they were fitted in one call or several. Where two quantities are
+dependent within one posterior (e.g. two levels of a fit that share a
+group-level term), the contrast is taken by subtracting aligned draws (draw *i*
+of one from draw *i* of the other), which keeps their covariance. Pairing those
+draws at random removes the covariance, which may make the interval of the
+difference wider or narrower depending on its sign. Where the fits share data,
+for example two equations pulled from one model set, `compare_posterior` still
+pairs their draws as if they were independent. The probabilities it returns
+then describe how far two estimates of one quantity overlap, and whether
+they can be read as posterior probabilities is uncertain (see
+`?compare_estimates`).
 
 Below we demonstrate `compare_posterior` on two published datasets that are
 included in `bayesnec`, each fitted separately by level using `bnec_group()`. In
@@ -284,8 +296,9 @@ the probability that irgarol has the higher N(S)EC is 0.009 against simazine and
 0.732, the most potent of the set, followed by ametryn and diuron at 0.837,
 atrazine and hexazinone at 0.839, ametryn and irgarol at 0.923, and simazine and
 tebuthiuron at 0.077.
-`bnec_group()` fits each herbicide separately, so the independence that the
-random pairing of `compare_posterior` assumes is satisfied here.
+`bnec_group()` fits each herbicide to its own data, with no parameter shared
+between herbicides, so the posteriors are independent and the paired
+differences approximate the posterior of the difference for each pair.
 
 The N(S)EC is a no-effect estimate, and it is not what @jones2003 report. They
 report EC50 values (the concentration at which yield is halved), so the
@@ -433,67 +446,124 @@ the others, from the control to about 2 µg/L.
 
 ## Comparing toxicity estimates across scenarios
 
-We first compare the colour EC50 across the scenarios, because this is the
-estimate @flores2021 compared.
+We compare three estimates across the scenarios, for both endpoints: the EC50,
+which is the estimate @flores2021 compared, and the EC10 and the N(S)EC, which
+describe smaller effects or none. `compare_posterior` is called once for each estimate
+and endpoint, and the table collates `prob_diff` from each call, i.e. the
+probability that the first scenario of each pair has the higher estimate.
 
-```{r cmp-colour}
-cmp_colour <- compare_posterior(fits_colour, comparison = "ecx", ecx_val = 50)
-cmp_colour$prob_diff
+```{r cmp-coral}
+compare_scenarios <- function(fit) {
+  list(EC50 = compare_posterior(fit, comparison = "ecx", ecx_val = 50),
+       EC10 = compare_posterior(fit, comparison = "ecx", ecx_val = 10),
+       "N(S)EC" = compare_posterior(fit, comparison = "n(s)ec"))
+}
+cmp_coral <- list(colour = compare_scenarios(fits_colour),
+                  yield = compare_scenarios(fits_yield))
+coral_probs <- bind_rows(lapply(cmp_coral, function(cmps) {
+  data.frame(comparison = cmps$EC50$prob_diff$comparison,
+             sapply(cmps, function(x) x$prob_diff$prob), check.names = FALSE)
+}), .id = "endpoint")
+coral_probs
 ```
 
-```{r exmp4-cmp-colour, fig.asp = 0.5, out.width = "85%"}
-ggplot(data = cmp_colour$posterior_data, mapping = aes(x = value)) +
+The posterior draws behind each probability are returned in `posterior_data`,
+and we plot them as densities, with one panel for each endpoint and estimate.
+
+```{r exmp4-cmp-scenarios, fig.asp = 0.6, out.width = "95%"}
+coral_post <- bind_rows(lapply(cmp_coral, function(cmps) {
+  bind_rows(lapply(cmps, `[[`, "posterior_data"), .id = "estimate")
+}), .id = "endpoint")
+coral_post$estimate <- factor(coral_post$estimate,
+                              levels = c("EC50", "EC10", "N(S)EC"))
+ggplot(data = coral_post, mapping = aes(x = value)) +
   geom_density(mapping = aes(group = model, colour = model, fill = model),
                alpha = 0.3) +
+  facet_grid(endpoint ~ estimate, scales = "free_y") +
   log_x +
   theme_classic() +
-  labs(x = "Colour EC50 (ug/L)", y = "Density", fill = "Scenario",
+  theme(legend.position = "bottom") +
+  labs(x = "Diuron (ug/L), control at 0.1", y = "Density", fill = "Scenario",
        colour = "Scenario")
 ```
 
-The probability that the 2018 EC50 is the higher is 0.962 against the 2050
-scenario and 0.997 against the 2100 scenario, which is similar to the
-probabilities of 0.956 and 0.970 that @flores2021 report. However, the EC50 values themselves differ from theirs. The posterior for 2100 is centred near 4 µg/L and
-that for 2050 near 6 µg/L (with a second mode near 10), whereas the posterior for
-2018 is spread from about 8 µg/L to 29 µg/L, the highest concentration tested.
+```{r cmp-coral-text, include = FALSE}
+p_coral <- function(endpoint, pair, estimate, complement = FALSE) {
+  p <- coral_probs[coral_probs$endpoint == endpoint &
+                     coral_probs$comparison == pair, estimate]
+  sprintf("%.3f", if (complement) 1 - p else p)
+}
+ci_coral <- function(endpoint, estimate, scenario) {
+  v <- coral_post$value[coral_post$endpoint == endpoint &
+                          coral_post$estimate == estimate &
+                          coral_post$model == scenario]
+  paste(signif(quantile(v, c(0.025, 0.975), na.rm = TRUE), 2),
+        collapse = " to ")
+}
+colour_2018 <- unlist(coral_probs[coral_probs$endpoint == "colour" &
+                                    coral_probs$comparison != "2050-2100",
+                                  c("EC50", "EC10", "N(S)EC")])
+yield_ecx <- unlist(coral_probs[coral_probs$endpoint == "yield",
+                                c("EC50", "EC10")])
+# Draws at the control differ from 0.1 by rounding error, so use a tolerance.
+at_control <- with(coral_post[coral_post$estimate == "N(S)EC", ],
+                   tapply(abs(value - 0.1) < 1e-6, list(endpoint, model), mean))
+```
+
+The concentration axis is shared by all six panels, whereas the density axis is
+shared only within each endpoint. In the N(S)EC panels, up to
+`r round(100 * max(at_control, na.rm = TRUE), 1)` per cent of the draws of a
+scenario are at 0.1 µg/L, the value substituted for the control, and so describe
+the substitution and not diuron.
+
+For the colour EC50 (top left panel), the probability that the 2018 estimate is
+the higher is `r p_coral("colour", "2018-2050", "EC50")` against the 2050
+scenario and `r p_coral("colour", "2018-2100", "EC50")` against the 2100
+scenario. These are similar to the probabilities of 0.956 and 0.970 that
+@flores2021 report, although they could not be expected to match, because our
+model differs from theirs in two respects. The fits here use a restricted set of
+four equations, whereas @flores2021 averaged over a larger set (their Table S2),
+and the fits here include a group-level term for chamber (`ogl(chamber)`),
+which @flores2021 did not fit. However, the EC50 values themselves differ more
+from theirs. The posterior for 2100 is centred near 4 µg/L and that for 2050
+near 6 µg/L (with a second mode near 10), whereas the posterior for 2018 is
+spread from about 8 µg/L to 29 µg/L, the highest concentration tested.
 @flores2021 report EC50 values of 6.05, 4.99 and 4.86 µg/L, measured for each
 scenario against one reference response (halfway between the mean 2018 control
 and the mean 2100 response at 29 µg/L), whereas `ecx()` measures each scenario
-against its own control. The width of the 2018 posterior probably reflects the
-colour design, which has no concentration between 2.9 and 29 µg/L at which to
-locate the 2018 decline.
+against its own control. The width of the 2018 posterior probably reflects the colour design,
+which has no concentration between 2.9 and 29 µg/L at which to locate the 2018
+decline.
 
-This comparison can be made for any estimate that `compare_posterior` accepts.
-Here we tabulate the probabilities for the EC50, the EC10 and the N(S)EC, for
-both endpoints.
+The EC10 and N(S)EC panels for colour order the scenarios as the EC50 panel
+does, with the 2100 posterior at the lowest concentrations and the 2018
+posterior at the highest. Across the three estimates, the probability that
+the 2018 estimate is the higher ranges from
+`r sprintf("%.3f", min(colour_2018))` to `r sprintf("%.3f", max(colour_2018))`
+against the 2050 and 2100 scenarios. The 2018 posteriors are also wide for the
+EC10 and the N(S)EC (e.g. a 95% credible interval for the EC10 of
+`r ci_coral("colour", "EC10", "2018")` µg/L, against
+`r ci_coral("colour", "EC10", "2050")` µg/L for 2050), which is again likely
+to reflect the absence of concentrations between 2.9 and 29 µg/L.
 
-```{r cmp-coral-estimates}
-scenario_probs <- function(fit) {
-  prob <- function(...) compare_posterior(fit, ...)$prob_diff
-  ec50 <- prob(comparison = "ecx", ecx_val = 50)
-  data.frame(comparison = ec50$comparison,
-             EC50 = ec50$prob,
-             EC10 = prob(comparison = "ecx", ecx_val = 10)$prob,
-             "N(S)EC" = prob(comparison = "n(s)ec")$prob,
-             check.names = FALSE)
-}
-rbind(data.frame(endpoint = "colour", scenario_probs(fits_colour),
-                 check.names = FALSE),
-      data.frame(endpoint = "yield", scenario_probs(fits_yield),
-                 check.names = FALSE))
-```
-
-For colour, the 2018 scenario has the higher estimate against both future
-scenarios with a probability above 0.95, whichever of the three estimates is
-used. For yield, no estimate gives a probability below 0.05 or above 0.95, and the
-probabilities for the EC50 and the EC10 range from 0.22 to 0.69, which is
-consistent with the probabilities of 0.615 and 0.539 that @flores2021 report
-for the yield EC50.
-The yield N(S)EC under the 2100 scenario is higher than under the other two
-scenarios, with a probability of 0.92 against each, which is in the opposite
-direction to an effect of warming. This may reflect the less precisely estimated
-control under the 2100 scenario (the wider band in the figure above), because
-the NSEC is measured from a lower quantile of the control response, and should not be read as an effect of climate from these data.
+For yield, the EC50 posteriors of the three scenarios overlap almost completely
+(bottom left panel), and none of the probabilities is below 0.05 or above
+0.95. The probabilities for the EC50 and the EC10 range from
+`r sprintf("%.2f", min(yield_ecx))` to `r sprintf("%.2f", max(yield_ecx))`,
+which is consistent with the probabilities of 0.615 and 0.539 that @flores2021
+report for the yield EC50. For the EC10 and the N(S)EC, the 2100 posterior is
+wider than those of the other two scenarios and extends to higher
+concentrations (e.g. a 95% credible interval for the N(S)EC of
+`r ci_coral("yield", "N(S)EC", "2100")` µg/L, against
+`r ci_coral("yield", "N(S)EC", "2018")` µg/L for 2018). The yield N(S)EC under
+the 2100 scenario is the higher, with a probability of
+`r p_coral("yield", "2018-2100", "N(S)EC", complement = TRUE)` against 2018 and
+`r p_coral("yield", "2050-2100", "N(S)EC", complement = TRUE)` against 2050,
+which is in the opposite direction to an effect of warming. This may reflect the
+less precisely estimated control under the 2100 scenario (the wider band in the
+figure of the fitted curves above), because the NSEC is measured from a lower
+quantile of the control response, and it should not be read as an effect of
+climate from these data.
 
 ## Comparing the fitted curves
 
@@ -552,6 +622,17 @@ scenarios differ over most of the range above about 1 µg/L, which is where the
 colour response declines under at least one scenario.
 
 # Contrasts from a joint refit
+
+Where levels share a parameter, such as a group-level term for a batch that
+includes every level (see the [Grouping and factor covariates][e8] vignette),
+their posteriors are dependent, and a contrast between two levels has to be
+taken from the aligned draws of one fit. However, the herbicides do not require
+this, because they are fixed levels tested separately, and the separate fits
+above already give the comparison of interest. Here we use the herbicide fits to
+demonstrate how such a refit is made and how a contrast is taken from its draws.
+Because the refit conditions on one equation per herbicide, it also shows how a
+contrast from one selected equation per level differs from the model-averaged
+comparison above.
 
 The comparisons above treat the levels as separate fits. `bnec_joint()` instead
 takes the per-level fits of a `bnec_group()` call and builds one model that includes all levels, each level keeping the equation its own weights
@@ -649,8 +730,13 @@ how two independently estimated levels compare, each with its own model
 uncertainty, which is appropriate where the levels were tested separately and
 are being ranked. The joint refit asks how two levels compare conditional on
 the selected equation for each. In this example each herbicide has its own curve
-and dispersion parameters; the fitted model shares no parameter between them.
-The aligned draws give a contrast under that model. A joint refit can also
+and dispersion parameters, and the fitted model shares no parameter between
+them, so the posteriors of the herbicides are independent within the refit as
+well. The aligned draws give a contrast under that model, and a random pairing
+of these draws would estimate that contrast as well. The difference between the
+probabilities of 0.617 and 0.732 is therefore not due to dependence between the
+herbicides, and most likely reflects fitting one equation per herbicide in place
+of the model average. A joint refit can also
 include a shared term where the levels use one equation, for example in a
 controlled comparison of treatments or sites.
 
