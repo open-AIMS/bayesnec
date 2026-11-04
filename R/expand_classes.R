@@ -428,7 +428,8 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
     stop("Cannot combine models with different numbers of posterior draws: ",
          paste(paste0(names(draw_counts), " = ", draw_counts),
                collapse = ", "),
-         ". Refit or use thin so each model retains the same number of draws.")
+         ". Refit with matching retained draw counts; set thin during fitting ",
+         "if the iteration counts differ.", call. = FALSE)
   }
   # Classify by each equation's parameters, as nec() does, not by group
   # membership or name.

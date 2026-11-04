@@ -361,8 +361,8 @@ test_that("unequal draw counts are refused before model weighting", {
   formulas <- lapply(fits, `[[`, "bayesnecformula")
   expected <- paste0(
     "Cannot combine models with different numbers of posterior draws: ",
-    "nec4param = 26, ecx4param = 100. Refit or use thin so each model ",
-    "retains the same number of draws."
+    "nec4param = 26, ecx4param = 100. Refit with matching retained draw ",
+    "counts; set thin during fitting if the iteration counts differ."
   )
   expect_error(expand_manec(fits, formulas), expected, fixed = TRUE)
 
