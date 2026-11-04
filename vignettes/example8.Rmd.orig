@@ -1017,13 +1017,16 @@ includes, so `model` names one equation to be fitted to both metals. We use
 `r sprintf("%.2f", level_weights[["Zn"]][["ecxll5"]])` for zinc) and on the
 diagonal of the crossed weights
 (`r sprintf("%.3f", crossed$diagonal[["ecxll5"]])`). The formula adds
-`(ec50 | batch)` to the structure of `fits_tox`, and `disp_by_level = FALSE`
-fits one dispersion sub-model for both metals, where the default would fit one
-for each level:
+`(ec50 | batch)` to the structure of `fits_tox` and writes its plate and cell
+terms as `pgl(gr(plate, by = toxicant))` and `ogl(gr(conc_group, by = toxicant))`.
+`gr()` is the `brms` function that declares a grouping, and with
+`by = toxicant` a separate SD is fitted for each metal (see `?brms::gr`).
+`disp_by_level = FALSE` fits one dispersion sub-model for both metals, where the
+default would fit one for each level:
 
 ```{r fit-metals-joint, results = "hide"}
 fits_tox_joint <- bnec_joint(fits_tox, model = "ecxll5",
-                             formula = rlu_cens | cens(censoring) ~ crf(log(conc), "ecxll5") + pgl(plate) + ogl(conc_group) + (ec50 | batch) + disp("power"),
+                             formula = rlu_cens | cens(censoring) ~ crf(log(conc), "ecxll5") + pgl(gr(plate, by = toxicant)) + ogl(gr(conc_group, by = toxicant)) + (ec50 | batch) + disp("power"),
                              disp_by_level = FALSE, seed = 228, refresh = 0)
 ```
 
@@ -1040,57 +1043,87 @@ fits_tox_joint$fit$formula
 
 Each curve parameter of `ecxll5` takes a separate value for each metal
 (`0 + toxicant`). The metals share the five batch deviations of `(1 | batch)` on
-`ec50`, the coefficients `c0` and `c1` of `disp("power")`, and the SD of each
-group-level term of the arm structure: one per parameter for `(1 | plate)` and
-one for `(1 | conc_group)`, each estimated from the plates or cells of both
-metals. Each plate and cell belongs to one metal, so the deviations themselves
-are not shared, only the SD from which they are drawn. The table below gives the
-SDs of the joint refit beside those of `ecxll5` in each level of `fits_tox`.
+`ec50` and the coefficients `c0` and `c1` of `disp("power")`. Each plate and
+cell belongs to one metal, and its deviation is drawn from an SD estimated from
+that metal's plates or cells alone, as in the separate fits: one SD per
+parameter for `plate` and one for `conc_group`. The table below gives the SDs
+of the joint refit beside those of `ecxll5` in each level of `fits_tox`.
 
 ```{r sd-joint, echo = FALSE}
 vc_joint <- brms::VarCorr(fits_tox_joint$fit, summary = FALSE)
+# brms names the SD of a by term <parameter>_Intercept:<by variable><level>.
+by_tag <- paste0(":", fits_tox_joint$group_var)
 sd_joint <- do.call(rbind, lapply(names(vc_joint), function(g) {
   d <- vc_joint[[g]]$sd
-  data.frame(group = g, parameter = sub("_Intercept$", "", colnames(d)),
+  per_level <- grepl(by_tag, colnames(d), fixed = TRUE)
+  data.frame(group = g, parameter = sub("_Intercept.*$", "", colnames(d)),
+             level = ifelse(per_level, sub(paste0("^.*", by_tag), "",
+                                           colnames(d)), NA),
              Estimate = apply(d, 2, median),
              Q2.5 = apply(d, 2, quantile, probs = 0.025),
              Q97.5 = apply(d, 2, quantile, probs = 0.975), row.names = NULL)
 }))
+sd_joint <- sd_joint[order(match(sd_joint$group, unique(sd_joint$group)),
+                           match(sd_joint$parameter, unique(sd_joint$parameter)),
+                           sd_joint$level), ]
 sd_tox <- group_level_sd(fits_tox)
 sd_tox <- sd_tox[sd_tox$model == "ecxll5", ]
 level_sd <- function(level, g, p) {
   r <- sd_tox[sd_tox$level == level & sd_tox$group == g & sd_tox$parameter == p, ]
   if (nrow(r) == 0) "not fitted" else ci(r[1, c("Estimate", "Q2.5", "Q97.5")])
 }
+metal_name <- c(Cu = "Copper", Zn = "Zinc")
 knitr::kable(
   data.frame(
     group = eq(sd_joint$group), parameter = eq(sd_joint$parameter),
-    cu = mapply(level_sd, "Cu", sd_joint$group, sd_joint$parameter),
-    zn = mapply(level_sd, "Zn", sd_joint$group, sd_joint$parameter),
+    metal = ifelse(is.na(sd_joint$level), "Both",
+                   metal_name[sd_joint$level]),
+    separate = vapply(seq_len(nrow(sd_joint)), function(i) {
+      if (is.na(sd_joint$level[i])) return("not fitted")
+      level_sd(sd_joint$level[i], sd_joint$group[i], sd_joint$parameter[i])
+    }, character(1)),
     joint = vapply(seq_len(nrow(sd_joint)), function(i) {
       ci(sd_joint[i, c("Estimate", "Q2.5", "Q97.5")])
     }, character(1))
   ),
-  col.names = c("Grouping", "Parameter", "Copper, separate fit",
-                "Zinc, separate fit", "Joint refit"),
+  col.names = c("Grouping", "Parameter", "Toxicant", "Separate fit",
+                "Joint refit"),
   row.names = FALSE
 )
 batch_sd <- unlist(sd_joint[sd_joint$group == "batch", c("Estimate", "Q2.5", "Q97.5")])
-joint_sd_text <- function(g, p) {
-  ci(sd_joint[sd_joint$group == g & sd_joint$parameter == p,
-              c("Estimate", "Q2.5", "Q97.5")])
+# A level of NA selects a term the metals share; %in% matches NA to NA.
+joint_sd_text <- function(g, p, level = NA) {
+  ci(sd_joint[sd_joint$group == g & sd_joint$parameter == p &
+                sd_joint$level %in% level, c("Estimate", "Q2.5", "Q97.5")])
+}
+cu_ec50_sep <- sd_tox[sd_tox$level == "Cu" & sd_tox$group == "plate" &
+                        sd_tox$parameter == "ec50", ]
+cu_ec50_joint <- sd_joint[sd_joint$group == "plate" &
+                            sd_joint$parameter == "ec50" &
+                            sd_joint$level %in% "Cu", ]
+cu_ec50_text <- if (cu_ec50_joint$Estimate[1] < cu_ec50_sep$Q2.5[1]) {
+  paste("Copper's plate SD on `ec50` in the joint refit is below the interval",
+        "of its separate fit, so part of the difference in position that the",
+        "copper fit attributed to plates appears to be attributed to batches",
+        "here.")
+} else {
+  paste("Copper's plate SD on `ec50` in the joint refit is within or above the",
+        "interval of its separate fit, so the difference in position that the",
+        "copper fit attributed to plates does not appear to be attributed to",
+        "batches here.")
 }
 ```
 
 The separate fits estimate different plate SDs for the two metals on some
 parameters. For example, on `ec50` the SD is `r level_sd("Cu", "plate", "ec50")`
 for copper and `r level_sd("Zn", "plate", "ec50")` for zinc, and on `f` it is
-`r level_sd("Cu", "plate", "f")` and `r level_sd("Zn", "plate", "f")`. The joint
-refit replaces each such pair by one SD estimated from both metals
-(`r joint_sd_text("plate", "ec50")` on `ec50` and
-`r joint_sd_text("plate", "f")` on `f`). A common SD per parameter therefore
-assumes that the plates vary as much for one metal as for the other, which the
-separate fits suggest may not hold for these data.
+`r level_sd("Cu", "plate", "f")` and `r level_sd("Zn", "plate", "f")`. One SD
+per parameter for both metals would assume that the plates of one metal vary as
+much as those of the other, which these pairs of estimates suggest may not hold
+for these data. In the joint refit the plate SD on `ec50` is
+`r joint_sd_text("plate", "ec50", "Cu")` for copper and
+`r joint_sd_text("plate", "ec50", "Zn")` for zinc, and on `f` it is
+`r joint_sd_text("plate", "f", "Cu")` and `r joint_sd_text("plate", "f", "Zn")`.
 
 A batch term shared by the metals is consistent with the caution above that a
 plate term belongs within one arm. The metals keep separate curve parameters,
@@ -1102,10 +1135,7 @@ condition of that date (e.g. the state of the reactivated cells, or that day's
 dilution series) would be expected to displace both metals' curves together. The
 batch SD on `ec50` is `r ci(batch_sd)`, and five batches leave it poorly
 determined (its interval spans a factor of
-`r round(batch_sd[[3]] / batch_sd[[2]])` from end to end). The plate SD on
-`ec50` in the joint refit, `r joint_sd_text("plate", "ec50")`, is below copper's
-value in the separate fit, so part of the difference in position that the copper
-fit attributed to plates appears to be attributed to batches here.
+`r round(batch_sd[[3]] / batch_sd[[2]])` from end to end). `r cu_ec50_text`
 
 The table below sets the EC50 of each metal from the joint refit beside the
 model-averaged EC50 of the separate fits and the per-plate EC50s that @luter2025
