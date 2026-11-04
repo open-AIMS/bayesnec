@@ -995,11 +995,20 @@ define_prior <- function(model, family, predictor, response,
   }
   pr_nec <- prior_string(x_pr, nlpar = "nec", lb = x_lb, ub = x_ub)
   pr_ec50 <- prior_string(x_pr, nlpar = "ec50", lb = x_lb, ub = x_ub)
-  # x- and y-independent priors
-  pr_d <- prior_string("normal(0, 5)", nlpar = "d")
-  pr_beta <- prior_string("normal(0, 5)", nlpar = "beta")
-  pr_f <- prior_string("normal(0, 5)", nlpar = "f")
-  pr_slope <- prior_string("normal(0, 5)", nlpar = "slope")
+  # d and f are log exponents. beta and slope also describe rates whose
+  # numerical values depend on predictor units, so keep their broad entries.
+  shape_scales <- if (prior_type == "regularizing") {
+    c(beta = 5, slope = 5, d = 1, f = 1)
+  } else {
+    c(beta = 5, slope = 5, d = 5, f = 5)
+  }
+  shape_prior <- function(par) {
+    prior_string(paste0("normal(0, ", shape_scales[[par]], ")"), nlpar = par)
+  }
+  pr_d <- shape_prior("d")
+  pr_beta <- shape_prior("beta")
+  pr_f <- shape_prior("f")
+  pr_slope <- shape_prior("slope")
   # assemble
   if (model == "ecxsigm") {
     priors <- pr_beta + pr_top + pr_d
@@ -1156,7 +1165,7 @@ define_disp_prior <- function(disp_spec, family, response, predictor = NULL,
 #'   \item \code{nec} and \code{ec50}: the predictor,
 #'     \code{diff(range(predictor)) / 10}.
 #'   \item \code{beta}, \code{slope}, \code{d} and \code{f}: 0.5, one tenth of
-#'     their own \code{normal(0, 5)}.
+#'     their \code{"uninformative"} \code{normal(0, 5)} entry.
 #' }
 #'
 #' The scale is taken from the data, not from the parameter's own prior, whose

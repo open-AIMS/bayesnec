@@ -89,9 +89,13 @@
 #' as recorded and the constant \code{10 sd(x)} where the predictor is supplied
 #' already logged, so how much narrower the regularizing entry is depends on
 #' which of the two the data are on. See \code{vignette("example3")} for why the
-#' two rules differ. Ignored when priors are supplied directly via the
-#' \code{prior} argument. Both default sets assume that the tested
-#' concentrations reach the lower asymptote of the curve. Where the mean
+#' two rules differ. The curve-shape parameters \code{d} and \code{f} use
+#' \code{normal(0, 1)} under \code{"regularizing"} and \code{normal(0, 5)} under
+#' \code{"uninformative"}. The \code{beta} and \code{slope} parameters keep
+#' \code{normal(0, 5)} in both sets. Each named parameter receives the same
+#' entry across equations. The choice is ignored when priors are supplied
+#' directly via the \code{prior} argument. Both default sets assume that the
+#' tested concentrations reach the lower asymptote of the curve. Where the mean
 #' response at the highest concentration is below the mean at the second
 #' highest by more than the contrast's standard error admits, tested one-sided
 #' at the 5% level under the mean-variance relationship of the fitted family,

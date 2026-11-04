@@ -708,6 +708,20 @@ test_that("amend(add = ) builds priors with the arguments the set records", {
                          "unrecorded")
 })
 
+test_that("amend(add = ) uses the regularizing shape prior bnec() uses", {
+  d <- data.frame(x = as.numeric(rep(0:5, each = 4)),
+                  y = rep(seq(0.9, 0.2, length.out = 6), each = 4))
+  obj <- amend_fixture(validate_family("Beta"), data = d)
+  obj$call_args <- call_record(prior_type = "regularizing")
+  amended <- fit_inputs(amend(obj, add = "ecxsigm"))
+  fitted <- fit_inputs(bnec(y ~ crf(x, "ecxsigm"), data = d,
+                            family = Beta(link = "identity"), chains = 2,
+                            prior_type = "regularizing"))
+  expect_same_fit_inputs(amended, fitted, "regularizing d")
+  pr <- amended$calls[[1]]$prior
+  expect_identical(pr$prior[pr$nlpar == "d"], "normal(0, 1)")
+})
+
 test_that("amend(add = ) gives an added equation the prior the set records", {
   d <- data.frame(x = nec_data$x, y = nec_data$y * 10)
   obj <- amend_fixture(validate_family("gaussian"), data = d)
