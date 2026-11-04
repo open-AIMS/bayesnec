@@ -399,6 +399,11 @@ the bound has already been declared and moving it would restate it. A row
 declared censored at a value the family excludes --- left-censored at 0 under
 Gamma or Beta, right-censored at 1 under Beta --- is an error rather than a
 shift, because the censored likelihood is degenerate there.
+In a direct two-block \code{\link{bnec}} fit, left censoring of the total
+response includes the zero outcome. For a survivor known to have a positive
+response below the bound, \code{\link{bnec_hurdle}} records survival
+separately. \code{\link{bnec_joint}} keeps that distinction for a Gamma
+refit and refuses a zero-inflated Beta refit with left-censored survivors.
 
 \strong{NB:} \code{aterms} other than \code{trials()}, \code{weights()} and
 \code{cens()} are currently omitted from \code{\link{model.frame}} output. If

@@ -1,5 +1,16 @@
 # bayesnec 2.2.0
 
+## Censored survivors in joint fits
+
+- `bnec_joint()` now preserves known survival when a factorised Gamma growth
+  fit includes a left-censored survivor. It fits that row as an interval from
+  zero to the recorded bound in the joint likelihood. The recorded response
+  remains positive in priors, diagnostics and plots. A corresponding
+  zero-inflated Beta joint refit is refused because Stan cannot sample the
+  required interval likelihood at zero. Direct `bnec()` left censoring still
+  includes the possibility of a structural zero when survival status is
+  unknown.
+
 ## Model weights under a within-concentration group term
 
 - Where each level of a group-level term is observed at a single
