@@ -16,7 +16,8 @@
   xform = NULL,
   group = NULL,
   group_aes = c("line", "colour"),
-  point_alpha = 1
+  point_alpha = 1,
+  x_scale = c("recorded", "fitted")
 )
 
 \method{autoplot}{bayesmanecfit}(
@@ -34,7 +35,8 @@
   group = NULL,
   group_aes = c("line", "colour"),
   point_alpha = 1,
-  all_models = NULL
+  all_models = NULL,
+  x_scale = c("recorded", "fitted")
 )
 
 \method{autoplot}{bayesnecgroupfit}(
@@ -45,7 +47,8 @@
   xform = NULL,
   group = NULL,
   group_aes = c("line", "colour"),
-  point_alpha = 1
+  point_alpha = 1,
+  x_scale = c("recorded", "fitted")
 )
 
 \method{autoplot}{bayesnecjointfit}(
@@ -56,7 +59,8 @@
   xform = NULL,
   group = NULL,
   group_aes = c("line", "colour"),
-  point_alpha = 1
+  point_alpha = 1,
+  x_scale = c("recorded", "fitted")
 )
 }
 \arguments{
@@ -94,6 +98,11 @@ in the fitted formula.}
 \item{point_alpha}{The opacity of the observation points, a single number
 from 0 (transparent) to 1 (opaque, the default). It does not change the
 credible band or the per-level means drawn for \code{group}.}
+
+\item{x_scale}{\code{"recorded"} (the default) draws the predictor as
+supplied to \code{bnec()}. \code{"fitted"} draws it as transformed inside
+\code{crf()}, with axis labels in the supplied units. It has no effect
+when \code{crf()} names an untransformed predictor.}
 
 \item{model}{\code{NULL} (the default), or a \code{\link[base]{character}}
 vector naming equations of the model set. Each named equation is drawn in a

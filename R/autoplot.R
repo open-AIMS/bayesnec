@@ -14,6 +14,10 @@
 #' @param ecx Should ECx values be added to the plot? Defaults to FALSE..
 #' @param xform \code{NULL}, the default, or a function. See
 #' \code{\link{ggbnec_data}}.
+#' @param x_scale \code{"recorded"} (the default) draws the predictor as
+#' supplied to \code{bnec()}. \code{"fitted"} draws it as transformed inside
+#' \code{crf()}, with axis labels in the supplied units. It has no effect
+#' when \code{crf()} names an untransformed predictor.
 #' @param group An optional character string naming a categorical variable in
 #' the data supplied to \code{\link{bnec}}. Observations are joined through
 #' their per-level means when the variable occurs as a group-level term in the
@@ -79,25 +83,28 @@ NULL
 autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                                  xform = NULL, group = NULL,
                                  group_aes = c("line", "colour"),
-                                 point_alpha = 1) {
+                                 point_alpha = 1,
+                                 x_scale = c("recorded", "fitted")) {
   x <- object
   chk_lgl(nec)
   chk_lgl(ecx)
   group_aes <- match.arg(group_aes)
   check_xform(xform)
   check_point_alpha(point_alpha)
+  x_scale <- plot_x_scale(x, x_scale, xform)
   summ <- summary(x, ecx = FALSE, xform = identity) |>
     suppressWarnings() |>
     suppressMessages()
   dat <- ggbnec_data(x, add_nec = nec, add_ecx = ecx,
-                     xform = xform, group = group, ...)
+                     xform = xform, x_scale = x_scale, group = group, ...)
+  x_axis <- attr(dat, "x_axis")
   group_label <- plot_group_label(dat, group, group_aes)
   dat |>
     mutate(model = x$model, tag = rownames(.env$summ$nec_vals)) |>
     ggbnec(nec = nec, ecx = ecx, group = !is.null(group),
            group_aes = group_aes, group_label = group_label,
            group_fitted = !identical(attr(dat, "group_fitted"), FALSE),
-           point_alpha = point_alpha)
+           point_alpha = point_alpha, x_axis = x_axis)
 }
 
 #' @rdname autoplot
@@ -151,13 +158,15 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                                    newpage = TRUE, multi_facet = TRUE,
                                    group = NULL,
                                    group_aes = c("line", "colour"),
-                                   point_alpha = 1, all_models = NULL) {
+                                   point_alpha = 1, all_models = NULL,
+                                   x_scale = c("recorded", "fitted")) {
   x <- object
   chk_lgl(nec)
   chk_lgl(ecx)
   group_aes <- match.arg(group_aes)
   check_xform(xform)
   check_point_alpha(point_alpha)
+  x_scale <- plot_x_scale(x, x_scale, xform)
   shown <- resolve_model_average(
     x, model, average, all_models,
     new_supplied = !missing(model) || !missing(average)
@@ -168,11 +177,12 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   chk_lgl(multi_facet)
   if (is.null(shown$model)) {
     avg <- manec_average_plot_data(x, nec = nec, ecx = ecx, xform = xform,
-                                   group = group, group_aes = group_aes, ...)
+                                   x_scale = x_scale, group = group,
+                                   group_aes = group_aes, ...)
     return(ggbnec(avg$data, nec = nec, ecx = ecx, group = !is.null(group),
                   group_aes = group_aes, group_label = avg$group_label,
                   group_fitted = avg$group_fitted,
-                  point_alpha = point_alpha))
+                  point_alpha = point_alpha, x_axis = avg$x_axis))
   }
   all_fits <- lapply(shown$model, pull_out, manec = x) |>
     suppressMessages() |>
@@ -189,9 +199,10 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
     }, .id = "model")
     plot_data <- lapply(all_fits, function(fit) {
       ggbnec_data(fit, add_nec = nec, add_ecx = ecx,
-                  xform = xform, group = group, ...)
+                  xform = xform, x_scale = x_scale, group = group, ...)
     })
     group_label <- plot_group_label(plot_data[[1]], group, group_aes)
+    x_axis <- attr(plot_data[[1]], "x_axis")
     group_fitted <- !identical(
       attr(plot_data[[1]], "group_fitted"), FALSE
     )
@@ -199,7 +210,8 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
       left_join(y = nec_labs, by = "model")
     if (shown$average) {
       avg <- manec_average_plot_data(x, nec = nec, ecx = ecx, xform = xform,
-                                     group = group, group_aes = group_aes,
+                                     x_scale = x_scale, group = group,
+                                     group_aes = group_aes,
                                      ...)
       # A factor puts the model average in the first facet. The equations
       # follow in alphabetical order, as facet_wrap() orders a character column.
@@ -210,7 +222,8 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
     }
     ggbnec(dat, nec = nec, ecx = ecx, group = !is.null(group),
            group_aes = group_aes, group_label = group_label,
-           group_fitted = group_fitted, point_alpha = point_alpha)
+           group_fitted = group_fitted, point_alpha = point_alpha,
+           x_axis = x_axis)
   } else {
     if (plot) {
       default_ask <- devAskNewPage()
@@ -222,20 +235,24 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
     for (i in seq_along(plots)) {
       if (i <= n_average) {
         avg <- manec_average_plot_data(x, nec = nec, ecx = ecx,
-                                       xform = xform, group = group,
+                                       xform = xform, x_scale = x_scale,
+                                       group = group,
                                        group_aes = group_aes, ...)
         plots[[i]] <- ggbnec(avg$data, nec = nec, ecx = ecx,
                              group = !is.null(group), group_aes = group_aes,
                              group_label = avg$group_label,
                              group_fitted = avg$group_fitted,
-                             point_alpha = point_alpha)
+                             point_alpha = point_alpha,
+                             x_axis = avg$x_axis)
       } else {
         j <- i - n_average
         summ_j <- summary(all_fits[[j]], ecx = FALSE, xform = identity) |>
           suppressWarnings() |>
           suppressMessages()
         dat_j <- ggbnec_data(all_fits[[j]], add_nec = nec, add_ecx = ecx,
-                             xform = xform, group = group, ...)
+                             xform = xform, x_scale = x_scale,
+                             group = group, ...)
+        x_axis <- attr(dat_j, "x_axis")
         group_label <- plot_group_label(dat_j, group, group_aes)
         plots[[i]] <- dat_j |>
           mutate(model = shown$model[j],
@@ -244,7 +261,7 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                  group_aes = group_aes, group_label = group_label,
                  group_fitted = !identical(
                    attr(dat_j, "group_fitted"), FALSE
-                 ), point_alpha = point_alpha)
+                 ), point_alpha = point_alpha, x_axis = x_axis)
       }
       # Draw each page as soon as it is built, and only where `plot` is TRUE,
       # the flag that also guards the device's prompt setting above.
@@ -277,20 +294,21 @@ manec_average_label <- "Model averaged predictions"
 #' @importFrom rlang .env
 #'
 #' @noRd
-manec_average_plot_data <- function(x, nec, ecx, xform, group, group_aes,
+manec_average_plot_data <- function(x, nec, ecx, xform, x_scale, group, group_aes,
                                     ...) {
   summ <- summary(x, ecx = FALSE, xform = identity) |>
     suppressWarnings() |>
     suppressMessages()
   dat <- ggbnec_data(x, add_nec = nec, add_ecx = ecx, xform = xform,
-                     group = group, ...)
+                     x_scale = x_scale, group = group, ...)
   group_label <- plot_group_label(dat, group, group_aes)
   list(
     data = dat |>
       mutate(model = manec_average_label,
              tag = rownames(.env$summ$nec_vals)),
     group_label = group_label,
-    group_fitted = !identical(attr(dat, "group_fitted"), FALSE)
+    group_fitted = !identical(attr(dat, "group_fitted"), FALSE),
+    x_axis = attr(dat, "x_axis")
   )
 }
 
@@ -483,6 +501,11 @@ bind_ecx <- function(data, ecx_vals) {
 #' \code{\link{ecx}} return by default, which are on that scale. A function
 #' other than \code{identity} is then applied to the estimates on the
 #' transformed scale instead, as the estimators apply it.
+#' @param x_scale \code{"recorded"} (the default) returns the predictor in
+#' supplied units. \code{"fitted"} returns the scale transformed inside
+#' \code{crf()} and attaches \code{"x_axis"}, a list of fitted-scale breaks
+#' and labels in supplied units. A fitted axis cannot be combined with a
+#' non-identity \code{xform}.
 #' @param group An optional character string naming a categorical variable in
 #' the data supplied to \code{\link{bnec}}. When supplied, its values are
 #' returned in a column named \code{group}, with the source name in attribute
@@ -512,8 +535,103 @@ bind_ecx <- function(data, ecx_vals) {
 #'
 #' @export
 ggbnec_data <- function(x, add_nec = TRUE, add_ecx = FALSE,
-                        xform = NULL, ..., group = NULL) {
+                        xform = NULL, ..., group = NULL,
+                        x_scale = c("recorded", "fitted")) {
   UseMethod("ggbnec_data")
+}
+
+#' @noRd
+plot_x_scale <- function(object, x_scale, xform) {
+  x_scale <- match.arg(x_scale, c("recorded", "fitted"))
+  if (x_scale == "fitted" && !is.null(inline_x_transform(object))) {
+    if (!is.null(xform) && !identical(xform, identity)) {
+      stop("`x_scale = \"fitted\"` cannot be combined with a non-identity ",
+           "`xform`.", call. = FALSE)
+    }
+    return(x_scale)
+  }
+  "recorded"
+}
+
+#' @noRd
+plot_fitted_grid <- function(object, resolution = 1000, x_range = NA) {
+  fit <- scale_source_fit(object)
+  formula <- fit$bayesnecformula
+  if (length(x_range) == 1 && is.na(x_range) &&
+      !inherits(object, "bayesnechurdlefit")) {
+    stored <- if (inherits(object, "bayesmanecfit")) {
+      object$w_pred_vals$data$x
+    } else {
+      fit$pred_vals$data$x
+    }
+    x_range <- range(stored, na.rm = TRUE)
+  }
+  grid <- newdata_eval(object, resolution = resolution, x_range = x_range)
+  recorded <- grid$x_vec
+  fitted <- as.numeric(sub_x_transformation(recorded, formula))
+  if (any(!is.finite(fitted))) {
+    stop("The fitted predictor axis is not finite over the plotted range.",
+         call. = FALSE)
+  }
+  if (!all(diff(fitted) > 0) && !all(diff(fitted) < 0)) {
+    stop("The fitted predictor axis must be strictly monotone over the ",
+         "plotted range.", call. = FALSE)
+  }
+  x <- seq(min(fitted), max(fitted), length.out = resolution)
+  inverse <- recorded_x_map(formula, recorded, inline_x_transform(object))
+  raw <- as.numeric(inverse(x))
+  x_var <- attr(model.frame(formula, fit$fit$data), "bnec_pop")[["x_var"]]
+  grid$newdata[[x_var]] <- raw
+  list(x = x, recorded = raw, newdata = grid$newdata)
+}
+
+#' @noRd
+plot_fitted_curve <- function(object) {
+  grid <- plot_fitted_grid(object)
+  if (inherits(object, "bayesmanecfit")) {
+    models <- names(object$mod_fits)
+    draw_index <- pull_draw_index(object, models,
+                                  set_draw_count(object$mod_fits))
+    # Retain only the draws contributing to the mixture before predicting the
+    # next equation, so a large set does not hold every full grid posterior.
+    pieces <- lapply(models, function(model) {
+      fit <- object$mod_fits[[model]]
+      draws <- factorised_count_epred(
+        fit$fit, fit$bayesnecformula, newdata = grid$newdata,
+        re_formula = NA
+      )
+      draws[draw_index[[model]], , drop = FALSE]
+    })
+    draws <- do.call(rbind, pieces)
+  } else {
+    draws <- posterior_epred(object, newdata = grid$newdata, re_formula = NA)
+  }
+  summaries <- t(apply(draws, 2, estimates_summary))
+  data.frame(x = grid$x, Estimate = summaries[, "Estimate"],
+             Q2.5 = summaries[, "Q2.5"], Q97.5 = summaries[, "Q97.5"])
+}
+
+#' @noRd
+plot_x_axis <- function(recorded, formula) {
+  observed <- sort(unique(recorded[is.finite(recorded)]))
+  positive <- observed[observed > 0]
+  if (length(positive) && diff(range(positive)) > 0 &&
+      diff(log10(range(positive))) >= 1) {
+    ticks <- 10^pretty(log10(range(positive)), n = 4)
+  } else {
+    ticks <- pretty(range(observed), n = 6)
+  }
+  ticks <- ticks[ticks >= min(observed) & ticks <= max(observed)]
+  if (0 %in% observed) ticks <- c(0, ticks)
+  ticks <- sort(unique(ticks))
+  breaks <- as.numeric(sub_x_transformation(ticks, formula))
+  keep <- is.finite(breaks)
+  breaks <- breaks[keep]
+  labels <- vapply(ticks[keep], function(value) {
+    format(signif(value, 3), trim = TRUE, scientific = FALSE)
+  }, character(1))
+  order <- order(breaks)
+  list(breaks = breaks[order], labels = labels[order])
 }
 
 #' Creates the data.frame for plotting with \code{\link{autoplot}}.
@@ -532,17 +650,22 @@ ggbnec_data <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #'
 #' @export
 ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
-                                    xform = NULL, ..., group = NULL) {
+                                    xform = NULL, ..., group = NULL,
+                                    x_scale = c("recorded", "fitted")) {
   chk_lgl(add_nec)
   chk_lgl(add_ecx)
   check_xform(xform)
+  x_scale <- plot_x_scale(x, x_scale, xform)
   brms_fit <- x$fit
-  # Draw the stored grid curve, not conditional_effects(): that holds a rate()
-  # denominator at its mean, which puts the curve on the count scale.
-  e_df <- x$pred_vals$data
-  e_df <- data.frame(x_e = c(e_df$x, rev(e_df$x)),
-                     y_e = c(e_df$Estimate, rep(NA, nrow(e_df))),
-                     y_ci = c(e_df$Q2.5, rev(e_df$Q97.5)),
+  if (x_scale == "fitted") {
+    curve <- plot_fitted_curve(x)
+  } else {
+    # The stored grid keeps rate() curves on the response scale.
+    curve <- x$pred_vals$data
+  }
+  e_df <- data.frame(x_e = c(curve$x, rev(curve$x)),
+                     y_e = c(curve$Estimate, rep(NA, nrow(curve))),
+                     y_ci = c(curve$Q2.5, rev(curve$Q97.5)),
                      x_r = NA, y_r = NA)
   r_df <- prep_raw_data(brms_fit, x$bayesnecformula, group = group,
                         retained_data = x$retained_data)
@@ -551,8 +674,12 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   }
   bdat <- model.frame(x$bayesnecformula, data = x$fit$data, run_par_checks = TRUE)
   out <- rbind(e_df, r_df)
+  if (x_scale == "fitted") {
+    out$x_r <- as.numeric(sub_x_transformation(out$x_r,
+                                               x$bayesnecformula))
+  }
   # On the recorded axis with no xform, draw what the estimators return.
-  recorded <- plot_reads_recorded(bdat, xform)
+  recorded <- x_scale == "recorded" && plot_reads_recorded(bdat, xform)
   axis_xform <- if (is.null(xform)) identity else xform
   if (!pop_var_is_transformed(bdat, "x_var")) {
     out <- out |>
@@ -564,6 +691,8 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
     # scale together, reversing both under a decreasing map.
     ne_vals <- if (recorded) {
       summary_ne_vals(x, NULL)
+    } else if (x_scale == "fitted") {
+      x$ne
     } else {
       to_axis_scale(x$ne, bdat, x$bayesnecformula, x_grid_raw, axis_xform)
     }
@@ -572,7 +701,7 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   if (add_ecx) {
     ecx_vals <- plot_ecx(x, x$fit$family$family, list(...),
                          if (recorded) NULL else identity)
-    if (!recorded) {
+    if (!recorded && x_scale != "fitted") {
       ecx_vals <- to_axis_scale(ecx_vals, bdat, x$bayesnecformula,
                                 x_grid_raw, axis_xform)
     }
@@ -581,6 +710,9 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   if (!is.null(group)) {
     attr(out, "group_var") <- group
     attr(out, "group_fitted") <- attr(r_df, "group_fitted")
+  }
+  if (x_scale == "fitted") {
+    attr(out, "x_axis") <- plot_x_axis(r_df$x_r, x$bayesnecformula)
   }
   out
 }
@@ -601,13 +733,15 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #'
 #' @export
 ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
-                                      xform = NULL, ..., group = NULL) {
+                                      xform = NULL, ..., group = NULL,
+                                      x_scale = c("recorded", "fitted")) {
   chk_lgl(add_nec)
   chk_lgl(add_ecx)
   # Check xform as the bayesnecfit method does. Otherwise mutate() fails with
   # an error that names neither the argument nor the remedy.
   check_xform(xform)
-  e_df <- x$w_pred_vals$data
+  x_scale <- plot_x_scale(x, x_scale, xform)
+  e_df <- if (x_scale == "fitted") plot_fitted_curve(x) else x$w_pred_vals$data
   e_df <- data.frame(x_e = c(e_df$x, rev(e_df$x)),
                      y_e = c(e_df$Estimate, rep(NA, nrow(e_df))),
                      y_ci = c(e_df$Q2.5, rev(e_df$Q97.5)),
@@ -624,8 +758,11 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   manec_formula <- x$mod_fits[[1]]$bayesnecformula
   x_grid_raw <- x$w_pred_vals$data$x
   out <- rbind(e_df, r_df)
+  if (x_scale == "fitted") {
+    out$x_r <- as.numeric(sub_x_transformation(out$x_r, manec_formula))
+  }
   # As in the bayesnecfit method.
-  recorded <- plot_reads_recorded(bdat, xform)
+  recorded <- x_scale == "recorded" && plot_reads_recorded(bdat, xform)
   axis_xform <- if (is.null(xform)) identity else xform
   if (!pop_var_is_transformed(bdat, "x_var")) {
     out <- out |>
@@ -634,6 +771,8 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   if (add_nec) {
     ne_vals <- if (recorded) {
       summary_ne_vals(x, NULL)
+    } else if (x_scale == "fitted") {
+      x$w_ne
     } else {
       to_axis_scale(x$w_ne, bdat, manec_formula, x_grid_raw, axis_xform)
     }
@@ -642,7 +781,7 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   if (add_ecx) {
     ecx_vals <- plot_ecx(x, x$mod_fits[[1]]$fit$family$family, list(...),
                          if (recorded) NULL else identity)
-    if (!recorded) {
+    if (!recorded && x_scale != "fitted") {
       ecx_vals <- to_axis_scale(ecx_vals, bdat, manec_formula, x_grid_raw,
                                 axis_xform)
     }
@@ -651,6 +790,9 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   if (!is.null(group)) {
     attr(out, "group_var") <- group
     attr(out, "group_fitted") <- attr(r_df, "group_fitted")
+  }
+  if (x_scale == "fitted") {
+    attr(out, "x_axis") <- plot_x_axis(r_df$x_r, manec_formula)
   }
   out
 }
@@ -668,11 +810,13 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #'
 #' @export
 ggbnec_data.bayesnecgroupfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
-                                         xform = NULL, ..., group = NULL) {
+                                         xform = NULL, ..., group = NULL,
+                                         x_scale = c("recorded", "fitted")) {
+  x_scale <- plot_x_scale(x, x_scale, xform)
   panel_group <- is.null(group) || identical(group, x$group_var)
   pieces <- lapply(seq_along(x$fits), function(i) {
     out <- ggbnec_data(x$fits[[i]], add_nec = add_nec, add_ecx = add_ecx,
-                       xform = xform, ...,
+                       xform = xform, x_scale = x_scale, ...,
                        group = if (panel_group) NULL else group)
     out$panel <- factor(rep(x$levels[i], nrow(out)), levels = x$levels)
     if (panel_group) {
@@ -686,6 +830,15 @@ ggbnec_data.bayesnecgroupfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   attr(out, "group_var") <- if (panel_group) x$group_var else group
   attr(out, "group_fitted") <- group_fitted
   attr(out, "panel_var") <- x$group_var
+  if (x_scale == "fitted") {
+    source <- scale_source_fit(x)
+    variable <- inline_x_transform(x)$variable
+    observed <- unlist(lapply(x$fits, function(part) {
+      fit <- scale_source_fit(part)
+      fit$fit$data[[variable]]
+    }))
+    attr(out, "x_axis") <- plot_x_axis(observed, source$bayesnecformula)
+  }
   out
 }
 
@@ -702,14 +855,17 @@ ggbnec_data.bayesnecgroupfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 autoplot.bayesnecgroupfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                                       xform = NULL, group = NULL,
                                       group_aes = c("line", "colour"),
-                                      point_alpha = 1) {
+                                      point_alpha = 1,
+                                      x_scale = c("recorded", "fitted")) {
   chk_lgl(nec)
   chk_lgl(ecx)
   group_aes <- match.arg(group_aes)
   check_xform(xform)
   check_point_alpha(point_alpha)
+  x_scale <- plot_x_scale(object, x_scale, xform)
   dat <- ggbnec_data(object, add_nec = nec, add_ecx = ecx,
-                     xform = xform, group = group, ...)
+                     xform = xform, x_scale = x_scale, group = group, ...)
+  x_axis <- attr(dat, "x_axis")
   tags <- vapply(object$fits, function(fit) {
     summ <- summary(fit, ecx = FALSE, xform = identity) |>
       suppressWarnings() |>
@@ -731,7 +887,7 @@ autoplot.bayesnecgroupfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   ggbnec(dat, nec = nec, ecx = ecx, group = show_group,
          group_aes = group_aes, group_label = group_label,
          group_fitted = !identical(attr(dat, "group_fitted"), FALSE),
-         point_alpha = point_alpha)
+         point_alpha = point_alpha, x_axis = x_axis)
 }
 
 #' Refuse a point_alpha that is not a single number from 0 to 1
@@ -772,7 +928,8 @@ check_point_alpha <- function(point_alpha) {
 #' @noRd
 ggbnec <- function(x, nec = TRUE, ecx = FALSE, group = FALSE,
                    group_aes = c("line", "colour"), group_label = NULL,
-                   group_fitted = TRUE, point_alpha = 1) {
+                   group_fitted = TRUE, point_alpha = 1,
+                   x_axis = NULL) {
   group_aes <- match.arg(group_aes)
   out <- ggplot() +
     geom_polygon(data = x |> filter(!is.na(.data$y_ci)),
@@ -885,8 +1042,13 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE, group = FALSE,
                 x = Inf, y = Inf, hjust = 1.1, vjust = 5.5, size = 3,
                 colour = "dodgerblue4")
   }
+  axis_scale <- if (is.null(x_axis)) {
+    scale_x_continuous(labels = function(x) signif(x, 2))
+  } else {
+    scale_x_continuous(breaks = x_axis$breaks, labels = x_axis$labels)
+  }
   out +
-    scale_x_continuous(labels = function(x) signif(x, 2)) +
+    axis_scale +
     theme_classic() +
     facet_wrap(~.data$model, scales = "free", ncol = 2) +
     theme(strip.text = element_text(hjust = 0),

@@ -898,3 +898,94 @@ test_that("autoplot refuses a point_alpha that is not one number in [0, 1]", {
   expect_error(autoplot(joint_split(), point_alpha = 2),
                "`point_alpha` must be between 0 and 1", fixed = TRUE)
 })
+
+test_that("a fitted axis spaces an offset-log curve and labels the control", {
+  skip_on_cran()
+  fit <- nec4param
+  fit$fit$data$x[1:4] <- c(0, 0.01, 0.1, 1)
+  fit$bayesnecformula <- bayesnecformula(
+    y ~ crf(log(x + 0.001), model = "nec4param")
+  )
+  dat <- suppressMessages(ggbnec_data(fit, add_nec = FALSE,
+                                       x_scale = "fitted"))
+  curve_x <- dat$x_e[!is.na(dat$y_e)]
+  expect_equal(diff(curve_x), rep(diff(curve_x)[1], length(curve_x) - 1))
+  expect_equal(dat$x_r[!is.na(dat$y_r)], log(fit$fit$data$x + 0.001))
+  axis <- attr(dat, "x_axis")
+  expect_true("0" %in% axis$labels)
+  expect_equal(axis$breaks[axis$labels == "0"], log(0.001))
+  p <- suppressMessages(autoplot(fit, nec = FALSE, x_scale = "fitted"))
+  expect_equal(p$scales$get_scales("x")$breaks, axis$breaks)
+  expect_error(ggbnec_data(fit, add_nec = FALSE, x_scale = "fitted",
+                           xform = exp), "cannot be combined")
+})
+
+test_that("an untransformed predictor has identical recorded and fitted plots", {
+  skip_on_cran()
+  plain <- suppressMessages(ggbnec_data(nec4param, add_nec = FALSE))
+  fitted <- suppressMessages(ggbnec_data(nec4param, add_nec = FALSE,
+                                         x_scale = "fitted"))
+  expect_identical(fitted, plain)
+  expect_null(attr(fitted, "x_axis"))
+})
+
+test_that("a fitted axis retains the stored prediction range", {
+  skip_on_cran()
+  formula <- bayesnecformula(
+    y ~ crf(log(x + 0.001), model = "nec4param")
+  )
+  fit <- nec4param
+  fit$bayesnecformula <- formula
+  fit$pred_vals$data$x <- seq(min(fit$pred_vals$data$x), 5,
+                              length.out = nrow(fit$pred_vals$data))
+  single <- suppressMessages(ggbnec_data(fit, add_nec = FALSE,
+                                          x_scale = "fitted"))
+  expect_equal(max(single$x_e, na.rm = TRUE), log(5.001))
+
+  average <- manec_example
+  average$mod_fits <- lapply(average$mod_fits, function(part) {
+    part$bayesnecformula <- formula
+    part
+  })
+  average$w_pred_vals$data$x <- seq(min(average$w_pred_vals$data$x), 5,
+                                     length.out = nrow(average$w_pred_vals$data))
+  averaged <- suppressMessages(ggbnec_data(average, add_nec = FALSE,
+                                            x_scale = "fitted"))
+  expect_equal(max(averaged$x_e, na.rm = TRUE), log(5.001))
+})
+
+test_that("fitted axes reach model sets, grouped fits and joint refits", {
+  skip_on_cran()
+  formula <- bayesnecformula(
+    y ~ crf(log(x + 0.001), model = "nec4param")
+  )
+  average <- manec_example
+  average$mod_fits <- lapply(average$mod_fits, function(fit) {
+    fit$bayesnecformula <- formula
+    fit
+  })
+  avg_data <- suppressMessages(ggbnec_data(average, add_nec = FALSE,
+                                           x_scale = "fitted"))
+  expect_equal(avg_data$x_r[!is.na(avg_data$y_r)],
+               log(average$mod_fits[[1]]$fit$data$x + 0.001))
+  expect_true(length(attr(avg_data, "x_axis")$breaks) > 0)
+
+  fit <- nec4param
+  fit$bayesnecformula <- formula
+  grouped <- structure(
+    list(fits = list(a = fit, b = fit), group_var = "site",
+         levels = c("a", "b")),
+    class = c("bayesnecgroupfit", "bnecfit")
+  )
+  group_data <- suppressMessages(ggbnec_data(grouped, add_nec = FALSE,
+                                             x_scale = "fitted"))
+  expect_true(length(attr(group_data, "x_axis")$breaks) > 0)
+  expect_equal(length(unique(group_data$panel)), 2)
+
+  joint <- joint_split()
+  joint$bayesnecformula <- formula
+  joint_data <- suppressMessages(ggbnec_data(joint, add_nec = FALSE,
+                                             x_scale = "fitted"))
+  expect_true(length(attr(joint_data, "x_axis")$breaks) > 0)
+  expect_equal(length(unique(joint_data$panel)), 2)
+})

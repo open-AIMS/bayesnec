@@ -10,7 +10,8 @@
   add_ecx = FALSE,
   xform = NULL,
   ...,
-  group = NULL
+  group = NULL,
+  x_scale = c("recorded", "fitted")
 )
 }
 \arguments{
@@ -40,6 +41,12 @@ fit represents the grouping: either the fitted formula includes it as a
 group-level variable, or independently fitted \code{bayesnecgroupfit}
 panels use it. A
 \code{bayesnecgroupfit} returns its fitted grouping variable automatically.}
+
+\item{x_scale}{\code{"recorded"} (the default) returns the predictor in
+supplied units. \code{"fitted"} returns the scale transformed inside
+\code{crf()} and attaches \code{"x_axis"}, a list of fitted-scale breaks
+and labels in supplied units. A fitted axis cannot be combined with a
+non-identity \code{xform}.}
 }
 \value{
 A \code{\link[base]{data.frame}}. When \code{group} is supplied, or

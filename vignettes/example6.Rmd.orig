@@ -295,23 +295,14 @@ ne_combined <- summary_f$ne$combined[[1]]
 ```
 
 `autoplot(fit_f, which = "all")` draws the three curves against the recorded
-dose. On a linear axis the ten lowest doses fall within the first twentieth of
-the width, and
-a log axis cannot show the control at a dose of zero, so we draw these curves
-from `ggbnec_data()`, which returns the data `autoplot()` plots, on the dose
-axis defined above (figure below).
+dose, on which the ten lowest doses fall within the first twentieth of the
+width. With `x_scale = "fitted"`, `autoplot()` instead spaces the curves and the
+observations on the scale of the fit, `log(dose + 0.001 / 10)`, and labels the
+axis in dose, including the control at zero. It also marks the no-effect
+estimate of each endpoint, and with `ecx = TRUE` the EC10 (figure below).
 
-```{r plot-factorised, fig.width = 10, fig.asp = 0.4, out.width = "100%", fig.cap = "The three endpoints of the factorised fit, with the median and 95% credible band of each curve. The deaths are the zeros along the bottom of the combined panel, and they are absent from the growth panel. The survival panel shows the proportion surviving at each dose."}
-fd <- ggbnec_data(fit_f, which = "all")
-
-ggplot(fd$curve, aes(x = log(x + off), y = y)) +
-  geom_ribbon(aes(ymin = lo, ymax = up), fill = "grey70", alpha = 0.5) +
-  geom_point(data = fd$raw, colour = "grey40", alpha = 0.3, size = 1) +
-  geom_line() +
-  facet_wrap(vars(panel), scales = "free_y") +
-  dose_axis +
-  labs(y = NULL) +
-  theme_classic()
+```{r plot-factorised, fig.width = 10, fig.asp = 0.4, out.width = "100%", fig.cap = "The three endpoints of the factorised fit, with the median and 95% credible band of each curve. Grey vertical lines mark the no-effect estimate and its credible limits; blue lines mark the EC10 and its limits. The deaths are the zeros along the bottom of the combined panel, and they are absent from the growth panel. The survival panel shows the proportion surviving at each dose."}
+autoplot(fit_f, which = "all", x_scale = "fitted", ecx = TRUE, xlab = "Dose")
 ```
 
 The growth estimates are between the doses of `r growth_bracket[1]` and
