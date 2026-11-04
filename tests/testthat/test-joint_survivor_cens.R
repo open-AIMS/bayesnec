@@ -109,3 +109,45 @@ test_that("a fitted object retains the original censoring columns", {
   expect_equal(bayesnec:::retrieve_cens(model.frame(f, restored$data)),
                c(0L, -1L, 2L, 0L))
 })
+
+test_that("bnec() hands brm() the interval for a marked survivor", {
+  d <- data.frame(
+    x = rep(c(0, 1, 2, 3, 4), each = 4),
+    y = c(0.9, 1.1, 1.0, 0.95, 0.8, 0.9, 0.85, 1.0, 0.6, 0.7, 0.65, 0.5,
+          0.3, 0, 0.35, 0.2, 0, 0, 0.05, 0),
+    censor = "none"
+  )
+  survivor <- 19
+  d$censor[survivor] <- "left"
+  f <- bayesnec:::mark_joint_survivor_cens(
+    bnf(y | cens(censor) ~ crf(x, "nec3param")), d, "hurdle_gamma"
+  )
+  seen <- new.env(parent = emptyenv())
+  local_mocked_bindings(
+    brm = function(formula, data, ...) {
+      seen$formula <- formula
+      seen$data <- data
+      structure(list(), class = "brmsfit")
+    },
+    are_chains_correct = function(...) TRUE,
+    make_good_inits = function(..., chains) {
+      replicate(chains, list(b_top = as.array(1)), simplify = FALSE)
+    },
+    make_good_hurdle_inits = function(..., chains) {
+      replicate(chains, list(b_top = as.array(1)), simplify = FALSE)
+    },
+    .package = "bayesnec"
+  )
+  try(suppressWarnings(suppressMessages(
+    bnec(f, data = d, family = "hurdle_gamma", model_survival = "nec3param")
+  )), silent = TRUE)
+  expect_false(is.null(seen$formula))
+  standata <- brms::make_standata(
+    seen$formula, seen$data,
+    family = bayesnec:::validate_family("hurdle_gamma")
+  )
+  expect_equal(standata$Y[survivor], 0)
+  expect_equal(standata$cens[survivor], 2L)
+  expect_equal(standata$rcens[survivor], 0.05)
+  expect_equal(seen$data$y, d$y)
+})

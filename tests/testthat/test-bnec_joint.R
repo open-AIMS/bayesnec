@@ -101,24 +101,21 @@ capture_joint_call <- function(env = parent.frame()) {
 }
 
 test_that("a factorised censored survivor is marked for a joint likelihood", {
-  for (growth_family in "Gamma") {
-    o <- mock_disp_crossed(
-      'y | cens(censor) ~ crf(x, c("nec3param", "ecx4param"))',
-      growth_family
-    )
-    o$data$censor <- rep("none", nrow(o$data))
-    survivor <- which(o$data$y > 0)[1]
-    o$data$censor[survivor] <- "left"
-    captured <- capture_joint_call()
-    suppressMessages(bnec_joint(o))
-    expect_true(is.list(attr(captured$formula,
-                             "bayesnec_survivor_cens")))
-    expect_identical(captured$data, o$data)
-    suppressMessages(bnec_joint(
-      o, formula = y ~ crf(x, "nec3param")
-    ))
-    expect_null(attr(captured$formula, "bayesnec_survivor_cens"))
-  }
+  o <- mock_disp_crossed(
+    'y | cens(censor) ~ crf(x, c("nec3param", "ecx4param"))', "Gamma"
+  )
+  o$data$censor <- rep("none", nrow(o$data))
+  survivor <- which(o$data$y > 0)[1]
+  o$data$censor[survivor] <- "left"
+  captured <- capture_joint_call()
+  suppressMessages(bnec_joint(o))
+  expect_true(is.list(attr(captured$formula,
+                           "bayesnec_survivor_cens")))
+  expect_identical(captured$data, o$data)
+  suppressMessages(bnec_joint(
+    o, formula = y ~ crf(x, "nec3param")
+  ))
+  expect_null(attr(captured$formula, "bayesnec_survivor_cens"))
 })
 
 test_that("a Beta joint refit with a censored survivor stops before fitting", {

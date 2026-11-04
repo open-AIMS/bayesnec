@@ -466,8 +466,8 @@ proportion on (0, 1). The distinction between "hurdle" and "zero-inflated"
 is nominal here: zero-inflation differs from a hurdle only when the base
 distribution can itself produce zeros, which neither the Gamma nor the Beta
 can, so the two are the same model and \pkg{bayesnec} treats them alike.
-Under either family, a left-coded \code{cens()} row on the total response includes
-the possibility that an observation is a structural zero. Where the
+Under either family, a left-censored row on the total response includes the
+possibility that an observation is a structural zero. Where the
 individual is known to have survived, use \code{\link{bnec_hurdle}};
 \code{\link{bnec_joint}} preserves that known survival on a Gamma joint
 refit and refuses the zero-inflated Beta joint refit.

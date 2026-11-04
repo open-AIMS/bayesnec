@@ -35,6 +35,7 @@ mark_joint_survivor_cens <- function(formula, data, family) {
   formula
 }
 
+#' The censoring codes of a cens() term, one per row of data
 #' @noRd
 joint_survivor_cens_values <- function(cens_call, data, formula) {
   if (length(cens_call) < 2) {
@@ -49,6 +50,10 @@ joint_survivor_cens_values <- function(cens_call, data, formula) {
   rep_len(normalise_cens(values), nrow(data))
 }
 
+#' Add the interval columns for marked survivors to data
+#'
+#' @details A marked survivor gets code 2 and its bound as the upper limit.
+#' The recorded response is left unchanged.
 #' @noRd
 joint_survivor_cens_data <- function(formula, data, spec) {
   cens_call <- hurdle_lhs_parts(formula[[2]])$aterms[["cens"]]
@@ -74,6 +79,11 @@ joint_survivor_cens_data <- function(formula, data, spec) {
   data
 }
 
+#' Rewrite the brms response for marked survivors
+#'
+#' @return A list of the data with the interval columns and the brms formula
+#'   whose response is zero for those rows. Unmarked formulas are returned
+#'   unchanged.
 #' @noRd
 prepare_joint_survivor_cens <- function(formula, data, brms_bf) {
   spec <- attr(formula, "bayesnec_survivor_cens")
@@ -82,7 +92,7 @@ prepare_joint_survivor_cens <- function(formula, data, brms_bf) {
   }
   data <- joint_survivor_cens_data(formula, data, spec)
   y_var <- hurdle_response_var(formula)
-  # brms stores the marker as a factor in some fitted-data paths.
+  # Compare with TRUE so that the marker also matches when stored as a factor.
   left <- call("==", as.name(spec$left), TRUE)
   lower <- call("I", call("ifelse", left, 0, as.name(y_var)))
   indicator <- call("cens", as.name(spec$code), as.name(spec$upper))
@@ -90,6 +100,10 @@ prepare_joint_survivor_cens <- function(formula, data, brms_bf) {
   list(data = data, formula = brms_bf)
 }
 
+#' Restore recorded columns that brms dropped from fit$data
+#'
+#' @details Package methods read the recorded response and the censoring
+#'   column from fit$data, which brms omits once the response is rewritten.
 #' @noRd
 restore_joint_survivor_data <- function(fit, data, formula) {
   if (is.null(attr(formula, "bayesnec_survivor_cens"))) {
