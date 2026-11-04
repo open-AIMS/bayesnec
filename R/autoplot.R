@@ -608,7 +608,7 @@ plot_x_axis <- function(recorded, formula) {
   positive <- observed[observed > 0]
   if (length(positive) && diff(range(positive)) > 0 &&
       diff(log10(range(positive))) >= 1) {
-    ticks <- 10^pretty(log10(range(positive)), n = 6)
+    ticks <- 10^pretty(log10(range(positive)), n = 4)
   } else {
     ticks <- pretty(range(observed), n = 6)
   }

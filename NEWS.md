@@ -1,5 +1,15 @@
 # bayesnec 2.2.0
 
+## Fitted predictor axes
+
+- `ggbnec_data()` and `autoplot()` accept `x_scale = "fitted"` when `crf()`
+  transforms the predictor inside the formula. The prediction grid and
+  observations use that scale, while axis labels show recorded concentrations,
+  including a zero control where the transformation is finite at zero.
+- `autoplot()` on a `bayesnechurdlefit` draws each panel's no-effect estimate
+  by default, and an ECx when `ecx = TRUE`. Vertical lines mark the estimate
+  and its credible limits.
+
 ## Default priors
 
 - Under `prior_type = "regularizing"`, the curve-shape exponents `d` and `f`

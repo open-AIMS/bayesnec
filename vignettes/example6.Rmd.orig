@@ -262,23 +262,13 @@ sig2 <- function(x) {
 }
 ```
 
-`autoplot(fit_f, which = "all")` draws the three curves against the recorded
-dose. On a linear axis the doses below 2.5 occupy a small part of the width, and
-a log axis cannot show the control at a dose of zero, so we draw these curves
-from `ggbnec_data()`, which returns the data `autoplot()` plots, on the dose
-axis defined above (figure below).
+For the fit using `log(dose + 0.001)`, `x_scale = "fitted"` spaces the prediction
+grid on the fitted scale and labels the axis in recorded dose, including the
+control at zero. We use `autoplot()` to draw the three endpoints with their
+no-effect and EC10 estimates (figure below).
 
-```{r plot-factorised, fig.width = 10, fig.asp = 0.4, out.width = "100%", fig.cap = "The three endpoints of the factorised fit, with the median and 95% credible band of each curve. The deaths are the zeros along the bottom of the combined panel, and they are absent from the growth panel. The survival panel shows the proportion surviving at each dose."}
-fd <- ggbnec_data(fit_f, which = "all")
-
-ggplot(fd$curve, aes(x = log(x + off), y = y)) +
-  geom_ribbon(aes(ymin = lo, ymax = up), fill = "grey70", alpha = 0.5) +
-  geom_point(data = fd$raw, colour = "grey40", alpha = 0.3, size = 1) +
-  geom_line() +
-  facet_wrap(vars(panel), scales = "free_y") +
-  dose_axis +
-  labs(y = NULL) +
-  theme_classic()
+```{r plot-factorised, fig.width = 10, fig.asp = 0.4, out.width = "100%", fig.cap = "The three endpoints of the factorised fit, with the median and 95% credible band of each curve. Grey vertical lines mark the no-effect estimate and its credible limits; blue lines mark EC10 and its limits. The deaths are the zeros along the bottom of the combined panel, and they are absent from the growth panel. The survival panel shows the proportion surviving at each dose."}
+autoplot(fit_f, which = "all", x_scale = "fitted", ecx = TRUE, xlab = "Dose")
 ```
 
 The growth estimates lie between the doses of 0.31 and 1.25, over which growth
