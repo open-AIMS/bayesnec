@@ -33,8 +33,8 @@
 #' \code{"observation"}. See the \code{loo_controls} argument of
 #' \code{\link{bnec}}.
 #' @slot sample_size The number of posterior draws each component model holds,
-#' from which model averaging draws. Where the models hold different numbers,
-#' it is the smallest.
+#' from which model averaging draws. Every component must hold the same number
+#' of draws when the set is assembled.
 #' @slot w_draw_index The realised model-averaging draw: a
 #' \code{\link[base]{list}} of the row indices kept for each component model.
 #' Model averaging keeps a weighted subset of each model's draws, and this

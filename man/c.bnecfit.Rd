@@ -40,6 +40,10 @@ different values of an argument, the \code{\link{bnec}} default is used and a
 message names the argument. An object fitted by an earlier version of
 \pkg{bayesnec} records none of them.
 
+All component models must retain the same number of posterior draws for
+model weighting. Refit or set \code{thin} to equalise the retained counts
+before combining fits with different iteration counts.
+
 Each equation keeps the record of the installation of \pkg{bayesnec} that
 fitted it, and a message reports a combined set whose equations were fitted
 by different installations. See \code{\link{bnec_version}}.
