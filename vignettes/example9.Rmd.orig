@@ -32,6 +32,25 @@ knitr::opts_chunk$set(
   dpi = 150,
   eval = identical(Sys.getenv("NOT_CRAN"), "true")
 )
+# In a chunk with drop_progress = TRUE, leave out every message line from the
+# first "Finding initial values" up to "Fitted models are": the per-equation
+# progress of bnec() and the sampler's own warnings.
+knitr::knit_hooks$set(message = local({
+  default_hook <- knitr::knit_hooks$get("message")
+  dropping <- FALSE
+  function(x, options) {
+    if (!isTRUE(options$drop_progress)) return(default_hook(x, options))
+    lines <- strsplit(x, "\n", fixed = TRUE)[[1]]
+    keep <- logical(length(lines))
+    for (i in seq_along(lines)) {
+      if (grepl("Finding initial values", lines[i], fixed = TRUE)) dropping <<- TRUE
+      if (grepl("Fitted models are", lines[i], fixed = TRUE)) dropping <<- FALSE
+      keep[i] <- !dropping
+    }
+    if (!any(keep)) return("")
+    default_hook(paste0(paste(lines[keep], collapse = "\n"), "\n"), options)
+  }
+}))
 # Helpers for inline text only. They keep a sentence grammatical whatever a
 # later render returns, including an empty set of equations.
 name_list <- function(x) {
@@ -348,7 +367,7 @@ in R, so both are set. The precompiled vignette uses the `cmdstanr` backend
 (through `options(brms.backend = "cmdstanr")`); without that option `brms` uses
 `rstan`, and the diagnostic counts below may differ.
 
-```{r coral-fit-default, results = "hide", message = TRUE}
+```{r coral-fit-default, results = "hide", message = TRUE, drop_progress = TRUE}
 set.seed(228)
 fit_default <- bnec(coral_formula, data = colour_2050, family = fam,
                     prior_type = "uninformative", seed = 228, refresh = 0)
@@ -361,7 +380,11 @@ fit_regular <- bnec(coral_formula, data = colour_2050, family = fam,
 ```
 
 The messages shown are those of the first fit, and the second fit prints the
-corresponding messages for the regularising priors. Before fitting, `bnec()`
+corresponding messages for the regularising priors. While fitting, `bnec()` also
+prints a line as it begins and completes each equation, and the sampler prints
+its own warnings, including the number of divergent transitions; those lines are
+omitted above, and step 3 examines the same diagnostics with `check_sampling()`.
+Before fitting, `bnec()`
 names the equations it drops, for the reasons given above. It then compares the
 mean colour at the two highest concentrations, and its message states that the
 response is still declining at the top of the series. This test cannot tell
@@ -560,10 +583,19 @@ if (nrow(retried)) {
 }
 ```
 
+```{r coral-retried-text, include = FALSE}
+tune_text <- if (setequal(tune_default, tune_regular)) {
+  paste(name_list(tune_default), "under both priors")
+} else {
+  paste(name_list(tune_default), "under the uninformative priors and to",
+        name_list(tune_regular), "under the regularising priors")
+}
+```
+
 In this run the longer refit was applied to `r name_list(retry_default)` under
 the uninformative priors and to `r name_list(retry_regular)` under the
 regularising priors, and the refit at a higher `adapt_delta` to
-`r name_list(tune_default)` and `r name_list(tune_regular)` respectively.
+`r tune_text`.
 `r if (nrow(retried)) "The table above gives the diagnostics of each refitted equation after its refit, and the screen below uses those." else "No equation was refitted, so no table is shown."`
 
 ## Screening the model sets
@@ -691,7 +723,7 @@ check_chains(best_regular)
 For `r name_list(best_regular$model)` the four chains overlap throughout a
 stable range in the trace panels, with brief excursions to larger values of some
 parameters in single chains, and in the autocorrelation panels the dependence
-between successive draws falls close to zero within about 15 lags. A
+between successive draws falls close to zero within about 5 lags. A
 satisfactory Rhat does not replace inspection of these plots, and before
 reporting a model average we would inspect the traces of each retained equation.
 `check_chains()` can write one page per equation to a PDF for that review:
@@ -1725,7 +1757,7 @@ different estimates from the same data.
 # Summary
 
 The sampler screen gave a different outcome for each fit in this vignette. On
-the 2050 colour data at the default sampling length it removed
+the 2050 colour data, after the refits of step 3, it removed
 `r sum(sampling_default$failed)` of the `r nrow(sampling_default)` fitted
 equations under the uninformative priors and `r sum(sampling_regular$failed)` of
 `r nrow(sampling_regular)` under the regularising priors. On `nassarius` it

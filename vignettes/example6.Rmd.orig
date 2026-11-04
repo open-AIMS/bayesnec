@@ -460,6 +460,14 @@ round(crossed_ms, 2)
 ```{r crossed-top, include = FALSE}
 growth_weights <- rowSums(crossed_ms)
 smooth_weight <- sum(growth_weights[grepl("^ecx", names(growth_weights))])
+smooth_text <- if (1 - smooth_weight < 0.005) {
+  threshold <- paste0("`", grep("^nec", names(growth_weights), value = TRUE),
+                      "`")
+  paste0("less than 0.01 to the threshold equations (",
+         paste(threshold, collapse = " and "), ")")
+} else {
+  paste(sprintf("%.2f", smooth_weight), "to the smooth equations together")
+}
 crossed_m <- crossed_weights(fit_m)
 before_note <- function(before, tab, component) {
   failed <- tab$model[tab$failed]
@@ -492,8 +500,7 @@ survival_note <- if (ncol(crossed_ms) == 1) {
 `r growth_before_note` `r survival_before_note` `r survival_note`
 Of the growth weight after screening, `r sprintf("%.2f", max(growth_weights))`
 is given to `` `r names(which.max(growth_weights))` `` and
-`r sprintf("%.2f", smooth_weight)` to the smooth equations together (table
-above). The model
+`r smooth_text` (table above). The model
 average is compared with a single combination in *Refitting a selected
 combination*.
 
@@ -658,14 +665,23 @@ route_conclusion <- if (route_diff <= 10) {
 ma_growth <- ec10["growth, model average", ]
 best_growth <- ec10["growth, factorised", ]
 best_growth_weight <- growth_weights[[best$growth]]
-ma_note <- if (diff(ma_growth[2:3]) > diff(best_growth[2:3])) {
+# The 2.5% and 97.5% quantiles vary by a few per cent between runs, so a
+# smaller difference in width is not described as wider or narrower.
+width_ratio <- diff(ma_growth[2:3]) / diff(best_growth[2:3])
+ma_note <- if (width_ratio > 1.1) {
   paste0("The interval of the model average is wider than that of the ",
          "selected combination, which is likely to reflect the ",
          sprintf("%.2f", 1 - best_growth_weight),
          " of the growth weight given to equations other than `", best$growth,
          "`, whose curves may begin to decline at different doses.")
+} else if (width_ratio >= 0.9) {
+  paste0("The two intervals are of similar width, although ",
+         sprintf("%.2f", 1 - best_growth_weight),
+         " of the growth weight is given to equations other than `",
+         best$growth, "`, so those equations are likely to give similar ",
+         "estimates of the growth EC10.")
 } else {
-  paste0("The interval of the model average is no wider than that of the ",
+  paste0("The interval of the model average is narrower than that of the ",
          "selected combination, which is consistent with the ",
          sprintf("%.2f", best_growth_weight), " of the growth weight given to `",
          best$growth, "`.")

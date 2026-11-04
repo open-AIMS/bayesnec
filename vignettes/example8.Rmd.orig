@@ -1034,7 +1034,24 @@ fits_tox_joint <- bnec_joint(fits_tox, model = "ecxll5",
 fits_tox_joint
 ```
 
-The print gives the equation fitted at each level.
+```{r weight-note-joint, include = FALSE}
+recorded_weight <- stats::setNames(unname(fits_tox_joint$level_weights),
+                                   fits_tox_joint$levels)
+shown_weight <- vapply(level_weights[names(recorded_weight)],
+                       function(w) w[["ecxll5"]], numeric(1))
+weight_note <- if (any(sprintf("%.2f", recorded_weight) !=
+                       sprintf("%.2f", shown_weight))) {
+  paste("Those weights were computed when the refit was made, and differ",
+        "slightly from the ones given above for the same fits, because",
+        "pseudo-BMA weights are computed by a Bayesian bootstrap over the",
+        "leave-out scores.")
+} else {
+  ""
+}
+```
+
+The print gives the equation fitted at each level and the weight it was given
+there. `r weight_note`
 The `brms` formula of the refit shows which terms the metals share:
 
 ```{r formula-metals-joint}
@@ -1242,6 +1259,11 @@ joint_at_depth <- mean(np_joint$Value[np_joint$Parameter == "treedepth__"] >=
 w_ll5 <- vapply(level_weights, function(w) w[["ecxll5"]], numeric(1))
 less_weight <- if (w_ll5[["Cu"]] < w_ll5[["Zn"]]) "copper than for zinc" else
   "zinc than for copper"
+# Give one decimal place where rounding would print 0 or 100 per cent.
+depth_pct <- 100 * joint_at_depth
+depth_text <- sprintf(if (round(depth_pct) %in% c(0, 100) &&
+                          !depth_pct %in% c(0, 100)) "%.1f" else "%.0f",
+                      depth_pct)
 ```
 
 A joint refit conditions on one equation per level, so the model uncertainty
@@ -1249,11 +1271,11 @@ that the per-level averages represent is absent from it. `ecxll5` was given only
 part of the weight at each level, so the intervals of the joint refit omit the
 uncertainty that the other equations represent (more for `r less_weight`), even
 where, as here, the batch term makes them wider overall. The refit recorded
-`r joint_divergent` divergent transitions in `r joint_draws` post-warmup draws,
+`r joint_divergent` divergent `r if (joint_divergent == 1) "transition" else "transitions"` in `r joint_draws` post-warmup draws,
 with a largest R-hat of `r sprintf("%.3f", max(pars_joint$Rhat))` and a smallest
 bulk effective sample size of `r round(min(pars_joint$Bulk_ESS))` over the
 population-level, family and group-level SD parameters. Of its transitions,
-`r round(100 * joint_at_depth)` per cent reached the maximum tree depth of
+`r depth_text` per cent reached the maximum tree depth of
 `r joint_max_depth`, which Stan treats as a limit on the efficiency of the
 sampler, not on the validity of the draws.
 
