@@ -81,21 +81,21 @@ The fitted `bayesmanecfit` object contains different elements to the `bayesnecfi
 
 ``` r
 exp_5$mod_stats
-#>               model      waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5
-#> nec3param nec3param -72.14396 2.056834e-02                  NA              NA               NA
-#> nec4param nec4param -84.95172 3.798331e-01                  NA              NA               NA
-#> neclin       neclin -52.29203 1.870590e-04                  NA              NA               NA
-#> ecxlin       ecxlin -26.28965 1.403286e-07                  NA              NA               NA
-#> ecxexp       ecxexp  65.94475 5.931159e-24                  NA              NA               NA
-#> ecxsigm     ecxsigm -77.63117 3.581168e-02                  NA              NA               NA
-#> ecx4param ecx4param -81.86810 9.517308e-02                  NA              NA               NA
-#> ecxwb1       ecxwb1 -75.21155 1.149892e-02                  NA              NA               NA
-#> ecxwb2       ecxwb2 -85.06792 2.900955e-01                  NA              NA               NA
-#> ecxwb1p3   ecxwb1p3 -74.45185 1.247815e-02                  NA              NA               NA
-#> ecxwb2p3   ecxwb2p3 -77.25285 5.177007e-02                  NA              NA               NA
-#> ecxll4       ecxll4 -81.18987 6.842721e-02                  NA              NA               NA
-#> ecxll3       ecxll3 -77.20556 3.415673e-02                  NA              NA               NA
-#> ecxflat     ecxflat 260.66017 1.370639e-65                  NA              NA               NA
+#>               model      waic       elpd           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5
+#> nec3param nec3param -72.14396   36.05841 2.056834e-02                  NA              NA               NA
+#> nec4param nec4param -84.95172   42.45160 3.798331e-01                  NA              NA               NA
+#> neclin       neclin -52.29203   26.13489 1.870590e-04                  NA              NA               NA
+#> ecxlin       ecxlin -26.28965   13.13538 1.403286e-07                  NA              NA               NA
+#> ecxexp       ecxexp  65.94475  -32.97761 5.931159e-24                  NA              NA               NA
+#> ecxsigm     ecxsigm -77.63117   38.80472 3.581168e-02                  NA              NA               NA
+#> ecx4param ecx4param -81.86810   40.91369 9.517308e-02                  NA              NA               NA
+#> ecxwb1       ecxwb1 -75.21155   37.58990 1.149892e-02                  NA              NA               NA
+#> ecxwb2       ecxwb2 -85.06792   42.51409 2.900955e-01                  NA              NA               NA
+#> ecxwb1p3   ecxwb1p3 -74.45185   37.20817 1.247815e-02                  NA              NA               NA
+#> ecxwb2p3   ecxwb2p3 -77.25285   38.61320 5.177007e-02                  NA              NA               NA
+#> ecxll4       ecxll4 -81.18987   40.57428 6.842721e-02                  NA              NA               NA
+#> ecxll3       ecxll3 -77.20556   38.58596 3.415673e-02                  NA              NA               NA
+#> ecxflat     ecxflat 260.66017 -130.33435 1.370639e-65                  NA              NA               NA
 #>           dispersion_P_over_1
 #> nec3param                  NA
 #> nec4param                  NA
@@ -127,22 +127,22 @@ summary(exp_5)
 #> 
 #> Number of posterior draws per model:  1600
 #> 
-#> Model weights (Method: pseudobma_bb_weights):
-#>             waic   wi
-#> nec3param -72.14 0.02
-#> nec4param -84.95 0.38
-#> neclin    -52.29 0.00
-#> ecxlin    -26.29 0.00
-#> ecxexp     65.94 0.00
-#> ecxsigm   -77.63 0.04
-#> ecx4param -81.87 0.10
-#> ecxwb1    -75.21 0.01
-#> ecxwb2    -85.07 0.29
-#> ecxwb1p3  -74.45 0.01
-#> ecxwb2p3  -77.25 0.05
-#> ecxll4    -81.19 0.07
-#> ecxll3    -77.21 0.03
-#> ecxflat   260.66 0.00
+#> Model weights (Method: pseudobma_bb_weights; each observation left out):
+#>             waic    elpd   wi
+#> nec3param -72.14   36.06 0.02
+#> nec4param -84.95   42.45 0.38
+#> neclin    -52.29   26.13 0.00
+#> ecxlin    -26.29   13.14 0.00
+#> ecxexp     65.94  -32.98 0.00
+#> ecxsigm   -77.63   38.80 0.04
+#> ecx4param -81.87   40.91 0.10
+#> ecxwb1    -75.21   37.59 0.01
+#> ecxwb2    -85.07   42.51 0.29
+#> ecxwb1p3  -74.45   37.21 0.01
+#> ecxwb2p3  -77.25   38.61 0.05
+#> ecxll4    -81.19   40.57 0.07
+#> ecxll3    -77.21   38.59 0.03
+#> ecxflat   260.66 -130.33 0.00
 #> 
 #> 
 #> Summary of weighted N(S)EC posterior estimates:
@@ -344,18 +344,18 @@ ECx10 <- ecx(exp_5, ecx_val = 10)
 ECx50 <- ecx(exp_5, ecx_val = 50)
 ECx10
 #>      Q50     Q2.5    Q97.5 
-#> 3.624921 2.760940 4.167620 
+#> 3.624993 2.760964 4.167579 
 #> attr(,"resolution")
-#> [1] 200
+#> [1] 500
 #> attr(,"ecx_val")
 #> [1] 10
 #> attr(,"toxicity_estimate")
 #> [1] "ecx"
 ECx50
 #>      Q50     Q2.5    Q97.5 
-#> 5.082461 4.816809 5.348705 
+#> 5.082466 4.816782 5.348731 
 #> attr(,"resolution")
-#> [1] 200
+#> [1] 500
 #> attr(,"ecx_val")
 #> [1] 50
 #> attr(,"toxicity_estimate")
