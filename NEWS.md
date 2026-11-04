@@ -1,5 +1,14 @@
 # bayesnec 2.2.0
 
+## Default priors
+
+- Under `prior_type = "regularizing"`, the curve-shape exponents `d` and `f`
+  take a `normal(0, 1)` prior in every equation that estimates them, and
+  `normal(0, 5)` under `"uninformative"`. `beta` and `slope` take
+  `normal(0, 5)` in both sets, because the value of a rate depends on the
+  concentration units, and `slope` is also an exponent in some equations
+  (#535).
+
 ## Model weights under a within-concentration group term
 
 - Where each level of a group-level term is observed at a single

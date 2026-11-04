@@ -134,6 +134,35 @@ test_that("prior_type selects between default prior sets", {
                             prior_type = "nonsense"))
 })
 
+test_that("curve-shape priors use one entry per parameter across equations", {
+  x <- as.numeric(rep(0:5, each = 4))
+  y <- rep(seq(0.9, 0.2, length.out = 6), each = 4)
+  expected <- list(
+    uninformative = c(beta = "normal(0, 5)", slope = "normal(0, 5)",
+                      d = "normal(0, 5)", f = "normal(0, 5)"),
+    regularizing = c(beta = "normal(0, 5)", slope = "normal(0, 5)",
+                     d = "normal(0, 1)", f = "normal(0, 1)")
+  )
+  for (type in names(expected)) {
+    seen <- setNames(integer(length(expected[[type]])),
+                     names(expected[[type]]))
+    for (model in names(models("all"))) {
+      pr <- define_prior(model, gaussian(), x, y, prior_type = type)
+      for (par in intersect(names(expected[[type]]), pr$nlpar)) {
+        expect_identical(unname(pr$prior[pr$nlpar == par]),
+                         unname(expected[[type]][par]),
+                         info = paste(type, model, par))
+        seen[par] <- seen[par] + 1L
+      }
+    }
+    expect_true(all(seen > 0))
+    expect_gt(seen[["beta"]], 1L)
+    expect_gt(seen[["slope"]], 1L)
+    expect_equal(seen[["d"]], 2L)
+    expect_equal(seen[["f"]], 1L)
+  }
+})
+
 # Zero-heavy responses must yield finite priors on the data scale.
 
 # Helper: a nec4param-shaped count response with a true lower asymptote of 5,
