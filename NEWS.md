@@ -1,15 +1,24 @@
 # bayesnec 2.2.0
 
+## Default priors
+
+- Under `prior_type = "regularizing"`, the curve-shape exponents `d` and `f`
+  take a `normal(0, 1)` prior in every equation that estimates them, and
+  `normal(0, 5)` under `"uninformative"`. `beta` and `slope` take
+  `normal(0, 5)` in both sets, because the value of a rate depends on the
+  concentration units, and `slope` is also an exponent in some equations
+  (#535).
+
 ## Censored survivors in joint fits
 
-- `bnec_joint()` now preserves known survival when a factorised Gamma growth
-  fit includes a left-censored survivor. It fits that row as an interval from
-  zero to the recorded bound in the joint likelihood. The recorded response
-  remains positive in priors, diagnostics and plots. A corresponding
-  zero-inflated Beta joint refit is refused because Stan cannot sample the
-  required interval likelihood at zero. Direct `bnec()` left censoring still
-  includes the possibility of a structural zero when survival status is
-  unknown.
+- Where a factorised Gamma growth fit includes a left-censored survivor,
+  `bnec_joint()` fits that row as an interval from zero to the recorded bound,
+  so that the joint likelihood conditions on known survival. The recorded
+  response remains positive in priors, diagnostics and plots. A zero-inflated
+  Beta joint refit with such a row is refused, because Stan cannot sample the
+  required interval likelihood at zero. Left censoring in a direct `bnec()`
+  call includes the possibility of a structural zero, for use where survival
+  status is unknown (#544).
 
 ## Model weights under a within-concentration group term
 

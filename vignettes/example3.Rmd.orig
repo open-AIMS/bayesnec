@@ -78,7 +78,7 @@ One restriction remains on `ogl()`. The transformation of the *mean* is only def
 
 ### Selecting the default prior set
 
-The priors described above are the default `"uninformative"` set, which is deliberately broad and close to truly uninformative. From version 2.1.3.2 `bayesnec` also offers a narrower, more `"regularizing"` set, selected through the `prior_type` argument of `bnec` (and `amend`). The two sets differ in the response-scaled **top** and **bot** parameters, in the predictor-scaled **nec** and **ec50** parameters, and in the group-level parameters described above. The fixed `normal(0, 5)` priors on **beta**, **slope**, **d** and **f** are identical for both.
+The priors described above are the default `"uninformative"` set, which is deliberately broad and close to truly uninformative. From version 2.1.3.2 `bayesnec` also offers a narrower, more `"regularizing"` set, selected through the `prior_type` argument of `bnec` (and `amend`). The two sets differ in the response-scaled **top** and **bot** parameters, in the predictor-scaled **nec** and **ec50** parameters, and in the group-level parameters described above. The narrower set also gives **d** and **f** `normal(0, 1)` priors, while their uninformative entries remain `normal(0, 5)`. Both sets retain `normal(0, 5)` for **beta** and **slope**, whose rate interpretation depends on the concentration units. Each parameter has the same entry across equations.
 
 The `"uninformative"` set is stated separately for each of the three branches, as Fisher et al. (2024) state it. The `"regularizing"` set is stated once, as a location and a spread, and each branch is derived from it.
 
