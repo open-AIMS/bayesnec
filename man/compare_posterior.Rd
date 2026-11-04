@@ -75,14 +75,14 @@ after an odd number of preceding normal draws. Use R's default
 \code{\link[brms]{posterior_epred}}.}
 }
 \value{
-A named \code{\link[base]{list}} containing bootstrapped differences
+A named \code{\link[base]{list}} containing paired differences
 in posterior predictions of the \code{\link{bayesnecfit}} or
 \code{\link{bayesmanecfit}} model fits contained in \code{x}. See Details.
 }
 \description{
 Extracts posterior predicted values from a list of class
 \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits and
-compares these via bootstrap re sampling.
+compares these by randomly pairing their posterior draws.
 }
 \details{
 For a \code{\link{bayesnecgroupfit}} the comparison is across the
@@ -97,9 +97,9 @@ an ECx, or the fitted curve. A factor covariate analysis usually wants both,
 and they can disagree: two levels can favour the same model form while
 differing in where the threshold falls, and vice versa.
 
-The levels share no parameters, so the posteriors are independent and the
-pairwise probabilities are read directly, with no multiple-comparison
-adjustment implied.
+The levels are fitted to separate data and share no parameters, so the
+posteriors are independent and the pairwise probabilities are read directly,
+with no multiple-comparison adjustment implied.
 
 \code{type} is passed to \code{\link{ecx}} and takes the same four
 values, all measured from the control --- the predicted mean at the lowest
@@ -130,13 +130,47 @@ and an upper value, \code{prob_lower} and \code{prob_upper}, with the
 censored fraction of each posterior, and \code{prob} is \code{NA}. See the
 \emph{Censored estimates} section of \code{\link{compare_estimates}}.
 }
+\section{What the comparison estimates}{
+
+Where the posteriors being compared are independent, the paired differences
+approximate the posterior of the difference between the estimates. Fits to
+separate data that share no parameter, such as the levels of a
+\code{\link{bayesnecgroupfit}}, have independent posteriors. For such
+posteriors, pairing the draws by their index would approximate the same
+distribution, so the random permutation is one Monte Carlo pairing and is
+not required.
+
+Whether two estimates are independent depends on their joint posterior, not
+on the number of calls that fitted them. Two quantities that are dependent in
+one posterior, for example two levels of one fit that share a group-level
+term or a dispersion parameter, are contrasted by subtracting aligned draws
+(draw \emph{i} of each), which keeps their covariance. Pairing their draws
+at random removes that covariance. Depending on its sign, the difference
+posterior can then be wider or narrower, and \code{prob_diff} can move
+towards or away from 0.5. Conversely, the levels of a
+\code{\link{bnec_joint}} refit that share no parameter, as under its
+defaults, have independent posteriors although they are estimated in one fit.
+
+Where the fits share data or fitted components, the comparison is of a
+different kind. Two equations pulled from one \code{\link{bayesmanecfit}}
+with \code{\link{pull_out}}, as in the examples, are fitted to the same
+observations, and a model-averaged fit includes the draws of its own
+equations. The comparison then contrasts two estimates of one quantity from
+one dataset, pairing their draws as if they were independent, and
+\code{prob_diff} describes how far the two posteriors overlap, i.e. how much
+the estimate depends on the equation fitted. How far it can be read as a
+posterior probability is uncertain, because no joint posterior of the two
+estimates is defined.
+}
+
 \examples{
 \dontrun{
 library(bayesnec)
 data(manec_example)
 nec4param <- pull_out(manec_example, model = "nec4param")
 ecx4param <- pull_out(manec_example, model = "ecx4param")
-compare_posterior(list("n(s)ec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
+compare_posterior(list("nec4param" = nec4param, "ecx4param" = ecx4param),
+                  ecx_val = 50)
 }
 
 }
