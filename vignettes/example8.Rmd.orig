@@ -1234,7 +1234,7 @@ ggplot(data.frame(ratio = zn_cu_ratio), aes(x = ratio)) +
 ```
 
 Zinc's EC10 is `r ci(ratio_q)` times copper's`r ratio_censored`, and the ratio
-exceeds 1 in `r round(100 * mean(zn_cu_ratio > 1, na.rm = TRUE), 1)` per cent of
+exceeds 1 in `r ratio_above <- round(100 * mean(zn_cu_ratio > 1, na.rm = TRUE), 1); if (ratio_above == 100) "more than 99.9" else ratio_above` per cent of
 the draws. The interval of the ratio spans a factor of
 `r fmt(ratio_q[[3]] / ratio_q[[2]])` between its bounds, whereas the EC10
 interval of each metal spans a factor of `r if (identical(fmt(level_span[["Cu"]]), fmt(level_span[["Zn"]]))) fmt(level_span[["Cu"]]) else paste(fmt(level_span[["Cu"]]), "for copper and", fmt(level_span[["Zn"]]), "for zinc")`. The metals' EC10s are correlated
