@@ -111,6 +111,15 @@ best_crossed <- function(object) {
 #' the family follows the growth component: \code{hurdle_gamma} where that was
 #' fitted as a Gamma, \code{zero_inflated_beta} where it was a Beta, and the
 #' corresponding count hurdle where it was Poisson or negative binomial.
+#' A left-censored survivor in a Gamma growth component is refitted as an
+#' interval from zero to its recorded bound. This conditions its response on
+#' known survival, as the factorised fit does. The recorded response stays
+#' positive in the returned data and in the package's checks and plots.
+#' The corresponding zero-inflated Beta joint refit is refused, because Stan
+#' fails to initialise when it evaluates the beta CDF at zero with sampled
+#' shape parameters. The factorised fit remains available. Supplying a
+#' \code{formula} without \code{cens()} instead fits those values as exact
+#' observations at their recorded bounds.
 #' For either class, the default priors are built with the
 #' \code{prior_type}, \code{asymptote_observed} and \code{predictor_scale}
 #' \code{object} was fitted with, unless those arguments are supplied. A grouped
@@ -283,6 +292,7 @@ bnec_joint.bayesnechurdlefit <- function(object, model = NULL,
     )
   }
   formula <- swap_crf_model(formula, model)
+  formula <- mark_joint_survivor_cens(formula, object$data, joint_fam)
   message("Refitting jointly as a ", joint_fam, " with a ", model,
           " response block and a ", model_survival, " survival block",
           " (crossed weight ", signif(best$weight, 3), ").")
