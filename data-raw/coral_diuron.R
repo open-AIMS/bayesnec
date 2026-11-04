@@ -23,7 +23,10 @@ stopifnot(
   length(unique(cc$Chamber)) == 45,
   all(table(cc$Chamber) == 4),
   # `Proportion` is the complement of `Intensity`, exactly
-  max(abs(cc$Proportion + cc$Intensity - 1)) < 1e-9
+  max(abs(cc$Proportion + cc$Intensity - 1)) < 1e-9,
+  # `Intensity` is `T14.MeanPixel` rescaled by the range of both pixel columns
+  max(abs(cc$Intensity - (cc$T14.MeanPixel - min(cc$T0.MeanPixel, cc$T14.MeanPixel)) /
+    diff(range(cc$T0.MeanPixel, cc$T14.MeanPixel)))) < 1e-8
 )
 
 # `Diuron.` substitutes 0.1 for the zero control so that a log predictor can be
@@ -32,6 +35,12 @@ stopifnot(
 # substitution can make it and say so.
 stopifnot(all(cc$Diuron[cc$Diuron > 0] == cc$Diuron.[cc$Diuron > 0]),
           all(cc$Diuron.[cc$Diuron == 0] == 0.1))
+
+# The source file labels the 9.6 ug/L treatment 29. The 29 ug/L corals died
+# before they were photographed, and Flores et al. (2021) Fig. 1A plots these
+# fragments at 9.6.
+stopifnot(!any(cc$Diuron == 9.6), sum(cc$Diuron == 29) == 36)
+cc$Diuron[cc$Diuron == 29] <- 9.6
 
 coral_colour <- cc |>
   dplyr::transmute(
