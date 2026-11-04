@@ -199,13 +199,12 @@ side (see *Endpoints of the factorised fit*).
 ```{r fit-factorised, results = "hide"}
 # bayesnec does not set cores; unless mc.cores is set, brms then runs the
 # chains one after another. adapt_delta and max_treedepth are raised for the
-# reason given below, and iter is reduced from the bayesnec default of 1e4 to
-# keep the model sets fitted later tractable.
+# reason given below.
 fit_f <- bnec_hurdle(growth | cens(cens) ~ crf(log(dose + 0.001),
                                                model = "nec3param"),
                      model_survival = "ecxwb1p3", data = snails, seed = 10,
-                     refresh = 0, cores = 4, iter = 4e3,
-                     control = list(adapt_delta = 0.999, max_treedepth = 12))
+                     refresh = 0, cores = 4,
+                     control = list(adapt_delta = 0.999, max_treedepth = 15))
 ```
 
 As for any `bayesnec` fit, the sampler diagnostics should be checked before the
@@ -226,7 +225,7 @@ sampling_f_note <- if (any(sampling_f$growth$failed,
 }
 ```
 
-We raise `adapt_delta` to 0.999 and `max_treedepth` to 12 for all the
+We raise `adapt_delta` to 0.999 and `max_treedepth` to 15 for all the
 `nassarius` fits because of the design at the top of the series. Survival falls
 from `r round(mean(snails$alive[snails$dose == 1.25]), 2)` at a dose of 1.25 to
 `r round(mean(snails$alive[snails$dose == 2.5]), 2)` at 2.5, with no dose in
@@ -362,8 +361,8 @@ survival_set <- c("nec3param", "ecxexp", "ecxwb1p3", "ecxwb2p3", "ecxll3")
 fit_m <- bnec_hurdle(growth | cens(cens) ~ crf(log(dose + 0.001),
                                                model = growth_set),
                      model_survival = survival_set, data = snails, seed = 10,
-                     refresh = 0, cores = 4, iter = 4e3,
-                     control = list(adapt_delta = 0.999, max_treedepth = 12))
+                     refresh = 0, cores = 4,
+                     control = list(adapt_delta = 0.999, max_treedepth = 15))
 ```
 
 `check_sampling()` gives the sampler diagnostics for each equation of the growth
@@ -550,8 +549,8 @@ survivor that was censored is then fitted as an exact observation at the bound.
 fit_j <- bnec_joint(fit_ms,
                     formula = growth ~ crf(log(dose + 0.001),
                                            model = best$growth),
-                    seed = 10, refresh = 0, cores = 4, iter = 4e3,
-                    control = list(adapt_delta = 0.999, max_treedepth = 12))
+                    seed = 10, refresh = 0, cores = 4,
+                    control = list(adapt_delta = 0.999, max_treedepth = 15))
 ```
 
 `pull_best()` returns the factorised fit of this combination from the screened

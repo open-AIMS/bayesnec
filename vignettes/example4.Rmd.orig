@@ -94,8 +94,12 @@ the first, the levels are seven photosystem II herbicides tested on the coral
 *Seriatopora hystrix* [@jones2003]. In the second, the levels are three climate
 scenarios under which the coral *Acropora millepora* was exposed to one of those
 herbicides, diuron [@flores2021], and the comparison is the one that study was
-designed to make. A final section uses the herbicide fits to show how two levels
-are compared within a single joint refit.
+designed to make. In both datasets the levels are fitted separately and share
+no parameter, so their posteriors are independent and the random pairing of
+`compare_posterior` is sufficient. A joint refit by `bnec_joint()`, in which
+two levels share a group-level term and a contrast between them is taken from
+aligned draws, is shown for copper and zinc in the
+[Grouping and factor covariates][e8] vignette.
 
 To run this vignette, we will also need some additional packages
 
@@ -693,125 +697,6 @@ at the highest concentration it is
 `r sprintf("%.3f", sep_late[["top"]])` at the highest concentration. This
 suggests that the scenarios differ over the range of concentrations in which the
 colour response declines under at least one scenario.
-
-# Contrasts from a joint refit
-
-Where levels share a parameter, such as a group-level term for a batch that
-includes every level (see the [Grouping and factor covariates][e8] vignette),
-their posteriors are dependent, and a contrast between two levels has to be
-taken from the aligned draws of one fit. However, the herbicides do not require
-this, because they are fixed levels tested separately, and the separate fits
-above already give the comparison of interest. Here we use the herbicide fits to
-demonstrate how such a refit is made and how a contrast is taken from its draws.
-Because the refit conditions on one equation per herbicide, it also shows how a
-contrast from one selected equation per level differs from the model-averaged
-comparison above.
-
-The comparisons above treat the levels as separate fits. `bnec_joint()` instead
-takes the per-level fits of a `bnec_group()` call and builds one model that includes all levels, each level keeping the equation its own weights
-favour and its own copy of that equation's parameters. A difference between two
-levels is then a difference between coefficients of one fit, taken draw by draw,
-and it needs no permutation.
-
-No equation is named in the call. The equation for each level is read from the
-weights the `bnec_group()` fit already computed, so the refit is of what each
-herbicide separately favoured, and not of one form imposed on all seven. The
-call comes after `screen_models()`, so it refits the equations each herbicide
-retained after screening.
-
-```{r fit-herb-joint, results = "hide"}
-herb_joint <- bnec_joint(fits_herb, seed = 228, refresh = 0)
-```
-
-```{r summary-herb-joint}
-herb_joint
-```
-
-Five different equations are used across the seven herbicides: `ecx4param` for
-ametryn and irgarol, `ecxwb1` for atrazine, `ecxll5` for diuron, `ecxll3` for
-hexazinone and simazine, and `ecxwb2p3` for tebuthiuron. The weight each chosen
-equation received for its own herbicide ranges from 0.266 for irgarol to 0.653
-for hexazinone, and is below 0.4 for four of the seven, which suggests that most of the
-herbicides are not well described by a single form.
-
-Each estimate from a joint refit is returned per level, one row each, as for a
-`bnec_group()` fit.
-
-```{r ecx-herb-joint}
-ecx(herb_joint, ecx_val = 50)
-```
-
-The contrast is then taken on the draws. `posterior = TRUE` returns the
-per-level draws as a named list, and because they come from one fit they are
-already aligned: draw *i* of one level and draw *i* of another were taken
-together, at one step of one chain.
-
-```{r cmp-herb-joint}
-herb_draws <- ecx(herb_joint, ecx_val = 50, posterior = TRUE)
-diuron_irgarol <- herb_draws[["diuron"]] - herb_draws[["irgarol"]]
-c(prob_diuron_higher = mean(diuron_irgarol > 0),
-  median_difference = median(diuron_irgarol),
-  quantile(diuron_irgarol, c(0.025, 0.975)))
-```
-
-The diuron EC50 exceeds that of irgarol in every draw, by 1.53 µg/L (1.39 to
-1.67). A contrast can also be made on the N(S)EC, the estimate compared with
-`compare_posterior` above.
-
-```{r joint-contrast-ne}
-herb_ne_draws <- nsec(herb_joint, posterior = TRUE)
-diuron_irgarol_ne <- herb_ne_draws[["diuron"]] - herb_ne_draws[["irgarol"]]
-c(prob_diuron_higher = mean(diuron_irgarol_ne > 0),
-  median_difference = median(diuron_irgarol_ne),
-  quantile(diuron_irgarol_ne, c(0.025, 0.975)))
-```
-
-On the N(S)EC the probability that diuron has the higher estimate is 0.617, with a
-median difference of 0.006 µg/L (-0.038 to 0.049), against 0.732 from
-`compare_posterior`. The joint refit and `compare_posterior` agree in direction, and do not separate
-this pair on the N(S)EC. An ECx is a fixed decline from the control of each
-level and is located where the curve is steep, whereas the N(S)EC is a departure
-from a band around the control, and where the curve is nearly flat, a small change in where that band ends
-produces a large change in the concentration at which the curve crosses it.
-
-The joint refit estimates five functional forms and a separate dispersion for
-each of seven herbicides, so we check its sampling.
-
-```{r joint-diagnostics}
-np <- brms::nuts_params(herb_joint$fit)
-s_joint <- summary(herb_joint$fit)
-pars <- rbind(s_joint$fixed, s_joint$spec_pars)
-c(divergent = sum(np$Value[np$Parameter == "divergent__"]),
-  post_warmup_draws = sum(np$Parameter == "divergent__"),
-  max_rhat = max(pars$Rhat), min_bulk_ess = min(pars$Bulk_ESS))
-```
-
-There were no divergent transitions in 8000 post-warmup draws, with a maximum
-R-hat of 1.002 and a minimum bulk effective sample size of 2148.
-
-A joint refit conditions on one equation per level, so the model uncertainty
-that the per-level averages represent is absent from it. A narrower interval
-after selecting one equation does not by itself show a gain in precision: it
-omits uncertainty over the other equations. The chosen equation receives less
-than 0.4 of the weight for four of the seven herbicides. For irgarol, whose
-equation received 0.266 of the weight, the EC50 interval is 0.489 to 0.592 µg/L
-in the joint refit, against 0.487 to 0.596 from the per-level model average.
-The narrowing is small on these data.
-
-`compare_posterior` and a joint refit therefore answer different questions. `compare_posterior` asks
-how two independently estimated levels compare, each with its own model
-uncertainty, which is appropriate where the levels were tested separately and
-are being ranked. The joint refit asks how two levels compare conditional on
-the selected equation for each. In this example each herbicide has its own curve
-and dispersion parameters, and the fitted model shares no parameter between
-them, so the posteriors of the herbicides are independent within the refit as
-well. The aligned draws give a contrast under that model, and a random pairing
-of these draws would estimate that contrast as well. The difference between the
-probabilities of 0.617 and 0.732 is therefore not due to dependence between the
-herbicides, and most likely reflects fitting one equation per herbicide in place
-of the model average. A joint refit can also
-include a shared term where the levels use one equation, for example in a
-controlled comparison of treatments or sites.
 
 # Provenance
 

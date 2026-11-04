@@ -509,46 +509,62 @@ it is excluded, because changing the prior would not test whether the original
 run was too short. The chunk below refits any such equation with twice the
 iterations and warmup, thinned by two so that it keeps the 8,000 draws of the
 other equations (the model weights compare leave-out scores computed from equal
-numbers of draws), and replaces it in the set before screening.
+numbers of draws), and replaces it in the set before screening. An equation
+with more than ten divergent transitions is instead refitted with the same
+iterations at `adapt_delta = 0.99`, or at 0.999 for `neclin` and `ecxlin`,
+which `bnec()` already fits at 0.99 because `ogl(chamber)` can take their mean
+outside (0, 1).
 
 ```{r coral-retry, results = "hide"}
 retry_models <- function(tab) tab$model[tab$failed & tab$n_divergent <= 10]
-refit_longer <- function(fit, retry) {
-  if (!length(retry)) return(fit)
+tune_models <- function(tab) tab$model[tab$failed & tab$n_divergent > 10]
+refit_failed <- function(fit, retry, tune) {
+  if (!length(retry) && !length(tune)) return(fit)
   longer <- lapply(retry, function(m) {
     update(pull_out(fit, model = m), iter = 2e4, warmup = 1.6e4, thin = 2,
            refresh = 0)
   })
+  tuned <- lapply(tune, function(m) {
+    delta <- if (m %in% c("neclin", "ecxlin")) 0.999 else 0.99
+    update(pull_out(fit, model = m), control = list(adapt_delta = delta),
+           refresh = 0)
+  })
   # c() keeps the first copy of an equation it is given twice, so the refits
   # come first.
-  do.call(c, c(longer, list(fit)))
+  do.call(c, c(longer, tuned, list(fit)))
 }
 retry_default <- retry_models(sampling_default)
 retry_regular <- retry_models(sampling_regular)
+tune_default <- tune_models(sampling_default)
+tune_regular <- tune_models(sampling_regular)
 set.seed(228)
-fit_default <- refit_longer(fit_default, retry_default)
+fit_default <- refit_failed(fit_default, retry_default, tune_default)
 set.seed(228)
-fit_regular <- refit_longer(fit_regular, retry_regular)
+fit_regular <- refit_failed(fit_regular, retry_regular, tune_regular)
 sampling_default <- check_sampling(fit_default)
 sampling_regular <- check_sampling(fit_regular)
 ```
 
 ```{r coral-retried}
+refit_default <- c(retry_default, tune_default)
+refit_regular <- c(retry_regular, tune_regular)
 retried <- rbind(
-  sampling_default[sampling_default$model %in% retry_default, ],
-  sampling_regular[sampling_regular$model %in% retry_regular, ]
+  sampling_default[sampling_default$model %in% refit_default, ],
+  sampling_regular[sampling_regular$model %in% refit_regular, ]
 )
 if (nrow(retried)) {
   cbind(prior_type = rep(c("uninformative", "regularizing"),
-                         c(length(retry_default), length(retry_regular))),
+                         c(sum(sampling_default$model %in% refit_default),
+                           sum(sampling_regular$model %in% refit_regular))),
         retried)
 }
 ```
 
-In this run the condition was met by `r name_list(retry_default)` under the
-uninformative priors and by `r name_list(retry_regular)` under the regularising
-priors.
-`r if (nrow(retried)) "The table above gives the diagnostics of each refitted equation after the longer run, and the screen below uses those." else "No equation was refitted, so no table is shown."`
+In this run the longer refit was applied to `r name_list(retry_default)` under
+the uninformative priors and to `r name_list(retry_regular)` under the
+regularising priors, and the refit at a higher `adapt_delta` to
+`r name_list(tune_default)` and `r name_list(tune_regular)` respectively.
+`r if (nrow(retried)) "The table above gives the diagnostics of each refitted equation after its refit, and the screen below uses those." else "No equation was refitted, so no table is shown."`
 
 ## Screening the model sets
 
@@ -957,7 +973,9 @@ first 8,000 were discarded as warmup. Equations were excluded where the maximum
 R-hat exceeded 1.01 or the minimum bulk or tail effective sample size was below
 400 [@Vehtari2021], or where more than ten divergent transitions occurred; an
 equation that failed only on R-hat or effective sample size was first refitted
-with twice the number of iterations (S3). Posterior predictions from the
+with twice the number of iterations, and one with more than ten divergent
+transitions with a target acceptance rate (`adapt_delta`) of 0.99, or 0.999
+where the default fit had already used 0.99 (S3). Posterior predictions from the
 retained equations were combined using pseudo-Bayesian model averaging weights
 [@Yao2018] calculated from leave-one-chamber-out cross-validation
 [@vehtari2017], with exact refits for chambers where the Pareto *k* diagnostic
