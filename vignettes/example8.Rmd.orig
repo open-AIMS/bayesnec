@@ -58,7 +58,6 @@ set_weights <- function(x) {
 [e1]: https://open-aims.github.io/bayesnec/articles/example1.html
 [e2]: https://open-aims.github.io/bayesnec/articles/example2.html
 [e3]: https://open-aims.github.io/bayesnec/articles/example3.html
-[e4]: https://open-aims.github.io/bayesnec/articles/example4.html
 [e9]: https://open-aims.github.io/bayesnec/articles/example9.html
 
 # Overview
@@ -474,21 +473,28 @@ sd_ogl <- group_level_sd(fit_ogl)
 sd_ogl[sd_ogl$wi >= 0.01, ]
 ec10_plain <- ecx(fit_plain, ecx_val = 10)
 ec10_ogl <- ecx(fit_ogl, ecx_val = 10)
+nsec_plain <- nsec(fit_plain)
+nsec_ogl <- nsec(fit_ogl)
 ```
 
-The table below gives each fit's EC10, and the weight, EC10 and cell SD of each
-equation given at least 0.01 of the weight.
+The table below gives each fit's EC10 and NSEC, and the weight, EC10, NSEC and
+cell SD of each equation given at least 0.01 of the weight.
 
 ```{r table-conc-group, echo = FALSE}
-eq_ec10 <- function(x, min_wi = 0.01) {
+# The EC10 and NSEC of each equation given at least min_wi of the weight.
+eq_estimates <- function(x, min_wi = 0.01) {
   w <- set_weights(x)
   keep <- names(sort(w[w >= min_wi], decreasing = TRUE))
-  lapply(stats::setNames(keep, keep),
-         function(m) ecx(pull_out(x, model = m), ecx_val = 10))
+  lapply(stats::setNames(keep, keep), function(m) {
+    fit_m <- pull_out(x, model = m)
+    list(ec10 = ecx(fit_m, ecx_val = 10), nsec = nsec(fit_m))
+  })
 }
-ec10_eq_plain <- eq_ec10(fit_plain)
-ec10_eq_ogl <- eq_ec10(fit_ogl)
-weight_rows <- function(x, label, average, by_eq, sd = NULL) {
+eq_plain <- eq_estimates(fit_plain)
+eq_ogl <- eq_estimates(fit_ogl)
+ec10_eq_plain <- lapply(eq_plain, `[[`, "ec10")
+ec10_eq_ogl <- lapply(eq_ogl, `[[`, "ec10")
+weight_rows <- function(x, label, ec10, nsec, by_eq, sd = NULL) {
   keep <- names(by_eq)
   sd_cell <- if (is.null(sd)) {
     rep("", length(keep))
@@ -500,15 +506,17 @@ weight_rows <- function(x, label, average, by_eq, sd = NULL) {
     fit = c(label, rep("", length(keep))),
     equation = c("model average", eq(keep)),
     weight = c("", sprintf("%.2f", set_weights(x)[keep])),
-    ec10 = c(ci(average), vapply(by_eq, ci, character(1))),
+    ec10 = c(ci(ec10), vapply(by_eq, function(e) ci(e$ec10), character(1))),
+    nsec = c(ci(nsec), vapply(by_eq, function(e) ci(e$nsec), character(1))),
     sd = c("", sd_cell)
   )
 }
 knitr::kable(
-  rbind(weight_rows(fit_plain, "No term", ec10_plain, ec10_eq_plain),
-        weight_rows(fit_ogl, "`ogl(conc_group)`", ec10_ogl, ec10_eq_ogl,
+  rbind(weight_rows(fit_plain, "No term", ec10_plain, nsec_plain, eq_plain),
+        weight_rows(fit_ogl, "`ogl(conc_group)`", ec10_ogl, nsec_ogl, eq_ogl,
                     sd = sd_ogl)),
-  col.names = c("Fit", "Equation", "Weight", "EC10, mg/L", "Cell SD"),
+  col.names = c("Fit", "Equation", "Weight", "EC10, mg/L", "NSEC, mg/L",
+                "Cell SD"),
   row.names = FALSE
 )
 low_ogl <- setdiff(names(ec10_eq_ogl), top_ogl)
@@ -518,17 +526,51 @@ low_ec10 <- fmt(median(vapply(ec10_eq_ogl[low_ogl], function(v) v[[1]],
 
 `autoplot()` with `group = "conc_group"` colours each well by its cell and, for
 the fit with the term, marks the mean of each cell (diamonds), the quantity
-`ogl(conc_group)` gives a deviation to; `ecx = TRUE` marks the EC10 and its
-interval. The legend is removed, because the position of each cell on
-the axis already identifies it.
+`ogl(conc_group)` gives a deviation to. The legend is removed, because the
+position of each cell on the axis already identifies it. `nec = TRUE`, the
+default, would mark the model average of each equation's own no-effect
+estimate, which is an NEC for an equation of the `nec` group, so we set it to
+`FALSE`. We then add the EC10 and NSEC of the table above with
+`mark_estimate()`, which draws an estimate as `autoplot()` draws an ECx under
+`ecx = TRUE`, so that the figures show the estimates given in the tables.
 
-```{r fig-conc-group, fig.show = "hold", out.width = "48%", fig.asp = 0.9}
-autoplot(fit_plain, group = "conc_group", group_aes = "colour",
-         ecx = TRUE, ecx_val = 10, nec = FALSE, point_alpha = 0.5) +
+```{r estimate-marks}
+# autoplot() draws an ECx in this blue.
+ec10_colour <- "dodgerblue4"
+nsec_colour <- "darkorange3"
+# `est` holds Q50, Q2.5 and Q97.5, and a column for each facet variable.
+mark_estimate <- function(est, name, colour, vjust) {
+  est$label <- paste0(name, ": ", fmt(est$Q50), " (", fmt(est$Q2.5), "-",
+                      fmt(est$Q97.5), ")")
+  list(
+    geom_vline(data = est, aes(xintercept = Q50), colour = colour,
+               linewidth = 0.5),
+    geom_vline(data = est, aes(xintercept = Q2.5), colour = colour,
+               linetype = 2, linewidth = 0.2),
+    geom_vline(data = est, aes(xintercept = Q97.5), colour = colour,
+               linetype = 2, linewidth = 0.2),
+    geom_text(data = est, aes(label = label), x = Inf, y = Inf, hjust = 1.1,
+              vjust = vjust, size = 3, colour = colour)
+  )
+}
+# One row of `est` from the vector ecx() or nsec() returns for a model set.
+est_row <- function(v, ...) {
+  v <- unname(unlist(v))[1:3]
+  data.frame(..., Q50 = v[1], Q2.5 = v[2], Q97.5 = v[3])
+}
+```
+
+```{r fig-conc-group, fig.show = "hold", out.width = "48%", fig.asp = 0.9, fig.cap = "The zinc plate Zn 23Apr24 Rep6B at 15 minutes, fitted without a group-level term and with ogl(conc_group). Each point is one well, coloured by its cell, and in the second panel each diamond marks a cell mean. The dashed black line is the model-averaged curve and the grey band its 95% credible interval. The blue lines mark the EC10 and the orange lines the NSEC, solid at the median and dashed at the 95% bounds."}
+autoplot(fit_plain, group = "conc_group", group_aes = "colour", nec = FALSE,
+         point_alpha = 0.5) +
+  mark_estimate(est_row(nsec_plain), "NSEC", nsec_colour, vjust = 1.5) +
+  mark_estimate(est_row(ec10_plain), "EC10", ec10_colour, vjust = 3.2) +
   log_x + rlu_axes + theme(legend.position = "none") +
   ggtitle("No term")
-autoplot(fit_ogl, group = "conc_group", group_aes = "colour",
-         ecx = TRUE, ecx_val = 10, nec = FALSE, point_alpha = 0.5) +
+autoplot(fit_ogl, group = "conc_group", group_aes = "colour", nec = FALSE,
+         point_alpha = 0.5) +
+  mark_estimate(est_row(nsec_ogl), "NSEC", nsec_colour, vjust = 1.5) +
+  mark_estimate(est_row(ec10_ogl), "EC10", ec10_colour, vjust = 3.2) +
   log_x + rlu_axes + theme(legend.position = "none") +
   ggtitle("ogl(conc_group)")
 ```
@@ -548,18 +590,45 @@ near `r low_ec10` mg/L and set the upper tail of the averaged interval. A
 model-averaged interval is therefore read against the weights and the estimates
 of the equations behind it.
 
+The EC10 is read where the curve has fallen 10 per cent below the fitted
+control, whereas the NSEC is read where the curve falls below the 0.01 quantile
+of the posterior of the control (the fitted mean at the lowest concentration),
+so the NSEC also depends on how precisely the control is estimated. The term
+changes the NSEC more than the EC10. The median NSEC is
+`r fmt(nsec_plain[[1]])` mg/L without the term, below the EC10, and
+`r fmt(nsec_ogl[[1]])` mg/L with it, above the EC10 (orange and blue lines in
+the figure). Under `r eq(top_ogl)`, given most of the weight in both fits, it
+changes from `r ci(eq_plain[[top_ogl]]$nsec)` to
+`r ci(eq_ogl[[top_ogl]]$nsec)` mg/L, so the change does not arise from the
+model weights. With the term, the lowest concentration is
+represented by one cell with its own departure from the curve, so the control is
+less precisely estimated (the band at the lowest concentration is wider in the
+second panel), and the curve has to fall further before it crosses that
+quantile.
+
 # Grouping across the concentration series
 
-A plate spans the whole concentration series, so plates can differ in more than
-a displacement. The plate reader's gain scales each plate's whole curve by one
-factor, and once that factor is divided out (see the figure of plate-relative
-means) the plates still appear to differ in where and how steeply the curve
-falls. We fitted the zinc readings at 15 minutes four ways: with no plate term;
-with `ogl(plate)`, which multiplies each plate's curve by one factor, the form
-the plate reader's gain takes; with `pgl(plate)`, which also lets each plate's
-curve differ in position and slope; and with `pgl(plate) + ogl(conc_group)`,
-which adds the cell term of the single-plate fit. We call the last the arm
-structure, because it is the structure fitted to each metal below.
+A plate spans the whole concentration series, so, unlike a cell, each plate can
+have a curve of its own. The figure of plate-relative means suggests that the
+zinc plates differ in two ways: the plate reader's gain scales each plate's
+whole curve by one factor, and once that factor is divided out, the plates still
+appear to differ in where and how steeply their curves fall. We fitted the zinc
+readings at 15 minutes with four plate structures, labelled A to D in the table
+and figure below:
+
+- (A) no plate term;
+- (B) `ogl(plate)`, which multiplies each plate's curve by one factor, the form
+  the plate reader's gain takes;
+- (C) `pgl(plate)`, which also lets each plate's curve differ in position and
+  slope;
+- (D) `pgl(plate) + ogl(conc_group)`, which adds the cell term of the
+  single-plate fit, for the reason given there.
+
+In D each cell deviates from its own plate's curve and not from the population
+curve. Without a deviation on the position of each plate's curve (e.g. with
+`ogl(plate) + ogl(conc_group)`), the cell deviations would also have to describe
+each plate's shift along the concentration axis. We call D the arm structure,
+because it is the structure fitted to each metal below.
 
 ```{r fit-plate, results = "hide"}
 fit_pooled <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + disp("power"),
@@ -607,7 +676,7 @@ fit_pgl_cell <- screen_models(fit_pgl_cell)
 ```
 
 The screen dropped `r nrow(pgl_stuck) + nrow(pgl_divergent)` equations from
-`fit_pgl`. In each of `r eqs(pgl_stuck$model)`,
+`fit_pgl` (C). In each of `r eqs(pgl_stuck$model)`,
 `r if (all(n_apart == 1)) "one" else paste(range(n_apart), collapse = " to ")`
 of the four chains sampled a mode of its own, at a
 `r if (apart_lower) "lower" else "different"` log density than the others, which
@@ -616,7 +685,8 @@ sizes as low as `r round(min(pgl_stuck$min_ess))`. The screen also dropped
 `r eqs(pgl_divergent$model)` on
 `r paste(pgl_divergent$n_divergent, collapse = ", ")` divergent transitions. The
 table below gives the number of equations each structure retained, the weights,
-and the EC10 and NSEC of each model average.
+and the EC10 and NSEC of each model average, and the figure that follows shows
+each fit.
 
 ```{r table-plate, echo = FALSE}
 plate_fits <- list(fit_pooled, fit_plate, fit_pgl, fit_pgl_cell)
@@ -624,6 +694,7 @@ plate_ec10 <- lapply(plate_fits, ecx, ecx_val = 10)
 plate_nsec <- lapply(plate_fits, nsec)
 knitr::kable(
   data.frame(
+    panel = LETTERS[1:4],
     structure = c("None", "`ogl(plate)`", "`pgl(plate)`",
                   "`pgl(plate) + ogl(conc_group)`"),
     retained = paste(vapply(plate_fits, function(x) length(x$success_models),
@@ -636,7 +707,7 @@ knitr::kable(
     ec10 = vapply(plate_ec10, ci, character(1)),
     nsec = vapply(plate_nsec, ci, character(1))
   ),
-  col.names = c("Plate structure", "Equations retained",
+  col.names = c("Panel", "Plate structure", "Equations retained",
                 "Weight of 0.05 or more", "EC10, mg/L", "NSEC, mg/L")
 )
 ec10_range <- range(vapply(plate_ec10, function(v) v[[1]], numeric(1)))
@@ -648,65 +719,104 @@ w_arm <- set_weights(fit_pgl_cell)
 top_arm <- names(which.max(w_arm))
 ```
 
-```{r fig-plate-terms, fig.show = "hold", out.width = "48%", fig.asp = 0.9}
-autoplot(fit_pooled, group = "plate", group_aes = "colour",
-         ecx = TRUE, ecx_val = 10, nec = FALSE, point_alpha = 0.5) +
-  log_x + rlu_axes + theme(legend.position = "none") +
-  ggtitle("No plate term")
-autoplot(fit_plate, group = "plate", group_aes = "colour",
-         ecx = TRUE, ecx_val = 10, nec = FALSE, point_alpha = 0.5) +
-  log_x + rlu_axes + theme(legend.position = "none") +
-  ggtitle("ogl(plate)")
-autoplot(fit_pgl, group = "plate", group_aes = "colour",
-         ecx = TRUE, ecx_val = 10, nec = FALSE, point_alpha = 0.5) +
-  log_x + rlu_axes + theme(legend.position = "none") +
-  ggtitle("pgl(plate)")
-autoplot(fit_pgl_cell, group = "plate", group_aes = "colour",
-         ecx = TRUE, ecx_val = 10, nec = FALSE, point_alpha = 0.5) +
-  log_x + rlu_axes + theme(legend.position = "none") +
-  ggtitle("pgl(plate) + ogl(conc_group)")
+```{r fig-plate-terms, fig.width = 8, fig.asp = 0.85, out.width = "100%", fig.cap = "The zinc readings at 15 minutes fitted with each plate structure (panels A to D). Each point is one well, and each thin line joins one plate's observed means, coloured by plate; these do not change between panels. The dashed black line is the model-averaged population curve and the grey band its 95% credible interval. The blue lines mark the EC10 and the orange lines the NSEC, solid at the median and dashed at the 95% bounds."}
+plate_panels <- c("(A) No plate term", "(B) ogl(plate)", "(C) pgl(plate)",
+                  "(D) pgl(plate) + ogl(conc_group)")
+plate_plot <- do.call(rbind, Map(function(x, panel) {
+  d <- ggbnec_data(x, add_nec = FALSE, group = "plate")
+  d$panel <- panel
+  d
+}, plate_fits, plate_panels))
+plate_plot$panel <- factor(plate_plot$panel, levels = plate_panels)
+plate_band <- filter(plate_plot, !is.na(y_ci))
+plate_obs <- filter(plate_plot, !is.na(y_r))
+by_panel <- function(est) {
+  do.call(rbind, Map(est_row, est,
+                     panel = factor(plate_panels, levels = plate_panels)))
+}
+
+ggplot() +
+  geom_polygon(data = plate_band, aes(x = x_e, y = y_ci), fill = "grey75",
+               alpha = 0.5) +
+  geom_point(data = plate_obs, aes(x = x_r, y = y_r, colour = group),
+             alpha = 0.3, size = 0.6) +
+  stat_summary(data = plate_obs, aes(x = x_r, y = y_r, colour = group,
+                                     group = group),
+               fun = mean, geom = "line", linewidth = 0.3) +
+  geom_line(data = filter(plate_band, !is.na(y_e)), aes(x = x_e, y = y_e),
+            linetype = 2) +
+  mark_estimate(by_panel(plate_nsec), "NSEC", nsec_colour, vjust = 1.5) +
+  mark_estimate(by_panel(plate_ec10), "EC10", ec10_colour, vjust = 3.2) +
+  facet_wrap(~panel, ncol = 2) +
+  log_x + rlu_axes + theme_classic() +
+  theme(legend.position = "none", strip.background = element_blank(),
+        strip.text = element_text(hjust = 0))
 ```
 
-In the second to fourth panels, each thin line joins one plate's observed means.
-Without a plate term, the differences in gain between plates are residual
-variation. The population curve then has a narrow band on the response scale
-(first panel), although its EC10 interval is the widest of the four, with an
-upper bound `r round(ec10_span[1], 1)` times its lower bound. Each plate term
-attributes that spread to the plates instead, and each narrowed the EC10
-interval, to a ratio of `r round(min(ec10_span[-1]), 1)` to
-`r round(max(ec10_span[-1]), 1)` between its bounds. The band on the response
-widens instead, because the height of the population curve is then an average
-over plates that differ in gain. On the single plate the within-concentration
-term widened the EC10 interval, so the direction of the change may differ from
-one grouping to another. The likely reason is that a cell has no curve of its
-own, so a cell term adds variation that the curve cannot account for, whereas a
-plate spans the series, and with a plate term the differences between plates are
-no longer counted as residual.
+```{r bands-plate, include = FALSE}
+# The ratio of the upper to the lower bound of each band at the lowest
+# concentration.
+band_span <- vapply(plate_fits, function(x) {
+  d <- x$w_pred_vals$data[which.min(x$w_pred_vals$data$x), ]
+  d$Q97.5 / d$Q2.5
+}, numeric(1))
+```
 
-The structures also differ in where they place the curve. Across the four, the
-median EC10 ranges from `r fmt(ec10_range[1])` to `r fmt(ec10_range[2])` mg/L
-and the median NSEC from `r fmt(nsec_range[1])` to `r fmt(nsec_range[2])`, so
-the NSEC changed more with the structure than the EC10, and a report should
-state the structure as well as the estimate. An ECx is read at a fixed fraction
-of the fitted control, whereas the NSEC is read where the curve first falls
-below the control's band, and a group-level term may change the width of that
-band by attributing part of the residual variation to the groups. The weights
-changed as well, and no equation was given most of the weight under every
-structure. Under `pgl(plate)` the weight was spread over `r sum(w_pgl >= 0.05)`
-equations, and the EC10 was `r ci(plate_ec10[[3]])` mg/L. Adding the cell term
-gave `r eq(top_arm)` `r sprintf("%.2f", w_arm[[top_arm]])` of the weight, and an
-EC10 of `r ci(plate_ec10[[4]])` mg/L.
+The observations, and the thin lines that join each plate's observed means, do
+not change between panels. The panels differ only in the population curve
+fitted to those data, its band, and the EC10 and NSEC read from that curve.
 
-The table below gives the group-level SDs of `fit_pgl_cell` from
-`group_level_sd()`, for each equation given at least 0.01 of the weight.
+Without a plate term (panel A), the differences in gain between plates are
+counted as residual variation, and the population curve is fitted to the wells
+of all `r n_distinct(zn15$plate)` plates as though they came from one plate.
+Its band is therefore narrow, with an upper bound `r round(band_span[1], 2)`
+times its lower bound at the lowest concentration. With a plate term (panels B
+to D), the band at the lowest concentration widens to a ratio of
+`r round(min(band_span[-1]), 2)` to `r round(max(band_span[-1]), 2)` between its
+bounds, because the population curve then describes a typical plate, and its
+height is estimated from plates that differ in gain. The EC10 interval changes
+the other way. It is widest in panel A, with an upper bound
+`r round(ec10_span[1], 1)` times its lower bound, and under each plate term the
+ratio is `r round(min(ec10_span[-1]), 1)` to `r round(max(ec10_span[-1]), 1)`.
+On the single plate, however, the cell term widened the EC10 interval, so the
+direction of the change may differ from one grouping to another. The likely
+reason is that a cell has no curve of its own, so a cell term adds variation
+that the curve cannot account for, whereas a plate spans the series, and a plate
+term removes the differences between plates from the residual variation.
+
+The four structures also give the curve different positions. Across the panels
+the median EC10 ranges from `r fmt(ec10_range[1])` to `r fmt(ec10_range[2])`
+mg/L (a factor of `r fmt(ec10_range[2] / ec10_range[1])`) and the median NSEC
+from `r fmt(nsec_range[1])` to `r fmt(nsec_range[2])` (a factor of
+`r fmt(nsec_range[2] / nsec_range[1])`), so the NSEC changed more with the
+structure than the EC10. The NSEC is lowest in panel A, where the band at the
+lowest concentration is narrowest (compare the orange lines of panel A with
+those of panels B to D). As on the single plate, the NSEC is read against the 0.01
+quantile of the posterior of the control, and a wider posterior places that
+quantile further below the fitted control, so the curve is likely to cross it
+at a higher concentration. A report should therefore state the structure as
+well as the estimate. The weights changed as well, and no equation was given
+most of the weight under every structure. Under `pgl(plate)` (panel C) the
+weight was spread over `r sum(w_pgl >= 0.05)` equations and the EC10 was
+`r ci(plate_ec10[[3]])` mg/L, whereas adding the cell term (panel D) gave
+`r eq(top_arm)` `r sprintf("%.2f", w_arm[[top_arm]])` of the weight and an EC10
+of `r ci(plate_ec10[[4]])` mg/L.
+
+The table below gives the group-level SDs of `fit_pgl_cell` (structure D) from
+`group_level_sd()`, for each equation given at least 0.01 of the weight. Each SD
+measures how much the plates, or the cells within a plate, differ in one
+parameter.
 
 ```{r sd-plate, echo = FALSE}
 sd_arm <- group_level_sd(fit_pgl_cell)
 sd_arm <- sd_arm[sd_arm$wi >= 0.01, ]
 sd_pgl <- group_level_sd(fit_pgl)
 sd_pgl_ec50 <- sd_pgl[sd_pgl$wi >= 0.05 & sd_pgl$parameter == "ec50", ]
-cell_pct <- round(100 * sd_arm$Estimate[sd_arm$model == top_arm &
-                                          sd_arm$parameter == "ogl"])
+sd_top <- function(parameter) {
+  sd_arm$Estimate[sd_arm$model == top_arm & sd_arm$parameter == parameter]
+}
+cell_pct <- round(100 * sd_top("ogl"))
+gain_factor <- exp(sd_top("topgl"))
 sd_of <- function(tab, model, parameter) {
   ci(tab[tab$model == model & tab$parameter == parameter,
          c("Estimate", "Q2.5", "Q97.5")])
@@ -721,27 +831,22 @@ knitr::kable(
 )
 ```
 
-Under `pgl(plate) + ogl(conc_group)`, `r eq(top_arm)` is given
-`r sprintf("%.2f", w_arm[[top_arm]])` of the weight, so its SDs describe the
-model average. Its SD on `topgl`, `r sd_of(sd_arm, top_arm, "topgl")`, is the
-difference in gain between plates (on the log scale of a multiplicative factor).
-The plates also differ in where their curves fall: under `pgl(plate)` alone,
-each equation given at least 0.05 of the weight estimates an SD on `ec50` of
-`r range_text(sd_pgl_ec50$Estimate)` on the scale of log concentration. The
-position of an `ecxll5` curve, however, depends on its exponent `f` as well as
-on `ec50`. Under the arm structure `ecxll5` estimates an SD on `f` of
-`r sd_of(sd_arm, "ecxll5", "f")`, whereas its SD on `ec50` is poorly determined
-(`r sd_of(sd_arm, "ecxll5", "ec50")`), so for this equation the differences in
-position between plates appear to be expressed through `f` and not `ec50`. The
-cell SD of `r sd_of(sd_arm, top_arm, "ogl")` corresponds to departures of about
-`r cell_pct` per cent between the cells of a plate, beyond what the plate's
-curve accounts for.
-
-The cell term is part of the arm structure for the reason given on the single
-plate, and it is placed under `pgl(plate)` so that each cell deviates from its
-own plate's curve and not from the population curve. Without a deviation on the
-position of each plate's curve (e.g. under `ogl(plate)`), the cell deviations
-would also have to describe each plate's shift along the concentration axis.
+`r eq(top_arm)` is given `r sprintf("%.2f", w_arm[[top_arm]])` of the weight
+under structure D, so its SDs describe the model average. Its SD on `topgl`,
+`r sd_of(sd_arm, top_arm, "topgl")`, measures the differences in gain between
+plates on the log scale of a multiplicative factor, so the control of a plate
+one SD above the population is about `r fmt(gain_factor)` times as high. The
+plates also appear to differ in position along the concentration axis, which
+`ogl(plate)` (B) cannot describe, because it only scales each plate's curve.
+Under `pgl(plate)` without the cell term (C), each equation given at least 0.05
+of the weight estimates an SD on `ec50` of `r range_text(sd_pgl_ec50$Estimate)`
+on the scale of log concentration. Under D, however, `ecxll5` appears to express
+that difference through its exponent `f`, which also changes the position of
+the curve, with an SD of `r sd_of(sd_arm, "ecxll5", "f")`, whereas its SD on
+`ec50` is poorly determined (`r sd_of(sd_arm, "ecxll5", "ec50")`). The cell SD,
+`r sd_of(sd_arm, top_arm, "ogl")`, corresponds to departures of about
+`r cell_pct` per cent between the cells of a plate beyond what the plate's curve
+accounts for, which is small beside the SD on `topgl`.
 
 Two cautions apply to plate terms. First, the SD of a plate term combines the
 plate reader's gain with any biological difference between plates, and nothing
@@ -752,11 +857,14 @@ copper against zinc, or 15 against 30 minutes, are fixed levels, for
 
 # Copper against zinc
 
-Copper and zinc are fixed levels (see *Types of grouping*), so `bnec_group()`
-fits a complete model set to each level separately and returns the fits as one
-object. Each level is fitted with the arm structure,
-`pgl(plate) + ogl(conc_group)`, and with `model = "all"`, because zinc rises
-above its control at low concentrations.
+Copper and zinc are fixed levels (see *Types of grouping*), so we fit them with
+`bnec_group()`. Although both metals are passed to one call, `bnec_group()`
+fits them independently: it calls `bnec()` once for each level, on that level's
+data alone, and returns both model sets as one object. Each metal therefore
+has its own curve parameters, group-level SDs, dispersion and model weights, and
+no parameter is shared between them. Each level is fitted with the arm
+structure, `pgl(plate) + ogl(conc_group)`, and with `model = "all"`, because
+zinc rises above its control at low concentrations.
 
 ```{r fit-metals, results = "hide"}
 fits_tox <- bnec_group(
@@ -765,9 +873,10 @@ fits_tox <- bnec_group(
   seed = 228, refresh = 0)
 ```
 
-The two levels were fitted separately, so they are screened separately: with
-`group_action = "per_level"`, an equation that fails at one level is dropped
-from that level only.
+Because each metal's model set was fitted independently, its sampling is also
+screened independently. With `group_action = "per_level"`, an equation that
+fails the screen for one metal is dropped for that metal only, so copper and
+zinc may retain different equations.
 
 ```{r screen-metals}
 fits_tox <- screen_models(fits_tox, group_action = "per_level")
@@ -777,12 +886,13 @@ fits_tox <- screen_models(fits_tox, group_action = "per_level")
 level_fits <- stats::setNames(fits_tox$fits, fits_tox$levels)
 level_weights <- lapply(level_fits, set_weights)
 level_ec10 <- ecx(fits_tox, ecx_val = 10)
+level_nsec <- nsec(fits_tox)
 level_top <- vapply(level_weights, function(w) names(which.max(w)), character(1))
 k_top <- mapply(function(f, m) {
   sum(f$mod_fits[[m]]$fit$criteria$logo$diagnostics$pareto_k > 0.7)
 }, level_fits, level_top)
-level_ec10_text <- function(l) {
-  ci(level_ec10[level_ec10$level == l, c("Q50", "Q2.5", "Q97.5")])
+level_text <- function(tab, l) {
+  ci(tab[tab$level == l, c("Q50", "Q2.5", "Q97.5")])
 }
 knitr::kable(
   data.frame(
@@ -793,25 +903,41 @@ knitr::kable(
       w <- sort(w[w >= 0.01], decreasing = TRUE)
       paste0("`", names(w), "` ", sprintf("%.2f", w), collapse = ", ")
     }, character(1)),
-    ec10 = vapply(fits_tox$levels, level_ec10_text, character(1))
+    ec10 = vapply(fits_tox$levels, level_text, character(1), tab = level_ec10),
+    nsec = vapply(fits_tox$levels, level_text, character(1), tab = level_nsec)
   ),
   col.names = c("Toxicant", "Equations retained", "Weight of 0.01 or more",
-                "EC10, mg/L"),
+                "EC10, mg/L", "NSEC, mg/L"),
   row.names = FALSE
 )
 ```
 
-```{r fig-metals, fig.asp = 0.5, out.width = "95%"}
-autoplot(fits_tox, ecx = TRUE, ecx_val = 10, nec = FALSE, point_alpha = 0.5) +
+`autoplot()` draws one panel for each level of a `bnec_group()` fit and
+identifies the panels by a column named `model`, so a layer added to the plot
+needs that column to be drawn in the right panel. We add the EC10 and NSEC of
+each metal from the table above in this way.
+
+```{r fig-metals, fig.asp = 0.5, out.width = "95%", fig.cap = "The copper and zinc readings at 15 minutes, with the model-averaged curve of each metal's separate fit (dashed line) and its 95% credible interval (grey band). The blue lines mark the EC10 and the orange lines the NSEC, solid at the median and dashed at the 95% bounds."}
+by_level <- function(tab) {
+  data.frame(model = paste0(fits_tox$group_var, " = ", tab$level),
+             tab[, c("Q50", "Q2.5", "Q97.5")])
+}
+autoplot(fits_tox, nec = FALSE, point_alpha = 0.5) +
+  mark_estimate(by_level(level_nsec), "NSEC", nsec_colour, vjust = 1.5) +
+  mark_estimate(by_level(level_ec10), "EC10", ec10_colour, vjust = 3.2) +
   log_x + rlu_axes
 ```
 
 The screen retained `r length(level_weights[["Cu"]])` equations for copper and
 `r length(level_weights[["Zn"]])` for zinc, and the equation given the most
 weight was `r if (identical(level_top[["Cu"]], level_top[["Zn"]])) paste(eq(level_top[["Cu"]]), "at both levels") else paste(eq(level_top[["Cu"]]), "for copper and", eq(level_top[["Zn"]]), "for zinc")`
-(table above). The EC10 is `r level_ec10_text("Cu")` mg/L for copper
-and `r level_ec10_text("Zn")` mg/L for zinc, so copper is the more potent metal,
-as @luter2025 report. Each panel has its own response axis, because the plates
+(table above). The EC10 is `r level_text(level_ec10, "Cu")` mg/L for copper
+and `r level_text(level_ec10, "Zn")` mg/L for zinc, so copper is the more potent
+metal, as @luter2025 report. The NSEC is `r level_text(level_nsec, "Cu")` mg/L
+for copper and `r level_text(level_nsec, "Zn")` mg/L for zinc. For both metals
+it is above the EC10 (orange and blue lines in the figure), as it is under the
+arm structure in panel D of the plate figure, for the reason given there. Each
+panel has its own response axis, because the plates
 of each metal were read at different gains, and their relative light units are
 not comparable between metals. Under the equation given the most weight, the
 left-out score is approximate (Pareto *k* above 0.7) for `r k_top[["Cu"]]` of
@@ -819,22 +945,55 @@ the 176 copper cells and `r k_top[["Zn"]]` of the 187 zinc cells, so these
 weights are approximate as well, and `loo_controls = list(refit = TRUE)` would
 replace the flagged scores by refitting the equation once for each flagged cell.
 
-`compare_posterior()` compares the levels of a `bnec_group()` fit. It pairs the
-draws of two levels by a random permutation, which treats their posteriors as
-independent. That assumption is met here, because each level was fitted
-separately, but not for two levels of one fit, whose draws are paired as they
-were drawn (see [Comparing posterior predictions][e4], and the joint refit
-below).
+Each metal's model average is formed over its own equations, so a different
+equation may describe each metal. Because the metals share no parameter, the
+model weight of a combination of one copper equation and one zinc equation is
+the product of their weights at their own levels, under the pseudo-BMA weights
+`bnec()` uses by default. `crossed_group_weights()` returns the weights of each
+level (`per_level`), the combination given the most weight
+(`best_combination`), and the weight of each equation retained at both levels
+when that one equation is fitted to both metals (`diagonal`, the combinations
+that pair an equation with itself, rescaled to sum to one).
 
-```{r cmp-metals}
-cmp_tox <- compare_posterior(fits_tox, comparison = "ecx", ecx_val = 10)
-cmp_tox$prob_diff[, c("comparison", "prob")]
+```{r crossed-metals}
+crossed <- crossed_group_weights(fits_tox)
+crossed$best_combination
+round(crossed$diagonal[crossed$diagonal >= 0.001], 3)
 ```
 
-`prob` is the probability that the first level of the pair (copper) has the
-higher EC10, here `r cmp_tox$prob_diff$prob[1]`, so copper's EC10 is below
-zinc's in `r round(100 * (1 - cmp_tox$prob_diff$prob[1]), 1)` per cent of the
-paired draws.
+The table below gives the crossed weight of each combination of the equations
+given at least 0.01 of the weight at each level, with each equation's own weight
+in parentheses.
+
+```{r table-crossed, echo = FALSE}
+w_cross <- lapply(stats::setNames(crossed$per_level, fits_tox$levels),
+                  function(w) sort(w[w >= 0.01], decreasing = TRUE))
+cross_tab <- outer(w_cross[["Cu"]], w_cross[["Zn"]])
+eq_weight <- function(w) paste0(eq(names(w)), " (", sprintf("%.2f", w), ")")
+knitr::kable(
+  data.frame(copper = eq_weight(w_cross[["Cu"]]),
+             matrix(sprintf("%.3f", cross_tab), nrow = nrow(cross_tab))),
+  col.names = c("Copper equation (weight)",
+                paste("Zinc", eq_weight(w_cross[["Zn"]]))),
+  row.names = FALSE
+)
+best_text <- with(as.list(crossed$best_combination), {
+  if (identical(Cu, Zn)) paste(eq(Cu), "to both metals") else
+    paste(eq(Cu), "to copper and", eq(Zn), "to zinc")
+})
+```
+
+The combination given the most crossed weight,
+`r sprintf("%.2f", crossed$best_weight)`, fits `r best_text`. Most of the
+remaining weight is given to combinations of zinc's `r eq(level_top[["Zn"]])`
+with another copper equation, because copper's weight is divided among more
+equations than zinc's. On the diagonal, `ecxll5` is given
+`r sprintf("%.3f", crossed$diagonal[["ecxll5"]])` of the weight over the
+`r length(crossed$common_models)` equations retained for both metals. The crossed
+weights do not change either metal's model average, which is formed over that
+metal's own equations. They show instead which single equation best describes
+both metals, the choice that a joint refit of copper and zinc requires (see
+below).
 
 # Joint refit of copper and zinc
 
@@ -849,13 +1008,18 @@ twice and independently. `bnec_joint()` refits the levels of a `bnec_group()`
 fit as one model, in which each level keeps its own curve parameters and a
 group-level term can span the levels (see `?bnec_joint`).
 
-A group-level term can be written only on a parameter the levels share, so each
-level must be fitted with one equation, which `model` names. We use `ecxll5`,
-the equation given most weight at both levels
+Without `model`, `bnec_joint()` fits each level the equation its own weights
+favour, which may differ between levels. A group-level term that spans the
+levels, however, can be written only on a parameter that each level's equation
+includes, so `model` names one equation to be fitted to both metals. We use
+`ecxll5`, the equation given the most weight at both levels
 (`r sprintf("%.2f", level_weights[["Cu"]][["ecxll5"]])` for copper and
-`r sprintf("%.2f", level_weights[["Zn"]][["ecxll5"]])` for zinc). The formula
-adds `(ec50 | batch)` to the structure of `fits_tox`, and
-`disp_by_level = FALSE` fits one dispersion sub-model for both metals:
+`r sprintf("%.2f", level_weights[["Zn"]][["ecxll5"]])` for zinc) and on the
+diagonal of the crossed weights
+(`r sprintf("%.3f", crossed$diagonal[["ecxll5"]])`). The formula adds
+`(ec50 | batch)` to the structure of `fits_tox`, and `disp_by_level = FALSE`
+fits one dispersion sub-model for both metals, where the default would fit one
+for each level:
 
 ```{r fit-metals-joint, results = "hide"}
 fits_tox_joint <- bnec_joint(fits_tox, model = "ecxll5",
@@ -985,9 +1149,10 @@ to each plate of the normalised response, whereas `ecx()` reads the population
 curve of a model that estimates the variation between plates and between
 batches.
 
-Because the levels are estimated in one posterior, a contrast between them is
-taken draw by draw, without the permutation `compare_posterior()` uses. Here we
-take the ratio of zinc's EC10 to copper's:
+Because the levels are estimated in one posterior, a contrast between them can
+be taken draw by draw, which keeps any dependence between the metals' estimates
+that the shared terms introduce. Here we take the ratio of zinc's EC10 to
+copper's:
 
 ```{r ratio-joint}
 ec10_joint <- ecx(fits_tox_joint, ecx_val = 10, posterior = TRUE)
@@ -1029,8 +1194,9 @@ interval of each metal spans a factor of `r if (identical(fmt(level_span[["Cu"]]
 across draws (`r fmt(log_cor)` on the log scale), most likely because the shared
 batch deviations shift both curves together, so much of their uncertainty
 cancels in the ratio. Each draw of the ratio is taken from one draw of the joint
-posterior, which keeps that correlation; a permutation of separate posteriors
-discards it.
+posterior, which keeps that correlation, whereas the separate fits of
+`fits_tox` share no parameter, so a ratio formed from their draws could not
+include it.
 
 ```{r diagnostics-joint, include = FALSE}
 np_joint <- brms::nuts_params(fits_tox_joint$fit)
