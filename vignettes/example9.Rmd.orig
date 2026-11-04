@@ -1052,9 +1052,8 @@ contaminant A). Each dose at which any snail died is largely or wholly
 reconstructed, so the descending limb that determines the reported estimate is
 derived almost entirely from reinstated records. This is a property of the data
 and not of `bayesnec`, and it should be stated in the methods section of any
-analysis based on these data. The corresponding sensitivity analysis, on
-contaminant B, is run in [*Hurdle and zero-inflated concentration-response
-models*](https://open-aims.github.io/bayesnec/articles/example6.html).
+analysis based on these data. The `record` column (see `?nassarius`) marks the
+reinstated rows, so a fit can be repeated without them.
 
 Survival is binary for each individual, and a binomial fit takes the number
 alive out of the number exposed. The source file lists the snails of each

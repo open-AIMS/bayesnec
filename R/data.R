@@ -141,10 +141,8 @@ NULL
 #' those rows biases survival thresholds low, because the last dose the records
 #' do contain is one where some animals were still alive.
 #'
-#' \code{record} is retained so that the distinction stays visible and can be
-#' tested --- \code{vignette("example6")} refits contaminant B without the
-#' reinstated doses and shows which parts of the reconstruction change the
-#' answer and which do not.
+#' \code{record} is retained so that the distinction stays visible and a fit
+#' can be repeated without the reinstated rows.
 #'
 #' @name nassarius
 #' @docType data
