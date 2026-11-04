@@ -112,6 +112,14 @@
 #' \code{(1 | a) + (1 | b)}, the same as \code{ogl(a) + ogl(b)}.
 #' \code{ogl(a*b)} also includes \code{(1 | a:b)}.
 #'
+#' The grouping inside \code{ogl()} and \code{pgl()} may also be a
+#' \code{\link[brms]{gr}} call. \code{pgl(gr(plate, by = toxicant))} fits a
+#' separate standard deviation of the plate deviations for each level of
+#' \code{toxicant}, which suits a grouping whose levels each belong to one
+#' level of \code{toxicant}. A \code{gr()} call on the right of the bar in a
+#' \code{(par | group)} term is not supported; use \code{pgl()} or
+#' \code{ogl()}.
+#'
 #' A grouping whose levels are each observed at a single concentration, such
 #' as the replicate vessels at each concentration, changes how the model
 #' weights are computed: each level is left out whole, rather than each
@@ -600,6 +608,16 @@ check_formula.bayesnecformula <- function(formula, data,
   }
   if (any(grepl("|", split_random_call, fixed = TRUE))) {
     str_calls <- grep("|", split_random_call, fixed = TRUE, value = TRUE)
+    # clean_bar_glef() strips every parenthesis, so a gr() call on the right
+    # of the bar would be read as one variable with a garbled name.
+    has_gr <- grepl("\\|\\s*gr\\(", str_calls)
+    if (any(has_gr)) {
+      stop("A gr() grouping is not supported on the right of the bar in a ",
+           "(par | group) term: ", paste(str_calls[has_gr], collapse = "; "),
+           ". Write it inside pgl() or ogl(), for example ",
+           "pgl(gr(plate, by = toxicant)). See ?bayesnecformula.",
+           call. = FALSE)
+    }
     split_str_calls <- lapply(str_calls, clean_bar_glef)
     tmp_list <- list()
     for (i in seq_along(split_str_calls)) {
