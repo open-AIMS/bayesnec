@@ -138,6 +138,9 @@ every object that records an argument records the same value. Where two objects 
 different values of an argument, the <code><a href="bnec.html">bnec</a></code> default is used and a
 message names the argument. An object fitted by an earlier version of
 <span class="pkg">bayesnec</span> records none of them.</p>
+<p>All component models must retain the same number of posterior draws for
+model weighting. When iteration counts differ, refit with <code>thin</code> set
+during fitting so the retained draw counts agree before combining the fits.</p>
 <p>Each equation keeps the record of the installation of <span class="pkg">bayesnec</span> that
 fitted it, and a message reports a combined set whose equations were fitted
 by different installations. See <code><a href="bnec_version.html">bnec_version</a></code>.</p>
