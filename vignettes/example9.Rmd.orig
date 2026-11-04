@@ -476,7 +476,7 @@ not show which parameter is responsible for a failure. The regularising priors
 provide more information about plausible parameter values, and of the
 `r length(both_failed)` equations that failed under both priors,
 `r fewer_divergences` had fewer divergent transitions under the regularising
-priors, although not few enough to pass.
+priors, although each still failed a cutoff on the first run.
 
 ## Kinds of failure
 
@@ -675,7 +675,7 @@ check_chains(best_regular)
 For `r name_list(best_regular$model)` the four chains overlap throughout a
 stable range in the trace panels, with brief excursions to larger values of some
 parameters in single chains, and in the autocorrelation panels the dependence
-between successive draws falls close to zero within about ten lags. A
+between successive draws falls close to zero within about 15 lags. A
 satisfactory Rhat does not replace inspection of these plots, and before
 reporting a model average we would inspect the traces of each retained equation.
 `check_chains()` can write one page per equation to a PDF for that review:
