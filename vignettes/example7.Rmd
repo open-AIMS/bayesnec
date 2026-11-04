@@ -390,7 +390,6 @@ Beta and under a Gamma it used twelve.
 
 
 
-
 ## 5.2 Design
 
 The data are generated from `nec4param`, which is in the candidate set of each
@@ -965,6 +964,7 @@ ggplot(nsec_long, aes(x = cv_f, y = value, colour = arm, group = arm)) +
 <img src="vignette-fig-nsec-precision-1.png" alt="**Figure 6.** Relative bias in the estimated NSEC against the true `nec` of 1.3 (upper row) and the proportion of 95% credible intervals containing it (lower row), against the control coefficient of variation. The dashed lines are zero bias and nominal coverage. A correctly specified approach stays on zero bias as the residual error falls; a misspecified one departs further the more precise the experiment becomes." width="100%" />
 <p class="caption">**Figure 6.** Relative bias in the estimated NSEC against the true `nec` of 1.3 (upper row) and the proportion of 95% credible intervals containing it (lower row), against the control coefficient of variation. The dashed lines are zero bias and nominal coverage. A correctly specified approach stays on zero bias as the residual error falls; a misspecified one departs further the more precise the experiment becomes.</p>
 </div>
+
 The retaining conventions remain near the true `nec` across the sweep, with no
 trend in either direction (Figure 6). At the highest precision the NSEC bias of
 `measured` is 3.2%, that of `censored`
@@ -1044,6 +1044,7 @@ Table: **Table 2.** Mean model weight on the generating equation `nec4param` acr
 |floored    |        0.066|        0.061|        0.003|        0.000|
 |beta       |        0.066|        0.050|        0.017|        0.010|
 |gamma      |        0.036|        0.021|        0.000|        0.000|
+
 
 
 Given the measurements as recorded, model averaging identifies the generating

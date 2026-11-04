@@ -17,11 +17,12 @@ bibliography: bayesnec.bib
 [e3]: https://open-aims.github.io/bayesnec/articles/example3.html
 [e4]: https://open-aims.github.io/bayesnec/articles/example4.html
 [e8]: https://open-aims.github.io/bayesnec/articles/example8.html
+[e9]: https://open-aims.github.io/bayesnec/articles/example9.html
 
 # Overview
 
-With `bayesnec` we have included a function that allows bootstrapped
-comparisons of posterior predictions. The main focus here is to showcase how the
+With `bayesnec` we have included a function that allows comparisons of
+posterior predictions. The main focus here is to showcase how the
 user can fit several different `bnec` model fits and can compare differences in
 the posterior predictions across these fits for individual toxicity estimates
 (e.g. *NEC*, *N(S)EC*, *NSEC* or *ECx*) or across a range of predictor values.
@@ -47,15 +48,27 @@ its own parameter values, but all levels are estimated in one posterior. Which
 designs admit which of these approaches is set out in the
 [Grouping and factor covariates][e8] vignette.
 
-`compare_posterior` is the function used to compare separate fits, whether these
-come from `bnec_group()` or from calls made independently for each level. It
-pairs the draws of two posteriors using a random permutation, which approximates
-their difference when the posteriors are independent. Separate fits of the
-levels by `bnec_group()` meet that condition. Levels of a fit with a shared
-term may be dependent, and permuting their draws would discard that dependence.
-For a joint fit, we therefore take a contrast by differencing its aligned
-draws. This also applies to the herbicide refit below, in which the levels have
-no shared parameters.
+`compare_posterior` pairs the posterior draws of two fits and takes the
+difference within each pair. Where the posteriors are independent, as they
+are for fits to separate data that share no parameter (e.g. the levels of a
+`bnec_group()` fit), these differences approximate the posterior of the
+difference between the two estimates. Pairing the draws by their index would
+also approximate this distribution, and the random permutation that
+`compare_posterior` uses is one Monte Carlo realisation of the pairing, not a
+requirement of it.
+
+Whether two estimates are independent depends on their joint posterior, and not
+on whether they were fitted in one call or several. Where two quantities are
+dependent within one posterior (e.g. two levels of a fit that share a
+group-level term), the contrast is taken by subtracting aligned draws (draw *i*
+of one from draw *i* of the other), which keeps their covariance. Pairing those
+draws at random removes the covariance, which may make the interval of the
+difference wider or narrower depending on its sign. Where the fits share data,
+for example two equations pulled from one model set, `compare_posterior` still
+pairs their draws as if they were independent. The probabilities it returns
+then describe how far two estimates of one quantity overlap, and whether
+they can be read as posterior probabilities is uncertain (see
+`?compare_estimates`).
 
 Below we demonstrate `compare_posterior` on two published datasets that are
 included in `bayesnec`, each fitted separately by level using `bnec_group()`. In
@@ -63,8 +76,12 @@ the first, the levels are seven photosystem II herbicides tested on the coral
 *Seriatopora hystrix* [@jones2003]. In the second, the levels are three climate
 scenarios under which the coral *Acropora millepora* was exposed to one of those
 herbicides, diuron [@flores2021], and the comparison is the one that study was
-designed to make. A final section uses the herbicide fits to show how two levels
-are compared within a single joint refit.
+designed to make. In both datasets the levels are fitted separately and share
+no parameter, so their posteriors are independent and the random pairing of
+`compare_posterior` is sufficient. A joint refit by `bnec_joint()`, in which
+two levels share a group-level term and a contrast between them is taken from
+aligned draws, is shown for copper and zinc in the
+[Grouping and factor covariates][e8] vignette.
 
 To run this vignette, we will also need some additional packages
 
@@ -152,10 +169,13 @@ discarding its fits for the other six.
 ``` r
 fits_herb <- screen_models(fits_herb, group_action = "per_level")
 #> Screening level "ametryn".
-#> All 12 candidate models passed the sampler screen (Rhat <= 1.01, ESS >= 400, divergences <= 10).
+#> Dropping 1 of 12 candidate models that failed the sampler screen:
+#>   -  ecxll5: 20 divergent transitions
+#> Fitted models are: nec3param nec4param ecxexp ecx4param ecxwb1 ecxwb2 ecxwb1p3 ecxwb2p3 ecxll4 ecxll3 ecxflat
+#> The fitted ecxflat curve does not fall to the control's 0.01 quantile within the predictor range for 7920 of 8000 draws. The NSEC summary is censored at 5.7: those draws keep their rank in it and are given no value.
 #> Screening level "atrazine".
 #> Dropping 1 of 12 candidate models that failed the sampler screen:
-#>   -  ecxll5: 30 divergent transitions
+#>   -  ecxll5: Rhat 1.013, 42 divergent transitions
 #> Fitted models are: nec3param nec4param ecxexp ecx4param ecxwb1 ecxwb2 ecxwb1p3 ecxwb2p3 ecxll4 ecxll3 ecxflat
 #> The fitted ecxflat curve does not fall to the control's 0.01 quantile within the predictor range for 7920 of 8000 draws. The NSEC summary is censored at 6.91: those draws keep their rank in it and are given no value.
 #> Screening level "diuron".
@@ -166,7 +186,7 @@ fits_herb <- screen_models(fits_herb, group_action = "per_level")
 #> All 12 candidate models passed the sampler screen (Rhat <= 1.01, ESS >= 400, divergences <= 10).
 #> Screening level "simazine".
 #> Dropping 1 of 12 candidate models that failed the sampler screen:
-#>   -  ecxll5: ESS 163.4, 113 divergent transitions
+#>   -  ecxll5: ESS 277.4, 122 divergent transitions
 #> Fitted models are: nec3param nec4param ecxexp ecx4param ecxwb1 ecxwb2 ecxwb1p3 ecxwb2p3 ecxll4 ecxll3 ecxflat
 #> The fitted ecxflat curve does not fall to the control's 0.01 quantile within the predictor range for 7920 of 8000 draws. The NSEC summary is censored at 5.7: those draws keep their rank in it and are given no value.
 #> Screening level "tebuthiuron".
@@ -270,13 +290,13 @@ herb_post |>
 #> # A tibble: 7 × 4
 #>   model       median lower  upper
 #>   <chr>        <dbl> <dbl>  <dbl>
-#> 1 irgarol      0.134 0.106  0.170
-#> 2 diuron       0.151 0.109  0.194
-#> 3 ametryn      0.194 0.118  0.634
-#> 4 hexazinone   0.624 0.235  1.66 
-#> 5 atrazine     1.13  0.333  2.49 
-#> 6 simazine     4.24  0.983 11.4  
-#> 7 tebuthiuron 10.6   4.42  13.6
+#> 1 irgarol      0.135 0.107  0.172
+#> 2 diuron       0.152 0.109  0.193
+#> 3 ametryn      0.190 0.118  0.636
+#> 4 hexazinone   0.622 0.232  1.64 
+#> 5 atrazine     1.11  0.304  2.50 
+#> 6 simazine     4.26  1.08  11.4  
+#> 7 tebuthiuron 10.5   4.09  13.6
 ```
 
 The N(S)EC estimates span about two orders of magnitude, from irgarol at
@@ -317,28 +337,28 @@ near 0.5 does not.
 
 ``` r
 cmp_herb$prob_diff
-#>                comparison        prob  prob_lower  prob_upper censored_first censored_second
-#> 1        ametryn-atrazine 0.019252407 0.019252407 0.019252407              0               0
-#> 2          ametryn-diuron 0.837354669 0.837354669 0.837354669              0               0
-#> 3      ametryn-hexazinone 0.045380673 0.045380673 0.045380673              0               0
-#> 4         ametryn-irgarol 0.922740343 0.922740343 0.922740343              0               0
-#> 5        ametryn-simazine 0.010126266 0.010126266 0.010126266              0               0
-#> 6     ametryn-tebuthiuron 0.011126391 0.011126391 0.011126391              0               0
-#> 7         atrazine-diuron 0.987373422 0.987373422 0.987373422              0               0
-#> 8     atrazine-hexazinone 0.838979872 0.838979872 0.838979872              0               0
-#> 9        atrazine-irgarol 0.987998500 0.987998500 0.987998500              0               0
-#> 10      atrazine-simazine 0.044880610 0.044880610 0.044880610              0               0
-#> 11   atrazine-tebuthiuron 0.011751469 0.011751469 0.011751469              0               0
-#> 12      diuron-hexazinone 0.014751844 0.014751844 0.014751844              0               0
-#> 13         diuron-irgarol 0.731966496 0.731966496 0.731966496              0               0
-#> 14        diuron-simazine 0.009501188 0.009501188 0.009501188              0               0
-#> 15     diuron-tebuthiuron 0.011251406 0.011251406 0.011251406              0               0
-#> 16     hexazinone-irgarol 0.986248281 0.986248281 0.986248281              0               0
-#> 17    hexazinone-simazine 0.018127266 0.018127266 0.018127266              0               0
-#> 18 hexazinone-tebuthiuron 0.011251406 0.011251406 0.011251406              0               0
-#> 19       irgarol-simazine 0.009251156 0.009251156 0.009251156              0               0
-#> 20    irgarol-tebuthiuron 0.011251406 0.011251406 0.011251406              0               0
-#> 21   simazine-tebuthiuron 0.076509564 0.076509564 0.076509564              0               0
+#>                comparison       prob prob_lower prob_upper censored_first censored_second
+#> 1        ametryn-atrazine 0.02325291 0.02325291 0.02325291              0               0
+#> 2          ametryn-diuron 0.82360295 0.82360295 0.82360295              0               0
+#> 3      ametryn-hexazinone 0.04863108 0.04863108 0.04863108              0               0
+#> 4         ametryn-irgarol 0.91361420 0.91361420 0.91361420              0               0
+#> 5        ametryn-simazine 0.01087636 0.01087636 0.01087636              0               0
+#> 6     ametryn-tebuthiuron 0.01050131 0.01050131 0.01050131              0               0
+#> 7         atrazine-diuron 0.98649831 0.98649831 0.98649831              0               0
+#> 8     atrazine-hexazinone 0.82897862 0.82897862 0.82897862              0               0
+#> 9        atrazine-irgarol 0.98762345 0.98762345 0.98762345              0               0
+#> 10      atrazine-simazine 0.03962995 0.03962995 0.03962995              0               0
+#> 11   atrazine-tebuthiuron 0.01087636 0.01087636 0.01087636              0               0
+#> 12      diuron-hexazinone 0.01275159 0.01275159 0.01275159              0               0
+#> 13         diuron-irgarol 0.72534067 0.72534067 0.72534067              0               0
+#> 14        diuron-simazine 0.01075134 0.01075134 0.01075134              0               0
+#> 15     diuron-tebuthiuron 0.01050131 0.01050131 0.01050131              0               0
+#> 16     hexazinone-irgarol 0.98924866 0.98924866 0.98924866              0               0
+#> 17    hexazinone-simazine 0.01762720 0.01762720 0.01762720              0               0
+#> 18 hexazinone-tebuthiuron 0.01050131 0.01050131 0.01050131              0               0
+#> 19       irgarol-simazine 0.01037630 0.01037630 0.01037630              0               0
+#> 20    irgarol-tebuthiuron 0.01037630 0.01037630 0.01037630              0               0
+#> 21   simazine-tebuthiuron 0.07975997 0.07975997 0.07975997              0               0
 ```
 
 Of the 21 pairs, 16 have a probability below 0.05 or above 0.95. For example,
@@ -347,8 +367,9 @@ the probability that irgarol has the higher N(S)EC is 0.009 against simazine and
 0.732, the most potent of the set, followed by ametryn and diuron at 0.837,
 atrazine and hexazinone at 0.839, ametryn and irgarol at 0.923, and simazine and
 tebuthiuron at 0.077.
-`bnec_group()` fits each herbicide separately, so the independence that the
-random pairing of `compare_posterior` assumes is satisfied here.
+`bnec_group()` fits each herbicide to its own data, with no parameter shared
+between herbicides, so the posteriors are independent and the paired
+differences approximate the posterior of the difference for each pair.
 
 The N(S)EC is a no-effect estimate, and it is not what @jones2003 report. They
 report EC50 values (the concentration at which yield is halved), so the
@@ -358,13 +379,13 @@ comparison with the source study uses `ecx()`.
 ``` r
 ecx(fits_herb, ecx_val = 50)
 #>         level         Q50        Q2.5       Q97.5 bound_Q50 bound_Q2.5 bound_Q97.5
-#> 1     ametryn   1.4591758   1.2863149   1.6324673                                 
-#> 2    atrazine  39.3445996  34.7377094  44.3024469                                 
-#> 3      diuron   2.0418154   1.8998202   2.1894078                                 
-#> 4  hexazinone   7.4208606   6.7161146   8.0947159                                 
-#> 5     irgarol   0.5399852   0.4873592   0.5958367                                 
-#> 6    simazine 124.1203960 112.8038986 136.3685623                                 
-#> 7 tebuthiuron  90.3584313  84.5195241  95.2532588
+#> 1     ametryn   1.4576962   1.2873341   1.6358331                                 
+#> 2    atrazine  39.3817666  34.7542251  44.0629222                                 
+#> 3      diuron   2.0387335   1.9059073   2.1832743                                 
+#> 4  hexazinone   7.4213779   6.7734750   8.0840415                                 
+#> 5     irgarol   0.5395958   0.4869177   0.5975541                                 
+#> 6    simazine 123.9402871 112.7926023 136.1374083                                 
+#> 7 tebuthiuron  90.3790885  84.5884054  95.3354059
 ```
 
 @jones2003 give EC50 values of 0.7 µg/L for irgarol, 1.7 for ametryn, 2.3 for
@@ -401,8 +422,11 @@ effective quantum yield of photosystem II, the quantity also recorded in
 `coral_colour` is a colour index used as a measure of bleaching, derived from
 photographs of the fragments and rescaled between the smallest and largest
 values observed (see `?coral_colour`). @flores2021 report that all corals at 9.6
-and 29 µg/L had died after 10 to 11 days of exposure, so the colour readings at
-29 µg/L are of fragments that had bleached completely.
+and 29 µg/L had died after 10 to 11 days of exposure. The corals at 9.6 µg/L had
+bleached by 10 days and were photographed then, whereas those at 29 µg/L died
+before they could be photographed. `coral_colour` therefore has five
+concentrations (0, 0.29, 0.96, 2.9 and 9.6 µg/L), and `coral_pam` has a sixth,
+29 µg/L.
 
 @flores2021 compared EC50 values between the scenarios using `bayesnec`, and
 found that the colour index EC50 was lower under both future scenarios than
@@ -414,12 +438,13 @@ scenarios were not separated.
 
 Both endpoints include an untreated control recorded as a concentration of 0,
 which has no position on a log axis, and `bnec()` refuses `crf(log(diuron))`
-because the logarithm of 0 is not finite. We therefore substitute 0.1 µg/L for the control. The
-treatments form a half-log dilution series (0.29, 0.96, 2.9, 9.6 and 29 µg/L,
-each step about 3.16 times the last), and 0.1 is one further step below the
+because the logarithm of 0 is not finite. We therefore substitute 0.1 µg/L
+for the control. The non-zero treatments (0.29, 0.96, 2.9, 9.6 and, for yield
+only, 29 µg/L) are separated by steps of approximately half a log unit (a factor
+of about three), and the value 0.1 is one further half-log step below the
 lowest treatment, rounded. The substitution is made here and not in the shipped
-data, and an estimate returned near 0.1 µg/L would describe the substitution
-and not diuron.
+data, and an estimate returned near 0.1 µg/L would describe the substitution and
+not diuron.
 
 
 ``` r
@@ -441,12 +466,13 @@ a term of this kind estimates where each of its levels is observed at a single
 concentration, and the model weights of a set fitted with it leave out each
 chamber whole (see the `loo_controls` argument of `bnec()`).
 
-The colour design has five concentrations and none between 2.9 and 29 µg/L,
-which appears to be too few to estimate both asymptotes of an equation with four
-curve parameters reliably. We therefore restrict the model set to four
-equations with three curve parameters (`nec3param`, `ecxll3`, `ecxwb1p3` and
-`ecxwb2p3`), and use this set for yield as well, so that the endpoints are compared on one
-set of equations.
+The colour design has five concentrations, which appears to be too few to
+estimate both asymptotes of an equation with four curve parameters reliably. We
+therefore restrict the model set to four equations with three curve parameters
+(`nec3param`, `ecxll3`, `ecxwb1p3` and `ecxwb2p3`), and use this set for yield
+as well, so that the endpoints are compared on one set of equations. [A complete analysis workflow][e9] fits the
+full declining set to the 2050 colour series and examines how the sparse
+concentrations may affect sampling, prior sensitivity and model weights.
 
 
 ``` r
@@ -470,13 +496,13 @@ fits_yield <- bnec_group(
 fits_colour <- screen_models(fits_colour, group_action = "per_level")
 #> Screening level "2018".
 #> Dropping 1 of 4 candidate models that failed the sampler screen:
-#>   -  ecxwb2p3: 52 divergent transitions
+#>   -  ecxwb2p3: 80 divergent transitions
 #> Fitted models are: nec3param ecxll3 ecxwb1p3
+#> The leave-one-group-out score has Pareto k above 0.7 for 1 of 15 levels of chamber in nec3param (weight 0.34); 1 of 15 levels of chamber in ecxwb1p3 (weight 0.34); 1 of 15 levels of chamber in ecxll3 (weight 0.32). The scores of those levels are approximate; loo_controls = list(refit = TRUE) replaces them by refitting the equation without each level.
 #> Screening level "2050".
 #> Dropping 1 of 4 candidate models that failed the sampler screen:
-#>   -  ecxll3: ESS 387.5
-#> Fitted models are: nec3param ecxwb1p3 ecxwb2p3
-#> The leave-one-group-out score has Pareto k above 0.7 for 1 of 15 levels of chamber in ecxwb2p3 (weight 0.51). The scores of those levels are approximate; loo_controls = list(refit = TRUE) replaces them by refitting the equation without each level.
+#>   -  nec3param: ESS 380.4
+#> Fitted models are: ecxll3 ecxwb1p3 ecxwb2p3
 #> Screening level "2100".
 #> All 4 candidate models passed the sampler screen (Rhat <= 1.01, ESS >= 400, divergences <= 10).
 fits_yield <- screen_models(fits_yield, group_action = "per_level")
@@ -484,23 +510,22 @@ fits_yield <- screen_models(fits_yield, group_action = "per_level")
 #> All 4 candidate models passed the sampler screen (Rhat <= 1.01, ESS >= 400, divergences <= 10).
 #> Screening level "2050".
 #> Dropping 1 of 4 candidate models that failed the sampler screen:
-#>   -  nec3param: ESS 185.1
+#>   -  nec3param: ESS 216.4
 #> Fitted models are: ecxll3 ecxwb1p3 ecxwb2p3
-#> The leave-one-group-out score has Pareto k above 0.7 for 1 of 18 levels of chamber in ecxll3 (weight 0.97); 1 of 18 levels of chamber in ecxwb2p3 (weight 0.03). The scores of those levels are approximate; loo_controls = list(refit = TRUE) replaces them by refitting the equation without each level.
+#> The leave-one-group-out score has Pareto k above 0.7 for 1 of 18 levels of chamber in ecxll3 (weight 0.95); 1 of 18 levels of chamber in ecxwb2p3 (weight 0.048). The scores of those levels are approximate; loo_controls = list(refit = TRUE) replaces them by refitting the equation without each level.
 #> Screening level "2100".
 #> All 4 candidate models passed the sampler screen (Rhat <= 1.01, ESS >= 400, divergences <= 10).
 ```
 
 
-The screen removes one equation from three of the six level fits: `ecxwb2p3`
-from the 2018 colour fit (52 divergent transitions), `ecxll3` from the 2050
-colour fit (an ESS of 388) and `nec3param` from the 2050 yield fit (an ESS of
-185). For the 2050 fits of both endpoints, the leave-one-group-out score also has a
-Pareto *k* above 0.7 for one chamber in some equations (`ecxwb2p3` for colour,
-and `ecxll3` and `ecxwb2p3` for yield), so the contribution of that chamber to
-the model weights is approximate. `loo_controls = list(refit = TRUE)` would
-replace it by refitting each equation without the chamber, which we have not
-done here.
+
+The screen removes `ecxwb2p3` from the 2018 colour fit, `nec3param` from the 2050 colour fit and `nec3param` from the 2050 yield fit, and the messages above give the criterion
+that each failed. Where the leave-one-group-out score has a Pareto *k* above 0.7
+for a chamber, the messages also name the equation, and the contribution of
+that chamber to the model weights is approximate.
+`loo_controls = list(refit = TRUE)` would replace it by refitting each equation
+without the chamber, which we have not done here.
+
 
 ``` r
 rbind(data.frame(endpoint = "colour (proportion)", group_curves(fits_colour)),
@@ -531,86 +556,118 @@ the others, from the control to about 2 µg/L.
 
 ## Comparing toxicity estimates across scenarios
 
-We first compare the colour EC50 across the scenarios, because this is the
-estimate @flores2021 compared.
+We compare three estimates across the scenarios, for both endpoints: the EC50,
+which is the estimate @flores2021 compared, and the EC10 and the N(S)EC, which
+describe smaller effects or none. `compare_posterior` is called once for each estimate
+and endpoint, and the table collates `prob_diff` from each call, i.e. the
+probability that the first scenario of each pair has the higher estimate.
 
 
 ``` r
-cmp_colour <- compare_posterior(fits_colour, comparison = "ecx", ecx_val = 50)
-cmp_colour$prob_diff
-#>   comparison     prob prob_lower prob_upper censored_first censored_second
-#> 1  2018-2050 0.961875   0.961875   0.961875              0        0.000000
-#> 2  2018-2100 0.997250   0.997250   0.997250              0        0.000125
-#> 3  2050-2100 0.922000   0.922000   0.922000              0        0.000125
+compare_scenarios <- function(fit) {
+  list(EC50 = compare_posterior(fit, comparison = "ecx", ecx_val = 50),
+       EC10 = compare_posterior(fit, comparison = "ecx", ecx_val = 10),
+       "N(S)EC" = compare_posterior(fit, comparison = "n(s)ec"))
+}
+cmp_coral <- list(colour = compare_scenarios(fits_colour),
+                  yield = compare_scenarios(fits_yield))
+coral_probs <- bind_rows(lapply(cmp_coral, function(cmps) {
+  data.frame(comparison = cmps$EC50$prob_diff$comparison,
+             sapply(cmps, function(x) x$prob_diff$prob), check.names = FALSE)
+}), .id = "endpoint")
+coral_probs
+#>   endpoint comparison      EC50      EC10     N(S)EC
+#> 1   colour  2018-2050 0.9585000 0.9703750 0.96962500
+#> 2   colour  2018-2100 0.9955000 0.9925000 0.98200000
+#> 3   colour  2050-2100 0.9608750 0.9026250 0.73537500
+#> 4    yield  2018-2050 0.3974247 0.2889111 0.30503813
+#> 5    yield  2018-2100 0.6180773 0.2255282 0.09551194
+#> 6    yield  2050-2100 0.6694587 0.3194149 0.10101263
 ```
 
+The posterior draws behind each probability are returned in `posterior_data`,
+and we plot them as densities, with one panel for each endpoint and estimate.
+
 
 ``` r
-ggplot(data = cmp_colour$posterior_data, mapping = aes(x = value)) +
+coral_post <- bind_rows(lapply(cmp_coral, function(cmps) {
+  bind_rows(lapply(cmps, `[[`, "posterior_data"), .id = "estimate")
+}), .id = "endpoint")
+coral_post$estimate <- factor(coral_post$estimate,
+                              levels = c("EC50", "EC10", "N(S)EC"))
+ggplot(data = coral_post, mapping = aes(x = value)) +
   geom_density(mapping = aes(group = model, colour = model, fill = model),
                alpha = 0.3) +
+  facet_grid(endpoint ~ estimate, scales = "free_y") +
   log_x +
   theme_classic() +
-  labs(x = "Colour EC50 (ug/L)", y = "Density", fill = "Scenario",
+  theme(legend.position = "bottom") +
+  labs(x = "Diuron (ug/L), control at 0.1", y = "Density", fill = "Scenario",
        colour = "Scenario")
 ```
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp4-cmp-colour-1.png" alt="plot of chunk exmp4-cmp-colour" width="85%" />
-<p class="caption">plot of chunk exmp4-cmp-colour</p>
+<img src="vignette-fig-exmp4-cmp-scenarios-1.png" alt="plot of chunk exmp4-cmp-scenarios" width="95%" />
+<p class="caption">plot of chunk exmp4-cmp-scenarios</p>
 </div>
 
-The probability that the 2018 EC50 is the higher is 0.962 against the 2050
-scenario and 0.997 against the 2100 scenario, which is similar to the
-probabilities of 0.956 and 0.970 that @flores2021 report. However, the EC50 values themselves differ from theirs. The posterior for 2100 is centred near 4 µg/L and
-that for 2050 near 6 µg/L (with a second mode near 10), whereas the posterior for
-2018 is spread from about 8 µg/L to 29 µg/L, the highest concentration tested.
-@flores2021 report EC50 values of 6.05, 4.99 and 4.86 µg/L, measured for each
-scenario against one reference response (halfway between the mean 2018 control
-and the mean 2100 response at 29 µg/L), whereas `ecx()` measures each scenario
-against its own control. The width of the 2018 posterior probably reflects the
-colour design, which has no concentration between 2.9 and 29 µg/L at which to
-locate the 2018 decline.
-
-This comparison can be made for any estimate that `compare_posterior` accepts.
-Here we tabulate the probabilities for the EC50, the EC10 and the N(S)EC, for
-both endpoints.
 
 
-``` r
-scenario_probs <- function(fit) {
-  prob <- function(...) compare_posterior(fit, ...)$prob_diff
-  ec50 <- prob(comparison = "ecx", ecx_val = 50)
-  data.frame(comparison = ec50$comparison,
-             EC50 = ec50$prob,
-             EC10 = prob(comparison = "ecx", ecx_val = 10)$prob,
-             "N(S)EC" = prob(comparison = "n(s)ec")$prob,
-             check.names = FALSE)
-}
-rbind(data.frame(endpoint = "colour", scenario_probs(fits_colour),
-                 check.names = FALSE),
-      data.frame(endpoint = "yield", scenario_probs(fits_yield),
-                 check.names = FALSE))
-#>   endpoint comparison     EC50     EC10   N(S)EC
-#> 1   colour  2018-2050 0.961875 0.963875 0.953750
-#> 2   colour  2018-2100 0.997250 0.994875 0.985875
-#> 3   colour  2050-2100 0.922000 0.945500 0.890500
-#> 4    yield  2018-2050 0.402125 0.272125 0.271625
-#> 5    yield  2018-2100 0.631125 0.223625 0.082375
-#> 6    yield  2050-2100 0.689875 0.305875 0.084250
-```
+The concentration axis is shared by all six panels, whereas the density axis is
+shared only within each endpoint. In the N(S)EC panels, up to
+1.1 per cent of the draws of a
+scenario are at 0.1 µg/L, the value substituted for the control, and so describe
+the substitution and not diuron.
 
-For colour, the 2018 scenario has the higher estimate against both future
-scenarios with a probability above 0.95, whichever of the three estimates is
-used. For yield, no estimate gives a probability below 0.05 or above 0.95, and the
-probabilities for the EC50 and the EC10 range from 0.22 to 0.69, which is
-consistent with the probabilities of 0.615 and 0.539 that @flores2021 report
-for the yield EC50.
-The yield N(S)EC under the 2100 scenario is higher than under the other two
-scenarios, with a probability of 0.92 against each, which is in the opposite
-direction to an effect of warming. This may reflect the less precisely estimated
-control under the 2100 scenario (the wider band in the figure above), because
-the NSEC is measured from a lower quantile of the control response, and should not be read as an effect of climate from these data.
+For the colour EC50 (top left panel), the probability that the 2018 estimate is
+the higher is 0.959 against the 2050
+scenario and 0.996 against the 2100
+scenario, where @flores2021 report 0.956 and 0.970. These could not be expected
+to match exactly, because our model differs from theirs in two respects. The
+fits here use a restricted set of four equations, whereas @flores2021 averaged
+over a larger set (their Table S2), and the fits here include a group-level term
+for chamber (`ogl(chamber)`), which @flores2021 did not fit. The EC50 values are
+also defined differently. The posterior medians are
+7.8,
+4.9 and
+3.4 µg/L for 2018, 2050 and 2100, against
+the values of 6.05, 4.99 and 4.86 µg/L that @flores2021 report. They measured
+each scenario against one reference response (halfway between the mean 2018
+control and the mean 2100 response at the highest concentration), whereas
+`ecx()` measures each scenario against its own control. The 95% credible
+interval of the 2018 EC50 is 5.1 to 9.5 µg/L, which
+probably reflects the colour design: under 2018 the mean colour at 2.9 µg/L is
+still at the control level, and the only higher concentration is 9.6 µg/L, so
+there are no observations within the range of concentrations where the 2018
+response declines.
+
+For colour, the order of the scenarios by increasing posterior median is
+2100, 2050 and 2018 for all three estimates. Across the three estimates, the probability that the
+2018 estimate is the higher ranges from 0.959
+to 0.996 against the 2050 and 2100 scenarios.
+The 2018 posteriors are also wide for the EC10 and the N(S)EC (e.g. a 95%
+credible interval for the EC10 of 2.9 to 9.2 µg/L,
+against 1.9 to 3.9 µg/L for 2050), which is again
+likely to reflect the absence of observations between 2.9 and 9.6 µg/L.
+
+For yield, the EC50 posteriors of the three scenarios overlap almost completely
+(bottom left panel), and none of the probabilities is below 0.05 or above
+0.95. The probabilities for the EC50 and the EC10 range from
+0.23 to 0.67,
+which is consistent with the probabilities of 0.615 and 0.539 that @flores2021
+report for the yield EC50. For the EC10 and the N(S)EC, the 2100 posterior is
+wider than those of the other two scenarios and extends to higher
+concentrations (e.g. a 95% credible interval for the N(S)EC of
+0.36 to 1.9 µg/L, against
+0.18 to 0.85 µg/L for 2018). The yield N(S)EC under
+the 2100 scenario is the higher, with a probability of
+0.904 against 2018 and
+0.899 against 2050,
+which is in the opposite direction to an effect of warming. This may reflect the
+less precisely estimated control under the 2100 scenario (the wider band in the
+figure of the fitted curves above), because the NSEC is measured from a lower
+quantile of the control response, and it should not be read as an effect of
+climate from these data.
 
 ## Comparing the fitted curves
 
@@ -626,12 +683,12 @@ cmp_colour_fit <- compare_posterior(fits_colour, comparison = "fitted",
                                     resolution = 200)
 head(cmp_colour_fit$posterior_data)
 #>   model         x  Estimate      Q2.5     Q97.5
-#> 1  2018 0.1000000 0.7285043 0.6922875 0.7664554
-#> 2  2018 0.2452261 0.7283892 0.6922071 0.7657922
-#> 3  2018 0.3904523 0.7282519 0.6922044 0.7653569
-#> 4  2018 0.5356784 0.7280907 0.6921380 0.7643305
-#> 5  2018 0.6809045 0.7278394 0.6919410 0.7640378
-#> 6  2018 0.8261307 0.7275729 0.6917574 0.7635209
+#> 1  2018 0.1000000 0.7283760 0.6921409 0.7658922
+#> 2  2018 0.1477387 0.7283682 0.6921404 0.7658674
+#> 3  2018 0.1954774 0.7283682 0.6921398 0.7657894
+#> 4  2018 0.2432161 0.7283682 0.6921388 0.7657311
+#> 5  2018 0.2909548 0.7283622 0.6921374 0.7657304
+#> 6  2018 0.3386935 0.7283507 0.6921365 0.7656390
 ```
 
 In the case of `comparison = "fitted"` the elements returned by
@@ -674,157 +731,26 @@ ggplot(data = cmp_colour_fit$prob_diff) +
 <p class="caption">plot of chunk exmp4-colour-prob</p>
 </div>
 
-The fitted curves for the three scenarios start at a similar colour (about 0.72
-to 0.73 at the control), and the 2100 curve declines first, below 1 µg/L,
-followed by the 2050 curve near 2 µg/L and the 2018 curve near 10 µg/L. The band
-for 2018 is wide above 3 µg/L, again reflecting the absence of observations
-between 2.9 and 29 µg/L. The probability that the 2018 curve is the higher
-exceeds 0.9 against the 2100 curve from about 0.7 µg/L and against the 2050
-curve from about 2 µg/L. Above about 1.5 µg/L, the comparison with 2100
-remains above 0.95, while the comparison with 2050 dips to about 0.94 near
-10 µg/L. The
-2050 and 2100 curves are most clearly separated near 3 µg/L (a probability of
-about 0.99), and less so near 10 µg/L (about 0.86). This suggests that the
-scenarios differ over most of the range above about 1 µg/L, which is where the
+
+
+The fitted curves for the three scenarios start at a similar colour
+(0.71 to
+0.73 at the control), and their medians
+fall 10 per cent below the control value in the order 2100 (1.7 µg/L), 2050 (2.6 µg/L) and 2018 (5.4 µg/L). The
+band for 2018 is widest at 8.7 µg/L, which is again likely
+to reflect the absence of observations between 2.9 and 9.6 µg/L. The probability
+that the 2018 curve is the higher first exceeds 0.9 at
+1.2 µg/L against the 2100 curve and at
+2 µg/L against the 2050 curve, and
+at the highest concentration it is
+1.000 and
+1.000, respectively. The
+2050 and 2100 curves are most clearly separated at
+2.9 µg/L (a probability of
+0.984), and the probability is
+0.915 at the highest concentration. This
+suggests that the scenarios differ over the range of concentrations in which the
 colour response declines under at least one scenario.
-
-# Contrasts from a joint refit
-
-The comparisons above treat the levels as separate fits. `bnec_joint()` instead
-takes the per-level fits of a `bnec_group()` call and builds one model that includes all levels, each level keeping the equation its own weights
-favour and its own copy of that equation's parameters. A difference between two
-levels is then a difference between coefficients of one fit, taken draw by draw,
-and it needs no permutation.
-
-No equation is named in the call. The equation for each level is read from the
-weights the `bnec_group()` fit already computed, so the refit is of what each
-herbicide separately favoured, and not of one form imposed on all seven. The
-call comes after `screen_models()`, so it refits the equations each herbicide
-retained after screening.
-
-
-``` r
-herb_joint <- bnec_joint(fits_herb, seed = 228, refresh = 0)
-```
-
-
-``` r
-herb_joint
-#> Object of class bayesnecjointfit
-#> 
-#>   equations         : ametryn = ecx4param, atrazine = ecxwb1, diuron = ecxll5, hexazinone = ecxll3, irgarol = ecx4param, simazine = ecxll3, tebuthiuron = ecxwb2p3 
-#>   grouping variable : herbicide 
-#>   levels            : ametryn, atrazine, diuron, hexazinone, irgarol, simazine, tebuthiuron 
-#>   family            : beta (link = identity) 
-#>   dispersion        : per level 
-#>   weight at level   : ametryn 0.31, atrazine 0.628, diuron 0.331, hexazinone 0.653, irgarol 0.266, simazine 0.369, tebuthiuron 0.524 
-#>   fitted by         : bayesnec 2.1.3.44, installed from a local source, which records no commit, under R 4.6.1 
-#> 
-#> Each level has its own equation and its own curve parameters in
-#> one posterior; read them from the draws as
-#> b_<parameter><level tag>_Intercept, the tags being ametryn = ametrynLv1, atrazine = atrazineLv2, diuron = diuronLv3, hexazinone = hexazinoneLv4, irgarol = irgarolLv5, simazine = simazineLv6, tebuthiuron = tebuthiuronLv7.
-#> ecx(), nsec() and nec() return one row per level, and autoplot()
-#> draws one panel per level.
-```
-
-Five different equations are used across the seven herbicides: `ecx4param` for
-ametryn and irgarol, `ecxwb1` for atrazine, `ecxll5` for diuron, `ecxll3` for
-hexazinone and simazine, and `ecxwb2p3` for tebuthiuron. The weight each chosen
-equation received for its own herbicide ranges from 0.266 for irgarol to 0.653
-for hexazinone, and is below 0.4 for four of the seven, which suggests that most of the
-herbicides are not well described by a single form.
-
-Each estimate from a joint refit is returned per level, one row each, as for a
-`bnec_group()` fit.
-
-
-``` r
-ecx(herb_joint, ecx_val = 50)
-#>         level         Q50        Q2.5      Q97.5 bound_Q50 bound_Q2.5 bound_Q97.5
-#> 1     ametryn   1.4605707   1.2899305   1.629602                                 
-#> 2    atrazine  40.0797815  35.9054921  44.793770                                 
-#> 3      diuron   2.0623333   1.9374383   2.199501                                 
-#> 4  hexazinone   7.4538850   6.8542001   8.096523                                 
-#> 5     irgarol   0.5366745   0.4890598   0.591555                                 
-#> 6    simazine 126.5668348 117.2100626 136.350713                                 
-#> 7 tebuthiuron  90.8803725  86.7826173  95.188208
-```
-
-The contrast is then taken on the draws. `posterior = TRUE` returns the
-per-level draws as a named list, and because they come from one fit they are
-already aligned: draw *i* of one level and draw *i* of another were taken
-together, at one step of one chain.
-
-
-``` r
-herb_draws <- ecx(herb_joint, ecx_val = 50, posterior = TRUE)
-diuron_irgarol <- herb_draws[["diuron"]] - herb_draws[["irgarol"]]
-c(prob_diuron_higher = mean(diuron_irgarol > 0),
-  median_difference = median(diuron_irgarol),
-  quantile(diuron_irgarol, c(0.025, 0.975)))
-#> prob_diuron_higher  median_difference               2.5%              97.5% 
-#>           1.000000           1.525176           1.389121           1.672942
-```
-
-The diuron EC50 exceeds that of irgarol in every draw, by 1.53 µg/L (1.39 to
-1.67). A contrast can also be made on the N(S)EC, the estimate compared with
-`compare_posterior` above.
-
-
-``` r
-herb_ne_draws <- nsec(herb_joint, posterior = TRUE)
-diuron_irgarol_ne <- herb_ne_draws[["diuron"]] - herb_ne_draws[["irgarol"]]
-c(prob_diuron_higher = mean(diuron_irgarol_ne > 0),
-  median_difference = median(diuron_irgarol_ne),
-  quantile(diuron_irgarol_ne, c(0.025, 0.975)))
-#> prob_diuron_higher  median_difference               2.5%              97.5% 
-#>        0.617000000        0.006362871       -0.038150811        0.049047814
-```
-
-On the N(S)EC the probability that diuron has the higher estimate is 0.617, with a
-median difference of 0.006 µg/L (-0.038 to 0.049), against 0.732 from
-`compare_posterior`. The joint refit and `compare_posterior` agree in direction, and do not separate
-this pair on the N(S)EC. An ECx is a fixed decline from the control of each
-level and is located where the curve is steep, whereas the N(S)EC is a departure
-from a band around the control, and where the curve is nearly flat, a small change in where that band ends
-produces a large change in the concentration at which the curve crosses it.
-
-The joint refit estimates five functional forms and a separate dispersion for
-each of seven herbicides, so we check its sampling.
-
-
-``` r
-np <- brms::nuts_params(herb_joint$fit)
-s_joint <- summary(herb_joint$fit)
-pars <- rbind(s_joint$fixed, s_joint$spec_pars)
-c(divergent = sum(np$Value[np$Parameter == "divergent__"]),
-  post_warmup_draws = sum(np$Parameter == "divergent__"),
-  max_rhat = max(pars$Rhat), min_bulk_ess = min(pars$Bulk_ESS))
-#>         divergent post_warmup_draws          max_rhat      min_bulk_ess 
-#>          0.000000       8000.000000          1.001749       2148.367079
-```
-
-There were no divergent transitions in 8000 post-warmup draws, with a maximum
-R-hat of 1.002 and a minimum bulk effective sample size of 2148.
-
-A joint refit conditions on one equation per level, so the model uncertainty
-that the per-level averages represent is absent from it. A narrower interval
-after selecting one equation does not by itself show a gain in precision: it
-omits uncertainty over the other equations. The chosen equation receives less
-than 0.4 of the weight for four of the seven herbicides. For irgarol, whose
-equation received 0.266 of the weight, the EC50 interval is 0.489 to 0.592 µg/L
-in the joint refit, against 0.487 to 0.596 from the per-level model average.
-The narrowing is small on these data.
-
-`compare_posterior` and a joint refit therefore answer different questions. `compare_posterior` asks
-how two independently estimated levels compare, each with its own model
-uncertainty, which is appropriate where the levels were tested separately and
-are being ranked. The joint refit asks how two levels compare conditional on
-the selected equation for each. In this example each herbicide has its own curve
-and dispersion parameters; the fitted model shares no parameter between them.
-The aligned draws give a contrast under that model. A joint refit can also
-include a shared term where the levels use one equation, for example in a
-controlled comparison of treatments or sites.
 
 # Provenance
 
