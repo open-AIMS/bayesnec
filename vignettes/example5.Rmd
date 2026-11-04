@@ -331,8 +331,8 @@ four parameters of the **nec4param** equation (**bot**, **top**, **beta** and
 Distributional Parameters* block containing `phi` (the precision of the Beta
 response), then the *NEC* estimate with its credible interval, and then a
 Bayesian R-squared. Two chains are enough to show that the toolchain works. An
-analysis, however, should use the `brms` default of four chains, which most of
-the other vignettes take.
+analysis, however, should use the `brms` default of four chains, which the
+other vignettes take.
 
 Once this fit returns, the modelling vignettes can be followed, beginning with
 [Single model usage][e1].
