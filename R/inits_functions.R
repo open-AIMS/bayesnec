@@ -879,7 +879,14 @@ group_inits <- function(brms_bf, data, family, priors, group_spec = NULL) {
   for (k in sort(as.integer(sub("^M_", "", m_names)))) {
     n_terms <- sdata[[paste0("M_", k)]]
     n_levels <- sdata[[paste0("N_", k)]]
-    out[[paste0("sd_", k)]] <- as.array(rep(start_sd, n_terms))
+    # A gr(g, by = h) term declares sd_k as a matrix, one column per level
+    # of h, and a vector of the wrong shape stops every chain at initialisation.
+    n_by <- sdata[[paste0("Nby_", k)]]
+    out[[paste0("sd_", k)]] <- if (is.null(n_by)) {
+      as.array(rep(start_sd, n_terms))
+    } else {
+      matrix(start_sd, nrow = n_terms, ncol = n_by)
+    }
     out[[paste0("z_", k)]] <- matrix(0, nrow = n_terms, ncol = n_levels)
   }
   for (nm in group_zero_intercepts(group_spec, family)) {
