@@ -2126,6 +2126,14 @@
 
 ## Bug fixes
 
+- A `pgl()` or `ogl()` term whose grouping is a `gr()` call with a `by`
+  variable, such as `pgl(gr(plate, by = toxicant))`, fits one standard
+  deviation for each level of `by`. Its initial values gave each standard
+  deviation a single value, which Stan refused, so every chain stopped at
+  initialisation. A `gr()` grouping in a `(par | group)` term is refused with a
+  message that names the `pgl()` and `ogl()` form, where it was misread as a
+  variable missing from the data. `?bayesnecformula` documents the `by` form.
+
 - `compare_posterior()` returns the names of the fits it is given unchanged in
   `posterior_data`. A name that is not a syntactic R name, such as the level
   `"2018"` of a `bnec_group()` fit, was returned as `"X2018"`, and so no longer
