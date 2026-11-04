@@ -18,6 +18,9 @@
 #' different values of an argument, the \code{\link{bnec}} default is used and a
 #' message names the argument. An object fitted by an earlier version of
 #' \pkg{bayesnec} records none of them.
+#' All component models must retain the same number of posterior draws for
+#' model weighting. When iteration counts differ, refit with \code{thin} set
+#' during fitting so the retained draw counts agree before combining the fits.
 #'
 #' Each equation keeps the record of the installation of \pkg{bayesnec} that
 #' fitted it, and a message reports a combined set whose equations were fitted
