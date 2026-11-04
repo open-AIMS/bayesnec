@@ -2,12 +2,12 @@
 
 ## Default priors
 
-- Under `prior_type = "regularizing"`, `d` and `f` now use `normal(0, 1)`
-  across the equations that estimate them. Their `"uninformative"` entries
-  remain `normal(0, 5)`. `beta` and `slope` retain `normal(0, 5)` in both
-  sets: a narrower zero-centred rate prior would change its meaning with
-  concentration units, and `slope` also controls a power exponent in some
-  equations. The fitted checks and their limits are recorded under #535.
+- Under `prior_type = "regularizing"`, the curve-shape exponents `d` and `f`
+  take a `normal(0, 1)` prior in every equation that estimates them, and
+  `normal(0, 5)` under `"uninformative"`. `beta` and `slope` take
+  `normal(0, 5)` in both sets, because the value of a rate depends on the
+  concentration units, and `slope` is also an exponent in some equations
+  (#535).
 
 ## Model weights under a within-concentration group term
 

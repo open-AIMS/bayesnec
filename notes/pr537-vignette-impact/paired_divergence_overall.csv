@@ -1,4 +1,0 @@
-"arm","candidate_entries","total_divergences","mean_divergences","median_divergences","with_divergences","above_10"
-"default",260,22569,86.8038461538462,0,40,28
-"original_regularizing",260,20609,79.2653846153846,0,36,27
-"new_regularizing",260,19006,73.1,0,34,26
