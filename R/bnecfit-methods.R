@@ -347,6 +347,12 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
   if ("family" %in% names(dot_args)) {
     dot_args$family <- unmark_family(dot_args$family)
   }
+  survivor_cens <- attr(object[[1]]$bayesnecformula,
+                        "bayesnec_survivor_cens")
+  if (!is.null(survivor_cens) && !is.null(newdata)) {
+    newdata <- joint_survivor_cens_data(object[[1]]$bayesnecformula,
+                                        newdata, survivor_cens)
+  }
   if (any(vapply(object, function(fit) is.null(fit$call_args), logical(1)))) {
     # Recover the shared block before a refit can leave only one equation.
     bdat <- model.frame(object[[1]]$bayesnecformula,
@@ -371,6 +377,10 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
     if (inherits(object[[i]]$fit, "try-error")) {
       class(object[[i]]) <- "somethingwentwrong"
     } else {
+      source_data <- if (is.null(newdata)) fit_i$data else newdata
+      object[[i]]$fit <- restore_joint_survivor_data(
+        object[[i]]$fit, source_data, object[[i]]$bayesnecformula
+      )
       # brms can restore the original backend with recompile = FALSE after
       # discarding settings because the caller requested a different one.
       old_backend <- fit_i$backend

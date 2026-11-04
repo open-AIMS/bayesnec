@@ -387,6 +387,11 @@
 #' declared censored at a value the family excludes --- left-censored at 0 under
 #' Gamma or Beta, right-censored at 1 under Beta --- is an error rather than a
 #' shift, because the censored likelihood is degenerate there.
+#' In a direct two-block \code{\link{bnec}} fit, left censoring of the total
+#' response includes the zero outcome. For a survivor known to have a positive
+#' response below the bound, \code{\link{bnec_hurdle}} records survival
+#' separately. \code{\link{bnec_joint}} keeps that distinction for a Gamma
+#' refit and refuses a zero-inflated Beta refit with left-censored survivors.
 #'
 #' **NB:** \code{aterms} other than \code{trials()}, \code{weights()} and
 #' \code{cens()} are currently omitted from \code{\link{model.frame}} output. If
@@ -1209,6 +1214,7 @@ single_model_formula <- function(formula, model) {
   # update() drops attributes, so carry the internal ones across by hand.
   internal_truncation <- attr(formula, "bayesnec_internal_truncation")
   tested_range <- attr(formula, "bayesnec_tested_range")
+  survivor_cens <- attr(formula, "bayesnec_survivor_cens")
   x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
   x_term <- eval(parse(text = x_str))
   new_crf <- paste0("crf(", x_term, ", model = \"", model, "\")")
@@ -1216,6 +1222,7 @@ single_model_formula <- function(formula, model) {
   formula <- eval(parse(text = to_eval))
   attr(formula, "bayesnec_internal_truncation") <- internal_truncation
   attr(formula, "bayesnec_tested_range") <- tested_range
+  attr(formula, "bayesnec_survivor_cens") <- survivor_cens
   bayesnecformula(formula)
 }
 

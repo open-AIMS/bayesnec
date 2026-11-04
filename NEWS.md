@@ -9,6 +9,17 @@
   concentration units, and `slope` is also an exponent in some equations
   (#535).
 
+## Censored survivors in joint fits
+
+- Where a factorised Gamma growth fit includes a left-censored survivor,
+  `bnec_joint()` fits that row as an interval from zero to the recorded bound,
+  so that the joint likelihood conditions on known survival. The recorded
+  response remains positive in priors, diagnostics and plots. A zero-inflated
+  Beta joint refit with such a row is refused, because Stan cannot sample the
+  required interval likelihood at zero. Left censoring in a direct `bnec()`
+  call includes the possibility of a structural zero, for use where survival
+  status is unknown (#544).
+
 ## Model weights under a within-concentration group term
 
 - Where each level of a group-level term is observed at a single

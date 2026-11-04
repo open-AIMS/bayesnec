@@ -82,6 +82,9 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   brms_bf <- wrangle_model_formula(model, formula, bdat, family,
                                    model_survival = model_survival,
                                    level_spec = level_spec)
+  joint_cens <- prepare_joint_survivor_cens(formula, data, brms_bf)
+  data <- joint_cens$data
+  brms_bf <- joint_cens$formula
   group_spec <- parse_group_terms(formula, model)
   brm_args <- add_brm_defaults(brm_args, model, family, x, response,
                                skip_check, custom_name,
@@ -152,6 +155,7 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   } else {
     fit <- tryCatch(do.call(brm, all_args), error = fit_failed)
   }
+  fit <- restore_joint_survivor_data(fit, data, formula)
   pass <- are_chains_correct(fit, all_args$chains)
   if (!pass) {
     stop(fit_failure_condition(model,
