@@ -183,8 +183,7 @@ For the count hurdles, <code>"mu"</code> is converted to the positive-count mean
     <div id="value">
     <h2>Value</h2>
     <p>A vector containing the estimated NSEC value, including upper and
-lower 95% credible interval bounds. A grouped <code>brmsfit</code> with
-<code>by_group = TRUE</code> returns a table; see Direct brmsfit output.</p>
+lower 95% credible interval bounds.</p>
     </div>
     <div id="details">
     <h2>Details</h2>
@@ -256,18 +255,6 @@ separate fits, so it takes <code>which = "growth"</code>, <code>"survival"</code
 holds two parameter blocks inside one model, so it takes <code>dpar</code> naming
 the <span class="pkg">brms</span> distributional parameter. Supplying one where the other is
 expected is an error rather than silently ignored.</p>
-    </div>
-    <div id="direct-brmsfit-output">
-    <h2>Direct brmsfit output</h2>
-
-
-<p>With <code>group_var</code> and <code>by_group = TRUE</code>, an NSEC summary has one
-row per group. Its <code>bound_</code> columns mark a quantile as <code>&gt;=</code> or
-<code>&lt;=</code> when it lies beyond the prediction range. An empty mark means the
-quantile was estimated within the range. With <code>posterior = TRUE</code>, the
-long table instead has <code>censored_above</code> and <code>censored_below</code>
-logical columns, one flag per draw. With <code>by_group = FALSE</code>, the pooled
-posterior vector has a <code>censored</code> attribute with those flags.</p>
     </div>
     <div id="capping-and-dropping">
     <h2>Capping and dropping</h2>
