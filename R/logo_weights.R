@@ -247,7 +247,9 @@ logo_criterion <- function(fit, group, level, chunk = 1000) {
   # likelihood underflows, and the relative efficiency does not depend on scale.
   lik <- exp(sweep(ll, 2, apply(ll, 2, max)))
   chain <- rep(seq_len(nchains(fit)), each = ndraws(fit) / nchains(fit))
-  out <- suppressWarnings(loo(ll, r_eff = relative_eff(lik, chain_id = chain)))
+  out <- without_pareto_k_warning(
+    loo(ll, r_eff = relative_eff(lik, chain_id = chain))
+  )
   attr(out, "group") <- group
   attr(out, "levels") <- levels(level)
   out
@@ -261,7 +263,7 @@ logo_criterion <- function(fit, group, level, chunk = 1000) {
 #' @param leave_out \code{"group"} or \code{"observation"}, from
 #' \code{loo_controls}.
 #' @param refit Whether to refit each equation without each level whose
-#' Pareto k exceeds 0.7, from \code{loo_controls}.
+#' Pareto k is at or above 0.7, from \code{loo_controls}.
 #'
 #' @details A criterion a fit already holds for the same grouping is reused,
 #' because the set is weighted again by every function that rebuilds it. Its
@@ -316,25 +318,25 @@ weight_criteria <- function(object, x, leave_out = "group", refit = FALSE) {
 #' @param level The level of every observation, from \code{logo_levels()}.
 #' @param model The name of the equation, for messages.
 #'
-#' @details Each level whose Pareto k exceeds 0.7 is left out of the data, the
-#' equation is refitted under the same priors, and the level is scored from the
-#' refit with its deviation integrated out. Its k is then set to 0. Attributes
-#' \code{"refitted"} and \code{"refit_failed"} name the levels done, so that a
-#' rebuilt set does not refit them again.
+#' @details Each level whose Pareto k is at or above 0.7 is left out of the
+#' data, the equation is refitted under the same priors, and the level is scored
+#' from the refit with its deviation integrated out. Its k is then set to 0.
+#' The \code{"refitted"} and \code{"refit_failed"} attributes name the levels
+#' done, so that a rebuilt set does not refit them again.
 #'
 #' @return The criterion, with the refitted levels' scores replaced.
 #'
 #' @noRd
 logo_reloo <- function(o, logo, level, model) {
   done <- c(attr(logo, "refitted"), attr(logo, "refit_failed"))
-  todo <- setdiff(levels(level)[logo$diagnostics$pareto_k > 0.7], done)
+  todo <- setdiff(levels(level)[logo$diagnostics$pareto_k >= 0.7], done)
   if (length(todo) == 0) {
     return(logo)
   }
   group <- attr(logo, "group")
   message("Refitting ", model, " ", length(todo), " time",
           if (length(todo) > 1) "s", ", leaving out each level of ", group,
-          " whose Pareto k exceeds 0.7.")
+          " whose Pareto k is at or above 0.7.")
   elpd <- stats::setNames(rep(NA_real_, length(todo)), todo)
   rhat_max <- elpd
   base <- o$fit
@@ -473,43 +475,95 @@ refit_inits <- function(init, fit, train) {
   })
 }
 
-#' Report the levels whose left-out score is unreliable
+#' Suppress an intermediate Pareto k warning
 #'
-#' @param logo The leave-one-group-out criteria of a set, or \code{NULL}.
+#' @param expr An expression that computes a LOO criterion.
+#'
+#' @return The value of \code{expr}.
+#' @noRd
+without_pareto_k_warning <- function(expr) {
+  withCallingHandlers(expr, warning = function(w) {
+    if (grepl("pareto[_ -]?k", conditionMessage(w), ignore.case = TRUE)) {
+      invokeRestart("muffleWarning")
+    }
+  })
+}
+
+#' Report high Pareto k in the criteria used for model weights
+#'
+#' @param criteria The selected LOO criteria, one per equation.
 #' @param wi The set's model weights.
-#' @param refit Whether the set was refitted where k exceeds 0.7, in which
+#' @param leave_out The grouping left out, or \code{"observation"}.
+#' @param refit Whether the set was refitted where k is at or above 0.7, in which
 #' case the levels still above it are those whose refits failed.
+#' @param report_k Whether to report the diagnostic.
 #'
 #' @details Only equations given at least 0.01 of the weight are named: an
 #' unreliable score for an equation given no weight does not change the
-#' average.
+#' average. With fewer posterior draws, loo may flag values below 0.7 at its
+#' draw-dependent reliability threshold; report those separately.
 #'
 #' @return \code{NULL}, invisibly. Called for the message.
 #' @noRd
-report_logo_k <- function(logo, wi, refit = FALSE) {
-  if (is.null(logo)) {
+report_weight_k <- function(criteria, wi, leave_out, refit = FALSE,
+                            report_k = TRUE) {
+  if (!report_k) {
     return(invisible(NULL))
   }
-  high <- vapply(logo, function(l) sum(l$diagnostics$pareto_k > 0.7),
+  high <- vapply(criteria, function(l) sum(l$diagnostics$pareto_k >= 0.7,
+                                           na.rm = TRUE),
                  numeric(1))
-  named <- names(logo)[high > 0 & wi >= 0.01]
-  if (length(named) == 0) {
-    return(invisible(NULL))
+  named <- names(criteria)[high > 0 & wi >= 0.01]
+  n_units <- nrow(criteria[[1]]$pointwise)
+  groupwise <- !identical(leave_out, "observation")
+  emit <- function(msg) {
+    condition <- simpleMessage(msg)
+    class(condition) <- c("bayesnec_pareto_k_message", class(condition))
+    message(condition)
   }
-  named <- named[order(wi[match(named, names(logo))], decreasing = TRUE)]
-  n_levels <- nrow(logo[[1]]$pointwise)
-  message("The leave-one-group-out score has Pareto k above 0.7 for ",
-          paste0(high[named], " of ", n_levels, " levels of ",
-                 attr(logo[[1]], "group"), " in ", named, " (weight ",
-                 signif(wi[match(named, names(logo))], 2), ")",
-                 collapse = "; "),
-          ". The scores of those levels are approximate",
-          if (refit) {
-            "."
-          } else {
-            paste0("; loo_controls = list(refit = TRUE) replaces them by",
-                   " refitting the equation without each level.")
-          })
+  if (length(named) > 0) {
+    named <- named[order(wi[match(named, names(criteria))], decreasing = TRUE)]
+    msg <- paste0("The leave-one-", if (groupwise) "group" else "observation",
+            "-out score has Pareto k at or above 0.7 for ",
+            paste0(high[named], " of ", n_units,
+                   if (groupwise) paste0(" levels of ", leave_out) else
+                     " observations",
+                   " in ", named, " (weight ",
+                   signif(wi[match(named, names(criteria))], 2), ")",
+                   collapse = "; "),
+            ". The affected scores are approximate",
+            if (refit || !groupwise) {
+              "."
+            } else {
+              paste0("; loo_controls = list(refit = TRUE) replaces them by",
+                     " refitting the equation without each level.")
+            })
+    emit(msg)
+  }
+  draws <- vapply(criteria, function(l) {
+    s <- attr(l, "dims", exact = TRUE)[1]
+    if (length(s) == 0 || !is.finite(s)) NA_real_ else s
+  }, numeric(1))
+  threshold <- ifelse(draws > 10, pmin(1 - 1 / log10(draws), 0.7), 0.7)
+  lower <- vapply(seq_along(criteria), function(i) {
+    k <- criteria[[i]]$diagnostics$pareto_k
+    sum(k >= threshold[i] & k < 0.7, na.rm = TRUE)
+  }, numeric(1))
+  named <- names(criteria)[lower > 0 & wi >= 0.01]
+  if (length(named) > 0) {
+    named <- named[order(wi[match(named, names(criteria))], decreasing = TRUE)]
+    i <- match(named, names(criteria))
+    emit(paste0(
+      "The selected LOO score has Pareto k below 0.7 but at or above loo's ",
+      "draw-dependent reliability threshold for ",
+      paste0(lower[named], " of ", n_units, " ",
+             if (groupwise) paste0("levels of ", leave_out) else "observations",
+             " in ", named, " (weight ", signif(wi[i], 2),
+             "; threshold ", signif(threshold[i], 2), ")",
+             collapse = "; "),
+      ". Increase the number of posterior draws and reassess."
+    ))
+  }
   invisible(NULL)
 }
 
