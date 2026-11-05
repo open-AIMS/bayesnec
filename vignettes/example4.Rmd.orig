@@ -579,16 +579,7 @@ colour_2018 <- unlist(coral_probs[coral_probs$endpoint == "colour" &
                                   c("EC50", "EC10", "N(S)EC")])
 yield_ecx <- unlist(coral_probs[coral_probs$endpoint == "yield",
                                 c("EC50", "EC10")])
-# Draws at the control differ from 0.1 by rounding error, so use a tolerance.
-at_control <- with(coral_post[coral_post$estimate == "N(S)EC", ],
-                   tapply(abs(value - 0.1) < 1e-6, list(endpoint, model), mean))
 ```
-
-The concentration axis is shared by all six panels, whereas the density axis is
-shared only within each endpoint. In the N(S)EC panels, up to
-`r round(100 * max(at_control, na.rm = TRUE), 1)` per cent of the draws of a
-scenario are at 0.1 µg/L, the value substituted for the control, and so describe
-the substitution and not diuron.
 
 For the colour EC50 (top left panel), the probability that the 2018 estimate is
 the higher is `r p_coral("colour", "2018-2050", "EC50")` against the 2050
