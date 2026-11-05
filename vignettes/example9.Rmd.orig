@@ -715,7 +715,7 @@ round_cols(pareto)
 
 In this run `r sum(pareto$n_high_k > 0)` of the `r nrow(pareto)` retained
 equations had at least one chamber with *k* at or above 0.7 (the largest *k* was
-`r sprintf("%.2f", max(pareto$max_k))`). Where any chamber reaches the cutoff,
+`r sprintf("%.2f", max(pareto$max_k))`). Where any chamber has a *k* at or above the cutoff,
 `amend(x, loo_controls = list(refit = TRUE))` refits each affected equation
 without that chamber and recomputes the weights from the exact scores. The chunk
 below does so for each set that needs it, and gives the final weights.
