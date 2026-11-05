@@ -70,12 +70,6 @@
   range. Other draws in that control tail still take the control
   concentration. This can change NSEC estimates and intervals, including
   stored NSEC values calculated during fitting.
-- `nsec.brmsfit()` now retains beyond-grid draws as censored ranks when it
-  summarises them. Previously a call with any such draw stopped while taking
-  a quantile of missing values. Its summaries use the same observed order
-  statistics as the other bayesnec NSEC methods when draws are censored.
-  Grouped summaries mark censored quantiles in `bound_` columns; grouped
-  posterior output includes per-draw censoring flags.
 
 ## Package metadata
 
@@ -85,6 +79,9 @@
   bound understated what running the tests requires. No package code changes.
 
 ## Removed functions
+
+- `nsec()` no longer accepts `brmsfit` or `drc` objects. Use
+  `toxval::nsec()` for those fits.
 
 - `average_estimates()` is removed. It combined the NEC, NSEC or ECx
   posteriors of several separate fits into a geometric mean, draw by draw.
@@ -551,9 +548,7 @@
   posterior holds no draw beyond it and a wider limit returns the same
   truncated posterior. And a curve-read component is measured from the control,
   so a lower limit below the lowest observed concentration extends the grid
-  without extending the search. `nsec()` on a `brmsfit` or a `drc` fit refuses
-  `extrapolate`, because neither stores a prediction range to measure a limit
-  against (#392).
+  without extending the search.
 
 - `compare_estimates()` and `compare_posterior()` now compare a censored draw
   through its censoring record instead of deleting it. For many pairs the
