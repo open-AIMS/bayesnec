@@ -1215,7 +1215,7 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
 #' The fitted option returns the predictor on the scale transformed inside
 #' \code{crf()}, with breaks in attribute \code{"x_axis"} labelled in
 #' recorded units.
-#' @param ... Unused.
+#' @param ... Unused. \code{dpar} is refused: select a curve with \code{which}.
 #' @param which Which curve(s) to return. See \code{\link{plot}}.
 #' @param resolution The number of unique predictor values.
 #' @param x_range A range of predictor values.
@@ -1233,6 +1233,7 @@ ggbnec_data.bayesnechurdlefit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                                           x_scale = c("recorded", "fitted")) {
   which <- hurdle_check_plot_which(which)
   check_xform(xform)
+  check_plot_dpar(list(...), x)
   x_scale <- plot_x_scale(x, x_scale, xform)
   panels <- if (which == "all") {
     c("combined", "growth", "survival")
@@ -1360,6 +1361,7 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
                                        x_scale = c("recorded", "fitted"),
                                        nec = TRUE, ecx = FALSE, ecx_val = 10) {
   which <- hurdle_check_plot_which(which)
+  check_plot_dpar(list(...), object)
   chk_lgl(CI)
   check_point_alpha(point_alpha)
   chk_lgl(nec)

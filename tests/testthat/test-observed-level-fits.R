@@ -245,6 +245,29 @@ test_that("the block panels of a joint refit read its observed levels", {
                unname(as.numeric(bayesnec:::estimates_summary(hu_ne))))
   expect_equal(lines("Response of survivors"),
                unname(as.numeric(bayesnec:::estimates_summary(mu_ne))))
+
+  # With group, the survival panel draws the proportion alive in each level.
+  grouped <- suppressWarnings(suppressMessages(
+    ggbnec_data(fit, which = "all", add_nec = FALSE, group = "plate")
+  ))
+  expect_true(attr(grouped, "group_fitted"))
+  alive <- grouped[grouped$panel == "Probability of survival" &
+                     !is.na(grouped$y_r), , drop = FALSE]
+  obs <- fit$fit$data
+  expected <- do.call(rbind, lapply(split(obs, obs$plate), function(part) {
+    s <- bayesnec:::survival_by_x(part$x, part$y)
+    data.frame(plate = part$plate[1], x = s$x, y = s$y)
+  }))
+  expect_equal(as.character(alive$group), expected$plate)
+  expect_equal(alive$x_r, expected$x)
+  expect_equal(alive$y_r, expected$y)
+  survivors <- grouped[grouped$panel == "Response of survivors" &
+                         !is.na(grouped$y_r), , drop = FALSE]
+  expect_equal(nrow(survivors), sum(obs$y > 0))
+  p <- suppressWarnings(suppressMessages(
+    autoplot(fit, which = "all", group = "plate")
+  ))
+  expect_no_error(ggplot2::ggplot_build(p))
 })
 
 test_that("a joint refit reads its spanning group levels", {

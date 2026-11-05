@@ -1030,6 +1030,28 @@ joint_hurdle_cache <- local({
   }
 })
 
+# A two-block model set whose survival block is a smooth equation, on an
+# untransformed predictor. Fitted once per test process.
+joint_set_cache <- local({
+  cached <- NULL
+  function() {
+    if (is.null(cached)) {
+      set.seed(565)
+      conc <- rep(c(0, 0.5, 1, 2, 4, 8), each = 10)
+      mu <- 20 * exp(-0.4 * pmax(conc - 1.5, 0))
+      alive <- stats::rbinom(length(conc), 1, 0.95 / (1 + (conc / 4)^3))
+      y <- ifelse(alive == 1, stats::rgamma(length(conc), 15, 15 / mu), 0)
+      cached <<- suppressWarnings(suppressMessages(bnec(
+        y ~ crf(x, c("nec3param", "ecx4param")),
+        data = data.frame(x = conc, y = y), family = "hurdle_gamma",
+        model_survival = "ecxll3", chains = 2, iter = 600, warmup = 300,
+        seed = 565, refresh = 0, resolution = 50
+      )))
+    }
+    cached
+  }
+})
+
 panel_titles <- function(p) {
   layout <- ggplot2::ggplot_build(p)$layout$layout
   as.character(layout$model[order(layout$PANEL)])
@@ -1059,6 +1081,12 @@ test_that("which draws the blocks of a joint two-block fit", {
   expect_equal(panel_titles(p), joint_titles)
   expect_true("y" %in% names(p$labels))
   expect_null(p$labels$y)
+  # One row with the x axis shared, as autoplot.bayesnechurdlefit() draws.
+  layout <- ggplot2::ggplot_build(p)$layout$layout
+  expect_equal(layout$ROW[order(layout$PANEL)], rep(1L, 3))
+  expect_equal(layout$COL[order(layout$PANEL)], 1:3)
+  expect_false(p$facet$params$free$x)
+  expect_true(p$facet$params$free$y)
 
   p <- q(autoplot(fit, which = "growth"))
   expect_equal(panel_titles(p), "ecx4param")
@@ -1215,6 +1243,77 @@ test_that("plots refuse a curve they cannot draw", {
   joint <- structure(hurdle_part, class = c("bayesnecjointfit", "bnecfit"))
   expect_error(bayesnec:::check_plot_single_curve("growth", joint),
                "ecx() or nsec() and `dpar`", fixed = TRUE)
+})
+
+test_that("a smooth survival block draws its NSEC and its ECx", {
+  skip_on_cran()
+  skip_if_not_installed("rstan")
+  q <- function(expr) suppressWarnings(suppressMessages(expr))
+  fit <- q(pull_out(joint_set_cache(), model = "nec3param"))
+  p <- q(autoplot(fit, which = "all", ecx = TRUE))
+  expect_equal(panel_titles(p), paste0(
+    c("Response per individual exposed", "Response of survivors",
+      "Probability of survival"),
+    "\n", c("nec3param / ecxll3", "nec3param", "ecxll3")
+  ))
+  text <- Filter(function(layer) inherits(layer$geom, "GeomText"),
+                 p$layers)[[1]]$data
+  expect_equal(text$tag,
+               c(rownames(q(summary(fit))$nec_vals)[1], "NEC", "NSEC"))
+
+  d <- q(ggbnec_data(fit, which = "all", add_ecx = TRUE))
+  growth <- d[d$panel == "Response of survivors", , drop = FALSE]
+  survival <- d[d$panel == "Probability of survival", , drop = FALSE]
+  lines <- function(frame, column) frame[[column]][!is.na(frame[[column]])]
+  nec <- as.numeric(
+    brms::as_draws_df(fit$fit, variable = "b_nec_Intercept")$b_nec_Intercept
+  )
+  expect_equal(lines(growth, "nec_vals"),
+               unname(c(stats::median(nec),
+                        stats::quantile(nec, c(0.025, 0.975)))))
+  args <- bayesnec:::recorded_expand_args(list(fit))
+  expect_equal(lines(survival, "nec_vals"),
+               as.numeric(q(nsec(fit, dpar = "hu", sig_val = args$sig_val,
+                                 resolution = args$resolution))))
+  expect_equal(lines(growth, "ecx_vals"),
+               as.numeric(q(ecx(fit, dpar = "mu"))))
+  expect_equal(lines(survival, "ecx_vals"),
+               as.numeric(q(ecx(fit, dpar = "hu"))))
+
+  # A relative ECx is defined for a block, not for the combined curve, and
+  # the refusal names the plot's argument rather than ecx()'s.
+  expect_error(q(autoplot(fit, which = "all", ecx = TRUE,
+                          type = "relative")),
+               "`which = \"growth\"`", fixed = TRUE)
+  expect_s3_class(q(autoplot(fit, which = "survival", ecx = TRUE,
+                             type = "relative")), "ggplot")
+})
+
+test_that("a two-block model set titles each equation as pull_out() does", {
+  skip_on_cran()
+  skip_if_not_installed("rstan")
+  q <- function(expr) suppressWarnings(suppressMessages(expr))
+  set <- joint_set_cache()
+  models <- set$success_models
+  pulled <- vapply(models, function(m) {
+    panel_titles(q(autoplot(q(pull_out(set, model = m)))))
+  }, character(1))
+  expect_equal(unname(pulled), paste(models, "/ ecxll3"))
+  by_name <- unname(pulled[sort(models)])
+  p <- q(autoplot(set, model = models))
+  expect_equal(panel_titles(p), c("Model averaged predictions", by_name))
+  p <- q(autoplot(set, model = models, average = FALSE))
+  expect_equal(panel_titles(p), by_name)
+  pages <- q(autoplot(set, model = models, multi_facet = FALSE,
+                      plot = FALSE))
+  expect_equal(vapply(pages, panel_titles, character(1)),
+               c("Model averaged predictions", unname(pulled)))
+  expect_equal(p$labels$y, "Response per individual exposed")
+
+  expect_error(q(autoplot(set, which = "all")), "pull_out", fixed = TRUE)
+  expect_error(q(autoplot(set, dpar = "mu")), "pull_out", fixed = TRUE)
+  expect_error(q(autoplot(set, ecx = TRUE, type = "relative")),
+               "type = \"absolute\"", fixed = TRUE)
 })
 
 test_that("a joint two-block fit refuses dpar and names which", {

@@ -143,11 +143,16 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
     dat$model <- factor(dat$model, levels = unname(labels$title))
   }
   dat$tag <- unname(labels$tag[key])
+  # Several curves of one fit share the predictor, so they are laid out as
+  # autoplot.bayesnechurdlefit() lays them out: one row, the x axis shared.
+  several <- length(blocks) > 1
   ggbnec(dat, nec = nec, ecx = ecx, group = !is.null(group),
          group_aes = group_aes, group_label = group_label,
          group_fitted = !identical(attr(dat, "group_fitted"), FALSE),
          point_alpha = point_alpha, x_axis = x_axis, xlab = xlab,
-         ylab = plot_ylab(ylab, x, names(blocks)))
+         ylab = plot_ylab(ylab, x, names(blocks)),
+         facet_scales = if (several) "free_y" else "free",
+         facet_ncol = if (several) NULL else 2)
 }
 
 #' @rdname autoplot
@@ -215,6 +220,9 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   dots <- list(...)
   check_plot_single_curve(dots[["which"]], x)
   check_plot_dpar(dots, x)
+  if (ecx) {
+    check_plot_relative(dots, x)
+  }
   ylab <- plot_ylab(ylab, x)
   x_scale <- plot_x_scale(x, x_scale, xform)
   shown <- resolve_model_average(
@@ -238,6 +246,10 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   all_fits <- lapply(shown$model, pull_out, manec = x) |>
     suppressMessages() |>
     suppressWarnings()
+  # Title each equation as autoplot() titles it once pulled out, which for a
+  # two-block fit names the equation of each block.
+  titles <- vapply(all_fits, plot_title, character(1))
+  names(titles) <- shown$model
   if (multi_facet) {
     names(all_fits) <- shown$model
     nec_labs <- map_dfr(all_fits, function(x) {
@@ -259,6 +271,8 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
     )
     dat <- map_dfr(plot_data, identity, .id = "model") |>
       left_join(y = nec_labs, by = "model")
+    # Join the labels by equation name before the titles replace it.
+    dat$model <- unname(titles[dat$model])
     if (shown$average) {
       avg <- manec_average_plot_data(x, nec = nec, ecx = ecx, xform = xform,
                                      x_scale = x_scale, group = group,
@@ -269,7 +283,7 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
       dat <- bind_rows(avg$data, dat)
       dat$model <- factor(dat$model,
                           levels = c(manec_average_label,
-                                     sort(unique(shown$model))))
+                                     unname(titles[sort(unique(shown$model))])))
     }
     ggbnec(dat, nec = nec, ecx = ecx, group = !is.null(group),
            group_aes = group_aes, group_label = group_label,
@@ -306,7 +320,7 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
         x_axis <- attr(dat_j, "x_axis")
         group_label <- plot_group_label(dat_j, group, group_aes)
         plots[[i]] <- dat_j |>
-          mutate(model = shown$model[j],
+          mutate(model = unname(titles[j]),
                  tag = rownames(.env$summ_j$nec_vals)) |>
           ggbnec(nec = nec, ecx = ecx, group = !is.null(group),
                  group_aes = group_aes, group_label = group_label,
@@ -770,6 +784,9 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   axis_xform <- if (is.null(xform)) identity else xform
   x_grid_raw <- x$pred_vals$data$x
   two_block <- is_hurdle_family(x$fit$family)
+  if (add_ecx && "combined" %in% names(blocks)) {
+    check_plot_relative(list(...), x)
+  }
   pieces <- lapply(names(blocks), function(w) {
     dpar <- if (is.na(blocks[[w]])) NULL else blocks[[w]]
     curve <- plot_block_curve(x, dpar, x_scale)
@@ -907,6 +924,34 @@ check_plot_dpar <- function(dots, object) {
   invisible(NULL)
 }
 
+#' Refuse a relative ECx on the combined curve of a two-block fit
+#'
+#' \code{ecx()} refuses it too, but its message names \code{dpar}, which a
+#' plot refuses.
+#'
+#' @param dots The calling method's \code{list(...)}, which \code{ecx()}
+#' receives.
+#' @param object The object being plotted.
+#'
+#' @return \code{NULL}, invisibly, or an error.
+#' @noRd
+check_plot_relative <- function(dots, object) {
+  if (!identical(dots[["type"]], "relative") ||
+      !is_hurdle_family(scale_source_fit(object)$fit$family)) {
+    return(invisible(NULL))
+  }
+  remedy <- if (is_bayesnecfit(object)) {
+    paste0("Draw one block with `which = \"growth\"` or `which = ",
+           "\"survival\"`, whose ECx is measured towards the block's own ",
+           "asymptote, or use type = \"absolute\" or type = \"range\".")
+  } else {
+    "Use type = \"absolute\" or type = \"range\"."
+  }
+  stop("type = \"relative\" is not defined for the combined curve of a ",
+       "two-block fit, whose asymptote is the product of the two blocks' ",
+       "asymptotes rather than a fitted parameter. ", remedy, call. = FALSE)
+}
+
 #' Why a plot cannot select a curve with which or dpar
 #'
 #' @param object The object being plotted.
@@ -915,6 +960,11 @@ check_plot_dpar <- function(dots, object) {
 #' @return A \code{\link[base]{character}} message.
 #' @noRd
 plot_curve_refusal <- function(object, arg) {
+  if (is_bayesnechurdlefit(object)) {
+    return(paste0("A bnec_hurdle() fit selects its curve with `which`, not ",
+                  "`dpar`: `which = \"growth\"`, `\"survival\"`, ",
+                  "`\"combined\"` or `\"all\"`."))
+  }
   family <- scale_source_fit(object)$fit$family
   if (!is_hurdle_family(family)) {
     return(paste0("This fit has a ", family$family, " family, which has one ",
@@ -1007,6 +1057,16 @@ plot_block_labels <- function(object, blocks, combined_tag) {
     }
   }, character(1))
   list(title = title, tag = tag)
+}
+
+#' The panel title of a single fit's combined curve
+#'
+#' @param object A \code{\link{bayesnecfit}}.
+#'
+#' @return A \code{\link[base]{character}} value.
+#' @noRd
+plot_title <- function(object) {
+  plot_block_labels(object, c(combined = NA_character_), "")$title[[1]]
 }
 
 #' The nec parameter of one block of a joint two-block fit
@@ -1194,6 +1254,9 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   check_xform(xform)
   check_plot_single_curve(which, x)
   check_plot_dpar(list(...), x)
+  if (add_ecx) {
+    check_plot_relative(list(...), x)
+  }
   warn_stale_observed_display(x)
   x_scale <- plot_x_scale(x, x_scale, xform)
   e_df <- if (x_scale == "fitted") plot_fitted_curve(x) else x$w_pred_vals$data
@@ -1278,6 +1341,9 @@ ggbnec_data.bayesnecgroupfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                                          which = "combined") {
   check_plot_single_curve(which, x)
   check_plot_dpar(list(...), x)
+  if (isTRUE(add_ecx)) {
+    check_plot_relative(list(...), x)
+  }
   x_scale <- plot_x_scale(x, x_scale, xform)
   panel_group <- is.null(group) || identical(group, x$group_var)
   pieces <- lapply(seq_along(x$fits), function(i) {
@@ -1397,7 +1463,8 @@ check_point_alpha <- function(point_alpha) {
 ggbnec <- function(x, nec = TRUE, ecx = FALSE, group = FALSE,
                    group_aes = c("line", "colour"), group_label = NULL,
                    group_fitted = TRUE, point_alpha = 1,
-                   x_axis = NULL, xlab = "Predictor", ylab = "Response") {
+                   x_axis = NULL, xlab = "Predictor", ylab = "Response",
+                   facet_scales = "free", facet_ncol = 2) {
   group_aes <- match.arg(group_aes)
   out <- ggplot() +
     geom_polygon(data = x |> filter(!is.na(.data$y_ci)),
@@ -1518,7 +1585,7 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE, group = FALSE,
   out +
     axis_scale +
     theme_classic() +
-    facet_wrap(~.data$model, scales = "free", ncol = 2) +
+    facet_wrap(~.data$model, scales = facet_scales, ncol = facet_ncol) +
     theme(strip.text = element_text(hjust = 0),
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),

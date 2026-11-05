@@ -566,6 +566,9 @@ ggbnec_data.bayesnecjointfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   check_xform(xform)
   check_plot_single_curve(which, x)
   check_plot_dpar(list(...), x)
+  if (add_ecx) {
+    check_plot_relative(list(...), x)
+  }
   x_scale <- plot_x_scale(x, x_scale, xform)
   panel_group <- is.null(group) || identical(group, x$group_var)
   raw_group <- if (panel_group) NULL else group
