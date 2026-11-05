@@ -535,9 +535,7 @@
   posterior holds no draw beyond it and a wider limit returns the same
   truncated posterior. And a curve-read component is measured from the control,
   so a lower limit below the lowest observed concentration extends the grid
-  without extending the search. `nsec()` on a `brmsfit` or a `drc` fit refuses
-  `extrapolate`, because neither stores a prediction range to measure a limit
-  against (#392).
+  without extending the search.
 
 - `compare_estimates()` and `compare_posterior()` now compare a censored draw
   through its censoring record instead of deleting it. For many pairs the

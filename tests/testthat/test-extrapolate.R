@@ -117,12 +117,6 @@ test_that("a truncated nec prior is reported against the limit asked for", {
   )
 })
 
-test_that("extrapolate is refused where no prediction range is stored", {
-  expect_error(bayesnec:::check_no_extrapolate(5, "brmsfit"),
-               "Set the grid with x_range instead")
-  expect_true(bayesnec:::check_no_extrapolate(FALSE, "brmsfit"))
-})
-
 # Reuse stored fits without sampling. Cutting the grid to 0.9 puts every
 # nec4param draw above it, making released censoring visible.
 
