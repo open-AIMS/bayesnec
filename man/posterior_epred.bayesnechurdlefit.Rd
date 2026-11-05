@@ -40,4 +40,7 @@ The combined curve is the product of the growth curve and the
 probability of survival, i.e. the expected response per individual
 \emph{exposed}. Draws are paired by row, which is valid because the two
 posteriors are independent -- see \code{\link{bnec_hurdle}}.
+Without \code{newdata}, a group term spanning concentrations is predicted
+for its observed levels and mixed by their observation counts. A level
+observed at one concentration is excluded.
 }

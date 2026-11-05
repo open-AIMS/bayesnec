@@ -10,13 +10,18 @@
 #' @order 1
 #'
 #' @param x An object of class \code{\link{bayesnecfit}} or
-#' \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}.
-#' @param group A \code{\link[base]{numeric}} vector of the same length as the
-#' data giving the group each row belongs to, or a single
-#' \code{\link[base]{numeric}} giving the number of bins to cut the predictor
+#' \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}, or a
+#' \code{\link{bayesnecgroupfit}} returned by \code{\link{bnec_group}}.
+#' @param group A numeric, character or factor vector of the same length as the
+#' data giving the group each row belongs to, or a single numeric value giving
+#' the number of bins to cut the predictor
 #' into. If \code{NULL} (the default) the distinct values of the predictor are
 #' used where they are replicated, and the predictor is binned otherwise, with a
 #' warning.
+#' For a \code{bayesnecgroupfit}, an explicit vector has one value per row of
+#' the original data passed to \code{bnec_group()}, in its original order. It
+#' is split by fitted level before the checks. The fitted-level factor is not
+#' the predictor grouping used within each level.
 #' @param ndraws A \code{\link[base]{numeric}} vector of length 1, the number of
 #' posterior draws to simulate from. Reduced silently to the number the fit
 #' actually holds where that is smaller.
@@ -73,7 +78,16 @@
 #' observations, the observed and simulated mean and standard deviation, their
 #' ratios, a posterior predictive p-value for each, and a logical flag marking
 #' the control group. For the mixture families it also carries the observed and
-#' simulated proportion of zeros. The separate \code{"pareto"} attribute is a
+#' simulated proportion of zeros. A group with one observation has no standard
+#' deviation; its standard deviation statistics are \code{NA}, while its mean
+#' statistics remain available.
+#' A \code{bayesnecgroupfit} returns a \code{checkfit_group} object containing
+#' the original \code{checkfit} table for each fitted level in \code{$fits}.
+#' Each table retains its attributes, including any stored Pareto diagnostics.
+#' \code{print()} labels and prints each level; \code{plot()} returns a named
+#' list of plots with one plot per fitted level.
+#'
+#' The separate \code{"pareto"} attribute is a
 #' data frame with one row per equation. It names the stored criterion used for
 #' model weights, its Pareto cutoff, the count and IDs of held-out units at or
 #' above that cutoff, the largest k, and any successful or failed group refits.
@@ -98,6 +112,12 @@
 #' library(bayesnec)
 #' nec4param <- pull_out(manec_example, model = "nec4param")
 #' check_fit(nec4param)
+#' data(nec_data)
+#' nec_data$site <- rep(c("a", "b"), length.out = nrow(nec_data))
+#' grouped <- bnec_group(y ~ crf(x, "nec3param"), data = nec_data,
+#'                       group_var = "site")
+#' checks <- check_fit(grouped)
+#' plot(checks)
 #' }
 #'
 #' @export
@@ -266,8 +286,10 @@ check_fit_stats <- function(y, yrep, mu, grp, is_mixture) {
     res_sim <- sweep(sim_y, 2, mu[idx], "-")
     obs_mean <- mean(obs_y)
     sim_mean <- rowMeans(sim_y)
-    obs_sd <- sd(res_obs)
-    sim_sd <- apply(res_sim, 1, sd)
+    has_sd <- length(idx) > 1L
+    obs_sd <- if (has_sd) sd(res_obs) else NA_real_
+    sim_sd <- if (has_sd) apply(res_sim, 1, sd) else NA_real_
+    sim_sd_median <- if (has_sd) median(sim_sd) else NA_real_
     row <- data.frame(
       group = lv,
       n = length(idx),
@@ -276,15 +298,15 @@ check_fit_stats <- function(y, yrep, mu, grp, is_mixture) {
       mean_ratio = obs_mean / median(sim_mean),
       ppp_mean = ppp_value(sim_mean, obs_mean),
       obs_sd = obs_sd,
-      sim_sd = median(sim_sd),
-      sd_ratio = obs_sd / median(sim_sd),
+      sim_sd = sim_sd_median,
+      sd_ratio = obs_sd / sim_sd_median,
       ppp_sd = ppp_value(sim_sd, obs_sd),
       # The 95% span of each simulated statistic, for plot(). print() hides
       # it to keep the table within one line width.
       sim_mean_lo = unname(quantile(sim_mean, 0.025)),
       sim_mean_hi = unname(quantile(sim_mean, 0.975)),
-      sim_sd_lo = unname(quantile(sim_sd, 0.025)),
-      sim_sd_hi = unname(quantile(sim_sd, 0.975)),
+      sim_sd_lo = if (has_sd) unname(quantile(sim_sd, 0.025)) else NA_real_,
+      sim_sd_hi = if (has_sd) unname(quantile(sim_sd, 0.975)) else NA_real_,
       stringsAsFactors = FALSE
     )
     if (is_mixture) {
@@ -371,6 +393,76 @@ check_fit.bayesmanecfit <- function(x, group = NULL, ndraws = 1000, seed = 10,
                          unname(x$mod_stats[m, "wi"]))
   }))
   allot_class(out, c("checkfit", "data.frame"))
+}
+
+#' @rdname check_fit
+#' @order 4
+#' @method check_fit bayesnecgroupfit
+#' @inherit check_fit description return examples
+#' @export
+check_fit.bayesnecgroupfit <- function(x, group = NULL, ndraws = 1000,
+                                      seed = 10, ...) {
+  chk_number(seed)
+  levels <- x$levels
+  if (is.null(levels)) levels <- names(x$fits)
+  if (is.null(levels) || !identical(levels, names(x$fits))) {
+    stop("The fitted levels do not match the component fits.", call. = FALSE)
+  }
+  groups <- rep(list(group), length(levels))
+  if (!is.null(group) && length(group) > 1L) {
+    if (!is.atomic(group) || !is.null(dim(group)) ||
+        length(group) != nrow(x$data) || anyNA(group)) {
+      stop("`group` must have one non-missing value per row of the original",
+           " data, in its original order.", call. = FALSE)
+    }
+    if (is.null(x$group_var) || !x$group_var %in% names(x$data)) {
+      stop("The fitted-level column is missing from the original data.",
+           call. = FALSE)
+    }
+    groups <- lapply(levels, function(level) {
+      group[as.character(x$data[[x$group_var]]) == level]
+    })
+    for (i in seq_along(levels)) {
+      fit <- x$fits[[i]]
+      n_rows <- if (inherits(fit, "bayesmanecfit")) {
+        vapply(fit$mod_fits, function(model) nrow(model$fit$data), integer(1))
+      } else {
+        nrow(fit$fit$data)
+      }
+      if (any(length(groups[[i]]) != n_rows)) {
+        stop("The original rows for fitted level \"", levels[[i]],
+             "\" do not match its fitted data.", call. = FALSE)
+      }
+    }
+  } else if (!is.null(group) &&
+             (length(group) != 1L || !is.numeric(group) || anyNA(group))) {
+    stop("`group` must be a numeric bin count or a full-input grouping vector.",
+         call. = FALSE)
+  }
+  out <- setNames(lapply(seq_along(levels), function(i) {
+    check_fit(x$fits[[i]], group = groups[[i]], ndraws = ndraws, seed = seed)
+  }), levels)
+  structure(list(fits = out, group_var = x$group_var),
+            class = "checkfit_group")
+}
+
+#' @rdname check_fit
+#' @export
+print.checkfit_group <- function(x, ...) {
+  for (level in names(x$fits)) {
+    cat("\n", x$group_var, " = ", level, "\n", sep = "")
+    print(x$fits[[level]])
+  }
+  invisible(x)
+}
+
+#' @rdname check_fit
+#' @export
+plot.checkfit_group <- function(x, ...) {
+  setNames(lapply(names(x$fits), function(level) {
+    plot(x$fits[[level]]) +
+      ggplot2::labs(title = paste0(x$group_var, ": ", level))
+  }), names(x$fits))
 }
 
 #' Print a check_fit table
@@ -616,7 +708,9 @@ hurdle_observed_response <- function(x) {
 #' and in which direction?", which is the question that decides whether it
 #' matters. Each panel shows, per group of the predictor, the observed statistic
 #' against the 95% span of what the fitted model simulates. A point outside its
-#' interval is a group the model does not reproduce.
+#' interval is a group the model does not reproduce. A group with one
+#' observation appears in the location panel only, because its residual
+#' standard deviation is undefined.
 #'
 #' Two panels rather than one: the location and the scale fail independently and
 #' for different reasons. A model can get the mean of every group right while
@@ -666,6 +760,8 @@ plot.checkfit <- function(x, ...) {
   if (!is.null(d$model)) {
     long$model <- rep(d$model, times = 2)
   }
+  long <- long[is.finite(long$observed) & is.finite(long$lo) &
+                 is.finite(long$hi), , drop = FALSE]
   long$role <- ifelse(long$control, "control", "exposed")
   long$group <- factor(long$group, levels = unique(d$group))
   p <- ggplot(long, aes(x = .data$group)) +

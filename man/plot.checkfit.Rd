@@ -19,7 +19,9 @@ The numeric table answers "is any group off?"; the plot answers "by how much,
 and in which direction?", which is the question that decides whether it
 matters. Each panel shows, per group of the predictor, the observed statistic
 against the 95\% span of what the fitted model simulates. A point outside its
-interval is a group the model does not reproduce.
+interval is a group the model does not reproduce. A group with one
+observation appears in the location panel only, because its residual
+standard deviation is undefined.
 }
 \details{
 Two panels rather than one: the location and the scale fail independently and

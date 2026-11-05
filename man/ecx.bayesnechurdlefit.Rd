@@ -14,7 +14,9 @@
   xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
   which = "combined",
-  ...
+  ...,
+  pool = NULL,
+  x_control = "own"
 )
 }
 \arguments{
@@ -55,6 +57,19 @@ return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
 \code{"growth"} or \code{"survival"}.}
 
 \item{...}{Additional arguments passed to methods.}
+
+\item{pool}{How observed group levels are combined: \code{"none"} returns
+per-level estimates, \code{"mixture"} samples levels in proportion to their
+observation counts, \code{"mean_estimate"} averages aligned estimates, and
+\code{"mean_curve"} estimates from their weighted mean curve. A joint fit
+defaults to \code{"none"}; other fits with spanning group terms default to
+\code{"mixture"}.}
+
+\item{x_control}{\code{"own"} reads each level's lowest observed concentration;
+\code{"shared"} reads the lowest across levels; a single finite number specifies
+the concentration directly. A shared control below a level's observations
+extrapolates its curve and gives a warning. Level controls are recorded in
+the result's \code{x_control} attribute.}
 }
 \value{
 A vector containing the estimated ECx value, including upper and
@@ -67,6 +82,10 @@ Extracts the predicted ECx value from a \code{\link{bayesnechurdlefit}}
 The combined curve is the product of the growth curve and the
 survival curve. Because both decline, the combined ECx is always reached at
 or below either component's own ECx.
+For a group term spanning concentrations, each observed level pairs its
+growth and survival predictions before the endpoint is read. A level
+observed at one concentration is excluded. \code{pool} and
+\code{x_control} use the same rules as for a single fit.
 
 Without \code{x_range}, every ECx is read over the whole concentration
 series, the range the survival component is fitted over. The growth

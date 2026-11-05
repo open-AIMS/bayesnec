@@ -331,8 +331,11 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
       model_set <- candidate
     }
   }
+  # A saved fit can need its observed-level display rebuilt with the same
+  # resolution and arguments it recorded.
   if (identical(model_set, names(mod_fits)) &&
-        identical(expand_args, inherited)) {
+        identical(expand_args, inherited) &&
+        !needs_observed_rebuild(object)) {
     message("Nothing to amend, please specify a model to ",
             "either add or drop that differs from the original set.")
     message(general_error)

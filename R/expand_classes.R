@@ -36,18 +36,26 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
                           resolution = resolution)
   new_dat <- grid$newdata
   x_seq <- grid$x_seq
+  # pull_equation() skips the level predictions: its estimators read the
+  # levels directly.
+  observed <- if (isTRUE(bnec_state$skip_level_display)) NULL else
+    observed_level_spec(list(fit = fit, bayesnecformula = formula))
   # Compute the grid posterior only where it is used, and never store it: it
   # would be by far the largest part of a fitted object.
   pred_posterior <- NULL
   get_pred_posterior <- function() {
     if (is.null(pred_posterior)) {
-      pred_posterior <<- factorised_count_epred(
-        fit, formula, newdata = new_dat, re_formula = NA
-      )
+      pred_posterior <<- if (is.null(observed)) {
+        factorised_count_epred(fit, formula, newdata = new_dat,
+                               re_formula = NA)
+      } else {
+        observed_grid_posterior(fit, formula, new_dat, observed)
+      }
     }
     pred_posterior
   }
-  if (is_factorised_count_formula(formula, fit$family)) {
+  if (!is.null(observed) ||
+      is_factorised_count_formula(formula, fit$family)) {
     y_pred_m <- summarise_epred(get_pred_posterior(), robust = TRUE)
   } else {
     y_pred_m <- fitted(fit, newdata = new_dat, robust = TRUE, re_formula = NA,
@@ -124,8 +132,15 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     ne_off_curve
   }
   if (mod_class == "ecx") {
-    ne_posterior <- get_ne_off_curve()
-    extracted_params$ne <- estimates_summary(ne_posterior)
+    # Under observed levels the NSEC is read per level below. The grid
+    # posterior here mixes levels with one control column, so it must not be
+    # used for the NSEC or its censoring messages.
+    if (is.null(observed)) {
+      ne_posterior <- get_ne_off_curve()
+      extracted_params$ne <- estimates_summary(ne_posterior)
+    } else {
+      ne_posterior <- NULL
+    }
   } else {
     ne_posterior <- as_draws_df(fit)[["b_nec_Intercept"]]
     attr(ne_posterior, "censored") <- censoring_record(
@@ -141,6 +156,7 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     }
   }
   pred_vals <- list(data = pred_data)
+  if (!is.null(observed)) pred_vals$observed_levels <- TRUE
   # A hurdle fit has a second block. Keep its threshold beside the combined
   # one, and report the combined threshold: posterior_epred() returns
   # mu * (1 - hu), so pred_vals describes the combined endpoint.
@@ -171,7 +187,7 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
       # interpolate off the combined curve. With one smooth block this is an
       # N(S)EC (Fisher et al. 2023): a threshold on one process and a
       # significant-effect point on the other.
-      combined_ne <- get_ne_off_curve()
+      combined_ne <- if (is.null(observed)) get_ne_off_curve() else NULL
       ne_lab <- if (mod_class == "ecx" && hu_class == "ecx") {
         "NSEC"
       } else {
@@ -183,14 +199,63 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
                          hu_params = hu_params, hu_ne_type = hu_class,
                          ne_type = ne_lab)
     ne_posterior <- combined_ne
-    extracted_params$ne <- estimates_summary(ne_posterior)
-    if (identical(ne_lab, "NEC")) {
+    if (!is.null(ne_posterior)) {
+      extracted_params$ne <- estimates_summary(ne_posterior)
+    }
+    if (identical(ne_lab, "NEC") && is.null(observed)) {
       # Only the two-threshold branch reports here. The other reaches its
       # combination through nsec_off_curve(), which has already said the same
       # thing about the same draws.
       report_ne_censoring(attr(extracted_params$ne, "censored_summary"),
                           object$model, ne_lab)
     }
+  }
+  if (!is.null(observed)) {
+    level_fit <- allot_class(
+      list(fit = fit, bayesnecformula = formula, model = object$model,
+           ne_posterior = ne_posterior),
+      c("bayesnecfit", "bnecfit")
+    )
+    ne_posterior <- if (!is.null(hurdle_parts) &&
+                        identical(hurdle_parts$ne_type, "NEC")) {
+      parts <- lapply(seq_len(nrow(observed$combinations)), function(i) {
+        level <- observed_level_fit(level_fit, observed, i, with_ne = TRUE)
+        nd <- newdata_eval(level, resolution = 2, x_range = NA)$newdata[1, ,
+                                                                     drop = FALSE]
+        hu_ne <- as.numeric(brms::posterior_linpred(
+          fit, newdata = nd, nlpar = paste0(hu_dpar, "nec"),
+          re_formula = observed$re_formula, transform = TRUE
+        )[, 1])
+        out <- pmin(level$ne_posterior, hu_ne)
+        bounds <- sub_x_transformation(range(level$level_x), formula)
+        attr(out, "censored") <- censoring_record(
+          max(bounds), min(bounds), out >= max(bounds),
+          out <= min(bounds)
+        )
+        out
+      })
+      pool_estimate_draws(parts, observed$n, "mixture")
+    } else if (!is.null(hurdle_parts) || identical(mod_class, "ecx")) {
+      without_censored_warning(
+        nsec(level_fit, posterior = TRUE, resolution = resolution,
+             x_range = x_range, sig_val = sig_val, xform = identity)
+      )
+    } else {
+      without_censored_warning(
+        nec(level_fit, posterior = TRUE, xform = identity)
+      )
+    }
+    attr(ne_posterior, "level") <- NULL
+    attr(ne_posterior, "draw_id") <- NULL
+    attr(ne_posterior, "x_control") <- NULL
+    extracted_params$ne <- estimates_summary(ne_posterior)
+    report_ne_censoring(attr(extracted_params$ne, "censored_summary"),
+                        object$model,
+                        if (is.null(hurdle_parts)) {
+                          if (mod_class == "nec") "NEC" else "NSEC"
+                        } else {
+                          hurdle_parts$ne_type
+                        })
   }
   od <- dispersion(object, summary = TRUE)
   if (length(od) == 0) {
@@ -244,8 +309,10 @@ extract_par_order <- function() {
 #' formula because inside \code{\link{expand_manec}} the object has no class
 #' yet.
 #'
-#' Every prediction is made with \code{re_formula = NA}, which drops
-#' group-level terms. A joint refit (\code{\link{bnec_joint}} on a
+#' A term whose levels each occur at one concentration is dropped from a
+#' predicted curve. Terms spanning concentrations are included for each
+#' observed level when the grid posterior is computed. A joint refit
+#' (\code{\link{bnec_joint}} on a
 #' \code{\link{bayesnecgroupfit}}) puts the factor in the population-level part
 #' of the curve, so the grid must then name a level through \code{level_spec}.
 #'
@@ -355,7 +422,13 @@ add_grid_levels <- function(newdata, level_spec, n_x) {
 posterior_on_grid <- function(fit, formula, x_range = NA, resolution = 1000) {
   new_dat <- prediction_grid(fit, formula, x_range = x_range,
                              resolution = resolution)$newdata
-  factorised_count_epred(fit, formula, newdata = new_dat, re_formula = NA)
+  observed <- observed_level_spec(list(fit = fit,
+                                       bayesnecformula = formula))
+  if (is.null(observed)) {
+    factorised_count_epred(fit, formula, newdata = new_dat, re_formula = NA)
+  } else {
+    observed_grid_posterior(fit, formula, new_dat, observed)
+  }
 }
 
 #' Extracts a range of statistics from a list of \code{\link{prebayesnecfit}}
@@ -453,14 +526,14 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
     define_loo_controls(loo_controls, fam_tag)
   }
   loo_w_controls <- loo_controls$weights
-  for (i in seq_along(object)) {
+  once_level_note(for (i in seq_along(object)) {
     object[[i]] <- without_pareto_k_warning(
       expand_nec(object[[i]], formula = formula[[i]],
                  x_range = x_range, resolution = resolution,
                  sig_val = sig_val, loo_controls = loo_controls,
                  model = success_models[i])
     )
-  }
+  })
   mod_dat <- model.frame(formula[[1]], data = object[[1]]$fit$data)
   y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
   disp <-  do_wrapper(object, extract_dispersion, fct = "rbind")
@@ -503,7 +576,8 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
       subset_censoring(attr(object[[m]]$ne_posterior, "censored"),
                        draw_index[[m]])
     }),
-    vapply(success_models, function(m) length(draw_index[[m]]), integer(1))
+    vapply(success_models, function(m) length(draw_index[[m]]), integer(1)),
+    ne_posterior
   )
   y_pred <- rowSums(do_wrapper(success_models, w_pred_calc,
                                object, mod_stats))
@@ -522,12 +596,18 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   # estimate; the per-equation reports above name the curves.
   report_ne_censoring(attr(nec, "censored_summary"), "model-averaged", ne_lab)
   # Do not store post_pred: only pred_data, built from it, is read.
+  w_pred_vals <- list(data = pred_data)
+  if (any(vapply(object, function(f) {
+    isTRUE(f$pred_vals$observed_levels)
+  }, logical(1)))) {
+    w_pred_vals$observed_levels <- TRUE
+  }
   out <- list(mod_fits = mod_fits, success_models = success_models,
               mod_stats = mod_stats, sample_size = sample_size,
               w_draw_seed = draw_seed, w_draw_index = draw_index,
               w_ne_posterior = ne_posterior, w_predicted_y = y_pred,
               w_residuals = mod_dat[[y_var]] - y_pred,
-              w_pred_vals = list(data = pred_data),
+              w_pred_vals = w_pred_vals,
               w_ne = nec, ne_type = ne_lab)
   retain_shared_data(out, retained_sources)
 }

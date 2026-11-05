@@ -14,6 +14,12 @@
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated NEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
+#' @param pool How observed group levels are combined: `"none"` returns
+#' per-level estimates, `"mixture"` samples levels in proportion to their
+#' observation counts, and `"mean_estimate"` averages aligned estimates.
+#' `"mean_curve"` is unavailable for a sampled NEC parameter. A joint fit
+#' defaults to `"none"`; other fits with spanning group terms default to
+#' `"mixture"`.
 #' @param extrapolate The bound beyond which the estimate is reported as
 #' censored. \code{FALSE}, the default, censors at the prediction range the fit
 #' was built on. \code{TRUE} removes the bound at both ends. A single number is
@@ -38,6 +44,14 @@
 #' see Fox 2010), and is a true measure
 #' of No-effect-concentration (the minimum concentration above which an effect
 #' is predicted to occur.
+#'
+#' Under a fitted group term whose levels span concentrations, the NEC is
+#' read for each observed level, including its deviation on the parameter.
+#' Terms whose levels each occur at one concentration are set to zero. The
+#' level of a spanning term observed at only one concentration is excluded from
+#' the estimate, with a message naming it. The default mixes the remaining
+#' observed levels by their observation counts;
+#' \code{pool = "none"} returns them separately.
 #'
 #' \bold{What is actually returned depends on the model set.} Despite the
 #' function name, \code{nec} returns a no-effect estimate of whichever type the
@@ -205,7 +219,7 @@
 # uses it. The other methods take it through `...` and refuse it.
 nec <- function(object, posterior = FALSE, xform = NULL,
                 prob_vals = c(0.5, 0.025, 0.975), extrapolate = FALSE, ...,
-                no_effect = FALSE) {
+                no_effect = FALSE, pool = NULL) {
   UseMethod("nec")
 }
 
@@ -225,7 +239,7 @@ nec <- function(object, posterior = FALSE, xform = NULL,
 #' @export
 nec.bayesnecfit <- function(object, posterior = FALSE, xform = NULL,
                             prob_vals = c(0.5, 0.025, 0.975),
-                            extrapolate = FALSE, ...) {
+                            extrapolate = FALSE, ..., pool = NULL) {
   check_component_arg(list(...), object)
   check_nec_no_dpar(list(...))
   check_no_effect_arg(list(...), object)
@@ -240,6 +254,30 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = NULL,
   # named without that prefix would otherwise return an NSEC as a NEC.
   if (!has_nec_parameter(object$model, object$fit)) {
     stop("nec is not a parameter in ecx model types.")
+  }
+  if (is.null(object$observed_group)) {
+    level_spec <- observed_level_spec(object)
+    if (!is.null(level_spec)) {
+      return(estimate_observed_levels(
+        object, level_spec, "nec",
+        function(level, control_value, range_override) {
+          # A mixed two-block endpoint has no combined sampled threshold.
+          if (!is.null(object$hurdle) &&
+              !identical(object$hurdle$ne_type, "NEC")) {
+            args <- recorded_expand_args(list(object))
+            nsec(level, sig_val = args$sig_val,
+                 resolution = args$resolution, posterior = TRUE,
+                 xform = xform, prob_vals = prob_vals,
+                 extrapolate = extrapolate, pool = "none")
+          } else {
+            nec(level, posterior = TRUE, xform = xform,
+                prob_vals = prob_vals, extrapolate = extrapolate,
+                pool = "none")
+          }
+        },
+        pool, posterior, prob_vals
+      ))
+    }
   }
   necfit_ne(object, posterior = posterior, xform = xform,
             prob_vals = prob_vals, extrapolate = extrapolate, ...)
@@ -325,7 +363,7 @@ necfit_ne <- function(object, posterior = FALSE, xform = NULL,
 #' @export
 nec.bayesmanecfit <- function(object, posterior = FALSE, xform = NULL,
                               prob_vals = c(0.5, 0.025, 0.975),
-                              extrapolate = FALSE, ...) {
+                              extrapolate = FALSE, ..., pool = NULL) {
   check_component_arg(list(...), object)
   check_nec_no_dpar(list(...))
   check_no_effect_arg(list(...), object)
@@ -335,6 +373,59 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = NULL,
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
+  }
+  first <- object$mod_fits[[1]]
+  if (!is.null(object$observed_group) ||
+      (!is.null(first$fit) && !is.null(observed_level_spec(first)))) {
+    if (is.null(pool)) pool <- "mixture"
+    pool <- validate_pool(pool, "nec")
+    dots <- list(...)
+    # Read smooth equations at the sig_val the fit stored, as the stored
+    # no-effect posterior is.
+    sig_val <- if (is.null(dots$sig_val)) {
+      recorded_expand_args(list(object))$sig_val
+    } else {
+      dots$sig_val
+    }
+    if (!all(vapply(names(object$mod_fits), function(m) {
+      has_nec_parameter(m, object$mod_fits[[m]]$fit)
+    }, logical(1)))) {
+      message("This bayesmanecfit contains smooth (ecx) models, which have no",
+              " threshold parameter, so the returned estimate is a weighted",
+              " mixture of NEC and NSEC draws -- the model-averaged N(S)EC",
+              " rather than a NEC. See ?nec and summary(), which labels it.")
+    }
+    per_model <- function(f) {
+      if (has_nec_parameter(f$model, f$fit)) {
+        nec(f, posterior = TRUE, xform = xform, prob_vals = prob_vals,
+            extrapolate = extrapolate, pool = pool)
+      } else {
+        nsec(f, sig_val = sig_val, posterior = TRUE, xform = xform,
+             prob_vals = prob_vals, extrapolate = extrapolate, pool = pool)
+      }
+    }
+    if (identical(pool, "none") && is.null(object$observed_group)) {
+      return(model_set_level_estimates(object, "nec", per_model,
+                                        posterior, prob_vals))
+    }
+    models <- names(object$mod_fits)
+    idx <- pull_draw_index(object, models, object$sample_size)
+    models <- models[lengths(idx[models]) > 0L]
+    parts <- once_level_note(lapply(models, function(m) {
+      out <- per_model(pull_equation(object, m))
+      subset_draws(out, idx[[m]])
+    }))
+    draws <- unlist(lapply(parts, as.numeric), use.names = FALSE)
+    attr(draws, "censored") <- concat_censoring(
+      lapply(parts, attr, "censored"), vapply(parts, length, integer(1)),
+      draws
+    )
+    attr(draws, "toxicity_estimate") <- "nec"
+    if (posterior) return(draws)
+    estimate <- summarise_censored(draws, prob_vals)
+    names(estimate) <- clean_names(estimate)
+    attr(estimate, "toxicity_estimate") <- "nec"
+    return(estimate)
   }
   # Classify each equation by its parameters, as nec.bayesnecfit() does.
   # ecxflat has no nec parameter, so a set holding it is a mixture.

@@ -86,6 +86,7 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                              jitter_x = FALSE, jitter_y = FALSE,
                              ylab = "Response", xlab = "Predictor",
                              xticks = NA) {
+  warn_stale_observed_display(x)
   chk_lgl(CI)
   chk_lgl(add_nec)
   chk_lgl(add_ec10)
@@ -250,6 +251,7 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                                ylab = "Response", xlab = "Predictor",
                                xticks = NA, model = NULL, average = TRUE,
                                all_models = NULL) {
+  warn_stale_observed_display(x)
   chk_lgl(CI)
   chk_lgl(add_nec)
   chk_lgl(add_ec10)

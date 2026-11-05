@@ -588,6 +588,17 @@ plot_fitted_grid <- function(object, resolution = 1000, x_range = NA) {
 #' @noRd
 plot_fitted_curve <- function(object) {
   grid <- plot_fitted_grid(object)
+  # Use the basis of the stored band: the observed levels of a group term that
+  # spans the series, otherwise the population curve.
+  grid_draws <- function(fit, formula) {
+    spec <- observed_level_spec(list(fit = fit, bayesnecformula = formula))
+    if (is.null(spec)) {
+      factorised_count_epred(fit, formula, newdata = grid$newdata,
+                             re_formula = NA)
+    } else {
+      observed_grid_posterior(fit, formula, grid$newdata, spec)
+    }
+  }
   if (inherits(object, "bayesmanecfit")) {
     models <- names(object$mod_fits)
     draw_index <- pull_draw_index(object, models,
@@ -596,15 +607,12 @@ plot_fitted_curve <- function(object) {
     # next equation, so a large set does not hold every full grid posterior.
     pieces <- lapply(models, function(model) {
       fit <- object$mod_fits[[model]]
-      draws <- factorised_count_epred(
-        fit$fit, fit$bayesnecformula, newdata = grid$newdata,
-        re_formula = NA
-      )
+      draws <- grid_draws(fit$fit, fit$bayesnecformula)
       draws[draw_index[[model]], , drop = FALSE]
     })
     draws <- do.call(rbind, pieces)
   } else {
-    draws <- posterior_epred(object, newdata = grid$newdata, re_formula = NA)
+    draws <- grid_draws(object$fit, object$bayesnecformula)
   }
   summaries <- t(apply(draws, 2, estimates_summary))
   data.frame(x = grid$x, Estimate = summaries[, "Estimate"],
@@ -655,6 +663,7 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   chk_lgl(add_nec)
   chk_lgl(add_ecx)
   check_xform(xform)
+  warn_stale_observed_display(x)
   x_scale <- plot_x_scale(x, x_scale, xform)
   brms_fit <- x$fit
   if (x_scale == "fitted") {
@@ -740,6 +749,7 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   # Check xform as the bayesnecfit method does. Otherwise mutate() fails with
   # an error that names neither the argument nor the remedy.
   check_xform(xform)
+  warn_stale_observed_display(x)
   x_scale <- plot_x_scale(x, x_scale, xform)
   e_df <- if (x_scale == "fitted") plot_fitted_curve(x) else x$w_pred_vals$data
   e_df <- data.frame(x_e = c(e_df$x, rev(e_df$x)),

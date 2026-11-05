@@ -219,9 +219,11 @@ factorised_count_epred <- function(fit, formula, dpar = NULL, nlpar = NULL,
 #' @importFrom brms posterior_epred
 #'
 #' @noRd
-joint_hurdle_epred <- function(object, newdata, dpar = NULL) {
+joint_hurdle_epred <- function(object, newdata, dpar = NULL,
+                               re_formula = NA) {
   if (is.null(dpar)) {
-    return(posterior_epred(object, newdata = newdata, re_formula = NA))
+    return(posterior_epred(object, newdata = newdata,
+                           re_formula = re_formula))
   }
   family <- object$fit$family
   if (!is_hurdle_family(family)) {
@@ -230,14 +232,14 @@ joint_hurdle_epred <- function(object, newdata, dpar = NULL) {
   }
   dpar <- match.arg(dpar, c("mu", hurdle_dpar(family)))
   out <- posterior_epred(
-    object, newdata = newdata, re_formula = NA, dpar = dpar
+    object, newdata = newdata, re_formula = re_formula, dpar = dpar
   )
   if (dpar != "mu") {
     return(1 - out)
   }
   if (family$family == "hurdle_negbinomial") {
     shape <- posterior_epred(
-      object, newdata = newdata, re_formula = NA, dpar = "shape"
+      object, newdata = newdata, re_formula = re_formula, dpar = "shape"
     )
     return(hurdle_positive_mean(out, family$family, shape))
   }

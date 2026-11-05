@@ -14,7 +14,9 @@
   extrapolate = FALSE,
   ...,
   posterior = FALSE,
-  which = "combined"
+  which = "combined",
+  pool = NULL,
+  x_control = "own"
 )
 }
 \arguments{
@@ -54,6 +56,19 @@ See the \emph{Extrapolation} section of \code{\link{nsec}}.}
 
 \item{which}{Which curve to use: \code{"combined"} (the default),
 \code{"growth"} or \code{"survival"}.}
+
+\item{pool}{How observed group levels are combined: \code{"none"} returns
+per-level estimates, \code{"mixture"} samples levels in proportion to their
+observation counts, \code{"mean_estimate"} averages aligned estimates, and
+\code{"mean_curve"} estimates from their weighted mean curve. A joint fit
+defaults to \code{"none"}; other fits with spanning group terms default to
+\code{"mixture"}.}
+
+\item{x_control}{\code{"own"} reads each level's lowest observed concentration;
+\code{"shared"} reads the lowest across levels; a single finite number specifies
+the concentration directly. A shared control below a level's observations
+extrapolates its curve and gives a warning. Level controls are recorded in
+the result's \code{x_control} attribute.}
 }
 \value{
 A vector containing the estimated NSEC value and credible bounds.
@@ -67,4 +82,8 @@ for over the whole concentration series, the survival component's range, and
 is reported as censored at its top where the curve has not reached the
 reference by the highest concentration tested. \code{extrapolate} extends
 that range. See \code{\link{ecx.bayesnechurdlefit}} for the reasoning.
+For a group term spanning concentrations, each observed level pairs its
+growth and survival predictions before the endpoint is read. A level
+observed at one concentration is excluded. \code{pool} and
+\code{x_control} use the same rules as for a single fit.
 }
