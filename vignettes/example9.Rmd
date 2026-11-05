@@ -132,18 +132,20 @@ colour_design <- data.frame(
 )
 round(colour_design, 3)
 #>      fragments chambers mean_proportion
-#> 0           12        3           0.725
-#> 0.29        12        3           0.685
-#> 0.96        12        3           0.737
-#> 2.9         12        3           0.611
-#> 9.6         12        3           0.066
+#> 0           12        3           0.720
+#> 0.29        12        3           0.680
+#> 0.96        12        3           0.733
+#> 2.9         12        3           0.604
+#> 9.6         10        3           0.143
 ```
+
+
 
 The design has 5 concentrations (an untreated control and
 4 diuron treatments from 0.29 to 9.6 µg/L),
 each with 12 fragments held in
 3 chambers of
-4. A chamber received
+4, except at 9.6 µg/L, where 10 fragments have a colour score. A chamber received
 one concentration only, so the 15 chambers are the
 independent units of the experiment. The `ogl(chamber)` term used below
 therefore estimates the variation among chambers at a concentration, without
@@ -173,25 +175,26 @@ ggplot(colour_plot, aes(x = plot_dose, y = proportion)) +
 Each point is one fragment, coloured by chamber. The control is drawn at 0.1
 µg/L on this logarithmic axis but labelled as the recorded zero (the model uses
 this substitution too, as described below). The mean colour proportion is
-between 0.69 and
-0.74 from the control to
+between 0.68 and
+0.73 from the control to
 0.96 µg/L, and
-0.61 at
+0.60 at
 2.9 µg/L (where the fragments are also more variable, from
-0.41
+0.40
 to
 0.70),
 whereas at 9.6 µg/L it is
-0.066. Most of the
-observed decline is therefore between the two highest concentrations, and only
-at the highest is the mean near zero.
+0.143. Most of the
+observed decline is therefore between the two highest concentrations, and at
+the highest the mean is 80 per cent below the control mean.
 
-Although the mean colour at 9.6 µg/L is near zero, the design has no
-higher treatment to show whether the response would have remained there. We
-retain the default `asymptote_observed = TRUE`, which declares that the lower
-asymptote of the curve was reached within the tested range. This is plausible
-given a mean so close to zero, but the design cannot verify it, and it is one of
-the assumptions on which the estimates in step 5 depend. `bnec()` tests the
+The design has no treatment above 9.6 µg/L to show whether the
+response would have fallen further. We retain the default
+`asymptote_observed = TRUE`, which declares that the lower asymptote of the
+curve was reached within the tested range. A decline of 80 per cent
+places the EC50 inside the tested range, but the design cannot show whether the
+response had levelled off by 9.6 µg/L, and this is one of the
+assumptions on which the estimates in step 5 depend. `bnec()` tests the
 change between the two highest concentrations before fitting, and we read its
 message in step 2.
 
@@ -203,7 +206,7 @@ mean. The 2050 subset has no value at either boundary:
 
 ``` r
 range(colour_2050$proportion)
-#> [1] 0.008267699 0.855555963
+#> [1] 0.07351162 0.85416294
 fam <- Beta(link = "identity")
 ```
 
@@ -310,7 +313,7 @@ rbind(selected_priors(prior_default, "uninformative"),
 #>      prior_type nlpar                                          prior                lb
 #> 1 uninformative   top                                     beta(5, 2)                 0
 #> 2 uninformative  ec50  normal(-0.0408219945202552, 18.0776750099551) -2.30258509299405
-#> 3  regularizing   top                         beta(34.9717, 13.9149)                 0
+#> 3  regularizing   top                         beta(35.0718, 14.2252)                 0
 #> 4  regularizing  ec50 normal(-0.0408219945202552, 0.989785370747016) -2.30258509299405
 #>                 ub
 #> 1                1
@@ -348,13 +351,12 @@ fit_default <- bnec(coral_formula, data = colour_2050, family = fam,
                     prior_type = "uninformative", seed = 228, refresh = 0)
 #> Dropping the model(s) neclin, ecxlin as they are not valid in the case of a beta with identity link.
 #> Dropping the model(s) ecxsigm as they are not valid for data with negative predictor (x) values.
-#> The response is still declining at the top of the series: the mean proportion falls from 0.611 to 0.0661 as log(diuron_adj) rises from 1.06 to 2.26 (p = 1.8e-14, one-sided).
+#> The response is still declining at the top of the series: the mean proportion falls from 0.604 to 0.143 as log(diuron_adj) rises from 1.06 to 2.26 (p = 5e-10, one-sided).
 #> The lower asymptote may not be identified by this design: where an equation estimates bot its default prior is derived from the observed response, and the default nec and ec50 priors are bounded to the tested range, so they exclude a threshold above it. Inspect the entries with get_priors() and supply scientifically justified ones through the prior argument where information beyond the design is available. Where the design did stop before the asymptote, declare it with asymptote_observed = FALSE, which spans the bot prior from the floor of the response to the mean at the highest predictor level, removes the upper bound of the nec and ec50 priors, and widens the initial-value search to match.
 #> Fitted models are: nec3param nec4param ecxexp ecx4param ecxwb1 ecxwb2 ecxwb1p3 ecxwb2p3 ecxll5 ecxll4 ecxll3 ecxflat
-#> The fitted ecxexp curve does not fall to the control's 0.01 quantile within the predictor range for 1513 of 8000 draws. The NSEC summary is censored at 2.26: those draws keep their rank in it and are given no value.
+#> The fitted ecxexp curve does not fall to the control's 0.01 quantile within the predictor range for 435 of 8000 draws. The NSEC summary is censored at 2.26: those draws keep their rank in it and are given no value.
 #> The fitted ecxflat curve does not fall to the control's 0.01 quantile within the predictor range for 7920 of 8000 draws. The NSEC summary is censored at 2.26: those draws keep their rank in it and are given no value.
-#> The leave-one-group-out score has Pareto k above 0.7 for 1 of 15 levels of chamber in ecxwb1p3 (weight 0.15); 1 of 15 levels of chamber in ecx4param (weight 0.1); 1 of 15 levels of chamber in ecxwb2 (weight 0.053). The scores of those levels are approximate; loo_controls = list(refit = TRUE) replaces them by refitting the equation without each level.
-#> The control group's observed and simulated response differ by more than 15% for: nec3param, nec4param, ecx4param, ecxwb1, ecxwb2, ecxwb1p3, ecxwb2p3, ecxll5, ecxll4, ecxll3.
+#> The leave-one-group-out score has Pareto k at or above 0.7 for 1 of 15 levels of chamber in ecxwb2 (weight 0.066). The affected scores are approximate; loo_controls = list(refit = TRUE) replaces them by refitting the equation without each level.The control group's observed and simulated response differ by more than 15% for: nec3param, ecx4param, ecxwb1, ecxwb2, ecxwb1p3, ecxwb2p3, ecxll5, ecxll3.
 #> nsec() reads its reference from the control, so this is the region most likely to move a reported no-effect concentration.
 #> See check_fit() for the per-group table. This is a modelling result, not a fault.
 ```
@@ -376,9 +378,8 @@ names the equations it drops, for the reasons given above. It then compares the
 mean colour at the two highest concentrations, and its message states that the
 response is still declining at the top of the series. This test cannot tell
 whether the curve flattens at 9.6 µg/L or continues to fall beyond it.
-We keep the default declaration because the mean response at that concentration
-is near the lower bound, while recognising that one concentration cannot
-establish a plateau. The next message describes what the declaration does to the
+We keep the default declaration for the reason given in step 1, while
+recognising that one concentration cannot establish a plateau. The next message describes what the declaration does to the
 priors: the `bot` prior is derived from the observed response, and the `nec` and
 `ec50` priors are bounded to the tested range, so that a threshold above it is
 excluded. Setting `asymptote_observed = FALSE` would be a different prior
@@ -389,7 +390,7 @@ and does not change it.
 The messages after fitting concern the fitted equations. They report, where any
 occur, the draws for which a curve does not fall to the NSEC reference within
 the tested range (those draws are censored in the NSEC summary), the chambers
-whose Pareto *k* exceeds 0.7 (step 3), and the equations whose control mean or
+whose Pareto *k* is at or above 0.7 (step 3), and the equations whose control mean or
 spread is not reproduced within 15% (step 4).
 
 
@@ -457,49 +458,93 @@ data.frame(
   row.names = NULL
 )
 #>        model              parameters           uninformative           regularizing
-#> 1  nec3param          top, beta, nec    1.014 / 465 / 0 fail   1.003 / 286 / 0 fail
-#> 2  nec4param     bot, top, beta, nec 1.041 / 102 / 1061 fail 1.042 / 137 / 407 fail
-#> 3     ecxexp               top, beta 1.018 / 400 / 1260 fail 1.079 / 35 / 1745 fail
-#> 4  ecx4param    bot, ec50, top, beta  1.006 / 377 / 825 fail 1.012 / 109 / 805 fail
-#> 5     ecxwb1    bot, ec50, top, beta   1.038 / 24 / 688 fail  1.051 / 15 / 705 fail
-#> 6     ecxwb2    bot, ec50, top, beta 1.013 / 172 / 1256 fail 1.034 / 135 / 643 fail
-#> 7   ecxwb1p3         ec50, top, beta   1.002 / 1100 / 0 pass  1.003 / 2296 / 0 pass
-#> 8   ecxwb2p3         ec50, top, beta    1.003 / 499 / 0 pass   1.003 / 391 / 0 fail
-#> 9     ecxll5 bot, top, beta, ec50, f 1.033 / 204 / 3676 fail  1.089 / 31 / 869 fail
-#> 10    ecxll4    bot, top, beta, ec50  1.005 / 243 / 587 fail  1.019 / 53 / 454 fail
-#> 11    ecxll3         top, beta, ec50   1.003 / 2413 / 0 pass  1.001 / 2811 / 0 pass
-#> 12   ecxflat                     top   1.005 / 1107 / 0 pass  1.006 / 1190 / 0 pass
+#> 1  nec3param          top, beta, nec    1.002 / 454 / 0 pass  1.001 / 2634 / 0 pass
+#> 2  nec4param     bot, top, beta, nec   1.056 / 55 / 454 fail  1.024 / 92 / 114 fail
+#> 3     ecxexp               top, beta  1.008 / 854 / 491 fail 1.007 / 927 / 544 fail
+#> 4  ecx4param    bot, ec50, top, beta  1.004 / 780 / 543 fail 1.102 / 18 / 1054 fail
+#> 5     ecxwb1    bot, ec50, top, beta   1.093 / 14 / 657 fail  1.018 / 66 / 477 fail
+#> 6     ecxwb2    bot, ec50, top, beta  1.256 / 12 / 1307 fail  1.056 / 26 / 512 fail
+#> 7   ecxwb1p3         ec50, top, beta   1.002 / 1603 / 0 pass  1.002 / 2888 / 0 pass
+#> 8   ecxwb2p3         ec50, top, beta   1.002 / 1033 / 0 pass  1.002 / 1173 / 0 pass
+#> 9     ecxll5 bot, top, beta, ec50, f 1.008 / 515 / 2210 fail  1.057 / 57 / 705 fail
+#> 10    ecxll4    bot, top, beta, ec50   1.031 / 30 / 505 fail 1.012 / 201 / 216 fail
+#> 11    ecxll3         top, beta, ec50   1.001 / 1715 / 0 pass  1.001 / 1587 / 0 pass
+#> 12   ecxflat                     top   1.005 / 1313 / 0 pass  1.005 / 1295 / 0 pass
 ```
 
 
 
 "Did not fit" marks an attempted equation with no draws, which is distinct from
 a fitted equation that missed a cutoff. Under the uninformative priors
-4 of the 12 fitted
-equations passed (`ecxwb1p3`, `ecxwb2p3`, `ecxll3` and `ecxflat`), and under the
-regularising priors 3 of the
+5 of the 12 fitted
+equations passed (`nec3param`, `ecxwb1p3`, `ecxwb2p3`, `ecxll3` and `ecxflat`), and under the
+regularising priors 5 of the
 12 fitted equations passed
-(`ecxwb1p3`, `ecxll3` and `ecxflat`). Of the
-8 failures under the uninformative priors,
+(`nec3param`, `ecxwb1p3`, `ecxwb2p3`, `ecxll3` and `ecxflat`). Of the
+7 failures under the uninformative priors,
 7 included more than ten divergent
 transitions, as did 7 of the
-9 under the regularising priors.
+7 under the regularising priors.
 
 An equation with a `bot` parameter has to estimate the lower asymptote, or the
-shape of the lower limb, from the single concentration (9.6 µg/L) at
-which the mean response is near zero, so it may sample poorly on this design. Of
+shape of the lower limb, from the response at the single highest concentration
+(9.6 µg/L), where the decline has not been shown to have levelled off,
+so it may sample poorly on this design. Of
 the 6 equations with a `bot` parameter,
 0 passed under the uninformative
 priors and 0 under the
 regularising priors, against
-4 and
-3 of the
+5 and
+5 of the
 6 equations without one. The diagnostics do
 not show which parameter is responsible for a failure. The regularising priors
 provide more information about plausible parameter values, and of the
-8 equations that failed under both priors,
+7 equations that failed under both priors,
 5 had fewer divergent transitions under the regularising
 priors, although each still failed a cutoff on the first run.
+
+Stan also records the time each chain spent in warmup and in sampling, and
+`rstan::get_elapsed_time()` reads it from the `stanfit` held in each equation's
+`brmsfit`. The table gives the sum over the four chains, in seconds, for the
+same first run. These times exclude compiling each Stan program and searching
+for initial values, and they depend on the machine and on what else it was
+running, so they are given for comparison between equations and prior sets
+only.
+
+
+``` r
+sampling_seconds <- function(fit) {
+  vapply(valid, function(m) {
+    if (!m %in% fit$success_models) return(NA_real_)
+    sum(rstan::get_elapsed_time(pull_brmsfit(fit, model = m)$fit))
+  }, numeric(1))
+}
+seconds_default <- sampling_seconds(fit_default)
+seconds_regular <- sampling_seconds(fit_regular)
+data.frame(model = valid, uninformative = round(seconds_default),
+           regularizing = round(seconds_regular), row.names = NULL)
+#>        model uninformative regularizing
+#> 1  nec3param            61           24
+#> 2  nec4param           343          130
+#> 3     ecxexp            64           51
+#> 4  ecx4param            57           42
+#> 5     ecxwb1            74           62
+#> 6     ecxwb2            67           47
+#> 7   ecxwb1p3            35           21
+#> 8   ecxwb2p3            38           22
+#> 9     ecxll5           192          102
+#> 10    ecxll4            66           54
+#> 11    ecxll3            35           20
+#> 12   ecxflat            25           16
+```
+
+
+
+Warmup and sampling took 18 min in total under
+the uninformative priors and 9.8 min under the
+regularising priors, and 82%
+and 83% of those totals were
+spent on the equations that failed the screen.
 
 ## Kinds of failure
 
@@ -583,30 +628,27 @@ if (nrow(retried)) {
                            sum(sampling_regular$model %in% refit_regular))),
         retried)
 }
-#>       prior_type     model max_rhat     min_ess min_ess_ratio n_divergent failed
-#> 1  uninformative nec3param 1.003658 1044.207699  0.1305259624           0  FALSE
-#> 2  uninformative nec4param 1.608212    6.825663  0.0008532079         118   TRUE
-#> 3  uninformative    ecxexp 1.002555  977.230874  0.1221538593          79   TRUE
-#> 4  uninformative ecx4param 1.004179  915.151420  0.1143939276         448   TRUE
-#> 5  uninformative    ecxwb1 1.015144  324.344128  0.0405430160         140   TRUE
-#> 6  uninformative    ecxwb2 1.007892  436.032075  0.0545040093         514   TRUE
-#> 7  uninformative    ecxll5 1.010758  452.216605  0.0565270757        1493   TRUE
-#> 8  uninformative    ecxll4 1.013433  352.973027  0.0441216284         163   TRUE
-#> 9   regularizing nec3param 1.001615  885.625678  0.1107032098           0  FALSE
-#> 10  regularizing  ecxwb2p3 1.001531 4421.742487  0.5527178108           0  FALSE
-#> 11  regularizing nec4param 1.011438  324.447889  0.0405559861          80   TRUE
-#> 12  regularizing    ecxexp 1.004778  801.763856  0.1002204821          94   TRUE
-#> 13  regularizing ecx4param 1.030980   23.872061  0.0029840076         479   TRUE
-#> 14  regularizing    ecxwb1 1.003106 1788.701206  0.2235876508          71   TRUE
-#> 15  regularizing    ecxwb2 1.002934  538.283683  0.0672854603         291   TRUE
-#> 16  regularizing    ecxll5 1.002057 1587.597171  0.1984496463         211   TRUE
-#> 17  regularizing    ecxll4 1.003683  705.828253  0.0882285316         137   TRUE
+#>       prior_type     model max_rhat    min_ess min_ess_ratio n_divergent failed
+#> 1  uninformative nec4param 1.266550   11.28785   0.001410981         170   TRUE
+#> 2  uninformative    ecxexp 1.004736  997.89638   0.124737048           6  FALSE
+#> 3  uninformative ecx4param 1.001325  948.06118   0.118507648         328   TRUE
+#> 4  uninformative    ecxwb1 1.004272 1014.79121   0.126848901         143   TRUE
+#> 5  uninformative    ecxwb2 1.004220  732.42165   0.091552707         348   TRUE
+#> 6  uninformative    ecxll5 1.002749  966.00128   0.120750160        1982   TRUE
+#> 7  uninformative    ecxll4 1.003785  895.64706   0.111955882         183   TRUE
+#> 8   regularizing nec4param 1.042087  130.28335   0.016285419          42   TRUE
+#> 9   regularizing    ecxexp 1.007470  710.37386   0.088796733          11   TRUE
+#> 10  regularizing ecx4param 1.001604 1854.35711   0.231794639         224   TRUE
+#> 11  regularizing    ecxwb1 1.002478 1015.76629   0.126970787          66   TRUE
+#> 12  regularizing    ecxwb2 1.005351  150.35796   0.018794745         250   TRUE
+#> 13  regularizing    ecxll5 1.002048 1144.54367   0.143067959         170   TRUE
+#> 14  regularizing    ecxll4 1.013716   73.72718   0.009215898         106   TRUE
 ```
 
 
 
-In this run the longer refit was applied to `nec3param` under
-the uninformative priors and to `nec3param` and `ecxwb2p3` under the
+In this run the longer refit was applied to none under
+the uninformative priors and to none under the
 regularising priors, and the refit at a higher `adapt_delta` to
 `nec4param`, `ecxexp`, `ecx4param`, `ecxwb1`, `ecxwb2`, `ecxll5` and `ecxll4` under both priors.
 The table above gives the diagnostics of each refitted equation after its refit, and the screen below uses those.
@@ -625,51 +667,50 @@ reasons instead of returning a model average.
 
 ``` r
 screened_default <- screen_models(fit_default)
-#> Dropping 7 of 12 candidate models that failed the sampler screen:
-#>   -  nec4param: Rhat 1.608, ESS 6.8, 118 divergent transitions
-#>   -  ecxexp: 79 divergent transitions
-#>   -  ecx4param: 448 divergent transitions
-#>   -  ecxwb1: Rhat 1.015, ESS 324.3, 140 divergent transitions
-#>   -  ecxwb2: 514 divergent transitions
-#>   -  ecxll5: Rhat 1.011, 1493 divergent transitions
-#>   -  ecxll4: Rhat 1.013, ESS 353, 163 divergent transitions
-#> Fitted models are: nec3param ecxwb1p3 ecxwb2p3 ecxll3 ecxflat
+#> Dropping 6 of 12 candidate models that failed the sampler screen:
+#>   -  nec4param: Rhat 1.267, ESS 11.3, 170 divergent transitions
+#>   -  ecx4param: 328 divergent transitions
+#>   -  ecxwb1: 143 divergent transitions
+#>   -  ecxwb2: 348 divergent transitions
+#>   -  ecxll5: 1982 divergent transitions
+#>   -  ecxll4: 183 divergent transitions
+#> Fitted models are: ecxexp nec3param ecxwb1p3 ecxwb2p3 ecxll3 ecxflat
+#> The fitted ecxexp curve does not fall to the control's 0.01 quantile within the predictor range for 434 of 8000 draws. The NSEC summary is censored at 2.26: those draws keep their rank in it and are given no value.
 #> The fitted ecxflat curve does not fall to the control's 0.01 quantile within the predictor range for 7920 of 8000 draws. The NSEC summary is censored at 2.26: those draws keep their rank in it and are given no value.
-#> The leave-one-group-out score has Pareto k above 0.7 for 1 of 15 levels of chamber in ecxwb1p3 (weight 0.26). The scores of those levels are approximate; loo_controls = list(refit = TRUE) replaces them by refitting the equation without each level.
 screened_regular <- screen_models(fit_regular)
 #> Dropping 7 of 12 candidate models that failed the sampler screen:
-#>   -  nec4param: Rhat 1.011, ESS 324.4, 80 divergent transitions
-#>   -  ecxexp: 94 divergent transitions
-#>   -  ecx4param: Rhat 1.031, ESS 23.9, 479 divergent transitions
-#>   -  ecxwb1: 71 divergent transitions
-#>   -  ecxwb2: 291 divergent transitions
-#>   -  ecxll5: 211 divergent transitions
-#>   -  ecxll4: 137 divergent transitions
-#> Fitted models are: nec3param ecxwb2p3 ecxwb1p3 ecxll3 ecxflat
+#>   -  nec4param: Rhat 1.042, ESS 130.3, 42 divergent transitions
+#>   -  ecxexp: 11 divergent transitions
+#>   -  ecx4param: 224 divergent transitions
+#>   -  ecxwb1: 66 divergent transitions
+#>   -  ecxwb2: ESS 150.4, 250 divergent transitions
+#>   -  ecxll5: 170 divergent transitions
+#>   -  ecxll4: Rhat 1.014, ESS 73.7, 106 divergent transitions
+#> Fitted models are: nec3param ecxwb1p3 ecxwb2p3 ecxll3 ecxflat
 #> The fitted ecxflat curve does not fall to the control's 0.01 quantile within the predictor range for 7920 of 8000 draws. The NSEC summary is censored at 2.26: those draws keep their rank in it and are given no value.
 ```
 
 
 
-After the refit, the screen retained 5 equations
-under the uninformative priors (`nec3param`, `ecxwb1p3`, `ecxwb2p3`, `ecxll3` and `ecxflat`)
+After the refit, the screen retained 6 equations
+under the uninformative priors (`ecxexp`, `nec3param`, `ecxwb1p3`, `ecxwb2p3`, `ecxll3` and `ecxflat`)
 and 5 under the regularising priors
-(`nec3param`, `ecxwb2p3`, `ecxwb1p3`, `ecxll3` and `ecxflat`), so on these data the regularising priors did not change the number of equations available for the model average. Step 5
+(`nec3param`, `ecxwb1p3`, `ecxwb2p3`, `ecxll3` and `ecxflat`), so on these data the regularising priors reduced the number of equations available for the model average. Step 5
 assesses what the additional information in the regularising priors does to the
 estimates.
 
 ## Chamber-level model weights
 
-The four fragments in each chamber are related observations, so leaving out one
+The fragments in each chamber are related observations, so leaving out one
 fragment at a time would overstate how well a model predicts a new chamber.
 Because `ogl(chamber)` is in the formula, the default model weights instead
 leave out a whole chamber at a time, and are computed from those
 leave-one-chamber-out scores by the default pseudo-BMA method. Pareto *k*
 assesses whether the importance-sampling approximation to each left-out score is
-reliable, and the score of a chamber with *k* above 0.7 is unreliable until an
+reliable, and the score of a chamber with *k* at or above 0.7 is unreliable until an
 exact refit replaces it. `check_fit()` returns these diagnostics for each
 equation as its `"pareto"` attribute, and we show the model weight, the number
-of chambers above 0.7 and the largest *k* for each retained equation. This check
+of chambers at or above 0.7 and the largest *k* for each retained equation. This check
 belongs after screening, because the weights of models whose posterior was not
 sampled adequately should not be interpreted.
 
@@ -689,21 +730,22 @@ pareto <- rbind(pareto_rows(screened_default, "uninformative"),
                 pareto_rows(screened_regular, "regularizing"))
 round_cols(pareto)
 #>       prior_type     model weight n_high_k max_k
-#> 1  uninformative nec3param  0.148        0 0.617
-#> 2  uninformative  ecxwb1p3  0.263        1 0.713
-#> 3  uninformative  ecxwb2p3  0.259        0 0.648
-#> 4  uninformative    ecxll3  0.330        0 0.645
-#> 5  uninformative   ecxflat  0.000        0 0.615
-#> 6   regularizing nec3param  0.193        0 0.563
-#> 7   regularizing  ecxwb2p3  0.278        0 0.675
-#> 8   regularizing  ecxwb1p3  0.236        0 0.598
-#> 9   regularizing    ecxll3  0.292        0 0.598
-#> 10  regularizing   ecxflat  0.000        0 0.685
+#> 1  uninformative    ecxexp  0.000        0 0.457
+#> 2  uninformative nec3param  0.193        0 0.603
+#> 3  uninformative  ecxwb1p3  0.218        0 0.655
+#> 4  uninformative  ecxwb2p3  0.323        0 0.554
+#> 5  uninformative    ecxll3  0.265        0 0.543
+#> 6  uninformative   ecxflat  0.000        0 0.474
+#> 7   regularizing nec3param  0.268        0 0.673
+#> 8   regularizing  ecxwb1p3  0.209        0 0.503
+#> 9   regularizing  ecxwb2p3  0.284        0 0.480
+#> 10  regularizing    ecxll3  0.238        0 0.538
+#> 11  regularizing   ecxflat  0.000        0 0.474
 ```
 
-In this run 1 of the 10 retained
-equations had at least one chamber with *k* above 0.7 (the largest *k* was
-0.71). Where any chamber exceeds the cutoff,
+In this run 0 of the 11 retained
+equations had at least one chamber with *k* at or above 0.7 (the largest *k* was
+0.67). Where any chamber has a *k* at or above the cutoff,
 `amend(x, loo_controls = list(refit = TRUE))` refits each affected equation
 without that chamber and recomputes the weights from the exact scores. The chunk
 below does so for each set that needs it, and gives the final weights.
@@ -733,19 +775,20 @@ coral_weights <- merge(weights_of(screened_default, "uninformative"),
                        weights_of(screened_regular, "regularizing"), all = TRUE)
 round_cols(coral_weights)
 #>       model uninformative regularizing
-#> 1   ecxflat         0.000        0.000
-#> 2    ecxll3         0.325        0.292
-#> 3  ecxwb1p3         0.273        0.236
-#> 4  ecxwb2p3         0.255        0.278
-#> 5 nec3param         0.146        0.193
+#> 1    ecxexp         0.000           NA
+#> 2   ecxflat         0.000        0.000
+#> 3    ecxll3         0.265        0.238
+#> 4  ecxwb1p3         0.218        0.209
+#> 5  ecxwb2p3         0.323        0.284
+#> 6 nec3param         0.193        0.268
 ```
 
 
 
 The weights are the share of the model-averaged prediction assigned to each
 equation, and sum to one within each set (an equation absent from a set is
-`NA`). Under the regularising priors `ecxll3` has the highest
-weight (0.29). A
+`NA`). Under the regularising priors `ecxwb2p3` has the highest
+weight (0.28). A
 small weight does not validate an equation that sampled poorly (e.g., an
 equation with many divergent transitions can still be given a large weight),
 which is why the weights are read only after screening.
@@ -767,7 +810,7 @@ check_chains(best_regular)
 <p class="caption">plot of chunk coral-chains</p>
 </div>
 
-For `ecxll3` the four chains overlap throughout a
+For `ecxwb2p3` the four chains overlap throughout a
 stable range in the trace panels, with brief excursions to larger values of some
 parameters in single chains, and in the autocorrelation panels the dependence
 between successive draws falls close to zero within about 5 lags. A
@@ -799,16 +842,16 @@ flagged_regular <- cf_regular$ppp_mean < 0.05 | cf_regular$ppp_mean > 0.95 |
 round_cols(as.data.frame(cf_regular[cf_regular$control | flagged_regular,
                                     fit_cols]))
 #>        model    wi group obs_mean sim_mean obs_sd sim_sd sd_ratio ppp_mean ppp_sd
-#> 1  nec3param 0.193   0.1    0.725    0.717  0.096  0.075    1.276    0.416  0.169
-#> 3  nec3param 0.193  0.96    0.737    0.720  0.046  0.077    0.600    0.266  0.979
-#> 6   ecxwb2p3 0.278   0.1    0.725    0.719  0.096  0.077    1.257    0.427  0.162
-#> 8   ecxwb2p3 0.278  0.96    0.737    0.719  0.046  0.077    0.603    0.262  0.974
-#> 11  ecxwb1p3 0.236   0.1    0.725    0.720  0.096  0.077    1.257    0.426  0.158
-#> 13  ecxwb1p3 0.236  0.96    0.737    0.713  0.046  0.077    0.598    0.175  0.967
-#> 16    ecxll3 0.292   0.1    0.725    0.718  0.097  0.077    1.260    0.399  0.167
-#> 18    ecxll3 0.292  0.96    0.737    0.716  0.047  0.077    0.605    0.218  0.968
-#> 21   ecxflat 0.000   0.1    0.725    0.727  0.094  0.081    1.162    0.532  0.288
-#> 23   ecxflat 0.000  0.96    0.737    0.732  0.039  0.081    0.484    0.444  0.992
+#> 1  nec3param 0.268   0.1    0.720    0.714  0.099  0.082    1.209    0.415  0.186
+#> 3  nec3param 0.268  0.96    0.733    0.715  0.048  0.081    0.589    0.255  0.974
+#> 6   ecxwb1p3 0.209   0.1    0.720    0.716  0.098  0.082    1.201    0.411  0.216
+#> 8   ecxwb1p3 0.209  0.96    0.733    0.704  0.048  0.082    0.582    0.147  0.979
+#> 11  ecxwb2p3 0.284   0.1    0.720    0.712  0.099  0.080    1.227    0.383  0.209
+#> 13  ecxwb2p3 0.284  0.96    0.733    0.714  0.048  0.081    0.588    0.238  0.983
+#> 16    ecxll3 0.238   0.1    0.720    0.714  0.099  0.081    1.220    0.408  0.196
+#> 18    ecxll3 0.238  0.96    0.733    0.708  0.048  0.082    0.583    0.195  0.983
+#> 21   ecxflat 0.000   0.1    0.720    0.719  0.096  0.090    1.060    0.482  0.404
+#> 23   ecxflat 0.000  0.96    0.733    0.726  0.040  0.089    0.450    0.421  0.999
 ```
 
 
@@ -820,8 +863,8 @@ identify concentrations worth inspecting. Of the 25 rows
 concentrations), 5 were flagged, at 0.96 µg/L. At the
 control 0 rows were flagged, and the ratio of observed to
 simulated standard deviation is
-1.16 to 1.28 across the retained
-equations, so each simulates less spread at the control than was observed. A fit that simulates too little spread at the control places the NSEC reference higher (see the Overview), so such a discrepancy is more likely to lower the NSEC than to raise it. With 12 fragments in
+1.06 to 1.23 across the retained
+equations, so each simulates less spread at the control than was observed. A fit that simulates too little spread at the control places the NSEC reference higher (see the Overview), so such a discrepancy is more likely to lower the NSEC than to raise it. With up to 12 fragments in
 3 chambers at each concentration, a flag is not by
 itself a reason to exclude an equation, but it shows whether a discrepancy
 concerns the mean or the spread, and where. `check_fit()` simulates each
@@ -846,11 +889,11 @@ plot(cf_best)
 A point may lie just inside its 95% interval even when its posterior predictive
 p-value is beyond the [0.05, 0.95] flag threshold, because the table uses the
 p-values whereas the plot shows the direction and size of a discrepancy. For
-`ecxll3` the observed means lie within their intervals
+`ecxwb2p3` the observed means lie within their intervals
 at
 5
 of the 5 concentrations, and the observed standard deviations at
-5.
+4.
 
 # 5. Prior sensitivity and reporting
 
@@ -898,12 +941,12 @@ prior_effect <- rbind(estimate_rows(common_default, "uninformative"),
 prior_effect <- prior_effect[order(prior_effect$estimate), ]
 round_cols(prior_effect)
 #>   estimate    prior_type   Q50  Q2.5 Q97.5
-#> 1     EC10 uninformative 2.614 1.889 4.087
-#> 4     EC10  regularizing 2.595 1.909 3.327
-#> 2     EC50 uninformative 4.971 4.087 6.609
-#> 5     EC50  regularizing 4.854 4.092 6.211
-#> 3     NSEC uninformative 2.218 1.289 3.136
-#> 6     NSEC  regularizing 2.119 1.107 2.723
+#> 1     EC10 uninformative 2.525 1.718 3.898
+#> 4     EC10  regularizing 2.490 1.717 3.515
+#> 2     EC50 uninformative 5.584 4.622 7.135
+#> 5     EC50  regularizing 5.538 4.607 6.986
+#> 3     NSEC uninformative 2.113 1.116 2.973
+#> 6     NSEC  regularizing 1.988 1.014 2.721
 ```
 
 
@@ -911,24 +954,24 @@ round_cols(prior_effect)
 Each pair of rows estimates one quantity from the common set
 (`ecxwb1p3`, `ecxwb2p3` and `ecxll3`), fitted to identical observations, so the
 difference between rows can be attributed to the priors within those equations.
-The median NSEC is 2.22 µg/L under
-the uninformative priors and 2.12
+The median NSEC is 2.11 µg/L under
+the uninformative priors and 1.99
 µg/L under the regularising priors, and the median EC50 is
-4.97 and
-4.85 µg/L. The upper bound of the
-EC50 is 6.61 µg/L under the
+5.58 and
+5.54 µg/L. The upper bound of the
+EC50 is 7.14 µg/L under the
 uninformative priors and
-6.21 µg/L under the
+6.99 µg/L under the
 regularising priors, and the width of the NSEC interval is
-1.85 and
-1.62 µg/L. Where an
+1.86 and
+1.71 µg/L. Where an
 interval is narrower under the regularising priors, the difference may reflect
 their stronger assumptions as well as information from the data, and cannot be
 presented as precision supplied solely by the experiment. The control fit, from
 which the NSEC reference is read, can be compared in the same way (the ratio of
 observed to simulated standard deviation at the control is
-1.23 to 1.27 across the common equations under the
-uninformative priors, and 1.26 under the
+1.20 to 1.21 across the common equations under the
+uninformative priors, and 1.20 to 1.23 under the
 regularising priors).
 
 The final regularising set can contain equations that are not in the common set
@@ -1012,20 +1055,20 @@ coral_estimates <- rbind(
 #> the summary and are given no value.
 round(coral_estimates, 3)
 #>        Q50  Q2.5 Q97.5
-#> EC10 2.661 1.927 3.392
-#> EC50 4.677 3.744 6.179
-#> NSEC 2.247 1.191 2.858
+#> EC10 2.604 1.789 3.388
+#> EC50 5.240 4.192 6.845
+#> NSEC 2.171 1.021 2.821
 ```
 
-The model-averaged EC10 is 2.66
-µg/L (1.93 to
+The model-averaged EC10 is 2.60
+µg/L (1.79 to
 3.39), the EC50 is
-4.68 µg/L
-(3.74 to
-6.18), and the NSEC is
-2.25 µg/L
-(1.19 to
-2.86). The ECx values use the
+5.24 µg/L
+(4.19 to
+6.84), and the NSEC is
+2.17 µg/L
+(1.02 to
+2.82). The ECx values use the
 default absolute response scale, and `type = "range"` would instead measure the
 decline between the fitted upper and lower response levels. A flat equation may
 have no ECx crossing within the tested range, in which case the messages and
@@ -1033,9 +1076,9 @@ warnings above report how many draws were censored.
 
 These values depend on the substitution of 0.1 µg/L for the control before
 logging, on `asymptote_observed = TRUE`, on the candidate set, and on the
-regularising priors. In particular, only the highest concentration has a mean
-near the lower response bound, so the EC50 rests on the assumption that the
-response had reached its lower asymptote by 9.6 µg/L. The flatness
+regularising priors. In particular, no concentration above 9.6 µg/L
+was tested, so the estimates rest on the assumption that the response had
+reached its lower asymptote by that concentration. The flatness
 message from `bnec()` and the comparison of priors above should be reported with
 the estimates.
 
@@ -1061,7 +1104,7 @@ Stan through `brms` [@Burkner2017]. The colour index (a proportion) was modelled
 as a function of log diuron concentration, with the control set to 0.1 µg/L
 before transformation, using a beta distribution with an identity link and a
 group-level intercept for chamber
-(4 fragments per
+(up to 4 fragments per
 chamber and 3 chambers per concentration; S1). The
 candidate model set comprised the 12 equations of the
 `bayesnec` `decline` group that are valid for these data (declining equations
@@ -1077,7 +1120,7 @@ where the default fit had already used 0.99 (S3). Posterior predictions from the
 retained equations were combined using pseudo-Bayesian model averaging weights
 [@Yao2018] calculated from leave-one-chamber-out cross-validation
 [@vehtari2017], with exact refits for chambers where the Pareto *k* diagnostic
-exceeded 0.7 (S3). The fit of each retained equation was assessed by comparing
+was at or above 0.7 (S3). The fit of each retained equation was assessed by comparing
 the observed mean and standard deviation of the response at each concentration
 with those simulated from the posterior (S4). The sensitivity of the estimates
 to the priors was assessed by also fitting the candidate set with the package's
@@ -1089,37 +1132,35 @@ priors to that range.
 
 ## Results
 
-Of the 12 candidate equations, 12
-were fitted successfully and 5 passed
-the sampler screen under the regularising priors, compared with
-5 of 12 under the
-uninformative priors (S3). Of the 6 equations that estimate
-a lower asymptote, 0 passed
-under the regularising priors. The highest-weighted retained equation was
-`ecxll3` (weight
-0.29; S3). Colour
-index declined from a mean of
+
+
+Colour index declined from a mean of
 0.72 in the controls to
-0.066 at
+0.143 at
 9.6 µg/L, with most of the decline occurring between 2.9 and
-9.6 µg/L (Fig. S1). The modelled concentrations that reduced colour
-index by 10% and 50% (EC10 and EC50) were
-2.66 (95% CI
-1.93–3.39)
-and 4.68
-(3.74–6.18)
+9.6 µg/L (Fig. S1). The sampler screen retained 5 of the 12 candidate equations under the regularising priors (`nec3param`, `ecxwb1p3`, `ecxwb2p3`, `ecxll3` and `ecxflat`) and 6 under the uninformative priors (S3), and `ecxexp` passed only under the uninformative priors. None of the 6 equations that estimate a lower asymptote passed the screen under either prior set, so the lower limit of every retained equation other than the constant `ecxflat` is zero. The
+highest-weighted retained equation was `ecxwb2p3` (weight
+0.28; S3).
+
+The modelled concentrations that reduced colour index by 10% and 50% (EC10 and
+EC50) were
+2.60 (95% CI
+1.79–3.39)
+and 5.24
+(4.19–6.84)
 µg/L, respectively, and the NSEC was
-2.25
-(1.19–2.86)
-µg/L (Table S5). For the equations that passed under both prior sets, the median
-NSEC was 2.12 µg/L under the
-regularising priors and 2.22 µg/L
-under the uninformative priors, with upper 95% bounds of
+2.17
+(1.02–2.82)
+µg/L (Table S5). For the smooth equations that passed under both prior sets
+(`ecxwb1p3`, `ecxwb2p3` and `ecxll3`), the median NSEC was
+1.99 µg/L under the regularising
+priors and 2.11 µg/L under the
+uninformative priors, with upper 95% bounds of
 2.72 and
-3.14 µg/L (S5). Because
-only the highest concentration had a mean colour index near zero, the shape of
-the lower part of the curve, and hence the EC50, depends on the assumption that
-the colour index had reached its lower asymptote at 9.6 µg/L.
+2.97 µg/L (S5). Because
+the design has no concentration above 9.6 µg/L, the shape of the lower
+part of the curve, and hence the EC50, depends on the assumption that the colour
+index had reached its lower asymptote within the tested range.
 
 # A count response {#a-count-response}
 
@@ -1297,7 +1338,13 @@ nass_screened <- screen_models(fit_nass)
 #> Fitted models are: ecxexp ecxsigm ecxflat
 #> The fitted ecxsigm mean has zero variance at 3 of 34 observations (26, 27, 28) which the model reproduces exactly, in 7930 of 8000 draws. Such a term says nothing about dispersion in either direction, and is excluded from both sums in the draws where it arises; every draw is retained.
 #> The fitted ecxflat curve does not fall to the control's 0.01 quantile within the predictor range for 7920 of 8000 draws. The NSEC summary is censored at 20: those draws keep their rank in it and are given no value.
+#> The leave-one-observation-out score has Pareto k at or above 0.7 for 4 of 34 observations in
+#> ecxsigm (weight 0.98). The affected scores are approximate.
 ```
+
+
+
+The screen's messages also note that the leave-one-out score has a Pareto *k* at or above 0.7 for at least one row under `ecxsigm`, so the weights of that equation are approximate.
 
 `summary()` of the fitted set gives the dispersion statistic for each equation,
 including those the screen removed. The table below takes those columns, and
@@ -1572,7 +1619,11 @@ screened_const <- screen_models(set_const)
 #>   -  ecxwb1p3: Rhat 1.01, 539 divergent transitions
 #> Fitted models are: nec3param nec4param ecx4param ecxwb1 ecxwb2 ecxwb2p3 ecxll4 ecxll3 ecxflat
 #> The fitted ecxflat curve does not fall to the control's 0.01 quantile within the predictor range for 7920 of 8000 draws. The NSEC summary is censored at 1.68: those draws keep their rank in it and are given no value.
-#> The leave-one-group-out score has Pareto k above 0.7 for 3 of 11 levels of conc_group in ecx4param (weight 0.3); 3 of 11 levels of conc_group in ecxwb1 (weight 0.26); 4 of 11 levels of conc_group in ecxll4 (weight 0.18); 5 of 11 levels of conc_group in nec4param (weight 0.17); 4 of 11 levels of conc_group in ecxwb2 (weight 0.087). The scores of those levels are approximate; loo_controls = list(refit = TRUE) replaces them by refitting the equation without each level.
+#> The leave-one-group-out score has Pareto k at or above 0.7 for 3 of 11 levels of conc_group in
+#> ecx4param (weight 0.3); 3 of 11 levels of conc_group in ecxwb1 (weight 0.26); 4 of 11 levels of
+#> conc_group in ecxll4 (weight 0.18); 5 of 11 levels of conc_group in nec4param (weight 0.17); 4 of
+#> 11 levels of conc_group in ecxwb2 (weight 0.087). The affected scores are approximate; loo_controls
+#> = list(refit = TRUE) replaces them by refitting the equation without each level.
 best_const <- pull_best(screened_const)
 #> Highest-weighted model is ecx4param, holding 0.299 of the weight of 9 candidate models.
 #> Pulling out model(s): ecx4param
@@ -1586,7 +1637,7 @@ that 3 were excluded before fitting,
 and the screen removed 2 more (steps 2
 and 3 describe all three mechanisms). Because a cell here is a whole
 concentration, leaving out one cell removes a point on the curve, and the Pareto
-*k* of such a score is often above 0.7 (the model-set check below counts the
+*k* of such a score is often at or above 0.7 (the model-set check below counts the
 retained equations with at least one such cell). Where it is, the model weights
 are approximate. `amend(loo_controls = list(refit = TRUE))` would replace those
 scores by exact refits, as in step 3, which requires one refit of an equation
@@ -1687,7 +1738,11 @@ screened_power <- screen_models(set_power)
 #>   -  ecxexp: 68 divergent transitions
 #> Fitted models are: nec3param nec4param ecx4param ecxwb1 ecxwb2 ecxwb1p3 ecxwb2p3 ecxll4 ecxll3 ecxflat
 #> The fitted ecxflat curve does not fall to the control's 0.01 quantile within the predictor range for 7920 of 8000 draws. The NSEC summary is censored at 1.68: those draws keep their rank in it and are given no value.
-#> The leave-one-group-out score has Pareto k above 0.7 for 3 of 11 levels of conc_group in ecxll4 (weight 0.5); 2 of 11 levels of conc_group in ecx4param (weight 0.46); 3 of 11 levels of conc_group in nec4param (weight 0.025); 2 of 11 levels of conc_group in ecxwb2 (weight 0.014). The scores of those levels are approximate; loo_controls = list(refit = TRUE) replaces them by refitting the equation without each level.
+#> The leave-one-group-out score has Pareto k at or above 0.7 for 3 of 11 levels of conc_group in
+#> ecxll4 (weight 0.5); 2 of 11 levels of conc_group in ecx4param (weight 0.46); 3 of 11 levels of
+#> conc_group in nec4param (weight 0.025); 2 of 11 levels of conc_group in ecxwb2 (weight 0.014). The
+#> affected scores are approximate; loo_controls = list(refit = TRUE) replaces them by refitting the
+#> equation without each level.
 best_power <- pull_best(screened_power)
 #> Highest-weighted model is ecxll4, holding 0.495 of the weight of 10 candidate models.
 #> Pulling out model(s): ecxll4
@@ -1815,7 +1870,7 @@ below 0.5 in 9 of the
 the sub-model in 1 of
 10. These counts show how far the
 discrepancy found in the highest-weighted equation is shared by the rest of each
-set. At least one cell has Pareto *k* above 0.7 in 9 of the
+set. At least one cell has Pareto *k* at or above 0.7 in 9 of the
 retained equations under constant dispersion, and in 10 under
 the sub-model.
 
@@ -1975,7 +2030,7 @@ different estimates from the same data.
 
 The sampler screen gave a different outcome for each fit in this vignette. On
 the 2050 colour data, after the refits of step 3, it removed
-7 of the 12 fitted
+6 of the 12 fitted
 equations under the uninformative priors and 7 of
 12 under the regularising priors. On `nassarius` it
 removed 8 of 11, and on the
