@@ -366,28 +366,23 @@ As elsewhere in `bayesnec`, model averaging is the preferred way of handling
 uncertainty about the form of the curve (see the [Multi model usage][e2]
 vignette), and it is as important for the survival component as for growth.
 The factorised route makes the full crossed comparison available, in which each
-growth equation is paired with each survival equation. Growth and survival need
-not share a set of equations, and here we give them different sets, because
-their curves end differently. All the snails at the highest dose died, so
-survival falls to zero, and the survival set is the declining equations that
-fall to zero without estimating a lower asymptote (the declining equations in
-`models()$zero_bounded`, except `ecxsigm`, which `bnec()` does not fit to a
-negative predictor such as `log(dose + 0.0001)`). Growth of the survivors, in
-contrast, is observed only up to a dose of `r top_survivor` and could level off
-above zero, so the growth set includes three equations that estimate a lower
-asymptote (`nec4param`, `ecx4param` and `ecxwb1`) as well as three that do not.
+growth equation is paired with each survival equation. We fit the `"decline"`
+group to both components. `model_survival` can name a different set for
+survival, but neither curve is constrained in advance by these data: growth of
+the survivors is observed only up to a dose of `r top_survivor`, so it may or may
+not level off above zero, and survival falls to zero, which an equation that
+estimates a lower asymptote can also describe. `bnec()` drops three equations of
+the group from each component: `neclin` and `ecxlin`, which are not valid for a
+Gamma or Bernoulli response under the identity link, and `ecxsigm`, which it
+does not fit to a negative predictor such as `log(dose + 0.0001)`.
 
 ```{r fit-manec, results = "hide"}
 # The pseudo-BMA weights use a Bayesian bootstrap, which draws from R's random
 # number stream.
 set.seed(10)
 
-growth_set <- c("nec3param", "nec4param", "ecx4param", "ecxexp", "ecxwb1",
-                "ecxll3")
-survival_set <- c("nec3param", "ecxexp", "ecxwb1p3", "ecxwb2p3", "ecxll3")
-
-fit_m <- bnec_hurdle(growth ~ crf(log(dose + 0.001 / 10), model = growth_set),
-                     model_survival = survival_set, data = snails, seed = 10,
+fit_m <- bnec_hurdle(growth ~ crf(log(dose + 0.001 / 10), model = "decline"),
+                     model_survival = "decline", data = snails, seed = 10,
                      refresh = 0, cores = 4,
                      control = list(adapt_delta = 0.999))
 ```
