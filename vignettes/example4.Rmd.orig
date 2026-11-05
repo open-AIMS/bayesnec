@@ -397,6 +397,45 @@ coral_colour$diuron_adj <- nudge(coral_colour$diuron)
 coral_pam$diuron_adj <- nudge(coral_pam$diuron)
 ```
 
+## Yield readings of zero
+
+```{r yield-zeros-text, include = FALSE}
+yield_zero <- coral_pam$yield == 0
+zero_conc <- sort(unique(coral_pam$diuron[yield_zero]))
+read_twice <- coral_pam[coral_pam$diuron %in% zero_conc, ] |>
+  group_by(chamber, fragment) |>
+  filter(n() == 2) |>
+  summarise(zeros = sum(yield == 0), top = max(yield), .groups = "drop")
+mixed <- read_twice[read_twice$zeros == 1, ]
+yield_means <- with(subset(coral_pam, diuron < 9.6),
+                    tapply(yield, list(diuron, climate), mean))
+yield_gap <- max(apply(yield_means, 1, function(m) diff(range(m))))
+```
+
+`r sum(yield_zero)` of the `r nrow(coral_pam)` yield readings are 0, all of
+them at `r knitr::combine_words(zero_conc)` µg/L. @flores2021 repeated the
+yield measurement at 14 days only up to 2.9 µg/L, so the readings at the two
+highest concentrations were taken at 7 days, before those corals died. Yield is
+recorded to three decimal places, but no reading is between 0 and
+`r min(coral_pam$yield[!yield_zero])`, the smallest positive value. Of the
+`r nrow(read_twice)` fragments read twice at
+`r knitr::combine_words(zero_conc)` µg/L, `r nrow(mixed)` gave one reading of 0
+and one of up to `r max(mixed$top)`. A 0 is therefore a reading at the floor of
+the fluorometer, with a true value at or below the smallest positive reading,
+and not a separate outcome such as a dead fragment, which a hurdle model would
+describe. We treat these readings as left-censored at the smallest positive
+reading (see *Censoring* in [Single model usage][e1]). The alternative,
+shifting each 0 to a fixed small value as `bnec()` does for an uncensored Beta
+response, would treat that value as a measurement.
+
+```{r yield-censoring}
+yield_floor <- min(coral_pam$yield[coral_pam$yield > 0])
+coral_pam$censoring <- ifelse(coral_pam$yield == 0, "left", "none")
+# A censored row carries its bound: a Beta fit refuses one censored at 0.
+coral_pam$yield_cens <- ifelse(coral_pam$yield == 0, yield_floor,
+                               coral_pam$yield)
+```
+
 ## Separate fits for each scenario
 
 The three scenarios are fixed levels of interest, so each is fitted separately
@@ -425,8 +464,8 @@ fits_colour <- bnec_group(
   family = Beta(link = "identity"), seed = 228, refresh = 0)
 
 fits_yield <- bnec_group(
-  yield ~ crf(log(diuron_adj),
-              c("nec3param", "ecxll3", "ecxwb1p3", "ecxwb2p3")) +
+  yield_cens | cens(censoring) ~
+    crf(log(diuron_adj), c("nec3param", "ecxll3", "ecxwb1p3", "ecxwb2p3")) +
     ogl(chamber),
   data = coral_pam, group_var = "climate",
   family = Beta(link = "identity"), seed = 228, refresh = 0)
@@ -483,9 +522,8 @@ rbind(data.frame(endpoint = "colour (proportion)", group_curves(fits_colour)),
 
 The scenarios appear to separate in colour and barely at all in yield. For example, mean
 colour at 2.9 µg/L is `r m29 <- sprintf("%.3f", with(subset(coral_colour, diuron == 2.9), tapply(proportion, climate, mean))); m29[1]`, `r m29[2]` and `r m29[3]` from 2018 to 2100, whereas mean
-yield differs by less than 0.015 between scenarios at each concentration below
-9.6 µg/L. The fitted band for yield under the 2100 scenario is also wider than
-the others, from the control to about 2 µg/L.
+yield differs between scenarios by at most `r sprintf("%.3f", yield_gap)` at
+each concentration below 9.6 µg/L.
 
 ## Comparing toxicity estimates across scenarios
 
@@ -566,8 +604,60 @@ colour_order_text <- if (length(unique(colour_order)) == 1) {
 colour_2018 <- unlist(coral_probs[coral_probs$endpoint == "colour" &
                                     coral_probs$comparison != "2050-2100",
                                   c("EC50", "EC10", "N(S)EC")])
-yield_ecx <- unlist(coral_probs[coral_probs$endpoint == "yield",
-                                c("EC50", "EC10")])
+yield_ec50 <- coral_probs$EC50[coral_probs$endpoint == "yield"]
+yield_all <- unlist(coral_probs[coral_probs$endpoint == "yield",
+                                c("EC50", "EC10", "N(S)EC")])
+# The equation with the most weight in each scenario's yield fit. A screen that
+# keeps one equation leaves a bayesnecfit, which has no mod_stats.
+yield_lead <- lapply(fits_yield$fits, function(f) {
+  if (inherits(f, "bayesmanecfit")) {
+    i <- which.max(f$mod_stats$wi)
+    list(model = f$mod_stats$model[i], wi = f$mod_stats$wi[i])
+  } else {
+    list(model = f$model, wi = 1)
+  }
+})
+names(yield_lead) <- fits_yield$levels
+lead_model <- vapply(yield_lead, `[[`, character(1), "model")
+lead_text <- knitr::combine_words(vapply(unique(lead_model), function(m) {
+  lv <- names(lead_model)[lead_model == m]
+  wi <- vapply(yield_lead[lv], `[[`, numeric(1), "wi")
+  paste0("`", m, "` under ", knitr::combine_words(lv), " (",
+         knitr::combine_words(sprintf("%.2f", wi)), ")")
+}, character(1)), oxford_comma = FALSE)
+yield_range_text <- if (all(yield_all > 0.05 & yield_all < 0.95)) {
+  "None of the yield probabilities, for any of the three estimates, is below 0.05 or above 0.95."
+} else {
+  paste0("The yield probabilities for the three estimates range from ",
+         sprintf("%.3f", min(yield_all)), " to ",
+         sprintf("%.3f", max(yield_all)), ".")
+}
+# Write the shape explanation only where it holds: the scenarios favour
+# different equations, their N(S)ECs differ more than their EC50s, and the
+# low-effect medians lie below 0.96 ug/L.
+yield_medians <- sapply(c("EC50", "EC10", "N(S)EC"), function(e) {
+  sapply(c("2018", "2050", "2100"), med_coral, endpoint = "yield", estimate = e)
+})
+spread <- apply(yield_medians, 2, function(m) max(m) / min(m))
+yield_shape_text <- if (length(unique(lead_model)) > 1 &&
+                          spread[["N(S)EC"]] > spread[["EC50"]] &&
+                          all(yield_medians[, c("EC10", "N(S)EC")] < 0.96)) {
+  paste0(
+    " The EC10 and the N(S)EC differ more between the scenarios than the EC50",
+    " does (e.g. a 95% credible interval for the N(S)EC of ",
+    ci_coral("yield", "N(S)EC", "2018"), " µg/L under 2018, against ",
+    ci_coral("yield", "N(S)EC", "2100"), " µg/L under 2100), although mean",
+    " yield differs between scenarios by at most ", sprintf("%.3f", yield_gap),
+    " at each concentration below 9.6 µg/L. The medians of both estimates are",
+    " below 0.96 µg/L, where the only observations are at the control and",
+    " 0.29 µg/L, and there the fitted curve follows the shape of the equation",
+    " the weights favour. The difference is therefore likely to reflect that",
+    " choice of equation, and it should not be read as an effect of climate",
+    " from these data."
+  )
+} else {
+  ""
+}
 ```
 
 For the colour EC50 (top left panel), the probability that the 2018 estimate is
@@ -603,23 +693,11 @@ against `r ci_coral("colour", "EC10", "2050")` µg/L for 2050), which is again
 likely to reflect the absence of observations between 2.9 and 9.6 µg/L.
 
 For yield, the EC50 posteriors of the three scenarios overlap almost completely
-(bottom left panel), and none of the probabilities is below 0.05 or above
-0.95. The probabilities for the EC50 and the EC10 range from
-`r sprintf("%.2f", min(yield_ecx))` to `r sprintf("%.2f", max(yield_ecx))`,
+(bottom left panel), with probabilities from
+`r sprintf("%.2f", min(yield_ec50))` to `r sprintf("%.2f", max(yield_ec50))`,
 which is consistent with the probabilities of 0.615 and 0.539 that @flores2021
-report for the yield EC50. For the EC10 and the N(S)EC, the 2100 posterior is
-wider than those of the other two scenarios and extends to higher
-concentrations (e.g. a 95% credible interval for the N(S)EC of
-`r ci_coral("yield", "N(S)EC", "2100")` µg/L, against
-`r ci_coral("yield", "N(S)EC", "2018")` µg/L for 2018). The yield N(S)EC under
-the 2100 scenario is the higher, with a probability of
-`r p_coral("yield", "2018-2100", "N(S)EC", complement = TRUE)` against 2018 and
-`r p_coral("yield", "2050-2100", "N(S)EC", complement = TRUE)` against 2050,
-which is in the opposite direction to an effect of warming. This may reflect the
-less precisely estimated control under the 2100 scenario (the wider band in the
-figure of the fitted curves above), because the NSEC is measured from a lower
-quantile of the control response, and it should not be read as an effect of
-climate from these data.
+report for the yield EC50. `r yield_range_text` The model weights favour
+`r lead_text`.`r yield_shape_text`
 
 ## Comparing the fitted curves
 
