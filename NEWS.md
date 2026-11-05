@@ -1,5 +1,8 @@
 # bayesnec 2.2.0
 
+- `check_fit()` now returns mean statistics for groups with one observation and
+  records their undefined standard deviation statistics as `NA`. The plot shows
+  these groups in the mean panel only (#558).
 - `bnec()` and `amend()` now reject malformed priors before fitting instead of
   silently replacing them with defaults.
 
