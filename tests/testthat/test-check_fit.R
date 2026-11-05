@@ -202,7 +202,7 @@ test_that("stored grouped scores retain corrected and failed refit IDs", {
   attr(cf, "pareto") <- p
   class(cf) <- c("checkfit", "data.frame")
   printed <- paste(capture.output(print(cf)), collapse = "\n")
-  expect_match(printed, "ecxlin above cutoff: c, d")
+  expect_match(printed, "ecxlin at or above cutoff: c, d")
   expect_match(printed, "ecxlin refit failed: d")
 })
 
@@ -225,7 +225,7 @@ test_that("observation-wise scores use the loo cutoff and row IDs", {
   attr(cf, "pareto") <- clean
   class(cf) <- c("checkfit", "data.frame")
   expect_match(paste(capture.output(print(cf)), collapse = "\n"),
-               "No held-out units exceed the Pareto cutoff")
+               "No held-out unit is at or above the Pareto cutoff")
 })
 
 test_that("missing criteria are marked unavailable", {

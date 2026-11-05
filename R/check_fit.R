@@ -75,8 +75,8 @@
 #' the control group. For the mixture families it also carries the observed and
 #' simulated proportion of zeros. The separate \code{"pareto"} attribute is a
 #' data frame with one row per equation. It names the stored criterion used for
-#' model weights, its Pareto cutoff, the count and IDs of held-out units above
-#' that cutoff, the largest k, and any successful or failed group refits.
+#' model weights, its Pareto cutoff, the count and IDs of held-out units at or
+#' above that cutoff, the largest k, and any successful or failed group refits.
 #' \code{flagged_ids}, \code{refitted_ids}, and \code{refit_failed_ids} are list
 #' columns of character vectors. A missing criterion has \code{status =
 #' "unavailable"} and missing counts, not a clean result. Single-equation fits
@@ -122,10 +122,10 @@ check_fit_pareto_row <- function(fit, criterion, weight = NA_real_) {
   if (available && (is.null(ids) || length(ids) != length(k))) {
     ids <- as.character(seq_along(k))
   }
-  flagged <- if (available) ids[k > cutoff] else character()
+  flagged <- if (available) ids[k >= cutoff] else character()
   row <- data.frame(model = fit$model, criterion = criterion,
                     weight = weight, cutoff = cutoff,
-                    n_high_k = if (available) sum(k > cutoff) else NA_integer_,
+                    n_high_k = if (available) sum(k >= cutoff) else NA_integer_,
                     max_k = if (available) max(k) else NA_real_,
                     status = if (available) "available" else "unavailable")
   row$flagged_ids <- I(list(flagged))
@@ -420,7 +420,7 @@ print.checkfit <- function(x, ...) {
       print(compact, row.names = FALSE)
       for (i in shown) {
         if (length(p$flagged_ids[[i]])) {
-          cat(p$model[i], "above cutoff:",
+          cat(p$model[i], "at or above cutoff:",
               paste(p$flagged_ids[[i]], collapse = ", "), "\n")
         }
         if (length(p$refit_failed_ids[[i]])) {
@@ -433,7 +433,7 @@ print.checkfit <- function(x, ...) {
             " print; see attr(x, \"pareto\") for all equations.\n")
       }
       if (all(p$status == "available" & p$n_high_k == 0)) {
-        cat("No held-out units exceed the Pareto cutoff.\n")
+        cat("No held-out unit is at or above the Pareto cutoff.\n")
       }
       cat("High k concerns the leave-one-out approximation, not sampler",
           " convergence or the posterior predictive check.\n")

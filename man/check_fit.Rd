@@ -53,8 +53,8 @@ ratios, a posterior predictive p-value for each, and a logical flag marking
 the control group. For the mixture families it also carries the observed and
 simulated proportion of zeros. The separate \code{"pareto"} attribute is a
 data frame with one row per equation. It names the stored criterion used for
-model weights, its Pareto cutoff, the count and IDs of held-out units above
-that cutoff, the largest k, and any successful or failed group refits.
+model weights, its Pareto cutoff, the count and IDs of held-out units at or
+above that cutoff, the largest k, and any successful or failed group refits.
 \code{flagged_ids}, \code{refitted_ids}, and \code{refit_failed_ids} are list
 columns of character vectors. A missing criterion has \code{status =
 "unavailable"} and missing counts, not a clean result. Single-equation fits
