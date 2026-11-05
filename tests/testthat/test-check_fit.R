@@ -455,3 +455,19 @@ test_that("check_fit gives a growth disp(~z) column each row's value (#443)", {
     'column "z" at value "c": no surviving response'
   )
 })
+
+test_that("control_fit_issues() compares only the mean of a control of one", {
+  ratios <- function(mean_ratio) {
+    function(x, ...) {
+      data.frame(group = c("0", "1"), n = c(1L, 3L), control = c(TRUE, FALSE),
+                 mean_ratio = c(mean_ratio, 1.5), sd_ratio = c(NA, 1.1))
+    }
+  }
+  x <- list(success_models = "nec3param")
+  local_mocked_bindings(check_fit = ratios(1.02))
+  expect_identical(control_fit_issues(x, cutoff = 1.15),
+                   list(nec3param = FALSE))
+  local_mocked_bindings(check_fit = ratios(1.30))
+  expect_identical(control_fit_issues(x, cutoff = 1.15),
+                   list(nec3param = TRUE))
+})

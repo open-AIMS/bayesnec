@@ -444,7 +444,8 @@ control_fit_issues <- function(x, cutoff) {
     return(NULL)
   }
   off <- function(r) !is.finite(r) | r > cutoff | r < 1 / cutoff
-  flagged <- off(d$mean_ratio) | off(d$sd_ratio)
+  # A group of one has no standard deviation, so only its mean is compared.
+  flagged <- off(d$mean_ratio) | (d$n > 1 & off(d$sd_ratio))
   out <- as.list(flagged)
   names(out) <- if (is.null(d$model)) x$success_models[1] else d$model
   out
