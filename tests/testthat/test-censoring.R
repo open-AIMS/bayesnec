@@ -219,7 +219,7 @@ test_that("the estimators under xform = exp return what they did before #440", {
   same(q(nsec(manec_example, xform = exp, x_range = c(0.0324, 1.2),
               resolution = 200)),
        c(3.3201169227, 2.0703283968, 3.3201169227), c(">=", "", ">="),
-       c(3.3201169227, 1.0329305949), c(82L, 0L), tolerance = 1e-6)
+       c(3.3201169227, 1.0329305949), c(82L, 1L), tolerance = 1e-6)
   same(q(nec(logged, xform = exp)),
        c(4.3104239685, 3.8995850141, 4.6079795245))
   # The per-draw records keep their ends and are not swapped.
@@ -264,6 +264,20 @@ test_that("concat_censoring reports the bound true of every component", {
   # a draw known only to be above 5.
   expect_equal(out$upper, 5)
   expect_equal(out$lower, 1)
+})
+
+test_that("a combined posterior censors values outside its common range", {
+  parts <- list(cens_record(c(FALSE, TRUE, FALSE), rep(FALSE, 3),
+                            upper = 5, lower = 1),
+                cens_record(rep(FALSE, 3), rep(FALSE, 3),
+                            upper = 8, lower = 0))
+  values <- c(2, NA_real_, 4, 3, 6, 7)
+  cens <- bayesnec:::concat_censoring(parts, c(3L, 3L), values)
+  expect_equal(cens$upper, 5)
+  expect_identical(cens$above, c(FALSE, TRUE, FALSE, FALSE, TRUE, TRUE))
+  result <- bayesnec:::summarise_censored(values, c(0.5, 0.75), cens)
+  expect_equal(as.numeric(result), c(4, 5))
+  expect_identical(attr(result, "censored_summary")$bound, c("", ">="))
 })
 
 test_that("subset_censoring takes a component's share of a record", {

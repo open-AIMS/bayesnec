@@ -14,7 +14,9 @@ ecx(
   xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
   ...,
-  dpar = NULL
+  dpar = NULL,
+  pool = NULL,
+  x_control = "own"
 )
 }
 \arguments{
@@ -72,6 +74,19 @@ measured towards the response block's asymptote and \code{"hu"} or
 equation has none. The combined curve, \code{dpar = NULL}, is refused under
 \code{type = "relative"}, because its asymptote is the product of the two
 blocks' asymptotes rather than a fitted parameter.}
+
+\item{pool}{How observed group levels are combined: \code{"none"} returns
+per-level estimates, \code{"mixture"} samples levels in proportion to their
+observation counts, \code{"mean_estimate"} averages aligned estimates, and
+\code{"mean_curve"} estimates from their weighted mean curve. A joint fit
+defaults to \code{"none"}; other fits with spanning group terms default to
+\code{"mixture"}.}
+
+\item{x_control}{\code{"own"} reads each level's lowest observed concentration;
+\code{"shared"} reads the lowest across levels; a single finite number specifies
+the concentration directly. A shared control below a level's observations
+extrapolates its curve and gives a warning. Level controls are recorded in
+the result's \code{x_control} attribute.}
 }
 \value{
 A vector containing the estimated ECx value, including upper and
@@ -86,6 +101,13 @@ Extracts the predicted ECx value as desired from an object of class
 predicted mean at the lowest concentration in the supplied predictor, taken
 per posterior draw. \code{type} names what the percentage is measured
 \emph{towards}:
+
+With a fitted group term whose levels span concentrations, the control and
+curve are predicted for each observed level with its group deviations.
+Terms whose levels each occur at one concentration are set to zero. The
+default estimate mixes the observed levels by their observation counts;
+\code{pool = "none"} returns them separately. A grouped or joint fit already
+separates levels and defaults to \code{pool = "none"}.
 
 \itemize{
 \item \code{"absolute"} (the default) --- control to 0.

@@ -121,15 +121,35 @@ test_that("per-level estimates come back as one row per level", {
 # Forwarded posterior and prob_vals arguments must not turn draws or
 # truncated quantile vectors into apparently valid estimate tables.
 
-test_that("posterior = TRUE is refused rather than tabulated", {
-  # nec(posterior = TRUE) returns the draws, not a summary, so a positional
-  # table reported draws 1, 2 and 3 as an estimate and its credible interval.
+test_that("posterior = TRUE returns each level with its censoring record", {
+  skip_if(Sys.getenv("NOT_CRAN") == "")
   gf <- fake_group_fit()
-  expect_error(nec(gf, posterior = TRUE), "one row per level")
-  expect_error(ecx(gf, posterior = TRUE), "one row per level")
-  expect_error(nsec(gf, posterior = TRUE), "one row per level")
-  # and the message points at the route that does work
-  expect_error(nec(gf, posterior = TRUE), "lapply\\(x\\$fits")
+  out <- nec(gf, posterior = TRUE)
+  expect_named(out, gf$levels)
+  expect_equal(out$a, nec(gf$fits$a, posterior = TRUE))
+  expect_identical(attr(out$a, "censored"),
+                   attr(nec(gf$fits$a, posterior = TRUE), "censored"))
+  ecx_draws <- ecx(gf, posterior = TRUE)
+  expect_named(ecx_draws, gf$levels)
+  expect_equal(attr(ecx_draws, "x_control"),
+               setNames(rep(bayesnec:::control_x(gf$fits$a), 2), gf$levels))
+  expect_named(nsec(gf, posterior = TRUE), gf$levels)
+  expect_named(ecnsec(gf, nsec = 1.5, posterior = TRUE), gf$levels)
+})
+
+test_that("mixture weighting and common bounds survive grouped pooling", {
+  a <- c(1, 2, NA_real_, 4)
+  b <- c(5, 6, 7, 8)
+  attr(a, "censored") <- bayesnec:::censoring_record(
+    3, 0, c(FALSE, FALSE, TRUE, FALSE), rep(FALSE, 4))
+  attr(b, "censored") <- bayesnec:::censoring_record(
+    8, 0, rep(FALSE, 4), rep(FALSE, 4))
+  out <- bayesnec:::pool_estimate_draws(list(a = a, b = b), c(1, 3),
+                                        "mixture", seed = 1)
+  expect_length(out, 4)
+  expect_equal(as.integer(table(attr(out, "level"))), c(1L, 3L))
+  expect_true(all(attr(out, "censored")$above[out > 3]))
+  expect_equal(attr(out, "censored")$upper, 3)
 })
 
 test_that("a non-default prob_vals is carried through, not truncated", {

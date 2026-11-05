@@ -595,7 +595,7 @@ extrapolated_manec_ne <- function(object, lims, bounds, sig_val, resolution) {
   })
   out <- unlist(lapply(parts, as.numeric))
   attr(out, "censored") <- concat_censoring(lapply(parts, attr, "censored"),
-                                            lens)
+                                            lens, out)
   mark_extrapolated(out)
 }
 

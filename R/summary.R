@@ -112,6 +112,7 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
   chk_numeric(ecx_vals)
   chk_number(divergence_cutoff)
   x <- object
+  warn_stale_observed_display(x)
   check_summary_ecx_posterior(list(...))
   # Resolve xform from the dots as ecx() matches them, so that the no-effect
   # row is on the scale of the ECx rows. See summary_ne_vals().
@@ -191,6 +192,7 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
   chk_number(fit_ratio_cutoff)
   chk_lgl(check_fit)
   x <- object
+  warn_stale_observed_display(x)
   # As in summary.bayesnecfit().
   check_summary_ecx_posterior(list(...))
   ne_xform <- summary_ecx_xform(list(...))

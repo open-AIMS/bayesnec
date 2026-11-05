@@ -26,6 +26,17 @@
 #' differ only where \code{crf()} transforms the predictor inline; see
 #' Details.
 #' @param x_range A range of x values over which to consider extracting ECx.
+#' @param pool How observed group levels are combined: `"none"` returns
+#' per-level estimates, `"mixture"` samples levels in proportion to their
+#' observation counts, `"mean_estimate"` averages aligned estimates, and
+#' `"mean_curve"` estimates from their weighted mean curve. A joint fit
+#' defaults to `"none"`; other fits with spanning group terms default to
+#' `"mixture"`.
+#' @param x_control `"own"` reads each level's lowest observed concentration;
+#' `"shared"` reads the lowest across levels; a single finite number specifies
+#' the concentration directly. A shared control below a level's observations
+#' extrapolates its curve and gives a warning. Level controls are recorded in
+#' the result's \code{x_control} attribute.
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
@@ -53,6 +64,13 @@
 #' predicted mean at the lowest concentration in the supplied predictor, taken
 #' per posterior draw. \code{type} names what the percentage is measured
 #' \emph{towards}:
+#'
+#' With a fitted group term whose levels span concentrations, the control and
+#' curve are predicted for each observed level with its group deviations.
+#' Terms whose levels each occur at one concentration are set to zero. The
+#' default estimate mixes the observed levels by their observation counts;
+#' \code{pool = "none"} returns them separately. A grouped or joint fit already
+#' separates levels and defaults to \code{pool = "none"}.
 #'
 #' \itemize{
 #'   \item \code{"absolute"} (the default) --- control to 0.
@@ -190,7 +208,7 @@
 ecx <- function(object, ecx_val = 10, resolution = 500,
                 posterior = FALSE, type = "absolute", x_range = NA,
                 xform = NULL, prob_vals = c(0.5, 0.025, 0.975), ...,
-                dpar = NULL) {
+                dpar = NULL, pool = NULL, x_control = "own") {
   UseMethod("ecx")
 }
 
@@ -212,7 +230,8 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
                             posterior = FALSE, type = "absolute",
                             x_range = NA, xform = NULL,
                             prob_vals = c(0.5, 0.025, 0.975), ...,
-                            dpar = NULL) {
+                            dpar = NULL, pool = NULL,
+                            x_control = "own") {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   chk_numeric(ecx_val)
@@ -228,6 +247,24 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order")
   }
+  if (is.null(object$observed_group)) {
+    level_spec <- observed_level_spec(object)
+    if (!is.null(level_spec)) {
+      return(estimate_observed_levels(
+        object, level_spec, "ecx",
+        function(level, control_value, range_override) {
+          ecx(level, ecx_val = ecx_val, resolution = resolution,
+              posterior = TRUE, type = type, x_range = range_override,
+              xform = xform, prob_vals = prob_vals, dpar = dpar,
+              pool = "none", x_control = control_value)
+        },
+        pool, posterior, prob_vals, x_control, x_range,
+        curve_args = list(ecx_val = ecx_val, resolution = resolution,
+                          type = type, xform = xform, prob_vals = prob_vals,
+                          dpar = dpar)
+      ))
+    }
+  }
   # Allow ecx_val > 100: with a positive control, "absolute" then targets a
   # negative response, as OECD TG 201 permits. An unreached target gives NA
   # for that draw, with the warning below.
@@ -241,8 +278,9 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
   # Do not refuse an absolute ECx for a gaussian response without a bot
   # parameter. Absolute measures towards 0 by design, and a gaussian mean that
   # declines towards 0 is consistent: the likelihood never tests the sign of y.
+  control_reading <- resolve_x_control(object, x_control, x_range)
   newdata_list <- newdata_eval(
-    object, resolution = resolution, x_range = x_range
+    object, resolution = resolution, x_range = control_reading$x_range
   )
   # NULL gives a two-block fit's combined mean: positive-part mean times its
   # non-zero probability (1 - hu or 1 - zi). dpar selects one block; invert
@@ -250,10 +288,14 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
 
   # The closure applies the same dpar handling to the control prediction as to
   # the curve, so that both are read on one quantity.
-  epred_fun <- function(nd) joint_hurdle_epred(object, nd, dpar)
+  epred_fun <- function(nd) joint_hurdle_epred(
+    object, nd, dpar,
+    re_formula = if (is.null(object$re_formula)) NA else object$re_formula
+  )
   p_samples <- epred_fun(newdata_list$newdata)
   x_vec <- newdata_list$x_vec
-  control <- control_posterior(object, newdata_list$newdata, epred_fun)
+  control <- control_posterior(object, newdata_list$newdata, epred_fun,
+                               x_at = control_reading$value)
   asymptote <- ecx_asymptote(object, type, dpar)
   asymptote <- count_positive_asymptote(
     object, dpar, asymptote, newdata_list$newdata
@@ -353,7 +395,8 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
                               posterior = FALSE, type = "absolute",
                               x_range = NA, xform = NULL,
                               prob_vals = c(0.5, 0.025, 0.975), ...,
-                              dpar = NULL) {
+                              dpar = NULL, pool = NULL,
+                              x_control = "own") {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   chk_numeric(ecx_val)
@@ -368,6 +411,20 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
       prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order")
+  }
+  x_control <- model_set_control(object, x_control)
+  first <- object$mod_fits[[1]]
+  finish <- model_set_control_recorder(first, x_control)
+  if (identical(pool, "none") &&
+      !is.null(observed_level_spec(first))) {
+    return(finish(model_set_level_estimates(
+      object, "ecx",
+      function(f) ecx(f, ecx_val = ecx_val, resolution = resolution,
+                      posterior = TRUE, type = type, x_range = x_range,
+                      xform = xform, prob_vals = prob_vals, dpar = dpar,
+                      pool = "none", x_control = x_control),
+      posterior, prob_vals
+    )))
   }
   # Warn about the relative rename once for the call. sample_ecx() below calls
   # ecx() for each equation with type passed explicitly, which would otherwise
@@ -387,7 +444,7 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
     out <- ecx(target, ecx_val = ecx_val, resolution = resolution,
                posterior = TRUE, type = type,
                x_range = x_range, xform = xform, prob_vals = prob_vals,
-               dpar = dpar)
+               dpar = dpar, pool = pool, x_control = x_control)
     idx <- draw_index[[mod]]
     sample_out <- out[idx]
     # Subsetting drops the censoring record, so rebuild the part for these
@@ -397,11 +454,11 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
       subset_censoring(attr(out, "censored"), idx)
     sample_out
   }
-  to_iter <- seq_len(length(object$success_models))
+  to_iter <- which(lengths(draw_index[names(object$mod_fits)]) > 0L)
   ecx_parts <- lapply(to_iter, sample_ecx)
   ecx_out <- unlist(lapply(ecx_parts, as.numeric))
   cens <- concat_censoring(lapply(ecx_parts, attr, "censored"),
-                           vapply(ecx_parts, length, integer(1)))
+                           vapply(ecx_parts, length, integer(1)), ecx_out)
   attr(ecx_out, "censored") <- cens
   ecx_estimate <- summarise_censored(ecx_out, prob_vals, cens)
   names(ecx_estimate) <- clean_names(ecx_estimate)
@@ -412,9 +469,9 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
   attr(ecx_estimate, "toxicity_estimate") <- "ecx"
   attr(ecx_out, "toxicity_estimate") <-  "ecx"
   if (!posterior) {
-    ecx_estimate
+    finish(ecx_estimate)
   } else {
-    ecx_out
+    finish(ecx_out)
   }
 }
 
@@ -474,6 +531,33 @@ ecx_asymptote <- function(object, type, dpar = NULL) {
       return(zero_block_asymptote(object, dpar))
     }
   }
+  if (!is.null(object$observed_group)) {
+    pforms <- names(object$fit$formula$pforms)
+    bot_par <- if ("bnecbot" %in% pforms) "bnecbot" else "bot"
+    if (bot_par %in% pforms) {
+      nd <- newdata_eval(object, resolution = 2,
+                         x_range = NA)$newdata[1, , drop = FALSE]
+      read_par <- function(par) as.numeric(brms::posterior_linpred(
+        object$fit, newdata = nd, nlpar = par,
+        re_formula = object$re_formula, transform = TRUE
+      )[, 1])
+      floor <- read_par(bot_par)
+      if ("ogl" %in% pforms) {
+        offset <- read_par("ogl")
+        kind <- ogl_transform_kind(object$model, object$fit$family)
+        floor <- switch(kind,
+                        log = floor * exp(offset),
+                        logit = floor * exp(offset) /
+                          (1 - floor + floor * exp(offset)),
+                        none = floor + offset)
+        if (identical(kind, "none") &&
+            !identical(object$fit$family$link, "identity")) {
+          floor <- object$fit$family$linkinv(floor)
+        }
+      }
+      return(floor)
+    }
+  }
   # A joint refit level names its coefficient b_bot_<group_var><level>, which
   # the b_bot_Intercept read below does not find. Without this branch such a
   # level would be measured towards 0 instead of bot, without an error.
@@ -516,6 +600,15 @@ ecx_asymptote <- function(object, type, dpar = NULL) {
 #' @noRd
 zero_block_asymptote <- function(object, dpar) {
   par <- paste0(dpar, "bot")
+  if (!is.null(object$observed_group) &&
+      par %in% names(object$fit$formula$pforms)) {
+    nd <- newdata_eval(object, resolution = 2,
+                       x_range = NA)$newdata[1, , drop = FALSE]
+    return(as.numeric(brms::posterior_linpred(
+      object$fit, newdata = nd, nlpar = par,
+      re_formula = object$re_formula, transform = TRUE
+    )[, 1]))
+  }
   draws <- NULL
   if (inherits(object, "bayesnecjointlevel")) {
     draws <- joint_level_draws(object, par)

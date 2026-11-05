@@ -14,7 +14,9 @@ nsec(
   prob_vals = c(0.5, 0.025, 0.975),
   extrapolate = FALSE,
   ...,
-  dpar = NULL
+  dpar = NULL,
+  pool = NULL,
+  x_control = "own"
 )
 }
 \arguments{
@@ -64,6 +66,19 @@ curve. See Details.
 For the count hurdles, \code{"mu"} is converted to the positive-count mean
 \code{E[Y | Y > 0]} so it matches the growth component returned by
 \code{\link{bnec_hurdle}}.}
+
+\item{pool}{How observed group levels are combined: \code{"none"} returns
+per-level estimates, \code{"mixture"} samples levels in proportion to their
+observation counts, \code{"mean_estimate"} averages aligned estimates, and
+\code{"mean_curve"} estimates from their weighted mean curve. A joint fit
+defaults to \code{"none"}; other fits with spanning group terms default to
+\code{"mixture"}.}
+
+\item{x_control}{\code{"own"} reads each level's lowest observed concentration;
+\code{"shared"} reads the lowest across levels; a single finite number specifies
+the concentration directly. A shared control below a level's observations
+extrapolates its curve and gives a warning. Level controls are recorded in
+the result's \code{x_control} attribute.}
 }
 \value{
 A vector containing the estimated NSEC value, including upper and
@@ -79,6 +94,13 @@ NSEC is no-effect toxicity metric that estimates the concentration
 at which the modeled mean response is statistically indistinguishable from
 the mean control response. See the detailed derivation in
 Fisher and Fox (2023).
+
+With a fitted group term whose levels span concentrations, the reference
+and curve are predicted for each observed level with its group deviations.
+Terms whose levels each occur at one concentration are set to zero. The
+default estimate mixes the observed levels by their observation counts;
+\code{pool = "none"} returns them separately. A grouped or joint fit already
+separates levels and defaults to \code{pool = "none"}.
 
 The reference is the \code{sig_val} quantile of the control posterior,
 the control being the predicted mean at the lowest concentration in the

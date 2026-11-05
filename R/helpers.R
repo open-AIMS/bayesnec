@@ -526,7 +526,7 @@ censored_end <- function(cens, end = c("above", "below")) {
 #'
 #' @return A record, or \code{NULL} where no component is censored.
 #' @noRd
-concat_censoring <- function(parts, n_draws) {
+concat_censoring <- function(parts, n_draws, values = NULL) {
   present <- !vapply(parts, is.null, logical(1))
   if (!any(present)) {
     return(NULL)
@@ -537,12 +537,24 @@ concat_censoring <- function(parts, n_draws) {
   below <- unlist(lapply(seq_along(parts), function(i) {
     if (present[i]) parts[[i]]$below else logical(n_draws[i])
   }))
+  uppers <- vapply(parts[present], function(p) p$upper, numeric(1))
+  lowers <- vapply(parts[present], function(p) p$lower, numeric(1))
+  upper <- min(uppers)
+  lower <- max(lowers)
+  if (!is.null(values)) {
+    if (length(values) != sum(n_draws)) {
+      stop("The values and censoring records have different lengths.",
+           call. = FALSE)
+    }
+    # A finite draw outside a component's wider range is censored when the
+    # components are combined over their common range.
+    above <- above | (!is.na(values) & values > upper)
+    below <- below | (!is.na(values) & values < lower)
+  }
   if (!any(above) && !any(below)) {
     return(NULL)
   }
-  uppers <- vapply(parts[present], function(p) p$upper, numeric(1))
-  lowers <- vapply(parts[present], function(p) p$lower, numeric(1))
-  out <- censoring_record(min(uppers), max(lowers), above, below)
+  out <- censoring_record(upper, lower, above, below)
   # Components from one bnec() call share a formula, so take the flag from the
   # first. A set assembled from separate fits must use a common orientation.
   # censored_end() and warn_censored_draws() read it from the combined record.
@@ -1966,7 +1978,15 @@ newdata_eval <- function(object, resolution, x_range) {
   }
   data <- model.frame(object$bayesnecformula, object$fit$data)
   bnec_pop_vars <- attr(data, "bnec_pop")
+  if (!is.null(object$observed_group) && is.na(x_range[1])) {
+    x_range <- range(object$level_x, na.rm = TRUE)
+  }
   newdata <- bnec_newdata(object, resolution = resolution, x_range = x_range)
+  if (!is.null(object$observed_group)) {
+    for (v in names(object$observed_group)) {
+      newdata[[v]] <- object$observed_group[[v]][rep(1L, nrow(newdata))]
+    }
+  }
   if (!is.null(hurdle)) {
     newdata <- hurdle_disp_placeholders(newdata, hurdle)
   }
@@ -2352,6 +2372,59 @@ control_x <- function(object) {
   lowest_observed_x(grid_obj)
 }
 
+#' Choose the control concentration and search grid
+#' @param object A single fit or one observed level.
+#' @param x_control \code{"own"}, \code{"shared"}, or one number.
+#' @param x_range The requested prediction range.
+#' @return A list with the control value and prediction range.
+#' @noRd
+resolve_x_control <- function(object, x_control, x_range) {
+  if (is.character(x_control) && length(x_control) == 1L &&
+      !is.na(x_control) && x_control %in% c("own", "shared")) {
+    return(list(value = control_x(object), x_range = x_range))
+  }
+  if (!is.numeric(x_control) || length(x_control) != 1L ||
+      !is.finite(x_control)) {
+    stop("`x_control` must be \"own\", \"shared\", or one finite number.",
+         call. = FALSE)
+  }
+  grid_obj <- object
+  if (is_bayesnechurdlefit(grid_obj)) grid_obj <- grid_obj$survival
+  if (inherits(grid_obj, "bayesmanecfit")) {
+    grid_obj <- suppressMessages(
+      pull_out(grid_obj, model = names(grid_obj$mod_fits)[1])
+    )
+  }
+  transformed <- tryCatch(
+    suppressWarnings(sub_x_transformation(x_control,
+                                           grid_obj$bayesnecformula)),
+    error = function(e) NA_real_
+  )
+  if (length(transformed) != 1L || !is.finite(transformed)) {
+    stop("`x_control = ", x_control, "` is not finite under the crf()",
+         " predictor transformation.", call. = FALSE)
+  }
+  low <- control_x(object)
+  high <- if (length(grid_obj$level_x)) max(grid_obj$level_x) else {
+    frame <- stats::model.frame(grid_obj$bayesnecformula,
+                                data = grid_obj$fit$data)
+    x_var <- attr(frame, "bnec_pop")[["x_var"]]
+    max(grid_obj$fit$data[[x_var]])
+  }
+  if (!is.na(x_range[1])) high <- max(x_range)
+  if (x_control >= high) {
+    stop("`x_control` must be below the highest concentration in the",
+         " prediction range.", call. = FALSE)
+  }
+  if (x_control < low && !isTRUE(attr(x_control, "warned"))) {
+    warning("The control at ", signif(x_control, 3), " is below the lowest",
+            " observed concentration, ", signif(low, 3),
+            "; the curve from control to the data is extrapolated.",
+            call. = FALSE)
+  }
+  list(value = as.numeric(x_control), x_range = c(x_control, high))
+}
+
 #' The lowest observed predictor value of one fit
 #'
 #' The rule \code{control_x()} and \code{control_posterior()} share. One level
@@ -2368,6 +2441,9 @@ control_x <- function(object) {
 #' @importFrom stats model.frame
 #' @noRd
 lowest_observed_x <- function(grid_obj, x_var = NULL) {
+  if (!is.null(grid_obj$observed_group)) {
+    return(min(grid_obj$level_x))
+  }
   if (inherits(grid_obj, "bayesnecjointlevel") && length(grid_obj$level_x)) {
     return(min(grid_obj$level_x))
   }
