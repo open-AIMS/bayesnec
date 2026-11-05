@@ -481,8 +481,12 @@ nsec_plain <- nsec(fit_plain)
 nsec_ogl <- nsec(fit_ogl)
 ```
 
-The table below gives each fit's EC10 and NSEC, and the weight, EC10, NSEC and
-cell SD of each equation given at least 0.01 of the weight.
+`lum31` comes from an acute assay, in which luminescence is read 15 and 30
+minutes after exposure. Low-effect and no-effect estimates such as the EC10 and
+NSEC are not usually appropriate endpoints for such an assay, and we report them
+here only to illustrate the methods. The table below gives each fit's EC10 and
+NSEC, and the weight, EC10, NSEC and cell SD of each equation given at least
+0.01 of the weight.
 
 ```{r table-conc-group, echo = FALSE}
 # The EC10 and NSEC of each equation given at least min_wi of the weight.
