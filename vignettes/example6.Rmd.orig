@@ -756,17 +756,12 @@ differ by at most `r sprintf("%.1f", route_diff)`% across the three endpoints
 priors, so they estimate one posterior, `r route_note`. `r joint_note`
 `r route_conclusion`
 
-`autoplot()` draws a joint fit as it draws any single `bnec()` fit, in one
-panel of the expected response, which for a two-block family is the combined
-endpoint (figure below). It has no argument that selects a block, so the growth
-and survival curves of the joint refit are compared with those of the
-factorised pair only through their EC10 (table above).
+`autoplot()` takes the same `which` argument for a joint fit as for a
+factorised one, so the joint refit is drawn as the factorised pair was (figure
+below).
 
-```{r plot-joint, fig.width = 6, fig.asp = 0.6, fig.cap = "The combined endpoint (response per individual exposed) of the joint refit, with the median (dashed line) and 95% credible band. Points are the growth of each snail, with the deaths as zeros. The grey vertical lines mark the combined NSEC and its credible limits, and the blue lines the EC10 and its limits."}
-# The default panel title names the growth equation only.
-autoplot(fit_j, x_scale = "fitted", ecx = TRUE, point_alpha = 0.25) +
-  labs(x = "Dose", y = "Response per individual exposed") +
-  theme(strip.text = element_blank())
+```{r plot-joint, fig.width = 10, fig.asp = 0.4, out.width = "100%", fig.cap = "The combined endpoint (response per individual exposed), growth (response of survivors) and survival of the joint refit, with the median and 95% credible band of each curve. Grey vertical lines mark the no-effect estimate of each panel and its credible limits; blue lines mark the EC10 and its limits. Points are as in the figure of the model average."}
+autoplot(fit_j, which = "all", x_scale = "fitted", ecx = TRUE, xlab = "Dose")
 ```
 
 ```{r joint-text, include = FALSE}
@@ -783,8 +778,9 @@ joint_ma_note <- if (abs(joint_15 / ma_15 - 1) < 0.1) {
 }
 ```
 
-The grey lines mark the combined NSEC of the joint refit, `r ci_text(nsec_j)`,
-and the blue lines its combined EC10 (table above). At a dose of 15, where
+On the combined panel the grey lines mark the combined NSEC of the joint
+refit, `r ci_text(nsec_j)`, and the blue lines its combined EC10, and the EC10
+of each block is in the table above. At a dose of 15, where
 survival has fallen to about half its control value, the median expected growth
 per snail exposed is `r sig2(joint_15)` for the joint
 refit and `r sig2(ma_15)` for the model average (figure in *Model averaging*),
