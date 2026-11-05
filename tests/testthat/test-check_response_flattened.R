@@ -116,6 +116,22 @@ test_that("the count families are assessed under a quasipoisson variance", {
   }
 })
 
+test_that("a zero count at the highest concentration marks the response floor", {
+  d <- data.frame(x = flat_x,
+                  y = c(declining_counts[1:12], rep(0, 4)))
+  d_positive <- d
+  d_positive$y[13:16] <- c(0, 0, 0, 1)
+  for (family in list(poisson(link = "identity"),
+                      brms::negbinomial(link = "identity"),
+                      brms::zero_inflated_poisson(link = "identity"),
+                      brms::zero_inflated_negbinomial(link = "identity"))) {
+    frame <- function(data) flat_bdat(y ~ crf(x, "nec3param"), data)
+    expect_silent(check_response_flattened(frame(d), family))
+    expect_message(check_response_flattened(frame(d_positive), family),
+                   still_declining)
+  }
+})
+
 test_that("the zero-inflated count families are assessed whole", {
   # They are not two-block families here: zi is held constant and no curve is
   # fitted on it, so the check runs on the whole response.
@@ -151,6 +167,28 @@ test_that("a binomial response is assessed on its counts", {
   )
 })
 
+test_that("zero survivors at the highest concentration mark the response floor", {
+  d <- data.frame(
+    conc = c(0, 6.218, 12.437, 25.074, 50.148, 80.236, 100.295),
+    y = c(179, 187, 193, 186, 172, 41, 0),
+    n = 200
+  )
+  d_positive <- d
+  d_positive$y[7] <- 10
+  d_flat <- d
+  d_flat$y[6] <- 0
+  for (family in list(binomial(link = "identity"),
+                      brms::beta_binomial(link = "identity"))) {
+    frame <- function(data) {
+      flat_bdat(y | trials(n) ~ crf(conc, "nec3param"), data)
+    }
+    expect_silent(check_response_flattened(frame(d), family))
+    expect_message(check_response_flattened(frame(d_positive), family),
+                   still_declining)
+    expect_silent(check_response_flattened(frame(d_flat), family))
+  }
+})
+
 test_that("a bernoulli response is assessed with the dispersion fixed", {
   # One trial per observation leaves no dispersion to estimate.
   expect_identical(flatness_spec("bernoulli")$family$family, "binomial")
@@ -168,6 +206,12 @@ test_that("a bernoulli response is assessed with the dispersion fixed", {
   expect_silent(
     check_response_flattened(flat, brms::bernoulli(link = "identity"))
   )
+  y_floor <- y
+  y_floor[x == 4] <- 0
+  floor <- flat_bdat(y ~ crf(x, "nec3param"),
+                     data.frame(x = x, y = y_floor))
+  expect_silent(check_response_flattened(floor,
+                                         brms::bernoulli(link = "identity")))
 })
 
 test_that("a beta response is assessed under a quasibinomial variance", {
@@ -289,7 +333,7 @@ test_that("a hurdle response block is assessed against its own two levels", {
   msg <- capture_messages(check_response_flattened(bdat, hurdle_family))
   # The levels named for the response block are 1 and 2, not 2 and 4.
   expect_length(grep("The response block .*rises from 1 to 2", msg), 1)
-  expect_length(grep("The survival block .*rises from 2 to 4", msg), 1)
+  expect_length(grep("The survival block", msg), 0)
 })
 
 test_that("the hurdle survival block reads the raw counts", {
@@ -303,12 +347,13 @@ test_that("the hurdle survival block reads the raw counts", {
   expect_identical(blocks$survival$trials, c(10, 10, 10, 10))
   observed <- blocks$survival$successes / blocks$survival$trials
   expect_false(any(observed %in% survival_by_x(x, y)$y))
-  # Complete separation, which is where the Wald statistic summary.glm() prints
-  # reports p near a half and the analysis of deviance does not.
+  # An observed zero floor does not need a contrast, even when the raw counts
+  # separate the two highest concentrations completely.
   result <- flatness_contrast(blocks$survival)
-  expect_identical(result$status, "tested")
-  expect_true(result$declining)
-  expect_lt(result$p_value, 1e-4)
+  expect_identical(result$status, "skipped")
+  bdat <- hurdle_frame(x, y)
+  msg <- capture_messages(check_response_flattened(bdat, hurdle_family))
+  expect_length(grep("The survival block", msg), 0)
 })
 
 # ---- edge cases -------------------------------------------------------------
@@ -477,6 +522,20 @@ test_that("each level of a grouped call is assessed on its own", {
   )
   expect_length(grep("level \"incomplete\"", msg), 1)
   expect_length(grep("level \"complete\"", msg), 0)
+})
+
+test_that("a grouped count response skips only levels with a zero floor", {
+  d <- data.frame(
+    x = rep(flat_x, 2),
+    y = c(declining_counts[1:12], rep(0, 4), declining_counts),
+    site = rep(c("zero floor", "positive end"), each = length(flat_x))
+  )
+  bdat <- flat_bdat(y ~ crf(x, "nec3param"), d)
+  msg <- capture_messages(check_response_flattened(
+    bdat, poisson(link = "identity"), group = d$site
+  ))
+  expect_length(grep("level \"zero floor\"", msg), 0)
+  expect_length(grep("level \"positive end\"", msg), 1)
 })
 
 test_that("a per-level block list is honoured", {
