@@ -20,6 +20,17 @@
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
+#' @param pool How observed group levels are combined: `"none"` returns
+#' per-level estimates, `"mixture"` samples levels in proportion to their
+#' observation counts, `"mean_estimate"` averages aligned estimates, and
+#' `"mean_curve"` estimates from their weighted mean curve. A joint fit
+#' defaults to `"none"`; other fits with spanning group terms default to
+#' `"mixture"`.
+#' @param x_control `"own"` reads each level's lowest observed concentration;
+#' `"shared"` reads the lowest across levels; a single finite number specifies
+#' the concentration directly. A shared control below a level's observations
+#' extrapolates its curve and gives a warning. Level controls are recorded in
+#' the result's \code{x_control} attribute.
 #' @param ... Further arguments to pass to class specific methods.
 #'
 #' @details NSEC is no-effect toxicity metric that estimates the concentration
@@ -27,6 +38,14 @@
 #' the mean control response. See the detailed derivation in
 #' Fisher and Fox (2023). Like NOEC, NSEC estimates will have an associated
 #' effect size. This function estimates the effect of a given NSEC estimate.
+#'
+#' With a fitted group term whose levels span concentrations, the curve and
+#' control are predicted for each observed level with its group deviations.
+#' Terms whose levels each occur at one concentration are set to zero. The
+#' level of a spanning term observed at only one concentration is excluded from
+#' the estimate, with a message naming it. The default mixes the remaining
+#' observed levels by their observation counts;
+#' \code{pool = "none"} returns them separately.
 #'
 #' The effect is measured from the control --- the predicted mean at the
 #' lowest concentration in the supplied predictor, per posterior draw --- and
@@ -86,7 +105,8 @@
 #' @export
 ecnsec <- function(object, nsec, resolution = 500, x_range = NA,
                    type = "absolute",
-                 xform = NULL, prob_vals = c(0.5, 0.025, 0.975), ...) {
+                 xform = NULL, prob_vals = c(0.5, 0.025, 0.975), ...,
+                 pool = NULL, x_control = "own") {
   UseMethod("ecnsec")
 }
 
@@ -110,7 +130,8 @@ ecnsec <- function(object, nsec, resolution = 500, x_range = NA,
 ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
                                type = "absolute",
                              xform = NULL, prob_vals = c(0.5, 0.025, 0.975), ...,
-                             posterior = FALSE) {
+                             posterior = FALSE, pool = NULL,
+                             x_control = "own") {
   # One value: the curve is read at one point.
   chk_number(nsec)
   chk_logical(posterior)
@@ -140,10 +161,58 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
   }
+  if (inherits(object, "bayesmanecfit")) {
+    x_control <- model_set_control(object, x_control)
+    first <- object$mod_fits[[1]]
+    finish <- model_set_control_recorder(first, x_control)
+    if (!is.null(observed_level_spec(first))) {
+      per_model <- function(f) ecnsec(
+        f, nsec = nsec, resolution = resolution, x_range = x_range,
+        type = type, xform = xform, prob_vals = prob_vals,
+        posterior = TRUE, pool = pool, x_control = x_control
+      )
+      if (identical(pool, "none")) {
+        return(finish(model_set_level_estimates(
+          object, "ecnsec", per_model, posterior, prob_vals
+        )))
+      }
+      models <- names(object$mod_fits)
+      idx <- pull_draw_index(object, models, object$sample_size)
+      models <- models[lengths(idx[models]) > 0L]
+      parts <- once_level_note(lapply(models, function(m) {
+        per_model(pull_equation(object, m))[idx[[m]]]
+      }))
+      out <- unlist(parts, use.names = FALSE)
+      if (posterior) return(finish(out))
+      result <- stats::quantile(out, probs = prob_vals, na.rm = TRUE)
+      names(result) <- clean_names(result)
+      return(finish(result))
+    }
+  }
+  if (!inherits(object, "bayesmanecfit") &&
+      is.null(object$observed_group)) {
+    level_spec <- observed_level_spec(object)
+    if (!is.null(level_spec)) {
+      return(estimate_observed_levels(
+        object, level_spec, "ecnsec",
+        function(level, control_value, range_override) {
+          ecnsec(level, nsec = nsec, resolution = resolution,
+                 x_range = range_override, type = type, xform = xform,
+                 prob_vals = prob_vals, posterior = TRUE, pool = "none",
+                 x_control = control_value)
+        },
+        pool, posterior, prob_vals, x_control, x_range,
+        curve_args = list(nsec = nsec, resolution = resolution,
+                          type = type, xform = xform,
+                          prob_vals = prob_vals)
+      ))
+    }
+  }
   nsec_use <- xform(nsec)
 
+  control_reading <- resolve_x_control(object, x_control, x_range)
   newdata_list <- newdata_eval(
-    object, resolution = resolution, x_range = x_range
+    object, resolution = resolution, x_range = control_reading$x_range
   )
   # Refuse an nsec outside the chosen grid. Otherwise the curve is evaluated
   # past that grid without reporting the extrapolation.
@@ -152,14 +221,16 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
 
   p_samples <- posterior_epred(object,
                                newdata = newdata_list$newdata,
-                               re_formula = NA)
+                               re_formula = if (is.null(object$re_formula)) NA
+                                 else object$re_formula)
   newdat_nsec <- newdata_eval(
     object, resolution = 2, x_range = c(nsec_use, nsec_use)
   )
 
   pred_val_nsec <- posterior_epred(object,
                                    newdata = newdat_nsec$newdata,
-                                   re_formula = NA)
+                                   re_formula = if (is.null(object$re_formula)) NA
+                                     else object$re_formula)
   at_nsec <- pred_val_nsec[, 2]
 
   # Each draw's control is compared with the same draw's curve at nsec. Keep
@@ -167,7 +238,10 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
   # pairs row i across calls only because each call thins by the stored index.
   control_draws <- control_posterior(
     object, newdata_list$newdata,
-    function(nd) posterior_epred(object, newdata = nd, re_formula = NA)
+    function(nd) posterior_epred(
+      object, newdata = nd,
+      re_formula = if (is.null(object$re_formula)) NA else object$re_formula
+    ), x_at = control_reading$value
   )
   floor_draws <- switch(
     type,

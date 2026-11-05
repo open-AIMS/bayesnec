@@ -12,7 +12,8 @@
 #' @details See \code{methods(class = "bayesnecgroupfit")} for an overview of
 #' available methods.
 #'
-#' \code{\link{nec}}, \code{\link{ecx}} and \code{\link{nsec}} on a
+#' \code{\link{nec}}, \code{\link{ecx}}, \code{\link{nsec}} and
+#' \code{\link{ecnsec}} on a
 #' \code{bayesnecgroupfit} return a \code{\link[base]{data.frame}} with one row
 #' per level: a \code{level} column; one numeric column per quantile, named as
 #' the same method names them on a single fit; and, after those, one character
@@ -22,6 +23,7 @@
 #' rather than a quantile, and \code{""} where it is a quantile. These are the
 #' marks the level's own fit returns in attribute \code{"censored_summary"} and
 #' prints beside the number.
+#' Use \code{pool} to combine the levels; see \code{\link{bnec_group}}.
 #'
 #' @slot fits A named \code{\link[base]{list}} of fits, one per level.
 #' @slot group_var The name of the grouping column.
@@ -73,24 +75,131 @@ group_lapply <- function(object, fun, ...) {
 #' @param fun A function taking a fit as its first argument.
 #' @param ... Passed to the underlying method.
 #'
-#' @details Refuses \code{posterior = TRUE}: a table with one row per level
-#' cannot hold a vector of draws.
+#' @details With \code{posterior = TRUE} and \code{pool = "none"}, returns a
+#' named list of per-level draws. Pooling returns one posterior vector.
 #'
 #' @return A \code{\link[base]{data.frame}} with one row per level: the level,
 #' one numeric column per entry of the estimate, and one \code{bound_} column
 #' per entry from \code{estimate_marks()}.
 #'
 #' @noRd
-group_estimate_table <- function(object, what, fun, ...) {
-  dots <- list(...)
-  if (isTRUE(dots$posterior)) {
-    stop(what, " on a bayesnecgroupfit returns one row per level, which a",
-         " posterior sample is not. Use lapply(x$fits, ", what,
-         ", posterior = TRUE) for the per-level posteriors: the levels are",
-         " fitted independently, so each element is an ordinary fit and its",
-         " posterior is unchanged by being part of a group.", call. = FALSE)
+group_estimate_table <- function(object, what, fun, ..., pool = "none",
+                                 nsec = NULL) {
+  if (is.null(pool)) pool <- "none"
+  pool <- validate_pool(pool, what)
+  dots <- shared_level_control(object$fits, list(...))
+  posterior <- isTRUE(dots$posterior)
+  finish <- if (identical(what, "nec")) identity else function(x) {
+    record_level_controls(x, level_control_values(object$fits,
+                                                   dots$x_control))
   }
-  estimate_table(group_lapply(object, fun, ...), object$levels, what)
+  if (identical(pool, "mean_curve")) {
+    if (identical(what, "ecnsec")) dots$nsec <- nsec
+    return(finish(mean_curve_estimate(object$fits, object$n, what, dots)))
+  }
+  if (identical(pool, "none")) {
+    est <- lapply(object$fits, function(f) do.call(fun, c(list(f), dots)))
+    names(est) <- object$levels
+    if (posterior) return(finish(est))
+    return(finish(estimate_table(est, object$levels, what)))
+  }
+  dots$posterior <- TRUE
+  draws <- lapply(object$fits, function(f) do.call(fun, c(list(f), dots)))
+  names(draws) <- object$levels
+  pooled <- pool_estimate_draws(draws, object$n, pool,
+                                seed = if (is.null(object$level_seeds)) 216 else
+                                  sum(object$level_seeds))
+  if (posterior) return(finish(pooled))
+  probs <- if (is.null(dots$prob_vals)) c(0.5, 0.025, 0.975) else
+    dots$prob_vals
+  out <- summarise_censored(pooled, probs)
+  names(out) <- clean_names(out)
+  if (identical(what, "nsec") &&
+      !is.null(attr(pooled, "ecnsec_relativeP"))) {
+    attr(out, "ecnsec_relativeP") <- stats::quantile(
+      attr(pooled, "ecnsec_relativeP"), probs = probs, na.rm = TRUE
+    )
+  }
+  finish(out)
+}
+
+#' @noRd
+validate_pool <- function(pool, what) {
+  choices <- c("none", "mixture", "mean_estimate", "mean_curve")
+  if (!is.character(pool) || length(pool) != 1L || is.na(pool) ||
+      !pool %in% choices) {
+    stop("`pool` must be one of ", paste(shQuote(choices), collapse = ", "),
+         ".", call. = FALSE)
+  }
+  if (identical(pool, "mean_curve") && identical(what, "nec")) {
+    stop("`mean_curve` is unavailable for nec(): the nec parameter has no",
+         " curve to average.", call. = FALSE)
+  }
+  pool
+}
+
+#' @noRd
+pool_estimate_draws <- function(draws, weights, pool, seed = 216) {
+  if (length(draws) != length(weights) || !length(draws) ||
+      any(!is.finite(weights)) || any(weights <= 0)) {
+    stop("Each level needs a positive observation count.", call. = FALSE)
+  }
+  n <- min(vapply(draws, length, integer(1)))
+  if (n == 0L) stop("The levels have no posterior draws.", call. = FALSE)
+  weights <- weights / sum(weights)
+  if (identical(pool, "mixture")) {
+    indices <- mixture_draw_indices(vapply(draws, length, integer(1)),
+                                     weights, n, seed)
+    counts <- lengths(indices)
+    parts <- Map(subset_draws, draws, indices)
+    out <- unlist(lapply(parts, as.numeric), use.names = FALSE)
+    attr(out, "censored") <- concat_censoring(
+      lapply(parts, attr, "censored"), vapply(parts, length, integer(1)), out
+    )
+    attr(out, "level") <- rep(names(draws), counts)
+    attr(out, "draw_id") <- unlist(indices, use.names = FALSE)
+    effects <- lapply(draws, attr, "ecnsec_relativeP")
+    if (all(!vapply(effects, is.null, logical(1)))) {
+      attr(out, "ecnsec_relativeP") <- unlist(Map(function(x, idx) x[idx],
+                                                   effects, indices),
+                                             use.names = FALSE)
+    }
+    return(out)
+  }
+  if (identical(pool, "mean_curve")) {
+    stop("`mean_curve` requires the level curves.", call. = FALSE)
+  }
+  aligned <- lapply(draws, subset_draws, idx = seq_len(n))
+  values <- do.call(cbind, lapply(aligned, as.numeric))
+  out <- as.numeric(values %*% weights)
+  effects <- lapply(draws, attr, "ecnsec_relativeP")
+  if (all(!vapply(effects, is.null, logical(1)))) {
+    effect_values <- do.call(cbind, lapply(effects, function(x) x[seq_len(n)]))
+    attr(out, "ecnsec_relativeP") <- as.numeric(effect_values %*% weights)
+  }
+  records <- lapply(aligned, attr, "censored")
+  present <- !vapply(records, is.null, logical(1))
+  if (any(present)) {
+    upper <- min(vapply(records[present], function(r) r$upper, numeric(1)))
+    lower <- max(vapply(records[present], function(r) r$lower, numeric(1)))
+    above <- Reduce(`|`, lapply(records, function(r) {
+      if (is.null(r)) rep(FALSE, n) else r$above
+    }))
+    below <- Reduce(`|`, lapply(records, function(r) {
+      if (is.null(r)) rep(FALSE, n) else r$below
+    }))
+    above <- above | rowSums(values > upper, na.rm = TRUE) > 0
+    below <- below | rowSums(values < lower, na.rm = TRUE) > 0
+    if (any(above & below)) {
+      stop("A draw is censored at opposite ends in different levels; its",
+           " weighted mean has no known bound.", call. = FALSE)
+    }
+    out[above | below] <- NA_real_
+    attr(out, "censored") <- censoring_record(
+      upper, lower, above, below
+    )
+  }
+  out
 }
 
 #' Stack per-level estimates into one row per level
@@ -226,6 +335,17 @@ ecx.bayesnecgroupfit <- function(object, ...) {
 #' @export
 nsec.bayesnecgroupfit <- function(object, ...) {
   group_estimate_table(object, "nsec", function(f, ...) nsec(f, ...), ...)
+}
+
+#' @noRd
+#' @method ecnsec bayesnecgroupfit
+#' @export
+ecnsec.bayesnecgroupfit <- function(object, nsec, ...) {
+  group_estimate_table(object, "ecnsec", function(f, ...) {
+    out <- ecnsec(f, nsec = nsec, ...)
+    if (!isTRUE(list(...)$posterior)) names(out) <- clean_names(out)
+    out
+  }, ..., nsec = nsec)
 }
 
 #' @noRd

@@ -42,6 +42,20 @@ model-averaging within each level, and returns a
 available from the per-level weights alone.
 }
 \details{
+\bold{Reading and pooling levels}
+
+\code{\link{ecx}}, \code{\link{nsec}}, \code{\link{nec}} and
+\code{\link{ecnsec}} return one row per fitted level by default. With
+\code{posterior = TRUE} and \code{pool = "none"}, they return a named list
+of per-level draws. \code{pool = "mixture"} combines levels in proportion
+to their observation counts; \code{"mean_estimate"} averages their
+estimates and \code{"mean_curve"} reads the estimate from their weighted
+mean curves. A NEC parameter has no curve to average, so \code{nec()} does
+not accept \code{"mean_curve"}. Each level uses its own lowest observed
+concentration as the control by default. \code{x_control = "shared"} or a
+number reads all levels at one concentration and warns where this lies
+below a level's observations.
+
 \bold{Why the levels can be fitted separately}
 
 Factor levels partition the data disjointly and share no parameters, so the

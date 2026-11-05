@@ -265,15 +265,48 @@ bnec_newdata.bayesnecjointlevel <- function(x, resolution = 100,
 #' \code{\link[base]{list}} under \code{posterior = TRUE}.
 #'
 #' @noRd
-joint_estimate_table <- function(object, what, fun, ...) {
-  est <- lapply(object$levels, function(lev) {
-    fun(joint_level_fit(object, lev), ...)
+joint_estimate_table <- function(object, what, fun, ..., pool = "none",
+                                  nsec = NULL) {
+  if (is.null(pool)) pool <- "none"
+  pool <- validate_pool(pool, what)
+  fits <- lapply(object$levels, function(lev) joint_level_fit(object, lev))
+  names(fits) <- object$levels
+  dots <- shared_level_control(fits, list(...))
+  posterior <- isTRUE(dots$posterior)
+  finish <- if (identical(what, "nec")) identity else function(x) {
+    record_level_controls(x, level_control_values(fits, dots$x_control))
+  }
+  if (identical(pool, "mean_curve")) {
+    if (identical(what, "ecnsec")) dots$nsec <- nsec
+    return(finish(mean_curve_estimate(fits, as.numeric(table(factor(
+      joint_row_levels(object), levels = object$levels))), what, dots)))
+  }
+  if (!identical(pool, "none")) dots$posterior <- TRUE
+  est <- lapply(fits, function(f) {
+    do.call(fun, c(list(f), dots))
   })
   names(est) <- object$levels
-  if (isTRUE(list(...)$posterior)) {
-    return(est)
+  if (!identical(pool, "none")) {
+    weights <- as.numeric(table(factor(joint_row_levels(object),
+                                       levels = object$levels)))
+    pooled <- pool_estimate_draws(est, weights, pool)
+    if (posterior) return(finish(pooled))
+    probs <- if (is.null(dots$prob_vals)) c(0.5, 0.025, 0.975) else
+      dots$prob_vals
+    out <- summarise_censored(pooled, probs)
+    names(out) <- clean_names(out)
+    if (identical(what, "nsec") &&
+        !is.null(attr(pooled, "ecnsec_relativeP"))) {
+      attr(out, "ecnsec_relativeP") <- stats::quantile(
+        attr(pooled, "ecnsec_relativeP"), probs = probs, na.rm = TRUE
+      )
+    }
+    return(finish(out))
   }
-  estimate_table(est, object$levels, what)
+  if (posterior) {
+    return(finish(est))
+  }
+  finish(estimate_table(est, object$levels, what))
 }
 
 #' The no-effect estimate at every level of a composed joint refit
@@ -297,7 +330,9 @@ joint_estimate_table <- function(object, what, fun, ...) {
 #' @importFrom stats quantile setNames
 #'
 #' @noRd
-joint_ne_table <- function(object, no_effect, ...) {
+joint_ne_table <- function(object, no_effect, ..., pool = "none") {
+  if (is.null(pool)) pool <- "none"
+  pool <- validate_pool(pool, "nec")
   dots <- list(...)
   prob_vals <- if (is.null(dots$prob_vals)) {
     c(0.5, 0.025, 0.975)
@@ -313,6 +348,7 @@ joint_ne_table <- function(object, no_effect, ...) {
          " in that order.", call. = FALSE)
   }
   posterior <- isTRUE(dots$posterior)
+  if (!identical(pool, "none")) dots$posterior <- TRUE
   levels <- object$levels
   models <- vapply(levels, joint_level_model, character(1), object = object,
                    USE.NAMES = FALSE)
@@ -328,16 +364,29 @@ joint_ne_table <- function(object, no_effect, ...) {
   est <- lapply(seq_along(levels), function(i) {
     lvl_fit <- joint_level_fit(object, levels[i])
     if (threshold[i]) {
-      return(nec(lvl_fit, ...))
+      return(do.call(nec, c(list(lvl_fit), dots)))
     }
     if (no_effect) {
-      return(nsec(lvl_fit, ...))
+      return(do.call(nsec, c(list(lvl_fit), dots)))
     }
     # NA per draw, not NULL or zeros: a zero-length element drops out of a
     # vapply(), and zeros would read as an estimate at the origin.
     if (posterior) rep(NA_real_, ndraws(object$fit)) else na_row
   })
   names(est) <- levels
+  if (!identical(pool, "none")) {
+    if (any(!threshold) && !no_effect) {
+      stop("Pooling NEC values needs `no_effect = TRUE` when a level fits",
+           " a smooth equation.", call. = FALSE)
+    }
+    weights <- as.numeric(table(factor(joint_row_levels(object),
+                                       levels = levels)))
+    pooled <- pool_estimate_draws(est, weights, pool)
+    if (posterior) return(pooled)
+    out <- summarise_censored(pooled, prob_vals)
+    names(out) <- clean_names(out)
+    return(out)
+  }
   if (any(!threshold) && !no_effect) {
     # Worded to read the same for one level or for every level.
     message("No NEC is defined at ",
@@ -396,7 +445,7 @@ ecnsec.bayesnecjointfit <- function(object, nsec, ...) {
       names(out) <- clean_names(out)
     }
     out
-  }, ...)
+  }, ..., nsec = nsec)
 }
 
 #' The fitted curve at one level of a joint refit
@@ -418,11 +467,21 @@ ecnsec.bayesnecjointfit <- function(object, nsec, ...) {
 joint_level_curve <- function(object, level, resolution = 1000,
                               x_range = NA) {
   lvl_fit <- joint_level_fit(object, level)
+  if (is.na(x_range[1]) && length(lvl_fit$level_x)) {
+    x_range <- range(lvl_fit$level_x)
+  }
   grid <- prediction_grid(object$fit, object$bayesnecformula,
                           x_range = x_range, resolution = resolution,
                           level_spec = joint_level_spec(object, level))
-  y <- fitted(lvl_fit, newdata = grid$newdata, robust = TRUE,
-              re_formula = NA, scale = "response")
+  spec <- observed_level_spec(lvl_fit)
+  y <- if (is.null(spec)) {
+    fitted(lvl_fit, newdata = grid$newdata, robust = TRUE,
+           re_formula = NA, scale = "response")
+  } else {
+    summarise_epred(observed_grid_posterior(object$fit,
+                                           object$bayesnecformula,
+                                           grid$newdata, spec), robust = TRUE)
+  }
   data.frame(x = grid$x_seq, Estimate = y[, "Estimate"],
              Q2.5 = y[, "Q2.5"], Q97.5 = y[, "Q97.5"])
 }
@@ -444,6 +503,14 @@ joint_level_curve <- function(object, level, resolution = 1000,
 #' @noRd
 joint_level_ne <- function(object, level, xform = identity) {
   lvl_fit <- joint_level_fit(object, level)
+  if (!is.null(observed_level_spec(lvl_fit)) &&
+      joint_level_is_threshold(lvl_fit)) {
+    out <- suppressWarnings(suppressMessages(nec(lvl_fit, xform = xform)))
+    vals <- as.numeric(out)
+    names(vals) <- c("Estimate", "Q2.5", "Q97.5")
+    attr(vals, "censored_summary") <- attr(out, "censored_summary")
+    return(vals)
+  }
   if (!is.null(lvl_fit$ne_posterior)) {
     map <- recorded_xform(lvl_fit, xform)
     return(estimates_summary(map_draws(lvl_fit$ne_posterior, map,

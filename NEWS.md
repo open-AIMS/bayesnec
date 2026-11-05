@@ -6,6 +6,32 @@
 - `bnec()` and `amend()` now reject malformed priors before fitting instead of
   silently replacing them with defaults.
 
+## Estimates from observed group levels
+
+- For a group term whose levels span concentrations, `ecx()`, `nsec()`,
+  `ecnsec()` and `nec()` now read the observed level curves, including their
+  fitted group deviations. A level observed at only one concentration is
+  excluded from estimates, with a message naming it. If every level has only
+  one concentration, the term remains at zero when curves are predicted. This
+  applies to single fits, model sets, hurdle fits and joint refits, and to
+  curves and no-effect summaries stored during fitting (#554).
+- `pool` selects per-level estimates, an observation-weighted mixture, a
+  weighted mean of estimates, or an estimate from the weighted mean curve.
+  A joint refit returns levels by default; a single fit with a spanning group
+  term returns the mixture. `x_control = "own"` uses each level's lowest
+  observed concentration. `"shared"` or a numeric concentration uses one
+  control across levels and warns where that requires extrapolation.
+- Pooled summaries retain censoring at the common tested bounds. The grouped
+  fit methods also accept `pool`, and `ecnsec()` now works on a grouped fit.
+- Fits saved before this change still hold their earlier summary and plot
+  values. Reading either gives a warning with an `amend()` call that rebuilds
+  those values from the stored model; the endpoint functions read observed
+  levels directly from either an old or a new fit.
+- `ggbnec_data()` now reads a single fit's credible band from its stored
+  `pred_vals`, so the band uses the same observed-level basis as the stored
+  no-effect summary. Its numerical values can differ slightly from the older
+  band built with `conditional_effects()`.
+
 ## Default priors
 
 - Under `prior_type = "regularizing"`, the curve-shape exponents `d` and `f`

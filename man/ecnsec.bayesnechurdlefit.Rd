@@ -15,7 +15,9 @@
   prob_vals = c(0.5, 0.025, 0.975),
   ...,
   posterior = FALSE,
-  which = "combined"
+  which = "combined",
+  pool = NULL,
+  x_control = "own"
 )
 }
 \arguments{
@@ -50,6 +52,19 @@ return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
 
 \item{which}{Which curve to use: \code{"combined"} (the default),
 \code{"growth"} or \code{"survival"}.}
+
+\item{pool}{How observed group levels are combined: \code{"none"} returns
+per-level estimates, \code{"mixture"} samples levels in proportion to their
+observation counts, \code{"mean_estimate"} averages aligned estimates, and
+\code{"mean_curve"} estimates from their weighted mean curve. A joint fit
+defaults to \code{"none"}; other fits with spanning group terms default to
+\code{"mixture"}.}
+
+\item{x_control}{\code{"own"} reads each level's lowest observed concentration;
+\code{"shared"} reads the lowest across levels; a single finite number specifies
+the concentration directly. A shared control below a level's observations
+extrapolates its curve and gives a warning. Level controls are recorded in
+the result's \code{x_control} attribute.}
 }
 \value{
 A vector of estimates.
@@ -83,4 +98,8 @@ points either side of it. An \code{nsec} outside the range is refused with a
 message naming the range, for the combined, growth and survival curves
 alike and whether or not \code{x_range} is supplied. Supply an
 \code{x_range} that includes \code{nsec} to read the curve there.
+For a group term spanning concentrations, each observed level pairs its
+growth and survival predictions before the percentage is read. A level
+observed at one concentration is excluded. \code{pool} and
+\code{x_control} use the same rules as for a single fit.
 }

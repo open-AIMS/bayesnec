@@ -52,7 +52,36 @@ is_bayesnechurdlefit <- function(x) {
 #' @importFrom brms posterior_epred
 #'
 #' @noRd
-hurdle_component_preds <- function(object, resolution = 1000, x_range = NA) {
+hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
+                                   x_control = "own") {
+  spec <- if (is.null(object$observed_group)) observed_level_spec(object)
+  if (!is.null(spec)) {
+    if (is.na(x_range[1])) x_range <- range(unlist(spec$x))
+    levels <- lapply(seq_len(nrow(spec$combinations)), function(i) {
+      hurdle_component_preds(observed_level_fit(object, spec, i),
+                             resolution, x_range, x_control)
+    })
+    n <- min(vapply(levels, function(x) nrow(x$combined), integer(1)))
+    idx <- mixture_draw_indices(rep(n, length(levels)), spec$n, n)
+    combine <- function(name) do.call(rbind, Map(function(x, take) {
+      x[[name]][take, , drop = FALSE]
+    }, levels, idx))
+    controls <- function(name) unlist(Map(function(x, take) {
+      x$control[[name]][take]
+    }, levels, idx), use.names = FALSE)
+    return(list(x = levels[[1]]$x, growth = combine("growth"),
+                survival = combine("survival"), combined = combine("combined"),
+                control = list(growth = controls("growth"),
+                               survival = controls("survival"),
+                               combined = controls("combined"))))
+  }
+  if (!is.null(object$observed_group) && is.na(x_range[1])) {
+    x_range <- range(object$level_x)
+  }
+  if (is.numeric(x_control)) {
+    control_reading <- resolve_x_control(object, x_control, x_range)
+    x_range <- control_reading$x_range
+  }
   # Default every curve to the survival fit's range, the whole concentration
   # series. The growth data stop at the last survivor, and an older fit stores
   # a growth grid that stops there too.
@@ -68,12 +97,22 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA) {
   # component's newdata must be built from its own model frame.
   nd_g <- newdata_eval(object$growth, resolution = resolution,
                        x_range = x_range)
-  g <- posterior_epred(object$growth, newdata = nd_g$newdata, re_formula = NA)
+  if (!is.null(object$observed_group)) {
+    for (v in names(object$observed_group)) {
+      nd_g$newdata[[v]] <- object$observed_group[[v]]
+      nd_s$newdata[[v]] <- object$observed_group[[v]]
+    }
+  }
+  re_formula <- if (is.null(object$re_formula)) NA else object$re_formula
+  g <- posterior_epred(object$growth, newdata = nd_g$newdata,
+                       re_formula = re_formula)
   s <- posterior_epred(object$survival, newdata = nd_s$newdata,
-                       re_formula = NA)
-  x_at <- control_x(object)
+                       re_formula = re_formula)
+  x_at <- if (is.numeric(x_control)) control_reading$value else
+    control_x(object)
   epred_part <- function(part) {
-    function(nd) posterior_epred(part, newdata = nd, re_formula = NA)
+    function(nd) posterior_epred(part, newdata = nd,
+                                re_formula = re_formula)
   }
   c_g <- control_posterior(object$growth, nd_g$newdata, epred_part(object$growth),
                            x_at = x_at)
@@ -168,13 +207,28 @@ hurdle_check_which <- function(which) {
 nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
                                   prob_vals = c(0.5, 0.025, 0.975),
                                   extrapolate = FALSE,
-                                  which = "combined", ...) {
+                                  which = "combined", ..., pool = NULL) {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   check_no_effect_arg(list(...), object)
   chk_logical(posterior)
   which <- hurdle_check_which(which)
   check_xform(xform)
+  if (is.null(object$observed_group)) {
+    spec <- observed_level_spec(object)
+    if (!is.null(spec)) {
+      result <- estimate_observed_levels(
+        object, spec, "nec",
+        function(level, control_value, range_override) {
+          nec(level, posterior = TRUE, xform = xform,
+              prob_vals = prob_vals, extrapolate = extrapolate,
+              which = which, pool = "none", ...)
+        }, pool, posterior, prob_vals
+      )
+      attr(result, "component") <- which
+      return(result)
+    }
+  }
   # Muffle the component censoring warnings; one is raised below for the
   # vector returned. `extrapolate` goes to each component, which has its own
   # prediction range, and a refusal is re-raised naming that component, since
@@ -257,6 +311,11 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
 hurdle_component_ne <- function(part, extrapolate, ...) {
   if (inherits(part, "bayesnecfit") &&
         !has_nec_parameter(part$model, part$fit)) {
+    if (!is.null(part$observed_group)) {
+      sig <- recorded_expand_args(list(part))$sig_val
+      return(nsec(part, sig_val = sig, posterior = TRUE,
+                  xform = identity, extrapolate = extrapolate, ...))
+    }
     return(necfit_ne(part, posterior = TRUE, xform = identity,
                      extrapolate = extrapolate, ...))
   }
@@ -275,6 +334,10 @@ hurdle_component_ne <- function(part, extrapolate, ...) {
 #' @details The combined curve is the product of the growth curve and the
 #' survival curve. Because both decline, the combined ECx is always reached at
 #' or below either component's own ECx.
+#' For a group term spanning concentrations, each observed level pairs its
+#' growth and survival predictions before the endpoint is read. A level
+#' observed at one concentration is excluded. \code{pool} and
+#' \code{x_control} use the same rules as for a single fit.
 #'
 #' Without \code{x_range}, every ECx is read over the whole concentration
 #' series, the range the survival component is fitted over. The growth
@@ -301,7 +364,8 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
                                   posterior = FALSE, type = "absolute",
                                   x_range = NA, xform = NULL,
                                   prob_vals = c(0.5, 0.025, 0.975),
-                                  which = "combined", ...) {
+                                  which = "combined", ..., pool = NULL,
+                                  x_control = "own") {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   chk_numeric(ecx_val)
@@ -317,9 +381,29 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
          "type = \"absolute\" or type = \"range\".", call. = FALSE)
   }
   check_xform(xform)
+  if (is.null(object$observed_group)) {
+    spec <- observed_level_spec(object)
+    if (!is.null(spec)) {
+      result <- estimate_observed_levels(
+        object, spec, "ecx",
+        function(level, control_value, range_override) {
+          ecx(level, ecx_val = ecx_val, resolution = resolution,
+              posterior = TRUE, type = type, x_range = range_override,
+              xform = xform, prob_vals = prob_vals, which = which,
+              pool = "none", x_control = control_value)
+        }, pool, posterior, prob_vals, x_control, x_range,
+        curve_args = list(ecx_val = ecx_val, resolution = resolution,
+                          type = type, xform = xform, prob_vals = prob_vals,
+                          which = which)
+      )
+      attr(result, "component") <- which
+      return(result)
+    }
+  }
   # Every curve, growth included, over the whole concentration series.
   preds <- hurdle_component_preds(object, resolution = resolution,
-                                  x_range = x_range)
+                                  x_range = x_range,
+                                  x_control = x_control)
   p_samples <- preds[[which]]
   # Take the control from hurdle_component_preds(), at the lowest observed
   # concentration. p_samples[, 1] would make every estimate depend on x_range.

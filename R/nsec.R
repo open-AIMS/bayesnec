@@ -16,6 +16,17 @@
 #' differ only where \code{crf()} transforms the predictor inline; see
 #' Details.
 #' @param x_range A range of x values over which to consider extracting NSEC.
+#' @param pool How observed group levels are combined: `"none"` returns
+#' per-level estimates, `"mixture"` samples levels in proportion to their
+#' observation counts, `"mean_estimate"` averages aligned estimates, and
+#' `"mean_curve"` estimates from their weighted mean curve. A joint fit
+#' defaults to `"none"`; other fits with spanning group terms default to
+#' `"mixture"`.
+#' @param x_control `"own"` reads each level's lowest observed concentration;
+#' `"shared"` reads the lowest across levels; a single finite number specifies
+#' the concentration directly. A shared control below a level's observations
+#' extrapolates its curve and gives a warning. Level controls are recorded in
+#' the result's \code{x_control} attribute.
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
@@ -44,6 +55,15 @@
 #' at which the modeled mean response is statistically indistinguishable from 
 #' the mean control response. See the detailed derivation in
 #' Fisher and Fox (2023).
+#'
+#' With a fitted group term whose levels span concentrations, the reference
+#' and curve are predicted for each observed level with its group deviations.
+#' Terms whose levels each occur at one concentration are set to zero. The
+#' level of a spanning term observed at only one concentration is excluded from
+#' the estimate, with a message naming it. The default estimate mixes the
+#' remaining observed levels by their observation counts;
+#' \code{pool = "none"} returns them separately. A grouped or joint fit already
+#' separates levels and defaults to \code{pool = "none"}.
 #' 
 #' The reference is the \code{sig_val} quantile of the control posterior,
 #' the control being the predicted mean at the lowest concentration in the
@@ -209,7 +229,7 @@ nsec <- function(object, sig_val = 0.01, resolution = 500,
                  x_range = NA,
                  xform = NULL, prob_vals = c(0.5, 0.025, 0.975),
                  extrapolate = FALSE, ...,
-                 dpar = NULL) {
+                 dpar = NULL, pool = NULL, x_control = "own") {
   UseMethod("nsec")
 }
 
@@ -234,7 +254,8 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
                              x_range = NA,
                              xform = NULL, prob_vals = c(0.5, 0.025, 0.975),
                              extrapolate = FALSE, ...,
-                             posterior = FALSE, dpar = NULL) {
+                             posterior = FALSE, dpar = NULL, pool = NULL,
+                             x_control = "own") {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   chk_numeric(sig_val)
@@ -249,6 +270,25 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
   }
+  if (is.null(object$observed_group)) {
+    level_spec <- observed_level_spec(object)
+    if (!is.null(level_spec)) {
+      return(estimate_observed_levels(
+        object, level_spec, "nsec",
+        function(level, control_value, range_override) {
+          nsec(level, sig_val = sig_val, resolution = resolution,
+               x_range = range_override, xform = xform,
+               prob_vals = prob_vals, extrapolate = extrapolate,
+               posterior = TRUE, dpar = dpar, pool = "none",
+               x_control = control_value)
+        },
+        pool, posterior, prob_vals, x_control, x_range,
+        curve_args = list(sig_val = sig_val, resolution = resolution,
+                          xform = xform, prob_vals = prob_vals,
+                          dpar = dpar, extrapolate = extrapolate)
+      ))
+    }
+  }
   # extrapolate becomes x_range, since an NSEC is read off the curve on the
   # grid. It adds two refusals a bare x_range lacks: of a limit that narrows
   # the range, and of an infinite limit.
@@ -259,27 +299,32 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
     report_curve_read_lower_limit(object, lims)
     x_range <- c(lims$lower, lims$upper)
   }
+  control_reading <- resolve_x_control(object, x_control, x_range)
   newdata_list <- newdata_eval(
-    object, resolution = resolution, x_range = x_range
+    object, resolution = resolution, x_range = control_reading$x_range
   )
   # dpar selects one block of a two-block fit, as in ecx(). NULL gives the
   # positive-part mean times (1 - hu) for a two-block family, and the mean
   # curve otherwise. The zero-probability block is inverted to survival first,
   # so that the NSEC is read off a declining curve.
-  epred_fun <- function(nd) joint_hurdle_epred(object, nd, dpar)
+  epred_fun <- function(nd) joint_hurdle_epred(
+    object, nd, dpar,
+    re_formula = if (is.null(object$re_formula)) NA else object$re_formula
+  )
   p_samples <- epred_fun(newdata_list$newdata)
   x_vec <- newdata_list$x_vec
   # Read the control at the lowest observed concentration, not the first grid
   # column, so that x_range does not change the reference.
-  control <- control_posterior(object, newdata_list$newdata, epred_fun)
+  control <- control_posterior(object, newdata_list$newdata, epred_fun,
+                               x_at = control_reading$value)
   reference <- quantile(control, sig_val)
   # ecnsec is the percent effect at the NSEC, defined as ecx() defines it: the
   # decline from the control towards zero, not across the fitted range.
   ecnsecP <- as.numeric((control - reference) / control * 100)
   ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
   # The control is the reference whether or not the curve shows hormesis.
-  x_control <- control_x(object)
-  nsec_out <- nsec_from_posterior(p_samples, reference, x_vec, x_control,
+  nsec_out <- nsec_from_posterior(p_samples, reference, x_vec,
+                                  control_reading$value,
                                   control)
   # Draws above and below the range return NA for opposite reasons, so each
   # class has its own warning. Count them before the transformations below,
@@ -368,13 +413,29 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 500,
                                x_range = NA,
                                xform = NULL, prob_vals = c(0.5, 0.025, 0.975),
                                extrapolate = FALSE, ...,
-                               posterior = FALSE, dpar = NULL) {
+                               posterior = FALSE, dpar = NULL, pool = NULL,
+                               x_control = "own") {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   if (length(sig_val)>1) {
     stop("You may only pass one sig_val")
   }
   check_xform(xform)
+  x_control <- model_set_control(object, x_control)
+  first <- object$mod_fits[[1]]
+  finish <- model_set_control_recorder(first, x_control)
+  if (identical(pool, "none") &&
+      !is.null(observed_level_spec(first))) {
+    return(finish(model_set_level_estimates(
+      object, "nsec",
+      function(f) nsec(f, sig_val = sig_val, resolution = resolution,
+                       x_range = x_range, xform = xform,
+                       prob_vals = prob_vals, extrapolate = extrapolate,
+                       posterior = TRUE, dpar = dpar, pool = "none",
+                       x_control = x_control),
+      posterior, prob_vals
+    )))
+  }
   # Resolve the limits once for the set, so that every component is searched
   # over one grid rather than against its own range.
   lims <- extrapolate_limits(extrapolate,
@@ -393,10 +454,11 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 500,
   # sapply() would drop any argument it did not list, dpar included.
   sample_nsec <- function(x) {
     mod <- names(object$mod_fits)[x]
-    target <- suppressMessages(pull_out(object, model = mod))
+    target <- pull_equation(object, mod)
     out <- nsec(target, sig_val = sig_val, resolution = resolution,
                 x_range = x_range, xform = xform, prob_vals = prob_vals,
-                posterior = TRUE, dpar = dpar)
+                posterior = TRUE, dpar = dpar, pool = pool,
+                x_control = x_control)
     idx <- draw_index[[mod]]
     sample_out <- out[idx]
     attr(sample_out, "ecnsec_relativeP") <-
@@ -407,13 +469,14 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 500,
       subset_censoring(attr(out, "censored"), idx)
     sample_out
   }
-  to_iter <- seq_len(length(object$success_models))
-  nsec_out <- lapply(to_iter, sample_nsec)
+  to_iter <- unname(which(lengths(draw_index[names(object$mod_fits)]) > 0L))
+  nsec_out <- once_level_note(lapply(to_iter, sample_nsec))
   ecnsecP <- unlist(lapply(nsec_out, 
                     FUN = function(p){attributes(p)$ecnsec_relativeP}))
   ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
   cens <- concat_censoring(lapply(nsec_out, attr, "censored"),
-                           vapply(nsec_out, length, integer(1)))
+                           vapply(nsec_out, length, integer(1)),
+                           unlist(lapply(nsec_out, as.numeric)))
   nsec_out <- unlist(lapply(nsec_out, as.numeric))
   attr(nsec_out, "censored") <- cens
   nsec_estimate <- summarise_censored(nsec_out, prob_vals, cens)
@@ -427,8 +490,8 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 500,
   attr(nsec_estimate, "ecnsec_relativeP") <- ecnsec
   attr(nsec_out, "ecnsec_relativeP") <-  ecnsecP
   if (!posterior) {
-    nsec_estimate
+    finish(nsec_estimate)
   } else {
-    nsec_out
+    finish(nsec_out)
   }
 }

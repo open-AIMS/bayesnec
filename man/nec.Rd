@@ -12,7 +12,8 @@ nec(
   prob_vals = c(0.5, 0.025, 0.975),
   extrapolate = FALSE,
   ...,
-  no_effect = FALSE
+  no_effect = FALSE,
+  pool = NULL
 )
 }
 \arguments{
@@ -52,6 +53,13 @@ own equation supports --- the \code{nec} parameter for a threshold equation,
 the NSEC of the fitted curve for a smooth one --- labelled by type in an
 \code{ne_type} column. The other classes have no such argument and reject it
 rather than discarding it.}
+
+\item{pool}{How observed group levels are combined: \code{"none"} returns
+per-level estimates, \code{"mixture"} samples levels in proportion to their
+observation counts, and \code{"mean_estimate"} averages aligned estimates.
+\code{"mean_curve"} is unavailable for a sampled NEC parameter. A joint fit
+defaults to \code{"none"}; other fits with spanning group terms default to
+\code{"mixture"}.}
 }
 \value{
 A vector containing the estimated no-effect value, including upper
@@ -71,6 +79,14 @@ The NEC is a parameter in a threshold model (for example,
 see Fox 2010), and is a true measure
 of No-effect-concentration (the minimum concentration above which an effect
 is predicted to occur.
+
+Under a fitted group term whose levels span concentrations, the NEC is
+read for each observed level, including its deviation on the parameter.
+Terms whose levels each occur at one concentration are set to zero. The
+level of a spanning term observed at only one concentration is excluded from
+the estimate, with a message naming it. The default mixes the remaining
+observed levels by their observation counts;
+\code{pool = "none"} returns them separately.
 
 \bold{What is actually returned depends on the model set.} Despite the
 function name, \code{nec} returns a no-effect estimate of whichever type the

@@ -346,7 +346,9 @@ test_that("a relative ECx of the zero block is measured towards its own bot (#49
     newdata_eval = function(...) {
       list(newdata = data.frame(x = grid), x_vec = grid)
     },
-    joint_hurdle_epred = function(object, newdata, dpar = NULL) curve,
+    control_x = function(...) grid[1],
+    joint_hurdle_epred = function(object, newdata, dpar = NULL,
+                                  re_formula = NA) curve,
     control_posterior = function(...) ctrl,
     as_draws_df = function(x, ...) draws,
     .package = "bayesnec"

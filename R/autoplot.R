@@ -537,14 +537,12 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   chk_lgl(add_nec)
   chk_lgl(add_ecx)
   check_xform(xform)
+  warn_stale_observed_display(x)
   brms_fit <- x$fit
-  plot_obj <- brms_fit |>
-    conditional_effects(method = "posterior_epred") |>
-    plot(plot = FALSE)
-  e_df <- plot_obj[[1]]$data
-  e_df <- data.frame(x_e = c(e_df$effect1__, rev(e_df$effect1__)),
-                     y_e = c(e_df$estimate__, rep(NA, nrow(e_df))),
-                     y_ci = c(e_df$lower__, rev(e_df$upper__)),
+  stored <- x$pred_vals$data
+  e_df <- data.frame(x_e = c(stored$x, rev(stored$x)),
+                     y_e = c(stored$Estimate, rep(NA, nrow(stored))),
+                     y_ci = c(stored$Q2.5, rev(stored$Q97.5)),
                      x_r = NA, y_r = NA)
   r_df <- prep_raw_data(brms_fit, x$bayesnecformula, group = group,
                         retained_data = x$retained_data)
@@ -609,6 +607,7 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   # Check xform as the bayesnecfit method does. Otherwise mutate() fails with
   # an error that names neither the argument nor the remedy.
   check_xform(xform)
+  warn_stale_observed_display(x)
   e_df <- x$w_pred_vals$data
   e_df <- data.frame(x_e = c(e_df$x, rev(e_df$x)),
                      y_e = c(e_df$Estimate, rep(NA, nrow(e_df))),

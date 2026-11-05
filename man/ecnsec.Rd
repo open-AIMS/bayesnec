@@ -13,7 +13,9 @@ ecnsec(
   type = "absolute",
   xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
-  ...
+  ...,
+  pool = NULL,
+  x_control = "own"
 )
 }
 \arguments{
@@ -44,6 +46,19 @@ return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
 
 \item{...}{Further arguments to pass to class specific methods.}
+
+\item{pool}{How observed group levels are combined: \code{"none"} returns
+per-level estimates, \code{"mixture"} samples levels in proportion to their
+observation counts, \code{"mean_estimate"} averages aligned estimates, and
+\code{"mean_curve"} estimates from their weighted mean curve. A joint fit
+defaults to \code{"none"}; other fits with spanning group terms default to
+\code{"mixture"}.}
+
+\item{x_control}{\code{"own"} reads each level's lowest observed concentration;
+\code{"shared"} reads the lowest across levels; a single finite number specifies
+the concentration directly. A shared control below a level's observations
+extrapolates its curve and gives a warning. Level controls are recorded in
+the result's \code{x_control} attribute.}
 }
 \value{
 A vector containing the estimated ECNSEC value, including upper and
@@ -59,6 +74,14 @@ at which the modeled mean response is statistically indistinguishable from
 the mean control response. See the detailed derivation in
 Fisher and Fox (2023). Like NOEC, NSEC estimates will have an associated
 effect size. This function estimates the effect of a given NSEC estimate.
+
+With a fitted group term whose levels span concentrations, the curve and
+control are predicted for each observed level with its group deviations.
+Terms whose levels each occur at one concentration are set to zero. The
+level of a spanning term observed at only one concentration is excluded from
+the estimate, with a message naming it. The default mixes the remaining
+observed levels by their observation counts;
+\code{pool = "none"} returns them separately.
 
 The effect is measured from the control --- the predicted mean at the
 lowest concentration in the supplied predictor, per posterior draw --- and

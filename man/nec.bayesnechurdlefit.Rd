@@ -11,7 +11,8 @@
   prob_vals = c(0.5, 0.025, 0.975),
   extrapolate = FALSE,
   which = "combined",
-  ...
+  ...,
+  pool = NULL
 )
 }
 \arguments{
@@ -44,6 +45,13 @@ order. See the \emph{Extrapolation} section of \code{\link{nec}}.}
 \code{resolution} are forwarded to \code{\link{nsec}} where a finite
 \code{extrapolate} limit requires a curve to be re-evaluated, and are
 otherwise unused.}
+
+\item{pool}{How observed group levels are combined: \code{"none"} returns
+per-level estimates, \code{"mixture"} samples levels in proportion to their
+observation counts, and \code{"mean_estimate"} averages aligned estimates.
+\code{"mean_curve"} is unavailable for a sampled NEC parameter. A joint fit
+defaults to \code{"none"}; other fits with spanning group terms default to
+\code{"mixture"}.}
 }
 \value{
 A vector containing the estimated no-effect value, including upper
