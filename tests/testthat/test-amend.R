@@ -58,6 +58,14 @@ test_that("amend.bayesnecfit rejects drop and no-ops cleanly", {
                "must be a positive number")
 })
 
+test_that("amend refuses malformed priors before adding a model", {
+  expect_error(amend(manec_example, add = "nec3param", priors = "normal(0, 1)"),
+               "Argument `priors` must be")
+  expect_error(amend(nec4param, add = "ecx4param",
+                     priors = list(ecx4param = 1)),
+               "Argument `priors` must be")
+})
+
 test_that("amend.bayesnecfit adds models and promotes to bayesmanecfit", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
