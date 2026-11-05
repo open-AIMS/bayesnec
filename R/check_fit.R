@@ -12,9 +12,9 @@
 #' @param x An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}, or a
 #' \code{\link{bayesnecgroupfit}} returned by \code{\link{bnec_group}}.
-#' @param group A \code{\link[base]{numeric}} vector of the same length as the
-#' data giving the group each row belongs to, or a single
-#' \code{\link[base]{numeric}} giving the number of bins to cut the predictor
+#' @param group A numeric, character or factor vector of the same length as the
+#' data giving the group each row belongs to, or a single numeric value giving
+#' the number of bins to cut the predictor
 #' into. If \code{NULL} (the default) the distinct values of the predictor are
 #' used where they are replicated, and the predictor is binned otherwise, with a
 #' warning.

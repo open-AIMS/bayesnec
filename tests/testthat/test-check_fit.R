@@ -425,6 +425,14 @@ grouped_checkfit_fixture <- function() {
 test_that("grouped checks equal separate component calls", {
   skip_on_cran()
   fit <- grouped_checkfit_fixture()
+  # This dispatch fixture has a different dose grid at level b. Its fitted
+  # parameters are unchanged, so it is not evidence about model fit.
+  fit$fits$b$mod_fits <- lapply(fit$fits$b$mod_fits, function(model) {
+    model$fit$data$x <- model$fit$data$x + 0.5
+    model
+  })
+  expect_false(identical(min(fit$fits$a$fit$data$x),
+                         min(fit$fits$b$mod_fits[[1L]]$fit$data$x)))
   out <- check_fit(fit, group = 3, ndraws = 20, seed = 19)
   expect_s3_class(out, "checkfit_group")
   expect_named(out$fits, fit$levels)
@@ -433,6 +441,7 @@ test_that("grouped checks equal separate component calls", {
   expect_identical(out$fits$b,
                    check_fit(fit$fits$b, group = 3, ndraws = 20, seed = 19))
   expect_equal(sum(out$fits$a$control), 1)
+  expect_true(all(tapply(out$fits$b$control, out$fits$b$model, sum) == 1L))
   expect_true(all(c("model", "wi", "control") %in% names(out$fits$b)))
 })
 

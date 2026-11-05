@@ -29,9 +29,9 @@ check_fit(x, group = NULL, ndraws = 1000, seed = 10, ...)
 \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}, or a
 \code{\link{bayesnecgroupfit}} returned by \code{\link{bnec_group}}.}
 
-\item{group}{A \code{\link[base]{numeric}} vector of the same length as the
-data giving the group each row belongs to, or a single
-\code{\link[base]{numeric}} giving the number of bins to cut the predictor
+\item{group}{A numeric, character or factor vector of the same length as the
+data giving the group each row belongs to, or a single numeric value giving
+the number of bins to cut the predictor
 into. If \code{NULL} (the default) the distinct values of the predictor are
 used where they are replicated, and the predictor is binned otherwise, with a
 warning.
