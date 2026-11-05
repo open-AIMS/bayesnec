@@ -105,7 +105,8 @@ bayesnecfit or bayesmanecfit."><meta property="og:image" content="https://open-a
 <span>  prob_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span>,</span>
 <span>  extrapolate <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span>,</span>
-<span>  no_effect <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  no_effect <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  pool <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -163,6 +164,15 @@ the NSEC of the fitted curve for a smooth one — labelled by type in an
 <code>ne_type</code> column. The other classes have no such argument and reject it
 rather than discarding it.</p></dd>
 
+
+<dt id="arg-pool">pool<a class="anchor" aria-label="anchor" href="#arg-pool"></a></dt>
+<dd><p>How observed group levels are combined: <code>"none"</code> returns
+per-level estimates, <code>"mixture"</code> samples levels in proportion to their
+observation counts, and <code>"mean_estimate"</code> averages aligned estimates.
+<code>"mean_curve"</code> is unavailable for a sampled NEC parameter. A joint fit
+defaults to <code>"none"</code>; other fits with spanning group terms default to
+<code>"mixture"</code>.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
@@ -180,6 +190,13 @@ which entries those are and states how many draws lie beyond each end.</p>
 see Fox 2010), and is a true measure
 of No-effect-concentration (the minimum concentration above which an effect
 is predicted to occur.</p>
+<p>Under a fitted group term whose levels span concentrations, the NEC is
+read for each observed level, including its deviation on the parameter.
+Terms whose levels each occur at one concentration are set to zero. The
+level of a spanning term observed at only one concentration is excluded from
+the estimate, with a message naming it. The default mixes the remaining
+observed levels by their observation counts;
+<code>pool = "none"</code> returns them separately.</p>
 <p><b>What is actually returned depends on the model set.</b> Despite the
 function name, <code>nec</code> returns a no-effect estimate of whichever type the
 fitted model(s) support, following the convention set out in Fisher et al.

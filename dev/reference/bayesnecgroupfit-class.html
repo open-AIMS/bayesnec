@@ -104,7 +104,8 @@ everything that works on those works per level.</p>
     <h2>Details</h2>
     <p>See <code>methods(class = "bayesnecgroupfit")</code> for an overview of
 available methods.</p>
-<p><code><a href="nec.html">nec</a></code>, <code><a href="ecx.html">ecx</a></code> and <code><a href="nsec.html">nsec</a></code> on a
+<p><code><a href="nec.html">nec</a></code>, <code><a href="ecx.html">ecx</a></code>, <code><a href="nsec.html">nsec</a></code> and
+<code><a href="ecnsec.html">ecnsec</a></code> on a
 <code>bayesnecgroupfit</code> return a <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code> with one row
 per level: a <code>level</code> column; one numeric column per quantile, named as
 the same method names them on a single fit; and, after those, one character
@@ -113,7 +114,8 @@ name, for example <code>bound_Q97.5</code>. A <code>bound_</code> entry is <code
 <code>"&lt;="</code> where the matching number is the end of the prediction range
 rather than a quantile, and <code>""</code> where it is a quantile. These are the
 marks the level's own fit returns in attribute <code>"censored_summary"</code> and
-prints beside the number.</p>
+prints beside the number.
+Use <code>pool</code> to combine the levels; see <code><a href="bnec_group.html">bnec_group</a></code>.</p>
     </div>
     <div id="slots">
     <h2>Slots</h2>

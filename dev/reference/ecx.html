@@ -108,7 +108,9 @@ bayesnecfit or bayesnecfit."><meta property="og:image" content="https://open-aim
 <span>  xform <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  prob_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span>,</span>
-<span>  dpar <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  dpar <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  pool <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  x_control <span class="op">=</span> <span class="st">"own"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -190,6 +192,23 @@ equation has none. The combined curve, <code>dpar = NULL</code>, is refused unde
 <code>type = "relative"</code>, because its asymptote is the product of the two
 blocks' asymptotes rather than a fitted parameter.</p></dd>
 
+
+<dt id="arg-pool">pool<a class="anchor" aria-label="anchor" href="#arg-pool"></a></dt>
+<dd><p>How observed group levels are combined: <code>"none"</code> returns
+per-level estimates, <code>"mixture"</code> samples levels in proportion to their
+observation counts, <code>"mean_estimate"</code> averages aligned estimates, and
+<code>"mean_curve"</code> estimates from their weighted mean curve. A joint fit
+defaults to <code>"none"</code>; other fits with spanning group terms default to
+<code>"mixture"</code>.</p></dd>
+
+
+<dt id="arg-x-control">x_control<a class="anchor" aria-label="anchor" href="#arg-x-control"></a></dt>
+<dd><p><code>"own"</code> reads each level's lowest observed concentration;
+<code>"shared"</code> reads the lowest across levels; a single finite number specifies
+the concentration directly. A shared control below a level's observations
+extrapolates its curve and gives a warning. Level controls are recorded in
+the result's <code>x_control</code> attribute.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
@@ -202,6 +221,14 @@ lower 95% credible interval bounds.</p>
 predicted mean at the lowest concentration in the supplied predictor, taken
 per posterior draw. <code>type</code> names what the percentage is measured
 <em>towards</em>:</p>
+<p>With a fitted group term whose levels span concentrations, the control and
+curve are predicted for each observed level with its group deviations.
+Terms whose levels each occur at one concentration are set to zero. The
+level of a spanning term observed at only one concentration is excluded from
+the estimate, with a message naming it. The default estimate mixes the
+remaining observed levels by their observation counts;
+<code>pool = "none"</code> returns them separately. A grouped or joint fit already
+separates levels and defaults to <code>pool = "none"</code>.</p>
 <ul><li><p><code>"absolute"</code> (the default) — control to 0.</p></li>
 <li><p><code>"relative"</code> — control to the equation's theoretical
 asymptote, the <code>bot</code> parameter where the equation has one and 0
