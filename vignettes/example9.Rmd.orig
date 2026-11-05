@@ -513,6 +513,41 @@ provide more information about plausible parameter values, and of the
 `r fewer_divergences` had fewer divergent transitions under the regularising
 priors, although each still failed a cutoff on the first run.
 
+Stan also records the time each chain spent in warmup and in sampling, and
+`rstan::get_elapsed_time()` reads it from the `stanfit` held in each equation's
+`brmsfit`. The table gives the sum over the four chains, in seconds, for the
+same first run. These times exclude compiling each Stan program and searching
+for initial values, and they depend on the machine and on what else it was
+running, so they are given for comparison between equations and prior sets
+only.
+
+```{r coral-sampling-time}
+sampling_seconds <- function(fit) {
+  vapply(valid, function(m) {
+    if (!m %in% fit$success_models) return(NA_real_)
+    sum(rstan::get_elapsed_time(pull_brmsfit(fit, model = m)$fit))
+  }, numeric(1))
+}
+seconds_default <- sampling_seconds(fit_default)
+seconds_regular <- sampling_seconds(fit_regular)
+data.frame(model = valid, uninformative = round(seconds_default),
+           regularizing = round(seconds_regular), row.names = NULL)
+```
+
+```{r coral-sampling-time-text, include = FALSE}
+total_minutes <- function(s) signif(sum(s, na.rm = TRUE) / 60, 2)
+failed_share <- function(s, tab) {
+  failed <- names(s) %in% tab$model[tab$failed]
+  sprintf("%.0f", 100 * sum(s[failed], na.rm = TRUE) / sum(s, na.rm = TRUE))
+}
+```
+
+Warmup and sampling took `r total_minutes(seconds_default)` min in total under
+the uninformative priors and `r total_minutes(seconds_regular)` min under the
+regularising priors, and `r failed_share(seconds_default, sampling_default)`%
+and `r failed_share(seconds_regular, sampling_regular)`% of those totals were
+spent on the equations that failed the screen.
+
 ## Kinds of failure
 
 The `failed` flag does not distinguish which cutoff was missed, although the
@@ -1035,21 +1070,73 @@ priors to that range.
 
 ## Results
 
-Of the `r length(prior_default)` candidate equations, `r nrow(sampling_regular)`
-were fitted successfully and `r length(screened_regular$success_models)` passed
-the sampler screen under the regularising priors, compared with
-`r length(passed(sampling_default))` of `r nrow(sampling_default)` under the
-uninformative priors (S3). Of the `r length(bot_models)` equations that estimate
-a lower asymptote, `r sum(bot_models %in% passed(sampling_regular))` passed
-under the regularising priors. The highest-weighted retained equation was
-`r name_list(lead_regular)` (weight
-`r sprintf("%.2f", max(coral_weights$regularizing, na.rm = TRUE))`; S3). Colour
-index declined from a mean of
+```{r coral-results-text, include = FALSE}
+kept_regular <- screened_regular$success_models
+kept_default <- screened_default$success_models
+screen_text <- if (setequal(kept_regular, kept_default)) {
+  paste0("The sampler screen retained the same ", length(kept_regular),
+         " of the ", length(valid), " candidate equations under both prior ",
+         "sets (", name_list(kept_regular), "; S3), so the regularising ",
+         "priors did not change the equations available for model averaging.")
+} else {
+  only_regular <- setdiff(kept_regular, kept_default)
+  only_default <- setdiff(kept_default, kept_regular)
+  paste0("The sampler screen retained ", length(kept_regular), " of the ",
+         length(valid), " candidate equations under the regularising priors (",
+         name_list(kept_regular), ") and ", length(kept_default),
+         " under the uninformative priors (S3), and ",
+         paste(c(if (length(only_regular)) {
+                   paste(name_list(only_regular),
+                         "passed only under the regularising priors")
+                 },
+                 if (length(only_default)) {
+                   paste(name_list(only_default),
+                         "passed only under the uninformative priors")
+                 }), collapse = " whereas "), ".")
+}
+unfit <- function(tab, label) {
+  m <- setdiff(valid, tab$model)
+  if (length(m)) paste(name_list(m), "under the", label, "priors")
+}
+unfit_parts <- c(unfit(sampling_regular, "regularising"),
+                 unfit(sampling_default, "uninformative"))
+unfit_text <- if (length(unfit_parts)) {
+  paste0(" No posterior draws were obtained for ",
+         paste(unfit_parts, collapse = " or for "), ".")
+} else {
+  ""
+}
+bot_regular <- intersect(bot_models, kept_regular)
+bot_default <- intersect(bot_models, kept_default)
+named_count <- function(x) {
+  if (length(x)) paste0(length(x), " (", name_list(x), ")") else "none"
+}
+bot_text <- if (!length(bot_regular) && !length(bot_default)) {
+  paste0("None of the ", length(bot_models), " equations that estimate a ",
+         "lower asymptote passed the screen under either prior set, so the ",
+         "lower limit of every retained equation",
+         if ("ecxflat" %in% c(kept_regular, kept_default)) {
+           " other than the constant `ecxflat`"
+         },
+         " is zero.")
+} else {
+  paste0("Of the ", length(bot_models), " equations that estimate a lower ",
+         "asymptote, ", named_count(bot_regular), " passed the screen under ",
+         "the regularising priors and ", named_count(bot_default),
+         " under the uninformative priors.")
+}
+```
+
+Colour index declined from a mean of
 `r sprintf("%.2f", colour_design$mean_proportion[1])` in the controls to
 `r sprintf("%.3f", colour_design$mean_proportion[length(doses)])` at
 `r top_dose` µg/L, with most of the decline occurring between `r next_dose` and
-`r top_dose` µg/L (Fig. S1). The modelled concentrations that reduced colour
-index by 10% and 50% (EC10 and EC50) were
+`r top_dose` µg/L (Fig. S1). `r screen_text``r unfit_text` `r bot_text` The
+highest-weighted retained equation was `r name_list(lead_regular)` (weight
+`r sprintf("%.2f", max(coral_weights$regularizing, na.rm = TRUE))`; S3).
+
+The modelled concentrations that reduced colour index by 10% and 50% (EC10 and
+EC50) were
 `r sprintf("%.2f", coral_estimates["EC10", "Q50"])` (95% CI
 `r sprintf("%.2f", coral_estimates["EC10", "Q2.5"])`–`r sprintf("%.2f", coral_estimates["EC10", "Q97.5"])`)
 and `r sprintf("%.2f", coral_estimates["EC50", "Q50"])`
@@ -1057,15 +1144,16 @@ and `r sprintf("%.2f", coral_estimates["EC50", "Q50"])`
 µg/L, respectively, and the NSEC was
 `r sprintf("%.2f", coral_estimates["NSEC", "Q50"])`
 (`r sprintf("%.2f", coral_estimates["NSEC", "Q2.5"])`–`r sprintf("%.2f", coral_estimates["NSEC", "Q97.5"])`)
-µg/L (Table S5). For the equations that passed under both prior sets, the median
-NSEC was `r sprintf("%.2f", pe("NSEC", "regularizing"))` µg/L under the
-regularising priors and `r sprintf("%.2f", pe("NSEC", "uninformative"))` µg/L
-under the uninformative priors, with upper 95% bounds of
+µg/L (Table S5). For the smooth equations that passed under both prior sets
+(`r name_list(shared_models)`), the median NSEC was
+`r sprintf("%.2f", pe("NSEC", "regularizing"))` µg/L under the regularising
+priors and `r sprintf("%.2f", pe("NSEC", "uninformative"))` µg/L under the
+uninformative priors, with upper 95% bounds of
 `r sprintf("%.2f", pe("NSEC", "regularizing", "Q97.5"))` and
 `r sprintf("%.2f", pe("NSEC", "uninformative", "Q97.5"))` µg/L (S5). Because
-only the highest concentration had a mean colour index near zero, the shape of
-the lower part of the curve, and hence the EC50, depends on the assumption that
-the colour index had reached its lower asymptote at `r top_dose` µg/L.
+the design has no concentration above `r top_dose` µg/L, the shape of the lower
+part of the curve, and hence the EC50, depends on the assumption that the colour
+index had reached its lower asymptote within the tested range.
 
 # A count response {#a-count-response}
 
