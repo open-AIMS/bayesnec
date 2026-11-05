@@ -5,7 +5,7 @@
 \alias{coral_colour}
 \title{Coral colour score under diuron and three climate scenarios}
 \format{
-An object of class \code{data.frame} with 180 rows and 8 columns.
+An object of class \code{data.frame} with 171 rows and 8 columns.
 }
 \description{
 Colour score of the reef-building coral \emph{Acropora millepora} after a
@@ -17,7 +17,9 @@ and 2100.
 \details{
 The design is three climate scenarios by five diuron concentrations by three
 chambers, with four coral fragments in each chamber: 45 chambers and 180
-fragments. \code{\link{coral_pam}} has a sixth concentration, 29
+fragments. 171 fragments have a colour score: all 12 at each combination of
+scenario and concentration, except at 9.6 \eqn{\mu}g/L, where 10 have one
+under 2050 and 5 under 2100. \code{\link{coral_pam}} has a sixth concentration, 29
 \eqn{\mu}g/L, at which the corals died before they could be photographed.
 A chamber sits at one concentration, so it spans no part of the
 concentration-response curve and admits only a displacement --- the
@@ -55,7 +57,8 @@ The columns are as follows:
 \item{diuron}{Diuron concentration in \eqn{\mu}g/L (dbl), one of 0, 0.29,
 0.96, 2.9 and 9.6.}
 \item{chamber}{Exposure chamber (fct), 45 levels, each at one climate
-scenario and one concentration.}
+scenario and one concentration, numbered as in the experiment. The
+numbers of the nine 29 \eqn{\mu}g/L chambers are absent.}
 \item{fragment}{Coral fragment within chamber (int), 1 to 4.}
 \item{t0_pixel}{Mean image pixel intensity at the start of the exposure
 (dbl).}

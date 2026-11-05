@@ -1997,8 +1997,8 @@
   diuron under three climate scenarios, from Flores et al. (2021), the study the
   JSS article cites for `compare_posterior()`. Both are within-concentration
   designs --- a chamber sits at one concentration and so admits only a
-  displacement --- with 45 chambers of four fragments for colour and 54 chambers
-  of five to eight readings for yield. `coral_colour` has five concentrations,
+  displacement --- with 45 chambers of four fragments (171 with a colour score)
+  for colour and 54 chambers of five to eight readings for yield. `coral_colour` has five concentrations,
   which is the conventional minimum, and `vignette("example4")` fits it with
   equations of three curve parameters for that reason (#301). Exactly one
   colour observation

@@ -350,7 +350,8 @@ and 29 µg/L had died after 10 to 11 days of exposure. The corals at 9.6 µg/L h
 bleached by 10 days and were photographed then, whereas those at 29 µg/L died
 before they could be photographed. `coral_colour` therefore has five
 concentrations (0, 0.29, 0.96, 2.9 and 9.6 µg/L), and `coral_pam` has a sixth,
-29 µg/L.
+29 µg/L. At 9.6 µg/L, `coral_colour` has a colour score for 10 of the 12
+fragments under 2050 and 5 of the 12 under 2100.
 
 @flores2021 compared EC50 values between the scenarios using `bayesnec`, and
 found that the colour index EC50 was lower under both future scenarios than
@@ -463,7 +464,7 @@ rbind(data.frame(endpoint = "colour (proportion)", group_curves(fits_colour)),
 ```
 
 The scenarios appear to separate in colour and barely at all in yield. For example, mean
-colour at 2.9 µg/L is 0.728, 0.611 and 0.456 from 2018 to 2100, whereas mean
+colour at 2.9 µg/L is `r m29 <- sprintf("%.3f", with(subset(coral_colour, diuron == 2.9), tapply(proportion, climate, mean))); m29[1]`, `r m29[2]` and `r m29[3]` from 2018 to 2100, whereas mean
 yield differs by less than 0.015 between scenarios at each concentration below
 9.6 µg/L. The fitted band for yield under the 2100 scenario is also wider than
 the others, from the control to about 2 µg/L.

@@ -189,11 +189,23 @@ colour_design <- data.frame(
 round(colour_design, 3)
 ```
 
+```{r colour-design-text, include = FALSE}
+# For example ", except at 9.6 µg/L, where 10 fragments have a colour score".
+short <- colour_design$fragments < colour_design$fragments[1]
+short_text <- if (any(short)) {
+  paste0(", except at ", paste(doses[short], collapse = " and "),
+         " µg/L, where ", paste(colour_design$fragments[short], collapse = " and "),
+         " fragments have a colour score")
+} else {
+  ""
+}
+```
+
 The design has `r length(doses)` concentrations (an untreated control and
 `r length(doses) - 1` diuron treatments from `r doses[2]` to `r top_dose` µg/L),
 each with `r colour_design$fragments[1]` fragments held in
 `r colour_design$chambers[1]` chambers of
-`r colour_design$fragments[1] / colour_design$chambers[1]`. A chamber received
+`r colour_design$fragments[1] / colour_design$chambers[1]``r short_text`. A chamber received
 one concentration only, so the `r nlevels(colour_2050$chamber)` chambers are the
 independent units of the experiment. The `ogl(chamber)` term used below
 therefore estimates the variation among chambers at a concentration, without
@@ -637,7 +649,7 @@ estimates.
 
 ## Chamber-level model weights
 
-The four fragments in each chamber are related observations, so leaving out one
+The fragments in each chamber are related observations, so leaving out one
 fragment at a time would overstate how well a model predicts a new chamber.
 Because `ogl(chamber)` is in the formula, the default model weights instead
 leave out a whole chamber at a time, and are computed from those
@@ -784,7 +796,7 @@ concentrations), `r sum(flagged_regular)` were flagged`r flag_where`. At the
 control `r control_flags` rows were flagged, and the ratio of observed to
 simulated standard deviation is
 `r range_text(cf_regular$sd_ratio[cf_regular$control])` across the retained
-equations, `r control_text`. With `r colour_design$fragments[1]` fragments in
+equations, `r control_text`. With up to `r colour_design$fragments[1]` fragments in
 `r colour_design$chambers[1]` chambers at each concentration, a flag is not by
 itself a reason to exclude an equation, but it shows whether a discrepancy
 concerns the mean or the spread, and where. `check_fit()` simulates each
@@ -995,7 +1007,7 @@ Stan through `brms` [@Burkner2017]. The colour index (a proportion) was modelled
 as a function of log diuron concentration, with the control set to 0.1 µg/L
 before transformation, using a beta distribution with an identity link and a
 group-level intercept for chamber
-(`r colour_design$fragments[1] / colour_design$chambers[1]` fragments per
+(up to `r colour_design$fragments[1] / colour_design$chambers[1]` fragments per
 chamber and `r colour_design$chambers[1]` chambers per concentration; S1). The
 candidate model set comprised the `r length(prior_default)` equations of the
 `bayesnec` `decline` group that are valid for these data (declining equations
