@@ -144,7 +144,7 @@ interpolated NOEC value from smooth ECx curves.</p></dd>
 
 
 <dt id="arg-loo-controls">loo_controls<a class="anchor" aria-label="anchor" href="#arg-loo-controls"></a></dt>
-<dd><p>A named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> of up to four
+<dd><p>A named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> of up to five
 elements. "fitting" and "weights" are each a named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code>
 containing the desired arguments to be passed on to <code><a href="https://mc-stan.org/loo/reference/loo.html" class="external-link">loo</a></code>
 (via "fitting") or to <code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> (via "weights").
@@ -157,8 +157,21 @@ group-level term is observed at a single concentration, each level is left
 out whole; otherwise, and always under "observation", each observation is
 left out. "refit" is <code>FALSE</code> (the default) or <code>TRUE</code>, and applies
 under "group" only: where <code>TRUE</code>, each equation is refitted without
-each level whose left-out score is approximate. The "fitting" arguments
+each level whose Pareto k is at or above 0.7. The "fitting" arguments
 apply to the score computed by leaving out each observation.
+"report_k" is <code>TRUE</code> (the default) or <code>FALSE</code>. For a model set,
+it reports Pareto k at or above 0.7 for equations with at least 0.01 model
+weight, using the LOO scores selected for weighting. Set it to <code>FALSE</code>
+after assessing the diagnostic to silence the message. This does not change
+the scores or weights. With fewer than about 2200 posterior draws, values
+below 0.7 can exceed the draw-dependent reliability threshold used by
+<span class="pkg">loo</span>; these are reported separately and are not selected for refitting
+by <code>refit = TRUE</code>. Every equation's observation-wise LOO criterion is
+retained in
+<code>fit$mod_fits[[model]]$fit$criteria$loo</code>; where groups were left out,
+the selected criterion, including its Pareto k values, is in
+<code>fit$mod_fits[[model]]$fit$criteria$logo</code>, even for equations with less
+than 0.01 weight.
 See Details, under model averaging.
 <code><a href="amend.html">amend</a></code>, <code>update</code> and <code><a href="pull_out.html">pull_out</a></code> operate on an
 existing set. They keep the "fitting" arguments it was built with unless

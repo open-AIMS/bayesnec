@@ -137,12 +137,13 @@ model types you which to include to the modified fit. Adding models to a
 
 
 <dt id="arg-loo-controls">loo_controls<a class="anchor" aria-label="anchor" href="#arg-loo-controls"></a></dt>
-<dd><p>A named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> of two elements,
-"fitting" and "weights", as for <code><a href="bnec.html">bnec</a></code>. An element not named
+<dd><p>A named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> as for
+<code><a href="bnec.html">bnec</a></code>. An element not named
 is taken from <code>object</code>: "fitting" holds the arguments <code>object</code>
 was built with, and "weights" holds them where they name the method its
 model weights were computed by. A "weights" list that names no method keeps
-that method.</p></dd>
+that method. The <code>report_k</code> element controls diagnostic messages when
+the amended set is assembled; it does not change the scores or weights.</p></dd>
 
 
 <dt id="arg-x-range-resolution-sig-val">x_range, resolution, sig_val<a class="anchor" aria-label="anchor" href="#arg-x-range-resolution-sig-val"></a></dt>
