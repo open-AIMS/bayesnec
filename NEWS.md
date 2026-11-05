@@ -1,5 +1,8 @@
 # bayesnec 2.2.0
 
+- `bnec()` and `amend()` now reject malformed priors before fitting instead of
+  silently replacing them with defaults.
+
 ## Fitted predictor axes
 
 - `ggbnec_data()` and `autoplot()` accept `x_scale = "fitted"` when `crf()`

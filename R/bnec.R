@@ -83,7 +83,8 @@
 #' formula.
 #' @param prior An optional \code{\link[brms]{brmsprior}} object (or, when
 #' multiple models are fitted, a named \code{\link[base]{list}} of such objects)
-#' specifying the priors to use, passed to \code{\link[brms]{brm}}. When omitted,
+#' specifying the priors to use, passed to \code{\link[brms]{brm}}. Each model
+#' name can occur only once in the list. When omitted,
 #' \code{\link{bnec}} builds default priors according to \code{prior_type}. This
 #' is an explicit argument (rather than being passed through \code{...}) so that
 #' it is matched exactly and not confused with \code{prior_type}.
@@ -937,6 +938,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   if (timeout <= 0) {
     stop("Argument `timeout` must be a positive number (or Inf).")
   }
+  check_prior_input(prior)
 
   mf <- match.call(expand.dots = FALSE)
   m <- sapply(c("x_var", "y_var", "trials_var", "model", "random",

@@ -58,6 +58,14 @@ test_that("amend.bayesnecfit rejects drop and no-ops cleanly", {
                "must be a positive number")
 })
 
+test_that("amend refuses malformed priors before adding a model", {
+  expect_error(amend(manec_example, add = "nec3param", priors = "normal(0, 1)"),
+               "Argument `priors` must be")
+  expect_error(amend(nec4param, add = "ecx4param",
+                     priors = list(ecx4param = 1)),
+               "Argument `priors` must be")
+})
+
 test_that("amend.bayesnecfit adds models and promotes to bayesmanecfit", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
@@ -849,7 +857,8 @@ test_that("amend() keeps the LOO fitting arguments the set records", {
   # Naming "weights" alone leaves "fitting" to the record.
   out <- q(amend(m, loo_controls = list(weights = list(method = "stacking"))))
   expect_equal(out$mod_stats$waic, reference$mod_stats$waic)
-  expect_identical(attr(out, "bnec_expand_args")$loo_controls, stacked)
+  expect_identical(attr(out, "bnec_expand_args")$loo_controls,
+                   c(stacked, list(report_k = TRUE)))
   # Naming "fitting" replaces the record.
   out <- q(amend(m, loo_controls = list(fitting = list())))
   expect_equal(out$mod_stats$waic, manec_example$mod_stats$waic)

@@ -50,8 +50,8 @@ refitting any model.}
 
 \item{priors}{An object of class \code{\link[brms]{brmsprior}} which
 specifies user-desired prior distributions of model parameters. It can also
-be specified as a named \code{\link[base]{list}} where each name needs to
-correspond to the same string as \code{model}. Where it is not supplied, the
+be specified as a named \code{\link[base]{list}} where each name identifies
+a model and occurs only once. Where it is not supplied, the
 \code{prior} of the call that fitted \code{object} is used as described in
 Details, and the default priors are built for each parameter it does not
 cover.}

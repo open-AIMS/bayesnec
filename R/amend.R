@@ -30,8 +30,8 @@
 #' refitting any model.
 #' @param priors An object of class \code{\link[brms]{brmsprior}} which
 #' specifies user-desired prior distributions of model parameters. It can also
-#' be specified as a named \code{\link[base]{list}} where each name needs to
-#' correspond to the same string as \code{model}. Where it is not supplied, the
+#' be specified as a named \code{\link[base]{list}} where each name identifies
+#' a model and occurs only once. Where it is not supplied, the
 #' \code{prior} of the call that fitted \code{object} is used as described in
 #' Details, and the default priors are built for each parameter it does not
 #' cover.
@@ -295,6 +295,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
                             prior_type = "uninformative",
                             asymptote_observed = TRUE,
                             predictor_scale = "auto", timeout = Inf) {
+  check_prior_input(priors, "priors")
   general_error <- amend_general_error()
   fam_tag <- mod_fits[[1]]$fit$family$family
   expand_args <- recorded_expand_args(
@@ -434,9 +435,8 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
         set_plan$brm_args
       )
       brm_args$prior <- fit_prior
-      model_priors <- try(validate_priors(brm_args$prior, model),
-                          silent = TRUE)
-      if (inherits(model_priors, "try-error")) {
+      model_priors <- validate_priors(brm_args$prior, model)
+      if (is.null(model_priors)) {
         x <- retrieve_var(bdat, "x_var", error = TRUE)
         y <- retrieve_var(bdat, "y_var", error = TRUE)
         custom_name <- check_custom_name(family)
