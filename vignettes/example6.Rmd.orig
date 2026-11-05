@@ -503,6 +503,76 @@ labels each endpoint accordingly, whereas `nec()` returns the estimate as an
 unlabelled vector with a message to that effect, so `summary()` is the better
 choice where the distinction is important.
 
+`autoplot()` draws the model-averaged curves of the screened sets with the
+arguments used for the single factorised fit (figure below). `bayesnec` forms
+each averaged curve from the posterior draws of the equations in its set, taken
+in proportion to their weights, so its credible band includes the uncertainty
+about the form of the curve as well as that about the parameters of each
+equation.
+
+```{r plot-manec, fig.width = 10, fig.asp = 0.4, out.width = "100%", fig.cap = "The model-averaged combined endpoint (response per individual exposed), growth (response of survivors) and survival of the screened sets, with the median and 95% credible band of each curve. Grey vertical lines mark the no-effect estimate and its credible limits; blue lines mark the EC10 and its limits. Points are the growth of each snail in the combined panel, with the deaths as zeros, the growth of the survivors in the growth panel, and the proportion surviving at each dose in the survival panel."}
+autoplot(fit_ms, which = "all", x_scale = "fitted", ecx = TRUE, xlab = "Dose")
+```
+
+```{r manec-text, include = FALSE}
+summary_ms <- summary(fit_ms)
+
+# An estimate and its credible interval, as "0.035 (0.010--0.090)".
+ci_text <- function(v) {
+  paste0(sig2(v[[1]]), " (", sig2(v[[2]]), "--", sig2(v[[3]]), ")")
+}
+# "close to" where the medians differ by less than 10 per cent.
+relation_to <- function(x, ref) {
+  if (abs(x / ref - 1) < 0.1) "close to" else if (x < ref) "below" else "above"
+}
+ne_ms_text <- function(endpoint) {
+  paste0("an ", summary_ms$ne_types[[endpoint]], " of ",
+         ci_text(summary_ms$ne[[endpoint]]))
+}
+
+growth_ma_text <- paste0(
+  "On the growth panel, the no-effect estimate of the average is ",
+  ne_ms_text("growth"), ", ",
+  relation_to(summary_ms$ne$growth[[1]], ne_growth), " the NSEC of ",
+  "`ecxll3` in the single factorised fit, ", ci_text(summary_f$ne$growth),
+  "."
+)
+survival_weights <- colSums(crossed_ms)
+smooth_survival <- sum(survival_weights[grepl("^ecx", names(survival_weights))])
+survival_ma_text <- if (length(survival_weights) == 1) {
+  paste0("The survival panel shows the `", names(survival_weights), "` curve ",
+         "only, because no other survival equation passed the screen.")
+} else {
+  ms_survival <- summary_ms$ne$survival
+  f_survival <- summary_f$ne$survival
+  width_ratio_s <- diff(ms_survival[2:3]) / diff(f_survival[2:3])
+  paste0(
+    "On the survival panel, ", sprintf("%.2f", smooth_survival), " of the ",
+    "weight is given to smooth equations, whose contribution to the ",
+    "no-effect estimate is an NSEC, so the survival no-effect estimate of ",
+    "the average is ", ne_ms_text("survival"), ". This is ",
+    relation_to(ms_survival[[1]], f_survival[[1]]), " the NEC of ",
+    "`nec3param` in the single factorised fit, ", ci_text(f_survival),
+    ", and its interval is ",
+    if (width_ratio_s > 1.1) {
+      paste0(sprintf("%.1f", width_ratio_s), " times as wide.")
+    } else if (width_ratio_s >= 0.9) {
+      "of similar width."
+    } else {
+      "narrower."
+    }
+  )
+}
+combined_ma_text <- paste0(
+  "The combined no-effect estimate of the average is ",
+  ne_ms_text("combined"), ", ",
+  relation_to(summary_ms$ne$combined[[1]], summary_ms$ne$growth[[1]]),
+  " its growth estimate."
+)
+```
+
+`r growth_ma_text` `r survival_ma_text` `r combined_ma_text`
+
 # The joint route
 
 In the joint route, `bnec(family = "hurdle_gamma")` fits one model with two
@@ -683,6 +753,38 @@ differ by at most `r sprintf("%.1f", route_diff)`% across the three endpoints
 (table above). Both routes fit the equations with identical likelihoods and
 priors, so they estimate one posterior, `r route_note`. `r joint_note`
 `r route_conclusion`
+
+`autoplot()` draws a joint fit as it draws any single `bnec()` fit, in one
+panel of the expected response, which for a two-block family is the combined
+endpoint (figure below). It has no argument that selects a block, so the growth
+and survival curves of the joint refit are compared with those of the
+factorised pair only through their EC10 (table above).
+
+```{r plot-joint, fig.width = 6, fig.asp = 0.6, fig.cap = "The combined endpoint (response per individual exposed) of the joint refit, with the median (dashed line) and 95% credible band. Points are the growth of each snail, with the deaths as zeros."}
+# The default panel title names the growth equation only.
+autoplot(fit_j, nec = FALSE, x_scale = "fitted", point_alpha = 0.25) +
+  labs(x = "Dose", y = "Response per individual exposed") +
+  theme(strip.text = element_blank())
+```
+
+```{r joint-text, include = FALSE}
+joint_15 <- median(posterior_epred(fit_j, newdata = at_15))
+ma_15 <- median(posterior_epred(fit_ms, newdata = at_15))
+joint_ma_note <- if (abs(joint_15 / ma_15 - 1) < 0.1) {
+  paste("At this dose, selecting one combination therefore changes the",
+        "combined response little from that of the model average.")
+} else {
+  paste("At this dose, selecting one combination therefore gives a combined",
+        "response", if (joint_15 < ma_15) "below" else "above",
+        "that of the model average.")
+}
+```
+
+At a dose of 15, where survival has fallen to about half its control value, the
+median expected growth per snail exposed is `r sig2(joint_15)` for the joint
+refit and `r sig2(ma_15)` for the model average (figure in *Model averaging*),
+against `r sig2(combined_15)` for the single factorised fit of `ecxll3` with
+`nec3param` (figure in *Endpoints of the factorised fit*). `r joint_ma_note`
 
 The model average gives a growth EC10 of `r sig2(ma_growth[[1]])`
 (`r sig2(ma_growth[[2]])`–`r sig2(ma_growth[[3]])`), against
