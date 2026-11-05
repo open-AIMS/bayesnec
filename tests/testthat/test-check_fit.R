@@ -106,6 +106,19 @@ test_that("a singleton group retains its mean statistics", {
   expect_equal(nrow(p$data), 2L * nrow(out) - 1L)
   expect_equal(sum(p$data$statistic == "location (mean)"), nrow(out))
   expect_warning(ggplot2::ggplot_build(p), NA)
+
+  by_model <- rbind(out, out)
+  by_model$model <- rep(c("a", "b"), each = nrow(out))
+  class(by_model) <- c("checkfit", "data.frame")
+  model_plot <- plot(by_model)
+  expect_equal(nrow(model_plot$data), 2L * nrow(by_model) - 2L)
+  expect_equal(as.integer(table(model_plot$data$model)),
+               rep(2L * nrow(out) - 1L, 2L))
+  location <- model_plot$data$statistic == "location (mean)"
+  expect_equal(model_plot$data$model[location], by_model$model)
+  expect_equal(model_plot$data$model[!location],
+               by_model$model[is.finite(by_model$obs_sd)])
+  expect_warning(ggplot2::ggplot_build(model_plot), NA)
 })
 
 test_that("check_fit accepts an explicit singleton group", {

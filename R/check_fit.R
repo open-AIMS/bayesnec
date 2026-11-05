@@ -561,11 +561,11 @@ plot.checkfit <- function(x, ...) {
                observed = d$obs_sd, lo = d$sim_sd_lo, hi = d$sim_sd_hi,
                stringsAsFactors = FALSE)
   )
-  long <- long[is.finite(long$observed) & is.finite(long$lo) &
-                 is.finite(long$hi), , drop = FALSE]
   if (!is.null(d$model)) {
     long$model <- rep(d$model, times = 2)
   }
+  long <- long[is.finite(long$observed) & is.finite(long$lo) &
+                 is.finite(long$hi), , drop = FALSE]
   long$role <- ifelse(long$control, "control", "exposed")
   long$group <- factor(long$group, levels = unique(d$group))
   p <- ggplot(long, aes(x = .data$group)) +
