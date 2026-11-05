@@ -454,10 +454,12 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   }
   loo_w_controls <- loo_controls$weights
   for (i in seq_along(object)) {
-    object[[i]] <- expand_nec(object[[i]], formula = formula[[i]],
-                              x_range = x_range, resolution = resolution,
-                              sig_val = sig_val, loo_controls = loo_controls,
-                              model = success_models[i])
+    object[[i]] <- without_pareto_k_warning(
+      expand_nec(object[[i]], formula = formula[[i]],
+                 x_range = x_range, resolution = resolution,
+                 sig_val = sig_val, loo_controls = loo_controls,
+                 model = success_models[i])
+    )
   }
   mod_dat <- model.frame(formula[[1]], data = object[[1]]$fit$data)
   y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
@@ -468,8 +470,11 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   mod_stats$waic <- sapply(object, extract_waic_estimate)
   scores <- weight_criteria(object, retrieve_var(mod_dat, "x_var"),
                             loo_controls$leave_out, loo_controls$refit)
-  for (m in names(scores$logo)) {
-    mod_fits[[m]]$fit$criteria$logo <- scores$logo[[m]]
+  for (m in names(scores$criteria)) {
+    mod_fits[[m]]$fit$criteria$loo <- object[[m]]$fit$criteria$loo
+    if (!is.null(scores$logo)) {
+      mod_fits[[m]]$fit$criteria$logo <- scores$logo[[m]]
+    }
   }
   mod_stats$elpd <- vapply(scores$criteria, function(l) {
     l$estimates["elpd_loo", "Estimate"]
@@ -478,7 +483,8 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   mod_stats$wi <- do.call(loo_model_weights, loo_mw_args)
   attr(mod_stats$wi, "method") <- loo_w_controls$method
   attr(mod_stats$wi, "leave_out") <- scores$leave_out
-  report_logo_k(scores$logo, mod_stats$wi, loo_controls$refit)
+  report_weight_k(scores$criteria, mod_stats$wi, scores$leave_out,
+                  loo_controls$refit, loo_controls$report_k)
   mod_stats <- cbind(mod_stats, disp)
   sample_size <- set_draw_count(object)
   # Realise the weighted draw once and store both the index and its seed.

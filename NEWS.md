@@ -32,6 +32,16 @@
 
 ## Model weights under a within-concentration group term
 
+- Model sets report Pareto *k* at or above 0.7 for the LOO scores used to
+  compute their weights, whether groups or observations were left out. The
+  report names equations with at least 0.01 model weight. Set
+  `loo_controls = list(report_k = FALSE)` after assessing the diagnostic to
+  silence it without changing the scores or weights. A separate message names
+  values below 0.7 that exceed the draw-dependent reliability threshold used by
+  `loo` when fewer posterior draws are available. `refit = TRUE` applies only at
+  or above 0.7. Each equation retains its LOO criterion and, where applicable,
+  its groupwise criterion, including the Pareto *k* values for equations below
+  the reporting weight (#536).
 - Where each level of a group-level term is observed at a single
   concentration, such as `ogl(conc_group)` on `lum31` or `ogl(chamber)` on
   `coral_pam`, the model weights are now computed by leaving out each level
@@ -43,7 +53,7 @@
   the earlier score, with a warning that gives the reason.
 - `loo_controls` takes two new elements. `leave_out` is `"group"` (the
   default) or `"observation"` (the earlier score). `refit = TRUE` refits each
-  equation without each level whose Pareto *k* exceeds 0.7 and scores that
+  equation without each level whose Pareto *k* is at or above 0.7 and scores that
   level from the refit; it is off by default, because each such level needs
   its own refit.
 - A model set built before this change keeps its earlier score when `amend()`,
