@@ -15,12 +15,13 @@
 #' @param add A \code{\link[base]{character}} vector containing the names of
 #' model types you which to include to the modified fit. Adding models to a
 #' \code{\link{bayesnecfit}} promotes it to a \code{\link{bayesmanecfit}}.
-#' @param loo_controls A named \code{\link[base]{list}} of two elements,
-#' "fitting" and "weights", as for \code{\link{bnec}}. An element not named
+#' @param loo_controls A named \code{\link[base]{list}} as for
+#' \code{\link{bnec}}. An element not named
 #' is taken from \code{object}: "fitting" holds the arguments \code{object}
 #' was built with, and "weights" holds them where they name the method its
 #' model weights were computed by. A "weights" list that names no method keeps
-#' that method.
+#' that method. The \code{report_k} element controls diagnostic messages when
+#' the amended set is assembled; it does not change the scores or weights.
 #' @param x_range,resolution,sig_val As for \code{\link{bnec}}. Each is taken
 #' from \code{object} unless supplied, and is the \code{\link{bnec}} default
 #' where \code{object} records none. The estimates of every model in the

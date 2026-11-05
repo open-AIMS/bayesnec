@@ -72,8 +72,9 @@ pull_out <- function(manec, model, loo_controls, x_range = NULL,
               "this is ignored in pull_out. Use function ?amend first if your",
               "intention is to modify the model averaging specs.")
     }
-    # The set keeps its own weighting, so pass on the fitting arguments only.
-    supplied_loo <- loo_controls[intersect(names(loo_controls), "fitting")]
+    # The set keeps its own weighting, but reporting can be chosen again.
+    supplied_loo <- loo_controls[intersect(names(loo_controls),
+                                            c("fitting", "report_k"))]
   }
   dots <- list(...)
   expand_args <- recorded_expand_args(

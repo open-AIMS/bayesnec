@@ -156,17 +156,42 @@ test_that("weight_criteria leaves out observations where asked or unsupported", 
   expect_identical(out$leave_out, "observation")
 })
 
-test_that("report_logo_k names contributing equations only", {
+test_that("selected criteria report high k in contributing equations", {
   l <- function(k) structure(list(pointwise = matrix(0, 4, 1),
                                   diagnostics = list(pareto_k = k)),
                              group = "cell")
   logo <- list(ecxlin = l(c(0.2, 0.9, 0.3, 0.1)),
                ecx4param = l(c(0.8, 0.9, 0.3, 0.1)),
                ecxexp = l(c(0.2, 0.3, 0.3, 0.1)))
-  expect_message(bayesnec:::report_logo_k(logo, c(0.005, 0.9, 0.095)),
-                 "2 of 4 levels of cell in ecx4param \\(weight 0.9\\)\\.")
-  expect_no_message(bayesnec:::report_logo_k(logo, c(0.005, 0, 0.995)))
-  expect_no_message(bayesnec:::report_logo_k(NULL, 1))
+  expect_message(bayesnec:::report_weight_k(
+    logo, c(0.005, 0.9, 0.095), "cell"),
+    "2 of 4 levels of cell in ecx4param \\(weight 0.9\\)\\.")
+  expect_no_message(bayesnec:::report_weight_k(
+    logo, c(0.005, 0, 0.995), "cell"))
+  expect_message(bayesnec:::report_weight_k(
+    logo, c(0.005, 0.9, 0.095), "observation"),
+    "2 of 4 observations in ecx4param \\(weight 0.9\\)\\.")
+  expect_no_message(bayesnec:::report_weight_k(
+    logo, c(0.005, 0.9, 0.095), "cell", report_k = FALSE))
+  expect_identical(logo$ecxlin$diagnostics$pareto_k[2], 0.9)
+  expect_message(bayesnec:::report_weight_k(
+    list(ecxlin = l(c(0.2, 0.7, 0.3, 0.1))), 1, "observation"),
+    "1 of 4 observations")
+})
+
+test_that("only intermediate Pareto k warnings are silenced", {
+  expect_warning(
+    bayesnec:::without_pareto_k_warning({
+      warning("Found 2 observations with a pareto_k > 0.7")
+      warning("WAIC variance is high")
+    }),
+    "WAIC variance is high"
+  )
+  seen <- collect_warnings(bayesnec:::without_pareto_k_warning({
+    warning("Some Pareto k diagnostic values are too high")
+    warning("another warning")
+  }))
+  expect_identical(seen$warnings, "another warning")
 })
 
 test_that("loo_controls takes leave_out", {
@@ -176,7 +201,8 @@ test_that("loo_controls takes leave_out", {
   out <- bayesnec:::define_loo_controls(
     list(leave_out = "observation", weights = list(BB = FALSE)), "gaussian"
   )
-  expect_identical(names(out), c("fitting", "weights", "leave_out", "refit"))
+  expect_identical(names(out), c("fitting", "weights", "leave_out", "refit",
+                                 "report_k"))
   expect_identical(out$leave_out, "observation")
   expect_error(bayesnec:::validate_loo_controls(list(leave_out = "plate"),
                                                 "gaussian"),
@@ -230,6 +256,25 @@ test_that("loo_controls takes refit under leave_out = \"group\" only", {
   )
 })
 
+test_that("loo_controls validates and inherits the reporting choice", {
+  define <- bayesnec:::define_loo_controls
+  expect_true(define(family_str = "gaussian")$report_k)
+  expect_false(define(list(report_k = FALSE), "gaussian")$report_k)
+  for (value in list(NA, "no", 0, c(TRUE, FALSE))) {
+    expect_error(bayesnec:::validate_loo_controls(
+      list(report_k = value), "gaussian"), "should be TRUE or FALSE")
+  }
+  set <- structure(list(), class = c("bayesmanecfit", "bnecfit"),
+                   bnec_expand_args = expand_record(report_k = FALSE))
+  args <- function(...) bayesnec:::recorded_expand_args(
+    list(set), method = "pseudobma", fam_tag = "gaussian",
+    ...
+  )$loo_controls
+  expect_false(args()$report_k)
+  expect_true(args(loo_controls = list(report_k = TRUE))$report_k)
+  expect_false(args(loo_controls = list(leave_out = "observation"))$report_k)
+})
+
 test_that("a model set passes on the refit it records", {
   record <- function(leave_out, refit) {
     list(loo_controls = list(fitting = list(),
@@ -263,6 +308,34 @@ fake_logo <- function(k) {
   out
 }
 
+test_that("reporting follows the criterion selected for weighting on rebuild", {
+  d <- data.frame(conc = 1:4, cell = letters[1:4])
+  group_score <- fake_logo(c(0.2, 0.9, 0.3, 0.1))
+  observation_score <- fake_logo(c(0.2, 0.3, 0.3, 0.1))
+  set <- fake_set(ranef_row("cell"), d, logo = group_score)
+  for (m in names(set)) {
+    set[[m]]$fit$criteria$loo <- observation_score
+  }
+  local_mocked_bindings(logo_criterion = function(...) stop("recomputed"))
+  for (i in 1:2) {
+    selected <- bayesnec:::weight_criteria(set, d$conc)
+    expect_identical(selected$criteria$ecxlin, group_score)
+    expect_message(bayesnec:::report_weight_k(
+      selected$criteria, c(0.5, 0.5), selected$leave_out),
+      "leave-one-group-out score")
+  }
+  selected <- bayesnec:::weight_criteria(set, d$conc, "observation")
+  expect_identical(selected$criteria$ecxlin, observation_score)
+  expect_no_message(bayesnec:::report_weight_k(
+    selected$criteria, c(0.5, 0.5), selected$leave_out))
+  set$ecxlin$fit$criteria$loo$diagnostics$pareto_k[2] <- 0.9
+  selected <- bayesnec:::weight_criteria(set, d$conc, "observation")
+  expect_message(bayesnec:::report_weight_k(
+    selected$criteria, c(0.5, 0.5), selected$leave_out),
+    "leave-one-observation-out score")
+  expect_identical(selected$criteria$ecxlin$diagnostics$pareto_k[2], 0.9)
+})
+
 test_that("logo_reloo replaces the scores of the levels it refits", {
   level <- factor(rep(c("a", "b", "c", "d"), each = 3))
   logo <- fake_logo(c(0.2, 0.9, 0.8, 0.1))
@@ -285,6 +358,9 @@ test_that("logo_reloo replaces the scores of the levels it refits", {
                ignore_attr = TRUE)
   expect_identical(out$pointwise[-2, "elpd_loo"], logo$pointwise[-2, "elpd_loo"])
   expect_identical(out$diagnostics$pareto_k, c(0.2, 0, 0.8, 0.1))
+  expect_message(bayesnec:::report_weight_k(
+    list(ecxlin = out), 1, "cell", refit = TRUE),
+    "1 of 4 levels of cell")
   expect_equal(out$estimates["elpd_loo", "Estimate"],
                sum(out$pointwise[, "elpd_loo"]))
   expect_equal(out$estimates["looic", "Estimate"],
@@ -338,11 +414,11 @@ test_that("weight_criteria refits only where asked", {
   expect_identical(attr(out$criteria$ecxlin, "refitted"), "ecxlin")
 })
 
-test_that("report_logo_k suggests a refit only where none was asked for", {
+test_that("groupwise k report suggests a refit only where none was asked for", {
   logo <- list(ecxlin = fake_logo(c(0.2, 0.9, 0.3, 0.1)))
-  expect_message(bayesnec:::report_logo_k(logo, 1),
+  expect_message(bayesnec:::report_weight_k(logo, 1, "cell"),
                  "list\\(refit = TRUE\\) replaces them")
-  msg <- tryCatch(bayesnec:::report_logo_k(logo, 1, refit = TRUE),
+  msg <- tryCatch(bayesnec:::report_weight_k(logo, 1, "cell", refit = TRUE),
                   message = conditionMessage)
   expect_match(msg, "1 of 4 levels of cell in ecxlin")
   expect_no_match(msg, "refit = TRUE")
@@ -386,6 +462,8 @@ test_that("a group nested within concentration is left out whole", {
   skip_on_cran()
   fit <- logo_fixture()
   expect_identical(attr(fit$mod_stats$wi, "leave_out"), "g")
+  expect_s3_class(fit$mod_fits$ecxlin$fit$criteria$logo, "psis_loo")
+  expect_s3_class(fit$mod_fits$ecxlin$fit$criteria$loo, "psis_loo")
   expect_identical(attr(fit, "bnec_expand_args")$loo_controls$leave_out,
                    "group")
   expect_gt(fit$mod_stats["ecx4param", "wi"], 0.99)
@@ -396,6 +474,7 @@ test_that("a group nested within concentration is left out whole", {
                              weights = list(method = "pseudobma", BB = FALSE))
   )))
   expect_identical(attr(pointwise$mod_stats$wi, "leave_out"), "observation")
+  expect_s3_class(pointwise$mod_fits$ecxlin$fit$criteria$loo, "psis_loo")
   expect_gt(pointwise$mod_stats["ecxlin", "wi"], 0.1)
   expect_gt(fit$mod_stats["ecx4param", "elpd"] -
               fit$mod_stats["ecxlin", "elpd"], 20)

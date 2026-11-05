@@ -8,16 +8,17 @@
 #' distribution.
 #'
 #' @return A named \code{\link[base]{list}}, with \code{fitting} and
-#' \code{weights} always present and \code{leave_out} and \code{refit} only
-#' where the caller named them.
+#' \code{weights} always present, and \code{leave_out}, \code{refit} and
+#' \code{report_k} present only where the caller named them.
 #'
 #' @noRd
 validate_loo_controls <- function(loo_controls, fam_tag) {
   if (!is.list(loo_controls)) {
-    stop("loo_controls should be a named list of up to four elements.",
+    stop("loo_controls should be a named list of up to five elements.",
          " See ?bnec")
   } else if (!all(names(loo_controls) %in%
-                    c("fitting", "weights", "leave_out", "refit"))) {
+                    c("fitting", "weights", "leave_out", "refit",
+                      "report_k"))) {
     stop("loo_controls list names are incorrect. See ?bnec")
   }
   if (!is.null(loo_controls$leave_out) &&
@@ -31,6 +32,13 @@ validate_loo_controls <- function(loo_controls, fam_tag) {
         !(is.logical(loo_controls$refit) && length(loo_controls$refit) == 1 &&
             !is.na(loo_controls$refit))) {
     stop("Element \"refit\" of loo_controls should be TRUE or FALSE.",
+         " See ?bnec")
+  }
+  if (!is.null(loo_controls$report_k) &&
+        !(is.logical(loo_controls$report_k) &&
+            length(loo_controls$report_k) == 1 &&
+            !is.na(loo_controls$report_k))) {
+    stop("Element \"report_k\" of loo_controls should be TRUE or FALSE.",
          " See ?bnec")
   }
   if ("fitting" %in% names(loo_controls)) {

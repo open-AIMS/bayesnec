@@ -107,6 +107,9 @@ test_that("pull_out honours settings when the requested group keeps every model"
                    expand_record(resolution = 250, fitting = list()))
   expect_equal(nrow(out$w_pred_vals$data), 250)
   expect_equal(out$mod_stats$waic, manec_example$mod_stats$waic)
+  quiet <- q(pull_out(m, "all", resolution = 250,
+                      loo_controls = list(report_k = FALSE)))
+  expect_false(attr(quiet, "bnec_expand_args")$loo_controls$report_k)
 })
 
 test_that("pull_out keeps positional and abbreviated prediction arguments", {
