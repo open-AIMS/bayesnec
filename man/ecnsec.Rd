@@ -78,7 +78,9 @@ effect size. This function estimates the effect of a given NSEC estimate.
 With a fitted group term whose levels span concentrations, the curve and
 control are predicted for each observed level with its group deviations.
 Terms whose levels each occur at one concentration are set to zero. The
-default mixes observed levels by their observation counts;
+level of a spanning term observed at only one concentration is excluded from
+the estimate, with a message naming it. The default mixes the remaining
+observed levels by their observation counts;
 \code{pool = "none"} returns them separately.
 
 The effect is measured from the control --- the predicted mean at the

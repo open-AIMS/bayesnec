@@ -85,6 +85,7 @@ group_lapply <- function(object, fun, ...) {
 #' @noRd
 group_estimate_table <- function(object, what, fun, ..., pool = "none",
                                  nsec = NULL) {
+  if (is.null(pool)) pool <- "none"
   pool <- validate_pool(pool, what)
   dots <- shared_level_control(object$fits, list(...))
   posterior <- isTRUE(dots$posterior)

@@ -59,7 +59,9 @@
 #' With a fitted group term whose levels span concentrations, the reference
 #' and curve are predicted for each observed level with its group deviations.
 #' Terms whose levels each occur at one concentration are set to zero. The
-#' default estimate mixes the observed levels by their observation counts;
+#' level of a spanning term observed at only one concentration is excluded from
+#' the estimate, with a message naming it. The default estimate mixes the
+#' remaining observed levels by their observation counts;
 #' \code{pool = "none"} returns them separately. A grouped or joint fit already
 #' separates levels and defaults to \code{pool = "none"}.
 #' 
@@ -452,7 +454,7 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 500,
   # sapply() would drop any argument it did not list, dpar included.
   sample_nsec <- function(x) {
     mod <- names(object$mod_fits)[x]
-    target <- suppressMessages(pull_out(object, model = mod))
+    target <- pull_equation(object, mod)
     out <- nsec(target, sig_val = sig_val, resolution = resolution,
                 x_range = x_range, xform = xform, prob_vals = prob_vals,
                 posterior = TRUE, dpar = dpar, pool = pool,
@@ -467,8 +469,8 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 500,
       subset_censoring(attr(out, "censored"), idx)
     sample_out
   }
-  to_iter <- which(lengths(draw_index[names(object$mod_fits)]) > 0L)
-  nsec_out <- lapply(to_iter, sample_nsec)
+  to_iter <- unname(which(lengths(draw_index[names(object$mod_fits)]) > 0L))
+  nsec_out <- once_level_note(lapply(to_iter, sample_nsec))
   ecnsecP <- unlist(lapply(nsec_out, 
                     FUN = function(p){attributes(p)$ecnsec_relativeP}))
   ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)

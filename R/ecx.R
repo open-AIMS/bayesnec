@@ -68,7 +68,9 @@
 #' With a fitted group term whose levels span concentrations, the control and
 #' curve are predicted for each observed level with its group deviations.
 #' Terms whose levels each occur at one concentration are set to zero. The
-#' default estimate mixes the observed levels by their observation counts;
+#' level of a spanning term observed at only one concentration is excluded from
+#' the estimate, with a message naming it. The default estimate mixes the
+#' remaining observed levels by their observation counts;
 #' \code{pool = "none"} returns them separately. A grouped or joint fit already
 #' separates levels and defaults to \code{pool = "none"}.
 #'
@@ -440,7 +442,7 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
   # them, and would silently return a two-block fit's combined curve.
   sample_ecx <- function(x) {
     mod <- names(object$mod_fits)[x]
-    target <- suppressMessages(pull_out(object, model = mod))
+    target <- pull_equation(object, mod)
     out <- ecx(target, ecx_val = ecx_val, resolution = resolution,
                posterior = TRUE, type = type,
                x_range = x_range, xform = xform, prob_vals = prob_vals,
@@ -454,8 +456,8 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
       subset_censoring(attr(out, "censored"), idx)
     sample_out
   }
-  to_iter <- which(lengths(draw_index[names(object$mod_fits)]) > 0L)
-  ecx_parts <- lapply(to_iter, sample_ecx)
+  to_iter <- unname(which(lengths(draw_index[names(object$mod_fits)]) > 0L))
+  ecx_parts <- once_level_note(lapply(to_iter, sample_ecx))
   ecx_out <- unlist(lapply(ecx_parts, as.numeric))
   cens <- concat_censoring(lapply(ecx_parts, attr, "censored"),
                            vapply(ecx_parts, length, integer(1)), ecx_out)

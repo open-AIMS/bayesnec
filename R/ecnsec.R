@@ -42,7 +42,9 @@
 #' With a fitted group term whose levels span concentrations, the curve and
 #' control are predicted for each observed level with its group deviations.
 #' Terms whose levels each occur at one concentration are set to zero. The
-#' default mixes observed levels by their observation counts;
+#' level of a spanning term observed at only one concentration is excluded from
+#' the estimate, with a message naming it. The default mixes the remaining
+#' observed levels by their observation counts;
 #' \code{pool = "none"} returns them separately.
 #'
 #' The effect is measured from the control --- the predicted mean at the
@@ -177,9 +179,9 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
       models <- names(object$mod_fits)
       idx <- pull_draw_index(object, models, object$sample_size)
       models <- models[lengths(idx[models]) > 0L]
-      parts <- lapply(models, function(m) {
-        per_model(suppressMessages(pull_out(object, model = m)))[idx[[m]]]
-      })
+      parts <- once_level_note(lapply(models, function(m) {
+        per_model(pull_equation(object, m))[idx[[m]]]
+      }))
       out <- unlist(parts, use.names = FALSE)
       if (posterior) return(finish(out))
       result <- stats::quantile(out, probs = prob_vals, na.rm = TRUE)

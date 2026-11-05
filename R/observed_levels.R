@@ -23,20 +23,11 @@ fitted_group_terms <- function(fit) {
 #' @return Invisible NULL.
 #' @noRd
 warn_stale_observed_display <- function(object) {
+  if (!needs_observed_rebuild(object)) return(invisible(NULL))
   if (inherits(object, "bayesmanecfit")) {
     stored <- object$w_pred_vals
-    if (isTRUE(stored$observed_levels)) return(invisible(NULL))
-    has_levels <- any(vapply(object$mod_fits, function(fit) {
-      !is.null(fit$fit) && !is.null(observed_level_spec(fit))
-    }, logical(1)))
   } else {
     stored <- object$pred_vals
-    if (isTRUE(stored$observed_levels)) return(invisible(NULL))
-    has_levels <- !is.null(object$fit) &&
-      !is.null(observed_level_spec(object))
-  }
-  if (!has_levels) {
-    return(invisible(NULL))
   }
   warning("This fit was saved before observed-level display values were",
           " stored. Its stored summary and plotted band still describe the",
@@ -47,16 +38,40 @@ warn_stale_observed_display <- function(object) {
   invisible(NULL)
 }
 
+#' Whether a saved fit needs its observed-level display rebuilt
+#' @param object A single fit or model set.
+#' @return A logical value.
+#' @noRd
+needs_observed_rebuild <- function(object) {
+  if (inherits(object, "bayesmanecfit")) {
+    if (isTRUE(object$w_pred_vals$observed_levels)) return(FALSE)
+    return(any(vapply(object$mod_fits, function(fit) {
+      !is.null(fit$fit) && !is.null(observed_level_spec(fit))
+    }, logical(1))))
+  }
+  !isTRUE(object$pred_vals$observed_levels) &&
+    !is.null(object$fit) && !is.null(observed_level_spec(object))
+}
+
 #' Observed combinations of grouping terms that span the series
 #'
 #' A term spans the series if at least one observed level has more than one
 #' predictor value. Terms whose every level occurs at one value are excluded
-#' from the prediction formula.
+#' from the prediction formula. A combination observed at one predictor value
+#' has no curve of its own, so it is not read; its label is kept in
+#' \code{excluded}. Where no combination remains, the terms are read as nested.
 #'
-#' @param object A single fit or a level of a joint refit.
+#' @param object A single fit, a level of a joint refit, or a hurdle pair.
 #' @return A list of observed combinations, their counts and ranges, or NULL.
 #' @noRd
 observed_level_spec <- function(object) {
+  if (!is.null(object$observed_group)) return(NULL)
+  if (is_bayesnechurdlefit(object)) {
+    # The survival component holds every exposed individual, so it has the
+    # whole series of each level.
+    object <- object$survival
+  }
+  if (inherits(object, "bayesmanecfit")) object <- object$mod_fits[[1]]
   fit <- object$fit
   groups <- fitted_group_terms(fit)
   if (!length(groups)) return(NULL)
@@ -90,22 +105,147 @@ observed_level_spec <- function(object) {
     n[i] <- sum(keep)
     x[[i]] <- dat[[x_var]][keep]
   }
+  spans <- vapply(x, function(v) length(unique(v[is.finite(v)])) > 1L,
+                  logical(1))
+  if (!any(spans)) return(NULL)
+  excluded <- level_labels(combinations[!spans, , drop = FALSE])
+  combinations <- combinations[spans, , drop = FALSE]
+  rownames(combinations) <- NULL
   rhs <- paste(vapply(groups, function(g) {
     paste0("(1 | ", deparse1(g), ")")
   }, character(1)), collapse = " + ")
   re_formula <- stats::as.formula(paste("~", rhs),
                                    env = environment(fit$formula$formula))
-  list(combinations = combinations, n = n, x = x,
-       re_formula = re_formula, x_var = x_var)
+  list(combinations = combinations, n = n[spans], x = x[spans],
+       re_formula = re_formula, x_var = x_var, excluded = excluded)
+}
+
+#' Labels of observed group combinations
+#' @param combinations A data frame with one row per combination.
+#' @return A character vector such as \code{"plate=a"}.
+#' @noRd
+level_labels <- function(combinations) {
+  vapply(seq_len(nrow(combinations)), function(i) {
+    paste(paste0(names(combinations), "=",
+                 vapply(combinations[i, , drop = FALSE], as.character,
+                        character(1))), collapse = ", ")
+  }, character(1))
+}
+
+#' Say which group levels an estimate leaves out
+#'
+#' Signals a message of class \code{bayesnec_level_note}, which
+#' \code{once_level_note()} reduces to one per call.
+#'
+#' @param spec An observed level specification.
+#' @return Invisible NULL.
+#' @noRd
+note_excluded_levels <- function(spec) {
+  if (!length(spec$excluded)) return(invisible(NULL))
+  text <- paste0(
+    "Group level(s) ", paste(spec$excluded, collapse = "; "),
+    " were observed at one concentration, so they have no curve of their",
+    " own and are left out of the estimate."
+  )
+  message(structure(
+    class = c("bayesnec_level_note", "message", "condition"),
+    list(message = paste0(text, "\n"), call = NULL)
+  ))
+  invisible(NULL)
+}
+
+#' Print each excluded-level note once
+#'
+#' The equations of a model set share their data, so each repeats the note.
+#'
+#' @param expr The expression to evaluate.
+#' @return The value of \code{expr}.
+#' @noRd
+once_level_note <- function(expr) {
+  seen <- character()
+  withCallingHandlers(expr, bayesnec_level_note = function(m) {
+    text <- conditionMessage(m)
+    if (text %in% seen) invokeRestart("muffleMessage")
+    seen <<- c(seen, text)
+  })
+}
+
+#' Mutable state for internal calls
+#' @noRd
+bnec_state <- new.env(parent = emptyenv())
+
+#' One equation of a model set, for an estimator to read
+#'
+#' \code{pull_out()} rebuilds the stored display values, which for a fit with
+#' a spanning group term means predicting every level. The estimators read the
+#' levels directly, so those values are built on the zero-deviation basis here.
+#' Do not return the result to a user.
+#'
+#' @param object A model set.
+#' @param model The equation to extract.
+#' @return A single fit.
+#' @noRd
+pull_equation <- function(object, model) {
+  old <- bnec_state$skip_level_display
+  bnec_state$skip_level_display <- TRUE
+  on.exit(bnec_state$skip_level_display <- old, add = TRUE)
+  out <- suppressMessages(pull_out(object, model = model))
+  source <- object$mod_fits[[model]]
+  if (!is.null(object$observed_group)) {
+    for (field in c("observed_group", "level_x", "re_formula")) {
+      out[[field]] <- object[[field]]
+    }
+    if (!is.null(source$ne_posterior)) {
+      out$ne_posterior <- source$ne_posterior
+    }
+  }
+  out
 }
 
 #' One observed combination viewed as a single fit
-#' @param object The parent fit.
+#' @param object The parent fit, or a hurdle pair.
 #' @param spec Its observed level specification.
 #' @param i The combination to read.
+#' @param with_ne Whether to read the level's nec parameter.
 #' @return A single fit with prediction metadata for one combination.
 #' @noRd
 observed_level_fit <- function(object, spec, i, with_ne = FALSE) {
+  if (is_bayesnechurdlefit(object)) {
+    out <- object
+    out$observed_group <- spec$combinations[i, , drop = FALSE]
+    out$level_x <- spec$x[[i]]
+    out$re_formula <- spec$re_formula
+    for (part in c("growth", "survival")) {
+      component <- out[[part]]
+      if (inherits(component, "bayesnecfit")) {
+        out[[part]] <- observed_level_fit(
+          component, spec, i,
+          with_ne = with_ne &&
+            has_nec_parameter(component$model, component$fit)
+        )
+      } else if (inherits(component, "bayesmanecfit")) {
+        component$observed_group <- out$observed_group
+        component$level_x <- out$level_x
+        component$re_formula <- out$re_formula
+        for (model in names(component$mod_fits)) {
+          source <- component$mod_fits[[model]]
+          level <- observed_level_fit(
+            allot_class(source, c("bayesnecfit", "bnecfit")), spec, i,
+            with_ne = with_ne && has_nec_parameter(
+              model, source$fit
+            )
+          )
+          for (field in c("observed_group", "level_x", "re_formula",
+                          "ne_posterior")) {
+            source[[field]] <- level[[field]]
+          }
+          component$mod_fits[[model]] <- source
+        }
+        out[[part]] <- component
+      }
+    }
+    return(out)
+  }
   out <- object
   out$observed_group <- spec$combinations[i, , drop = FALSE]
   out$level_x <- spec$x[[i]]
@@ -117,6 +257,15 @@ observed_level_fit <- function(object, spec, i, with_ne = FALSE) {
       out$fit, newdata = nd, nlpar = "nec", re_formula = spec$re_formula,
       transform = TRUE
     )[, 1])
+    if (!is.null(out$hurdle) &&
+        identical(out$hurdle$ne_type, "NEC")) {
+      hu_ne <- as.numeric(brms::posterior_linpred(
+        out$fit, newdata = nd,
+        nlpar = paste0(hurdle_dpar(out$fit$family), "nec"),
+        re_formula = spec$re_formula, transform = TRUE
+      )[, 1])
+      ne <- pmin(ne, hu_ne)
+    }
     bounds <- sub_x_transformation(range(out$level_x),
                                    out$bayesnecformula)
     attr(ne, "censored") <- censoring_record(
@@ -145,11 +294,7 @@ record_level_controls <- function(result, values) {
 model_set_control_recorder <- function(first, choice) {
   spec <- observed_level_spec(first)
   if (is.null(spec)) return(identity)
-  labels <- vapply(seq_len(nrow(spec$combinations)), function(i) {
-    paste(paste0(names(spec$combinations), "=",
-                 vapply(spec$combinations[i, , drop = FALSE], as.character,
-                        character(1))), collapse = ", ")
-  }, character(1))
+  labels <- level_labels(spec$combinations)
   values <- setNames(vapply(spec$x, min, numeric(1)), labels)
   if (!identical(choice, "own")) values[] <- as.numeric(choice)
   function(x) record_level_controls(x, values)
@@ -171,29 +316,16 @@ estimate_observed_levels <- function(object, spec, what, fun, pool,
                                      curve_args = NULL) {
   if (is.null(pool)) pool <- "mixture"
   pool <- validate_pool(pool, what)
-  labels <- vapply(seq_len(nrow(spec$combinations)), function(i) {
-    paste(paste0(names(spec$combinations), "=",
-                 vapply(spec$combinations[i, , drop = FALSE], as.character,
-                        character(1))), collapse = ", ")
-  }, character(1))
+  note_excluded_levels(spec)
+  labels <- level_labels(spec$combinations)
   controls <- setNames(vapply(spec$x, min, numeric(1)), labels)
   control_value <- x_control
   range_override <- x_range
-  if (identical(x_control, "shared") || is.numeric(x_control)) {
-    control_value <- if (identical(x_control, "shared")) {
-      min(unlist(spec$x, use.names = FALSE))
-    } else {
-      x_control
-    }
+  if (identical(what, "nec")) {
+    record_level_controls <- function(result, values) result
+  } else if (identical(x_control, "shared") || is.numeric(x_control)) {
     lows <- vapply(spec$x, min, numeric(1))
-    beyond <- control_value < lows
-    if (any(beyond) && !isTRUE(attr(x_control, "warned"))) {
-      warning("The shared control concentration is below the lowest",
-              " observation of ", sum(beyond), " level(s), by up to ",
-              signif(max(lows[beyond] - control_value), 3), ".",
-              call. = FALSE)
-    }
-    attr(control_value, "warned") <- TRUE
+    control_value <- checked_shared_control(object, x_control, lows)
     controls[] <- as.numeric(control_value)
     if (is.na(x_range[1])) {
       range_override <- c(as.numeric(control_value),
@@ -211,8 +343,10 @@ estimate_observed_levels <- function(object, spec, what, fun, pool,
       mean_curve_estimate(fits, spec$n, what, curve_args), controls
     ))
   }
+  with_ne <- identical(what, "nec") &&
+    (is.null(object$hurdle) || identical(object$hurdle$ne_type, "NEC"))
   draws <- lapply(seq_along(labels), function(i) {
-    fun(observed_level_fit(object, spec, i, with_ne = identical(what, "nec")),
+    fun(observed_level_fit(object, spec, i, with_ne = with_ne),
         control_value, range_override)
   })
   names(draws) <- labels
@@ -262,27 +396,11 @@ shared_level_control <- function(fits, dots) {
   if (is.null(choice) || identical(choice, "own")) return(dots)
   if (!identical(choice, "shared") && !is.numeric(choice)) return(dots)
   lows <- unlist(lapply(fits, function(fit) {
-    first <- if (inherits(fit, "bayesmanecfit")) {
-      fit$mod_fits[[1]]
-    } else {
-      fit
-    }
-    spec <- observed_level_spec(first)
+    spec <- observed_level_spec(fit)
     if (is.null(spec)) control_x(fit) else
       vapply(spec$x, min, numeric(1))
   }), use.names = FALSE)
-  value <- if (identical(choice, "shared")) min(lows) else choice
-  if (!is.numeric(value) || length(value) != 1L || !is.finite(value)) {
-    stop("`x_control` must be \"own\", \"shared\", or one finite number.",
-         call. = FALSE)
-  }
-  beyond <- value < lows
-  if (any(beyond)) {
-    warning("The shared control concentration is below the lowest",
-            " observation of ", sum(beyond), " level(s), by up to ",
-            signif(max(lows[beyond] - value), 3), ".", call. = FALSE)
-  }
-  attr(value, "warned") <- TRUE
+  value <- checked_shared_control(fits[[1]], choice, lows)
   dots$x_control <- value
   if (is.null(dots$x_range) || is.na(dots$x_range[1])) {
     highs <- vapply(fits, function(f) level_x_bounds(f)[2], numeric(1))
@@ -299,25 +417,68 @@ shared_level_control <- function(fits, dots) {
 model_set_control <- function(object, choice) {
   if (identical(choice, "own")) return(choice)
   if (!identical(choice, "shared") && !is.numeric(choice)) return(choice)
-  first <- suppressMessages(
-    pull_out(object, model = names(object$mod_fits)[1])
-  )
-  spec <- observed_level_spec(first)
-  lows <- if (is.null(spec)) control_x(first) else
+  spec <- observed_level_spec(object)
+  lows <- if (is.null(spec)) control_x(object) else
     vapply(spec$x, min, numeric(1))
-  value <- if (identical(choice, "shared")) min(lows) else choice
+  checked_shared_control(object, choice, lows)
+}
+
+#' Validate one control concentration for several levels
+#'
+#' Refuses a value the predictor transformation cannot take before warning
+#' about levels observed only above it.
+#'
+#' @param object A fit whose formula names the predictor transformation.
+#' @param choice \code{"shared"} or one number.
+#' @param lows The lowest observed concentration of each level.
+#' @return The control concentration, marked so that it warns once.
+#' @noRd
+checked_shared_control <- function(object, choice, lows) {
+  if (isTRUE(attr(choice, "warned"))) return(choice)
+  shared <- identical(choice, "shared")
+  value <- if (shared) min(lows) else choice
   if (!is.numeric(value) || length(value) != 1L || !is.finite(value)) {
     stop("`x_control` must be \"own\", \"shared\", or one finite number.",
          call. = FALSE)
   }
+  check_control_finite(object, value)
   beyond <- value < lows
   if (any(beyond)) {
-    warning("The shared control concentration is below the lowest",
-            " observation of ", sum(beyond), " level(s), by up to ",
-            signif(max(lows[beyond] - value), 3), ".", call. = FALSE)
+    warning(if (shared) "The shared control concentration, " else
+              "The control concentration, ",
+            signif(value, 3), ", is below the lowest observation of ",
+            sum(beyond), " level(s), by up to ",
+            signif(max(lows[beyond] - value), 3),
+            ". Their curves are extrapolated down to it.", call. = FALSE)
   }
+  value <- as.numeric(value)
   attr(value, "warned") <- TRUE
   value
+}
+
+#' Refuse a control concentration the predictor transformation maps off the
+#' real line
+#' @param object A single fit, model set, hurdle pair or joint level.
+#' @param value The control concentration on the recorded scale.
+#' @return Invisible NULL.
+#' @noRd
+check_control_finite <- function(object, value) {
+  formula <- if (is_bayesnechurdlefit(object)) {
+    object$formula
+  } else if (inherits(object, "bayesmanecfit")) {
+    object$mod_fits[[1]]$bayesnecformula
+  } else {
+    object$bayesnecformula
+  }
+  transformed <- tryCatch(
+    suppressWarnings(sub_x_transformation(value, formula)),
+    error = function(e) NA_real_
+  )
+  if (length(transformed) != 1L || !is.finite(transformed)) {
+    stop("`x_control = ", value, "` is not finite under the crf()",
+         " predictor transformation.", call. = FALSE)
+  }
+  invisible(NULL)
 }
 
 #' Draw one weighted mixture sample from each observed level
@@ -389,7 +550,7 @@ level_curve_draws <- function(object, x_vec, x_control = "own",
     idx <- pull_draw_index(object, models, object$sample_size)
     models <- models[lengths(idx[models]) > 0L]
     parts <- lapply(models, function(m) {
-      part <- suppressMessages(pull_out(object, model = m))
+      part <- pull_equation(object, m)
       out <- level_curve_draws(part, x_vec, x_control, type, dpar)
       take <- idx[[m]]
       list(curve = out$curve[take, , drop = FALSE],
@@ -454,11 +615,9 @@ level_curve_draws <- function(object, x_vec, x_control = "own",
 #' @return The minimum and maximum observed predictor values.
 #' @noRd
 level_x_bounds <- function(object) {
-  if (inherits(object, "bayesmanecfit")) {
-    object <- suppressMessages(
-      pull_out(object, model = names(object$mod_fits)[1])
-    )
-  }
+  if (length(object$level_x)) return(range(object$level_x))
+  if (is_bayesnechurdlefit(object)) object <- object$survival
+  if (inherits(object, "bayesmanecfit")) object <- grid_equation(object)
   if (length(object$level_x)) return(range(object$level_x))
   frame <- stats::model.frame(object$bayesnecformula, data = object$fit$data)
   x_var <- attr(frame, "bnec_pop")[["x_var"]]
@@ -517,6 +676,10 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
   if (identical(type, "relative") && is.null(dpar) &&
       what %in% c("ecx", "ecnsec")) {
     for (fit in fits) {
+      if (is_bayesnechurdlefit(fit)) {
+        stop("type = \"relative\" is not defined for a hurdle fit.",
+             call. = FALSE)
+      }
       family <- if (inherits(fit, "bayesmanecfit")) {
         fit$mod_fits[[1]]$fit$family
       } else {
@@ -543,10 +706,23 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
     }
   }
   for (i in seq_along(fits)) {
-    part <- level_curve_draws(fits[[i]], x_vec, x_control, type, dpar)
+    if (is_bayesnechurdlefit(fits[[i]])) {
+      pred <- hurdle_component_preds(fits[[i]], resolution = resolution,
+                                     x_range = c(low, high),
+                                     x_control = x_control)
+      component <- if (is.null(dots$which)) "combined" else dots$which
+      part <- list(curve = pred[[component]],
+                   control = pred$control[[component]], asymptote = 0)
+    } else {
+      part <- level_curve_draws(fits[[i]], x_vec, x_control, type, dpar)
+    }
     if (identical(what, "ecnsec")) {
-      at_part <- level_curve_draws(fits[[i]], rep(nsec_use, 2),
-                                   x_control, type, dpar)$curve[, 1]
+      at_part <- if (is_bayesnechurdlefit(fits[[i]])) {
+        curve_draws_at(part$curve, x_vec, nsec_use)
+      } else {
+        level_curve_draws(fits[[i]], rep(nsec_use, 2),
+                          x_control, type, dpar)$curve[, 1]
+      }
     }
     if (is.null(curve)) {
       curve <- part$curve * weights[i]
@@ -603,15 +779,13 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
   effect_draws <- attr(out, "ecnsec_relativeP")
   cens <- censoring_record(high, searched_from, above, below)
   first <- fits[[1]]
-  if (inherits(first, "bayesmanecfit")) {
-    first <- suppressMessages(
-      pull_out(first, model = names(first$mod_fits)[1])
-    )
-  }
+  if (inherits(first, "bayesmanecfit")) first <- grid_equation(first)
   xform <- dots$xform
   if (!returns_recorded(first, xform)) {
-    to_fitted <- function(value) {
-      sub_x_transformation(value, first$bayesnecformula)
+    to_fitted <- if (is_bayesnechurdlefit(first)) {
+      function(value) hurdle_xform_x(first, value)
+    } else {
+      function(value) sub_x_transformation(value, first$bayesnecformula)
     }
     out <- to_fitted(out)
     cens <- xform_censoring(cens, to_fitted)
@@ -664,9 +838,9 @@ model_set_level_estimates <- function(object, what, fun, posterior, prob_vals) {
   models <- names(object$mod_fits)
   idx <- pull_draw_index(object, models, object$sample_size)
   models <- models[lengths(idx[models]) > 0L]
-  components <- lapply(models, function(m) {
-    fun(suppressMessages(pull_out(object, model = m)))
-  })
+  components <- once_level_note(lapply(models, function(m) {
+    fun(pull_equation(object, m))
+  }))
   levels <- names(components[[1]])
   if (is.null(levels) || any(!vapply(components, function(x) {
     identical(names(x), levels)

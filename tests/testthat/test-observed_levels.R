@@ -25,8 +25,45 @@ test_that("a grouping with incomplete series still spans the series", {
   fit$fit$formula <- list(formula = y ~ mu,
                           pforms = list(beta = beta ~ 1 + (1 | batch)))
   spec <- bayesnec:::observed_level_spec(fit)
-  expect_equal(spec$n, c(2L, 2L, 1L))
+  expect_equal(spec$n, c(2L, 2L))
   expect_equal(vapply(spec$x, length, integer(1)), spec$n)
+  expect_equal(spec$excluded, "batch=c")
+  fit$fit$data <- d[d$batch == "c", , drop = FALSE]
+  expect_null(bayesnec:::observed_level_spec(fit))
+})
+
+test_that("excluded-level notes occur once across equations", {
+  spec <- list(excluded = "plate=c")
+  expect_message(
+    bayesnec:::once_level_note({
+      bayesnec:::note_excluded_levels(spec)
+      bayesnec:::note_excluded_levels(spec)
+    }),
+    "plate=c"
+  )
+  messages <- character()
+  withCallingHandlers(bayesnec:::once_level_note({
+    bayesnec:::note_excluded_levels(spec)
+    bayesnec:::note_excluded_levels(spec)
+  }), message = function(m) {
+    messages <<- c(messages, conditionMessage(m))
+    invokeRestart("muffleMessage")
+  })
+  expect_length(messages, 1L)
+})
+
+test_that("NULL pool selects separate grouped and joint levels", {
+  simple <- function(fit, ...) c(Q50 = fit, Q2.5 = fit, Q97.5 = fit)
+  grouped <- list(fits = list(a = 1, b = 2), levels = c("a", "b"))
+  g <- bayesnec:::group_estimate_table(grouped, "nec", simple, pool = NULL)
+  expect_equal(g$Q50, c(1, 2))
+  local_mocked_bindings(
+    joint_level_fit = function(object, level) match(level, object$levels),
+    .package = "bayesnec"
+  )
+  joint <- list(levels = c("a", "b"))
+  j <- bayesnec:::joint_estimate_table(joint, "nec", simple, pool = NULL)
+  expect_equal(j$Q50, c(1, 2))
 })
 
 test_that("a numeric control changes the reference and rejects log zero", {

@@ -267,6 +267,7 @@ bnec_newdata.bayesnecjointlevel <- function(x, resolution = 100,
 #' @noRd
 joint_estimate_table <- function(object, what, fun, ..., pool = "none",
                                   nsec = NULL) {
+  if (is.null(pool)) pool <- "none"
   pool <- validate_pool(pool, what)
   fits <- lapply(object$levels, function(lev) joint_level_fit(object, lev))
   names(fits) <- object$levels
@@ -330,6 +331,7 @@ joint_estimate_table <- function(object, what, fun, ..., pool = "none",
 #'
 #' @noRd
 joint_ne_table <- function(object, no_effect, ..., pool = "none") {
+  if (is.null(pool)) pool <- "none"
   pool <- validate_pool(pool, "nec")
   dots <- list(...)
   prob_vals <- if (is.null(dots$prob_vals)) {

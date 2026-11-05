@@ -48,7 +48,9 @@
 #' Under a fitted group term whose levels span concentrations, the NEC is
 #' read for each observed level, including its deviation on the parameter.
 #' Terms whose levels each occur at one concentration are set to zero. The
-#' default mixes observed levels by their observation counts;
+#' level of a spanning term observed at only one concentration is excluded from
+#' the estimate, with a message naming it. The default mixes the remaining
+#' observed levels by their observation counts;
 #' \code{pool = "none"} returns them separately.
 #'
 #' \bold{What is actually returned depends on the model set.} Despite the
@@ -259,8 +261,19 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = NULL,
       return(estimate_observed_levels(
         object, level_spec, "nec",
         function(level, control_value, range_override) {
-          nec(level, posterior = TRUE, xform = xform,
-              prob_vals = prob_vals, extrapolate = extrapolate, pool = "none")
+          # A mixed two-block endpoint has no combined sampled threshold.
+          if (!is.null(object$hurdle) &&
+              !identical(object$hurdle$ne_type, "NEC")) {
+            args <- recorded_expand_args(list(object))
+            nsec(level, sig_val = args$sig_val,
+                 resolution = args$resolution, posterior = TRUE,
+                 xform = xform, prob_vals = prob_vals,
+                 extrapolate = extrapolate, pool = "none")
+          } else {
+            nec(level, posterior = TRUE, xform = xform,
+                prob_vals = prob_vals, extrapolate = extrapolate,
+                pool = "none")
+          }
         },
         pool, posterior, prob_vals
       ))
@@ -362,30 +375,46 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = NULL,
          " in that order.")
   }
   first <- object$mod_fits[[1]]
-  if (!is.null(first$fit) &&
-      !is.null(observed_level_spec(first))) {
+  if (!is.null(object$observed_group) ||
+      (!is.null(first$fit) && !is.null(observed_level_spec(first)))) {
     if (is.null(pool)) pool <- "mixture"
     pool <- validate_pool(pool, "nec")
+    dots <- list(...)
+    # Read smooth equations at the sig_val the fit stored, as the stored
+    # no-effect posterior is.
+    sig_val <- if (is.null(dots$sig_val)) {
+      recorded_expand_args(list(object))$sig_val
+    } else {
+      dots$sig_val
+    }
+    if (!all(vapply(names(object$mod_fits), function(m) {
+      has_nec_parameter(m, object$mod_fits[[m]]$fit)
+    }, logical(1)))) {
+      message("This bayesmanecfit contains smooth (ecx) models, which have no",
+              " threshold parameter, so the returned estimate is a weighted",
+              " mixture of NEC and NSEC draws -- the model-averaged N(S)EC",
+              " rather than a NEC. See ?nec and summary(), which labels it.")
+    }
     per_model <- function(f) {
       if (has_nec_parameter(f$model, f$fit)) {
         nec(f, posterior = TRUE, xform = xform, prob_vals = prob_vals,
             extrapolate = extrapolate, pool = pool)
       } else {
-        nsec(f, posterior = TRUE, xform = xform, prob_vals = prob_vals,
-             extrapolate = extrapolate, pool = pool)
+        nsec(f, sig_val = sig_val, posterior = TRUE, xform = xform,
+             prob_vals = prob_vals, extrapolate = extrapolate, pool = pool)
       }
     }
-    if (identical(pool, "none")) {
+    if (identical(pool, "none") && is.null(object$observed_group)) {
       return(model_set_level_estimates(object, "nec", per_model,
                                         posterior, prob_vals))
     }
     models <- names(object$mod_fits)
     idx <- pull_draw_index(object, models, object$sample_size)
     models <- models[lengths(idx[models]) > 0L]
-    parts <- lapply(models, function(m) {
-      out <- per_model(suppressMessages(pull_out(object, model = m)))
+    parts <- once_level_note(lapply(models, function(m) {
+      out <- per_model(pull_equation(object, m))
       subset_draws(out, idx[[m]])
-    })
+    }))
     draws <- unlist(lapply(parts, as.numeric), use.names = FALSE)
     attr(draws, "censored") <- concat_censoring(
       lapply(parts, attr, "censored"), vapply(parts, length, integer(1)),

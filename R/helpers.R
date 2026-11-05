@@ -1974,7 +1974,7 @@ newdata_eval <- function(object, resolution, x_range) {
   }
   if (inherits(object, "bayesmanecfit")) {
     model_set <- names(object$mod_fits)
-    object <- suppressMessages(pull_out(object, model = model_set[1]))
+    object <- grid_equation(object)
   }
   data <- model.frame(object$bayesnecformula, object$fit$data)
   bnec_pop_vars <- attr(data, "bnec_pop")
@@ -2360,16 +2360,29 @@ check_resolution <- function(resolution) {
 #'
 #' @noRd
 control_x <- function(object) {
+  if (!is.null(object$observed_group) && length(object$level_x)) {
+    return(min(object$level_x))
+  }
   grid_obj <- object
   if (is_bayesnechurdlefit(grid_obj)) {
     grid_obj <- grid_obj$survival
   }
   if (inherits(grid_obj, "bayesmanecfit")) {
-    grid_obj <- suppressMessages(
-      pull_out(grid_obj, model = names(grid_obj$mod_fits)[1])
-    )
+    grid_obj <- grid_equation(grid_obj)
   }
   lowest_observed_x(grid_obj)
+}
+
+#' The first equation of a model set, for reading its data and grid
+#'
+#' Every equation of a set shares the data, so the first gives the grid. It is
+#' not expanded, so it holds only the brms fit and the formula.
+#'
+#' @param object A model set.
+#' @return A single fit without stored summaries.
+#' @noRd
+grid_equation <- function(object) {
+  allot_class(object$mod_fits[[1]], c("bayesnecfit", "bnecfit"))
 }
 
 #' Choose the control concentration and search grid
@@ -2389,21 +2402,13 @@ resolve_x_control <- function(object, x_control, x_range) {
          call. = FALSE)
   }
   grid_obj <- object
-  if (is_bayesnechurdlefit(grid_obj)) grid_obj <- grid_obj$survival
+  if (is_bayesnechurdlefit(grid_obj)) {
+    grid_obj <- grid_obj$survival
+  }
   if (inherits(grid_obj, "bayesmanecfit")) {
-    grid_obj <- suppressMessages(
-      pull_out(grid_obj, model = names(grid_obj$mod_fits)[1])
-    )
+    grid_obj <- grid_equation(grid_obj)
   }
-  transformed <- tryCatch(
-    suppressWarnings(sub_x_transformation(x_control,
-                                           grid_obj$bayesnecformula)),
-    error = function(e) NA_real_
-  )
-  if (length(transformed) != 1L || !is.finite(transformed)) {
-    stop("`x_control = ", x_control, "` is not finite under the crf()",
-         " predictor transformation.", call. = FALSE)
-  }
+  check_control_finite(object, x_control)
   low <- control_x(object)
   high <- if (length(grid_obj$level_x)) max(grid_obj$level_x) else {
     frame <- stats::model.frame(grid_obj$bayesnecformula,
@@ -2619,13 +2624,13 @@ control_posterior <- function(object, newdata, epred_fun, x_at = NULL) {
     grid_obj <- grid_obj$survival
   }
   if (inherits(grid_obj, "bayesmanecfit")) {
-    grid_obj <- suppressMessages(pull_out(grid_obj, model = names(grid_obj$mod_fits)[1]))
+    grid_obj <- grid_equation(grid_obj)
   }
   mod_dat <- model.frame(grid_obj$bayesnecformula, grid_obj$fit$data)
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
   control_nd <- newdata[1, , drop = FALSE]
   if (is.null(x_at)) {
-    x_at <- lowest_observed_x(grid_obj, x_var)
+    x_at <- control_x(object)
   }
   control_nd[[x_var]] <- x_at
   epred_fun(control_nd)[, 1]
