@@ -74,6 +74,52 @@ test_that("an explicit group vector is used as given", {
   expect_equal(as.character(g[1]), "a")
 })
 
+test_that("a singleton group retains its mean statistics", {
+  x <- c(0, 0, 0.03, 0.03, 0.09, 0.29, 0.29)
+  y <- c(0.95, 1.38, 1.18, 1.40, 0.81, 0.94, 0.96)
+  yrep <- rbind(y, y + 0.1, y - 0.1)
+  mu <- rep(1, length(y))
+  expect_warning(grp <- bayesnec:::check_fit_groups(x), "cut into 3 bins")
+  out <- bayesnec:::check_fit_stats(y, yrep, mu, grp, FALSE)
+  one <- out[out$n == 1L, , drop = FALSE]
+  expect_equal(nrow(one), 1L)
+  expect_true(all(is.na(one[c("obs_sd", "sim_sd", "sd_ratio", "ppp_sd",
+                              "sim_sd_lo", "sim_sd_hi")])))
+  expect_true(all(is.finite(unlist(one[c("obs_mean", "sim_mean",
+                                          "mean_ratio", "ppp_mean",
+                                          "sim_mean_lo", "sim_mean_hi")]))))
+  sd_cols <- c("obs_sd", "sim_sd", "sd_ratio", "ppp_sd", "sim_sd_lo",
+               "sim_sd_hi")
+  expect_true(all(is.finite(unlist(out[out$n > 1L, sd_cols]))))
+
+  explicit <- bayesnec:::check_fit_groups(x, x)
+  by_concentration <- bayesnec:::check_fit_stats(y, yrep, mu, explicit, FALSE)
+  expect_equal(by_concentration$n, c(2L, 2L, 1L, 2L))
+  expect_true(is.na(by_concentration$sim_sd[3]))
+  expect_true(is.finite(by_concentration$sim_mean[3]))
+
+  out$control <- out$group == out$group[1]
+  class(out) <- c("checkfit", "data.frame")
+  expect_output(print(out), "NA")
+  p <- plot(out)
+  expect_s3_class(p, "ggplot")
+  expect_equal(nrow(p$data), 2L * nrow(out) - 1L)
+  expect_equal(sum(p$data$statistic == "location (mean)"), nrow(out))
+  expect_warning(ggplot2::ggplot_build(p), NA)
+})
+
+test_that("check_fit accepts an explicit singleton group", {
+  skip_on_cran()
+  group <- rep(0, nrow(nec4param$fit$data))
+  group[1] <- 1
+  out <- check_fit(nec4param, group = group, ndraws = 50)
+  expect_s3_class(out, "checkfit")
+  expect_equal(sum(out$n), length(group))
+  expect_true(is.na(out$sim_sd[out$n == 1L]))
+  expect_true(is.finite(out$sim_mean[out$n == 1L]))
+  expect_warning(ggplot2::ggplot_build(plot(out)), NA)
+})
+
 test_that("ppp_value is the tail probability, and handles degenerate input", {
   expect_equal(bayesnec:::ppp_value(c(1, 2, 3, 4), 2.5), 0.5)
   expect_equal(bayesnec:::ppp_value(c(1, 2, 3, 4), 0), 1)

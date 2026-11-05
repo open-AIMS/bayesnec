@@ -51,7 +51,9 @@ for a \code{\link{bayesmanecfit}}), carrying the group, the number of
 observations, the observed and simulated mean and standard deviation, their
 ratios, a posterior predictive p-value for each, and a logical flag marking
 the control group. For the mixture families it also carries the observed and
-simulated proportion of zeros.
+simulated proportion of zeros. A group with one observation has no standard
+deviation; its standard deviation statistics are \code{NA}, while its mean
+statistics remain available.
 }
 \description{
 Reports, per group of the predictor, the observed location and scale of the
