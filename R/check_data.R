@@ -193,9 +193,9 @@ flatness_blocks <- function(x, y, trials, denominator, family) {
 #' whole series rather than over the two levels being compared.
 #'
 #' @return A \code{\link[base]{list}} with element \code{status}, one of
-#' "skipped" (fewer than two predictor values), "failed" (the contrast could
-#' not be computed) or "tested", and for "tested" the p-value, the two levels
-#' and the mean at each.
+#' "skipped" (fewer than two predictor values or an observed zero floor),
+#' "failed" (the contrast could not be computed) or "tested", and for
+#' "tested" the p-value, the two levels and the mean at each.
 #'
 #' @importFrom stats glm relevel pf pchisq as.formula
 #'
@@ -237,6 +237,17 @@ flatness_contrast <- function(block, alpha = 0.05, pool_dispersion = TRUE) {
   x_keep <- x[keep]
   if (!all(c(lower, upper) %in% x_keep)) {
     return(list(status = "failed"))
+  }
+  # Exact zero is the observed floor for counts and trial responses.
+  bounded_below <- identical(spec$kind, "matrix") ||
+    spec$family$family %in% c("binomial", "quasipoisson")
+  upper_response <- if (identical(spec$kind, "matrix")) {
+    block$successes[keep][x_keep == upper]
+  } else {
+    response[x_keep == upper]
+  }
+  if (bounded_below && all(upper_response == 0)) {
+    return(list(status = "skipped"))
   }
   # Only the binomial row holds its dispersion fixed. The count rows are mapped
   # to quasipoisson, so poisson never reaches here as itself.

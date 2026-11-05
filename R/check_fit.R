@@ -73,7 +73,9 @@
 #' observations, the observed and simulated mean and standard deviation, their
 #' ratios, a posterior predictive p-value for each, and a logical flag marking
 #' the control group. For the mixture families it also carries the observed and
-#' simulated proportion of zeros.
+#' simulated proportion of zeros. A group with one observation has no standard
+#' deviation; its standard deviation statistics are \code{NA}, while its mean
+#' statistics remain available.
 #'
 #' @seealso \code{\link{pp_check}}, \code{\link{pull_best}},
 #' \code{\link{dispersion}},
@@ -206,8 +208,10 @@ check_fit_stats <- function(y, yrep, mu, grp, is_mixture) {
     res_sim <- sweep(sim_y, 2, mu[idx], "-")
     obs_mean <- mean(obs_y)
     sim_mean <- rowMeans(sim_y)
-    obs_sd <- sd(res_obs)
-    sim_sd <- apply(res_sim, 1, sd)
+    has_sd <- length(idx) > 1L
+    obs_sd <- if (has_sd) sd(res_obs) else NA_real_
+    sim_sd <- if (has_sd) apply(res_sim, 1, sd) else NA_real_
+    sim_sd_median <- if (has_sd) median(sim_sd) else NA_real_
     row <- data.frame(
       group = lv,
       n = length(idx),
@@ -216,15 +220,15 @@ check_fit_stats <- function(y, yrep, mu, grp, is_mixture) {
       mean_ratio = obs_mean / median(sim_mean),
       ppp_mean = ppp_value(sim_mean, obs_mean),
       obs_sd = obs_sd,
-      sim_sd = median(sim_sd),
-      sd_ratio = obs_sd / median(sim_sd),
+      sim_sd = sim_sd_median,
+      sd_ratio = obs_sd / sim_sd_median,
       ppp_sd = ppp_value(sim_sd, obs_sd),
       # The 95% span of each simulated statistic, for plot(). print() hides
       # it to keep the table within one line width.
       sim_mean_lo = unname(quantile(sim_mean, 0.025)),
       sim_mean_hi = unname(quantile(sim_mean, 0.975)),
-      sim_sd_lo = unname(quantile(sim_sd, 0.025)),
-      sim_sd_hi = unname(quantile(sim_sd, 0.975)),
+      sim_sd_lo = if (has_sd) unname(quantile(sim_sd, 0.025)) else NA_real_,
+      sim_sd_hi = if (has_sd) unname(quantile(sim_sd, 0.975)) else NA_real_,
       stringsAsFactors = FALSE
     )
     if (is_mixture) {
@@ -508,7 +512,9 @@ hurdle_observed_response <- function(x) {
 #' and in which direction?", which is the question that decides whether it
 #' matters. Each panel shows, per group of the predictor, the observed statistic
 #' against the 95% span of what the fitted model simulates. A point outside its
-#' interval is a group the model does not reproduce.
+#' interval is a group the model does not reproduce. A group with one
+#' observation appears in the location panel only, because its residual
+#' standard deviation is undefined.
 #'
 #' Two panels rather than one: the location and the scale fail independently and
 #' for different reasons. A model can get the mean of every group right while
@@ -558,6 +564,8 @@ plot.checkfit <- function(x, ...) {
   if (!is.null(d$model)) {
     long$model <- rep(d$model, times = 2)
   }
+  long <- long[is.finite(long$observed) & is.finite(long$lo) &
+                 is.finite(long$hi), , drop = FALSE]
   long$role <- ifelse(long$control, "control", "exposed")
   long$group <- factor(long$group, levels = unique(d$group))
   p <- ggplot(long, aes(x = .data$group)) +
