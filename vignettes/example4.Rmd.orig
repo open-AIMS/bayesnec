@@ -575,11 +575,12 @@ the higher is `r p_coral("colour", "2018-2050", "EC50")` against the 2050
 scenario and `r p_coral("colour", "2018-2100", "EC50")` against the 2100
 scenario, where @flores2021 report 0.956 and 0.970. These could not be expected
 to match exactly, because our model differs from theirs in two respects. The
-fits here use a restricted set of four equations, whereas @flores2021 averaged
-over a larger set (their Table S2), and the fits here include a group-level term
-for chamber (`ogl(chamber)`), which @flores2021 did not fit. The EC50 values are
-also defined differently. The posterior medians are
-`r med_coral("colour", "EC50", "2018")`,
+fits here use four equations with three curve parameters, because the five
+colour concentrations are too few to estimate both asymptotes of the equations
+with four, whereas @flores2021 averaged over a larger set (their Table S2). The
+fits here also include a group-level term for chamber (`ogl(chamber)`), which
+@flores2021 did not fit. The EC50 values are also defined differently. The
+posterior medians are `r med_coral("colour", "EC50", "2018")`,
 `r med_coral("colour", "EC50", "2050")` and
 `r med_coral("colour", "EC50", "2100")` µg/L for 2018, 2050 and 2100, against
 the values of 6.05, 4.99 and 4.86 µg/L that @flores2021 report. They measured
