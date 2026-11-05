@@ -92,7 +92,9 @@
 
     <div class="section level2">
 <h2 class="page-header" data-toc-text="2.2.0" id="bayesnec-220">bayesnec 2.2.0<a class="anchor" aria-label="anchor" href="#bayesnec-220"></a></h2>
-<div class="section level3">
+<ul><li>
+<code><a href="../reference/bnec.html">bnec()</a></code> and <code><a href="../reference/amend.html">amend()</a></code> now reject malformed priors before fitting instead of silently replacing them with defaults.</li>
+</ul><div class="section level3">
 <h3 id="default-priors-2-2-0">Default priors<a class="anchor" aria-label="anchor" href="#default-priors-2-2-0"></a></h3>
 <ul><li>Under <code>prior_type = "regularizing"</code>, the curve-shape exponents <code>d</code> and <code>f</code> take a <code>normal(0, 1)</code> prior in every equation that estimates them, and <code>normal(0, 5)</code> under <code>"uninformative"</code>. <code>beta</code> and <code>slope</code> take <code>normal(0, 5)</code> in both sets, because the value of a rate depends on the concentration units, and <code>slope</code> is also an exponent in some equations (<a href="https://github.com/open-aims/bayesnec/issues/535" class="external-link">#535</a>).</li>
 </ul></div>

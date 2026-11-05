@@ -229,7 +229,8 @@ formula.</p></dd>
 <dt id="arg-prior">prior<a class="anchor" aria-label="anchor" href="#arg-prior"></a></dt>
 <dd><p>An optional <code><a href="https://paulbuerkner.com/brms/reference/set_prior.html" class="external-link">brmsprior</a></code> object (or, when
 multiple models are fitted, a named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> of such objects)
-specifying the priors to use, passed to <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm</a></code>. When omitted,
+specifying the priors to use, passed to <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm</a></code>. Each model
+name can occur only once in the list. When omitted,
 <code>bnec</code> builds default priors according to <code>prior_type</code>. This
 is an explicit argument (rather than being passed through <code>...</code>) so that
 it is matched exactly and not confused with <code>prior_type</code>.</p></dd>

@@ -157,8 +157,8 @@ refitting any model.</p></dd>
 <dt id="arg-priors">priors<a class="anchor" aria-label="anchor" href="#arg-priors"></a></dt>
 <dd><p>An object of class <code><a href="https://paulbuerkner.com/brms/reference/set_prior.html" class="external-link">brmsprior</a></code> which
 specifies user-desired prior distributions of model parameters. It can also
-be specified as a named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> where each name needs to
-correspond to the same string as <code>model</code>. Where it is not supplied, the
+be specified as a named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> where each name identifies
+a model and occurs only once. Where it is not supplied, the
 <code>prior</code> of the call that fitted <code>object</code> is used as described in
 Details, and the default priors are built for each parameter it does not
 cover.</p></dd>
