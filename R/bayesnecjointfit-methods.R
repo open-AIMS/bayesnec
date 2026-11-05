@@ -559,10 +559,13 @@ joint_level_ne <- function(object, level, xform = identity) {
 #' @export
 ggbnec_data.bayesnecjointfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                                          xform = NULL, ..., group = NULL,
-                                         x_scale = c("recorded", "fitted")) {
+                                         x_scale = c("recorded", "fitted"),
+                                         which = "combined") {
   chk_lgl(add_nec)
   chk_lgl(add_ecx)
   check_xform(xform)
+  check_plot_single_curve(which, x)
+  check_plot_dpar(list(...), x)
   x_scale <- plot_x_scale(x, x_scale, xform)
   panel_group <- is.null(group) || identical(group, x$group_var)
   raw_group <- if (panel_group) NULL else group
@@ -656,7 +659,8 @@ autoplot.bayesnecjointfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                                       xform = NULL, group = NULL,
                                       group_aes = c("line", "colour"),
                                       point_alpha = 1,
-                                      x_scale = c("recorded", "fitted")) {
+                                      x_scale = c("recorded", "fitted"),
+                                      xlab = "Predictor", ylab = NULL) {
   chk_lgl(nec)
   chk_lgl(ecx)
   group_aes <- match.arg(group_aes)
@@ -686,5 +690,6 @@ autoplot.bayesnecjointfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   ggbnec(dat, nec = nec, ecx = ecx, group = show_group,
          group_aes = group_aes, group_label = group_label,
          group_fitted = !identical(attr(dat, "group_fitted"), FALSE),
-         point_alpha = point_alpha, x_axis = x_axis)
+         point_alpha = point_alpha, x_axis = x_axis, xlab = xlab,
+         ylab = plot_ylab(ylab, object))
 }

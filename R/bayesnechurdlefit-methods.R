@@ -1019,6 +1019,12 @@ hurdle_check_plot_which <- function(which) {
   match.arg(which, c("combined", "growth", "survival", "all"))
 }
 
+# The title of each curve, named by the `which` value that selects it. The
+# panels of a joint two-block fit use the same titles.
+hurdle_panel_names <- c(combined = "Response per individual exposed",
+                        growth = "Response of survivors",
+                        survival = "Probability of survival")
+
 #' Raw observed data underlying a \code{\link{bayesnechurdlefit}}
 #'
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
@@ -1066,10 +1072,7 @@ hurdle_panel <- function(object, which, resolution, x_range) {
        lo = apply(p, 2, quantile, 0.025),
        up = apply(p, 2, quantile, 0.975),
        raw = raw,
-       ylab = switch(which,
-                     combined = "Response per individual exposed",
-                     growth = "Response of survivors",
-                     survival = "Probability of survival"))
+       ylab = hurdle_panel_names[[which]])
 }
 
 #' The map the hurdle plots apply to the points and the curve
@@ -1268,10 +1271,7 @@ ggbnec_data.bayesnechurdlefit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                 lo = apply(preds[[w]], 2, quantile, 0.025),
                 up = apply(preds[[w]], 2, quantile, 0.975),
                 raw = observed,
-                ylab = switch(w,
-                              combined = "Response per individual exposed",
-                              growth = "Response of survivors",
-                              survival = "Probability of survival"))
+                ylab = hurdle_panel_names[[w]])
       p$raw$x <- as.numeric(sub_x_transformation(p$raw$x, x$formula))
     } else {
       p <- hurdle_panel(x, w, resolution, x_range)
@@ -1390,9 +1390,7 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
                                 labels = axis$labels)
   }
   panels <- if (which == "all") c("combined", "growth", "survival") else which
-  panel_names <- c(combined = "Response per individual exposed",
-                   growth = "Response of survivors",
-                   survival = "Probability of survival")
+  panel_names <- hurdle_panel_names
   est_xform <- if (x_scale == "fitted") identity else
     hurdle_ne_axis_map(object, xform)
   if (nec) {

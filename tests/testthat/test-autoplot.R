@@ -1005,3 +1005,225 @@ test_that("fitted axes reach model sets, grouped fits and joint refits", {
   expect_true(length(attr(joint_data, "x_axis")$breaks) > 0)
   expect_equal(length(unique(joint_data$panel)), 2)
 })
+
+# A joint two-block fit with a smooth response block and a threshold survival
+# block, on a log predictor so that the fitted axis applies. Fitted once per
+# test process.
+joint_hurdle_cache <- local({
+  cached <- NULL
+  function() {
+    if (is.null(cached)) {
+      set.seed(564)
+      conc <- rep(c(0.1, 0.3, 1, 3, 10, 30), each = 10)
+      mu <- 20 / (1 + exp(1.2 * (log(conc) - log(4))))
+      alive <- stats::rbinom(length(conc), 1,
+                             0.95 * exp(-0.12 * pmax(conc - 5, 0)))
+      y <- ifelse(alive == 1, stats::rgamma(length(conc), 15, 15 / mu), 0)
+      cached <<- suppressWarnings(suppressMessages(bnec(
+        y ~ crf(log(x), "ecx4param"), data = data.frame(x = conc, y = y),
+        family = "hurdle_gamma", model_survival = "nec3param",
+        chains = 2, iter = 600, warmup = 300, seed = 564, refresh = 0,
+        resolution = 50
+      )))
+    }
+    cached
+  }
+})
+
+panel_titles <- function(p) {
+  layout <- ggplot2::ggplot_build(p)$layout$layout
+  as.character(layout$model[order(layout$PANEL)])
+}
+
+joint_titles <- paste0(
+  c("Response per individual exposed", "Response of survivors",
+    "Probability of survival"),
+  "\n", c("ecx4param / nec3param", "ecx4param", "nec3param")
+)
+
+test_that("which draws the blocks of a joint two-block fit", {
+  skip_on_cran()
+  skip_if_not_installed("rstan")
+  fit <- joint_hurdle_cache()
+  q <- function(expr) suppressWarnings(suppressMessages(expr))
+
+  # One panel, titled by both equations, with the curve on the y axis.
+  p <- q(autoplot(fit))
+  expect_equal(panel_titles(p), "ecx4param / nec3param")
+  expect_equal(p$labels$y, "Response per individual exposed")
+
+  # The panels and titles of autoplot.bayesnechurdlefit(), each naming the
+  # equation of its block. The titles name the curves, so the y axis has no
+  # label.
+  p <- q(autoplot(fit, which = "all"))
+  expect_equal(panel_titles(p), joint_titles)
+  expect_true("y" %in% names(p$labels))
+  expect_null(p$labels$y)
+
+  p <- q(autoplot(fit, which = "growth"))
+  expect_equal(panel_titles(p), "ecx4param")
+  expect_equal(p$labels$y, "Response of survivors")
+  p <- q(autoplot(fit, which = "survival", ylab = "Alive"))
+  expect_equal(panel_titles(p), "nec3param")
+  expect_equal(p$labels$y, "Alive")
+
+  # The no-effect label names the estimate each panel draws: the response
+  # block has no nec parameter, the survival block does.
+  p <- q(autoplot(fit, which = "all"))
+  text <- Filter(function(layer) inherits(layer$geom, "GeomText"),
+                 p$layers)[[1]]$data
+  expect_equal(text$tag,
+               c(rownames(q(summary(fit))$nec_vals)[1], "NSEC", "NEC"))
+})
+
+test_that("the block panels of a joint fit match the estimators", {
+  skip_on_cran()
+  skip_if_not_installed("rstan")
+  fit <- joint_hurdle_cache()
+  q <- function(expr) suppressWarnings(suppressMessages(expr))
+  d <- q(ggbnec_data(fit, which = "all", add_ecx = TRUE))
+  expect_equal(levels(d$panel), unname(bayesnec:::hurdle_panel_names))
+  panel <- function(name) d[d$panel == name, , drop = FALSE]
+  growth <- panel("Response of survivors")
+  survival <- panel("Probability of survival")
+  combined <- panel("Response per individual exposed")
+  obs <- fit$fit$data
+
+  # The observations: every row, the survivors, and the proportion alive at
+  # each concentration.
+  expect_equal(sum(!is.na(combined$y_r)), nrow(obs))
+  expect_equal(sort(growth$y_r[!is.na(growth$y_r)]), sort(obs$y[obs$y > 0]))
+  alive <- bayesnec:::survival_by_x(obs$x, obs$y)
+  expect_equal(survival$x_r[!is.na(survival$x_r)], alive$x)
+  expect_equal(survival$y_r[!is.na(survival$y_r)], alive$y)
+
+  # The bands are those of each block on the stored grid.
+  grid <- fit$pred_vals$data$x
+  nd <- bnec_newdata(fit, resolution = length(grid), x_range = range(grid))
+  band_median <- function(frame) frame$y_e[!is.na(frame$y_e)]
+  expect_equal(band_median(growth),
+               unname(apply(brms::posterior_epred(fit$fit, newdata = nd,
+                                                  dpar = "mu",
+                                                  re_formula = NA),
+                            2, stats::median)))
+  expect_equal(band_median(survival),
+               unname(apply(1 - brms::posterior_epred(fit$fit, newdata = nd,
+                                                      dpar = "hu",
+                                                      re_formula = NA),
+                            2, stats::median)))
+  expect_equal(band_median(combined), fit$pred_vals$data$Estimate)
+
+  # The response block is smooth, so its line is the NSEC of its curve; the
+  # survival block's is its nec parameter, on the recorded scale.
+  lines <- function(frame, column) frame[[column]][!is.na(frame[[column]])]
+  expect_equal(lines(growth, "nec_vals"),
+               as.numeric(q(nsec(fit, dpar = "mu", resolution = 50))))
+  hunec <- exp(as.numeric(
+    brms::as_draws_df(fit$fit, variable = "b_hunec_Intercept")$b_hunec_Intercept
+  ))
+  expect_equal(lines(survival, "nec_vals"),
+               unname(c(stats::median(hunec),
+                        stats::quantile(hunec, c(0.025, 0.975)))))
+
+  # The ECx lines are those ecx() returns for each block.
+  expect_equal(lines(growth, "ecx_vals"),
+               as.numeric(q(ecx(fit, dpar = "mu"))))
+  expect_equal(lines(survival, "ecx_vals"),
+               as.numeric(q(ecx(fit, dpar = "hu"))))
+  expect_equal(lines(combined, "ecx_vals"), as.numeric(q(ecx(fit))))
+})
+
+test_that("the block panels of a joint fit follow the fitted axis", {
+  skip_on_cran()
+  skip_if_not_installed("rstan")
+  fit <- joint_hurdle_cache()
+  q <- function(expr) suppressWarnings(suppressMessages(expr))
+  d <- q(ggbnec_data(fit, which = "all", add_ecx = TRUE,
+                     x_scale = "fitted"))
+  survival <- d[d$panel == "Probability of survival", , drop = FALSE]
+  growth <- d[d$panel == "Response of survivors", , drop = FALSE]
+  expect_equal(range(growth$x_e, na.rm = TRUE), log(c(0.1, 30)))
+  expect_equal(sort(unique(survival$x_r[!is.na(survival$x_r)])),
+               log(c(0.1, 0.3, 1, 3, 10, 30)))
+  # Lines sit on the fitted scale, and their labels give recorded units.
+  ne <- survival$nec_vals[!is.na(survival$nec_vals)]
+  expect_equal(as.numeric(survival$nec_labs[!is.na(survival$nec_labs)]),
+               round(exp(ne[1]), 2))
+  ec <- growth$ecx_vals[!is.na(growth$ecx_vals)]
+  # Quantiles interpolate between draws, so the two scales agree closely
+  # rather than exactly.
+  expect_equal(exp(ec), as.numeric(q(ecx(fit, dpar = "mu"))),
+               tolerance = 0.01)
+  expect_equal(as.numeric(growth$ecx_labs[!is.na(growth$ecx_labs)]),
+               round(exp(ec[1]), 2))
+
+  p <- q(autoplot(fit, which = "all", ecx = TRUE, x_scale = "fitted"))
+  expect_equal(panel_titles(p), joint_titles)
+  scale <- p$scales$get_scales("x")
+  expect_equal(scale$breaks, attr(d, "x_axis")$breaks)
+})
+
+test_that("xlab and ylab label every class autoplot() draws", {
+  skip_on_cran()
+  q <- function(expr) suppressWarnings(suppressMessages(expr))
+  labels_of <- function(p) c(p$labels$x, p$labels$y)
+  defaults <- c("Predictor", "Response")
+  supplied <- c("Dose", "Length")
+  for (object in list(nec4param, manec_example, grouped_object(),
+                      joint_with_rows())) {
+    expect_equal(labels_of(q(autoplot(object))), defaults)
+    expect_equal(labels_of(q(autoplot(object, xlab = "Dose",
+                                      ylab = "Length"))), supplied)
+  }
+  expect_equal(labels_of(q(autoplot(manec_example, model = "nec4param",
+                                    xlab = "Dose", ylab = "Length"))),
+               supplied)
+  pages <- q(autoplot(manec_example, model = "nec4param",
+                      multi_facet = FALSE, plot = FALSE, xlab = "Dose",
+                      ylab = "Length"))
+  for (page in pages) expect_equal(labels_of(page), supplied)
+})
+
+test_that("plots refuse a curve they cannot draw", {
+  skip_on_cran()
+  q <- function(expr) suppressWarnings(suppressMessages(expr))
+  # A one-block family has no block to select, whatever the class.
+  for (object in list(nec4param, manec_example, grouped_object(),
+                      joint_with_rows())) {
+    expect_error(q(autoplot(object, which = "growth")), "one curve")
+    expect_error(q(ggbnec_data(object, which = "all")), "one curve")
+    expect_error(q(autoplot(object, dpar = "mu")), "one curve")
+    # The default is accepted when named.
+    expect_s3_class(q(autoplot(object, which = "combined")), "ggplot")
+  }
+  # The ECx line would otherwise read the block while the curve did not.
+  expect_error(q(autoplot(nec4param, ecx = TRUE, dpar = "mu")), "one curve")
+  expect_error(q(autoplot(nec4param, which = "nonsense")), "should be one of")
+
+  # A model set of two-block fits names pull_out(); a grouped fit or joint
+  # refit names the estimators.
+  hurdle_part <- list(fit = list(family = brms::hurdle_gamma()))
+  set <- structure(list(mod_fits = list(ecx4param = hurdle_part)),
+                   class = c("bayesmanecfit", "bnecfit"))
+  expect_error(bayesnec:::check_plot_single_curve("all", set),
+               "pull_out(x, model = \"ecx4param\"), which = \"all\")",
+               fixed = TRUE)
+  expect_error(bayesnec:::check_plot_dpar(list(dpar = "hu"), set),
+               "pull_out", fixed = TRUE)
+  expect_null(bayesnec:::check_plot_single_curve("combined", set))
+  expect_null(bayesnec:::check_plot_single_curve(NULL, set))
+  joint <- structure(hurdle_part, class = c("bayesnecjointfit", "bnecfit"))
+  expect_error(bayesnec:::check_plot_single_curve("growth", joint),
+               "ecx() or nsec() and `dpar`", fixed = TRUE)
+})
+
+test_that("a joint two-block fit refuses dpar and names which", {
+  skip_on_cran()
+  skip_if_not_installed("rstan")
+  fit <- joint_hurdle_cache()
+  expect_error(suppressMessages(autoplot(fit, dpar = "mu")),
+               "`which = \"growth\"`", fixed = TRUE)
+  expect_error(suppressMessages(ggbnec_data(fit, add_ecx = TRUE,
+                                            dpar = "hu")),
+               "not `dpar`", fixed = TRUE)
+})
