@@ -123,7 +123,8 @@ test_that("a zero count at the highest concentration marks the response floor", 
   d_positive$y[13:16] <- c(0, 0, 0, 1)
   for (family in list(poisson(link = "identity"),
                       brms::negbinomial(link = "identity"),
-                      brms::zero_inflated_poisson(link = "identity"))) {
+                      brms::zero_inflated_poisson(link = "identity"),
+                      brms::zero_inflated_negbinomial(link = "identity"))) {
     frame <- function(data) flat_bdat(y ~ crf(x, "nec3param"), data)
     expect_silent(check_response_flattened(frame(d), family))
     expect_message(check_response_flattened(frame(d_positive), family),
@@ -205,6 +206,12 @@ test_that("a bernoulli response is assessed with the dispersion fixed", {
   expect_silent(
     check_response_flattened(flat, brms::bernoulli(link = "identity"))
   )
+  y_floor <- y
+  y_floor[x == 4] <- 0
+  floor <- flat_bdat(y ~ crf(x, "nec3param"),
+                     data.frame(x = x, y = y_floor))
+  expect_silent(check_response_flattened(floor,
+                                         brms::bernoulli(link = "identity")))
 })
 
 test_that("a beta response is assessed under a quasibinomial variance", {
@@ -515,6 +522,20 @@ test_that("each level of a grouped call is assessed on its own", {
   )
   expect_length(grep("level \"incomplete\"", msg), 1)
   expect_length(grep("level \"complete\"", msg), 0)
+})
+
+test_that("a grouped count response skips only levels with a zero floor", {
+  d <- data.frame(
+    x = rep(flat_x, 2),
+    y = c(declining_counts[1:12], rep(0, 4), declining_counts),
+    site = rep(c("zero floor", "positive end"), each = length(flat_x))
+  )
+  bdat <- flat_bdat(y ~ crf(x, "nec3param"), d)
+  msg <- capture_messages(check_response_flattened(
+    bdat, poisson(link = "identity"), group = d$site
+  ))
+  expect_length(grep("level \"zero floor\"", msg), 0)
+  expect_length(grep("level \"positive end\"", msg), 1)
 })
 
 test_that("a per-level block list is honoured", {
