@@ -5,6 +5,22 @@
   these groups in the mean panel only (#558).
 - `bnec()` and `amend()` now reject malformed priors before fitting instead of
   silently replacing them with defaults.
+- `autoplot()` on a joint two-block fit, from `bnec()` with a `hurdle_gamma`,
+  `zero_inflated_beta`, `hurdle_poisson` or `hurdle_negbinomial` family, takes
+  `which`. `which = "all"` draws the combined curve, the response of survivors
+  and the probability of survival in the panels drawn for a `bnec_hurdle()`
+  fit, each with the no-effect estimate and ECx of its own block, and
+  `"growth"` or `"survival"` draws one of them. Each panel is titled with the
+  equation of every block it reads, so the combined curve names both, and a
+  single panel labels its y axis with the curve it draws. A model set's
+  equations are titled the same way when drawn with `model`.
+  `ggbnec_data()` takes the same argument, and for a two-block fit it now
+  returns a `panel` column naming the curve of each row, under the default
+  `which` as well. Every `autoplot()` method now uses `xlab` and `ylab`, and
+  `autoplot()` and `ggbnec_data()` refuse `dpar` on every class, and a `which`
+  they cannot draw. Each was previously ignored without a message, except that
+  `dpar` with `ecx = TRUE` marked the ECx of one block on the combined curve
+  (#564).
 
 ## Fitted predictor axes
 

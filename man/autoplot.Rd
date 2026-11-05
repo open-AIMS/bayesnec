@@ -17,7 +17,10 @@
   group = NULL,
   group_aes = c("line", "colour"),
   point_alpha = 1,
-  x_scale = c("recorded", "fitted")
+  x_scale = c("recorded", "fitted"),
+  which = "combined",
+  xlab = "Predictor",
+  ylab = NULL
 )
 
 \method{autoplot}{bayesmanecfit}(
@@ -36,7 +39,9 @@
   group_aes = c("line", "colour"),
   point_alpha = 1,
   all_models = NULL,
-  x_scale = c("recorded", "fitted")
+  x_scale = c("recorded", "fitted"),
+  xlab = "Predictor",
+  ylab = NULL
 )
 
 \method{autoplot}{bayesnecgroupfit}(
@@ -48,7 +53,9 @@
   group = NULL,
   group_aes = c("line", "colour"),
   point_alpha = 1,
-  x_scale = c("recorded", "fitted")
+  x_scale = c("recorded", "fitted"),
+  xlab = "Predictor",
+  ylab = NULL
 )
 
 \method{autoplot}{bayesnecjointfit}(
@@ -60,7 +67,9 @@
   group = NULL,
   group_aes = c("line", "colour"),
   point_alpha = 1,
-  x_scale = c("recorded", "fitted")
+  x_scale = c("recorded", "fitted"),
+  xlab = "Predictor",
+  ylab = NULL
 )
 }
 \arguments{
@@ -103,6 +112,32 @@ credible band or the per-level means drawn for \code{group}.}
 supplied to \code{bnec()}. \code{"fitted"} draws it as transformed inside
 \code{crf()}, with axis labels in the supplied units. It has no effect
 when \code{crf()} names an untransformed predictor.}
+
+\item{which}{The curve to draw for a \code{\link{bayesnecfit}} with a
+two-block family (\code{"hurdle_gamma"}, \code{"zero_inflated_beta"},
+\code{"hurdle_poisson"} or \code{"hurdle_negbinomial"}), as returned by
+\code{\link{bnec}} or by \code{\link{bnec_joint}} on a
+\code{\link{bnec_hurdle}} fit: \code{"combined"} (the default), the
+expected response per individual exposed; \code{"growth"}, the response of
+survivors, which \code{dpar = "mu"} selects in \code{\link{ecx}};
+\code{"survival"}, the probability of a non-zero response, which
+\code{dpar = "hu"} (\code{"zi"} for \code{zero_inflated_beta}) selects; or
+\code{"all"} for a panel of each. The panels and their titles are those
+\code{\link{autoplot.bayesnechurdlefit}} draws for a factorised fit, and
+each title names the equation of its block. A growth or survival panel marks
+the \code{nec} parameter of its block where the block's equation has one,
+and otherwise the NSEC of its curve, and draws the ECx that
+\code{\link{ecx}} returns with the matching \code{dpar}. A model set, a
+\code{\link{bayesnecgroupfit}}, a \code{\link{bayesnecjointfit}} and a fit
+of any other family draw one curve and refuse any value but
+\code{"combined"}.}
+
+\item{xlab}{The x-axis label. Defaults to \code{"Predictor"}.}
+
+\item{ylab}{The y-axis label. Defaults to \code{NULL}, which gives
+\code{"Response"}, or for a two-block family the title of the curve drawn.
+Where \code{which = "all"}, the panel titles name the curves and
+\code{NULL} leaves the axis unlabelled.}
 
 \item{model}{\code{NULL} (the default), or a \code{\link[base]{character}}
 vector naming equations of the model set. Each named equation is drawn in a
@@ -156,7 +191,7 @@ library(brms)
 nec4param <- pull_out(manec_example, "nec4param")
 autoplot(nec4param)
 autoplot(nec4param, nec = FALSE)
-autoplot(nec4param, ecx = TRUE, ecx_val = 50)
+autoplot(nec4param, ecx = TRUE, ecx_val = 50, xlab = "Concentration")
 
 # plot model averaged predictions
 autoplot(manec_example)

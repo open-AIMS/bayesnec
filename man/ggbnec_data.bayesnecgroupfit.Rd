@@ -11,7 +11,8 @@
   xform = NULL,
   ...,
   group = NULL,
-  x_scale = c("recorded", "fitted")
+  x_scale = c("recorded", "fitted"),
+  which = "combined"
 )
 }
 \arguments{
@@ -31,7 +32,8 @@ other than \code{identity} is then applied to the estimates on the
 transformed scale instead, as the estimators apply it.}
 
 \item{...}{Additional arguments to be passed to \code{\link{ecx}}. By
-default, function \code{\link{ecx}} returns EC10.}
+default, function \code{\link{ecx}} returns EC10. \code{dpar} is refused:
+select a block with \code{which}.}
 
 \item{group}{An optional character string naming a categorical variable in
 the data supplied to \code{\link{bnec}}. When supplied, its values are
@@ -47,13 +49,21 @@ supplied units. \code{"fitted"} returns the scale transformed inside
 \code{crf()} and attaches \code{"x_axis"}, a list of fitted-scale breaks
 and labels in supplied units. A fitted axis cannot be combined with a
 non-identity \code{xform}.}
+
+\item{which}{For a \code{\link{bayesnecfit}} with a two-block family, the
+curve or curves to return: \code{"combined"} (the default),
+\code{"growth"}, \code{"survival"} or \code{"all"}, as described for
+\code{\link{autoplot}}. Every other class and family has one curve, and
+refuses any value but \code{"combined"}.}
 }
 \value{
 A \code{\link[base]{data.frame}}. When \code{group} is supplied, or
 \code{x} is a \code{bayesnecgroupfit} or a \code{bayesnecjointfit}, the
 frame includes a \code{group} column and a \code{"group_var"} attribute.
 Those two classes also include a \code{panel} column containing the level
-drawn in each panel.
+drawn in each panel. For a \code{bayesnecfit} with a two-block family, the
+\code{panel} column holds the title of the curve each row belongs to, a
+factor whose levels follow \code{which}.
 }
 \description{
 Creates the data.frame for plotting a grouped set of fits

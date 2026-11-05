@@ -37,6 +37,29 @@
 #' @param point_alpha The opacity of the observation points, a single number
 #' from 0 (transparent) to 1 (opaque, the default). It does not change the
 #' credible band or the per-level means drawn for \code{group}.
+#' @param which The curve to draw for a \code{\link{bayesnecfit}} with a
+#' two-block family (\code{"hurdle_gamma"}, \code{"zero_inflated_beta"},
+#' \code{"hurdle_poisson"} or \code{"hurdle_negbinomial"}), as returned by
+#' \code{\link{bnec}} or by \code{\link{bnec_joint}} on a
+#' \code{\link{bnec_hurdle}} fit: \code{"combined"} (the default), the
+#' expected response per individual exposed; \code{"growth"}, the response of
+#' survivors, which \code{dpar = "mu"} selects in \code{\link{ecx}};
+#' \code{"survival"}, the probability of a non-zero response, which
+#' \code{dpar = "hu"} (\code{"zi"} for \code{zero_inflated_beta}) selects; or
+#' \code{"all"} for a panel of each. The panels and their titles are those
+#' \code{\link{autoplot.bayesnechurdlefit}} draws for a factorised fit, and
+#' each title names the equation of its block. A growth or survival panel marks
+#' the \code{nec} parameter of its block where the block's equation has one,
+#' and otherwise the NSEC of its curve, and draws the ECx that
+#' \code{\link{ecx}} returns with the matching \code{dpar}. A model set, a
+#' \code{\link{bayesnecgroupfit}}, a \code{\link{bayesnecjointfit}} and a fit
+#' of any other family draw one curve and refuse any value but
+#' \code{"combined"}.
+#' @param xlab The x-axis label. Defaults to \code{"Predictor"}.
+#' @param ylab The y-axis label. Defaults to \code{NULL}, which gives
+#' \code{"Response"}, or for a two-block family the title of the curve drawn.
+#' Where \code{which = "all"}, the panel titles name the curves and
+#' \code{NULL} leaves the axis unlabelled.
 #'
 #' @return A \code{\link[ggplot2]{ggplot}} object, or, for a
 #' \code{\link{bayesmanecfit}} with \code{multi_facet = FALSE}, a
@@ -49,7 +72,7 @@
 #' nec4param <- pull_out(manec_example, "nec4param")
 #' autoplot(nec4param)
 #' autoplot(nec4param, nec = FALSE)
-#' autoplot(nec4param, ecx = TRUE, ecx_val = 50)
+#' autoplot(nec4param, ecx = TRUE, ecx_val = 50, xlab = "Concentration")
 #'
 #' # plot model averaged predictions
 #' autoplot(manec_example)
@@ -84,27 +107,52 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                                  xform = NULL, group = NULL,
                                  group_aes = c("line", "colour"),
                                  point_alpha = 1,
-                                 x_scale = c("recorded", "fitted")) {
+                                 x_scale = c("recorded", "fitted"),
+                                 which = "combined", xlab = "Predictor",
+                                 ylab = NULL) {
   x <- object
   chk_lgl(nec)
   chk_lgl(ecx)
   group_aes <- match.arg(group_aes)
   check_xform(xform)
   check_point_alpha(point_alpha)
+  check_plot_dpar(list(...), x)
+  blocks <- plot_blocks(x, which)
   x_scale <- plot_x_scale(x, x_scale, xform)
   summ <- summary(x, ecx = FALSE, xform = identity) |>
     suppressWarnings() |>
     suppressMessages()
   dat <- ggbnec_data(x, add_nec = nec, add_ecx = ecx,
-                     xform = xform, x_scale = x_scale, group = group, ...)
+                     xform = xform, x_scale = x_scale, group = group,
+                     which = which, ...)
   x_axis <- attr(dat, "x_axis")
   group_label <- plot_group_label(dat, group, group_aes)
-  dat |>
-    mutate(model = x$model, tag = rownames(.env$summ$nec_vals)) |>
-    ggbnec(nec = nec, ecx = ecx, group = !is.null(group),
-           group_aes = group_aes, group_label = group_label,
-           group_fitted = !identical(attr(dat, "group_fitted"), FALSE),
-           point_alpha = point_alpha, x_axis = x_axis)
+  labels <- plot_block_labels(x, blocks, rownames(summ$nec_vals)[1])
+  # A two-block fit's frame names each row's curve in `panel`; map it to the
+  # title and annotation label of that curve.
+  key <- if (is.null(dat$panel)) {
+    rep("combined", nrow(dat))
+  } else {
+    names(hurdle_panel_names)[match(as.character(dat$panel),
+                                    hurdle_panel_names)]
+  }
+  # A factor keeps several panels in the order of `which`; facet_wrap() would
+  # sort a character column.
+  dat$model <- unname(labels$title[key])
+  if (length(blocks) > 1) {
+    dat$model <- factor(dat$model, levels = unname(labels$title))
+  }
+  dat$tag <- unname(labels$tag[key])
+  # Several curves of one fit share the predictor, so they are laid out as
+  # autoplot.bayesnechurdlefit() lays them out: one row, the x axis shared.
+  several <- length(blocks) > 1
+  ggbnec(dat, nec = nec, ecx = ecx, group = !is.null(group),
+         group_aes = group_aes, group_label = group_label,
+         group_fitted = !identical(attr(dat, "group_fitted"), FALSE),
+         point_alpha = point_alpha, x_axis = x_axis, xlab = xlab,
+         ylab = plot_ylab(ylab, x, names(blocks)),
+         facet_scales = if (several) "free_y" else "free",
+         facet_ncol = if (several) NULL else 2)
 }
 
 #' @rdname autoplot
@@ -159,13 +207,23 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                                    group = NULL,
                                    group_aes = c("line", "colour"),
                                    point_alpha = 1, all_models = NULL,
-                                   x_scale = c("recorded", "fitted")) {
+                                   x_scale = c("recorded", "fitted"),
+                                   xlab = "Predictor", ylab = NULL) {
   x <- object
   chk_lgl(nec)
   chk_lgl(ecx)
   group_aes <- match.arg(group_aes)
   check_xform(xform)
   check_point_alpha(point_alpha)
+  # Check before the equations are pulled out: a pulled-out equation would
+  # accept `which` and draw its blocks inside the model's one panel.
+  dots <- list(...)
+  check_plot_single_curve(dots[["which"]], x)
+  check_plot_dpar(dots, x)
+  if (ecx) {
+    check_plot_relative(dots, x)
+  }
+  ylab <- plot_ylab(ylab, x)
   x_scale <- plot_x_scale(x, x_scale, xform)
   shown <- resolve_model_average(
     x, model, average, all_models,
@@ -182,11 +240,16 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
     return(ggbnec(avg$data, nec = nec, ecx = ecx, group = !is.null(group),
                   group_aes = group_aes, group_label = avg$group_label,
                   group_fitted = avg$group_fitted,
-                  point_alpha = point_alpha, x_axis = avg$x_axis))
+                  point_alpha = point_alpha, x_axis = avg$x_axis,
+                  xlab = xlab, ylab = ylab))
   }
   all_fits <- lapply(shown$model, pull_out, manec = x) |>
     suppressMessages() |>
     suppressWarnings()
+  # Title each equation as autoplot() titles it once pulled out, which for a
+  # two-block fit names the equation of each block.
+  titles <- vapply(all_fits, plot_title, character(1))
+  names(titles) <- shown$model
   if (multi_facet) {
     names(all_fits) <- shown$model
     nec_labs <- map_dfr(all_fits, function(x) {
@@ -208,6 +271,8 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
     )
     dat <- map_dfr(plot_data, identity, .id = "model") |>
       left_join(y = nec_labs, by = "model")
+    # Join the labels by equation name before the titles replace it.
+    dat$model <- unname(titles[dat$model])
     if (shown$average) {
       avg <- manec_average_plot_data(x, nec = nec, ecx = ecx, xform = xform,
                                      x_scale = x_scale, group = group,
@@ -218,12 +283,12 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
       dat <- bind_rows(avg$data, dat)
       dat$model <- factor(dat$model,
                           levels = c(manec_average_label,
-                                     sort(unique(shown$model))))
+                                     unname(titles[sort(unique(shown$model))])))
     }
     ggbnec(dat, nec = nec, ecx = ecx, group = !is.null(group),
            group_aes = group_aes, group_label = group_label,
            group_fitted = group_fitted, point_alpha = point_alpha,
-           x_axis = x_axis)
+           x_axis = x_axis, xlab = xlab, ylab = ylab)
   } else {
     if (plot) {
       default_ask <- devAskNewPage()
@@ -243,7 +308,7 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                              group_label = avg$group_label,
                              group_fitted = avg$group_fitted,
                              point_alpha = point_alpha,
-                             x_axis = avg$x_axis)
+                             x_axis = avg$x_axis, xlab = xlab, ylab = ylab)
       } else {
         j <- i - n_average
         summ_j <- summary(all_fits[[j]], ecx = FALSE, xform = identity) |>
@@ -255,13 +320,14 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
         x_axis <- attr(dat_j, "x_axis")
         group_label <- plot_group_label(dat_j, group, group_aes)
         plots[[i]] <- dat_j |>
-          mutate(model = shown$model[j],
+          mutate(model = unname(titles[j]),
                  tag = rownames(.env$summ_j$nec_vals)) |>
           ggbnec(nec = nec, ecx = ecx, group = !is.null(group),
                  group_aes = group_aes, group_label = group_label,
                  group_fitted = !identical(
                    attr(dat_j, "group_fitted"), FALSE
-                 ), point_alpha = point_alpha, x_axis = x_axis)
+                 ), point_alpha = point_alpha, x_axis = x_axis,
+                 xlab = xlab, ylab = ylab)
       }
       # Draw each page as soon as it is built, and only where `plot` is TRUE,
       # the flag that also guards the device's prompt setting above.
@@ -533,13 +599,21 @@ fitted_axis_labels <- function(values, object, x_grid_raw) {
 #' panels use it. A
 #' \code{bayesnecgroupfit} returns its fitted grouping variable automatically.
 #' @param ... Additional arguments to be passed to \code{\link{ecx}}. By
-#' default, function \code{\link{ecx}} returns EC10.
+#' default, function \code{\link{ecx}} returns EC10. \code{dpar} is refused:
+#' select a block with \code{which}.
+#' @param which For a \code{\link{bayesnecfit}} with a two-block family, the
+#' curve or curves to return: \code{"combined"} (the default),
+#' \code{"growth"}, \code{"survival"} or \code{"all"}, as described for
+#' \code{\link{autoplot}}. Every other class and family has one curve, and
+#' refuses any value but \code{"combined"}.
 #'
 #' @return A \code{\link[base]{data.frame}}. When \code{group} is supplied, or
 #' \code{x} is a \code{bayesnecgroupfit} or a \code{bayesnecjointfit}, the
 #' frame includes a \code{group} column and a \code{"group_var"} attribute.
 #' Those two classes also include a \code{panel} column containing the level
-#' drawn in each panel.
+#' drawn in each panel. For a \code{bayesnecfit} with a two-block family, the
+#' \code{panel} column holds the title of the curve each row belongs to, a
+#' factor whose levels follow \code{which}.
 #'
 #' @examples
 #' \donttest{
@@ -552,9 +626,12 @@ fitted_axis_labels <- function(values, object, x_grid_raw) {
 #' }
 #'
 #' @export
+# Keep which on the generic: the bayesnecfit method is @noRd, so the generic's
+# usage is the only place it can be documented.
 ggbnec_data <- function(x, add_nec = TRUE, add_ecx = FALSE,
                         xform = NULL, ..., group = NULL,
-                        x_scale = c("recorded", "fitted")) {
+                        x_scale = c("recorded", "fitted"),
+                        which = "combined") {
   UseMethod("ggbnec_data")
 }
 
@@ -605,16 +682,29 @@ plot_fitted_grid <- function(object, resolution = 1000, x_range = NA) {
 
 #' @noRd
 plot_fitted_curve <- function(object) {
-  grid <- plot_fitted_grid(object)
+  plot_curve(object, plot_fitted_grid(object))
+}
+
+#' The credible band of a fit, or of one block of a joint hurdle fit, on a grid
+#'
+#' @param object A \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
+#' @param grid A list holding \code{x}, the axis values, and \code{newdata},
+#' the prediction rows on the recorded scale.
+#' @param dpar \code{NULL} for the expected response, or one block of a joint
+#' hurdle fit, as \code{block_epred()} takes it.
+#'
+#' @return A \code{\link[base]{data.frame}} with columns \code{x},
+#' \code{Estimate}, \code{Q2.5} and \code{Q97.5}.
+#' @noRd
+plot_curve <- function(object, grid, dpar = NULL) {
   # Use the basis of the stored band: the observed levels of a group term that
   # spans the series, otherwise the population curve.
   grid_draws <- function(fit, formula) {
     spec <- observed_level_spec(list(fit = fit, bayesnecformula = formula))
     if (is.null(spec)) {
-      factorised_count_epred(fit, formula, newdata = grid$newdata,
-                             re_formula = NA)
+      block_epred(fit, formula, grid$newdata, re_formula = NA, dpar = dpar)
     } else {
-      observed_grid_posterior(fit, formula, grid$newdata, spec)
+      observed_grid_posterior(fit, formula, grid$newdata, spec, dpar)
     }
   }
   if (inherits(object, "bayesmanecfit")) {
@@ -677,70 +767,93 @@ plot_x_axis <- function(recorded, formula) {
 #' @export
 ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                                     xform = NULL, ..., group = NULL,
-                                    x_scale = c("recorded", "fitted")) {
+                                    x_scale = c("recorded", "fitted"),
+                                    which = "combined") {
   chk_lgl(add_nec)
   chk_lgl(add_ecx)
   check_xform(xform)
+  check_plot_dpar(list(...), x)
+  blocks <- plot_blocks(x, which)
   warn_stale_observed_display(x)
   x_scale <- plot_x_scale(x, x_scale, xform)
-  brms_fit <- x$fit
-  if (x_scale == "fitted") {
-    curve <- plot_fitted_curve(x)
-  } else {
-    # The stored grid keeps rate() curves on the response scale.
-    curve <- x$pred_vals$data
-  }
-  e_df <- data.frame(x_e = c(curve$x, rev(curve$x)),
-                     y_e = c(curve$Estimate, rep(NA, nrow(curve))),
-                     y_ci = c(curve$Q2.5, rev(curve$Q97.5)),
-                     x_r = NA, y_r = NA)
-  r_df <- prep_raw_data(brms_fit, x$bayesnecformula, group = group,
+  r_df <- prep_raw_data(x$fit, x$bayesnecformula, group = group,
                         retained_data = x$retained_data)
-  if (!is.null(group)) {
-    e_df$group <- r_df$group[rep(NA_integer_, nrow(e_df))]
-  }
   bdat <- model.frame(x$bayesnecformula, data = x$fit$data, run_par_checks = TRUE)
-  out <- rbind(e_df, r_df)
-  if (x_scale == "fitted") {
-    out$x_r <- as.numeric(sub_x_transformation(out$x_r,
-                                               x$bayesnecformula))
-  }
   # On the recorded axis with no xform, draw what the estimators return.
   recorded <- x_scale == "recorded" && plot_reads_recorded(bdat, xform)
   axis_xform <- if (is.null(xform)) identity else xform
-  if (!pop_var_is_transformed(bdat, "x_var")) {
-    out <- out |>
-      mutate(x_e = axis_xform(.data$x_e), x_r = axis_xform(.data$x_r))
-  }
   x_grid_raw <- x$pred_vals$data$x
-  if (add_nec) {
-    # to_axis_scale() puts the estimates and the censoring marks onto the axis
-    # scale together, reversing both under a decreasing map.
-    ne_vals <- if (recorded) {
-      summary_ne_vals(x, NULL)
-    } else if (x_scale == "fitted") {
-      x$ne
-    } else {
-      to_axis_scale(x$ne, bdat, x$bayesnecformula, x_grid_raw, axis_xform)
-    }
-    out <- bind_nec(out, ne_vals, if (x_scale == "fitted") {
-      fitted_axis_labels(ne_vals, x, x_grid_raw)
-    } else {
-      ne_vals
-    })
+  two_block <- is_hurdle_family(x$fit$family)
+  if (add_ecx && "combined" %in% names(blocks)) {
+    check_plot_relative(list(...), x)
   }
-  if (add_ecx) {
-    ecx_vals <- plot_ecx(x, x$fit$family$family, list(...),
-                         if (recorded) NULL else identity)
-    if (!recorded && x_scale != "fitted") {
-      ecx_vals <- to_axis_scale(ecx_vals, bdat, x$bayesnecformula,
-                                x_grid_raw, axis_xform)
+  pieces <- lapply(names(blocks), function(w) {
+    dpar <- if (is.na(blocks[[w]])) NULL else blocks[[w]]
+    curve <- plot_block_curve(x, dpar, x_scale)
+    e_df <- data.frame(x_e = c(curve$x, rev(curve$x)),
+                       y_e = c(curve$Estimate, rep(NA, nrow(curve))),
+                       y_ci = c(curve$Q2.5, rev(curve$Q97.5)),
+                       x_r = NA, y_r = NA)
+    raw <- plot_block_raw(r_df, w)
+    if (!is.null(group)) {
+      e_df$group <- raw$group[rep(NA_integer_, nrow(e_df))]
     }
-    out <- bind_ecx(out, ecx_vals, if (x_scale == "fitted") {
-      fitted_axis_labels(ecx_vals, x, x_grid_raw)
-    } else {
-      ecx_vals
-    })
+    out <- rbind(e_df, raw)
+    if (x_scale == "fitted") {
+      out$x_r <- as.numeric(sub_x_transformation(out$x_r,
+                                                 x$bayesnecformula))
+    }
+    if (!pop_var_is_transformed(bdat, "x_var")) {
+      out <- out |>
+        mutate(x_e = axis_xform(.data$x_e), x_r = axis_xform(.data$x_r))
+    }
+    if (add_nec) {
+      ne_fit <- if (is.null(dpar)) x else plot_block_ne_fit(x, dpar)
+      # to_axis_scale() puts the estimates and the censoring marks onto the
+      # axis scale together, reversing both under a decreasing map.
+      ne_vals <- if (recorded) {
+        summary_ne_vals(ne_fit, NULL)
+      } else if (x_scale == "fitted") {
+        ne_fit$ne
+      } else {
+        to_axis_scale(ne_fit$ne, bdat, x$bayesnecformula, x_grid_raw,
+                      axis_xform)
+      }
+      out <- bind_nec(out, ne_vals, if (x_scale == "fitted") {
+        fitted_axis_labels(ne_vals, x, x_grid_raw)
+      } else {
+        ne_vals
+      })
+    }
+    if (add_ecx) {
+      ecx_dots <- list(...)
+      ecx_dots$dpar <- dpar
+      ecx_vals <- plot_ecx(x, x$fit$family$family, ecx_dots,
+                           if (recorded) NULL else identity)
+      if (!recorded && x_scale != "fitted") {
+        ecx_vals <- to_axis_scale(ecx_vals, bdat, x$bayesnecformula,
+                                  x_grid_raw, axis_xform)
+      }
+      out <- bind_ecx(out, ecx_vals, if (x_scale == "fitted") {
+        fitted_axis_labels(ecx_vals, x, x_grid_raw)
+      } else {
+        ecx_vals
+      })
+    }
+    if (two_block) {
+      out$panel <- hurdle_panel_names[[w]]
+    }
+    out
+  })
+  if (length(pieces) == 1) {
+    out <- pieces[[1]]
+  } else {
+    out <- do.call(rbind, pieces)
+    rownames(out) <- NULL
+  }
+  if (two_block) {
+    out$panel <- factor(out$panel,
+                        levels = unname(hurdle_panel_names[names(blocks)]))
   }
   if (!is.null(group)) {
     attr(out, "group_var") <- group
@@ -750,6 +863,369 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
     attr(out, "x_axis") <- plot_x_axis(r_df$x_r, x$bayesnecformula)
   }
   out
+}
+
+#' The curves a plot of a single fit draws
+#'
+#' @param object A \code{\link{bayesnecfit}}.
+#' @param which The value supplied to \code{autoplot()} or
+#' \code{ggbnec_data()}.
+#'
+#' @return A named \code{\link[base]{character}} vector with one element per
+#' curve, named by the value of \code{which} that selects the curve. Each
+#' element is the block the curve reads, or \code{NA} for the expected
+#' response.
+#' @noRd
+plot_blocks <- function(object, which) {
+  which <- hurdle_check_plot_which(which)
+  family <- object$fit$family
+  if (!is_hurdle_family(family)) {
+    check_plot_single_curve(which, object)
+    return(c(combined = NA_character_))
+  }
+  blocks <- c(combined = NA_character_, growth = "mu",
+              survival = hurdle_dpar(family))
+  if (identical(which, "all")) blocks else blocks[which]
+}
+
+#' Refuse a curve other than the expected response
+#'
+#' Only a single fit with a two-block family draws its blocks. Without this
+#' check \code{which} falls into \code{...}, where it is ignored, or reaches
+#' \code{ecx()}, which refuses it with a message about the estimators.
+#'
+#' @param which The value supplied, or \code{NULL}.
+#' @param object The object being plotted.
+#'
+#' @return \code{NULL}, invisibly, or an error.
+#' @noRd
+check_plot_single_curve <- function(which, object) {
+  if (is.null(which) ||
+      identical(hurdle_check_plot_which(which), "combined")) {
+    return(invisible(NULL))
+  }
+  stop(plot_curve_refusal(object, "which"), call. = FALSE)
+}
+
+#' Refuse a dpar passed to a plotting method
+#'
+#' Passed through \code{...}, it would reach \code{ecx()} alone, which would
+#' then mark the ECx of one block on the curve of another.
+#'
+#' @param dots The calling method's \code{list(...)}.
+#' @param object The object being plotted.
+#'
+#' @return \code{NULL}, invisibly, or an error.
+#' @noRd
+check_plot_dpar <- function(dots, object) {
+  if ("dpar" %in% names(dots)) {
+    stop(plot_curve_refusal(object, "dpar"), call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+#' Refuse a relative ECx on the combined curve of a two-block fit
+#'
+#' \code{ecx()} refuses it too, but its message names \code{dpar}, which a
+#' plot refuses.
+#'
+#' @param dots The calling method's \code{list(...)}, which \code{ecx()}
+#' receives.
+#' @param object The object being plotted.
+#'
+#' @return \code{NULL}, invisibly, or an error.
+#' @noRd
+check_plot_relative <- function(dots, object) {
+  if (!identical(dots[["type"]], "relative") ||
+      !is_hurdle_family(scale_source_fit(object)$fit$family)) {
+    return(invisible(NULL))
+  }
+  remedy <- if (is_bayesnecfit(object)) {
+    paste0("Draw one block with `which = \"growth\"` or `which = ",
+           "\"survival\"`, whose ECx is measured towards the block's own ",
+           "asymptote, or use type = \"absolute\" or type = \"range\".")
+  } else {
+    "Use type = \"absolute\" or type = \"range\"."
+  }
+  stop("type = \"relative\" is not defined for the combined curve of a ",
+       "two-block fit, whose asymptote is the product of the two blocks' ",
+       "asymptotes rather than a fitted parameter. ", remedy, call. = FALSE)
+}
+
+#' Why a plot cannot select a curve with which or dpar
+#'
+#' @param object The object being plotted.
+#' @param arg The argument supplied, \code{"which"} or \code{"dpar"}.
+#'
+#' @return A \code{\link[base]{character}} message.
+#' @noRd
+plot_curve_refusal <- function(object, arg) {
+  if (is_bayesnechurdlefit(object)) {
+    return(paste0("A bnec_hurdle() fit selects its curve with `which`, not ",
+                  "`dpar`: `which = \"growth\"`, `\"survival\"`, ",
+                  "`\"combined\"` or `\"all\"`."))
+  }
+  family <- scale_source_fit(object)$fit$family
+  if (!is_hurdle_family(family)) {
+    return(paste0("This fit has a ", family$family, " family, which has one ",
+                  "curve, so `", arg, "` has no block to select. Only a ",
+                  "joint two-block fit (family \"hurdle_gamma\", ",
+                  "\"zero_inflated_beta\", \"hurdle_poisson\" or ",
+                  "\"hurdle_negbinomial\") has blocks, which a plot selects ",
+                  "with `which`."))
+  }
+  if (is_bayesnecfit(object)) {
+    return(paste0("A plot selects a block of a joint two-block fit with ",
+                  "`which`, not `dpar`: `which = \"growth\"` draws the ",
+                  "response block, `which = \"survival\"` the survival ",
+                  "block, and `which = \"all\"` both beside the combined ",
+                  "curve."))
+  }
+  if (inherits(object, "bayesmanecfit")) {
+    return(paste0("A model set is drawn as its model-averaged combined ",
+                  "curve, so `", arg, "` cannot select a block. Draw the ",
+                  "blocks of one equation with autoplot(pull_out(x, model = ",
+                  "\"", names(object$mod_fits)[1], "\"), which = \"all\")."))
+  }
+  paste0("A ", class(object)[1], " is drawn as the combined curve of each ",
+         "level, so `", arg, "` cannot select a block. Estimate a block ",
+         "with ecx() or nsec() and `dpar`.")
+}
+
+#' The y-axis label of a plot drawn by ggbnec()
+#'
+#' @param ylab The label supplied, or \code{NULL}.
+#' @param object The object being plotted.
+#' @param curves The values of \code{which} the plot draws.
+#'
+#' @return The label, or \code{NULL} where the panel titles name several
+#' curves.
+#' @noRd
+plot_ylab <- function(ylab, object, curves = "combined") {
+  if (!is.null(ylab)) {
+    return(ylab)
+  }
+  if (!is_hurdle_family(scale_source_fit(object)$fit$family)) {
+    return("Response")
+  }
+  if (length(curves) > 1) {
+    return(NULL)
+  }
+  hurdle_panel_names[[curves]]
+}
+
+#' Panel titles and no-effect labels of a plot of a single fit
+#'
+#' A one-block fit is titled by its equation. Each curve of a two-block fit is
+#' titled by the equation of each block it reads, after the curve's own title
+#' where several curves are drawn.
+#'
+#' @param object A \code{\link{bayesnecfit}}.
+#' @param blocks The curves drawn, as \code{plot_blocks()} returns them.
+#' @param combined_tag The label \code{summary()} gives the stored no-effect
+#' estimate.
+#'
+#' @return A list of two named \code{\link[base]{character}} vectors,
+#' \code{title} and \code{tag}, named as \code{blocks}.
+#' @noRd
+plot_block_labels <- function(object, blocks, combined_tag) {
+  curves <- names(blocks)
+  if (!is_hurdle_family(object$fit$family)) {
+    return(list(title = c(combined = object$model),
+                tag = c(combined = combined_tag)))
+  }
+  dpar <- hurdle_dpar(object$fit$family)
+  survival <- dpar_models(object)[[dpar]]
+  if (is.na(survival)) {
+    survival <- paste(dpar, "block")
+  }
+  equations <- c(combined = paste(object$model, survival, sep = " / "),
+                 growth = object$model, survival = survival)[curves]
+  title <- if (length(curves) > 1) {
+    paste0(hurdle_panel_names[curves], "\n", equations)
+  } else {
+    unname(equations)
+  }
+  names(title) <- curves
+  tag <- vapply(curves, function(w) {
+    if (identical(w, "combined")) {
+      combined_tag
+    } else if (block_has_nec(object, blocks[[w]])) {
+      "NEC"
+    } else {
+      "NSEC"
+    }
+  }, character(1))
+  list(title = title, tag = tag)
+}
+
+#' The panel title of a single fit's combined curve
+#'
+#' @param object A \code{\link{bayesnecfit}}.
+#'
+#' @return A \code{\link[base]{character}} value.
+#' @noRd
+plot_title <- function(object) {
+  plot_block_labels(object, c(combined = NA_character_), "")$title[[1]]
+}
+
+#' The nec parameter of one block of a joint two-block fit
+#'
+#' @param dpar \code{"mu"}, \code{"hu"} or \code{"zi"}.
+#'
+#' @return The name of the non-linear parameter.
+#' @noRd
+block_nec_nlpar <- function(dpar) {
+  if (identical(dpar, "mu")) "nec" else paste0(dpar, "nec")
+}
+
+#' Whether one block of a joint two-block fit estimates a nec parameter
+#'
+#' @param object A \code{\link{bayesnecfit}} with a two-block family.
+#' @param dpar \code{"mu"}, \code{"hu"} or \code{"zi"}.
+#'
+#' @return A \code{\link[base]{logical}} value.
+#'
+#' @importFrom brms variables
+#' @noRd
+block_has_nec <- function(object, dpar) {
+  paste0("b_", block_nec_nlpar(dpar), "_Intercept") %in%
+    variables(object$fit)
+}
+
+#' The credible band of one curve of a single fit
+#'
+#' @param object A \code{\link{bayesnecfit}}.
+#' @param dpar \code{NULL} for the expected response, or one block of a joint
+#' two-block fit.
+#' @param x_scale \code{"recorded"} or \code{"fitted"}.
+#'
+#' @return A \code{\link[base]{data.frame}} with columns \code{x},
+#' \code{Estimate}, \code{Q2.5} and \code{Q97.5}.
+#' @noRd
+plot_block_curve <- function(object, dpar, x_scale) {
+  if (is.null(dpar)) {
+    # The stored grid keeps rate() curves on the response scale.
+    return(if (x_scale == "fitted") {
+      plot_fitted_curve(object)
+    } else {
+      object$pred_vals$data
+    })
+  }
+  grid <- if (x_scale == "fitted") {
+    plot_fitted_grid(object)
+  } else {
+    # The grid of the stored band, so that every panel spans the same range.
+    x <- object$pred_vals$data$x
+    list(x = x, newdata = bnec_newdata(object, resolution = length(x),
+                                       x_range = range(x)))
+  }
+  plot_curve(object, grid, dpar)
+}
+
+#' The observations drawn with one curve of a single fit
+#'
+#' As \code{autoplot.bayesnechurdlefit()} draws them: the survivors for the
+#' growth curve, and the proportion of non-zero responses at each predictor
+#' value for the survival curve, within each level of \code{group} where one
+#' was selected.
+#'
+#' @param raw The frame \code{prep_raw_data()} returns.
+#' @param which \code{"combined"}, \code{"growth"} or \code{"survival"}.
+#'
+#' @return A frame with the columns of \code{raw}.
+#' @noRd
+plot_block_raw <- function(raw, which) {
+  if (identical(which, "growth")) {
+    return(raw[raw$y_r > 0, , drop = FALSE])
+  }
+  if (!identical(which, "survival")) {
+    return(raw)
+  }
+  rows <- if (is.null(raw$group)) {
+    list(seq_len(nrow(raw)))
+  } else {
+    split(seq_len(nrow(raw)), raw$group, drop = TRUE)
+  }
+  parts <- lapply(rows, function(i) {
+    obs <- survival_by_x(raw$x_r[i], raw$y_r[i])
+    out <- data.frame(x_e = NA, y_e = NA, y_ci = NA, x_r = obs$x,
+                      y_r = obs$y)
+    if (!is.null(raw$group)) {
+      out$group <- raw$group[i[rep(1L, length(obs$x))]]
+    }
+    out
+  })
+  out <- do.call(rbind, parts)
+  rownames(out) <- NULL
+  out
+}
+
+#' A single fit whose no-effect estimate is that of one block
+#'
+#' @param object A \code{\link{bayesnecfit}} with a two-block family.
+#' @param dpar \code{"mu"}, \code{"hu"} or \code{"zi"}.
+#'
+#' @return \code{object} with \code{ne} and \code{ne_posterior} replaced.
+#' @noRd
+plot_block_ne_fit <- function(object, dpar) {
+  post <- joint_block_ne(object, dpar)
+  object$ne_posterior <- post
+  object$ne <- estimates_summary(post)
+  object
+}
+
+#' The no-effect posterior of one block of a joint two-block fit
+#'
+#' The block's \code{nec} parameter where its equation has one, and otherwise
+#' the NSEC of its curve, read as \code{nec(which = "growth")} reads one
+#' component of a \code{\link{bayesnechurdlefit}}. A group term whose levels
+#' span concentrations is read at each observed level, and the levels are
+#' mixed by observation count, as for the stored combined estimate.
+#'
+#' @param object A \code{\link{bayesnecfit}} with a two-block family.
+#' @param dpar \code{"mu"}, \code{"hu"} or \code{"zi"}.
+#'
+#' @return Draws on the fitted scale, with a \code{"censored"} record.
+#'
+#' @importFrom brms as_draws_df posterior_linpred
+#' @noRd
+joint_block_ne <- function(object, dpar) {
+  formula <- object$bayesnecformula
+  if (!block_has_nec(object, dpar)) {
+    args <- recorded_expand_args(list(object))
+    return(suppressMessages(nsec(
+      object, sig_val = args$sig_val, resolution = args$resolution,
+      x_range = args$x_range, xform = identity, posterior = TRUE,
+      dpar = dpar
+    )))
+  }
+  nlpar <- block_nec_nlpar(dpar)
+  with_record <- function(draws, recorded_x) {
+    bounds <- sub_x_transformation(recorded_x, formula)
+    bounds <- range(bounds[is.finite(bounds)])
+    attr(draws, "censored") <- censoring_record(
+      bounds[2], bounds[1], draws >= bounds[2], draws <= bounds[1]
+    )
+    draws
+  }
+  spec <- observed_level_spec(object)
+  if (is.null(spec)) {
+    name <- paste0("b_", nlpar, "_Intercept")
+    draws <- as.numeric(as_draws_df(object$fit, variable = name)[[name]])
+    return(with_record(draws, object$pred_vals$data$x))
+  }
+  parts <- lapply(seq_len(nrow(spec$combinations)), function(i) {
+    level <- observed_level_fit(object, spec, i)
+    nd <- newdata_eval(level, resolution = 2, x_range = NA)$newdata[1, ,
+                                                                  drop = FALSE]
+    draws <- as.numeric(posterior_linpred(
+      object$fit, newdata = nd, nlpar = nlpar,
+      re_formula = spec$re_formula, transform = TRUE
+    )[, 1])
+    with_record(draws, range(level$level_x))
+  })
+  pool_estimate_draws(parts, spec$n, "mixture")
 }
 
 #' Creates the data.frame for plotting with \code{\link{autoplot}}.
@@ -769,12 +1245,18 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #' @export
 ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                                       xform = NULL, ..., group = NULL,
-                                      x_scale = c("recorded", "fitted")) {
+                                      x_scale = c("recorded", "fitted"),
+                                      which = "combined") {
   chk_lgl(add_nec)
   chk_lgl(add_ecx)
   # Check xform as the bayesnecfit method does. Otherwise mutate() fails with
   # an error that names neither the argument nor the remedy.
   check_xform(xform)
+  check_plot_single_curve(which, x)
+  check_plot_dpar(list(...), x)
+  if (add_ecx) {
+    check_plot_relative(list(...), x)
+  }
   warn_stale_observed_display(x)
   x_scale <- plot_x_scale(x, x_scale, xform)
   e_df <- if (x_scale == "fitted") plot_fitted_curve(x) else x$w_pred_vals$data
@@ -855,7 +1337,13 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #' @export
 ggbnec_data.bayesnecgroupfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                                          xform = NULL, ..., group = NULL,
-                                         x_scale = c("recorded", "fitted")) {
+                                         x_scale = c("recorded", "fitted"),
+                                         which = "combined") {
+  check_plot_single_curve(which, x)
+  check_plot_dpar(list(...), x)
+  if (isTRUE(add_ecx)) {
+    check_plot_relative(list(...), x)
+  }
   x_scale <- plot_x_scale(x, x_scale, xform)
   panel_group <- is.null(group) || identical(group, x$group_var)
   pieces <- lapply(seq_along(x$fits), function(i) {
@@ -900,7 +1388,8 @@ autoplot.bayesnecgroupfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                                       xform = NULL, group = NULL,
                                       group_aes = c("line", "colour"),
                                       point_alpha = 1,
-                                      x_scale = c("recorded", "fitted")) {
+                                      x_scale = c("recorded", "fitted"),
+                                      xlab = "Predictor", ylab = NULL) {
   chk_lgl(nec)
   chk_lgl(ecx)
   group_aes <- match.arg(group_aes)
@@ -931,7 +1420,8 @@ autoplot.bayesnecgroupfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   ggbnec(dat, nec = nec, ecx = ecx, group = show_group,
          group_aes = group_aes, group_label = group_label,
          group_fitted = !identical(attr(dat, "group_fitted"), FALSE),
-         point_alpha = point_alpha, x_axis = x_axis)
+         point_alpha = point_alpha, x_axis = x_axis, xlab = xlab,
+         ylab = plot_ylab(ylab, object))
 }
 
 #' Refuse a point_alpha that is not a single number from 0 to 1
@@ -973,7 +1463,8 @@ check_point_alpha <- function(point_alpha) {
 ggbnec <- function(x, nec = TRUE, ecx = FALSE, group = FALSE,
                    group_aes = c("line", "colour"), group_label = NULL,
                    group_fitted = TRUE, point_alpha = 1,
-                   x_axis = NULL) {
+                   x_axis = NULL, xlab = "Predictor", ylab = "Response",
+                   facet_scales = "free", facet_ncol = 2) {
   group_aes <- match.arg(group_aes)
   out <- ggplot() +
     geom_polygon(data = x |> filter(!is.na(.data$y_ci)),
@@ -1094,13 +1585,11 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE, group = FALSE,
   out +
     axis_scale +
     theme_classic() +
-    facet_wrap(~.data$model, scales = "free", ncol = 2) +
+    facet_wrap(~.data$model, scales = facet_scales, ncol = facet_ncol) +
     theme(strip.text = element_text(hjust = 0),
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
           strip.background = element_blank(),
           panel.border = element_rect(colour = NA, fill = NA)) +
-    labs(x = "Predictor",
-         y = "Response")
-  
+    labs(x = xlab, y = ylab)
 }

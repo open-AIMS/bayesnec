@@ -29,6 +29,14 @@ test_that("combined is the default for every curve method", {
   expect_equal(eval(formals(autoplot.bayesnechurdlefit)$which), "combined")
 })
 
+test_that("the plots of a factorised fit refuse dpar and name which", {
+  # Checked before the fit is read, so the mock reaches the refusal.
+  o <- mock_hurdle()
+  expect_error(autoplot(o, dpar = "mu"), "`which = \"growth\"`",
+               fixed = TRUE)
+  expect_error(ggbnec_data(o, dpar = "hu"), "not `dpar`", fixed = TRUE)
+})
+
 test_that("hurdle_raw_data recovers the response and a transformed predictor", {
   o <- mock_hurdle()
   d <- bayesnec:::hurdle_raw_data(o)

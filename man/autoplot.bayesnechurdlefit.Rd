@@ -24,7 +24,7 @@
 \arguments{
 \item{object}{An object of class \code{\link{bayesnechurdlefit}}.}
 
-\item{...}{Unused.}
+\item{...}{Unused. \code{dpar} is refused: select a curve with \code{which}.}
 
 \item{which}{Which curve(s) to return. See \code{\link{plot}}.}
 
