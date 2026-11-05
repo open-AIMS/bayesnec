@@ -317,7 +317,8 @@ from the suffix of `conc_group`):
 
 ```{r lum31-15min}
 zn_cu_15 <- droplevels(subset(lum31, minutes == 15)) |>
-  mutate(conc_rank = factor(as.integer(sub(".*-c", "", as.character(conc_group)))))
+  mutate(conc_rank = factor(as.integer(sub(".*-c", "",
+                                           as.character(conc_group)))))
 ```
 
 ```{r fig-plate-relative, fig.asp = 0.5, out.width = "95%"}
@@ -406,7 +407,8 @@ the residual. To keep the plate structure out of this example we fit one plate
 at 15 minutes, which has one cell at each of its 11 concentrations.
 
 ```{r one-plate}
-one_plate <- droplevels(subset(lum31, plate == "Zn 23Apr24 Rep6B" & minutes == 15))
+one_plate <- droplevels(subset(lum31, plate == "Zn 23Apr24 Rep6B" &
+                                 minutes == 15))
 ```
 
 Both fits use `model = "all"`, which `bnec()` filters to the equations valid for
@@ -417,11 +419,13 @@ of plate-relative means). No fit in this vignette names `iter`, `warmup` or
 is what a reader would obtain from the same call.
 
 ```{r fit-conc-group, results = "hide"}
-fit_plain <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + disp("power"),
+fit_plain <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") +
+                    disp("power"),
                   data = one_plate, family = gfam,
                   seed = 228, refresh = 0)
 
-fit_ogl <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(conc_group) + disp("power"),
+fit_ogl <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") +
+                  ogl(conc_group) + disp("power"),
                 data = one_plate, family = gfam,
                 seed = 228, refresh = 0)
 ```
@@ -631,23 +635,27 @@ each plate's shift along the concentration axis. We call D the arm structure,
 because it is the structure fitted to each metal below.
 
 ```{r fit-plate, results = "hide"}
-fit_pooled <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + disp("power"),
+fit_pooled <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") +
+                     disp("power"),
                    data = zn15, family = gfam,
                    seed = 228, refresh = 0)
 
-fit_plate <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + disp("power"),
+fit_plate <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") +
+                    ogl(plate) + disp("power"),
                   data = zn15, family = gfam,
                   seed = 228, refresh = 0)
 ```
 
 ```{r fit-pgl, results = "hide"}
-fit_pgl <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + pgl(plate) + disp("power"),
+fit_pgl <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") +
+                  pgl(plate) + disp("power"),
                 data = zn15, family = gfam,
                 seed = 228, refresh = 0)
 ```
 
 ```{r fit-pgl-cell, results = "hide"}
-fit_pgl_cell <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + pgl(plate) + ogl(conc_group) + disp("power"),
+fit_pgl_cell <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") +
+                       pgl(plate) + ogl(conc_group) + disp("power"),
                      data = zn15, family = gfam,
                      seed = 228, refresh = 0)
 ```
@@ -868,7 +876,8 @@ zinc rises above its control at low concentrations.
 
 ```{r fit-metals, results = "hide"}
 fits_tox <- bnec_group(
-  rlu_cens | cens(censoring) ~ crf(log(conc), "all") + pgl(plate) + ogl(conc_group) + disp("power"),
+  rlu_cens | cens(censoring) ~ crf(log(conc), "all") +
+    pgl(plate) + ogl(conc_group) + disp("power"),
   data = zn_cu_15, group_var = "toxicant", family = gfam,
   seed = 228, refresh = 0)
 ```
@@ -1025,9 +1034,12 @@ terms as `pgl(gr(plate, by = toxicant))` and `ogl(gr(conc_group, by = toxicant))
 default would fit one for each level:
 
 ```{r fit-metals-joint, results = "hide"}
-fits_tox_joint <- bnec_joint(fits_tox, model = "ecxll5",
-                             formula = rlu_cens | cens(censoring) ~ crf(log(conc), "ecxll5") + pgl(gr(plate, by = toxicant)) + ogl(gr(conc_group, by = toxicant)) + (ec50 | batch) + disp("power"),
-                             disp_by_level = FALSE, seed = 228, refresh = 0)
+fits_tox_joint <- bnec_joint(
+  fits_tox, model = "ecxll5",
+  formula = rlu_cens | cens(censoring) ~ crf(log(conc), "ecxll5") +
+    pgl(gr(plate, by = toxicant)) + ogl(gr(conc_group, by = toxicant)) +
+    (ec50 | batch) + disp("power"),
+  disp_by_level = FALSE, seed = 228, refresh = 0)
 ```
 
 ```{r print-metals-joint}
