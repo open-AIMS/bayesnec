@@ -627,16 +627,18 @@ route_note <- if (route_diff <= 10) {
         "likely to produce, which suggests that at least one of the fits has",
         "not sampled the posterior fully")
 }
+joint_div <- paste(sampling_j$n_divergent, if (sampling_j$n_divergent == 1)
+  "divergent transition" else "divergent transitions")
 joint_note <- if (sampling_j$failed) {
-  paste0("The joint fit, however, produced ", sampling_j$n_divergent,
-         " divergent transitions and fails the checks of `check_sampling()`, ",
+  paste0("The joint fit, however, produced ", joint_div,
+         " and fails the checks of `check_sampling()`, ",
          "whereas both of its equations passed them in the factorised fit, ",
          "which is why `screen_models()` kept them. A joint fit adapts one ",
          "sampler to both blocks, so the steep survival decline is likely to ",
          "make the whole model harder to sample.")
 } else {
-  paste0("The joint fit produced ", sampling_j$n_divergent, " divergent ",
-         "transitions and passes the checks of `check_sampling()`, as both of ",
+  paste0("The joint fit produced ", joint_div,
+         " and passes the checks of `check_sampling()`, as both of ",
          "its equations did in the factorised fit.")
 }
 route_conclusion <- if (route_diff <= 10) {
