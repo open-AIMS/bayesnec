@@ -358,28 +358,6 @@ report_curve_read_lower_limit <- function(object, lims) {
   invisible(NULL)
 }
 
-#' Refuse \code{extrapolate} on a class that keeps no prediction range
-#'
-#' A \code{\link[brms]{brmsfit}} or a \code{drc} fit reaching these methods was
-#' not built by \code{\link{bnec}}, so there is no stored grid to measure a
-#' limit against and no censoring record to place one on. \code{x_range} sets
-#' the grid for such an object and is the argument to use, with the checks
-#' \code{extrapolate} adds unavailable.
-#'
-#' @param extrapolate The caller's argument.
-#' @param what A \code{\link[base]{character}} naming the class.
-#'
-#' @return \code{TRUE}, invisibly.
-#' @noRd
-check_no_extrapolate <- function(extrapolate, what) {
-  if (!identical(extrapolate, FALSE)) {
-    stop("extrapolate is measured against the prediction range a bnec() fit ",
-         "stores, and a ", what, " object holds no such range. Set the grid ",
-         "with x_range instead.", call. = FALSE)
-  }
-  invisible(TRUE)
-}
-
 #' What the two bounds of a censoring record are the ends of
 #'
 #' \code{warn_censored_draws()} names the bounds. Under \code{extrapolate} a
