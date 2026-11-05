@@ -28,10 +28,11 @@ source records rather than across the experiment, so \code{chamber} here
 combines the three to give a unique identifier.
 
 Yield is a proportion and 63 of the 414 readings are exactly 0, all of them
-at the higher concentrations where photosynthesis had stopped. These are
-measurements at a boundary rather than substitutions, and a \code{Beta}
-likelihood cannot represent them; \code{vignette("example6")} covers the
-options.
+at 9.6 and 29 \eqn{\mu}g/L. They are readings at the floor of the
+fluorometer: no reading lies between 0 and the smallest positive value,
+0.007, and a fragment read twice can give one 0 and one positive reading. A
+\code{Beta} likelihood cannot represent a 0, so \code{vignette("example4")}
+treats these readings as left-censored at the smallest positive value.
 
 The control concentration is reported as \code{0}, and the substitution the
 source file holds for it is not shipped, for the reason given under
