@@ -849,7 +849,8 @@ test_that("amend() keeps the LOO fitting arguments the set records", {
   # Naming "weights" alone leaves "fitting" to the record.
   out <- q(amend(m, loo_controls = list(weights = list(method = "stacking"))))
   expect_equal(out$mod_stats$waic, reference$mod_stats$waic)
-  expect_identical(attr(out, "bnec_expand_args")$loo_controls, stacked)
+  expect_identical(attr(out, "bnec_expand_args")$loo_controls,
+                   c(stacked, list(report_k = TRUE)))
   # Naming "fitting" replaces the record.
   out <- q(amend(m, loo_controls = list(fitting = list())))
   expect_equal(out$mod_stats$waic, manec_example$mod_stats$waic)
