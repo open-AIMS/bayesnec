@@ -26,9 +26,12 @@
   compute their weights, whether groups or observations were left out. The
   report names equations with at least 0.01 model weight. Set
   `loo_controls = list(report_k = FALSE)` after assessing the diagnostic to
-  silence it without changing the scores or weights. Each equation retains
-  its LOO criterion and, where applicable, its groupwise criterion, including
-  the Pareto *k* values for equations below the reporting weight (#536).
+  silence it without changing the scores or weights. A separate message names
+  values below 0.7 that exceed the draw-dependent reliability threshold used by
+  `loo` when fewer posterior draws are available. `refit = TRUE` applies only at
+  or above 0.7. Each equation retains its LOO criterion and, where applicable,
+  its groupwise criterion, including the Pareto *k* values for equations below
+  the reporting weight (#536).
 - Where each level of a group-level term is observed at a single
   concentration, such as `ogl(conc_group)` on `lum31` or `ogl(chamber)` on
   `coral_pam`, the model weights are now computed by leaving out each level

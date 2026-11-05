@@ -179,6 +179,25 @@ test_that("selected criteria report high k in contributing equations", {
     "1 of 4 observations")
 })
 
+test_that("selected criteria retain loo's draw-dependent k diagnostic", {
+  criterion <- function(k, draws) {
+    structure(list(pointwise = matrix(0, 2, 1),
+                   diagnostics = list(pareto_k = c(k, 0.2))),
+              dims = c(draws, 2))
+  }
+  low_draws <- list(ecxlin = criterion(0.65, 400))
+  expect_message(bayesnec:::report_weight_k(
+    low_draws, 1, "observation"),
+    "below 0.7 but at or above loo's draw-dependent reliability threshold")
+  expect_no_message(bayesnec:::report_weight_k(
+    list(ecxlin = criterion(0.61, 400)), 1, "observation"))
+  expect_no_message(bayesnec:::report_weight_k(
+    list(ecxlin = criterion(0.65, 400)), 0.005, "observation"))
+  expect_no_message(bayesnec:::report_weight_k(
+    list(ecxlin = criterion(0.65, 400)), 1, "observation",
+    report_k = FALSE))
+})
+
 test_that("only intermediate Pareto k warnings are silenced", {
   expect_warning(
     bayesnec:::without_pareto_k_warning({

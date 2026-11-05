@@ -49,15 +49,19 @@ group-level term is observed at a single concentration, each level is left
 out whole; otherwise, and always under "observation", each observation is
 left out. "refit" is \code{FALSE} (the default) or \code{TRUE}, and applies
 under "group" only: where \code{TRUE}, each equation is refitted without
-each level whose left-out score is approximate. The "fitting" arguments
+each level whose Pareto k is at or above 0.7. The "fitting" arguments
 apply to the score computed by leaving out each observation.
 "report_k" is \code{TRUE} (the default) or \code{FALSE}. For a model set,
 it reports Pareto k at or above 0.7 for equations with at least 0.01 model
 weight, using the LOO scores selected for weighting. Set it to \code{FALSE}
 after assessing the diagnostic to silence the message. This does not change
-the scores or weights. Every equation's observation-wise LOO criterion is
-retained in \code{fit$mod_fits[[model]]$fit$criteria$loo}; where groups were
-left out, the selected criterion, including its Pareto k values, is in
+the scores or weights. With fewer than about 2200 posterior draws, values
+below 0.7 can exceed the draw-dependent reliability threshold used by
+\pkg{loo}; these are reported separately and are not selected for refitting
+by \code{refit = TRUE}. Every equation's observation-wise LOO criterion is
+retained in
+\code{fit$mod_fits[[model]]$fit$criteria$loo}; where groups were left out,
+the selected criterion, including its Pareto k values, is in
 \code{fit$mod_fits[[model]]$fit$criteria$logo}, even for equations with less
 than 0.01 weight.
 See Details, under model averaging.

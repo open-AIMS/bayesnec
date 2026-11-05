@@ -500,7 +500,8 @@ without_pareto_k_warning <- function(expr) {
 #'
 #' @details Only equations given at least 0.01 of the weight are named: an
 #' unreliable score for an equation given no weight does not change the
-#' average.
+#' average. With fewer posterior draws, loo may flag values below 0.7 at its
+#' draw-dependent reliability threshold; report those separately.
 #'
 #' @return \code{NULL}, invisibly. Called for the message.
 #' @noRd
@@ -513,27 +514,56 @@ report_weight_k <- function(criteria, wi, leave_out, refit = FALSE,
                                            na.rm = TRUE),
                  numeric(1))
   named <- names(criteria)[high > 0 & wi >= 0.01]
-  if (length(named) == 0) {
-    return(invisible(NULL))
-  }
-  named <- named[order(wi[match(named, names(criteria))], decreasing = TRUE)]
   n_units <- nrow(criteria[[1]]$pointwise)
   groupwise <- !identical(leave_out, "observation")
-  message("The leave-one-", if (groupwise) "group" else "observation",
-          "-out score has Pareto k at or above 0.7 for ",
-          paste0(high[named], " of ", n_units,
-                 if (groupwise) paste0(" levels of ", leave_out) else
-                   " observations",
-                 " in ", named, " (weight ",
-                 signif(wi[match(named, names(criteria))], 2), ")",
-                 collapse = "; "),
-          ". The affected scores are approximate",
-          if (refit || !groupwise) {
-            "."
-          } else {
-            paste0("; loo_controls = list(refit = TRUE) replaces them by",
-                   " refitting the equation without each level.")
-          })
+  emit <- function(msg) {
+    condition <- simpleMessage(msg)
+    class(condition) <- c("bayesnec_pareto_k_message", class(condition))
+    message(condition)
+  }
+  if (length(named) > 0) {
+    named <- named[order(wi[match(named, names(criteria))], decreasing = TRUE)]
+    msg <- paste0("The leave-one-", if (groupwise) "group" else "observation",
+            "-out score has Pareto k at or above 0.7 for ",
+            paste0(high[named], " of ", n_units,
+                   if (groupwise) paste0(" levels of ", leave_out) else
+                     " observations",
+                   " in ", named, " (weight ",
+                   signif(wi[match(named, names(criteria))], 2), ")",
+                   collapse = "; "),
+            ". The affected scores are approximate",
+            if (refit || !groupwise) {
+              "."
+            } else {
+              paste0("; loo_controls = list(refit = TRUE) replaces them by",
+                     " refitting the equation without each level.")
+            })
+    emit(msg)
+  }
+  draws <- vapply(criteria, function(l) {
+    s <- attr(l, "dims", exact = TRUE)[1]
+    if (length(s) == 0 || !is.finite(s)) NA_real_ else s
+  }, numeric(1))
+  threshold <- ifelse(draws > 10, pmin(1 - 1 / log10(draws), 0.7), 0.7)
+  lower <- vapply(seq_along(criteria), function(i) {
+    k <- criteria[[i]]$diagnostics$pareto_k
+    sum(k >= threshold[i] & k < 0.7, na.rm = TRUE)
+  }, numeric(1))
+  named <- names(criteria)[lower > 0 & wi >= 0.01]
+  if (length(named) > 0) {
+    named <- named[order(wi[match(named, names(criteria))], decreasing = TRUE)]
+    i <- match(named, names(criteria))
+    emit(paste0(
+      "The selected LOO score has Pareto k below 0.7 but at or above loo's ",
+      "draw-dependent reliability threshold for ",
+      paste0(lower[named], " of ", n_units, " ",
+             if (groupwise) paste0("levels of ", leave_out) else "observations",
+             " in ", named, " (weight ", signif(wi[i], 2),
+             "; threshold ", signif(threshold[i], 2), ")",
+             collapse = "; "),
+      ". Increase the number of posterior draws and reassess."
+    ))
+  }
   invisible(NULL)
 }
 
