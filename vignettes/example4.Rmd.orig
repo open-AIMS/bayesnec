@@ -66,27 +66,24 @@ its own parameter values, but all levels are estimated in one posterior. Which
 designs admit which of these approaches is set out in the
 [Grouping and factor covariates][e8] vignette.
 
-`compare_posterior` pairs the posterior draws of two fits and takes the
-difference within each pair. Where the posteriors are independent, as they
-are for fits to separate data that share no parameter (e.g. the levels of a
-`bnec_group()` fit), these differences approximate the posterior of the
-difference between the two estimates. Pairing the draws by their index would
-also approximate this distribution, and the random permutation that
-`compare_posterior` uses is one Monte Carlo realisation of the pairing, not a
-requirement of it.
+For each pair of fits, `compare_posterior` pairs the posterior draws of an
+estimate from one fit with those from the other at random, and subtracts one
+from the other within each pair. It returns these differences, and in
+`prob_diff` the proportion of them above zero, i.e. the probability that the
+first fit has the higher estimate. This proportion estimates a posterior
+probability where the two posteriors are independent, which is the case for
+fits to separate data that share no parameter, such as the levels of a
+`bnec_group()` fit and every comparison in this vignette.
 
-Whether two estimates are independent depends on their joint posterior, and not
-on whether they were fitted in one call or several. Where two quantities are
-dependent within one posterior (e.g. two levels of a fit that share a
-group-level term), the contrast is taken by subtracting aligned draws (draw *i*
-of one from draw *i* of the other), which keeps their covariance. Pairing those
-draws at random removes the covariance, which may make the interval of the
-difference wider or narrower depending on its sign. Where the fits share data,
-for example two equations pulled from one model set, `compare_posterior` still
-pairs their draws as if they were independent. The probabilities it returns
-then describe how far two estimates of one quantity overlap, and whether
-they can be read as posterior probabilities is uncertain (see
-`?compare_estimates`).
+Where two estimates come from one posterior and share a parameter, for example
+two levels of a `bnec_joint()` refit with a common group-level term, they can
+be correlated, and pairing their draws at random discards that correlation. The
+contrast is then taken draw by draw, from the draws that `ecx()` returns for
+each level of the refit under `posterior = TRUE`, as shown for copper and zinc
+in the [Grouping and factor covariates][e8] vignette. Where two fits share
+data, such as two equations of one model set, `prob_diff` describes how far
+their posteriors overlap and cannot be read directly as a posterior probability
+(see the section *What the comparison estimates* in `?compare_posterior`).
 
 Below we demonstrate `compare_posterior` on two published datasets that are
 included in `bayesnec`, each fitted separately by level using `bnec_group()`. In
@@ -94,12 +91,7 @@ the first, the levels are seven photosystem II herbicides tested on the coral
 *Seriatopora hystrix* [@jones2003]. In the second, the levels are three climate
 scenarios under which the coral *Acropora millepora* was exposed to one of those
 herbicides, diuron [@flores2021], and the comparison is the one that study was
-designed to make. In both datasets the levels are fitted separately and share
-no parameter, so their posteriors are independent and the random pairing of
-`compare_posterior` is sufficient. A joint refit by `bnec_joint()`, in which
-two levels share a group-level term and a contrast between them is taken from
-aligned draws, is shown for copper and zinc in the
-[Grouping and factor covariates][e8] vignette.
+designed to make.
 
 To run this vignette, we will also need some additional packages
 
@@ -329,9 +321,6 @@ the probability that irgarol has the higher N(S)EC is 0.009 against simazine and
 0.732, the most potent of the set, followed by ametryn and diuron at 0.837,
 atrazine and hexazinone at 0.839, ametryn and irgarol at 0.923, and simazine and
 tebuthiuron at 0.077.
-`bnec_group()` fits each herbicide to its own data, with no parameter shared
-between herbicides, so the posteriors are independent and the paired
-differences approximate the posterior of the difference for each pair.
 
 The N(S)EC is a no-effect estimate, and it is not what @jones2003 report. They
 report EC50 values (the concentration at which yield is halved), so the
@@ -579,27 +568,19 @@ colour_2018 <- unlist(coral_probs[coral_probs$endpoint == "colour" &
                                   c("EC50", "EC10", "N(S)EC")])
 yield_ecx <- unlist(coral_probs[coral_probs$endpoint == "yield",
                                 c("EC50", "EC10")])
-# Draws at the control differ from 0.1 by rounding error, so use a tolerance.
-at_control <- with(coral_post[coral_post$estimate == "N(S)EC", ],
-                   tapply(abs(value - 0.1) < 1e-6, list(endpoint, model), mean))
 ```
-
-The concentration axis is shared by all six panels, whereas the density axis is
-shared only within each endpoint. In the N(S)EC panels, up to
-`r round(100 * max(at_control, na.rm = TRUE), 1)` per cent of the draws of a
-scenario are at 0.1 µg/L, the value substituted for the control, and so describe
-the substitution and not diuron.
 
 For the colour EC50 (top left panel), the probability that the 2018 estimate is
 the higher is `r p_coral("colour", "2018-2050", "EC50")` against the 2050
 scenario and `r p_coral("colour", "2018-2100", "EC50")` against the 2100
 scenario, where @flores2021 report 0.956 and 0.970. These could not be expected
 to match exactly, because our model differs from theirs in two respects. The
-fits here use a restricted set of four equations, whereas @flores2021 averaged
-over a larger set (their Table S2), and the fits here include a group-level term
-for chamber (`ogl(chamber)`), which @flores2021 did not fit. The EC50 values are
-also defined differently. The posterior medians are
-`r med_coral("colour", "EC50", "2018")`,
+fits here use four equations with three curve parameters, because the five
+colour concentrations are too few to estimate both asymptotes of the equations
+with four, whereas @flores2021 averaged over a larger set (their Table S2). The
+fits here also include a group-level term for chamber (`ogl(chamber)`), which
+@flores2021 did not fit. The EC50 values are also defined differently. The
+posterior medians are `r med_coral("colour", "EC50", "2018")`,
 `r med_coral("colour", "EC50", "2050")` and
 `r med_coral("colour", "EC50", "2100")` µg/L for 2018, 2050 and 2100, against
 the values of 6.05, 4.99 and 4.86 µg/L that @flores2021 report. They measured
