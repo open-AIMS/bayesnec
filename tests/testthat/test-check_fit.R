@@ -406,6 +406,129 @@ test_that("check_fit refuses a seed set.seed() would take silently", {
   expect_error(suppressMessages(check_fit(manec_example, seed = NULL)), "seed")
 })
 
+grouped_checkfit_fixture <- function() {
+  a <- nec4param
+  b <- manec_example
+  a_data <- a$fit$data
+  b_data <- b$mod_fits[[1L]]$fit$data
+  # Only the grouping column is needed from the original input here. The
+  # component fits retain their own response and predictor data.
+  site <- c(rep("a", nrow(a_data)), rep("b", nrow(b_data)))
+  site <- site[order(c(seq_len(nrow(a_data)) * 2L - 1L,
+                       seq_len(nrow(b_data)) * 2L))]
+  data <- data.frame(site = site)
+  structure(list(fits = list(a = a, b = b), levels = c("a", "b"),
+                 group_var = "site", data = data),
+            class = c("bayesnecgroupfit", "bnecfit"))
+}
+
+test_that("grouped checks equal separate component calls", {
+  skip_on_cran()
+  fit <- grouped_checkfit_fixture()
+  # This dispatch fixture has a different dose grid at level b. Its fitted
+  # parameters are unchanged, so it is not evidence about model fit.
+  fit$fits$b$mod_fits <- lapply(fit$fits$b$mod_fits, function(model) {
+    model$fit$data$x <- model$fit$data$x + 0.5
+    model
+  })
+  expect_false(identical(min(fit$fits$a$fit$data$x),
+                         min(fit$fits$b$mod_fits[[1L]]$fit$data$x)))
+  out <- check_fit(fit, group = 3, ndraws = 20, seed = 19)
+  expect_s3_class(out, "checkfit_group")
+  expect_named(out$fits, fit$levels)
+  expect_identical(out$fits$a,
+                   check_fit(fit$fits$a, group = 3, ndraws = 20, seed = 19))
+  expect_identical(out$fits$b,
+                   check_fit(fit$fits$b, group = 3, ndraws = 20, seed = 19))
+  expect_equal(sum(out$fits$a$control), 1)
+  expect_true(all(tapply(out$fits$b$control, out$fits$b$model, sum) == 1L))
+  expect_true(all(c("model", "wi", "control") %in% names(out$fits$b)))
+})
+
+test_that("full-input groups are split in original row order", {
+  skip_on_cran()
+  fit <- grouped_checkfit_fixture()
+  n_a <- nrow(fit$fits$a$fit$data)
+  n_b <- nrow(fit$fits$b$mod_fits[[1L]]$fit$data)
+  grouping <- character(n_a + n_b)
+  grouping[fit$data$site == "a"] <- rep(c("low", "high"), length.out = n_a)
+  grouping[fit$data$site == "b"] <- rep(c("early", "late"), length.out = n_b)
+  out <- check_fit(fit, group = grouping, ndraws = 20)
+  expect_identical(out$fits$a,
+                   check_fit(fit$fits$a, group = grouping[fit$data$site == "a"],
+                             ndraws = 20))
+  expect_identical(out$fits$b,
+                   check_fit(fit$fits$b, group = grouping[fit$data$site == "b"],
+                             ndraws = 20))
+  expect_error(check_fit(fit, group = grouping[-1L], ndraws = 20),
+               "original order")
+  grouping[1L] <- NA_character_
+  expect_error(check_fit(fit, group = grouping, ndraws = 20),
+               "non-missing")
+})
+
+test_that("grouped results retain component attributes and label displays", {
+  skip_on_cran()
+  fit <- grouped_checkfit_fixture()
+  out <- check_fit(fit, group = 3, ndraws = 20)
+  printed <- paste(capture.output(print(out)), collapse = "\n")
+  expect_match(printed, "site = a", fixed = TRUE)
+  expect_match(printed, "site = b", fixed = TRUE)
+  plots <- plot(out)
+  expect_named(plots, c("a", "b"))
+  expect_s3_class(plots$a, "ggplot")
+  expect_identical(plots$a$labels$title, "site: a")
+  expect_identical(plots$b$labels$title, "site: b")
+  expect_identical(out$fits$b$wi,
+                   check_fit(fit$fits$b, group = 3, ndraws = 20)$wi)
+})
+
+test_that("grouped dispatch leaves a component's Pareto attribute intact", {
+  fit <- grouped_checkfit_fixture()
+  seen <- list()
+  local_mocked_bindings(
+    check_fit = function(x, group, ndraws, seed, ...) {
+      seen[[length(seen) + 1L]] <<- list(group = group, ndraws = ndraws,
+                                          seed = seed)
+      out <- data.frame(group = "control", control = TRUE)
+      attr(out, "pareto") <- data.frame(model = "nec4param", max_k = 0.8)
+      bayesnec:::allot_class(out, c("checkfit", "data.frame"))
+    },
+    .package = "bayesnec"
+  )
+  out <- bayesnec:::check_fit.bayesnecgroupfit(fit, ndraws = 7, seed = 19)
+  expect_identical(attr(out$fits$a, "pareto")$max_k, 0.8)
+  expect_identical(attr(out$fits$b, "pareto")$max_k, 0.8)
+  expect_true(all(vapply(seen, function(z) is.null(z$group), logical(1))))
+  expect_true(all(vapply(seen, function(z) z$ndraws == 7 && z$seed == 19,
+                         logical(1))))
+  seen <- list()
+  bayesnec:::check_fit.bayesnecgroupfit(fit, group = 3)
+  expect_identical(lapply(seen, `[[`, "group"), list(3, 3))
+  seen <- list()
+  expect_error(bayesnec:::check_fit.bayesnecgroupfit(fit, group = 1:3),
+               "original order")
+  expect_length(seen, 0)
+  full_group <- rep("g", nrow(fit$data))
+  fit$fits$b$mod_fits[[2L]]$fit$data <-
+    fit$fits$b$mod_fits[[2L]]$fit$data[-1L, , drop = FALSE]
+  expect_error(bayesnec:::check_fit.bayesnecgroupfit(fit, group = full_group),
+               "do not match its fitted data")
+  expect_length(seen, 0)
+})
+
+test_that("grouped checks restore the caller's random stream", {
+  skip_on_cran()
+  fit <- grouped_checkfit_fixture()
+  set.seed(562)
+  expected <- runif(3)
+  set.seed(562)
+  first <- runif(1)
+  out <- check_fit(fit, group = 3, ndraws = 20, seed = 17)
+  expect_identical(c(first, runif(2)), expected)
+  expect_identical(out, check_fit(fit, group = 3, ndraws = 20, seed = 17))
+})
+
 test_that("check_fit gives a growth disp(~z) column each row's value (#443)", {
   # check_fit_combined() simulates the growth component over the survival
   # component's fitted data. That frame is built here as bnec_hurdle() builds

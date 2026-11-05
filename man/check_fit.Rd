@@ -4,7 +4,10 @@
 \alias{check_fit}
 \alias{check_fit.bayesnecfit}
 \alias{check_fit.bayesmanecfit}
+\alias{check_fit.bayesnecgroupfit}
 \alias{check_fit.bayesnechurdlefit}
+\alias{print.checkfit_group}
+\alias{plot.checkfit_group}
 \title{Check a fit against the data it was fitted to}
 \usage{
 check_fit(x, group = NULL, ndraws = 1000, seed = 10, ...)
@@ -13,18 +16,29 @@ check_fit(x, group = NULL, ndraws = 1000, seed = 10, ...)
 
 \method{check_fit}{bayesmanecfit}(x, group = NULL, ndraws = 1000, seed = 10, ...)
 
+\method{check_fit}{bayesnecgroupfit}(x, group = NULL, ndraws = 1000, seed = 10, ...)
+
 \method{check_fit}{bayesnechurdlefit}(x, group = NULL, ndraws = 1000, seed = 10, combined = TRUE, ...)
+
+\method{print}{checkfit_group}(x, ...)
+
+\method{plot}{checkfit_group}(x, ...)
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesnecfit}} or
-\code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}.}
+\code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}, or a
+\code{\link{bayesnecgroupfit}} returned by \code{\link{bnec_group}}.}
 
-\item{group}{A \code{\link[base]{numeric}} vector of the same length as the
-data giving the group each row belongs to, or a single
-\code{\link[base]{numeric}} giving the number of bins to cut the predictor
+\item{group}{A numeric, character or factor vector of the same length as the
+data giving the group each row belongs to, or a single numeric value giving
+the number of bins to cut the predictor
 into. If \code{NULL} (the default) the distinct values of the predictor are
 used where they are replicated, and the predictor is binned otherwise, with a
-warning.}
+warning.
+For a \code{bayesnecgroupfit}, an explicit vector has one value per row of
+the original data passed to \code{bnec_group()}, in its original order. It
+is split by fitted level before the checks. The fitted-level factor is not
+the predictor grouping used within each level.}
 
 \item{ndraws}{A \code{\link[base]{numeric}} vector of length 1, the number of
 posterior draws to simulate from. Reduced silently to the number the fit
@@ -54,6 +68,11 @@ the control group. For the mixture families it also carries the observed and
 simulated proportion of zeros. A group with one observation has no standard
 deviation; its standard deviation statistics are \code{NA}, while its mean
 statistics remain available.
+A \code{bayesnecgroupfit} returns a \code{checkfit_group} object containing
+the original \code{checkfit} table for each fitted level in \code{$fits}.
+Each table retains its attributes, including any stored Pareto diagnostics.
+\code{print()} labels and prints each level; \code{plot()} returns a named
+list of plots with one plot per fitted level.
 }
 \description{
 Reports, per group of the predictor, the observed location and scale of the
@@ -114,6 +133,12 @@ both.
 library(bayesnec)
 nec4param <- pull_out(manec_example, model = "nec4param")
 check_fit(nec4param)
+data(nec_data)
+nec_data$site <- rep(c("a", "b"), length.out = nrow(nec_data))
+grouped <- bnec_group(y ~ crf(x, "nec3param"), data = nec_data,
+                      group_var = "site")
+checks <- check_fit(grouped)
+plot(checks)
 }
 
 }
