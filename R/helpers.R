@@ -1405,10 +1405,8 @@ add_brm_defaults <- function(
       supplied_pars = supplied_pars
     )
   }
-  priors <- try(validate_priors(brm_args$prior, model), silent = TRUE)
-  if (inherits(priors, "try-error")) {
-    # No usable prior from the user, so the defaults are the fit. If they cannot
-    # be built the error is the right outcome and is allowed to propagate.
+  priors <- validate_priors(brm_args$prior, model)
+  if (is.null(priors)) {
     brm_args$prior <- build_defaults()
   } else {
     # A failure to build the defaults must not block a user's own prior. Use

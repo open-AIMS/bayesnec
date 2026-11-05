@@ -921,6 +921,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   if (timeout <= 0) {
     stop("Argument `timeout` must be a positive number (or Inf).")
   }
+  check_prior_input(prior)
 
   mf <- match.call(expand.dots = FALSE)
   m <- sapply(c("x_var", "y_var", "trials_var", "model", "random",
