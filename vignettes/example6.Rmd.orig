@@ -904,11 +904,22 @@ zib_ci <- function(row) {
 }
 same_ne <- identical(sig2(zib_est["combined nec", "Q50"]),
                      sig2(zib_est["growth nec", "Q50"]))
+grew_mean <- tapply(zib_dat$y[zib_dat$y > 0], zib_dat$x[zib_dat$y > 0], mean)
+miss_text <- if (!inside[1]) {
+  paste0(" In this simulated data set the mean of the cultures that grew is ",
+         sprintf("%.2f", grew_mean[["0"]]), " at the control and ",
+         sprintf("%.2f", grew_mean[["2"]]), " at a concentration of 2, ",
+         "whereas the generating curve is at 0.70 for both, so the data ",
+         "decline from below the generating threshold, and the growth NEC is ",
+         "estimated below it.")
+} else {
+  ""
+}
 ```
 
 The combined no-effect estimate is the per-draw minimum of the growth and
 survival NECs, so its generating value is the smaller threshold, 3.
-`r inside_text` (table above). The precision of the thresholds is limited by the
+`r inside_text` (table above).`r miss_text` The precision of the thresholds is limited by the
 design, not by the family. A threshold model can locate a change point only as
 sharply as the dose spacing around it allows. The generating growth threshold
 of 3 falls in the gap between the doses at 2 and 4, and the survival threshold
