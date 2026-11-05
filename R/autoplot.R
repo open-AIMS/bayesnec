@@ -423,7 +423,7 @@ plot_group_label <- function(data, group, group_aes) {
 #' @return A \code{\link[base]{data.frame}}.
 #'
 #' @noRd
-bind_nec <- function(data, nec_vals) {
+bind_nec <- function(data, nec_vals, label_vals = nec_vals) {
   data$nec_vals <- NA
   data$nec_labs <- NA
   data$nec_labs_l <- NA
@@ -440,9 +440,9 @@ bind_nec <- function(data, nec_vals) {
   # A censored entry is the end of the prediction range, not a quantile, so
   # its label carries the bound's prefix. The line is still drawn there,
   # where the estimate is known to lie at or beyond.
-  df$nec_labs[1] <- censored_label(nec_vals, cens, 1)
-  df$nec_labs_l[1] <- censored_label(nec_vals, cens, 2)
-  df$nec_labs_u[1] <- censored_label(nec_vals, cens, 3)
+  df$nec_labs[1] <- censored_label(label_vals, cens, 1)
+  df$nec_labs_l[1] <- censored_label(label_vals, cens, 2)
+  df$nec_labs_u[1] <- censored_label(label_vals, cens, 3)
   rbind(data, df)
 }
 
@@ -469,7 +469,7 @@ censored_label <- function(values, cens, i) {
 #' @return A \code{\link[base]{data.frame}}.
 #'
 #' @noRd
-bind_ecx <- function(data, ecx_vals) {
+bind_ecx <- function(data, ecx_vals, label_vals = ecx_vals) {
   data$ecx_vals <- NA
   data$ecx_int <- NA
   data$ecx_labs <- NA
@@ -480,10 +480,28 @@ bind_ecx <- function(data, ecx_vals) {
   cens <- attr(ecx_vals, "censored_summary")
   df$ecx_vals <- ecx_vals
   df$ecx_int[1] <- attr(ecx_vals, "ecx_val")
-  df$ecx_labs[1] <- censored_label(ecx_vals, cens, 1)
-  df$ecx_labs_l[1] <- censored_label(ecx_vals, cens, 2)
-  df$ecx_labs_u[1] <- censored_label(ecx_vals, cens, 3)
+  df$ecx_labs[1] <- censored_label(label_vals, cens, 1)
+  df$ecx_labs_l[1] <- censored_label(label_vals, cens, 2)
+  df$ecx_labs_u[1] <- censored_label(label_vals, cens, 3)
   rbind(data, df)
+}
+
+#' Recorded values for labelling estimates drawn on the fitted axis
+#'
+#' The fitted axis is labelled in recorded units, so an estimate placed on it
+#' is labelled in those units too.
+#'
+#' @param values Estimates on the fitted scale.
+#' @param object The fit whose formula transforms the predictor.
+#' @param x_grid_raw Recorded predictor values spanning the data.
+#' @return \code{values} mapped back to the recorded scale.
+#' @noRd
+fitted_axis_labels <- function(values, object, x_grid_raw) {
+  inverse <- recorded_x_map(scale_source_fit(object)$bayesnecformula,
+                            x_grid_raw, inline_x_transform(object))
+  out <- as.numeric(inverse(as.numeric(values)))
+  names(out) <- names(values)
+  out
 }
 
 #' Creates the data.frame for plotting with \code{\link{autoplot}}.
@@ -705,7 +723,11 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
     } else {
       to_axis_scale(x$ne, bdat, x$bayesnecformula, x_grid_raw, axis_xform)
     }
-    out <- bind_nec(out, ne_vals)
+    out <- bind_nec(out, ne_vals, if (x_scale == "fitted") {
+      fitted_axis_labels(ne_vals, x, x_grid_raw)
+    } else {
+      ne_vals
+    })
   }
   if (add_ecx) {
     ecx_vals <- plot_ecx(x, x$fit$family$family, list(...),
@@ -714,7 +736,11 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
       ecx_vals <- to_axis_scale(ecx_vals, bdat, x$bayesnecformula,
                                 x_grid_raw, axis_xform)
     }
-    out <- bind_ecx(out, ecx_vals)
+    out <- bind_ecx(out, ecx_vals, if (x_scale == "fitted") {
+      fitted_axis_labels(ecx_vals, x, x_grid_raw)
+    } else {
+      ecx_vals
+    })
   }
   if (!is.null(group)) {
     attr(out, "group_var") <- group
@@ -786,7 +812,11 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
     } else {
       to_axis_scale(x$w_ne, bdat, manec_formula, x_grid_raw, axis_xform)
     }
-    out <- bind_nec(out, ne_vals)
+    out <- bind_nec(out, ne_vals, if (x_scale == "fitted") {
+      fitted_axis_labels(ne_vals, x, x_grid_raw)
+    } else {
+      ne_vals
+    })
   }
   if (add_ecx) {
     ecx_vals <- plot_ecx(x, x$mod_fits[[1]]$fit$family$family, list(...),
@@ -795,7 +825,11 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
       ecx_vals <- to_axis_scale(ecx_vals, bdat, manec_formula, x_grid_raw,
                                 axis_xform)
     }
-    out <- bind_ecx(out, ecx_vals)
+    out <- bind_ecx(out, ecx_vals, if (x_scale == "fitted") {
+      fitted_axis_labels(ecx_vals, x, x_grid_raw)
+    } else {
+      ecx_vals
+    })
   }
   if (!is.null(group)) {
     attr(out, "group_var") <- group

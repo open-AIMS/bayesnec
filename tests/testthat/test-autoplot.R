@@ -920,6 +920,22 @@ test_that("a fitted axis spaces an offset-log curve and labels the control", {
                            xform = exp), "cannot be combined")
 })
 
+test_that("a fitted axis labels its estimate lines in recorded units", {
+  skip_on_cran()
+  fit <- nec4param
+  fit$fit$data$x[1:4] <- c(0, 0.01, 0.1, 1)
+  fit$bayesnecformula <- bayesnecformula(
+    y ~ crf(log(x + 0.001), model = "nec4param")
+  )
+  dat <- suppressMessages(ggbnec_data(fit, x_scale = "fitted"))
+  recorded <- exp(unname(fit$ne)) - 0.001
+  expect_equal(dat$nec_labs[!is.na(dat$nec_labs)], rounded(recorded[1], 2))
+  expect_equal(dat$nec_labs_l[!is.na(dat$nec_labs_l)], rounded(recorded[2], 2))
+  expect_equal(dat$nec_labs_u[!is.na(dat$nec_labs_u)], rounded(recorded[3], 2))
+  expect_equal(dat$nec_vals[!is.na(dat$nec_vals)], unname(fit$ne),
+               ignore_attr = TRUE)
+})
+
 test_that("an untransformed predictor has identical recorded and fitted plots", {
   skip_on_cran()
   plain <- suppressMessages(ggbnec_data(nec4param, add_nec = FALSE))

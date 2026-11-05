@@ -599,7 +599,11 @@ ggbnec_data.bayesnecjointfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
         ne_vals <- to_axis_scale(ne_vals, bdat, x$bayesnecformula, curve$x,
                                  axis_xform)
       }
-      out <- bind_nec(out, ne_vals)
+      out <- bind_nec(out, ne_vals, if (x_scale == "fitted") {
+        fitted_axis_labels(ne_vals, x, r_all$x_r)
+      } else {
+        ne_vals
+      })
     }
     if (add_ecx) {
       ecx_vals <- plot_ecx(joint_level_fit(x, lev), x$fit$family$family,
@@ -608,7 +612,11 @@ ggbnec_data.bayesnecjointfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
         ecx_vals <- to_axis_scale(ecx_vals, bdat, x$bayesnecformula, curve$x,
                                   axis_xform)
       }
-      out <- bind_ecx(out, ecx_vals)
+      out <- bind_ecx(out, ecx_vals, if (x_scale == "fitted") {
+        fitted_axis_labels(ecx_vals, x, r_all$x_r)
+      } else {
+        ecx_vals
+      })
     }
     out$panel <- factor(rep(lev, nrow(out)), levels = x$levels)
     if (panel_group) {
