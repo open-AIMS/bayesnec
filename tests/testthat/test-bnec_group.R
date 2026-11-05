@@ -137,6 +137,15 @@ test_that("posterior = TRUE returns each level with its censoring record", {
   expect_named(ecnsec(gf, nsec = 1.5, posterior = TRUE), gf$levels)
 })
 
+test_that("shared controls find the upper grid bound of model-set levels", {
+  gf <- fake_group_fit()
+  controls <- bayesnec:::shared_level_control(
+    gf$fits, list(x_control = "shared")
+  )
+  expect_equal(controls$x_range,
+               range(manec_example$mod_fits[[1]]$fit$data$x))
+})
+
 test_that("mixture weighting and common bounds survive grouped pooling", {
   a <- c(1, 2, NA_real_, 4)
   b <- c(5, 6, 7, 8)
@@ -631,7 +640,8 @@ test_that("a group name reaches each level, ecxflat included (#485)", {
   sets <- list()
   local_mocked_bindings(
     bnec = function(formula, data, ...) {
-      sets[[length(sets) + 1L]] <<- get_model_from_formula(formula)
+      sets[[length(sets) + 1L]] <<-
+        bayesnec:::get_model_from_formula(formula)
       manec_example
     },
     .package = "bayesnec"
@@ -646,7 +656,7 @@ test_that("a group name reaches each level, ecxflat included (#485)", {
     }
   )
   expect_length(sets, 2)
-  expect_identical(sets[[1]], mod_groups$decline)
+  expect_identical(sets[[1]], bayesnec:::mod_groups$decline)
   expect_true("ecxflat" %in% sets[[1]])
   # The group named more than ecxflat, so the level at a bound is reported.
   expect_length(grep("fitted with the constant equation ecxflat alone", msgs,

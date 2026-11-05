@@ -85,6 +85,94 @@ test_that("mean_curve reads the average curve before finding ECx", {
   expect_equal(mean_estimate, c(0.7, 0.7))
 })
 
+test_that("mean_curve NSEC starts at the latest own control", {
+  fits <- list(a = list(label = "a"), b = list(label = "b"))
+  local_mocked_bindings(
+    level_x_bounds = function(object) {
+      if (object$label == "a") c(1, 3) else c(2, 3)
+    },
+    level_curve_draws = function(object, x_vec, ...) {
+      list(curve = matrix(rep(c(10, 9, 8), each = 2), nrow = 2),
+           control = c(10, 10), asymptote = 0)
+    },
+    returns_recorded = function(...) TRUE,
+    .package = "bayesnec"
+  )
+  out <- bayesnec:::mean_curve_estimate(
+    fits, c(1, 1), "nsec",
+    list(x_range = c(0, 3), resolution = 3, posterior = TRUE)
+  )
+  expect_equal(as.numeric(out), c(2, 2))
+  expect_equal(attr(out, "censored")$lower, 2)
+})
+
+test_that("mean_curve NSEC censors crossings before the common range", {
+  fits <- list(a = list(label = "a"), b = list(label = "b"))
+  local_mocked_bindings(
+    level_x_bounds = function(object) {
+      if (object$label == "a") c(1, 3) else c(2, 3)
+    },
+    level_curve_draws = function(object, x_vec, ...) {
+      second <- if (object$label == "a") c(0, 0, 0) else c(20, 19, 18)
+      list(curve = rbind(c(10, 9, 8), second),
+           control = c(10, 20), asymptote = 0)
+    },
+    returns_recorded = function(...) TRUE,
+    .package = "bayesnec"
+  )
+  out <- bayesnec:::mean_curve_estimate(
+    fits, c(1, 1), "nsec",
+    list(resolution = 3, posterior = TRUE)
+  )
+  expect_true(is.na(out[2]))
+  expect_true(attr(out, "censored")$below[2])
+  expect_equal(attr(out, "censored")$lower, 2)
+})
+
+test_that("mean_curve NSEC reads a finite extrapolation limit", {
+  fits <- list(a = list(), b = list())
+  local_mocked_bindings(
+    level_x_bounds = function(object) c(0, 3),
+    level_curve_draws = function(object, x_vec, ...) {
+      list(curve = rbind(10 - 0.5 * x_vec, 12 - 0.5 * x_vec),
+           control = c(10, 12), asymptote = 0)
+    },
+    returns_recorded = function(...) TRUE,
+    .package = "bayesnec"
+  )
+  estimate <- function(extrapolate) bayesnec:::mean_curve_estimate(
+    fits, c(1, 1), "nsec",
+    list(resolution = 21, posterior = TRUE, extrapolate = extrapolate)
+  )
+  tested <- estimate(FALSE)
+  extended <- estimate(5)
+  expect_true(is.na(tested[2]))
+  expect_true(is.finite(extended[2]))
+  expect_gt(extended[2], 3)
+  expect_equal(attr(extended, "censored")$upper, 5)
+})
+
+test_that("mean_curve refuses relative effects on a combined hurdle", {
+  fits <- list(a = list(fit = list(family = brms::hurdle_poisson())))
+  local_mocked_bindings(
+    level_x_bounds = function(object) c(0, 3),
+    .package = "bayesnec"
+  )
+  expect_error(
+    bayesnec:::mean_curve_estimate(
+      fits, 1, "ecx", list(type = "relative", resolution = 3)
+    ),
+    "combined curve"
+  )
+  expect_error(
+    bayesnec:::mean_curve_estimate(
+      fits, 1, "ecnsec",
+      list(type = "relative", nsec = 1, resolution = 3)
+    ),
+    "combined curve"
+  )
+})
+
 test_that("saved population displays identify their earlier prediction basis", {
   fit <- nec4param
   fit$pred_vals <- list(data = data.frame(x = c(0, 1)))

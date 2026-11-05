@@ -295,7 +295,7 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
         pool, posterior, prob_vals, x_control, x_range,
         curve_args = list(sig_val = sig_val, resolution = resolution,
                           xform = xform, prob_vals = prob_vals,
-                          dpar = dpar)
+                          dpar = dpar, extrapolate = extrapolate)
       ))
     }
   }

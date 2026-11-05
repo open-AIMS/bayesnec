@@ -285,12 +285,7 @@ shared_level_control <- function(fits, dots) {
   attr(value, "warned") <- TRUE
   dots$x_control <- value
   if (is.null(dots$x_range) || is.na(dots$x_range[1])) {
-    highs <- vapply(fits, function(f) {
-      if (length(f$level_x)) return(max(f$level_x))
-      frame <- stats::model.frame(f$bayesnecformula, data = f$fit$data)
-      x_var <- attr(frame, "bnec_pop")[["x_var"]]
-      max(f$fit$data[[x_var]])
-    }, numeric(1))
+    highs <- vapply(fits, function(f) level_x_bounds(f)[2], numeric(1))
     dots$x_range <- c(as.numeric(value), max(highs))
   }
   dots
@@ -493,6 +488,20 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
     low <- min(requested)
     high <- max(requested)
   }
+  if (own) {
+    low <- max(low, max(bounds[, 1]))
+    high <- min(high, min(bounds[, 2]))
+  }
+  if (identical(what, "nsec")) {
+    extrapolate <- if (is.null(dots$extrapolate)) FALSE else dots$extrapolate
+    lims <- extrapolate_limits(extrapolate,
+                               list(lower = low, upper = high), "NSEC")
+    if (!is.null(lims)) {
+      control_start <- if (own) max(bounds[, 1]) else as.numeric(x_control)
+      low <- max(lims$lower, control_start)
+      high <- lims$upper
+    }
+  }
   if (!is.finite(low) || !is.finite(high) || low >= high) {
     stop("The levels have no common predictor range for mean_curve.",
          call. = FALSE)
@@ -505,6 +514,17 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
          call. = FALSE)
   }
   dpar <- dots$dpar
+  if (identical(type, "relative") && is.null(dpar) &&
+      what %in% c("ecx", "ecnsec")) {
+    for (fit in fits) {
+      family <- if (inherits(fit, "bayesmanecfit")) {
+        fit$mod_fits[[1]]$fit$family
+      } else {
+        fit$fit$family
+      }
+      check_combined_relative(family, what)
+    }
+  }
   weights <- weights / sum(weights)
   curve <- NULL
   control <- NULL
@@ -563,8 +583,13 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
   } else {
     sig <- if (is.null(dots$sig_val)) 0.01 else dots$sig_val
     reference <- stats::quantile(control, sig)
-    start <- if (own) low else as.numeric(x_control)
+    start <- if (own) min(bounds[, 1]) else as.numeric(x_control)
     out <- nsec_from_posterior(curve, reference, x_vec, start, control)
+    if (own && low > start) {
+      # Averaged own controls have no single concentration. Put a draw already
+      # below its reference at the first concentration shared by all levels.
+      out[!is.na(out) & out == start] <- low
+    }
     attr(out, "ecnsec_relativeP") <-
       as.numeric((control - reference) / control * 100)
   }
