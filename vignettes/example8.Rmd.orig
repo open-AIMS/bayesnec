@@ -1150,6 +1150,16 @@ call makes the resulting difference between candidate sets explicit.
 fits_tox <- screen_models(fits_tox, group_action = "per_level")
 ```
 
+The predictive check is computed separately within each toxicant. Its
+`fits` list keeps the concentration groups, control flags and equation weights
+from each level's fit. `plot()` returns one labelled plot per toxicant.
+
+```{r check-metals, eval = FALSE}
+checks_tox <- check_fit(fits_tox, ndraws = 1000, seed = 228)
+checks_tox$fits
+plot(checks_tox)
+```
+
 ```{r summary-metals}
 summary(fits_tox)
 ```

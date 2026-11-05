@@ -10,13 +10,18 @@
 #' @order 1
 #'
 #' @param x An object of class \code{\link{bayesnecfit}} or
-#' \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}.
+#' \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}, or a
+#' \code{\link{bayesnecgroupfit}} returned by \code{\link{bnec_group}}.
 #' @param group A \code{\link[base]{numeric}} vector of the same length as the
 #' data giving the group each row belongs to, or a single
 #' \code{\link[base]{numeric}} giving the number of bins to cut the predictor
 #' into. If \code{NULL} (the default) the distinct values of the predictor are
 #' used where they are replicated, and the predictor is binned otherwise, with a
 #' warning.
+#' For a \code{bayesnecgroupfit}, an explicit vector has one value per row of
+#' the original data passed to \code{bnec_group()}, in its original order. It
+#' is split by fitted level before the checks. The fitted-level factor is not
+#' the predictor grouping used within each level.
 #' @param ndraws A \code{\link[base]{numeric}} vector of length 1, the number of
 #' posterior draws to simulate from. Reduced silently to the number the fit
 #' actually holds where that is smaller.
@@ -76,6 +81,11 @@
 #' simulated proportion of zeros. A group with one observation has no standard
 #' deviation; its standard deviation statistics are \code{NA}, while its mean
 #' statistics remain available.
+#' A \code{bayesnecgroupfit} returns a \code{checkfit_group} object containing
+#' the original \code{checkfit} table for each fitted level in \code{$fits}.
+#' Each table retains its attributes, including any stored Pareto diagnostics.
+#' \code{print()} labels and prints each level; \code{plot()} returns a named
+#' list of plots with one plot per fitted level.
 #'
 #' @seealso \code{\link{pp_check}}, \code{\link{pull_best}},
 #' \code{\link{dispersion}},
@@ -86,6 +96,12 @@
 #' library(bayesnec)
 #' nec4param <- pull_out(manec_example, model = "nec4param")
 #' check_fit(nec4param)
+#' data(nec_data)
+#' nec_data$site <- rep(c("a", "b"), length.out = nrow(nec_data))
+#' grouped <- bnec_group(y ~ crf(x, "nec3param"), data = nec_data,
+#'                       group_var = "site")
+#' checks <- check_fit(grouped)
+#' plot(checks)
 #' }
 #'
 #' @export
@@ -305,6 +321,76 @@ check_fit.bayesmanecfit <- function(x, group = NULL, ndraws = 1000, seed = 10,
   out <- out[, c("model", "wi",
                  setdiff(names(out), c("model", "wi"))), drop = FALSE]
   allot_class(out, c("checkfit", "data.frame"))
+}
+
+#' @rdname check_fit
+#' @order 4
+#' @method check_fit bayesnecgroupfit
+#' @inherit check_fit description return examples
+#' @export
+check_fit.bayesnecgroupfit <- function(x, group = NULL, ndraws = 1000,
+                                      seed = 10, ...) {
+  chk_number(seed)
+  levels <- x$levels
+  if (is.null(levels)) levels <- names(x$fits)
+  if (is.null(levels) || !identical(levels, names(x$fits))) {
+    stop("The fitted levels do not match the component fits.", call. = FALSE)
+  }
+  groups <- rep(list(group), length(levels))
+  if (!is.null(group) && length(group) > 1L) {
+    if (!is.atomic(group) || !is.null(dim(group)) ||
+        length(group) != nrow(x$data) || anyNA(group)) {
+      stop("`group` must have one non-missing value per row of the original",
+           " data, in its original order.", call. = FALSE)
+    }
+    if (is.null(x$group_var) || !x$group_var %in% names(x$data)) {
+      stop("The fitted-level column is missing from the original data.",
+           call. = FALSE)
+    }
+    groups <- lapply(levels, function(level) {
+      group[as.character(x$data[[x$group_var]]) == level]
+    })
+    for (i in seq_along(levels)) {
+      fit <- x$fits[[i]]
+      n_rows <- if (inherits(fit, "bayesmanecfit")) {
+        vapply(fit$mod_fits, function(model) nrow(model$fit$data), integer(1))
+      } else {
+        nrow(fit$fit$data)
+      }
+      if (any(length(groups[[i]]) != n_rows)) {
+        stop("The original rows for fitted level \"", levels[[i]],
+             "\" do not match its fitted data.", call. = FALSE)
+      }
+    }
+  } else if (!is.null(group) &&
+             (length(group) != 1L || !is.numeric(group) || anyNA(group))) {
+    stop("`group` must be a numeric bin count or a full-input grouping vector.",
+         call. = FALSE)
+  }
+  out <- setNames(lapply(seq_along(levels), function(i) {
+    check_fit(x$fits[[i]], group = groups[[i]], ndraws = ndraws, seed = seed)
+  }), levels)
+  structure(list(fits = out, group_var = x$group_var),
+            class = "checkfit_group")
+}
+
+#' @rdname check_fit
+#' @export
+print.checkfit_group <- function(x, ...) {
+  for (level in names(x$fits)) {
+    cat("\n", x$group_var, " = ", level, "\n", sep = "")
+    print(x$fits[[level]])
+  }
+  invisible(x)
+}
+
+#' @rdname check_fit
+#' @export
+plot.checkfit_group <- function(x, ...) {
+  setNames(lapply(names(x$fits), function(level) {
+    plot(x$fits[[level]]) +
+      ggplot2::labs(title = paste0(x$group_var, ": ", level))
+  }), names(x$fits))
 }
 
 #' Print a check_fit table
