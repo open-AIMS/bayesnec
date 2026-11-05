@@ -192,6 +192,8 @@ round(colour_design, 3)
 ```{r colour-design-text, include = FALSE}
 # For example ", except at 9.6 µg/L, where 10 fragments have a colour score".
 short <- colour_design$fragments < colour_design$fragments[1]
+top_decline <- round(100 * (1 - colour_design$mean_proportion[length(doses)] /
+                               colour_design$mean_proportion[1]))
 short_text <- if (any(short)) {
   paste0(", except at ", paste(doses[short], collapse = " and "),
          " µg/L, where ", paste(colour_design$fragments[short], collapse = " and "),
@@ -239,15 +241,16 @@ to
 `r sprintf("%.2f", max(colour_2050$proportion[colour_2050$diuron == next_dose]))`),
 whereas at `r top_dose` µg/L it is
 `r sprintf("%.3f", colour_design$mean_proportion[length(doses)])`. Most of the
-observed decline is therefore between the two highest concentrations, and only
-at the highest is the mean near zero.
+observed decline is therefore between the two highest concentrations, and at
+the highest the mean is `r top_decline` per cent below the control mean.
 
-Although the mean colour at `r top_dose` µg/L is near zero, the design has no
-higher treatment to show whether the response would have remained there. We
-retain the default `asymptote_observed = TRUE`, which declares that the lower
-asymptote of the curve was reached within the tested range. This is plausible
-given a mean so close to zero, but the design cannot verify it, and it is one of
-the assumptions on which the estimates in step 5 depend. `bnec()` tests the
+The design has no treatment above `r top_dose` µg/L to show whether the
+response would have fallen further. We retain the default
+`asymptote_observed = TRUE`, which declares that the lower asymptote of the
+curve was reached within the tested range. A decline of `r top_decline` per cent
+places the EC50 inside the tested range, but the design cannot show whether the
+response had levelled off by `r top_dose` µg/L, and this is one of the
+assumptions on which the estimates in step 5 depend. `bnec()` tests the
 change between the two highest concentrations before fitting, and we read its
 message in step 2.
 
@@ -401,9 +404,8 @@ names the equations it drops, for the reasons given above. It then compares the
 mean colour at the two highest concentrations, and its message states that the
 response is still declining at the top of the series. This test cannot tell
 whether the curve flattens at `r top_dose` µg/L or continues to fall beyond it.
-We keep the default declaration because the mean response at that concentration
-is near the lower bound, while recognising that one concentration cannot
-establish a plateau. The next message describes what the declaration does to the
+We keep the default declaration for the reason given in step 1, while
+recognising that one concentration cannot establish a plateau. The next message describes what the declaration does to the
 priors: the `bot` prior is derived from the observed response, and the `nec` and
 `ec50` priors are bounded to the tested range, so that a threshold above it is
 excluded. Setting `asymptote_observed = FALSE` would be a different prior
@@ -498,8 +500,9 @@ transitions, as did `r n_divergence_fail(sampling_regular)` of the
 `r sum(sampling_regular$failed)` under the regularising priors.
 
 An equation with a `bot` parameter has to estimate the lower asymptote, or the
-shape of the lower limb, from the single concentration (`r top_dose` µg/L) at
-which the mean response is near zero, so it may sample poorly on this design. Of
+shape of the lower limb, from the response at the single highest concentration
+(`r top_dose` µg/L), where the decline has not been shown to have levelled off,
+so it may sample poorly on this design. Of
 the `r length(bot_models)` equations with a `bot` parameter,
 `r sum(bot_models %in% passed(sampling_default))` passed under the uninformative
 priors and `r sum(bot_models %in% passed(sampling_regular))` under the
@@ -1014,9 +1017,9 @@ warnings above report how many draws were censored.
 
 These values depend on the substitution of 0.1 µg/L for the control before
 logging, on `asymptote_observed = TRUE`, on the candidate set, and on the
-regularising priors. In particular, only the highest concentration has a mean
-near the lower response bound, so the EC50 rests on the assumption that the
-response had reached its lower asymptote by `r top_dose` µg/L. The flatness
+regularising priors. In particular, no concentration above `r top_dose` µg/L
+was tested, so the estimates rest on the assumption that the response had
+reached its lower asymptote by that concentration. The flatness
 message from `bnec()` and the comparison of priors above should be reported with
 the estimates.
 
