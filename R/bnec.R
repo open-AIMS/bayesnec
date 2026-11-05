@@ -70,7 +70,8 @@
 #' formula.
 #' @param prior An optional \code{\link[brms]{brmsprior}} object (or, when
 #' multiple models are fitted, a named \code{\link[base]{list}} of such objects)
-#' specifying the priors to use, passed to \code{\link[brms]{brm}}. When omitted,
+#' specifying the priors to use, passed to \code{\link[brms]{brm}}. Each model
+#' name can occur only once in the list. When omitted,
 #' \code{\link{bnec}} builds default priors according to \code{prior_type}. This
 #' is an explicit argument (rather than being passed through \code{...}) so that
 #' it is matched exactly and not confused with \code{prior_type}.

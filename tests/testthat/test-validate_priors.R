@@ -10,6 +10,14 @@ test_that("prior validation retains the supported default and list paths", {
   )
 })
 
+test_that("duplicate model names cannot silently discard a prior", {
+  first <- brms::prior_string("beta(5, 1)", nlpar = "top")
+  second <- brms::prior_string("beta(5, 2)", nlpar = "top")
+  duplicate <- list(nec3param = first, nec3param = second)
+  expect_error(validate_priors(duplicate, "nec3param"),
+               "duplicate model name `nec3param`")
+})
+
 test_that("a missing prior uses defaults and a partial prior is filled", {
   x <- nec_data$x
   y <- nec_data$y

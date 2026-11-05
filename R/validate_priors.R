@@ -12,6 +12,11 @@ check_prior_input <- function(priors, arg = "prior") {
     all(!is.na(names(priors)) & nzchar(names(priors)))
   received <- paste(class(priors), collapse = "/")
   if (named_list) {
+    duplicate <- anyDuplicated(names(priors))
+    if (duplicate) {
+      stop("Argument `", arg, "` has duplicate model name `",
+           names(priors)[duplicate], "`.", call. = FALSE)
+    }
     valid <- vapply(priors, inherits, logical(1), "brmsprior")
     if (all(valid)) {
       return(invisible(NULL))
