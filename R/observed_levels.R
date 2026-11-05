@@ -490,14 +490,27 @@ check_control_finite <- function(object, value) {
   invisible(NULL)
 }
 
-#' Draw one weighted mixture sample from each observed level
+#' Assign each posterior draw to one level of a weighted mixture
+#'
+#' Put a level's value for draw \emph{d} at position \emph{d} of the mixture,
+#' so that two mixtures of one posterior, such as two toxicants of a joint
+#' refit, pair by draw. The labels enter the seed, so that two lists of levels
+#' are not also paired by their order.
+#'
 #' @param lengths Number of available draws at each level.
 #' @param weights Observation counts at each level.
-#' @param n Total number of draws to keep.
+#' @param n Total number of draws to keep, at most \code{min(lengths)}.
 #' @param seed Seed for reproducible sampling.
-#' @return Integer indices, one vector per level.
+#' @param labels The level labels, or \code{NULL}.
+#' @return Sorted integer indices, one vector per level, which together hold
+#' each of \code{1:n} once.
 #' @noRd
-mixture_draw_indices <- function(lengths, weights, n, seed = 216) {
+mixture_draw_indices <- function(lengths, weights, n, seed = 216,
+                                 labels = NULL) {
+  if (n > min(lengths)) {
+    stop("A mixture cannot keep more draws than its shortest level holds.",
+         call. = FALSE)
+  }
   expected <- n * weights / sum(weights)
   counts <- floor(expected)
   remainder <- n - sum(counts)
@@ -505,13 +518,17 @@ mixture_draw_indices <- function(lengths, weights, n, seed = 216) {
     ord <- order(expected - counts, decreasing = TRUE)
     counts[ord[seq_len(remainder)]] <- counts[ord[seq_len(remainder)]] + 1L
   }
-  with_preserved_rng_state({
+  if (length(labels)) {
+    codes <- as.numeric(utf8ToInt(paste(labels, collapse = "\n")))
+    seed <- seed + sum(codes * seq_along(codes))
+  }
+  shuffled <- with_preserved_rng_state({
     set.seed(as.integer(seed %% .Machine$integer.max),
              sample.kind = "Rejection")
-    lapply(seq_along(lengths), function(i) {
-      sample.int(lengths[i], counts[i])
-    })
+    sample.int(n)
   })
+  owner <- factor(rep(seq_along(lengths), counts), levels = seq_along(lengths))
+  unname(lapply(split(shuffled, owner), sort))
 }
 
 #' Posterior of the observed-level mixture on one prediction grid
@@ -524,9 +541,9 @@ mixture_draw_indices <- function(lengths, weights, n, seed = 216) {
 observed_grid_posterior <- function(fit, formula, newdata, spec) {
   n <- brms::ndraws(fit)
   indices <- mixture_draw_indices(rep(n, nrow(spec$combinations)),
-                                   spec$n, n)
+                                   spec$n, n,
+                                   labels = level_labels(spec$combinations))
   out <- matrix(NA_real_, nrow = n, ncol = nrow(newdata))
-  next_row <- 1L
   for (i in seq_len(nrow(spec$combinations))) {
     idx <- indices[[i]]
     if (!length(idx)) next
@@ -534,12 +551,10 @@ observed_grid_posterior <- function(fit, formula, newdata, spec) {
     for (v in names(spec$combinations)) {
       nd[[v]] <- spec$combinations[[v]][rep(i, nrow(nd))]
     }
-    pred <- factorised_count_epred(
-      fit, formula, newdata = nd, re_formula = spec$re_formula
+    out[idx, ] <- factorised_count_epred(
+      fit, formula, newdata = nd, re_formula = spec$re_formula,
+      draw_ids = idx
     )
-    rows <- seq.int(next_row, length.out = length(idx))
-    out[rows, ] <- pred[idx, , drop = FALSE]
-    next_row <- next_row + length(idx)
   }
   out
 }
@@ -578,21 +593,19 @@ level_curve_draws <- function(object, x_vec, x_control = "own",
   if (!is.null(spec)) {
     n <- brms::ndraws(object$fit)
     indices <- mixture_draw_indices(rep(n, nrow(spec$combinations)),
-                                     spec$n, n)
+                                     spec$n, n,
+                                     labels = level_labels(spec$combinations))
     curve <- matrix(NA_real_, nrow = n, ncol = length(x_vec))
     control <- numeric(n)
     asymptote <- numeric(n)
-    next_row <- 1L
     for (i in seq_len(nrow(spec$combinations))) {
       take <- indices[[i]]
       if (!length(take)) next
       level <- observed_level_fit(object, spec, i)
       part <- level_curve_draws(level, x_vec, x_control, type, dpar)
-      rows <- seq.int(next_row, length.out = length(take))
-      curve[rows, ] <- part$curve[take, , drop = FALSE]
-      control[rows] <- part$control[take]
-      asymptote[rows] <- rep_len(part$asymptote, n)[take]
-      next_row <- next_row + length(take)
+      curve[take, ] <- part$curve[take, , drop = FALSE]
+      control[take] <- part$control[take]
+      asymptote[take] <- rep_len(part$asymptote, n)[take]
     }
     return(list(curve = curve, control = control,
                 asymptote = asymptote))

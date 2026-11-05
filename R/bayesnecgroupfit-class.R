@@ -149,20 +149,25 @@ pool_estimate_draws <- function(draws, weights, pool, seed = 216) {
   weights <- weights / sum(weights)
   if (identical(pool, "mixture")) {
     indices <- mixture_draw_indices(vapply(draws, length, integer(1)),
-                                     weights, n, seed)
+                                     weights, n, seed, labels = names(draws))
     counts <- lengths(indices)
     parts <- Map(subset_draws, draws, indices)
-    out <- unlist(lapply(parts, as.numeric), use.names = FALSE)
-    attr(out, "censored") <- concat_censoring(
-      lapply(parts, attr, "censored"), vapply(parts, length, integer(1)), out
+    stacked <- unlist(lapply(parts, as.numeric), use.names = FALSE)
+    cens <- concat_censoring(
+      lapply(parts, attr, "censored"), vapply(parts, length, integer(1)),
+      stacked
     )
-    attr(out, "level") <- rep(names(draws), counts)
-    attr(out, "draw_id") <- unlist(indices, use.names = FALSE)
+    # Put draw d at position d, so that mixtures of one posterior pair by draw.
+    by_draw <- order(unlist(indices, use.names = FALSE))
+    out <- stacked[by_draw]
+    attr(out, "censored") <- subset_censoring(cens, by_draw)
+    attr(out, "level") <- rep(names(draws), counts)[by_draw]
+    attr(out, "draw_id") <- seq_len(n)
     effects <- lapply(draws, attr, "ecnsec_relativeP")
     if (all(!vapply(effects, is.null, logical(1)))) {
       attr(out, "ecnsec_relativeP") <- unlist(Map(function(x, idx) x[idx],
                                                    effects, indices),
-                                             use.names = FALSE)
+                                             use.names = FALSE)[by_draw]
     }
     return(out)
   }

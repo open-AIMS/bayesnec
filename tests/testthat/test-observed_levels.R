@@ -66,6 +66,60 @@ test_that("NULL pool selects separate grouped and joint levels", {
   expect_equal(j$Q50, c(1, 2))
 })
 
+test_that("a mixture gives each posterior draw to one level", {
+  idx <- bayesnec:::mixture_draw_indices(c(10, 10, 10), c(1, 1, 2), 10)
+  expect_equal(sort(unlist(idx)), 1:10)
+  expect_equal(lengths(idx), c(3L, 2L, 5L))
+  expect_error(bayesnec:::mixture_draw_indices(c(5, 10), c(1, 1), 8),
+               "shortest level")
+})
+
+test_that("mixtures over different levels are not paired by level order", {
+  share <- function(labels) {
+    bayesnec:::mixture_draw_indices(c(500, 500), c(1, 1), 500,
+                                    labels = labels)
+  }
+  expect_identical(share(c("cu1", "cu2")), share(c("cu1", "cu2")))
+  first_cu <- seq_len(500) %in% share(c("cu1", "cu2"))[[1]]
+  first_zn <- seq_len(500) %in% share(c("zn1", "zn2"))[[1]]
+  expect_lt(mean(first_cu == first_zn), 0.9)
+})
+
+test_that("a mixture holds draw d of its level at position d", {
+  n <- 12L
+  out <- bayesnec:::pool_estimate_draws(
+    list(a = 100 + seq_len(n), b = 200 + seq_len(n)), c(1, 2), "mixture"
+  )
+  expect_equal(attr(out, "draw_id"), seq_len(n))
+  expect_equal(as.numeric(out) %% 100, seq_len(n))
+  expect_equal(as.numeric(out) %/% 100,
+               ifelse(attr(out, "level") == "a", 1, 2))
+  expect_equal(as.integer(table(attr(out, "level"))), c(4L, 8L))
+})
+
+test_that("mixtures over different levels of one posterior pair by draw", {
+  # As the copper and zinc plates of one joint refit: every plate of a metal
+  # shares that metal's value at draw d.
+  n <- 40L
+  cu <- stats::setNames(rep(list(seq_len(n)), 3), paste0("cu", 1:3))
+  zn <- stats::setNames(rep(list(2 * seq_len(n)), 4), paste0("zn", 1:4))
+  mix_cu <- bayesnec:::pool_estimate_draws(cu, c(1, 1, 1), "mixture")
+  mix_zn <- bayesnec:::pool_estimate_draws(zn, c(1, 2, 1, 1), "mixture")
+  expect_equal(as.numeric(mix_zn) / as.numeric(mix_cu), rep(2, n))
+})
+
+test_that("a mixture keeps each censoring flag with its draw", {
+  a <- c(1, 2, NA_real_, 4)
+  attr(a, "censored") <- bayesnec:::censoring_record(
+    3, 0, c(FALSE, FALSE, TRUE, FALSE), rep(FALSE, 4))
+  b <- c(1.5, 2.5, 2.8, 2.9)
+  out <- bayesnec:::pool_estimate_draws(list(a = a, b = b), c(1, 1),
+                                        "mixture")
+  expect_equal(attr(out, "censored")$above, is.na(out) | out > 3)
+  from_a <- attr(out, "level") == "a"
+  expect_equal(as.numeric(out)[from_a], a[from_a])
+})
+
 test_that("a numeric control changes the reference and rejects log zero", {
   skip_if(Sys.getenv("NOT_CRAN") == "")
   fit <- suppressMessages(pull_out(manec_example, model = "ecx4param"))
