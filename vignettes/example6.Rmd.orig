@@ -358,7 +358,9 @@ ECx, which will generally be close to the growth estimate, is not a reason to
 fit a hurdle model. The reasons to fit one are the survival curve, which an
 analysis of the survivors only cannot produce at all, and the effect sizes at
 doses where mortality is operating, which such an analysis systematically
-understates.
+understates. Where mortality begins before growth has fallen by half, the
+combined EC50 is also lower than the growth EC50, and *The hurdle Beta* gives a
+simulated example constructed that way.
 
 ## Model averaging
 
@@ -814,15 +816,21 @@ nec3 <- function(x, top, beta, nec) {
   top * exp(-exp(beta) * (x - nec) * (x > nec))
 }
 
-# Growth declines from a control proportion of 0.70 with a threshold at a
-# concentration of 3; cultures start crashing only from 10.
-conc <- rep(c(0, 1, 2, 4, 8, 16, 32, 64), each = 16)
-mu_true <- nec3(log(conc + 1), top = 0.70, beta = log(0.6), nec = log(3 + 1))
-p_alive <- nec3(log(conc + 1), top = 0.98, beta = log(1), nec = log(10 + 1))
+# Growth declines gradually from a control proportion of 0.70, with a threshold
+# at a concentration of 3. Every culture grows up to a concentration of 6, above
+# which they crash in increasing numbers, before growth has fallen by half.
+growth_true <- function(x) {
+  nec3(log(x + 1), top = 0.70, beta = log(0.37), nec = log(3 + 1))
+}
+survival_true <- function(x) {
+  nec3(log(x + 1), top = 1, beta = log(0.7), nec = log(6 + 1))
+}
 
-alive <- rbinom(length(conc), 1, p_alive)
+conc <- rep(c(0, 1, 2, 4, 8, 16, 32, 64), each = 16)
+alive <- rbinom(length(conc), 1, survival_true(conc))
 # 30 is the Beta precision: higher values give tighter scatter about mu.
-prop <- rbeta(length(conc), mu_true * 30, (1 - mu_true) * 30)
+prop <- rbeta(length(conc), growth_true(conc) * 30,
+              (1 - growth_true(conc)) * 30)
 
 zib_dat <- data.frame(x = conc, y = ifelse(alive == 1, prop, 0))
 ```
@@ -843,8 +851,11 @@ table(dose = zib_dat$x, measured = zib_dat$y > 0)
 The largest observed proportion is `r round(max(zib_dat$y), 2)` and no value
 is at or above 1, so there is no spike at the boundary for the Beta to
 accommodate.
-Mortality is graded across the top three doses, instead of changing directly
-to total loss, which leaves the response block with data at each dose and the
+Cultures crash at the top
+`r c("one", "two", "three", "four", "five", "six", "seven")[sum(tapply(zib_dat$y == 0, zib_dat$x, any))]`
+concentrations, in increasing numbers instead of all at once, and at least
+`r min(tapply(zib_dat$y > 0, zib_dat$x, sum))` of the 16 grew at every
+concentration, which leaves the response block with data at each dose and the
 survival threshold identifiable (table above).
 
 `bnec_hurdle()` takes the data unchanged. It selects the response family from
@@ -859,32 +870,66 @@ zib_f <- bnec_hurdle(y ~ crf(log(x + 1), model = "nec3param"),
 ```
 
 ```{r zib-table}
+# The generating EC50 is the concentration at which a generating curve falls to
+# half its value at the control. The combined curve is growth times survival.
+ec50_true <- function(f) uniroot(function(x) f(x) - f(0) / 2, c(0, 64))$root
+generating <- c(3, 6, 3, ec50_true(growth_true), ec50_true(survival_true),
+                ec50_true(function(x) growth_true(x) * survival_true(x)))
 zib_est <- rbind(
   `growth nec` = nec(zib_f, which = "growth"),
-  `survival nec` = nec(zib_f, which = "survival")
+  `survival nec` = nec(zib_f, which = "survival"),
+  `combined nec` = nec(zib_f),
+  `growth ec50` = ecx(zib_f, which = "growth", ecx_val = 50),
+  `survival ec50` = ecx(zib_f, which = "survival", ecx_val = 50),
+  `combined ec50` = ecx(zib_f, ecx_val = 50)
 )
-data.frame(generating = c(3, 10), signif(zib_est, 3))
+data.frame(generating = signif(generating, 3), signif(zib_est, 3))
 ```
 
-Both generating thresholds lie inside their 95% credible intervals (table
-above). The growth threshold has a posterior median of
-`r signif(zib_est["growth nec", 1], 3)` against a generating value of 3, with
-an interval of `r signif(zib_est["growth nec", 2], 3)` to
-`r signif(zib_est["growth nec", 3], 3)`, and the survival threshold a median of
-`r signif(zib_est["survival nec", 1], 3)` against 10, with an interval of
-`r signif(zib_est["survival nec", 2], 3)` to
-`r signif(zib_est["survival nec", 3], 3)`.
+```{r zib-text, include = FALSE}
+zib_labels <- c("growth NEC", "survival NEC", "combined no-effect estimate",
+                "growth EC50", "survival EC50", "combined EC50")
+inside <- generating >= zib_est[, "Q2.5"] & generating <= zib_est[, "Q97.5"]
+inside_text <- if (all(inside)) {
+  "Every generating value lies inside its 95% credible interval"
+} else {
+  paste0("Each generating value lies inside its 95% credible interval except ",
+         "that of the ", paste(zib_labels[!inside], collapse = " and the "))
+}
+zib_ci <- function(row) {
+  paste0(sig2(zib_est[row, "Q50"]), " (", sig2(zib_est[row, "Q2.5"]), "--",
+         sig2(zib_est[row, "Q97.5"]), ")")
+}
+same_ne <- identical(sig2(zib_est["combined nec", "Q50"]),
+                     sig2(zib_est["growth nec", "Q50"]))
+```
 
-The precision of both thresholds is limited by the design, not by the family. A
-threshold model can locate a change point only as sharply as the dose spacing
-around it allows, and here the generating growth threshold of 3 falls in the gap
-between the doses at 2 and 4. With nothing observed in between, the likelihood
-is nearly flat across that interval, and the posterior median is above the
-generating value, towards the dose of 4 at which the decline is first
-unambiguous. The survival threshold is less precise again, because mortality is
-confined to the top three doses. Where a threshold is the quantity of interest,
-placing doses around it is therefore likely to narrow its interval more than
-extra replication elsewhere.
+The combined no-effect estimate is the per-draw minimum of the growth and
+survival NECs, so its generating value is the smaller threshold, 3.
+`r inside_text` (table above). The precision of the thresholds is limited by the
+design, not by the family. A threshold model can locate a change point only as
+sharply as the dose spacing around it allows. The generating growth threshold
+of 3 falls in the gap between the doses at 2 and 4, and the survival threshold
+of 6 in the gap between 4 and 8, and with nothing observed inside a gap the
+likelihood is nearly flat across it. The survival NEC, `r zib_ci("survival nec")`,
+is the less precise of the two, because each culture contributes only whether
+it grew. Where a threshold is the quantity of interest, placing doses around it
+is therefore likely to narrow its interval more than extra replication
+elsewhere.
+
+The EC50 is where survival changes the combined estimate. Growth declines
+gradually from a concentration of 3 and has fallen by half only at about
+`r signif(generating[4], 2)`, whereas the cultures begin to crash above 6. At
+the concentration at which growth has halved, only
+`r round(100 * survival_true(generating[4]))` per cent of cultures grow at all,
+so the combined curve falls to half its control value at a lower concentration:
+the combined EC50 is
+`r zib_ci("combined ec50")`, against `r zib_ci("growth ec50")` for growth and
+`r zib_ci("survival ec50")` for survival (table above). The combined no-effect
+estimate, `r zib_ci("combined nec")`, is in contrast
+`r if (same_ne) "equal to" else "close to"` the growth NEC, because growth
+begins to decline at a lower concentration than survival, as it did for the
+snails.
 
 ```{r zib-ends, include = FALSE}
 at_64 <- data.frame(x = 64)
@@ -892,16 +937,19 @@ zib_growth_64 <- median(posterior_epred(zib_f, which = "growth", newdata = at_64
 zib_combined_64 <- median(posterior_epred(zib_f, newdata = at_64))
 ```
 
-`autoplot()` draws the three curves of the factorised fit (figure below). On the
-`log1p` axis, which is `log(x + 1)` and so the scale of the fit, the control and
-the doses of the series are spaced as they were fitted. The combined curve
-follows the growth curve up to a concentration of 8, and above it falls further
-than growth as the cultures crash. At 64, for example, the median proportion
+`autoplot()` draws the three curves of the factorised fit (figure below), and
+with `ecx = TRUE` and `ecx_val = 50` it marks the EC50 of each panel beside the
+no-effect estimate it draws by default. On the `log1p` axis, which is
+`log(x + 1)` and so the scale of the fit, the control and the doses of the
+series are spaced as they were fitted. The combined curve follows the growth
+curve up to the survival NEC, and above it falls further than growth as the
+cultures crash. At 64, for example, the median proportion
 achieved by cultures that grew is `r sig2(zib_growth_64)`, whereas the
 expected proportion per culture started is `r sig2(zib_combined_64)`.
 
-```{r zib-plot, fig.width = 10, fig.asp = 0.38, out.width = "100%", fig.cap = "The simulated hurdle Beta. Growth is the proportion achieved by cultures that grew, survival the probability of a culture growing at all, and the combined endpoint their product (the expected proportion per culture started). Concentration is drawn on a log(x + 1) axis, the scale of the fit."}
-autoplot(zib_f, which = "all", xlab = "Concentration") +
+```{r zib-plot, fig.width = 10, fig.asp = 0.38, out.width = "100%", fig.cap = "The simulated hurdle Beta. The combined endpoint (response per individual exposed) is the expected proportion per culture started, growth (response of survivors) the proportion achieved by cultures that grew, and survival the probability of a culture growing at all. Grey vertical lines mark the NEC of each panel and its credible limits (on the combined panel, the per-draw minimum of the growth and survival NECs), and blue lines the EC50 and its limits. Concentration is drawn on a log(x + 1) axis, the scale of the fit."}
+autoplot(zib_f, which = "all", ecx = TRUE, ecx_val = 50,
+         xlab = "Concentration") +
   scale_x_continuous(transform = "log1p",
                      breaks = c(0, 1, 2, 4, 8, 16, 32, 64))
 ```
