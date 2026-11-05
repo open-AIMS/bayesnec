@@ -666,8 +666,10 @@ argument, and a joint fit through `dpar`, which names the `brms` distributional
 parameter: `"mu"` for growth, `"hu"` for survival, and the default `NULL` for
 the combined endpoint. These arguments are not interchangeable, so where a
 component estimate looks like the combined one, it is useful to check
-`class(fit)`. Note also that `nec()` on a joint fit returns the combined
-no-effect estimate, and has no argument for selecting a block.
+`class(fit)`. Note also that the no-effect estimate of a joint fit is the
+combined one, with no argument for selecting a block: `nsec()` returns it for
+any pair of equations, whereas `nec()` requires a growth equation with an `nec`
+parameter.
 
 ```{r table-routes}
 fit_b <- pull_best(fit_ms)
@@ -760,14 +762,15 @@ endpoint (figure below). It has no argument that selects a block, so the growth
 and survival curves of the joint refit are compared with those of the
 factorised pair only through their EC10 (table above).
 
-```{r plot-joint, fig.width = 6, fig.asp = 0.6, fig.cap = "The combined endpoint (response per individual exposed) of the joint refit, with the median (dashed line) and 95% credible band. Points are the growth of each snail, with the deaths as zeros."}
+```{r plot-joint, fig.width = 6, fig.asp = 0.6, fig.cap = "The combined endpoint (response per individual exposed) of the joint refit, with the median (dashed line) and 95% credible band. Points are the growth of each snail, with the deaths as zeros. The grey vertical lines mark the combined NSEC and its credible limits, and the blue lines the EC10 and its limits."}
 # The default panel title names the growth equation only.
-autoplot(fit_j, nec = FALSE, x_scale = "fitted", point_alpha = 0.25) +
+autoplot(fit_j, x_scale = "fitted", ecx = TRUE, point_alpha = 0.25) +
   labs(x = "Dose", y = "Response per individual exposed") +
   theme(strip.text = element_blank())
 ```
 
 ```{r joint-text, include = FALSE}
+nsec_j <- nsec(fit_j)
 joint_15 <- median(posterior_epred(fit_j, newdata = at_15))
 ma_15 <- median(posterior_epred(fit_ms, newdata = at_15))
 joint_ma_note <- if (abs(joint_15 / ma_15 - 1) < 0.1) {
@@ -780,8 +783,10 @@ joint_ma_note <- if (abs(joint_15 / ma_15 - 1) < 0.1) {
 }
 ```
 
-At a dose of 15, where survival has fallen to about half its control value, the
-median expected growth per snail exposed is `r sig2(joint_15)` for the joint
+The grey lines mark the combined NSEC of the joint refit, `r ci_text(nsec_j)`,
+and the blue lines its combined EC10 (table above). At a dose of 15, where
+survival has fallen to about half its control value, the median expected growth
+per snail exposed is `r sig2(joint_15)` for the joint
 refit and `r sig2(ma_15)` for the model average (figure in *Model averaging*),
 against `r sig2(combined_15)` for the single factorised fit of `ecxll3` with
 `nec3param` (figure in *Endpoints of the factorised fit*). `r joint_ma_note`
