@@ -222,3 +222,22 @@ test_that("saved population displays identify their earlier prediction basis", {
   fit$pred_vals$observed_levels <- TRUE
   expect_silent(bayesnec:::warn_stale_observed_display(fit))
 })
+
+test_that("pooled observed-level ECx retains the value used by plot labels", {
+  spec <- list(combinations = data.frame(plate = c("a", "b")),
+               n = c(2L, 2L), x = list(c(0, 1), c(0, 1)),
+               excluded = character())
+  local_mocked_bindings(
+    observed_level_fit = function(object, spec, i, with_ne = FALSE) i,
+    .package = "bayesnec"
+  )
+  estimate <- bayesnec:::estimate_observed_levels(
+    list(), spec, "ecx", function(level, control, range) rep(0.5, 4),
+    pool = "mixture", posterior = FALSE,
+    prob_vals = c(0.5, 0.025, 0.975),
+    curve_args = list(ecx_val = 10, resolution = 20)
+  )
+  plotted <- bayesnec:::bind_ecx(data.frame(x = 1:3), estimate)
+  expect_equal(plotted$ecx_int[4], 10)
+  expect_equal(attr(estimate, "resolution"), 20)
+})

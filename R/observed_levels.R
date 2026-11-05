@@ -316,6 +316,15 @@ estimate_observed_levels <- function(object, spec, what, fun, pool,
                                      curve_args = NULL) {
   if (is.null(pool)) pool <- "mixture"
   pool <- validate_pool(pool, what)
+  keep_metadata <- function(result) {
+    attr(result, "toxicity_estimate") <- what
+    if (what %in% c("ecx", "nsec")) {
+      attr(result, "resolution") <- curve_args$resolution
+      key <- if (identical(what, "ecx")) "ecx_val" else "sig_val"
+      attr(result, key) <- curve_args[[key]]
+    }
+    result
+  }
   note_excluded_levels(spec)
   labels <- level_labels(spec$combinations)
   controls <- setNames(vapply(spec$x, min, numeric(1)), labels)
@@ -339,8 +348,8 @@ estimate_observed_levels <- function(object, spec, what, fun, pool,
     curve_args$x_control <- control_value
     curve_args$x_range <- range_override
     curve_args$posterior <- posterior
-    return(record_level_controls(
-      mean_curve_estimate(fits, spec$n, what, curve_args), controls
+    return(record_level_controls(keep_metadata(
+      mean_curve_estimate(fits, spec$n, what, curve_args)), controls
     ))
   }
   with_ne <- identical(what, "nec") &&
@@ -351,18 +360,18 @@ estimate_observed_levels <- function(object, spec, what, fun, pool,
   })
   names(draws) <- labels
   if (identical(pool, "none")) {
-    if (posterior) return(record_level_controls(draws, controls))
+    if (posterior) return(record_level_controls(keep_metadata(draws), controls))
     summaries <- lapply(draws, function(x) {
       out <- summarise_censored(x, prob_vals)
       names(out) <- clean_names(out)
       out
     })
     return(record_level_controls(
-      estimate_table(summaries, labels, what), controls
+      keep_metadata(estimate_table(summaries, labels, what)), controls
     ))
   }
   pooled <- pool_estimate_draws(draws, spec$n, pool)
-  if (posterior) return(record_level_controls(pooled, controls))
+  if (posterior) return(record_level_controls(keep_metadata(pooled), controls))
   out <- summarise_censored(pooled, prob_vals)
   names(out) <- clean_names(out)
   if (identical(what, "nsec") &&
@@ -371,7 +380,7 @@ estimate_observed_levels <- function(object, spec, what, fun, pool,
       attr(pooled, "ecnsec_relativeP"), probs = prob_vals, na.rm = TRUE
     )
   }
-  record_level_controls(out, controls)
+  record_level_controls(keep_metadata(out), controls)
 }
 
 #' Control concentrations used when reading separate fitted levels
