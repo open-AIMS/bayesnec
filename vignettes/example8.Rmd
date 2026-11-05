@@ -262,7 +262,8 @@ from the suffix of `conc_group`):
 
 ``` r
 zn_cu_15 <- droplevels(subset(lum31, minutes == 15)) |>
-  mutate(conc_rank = factor(as.integer(sub(".*-c", "", as.character(conc_group)))))
+  mutate(conc_rank = factor(as.integer(sub(".*-c", "",
+                                           as.character(conc_group)))))
 ```
 
 
@@ -365,7 +366,8 @@ at 15 minutes, which has one cell at each of its 11 concentrations.
 
 
 ``` r
-one_plate <- droplevels(subset(lum31, plate == "Zn 23Apr24 Rep6B" & minutes == 15))
+one_plate <- droplevels(subset(lum31, plate == "Zn 23Apr24 Rep6B" &
+                                 minutes == 15))
 ```
 
 Both fits use `model = "all"`, which `bnec()` filters to the equations valid for
@@ -377,11 +379,13 @@ is what a reader would obtain from the same call.
 
 
 ``` r
-fit_plain <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + disp("power"),
+fit_plain <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") +
+                    disp("power"),
                   data = one_plate, family = gfam,
                   seed = 228, refresh = 0)
 
-fit_ogl <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(conc_group) + disp("power"),
+fit_ogl <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") +
+                  ogl(conc_group) + disp("power"),
                 data = one_plate, family = gfam,
                 seed = 228, refresh = 0)
 ```
@@ -414,7 +418,10 @@ fit_ogl <- screen_models(fit_ogl)
 #>   -  ecxll5: 77 divergent transitions
 #> Fitted models are: nec3param nec4param nechorme ecx4param ecxwb1 ecxwb2 ecxwb1p3 ecxwb2p3 ecxll4 ecxll3 ecxhormebc4 ecxflat
 #> The fitted ecxflat curve does not fall to the control's 0.01 quantile within the predictor range for 7920 of 8000 draws. The NSEC summary is censored at 2.75: those draws keep their rank in it and are given no value.
-#> The leave-one-group-out score has Pareto k above 0.7 for 2 of 11 levels of conc_group in ecxwb1 (weight 0.94); 3 of 11 levels of conc_group in ecxll3 (weight 0.032); 3 of 11 levels of conc_group in ecxhormebc4 (weight 0.02). The scores of those levels are approximate; loo_controls = list(refit = TRUE) replaces them by refitting the equation without each level.
+#> The leave-one-group-out score has Pareto k at or above 0.7 for 2 of 11 levels of conc_group in ecxwb1 (weight
+#> 0.94); 3 of 11 levels of conc_group in ecxll3 (weight 0.032); 3 of 11 levels of conc_group in ecxhormebc4 (weight
+#> 0.02). The affected scores are approximate; loo_controls = list(refit = TRUE) replaces them by refitting the
+#> equation without each level.
 ```
 
 
@@ -426,7 +433,7 @@ of `fit_ogl` are computed by leaving out each cell whole (its summary prints
 "each level of conc_group left out"), whereas those of `fit_plain` leave out one
 observation at a time, so weights are compared within a fit and not between
 these fits. The last message of the screen notes that the left-out score is
-approximate (Pareto *k* above 0.7) for 2 of the 11 cells
+approximate (Pareto *k* at or above 0.7) for 2 of the 11 cells
 under `ecxwb1`, and `loo_controls = list(refit = TRUE)` would replace
 those scores by refitting the equation without each such cell.
 
@@ -450,8 +457,12 @@ nsec_plain <- nsec(fit_plain)
 nsec_ogl <- nsec(fit_ogl)
 ```
 
-The table below gives each fit's EC10 and NSEC, and the weight, EC10, NSEC and
-cell SD of each equation given at least 0.01 of the weight.
+`lum31` comes from an acute assay, in which luminescence is read 15 and 30
+minutes after exposure. Low-effect and no-effect estimates such as the EC10 and
+NSEC are not usually appropriate endpoints for such an assay, and we report them
+here only to illustrate the methods. The table below gives each fit's EC10 and
+NSEC, and the weight, EC10, NSEC and cell SD of each equation given at least
+0.01 of the weight.
 
 
 
@@ -581,25 +592,29 @@ because it is the structure fitted to each metal below.
 
 
 ``` r
-fit_pooled <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + disp("power"),
+fit_pooled <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") +
+                     disp("power"),
                    data = zn15, family = gfam,
                    seed = 228, refresh = 0)
 
-fit_plate <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + disp("power"),
+fit_plate <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") +
+                    ogl(plate) + disp("power"),
                   data = zn15, family = gfam,
                   seed = 228, refresh = 0)
 ```
 
 
 ``` r
-fit_pgl <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + pgl(plate) + disp("power"),
+fit_pgl <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") +
+                  pgl(plate) + disp("power"),
                 data = zn15, family = gfam,
                 seed = 228, refresh = 0)
 ```
 
 
 ``` r
-fit_pgl_cell <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + pgl(plate) + ogl(conc_group) + disp("power"),
+fit_pgl_cell <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") +
+                       pgl(plate) + ogl(conc_group) + disp("power"),
                      data = zn15, family = gfam,
                      seed = 228, refresh = 0)
 ```
@@ -781,7 +796,8 @@ zinc rises above its control at low concentrations.
 
 ``` r
 fits_tox <- bnec_group(
-  rlu_cens | cens(censoring) ~ crf(log(conc), "all") + pgl(plate) + ogl(conc_group) + disp("power"),
+  rlu_cens | cens(censoring) ~ crf(log(conc), "all") +
+    pgl(plate) + ogl(conc_group) + disp("power"),
   data = zn_cu_15, group_var = "toxicant", family = gfam,
   seed = 228, refresh = 0)
 ```
@@ -839,7 +855,7 @@ arm structure in panel D of the plate figure, for the reason given there. Each
 panel has its own response axis, because the plates
 of each metal were read at different gains, and their relative light units are
 not comparable between metals. Under the equation given the most weight, the
-left-out score is approximate (Pareto *k* above 0.7) for 22 of
+left-out score is approximate (Pareto *k* at or above 0.7) for 22 of
 the 176 copper cells and 22 of the 187 zinc cells, so these
 weights are approximate as well, and `loo_controls = list(refit = TRUE)` would
 replace the flagged scores by refitting the equation once for each flagged cell.
@@ -923,9 +939,12 @@ default would fit one for each level:
 
 
 ``` r
-fits_tox_joint <- bnec_joint(fits_tox, model = "ecxll5",
-                             formula = rlu_cens | cens(censoring) ~ crf(log(conc), "ecxll5") + pgl(gr(plate, by = toxicant)) + ogl(gr(conc_group, by = toxicant)) + (ec50 | batch) + disp("power"),
-                             disp_by_level = FALSE, seed = 228, refresh = 0)
+fits_tox_joint <- bnec_joint(
+  fits_tox, model = "ecxll5",
+  formula = rlu_cens | cens(censoring) ~ crf(log(conc), "ecxll5") +
+    pgl(gr(plate, by = toxicant)) + ogl(gr(conc_group, by = toxicant)) +
+    (ec50 | batch) + disp("power"),
+  disp_by_level = FALSE, seed = 228, refresh = 0)
 ```
 
 

@@ -319,6 +319,8 @@ exp_5_screened <- screen_models(exp_5)
 #> The fitted ecxflat curve does not fall to the control's 0.01 quantile within the predictor range for 1584 of 1600 draws. The NSEC summary is censored at 10: those draws keep their rank in it and are given no value.
 ```
 
+
+
 Here `screen_models()` dropped 3 of the 14 candidates, and its message names each of them and the diagnostic it failed. The screened object `exp_5_screened` contains only the candidates that passed, while `exp_5` still contains all of them.
 
 ### Extracting toxicity values
