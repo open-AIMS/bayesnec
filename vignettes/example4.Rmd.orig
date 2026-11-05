@@ -178,10 +178,39 @@ discarding its fits for the other six.
 fits_herb <- screen_models(fits_herb, group_action = "per_level")
 ```
 
+```{r herb-k-text, include = FALSE}
+# The equations a screen names for Pareto k: at least 0.01 of the weight and
+# at least one observation with k at or above 0.7 in the leave-one-out score.
+k_named <- function(set) {
+  wi <- setNames(set$mod_stats$wi, set$mod_stats$model)
+  names(wi)[wi >= 0.01 & vapply(names(wi), function(m) {
+    k <- set$mod_fits[[m]]$fit$criteria$loo$diagnostics$pareto_k
+    any(k >= 0.7, na.rm = TRUE)
+  }, logical(1))]
+}
+and_list <- function(x) {
+  if (length(x) < 2) x else paste(paste(x[-length(x)], collapse = ", "), "and",
+                                  x[length(x)])
+}
+herb_k <- unlist(Map(function(f, lev) {
+  hit <- k_named(f)
+  if (length(hit) > 0) paste0("`", hit, "` for ", lev)
+}, fits_herb$fits, fits_herb$levels))
+herb_k_text <- if (length(herb_k) > 0) {
+  paste0(" The messages also note that the leave-one-out score has a Pareto *k* ",
+         "at or above 0.7 for at least one observation under ",
+         and_list(herb_k), ", so the weights of ",
+         if (length(herb_k) == 1) "that equation" else "those equations",
+         " are approximate (see the [Multi model usage][e2] vignette).")
+} else {
+  ""
+}
+```
+
 The screen removes `ecxll5` for atrazine (30 divergent transitions) and for
 simazine (113 divergent transitions and an effective sample size, or ESS, of
 163), so each herbicide keeps
-eleven or twelve equations of `"decline"`.
+eleven or twelve equations of `"decline"`.`r herb_k_text`
 
 `summary()` on a `bayesnecgroupfit` prints a full summary for each level, which
 for seven herbicides is several hundred lines. Here we collate only the model
@@ -441,8 +470,8 @@ removed_text <- if (length(removed)) {
 ```
 
 The screen removes `r removed_text`, and the messages above give the criterion
-that each failed. Where the leave-one-group-out score has a Pareto *k* above 0.7
-for a chamber, the messages also name the equation, and the contribution of
+that each failed. Where the leave-one-group-out score has a Pareto *k* at or above
+0.7 for a chamber, the messages also name the equation, and the contribution of
 that chamber to the model weights is approximate.
 `loo_controls = list(refit = TRUE)` would replace it by refitting each equation
 without the chamber, which we have not done here.

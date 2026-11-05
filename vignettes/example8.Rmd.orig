@@ -458,7 +458,7 @@ of `fit_ogl` are computed by leaving out each cell whole (its summary prints
 "each level of conc_group left out"), whereas those of `fit_plain` leave out one
 observation at a time, so weights are compared within a fit and not between
 these fits. The last message of the screen notes that the left-out score is
-approximate (Pareto *k* above 0.7) for `r sum(k_top_ogl > 0.7)` of the 11 cells
+approximate (Pareto *k* at or above 0.7) for `r sum(k_top_ogl >= 0.7)` of the 11 cells
 under `r eq(top_ogl)`, and `loo_controls = list(refit = TRUE)` would replace
 those scores by refitting the equation without each such cell.
 
@@ -889,7 +889,7 @@ level_ec10 <- ecx(fits_tox, ecx_val = 10)
 level_nsec <- nsec(fits_tox)
 level_top <- vapply(level_weights, function(w) names(which.max(w)), character(1))
 k_top <- mapply(function(f, m) {
-  sum(f$mod_fits[[m]]$fit$criteria$logo$diagnostics$pareto_k > 0.7)
+  sum(f$mod_fits[[m]]$fit$criteria$logo$diagnostics$pareto_k >= 0.7)
 }, level_fits, level_top)
 level_text <- function(tab, l) {
   ci(tab[tab$level == l, c("Q50", "Q2.5", "Q97.5")])
@@ -940,7 +940,7 @@ arm structure in panel D of the plate figure, for the reason given there. Each
 panel has its own response axis, because the plates
 of each metal were read at different gains, and their relative light units are
 not comparable between metals. Under the equation given the most weight, the
-left-out score is approximate (Pareto *k* above 0.7) for `r k_top[["Cu"]]` of
+left-out score is approximate (Pareto *k* at or above 0.7) for `r k_top[["Cu"]]` of
 the 176 copper cells and `r k_top[["Zn"]]` of the 187 zinc cells, so these
 weights are approximate as well, and `loo_controls = list(refit = TRUE)` would
 replace the flagged scores by refitting the equation once for each flagged cell.

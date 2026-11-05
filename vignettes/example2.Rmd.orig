@@ -165,7 +165,32 @@ The `screen_models()` function screens the candidate models on these three diagn
 exp_5_screened <- screen_models(exp_5)
 ```
 
-Here `screen_models()` dropped `r sum(check_sampling(exp_5)$failed)` of the `r nrow(check_sampling(exp_5))` candidates, and its message names each of them and the diagnostic it failed. The screened object `exp_5_screened` contains only the candidates that passed, while `exp_5` still contains all of them.
+```{r screen-k, include = FALSE}
+# The equations screen_models() names for Pareto k: at least 0.01 of the weight
+# and at least one observation with k at or above 0.7.
+wi_screened <- setNames(exp_5_screened$mod_stats$wi,
+                        exp_5_screened$mod_stats$model)
+k_named <- names(wi_screened)[wi_screened >= 0.01 & vapply(
+  names(wi_screened), function(m) {
+    k <- exp_5_screened$mod_fits[[m]]$fit$criteria$loo$diagnostics$pareto_k
+    any(k >= 0.7, na.rm = TRUE)
+  }, logical(1))]
+k_text <- if (length(k_named) > 0) {
+  paste0(" A further message names ",
+         if (length(k_named) == 1) "the equation" else "the equations",
+         " given at least 0.01 of the weight whose leave-one-out score has a ",
+         "Pareto *k* at or above 0.7 for at least one observation (",
+         paste0("**", k_named, "**", collapse = ", "), "). The scores of those ",
+         "observations are approximate, and so are the model weights computed ",
+         "from them. Once this has been assessed, ",
+         "`loo_controls = list(report_k = FALSE)` silences the message without ",
+         "changing the scores or the weights.")
+} else {
+  ""
+}
+```
+
+Here `screen_models()` dropped `r sum(check_sampling(exp_5)$failed)` of the `r nrow(check_sampling(exp_5))` candidates, and its message names each of them and the diagnostic it failed.`r k_text` The screened object `exp_5_screened` contains only the candidates that passed, while `exp_5` still contains all of them.
 
 ### Extracting toxicity values
 

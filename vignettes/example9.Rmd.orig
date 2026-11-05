@@ -414,7 +414,7 @@ and does not change it.
 The messages after fitting concern the fitted equations. They report, where any
 occur, the draws for which a curve does not fall to the NSEC reference within
 the tested range (those draws are censored in the NSEC summary), the chambers
-whose Pareto *k* exceeds 0.7 (step 3), and the equations whose control mean or
+whose Pareto *k* is at or above 0.7 (step 3), and the equations whose control mean or
 spread is not reproduced within 15% (step 4).
 
 ```{r coral-record}
@@ -655,10 +655,10 @@ Because `ogl(chamber)` is in the formula, the default model weights instead
 leave out a whole chamber at a time, and are computed from those
 leave-one-chamber-out scores by the default pseudo-BMA method. Pareto *k*
 assesses whether the importance-sampling approximation to each left-out score is
-reliable, and the score of a chamber with *k* above 0.7 is unreliable until an
+reliable, and the score of a chamber with *k* at or above 0.7 is unreliable until an
 exact refit replaces it. `check_fit()` returns these diagnostics for each
 equation as its `"pareto"` attribute, and we show the model weight, the number
-of chambers above 0.7 and the largest *k* for each retained equation. This check
+of chambers at or above 0.7 and the largest *k* for each retained equation. This check
 belongs after screening, because the weights of models whose posterior was not
 sampled adequately should not be interpreted.
 
@@ -679,8 +679,8 @@ round_cols(pareto)
 ```
 
 In this run `r sum(pareto$n_high_k > 0)` of the `r nrow(pareto)` retained
-equations had at least one chamber with *k* above 0.7 (the largest *k* was
-`r sprintf("%.2f", max(pareto$max_k))`). Where any chamber exceeds the cutoff,
+equations had at least one chamber with *k* at or above 0.7 (the largest *k* was
+`r sprintf("%.2f", max(pareto$max_k))`). Where any chamber reaches the cutoff,
 `amend(x, loo_controls = list(refit = TRUE))` refits each affected equation
 without that chamber and recomputes the weights from the exact scores. The chunk
 below does so for each set that needs it, and gives the final weights.
@@ -1023,7 +1023,7 @@ where the default fit had already used 0.99 (S3). Posterior predictions from the
 retained equations were combined using pseudo-Bayesian model averaging weights
 [@Yao2018] calculated from leave-one-chamber-out cross-validation
 [@vehtari2017], with exact refits for chambers where the Pareto *k* diagnostic
-exceeded 0.7 (S3). The fit of each retained equation was assessed by comparing
+was at or above 0.7 (S3). The fit of each retained equation was assessed by comparing
 the observed mean and standard deviation of the response at each concentration
 with those simulated from the posterior (S4). The sensitivity of the estimates
 to the priors was assessed by also fitting the candidate set with the package's
@@ -1208,6 +1208,30 @@ fit_nass <- bnec(suc | trials(tot) ~ crf(dose, model = "decline"),
 ```{r nass-screen-models, message = TRUE}
 nass_screened <- screen_models(fit_nass)
 ```
+
+```{r nass-k-text, include = FALSE}
+# The equations a screen names for Pareto k: at least 0.01 of the weight and
+# at least one observation with k at or above 0.7 in the leave-one-out score.
+k_named <- function(set) {
+  wi <- setNames(set$mod_stats$wi, set$mod_stats$model)
+  names(wi)[wi >= 0.01 & vapply(names(wi), function(m) {
+    k <- set$mod_fits[[m]]$fit$criteria$loo$diagnostics$pareto_k
+    any(k >= 0.7, na.rm = TRUE)
+  }, logical(1))]
+}
+nass_k <- k_named(nass_screened)
+nass_k_text <- if (length(nass_k) > 0) {
+  paste0("The screen's messages also note that the leave-one-out score has a ",
+         "Pareto *k* at or above 0.7 for at least one row under ",
+         name_list(nass_k), ", so the weights of ",
+         if (length(nass_k) == 1) "that equation" else "those equations",
+         " are approximate.")
+} else {
+  ""
+}
+```
+
+`r nass_k_text`
 
 `summary()` of the fitted set gives the dispersion statistic for each equation,
 including those the screen removed. The table below takes those columns, and
@@ -1452,7 +1476,7 @@ that `r nrow(bnec_record(set_const)$excluded)` were excluded before fitting,
 and the screen removed `r sum(check_sampling(set_const)$failed)` more (steps 2
 and 3 describe all three mechanisms). Because a cell here is a whole
 concentration, leaving out one cell removes a point on the curve, and the Pareto
-*k* of such a score is often above 0.7 (the model-set check below counts the
+*k* of such a score is often at or above 0.7 (the model-set check below counts the
 retained equations with at least one such cell). Where it is, the model weights
 are approximate. `amend(loo_controls = list(refit = TRUE))` would replace those
 scores by exact refits, as in step 3, which requires one refit of an equation
@@ -1632,7 +1656,7 @@ below 0.5 in `r sum(scale_summary$ctrl_ratio_const < 0.5, na.rm = TRUE)` of the
 the sub-model in `r sum(scale_summary$ctrl_ratio_power < 0.5, na.rm = TRUE)` of
 `r sum(!is.na(scale_summary$ctrl_ratio_power))`. These counts show how far the
 discrepancy found in the highest-weighted equation is shared by the rest of each
-set. At least one cell has Pareto *k* above 0.7 in `r high_k[["const"]]` of the
+set. At least one cell has Pareto *k* at or above 0.7 in `r high_k[["const"]]` of the
 retained equations under constant dispersion, and in `r high_k[["power"]]` under
 the sub-model.
 
