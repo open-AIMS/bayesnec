@@ -152,6 +152,52 @@ test_that("unequal counts match in the largest share they allow", {
   expect_lte(abs(sum(partial$Cu == partial$Zn) - n / 3), 1)
 })
 
+test_that("unmatched draws are paired independently of their labels", {
+  # Copper in b1 to b3 and zinc in b1, b4 and b5: only b1 can be matched, and
+  # copper's b2 and b3 meet zinc's b4 and b5 at random.
+  n <- 6000
+  cu <- c("batch=b1", "batch=b2", "batch=b3")
+  zn <- c("batch=b1", "batch=b4", "batch=b5")
+  a <- bayesnec:::coupled_draw_assignment(n, list(c(1, 1, 1), c(1, 1, 1)),
+                                          list(cu, zn))
+  pair <- table(cu[a[[1]]], zn[a[[2]]]) / n
+  expect_lte(abs(pair["batch=b1", "batch=b1"] - 1 / 3), 1 / n)
+  off <- pair[c("batch=b2", "batch=b3"), c("batch=b4", "batch=b5")]
+  expect_equal(as.numeric(off), rep(1 / 6, 4), tolerance = 0.1)
+})
+
+test_that("a level without a shared value does not stop the others matching", {
+  n <- 4000
+  spec <- function(batches, counts, metal) {
+    list(n = counts, terms = list(
+      "plate:tox" = paste0("plate=", metal, seq_along(counts), ", tox=", metal),
+      batch = paste0("batch=", batches)
+    ))
+  }
+  matched <- function(specs) {
+    keys <- bayesnec:::shared_term_keys(specs)
+    a <- bayesnec:::coupled_draw_assignment(n, lapply(specs, `[[`, "n"),
+                                            keys)
+    batch <- lapply(1:2, function(j) specs[[j]]$terms$batch[a[[j]]])
+    sum(batch[[1]] == batch[[2]])
+  }
+  no_batch <- list(n = c(1, 1), terms = list(
+    "plate:tox" = c("plate=Ni1, tox=Ni", "plate=Ni2, tox=Ni")
+  ))
+  other_batches <- spec(c("b4", "b5"), c(1, 1), "Ni")
+  partial <- list(spec(c("b1", "b2"), c(1, 1), "Cu"),
+                  spec(c("b2", "b3"), c(1, 1), "Zn"))
+  for (third in list(NULL, no_batch, other_batches)) {
+    expect_lte(abs(matched(c(partial, list(third))) - n / 2), 1)
+  }
+  unequal <- list(spec(c("b1", "b2", "b3"), c(2, 2, 4), "Cu"),
+                  spec(c("b1", "b2", "b3"), c(3, 3, 4), "Zn"))
+  bound <- sum(pmin(c(2, 2, 4) / 8, c(3, 3, 4) / 10))
+  for (third in list(NULL, no_batch, other_batches)) {
+    expect_lte(abs(matched(c(unequal, list(third))) - n * bound), 1)
+  }
+})
+
 test_that("matching leaves each level's own shares unchanged", {
   n <- 4000
   for (zn in list(c(2, 2, 2), c(6, 1, 1))) {

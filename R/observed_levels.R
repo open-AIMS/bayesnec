@@ -624,12 +624,16 @@ mixture_draw_indices <- function(lengths, weights, n, seed = 216) {
 #'
 #' Each set gives its keys draws in proportion to their counts, and each key's
 #' draws to its combinations in proportion to theirs, at uniformly random
-#' positions. Across sets, each key first gets the minimum of its draw counts
-#' over the sets, at positions common to all, and the remaining draws are
-#' given out in the byte order of the keys at common random positions.
-#' Two sets are therefore matched at \code{sum(pmin(n1, n2))} draws, the most
-#' their counts allow. Within a key, each set chooses its combinations
-#' independently of the others.
+#' positions. A key held by two or more sets gets the smallest of those sets'
+#' draw counts at random positions still free in all of them. Keys held by
+#' more sets are matched first, ties in the byte order of the keys, and the
+#' pass is repeated while any key has draws left in two or more sets. Each set
+#' then puts its remaining draws at its free positions in a random order of its
+#' own, so unmatched draws are paired independently. Two
+#' sets are therefore matched at \code{sum(pmin(n1, n2))} draws, the most their
+#' counts allow, and a set that lacks a key does not reduce the matching of the
+#' others on it. Within a key, each set chooses its combinations independently
+#' of the others.
 #'
 #' @param n Number of posterior draws.
 #' @param weights A list with the observation counts of each set's
@@ -653,23 +657,39 @@ coupled_draw_assignment <- function(n, weights, keys, seed = 216) {
   keys <- lapply(keys, match, table = key_set)
   # Round at the key first, so that sets with the same proportions over the
   # keys get the same number of draws on each key.
-  key_counts <- lapply(seq_along(present), function(j) {
+  left <- do.call(rbind, lapply(seq_along(present), function(j) {
     mixture_counts(vapply(seq_along(key_set), function(k) {
       sum(weights[[j]][keys[[j]] == k])
     }, numeric(1)), n)
-  })
-  common <- do.call(pmin, key_counts)
+  }))
   out <- vector("list", length(present))
   with_preserved_rng_state({
     set.seed(seed, sample.kind = "Rejection")
     position <- sample.int(n)
+    key_at <- matrix(0L, nrow = n, ncol = length(present))
+    # Repeat, because a key matched over three sets can still be matched over
+    # the two of them that have draws left on it.
+    repeat {
+      holders <- colSums(left > 0L)
+      matched <- 0L
+      for (k in order(-holders, seq_along(key_set))) {
+        who <- which(left[, k] > 0L)
+        if (length(who) < 2L) next
+        free <- position[rowSums(key_at[position, who, drop = FALSE]) == 0L]
+        take <- free[seq_len(min(left[who, k], length(free)))]
+        key_at[take, who] <- k
+        left[who, k] <- left[who, k] - length(take)
+        matched <- matched + length(take)
+      }
+      if (matched == 0L) break
+    }
     for (j in seq_along(present)) {
-      key_at <- integer(n)
-      key_at[position] <- c(rep(seq_along(key_set), common),
-                            rep(seq_along(key_set), key_counts[[j]] - common))
+      open <- which(key_at[, j] == 0L)
+      key_at[open[sample.int(length(open))], j] <-
+        rep(seq_along(key_set), left[j, ])
       combination <- integer(n)
       for (k in seq_along(key_set)) {
-        draws <- which(key_at == k)
+        draws <- which(key_at[, j] == k)
         if (!length(draws)) next
         own <- which(keys[[j]] == k)
         counts <- mixture_counts(weights[[j]][own], length(draws))
