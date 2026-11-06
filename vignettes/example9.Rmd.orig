@@ -879,8 +879,8 @@ regularising priors, so the analysis continues with the `r final_label` priors.
 Sampler diagnostics concern the posterior draws, whereas `check_fit()` compares
 the observed and simulated response within each concentration. We apply it
 first to the highest-weighted equation of the set chosen in step 4, and then to
-each retained equation. `check_fit()` holds a censored reading at its bound in
-both the observed and the simulated statistics, and gives the number of such
+each retained equation. For a censored reading, `check_fit()` uses the bound in
+both the observed and the simulated statistics, and it gives the number of such
 readings in each group as `n_cens`. `r cens_check_text`
 
 ## Spread by concentration
