@@ -71,15 +71,16 @@ print.necsummary <- function(x, ...) {
     cat("NB: Model", x$model, "is an ECx model, thus",
         "the NEC estimate is an\n", "   NSEC surrogate.\n", sep = " ")
   } else if (identical(x$ne_type, "NSEC")) {
-    cat("NB: The sampled nec parameter marks the end of a potential rise. The",
-        " no-effect estimate is the NSEC on the declining limb;",
-        " use curve_params() for the breakpoint.\n")
+    cat("NB: The nec parameter of ", x$model, " marks where its decline\n",
+        "    term starts. The no-effect estimate is the NSEC read off the\n",
+        "    fitted curve; curve_params() returns the nec parameter.\n",
+        sep = "")
   } else if (identical(x$ne_type, "N(S)EC")) {
-    # Reachable only for a two-block fit whose blocks use different equation
-    # types, such as a threshold response block with a smooth survival block.
-    cat("NB: The two blocks of this fit use a threshold model on one and a\n",
-        "   smooth model on the other, so the combined estimate is a\n",
-        "   combination of a NEC and a NSEC.\n", sep = "")
+    # Reachable only for a two-block fit where one block samples its NEC and
+    # the other uses a smooth or hormesis threshold equation.
+    cat("NB: One block of this fit samples a NEC and the other is read off\n",
+        "    its curve, so the combined estimate is a combination of a NEC\n",
+        "    and an NSEC.\n", sep = "")
   }
   print_mat(x$nec_vals)
   print_censoring_note(attr(x$nec_vals, "censored_summary"),

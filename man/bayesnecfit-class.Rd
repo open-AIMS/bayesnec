@@ -84,8 +84,9 @@ no-effect toxicity estimate. A monotone threshold equation contributes its
 sampled no-effect-concentration (\code{NEC}, see Fox 2010). A smooth or
 hormesis threshold equation contributes a curve-read
 no-significant-effect-concentration (\code{NSEC}, see Fisher and Fox 2023).
-A hormesis threshold equation still samples a \code{nec} parameter at the
-end of its potential rising limb; \code{\link{curve_params}} returns it.}
+A hormesis threshold equation still samples a \code{nec} parameter, the
+concentration at which its decline term starts; \code{\link{curve_params}}
+returns it.}
 }}
 
 \references{

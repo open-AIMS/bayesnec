@@ -72,13 +72,13 @@ The combined no-effect concentration is
 \code{pmin(ne_growth, ne_survival)} evaluated per posterior draw, on the
 scale the model was fitted on. If both components use monotone threshold
 equations, their product is flat below both thresholds and departs that
-plateau at the smaller one. With a smooth or hormesis equation, the minimum
-is a componentwise no-effect estimate; the NSEC of the combined response
-curve can differ. The minimum, and the rule for censored draws below, apply
-on the fitted scale, and the result is then returned on the scale
-\code{xform} names. Under a
-decreasing transformation in \code{crf()}, such as \code{crf(I(-x))}, the
-smaller fitted-scale value is the larger of the two recorded values.
+plateau at the smaller one. With a smooth or hormesis threshold equation,
+the minimum is a componentwise no-effect estimate; the NSEC of the combined
+response curve can differ. The minimum, and the rule for censored draws
+below, apply on the fitted scale, and the result is then returned on the
+scale \code{xform} names. Under a decreasing transformation in
+\code{crf()}, such as \code{crf(I(-x))}, the smaller fitted-scale value is
+the larger of the two recorded values.
 An \code{xform} changes the scale the value is reported on, not which
 component estimate determines it.
 
@@ -104,16 +104,16 @@ is what the hurdle model adds over a survivors-only analysis.
 
 As for \code{\link{nec}} on any fit, what is returned is a sampled NEC only
 where the underlying equations are monotone threshold models. A component
-whose model set contains smooth or hormesis equations contributes NSEC draws
-instead. A combination of NEC and NSEC draws is labelled N(S)EC; a message
-is emitted and \code{summary} labels each component. A component fitted to
-a single smooth equation, such as \code{ecx4param}, contributes the NSEC
-draws stored when it
-was fitted, although \code{nec()} refuses that equation fitted on its own
-with \code{\link{bnec}}. Only the component or components that \code{which}
-names are computed, so \code{which = "growth"} reads nothing from the
-survival component. \code{\link{nsec}} with
-\code{which = "combined"} is the alternative that reads a single value off
-the combined curve itself rather than taking the minimum of two component
-estimates, and it does not reduce to the growth value.
+whose model set contains smooth or hormesis threshold equations contributes
+NSEC draws instead. A combination of NEC and NSEC draws is labelled N(S)EC;
+a message is emitted and \code{summary} labels each component. A component
+fitted to a single smooth equation, such as \code{ecx4param}, contributes
+the NSEC draws stored when it was fitted, although \code{nec()} refuses
+that equation fitted on its own with \code{\link{bnec}}. Only the component
+or components that \code{which} names are computed, so
+\code{which = "growth"} reads nothing from the survival component.
+\code{\link{nsec}} with \code{which = "combined"} is the alternative that
+reads a single value off the combined curve itself rather than taking the
+minimum of two component estimates, and it does not reduce to the growth
+value.
 }

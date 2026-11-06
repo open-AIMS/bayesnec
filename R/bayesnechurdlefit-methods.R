@@ -429,6 +429,7 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
                                       ecx_vals = c(10, 50, 90)) {
   chk_lgl(ecx)
   chk_numeric(ecx_vals)
+  warn_stale_ne_type(object)
   # The dots go to nec() and, with ecx = TRUE, to ecx(), so look for
   # posterior = TRUE as each of them will match it.
   check_summary_posterior(nec, c(list(which = "combined"), list(...)))
@@ -458,7 +459,7 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
   # nec_row() drops x_range, which cannot change a no-effect estimate read
   # from the stored posterior; it sets the grid of the ECx rows only.
   nec_row <- function(w, ..., x_range) {
-    suppressMessages(nec(object, which = w, ...))
+    without_stale_ne_warning(suppressMessages(nec(object, which = w, ...)))
   }
   nes <- lapply(c("combined", "growth", "survival"), function(w) {
     nec_row(w, ...)
@@ -535,9 +536,9 @@ print.hurdlesummary <- function(x, ...) {
   print_row_censoring_notes(attr(ne_mat, "censored_summary"),
                             rownames(ne_mat))
   if (any(x$ne_types != "NEC", na.rm = TRUE)) {
-    cat("\nNSEC values come from smooth or hormesis equations; N(S)EC",
-        " combines\nsampled NEC and curve-read NSEC estimates",
-        " (Fisher et al. 2023).\n")
+    cat("\nNSEC values come from smooth or hormesis threshold equations;",
+        "N(S)EC\ncombines sampled NEC and curve-read NSEC estimates",
+        "(Fisher et al. 2023).\n")
   }
   if (!is.null(x$ecs)) {
     cat("\nECx estimates\n")
@@ -1172,6 +1173,7 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
   }
   axis_x <- hurdle_axis_xform(x, xform)
   if (add_nec) {
+    warn_stale_ne_type(x)
     ne_map <- hurdle_ne_axis_map(x, xform)
   }
   for (w in panels) {
@@ -1190,7 +1192,9 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
       # Give nec() the map rather than apply it to the summary, so that a
       # decreasing map keeps the interval and its censoring marks in order.
       # Suppress its messages, which describe the estimate, not the figure.
-      ne <- suppressMessages(nec(x, which = w, xform = ne_map))
+      ne <- without_stale_ne_warning(
+        suppressMessages(nec(x, which = w, xform = ne_map))
+      )
       abline(v = ne, col = "red", lty = c(1, 3, 3))
       legend("topright", bty = "n", lty = 1, col = "red",
              legend = paste0("N(S)EC: ", bound_prefix(ne, 1),

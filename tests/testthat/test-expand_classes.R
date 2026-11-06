@@ -89,6 +89,25 @@ test_that("expand_ecx sig_val argument work for ecx model", {
   expect_gt(ecx_fit_a$ne["Estimate"], ecx_fit_b$ne["Estimate"])
 })
 
+test_that("a stored smooth NSEC reads its control where nsec() does", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # nsec() reads the control at the lowest observed concentration, whether
+  # the x_range starts above it or below it.
+  x_obs <- range(fit2$fit$data$x)
+  for (rng in list(c(x_obs[1] + 0.3, x_obs[2]), c(x_obs[1] - 0.5, x_obs[2]))) {
+    stored <- expand_nec(fit2, fit2$bayesnecformula, model = "ecx4param",
+                         x_range = rng, resolution = 200) |>
+      suppressWarnings() |>
+      suppressMessages()
+    stored <- bayesnec:::allot_class(stored, c("bayesnecfit", "bnecfit"))
+    direct <- suppressWarnings(nsec(stored, x_range = rng, resolution = 200,
+                                    posterior = TRUE, xform = identity))
+    expect_equal(as.numeric(stored$ne_posterior), as.numeric(direct))
+  }
+})
+
 tt1 <- manec_example$mod_fits
 formulas <- lapply(tt1, `[[`, "bayesnecformula")
 test_null <- NULL

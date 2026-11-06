@@ -576,33 +576,47 @@ extrapolated_manec_ne <- function(object, lims, bounds, sig_val, resolution) {
   mark_extrapolated(out)
 }
 
-#' The class of no-effect estimate each equation of a set contributes
+#' The no-effect type each equation of a set recorded
 #'
-#' Uses each component's stored type where available, falling back to its
-#' equation name for a component without that record. This keeps a hormesis
-#' threshold equation's curve-read NSEC distinct from its sampled breakpoint.
+#' The type \code{expand_manec()} stored on each component. A set saved
+#' without those types built its stored draws by whether each equation has a
+#' \code{nec} parameter, so that rule labels them until \code{amend()}
+#' rebuilds the set.
 #'
 #' @param object A \code{\link{bayesmanecfit}}.
 #'
-#' @return A \code{\link[base]{character}} vector, one entry per successful
-#' equation.
+#' @return A \code{\link[base]{character}} vector of \code{"NEC"},
+#' \code{"NSEC"} or \code{"N(S)EC"}, one entry per successful equation.
 #' @noRd
-manec_ne_types <- function(object) {
+manec_component_types <- function(object) {
   vapply(object$success_models, function(model) {
     part <- object$mod_fits[[model]]
-    if (!is.null(part$ne_type)) {
-      return(if (identical(part$ne_type, "NEC")) "NEC" else "NSEC")
+    if (is.character(part$ne_type) && length(part$ne_type) == 1) {
+      return(part$ne_type)
     }
-    if (sampled_nec_is_no_effect(model, part$fit)) "NEC" else "NSEC"
+    if (has_nec_parameter(model, part$fit)) "NEC" else "NSEC"
   }, character(1), USE.NAMES = FALSE)
+}
+
+#' The class of no-effect estimate each equation of a set contributes
+#'
+#' @param object A \code{\link{bayesmanecfit}}.
+#'
+#' @return A \code{\link[base]{character}} vector, \code{"NEC"} where the
+#' equation contributes sampled draws and \code{"NSEC"} otherwise, one entry
+#' per successful equation.
+#' @noRd
+manec_ne_types <- function(object) {
+  ifelse(manec_component_types(object) == "NEC", "NEC", "NSEC")
 }
 
 #' The class of no-effect estimate a single fit holds
 #'
 #' \code{expand_nec()} records it in \code{ne_type}, taking both blocks of a
 #' two-block fit into account, and that record decides. For an object saved
-#' before the slot existed, only a single-block equation with a \code{nec}
-#' parameter is treated as sampling its threshold.
+#' before the slot existed, a single-block equation with a \code{nec}
+#' parameter is treated as sampling its threshold, because its stored draws
+#' were built that way.
 #'
 #' @param object A \code{\link{bayesnecfit}}.
 #'
@@ -614,7 +628,7 @@ necfit_ne_type <- function(object) {
     return(if (identical(label, "NEC")) "NEC" else "NSEC")
   }
   if (is.null(object$hurdle) && !is_hurdle_family(object$fit$family) &&
-        sampled_nec_is_no_effect(object$model, object$fit)) {
+        has_nec_parameter(object$model, object$fit)) {
     "NEC"
   } else {
     "NSEC"

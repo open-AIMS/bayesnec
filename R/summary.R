@@ -27,16 +27,19 @@
 #' model fits are not satisfactory with regards to their Rhats or their
 #' divergent transitions.
 #' 
-#' @details The summary method for both \code{\link{bayesnecfit}} and 
+#' @details The summary method for both \code{\link{bayesnecfit}} and
 #' \code{\link{bayesmanecfit}} also returns a no-effect toxicity
-#' estimate. Where the fitted model(s) are NEC models (threshold models,
-#' containing a step function) the no-effect estimate is a true 
-#' no-effect-concentration (NEC, see Fox 2010). Where the fitted model(s) are 
-#' smooth ECx models with no step function, the no-effect estimate is a 
-#' no-significant-effect-concentration (NSEC, see Fisher and Fox 2023). In the 
-#' case of a \code{\link{bayesmanecfit}} that contains a mixture of both NEC and
-#' ECx models, the no-effect estimate is a model averaged combination of the NEC
-#' and NSEC estimates, and is reported as the N(S)EC (see Fisher et al. 2023).
+#' estimate. For a monotone threshold equation (\code{nec3param},
+#' \code{nec4param}, \code{neclin} or \code{necsigm}) it is the sampled
+#' \code{nec} parameter, a no-effect-concentration (NEC, see Fox 2010). For a
+#' smooth ECx equation, and for a hormesis threshold equation
+#' (\code{nechorme}, \code{nechorme4}, \code{neclinhorme},
+#' \code{nechormepwr}, \code{nechorme4pwr} or \code{nechormepwr01}), it is
+#' a no-significant-effect-concentration read off the fitted curve (NSEC, see
+#' Fisher and Fox 2023); \code{\link{nec}} explains why. In the case of a
+#' \code{\link{bayesmanecfit}} that contains both kinds of equation, the
+#' no-effect estimate is a model averaged combination of the NEC and NSEC
+#' estimates, and is reported as the N(S)EC (see Fisher et al. 2023).
 #'
 #' With \code{ecx = TRUE}, each ECx row is computed by \code{\link{ecx}} over
 #' the prediction grid stored with the fit, which is the grid the no-effect
@@ -113,6 +116,7 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
   chk_number(divergence_cutoff)
   x <- object
   warn_stale_observed_display(x)
+  warn_stale_ne_type(x)
   check_summary_ecx_posterior(list(...))
   # Resolve xform from the dots as ecx() matches them, so that the no-effect
   # row is on the scale of the ECx rows. See summary_ne_vals().
@@ -127,8 +131,8 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
     ecs <- summary_ecx_rows(..., .fit = x, .ecx_vals = ecx_vals,
                             .stored_range = range(x$pred_vals$data$x))
   }
-  # is_ecx names the equation class. The no-effect estimate may be an NSEC
-  # even where a hormesis threshold equation samples a nec breakpoint.
+  # is_ecx names the equation class. A hormesis threshold equation has a nec
+  # parameter, but its no-effect estimate is an NSEC.
   is_ecx <- !has_nec_parameter(x$model, x$fit)
   ecx_mod <- NULL
   if (is_ecx) {
@@ -193,6 +197,7 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
   chk_lgl(check_fit)
   x <- object
   warn_stale_observed_display(x)
+  warn_stale_ne_type(x)
   # As in summary.bayesnecfit().
   check_summary_ecx_posterior(list(...))
   ne_xform <- summary_ecx_xform(list(...))

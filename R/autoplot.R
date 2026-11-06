@@ -538,6 +538,7 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   chk_lgl(add_ecx)
   check_xform(xform)
   warn_stale_observed_display(x)
+  warn_stale_ne_type(x)
   brms_fit <- x$fit
   stored <- x$pred_vals$data
   e_df <- data.frame(x_e = c(stored$x, rev(stored$x)),
@@ -608,6 +609,7 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   # an error that names neither the argument nor the remedy.
   check_xform(xform)
   warn_stale_observed_display(x)
+  warn_stale_ne_type(x)
   e_df <- x$w_pred_vals$data
   e_df <- data.frame(x_e = c(e_df$x, rev(e_df$x)),
                      y_e = c(e_df$Estimate, rep(NA, nrow(e_df))),
