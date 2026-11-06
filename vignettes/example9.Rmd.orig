@@ -1242,8 +1242,8 @@ screen_text <- paste0(
   "; S3)."
 )
 time_text <- paste0(
-  "Under the regularising priors the total sampling time was ",
-  total_minutes(seconds_regular), " min, against ",
+  "Under the regularising priors the first run took ",
+  total_minutes(seconds_regular), " min of warmup and sampling, against ",
   total_minutes(seconds_default), " min under the default priors"
 )
 regular_text <- if (setequal(kept_regular, kept_default)) {
