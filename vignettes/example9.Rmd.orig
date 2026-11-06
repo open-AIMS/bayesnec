@@ -910,6 +910,14 @@ ctrl_text <- if (ctrl_const < 1) {
          sprintf("%.1f", 1 / ctrl_const), " of the spread observed")
 }
 both_ways <- ctrl_const < 1 && max(ratio_const) > 1
+summary_spread_text <- if (ctrl_const < 2 / 3 || ctrl_const > 1.5) {
+  paste0("simulated a control spread about ", signif(1 / ctrl_const, 2),
+         " times the one observed")
+} else {
+  paste0("simulated between ", signif(1 / max(ratio_const), 2), " and ",
+         signif(1 / min(ratio_const), 2), " times the spread observed, ",
+         "depending on the concentration")
+}
 ```
 
 `sd_ratio` is the observed spread divided by the simulated spread, so a value of
@@ -1436,13 +1444,7 @@ final_text <- paste0(" The analysis therefore used the ", final_label,
                      " priors.")
 spread_text <- paste0(
   "Under constant dispersion the highest-weighted equation ",
-  if (ctrl_const < 1) {
-    paste0("simulated about ", round(1 / ctrl_const),
-           " times the standard deviation observed at the control")
-  } else {
-    paste0("simulated ", sprintf("%.2f", 1 / ctrl_const),
-           " of the standard deviation observed at the control")
-  },
+  summary_spread_text,
   ", and the posterior predictive p-value of the standard deviation was ",
   "outside [0.05, 0.95] at ", flagged_sd(cf_const), " of ", nrow(cf_const),
   " concentrations (S5)."
@@ -1520,13 +1522,12 @@ plate the coefficient of variation among the wells rose from
 `r sprintf("%.3f", cv_obs[1])` at the control to
 `r sprintf("%.3f", max(cv_obs))`, and the constant-dispersion set passed the
 sampler screen for most of its equations while its highest-weighted equation
-simulated a control spread about `r signif(1 / ctrl_const, 2)` times the one
-observed. Adding `disp("power")` changed the number of concentrations flagged
-for spread in that equation from `r flagged_sd(cf_const)` to
-`r flagged_sd(cf_power)`, and the model-averaged *NSEC* from
-`r sprintf("%.3f", nsec_const)` to `r sprintf("%.3f", nsec_power)` mg/L. A fit
-can therefore pass the checks the sampler screen applies and still simulate the
-wrong spread at the concentration from which both estimators are referenced.
+`r summary_spread_text`. Adding `disp("power")` changed the number of
+concentrations flagged for spread in that equation from
+`r flagged_sd(cf_const)` to `r flagged_sd(cf_power)`, and the model-averaged
+*NSEC* from `r sprintf("%.3f", nsec_const)` to `r sprintf("%.3f", nsec_power)`
+mg/L. A fit can therefore pass the checks the sampler screen applies and still
+simulate the wrong spread.
 
 Several decisions made around the fits also determine the estimates: the family
 was chosen on the support of the response, the candidate set included the
