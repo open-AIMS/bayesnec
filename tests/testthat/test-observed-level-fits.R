@@ -75,6 +75,37 @@ joint_fit_cache <- local({
   }
 })
 
+# Two toxicants, each tested on three plates of its own, refitted jointly with
+# a plate term for each toxicant, as the copper and zinc fits of example8 are.
+toxicant_joint_cache <- local({
+  cached <- NULL
+  function() {
+    if (is.null(cached)) {
+      d <- observed_fit_data()
+      d <- d[d$plate != "p4", , drop = FALSE]
+      d_b <- d
+      d_b$y <- d_b$y * 0.7
+      d$tox <- "a"
+      d_b$tox <- "b"
+      d$plate <- paste0("a", d$plate)
+      d_b$plate <- paste0("b", d_b$plate)
+      d <- rbind(d, d_b)
+      d$tox <- factor(d$tox)
+      grouped <- suppressWarnings(suppressMessages(bnec_group(
+        y ~ crf(x, "ecx4param") + ogl(plate), data = d, group_var = "tox",
+        family = "gaussian", iter = 300, warmup = 150, chains = 2,
+        seed = 558, refresh = 0, resolution = 40
+      )))
+      cached <<- suppressWarnings(suppressMessages(bnec_joint(
+        grouped, model = "ecx4param",
+        formula = y ~ crf(x, "ecx4param") + ogl(gr(plate, by = tox)),
+        iter = 300, warmup = 150, chains = 2, seed = 558, refresh = 0
+      )))
+    }
+    cached
+  }
+})
+
 test_that("fitted spanning levels exclude one-concentration levels", {
   skip_on_cran()
   skip_if_not_installed("rstan")
@@ -140,6 +171,33 @@ test_that("a pooled estimate holds each level's own draw at its position", {
                                   re_formula = spec$re_formula)
     expect_equal(band[idx[[i]], ], full[idx[[i]], ])
   }
+})
+
+test_that("the toxicant mixtures of a joint refit pair by posterior draw", {
+  skip_on_cran()
+  skip_if_not_installed("rstan")
+  fit <- toxicant_joint_cache()
+  pooled <- suppressMessages(ecx(fit, posterior = TRUE, resolution = 30))
+  expect_named(pooled, c("a", "b"))
+  n <- brms::ndraws(fit$fit)
+  expect_equal(attr(pooled$a, "draw_id"), seq_len(n))
+  expect_equal(attr(pooled$b, "draw_id"), seq_len(n))
+  for (tox in c("a", "b")) {
+    level <- bayesnec:::joint_level_fit(fit, tox)
+    per_plate <- suppressMessages(ecx(level, pool = "none", posterior = TRUE,
+                                      resolution = 30))
+    plate <- attr(pooled[[tox]], "level")
+    own <- vapply(seq_len(n), function(d) {
+      as.numeric(per_plate[[plate[d]]][d])
+    }, numeric(1))
+    # Position d holds draw d of the plate it was given to.
+    expect_equal(as.numeric(pooled[[tox]]), own)
+  }
+  # Each toxicant's plates are given draws independently of the other's, so
+  # the first plate of one is not paired with the first plate of the other.
+  rank_a <- as.integer(factor(attr(pooled$a, "level")))
+  rank_b <- as.integer(factor(attr(pooled$b, "level")))
+  expect_lt(mean(rank_a == rank_b), 0.6)
 })
 
 test_that("stored smooth no-effect draws use the recorded significance", {
