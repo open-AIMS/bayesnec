@@ -761,7 +761,8 @@ factorised one, so the joint refit is drawn as the factorised pair was (figure
 below).
 
 ```{r plot-joint, fig.width = 10, fig.asp = 0.4, out.width = "100%", fig.cap = "The combined endpoint (response per individual exposed), growth (response of survivors) and survival of the joint refit, with the median and 95% credible band of each curve. Grey vertical lines mark the no-effect estimate of each panel and its credible limits; blue lines mark the EC10 and its limits. Points are as in the figure of the model average."}
-autoplot(fit_j, which = "all", x_scale = "fitted", ecx = TRUE, xlab = "Dose")
+autoplot(fit_j, which = "all", x_scale = "fitted", ecx = TRUE, xlab = "Dose",
+         point_alpha = 0.25)
 ```
 
 ```{r joint-text, include = FALSE}
