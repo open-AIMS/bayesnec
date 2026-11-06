@@ -536,9 +536,12 @@ mixture_draw_indices <- function(lengths, weights, n, seed = 216,
 #' @param formula Its bayesnec formula.
 #' @param newdata Prediction rows on a common grid.
 #' @param spec Observed level specification.
+#' @param dpar \code{NULL} for the expected response, or one block of a joint
+#' hurdle fit, as \code{block_epred()} takes it.
 #' @return A draws by grid matrix.
 #' @noRd
-observed_grid_posterior <- function(fit, formula, newdata, spec) {
+observed_grid_posterior <- function(fit, formula, newdata, spec,
+                                    dpar = NULL) {
   n <- brms::ndraws(fit)
   indices <- mixture_draw_indices(rep(n, nrow(spec$combinations)),
                                    spec$n, n,
@@ -551,10 +554,9 @@ observed_grid_posterior <- function(fit, formula, newdata, spec) {
     for (v in names(spec$combinations)) {
       nd[[v]] <- spec$combinations[[v]][rep(i, nrow(nd))]
     }
-    out[idx, ] <- factorised_count_epred(
-      fit, formula, newdata = nd, re_formula = spec$re_formula,
-      draw_ids = idx
-    )
+    pred <- block_epred(fit, formula, nd, re_formula = spec$re_formula,
+                        dpar = dpar)
+    out[idx, ] <- pred[idx, , drop = FALSE]
   }
   out
 }

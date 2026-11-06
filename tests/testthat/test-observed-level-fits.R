@@ -295,6 +295,70 @@ test_that("hurdle endpoints and band read observed levels", {
   )))[1])))
 })
 
+test_that("the block panels of a joint refit read its observed levels", {
+  skip_on_cran()
+  skip_if_not_installed("rstan")
+  fit <- joint_fit_cache()
+  spec <- bayesnec:::observed_level_spec(fit)
+  d <- suppressWarnings(suppressMessages(ggbnec_data(fit, which = "all")))
+  grid <- fit$pred_vals$data$x
+  nd <- bnec_newdata(fit, resolution = length(grid), x_range = range(grid))
+  band <- function(dpar) {
+    bayesnec:::observed_grid_posterior(fit$fit, fit$bayesnecformula, nd,
+                                       spec, dpar = dpar)
+  }
+  growth <- band("mu")
+  survival <- band("hu")
+  # The block bands pair the levels and draws of the stored combined band.
+  expect_equal(growth * survival, band(NULL))
+  drawn <- function(name) d$y_e[d$panel == name & !is.na(d$y_e)]
+  medians <- function(draws) unname(apply(draws, 2, stats::median))
+  expect_equal(drawn("Response of survivors"), medians(growth))
+  expect_equal(drawn("Probability of survival"), medians(survival))
+  expect_equal(drawn("Response per individual exposed"),
+               fit$pred_vals$data$Estimate)
+  population <- bayesnec:::joint_hurdle_epred(fit, nd, "mu", re_formula = NA)
+  expect_false(isTRUE(all.equal(drawn("Response of survivors"),
+                                medians(population))))
+
+  # Both blocks are threshold equations, so the stored combined NEC is the
+  # smaller of the two block NECs, level by level and draw by draw.
+  mu_ne <- bayesnec:::joint_block_ne(fit, "mu")
+  hu_ne <- bayesnec:::joint_block_ne(fit, "hu")
+  expect_equal(pmin(as.numeric(mu_ne), as.numeric(hu_ne)),
+               as.numeric(fit$ne_posterior))
+  lines <- function(name) {
+    d$nec_vals[d$panel == name & !is.na(d$nec_vals)]
+  }
+  expect_equal(lines("Probability of survival"),
+               unname(as.numeric(bayesnec:::estimates_summary(hu_ne))))
+  expect_equal(lines("Response of survivors"),
+               unname(as.numeric(bayesnec:::estimates_summary(mu_ne))))
+
+  # With group, the survival panel draws the proportion alive in each level.
+  grouped <- suppressWarnings(suppressMessages(
+    ggbnec_data(fit, which = "all", add_nec = FALSE, group = "plate")
+  ))
+  expect_true(attr(grouped, "group_fitted"))
+  alive <- grouped[grouped$panel == "Probability of survival" &
+                     !is.na(grouped$y_r), , drop = FALSE]
+  obs <- fit$fit$data
+  expected <- do.call(rbind, lapply(split(obs, obs$plate), function(part) {
+    s <- bayesnec:::survival_by_x(part$x, part$y)
+    data.frame(plate = part$plate[1], x = s$x, y = s$y)
+  }))
+  expect_equal(as.character(alive$group), expected$plate)
+  expect_equal(alive$x_r, expected$x)
+  expect_equal(alive$y_r, expected$y)
+  survivors <- grouped[grouped$panel == "Response of survivors" &
+                         !is.na(grouped$y_r), , drop = FALSE]
+  expect_equal(nrow(survivors), sum(obs$y > 0))
+  p <- suppressWarnings(suppressMessages(
+    autoplot(fit, which = "all", group = "plate")
+  ))
+  expect_no_error(ggplot2::ggplot_build(p))
+})
+
 test_that("a joint refit reads its spanning group levels", {
   skip_on_cran()
   skip_if_not_installed("rstan")

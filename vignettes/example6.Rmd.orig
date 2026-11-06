@@ -756,17 +756,13 @@ differ by at most `r sprintf("%.1f", route_diff)`% across the three endpoints
 priors, so they estimate one posterior, `r route_note`. `r joint_note`
 `r route_conclusion`
 
-`autoplot()` draws a joint fit as it draws any single `bnec()` fit, in one
-panel of the expected response, which for a two-block family is the combined
-endpoint (figure below). It has no argument that selects a block, so the growth
-and survival curves of the joint refit are compared with those of the
-factorised pair only through their EC10 (table above).
+`autoplot()` takes the same `which` argument for a joint fit as for a
+factorised one, so the joint refit is drawn as the factorised pair was (figure
+below).
 
-```{r plot-joint, fig.width = 6, fig.asp = 0.6, fig.cap = "The combined endpoint (response per individual exposed) of the joint refit, with the median (dashed line) and 95% credible band. Points are the growth of each snail, with the deaths as zeros. The grey vertical lines mark the combined NSEC and its credible limits, and the blue lines the EC10 and its limits."}
-# The default panel title names the growth equation only.
-autoplot(fit_j, x_scale = "fitted", ecx = TRUE, point_alpha = 0.25) +
-  labs(x = "Dose", y = "Response per individual exposed") +
-  theme(strip.text = element_blank())
+```{r plot-joint, fig.width = 10, fig.asp = 0.4, out.width = "100%", fig.cap = "The combined endpoint (response per individual exposed), growth (response of survivors) and survival of the joint refit, with the median and 95% credible band of each curve. Grey vertical lines mark the no-effect estimate of each panel and its credible limits; blue lines mark the EC10 and its limits. Points are as in the figure of the model average."}
+autoplot(fit_j, which = "all", x_scale = "fitted", ecx = TRUE, xlab = "Dose",
+         point_alpha = 0.25)
 ```
 
 ```{r joint-text, include = FALSE}
@@ -783,8 +779,9 @@ joint_ma_note <- if (abs(joint_15 / ma_15 - 1) < 0.1) {
 }
 ```
 
-The grey lines mark the combined NSEC of the joint refit, `r ci_text(nsec_j)`,
-and the blue lines its combined EC10 (table above). At a dose of 15, where
+On the combined panel the grey lines mark the combined NSEC of the joint
+refit, `r ci_text(nsec_j)`, and the blue lines its combined EC10, and the EC10
+of each block is in the table above. At a dose of 15, where
 survival has fallen to about half its control value, the median expected growth
 per snail exposed is `r sig2(joint_15)` for the joint
 refit and `r sig2(ma_15)` for the model average (figure in *Model averaging*),
@@ -874,8 +871,8 @@ it simply because a proportion contains some zeros.
 A hurdle Beta is appropriate only where all of the following conditions are met:
 
 * the proportion has a denominator that is fixed by design or measured per unit,
-  and is not a control mean or an observed maximum (see the normalisation caveat
-  below);
+  and is not a control mean or an observed maximum (see *Unavoidable divisors* in
+  the [Single model usage][e1] vignette);
 * the response declines, matching the convention of the `bayesnec` model set;
 * the zeros are structural, produced by a process that genuinely fails; and
 * there is no mass at 1.
@@ -1074,29 +1071,6 @@ autoplot(zib_f, which = "all", ecx = TRUE, ecx_val = 50,
                      breaks = c(0, 1, 2, 4, 8, 16, 32, 64))
 ```
 
-### Normalisation caveat
-
-Where a proportional response has been obtained by dividing by a maximum, the
-divisor must be a constant fixed in advance, and not one computed from the data
-under analysis. Dividing all observations by a single random quantity (e.g. a
-control mean or an observed maximum) induces correlation across observations,
-discards the uncertainty in the divisor, and biases effective doses upwards by
-Jensen's inequality [@Ritz2026].
-
-The relevant distinction is between a shared divisor and a per-unit one, and not
-between a random divisor and a fixed one. Dividing each unit by its own baseline
-also uses a random quantity, but it induces no correlation between observations
-and no Jensen bias, so the problem arises only where a single divisor is applied
-to all observations. A baseline mean that is subtracted (instead of divided)
-does not introduce the Jensen bias at all, because subtraction is linear. It
-introduces a shared offset that slightly understates standard errors, but it
-does not bias effective doses.
-
-The recommended alternative is available in `bayesnec` and requires no
-normalisation. The raw response is fitted and `ecx(type = "absolute")` is used,
-which measures the decline relative to the *fitted* control value and therefore
-propagates the uncertainty in the control through the posterior.
-
 # The origin of the zeros
 
 A hurdle model assumes that each zero is structural, i.e. that it marks a unit
@@ -1159,7 +1133,8 @@ Each of these zeros is instead a value known only to lie in `[0, 0.005)`, i.e.
 a censored observation (see the Censoring section of `vignette("example1")`).
 The default `bayesnec` behaviour of nudging zeros to `min(y[y > 0]) / 10` is
 crude, but defensible in this case, because 0.001 falls inside the true
-interval.
+interval. The herbicide fits of `vignette("example4")` treat these zeros as
+left-censored at 0.005 instead.
 
 The diagnostic for this case is a comparison of the gap between zero and the
 smallest non-zero value against the resolution the data were recorded at. Where

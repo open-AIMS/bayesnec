@@ -246,6 +246,29 @@ joint_hurdle_epred <- function(object, newdata, dpar = NULL,
   hurdle_positive_mean(out, family$family)
 }
 
+#' Posterior draws of a fit, or of one block of a joint hurdle fit, from its
+#' parts
+#'
+#' @param fit A \code{\link[brms]{brmsfit}}.
+#' @param formula Its \code{\link{bayesnecformula}}.
+#' @param newdata A prediction data frame.
+#' @param re_formula Passed to \code{\link[brms]{posterior_epred}}.
+#' @param dpar \code{NULL} for the expected response, or a block, as
+#' \code{joint_hurdle_epred()} takes it.
+#'
+#' @return A numeric matrix of posterior draws.
+#'
+#' @noRd
+block_epred <- function(fit, formula, newdata, re_formula = NA, dpar = NULL) {
+  if (is.null(dpar)) {
+    return(factorised_count_epred(fit, formula, newdata = newdata,
+                                  re_formula = re_formula))
+  }
+  object <- allot_class(list(fit = fit, bayesnecformula = formula),
+                        c("bayesnecfit", "bnecfit"))
+  joint_hurdle_epred(object, newdata, dpar, re_formula = re_formula)
+}
+
 #' Non-linear parameter names of the second block for a given model
 #'
 #' @param model A \code{\link[base]{character}} string naming a bayesnec model.

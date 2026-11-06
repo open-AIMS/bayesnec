@@ -53,8 +53,8 @@ knitr::knit_hooks$set(message = local({
 }))
 # Helpers for inline text only. They keep a sentence grammatical whatever a
 # later render returns, including an empty set of equations.
-name_list <- function(x) {
-  if (!length(x)) return("none")
+name_list <- function(x, empty = "none") {
+  if (!length(x)) return(empty)
   x <- paste0("`", x, "`")
   if (length(x) == 1) x else
     paste(paste(x[-length(x)], collapse = ", "), "and", x[length(x)])
@@ -73,14 +73,19 @@ which_failed <- function(fit) {
 
 The other vignettes each explain one part of `bayesnec` (e.g., what the model
 set is, what a `bayesmanecfit` is, how priors are built, and how to handle a
-two-block response). Here we run one analysis from the data through to a
-reportable estimate, taking the steps in the order in which they occur:
+two-block response). Here we run one analysis, on one plate of a bioluminescence
+toxicity test, from the data through to a reportable estimate, taking the steps
+in the order in which they occur:
 
-1. Prepare the data and choose the family.
-2. Choose the candidate set and its priors, and fit it.
-3. Check the sampler, and screen out the models that did not sample adequately.
-4. Check the fit of the models that remain.
-5. Assess the influence of the priors, and report.
+1. Prepare the data, and choose the family and the terms the design requires.
+2. Fit the candidate set under the default priors, and read its summary.
+3. Check the sampler, refit the equations whose failure has a remedy, and screen
+   out those that still fail.
+4. Refit the set under regularising priors, check the sampler again, and choose
+   the prior set used for inference.
+5. Check the fit of the retained equations, and refit with a dispersion
+   sub-model where the spread is not reproduced.
+6. Assess the influence of the priors, and report.
 
 The construction of the default priors, and `check_priors()`, are described in
 the [*Priors*](https://open-aims.github.io/bayesnec/articles/example3.html)
@@ -139,21 +144,14 @@ equation whose posterior the sampler cannot traverse, and an equation the design
 does not support are all reported under one failure flag, although the
 appropriate response to each is different.
 
-## Coverage
+## The case study
 
-Steps 1 to 5 are worked on the 2050 climate scenario of `coral_colour`, with the
-candidate set fitted under both the default and the regularising priors. The
-coral analysis ends with a draft of the methods and results text a paper might
-give for it, in which steps 1 to 5 are presented as the supplementary material.
-Two further responses follow. The first is a count response, for which both the
-choice of family and the sampler screen take a different form. The second is a
-response whose coefficient of variation is not constant, although the family
-assumes that it is; here the departure is detected with a posterior check, and
-corrected with a term written in the model formula.
-
-The threshold estimates themselves (*NEC*, *NSEC*, ECx, and the model-averaged
-*N(S)EC* reported when a set mixes both kinds) are defined, together with the
-candidate equations, in [*Model
+The analysis uses one plate of the copper series of the `lum31`
+bioluminescence assay, read at 15 minutes. It ends with a draft of the methods
+and results text a paper might give for it, in which steps 1 to 6 are presented
+as the supplementary material. The threshold estimates themselves (*NEC*,
+*NSEC*, ECx, and the model-averaged *N(S)EC* reported when a set mixes both
+kinds) are defined, together with the candidate equations, in [*Model
 details*](https://open-aims.github.io/bayesnec/articles/example2b.html).
 
 ```{r libraries}
@@ -161,213 +159,162 @@ library(bayesnec)
 library(ggplot2)
 ```
 
-# 1. Data preparation and family choice
+# 1. Data, design and family
 
-The `coral_colour` data record a colour index for fragments of the coral
-*Acropora millepora* exposed to the herbicide diuron under three climate
-scenarios [@flores2021]. The index is a proportion derived from photographs of
-each fragment, and a lower value indicates a paler fragment (`?coral_colour`
-documents the columns). Here we use the 2050 scenario. The comparison among
-scenarios, and a second endpoint measured in that experiment, are described in
-[*Comparing posterior
-predictions*](https://open-aims.github.io/bayesnec/articles/example4.html).
+The `lum31` data contain the results of acute copper and zinc toxicity tests run
+on the Lum-31 bioluminescent bacterial assay [@luter2025]. A suspension of
+marine bacteria is dosed in a microplate well and its light output is read after
+a fixed exposure, so the response is luminescence in relative light units
+(`?lum31` documents the columns).
 
-```{r coral-data}
-data(coral_colour)
-colour_2050 <- droplevels(subset(coral_colour, climate == "2050"))
-doses <- sort(unique(colour_2050$diuron))
-top_dose <- doses[length(doses)]
-next_dose <- doses[length(doses) - 1]
-colour_design <- data.frame(
-  fragments = as.vector(table(colour_2050$diuron)),
-  chambers = as.vector(tapply(colour_2050$chamber, colour_2050$diuron,
-                              function(z) length(unique(z)))),
-  mean_proportion = as.vector(tapply(colour_2050$proportion,
-                                     colour_2050$diuron, mean)),
-  row.names = doses
-)
-round(colour_design, 3)
+We use one plate of the copper series read at 15 minutes (plate
+`Cu 19Mar24 Rep1B`). A plate is a complete test (i.e., eleven concentrations by
+four replicate wells). Because the plate reader sets its gain for each read,
+plates are not on a common vertical scale, and taking a single plate avoids that
+difference instead of modelling it. The group-level terms that handle the whole
+assay are described in [*Grouping and factor
+covariates*](https://open-aims.github.io/bayesnec/articles/example8.html).
+
+```{r lum31-data}
+data(lum31)
+cu <- droplevels(subset(lum31, plate == "Cu 19Mar24 Rep1B" & minutes == 15))
+c(wells = nrow(cu), concentrations = length(unique(cu$conc)),
+  at_the_floor = sum(cu$censoring != "none"))
 ```
 
-```{r colour-design-text, include = FALSE}
-# For example ", except at 9.6 µg/L, where 10 fragments have a colour score".
-short <- colour_design$fragments < colour_design$fragments[1]
-top_decline <- round(100 * (1 - colour_design$mean_proportion[length(doses)] /
-                               colour_design$mean_proportion[1]))
-short_text <- if (any(short)) {
-  paste0(", except at ", paste(doses[short], collapse = " and "),
-         " µg/L, where ", paste(colour_design$fragments[short], collapse = " and "),
-         " fragments have a colour score")
-} else {
-  ""
+```{r copper-design-text, include = FALSE}
+conc_levels <- sort(unique(cu$conc))
+conc_means <- tapply(cu$rlu_cens, cu$conc, mean)
+mean_share <- conc_means / conc_means[1]
+last_high <- max(which(mean_share > 0.9))
+first_low <- min(which(mean_share < 0.01))
+cens_conc <- unique(cu$conc[cu$censoring != "none"])
+# TRUE for each concentration with no censored reading. A tolerance,
+# because a group label is a printed concentration and not the stored double.
+uncensored <- function(group) {
+  vapply(as.numeric(as.character(group)),
+         function(v) !any(abs(v - cens_conc) < 1e-8), logical(1))
 }
 ```
 
-The design has `r length(doses)` concentrations (an untreated control and
-`r length(doses) - 1` diuron treatments from `r doses[2]` to `r top_dose` µg/L),
-each with `r colour_design$fragments[1]` fragments held in
-`r colour_design$chambers[1]` chambers of
-`r colour_design$fragments[1] / colour_design$chambers[1]``r short_text`. A chamber received
-one concentration only, so the `r nlevels(colour_2050$chamber)` chambers are the
-independent units of the experiment. The `ogl(chamber)` term used below
-therefore estimates the variation among chambers at a concentration, without
-requiring any chamber to define a concentration-response curve on its own, and
-the model weights in step 3 leave out one chamber at a time.
+This plate is one of two in the arm of
+`r length(unique(subset(lum31, toxicant == "Cu" & minutes == 15)$plate))` with
+the fewest readings at the floor of the instrument (one of `r nrow(cu)`). A
+reading held at a bound contributes a smaller spread than the well would have
+shown, so a plate with many such readings would understate the spread examined
+in step 5.
 
-```{r coral-data-plot, out.width = "85%"}
-colour_plot <- transform(colour_2050,
-                         plot_dose = ifelse(diuron == 0, 0.1, diuron))
-ggplot(colour_plot, aes(x = plot_dose, y = proportion)) +
-  geom_point(aes(colour = chamber), alpha = 0.75, size = 2) +
-  scale_x_continuous(transform = "log10",
-                     breaks = sort(unique(colour_plot$plot_dose)),
-                     labels = as.character(doses)) +
-  guides(colour = "none") +
-  labs(x = expression(paste("Diuron (", mu, "g ", L^-1, ")")),
-       y = "Coral colour proportion") +
+```{r exmp9-copper-data, fig.asp = 0.72, out.width = "80%"}
+copper_axis <- list(
+  scale_x_continuous(transform = "log", breaks = c(0.003, 0.03, 0.3, 3),
+                     labels = function(x) signif(x, 2)),
+  scale_y_continuous(labels = function(x) {
+    format(x, big.mark = ",", scientific = FALSE)
+  }),
+  labs(x = expression(paste("Copper (mg ", L^-1, ")")),
+       y = "Relative light units")
+)
+ggplot(cu, aes(x = conc, y = rlu_cens)) +
+  geom_point(aes(shape = censoring), alpha = 0.7, size = 2) +
+  copper_axis +
   theme_classic()
 ```
 
-Each point is one fragment, coloured by chamber. The control is drawn at 0.1
-µg/L on this logarithmic axis but labelled as the recorded zero (the model uses
-this substitution too, as described below). The mean colour proportion is
-between `r sprintf("%.2f", min(colour_design$mean_proportion[1:3]))` and
-`r sprintf("%.2f", max(colour_design$mean_proportion[1:3]))` from the control to
-`r doses[3]` µg/L, and
-`r sprintf("%.2f", colour_design$mean_proportion[length(doses) - 1])` at
-`r next_dose` µg/L (where the fragments are also more variable, from
-`r sprintf("%.2f", min(colour_2050$proportion[colour_2050$diuron == next_dose]))`
-to
-`r sprintf("%.2f", max(colour_2050$proportion[colour_2050$diuron == next_dose]))`),
-whereas at `r top_dose` µg/L it is
-`r sprintf("%.3f", colour_design$mean_proportion[length(doses)])`. Most of the
-observed decline is therefore between the two highest concentrations, and at
-the highest the mean is `r top_decline` per cent below the control mean.
+Each point is one well, and the reading at the floor is drawn with its own
+symbol. The mean response remains above
+`r round(100 * mean_share[last_high])` per cent of its control value up to
+`r signif(conc_levels[last_high], 2)` mg/L, and is below one per cent from
+`r signif(conc_levels[first_low], 2)` mg/L, so the whole decline occurs over a
+factor of about `r round(conc_levels[first_low] / conc_levels[last_high])` in
+concentration. Over the highest `r sum(mean_share < 0.01)` concentrations the
+response stays near the floor.
 
-The design has no treatment above `r top_dose` µg/L to show whether the
-response would have fallen further. We retain the default
-`asymptote_observed = TRUE`, which declares that the lower asymptote of the
-curve was reached within the tested range. A decline of `r top_decline` per cent
-places the EC50 inside the tested range, but the design cannot show whether the
-response had levelled off by `r top_dose` µg/L, and this is one of the
-assumptions on which the estimates in step 5 depend. `bnec()` tests the
-change between the two highest concentrations before fitting, and we read its
-message in step 2.
+The four wells at a concentration share one cell of the plate, and readings from
+one cell can vary together. Each fit below therefore includes `ogl(conc_group)`,
+a deviation for each cell, so that the cell (and not the well) is the
+observation at each concentration ([*Grouping and factor
+covariates*](https://open-aims.github.io/bayesnec/articles/example8.html)
+describes the term and how the model weights are computed under it). The
+dispersion parameter then describes the spread of the wells within a cell.
 
-The response is continuous and bounded by zero and one, so we use a `Beta`
-family with an identity link. A `Beta` likelihood is defined on the open
-interval (0, 1), and it estimates a dispersion parameter (`phi`) as well as the
-mean. The 2050 subset has no value at either boundary:
+Concentrations are measured dissolved copper, and the lowest
+(`r conc_levels[1]` mg/L) serves as the control, because `bayesnec` takes the
+control to be the lowest value of the predictor. The concentrations span
+`r sprintf("%.1f", log10(max(conc_levels) / min(conc_levels)))` orders of
+magnitude, so we fit copper on a log scale, and because the lowest value is
+positive no substitution is needed before taking logarithms.
 
-```{r coral-boundaries}
-range(colour_2050$proportion)
-fam <- Beta(link = "identity")
-```
-
-This colour index is not a count of successes out of a known number of trials,
-so the `binomial` and `beta_binomial` families do not apply. Where a Beta
-response does include an exact zero, `bnec()` substitutes one tenth of the
-smallest positive response, and it reduces an exact one by 0.001. Such changes
-are recorded by `bnec_record()` and should be reported, particularly where a
-boundary value represents a real outcome (e.g., a fragment that has lost all
-colour). [*Hurdle and zero-inflated concentration-response
-models*](https://open-aims.github.io/bayesnec/articles/example6.html) addresses
-responses with substantive zeros, and [*Single model
-usage*](https://open-aims.github.io/bayesnec/articles/example1.html) compares
-the supported families.
-
-The identity link keeps `top` and any estimated lower asymptote (`bot`) on the
-scale of the colour proportion, whereas a logit link would fit the
-concentration-response equation to the logit of the mean. Because `Beta`
-estimates its own dispersion parameter, a dispersion check before fitting is not
-needed here, and we instead compare the simulated and observed spread within
-each concentration after fitting (step 4). The count response below uses a
-family whose variance is fixed by its mean, so there the dispersion question
-bears on the choice of family.
-
-The positive concentrations span `r sprintf("%.1f", log10(top_dose / doses[2]))`
-orders of magnitude (`r doses[2]` to `r top_dose` µg/L), so we fit diuron on a
-log scale. To do so we replace the zero control by 0.1 µg/L, approximately one
-half-log step below the lowest treatment, and keep the recorded concentration in
-its own column. This substitution places the control on the log predictor, and a
-threshold estimated near 0.1 µg/L would depend on it. Logging also changes the
-equation fitted to diuron and the scale of its default predictor prior (not only
-the spacing of points on a plot), so a methods section should state the
-transformation and the control substitution together.
-
-```{r coral-log-dose}
-colour_2050$diuron_adj <- ifelse(colour_2050$diuron == 0, 0.1,
-                                  colour_2050$diuron)
-sort(unique(colour_2050$diuron_adj))
-```
+Luminescence is continuous and positive, so we use a `Gamma` family with an
+identity link, which keeps `top` and any estimated lower asymptote (`bot`) on
+the scale of relative light units. Readings were blank-corrected, and a well
+emitting less light than the blank was recorded as zero. Such a reading is
+below the floor of the instrument and is not an absence of light, so it is
+left-censored: `rlu_cens | cens(censoring)` replaces it by the smallest positive
+reading on the plate and declares that the true value is below that bound
+(`?lum31`, and *Censoring* in [*Single model
+usage*](https://open-aims.github.io/bayesnec/articles/example1.html)). On this
+plate `r sum(cu$censoring != "none")` reading is censored, at
+`r signif(cens_conc, 2)` mg/L. A `Gamma` family with one `shape` parameter
+assumes a constant coefficient of variation (i.e., the standard deviation of a
+well is a fixed multiple of the fitted mean at each concentration), and step 5
+checks that assumption.
 
 # 2. The candidate set and its priors
 
-We request `model = "decline"`, which includes the constant equation `ecxflat`
-(a response independent of concentration) and the equations for a declining
-response. The data show no rise above the control at low concentrations, so the
-hormesis equations (which allow such a rise) are not requested. This broad set
-exposes the difficulty of estimating the shape of a curve from `r length(doses)`
-concentrations. An equation that fits or samples poorly is not made suitable by
-being assigned a small model weight, and steps 3 and 4 check each one.
+The copper response falls from its control, so we request `model = "decline"`,
+which includes the constant equation `ecxflat` (a response independent of
+concentration) and the equations for a declining response. The zinc series in
+this dataset rises above its control at low concentrations, which is why `all`
+is fitted to it in *Grouping and factor covariates*. An equation that fits or
+samples poorly is not made suitable by being assigned a small model weight, and
+steps 3 to 5 check each one.
 
-Some equations in `decline` estimate a lower asymptote (`bot`), whereas others
-do not, and without observations on a flat lower limb the data may not
-distinguish these forms. Whether a response can reach zero is a property of the
-endpoint and not a conclusion from this fit. Where it is known, the set can be
-restricted on that basis (e.g., `models()$zero_bounded` if a zero response is
-biologically attainable). Here we keep the full `decline` set, and the screen in
-step 3 removes the equations the design cannot support.
+Some equations in `decline` estimate a lower asymptote (`bot`), whereas the
+others decline towards zero. Here the response stays near the floor over the
+highest concentrations (step 1), so the design includes the lower limb from
+which `bot` is estimated.
 
-The family and the logged predictor also rule out equations before sampling, for
-example where an equation can predict a mean the family cannot take. Under an
-identity link `neclin` and `ecxlin` can predict means outside the bounds of the
-Beta family (e.g., below zero at high concentrations), and `ecxsigm` cannot
-evaluate its fractional power at the negative logged control. `get_priors()`
-returns entries only for the equations that remain valid ([*Model
+The family and the logged predictor also rule out equations before sampling.
+Under an identity link `neclin` and `ecxlin` can predict negative means, which a
+`Gamma` family cannot take, and `ecxsigm` cannot evaluate its fractional power
+at the negative logged concentrations. `get_priors()` returns entries only for
+the equations that remain valid ([*Model
 details*](https://open-aims.github.io/bayesnec/articles/example2b.html) gives
 their equations, and `?models` the model groups).
 
-```{r coral-priors}
-coral_formula <- proportion ~ crf(log(diuron_adj), model = "decline") +
-  ogl(chamber)
-prior_default <- get_priors(coral_formula, data = colour_2050, family = fam,
+```{r copper-priors}
+gfam <- Gamma(link = "identity")
+copper_formula <- rlu_cens | cens(censoring) ~
+  crf(log(conc), model = "decline") + ogl(conc_group)
+prior_default <- get_priors(copper_formula, data = cu, family = gfam,
                             prior_type = "uninformative")
-prior_regular <- get_priors(coral_formula, data = colour_2050, family = fam,
-                            prior_type = "regularizing")
 names(prior_default)
 ```
 
-We fit these `r length(prior_default)` equations twice, under the default
-`"uninformative"` priors and under `"regularizing"` priors. The regularising
-priors are narrower, and they centre `top` and `bot` on the mean response at the
-lowest and the highest concentrations (`?bnec` describes both sets). They
-therefore provide the sampler with more information about plausible parameter
-values, and we use them to show whether more equations can be fitted
-successfully when the priors provide that information. The screened regularising
-set is the one we use for inference (step 5), and the default priors provide the
-comparison that shows how much the additional information changes the estimates.
-For example, the `ec50` and `top` entries for `ecxwb1p3` are:
+We fit these `r length(prior_default)` equations first under the default
+`"uninformative"` priors (`?bnec` describes the set). Step 4 fits them again
+under the `"regularizing"` priors, which provide the sampler with more
+information about plausible parameter values, to test whether that information
+allows the equations that fail in step 3 to be sampled. For example, the default
+entries for the `top`, `bot`, `ec50` and `f` parameters of `ecxll5` are:
 
-```{r coral-prior-entries}
-selected_priors <- function(x, label) {
-  p <- as.data.frame(x[["ecxwb1p3"]])
-  p <- p[p$nlpar %in% c("ec50", "top"),
+```{r copper-prior-entries}
+selected_priors <- function(x) {
+  p <- as.data.frame(x[["ecxll5"]])
+  p <- p[p$nlpar %in% c("top", "bot", "ec50", "f"),
          c("nlpar", "prior", "lb", "ub")]
-  data.frame(prior_type = label, p, row.names = NULL)
+  rownames(p) <- NULL
+  p
 }
-rbind(selected_priors(prior_default, "uninformative"),
-      selected_priors(prior_regular, "regularizing"))
+entries_default <- selected_priors(prior_default)
+entries_default
 ```
 
-The `ec50` entry is a normal prior on log concentration, bounded below by the
-logged control and (because `asymptote_observed = TRUE`) above by the logged
-highest concentration, and its standard deviation is much smaller under the
-regularising priors. The `top` entry is a beta prior on the response scale,
-which the regularising priors concentrate around the mean response at the lowest
-concentrations. Narrower priors may stabilise sampling on sparse data, but they
-can also narrow the reported interval where the likelihood provides little
-information.
+`top` and `bot` are gamma priors on the response scale. `ec50` is a normal prior
+on log concentration, bounded below by the logged control and (because
+`asymptote_observed = TRUE`, the default) above by the logged highest
+concentration. `f`, the exponent that sets the asymmetry of `ecxll5`, is
+`r entries_default$prior[entries_default$nlpar == "f"]`.
 [*Priors*](https://open-aims.github.io/bayesnec/articles/example3.html) explains
 how the entries are constructed and how to compare them with the posterior.
 
@@ -375,51 +322,32 @@ how the entries are constructed and how to compare them with the posterior.
 
 `bnec()` uses four chains and 10,000 iterations per chain by default. Under its
 warmup rule the first 8,000 iterations of each chain are discarded, so 8,000
-post-warmup draws remain across the four chains. We use these defaults for both
-prior choices, with identical data and seed. The `seed` argument controls Stan's
-sampler, whereas `set.seed()` controls the initial values `bayesnec` generates
-in R, so both are set. The precompiled vignette uses the `cmdstanr` backend
+post-warmup draws remain across the four chains. We use these defaults here and
+for the refits in steps 4 and 5, with identical data and seed. The `seed`
+argument controls Stan's sampler, whereas `set.seed()` controls the initial
+values `bayesnec` generates in R, so both are set. The precompiled vignette uses
+the `cmdstanr` backend
 (through `options(brms.backend = "cmdstanr")`); without that option `brms` uses
 `rstan`, and the diagnostic counts below may differ.
 
-```{r coral-fit-default, results = "hide", message = TRUE, drop_progress = TRUE}
-set.seed(228)
-fit_default <- bnec(coral_formula, data = colour_2050, family = fam,
-                    prior_type = "uninformative", seed = 228, refresh = 0)
+```{r copper-fit-default, results = "hide", message = TRUE, drop_progress = TRUE}
+set.seed(17)
+fit_default <- bnec(copper_formula, data = cu, family = gfam,
+                    prior_type = "uninformative", seed = 17, refresh = 0)
 ```
 
-```{r coral-fit-regular, results = "hide"}
-set.seed(228)
-fit_regular <- bnec(coral_formula, data = colour_2050, family = fam,
-                    prior_type = "regularizing", seed = 228, refresh = 0)
-```
+While fitting, `bnec()` also prints a line as it begins and completes each
+equation, and the sampler prints its own warnings, including the number of
+divergent transitions; those lines are omitted above, and step 3 examines the
+same diagnostics with `check_sampling()`. Before fitting, `bnec()` names the
+equations it drops, for the reasons given above. The messages after fitting
+concern the fitted equations. They report, where any occur, the draws for which
+a curve does not fall to the NSEC reference within the tested range (those
+draws are censored in the NSEC summary), the cells whose Pareto *k* is at or
+above 0.7 (step 3), and the equations whose control mean or spread is not
+reproduced within 15% (step 5).
 
-The messages shown are those of the first fit, and the second fit prints the
-corresponding messages for the regularising priors. While fitting, `bnec()` also
-prints a line as it begins and completes each equation, and the sampler prints
-its own warnings, including the number of divergent transitions; those lines are
-omitted above, and step 3 examines the same diagnostics with `check_sampling()`.
-Before fitting, `bnec()`
-names the equations it drops, for the reasons given above. It then compares the
-mean colour at the two highest concentrations, and its message states that the
-response is still declining at the top of the series. This test cannot tell
-whether the curve flattens at `r top_dose` µg/L or continues to fall beyond it.
-We keep the default declaration for the reason given in step 1, while
-recognising that one concentration cannot establish a plateau. The next message describes what the declaration does to the
-priors: the `bot` prior is derived from the observed response, and the `nec` and
-`ec50` priors are bounded to the tested range, so that a threshold above it is
-excluded. Setting `asymptote_observed = FALSE` would be a different prior
-assumption, because under it the `bot` prior changes and the `nec` and `ec50`
-priors have no upper bound. The message asks for that assumption to be examined,
-and does not change it.
-
-The messages after fitting concern the fitted equations. They report, where any
-occur, the draws for which a curve does not fall to the NSEC reference within
-the tested range (those draws are censored in the NSEC summary), the chambers
-whose Pareto *k* is at or above 0.7 (step 3), and the equations whose control mean or
-spread is not reproduced within 15% (step 4).
-
-```{r coral-record}
+```{r copper-record}
 record_default <- bnec_record(fit_default)
 record_default$excluded
 is.null(record_default$substitutions)
@@ -427,16 +355,55 @@ is.null(record_default$substitutions)
 
 `bnec_record()` gives the equations excluded before fitting, with the reasons
 above, and any value changed to make the response compatible with the family
-(`substitutions`, which is `NULL` here because the 2050 colour values are inside
-the Beta support). Every requested equation is either excluded or `attempted`,
-and an attempted equation that did not fit remains in `attempted`.
-`failed_models()` lists such equations: in this run
-`r which_failed(fit_regular)` failed to fit under the regularising priors, and
-`r which_failed(fit_default)` under the uninformative priors. It also keeps the
-priors and initial values used for each failed equation, which are useful when
-investigating the failure. A different initialisation or prior may allow such a
-fit to start, although that does not show that the resulting posterior is
-identified by these concentrations.
+(`substitutions`, which is `NULL` here because `rlu_cens` is strictly positive).
+Every requested equation is either excluded or `attempted`, and an attempted
+equation that did not fit remains in `attempted`. `failed_models()` lists such
+equations, and in this run `r which_failed(fit_default)` failed to fit. It also
+keeps the priors and initial values used for each failed equation, which are
+useful when investigating the failure. A different initialisation or prior may
+allow such a fit to start (step 4 refits the set under other priors), although
+that does not show that the resulting posterior is identified by these
+concentrations.
+
+## The summary of the fitted set
+
+`summary()` gives the model weights, computed from leave-one-cell-out scores,
+the model-averaged *N(S)EC*, and the Bayesian R² and number of divergent
+transitions of each equation. It ends with a warning that names each equation
+whose maximum Rhat exceeds 1.01 or which has more than ten divergent
+transitions, and each equation whose control mean or spread is not reproduced
+within 15%.
+
+```{r copper-summary}
+summary_default <- summary(fit_default)
+```
+
+```{r copper-summary-print, warning = TRUE}
+summary_default
+```
+
+```{r copper-summary-text, include = FALSE}
+flag_default <- with(check_sampling(fit_default),
+                     model[which(max_rhat > 1.01 | n_divergent > 10)])
+flag_weight <- sum(summary_default$mod_weights[flag_default, "wi"])
+flag_text <- if (!length(flag_default)) {
+  paste("In this run no equation exceeds the Rhat or divergence cutoff,",
+        "although step 3 also applies an ESS cutoff that the summary does not",
+        "report.")
+} else {
+  paste0("In this run the warning names ", length(flag_default), " of the ",
+         length(fit_default$success_models), " fitted equations for their ",
+         "Rhat or divergent transitions, and together they hold ",
+         sprintf("%.2f", flag_weight), " of the model weight. The ",
+         "model-averaged *N(S)EC* in the summary therefore includes equations ",
+         "whose posteriors the sampler may not have explored reliably, and it ",
+         "is not an estimate to report.")
+}
+```
+
+These weights are computed over every fitted equation, including any that the
+warning names. `r flag_text` Step 3 examines the sampler diagnostics of each
+equation and removes those that fail them before any estimate is read.
 
 # 3. Sampler diagnostics and screening
 
@@ -448,108 +415,48 @@ transitions. The Rhat and ESS cutoffs follow the recommendations of
 convention (Stan regards any divergence as evidence that some part of the
 posterior was not explored). A screen result is specific to the data, priors,
 sampler settings and seed. The table gives the curve parameters of each valid
-equation and, for each prior, its maximum Rhat, minimum ESS and number of
-divergent transitions, followed by the screen result.
+equation, its maximum Rhat, minimum ESS and number of divergent transitions
+under the default priors, and whether it failed the screen.
 
-```{r coral-sampling}
-sampling_default <- check_sampling(fit_default)
-sampling_regular <- check_sampling(fit_regular)
-diagnostic_label <- function(tab, model) {
-  i <- match(model, tab$model)
-  if (is.na(i)) return("did not fit")
-  x <- tab[i, ]
-  sprintf("%.3f / %.0f / %d %s", x$max_rhat, x$min_ess, x$n_divergent,
-          if (x$failed) "fail" else "pass")
+```{r copper-sampling}
+round_cols <- function(x, digits = 3) {
+  num <- vapply(x, is.numeric, logical(1))
+  x[num] <- lapply(x[num], round, digits)
+  x
 }
+sampling_default <- check_sampling(fit_default)
 valid <- names(prior_default)
 curve_parameters <- lapply(valid, function(m) names(show_params(m)[[1]]$pforms))
+first_run <- sampling_default[match(valid, sampling_default$model), ]
 data.frame(
   model = valid,
   parameters = vapply(curve_parameters, paste, character(1), collapse = ", "),
-  uninformative = vapply(valid, diagnostic_label, character(1),
-                         tab = sampling_default),
-  regularizing = vapply(valid, diagnostic_label, character(1),
-                        tab = sampling_regular),
+  max_rhat = round(first_run$max_rhat, 3),
+  min_ess = round(first_run$min_ess),
+  n_divergent = first_run$n_divergent,
+  failed = first_run$failed,
   row.names = NULL
 )
 ```
 
-```{r coral-sampling-counts, include = FALSE}
+```{r copper-sampling-counts, include = FALSE}
 passed <- function(tab) tab$model[!tab$failed]
 bot_models <- valid[vapply(curve_parameters, function(p) "bot" %in% p,
                            logical(1))]
 n_divergence_fail <- function(tab) sum(tab$failed & tab$n_divergent > 10)
-both_failed <- intersect(sampling_default$model[sampling_default$failed],
-                         sampling_regular$model[sampling_regular$failed])
-fewer_divergences <- sum(
-  sampling_regular$n_divergent[match(both_failed, sampling_regular$model)] <
-    sampling_default$n_divergent[match(both_failed, sampling_default$model)]
-)
 ```
 
-"Did not fit" marks an attempted equation with no draws, which is distinct from
-a fitted equation that missed a cutoff. Under the uninformative priors
+A row of `NA` marks an attempted equation with no draws, which is distinct from
+a fitted equation that missed a cutoff. Under the default priors
 `r length(passed(sampling_default))` of the `r nrow(sampling_default)` fitted
-equations passed (`r name_list(passed(sampling_default))`), and under the
-regularising priors `r length(passed(sampling_regular))` of the
-`r nrow(sampling_regular)` fitted equations passed
-(`r name_list(passed(sampling_regular))`). Of the
-`r sum(sampling_default$failed)` failures under the uninformative priors,
-`r n_divergence_fail(sampling_default)` included more than ten divergent
-transitions, as did `r n_divergence_fail(sampling_regular)` of the
-`r sum(sampling_regular$failed)` under the regularising priors.
-
-An equation with a `bot` parameter has to estimate the lower asymptote, or the
-shape of the lower limb, from the response at the single highest concentration
-(`r top_dose` µg/L), where the decline has not been shown to have levelled off,
-so it may sample poorly on this design. Of
-the `r length(bot_models)` equations with a `bot` parameter,
-`r sum(bot_models %in% passed(sampling_default))` passed under the uninformative
-priors and `r sum(bot_models %in% passed(sampling_regular))` under the
-regularising priors, against
-`r sum(setdiff(valid, bot_models) %in% passed(sampling_default))` and
-`r sum(setdiff(valid, bot_models) %in% passed(sampling_regular))` of the
+equations passed (`r name_list(passed(sampling_default))`), and
+`r n_divergence_fail(sampling_default)` of the
+`r sum(sampling_default$failed)` that failed had more than ten divergent
+transitions. Of the `r length(bot_models)` equations with a `bot` parameter,
+`r sum(bot_models %in% passed(sampling_default))` passed, against
+`r sum(setdiff(valid, bot_models) %in% passed(sampling_default))` of the
 `r length(valid) - length(bot_models)` equations without one. The diagnostics do
-not show which parameter is responsible for a failure. The regularising priors
-provide more information about plausible parameter values, and of the
-`r length(both_failed)` equations that failed under both priors,
-`r fewer_divergences` had fewer divergent transitions under the regularising
-priors, although each still failed a cutoff on the first run.
-
-Stan also records the time each chain spent in warmup and in sampling, and
-`rstan::get_elapsed_time()` reads it from the `stanfit` held in each equation's
-`brmsfit`. The table gives the sum over the four chains, in seconds, for the
-same first run. These times exclude compiling each Stan program and searching
-for initial values, and they depend on the machine and on what else it was
-running, so they are given for comparison between equations and prior sets
-only.
-
-```{r coral-sampling-time}
-sampling_seconds <- function(fit) {
-  vapply(valid, function(m) {
-    if (!m %in% fit$success_models) return(NA_real_)
-    sum(rstan::get_elapsed_time(pull_brmsfit(fit, model = m)$fit))
-  }, numeric(1))
-}
-seconds_default <- sampling_seconds(fit_default)
-seconds_regular <- sampling_seconds(fit_regular)
-data.frame(model = valid, uninformative = round(seconds_default),
-           regularizing = round(seconds_regular), row.names = NULL)
-```
-
-```{r coral-sampling-time-text, include = FALSE}
-total_minutes <- function(s) signif(sum(s, na.rm = TRUE) / 60, 2)
-failed_share <- function(s, tab) {
-  failed <- names(s) %in% tab$model[tab$failed]
-  sprintf("%.0f", 100 * sum(s[failed], na.rm = TRUE) / sum(s, na.rm = TRUE))
-}
-```
-
-Warmup and sampling took `r total_minutes(seconds_default)` min in total under
-the uninformative priors and `r total_minutes(seconds_regular)` min under the
-regularising priors, and `r failed_share(seconds_default, sampling_default)`%
-and `r failed_share(seconds_regular, sampling_regular)`% of those totals were
-spent on the equations that failed the screen.
+not show which parameter is responsible for a failure.
 
 ## Kinds of failure
 
@@ -559,12 +466,10 @@ few divergences may only have been given too few draws, and more iterations may
 raise its ESS. Divergences describe a different problem: additional draws visit
 the difficult part of the posterior more often, so increasing `iter` by itself
 is unlikely to remove them. A higher `adapt_delta` (set through the `control`
-argument, which `bnec()` already raises to 0.99 for an equation whose
-group-level term could take a bounded mean outside its support) may reduce them,
-although it cannot identify a lower asymptote that the design did not observe.
-If Stan also warns about maximum tree depth, `max_treedepth` is the relevant
-control to examine (see `?check_sampling`). An equation that never initialises
-is recorded by `failed_models()`, and has no sampler diagnostics to screen.
+argument) makes the sampler take smaller steps and may reduce them. If Stan also
+warns about maximum tree depth, `max_treedepth` is the relevant control to
+examine (see `?check_sampling`). An equation that never initialises is recorded
+by `failed_models()`, and has no sampler diagnostics to screen.
 
 The ESS floor and the divergence allowance are both absolute counts. At an
 unchanged divergence rate a longer run will record more divergences, while it
@@ -584,11 +489,10 @@ iterations and warmup, thinned by two so that it keeps the 8,000 draws of the
 other equations (the model weights compare leave-out scores computed from equal
 numbers of draws), and replaces it in the set before screening. An equation
 with more than ten divergent transitions is instead refitted with the same
-iterations at `adapt_delta = 0.99`, or at 0.999 for `neclin` and `ecxlin`,
-which `bnec()` already fits at 0.99 because `ogl(chamber)` can take their mean
-outside (0, 1).
+iterations at `adapt_delta = 0.99`, or at 0.999 if its first fit already used
+0.99. Steps 4 and 5 apply the same rules to their refits.
 
-```{r coral-retry, results = "hide"}
+```{r copper-retry, results = "hide"}
 retry_models <- function(tab) tab$model[tab$failed & tab$n_divergent <= 10]
 tune_models <- function(tab) tab$model[tab$failed & tab$n_divergent > 10]
 refit_failed <- function(fit, retry, tune) {
@@ -598,7 +502,8 @@ refit_failed <- function(fit, retry, tune) {
            refresh = 0)
   })
   tuned <- lapply(tune, function(m) {
-    delta <- if (m %in% c("neclin", "ecxlin")) 0.999 else 0.99
+    first <- brms::control_params(pull_brmsfit(fit, model = m))$adapt_delta
+    delta <- if (isTRUE(first >= 0.99)) 0.999 else 0.99
     update(pull_out(fit, model = m), control = list(adapt_delta = delta),
            refresh = 0)
   })
@@ -607,48 +512,26 @@ refit_failed <- function(fit, retry, tune) {
   do.call(c, c(longer, tuned, list(fit)))
 }
 retry_default <- retry_models(sampling_default)
-retry_regular <- retry_models(sampling_regular)
 tune_default <- tune_models(sampling_default)
-tune_regular <- tune_models(sampling_regular)
-set.seed(228)
-fit_default <- refit_failed(fit_default, retry_default, tune_default)
-set.seed(228)
-fit_regular <- refit_failed(fit_regular, retry_regular, tune_regular)
-sampling_default <- check_sampling(fit_default)
-sampling_regular <- check_sampling(fit_regular)
+set.seed(17)
+refit_default <- refit_failed(fit_default, retry_default, tune_default)
+sampling_default_refit <- check_sampling(refit_default)
 ```
 
-```{r coral-retried}
-refit_default <- c(retry_default, tune_default)
-refit_regular <- c(retry_regular, tune_regular)
-retried <- rbind(
-  sampling_default[sampling_default$model %in% refit_default, ],
-  sampling_regular[sampling_regular$model %in% refit_regular, ]
-)
-if (nrow(retried)) {
-  cbind(prior_type = rep(c("uninformative", "regularizing"),
-                         c(sum(sampling_default$model %in% refit_default),
-                           sum(sampling_regular$model %in% refit_regular))),
-        retried)
+```{r copper-retried}
+refitted_default <- c(retry_default, tune_default)
+if (length(refitted_default)) {
+  round_cols(sampling_default_refit[sampling_default_refit$model %in%
+                                      refitted_default, ])
 }
 ```
 
-```{r coral-retried-text, include = FALSE}
-tune_text <- if (setequal(tune_default, tune_regular)) {
-  paste(name_list(tune_default), "under both priors")
-} else {
-  paste(name_list(tune_default), "under the uninformative priors and to",
-        name_list(tune_regular), "under the regularising priors")
-}
-```
+In this run the longer refit was applied to
+`r name_list(retry_default, "no equation")`, and the refit at a higher
+`adapt_delta` to `r name_list(tune_default, "no equation")`.
+`r if (length(refitted_default)) "The table above gives the diagnostics of each refitted equation after its refit, and the screen below uses those." else "No equation was refitted, so no table is shown."`
 
-In this run the longer refit was applied to `r name_list(retry_default)` under
-the uninformative priors and to `r name_list(retry_regular)` under the
-regularising priors, and the refit at a higher `adapt_delta` to
-`r tune_text`.
-`r if (nrow(retried)) "The table above gives the diagnostics of each refitted equation after its refit, and the screen below uses those." else "No equation was refitted, so no table is shown."`
-
-## Screening the model sets
+## Screening the model set
 
 `screen_models()` drops each equation that misses any cutoff, names it with the
 cutoffs it failed, and recomputes the model weights over the equations that
@@ -659,971 +542,405 @@ posterior draws are reliable, and does not select equations for their fit to the
 observed response. If every fitted equation fails, the function stops with the
 reasons instead of returning a model average.
 
-```{r coral-screen, message = TRUE}
-screened_default <- screen_models(fit_default)
-screened_regular <- screen_models(fit_regular)
+```{r copper-screen, message = TRUE}
+screened_default <- screen_models(refit_default)
 ```
 
-```{r coral-screen-counts, include = FALSE}
-n_kept <- c(uninformative = length(screened_default$success_models),
-            regularizing = length(screened_regular$success_models))
-effect <- if (n_kept[["regularizing"]] > n_kept[["uninformative"]]) {
-  "increased"
-} else if (n_kept[["regularizing"]] == n_kept[["uninformative"]]) {
-  "did not change"
-} else {
-  "reduced"
-}
-kept_clause <- paste("so on these data the regularising priors", effect,
-                     "the number of equations available for the model average")
-```
+After the refits, the screen retained
+`r length(screened_default$success_models)` of the
+`r nrow(sampling_default)` fitted equations
+(`r name_list(screened_default$success_models)`).
 
-After the refit, the screen retained `r n_kept[["uninformative"]]` equations
-under the uninformative priors (`r name_list(screened_default$success_models)`)
-and `r n_kept[["regularizing"]]` under the regularising priors
-(`r name_list(screened_regular$success_models)`), `r kept_clause`. Step 5
-assesses what the additional information in the regularising priors does to the
-estimates.
+## Cell-level model weights
 
-## Chamber-level model weights
+The four wells in a cell are related observations, so leaving out one well at a
+time would overstate how well a model predicts a new cell. Because
+`ogl(conc_group)` is in the formula, the default model weights instead leave out
+a whole cell at a time, and are computed from those leave-one-cell-out scores by
+the default pseudo-BMA method. A cell here is a whole concentration, so leaving
+it out removes a point on the curve. Pareto *k* assesses whether the
+importance-sampling approximation to each left-out score is reliable, and the
+score of a cell with *k* at or above 0.7 is unreliable until an exact refit
+replaces it. `check_fit()` returns these diagnostics for each equation as its
+`"pareto"` attribute, and we show the model weight, the number of cells at or
+above 0.7 and the largest *k* for each retained equation. This check belongs
+after screening, because the weights of models whose posterior was not sampled
+adequately should not be interpreted.
 
-The fragments in each chamber are related observations, so leaving out one
-fragment at a time would overstate how well a model predicts a new chamber.
-Because `ogl(chamber)` is in the formula, the default model weights instead
-leave out a whole chamber at a time, and are computed from those
-leave-one-chamber-out scores by the default pseudo-BMA method. Pareto *k*
-assesses whether the importance-sampling approximation to each left-out score is
-reliable, and the score of a chamber with *k* at or above 0.7 is unreliable until an
-exact refit replaces it. `check_fit()` returns these diagnostics for each
-equation as its `"pareto"` attribute, and we show the model weight, the number
-of chambers at or above 0.7 and the largest *k* for each retained equation. This check
-belongs after screening, because the weights of models whose posterior was not
-sampled adequately should not be interpreted.
-
-```{r coral-pareto}
-round_cols <- function(x, digits = 3) {
-  num <- vapply(x, is.numeric, logical(1))
-  x[num] <- lapply(x[num], round, digits)
-  x
-}
-pareto_rows <- function(x, label) {
+```{r copper-pareto}
+pareto_rows <- function(x) {
   p <- attr(check_fit(x, ndraws = 100), "pareto")
   if (anyNA(p$n_high_k)) stop("Pareto diagnostics are unavailable")
-  data.frame(prior_type = label, p[, c("model", "weight", "n_high_k", "max_k")])
+  p[, c("model", "weight", "n_high_k", "max_k")]
 }
-pareto <- rbind(pareto_rows(screened_default, "uninformative"),
-                pareto_rows(screened_regular, "regularizing"))
-round_cols(pareto)
+pareto_default <- pareto_rows(screened_default)
+round_cols(pareto_default)
 ```
 
-In this run `r sum(pareto$n_high_k > 0)` of the `r nrow(pareto)` retained
-equations had at least one chamber with *k* at or above 0.7 (the largest *k* was
-`r sprintf("%.2f", max(pareto$max_k))`). Where any chamber has a *k* at or above the cutoff,
-`amend(x, loo_controls = list(refit = TRUE))` refits each affected equation
-without that chamber and recomputes the weights from the exact scores. The chunk
-below does so for each set that needs it, and gives the final weights.
+In this run `r sum(pareto_default$n_high_k > 0)` of the
+`r nrow(pareto_default)` retained equations had at least one cell with *k* at or
+above 0.7 (the largest *k* was
+`r sprintf("%.2f", max(pareto_default$max_k))`).
+`amend(x, loo_controls = list(refit = TRUE))` replaces each such score by
+refitting the equation without that cell, which takes one refit for each cell at
+or above the cutoff. The weights of this set are used only to compare it with
+later fits, so we make the exact refits only for the set the reported estimates
+come from (step 5), and the weights below are approximate.
 
-```{r coral-reloo, results = "hide"}
-refit_high_k <- function(x, label) {
-  if (any(pareto$n_high_k[pareto$prior_type == label] > 0)) {
-    amend(x, loo_controls = list(refit = TRUE))
-  } else {
-    x
-  }
-}
-set.seed(228)
-screened_default <- refit_high_k(screened_default, "uninformative")
-set.seed(228)
-screened_regular <- refit_high_k(screened_regular, "regularizing")
-```
-
-```{r coral-weights}
+```{r copper-weights}
 weights_of <- function(x, label) {
   w <- summary(x)$mod_weights
-  setNames(data.frame(rownames(w), w[, "wi"]), c("model", label))
+  setNames(data.frame(rownames(w), w[, "wi"], row.names = NULL),
+           c("model", label))
 }
-coral_weights <- merge(weights_of(screened_default, "uninformative"),
-                       weights_of(screened_regular, "regularizing"), all = TRUE)
-round_cols(coral_weights)
+weights_default <- weights_of(screened_default, "uninformative")
+round_cols(weights_default)
 ```
 
-```{r coral-weights-lead, include = FALSE}
-lead_regular <- coral_weights$model[which.max(coral_weights$regularizing)]
+```{r copper-weights-lead, include = FALSE}
+lead_default <- weights_default$model[which.max(weights_default$uninformative)]
 ```
 
 The weights are the share of the model-averaged prediction assigned to each
-equation, and sum to one within each set (an equation absent from a set is
-`NA`). Under the regularising priors `r name_list(lead_regular)` has the highest
-weight (`r sprintf("%.2f", max(coral_weights$regularizing, na.rm = TRUE))`). A
-small weight does not validate an equation that sampled poorly (e.g., an
-equation with many divergent transitions can still be given a large weight),
-which is why the weights are read only after screening.
+equation, and sum to one. `r name_list(lead_default)` has the highest weight
+(`r sprintf("%.2f", max(weights_default$uninformative))`). A small weight does
+not validate an equation that sampled poorly (e.g., an equation with many
+divergent transitions can still be given a large weight), which is why the
+weights are read only after screening.
 
 ## Chain mixing
 
 The screen summarises each chain in a few numbers, whereas the traces show the
-draws themselves. Here we inspect the traces for the highest-weighted equation
-of the regularising set:
+draws themselves. Here we inspect the traces for the highest-weighted equation:
 
-```{r coral-chains, out.width = "90%"}
-best_regular <- pull_best(screened_regular)
-check_chains(best_regular)
+```{r exmp9-chains, out.width = "90%"}
+best_default <- pull_best(screened_default)
+check_chains(best_default)
 ```
 
-For `r name_list(best_regular$model)` the four chains overlap throughout a
-stable range in the trace panels, with brief excursions to larger values of some
-parameters in single chains, and in the autocorrelation panels the dependence
-between successive draws falls close to zero within about 5 lags. A
+```{r copper-chains-text, include = FALSE}
+best_row <- sampling_default_refit[sampling_default_refit$model ==
+                                     best_default$model, ]
+```
+
+For `r name_list(best_default$model)` (maximum Rhat
+`r sprintf("%.3f", best_row$max_rhat)`, minimum ESS
+`r sprintf("%.0f", best_row$min_ess)`) the four chains overlap throughout a
+stable range in the trace panels, and in the autocorrelation panels the
+dependence between successive draws falls close to zero within a few lags. A
 satisfactory Rhat does not replace inspection of these plots, and before
 reporting a model average we would inspect the traces of each retained equation.
 `check_chains()` can write one page per equation to a PDF for that review:
 
-```{r coral-all-chains, eval = FALSE}
-check_chains(screened_regular, filename = "coral_2050_chains")
+```{r copper-all-chains, eval = FALSE}
+check_chains(screened_default, filename = "copper_chains")
 ```
 
-# 4. Fit diagnostics
+# 4. The regularising priors
+
+```{r copper-remaining, include = FALSE}
+still_failed <- sampling_default_refit$model[sampling_default_refit$failed]
+unfit_default <- setdiff(valid, fit_default$success_models)
+remaining_text <- if (length(still_failed) || length(unfit_default)) {
+  paste0("After the refits of step 3, ", length(still_failed), " of the ",
+         nrow(sampling_default_refit), " fitted equations still failed the ",
+         "screen under the default priors",
+         if (length(still_failed)) paste0(" (", name_list(still_failed), ")"),
+         if (length(unfit_default)) {
+           paste0(", and ", name_list(unfit_default), " had not fitted at all")
+         }, ".")
+} else {
+  paste("After the refits of step 3, every equation fitted and passed the",
+        "screen under the default priors, so here the regularising priors are",
+        "fitted only for comparison.")
+}
+```
+
+`r remaining_text` The `"regularizing"` priors (`?bnec`) are narrower than the
+defaults, and they centre `top` and `bot` on the mean response at the lowest
+and the highest concentrations. They therefore provide the sampler with more
+information about plausible parameter values, and refitting under them tests
+whether the equations that failed can be fitted and sampled when the priors
+provide that information. The entries for `ecxll5` that correspond to those of
+step 2 are:
+
+```{r copper-prior-regular}
+prior_regular <- get_priors(copper_formula, data = cu, family = gfam,
+                            prior_type = "regularizing")
+entries_regular <- selected_priors(prior_regular)
+entries_regular
+```
+
+The bounds of `ec50` are unchanged and its standard deviation is smaller, `top`
+and `bot` are concentrated around the mean response at the lowest and the
+highest concentrations, and `f` is
+`r entries_regular$prior[entries_regular$nlpar == "f"]` instead of
+`r entries_default$prior[entries_default$nlpar == "f"]`. Narrower priors may
+stabilise sampling on sparse data, but they can also narrow the reported
+interval where the likelihood provides little information.
+
+We refit the whole candidate set under these priors, and not only the equations
+that failed. Step 6 compares the estimates of the equations that pass under both
+prior sets, which requires each of them to be fitted under both. The model
+weights of a set that combined equations fitted under different priors would
+depend on those priors as well as on the shapes of the curves, so such a set
+could not be reported as fitted under one prior set.
+
+```{r copper-fit-regular, results = "hide"}
+set.seed(17)
+fit_regular <- bnec(copper_formula, data = cu, family = gfam,
+                    prior_type = "regularizing", seed = 17, refresh = 0)
+```
+
+```{r copper-rescued, include = FALSE}
+rescued <- setdiff(fit_regular$success_models, fit_default$success_models)
+rescue_text <- if (length(rescued)) {
+  paste0(" ", name_list(rescued), if (length(rescued) == 1) " was" else " were",
+         " fitted under the regularising priors although ",
+         if (length(rescued) == 1) "it" else "they",
+         " failed to fit under the default priors. The refits of step 3 do not",
+         " apply to such a failure, because an equation with no draws has no",
+         " diagnostics to act on.")
+} else {
+  ""
+}
+```
+
+This fit prints the same kinds of message as the fit of step 2, and they are not
+shown. In this run `r which_failed(fit_regular)` failed to fit under the
+regularising priors.`r rescue_text`
+
+## Sampler diagnostics under both prior sets
+
+The table compares the first run under each prior set, before any refit. Each
+entry gives the maximum Rhat, the minimum ESS and the number of divergent
+transitions, followed by the screen result, and "did not fit" marks an attempted
+equation with no draws.
+
+```{r copper-sampling-compare}
+sampling_regular <- check_sampling(fit_regular)
+diagnostic_label <- function(tab, model) {
+  i <- match(model, tab$model)
+  if (is.na(i)) return("did not fit")
+  x <- tab[i, ]
+  sprintf("%.3f / %.0f / %d %s", x$max_rhat, x$min_ess, x$n_divergent,
+          if (x$failed) "fail" else "pass")
+}
+data.frame(
+  model = valid,
+  uninformative = vapply(valid, diagnostic_label, character(1),
+                         tab = sampling_default),
+  regularizing = vapply(valid, diagnostic_label, character(1),
+                        tab = sampling_regular),
+  row.names = NULL
+)
+```
+
+```{r copper-sampling-compare-text, include = FALSE}
+both_failed <- intersect(sampling_default$model[sampling_default$failed],
+                         sampling_regular$model[sampling_regular$failed])
+fewer_divergences <- sum(
+  sampling_regular$n_divergent[match(both_failed, sampling_regular$model)] <
+    sampling_default$n_divergent[match(both_failed, sampling_default$model)]
+)
+only_regular_first <- setdiff(passed(sampling_regular), passed(sampling_default))
+only_default_first <- setdiff(passed(sampling_default), passed(sampling_regular))
+first_run_text <- if (!length(only_regular_first) && !length(only_default_first)) {
+  ", and the same equations passed under both"
+} else {
+  paste0(", and ", paste(c(
+    if (length(only_regular_first)) {
+      paste(name_list(only_regular_first),
+            "passed only under the regularising priors")
+    },
+    if (length(only_default_first)) {
+      paste(name_list(only_default_first),
+            "passed only under the default priors")
+    }), collapse = " whereas "))
+}
+```
+
+On the first run `r length(passed(sampling_regular))` of the
+`r nrow(sampling_regular)` fitted equations passed under the regularising
+priors, against `r length(passed(sampling_default))` of
+`r nrow(sampling_default)` under the default priors`r first_run_text`. Of the
+`r length(both_failed)` equations that failed under both prior sets,
+`r fewer_divergences` had fewer divergent transitions under the regularising
+priors.
+
+Stan also records the time each chain spent in warmup and in sampling, and
+`rstan::get_elapsed_time()` reads it from the `stanfit` held in each equation's
+`brmsfit`. The table gives the sum over the four chains, in seconds, for the
+same first run. These times exclude compiling each Stan program and searching
+for initial values, and they depend on the machine and on what else it was
+running, so they are given for comparison between equations and prior sets
+only.
+
+```{r copper-sampling-time}
+sampling_seconds <- function(fit) {
+  vapply(valid, function(m) {
+    if (!m %in% fit$success_models) return(NA_real_)
+    sum(rstan::get_elapsed_time(pull_brmsfit(fit, model = m)$fit))
+  }, numeric(1))
+}
+seconds_default <- sampling_seconds(fit_default)
+seconds_regular <- sampling_seconds(fit_regular)
+data.frame(model = valid, uninformative = round(seconds_default),
+           regularizing = round(seconds_regular), row.names = NULL)
+```
+
+```{r copper-sampling-time-text, include = FALSE}
+total_minutes <- function(s) signif(sum(s, na.rm = TRUE) / 60, 2)
+failed_share <- function(s, tab) {
+  failed <- names(s) %in% tab$model[tab$failed]
+  sprintf("%.0f", 100 * sum(s[failed], na.rm = TRUE) / sum(s, na.rm = TRUE))
+}
+```
+
+Warmup and sampling took `r total_minutes(seconds_default)` min in total under
+the default priors and `r total_minutes(seconds_regular)` min under the
+regularising priors, and `r failed_share(seconds_default, sampling_default)`%
+and `r failed_share(seconds_regular, sampling_regular)`% of those totals were
+spent on the equations that failed the screen.
+
+## Refits and screening under the regularising priors
+
+The equations that failed under the regularising priors are refitted by the
+rules of step 3, and the set is then screened, and its cell-level weights
+checked, in the same way.
+
+```{r copper-retry-regular, results = "hide"}
+retry_regular <- retry_models(sampling_regular)
+tune_regular <- tune_models(sampling_regular)
+set.seed(17)
+refit_regular <- refit_failed(fit_regular, retry_regular, tune_regular)
+sampling_regular_refit <- check_sampling(refit_regular)
+```
+
+```{r copper-screen-regular, message = TRUE}
+screened_regular <- screen_models(refit_regular)
+```
+
+```{r copper-pareto-regular}
+pareto_regular <- pareto_rows(screened_regular)
+round_cols(pareto_regular)
+```
+
+```{r copper-weights-both}
+copper_weights <- merge(weights_default,
+                        weights_of(screened_regular, "regularizing"),
+                        all = TRUE)
+round_cols(copper_weights)
+```
+
+In this run the longer refit was applied to
+`r name_list(retry_regular, "no equation")` under the regularising priors, and
+the refit at a higher `adapt_delta` to
+`r name_list(tune_regular, "no equation")`. After these refits the screen
+retained `r length(screened_regular$success_models)` equations
+(`r name_list(screened_regular$success_models)`), against
+`r length(screened_default$success_models)` under the default priors. Under
+the regularising priors `r sum(pareto_regular$n_high_k > 0)` of the retained
+equations had at least one cell with *k* at or above 0.7, and as in step 3 the
+weights of both sets are approximate. They sum to one within each set, and an
+equation absent from a set is `NA`.
+
+## The set used for inference
+
+We use the regularising set for inference only if its screen retains more
+equations than the screen of the default set, because only then do its stronger
+assumptions make more of the candidate set usable. Otherwise the default set is
+used for inference, and the regularising set provides the comparison of step 6.
+The rule depends on the screens alone, so the choice of prior set does not
+depend on the estimates.
+
+```{r copper-final-set}
+use_regular <- length(screened_regular$success_models) >
+  length(screened_default$success_models)
+screened_final <- if (use_regular) screened_regular else screened_default
+final_prior <- if (use_regular) "regularizing" else "uninformative"
+```
+
+```{r copper-final-set-text, include = FALSE}
+final_label <- if (use_regular) "regularising" else "default"
+other_label <- if (use_regular) "default" else "regularising"
+other_prior <- if (use_regular) "uninformative" else "regularizing"
+```
+
+The screen retained `r length(screened_default$success_models)` equations under
+the default priors and `r length(screened_regular$success_models)` under the
+regularising priors, so the analysis continues with the `r final_label` priors.
+
+# 5. Fit diagnostics
 
 Sampler diagnostics concern the posterior draws, whereas `check_fit()` compares
-the observed and simulated response within each concentration. We apply it to
-the screened regularising set used for inference, so that each retained equation
-is checked. The table shows the control rows (because the *N(S)EC* and ECx use
-the fitted control mean as a reference) and any other row flagged by its
-posterior predictive p-value.
+the observed and simulated response within each concentration. We apply it
+first to the highest-weighted equation of the set chosen in step 4, and then to
+each retained equation. The concentration with the censored reading
+(`r signif(cens_conc, 2)` mg/L) is left out of the counts and ranges below,
+because the reading at the floor is a bound and not a measurement.
 
-```{r coral-checkfit}
-cf_regular <- check_fit(screened_regular)
-fit_cols <- c("model", "wi", "group", "obs_mean", "sim_mean",
-              "obs_sd", "sim_sd", "sd_ratio", "ppp_mean", "ppp_sd")
-flagged_regular <- cf_regular$ppp_mean < 0.05 | cf_regular$ppp_mean > 0.95 |
-  cf_regular$ppp_sd < 0.05 | cf_regular$ppp_sd > 0.95
-round_cols(as.data.frame(cf_regular[cf_regular$control | flagged_regular,
-                                    fit_cols]))
+## Spread by concentration
+
+A constant `Gamma` `shape` implies a constant coefficient of variation. We use
+`check_fit()` to compare the observed spread within each concentration with the
+spread of replicate responses simulated from the highest-weighted equation.
+
+```{r checkfit-const}
+best_final <- pull_best(screened_final)
+cf_const <- check_fit(best_final)
+cf_const[, c("group", "n", "obs_sd", "sim_sd", "sd_ratio", "ppp_sd", "control")]
 ```
 
-```{r coral-checkfit-text, include = FALSE}
-ctrl_ratio <- cf_regular$sd_ratio[cf_regular$control]
-control_text <- if (all(ctrl_ratio > 1)) {
-  paste("so each simulates less spread at the control than was observed. A fit",
-        "that simulates too little spread at the control places the NSEC",
-        "reference higher (see the Overview), so such a discrepancy is more",
-        "likely to lower the NSEC than to raise it")
-} else if (all(ctrl_ratio < 1)) {
-  paste("so each simulates more spread at the control than was observed. A fit",
-        "that simulates too much spread at the control places the NSEC",
-        "reference lower (see the Overview), so such a discrepancy is more",
-        "likely to raise the NSEC than to lower it")
+```{r checkfit-const-text, include = FALSE}
+flagged_sd <- function(cf) {
+  keep <- uncensored(cf$group)
+  sum((cf$ppp_sd[keep] > 0.95 | cf$ppp_sd[keep] < 0.05), na.rm = TRUE)
+}
+keep_const <- uncensored(cf_const$group)
+ratio_const <- cf_const$sd_ratio[keep_const]
+group_const <- as.numeric(as.character(cf_const$group[keep_const]))
+ctrl_const <- cf_const$sd_ratio[cf_const$control]
+ctrl_text <- if (ctrl_const < 1) {
+  paste0("At the control the fit simulates about ", round(1 / ctrl_const),
+         " times the spread observed")
 } else {
-  paste("so the retained equations differ in whether they simulate more or",
-        "less spread at the control than was observed")
+  paste0("At the control the fit simulates about ",
+         sprintf("%.1f", 1 / ctrl_const), " of the spread observed")
 }
-flag_where <- if (any(flagged_regular)) {
-  paste0(", at ", paste(unique(cf_regular$group[flagged_regular]),
-                        collapse = " and "), " µg/L")
-} else {
-  ""
-}
-control_flags <- sum(flagged_regular & cf_regular$control)
+both_ways <- ctrl_const < 1 && max(ratio_const) > 1
 ```
 
-The posterior predictive p-value is the fraction of simulated group statistics
-at least as large as the observed statistic, so values outside [0.05, 0.95]
-identify concentrations worth inspecting. Of the `r nrow(cf_regular)` rows
-(`r length(unique(cf_regular$model))` equations by `r length(doses)`
-concentrations), `r sum(flagged_regular)` were flagged`r flag_where`. At the
-control `r control_flags` rows were flagged, and the ratio of observed to
-simulated standard deviation is
-`r range_text(cf_regular$sd_ratio[cf_regular$control])` across the retained
-equations, `r control_text`. With up to `r colour_design$fragments[1]` fragments in
-`r colour_design$chambers[1]` chambers at each concentration, a flag is not by
-itself a reason to exclude an equation, but it shows whether a discrepancy
-concerns the mean or the spread, and where. `check_fit()` simulates each
-fragment with the fitted deviation of its chamber, so the comparison of means
-reflects those deviations as well as the curve.
-
-For a closer view, we plot the highest-weighted retained equation. The points
-are the observed group statistics and the bars are 95% intervals of the
-statistics simulated from that equation.
-
-```{r coral-checkfit-plot, out.width = "85%"}
-cf_best <- cf_regular[cf_regular$model == best_regular$model, , drop = FALSE]
-plot(cf_best)
-```
-
-A point may lie just inside its 95% interval even when its posterior predictive
-p-value is beyond the [0.05, 0.95] flag threshold, because the table uses the
-p-values whereas the plot shows the direction and size of a discrepancy. For
-`r name_list(best_regular$model)` the observed means lie within their intervals
-at
-`r sum(cf_best$obs_mean >= cf_best$sim_mean_lo & cf_best$obs_mean <= cf_best$sim_mean_hi)`
-of the `r nrow(cf_best)` concentrations, and the observed standard deviations at
-`r sum(cf_best$obs_sd >= cf_best$sim_sd_lo & cf_best$obs_sd <= cf_best$sim_sd_hi)`.
-
-# 5. Prior sensitivity and reporting
-
-## The influence of the priors
-
-Model averages over the uninformative and regularising sets differ both in their
-priors and in the equations that passed the screen. To isolate the effect of the
-priors, we compare the estimates from the smooth (ECx) equations that passed
-under both priors, excluding `ecxflat`. The passing equations may depend on the
-sampler backend and seed, so we take their intersection from the screened sets,
-and recompute the weights for that common set (with the Pareto *k* check and
-refit of step 3).
-
-```{r coral-common-set, results = "hide"}
-shared_models <- intersect(names(models(screened_default)),
-                           names(models(screened_regular)))
-shared_models <- setdiff(shared_models[grepl("^ecx", shared_models)], "ecxflat")
-if (!length(shared_models)) {
-  stop("No smooth equation passed the screen under both priors.")
-}
-make_common <- function(x, selected) {
-  fits <- lapply(selected, function(m) pull_out(x, model = m))
-  x <- if (length(fits) == 1L) fits[[1]] else do.call(c, fits)
-  p <- attr(check_fit(x, ndraws = 100), "pareto")
-  if (anyNA(p$n_high_k)) stop("Pareto diagnostics are unavailable")
-  if (any(p$n_high_k > 0)) amend(x, loo_controls = list(refit = TRUE)) else x
-}
-set.seed(228)
-common_default <- make_common(screened_default, shared_models)
-set.seed(228)
-common_regular <- make_common(screened_regular, shared_models)
-```
-
-```{r coral-prior-effect}
-estimate_rows <- function(x, label) {
-  est <- rbind(EC10 = ecx(x, ecx_val = 10), EC50 = ecx(x, ecx_val = 50),
-               NSEC = nsec(x))[, c("Q50", "Q2.5", "Q97.5")]
-  data.frame(estimate = rownames(est), prior_type = label, est,
-             row.names = NULL)
-}
-prior_effect <- rbind(estimate_rows(common_default, "uninformative"),
-                      estimate_rows(common_regular, "regularizing"))
-prior_effect <- prior_effect[order(prior_effect$estimate), ]
-round_cols(prior_effect)
-```
-
-```{r coral-prior-effect-values, include = FALSE}
-pe <- function(est, prior, col = "Q50") {
-  prior_effect[prior_effect$estimate == est &
-                 prior_effect$prior_type == prior, col]
-}
-interval_width <- function(est, prior) pe(est, prior, "Q97.5") - pe(est, prior, "Q2.5")
-cf_common <- function(x) {
-  d <- as.data.frame(check_fit(x))
-  d$sd_ratio[d$control]
-}
-control_ratio_default <- cf_common(common_default)
-control_ratio_regular <- cf_common(common_regular)
-```
-
-Each pair of rows estimates one quantity from the common set
-(`r name_list(shared_models)`), fitted to identical observations, so the
-difference between rows can be attributed to the priors within those equations.
-The median NSEC is `r sprintf("%.2f", pe("NSEC", "uninformative"))` µg/L under
-the uninformative priors and `r sprintf("%.2f", pe("NSEC", "regularizing"))`
-µg/L under the regularising priors, and the median EC50 is
-`r sprintf("%.2f", pe("EC50", "uninformative"))` and
-`r sprintf("%.2f", pe("EC50", "regularizing"))` µg/L. The upper bound of the
-EC50 is `r sprintf("%.2f", pe("EC50", "uninformative", "Q97.5"))` µg/L under the
-uninformative priors and
-`r sprintf("%.2f", pe("EC50", "regularizing", "Q97.5"))` µg/L under the
-regularising priors, and the width of the NSEC interval is
-`r sprintf("%.2f", interval_width("NSEC", "uninformative"))` and
-`r sprintf("%.2f", interval_width("NSEC", "regularizing"))` µg/L. Where an
-interval is narrower under the regularising priors, the difference may reflect
-their stronger assumptions as well as information from the data, and cannot be
-presented as precision supplied solely by the experiment. The control fit, from
-which the NSEC reference is read, can be compared in the same way (the ratio of
-observed to simulated standard deviation at the control is
-`r range_text(control_ratio_default)` across the common equations under the
-uninformative priors, and `r range_text(control_ratio_regular)` under the
-regularising priors).
-
-The final regularising set can contain equations that are not in the common set
-(e.g., `ecxflat`, which the comparison excludes), so its model-averaged
-estimates also reflect their weights and cannot be interpreted as a pure effect
-of the priors.
-[*Priors*](https://open-aims.github.io/bayesnec/articles/example3.html)
-describes how the priors are constructed and how to compare their densities with
-the posterior.
-
-## The final model-averaged fit
-
-We use the screened regularising set for inference. The first figure shows each
-equation retained after screening, on the measured diuron scale, and the second
-shows the model-averaged curve with its 95% credible band.
-
-```{r coral-curves, fig.asp = 1, out.width = "95%"}
-autoplot(screened_regular, model = screened_regular$success_models,
-         average = FALSE, nec = FALSE) +
-    scale_x_continuous(transform = "log10",
-                     breaks = sort(unique(colour_2050$diuron_adj)),
-                     labels = function(x) signif(x, 2)) +
-  labs(x = expression(paste("Diuron (", mu, "g ", L^-1, ")")),
-       y = "Coral colour proportion")
-```
-
-`autoplot()` draws one panel for each equation named in `model`, and
-`average = FALSE` omits the model-averaged panel. The control is drawn at 0.1
-µg/L, the value substituted before logging. The constant equation `ecxflat` does
-not follow the decline (its weight is
-`r sprintf("%.2f", coral_weights$regularizing[coral_weights$model == "ecxflat"])`).
-The other retained equations agree closely from the control to
-`r doses[length(doses) - 2]` µg/L, where the response is flat. Above that
-concentration, where the response falls, the shapes of their declines differ,
-and that difference is the model uncertainty the average incorporates.
-
-```{r coral-final-plot, fig.asp = 0.75, out.width = "85%"}
-autoplot(screened_regular, nec = FALSE) +
-    scale_x_continuous(transform = "log10",
-                     breaks = sort(unique(colour_2050$diuron_adj)),
-                     labels = function(x) signif(x, 2)) +
-  labs(x = expression(paste("Diuron (", mu, "g ", L^-1, ")")),
-       y = "Coral colour proportion")
-```
-
-The model-averaged curve passes through the mean response at each concentration,
-and its credible band is widest where the response falls, between `r next_dose`
-and `r top_dose` µg/L. The table gives the median and equal-tailed 95% credible
-interval of the EC10, EC50 and NSEC (µg/L) from this set. Here `nsec()` applies
-one control-reference definition to each retained equation, whereas, where a set
-mixes threshold and smooth equations, `nec()` returns the model-averaged mixture
-of NEC and NSEC draws that `summary()` labels N(S)EC.
-
-```{r coral-final-estimates, message = TRUE, warning = TRUE}
-coral_estimates <- rbind(
-  EC10 = ecx(screened_regular, ecx_val = 10),
-  EC50 = ecx(screened_regular, ecx_val = 50),
-  NSEC = nsec(screened_regular)
-)[, c("Q50", "Q2.5", "Q97.5")]
-round(coral_estimates, 3)
-```
-
-The model-averaged EC10 is `r sprintf("%.2f", coral_estimates["EC10", "Q50"])`
-µg/L (`r sprintf("%.2f", coral_estimates["EC10", "Q2.5"])` to
-`r sprintf("%.2f", coral_estimates["EC10", "Q97.5"])`), the EC50 is
-`r sprintf("%.2f", coral_estimates["EC50", "Q50"])` µg/L
-(`r sprintf("%.2f", coral_estimates["EC50", "Q2.5"])` to
-`r sprintf("%.2f", coral_estimates["EC50", "Q97.5"])`), and the NSEC is
-`r sprintf("%.2f", coral_estimates["NSEC", "Q50"])` µg/L
-(`r sprintf("%.2f", coral_estimates["NSEC", "Q2.5"])` to
-`r sprintf("%.2f", coral_estimates["NSEC", "Q97.5"])`). The ECx values use the
-default absolute response scale, and `type = "range"` would instead measure the
-decline between the fitted upper and lower response levels. A flat equation may
-have no ECx crossing within the tested range, in which case the messages and
-warnings above report how many draws were censored.
-
-These values depend on the substitution of 0.1 µg/L for the control before
-logging, on `asymptote_observed = TRUE`, on the candidate set, and on the
-regularising priors. In particular, no concentration above `r top_dose` µg/L
-was tested, so the estimates rest on the assumption that the response had
-reached its lower asymptote by that concentration. The flatness
-message from `bnec()` and the comparison of priors above should be reported with
-the estimates.
-
-# Draft methods and results text
-
-Here we give a draft of how the analysis above might be described in a paper,
-modelled on the way @flores2021 reported the original analysis of these data.
-That paper summarised its model fitting in a few sentences of the methods,
-reported each EC50 with its interval in the results, and placed further detail
-in supplementary material. Our analysis includes more checks than theirs, and
-the draft refers to steps 1 to 5 of this vignette as Supplementary Material S1
-to S5 (e.g., the sampler diagnostics table of step 3 would be Table S3). The
-values are those computed above, and would update with any change to the
-analysis.
-
-## Statistical analysis
-
-Concentrations of diuron that reduced the colour index of *A. millepora* by 10%
-and 50% (EC10 and EC50), and the no-significant-effect concentration (NSEC;
-@fisherfox2023), were estimated for the 2050 climate scenario using the R
-package `bayesnec` [@fisher2024], which fits concentration-response models in
-Stan through `brms` [@Burkner2017]. The colour index (a proportion) was modelled
-as a function of log diuron concentration, with the control set to 0.1 µg/L
-before transformation, using a beta distribution with an identity link and a
-group-level intercept for chamber
-(up to `r colour_design$fragments[1] / colour_design$chambers[1]` fragments per
-chamber and `r colour_design$chambers[1]` chambers per concentration; S1). The
-candidate model set comprised the `r length(prior_default)` equations of the
-`bayesnec` `decline` group that are valid for these data (declining equations
-and one constant equation; S2), fitted with the package's regularising priors.
-Each equation was fitted with four chains of 10,000 iterations, of which the
-first 8,000 were discarded as warmup. Equations were excluded where the maximum
-R-hat exceeded 1.01 or the minimum bulk or tail effective sample size was below
-400 [@Vehtari2021], or where more than ten divergent transitions occurred; an
-equation that failed only on R-hat or effective sample size was first refitted
-with twice the number of iterations, and one with more than ten divergent
-transitions with a target acceptance rate (`adapt_delta`) of 0.99, or 0.999
-where the default fit had already used 0.99 (S3). Posterior predictions from the
-retained equations were combined using pseudo-Bayesian model averaging weights
-[@Yao2018] calculated from leave-one-chamber-out cross-validation
-[@vehtari2017], with exact refits for chambers where the Pareto *k* diagnostic
-was at or above 0.7 (S3). The fit of each retained equation was assessed by comparing
-the observed mean and standard deviation of the response at each concentration
-with those simulated from the posterior (S4). The sensitivity of the estimates
-to the priors was assessed by also fitting the candidate set with the package's
-default (uninformative) priors, and comparing the estimates from the smooth
-(ECx) equations that passed the screen under both prior sets (S5). Both prior
-sets assumed that the lower asymptote of the response was reached within the
-tested concentration range (the package default), which bounds the NEC and EC50
-priors to that range.
-
-## Results
-
-```{r coral-results-text, include = FALSE}
-kept_regular <- screened_regular$success_models
-kept_default <- screened_default$success_models
-screen_text <- if (setequal(kept_regular, kept_default)) {
-  paste0("The sampler screen retained the same ", length(kept_regular),
-         " of the ", length(valid), " candidate equations under both prior ",
-         "sets (", name_list(kept_regular), "; S3), so the regularising ",
-         "priors did not change the equations available for model averaging.")
-} else {
-  only_regular <- setdiff(kept_regular, kept_default)
-  only_default <- setdiff(kept_default, kept_regular)
-  paste0("The sampler screen retained ", length(kept_regular), " of the ",
-         length(valid), " candidate equations under the regularising priors (",
-         name_list(kept_regular), ") and ", length(kept_default),
-         " under the uninformative priors (S3), and ",
-         paste(c(if (length(only_regular)) {
-                   paste(name_list(only_regular),
-                         "passed only under the regularising priors")
-                 },
-                 if (length(only_default)) {
-                   paste(name_list(only_default),
-                         "passed only under the uninformative priors")
-                 }), collapse = " whereas "), ".")
-}
-unfit <- function(tab, label) {
-  m <- setdiff(valid, tab$model)
-  if (length(m)) paste(name_list(m), "under the", label, "priors")
-}
-unfit_parts <- c(unfit(sampling_regular, "regularising"),
-                 unfit(sampling_default, "uninformative"))
-unfit_text <- if (length(unfit_parts)) {
-  paste0(" No posterior draws were obtained for ",
-         paste(unfit_parts, collapse = " or for "), ".")
-} else {
-  ""
-}
-bot_regular <- intersect(bot_models, kept_regular)
-bot_default <- intersect(bot_models, kept_default)
-named_count <- function(x) {
-  if (length(x)) paste0(length(x), " (", name_list(x), ")") else "none"
-}
-bot_text <- if (!length(bot_regular) && !length(bot_default)) {
-  paste0("None of the ", length(bot_models), " equations that estimate a ",
-         "lower asymptote passed the screen under either prior set, so the ",
-         "lower limit of every retained equation",
-         if ("ecxflat" %in% c(kept_regular, kept_default)) {
-           " other than the constant `ecxflat`"
-         },
-         " is zero.")
-} else {
-  paste0("Of the ", length(bot_models), " equations that estimate a lower ",
-         "asymptote, ", named_count(bot_regular), " passed the screen under ",
-         "the regularising priors and ", named_count(bot_default),
-         " under the uninformative priors.")
-}
-```
-
-Colour index declined from a mean of
-`r sprintf("%.2f", colour_design$mean_proportion[1])` in the controls to
-`r sprintf("%.3f", colour_design$mean_proportion[length(doses)])` at
-`r top_dose` µg/L, with most of the decline occurring between `r next_dose` and
-`r top_dose` µg/L (Fig. S1). `r screen_text``r unfit_text` `r bot_text` The
-highest-weighted retained equation was `r name_list(lead_regular)` (weight
-`r sprintf("%.2f", max(coral_weights$regularizing, na.rm = TRUE))`; S3).
-
-The modelled concentrations that reduced colour index by 10% and 50% (EC10 and
-EC50) were
-`r sprintf("%.2f", coral_estimates["EC10", "Q50"])` (95% CI
-`r sprintf("%.2f", coral_estimates["EC10", "Q2.5"])`–`r sprintf("%.2f", coral_estimates["EC10", "Q97.5"])`)
-and `r sprintf("%.2f", coral_estimates["EC50", "Q50"])`
-(`r sprintf("%.2f", coral_estimates["EC50", "Q2.5"])`–`r sprintf("%.2f", coral_estimates["EC50", "Q97.5"])`)
-µg/L, respectively, and the NSEC was
-`r sprintf("%.2f", coral_estimates["NSEC", "Q50"])`
-(`r sprintf("%.2f", coral_estimates["NSEC", "Q2.5"])`–`r sprintf("%.2f", coral_estimates["NSEC", "Q97.5"])`)
-µg/L (Table S5). For the smooth equations that passed under both prior sets
-(`r name_list(shared_models)`), the median NSEC was
-`r sprintf("%.2f", pe("NSEC", "regularizing"))` µg/L under the regularising
-priors and `r sprintf("%.2f", pe("NSEC", "uninformative"))` µg/L under the
-uninformative priors, with upper 95% bounds of
-`r sprintf("%.2f", pe("NSEC", "regularizing", "Q97.5"))` and
-`r sprintf("%.2f", pe("NSEC", "uninformative", "Q97.5"))` µg/L (S5). Because
-the design has no concentration above `r top_dose` µg/L, the shape of the lower
-part of the curve, and hence the EC50, depends on the assumption that the colour
-index had reached its lower asymptote within the tested range.
-
-# A count response {#a-count-response}
-
-When the response is a count out of a known number of trials, both the family
-question and the sampler screen take a different form. The family question
-becomes a question about dispersion, and the sampler screen can return an
-outcome that more sampling does not fix. Here we use the `nassarius` data to
-demonstrate both.
-
-The data are survival records for the tropical marine snail *Nassarius dorsatus*
-exposed to each of four contaminants, with one row per individual
-[@trenfield2016]. `?nassarius` documents the columns and the provenance of the
-response.
-
-```{r nass-data}
-data(nassarius)
-a <- nassarius[nassarius$contaminant == "A", ]
-table(a$record, a$alive)
-```
-
-The `record` column is important. A death is recorded as `alive = 0`, but most
-of those zeros were not read from the source file, because a treatment in which
-nothing survived was not written down at all, and its rows were reinstated from
-the test design. `record` gives how the fate of each snail was established
-(`measured`, `sentinel_code`, `blank_rep`, `absent_tank` or `absent_dose`), and
-the last two of these are the reinstated records (30 of the 38 deaths in
-contaminant A). Each dose at which any snail died is largely or wholly
-reconstructed, so the descending limb that determines the reported estimate is
-derived almost entirely from reinstated records. This is a property of the data
-and not of `bayesnec`, and it should be stated in the methods section of any
-analysis based on these data. The `record` column (see `?nassarius`) marks the
-reinstated rows, so a fit can be repeated without them.
-
-Survival is binary for each individual, and a binomial fit takes the number
-alive out of the number exposed. The source file lists the snails of each
-treatment in rows labelled as tanks, and we sum the snails in each row:
-
-```{r nass-aggregate}
-surv <- aggregate(alive ~ dose + tank + contaminant,
-                  data = nassarius, FUN = function(x) c(suc = sum(x),
-                                                        tot = length(x)))
-surv <- do.call(data.frame, surv)
-names(surv)[names(surv) == "alive.suc"] <- "suc"
-names(surv)[names(surv) == "alive.tot"] <- "tot"
-surv <- surv[surv$contaminant == "A", ]
-head(surv)
-```
-
-Each row of contaminant A contains `r unique(surv$tot)` snails. However, the
-snails were mixed before they were recorded, so a row is not the tank in which a
-snail was held. The row totals are valid binomial counts, but they contain no
-information about variation between tanks, and the analysis below includes no
-tank term.
-
-A concentration series laid out as a dilution ladder is read on a logarithmic
-axis, which spaces its steps evenly. However, a logarithm is undefined at zero,
-so the control has to be given a plotting position. Here we use half the lowest
-tested dose, marked on the axis as the control and not as a number, so that
-nothing on the figure claims that the control was a dose it was not.
-
-This substitution is made only for the figure. The fit uses the recorded dose,
-including the control, and all estimates are reported in those units. The
-plotting position and the recorded dose can differ safely because `bayesnec`
-takes the control to be the lowest value of the predictor, whatever that value
-is.
-
-```{r exmp9-nass-data}
-ctrl_pos <- min(surv$dose[surv$dose > 0]) / 2
-surv$dose_plot <- ifelse(surv$dose == 0, ctrl_pos, surv$dose)
-dose_breaks <- c(ctrl_pos, 0.01, 0.04, 0.16, 0.63, 2.5, 20)
-# Most rows are at exactly 1 or exactly 0, so the points overplot and the
-# number of rows at each dose cannot be read. The vertical jitter is for display
-# only, with the seed set so the figure is reproducible; the fit uses the
-# recorded proportions.
-set.seed(17)
-ggplot(surv, aes(x = dose_plot, y = suc / tot)) +
-  geom_point(size = 2, alpha = 0.6,
-             position = position_jitter(width = 0, height = 0.015)) +
-  # Transform the scale, not the breaks: transforming the breaks would relabel
-  # the axis without respacing it.
-  scale_x_continuous(transform = "log", breaks = dose_breaks,
-                     labels = c("0\n(control)", "0.01", "0.04", "0.16", "0.63",
-                                "2.5", "20")) +
-  labs(x = "Dose", y = "Proportion surviving") +
-  theme_classic()
-```
-
-Survival is at or near complete for most of the series, and falls away over the
-top two doses (2.5 and 20). Nine of the eleven doses have survival at or above
-0.875, and the whole of the decline occurs between 1.25 and 2.5, with no dose
-tested in between. The logarithmic axis makes that gap visible, because on a
-linear axis the nine doses up to 1.25 would occupy the leftmost six per cent of
-the plot and overlap into a single stack.
-
-## Dispersion and the choice of family
-
-The default family for successes out of trials is `binomial`, which fixes the
-variance at $np(1-p)$ (where $n$ is the number of trials and $p$ the probability
-of success). However, toxicity data often vary by more than that, for several
-reasons. For example, animals within a replicate share conditions, so the
-effective sample size is smaller than the number of individuals; individuals
-differ in susceptibility, so the probability of survival is not one number but a
-distribution; and covariates that were not measured contribute similarly. The
-`beta_binomial` family writes the second of these down explicitly (`p` varies
-between units, drawn from a beta distribution), and in practice it accommodates
-the others as well. Because the rows of `nassarius` are not tanks, variation
-among the rows at a dose cannot reflect conditions shared within a tank, and any
-extra variation in these counts would appear as departures of whole doses from
-the fitted curve.
-
-This correction works in one direction only. Mixing `p` over a beta distribution
-can only *add* variance, so `beta_binomial` addresses over-dispersion, but not
-the opposite case. A dispersion ratio below 1 therefore indicates something
-about the fit, the design or the data-generating process, and not about the
-family.
-
-We fit the `binomial` family to the full candidate set and then inspect the
-dispersion statistic of each equation. `dispersion()` compares the observed and
-simulated sums of squared Pearson residuals for each posterior draw, and
-`summary()` gives the median and 95% interval of that ratio for each equation
-(`dispersion_Estimate`, `dispersion_Q2.5` and `dispersion_Q97.5`), together with
-`dispersion_P_over_1`, the proportion of draws with a ratio above one. The
-statistic depends on the shape of the curve as well as on the family, because a
-curve that fits the mean response poorly leaves residual variation that the
-statistic counts as dispersion. We therefore read it beside the fitted curves,
-and the `beta_binomial` family would be a candidate if the equations that
-describe the response well indicated over-dispersion.
-
-## The fitted set and its screen
-
-We fit the full `decline` set with the default sampling settings, as in the
-coral analysis.
-
-```{r nass-fit, results = "hide"}
-set.seed(17)
-fit_nass <- bnec(suc | trials(tot) ~ crf(dose, model = "decline"),
-                 data = surv, family = "binomial", seed = 17)
-```
-
-```{r nass-screen-models, message = TRUE}
-nass_screened <- screen_models(fit_nass)
-```
-
-```{r nass-k-text, include = FALSE}
-# The equations a screen names for Pareto k: at least 0.01 of the weight and
-# at least one observation with k at or above 0.7 in the leave-one-out score.
-k_named <- function(set) {
-  wi <- setNames(set$mod_stats$wi, set$mod_stats$model)
-  names(wi)[wi >= 0.01 & vapply(names(wi), function(m) {
-    k <- set$mod_fits[[m]]$fit$criteria$loo$diagnostics$pareto_k
-    any(k >= 0.7, na.rm = TRUE)
-  }, logical(1))]
-}
-nass_k <- k_named(nass_screened)
-nass_k_text <- if (length(nass_k) > 0) {
-  paste0("The screen's messages also note that the leave-one-out score has a ",
-         "Pareto *k* at or above 0.7 for at least one row under ",
-         name_list(nass_k), ", so the weights of ",
-         if (length(nass_k) == 1) "that equation" else "those equations",
-         " are approximate.")
-} else {
-  ""
-}
-```
-
-`r nass_k_text`
-
-`summary()` of the fitted set gives the dispersion statistic for each equation,
-including those the screen removed. The table below takes those columns, and
-adds each equation's screen result and its weight in the screened set (`NA` for
-an equation the screen removed).
-
-```{r nass-dispersion-by-model}
-nass_sampling <- check_sampling(fit_nass)
-nass_summary <- summary(fit_nass)$mod_weights
-nass_weights <- summary(nass_screened)$mod_weights
-nass_disp <- data.frame(
-  screen = ifelse(nass_sampling$failed[match(rownames(nass_summary),
-                                             nass_sampling$model)],
-                  "fail", "pass"),
-  weight = nass_weights[match(rownames(nass_summary), rownames(nass_weights)),
-                        "wi"],
-  nass_summary[, c("dispersion_Estimate", "dispersion_Q2.5",
-                   "dispersion_Q97.5", "dispersion_P_over_1")],
-  row.names = rownames(nass_summary)
-)
-round_cols(nass_disp)
-```
-
-To see which equations describe the response, we plot each fitted equation,
-including those the screen removed. The square-root axis spreads the low doses
-while keeping the control at zero.
-
-```{r exmp9-nass-all-curves, fig.asp = 1, out.width = "95%"}
-autoplot(fit_nass, model = fit_nass$success_models, average = FALSE,
-         nec = FALSE) +
-  scale_x_continuous(transform = "sqrt") +
-  labs(x = "Dose", y = "Proportion surviving")
-```
-
-```{r nass-dispersion-values, include = FALSE}
-poor_shape <- c("ecxexp", "ecxflat")
-good_shape <- setdiff(rownames(nass_disp), poor_shape)
-lead_nass <- rownames(nass_weights)[which.max(nass_weights[, "wi"])]
-```
-
-Two equations cannot follow the observed response. `ecxflat` has no decline at
-all, and `ecxexp`, whose exponential decay begins at the control, cannot remain
-flat to 1.25 and then fall steeply. Each of the other `r length(good_shape)`
-equations follows the decline, and their dispersion statistics agree closely
-whether or not they passed the screen (medians from
-`r sprintf("%.2f", min(nass_disp[good_shape, "dispersion_Estimate"]))` to
-`r sprintf("%.2f", max(nass_disp[good_shape, "dispersion_Estimate"]))`, with
-`P(>1)` from
-`r sprintf("%.2f", min(nass_disp[good_shape, "dispersion_P_over_1"]))` to
-`r sprintf("%.2f", max(nass_disp[good_shape, "dispersion_P_over_1"]))`). The
-larger ratios belong to `ecxexp`
-(`r sprintf("%.2f", nass_disp["ecxexp", "dispersion_Estimate"])`) and `ecxflat`
-(`r sprintf("%.2f", nass_disp["ecxflat", "dispersion_Estimate"])`), so their
-excess is likely to be residual variation from a curve that does not fit, and
-not evidence about the family. The statistics of the equations the screen
-removed come from posteriors that were not explored reliably, so we read them
-only as a check on those of the retained equations, which they match.
-
-The ratio near
-`r sprintf("%.1f", median(nass_disp[good_shape, "dispersion_Estimate"]))` in the
-equations that fit suggests some variation beyond the binomial, although the 95%
-intervals are wide (from
-`r sprintf("%.2f", nass_disp[lead_nass, "dispersion_Q2.5"])` to
-`r sprintf("%.2f", nass_disp[lead_nass, "dispersion_Q97.5"])` for
-`r name_list(lead_nass)`, the highest-weighted equation after screening, and
-with lower bounds below 1 in
-`r sum(nass_disp[good_shape, "dispersion_Q2.5"] < 1)` of these
-`r length(good_shape)` equations). We retain `binomial` for this worked
-analysis. With `r nrow(surv)` rows across `r length(unique(surv$dose))` doses, a
-`beta_binomial` fit would be a useful sensitivity check before using this
-estimate for a decision.
-
-## Divergent transitions and the design
-
-In the coral analysis a broad candidate set contained equations with divergent
-transitions at the default sampling length. In this count response most of the
-`decline` set fails the screen (`r sum(nass_sampling$failed)` of
-`r nrow(nass_sampling)` fitted equations), with
-`r min(nass_sampling$n_divergent[nass_sampling$failed])` to
-`r max(nass_sampling$n_divergent[nass_sampling$failed])` divergent transitions
-in each failing equation. Increasing iterations alone is unlikely to resolve
-these divergences. The cutoff is an absolute count over post-warmup draws, so at
-an unchanged divergence rate a longer run would record more of them, and their
-occurrence calls for examining the posterior geometry and the equations.
-
-No dose was tested between 1.25 and 2.5, where the observed response changes
-sharply. This sparse coverage may contribute to difficult posterior geometry for
-equations that estimate a threshold or a steep midpoint, although the sampler
-diagnostics do not identify the cause. Raising `adapt_delta` can reduce
-divergences, but cannot supply an observation within that gap, so the gap should
-be reported with any model-based no-effect estimate.
-
-```{r nass-estimate}
-nass_nsec <- nec(nass_screened)
-nass_nsec
-```
-
-The model-averaged *N(S)EC* is `r sprintf("%.2f", nass_nsec[1])`
-(`r sprintf("%.2f", nass_nsec[2])` to `r sprintf("%.2f", nass_nsec[3])`), with
-`r name_list(lead_nass)` holding `r sprintf("%.2f", max(nass_weights[, "wi"]))`
-of the weight. Its upper bound is in the untested interval between 1.25 and 2.5,
-and its lower bound extends below it, to doses at which every snail survived. An
-analysis of these data should report the interval as such, with the equations
-excluded and the reason, and not a narrower estimate obtained by loosening the
-screen until more equations are retained. The fitted set illustrates what this
-means.
-
-```{r exmp9-nass-autoplot, fig.asp = 0.72, out.width = "80%"}
-# The control is a true zero, which a logarithmic axis cannot place. It takes
-# the plotting position of the raw-data figure, and the prediction grid is
-# clipped there.
-nass_plot <- ggbnec_data(nass_screened)
-nass_plot$x_e[nass_plot$x_e == 0] <- ctrl_pos
-nass_plot$x_r[nass_plot$x_r == 0] <- ctrl_pos
-nass_plot <- nass_plot[is.na(nass_plot$x_e) | nass_plot$x_e >= ctrl_pos, ]
-
-ggplot() +
-  geom_polygon(data = subset(nass_plot, !is.na(y_ci)), aes(x = x_e, y = y_ci),
-               fill = "grey80", alpha = 0.7) +
-  geom_line(data = subset(nass_plot, !is.na(y_e)), aes(x = x_e, y = y_e),
-            linetype = 2) +
-  geom_point(data = subset(nass_plot, !is.na(x_r)), aes(x = x_r, y = y_r),
-             size = 1.6, alpha = 0.6) +
-  geom_vline(xintercept = nass_nsec[1], colour = "grey40") +
-  geom_vline(xintercept = nass_nsec[2:3], colour = "grey40", linetype = 3) +
-  scale_x_continuous(transform = "log", breaks = dose_breaks,
-                     labels = c("0\n(control)", "0.01", "0.04", "0.16", "0.63",
-                                "2.5", "20")) +
-  labs(x = "Dose", y = "Proportion surviving") +
-  theme_classic()
-```
-
-The dashed line is the model-averaged prediction over the retained equations,
-and the grey band is its 95% credible interval. The band is narrow at each dose
-up to `r max(surv$dose[surv$dose < 2])` and opens across the interval from there
-to `r min(surv$dose[surv$dose > 2])`, where no dose was tested, and it remains
-wide at `r min(surv$dose[surv$dose > 2])`, because the curve has to fall
-somewhere in that interval and the data do not indicate where. The solid line is
-the model-averaged *N(S)EC*, and the dotted lines are its bounds, at
-`r sprintf("%.2f", nass_nsec[2])` and `r sprintf("%.2f", nass_nsec[3])`. The
-axis is the one used for the raw-data figure, so the control keeps its marked
-position, and the nine doses at or below `r max(surv$dose[surv$dose < 2])` are
-legible instead of stacked.
-
-# A non-constant coefficient of variation {#a-non-constant-coefficient-of-variation}
-
-In step 4 we compared the fitted spread with the observed spread within each
-concentration. Here we work through a third response, whose coefficient of
-variation changes systematically across concentrations although the family
-fitted first assumes that it is constant. No convergence diagnostic detects this
-departure.
-
-In each family with a free dispersion parameter (e.g., `Gamma`, `Beta` or
-`negbinomial`), that parameter is constant along the series unless the formula
-specifies otherwise. For a `Gamma` family under the identity link, a constant
-`shape` is a constant coefficient of variation (i.e., the standard deviation of
-a replicate is a fixed multiple of the fitted mean at each concentration). Where
-replicate variation does not behave in this way, a single `shape` is estimated
-as a compromise between the low-concentration and high-concentration ends of the
-series, and may describe neither.
-
-## The assay
-
-The `lum31` data contain the results of acute copper and zinc toxicity tests run
-on the Lum-31 bioluminescent bacterial assay [@luter2025]. A suspension of
-marine bacteria is dosed in a microplate well and its light output is read after
-a fixed exposure, so the response is luminescence in relative light units.
-
-Here we work through one plate of the copper series at 15 minutes (plate
-`Cu 19Mar24 Rep1B`). A plate is a complete test (i.e., eleven concentrations by
-four replicate wells). Because the plate reader sets its gain for each read,
-plates are not on a common vertical scale, and taking a single plate avoids that
-difference instead of modelling it. The group-level terms that handle the whole
-assay, and the left-censoring that the blank correction requires, are described
-in [*Grouping and factor
-covariates*](https://open-aims.github.io/bayesnec/articles/example8.html).
-
-```{r lum31-data}
-data(lum31)
-cu <- droplevels(subset(lum31, plate == "Cu 19Mar24 Rep1B" & minutes == 15))
-c(wells = nrow(cu), concentrations = length(unique(cu$conc)),
-  at_the_floor = sum(cu$censoring != "none"))
-```
-
-This plate is one of two in the arm of
-`r length(unique(subset(lum31, toxicant == "Cu" & minutes == 15)$plate))` with
-the fewest readings at the floor of the instrument (one of `r nrow(cu)`). A
-reading held at a bound contributes a smaller spread than the well would have
-shown, so a plate with many such readings would understate the quantity examined
-in this section.
-
-The four wells at a concentration share one cell of the plate, and readings from
-one cell can vary together. Each fit below therefore includes `ogl(conc_group)`,
-a deviation for each cell, so that the cell (and not the well) is the
-observation at each concentration ([*Grouping and factor
-covariates*](https://open-aims.github.io/bayesnec/articles/example8.html)
-describes the term and how the model weights are computed under it). The
-dispersion parameter then describes the spread of the wells within a cell.
-
-A coefficient of variation computed from the four wells at one concentration
+`sd_ratio` is the observed spread divided by the simulated spread, so a value of
+1 indicates agreement. Over the concentrations without a censored reading it is
+between `r sprintf("%.2f", min(ratio_const))` and
+`r sprintf("%.2f", max(ratio_const))`, with its maximum at
+`r signif(group_const[which.max(ratio_const)], 2)` mg/L, and
+`r flagged_sd(cf_const)` of the `r sum(keep_const)` are flagged (a posterior
+predictive p-value for the standard deviation outside [0.05, 0.95]).
+`r ctrl_text`.
+`r if (both_ways) paste0("Where the ratio is largest it simulates about ", round(max(ratio_const)), " times too little. A single shape cannot do both, and a constant coefficient of variation requires it to.") else ""`
+
+The coefficient of variation computed from the four wells at one concentration
 involves no curve, and cannot be inflated by any lack of fit in the mean. It
 measures the same within-cell spread.
 
-```{r lum31-cv}
+```{r copper-cv}
 cv_obs <- tapply(cu$rlu_cens, cu$conc, function(z) sd(z) / mean(z))
 round(cv_obs, 3)
 ```
 
-The coefficient of variation is between `r sprintf("%.3f", min(cv_obs[1:5]))`
-and `r sprintf("%.3f", max(cv_obs[1:5]))` over the five lowest concentrations,
-then rises without interruption to `r sprintf("%.3f", max(cv_obs))` at
-`r sprintf("%.2g", as.numeric(names(cv_obs))[which.max(cv_obs)])` mg/L, and
-falls to `r sprintf("%.3f", cv_obs[length(cv_obs)])` at the highest
-concentration. The largest of these values is `r round(max(cv_obs) / cv_obs[1])`
-times the control value, whereas a `Gamma` fitted with one `shape` returns a
-single value for all of them.
-
-## Fitting and screening the set
-
-The copper response falls from its control, so `decline` is the candidate set
-(the zinc series in this dataset rises above its control at low concentrations,
-which is why `all` is fitted to it in *Grouping and factor covariates*).
-
-```{r disp-const, results = "hide"}
-gfam <- Gamma(link = "identity")
-set.seed(17)
-set_const <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), model = "decline") +
-                    ogl(conc_group),
-                  data = cu, family = gfam, seed = 17)
+```{r copper-cv-text, include = FALSE}
+cv_keep <- cv_obs[uncensored(names(cv_obs))]
 ```
 
-```{r disp-const-screen, message = TRUE}
-screened_const <- screen_models(set_const)
-best_const <- pull_best(screened_const)
-```
-
-
-
-`r length(models()$decline)` equations were requested. `bnec_record()` shows
-that `r nrow(bnec_record(set_const)$excluded)` were excluded before fitting,
-`r which_failed(set_const)` failed to fit on these `r nrow(cu)` observations,
-and the screen removed `r sum(check_sampling(set_const)$failed)` more (steps 2
-and 3 describe all three mechanisms). Because a cell here is a whole
-concentration, leaving out one cell removes a point on the curve, and the Pareto
-*k* of such a score is often at or above 0.7 (the model-set check below counts the
-retained equations with at least one such cell). Where it is, the model weights
-are approximate. `amend(loo_controls = list(refit = TRUE))` would replace those
-scores by exact refits, as in step 3, which requires one refit of an equation
-for each cell above the cutoff, and we do not run it here.
-
-```{r exmp9-disp-autoplot-const, fig.asp = 0.72, out.width = "80%"}
-copper_axis <- list(
-  scale_x_continuous(transform = "log", breaks = c(0.003, 0.03, 0.3, 3),
-                     labels = function(x) signif(x, 2)),
-  scale_y_continuous(labels = function(x) {
-    format(x, big.mark = ",", scientific = FALSE)
-  }),
-  labs(x = expression(paste("Copper (mg ", L^-1, ")")),
-       y = "Relative light units")
-)
-autoplot(screened_const) + copper_axis
-```
-
-The curve is the model-averaged prediction over the retained equations, shown
-with its 95% credible band and with the model-averaged *N(S)EC* marked. The mean
-is described well, with the response remaining above
-`r round(100 * with(aggregate(rlu_cens ~ conc, cu, mean), rlu_cens[4] / rlu_cens[1]))`
-per cent of its control value up to
-`r sprintf("%.2g", sort(unique(cu$conc))[4])` mg/L, and falling to below one per
-cent by `r sprintf("%.2g", sort(unique(cu$conc))[7])`. The credible band
-describes uncertainty in the fitted mean, and its width near the control
-motivates a closer check of the variation between wells there. Comparing the
-band with the range of four wells is not a test of the Gamma variance
-assumption, however, and we use `check_fit()` for that comparison.
-
-## Checking variability by concentration
-
-A constant Gamma `shape` implies a constant coefficient of variation. We use
-`check_fit()` to compare the observed spread within each concentration with the
-spread of replicate responses simulated from the highest-weighted equation,
-`r name_list(best_const$model)`. The model-set check below extends this
-comparison to each retained equation.
-
-```{r checkfit-const}
-cf_const <- check_fit(best_const)
-cf_const[, c("group", "n", "obs_sd", "sim_sd", "sd_ratio", "ppp_sd", "control")]
-```
-
-`sd_ratio` is the observed spread divided by the simulated spread, so a value of
-1 indicates agreement. Here it is between
-`r sprintf("%.2f", min(cf_const$sd_ratio[1:5]))` and
-`r sprintf("%.2f", max(cf_const$sd_ratio[1:5]))` over the five lowest
-concentrations, then rises to a maximum of
-`r sprintf("%.2f", max(cf_const$sd_ratio))` at
-`r sprintf("%.2g", as.numeric(cf_const$group)[which.max(cf_const$sd_ratio)])`
-mg/L, and `r sum(cf_const$ppp_sd > 0.95 | cf_const$ppp_sd < 0.05)` of the
-`r nrow(cf_const)` groups are flagged. The fit simulates about
-`r round(1 / cf_const$sd_ratio[cf_const$control])` times the spread observed at
-the control, and about `r round(max(cf_const$sd_ratio))` times too little where
-the ratio is largest. A single `shape` cannot do both, and a constant
-coefficient of variation requires it to.
+Over the concentrations without a censored reading, the coefficient of
+variation is between `r sprintf("%.3f", min(cv_keep[1:5]))` and
+`r sprintf("%.3f", max(cv_keep[1:5]))` over the five lowest, and its largest
+value is `r sprintf("%.3f", max(cv_keep))` at
+`r signif(as.numeric(names(cv_keep))[which.max(cv_keep)], 2)` mg/L, which is
+`r round(max(cv_keep) / cv_keep[1])` times the control value. A `Gamma` fitted
+with one `shape` returns a single value for all of them.
 
 ## The dispersion sub-model
 
@@ -1634,34 +951,57 @@ and what the estimated exponent implies for a given family are described in
 [*Single model
 usage*](https://open-aims.github.io/bayesnec/articles/example1.html).
 
+We refit the candidate set with the sub-model under the prior set chosen in step
+4 (the `r final_label` priors), so that the refit changes the dispersion
+structure alone. A dispersion sub-model changes the posterior from which each
+equation is sampled, so the refits and the screen of step 3 are applied again.
+Because this is the set from which the estimates are reported, the cells with
+Pareto *k* at or above 0.7 are also refitted exactly.
+
 ```{r disp-power, results = "hide"}
+power_formula <- rlu_cens | cens(censoring) ~
+  crf(log(conc), model = "decline") + ogl(conc_group) + disp("power")
 set.seed(17)
-set_power <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), model = "decline") +
-                    ogl(conc_group) + disp("power"),
-                  data = cu, family = gfam, seed = 17)
+fit_power <- bnec(power_formula, data = cu, family = gfam,
+                  prior_type = final_prior, seed = 17, refresh = 0)
+sampling_power <- check_sampling(fit_power)
+retry_power <- retry_models(sampling_power)
+tune_power <- tune_models(sampling_power)
+set.seed(17)
+refit_power <- refit_failed(fit_power, retry_power, tune_power)
+sampling_power_refit <- check_sampling(refit_power)
 ```
 
 ```{r disp-power-screen, message = TRUE}
-screened_power <- screen_models(set_power)
+screened_power <- screen_models(refit_power)
+pareto_power <- pareto_rows(screened_power)
+round_cols(pareto_power)
+```
+
+```{r disp-power-reloo, results = "hide"}
+refit_high_k <- function(x, p) {
+  if (any(p$n_high_k > 0)) amend(x, loo_controls = list(refit = TRUE)) else x
+}
+set.seed(17)
+screened_power <- refit_high_k(screened_power, pareto_power)
+```
+
+```{r disp-power-weights}
+weights_power <- weights_of(screened_power, "power")
+round_cols(weights_power)
 best_power <- pull_best(screened_power)
 ```
 
-```{r disp-weights, include = FALSE}
-wi_const <- summary(screened_const)$mod_weights[, "wi"]
-wi_power <- summary(screened_power)$mod_weights[, "wi"]
-```
-
-The screen is run again, and not assumed, because a dispersion sub-model changes
-the posterior from which each equation is sampled. Under the sub-model it
-removed `r sum(check_sampling(set_power)$failed)` of the
-`r nrow(check_sampling(set_power))` fitted equations, against
-`r sum(check_sampling(set_const)$failed)` of `r nrow(check_sampling(set_const))`
-under constant dispersion. The highest-weighted equation is
-`r name_list(best_power$model)`, with `r sprintf("%.2f", max(wi_power))` of the
-weight, against `r sprintf("%.2f", max(wi_const))` for
-`r name_list(best_const$model)` under constant dispersion, and
-`r sum(wi_power > 0.01)` equations have a weight above 0.01, against
-`r sum(wi_const > 0.01)`.
+In this run `r which_failed(fit_power)` failed to fit under the sub-model, the
+longer refit was applied to `r name_list(retry_power, "no equation")`, and the
+refit at a higher `adapt_delta` to `r name_list(tune_power, "no equation")`.
+The screen then retained `r length(screened_power$success_models)` of the
+`r nrow(sampling_power)` fitted equations, against
+`r length(screened_final$success_models)` under constant dispersion, and
+`r sum(pareto_power$n_high_k > 0)` of the retained equations had a cell with *k*
+at or above 0.7 before the exact refits. With the exact scores,
+`r name_list(best_power$model)` has the highest weight
+(`r sprintf("%.2f", max(weights_power$power))`).
 
 ```{r disp-slope}
 brms::fixef(pull_brmsfit(best_power))[c("c0_Intercept", "c1_Intercept"), ]
@@ -1676,7 +1016,8 @@ with slope `-c1/2`.
 
 ```{r disp-slope-observed}
 conc_mean <- tapply(cu$rlu_cens, cu$conc, mean)
-obs_slope <- lm(log(cv_obs) ~ log(conc_mean))
+keep_cv <- uncensored(names(cv_obs))
+obs_slope <- lm(log(cv_obs[keep_cv]) ~ log(conc_mean[keep_cv]))
 # Multiplying by -2 reverses the order of the bounds, so the names confint()
 # supplied would be attached to the wrong ends.
 setNames(-2 * c(coef(obs_slope)[[2]], rev(confint(obs_slope)[2, ])),
@@ -1684,19 +1025,22 @@ setNames(-2 * c(coef(obs_slope)[[2]], rev(confint(obs_slope)[2, ])),
 c(r_squared = summary(obs_slope)$r.squared)
 ```
 
-The fitted and observed estimates agree. The fit gives
-`r sprintf("%.2f", brms::fixef(pull_brmsfit(best_power))["c1_Intercept", "Estimate"])`
-(`r sprintf("%.2f", brms::fixef(pull_brmsfit(best_power))["c1_Intercept", "Q2.5"])`
-to
-`r sprintf("%.2f", brms::fixef(pull_brmsfit(best_power))["c1_Intercept", "Q97.5"])`),
-and the wells give `r sprintf("%.2f", -2 * coef(obs_slope)[[2]])`
-(`r sprintf("%.2f", -2 * confint(obs_slope)[2, 2])` to
-`r sprintf("%.2f", -2 * confint(obs_slope)[2, 1])`). This agreement indicates
-that the sub-model describes the replicate variation the design measured, and
-does not absorb a failure of the curve elsewhere in the series. A
-within-concentration standard deviation involves no curve, which is what makes
+```{r disp-slope-text, include = FALSE}
+c1_fit <- brms::fixef(pull_brmsfit(best_power))["c1_Intercept", ]
+c1_wells <- -2 * c(coef(obs_slope)[[2]], rev(confint(obs_slope)[2, ]))
+c1_overlap <- c1_fit[["Q2.5"]] <= c1_wells[3] && c1_wells[2] <= c1_fit[["Q97.5"]]
+```
+
+The fit gives `r sprintf("%.2f", c1_fit[["Estimate"]])`
+(`r sprintf("%.2f", c1_fit[["Q2.5"]])` to `r sprintf("%.2f", c1_fit[["Q97.5"]])`)
+for `r name_list(best_power$model)`, and the wells give
+`r sprintf("%.2f", c1_wells[1])` (`r sprintf("%.2f", c1_wells[2])` to
+`r sprintf("%.2f", c1_wells[3])`), so the two intervals
+`r if (c1_overlap) "overlap" else "do not overlap"`.
+`r if (c1_overlap) "This agreement indicates that the sub-model describes the replicate variation the design measured, and does not absorb a failure of the curve elsewhere in the series." else "The sub-model therefore describes a relationship between spread and mean that the wells alone do not show, and the curve should be examined before the sub-model is accepted."`
+A within-concentration standard deviation involves no curve, which is what makes
 that comparison informative. Whether a power law is the right form for the
-relationship is a separate question, which the regression addresses here with an
+relationship is a separate question, which the regression addresses with an
 R-squared of `r sprintf("%.3f", summary(obs_slope)$r.squared)` on
 `r summary(obs_slope)$df[2]` degrees of freedom.
 
@@ -1706,27 +1050,24 @@ We repeat the within-concentration check after fitting `disp("power")`.
 
 ```{r checkfit-power}
 cf_power <- check_fit(best_power)
-c(flagged = sum(cf_power$ppp_sd > 0.95 | cf_power$ppp_sd < 0.05),
-  groups = nrow(cf_power),
-  control_sd_ratio = round(cf_power$sd_ratio[cf_power$control], 3))
+cf_power[, c("group", "n", "obs_sd", "sim_sd", "sd_ratio", "ppp_sd", "control")]
 ```
 
-For the highest-weighted equation, the number of groups flagged for scale falls
-from `r sum(cf_const$ppp_sd > 0.95 | cf_const$ppp_sd < 0.05)` to
-`r sum(cf_power$ppp_sd > 0.95 | cf_power$ppp_sd < 0.05)`, and the control ratio
+For the highest-weighted equation, the number of concentrations without a
+censored reading that are flagged for spread changes from
+`r flagged_sd(cf_const)` to `r flagged_sd(cf_power)`, and the control ratio
 changes from `r sprintf("%.2f", cf_const$sd_ratio[cf_const$control])` to
-`r sprintf("%.2f", cf_power$sd_ratio[cf_power$control])`. Because the final
+`r sprintf("%.2f", cf_power$sd_ratio[cf_power$control])`. Because the
 estimates use model averages, we also check each retained equation:
 
 ```{r checkfit-model-sets}
-cf_const_set <- check_fit(screened_const)
+cf_const_set <- check_fit(screened_final)
 cf_power_set <- check_fit(screened_power)
 fit_scale_summary <- function(x, label) {
   parts <- split(as.data.frame(x), x$model)
   out <- do.call(rbind, lapply(parts, function(d) {
     data.frame(model = d$model[1], wi = d$wi[1],
-               ctrl_ratio = d$sd_ratio[d$control],
-               n_flag = sum(d$ppp_sd < 0.05 | d$ppp_sd > 0.95, na.rm = TRUE))
+               ctrl_ratio = d$sd_ratio[d$control], n_flag = flagged_sd(d))
   }))
   names(out)[-1] <- paste(names(out)[-1], label, sep = "_")
   out
@@ -1734,31 +1075,28 @@ fit_scale_summary <- function(x, label) {
 scale_summary <- merge(fit_scale_summary(cf_const_set, "const"),
                        fit_scale_summary(cf_power_set, "power"), all = TRUE)
 round_cols(scale_summary)
-high_k <- c(const = sum(attr(cf_const_set, "pareto")$n_high_k > 0),
-            power = sum(attr(cf_power_set, "pareto")$n_high_k > 0))
 ```
 
 The table gives, for each equation under each structure, its weight (`wi`), the
 ratio of observed to simulated standard deviation at the control (`ctrl_ratio`),
-and the number of concentrations flagged for scale (`n_flag`), with `NA` where
-the screen removed the equation. Under constant dispersion the control ratio is
-below 0.5 in `r sum(scale_summary$ctrl_ratio_const < 0.5, na.rm = TRUE)` of the
+and the number of concentrations without a censored reading that are flagged
+for spread (`n_flag`), with `NA` where the screen removed the equation. Under
+constant dispersion the control ratio is below 0.5 in
+`r sum(scale_summary$ctrl_ratio_const < 0.5, na.rm = TRUE)` of the
 `r sum(!is.na(scale_summary$ctrl_ratio_const))` retained equations, and under
 the sub-model in `r sum(scale_summary$ctrl_ratio_power < 0.5, na.rm = TRUE)` of
 `r sum(!is.na(scale_summary$ctrl_ratio_power))`. These counts show how far the
 discrepancy found in the highest-weighted equation is shared by the rest of each
-set. At least one cell has Pareto *k* at or above 0.7 in `r high_k[["const"]]` of the
-retained equations under constant dispersion, and in `r high_k[["power"]]` under
-the sub-model.
+set.
 
 `plot()` draws each statistic against the spread that the fit simulates for it,
 and takes both fits at once where a `model` column distinguishes the panels.
 Because the response falls from about
-`r format(signif(max(cf_const$obs_mean), 3), big.mark = ",", scientific = FALSE)`
+`r format(signif(max(conc_means), 3), big.mark = ",", scientific = FALSE)`
 relative light units at the control to about
-`r format(signif(min(cf_const$obs_mean), 3), big.mark = ",", scientific = FALSE)`
-at its lowest, we put the display on a logarithmic scale, as on a linear scale
-the lower half of the series would be a row of points on the axis.
+`r format(signif(min(conc_means), 3), big.mark = ",", scientific = FALSE)` at
+its lowest, we put the display on a logarithmic scale, as on a linear scale the
+lower half of the series would be a row of points on the axis.
 
 ```{r exmp9-disp-checkfit, fig.asp = 0.82, out.width = "92%"}
 both <- rbind(cbind(cf_const, model = "constant"),
@@ -1770,35 +1108,125 @@ plot(both) +
   })
 ```
 
+```{r disp-checkfit-text, include = FALSE}
+inside <- function(cf, stat) {
+  keep <- uncensored(cf$group)
+  lo <- cf[[paste0("sim_", stat, "_lo")]][keep]
+  hi <- cf[[paste0("sim_", stat, "_hi")]][keep]
+  obs <- cf[[paste0("obs_", stat)]][keep]
+  sum(obs >= lo & obs <= hi)
+}
+```
+
 Each bar is the 95% span of the statistic simulated from the fit, and each point
-is the observed value. The observed means fall inside their bars under both
-structures, although the bars are far wider under constant dispersion. This
-agreement says little about the curve, because `check_fit()` simulates each
-concentration with its fitted cell deviation, which can absorb a departure of
-the mean from the curve. The spread of the four wells within a cell is
-unaffected by that deviation, so the scale panels remain a test of the
-dispersion structure, and they differ between the two structures. Under constant
-dispersion the observed standard deviation falls below its bar at the
-`r sum(cf_const$ppp_sd > 0.95)` concentrations where the response is highest,
-and the gap at the control is more than an order of magnitude
-(`r format(signif(cf_const$obs_sd[cf_const$control], 3), big.mark = ",", scientific = FALSE)`
-observed, against a simulated span reaching
-`r format(signif(cf_const$sim_sd_hi[cf_const$control], 3), big.mark = ",", scientific = FALSE)`).
-Under the sub-model the bars close on the points, and the observed standard
-deviations fall inside their bars, including that of the control
-(`r format(signif(cf_power$obs_sd[cf_power$control], 3), big.mark = ",", scientific = FALSE)`
-against a span of
+is the observed value. Of the `r sum(keep_const)` concentrations without a
+censored reading, the observed mean falls inside its bar at
+`r inside(cf_const, "mean")` under constant dispersion and at
+`r inside(cf_power, "mean")` under the sub-model. This says little about the
+curve, because `check_fit()` simulates each concentration with its fitted cell
+deviation, which can absorb a departure of the mean from the curve. The spread
+of the four wells within a cell is unaffected by that deviation, so the scale
+panels remain a test of the dispersion structure. The observed standard
+deviation falls inside its bar at `r inside(cf_const, "sd")` of those
+concentrations under constant dispersion and at `r inside(cf_power, "sd")`
+under the sub-model, and at the control it is
+`r format(signif(cf_const$obs_sd[cf_const$control], 3), big.mark = ",", scientific = FALSE)`
+against a simulated span of
+`r format(signif(cf_const$sim_sd_lo[cf_const$control], 3), big.mark = ",", scientific = FALSE)`
+to
+`r format(signif(cf_const$sim_sd_hi[cf_const$control], 3), big.mark = ",", scientific = FALSE)`
+under constant dispersion, and
 `r format(signif(cf_power$sim_sd_lo[cf_power$control], 3), big.mark = ",", scientific = FALSE)`
 to
-`r format(signif(cf_power$sim_sd_hi[cf_power$control], 3), big.mark = ",", scientific = FALSE)`).
-A model can therefore reproduce the mean of each group and still be wrong about
-the spread of all of them, which is the case described in the Overview, and here
-the sub-model corrects it.
+`r format(signif(cf_power$sim_sd_hi[cf_power$control], 3), big.mark = ",", scientific = FALSE)`
+under the sub-model. A model can reproduce the mean of each group and still be
+wrong about the spread, which is the case described in the Overview.
 
-## The reported estimates
+# 6. Prior sensitivity and reporting
 
-The estimates come from the screened set under the sub-model, shown here with
-its credible band.
+## The influence of the priors
+
+The prior set was chosen in step 4 on the constant-dispersion fits. To show how
+much the priors change the reported estimates, we fit the dispersion sub-model
+under the `r other_label` priors as well, and compare the estimates from the
+smooth (ECx) equations that pass the screen under both prior sets, excluding
+`ecxflat`. The comparison needs only the equations that pass under both, so the
+equations that fail under the `r other_label` priors are not refitted. The
+weights of each common set are recomputed without exact refits, so they may be
+approximate (step 3), and both sides of the comparison are computed in the same
+way.
+
+```{r copper-power-other, results = "hide"}
+set.seed(17)
+fit_power_other <- bnec(power_formula, data = cu, family = gfam,
+                        prior_type = other_prior, seed = 17, refresh = 0)
+screened_power_other <- screen_models(fit_power_other)
+```
+
+```{r copper-common-set, results = "hide"}
+power_sets <- setNames(list(screened_power, screened_power_other),
+                       c(final_prior, other_prior))
+shared_models <- intersect(names(models(screened_power)),
+                           names(models(screened_power_other)))
+shared_models <- setdiff(shared_models[grepl("^ecx", shared_models)], "ecxflat")
+if (!length(shared_models)) {
+  stop("No smooth equation passed the screen under both priors.")
+}
+make_common <- function(x, selected) {
+  fits <- lapply(selected, function(m) pull_out(x, model = m))
+  if (length(fits) == 1L) fits[[1]] else do.call(c, fits)
+}
+common_default <- make_common(power_sets[["uninformative"]], shared_models)
+common_regular <- make_common(power_sets[["regularizing"]], shared_models)
+```
+
+```{r copper-prior-effect}
+estimate_rows <- function(x, label) {
+  est <- rbind(EC10 = ecx(x, ecx_val = 10), EC50 = ecx(x, ecx_val = 50),
+               NSEC = nsec(x))[, c("Q50", "Q2.5", "Q97.5")]
+  data.frame(estimate = rownames(est), prior_type = label, est,
+             row.names = NULL)
+}
+prior_effect <- rbind(estimate_rows(common_default, "uninformative"),
+                      estimate_rows(common_regular, "regularizing"))
+prior_effect <- prior_effect[order(prior_effect$estimate), ]
+round_cols(prior_effect)
+```
+
+```{r copper-prior-effect-values, include = FALSE}
+pe <- function(est, prior, col = "Q50") {
+  prior_effect[prior_effect$estimate == est &
+                 prior_effect$prior_type == prior, col]
+}
+interval_width <- function(est, prior) pe(est, prior, "Q97.5") - pe(est, prior, "Q2.5")
+```
+
+Each pair of rows estimates one quantity from the common set
+(`r name_list(shared_models)`), fitted to identical observations, so the
+difference between rows can be attributed to the priors within those equations.
+The median NSEC is `r sprintf("%.3f", pe("NSEC", "uninformative"))` mg/L under
+the default priors and `r sprintf("%.3f", pe("NSEC", "regularizing"))` mg/L
+under the regularising priors, and the median EC50 is
+`r sprintf("%.3f", pe("EC50", "uninformative"))` and
+`r sprintf("%.3f", pe("EC50", "regularizing"))` mg/L. The width of the NSEC
+interval is `r sprintf("%.3f", interval_width("NSEC", "uninformative"))` and
+`r sprintf("%.3f", interval_width("NSEC", "regularizing"))` mg/L. Where an
+interval is narrower under the regularising priors, the difference may reflect
+their stronger assumptions as well as information from the data, and cannot be
+presented as precision supplied solely by the experiment.
+
+The set used for inference can contain equations that are not in the common set
+(e.g., `ecxflat`, which the comparison excludes), so its model-averaged
+estimates also reflect their weights and cannot be interpreted as a pure effect
+of the priors.
+[*Priors*](https://open-aims.github.io/bayesnec/articles/example3.html)
+describes how the priors are constructed and how to compare their densities with
+the posterior.
+
+## The final model-averaged fit
+
+We report the estimates of the screened set fitted with the dispersion sub-model
+under the `r final_label` priors (step 5), shown here with its credible band.
 
 ```{r exmp9-autoplot, fig.asp = 0.72, out.width = "80%"}
 autoplot(screened_power) + copper_axis
@@ -1806,42 +1234,53 @@ autoplot(screened_power) + copper_axis
 
 The curve is the model-averaged prediction over the retained equations, and the
 band is its 95% credible interval, both returned on the recorded concentration
-scale although the formula fitted `log(conc)`. The response remains above
-`r round(100 * cf_const$obs_mean[4] / cf_const$obs_mean[1])` per cent of its
-control value up to `r sprintf("%.2g", as.numeric(cf_const$group)[4])` mg/L, is
-at `r round(100 * cf_const$obs_mean[6] / cf_const$obs_mean[1])` per cent of it
-by `r sprintf("%.2g", as.numeric(cf_const$group)[6])`, and is below one per cent
-by `r sprintf("%.2g", as.numeric(cf_const$group)[7])`, so the whole decline
-occurs over a factor of about
-`r round(as.numeric(cf_const$group)[7] / as.numeric(cf_const$group)[4])` in
-concentration. The vertical lines mark the model-averaged *N(S)EC* and its
-bounds.
+scale although the formula fitted `log(conc)`. The vertical lines mark the
+model-averaged *N(S)EC* and its bounds. The table gives the median and
+equal-tailed 95% credible interval of the EC10, EC50 and NSEC (mg/L) from this
+set. Here `nsec()` applies one control-reference definition to each retained
+equation, whereas, where a set mixes threshold and smooth equations, `nec()`
+returns the model-averaged mixture of NEC and NSEC draws that `summary()` labels
+N(S)EC.
 
-Compared with the constant-dispersion curve shown earlier, the band has narrowed
-onto the observations, and the *N(S)EC* marked on the figure is lower. The
-curves under constant dispersion and under the sub-model describe a common mean,
-and differ in how wide each makes the posterior at the control, which is
-measured below. The checks above were made on the highest-weighted equation and
-on each retained equation, whereas the estimates are read from the screened
-sets, because no single equation represents the model average.
-
-```{r disp-estimates}
+```{r copper-final-estimates, message = TRUE, warning = TRUE}
 copper_estimates <- rbind(
-  constant_NSEC = nsec(screened_const),
-  power_NSEC = nsec(screened_power),
-  constant_EC10 = ecx(screened_const, ecx_val = 10),
-  power_EC10 = ecx(screened_power, ecx_val = 10)
+  EC10 = ecx(screened_power, ecx_val = 10),
+  EC50 = ecx(screened_power, ecx_val = 50),
+  NSEC = nsec(screened_power)
 )[, c("Q50", "Q2.5", "Q97.5")]
-round(copper_estimates, 3)
+round(copper_estimates, 4)
 ```
 
-The *NSEC* falls from
-`r sprintf("%.3f", copper_estimates["constant_NSEC", "Q50"])` to
-`r sprintf("%.3f", copper_estimates["power_NSEC", "Q50"])` mg/L, a factor of
-`r sprintf("%.1f", copper_estimates["constant_NSEC", "Q50"] / copper_estimates["power_NSEC", "Q50"])`.
-The change arises through the quantity from which `nsec()` reads its reference,
-which is the posterior of the control mean with any group-level deviation
-excluded.
+The model-averaged EC10 is `r sprintf("%.3f", copper_estimates["EC10", "Q50"])`
+mg/L (`r sprintf("%.3f", copper_estimates["EC10", "Q2.5"])` to
+`r sprintf("%.3f", copper_estimates["EC10", "Q97.5"])`), the EC50 is
+`r sprintf("%.3f", copper_estimates["EC50", "Q50"])` mg/L
+(`r sprintf("%.3f", copper_estimates["EC50", "Q2.5"])` to
+`r sprintf("%.3f", copper_estimates["EC50", "Q97.5"])`), and the NSEC is
+`r sprintf("%.3f", copper_estimates["NSEC", "Q50"])` mg/L
+(`r sprintf("%.3f", copper_estimates["NSEC", "Q2.5"])` to
+`r sprintf("%.3f", copper_estimates["NSEC", "Q97.5"])`). The ECx values use the
+default absolute response scale, and `type = "range"` would instead measure the
+decline between the fitted upper and lower response levels. A flat equation may
+have no ECx crossing within the tested range, in which case the messages and
+warnings above report how many draws were censored.
+
+## The dispersion structure and the estimates
+
+The constant-dispersion set of step 4 and the sub-model describe a common mean,
+and differ in how wide each makes the posterior at the control. The weights of
+the constant-dispersion set are approximate (step 3), which is sufficient for
+this comparison.
+
+```{r disp-estimates}
+dispersion_estimates <- rbind(
+  constant_NSEC = nsec(screened_final),
+  power_NSEC = nsec(screened_power),
+  constant_EC10 = ecx(screened_final, ecx_val = 10),
+  power_EC10 = ecx(screened_power, ecx_val = 10)
+)[, c("Q50", "Q2.5", "Q97.5")]
+round(dispersion_estimates, 4)
+```
 
 ```{r control-posterior}
 control_reference <- function(fit) {
@@ -1850,83 +1289,244 @@ control_reference <- function(fit) {
   c(sd = sd(post), cv = sd(post) / mean(post),
     reference_share = unname(quantile(post, 0.01) / mean(post)))
 }
-control_posterior <- rbind(constant = control_reference(best_const),
+control_posterior <- rbind(constant = control_reference(best_final),
                            power = control_reference(best_power))
 round(control_posterior, 4)
 ```
 
-For the highest-weighted equations, this posterior is
-`r sprintf("%.0f", control_posterior["constant", "sd"] / control_posterior["power", "sd"])`
-times wider under constant dispersion. Because `nsec()` sets its reference at a
-lower quantile of it, the reference is at
+```{r control-posterior-text, include = FALSE}
+nsec_const <- dispersion_estimates["constant_NSEC", "Q50"]
+nsec_power <- dispersion_estimates["power_NSEC", "Q50"]
+sd_factor <- control_posterior["constant", "sd"] / control_posterior["power", "sd"]
+direction_text <- if (sd_factor > 1 && nsec_const > nsec_power) {
+  paste("A reference placed lower is crossed further along the curve, so the",
+        "constant-dispersion fit returns the *less* protective figure, and",
+        "nothing in its sampler diagnostics indicates this.")
+} else {
+  paste("The sampler diagnostics do not distinguish between the two figures;",
+        "the check of spread in step 5 does.")
+}
+```
+
+The median *NSEC* is `r sprintf("%.3f", nsec_const)` mg/L under constant
+dispersion and `r sprintf("%.3f", nsec_power)` mg/L under the sub-model. The
+change arises through the quantity from which `nsec()` reads its reference,
+which is the posterior of the control mean with any group-level deviation
+excluded. For the highest-weighted equations, this posterior is
+`r sprintf("%.1f", sd_factor)` times as wide under constant dispersion as under
+the sub-model. Because `nsec()` sets its reference at a lower quantile of it,
+the reference is at
 `r sprintf("%.2f", control_posterior["constant", "reference_share"])` of the
 control mean under constant dispersion, against
 `r sprintf("%.2f", control_posterior["power", "reference_share"])` under the
-sub-model. A reference placed that far below the control is crossed further
-along the curve, so the constant-dispersion fit returns the *less* protective
-figure, and nothing in its sampler diagnostics indicates this.
+sub-model. `r direction_text`
 
-The EC10 changes by less, from
-`r sprintf("%.3f", copper_estimates["constant_EC10", "Q50"])` to
-`r sprintf("%.3f", copper_estimates["power_EC10", "Q50"])` mg/L, whereas its
-interval narrows from a width of
-`r sprintf("%.3f", diff(copper_estimates["constant_EC10", c("Q2.5", "Q97.5")]))`
-to `r sprintf("%.3f", diff(copper_estimates["power_EC10", c("Q2.5", "Q97.5")]))`
+The EC10 is `r sprintf("%.3f", dispersion_estimates["constant_EC10", "Q50"])`
+mg/L under constant dispersion and
+`r sprintf("%.3f", dispersion_estimates["power_EC10", "Q50"])` mg/L under the
+sub-model, with interval widths of
+`r sprintf("%.3f", diff(dispersion_estimates["constant_EC10", c("Q2.5", "Q97.5")]))`
+and
+`r sprintf("%.3f", diff(dispersion_estimates["power_EC10", c("Q2.5", "Q97.5")]))`
 mg/L. Because the EC10 is measured at a fixed fraction of the control mean, and
 not at a quantile of its posterior, the variance assumption affects it through
 the precision of the curve, and not through the placement of its reference. This
 is the difference between the *NSEC* and the ECx described in the Overview.
 
-A methods section should state the dispersion structure under which each
-estimate was fitted, because constant dispersion and the sub-model return
-different estimates from the same data.
+These values depend on the treatment of the floor reading as left-censored at
+the smallest positive reading on the plate, on the cell term, on
+`asymptote_observed = TRUE`, on the candidate set, on the `r final_label`
+priors and on the dispersion sub-model, and they describe one plate. A methods
+section should state each of these.
+
+# Draft methods and results text
+
+Here we give a draft of how the analysis above might be described in a paper.
+It refers to steps 1 to 6 of this vignette as Supplementary Material S1 to S6
+(e.g., the sampler diagnostics table of step 3 would be Table S3). The values
+are those computed above, and would update with any change to the analysis.
+
+## Statistical analysis
+
+```{r copper-methods-text, include = FALSE}
+regular_reason <- if (length(still_failed) || length(unfit_default)) {
+  "Because equations still failed after these refits, the"
+} else {
+  "The"
+}
+spread_reason <- if (flagged_sd(cf_const) > 0) {
+  paste0("Because the posterior predictive p-value of the standard deviation ",
+         "was outside [0.05, 0.95] at ", flagged_sd(cf_const),
+         " concentrations for the highest-weighted equation, the")
+} else {
+  "The"
+}
+```
+
+Concentrations of copper that reduced the luminescence of the Lum-31 assay by
+10% and 50% (EC10 and EC50), and the no-significant-effect concentration (NSEC;
+@fisherfox2023), were estimated for one plate read at 15 minutes using the R
+package `bayesnec` [@fisher2024], which fits concentration-response models in
+Stan through `brms` [@Burkner2017]. Luminescence (relative light units) was
+modelled as a function of log measured copper concentration, using a gamma
+distribution with an identity link and a group-level intercept for the four
+wells at each concentration. Readings at or below the blank were treated as
+left-censored at the smallest positive reading on the plate (S1). The candidate
+model set comprised the `r length(prior_default)` equations of the `bayesnec`
+`decline` group that are valid for these data (declining equations and one
+constant equation; S2), fitted first with the package's default (uninformative)
+priors. Each equation was fitted with four chains of 10,000 iterations, of which
+the first 8,000 were discarded as warmup. Equations were excluded where the
+maximum R-hat exceeded 1.01 or the minimum bulk or tail effective sample size
+was below 400 [@Vehtari2021], or where more than ten divergent transitions
+occurred; an equation that failed only on R-hat or effective sample size was
+first refitted with twice the number of iterations, and one with more than ten
+divergent transitions with a target acceptance rate (`adapt_delta`) of 0.99, or
+0.999 where its first fit had already used 0.99 (S3). `r regular_reason`
+candidate set was refitted with the package's regularising priors, which are
+narrower and centre the upper and lower response levels on the mean response at
+the lowest and highest concentrations, and screened in the same way. The set
+fitted with the regularising priors was to be used for inference only if more of
+its equations passed the screen (S4). The fit of each retained equation was
+assessed by comparing the observed mean and standard deviation of the response
+at each concentration with those simulated from the posterior.
+`r spread_reason` candidate set was refitted under the chosen priors with the
+logarithm of the gamma shape parameter modelled as a linear function of the
+logarithm of the mean (a power-law dispersion sub-model), and refitted and
+screened as above (S5). Posterior predictions from the retained equations of
+this set were combined using pseudo-Bayesian model averaging weights [@Yao2018]
+calculated from cross-validation that left out the four wells of one
+concentration at a time [@vehtari2017], with exact refits where the Pareto *k*
+diagnostic was at or above 0.7 (S5). The sensitivity of the estimates to the
+priors was assessed by fitting the dispersion sub-model with the other prior
+set, and comparing the estimates from the smooth (ECx) equations that passed the
+screen under both (S6). Both prior sets bounded the NEC and EC50 priors to the
+tested concentration range (the package default).
+
+## Results
+
+```{r copper-results-text, include = FALSE}
+kept_default <- screened_default$success_models
+kept_regular <- screened_regular$success_models
+screen_text <- paste0(
+  "Under the default priors the sampler screen retained ", length(kept_default),
+  " of the ", length(valid), " candidate equations (", name_list(kept_default),
+  "; S3)",
+  if (length(unfit_default)) {
+    paste0(", and ", name_list(unfit_default), " failed to fit")
+  }, "."
+)
+regular_text <- paste0(
+  " Under the regularising priors ",
+  if (length(rescued)) paste0(name_list(rescued), " also fitted and "),
+  "the screen retained ", length(kept_regular), " equations",
+  if (length(intersect(rescued, kept_regular))) {
+    paste0(", including ", name_list(intersect(rescued, kept_regular)))
+  },
+  "; the first run took ", total_minutes(seconds_regular),
+  " min of warmup and sampling, against ", total_minutes(seconds_default),
+  " min under the default priors (S4)."
+)
+final_text <- paste0(" The analysis therefore used the ", final_label,
+                     " priors.")
+spread_text <- paste0(
+  "Under constant dispersion the highest-weighted equation ",
+  if (ctrl_const < 1) {
+    paste0("simulated about ", round(1 / ctrl_const),
+           " times the standard deviation observed at the control")
+  } else {
+    paste0("simulated ", sprintf("%.2f", 1 / ctrl_const),
+           " of the standard deviation observed at the control")
+  },
+  ", and the posterior predictive p-value of the standard deviation was ",
+  "outside [0.05, 0.95] at ", flagged_sd(cf_const), " of ", sum(keep_const),
+  " concentrations (S5)."
+)
+power_text <- paste0(
+  " With the dispersion sub-model the estimated exponent was ",
+  sprintf("%.2f", c1_fit[["Estimate"]]), " (95% CI ",
+  sprintf("%.2f", c1_fit[["Q2.5"]]), "–", sprintf("%.2f", c1_fit[["Q97.5"]]),
+  "), against ", sprintf("%.2f", c1_wells[1]), " (",
+  sprintf("%.2f", c1_wells[2]), "–", sprintf("%.2f", c1_wells[3]),
+  ") estimated from the wells without a fitted curve, ",
+  flagged_sd(cf_power), " concentrations were flagged, and the screen retained ",
+  length(screened_power$success_models), " equations, of which ",
+  name_list(best_power$model), " had the highest weight (",
+  sprintf("%.2f", max(weights_power$power)), "; S5)."
+)
+```
+
+Mean luminescence fell from
+`r format(signif(conc_means[1], 3), big.mark = ",", scientific = FALSE)`
+relative light units in the controls to below one per cent of that value from
+`r signif(conc_levels[first_low], 2)` mg/L, and the coefficient of variation
+among the four wells at a concentration rose from
+`r sprintf("%.3f", cv_keep[1])` at the control to a maximum of
+`r sprintf("%.3f", max(cv_keep))` as the response fell (S1).
+`r screen_text``r regular_text``r final_text`
+
+`r spread_text``r power_text` The modelled concentrations that reduced
+luminescence by 10% and 50% (EC10 and EC50) were
+`r sprintf("%.3f", copper_estimates["EC10", "Q50"])` (95% CI
+`r sprintf("%.3f", copper_estimates["EC10", "Q2.5"])`–`r sprintf("%.3f", copper_estimates["EC10", "Q97.5"])`)
+and `r sprintf("%.3f", copper_estimates["EC50", "Q50"])`
+(`r sprintf("%.3f", copper_estimates["EC50", "Q2.5"])`–`r sprintf("%.3f", copper_estimates["EC50", "Q97.5"])`)
+mg/L, respectively, and the NSEC was
+`r sprintf("%.3f", copper_estimates["NSEC", "Q50"])`
+(`r sprintf("%.3f", copper_estimates["NSEC", "Q2.5"])`–`r sprintf("%.3f", copper_estimates["NSEC", "Q97.5"])`)
+mg/L (Table S6). Under constant dispersion the NSEC was
+`r sprintf("%.3f", nsec_const)` mg/L. For the smooth equations that passed under
+both prior sets (`r name_list(shared_models)`), the median NSEC was
+`r sprintf("%.3f", pe("NSEC", "uninformative"))` mg/L under the default priors
+and `r sprintf("%.3f", pe("NSEC", "regularizing"))` mg/L under the regularising
+priors (S6).
 
 # Summary
 
-The sampler screen gave a different outcome for each fit in this vignette. On
-the 2050 colour data, after the refits of step 3, it removed
-`r sum(sampling_default$failed)` of the `r nrow(sampling_default)` fitted
-equations under the uninformative priors and `r sum(sampling_regular$failed)` of
-`r nrow(sampling_regular)` under the regularising priors. On `nassarius` it
-removed `r sum(nass_sampling$failed)` of `r nrow(nass_sampling)`, and on the
-copper plate `r sum(check_sampling(set_const)$failed)` of
-`r nrow(check_sampling(set_const))` under constant dispersion and
-`r sum(check_sampling(set_power)$failed)` of `r nrow(check_sampling(set_power))`
-under the dispersion sub-model. Which equations fail cannot be predicted before
-the screen is run, so the equations removed, and the reasons, should be reported
-for each fit; a prior choice that reduces failures in one equation may increase
-them in another.
+```{r copper-summary-counts, include = FALSE}
+removed <- function(tab) sum(tab$failed)
+```
+
+The sampler screen was applied to three fits of the same candidate set. After
+the refits of step 3 it removed `r removed(sampling_default_refit)` of the
+`r nrow(sampling_default_refit)` fitted equations under the default priors,
+after the same refits `r removed(sampling_regular_refit)` of
+`r nrow(sampling_regular_refit)` under the regularising priors, and
+`r removed(sampling_power_refit)` of `r nrow(sampling_power_refit)` with the
+dispersion sub-model. Which equations fail cannot be predicted before the screen
+is run, so the equations removed, and the reasons, should be reported for each
+fit; a prior choice that reduces failures in one equation may increase them in
+another.
 
 The diagnostic table separates inadequate effective sample size from divergent
-transitions and failed initialisation. A longer run may resolve an ESS-only
-failure, whereas divergences call for examining posterior geometry, priors and
-parameterisation. Sparse concentration designs may contribute to these
-difficulties, particularly for equations that estimate a lower asymptote or have
-more curve parameters, but the diagnostics alone do not establish that
-explanation. Excluding an equation at the stated cutoff is an analysis decision
-that should be reported.
+transitions, and both from a failure to fit. A longer run may resolve an
+ESS-only failure, whereas divergences call for examining posterior geometry,
+priors and parameterisation. An equation that does not fit has no diagnostics,
+so none of the refits of step 3 applies to it, and a change of priors is the
+remedy available. `r if (length(rescued)) paste0("On this plate ", name_list(rescued), " failed to fit under the default priors and fitted under the regularising priors.") else ""`
+Excluding an equation at the stated cutoff is an analysis decision that should
+be reported.
 
-The variance assumption is the one that no sampler diagnostic detects. On the
-`lum31` copper plate the observed coefficient of variation ran from
-`r sprintf("%.3f", cv_obs[1])` at the control to
-`r sprintf("%.3f", cv_obs[length(cv_obs)])` at the highest concentration, and
-the constant-dispersion fit passed the sampler screen for most of its equations
-while its highest-weighted equation simulated about
-`r round(1 / cf_const$sd_ratio[cf_const$control])` times the spread observed at
-the control. Adding `disp("power")` removed the groupwise flags for that
-equation and reduced the model-averaged *NSEC* from
-`r sprintf("%.3f", copper_estimates["constant_NSEC", "Q50"])` to
-`r sprintf("%.3f", copper_estimates["power_NSEC", "Q50"])` mg/L. A fit can
-therefore pass the checks the sampler screen applies and still simulate the
+The variance assumption is the one that no sampler diagnostic detects. On this
+plate the coefficient of variation among the wells rose from
+`r sprintf("%.3f", cv_keep[1])` at the control to
+`r sprintf("%.3f", max(cv_keep))`, and the constant-dispersion set passed the
+sampler screen for most of its equations while its highest-weighted equation
+simulated a control spread about `r signif(1 / ctrl_const, 2)` times the one
+observed. Adding `disp("power")` changed the number of concentrations flagged
+for spread in that equation from `r flagged_sd(cf_const)` to
+`r flagged_sd(cf_power)`, and the model-averaged *NSEC* from
+`r sprintf("%.3f", nsec_const)` to `r sprintf("%.3f", nsec_power)` mg/L. A fit
+can therefore pass the checks the sampler screen applies and still simulate the
 wrong spread at the concentration from which both estimators are referenced.
 
-Several decisions made around the fits also determine the estimates. For the
-colour index, the family was chosen on the support of the data and not on a
-test, the influence of the priors was assessed in step 5,
-`asymptote_observed = TRUE` was declared although this design cannot verify it,
-and the control was substituted before logging. For the counts, `binomial` was
-retained after examining dispersion across the fitted equations. None of these
-is a result the workflow produces automatically, and each is a decision that the
-analysis needs to record.
+Several decisions made around the fits also determine the estimates: the family
+was chosen on the support of the response, the floor reading was treated as
+left-censored at a bound inferred from the plate, one plate was analysed so that
+no term for the gain of the plate reader was needed, the cell term set the unit
+of replication, the prior set was chosen by a rule fixed before the estimates
+were read, and `asymptote_observed = TRUE` was kept. None of these is a result
+the workflow produces automatically, and each is a decision that the analysis
+needs to record.
 
 # References

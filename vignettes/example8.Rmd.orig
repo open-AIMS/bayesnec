@@ -358,8 +358,8 @@ separate process (see `?lum31`, and *Censoring* in [Single model usage][e1]). In
 addition, a `Gamma` family with a constant shape has a constant coefficient of
 variation, whereas the coefficient of variation within a cell rises as the
 response falls (figure below), so each fit includes `disp("power")` (see
-*Non-constant dispersion* in [Single model usage][e1], and *A non-constant
-coefficient of variation* in [A complete analysis workflow][e9]). The
+*Non-constant dispersion* in [Single model usage][e1], and *The dispersion
+sub-model* in [A complete analysis workflow][e9]). The
 single-plate and plate fits use the zinc readings at 15 minutes, and all fits
 use a `Gamma` family with the identity link:
 

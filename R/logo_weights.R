@@ -565,7 +565,7 @@ report_weight_k <- function(criteria, wi, leave_out, refit = FALSE,
     emit(paste0(
       "The selected LOO score has Pareto k below 0.7 but at or above loo's ",
       "draw-dependent reliability threshold for ",
-      paste0(lower[named], " of ", n_units, " ",
+      paste0(lower[i], " of ", n_units, " ",
              if (groupwise) paste0("levels of ", leave_out) else "observations",
              " in ", named, " (weight ", signif(wi[i], 2),
              "; threshold ", signif(threshold[i], 2), ")",
