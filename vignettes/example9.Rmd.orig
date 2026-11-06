@@ -77,14 +77,15 @@ two-block response). Here we run one analysis, on one plate of a bioluminescence
 toxicity test, from the data through to a reportable estimate, taking the steps
 in the order in which they occur:
 
-1. Prepare the data, and choose the family and the terms the design requires.
+1. Prepare the data, and choose the family, the dispersion structure and the
+   terms the design requires.
 2. Fit the candidate set under the default priors, and read its summary.
 3. Check the sampler, refit the equations whose failure has a remedy, and screen
    out those that still fail.
 4. Refit the set under regularising priors, check the sampler again, and choose
    the prior set used for inference.
-5. Check the fit of the retained equations, and refit with a dispersion
-   sub-model where the spread is not reproduced.
+5. Check the fit of the retained equations, including whether the dispersion
+   structure reproduces the spread of the wells.
 6. Assess the influence of the priors, and report.
 
 The construction of the default priors, and `check_priors()`, are described in
@@ -190,6 +191,14 @@ conc_means <- tapply(zn$rlu_cens, zn$conc, mean)
 mean_share <- conc_means / conc_means[1]
 last_high <- max(which(mean_share > 0.9))
 peak <- which.max(mean_share[seq_len(last_high)])
+# How many zinc plates read at 15 minutes have a mean above the lowest
+# concentration's at each of the second to fifth concentrations.
+zn_all <- droplevels(subset(lum31, toxicant == "Zn" & minutes == 15))
+zn_all$rank <- as.integer(sub(".*-c", "", as.character(zn_all$conc_group)))
+cell_means <- aggregate(rlu_cens ~ plate + rank, data = zn_all, FUN = mean)
+rises <- vapply(split(cell_means, cell_means$plate), function(d) {
+  all(d$rlu_cens[d$rank %in% 2:5] > d$rlu_cens[d$rank == 1])
+}, logical(1))
 n_floor <- sum(zn$censoring != "none")
 floor_text <- if (n_floor == 0) {
   paste("No reading on this plate is at the floor, so the censoring term",
@@ -227,9 +236,11 @@ concentrations, to `r sprintf("%.2f", mean_share[peak])` times the control at
 control up to
 `r signif(conc_levels[last_high], 2)` mg/L, and falls to
 `r sprintf("%.1f", 100 * mean_share[length(mean_share)])` per cent of it at the
-highest concentration (`r signif(max(conc_levels), 3)` mg/L). Most zinc plates
-of this assay rise above their control over the low concentrations (*Grouping
-and factor covariates*), and step 2 includes equations that allow it.
+highest concentration (`r signif(max(conc_levels), 3)` mg/L). The mean at each
+of the second to fifth concentrations is above the mean at the lowest on
+`r sum(rises)` of the `r length(rises)` zinc plates of this assay read at 15
+minutes, so a rise of this kind is common in the assay, and step 2 includes
+equations that allow it.
 
 The four wells at a concentration share one cell of the plate, and readings from
 one cell can vary together. Each fit below therefore includes `ogl(conc_group)`,
@@ -258,9 +269,38 @@ positive reading on the plate and declares that the true value is below that
 bound (`?lum31`, and *Censoring* in [*Single model
 usage*](https://open-aims.github.io/bayesnec/articles/example1.html)).
 `r floor_text`
+
 A `Gamma` family with one `shape` parameter assumes a constant coefficient of
 variation (i.e., the standard deviation of a well is a fixed multiple of the
-fitted mean at each concentration), and step 5 checks that assumption.
+fitted mean at each concentration). The coefficient of variation computed from
+the four wells at one concentration involves no curve, so it can be read before
+any fit:
+
+```{r zinc-cv}
+cv_obs <- tapply(zn$rlu_cens, zn$conc, function(z) sd(z) / mean(z))
+round(cv_obs, 3)
+```
+
+```{r zinc-cv-text, include = FALSE}
+# The concentrations up to the last whose coefficient of variation is within
+# twice the largest of the five lowest.
+n_steady <- max(which(cv_obs <= 2 * max(cv_obs[1:5])))
+cv_high <- cv_obs[-seq_len(n_steady)]
+```
+
+Up to `r signif(conc_levels[n_steady], 2)` mg/L the coefficient of variation is
+between `r sprintf("%.2f", min(cv_obs[seq_len(n_steady)]))` and
+`r sprintf("%.2f", max(cv_obs[seq_len(n_steady)]))`, and at the
+`r length(cv_high)` higher concentrations it is
+`r paste(sprintf("%.2f", cv_high), collapse = " and ")`, as the response falls
+towards zero. One `shape` cannot describe both, so each fit below includes
+`disp("power")`, which lets the dispersion parameter change with the fitted mean
+(see *Non-constant dispersion* in [*Single model
+usage*](https://open-aims.github.io/bayesnec/articles/example1.html)).
+[*Grouping and factor
+covariates*](https://open-aims.github.io/bayesnec/articles/example8.html) fits
+the zinc plates of this assay with the same term, and step 5 compares it with
+constant dispersion.
 
 # 2. The candidate set and its priors
 
@@ -288,7 +328,7 @@ their equations, and `?models` the model groups).
 ```{r zinc-priors}
 gfam <- Gamma(link = "identity")
 zinc_formula <- rlu_cens | cens(censoring) ~
-  crf(log(conc), model = "all") + ogl(conc_group)
+  crf(log(conc), model = "all") + ogl(conc_group) + disp("power")
 prior_default <- get_priors(zinc_formula, data = zn, family = gfam,
                             prior_type = "uninformative")
 names(prior_default)
