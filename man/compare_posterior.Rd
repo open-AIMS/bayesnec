@@ -71,13 +71,12 @@ If so, arguments \code{resolution} and \code{x_range} will be used. Defaults
 to TRUE. See details.}
 
 \item{seed}{A \code{\link[base]{numeric}} vector of length 1. Passed to
-\code{\link[base]{set.seed}} before separate posteriors are paired or
-joint fitted values are predicted, so that two calls on the same fits
-return the same answer. The caller's saved RNG state is restored afterwards.
-A \code{\link[base]{set.seed}} in the session therefore does not change the
-result. A different value changes the random pairing of separate fits or
-stochastic fitted predictions. Joint estimate contrasts retain their draw
-pairing for every seed. \code{NULL} is refused, because
+\code{\link[base]{set.seed}} before the draws of the posteriors being
+compared are paired, so that two calls on the same fits return the same
+answer. The caller's saved RNG state is restored afterwards, and a
+\code{\link[base]{set.seed}} in the session therefore does not change the
+result. A different value gives another realisation of the same Monte
+Carlo approximation. \code{NULL} is refused, because
 \code{set.seed(NULL)} re-initialises the stream from the clock.
 Reproducibility assumes the same RNG kind; the sampling algorithm is fixed
 to \code{sample.kind = "Rejection"}. The saved RNG state is restored,
@@ -113,14 +112,45 @@ The levels are fitted to separate data and share no parameters, so the
 posteriors are independent and the pairwise probabilities are read directly,
 with no multiple-comparison adjustment implied.
 
-For a \code{\link{bayesnecjointfit}}, differences are taken at
-matching posterior draw positions. Each level is estimated from the same
-fitted posterior. Where an observed group term spans concentrations, each
-draw is assigned one observed level in proportion to its observation count;
-the draw remains at its original position in every joint-level estimate.
-The \code{seed} argument controls stochastic fitted predictions but does
-not permute joint posterior draws. Observed-level mixture assignments are
-reproducible from their level labels and observation counts.
+For a \code{\link{bayesnecjointfit}}, the levels are estimated in
+one posterior, and each difference is taken between the levels' values at
+the same posterior draw, so it keeps any dependence between them. Each
+level's estimate is computed over its own prediction range, as
+\code{\link{ecx}} computes it on a joint refit, whereas
+\code{\link{compare_estimates}} computes every fit over one range common
+to them all. \code{posterior_list} holds the draws that \code{\link{ecx}},
+\code{\link{nsec}} or \code{\link{nec}} return for the refit with
+\code{posterior = TRUE}.
+
+Where a group term spans concentrations, each level is read at its own
+observed group levels, as \code{\link{ecx}} reads it: each posterior draw
+is given to one observed group level, in proportion to its observation
+count. A group term is shared where one of its values, such as batch
+\code{"b1"}, occurs in the data of more than one level, and a shared term
+is read at the same value for every level at each draw. Where copper and
+zinc were tested in the same batches, for example, each draw compares them
+within one batch, as in a paired design. The levels are matched at every
+draw where their observation counts over the shared values are in the same
+proportions. Otherwise two levels are matched in the largest share of draws
+those counts allow, the sum over values of the smaller of the two levels'
+proportions. With more than two levels, the share common to all of them is
+matched first, and the remaining draws are given out in a fixed order of
+the values. Terms the levels do not share, such as plates that belong to
+one level, are chosen for each level independently, in proportion to its
+counts within the shared value.
+
+With \code{comparison = "fitted"}, every level is predicted over one grid
+spanning the levels' combined range, or at the rows of \code{newdata}, as
+the band of \code{\link{autoplot}} predicts it: at the observed group levels
+where a group term spans concentrations, and on the population curve
+otherwise. Only \code{newdata}, \code{ndraws} and \code{draw_ids} are
+taken through \code{...}, and \code{make_newdata = FALSE} requires
+\code{newdata}. \code{seed} changes the result only where \code{ndraws}
+selects the draws.
+
+\code{comparison = "nec"} requires a \code{nec} parameter at every level.
+Where a level fits a smooth equation, \code{"n(s)ec"} compares the
+no-effect estimate each level's equation supports.
 
 \code{type} is passed to \code{\link{ecx}} and takes the same four
 values, all measured from the control --- the predicted mean at the lowest

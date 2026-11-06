@@ -28,10 +28,17 @@ test_that("joint comparisons pair estimates and retain censoring", {
     10, 0, c(FALSE, TRUE, FALSE, FALSE), rep(FALSE, 4)
   )
   b <- c(1, 5, 5, 5)
-  joint <- structure(list(levels = c("a", "b")),
+  joint <- structure(list(levels = c("a", "b"), model = "nec4param"),
                      class = "bayesnecjointfit")
-  local_mocked_bindings(nec = function(...) list(a = a, b = b))
-  result <- compare_posterior(joint, comparison = "nec")
+  passed <- NULL
+  local_mocked_bindings(nec = function(...) {
+    passed <<- list(...)
+    list(a = a, b = b)
+  })
+  result <- compare_posterior(joint, comparison = "nec", sig_val = 0.05,
+                              resolution = 40, x_range = c(0, 3))
+  expect_equal(passed[c("sig_val", "resolution", "x_range")],
+               list(sig_val = 0.05, resolution = 40, x_range = c(0, 3)))
   expect_identical(result$posterior_list$a, a)
   expect_equal(result$diff_list[["a-b"]], c(1, NA, -1, 0))
   expect_equal(result$prob_diff$prob, 0.5)
@@ -60,7 +67,7 @@ test_that("joint fitted curves retain shared posterior rows", {
 })
 
 test_that("paired joint differences retain positive covariance", {
-  joint <- structure(list(levels = c("a", "b")),
+  joint <- structure(list(levels = c("a", "b"), model = "nec4param"),
                      class = "bayesnecjointfit")
   a <- seq_len(100)
   b <- a + 5
@@ -90,4 +97,21 @@ test_that("smooth joint levels compare their no-effect posteriors", {
   )))
   expect_equal(result$posterior_list$low, direct$low)
   expect_equal(result$posterior_list$high, direct$high)
+})
+
+test_that("a joint nec comparison refuses a level without a nec parameter", {
+  joint <- joint_split()
+  joint$models <- list(low = "nec4param", high = "ecx4param")
+  expect_error(compare_posterior(joint, comparison = "nec"),
+               "\"high\".*n\\(s\\)ec")
+})
+
+test_that("a joint fitted comparison asks for the rows it predicts", {
+  joint <- joint_split()
+  expect_error(compare_posterior(joint, comparison = "fitted",
+                                 make_newdata = FALSE),
+               "needs `newdata`")
+  expect_error(compare_posterior(joint, comparison = "fitted",
+                                 re_formula = NULL),
+               "`re_formula`")
 })

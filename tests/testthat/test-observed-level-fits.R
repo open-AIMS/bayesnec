@@ -160,16 +160,16 @@ test_that("a pooled estimate holds each level's own draw at its position", {
   band <- bayesnec:::observed_grid_posterior(fit$fit, fit$bayesnecformula, nd,
                                              spec)
   n <- brms::ndraws(fit$fit)
-  idx <- bayesnec:::mixture_draw_indices(
-    rep(n, nrow(spec$combinations)), spec$n, n,
-    labels = bayesnec:::level_labels(spec$combinations)
-  )
-  for (i in seq_along(idx)) {
+  owner <- bayesnec:::observed_assignment(spec, n)
+  expect_equal(spec$combinations$plate[owner],
+               sub("^plate=", "", attr(pooled, "level")))
+  for (i in seq_len(nrow(spec$combinations))) {
     nd_i <- nd
     nd_i$plate <- spec$combinations$plate[i]
     full <- brms::posterior_epred(fit$fit, newdata = nd_i,
                                   re_formula = spec$re_formula)
-    expect_equal(band[idx[[i]], ], full[idx[[i]], ])
+    take <- owner == i
+    expect_equal(band[take, ], full[take, ])
   }
 })
 
@@ -215,6 +215,17 @@ test_that("the toxicant mixtures of a joint refit pair by posterior draw", {
   fitted <- compare_posterior(fit, comparison = "fitted", resolution = 5)
   expect_equal(fitted$diff_list[["a-b"]],
                fitted$posterior_list$a - fitted$posterior_list$b)
+  # The fitted comparison reads the plates the plotted band reads.
+  x_range <- range(unlist(lapply(fit$levels, function(l) {
+    bayesnec:::joint_level_x(fit, l)
+  })))
+  for (tox in fit$levels) {
+    curve <- bayesnec:::joint_level_curve(fit, tox, resolution = 5,
+                                          x_range = x_range)
+    expect_equal(unname(apply(fitted$posterior_list[[tox]], 2,
+                              stats::median)),
+                 curve$Estimate, label = tox)
+  }
 })
 
 test_that("stored smooth no-effect draws use the recorded significance", {
@@ -392,6 +403,10 @@ test_that("a joint refit reads its spanning group levels", {
   expect_equal(nrow(suppressWarnings(suppressMessages(nec(
     fit, pool = "none"
   )))), 3L)
+  # nec() reads the plates at the draws the stored summary was built from.
+  direct <- suppressWarnings(suppressMessages(nec(fit, posterior = TRUE,
+                                                  xform = identity)))
+  expect_equal(as.numeric(direct), as.numeric(fit$ne_posterior))
   level <- bayesnec:::observed_level_fit(fit, spec, 1, with_ne = TRUE)
   nd <- bayesnec:::newdata_eval(level, 2, NA)$newdata[1, , drop = FALSE]
   mu <- brms::posterior_linpred(
