@@ -891,3 +891,40 @@ test_that("a hurdle fit with a model set checks every pair of equations", {
   expect_true(all(tapply(out$control, out$model, sum) == 1L))
   expect_s3_class(plot(out), "ggplot")
 })
+
+test_that("a tie at the bound survives rounding in the last place", {
+  # mean() and rowMeans() can differ in the last place, which on some platforms
+  # turns a tie at the bound into a flag.
+  x <- 0.1
+  up <- x * (1 + 4 * .Machine$double.eps)
+  down <- x * (1 - 4 * .Machine$double.eps)
+  expect_equal(bayesnec:::ppp_value(rep(up, 4), x, ties = TRUE), 0.5)
+  expect_equal(bayesnec:::ppp_value(rep(down, 4), x, ties = TRUE), 0.5)
+  expect_equal(bayesnec:::ppp_value(c(up, 2 * x), x, ties = TRUE), 0.75)
+  expect_equal(bayesnec:::ppp_value(rep(up, 4), x), 1)
+  # Half the draws sit just above the bound and half are held at it.
+  y <- rep(x, 12)
+  yrep <- rbind(matrix(up, 5, 12), matrix(0.05, 5, 12))
+  cens <- list(code = rep(-1L, 12), bound = y, may_be_zero = rep(TRUE, 12))
+  out <- bayesnec:::check_fit_stats(y, yrep, rep(0.02, 12),
+                                    factor(rep("a", 12)), FALSE, cens)
+  expect_equal(out$ppp_mean, 0.5)
+  expect_equal(out$mean_ratio, 1)
+})
+
+test_that("a wholly held control is not read as a discrepancy", {
+  y <- rep(0.1, 6)
+  yrep <- matrix(0.01, nrow = 20, ncol = 6)
+  grp <- factor(rep("0", 6))
+  cens <- list(code = rep(-1L, 6), bound = y, may_be_zero = rep(TRUE, 6))
+  out <- bayesnec:::check_fit_stats(y, yrep, rep(0.02, 6), grp, FALSE, cens)
+  expect_equal(c(out$mean_ratio, out$sd_ratio), c(1, 1))
+  expect_equal(c(out$ppp_mean, out$ppp_sd), c(0.5, 0.5))
+  out$control <- TRUE
+  class(out) <- c("checkfit", "data.frame")
+  local_mocked_bindings(check_fit = function(x, ...) out)
+  expect_identical(control_fit_issues(list(success_models = "ecx4param"),
+                                      cutoff = 1.15),
+                   list(ecx4param = FALSE))
+})
+

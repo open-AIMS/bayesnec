@@ -86,10 +86,12 @@
 #' censored reading is known to be beyond the bound, so its held value is known
 #' exactly, and the observed and simulated statistics are computed from the
 #' same quantity. Ties at the bound are split evenly between the two tails of
-#' the posterior predictive p-value. A structural zero of a hurdle or
-#' zero-inflated family stays at zero, unless a left-censored reading in the
-#' group could itself be a zero; the zeros are then held with the other values
-#' and the group's zero proportions are \code{NA}.
+#' the posterior predictive p-value, and where the observed statistic equals
+#' the median simulated one, as when every value is held, its ratio is 1. A
+#' structural zero of a hurdle or zero-inflated family stays at zero, unless a
+#' left-censored reading in the group could itself be a zero; the zeros are
+#' then held with the other values and the group's zero proportions are
+#' \code{NA}.
 #'
 #' Holding the values discards what the data show beyond the bound. The column
 #' \code{n_cens} gives the number of censored readings in each group, and where
@@ -182,8 +184,9 @@ check_fit_groups <- function(predictor, group = NULL) {
 #' @param sim A \code{\link[base]{numeric}} vector of simulated statistics.
 #' @param obs A \code{\link[base]{numeric}} vector of length 1.
 #' @param ties A \code{\link[base]{logical}}. If \code{TRUE}, a simulated value
-#' equal to \code{obs} counts one half, so that statistics of values held at a
-#' censoring bound, which tie often, are not pushed to 1.
+#' that \code{is_tie()} matches to \code{obs} counts one half, so that
+#' statistics of values held at a censoring bound, which tie often, are not
+#' pushed to 1.
 #'
 #' @return A \code{\link[base]{numeric}} vector of length 1.
 #'
@@ -194,9 +197,26 @@ ppp_value <- function(sim, obs, ties = FALSE) {
     return(NA_real_)
   }
   if (ties) {
-    return(mean(sim > obs) + mean(sim == obs) / 2)
+    tied <- is_tie(sim, obs)
+    return(mean(sim > obs & !tied) + mean(tied) / 2)
   }
   mean(sim >= obs)
+}
+
+#' Whether two statistics are equal up to rounding
+#'
+#' @param a,b \code{\link[base]{numeric}} vectors.
+#'
+#' @details Values held at one bound give equal statistics on both sides, but
+#' \code{mean()} and \code{rowMeans()} round differently where the platform's
+#' \code{long double} is a \code{double}, as on macOS arm64. Exact equality
+#' then misses the tie.
+#'
+#' @return A \code{\link[base]{logical}} vector.
+#'
+#' @noRd
+is_tie <- function(a, b) {
+  abs(a - b) <= sqrt(.Machine$double.eps) * pmax(abs(a), abs(b))
 }
 
 #' The censoring of each fitted row, as the model treats it
@@ -332,16 +352,21 @@ check_fit_stats <- function(y, yrep, mu, grp, is_mixture, cens = NULL) {
     obs_sd <- if (has_sd) sd(res_obs) else NA_real_
     sim_sd <- if (has_sd) apply(res_sim, 1, sd) else NA_real_
     sim_sd_median <- if (has_sd) median(sim_sd) else NA_real_
+    # A held group can give the same statistic on both sides, zero included.
+    # Report that as a ratio of 1, not 0/0, which control_fit_issues() flags.
+    ratio <- function(o, s) {
+      if (held && isTRUE(is_tie(o, s))) 1 else o / s
+    }
     row <- data.frame(
       group = lv,
       n = length(idx),
       obs_mean = obs_mean,
       sim_mean = median(sim_mean),
-      mean_ratio = obs_mean / median(sim_mean),
+      mean_ratio = ratio(obs_mean, median(sim_mean)),
       ppp_mean = ppp_value(sim_mean, obs_mean, ties = held),
       obs_sd = obs_sd,
       sim_sd = sim_sd_median,
-      sd_ratio = obs_sd / sim_sd_median,
+      sd_ratio = ratio(obs_sd, sim_sd_median),
       ppp_sd = ppp_value(sim_sd, obs_sd, ties = held),
       # The 95% span of each simulated statistic, for plot(). print() hides
       # it to keep the table within one line width.

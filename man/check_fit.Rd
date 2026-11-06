@@ -141,10 +141,12 @@ left-censored at the upper end of its interval. The true value of every
 censored reading is known to be beyond the bound, so its held value is known
 exactly, and the observed and simulated statistics are computed from the
 same quantity. Ties at the bound are split evenly between the two tails of
-the posterior predictive p-value. A structural zero of a hurdle or
-zero-inflated family stays at zero, unless a left-censored reading in the
-group could itself be a zero; the zeros are then held with the other values
-and the group's zero proportions are \code{NA}.
+the posterior predictive p-value, and where the observed statistic equals
+the median simulated one, as when every value is held, its ratio is 1. A
+structural zero of a hurdle or zero-inflated family stays at zero, unless a
+left-censored reading in the group could itself be a zero; the zeros are
+then held with the other values and the group's zero proportions are
+\code{NA}.
 
 Holding the values discards what the data show beyond the bound. The column
 \code{n_cens} gives the number of censored readings in each group, and where
