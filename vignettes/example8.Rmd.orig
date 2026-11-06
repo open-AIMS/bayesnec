@@ -1306,10 +1306,7 @@ the plate SDs.
 Because the levels are estimated in one posterior, a contrast between them can
 be taken draw by draw, which keeps any dependence between the metals' estimates
 that the shared terms introduce. Here we take the ratio of zinc's EC10 to
-copper's. `ecx()` places each metal's value for posterior draw *d* at position
-*d* of its draws, so each draw of the ratio compares a zinc plate with a copper
-plate, each chosen in proportion to its observations, within one draw of the
-joint posterior:
+copper's:
 
 ```{r ratio-joint}
 ec10_joint <- ecx(fits_tox_joint, ecx_val = 10, posterior = TRUE)
@@ -1333,24 +1330,6 @@ level_span <- vapply(ec10_joint, function(d) {
 }, numeric(1))
 log_cor <- cor(log(ec10_joint[["Zn"]]), log(ec10_joint[["Cu"]]),
                use = "complete.obs")
-cor_text <- if (abs(log_cor) < 0.3) {
-  paste0("The metals' EC10s are almost uncorrelated across draws (",
-         fmt(log_cor), " on the log scale). Each is read from the curves of ",
-         "that metal's plates, which include the plates' batch deviations and ",
-         "are most likely determined largely by each plate's own wells, so the ",
-         "uncertainty in the shared batch deviations contributes little to ",
-         "either estimate. The interval of the ratio therefore includes the ",
-         "differences between the plates of each metal as well as the ",
-         "uncertainty in each plate's curve.")
-} else {
-  paste0("The metals' EC10s are correlated across draws (", fmt(log_cor),
-         " on the log scale), most likely because the shared batch deviations ",
-         "shift both curves together, so part of their uncertainty cancels in ",
-         "the ratio. Each draw of the ratio is taken from one draw of the joint ",
-         "posterior, which keeps that correlation, whereas the separate fits of ",
-         "`fits_tox` share no parameter, so a ratio formed from their draws ",
-         "could not include it.")
-}
 ```
 
 ```{r fig-ratio-joint, fig.asp = 0.5, out.width = "70%"}
@@ -1365,7 +1344,13 @@ Zinc's EC10 is `r ci(ratio_q)` times copper's`r ratio_censored`, and the ratio
 exceeds 1 in `r ratio_above <- round(100 * mean(zn_cu_ratio > 1, na.rm = TRUE), 1); if (ratio_above == 100) "more than 99.9" else ratio_above` per cent of
 the draws. The interval of the ratio spans a factor of
 `r fmt(ratio_q[[3]] / ratio_q[[2]])` between its bounds, whereas the EC10
-interval of each metal spans a factor of `r if (identical(fmt(level_span[["Cu"]]), fmt(level_span[["Zn"]]))) fmt(level_span[["Cu"]]) else paste(fmt(level_span[["Cu"]]), "for copper and", fmt(level_span[["Zn"]]), "for zinc")`. `r cor_text`
+interval of each metal spans a factor of `r if (identical(fmt(level_span[["Cu"]]), fmt(level_span[["Zn"]]))) fmt(level_span[["Cu"]]) else paste(fmt(level_span[["Cu"]]), "for copper and", fmt(level_span[["Zn"]]), "for zinc")`. The metals' EC10s are correlated
+across draws (`r fmt(log_cor)` on the log scale), most likely because the shared
+batch deviations shift both curves together, so much of their uncertainty
+cancels in the ratio. Each draw of the ratio is taken from one draw of the joint
+posterior, which keeps that correlation, whereas the separate fits of
+`fits_tox` share no parameter, so a ratio formed from their draws could not
+include it.
 
 ```{r diagnostics-joint, include = FALSE}
 np_joint <- brms::nuts_params(fits_tox_joint$fit)
