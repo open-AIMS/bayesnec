@@ -1393,13 +1393,20 @@ to each plate of the normalised response, whereas `ecx()` mixes the plates'
 curves from one model, in which the plates of a metal share information through
 the plate SDs.
 
-Because the levels are estimated in one posterior, `compare_posterior()`
-subtracts their EC10s at matching draws and retains any dependence between the
-metals' estimates that the shared terms introduce. We use the aligned draws it
-returns to take the ratio of zinc's EC10 to copper's:
+Because the metals are estimated in one posterior, `compare_posterior()`
+compares their EC10s draw by draw. Each metal is read at its own observed
+plates, as `ecx()` reads it. The plates are matched on the batches the metals
+share: at each draw both metals are read in the same batch as far as their
+numbers of observations per batch allow, so that the comparison is made within
+a batch, as in a paired design. The function returns the probability that
+copper's EC10 exceeds zinc's in `prob_diff`. It returns each metal's EC10 draws
+in `posterior_list`, in which the draws at one position come from the same
+iteration of the joint posterior. We take the ratio of zinc's EC10 to copper's
+from those draws:
 
 ```{r ratio-joint}
 cmp_joint <- compare_posterior(fits_tox_joint, comparison = "ecx", ecx_val = 10)
+cmp_joint$prob_diff
 ec10_joint <- cmp_joint$posterior_list
 zn_cu_ratio <- ec10_joint[["Zn"]] / ec10_joint[["Cu"]]
 quantile(zn_cu_ratio, c(0.5, 0.025, 0.975), na.rm = TRUE)
@@ -1421,6 +1428,44 @@ level_span <- vapply(ec10_joint, function(d) {
 }, numeric(1))
 log_cor <- cor(log(ec10_joint[["Zn"]]), log(ec10_joint[["Cu"]]),
                use = "complete.obs")
+level_span_text <- if (identical(fmt(level_span[["Cu"]]),
+                                 fmt(level_span[["Zn"]]))) {
+  paste(fmt(level_span[["Cu"]]), "for each")
+} else {
+  paste(fmt(level_span[["Cu"]]), "for copper and", fmt(level_span[["Zn"]]),
+        "for zinc")
+}
+ratio_span <- ratio_q[[3]] / ratio_q[[2]]
+span_text <- if (ratio_span < min(level_span)) {
+  "narrower than the EC10 intervals of both metals"
+} else if (ratio_span > max(level_span)) {
+  "wider than the EC10 intervals of both metals"
+} else {
+  "between the widths of the two metals' EC10 intervals"
+}
+cor_text <- if (log_cor >= 0.5) {
+  ", so much of their uncertainty cancels in the ratio"
+} else if (log_cor >= 0.1) {
+  ", so part of their uncertainty cancels in the ratio"
+} else if (log_cor > -0.1) {
+  ", so almost none of their uncertainty cancels in the ratio"
+} else {
+  ", which widens the interval of the ratio"
+}
+# The largest share of draws at which both metals can be read in one batch:
+# the sum over batches of the smaller of the metals' shares of observations.
+batch_share <- prop.table(table(zn_cu_15$toxicant, zn_cu_15$batch), 1)
+same_batch <- sum(apply(batch_share, 2, min))
+# prob is the probability that copper's EC10 exceeds zinc's. Where censoring
+# leaves it unidentified, prob is NA and prob_lower and prob_upper bound it.
+pd <- cmp_joint$prob_diff[cmp_joint$prob_diff$comparison == "Cu-Zn", ]
+pct <- function(p) if (p > 99.9) "more than 99.9" else fmt(p, 3)
+zn_above <- 100 * (1 - c(pd$prob_upper, pd$prob_lower))
+zn_above_text <- if (is.na(pd$prob)) {
+  paste("between", pct(zn_above[1]), "and", pct(zn_above[2]))
+} else {
+  pct(zn_above[1])
+}
 ```
 
 ```{r fig-ratio-joint, fig.asp = 0.5, out.width = "70%"}
@@ -1431,17 +1476,15 @@ ggplot(data.frame(ratio = zn_cu_ratio), aes(x = ratio)) +
   labs(x = "Ratio of zinc's EC10 to copper's (joint refit)", y = "Density")
 ```
 
-Zinc's EC10 is `r ci(ratio_q)` times copper's`r ratio_censored`, and the ratio
-exceeds 1 in `r ratio_above <- round(100 * mean(zn_cu_ratio > 1, na.rm = TRUE), 1); if (ratio_above == 100) "more than 99.9" else ratio_above` per cent of
-the draws. The interval of the ratio spans a factor of
-`r fmt(ratio_q[[3]] / ratio_q[[2]])` between its bounds, whereas the EC10
-interval of each metal spans a factor of `r if (identical(fmt(level_span[["Cu"]]), fmt(level_span[["Zn"]]))) fmt(level_span[["Cu"]]) else paste(fmt(level_span[["Cu"]]), "for copper and", fmt(level_span[["Zn"]]), "for zinc")`. The metals' EC10s are correlated
-across draws (`r fmt(log_cor)` on the log scale), most likely because the shared
-batch deviations shift both curves together, so much of their uncertainty
-cancels in the ratio. Each draw of the ratio is taken from one draw of the joint
-posterior, which keeps that correlation, whereas the separate fits of
-`fits_tox` share no parameter, so a ratio formed from their draws could not
-include it.
+Zinc's EC10 is `r ci(ratio_q)` times copper's`r ratio_censored`, and the
+probability that it exceeds copper's, one minus the `prob` of `prob_diff`, is
+`r zn_above_text` per cent. Both metals are read in the same batch at
+`r fmt(100 * same_batch)` per cent of the draws. Their log EC10s have a
+correlation of `r fmt(log_cor)` across draws`r cor_text`. The interval of the
+ratio spans a factor of `r fmt(ratio_span)` between its bounds,
+`r span_text`, which span a factor of `r level_span_text`. The separate fits
+of `fits_tox` share no parameter, so a ratio formed from their draws could
+include no dependence between the metals.
 
 ```{r diagnostics-joint, include = FALSE}
 np_joint <- brms::nuts_params(fits_tox_joint$fit)
