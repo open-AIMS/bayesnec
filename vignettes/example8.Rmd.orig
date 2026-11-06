@@ -840,8 +840,8 @@ lower bound at the lowest concentration. With a plate term (panels B to D), the
 band is that of the mixture of the plates' curves, so at the lowest
 concentration it includes the differences in gain between plates as well as the
 uncertainty in each plate's curve, and its upper bound is
-`r round(min(band_span[-1]), 1)` to `r round(max(band_span[-1]), 1)` times its
-lower bound.
+`r fmt(min(band_span[-1]))` to `r fmt(max(band_span[-1]))` times its lower
+bound.
 
 The EC10 interval depends on the kind of plate term. `ogl(plate)` (B) scales
 each plate's curve by one factor, which cancels in an effect measured from that
