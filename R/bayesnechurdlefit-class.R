@@ -150,15 +150,17 @@ hurdle_check_which <- function(which) {
 #'
 #' The combined no-effect concentration is
 #' \code{pmin(ne_growth, ne_survival)} evaluated per posterior draw, on the
-#' scale the model was fitted on. Below both thresholds the growth curve sits
-#' at \code{top} and the survival curve at its own control value, so their
-#' product is flat; it departs that plateau at whichever threshold binds first.
-#' The minimum, and the rule for censored draws below, apply on that scale, and
-#' the result is then returned on the scale \code{xform} names. Under a
-#' decreasing transformation in \code{crf()}, such as \code{crf(I(-x))}, each
-#' curve is flat above its threshold on the recorded scale, so the combined
-#' value is the larger of the two recorded thresholds. An \code{xform} changes
-#' the scale the value is reported on, not which threshold it is.
+#' scale the model was fitted on. If both components use monotone threshold
+#' equations, their product is flat below both thresholds and departs that
+#' plateau at the smaller one. With a smooth or hormesis threshold equation,
+#' the minimum is a componentwise no-effect estimate; the NSEC of the combined
+#' response curve can differ. The minimum, and the rule for censored draws
+#' below, apply on the fitted scale, and the result is then returned on the
+#' scale \code{xform} names. Under a decreasing transformation in
+#' \code{crf()}, such as \code{crf(I(-x))}, the smaller fitted-scale value is
+#' the larger of the two recorded values.
+#' An \code{xform} changes the scale the value is reported on, not which
+#' component estimate determines it.
 #'
 #' A component draw beyond the top of its prediction range is known only to
 #' exceed that limit. Both components are predicted over the whole
@@ -174,26 +176,26 @@ hurdle_check_which <- function(which) {
 #' whenever growth is the more sensitive endpoint} --
 #' which it usually is, since a contaminant that kills has generally slowed
 #' growth at a lower concentration first. This is not a defect of the
-#' combination but a property of thresholds: a threshold marks where an effect
-#' \emph{begins}, and the combined effect begins as soon as either process
-#' does. Where the two components differ is in the \emph{magnitude} of effect
+#' combination: the minimum selects the more sensitive component's estimate.
+#' Where the two components differ is in the \emph{magnitude} of effect
 #' above that point, which is what \code{\link{ecx}} measures. Use
 #' \code{ecx(which = "combined")} rather than this function where the question
 #' is what the hurdle model adds over a survivors-only analysis.
 #'
-#' As for \code{\link{nec}} on any fit, what is returned is a NEC only where
-#' the underlying model(s) are threshold models. A component whose model set
-#' contains smooth (\code{ecx}-type) models contributes NSEC draws instead, and
-#' the combination is then an N(S)EC; a message is emitted in that case and
-#' \code{summary} labels each component. A component fitted to a single smooth
-#' equation, such as \code{ecx4param}, contributes the NSEC draws stored when it
-#' was fitted, although \code{nec()} refuses that equation fitted on its own
-#' with \code{\link{bnec}}. Only the component or components that \code{which}
-#' names are computed, so \code{which = "growth"} reads nothing from the
-#' survival component. \code{\link{nsec}} with
-#' \code{which = "combined"} is the alternative that reads a single value off
-#' the combined curve itself rather than taking the minimum of two component
-#' estimates, and it does not reduce to the growth value.
+#' As for \code{\link{nec}} on any fit, what is returned is a sampled NEC only
+#' where the underlying equations are monotone threshold models. A component
+#' whose model set contains smooth or hormesis threshold equations contributes
+#' NSEC draws instead. A combination of NEC and NSEC draws is labelled N(S)EC;
+#' a message is emitted and \code{summary} labels each component. A component
+#' fitted to a single smooth equation, such as \code{ecx4param}, contributes
+#' the NSEC draws stored when it was fitted, although \code{nec()} refuses
+#' that equation fitted on its own with \code{\link{bnec}}. Only the component
+#' or components that \code{which} names are computed, so
+#' \code{which = "growth"} reads nothing from the survival component.
+#' \code{\link{nsec}} with \code{which = "combined"} is the alternative that
+#' reads a single value off the combined curve itself rather than taking the
+#' minimum of two component estimates, and it does not reduce to the growth
+#' value.
 #'
 #' @return A vector containing the estimated no-effect value, including upper
 #' and lower credible interval bounds.
@@ -229,15 +231,18 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
       return(result)
     }
   }
-  # Muffle the component censoring warnings; one is raised below for the
-  # vector returned. `extrapolate` goes to each component, which has its own
-  # prediction range, and a refusal is re-raised naming that component, since
-  # an older fit's growth range can stop short of the survival range.
+  # Check only the component or components that `which` reads.
+  warn_stale_ne_type(if (which == "combined") object else object[[which]])
+  # Muffle the component censoring and stale-estimate warnings, which are
+  # raised once for the whole fit. `extrapolate` goes to each component, which
+  # has its own prediction range, and a refusal is re-raised naming that
+  # component, since an older fit's growth range can stop short of the
+  # survival range.
   component_nec <- function(part, what) {
     call_it <- function() {
-      without_censored_warning(
+      without_stale_ne_warning(without_censored_warning(
         hurdle_component_ne(part, extrapolate = extrapolate, ...)
-      )
+      ))
     }
     # Relabel an error only where extrapolate was given; otherwise an unrelated
     # error would be blamed on it.
@@ -265,7 +270,7 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
     n <- min(length(g_post), length(s_post))
     # Keep the minimum on the fitted scale, where each curve is flat below its
     # threshold. Under a decreasing crf() it is the larger recorded threshold,
-    # which is where the product leaves its plateau.
+    # which is where the product leaves its plateau for monotone thresholds.
     combined <- combine_censored_min(g_post, s_post, n)
     out <- combined$values
     cens <- combined$censored
@@ -274,7 +279,7 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
     # only: a fit that recorded no ne_type has the label "no-effect estimate".
     kinds <- c(ne_label(object$growth), ne_label(object$survival))
     if (any(kinds %in% c("NSEC", "N(S)EC"))) {
-      message("At least one component is an ecx-type (NSEC) estimate, so the",
+      message("At least one component is a curve-read NSEC estimate, so the",
               " combined value is approximate. See ?nec.bayesnechurdlefit.")
     }
   }
@@ -297,8 +302,9 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
 #' The no-effect draws one hurdle component contributes
 #'
 #' A component fitted to one smooth equation has no \code{nec} parameter, so
-#' \code{nec()} refuses it. It contributes its stored NSEC draws instead, as an
-#' equation of a model set does.
+#' \code{nec()} refuses it. It contributes its stored NSEC draws instead. A
+#' hormesis threshold equation also contributes its stored NSEC draws, rather
+#' than its \code{nec} parameter.
 #'
 #' @param part The \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}
 #' of one component.
@@ -310,7 +316,7 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
 #' @noRd
 hurdle_component_ne <- function(part, extrapolate, ...) {
   if (inherits(part, "bayesnecfit") &&
-        !has_nec_parameter(part$model, part$fit)) {
+        !sampled_nec_is_no_effect(part$model, part$fit)) {
     if (!is.null(part$observed_group)) {
       sig <- recorded_expand_args(list(part))$sig_val
       return(nsec(part, sig_val = sig, posterior = TRUE,

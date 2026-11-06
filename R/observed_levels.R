@@ -221,7 +221,7 @@ observed_level_fit <- function(object, spec, i, with_ne = FALSE) {
         out[[part]] <- observed_level_fit(
           component, spec, i,
           with_ne = with_ne &&
-            has_nec_parameter(component$model, component$fit)
+            sampled_nec_is_no_effect(component$model, component$fit)
         )
       } else if (inherits(component, "bayesmanecfit")) {
         component$observed_group <- out$observed_group
@@ -231,7 +231,7 @@ observed_level_fit <- function(object, spec, i, with_ne = FALSE) {
           source <- component$mod_fits[[model]]
           level <- observed_level_fit(
             allot_class(source, c("bayesnecfit", "bnecfit")), spec, i,
-            with_ne = with_ne && has_nec_parameter(
+            with_ne = with_ne && sampled_nec_is_no_effect(
               model, source$fit
             )
           )
@@ -353,7 +353,9 @@ estimate_observed_levels <- function(object, spec, what, fun, pool,
     ))
   }
   with_ne <- identical(what, "nec") &&
-    (is.null(object$hurdle) || identical(object$hurdle$ne_type, "NEC"))
+    (is.null(object$hurdle) || identical(object$hurdle$ne_type, "NEC")) &&
+    (!is_bayesnecfit(object) ||
+       sampled_nec_is_no_effect(object$model, object$fit))
   draws <- lapply(seq_along(labels), function(i) {
     fun(observed_level_fit(object, spec, i, with_ne = with_ne),
         control_value, range_override)

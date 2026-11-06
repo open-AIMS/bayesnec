@@ -1020,8 +1020,7 @@ check_nec_no_dpar <- function(dots) {
 #' @noRd
 check_no_effect_arg <- function(dots, object) {
   if ("no_effect" %in% names(dots)) {
-    stop("`no_effect` selects between the nec parameter and the no-effect",
-         " estimate each level's own equation supports. It applies to a",
+    stop("`no_effect` adds the curve-read NSEC for smooth equations to a",
          " bayesnecjointfit, where exactly one equation is fitted per level.",
          " This object is a ", class(object)[1], ", whose no-effect estimate",
          " has one type already: see ?nec for what that type is, and nsec()",

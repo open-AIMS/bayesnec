@@ -775,6 +775,7 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   check_plot_dpar(list(...), x)
   blocks <- plot_blocks(x, which)
   warn_stale_observed_display(x)
+  warn_stale_ne_type(x)
   x_scale <- plot_x_scale(x, x_scale, xform)
   r_df <- prep_raw_data(x$fit, x$bayesnecformula, group = group,
                         retained_data = x$retained_data)
@@ -1258,6 +1259,7 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
     check_plot_relative(list(...), x)
   }
   warn_stale_observed_display(x)
+  warn_stale_ne_type(x)
   x_scale <- plot_x_scale(x, x_scale, xform)
   e_df <- if (x_scale == "fitted") plot_fitted_curve(x) else x$w_pred_vals$data
   e_df <- data.frame(x_e = c(e_df$x, rev(e_df$x)),
@@ -1346,7 +1348,7 @@ ggbnec_data.bayesnecgroupfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   }
   x_scale <- plot_x_scale(x, x_scale, xform)
   panel_group <- is.null(group) || identical(group, x$group_var)
-  pieces <- lapply(seq_along(x$fits), function(i) {
+  pieces <- once_stale_ne_warning(x, lapply(seq_along(x$fits), function(i) {
     out <- ggbnec_data(x$fits[[i]], add_nec = add_nec, add_ecx = add_ecx,
                        xform = xform, x_scale = x_scale, ...,
                        group = if (panel_group) NULL else group)
@@ -1355,7 +1357,7 @@ ggbnec_data.bayesnecgroupfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
       out$group <- out$panel
     }
     out
-  })
+  }))
   group_fitted <- if (panel_group) TRUE else attr(pieces[[1]], "group_fitted")
   out <- do.call(rbind, pieces)
   rownames(out) <- NULL
