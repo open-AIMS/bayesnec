@@ -43,7 +43,6 @@ clauses <- function(x) {
 [e4]: https://open-aims.github.io/bayesnec/articles/example4.html
 [e6]: https://open-aims.github.io/bayesnec/articles/example6.html
 [e8]: https://open-aims.github.io/bayesnec/articles/example8.html
-[e9]: https://open-aims.github.io/bayesnec/articles/example9.html
 
 # Overview
 
@@ -663,9 +662,7 @@ The colour design has five concentrations, which appears to be too few to
 estimate both asymptotes of an equation with four curve parameters reliably. We
 therefore restrict the model set to four equations with three curve parameters
 (`nec3param`, `ecxll3`, `ecxwb1p3` and `ecxwb2p3`), and use this set for yield
-as well, so that the endpoints are compared on one set of equations. [A complete analysis workflow][e9] fits the
-full declining set to the 2050 colour series and examines how the sparse
-concentrations may affect sampling, prior sensitivity and model weights.
+as well, so that the endpoints are compared on one set of equations.
 
 ```{r fit-coral, results = "hide"}
 fits_colour <- bnec_group(
