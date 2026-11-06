@@ -57,7 +57,11 @@ because \code{set.seed(NULL)} re-initialises the stream from the clock.}
 \code{TRUE} (the default) a third table is returned checking the two
 components against the response they jointly predict, which is what the user
 actually observed. The growth component is predicted onto the full exposed
-set rather than onto its own data, since it is fitted on survivors only.}
+set rather than onto its own data, since it is fitted on survivors only.
+Where either component is a model set, the third table has one block of rows
+per pair of growth and survival equations, named \code{"growth / survival"}
+in the column \code{model}, with the pair's weight from
+\code{\link{crossed_weights}} in the column \code{wi}.}
 }
 \value{
 A \code{\link[base]{data.frame}} with one row per group (per model,

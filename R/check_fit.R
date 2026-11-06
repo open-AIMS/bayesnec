@@ -561,6 +561,10 @@ print.checkfit <- function(x, ...) {
 #' components against the response they jointly predict, which is what the user
 #' actually observed. The growth component is predicted onto the full exposed
 #' set rather than onto its own data, since it is fitted on survivors only.
+#' Where either component is a model set, the third table has one block of rows
+#' per pair of growth and survival equations, named \code{"growth / survival"}
+#' in the column \code{model}, with the pair's weight from
+#' \code{\link{crossed_weights}} in the column \code{wi}.
 #'
 #' @export
 check_fit.bayesnechurdlefit <- function(x, group = NULL, ndraws = 1000,
@@ -593,6 +597,9 @@ check_fit.bayesnechurdlefit <- function(x, group = NULL, ndraws = 1000,
 #' survivor. Those predictions still affect the combined check wherever the
 #' survival component predicts a nonzero response.
 #'
+#' Where either component is a model set, every pair of equations is checked,
+#' as \code{\link{check_fit}} checks every equation of a set.
+#'
 #' @inheritParams check_fit
 #'
 #' @return A \code{\link[base]{data.frame}} of class \code{checkfit}.
@@ -602,30 +609,74 @@ check_fit.bayesnechurdlefit <- function(x, group = NULL, ndraws = 1000,
 #'
 #' @noRd
 check_fit_combined <- function(x, group = NULL, ndraws = 1000, seed = 10) {
-  gb <- pull_brmsfit(x$growth)
-  sb <- pull_brmsfit(x$survival)
-  s_dat <- model.frame(x$survival$bayesnecformula, data = sb$data)
+  g_fits <- component_fits(x$growth)
+  s_fits <- component_fits(x$survival)
+  # Every equation of a component is fitted to the same rows.
+  gb <- g_fits[[1]]$fit
+  sb <- s_fits[[1]]$fit
+  s_dat <- model.frame(s_fits[[1]]$bayesnecformula, data = sb$data)
   predictor <- retrieve_var(s_dat, "x_var", error = TRUE)
   y_obs <- hurdle_observed_response(x)
   grp <- check_fit_groups(predictor, group)
-  n_av <- min(brms::ndraws(gb), brms::ndraws(sb))
+  n_av <- min(vapply(c(g_fits, s_fits), function(f) brms::ndraws(f$fit),
+                     numeric(1)))
   nd <- min(ndraws, n_av)
   g_rows <- hurdle_growth_rows(x, sb$data, growth_data = gb$data)
+  # Draw each equation's predictions once, before the pairs are formed, so
+  # that every pair sharing an equation shares its draws.
   with_preserved_rng_state({
     set.seed(seed)
-    alive <- posterior_predict(sb, ndraws = nd)
-    grow <- posterior_predict(gb, newdata = g_rows, ndraws = nd)
-    mu_alive <- apply(posterior_epred(sb), 2, median)
-    mu_grow <- apply(factorised_count_epred(
-      gb, x$growth$bayesnecformula, newdata = g_rows, ndraws = nd
-    ), 2, median)
+    alive <- lapply(s_fits, function(f) posterior_predict(f$fit, ndraws = nd))
+    grow <- lapply(g_fits, function(f) {
+      posterior_predict(f$fit, newdata = g_rows, ndraws = nd)
+    })
+    mu_alive <- lapply(s_fits, function(f) {
+      apply(posterior_epred(f$fit), 2, median)
+    })
+    mu_grow <- lapply(g_fits, function(f) {
+      apply(factorised_count_epred(
+        f$fit, f$bayesnecformula, newdata = g_rows, ndraws = nd
+      ), 2, median)
+    })
   })
-  n <- min(nrow(alive), nrow(grow))
-  yrep <- alive[seq_len(n), , drop = FALSE] * grow[seq_len(n), , drop = FALSE]
-  mu <- mu_alive * mu_grow
-  out <- check_fit_stats(y_obs, yrep, mu, grp, is_mixture = TRUE,
-                         cens = hurdle_exposed_cens(gb, y_obs))
+  cens <- hurdle_exposed_cens(gb, y_obs)
+  ctrl <- levels(grp)[which.min(tapply(predictor, grp, min))]
+  weights <- crossed_weights(x)
+  pairs <- expand.grid(growth = names(g_fits), survival = names(s_fits),
+                       stringsAsFactors = FALSE)
+  out <- lapply(seq_len(nrow(pairs)), function(i) {
+    g <- pairs$growth[i]
+    s <- pairs$survival[i]
+    n <- min(nrow(alive[[s]]), nrow(grow[[g]]))
+    yrep <- alive[[s]][seq_len(n), , drop = FALSE] *
+      grow[[g]][seq_len(n), , drop = FALSE]
+    res <- check_fit_stats(y_obs, yrep, mu_alive[[s]] * mu_grow[[g]], grp,
+                           is_mixture = TRUE, cens = cens)
+    res$control <- res$group == ctrl
+    if (nrow(pairs) > 1) {
+      res <- data.frame(model = paste(g, s, sep = " / "),
+                        wi = weights[g, s], res)
+    }
+    res
+  })
+  out <- do.call(rbind, out)
+  rownames(out) <- NULL
   allot_class(out, c("checkfit", "data.frame"))
+}
+
+#' The equations of one component of a hurdle fit
+#'
+#' @param x A \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
+#'
+#' @return A named \code{\link[base]{list}} with one element per equation,
+#' each holding \code{fit} and \code{bayesnecformula}.
+#'
+#' @noRd
+component_fits <- function(x) {
+  if (inherits(x, "bayesmanecfit")) {
+    return(x$mod_fits)
+  }
+  setNames(list(x), x$model)
 }
 
 #' The growth component's censoring, placed on the exposed rows of a hurdle fit
@@ -730,11 +781,11 @@ hurdle_growth_rows <- function(x, frame, growth_data = NULL) {
 #'
 #' @noRd
 hurdle_observed_response <- function(x) {
-  sb <- pull_brmsfit(x$survival)
-  s_dat <- model.frame(x$survival$bayesnecformula, data = sb$data)
+  s_fit <- component_fits(x$survival)[[1]]
+  s_dat <- model.frame(s_fit$bayesnecformula, data = s_fit$fit$data)
   alive <- retrieve_var(s_dat, "y_var", error = TRUE)
-  gb <- pull_brmsfit(x$growth)
-  g_dat <- model.frame(x$growth$bayesnecformula, data = gb$data)
+  g_fit <- component_fits(x$growth)[[1]]
+  g_dat <- model.frame(g_fit$bayesnecformula, data = g_fit$fit$data)
   g_y <- retrieve_var(g_dat, "y_var", error = TRUE)
   out <- numeric(length(alive))
   # The survivors appear in the growth frame in the same order they appear in

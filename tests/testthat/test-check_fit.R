@@ -853,3 +853,41 @@ test_that("grouped and model-set checks carry each fit's censoring", {
   expect_identical(by_model$n_cens[by_model$model == "ecx4param"],
                    out$fits$cens$n_cens)
 })
+
+test_that("the combined hurdle table marks the control, so it can be plotted", {
+  skip_on_cran()
+  res <- suppressWarnings(check_fit(hurdle_fixture()$fit))
+  d <- as.data.frame(res$combined)
+  expect_equal(sum(d$control), 1)
+  expect_true(d$control[1])
+  p <- plot(res$combined)
+  expect_s3_class(p, "ggplot")
+  expect_warning(ggplot2::ggplot_build(p), NA)
+})
+
+test_that("a hurdle fit with a model set checks every pair of equations", {
+  skip_on_cran()
+  fit <- hurdle_fixture()$fit
+  # The fixture holds 400 draws, so asking for more uses every draw.
+  single <- bayesnec:::check_fit_combined(fit, group = 3, ndraws = 1000,
+                                          seed = 7)
+  g <- fit$growth
+  set_fit <- fit
+  set_fit$growth <- structure(
+    list(mod_fits = setNames(list(g, g), c(g$model, "copy")),
+         mod_stats = data.frame(wi = c(0.6, 0.4),
+                                row.names = c(g$model, "copy"))),
+    class = c("bayesmanecfit", "bnecfit")
+  )
+  out <- bayesnec:::check_fit_combined(set_fit, group = 3, ndraws = 1000,
+                                       seed = 7)
+  labels <- paste(c(g$model, "copy"), fit$survival$model, sep = " / ")
+  expect_identical(unique(out$model), labels)
+  expect_equal(unique(out$wi), c(0.6, 0.4))
+  expect_identical(names(out)[1:3], c("model", "wi", "group"))
+  first <- as.data.frame(out)[out$model == labels[1], names(single)]
+  rownames(first) <- NULL
+  expect_equal(first, as.data.frame(single))
+  expect_true(all(tapply(out$control, out$model, sum) == 1L))
+  expect_s3_class(plot(out), "ggplot")
+})
