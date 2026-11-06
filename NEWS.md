@@ -1,5 +1,10 @@
 # bayesnec 2.2.0
 
+- `check_fit()` now counts ties as one half when calculating posterior
+  predictive p-values. Identical observed and simulated count statistics give
+  a p-value of 0.5 rather than 1. When the observed statistic and the median
+  simulated statistic are both zero, their ratio is reported as 1 so that the
+  control check does not flag agreement (#568).
 - `check_fit()` now returns mean statistics for groups with one observation and
   records their undefined standard deviation statistics as `NA`. The plot shows
   these groups in the mean panel only (#558).
@@ -11,7 +16,8 @@
   that bound before the statistics are computed, and a new column, `n_cens`,
   gives the number of censored readings in each group. This applies to single
   fits, model sets, grouped fits and the growth and combined tables of a hurdle
-  fit. A fit without a `cens()` term gives the same table as before (#566).
+  fit. The censoring treatment applies only to groups with censored readings
+  (#566).
 - `bnec()` and `amend()` now reject malformed priors before fitting instead of
   silently replacing them with defaults.
 

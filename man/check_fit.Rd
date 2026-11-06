@@ -128,6 +128,12 @@ for the control. For a \code{\link{bayesmanecfit}} the per-model rows are
 therefore reported alongside the averaged rows, or the table could not say
 which model is doing the damage.
 
+Posterior predictive p-values give half weight to simulated statistics that
+tie the observed statistic. Ties are common for count families because their
+statistics take few distinct values.
+When both an observed statistic and the median simulated statistic are zero,
+their ratio is reported as 1 to denote agreement in the control check.
+
 \bold{Censored readings}
 
 Where the formula includes a \code{cens()} term, a censored reading is
@@ -137,12 +143,12 @@ the simulated responses are therefore both held at one bound before the
 statistics are computed: values below the largest left-censoring bound in
 the group are raised to it, and values above the smallest right-censoring
 bound are lowered to it. An interval-censored reading is treated as
-left-censored at the upper end of its interval. The true value of every
-censored reading is known to be beyond the bound, so its held value is known
-exactly, and the observed and simulated statistics are computed from the
-same quantity. Ties at the bound are split evenly between the two tails of
-the posterior predictive p-value, and where the observed statistic equals
-the median simulated one, as when every value is held, its ratio is 1. A
+left-censored at the upper end of its interval. A group whose lower holding
+bound exceeds its upper holding bound cannot be compared this way and is
+refused. The true value of every censored reading is known to be beyond the
+bound, so its held value is known exactly, and the observed and simulated
+statistics are computed from the same quantity. Where the observed statistic
+equals the median simulated one, as when every value is held, its ratio is 1. A
 structural zero of a hurdle or zero-inflated family stays at zero, unless a
 left-censored reading in the group could itself be a zero; the zeros are
 then held with the other values and the group's zero proportions are

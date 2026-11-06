@@ -133,14 +133,44 @@ test_that("check_fit accepts an explicit singleton group", {
   expect_warning(ggplot2::ggplot_build(plot(out)), NA)
 })
 
-test_that("ppp_value is the tail probability, and handles degenerate input", {
+test_that("ppp_value splits ties and handles degenerate input", {
   expect_equal(bayesnec:::ppp_value(c(1, 2, 3, 4), 2.5), 0.5)
   expect_equal(bayesnec:::ppp_value(c(1, 2, 3, 4), 0), 1)
   expect_equal(bayesnec:::ppp_value(c(1, 2, 3, 4), 99), 0)
+  expect_equal(bayesnec:::ppp_value(rep(0, 4), 0), 0.5)
+  expect_equal(bayesnec:::ppp_value(c(0, 0, 1, 1), 0), 0.75)
+  expect_equal(bayesnec:::ppp_value(10 + 1e-14, 10), 0.5)
+  expect_equal(bayesnec:::ppp_value(10 - 1e-14, 10), 0.5)
+  expect_equal(bayesnec:::ppp_value(10 + 1e-10, 10), 1)
+  expect_equal(bayesnec:::ppp_value(10 - 1e-10, 10), 0)
   # a statistic that could not be computed must not become a silent 0 or 1
   expect_true(is.na(bayesnec:::ppp_value(numeric(0), 1)))
   expect_true(is.na(bayesnec:::ppp_value(c(1, 2), NA_real_)))
   expect_equal(bayesnec:::ppp_value(c(1, NA, 3), 2), 0.5)
+})
+
+test_that("identical binomial counts give a mid-p for mean and SD", {
+  y <- rep(10, 3)
+  yrep <- matrix(10, nrow = 20, ncol = length(y))
+  mu <- rep(10, length(y))
+  out <- bayesnec:::check_fit_stats(y, yrep, mu, factor(rep(0, 3)), FALSE)
+  expect_equal(out$ppp_mean, 0.5)
+  expect_equal(out$ppp_sd, 0.5)
+  expect_equal(out$sd_ratio, 1)
+})
+
+test_that("identical zero counts do not flag the control", {
+  y <- rep(0, 3)
+  yrep <- matrix(0, nrow = 20, ncol = length(y))
+  out <- bayesnec:::check_fit_stats(y, yrep, y, factor(rep(0, 3)), FALSE)
+  expect_equal(c(out$ppp_mean, out$ppp_sd), c(0.5, 0.5))
+  expect_equal(c(out$mean_ratio, out$sd_ratio), c(1, 1))
+  out$control <- TRUE
+  class(out) <- c("checkfit", "data.frame")
+  local_mocked_bindings(check_fit = function(x, ...) out)
+  expect_identical(control_fit_issues(list(success_models = "ecx4param"),
+                                      cutoff = 1.15),
+                   list(ecx4param = FALSE))
 })
 
 test_that("a bayesmanecfit reports per-model rows carrying their weights", {
@@ -644,8 +674,7 @@ test_that("values tied at the bound split the p-value evenly", {
   # Without the hold, readings recorded at their bound are flagged.
   raw <- bayesnec:::check_fit_stats(y, yrep, mu, grp, FALSE)
   expect_equal(raw$ppp_mean, 0)
-  expect_equal(bayesnec:::ppp_value(c(1, 2, 2, 3), 2, ties = TRUE), 0.5)
-  expect_equal(bayesnec:::ppp_value(c(1, 2, 2, 3), 2), 0.75)
+  expect_equal(bayesnec:::ppp_value(c(1, 2, 2, 3), 2), 0.5)
 })
 
 test_that("a group with no censored reading is unchanged by the cens() term", {
@@ -679,6 +708,17 @@ test_that("right and interval bounds hold values at the group's bounds", {
   expect_equal(out$sim_mean, median(c(mean(c(4, 4, 5, 5, 4.5)), 4)))
 })
 
+test_that("crossing left and right bounds cannot be held together", {
+  y <- c(10, 5)
+  cens <- list(code = c(-1L, 1L), bound = y,
+               may_be_zero = c(TRUE, FALSE))
+  expect_error(
+    bayesnec:::check_fit_stats(y, matrix(y, nrow = 1), y,
+                                factor(c("a", "a")), FALSE, cens),
+    "Group a has a left or interval censoring bound above a right"
+  )
+})
+
 test_that("a structural zero stays at zero unless a censored reading may be one", {
   y <- c(0, 0, 0.1, 0.4, 0.05)
   code <- c(0L, 0L, -1L, 0L, 0L)
@@ -696,6 +736,14 @@ test_that("a structural zero stays at zero unless a censored reading may be one"
   out <- bayesnec:::check_fit_stats(y, yrep, mu, grp, TRUE, maybe)
   expect_equal(out$obs_mean, mean(c(0.1, 0.1, 0.1, 0.4, 0.1)))
   expect_true(all(is.na(out[c("obs_zero", "sim_zero", "ppp_zero")])))
+})
+
+test_that("an identical zero fraction gives a mid-p", {
+  y <- c(0, 0, 1, 1)
+  yrep <- matrix(rep(y, 20), nrow = 20, byrow = TRUE)
+  out <- bayesnec:::check_fit_stats(y, yrep, rep(0.5, 4),
+                                    factor(rep("a", 4)), TRUE)
+  expect_equal(out$ppp_zero, 0.5)
 })
 
 test_that("print, plot and the control check read a censored table", {
@@ -898,10 +946,9 @@ test_that("a tie at the bound survives rounding in the last place", {
   x <- 0.1
   up <- x * (1 + 4 * .Machine$double.eps)
   down <- x * (1 - 4 * .Machine$double.eps)
-  expect_equal(bayesnec:::ppp_value(rep(up, 4), x, ties = TRUE), 0.5)
-  expect_equal(bayesnec:::ppp_value(rep(down, 4), x, ties = TRUE), 0.5)
-  expect_equal(bayesnec:::ppp_value(c(up, 2 * x), x, ties = TRUE), 0.75)
-  expect_equal(bayesnec:::ppp_value(rep(up, 4), x), 1)
+  expect_equal(bayesnec:::ppp_value(rep(up, 4), x), 0.5)
+  expect_equal(bayesnec:::ppp_value(rep(down, 4), x), 0.5)
+  expect_equal(bayesnec:::ppp_value(c(up, 2 * x), x), 0.75)
   # Half the draws sit just above the bound and half are held at it.
   y <- rep(x, 12)
   yrep <- rbind(matrix(up, 5, 12), matrix(0.05, 5, 12))
@@ -928,3 +975,64 @@ test_that("a wholly held control is not read as a discrepancy", {
                    list(ecx4param = FALSE))
 })
 
+# The model bnec_joint() refits a censored hurdle fit as: it marks each
+# left-censored survivor and passes the formula to bnec().
+joint_cens_fixture <- local({
+  cached <- NULL
+  function() {
+    if (is.null(cached)) {
+      set.seed(566)
+      x <- rep(c(0, 1, 2, 2.5, 3, 3.5, 5), each = 10)
+      mu <- 1 / (1 + exp((x - 2) * 1.5))
+      y <- stats::rgamma(length(x), shape = 8, rate = 8 / mu)
+      floor <- 0.12
+      censor <- ifelse(y < floor, "left", "none")
+      y <- pmax(y, floor)
+      alive <- stats::rbinom(length(x), 1, 1 / (1 + exp((x - 3.5) * 2)))
+      y[alive == 0] <- 0
+      censor[alive == 0] <- "none"
+      dat <- data.frame(x = x, y = y, censor = censor)
+      f <- bayesnec:::mark_joint_survivor_cens(
+        bnf(y | cens(censor) ~ crf(x, "ecx4param")), dat, "hurdle_gamma"
+      )
+      fit <- suppressWarnings(suppressMessages(
+        bnec(f, data = dat, family = "hurdle_gamma",
+             model_survival = "ecx4param", iter = 1000, warmup = 500,
+             chains = 2, seed = 568, refresh = 0)
+      ))
+      cached <<- list(dat = dat, fit = fit)
+    }
+    cached
+  }
+})
+
+test_that("a joint refit's censored survivors are read as alive", {
+  skip_on_cran()
+  f <- joint_cens_fixture()
+  fit <- f$fit
+  dat <- f$dat
+  left <- dat$censor == "left"
+  codes <- bayesnec:::check_fit_cens(fit$fit)
+  expect_identical(codes$code == 2L, left)
+  expect_false(any(codes$may_be_zero))
+  expect_equal(codes$bound[left], dat$y[left])
+  # The recorded codes call the same rows left-censored, which in a hurdle
+  # family includes the zero mass.
+  frame <- model.frame(fit$bayesnecformula, data = fit$fit$data)
+  recorded <- bayesnec:::retrieve_cens(frame)
+  expect_identical(recorded == -1L, left)
+  out <- check_fit(fit, ndraws = 400, seed = 9)
+  expect_identical(out$n_cens, as.integer(tapply(left, dat$x, sum)))
+  expect_equal(out$obs_zero, as.numeric(tapply(dat$y == 0, dat$x, mean)))
+  mixed <- as.vector(tapply(left, dat$x, any) & tapply(dat$y == 0, dat$x, any))
+  expect_gte(sum(mixed), 1)
+  expect_true(all(is.finite(out$ppp_zero[mixed])))
+  # Read with the recorded codes, the deaths in those groups would be held at
+  # the bound and their zero proportions lost.
+  local_mocked_bindings(check_fit_cens = function(fit) {
+    list(code = recorded, bound = fit$data$y, may_be_zero = recorded == -1L)
+  })
+  wrong <- check_fit(fit, ndraws = 400, seed = 9)
+  expect_true(all(is.na(wrong$obs_zero[mixed])))
+  expect_true(all(wrong$obs_mean[mixed] > out$obs_mean[mixed]))
+})

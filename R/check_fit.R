@@ -73,6 +73,12 @@
 #' therefore reported alongside the averaged rows, or the table could not say
 #' which model is doing the damage.
 #'
+#' Posterior predictive p-values give half weight to simulated statistics that
+#' tie the observed statistic. Ties are common for count families because their
+#' statistics take few distinct values.
+#' When both an observed statistic and the median simulated statistic are zero,
+#' their ratio is reported as 1 to denote agreement in the control check.
+#'
 #' \bold{Censored readings}
 #'
 #' Where the formula includes a \code{cens()} term, a censored reading is
@@ -82,12 +88,12 @@
 #' statistics are computed: values below the largest left-censoring bound in
 #' the group are raised to it, and values above the smallest right-censoring
 #' bound are lowered to it. An interval-censored reading is treated as
-#' left-censored at the upper end of its interval. The true value of every
-#' censored reading is known to be beyond the bound, so its held value is known
-#' exactly, and the observed and simulated statistics are computed from the
-#' same quantity. Ties at the bound are split evenly between the two tails of
-#' the posterior predictive p-value, and where the observed statistic equals
-#' the median simulated one, as when every value is held, its ratio is 1. A
+#' left-censored at the upper end of its interval. A group whose lower holding
+#' bound exceeds its upper holding bound cannot be compared this way and is
+#' refused. The true value of every censored reading is known to be beyond the
+#' bound, so its held value is known exactly, and the observed and simulated
+#' statistics are computed from the same quantity. Where the observed statistic
+#' equals the median simulated one, as when every value is held, its ratio is 1. A
 #' structural zero of a hurdle or zero-inflated family stays at zero, unless a
 #' left-censored reading in the group could itself be a zero; the zeros are
 #' then held with the other values and the group's zero proportions are
@@ -178,29 +184,22 @@ check_fit_groups <- function(predictor, group = NULL) {
 
 #' Posterior predictive p-value
 #'
-#' \code{P(T(yrep) >= T(y))}. Values near 0 or 1 both indicate misfit, in
-#' opposite directions; 0.5 is perfect agreement.
+#' The proportion above the observed statistic plus half the proportion tied
+#' with it. Values near 0 or 1 both indicate misfit, in opposite directions;
+#' 0.5 is perfect agreement.
 #'
 #' @param sim A \code{\link[base]{numeric}} vector of simulated statistics.
 #' @param obs A \code{\link[base]{numeric}} vector of length 1.
-#' @param ties A \code{\link[base]{logical}}. If \code{TRUE}, a simulated value
-#' that \code{is_tie()} matches to \code{obs} counts one half, so that
-#' statistics of values held at a censoring bound, which tie often, are not
-#' pushed to 1.
-#'
 #' @return A \code{\link[base]{numeric}} vector of length 1.
 #'
 #' @noRd
-ppp_value <- function(sim, obs, ties = FALSE) {
+ppp_value <- function(sim, obs) {
   sim <- sim[is.finite(sim)]
   if (!length(sim) || !is.finite(obs)) {
     return(NA_real_)
   }
-  if (ties) {
-    tied <- is_tie(sim, obs)
-    return(mean(sim > obs & !tied) + mean(tied) / 2)
-  }
-  mean(sim >= obs)
+  tied <- is_tie(sim, obs)
+  mean(sim > obs & !tied) + mean(tied) / 2
 }
 
 #' Whether two statistics are equal up to rounding
@@ -216,7 +215,7 @@ ppp_value <- function(sim, obs, ties = FALSE) {
 #'
 #' @noRd
 is_tie <- function(a, b) {
-  abs(a - b) <= sqrt(.Machine$double.eps) * pmax(abs(a), abs(b))
+  abs(a - b) <= 64 * .Machine$double.eps * pmax(1, abs(a), abs(b))
 }
 
 #' The censoring of each fitted row, as the model treats it
@@ -339,6 +338,11 @@ check_fit_stats <- function(y, yrep, mu, grp, is_mixture, cens = NULL) {
       bound <- cens$bound[idx]
       lower <- max(-Inf, bound[code %in% c(-1L, 2L)])
       upper <- min(Inf, bound[code == 1L])
+      if (lower > upper) {
+        stop("Group ", lv, " has a left or interval censoring bound above a",
+             " right censoring bound, so check_fit() cannot hold its",
+             " responses at a common bound.", call. = FALSE)
+      }
       zero_known <- !any(cens$may_be_zero[idx] & code != 0L)
       keep_zero <- is_mixture && zero_known
       obs_y <- hold_at_bound(obs_y, lower, upper, keep_zero)
@@ -352,10 +356,11 @@ check_fit_stats <- function(y, yrep, mu, grp, is_mixture, cens = NULL) {
     obs_sd <- if (has_sd) sd(res_obs) else NA_real_
     sim_sd <- if (has_sd) apply(res_sim, 1, sd) else NA_real_
     sim_sd_median <- if (has_sd) median(sim_sd) else NA_real_
-    # A held group can give the same statistic on both sides, zero included.
-    # Report that as a ratio of 1, not 0/0, which control_fit_issues() flags.
+    # Report two zero statistics as agreement; 0/0 would flag the control.
+    # A held group can also differ by rounding alone.
     ratio <- function(o, s) {
-      if (held && isTRUE(is_tie(o, s))) 1 else o / s
+      if ((held && isTRUE(is_tie(o, s))) ||
+          (isTRUE(o == 0) && isTRUE(s == 0))) 1 else o / s
     }
     row <- data.frame(
       group = lv,
@@ -363,11 +368,11 @@ check_fit_stats <- function(y, yrep, mu, grp, is_mixture, cens = NULL) {
       obs_mean = obs_mean,
       sim_mean = median(sim_mean),
       mean_ratio = ratio(obs_mean, median(sim_mean)),
-      ppp_mean = ppp_value(sim_mean, obs_mean, ties = held),
+      ppp_mean = ppp_value(sim_mean, obs_mean),
       obs_sd = obs_sd,
       sim_sd = sim_sd_median,
       sd_ratio = ratio(obs_sd, sim_sd_median),
-      ppp_sd = ppp_value(sim_sd, obs_sd, ties = held),
+      ppp_sd = ppp_value(sim_sd, obs_sd),
       # The 95% span of each simulated statistic, for plot(). print() hides
       # it to keep the table within one line width.
       sim_mean_lo = unname(quantile(sim_mean, 0.025)),
