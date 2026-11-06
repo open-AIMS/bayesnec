@@ -74,7 +74,7 @@ show <- subset(sim, amplitude == 0.1 & replicates == 3 & levels == 6 |
 show <- show[, c("amplitude", "replicates", "levels", "metric",
                  "fit_success", "median", "q025", "q975")]
 show[, 5:8] <- round(show[, 5:8], 2)
-knitr::kable(show, caption = "Exploratory fitted locations across 250 datasets per design. The last two columns are simulation quantiles, not credible intervals.")
+knitr::kable(show, caption = "Table 1. Exploratory fitted locations across 250 datasets per design. The last two columns are simulation quantiles, not credible intervals.")
 ```
 
 ## Case-study observations
@@ -109,7 +109,7 @@ with(aggregate(weight ~ conc, lettuce, mean),
 par(op)
 ```
 
-For both datasets, a Gaussian response family permits negative fitted values where the measured endpoint can be negative, as it is for the *C. goreaui* growth rates. We used `neclinhorme` to examine the breakpoint and `ecxhormebc4` as a smooth hormesis sensitivity model (the Brain–Cousens form). A monotone candidate must also be assessed under the OECD procedure before a final model choice. The following code gives the threshold fit and the two different estimates; `curve_params()` exposes the sampled curve parameter independently of the no-effect summary.
+For both datasets, a Gaussian response family permits negative fitted values where the measured endpoint can be negative, as it is for the *C. goreaui* growth rates. We used `neclinhorme` to examine the breakpoint in each series. For the marine case, `ecxhormebc4` supplied a smooth hormesis sensitivity model (the Brain–Cousens form), and `neclin` supplied a monotone comparator. We compared their individual-observation predictive fit using Pareto-smoothed importance sampling leave-one-out cross-validation (PSIS-LOO) [@vehtari2017]. The following code gives the fitted estimates; `curve_params()` exposes the sampled curve parameter independently of the no-effect summary.
 
 ```{r case-fits, eval=FALSE}
 library(bayesnec)
@@ -133,6 +133,21 @@ fit_negri_smooth <- bnec(sgr ~ crf(conc, model = "ecxhormebc4"),
                          control = list(adapt_delta = 0.995,
                                         max_treedepth = 12))
 nsec(fit_negri_smooth, sig_val = 0.01)
+ecx(fit_negri_smooth, ecx_val = 10)
+
+set.seed(570)
+fit_negri_monotone <- bnec(sgr ~ crf(conc, model = "neclin"),
+                           data = negri, family = gaussian(),
+                           chains = 4, cores = 4, iter = 2000, warmup = 1000,
+                           control = list(adapt_delta = 0.995,
+                                          max_treedepth = 12))
+nsec(fit_negri_monotone, sig_val = 0.01)
+ecx(fit_negri_monotone, ecx_val = 10)
+loo::loo_compare(list(
+  monotone = loo::loo(fit_negri_monotone$fit),
+  threshold_hormesis = loo::loo(fit_negri$fit),
+  smooth_hormesis = loo::loo(fit_negri_smooth$fit)
+))
 
 set.seed(570)
 fit_lettuce <- bnec(weight ~ crf(conc, model = "neclinhorme"),
@@ -154,7 +169,17 @@ With weak stimulation, three replicates and only six concentrations, the simulat
 
 In the *C. goreaui* series, the highest treatment mean specific growth rate was approximately 22% above the control mean, with a decline to negative growth rates at the highest TAH concentrations. The lettuce mean at 1 mg/L was approximately 28% above the control mean, followed by lower biomass at high concentrations (Figure 1). These descriptive rises exceed the 10% size condition in OECD TG 201; the guideline also requires a statistical test before deciding whether stimulation could be ignored. The biological explanation differs between the assays and is not resolved by these data.
 
-Preliminary four-chain threshold fits gave a *C. goreaui* peak parameter of 0.94 mg/L TAH relative to the source-coded control (95% credible interval 0.57–1.48) and a post-peak NSEC of 1.98 mg/L TAH (1.79–2.17). The fitted NSEC corresponded to an estimated 10.5% decline from the control at the posterior median. One divergent transition remained after warm-up, although no transition reached the maximum tree depth of 12. A smooth Brain–Cousens fit had no divergent transitions and gave an NSEC of 2.36 mg/L TAH (1.91–2.67), showing that model choice also affects this estimate. The respective EC10 medians were 1.97 and 2.50 mg/L TAH. These values illustrate the difference between estimands and should not be used in guideline derivation without a monotone comparison and further model checks. The lettuce threshold fit was less stable: its peak parameter was weakly resolved and 20 transitions diverged (with `adapt_delta = 0.99`). We therefore do not interpret its threshold or NSEC numerically here. The two-observation treatment groups and uncertain descending shape limit what this example can establish.
+The threshold hormesis fit gave a *C. goreaui* peak parameter of 0.94 mg/L TAH relative to the source-coded control (95% credible interval 0.57–1.48), while its reported NSEC was 1.98 mg/L TAH (1.79–2.17; Table 2). The fitted NSEC corresponded to an estimated 10.5% decline from the control at the posterior median. Compared with this fit, the monotone `neclin` model had a lower expected log predictive density by 4.0 (standard error 1.5). The smooth hormesis fit had a lower value by 3.9 (standard error 5.8), so its predictive difference from the threshold hormesis fit was poorly resolved. All PSIS-LOO Pareto $k$ estimates were below 0.7. These comparisons support retaining a hormesis model in the candidate set, without establishing that either hormesis equation is uniquely adequate.
+
+| Model | NSEC, mg/L TAH (95% credible interval) | EC10, mg/L TAH | Difference in expected log predictive density (SE) | Divergent transitions |
+| --- | --- | --- | --- | --- |
+| `neclin`, monotone | 1.70 (1.43–2.01) | 1.76 | −4.0 (1.5) | 0 |
+| `neclinhorme`, threshold hormesis | 1.98 (1.79–2.17) | 1.97 | 0 (reference) | 1 |
+| `ecxhormebc4`, smooth hormesis | 2.36 (1.91–2.67) | 2.50 | −3.9 (5.8) | 0 |
+
+Table 2. Preliminary four-chain fits to individual *C. goreaui* growth rates. NSEC was calculated for every model to compare a common control-based location; the usual default for the monotone `neclin` equation is its sampled NEC. The one divergence in `neclinhorme` remained with `adapt_delta = 0.995`, while no fit reached the maximum tree depth of 12. The comparison does not establish a guideline input without further posterior predictive and exposure checks.
+
+The lettuce threshold fit was less stable: its peak parameter was weakly resolved and 20 transitions diverged (with `adapt_delta = 0.99`). We therefore do not interpret its threshold or NSEC numerically here. The two-observation treatment groups and uncertain descending shape limit what this example can establish.
 
 # Discussion
 
