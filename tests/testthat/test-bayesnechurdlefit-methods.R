@@ -1646,7 +1646,8 @@ test_that("nec() computes only the component which names (#487)", {
   h <- hurdle_pair(survival = manec_example)
   expect_no_message(g <- nec(h, which = "growth"))
   expect_equal(as.numeric(g), as.numeric(nec(nec4param)))
-  expect_message(nec(h, which = "survival"), "weighted mixture of NEC and NSEC")
+  expect_message(nec(h, which = "survival"),
+                 "combines sampled NEC and curve-read NSEC")
 })
 
 # ---- An inline-transformed predictor in the hurdle plots ----------------------
@@ -1823,7 +1824,7 @@ test_that("plot() on a hurdle fit prints no message from nec() (#506)", {
     msgs <<- c(msgs, conditionMessage(m))
     invokeRestart("muffleMessage")
   })
-  expect_true(any(grepl("weighted mixture of NEC and NSEC", msgs)))
+  expect_true(any(grepl("combines sampled NEC and curve-read NSEC", msgs)))
   expect_true(any(grepl("the combined value is approximate", msgs)))
   grDevices::pdf(NULL)
   on.exit(grDevices::dev.off(), add = TRUE)
