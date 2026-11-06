@@ -1030,6 +1030,96 @@ the 176 copper cells and `r k_top[["Zn"]]` of the 187 zinc cells, so these
 weights are approximate as well, and `loo_controls = list(refit = TRUE)` would
 replace the flagged scores by refitting the equation once for each flagged cell.
 
+`check_fit()` compares the observed mean and residual SD of each group of
+readings with those of responses simulated from each equation of a set, and on
+a `bnec_group()` fit it computes the check within each level. Each batch was
+dosed separately, so we group the readings by dilution step (`conc_rank`) and
+not by concentration, and a censored reading is held at its bound in both the
+observed and the simulated responses (see `?check_fit`). The rows below are
+those of the equation given the most weight for copper: the number of censored
+readings at each step, and the ratio of the observed to the simulated mean and
+residual SD, each with its posterior predictive p-value.
+
+```{r check-metals}
+checks_tox <- check_fit(fits_tox, group = zn_cu_15$conc_rank, ndraws = 1000,
+                        seed = 228)
+cu_check <- as.data.frame(checks_tox$fits[["Cu"]])
+print(cu_check[cu_check$model == level_top[["Cu"]],
+               c("group", "n_cens", "mean_ratio", "ppp_mean", "sd_ratio",
+                 "ppp_sd")], digits = 2, row.names = FALSE)
+```
+
+```{r check-metals-summary, include = FALSE}
+# The check rows of the equation given the most weight at each level.
+check_top <- lapply(stats::setNames(fits_tox$levels, fits_tox$levels),
+                    function(l) {
+  d <- checks_tox$fits[[l]]
+  d[d$model == level_top[[l]], ]
+})
+# The dilution steps at which an observed statistic is outside the 95 per
+# cent span of its simulated values, below or above it.
+steps_out <- function(d, stat, side = c("any", "below", "above")) {
+  side <- match.arg(side)
+  obs <- d[[paste0("obs_", stat)]]
+  lo <- obs < d[[paste0("sim_", stat, "_lo")]]
+  hi <- obs > d[[paste0("sim_", stat, "_hi")]]
+  out <- switch(side, any = which(lo | hi), below = which(lo),
+                above = which(hi))
+  as.integer(as.character(d$group[out]))
+}
+step_text <- function(s) {
+  if (!length(s)) return("no step")
+  s <- as.character(s)
+  if (length(s) == 1) return(paste("step", s))
+  paste("steps", paste(s[-length(s)], collapse = ", "), "and", s[length(s)])
+}
+mean_out <- lapply(check_top, steps_out, "mean")
+sd_text <- vapply(check_top, function(d) {
+  below <- steps_out(d, "sd", "below")
+  above <- steps_out(d, "sd", "above")
+  if (!length(below) && !length(above)) return("at no step")
+  paste0(if (length(below)) paste("below the simulated span at",
+                                  step_text(below)),
+         if (length(below) && length(above)) " and ",
+         if (length(above)) paste("above it at", step_text(above)))
+}, character(1))
+cu_top <- check_top[["Cu"]]
+cu_mean_steps <- mean_out[["Cu"]]
+cu_censored <- cu_top$n_cens[cu_top$group %in% cu_mean_steps]
+cu_step_conc <- with(subset(zn_cu_15, toxicant == "Cu"),
+                     tapply(conc, conc_rank, median))
+cu_control_sd_high <- 1 %in% steps_out(cu_top, "sd", "below")
+and_text <- function(x) {
+  if (length(x) < 2) return(as.character(x))
+  paste(paste(x[-length(x)], collapse = ", "), "and", x[length(x)])
+}
+cu_control_text <- if (cu_control_sd_high) {
+  paste("At copper's control the simulated SD is larger than the observed one,",
+        "and *Why the control row matters* in `?check_fit` explains how an",
+        "overstated spread at the control can place the NSEC at a higher",
+        "concentration.")
+} else {
+  ""
+}
+cu_floor_text <- if (length(cu_mean_steps)) {
+  paste0(" (from ", fmt(min(cu_step_conc[as.character(cu_mean_steps)])),
+         " mg/L, against an EC10 of ",
+         fmt(level_ec10$Q50[level_ec10$level == "Cu"]), " mg/L), where ",
+         and_text(cu_censored), " of the ", cu_top$n[1], " readings",
+         if (length(cu_censored) > 1) ", respectively," else "",
+         " are censored at the instrument's floor")
+} else {
+  ""
+}
+```
+
+For zinc, under `r eq(level_top[["Zn"]])`, the observed mean is within the
+simulated span at `r if (!length(mean_out[["Zn"]])) "every dilution step" else paste("every step except", step_text(mean_out[["Zn"]]))`,
+and the residual SD is `r sd_text[["Zn"]]`. For copper, the observed mean is
+outside the simulated span at `r step_text(cu_mean_steps)``r cu_floor_text`,
+and the residual SD is `r sd_text[["Cu"]]`. `r if (length(cu_mean_steps) && all(cu_mean_steps >= 7)) paste0(eq(level_top[["Cu"]]), " therefore does not follow copper's readings as they approach the floor, well above the concentrations at which the EC10 and NSEC are read.") else ""`
+`r cu_control_text`
+
 Each metal's model average is formed over its own equations, so a different
 equation may describe each metal. Because the metals share no parameter, the
 model weight of a combination of one copper equation and one zinc equation is
