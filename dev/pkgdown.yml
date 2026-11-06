@@ -3,6 +3,7 @@ pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
   example1: example1.html
+  example10: example10.html
   example2: example2.html
   example2b: example2b.html
   example3: example3.html
@@ -12,7 +13,7 @@ articles:
   example7: example7.html
   example8: example8.html
   example9: example9.html
-last_built: 2026-11-06T13:39Z
+last_built: 2026-11-06T23:41Z
 urls:
   reference: https://open-aims.github.io/bayesnec/reference
   article: https://open-aims.github.io/bayesnec/articles

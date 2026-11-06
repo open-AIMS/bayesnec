@@ -85,9 +85,12 @@
       <a href="../articles/example8.html">Grouping and factor covariates</a>
     </li>
     <li class="divider"></li>
-    <li class="dropdown-header">A worked analysis</li>
+    <li class="dropdown-header">Worked analyses</li>
     <li>
       <a href="../articles/example9.html">A complete analysis workflow</a>
+    </li>
+    <li>
+      <a href="../articles/example10.html">Hormesis in concentration–response analysis: estimands for guideline values</a>
     </li>
   </ul>
 </li>
@@ -285,7 +288,7 @@ error rate) of 0.01 for a one-sided test of significance. The NSEC
 concept has been recently explored using simulation studies and case
 study examples, and when combined with the NEC estimates of threshold
 models within a model‐ averaging approach, can yield robust estimates of
-N(S)EC and of their uncertainty within a single analysis framework <span class="citation">(Fisher et al. 2023)</span>. Both NEC and NSEC can be
+N(S)EC and of their uncertainty within a single analysis framework <span class="citation">(Fisher et al. 2024)</span>. Both NEC and NSEC can be
 calculated from fitted models using the functions and . The model
 averaged N(S)EC is automatically returned as part of the fitted model
 for any that contains a combination of both and models. The significance
@@ -444,7 +447,7 @@ with the respective <code>brmsformula</code> being</p>
 <h5 id="ecxwb1">ecxwb1<a class="anchor" aria-label="anchor" href="#ecxwb1"></a>
 </h5>
 <p>The <strong>ecxwb1</strong> model is a 4-parameter sigmoidal decay
-model which is a slight reformulation of the Weibull1 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation:
+model which is a slight reformulation of the Weibull1 model of <span class="citation">Ritz et al. (2015)</span>, given by the equation:
 <math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo stretchy="false" form="postfix">)</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta) e^{-e^{e^{\beta} (x_i - \omega)}}</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + (top - bot) * exp(-exp(exp(beta) * (x - ec50))) </span></span>
@@ -457,7 +460,7 @@ with the respective <code>brmsformula</code> being</p>
 <h5 id="ecxwb1p3">ecxwb1p3<a class="anchor" aria-label="anchor" href="#ecxwb1p3"></a>
 </h5>
 <p>The <strong>ecxwb1p3</strong> model is a 3-parameter sigmoidal decay
-model which is a slight reformulation of the Weibull1 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation:
+model which is a slight reformulation of the Weibull1 model of <span class="citation">Ritz et al. (2015)</span>, given by the equation:
 <math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mn>0</mn><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mn>0</mn><mo stretchy="false" form="postfix">)</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = {0} + (\tau - {0}) e^{-e^{e^{\beta} (x_i - \omega)}}</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ 0 + (top - 0) * exp(-exp(exp(beta) * (x - ec50))) </span></span>
@@ -472,7 +475,7 @@ function.</p>
 <h5 id="ecxwb2">ecxwb2<a class="anchor" aria-label="anchor" href="#ecxwb2"></a>
 </h5>
 <p>The <strong>ecxwb2</strong> model is a 4-parameter sigmoidal decay
-model which is a slight reformulation of the Weibull2 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation:
+model which is a slight reformulation of the Weibull2 model of <span class="citation">Ritz et al. (2015)</span>, given by the equation:
 <math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta) (1 - e^{-e^{e^{\beta} (x_i - \omega)}})</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + (top - bot) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) </span></span>
@@ -480,7 +483,7 @@ with the respective <code>brmsformula</code> being</p>
 <span><span class="co">#&gt; ec50 ~ 1</span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span></code></pre>
-<p>While very similar to the <strong>ecxwb1</strong> <span class="citation">(according to Ritz et al. 2016)</span>, fitted
+<p>While very similar to the <strong>ecxwb1</strong> <span class="citation">(according to Ritz et al. 2015)</span>, fitted
 <strong>ecxwb1</strong> and <strong>ecxwb2</strong> models can differ
 slightly.</p>
 </div>
@@ -488,14 +491,14 @@ slightly.</p>
 <h5 id="ecxwb2p3">ecxwb2p3<a class="anchor" aria-label="anchor" href="#ecxwb2p3"></a>
 </h5>
 <p>The <strong>ecxwb2p3</strong> model is a 3-parameter sigmoidal decay
-model, which is a slight reformulation of the Weibull2 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation:
+model, which is a slight reformulation of the Weibull2 model of <span class="citation">Ritz et al. (2015)</span>, given by the equation:
 <math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mn>0</mn><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mn>0</mn><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = {0} + (\tau -{0}) (1 - e^{-e^{e^{\beta} (x_i - \omega)}})</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ 0 + (top - 0) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) </span></span>
 <span><span class="co">#&gt; ec50 ~ 1</span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span></code></pre>
-<p>While very similar to the <strong>ecxwb1p3</strong> <span class="citation">(according to Ritz et al. 2016)</span>, fitted
+<p>While very similar to the <strong>ecxwb1p3</strong> <span class="citation">(according to Ritz et al. 2015)</span>, fitted
 <strong>ecxwb1p3</strong> and <strong>ecxwb2p3</strong> models can
 differ slightly. The model is 0-bounded, thus not suitable for Gaussian
 response data or the use of a logit or log link function.</p>
@@ -505,7 +508,7 @@ response data or the use of a logit or log link function.</p>
 </h5>
 <p>The <strong>ecxll5</strong> model is a 5-parameter sigmoidal
 log-logistic decay model, which is a slight reformulation of the LL.5
-model of <span class="citation">Ritz et al. (2016)</span>, given by the
+model of <span class="citation">Ritz et al. (2015)</span>, given by the
 equation:
 <math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup><msup><mo stretchy="false" form="postfix">)</mo><msup><mi>e</mi><mi>ϕ</mi></msup></msup></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta) / (1 + e^{-e^{\beta} (x_i - \omega)})^{e^\phi}</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
@@ -521,7 +524,7 @@ with the respective <code>brmsformula</code> being</p>
 </h5>
 <p>The <strong>ecxll4</strong> model is a 4-parameter sigmoidal
 log-logistic decay model which is a slight reformulation of the LL.4
-model of <span class="citation">Ritz et al. (2016)</span>, given by the
+model of <span class="citation">Ritz et al. (2015)</span>, given by the
 equation:
 <math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta)/ (1 + e^{e^{\beta} (x_i - \omega)})</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
@@ -536,7 +539,7 @@ with the respective <code>brmsformula</code> being</p>
 </h5>
 <p>The <strong>ecxll3</strong> model is a 3-parameter sigmoidal
 log-logistic decay model, which is a slight reformulation of the LL.3
-model of <span class="citation">Ritz et al. (2016)</span>, given by the
+model of <span class="citation">Ritz et al. (2015)</span>, given by the
 equation:
 <math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mn>0</mn><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mn>0</mn><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = 0 + (\tau - 0)/ (1 + e^{e^{\beta} (x_i - \omega)})</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
@@ -554,7 +557,7 @@ function.</p>
 <p>The <strong>ecxhormebc5</strong> model is a 5 parameter log-logistic
 model modified to accommodate a non-linear hormesis at low
 concentrations. It has been modified from to the “Brain-Cousens” (BC.5)
-model of <span class="citation">Ritz et al. (2016)</span>, given by the
+model of <span class="citation">Ritz et al. (2015)</span>, given by the
 equation:
 <math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta + e^{\alpha} x)/ (1 + e^{e^{\beta} (x_i - \omega)})</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
@@ -819,7 +822,7 @@ model are not currently recommended without further testing.</p>
 <div class="section level2">
 <h2 id="relationship-to-the-drc-nec-models">Relationship to the <code>drc</code> NEC models<a class="anchor" aria-label="anchor" href="#relationship-to-the-drc-nec-models"></a>
 </h2>
-<p>Users arriving from the <code>drc</code> package <span class="citation">(Ritz et al. 2016)</span> often ask which
+<p>Users arriving from the <code>drc</code> package <span class="citation">(Ritz et al. 2015)</span> often ask which
 <code>bayesnec</code> model corresponds to <code>drc</code>’s
 <code>NEC.2()</code>, <code>NEC.3()</code> and <code>NEC.4()</code>. Two
 of the three are already here, and they are not approximations of one
@@ -943,9 +946,9 @@ Article. <em>Environmental Toxicology and Chemistry</em> 42 (9):
 </div>
 <div id="ref-fisher2023ieam" class="csl-entry">
 Fisher, Rebecca, David R. Fox, Andrew P. Negri, Joost van Dam, Florita
-Flores, and Darren Koppel. 2023. <span>“Methods for Estimating No-Effect
+Flores, and Darren Koppel. 2024. <span>“Methods for Estimating No-Effect
 Toxicity Concentrations in Ecotoxicology.”</span> <em>Integrated
-Environmental Assessment and Management</em> n/a (n/a).
+Environmental Assessment and Management</em> 20 (1): 279–93.
 https://doi.org/<a href="https://doi.org/10.1002/ieam.4809" class="external-link">https://doi.org/10.1002/ieam.4809</a>.
 </div>
 <div id="ref-Fox2010" class="csl-entry">
@@ -965,7 +968,7 @@ concentration’</span>.”</span> <em>Environmetrics</em> 13: 15–27. <a href=
 </div>
 <div id="ref-Ritz2016" class="csl-entry">
 Ritz, Christian, Florent Baty, Jens C Streibig, and Daniel Gerhard.
-2016. <span>“<span>Dose-Response Analysis Using R</span>.”</span>
+2015. <span>“<span>Dose-Response Analysis Using R</span>.”</span>
 <em>PLoS ONE</em> 10 (12): e0146021. <a href="https://doi.org/10.1371/journal.pone.0146021" class="external-link">https://doi.org/10.1371/journal.pone.0146021</a>.
 </div>
 <div id="ref-vehtari2020" class="csl-entry">
