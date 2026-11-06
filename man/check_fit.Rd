@@ -67,7 +67,9 @@ ratios, a posterior predictive p-value for each, and a logical flag marking
 the control group. For the mixture families it also carries the observed and
 simulated proportion of zeros. A group with one observation has no standard
 deviation; its standard deviation statistics are \code{NA}, while its mean
-statistics remain available.
+statistics remain available. Where the formula includes a \code{cens()}
+term, the column \code{n_cens} gives the number of censored readings in each
+group.
 A \code{bayesnecgroupfit} returns a \code{checkfit_group} object containing
 the original \code{checkfit} table for each fitted level in \code{$fits}.
 Each table retains its attributes, including any stored Pareto diagnostics.
@@ -121,6 +123,32 @@ control badly --- it wins on the bulk of the curve and pays almost nothing
 for the control. For a \code{\link{bayesmanecfit}} the per-model rows are
 therefore reported alongside the averaged rows, or the table could not say
 which model is doing the damage.
+
+\bold{Censored readings}
+
+Where the formula includes a \code{cens()} term, a censored reading is
+recorded at its bound, whereas the responses simulated from the fit are not
+censored. In each group that includes a censored reading, the observed and
+the simulated responses are therefore both held at one bound before the
+statistics are computed: values below the largest left-censoring bound in
+the group are raised to it, and values above the smallest right-censoring
+bound are lowered to it. An interval-censored reading is treated as
+left-censored at the upper end of its interval. The true value of every
+censored reading is known to be beyond the bound, so its held value is known
+exactly, and the observed and simulated statistics are computed from the
+same quantity. Ties at the bound are split evenly between the two tails of
+the posterior predictive p-value. A structural zero of a hurdle or
+zero-inflated family stays at zero, unless a left-censored reading in the
+group could itself be a zero; the zeros are then held with the other values
+and the group's zero proportions are \code{NA}.
+
+Holding the values discards what the data show beyond the bound. The column
+\code{n_cens} gives the number of censored readings in each group, and where
+it approaches \code{n} the statistics of that group show little more than
+whether the fitted model predicts readings beyond the bound.
+\code{\link{pp_check}} instead leaves censored readings out, which in a
+partly censored group compares the uncensored readings, all on the measured
+side of the bound, with simulations that fall on either side.
 
 For a \code{\link{bayesnechurdlefit}} one table is returned per
 component, following the precedent \code{\link{dispersion}} sets. The two

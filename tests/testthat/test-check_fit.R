@@ -594,3 +594,262 @@ test_that("control_fit_issues() compares only the mean of a control of one", {
   expect_identical(control_fit_issues(x, cutoff = 1.15),
                    list(nec3param = TRUE))
 })
+
+# A censored reading is recorded at its bound, while posterior_predict() does
+# not censor. Hold both sides at the group's bound before comparing them.
+
+gamma_draws <- function(mu, n, shape = 8) {
+  matrix(stats::rgamma(n * length(mu), shape, shape / rep(mu, each = n)),
+         nrow = n)
+}
+
+test_that("a censored group simulated from the model is not flagged", {
+  # Each replicate draws the data from the distribution its simulations come
+  # from, then censors it, so a correct check flags about one in ten.
+  set.seed(566)
+  mu <- rep(c(1, 0.3, 0.12, 0.08, 0.03), each = 12)
+  grp <- factor(rep(seq_len(5), each = 12))
+  floor <- 0.1
+  out <- replicate(200, {
+    yrep <- gamma_draws(mu, 100)
+    y_true <- gamma_draws(mu, 1)[1, ]
+    code <- ifelse(y_true < floor, -1L, 0L)
+    y <- pmax(y_true, floor)
+    cens <- list(code = code, bound = y, may_be_zero = code == -1L)
+    held <- bayesnec:::check_fit_stats(y, yrep, mu, grp, FALSE, cens)
+    raw <- bayesnec:::check_fit_stats(y, yrep, mu, grp, FALSE)
+    c(held$ppp_mean[3:5], held$ppp_sd[3:5], raw$ppp_mean[4:5],
+      held$n_cens[3:5])
+  })
+  flagged <- rowMeans(out[1:8, ] < 0.05 | out[1:8, ] > 0.95)
+  # Groups 3 to 5 are partly, mostly and wholly censored.
+  expect_true(all(rowMeans(out[9:11, ]) > c(2, 8, 11.9)))
+  expect_true(all(flagged[1:6] < 0.2))
+  expect_true(all(abs(rowMeans(out[1:6, ]) - 0.5) < 0.1))
+  # Without the hold, the mean of the two most censored groups is flagged in
+  # nearly every replicate.
+  expect_true(all(flagged[7:8] > 0.9))
+})
+
+test_that("values tied at the bound split the p-value evenly", {
+  y <- rep(0.1, 4)
+  yrep <- matrix(0.01, nrow = 10, ncol = 4)
+  mu <- c(0.02, 0.03, 0.02, 0.03)
+  grp <- factor(rep("a", 4))
+  cens <- list(code = rep(-1L, 4), bound = y, may_be_zero = rep(TRUE, 4))
+  out <- bayesnec:::check_fit_stats(y, yrep, mu, grp, FALSE, cens)
+  expect_equal(out$n_cens, 4L)
+  expect_equal(c(out$obs_mean, out$sim_mean), c(0.1, 0.1))
+  expect_equal(c(out$ppp_mean, out$ppp_sd), c(0.5, 0.5))
+  # Without the hold, readings recorded at their bound are flagged.
+  raw <- bayesnec:::check_fit_stats(y, yrep, mu, grp, FALSE)
+  expect_equal(raw$ppp_mean, 0)
+  expect_equal(bayesnec:::ppp_value(c(1, 2, 2, 3), 2, ties = TRUE), 0.5)
+  expect_equal(bayesnec:::ppp_value(c(1, 2, 2, 3), 2), 0.75)
+})
+
+test_that("a group with no censored reading is unchanged by the cens() term", {
+  set.seed(1)
+  mu <- rep(c(1, 0.2), each = 6)
+  grp <- factor(rep(c("a", "b"), each = 6))
+  yrep <- gamma_draws(mu, 50)
+  y <- gamma_draws(mu, 1)[1, ]
+  code <- c(rep(0L, 6), 0L, -1L, 0L, -1L, 0L, 0L)
+  y[code == -1L] <- 0.15
+  cens <- list(code = code, bound = y, may_be_zero = code == -1L)
+  held <- bayesnec:::check_fit_stats(y, yrep, mu, grp, FALSE, cens)
+  raw <- bayesnec:::check_fit_stats(y, yrep, mu, grp, FALSE)
+  expect_identical(names(held), append(names(raw), "n_cens", after = 2))
+  expect_identical(held$n_cens, c(0L, 2L))
+  expect_identical(held[1, names(raw)], raw[1, ])
+  expect_false(identical(held[2, names(raw)], raw[2, ]))
+})
+
+test_that("right and interval bounds hold values at the group's bounds", {
+  # The interval [3, 4] is read as left-censored at 4; the right-censored
+  # reading sets a ceiling of 5.
+  y <- c(1, 2, 5, 3, 0.5)
+  cens <- list(code = c(0L, 0L, 1L, 2L, 0L), bound = c(1, 2, 5, 4, 0.5),
+               may_be_zero = rep(FALSE, 5))
+  yrep <- rbind(c(0, 3, 6, 10, 4.5), rep(1, 5))
+  out <- bayesnec:::check_fit_stats(y, yrep, rep(0, 5), factor(rep("a", 5)),
+                                    FALSE, cens)
+  expect_equal(out$n_cens, 2L)
+  expect_equal(out$obs_mean, mean(c(4, 4, 5, 4, 4)))
+  expect_equal(out$sim_mean, median(c(mean(c(4, 4, 5, 5, 4.5)), 4)))
+})
+
+test_that("a structural zero stays at zero unless a censored reading may be one", {
+  y <- c(0, 0, 0.1, 0.4, 0.05)
+  code <- c(0L, 0L, -1L, 0L, 0L)
+  grp <- factor(rep("a", 5))
+  yrep <- rbind(c(0, 0.02, 0.3, 0, 0.6), c(0.2, 0, 0, 0.05, 0.5))
+  mu <- rep(0.2, 5)
+  # A censored survivor of a hurdle fit is known to be alive.
+  known <- list(code = code, bound = y, may_be_zero = rep(FALSE, 5))
+  out <- bayesnec:::check_fit_stats(y, yrep, mu, grp, TRUE, known)
+  expect_equal(out$obs_mean, mean(c(0, 0, 0.1, 0.4, 0.1)))
+  expect_equal(c(out$obs_zero, out$sim_zero), c(0.4, 0.4))
+  expect_true(is.finite(out$ppp_zero))
+  # brms left censoring in a hurdle family includes the zero mass.
+  maybe <- list(code = code, bound = y, may_be_zero = code == -1L)
+  out <- bayesnec:::check_fit_stats(y, yrep, mu, grp, TRUE, maybe)
+  expect_equal(out$obs_mean, mean(c(0.1, 0.1, 0.1, 0.4, 0.1)))
+  expect_true(all(is.na(out[c("obs_zero", "sim_zero", "ppp_zero")])))
+})
+
+test_that("print, plot and the control check read a censored table", {
+  set.seed(3)
+  mu <- rep(c(1, 0.5, 0.02), each = 4)
+  grp <- factor(rep(c("0", "1", "2"), each = 4))
+  yrep <- gamma_draws(mu, 50)
+  y <- c(gamma_draws(mu[1:8], 1)[1, ], rep(0.1, 4))
+  code <- rep(c(0L, -1L), c(8, 4))
+  cens <- list(code = code, bound = y, may_be_zero = code == -1L)
+  out <- bayesnec:::check_fit_stats(y, yrep, mu, grp, FALSE, cens)
+  out$control <- out$group == "0"
+  class(out) <- c("checkfit", "data.frame")
+  expect_equal(out$n_cens, c(0L, 0L, 4L))
+  expect_true(is.finite(out$ppp_mean[3]))
+  expect_output(print(out), "n_cens is the number of censored readings")
+  p <- plot(out)
+  expect_match(p$labels$caption, "held at their censoring bound")
+  expect_warning(ggplot2::ggplot_build(p), NA)
+  local_mocked_bindings(check_fit = function(x, ...) out)
+  issues <- control_fit_issues(list(success_models = "ecx4param"),
+                               cutoff = 1.15)
+  expect_named(issues, "ecx4param")
+  expect_type(unlist(issues), "logical")
+  # A table without the column prints no note.
+  raw <- bayesnec:::check_fit_stats(y, yrep, mu, grp, FALSE)
+  raw$control <- raw$group == "0"
+  class(raw) <- c("checkfit", "data.frame")
+  expect_false(any(grepl("n_cens", capture.output(print(raw)))))
+  expect_false(grepl("censoring bound", plot(raw)$labels$caption))
+})
+
+# brm(empty = TRUE) builds the fitted data without compiling a Stan program.
+cens_empty_fit <- function(formula, data) {
+  fam <- Gamma(link = "identity")
+  bf <- bayesnec:::wrangle_model_formula(
+    "ecx4param", formula, model.frame(formula, data = data),
+    family = bayesnec:::validate_family(fam)
+  )
+  suppressMessages(brms::brm(
+    bf, data = data, family = bayesnec:::validate_family(fam),
+    prior = get_priors(formula, data = data, family = fam), empty = TRUE
+  ))
+}
+
+cens_empty_data <- data.frame(
+  x = rep(c(0.1, 1, 3, 10), each = 3),
+  y = c(1.2, 1.1, 0.9, 0.8, 0.7, 0.75, 0.4, 0.3, 0.35, 0.2, 0.2, 0.25),
+  censor = c(rep("none", 9), "left", "left", "interval"),
+  upper = c(rep(0, 11), 0.3)
+)
+
+test_that("check_fit_cens() reads the codes and bounds brms fits", {
+  d <- cens_empty_data
+  expect_null(bayesnec:::check_fit_cens(
+    cens_empty_fit(bnf(y ~ crf(x, "ecx4param")), d)
+  ))
+  got <- bayesnec:::check_fit_cens(
+    cens_empty_fit(bnf(y | cens(censor, upper) ~ crf(x, "ecx4param")), d)
+  )
+  expect_identical(got$code, c(rep(0L, 9), -1L, -1L, 2L))
+  expect_equal(got$bound, c(d$y[1:11], 0.3))
+  expect_identical(got$may_be_zero, got$code == -1L)
+})
+
+test_that("a hurdle fit's growth censoring is placed on the survivors", {
+  d <- cens_empty_data
+  gb <- cens_empty_fit(bnf(y | cens(censor, upper) ~ crf(x, "ecx4param")), d)
+  y_obs <- c(0, d$y[1:3], 0, 0, d$y[4:12])
+  got <- bayesnec:::hurdle_exposed_cens(gb, y_obs)
+  expect_identical(got$code, c(0L, 0L, 0L, 0L, 0L, 0L, rep(0L, 6), -1L, -1L,
+                               2L))
+  expect_equal(got$bound[y_obs > 0], c(d$y[1:11], 0.3))
+  expect_false(any(got$may_be_zero))
+  expect_error(bayesnec:::hurdle_exposed_cens(gb, y_obs[-2]),
+               "cannot be matched")
+  expect_null(bayesnec:::hurdle_exposed_cens(
+    cens_empty_fit(bnf(y ~ crf(x, "ecx4param")), d), y_obs
+  ))
+})
+
+cens_fit_fixture <- local({
+  cached <- NULL
+  function() {
+    if (is.null(cached)) {
+      set.seed(566)
+      x <- rep(c(0, 1, 2, 2.5, 3, 3.5, 5), each = 10)
+      mu <- 1 / (1 + exp((x - 2) * 1.5))
+      y <- stats::rgamma(length(x), shape = 8, rate = 8 / mu)
+      floor <- 0.12
+      dat <- data.frame(x = x, y = pmax(y, floor),
+                        censor = ifelse(y < floor, "left", "none"))
+      fit <- suppressWarnings(suppressMessages(
+        bnec(y | cens(censor) ~ crf(x, "ecx4param"), data = dat,
+             family = Gamma(), iter = 1000, warmup = 500, chains = 2,
+             seed = 566, refresh = 0)
+      ))
+      cached <<- list(dat = dat, fit = fit)
+    }
+    cached
+  }
+})
+
+test_that("check_fit reads the censoring of a fit and holds those groups", {
+  skip_on_cran()
+  f <- cens_fit_fixture()
+  out <- check_fit(f$fit, ndraws = 500, seed = 10)
+  expect_identical(out$n_cens,
+                   as.integer(tapply(f$dat$censor == "left", f$dat$x, sum)))
+  whole <- out$n_cens == out$n
+  expect_gte(sum(whole), 2)
+  in_span <- function(p) p >= 0.05 & p <= 0.95
+  expect_true(all(in_span(c(out$ppp_mean[whole], out$ppp_sd[whole]))))
+  # Read without the cens() term, the same groups are flagged.
+  local_mocked_bindings(check_fit_cens = function(fit) NULL)
+  raw <- check_fit(f$fit, ndraws = 500, seed = 10)
+  expect_false("n_cens" %in% names(raw))
+  expect_true(all(raw$ppp_mean[whole] < 0.05))
+  uncensored <- out$n_cens == 0
+  expect_identical(as.data.frame(out)[uncensored, names(raw)],
+                   as.data.frame(raw)[uncensored, names(raw)])
+})
+
+test_that("grouped and model-set checks carry each fit's censoring", {
+  skip_on_cran()
+  fit <- cens_fit_fixture()$fit
+  n_cens <- nrow(fit$fit$data)
+  n_plain <- nrow(nec4param$fit$data)
+  grouped <- structure(
+    list(fits = list(cens = fit, plain = nec4param),
+         levels = c("cens", "plain"), group_var = "site",
+         data = data.frame(site = rep(c("cens", "plain"),
+                                      c(n_cens, n_plain)))),
+    class = c("bayesnecgroupfit", "bnecfit")
+  )
+  out <- suppressWarnings(check_fit(grouped, ndraws = 50, seed = 4))
+  expect_identical(out$fits$cens, check_fit(fit, ndraws = 50, seed = 4))
+  expect_true("n_cens" %in% names(out$fits$cens))
+  expect_false("n_cens" %in% names(out$fits$plain))
+  expect_output(print(out), "n_cens is the number of censored readings")
+
+  # The model-set method delegates to the single-fit method per model.
+  set <- structure(
+    list(mod_fits = list(ecx4param = fit, copy = fit),
+         mod_stats = data.frame(wi = c(0.7, 0.3),
+                                row.names = c("ecx4param", "copy"))),
+    class = c("bayesmanecfit", "bnecfit")
+  )
+  local_mocked_bindings(pull_out = function(x, model, ...) x$mod_fits[[model]])
+  by_model <- check_fit(set, ndraws = 50, seed = 4)
+  expect_identical(names(by_model)[1:5],
+                   c("model", "wi", "group", "n", "n_cens"))
+  expect_identical(by_model$n_cens[by_model$model == "copy"],
+                   out$fits$cens$n_cens)
+  expect_identical(by_model$n_cens[by_model$model == "ecx4param"],
+                   out$fits$cens$n_cens)
+})

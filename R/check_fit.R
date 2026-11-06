@@ -73,6 +73,32 @@
 #' therefore reported alongside the averaged rows, or the table could not say
 #' which model is doing the damage.
 #'
+#' \bold{Censored readings}
+#'
+#' Where the formula includes a \code{cens()} term, a censored reading is
+#' recorded at its bound, whereas the responses simulated from the fit are not
+#' censored. In each group that includes a censored reading, the observed and
+#' the simulated responses are therefore both held at one bound before the
+#' statistics are computed: values below the largest left-censoring bound in
+#' the group are raised to it, and values above the smallest right-censoring
+#' bound are lowered to it. An interval-censored reading is treated as
+#' left-censored at the upper end of its interval. The true value of every
+#' censored reading is known to be beyond the bound, so its held value is known
+#' exactly, and the observed and simulated statistics are computed from the
+#' same quantity. Ties at the bound are split evenly between the two tails of
+#' the posterior predictive p-value. A structural zero of a hurdle or
+#' zero-inflated family stays at zero, unless a left-censored reading in the
+#' group could itself be a zero; the zeros are then held with the other values
+#' and the group's zero proportions are \code{NA}.
+#'
+#' Holding the values discards what the data show beyond the bound. The column
+#' \code{n_cens} gives the number of censored readings in each group, and where
+#' it approaches \code{n} the statistics of that group show little more than
+#' whether the fitted model predicts readings beyond the bound.
+#' \code{\link{pp_check}} instead leaves censored readings out, which in a
+#' partly censored group compares the uncensored readings, all on the measured
+#' side of the bound, with simulations that fall on either side.
+#'
 #' @return A \code{\link[base]{data.frame}} with one row per group (per model,
 #' for a \code{\link{bayesmanecfit}}), carrying the group, the number of
 #' observations, the observed and simulated mean and standard deviation, their
@@ -80,7 +106,9 @@
 #' the control group. For the mixture families it also carries the observed and
 #' simulated proportion of zeros. A group with one observation has no standard
 #' deviation; its standard deviation statistics are \code{NA}, while its mean
-#' statistics remain available.
+#' statistics remain available. Where the formula includes a \code{cens()}
+#' term, the column \code{n_cens} gives the number of censored readings in each
+#' group.
 #' A \code{bayesnecgroupfit} returns a \code{checkfit_group} object containing
 #' the original \code{checkfit} table for each fitted level in \code{$fits}.
 #' Each table retains its attributes, including any stored Pareto diagnostics.
@@ -153,16 +181,75 @@ check_fit_groups <- function(predictor, group = NULL) {
 #'
 #' @param sim A \code{\link[base]{numeric}} vector of simulated statistics.
 #' @param obs A \code{\link[base]{numeric}} vector of length 1.
+#' @param ties A \code{\link[base]{logical}}. If \code{TRUE}, a simulated value
+#' equal to \code{obs} counts one half, so that statistics of values held at a
+#' censoring bound, which tie often, are not pushed to 1.
 #'
 #' @return A \code{\link[base]{numeric}} vector of length 1.
 #'
 #' @noRd
-ppp_value <- function(sim, obs) {
+ppp_value <- function(sim, obs, ties = FALSE) {
   sim <- sim[is.finite(sim)]
   if (!length(sim) || !is.finite(obs)) {
     return(NA_real_)
   }
+  if (ties) {
+    return(mean(sim > obs) + mean(sim == obs) / 2)
+  }
   mean(sim >= obs)
+}
+
+#' The censoring of each fitted row, as the model treats it
+#'
+#' @param fit An object of class \code{\link[brms]{brmsfit}}.
+#'
+#' @details The codes are read from the data \pkg{brms} fitted, not from the
+#' \code{cens()} column. A joint refit fits a left-censored survivor as an
+#' interval from zero, and a literal indicator such as \code{cens("left")} has
+#' no column.
+#'
+#' @return \code{NULL} where the model has no \code{cens()} term. Otherwise a
+#' \code{\link[base]{list}} with one element per row in each of \code{code},
+#' the \pkg{brms} code (-1 left, 0 none, 1 right, 2 interval); \code{bound},
+#' the recorded value, or the upper end of an interval; and
+#' \code{may_be_zero}, whether a censored reading could be a structural zero
+#' of a hurdle or zero-inflated family, which \pkg{brms} left censoring
+#' includes.
+#'
+#' @importFrom brms standata
+#'
+#' @noRd
+check_fit_cens <- function(fit) {
+  if (!"cens" %in% all.names(fit$formula$formula[[2]])) {
+    return(NULL)
+  }
+  sdata <- standata(fit)
+  if (is.null(sdata$cens)) {
+    return(NULL)
+  }
+  code <- as.integer(sdata$cens)
+  bound <- as.vector(sdata$Y)
+  interval <- code == 2L
+  bound[interval] <- as.vector(sdata$rcens)[interval]
+  list(code = code, bound = bound, may_be_zero = code == -1L)
+}
+
+#' Hold observed or simulated responses at a group's censoring bound
+#'
+#' @param v A \code{\link[base]{numeric}} vector or matrix.
+#' @param lower,upper The bounds; values beyond them are set to them.
+#' @param keep_zero A \code{\link[base]{logical}}. Whether an exact zero stays
+#' at zero.
+#'
+#' @return \code{v}, with its dimensions.
+#'
+#' @noRd
+hold_at_bound <- function(v, lower, upper, keep_zero) {
+  out <- pmin(pmax(v, lower), upper)
+  if (keep_zero) {
+    out[v == 0] <- 0
+  }
+  out
 }
 
 #' The per-group table for one brmsfit
@@ -197,7 +284,7 @@ check_fit_table <- function(fit, formula, y, grp, ndraws, seed, is_mixture) {
     mu <- apply(factorised_count_epred(fit, formula, ndraws = ndraws),
                 2, median)
   })
-  check_fit_stats(y, yrep, mu, grp, is_mixture)
+  check_fit_stats(y, yrep, mu, grp, is_mixture, cens = check_fit_cens(fit))
 }
 
 #' The per-group statistics, given a response and a simulated response
@@ -210,16 +297,33 @@ check_fit_table <- function(fit, formula, y, grp, ndraws, seed, is_mixture) {
 #' @param mu The fitted mean per observation.
 #' @param grp A \code{\link[base]{factor}} grouping the observations.
 #' @param is_mixture A \code{\link[base]{logical}}.
+#' @param cens \code{NULL}, or the censoring of each row in the form
+#' \code{check_fit_cens()} returns. Where supplied, the table gains an
+#' \code{n_cens} column, and a group with a censored reading is compared
+#' with both sides held at its bound (see \code{\link{check_fit}}).
 #'
 #' @return A \code{\link[base]{data.frame}}, one row per group.
 #'
 #' @noRd
-check_fit_stats <- function(y, yrep, mu, grp, is_mixture) {
+check_fit_stats <- function(y, yrep, mu, grp, is_mixture, cens = NULL) {
   levs <- levels(grp)
   out <- lapply(levs, function(lv) {
     idx <- which(grp == lv)
     obs_y <- y[idx]
     sim_y <- yrep[, idx, drop = FALSE]
+    n_cens <- if (is.null(cens)) 0L else sum(cens$code[idx] != 0L)
+    held <- n_cens > 0L
+    zero_known <- TRUE
+    if (held) {
+      code <- cens$code[idx]
+      bound <- cens$bound[idx]
+      lower <- max(-Inf, bound[code %in% c(-1L, 2L)])
+      upper <- min(Inf, bound[code == 1L])
+      zero_known <- !any(cens$may_be_zero[idx] & code != 0L)
+      keep_zero <- is_mixture && zero_known
+      obs_y <- hold_at_bound(obs_y, lower, upper, keep_zero)
+      sim_y <- hold_at_bound(sim_y, lower, upper, keep_zero)
+    }
     res_obs <- obs_y - mu[idx]
     res_sim <- sweep(sim_y, 2, mu[idx], "-")
     obs_mean <- mean(obs_y)
@@ -234,11 +338,11 @@ check_fit_stats <- function(y, yrep, mu, grp, is_mixture) {
       obs_mean = obs_mean,
       sim_mean = median(sim_mean),
       mean_ratio = obs_mean / median(sim_mean),
-      ppp_mean = ppp_value(sim_mean, obs_mean),
+      ppp_mean = ppp_value(sim_mean, obs_mean, ties = held),
       obs_sd = obs_sd,
       sim_sd = sim_sd_median,
       sd_ratio = obs_sd / sim_sd_median,
-      ppp_sd = ppp_value(sim_sd, obs_sd),
+      ppp_sd = ppp_value(sim_sd, obs_sd, ties = held),
       # The 95% span of each simulated statistic, for plot(). print() hides
       # it to keep the table within one line width.
       sim_mean_lo = unname(quantile(sim_mean, 0.025)),
@@ -247,11 +351,20 @@ check_fit_stats <- function(y, yrep, mu, grp, is_mixture) {
       sim_sd_hi = if (has_sd) unname(quantile(sim_sd, 0.975)) else NA_real_,
       stringsAsFactors = FALSE
     )
+    if (!is.null(cens)) {
+      row <- data.frame(row[1:2], n_cens = n_cens, row[-(1:2)])
+    }
     if (is_mixture) {
       # Callers enable this zero-fraction check for hurdle fits and the
       # combined hurdle check. Zero-inflated count fits do not reach it.
       obs_zero <- mean(obs_y == 0)
       sim_zero <- rowMeans(sim_y == 0)
+      if (!zero_known) {
+        # A censored reading here could be a zero, so the held values hide
+        # the zeros on both sides.
+        obs_zero <- NA_real_
+        sim_zero <- NA_real_
+      }
       row$obs_zero <- obs_zero
       row$sim_zero <- median(sim_zero)
       row$ppp_zero <- ppp_value(sim_zero, obs_zero)
@@ -421,6 +534,12 @@ print.checkfit <- function(x, ...) {
     cat("\nOne or more groups show a posterior predictive p-value beyond",
         "\n[0.05, 0.95]. See ?check_fit.\n")
   }
+  if (any(y$n_cens > 0)) {
+    cat("\nn_cens is the number of censored readings in a group. The",
+        "\nstatistics of such a group are computed on observed and simulated",
+        "\nvalues held at its censoring bound, and show nothing of the fit",
+        "\nbeyond that bound. See ?check_fit.\n")
+  }
   invisible(x)
 }
 
@@ -504,8 +623,41 @@ check_fit_combined <- function(x, group = NULL, ndraws = 1000, seed = 10) {
   n <- min(nrow(alive), nrow(grow))
   yrep <- alive[seq_len(n), , drop = FALSE] * grow[seq_len(n), , drop = FALSE]
   mu <- mu_alive * mu_grow
-  out <- check_fit_stats(y_obs, yrep, mu, grp, is_mixture = TRUE)
+  out <- check_fit_stats(y_obs, yrep, mu, grp, is_mixture = TRUE,
+                         cens = hurdle_exposed_cens(gb, y_obs))
   allot_class(out, c("checkfit", "data.frame"))
+}
+
+#' The growth component's censoring, placed on the exposed rows of a hurdle fit
+#'
+#' @param gb The growth component's \code{\link[brms]{brmsfit}}.
+#' @param y_obs The observed response of every exposed row, zeros included.
+#'
+#' @details The growth rows are the survivors, in the order of the exposed
+#' rows, so they are the rows where \code{y_obs} is positive. A censored
+#' survivor is known to be alive, so none of its readings can be a zero.
+#'
+#' @return \code{NULL} where the growth component has no \code{cens()} term,
+#' otherwise a \code{\link[base]{list}} in the form \code{check_fit_cens()}
+#' returns, one element per exposed row.
+#'
+#' @noRd
+hurdle_exposed_cens <- function(gb, y_obs) {
+  g_cens <- check_fit_cens(gb)
+  if (is.null(g_cens)) {
+    return(NULL)
+  }
+  alive <- y_obs > 0
+  if (sum(alive) != length(g_cens$code)) {
+    stop("The growth component of this hurdle fit has ", length(g_cens$code),
+         " rows and the data ", sum(alive), " non-zero responses, so its",
+         " censoring cannot be matched to the exposed rows.", call. = FALSE)
+  }
+  code <- integer(length(y_obs))
+  bound <- numeric(length(y_obs))
+  code[alive] <- g_cens$code
+  bound[alive] <- g_cens$bound
+  list(code = code, bound = bound, may_be_zero = logical(length(y_obs)))
 }
 
 #' The exposed rows of a hurdle fit, with the growth component's disp() columns
@@ -654,6 +806,13 @@ plot.checkfit <- function(x, ...) {
                  is.finite(long$hi), , drop = FALSE]
   long$role <- ifelse(long$control, "control", "exposed")
   long$group <- factor(long$group, levels = unique(d$group))
+  caption <- paste("Bars are the 95% span of the statistic simulated",
+                   "from the fit.\nA point outside its bar is a group",
+                   "the model does not reproduce.")
+  if (any(d$n_cens > 0)) {
+    caption <- paste0(caption, "\nGroups with censored readings are compared",
+                      " with values held at their censoring bound.")
+  }
   p <- ggplot(long, aes(x = .data$group)) +
     geom_linerange(aes(ymin = .data$lo, ymax = .data$hi)) +
     geom_point(aes(y = .data$observed, colour = .data$role,
@@ -661,10 +820,7 @@ plot.checkfit <- function(x, ...) {
     scale_colour_manual(values = c(control = "#b2182b", exposed = "black")) +
     scale_shape_manual(values = c(control = 17, exposed = 16)) +
     labs(x = NULL, y = "observed against simulated (95%)",
-         colour = NULL, shape = NULL,
-         caption = paste("Bars are the 95% span of the statistic simulated",
-                         "from the fit.\nA point outside its bar is a group",
-                         "the model does not reproduce.")) +
+         colour = NULL, shape = NULL, caption = caption) +
     theme_bw() +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
   if (!is.null(long$model)) {
