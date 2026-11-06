@@ -1133,7 +1133,8 @@ Each of these zeros is instead a value known only to lie in `[0, 0.005)`, i.e.
 a censored observation (see the Censoring section of `vignette("example1")`).
 The default `bayesnec` behaviour of nudging zeros to `min(y[y > 0]) / 10` is
 crude, but defensible in this case, because 0.001 falls inside the true
-interval.
+interval. The herbicide fits of `vignette("example4")` treat these zeros as
+left-censored at 0.005 instead.
 
 The diagnostic for this case is a comparison of the gap between zero and the
 smallest non-zero value against the resolution the data were recorded at. Where
