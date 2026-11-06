@@ -654,18 +654,23 @@ remaining_text <- if (length(still_failed) || length(unfit_default)) {
          }, ".")
 } else {
   paste("After the refits of step 3, every equation fitted and passed the",
-        "screen under the default priors, so here the regularising priors are",
-        "fitted only for comparison.")
+        "screen under the default priors, although some needed a refit to do",
+        "so.")
+}
+purpose_text <- if (length(still_failed) || length(unfit_default)) {
+  paste("refitting under them tests whether the equations that failed can be",
+        "fitted and sampled when the priors provide that information")
+} else {
+  paste("refitting under them shows whether that information changes the",
+        "first run, the time the sampler takes or the estimates")
 }
 ```
 
 `r remaining_text` The `"regularizing"` priors (`?bnec`) are narrower than the
 defaults, and they centre `top` and `bot` on the mean response at the lowest
 and the highest concentrations. They therefore provide the sampler with more
-information about plausible parameter values, and refitting under them tests
-whether the equations that failed can be fitted and sampled when the priors
-provide that information. The entries for `ecxll5` that correspond to those of
-step 2 are:
+information about plausible parameter values, and `r purpose_text`. The
+entries for `ecxll5` that correspond to those of step 2 are:
 
 ```{r zinc-prior-regular}
 prior_regular <- get_priors(zinc_formula, data = zn, family = gfam,
