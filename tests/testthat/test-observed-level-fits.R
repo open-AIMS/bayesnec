@@ -111,37 +111,6 @@ test_that("fitted spanning levels exclude one-concentration levels", {
   ))[1])))
 })
 
-test_that("a pooled estimate holds each level's own draw at its position", {
-  skip_on_cran()
-  skip_if_not_installed("rstan")
-  fit <- suppressMessages(pull_out(observed_fit_cache(), model = "ecx4param"))
-  per_level <- suppressMessages(ecx(fit, pool = "none", posterior = TRUE,
-                                    resolution = 30))
-  pooled <- suppressMessages(ecx(fit, posterior = TRUE, resolution = 30))
-  level <- attr(pooled, "level")
-  own <- vapply(seq_along(pooled), function(d) {
-    as.numeric(per_level[[level[d]]][d])
-  }, numeric(1))
-  expect_equal(as.numeric(pooled), own)
-
-  spec <- bayesnec:::observed_level_spec(fit)
-  nd <- bayesnec:::newdata_eval(fit, resolution = 5, x_range = NA)$newdata
-  band <- bayesnec:::observed_grid_posterior(fit$fit, fit$bayesnecformula, nd,
-                                             spec)
-  n <- brms::ndraws(fit$fit)
-  idx <- bayesnec:::mixture_draw_indices(
-    rep(n, nrow(spec$combinations)), spec$n, n,
-    labels = bayesnec:::level_labels(spec$combinations)
-  )
-  for (i in seq_along(idx)) {
-    nd_i <- nd
-    nd_i$plate <- spec$combinations$plate[i]
-    full <- brms::posterior_epred(fit$fit, newdata = nd_i,
-                                  re_formula = spec$re_formula)
-    expect_equal(band[idx[[i]], ], full[idx[[i]], ])
-  }
-})
-
 test_that("stored smooth no-effect draws use the recorded significance", {
   skip_on_cran()
   skip_if_not_installed("rstan")

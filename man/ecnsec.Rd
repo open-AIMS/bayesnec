@@ -47,12 +47,12 @@ return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
 
 \item{...}{Further arguments to pass to class specific methods.}
 
-\item{pool}{How observed group levels are combined. \code{"none"} returns
-per-level estimates; \code{"mixture"} gives each posterior draw to one level, in
-proportion to the levels' observation counts, and keeps it at its own
-position; \code{"mean_estimate"} averages aligned estimates; and \code{"mean_curve"}
-estimates from their weighted mean curve. A joint fit defaults to \code{"none"};
-other fits with spanning group terms default to \code{"mixture"}.}
+\item{pool}{How observed group levels are combined: \code{"none"} returns
+per-level estimates, \code{"mixture"} samples levels in proportion to their
+observation counts, \code{"mean_estimate"} averages aligned estimates, and
+\code{"mean_curve"} estimates from their weighted mean curve. A joint fit
+defaults to \code{"none"}; other fits with spanning group terms default to
+\code{"mixture"}.}
 
 \item{x_control}{\code{"own"} reads each level's lowest observed concentration;
 \code{"shared"} reads the lowest across levels; a single finite number specifies
