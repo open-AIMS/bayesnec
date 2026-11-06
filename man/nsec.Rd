@@ -67,12 +67,15 @@ For the count hurdles, \code{"mu"} is converted to the positive-count mean
 \code{E[Y | Y > 0]} so it matches the growth component returned by
 \code{\link{bnec_hurdle}}.}
 
-\item{pool}{How observed group levels are combined: \code{"none"} returns
-per-level estimates, \code{"mixture"} samples levels in proportion to their
-observation counts, \code{"mean_estimate"} averages aligned estimates, and
-\code{"mean_curve"} estimates from their weighted mean curve. A joint fit
-defaults to \code{"none"}; other fits with spanning group terms default to
-\code{"mixture"}.}
+\item{pool}{How observed group levels are combined. \code{"none"} returns
+per-level estimates. \code{"mixture"} gives each posterior draw to one level, in
+proportion to the levels' observation counts, and keeps it at its position,
+so that draw \emph{i} of the mixture comes from posterior iteration
+\emph{i}. Separate fits with different numbers of draws are instead each
+sampled over their full posterior. \code{"mean_estimate"} averages the levels'
+estimates at each draw, and \code{"mean_curve"} estimates from their weighted
+mean curve. A joint fit defaults to \code{"none"}; other fits with spanning group
+terms default to \code{"mixture"}.}
 
 \item{x_control}{\code{"own"} reads each level's lowest observed concentration;
 \code{"shared"} reads the lowest across levels; a single finite number specifies
@@ -102,6 +105,14 @@ the estimate, with a message naming it. The default estimate mixes the
 remaining observed levels by their observation counts;
 \code{pool = "none"} returns them separately. A grouped or joint fit already
 separates levels and defaults to \code{pool = "none"}.
+
+On a \code{\link{bayesnecjointfit}}, each level of the refit is mixed over
+its own observed group levels. A group term whose values occur in the data
+of more than one level, such as a batch in which two levels were both
+tested, is read at the same value for every level at each posterior draw,
+as often as their observation counts on that term allow. Terms they do not
+share are chosen for each level independently. The levels can therefore be
+contrasted draw by draw, as \code{\link{compare_posterior}} does.
 
 The reference is the \code{sig_val} quantile of the control posterior,
 the control being the predicted mean at the lowest concentration in the

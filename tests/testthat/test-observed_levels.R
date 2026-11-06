@@ -66,6 +66,244 @@ test_that("NULL pool selects separate grouped and joint levels", {
   expect_equal(j$Q50, c(1, 2))
 })
 
+test_that("a mixture gives each posterior draw to one level", {
+  idx <- bayesnec:::mixture_draw_indices(c(10, 10, 10), c(1, 1, 2), 10)
+  expect_equal(sort(unlist(idx)), 1:10)
+  expect_equal(lengths(idx), c(3L, 2L, 5L))
+  expect_error(bayesnec:::mixture_draw_indices(c(5, 10), c(1, 1), 8),
+               "shortest level")
+})
+
+# Two metals tested in three shared batches, each on plates of its own, as one
+# level of a mocked joint refit. `cu` and `zn` give each metal's replicate
+# count per plate and batch.
+shared_batch_level <- function(level, cu = c(2, 2, 2), zn = c(2, 2, 2),
+                               zn_batches = c("b1", "b2", "b3"),
+                               zn_plates = 1) {
+  rows <- function(tox, batch, plate, reps) {
+    expand.grid(x = c(0, 0.5, 1, 2), rep = seq_len(reps), tox = tox,
+                batch = batch, plate = plate, stringsAsFactors = FALSE)
+  }
+  d <- do.call(rbind, c(
+    Map(function(b, r) rbind(rows("Cu", b, paste("Cu", b, 1), r),
+                             rows("Cu", b, paste("Cu", b, 2), r)),
+        c("b1", "b2", "b3"), cu),
+    Map(function(b, r) {
+      do.call(rbind, lapply(seq_len(zn_plates), function(p) {
+        rows("Zn", b, paste("Zn", b, p), r)
+      }))
+    }, zn_batches, zn)
+  ))
+  d$y <- 1
+  d$tox <- factor(d$tox)
+  fit <- nec4param
+  fit$fit$data <- d
+  fit$fit$formula <- list(
+    formula = y ~ mu,
+    pforms = list(beta = beta ~ 1 + (1 | gr(plate, by = tox)) + (1 | batch))
+  )
+  fit$group_var <- "tox"
+  fit$levels <- c("Cu", "Zn")
+  fit$level <- level
+  fit$level_spec <- list()
+  bayesnec:::allot_class(fit, c("bayesnecjointlevel", "bayesnecfit",
+                                "bnecfit"))
+}
+
+# The batch read for each metal at each of n draws.
+batch_draws <- function(n = 4000, ...) {
+  lapply(c(Cu = "Cu", Zn = "Zn"), function(level) {
+    spec <- bayesnec:::observed_level_spec(shared_batch_level(level, ...))
+    spec$combinations$batch[bayesnec:::observed_assignment(spec, n)]
+  })
+}
+
+test_that("a shared group term is matched and an unshared one is not", {
+  spec <- bayesnec:::observed_level_spec(shared_batch_level("Cu"))
+  expect_named(spec$terms, c("plate:tox", "batch"))
+  keys <- spec$coupling$keys
+  expect_equal(keys[[1]], spec$terms$batch)
+  expect_equal(keys[[2]], c("batch=b1", "batch=b2", "batch=b3"))
+  expect_equal(spec$coupling$which, 1L)
+  expect_equal(bayesnec:::group_term_vars(quote(batch / plate)),
+               list("batch", c("batch", "plate")))
+})
+
+test_that("levels with the same counts on a shared term match at every draw", {
+  # Copper has two plates in each batch and zinc one, so their combinations
+  # differ but their proportions over the batches agree.
+  batch <- batch_draws()
+  expect_true(all(batch$Cu == batch$Zn))
+  three <- bayesnec:::coupled_draw_assignment(
+    1000, rep(list(c(3, 1, 2)), 3), rep(list(c("a", "b", "c")), 3)
+  )
+  expect_identical(three[[1]], three[[2]])
+  expect_identical(three[[1]], three[[3]])
+})
+
+test_that("unequal counts match in the largest share they allow", {
+  n <- 4000
+  batch <- batch_draws(n, zn = c(6, 1, 1))
+  bound <- sum(pmin(c(1, 1, 1) / 3, c(6, 1, 1) / 8))
+  expect_lte(abs(sum(batch$Cu == batch$Zn) - n * bound), 1)
+  # Random pairing of the same shares would match in about a third of draws.
+  expect_gt(mean(batch$Cu == batch$Zn), 0.5)
+  partial <- batch_draws(n, zn = c(2, 2), zn_batches = c("b1", "b4"))
+  expect_lte(abs(sum(partial$Cu == partial$Zn) - n / 3), 1)
+})
+
+test_that("unmatched draws are paired independently of their labels", {
+  # Copper in b1 to b3 and zinc in b1, b4 and b5: only b1 can be matched, and
+  # copper's b2 and b3 meet zinc's b4 and b5 at random.
+  n <- 6000
+  cu <- c("batch=b1", "batch=b2", "batch=b3")
+  zn <- c("batch=b1", "batch=b4", "batch=b5")
+  a <- bayesnec:::coupled_draw_assignment(n, list(c(1, 1, 1), c(1, 1, 1)),
+                                          list(cu, zn))
+  pair <- table(cu[a[[1]]], zn[a[[2]]]) / n
+  expect_lte(abs(pair["batch=b1", "batch=b1"] - 1 / 3), 1 / n)
+  off <- pair[c("batch=b2", "batch=b3"), c("batch=b4", "batch=b5")]
+  expect_equal(as.numeric(off), rep(1 / 6, 4), tolerance = 0.1)
+})
+
+test_that("a level without a shared value does not stop the others matching", {
+  n <- 4000
+  spec <- function(batches, counts, metal) {
+    list(n = counts, terms = list(
+      "plate:tox" = paste0("plate=", metal, seq_along(counts), ", tox=", metal),
+      batch = paste0("batch=", batches)
+    ))
+  }
+  matched <- function(specs) {
+    keys <- bayesnec:::shared_term_keys(specs)
+    a <- bayesnec:::coupled_draw_assignment(n, lapply(specs, `[[`, "n"),
+                                            keys)
+    batch <- lapply(1:2, function(j) specs[[j]]$terms$batch[a[[j]]])
+    sum(batch[[1]] == batch[[2]])
+  }
+  no_batch <- list(n = c(1, 1), terms = list(
+    "plate:tox" = c("plate=Ni1, tox=Ni", "plate=Ni2, tox=Ni")
+  ))
+  other_batches <- spec(c("b4", "b5"), c(1, 1), "Ni")
+  partial <- list(spec(c("b1", "b2"), c(1, 1), "Cu"),
+                  spec(c("b2", "b3"), c(1, 1), "Zn"))
+  for (third in list(NULL, no_batch, other_batches)) {
+    expect_lte(abs(matched(c(partial, list(third))) - n / 2), 1)
+  }
+  unequal <- list(spec(c("b1", "b2", "b3"), c(2, 2, 4), "Cu"),
+                  spec(c("b1", "b2", "b3"), c(3, 3, 4), "Zn"))
+  bound <- sum(pmin(c(2, 2, 4) / 8, c(3, 3, 4) / 10))
+  for (third in list(NULL, no_batch, other_batches)) {
+    expect_lte(abs(matched(c(unequal, list(third))) - n * bound), 1)
+  }
+})
+
+test_that("matching leaves each level's own shares unchanged", {
+  n <- 4000
+  for (zn in list(c(2, 2, 2), c(6, 1, 1))) {
+    for (level in c("Cu", "Zn")) {
+      spec <- bayesnec:::observed_level_spec(
+        shared_batch_level(level, zn = zn)
+      )
+      # Counts are rounded from the shares, to within two draws.
+      counts <- tabulate(bayesnec:::observed_assignment(spec, n),
+                         nrow(spec$combinations))
+      expect_lte(max(abs(counts - n * spec$n / sum(spec$n))), 2)
+      alone <- spec
+      alone$coupling <- NULL
+      alone_counts <- tabulate(bayesnec:::observed_assignment(alone, n),
+                               nrow(spec$combinations))
+      expect_lte(max(abs(counts - alone_counts)), 2)
+    }
+  }
+})
+
+test_that("plates the levels do not share are chosen independently", {
+  n <- 20000
+  plates <- lapply(c(Cu = "Cu", Zn = "Zn"), function(level) {
+    spec <- bayesnec:::observed_level_spec(
+      shared_batch_level(level, zn_plates = 2)
+    )
+    spec$combinations$plate[bayesnec:::observed_assignment(spec, n)]
+  })
+  batch <- lapply(plates, function(p) sub("^.. (b[0-9]) [0-9]$", "\\1", p))
+  expect_true(all(batch$Cu == batch$Zn))
+  in_b1 <- batch$Cu == "b1"
+  pair <- table(plates$Cu[in_b1], plates$Zn[in_b1]) / sum(in_b1)
+  expect_equal(as.numeric(pair), rep(0.25, 4), tolerance = 0.02)
+})
+
+test_that("the matched assignment repeats and restores the RNG state", {
+  spec <- bayesnec:::observed_level_spec(shared_batch_level("Zn", zn = c(6, 1, 1)))
+  set.seed(9)
+  before <- .Random.seed
+  first <- bayesnec:::observed_assignment(spec, 500)
+  expect_identical(.Random.seed, before)
+  set.seed(10)
+  expect_identical(bayesnec:::observed_assignment(spec, 500), first)
+})
+
+test_that("a label that is not valid UTF-8 does not stop the mixture", {
+  bad <- "plate=\xff"
+  out <- bayesnec:::pool_estimate_draws(
+    stats::setNames(list(1:10, 11:20), c(bad, "plate=b")), c(1, 1),
+    "mixture"
+  )
+  expect_length(out, 10L)
+  keys <- list(c(bad, "plate=b"), c(bad, "plate=c"))
+  matched <- bayesnec:::coupled_draw_assignment(10, list(c(1, 1), c(1, 1)),
+                                                keys)
+  expect_equal(sum(keys[[1]][matched[[1]]] == keys[[2]][matched[[2]]]), 5L)
+})
+
+test_that("a mixture holds draw d of its level at position d", {
+  n <- 12L
+  out <- bayesnec:::pool_estimate_draws(
+    list(a = 100 + seq_len(n), b = 200 + seq_len(n)), c(1, 2), "mixture"
+  )
+  expect_equal(attr(out, "draw_id"), seq_len(n))
+  expect_equal(as.numeric(out) %% 100, seq_len(n))
+  expect_equal(as.numeric(out) %/% 100,
+               ifelse(attr(out, "level") == "a", 1, 2))
+  expect_equal(as.integer(table(attr(out, "level"))), c(4L, 8L))
+})
+
+test_that("mixtures over different levels of one posterior pair by draw", {
+  # As the copper and zinc plates of one joint refit: every plate of a metal
+  # shares that metal's value at draw d.
+  n <- 40L
+  cu <- stats::setNames(rep(list(seq_len(n)), 3), paste0("cu", 1:3))
+  zn <- stats::setNames(rep(list(2 * seq_len(n)), 4), paste0("zn", 1:4))
+  mix_cu <- bayesnec:::pool_estimate_draws(cu, c(1, 1, 1), "mixture")
+  mix_zn <- bayesnec:::pool_estimate_draws(zn, c(1, 2, 1, 1), "mixture")
+  expect_equal(as.numeric(mix_zn) / as.numeric(mix_cu), rep(2, n))
+})
+
+test_that("a mixture samples the full posterior when lengths differ", {
+  draws <- list(a = 1:4, b = 101:108)
+  out <- bayesnec:::pool_estimate_draws(draws, c(1, 3), "mixture", seed = 1)
+  level <- attr(out, "level")
+  draw_id <- attr(out, "draw_id")
+  expect_true(any(draw_id[level == "b"] > 4L))
+  expect_equal(as.numeric(out[level == "a"]), draws$a[draw_id[level == "a"]])
+  expect_equal(as.numeric(out[level == "b"]), draws$b[draw_id[level == "b"]])
+  expect_identical(out, bayesnec:::pool_estimate_draws(
+    draws, c(1, 3), "mixture", seed = 1
+  ))
+})
+
+test_that("a mixture keeps each censoring flag with its draw", {
+  a <- c(1, 2, NA_real_, 4)
+  attr(a, "censored") <- bayesnec:::censoring_record(
+    3, 0, c(FALSE, FALSE, TRUE, FALSE), rep(FALSE, 4))
+  b <- c(1.5, 2.5, 2.8, 2.9)
+  out <- bayesnec:::pool_estimate_draws(list(a = a, b = b), c(1, 1),
+                                        "mixture")
+  expect_equal(attr(out, "censored")$above, is.na(out) | out > 3)
+  from_a <- attr(out, "level") == "a"
+  expect_equal(as.numeric(out)[from_a], a[from_a])
+})
+
 test_that("a numeric control changes the reference and rejects log zero", {
   skip_if(Sys.getenv("NOT_CRAN") == "")
   fit <- suppressMessages(pull_out(manec_example, model = "ecx4param"))

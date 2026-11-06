@@ -61,10 +61,34 @@ needs_observed_rebuild <- function(object) {
 #' has no curve of its own, so it is not read; its label is kept in
 #' \code{excluded}. Where no combination remains, the terms are read as nested.
 #'
+#' For a level of a joint refit, \code{coupling} holds what
+#' \code{observed_assignment()} needs to match the levels of the refit on the
+#' group terms they share.
+#'
 #' @param object A single fit, a level of a joint refit, or a hurdle pair.
-#' @return A list of observed combinations, their counts and ranges, or NULL.
+#' @return A list of observed combinations, their counts, ranges and term
+#' labels, or NULL.
 #' @noRd
 observed_level_spec <- function(object) {
+  spec <- spanning_level_spec(object)
+  if (!is.null(spec) && inherits(object, "bayesnecjointlevel")) {
+    specs <- lapply(object$levels, function(level) {
+      other <- object
+      other$level <- level
+      spanning_level_spec(other)
+    })
+    spec$coupling <- list(n = lapply(specs, `[[`, "n"),
+                          keys = shared_term_keys(specs),
+                          which = match(object$level, object$levels))
+  }
+  spec
+}
+
+#' The body of observed_level_spec(), without the joint coupling
+#' @inheritParams observed_level_spec
+#' @return As \code{observed_level_spec()}, without \code{coupling}.
+#' @noRd
+spanning_level_spec <- function(object) {
   if (!is.null(object$observed_group)) return(NULL)
   if (is_bayesnechurdlefit(object)) {
     # The survival component holds every exposed individual, so it has the
@@ -116,8 +140,70 @@ observed_level_spec <- function(object) {
   }, character(1)), collapse = " + ")
   re_formula <- stats::as.formula(paste("~", rhs),
                                    env = environment(fit$formula$formula))
+  term_vars <- unique(unlist(lapply(groups, group_term_vars),
+                             recursive = FALSE))
+  terms <- lapply(term_vars, function(v) {
+    level_labels(combinations[v])
+  })
+  names(terms) <- vapply(term_vars, paste, character(1), collapse = ":")
   list(combinations = combinations, n = n[spans], x = x[spans],
-       re_formula = re_formula, x_var = x_var, excluded = excluded)
+       re_formula = re_formula, x_var = x_var, excluded = excluded,
+       terms = terms)
+}
+
+#' The variables of each grouping factor in a group term
+#'
+#' \code{a/b} fits a term for \code{a} and one for \code{a:b}, as in
+#' \pkg{brms}, so it gives two sets.
+#'
+#' @param expr The grouping expression of one term, e.g. \code{batch/plate}.
+#' @return A list of character vectors, one per grouping factor.
+#' @noRd
+group_term_vars <- function(expr) {
+  if (is.call(expr) && identical(expr[[1]], as.name("/"))) {
+    outer <- group_term_vars(expr[[2]])
+    inner <- unique(c(outer[[length(outer)]], all.vars(expr[[3]])))
+    return(c(outer, list(inner)))
+  }
+  list(all.vars(expr))
+}
+
+#' Keys that match the levels of a joint refit on their shared group terms
+#'
+#' A term is shared where one of its labels, such as \code{batch=b1}, occurs in
+#' more than one level of the refit. The key of a combination joins its labels
+#' on the shared terms. A level that does not read a shared term gets a key no
+#' other level has.
+#'
+#' @param specs One \code{spanning_level_spec()} per level of the refit, or
+#' \code{NULL} for a level with no spanning term.
+#' @return A list with one character vector of keys per level, one key per
+#' combination, or \code{NULL} where the spec is \code{NULL}.
+#' @noRd
+shared_term_keys <- function(specs) {
+  present <- which(!vapply(specs, is.null, logical(1)))
+  terms <- lapply(specs[present], `[[`, "terms")
+  names_all <- unique(unlist(lapply(terms, names), use.names = FALSE))
+  shared <- names_all[vapply(names_all, function(term) {
+    labels <- unlist(lapply(terms, function(t) unique(t[[term]])),
+                     use.names = FALSE)
+    anyDuplicated(labels) > 0L
+  }, logical(1))]
+  out <- vector("list", length(specs))
+  for (j in seq_along(present)) {
+    t <- terms[[j]]
+    size <- length(specs[[present[j]]]$n)
+    parts <- lapply(shared, function(term) {
+      if (is.null(t[[term]])) rep(paste0("\001", present[j]), size) else
+        t[[term]]
+    })
+    out[[present[j]]] <- if (length(parts)) {
+      do.call(paste, c(parts, sep = "\n"))
+    } else {
+      rep("", size)
+    }
+  }
+  out
 }
 
 #' Labels of observed group combinations
@@ -370,7 +456,7 @@ estimate_observed_levels <- function(object, spec, what, fun, pool,
       keep_metadata(estimate_table(summaries, labels, what)), controls
     ))
   }
-  pooled <- pool_estimate_draws(draws, spec$n, pool)
+  pooled <- pool_observed_draws(draws, spec, pool)
   if (posterior) return(record_level_controls(keep_metadata(pooled), controls))
   out <- summarise_censored(pooled, prob_vals)
   names(out) <- clean_names(out)
@@ -490,14 +576,12 @@ check_control_finite <- function(object, value) {
   invisible(NULL)
 }
 
-#' Draw one weighted mixture sample from each observed level
-#' @param lengths Number of available draws at each level.
+#' Number of draws each level of a weighted mixture receives
 #' @param weights Observation counts at each level.
-#' @param n Total number of draws to keep.
-#' @param seed Seed for reproducible sampling.
-#' @return Integer indices, one vector per level.
+#' @param n Total number of draws.
+#' @return Integer counts summing to \code{n}, by largest remainder.
 #' @noRd
-mixture_draw_indices <- function(lengths, weights, n, seed = 216) {
+mixture_counts <- function(weights, n) {
   expected <- n * weights / sum(weights)
   counts <- floor(expected)
   remainder <- n - sum(counts)
@@ -505,13 +589,151 @@ mixture_draw_indices <- function(lengths, weights, n, seed = 216) {
     ord <- order(expected - counts, decreasing = TRUE)
     counts[ord[seq_len(remainder)]] <- counts[ord[seq_len(remainder)]] + 1L
   }
-  with_preserved_rng_state({
+  as.integer(counts)
+}
+
+#' Assign each posterior draw to one level of a weighted mixture
+#'
+#' Put a level's value for draw \emph{d} at position \emph{d} of the mixture.
+#' For observed group levels use \code{observed_assignment()} instead, which
+#' also matches the levels of a joint refit on their shared terms.
+#'
+#' @param lengths Number of available draws at each level.
+#' @param weights Observation counts at each level.
+#' @param n Total number of draws to keep, at most \code{min(lengths)}.
+#' @param seed Seed for reproducible sampling.
+#' @return Sorted integer indices, one vector per level, which together hold
+#' each of \code{1:n} once.
+#' @noRd
+mixture_draw_indices <- function(lengths, weights, n, seed = 216) {
+  if (n > min(lengths)) {
+    stop("A mixture cannot keep more draws than its shortest level holds.",
+         call. = FALSE)
+  }
+  counts <- mixture_counts(weights, n)
+  shuffled <- with_preserved_rng_state({
     set.seed(as.integer(seed %% .Machine$integer.max),
              sample.kind = "Rejection")
-    lapply(seq_along(lengths), function(i) {
-      sample.int(lengths[i], counts[i])
-    })
+    sample.int(n)
   })
+  owner <- factor(rep(seq_along(lengths), counts), levels = seq_along(lengths))
+  unname(lapply(split(shuffled, owner), sort))
+}
+
+#' Assign posterior draws to observed combinations, matched on shared terms
+#'
+#' Each set gives its keys draws in proportion to their counts, and each key's
+#' draws to its combinations in proportion to theirs, at uniformly random
+#' positions. A key held by two or more sets gets the smallest of those sets'
+#' draw counts at random positions still free in all of them. Keys held by
+#' more sets are matched first, ties in the byte order of the keys, and the
+#' pass is repeated while any key has draws left in two or more sets. Each set
+#' then puts its remaining draws at its free positions in a random order of its
+#' own, so unmatched draws are paired independently. Two
+#' sets are therefore matched at \code{sum(pmin(n1, n2))} draws, the most their
+#' counts allow, and a set that lacks a key does not reduce the matching of the
+#' others on it. Within a key, each set chooses its combinations independently
+#' of the others.
+#'
+#' @param n Number of posterior draws.
+#' @param weights A list with the observation counts of each set's
+#' combinations, \code{NULL} for a set that is not read.
+#' @param keys A list with the key of each combination, as weights.
+#' @param seed Seed for reproducible sampling.
+#' @return A list with, for each set, the combination at each of the \code{n}
+#' draws, or \code{NULL}.
+#' @noRd
+coupled_draw_assignment <- function(n, weights, keys, seed = 216) {
+  result <- vector("list", length(weights))
+  present <- which(!vapply(weights, is.null, logical(1)))
+  keys <- lapply(keys[present], as.character)
+  weights <- weights[present]
+  key_set <- unique(unlist(keys, use.names = FALSE))
+  # Sort the bytes, so that the order does not depend on the locale and a
+  # label that is not valid UTF-8 can be sorted.
+  bytes <- key_set
+  Encoding(bytes) <- "bytes"
+  key_set <- key_set[order(bytes, method = "radix")]
+  keys <- lapply(keys, match, table = key_set)
+  # Round at the key first, so that sets with the same proportions over the
+  # keys get the same number of draws on each key.
+  left <- do.call(rbind, lapply(seq_along(present), function(j) {
+    mixture_counts(vapply(seq_along(key_set), function(k) {
+      sum(weights[[j]][keys[[j]] == k])
+    }, numeric(1)), n)
+  }))
+  out <- vector("list", length(present))
+  with_preserved_rng_state({
+    set.seed(seed, sample.kind = "Rejection")
+    position <- sample.int(n)
+    key_at <- matrix(0L, nrow = n, ncol = length(present))
+    # Repeat, because a key matched over three sets can still be matched over
+    # the two of them that have draws left on it.
+    repeat {
+      holders <- colSums(left > 0L)
+      matched <- 0L
+      for (k in order(-holders, seq_along(key_set))) {
+        who <- which(left[, k] > 0L)
+        if (length(who) < 2L) next
+        free <- position[rowSums(key_at[position, who, drop = FALSE]) == 0L]
+        take <- free[seq_len(min(left[who, k], length(free)))]
+        key_at[take, who] <- k
+        left[who, k] <- left[who, k] - length(take)
+        matched <- matched + length(take)
+      }
+      if (matched == 0L) break
+    }
+    for (j in seq_along(present)) {
+      open <- which(key_at[, j] == 0L)
+      key_at[open[sample.int(length(open))], j] <-
+        rep(seq_along(key_set), left[j, ])
+      combination <- integer(n)
+      for (k in seq_along(key_set)) {
+        draws <- which(key_at[, j] == k)
+        if (!length(draws)) next
+        own <- which(keys[[j]] == k)
+        counts <- mixture_counts(weights[[j]][own], length(draws))
+        combination[draws[sample.int(length(draws))]] <- rep(own, counts)
+      }
+      out[[j]] <- combination
+    }
+  })
+  result[present] <- out
+  result
+}
+
+#' The observed combination read at each posterior draw
+#'
+#' Every reader of observed levels takes its mixture from here, so that an
+#' estimate, its stored summary and the plotted band use the same draws.
+#'
+#' @param spec An observed level specification.
+#' @param n Number of posterior draws.
+#' @return An integer vector of length \code{n} indexing
+#' \code{spec$combinations}.
+#' @noRd
+observed_assignment <- function(spec, n) {
+  coupling <- spec$coupling
+  if (is.null(coupling)) {
+    return(coupled_draw_assignment(
+      n, list(spec$n), list(rep("", length(spec$n)))
+    )[[1]])
+  }
+  coupled_draw_assignment(n, coupling$n, coupling$keys)[[coupling$which]]
+}
+
+#' Pool per-combination draws of one fit with its observed-level assignment
+#' @param draws One posterior vector per combination of \code{spec}.
+#' @param spec An observed level specification.
+#' @param pool The pooling method, as \code{pool_estimate_draws()} takes it.
+#' @return The pooled draws.
+#' @noRd
+pool_observed_draws <- function(draws, spec, pool = "mixture") {
+  sizes <- unique(lengths(draws))
+  assignment <- if (identical(pool, "mixture") && length(sizes) == 1L) {
+    observed_assignment(spec, sizes)
+  }
+  pool_estimate_draws(draws, spec$n, pool, assignment = assignment)
 }
 
 #' Posterior of the observed-level mixture on one prediction grid
@@ -521,27 +743,25 @@ mixture_draw_indices <- function(lengths, weights, n, seed = 216) {
 #' @param spec Observed level specification.
 #' @param dpar \code{NULL} for the expected response, or one block of a joint
 #' hurdle fit, as \code{block_epred()} takes it.
+#' @param draw_ids Optional posterior draws to keep, in the order wanted.
 #' @return A draws by grid matrix.
 #' @noRd
 observed_grid_posterior <- function(fit, formula, newdata, spec,
-                                    dpar = NULL) {
+                                    dpar = NULL, draw_ids = NULL) {
   n <- brms::ndraws(fit)
-  indices <- mixture_draw_indices(rep(n, nrow(spec$combinations)),
-                                   spec$n, n)
-  out <- matrix(NA_real_, nrow = n, ncol = nrow(newdata))
-  next_row <- 1L
+  owner <- observed_assignment(spec, n)
+  if (is.null(draw_ids)) draw_ids <- seq_len(n)
+  out <- matrix(NA_real_, nrow = length(draw_ids), ncol = nrow(newdata))
   for (i in seq_len(nrow(spec$combinations))) {
-    idx <- indices[[i]]
-    if (!length(idx)) next
+    rows <- which(owner[draw_ids] == i)
+    if (!length(rows)) next
     nd <- newdata
     for (v in names(spec$combinations)) {
       nd[[v]] <- spec$combinations[[v]][rep(i, nrow(nd))]
     }
-    pred <- block_epred(fit, formula, nd, re_formula = spec$re_formula,
-                        dpar = dpar)
-    rows <- seq.int(next_row, length.out = length(idx))
-    out[rows, ] <- pred[idx, , drop = FALSE]
-    next_row <- next_row + length(idx)
+    out[rows, ] <- block_epred(fit, formula, nd,
+                              re_formula = spec$re_formula, dpar = dpar,
+                              draw_ids = draw_ids[rows])
   }
   out
 }
@@ -579,22 +799,18 @@ level_curve_draws <- function(object, x_vec, x_control = "own",
   }
   if (!is.null(spec)) {
     n <- brms::ndraws(object$fit)
-    indices <- mixture_draw_indices(rep(n, nrow(spec$combinations)),
-                                     spec$n, n)
+    owner <- observed_assignment(spec, n)
     curve <- matrix(NA_real_, nrow = n, ncol = length(x_vec))
     control <- numeric(n)
     asymptote <- numeric(n)
-    next_row <- 1L
     for (i in seq_len(nrow(spec$combinations))) {
-      take <- indices[[i]]
+      take <- which(owner == i)
       if (!length(take)) next
       level <- observed_level_fit(object, spec, i)
       part <- level_curve_draws(level, x_vec, x_control, type, dpar)
-      rows <- seq.int(next_row, length.out = length(take))
-      curve[rows, ] <- part$curve[take, , drop = FALSE]
-      control[rows] <- part$control[take]
-      asymptote[rows] <- rep_len(part$asymptote, n)[take]
-      next_row <- next_row + length(take)
+      curve[take, ] <- part$curve[take, , drop = FALSE]
+      control[take] <- part$control[take]
+      asymptote[take] <- rep_len(part$asymptote, n)[take]
     }
     return(list(curve = curve, control = control,
                 asymptote = asymptote))

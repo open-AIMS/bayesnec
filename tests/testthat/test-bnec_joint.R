@@ -935,6 +935,47 @@ test_that("the estimators report one row per level of a joint refit", {
   expect_equal(length(ep$a), brms::ndraws(f$joint$fit))
 })
 
+test_that("joint posterior comparisons use the levels' matching draws", {
+  skip_on_cran()
+  f <- joint_gate_fixture()
+  for (what in c("nec", "n(s)ec", "nsec", "ecx")) {
+    result <- suppressWarnings(suppressMessages(compare_posterior(
+      f$joint, comparison = what, resolution = 30
+    )))
+    direct <- suppressWarnings(suppressMessages(switch(what,
+      "nec" = nec(f$joint, posterior = TRUE),
+      "n(s)ec" = nec(f$joint, no_effect = TRUE, posterior = TRUE,
+                     resolution = 30),
+      "nsec" = nsec(f$joint, posterior = TRUE, resolution = 30),
+      "ecx" = ecx(f$joint, posterior = TRUE, resolution = 30)
+    )))
+    expect_equal(result$posterior_list, direct, label = what)
+    known <- !is.na(direct$a) & !is.na(direct$b)
+    ca <- attr(direct$a, "censored")
+    cb <- attr(direct$b, "censored")
+    if (!is.null(ca)) known <- known & !ca$above & !ca$below
+    if (!is.null(cb)) known <- known & !cb$above & !cb$below
+    expect_true(any(known), label = what)
+    expect_equal(result$diff_list[["a-b"]][known],
+                 as.numeric(direct$a[known] - direct$b[known]), label = what)
+  }
+  fitted <- compare_posterior(f$joint, comparison = "fitted", resolution = 6)
+  expect_equal(fitted$diff_list[["a-b"]],
+               fitted$posterior_list$a - fitted$posterior_list$b)
+  expect_equal(ncol(fitted$posterior_list$a), 6L)
+  fixed <- compare_posterior(f$joint, comparison = "fitted", resolution = 6,
+                             draw_ids = 1:20)
+  for (lev in f$joint$levels) {
+    level_fit <- joint_level_fit(f$joint, lev)
+    grid <- bnec_newdata(level_fit, resolution = 6,
+                         x_range = range(f$data$x))
+    expected <- brms::posterior_epred(level_fit, newdata = grid,
+                                      re_formula = NA, draw_ids = 1:20)
+    expect_equal(fixed$posterior_list[[lev]], expected, label = lev)
+  }
+  expect_true(any(fixed$diff_list[["a-b"]] != 0))
+})
+
 test_that("per-level ecx from a joint refit agrees with bnec_group", {
   # Compare estimator output after the parameter-level checks. A discrepancy
   # confined to this comparison warrants checking the grid and extraction.

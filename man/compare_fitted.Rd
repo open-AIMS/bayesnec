@@ -14,9 +14,8 @@ compare_fitted(
 )
 }
 \arguments{
-\item{x}{A named \code{\link[base]{list}} of objects of class
-\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by
-\code{\link{bnec}}.}
+\item{x}{A named \code{\link[base]{list}} of
+\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} objects.}
 
 \item{resolution}{The number of unique x values over which to find ECx.
 The crossing is located by linear interpolation between the two grid values
