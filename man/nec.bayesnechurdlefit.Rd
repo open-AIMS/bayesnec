@@ -47,14 +47,14 @@ order. See the \emph{Extrapolation} section of \code{\link{nec}}.}
 otherwise unused.}
 
 \item{pool}{How observed group levels are combined. \code{"none"} returns
-per-level estimates; \code{"mixture"} selects levels in proportion to their
-observation counts. For equal-length levels of one fit, selected values keep
-matching draw positions. With unequal lengths, it samples from the full
-posterior of each level.
-\code{"mean_estimate"} averages aligned estimates.
-\code{"mean_curve"} is unavailable for a sampled NEC parameter. A joint fit
-defaults to \code{"none"}; other fits with spanning group terms default to
-\code{"mixture"}.}
+per-level estimates. \code{"mixture"} gives each posterior draw to one level, in
+proportion to the levels' observation counts, and keeps it at its position,
+so that draw \emph{i} of the mixture comes from posterior iteration
+\emph{i}. Separate fits with different numbers of draws are instead each
+sampled over their full posterior. \code{"mean_estimate"} averages the levels'
+estimates at each draw. \code{"mean_curve"} is unavailable for a sampled NEC
+parameter. A joint fit defaults to \code{"none"}; other fits with spanning group
+terms default to \code{"mixture"}.}
 }
 \value{
 A vector containing the estimated no-effect value, including upper

@@ -49,11 +49,11 @@
 
 ## Estimates from observed group levels
 
-- `compare_posterior()` now accepts a `bayesnecjointfit` and subtracts the
-  matching posterior draws of its levels for NEC, N(S)EC, NSEC and ECx
-  comparisons. Fitted-curve comparisons predict every level in one call on a
-  common concentration grid, preserving draw pairing. Separate fits continue
-  to pair draws at random (#571).
+- `compare_posterior()` now accepts a `bayesnecjointfit` and contrasts its
+  levels at the same posterior draw, for NEC, N(S)EC, NSEC, ECx and fitted
+  curve comparisons, so that each contrast keeps the dependence between levels
+  estimated in one posterior. Separate fits continue to pair draws at random
+  (#571).
 - For a group term whose levels span concentrations, `ecx()`, `nsec()`,
   `ecnsec()` and `nec()` now read the observed level curves, including their
   fitted group deviations. A level observed at only one concentration is
@@ -64,12 +64,13 @@
 - `pool` selects per-level estimates, an observation-weighted mixture, a
   weighted mean of estimates, or an estimate from the weighted mean curve.
   A joint refit returns levels by default; a single fit with a spanning group
-  term returns the mixture. Where levels share a posterior, the mixture keeps
-  each selected value at its draw position so that joint levels can be
-  compared draw by draw. With unequal posterior lengths, each level's full
-  posterior is sampled. `x_control = "own"` uses each
-  level's lowest observed concentration. `"shared"` or a numeric concentration uses one
-  control across levels and warns where that requires extrapolation.
+  term returns the mixture. The mixture gives each posterior draw to one
+  level and keeps it at its position. On a joint refit, a group term that the
+  levels share, such as a batch in which both were tested, is read at the same
+  value for every level at each draw, as often as their observation counts
+  allow (#571). `x_control = "own"` uses each level's lowest observed
+  concentration. `"shared"` or a numeric concentration uses one control across
+  levels and warns where that requires extrapolation.
 - Pooled summaries retain censoring at the common tested bounds. The grouped
   fit methods also accept `pool`, and `ecnsec()` now works on a grouped fit.
 - Fits saved before this change still hold their earlier summary and plot

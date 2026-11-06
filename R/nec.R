@@ -15,14 +15,14 @@
 #' return the estimated NEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
 #' @param pool How observed group levels are combined. `"none"` returns
-#' per-level estimates; `"mixture"` selects levels in proportion to their
-#' observation counts. For equal-length levels of one fit, selected values keep
-#' matching draw positions. With unequal lengths, it samples from the full
-#' posterior of each level.
-#' `"mean_estimate"` averages aligned estimates.
-#' `"mean_curve"` is unavailable for a sampled NEC parameter. A joint fit
-#' defaults to `"none"`; other fits with spanning group terms default to
-#' `"mixture"`.
+#' per-level estimates. `"mixture"` gives each posterior draw to one level, in
+#' proportion to the levels' observation counts, and keeps it at its position,
+#' so that draw \emph{i} of the mixture comes from posterior iteration
+#' \emph{i}. Separate fits with different numbers of draws are instead each
+#' sampled over their full posterior. `"mean_estimate"` averages the levels'
+#' estimates at each draw. `"mean_curve"` is unavailable for a sampled NEC
+#' parameter. A joint fit defaults to `"none"`; other fits with spanning group
+#' terms default to `"mixture"`.
 #' @param extrapolate The bound beyond which the estimate is reported as
 #' censored. \code{FALSE}, the default, censors at the prediction range the fit
 #' was built on. \code{TRUE} removes the bound at both ends. A single number is
@@ -55,6 +55,14 @@
 #' the estimate, with a message naming it. The default mixes the remaining
 #' observed levels by their observation counts;
 #' \code{pool = "none"} returns them separately.
+#'
+#' On a \code{\link{bayesnecjointfit}}, each level of the refit is mixed over
+#' its own observed group levels. A group term whose values occur in the data
+#' of more than one level, such as a batch in which two levels were both
+#' tested, is read at the same value for every level at each posterior draw,
+#' as often as their observation counts on that term allow. Terms they do not
+#' share are chosen for each level independently. The levels can therefore be
+#' contrasted draw by draw, as \code{\link{compare_posterior}} does.
 #'
 #' \bold{What is actually returned depends on the model set.} Despite the
 #' function name, \code{nec} returns a no-effect estimate of whichever type the
