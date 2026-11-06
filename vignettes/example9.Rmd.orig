@@ -590,7 +590,8 @@ come from (step 5), and the weights below are approximate.
 ```{r copper-weights}
 weights_of <- function(x, label) {
   w <- summary(x)$mod_weights
-  setNames(data.frame(rownames(w), w[, "wi"]), c("model", label))
+  setNames(data.frame(rownames(w), w[, "wi"], row.names = NULL),
+           c("model", label))
 }
 weights_default <- weights_of(screened_default, "uninformative")
 round_cols(weights_default)
@@ -1354,9 +1355,9 @@ regular_reason <- if (length(still_failed) || length(unfit_default)) {
   "The"
 }
 spread_reason <- if (flagged_sd(cf_const) > 0) {
-  paste0("Because the observed standard deviation lay outside the range ",
-         "simulated by the highest-weighted equation at ", flagged_sd(cf_const),
-         " concentrations, the")
+  paste0("Because the posterior predictive p-value of the standard deviation ",
+         "was outside [0.05, 0.95] at ", flagged_sd(cf_const),
+         " concentrations for the highest-weighted equation, the")
 } else {
   "The"
 }
@@ -1437,8 +1438,9 @@ spread_text <- paste0(
     paste0("simulated ", sprintf("%.2f", 1 / ctrl_const),
            " of the standard deviation observed at the control")
   },
-  ", and the observed standard deviation lay outside its simulated range at ",
-  flagged_sd(cf_const), " of ", sum(keep_const), " concentrations (S5)."
+  ", and the posterior predictive p-value of the standard deviation was ",
+  "outside [0.05, 0.95] at ", flagged_sd(cf_const), " of ", sum(keep_const),
+  " concentrations (S5)."
 )
 power_text <- paste0(
   " With the dispersion sub-model the estimated exponent was ",
@@ -1510,7 +1512,7 @@ plate the coefficient of variation among the wells rose from
 `r sprintf("%.3f", cv_keep[1])` at the control to
 `r sprintf("%.3f", max(cv_keep))`, and the constant-dispersion set passed the
 sampler screen for most of its equations while its highest-weighted equation
-simulated a control spread `r sprintf("%.2f", 1 / ctrl_const)` times the one
+simulated a control spread about `r signif(1 / ctrl_const, 2)` times the one
 observed. Adding `disp("power")` changed the number of concentrations flagged
 for spread in that equation from `r flagged_sd(cf_const)` to
 `r flagged_sd(cf_power)`, and the model-averaged *NSEC* from
