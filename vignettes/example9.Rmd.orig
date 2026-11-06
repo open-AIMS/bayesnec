@@ -431,8 +431,11 @@ whose maximum Rhat exceeds 1.01 or which has more than ten divergent
 transitions, and each equation whose control mean or spread is not reproduced
 within 15%.
 
-```{r coral-summary, warning = TRUE}
+```{r coral-summary}
 summary_default <- summary(fit_default)
+```
+
+```{r coral-summary-print, warning = TRUE}
 summary_default
 ```
 
