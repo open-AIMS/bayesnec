@@ -198,6 +198,11 @@ floor_text <- if (n_floor == 0) {
 } else {
   paste(n_floor, "readings on this plate are censored.")
 }
+cens_check_text <- if (n_floor == 0) {
+  "No reading on this plate is censored, so every concentration enters the checks unchanged."
+} else {
+  "The groups with a censored reading are read with that in mind."
+}
 ```
 
 ```{r exmp9-zinc-data, fig.asp = 0.72, out.width = "80%"}
@@ -874,9 +879,9 @@ regularising priors, so the analysis continues with the `r final_label` priors.
 Sampler diagnostics concern the posterior draws, whereas `check_fit()` compares
 the observed and simulated response within each concentration. We apply it
 first to the highest-weighted equation of the set chosen in step 4, and then to
-each retained equation. The concentration with the censored reading
-(`r signif(cens_conc, 2)` mg/L) is left out of the counts and ranges below,
-because the reading at the floor is a bound and not a measurement.
+each retained equation. `check_fit()` holds a censored reading at its bound in
+both the observed and the simulated statistics, and gives the number of such
+readings in each group as `n_cens`. `r cens_check_text`
 
 ## Spread by concentration
 
@@ -892,12 +897,10 @@ cf_const[, c("group", "n", "obs_sd", "sim_sd", "sd_ratio", "ppp_sd", "control")]
 
 ```{r checkfit-const-text, include = FALSE}
 flagged_sd <- function(cf) {
-  keep <- uncensored(cf$group)
-  sum((cf$ppp_sd[keep] > 0.95 | cf$ppp_sd[keep] < 0.05), na.rm = TRUE)
+  sum(cf$ppp_sd > 0.95 | cf$ppp_sd < 0.05, na.rm = TRUE)
 }
-keep_const <- uncensored(cf_const$group)
-ratio_const <- cf_const$sd_ratio[keep_const]
-group_const <- as.numeric(as.character(cf_const$group[keep_const]))
+ratio_const <- cf_const$sd_ratio
+group_const <- as.numeric(as.character(cf_const$group))
 ctrl_const <- cf_const$sd_ratio[cf_const$control]
 ctrl_text <- if (ctrl_const < 1) {
   paste0("At the control the fit simulates about ", round(1 / ctrl_const),
@@ -910,12 +913,11 @@ both_ways <- ctrl_const < 1 && max(ratio_const) > 1
 ```
 
 `sd_ratio` is the observed spread divided by the simulated spread, so a value of
-1 indicates agreement. Over the concentrations without a censored reading it is
-between `r sprintf("%.2f", min(ratio_const))` and
-`r sprintf("%.2f", max(ratio_const))`, with its maximum at
+1 indicates agreement. Here it is between `r sprintf("%.2f", min(ratio_const))`
+and `r sprintf("%.2f", max(ratio_const))`, with its maximum at
 `r signif(group_const[which.max(ratio_const)], 2)` mg/L, and
-`r flagged_sd(cf_const)` of the `r sum(keep_const)` are flagged (a posterior
-predictive p-value for the standard deviation outside [0.05, 0.95]).
+`r flagged_sd(cf_const)` of the `r nrow(cf_const)` concentrations are flagged (a
+posterior predictive p-value for the standard deviation outside [0.05, 0.95]).
 `r ctrl_text`.
 `r if (both_ways) paste0("Where the ratio is largest it simulates about ", round(max(ratio_const)), " times too little. A single shape cannot do both, and a constant coefficient of variation requires it to.") else ""`
 
@@ -929,15 +931,17 @@ round(cv_obs, 3)
 ```
 
 ```{r zinc-cv-text, include = FALSE}
-cv_keep <- cv_obs[uncensored(names(cv_obs))]
+# The concentrations up to the last whose coefficient of variation is within
+# twice the largest of the five lowest.
+n_steady <- max(which(cv_obs <= 2 * max(cv_obs[1:5])))
 ```
 
-Over the concentrations without a censored reading, the coefficient of
-variation is between `r sprintf("%.3f", min(cv_keep[1:5]))` and
-`r sprintf("%.3f", max(cv_keep[1:5]))` over the five lowest, and its largest
-value is `r sprintf("%.3f", max(cv_keep))` at
-`r signif(as.numeric(names(cv_keep))[which.max(cv_keep)], 2)` mg/L, which is
-`r round(max(cv_keep) / cv_keep[1])` times the control value. A `Gamma` fitted
+Up to `r signif(conc_levels[n_steady], 2)` mg/L the coefficient of variation is
+between `r sprintf("%.3f", min(cv_obs[seq_len(n_steady)]))` and
+`r sprintf("%.3f", max(cv_obs[seq_len(n_steady)]))`, and its largest value is
+`r sprintf("%.3f", max(cv_obs))` at
+`r signif(conc_levels[which.max(cv_obs)], 2)` mg/L, which is
+`r round(max(cv_obs) / cv_obs[1])` times the control value. A `Gamma` fitted
 with one `shape` returns a single value for all of them.
 
 ## The dispersion sub-model
@@ -1014,8 +1018,7 @@ with slope `-c1/2`.
 
 ```{r disp-slope-observed}
 conc_mean <- tapply(zn$rlu_cens, zn$conc, mean)
-keep_cv <- uncensored(names(cv_obs))
-obs_slope <- lm(log(cv_obs[keep_cv]) ~ log(conc_mean[keep_cv]))
+obs_slope <- lm(log(cv_obs) ~ log(conc_mean))
 # Multiplying by -2 reverses the order of the bounds, so the names confint()
 # supplied would be attached to the wrong ends.
 setNames(-2 * c(coef(obs_slope)[[2]], rev(confint(obs_slope)[2, ])),
@@ -1051,8 +1054,8 @@ cf_power <- check_fit(best_power)
 cf_power[, c("group", "n", "obs_sd", "sim_sd", "sd_ratio", "ppp_sd", "control")]
 ```
 
-For the highest-weighted equation, the number of concentrations without a
-censored reading that are flagged for spread changes from
+For the highest-weighted equation, the number of concentrations flagged for
+spread changes from
 `r flagged_sd(cf_const)` to `r flagged_sd(cf_power)`, and the control ratio
 changes from `r sprintf("%.2f", cf_const$sd_ratio[cf_const$control])` to
 `r sprintf("%.2f", cf_power$sd_ratio[cf_power$control])`. Because the
@@ -1077,8 +1080,7 @@ round_cols(scale_summary)
 
 The table gives, for each equation under each structure, its weight (`wi`), the
 ratio of observed to simulated standard deviation at the control (`ctrl_ratio`),
-and the number of concentrations without a censored reading that are flagged
-for spread (`n_flag`), with `NA` where the screen removed the equation. Under
+and the number of concentrations flagged for spread (`n_flag`), with `NA` where the screen removed the equation. Under
 constant dispersion the control ratio is below 0.5 in
 `r sum(scale_summary$ctrl_ratio_const < 0.5, na.rm = TRUE)` of the
 `r sum(!is.na(scale_summary$ctrl_ratio_const))` retained equations, and under
@@ -1108,17 +1110,16 @@ plot(both) +
 
 ```{r disp-checkfit-text, include = FALSE}
 inside <- function(cf, stat) {
-  keep <- uncensored(cf$group)
-  lo <- cf[[paste0("sim_", stat, "_lo")]][keep]
-  hi <- cf[[paste0("sim_", stat, "_hi")]][keep]
-  obs <- cf[[paste0("obs_", stat)]][keep]
-  sum(obs >= lo & obs <= hi)
+  lo <- cf[[paste0("sim_", stat, "_lo")]]
+  hi <- cf[[paste0("sim_", stat, "_hi")]]
+  obs <- cf[[paste0("obs_", stat)]]
+  sum(obs >= lo & obs <= hi, na.rm = TRUE)
 }
 ```
 
 Each bar is the 95% span of the statistic simulated from the fit, and each point
-is the observed value. Of the `r sum(keep_const)` concentrations without a
-censored reading, the observed mean falls inside its bar at
+is the observed value. Of the `r nrow(cf_const)` concentrations, the observed
+mean falls inside its bar at
 `r inside(cf_const, "mean")` under constant dispersion and at
 `r inside(cf_power, "mean")` under the sub-model. This says little about the
 curve, because `check_fit()` simulates each concentration with its fitted cell
@@ -1331,8 +1332,7 @@ not at a quantile of its posterior, the variance assumption affects it through
 the precision of the curve, and not through the placement of its reference. This
 is the difference between the *NSEC* and the ECx described in the Overview.
 
-These values depend on the treatment of the floor reading as left-censored at
-the smallest positive reading on the plate, on the cell term, on
+These values depend on the cell term, on
 `asymptote_observed = TRUE`, on the candidate set, on the `r final_label`
 priors and on the dispersion sub-model, and they describe one plate. A methods
 section should state each of these.
@@ -1361,19 +1361,18 @@ spread_reason <- if (flagged_sd(cf_const) > 0) {
 }
 ```
 
-Concentrations of copper that reduced the luminescence of the Lum-31 assay by
+Concentrations of zinc that reduced the luminescence of the Lum-31 assay by
 10% and 50% (EC10 and EC50), and the no-significant-effect concentration (NSEC;
 @fisherfox2023), were estimated for one plate read at 15 minutes using the R
 package `bayesnec` [@fisher2024], which fits concentration-response models in
 Stan through `brms` [@Burkner2017]. Luminescence (relative light units) was
-modelled as a function of log measured copper concentration, using a gamma
+modelled as a function of log measured zinc concentration, using a gamma
 distribution with an identity link and a group-level intercept for the four
-wells at each concentration. Readings at or below the blank were treated as
-left-censored at the smallest positive reading on the plate (S1). The candidate
-model set comprised the `r length(prior_default)` equations of the `bayesnec`
-`decline` group that are valid for these data (declining equations and one
-constant equation; S2), fitted first with the package's default (uninformative)
-priors. Each equation was fitted with four chains of 10,000 iterations, of which
+wells at each concentration (S1). The candidate model set comprised the
+`r length(prior_default)` equations of the `bayesnec` `all` group that are valid
+for these data (declining equations, equations that allow a rise above the
+control at low concentrations, and one constant equation; S2), fitted first
+with the package's default (uninformative) priors. Each equation was fitted with four chains of 10,000 iterations, of which
 the first 8,000 were discarded as warmup. Equations were excluded where the
 maximum R-hat exceeded 1.01 or the minimum bulk or tail effective sample size
 was below 400 [@Vehtari2021], or where more than ten divergent transitions
@@ -1437,7 +1436,7 @@ spread_text <- paste0(
            " of the standard deviation observed at the control")
   },
   ", and the posterior predictive p-value of the standard deviation was ",
-  "outside [0.05, 0.95] at ", flagged_sd(cf_const), " of ", sum(keep_const),
+  "outside [0.05, 0.95] at ", flagged_sd(cf_const), " of ", nrow(cf_const),
   " concentrations (S5)."
 )
 power_text <- paste0(
@@ -1459,8 +1458,8 @@ Mean luminescence fell from
 relative light units in the controls to below one per cent of that value from
 `r signif(conc_levels[first_low], 2)` mg/L, and the coefficient of variation
 among the four wells at a concentration rose from
-`r sprintf("%.3f", cv_keep[1])` at the control to a maximum of
-`r sprintf("%.3f", max(cv_keep))` as the response fell (S1).
+`r sprintf("%.3f", cv_obs[1])` at the control to a maximum of
+`r sprintf("%.3f", max(cv_obs))` as the response fell (S1).
 `r screen_text``r regular_text``r final_text`
 
 `r spread_text``r power_text` The modelled concentrations that reduced
@@ -1507,8 +1506,8 @@ be reported.
 
 The variance assumption is the one that no sampler diagnostic detects. On this
 plate the coefficient of variation among the wells rose from
-`r sprintf("%.3f", cv_keep[1])` at the control to
-`r sprintf("%.3f", max(cv_keep))`, and the constant-dispersion set passed the
+`r sprintf("%.3f", cv_obs[1])` at the control to
+`r sprintf("%.3f", max(cv_obs))`, and the constant-dispersion set passed the
 sampler screen for most of its equations while its highest-weighted equation
 simulated a control spread about `r signif(1 / ctrl_const, 2)` times the one
 observed. Adding `disp("power")` changed the number of concentrations flagged
@@ -1519,8 +1518,9 @@ can therefore pass the checks the sampler screen applies and still simulate the
 wrong spread at the concentration from which both estimators are referenced.
 
 Several decisions made around the fits also determine the estimates: the family
-was chosen on the support of the response, the floor reading was treated as
-left-censored at a bound inferred from the plate, one plate was analysed so that
+was chosen on the support of the response, the candidate set included the
+hormesis equations because the response rose above the control, one plate was
+analysed so that
 no term for the gain of the plate reader was needed, the cell term set the unit
 of replication, the prior set was chosen by a rule fixed before the estimates
 were read, and `asymptote_observed = TRUE` was kept. None of these is a result
