@@ -934,6 +934,14 @@ round(cv_obs, 3)
 # The concentrations up to the last whose coefficient of variation is within
 # twice the largest of the five lowest.
 n_steady <- max(which(cv_obs <= 2 * max(cv_obs[1:5])))
+spread_text_step5 <- if (flagged_sd(cf_const) > 0) {
+  paste0("The constant-dispersion fit therefore misdescribes the spread at ",
+         flagged_sd(cf_const), " of the ", nrow(cf_const), " concentrations.")
+} else {
+  paste("The check flags no concentration, although the coefficient of",
+        "variation of the wells is not constant, and we fit the sub-model to",
+        "test whether the estimates depend on that structure.")
+}
 ```
 
 Up to `r signif(conc_levels[n_steady], 2)` mg/L the coefficient of variation is
@@ -953,9 +961,9 @@ and what the estimated exponent implies for a given family are described in
 [*Single model
 usage*](https://open-aims.github.io/bayesnec/articles/example1.html).
 
-We refit the candidate set with the sub-model under the prior set chosen in step
-4 (the `r final_label` priors), so that the refit changes the dispersion
-structure alone. A dispersion sub-model changes the posterior from which each
+`r spread_text_step5` We refit the candidate set with the sub-model under the
+prior set chosen in step 4 (the `r final_label` priors), so that the refit
+changes the dispersion structure alone. A dispersion sub-model changes the posterior from which each
 equation is sampled, so the refits and the screen of step 3 are applied again.
 Because this is the set from which the estimates are reported, the cells with
 Pareto *k* at or above 0.7 are also refitted exactly.
@@ -1453,13 +1461,16 @@ power_text <- paste0(
 )
 ```
 
-Mean luminescence fell from
+Mean luminescence was
 `r format(signif(conc_means[1], 3), big.mark = ",", scientific = FALSE)`
-relative light units in the controls to below one per cent of that value from
-`r signif(conc_levels[first_low], 2)` mg/L, and the coefficient of variation
-among the four wells at a concentration rose from
-`r sprintf("%.3f", cv_obs[1])` at the control to a maximum of
-`r sprintf("%.3f", max(cv_obs))` as the response fell (S1).
+relative light units in the controls, rose to
+`r sprintf("%.2f", mean_share[peak])` times that value at
+`r signif(conc_levels[peak], 2)` mg/L, and fell to
+`r sprintf("%.1f", 100 * mean_share[length(mean_share)])` per cent of it at
+`r signif(max(conc_levels), 3)` mg/L. The coefficient of variation among the
+four wells at a concentration was `r sprintf("%.3f", cv_obs[1])` at the control
+and reached `r sprintf("%.3f", max(cv_obs))` at
+`r signif(conc_levels[which.max(cv_obs)], 2)` mg/L (S1).
 `r screen_text``r regular_text``r final_text`
 
 `r spread_text``r power_text` The modelled concentrations that reduced
