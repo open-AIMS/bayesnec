@@ -595,7 +595,7 @@ manec_ne_types <- function(object) {
       return(if (identical(part$ne_type, "NEC")) "NEC" else "NSEC")
     }
     if (sampled_nec_is_no_effect(model, part$fit)) "NEC" else "NSEC"
-  }, character(1))
+  }, character(1), USE.NAMES = FALSE)
 }
 
 #' The class of no-effect estimate a single fit holds
