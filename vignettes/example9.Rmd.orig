@@ -653,9 +653,11 @@ remaining_text <- if (length(still_failed) || length(unfit_default)) {
            paste0(", and ", name_list(unfit_default), " had not fitted at all")
          }, ".")
 } else {
-  paste("After the refits of step 3, every equation fitted and passed the",
-        "screen under the default priors, although some needed a refit to do",
-        "so.")
+  paste0("After the refits of step 3, every equation fitted and passed the ",
+         "screen under the default priors",
+         if (length(refitted_default)) {
+           paste0(", ", length(refitted_default), " of them after a refit")
+         }, ".")
 }
 purpose_text <- if (length(still_failed) || length(unfit_default)) {
   paste("refitting under them tests whether the equations that failed can be",
